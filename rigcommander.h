@@ -153,8 +153,8 @@ public slots:
     void getDuplexMode();
     void setQuickSplit(bool qsOn);
     void getTransmitFrequency();
-    void setTone(rptrTone_t t);
-    void setTSQL(rptrTone_t t);
+    void setTone(toneInfo t);
+    void setTSQL(toneInfo t);
     void setTone(quint16 t);
     void setTSQL(quint16 t);
     void getTSQL();
@@ -315,7 +315,6 @@ signals:
     void havespectrumMode_t(spectrumMode_t spectmode);
     void haveScopeEdge(char edge);
     void haveSpectrumRefLevel(int level);
-    void haveScopeOutOfRange(bool outOfRange);
 
     // Rig ID:
     void haveRigID(rigCapabilities rigCaps);
@@ -485,20 +484,19 @@ private:
     QByteArray rigData;
 
     QByteArray spectrumLine;
-    double spectrumStartFreq;
-    double spectrumEndFreq;
+    //double spectrumStartFreq;
+    //double spectrumEndFreq;
 
     struct rigCapabilities rigCaps;
     
     rigstate state;
 
     bool haveRigCaps=false;
-    model_kind model;
+    quint8 model = 0; // Was model_kind but that makes no sense when users can create their own rigs!
     quint8 spectSeqMax;
     quint16 spectAmpMax;
     quint16 spectLenMax;
     spectrumMode_t oldScopeMode;
-    bool wasOutOfRange = false;
 
     bool usingNativeLAN; // indicates using OEM LAN connection (705,7610,9700,7850)
     bool lookingForRig;

@@ -456,7 +456,7 @@ void rigCommander::setSpectrumBounds(double startFreq, double endFreq, unsigned 
     unsigned char range = 1;
 
     QByteArray payload;
-    if (getCommand(funcScopeFixedFreq,payload,edgeNumber))
+    if (getCommand(funcScopeFixedEdgeFreq,payload,edgeNumber))
     {
         // Each band should be configured with a maximum range, except for the ICR8600 which doesn't really have "bands"
         for (bandType band: rigCaps.bands)
@@ -480,7 +480,7 @@ void rigCommander::getScopeMode()
     // center or fixed
     QByteArray payload;
     unsigned char cmd = '\x00';
-    if (getCommand(funcScopeCenterFixed,payload,cmd))
+    if (getCommand(funcScopeMainMode,payload,cmd))
     {
         payload.append(cmd);
         prepDataAndSend(payload);
@@ -491,7 +491,7 @@ void rigCommander::getScopeEdge()
 {
     QByteArray payload;
     unsigned char cmd = '\x00';
-    if (getCommand(funcScopeEdgeNumber,payload,cmd))
+    if (getCommand(funcScopeMainEdge,payload,cmd))
     {
         payload.append(cmd);
         prepDataAndSend(payload);
@@ -503,7 +503,7 @@ void rigCommander::setScopeEdge(char edge)
     // 1 2 or 3 (check command definition)
     QByteArray payload;
     unsigned char vfo = '\x00';
-    if (getCommand(funcScopeEdgeNumber,payload,edge))
+    if (getCommand(funcScopeMainEdge,payload,edge))
     {
         payload.append(vfo);
         payload.append(edge);
@@ -519,7 +519,7 @@ void rigCommander::getScopeSpan()
 void rigCommander::getScopeSpan(bool isSub)
 {
     QByteArray payload;
-    if (getCommand(funcScopeCenterSpan,payload,static_cast<int>(isSub)))
+    if (getCommand(funcScopeMainSpan,payload,static_cast<int>(isSub)))
     {
         payload.append(static_cast<unsigned char>(isSub));
         prepDataAndSend(payload);
@@ -534,7 +534,7 @@ void rigCommander::setScopeSpan(char span)
 
     QByteArray payload;
     unsigned char vfo = '\x00';
-    if (getCommand(funcScopeCenterSpan,payload,span))
+    if (getCommand(funcScopeMainSpan,payload,span))
     {
         payload.append(vfo);
         payload.append("\x00"); // 10Hz/1Hz
@@ -557,7 +557,7 @@ void rigCommander::setspectrumMode_t(spectrumMode_t spectMode)
 {
     QByteArray payload;
     unsigned char vfo = '\x00';
-    if (getCommand(funcScopeCenterFixed,payload,static_cast<int>(spectMode)))
+    if (getCommand(funcScopeMainMode,payload,static_cast<int>(spectMode)))
     {
         payload.append(vfo);
         payload.append(static_cast<unsigned char>(spectMode) );
@@ -573,7 +573,7 @@ void rigCommander::getSpectrumRefLevel()
 void rigCommander::getSpectrumRefLevel(unsigned char mainSub)
 {
     QByteArray payload;
-    if (getCommand(funcScopeRef,payload,static_cast<int>(mainSub)))
+    if (getCommand(funcScopeMainRef,payload,static_cast<int>(mainSub)))
     {
         payload.append(mainSub);
         prepDataAndSend(payload);
@@ -585,7 +585,7 @@ void rigCommander::setSpectrumRefLevel(int level)
     // -30 to +10
     unsigned char vfo = 0x0;
     QByteArray payload;
-    if (getCommand(funcScopeRef,payload,level))
+    if (getCommand(funcScopeMainRef,payload,level))
     {
         bool isNegative = false;
         if(level < 0)
@@ -604,7 +604,7 @@ void rigCommander::setSpectrumRefLevel(int level)
 void rigCommander::getSpectrumCenterMode()
 {
     QByteArray payload;
-    if (getCommand(funcScopeCenterFixed,payload))
+    if (getCommand(funcScopeMainMode,payload))
     {
         prepDataAndSend(payload);
     }
@@ -613,7 +613,7 @@ void rigCommander::getSpectrumCenterMode()
 void rigCommander::getspectrumMode_t()
 {
     QByteArray payload;
-    if (getCommand(funcScopeCenterFixed,payload))
+    if (getCommand(funcScopeMainMode,payload))
     {
         prepDataAndSend(payload);
     }
@@ -950,7 +950,7 @@ void rigCommander::setSplit(bool splitEnabled)
 void rigCommander::setDuplexMode(duplexMode_t dm)
 {
     QByteArray payload;
-    if (getCommand(funcDuplexStatus,payload,static_cast<int>(dm)))
+    if (getCommand(funcSplitStatus,payload,static_cast<int>(dm)))
     {
         payload.append(static_cast<unsigned char>(dm));
         prepDataAndSend(payload);
@@ -964,7 +964,7 @@ void rigCommander::setDuplexMode(duplexMode_t dm)
 void rigCommander::getDuplexMode()
 {
     QByteArray payload;
-    if (getCommand(funcDuplexStatus,payload))
+    if (getCommand(funcSplitStatus,payload))
     {
         prepDataAndSend(payload);
     }
@@ -1145,17 +1145,17 @@ void rigCommander::getTransmitFrequency()
 
 void rigCommander::setTone(quint16 tone)
 {
-    rptrTone_t t;
+    toneInfo t;
     t.tone = tone;
     setTone(t);
 }
 
-void rigCommander::setTone(rptrTone_t t)
+void rigCommander::setTone(toneInfo t)
 {
     QByteArray payload;
     if (getCommand(funcMainSubPrefix,payload))
     {
-        payload.append(static_cast<unsigned char>(t.useSecondaryVFO));
+        //payload.append(static_cast<unsigned char>(t.useSecondaryVFO));
     }
 
     if (getCommand(funcToneFreq,payload,static_cast<int>(t.tone)))
@@ -1167,17 +1167,17 @@ void rigCommander::setTone(rptrTone_t t)
 
 void rigCommander::setTSQL(quint16 t)
 {
-    rptrTone_t tn;
+    toneInfo tn;
     tn.tone = t;
     setTSQL(tn);
 }
 
-void rigCommander::setTSQL(rptrTone_t t)
+void rigCommander::setTSQL(toneInfo t)
 {
     QByteArray payload;
     if (getCommand(funcMainSubPrefix,payload))
     {
-        payload.append(static_cast<unsigned char>(t.useSecondaryVFO));
+        //payload.append(static_cast<unsigned char>(t.useSecondaryVFO));
     }
 
     if (getCommand(funcTSQLFreq,payload,static_cast<int>(t.tone)))
@@ -2000,7 +2000,7 @@ void rigCommander::parseCommand()
     switch (func)
     {
     case funcFreqGet:
-    case funcfreqTR:
+    case funcFreqTR:
     case funcReadTXFreq:
     {
         value.setValue(parseFrequency());
@@ -2075,11 +2075,14 @@ void rigCommander::parseCommand()
         value.setValue(parseFrequencyRptOffset(payloadIn));
         break;
     // These return a single byte that we convert to a uchar (0-99)
-    case funcSplitStatus:
-    case funcDuplexStatus:
     case funcTuningStep:
     case funcAttenuator:
+    case funcBreakIn:   // This is 0,1 or 2
         value.setValue(uchar(payloadIn[1]));
+        break;
+    // Return a duplexMode_t for split or duplex (same function)
+    case funcSplitStatus:
+        value.setValue(duplexMode_t(payloadIn[1]));
         break;
     case funcAntenna:
     {
@@ -2094,6 +2097,8 @@ void rigCommander::parseCommand()
     case funcAfGain:        
         if (udp == Q_NULLPTR) {
             value.setValue(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        } else {
+            value.setValue(localVolume);
         }
         break;
     // The following group are 2 bytes converted to uchar (0-255)
@@ -2169,7 +2174,11 @@ void rigCommander::parseCommand()
     // 0x19 it automatically added.
     case funcTransceiverId:
         value.setValue(static_cast<uchar>(payloadIn[2]));
-        model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
+        if (rigList.contains(uchar(payloadIn[2])))
+        {
+            this->model = rigList.find(uchar(payloadIn[2])).key();
+        }
+        //model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
         rigCaps.modelID = payloadIn[2];
         determineRigCaps();
         qInfo(logRig()) << "Have rig ID: " << QString::number(rigCaps.modelID,16);
@@ -2265,10 +2274,11 @@ void rigCommander::parseCommand()
              break;
         ritHz = f.Hz*((payloadIn.at(4)=='\x01')?-1:1);
         value.setValue(ritHz);
+        qInfo() << "Have RIT" << ritHz;
         break;
     }
     // 0x27
-    case funcScopeWaveData:
+    case funcScopeMainWaveData:
     {
         scopeData d;
         if (parseSpectrum(d))
@@ -2288,37 +2298,37 @@ void rigCommander::parseCommand()
     case funcScopeSingleDual:
         // This tells us whether we are receiving single or dual scopes
         break;
-    case funcScopeCenterFixed:
+    case funcScopeMainMode:
         // fixed or center
         // [1] 0x14
         // [2] 0x00
         // [3] 0x00 (center), 0x01 (fixed), 0x02, 0x03
         value.setValue(static_cast<spectrumMode_t>(uchar(payloadIn[3])));
-        //emit havespectrumMode_t(static_cast<spectrumMode_t>((unsigned char)payloadIn[3]));
         break;
-    case funcScopeCenterSpan:
+    case funcScopeMainSpan:
     {
         freqt f = parseFrequency(payloadIn, 6);
-        f.VFO = static_cast<selVFO_t>((uchar)payloadIn[2]);
-        value.setValue(f);
-        // read span in center mode
-        // [1] 0x15
-        // [2] to [8] is spastatic_cast<bool>(payloadIn.at(2)n encoded as a frequency
-        //emit haveScopeSpan(parseFrequency(payloadIn, 6), static_cast<bool>(payloadIn.at(2)));
+        foreach (auto s, rigCaps.scopeCenterSpans)
+        {
+            if (s.freq == f.Hz)
+            {
+                value.setValue(s);
+            }
+        }
         break;
     }
-    case funcScopeEdgeNumber:
+    case funcScopeMainEdge:
         // read edge mode center in edge mode
         // [1] 0x16
         // [2] 0x01, 0x02, 0x03: Edge 1,2,3
         value.setValue(bcdHexToUChar(payloadIn[2]));
         //emit haveScopeEdge((char)payloadIn[2]);
         break;
-    case funcScopeHold:
+    case funcScopeMainHold:
         // Hold status (only 9700?)
         value.setValue(static_cast<bool>(payloadIn[2]));
         break;
-    case funcScopeRef:
+    case funcScopeMainRef:
     {
         // scope reference level
         // [1] 0x19
@@ -2335,12 +2345,12 @@ void rigCommander::parseCommand()
         value.setValue(ref);
         break;
     }
-    case funcScopeSpeed:
+    case funcScopeMainSpeed:
     case funcScopeDuringTX:
     case funcScopeCenterType:
-    case funcScopeVBW:
-    case funcScopeFixedFreq:
-    case funcScopeRBW:
+    case funcScopeMainVBW:
+    case funcScopeFixedEdgeFreq:
+    case funcScopeMainRBW:
         break;
     // 0x28
     case funcVoiceTX:
@@ -2360,7 +2370,7 @@ void rigCommander::parseCommand()
         break;
     }
 
-    if( (func != funcScopeWaveData) && (payloadIn[00] != '\x15') )
+    if(func != funcScopeMainWaveData && func != funcScopeSubWaveData && payloadIn[00] != '\x15')
     {
         // We do not log spectrum and meter data,
         // as they tend to clog up any useful logging.
@@ -5552,29 +5562,27 @@ bool rigCommander::parseSpectrum(scopeData& d)
         if(payloadIn.length() >= 15)
         {
             d.oor=(bool)payloadIn[16];
-            if(d.oor != wasOutOfRange)
-            {
-                emit haveScopeOutOfRange(d.oor);
-                wasOutOfRange = d.oor;
-                return false;
+            if (d.oor) {
+                d.data = QByteArray(rigCaps.spectLenMax,'\0');
+                return true;
             }
         }
 
         // wave information
         spectrumLine.clear();
+
+
         // For Fixed, and both scroll modes, the following produces correct information:
         fStart = parseFrequency(payloadIn, 9);
-        spectrumStartFreq = fStart.MHzDouble;
+        d.startFreq = fStart.MHzDouble;
         fEnd = parseFrequency(payloadIn, 14);
-        spectrumEndFreq = fEnd.MHzDouble;
+        d.endFreq = fEnd.MHzDouble;
+
         if(scopeMode == spectModeCenter)
         {
             // "center" mode, start is actual center, end is bandwidth.
-            spectrumStartFreq -= spectrumEndFreq;
-            spectrumEndFreq = spectrumStartFreq + 2*(spectrumEndFreq);
-            d.startFreq = spectrumStartFreq;
-            d.endFreq = spectrumEndFreq;
-            // emit haveSpectrumCenterSpan(span);
+            d.startFreq -= d.endFreq;
+            d.endFreq = d.startFreq + 2*(d.endFreq);
         }
 
         if (payloadIn.length() > 400) // Must be a LAN packet.
@@ -5582,7 +5590,6 @@ bool rigCommander::parseSpectrum(scopeData& d)
             payloadIn.chop(1);
             d.data.append(payloadIn.right(payloadIn.length()-17)); // write over the FD, last one doesn't, oh well.
             ret = true;
-            //emit haveSpectrumData(spectrumLine, spectrumStartFreq, spectrumEndFreq);
         }
     }
     else if ((sequence > 1) && (sequence < rigCaps.spectSeqMax))
@@ -5880,7 +5887,12 @@ modeInfo rigCommander::parseMode(quint8 mode, quint8 filter)
         qInfo(logRig()) << QString("parseMode() Couldn't find a matching mode %0 with filter %1").arg(mode).arg(filter);
 
     cacheItem item = queue->getCache(funcFilterWidth);
-    if (!item.value.isValid()) {
+
+    if (item.value.isValid()) {
+        mi.pass = item.value.toInt();
+    }
+    else
+    {
 
         /*  We haven't got a valid passband from the rig so we
             need to create a 'fake' one from default values
@@ -6288,11 +6300,13 @@ void rigCommander::setRigID(unsigned char rigID)
     // this->civAddr comes from how rigCommander is setup and should be accurate.
     this->incomingCIVAddr = this->civAddr;
 
-    this->model = determineRadioModel(rigID);
+    if (rigList.contains(rigID)) this->model = rigID;
     rigCaps.modelID = rigID;
-    rigCaps.model = determineRadioModel(rigID);
-
+    rigCaps.model = this->model;
     determineRigCaps();
+
+    //this->model = determineRadioModel(rigID);
+    //rigCaps.model = determineRadioModel(rigID);
 }
 
 void rigCommander::changeLatency(const quint16 value)
@@ -6873,16 +6887,48 @@ void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value
 
     //qInfo() << "Got command:" << funcString[func];
     int val=INT_MIN;
-    if (value.isValid()) {
-        val = value.value<int>() & 0xffff;
+    if (value.isValid() && value.canConvert<int>()) {
+        // Used to validate payload, otherwise ignore.
+        val = value.value<int>();
         //qInfo(logRig()) << "Got value" << QString(value.typeName());
+        if (func == funcMemoryContents || func == funcMemoryClear || func == funcMemoryWrite)
+        {
+            // Strip out group number from memory for validation purposes.
+            val = val & 0xffff;
+        }
     }
 
-    if (func == funcSelectVFO) {
+    if (func == funcSendCW)
+    {
+        val = value.value<QString>().length();
+    }
+
+    if (func == funcAfGain && value.isValid() && udp != Q_NULLPTR) {
+        // Ignore the AF Gain command, just queue it for processing
+        emit haveSetVolume(static_cast<uchar>(value.toInt()));
+        queue->receiveValue(func,value);
+        return;
+    }
+
+    // Need to work out what to do with older dual-VFO rigs.
+    if ((func == funcSelectedFreq || func == funcUnselectedFreq) && !rigCaps.commands.contains(func))
+    {
+        if (value.isValid())
+            func = funcFreqSet;
+        else
+            func = funcFreqGet;
+    } else if ((func == funcSelectedMode || func == funcUnselectedMode) && !rigCaps.commands.contains(func))
+    {
+        if (value.isValid())
+            func = funcModeSet;
+        else
+            func = funcModeGet;
+    } else if (func == funcSelectVFO) {
         // Special command
         vfo_t vfo = value.value<vfo_t>();
         func = (vfo == vfoA)?funcVFOASelect:(vfo == vfoB)?funcVFOBSelect:(vfo == vfoMain)?funcVFOMainSelect:funcVFOSubSelect;
         value.clear();
+        val = INT_MIN;
     }
 
     QByteArray payload;
@@ -6890,10 +6936,37 @@ void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value
     {
         if (value.isValid())
         {
-
             if (!strcmp(value.typeName(),"bool"))
             {
                  payload.append(value.value<bool>());
+            }
+            if (!strcmp(value.typeName(),"QString"))
+            {
+                 QString text = value.value<QString>();
+                 if (pttAllowed && func == funcSendCW)
+                 {
+                    QByteArray textData = text.toLocal8Bit();
+                    unsigned char p=0;
+                    for(int c=0; c < textData.length(); c++)
+                    {
+                        p = textData.at(c);
+                        if( ( (p >= 0x30) && (p <= 0x39) ) ||
+                            ( (p >= 0x41) && (p <= 0x5A) ) ||
+                            ( (p >= 0x61) && (p <= 0x7A) ) ||
+                            (p==0x2F) || (p==0x3F) || (p==0x2E) ||
+                            (p==0x2D) || (p==0x2C) || (p==0x3A) ||
+                            (p==0x27) || (p==0x28) || (p==0x29) ||
+                            (p==0x3D) || (p==0x2B) || (p==0x22) ||
+                            (p==0x40) || (p==0x20) )
+                        {
+                            // Allowed character, continue
+                        } else {
+                            qWarning(logRig()) << "Invalid character detected in CW message at position " << c << ", the character is " << text.at(c);
+                            textData[c] = 0x3F; // "?"
+                        }
+                    }
+                    payload.append(textData);
+                 }
             }
             else if (!strcmp(value.typeName(),"uchar"))
             {
@@ -6905,6 +6978,25 @@ void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value
                     payload.append(makeFilterWidth(value.value<ushort>()));
                 else
                     payload.append(bcdEncodeInt(value.value<ushort>()));
+            }
+            else if (!strcmp(value.typeName(),"short"))
+            {
+                // Currently only used for RIT (I think)
+                bool isNegative = false;
+                short val = value.value<short>();
+                qInfo() << "Setting rit to " << val;
+                if(val < 0)
+                {
+                    isNegative = true;
+                    val *= -1;
+                }
+                freqt f;
+                QByteArray freqBytes;
+                f.Hz = val;
+                freqBytes = makeFreqPayload(f);
+                freqBytes.truncate(2);
+                payload.append(freqBytes);
+                payload.append(QByteArray(1,(char)isNegative));
             }
             else if (!strcmp(value.typeName(),"uint") && (func == funcMemoryContents || func == funcMemoryMode))
             {
@@ -6949,7 +7041,8 @@ void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value
             else if(!strcmp(value.typeName(),"antennaInfo"))
             {
                 payload.append(value.value<antennaInfo>().antenna);
-                payload.append(value.value<antennaInfo>().rx);
+                if (rigCaps.commands.contains(funcRXAntenna))
+                    payload.append(value.value<antennaInfo>().rx);
             }
             else if(!strcmp(value.typeName(),"rigInput"))
             {
@@ -6959,16 +7052,55 @@ void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value
             {
                 payload.append(setMemory(value.value<memoryType>()));
             }
+            else if (!strcmp(value.typeName(),"spectrumBounds"))
+            {
+                spectrumBounds s = value.value<spectrumBounds>();
+                uchar range=1;
+                for (bandType band: rigCaps.bands)
+                {
+                   if (band.range != 0.0 && s.start > band.range)
+                        range++;
+                }
+                payload.append(range);
+                payload.append(s.edge);
+                payload.append(makeFreqPayload(s.start));
+                payload.append(makeFreqPayload(s.end));
+                qInfo() << "Bounds" << range << s.edge << s.start << s.end << payload.toHex();
+            }
+            else if (!strcmp(value.typeName(),"duplexMode_t"))
+            {
+                payload.append(static_cast<uchar>(value.value<duplexMode_t>()));
+            }
+            else if (!strcmp(value.typeName(),"spectrumMode_t"))
+            {
+                payload.append(static_cast<uchar>(value.value<spectrumMode_t>()));
+            }
+            else if (!strcmp(value.typeName(),"centerSpanData"))
+            {
+                centerSpanData span = value.value<centerSpanData>();
+                double freq = double(span.freq/1000000.0);
+                payload.append(makeFreqPayload(freq));
+            }
+            else if (!strcmp(value.typeName(),"toneInfo"))
+            {
+                toneInfo t = value.value<toneInfo>();
+                payload.append(encodeTone(t.tone, t.tinv, t.rinv));
+            }
             else
             {
                 qInfo(logRig()) << "Got unknown value type" << QString(value.typeName());
+                return;
             }
+            // This was a set command, so queue a get straight after to retrieve the updated value
+            // will fail on some commands so they would need to be added here:
+            if (func != funcScopeFixedEdgeFreq && func != funcSpeech)
+                queue->addUnique(priorityImmediate,func);
         }
         prepDataAndSend(payload);
     }
     else
     {
-        qInfo() << "cachingQueue(): unimplemented command" << funcString[func];
+        qDebug(logRig()) << "cachingQueue(): unimplemented command" << funcString[func];
     }
 }
 

@@ -10,7 +10,8 @@ cwSidetone::cwSidetone(int level, int speed, int freq, double ratio, QWidget* pa
     ratio(ratio)
 {
 
-    /*
+    qInfo(logCW()) << "Starting sidetone. Thread=" << QThread::currentThreadId();
+     /*
      * Characters to match Icom table
      * Unknown characters will return '?'
     */
@@ -68,7 +69,7 @@ cwSidetone::cwSidetone(int level, int speed, int freq, double ratio, QWidget* pa
 
     cwTable[' '] = " ";
 
-    init();
+    //init();
 }
 
 cwSidetone::~cwSidetone()
@@ -80,6 +81,7 @@ cwSidetone::~cwSidetone()
 
 void cwSidetone::init()
 {
+    qInfo(logCW()) << "Sidetone init() Thread=" << QThread::currentThreadId();
     format.setSampleRate(44100);
     format.setChannelCount(1);
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))

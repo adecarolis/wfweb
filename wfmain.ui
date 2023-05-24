@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -114,19 +114,6 @@
             </property>
             <property name="sizeAdjustPolicy">
              <enum>QComboBox::AdjustToContents</enum>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="scopeOutOfRangeLabel">
-            <property name="minimumSize">
-             <size>
-              <width>5</width>
-              <height>0</height>
-             </size>
-            </property>
-            <property name="text">
-             <string/>
             </property>
            </widget>
           </item>
@@ -3902,7 +3889,7 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>824</width>
+                      <width>579</width>
                       <height>254</height>
                      </rect>
                     </property>
@@ -6009,8 +5996,8 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="underlayButtonGroup"/>
   <buttongroup name="buttonGroup"/>
   <buttongroup name="pollingButtonGroup"/>
+  <buttongroup name="underlayButtonGroup"/>
  </buttongroups>
 </ui>

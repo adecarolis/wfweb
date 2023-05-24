@@ -162,7 +162,7 @@ struct genericType {
 model_kind determineRadioModel(unsigned char rigID);
 
 struct rigCapabilities {
-    model_kind model;
+    quint8 model;
     quint8 civ;
     quint8 modelID = 0;
     QString filename;
@@ -220,7 +220,7 @@ struct rigCapabilities {
     std::vector <filterType> filters;
     std::vector <centerSpanData> scopeCenterSpans;
     std::vector <bandType> bands;
-    std::vector <spanType> spans;
+    //std::vector <spanType> spans;
     std::vector <stepType> steps;
     unsigned char bsr[24] = {0};
 

@@ -75,11 +75,6 @@ enum vfo_t {
     vfoSub = 0xD1
 };
 
-struct rptrTone_t {
-    quint16 tone = 0;
-    bool useSecondaryVFO = false;
-};
-
 enum duplexMode_t {
     dmSplitOff=0x00,
     dmSplitOn=0x01,
@@ -210,14 +205,14 @@ cmdLCDWaterfall, cmdLCDSpectrum, cmdLCDNothing, cmdSeparator
 
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 197
+#define NUMFUNCS 210
 
 enum funcs { funcNone,
-funcfreqTR,             funcModeTR,             funcBandEdgeFreq,           funcFreqGet,        	funcModeGet,        	funcFreqSet,			// \x00
+funcFreqTR,             funcModeTR,             funcBandEdgeFreq,           funcFreqGet,        	funcModeGet,        	funcFreqSet,			// \x00
 funcModeSet,            funcVFOSwapAB,          funcVFOSwapMS,              funcVFOEqualAB,     	funcVFOEqualMS,     	funcVFODualWatchOff,	// \x06
 funcVFODualWatchOn,     funcVFODualWatch,       funcVFOMainSelect,          funcVFOSubSelect,   	funcVFOASelect,     	funcVFOBSelect,			// \x07
 funcVFOBandMS,          funcMemoryMode,         funcMemoryWrite,            funcMemoryToVFO,    	funcMemoryClear,    	funcReadFreqOffset,
-funcSendFreqOffset,		funcScanning,			funcSplitStatus,            funcDuplexStatus, 		funcTuningStep,         funcAttenuator,
+funcSendFreqOffset,		funcScanning,			funcSplitStatus,      		funcTuningStep,         funcAttenuator,
 funcAntenna,        	funcSpeech,        		funcAfGain,                 funcRfGain,             funcSquelch,            funcAPFLevel,
 funcNRLevel,       		funcIFShift,            funcPBTInner,               funcPBTOuter,			funcCwPitch,            funcRFPower,
 funcMicGain,            funcKeySpeed,			funcNotchFilter,            funcCompressorLevel,	funcBreakInDelay,		funcNBLevel,
@@ -231,22 +226,23 @@ funcDSPIFFilter,		funcNotchWidth,         funcSSBBandwidth,           funcMainSu
 funcToneSquelchType,    funcIPPlus,				funcSendCW,                 funcPowerControl,		funcTransceiverId,		funcFilterWidth,
 funcMemoryContents,		funcBandStackReg,		funcMemoryKeyer,            funcIFFilterWidth,      funcQuickDualWatch,		funcQuickSplit,
 funcAutoRepeater,		funcTunerStatus,		funcTransverter,            funcTransverterOffset,  funcLockFunction,		funcREFAdjust,
-funcREFAdjustFine,		funcACCAModLevel,		funcACCBModLevel,           funcUSBModLevel,		funcLANModLevel,		funcSPDIFModLevel,       funcDATAOffMod,
-funcDATA1Mod,			funcDATA2Mod,			funcDATA3Mod,               funcCIVTransceive,		funcTime,           	funcDate,
-funcUTCOffset,			funcCLOCK2,				funcCLOCK2UTCOffset,        funcCLOCK2Name,			funcDashRatio,			funcScanSpeed,
-funcScanResume,			funcRecorderMode,		funcRecorderTX,             funcRecorderRX,			funcRecorderSplit,		funcRecorderPTTAuto,
-funcRecorderPreRec,		funcRXAntConnector,		funcAntennaSelectMode,      funcNBDepth,			funcNBWidth,			funcVOXDelay,
-funcVOXVoiceDelay,		funcAPFType,			funcAPFTypeLevel,           funcPSKTone,            funcRTTYMarkTone,       funcDataModeWithFilter,
-funcAFMute,				funcToneFreq,           funcTSQLFreq,               funcDTCSCode,           funcCSQLCode,           funcTransceiverStatus,
-funcXFCStatus,			funcReadTXFreq,			funcCIVOutput,              funcReadTXFreqs,        funcReadUserTXFreqs,	funcUserTXBandEdgeFreq,
-funcRITFreq,			funcRitStatus,			funcRitTXStatus,            funcSelectedFreq,       funcSelectedMode,       funcUnselectedFreq,
-funcUnselectedMode,     funcScopeWaveData,
-funcScopeOnOff,			funcScopeDataOutput,	funcScopeMainSub,           funcScopeSingleDual,	funcScopeCenterFixed,	funcScopeCenterSpan,
-funcScopeEdgeNumber,  	funcScopeHold,      	funcScopeRef,               funcScopeSpeed,			funcScopeDuringTX,      funcScopeCenterType,
-funcScopeVBW,       	funcScopeFixedFreq, 	funcScopeRBW,               funcVoiceTX,			funcMainSubPrefix,		funcAFCSetting,
+funcREFAdjustFine,		funcACCAModLevel,		funcACCBModLevel,           funcUSBModLevel,		funcLANModLevel,		funcSPDIFModLevel,
+funcDATAOffMod,         funcDATA1Mod,			funcDATA2Mod,               funcDATA3Mod,           funcCIVTransceive,		funcTime,
+funcDate,               funcUTCOffset,			funcCLOCK2,                 funcCLOCK2UTCOffset,    funcCLOCK2Name,			funcDashRatio,
+funcScanSpeed,          funcScanResume,			funcRecorderMode,           funcRecorderTX,         funcRecorderRX,			funcRecorderSplit,
+funcRecorderPTTAuto,    funcRecorderPreRec,		funcRXAntConnector,         funcAntennaSelectMode,  funcNBDepth,			funcNBWidth,
+funcVOXDelay,           funcVOXVoiceDelay,		funcAPFType,                funcAPFTypeLevel,       funcPSKTone,            funcRTTYMarkTone,
+funcDataModeWithFilter, funcAFMute,				funcToneFreq,               funcTSQLFreq,           funcDTCSCode,           funcCSQLCode,
+funcTransceiverStatus,  funcXFCStatus,			funcReadTXFreq,             funcCIVOutput,          funcReadTXFreqs,        funcReadUserTXFreqs,
+funcUserTXBandEdgeFreq, funcRITFreq,			funcRitStatus,              funcRitTXStatus,        funcSelectedFreq,       funcSelectedMode,
+funcUnselectedFreq,     funcUnselectedMode,     funcScopeMainWaveData,      funcScopeSubWaveData,   funcScopeOnOff,         funcScopeDataOutput,
+funcScopeMainSub,       funcScopeSingleDual,	funcScopeMainMode,          funcScopeSubMode,       funcScopeMainSpan,      funcScopeSubSpan,
+funcScopeMainEdge,      funcScopeSubEdge,       funcScopeMainHold,          funcScopeSubHold,       funcScopeMainRef,       funcScopeSubRef,
+funcScopeMainSpeed,     funcScopeSubSpeed,      funcScopeMainVBW,           funcScopeSubVBW,        funcScopeMainRBW,       funcScopeSubRBW,
+funcScopeDuringTX,      funcScopeCenterType,    funcScopeFixedEdgeFreq,     funcVoiceTX,			funcMainSubPrefix,		funcAFCSetting,
 funcGPSTXMode,          funcSatelliteMemory,    funcGPSPosition,            funcMemoryGroup,        funcSelectVFO,          funcSeparator,
-funcLCDWaterfall,       funcLCDSpectrum,        funcLCDNothing,             funcPageUp,             funcPageDown,           funcFA,
-funcFB
+funcLCDWaterfall,       funcLCDSpectrum,        funcLCDNothing,             funcPageUp,             funcPageDown,           funcVFOFrequency,
+funcVFOMode,            funcRigctlFunction,     funcRigctlLevel,            funcRigctlParam,        funcFA,                 funcFB
 };
 
 
@@ -256,7 +252,7 @@ static QString funcString[] { "None",
 "Mode Set",             "VFO Swap A/B",         "VFO Swap M/S",             "VFO Equal AB",         "VFO Equal MS",         "VFO Dual Watch Off",
 "VFO Dual Watch On",	"VFO Dual Watch",       "VFO Main Select",          "VFO Sub Select",       "VFO A Select",         "VFO B Select",
 "VFO Main/Sub Band",    "Memory Mode",          "Memory Write",             "Memory to VFO",        "Memory Clear",         "Read Freq Offset",
-"Send Freq Offset",		"Scanning",				"Split Operation",          "Duplex Operation",     "Tuning Step",          "Attenuator Status",
+"Send Freq Offset",		"Scanning",				"Split/Duplex",             "Tuning Step",          "Attenuator Status",
 "Antenna",          	"Speech",           	"AF Gain",                  "RF Gain",              "Squelch",              "APF Level",
 "NR Level",  			"IF Shift",             "PBT Inner",                "PBT Outer",            "CW Pitch",             "RF Power",
 "Mic Gain",             "Key Speed",			"Notch Filter",             "Compressor Level",     "Break-In Delay",       "NB Level",
@@ -270,25 +266,24 @@ static QString funcString[] { "None",
 "Tone Squelch Type",    "IP Plus Status",       "Send CW",                  "Power Control",        "Transceiver ID",       "Filter Width",
 "Memory Contents",      "Band Stacking Reg",    "Memory Keyer",             "IF Filter Width",      "Quick Dual Watch",     "Quick Split",
 "Auto Repeater Mode",   "Tuner/ATU Status",     "Transverter Function",     "Transverter Offset",   "Lock Function",        "REF Adjust",
-"REF Adjust Fine",      "ACC1 Mod Level",       "ACC2 Mod Level",           "USB Mod Level",        "LAN Mod Level",        "SPDIF Mod Level", "Data Off Mod Input",
-"DATA1 Mod Input",      "DATA2 Mod Input",  	"DATA3 Mod Input",          "CIV Transceive",       "System Time",          "System Date",
-"UTC Offset",           "CLOCK2 Setting",       "CLOCK2 UTC Offset",        "CLOCK 2 Name",         "Dash Ratio",           "Scanning Speed",
-"Scanning Resume",      "Recorder Mode",        "Recorder TX",              "Recorder RX",          "Recorder Split",       "Recorder PTT Auto",
-"Recorder Pre Rec",     "RX Ant Connector",     "Antenna Select Mode",      "NB Depth",             "NB Width",             "VOX Delay",
-"VOX Voice Delay",      "APF Type",             "APF Type Level",           "PSK Tone",             "RTTY Mark Tone",       "Data Mode Filter",
-"AF Mute Status",       "Tone Frequency",       "TSQL Frequency",           "DTCS Code/Polarity",   "CSQL Code",            "Transceiver Status",
-"XFC Status",           "Read TX Freq",         "CI-V Output",              "Read TX Freqs",        "Read User TX Freqs",   "User TX Band Edge Freq",
-"RIT Frequency",        "RIT Status",           "RIT TX Status",            "Selected Freq",        "Selected Mode",        "Unselected Freq",
-"Unselected Mode",      "Scope Wave Data",
-"Scope On/Off",         "Scope Data Output",    "Scope Main/Sub",           "Scope Single/Dual",    "Scope Center Fixed",   "Scope Center Span",
-"Scope Edge Number",    "Scope Hold",           "Scope Ref",                "Scope Speed",          "Scope During TX",      "Scope Center Type",
-"Scope VBW",            "Scope Fixed Freq",     "Scope RBW",                "Voice TX",             "Main/Sub Prefix",      "AFC Function",
+"REF Adjust Fine",      "ACC1 Mod Level",       "ACC2 Mod Level",           "USB Mod Level",        "LAN Mod Level",        "SPDIF Mod Level",
+"Data Off Mod Input",   "DATA1 Mod Input",      "DATA2 Mod Input",          "DATA3 Mod Input",      "CIV Transceive",       "System Time",
+"System Date",          "UTC Offset",           "CLOCK2 Setting",           "CLOCK2 UTC Offset",    "CLOCK 2 Name",         "Dash Ratio",
+"Scanning Speed",       "Scanning Resume",      "Recorder Mode",            "Recorder TX",          "Recorder RX",          "Recorder Split",
+"Recorder PTT Auto",    "Recorder Pre Rec",     "RX Ant Connector",         "Antenna Select Mode",  "NB Depth",             "NB Width",
+"VOX Delay",            "VOX Voice Delay",      "APF Type",                 "APF Type Level",       "PSK Tone",             "RTTY Mark Tone",
+"Data Mode Filter",     "AF Mute Status",       "Tone Frequency",           "TSQL Frequency",       "DTCS Code/Polavrity",  "CSQL Code",
+"Transceiver Status",   "XFC Status",           "Read TX Freq",             "CI-V Output",          "Read TX Freqs",        "Read User TX Freqs",
+"User TX Band Edge Freq","RIT Frequency",       "RIT Status",               "RIT TX Status",        "Selected Freq",        "Selected Mode",
+"Unselected Freq",      "Unselected Mode",      "Scope Main Wave Data",     "Scope Sub Wave Data",  "Scope On/Off",         "Scope Data Output",
+"Scope Main/Sub",       "Scope Single/Dual",    "Scope Main Mode",          "Scope Sub Mode",       "Scope Main Span",      "Scope Sub Span",
+"Scope Main Edge",      "Scope Sub Edge",       "Scope Main Hold",          "Scope Sub Hold",       "Scope Main Ref",       "Scope Sub Ref",
+"Scope Main Speed",     "Scope Sub Speed",      "Scope Main VBW",           "Scope Sub VBW",        "Scope Main RBW",       "Scope Sub RBW",
+"Scope During TX",      "Scope Center Type",    "Scope Fixed Edge Freq",    "Voice TX",             "Main/Sub Prefix",      "AFC Function",
 "GPS TX Mode",          "Satellite Memory",     "GPS Position",             "Memory Group",         "-Select VFO",          "-Seperator",
-"-LCD Waterfall",       "-LCD Spectrum",        "-LCD Nothing",             "-Page Up",             "-Page Down",           "Command Error FA",
-"Command OK FB"
+"-LCD Waterfall",       "-LCD Spectrum",        "-LCD Nothing",             "-Page Up",             "-Page Down",           "-VFO Frequency",
+"-VFO Mode",            "-Rigctl Function",     "-Rigctl Level",            "-Rigctl Param",        "Command Error FA",     "Command OK FB"
 };
-
-
 
 struct spanType {
     spanType() {}
@@ -319,6 +314,15 @@ struct stepType {
     unsigned char num;
     QString name;
     quint64 hz;
+};
+
+struct spectrumBounds {
+    spectrumBounds(){};
+    spectrumBounds(double start, double end, uchar edge) : start(start), end(end), edge(edge) {};
+    double start;
+    double end;
+    uchar edge;
+
 };
 
 struct errorType {
@@ -408,7 +412,6 @@ Q_DECLARE_METATYPE(rigMode_t)
 Q_DECLARE_METATYPE(vfo_t)
 Q_DECLARE_METATYPE(duplexMode_t)
 Q_DECLARE_METATYPE(rptAccessTxRx_t)
-Q_DECLARE_METATYPE(rptrTone_t)
 Q_DECLARE_METATYPE(rptrAccessData)
 Q_DECLARE_METATYPE(usbFeatureType)
 Q_DECLARE_METATYPE(cmds)

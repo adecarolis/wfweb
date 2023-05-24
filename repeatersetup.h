@@ -23,9 +23,9 @@ public:
 signals:
     void getDuplexMode();
     void setDuplexMode(duplexMode_t dm);
-    void setTone(rptrTone_t tone);
-    void setTSQL(rptrTone_t tsql);
-    void setDTCS(quint16 dcode, bool tinv, bool rinv);
+    void setTone(toneInfo tone);
+    void setTSQL(toneInfo tsql);
+    void setDTCS(toneInfo tsql);
     void getTone();
     void getTSQL();
     void getDTCS();

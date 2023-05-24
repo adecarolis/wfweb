@@ -144,8 +144,6 @@ struct COMMAND {
         index(index), text(text), cmdType(cmdType), command(command), value(value) {}
     COMMAND(int index, QString text, usbCommandType cmdType, int command, unsigned char suffix) :
         index(index), text(text), cmdType(cmdType), command(command), suffix(suffix) {}
-    COMMAND(int index, QString text, usbCommandType cmdType, int command, int getCommand, unsigned char suffix) :
-        index(index), text(text), cmdType(cmdType), command(command), getCommand(getCommand), suffix(suffix) {}
     COMMAND(int index, QString text, usbCommandType cmdType, int command, availableBands band) :
         index(index), text(text), cmdType(cmdType), command(command), band(band) {}
     COMMAND(int index, QString text, usbCommandType cmdType, int command, rigMode_t mode) :
@@ -155,7 +153,6 @@ struct COMMAND {
     QString text;
     usbCommandType cmdType = commandButton;
     int command=funcNone;
-    int getCommand=funcNone;
     unsigned char suffix=0x0;
     int value=0;
     availableBands band=bandGen;

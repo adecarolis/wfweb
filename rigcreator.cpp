@@ -14,12 +14,26 @@ rigCreator::rigCreator(QWidget *parent) :
     commandsList = new tableCombobox(createModel(commandsModel, funcString),true,ui->commands);
     ui->commands->setItemDelegateForColumn(0, commandsList);
 
-    ui->commands->setColumnWidth(0,145);
-    ui->commands->setColumnWidth(1,125);
+    ui->commands->setColumnWidth(0,120);
+    ui->commands->setColumnWidth(1,115);
     ui->commands->setColumnWidth(2,50);
     ui->commands->setColumnWidth(3,50);
+    ui->commands->setColumnWidth(4,25);
 
+    connect(ui->commands,SIGNAL(rowAdded(int)),this,SLOT(commandRowAdded(int)));
 }
+
+void rigCreator::commandRowAdded(int row)
+{
+    if (ui->commands->item(row,4) == NULL) {
+        // Add checkbox
+        QTableWidgetItem * item = new QTableWidgetItem();
+        item->setFlags(Qt::ItemFlag::ItemIsEnabled | Qt::ItemFlag::ItemIsUserCheckable);
+        item->setCheckState(Qt::Unchecked);
+        ui->commands->setItem(row,4,item);
+    }
+}
+
 
 rigCreator::~rigCreator()
 {
@@ -77,6 +91,8 @@ void rigCreator::on_loadFile_clicked(bool clicked)
 void rigCreator::loadRigFile(QString file)
 {
 
+    ui->loadFile->setEnabled(false);
+    ui->defaultRigs->setEnabled(false);
     this->currentFile = file;
     QSettings* settings = new QSettings(file, QSettings::Format::IniFormat);
 
@@ -127,6 +143,16 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->commands->insertRow(ui->commands->rowCount());
+            // Add checkbox for row 4 (command 39)
+            QTableWidgetItem * item = new QTableWidgetItem();
+            item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+            if (settings->value("Command39",false).toBool())
+                item->setCheckState(Qt::Checked);
+            else
+                item->setCheckState(Qt::Unchecked);
+            ui->commands->setItem(c,4,item);
+
+
             ui->commands->model()->setData(ui->commands->model()->index(c,0),settings->value("Type", "").toString());
             ui->commands->model()->setData(ui->commands->model()->index(c,1),settings->value("String", "").toString());
             ui->commands->model()->setData(ui->commands->model()->index(c,2),QString::number(settings->value("Min", 0).toInt(),16));

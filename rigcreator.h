@@ -32,12 +32,16 @@ private slots:
     void on_defaultRigs_clicked(bool clicked);
     void loadRigFile(QString filename);
     void saveRigFile(QString filename);
+    void commandRowAdded(int row);
+
 
 private:
     Ui::rigCreator *ui;
     QMenu* context;
     tableCombobox* commandsList;
+    tableCheckbox* command39;
     QStandardItemModel* commandsModel;
+    QStandardItemModel* command36Model;
     QStandardItemModel* createModel(QStandardItemModel* model, QString strings[]);
     QString currentFile;
 

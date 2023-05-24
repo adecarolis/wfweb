@@ -90,7 +90,6 @@ private:
     quint8 spectrumDivisionMax;
     quint8 spectrumCenterOrFixed;
     quint8 spectrumInformation;
-    quint8 spectrumOutOfRange;
     quint8 lastSpectrum = 0;
     QTime lastDataReceived;
 };

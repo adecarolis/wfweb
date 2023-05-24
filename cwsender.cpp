@@ -18,6 +18,7 @@ cwSender::cwSender(QWidget *parent) :
     ui->statusbar->setToolTipDuration(3000);
     this->setToolTipDuration(3000);
     connect(ui->textToSendEdit->lineEdit(), &QLineEdit::textEdited, this, &cwSender::textChanged);
+    queue = cachingQueue::getInstance(this);
 }
 
 cwSender::~cwSender()
@@ -30,11 +31,11 @@ cwSender::~cwSender()
         toneThread = Q_NULLPTR;
         tone = Q_NULLPTR;
         /* Finally disconnect all connections */
-        for (auto conn: connections)
-        {
-            disconnect(conn);
-        }
-        connections.clear();
+        //for (auto conn: connections)
+        //{
+        //    disconnect(conn);
+        //}
+        //connections.clear();
     }
 
     delete ui;
@@ -272,22 +273,65 @@ void cwSender::on_sidetoneEnableChk_clicked(bool clicked)
         tone->moveToThread(toneThread);
         toneThread->start();
 
-        connections.append(connect(toneThread, &QThread::finished,
-            [=]() { tone->deleteLater(); }));
-        connections.append(connect(this, &cwSender::sendCW,
-            [=](const QString& text) { tone->send(text); ui->sidetoneEnableChk->setEnabled(false); }));
-        connections.append(connect(this, &cwSender::setKeySpeed,
-            [=](const unsigned char& wpm) { tone->setSpeed(wpm); }));
-        connections.append(connect(this, &cwSender::setDashRatio,
-            [=](const unsigned char& ratio) { tone->setRatio(ratio); }));
-        connections.append(connect(this, &cwSender::setPitch,
-            [=](const unsigned char& pitch) { tone->setFrequency(pitch); }));
-        connections.append(connect(this, &cwSender::setLevel,
-            [=](const unsigned char& level) { tone->setLevel(level); }));
-        connections.append(connect(this, &cwSender::stopCW,
-            [=]() { tone->stopSending(); }));
-        connections.append(connect(tone, &cwSidetone::finished,
-            [=]() { ui->sidetoneEnableChk->setEnabled(true); }));
+        connect(this,SIGNAL(initTone()),tone,SLOT(init()));
+
+        connect(toneThread, &QThread::finished, tone,
+            [=]() { tone->deleteLater(); });
+
+        connect(this, &cwSender::sendCW, tone, [=](const QString& text) {
+               tone->send(text); ui->sidetoneEnableChk->setEnabled(false);
+        });
+
+        connect(this, &cwSender::sendCW, queue, [=](const QString &cwMessage) {
+            queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<QString>(cwMessage)));
+        });
+
+        connect(this, &cwSender::stopCW, queue, [=]() {
+            queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<QString>(QChar(0xff))));
+        });
+
+        connect(this, &cwSender::setBreakInMode, queue, [=](const unsigned char &bmode) {
+            queue->add(priorityImmediate,queueItem(funcBreakIn,QVariant::fromValue<uchar>(bmode)));
+        });
+
+        connect(this, &cwSender::setKeySpeed, queue, [=](const unsigned char& wpm) {
+            queue->add(priorityImmediate,queueItem(funcKeySpeed,QVariant::fromValue<ushort>(wpm)));
+        });
+
+        connect(this, &cwSender::setDashRatio, queue, [=](const unsigned char& ratio) {
+            queue->add(priorityImmediate,queueItem(funcDashRatio,QVariant::fromValue<uchar>(ratio)));
+        });
+
+        connect(this, &cwSender::setPitch, queue, [=](const unsigned char& pitch) {
+            queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<ushort>(pitch)));
+        });
+
+        connect(this, &cwSender::getCWSettings, queue, [=]() {
+            queue->add(priorityImmediate,funcKeySpeed);
+            queue->add(priorityImmediate,funcBreakIn);
+            queue->add(priorityImmediate,funcCwPitch);
+            queue->add(priorityImmediate,funcDashRatio);
+        });
+
+        connect(this, &cwSender::setKeySpeed, tone,
+            [=](const unsigned char& wpm) { tone->setSpeed(wpm); });
+
+        connect(this, &cwSender::setDashRatio, tone,
+            [=](const unsigned char& ratio) { tone->setRatio(ratio); });
+
+        connect(this, &cwSender::setPitch, tone,
+            [=](const unsigned char& pitch) { tone->setFrequency(pitch); });
+
+        connect(this, &cwSender::setLevel, tone,
+            [=](const unsigned char& level) { tone->setLevel(level); });
+
+        connect(this, &cwSender::stopCW, tone,
+            [=]() { tone->stopSending(); });
+
+        connect(tone, &cwSidetone::finished, this,
+            [=]() { ui->sidetoneEnableChk->setEnabled(true); });
+
+        emit initTone();
 
     } else if (!clicked && toneThread != Q_NULLPTR) {
         /* disconnect all connections */
@@ -295,11 +339,13 @@ void cwSender::on_sidetoneEnableChk_clicked(bool clicked)
         toneThread->wait();
         toneThread = Q_NULLPTR;
         tone = Q_NULLPTR;
+/*
         for (auto conn: connections)
         {
             disconnect(conn);
         }
         connections.clear();
+*/
     }
 }
 

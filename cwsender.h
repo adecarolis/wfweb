@@ -11,6 +11,7 @@
 #include <math.h>
 #include "cwsidetone.h"
 #include "wfviewtypes.h"
+#include "cachingqueue.h"
 
 namespace Ui {
 class cwSender;
@@ -47,6 +48,7 @@ signals:
     void pitchChanged(int val);
     void dashChanged(int val);
     void wpmChanged(int val);
+    void initTone();
 
 public slots:
     void handleKeySpeed(unsigned char wpm);
@@ -114,6 +116,7 @@ private:
     QThread* toneThread = Q_NULLPTR;
     bool sidetoneWasEnabled=false;
     QList<QMetaObject::Connection> connections;
+    cachingQueue* queue;
 };
 
 #endif // CWSENDER_H

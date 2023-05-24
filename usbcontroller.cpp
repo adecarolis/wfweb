@@ -804,7 +804,7 @@ void usbController::receivePTTStatus(bool on) {
     for (auto devIt = devices->begin(); devIt != devices->end(); devIt++)
     {
         auto dev = &devIt.value();
-        if (dev->lcd != cmdLCDSpectrum && dev->lcd != cmdLCDWaterfall) {
+        if (dev->lcd != funcLCDSpectrum && dev->lcd != funcLCDWaterfall) {
             if (on && !ptt) {
                 lastColour = currentColour;
                 QColor newColor = QColor(255,0,0);
@@ -1079,7 +1079,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                 }
                 if (text != "**REMOVE**") {
                     dev->knobValues[val].lastChanged = QDateTime::currentMSecsSinceEpoch();
-                    if (dev->lcd != cmdLCDSpectrum && dev->lcd != cmdLCDWaterfall)
+                    if (dev->lcd != funcLCDSpectrum && dev->lcd != funcLCDWaterfall)
                         QTimer::singleShot(2000, this, [=]() { sendRequest(dev,usbFeatureType::featureGraph,val,"**REMOVE**",Q_NULLPTR,&dev->color); });
                 }
 
@@ -1585,38 +1585,38 @@ void usbController::loadCommands()
     int num = 0;
     // Important commands at the top!
     commands.append(COMMAND(num++, "None", commandAny, cmdNone, (quint8)0x0));
-    commands.append(COMMAND(num++, "PTT On", commandButton, funcTransceiverStatus, funcTransceiverStatus, (quint8)0x1));
-    commands.append(COMMAND(num++, "PTT Off", commandButton, funcTransceiverStatus, funcTransceiverStatus, (quint8)0x0));
-    commands.append(COMMAND(num++, "VFOA", commandKnob, funcFreqSet, funcFreqSet, (quint8)0x0));
-    commands.append(COMMAND(num++, "VFOB", commandKnob, funcFreqSet, funcFreqSet, (quint8)0x1));
-    commands.append(COMMAND(num++, "Freq Down", commandButton, funcFreqSet, funcFreqSet, (int)-1));
-    commands.append(COMMAND(num++, "Freq Up", commandButton, funcFreqSet, funcFreqSet, (int)1));
-    commands.append(COMMAND(num++, "PTT Off", commandButton, funcTransceiverStatus, funcTransceiverStatus, (quint8)0x0));
-    commands.append(COMMAND(num++, "PTT Toggle", commandButton, funcTransceiverStatus, funcTransceiverStatus, (quint8)0x0));
+    commands.append(COMMAND(num++, "PTT On", commandButton, funcTransceiverStatus,  (quint8)0x1));
+    commands.append(COMMAND(num++, "PTT Off", commandButton, funcTransceiverStatus, (quint8)0x0));
+    commands.append(COMMAND(num++, "VFOA", commandKnob, funcSelectedFreq, (quint8)0x0));
+    commands.append(COMMAND(num++, "VFOB", commandKnob, funcUnselectedFreq, (quint8)0x1));
+    commands.append(COMMAND(num++, "Freq Down", commandButton, funcSelectedFreq,(int)-1));
+    commands.append(COMMAND(num++, "Freq Up", commandButton, funcSelectedFreq, (int)1));
+    commands.append(COMMAND(num++, "PTT Off", commandButton, funcTransceiverStatus, (quint8)0x0));
+    commands.append(COMMAND(num++, "PTT Toggle", commandButton, funcTransceiverStatus,  (quint8)0x0));
     commands.append(COMMAND(num++, "Span/Step", commandKnob, funcSeparator, (quint8)0x0));
     commands.append(COMMAND(num++, "Tune", commandButton, funcTunerStatus, (quint8)0x0));
     commands.append(COMMAND(num++, "Span/Step", commandButton, funcSeparator, (quint8)0x0));
     commands.append(COMMAND(num++, "Step+", commandButton, funcTuningStep, 100));
     commands.append(COMMAND(num++, "Step-", commandButton, funcTuningStep, -100));
-    commands.append(COMMAND(num++, "Span+", commandButton, funcScopeCenterSpan, 100));
-    commands.append(COMMAND(num++, "Span-", commandButton, funcScopeCenterSpan, -100));
+    commands.append(COMMAND(num++, "Span+", commandButton, funcScopeMainSpan, 100));
+    commands.append(COMMAND(num++, "Span-", commandButton, funcScopeMainSpan, -100));
     commands.append(COMMAND(num++, "Modes", commandButton, funcSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "Mode+", commandButton, funcModeSet, 100));
-    commands.append(COMMAND(num++, "Mode-", commandButton, funcModeSet, -100));
-    commands.append(COMMAND(num++, "Mode LSB", commandButton, funcModeSet, modeLSB));
-    commands.append(COMMAND(num++, "Mode USB", commandButton, funcModeSet, modeUSB));
-    commands.append(COMMAND(num++, "Mode LSBD", commandButton, funcModeSet, modeLSB_D));
-    commands.append(COMMAND(num++, "Mode USBD", commandButton, funcModeSet, modeUSB_D));
-    commands.append(COMMAND(num++, "Mode CW", commandButton, funcModeSet, modeCW));
-    commands.append(COMMAND(num++, "Mode CWR", commandButton, funcModeSet, modeCW_R));
-    commands.append(COMMAND(num++, "Mode FM", commandButton, funcModeSet, modeFM));
-    commands.append(COMMAND(num++, "Mode AM", commandButton, funcModeSet, modeAM));
-    commands.append(COMMAND(num++, "Mode RTTY", commandButton, funcModeSet, modeRTTY));
-    commands.append(COMMAND(num++, "Mode RTTYR", commandButton, funcModeSet, modeRTTY_R));
-    commands.append(COMMAND(num++, "Mode PSK", commandButton, funcModeSet, modePSK));
-    commands.append(COMMAND(num++, "Mode PSKR", commandButton, funcModeSet, modePSK_R));
-    commands.append(COMMAND(num++, "Mode DV", commandButton, funcModeSet, modeDV));
-    commands.append(COMMAND(num++, "Mode DD", commandButton, funcModeSet, modeDD));
+    commands.append(COMMAND(num++, "Mode+", commandButton, funcSelectedMode, 100));
+    commands.append(COMMAND(num++, "Mode-", commandButton, funcSelectedMode, -100));
+    commands.append(COMMAND(num++, "Mode LSB", commandButton, funcSelectedMode, modeLSB));
+    commands.append(COMMAND(num++, "Mode USB", commandButton, funcSelectedMode, modeUSB));
+    commands.append(COMMAND(num++, "Mode LSBD", commandButton, funcSelectedMode, modeLSB_D));
+    commands.append(COMMAND(num++, "Mode USBD", commandButton, funcSelectedMode, modeUSB_D));
+    commands.append(COMMAND(num++, "Mode CW", commandButton, funcSelectedMode, modeCW));
+    commands.append(COMMAND(num++, "Mode CWR", commandButton, funcSelectedMode, modeCW_R));
+    commands.append(COMMAND(num++, "Mode FM", commandButton, funcSelectedMode, modeFM));
+    commands.append(COMMAND(num++, "Mode AM", commandButton, funcSelectedMode, modeAM));
+    commands.append(COMMAND(num++, "Mode RTTY", commandButton, funcSelectedMode, modeRTTY));
+    commands.append(COMMAND(num++, "Mode RTTYR", commandButton, funcSelectedMode, modeRTTY_R));
+    commands.append(COMMAND(num++, "Mode PSK", commandButton, funcSelectedMode, modePSK));
+    commands.append(COMMAND(num++, "Mode PSKR", commandButton, funcSelectedMode, modePSK_R));
+    commands.append(COMMAND(num++, "Mode DV", commandButton, funcSelectedMode, modeDV));
+    commands.append(COMMAND(num++, "Mode DD", commandButton, funcSelectedMode, modeDD));
     commands.append(COMMAND(num++, "Bands", commandButton, funcSeparator, (quint8)0x0));
     commands.append(COMMAND(num++, "Band+", commandButton, funcBandStackReg, 100));
     commands.append(COMMAND(num++, "Band-", commandButton, funcBandStackReg, -100));
@@ -1641,19 +1641,19 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Band 2200m", commandButton, funcBandStackReg, band2200m));
     commands.append(COMMAND(num++, "Band GEN", commandButton, funcBandStackReg, bandGen));
     commands.append(COMMAND(num++, "NB/NR", commandButton, funcSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "NR On", commandButton, funcNoiseReduction, cmdGetNR, (quint8)0x01));
-    commands.append(COMMAND(num++, "NR Off", commandButton, funcNoiseReduction, cmdGetNR, (quint8)0x0));
-    commands.append(COMMAND(num++, "NB On", commandButton, funcNoiseBlanker, cmdGetNB, (quint8)0x01));
-    commands.append(COMMAND(num++, "NB Off", commandButton, funcNoiseBlanker, cmdGetNB, (quint8)0x0));
-    commands.append(COMMAND(num++, "Moni On", commandButton, funcMonitor, cmdGetMonitor, (quint8)0x01));
-    commands.append(COMMAND(num++, "Moni Off", commandButton, funcMonitor, cmdGetMonitor, (quint8)0x0));
-    commands.append(COMMAND(num++, "Comp On", commandButton, funcCompressor, cmdGetComp, (quint8)0x01));
-    commands.append(COMMAND(num++, "Comp Off", commandButton, funcCompressor, cmdGetComp, (quint8)0x0));
-    commands.append(COMMAND(num++, "Vox On", commandButton, funcVox, cmdGetVox, (quint8)0x01));
-    commands.append(COMMAND(num++, "Vox Off", commandButton, funcVox, cmdGetVox, (quint8)0x0));
+    commands.append(COMMAND(num++, "NR On", commandButton, funcNoiseReduction, (quint8)0x01));
+    commands.append(COMMAND(num++, "NR Off", commandButton, funcNoiseReduction, (quint8)0x0));
+    commands.append(COMMAND(num++, "NB On", commandButton, funcNoiseBlanker, (quint8)0x01));
+    commands.append(COMMAND(num++, "NB Off", commandButton, funcNoiseBlanker, (quint8)0x0));
+    commands.append(COMMAND(num++, "Moni On", commandButton, funcMonitor, (quint8)0x01));
+    commands.append(COMMAND(num++, "Moni Off", commandButton, funcMonitor, (quint8)0x0));
+    commands.append(COMMAND(num++, "Comp On", commandButton, funcCompressor, (quint8)0x01));
+    commands.append(COMMAND(num++, "Comp Off", commandButton, funcCompressor, (quint8)0x0));
+    commands.append(COMMAND(num++, "Vox On", commandButton, funcVox, (quint8)0x01));
+    commands.append(COMMAND(num++, "Vox Off", commandButton, funcVox, (quint8)0x0));
     commands.append(COMMAND(num++, "Split", commandButton, funcSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "Split On", commandButton, funcQuickSplit, cmdGetDuplexMode, (quint8)0x01));
-    commands.append(COMMAND(num++, "Split Off", commandButton, funcQuickSplit, cmdGetDuplexMode, (quint8)0x0));
+    commands.append(COMMAND(num++, "Split On", commandButton, funcQuickSplit, (quint8)0x01));
+    commands.append(COMMAND(num++, "Split Off", commandButton, funcQuickSplit, (quint8)0x0));
     commands.append(COMMAND(num++, "Swap VFO AB", commandButton, funcVFOSwapAB, (quint8)0x0));
     commands.append(COMMAND(num++, "Swap VFO MS", commandButton, funcVFOSwapMS, (quint8)0x0));
     commands.append(COMMAND(num++, "Scope", commandButton, funcSeparator, (quint8)0x0));
@@ -1664,26 +1664,26 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Page Down", commandButton, funcPageDown, (quint8)0x0));
     commands.append(COMMAND(num++, "Page Up", commandButton, funcPageUp, (quint8)0x0));
 
-    commands.append(COMMAND(num++, "AF Gain", commandKnob, funcAfGain, funcAfGain, (quint8)0xff));
-    commands.append(COMMAND(num++, "RF Gain", commandKnob, funcRfGain, funcRfGain,  (quint8)0xff));
-    commands.append(COMMAND(num++, "TX Power", commandKnob, funcRFPower, funcRFPower, (quint8)0xff));
-    commands.append(COMMAND(num++, "Mic Gain", commandKnob, funcMicGain, funcMicGain, (quint8)0xff));
-    commands.append(COMMAND(num++, "Mod Level", commandKnob, funcDATAOffMod, funcDATAOffMod, (quint8)0xff));
-    commands.append(COMMAND(num++, "Data Mod", commandKnob, funcDATAOffMod, funcDATAOffMod, (quint8)0xff));
-    commands.append(COMMAND(num++, "Squelch", commandKnob, funcSquelch, funcSquelch, (quint8)0xff));
-    commands.append(COMMAND(num++, "Monitor", commandKnob, funcMonitorGain, funcMonitorGain, (quint8)0xff));
-    commands.append(COMMAND(num++, "Compressor", commandKnob, funcCompressorLevel, funcCompressorLevel, (quint8)0xff));
-    commands.append(COMMAND(num++, "Vox Level", commandKnob, funcVoxGain, funcVoxGain, (quint8)0xff));
-    commands.append(COMMAND(num++, "Anti-Vox", commandKnob, funcAntiVoxGain, funcAntiVoxGain, (quint8)0xff));
-    commands.append(COMMAND(num++, "NB Level", commandKnob, funcNBLevel, funcNBLevel, (quint8)0xff));
-    commands.append(COMMAND(num++, "NR Level", commandKnob, funcNRLevel, funcNRLevel, (quint8)0xff));
+    commands.append(COMMAND(num++, "AF Gain", commandKnob, funcAfGain, (quint8)0xff));
+    commands.append(COMMAND(num++, "RF Gain", commandKnob, funcRfGain,  (quint8)0xff));
+    commands.append(COMMAND(num++, "TX Power", commandKnob, funcRFPower, (quint8)0xff));
+    commands.append(COMMAND(num++, "Mic Gain", commandKnob, funcMicGain, (quint8)0xff));
+    commands.append(COMMAND(num++, "Mod Level", commandKnob, funcDATAOffMod, (quint8)0xff));
+    commands.append(COMMAND(num++, "Data Mod", commandKnob, funcDATAOffMod, (quint8)0xff));
+    commands.append(COMMAND(num++, "Squelch", commandKnob, funcSquelch, (quint8)0xff));
+    commands.append(COMMAND(num++, "Monitor", commandKnob, funcMonitorGain, (quint8)0xff));
+    commands.append(COMMAND(num++, "Compressor", commandKnob, funcCompressorLevel, (quint8)0xff));
+    commands.append(COMMAND(num++, "Vox Level", commandKnob, funcVoxGain, (quint8)0xff));
+    commands.append(COMMAND(num++, "Anti-Vox", commandKnob, funcAntiVoxGain, (quint8)0xff));
+    commands.append(COMMAND(num++, "NB Level", commandKnob, funcNBLevel, (quint8)0xff));
+    commands.append(COMMAND(num++, "NR Level", commandKnob, funcNRLevel, (quint8)0xff));
     commands.append(COMMAND(num++, "Span/Step", commandKnob, cmdSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "IF Shift", commandKnob, funcIFShift, funcIFShift, (quint8)0xff));
-    commands.append(COMMAND(num++, "In PBT", commandKnob, funcPBTInner, funcPBTInner, (quint8)0xff));
-    commands.append(COMMAND(num++, "Out PBT", commandKnob, funcPBTOuter, funcPBTOuter, (quint8)0xff));
+    commands.append(COMMAND(num++, "IF Shift", commandKnob, funcIFShift, (quint8)0xff));
+    commands.append(COMMAND(num++, "In PBT", commandKnob, funcPBTInner, (quint8)0xff));
+    commands.append(COMMAND(num++, "Out PBT", commandKnob, funcPBTOuter, (quint8)0xff));
     commands.append(COMMAND(num++, "Span/Step", commandKnob, cmdSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "CW Pitch", commandKnob, funcCwPitch, funcCwPitch, (quint8)0xff));
-    commands.append(COMMAND(num++, "CW Speed", commandKnob, funcKeySpeed, funcKeySpeed, (quint8)0xff));
+    commands.append(COMMAND(num++, "CW Pitch", commandKnob, funcCwPitch, (quint8)0xff));
+    commands.append(COMMAND(num++, "CW Speed", commandKnob, funcKeySpeed, (quint8)0xff));
 }
 
 
@@ -1831,7 +1831,7 @@ void usbController::receiveLevel(cmds cmd, unsigned char level)
         auto dev = &devIt.value();
 
         auto kb = std::find_if(knobList->begin(), knobList->end(), [dev, cmd](const KNOB& k)
-                               { return (k.command && dev->connected && k.path == dev->path && k.page == dev->currentPage && k.command->getCommand == cmd);});
+                               { return (k.command && dev->connected && k.path == dev->path && k.page == dev->currentPage && k.command->command == cmd);});
         if (kb != knobList->end() && kb->num < dev->knobValues.size()) {
             // qInfo(logUsbControl()) << "Received value:" << level << "for knob" << kb->num;
             // Set both current and previous knobvalue to the received value
@@ -1839,7 +1839,7 @@ void usbController::receiveLevel(cmds cmd, unsigned char level)
             dev->knobValues[kb->num].previous = level/dev->sensitivity;
         }
         auto bt = std::find_if(buttonList->begin(), buttonList->end(), [dev, cmd](const BUTTON& b)
-                               { return (b.onCommand && dev->connected && b.path == dev->path && b.page == dev->currentPage && b.onCommand->getCommand == cmd && b.led != 0 &&  b.led <= dev->type.leds);});
+                               { return (b.onCommand && dev->connected && b.path == dev->path && b.page == dev->currentPage && b.onCommand->command == cmd && b.led != 0 &&  b.led <= dev->type.leds);});
         if (bt != buttonList->end()) {
             // qInfo(logUsbControl()) << "Received value:" << level << "for led" << bt->led;
             QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,bt->led,QString("%1").arg(level)); });

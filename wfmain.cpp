@@ -64,7 +64,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<spectrumMode_t>();
     qRegisterMetaType<freqt>();
     qRegisterMetaType<vfo_t>();
-    qRegisterMetaType<rptrTone_t>();
     qRegisterMetaType<modeInfo>();
     qRegisterMetaType<rigMode_t>();
     qRegisterMetaType<audioPacket>();
@@ -467,14 +466,6 @@ void wfmain::rigConnections()
     //connect(this, SIGNAL(setCWBreakMode(unsigned char)), rig, SLOT(setBreakIn(unsigned char)));
     //connect(this, SIGNAL(getCWBreakMode()), rig, SLOT(getBreakIn()));
 
-    connect(this->rig, &rigCommander::haveKeySpeed,
-        [=](const unsigned char& wpm) { cw->handleKeySpeed(wpm); });
-    connect(this->rig, &rigCommander::haveDashRatio,
-        [=](const unsigned char& ratio) { cw->handleDashRatio(ratio); });
-    connect(this->rig, &rigCommander::haveCwPitch,
-        [=](const unsigned char& speed) { cw->handlePitch(speed); });
-    connect(this->rig, &rigCommander::haveCWBreakMode,
-            [=](const unsigned char &bm) { cw->handleBreakInMode(bm);});
 
     //connect(rig, SIGNAL(haveBandStackReg(freqt,char,char,bool)), this, SLOT(receiveBandStackReg(freqt,char,char,bool)));
     //connect(this, SIGNAL(setRitEnable(bool)), rig, SLOT(setRitEnable(bool)));
@@ -505,9 +496,9 @@ void wfmain::rigConnections()
     //connect(rig, SIGNAL(haveMonitor(bool)), this, SLOT(receiveMonitor(bool)));
 
     // Repeater, duplex, and split:
-    connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
-    connect(rpt, SIGNAL(setDuplexMode(duplexMode_t)), rig, SLOT(setDuplexMode(duplexMode_t)));
-    connect(rig, SIGNAL(haveDuplexMode(duplexMode_t)), rpt, SLOT(receiveDuplexMode(duplexMode_t)));
+    //connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
+    //connect(rpt, SIGNAL(setDuplexMode(duplexMode_t)), rig, SLOT(setDuplexMode(duplexMode_t)));
+    //connect(rig, SIGNAL(haveDuplexMode(duplexMode_t)), rpt, SLOT(receiveDuplexMode(duplexMode_t)));
     //connect(this, SIGNAL(getRptDuplexOffset()), rig, SLOT(getRptDuplexOffset()));
     connect(rig, SIGNAL(haveRptOffsetFrequency(freqt)), rpt, SLOT(handleRptOffsetFrequency(freqt)));
 
@@ -520,16 +511,24 @@ void wfmain::rigConnections()
     //connect(this, SIGNAL(clearMemory(quint32)), rig, SLOT(clearMemory(quint32)));
     //connect(this, SIGNAL(recallMemory(quint32)), rig, SLOT(recallMemory(quint32)));
 
-    // These are the current tone frequency or DCS code selected:
-    connect(rpt, SIGNAL(getTone()), rig, SLOT(getTone()));
-    connect(rpt, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
-    connect(rpt, SIGNAL(getDTCS()), rig, SLOT(getDTCS()));
+    connect(this->rpt, &repeaterSetup::setDuplexMode, this->rig,
+            [=](const duplexMode_t &t) { queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(t),false));});
 
-    connect(this->rpt, &repeaterSetup::setTone, this->rig,
-            [=](const rptrTone_t &t) { queue->add(priorityImmediate,queueItem(funcToneFreq,QVariant::fromValue<rptrTone_t>(t),false));});
+    connect(this->rpt, &repeaterSetup::getTone, this->rig,
+            [=]() { queue->add(priorityImmediate,funcRepeaterTone);});
 
     connect(this->rpt, &repeaterSetup::setTSQL, this->rig,
-            [=](const rptrTone_t &t) { queue->add(priorityImmediate,queueItem(funcTSQLFreq,QVariant::fromValue<rptrTone_t>(t),false));});
+            [=](const toneInfo& t) { queue->add(priorityImmediate,queueItem(funcTSQLFreq,QVariant::fromValue<toneInfo>(t),false));});
+
+    connect(this->rpt, &repeaterSetup::getTSQL, this->rig,
+            [=]() { queue->add(priorityImmediate,funcRepeaterTSQL);});
+
+    connect(this->rpt, &repeaterSetup::setDTCS, this->rig,
+            [=](const toneInfo& t) { queue->add(priorityImmediate,queueItem(funcRepeaterDTCS,QVariant::fromValue<toneInfo>(t),false));});
+
+    connect(this->rpt, &repeaterSetup::getDTCS, this->rig,
+            [=]() { queue->add(priorityImmediate,funcRepeaterDTCS);});
+
 
     connect(this->rpt, &repeaterSetup::getRptAccessMode, this->rig,
             [=]() {
@@ -551,12 +550,6 @@ void wfmain::rigConnections()
                 queue->add(priorityImmediate,queueItem(funcToneSquelchType,QVariant::fromValue<rptrAccessData>(rd),false));
         });
 
-
-    connect(rig, SIGNAL(haveTone(quint16)), rpt, SLOT(handleTone(quint16)));
-    connect(rig, SIGNAL(haveTSQL(quint16)), rpt, SLOT(handleTSQL(quint16)));
-    connect(rig, SIGNAL(haveDTCS(quint16,bool,bool)), rpt, SLOT(handleDTCS(quint16,bool,bool)));
-    connect(rig, SIGNAL(haveRptAccessMode(rptAccessTxRx_t)), rpt, SLOT(handleRptAccessMode(rptAccessTxRx_t)));
-
     connect(this->rig, &rigCommander::haveDuplexMode, this->rpt,
             [=](const duplexMode_t &dm) {
                 if(dm==dmSplitOn)
@@ -565,23 +558,27 @@ void wfmain::rigConnections()
                     this->splitModeEnabled = false;
     });
 
-    //connect(this, SIGNAL(getToneEnabled()), rig, SLOT(getToneEnabled()));
-    //connect(this, SIGNAL(getTSQLEnabled()), rig, SLOT(getToneSqlEnabled()));
-
     connect(this->rpt, &repeaterSetup::setTransmitFrequency, this->rig,
             [=](const freqt &transmitFreq) { queue->add(priorityImmediate,queueItem(funcFreqSet,QVariant::fromValue<freqt>(transmitFreq),false));});
+
     connect(this->rpt, &repeaterSetup::setTransmitMode, this->rig,
             [=](const modeInfo &transmitMode) {  queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(transmitMode),false));});
+
     connect(this->rpt, &repeaterSetup::selectVFO, this->rig,
             [=](const vfo_t &v) { queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(v),false));});
+
     connect(this->rpt, &repeaterSetup::equalizeVFOsAB, this->rig,
             [=]() { queue->add(priorityImmediate,funcVFOEqualAB);});
+
     connect(this->rpt, &repeaterSetup::equalizeVFOsMS, this->rig,
             [=]() {  queue->add(priorityImmediate,funcVFOEqualMS);});
+
     connect(this->rpt, &repeaterSetup::swapVFOs, this->rig,
             [=]() {  queue->add(priorityImmediate,funcVFOSwapMS);});
+
     connect(this->rpt, &repeaterSetup::setRptDuplexOffset, this->rig,
             [=](const freqt &fOffset) { queue->add(priorityImmediate,queueItem(funcSendFreqOffset,QVariant::fromValue<freqt>(fOffset),false));});
+
     connect(this->rpt, &repeaterSetup::getRptDuplexOffset, this->rig,
             [=]() {  queue->add(priorityImmediate,funcReadFreqOffset);});
 
@@ -596,7 +593,6 @@ void wfmain::rigConnections()
 
     connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
     connect(rig, SIGNAL(havespectrumMode_t(spectrumMode_t)), this, SLOT(receivespectrumMode_t(spectrumMode_t)));
-    connect(rig, SIGNAL(haveScopeOutOfRange(bool)), this, SLOT(handleScopeOutOfRange(bool)));
     connect(this, SIGNAL(setScopeMode(spectrumMode_t)), rig, SLOT(setspectrumMode_t(spectrumMode_t)));
     connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
 
@@ -1011,20 +1007,20 @@ void wfmain::setupPlots()
     freqIndicatorLine->setAntialiased(true);
     freqIndicatorLine->setPen(QPen(Qt::blue));
 
-    /*
-    text = new QCPItemText(plot);
-    text->setAntialiased(true);
-    text->setColor(QColor(Qt::red));
-    text->setText("TEST");
-    text->position->setCoords(14.195, rigCaps.spectAmpMax);
-    text->setFont(QFont(font().family(), 12));
-    */
+    oorIndicator = new QCPItemText(plot);
+    oorIndicator->setVisible(false);
+    oorIndicator->setAntialiased(true);
+    oorIndicator->setPen(QPen(Qt::red));
+    oorIndicator->setBrush(QBrush(Qt::red));
+    oorIndicator->setFont(QFont(font().family(), 14));
+    oorIndicator->setPositionAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
+    oorIndicator->position->setType(QCPItemPosition::ptAxisRectRatio); // Positioned relative to the current plot rect
+    oorIndicator->setText("SCOPE OUT OF RANGE");
 
     ui->plot->addGraph(); // primary
     ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first.
     ui->plot->addLayer( "Top Layer", ui->plot->layer("main"));
     ui->plot->graph(0)->setLayer("Top Layer");
-
 
     ui->waterfall->addGraph();
 
@@ -1052,6 +1048,7 @@ void wfmain::setupPlots()
 
     pbtIndicator->topLeft->setCoords(0.5, 0);
     pbtIndicator->bottomRight->setCoords(0.5, 160);
+
 
     // Plot user interaction
     connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
@@ -1135,9 +1132,9 @@ void wfmain::setupMainUI()
 
 
 
-    spans << "2.5k" << "5.0k" << "10k" << "25k";
-    spans << "50k" << "100k" << "250k" << "500k";
-    ui->scopeBWCombo->insertItems(0, spans);
+    //spans << "2.5k" << "5.0k" << "10k" << "25k";
+    //spans << "50k" << "100k" << "250k" << "500k";
+    //ui->scopeBWCombo->insertItems(0, spans);
 
     edges << "1" << "2" << "3" << "4";
     ui->scopeEdgeCombo->insertItems(0, edges);
@@ -1257,36 +1254,6 @@ void wfmain::setupMainUI()
         queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<short>(passbandHz)));
     });
 
-    connect(this->cw, &cwSender::sendCW, this, [=](const QString &cwMessage) {
-        queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<QString>(cwMessage)));
-    });
-
-    connect(this->cw, &cwSender::stopCW, this, [=]() {
-        queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<uchar>(0xff)));
-    });
-
-    connect(this->cw, &cwSender::setBreakInMode, this, [=](const unsigned char &bmode) {
-        queue->add(priorityImmediate,queueItem(funcBreakIn,QVariant::fromValue<uchar>(bmode)));
-    });
-
-    connect(this->cw, &cwSender::setKeySpeed, this, [=](const unsigned char& wpm) {
-        queue->add(priorityImmediate,queueItem(funcKeySpeed,QVariant::fromValue<ushort>(wpm)));
-    });
-
-    connect(this->cw, &cwSender::setDashRatio, this, [=](const unsigned char& ratio) {
-        queue->add(priorityImmediate,queueItem(funcDashRatio,QVariant::fromValue<uchar>(ratio)));
-    });
-
-    connect(this->cw, &cwSender::setPitch, this, [=](const unsigned char& pitch) {
-        queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<ushort>(pitch)));
-    });
-
-    connect(this->cw, &cwSender::getCWSettings, this, [=]() {
-        queue->add(priorityImmediate,funcKeySpeed);
-        queue->add(priorityImmediate,funcBreakIn);
-        queue->add(priorityImmediate,funcCwPitch);
-        queue->add(priorityImmediate,funcDashRatio);
-    });
 }
 
 void wfmain::prepareSettingsWindow()
@@ -1951,7 +1918,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
             //Potentially add option to select specific step size?
         }
         break;
-    case funcScopeCenterSpan:
+    case funcScopeMainSpan:
         if (cmd->value == 100) {
             if (ui->scopeBWCombo->currentIndex() < ui->scopeBWCombo->count()-1)
             {
@@ -2004,9 +1971,9 @@ void wfmain::buttonControl(const COMMAND* cmd)
         break;
     }
 
-    // Make sure we get status quickly
-    if (cmd->getCommand != funcNone) {
-        queue->add(priorityHigh,(funcs)cmd->getCommand);
+    // Make sure we get status quickly by sending a get command
+    if (cmd->command != funcNone) {
+        queue->add(priorityHigh,(funcs)cmd->command);
     }
 }
 
@@ -3441,7 +3408,7 @@ void wfmain::shortcutF12()
 {
     // Speak current frequency and mode from the radio
     showStatusBarText("Sending speech command to radio.");
-    emit sayAll();
+    queue->add(priorityImmediate,queueItem(funcSpeech,QVariant::fromValue(uchar(0U))));
 }
 
 void wfmain::shortcutControlT()
@@ -3811,17 +3778,17 @@ void wfmain:: getInitialRigState()
             queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
             queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
         }
-        queue->add(priorityHigh,funcFilterWidth,false);
-        queue->add(priorityHigh,funcScopeRef,false);
-        queue->add(priorityHigh,funcScopeCenterFixed,false);
-        queue->add(priorityHigh,funcScopeCenterSpan,false);
-        queue->add(priorityHigh,funcDuplexStatus,false);
     }
 
+    if (rigCaps.commands.contains(funcFilterWidth))
+        queue->add(priorityHigh,funcFilterWidth,false);
+
+
+    if (rigCaps.commands.contains(funcSplitStatus))
+        queue->add(priorityHigh,funcSplitStatus,false);
+
     if(rigCaps.commands.contains(funcTuningStep))
-    {
         queue->add(priorityImmediate,funcTuningStep,false);
-    }
 
     if(rigCaps.commands.contains(funcRepeaterTone))
     {
@@ -3830,27 +3797,19 @@ void wfmain:: getInitialRigState()
     }
 
     if(rigCaps.commands.contains(funcRepeaterDTCS))
-    {
         queue->add(priorityImmediate,funcRepeaterDTCS,false);
-    }
 
     if(rigCaps.commands.contains(funcToneSquelchType))
-    {
         queue->add(priorityImmediate,funcToneSquelchType,false);
-    }
 
     if(rigCaps.commands.contains(funcAntenna))
-    {
         queue->add(priorityImmediate,funcAntenna,false);
-    }
+
     if(rigCaps.commands.contains(funcAttenuator))
-    {
         queue->add(priorityImmediate,funcAttenuator,false);
-    }
+
     if(rigCaps.commands.contains(funcPreamp))
-    {
         queue->add(priorityImmediate,funcPreamp,false);
-    }
 
     if (rigCaps.commands.contains(funcRitStatus))
     {
@@ -3859,9 +3818,7 @@ void wfmain:: getInitialRigState()
     }
 
     if(rigCaps.commands.contains(funcIFShift))
-    {
         queue->add(priorityImmediate,funcIFShift,false);
-    }
 
     if(rigCaps.commands.contains(funcPBTInner) && rigCaps.commands.contains(funcPBTOuter))
     {
@@ -3870,9 +3827,7 @@ void wfmain:: getInitialRigState()
     }
 
     if(rigCaps.commands.contains(funcTunerStatus))
-    {
         queue->add(priorityImmediate,funcTunerStatus,false);
-    }
 
 }
 
@@ -4218,7 +4173,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->scopeBWCombo->setHidden(false);
             for(unsigned int i=0; i < rigCaps.scopeCenterSpans.size(); i++)
             {
-                ui->scopeBWCombo->addItem(rigCaps.scopeCenterSpans.at(i).name, (int)rigCaps.scopeCenterSpans.at(i).cstype);
+                ui->scopeBWCombo->addItem(rigCaps.scopeCenterSpans.at(i).name, QVariant::fromValue(rigCaps.scopeCenterSpans.at(i)));
             }
             plot->yAxis->setRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
             colorMap->setDataRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
@@ -4312,8 +4267,8 @@ void wfmain::initPeriodicCommands()
     if (rigCaps.commands.contains(funcAntenna))
         queue->add(priorityMediumLow,funcAntenna,true);
 
-    if (rigCaps.commands.contains(funcDuplexStatus))
-        queue->add(priorityMediumLow,funcDuplexStatus,true);
+    if (rigCaps.commands.contains(funcSplitStatus))
+        queue->add(priorityMediumLow,funcSplitStatus,true);
 
     if(rigCaps.commands.contains(funcToneSquelchType))
         queue->add(priorityMediumLow,funcToneSquelchType,true);
@@ -4321,6 +4276,11 @@ void wfmain::initPeriodicCommands()
     if (rigCaps.commands.contains(funcSMeter))
         queue->add(priorityHighest,queueItem(funcSMeter,true));
 
+    if (rigCaps.hasSpectrum)
+    {
+        queue->add(priorityMediumHigh,queueItem(funcScopeMainMode,true));
+        queue->add(priorityMediumHigh,queueItem(funcScopeMainSpan,true));
+    }
 }
 
 void wfmain::receiveFreq(freqt freqStruct)
@@ -4384,7 +4344,7 @@ void wfmain::changeTxBtn()
 
 
 
-void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq)
+void wfmain::receiveSpectrumData(scopeData spectrum)
 {
     if (ui->scopeEnableWFBtn->checkState()== Qt::PartiallyChecked)
     {
@@ -4401,9 +4361,9 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     //QElapsedTimer performanceTimer;
     bool updateRange = false;
 
-    if((startFreq != oldLowerFreq) || (endFreq != oldUpperFreq))
+    if((spectrum.startFreq != oldLowerFreq) || (spectrum.endFreq != oldUpperFreq))
     {
-        // If the frequency changed and we were drawing peaks, now is the time to clearn them
+        // If the frequency changed and we were drawing peaks, now is the time to clean them
         if(underlayMode == underlayPeakHold)
         {
             // TODO: create non-button function to do this
@@ -4414,49 +4374,39 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             preparePlasma();
         }
         // Inform other threads (cluster) that the frequency range has changed.
-        emit setFrequencyRange(startFreq, endFreq);
+        emit setFrequencyRange(spectrum.startFreq, spectrum.endFreq);
     }
 
-    oldLowerFreq = startFreq;
-    oldUpperFreq = endFreq;
+    oldLowerFreq = spectrum.startFreq;
+    oldUpperFreq = spectrum.endFreq;
 
-    //qInfo(logSystem()) << "start: " << startFreq << " end: " << endFreq;
-    quint16 specLen = spectrum.length();
-    //qInfo(logSystem()) << "Spectrum data received at UI! Length: " << specLen;
-    //if( (specLen != 475) || (specLen!=689) )
+    //qInfo(logSystem()) << "start: " << spectrum.startFreq << " end: " << spectrum.endFreq;
+    quint16 specLen = spectrum.data.length();
 
-    if( specLen != rigCaps.spectLenMax )
-    {
-        qDebug(logSystem()) << "-------------------------------------------";
-        qDebug(logSystem()) << "------ Unusual spectrum received, length: " << specLen;
-        qDebug(logSystem()) << "------ Expected spectrum length: " << rigCaps.spectLenMax;
-        qDebug(logSystem()) << "------ This should happen once at most. ";
-        return; // safe. Using these unusual length things is a problem.
-    }
 
     QVector <double> x(spectWidth), y(spectWidth), y2(spectWidth);
 
     // TODO: Keep x around unless the frequency range changes. Should save a little time.
     for(int i=0; i < spectWidth; i++)
     {
-        x[i] = (i * (endFreq-startFreq)/spectWidth) + startFreq;
+        x[i] = (i * (spectrum.endFreq-spectrum.startFreq)/spectWidth) + spectrum.startFreq;
     }
 
     for(int i=0; i<specLen; i++)
     {
         //x[i] = (i * (endFreq-startFreq)/specLen) + startFreq;
-        y[i] = (unsigned char)spectrum.at(i);
+        y[i] = (unsigned char)spectrum.data.at(i);
         if(underlayMode == underlayPeakHold)
         {
-            if((unsigned char)spectrum.at(i) > (unsigned char)spectrumPeaks.at(i))
+            if((unsigned char)spectrum.data.at(i) > (unsigned char)spectrumPeaks.at(i))
             {
-                spectrumPeaks[i] = spectrum.at(i);
+                spectrumPeaks[i] = spectrum.data.at(i);
             }
             y2[i] = (unsigned char)spectrumPeaks.at(i);
         }
     }
     plasmaMutex.lock();
-    spectrumPlasma.push_front(spectrum);
+    spectrumPlasma.push_front(spectrum.data);
     if(spectrumPlasma.size() > (int)spectrumPlasmaSize)
     {
         spectrumPlasma.pop_back();
@@ -4475,7 +4425,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         plot->graph(0)->setData(x, y, true);
 #endif
 
-        if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
+        if((freq.MHzDouble < spectrum.endFreq) && (freq.MHzDouble > spectrum.startFreq))
         {
             freqIndicatorLine->start->setCoords(freq.MHzDouble, 0);
             freqIndicatorLine->end->setCoords(freq.MHzDouble, rigCaps.spectAmpMax);
@@ -4585,12 +4535,12 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         if(updateRange)
             plot->yAxis->setRange(prefs.plotFloor, prefs.plotCeiling);
 
-        plot->xAxis->setRange(startFreq, endFreq);
+        plot->xAxis->setRange(spectrum.startFreq, spectrum.endFreq);
         plot->replot();
 
         if(specLen == spectWidth)
         {
-            wfimage.prepend(spectrum);
+            wfimage.prepend(spectrum.data);
             wfimage.pop_back();
             QByteArray wfRow;
             // Waterfall:
@@ -4633,8 +4583,14 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         oldPlotFloor = plotFloor;
         oldPlotCeiling = plotCeiling;
 
-
-
+        if (spectrum.oor && !oorIndicator->visible()) {
+            oorIndicator->setVisible(true);
+            oorIndicator->position->setCoords(0.5f,0.5f);
+            //oorIndicator->position->setCoords((oldLowerFreq+oldUpperFreq)/2,ui->topLevelSlider->value() - 20);
+            qInfo(logSystem()) << "Scope out of range";
+        } else if (!spectrum.oor && oorIndicator->visible()) {
+            oorIndicator->setVisible(false);
+        }
     }
 }
 
@@ -4687,29 +4643,12 @@ void wfmain::computePlasma()
 
 void wfmain::receivespectrumMode_t(spectrumMode_t spectMode)
 {
-    for (int i = 0; i < ui->spectrumMode_tCombo->count(); i++)
-    {
-        if (static_cast<spectrumMode_t>(ui->spectrumMode_tCombo->itemData(i).toInt()) == spectMode)
-        {
-            ui->spectrumMode_tCombo->blockSignals(true);
-            ui->spectrumMode_tCombo->setCurrentIndex(i);
-            ui->spectrumMode_tCombo->blockSignals(false);
-        }
-    }
+    ui->spectrumMode_tCombo->blockSignals(true);
+    ui->spectrumMode_tCombo->setCurrentIndex(ui->spectrumMode_tCombo->findData(spectMode));
+    ui->spectrumMode_tCombo->blockSignals(false);
     setUISpectrumControlsToMode(spectMode);
 }
 
-void wfmain::handleScopeOutOfRange(bool outOfRange)
-{
-    if(outOfRange)
-    {
-        ui->scopeOutOfRangeLabel->setText("OUT OF RANGE");
-        ui->scopeOutOfRangeLabel->setStyleSheet("QLabel { background-color : red; color : blue; }");
-    } else {
-        ui->scopeOutOfRangeLabel->setText("");
-        ui->scopeOutOfRangeLabel->setStyleSheet("");
-    }
-}
 
 void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 {
@@ -5171,6 +5110,8 @@ void wfmain::receiveMode(modeInfo mode)
         if (!rigCaps.commands.contains(funcSelectedMode))
         {
             queue->add(priorityImmediate,funcDataModeWithFilter);
+        } else {
+            receiveDataModeStatus(mode.data,mode.filter);
         }
 
         return; // We have nothing more to process
@@ -5350,7 +5291,7 @@ void wfmain::on_fCEbtn_clicked()
 void wfmain::on_spectrumMode_tCombo_currentIndexChanged(int index)
 {
     spectrumMode_t smode = static_cast<spectrumMode_t>(ui->spectrumMode_tCombo->itemData(index).toInt());
-    emit setScopeMode(smode);
+    queue->add(priorityImmediate,queueItem(funcScopeMainMode,QVariant::fromValue(smode)));
     setUISpectrumControlsToMode(smode);
 }
 
@@ -5384,12 +5325,12 @@ void wfmain::on_fEnterBtn_clicked()
 
 void wfmain::on_scopeBWCombo_currentIndexChanged(int index)
 {
-    emit setScopeSpan((char)index);
+    queue->add(priorityImmediate,queueItem(funcScopeMainSpan,ui->scopeBWCombo->itemData(index)));
 }
 
 void wfmain::on_scopeEdgeCombo_currentIndexChanged(int index)
 {
-    emit setScopeEdge((char)index+1);
+    queue->add(priorityImmediate,queueItem(funcScopeMainEdge,QVariant::fromValue<uchar>(index+1)));
 }
 
 void wfmain::changeMode(rigMode_t mode)
@@ -5835,21 +5776,15 @@ void wfmain::receiveIFShift(unsigned char level)
 
 void wfmain::on_tuneNowBtn_clicked()
 {
-    queue->addUnique(priorityImmediate,queueItem(funcTunerStatus,QVariant::fromValue<uchar>(2)));
+    queue->addUnique(priorityImmediate,queueItem(funcTunerStatus,QVariant::fromValue<uchar>(2U)));
     showStatusBarText("Starting ATU tuning cycle...");
-    queue->addUnique(priorityImmediate,funcTunerStatus);
 }
 
 void wfmain::on_tuneEnableChk_clicked(bool checked)
 {
     queue->addUnique(priorityImmediate,queueItem(funcTunerStatus,QVariant::fromValue<uchar>(checked)));
 
-    if(checked)
-    {
-        showStatusBarText("Turning on ATU");
-    } else {
-        showStatusBarText("Turning off ATU");
-    }
+    showStatusBarText(QString("Turning %0 ATU").arg(checked?"on":"off"));
 }
 
 void wfmain::on_exitBtn_clicked()
@@ -6100,12 +6035,11 @@ void wfmain::on_toFixedBtn_clicked()
         int edge = QString(item).toInt(&numOk,10);
         if(numOk)
         {
-            emit setScopeFixedEdge(oldLowerFreq, oldUpperFreq, edge);
-            emit setScopeEdge(edge);
             ui->scopeEdgeCombo->blockSignals(true);
             ui->scopeEdgeCombo->setCurrentIndex(edge-1);
             ui->scopeEdgeCombo->blockSignals(false);
-            queue->add(priorityImmediate,queueItem(funcScopeCenterFixed,QVariant::fromValue<uchar>(1)));
+            queue->add(priorityImmediate,queueItem(funcScopeFixedEdgeFreq,QVariant::fromValue(spectrumBounds(oldLowerFreq, oldUpperFreq, edge))));
+            queue->add(priorityImmediate,queueItem(funcScopeMainMode,QVariant::fromValue<uchar>(spectrumMode_t::spectModeFixed)));
         }
     }
 }
@@ -6798,14 +6732,12 @@ void wfmain::on_wfthemeCombo_activated(int index)
 
 void wfmain::receivePreamp(unsigned char pre)
 {
-    int preindex = ui->preampSelCombo->findData(pre);
-    ui->preampSelCombo->setCurrentIndex(preindex);
+    ui->preampSelCombo->setCurrentIndex(ui->preampSelCombo->findData(pre));
 }
 
 void wfmain::receiveAttenuator(unsigned char att)
 {
-    int attindex = ui->attSelCombo->findData(att);
-    ui->attSelCombo->setCurrentIndex(attindex);
+    ui->attSelCombo->setCurrentIndex(ui->attSelCombo->findData(att));
 }
 
 void wfmain::receiveAntennaSel(unsigned char ant, bool rx)
@@ -6816,6 +6748,8 @@ void wfmain::receiveAntennaSel(unsigned char ant, bool rx)
 
 void wfmain::receiveSpectrumSpan(freqt freqspan, bool isSub)
 {
+
+
     if(!isSub)
     {
        switch((int)(freqspan.MHzDouble * 1000000.0))
@@ -8372,7 +8306,8 @@ with a comma between the low and high range.",
             if(ok)
             {
                 qDebug(logGui()) << "setting edge to: " << lowFreq << ", " << highFreq << ", edge num: " << ui->scopeEdgeCombo->currentIndex() + 1;
-                emit setScopeFixedEdge(lowFreq, highFreq, ui->scopeEdgeCombo->currentIndex() + 1);
+                queue->add(priorityImmediate,queueItem(funcScopeFixedEdgeFreq,
+                                                        QVariant::fromValue(spectrumBounds(lowFreq, highFreq, ui->scopeEdgeCombo->currentIndex() + 1))));
                 return;
             }
         }
@@ -8989,7 +8924,7 @@ void wfmain::receiveValue(cacheItem val){
     switch (val.command)
     {
     case funcFreqGet:
-    case funcfreqTR:
+    case funcFreqTR:
     case funcSelectedFreq:
     case funcUnselectedFreq:
     {
@@ -9023,8 +8958,7 @@ void wfmain::receiveValue(cacheItem val){
     case funcReadFreqOffset:
         break;
     case funcSplitStatus:
-        break;
-    case funcDuplexStatus:
+        rpt->receiveDuplexMode(val.value.value<duplexMode_t>());
         break;
     case funcTuningStep:
         receiveTuningStep(val.value.value<uchar>());
@@ -9058,8 +8992,15 @@ void wfmain::receiveValue(cacheItem val){
     case funcIFShift:
         receiveIFShift(val.value.value<uchar>());
         break;
+        /*
+    connect(this->rig, &rigCommander::haveDashRatio,
+        [=](const unsigned char& ratio) { cw->handleDashRatio(ratio); });
+    connect(this->rig, &rigCommander::haveCWBreakMode,
+            [=](const unsigned char &bm) { cw->handleBreakInMode(bm);});
+*/
     case funcCwPitch:
         receiveCwPitch(val.value.value<uchar>());
+        cw->handlePitch(val.value.value<uchar>());
         break;
     case funcRFPower:
         receiveTxPower(val.value.value<uchar>());
@@ -9069,6 +9010,7 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcKeySpeed:
         // Only used by CW window
+        cw->handleKeySpeed(val.value.value<uchar>());
         break;
     case funcNotchFilter:
         break;
@@ -9140,9 +9082,12 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcRepeaterTone:
         break;
+        rpt->handleRptAccessMode(rptAccessTxRx_t((val.value.value<bool>())?ratrTONEon:ratrTONEoff));
     case funcRepeaterTSQL:
+        rpt->handleRptAccessMode(rptAccessTxRx_t((val.value.value<bool>())?ratrTSQLon:ratrTSQLoff));
         break;
     case funcRepeaterDTCS:
+        break;
     case funcRepeaterCSQL:
         break;
     case funcCompressor:
@@ -9175,6 +9120,9 @@ void wfmain::receiveValue(cacheItem val){
     case funcToneSquelchType:
         break;
     case funcIPPlus:
+        break;
+    case funcBreakIn:
+        cw->handleBreakInMode(val.value.value<uchar>());
         break;
     // 0x17 is CW send and 0x18 is power control (no reply)
     // 0x19 it automatically added.
@@ -9224,14 +9172,21 @@ void wfmain::receiveValue(cacheItem val){
         receiveModInput(val.value.value<rigInput>(), 3);
         break;
     case funcDashRatio:
+        cw->handleDashRatio(val.value.value<uchar>());
         break;
     // 0x1b register
     case funcToneFreq:
+        rpt->handleTone(val.value.value<toneInfo>().tone);
         break;
     case funcTSQLFreq:
+        rpt->handleTSQL(val.value.value<toneInfo>().tone);
         break;
     case funcDTCSCode:
+    {
+        toneInfo t = val.value.value<toneInfo>();
+        rpt->handleDTCS(t.tone,t.rinv,t.tinv);
         break;
+    }
     case funcCSQLCode:
         break;
     // 0x1c register
@@ -9246,10 +9201,9 @@ void wfmain::receiveValue(cacheItem val){
     case funcRITFreq:
         break;
     // 0x27
-    case funcScopeWaveData:
+    case funcScopeMainWaveData:
     {
-        scopeData d = val.value.value<scopeData>();
-        receiveSpectrumData(d.data,d.startFreq,d.endFreq);
+        receiveSpectrumData(val.value.value<scopeData>());
         break;
     }
     case funcScopeOnOff:
@@ -9264,29 +9218,36 @@ void wfmain::receiveValue(cacheItem val){
     case funcScopeSingleDual:
         // This tells us whether we are receiving single or dual scopes
         break;
-    case funcScopeCenterFixed:
+    case funcScopeMainMode:
         // fixed or center
         // [1] 0x14
         // [2] 0x00
         // [3] 0x00 (center), 0x01 (fixed), 0x02, 0x03
+        receivespectrumMode_t(val.value.value<spectrumMode_t>());
         break;
-    case funcScopeCenterSpan:
+    case funcScopeMainSpan:
     {
         // read span in center mode
         // [1] 0x15
-        // [2] to [8] is spastatic_cast<bool>(payloadIn.at(2)n encoded as a frequency
-        //emit haveScopeSpan(parseFrequency(payloadIn, 6), static_cast<bool>(payloadIn.at(2)));
+        // [2] to [8] is encoded as a frequency
+        centerSpanData d = val.value.value<centerSpanData>();
+        if (ui->scopeBWCombo->currentIndex() != d.cstype)
+        {
+            ui->scopeBWCombo->blockSignals(true);
+            ui->scopeBWCombo->setCurrentIndex(d.cstype);
+            ui->scopeBWCombo->blockSignals(false);
+        }
         break;
     }
-    case funcScopeEdgeNumber:
+    case funcScopeMainEdge:
         // read edge mode center in edge mode
         // [1] 0x16
         // [2] 0x01, 0x02, 0x03: Edge 1,2,3
         break;
-    case funcScopeHold:
+    case funcScopeMainHold:
         // Hold status (only 9700?)
         break;
-    case funcScopeRef:
+    case funcScopeMainRef:
     {
         // scope reference level
         // [1] 0x19
@@ -9296,12 +9257,12 @@ void wfmain::receiveValue(cacheItem val){
         // [5] 0x00 = +, 0x01 = -
         break;
     }
-    case funcScopeSpeed:
+    case funcScopeMainSpeed:
     case funcScopeDuringTX:
     case funcScopeCenterType:
-    case funcScopeVBW:
-    case funcScopeFixedFreq:
-    case funcScopeRBW:
+    case funcScopeMainVBW:
+    case funcScopeFixedEdgeFreq:
+    case funcScopeMainRBW:
         break;
     // 0x28
     case funcVoiceTX:
@@ -9314,10 +9275,5 @@ void wfmain::receiveValue(cacheItem val){
         qWarning(logSystem()) << "Unhandled command received from rigcommander()" << funcString[val.command] << "Contact support!";
         break;
     }
-
-
-
 }
-
-
 

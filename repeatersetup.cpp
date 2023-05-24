@@ -509,7 +509,7 @@ void repeaterSetup::on_rptToneCombo_activated(int tindex)
 {
     quint16 tone=0;
     tone = (quint16)ui->rptToneCombo->itemData(tindex).toUInt();
-    rptrTone_t rt;
+    toneInfo rt;
     rt.tone = tone;
     bool updateSub = ui->setSplitRptrToneChk->isEnabled() && ui->setSplitRptrToneChk->isChecked();
     if(ui->toneTone->isChecked())
@@ -517,7 +517,7 @@ void repeaterSetup::on_rptToneCombo_activated(int tindex)
         emit setTone(rt);
         if(updateSub)
         {
-            rt.useSecondaryVFO = true;
+            //rt.useSecondaryVFO = true;
             emit setTone(rt);
         }
 
@@ -525,7 +525,7 @@ void repeaterSetup::on_rptToneCombo_activated(int tindex)
         emit setTSQL(rt);
         if(updateSub)
         {
-            rt.useSecondaryVFO = true;
+            //rt.useSecondaryVFO = true;
             emit setTone(rt);
         }
     }
@@ -533,11 +533,11 @@ void repeaterSetup::on_rptToneCombo_activated(int tindex)
 
 void repeaterSetup::on_rptDTCSCombo_activated(int index)
 {
-    quint16 dcode=0;
-    bool tinv = ui->rptDTCSInvertTx->isChecked();
-    bool rinv = ui->rptDTCSInvertRx->isChecked();
-    dcode = (quint16)ui->rptDTCSCombo->itemData(index).toUInt();
-    emit setDTCS(dcode, tinv, rinv);
+    toneInfo tone;
+    tone.tinv = ui->rptDTCSInvertTx->isChecked();
+    tone.rinv = ui->rptDTCSInvertRx->isChecked();
+    tone.tone = (quint16)ui->rptDTCSCombo->itemData(index).toUInt();
+    emit setDTCS(tone);
 }
 
 void repeaterSetup::on_toneNone_clicked()
@@ -562,7 +562,7 @@ void repeaterSetup::on_toneTone_clicked()
     rptrAccessData rd;
     rm = ratrTN;
     rd.accessMode = rm;
-    rptrTone_t rt;
+    toneInfo rt;
     rt.tone = (quint16)ui->rptToneCombo->currentData().toUInt();
     emit setRptAccessMode(rd);
     emit setTone(rt);
@@ -571,8 +571,8 @@ void repeaterSetup::on_toneTone_clicked()
 
     if(updateSub)
     {
-        rd.useSecondaryVFO = true;
-        rt.useSecondaryVFO = true;
+        //rd.useSecondaryVFO = true;
+        //rt.useSecondaryVFO = true;
         emit setRptAccessMode(rd);
         emit setTone(rt);
     }
@@ -583,7 +583,7 @@ void repeaterSetup::on_toneTSQL_clicked()
     rptAccessTxRx_t rm;
     rptrAccessData rd;
     rm = ratrTT;
-    rptrTone_t rt;
+    toneInfo rt;
     rt.tone = (quint16)ui->rptToneCombo->currentData().toUInt();
     rd.accessMode = rm;
     emit setRptAccessMode(rd);
@@ -592,8 +592,8 @@ void repeaterSetup::on_toneTSQL_clicked()
 
     if(updateSub)
     {
-        rd.useSecondaryVFO = true;
-        rt.useSecondaryVFO = true;
+        //rd.useSecondaryVFO = true;
+        //rt.useSecondaryVFO = true;
         emit setRptAccessMode(rd);
         emit setTone(rt);
     }
@@ -602,15 +602,14 @@ void repeaterSetup::on_toneTSQL_clicked()
 void repeaterSetup::on_toneDTCS_clicked()
 {
     rptrAccessData rd;
-    quint16 dcode=0;
 
     rd.accessMode = ratrDD;
     emit setRptAccessMode(rd);
-
-    bool tinv = ui->rptDTCSInvertTx->isChecked();
-    bool rinv = ui->rptDTCSInvertRx->isChecked();
-    dcode = (quint16)ui->rptDTCSCombo->currentData().toUInt();
-    emit setDTCS(dcode, tinv, rinv);
+    toneInfo tone;
+    tone.tinv = ui->rptDTCSInvertTx->isChecked();
+    tone.rinv = ui->rptDTCSInvertRx->isChecked();
+    tone.tone = (quint16)ui->rptDTCSCombo->currentData().toUInt();
+    emit setDTCS(tone);
     // TODO: DTCS with subband
 }
 
@@ -785,9 +784,9 @@ void repeaterSetup::on_setToneSubVFOBtn_clicked()
     // Perhaps not needed
     // Set the secondary VFO to the selected tone
     // TODO: DTCS
-    rptrTone_t rt;
+    toneInfo rt;
     rt.tone = (quint16)ui->rptToneCombo->currentData().toUInt();
-    rt.useSecondaryVFO = true;
+    //rt.useSecondaryVFO = true;
     emit setTone(rt);
 }
 

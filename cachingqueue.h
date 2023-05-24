@@ -12,6 +12,7 @@
 #include <QRect>
 #include <QWaitCondition>
 #include <QDateTime>
+#include <QRandomGenerator>
 
 #include "wfviewtypes.h"
 #include "rigidentities.h"

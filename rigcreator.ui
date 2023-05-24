@@ -161,7 +161,7 @@
    <property name="geometry">
     <rect>
      <x>830</x>
-     <y>200</y>
+     <y>230</y>
      <width>141</width>
      <height>131</height>
     </rect>
@@ -632,7 +632,7 @@
      <number>0</number>
     </property>
     <property name="columnCount">
-     <number>4</number>
+     <number>5</number>
     </property>
     <attribute name="horizontalHeaderCascadingSectionResizes">
      <bool>false</bool>
@@ -672,6 +672,11 @@
       <string>Max</string>
      </property>
     </column>
+    <column>
+     <property name="text">
+      <string>29</string>
+     </property>
+    </column>
    </widget>
   </widget>
   <widget class="QGroupBox" name="groupBox_9">
@@ -680,7 +685,7 @@
      <x>830</x>
      <y>50</y>
      <width>141</width>
-     <height>151</height>
+     <height>181</height>
     </rect>
    </property>
    <property name="title">
@@ -762,6 +767,19 @@
     </property>
     <property name="text">
      <string>HasFDComms</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="hasCommand29">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>150</y>
+      <width>121</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Has Command 29</string>
     </property>
    </widget>
   </widget>
@@ -974,9 +992,9 @@
    <property name="geometry">
     <rect>
      <x>770</x>
-     <y>330</y>
+     <y>360</y>
      <width>191</width>
-     <height>211</height>
+     <height>181</height>
     </rect>
    </property>
    <property name="title">
@@ -988,7 +1006,7 @@
       <x>0</x>
       <y>30</y>
       <width>191</width>
-      <height>181</height>
+      <height>151</height>
      </rect>
     </property>
     <property name="sizePolicy">

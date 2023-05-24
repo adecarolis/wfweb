@@ -8,6 +8,7 @@
 #include <QtMath>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QThread>
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 #include <QAudioDeviceInfo>
@@ -45,8 +46,8 @@ public slots:
     void setRatio(unsigned char ratio);
     void setLevel(int level);
     void stopSending();
-private:
     void init();
+private:
 
     void generateMorse(QString morse);
     QByteArray generateData(qint64 len, qint64 freq);

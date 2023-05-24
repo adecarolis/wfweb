@@ -150,8 +150,8 @@ signals:
     void getDTCS();
     void getRptAccessMode();
     void setRepeaterAccessMode(rptrAccessData rd);
-    void setTone(rptrTone_t t);
-    void setTSQL(rptrTone_t t);
+    void setTone(toneInfo t);
+    void setTSQL(toneInfo t);
     void getToneEnabled();
     void getTSQLEnabled();
     void setToneEnabled(bool enabled);
@@ -351,10 +351,9 @@ private slots:
     void receiveCommReady();
     void receiveFreq(freqt);
     void receiveMode(modeInfo mode);
-    void receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq);
+    void receiveSpectrumData(scopeData data);
     void receivespectrumMode_t(spectrumMode_t spectMode);
     void receiveSpectrumSpan(freqt freqspan, bool isSub);
-    void handleScopeOutOfRange(bool outOfRange);
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(unsigned char data, unsigned char filter);
     void receiveBandStackReg(freqt f, char mode, char filter, bool dataOn); // freq, mode, (filter,) datamode
@@ -861,6 +860,7 @@ private:
     QCPItemLine * freqIndicatorLine;
     QCPItemRect* passbandIndicator;
     QCPItemRect* pbtIndicator;
+    QCPItemText* oorIndicator;
     void setAppTheme(bool isCustom);
     void prepareWf();
     void prepareWf(unsigned int wfLength);
