@@ -210,6 +210,9 @@ struct rigCapabilities {
 
     bool hasAdvancedRptrToneCmds = false;
     bool hasQuickSplitCommand = false;
+
+    bool hasCommand29 = false;
+
     QByteArray quickSplitCommand;
     QHash<funcs,funcType> commands;
     QHash<QByteArray,funcs> commandsReverse;

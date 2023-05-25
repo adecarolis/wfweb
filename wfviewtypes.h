@@ -295,12 +295,13 @@ struct spanType {
 
 struct funcType {
     funcType() {}
-    funcType(funcs cmd, QString name, QByteArray data, int minVal, int maxVal) : cmd(cmd), name(name), data(data), minVal(minVal), maxVal(maxVal) {}
+    funcType(funcs cmd, QString name, QByteArray data, int minVal, int maxVal, bool cmd29) : cmd(cmd), name(name), data(data), minVal(minVal), maxVal(maxVal), cmd29(cmd29) {}
     funcs cmd;
     QString name;
     QByteArray data;
     int minVal;
     int maxVal;
+    bool cmd29;
 };
 
 struct commandtype {

@@ -39,14 +39,14 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
         }
         else if( selectedAction == clone )
         {
-            int row=this->currentRow();
-            int rown=this->rowCount();
-            this->insertRow(this->rowCount());
+            int row=this->currentRow(); // This will be the new row with the old one as row+1
+            this->insertRow(this->currentRow());
             for (int i=0;i<this->columnCount();i++)
             {
-                if (this->item(row,i) != NULL) this->model()->setData(this->model()->index(rown,i),this->item(row,i)->text());
+                if (this->item(row+1,i) != NULL && dynamic_cast<QComboBox*>(this->item(row+1,i)) == nullptr) // Don't try to copy checkbox
+                    this->model()->setData(this->model()->index(row,i),this->item(row+1,i)->text());
             }
-            emit rowAdded(rown);
+            emit rowAdded(row);
         }
         else if( selectedAction == del )
         {

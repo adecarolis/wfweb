@@ -211,7 +211,7 @@ void cachingQueue::message(QString msg)
     waiting.wakeOne();
 }
 
-void cachingQueue::receiveValue(funcs func, QVariant value)
+void cachingQueue::receiveValue(funcs func, QVariant value, bool sub)
 {
     QMutexLocker locker(&mutex);
     cacheItem c = cacheItem(func,value);

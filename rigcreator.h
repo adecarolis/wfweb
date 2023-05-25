@@ -29,6 +29,7 @@ public:
 private slots:
     void on_loadFile_clicked(bool clicked);
     void on_saveFile_clicked(bool clicked);
+    void on_hasCommand29_toggled(bool checked);
     void on_defaultRigs_clicked(bool clicked);
     void loadRigFile(QString filename);
     void saveRigFile(QString filename);
@@ -39,7 +40,6 @@ private:
     Ui::rigCreator *ui;
     QMenu* context;
     tableCombobox* commandsList;
-    tableCheckbox* command39;
     QStandardItemModel* commandsModel;
     QStandardItemModel* command36Model;
     QStandardItemModel* createModel(QStandardItemModel* model, QString strings[]);

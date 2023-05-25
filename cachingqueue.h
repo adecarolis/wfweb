@@ -42,12 +42,13 @@ struct queueItem {
 
 struct cacheItem {
     cacheItem () {};
-    cacheItem (funcs command, QVariant value) : command(command), value(value) {};
+    cacheItem (funcs command, QVariant value, bool sub=false) : command(command), value(value), sub(sub) {};
 
     funcs command = funcNone;
     QDateTime req=QDateTime();
     QDateTime reply=QDateTime();
     QVariant value=QVariant();
+    bool sub;
 };
 
 class cachingQueue : public QThread
@@ -60,7 +61,7 @@ signals:
 
 public slots:
     // Can be called directly or via emit.
-    void receiveValue(funcs func, QVariant value);
+    void receiveValue(funcs func, QVariant value, bool sub);
 
 private:
 

@@ -15,23 +15,25 @@ rigCreator::rigCreator(QWidget *parent) :
     ui->commands->setItemDelegateForColumn(0, commandsList);
 
     ui->commands->setColumnWidth(0,120);
-    ui->commands->setColumnWidth(1,115);
+    ui->commands->setColumnWidth(1,100);
     ui->commands->setColumnWidth(2,50);
     ui->commands->setColumnWidth(3,50);
-    ui->commands->setColumnWidth(4,25);
+    ui->commands->setColumnWidth(4,40);
 
     connect(ui->commands,SIGNAL(rowAdded(int)),this,SLOT(commandRowAdded(int)));
 }
 
 void rigCreator::commandRowAdded(int row)
 {
-    if (ui->commands->item(row,4) == NULL) {
-        // Add checkbox
-        QTableWidgetItem * item = new QTableWidgetItem();
-        item->setFlags(Qt::ItemFlag::ItemIsEnabled | Qt::ItemFlag::ItemIsUserCheckable);
-        item->setCheckState(Qt::Unchecked);
-        ui->commands->setItem(row,4,item);
-    }
+    // Create a widget that will contain a checkbox
+    QWidget *checkBoxWidget = new QWidget();
+    QCheckBox *checkBox = new QCheckBox();      // We declare and initialize the checkbox
+    checkBox->setObjectName("check");
+    QHBoxLayout *layoutCheckBox = new QHBoxLayout(checkBoxWidget); // create a layer with reference to the widget
+    layoutCheckBox->addWidget(checkBox);            // Set the checkbox in the layer
+    layoutCheckBox->setAlignment(Qt::AlignCenter);  // Center the checkbox
+    layoutCheckBox->setContentsMargins(0,0,0,0);    // Set the zero padding
+    ui->commands->setCellWidget(row,4, checkBoxWidget);
 }
 
 
@@ -124,6 +126,7 @@ void rigCreator::loadRigFile(QString file)
     ui->hasWifi->setChecked(settings->value("HasWiFi",false).toBool());
     ui->hasTransmit->setChecked(settings->value("HasTransmit",false).toBool());
     ui->hasFDComms->setChecked(settings->value("HasFDComms",false).toBool());
+    ui->hasCommand29->setChecked(settings->value("HasCommand29",false).toBool());
 
     ui->memGroups->setText(settings->value("MemGroups","0").toString());
     ui->memories->setText(settings->value("Memories","0").toString());
@@ -143,20 +146,26 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->commands->insertRow(ui->commands->rowCount());
-            // Add checkbox for row 4 (command 39)
-            QTableWidgetItem * item = new QTableWidgetItem();
-            item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-            if (settings->value("Command39",false).toBool())
-                item->setCheckState(Qt::Checked);
-            else
-                item->setCheckState(Qt::Unchecked);
-            ui->commands->setItem(c,4,item);
 
+            // Create a widget that will contain a checkbox
+            QWidget *checkBoxWidget = new QWidget();
+            QCheckBox *checkBox = new QCheckBox();      // We declare and initialize the checkbox
+            checkBox->setObjectName("check");
+            QHBoxLayout *layoutCheckBox = new QHBoxLayout(checkBoxWidget); // create a layer with reference to the widget
+            layoutCheckBox->addWidget(checkBox);            // Set the checkbox in the layer
+            layoutCheckBox->setAlignment(Qt::AlignCenter);  // Center the checkbox
+            layoutCheckBox->setContentsMargins(0,0,0,0);    // Set the zero padding
 
+            if (settings->value("Command29",false).toBool()) {
+                checkBox->setChecked(true);
+            } else {
+                checkBox->setChecked(false);
+            }
             ui->commands->model()->setData(ui->commands->model()->index(c,0),settings->value("Type", "").toString());
             ui->commands->model()->setData(ui->commands->model()->index(c,1),settings->value("String", "").toString());
             ui->commands->model()->setData(ui->commands->model()->index(c,2),QString::number(settings->value("Min", 0).toInt(),16));
             ui->commands->model()->setData(ui->commands->model()->index(c,3),QString::number(settings->value("Max", 0).toInt(),16));
+            ui->commands->setCellWidget(c,4, checkBoxWidget);
 
         }
         settings->endArray();
@@ -382,6 +391,7 @@ void rigCreator::saveRigFile(QString file)
     settings->setValue("HasWiFi",ui->hasWifi->isChecked());
     settings->setValue("HasTransmit",ui->hasTransmit->isChecked());
     settings->setValue("HasFDComms",ui->hasFDComms->isChecked());
+    settings->setValue("HasCommand29",ui->hasCommand29->isChecked());
 
     settings->setValue("MemGroups",ui->memGroups->text().toInt());
     settings->setValue("Memories",ui->memories->text().toInt());
@@ -400,6 +410,13 @@ void rigCreator::saveRigFile(QString file)
         settings->setValue("String", (ui->commands->item(n,1) == NULL) ? "" : ui->commands->item(n,1)->text());
         settings->setValue("Min", (ui->commands->item(n,2) == NULL) ? 0 : ui->commands->item(n,2)->text().toInt(nullptr,16));
         settings->setValue("Max", (ui->commands->item(n,3) == NULL) ? 0 : ui->commands->item(n,3)->text().toInt(nullptr,16));
+
+        QCheckBox* chk = ui->commands->cellWidget(n,4)->findChild<QCheckBox*>();
+        if (chk != nullptr)
+        {
+            settings->setValue("Command29", chk->isChecked());
+        }
+
     }
     settings->endArray();
 
@@ -537,3 +554,7 @@ QStandardItemModel* rigCreator::createModel(QStandardItemModel* model, QString s
     return model;
 }
 
+void rigCreator::on_hasCommand29_toggled(bool checked)
+{
+    ui->commands->setColumnHidden(4,!checked);
+}

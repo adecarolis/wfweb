@@ -79,6 +79,11 @@
          </column>
          <column>
           <property name="text">
+           <string>Sub</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
            <string>Request</string>
           </property>
          </column>

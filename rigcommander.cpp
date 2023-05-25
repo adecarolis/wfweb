@@ -220,7 +220,7 @@ void rigCommander::commonSetup()
     // Add the below commands so we can get a response until we have received rigCaps
     rigCaps.commands.clear();
     rigCaps.commandsReverse.clear();
-    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),QByteArrayLiteral("\x19\x00"),0,0));
+    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),QByteArrayLiteral("\x19\x00"),0,0,false));
     rigCaps.commandsReverse.insert(QByteArrayLiteral("\x19\x00"),funcTransceiverId);
 
     queue = cachingQueue::getInstance(this);
@@ -321,7 +321,7 @@ void rigCommander::prepDataAndSend(QByteArray data)
     emit dataForComm(data);
 }
 
-bool rigCommander::getCommand(funcs func, QByteArray &payload, int value)
+bool rigCommander::getCommand(funcs func, QByteArray &payload, int value, bool sub)
 {
     // Value is set to INT_MIN by default as this should be outside any "real" values
     auto it = rigCaps.commands.find(func);
@@ -333,6 +333,12 @@ bool rigCommander::getCommand(funcs func, QByteArray &payload, int value)
                 qDebug(logRig()) << QString("%0 with no value (get)").arg(funcString[func]);
             else
                 qDebug(logRig()) << QString("%0 with value %1 (Range: %2-%3)").arg(funcString[func]).arg(value).arg(it.value().minVal).arg(it.value().maxVal);
+            if (rigCaps.hasCommand29 && it.value().cmd29)
+            {
+                // This can use cmd29 so add sub/main to the command
+                payload.append('\x29');
+                payload.append(static_cast<uchar>(sub));
+            }
             payload.append(it.value().data);
             return true;
         }
@@ -1972,6 +1978,13 @@ void rigCommander::parseCommand()
 #endif
 
     funcs func = funcNone;
+    bool sub = false;
+
+    if (rigCaps.hasCommand29 && payloadIn[0] == '\x29')
+    {
+        sub = static_cast<bool>(payloadIn[1]);
+        payloadIn.remove(0,2);
+    }
 
     // As some commands bave both single and multi-byte options, start at 4 characters and work down to 1.
     // This is quite wasteful as many commands are single-byte, but I can't think of an easier way?
@@ -2399,7 +2412,7 @@ void rigCommander::parseCommand()
 #endif
 
     if (value.isValid() && queue != Q_NULLPTR) {
-        queue->receiveValue(func,value);
+        queue->receiveValue(func,value,sub);
     }
 
 }
@@ -4354,6 +4367,7 @@ void rigCommander::determineRigCaps()
     rigCaps.hasDV = settings->value("HasDV",false).toBool();
     rigCaps.hasTransmit = settings->value("HasTransmit",false).toBool();
     rigCaps.hasFDcomms = settings->value("HasFDComms",false).toBool();
+    rigCaps.hasCommand29 = settings->value("HasCommand29",false).toBool();
     rigCaps.useRTSforPTT = settings->value("UseRTSforPTT",false).toBool();
 
     rigCaps.memGroups = settings->value("MemGroups",0).toUInt();
@@ -4385,12 +4399,13 @@ void rigCommander::determineRigCaps()
             {
                 funcs func = funcsLookup.find(settings->value("Type", "").toString().toUpper()).value();
                             rigCaps.commands.insert(func, funcType(func, funcString[int(func)],
-                                                                   QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),
-                                                                   settings->value("Min", 0).toString().toInt(), settings->value("Max", 0).toString().toInt()));
+                                QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),
+                                settings->value("Min", 0).toString().toInt(), settings->value("Max", 0).toString().toInt(),
+                                settings->value("Command29",false).toBool()));
 
                             rigCaps.commandsReverse.insert(QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),func);
             } else {
-                qInfo(logRig()) << "Function" << settings->value("Type", "").toString() << "Not Found!";
+                qWarning(logRig()) << "**** Function" << settings->value("Type", "").toString() << "Not Found, rig file may be out of date?";
             }
         }
         settings->endArray();
@@ -6906,7 +6921,7 @@ void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value
     if (func == funcAfGain && value.isValid() && udp != Q_NULLPTR) {
         // Ignore the AF Gain command, just queue it for processing
         emit haveSetVolume(static_cast<uchar>(value.toInt()));
-        queue->receiveValue(func,value);
+        queue->receiveValue(func,value,false);
         return;
     }
 
@@ -6932,7 +6947,7 @@ void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value
     }
 
     QByteArray payload;
-    if (getCommand(func,payload,val))
+    if (getCommand(func,payload,val,false))
     {
         if (value.isValid())
         {
@@ -6940,7 +6955,7 @@ void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value
             {
                  payload.append(value.value<bool>());
             }
-            if (!strcmp(value.typeName(),"QString"))
+            else if (!strcmp(value.typeName(),"QString"))
             {
                  QString text = value.value<QString>();
                  if (pttAllowed && func == funcSendCW)
