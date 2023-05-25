@@ -70,7 +70,6 @@ void cachingQueue::run()
                     prio = priorityLowest;
             }            
             counter++;
-            QMutableMultiMapIterator<queuePriority,queueItem> itt(queue);
 
             auto it = queue.find(prio);
             if (it != queue.end())
@@ -214,7 +213,7 @@ void cachingQueue::message(QString msg)
 void cachingQueue::receiveValue(funcs func, QVariant value, bool sub)
 {
     QMutexLocker locker(&mutex);
-    cacheItem c = cacheItem(func,value);
+    cacheItem c = cacheItem(func,value,sub);
     items.enqueue(c);
     updateCache(true,func,value);
     waiting.wakeOne();

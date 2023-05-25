@@ -2095,7 +2095,7 @@ void rigCommander::parseCommand()
         break;
     // Return a duplexMode_t for split or duplex (same function)
     case funcSplitStatus:
-        value.setValue(duplexMode_t(payloadIn[1]));
+        value.setValue(static_cast<duplexMode_t>(uchar(payloadIn[1])));
         break;
     case funcAntenna:
     {

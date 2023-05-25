@@ -68,13 +68,13 @@ struct commandStruct
     const char *str;
     funcs func;
     char type;
-    int flags;
-    const char* arg1;
-    const char* arg2;
-    const char* arg3;
-    const char* arg4;
-    const char* arg5;
-    const char* arg6;
+    int flags = 0;
+    const char* arg1=nullptr;
+    const char* arg2=nullptr;
+    const char* arg3=nullptr;
+    const char* arg4=nullptr;
+    const char* arg5=nullptr;
+    const char* arg6=nullptr;
 };
 
 struct subCommandStruct

@@ -94,6 +94,8 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<queueItemType>();
     qRegisterMetaType<queueItem>();
     qRegisterMetaType<cacheItem>();
+    qRegisterMetaType<spectrumBounds>();
+    qRegisterMetaType<centerSpanData>();
 
     haveRigCaps = false;
 
