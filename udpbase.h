@@ -24,6 +24,18 @@
 
 #include "packettypes.h"
 
+enum udpPrefsItem {
+    u_ipAddress = 1 << 0,
+    u_controlLANPort = 1 << 1,
+    u_serialLANPort = 1 << 2,
+    u_audioLANPort = 1 << 3,
+    u_username = 1 << 4,
+    u_password = 1 << 5,
+    u_clientName = 1 << 6,
+    u_waterfallFormat = 1 << 7,
+    u_halfDuplex = 1 << 8,
+    u_all = 1 << 9
+};
 
 
 struct udpPreferences {

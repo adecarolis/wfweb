@@ -230,11 +230,14 @@ win32:INCLUDEPATH += ../qcustomplot
 INCLUDEPATH += resampler
 
 SOURCES += main.cpp\
+    bandbuttons.cpp \
     cachingqueue.cpp \
     cwsender.cpp \
+    frequencyinputwidget.cpp \
     cwsidetone.cpp \
     debugwindow.cpp \
     loggingwindow.cpp \
+    settingswidget.cpp \
     memories.cpp \
     rigcreator.cpp \
     tablewidget.cpp \
@@ -272,10 +275,12 @@ SOURCES += main.cpp\
     audiodevices.cpp
 
 HEADERS  += wfmain.h \
+    bandbuttons.h \
     cachingqueue.h \
     colorprefs.h \
     commhandler.h \
     cwsender.h \
+    frequencyinputwidget.h \
     cwsidetone.h \
     debugwindow.h \
     loggingwindow.h \
@@ -286,6 +291,7 @@ HEADERS  += wfmain.h \
     freqmemory.h \
     rigcreator.h \
     rigidentities.h \
+    settingswidget.h \
     sidebandchooser.h \
     tablewidget.h \
     udpbase.h \
@@ -325,8 +331,10 @@ HEADERS  += wfmain.h \
     audiodevices.h
 
 FORMS    += wfmain.ui \
+    bandbuttons.ui \
     calibrationwindow.ui \
     cwsender.ui \
+    frequencyinputwidget.ui \
     debugwindow.ui \
     loggingwindow.ui \
     memories.ui \
@@ -334,6 +342,7 @@ FORMS    += wfmain.ui \
     satellitesetup.ui \
     selectradio.ui \
     repeatersetup.ui \
+    settingswidget.ui \
     transceiveradjustments.ui \
     controllersetup.ui \
     aboutbox.ui

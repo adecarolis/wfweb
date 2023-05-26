@@ -94,6 +94,21 @@ struct SERVERCONFIG {
 	QList <RIGCONFIG*> rigs;
 };
 
+enum serverItems {
+    s_enabled = 1 << 0,
+    s_lan = 1 << 1,
+    s_controlPort = 1 << 2,
+    s_civPort = 1 << 3,
+    s_audioPort = 1 << 4,
+    s_audioOutput = 1 << 5,
+    s_audioInput = 1 << 6,
+    s_resampleQuality = 1 << 7,
+    s_baudRate = 1 << 8,
+    s_users = 1 << 9,
+    s_rigs = 1 << 10,
+    s_all = 1 << 11
+};
+
 
 class udpServer : public QObject
 {

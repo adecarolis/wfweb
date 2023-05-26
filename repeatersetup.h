@@ -74,41 +74,23 @@ private slots:
     void on_toneDTCS_clicked();    
     void on_splitPlusButton_clicked();
     void on_splitMinusBtn_clicked();
-
     void on_splitTxFreqSetBtn_clicked();
-
     void on_selABtn_clicked();
-
     void on_selBBtn_clicked();
-
     void on_aEqBBtn_clicked();
-
     void on_swapABBtn_clicked();
-
     void on_selMainBtn_clicked();
-
     void on_selSubBtn_clicked();
-
     void on_mEqSBtn_clicked();
-
     void on_swapMSBtn_clicked();
-
     void on_setToneSubVFOBtn_clicked();
-
     void on_setRptrSubVFOBtn_clicked();
-
     void on_rptrOffsetSetBtn_clicked();
-
     void on_splitOffBtn_clicked();
-
     void on_splitEnableChk_clicked();
-
     void on_rptrOffsetEdit_returnPressed();
-
     void on_splitTransmitFreqEdit_returnPressed();
-
     void on_setSplitRptrToneChk_clicked(bool checked);
-
     void on_quickSplitChk_clicked(bool checked);
 
 private:

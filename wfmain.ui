@@ -1653,985 +1653,6 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="bandTab">
-       <attribute name="title">
-        <string>Band</string>
-       </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout_7">
-        <item>
-         <widget class="QGroupBox" name="groupBox_3">
-          <property name="title">
-           <string>Band</string>
-          </property>
-          <layout class="QVBoxLayout" name="verticalLayout_6">
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_26">
-             <property name="topMargin">
-              <number>0</number>
-             </property>
-             <property name="rightMargin">
-              <number>0</number>
-             </property>
-             <item>
-              <widget class="QPushButton" name="band2200mbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>2200m</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="band630mbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>630m</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="band160mbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>160m</string>
-               </property>
-               <property name="shortcut">
-                <string>L</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="band80mbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>80m</string>
-               </property>
-               <property name="shortcut">
-                <string>8</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_8">
-             <item>
-              <widget class="QPushButton" name="band60mbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>60m</string>
-               </property>
-               <property name="shortcut">
-                <string>S</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="band40mbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>40m</string>
-               </property>
-               <property name="shortcut">
-                <string>4</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="band30mbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>30m</string>
-               </property>
-               <property name="shortcut">
-                <string>3</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="band20mbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>20m</string>
-               </property>
-               <property name="shortcut">
-                <string>2</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_9">
-             <item>
-              <widget class="QPushButton" name="band17mbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>17m</string>
-               </property>
-               <property name="shortcut">
-                <string>7</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="band15mbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>15m</string>
-               </property>
-               <property name="shortcut">
-                <string>5</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="band12mbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>12m</string>
-               </property>
-               <property name="shortcut">
-                <string>T</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="band10mbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>10m</string>
-               </property>
-               <property name="shortcut">
-                <string>1</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_10">
-             <item>
-              <widget class="QPushButton" name="band6mbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>6m</string>
-               </property>
-               <property name="shortcut">
-                <string>6</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="band4mbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>4m</string>
-               </property>
-               <property name="shortcut">
-                <string>$</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="band2mbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>2m</string>
-               </property>
-               <property name="shortcut">
-                <string>V</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="band70cmbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>70cm</string>
-               </property>
-               <property name="shortcut">
-                <string>U</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="band23cmbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>23cm</string>
-               </property>
-               <property name="shortcut">
-                <string/>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_11">
-             <item>
-              <widget class="QPushButton" name="bandWFMbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>WFM</string>
-               </property>
-               <property name="shortcut">
-                <string>W</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="bandAirbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>Air</string>
-               </property>
-               <property name="shortcut">
-                <string>A</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="bandGenbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>Gen</string>
-               </property>
-               <property name="shortcut">
-                <string>G</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <widget class="QGroupBox" name="groupBox_4">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="title">
-           <string>Segment</string>
-          </property>
-          <layout class="QHBoxLayout" name="horizontalLayout_12">
-           <item>
-            <widget class="QRadioButton" name="bandStkLastUsedBtn">
-             <property name="text">
-              <string>&amp;Last Used</string>
-             </property>
-             <property name="iconSize">
-              <size>
-               <width>16</width>
-               <height>16</height>
-              </size>
-             </property>
-             <property name="checked">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="label">
-             <property name="text">
-              <string>Band Stack Selection:</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QComboBox" name="bandStkPopdown">
-             <item>
-              <property name="text">
-               <string>1 - Latest Used</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>2 - Older</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>3 - Oldest Used</string>
-              </property>
-             </item>
-            </widget>
-           </item>
-           <item>
-            <widget class="QRadioButton" name="bandStkVoiceBtn">
-             <property name="text">
-              <string>Voice</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QRadioButton" name="bandStkDataBtn">
-             <property name="text">
-              <string>Data</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QRadioButton" name="bandStkCWBtn">
-             <property name="text">
-              <string>&amp;CW</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="horizontalSpacer">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QWidget" name="freqTab">
-       <attribute name="title">
-        <string>Frequency</string>
-       </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout_4">
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_3">
-          <item>
-           <widget class="QLabel" name="label_8">
-            <property name="text">
-             <string>Frequency:</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="freqMhzLineEdit">
-            <property name="font">
-             <font>
-              <family>DejaVu Sans Mono</family>
-              <pointsize>14</pointsize>
-              <bold>true</bold>
-             </font>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="goFreqBtn">
-            <property name="text">
-             <string>Go</string>
-            </property>
-            <property name="shortcut">
-             <string>Return</string>
-            </property>
-            <property name="default">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <widget class="QGroupBox" name="groupBox_2">
-          <property name="title">
-           <string>Entry</string>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_3">
-           <item row="1" column="1">
-            <widget class="QPushButton" name="f5btn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>30</width>
-               <height>30</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>5</string>
-             </property>
-             <property name="shortcut">
-              <string>5</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="3">
-            <widget class="QPushButton" name="fRclBtn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>30</height>
-              </size>
-             </property>
-             <property name="toolTip">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;To recall a preset memory:&lt;/p&gt;&lt;p&gt;1. Type in the preset number (0 through 99)&lt;/p&gt;&lt;p&gt;2. Press RCL (or use hotkey &amp;quot;R&amp;quot;)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-             </property>
-             <property name="text">
-              <string>&amp;RCL</string>
-             </property>
-             <property name="shortcut">
-              <string>R</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="2">
-            <widget class="QPushButton" name="f6btn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>30</width>
-               <height>30</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>6</string>
-             </property>
-             <property name="shortcut">
-              <string>6</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="2">
-            <widget class="QPushButton" name="f3btn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>30</width>
-               <height>30</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>3</string>
-             </property>
-             <property name="shortcut">
-              <string>3</string>
-             </property>
-             <property name="flat">
-              <bool>false</bool>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="2">
-            <widget class="QPushButton" name="fCEbtn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>30</width>
-               <height>30</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>&amp;CE</string>
-             </property>
-             <property name="shortcut">
-              <string>C</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0">
-            <widget class="QPushButton" name="f4btn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>30</width>
-               <height>30</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>4</string>
-             </property>
-             <property name="shortcut">
-              <string>4</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="3">
-            <widget class="QPushButton" name="fStoBtn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>30</height>
-              </size>
-             </property>
-             <property name="toolTip">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;To store a preset:&lt;/p&gt;&lt;p&gt;1. Set the desired frequency and mode per normal methods&lt;/p&gt;&lt;p&gt;2. Type the index to to store to (0 through 99)&lt;/p&gt;&lt;p&gt;3. Press STO (or use hotkey &amp;quot;S&amp;quot;)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-             </property>
-             <property name="text">
-              <string>&amp;STO</string>
-             </property>
-             <property name="shortcut">
-              <string>S</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="2">
-            <widget class="QPushButton" name="f9btn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>30</width>
-               <height>30</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>9</string>
-             </property>
-             <property name="shortcut">
-              <string>9</string>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="3">
-            <widget class="QPushButton" name="fBackbtn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>30</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>Back</string>
-             </property>
-             <property name="shortcut">
-              <string>Backspace</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="3">
-            <widget class="QPushButton" name="fEnterBtn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>30</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>Enter</string>
-             </property>
-             <property name="shortcut">
-              <string>Enter</string>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="1">
-            <widget class="QPushButton" name="f0btn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>30</width>
-               <height>30</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>0</string>
-             </property>
-             <property name="shortcut">
-              <string>0</string>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="0">
-            <widget class="QPushButton" name="fDotbtn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>30</width>
-               <height>30</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>.</string>
-             </property>
-             <property name="shortcut">
-              <string>.</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="0">
-            <widget class="QPushButton" name="f1btn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>30</width>
-               <height>30</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>1</string>
-             </property>
-             <property name="shortcut">
-              <string>1</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QPushButton" name="f2btn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>30</width>
-               <height>30</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>2</string>
-             </property>
-             <property name="shortcut">
-              <string>2</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="0">
-            <widget class="QPushButton" name="f7btn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>30</width>
-               <height>30</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>7</string>
-             </property>
-             <property name="shortcut">
-              <string>7</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="1">
-            <widget class="QPushButton" name="f8btn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>30</width>
-               <height>30</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>8</string>
-             </property>
-             <property name="shortcut">
-              <string>8</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
-       </layout>
-      </widget>
       <widget class="QWidget" name="settingsTab">
        <attribute name="title">
         <string>Settings</string>
@@ -2664,7 +1685,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>2</number>
+             <number>3</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -2877,16 +1898,6 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
                        <width>120</width>
                        <height>16777215</height>
                       </size>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="useRTSforPTTchk">
-                     <property name="toolTip">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This feature is for older radios that respond best to an RTS serial port signal than a PTT command.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;For radios lacking PTT commands, this is automatic and transparent, but for radios which have a PTT command, you can check this box to override and force the PTT to be done using RTS. Do not check this box unless you really need this and have an appropriate adapter with RTS connected to the PTT line of the transceiver. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                     </property>
-                     <property name="text">
-                      <string>Send RTS for PTT</string>
                      </property>
                     </widget>
                    </item>
@@ -3297,35 +2308,9 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QComboBox" name="audioOutputCombo">
-                       <property name="maximumSize">
-                        <size>
-                         <width>200</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="accessibleName">
-                        <string>Audio Output Selector</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
                       <widget class="QLabel" name="label_18">
                        <property name="text">
                         <string>Audio Input</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QComboBox" name="audioInputCombo">
-                       <property name="maximumSize">
-                        <size>
-                         <width>200</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="accessibleName">
-                        <string>Audio Input Selector</string>
                        </property>
                       </widget>
                      </item>
@@ -3399,22 +2384,6 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QCheckBox" name="autoSSBchk">
-                  <property name="toolTip">
-                   <string>When using SSB, automatically switch to the standard sideband for a given band.</string>
-                  </property>
-                  <property name="accessibleName">
-                   <string>Auto SSB Switching</string>
-                  </property>
-                  <property name="accessibleDescription">
-                   <string>When using SSB, automatically switch to the standard sideband for a given band.</string>
-                  </property>
-                  <property name="text">
-                   <string>Auto SSB</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
                  <widget class="QCheckBox" name="clickDragTuningEnableChk">
                   <property name="text">
                    <string>Allow tuning via click and drag (experimental)</string>
@@ -3446,164 +2415,7 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_22">
                 <item>
-                 <widget class="QCheckBox" name="wfInterpolateChk">
-                  <property name="toolTip">
-                   <string>Enables interpolation between pixels. Note that this will increase CPU usage.</string>
-                  </property>
-                  <property name="text">
-                   <string>Interpolate Waterfall</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QCheckBox" name="wfAntiAliasChk">
-                  <property name="text">
-                   <string>Anti-Alias Waterfall</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QCheckBox" name="useSystemThemeChk">
-                  <property name="text">
-                   <string>Use System Theme</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QCheckBox" name="fullScreenChk">
-                  <property name="text">
-                   <string>Show full screen</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
                  <spacer name="horizontalSpacer_12">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
-              </item>
-              <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_43">
-                <property name="leftMargin">
-                 <number>0</number>
-                </property>
-                <property name="topMargin">
-                 <number>0</number>
-                </property>
-                <property name="rightMargin">
-                 <number>0</number>
-                </property>
-                <property name="bottomMargin">
-                 <number>0</number>
-                </property>
-                <item>
-                 <widget class="QLabel" name="underlayLabel">
-                  <property name="text">
-                   <string>Underlay Mode</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="underlayNone">
-                  <property name="toolTip">
-                   <string>No underlay graphics</string>
-                  </property>
-                  <property name="text">
-                   <string>None</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                  <attribute name="buttonGroup">
-                   <string notr="true">underlayButtonGroup</string>
-                  </attribute>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="underlayPeakHold">
-                  <property name="toolTip">
-                   <string>Indefinite peak hold</string>
-                  </property>
-                  <property name="text">
-                   <string>Peak Hold</string>
-                  </property>
-                  <attribute name="buttonGroup">
-                   <string notr="true">underlayButtonGroup</string>
-                  </attribute>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="underlayPeakBuffer">
-                  <property name="toolTip">
-                   <string>Peak value within the buffer</string>
-                  </property>
-                  <property name="text">
-                   <string>Peak</string>
-                  </property>
-                  <attribute name="buttonGroup">
-                   <string notr="true">underlayButtonGroup</string>
-                  </attribute>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="underlayAverageBuffer">
-                  <property name="toolTip">
-                   <string>Average value within the buffer</string>
-                  </property>
-                  <property name="text">
-                   <string>Average</string>
-                  </property>
-                  <attribute name="buttonGroup">
-                   <string notr="true">underlayButtonGroup</string>
-                  </attribute>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLabel" name="label_42">
-                  <property name="text">
-                   <string>Underlay Buffer Size:</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QSlider" name="underlayBufferSlider">
-                  <property name="maximumSize">
-                   <size>
-                    <width>100</width>
-                    <height>16777215</height>
-                   </size>
-                  </property>
-                  <property name="toolTip">
-                   <string>Size of buffer for spectrum data. Shorter values are more responsive.</string>
-                  </property>
-                  <property name="minimum">
-                   <number>8</number>
-                  </property>
-                  <property name="maximum">
-                   <number>128</number>
-                  </property>
-                  <property name="value">
-                   <number>64</number>
-                  </property>
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <spacer name="horizontalSpacer_27">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
                   </property>
@@ -3620,13 +2432,6 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_28">
                 <item>
-                 <widget class="QCheckBox" name="pttEnableChk">
-                  <property name="text">
-                   <string>Enable PTT Controls</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
                  <spacer name="horizontalSpacer_30">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
@@ -3641,65 +2446,6 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
                    </size>
                   </property>
                  </spacer>
-                </item>
-                <item>
-                 <widget class="QLabel" name="secondaryMeterSelectionLabel">
-                  <property name="text">
-                   <string>Secondary Meter Selection:</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QComboBox" name="meter2selectionCombo"/>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="autoPollBtn">
-                  <property name="toolTip">
-                   <string>wfview will automatically calculate command polling. Recommended.</string>
-                  </property>
-                  <property name="text">
-                   <string>AutoPolling</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                  <attribute name="buttonGroup">
-                   <string notr="true">pollingButtonGroup</string>
-                  </attribute>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="manualPollBtn">
-                  <property name="toolTip">
-                   <string>Manual (user-defined) command polling</string>
-                  </property>
-                  <property name="text">
-                   <string>Manual Polling Inteval:</string>
-                  </property>
-                  <attribute name="buttonGroup">
-                   <string notr="true">pollingButtonGroup</string>
-                  </attribute>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QSpinBox" name="pollTimeMsSpin">
-                  <property name="toolTip">
-                   <string>Sets the polling interval, in ms. Automatic polling is recommended. Serial port and USB port radios should not poll quicker than about 75ms.</string>
-                  </property>
-                  <property name="minimum">
-                   <number>1</number>
-                  </property>
-                  <property name="maximum">
-                   <number>250</number>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLabel" name="label_50">
-                  <property name="text">
-                   <string>ms</string>
-                  </property>
-                 </widget>
                 </item>
                 <item>
                  <spacer name="horizontalSpacer_11">
@@ -3889,8 +2635,8 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>579</width>
-                      <height>254</height>
+                      <width>453</width>
+                      <height>235</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
@@ -5037,41 +3783,9 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QComboBox" name="serverRXAudioInputCombo">
-                       <property name="minimumSize">
-                        <size>
-                         <width>100</width>
-                         <height>0</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>100</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
                       <widget class="QLabel" name="label_34">
                        <property name="text">
                         <string>TX Audio Output</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QComboBox" name="serverTXAudioOutputCombo">
-                       <property name="minimumSize">
-                        <size>
-                         <width>100</width>
-                         <height>0</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>100</width>
-                         <height>16777215</height>
-                        </size>
                        </property>
                       </widget>
                      </item>
@@ -5263,16 +3977,6 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
                  <number>0</number>
                 </property>
                 <item>
-                 <widget class="QCheckBox" name="enableRigctldChk">
-                  <property name="layoutDirection">
-                   <enum>Qt::LeftToRight</enum>
-                  </property>
-                  <property name="text">
-                   <string>Enable RigCtld</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
                  <spacer name="horizontalSpacer_18">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
@@ -5292,22 +3996,6 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
                  <widget class="QLabel" name="label_28">
                   <property name="text">
                    <string>Port</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLineEdit" name="rigctldPortTxt">
-                  <property name="minimumSize">
-                   <size>
-                    <width>75</width>
-                    <height>0</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>75</width>
-                    <height>16777215</height>
-                   </size>
                   </property>
                  </widget>
                 </item>
@@ -5332,28 +4020,6 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
                  <widget class="QLabel" name="vspLabel">
                   <property name="text">
                    <string>Virtual Serial Port</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QComboBox" name="vspCombo">
-                  <property name="minimumSize">
-                   <size>
-                    <width>250</width>
-                    <height>0</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>250</width>
-                    <height>16777215</height>
-                   </size>
-                  </property>
-                  <property name="toolTip">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use this to define a virtual serial port. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;On Windows, the virtual serial port can be used to connect to a serial port loopback device, through which other programs can connect to the radio. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;On Linux and macOS, the port defined here is a pseudo-terminal device, which may be connected to directly by any program designed for a serial connection. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                  <property name="accessibleName">
-                   <string>Virtual Serial Port Selector</string>
                   </property>
                  </widget>
                 </item>
@@ -5468,13 +4134,6 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
               </item>
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_46">
-                <item>
-                 <widget class="QCheckBox" name="enableUsbChk">
-                  <property name="text">
-                   <string>Enable USB Controllers</string>
-                  </property>
-                 </widget>
-                </item>
                 <item>
                  <widget class="QPushButton" name="usbControllerBtn">
                   <property name="toolTip">
@@ -5893,6 +4552,13 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="showSettingsBtn">
+        <property name="text">
+         <string>Settings</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="saveSettingsBtn">
         <property name="text">
          <string>Save Settings</string>
@@ -5910,6 +4576,20 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
        <widget class="QPushButton" name="showLogBtn">
         <property name="text">
          <string>Log</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="showBandsBtn">
+        <property name="text">
+         <string>Bands</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="showFreqBtn">
+        <property name="text">
+         <string>Frequency</string>
         </property>
        </widget>
       </item>
@@ -5968,14 +4648,20 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1063</width>
-     <height>22</height>
+     <width>1042</width>
+     <height>20</height>
     </rect>
    </property>
   </widget>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
+  <customwidget>
+   <class>QLedLabel</class>
+   <extends>QWidget</extends>
+   <header location="global">qledlabel.h</header>
+   <container>1</container>
+  </customwidget>
   <customwidget>
    <class>QCustomPlot</class>
    <container>1</container>
@@ -5986,18 +4672,10 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
    <header>meter.h</header>
    <container>1</container>
   </customwidget>
-  <customwidget>
-   <class>QLedLabel</class>
-   <extends>QWidget</extends>
-   <header>qledlabel.h</header>
-   <container>1</container>
-  </customwidget>
  </customwidgets>
  <resources/>
  <connections/>
  <buttongroups>
   <buttongroup name="buttonGroup"/>
-  <buttongroup name="pollingButtonGroup"/>
-  <buttongroup name="underlayButtonGroup"/>
  </buttongroups>
 </ui>

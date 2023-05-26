@@ -176,6 +176,11 @@ struct bandStackType {
 
 //model_kind determineRadioModel(unsigned char rigID);
 
+struct bsrRequest {
+    availableBands band;
+    int bsrPosition=1;
+};
+
 struct rigCapabilities {
     quint8 model;
     quint8 civ;
