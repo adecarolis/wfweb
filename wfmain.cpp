@@ -1019,6 +1019,19 @@ void wfmain::setupPlots()
     oorIndicator->setPositionAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
     oorIndicator->position->setType(QCPItemPosition::ptAxisRectRatio); // Positioned relative to the current plot rect
     oorIndicator->setText("SCOPE OUT OF RANGE");
+    oorIndicator->position->setCoords(0.5f,0.5f);
+
+    ovfIndicator = new QCPItemText(plot);
+    ovfIndicator->setVisible(false);
+    ovfIndicator->setAntialiased(true);
+    ovfIndicator->setPen(QPen(Qt::red));
+    ovfIndicator->setColor(Qt::red);
+    ovfIndicator->setFont(QFont(font().family(), 10));
+    ovfIndicator->setPositionAlignment(Qt::AlignLeft | Qt::AlignTop);
+    ovfIndicator->position->setType(QCPItemPosition::ptAxisRectRatio); // Positioned relative to the current plot rect
+    ovfIndicator->setText(" OVF ");
+    ovfIndicator->position->setCoords(0.01f,0.0f);
+    //ovfIndicator->setVisible(true);
 
     ui->plot->addGraph(); // primary
     ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first.
@@ -4279,6 +4292,10 @@ void wfmain::initPeriodicCommands()
     if (rigCaps.commands.contains(funcSMeter))
         queue->add(priorityHighest,queueItem(funcSMeter,true));
 
+    if (rigCaps.commands.contains(funcOverflowStatus))
+        queue->add(priorityHigh,queueItem(funcOverflowStatus,true));
+
+
     if (rigCaps.hasSpectrum)
     {
         queue->add(priorityMediumHigh,queueItem(funcScopeMainMode,true));
@@ -4588,12 +4605,14 @@ void wfmain::receiveSpectrumData(scopeData spectrum)
 
         if (spectrum.oor && !oorIndicator->visible()) {
             oorIndicator->setVisible(true);
-            oorIndicator->position->setCoords(0.5f,0.5f);
             //oorIndicator->position->setCoords((oldLowerFreq+oldUpperFreq)/2,ui->topLevelSlider->value() - 20);
             qInfo(logSystem()) << "Scope out of range";
         } else if (!spectrum.oor && oorIndicator->visible()) {
             oorIndicator->setVisible(false);
         }
+
+        //ovfIndicator->setVisible(true);
+
     }
 }
 
@@ -9045,6 +9064,7 @@ void wfmain::receiveValue(cacheItem val){
     case funcVariousSql:
         break;
     case funcOverflowStatus:
+        ovfIndicator->setVisible(val.value.value<bool>());
         break;
     case funcCenterMeter:
         receiveMeter(meter_t::meterCenter,val.value.value<uchar>());

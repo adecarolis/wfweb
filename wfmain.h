@@ -861,6 +861,7 @@ private:
     QCPItemRect* passbandIndicator;
     QCPItemRect* pbtIndicator;
     QCPItemText* oorIndicator;
+    QCPItemText* ovfIndicator;
     void setAppTheme(bool isCustom);
     void prepareWf();
     void prepareWf(unsigned int wfLength);
