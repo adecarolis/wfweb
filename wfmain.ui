@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -2189,8 +2189,8 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>818</width>
-                      <height>324</height>
+                      <width>453</width>
+                      <height>235</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
@@ -4171,7 +4171,6 @@
        <widget class="QPushButton" name="exitBtn">
         <property name="font">
          <font>
-          <weight>50</weight>
           <bold>false</bold>
          </font>
         </property>
@@ -4191,13 +4190,19 @@
      <x>0</x>
      <y>0</y>
      <width>1042</width>
-     <height>21</height>
+     <height>20</height>
     </rect>
    </property>
   </widget>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
+  <customwidget>
+   <class>QLedLabel</class>
+   <extends>QWidget</extends>
+   <header location="global">qledlabel.h</header>
+   <container>1</container>
+  </customwidget>
   <customwidget>
    <class>QCustomPlot</class>
    <container>1</container>
@@ -4206,12 +4211,6 @@
    <class>meter</class>
    <extends>QWidget</extends>
    <header>meter.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>QLedLabel</class>
-   <extends>QWidget</extends>
-   <header location="global">qledlabel.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -1527,12 +1527,12 @@ void wfmain::setSerialDevicesUI()
     int vspCount=0;
 
 #ifdef Q_OS_WIN
-    ui->vspCombo->addItem(QString("None"), i++); // i=0 when this is run
+    vspList.append(QString("None")); // i=0 when this is run
+    vspData.append(vspCount);
 
     foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
     {
-        ui->vspCombo->addItem(serialPortInfo.portName());
-        vspList.append(serialPortInfo.portName(), vspCount);
+        vspList.append(serialPortInfo.portName());
         vspData.append(vspCount);
         vspCount++;
     }
