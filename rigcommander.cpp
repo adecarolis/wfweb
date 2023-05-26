@@ -2198,8 +2198,20 @@ void rigCommander::parseCommand()
         break;
     // 0x1a
     case funcBandStackReg:
-        parseBandStackReg();
+    {
+        bandStackType bsr;
+        bsr.band = payloadIn[2];
+        bsr.regCode = payloadIn[3];
+        bsr.freq = parseFrequency(payloadIn, 7);
+        // The Band Stacking command returns the regCode in the position that VFO is expected.
+        // As BSR is always on the active VFO, just set that.
+        bsr.freq.VFO = selVFO_t::activeVFO;
+        bsr.data = (payloadIn[11] & 0x10) >> 4; // not sure...
+        bsr.mode = payloadIn[9];
+        bsr.filter = payloadIn[10];
+        value.setValue(bsr);
         break;
+    }
     case funcFilterWidth:
     {
         quint16 calc;
@@ -7100,6 +7112,12 @@ void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value
             {
                 toneInfo t = value.value<toneInfo>();
                 payload.append(encodeTone(t.tone, t.tinv, t.rinv));
+            }
+            else if (!strcmp(value.typeName(),"bandStackType"))
+            {
+                bandStackType bsr = value.value<bandStackType>();
+                payload.append(bsr.band);
+                payload.append(bsr.regCode); // [01...03]. 01 = latest, 03 = oldest
             }
             else
             {

@@ -96,6 +96,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<cacheItem>();
     qRegisterMetaType<spectrumBounds>();
     qRegisterMetaType<centerSpanData>();
+    qRegisterMetaType<bandStackType>();
 
     haveRigCaps = false;
 
@@ -5493,7 +5494,7 @@ void wfmain::bandStackBtnClick()
 {
     bandStkRegCode = ui->bandStkPopdown->currentIndex() + 1;
     waitingForBandStackRtn = true; // so that when the return is parsed we jump to this frequency/mode info
-    emit getBandStackReg(bandStkBand, bandStkRegCode);
+    queue->add(priorityImmediate,queueItem(funcBandStackReg,QVariant::fromValue<bandStackType>(bandStackType(bandStkBand, bandStkRegCode)),false));
 }
 
 void wfmain::setBand(int band)
@@ -9132,7 +9133,29 @@ void wfmain::receiveValue(cacheItem val){
         break;
     // 0x1a
     case funcBandStackReg:
+    {
+        bandStackType bsr = val.value.value<bandStackType>();
+        qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << bsr.freq.Hz << ", mode: " << bsr.mode << ", filter: " << bsr.filter << ", data mode: " << bsr.data;
+
+        queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(bsr.freq),false));
+
+        freq = bsr.freq;
+
+        ui->tabWidget->setCurrentIndex(0);
+
+        foreach (auto md, rigCaps.modes)
+        {
+                if (md.reg == bsr.mode) {
+                    md.filter=bsr.filter;
+                    md.data=bsr.data;
+                    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<modeInfo>(md),false));
+                    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),QVariant::fromValue<modeInfo>(md),false));
+                    receiveMode(md); // update UI
+                    break;
+                }
+        }
         break;
+    }
     case funcFilterWidth:
         receivePassband(val.value.value<ushort>());
         break;

@@ -159,7 +159,22 @@ struct genericType {
     QString name;
 };
 
-model_kind determineRadioModel(unsigned char rigID);
+
+struct bandStackType {
+    bandStackType() {}
+    bandStackType(uchar band, uchar regCode): band(band),regCode(regCode), freq(), data(0), mode(0), filter(0) {}
+    bandStackType(uchar band, uchar regCode, freqt freq, uchar data, uchar mode, uchar filter):
+        band(band), regCode(regCode), freq(freq), data(data), mode(mode), filter(filter) {};
+    uchar band;
+    uchar regCode;
+    freqt freq;
+    uchar data;
+    uchar mode;
+    uchar filter;
+};
+
+
+//model_kind determineRadioModel(unsigned char rigID);
 
 struct rigCapabilities {
     quint8 model;
@@ -249,6 +264,7 @@ Q_DECLARE_METATYPE(filterType)
 Q_DECLARE_METATYPE(inputTypes)
 Q_DECLARE_METATYPE(genericType)
 Q_DECLARE_METATYPE(bandType)
+Q_DECLARE_METATYPE(bandStackType)
 Q_DECLARE_METATYPE(centerSpanData)
 
 #endif // RIGIDENTITIES_H
