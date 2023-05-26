@@ -173,19 +173,22 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
 
 void cachingQueue::del(funcs func)
 {
-    QMutexLocker locker(&mutex);
+    if (func != funcNone)
+    {
+        QMutexLocker locker(&mutex);
 #if (QT_VERSION > QT_VERSION_CHECK(6,0,0))
-    queue.erase(std::remove_if(queue.begin(), queue.end(), [func](const queueItem& c) {  return (c.command == func); }), queue.end());
+        queue.erase(std::remove_if(queue.begin(), queue.end(), [func](const queueItem& c) {  return (c.command == func); }), queue.end());
 #else
-    auto it(queue.begin());
-    while (it != queue.end()) {
-        if (it.value().command == func)
-            it = queue.erase(it);
-        else
-            it++;
-    }
+        auto it(queue.begin());
+        while (it != queue.end()) {
+            if (it.value().command == func)
+                it = queue.erase(it);
+            else
+                it++;
+        }
 #endif
-    qInfo() << "deleting" << funcString[func];
+        qInfo() << "deleting" << funcString[func];
+    }
 }
 
 queuePriority cachingQueue::isRecurring(funcs func)

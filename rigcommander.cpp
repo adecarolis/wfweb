@@ -1980,6 +1980,7 @@ void rigCommander::parseCommand()
     funcs func = funcNone;
     bool sub = false;
 
+
     if (rigCaps.hasCommand29 && payloadIn[0] == '\x29')
     {
         sub = static_cast<bool>(payloadIn[1]);
@@ -2003,7 +2004,9 @@ void rigCommander::parseCommand()
 #endif
 
     if (!rigCaps.commands.contains(func)) {
-        qInfo(logRig()) << "Unsupported command received from rig" << funcString[func] << "Check rig file (" << payloadIn.toHex() << ")";
+        // Don't warn if we haven't received rigCaps yet
+        if (haveRigCaps)
+            qInfo(logRig()) << "Unsupported command received from rig" <<  payloadIn.toHex().mid(0,10) << "Check rig file";
         return;
     }
 
@@ -2391,7 +2394,7 @@ void rigCommander::parseCommand()
         printHex(payloadIn, false ,true);
         break;
     default:
-        qWarning(logRig()) << "Unhandled command received from rig" << payloadIn.toHex() << "Contact support!";
+        qWarning(logRig()) << "Unhandled command received from rig" << payloadIn.toHex().mid(0,10) << "Contact support!";
         break;
     }
 
@@ -6918,7 +6921,7 @@ void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value
         // Used to validate payload, otherwise ignore.
         val = value.value<int>();
         //qInfo(logRig()) << "Got value" << QString(value.typeName());
-        if (func == funcMemoryContents || func == funcMemoryClear || func == funcMemoryWrite)
+        if (func == funcMemoryContents || func == funcMemoryClear || func == funcMemoryWrite || func == funcMemoryMode)
         {
             // Strip out group number from memory for validation purposes.
             val = val & 0xffff;
