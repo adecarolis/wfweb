@@ -303,7 +303,6 @@ signals:
     void setClusterSkimmerSpots(bool enable);
     void setFrequencyRange(double low, double high);
     void sendControllerRequest(USBDEVICE* dev, usbFeatureType request, int val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
-
     // Signals to forward incoming data onto other areas
     void haveMemory(memoryType mem);
 
@@ -323,6 +322,7 @@ private slots:
     void extChangedClusterPref(prefClusterItem i);
     void extChangedUdpPref(udpPrefsItem i);
 
+    void enableUsbControllers(bool enabled);
 
     void receiveValue(cacheItem val);
     void setAudioDevicesUI();
@@ -371,10 +371,10 @@ private slots:
     void receiveFreq(freqt);
     void receiveMode(modeInfo mode);
     void receiveSpectrumData(scopeData data);
-    void receivespectrumMode_t(spectrumMode_t spectMode);
+    void receivespectrumMode(spectrumMode_t spectMode);
     void receiveSpectrumSpan(freqt freqspan, bool isSub);
     void receivePTTstatus(bool pttOn);
-    void receiveDataModeStatus(bool dataOn);
+    void receiveDataModeStatus(uchar data, uchar filter);
     void handleBandStackReg(freqt f, char mode, char filter, bool dataOn); // freq, mode, (filter,) datamode
     void receiveRITStatus(bool ritEnabled);
     void receiveRITValue(int ritValHz);
@@ -497,7 +497,7 @@ private slots:
     void on_audioRXCodecCombo_currentIndexChanged(int value);
     void on_audioTXCodecCombo_currentIndexChanged(int value);
     void on_audioSampleRateCombo_currentIndexChanged(int value);
-    void on_scopeEnableWFBtn_clicked(bool checked);
+    void on_scopeEnableWFBtn_stateChanged(int state);
     void on_sqlSlider_valueChanged(int value);
     void on_modeFilterCombo_activated(int index);
 
@@ -518,7 +518,7 @@ private slots:
 
     void on_tuneLockChk_clicked(bool checked);
 
-    void on_spectrumMode_tCombo_currentIndexChanged(int index);
+    void on_spectrumModeCombo_currentIndexChanged(int index);
 
     void on_serialEnableBtn_clicked(bool checked);
     void on_tuningStepCombo_currentIndexChanged(int index);
@@ -539,7 +539,7 @@ private slots:
     void on_wfLengthSlider_valueChanged(int value);
     void on_wfAntiAliasChk_clicked(bool checked);
     void on_wfInterpolateChk_clicked(bool checked);
-    void changeMeter2Type(meterKind m);
+    void changeMeter2Type(meter_t m);
     void enableRigCtl(bool enabled);
     void on_moreControlsBtn_clicked();
 
@@ -808,7 +808,7 @@ private:
 
     bool onFullscreen;
     bool freqTextSelected;
-    void setUISpectrumControlsToMode(spectrumMode smode);
+    void setUISpectrumControlsToMode(spectrumMode_t smode);
 
     double oldLowerFreq;
     double oldUpperFreq;

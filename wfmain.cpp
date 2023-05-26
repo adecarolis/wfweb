@@ -628,11 +628,11 @@ void wfmain::rigConnections()
         issueCmd(cmd, f);
     });
     connect(finputbtns, &frequencyinputwidget::issueCmdM,
-            [=](cmds cmd, mode_info m) {
+            [=](cmds cmd, modeInfo m) {
         issueCmd(cmd, m);
     });
     connect(finputbtns, &frequencyinputwidget::updateUIMode,
-            [=](mode_kind m) {
+            [=](rigMode_t m) {
         // set the mode combo box, quietly, to the mode indicated.
         ui->modeSelectCombo->blockSignals(true);
         ui->modeSelectCombo->setCurrentIndex(ui->modeSelectCombo->findData(m));
@@ -1338,7 +1338,7 @@ void wfmain::setupMainUI()
     connect(this->trxadj, &transceiverAdjustments::setPassband, this, [=](const quint16 &passbandHz) {
         queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<short>(passbandHz)));
     });
-
+/*
     connect(this->cw, &cwSender::sendCW,
             [=](const QString &cwMessage) { issueCmd(cmdSendCW, cwMessage);});
     connect(this->cw, &cwSender::stopCW,
@@ -1352,6 +1352,9 @@ void wfmain::setupMainUI()
     connect(this->cw, &cwSender::getCWSettings,
             [=]() { issueDelayedCommand(cmdGetKeySpeed);
                     issueDelayedCommand(cmdGetBreakMode);});
+*/
+
+}
 
 void wfmain::connectSettingsWidget()
 {
@@ -1374,8 +1377,8 @@ void wfmain::connectSettingsWidget()
     connect(setupui, SIGNAL(changedUdpPrefs(int)), this, SLOT(extChangedUdpPrefs(int)));
 
     connect(setupui, &settingswidget::showUSBControllerSetup, [=](){
-        if(shut != Q_NULLPTR)
-            showAndRaiseWidget(shut);
+        if(usbWindow != Q_NULLPTR)
+            showAndRaiseWidget(usbWindow);
     });
 
     connect(this, SIGNAL(haveClusterList(QList<clusterSettings>)), setupui, SLOT(copyClusterList(QList<clusterSettings>)));
@@ -2380,8 +2383,8 @@ void wfmain::loadSettings()
     ui->audioSystemServerCombo->setEnabled(!prefs.enableLAN);
 
     // If LAN is not enabled, disable local audio input/output
-    ui->audioOutputCombo->setEnabled(prefs.enableLAN);
-    ui->audioInputCombo->setEnabled(prefs.enableLAN);
+    //ui->audioOutputCombo->setEnabled(prefs.enableLAN);
+    //ui->audioInputCombo->setEnabled(prefs.enableLAN);
 
     ui->baudRateCombo->setEnabled(!prefs.enableLAN);
     ui->serialDeviceListCombo->setEnabled(!prefs.enableLAN);
@@ -2700,7 +2703,7 @@ void wfmain::loadSettings()
     }
     settings->endArray();
     settings->endGroup();
-    emit haveClusterList(clusters);
+    //emit haveClusterList(clusters);
 
     // CW Memory Load:
     settings->beginGroup("Keyer");
@@ -2726,9 +2729,9 @@ void wfmain::loadSettings()
     settings->beginGroup("USB");
     /* Load USB buttons*/
     prefs.enableUSBControllers = settings->value("EnableUSBControllers", defPrefs.enableUSBControllers).toBool();
-    ui->enableUsbChk->blockSignals(true);
-    ui->enableUsbChk->setChecked(prefs.enableUSBControllers);
-    ui->enableUsbChk->blockSignals(false);
+    //ui->enableUsbChk->blockSignals(true);
+    //ui->enableUsbChk->setChecked(prefs.enableUSBControllers);
+    //ui->enableUsbChk->blockSignals(false);
     ui->usbControllerBtn->setEnabled(prefs.enableUSBControllers);
     ui->usbControllersResetBtn->setEnabled(prefs.enableUSBControllers);
     ui->usbResetLbl->setVisible(prefs.enableUSBControllers);
@@ -3112,7 +3115,7 @@ void wfmain::extChangedCtPref(prefCtItem i)
         finputbtns->setAutomaticSidebandSwitching(prefs.automaticSidebandSwitching);
         break;
     case ct_enableUSBControllers:
-        enableUsbControllers(prefs.enableUSBControllers);
+        //enableUsbControllers(prefs.enableUSBControllers);
         break;
     case ct_usbSensitivity:
         // No UI element for this.
@@ -4551,9 +4554,11 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->modeSelectCombo->blockSignals(true);
         ui->modeSelectCombo->clear();
 
+
         foreach (auto m, rigCaps.modes)
         {
             ui->modeSelectCombo->addItem(m.name, m.mk);
+
         }
         ui->modeSelectCombo->blockSignals(false);
 
@@ -4568,7 +4573,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->tuningStepCombo->setCurrentIndex(2);
         ui->tuningStepCombo->blockSignals(false);
 
-
+        QStringList modSources;
+        QVector<rigInput> modData;
 
         if(rigCaps.model == model9700)
         {
@@ -4693,7 +4699,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         ui->memoriesBtn->setEnabled(rigCaps.commands.contains(funcMemoryContents));
 
-        ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
+        //ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
 
         ui->audioSystemCombo->setEnabled(false);
         ui->audioSystemServerCombo->setEnabled(false);
@@ -4721,7 +4727,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         changeMeter2Type(prefs.meter2Type);
 //        for (int i = 0; i < ui->meter2selectionCombo->count(); i++)
 //        {
-//            if (static_cast<meterKind>(ui->meter2selectionCombo->itemData(i).toInt()) == prefs.meter2Type)
+//            if (static_cast<meter_t>(ui->meter2selectionCombo->itemData(i).toInt()) == prefs.meter2Type)
 //            {
 //                // I thought that setCurrentIndex() would call the activated() function for the combobox
 //                // but it doesn't, so call it manually.
@@ -5152,7 +5158,7 @@ void wfmain::computePlasma()
     plasmaMutex.unlock();
 }
 
-void wfmain::receivespectrumMode_t(spectrumMode_t spectMode)
+void wfmain::receivespectrumMode(spectrumMode_t spectMode)
 {
     ui->spectrumMode_tCombo->blockSignals(true);
     ui->spectrumMode_tCombo->setCurrentIndex(ui->spectrumMode_tCombo->findData(spectMode));
@@ -5607,20 +5613,20 @@ void wfmain::receiveMode(modeInfo mode)
             ui->modeFilterCombo->blockSignals(false);
         }
 
-            currentModeIndex = mode;
+            //currentModeIndex = mode;
             finputbtns->updateCurrentMode(currentMode);
-            finputbtns->updateFilterSelection(filter);
-            currentModeInfo.mk = (mode_kind)mode;
-            currentMode = (mode_kind)mode;
-            currentModeInfo.filter = filter;
-            currentModeInfo.reg = mode;
-            rpt->handleUpdateCurrentMainMode(currentModeInfo);
-            cw->handleCurrentModeUpdate(currentMode);
-            if (!found)
-            {
-                qWarning(logSystem()) << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
-                return;
-            }
+            //finputbtns->updateFilterSelection(filter);
+            //currentModeInfo.mk = (rigMode_t)mode;
+            //currentMode = (rigMode_t)mode;
+            //currentModeInfo.filter = filter;
+            //currentModeInfo.reg = mode;
+            //rpt->handleUpdateCurrentMainMode(currentModeInfo);
+            //cw->handleCurrentModeUpdate(currentMode);
+            //if (!found)
+            //{
+            //    qWarning(logSystem()) << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
+            //    return;
+            //}
 
         if (maxPassbandHz != 0)
         {
@@ -5639,7 +5645,7 @@ void wfmain::receiveMode(modeInfo mode)
     }
 }
 
-void wfmain::receiveDataModeStatus(unsigned char data, unsigned char filter)
+void wfmain::receiveDataModeStatus(uchar data, uchar filter)
 {
     ui->datamodeCombo->blockSignals(true);
     ui->datamodeCombo->setCurrentIndex(data);
@@ -5888,14 +5894,14 @@ void wfmain::gotoMemoryPreset(int presetNumber)
     setFilterVal = ui->modeFilterCombo->currentIndex()+1; // TODO, add to memory
     setModeVal = temp.mode;
     freqt memFreq;
-    mode_info m;
+    modeInfo m;
     m.mk = temp.mode;
     m.filter = ui->modeFilterCombo->currentIndex()+1;
     m.reg =(unsigned char) m.mk; // fallback, works only for some modes
     memFreq.Hz = temp.frequency * 1E6;
-    issueCmd(cmdSetFreq, memFreq);
+    //issueCmd(cmdSetFreq, memFreq);
     //issueDelayedCommand(cmdSetModeFilter); // goes to setModeVal
-    issueCmd(cmdSetMode, m);
+    //issueCmd(cmdSetMode, m);
     memFreq.MHzDouble = memFreq.Hz / 1.0E6;
     freq = memFreq;
     qDebug(logGui()) << "Recalling preset number " << presetNumber << " as frequency " << temp.frequency << "MHz";
@@ -5905,7 +5911,7 @@ void wfmain::gotoMemoryPreset(int presetNumber)
 
 void wfmain::saveMemoryPreset(int presetNumber)
 {
-    // int, double, mode_kind
+    // int, double, rigMode_t
     double frequency;
     if(this->freq.Hz == 0)
     {
@@ -5913,7 +5919,7 @@ void wfmain::saveMemoryPreset(int presetNumber)
     } else {
         frequency = freq.Hz / 1.0E6;
     }
-    mode_kind mode = currentMode;
+    rigMode_t mode = currentMode;
     qDebug(logGui()) << "Saving preset number " << presetNumber << " to frequency " << frequency << " MHz";
     mem.setPreset(presetNumber, frequency, mode);
 }
@@ -7269,12 +7275,13 @@ funcs wfmain::meter_tToMeterCommand(meter_t m)
 }
 
 
-void wfmain::changeMeter2Type(meterKind m)
+void wfmain::changeMeter2Type(meter_t m)
 {
     meter_t newMeterType;
     meter_t oldMeterType;
-    newMeterType = static_cast<meter_t>(ui->meter2selectionCombo->currentData().toInt());
+    newMeterType = m;
     oldMeterType = ui->meter2Widget->getMeterType();
+
     if(newMeterType == oldMeterType)
         return;
 
@@ -8684,7 +8691,7 @@ void wfmain::on_clickDragTuningEnableChk_clicked(bool checked)
     prefs.clickDragTuningEnable = checked;
 }
 
-void wfmain::enableUsbControllers(bool enabled)
+void wfmain::enableUsbControllers(bool checked)
 {
     prefs.enableUSBControllers = checked;
     ui->usbControllerBtn->setEnabled(checked);
@@ -8731,18 +8738,18 @@ void wfmain::on_usbControllersResetBtn_clicked()
         QMessageBox::Cancel);
     if (ret == QMessageBox::Ok) {
         qInfo(logUsbControl()) << "Resetting USB controllers to default values";
-        bool enabled = ui->enableUsbChk->isChecked();
-        if (enabled) on_enableUsbChk_clicked(false); // Force disconnect of USB controllers
+        //bool enabled = ui->enableUsbChk->isChecked();
+        //if (enabled) on_enableUsbChk_clicked(false); // Force disconnect of USB controllers
 
         usbButtons.clear();
         usbKnobs.clear();
         usbDevices.clear();
 
-        if (enabled) on_enableUsbChk_clicked(true); // Force connect of USB controllers
+        //if (enabled) on_enableUsbChk_clicked(true); // Force connect of USB controllers
     }
 }
 
-
+/*
 void wfmain::on_autoPollBtn_clicked(bool checked)
 {
     ui->pollTimeMsSpin->setEnabled(!checked);
@@ -8771,6 +8778,7 @@ void wfmain::on_pollTimeMsSpin_valueChanged(int timing_ms)
         changePollTiming(timing_ms);
     }
 }
+*/
 
 void wfmain::changePollTiming(int timing_ms, bool setUI)
 {
@@ -8813,11 +8821,12 @@ void wfmain::connectionHandler(bool connect)
     queue->clear();
 
 }
-
+/*
 void wfmain::on_autoSSBchk_clicked(bool checked)
 {
     prefs.automaticSidebandSwitching = checked;
 }
+*/
 
 void wfmain::on_cwButton_clicked()
 {
@@ -9337,7 +9346,7 @@ void wfmain::receiveValue(cacheItem val){
         // [1] 0x14
         // [2] 0x00
         // [3] 0x00 (center), 0x01 (fixed), 0x02, 0x03
-        receivespectrumMode_t(val.value.value<spectrumMode_t>());
+        receivespectrumMode(val.value.value<spectrumMode_t>());
         break;
     case funcScopeMainSpan:
     {
@@ -9389,5 +9398,21 @@ void wfmain::receiveValue(cacheItem val){
         qWarning(logSystem()) << "Unhandled command received from rigcommander()" << funcString[val.command] << "Contact support!";
         break;
     }
+}
+
+
+void wfmain::on_showBandsBtn_clicked()
+{
+    showAndRaiseWidget(bandbtns);
+}
+
+void wfmain::on_showFreqBtn_clicked()
+{
+    showAndRaiseWidget(finputbtns);
+}
+
+void wfmain::on_showSettingsBtn_clicked()
+{
+    showAndRaiseWidget(setupui);
 }
 

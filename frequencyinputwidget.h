@@ -22,14 +22,14 @@ public:
 
 signals:
     void issueCmdF(cmds cmd, freqt f);
-    void issueCmdM(cmds cmd, mode_info m);
-    void updateUIMode(mode_kind mode);
+    void issueCmdM(cmds cmd, modeInfo m);
+    void updateUIMode(rigMode_t mode);
     void updateUIFrequency(freqt f);
     void gotoMemoryPreset(int presetNumber);
     void saveMemoryPreset(int presetNumber);
 
 public slots:
-    void updateCurrentMode(mode_kind mode);
+    void updateCurrentMode(rigMode_t mode);
     void updateFilterSelection(int filter);
     void setAutomaticSidebandSwitching(bool autossb);
 
@@ -59,7 +59,7 @@ private:
     bool freqTextSelected = false;
     bool usingDataMode = false;
     bool automaticSidebandSwitching = true;
-    mode_kind currentMode;
+    rigMode_t currentMode;
     freqt currentFrequency;
     int currentFilter = 1;
     void checkFreqSel();

@@ -837,7 +837,7 @@ void settingswidget::updateModSourceList(QStringList deviceNames, QVector<rigInp
     ui->modInputCombo->clear();
     for(int i=0; i < deviceNames.length(); i++)
     {
-        ui->modInputCombo->addItem(deviceNames.at(i), data.at(i));
+        ui->modInputCombo->addItem(deviceNames.at(i), QVariant::fromValue(data.at(i)));
     }
     ui->modInputCombo->blockSignals(false);
 }
@@ -848,7 +848,7 @@ void settingswidget::updateDataModSourceList(QStringList deviceNames, QVector<ri
     ui->modInputDataCombo->clear();
     for(int i=0; i < deviceNames.length(); i++)
     {
-        ui->modInputDataCombo->addItem(deviceNames.at(i), data.at(i));
+        ui->modInputDataCombo->addItem(deviceNames.at(i), QVariant::fromValue(data.at(i)));
     }
     ui->modInputDataCombo->blockSignals(false);
 }
@@ -1251,7 +1251,7 @@ void settingswidget::on_audioSystemServerCombo_currentIndexChanged(int value)
 
 void settingswidget::on_meter2selectionCombo_currentIndexChanged(int index)
 {
-    prefs->meter2Type = static_cast<meterKind>(ui->meter2selectionCombo->itemData(index).toInt());
+    prefs->meter2Type = static_cast<meter_t>(ui->meter2selectionCombo->itemData(index).toInt());
     emit changedIfPref(if_meter2Type);
 }
 

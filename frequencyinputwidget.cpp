@@ -26,7 +26,7 @@ void frequencyinputwidget::setAutomaticSidebandSwitching(bool autossb)
     this->automaticSidebandSwitching = autossb;
 }
 
-void frequencyinputwidget::updateCurrentMode(mode_kind mode)
+void frequencyinputwidget::updateCurrentMode(rigMode_t mode)
 {
     currentMode = mode;
 }
@@ -126,7 +126,7 @@ void frequencyinputwidget::on_fStoBtn_clicked()
     {
         //emit setMemory(preset_number, freq, currentMode);
         emit saveMemoryPreset(preset_number);
-        //mem.setPreset(preset_number, freq.MHzDouble, (mode_kind)ui->modeSelectCombo->currentData().toInt() );
+        //mem.setPreset(preset_number, freq.MHzDouble, (rigMode_t)ui->modeSelectCombo->currentData().toInt() );
         //showStatusBarText( QString("Storing frequency %1 to memory location %2").arg( freq.MHzDouble ).arg(preset_number) );
     } else {
         //showStatusBarText(QString("Could not store preset to %1. Valid preset numbers are 0 to 99").arg(preset_number));
@@ -195,7 +195,7 @@ void frequencyinputwidget::on_goFreqBtn_clicked()
     }
     if(ok)
     {
-        mode_info m;
+        modeInfo m;
         issueCmdF(cmdSetFreq, f);
         m.mk = sidebandChooser::getMode(f, currentMode);
         m.reg = (unsigned char) m.mk;
