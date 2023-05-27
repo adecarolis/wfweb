@@ -17,8 +17,6 @@
 #include "tcpserver.h"
 #include "cachingqueue.h"
 
-#include "rigstate.h"
-
 // This file figures out what to send to the comm and also
 // parses returns into useful things.
 
@@ -48,7 +46,6 @@ public slots:
     void commSetup(rigTypedef rigList, unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf);
     void commSetup(rigTypedef rigList, unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     void closeComm();
-    void stateUpdated();
     void setRTSforPTT(bool enabled);
 
     // Power:
@@ -286,7 +283,6 @@ public slots:
     void radioSelection(QList<radio_cap_packet> radios);
     void radioUsage(quint8 radio, quint8 busy, QString name, QString ip);
     void setCurrentRadio(quint8 radio);
-    void sendState();
     void getDebug();
     void receiveCommand(queueItemType type, funcs func, QVariant value);
 
@@ -396,10 +392,6 @@ signals:
     void haveCWBreakMode(unsigned char bmode);
     void haveDashRatio(unsigned char ratio);
 
-
-    // Rig State
-    void stateInfo(rigstate* state);
-
     // Housekeeping:
     void requestRadioSelection(QList<radio_cap_packet> radios);
     void setRadioUsage(quint8 radio, quint8 busy, QString user, QString ip);
@@ -488,8 +480,6 @@ private:
     //double spectrumEndFreq;
 
     struct rigCapabilities rigCaps;
-    
-    rigstate state;
 
     bool haveRigCaps=false;
     quint8 model = 0; // Was model_kind but that makes no sense when users can create their own rigs!

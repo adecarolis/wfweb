@@ -280,15 +280,6 @@ rigCtlD::~rigCtlD()
 }
 
 
-
-void rigCtlD::receiveStateInfo(rigstate* state)
-{
-    qInfo("Setting rig state");
-    rigState = state;
-}
-
-
-
 int rigCtlD::startServer(qint16 port)
 {
     if (!this->listen(QHostAddress::Any, port)) {
@@ -304,7 +295,7 @@ int rigCtlD::startServer(qint16 port)
 }
 
 void rigCtlD::incomingConnection(qintptr socket) {
-    rigCtlClient* client = new rigCtlClient(socket, rigCaps, rigState, this);
+    rigCtlClient* client = new rigCtlClient(socket, rigCaps, this);
     connect(this, SIGNAL(onStopped()), client, SLOT(closeSocket()));
 }
 
@@ -321,14 +312,13 @@ void rigCtlD::receiveRigCaps(rigCapabilities caps)
     this->rigCaps = caps;
 }
 
-rigCtlClient::rigCtlClient(int socketId, rigCapabilities caps, rigstate* state, rigCtlD* parent) : QObject(parent)
+rigCtlClient::rigCtlClient(int socketId, rigCapabilities caps, rigCtlD* parent) : QObject(parent)
 {
 
     queue = cachingQueue::getInstance(this);
     commandBuffer.clear();
     sessionId = socketId;
     rigCaps = caps;
-    rigState = state;
     socket = new QTcpSocket(this);
     this->parent = parent;
     if (!socket->setSocketDescriptor(sessionId))
@@ -340,7 +330,6 @@ rigCtlClient::rigCtlClient(int socketId, rigCapabilities caps, rigstate* state, 
     connect(socket, SIGNAL(disconnected()), this, SLOT(socketDisconnected()), Qt::DirectConnection);
     connect(parent, SIGNAL(sendData(QString)), this, SLOT(sendData(QString)), Qt::DirectConnection);
     qInfo(logRigCtlD()) << " session connected: " << sessionId;
-    emit parent->stateUpdated(); // Get the current state.
 
 }
 

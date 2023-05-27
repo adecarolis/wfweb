@@ -11,6 +11,8 @@ bandbuttons::bandbuttons(QWidget *parent) :
     ui->bandStkDataBtn->setVisible(false);
     ui->bandStkCWBtn->setVisible(false);
     this->setWindowTitle("Band Switcher");
+    this->setObjectName("bandButtons");
+    queue = cachingQueue::getInstance(this);
 }
 
 bandbuttons::~bandbuttons()
@@ -71,11 +73,9 @@ void bandbuttons::setUIToRig()
     hideButton(ui->band2200mbtn);
     hideButton(ui->bandGenbtn);
 
-    bandType bandSel;
-    for(unsigned int i=0; i < rigCaps.bands.size(); i++)
+    foreach (auto band, rigCaps.bands)
     {
-        bandSel = rigCaps.bands.at(i);
-        switch(bandSel.band)
+        switch(band.band)
         {
             case(band23cm):
                 showButton(ui->band23cmbtn);
@@ -98,7 +98,6 @@ void bandbuttons::setUIToRig()
             case(band6m):
                 showButton(ui->band6mbtn);
                 break;
-
             case(band10m):
                 showButton(ui->band10mbtn);
                 break;
@@ -129,7 +128,6 @@ void bandbuttons::setUIToRig()
             case(band160m):
                 showButton(ui->band160mbtn);
                 break;
-
             case(band630m):
                 showButton(ui->band630mbtn);
                 break;
@@ -182,16 +180,20 @@ void bandbuttons::bandStackBtnClick(availableBands band)
 {
     if(haveRigCaps)
     {
-        unsigned char bandRegister = rigCaps.bsr[band];
-        if(bandRegister == 00)
+        foreach (auto b, rigCaps.bands)
         {
-            qDebug(logGui()) << "requested to drop to band that does not have a BSR.";
-            // TODO: Jump to reasonable frequency for the selected band
-            jumpToBandWithoutBSR(band);
-        } else {
-            waitingForBSR = true;
-            // TODO: request the BSR 1, 2, or 3
-            emit issueCmd(cmdGetBandStackReg, (unsigned char)band);
+            if (b.band == band)
+            {
+                if(b.bsr == 0)
+                {
+                    qDebug(logGui()) << "requested to drop to band that does not have a BSR.";
+                    jumpToBandWithoutBSR(band);
+                } else {
+                    queue->add(priorityImmediate,queueItem(funcBandStackReg,
+                            QVariant::fromValue<bandStackType>(bandStackType(b.bsr,ui->bandStkPopdown->currentIndex()+1)),false));
+                }
+                break;
+            }
         }
     } else {
         qWarning(logGui()) << "bandbuttons, Asked to go to a band but do not have rigCaps yet.";
@@ -201,39 +203,17 @@ void bandbuttons::bandStackBtnClick(availableBands band)
 void bandbuttons::jumpToBandWithoutBSR(availableBands band)
 {
     // Sometimes we do not have a BSR for these bands:
-    freqt f;
-    f.Hz = 0;
-
-    switch(band)
+    foreach (auto b, rigCaps.bands)
     {
-    case band2200m:
-        f.Hz = 136 * 1E3;
-        break;
-    case band630m:
-        f.Hz = 475 * 1E3;
-        break;
-    case band60m:
-        f.Hz = (5.3305) * 1E6;
-        break;
-    case band4m:
-        f.Hz = (70.200) * 1E6;
-        break;
-    case bandAir:
-        f.Hz = 121.5 * 1E6;
-        break;
-    case bandGen:
-        f.Hz = 10.0 * 1E6;
-        break;
-    case bandWFM:
-        f.Hz = (100.1) * 1E6;
-        break;
-    default:
-        qCritical(logGui()) << "Band " << (unsigned char) band << " not understood.";
-        break;
-    }
-    if(f.Hz != 0)
-    {
-        emit issueCmdF(cmdSetFreq, f);
+        if (b.band == band)
+        {
+            freqt f;
+            f.Hz = (b.lowFreq+b.highFreq)/2.0;
+            f.MHzDouble = f.Hz/1000000.0;
+            f.VFO = activeVFO;
+            queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+            break;
+        }
     }
 }
 

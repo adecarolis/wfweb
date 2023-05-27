@@ -42,15 +42,19 @@ public slots:
     void copyClusterList(QList<clusterSettings> c);
     void insertClusterOutputText(QString text);
 
-    void updateIfPrefs(int items);
-    void updateRaPrefs(int items);
-    void updateCtPrefs(int items);
-    void updateLanPrefs(int items);
-    void updateClusterPrefs(int items);
-    void updateServerConfigs(int items);
+    void updateIfPrefs(quint64 items);
+    void updateColPrefs(quint64 items);
+    void updateRaPrefs(quint64 items);
+    void updateRsPrefs(quint64 items);
+    void updateCtPrefs(quint64 items);
+    void updateLanPrefs(quint64 items);
+    void updateClusterPrefs(quint64 items);
+    void updateServerConfigs(quint64 items);
 
     void updateIfPref(prefIfItem pif);
+    void updateColPref(prefColItem pra);
     void updateRaPref(prefRaItem pra);
+    void updateRsPref(prefRsItem pra);
     void updateCtPref(prefCtItem pct);
     void updateLanPref(prefLanItem plan);
     void updateClusterPref(prefClusterItem pcl);
@@ -67,17 +71,17 @@ public slots:
     void updateSerialPortList(QStringList deviceList, QVector<int> data);
     void updateVSPList(QStringList deviceList, QVector<int> data);
 
-    void updateModSourceList(QStringList deviceNames, QVector<rigInput> data);
-    void updateDataModSourceList(QStringList deviceNames, QVector<rigInput> data);
+    void updateModSourceList(uchar num, QVector<rigInput> data);
 
 signals:
-    void changedIfPrefs(int items);
-    void changedRaPrefs(int items);
-    void changedCtPrefs(int items);
-    void changedLanPrefs(int items);
-    void changedClusterPrefs(int items);
-    void changedUdpPrefs(int items);
-    void changedServerConfigs(int i);
+    void changedIfPrefs(quint64 items);
+    void changedRaPrefs(quint64 items);
+    void changedRsPrefs(quint64 items);
+    void changedCtPrefs(quint64 items);
+    void changedLanPrefs(quint64 items);
+    void changedClusterPrefs(quint64 items);
+    void changedUdpPrefs(quint64 items);
+    void changedServerConfigs(quint64 items);
 
     void changedAudioOutputCombo(int index);
     void changedAudioInputCombo(int index);
@@ -86,6 +90,7 @@ signals:
 
     void changedIfPref(prefIfItem i);
     void changedRaPref(prefRaItem i);
+    void changedRsPref(prefRsItem i);
     void changedCtPref(prefCtItem i);
     void changedLanPref(prefLanItem i);
     void changedClusterPref(prefClusterItem i);
@@ -93,6 +98,7 @@ signals:
     void changedServerConfig(serverItems i);
 
     void showUSBControllerSetup();
+    void changedModInput(uchar num, inputTypes input);
 
 private slots:
     void on_settingsList_currentRowChanged(int currentRow);
@@ -151,6 +157,12 @@ private slots:
 
     void on_serverAddUserBtn_clicked();
 
+    void on_modInputCombo_activated(int index);
+    void on_modInputData1Combo_activated(int index);
+    void on_modInputData2Combo_activated(int index);
+    void on_modInputData3Combo_activated(int index);
+
+
 private:
     Ui::settingswidget *ui;
     void createSettingsListItems();
@@ -161,6 +173,8 @@ private:
 
     // Utility:
     void quietlyUpdateSlider(QSlider* sl, int val);
+    void quietlyUpdateCombobox(QComboBox *cb, int index);
+    void quietlyUpdateCombobox(QComboBox *cb, QVariant val);
     void quietlyUpdateSpinbox(QSpinBox *sb, int val);
     void quietlyUpdateCheckbox(QCheckBox *cb, bool isChecked);
     void quietlyUpdateRadiobutton(QRadioButton *rb, bool isChecked);

@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QPushButton>
 
+#include "cachingqueue.h"
 #include "logcategories.h"
 #include "wfviewtypes.h"
 #include "rigidentities.h"
@@ -88,7 +89,7 @@ private:
     bool waitingForBSR = false;
     rigCapabilities rigCaps;
     bool haveRigCaps = false;
-
+    cachingQueue* queue;
 };
 
 #endif // BANDBUTTONS_H

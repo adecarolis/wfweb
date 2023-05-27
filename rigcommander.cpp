@@ -26,14 +26,12 @@ rigCommander::rigCommander(QObject* parent) : QObject(parent)
 
     qInfo(logRig()) << "creating instance of rigCommander()";
 
-    state.set(SCOPEFUNC, true, false);
 }
 
 rigCommander::rigCommander(quint8 guid[GUIDLEN], QObject* parent) : QObject(parent)
 {
 
     qInfo(logRig()) << "creating instance of rigCommander()";
-    state.set(SCOPEFUNC, true, false);
     memcpy(this->guid, guid, GUIDLEN);
     // Add some commands that is a minimum for rig detection
 }
@@ -230,8 +228,6 @@ void rigCommander::commonSetup()
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
 
     emit commReady();
-    sendState(); // Send current rig state to rigctld
-
 }
 
 
@@ -992,76 +988,11 @@ void rigCommander::setQuickSplit(bool qsOn)
 
 void rigCommander::setPassband(quint16 pass)
 {
-    /*
-    * Passband is calculated as follows, if a higher than legal value is provided,
-    * It will set passband to the maximum allowed for the particular mode.
-    *
-    * Mode                Data        Steps
-    * SSB/CW/RTTY/PSK     0 to 9      50 ~ 500 Hz (50 Hz)
-    * SSB/CW/PSK          10 to 40    600 Hz ~ 3.6 kHz (100 Hz)
-    * RTTY                10 to 31    600 ~ 2.7 kHz (100 Hz)
-    * AM                  0 to 49     200 Hz ~ 10.0 kHz (200 Hz)
-    * WFM                   NOT SUPPORTED
-    */
-
-    // Passband may be fixed?
-    unsigned char mode = state.getChar(MODE);
-    foreach (modeInfo m, rigCaps.modes)
-    {
-        if (m.reg == mode && m.bw) {
-            QByteArray payload;
-            if (getCommand(funcFilterWidth,payload,pass))
-            {
-                unsigned char calc;
-                if (mode == modeAM) { // AM 0-49
-
-                    calc = quint16((pass / 200) - 1);
-                    if (calc > 49)
-                        calc = 49;
-                }
-                else if (pass >= 600) // SSB/CW/PSK 10-40 (10-31 for RTTY)
-                {
-                    calc = quint16((pass / 100) + 4);
-                    if (((calc > 31) && (mode == modeRTTY || mode == modeRTTY_R)))
-                    {
-                        calc = 31;
-                    }
-                    else if (calc > 40) {
-                        calc = 40;
-                    }
-                }
-                else {  // SSB etc 0-9
-                    calc = quint16((pass / 50) - 1);
-                }
-
-                char tens = (calc / 10);
-                char units = (calc - (10 * tens));
-
-                char b1 = (units) | (tens << 4);
-
-                payload.append(b1);
-                prepDataAndSend(payload);
-            }
-        }
-    }
-
+    Q_UNUSED(pass)
 }
 
 void rigCommander::getPassband()
 {
-    // Passband may be fixed?
-    unsigned char mode = state.getChar(MODE);
-    foreach (modeInfo m, rigCaps.modes)
-    {
-        if (m.reg == mode && m.bw)
-        {
-            QByteArray payload;
-            if (getCommand(funcFilterWidth,payload))
-            {
-                prepDataAndSend(payload);
-            }
-        }
-    }
 }
 
 void rigCommander::getCwPitch()
@@ -2093,9 +2024,6 @@ void rigCommander::parseCommand()
     // These return a single byte that we convert to a uchar (0-99)
     case funcTuningStep:
     case funcAttenuator:
-    case funcBreakIn:   // This is 0,1 or 2
-        value.setValue(uchar(payloadIn[1]));
-        break;
     // Return a duplexMode_t for split or duplex (same function)
     case funcSplitStatus:
         value.setValue(static_cast<duplexMode_t>(uchar(payloadIn[1])));
@@ -2150,9 +2078,15 @@ void rigCommander::parseCommand()
     case funcIdMeter:
         value.setValue(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         break;
-
-    // The following group ALL return bool
+    // These are 2 byte commands that return a single byte (0-99) from position 2
+    case funcBreakIn:   // This is 0,1 or 2
     case funcPreamp:
+    case funcManualNotchWidth:
+    case funcSSBTXBandwidth:
+    case funcDSPIFFilter:
+        value.setValue(uchar(payloadIn[2]));
+        break;
+    // The following group ALL return bool
     case funcNoiseBlanker:
     case funcAudioPeakFilter:
     case funcNoiseReduction:
@@ -2174,12 +2108,6 @@ void rigCommander::parseCommand()
     case funcRXAntenna:
         value.setValue(static_cast<bool>(payloadIn[2]));
         break;
-    case funcDSPIFFilter:
-        break;
-    case funcNotchWidth:
-        break;
-    case funcSSBBandwidth:
-        break;        
     case funcMainSubTracking:
     case funcToneSquelchType:
         emit haveRptAccessMode((rptAccessTxRx_t)payloadIn.at(2));
@@ -2219,7 +2147,9 @@ void rigCommander::parseCommand()
     {
         quint16 calc;
         quint8 pass = bcdHexToUChar((quint8)payloadIn[2]);
-        if (state.getChar(MODE) == modeAM) {
+        modeInfo m = queue->getCache(funcSelectedMode).value.value<modeInfo>();
+        if (m.mk == modeAM)
+        {
              calc = 200 + (pass * 200);
         }
         else if (pass <= 10)
@@ -2242,7 +2172,7 @@ void rigCommander::parseCommand()
         break;
     }
     case funcAFMute:
-        state.set(MUTEFUNC, (quint8)payloadIn[2], false);
+        // TODO add AF Mute
         break;
     // 0x1a 0x05 various registers below are 2 byte (0-255) as uchar
     case funcREFAdjust:
@@ -2605,180 +2535,6 @@ bool rigCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType* 
 
 void rigCommander::parseLevels()
 {
-    //qInfo(logRig()) << "Received a level status readout: ";
-    // printHex(payloadIn, false, true);
-
-    // wrong: unsigned char level = (payloadIn[2] * 100) + payloadIn[03];
-    unsigned char hundreds = payloadIn[2];
-    unsigned char tens = (payloadIn[3] & 0xf0) >> 4;
-    unsigned char units = (payloadIn[3] & 0x0f);
-
-    unsigned char level = ((unsigned char)100*hundreds) + (10*tens) + units;
-
-    //qInfo(logRig()) << "Level is: " << (int)level << " or " << 100.0*level/255.0 << "%";
-
-    // Typical RF gain response (rather low setting):
-    // "INDEX: 00 01 02 03 04 "
-    // "DATA:  14 02 00 78 fd "
-
-    if(payloadIn[0] == '\x14')
-    {
-        switch(payloadIn[1])
-        {
-            case '\x01':
-                // AF level - ignore if LAN connection.
-                if (udp == Q_NULLPTR) {
-                    emit haveAfGain(level);
-                    state.set(AFGAIN, level, false);
-                }
-                else {
-                    state.set(AFGAIN, localVolume, false);
-                }
-                break;
-            case '\x02':
-                // RX RF Gain
-                emit haveRfGain(level);
-                state.set(RFGAIN, level, false);
-                break;
-            case '\x03':
-                // Squelch level
-                emit haveSql(level);
-                state.set(SQUELCH, level, false);
-                break;
-            case '\x07':
-                // Twin BPF Inner, or, IF-Shift level
-                if(rigCaps.commands.contains(funcPBTInner))
-                    emit havePBTInner(level);
-                else
-                    emit haveIFShift(level);
-                state.set(PBTIN, level, false);
-                break;
-            case '\x08':
-                // Twin BPF Outer
-                emit havePBTOuter(level);
-                state.set(PBTOUT, level, false);
-                break;
-            case '\x06':
-                // NR Level
-                emit haveNRLevel(level);
-                state.set(NR, level, false);
-                break;
-            case '\x09':
-                // CW Pitch
-                emit haveCwPitch(level);
-                state.set(CWPITCH, level, false);
-                break;
-            case '\x0A':
-                // TX RF level
-                emit haveTxPower(level);
-                state.set(RFPOWER, level, false);
-                break;
-            case '\x0B':
-                // Mic Gain
-                emit haveMicGain(level);
-                state.set(MICGAIN, level, false);
-                break;
-            case '\x0C':
-                state.set(KEYSPD, level, false);
-                //qInfo(logRig()) << "Have received key speed in RC, raw level: " << level << ", WPM: " << (level/6.071)+6 << ", rounded: " << round((level/6.071)+6);
-                emit haveKeySpeed(round((level / 6.071) + 6));
-                break;
-            case '\x0D':
-                // Notch filder setting - ignore for now
-                state.set(NOTCHF, level, false);
-                break;
-            case '\x0E':
-                // compressor level
-                emit haveCompLevel(level);
-                state.set(COMPLEVEL, level, false);
-                break;
-            case '\x12':
-                emit haveNB((bool)level);
-                state.set(NB, level, false);
-                break;
-            case '\x15':
-                // monitor level
-                emit haveMonitorGain(level);
-                state.set(MONITORLEVEL, level, false);
-                break;
-            case '\x16':
-                // VOX gain
-                emit haveVoxGain(level);
-                state.set(VOXGAIN, level, false);
-                break;
-            case '\x17':
-                // anti-VOX gain
-                emit haveAntiVoxGain(level);
-                state.set(ANTIVOXGAIN, level, false);
-                break;
-
-            default:
-                qInfo(logRig()) << "Unknown control level (0x14) received at register " << QString("0x%1").arg((int)payloadIn[1],2,16) << " with level " << QString("0x%1").arg((int)level,2,16) << ", int=" << (int)level;
-                printHex(payloadIn);
-                break;
-        }
-        return;
-    }
-
-    if(payloadIn[0] == '\x15')
-    {
-        switch(payloadIn[1])
-        {
-            case '\x01':
-                // noise or s-meter sequelch status
-                break;
-            case '\x02':
-                // S-Meter
-                emit haveMeter(meterS, level);
-                state.set(SMETER, level, false);
-                break;
-            case '\x04':
-                // Center (IC-R8600)
-                emit haveMeter(meterCenter, level);
-                state.set(SMETER, level, false);
-                break;
-            case '\x05':
-                // Various squelch (tone etc.)
-                break;
-            case '\x11':
-                // RF-Power meter
-                emit haveMeter(meterPower, level);
-                state.set(POWERMETER, level, false);
-                break;
-            case '\x12':
-                // SWR
-                emit haveMeter(meterSWR, level);
-                state.set(SWRMETER, level, false);
-                break;
-            case '\x13':
-                // ALC
-                emit haveMeter(meterALC, level);
-                state.set(ALCMETER, level, false);
-                break;
-            case '\x14':
-                // COMP dB reduction
-                emit haveMeter(meterComp, level);
-                state.set(COMPMETER, level, false);
-                break;
-            case '\x15':
-                // VD (12V)
-                emit haveMeter(meterVoltage, level);
-                state.set(VOLTAGEMETER, level, false);
-                break;
-            case '\x16':
-                // ID
-                emit haveMeter(meterCurrent, level);
-                state.set(CURRENTMETER, level, false);
-                break;
-
-            default:
-                qInfo(logRig()) << "Unknown meter level (0x15) received at register " << (unsigned int) payloadIn[1] << " with level " << level;
-                break;
-        }
-
-
-    return;
-    }
 
 }
 
@@ -2794,44 +2550,12 @@ void rigCommander::setIFShift(unsigned char level)
 
 void rigCommander::setPBTInner(unsigned char level)
 {
-    QByteArray payload;
-    // Passband may be fixed?
-    unsigned char mode = state.getChar(MODE);
-    foreach (modeInfo m, rigCaps.modes)
-    {
-        if (m.reg == mode)
-        {
-            if (m.bw)
-            {
-                if (getCommand(funcPBTInner,payload,level))
-                {
-                    payload.append(bcdEncodeInt(level));
-                    prepDataAndSend(payload);
-                }
-            }
-        }
-    }
+    Q_UNUSED(level)
 }
 
 void rigCommander::setPBTOuter(unsigned char level)
 {
-    QByteArray payload;
-    // Passband may be fixed?
-    unsigned char mode = state.getChar(MODE);
-    foreach (modeInfo m, rigCaps.modes)
-    {
-        if (m.reg == mode)
-        {
-            if (m.bw)
-            {
-                if (getCommand(funcPBTOuter,payload,level))
-                {
-                    payload.append(bcdEncodeInt(level));
-                    prepDataAndSend(payload);
-                }
-            }
-        }
-    }
+    Q_UNUSED(level)
 }
 
 void rigCommander::setTxPower(unsigned char power)
@@ -3369,40 +3093,11 @@ void rigCommander::getIFShift()
 
 void rigCommander::getPBTInner()
 {
-    // Passband may be fixed?
-    unsigned char mode = state.getChar(MODE);
-    foreach (modeInfo m, rigCaps.modes)
-    {
-        if (m.reg == mode) {
-            if (m.bw) {
-                QByteArray payload;
-                if (getCommand(funcPBTInner,payload))
-                {
-                    prepDataAndSend(payload);
-                }
-                break;
-            }
-        }
-    }
+
 }
 
 void rigCommander::getPBTOuter()
 {
-    // Passband may be fixed?
-    unsigned char mode = state.getChar(MODE);
-    foreach (modeInfo m, rigCaps.modes)
-    {
-        if (m.reg == mode) {
-            if (m.bw) {
-                QByteArray payload;
-                if (getCommand(funcPBTOuter,payload))
-                {
-                    prepDataAndSend(payload);
-                }
-                break;
-            }
-        }
-    }
 }
 
 void rigCommander::getSql()
@@ -3855,154 +3550,21 @@ void rigCommander::parseRegisters1C()
 
 void rigCommander::parseRegister21()
 {
-    // Register 21 is RIT and Delta TX
-    int ritHz = 0;
-    freqt f;
-    QByteArray longfreq;
 
-    // Example RIT value reply:
-    // Index: 00 01 02 03 04 05
-    // DATA:  21 00 32 03 00 fd
-
-    switch(payloadIn[01])
-    {
-        case '\x00':
-            // RIT frequency
-            //
-            longfreq = payloadIn.mid(2,2);
-            longfreq.append(QByteArray(3,'\x00'));
-            f = parseFrequency(longfreq, 3);
-            if(payloadIn.length() < 5)
-                break;
-            ritHz = f.Hz*((payloadIn.at(4)=='\x01')?-1:1);
-            emit haveRitFrequency(ritHz);
-            state.set(RITVALUE, ritHz, false);
-            break;
-        case '\x01':
-            // RIT on/off
-            if(payloadIn.at(02) == '\x01')
-            {
-                emit haveRitEnabled(true);
-            } else {
-                emit haveRitEnabled(false);
-            }
-            state.set(RITFUNC, (bool)payloadIn.at(02), false);
-            break;
-        case '\x02':
-            // Delta TX setting on/off
-            break;
-        default:
-            break;
-    }
 }
 
 void rigCommander::parseATU()
 {
-    // qInfo(logRig()) << "Have ATU status from radio. Emitting.";
-    // Expect:
-    // [0]: 0x1c
-    // [1]: 0x01
-    // [2]: 0 = off, 0x01 = on, 0x02 = tuning in-progress
-    emit haveATUStatus((unsigned char) payloadIn[2]);
-    // This is a bool so any non-zero will mean enabled.
-    state.set(TUNERFUNC, (bool)payloadIn[2], false);
+
+
 }
 
 void rigCommander::parsePTT()
 {
-    // read after payloadIn[02]
-
-    if(payloadIn[2] == (char)0)
-    {
-        // PTT off
-        emit havePTTStatus(false);
-    } else {
-        // PTT on
-        emit havePTTStatus(true);
-    }
-    state.set(PTT,(bool)payloadIn[2],false);
 }
 
 void rigCommander::parseRegisters1A()
 {
-    // The simpler of the 1A stuff:
-
-    // 1A 06: data mode on/off
-    //    07: IP+ enable/disable
-    //    00:   memory contents
-    //    01:   band stacking memory contents (last freq used is stored here per-band)
-    //    03: filter width
-    //    04: AGC rate
-    // qInfo(logRig()) << "Looking at register 1A :";
-    // printHex(payloadIn, false, true);
-
-    // "INDEX: 00 01 02 03 04 "
-    // "DATA:  1a 06 01 03 fd " (data mode enabled, filter width 3 selected)
-
-    switch(payloadIn[01])
-    {
-        case '\x00':
-        {
-            // Memory contents
-            break;
-        }
-        case '\x01':
-        {
-            // band stacking register
-            parseBandStackReg();
-            break;
-        }
-        case '\x03':
-        {
-            quint16 calc;
-            quint8 pass = bcdHexToUChar((quint8)payloadIn[2]);
-            if (state.getChar(MODE) == modeAM) {
-                calc = 200 + (pass * 200);
-            }
-            else if (pass <= 10)
-            {
-                calc = 50 + (pass * 50);
-            }
-            else {
-                calc = 600 + ((pass - 10) * 100);
-            }
-            emit havePassband(calc);
-            state.set(PASSBAND, calc, false);
-            break;
-        }
-        case '\x04':
-        {
-            state.set(AGC, (quint8)payloadIn[2], false);
-            break;
-        }
-        case '\x06':
-        {
-            // data mode
-            // emit havedataMode( (bool) payloadIn[somebit])
-            // index
-            // 03 04
-            // XX YY
-            // XX = 00 (off) or 01 (on)
-            // YY: filter selected, 01 through 03.;
-            // if YY is 00 then XX was also set to 00
-            emit haveDataMode((bool)payloadIn[03]);
-            state.set(DATAMODE, (quint8)payloadIn[3], false);
-            break;
-        }
-        case '\x07':
-        {
-            // IP+ status
-            break;
-        }
-        case '\x09':
-        {
-            state.set(MUTEFUNC, (quint8)payloadIn[2], false);
-        }
-        default:
-        {
-            break;
-        }
-    }
 }
 
 void rigCommander::parseRegister1B()
@@ -4545,11 +4107,11 @@ void rigCommander::determineRigCaps()
             availableBands band =  availableBands(settings->value("Num", 0).toInt());
             quint64 start = settings->value("Start", 0ULL).toULongLong();
             quint64 end = settings->value("End", 0ULL).toULongLong();
-            int bsr = settings->value("BSR", 0).toInt();
+            uchar bsr = static_cast<uchar>(settings->value("BSR", 0).toInt());
             double range = settings->value("Range", 0.0).toDouble();
             int memGroup = settings->value("MemoryGroup", -1).toInt();
 
-            rigCaps.bands.push_back(bandType(band,start,end,range,memGroup));
+            rigCaps.bands.push_back(bandType(band,bsr,start,end,range,memGroup));
             rigCaps.bsr[band] = bsr;
             qInfo(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << QString::number(bsr,16);
         }
@@ -6391,11 +5953,6 @@ QByteArray rigCommander::stripData(const QByteArray &data, unsigned char cutPosi
     return rtndata;
 }
 
-void rigCommander::sendState()
-{
-    emit stateInfo(&state);
-}
-
 void rigCommander::radioSelection(QList<radio_cap_packet> radios)
 {
     emit requestRadioSelection(radios);
@@ -6409,417 +5966,6 @@ void rigCommander::setCurrentRadio(quint8 radio) {
     emit selectedRadio(radio);
 }
 
-void rigCommander::stateUpdated()
-{
-    // A remote process has updated the rigState
-    // First we need to find which item(s) have been updated and send the command(s) to the rig.
-
-    QMap<stateTypes, value>::iterator i = state.map.begin();
-    while (i != state.map.end()) {
-        if (!i.value()._valid || i.value()._updated)
-        {
-            i.value()._updated = false;
-            i.value()._valid = true; // Set value to valid as we have requested it (even if we haven't had a response)
-            qDebug(logRigCtlD()) << "Got new value:" << i.key() << "=" << i.value()._value;
-            switch (i.key()) {
-            case VFOAFREQ:
-                if (i.value()._valid) {
-                    freqt freq;
-                    freq.Hz = state.getInt64(VFOAFREQ);
-                    setFrequency(0, freq);
-                    setFrequency(0, freq);
-                    setFrequency(0, freq);
-                }
-                getFrequency();
-                break;
-            case VFOBFREQ:
-                if (i.value()._valid) {
-                    freqt freq;
-                    freq.Hz = state.getInt64(VFOBFREQ);
-                    setFrequency(1, freq);
-                    setFrequency(1, freq);
-                    setFrequency(1, freq);
-                }
-                getFrequency();
-                break;
-            case CURRENTVFO:
-                // Work on VFOB - how do we do this?
-                break;
-            case PTT:
-                if (i.value()._valid) {
-                    setPTT(state.getBool(PTT));
-                    setPTT(state.getBool(PTT));
-                    setPTT(state.getBool(PTT));
-                }
-                getPTT();
-                break;
-            case MODE:
-            case FILTER:
-                if (state.isValid(MODE) && state.isValid(FILTER)) {
-                    setMode(state.getChar(MODE), state.getChar(FILTER));
-                }
-                getMode();
-                break;
-            case PASSBAND:
-                if (i.value()._valid && state.isValid(MODE)) {
-                    setPassband(state.getUInt16(PASSBAND));
-                }
-                getPassband();
-                break;
-            case DUPLEX:
-                if (i.value()._valid) {
-                    setDuplexMode(state.getDuplex(DUPLEX));
-                }
-                getDuplexMode();
-                break;
-            case DATAMODE:
-                if (i.value()._valid) {
-                    setDataMode(state.getBool(DATAMODE), state.getChar(FILTER));
-                }
-                getDataMode();
-                break;
-            case ANTENNA:
-            case RXANTENNA:
-                if (i.value()._valid) {
-                    setAntenna(state.getChar(ANTENNA), state.getBool(RXANTENNA));
-                }
-                getAntenna();
-                break;
-            case CTCSS:
-                if (i.value()._valid) {
-                    setTone(state.getChar(CTCSS));
-                }
-                getTone();
-                break;
-            case TSQL:
-                if (i.value()._valid) {
-                    setTSQL(state.getChar(TSQL));
-                }
-                getTSQL();
-                break;
-            case DTCS:
-                if (i.value()._valid) {
-                    setDTCS(state.getChar(DTCS), false, false); // Not sure about this?
-                }
-                getDTCS();
-                break;
-            case CSQL:
-                if (i.value()._valid) {
-                    setTone(state.getChar(CSQL));
-                }
-                getTone();
-                break;
-            case PREAMP:
-                if (i.value()._valid) {
-                    setPreamp(state.getChar(PREAMP));
-                }
-                getPreamp();
-                break;
-            case ATTENUATOR:
-                if (i.value()._valid) {
-                    setAttenuator(state.getChar(ATTENUATOR));
-                }
-                getAttenuator();
-                break;
-            case AFGAIN:
-                if (i.value()._valid) {
-                    setAfGain(state.getChar(AFGAIN));
-                }
-                getAfGain();
-                break;
-            case RFGAIN:
-                if (i.value()._valid) {
-                    setRfGain(state.getChar(RFGAIN));
-                }
-                getRfGain();
-                break;
-            case SQUELCH:
-                if (i.value()._valid) {
-                    setSquelch(state.getChar(SQUELCH));
-                }
-                getSql();
-                break;
-            case RFPOWER:
-                if (i.value()._valid) {
-                    setTxPower(state.getChar(RFPOWER));
-                }
-                getTxLevel();
-                break;
-            case MICGAIN:
-                if (i.value()._valid) {
-                    setMicGain(state.getChar(MICGAIN));
-                }
-                getMicGain();
-                break;
-            case COMPLEVEL:
-                if (i.value()._valid) {
-                    setCompLevel(state.getChar(COMPLEVEL));
-                }
-                getCompLevel();
-                break;
-            case MONITORLEVEL:
-                if (i.value()._valid) {
-                    setMonitorGain(state.getChar(MONITORLEVEL));
-                }
-                getMonitorGain();
-                break;
-            case VOXGAIN:
-                if (i.value()._valid) {
-                    setVoxGain(state.getChar(VOXGAIN));
-                }
-                getVoxGain();
-                break;
-            case ANTIVOXGAIN:
-                if (i.value()._valid) {
-                    setAntiVoxGain(state.getChar(ANTIVOXGAIN));
-                }
-                getAntiVoxGain();
-                break;
-            case NBFUNC:
-                if (i.value()._valid) {
-                    setNB(state.getBool(NBFUNC));
-                }
-                getNB();
-                break;
-            case NRFUNC:
-                if (i.value()._valid) {
-                    setNR(state.getBool(NRFUNC));
-                }
-                getNR();
-                break;
-            case ANFFUNC:
-                if (i.value()._valid) {
-                    setAutoNotch(state.getBool(ANFFUNC));
-                }
-                getAutoNotch();
-                break;
-            case TONEFUNC:
-                if (i.value()._valid) {
-                    setToneEnabled(state.getBool(TONEFUNC));
-                }
-                getToneEnabled();
-                break;
-            case TSQLFUNC:
-                if (i.value()._valid) {
-                    setToneSql(state.getBool(TSQLFUNC));
-                }
-                getToneSqlEnabled();
-                break;
-            case COMPFUNC:
-                if (i.value()._valid) {
-                    setCompressor(state.getBool(COMPFUNC));
-                }
-                getCompressor();
-                break;
-            case MONFUNC:
-                if (i.value()._valid) {
-                    setMonitor(state.getBool(MONFUNC));
-                }
-                getMonitor();
-                break;
-            case VOXFUNC:
-                if (i.value()._valid) {
-                    setVox(state.getBool(VOXFUNC));
-                }
-                getVox();
-                break;
-            case SBKINFUNC:
-                if (i.value()._valid) {
-                    setBreakIn(state.getBool(VOXFUNC));
-                }
-                getVox();
-                break;
-            case FBKINFUNC:
-                if (i.value()._valid) {
-                    setBreakIn(state.getBool(VOXFUNC) << 1);
-                }
-                getBreakIn();
-                break;
-            case MNFUNC:
-                if (i.value()._valid) {
-                    setManualNotch(state.getBool(MNFUNC));
-                }
-                getManualNotch();
-                break;
-            case SCOPEFUNC:
-                if (i.value()._valid) {
-                    if (state.getBool(SCOPEFUNC)) {
-                        enableSpectOutput();
-                    }
-                    else {
-                        disableSpectOutput();
-                    }
-                }
-                break;
-            case RIGINPUT:
-                if (i.value()._valid) {
-                    setModInput(state.getInput(RIGINPUT), state.getBool(DATAMODE));
-                }
-                getModInput(state.getBool(DATAMODE));
-                break;
-            case POWERONOFF:
-                if (i.value()._valid) {
-                    if (state.getBool(POWERONOFF)) {
-                        powerOn();
-                    }
-                    else {
-                        powerOff();
-                    }
-                }
-                break;
-            case RITVALUE:
-                if (i.value()._valid) {
-                    setRitValue(state.getInt32(RITVALUE));
-                }
-                getRitValue();
-                break;
-             case RITFUNC:
-                 if (i.value()._valid) {
-                     setRitEnable(state.getBool(RITFUNC));
-                 }
-                 getRitEnabled();
-                 break;
-                 // All meters can only be updated from the rig end.
-             case SMETER:
-             case SWRMETER:
-             case POWERMETER:
-             case ALCMETER:
-             case COMPMETER:
-             case VOLTAGEMETER:
-             case CURRENTMETER:
-                 break;
-             case AGC:
-                 break;
-             case MODINPUT:
-                 break;
-             case FAGCFUNC:
-                 break;
-             case AIPFUNC:
-                 break;
-             case APFFUNC:
-                 break;
-             case RFFUNC: // Should this set RF output power to 0?
-                 break;
-             case AROFUNC:
-                 break;
-             case MUTEFUNC:
-                 if (i.value()._valid) {
-                     setAfMute(state.getBool(MUTEFUNC));
-                 }
-                 getAfMute();
-                 break;
-             case VSCFUNC:
-                 break;
-             case REVFUNC:
-                 break;
-             case SQLFUNC:
-                 break;
-             case ABMFUNC:
-                 break;
-             case BCFUNC:
-                 break;
-             case MBCFUNC:
-                 break;
-             case AFCFUNC:
-                 break;
-             case SATMODEFUNC:
-                 break;
-             case NBDEPTH:
-                 break;
-             case NBWIDTH:
-                 break;
-             case NB:
-                 break;
-             case NR: {
-                 if (i.value()._valid) {
-                     QByteArray payload("\x14\x06");
-                     payload.append(bcdEncodeInt(state.getChar(NR)));
-                     prepDataAndSend(payload);
-                 }
-                 break;
-             }
-             case PBTIN: {
-                 if (i.value()._valid) {
-                     QByteArray payload("\x14\x07");
-                     payload.append(bcdEncodeInt(state.getChar(PBTIN)));
-                     prepDataAndSend(payload);
-                 }
-                 break;
-             }
-             case PBTOUT: {
-                 if (i.value()._valid) {
-                     QByteArray payload("\x14\x08");
-                     payload.append(bcdEncodeInt(state.getChar(PBTOUT)));
-                     prepDataAndSend(payload);
-                 }
-                 break;
-             }
-             case CWPITCH: {
-                 if (i.value()._valid) {
-                     QByteArray payload("\x14\x09");
-                     payload.append(bcdEncodeInt(state.getChar(CWPITCH)));
-                     prepDataAndSend(payload);
-                 }
-                 break;
-             }
-             case KEYSPD: {
-                 if (i.value()._valid) {
-                     QByteArray payload("\x14\x0c");
-                     payload.append(bcdEncodeInt(state.getChar(KEYSPD)));
-                     prepDataAndSend(payload);
-                 }
-                 break;
-             }
-             case NOTCHF: {
-                 if (i.value()._valid) {
-                     QByteArray payload("\x14\x0d");
-                     payload.append(bcdEncodeInt(state.getChar(NOTCHF)));
-                     prepDataAndSend(payload);
-                 }
-                 break;
-             }
-             case IF: {
-                 if (i.value()._valid) {
-                     setIFShift(state.getChar(IF));
-                 }
-                 getIFShift();
-                 break;
-             }
-             case APF:
-                 break;
-             case BAL:
-                 break;
-             case RESUMEFUNC:
-                 break;
-             case TBURSTFUNC:
-                 break;
-             case TUNERFUNC:
-                 if (i.value()._valid) {
-                     setATU(state.getBool(TUNERFUNC));
-                 }
-                 getATUStatus();
-                 break;
-             case LOCKFUNC:
-                 if (i.value()._valid) {
-                     setDialLock(state.getBool(LOCKFUNC));
-                 }
-                 getDialLock();
-                 break;
-
-            case ANN:
-            case APO:
-            case BACKLIGHT:
-            case BEEP:
-            case TIME:
-            case BAT:
-            case KEYLIGHT:
-                break;
-
-            }
-        }
-        ++i;
-    }
-}
 
 void rigCommander::getDebug()
 {
@@ -6875,46 +6021,13 @@ quint8* rigCommander::getGUID() {
 
 uchar rigCommander::makeFilterWidth(ushort pass)
 {
-    unsigned char mode = state.getChar(MODE);
-    uchar payload=0;
-
-    foreach (modeInfo m, rigCaps.modes)
-    {
-        if (m.reg == mode && m.bw) {
-            uchar calc;
-            if (mode == modeAM) { // AM 0-49
-
-                 calc = quint16((pass / 200) - 1);
-                 if (calc > 49)
-                    calc = 49;
-            }
-            else if (pass >= 600) // SSB/CW/PSK 10-40 (10-31 for RTTY)
-            {
-                 calc = quint16((pass / 100) + 4);
-                 if (((calc > 31) && (mode == modeRTTY || mode == modeRTTY_R)))
-                 {
-                    calc = 31;
-                 }
-                 else if (calc > 40) {
-                    calc = 40;
-                 }
-            }
-            else {  // SSB etc 0-9
-                 calc = quint16((pass / 50) - 1);
-            }
-
-            uchar tens = (calc / 10);
-            uchar units = (calc - (10 * tens));
-            payload = (units) | (tens << 4);
-        }
-    }
-    return payload;
+    Q_UNUSED(pass)
+    return 0U;
 }
 
 void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value)
 {
     Q_UNUSED(type)
-
     //qInfo() << "Got command:" << funcString[func];
     int val=INT_MIN;
     if (value.isValid() && value.canConvert<int>()) {
@@ -7000,7 +6113,7 @@ void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value
             }
             else if (!strcmp(value.typeName(),"uchar"))
             {
-                 payload.append(bcdEncodeChar(value.value<uchar>()));
+                 payload.append(value.value<uchar>());
             }
             else if (!strcmp(value.typeName(),"ushort"))
             {
@@ -7129,7 +6242,7 @@ void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value
             }
             // This was a set command, so queue a get straight after to retrieve the updated value
             // will fail on some commands so they would need to be added here:
-            if (func != funcScopeFixedEdgeFreq && func != funcSpeech)
+            if (func != funcScopeFixedEdgeFreq && func != funcSpeech && func != funcBandStackReg)
                 queue->addUnique(priorityImmediate,func);
         }
         prepDataAndSend(payload);

@@ -8,6 +8,8 @@ frequencyinputwidget::frequencyinputwidget(QWidget *parent) :
     ui->setupUi(this);
     this->setWindowTitle("Frequency Input");
     ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
+    this->setObjectName("freqInput");
+    queue = cachingQueue::getInstance(this);
 }
 
 frequencyinputwidget::~frequencyinputwidget()
@@ -196,7 +198,7 @@ void frequencyinputwidget::on_goFreqBtn_clicked()
     if(ok)
     {
         modeInfo m;
-        issueCmdF(cmdSetFreq, f);
+        queue->add(priorityImmediate,queueItem(funcFreqSet,QVariant::fromValue<freqt>(f),false));
         m.mk = sidebandChooser::getMode(f, currentMode);
         m.reg = (unsigned char) m.mk;
 
@@ -211,7 +213,7 @@ void frequencyinputwidget::on_goFreqBtn_clicked()
         }
 
         f.MHzDouble = (float)f.Hz / 1E6;
-        emit updateUIFrequency(f);
+        //emit updateUIFrequency(f);
         currentFrequency = f;
     } else {
         qWarning(logGui()) << "Could not understand frequency" << ui->freqMhzLineEdit->text();

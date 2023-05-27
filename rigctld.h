@@ -21,7 +21,6 @@
 
 #include "rigcommander.h"
 #include "cachingqueue.h"
-#include "rigstate.h"
 
 #define CONSTANT_64BIT_FLAG(BIT) (1ull << (BIT))
 
@@ -291,7 +290,6 @@ signals:
     void setVFO(quint8 vfo);
     void setSplit(quint8 split);
     void setDuplexMode(duplexMode_t dm);
-    void stateUpdated();
     // Power
     void sendPowerOn();
     void sendPowerOff();
@@ -315,11 +313,7 @@ signals:
 public slots:
     virtual void incomingConnection(qintptr socketDescriptor);
     void receiveRigCaps(rigCapabilities caps);
-    void receiveStateInfo(rigstate* state);
 //    void receiveFrequency(freqt freq);
-
-private: 
-    rigstate* rigState = Q_NULLPTR;
 
 };
 
@@ -330,7 +324,7 @@ class rigCtlClient : public QObject
 
 public:
 
-    explicit rigCtlClient(int socket, rigCapabilities caps, rigstate *state, rigCtlD* parent = Q_NULLPTR);
+    explicit rigCtlClient(int socket, rigCapabilities caps, rigCtlD* parent = Q_NULLPTR);
     int getSocketId();
 
 
@@ -348,7 +342,6 @@ protected:
 private:
     cachingQueue* queue;
     rigCapabilities rigCaps;
-    rigstate* rigState = Q_NULLPTR;
     rigCtlD* parent;
     bool chkVfoEecuted=false;
     unsigned long crcTable[256];

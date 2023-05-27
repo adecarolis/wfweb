@@ -74,7 +74,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<SERVERCONFIG>();
     qRegisterMetaType<timekind>();
     qRegisterMetaType<datekind>();
-    qRegisterMetaType<rigstate*>();
     qRegisterMetaType<QList<radio_cap_packet>>();
     qRegisterMetaType<QVector<BUTTON>*>();
     qRegisterMetaType<QVector<KNOB>*>();
@@ -836,13 +835,6 @@ void wfmain::makeRig()
         connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
-        connect(this, SIGNAL(requestRigState()), rig, SLOT(sendState()));
-        connect(this, SIGNAL(stateUpdated()), rig, SLOT(stateUpdated()));
-        connect(rig, SIGNAL(stateInfo(rigstate*)), this, SLOT(receiveStateInfo(rigstate*)));
-        if (rigCtl != Q_NULLPTR) {
-            connect(rig, SIGNAL(stateInfo(rigstate*)), rigCtl, SLOT(receiveStateInfo(rigstate*)));
-            connect(rigCtl, SIGNAL(stateUpdated()), rig, SLOT(stateUpdated()));
-        }
         // Create link for server so it can have easy access to rig.
         if (serverConfig.rigs.first() != Q_NULLPTR) {
             serverConfig.rigs.first()->rig = rig;
@@ -1166,10 +1158,10 @@ void wfmain::setupMainUI()
     ui->baudRateCombo->insertItem(8, QString("1200"), 1200);
     ui->baudRateCombo->insertItem(9, QString("300"), 300);
 
-    ui->spectrumMode_tCombo->addItem("Center", (spectrumMode_t)spectModeCenter);
-    ui->spectrumMode_tCombo->addItem("Fixed", (spectrumMode_t)spectModeFixed);
-    ui->spectrumMode_tCombo->addItem("Scroll-C", (spectrumMode_t)spectModeScrollC);
-    ui->spectrumMode_tCombo->addItem("Scroll-F", (spectrumMode_t)spectModeScrollF);
+    ui->spectrumModeCombo->addItem("Center", (spectrumMode_t)spectModeCenter);
+    ui->spectrumModeCombo->addItem("Fixed", (spectrumMode_t)spectModeFixed);
+    ui->spectrumModeCombo->addItem("Scroll-C", (spectrumMode_t)spectModeScrollC);
+    ui->spectrumModeCombo->addItem("Scroll-F", (spectrumMode_t)spectModeScrollF);
 
     ui->modeFilterCombo->addItem("1", 1);
     ui->modeFilterCombo->addItem("2", 2);
@@ -1359,24 +1351,30 @@ void wfmain::setupMainUI()
 void wfmain::connectSettingsWidget()
 {
     connect(setupui, SIGNAL(changedClusterPref(prefClusterItem)), this, SLOT(extChangedClusterPref(prefClusterItem)));
-    connect(setupui, SIGNAL(changedClusterPrefs(int)), this, SLOT(extChangedClusterPrefs(int)));
+    connect(setupui, SIGNAL(changedClusterPrefs(quint64)), this, SLOT(extChangedClusterPrefs(quint64)));
 
     connect(setupui, SIGNAL(changedCtPref(prefCtItem)), this, SLOT(extChangedCtPref(prefCtItem)));
-    connect(setupui, SIGNAL(changedCtPrefs(int)), this, SLOT(extChangedCtPrefs(int)));
+    connect(setupui, SIGNAL(changedCtPrefs(quint64)), this, SLOT(extChangedCtPrefs(quint64)));
 
     connect(setupui, SIGNAL(changedIfPref(prefIfItem)), this, SLOT(extChangedIfPref(prefIfItem)));
-    connect(setupui, SIGNAL(changedIfPrefs(int)), this, SLOT(extChangedIfPrefs(int)));
+    connect(setupui, SIGNAL(changedIfPrefs(quint64)), this, SLOT(extChangedIfPrefs(quint64)));
+
+    connect(setupui, SIGNAL(changedColPref(prefColItem)), this, SLOT(extChangedColPref(prefColItem)));
+    connect(setupui, SIGNAL(changedColPrefs(quint64)), this, SLOT(extChangedColPrefs(quint64)));
 
     connect(setupui, SIGNAL(changedLanPref(prefLanItem)), this, SLOT(extChangedLanPref(prefLanItem)));
-    connect(setupui, SIGNAL(changedLanPrefs(int)), this, SLOT(extChangedLanPrefs(int)));
+    connect(setupui, SIGNAL(changedLanPrefs(quint64)), this, SLOT(extChangedLanPrefs(quint64)));
 
     connect(setupui, SIGNAL(changedRaPref(prefRaItem)), this, SLOT(extChangedRaPref(prefRaItem)));
-    connect(setupui, SIGNAL(changedRaPrefs(int)), this, SLOT(extChangedRaPrefs(int)));
+    connect(setupui, SIGNAL(changedRaPrefs(quint64)), this, SLOT(extChangedRaPrefs(quint64)));
+
+    connect(setupui, SIGNAL(changedRsPref(prefRsItem)), this, SLOT(extChangedRsPref(prefRsItem)));
+    connect(setupui, SIGNAL(changedRsPrefs(quint64)), this, SLOT(extChangedRsPrefs(quint64)));
 
     connect(setupui, SIGNAL(changedUdpPref(udpPrefsItem)), this, SLOT(extChangedUdpPref(udpPrefsItem)));
-    connect(setupui, SIGNAL(changedUdpPrefs(int)), this, SLOT(extChangedUdpPrefs(int)));
+    connect(setupui, SIGNAL(changedUdpPrefs(quint64)), this, SLOT(extChangedUdpPrefs(quint64)));
 
-    connect(setupui, &settingswidget::showUSBControllerSetup, [=](){
+    connect(setupui, &settingswidget::showUSBControllerSetup, this, [=](){
         if(usbWindow != Q_NULLPTR)
             showAndRaiseWidget(usbWindow);
     });
@@ -1388,6 +1386,7 @@ void wfmain::connectSettingsWidget()
     connect(setupui, SIGNAL(changedServerRXAudioInputCombo(int)), this, SLOT(changedServerRXAudioInput(int)));
     connect(setupui, SIGNAL(changedServerTXAudioOutputCombo(int)), this, SLOT(changedServerTXAudioOutput(int)));
 
+    connect(setupui, SIGNAL(changedModInput(uchar,inputTypes)), this, SLOT(changedModInput(uchar,inputTypes)));
 }
 
 void wfmain::prepareSettingsWindow()
@@ -2862,6 +2861,7 @@ void wfmain::loadSettings()
     setupui->acceptPreferencesPtr(&prefs);
     setupui->updateIfPrefs((int)if_all);
     setupui->updateRaPrefs((int)ra_all);
+    setupui->updateRsPrefs((int)ra_all); // Most of these come from the rig anyway
     setupui->updateCtPrefs((int)ct_all);
     setupui->updateClusterPrefs((int)cl_all);
     setupui->updateLanPrefs((int)l_all);
@@ -2871,7 +2871,7 @@ void wfmain::loadSettings()
 
 }
 
-void wfmain::extChangedIfPrefs(int items)
+void wfmain::extChangedIfPrefs(quint64 items)
 {
     prefIfItem pif;
     if(items & (int)if_all)
@@ -2889,7 +2889,25 @@ void wfmain::extChangedIfPrefs(int items)
     }
 }
 
-void wfmain::extChangedRaPrefs(int items)
+void wfmain::extChangedColPrefs(quint64 items)
+{
+    prefColItem col;
+    if(items & (int)col_all)
+    {
+        items = 0xffffffff;
+    }
+    for(int i=1; i < (int)col_all; i = i << 1)
+    {
+        if(items & i)
+        {
+            qDebug(logSystem()) << "Updating Color pref in wfmain" << (int)i;
+            col = (prefColItem)i;
+            extChangedColPref(col);
+        }
+    }
+}
+
+void wfmain::extChangedRaPrefs(quint64 items)
 {
     prefRaItem pra;
     if(items & (int)ra_all)
@@ -2907,7 +2925,25 @@ void wfmain::extChangedRaPrefs(int items)
     }
 }
 
-void wfmain::extChangedCtPrefs(int items)
+void wfmain::extChangedRsPrefs(quint64 items)
+{
+    prefRsItem prs;
+    if(items & (int)rs_all)
+    {
+        items = 0xffffffff;
+    }
+    for(int i=1; i < (int)rs_all; i = i << 1)
+    {
+        if(items & i)
+        {
+            qDebug(logSystem()) << "Updating Rs pref in wfmain" << (int)i;
+            prs = (prefRsItem)i;
+            extChangedRsPref(prs);
+        }
+    }
+}
+
+void wfmain::extChangedCtPrefs(quint64 items)
 {
     prefCtItem pct;
     if(items & (int)ct_all)
@@ -2925,7 +2961,7 @@ void wfmain::extChangedCtPrefs(int items)
     }
 }
 
-void wfmain::extChangedLanPrefs(int items)
+void wfmain::extChangedLanPrefs(quint64 items)
 {
     prefLanItem plan;
     if(items & (int)l_all)
@@ -2943,7 +2979,7 @@ void wfmain::extChangedLanPrefs(int items)
     }
 }
 
-void wfmain::extChangedClusterPrefs(int items)
+void wfmain::extChangedClusterPrefs(quint64 items)
 {
     prefClusterItem pcl;
     if(items & (int)cl_all)
@@ -2961,7 +2997,7 @@ void wfmain::extChangedClusterPrefs(int items)
     }
 }
 
-void wfmain::extChangedUdpPrefs(int items)
+void wfmain::extChangedUdpPrefs(quint64 items)
 {
     udpPrefsItem upi;
     if(items & (int)u_all)
@@ -3052,6 +3088,17 @@ void wfmain::extChangedIfPref(prefIfItem i)
     }
 }
 
+void wfmain::extChangedColPref(prefColItem i)
+{
+    switch(i)
+    {
+    case col_grid:
+        break;
+    default:
+        qWarning(logSystem()) << "Cannot update wfmain col pref" << (int)i;
+    }
+}
+
 void wfmain::extChangedRaPref(prefRaItem i)
 {
     // Radio Access Prefs
@@ -3102,6 +3149,27 @@ void wfmain::extChangedRaPref(prefRaItem i)
         qWarning(logSystem()) << "Cannot update wfmain ra pref" << (int)i;
     }
 }
+
+void wfmain::extChangedRsPref(prefRsItem i)
+{
+    // Radio Settings prefs
+    switch(i)
+    {
+    case rs_dataOffMod:
+        break;
+    case rs_data1Mod:
+        break;
+    case rs_data2Mod:
+        break;
+    case rs_data3Mod:
+        break;
+    case rs_clockUseUtc:
+        break;
+    default:
+        qWarning(logSystem()) << "Cannot update wfmain rs pref" << (int)i;
+    }
+}
+
 
 void wfmain::extChangedCtPref(prefCtItem i)
 {
@@ -3390,6 +3458,44 @@ void wfmain::changedServerTXAudioOutput(int value)
 
 }
 
+void wfmain::changedModInput(uchar val, inputTypes type)
+{
+
+    queue->del(getInputTypeCommand(currentModData1Src.type));
+
+    funcs func=funcNone;
+
+    switch (val)
+    {
+    case 0:
+        func = funcDATAOffMod;
+        break;
+    case 1:
+        func = funcDATA1Mod;
+        break;
+    case 2:
+        func = funcDATA2Mod;
+        break;
+    case 3:
+        func = funcDATA3Mod;
+        break;
+    default:
+        break;
+    }
+
+    foreach(auto inp, rigCaps.inputs)
+    {
+        if (inp.type == type)
+        {
+            queue->add(priorityImmediate,queueItem(func,QVariant::fromValue<rigInput>(inp)));
+            if(usingDataMode==val)
+            {
+                changeModLabel(inp);
+            }
+            break;
+        }
+    }
+}
 
 
 void wfmain::saveSettings()
@@ -3730,7 +3836,7 @@ void wfmain::showHideSpectrum(bool show)
 
     // Controls:
     ui->spectrumGroupBox->setVisible(show);
-    ui->spectrumMode_tCombo->setVisible(show);
+    ui->spectrumModeCombo->setVisible(show);
     ui->scopeBWCombo->setVisible(show);
     ui->scopeEdgeCombo->setVisible(show);
     ui->scopeEnableWFBtn->setVisible(show);
@@ -3758,11 +3864,6 @@ void wfmain::showHideSpectrum(bool show)
     // Window resize:
     updateSizes(ui->tabWidget->currentIndex());
 
-}
-
-void wfmain::prepareWf()
-{
-    prepareWf(160);
 }
 
 void wfmain::prepareWf(unsigned int wfLength)
@@ -4573,10 +4674,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->tuningStepCombo->setCurrentIndex(2);
         ui->tuningStepCombo->blockSignals(false);
 
-        QStringList modSources;
-        QVector<rigInput> modData;
-
-        if(rigCaps.model == model9700)
+        if(rigCaps.commands.contains(funcSatelliteMode))
         {
             ui->satOpsBtn->setDisabled(false);
             ui->adjRefBtn->setDisabled(false);
@@ -4584,58 +4682,26 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->satOpsBtn->setDisabled(true);
             ui->adjRefBtn->setDisabled(true);
         }
-        // Clear input combos before adding known inputs.
-        ui->modInputCombo->clear();
-        ui->modInputData1Combo->clear();
-        ui->modInputData2Combo->clear();
-        ui->modInputData3Combo->clear();
 
-        foreach (auto&& input, rigCaps.inputs)
-        {
-            qInfo() << "Adding mod input" << input.name << input.type;
-            ui->modInputCombo->addItem(input.name, input.type);
-            ui->modInputData1Combo->addItem(input.name, input.type);
-            ui->modInputData2Combo->addItem(input.name, input.type);
-            ui->modInputData3Combo->addItem(input.name, input.type);
-        }
-
-        if(rigCaps.inputs.length() == 0)
-        {
-            ui->modInputCombo->addItem("None", inputNone);
-            ui->modInputData1Combo->addItem("None", inputNone);
-            ui->modInputData2Combo->addItem("None", inputNone);
-            ui->modInputData3Combo->addItem("None", inputNone);
-        }
+        setupui->updateModSourceList(0, rigCaps.inputs);
+        setupui->updateModSourceList(1, rigCaps.inputs);
 
         ui->datamodeCombo->clear();
         ui->datamodeCombo->addItem("Off",0);
 
+
         if (rigCaps.commands.contains(funcDATA2Mod))
         {
-            ui->modInputData2ComboText->setVisible(true);
-            ui->modInputData2Combo->setVisible(true);
+            setupui->updateModSourceList(2, rigCaps.inputs);
             ui->datamodeCombo->addItem("Data1",1);
             ui->datamodeCombo->addItem("Data2",2);
-        } else {
-            ui->datamodeCombo->addItem("On",1);
-            ui->modInputData2ComboText->setVisible(false);
-            ui->modInputData2Combo->setVisible(false);
         }
 
         if (rigCaps.commands.contains(funcDATA3Mod))
         {
-            ui->modInputData3ComboText->setVisible(true);
-            ui->modInputData3Combo->setVisible(true);
+            setupui->updateModSourceList(3, rigCaps.inputs);
             ui->datamodeCombo->addItem("Data3",3);
-        } else {
-            ui->modInputData3ComboText->setVisible(false);
-            ui->modInputData3Combo->setVisible(false);
-            ui->modInputCombo->addItem("None", inputNone);
-            modSources.append("None");
-            modData.append(inputNone);
         }
-        setupui->updateModSourceList(modSources, modData);
-        setupui->updateDataModSourceList(modSources, modData);
 
         ui->attSelCombo->clear();
         if(rigCaps.commands.contains(funcAttenuator))
@@ -4756,6 +4822,7 @@ void wfmain::initPeriodicCommands()
         queue->add(priorityMediumHigh,(rigCaps.commands.contains(funcDATAOffMod)?funcDATAOffMod:funcNone),true);
         queue->add(priorityMediumHigh,(rigCaps.commands.contains(funcDATA1Mod)?funcDATA1Mod:funcNone),true);
         queue->add(priorityMediumHigh,(rigCaps.commands.contains(funcDATA2Mod)?funcDATA2Mod:funcNone),true);
+        queue->add(priorityMediumHigh,(rigCaps.commands.contains(funcDATA3Mod)?funcDATA3Mod:funcNone),true);
     }
     if (rigCaps.commands.contains(funcRFPower))
         queue->add(priorityMedium,funcRFPower,true);
@@ -5160,9 +5227,9 @@ void wfmain::computePlasma()
 
 void wfmain::receivespectrumMode(spectrumMode_t spectMode)
 {
-    ui->spectrumMode_tCombo->blockSignals(true);
-    ui->spectrumMode_tCombo->setCurrentIndex(ui->spectrumMode_tCombo->findData(spectMode));
-    ui->spectrumMode_tCombo->blockSignals(false);
+    ui->spectrumModeCombo->blockSignals(true);
+    ui->spectrumModeCombo->setCurrentIndex(ui->spectrumModeCombo->findData(spectMode));
+    ui->spectrumModeCombo->blockSignals(false);
     setUISpectrumControlsToMode(spectMode);
 }
 
@@ -5613,20 +5680,10 @@ void wfmain::receiveMode(modeInfo mode)
             ui->modeFilterCombo->blockSignals(false);
         }
 
-            //currentModeIndex = mode;
-            finputbtns->updateCurrentMode(currentMode);
-            //finputbtns->updateFilterSelection(filter);
-            //currentModeInfo.mk = (rigMode_t)mode;
-            //currentMode = (rigMode_t)mode;
-            //currentModeInfo.filter = filter;
-            //currentModeInfo.reg = mode;
-            //rpt->handleUpdateCurrentMainMode(currentModeInfo);
-            //cw->handleCurrentModeUpdate(currentMode);
-            //if (!found)
-            //{
-            //    qWarning(logSystem()) << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
-            //    return;
-            //}
+        finputbtns->updateCurrentMode(mode.mk);
+
+        rpt->handleUpdateCurrentMainMode(mode);
+        cw->handleCurrentModeUpdate(mode.mk);
 
         if (maxPassbandHz != 0)
         {
@@ -5638,8 +5695,11 @@ void wfmain::receiveMode(modeInfo mode)
         {
             queue->add(priorityImmediate,funcDataModeWithFilter);
         } else {
-            receiveDataModeStatus(mode.data,mode.filter);
+            //receiveDataModeStatus(mode.data,mode.filter);
+            finputbtns->updateFilterSelection(mode.filter);
         }
+
+        currentModeInfo = mode;
 
         return; // We have nothing more to process
     }
@@ -5685,7 +5745,7 @@ void wfmain::changeFullScreenMode(bool checked)
 
 void wfmain::on_spectrumModeCombo_currentIndexChanged(int index)
 {
-    spectrumMode_t smode = static_cast<spectrumMode_t>(ui->spectrumMode_tCombo->itemData(index).toInt());
+    spectrumMode_t smode = static_cast<spectrumMode_t>(ui->spectrumModeCombo->itemData(index).toInt());
     queue->add(priorityImmediate,queueItem(funcScopeMainMode,QVariant::fromValue(smode)));
     setUISpectrumControlsToMode(smode);
 }
@@ -5765,27 +5825,19 @@ void wfmain::on_modeSelectCombo_activated(int index)
     // The "activated" signal means the user initiated a mode change.
     // This function is not called if code initiated the change.
 
-    unsigned char newMode = static_cast<unsigned char>(ui->modeSelectCombo->itemData(index).toUInt());
+    rigMode_t newMode = static_cast<rigMode_t>(ui->modeSelectCombo->itemData(index).toUInt());
 
-    int filterSelection = ui->modeFilterCombo->currentData().toInt();
-    if(filterSelection == 99)
+    qInfo(logSystem()) << __func__ << " at index " << index << " has newMode: " << newMode;
+    foreach (modeInfo mi, rigCaps.modes)
     {
-        // oops, we forgot to reset the combo box
-        return;
-    } else {
-        //qInfo(logSystem()) << __func__ << " at index " << index << " has newMode: " << newMode;
-        foreach (modeInfo mi, rigCaps.modes)
+        if (mi.mk == newMode)
         {
-            if (mi.mk == (rigMode_t)newMode)
-            {
-                modeInfo m = modeInfo(mi);
-                m.filter = filterSelection;
-                m.data = usingDataMode;
-                m.VFO=selVFO_t::activeVFO;
-                queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<modeInfo>(m),false));
-                queue->add(priorityImmediate,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),false);
-                break;
-            }
+            modeInfo m = modeInfo(mi);
+            m.filter = static_cast<uchar>(ui->modeFilterCombo->currentData().toInt());
+            m.data = usingDataMode;
+            m.VFO=selVFO_t::activeVFO;
+            queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<modeInfo>(m),false));
+            break;
         }
     }
 }
@@ -6504,37 +6556,44 @@ void wfmain::processModLevel(inputTypes source, unsigned char level)
 
 void wfmain::receiveModInput(rigInput input, unsigned char data)
 {
-    QComboBox *box = Q_NULLPTR;
 
-    //qInfo() << QString("Data: %0 Input: %1 current: %2").arg(data).arg(input.name).arg(currentModDataOffSrc.name);
+    prefRsItem item= rs_all;
     // This will ONLY fire if the input type is different to the current one
     if (data == 0 && currentModDataOffSrc.type != input.type) {
+        qInfo() << QString("Data: %0 Input: %1 current: %2").arg(data).arg(input.name).arg(currentModDataOffSrc.name);
         queue->del(getInputTypeCommand(currentModDataOffSrc.type));
-        box = ui->modInputCombo;
+        item = rs_dataOffMod;
+        prefs.inputDataOff = input.type;
         currentModDataOffSrc = input;
     } else if (data == 1 && currentModData1Src.type != input.type) {
+        qInfo() << QString("Data: %0 Input: %1 current: %2").arg(data).arg(input.name).arg(currentModData1Src.name);
         queue->del(getInputTypeCommand(currentModData1Src.type));
-        box = ui->modInputData1Combo;
+        item = rs_data1Mod;
+        prefs.inputData1 = input.type;
         currentModData1Src = input;
     } else if (data == 2 && currentModData2Src.type != input.type) {
+        qInfo() << QString("Data: %0 Input: %1 current: %2").arg(data).arg(input.name).arg(currentModData2Src.name);
         queue->del(getInputTypeCommand(currentModData2Src.type));
-        box = ui->modInputData2Combo;
+        item = rs_data2Mod;
+        prefs.inputData2 = input.type;
         currentModData2Src = input;
     } else if (data == 3 && currentModData3Src.type != input.type) {
+        qInfo() << QString("Data: %0 Input: %1 current: %2").arg(data).arg(input.name).arg(currentModData3Src.name);
         queue->del(getInputTypeCommand(currentModData3Src.type));
-        box = ui->modInputData3Combo;
+        item = rs_data3Mod;
+        prefs.inputData3 = input.type;
         currentModData3Src = input;
     }
 
-    if (box != Q_NULLPTR)
+
+    if (item != rs_all)
     {
-        box->blockSignals(true);
-        box->setCurrentIndex(box->findData((int)input.type));
-        box->blockSignals(false);
+        setupui->updateRsPrefs(item);
         if (ui->datamodeCombo->currentData().toUInt() == data) {
             queue->add(priorityImmediate,getInputTypeCommand(input.type),false);
             changeModLabel(input);
         }
+
     }
 }
 
@@ -6734,92 +6793,6 @@ void wfmain::receiveSpectrumRefLevel(int level)
     changeSliderQuietly(ui->scopeRefLevelSlider, level);
 }
 
-void wfmain::on_modInputCombo_activated(int index)
-{
-    queue->del(getInputTypeCommand(currentModDataOffSrc.type));
-    foreach(auto inp, rigCaps.inputs)
-    {
-        if (inp.type == inputTypes(ui->modInputCombo->currentData().toInt()))
-        {
-            currentModDataOffSrc = rigInput(inp);
-            if(usingDataMode==0)
-            {
-                queue->add(priorityImmediate,queueItem(funcDATAOffMod,QVariant::fromValue<rigInput>(currentModDataOffSrc)));
-                changeModLabel(currentModDataOffSrc);
-            }
-            return;;
-        }
-    }
-
-    qWarning(logSystem()) << "Invalid Input type (check rigcaps)" << ui->modInputCombo->currentData().toInt();
-    (void)index;
-}
-
-void wfmain::on_modInputData1Combo_activated(int index)
-{
-    queue->del(getInputTypeCommand(currentModData1Src.type));
-    foreach(auto inp, rigCaps.inputs)
-    {
-        if (inp.type == inputTypes(ui->modInputData1Combo->currentData().toInt()))
-        {
-            currentModData1Src = rigInput(inp);
-            if(usingDataMode==1)
-            {
-                queue->add(priorityImmediate,queueItem(funcDATA1Mod,QVariant::fromValue<rigInput>(currentModData1Src)));
-                changeModLabel(currentModData1Src);
-            }
-            return;
-        }
-    }
-
-    qWarning(logSystem()) << "DATA1 Invalid Input type (check rigcaps)" << ui->modInputData1Combo->currentData().toInt();
-    (void)index;
-}
-
-
-void wfmain::on_modInputData2Combo_activated(int index)
-{
-    queue->del(getInputTypeCommand(currentModData2Src.type));
-    foreach(auto inp, rigCaps.inputs)
-    {
-        if (inp.type == inputTypes(ui->modInputData2Combo->currentData().toInt()))
-        {
-            currentModData2Src = rigInput(inp);
-            if(usingDataMode==1)
-            {
-                changeModLabel(currentModData1Src);
-                queue->add(priorityImmediate,queueItem(funcDATA2Mod,QVariant::fromValue<rigInput>(currentModData2Src)));
-            }
-            return;
-        }
-    }
-
-    qWarning(logSystem()) << "DATA2 Invalid Input type (check rigcaps)" << ui->modInputData2Combo->currentData().toInt();
-    (void)index;
-}
-
-
-void wfmain::on_modInputData3Combo_activated(int index)
-{
-    queue->del(getInputTypeCommand(currentModData3Src.type));
-    foreach(auto inp, rigCaps.inputs)
-    {
-
-        if (inp.type == inputTypes(ui->modInputData3Combo->currentData().toInt()))
-        {
-            currentModData3Src = rigInput(inp);
-            if(usingDataMode==3)
-            {
-                changeModLabel(currentModData3Src);
-                queue->add(priorityImmediate,queueItem(funcDATA3Mod,QVariant::fromValue<rigInput>(currentModData3Src)));
-            }
-            return;
-        }
-    }
-
-    qWarning(logSystem()) << "DATA3 Invalid Input type (check rigcaps)" << ui->modInputData3Combo->currentData().toInt();
-    (void)index;
-}
 
 
 void wfmain::changeModLabelAndSlider(rigInput source)
@@ -7322,14 +7295,9 @@ void wfmain::enableRigCtl(bool enabled)
         connect(this, SIGNAL(sendRigCaps(rigCapabilities)), rigCtl, SLOT(receiveRigCaps(rigCapabilities)));
         if (rig != Q_NULLPTR) {
             // We are already connected to a rig.
-            connect(rig, SIGNAL(stateInfo(rigstate*)), rigCtl, SLOT(receiveStateInfo(rigstate*)));
-            connect(rigCtl, SIGNAL(stateUpdated()), rig, SLOT(stateUpdated()));
-
             emit sendRigCaps(rigCaps);
-            emit requestRigState();
         }
     }    
-    //prefs.enableRigCtlD = checked;
 }
 
 void wfmain::on_moreControlsBtn_clicked()
@@ -7348,12 +7316,6 @@ void wfmain::on_moreControlsBtn_clicked()
 void wfmain::on_useCIVasRigIDChk_clicked(bool checked)
 {
     prefs.CIVisRadioModel = checked;
-}
-
-void wfmain::receiveStateInfo(rigstate* state)
-{
-    qInfo("Setting rig state for wfmain");
-    rigState = state;
 }
 
 void wfmain::on_setClockBtn_clicked()
@@ -9212,9 +9174,9 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcDSPIFFilter:
         break;
-    case funcNotchWidth:
+    case funcManualNotchWidth:
         break;
-    case funcSSBBandwidth:
+    case funcSSBTXBandwidth:
         break;
     case funcMainSubTracking:
         break;

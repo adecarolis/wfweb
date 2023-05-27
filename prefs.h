@@ -4,6 +4,7 @@
 #include <QString>
 #include <QColor>
 #include <QMap>
+#include "rigidentities.h"
 #include "wfviewtypes.h"
 
 enum prefIfItem {
@@ -25,6 +26,41 @@ enum prefIfItem {
     if_clickDragTuningEnable = 1 << 15,
     if_currentColorPresetNumber = 1 << 16,
     if_all = 1 << 17
+};
+
+enum prefColItem {
+    col_grid = 1 << 0,
+    col_axis = 1 << 1,
+    col_text = 1 << 2,
+    col_plotBackground = 1 << 3,
+    col_spectrumLine = 1 << 4,
+    col_spectrumFill = 1 << 5,
+    col_underlayLine = 1 << 6,
+    col_underlayFill = 1 << 7,
+    col_tuningLine = 1 << 8,
+    col_passband = 1 << 9,
+    col_pbtIndicator = 1 << 10,
+    col_meterLevel = 1 << 11,
+    col_meterAverage = 1 << 12,
+    col_meterPeakLevel = 1 << 13,
+    col_meterHighScale = 1 << 14,
+    col_meterScale = 1 << 15,
+    col_meterText = 1 << 16,
+    col_waterfallBack = 1 << 17,
+    col_waterfallGrid = 1 << 18,
+    col_waterfallAxis = 1 << 19,
+    col_waterfallText = 1 << 20,
+    col_clusterSpots = 1 << 21,
+    col_all = 1 << 22
+};
+
+enum prefRsItem {
+    rs_dataOffMod = 1 << 0,
+    rs_data1Mod = 1 << 1,
+    rs_data2Mod = 1 << 2,
+    rs_data3Mod = 1 << 3,
+    rs_clockUseUtc = 1 << 4,
+    rs_all = 1 << 5
 };
 
 enum prefRaItem {
@@ -113,6 +149,12 @@ struct preferences {
     QString virtualSerialPort;
     unsigned char localAFgain;
     audioType audioSystem;
+
+    // Radio settings:
+    inputTypes inputDataOff=inputNone;
+    inputTypes inputData1=inputNone;
+    inputTypes inputData2=inputNone;
+    inputTypes inputData3=inputNone;
 
     // Controls:
     bool enablePTT;

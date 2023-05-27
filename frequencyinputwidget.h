@@ -7,6 +7,7 @@
 #include "sidebandchooser.h"
 #include "wfviewtypes.h"
 #include "logcategories.h"
+#include "cachingqueue.h"
 
 namespace Ui {
 class frequencyinputwidget;
@@ -63,6 +64,8 @@ private:
     freqt currentFrequency;
     int currentFilter = 1;
     void checkFreqSel();
+    cachingQueue* queue;
+
 };
 
 #endif // FREQUENCYINPUTWIDGET_H

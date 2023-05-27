@@ -130,16 +130,32 @@ struct centerSpanData {
 
 struct bandType {
     bandType() {}
-    bandType(availableBands band, quint64 lowFreq, quint64 highFreq, double range, int memGroup) :
-        band(band), lowFreq(lowFreq), highFreq(highFreq), range(range), memGroup(memGroup) {}
+    bandType(availableBands band, uchar bsr, quint64 lowFreq, quint64 highFreq, double range, int memGroup) :
+        band(band), bsr(bsr), lowFreq(lowFreq), highFreq(highFreq), range(range), memGroup(memGroup) {}
 
     availableBands band;
+    uchar bsr;
     quint64 lowFreq;
     quint64 highFreq;
     rigMode_t defaultMode;
     double range;
     int memGroup;
 };
+
+// Used for setting/retrieving BSR information
+struct bandStackType {
+    bandStackType() {}
+    bandStackType(uchar band, uchar regCode): band(band),regCode(regCode), freq(), data(0), mode(0), filter(0) {}
+    bandStackType(uchar band, uchar regCode, freqt freq, uchar data, uchar mode, uchar filter):
+        band(band), regCode(regCode), freq(freq), data(data), mode(mode), filter(filter) {};
+    uchar band;
+    uchar regCode;
+    freqt freq;
+    uchar data;
+    uchar mode;
+    uchar filter;
+};
+
 
 struct filterType {
     filterType() {}
@@ -159,19 +175,6 @@ struct genericType {
     QString name;
 };
 
-
-struct bandStackType {
-    bandStackType() {}
-    bandStackType(uchar band, uchar regCode): band(band),regCode(regCode), freq(), data(0), mode(0), filter(0) {}
-    bandStackType(uchar band, uchar regCode, freqt freq, uchar data, uchar mode, uchar filter):
-        band(band), regCode(regCode), freq(freq), data(data), mode(mode), filter(filter) {};
-    uchar band;
-    uchar regCode;
-    freqt freq;
-    uchar data;
-    uchar mode;
-    uchar filter;
-};
 
 
 //model_kind determineRadioModel(unsigned char rigID);

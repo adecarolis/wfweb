@@ -41,7 +41,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>3</number>
+        <number>2</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -1211,8 +1211,8 @@
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>916</width>
-                 <height>311</height>
+                 <width>925</width>
+                 <height>332</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">
@@ -1960,7 +1960,7 @@
            <item>
             <widget class="QLabel" name="label_27">
              <property name="text">
-              <string>Modulation Input:</string>
+              <string>Data Off Modulation Input:</string>
              </property>
             </widget>
            </item>
@@ -1980,12 +1980,12 @@
            <item>
             <widget class="QLabel" name="label_29">
              <property name="text">
-              <string>Data Mod Input:</string>
+              <string>(Data Mod Inputs) DATA1:</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QComboBox" name="modInputDataCombo">
+            <widget class="QComboBox" name="modInputData1Combo">
              <property name="accessibleName">
               <string>Data Modulation Input</string>
              </property>
@@ -1996,6 +1996,26 @@
               <enum>QComboBox::AdjustToContents</enum>
              </property>
             </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="modInputData2ComboText">
+             <property name="text">
+              <string>DATA2:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="modInputData2Combo"/>
+           </item>
+           <item>
+            <widget class="QLabel" name="modInputData3ComboText">
+             <property name="text">
+              <string>DATA3:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="modInputData3Combo"/>
            </item>
            <item>
             <spacer name="horizontalSpacer_15">

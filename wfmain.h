@@ -26,7 +26,6 @@
 #include "prefs.h"
 #include "commhandler.h"
 #include "rigcommander.h"
-#include "rigstate.h"
 #include "freqmemory.h"
 #include "rigidentities.h"
 #include "repeaterattributes.h"
@@ -289,8 +288,7 @@ signals:
     void initServer();
     void sendRigCaps(rigCapabilities caps);
     void openShuttle();
-    void requestRigState();
-    void stateUpdated();
+
     void initUsbController(QMutex* mutex,usbDevMap* devs ,QVector<BUTTON>* buts,QVector<KNOB>* knobs);
     void setClusterUdpPort(int port);
     void setClusterEnableUdp(bool udp);
@@ -308,15 +306,19 @@ signals:
 
 private slots:
     // Triggered from external preference changes:
-    void extChangedIfPrefs(int items);
-    void extChangedRaPrefs(int items);
-    void extChangedCtPrefs(int items);
-    void extChangedLanPrefs(int items);
-    void extChangedClusterPrefs(int items);
-    void extChangedUdpPrefs(int items);
+    void extChangedIfPrefs(quint64 items);
+    void extChangedColPrefs(quint64 items);
+    void extChangedRaPrefs(quint64 items);
+    void extChangedRsPrefs(quint64 items);
+    void extChangedCtPrefs(quint64 items);
+    void extChangedLanPrefs(quint64 items);
+    void extChangedClusterPrefs(quint64 items);
+    void extChangedUdpPrefs(quint64 items);
 
     void extChangedIfPref(prefIfItem i);
+    void extChangedColPref(prefColItem i);
     void extChangedRaPref(prefRaItem i);
+    void extChangedRsPref(prefRsItem i);
     void extChangedCtPref(prefCtItem i);
     void extChangedLanPref(prefLanItem i);
     void extChangedClusterPref(prefClusterItem i);
@@ -510,11 +512,6 @@ private slots:
     void on_micGainSlider_valueChanged(int value);
     void on_scopeRefLevelSlider_valueChanged(int value);
     void useSystemTheme(bool checked);
-    void on_modInputCombo_activated(int index);
-
-    void on_modInputData1Combo_activated(int index);
-    void on_modInputData2Combo_activated(int index);
-    void on_modInputData3Combo_activated(int index);
 
     void on_tuneLockChk_clicked(bool checked);
 
@@ -547,17 +544,18 @@ private slots:
 
     void on_useCIVasRigIDChk_clicked(bool checked);
 
-    void receiveStateInfo(rigstate* state);
-
     void on_settingsList_currentRowChanged(int currentRow);
     void on_setClockBtn_clicked();
     void on_serverEnableCheckbox_clicked(bool checked);
     void on_serverControlPortText_textChanged(QString text);
     void on_serverCivPortText_textChanged(QString text);
     void on_serverAudioPortText_textChanged(QString text);
+
     void changedServerTXAudioOutput(int value);
     void changedServerRXAudioInput(int value);
     void onServerUserFieldChanged();
+    void changedModInput(uchar val, inputTypes type);
+
     void on_serverAddUserBtn_clicked();
     void on_radioStatusBtn_clicked();
     void on_audioSystemCombo_currentIndexChanged(int value);
@@ -677,7 +675,6 @@ private:
     QCPItemText* oorIndicator;
     QCPItemText* ovfIndicator;
     void setAppTheme(bool isCustom);
-    void prepareWf();
     void prepareWf(unsigned int wfLength);
     void preparePlasma();
     bool plasmaPrepared = false;
@@ -975,8 +972,6 @@ private:
     unsigned int tsWfScrollHz;
     unsigned int tsKnobHz;
 
-    rigstate* rigState = Q_NULLPTR;
-
     passbandActions passbandAction = passbandStatic;
     double PBTInner = 0.0;
     double PBTOuter = 0.0;
@@ -1028,7 +1023,6 @@ Q_DECLARE_METATYPE(networkStatus)
 Q_DECLARE_METATYPE(networkAudioLevels)
 Q_DECLARE_METATYPE(spotData)
 Q_DECLARE_METATYPE(radio_cap_packet)
-Q_DECLARE_METATYPE(rigstate*)
 Q_DECLARE_METATYPE(BUTTON)
 Q_DECLARE_METATYPE(QVector<BUTTON>*)
 Q_DECLARE_METATYPE(KNOB)

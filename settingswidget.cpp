@@ -82,6 +82,11 @@ void settingswidget::populateComboBoxes()
     ui->audioTXCodecCombo->blockSignals(false);
 
     ui->controlPortTxt->setValidator(new QIntValidator(this));
+
+    ui->modInputData2ComboText->setVisible(false);
+    ui->modInputData2Combo->setVisible(false);
+    ui->modInputData3ComboText->setVisible(false);
+    ui->modInputData3Combo->setVisible(false);
 }
 
 // Updating Preferences:
@@ -175,7 +180,7 @@ void settingswidget::setUItoClustersList()
     }
 }
 
-void settingswidget::updateIfPrefs(int items)
+void settingswidget::updateIfPrefs(quint64 items)
 {
     prefIfItem pif;
     if(items & (int)if_all)
@@ -193,7 +198,25 @@ void settingswidget::updateIfPrefs(int items)
     }
 }
 
-void settingswidget::updateRaPrefs(int items)
+void settingswidget::updateColPrefs(quint64 items)
+{
+    prefColItem col;
+    if(items & (int)if_all)
+    {
+        items = 0xffffffff;
+    }
+    for(int i=1; i < (int)col_all; i = i << 1)
+    {
+        if(items & i)
+        {
+            qDebug(logGui()) << "Updating Color pref" << (int)i;
+            col = (prefColItem)i;
+            updateColPref(col);
+        }
+    }
+}
+
+void settingswidget::updateRaPrefs(quint64 items)
 {
     prefRaItem pra;
     if(items & (int)ra_all)
@@ -211,7 +234,26 @@ void settingswidget::updateRaPrefs(int items)
     }
 }
 
-void settingswidget::updateCtPrefs(int items)
+void settingswidget::updateRsPrefs(quint64 items)
+{
+    prefRsItem prs;
+    if(items & (int)rs_all)
+    {
+        items = 0xffffffff;
+    }
+    for(int i=1; i < (int)rs_all; i = i << 1)
+    {
+        if(items & i)
+        {
+            qInfo(logGui()) << "Updating Rs pref" << (int)i;
+            prs = (prefRsItem)i;
+            updateRsPref(prs);
+        }
+    }
+}
+
+
+void settingswidget::updateCtPrefs(quint64 items)
 {
     prefCtItem pct;
     if(items & (int)ct_all)
@@ -229,7 +271,7 @@ void settingswidget::updateCtPrefs(int items)
     }
 }
 
-void settingswidget::updateServerConfigs(int items)
+void settingswidget::updateServerConfigs(quint64 items)
 {
     serverItems si;
     if(items & (int)s_all)
@@ -247,7 +289,7 @@ void settingswidget::updateServerConfigs(int items)
     }
 }
 
-void settingswidget::updateLanPrefs(int items)
+void settingswidget::updateLanPrefs(quint64 items)
 {
     prefLanItem plan;
     if(items & (int)l_all)
@@ -265,7 +307,7 @@ void settingswidget::updateLanPrefs(int items)
     }
 }
 
-void settingswidget::updateClusterPrefs(int items)
+void settingswidget::updateClusterPrefs(quint64 items)
 {
     prefClusterItem pcl;
     if(items & (int)cl_all)
@@ -358,6 +400,23 @@ void settingswidget::updateIfPref(prefIfItem pif)
     updatingUIFromPrefs = false;
 }
 
+void settingswidget::updateColPref(prefColItem col)
+{
+    if(prefs==NULL)
+        return;
+
+    updatingUIFromPrefs = true;
+    switch(col)
+    {
+    case col_grid:
+        break;
+    default:
+        qWarning(logGui()) << "Did not understand color pref update item " << (int)col;
+        break;
+    }
+    updatingUIFromPrefs = false;
+}
+
 void settingswidget::updateRaPref(prefRaItem pra)
 {
     if(prefs==NULL)
@@ -432,9 +491,7 @@ void settingswidget::updateRaPref(prefRaItem pra)
         break;
     }
     case ra_serialPortBaud:
-        ui->baudRateCombo->blockSignals(true);
-        ui->baudRateCombo->setCurrentIndex(ui->baudRateCombo->findData(prefs->serialPortBaud));
-        ui->baudRateCombo->blockSignals(false);
+        quietlyUpdateCombobox(ui->baudRateCombo,QVariant::fromValue(prefs->serialPortBaud));
         break;
     case ra_virtualSerialPort:
     {
@@ -472,6 +529,34 @@ void settingswidget::updateRaPref(prefRaItem pra)
     }
     updatingUIFromPrefs = false;
 }
+
+void settingswidget::updateRsPref(prefRsItem prs)
+{
+    if(prefs==NULL)
+        return;
+
+    updatingUIFromPrefs = true;
+    switch(prs)
+    {
+    case rs_dataOffMod:
+        quietlyUpdateCombobox(ui->modInputCombo,QVariant::fromValue(prefs->inputDataOff));
+        break;
+    case rs_data1Mod:
+        quietlyUpdateCombobox(ui->modInputData1Combo,QVariant::fromValue(prefs->inputData1));
+        break;
+    case rs_data2Mod:
+        quietlyUpdateCombobox(ui->modInputData2Combo,QVariant::fromValue(prefs->inputData2));
+        break;
+    case rs_data3Mod:
+        quietlyUpdateCombobox(ui->modInputData3Combo,QVariant::fromValue(prefs->inputData3));
+        break;
+    default:
+        qWarning(logGui()) << "Cannot update rs pref" << (int)prs;
+    }
+    updatingUIFromPrefs = false;
+}
+
+
 
 void settingswidget::updateCtPref(prefCtItem pct)
 {
@@ -831,26 +916,44 @@ void settingswidget::updateVSPList(QStringList deviceList, QVector<int> data)
     }
 }
 
-void settingswidget::updateModSourceList(QStringList deviceNames, QVector<rigInput> data)
+void settingswidget::updateModSourceList(uchar num, QVector<rigInput> data)
 {
-    ui->modInputCombo->blockSignals(true);
-    ui->modInputCombo->clear();
-    for(int i=0; i < deviceNames.length(); i++)
-    {
-        ui->modInputCombo->addItem(deviceNames.at(i), QVariant::fromValue(data.at(i)));
-    }
-    ui->modInputCombo->blockSignals(false);
-}
 
-void settingswidget::updateDataModSourceList(QStringList deviceNames, QVector<rigInput> data)
-{
-    ui->modInputDataCombo->blockSignals(true);
-    ui->modInputDataCombo->clear();
-    for(int i=0; i < deviceNames.length(); i++)
+    QComboBox* combo;
+    switch (num)
     {
-        ui->modInputDataCombo->addItem(deviceNames.at(i), QVariant::fromValue(data.at(i)));
+    case 0:
+        combo = ui->modInputCombo;
+        break;
+    case 1:
+        combo = ui->modInputData1Combo;
+        break;
+    case 2:
+        combo = ui->modInputData2Combo;
+        ui->modInputData2ComboText->setVisible(true);
+        break;
+    case 3:
+        combo = ui->modInputData3Combo;
+        ui->modInputData3ComboText->setVisible(true);
+        break;
+    default:
+        return;
     }
-    ui->modInputDataCombo->blockSignals(false);
+
+    combo->blockSignals(true);
+    combo->clear();
+
+    foreach (auto input, data)
+    {
+        combo->addItem(input.name, QVariant::fromValue(input.type));
+    }
+
+    if (data.length()==0){
+        combo->addItem("None", QVariant::fromValue(inputNone));
+    }
+
+    combo->setVisible(true);
+    combo->blockSignals(false);
 }
 
 void settingswidget::populateServerUsers()
@@ -963,6 +1066,20 @@ void settingswidget::quietlyUpdateSlider(QSlider *sl, int val)
     if( (val >= sl->minimum()) && (val <= sl->maximum()) )
         sl->setValue(val);
     sl->blockSignals(false);
+}
+
+void settingswidget::quietlyUpdateCombobox(QComboBox *cb, int index)
+{
+    cb->blockSignals(true);
+    cb->setCurrentIndex(index);
+    cb->blockSignals(false);
+}
+
+void settingswidget::quietlyUpdateCombobox(QComboBox *cb, QVariant val)
+{
+    cb->blockSignals(true);
+    cb->setCurrentIndex(cb->findData(val));
+    cb->blockSignals(false);
 }
 
 void settingswidget::quietlyUpdateSpinbox(QSpinBox *sb, int val)
@@ -1184,9 +1301,7 @@ void settingswidget::on_serialDeviceListCombo_activated(const QString &arg1)
                                            tr("/dev/device"), &ok);
         if(manualPort.isEmpty() || !ok)
         {
-            ui->serialDeviceListCombo->blockSignals(true);
-            ui->serialDeviceListCombo->setCurrentIndex(0);
-            ui->serialDeviceListCombo->blockSignals(false);
+            quietlyUpdateCombobox(ui->serialDeviceListCombo,0);
             return;
         } else {
             prefs->serialPortRadio = manualPort;
@@ -1234,18 +1349,14 @@ void settingswidget::on_vspCombo_activated(int index)
 void settingswidget::on_audioSystemCombo_currentIndexChanged(int value)
 {
     prefs->audioSystem = static_cast<audioType>(value);
-    ui->audioSystemServerCombo->blockSignals(true);
-    ui->audioSystemServerCombo->setCurrentIndex(value);
-    ui->audioSystemServerCombo->blockSignals(false);
+    quietlyUpdateCombobox(ui->audioSystemServerCombo,value);
     emit changedRaPref(ra_audioSystem);
 }
 
 void settingswidget::on_audioSystemServerCombo_currentIndexChanged(int value)
 {
     prefs->audioSystem = static_cast<audioType>(value);
-    ui->audioSystemCombo->blockSignals(true);
-    ui->audioSystemCombo->setCurrentIndex(value);
-    ui->audioSystemCombo->blockSignals(false);
+    quietlyUpdateCombobox(ui->audioSystemCombo,value);
     emit changedRaPref(ra_audioSystem);
 }
 
@@ -1391,17 +1502,10 @@ void settingswidget::on_clusterServerNameCombo_currentIndexChanged(int index)
         qInfo(logGui) << "Editing Cluster server" << text;
         clusters[index].server = text;
     }
-    ui->clusterUsernameLineEdit->blockSignals(true);
-    ui->clusterPasswordLineEdit->blockSignals(true);
-    ui->clusterTimeoutLineEdit->blockSignals(true);
-    ui->clusterTcpPortLineEdit->setText(QString::number(clusters[index].port));
-    ui->clusterUsernameLineEdit->setText(clusters[index].userName);
-    ui->clusterPasswordLineEdit->setText(clusters[index].password);
-    ui->clusterTimeoutLineEdit->setText(QString::number(clusters[index].timeout));
-    ui->clusterUsernameLineEdit->blockSignals(false);
-    ui->clusterPasswordLineEdit->blockSignals(false);
-    ui->clusterTimeoutLineEdit->blockSignals(false);
-
+    quietlyUpdateLineEdit(ui->clusterTcpPortLineEdit,QString::number(clusters[index].port));
+    quietlyUpdateLineEdit(ui->clusterUsernameLineEdit,clusters[index].userName);
+    quietlyUpdateLineEdit(ui->clusterPasswordLineEdit,clusters[index].password);
+    quietlyUpdateLineEdit(ui->clusterTimeoutLineEdit,QString::number(clusters[index].timeout));
 
     for (int i = 0; i < clusters.size(); i++) {
         if (i == index)
@@ -1610,4 +1714,27 @@ void settingswidget::on_serverAddUserBtn_clicked()
     serverConfig->users.append(user);
 
     ui->serverAddUserBtn->setEnabled(false);
+}
+
+
+void settingswidget::on_modInputCombo_activated(int index)
+{
+    emit changedModInput(0,ui->modInputCombo->currentData().value<inputTypes>());
+}
+
+void settingswidget::on_modInputData1Combo_activated(int index)
+{
+    emit changedModInput(1,ui->modInputData1Combo->currentData().value<inputTypes>());
+}
+
+
+void settingswidget::on_modInputData2Combo_activated(int index)
+{
+    emit changedModInput(2,ui->modInputData2Combo->currentData().value<inputTypes>());
+}
+
+
+void settingswidget::on_modInputData3Combo_activated(int index)
+{
+    emit changedModInput(3,ui->modInputData3Combo->currentData().value<inputTypes>());
 }
