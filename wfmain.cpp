@@ -6967,12 +6967,12 @@ void wfmain::powerRigOff()
 
 void wfmain::on_ritTuneDial_valueChanged(int value)
 {
-    emit setRitValue(value);
+    queue->add(priorityImmediate,queueItem(funcRITFreq,QVariant::fromValue(short(value))));
 }
 
 void wfmain::on_ritEnableChk_clicked(bool checked)
 {
-    emit setRitEnable(checked);
+    queue->add(priorityImmediate,queueItem(funcRitStatus,QVariant::fromValue(checked)));
 }
 
 void wfmain::receiveRITStatus(bool ritEnabled)
@@ -8347,14 +8347,17 @@ void wfmain::receiveValue(cacheItem val){
         break;
     // 0x1c register
     case funcRitStatus:
+        receiveRITStatus(val.value.value<bool>());
         break;
     case funcTransceiverStatus:
         receivePTTstatus(val.value.value<bool>());
         break;
     case funcTunerStatus:
+        receiveATUStatus(val.value.value<uchar>());
         break;
     // 0x21 RIT:
     case funcRITFreq:
+        receiveRITValue(val.value.value<short>());
         break;
     // 0x27
     case funcScopeMainWaveData:
