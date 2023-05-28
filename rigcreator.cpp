@@ -337,8 +337,42 @@ void rigCreator::loadRigFile(QString file)
 
     settings->endGroup();
     delete settings;
+
+    // Connect signals to find out if changed.
+    connect(ui->antennas,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->attenuators,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->bands,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->commands,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->filters,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->inputs,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->modes,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->preamps,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->spans,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->hasCommand29,SIGNAL(stateChanged(int)),SLOT(changed()));
+    connect(ui->hasEthernet,SIGNAL(stateChanged(int)),SLOT(changed()));
+    connect(ui->hasFDComms,SIGNAL(stateChanged(int)),SLOT(changed()));
+    connect(ui->hasLAN,SIGNAL(stateChanged(int)),SLOT(changed()));
+    connect(ui->hasSpectrum,SIGNAL(stateChanged(int)),SLOT(changed()));
+    connect(ui->hasTransmit,SIGNAL(stateChanged(int)),SLOT(changed()));
+    connect(ui->hasWifi,SIGNAL(stateChanged(int)),SLOT(changed()));
+    connect(ui->civAddress,SIGNAL(editingFinished()),SLOT(changed()));
+    connect(ui->rigctldModel,SIGNAL(editingFinished()),SLOT(changed()));
+    connect(ui->model,SIGNAL(editingFinished()),SLOT(changed()));
+//    connect(ui->manufacturer,SIGNAL(editingFinished()),SLOT(changed()));
+    connect(ui->memGroups,SIGNAL(editingFinished()),SLOT(changed()));
+    connect(ui->memStart,SIGNAL(editingFinished()),SLOT(changed()));
+    connect(ui->memories,SIGNAL(editingFinished()),SLOT(changed()));
+    connect(ui->memoryFormat,SIGNAL(editingFinished()),SLOT(changed()));
+    connect(ui->satMemories,SIGNAL(editingFinished()),SLOT(changed()));
+    connect(ui->satelliteFormat,SIGNAL(editingFinished()),SLOT(changed()));
+
+    settingsChanged = false;
 }
 
+void rigCreator::changed()
+{
+    settingsChanged = true;
+}
 void rigCreator::on_saveFile_clicked(bool clicked)
 {
     Q_UNUSED(clicked)
@@ -527,6 +561,9 @@ void rigCreator::saveRigFile(QString file)
     settings->sync();
 
     delete settings;
+
+    settingsChanged = false;
+
 }
 
 
@@ -557,4 +594,20 @@ QStandardItemModel* rigCreator::createModel(QStandardItemModel* model, QString s
 void rigCreator::on_hasCommand29_toggled(bool checked)
 {
     ui->commands->setColumnHidden(4,!checked);
+}
+
+
+void rigCreator::closeEvent(QCloseEvent *event)
+{
+
+    if (settingsChanged)
+    {
+        // Settings have changed since last save
+        qInfo() << "Settings have changed since last save";
+        int reply = QMessageBox::question(this,"rig creator","Changes will be lost!",QMessageBox::Cancel |QMessageBox::Ok);
+        if (reply == QMessageBox::Cancel)
+        {
+            event->ignore();
+        }
+    }
 }

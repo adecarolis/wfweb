@@ -20,6 +20,8 @@
 #include "cluster.h" // for clusterSettings
 #include "rigidentities.h" // for rigInputs
 #include "udpserver.h" // for SERVERCONFIG
+#include "qledlabel.h" // For color swatches
+#include "audiodevices.h"
 
 namespace Ui {
 class settingswidget;
@@ -38,6 +40,7 @@ public slots:
     void acceptPreferencesPtr(preferences *pptr);
     void acceptUdpPreferencesPtr(udpPreferences *upptr);
     void acceptServerConfig(SERVERCONFIG *serverConfig);
+    void acceptColorPresetPtr(colorPrefsType *cp);
 
     void copyClusterList(QList<clusterSettings> c);
     void insertClusterOutputText(QString text);
@@ -72,9 +75,11 @@ public slots:
     void updateVSPList(QStringList deviceList, QVector<int> data);
 
     void updateModSourceList(uchar num, QVector<rigInput> data);
+    void setAudioDevicesUI();
 
 signals:
     void changedIfPrefs(quint64 items);
+    void changedColPrefs(quint64 items);
     void changedRaPrefs(quint64 items);
     void changedRsPrefs(quint64 items);
     void changedCtPrefs(quint64 items);
@@ -89,6 +94,7 @@ signals:
     void changedServerRXAudioInputCombo(int index);
 
     void changedIfPref(prefIfItem i);
+    void changedColPref(prefColItem i);
     void changedRaPref(prefRaItem i);
     void changedRsPref(prefRsItem i);
     void changedCtPref(prefCtItem i);
@@ -98,7 +104,7 @@ signals:
     void changedServerConfig(serverItems i);
 
     void showUSBControllerSetup();
-    void changedModInput(uchar num, inputTypes input);
+    void changedModInput(uchar num, inputTypes input);    
 
 private slots:
     void on_settingsList_currentRowChanged(int currentRow);
@@ -128,6 +134,7 @@ private slots:
     void on_underlayBufferSlider_valueChanged(int value);
     void on_pttEnableChk_clicked(bool checked);
     void on_clickDragTuningEnableChk_clicked(bool checked);
+    void on_rigCreatorChk_clicked(bool checked);
     void on_serialEnableBtn_clicked(bool checked);
     void on_enableRigctldChk_clicked(bool checked);
     void on_rigctldPortTxt_editingFinished();
@@ -155,6 +162,12 @@ private slots:
     void on_serverTXAudioOutputCombo_currentIndexChanged(int index);
     void on_serverEnableCheckbox_clicked(bool checked);
 
+    void on_rxLatencySlider_valueChanged(int value);
+    void on_txLatencySlider_valueChanged(int value);
+    void on_audioRXCodecCombo_currentIndexChanged(int value);
+    void on_audioTXCodecCombo_currentIndexChanged(int value);
+    void on_audioSampleRateCombo_currentIndexChanged(int value);
+
     void on_serverAddUserBtn_clicked();
 
     void on_modInputCombo_activated(int index);
@@ -162,6 +175,56 @@ private slots:
     void on_modInputData2Combo_activated(int index);
     void on_modInputData3Combo_activated(int index);
 
+    // Color slots
+    void on_colorPresetCombo_currentIndexChanged(int index);
+    void on_colorSavePresetBtn_clicked();
+
+    void on_colorSetBtnPlotBackground_clicked();
+    void on_colorEditPlotBackground_editingFinished();
+    void on_colorSetBtnSpecLine_clicked();
+    void on_colorEditSpecLine_editingFinished();
+    void on_colorSetBtnGrid_clicked();
+    void on_colorEditGrid_editingFinished();
+    void on_colorSetBtnText_clicked();
+    void on_colorEditText_editingFinished();
+    void on_colorSetBtnSpecFill_clicked();
+    void on_colorEditSpecFill_editingFinished();
+    void on_colorSetBtnAxis_clicked();
+    void on_colorEditAxis_editingFinished();
+    void on_colorSetBtnUnderlayLine_clicked();
+    void on_colorEditUnderlayLine_editingFinished();
+    void on_colorSetBtnUnderlayFill_clicked();
+    void on_colorEditUnderlayFill_editingFinished();
+    void on_colorSetBtnwfBackground_clicked();
+    void on_colorEditWfBackground_editingFinished();
+    void on_colorSetBtnWfGrid_clicked();
+    void on_colorEditWfGrid_editingFinished();
+    void on_colorSetBtnWfAxis_clicked();
+    void on_colorEditWfAxis_editingFinished();
+    void on_colorSetBtnWfText_clicked();
+    void on_colorEditWfText_editingFinished();
+    void on_colorSetBtnTuningLine_clicked();
+    void on_colorEditTuningLine_editingFinished();
+    void on_colorSetBtnPassband_clicked();
+    void on_colorEditPassband_editingFinished();
+    void on_colorSetBtnPBT_clicked();
+    void on_colorEditPBT_editingFinished();
+    void on_colorSetBtnMeterLevel_clicked();
+    void on_colorEditMeterLevel_editingFinished();
+    void on_colorSetBtnMeterAvg_clicked();
+    void on_colorEditMeterAvg_editingFinished();
+    void on_colorSetBtnMeterScale_clicked();
+    void on_colorEditMeterScale_editingFinished();
+    void on_colorSetBtnMeterText_clicked();
+    void on_colorEditMeterText_editingFinished();
+    void on_colorSetBtnClusterSpots_clicked();
+    void on_colorEditClusterSpots_editingFinished();
+    void on_colorRenamePresetBtn_clicked();
+    void on_colorRevertPresetBtn_clicked();
+    void on_colorSetBtnMeterPeakLevel_clicked();
+    void on_colorEditMeterPeakLevel_editingFinished();
+    void on_colorSetBtnMeterPeakScale_clicked();
+    void on_colorEditMeterPeakScale_editingFinished();
 
 private:
     Ui::settingswidget *ui;
@@ -175,15 +238,30 @@ private:
     void quietlyUpdateSlider(QSlider* sl, int val);
     void quietlyUpdateCombobox(QComboBox *cb, int index);
     void quietlyUpdateCombobox(QComboBox *cb, QVariant val);
+    void quietlyUpdateCombobox(QComboBox *cb, QString val);
     void quietlyUpdateSpinbox(QSpinBox *sb, int val);
     void quietlyUpdateCheckbox(QCheckBox *cb, bool isChecked);
     void quietlyUpdateRadiobutton(QRadioButton *rb, bool isChecked);
     void quietlyUpdateLineEdit(QLineEdit *le, const QString text);
 
+    // Colors (helper functions)
+    void setEditAndLedFromColor(QColor c, QLineEdit *e, QLedLabel *d);
+    void setColorButtonOperations(QColor *colorStore, QLineEdit *e, QLedLabel *d);
+    void setColorLineEditOperations(QColor *colorStore, QLineEdit *e, QLedLabel *d);
+    void loadColorPresetToUIandPlots(int presetNumber);
+    void setColorElement(QColor color, QLedLabel *led, QLabel *label);
+    void setColorElement(QColor color, QLedLabel *led, QLineEdit *lineText);
+    void setColorElement(QColor color, QLedLabel *led, QLabel *label, QLineEdit *lineText);
+    QColor getColorFromPicker(QColor initialColor);
+    void getSetColor(QLedLabel *led, QLabel *label);
+    void getSetColor(QLedLabel *led, QLineEdit *line);
+    QString setColorFromString(QString aarrggbb, QLedLabel *led);
+
     void populateServerUsers();
     void serverAddUserLine(const QString& user, const QString& pass, const int& type);
 
     preferences *prefs = NULL;
+    colorPrefsType *colorPreset;
     udpPreferences *udpPrefs = NULL;
     SERVERCONFIG *serverConfig = NULL;
     bool havePrefs = false;
@@ -199,6 +277,8 @@ private:
     bool updatingUIFromPrefs = false;
 
     QList<clusterSettings> clusters;
+
+    audioDevices* audioDev = Q_NULLPTR;
 
 };
 

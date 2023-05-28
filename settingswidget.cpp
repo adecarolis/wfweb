@@ -8,6 +8,7 @@ settingswidget::settingswidget(QWidget *parent) :
     ui(new Ui::settingswidget)
 {
     ui->setupUi(this);
+
     createSettingsListItems();
     populateComboBoxes();
 }
@@ -15,6 +16,14 @@ settingswidget::settingswidget(QWidget *parent) :
 settingswidget::~settingswidget()
 {
     delete ui;
+
+    if (audioDev != Q_NULLPTR) {
+        delete audioDev;
+    }
+
+    if (prefs->audioSystem == portAudio) {
+        Pa_Terminate();
+    }
 }
 
 // Startup:
@@ -87,6 +96,11 @@ void settingswidget::populateComboBoxes()
     ui->modInputData2Combo->setVisible(false);
     ui->modInputData3ComboText->setVisible(false);
     ui->modInputData3Combo->setVisible(false);
+
+    // Set color preset combo to an invalid value to force the current preset to be loaded
+    ui->colorPresetCombo->blockSignals(true);
+    ui->colorPresetCombo->setCurrentIndex(-1);
+    ui->colorPresetCombo->blockSignals(false);
 }
 
 // Updating Preferences:
@@ -108,6 +122,14 @@ void settingswidget::acceptUdpPreferencesPtr(udpPreferences *upptr)
         udpPrefs = upptr;
         haveUdpPrefs = true;
     }
+    // New we have prefs, we get audio information
+
+    if (audioDev == Q_NULLPTR) {
+        audioDev = new audioDevices(prefs->audioSystem, QFontMetrics(ui->audioSystemCombo->font()));
+        connect(audioDev, SIGNAL(updated()), this, SLOT(setAudioDevicesUI()));
+        audioDev->enumerate();
+    }
+
 }
 
 void settingswidget::acceptServerConfig(SERVERCONFIG *sc)
@@ -117,6 +139,16 @@ void settingswidget::acceptServerConfig(SERVERCONFIG *sc)
         qDebug(logGui()) << "Accepting ServerConfig pointer into settings widget.";
         serverConfig = sc;
         haveServerConfig = true;
+    }
+}
+
+
+void settingswidget::acceptColorPresetPtr(colorPrefsType *cp)
+{
+    if(cp != NULL)
+    {
+        qDebug(logGui()) << "Accepting color preset pointer into settings widget.";
+        colorPreset = cp;
     }
 }
 
@@ -272,7 +304,7 @@ void settingswidget::updateCtPrefs(quint64 items)
 }
 
 void settingswidget::updateServerConfigs(quint64 items)
-{
+{    
     serverItems si;
     if(items & (int)s_all)
     {
@@ -290,7 +322,7 @@ void settingswidget::updateServerConfigs(quint64 items)
 }
 
 void settingswidget::updateLanPrefs(quint64 items)
-{
+{    
     prefLanItem plan;
     if(items & (int)l_all)
     {
@@ -387,12 +419,14 @@ void settingswidget::updateIfPref(prefIfItem pif)
         quietlyUpdateCheckbox(ui->clickDragTuningEnableChk, prefs->clickDragTuningEnable);
         break;
     case if_currentColorPresetNumber:
-        ui->colorPresetCombo->blockSignals(true);
+        //ui->colorPresetCombo->blockSignals(true);
         ui->colorPresetCombo->setCurrentIndex(prefs->currentColorPresetNumber);
-        ui->colorPresetCombo->blockSignals(false);
+        //ui->colorPresetCombo->blockSignals(false);
         // activate? or done when prefs load? Maybe some of each?
         // TODO
         break;
+    case if_rigCreatorEnable:
+        quietlyUpdateCheckbox(ui->rigCreatorChk, prefs->rigCreatorEnable);
     default:
         qWarning(logGui()) << "Did not understand if pref update item " << (int)pif;
         break;
@@ -406,10 +440,141 @@ void settingswidget::updateColPref(prefColItem col)
         return;
 
     updatingUIFromPrefs = true;
+    int pos = ui->colorPresetCombo->currentIndex();
     switch(col)
     {
     case col_grid:
+    {
+        QColor c = (colorPreset[pos].gridColor);
+        setColorElement(c,ui->colorSwatchGrid, ui->colorEditGrid);
         break;
+    }
+    case col_axis:
+    {
+        QColor c = (colorPreset[pos].axisColor);
+        setColorElement(c, ui->colorSwatchAxis, ui->colorEditAxis);
+        break;
+    }
+    case col_text:
+    {
+        QColor c = (colorPreset[pos].textColor);
+        setColorElement(c, ui->colorSwatchText, ui->colorEditText);
+        break;
+    }
+    case col_plotBackground:
+    {
+        QColor c = (colorPreset[pos].plotBackground);
+        setColorElement(c, ui->colorSwatchPlotBackground, ui->colorEditPlotBackground);
+        break;
+    }
+    case col_spectrumLine:
+    {
+        QColor c = (colorPreset[pos].spectrumLine);
+        setColorElement(c, ui->colorSwatchSpecLine, ui->colorEditSpecLine);
+        break;
+    }
+    case col_spectrumFill:
+    {
+        QColor c = (colorPreset[pos].spectrumFill);
+        setColorElement(c, ui->colorSwatchSpecFill, ui->colorEditSpecFill);
+        break;
+    }
+    case col_underlayLine:
+    {
+        QColor c = (colorPreset[pos].underlayLine);
+        setColorElement(c, ui->colorSwatchUnderlayLine, ui->colorEditUnderlayLine);
+        break;
+    }
+    case col_underlayFill:
+    {
+        QColor c = (colorPreset[pos].underlayFill);
+        setColorElement(c, ui->colorSwatchUnderlayFill, ui->colorEditUnderlayFill);
+        break;
+    }
+    case col_tuningLine:
+    {
+        QColor c = (colorPreset[pos].tuningLine);
+        setColorElement(c, ui->colorSwatchTuningLine, ui->colorEditTuningLine);
+        break;
+    }
+    case col_passband:
+    {
+        QColor c = (colorPreset[pos].passband);
+        setColorElement(c, ui->colorSwatchPassband, ui->colorEditPassband);
+        break;
+    }
+    case col_pbtIndicator:
+    {
+        QColor c = (colorPreset[pos].pbt);
+        setColorElement(c, ui->colorSwatchPBT, ui->colorEditPBT);
+        break;
+    }
+    case col_meterLevel:
+    {
+        QColor c = (colorPreset[pos].meterLevel);
+        setColorElement(c, ui->colorSwatchMeterLevel, ui->colorEditMeterLevel);
+        break;
+    }
+    case col_meterAverage:
+    {
+        QColor c = (colorPreset[pos].meterAverage);
+        setColorElement(c, ui->colorSwatchMeterAverage, ui->colorEditMeterAvg);
+        break;
+    }
+    case col_meterPeakLevel:
+    {
+        QColor c = (colorPreset[pos].meterPeakLevel);
+        setColorElement(c, ui->colorSwatchMeterPeakLevel, ui->colorEditMeterPeakLevel);
+        break;
+    }
+    case col_meterHighScale:
+    {
+        QColor c = (colorPreset[pos].meterPeakScale);
+        setColorElement(c, ui->colorSwatchMeterPeakScale, ui->colorEditMeterPeakScale);
+        break;
+    }
+    case col_meterScale:
+    {
+        QColor c = (colorPreset[pos].meterScale);
+        setColorElement(c, ui->colorSwatchMeterScale, ui->colorEditMeterScale);
+        break;
+    }
+    case col_meterText:
+    {
+        QColor c = (colorPreset[pos].meterLowText);
+        setColorElement(c, ui->colorSwatchMeterText, ui->colorEditMeterText);
+        break;
+    }
+    case col_waterfallBack:
+    {
+        QColor c = (colorPreset[pos].wfBackground);
+        setColorElement(c, ui->colorSwatchWfBackground, ui->colorEditWfBackground);
+        break;
+    }
+    case col_waterfallGrid:
+    {
+        QColor c = (colorPreset[pos].wfGrid);
+        setColorElement(c, ui->colorSwatchWfGrid, ui->colorEditWfGrid);
+        break;
+    }
+    case col_waterfallAxis:
+    {
+        QColor c = (colorPreset[pos].wfAxis);
+        setColorElement(c, ui->colorSwatchWfAxis, ui->colorEditWfAxis);
+        break;
+    }
+    case col_waterfallText:
+    {
+        QColor c = (colorPreset[pos].wfText);
+        setColorElement(c, ui->colorSwatchWfText, ui->colorEditWfText);
+        break;
+    }
+    case col_clusterSpots:
+    {
+        QColor c = (colorPreset[pos].clusterSpots);
+        setColorElement(c, ui->colorSwatchClusterSpots, ui->colorEditClusterSpots);
+        break;
+    }
     default:
         qWarning(logGui()) << "Did not understand color pref update item " << (int)col;
         break;
@@ -436,6 +601,9 @@ void settingswidget::updateRaPref(prefRaItem pra)
             ui->rigCIVaddrHexLine->setEnabled(true);
             ui->rigCIVaddrHexLine->setText(QString("%1").arg(prefs->radioCIVAddr, 2, 16));
         }
+        break;
+    case ra_serialEnabled:
+        // Will be enabled/disabled by UDP connection prefs
         break;
     case ra_CIVisRadioModel:
         quietlyUpdateCheckbox(ui->useCIVasRigIDChk, prefs->CIVisRadioModel);
@@ -734,17 +902,15 @@ void settingswidget::updateUdpPref(udpPrefsItem upi)
     updatingUIFromPrefs = true;
     switch(upi)
     {
+    case u_enabled:
+        // Call function directly
+        on_lanEnableBtn_clicked(prefs->enableLAN);
+        break;
     case u_ipAddress:
-        ui->ipAddressTxt->blockSignals(true);
-        ui->ipAddressTxt->setEnabled(ui->lanEnableBtn->isChecked());
-        ui->ipAddressTxt->setText(udpPrefs->ipAddress);
-        ui->ipAddressTxt->blockSignals(false);
+        quietlyUpdateLineEdit(ui->ipAddressTxt,udpPrefs->ipAddress);
         break;
     case u_controlLANPort:
-        ui->controlPortTxt->blockSignals(true);
-        ui->controlPortTxt->setEnabled(ui->lanEnableBtn->isChecked());
-        ui->controlPortTxt->setText(QString("%1").arg(udpPrefs->controlLANPort));
-        ui->controlPortTxt->blockSignals(false);
+        quietlyUpdateLineEdit(ui->controlPortTxt,QString::number(udpPrefs->controlLANPort));
         break;
     case u_serialLANPort:
         // Not used in the UI.
@@ -753,29 +919,40 @@ void settingswidget::updateUdpPref(udpPrefsItem upi)
         // Not used in the UI.
         break;
     case u_username:
-        ui->usernameTxt->blockSignals(true);
-        ui->usernameTxt->setEnabled(ui->lanEnableBtn->isChecked());
-        ui->usernameTxt->setText(QString("%1").arg(udpPrefs->username));
-        ui->usernameTxt->blockSignals(false);
+        quietlyUpdateLineEdit(ui->usernameTxt,udpPrefs->username);
         break;
     case u_password:
-        ui->passwordTxt->blockSignals(true);
-        ui->passwordTxt->setEnabled(ui->lanEnableBtn->isChecked());
-        ui->passwordTxt->setText(QString("%1").arg(udpPrefs->password));
-        ui->passwordTxt->blockSignals(false);
+        quietlyUpdateLineEdit(ui->passwordTxt,udpPrefs->password);
         break;
     case u_clientName:
         // Not used in the UI.
         break;
     case u_waterfallFormat:
-        ui->waterfallFormatCombo->blockSignals(true);
-        ui->waterfallFormatCombo->setCurrentIndex(prefs->waterfallFormat);
-        ui->waterfallFormatCombo->blockSignals(false);
+        quietlyUpdateCombobox(ui->waterfallFormatCombo,int(prefs->waterfallFormat));
         break;
     case u_halfDuplex:
-        ui->audioDuplexCombo->blockSignals(true);
-        ui->audioDuplexCombo->setCurrentIndex((int)udpPrefs->halfDuplex);
-        ui->audioDuplexCombo->blockSignals(false);
+        quietlyUpdateCombobox(ui->audioDuplexCombo,int(udpPrefs->halfDuplex));
+        break;
+    case u_sampleRate:
+        quietlyUpdateCombobox(ui->audioSampleRateCombo,QString::number(prefs->rxSetup.sampleRate));
+        break;
+    case u_rxCodec:
+        quietlyUpdateCombobox(ui->audioRXCodecCombo,QVariant::fromValue(prefs->rxSetup.codec));
+        break;
+    case u_txCodec:
+        quietlyUpdateCombobox(ui->audioTXCodecCombo,QVariant::fromValue(prefs->txSetup.codec));
+        break;
+    case u_rxLatency:
+        ui->rxLatencySlider->setValue(prefs->rxSetup.latency); // We want the signal to fire on audio devices
+        break;
+    case u_txLatency:
+        ui->txLatencySlider->setValue(prefs->txSetup.latency);
+        break;
+    case u_audioInput:
+        ui->audioInputCombo->setCurrentIndex(audioDev->findInput("Client", prefs->txSetup.name));
+        break;
+    case u_audioOutput:
+        ui->audioOutputCombo->setCurrentIndex(audioDev->findOutput("Client", prefs->rxSetup.name));
         break;
     default:
         qWarning(logGui()) << "Did not find matching UI element for UDP pref item " << (int)upi;
@@ -783,6 +960,61 @@ void settingswidget::updateUdpPref(udpPrefsItem upi)
     }
     updatingUIFromPrefs = false;
 }
+
+
+void settingswidget::setAudioDevicesUI()
+{
+    qInfo() << "Looking for inputs";
+
+    ui->audioInputCombo->blockSignals(true);
+    ui->audioInputCombo->clear();
+    ui->audioInputCombo->addItems(audioDev->getInputs());
+    ui->audioInputCombo->setCurrentIndex(-1);
+    ui->audioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn() + 30));
+    ui->audioInputCombo->blockSignals(false);
+
+    qInfo() << "Looking for outputs";
+    // done:
+    ui->audioOutputCombo->blockSignals(true);
+    ui->audioOutputCombo->clear();
+    ui->audioOutputCombo->addItems(audioDev->getOutputs());
+    ui->audioOutputCombo->setCurrentIndex(-1);
+    ui->audioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsOut() + 30));
+    ui->audioOutputCombo->blockSignals(false);
+
+    ui->serverTXAudioOutputCombo->blockSignals(true);
+    ui->serverTXAudioOutputCombo->clear();
+    ui->serverTXAudioOutputCombo->addItems(audioDev->getOutputs());
+    ui->serverTXAudioOutputCombo->setCurrentIndex(-1);
+    ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsOut() + 30));
+    ui->serverTXAudioOutputCombo->blockSignals(false);
+    int serverOutputIndex = -1;
+
+    ui->serverRXAudioInputCombo->blockSignals(true);
+    ui->serverRXAudioInputCombo->clear();
+    ui->serverRXAudioInputCombo->addItems(audioDev->getInputs());
+    ui->serverRXAudioInputCombo->setCurrentIndex(-1);
+    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn()+30));
+    ui->serverRXAudioInputCombo->blockSignals(false);
+    int serverInputIndex = -1;
+
+    prefs->rxSetup.type = prefs->audioSystem;
+    prefs->txSetup.type = prefs->audioSystem;
+
+    if (!serverConfig->rigs.isEmpty())
+    {
+        serverConfig->rigs.first()->rxAudioSetup.type = prefs->audioSystem;
+        serverConfig->rigs.first()->txAudioSetup.type = prefs->audioSystem;
+
+        ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig->rigs.first()->rxAudioSetup.name));
+        serverOutputIndex = audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name);
+        ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name));
+        serverInputIndex = audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name);
+    }
+
+    qDebug(logSystem()) << "Audio devices done.";
+}
+
 
 void settingswidget::updateAllPrefs()
 {
@@ -811,59 +1043,18 @@ void settingswidget::updateAllPrefs()
 
 void settingswidget::updateAudioInputs(QStringList deviceList, int currentIndex, int chars)
 {
-    // see wfmain::setAudioDevicesUI()
-    if(haveAudioInputs)
-        qDebug(logGui()) << "Reloading audio input list";
-    ui->audioInputCombo->blockSignals(true);
-    ui->audioInputCombo->clear();
-    ui->audioInputCombo->addItems(deviceList);
-    ui->audioInputCombo->setCurrentIndex(-1);
-    ui->audioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(chars + 30));
-    ui->audioInputCombo->blockSignals(false);
-    ui->audioInputCombo->setCurrentIndex(currentIndex);
-    haveAudioInputs = true;
 }
 
 void settingswidget::updateAudioOutputs(QStringList deviceList, int currentIndex, int chars)
 {
-    if(haveAudioOutputs)
-        qDebug(logGui()) << "Reloading audio output list";
-    ui->audioOutputCombo->blockSignals(true);
-    ui->audioOutputCombo->clear();
-    ui->audioOutputCombo->addItems(deviceList);
-    ui->audioOutputCombo->setCurrentIndex(-1);
-    ui->audioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(chars + 30));
-    ui->audioOutputCombo->blockSignals(false);
-    ui->audioOutputCombo->setCurrentIndex(currentIndex);
-    haveAudioOutputs = true;
 }
 
 void settingswidget::updateServerTXAudioOutputs(QStringList deviceList, int currentIndex, int chars)
 {
-    if(haveServerAudioOutputs)
-        qDebug(logGui()) << "Reloading ServerTXAudioOutputs";
-    ui->serverTXAudioOutputCombo->blockSignals(true);
-    ui->serverTXAudioOutputCombo->clear();
-    ui->serverTXAudioOutputCombo->addItems(deviceList);
-    ui->serverTXAudioOutputCombo->setCurrentIndex(-1);
-    ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(chars + 30));
-    ui->serverTXAudioOutputCombo->setCurrentIndex(currentIndex);
-    ui->serverTXAudioOutputCombo->blockSignals(false);
-    haveServerAudioOutputs = true;
 }
 
 void settingswidget::updateServerRXAudioInputs(QStringList deviceList, int currentIndex, int chars)
 {
-    if(haveServerAudioInputs)
-        qDebug(logGui()) << "Reloading ServerRXAudioInputs";
-    ui->serverRXAudioInputCombo->blockSignals(true);
-    ui->serverRXAudioInputCombo->clear();
-    ui->serverRXAudioInputCombo->addItems(deviceList);
-    ui->serverRXAudioInputCombo->setCurrentIndex(-1);
-    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(chars+30));
-    ui->serverRXAudioInputCombo->setCurrentIndex(currentIndex);
-    ui->serverRXAudioInputCombo->blockSignals(false);
-    haveServerAudioInputs = true;
 }
 
 void settingswidget::updateSerialPortList(QStringList deviceList, QVector<int> data)
@@ -1082,6 +1273,13 @@ void settingswidget::quietlyUpdateCombobox(QComboBox *cb, QVariant val)
     cb->blockSignals(false);
 }
 
+void settingswidget::quietlyUpdateCombobox(QComboBox *cb, QString val)
+{
+    cb->blockSignals(true);
+    cb->setCurrentIndex(cb->findText(val));
+    cb->blockSignals(false);
+}
+
 void settingswidget::quietlyUpdateSpinbox(QSpinBox *sb, int val)
 {
     sb->blockSignals(true);
@@ -1181,6 +1379,9 @@ void settingswidget::on_lanEnableBtn_clicked(bool checked)
 {
     // TODO: prefs.enableLAN = checked;
     // TOTO? ui->connectBtn->setEnabled(true); // move to other side
+    ui->groupNetwork->setEnabled(checked);
+    ui->groupSerial->setEnabled(!checked);
+/*
     ui->ipAddressTxt->setEnabled(checked);
     ui->controlPortTxt->setEnabled(checked);
     ui->usernameTxt->setEnabled(checked);
@@ -1199,7 +1400,7 @@ void settingswidget::on_lanEnableBtn_clicked(bool checked)
     ui->serverRXAudioInputCombo->setEnabled(!checked);
     ui->serverTXAudioOutputCombo->setEnabled(!checked);
     ui->useRTSforPTTchk->setEnabled(!checked);
-
+*/
     prefs->enableLAN = checked;
     emit changedLanPref(l_enableLAN);
 }
@@ -1207,6 +1408,10 @@ void settingswidget::on_lanEnableBtn_clicked(bool checked)
 void settingswidget::on_serialEnableBtn_clicked(bool checked)
 {
     prefs->enableLAN = !checked;
+    ui->groupSerial->setEnabled(checked);
+    ui->groupNetwork->setEnabled(!checked);
+
+/*
     ui->serialDeviceListCombo->setEnabled(checked);
 
     ui->ipAddressTxt->setEnabled(!checked);
@@ -1227,9 +1432,12 @@ void settingswidget::on_serialEnableBtn_clicked(bool checked)
     ui->serverRXAudioInputCombo->setEnabled(checked);
     ui->serverTXAudioOutputCombo->setEnabled(checked);
     ui->useRTSforPTTchk->setEnabled(checked);
-
+*/
     emit changedLanPref(l_enableLAN);
 }
+
+
+
 
 void settingswidget::on_autoSSBchk_clicked(bool checked)
 {
@@ -1348,15 +1556,19 @@ void settingswidget::on_vspCombo_activated(int index)
 
 void settingswidget::on_audioSystemCombo_currentIndexChanged(int value)
 {
-    prefs->audioSystem = static_cast<audioType>(value);
     quietlyUpdateCombobox(ui->audioSystemServerCombo,value);
+    prefs->audioSystem = static_cast<audioType>(value);
+    audioDev->setAudioType(prefs->audioSystem);
+    audioDev->enumerate();
     emit changedRaPref(ra_audioSystem);
 }
 
 void settingswidget::on_audioSystemServerCombo_currentIndexChanged(int value)
 {
-    prefs->audioSystem = static_cast<audioType>(value);
     quietlyUpdateCombobox(ui->audioSystemCombo,value);
+    prefs->audioSystem = static_cast<audioType>(value);
+    audioDev->setAudioType(prefs->audioSystem);
+    audioDev->enumerate();
     emit changedRaPref(ra_audioSystem);
 }
 
@@ -1448,6 +1660,12 @@ void settingswidget::on_clickDragTuningEnableChk_clicked(bool checked)
     emit changedIfPref(if_clickDragTuningEnable);
 }
 
+void settingswidget::on_rigCreatorChk_clicked(bool checked)
+{
+    prefs->rigCreatorEnable = checked;
+    emit changedIfPref(if_rigCreatorEnable);
+}
+
 void settingswidget::on_enableRigctldChk_clicked(bool checked)
 {
     prefs->enableRigCtlD = checked;
@@ -1476,6 +1694,7 @@ void settingswidget::on_tcpServerPortTxt_editingFinished()
     }
 }
 
+/* Beginning of cluster settings */
 void settingswidget::on_clusterServerNameCombo_currentIndexChanged(int index)
 {
     if (index < 0)
@@ -1638,6 +1857,10 @@ void settingswidget::on_clusterSkimmerSpotsEnable_clicked(bool checked)
     emit changedClusterPref(cl_clusterSkimmerSpotsEnable);
 }
 
+/* End of cluster settings */
+
+
+/* Beginning of UDP connection settings */
 void settingswidget::on_ipAddressTxt_textChanged(const QString &arg1)
 {
     udpPrefs->ipAddress = arg1;
@@ -1673,16 +1896,78 @@ void settingswidget::on_audioDuplexCombo_currentIndexChanged(int index)
     emit changedUdpPref(u_halfDuplex);
 }
 
+void settingswidget::on_audioSampleRateCombo_currentIndexChanged(int value)
+{
+    prefs->rxSetup.sampleRate= ui->audioSampleRateCombo->itemText(value).toInt();
+    prefs->txSetup.sampleRate= ui->audioSampleRateCombo->itemText(value).toInt();
+    emit changedUdpPref(u_sampleRate);
+}
+
+void settingswidget::on_audioRXCodecCombo_currentIndexChanged(int value)
+{
+    prefs->rxSetup.codec = ui->audioRXCodecCombo->itemData(value).toInt();
+    emit changedUdpPref(u_rxCodec);
+}
+
+void settingswidget::on_audioTXCodecCombo_currentIndexChanged(int value)
+{
+    prefs->txSetup.codec = ui->audioTXCodecCombo->itemData(value).toInt();
+    emit changedUdpPref(u_txCodec);
+}
+
+void settingswidget::on_rxLatencySlider_valueChanged(int value)
+{
+    prefs->rxSetup.latency = value;
+    ui->rxLatencyValue->setText(QString::number(value));
+    emit changedUdpPref(u_rxLatency);
+}
+
+void settingswidget::on_txLatencySlider_valueChanged(int value)
+{
+    //txSetup.latency = value;
+    prefs->txSetup.latency = value;
+    ui->txLatencyValue->setText(QString::number(value));
+    emit changedUdpPref(u_txLatency);
+}
+
 void settingswidget::on_audioOutputCombo_currentIndexChanged(int index)
 {
-    emit changedAudioOutputCombo(index);
+    if (index >= 0) {
+        if (prefs->audioSystem == qtAudio) {
+            prefs->rxSetup.port = audioDev->getOutputDeviceInfo(index);
+        }
+        else {
+            prefs->rxSetup.portInt = audioDev->getOutputDeviceInt(index);
+        }
+
+        prefs->rxSetup.name = audioDev->getOutputName(index);
+    }
+    qDebug(logGui()) << "Changed audio output to:" << prefs->rxSetup.name;
+
+    emit changedUdpPref(u_audioOutput);
 }
 
 void settingswidget::on_audioInputCombo_currentIndexChanged(int index)
 {
-    emit changedAudioInputCombo(index);
+    if (index >= 0) {
+        if (prefs->audioSystem == qtAudio) {
+            prefs->txSetup.port = audioDev->getInputDeviceInfo(index);
+        }
+        else {
+            prefs->txSetup.portInt = audioDev->getInputDeviceInt(index);
+        }
+
+        prefs->txSetup.name = audioDev->getInputName(index);
+    }
+    qDebug(logGui()) << "Changed audio output to:" << prefs->rxSetup.name;
+
+    emit changedUdpPref(u_audioInput);
 }
 
+/* End of UDP connection settings */
+
+
+/* Beginning of UDP Server settings */
 void settingswidget::on_serverRXAudioInputCombo_currentIndexChanged(int index)
 {
     emit changedServerRXAudioInputCombo(index);
@@ -1716,7 +2001,10 @@ void settingswidget::on_serverAddUserBtn_clicked()
     ui->serverAddUserBtn->setEnabled(false);
 }
 
+/* End of UDP Server settings */
 
+
+/* Beginning of radio specific settings */
 void settingswidget::on_modInputCombo_activated(int index)
 {
     emit changedModInput(0,ui->modInputCombo->currentData().value<inputTypes>());
@@ -1738,3 +2026,637 @@ void settingswidget::on_modInputData3Combo_activated(int index)
 {
     emit changedModInput(3,ui->modInputData3Combo->currentData().value<inputTypes>());
 }
+
+/* End of radio specific settings */
+
+
+/* Color UI helper functions */
+void settingswidget::setColorElement(QColor color,
+                             QLedLabel *led,
+                             QLabel *label,
+                             QLineEdit *lineText)
+{
+    if(led != Q_NULLPTR)
+    {
+        led->setColor(color, true);
+    }
+    if(label != Q_NULLPTR)
+    {
+        label->setText(color.name(QColor::HexArgb));
+    }
+    if(lineText != Q_NULLPTR)
+    {
+        lineText->setText(color.name(QColor::HexArgb));
+    }
+}
+
+void settingswidget::setColorElement(QColor color, QLedLabel *led, QLabel *label)
+{
+    setColorElement(color, led, label, Q_NULLPTR);
+}
+
+void settingswidget::setColorElement(QColor color, QLedLabel *led, QLineEdit *lineText)
+{
+    setColorElement(color, led, Q_NULLPTR, lineText);
+}
+
+QColor settingswidget::getColorFromPicker(QColor initialColor)
+{
+    QColorDialog::ColorDialogOptions options;
+    options.setFlag(QColorDialog::ShowAlphaChannel, true);
+    options.setFlag(QColorDialog::DontUseNativeDialog, true);
+    QColor selColor = QColorDialog::getColor(initialColor, this, "Select Color", options);
+    int alphaVal = 0;
+    bool ok = false;
+
+    if (selColor.isValid())
+    {
+        if (selColor.alpha() == 0)
+        {
+            alphaVal = QInputDialog::getInt(this, tr("Specify Opacity"),
+                                            tr("You specified an opacity value of 0. \nDo you want to change it? (0=transparent, 255=opaque)"), 0, 0, 255, 1,
+                                            &ok);
+            if (!ok)
+            {
+                return selColor;
+            }
+            else {
+                selColor.setAlpha(alphaVal);
+                return selColor;
+            }
+        }
+        return selColor;
+    }
+    else
+        return initialColor;
+}
+
+void settingswidget::getSetColor(QLedLabel *led, QLabel *label)
+{
+    QColor selColor = getColorFromPicker(led->getColor());
+    setColorElement(selColor, led, label);
+}
+
+void settingswidget::getSetColor(QLedLabel *led, QLineEdit *line)
+{
+    QColor selColor = getColorFromPicker(led->getColor());
+    setColorElement(selColor, led, line);
+}
+
+QString settingswidget::setColorFromString(QString colorstr, QLedLabel *led)
+{
+    if(led==Q_NULLPTR)
+        return "ERROR";
+
+    if(!colorstr.startsWith("#"))
+    {
+        colorstr.prepend("#");
+    }
+    if(colorstr.length() != 9)
+    {
+        // TODO: Tell user about AA RR GG BB
+        return led->getColor().name(QColor::HexArgb);
+    }
+    led->setColor(colorstr, true);
+    return led->getColor().name(QColor::HexArgb);
+}
+
+void settingswidget::setColorButtonOperations(QColor *colorStore,
+                                      QLineEdit *e, QLedLabel *d)
+{
+    // Call this function with a pointer into the colorPreset color you
+    // wish to edit.
+
+    if(colorStore==Q_NULLPTR)
+    {
+        qInfo(logSystem()) << "ERROR, invalid pointer to color received.";
+        return;
+    }
+    getSetColor(d, e);
+    QColor t = d->getColor();
+    colorStore->setNamedColor(t.name(QColor::HexArgb));
+    //useCurrentColorPreset();
+}
+
+void settingswidget::setColorLineEditOperations(QColor *colorStore,
+                                        QLineEdit *e, QLedLabel *d)
+{
+    // Call this function with a pointer into the colorPreset color you
+    // wish to edit.
+    if(colorStore==Q_NULLPTR)
+    {
+        qInfo(logSystem()) << "ERROR, invalid pointer to color received.";
+        return;
+    }
+
+    QString colorStrValidated = setColorFromString(e->text(), d);
+    e->setText(colorStrValidated);
+    colorStore->setNamedColor(colorStrValidated);
+    //useCurrentColorPreset();
+}
+
+void settingswidget::setEditAndLedFromColor(QColor c, QLineEdit *e, QLedLabel *d)
+{
+    bool blockSignals = true;
+    if(e != Q_NULLPTR)
+    {
+        e->blockSignals(blockSignals);
+        e->setText(c.name(QColor::HexArgb));
+        e->blockSignals(false);
+    }
+    if(d != Q_NULLPTR)
+    {
+        d->setColor(c);
+    }
+}
+
+
+
+void settingswidget::loadColorPresetToUIandPlots(int presetNumber)
+{
+    if(presetNumber >= numColorPresetsTotal)
+    {
+        qDebug(logSystem()) << "WARNING: asked for preset number [" << presetNumber << "], which is out of range.";
+        return;
+    }
+
+    colorPrefsType p = colorPreset[presetNumber];
+    //qInfo(logSystem()) << "color preset number [" << presetNumber << "] requested for UI load, which has internal index of [" << p.presetNum << "]";
+    setEditAndLedFromColor(p.gridColor, ui->colorEditGrid, ui->colorSwatchGrid);
+    setEditAndLedFromColor(p.axisColor, ui->colorEditAxis, ui->colorSwatchAxis);
+    setEditAndLedFromColor(p.textColor, ui->colorEditText, ui->colorSwatchText);
+    setEditAndLedFromColor(p.spectrumLine, ui->colorEditSpecLine, ui->colorSwatchSpecLine);
+    setEditAndLedFromColor(p.spectrumFill, ui->colorEditSpecFill, ui->colorSwatchSpecFill);
+    setEditAndLedFromColor(p.underlayLine, ui->colorEditUnderlayLine, ui->colorSwatchUnderlayLine);
+    setEditAndLedFromColor(p.underlayFill, ui->colorEditUnderlayFill, ui->colorSwatchUnderlayFill);
+    setEditAndLedFromColor(p.plotBackground, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
+    setEditAndLedFromColor(p.tuningLine, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
+    setEditAndLedFromColor(p.passband, ui->colorEditPassband, ui->colorSwatchPassband);
+    setEditAndLedFromColor(p.pbt, ui->colorEditPBT, ui->colorSwatchPBT);
+
+    setEditAndLedFromColor(p.meterLevel, ui->colorEditMeterLevel, ui->colorSwatchMeterLevel);
+    setEditAndLedFromColor(p.meterAverage, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
+    setEditAndLedFromColor(p.meterPeakLevel, ui->colorEditMeterPeakLevel, ui->colorSwatchMeterPeakLevel);
+    setEditAndLedFromColor(p.meterPeakScale, ui->colorEditMeterPeakScale, ui->colorSwatchMeterPeakScale);
+    setEditAndLedFromColor(p.meterLowerLine, ui->colorEditMeterScale, ui->colorSwatchMeterScale);
+    setEditAndLedFromColor(p.meterLowText, ui->colorEditMeterText, ui->colorSwatchMeterText);
+
+    setEditAndLedFromColor(p.wfBackground, ui->colorEditWfBackground, ui->colorSwatchWfBackground);
+    setEditAndLedFromColor(p.wfGrid, ui->colorEditWfGrid, ui->colorSwatchWfGrid);
+    setEditAndLedFromColor(p.wfAxis, ui->colorEditWfAxis, ui->colorSwatchWfAxis);
+    setEditAndLedFromColor(p.wfText, ui->colorEditWfText, ui->colorSwatchWfText);
+
+    setEditAndLedFromColor(p.clusterSpots, ui->colorEditClusterSpots, ui->colorSwatchClusterSpots);
+
+    //useColorPreset(&p);
+    prefs->currentColorPresetNumber = presetNumber;
+    emit changedIfPref(if_currentColorPresetNumber);
+}
+
+void settingswidget::on_colorRenamePresetBtn_clicked()
+{
+    int p = ui->colorPresetCombo->currentIndex();
+    QString newName;
+    QMessageBox msgBox;
+
+    bool ok = false;
+    newName = QInputDialog::getText(this, tr("Rename Preset"),
+                                    tr("Preset Name (10 characters max):"), QLineEdit::Normal,
+                                    ui->colorPresetCombo->currentText(), &ok);
+    if(!ok)
+        return;
+
+    if(ok && (newName.length() < 11) && !newName.isEmpty())
+    {
+        colorPreset[p].presetName->clear();
+        colorPreset[p].presetName->append(newName);
+        ui->colorPresetCombo->setItemText(p, *(colorPreset[p].presetName));
+    } else {
+        if(newName.isEmpty() || (newName.length() > 10))
+        {
+            msgBox.setText("Error, name must be at least one character and not exceed 10 characters.");
+            msgBox.exec();
+        }
+    }
+}
+
+void settingswidget::on_colorPresetCombo_currentIndexChanged(int index)
+{
+    prefs->currentColorPresetNumber = index;
+    loadColorPresetToUIandPlots(index);
+}
+
+void settingswidget::on_colorRevertPresetBtn_clicked()
+{
+    int pn = ui->colorPresetCombo->currentIndex();
+    //setDefaultColors(pn);
+    loadColorPresetToUIandPlots(pn);
+}
+
+// ---------- end color helper functions ---------- //
+
+
+// ----------       Color UI slots        ----------//
+
+
+void settingswidget::on_colorSavePresetBtn_clicked()
+{
+    int pn = ui->colorPresetCombo->currentIndex();
+
+    /*
+    settings->beginGroup("ColorPresets");
+    settings->setValue("currentColorPresetNumber", prefs.currentColorPresetNumber);
+    settings->beginWriteArray("ColorPreset", numColorPresetsTotal);
+
+    colorPrefsType *p;
+    p = &(colorPreset[pn]);
+    settings->setArrayIndex(pn);
+    settings->setValue("presetNum", p->presetNum);
+    settings->setValue("presetName", *(p->presetName));
+    settings->setValue("gridColor", p->gridColor.name(QColor::HexArgb));
+    settings->setValue("axisColor", p->axisColor.name(QColor::HexArgb));
+    settings->setValue("textColor", p->textColor.name(QColor::HexArgb));
+    settings->setValue("spectrumLine", p->spectrumLine.name(QColor::HexArgb));
+    settings->setValue("spectrumFill", p->spectrumFill.name(QColor::HexArgb));
+    settings->setValue("underlayLine", p->underlayLine.name(QColor::HexArgb));
+    settings->setValue("underlayFill", p->underlayFill.name(QColor::HexArgb));
+    settings->setValue("plotBackground", p->plotBackground.name(QColor::HexArgb));
+    settings->setValue("tuningLine", p->tuningLine.name(QColor::HexArgb));
+    settings->setValue("passband", p->passband.name(QColor::HexArgb));
+    settings->setValue("pbt", p->pbt.name(QColor::HexArgb));
+    settings->setValue("wfBackground", p->wfBackground.name(QColor::HexArgb));
+    settings->setValue("wfGrid", p->wfGrid.name(QColor::HexArgb));
+    settings->setValue("wfAxis", p->wfAxis.name(QColor::HexArgb));
+    settings->setValue("wfText", p->wfText.name(QColor::HexArgb));
+    settings->setValue("meterLevel", p->meterLevel.name(QColor::HexArgb));
+    settings->setValue("meterAverage", p->meterAverage.name(QColor::HexArgb));
+    settings->setValue("meterPeakScale", p->meterPeakScale.name(QColor::HexArgb));
+    settings->setValue("meterPeakLevel", p->meterPeakLevel.name(QColor::HexArgb));
+    settings->setValue("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb));
+    settings->setValue("meterLowText", p->meterLowText.name(QColor::HexArgb));
+    settings->setValue("clusterSpots", p->clusterSpots.name(QColor::HexArgb));
+
+    settings->endArray();
+    settings->endGroup();
+    settings->sync();
+*/
+}
+
+// Grid:
+void settingswidget::on_colorSetBtnGrid_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].gridColor);
+    setColorButtonOperations(c, ui->colorEditGrid, ui->colorSwatchGrid);
+    emit changedColPref(col_grid);
+}
+void settingswidget::on_colorEditGrid_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].gridColor);
+    setColorLineEditOperations(c, ui->colorEditGrid, ui->colorSwatchGrid);
+    emit changedColPref(col_grid);
+}
+
+// Axis:
+void settingswidget::on_colorSetBtnAxis_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].axisColor);
+    setColorButtonOperations(c, ui->colorEditAxis, ui->colorSwatchAxis);
+    emit changedColPref(col_axis);
+}
+void settingswidget::on_colorEditAxis_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].axisColor);
+    setColorLineEditOperations(c, ui->colorEditAxis, ui->colorSwatchAxis);
+    emit changedColPref(col_axis);
+}
+
+// Text:
+void settingswidget::on_colorSetBtnText_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].textColor);
+    setColorButtonOperations(c, ui->colorEditText, ui->colorSwatchText);
+    emit changedColPref(col_text);
+}
+void settingswidget::on_colorEditText_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].textColor);
+    setColorLineEditOperations(c, ui->colorEditText, ui->colorSwatchText);
+    emit changedColPref(col_text);
+}
+
+// SpecLine:
+void settingswidget::on_colorEditSpecLine_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumLine);
+    setColorLineEditOperations(c, ui->colorEditSpecLine, ui->colorSwatchSpecLine);
+    emit changedColPref(col_spectrumLine);
+}
+void settingswidget::on_colorSetBtnSpecLine_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumLine);
+    setColorButtonOperations(c, ui->colorEditSpecLine, ui->colorSwatchSpecLine);
+    emit changedColPref(col_spectrumLine);
+}
+
+// SpecFill:
+void settingswidget::on_colorSetBtnSpecFill_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumFill);
+    setColorButtonOperations(c, ui->colorEditSpecFill, ui->colorSwatchSpecFill);
+    emit changedColPref(col_spectrumFill);
+}
+void settingswidget::on_colorEditSpecFill_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumFill);
+    setColorLineEditOperations(c, ui->colorEditSpecFill, ui->colorSwatchSpecFill);
+    emit changedColPref(col_spectrumFill);
+}
+
+// PlotBackground:
+void settingswidget::on_colorEditPlotBackground_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].plotBackground);
+    setColorLineEditOperations(c, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
+    emit changedColPref(col_plotBackground);
+}
+void settingswidget::on_colorSetBtnPlotBackground_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].plotBackground);
+    setColorButtonOperations(c, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
+    emit changedColPref(col_plotBackground);
+}
+
+// Underlay Line:
+void settingswidget::on_colorSetBtnUnderlayLine_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayLine);
+    setColorButtonOperations(c, ui->colorEditUnderlayLine, ui->colorSwatchUnderlayLine);
+    emit changedColPref(col_underlayLine);
+}
+
+void settingswidget::on_colorEditUnderlayLine_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayLine);
+    setColorLineEditOperations(c, ui->colorEditUnderlayLine, ui->colorSwatchUnderlayLine);
+    emit changedColPref(col_underlayLine);
+}
+
+// Underlay Fill:
+void settingswidget::on_colorSetBtnUnderlayFill_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayFill);
+    setColorButtonOperations(c, ui->colorEditUnderlayFill, ui->colorSwatchUnderlayFill);
+    emit changedColPref(col_underlayFill);
+}
+void settingswidget::on_colorEditUnderlayFill_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayFill);
+    setColorLineEditOperations(c, ui->colorEditUnderlayFill, ui->colorSwatchUnderlayFill);
+    emit changedColPref(col_underlayFill);
+}
+
+// WF Background:
+void settingswidget::on_colorSetBtnwfBackground_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfBackground);
+    setColorButtonOperations(c, ui->colorEditWfBackground, ui->colorSwatchWfBackground);
+    emit changedColPref(col_waterfallBack);
+}
+void settingswidget::on_colorEditWfBackground_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfBackground);
+    setColorLineEditOperations(c, ui->colorEditWfBackground, ui->colorSwatchWfBackground);
+    emit changedColPref(col_waterfallBack);
+}
+
+// WF Grid:
+void settingswidget::on_colorSetBtnWfGrid_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfGrid);
+    setColorButtonOperations(c, ui->colorEditWfGrid, ui->colorSwatchWfGrid);
+    emit changedColPref(col_waterfallGrid);
+}
+void settingswidget::on_colorEditWfGrid_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfGrid);
+    setColorLineEditOperations(c, ui->colorEditWfGrid, ui->colorSwatchWfGrid);
+    emit changedColPref(col_waterfallGrid);
+}
+
+// WF Axis:
+void settingswidget::on_colorSetBtnWfAxis_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfAxis);
+    setColorButtonOperations(c, ui->colorEditWfAxis, ui->colorSwatchWfAxis);
+    emit changedColPref(col_waterfallAxis);
+}
+void settingswidget::on_colorEditWfAxis_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfAxis);
+    setColorLineEditOperations(c, ui->colorEditWfAxis, ui->colorSwatchWfAxis);
+    emit changedColPref(col_waterfallAxis);
+}
+
+// WF Text:
+void settingswidget::on_colorSetBtnWfText_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].wfText);
+    setColorButtonOperations(c, ui->colorEditWfText, ui->colorSwatchWfText);
+    emit changedColPref(col_waterfallText);
+}
+
+void settingswidget::on_colorEditWfText_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].wfText);
+    setColorLineEditOperations(c, ui->colorEditWfText, ui->colorSwatchWfText);
+    emit changedColPref(col_waterfallText);
+}
+
+// Tuning Line:
+void settingswidget::on_colorSetBtnTuningLine_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].tuningLine);
+    setColorButtonOperations(c, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
+    emit changedColPref(col_tuningLine);
+}
+void settingswidget::on_colorEditTuningLine_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].tuningLine);
+    setColorLineEditOperations(c, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
+    emit changedColPref(col_tuningLine);
+}
+
+// Passband:
+void settingswidget::on_colorSetBtnPassband_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].passband);
+    setColorButtonOperations(c, ui->colorEditPassband, ui->colorSwatchPassband);
+    emit changedColPref(col_passband);
+}
+
+void settingswidget::on_colorEditPassband_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].passband);
+    setColorLineEditOperations(c, ui->colorEditPassband, ui->colorSwatchPassband);
+    emit changedColPref(col_passband);
+}
+
+void settingswidget::on_colorSetBtnPBT_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].pbt);
+    setColorButtonOperations(c, ui->colorEditPBT, ui->colorSwatchPBT);
+    emit changedColPref(col_pbtIndicator);
+}
+
+void settingswidget::on_colorEditPBT_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].pbt);
+    setColorLineEditOperations(c, ui->colorEditPBT, ui->colorSwatchPBT);
+    emit changedColPref(col_pbtIndicator);
+}
+
+// Meter Level:
+void settingswidget::on_colorSetBtnMeterLevel_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLevel);
+    setColorButtonOperations(c, ui->colorEditMeterLevel, ui->colorSwatchMeterLevel);
+    emit changedColPref(col_meterLevel);
+}
+void settingswidget::on_colorEditMeterLevel_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLevel);
+    setColorLineEditOperations(c, ui->colorEditMeterLevel, ui->colorSwatchMeterLevel);
+    emit changedColPref(col_meterLevel);
+}
+
+// Meter Average:
+void settingswidget::on_colorSetBtnMeterAvg_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterAverage);
+    setColorButtonOperations(c, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
+    emit changedColPref(col_meterAverage);
+}
+void settingswidget::on_colorEditMeterAvg_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterAverage);
+    setColorLineEditOperations(c, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
+    emit changedColPref(col_meterAverage);
+}
+
+// Meter Peak Level:
+void settingswidget::on_colorSetBtnMeterPeakLevel_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterPeakLevel);
+    setColorButtonOperations(c, ui->colorEditMeterPeakLevel, ui->colorSwatchMeterPeakLevel);
+    emit changedColPref(col_meterPeakLevel);
+}
+void settingswidget::on_colorEditMeterPeakLevel_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterPeakLevel);
+    setColorLineEditOperations(c, ui->colorEditMeterPeakLevel, ui->colorSwatchMeterPeakLevel);
+    emit changedColPref(col_meterPeakLevel);
+}
+
+// Meter Peak Scale:
+void settingswidget::on_colorSetBtnMeterPeakScale_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterPeakScale);
+    setColorButtonOperations(c, ui->colorEditMeterPeakScale, ui->colorSwatchMeterPeakScale);
+    emit changedColPref(col_meterHighScale);
+}
+void settingswidget::on_colorEditMeterPeakScale_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterPeakScale);
+    setColorLineEditOperations(c, ui->colorEditMeterPeakScale, ui->colorSwatchMeterPeakScale);
+    emit changedColPref(col_meterHighScale);
+}
+
+// Meter Scale (line):
+void settingswidget::on_colorSetBtnMeterScale_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLowerLine);
+    setColorButtonOperations(c, ui->colorEditMeterScale, ui->colorSwatchMeterScale);
+    emit changedColPref(col_meterScale);
+}
+void settingswidget::on_colorEditMeterScale_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLowerLine);
+    setColorLineEditOperations(c, ui->colorEditMeterScale, ui->colorSwatchMeterScale);
+    emit changedColPref(col_meterScale);
+}
+
+// Meter Text:
+void settingswidget::on_colorSetBtnMeterText_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLowText);
+    setColorButtonOperations(c, ui->colorEditMeterText, ui->colorSwatchMeterText);
+    emit changedColPref(col_meterText);
+}
+void settingswidget::on_colorEditMeterText_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLowText);
+    setColorLineEditOperations(c, ui->colorEditMeterText, ui->colorSwatchMeterText);
+    emit changedColPref(col_meterText);
+}
+
+// Cluster Spots:
+void settingswidget::on_colorSetBtnClusterSpots_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].clusterSpots);
+    setColorButtonOperations(c, ui->colorEditClusterSpots, ui->colorSwatchClusterSpots);
+    emit changedColPref(col_clusterSpots);
+}
+void settingswidget::on_colorEditClusterSpots_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].clusterSpots);
+    setColorLineEditOperations(c, ui->colorEditClusterSpots, ui->colorSwatchClusterSpots);
+    emit changedColPref(col_clusterSpots);
+}
+
+// ----------   End color UI slots        ----------//
+
+

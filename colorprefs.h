@@ -4,6 +4,8 @@
 #include <QColor>
 #include <QString>
 
+#define numColorPresetsTotal (5)
+
 struct colorPrefsType{
     int presetNum = -1;
     QString *presetName = Q_NULLPTR;
@@ -32,6 +34,7 @@ struct colorPrefsType{
     QColor meterAverage;
     QColor meterPeakLevel;
     QColor meterPeakScale;
+    QColor meterScale;
     QColor meterLowerLine;
     QColor meterLowText;
 

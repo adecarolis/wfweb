@@ -4,6 +4,7 @@
 #include <QString>
 #include <QColor>
 #include <QMap>
+#include "audioconverter.h"
 #include "rigidentities.h"
 #include "wfviewtypes.h"
 
@@ -25,7 +26,8 @@ enum prefIfItem {
     if_meter2Type = 1 << 14,
     if_clickDragTuningEnable = 1 << 15,
     if_currentColorPresetNumber = 1 << 16,
-    if_all = 1 << 17
+    if_rigCreatorEnable = 1 << 17,
+    if_all = 1 << 18
 };
 
 enum prefColItem {
@@ -69,12 +71,13 @@ enum prefRaItem {
     ra_CIVisRadioModel = 1 << 1,
     ra_forceRTSasPTT = 1 << 2,
     ra_polling_ms = 1 << 3,
-    ra_serialPortRadio = 1 << 4,
-    ra_serialPortBaud = 1 << 5,
-    ra_virtualSerialPort = 1 << 6,
-    ra_localAFgain = 1 << 7,
-    ra_audioSystem = 1 << 8,
-    ra_all = 1 << 9
+    ra_serialEnabled = 1 << 4,
+    ra_serialPortRadio = 1 << 5,
+    ra_serialPortBaud = 1 << 6,
+    ra_virtualSerialPort = 1 << 7,
+    ra_localAFgain = 1 << 8,
+    ra_audioSystem = 1 << 9,
+    ra_all = 1 << 10
 };
 
 enum prefCtItem {
@@ -109,6 +112,26 @@ enum prefClusterItem {
     cl_all = 1 << 9
 };
 
+enum udpPrefsItem {
+    u_enabled = 1 << 0,
+    u_ipAddress = 1 << 1,
+    u_controlLANPort = 1 << 2,
+    u_serialLANPort = 1 << 3,
+    u_audioLANPort = 1 << 4,
+    u_username = 1 << 5,
+    u_password = 1 << 6,
+    u_clientName = 1 << 7,
+    u_waterfallFormat = 1 << 8,
+    u_halfDuplex = 1 << 9,
+    u_sampleRate = 1 << 10,
+    u_rxCodec = 1 << 11,
+    u_txCodec = 1 << 12,
+    u_rxLatency = 1 << 13,
+    u_txLatency = 1 << 14,
+    u_audioInput = 1 << 15,
+    u_audioOutput = 1 << 16,
+    u_all = 1 << 17
+};
 
 
 struct preferences {
@@ -117,6 +140,7 @@ struct preferences {
     int majorVersion = 0;
     int minorVersion = 0;
     QString gitShort;
+    bool settingsChanged = false;
 
     // Interface:
     bool useFullScreen;
@@ -137,7 +161,7 @@ struct preferences {
     meter_t meter2Type;
     bool clickDragTuningEnable;
     int currentColorPresetNumber = 0;
-
+    bool rigCreatorEnable = false;
 
     // Radio:
     unsigned char radioCIVAddr;
@@ -149,12 +173,6 @@ struct preferences {
     QString virtualSerialPort;
     unsigned char localAFgain;
     audioType audioSystem;
-
-    // Radio settings:
-    inputTypes inputDataOff=inputNone;
-    inputTypes inputData1=inputNone;
-    inputTypes inputData2=inputNone;
-    inputTypes inputData3=inputNone;
 
     // Controls:
     bool enablePTT;
@@ -173,12 +191,21 @@ struct preferences {
     bool clusterUdpEnable;
     bool clusterTcpEnable;
     int clusterUdpPort;
-    QString clusterTcpServerName;
-    QString clusterTcpUserName;
-    QString clusterTcpPassword;
     int clusterTcpPort = 7300;
     int clusterTimeout; // used?
     bool clusterSkimmerSpotsEnable; // where is this used?
+    QString clusterTcpServerName;
+    QString clusterTcpUserName;
+    QString clusterTcpPassword;
+
+    // Temporary settings
+    inputTypes inputDataOff=inputNone;
+    inputTypes inputData1=inputNone;
+    inputTypes inputData2=inputNone;
+    inputTypes inputData3=inputNone;
+
+    audioSetup rxSetup;
+    audioSetup txSetup;
 };
 
 #endif // PREFS_H

@@ -34,16 +34,19 @@ private slots:
     void loadRigFile(QString filename);
     void saveRigFile(QString filename);
     void commandRowAdded(int row);
+    void changed();
 
 
 private:
     Ui::rigCreator *ui;
+    void closeEvent(QCloseEvent *event);
     QMenu* context;
     tableCombobox* commandsList;
     QStandardItemModel* commandsModel;
     QStandardItemModel* command36Model;
     QStandardItemModel* createModel(QStandardItemModel* model, QString strings[]);
     QString currentFile;
+    bool settingsChanged=false;
 
 };
 

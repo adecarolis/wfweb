@@ -41,7 +41,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>2</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -154,17 +154,38 @@
             </widget>
            </item>
            <item>
-            <spacer name="horizontalSpacer_2">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+            <widget class="QGroupBox" name="groupBox_11">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
              </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
+             <property name="title">
+              <string>Information</string>
              </property>
-            </spacer>
+             <property name="checkable">
+              <bool>false</bool>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_19">
+              <item>
+               <layout class="QVBoxLayout" name="verticalLayout_22">
+                <item>
+                 <widget class="QLabel" name="label_53">
+                  <property name="text">
+                   <string>Audio controls on this page are ONLY for network radios
+Please use the &quot;Radio Server&quot; page to select server audio.
+ONLY use Manual CI-V when Transceive mode is not supported</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignCenter</set>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </widget>
            </item>
           </layout>
          </item>
@@ -174,7 +195,10 @@
             <number>0</number>
            </property>
            <item>
-            <widget class="QGroupBox" name="groupBox_6">
+            <widget class="QGroupBox" name="groupSerial">
+             <property name="enabled">
+              <bool>true</bool>
+             </property>
              <property name="title">
               <string>Serial Connected Radios</string>
              </property>
@@ -271,7 +295,7 @@
             <number>0</number>
            </property>
            <item>
-            <widget class="QGroupBox" name="groupBox_7">
+            <widget class="QGroupBox" name="groupNetwork">
              <property name="title">
               <string>Network Connected Radios</string>
              </property>
@@ -773,6 +797,16 @@
             </widget>
            </item>
            <item>
+            <widget class="QCheckBox" name="rigCreatorChk">
+             <property name="toolTip">
+              <string>Rig creator allows changing of all rig features and adding new rig profiles</string>
+             </property>
+             <property name="text">
+              <string>Enable Rig Creator Feature (use with care)</string>
+             </property>
+            </widget>
+           </item>
+           <item>
             <spacer name="horizontalSpacer_10">
              <property name="orientation">
               <enum>Qt::Horizontal</enum>
@@ -1211,8 +1245,8 @@
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>925</width>
-                 <height>332</height>
+                 <width>453</width>
+                 <height>235</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">

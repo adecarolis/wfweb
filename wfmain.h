@@ -81,8 +81,6 @@
     #endif
 #endif
 
-#define numColorPresetsTotal (5)
-
 namespace Ui {
 class wfmain;
 }
@@ -484,23 +482,14 @@ private slots:
     void on_pttOffBtn_clicked();
     void on_saveSettingsBtn_clicked();
     void on_debugBtn_clicked();
-    void on_lanEnableBtn_clicked(bool checked);
-    void on_ipAddressTxt_textChanged(QString text);
-    void on_controlPortTxt_textChanged(QString text);
-    void on_usernameTxt_textChanged(QString text);
-    void on_passwordTxt_textChanged(QString text);
-    void on_audioDuplexCombo_currentIndexChanged(int value);
-    void changedAudioInput(int value);
-    void changedAudioOutput(int value);
+
     void on_toFixedBtn_clicked();
     void on_connectBtn_clicked();
-    void on_rxLatencySlider_valueChanged(int value);
-    void on_txLatencySlider_valueChanged(int value);
-    void on_audioRXCodecCombo_currentIndexChanged(int value);
-    void on_audioTXCodecCombo_currentIndexChanged(int value);
-    void on_audioSampleRateCombo_currentIndexChanged(int value);
+
+
     void on_scopeEnableWFBtn_stateChanged(int state);
     void on_sqlSlider_valueChanged(int value);
+
     void on_modeFilterCombo_activated(int index);
 
     void on_datamodeCombo_activated(int index);
@@ -517,7 +506,6 @@ private slots:
 
     void on_spectrumModeCombo_currentIndexChanged(int index);
 
-    void on_serialEnableBtn_clicked(bool checked);
     void on_tuningStepCombo_currentIndexChanged(int index);
     void on_serialDeviceListCombo_textActivated(const QString &arg1);
     void on_rptSetupBtn_clicked();
@@ -551,14 +539,12 @@ private slots:
     void on_serverCivPortText_textChanged(QString text);
     void on_serverAudioPortText_textChanged(QString text);
 
-    void changedServerTXAudioOutput(int value);
-    void changedServerRXAudioInput(int value);
     void onServerUserFieldChanged();
     void changedModInput(uchar val, inputTypes type);
 
     void on_serverAddUserBtn_clicked();
     void on_radioStatusBtn_clicked();
-    void on_audioSystemCombo_currentIndexChanged(int value);
+
     void on_topLevelSlider_valueChanged(int value);
     void on_botLevelSlider_valueChanged(int value);
     void on_underlayBufferSlider_valueChanged(int value);
@@ -567,59 +553,7 @@ private slots:
     void on_underlayPeakBuffer_toggled(bool checked);
     void on_underlayAverageBuffer_toggled(bool checked);
 
-    void on_colorSetBtnGrid_clicked();
-    void on_colorSetBtnPlotBackground_clicked();
-    void on_colorSetBtnText_clicked();
-    void on_colorSetBtnSpecLine_clicked();
-    void on_colorSetBtnSpecFill_clicked();
-    void on_colorEditPlotBackground_editingFinished();
-    void on_colorPopOutBtn_clicked();
-    void on_colorPresetCombo_currentIndexChanged(int index);
-    void on_colorEditSpecLine_editingFinished();
-    void on_colorEditGrid_editingFinished();
-    void on_colorEditText_editingFinished();
-    void on_colorEditSpecFill_editingFinished();
-    void on_colorSetBtnAxis_clicked();
-    void on_colorEditAxis_editingFinished();
-    void on_colorSetBtnUnderlayLine_clicked();
-    void on_colorEditUnderlayLine_editingFinished();
-    void on_colorSetBtnUnderlayFill_clicked();
-    void on_colorEditUnderlayFill_editingFinished();
-    void on_colorSetBtnwfBackground_clicked();
-    void on_colorEditWfBackground_editingFinished();
-    void on_colorSetBtnWfGrid_clicked();
-    void on_colorEditWfGrid_editingFinished();
-    void on_colorSetBtnWfAxis_clicked();
-    void on_colorEditWfAxis_editingFinished();
-    void on_colorSetBtnWfText_clicked();
-    void on_colorEditWfText_editingFinished();
-    void on_colorSetBtnTuningLine_clicked();
-    void on_colorEditTuningLine_editingFinished();
-    void on_colorSetBtnPassband_clicked();
-    void on_colorEditPassband_editingFinished();
-    void on_colorSetBtnPBT_clicked();
-    void on_colorEditPBT_editingFinished();
-    void on_colorSetBtnMeterLevel_clicked();
-    void on_colorEditMeterLevel_editingFinished();
-    void on_colorSetBtnMeterAvg_clicked();
-    void on_colorEditMeterAvg_editingFinished();
-    void on_colorSetBtnMeterScale_clicked();
-    void on_colorEditMeterScale_editingFinished();
-    void on_colorSetBtnMeterText_clicked();
-    void on_colorEditMeterText_editingFinished();
-    void on_colorSetBtnClusterSpots_clicked();
-    void on_colorEditClusterSpots_editingFinished();
-    void on_colorRenamePresetBtn_clicked();
-    void on_colorRevertPresetBtn_clicked();
-    void on_colorSetBtnMeterPeakLevel_clicked();
-    void on_colorEditMeterPeakLevel_editingFinished();
-    void on_colorSetBtnMeterPeakScale_clicked();
-    void on_colorEditMeterPeakScale_editingFinished();
-    void on_colorSavePresetBtn_clicked();
-
     void on_showLogBtn_clicked();
-
-    void on_audioSystemServerCombo_currentIndexChanged(int index);
 
     void on_customEdgeBtn_clicked();
 
@@ -844,29 +778,14 @@ private:
     udpPreferences udpPrefs;
     udpPreferences udpDefPrefs;
 
-    // Configuration for audio output and input.
-    audioSetup rxSetup;
-    audioSetup txSetup;
-
     void setDefaultColors(int presetNumber); // populate with default values
+    void setDefaultColorPresets();
+    void useColorPreset(colorPrefsType *cp);
 
     void useColors(); // set the plot up
     void setDefPrefs(); // populate default values to default prefs
     void setTuningSteps();
-    void setColorElement(QColor color, QLedLabel *led, QLabel *label);
-    void setColorElement(QColor color, QLedLabel *led, QLineEdit *lineText);
-    void setColorElement(QColor color, QLedLabel *led, QLabel *label, QLineEdit *lineText);
-    QColor getColorFromPicker(QColor initialColor);
-    void getSetColor(QLedLabel *led, QLabel *label);
-    void getSetColor(QLedLabel *led, QLineEdit *line);
-    QString setColorFromString(QString aarrggbb, QLedLabel *led);
-    void setDefaultColorPresets();
-    void loadColorPresetToUIandPlots(int presetNumber);
-    void useColorPreset(colorPrefsType *cp);
     void useCurrentColorPreset();
-    void setEditAndLedFromColor(QColor c, QLineEdit *e, QLedLabel *d);
-    void setColorButtonOperations(QColor *colorStore, QLineEdit *e, QLedLabel *d);
-    void setColorLineEditOperations(QColor *colorStore, QLineEdit *e, QLedLabel *d);
 
     void calculateTimingParameters();
     void initPeriodicCommands();
