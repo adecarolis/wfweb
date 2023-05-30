@@ -198,7 +198,7 @@ void frequencyinputwidget::on_goFreqBtn_clicked()
     if(ok)
     {
         modeInfo m;
-        queue->add(priorityImmediate,queueItem(funcFreqSet,QVariant::fromValue<freqt>(f),false));
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
         m.mk = sidebandChooser::getMode(f, currentMode);
         m.reg = (unsigned char) m.mk;
 
