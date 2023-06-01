@@ -240,6 +240,7 @@ SOURCES += main.cpp\
     settingswidget.cpp \
     memories.cpp \
     rigcreator.cpp \
+    spectrumscope.cpp \
     tablewidget.cpp \
     wfmain.cpp \
     commhandler.cpp \
@@ -293,6 +294,7 @@ HEADERS  += wfmain.h \
     rigidentities.h \
     settingswidget.h \
     sidebandchooser.h \
+    spectrumscope.h \
     tablewidget.h \
     udpbase.h \
     udphandler.h \

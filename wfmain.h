@@ -51,6 +51,7 @@
 #include "audiodevices.h"
 #include "sidebandchooser.h"
 #include "debugwindow.h"
+#include "spectrumscope.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -370,7 +371,7 @@ private slots:
     void receiveCommReady();
     void receiveFreq(freqt);
     void receiveMode(modeInfo mode);
-    void receiveSpectrumData(scopeData data);
+
     void receivespectrumMode(spectrumMode_t spectMode);
     void receiveSpectrumSpan(freqt freqspan, bool isSub);
     void receivePTTstatus(bool pttOn);
@@ -610,9 +611,7 @@ private:
     QCPItemText* ovfIndicator;
     void setAppTheme(bool isCustom);
     void prepareWf(unsigned int wfLength);
-    void preparePlasma();
-    bool plasmaPrepared = false;
-    void computePlasma();
+
     void showHideSpectrum(bool show);
     void getInitialRigState();
     void showButton(QPushButton *btn);
@@ -685,7 +684,6 @@ private:
     uint16_t slowCmdNum=0;
     uint16_t rapidCmdNum=0;
 
-    void setupPlots();
     void makeRig();
     void rigConnections();
     void removeRig();
@@ -714,15 +712,6 @@ private:
     quint16 wfLength;
     bool spectrumDrawLock;
 
-    QByteArray spectrumPeaks;
-    QVector <double> spectrumPlasmaLine;
-    QVector <QByteArray> spectrumPlasma;
-    unsigned int spectrumPlasmaSize = 64;
-    underlay_t underlayMode = underlayNone;
-    QMutex plasmaMutex;
-    void resizePlasmaBuffer(int newSize);
-    void clearPlasmaBuffer();
-
     double plotFloor = 0;
     double plotCeiling = 160;
     double wfFloor = 0;
@@ -743,8 +732,8 @@ private:
 
     double oldLowerFreq;
     double oldUpperFreq;
-    freqt freq;
-    freqt freqb;
+    //freqt freq;
+    //freqt freqb;
     float tsKnobMHz;
 
     unsigned char setModeVal=0;
@@ -864,6 +853,7 @@ private:
     bandbuttons* bandbtns;
     frequencyinputwidget* finputbtns;
     settingswidget* setupui;
+
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;

@@ -158,6 +158,8 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         }
     }
 
+    ui->subScope->setVisible(false); // Disable sub scope until we need it
+
 
     setupKeyShortcuts();
 
@@ -172,7 +174,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     getSettingsFilePath(settingsFile);
 
-    setupPlots();
     setDefaultColorPresets();
 
     loadSettings(); // Look for saved preferences
@@ -641,7 +642,7 @@ void wfmain::rigConnections()
     connect(finputbtns, &frequencyinputwidget::updateUIFrequency,
             [=](freqt f) {
         // f has both parts populated
-        this->freq = f;
+        ui->mainScope->setFrequency(f);
         setUIFreq(); // requires f.MHzDouble
     });
     connect(finputbtns, &frequencyinputwidget::gotoMemoryPreset,
@@ -1052,98 +1053,6 @@ void wfmain::receiveNetworkAudioLevels(networkAudioLevels l)
 
 }
 
-void wfmain::setupPlots()
-{
-    spectrumDrawLock = true;
-    plot = ui->plot;
-
-    wf = ui->waterfall;
-
-    passbandIndicator = new QCPItemRect(plot);
-    passbandIndicator->setAntialiased(true);
-    passbandIndicator->setPen(QPen(Qt::red));
-    passbandIndicator->setBrush(QBrush(Qt::red));
-    passbandIndicator->setSelectable(true);
-
-    pbtIndicator = new QCPItemRect(plot);
-    pbtIndicator->setAntialiased(true);
-    pbtIndicator->setPen(QPen(Qt::red));
-    pbtIndicator->setBrush(QBrush(Qt::red));
-    pbtIndicator->setSelectable(true);
-    pbtIndicator->setVisible(false);
-
-    freqIndicatorLine = new QCPItemLine(plot);
-    freqIndicatorLine->setAntialiased(true);
-    freqIndicatorLine->setPen(QPen(Qt::blue));
-
-    oorIndicator = new QCPItemText(plot);
-    oorIndicator->setVisible(false);
-    oorIndicator->setAntialiased(true);
-    oorIndicator->setPen(QPen(Qt::red));
-    oorIndicator->setBrush(QBrush(Qt::red));
-    oorIndicator->setFont(QFont(font().family(), 14));
-    oorIndicator->setPositionAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
-    oorIndicator->position->setType(QCPItemPosition::ptAxisRectRatio); // Positioned relative to the current plot rect
-    oorIndicator->setText("SCOPE OUT OF RANGE");
-    oorIndicator->position->setCoords(0.5f,0.5f);
-
-    ovfIndicator = new QCPItemText(plot);
-    ovfIndicator->setVisible(false);
-    ovfIndicator->setAntialiased(true);
-    ovfIndicator->setPen(QPen(Qt::red));
-    ovfIndicator->setColor(Qt::red);
-    ovfIndicator->setFont(QFont(font().family(), 10));
-    ovfIndicator->setPositionAlignment(Qt::AlignLeft | Qt::AlignTop);
-    ovfIndicator->position->setType(QCPItemPosition::ptAxisRectRatio); // Positioned relative to the current plot rect
-    ovfIndicator->setText(" OVF ");
-    ovfIndicator->position->setCoords(0.01f,0.0f);
-    //ovfIndicator->setVisible(true);
-
-    ui->plot->addGraph(); // primary
-    ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first.
-    ui->plot->addLayer( "Top Layer", ui->plot->layer("main"));
-    ui->plot->graph(0)->setLayer("Top Layer");
-
-    ui->waterfall->addGraph();
-
-    colorMap = new QCPColorMap(wf->xAxis, wf->yAxis);
-    colorMapData = NULL;
-
-#if QCUSTOMPLOT_VERSION < 0x020001
-    wf->addPlottable(colorMap);
-#endif
-
-    colorScale = new QCPColorScale(wf);
-
-    ui->tabWidget->setCurrentIndex(0);
-
-    QColor color(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
-    plot->graph(1)->setLineStyle(QCPGraph::lsLine);
-    plot->graph(1)->setPen(QPen(color.lighter(200)));
-    plot->graph(1)->setBrush(QBrush(color));
-
-    freqIndicatorLine->start->setCoords(0.5, 0);
-    freqIndicatorLine->end->setCoords(0.5, 160);
-
-    passbandIndicator->topLeft->setCoords(0.5, 0);
-    passbandIndicator->bottomRight->setCoords(0.5, 160);
-
-    pbtIndicator->topLeft->setCoords(0.5, 0);
-    pbtIndicator->bottomRight->setCoords(0.5, 160);
-
-
-    // Plot user interaction
-    connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
-    connect(wf, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handleWFDoubleClick(QMouseEvent*)));
-    connect(plot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handlePlotClick(QMouseEvent*)));
-    connect(wf, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handleWFClick(QMouseEvent*)));
-    connect(plot, SIGNAL(mouseRelease(QMouseEvent*)), this, SLOT(handlePlotMouseRelease(QMouseEvent*)));
-    connect(plot, SIGNAL(mouseMove(QMouseEvent*)), this, SLOT(handlePlotMouseMove(QMouseEvent *)));
-    connect(wf, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handleWFScroll(QWheelEvent*)));
-    connect(plot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handlePlotScroll(QWheelEvent*)));
-    spectrumDrawLock = false;
-}
-
 void wfmain::setupMainUI()
 {
     createSettingsListItems();
@@ -1216,8 +1125,6 @@ void wfmain::setupMainUI()
     edges << "1" << "2" << "3" << "4";
     ui->scopeEdgeCombo->insertItems(0, edges);
 
-    ui->splitter->setHandleWidth(5);
-
     // Set scroll wheel response (tick interval)
     // and set arrow key response (single step)
     ui->rfGainSlider->setTickInterval(100);
@@ -1269,8 +1176,11 @@ void wfmain::setupMainUI()
     rigName->setText("NONE");
     rigName->setFixedWidth(60);
 
-    freq.MHzDouble = 0.0;
-    freq.Hz = 0;
+    freqt f;
+    f.MHzDouble = 0.0;
+    f.Hz = 0;
+    ui->mainScope->setFrequency(f);
+    ui->subScope->setFrequency(f);
     oldFreqDialVal = ui->freqDial->value();
 
     ui->tuneLockChk->setChecked(false);
@@ -1550,8 +1460,17 @@ void wfmain::setUIToPrefs()
     //ui->useSystemThemeChk->setChecked(prefs.useSystemTheme);
     useSystemTheme(prefs.useSystemTheme);
 
-    underlayMode = prefs.underlayMode;
-//    switch(underlayMode)
+    ui->mainScope->setUnderlayMode(prefs.underlayMode);
+    ui->mainScope->wfAntiAliased(prefs.wfAntiAlias);
+    ui->mainScope->wfInterpolate(prefs.wfInterpolate);
+    ui->mainScope->wfTheme(prefs.wftheme);
+
+    ui->subScope->setUnderlayMode(prefs.underlayMode);
+    ui->subScope->wfAntiAliased(prefs.wfAntiAlias);
+    ui->subScope->wfInterpolate(prefs.wfInterpolate);
+    ui->subScope->wfTheme(prefs.wftheme);
+
+    //    switch(underlayMode)
 //    {
 //        case underlayNone:
 //            ui->underlayNone->setChecked(true);
@@ -1579,13 +1498,17 @@ void wfmain::setUIToPrefs()
     on_wfInterpolateChk_clicked(prefs.wfInterpolate);
 
     ui->wfLengthSlider->setValue(prefs.wflength);
-    prepareWf(prefs.wflength);
-    preparePlasma();
+
+    ui->mainScope->prepareWf(prefs.wflength);
+    ui->mainScope->preparePlasma();
+    ui->subScope->prepareWf(prefs.wflength);
+    ui->subScope->preparePlasma();
+
     ui->topLevelSlider->setValue(prefs.plotCeiling);
     ui->botLevelSlider->setValue(prefs.plotFloor);
 
-    plot->yAxis->setRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
-    colorMap->setDataRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
+    ui->mainScope->setRange(prefs.plotFloor, prefs.plotCeiling);
+    ui->subScope->setRange(prefs.plotFloor, prefs.plotCeiling);
 
     colorPrefsType p;
     for(int pn=0; pn < numColorPresetsTotal; pn++)
@@ -1600,7 +1523,8 @@ void wfmain::setUIToPrefs()
     //loadColorPresetToUIandPlots(prefs.currentColorPresetNumber);
 
     ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
-    colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
+    ui->mainScope->wfTheme(prefs.wftheme);
+    ui->subScope->wfTheme(prefs.wftheme);
 
 //    ui->tuningFloorZerosChk->blockSignals(true);
 //    ui->tuningFloorZerosChk->setChecked(prefs.niceTS);
@@ -1858,12 +1782,12 @@ void wfmain::setupKeyShortcuts()
         if (freqLock) return;
 
         freqt f;
-        f.Hz = roundFrequencyWithStep(freq.Hz, -1, tsKnobHz);
+        f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, -1, tsKnobHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        freq.Hz = f.Hz;
-        freq.MHzDouble = f.MHzDouble;
+        ui->mainScope->setFrequency(f);
+        ui->subScope->setFrequency(f);
         setUIFreq();
-        queue->add(priorityImmediate,queueItem(funcFreqSet,QVariant::fromValue<freqt>(f)));
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f)));
     });
 
     // L = Up
@@ -1874,13 +1798,13 @@ void wfmain::setupKeyShortcuts()
         if (freqLock) return;
 
         freqt f;
-        f.Hz = roundFrequencyWithStep(freq.Hz, 1, tsKnobHz);
+        f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, 1, tsKnobHz);
         f.MHzDouble = f.Hz / (double)1E6;
         ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
-        freq.Hz = f.Hz;
-        freq.MHzDouble = f.MHzDouble;
+        ui->mainScope->setFrequency(f);
+        ui->subScope->setFrequency(f);
         setUIFreq();
-        queue->add(priorityImmediate,queueItem(funcFreqSet,QVariant::fromValue<freqt>(f)));
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f)));
     });
 
     keyDebug = new QShortcut(this);
@@ -2088,22 +2012,22 @@ void wfmain::buttonControl(const COMMAND* cmd)
         if (freqLock) break;
         freqt f;
         if (cmd->suffix) {
-            f.Hz = roundFrequencyWithStep(freqb.Hz, cmd->value, tsWfScrollHz);
+            f.Hz = roundFrequencyWithStep(ui->subScope->getFrequency().Hz, cmd->value, tsWfScrollHz);
         } else {
-            f.Hz = roundFrequencyWithStep(freq.Hz, cmd->value, tsWfScrollHz);
+            f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, cmd->value, tsWfScrollHz);
         }
         f.MHzDouble = f.Hz / (double)1E6;
         f.VFO=(selVFO_t)cmd->suffix;
         if (f.VFO == activeVFO)
-            queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(f),false));
+            queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
         else
-            queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),QVariant::fromValue<freqt>(f),false));
+            queue->add(priorityImmediate,queueItem(funcUnselectedFreq,QVariant::fromValue<freqt>(f),false));
 
         if (!cmd->suffix) {
-            freq = f;
+            ui->mainScope->setFrequency(f);
             ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
         } else {
-            freqb = f;
+            ui->subScope->setFrequency(f);
         }
         break;
     }
@@ -2135,10 +2059,10 @@ void wfmain::changeFrequency(int value) {
     if (freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(freq.Hz, value, tsWfScrollHz);
+    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, value, tsWfScrollHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    freq = f;
-    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(f),false));
+    ui->mainScope->setFrequency(f);
+    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
     ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 }
 
@@ -2231,7 +2155,7 @@ void wfmain::loadSettings()
     prefs.wfInterpolate = settings->value("WFInterpolate", defPrefs.wfInterpolate).toBool();
     prefs.wflength = (unsigned int)settings->value("WFLength", defPrefs.wflength).toInt();
     prefs.stylesheetPath = settings->value("StylesheetPath", defPrefs.stylesheetPath).toString();
-    ui->splitter->restoreState(settings->value("splitter").toByteArray());
+    //ui->splitter->restoreState(settings->value("splitter").toByteArray());
 
     restoreGeometry(settings->value("windowGeometry").toByteArray());
     restoreState(settings->value("windowState").toByteArray());
@@ -2968,36 +2892,35 @@ void wfmain::extChangedIfPref(prefIfItem i)
         // depreciated;
         break;
     case if_underlayMode:
-        underlayMode = prefs.underlayMode;
-        on_clearPeakBtn_clicked();
+        ui->mainScope->setUnderlayMode(prefs.underlayMode);
+        ui->subScope->setUnderlayMode(prefs.underlayMode);
         break;
     case if_underlayBufferSize:
-        resizePlasmaBuffer(prefs.underlayBufferSize);
-        spectrumPlasmaSize = prefs.underlayBufferSize;
+        ui->mainScope->resizePlasmaBuffer(prefs.underlayBufferSize);
+        ui->subScope->resizePlasmaBuffer(prefs.underlayBufferSize);
         break;
     case if_wfAntiAlias:
-        colorMap->setAntialiased(prefs.wfAntiAlias);
+        ui->mainScope->wfAntiAliased(prefs.wfAntiAlias);
+        ui->subScope->wfAntiAliased(prefs.wfAntiAlias);
         break;
     case if_wfInterpolate:
-        colorMap->setInterpolate(prefs.wfInterpolate);
+        ui->mainScope->wfInterpolate(prefs.wfInterpolate);
+        ui->subScope->wfInterpolate(prefs.wfInterpolate);
         break;
     case if_wftheme:
         // Not in settings widget
-        colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
+        ui->mainScope->wfTheme(prefs.wftheme);
+        ui->subScope->wfTheme(prefs.wftheme);
         break;
     case if_plotFloor:
         // Not in settings widget
-        wfFloor = prefs.plotFloor;
-        plotFloor = prefs.plotFloor;
-        plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
-        colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
+        ui->mainScope->setRange(prefs.plotFloor,prefs.plotCeiling);
+        ui->subScope->setRange(prefs.plotFloor,prefs.plotCeiling);
         break;
     case if_plotCeiling:
         // Not in settings widget
-        wfCeiling = prefs.plotCeiling;
-        plotCeiling = prefs.plotCeiling;
-        plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
-        colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
+        ui->mainScope->setRange(prefs.plotFloor,prefs.plotCeiling);
+        ui->subScope->setRange(prefs.plotFloor,prefs.plotCeiling);
         break;
     case if_stylesheetPath:
         // Not in settings widget
@@ -3043,44 +2966,23 @@ void wfmain::extChangedColPref(prefColItem i)
     switch(i)
     {
     case col_grid:
-        plot->xAxis->grid()->setPen(cp->gridColor);
-        plot->yAxis->grid()->setPen(cp->gridColor);
-        break;
     case col_axis:
-        plot->xAxis->setBasePen(cp->axisColor);
-        plot->xAxis->setTickPen(cp->axisColor);
-        plot->yAxis->setBasePen(cp->axisColor);
-        plot->yAxis->setTickPen(cp->axisColor);
-        break;
     case col_text:
-        plot->xAxis->setTickLabelColor(cp->textColor);
-        plot->yAxis->setTickLabelColor(cp->textColor);
-        break;
     case col_plotBackground:
-        plot->setBackground(cp->plotBackground);
-        break;
     case col_spectrumLine:
-        plot->graph(0)->setPen(QPen(cp->spectrumLine));
-        break;
     case col_spectrumFill:
-        plot->graph(0)->setBrush(QBrush(cp->spectrumFill));
-        break;
     case col_underlayLine:
-        plot->graph(1)->setPen(QPen(cp->underlayLine));
-        break;
     case col_underlayFill:
-        plot->graph(1)->setBrush(QBrush(cp->underlayFill));
-        break;
     case col_tuningLine:
-        freqIndicatorLine->setPen(QPen(cp->tuningLine));
-        break;
     case col_passband:
-        passbandIndicator->setPen(QPen(cp->passband));
-        passbandIndicator->setBrush(QBrush(cp->passband));
-        break;
     case col_pbtIndicator:
-        pbtIndicator->setPen(QPen(cp->pbt));
-        pbtIndicator->setBrush(QBrush(cp->pbt));
+    case col_waterfallBack:
+    case col_waterfallGrid:
+    case col_waterfallAxis:
+    case col_waterfallText:
+    case col_clusterSpots:
+        ui->mainScope->colorPreset(cp);
+        ui->subScope->colorPreset(cp);
         break;
     case col_meterLevel:
     case col_meterAverage:
@@ -3090,26 +2992,6 @@ void wfmain::extChangedColPref(prefColItem i)
     case col_meterText:
         ui->meterSPoWidget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
         ui->meter2Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
-        break;
-    case col_waterfallBack:
-        wf->setBackground(cp->wfBackground);
-        break;
-    case col_waterfallGrid:
-        wf->xAxis->setLabelColor(cp->wfGrid);
-        wf->yAxis->setLabelColor(cp->wfGrid);
-        break;
-    case col_waterfallAxis:
-        wf->yAxis->setBasePen(cp->wfAxis);
-        wf->yAxis->setTickPen(cp->wfAxis);
-        wf->xAxis->setBasePen(cp->wfAxis);
-        wf->xAxis->setTickPen(cp->wfAxis);
-        break;
-    case col_waterfallText:
-        wf->xAxis->setTickLabelColor(cp->wfText);
-        wf->yAxis->setTickLabelColor(cp->wfText);
-        break;
-    case col_clusterSpots:
-        clusterColor = cp->clusterSpots;
         break;
     default:
         qWarning(logSystem()) << "Cannot update wfmain col pref" << (int)i;
@@ -3539,7 +3421,7 @@ void wfmain::saveSettings()
     settings->setValue("plotFloor", prefs.plotFloor);
     settings->setValue("plotCeiling", prefs.plotCeiling);
     settings->setValue("StylesheetPath", prefs.stylesheetPath);
-    settings->setValue("splitter", ui->splitter->saveState());
+    //settings->setValue("splitter", ui->splitter->saveState());
     settings->setValue("windowGeometry", saveGeometry());
     settings->setValue("windowState", saveState());
     settings->setValue("WFLength", prefs.wflength);
@@ -3831,14 +3713,8 @@ void wfmain::saveSettings()
 void wfmain::showHideSpectrum(bool show)
 {
 
-    if(show)
-    {
-        wf->show();
-        plot->show();
-    } else {
-        wf->hide();
-        plot->hide();
-    }
+    ui->mainScope->setVisible(show);
+    ui->subScope->setVisible(false);
 
     // Controls:
     ui->spectrumGroupBox->setVisible(show);
@@ -3862,9 +3738,6 @@ void wfmain::showHideSpectrum(bool show)
 
     // And the layout for space:
     ui->specControlsHorizLayout->setEnabled(show);
-    ui->splitter->setVisible(show);
-    ui->plot->setVisible(show);
-    ui->waterfall->setVisible(show);
     ui->spectrumGroupBox->setEnabled(show);
 
     // Window resize:
@@ -3874,67 +3747,6 @@ void wfmain::showHideSpectrum(bool show)
 
 void wfmain::prepareWf(unsigned int wfLength)
 {
-    // All this code gets moved in from the constructor of wfmain.
-
-    if(haveRigCaps)
-    {
-        showHideSpectrum(rigCaps.hasSpectrum);
-        if(!rigCaps.hasSpectrum)
-        {
-            return;
-        }
-        // TODO: Lock the function that draws on the spectrum while we are updating.
-        spectrumDrawLock = true;
-
-        spectWidth = rigCaps.spectLenMax;
-        wfLengthMax = 1024;
-
-        this->wfLength = wfLength; // fixed for now, time-length of waterfall
-
-        // Initialize before use!
-
-        QByteArray empty((int)spectWidth, '\x01');
-        spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
-
-        if((unsigned int)wfimage.size() < wfLengthMax)
-        {
-            unsigned int i=0;
-            unsigned int oldSize = wfimage.size();
-            for(i=oldSize; i<(wfLengthMax); i++)
-            {
-                wfimage.append(empty);
-            }
-        } else {
-            // Keep wfimage, do not trim, no performance impact.
-            //wfimage.remove(wfLength, wfimage.size()-wfLength);
-        }
-
-        wfimage.squeeze();
-        //colorMap->clearData();
-        colorMap->data()->clear();
-
-        colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
-        colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
-        colorMap->setDataRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
-        colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(ui->wfthemeCombo->currentData().toInt()));
-
-        if(colorMapData == Q_NULLPTR)
-        {
-            colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
-        } else {
-            //delete colorMapData; // TODO: Figure out why it crashes if we delete first.
-            colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
-        }
-        colorMap->setData(colorMapData);
-
-        wf->yAxis->setRangeReversed(true);
-        wf->xAxis->setVisible(false);
-
-        spectrumDrawLock = false;
-    } else {
-        qInfo(logSystem()) << "Cannot prepare WF view without rigCaps. Waiting on this.";
-        return;
-    }
 
 }
 
@@ -4135,12 +3947,12 @@ void wfmain::shortcutMinus()
     if (freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(freq.Hz, -1, tsPlusHz);
+    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, -1, tsPlusHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    freq.Hz = f.Hz;
-    freq.MHzDouble = f.MHzDouble;
+    ui->mainScope->setFrequency(f);
+    ui->subScope->setFrequency(f);
     setUIFreq();
-    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(f),false));
+    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
 
 void wfmain::shortcutPlus()
@@ -4148,12 +3960,12 @@ void wfmain::shortcutPlus()
     if (freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(freq.Hz, 1, tsPlusHz);
+    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, 1, tsPlusHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    freq.Hz = f.Hz;
-    freq.MHzDouble = f.MHzDouble;
+    ui->mainScope->setFrequency(f);
+    ui->subScope->setFrequency(f);
     setUIFreq();
-    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(f),false));
+    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
 
 void wfmain::shortcutStepMinus()
@@ -4161,11 +3973,11 @@ void wfmain::shortcutStepMinus()
     if (freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(freq.Hz, -1, ui->tuningStepCombo->currentData().toInt());
+    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, -1, ui->tuningStepCombo->currentData().toInt());
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(f),false));
+    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 
 }
 
@@ -4174,11 +3986,11 @@ void wfmain::shortcutStepPlus()
     if (freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(freq.Hz, 1, ui->tuningStepCombo->currentData().toInt());
+    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, 1, ui->tuningStepCombo->currentData().toInt());
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(f),false));
+    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
 
 void wfmain::shortcutShiftMinus()
@@ -4186,13 +3998,13 @@ void wfmain::shortcutShiftMinus()
     if(freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(freq.Hz, -1, tsPlusShiftHz);
+    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, -1, tsPlusShiftHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    freq.Hz = f.Hz;
-    freq.MHzDouble = f.MHzDouble;
+    ui->mainScope->setFrequency(f);
+    ui->subScope->setFrequency(f);
     setUIFreq();
     //emit setFrequency(0,f);
-    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(f),false));
+    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
 
 void wfmain::shortcutShiftPlus()
@@ -4200,13 +4012,13 @@ void wfmain::shortcutShiftPlus()
     if(freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(freq.Hz, 1, tsPlusShiftHz);
+    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, 1, tsPlusShiftHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    freq.Hz = f.Hz;
-    freq.MHzDouble = f.MHzDouble;
+    ui->mainScope->setFrequency(f);
+    ui->subScope->setFrequency(f);
     setUIFreq();
     //emit setFrequency(0,f);
-    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(f),false));
+    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 
 }
 
@@ -4215,12 +4027,12 @@ void wfmain::shortcutControlMinus()
     if(freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(freq.Hz, -1, tsPlusControlHz);
+    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, -1, tsPlusControlHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    freq.Hz = f.Hz;
-    freq.MHzDouble = f.MHzDouble;
+    ui->mainScope->setFrequency(f);
+    ui->subScope->setFrequency(f);
     setUIFreq();
-    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(f),false));
+    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
 
 void wfmain::shortcutControlPlus()
@@ -4228,12 +4040,12 @@ void wfmain::shortcutControlPlus()
     if(freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(freq.Hz, 1, tsPlusControlHz);
+    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, 1, tsPlusControlHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    freq.Hz = f.Hz;
-    freq.MHzDouble = f.MHzDouble;
+    ui->mainScope->setFrequency(f);
+    ui->subScope->setFrequency(f);
     setUIFreq();
-    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(f),false));
+    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
 
 void wfmain::shortcutPageUp()
@@ -4241,12 +4053,12 @@ void wfmain::shortcutPageUp()
     if(freqLock) return;
 
     freqt f;
-    f.Hz = freq.Hz + tsPageHz;
+    f.Hz = ui->mainScope->getFrequency().Hz + tsPageHz;
     f.MHzDouble = f.Hz / (double)1E6;
-    freq.Hz = f.Hz;
-    freq.MHzDouble = f.MHzDouble;
+    ui->mainScope->setFrequency(f);
+    ui->subScope->setFrequency(f);
     setUIFreq();
-    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(f),false));
+    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
 
 void wfmain::shortcutPageDown()
@@ -4254,12 +4066,12 @@ void wfmain::shortcutPageDown()
     if(freqLock) return;
 
     freqt f;
-    f.Hz = freq.Hz - tsPageHz;
+    f.Hz = ui->mainScope->getFrequency().Hz - tsPageHz;
     f.MHzDouble = f.Hz / (double)1E6;
-    freq.Hz = f.Hz;
-    freq.MHzDouble = f.MHzDouble;
+    ui->mainScope->setFrequency(f);
+    ui->subScope->setFrequency(f);
     setUIFreq();
-    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(f),false));
+    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
 
 void wfmain::shortcutF()
@@ -4283,7 +4095,10 @@ void wfmain::setUIFreq()
 {
     // Call this function, without arguments, if you know that the
     // freqMhz variable is already set correctly.
-    setUIFreq(freq.MHzDouble);
+    if (ui->mainScope->isVisible())
+        setUIFreq(ui->mainScope->getFrequency().MHzDouble);
+    else if (ui->subScope->isVisible())
+        setUIFreq(ui->subScope->getFrequency().MHzDouble);
 }
 
 funcs wfmain::getInputTypeCommand(inputTypes input)
@@ -4757,8 +4572,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             {
                 ui->scopeBWCombo->addItem(rigCaps.scopeCenterSpans.at(i).name, QVariant::fromValue(rigCaps.scopeCenterSpans.at(i)));
             }
-            plot->yAxis->setRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
-            colorMap->setDataRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
+            ui->mainScope->setRange(prefs.plotFloor, prefs.plotCeiling);
+            ui->subScope->setRange(prefs.plotFloor, prefs.plotCeiling);
         } else {
             ui->scopeBWCombo->setHidden(true);
         }
@@ -4777,6 +4592,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         //ui->audioSystemServerCombo->setEnabled(false);
 
         ui->connectBtn->setText("Disconnect from Radio"); // We must be connected now.
+
 
         prepareWf(ui->wfLengthSlider->value());
         if(usingLAN)
@@ -4868,6 +4684,8 @@ void wfmain::initPeriodicCommands()
     {
         queue->add(priorityMediumHigh,queueItem(funcScopeMainMode,true));
         queue->add(priorityMediumHigh,queueItem(funcScopeMainSpan,true));
+        queue->add(priorityMediumHigh,queueItem(funcScopeSingleDual,true));
+        queue->add(priorityMediumHigh,queueItem(funcScopeMainSub,true));
     }
 }
 
@@ -4879,10 +4697,10 @@ void wfmain::receiveFreq(freqt freqStruct)
     {
         if (freqStruct.VFO == selVFO_t::activeVFO) {
             ui->freqLabel->setText(QString("%1").arg(freqStruct.MHzDouble, 0, 'f'));
-            freq = freqStruct;
+            ui->mainScope->setFrequency(freqStruct);
             rpt->handleUpdateCurrentMainFrequency(freqStruct);
         } else {
-            freqb = freqStruct;
+            ui->subScope->setFrequency(freqStruct);
         }
 
     } else {
@@ -4931,306 +4749,6 @@ void wfmain::changeTxBtn()
 }
 
 
-
-void wfmain::receiveSpectrumData(scopeData spectrum)
-{
-    if (ui->scopeEnableWFBtn->checkState()== Qt::PartiallyChecked)
-    {
-        return;
-    }
-
-
-    if(!haveRigCaps)
-    {
-        qDebug(logSystem()) << "Spectrum received, but RigID incomplete.";
-        return;
-    }
-
-    //QElapsedTimer performanceTimer;
-    bool updateRange = false;
-
-    if((spectrum.startFreq != oldLowerFreq) || (spectrum.endFreq != oldUpperFreq))
-    {
-        // If the frequency changed and we were drawing peaks, now is the time to clean them
-        if(underlayMode == underlayPeakHold)
-        {
-            // TODO: create non-button function to do this
-            // This will break if the button is ever moved or renamed.
-            on_clearPeakBtn_clicked();
-        } else {
-            plasmaPrepared = false;
-            preparePlasma();
-        }
-        // Inform other threads (cluster) that the frequency range has changed.
-        emit setFrequencyRange(spectrum.startFreq, spectrum.endFreq);
-    }
-
-    oldLowerFreq = spectrum.startFreq;
-    oldUpperFreq = spectrum.endFreq;
-
-    //qInfo(logSystem()) << "start: " << spectrum.startFreq << " end: " << spectrum.endFreq;
-    quint16 specLen = spectrum.data.length();
-
-
-    QVector <double> x(spectWidth), y(spectWidth), y2(spectWidth);
-
-    // TODO: Keep x around unless the frequency range changes. Should save a little time.
-    for(int i=0; i < spectWidth; i++)
-    {
-        x[i] = (i * (spectrum.endFreq-spectrum.startFreq)/spectWidth) + spectrum.startFreq;
-    }
-
-    for(int i=0; i<specLen; i++)
-    {
-        //x[i] = (i * (endFreq-startFreq)/specLen) + startFreq;
-        y[i] = (unsigned char)spectrum.data.at(i);
-        if(underlayMode == underlayPeakHold)
-        {
-            if((unsigned char)spectrum.data.at(i) > (unsigned char)spectrumPeaks.at(i))
-            {
-                spectrumPeaks[i] = spectrum.data.at(i);
-            }
-            y2[i] = (unsigned char)spectrumPeaks.at(i);
-        }
-    }
-    plasmaMutex.lock();
-    spectrumPlasma.push_front(spectrum.data);
-    if(spectrumPlasma.size() > (int)spectrumPlasmaSize)
-    {
-        spectrumPlasma.pop_back();
-    }
-    plasmaMutex.unlock();
-
-
-    if (!spectrumDrawLock)
-    {
-        if ((plotFloor != oldPlotFloor) || (plotCeiling != oldPlotCeiling)){
-            updateRange = true;
-        }
-#if QCUSTOMPLOT_VERSION < 0x020000
-        plot->graph(0)->setData(x, y);
-#else
-        plot->graph(0)->setData(x, y, true);
-#endif
-
-        if((freq.MHzDouble < spectrum.endFreq) && (freq.MHzDouble > spectrum.startFreq))
-        {
-            freqIndicatorLine->start->setCoords(freq.MHzDouble, 0);
-            freqIndicatorLine->end->setCoords(freq.MHzDouble, rigCaps.spectAmpMax);
-
-            double pbStart = 0.0;
-            double pbEnd = 0.0;
-
-            switch (currentModeInfo.mk)
-            {
-            case modeLSB:
-            case modeRTTY:
-            case modePSK_R:
-                pbStart = freq.MHzDouble - passbandCenterFrequency - (passbandWidth / 2);
-                pbEnd = freq.MHzDouble - passbandCenterFrequency + (passbandWidth / 2);
-                break;
-            case modeCW:
-                if (passbandWidth < 0.0006) {
-                    pbStart = freq.MHzDouble - (passbandWidth / 2);
-                    pbEnd = freq.MHzDouble + (passbandWidth / 2);
-                }
-                else {
-                    pbStart = freq.MHzDouble + passbandCenterFrequency - passbandWidth;
-                    pbEnd = freq.MHzDouble + passbandCenterFrequency;
-                }
-                break;
-            case modeCW_R:
-                if (passbandWidth < 0.0006) {
-                    pbStart = freq.MHzDouble - (passbandWidth / 2);
-                    pbEnd = freq.MHzDouble + (passbandWidth / 2);
-                }
-                else {
-                    pbStart = freq.MHzDouble - passbandCenterFrequency;
-                    pbEnd = freq.MHzDouble + passbandWidth - passbandCenterFrequency;
-                }
-                break;
-            default:
-                pbStart = freq.MHzDouble + passbandCenterFrequency - (passbandWidth / 2);
-                pbEnd = freq.MHzDouble + passbandCenterFrequency + (passbandWidth / 2);
-                break;
-            }
-
-            passbandIndicator->topLeft->setCoords(pbStart, 0);
-            passbandIndicator->bottomRight->setCoords(pbEnd, rigCaps.spectAmpMax);
-
-            if ((currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) && passbandWidth > 0.0006)
-            {
-                pbtDefault = round((passbandWidth - (cwPitch / 1000000.0)) * 200000.0) / 200000.0;
-            }
-            else 
-            {
-                pbtDefault = 0.0;
-            }
-
-            if ((PBTInner - pbtDefault || PBTOuter - pbtDefault) && passbandAction != passbandResizing && currentModeInfo.mk != modeFM)
-            {
-                pbtIndicator->setVisible(true);
-            }
-            else
-            {
-                pbtIndicator->setVisible(false);
-            }
-
-            /*
-                pbtIndicator displays the intersection between PBTInner and PBTOuter
-            */
-            if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modeCW || currentModeInfo.mk == modeRTTY) {
-                pbtIndicator->topLeft->setCoords(qMax(pbStart - (PBTInner / 2) + (pbtDefault / 2), pbStart - (PBTOuter / 2) + (pbtDefault / 2)), 0);
-
-                pbtIndicator->bottomRight->setCoords(qMin(pbStart - (PBTInner / 2) + (pbtDefault / 2) + passbandWidth,
-                    pbStart - (PBTOuter / 2) + (pbtDefault / 2) + passbandWidth), rigCaps.spectAmpMax);
-            }
-            else
-            {
-                pbtIndicator->topLeft->setCoords(qMax(pbStart + (PBTInner / 2) - (pbtDefault / 2), pbStart + (PBTOuter / 2) - (pbtDefault / 2)), 0);
-
-                pbtIndicator->bottomRight->setCoords(qMin(pbStart + (PBTInner / 2) - (pbtDefault / 2) + passbandWidth,
-                    pbStart + (PBTOuter / 2) - (pbtDefault / 2) + passbandWidth), rigCaps.spectAmpMax);
-            }
-
-            //qDebug() << "Default" << pbtDefault << "Inner" << PBTInner << "Outer" << PBTOuter << "Pass" << passbandWidth << "Center" << passbandCenterFrequency << "CW" << cwPitch;
-        }
-
-        if (underlayMode == underlayPeakHold)
-        {
-#if QCUSTOMPLOT_VERSION < 0x020000
-            plot->graph(1)->setData(x, y2); // peaks
-#else
-            plot->graph(1)->setData(x, y2, true); // peaks
-#endif
-        }
-        else if (underlayMode != underlayNone) {
-            computePlasma();
-#if QCUSTOMPLOT_VERSION < 0x020000
-            plot->graph(1)->setData(x, spectrumPlasmaLine);
-#else
-            plot->graph(1)->setData(x, spectrumPlasmaLine, true);
-#endif
-        }
-        else {
-#if QCUSTOMPLOT_VERSION < 0x020000
-            plot->graph(1)->setData(x, y2); // peaks, but probably cleared out
-#else
-            plot->graph(1)->setData(x, y2, true); // peaks, but probably cleared out
-#endif
-        }
-
-        if(updateRange)
-            plot->yAxis->setRange(prefs.plotFloor, prefs.plotCeiling);
-
-        plot->xAxis->setRange(spectrum.startFreq, spectrum.endFreq);
-        plot->replot();
-
-        if(specLen == spectWidth)
-        {
-            wfimage.prepend(spectrum.data);
-            wfimage.pop_back();
-            QByteArray wfRow;
-            // Waterfall:
-            for(int row = 0; row < wfLength; row++)
-            {
-                wfRow = wfimage.at(row);
-                for(int col = 0; col < spectWidth; col++)
-                {
-                    colorMap->data()->setCell( col, row, (unsigned char)wfRow.at(col));
-                }
-            }
-            if(updateRange)
-            {
-                colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
-            }
-            wf->yAxis->setRange(0,wfLength - 1);
-            wf->xAxis->setRange(0, spectWidth-1);
-            wf->replot();
-
-#if defined (USB_CONTROLLER)
-            // Send to USB Controllers if requested
-            auto i = usbDevices.begin();
-            while (i != usbDevices.end())
-            {
-                if (i.value().connected && i.value().type.model == usbDeviceType::StreamDeckPlus && i.value().lcd == funcLCDWaterfall )
-                {
-                    lcdImage = wf->toPixmap().toImage();
-                    emit sendControllerRequest(&i.value(), usbFeatureType::featureLCD, 0, "", &lcdImage);
-                }
-                else if (i.value().connected && i.value().type.model == usbDeviceType::StreamDeckPlus && i.value().lcd == funcLCDSpectrum)
-                {
-                    lcdImage = plot->toPixmap().toImage();
-                    emit sendControllerRequest(&i.value(), usbFeatureType::featureLCD, 0, "", &lcdImage);
-                }
-                 ++i;
-            }
-#endif
-
-        }
-        oldPlotFloor = plotFloor;
-        oldPlotCeiling = plotCeiling;
-
-        if (spectrum.oor && !oorIndicator->visible()) {
-            oorIndicator->setVisible(true);
-            //oorIndicator->position->setCoords((oldLowerFreq+oldUpperFreq)/2,ui->topLevelSlider->value() - 20);
-            qInfo(logSystem()) << "Scope out of range";
-        } else if (!spectrum.oor && oorIndicator->visible()) {
-            oorIndicator->setVisible(false);
-        }
-
-        //ovfIndicator->setVisible(true);
-
-    }
-}
-
-void wfmain::preparePlasma()
-{
-    if(plasmaPrepared)
-        return;
-
-    if(spectrumPlasmaSize == 0)
-        spectrumPlasmaSize = 128;
-
-    plasmaMutex.lock();
-    spectrumPlasma.clear();
-
-
-    spectrumPlasma.squeeze();
-    plasmaMutex.unlock();
-    plasmaPrepared = true;
-}
-
-void wfmain::computePlasma()
-{
-    plasmaMutex.lock();
-    spectrumPlasmaLine.clear();
-    spectrumPlasmaLine.resize(spectWidth);
-    int specPlasmaSize = spectrumPlasma.size();
-    if(underlayMode == underlayAverageBuffer)
-    {
-        for(int col=0; col < spectWidth; col++)
-        {
-            for(int pos=0; pos < specPlasmaSize; pos++)
-            {
-                spectrumPlasmaLine[col] += (unsigned char)spectrumPlasma[pos][col];
-            }
-            spectrumPlasmaLine[col] = spectrumPlasmaLine[col] / specPlasmaSize;
-        }
-    } else if (underlayMode == underlayPeakBuffer){
-        // peak mode, running peak display
-        for(int col=0; col < spectWidth; col++)
-        {
-            for(int pos=0; pos < specPlasmaSize; pos++)
-            {
-                if((double)((unsigned char)spectrumPlasma[pos][col]) > spectrumPlasmaLine[col])
-                    spectrumPlasmaLine[col] = (unsigned char)spectrumPlasma[pos][col];
-            }
-        }
-    }
-    plasmaMutex.unlock();
-}
-
 void wfmain::receivespectrumMode(spectrumMode_t spectMode)
 {
     ui->spectrumModeCombo->blockSignals(true);
@@ -5242,6 +4760,7 @@ void wfmain::receivespectrumMode(spectrumMode_t spectMode)
 
 void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 {
+    /*
     if (me->button() == Qt::LeftButton) {
 
         double x;
@@ -5257,9 +4776,9 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
             freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
             freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
 
-            queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(freqGo),false));
+            queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(freqGo),false));
 
-            freq = freqGo;
+            ui->mainScope->setFrequency(freqGo);
             setUIFreq();
 
             showStatusBarText(QString("Going to %1 MHz").arg(x));
@@ -5276,10 +4795,12 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
             queue->add(priorityHighest,funcPBTOuter);
         }
     }
+    */
 }
 
 void wfmain::handleWFDoubleClick(QMouseEvent *me)
 {
+    /*
     double x;
     freqt freqGo;
     //double y;
@@ -5296,14 +4817,16 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
 
         queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(freqGo),false));
 
-        freq = freqGo;
+        ui->mainScope->setFrequency(freqGo);
         setUIFreq();
         showStatusBarText(QString("Going to %1 MHz").arg(x));
     }
+*/
 }
 
 void wfmain::handlePlotClick(QMouseEvent* me)
 {
+    /*
     QCPAbstractItem* item = plot->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
     QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
@@ -5331,7 +4854,7 @@ void wfmain::handlePlotClick(QMouseEvent* me)
                 freqt freqGo;
                 freqGo.Hz = (spot.value()->frequency) * 1E6;
                 freqGo.MHzDouble = spot.value()->frequency;
-                queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(freqGo),false));
+                queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(freqGo),false));
             }
         }
         else if (passbandAction == passbandStatic && rectItem != nullptr)
@@ -5356,7 +4879,7 @@ void wfmain::handlePlotClick(QMouseEvent* me)
         if (textItem != nullptr) {
             QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
             if (spot != clusterSpots.end() && spot.key() == textItem->text()) {
-                /* parent and children are destroyed on close */
+                // parent and children are destroyed on close
                 QDialog* spotDialog = new QDialog();
                 QVBoxLayout* vlayout = new QVBoxLayout;
                 //spotDialog->setFixedSize(240, 100);
@@ -5394,10 +4917,12 @@ void wfmain::handlePlotClick(QMouseEvent* me)
             this->mousePressFreq = plot->xAxis->pixelToCoord(cursor);
         }
     }
+    */
 }
 
 void wfmain::handlePlotMouseRelease(QMouseEvent* me)
 {
+    /*
     QCPAbstractItem* item = plot->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
 
@@ -5410,10 +4935,12 @@ void wfmain::handlePlotMouseRelease(QMouseEvent* me)
     if (passbandAction != passbandStatic) {
         passbandAction = passbandStatic;
     }
+*/
 }
 
 void wfmain::handlePlotMouseMove(QMouseEvent* me)
 {
+    /*
     QCPAbstractItem* item = plot->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
     QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
@@ -5466,7 +4993,7 @@ void wfmain::handlePlotMouseMove(QMouseEvent* me)
                 break;
             }
 
-            if (plot->xAxis->pixelToCoord(cursor) >= freq.MHzDouble + origin) {
+            if (plot->xAxis->pixelToCoord(cursor) >= ui->mainScope->getFrequency().MHzDouble + origin) {
                 pb = plot->xAxis->pixelToCoord(cursor) - passbandIndicator->topLeft->coords().x();
             }
             else {
@@ -5535,24 +5062,25 @@ void wfmain::handlePlotMouseMove(QMouseEvent* me)
         {
             freqt freqGo;
             freqGo.VFO = activeVFO;
-            freqGo.Hz = (freq.MHzDouble + delta) * 1E6;
+            freqGo.Hz = (ui->mainScope->getFrequency().MHzDouble + delta) * 1E6;
             freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
             queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(freqGo),false));
         }
     } else {
         setCursor(Qt::ArrowCursor);
     }
-
+    */
 }
 
 void wfmain::handleWFClick(QMouseEvent *me)
 {
-    double x = plot->xAxis->pixelToCoord(me->pos().x());
-    showStatusBarText(QString("Selected %1 MHz").arg(x));
+    //double x = plot->xAxis->pixelToCoord(me->pos().x());
+    //showStatusBarText(QString("Selected %1 MHz").arg(x));
 }
 
 void wfmain::handleWFScroll(QWheelEvent *we)
 {
+    /*
     // The wheel event is typically
     // .y() and is +/- 120.
     // We will click the dial once for every 120 received.
@@ -5583,18 +5111,21 @@ void wfmain::handleWFScroll(QWheelEvent *we)
         stepsHz *= 10;
     }
 
-    f.Hz = roundFrequencyWithStep(freq.Hz, clicks, stepsHz);
+    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, clicks, stepsHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    freq = f;
+    ui->mainScope->setFrequency(f);
 
-    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(f),false));
+    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 
     ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
+*/
 }
 
 void wfmain::handlePlotScroll(QWheelEvent *we)
 {
+    /*
     handleWFScroll(we);
+*/
 }
 
 void wfmain::on_scopeEnableWFBtn_stateChanged(int state)
@@ -5626,12 +5157,12 @@ void wfmain::receiveMode(modeInfo mode)
         case modeDV:
         case modeDD:
             if (mode.filter == 1)
-                passbandWidth = 0.015;
+                ui->mainScope->setPassbandWidth(0.015);
             else if (mode.filter == 2)
-                passbandWidth = 0.010;
+                ui->mainScope->setPassbandWidth(0.010);
             else
-                passbandWidth = 0.007;
-            passbandCenterFrequency = 0.0;
+                ui->mainScope->setPassbandWidth(0.007);
+            ui->mainScope->setCenterFreq(0.0);
             maxPassbandHz = 10E3;
             queue->del(funcPBTInner);
             queue->del(funcPBTOuter);
@@ -5647,16 +5178,16 @@ void wfmain::receiveMode(modeInfo mode)
             maxPassbandHz = 3600;
             break;
         case modeAM:
-            passbandCenterFrequency = 0.0;
+            ui->mainScope->setCenterFreq(0.0);
             maxPassbandHz = 10E3;
             break;
         case modeLSB:
         case modeUSB:
-            passbandCenterFrequency = 0.0015;
+            ui->mainScope->setCenterFreq(0.0015);
             maxPassbandHz = 3600;
             break;
         default:
-            passbandCenterFrequency = 0.0;
+            ui->mainScope->setCenterFreq(0.0);
             maxPassbandHz = 3600;
             break;
         }
@@ -5728,12 +5259,7 @@ void wfmain::receiveDataModeStatus(uchar data, uchar filter)
 
 void wfmain::on_clearPeakBtn_clicked()
 {
-    if(haveRigCaps)
-    {
-        spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
-        clearPlasmaBuffer();
-    }
-    return;
+    ui->mainScope->setUnderlayMode(prefs.underlayMode);
 }
 
 void wfmain::changeFullScreenMode(bool checked)
@@ -5888,14 +5414,14 @@ void wfmain::on_freqDial_valueChanged(int value)
     // With the number of steps and direction of steps established,
     // we can now adjust the frequency:
 
-    f.Hz = roundFrequencyWithStep(freq.Hz, delta, tsKnobHz);
+    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, delta, tsKnobHz);
     f.MHzDouble = f.Hz / (double)1E6;
     if (f.Hz > 0)
     {
-        freq = f;
+        ui->mainScope->setFrequency(f);
         oldFreqDialVal = value;
         ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
-        queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(f),false));
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
     } else {
         ui->freqDial->blockSignals(true);
         ui->freqDial->setValue(oldFreqDialVal);
@@ -5910,9 +5436,9 @@ void wfmain::handleBandStackReg(freqt freqGo, char mode, char filter, bool dataO
 
     qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << freqGo.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
 
-    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(freqGo),false));
+    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(freqGo),false));
 
-    freq = freqGo;
+    ui->mainScope->setFrequency(freqGo);
     //setUIFreq();
 
     ui->tabWidget->setCurrentIndex(0);
@@ -5961,7 +5487,7 @@ void wfmain::gotoMemoryPreset(int presetNumber)
     //issueDelayedCommand(cmdSetModeFilter); // goes to setModeVal
     //issueCmd(cmdSetMode, m);
     memFreq.MHzDouble = memFreq.Hz / 1.0E6;
-    freq = memFreq;
+    ui->mainScope->setFrequency(memFreq);
     qDebug(logGui()) << "Recalling preset number " << presetNumber << " as frequency " << temp.frequency << "MHz";
 
     setUIFreq();
@@ -5971,11 +5497,11 @@ void wfmain::saveMemoryPreset(int presetNumber)
 {
     // int, double, rigMode_t
     double frequency;
-    if(this->freq.Hz == 0)
+    if(ui->mainScope->getFrequency().Hz == 0)
     {
-        frequency = freq.MHzDouble;
+        frequency = ui->mainScope->getFrequency().MHzDouble;
     } else {
-        frequency = freq.Hz / 1.0E6;
+        frequency = ui->mainScope->getFrequency().Hz / 1.0E6;
     }
     rigMode_t mode = currentMode;
     qDebug(logGui()) << "Saving preset number " << presetNumber << " to frequency " << frequency << " MHz";
@@ -6460,8 +5986,8 @@ void wfmain::receiveModInput(rigInput input, unsigned char data)
 void wfmain::receivePassband(quint16 pass)
 {
     double pb = (double)(pass / 1000000.0);
-    if (passbandWidth != pb) {
-        passbandWidth = pb;
+    if (ui->mainScope->getPassbandWidth() != pb) {
+        ui->mainScope->setPassbandWidth(pb);
         trxadj->updatePassband(pass);
         qInfo(logSystem()) << QString("Received new IF Filter/Passband %0 Hz").arg(pass);
         showStatusBarText(QString("IF filter width %0 Hz (%1 MHz)").arg(pass).arg(passbandWidth));
@@ -6488,10 +6014,10 @@ void wfmain::receivePBTInner(unsigned char level) {
     * In CW mode, the value is also dependant on the CW Pitch setting
     */
     qint16 shift = (qint16)(level - 128);
-    double tempVar = ceil((shift / 127.0) * passbandWidth * 20000.0) / 20000.0;
+    double tempVar = ceil((shift / 127.0) * ui->mainScope->getPassbandWidth() * 20000.0) / 20000.0;
     // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
     double pitch = 0.0;
-    if ((currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) && passbandWidth > 0.0006)
+    if ((currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) && ui->mainScope->getPassbandWidth() > 0.0006)
     {
         pitch = (600.0 - cwPitch) / 1000000.0;
     }
@@ -6511,10 +6037,10 @@ void wfmain::receivePBTOuter(unsigned char level) {
     * In CW mode, the value is also dependant on the CW Pitch setting
     */
     qint16 shift = (qint16)(level - 128);
-    double tempVar = ceil((shift / 127.0) * passbandWidth * 20000.0) / 20000.0;
+    double tempVar = ceil((shift / 127.0) * ui->mainScope->getPassbandWidth() * 20000.0) / 20000.0;
     // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
     double pitch = 0.0;
-    if ((currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) && passbandWidth > 0.0006)
+    if ((currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) && ui->mainScope->getPassbandWidth() > 0.0006)
     {
         pitch = (600.0 - cwPitch) / 1000000.0;
     }
@@ -6780,8 +6306,9 @@ void wfmain::on_rxAntennaCheck_clicked(bool value)
 }
 void wfmain::on_wfthemeCombo_activated(int index)
 {
-    colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(ui->wfthemeCombo->itemData(index).toInt()));
     prefs.wftheme = ui->wfthemeCombo->itemData(index).toInt();
+    ui->mainScope->wfTheme(prefs.wftheme);
+    ui->subScope->wfTheme(prefs.wftheme);
 }
 
 void wfmain::receivePreamp(unsigned char pre)
@@ -7051,18 +6578,21 @@ void wfmain::on_baudRateCombo_activated(int index)
 void wfmain::on_wfLengthSlider_valueChanged(int value)
 {
     prefs.wflength = (unsigned int)(value);
-    prepareWf(value);
+    ui->mainScope->prepareWf(value);
+    ui->subScope->prepareWf(value);
 }
 
 void wfmain::on_wfAntiAliasChk_clicked(bool checked)
 {
-    colorMap->setAntialiased(checked);
+    ui->mainScope->wfAntiAliased(checked);
+    ui->subScope->wfAntiAliased(checked);
     prefs.wfAntiAlias = checked;
 }
 
 void wfmain::on_wfInterpolateChk_clicked(bool checked)
 {
-    colorMap->setInterpolate(checked);
+    ui->mainScope->wfInterpolate(checked);
+    ui->subScope->wfInterpolate(checked);
     prefs.wfInterpolate = checked;
 }
 
@@ -7208,107 +6738,54 @@ void wfmain::setAudioDevicesUI()
 
 void wfmain::on_topLevelSlider_valueChanged(int value)
 {
-    wfCeiling = value;
-    plotCeiling = value;
     prefs.plotCeiling = value;
-    plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
-    colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
+    ui->mainScope->setRange(plotFloor,plotCeiling);
+    ui->subScope->setRange(plotFloor,plotCeiling);
 }
 
 void wfmain::on_botLevelSlider_valueChanged(int value)
 {
-    wfFloor = value;
-    plotFloor = value;
     prefs.plotFloor = value;
-    plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
-    colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
+    ui->mainScope->setRange(plotFloor,plotCeiling);
+    ui->subScope->setRange(plotFloor,plotCeiling);
 }
 
 void wfmain::on_underlayBufferSlider_valueChanged(int value)
 {
-    resizePlasmaBuffer(value);
-    prefs.underlayBufferSize = value;
-    spectrumPlasmaSize = value;
-}
-
-void wfmain::resizePlasmaBuffer(int newSize)
-{
-
-    QByteArray empty((int)spectWidth, '\x01');
-    plasmaMutex.lock();
-
-    int oldSize = spectrumPlasma.size();
-
-    if(oldSize < newSize)
-    {
-        spectrumPlasma.resize(newSize);
-        for(int p=oldSize; p < newSize; p++)
-        {
-            spectrumPlasma.append(empty);
-        }
-    } else if (oldSize > newSize){
-        for(int p = oldSize; p > newSize; p--)
-        {
-            spectrumPlasma.pop_back();
-        }
-    }
-
-    spectrumPlasma.squeeze();
-    plasmaMutex.unlock();
-}
-
-void wfmain::clearPlasmaBuffer()
-{
-    QByteArray empty((int)spectWidth, '\x01');
-    plasmaMutex.lock();
-    int pSize = spectrumPlasma.size();
-    for(int i=0; i < pSize; i++)
-    {
-        spectrumPlasma[i] = empty;
-    }
-    plasmaMutex.unlock();
+    ui->mainScope->resizePlasmaBuffer(value);
+    ui->subScope->resizePlasmaBuffer(value);
 }
 
 void wfmain::on_underlayNone_toggled(bool checked)
 {
-    //ui->underlayBufferSlider->setDisabled(checked);
     if(checked)
-    {
-        underlayMode = underlayNone;
-        prefs.underlayMode = underlayMode;
-        on_clearPeakBtn_clicked();
-    }
+        prefs.underlayMode = underlayNone;
+    ui->mainScope->setUnderlayMode(prefs.underlayMode);
+    ui->subScope->setUnderlayMode(prefs.underlayMode);
 }
 
 void wfmain::on_underlayPeakHold_toggled(bool checked)
 {
-    //ui->underlayBufferSlider->setDisabled(checked);
     if(checked)
-    {
-        underlayMode = underlayPeakHold;
-        prefs.underlayMode = underlayMode;
-        on_clearPeakBtn_clicked();
-    }
+        prefs.underlayMode = underlayPeakHold;
+    ui->mainScope->setUnderlayMode(prefs.underlayMode);
+    ui->subScope->setUnderlayMode(prefs.underlayMode);
 }
 
 void wfmain::on_underlayPeakBuffer_toggled(bool checked)
 {
-    //ui->underlayBufferSlider->setDisabled(!checked);
     if(checked)
-    {
-        underlayMode = underlayPeakBuffer;
-        prefs.underlayMode = underlayMode;
-    }
+        prefs.underlayMode = underlayPeakBuffer;
+    ui->mainScope->setUnderlayMode(prefs.underlayMode);
+    ui->subScope->setUnderlayMode(prefs.underlayMode);
 }
 
 void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 {
-    //ui->underlayBufferSlider->setDisabled(!checked);
     if(checked)
-    {
-        underlayMode = underlayAverageBuffer;
-        prefs.underlayMode = underlayMode;
-    }
+        prefs.underlayMode = underlayAverageBuffer;
+    ui->mainScope->setUnderlayMode(prefs.underlayMode);
+    ui->subScope->setUnderlayMode(prefs.underlayMode);
 }
 
 // --- DEBUG FUNCTION ---
@@ -7348,57 +6825,10 @@ void wfmain::useColorPreset(colorPrefsType *cp)
         return;
 
     //qInfo(logSystem()) << "Setting plots to color preset number " << cp->presetNum << ", with name " << *(cp->presetName);
-
-    plot->setBackground(cp->plotBackground);
-
-    plot->xAxis->grid()->setPen(cp->gridColor);
-    plot->yAxis->grid()->setPen(cp->gridColor);
-
-    plot->legend->setTextColor(cp->textColor);
-    plot->legend->setBorderPen(cp->gridColor);
-    plot->legend->setBrush(cp->gridColor);
-
-    plot->xAxis->setTickLabelColor(cp->textColor);
-    plot->xAxis->setLabelColor(cp->gridColor);
-    plot->yAxis->setTickLabelColor(cp->textColor);
-    plot->yAxis->setLabelColor(cp->gridColor);
-
-    plot->xAxis->setBasePen(cp->axisColor);
-    plot->xAxis->setTickPen(cp->axisColor);
-    plot->yAxis->setBasePen(cp->axisColor);
-    plot->yAxis->setTickPen(cp->axisColor);
-
-    freqIndicatorLine->setPen(QPen(cp->tuningLine));
-
-    passbandIndicator->setPen(QPen(cp->passband));
-    passbandIndicator->setBrush(QBrush(cp->passband));
-
-    pbtIndicator->setPen(QPen(cp->pbt));
-    pbtIndicator->setBrush(QBrush(cp->pbt));
-
-    plot->graph(0)->setPen(QPen(cp->spectrumLine));
-    plot->graph(0)->setBrush(QBrush(cp->spectrumFill));
-
-    plot->graph(1)->setPen(QPen(cp->underlayLine));
-    plot->graph(1)->setBrush(QBrush(cp->underlayFill));
-
-    wf->yAxis->setBasePen(cp->wfAxis);
-    wf->yAxis->setTickPen(cp->wfAxis);
-    wf->xAxis->setBasePen(cp->wfAxis);
-    wf->xAxis->setTickPen(cp->wfAxis);
-
-    wf->xAxis->setLabelColor(cp->wfGrid);
-    wf->yAxis->setLabelColor(cp->wfGrid);
-
-    wf->xAxis->setTickLabelColor(cp->wfText);
-    wf->yAxis->setTickLabelColor(cp->wfText);
-
-    wf->setBackground(cp->wfBackground);
-
     ui->meterSPoWidget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
     ui->meter2Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
-
-    clusterColor = cp->clusterSpots;
+    ui->mainScope->colorPreset(cp);
+    ui->subScope->colorPreset(cp);
 }
 
 
@@ -7709,7 +7139,7 @@ void wfmain::receiveSpots(QList<spotData> spots)
 {
     //QElapsedTimer timer;
     //timer.start();
-
+/*
     bool current = false;
     
     if (clusterSpots.size() > 0) {
@@ -7729,6 +7159,7 @@ void wfmain::receiveSpots(QList<spotData> spots)
 
         if (!found)
         {
+
             spotData* sp = new spotData(s);
 
             //qDebug(logCluster()) << "ADD:" << sp->dxcall;
@@ -7789,6 +7220,7 @@ void wfmain::receiveSpots(QList<spotData> spots)
     }
 
     //qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
+*/
 }
 
 void wfmain::on_clusterPopOutBtn_clicked()
@@ -8175,7 +7607,8 @@ void wfmain::receiveValue(cacheItem val){
     case funcVariousSql:
         break;
     case funcOverflowStatus:
-        ovfIndicator->setVisible(val.value.value<bool>());
+        ui->mainScope->overflow(val.value.value<bool>());
+        ui->subScope->overflow(val.value.value<bool>());
         break;
     case funcCenterMeter:
         receiveMeter(meter_t::meterCenter,val.value.value<uchar>());
@@ -8268,9 +7701,9 @@ void wfmain::receiveValue(cacheItem val){
         bandStackType bsr = val.value.value<bandStackType>();
         qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << bsr.freq.Hz << ", mode: " << bsr.mode << ", filter: " << bsr.filter << ", data mode: " << bsr.data;
 
-        queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(bsr.freq),false));
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(bsr.freq),false));
 
-        freq = bsr.freq;
+        ui->mainScope->setFrequency(bsr.freq);
 
         ui->tabWidget->setCurrentIndex(0);
 
@@ -8361,10 +7794,11 @@ void wfmain::receiveValue(cacheItem val){
         break;
     // 0x27
     case funcScopeMainWaveData:
-    {
-        receiveSpectrumData(val.value.value<scopeData>());
+        ui->mainScope->update(val.value.value<scopeData>());
         break;
-    }
+    case funcScopeSubWaveData:
+        ui->subScope->update(val.value.value<scopeData>());
+        break;
     case funcScopeOnOff:
         // confirming scope is on
         break;
@@ -8372,11 +7806,43 @@ void wfmain::receiveValue(cacheItem val){
         // confirming output enabled/disabled of wf data.
         break;
     case funcScopeMainSub:
+    {
         // This tells us whether we are receiving main or sub data
+        bool sub = val.value.value<bool>();
+        if (!sub && !ui->mainScope->isVisible()) {
+                ui->subScope->setVisible(false);
+                ui->mainScope->setVisible(true);
+        } else if (sub && !ui->subScope->isVisible()) {
+                ui->mainScope->setVisible(false);
+                ui->subScope->setVisible(true);
+        }
         break;
+    }
     case funcScopeSingleDual:
+    {
         // This tells us whether we are receiving single or dual scopes
+        bool dual = val.value.value<bool>();
+        if (dual) {
+            if (!ui->subScope->isVisible())
+            {
+                ui->subScope->setVisible(true);
+            }
+            else if (!ui->mainScope->isVisible())
+            {
+                ui->subScope->setVisible(true);
+            }
+        } else {
+            if (ui->mainScope->isVisible())
+            {
+                ui->subScope->setVisible(false);
+            }
+            else if (ui->subScope->isVisible())
+            {
+                ui->mainScope->setVisible(false);
+            }
+        }
         break;
+    }
     case funcScopeMainMode:
         // fixed or center
         // [1] 0x14

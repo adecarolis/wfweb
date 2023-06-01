@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -44,13 +44,18 @@
             <number>0</number>
            </property>
            <item>
-            <widget class="QSplitter" name="splitter">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <widget class="QCustomPlot" name="plot" native="true"/>
-             <widget class="QCustomPlot" name="waterfall" native="true"/>
-            </widget>
+            <layout class="QVBoxLayout" name="verticalLayout_4">
+             <item>
+              <widget class="spectrumScope" name="mainScope" native="true"/>
+             </item>
+             <item>
+              <widget class="spectrumScope" name="subScope" native="true">
+               <property name="enabled">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
           </layout>
          </widget>
@@ -3419,13 +3424,15 @@ Please use the &quot;Radio Server&quot; page to select server audio</string>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
   <customwidget>
-   <class>QCustomPlot</class>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>meter</class>
    <extends>QWidget</extends>
    <header>meter.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>spectrumScope</class>
+   <extends>QWidget</extends>
+   <header location="global">spectrumscope.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

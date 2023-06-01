@@ -2237,6 +2237,7 @@ void rigCommander::parseCommand()
     }
     // 0x27
     case funcScopeMainWaveData:
+    case funcScopeSubWaveData:
     {
         scopeData d;
         if (parseSpectrum(d))
@@ -2245,16 +2246,13 @@ void rigCommander::parseCommand()
     }
     case funcScopeOnOff:
         // confirming scope is on
-        value.setValue(static_cast<bool>(payloadIn[2]));
-        break;
     case funcScopeDataOutput:
         // confirming output enabled/disabled of wf data.
-        break;
     case funcScopeMainSub:
         // This tells us whether we are receiving main or sub data
-        break;
     case funcScopeSingleDual:
         // This tells us whether we are receiving single or dual scopes
+        value.setValue(static_cast<bool>(payloadIn[2]));
         break;
     case funcScopeMainMode:
         // fixed or center
