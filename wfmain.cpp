@@ -5008,7 +5008,7 @@ void wfmain::handlePlotMouseMove(QMouseEvent* me)
                 pb = passbandIndicator->bottomRight->coords().x() - plot->xAxis->pixelToCoord(cursor);
             }
             queue->add(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(pb * 1000000),false));
-            queue->add(priorityHighest,funcFilterWidth);
+            queue->add(priorityHigh,funcFilterWidth);
             lastFreq = movedFrequency;
         }
     }

@@ -342,6 +342,10 @@ bool rigCommander::getCommand(funcs func, QByteArray &payload, int value, bool s
         {
             qInfo(logRig()) << QString("Value %0 for %1 is outside of allowed range (%2-%3)").arg(value).arg(funcString[func]).arg(it.value().minVal).arg(it.value().maxVal);
         }
+    } else {
+        // Don't try this command again as the rig doesn't support it!
+        qInfo(logRig()) << "Removing unsupported command from queue" << funcString[func] << "sub" << sub;
+        queue->del(func,sub);
     }
     return false;
 }
@@ -1984,7 +1988,7 @@ void rigCommander::parseCommand()
         modeInfo m;
         // New format payload with mode+datamode+filter
         m = parseMode(uchar(payloadIn[2]), uchar(payloadIn[4]),sub);
-        m.data = bool(payloadIn[3]);
+        m.data = uchar(payloadIn[3]);
         m.VFO = selVFO_t(payloadIn[1] & 0x01);
         value.setValue(m);
         break;
@@ -2150,7 +2154,7 @@ void rigCommander::parseCommand()
         quint16 calc;
         quint8 pass = bcdHexToUChar((quint8)payloadIn[2]);
         modeInfo m;
-        m = queue->getCache((sub?funcUnselectedMode:funcSelectedMode)).value.value<modeInfo>();
+        m = queue->getCache((sub?funcUnselectedMode:funcSelectedMode),sub).value.value<modeInfo>();
 
         if (m.mk == modeAM)
         {
