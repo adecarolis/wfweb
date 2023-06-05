@@ -71,8 +71,8 @@ void cachingQueue::run()
             }            
             counter++;
 
-            QMultiMap<queuePriority,queueItem>::const_iterator it = queue.constFind(prio);
-            if (it != queue.cend())
+            auto it = queue.find(prio);
+            if (it != queue.end())
             {
                 auto item = it.value();
                 emit haveCommand(item.command,item.param,item.sub);
@@ -80,7 +80,7 @@ void cachingQueue::run()
                     queue.insert(queue.cend(),prio,item);
                     updateCache(false,item.command);
                 }
-                queue.erase(it);
+                it=queue.erase(it);
             }
 
             QCoreApplication::processEvents();
