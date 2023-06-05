@@ -34,11 +34,11 @@ debugWindow::~debugWindow()
 
 void debugWindow::getCache()
 {
-    QMap<funcs,cacheItem> cacheItems = queue->getCacheItems();
+    auto cacheItems = queue->getCacheItems();
     ui->cacheLabel->setText(QString("Current cache items in cachingView(%0)").arg(cacheItems.size()));
     int c=0;
-    QMap<funcs,cacheItem>::const_iterator i = cacheItems.constBegin();
-    while (i != cacheItems.constEnd())
+    auto i = cacheItems.cbegin();
+    while (i != cacheItems.cend())
     {
         if (c >= ui->cacheView->rowCount())
         {
@@ -65,11 +65,11 @@ void debugWindow::getCache()
 
 void debugWindow::getQueue()
 {
-    QMultiMap <queuePriority,queueItem> queueItems = queue->getQueueItems();
+    auto queueItems = queue->getQueueItems();
     ui->queueLabel->setText(QString("Current queue items in cachingView(%0)").arg(queueItems.size()));
     int c=0;
-    QMultiMap<queuePriority,queueItem>::const_iterator i = queueItems.constBegin();
-    while (i != queueItems.constEnd())
+    auto i = queueItems.cbegin();
+    while (i != queueItems.cend())
     {
         if (c >= ui->queueView->rowCount())
         {

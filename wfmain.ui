@@ -26,177 +26,12 @@
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
-         <widget class="QGroupBox" name="spectrumGroupBox">
-          <property name="title">
-           <string>Spectrum</string>
-          </property>
-          <layout class="QVBoxLayout" name="verticalLayout_3">
-           <property name="leftMargin">
-            <number>0</number>
-           </property>
-           <property name="topMargin">
-            <number>7</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
-            <number>0</number>
-           </property>
-           <item>
-            <layout class="QVBoxLayout" name="verticalLayout_4">
-             <item>
-              <widget class="spectrumScope" name="mainScope" native="true"/>
-             </item>
-             <item>
-              <widget class="spectrumScope" name="subScope" native="true">
-               <property name="enabled">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="specControlsHorizLayout">
-          <property name="topMargin">
-           <number>0</number>
-          </property>
+         <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
-           <widget class="QLabel" name="specModeLabel">
-            <property name="text">
-             <string>Spectrum Mode: </string>
-            </property>
-           </widget>
+           <widget class="spectrumScope" name="mainScope" native="true"/>
           </item>
           <item>
-           <widget class="QComboBox" name="spectrumModeCombo">
-            <property name="accessibleName">
-             <string>Spectrum Mode</string>
-            </property>
-            <property name="accessibleDescription">
-             <string>Spectrum Mode</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="specSpanLabel">
-            <property name="text">
-             <string>Span:</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="scopeBWCombo">
-            <property name="accessibleName">
-             <string>Spectrum Span</string>
-            </property>
-            <property name="accessibleDescription">
-             <string/>
-            </property>
-            <property name="sizeAdjustPolicy">
-             <enum>QComboBox::AdjustToContents</enum>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="specEdgeLabel">
-            <property name="text">
-             <string>Edge</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="scopeEdgeCombo">
-            <property name="accessibleName">
-             <string>Spectrum Edge</string>
-            </property>
-            <property name="accessibleDescription">
-             <string/>
-            </property>
-            <property name="sizeAdjustPolicy">
-             <enum>QComboBox::AdjustToContents</enum>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="customEdgeBtn">
-            <property name="toolTip">
-             <string>Define a custom (fixed) scope edge</string>
-            </property>
-            <property name="text">
-             <string>Custom Edge</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="toFixedBtn">
-            <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;The currently-selected edge slot will be overridden.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-            </property>
-            <property name="text">
-             <string>ToFixed</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="clearPeakBtn">
-            <property name="text">
-             <string>Clear Peaks</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="scopeEnableWFBtn">
-            <property name="toolTip">
-             <string>Checked=WF enable, Unchecked=WF disable, Partial=Enable WF but no local display</string>
-            </property>
-            <property name="text">
-             <string>Enable WF</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-            <property name="tristate">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="specThemeLabel">
-            <property name="text">
-             <string>Theme:</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="wfthemeCombo">
-            <property name="toolTip">
-             <string>Waterfall color theme</string>
-            </property>
-            <property name="accessibleName">
-             <string>Waterfall display color theme</string>
-            </property>
-            <property name="accessibleDescription">
-             <string>Selects the theme for the color waterfall display</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <spacer name="specHorizSpacer">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
+           <widget class="spectrumScope" name="subScope" native="true"/>
           </item>
          </layout>
         </item>
@@ -459,6 +294,9 @@
             </property>
             <item>
              <widget class="QLabel" name="label_2">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
               <property name="maximumSize">
                <size>
                 <width>16777215</width>
@@ -472,6 +310,9 @@
             </item>
             <item>
              <widget class="QComboBox" name="modeSelectCombo">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
               <property name="accessibleName">
                <string>Mode Selector</string>
               </property>
@@ -482,16 +323,26 @@
             </item>
             <item>
              <widget class="QLabel" name="label_55">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
               <property name="text">
                <string>Data:</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QComboBox" name="datamodeCombo"/>
+             <widget class="QComboBox" name="datamodeCombo">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+             </widget>
             </item>
             <item>
              <widget class="QLabel" name="label_22">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
               <property name="text">
                <string>Receive Filter</string>
               </property>
@@ -502,6 +353,9 @@
             </item>
             <item>
              <widget class="QComboBox" name="modeFilterCombo">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
               <property name="accessibleName">
                <string>Receive Filter Selection</string>
               </property>
@@ -512,6 +366,9 @@
             </item>
             <item>
              <widget class="QPushButton" name="moreControlsBtn">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
               <property name="toolTip">
                <string>Show additional controls</string>
               </property>

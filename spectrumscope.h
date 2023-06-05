@@ -5,9 +5,16 @@
 #include <QMutex>
 #include <QMutexLocker>
 #include <QSplitter>
+#include <QComboBox>
+#include <QLabel>
+#include <QCheckBox>
+#include <QPushButton>
+#include <QSpacerItem>
 #include <qcustomplot.h>
 #include "wfviewtypes.h"
 #include "colorprefs.h"
+#include "rigidentities.h"
+#include "cachingqueue.h"
 
 enum scopeTypes {
     scopeSpectrum=0,
@@ -15,7 +22,7 @@ enum scopeTypes {
     scopeNone
 };
 
-class spectrumScope : public QWidget
+class spectrumScope : public QGroupBox
 {
     Q_OBJECT
 public:
@@ -32,31 +39,115 @@ public:
     void overflow(bool en) {ovfIndicator->setVisible(en);}
     void resizePlasmaBuffer(int size);
     void colorPreset(colorPrefsType *p);
+
     void setCenterFreq (double hz) { passbandCenterFrequency = hz;}
     double getCenterFreq () { return passbandCenterFrequency;}
-    void setPassbandWidth (double hz) { passbandWidth = hz;}
-    double getPassbandWidth () { return passbandWidth;}
+
+    void setPassbandWidth(double hz) { passbandWidth = hz;}
+    double getPassbandWidth() { return passbandWidth;}
+
+    void setIdentity(QString name, bool s) {this->setTitle(name), sub = s;}
+    bool getSub() { return sub;}
+
+    void receiveCwPitch(uchar p);
+    quint16 getCwPitch() { return cwPitch;}
+    void receivePassband(quint16 pass);
+
+    double getPBTInner () { return PBTInner;}
+    void setPBTInner (double hz) { PBTInner = hz;}
+
+    double getPBTOuter () { return PBTOuter;}
+    void setPBTOuter (double hz) { PBTOuter = hz;}
+
+    quint16 getStepSize () { return stepSize;}
+    void setStepSize (quint16 hz) { stepSize = hz;}
+
     void setFrequency (freqt f) { freq = f;}
     freqt getFrequency () { return freq;}
 
-signals:
+    void receiveMode (modeInfo m);
+
+    void clearSpans() { spanCombo->clear();}
+    void clearMode() { modeCombo->clear();}
+    void clearData() { dataCombo->clear();}
+    void clearFilter() { filterCombo->clear();}
+
+    void addSpan(QString text, QVariant data) {spanCombo->blockSignals(true); spanCombo->addItem(text,data); spanCombo->blockSignals(false);}
+    void addMode(QString text, QVariant data) {modeCombo->blockSignals(true); modeCombo->addItem(text,data); modeCombo->blockSignals(false);}
+    void addData(QString text, QVariant data) {dataCombo->blockSignals(true); dataCombo->addItem(text,data); dataCombo->blockSignals(false);}
+    void addFilter(QString text, QVariant data) {filterCombo->blockSignals(true); filterCombo->addItem(text,data); filterCombo->blockSignals(false);}
+
+
+
+public slots: // Can be called directly or updated via signal/slot
+    void selectScopeMode(spectrumMode_t m);
+    void selectSpan(centerSpanData s);
+
+signals:    
     void frequencyRange(double start, double end);
+    void updateScopeMode(spectrumMode_t index);
+    void updateSpan(centerSpanData s);
+
+private slots:
+    void updatedScopeMode(int index);
+    void updatedSpan(int index);
+    void updatedTheme(int index);
+    void updatedEdge(int index);
+    void updatedMode(int index);
+    void toFixedPressed();
+    void customSpanPressed();
+
+    // Mouse interaction with scope/waterfall
+    void scopeClick(QMouseEvent *);
+    void scopeMouseRelease(QMouseEvent *);
+    void scopeMouseMove(QMouseEvent *);
+    void scopeDoubleClick(QMouseEvent *);
+
+    void waterfallClick(QMouseEvent *);
+    void waterfallDoubleClick(QMouseEvent *);
+    void scroll(QWheelEvent *);
 
 private:
-
     void clearPeaks();
     void clearPlasma();
     void computePlasma();
+    void showHideControls(spectrumMode_t mode);
+    quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
+    quint64 roundFrequency(quint64 frequency, int steps, unsigned int tsHz);
 
     QMutex mutex;
     QCustomPlot* spectrum = Q_NULLPTR;
     QCustomPlot* waterfall = Q_NULLPTR;
+    QGroupBox* group;
     QSplitter* splitter;
+    QVBoxLayout* mainLayout;
     QVBoxLayout* layout;
+    QHBoxLayout* controlLayout;
+    QCheckBox* enableCheckBox;
+    QLabel* scopeModeLabel;
+    QComboBox* scopeModeCombo;
+    QLabel* spanLabel;
+    QComboBox* spanCombo;
+    QLabel* edgeLabel;
+    QComboBox* edgeCombo;
+    QPushButton* edgeButton;
+    QPushButton* toFixedButton;
+    QPushButton* clearPeaksButton;
+    QLabel* themeLabel;
+    QComboBox* modeCombo;
+    QComboBox* dataCombo;
+    QComboBox* filterCombo;
+    QComboBox* antennaCombo;
+    QCheckBox* rxCheckBox;
+    QComboBox* themeCombo;
+
+    QSpacerItem* controlSpacer;
+    QSpacerItem* midSpacer;
     int currentTheme = 1;
     colorPrefsType colors;
     freqt freq;
-    modeInfo rigMode;
+    modeInfo mode;
+    bool lock = false;
     bool scopePrepared=false;
     quint16 spectWidth=689;
     quint16 maxAmp=200;
@@ -97,12 +188,17 @@ private:
     double passbandCenterFrequency = 0.0;
     double pbtDefault = 0.0;
     quint16 cwPitch = 600;
+    quint16 stepSize = 100;
 
     // Waterfall items;
     QCPColorMap * colorMap = Q_NULLPTR;
     QCPColorMapData * colorMapData = Q_NULLPTR;
     QCPColorScale * colorScale = Q_NULLPTR;
     QVector <QByteArray> wfimage;
+
+    cachingQueue* queue;
+    bool sub=false;
+    bool tuningFloorZeros=false;
 };
 
 #endif // SPECTRUMSCOPE_H

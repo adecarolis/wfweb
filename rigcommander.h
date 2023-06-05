@@ -284,7 +284,7 @@ public slots:
     void radioUsage(quint8 radio, quint8 busy, QString name, QString ip);
     void setCurrentRadio(quint8 radio);
     void getDebug();
-    void receiveCommand(queueItemType type, funcs func, QVariant value);
+    void receiveCommand(funcs func, QVariant value, bool sub);
 
 signals:
     // Communication:

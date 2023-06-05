@@ -1068,28 +1068,10 @@ void wfmain::setupMainUI()
     ui->baudRateCombo->insertItem(8, QString("1200"), 1200);
     ui->baudRateCombo->insertItem(9, QString("300"), 300);
 
-    ui->spectrumModeCombo->addItem("Center", (spectrumMode_t)spectModeCenter);
-    ui->spectrumModeCombo->addItem("Fixed", (spectrumMode_t)spectModeFixed);
-    ui->spectrumModeCombo->addItem("Scroll-C", (spectrumMode_t)spectModeScrollC);
-    ui->spectrumModeCombo->addItem("Scroll-F", (spectrumMode_t)spectModeScrollF);
-
-    ui->modeFilterCombo->addItem("1", 1);
-    ui->modeFilterCombo->addItem("2", 2);
-    ui->modeFilterCombo->addItem("3", 3);
-    ui->modeFilterCombo->addItem("Setup...", 99);
-
-    ui->wfthemeCombo->addItem("Jet", QCPColorGradient::gpJet);
-    ui->wfthemeCombo->addItem("Cold", QCPColorGradient::gpCold);
-    ui->wfthemeCombo->addItem("Hot", QCPColorGradient::gpHot);
-    ui->wfthemeCombo->addItem("Thermal", QCPColorGradient::gpThermal);
-    ui->wfthemeCombo->addItem("Night", QCPColorGradient::gpNight);
-    ui->wfthemeCombo->addItem("Ion", QCPColorGradient::gpIon);
-    ui->wfthemeCombo->addItem("Gray", QCPColorGradient::gpGrayscale);
-    ui->wfthemeCombo->addItem("Geography", QCPColorGradient::gpGeography);
-    ui->wfthemeCombo->addItem("Hues", QCPColorGradient::gpHues);
-    ui->wfthemeCombo->addItem("Polar", QCPColorGradient::gpPolar);
-    ui->wfthemeCombo->addItem("Spectrum", QCPColorGradient::gpSpectrum);
-    ui->wfthemeCombo->addItem("Candy", QCPColorGradient::gpCandy);
+    //ui->modeFilterCombo->addItem("1", 1);
+    //ui->modeFilterCombo->addItem("2", 2);
+    //ui->modeFilterCombo->addItem("3", 3);
+    //ui->modeFilterCombo->addItem("Setup...", 99);
 
 //    ui->meter2selectionCombo->addItem("None", meterNone);
 //    ui->meter2selectionCombo->addItem("SWR", meterSWR);
@@ -1122,8 +1104,8 @@ void wfmain::setupMainUI()
     //spans << "50k" << "100k" << "250k" << "500k";
     //ui->scopeBWCombo->insertItems(0, spans);
 
-    edges << "1" << "2" << "3" << "4";
-    ui->scopeEdgeCombo->insertItems(0, edges);
+    //edges << "1" << "2" << "3" << "4";
+    //ui->scopeEdgeCombo->insertItems(0, edges);
 
     // Set scroll wheel response (tick interval)
     // and set arrow key response (single step)
@@ -1179,8 +1161,12 @@ void wfmain::setupMainUI()
     freqt f;
     f.MHzDouble = 0.0;
     f.Hz = 0;
+    ui->mainScope->setIdentity("Main Band",false);
+    ui->subScope->setIdentity("Sub Band",true);
+
     ui->mainScope->setFrequency(f);
     ui->subScope->setFrequency(f);
+
     oldFreqDialVal = ui->freqDial->value();
 
     ui->tuneLockChk->setChecked(false);
@@ -1189,9 +1175,9 @@ void wfmain::setupMainUI()
     connect(ui->tabWidget, SIGNAL(currentChanged(int)), this, SLOT(updateSizes(int)));
 
     connect(
-                ui->txPowerSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) { statusFromSliderPercent("Tx Power", newValue);}
-    );
+        ui->txPowerSlider, &QSlider::valueChanged, this,
+        [=](const int &newValue) { statusFromSliderPercent("Tx Power", newValue);}
+        );
 
     connect(
                 ui->rfGainSlider, &QSlider::valueChanged, this,
@@ -1522,7 +1508,7 @@ void wfmain::setUIToPrefs()
     // TODO Load Initial color preset
     //loadColorPresetToUIandPlots(prefs.currentColorPresetNumber);
 
-    ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
+    //ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
     ui->mainScope->wfTheme(prefs.wftheme);
     ui->subScope->wfTheme(prefs.wftheme);
 
@@ -1986,23 +1972,23 @@ void wfmain::buttonControl(const COMMAND* cmd)
         break;
     case funcScopeMainSpan:
         if (cmd->value == 100) {
-            if (ui->scopeBWCombo->currentIndex() < ui->scopeBWCombo->count()-1)
-            {
-                ui->scopeBWCombo->setCurrentIndex(ui->scopeBWCombo->currentIndex() + 1);
-            }
-            else
-            {
-                ui->scopeBWCombo->setCurrentIndex(0);
-            }
+            //if (ui->scopeBWCombo->currentIndex() < ui->scopeBWCombo->count()-1)
+            //{
+            //    ui->scopeBWCombo->setCurrentIndex(ui->scopeBWCombo->currentIndex() + 1);
+            //}
+            //else
+            //{
+            //    ui->scopeBWCombo->setCurrentIndex(0);
+            //}
         } else if (cmd->value == -100) {
-            if (ui->scopeBWCombo->currentIndex() > 0)
-            {
-                ui->scopeBWCombo->setCurrentIndex(ui->scopeBWCombo->currentIndex() - 1);
-            }
-            else
-            {
-                ui->scopeBWCombo->setCurrentIndex(ui->scopeBWCombo->count() - 1);
-            }
+            //if (ui->scopeBWCombo->currentIndex() > 0)
+            //{
+            //    ui->scopeBWCombo->setCurrentIndex(ui->scopeBWCombo->currentIndex() - 1);
+            //}
+            //else
+            //{
+            //    ui->scopeBWCombo->setCurrentIndex(ui->scopeBWCombo->count() - 1);
+            //}
         } else {
             //Potentially add option to select specific step size?
         }
@@ -2021,7 +2007,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
         if (f.VFO == activeVFO)
             queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
         else
-            queue->add(priorityImmediate,queueItem(funcUnselectedFreq,QVariant::fromValue<freqt>(f),false));
+            queue->add(priorityImmediate,queueItem(funcUnselectedFreq,QVariant::fromValue<freqt>(f),false,true));
 
         if (!cmd->suffix) {
             ui->mainScope->setFrequency(f);
@@ -2140,7 +2126,7 @@ void wfmain::loadSettings()
     prefs.useFullScreen = settings->value("UseFullScreen", defPrefs.useFullScreen).toBool();
     prefs.useSystemTheme = settings->value("UseSystemTheme", defPrefs.useSystemTheme).toBool();
     prefs.wfEnable = settings->value("WFEnable", defPrefs.wfEnable).toInt();
-    ui->scopeEnableWFBtn->setCheckState(Qt::CheckState(prefs.wfEnable));
+    //ui->scopeEnableWFBtn->setCheckState(Qt::CheckState(prefs.wfEnable));
     prefs.wftheme = settings->value("WFTheme", defPrefs.wftheme).toInt();
     prefs.plotFloor = settings->value("plotFloor", defPrefs.plotFloor).toInt();
     prefs.plotCeiling = settings->value("plotCeiling", defPrefs.plotCeiling).toInt();
@@ -3717,28 +3703,25 @@ void wfmain::showHideSpectrum(bool show)
     ui->subScope->setVisible(false);
 
     // Controls:
-    ui->spectrumGroupBox->setVisible(show);
-    ui->spectrumModeCombo->setVisible(show);
-    ui->scopeBWCombo->setVisible(show);
-    ui->scopeEdgeCombo->setVisible(show);
-    ui->scopeEnableWFBtn->setVisible(show);
-    ui->scopeEnableWFBtn->setTristate(true);
+    //ui->spectrumGroupBox->setVisible(show);
+    //ui->scopeEdgeCombo->setVisible(show);
+    //ui->scopeEnableWFBtn->setVisible(show);
+    //ui->scopeEnableWFBtn->setTristate(true);
     ui->scopeRefLevelSlider->setEnabled(show);
     ui->wfLengthSlider->setEnabled(show);
-    ui->wfthemeCombo->setVisible(show);
-    ui->toFixedBtn->setVisible(show);
-    ui->customEdgeBtn->setVisible(show);
-    ui->clearPeakBtn->setVisible(show);
+    //ui->wfthemeCombo->setVisible(show);
+    //ui->toFixedBtn->setVisible(show);
+    //ui->customEdgeBtn->setVisible(show);
+   // ui->clearPeakBtn->setVisible(show);
 
     // And the labels:
-    ui->specEdgeLabel->setVisible(show);
-    ui->specModeLabel->setVisible(show);
-    ui->specSpanLabel->setVisible(show);
-    ui->specThemeLabel->setVisible(show);
+    //ui->specEdgeLabel->setVisible(show);
+    //ui->specModeLabel->setVisible(show);
+    //ui->specSpanLabel->setVisible(show);
+    //ui->specThemeLabel->setVisible(show);
 
     // And the layout for space:
-    ui->specControlsHorizLayout->setEnabled(show);
-    ui->spectrumGroupBox->setEnabled(show);
+    //ui->spectrumGroupBox->setEnabled(show);
 
     // Window resize:
     updateSizes(ui->tabWidget->currentIndex());
@@ -4152,10 +4135,11 @@ void wfmain:: getInitialRigState()
 
     queue->del(funcTransceiverId); // This command is no longer required
 
+    /*
     queue->add(priorityImmediate,(rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),false);
     queue->add(priorityImmediate,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),false);
-    queue->add(priorityImmediate,(rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),false);
-    queue->add(priorityImmediate,(rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),false);
+    queue->add(priorityImmediate,(rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),false,true);
+    queue->add(priorityImmediate,(rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),false,true);
 
     // From left to right in the UI:
     if (rigCaps.hasTransmit) 
@@ -4174,7 +4158,7 @@ void wfmain:: getInitialRigState()
             queue->add(priorityImmediate,getInputTypeCommand(currentModData3Src.type),false);
     }
 
-    queue->add(priorityImmediate,funcRfGain,false);
+    queue->add(priorityImmediate,funcRfGain,false,false);
 
     if (!usingLAN)
         queue->add(priorityImmediate,funcAfGain,false);
@@ -4182,10 +4166,11 @@ void wfmain:: getInitialRigState()
     queue->add(priorityImmediate,funcMonitor,false);
     queue->add(priorityImmediate,funcMonitorGain,false);
 
-
+    */
     if(rigCaps.hasSpectrum)
     {
 
+        /*
         if(ui->scopeEnableWFBtn->checkState() == Qt::Unchecked)
         {
             queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(0)),false));
@@ -4200,6 +4185,10 @@ void wfmain:: getInitialRigState()
             queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
             queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
         }
+        */
+        // TODO work out which scope to enable and when.
+        queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
+        queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
     }
 
     if (rigCaps.commands.contains(funcFilterWidth))
@@ -4473,16 +4462,25 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         trxadj->setRig(rigCaps);
 
         // Set the mode combo box up:
-        ui->modeSelectCombo->blockSignals(true);
-        ui->modeSelectCombo->clear();
-
+        ui->mainScope->clearMode();
+        ui->subScope->clearMode();
 
         foreach (auto m, rigCaps.modes)
         {
-            ui->modeSelectCombo->addItem(m.name, m.mk);
-
+            //ui->modeSelectCombo->addItem(m.name, m.mk);
+            ui->mainScope->addMode("Mode "+m.name,QVariant::fromValue(m));
+            ui->subScope->addMode("Mode "+m.name,QVariant::fromValue(m));
         }
-        ui->modeSelectCombo->blockSignals(false);
+
+        ui->mainScope->clearFilter();
+        ui->subScope->clearFilter();
+
+        foreach (auto f, rigCaps.filters)
+        {
+            ui->mainScope->addFilter(f.name,f.num);
+            ui->subScope->addFilter(f.name,f.num);
+        }
+
 
         // Set the tuning step combo box up:
         ui->tuningStepCombo->blockSignals(true);
@@ -4511,17 +4509,28 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->datamodeCombo->addItem("Off",0);
 
 
+        ui->mainScope->clearData();
+        ui->subScope->clearData();
+
+        ui->mainScope->addData("Data Off",0);
+        ui->subScope->addData("Data Off",0);
+
         if (rigCaps.commands.contains(funcDATA2Mod))
         {
             setupui->updateModSourceList(2, rigCaps.inputs);
-            ui->datamodeCombo->addItem("Data1",1);
-            ui->datamodeCombo->addItem("Data2",2);
+            ui->mainScope->addData("Data 1", 1);
+            ui->subScope->addData("Data 1", 1);
+            ui->mainScope->addData("Data 2", 2);
+            ui->subScope->addData("Data 2", 2);
+            //ui->datamodeCombo->addItem("Data1",1);
+            //ui->datamodeCombo->addItem("Data2",2);
         }
 
         if (rigCaps.commands.contains(funcDATA3Mod))
         {
             setupui->updateModSourceList(3, rigCaps.inputs);
-            ui->datamodeCombo->addItem("Data3",3);
+            ui->mainScope->addData("Data 3", 3);
+            ui->subScope->addData("Data 3", 3);
         }
 
         ui->attSelCombo->clear();
@@ -4563,21 +4572,24 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->rxAntennaCheck->setEnabled(rigCaps.commands.contains(funcRXAntenna));
         ui->rxAntennaCheck->setChecked(false);
 
-        ui->scopeBWCombo->blockSignals(true);
-        ui->scopeBWCombo->clear();
+        //ui->scopeBWCombo->blockSignals(true);
+        //ui->scopeBWCombo->clear();
+        ui->mainScope->clearSpans();
+        ui->subScope->clearSpans();
         if(rigCaps.hasSpectrum)
         {
-            ui->scopeBWCombo->setHidden(false);
+            //ui->scopeBWCombo->setHidden(false);
             for(unsigned int i=0; i < rigCaps.scopeCenterSpans.size(); i++)
             {
-                ui->scopeBWCombo->addItem(rigCaps.scopeCenterSpans.at(i).name, QVariant::fromValue(rigCaps.scopeCenterSpans.at(i)));
+                ui->mainScope->addSpan(rigCaps.scopeCenterSpans.at(i).name, QVariant::fromValue(rigCaps.scopeCenterSpans.at(i)));
+                ui->subScope->addSpan(rigCaps.scopeCenterSpans.at(i).name, QVariant::fromValue(rigCaps.scopeCenterSpans.at(i)));
             }
             ui->mainScope->setRange(prefs.plotFloor, prefs.plotCeiling);
             ui->subScope->setRange(prefs.plotFloor, prefs.plotCeiling);
-        } else {
-            ui->scopeBWCombo->setHidden(true);
-        }
-        ui->scopeBWCombo->blockSignals(false);
+        }// else {
+            //ui->scopeBWCombo->setHidden(true);
+       //}
+        //ui->scopeBWCombo->blockSignals(false);
 
         //setBandButtons();
 
@@ -4633,59 +4645,63 @@ void wfmain::initPeriodicCommands()
     // Can be run multiple times as it will remove all existing entries.
 
     queue->clear();
-    queue->add(priorityMedium,(rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),true);
-    queue->add(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),true);
-    queue->add(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),true);
-    queue->add(priorityMedium,(rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),true);
-    queue->add(priorityMedium,(rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),true);
+    queue->add(priorityMedium,(rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),true,false);
+    queue->add(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),true,false);
+    queue->add(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),true,false);
+    queue->add(priorityMedium,(rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),true,true);
+    queue->add(priorityMedium,(rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),true,true);
 
     if(rigCaps.hasTransmit) {
-        queue->add(priorityHigh,funcTransceiverStatus,true);
-        queue->add(priorityMediumHigh,(rigCaps.commands.contains(funcDATAOffMod)?funcDATAOffMod:funcNone),true);
-        queue->add(priorityMediumHigh,(rigCaps.commands.contains(funcDATA1Mod)?funcDATA1Mod:funcNone),true);
-        queue->add(priorityMediumHigh,(rigCaps.commands.contains(funcDATA2Mod)?funcDATA2Mod:funcNone),true);
-        queue->add(priorityMediumHigh,(rigCaps.commands.contains(funcDATA3Mod)?funcDATA3Mod:funcNone),true);
+        queue->add(priorityHigh,funcTransceiverStatus,true,false);
+        queue->add(priorityMediumHigh,(rigCaps.commands.contains(funcDATAOffMod)?funcDATAOffMod:funcNone),true,false);
+        queue->add(priorityMediumHigh,(rigCaps.commands.contains(funcDATA1Mod)?funcDATA1Mod:funcNone),true,false);
+        queue->add(priorityMediumHigh,(rigCaps.commands.contains(funcDATA2Mod)?funcDATA2Mod:funcNone),true,false);
+        queue->add(priorityMediumHigh,(rigCaps.commands.contains(funcDATA3Mod)?funcDATA3Mod:funcNone),true,false);
     }
     if (rigCaps.commands.contains(funcRFPower))
-        queue->add(priorityMedium,funcRFPower,true);
+        queue->add(priorityMedium,funcRFPower,true,false);
 
     if (rigCaps.commands.contains(funcRfGain))
-        queue->add(priorityMedium,funcRfGain,true);
+        queue->add(priorityMedium,funcRfGain,true,false);
 
     if (rigCaps.commands.contains(funcMonitorGain))
-        queue->add(priorityMediumLow,funcMonitorGain,true);
+        queue->add(priorityMediumLow,funcMonitorGain,true,false);
 
     if (rigCaps.commands.contains(funcMonitor))
-        queue->add(priorityMediumLow,funcMonitor,true);
+        queue->add(priorityMediumLow,funcMonitor,true,false);
 
     if(rigCaps.commands.contains(funcAttenuator))
-        queue->add(priorityMediumLow,funcAttenuator,true);
+        queue->add(priorityMediumLow,funcAttenuator,true,false);
 
     if(rigCaps.commands.contains(funcPreamp))
-        queue->add(priorityMediumLow,funcPreamp,true);
+        queue->add(priorityMediumLow,funcPreamp,true,false);
 
     if (rigCaps.commands.contains(funcAntenna))
-        queue->add(priorityMediumLow,funcAntenna,true);
+        queue->add(priorityMediumLow,funcAntenna,true,false);
 
     if (rigCaps.commands.contains(funcSplitStatus))
-        queue->add(priorityMediumLow,funcSplitStatus,true);
+        queue->add(priorityMediumLow,funcSplitStatus,true,false);
 
     if(rigCaps.commands.contains(funcToneSquelchType))
-        queue->add(priorityMediumLow,funcToneSquelchType,true);
+        queue->add(priorityMediumLow,funcToneSquelchType,true,false);
 
     if (rigCaps.commands.contains(funcSMeter))
-        queue->add(priorityHighest,queueItem(funcSMeter,true));
+        queue->add(priorityHighest,queueItem(funcSMeter,true,false));
 
     if (rigCaps.commands.contains(funcOverflowStatus))
-        queue->add(priorityHigh,queueItem(funcOverflowStatus,true));
+        queue->add(priorityHigh,queueItem(funcOverflowStatus,true,false));
 
 
     if (rigCaps.hasSpectrum)
     {
-        queue->add(priorityMediumHigh,queueItem(funcScopeMainMode,true));
-        queue->add(priorityMediumHigh,queueItem(funcScopeMainSpan,true));
-        queue->add(priorityMediumHigh,queueItem(funcScopeSingleDual,true));
-        queue->add(priorityMediumHigh,queueItem(funcScopeMainSub,true));
+        queue->add(priorityMediumHigh,queueItem(rigCaps.commands.contains(funcScopeMainMode)?funcScopeMainMode:funcNone,true,false));
+        queue->add(priorityMediumHigh,queueItem(rigCaps.commands.contains(funcScopeSubMode)?funcScopeSubMode:funcNone,true,false));
+
+        queue->add(priorityMediumHigh,queueItem(rigCaps.commands.contains(funcScopeMainSpan)?funcScopeMainSpan:funcNone,true,false));
+        queue->add(priorityMediumHigh,queueItem(rigCaps.commands.contains(funcScopeSubSpan)?funcScopeSubSpan:funcNone,true,false));
+
+        queue->add(priorityMediumHigh,queueItem(funcScopeSingleDual,true,false));
+        queue->add(priorityMediumHigh,queueItem(funcScopeMainSub,true,false));
     }
 }
 
@@ -4697,10 +4713,7 @@ void wfmain::receiveFreq(freqt freqStruct)
     {
         if (freqStruct.VFO == selVFO_t::activeVFO) {
             ui->freqLabel->setText(QString("%1").arg(freqStruct.MHzDouble, 0, 'f'));
-            ui->mainScope->setFrequency(freqStruct);
             rpt->handleUpdateCurrentMainFrequency(freqStruct);
-        } else {
-            ui->subScope->setFrequency(freqStruct);
         }
 
     } else {
@@ -4749,13 +4762,6 @@ void wfmain::changeTxBtn()
 }
 
 
-void wfmain::receivespectrumMode(spectrumMode_t spectMode)
-{
-    ui->spectrumModeCombo->blockSignals(true);
-    ui->spectrumModeCombo->setCurrentIndex(ui->spectrumModeCombo->findData(spectMode));
-    ui->spectrumModeCombo->blockSignals(false);
-    setUISpectrumControlsToMode(spectMode);
-}
 
 
 void wfmain::handlePlotDoubleClick(QMouseEvent *me)
@@ -5143,7 +5149,7 @@ void wfmain::on_scopeEnableWFBtn_stateChanged(int state)
 
 
 
-void wfmain::receiveMode(modeInfo mode)
+void wfmain::receiveMode(modeInfo mode, bool sub)
 {
     // Update mode information if mode/filter has changed
     if ((mode.VFO == activeVFO) && (currentModeInfo.reg != mode.reg || currentModeInfo.filter != mode.filter || currentModeInfo.data != mode.data))
@@ -5152,69 +5158,80 @@ void wfmain::receiveMode(modeInfo mode)
                                               .arg(QString::number(mode.mk,16)).arg(mode.name).arg(mode.filter).arg(mode.data) ;
 
         quint16 maxPassbandHz = 0;
+        double passbandWidth = 0.0;
+        double centerFreq = 0.0;
         switch (mode.mk) {
         case modeFM:
         case modeDV:
         case modeDD:
             if (mode.filter == 1)
-                ui->mainScope->setPassbandWidth(0.015);
+                passbandWidth = 0.015;
             else if (mode.filter == 2)
-                ui->mainScope->setPassbandWidth(0.010);
+                passbandWidth = 0.010;
             else
-                ui->mainScope->setPassbandWidth(0.007);
-            ui->mainScope->setCenterFreq(0.0);
+                passbandWidth = 0.007;
             maxPassbandHz = 10E3;
-            queue->del(funcPBTInner);
-            queue->del(funcPBTOuter);
-            queue->del(funcFilterWidth);
+            queue->del(funcPBTInner,sub);
+            queue->del(funcPBTOuter,sub);
+            queue->del(funcFilterWidth,sub);
             break;
         case modeCW:
         case modeCW_R:
             if (currentModeInfo.mk != modeCW && currentModeInfo.mk != modeCW_R) {
-                queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcCwPitch)?funcCwPitch:funcNone),true);
-                queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcDashRatio)?funcDashRatio:funcNone),true);
-                queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcKeySpeed)?funcKeySpeed:funcNone),true);
+                queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcCwPitch)?funcCwPitch:funcNone),true,sub);
+                queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcDashRatio)?funcDashRatio:funcNone),true,sub);
+                queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcKeySpeed)?funcKeySpeed:funcNone),true,sub);
             }
             maxPassbandHz = 3600;
             break;
         case modeAM:
-            ui->mainScope->setCenterFreq(0.0);
             maxPassbandHz = 10E3;
             break;
         case modeLSB:
         case modeUSB:
-            ui->mainScope->setCenterFreq(0.0015);
+            centerFreq = 0.0015;
             maxPassbandHz = 3600;
             break;
         default:
-            ui->mainScope->setCenterFreq(0.0);
             maxPassbandHz = 3600;
             break;
         }
 
+
         if ((mode.mk != modeFM && mode.mk != modeDV && mode.mk != modeDD ))
         {
             /* mode was FM or DV/DD but now isn't so insert commands */
-            queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcPBTInner)?funcPBTInner:funcNone),true);
-            queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcPBTOuter)?funcPBTOuter:funcNone),true);
-            queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcFilterWidth)?funcFilterWidth:funcNone),true);
+            queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcPBTInner)?funcPBTInner:funcNone),true,sub);
+            queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcPBTOuter)?funcPBTOuter:funcNone),true,sub);
+            queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcFilterWidth)?funcFilterWidth:funcNone),true,sub);
         }
 
 
         if ((mode.mk != modeCW && mode.mk != modeCW_R) && (currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R))
         {
             /* mode was CW/CWR but now isn't so remove CW commands */
-            queue->del(funcCwPitch);
-            queue->del(funcDashRatio);
-            queue->del(funcKeySpeed);
+            queue->del(funcCwPitch,sub);
+            queue->del(funcDashRatio,sub);
+            queue->del(funcKeySpeed,sub);
         }
 
-        ui->modeSelectCombo->setCurrentIndex(ui->modeSelectCombo->findData(mode.mk));
+
+        if (sub) {
+            ui->subScope->setPassbandWidth(passbandWidth);
+            ui->subScope->setCenterFreq(centerFreq);
+            //ui->subScope->setMode(mode);
+        } else
+        {
+            ui->mainScope->setPassbandWidth(passbandWidth);
+            ui->mainScope->setCenterFreq(centerFreq);
+            //ui->mainScope->setMode(mode);
+        }
+        //ui->modeSelectCombo->setCurrentIndex(ui->modeSelectCombo->findData(mode.mk));
 
         if ((mode.filter) && (mode.filter < 4)) {
             ui->modeFilterCombo->blockSignals(true);
             ui->modeFilterCombo->setCurrentIndex(ui->modeFilterCombo->findData(mode.filter));
-            ui->modeFilterCombo->blockSignals(false);
+            ui->modeFilterCombo->blockSignals(false);            
         }
 
         finputbtns->updateCurrentMode(mode.mk);
@@ -5275,37 +5292,6 @@ void wfmain::changeFullScreenMode(bool checked)
     prefs.useFullScreen = checked;
 }
 
-void wfmain::on_spectrumModeCombo_currentIndexChanged(int index)
-{
-    spectrumMode_t smode = static_cast<spectrumMode_t>(ui->spectrumModeCombo->itemData(index).toInt());
-    queue->add(priorityImmediate,queueItem(funcScopeMainMode,QVariant::fromValue(smode)));
-    setUISpectrumControlsToMode(smode);
-}
-
-void wfmain::setUISpectrumControlsToMode(spectrumMode_t smode)
-{
-    if((smode==spectModeCenter) || (smode==spectModeScrollC))
-    {
-        ui->specEdgeLabel->hide();
-        ui->scopeEdgeCombo->hide();
-        ui->customEdgeBtn->hide();
-        ui->toFixedBtn->show();
-        ui->specSpanLabel->show();
-        ui->scopeBWCombo->show();
-    } else {
-        ui->specEdgeLabel->show();
-        ui->scopeEdgeCombo->show();
-        ui->customEdgeBtn->show();
-        ui->toFixedBtn->hide();
-        ui->specSpanLabel->hide();
-        ui->scopeBWCombo->hide();
-    }
-}
-
-void wfmain::on_scopeBWCombo_currentIndexChanged(int index)
-{
-    queue->add(priorityImmediate,queueItem(funcScopeMainSpan,ui->scopeBWCombo->itemData(index)));
-}
 
 void wfmain::on_scopeEdgeCombo_currentIndexChanged(int index)
 {
@@ -5450,10 +5436,12 @@ void wfmain::handleBandStackReg(freqt freqGo, char mode, char filter, bool dataO
             md.data=dataOn;
             queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<modeInfo>(md),false));
             queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),QVariant::fromValue<modeInfo>(md),false));
-            receiveMode(md); // update UI
+            ui->mainScope->receiveMode(md);
+            //receiveMode(md); // update UI
             break;
         }
     }
+
     queue->add(priorityHighest,(rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet));
     queue->add(priorityHighest,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedFreq:funcModeGet));
 }
@@ -5510,7 +5498,7 @@ void wfmain::saveMemoryPreset(int presetNumber)
 
 void wfmain::on_rfGainSlider_valueChanged(int value)
 {
-    queue->addUnique(priorityImmediate,queueItem(funcRfGain,QVariant::fromValue<ushort>(value),false));
+    queue->addUnique(priorityImmediate,queueItem(funcRfGain,QVariant::fromValue<ushort>(value),false,false));
 }
 
 void wfmain::on_afGainSlider_valueChanged(int value)
@@ -5664,27 +5652,7 @@ void wfmain::receiveATUStatus(unsigned char atustatus)
 
 void wfmain::on_toFixedBtn_clicked()
 {
-    int currentEdge = ui->scopeEdgeCombo->currentIndex();
-    bool dialogOk = false;
-    bool numOk = false;
 
-    QStringList edges;
-    edges << "1" << "2" << "3" << "4";
-
-    QString item = QInputDialog::getItem(this, "Select Edge", "Edge to replace:", edges, currentEdge, false, &dialogOk);
-
-    if(dialogOk)
-    {
-        int edge = QString(item).toInt(&numOk,10);
-        if(numOk)
-        {
-            ui->scopeEdgeCombo->blockSignals(true);
-            ui->scopeEdgeCombo->setCurrentIndex(edge-1);
-            ui->scopeEdgeCombo->blockSignals(false);
-            queue->add(priorityImmediate,queueItem(funcScopeFixedEdgeFreq,QVariant::fromValue(spectrumBounds(oldLowerFreq, oldUpperFreq, edge))));
-            queue->add(priorityImmediate,queueItem(funcScopeMainMode,QVariant::fromValue<uchar>(spectrumMode_t::spectModeFixed)));
-        }
-    }
 }
 
 
@@ -6306,9 +6274,9 @@ void wfmain::on_rxAntennaCheck_clicked(bool value)
 }
 void wfmain::on_wfthemeCombo_activated(int index)
 {
-    prefs.wftheme = ui->wfthemeCombo->itemData(index).toInt();
-    ui->mainScope->wfTheme(prefs.wftheme);
-    ui->subScope->wfTheme(prefs.wftheme);
+    //prefs.wftheme = ui->wfthemeCombo->itemData(index).toInt();
+    //ui->mainScope->wfTheme(prefs.wftheme);
+   // ui->subScope->wfTheme(prefs.wftheme);
 }
 
 void wfmain::receivePreamp(unsigned char pre)
@@ -6325,52 +6293,6 @@ void wfmain::receiveAntennaSel(unsigned char ant, bool rx)
 {
     ui->antennaSelCombo->setCurrentIndex(ant);
     ui->rxAntennaCheck->setChecked(rx);
-}
-
-void wfmain::receiveSpectrumSpan(freqt freqspan, bool isSub)
-{
-
-
-    if(!isSub)
-    {
-       switch((int)(freqspan.MHzDouble * 1000000.0))
-       {
-           case(2500):
-               ui->scopeBWCombo->setCurrentIndex(0);
-               break;
-           case(5000):
-               ui->scopeBWCombo->setCurrentIndex(1);
-               break;
-           case(10000):
-               ui->scopeBWCombo->setCurrentIndex(2);
-               break;
-           case(25000):
-               ui->scopeBWCombo->setCurrentIndex(3);
-               break;
-           case(50000):
-               ui->scopeBWCombo->setCurrentIndex(4);
-               break;
-           case(100000):
-               ui->scopeBWCombo->setCurrentIndex(5);
-               break;
-           case(250000):
-               ui->scopeBWCombo->setCurrentIndex(6);
-               break;
-           case(500000):
-               ui->scopeBWCombo->setCurrentIndex(7);
-               break;
-           case(1000000):
-               ui->scopeBWCombo->setCurrentIndex(8);
-               break;
-           case(2500000):
-               ui->scopeBWCombo->setCurrentIndex(9);
-               break;
-           default:
-               qInfo(logSystem()) << __func__ << "Could not match: " << freqspan.MHzDouble << " to anything like: " << (int)(freqspan.MHzDouble*1E6);
-               break;
-       }
-
-    }
 }
 
 void wfmain::calculateTimingParameters()
@@ -6468,17 +6390,17 @@ void wfmain::powerRigOn()
     emit sendPowerOn();
 
     delayedCommand->setInterval(3000); // 3 seconds
-    if(ui->scopeEnableWFBtn->checkState() != Qt::Unchecked)
-    {
+    //if(ui->scopeEnableWFBtn->checkState() != Qt::Unchecked)
+    //{
         //issueDelayedCommand(cmdDispEnable);
         //issueDelayedCommand(cmdQueNormalSpeed);
         //issueDelayedCommand(cmdSpecOn);
         //issueDelayedCommand(cmdStartRegularPolling); // s-meter, etc
-    } else {
+    //} else {
         //issueDelayedCommand(cmdQueNormalSpeed);
         //issueDelayedCommand(cmdSpecOff);
         //issueDelayedCommand(cmdStartRegularPolling); // s-meter, etc
-    }
+    //}
     delayedCommand->start();
     calculateTimingParameters(); // Set queue interval
 
@@ -6664,7 +6586,7 @@ void wfmain::changeMeter2Type(meter_t m)
         ui->meter2Widget->show();
         ui->meter2Widget->setMeterType(newMeterType);
         if((newMeterType!=meterRxAudio) && (newMeterType!=meterTxMod) && (newMeterType!=meterAudio))
-            queue->add(priorityHighest,queueItem(newCmd,true));
+            queue->add(priorityHighest,queueItem(newCmd,true,false));
     }
 }
 
@@ -6955,50 +6877,6 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
 
 void wfmain::on_customEdgeBtn_clicked()
 {
-    double lowFreq = oldLowerFreq;
-    double highFreq = oldUpperFreq;
-    QString freqstring = QString("%1, %2").arg(lowFreq).arg(highFreq);
-    bool ok;
-
-    QString userFreq = QInputDialog::getText(this, "Scope Edges",
-                          "Please enter desired scope edges, in MHz, \
-with a comma between the low and high range.",
-    QLineEdit::Normal, freqstring, &ok);
-    if(!ok)
-        return;
-
-    QString clean = userFreq.trimmed().replace(" ", "");
-    QStringList freqs = clean.split(",");
-    if(freqs.length() == 2)
-    {
-        lowFreq = QString(freqs.at(0)).toDouble(&ok);
-        if(ok)
-        {
-            highFreq = QString(freqs.at(1)).toDouble(&ok);
-            if(ok)
-            {
-                qDebug(logGui()) << "setting edge to: " << lowFreq << ", " << highFreq << ", edge num: " << ui->scopeEdgeCombo->currentIndex() + 1;
-                queue->add(priorityImmediate,queueItem(funcScopeFixedEdgeFreq,
-                                                        QVariant::fromValue(spectrumBounds(lowFreq, highFreq, ui->scopeEdgeCombo->currentIndex() + 1))));
-                return;
-            }
-        }
-        goto errMsg;
-    } else {
-        goto errMsg;
-    }
-
-errMsg:
-    {
-        QMessageBox URLmsgBox;
-        URLmsgBox.setText("Error, could not interpret your input.\
-                          <br/>Please make sure to place a comma between the frequencies.\
-                          <br/>For example: '7.200, 7.300'");
-        URLmsgBox.exec();
-
-        return;
-    }
-
 
 }
 
@@ -7437,15 +7315,15 @@ void wfmain::on_memoriesBtn_clicked()
                 queue->add(priorityImmediate,funcMemoryMode);
                 queue->del((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet));
                 queue->del((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet));
-                queue->del((rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone));
-                queue->del((rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone));
+                queue->del((rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),true);
+                queue->del((rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),true);
             });
 
             this->memWindow->connect(this->memWindow, &memories::vfoMode, rig, [this]() {
                 queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),true);
                 queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),true);
-                queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),true);
-                queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),true);
+                queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),true,true);
+                queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),true,true);
             });
 
             this->memWindow->connect(this->memWindow, &memories::setSatelliteMode, rig, [this](const bool &en) {
@@ -7458,8 +7336,8 @@ void wfmain::on_memoriesBtn_clicked()
                 } else {
                     queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),true);
                     queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),true);
-                    queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),true);
-                    queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),true);
+                    queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),true,true);
+                    queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),true,true);
                 }
             });
 
@@ -7494,6 +7372,12 @@ void wfmain::receiveValue(cacheItem val){
     case funcUnselectedFreq:
     {
         freqt f = val.value.value<freqt>();
+
+        if (val.sub)
+            ui->subScope->setFrequency(f);
+        else
+            ui->mainScope->setFrequency(f);
+
         if (f.VFO == activeVFO)
                 receiveFreq(f);
         break;
@@ -7504,10 +7388,13 @@ void wfmain::receiveValue(cacheItem val){
         // Not currently used, but will report the current dual-watch status
         break;
     case funcModeGet:
-    case funcModeTR:
+    case funcModeTR:        
     case funcSelectedMode:
     case funcUnselectedMode:
-        receiveMode(val.value.value<modeInfo>());
+        if (val.sub)
+            ui->subScope->receiveMode(val.value.value<modeInfo>());
+        else
+            ui->mainScope->receiveMode(val.value.value<modeInfo>());
         break;
     case funcSatelliteMemory:
     case funcMemoryContents:
@@ -7548,12 +7435,35 @@ void wfmain::receiveValue(cacheItem val){
     case funcNRLevel:
         receiveNRLevel(val.value.value<uchar>());
         break;
-    case funcPBTInner:
-        receivePBTInner(val.value.value<uchar>());
-        break;
     case funcPBTOuter:
-        receivePBTOuter(val.value.value<uchar>());
+    case funcPBTInner:
+    {
+        uchar level = val.value.value<uchar>();
+        qint16 shift = (qint16)(level - 128);
+        double tempVar = ceil((shift / 127.0) * ui->mainScope->getPassbandWidth() * 20000.0) / 20000.0;
+        // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
+        double pitch = 0.0;
+        if ((currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) && ui->mainScope->getPassbandWidth() > 0.0006)
+        {
+                pitch = (600.0 - cwPitch) / 1000000.0;
+        }
+        double newVal = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
+
+        if (val.command == funcPBTInner) {
+            if (val.sub) {
+                ui->subScope->setPBTInner(newVal);
+            } else {
+                ui->mainScope->setPBTInner(newVal);
+            }
+        } else {
+            if (val.sub) {
+                ui->subScope->setPBTOuter(newVal);
+            } else {
+                ui->mainScope->setPBTOuter(newVal);
+            }
+        }
         break;
+    }
     case funcIFShift:
         receiveIFShift(val.value.value<uchar>());
         break;
@@ -7564,7 +7474,10 @@ void wfmain::receiveValue(cacheItem val){
             [=](const unsigned char &bm) { cw->handleBreakInMode(bm);});
 */
     case funcCwPitch:
-        receiveCwPitch(val.value.value<uchar>());
+        // There is only a single CW Pitch setting, so send to both scopes.
+        ui->mainScope->receiveCwPitch(val.value.value<uchar>());
+        ui->subScope->receiveCwPitch(val.value.value<uchar>());
+        //receiveCwPitch(val.value.value<uchar>());
         cw->handlePitch(val.value.value<uchar>());
         break;
     case funcRFPower:
@@ -7721,7 +7634,11 @@ void wfmain::receiveValue(cacheItem val){
         break;
     }
     case funcFilterWidth:
-        receivePassband(val.value.value<ushort>());
+        if (val.sub)
+            ui->subScope->receivePassband(val.value.value<ushort>());
+        else
+            ui->mainScope->receivePassband(val.value.value<ushort>());
+        //receivePassband(val.value.value<ushort>());
         break;
     case funcDataModeWithFilter:
         receiveDataModeStatus(val.value.value<modeInfo>().data,val.value.value<modeInfo>().filter);
@@ -7844,26 +7761,17 @@ void wfmain::receiveValue(cacheItem val){
         break;
     }
     case funcScopeMainMode:
-        // fixed or center
-        // [1] 0x14
-        // [2] 0x00
-        // [3] 0x00 (center), 0x01 (fixed), 0x02, 0x03
-        receivespectrumMode(val.value.value<spectrumMode_t>());
+        ui->mainScope->selectScopeMode(val.value.value<spectrumMode_t>());
+        break;
+    case funcScopeSubMode:
+        ui->subScope->selectScopeMode(val.value.value<spectrumMode_t>());
         break;
     case funcScopeMainSpan:
-    {
-        // read span in center mode
-        // [1] 0x15
-        // [2] to [8] is encoded as a frequency
-        centerSpanData d = val.value.value<centerSpanData>();
-        if (ui->scopeBWCombo->currentIndex() != d.cstype)
-        {
-            ui->scopeBWCombo->blockSignals(true);
-            ui->scopeBWCombo->setCurrentIndex(d.cstype);
-            ui->scopeBWCombo->blockSignals(false);
-        }
+        ui->mainScope->selectSpan(val.value.value<centerSpanData>());
         break;
-    }
+    case funcScopeSubSpan:
+        ui->subScope->selectSpan(val.value.value<centerSpanData>());
+        break;
     case funcScopeMainEdge:
         // read edge mode center in edge mode
         // [1] 0x16

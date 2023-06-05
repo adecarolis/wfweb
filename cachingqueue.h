@@ -28,26 +28,27 @@ enum queueItemType {
 
 // Command with no param is a get by default
 struct queueItem {
-    queueItem () {};
-    queueItem (funcs command, QVariant param, bool recurring) : type(queueCommandGet), command(command), param(param), recurring(recurring) {};
-    queueItem (funcs command, bool recurring) : type(queueCommandGet), command(command), recurring(recurring) {};
-    queueItem (funcs command) : type(queueCommandGet), command(command) {};
-    queueItem (funcs command, QVariant param) : type(queueCommandSet), command(command), param(param) {};
-    queueItem (queueItemType type, funcs command, QVariant param) : type(type), command(command), param(param) {};
-    queueItemType type = queueCommandNone;
-    funcs command = funcNone;
-    QVariant param=QVariant();
-    bool recurring = false;
+    queueItem () {}
+    queueItem (funcs command, QVariant param, bool recurring, bool sub) : command(command), param(param), sub(sub), recurring(recurring){};
+    queueItem (funcs command, QVariant param, bool recurring) : command(command), param(param), sub(false), recurring(recurring){};
+    queueItem (funcs command, QVariant param) : command(command), param(param), sub(false), recurring(false){};
+    queueItem (funcs command, bool recurring, bool sub=false) : command(command), param(QVariant()), sub(sub), recurring(recurring) {};
+    queueItem (funcs command, bool recurring) : command(command), param(QVariant()), sub(false), recurring(recurring) {};
+    queueItem (funcs command) : command(command), param(QVariant()), sub(false), recurring(false){};
+    funcs command;
+    QVariant param;
+    bool sub;
+    bool recurring;
 };
 
 struct cacheItem {
     cacheItem () {};
-    cacheItem (funcs command, QVariant value, bool sub=false) : command(command), value(value), sub(sub) {};
+    cacheItem (funcs command, QVariant value, bool sub=false) : command(command), req(QDateTime()), reply(QDateTime()), value(value), sub(sub){};
 
-    funcs command = funcNone;
-    QDateTime req=QDateTime();
-    QDateTime reply=QDateTime();
-    QVariant value=QVariant();
+    funcs command;
+    QDateTime req;
+    QDateTime reply;
+    QVariant value;
     bool sub;
 };
 
@@ -56,7 +57,7 @@ class cachingQueue : public QThread
     Q_OBJECT
 
 signals:
-    void haveCommand(queueItemType type, funcs func, QVariant param);
+    void haveCommand(funcs func, QVariant param, bool sub);
     void sendValue(cacheItem item);
 
 public slots:
@@ -71,12 +72,12 @@ private:
     QMutex mutex;
 
     QMultiMap <queuePriority,queueItem> queue;
-    QMap<funcs,cacheItem> cache;
+    QMultiMap<funcs,cacheItem> cache;
     QQueue<cacheItem> items;
 
     // Command to set cache value
-    void setCache(funcs func, QVariant val);
-    queuePriority isRecurring(funcs func);
+    void setCache(funcs func, QVariant val, bool sub=false);
+    queuePriority isRecurring(funcs func, bool sub=false);
 
 
     // Various other values
@@ -97,18 +98,19 @@ public:
 
     static cachingQueue *getInstance(QObject* parent = Q_NULLPTR);
     void message(QString msg);
-    void add(queuePriority prio ,funcs func, bool recurring=false);
+    void add(queuePriority prio ,funcs func, bool recurring=false, bool sub=false);
     void add(queuePriority prio,queueItem item);
-    void addUnique(queuePriority prio ,funcs func, bool recurring=false);
+    void addUnique(queuePriority prio ,funcs func, bool recurring=false, bool sub=false);
     void addUnique(queuePriority prio,queueItem item);
-    void del(funcs func);
+    void del(funcs func, bool sub=false);
     void clear();
     void interval(quint64 val);
-    void updateCache(bool reply, funcs func, QVariant value=QVariant());
+    void updateCache(bool reply, queueItem item);
+    void updateCache(bool reply, funcs func, QVariant value=QVariant(), bool sub=false);
 
-    cacheItem getCache(funcs func);
+    cacheItem getCache(funcs func, bool sub=false);
 
-    QMap<funcs,cacheItem> getCacheItems();
+    QMultiMap<funcs,cacheItem> getCacheItems();
     QMultiMap <queuePriority,queueItem> getQueueItems();
     void unlockMutex();
 };

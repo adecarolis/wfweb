@@ -1,18 +1,58 @@
 #include "spectrumscope.h"
 
 #include "logcategories.h"
+#include "rigidentities.h"
 
 spectrumScope::spectrumScope(QWidget *parent)
-    : QWidget{parent}
+    : QGroupBox{parent}
 {
-    QMutexLocker locker(&mutex);
 
+    QMutexLocker locker(&mutex);
+    this->setObjectName("SpectrumScope");
+    this->setTitle("Band");
+    queue = cachingQueue::getInstance();
     spectrum = new QCustomPlot();
     layout = new QVBoxLayout(this);
     splitter = new QSplitter(this);
     layout->addWidget(splitter);
     splitter->setOrientation(Qt::Vertical);
 
+    controlLayout = new QHBoxLayout();
+    enableCheckBox = new QCheckBox("Enable");
+    enableCheckBox->setTristate(true);
+    enableCheckBox->setToolTip("Checked=WF enable, Unchecked=WF disable, Partial=Enable WF but no local display");
+    enableCheckBox->setCheckState(Qt::CheckState::Checked);
+    //scopeModeLabel = new QLabel("Spectrum Mode:");
+    scopeModeCombo = new QComboBox();
+    scopeModeCombo->setAccessibleDescription("Spectrum Mode");
+    //spanLabel = new QLabel("Span:");
+    spanCombo = new QComboBox();
+    spanCombo->setAccessibleDescription("Spectrum Span");
+    spanCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    //edgeLabel = new QLabel("Edge:");
+    edgeCombo = new QComboBox();
+    edgeCombo->setAccessibleDescription("Spectrum Edge");
+    edgeButton = new QPushButton("Custom Edge");
+    edgeButton->setToolTip("Define a custom (fixed) scope edge");
+    toFixedButton = new QPushButton("To Fixed");
+    toFixedButton->setToolTip("&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;The currently-selected edge slot will be overridden.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;");
+    //themeLabel = new QLabel("Theme:");
+    controlSpacer = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
+    midSpacer = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
+    clearPeaksButton = new QPushButton("Clear Peaks");
+    themeCombo = new QComboBox();
+    themeCombo->setAccessibleName("Waterfall display color themey");
+    themeCombo->setAccessibleDescription("Selects the theme for the color waterfall display");
+    themeCombo->setToolTip("Waterfall color theme");
+
+    modeCombo = new QComboBox();
+    dataCombo = new QComboBox();
+    filterCombo = new QComboBox();
+
+    spanCombo->setVisible(false);
+    edgeCombo->setVisible(false);
+    edgeButton->setVisible(false);
+    toFixedButton->setVisible(false);
 
     spectrum = new QCustomPlot();
     waterfall = new QCustomPlot();
@@ -23,6 +63,50 @@ spectrumScope::spectrumScope(QWidget *parent)
 
     spectrum->axisRect()->setMargins(QMargins(0,0,0,0));
     waterfall->axisRect()->setMargins(QMargins(0,0,0,0));
+
+    layout->addLayout(controlLayout);
+    controlLayout->addWidget(enableCheckBox);
+    //controlLayout->addWidget(scopeModeLabel);
+    controlLayout->addWidget(scopeModeCombo);
+    //controlLayout->addWidget(spanLabel);
+    controlLayout->addWidget(spanCombo);
+    //controlLayout->addWidget(edgeLabel);
+    controlLayout->addWidget(edgeCombo);
+    controlLayout->addWidget(edgeButton);
+    controlLayout->addWidget(toFixedButton);
+    //controlLayout->addWidget(themeLabel);
+    controlLayout->addSpacerItem(controlSpacer);
+    controlLayout->addWidget(modeCombo);
+    controlLayout->addWidget(dataCombo);
+    controlLayout->addWidget(filterCombo);
+    controlLayout->addSpacerItem(midSpacer);
+    controlLayout->addWidget(clearPeaksButton);
+    controlLayout->addWidget(themeCombo);
+
+    this->layout->setContentsMargins(5,5,5,5);
+
+    scopeModeCombo->addItem("Center Mode", (spectrumMode_t)spectModeCenter);
+    scopeModeCombo->addItem("Fixed Mode", (spectrumMode_t)spectModeFixed);
+    scopeModeCombo->addItem("Scroll-C", (spectrumMode_t)spectModeScrollC);
+    scopeModeCombo->addItem("Scroll-F", (spectrumMode_t)spectModeScrollF);
+    scopeModeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+
+    themeCombo->addItem("Theme Jet", QCPColorGradient::gpJet);
+    themeCombo->addItem("Theme Cold", QCPColorGradient::gpCold);
+    themeCombo->addItem("Theme Hot", QCPColorGradient::gpHot);
+    themeCombo->addItem("Theme Therm", QCPColorGradient::gpThermal);
+    themeCombo->addItem("Theme Night", QCPColorGradient::gpNight);
+    themeCombo->addItem("Theme Ion", QCPColorGradient::gpIon);
+    themeCombo->addItem("Theme Gray", QCPColorGradient::gpGrayscale);
+    themeCombo->addItem("Theme Geo", QCPColorGradient::gpGeography);
+    themeCombo->addItem("Theme Hues", QCPColorGradient::gpHues);
+    themeCombo->addItem("Theme Polar", QCPColorGradient::gpPolar);
+    themeCombo->addItem("Theme Spect", QCPColorGradient::gpSpectrum);
+    themeCombo->addItem("Theme Candy", QCPColorGradient::gpCandy);
+    themeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+
+    edgeCombo->insertItems(0, QStringList({"Fixed Edge 1","Fixed Edge 2","Fixed Edge 3","Fixed Edge 4"}));
+    //edgeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContentsOnFirstShow);
 
     // Spectrum Plot setup
     passbandIndicator = new QCPItemRect(spectrum);
@@ -87,11 +171,36 @@ spectrumScope::spectrumScope(QWidget *parent)
     waterfall->addGraph();
     colorMap = new QCPColorMap(waterfall->xAxis, waterfall->yAxis);
     colorMapData = NULL;
+
 #if QCUSTOMPLOT_VERSION < 0x020001
     this->addPlottable(colorMap);
 #endif
 
+
+    connect(scopeModeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedScopeMode(int)));
+    connect(spanCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedSpan(int)));
+    connect(themeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedTheme(int)));
+
+    connect(toFixedButton,SIGNAL(pressed()), this, SLOT(toFixedPressed()));
+    connect(edgeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedEdge(int)));
+    connect(edgeButton,SIGNAL(pressed()), this, SLOT(customSpanPressed()));
+
+    connect(modeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedMode(int)));
+    connect(filterCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedMode(int)));
+    connect(dataCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedMode(int)));
+
+    connect(spectrum, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(scopeDoubleClick(QMouseEvent*)));
+    connect(waterfall, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(waterfallDoubleClick(QMouseEvent*)));
+    connect(spectrum, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(scopeClick(QMouseEvent*)));
+    connect(waterfall, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(waterfallClick(QMouseEvent*)));
+    connect(spectrum, SIGNAL(mouseRelease(QMouseEvent*)), this, SLOT(scopeMouseRelease(QMouseEvent*)));
+    connect(spectrum, SIGNAL(mouseMove(QMouseEvent*)), this, SLOT(scopeMouseMove(QMouseEvent *)));
+    connect(waterfall, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(scroll(QWheelEvent*)));
+    connect(spectrum, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(scroll(QWheelEvent*)));
+
+    showHideControls(spectrumMode_t::spectModeCenter);
 }
+
 
 
 bool spectrumScope::prepareWf(uint wf)
@@ -282,7 +391,7 @@ bool spectrumScope::update(scopeData data)
         double pbStart = 0.0;
         double pbEnd = 0.0;
 
-        switch (rigMode.mk)
+        switch (mode.mk)
         {
         case modeLSB:
         case modeRTTY:
@@ -319,7 +428,7 @@ bool spectrumScope::update(scopeData data)
         passbandIndicator->topLeft->setCoords(pbStart, 0);
         passbandIndicator->bottomRight->setCoords(pbEnd, maxAmp);
 
-        if ((rigMode.mk == modeCW || rigMode.mk == modeCW_R) && passbandWidth > 0.0006)
+        if ((mode.mk == modeCW || mode.mk == modeCW_R) && passbandWidth > 0.0006)
         {
             pbtDefault = round((passbandWidth - (cwPitch / 1000000.0)) * 200000.0) / 200000.0;
         }
@@ -328,7 +437,7 @@ bool spectrumScope::update(scopeData data)
             pbtDefault = 0.0;
         }
 
-        if ((PBTInner - pbtDefault || PBTOuter - pbtDefault) && passbandAction != passbandResizing && rigMode.mk != modeFM)
+        if ((PBTInner - pbtDefault || PBTOuter - pbtDefault) && passbandAction != passbandResizing && mode.mk != modeFM)
         {
             pbtIndicator->setVisible(true);
         }
@@ -340,7 +449,7 @@ bool spectrumScope::update(scopeData data)
         /*
             pbtIndicator displays the intersection between PBTInner and PBTOuter
         */
-        if (rigMode.mk == modeLSB || rigMode.mk == modeCW || rigMode.mk == modeRTTY) {
+        if (mode.mk == modeLSB || mode.mk == modeCW || mode.mk == modeRTTY) {
             pbtIndicator->topLeft->setCoords(qMax(pbStart - (PBTInner / 2) + (pbtDefault / 2), pbStart - (PBTOuter / 2) + (pbtDefault / 2)), 0);
 
             pbtIndicator->bottomRight->setCoords(qMin(pbStart - (PBTInner / 2) + (pbtDefault / 2) + passbandWidth,
@@ -534,5 +643,650 @@ void spectrumScope::computePlasma()
                     spectrumPlasmaLine[col] = (unsigned char)spectrumPlasma[pos][col];
             }
         }
+    }
+}
+
+void spectrumScope::showHideControls(spectrumMode_t mode)
+{
+    if((mode==spectModeCenter) || (mode==spectModeScrollC))
+    {
+        //edgeLabel->hide();
+        edgeCombo->hide();
+        edgeButton->hide();
+        toFixedButton->show();
+        //spanLabel->show();
+        spanCombo->show();
+    } else {
+        //edgeLabel->show();
+        edgeCombo->show();
+        edgeButton->show();
+        toFixedButton->hide();
+        //spanLabel->hide();
+        spanCombo->hide();
+    }
+}
+
+void spectrumScope::selectScopeMode(spectrumMode_t m)
+{
+    scopeModeCombo->blockSignals(true);
+    scopeModeCombo->setCurrentIndex(scopeModeCombo->findData(m));
+    scopeModeCombo->blockSignals(false);
+    showHideControls(m);
+}
+
+void spectrumScope::selectSpan(centerSpanData s)
+{
+    spanCombo->blockSignals(true);
+    spanCombo->setCurrentIndex(spanCombo->findText(s.name));
+    spanCombo->blockSignals(false);
+}
+
+void spectrumScope::updatedScopeMode(int index)
+{
+    //spectrumMode_t s = static_cast<spectrumMode_t>(scopeModeCombo->itemData(index).toInt());
+    spectrumMode_t s = scopeModeCombo->itemData(index).value<spectrumMode_t>();
+
+    queue->add(priorityImmediate,queueItem((sub?funcScopeSubMode:funcScopeMainMode),QVariant::fromValue(s),false,sub));
+
+    showHideControls(s);
+}
+
+void spectrumScope::updatedSpan(int index)
+{
+    queue->add(priorityImmediate,queueItem((sub?funcScopeSubSpan:funcScopeMainSpan),spanCombo->itemData(index),false,sub));
+}
+
+void spectrumScope::updatedMode(int index)
+{
+    Q_UNUSED(index) // We don't know where it came from!
+    modeInfo mi = modeCombo->currentData().value<modeInfo>();
+    mi.filter = filterCombo->currentData().toInt();
+    mi.data = dataCombo->currentIndex();
+    queue->add(priorityImmediate,queueItem((sub?funcUnselectedMode:funcSelectedMode),QVariant::fromValue(mi),false,sub));
+}
+
+void spectrumScope::updatedTheme(int index)
+{
+    currentTheme = themeCombo->itemData(index).toInt();
+    colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(currentTheme));
+}
+
+void spectrumScope::updatedEdge(int index)
+{
+    queue->add(priorityImmediate,queueItem((sub?funcScopeSubEdge:funcScopeMainEdge),QVariant::fromValue<uchar>(index+1),false,sub));
+}
+
+void spectrumScope::toFixedPressed()
+{
+    int currentEdge = edgeCombo->currentIndex();
+    bool dialogOk = false;
+    bool numOk = false;
+
+    QStringList edges;
+    edges << "1" << "2" << "3" << "4";
+
+    QString item = QInputDialog::getItem(this, "Select Edge", "Edge to replace:", edges, currentEdge, false, &dialogOk);
+
+    if(dialogOk)
+    {
+        int edge = QString(item).toInt(&numOk,10);
+        if(numOk)
+        {
+            edgeCombo->blockSignals(true);
+            edgeCombo->setCurrentIndex(edge-1);
+            edgeCombo->blockSignals(false);
+            queue->add(priorityImmediate,queueItem(funcScopeFixedEdgeFreq,QVariant::fromValue(spectrumBounds(lowerFreq, upperFreq, edge)),false,sub));
+            queue->add(priorityImmediate,queueItem((sub?funcScopeSubMode:funcScopeMainMode),QVariant::fromValue<uchar>(spectrumMode_t::spectModeFixed),false,sub));
+        }
+    }
+}
+
+void spectrumScope::customSpanPressed()
+{
+    double lowFreq = lowerFreq;
+    double highFreq = upperFreq;
+    QString freqstring = QString("%1, %2").arg(lowFreq).arg(highFreq);
+    bool ok;
+
+    QString userFreq = QInputDialog::getText(this, "Scope Edges",
+                          "Please enter desired scope edges, in MHz,\nwith a comma between the low and high range.",
+    QLineEdit::Normal, freqstring, &ok);
+    if(!ok)
+        return;
+
+    QString clean = userFreq.trimmed().replace(" ", "");
+    QStringList freqs = clean.split(",");
+    if(freqs.length() == 2)
+    {
+        lowFreq = QString(freqs.at(0)).toDouble(&ok);
+        if(ok)
+        {
+            highFreq = QString(freqs.at(1)).toDouble(&ok);
+            if(ok)
+            {
+                qDebug(logGui()) << "setting edge to: " << lowFreq << ", " << highFreq << ", edge num: " << edgeCombo->currentIndex() + 1;
+                queue->add(priorityImmediate,queueItem(funcScopeFixedEdgeFreq,
+                                                        QVariant::fromValue(spectrumBounds(lowFreq, highFreq, edgeCombo->currentIndex() + 1))));
+                return;
+            }
+        }
+        goto errMsg;
+    } else {
+        goto errMsg;
+    }
+
+errMsg:
+    {
+        QMessageBox URLmsgBox;
+        URLmsgBox.setText("Error, could not interpret your input.\
+                          <br/>Please make sure to place a comma between the frequencies.\
+                          <br/>For example: '7.200, 7.300'");
+        URLmsgBox.exec();
+
+        return;
+    }
+
+
+}
+
+
+void spectrumScope::scopeDoubleClick(QMouseEvent *me)
+{
+    if (me->button() == Qt::LeftButton)
+    {
+        double x;
+        freqt freqGo;
+        if (!lock)
+        {
+            //y = plot->yAxis->pixelToCoord(me->pos().y());
+            x = spectrum->xAxis->pixelToCoord(me->pos().x());
+            freqGo.Hz = x * 1E6;
+            freqGo.Hz = roundFrequency(freqGo.Hz, stepSize);
+            freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
+            queue->add(priorityImmediate,queueItem((sub?funcUnselectedFreq:funcSelectedFreq),QVariant::fromValue<freqt>(freqGo),false,sub));
+
+        }
+    }
+    else if (me->button() == Qt::RightButton)
+    {
+        QCPAbstractItem* item = spectrum->itemAt(me->pos(), true);
+        QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
+        if (rectItem != nullptr)
+        {
+            double pbFreq = (pbtDefault / passbandWidth) * 127.0;
+            qint16 newFreq = pbFreq + 128;
+            queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newFreq),false,sub));
+            queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newFreq),false,sub));
+        }
+    }
+}
+
+void spectrumScope::waterfallDoubleClick(QMouseEvent *me)
+{
+    double x;
+    freqt freqGo;
+    //double y;
+    //x = wf->xAxis->pixelToCoord(me->pos().x());
+    //y = wf->yAxis->pixelToCoord(me->pos().y());
+    // cheap trick until I figure out how the axis works on the WF:
+    if(!lock)
+    {
+        //y = plot->yAxis->pixelToCoord(me->pos().y());
+        x = spectrum->xAxis->pixelToCoord(me->pos().x());
+        freqGo.Hz = x * 1E6;
+        freqGo.Hz = roundFrequency(freqGo.Hz, stepSize);
+        freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
+        queue->add(priorityImmediate,queueItem((sub?funcUnselectedFreq:funcSelectedFreq),QVariant::fromValue<freqt>(freqGo),false,sub));
+    }
+}
+
+void spectrumScope::scopeClick(QMouseEvent* me)
+{
+    QCPAbstractItem* item = spectrum->itemAt(me->pos(), true);
+    //QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
+    QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
+#if QCUSTOMPLOT_VERSION < 0x020000
+    int leftPix = (int)passbandIndicator->left->pixelPoint().x();
+    int rightPix = (int)passbandIndicator->right->pixelPoint().x();
+    int pbtLeftPix = (int)pbtIndicator->left->pixelPoint().x();
+    int pbtRightPix = (int)pbtIndicator->right->pixelPoint().x();
+#else
+    int leftPix = (int)passbandIndicator->left->pixelPosition().x();
+    int rightPix = (int)passbandIndicator->right->pixelPosition().x();
+    int pbtLeftPix = (int)pbtIndicator->left->pixelPosition().x();
+    int pbtRightPix = (int)pbtIndicator->right->pixelPosition().x();
+#endif
+    int pbtCenterPix = pbtLeftPix + ((pbtRightPix - pbtLeftPix) / 2);
+    int cursor = me->pos().x();
+
+    if (me->button() == Qt::LeftButton) {
+/*
+        if (textItem != nullptr)
+        {
+            QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
+            if (spot != clusterSpots.end() && spot.key() == textItem->text())
+            {
+                qInfo(logGui()) << "Clicked on spot:" << textItem->text();
+                freqt freqGo;
+                freqGo.Hz = (spot.value()->frequency) * 1E6;
+                freqGo.MHzDouble = spot.value()->frequency;
+                issueCmdUniquePriority(cmdSetFreq, freqGo);
+            }
+        }
+        else */
+
+        if (passbandAction == passbandStatic && rectItem != nullptr)
+        {
+            if ((cursor <= leftPix && cursor > leftPix - 10) || (cursor >= rightPix && cursor < rightPix + 10))
+            {
+                passbandAction = passbandResizing;
+            }
+        }
+        // TODO clickdragtuning and sending messages to statusbar
+        /*
+        else if (prefs.clickDragTuningEnable)
+        {
+            this->mousePressFreq = plot->xAxis->pixelToCoord(cursor);
+            showStatusBarText(QString("Selected %1 MHz").arg(this->mousePressFreq));
+        }
+        else {
+            double x = spectrum->xAxis->pixelToCoord(cursor);
+            //showStatusBarText(QString("Selected %1 MHz").arg(x));
+        }
+        */
+    }
+    else if (me->button() == Qt::RightButton)
+    {
+        // TODO spots!
+        /*
+        if (textItem != nullptr) {
+            QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
+            if (spot != clusterSpots.end() && spot.key() == textItem->text()) {
+                // parent and children are destroyed on close
+                QDialog* spotDialog = new QDialog();
+                QVBoxLayout* vlayout = new QVBoxLayout;
+                //spotDialog->setFixedSize(240, 100);
+                spotDialog->setBaseSize(1, 1);
+                spotDialog->setWindowTitle(spot.value()->dxcall);
+                QLabel* dxcall = new QLabel(QString("DX:%1").arg(spot.value()->dxcall));
+                QLabel* spotter = new QLabel(QString("Spotter:%1").arg(spot.value()->spottercall));
+                QLabel* frequency = new QLabel(QString("Frequency:%1 MHz").arg(spot.value()->frequency));
+                QLabel* comment = new QLabel(QString("Comment:%1").arg(spot.value()->comment));
+                QAbstractButton* bExit = new QPushButton("Close");
+                vlayout->addWidget(dxcall);
+                vlayout->addWidget(spotter);
+                vlayout->addWidget(frequency);
+                vlayout->addWidget(comment);
+                vlayout->addWidget(bExit);
+                spotDialog->setLayout(vlayout);
+                spotDialog->show();
+                spotDialog->connect(bExit, SIGNAL(clicked()), spotDialog, SLOT(close()));
+            }
+        }
+        else
+                */
+
+        if (passbandAction == passbandStatic && rectItem != nullptr)
+        {
+            if (cursor <= pbtLeftPix && cursor > pbtLeftPix - 10)
+            {
+                passbandAction = pbtInnerMove;
+            }
+            else if (cursor >= pbtRightPix && cursor < pbtRightPix + 10)
+            {
+                passbandAction = pbtOuterMove;
+            }
+            else if (cursor > pbtCenterPix - 20 && cursor < pbtCenterPix + 20)
+            {
+                passbandAction = pbtMoving;
+            }
+            this->mousePressFreq = spectrum->xAxis->pixelToCoord(cursor);
+        }
+    }
+}
+
+void spectrumScope::scopeMouseRelease(QMouseEvent* me)
+{
+    /*
+    QCPAbstractItem* item = spectrum->itemAt(me->pos(), true);
+    QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
+
+    if (textItem == nullptr && prefs.clickDragTuningEnable) {
+        this->mouseReleaseFreq = plot->xAxis->pixelToCoord(me->pos().x());
+        double delta = mouseReleaseFreq - mousePressFreq;
+        qInfo(logGui()) << "Mouse release delta: " << delta;
+    }
+*/
+    if (passbandAction != passbandStatic) {
+        passbandAction = passbandStatic;
+    }
+}
+
+void spectrumScope::scopeMouseMove(QMouseEvent* me)
+{
+    QCPAbstractItem* item = spectrum->itemAt(me->pos(), true);
+    QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
+    QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
+#if QCUSTOMPLOT_VERSION < 0x020000
+    int leftPix = (int)passbandIndicator->left->pixelPoint().x();
+    int rightPix = (int)passbandIndicator->right->pixelPoint().x();
+    int pbtLeftPix = (int)pbtIndicator->left->pixelPoint().x();
+    int pbtRightPix = (int)pbtIndicator->right->pixelPoint().x();
+#else
+    int leftPix = (int)passbandIndicator->left->pixelPosition().x();
+    int rightPix = (int)passbandIndicator->right->pixelPosition().x();
+    int pbtLeftPix = (int)pbtIndicator->left->pixelPosition().x();
+    int pbtRightPix = (int)pbtIndicator->right->pixelPosition().x();
+#endif
+    int pbtCenterPix = pbtLeftPix + ((pbtRightPix - pbtLeftPix) / 2);
+    int cursor = me->pos().x();
+    double movedFrequency = spectrum->xAxis->pixelToCoord(cursor) - mousePressFreq;
+
+    if (passbandAction == passbandStatic && rectItem != nullptr)
+    {
+        if ((cursor <= leftPix && cursor > leftPix - 10) ||
+            (cursor >= rightPix && cursor < rightPix + 10) ||
+            (cursor <= pbtLeftPix && cursor > pbtLeftPix - 10) ||
+            (cursor >= pbtRightPix && cursor < pbtRightPix + 10))
+        {
+            setCursor(Qt::SizeHorCursor);
+        }
+        else if (cursor > pbtCenterPix - 20 && cursor < pbtCenterPix + 20) {
+            setCursor(Qt::OpenHandCursor);
+        }
+    }
+    else if (passbandAction == passbandResizing)
+    {
+    static double lastFreq = movedFrequency;
+    if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
+
+        // We are currently resizing the passband.
+        double pb = 0.0;
+        double origin = 0.0;
+        switch (mode.mk)
+        {
+            case modeCW:
+            case modeCW_R:
+                origin = 0.0;
+                break;
+            case modeLSB:
+                origin = -passbandCenterFrequency;
+                break;
+            default:
+                origin = passbandCenterFrequency;
+                break;
+        }
+
+        if (spectrum->xAxis->pixelToCoord(cursor) >= freq.MHzDouble + origin) {
+            pb = spectrum->xAxis->pixelToCoord(cursor) - passbandIndicator->topLeft->coords().x();
+        }
+        else {
+            pb = passbandIndicator->bottomRight->coords().x() - spectrum->xAxis->pixelToCoord(cursor);
+        }
+        queue->add(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(pb * 1000000),false,sub));
+        lastFreq = movedFrequency;
+    }
+    }
+    else if (passbandAction == pbtMoving) {
+
+        //qint16 shift = (qint16)(level - 128);
+        //TPBFInner = (double)(shift / 127.0) * (passbandWidth);
+        // Only move if more than 100Hz
+        static double lastFreq = movedFrequency;
+        if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
+
+            double innerFreq = ((double)(PBTInner + movedFrequency) / passbandWidth) * 127.0;
+            double outerFreq = ((double)(PBTOuter + movedFrequency) / passbandWidth) * 127.0;
+
+            qint16 newInFreq = innerFreq + 128;
+            qint16 newOutFreq = outerFreq + 128;
+
+            if (newInFreq >= 0 && newInFreq <= 255 && newOutFreq >= 0 && newOutFreq <= 255) {
+                qDebug() << QString("Moving passband by %1 Hz (Inner %2) (Outer %3) Mode:%4").arg((qint16)(movedFrequency * 1000000))
+                                .arg(newInFreq).arg(newOutFreq).arg(mode.mk);
+                queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newInFreq),false,sub));
+                queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newOutFreq),false,sub));
+            }
+            lastFreq = movedFrequency;
+        }
+    }
+    else if (passbandAction == pbtInnerMove) {
+        static double lastFreq = movedFrequency;
+        if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
+            double pbFreq = ((double)(PBTInner + movedFrequency) / passbandWidth) * 127.0;
+            qint16 newFreq = pbFreq + 128;
+            if (newFreq >= 0 && newFreq <= 255) {
+                if (sub) {
+                    queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newFreq),false,true));
+                } else {
+                    queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newFreq),false,false));
+                }
+            }
+            lastFreq = movedFrequency;
+        }
+    }
+    else if (passbandAction == pbtOuterMove) {
+        static double lastFreq = movedFrequency;
+        if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
+            double pbFreq = ((double)(PBTOuter + movedFrequency) / passbandWidth) * 127.0;
+            qint16 newFreq = pbFreq + 128;
+            if (newFreq >= 0 && newFreq <= 255) {
+                if (sub) {
+                    queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newFreq),false,true));
+                } else {
+                    queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newFreq),false,false));
+                }
+            }
+            lastFreq = movedFrequency;
+        }
+    }
+    else  if (passbandAction == passbandStatic && me->buttons() == Qt::LeftButton && textItem == nullptr)
+    {
+    }
+    /* && prefs.clickDragTuningEnable)
+    {
+        double delta = plot->xAxis->pixelToCoord(cursor) - mousePressFreq;
+        qDebug(logGui()) << "Mouse moving delta: " << delta;
+        if( (( delta < -0.0001 ) || (delta > 0.0001)) && ((delta < 0.501) && (delta > -0.501)) )
+        {
+            freqt freqGo;
+            freqGo.Hz = (freq.MHzDouble + delta) * 1E6;
+            //freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
+            freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
+            issueCmdUniquePriority(cmdSetFreq, freqGo);
+        }
+    }
+    */
+    else {
+        setCursor(Qt::ArrowCursor);
+    }
+
+}
+
+void spectrumScope::waterfallClick(QMouseEvent *me)
+{
+        //double x = spectrum->xAxis->pixelToCoord(me->pos().x());
+        //showStatusBarText(QString("Selected %1 MHz").arg(x));
+}
+
+void spectrumScope::scroll(QWheelEvent *we)
+{
+
+    int clicks = we->angleDelta().y() / 120;
+
+    if (!we->angleDelta().y() / 120)
+        return;
+
+    unsigned int stepsHz = stepSize;
+
+    Qt::KeyboardModifiers key = we->modifiers();
+    if ((key == Qt::ShiftModifier) && (stepsHz != 1))
+    {
+        stepsHz /= 10;
+    }
+    else if (key == Qt::ControlModifier)
+    {
+        stepsHz *= 10;
+    }
+
+    freqt f;
+    f.Hz = roundFrequency(freq.Hz, clicks, stepsHz);
+    f.MHzDouble = f.Hz / (double)1E6;
+
+    freq = f; // Do we need to do this?
+
+    queue->add(priorityImmediate,queueItem((sub?funcUnselectedFreq:funcSelectedFreq),QVariant::fromValue<freqt>(f),false,sub));
+    //ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
+    qInfo() << "Moving to freq:" << f.Hz << "step" << stepsHz;
+}
+
+
+
+void spectrumScope::receiveMode(modeInfo m)
+{
+    // Update mode information if mode/filter/data has changed.
+    // Not all rigs send data so this "might" need to be updated independantly?
+    if (mode.reg != m.reg || m.filter != mode.filter || m.data != mode.data)
+    {
+        qInfo(logSystem()) << __func__ << QString("Received new mode for %0: %1 (%2) filter:%3 data:%4")
+                                              .arg((sub?"Sub":"Main")).arg(QString::number(m.mk,16)).arg(m.name).arg(m.filter).arg(m.data) ;
+
+        if (mode.mk != m.mk) {
+            for (int i=0;i<modeCombo->count();i++)
+            {
+                modeInfo mi = modeCombo->itemData(i).value<modeInfo>();
+                if (mi.mk == m.mk)
+                {
+                    modeCombo->blockSignals(true);
+                    modeCombo->setCurrentIndex(i);
+                    modeCombo->blockSignals(false);
+                    break;
+                }
+            }
+        }
+
+        if (m.filter && mode.filter != m.filter)
+        {
+            filterCombo->blockSignals(true);
+            filterCombo->setCurrentIndex(filterCombo->findData(m.filter));
+            filterCombo->blockSignals(false);
+        }
+
+        if (mode.data != m.data)
+        {
+            dataCombo->blockSignals(true);
+            dataCombo->setCurrentIndex(m.data);
+            dataCombo->blockSignals(false);
+        }
+
+        passbandCenterFrequency = 0.0;
+
+        switch (m.mk) {
+        case modeLSB:
+        case modeUSB:
+            passbandCenterFrequency = 0.0015;
+            queue->addUnique(priorityHigh,funcPBTInner,true,sub);
+            queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
+            queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
+            queue->del(funcCwPitch,sub);
+            queue->del(funcDashRatio,sub);
+            queue->del(funcKeySpeed,sub);
+            break;
+        case modeRTTY:
+        case modeRTTY_R:
+        case modePSK:
+        case modePSK_R:
+            queue->addUnique(priorityHigh,funcPBTInner,true,sub);
+            queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
+            queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
+            queue->del(funcCwPitch,sub);
+            queue->del(funcDashRatio,sub);
+            queue->del(funcKeySpeed,sub);
+            break;
+        case modeCW:
+        case modeCW_R:
+            queue->addUnique(priorityHigh,funcPBTInner,true,sub);
+            queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
+            queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
+            queue->addUnique(priorityLow,funcCwPitch,true,sub);
+            queue->addUnique(priorityLow,funcDashRatio,true,sub);
+            queue->addUnique(priorityLow,funcKeySpeed,true,sub);
+            break;
+        case modeAM:
+            queue->addUnique(priorityHigh,funcPBTInner,true,sub);
+            queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
+            queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
+            queue->del(funcCwPitch,sub);
+            queue->del(funcDashRatio,sub);
+            queue->del(funcKeySpeed,sub);
+            break;
+        default:
+            // FM and digital modes are fixed width, not sure about any other modes?
+            if (mode.filter == 1)
+                passbandWidth = 0.015;
+            else if (mode.filter == 2)
+                passbandWidth = 0.010;
+            else
+                passbandWidth = 0.007;
+            break;
+            queue->del(funcCwPitch,sub);
+            queue->del(funcDashRatio,sub);
+            queue->del(funcKeySpeed,sub);
+            queue->del(funcPBTInner,sub);
+            queue->del(funcPBTOuter,sub);
+            queue->del(funcFilterWidth,sub);
+            break;
+        }
+
+        mode = m;
+    }
+}
+
+quint64 spectrumScope::roundFrequency(quint64 frequency, unsigned int tsHz)
+{
+    return roundFrequency(frequency, 0, tsHz);
+}
+
+quint64 spectrumScope::roundFrequency(quint64 frequency, int steps, unsigned int tsHz)
+{
+    if(steps > 0)
+    {
+        frequency = frequency + (quint64)(steps*tsHz);
+    } else if (steps < 0) {
+        frequency = frequency - std::min((quint64)(abs(steps)*tsHz), frequency);
+    }
+
+    quint64 rounded = frequency;
+
+    if(tuningFloorZeros)
+    {
+        rounded = ((frequency % tsHz) > tsHz/2) ? frequency + tsHz - frequency%tsHz : frequency - frequency%tsHz;
+    }
+
+    return rounded;
+}
+
+
+void spectrumScope::receiveCwPitch(uchar pitch)
+{
+    if (mode.mk == modeCW || mode.mk == modeCW_R) {
+        quint16 p = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
+        if (p != cwPitch)
+        {
+            passbandCenterFrequency = p / 2000000.0;
+            qInfo(logSystem()) << QString("%0 Received new CW Pitch %1 Hz was %2 (center freq %3 MHz)").arg((sub?"Sub":"Main")).arg(p).arg(cwPitch).arg(passbandCenterFrequency);
+            cwPitch = p;
+        }
+    }
+}
+
+void spectrumScope::receivePassband(quint16 pass)
+{
+    double pb = (double)(pass / 1000000.0);
+    if (passbandWidth != pb) {
+        passbandWidth = pb;
+        //trxadj->updatePassband(pass);
+        qInfo(logSystem()) << QString("%0 Received new IF Filter/Passband %1 Hz").arg((sub?"Sub":"Main")).arg(pass);
+        //showStatusBarText(QString("IF filter width %0 Hz (%1 MHz)").arg(pass).arg(passbandWidth));
     }
 }

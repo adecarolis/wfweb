@@ -370,10 +370,7 @@ private slots:
 
     void receiveCommReady();
     void receiveFreq(freqt);
-    void receiveMode(modeInfo mode);
-
-    void receivespectrumMode(spectrumMode_t spectMode);
-    void receiveSpectrumSpan(freqt freqspan, bool isSub);
+    void receiveMode(modeInfo mode, bool sub=false);
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(uchar data, uchar filter);
     void handleBandStackReg(freqt f, char mode, char filter, bool dataOn); // freq, mode, (filter,) datamode
@@ -463,7 +460,6 @@ private slots:
 
     void on_usbControllersResetBtn_clicked();
 
-    void on_scopeBWCombo_currentIndexChanged(int index);
     void on_scopeEdgeCombo_currentIndexChanged(int index);
     void on_modeSelectCombo_activated(int index);
     void on_freqDial_valueChanged(int value);
@@ -504,8 +500,6 @@ private slots:
     void useSystemTheme(bool checked);
 
     void on_tuneLockChk_clicked(bool checked);
-
-    void on_spectrumModeCombo_currentIndexChanged(int index);
 
     void on_tuningStepCombo_currentIndexChanged(int index);
     void on_serialDeviceListCombo_textActivated(const QString &arg1);
@@ -728,7 +722,6 @@ private:
 
     bool onFullscreen;
     bool freqTextSelected;
-    void setUISpectrumControlsToMode(spectrumMode_t smode);
 
     double oldLowerFreq;
     double oldUpperFreq;

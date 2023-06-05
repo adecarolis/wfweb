@@ -222,7 +222,7 @@ void rigCommander::commonSetup()
     rigCaps.commandsReverse.insert(QByteArrayLiteral("\x19\x00"),funcTransceiverId);
 
     queue = cachingQueue::getInstance(this);
-    connect(queue,SIGNAL(haveCommand(queueItemType,funcs,QVariant)),this,SLOT(receiveCommand(queueItemType, funcs,QVariant)));
+    connect(queue,SIGNAL(haveCommand(funcs,QVariant,bool)),this,SLOT(receiveCommand(funcs,QVariant,bool)));
     oldScopeMode = spectModeUnknown;
 
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
@@ -1915,7 +1915,7 @@ void rigCommander::parseCommand()
     if (rigCaps.hasCommand29 && payloadIn[0] == '\x29')
     {
         sub = static_cast<bool>(payloadIn[1]);
-        payloadIn.remove(0,2);
+        payloadIn.remove(0,2);      
     }
 
     // As some commands bave both single and multi-byte options, start at 4 characters and work down to 1.
@@ -1956,8 +1956,9 @@ void rigCommander::parseCommand()
     case funcVFODualWatch:
         // Not currently used, but will report the current dual-watch status
         break;
-    case funcSelectedFreq:
     case funcUnselectedFreq:
+        sub = true;
+    case funcSelectedFreq:
     {
         value.setValue(parseFrequency(payloadIn,5));
         break;
@@ -1976,8 +1977,9 @@ void rigCommander::parseCommand()
         value.setValue(m);
         break;
     }
-    case funcSelectedMode:
     case funcUnselectedMode:
+        sub = true;
+    case funcSelectedMode:
     {
         modeInfo m;
         // New format payload with mode+datamode+filter
@@ -2147,7 +2149,12 @@ void rigCommander::parseCommand()
     {
         quint16 calc;
         quint8 pass = bcdHexToUChar((quint8)payloadIn[2]);
-        modeInfo m = queue->getCache(funcSelectedMode).value.value<modeInfo>();
+        modeInfo m;
+        if (sub)
+            m = queue->getCache(funcUnselectedMode).value.value<modeInfo>();
+        else
+            m = queue->getCache(funcSelectedMode).value.value<modeInfo>();
+
         if (m.mk == modeAM)
         {
              calc = 200 + (pass * 200);
@@ -2236,8 +2243,8 @@ void rigCommander::parseCommand()
         break;
     }
     // 0x27
-    case funcScopeMainWaveData:
     case funcScopeSubWaveData:
+    case funcScopeMainWaveData:
     {
         scopeData d;
         if (parseSpectrum(d))
@@ -2254,6 +2261,8 @@ void rigCommander::parseCommand()
         // This tells us whether we are receiving single or dual scopes
         value.setValue(static_cast<bool>(payloadIn[2]));
         break;
+    case funcScopeSubMode:
+        sub=true;
     case funcScopeMainMode:
         // fixed or center
         // [1] 0x14
@@ -2261,6 +2270,7 @@ void rigCommander::parseCommand()
         // [3] 0x00 (center), 0x01 (fixed), 0x02, 0x03
         value.setValue(static_cast<spectrumMode_t>(uchar(payloadIn[3])));
         break;
+    case funcScopeSubSpan:
     case funcScopeMainSpan:
     {
         freqt f = parseFrequency(payloadIn, 6);
@@ -2273,6 +2283,7 @@ void rigCommander::parseCommand()
         }
         break;
     }
+    case funcScopeSubEdge:
     case funcScopeMainEdge:
         // read edge mode center in edge mode
         // [1] 0x16
@@ -2280,10 +2291,12 @@ void rigCommander::parseCommand()
         value.setValue(bcdHexToUChar(payloadIn[2]));
         //emit haveScopeEdge((char)payloadIn[2]);
         break;
+    case funcScopeSubHold:
     case funcScopeMainHold:
         // Hold status (only 9700?)
         value.setValue(static_cast<bool>(payloadIn[2]));
         break;
+    case funcScopeSubRef:
     case funcScopeMainRef:
     {
         // scope reference level
@@ -2301,12 +2314,18 @@ void rigCommander::parseCommand()
         value.setValue(ref);
         break;
     }
+    case funcScopeSubSpeed:
     case funcScopeMainSpeed:
+        break;
+    case funcScopeSubVBW:
+    case funcScopeMainVBW:
+        break;
+    case funcScopeSubRBW:
+    case funcScopeMainRBW:
+        break;
+    case funcScopeFixedEdgeFreq:
     case funcScopeDuringTX:
     case funcScopeCenterType:
-    case funcScopeMainVBW:
-    case funcScopeFixedEdgeFreq:
-    case funcScopeMainRBW:
         break;
     // 0x28
     case funcVoiceTX:
@@ -5476,6 +5495,7 @@ modeInfo rigCommander::parseMode(quint8 mode, quint8 filter)
     if (!found)
         qInfo(logRig()) << QString("parseMode() Couldn't find a matching mode %0 with filter %1").arg(mode).arg(filter);
 
+    /*
     cacheItem item = queue->getCache(funcFilterWidth);
 
     if (item.value.isValid()) {
@@ -5483,7 +5503,7 @@ modeInfo rigCommander::parseMode(quint8 mode, quint8 filter)
     }
     else
     {
-
+    */
         /*  We haven't got a valid passband from the rig so we
             need to create a 'fake' one from default values
             This will be replaced with a valid one if we get it */
@@ -5556,7 +5576,7 @@ modeInfo rigCommander::parseMode(quint8 mode, quint8 filter)
                 break;
             }
         }
-    }
+    //}
 
     return mi;
 }
@@ -6023,9 +6043,8 @@ uchar rigCommander::makeFilterWidth(ushort pass)
     return 0U;
 }
 
-void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value)
+void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
 {
-    Q_UNUSED(type)
     //qInfo() << "Got command:" << funcString[func];
     int val=INT_MIN;
     if (value.isValid() && value.canConvert<int>()) {
@@ -6073,7 +6092,7 @@ void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value
     }
 
     QByteArray payload;
-    if (getCommand(func,payload,val,false))
+    if (getCommand(func,payload,val,sub))
     {
         if (value.isValid())
         {
