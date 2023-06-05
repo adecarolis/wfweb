@@ -547,13 +547,11 @@ bool spectrumScope::update(scopeData data)
 
     if (data.oor && !oorIndicator->visible()) {
         oorIndicator->setVisible(true);
-        //oorIndicator->position->setCoords((oldLowerFreq+oldUpperFreq)/2,ui->topLevelSlider->value() - 20);
         qInfo(logSystem()) << "Scope out of range";
     } else if (!data.oor && oorIndicator->visible()) {
         oorIndicator->setVisible(false);
     }
 
-    //ovfIndicator->setVisible(true);
 
     return true;
 }

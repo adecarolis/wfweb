@@ -71,7 +71,7 @@ void cachingQueue::run()
             }            
             counter++;
 
-            auto it = queue.constFind(prio);
+            QMultiMap<queuePriority,queueItem>::const_iterator it = queue.constFind(prio);
             if (it != queue.cend())
             {
                 auto item = it.value();
