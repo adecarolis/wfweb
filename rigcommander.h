@@ -424,7 +424,7 @@ private:
     unsigned char convertNumberToHex(unsigned char num);
     toneInfo decodeTone(QByteArray eTone);
     //quint16 decodeTone(QByteArray eTone, bool &tinv, bool &rinv);
-    uchar makeFilterWidth(ushort width);
+    uchar makeFilterWidth(ushort width, bool sub);
 
 
     unsigned char audioLevelRxMean[50];
@@ -432,7 +432,7 @@ private:
     unsigned char audioLevelTxMean[50];
     unsigned char audioLevelTxPeak[50];
 
-    modeInfo parseMode(quint8 mode, quint8 filter);
+    modeInfo parseMode(quint8 mode, quint8 filter, bool sub);
     bool parseSpectrum(scopeData& d);
     void parseWFData();
     void parseSpectrumRefLevel();

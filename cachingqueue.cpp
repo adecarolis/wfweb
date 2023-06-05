@@ -168,8 +168,8 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
                 queueItem it = item;
                 it.recurring=false;
                 queue.insert(queue.cend(),priorityHighest, it);
+                qInfo() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "sub" << item.sub;
             }
-            qInfo() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "sub" << item.sub;
             queue.insert(queue.cend(),prio, item);
             updateCache(false,item.command,item.param);
         }

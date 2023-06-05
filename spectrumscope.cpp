@@ -188,9 +188,10 @@ spectrumScope::spectrumScope(QWidget *parent)
     connect(modeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedMode(int)));
     connect(filterCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedMode(int)));
     connect(dataCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedMode(int)));
+    connect(clearPeaksButton,SIGNAL(pressed()), this, SLOT(clearPeaks()));
 
-    connect(spectrum, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(scopeDoubleClick(QMouseEvent*)));
-    connect(waterfall, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(waterfallDoubleClick(QMouseEvent*)));
+    connect(spectrum, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(doubleClick(QMouseEvent*)));
+    connect(waterfall, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(doubleClick(QMouseEvent*)));
     connect(spectrum, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(scopeClick(QMouseEvent*)));
     connect(waterfall, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(waterfallClick(QMouseEvent*)));
     connect(spectrum, SIGNAL(mouseRelease(QMouseEvent*)), this, SLOT(scopeMouseRelease(QMouseEvent*)));
@@ -788,7 +789,7 @@ errMsg:
 }
 
 
-void spectrumScope::scopeDoubleClick(QMouseEvent *me)
+void spectrumScope::doubleClick(QMouseEvent *me)
 {
     if (me->button() == Qt::LeftButton)
     {
@@ -819,29 +820,10 @@ void spectrumScope::scopeDoubleClick(QMouseEvent *me)
     }
 }
 
-void spectrumScope::waterfallDoubleClick(QMouseEvent *me)
-{
-    double x;
-    freqt freqGo;
-    //double y;
-    //x = wf->xAxis->pixelToCoord(me->pos().x());
-    //y = wf->yAxis->pixelToCoord(me->pos().y());
-    // cheap trick until I figure out how the axis works on the WF:
-    if(!lock)
-    {
-        //y = plot->yAxis->pixelToCoord(me->pos().y());
-        x = spectrum->xAxis->pixelToCoord(me->pos().x());
-        freqGo.Hz = x * 1E6;
-        freqGo.Hz = roundFrequency(freqGo.Hz, stepSize);
-        freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
-        queue->add(priorityImmediate,queueItem((sub?funcUnselectedFreq:funcSelectedFreq),QVariant::fromValue<freqt>(freqGo),false,sub));
-    }
-}
-
 void spectrumScope::scopeClick(QMouseEvent* me)
 {
     QCPAbstractItem* item = spectrum->itemAt(me->pos(), true);
-    //QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
+    QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
     QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
 #if QCUSTOMPLOT_VERSION < 0x020000
     int leftPix = (int)passbandIndicator->left->pixelPoint().x();
@@ -858,7 +840,7 @@ void spectrumScope::scopeClick(QMouseEvent* me)
     int cursor = me->pos().x();
 
     if (me->button() == Qt::LeftButton) {
-/*
+        this->mousePressFreq = spectrum->xAxis->pixelToCoord(cursor);
         if (textItem != nullptr)
         {
             QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
@@ -868,12 +850,10 @@ void spectrumScope::scopeClick(QMouseEvent* me)
                 freqt freqGo;
                 freqGo.Hz = (spot.value()->frequency) * 1E6;
                 freqGo.MHzDouble = spot.value()->frequency;
-                issueCmdUniquePriority(cmdSetFreq, freqGo);
+                queue->add(priorityImmediate,queueItem((sub?funcUnselectedFreq:funcSelectedFreq),QVariant::fromValue<freqt>(freqGo),false,sub));
             }
         }
-        else */
-
-        if (passbandAction == passbandStatic && rectItem != nullptr)
+        else if (passbandAction == passbandStatic && rectItem != nullptr)
         {
             if ((cursor <= leftPix && cursor > leftPix - 10) || (cursor >= rightPix && cursor < rightPix + 10))
             {
@@ -884,12 +864,10 @@ void spectrumScope::scopeClick(QMouseEvent* me)
         /*
         else if (prefs.clickDragTuningEnable)
         {
-            this->mousePressFreq = plot->xAxis->pixelToCoord(cursor);
             showStatusBarText(QString("Selected %1 MHz").arg(this->mousePressFreq));
         }
         else {
-            double x = spectrum->xAxis->pixelToCoord(cursor);
-            //showStatusBarText(QString("Selected %1 MHz").arg(x));
+            //showStatusBarText(QString("Selected %1 MHz").arg(this->mousePressFreq));
         }
         */
     }
@@ -995,35 +973,28 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
     }
     else if (passbandAction == passbandResizing)
     {
-    static double lastFreq = movedFrequency;
-    if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
+        static double lastFreq = movedFrequency;
+        if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
 
-        // We are currently resizing the passband.
-        double pb = 0.0;
-        double origin = 0.0;
-        switch (mode.mk)
-        {
-            case modeCW:
-            case modeCW_R:
-                origin = 0.0;
-                break;
-            case modeLSB:
-                origin = -passbandCenterFrequency;
-                break;
-            default:
-                origin = passbandCenterFrequency;
-                break;
-        }
+            // We are currently resizing the passband.
+            double pb = 0.0;
+            double origin = passbandCenterFrequency;
+            if (mode.mk == modeLSB)
+            {
+                origin = - passbandCenterFrequency;
+            }
 
-        if (spectrum->xAxis->pixelToCoord(cursor) >= freq.MHzDouble + origin) {
-            pb = spectrum->xAxis->pixelToCoord(cursor) - passbandIndicator->topLeft->coords().x();
+            if (spectrum->xAxis->pixelToCoord(cursor) >= freq.MHzDouble + origin) {
+                pb = spectrum->xAxis->pixelToCoord(cursor) - passbandIndicator->topLeft->coords().x();
+            }
+            else {
+                pb = passbandIndicator->bottomRight->coords().x() - spectrum->xAxis->pixelToCoord(cursor);
+            }
+            queue->add(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(pb * 1000000),false,sub));
+            //qInfo() << "New passband" << uint(pb * 1000000);
+
+            lastFreq = movedFrequency;
         }
-        else {
-            pb = passbandIndicator->bottomRight->coords().x() - spectrum->xAxis->pixelToCoord(cursor);
-        }
-        queue->add(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(pb * 1000000),false,sub));
-        lastFreq = movedFrequency;
-    }
     }
     else if (passbandAction == pbtMoving) {
 
@@ -1054,11 +1025,7 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
             double pbFreq = ((double)(PBTInner + movedFrequency) / passbandWidth) * 127.0;
             qint16 newFreq = pbFreq + 128;
             if (newFreq >= 0 && newFreq <= 255) {
-                if (sub) {
-                    queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newFreq),false,true));
-                } else {
-                    queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newFreq),false,false));
-                }
+                queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newFreq),false,sub));
             }
             lastFreq = movedFrequency;
         }
@@ -1069,11 +1036,7 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
             double pbFreq = ((double)(PBTOuter + movedFrequency) / passbandWidth) * 127.0;
             qint16 newFreq = pbFreq + 128;
             if (newFreq >= 0 && newFreq <= 255) {
-                if (sub) {
-                    queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newFreq),false,true));
-                } else {
-                    queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newFreq),false,false));
-                }
+                queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newFreq),false,sub));
             }
             lastFreq = movedFrequency;
         }
@@ -1112,7 +1075,7 @@ void spectrumScope::scroll(QWheelEvent *we)
 
     int clicks = we->angleDelta().y() / 120;
 
-    if (!we->angleDelta().y() / 120)
+    if (!(we->angleDelta().y() / 120))
         return;
 
     unsigned int stepsHz = stepSize;
@@ -1177,65 +1140,68 @@ void spectrumScope::receiveMode(modeInfo m)
             dataCombo->blockSignals(false);
         }
 
-        passbandCenterFrequency = 0.0;
+        if (m.mk != mode.mk) {
+            // We have changed mode so "may" need to change regular commands
+            passbandCenterFrequency = 0.0;
 
-        switch (m.mk) {
-        case modeLSB:
-        case modeUSB:
-            passbandCenterFrequency = 0.0015;
-            queue->addUnique(priorityHigh,funcPBTInner,true,sub);
-            queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
-            queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
-            queue->del(funcCwPitch,sub);
-            queue->del(funcDashRatio,sub);
-            queue->del(funcKeySpeed,sub);
-            break;
-        case modeRTTY:
-        case modeRTTY_R:
-        case modePSK:
-        case modePSK_R:
-            queue->addUnique(priorityHigh,funcPBTInner,true,sub);
-            queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
-            queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
-            queue->del(funcCwPitch,sub);
-            queue->del(funcDashRatio,sub);
-            queue->del(funcKeySpeed,sub);
-            break;
-        case modeCW:
-        case modeCW_R:
-            queue->addUnique(priorityHigh,funcPBTInner,true,sub);
-            queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
-            queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
-            queue->addUnique(priorityLow,funcCwPitch,true,sub);
-            queue->addUnique(priorityLow,funcDashRatio,true,sub);
-            queue->addUnique(priorityLow,funcKeySpeed,true,sub);
-            break;
-        case modeAM:
-            queue->addUnique(priorityHigh,funcPBTInner,true,sub);
-            queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
-            queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
-            queue->del(funcCwPitch,sub);
-            queue->del(funcDashRatio,sub);
-            queue->del(funcKeySpeed,sub);
-            break;
-        default:
-            // FM and digital modes are fixed width, not sure about any other modes?
-            if (mode.filter == 1)
-                passbandWidth = 0.015;
-            else if (mode.filter == 2)
-                passbandWidth = 0.010;
-            else
-                passbandWidth = 0.007;
-            break;
-            queue->del(funcCwPitch,sub);
-            queue->del(funcDashRatio,sub);
-            queue->del(funcKeySpeed,sub);
-            queue->del(funcPBTInner,sub);
-            queue->del(funcPBTOuter,sub);
-            queue->del(funcFilterWidth,sub);
-            break;
+            switch (m.mk) {
+            case modeLSB:
+            case modeUSB:
+                passbandCenterFrequency = 0.0015;
+                queue->addUnique(priorityHigh,funcPBTInner,true,sub);
+                queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
+                queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
+                queue->del(funcCwPitch,sub);
+                queue->del(funcDashRatio,sub);
+                queue->del(funcKeySpeed,sub);
+                break;
+            case modeRTTY:
+            case modeRTTY_R:
+            case modePSK:
+            case modePSK_R:
+                queue->addUnique(priorityHigh,funcPBTInner,true,sub);
+                queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
+                queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
+                queue->del(funcCwPitch,sub);
+                queue->del(funcDashRatio,sub);
+                queue->del(funcKeySpeed,sub);
+                break;
+            case modeCW:
+            case modeCW_R:
+                queue->addUnique(priorityHigh,funcPBTInner,true,sub);
+                queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
+                queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
+                queue->addUnique(priorityLow,funcCwPitch,true,sub);
+                queue->addUnique(priorityLow,funcDashRatio,true,sub);
+                queue->addUnique(priorityLow,funcKeySpeed,true,sub);
+                break;
+            case modeAM:
+                queue->addUnique(priorityHigh,funcPBTInner,true,sub);
+                queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
+                queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
+                queue->del(funcCwPitch,sub);
+                queue->del(funcDashRatio,sub);
+                queue->del(funcKeySpeed,sub);
+                break;
+            default:
+                // FM and digital modes are fixed width, not sure about any other modes?
+                if (mode.filter == 1)
+                    passbandWidth = 0.015;
+                else if (mode.filter == 2)
+                    passbandWidth = 0.010;
+                else
+                    passbandWidth = 0.007;
+                break;
+                queue->del(funcCwPitch,sub);
+                queue->del(funcDashRatio,sub);
+                queue->del(funcKeySpeed,sub);
+                queue->del(funcPBTInner,sub);
+                queue->del(funcPBTOuter,sub);
+                queue->del(funcFilterWidth,sub);
+                break;
+            }
+
         }
-
         mode = m;
     }
 }

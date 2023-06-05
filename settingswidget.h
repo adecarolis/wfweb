@@ -66,11 +66,6 @@ public slots:
     void updateUdpPref(udpPrefsItem upi);
     void updateUdpPrefs(int items);
 
-    void updateAudioInputs(QStringList deviceList, int currentIndex, int chars);
-    void updateAudioOutputs(QStringList deviceList, int currentIndex, int chars);
-    void updateServerRXAudioInputs(QStringList deviceList, int currentIndex, int chars);
-    void updateServerTXAudioOutputs(QStringList deviceList, int currentIndex, int chars);
-
     void updateSerialPortList(QStringList deviceList, QVector<int> data);
     void updateVSPList(QStringList deviceList, QVector<int> data);
 

@@ -1967,7 +1967,7 @@ void rigCommander::parseCommand()
     case funcModeTR:
     {
         modeInfo m;
-        m = parseMode(payloadIn[1], m.filter);
+        m = parseMode(payloadIn[1], m.filter,sub);
         if(payloadIn[2] != '\xFD')
         {
             m.filter = payloadIn[2];
@@ -1983,7 +1983,7 @@ void rigCommander::parseCommand()
     {
         modeInfo m;
         // New format payload with mode+datamode+filter
-        m = parseMode(uchar(payloadIn[2]), uchar(payloadIn[4]));
+        m = parseMode(uchar(payloadIn[2]), uchar(payloadIn[4]),sub);
         m.data = bool(payloadIn[3]);
         m.VFO = selVFO_t(payloadIn[1] & 0x01);
         value.setValue(m);
@@ -2150,10 +2150,7 @@ void rigCommander::parseCommand()
         quint16 calc;
         quint8 pass = bcdHexToUChar((quint8)payloadIn[2]);
         modeInfo m;
-        if (sub)
-            m = queue->getCache(funcUnselectedMode).value.value<modeInfo>();
-        else
-            m = queue->getCache(funcSelectedMode).value.value<modeInfo>();
+        m = queue->getCache((sub?funcUnselectedMode:funcSelectedMode)).value.value<modeInfo>();
 
         if (m.mk == modeAM)
         {
@@ -2167,6 +2164,7 @@ void rigCommander::parseCommand()
              calc = 600 + ((pass - 10) * 100);
         }
         value.setValue(calc);
+        //qInfo() << "Got filter width" << calc << "sub" << sub;
         break;
     }
     case funcDataModeWithFilter:
@@ -5479,7 +5477,7 @@ quint64 rigCommander::parseFreqDataToInt(QByteArray data)
 }
 
 
-modeInfo rigCommander::parseMode(quint8 mode, quint8 filter)
+modeInfo rigCommander::parseMode(quint8 mode, quint8 filter, bool sub)
 {
     modeInfo mi;
     bool found=false;
@@ -5492,19 +5490,20 @@ modeInfo rigCommander::parseMode(quint8 mode, quint8 filter)
             break;
         }
     }
-    if (!found)
-        qInfo(logRig()) << QString("parseMode() Couldn't find a matching mode %0 with filter %1").arg(mode).arg(filter);
 
-    /*
-    cacheItem item = queue->getCache(funcFilterWidth);
+    if (!found) {
+        qInfo(logRig()) << QString("parseMode() Couldn't find a matching mode %0 with filter %1").arg(mode).arg(filter);
+    }
+
+    cacheItem item = queue->getCache(funcFilterWidth,sub);
 
     if (item.value.isValid()) {
         mi.pass = item.value.toInt();
     }
     else
     {
-    */
-        /*  We haven't got a valid passband from the rig so we
+
+        /*  We haven't got a valid passband from the rig yet so we
             need to create a 'fake' one from default values
             This will be replaced with a valid one if we get it */
 
@@ -5576,7 +5575,7 @@ modeInfo rigCommander::parseMode(quint8 mode, quint8 filter)
                 break;
             }
         }
-    //}
+    }
 
     return mi;
 }
@@ -6037,10 +6036,37 @@ quint8* rigCommander::getGUID() {
     return guid;
 }
 
-uchar rigCommander::makeFilterWidth(ushort pass)
+uchar rigCommander::makeFilterWidth(ushort pass,bool sub)
 {
-    Q_UNUSED(pass)
-    return 0U;
+    unsigned char calc;
+    modeInfo mi = queue->getCache((sub?funcUnselectedMode:funcSelectedMode),sub).value.value<modeInfo>();
+    if (mi.mk == modeAM) { // AM 0-49
+
+        calc = quint16((pass / 200) - 1);
+        if (calc > 49)
+            calc = 49;
+    }
+    else if (pass >= 600) // SSB/CW/PSK 10-40 (10-31 for RTTY)
+    {
+        calc = quint16((pass / 100) + 4);
+        if (((calc > 31) && (mi.mk == modeRTTY || mi.mk == modeRTTY_R)))
+        {
+            calc = 31;
+        }
+        else if (calc > 40) {
+            calc = 40;
+        }
+    }
+    else {  // SSB etc 0-9
+        calc = quint16((pass / 50) - 1);
+    }
+
+    char tens = (calc / 10);
+    char units = (calc - (10 * tens));
+
+    char b1 = (units) | (tens << 4);
+
+    return b1;
 }
 
 void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
@@ -6134,8 +6160,11 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
             }
             else if (!strcmp(value.typeName(),"ushort"))
             {
-                if (func == funcFilterWidth)
-                    payload.append(makeFilterWidth(value.value<ushort>()));
+                 if (func == funcFilterWidth) {
+                    payload.append(makeFilterWidth(value.value<ushort>(),sub));
+                    qInfo() << "Setting filter width" << value.value<ushort>() << "sub" << sub << "hex" << payload.toHex();
+
+                 }
                 else
                     payload.append(bcdEncodeInt(value.value<ushort>()));
             }

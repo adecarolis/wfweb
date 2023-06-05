@@ -11,6 +11,7 @@
 #include <QPushButton>
 #include <QSpacerItem>
 #include <qcustomplot.h>
+#include "cluster.h"
 #include "wfviewtypes.h"
 #include "colorprefs.h"
 #include "rigidentities.h"
@@ -101,14 +102,13 @@ private slots:
     void scopeClick(QMouseEvent *);
     void scopeMouseRelease(QMouseEvent *);
     void scopeMouseMove(QMouseEvent *);
-    void scopeDoubleClick(QMouseEvent *);
-
+    void doubleClick(QMouseEvent *); // used for both scope and wf
     void waterfallClick(QMouseEvent *);
-    void waterfallDoubleClick(QMouseEvent *);
     void scroll(QWheelEvent *);
 
-private:
     void clearPeaks();
+
+private:
     void clearPlasma();
     void computePlasma();
     void showHideControls(spectrumMode_t mode);
@@ -199,6 +199,9 @@ private:
     cachingQueue* queue;
     bool sub=false;
     bool tuningFloorZeros=false;
+    double startFrequency;
+    QMap<QString, spotData*> clusterSpots;
+
 };
 
 #endif // SPECTRUMSCOPE_H

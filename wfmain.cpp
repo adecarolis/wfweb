@@ -3065,6 +3065,8 @@ void wfmain::extChangedCtPref(prefCtItem i)
     case ct_enablePTT:
         break;
     case ct_niceTS:
+        //ui->mainScope.setNiceTS = prefs.niceTS;
+        //ui->subScope.setNiceTS = prefs.niceTS;
         break;
     case ct_automaticSidebandSwitching:
         finputbtns->setAutomaticSidebandSwitching(prefs.automaticSidebandSwitching);
@@ -5151,112 +5153,11 @@ void wfmain::on_scopeEnableWFBtn_stateChanged(int state)
 
 void wfmain::receiveMode(modeInfo mode, bool sub)
 {
-    // Update mode information if mode/filter has changed
-    if ((mode.VFO == activeVFO) && (currentModeInfo.reg != mode.reg || currentModeInfo.filter != mode.filter || currentModeInfo.data != mode.data))
-    {        
-        qInfo(logSystem()) << __func__ << QString("Received new mode: %0 (%1) filter:%2 data:%3")
-                                              .arg(QString::number(mode.mk,16)).arg(mode.name).arg(mode.filter).arg(mode.data) ;
-
-        quint16 maxPassbandHz = 0;
-        double passbandWidth = 0.0;
-        double centerFreq = 0.0;
-        switch (mode.mk) {
-        case modeFM:
-        case modeDV:
-        case modeDD:
-            if (mode.filter == 1)
-                passbandWidth = 0.015;
-            else if (mode.filter == 2)
-                passbandWidth = 0.010;
-            else
-                passbandWidth = 0.007;
-            maxPassbandHz = 10E3;
-            queue->del(funcPBTInner,sub);
-            queue->del(funcPBTOuter,sub);
-            queue->del(funcFilterWidth,sub);
-            break;
-        case modeCW:
-        case modeCW_R:
-            if (currentModeInfo.mk != modeCW && currentModeInfo.mk != modeCW_R) {
-                queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcCwPitch)?funcCwPitch:funcNone),true,sub);
-                queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcDashRatio)?funcDashRatio:funcNone),true,sub);
-                queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcKeySpeed)?funcKeySpeed:funcNone),true,sub);
-            }
-            maxPassbandHz = 3600;
-            break;
-        case modeAM:
-            maxPassbandHz = 10E3;
-            break;
-        case modeLSB:
-        case modeUSB:
-            centerFreq = 0.0015;
-            maxPassbandHz = 3600;
-            break;
-        default:
-            maxPassbandHz = 3600;
-            break;
-        }
-
-
-        if ((mode.mk != modeFM && mode.mk != modeDV && mode.mk != modeDD ))
-        {
-            /* mode was FM or DV/DD but now isn't so insert commands */
-            queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcPBTInner)?funcPBTInner:funcNone),true,sub);
-            queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcPBTOuter)?funcPBTOuter:funcNone),true,sub);
-            queue->addUnique(priorityHigh,(rigCaps.commands.contains(funcFilterWidth)?funcFilterWidth:funcNone),true,sub);
-        }
-
-
-        if ((mode.mk != modeCW && mode.mk != modeCW_R) && (currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R))
-        {
-            /* mode was CW/CWR but now isn't so remove CW commands */
-            queue->del(funcCwPitch,sub);
-            queue->del(funcDashRatio,sub);
-            queue->del(funcKeySpeed,sub);
-        }
-
-
-        if (sub) {
-            ui->subScope->setPassbandWidth(passbandWidth);
-            ui->subScope->setCenterFreq(centerFreq);
-            //ui->subScope->setMode(mode);
-        } else
-        {
-            ui->mainScope->setPassbandWidth(passbandWidth);
-            ui->mainScope->setCenterFreq(centerFreq);
-            //ui->mainScope->setMode(mode);
-        }
-        //ui->modeSelectCombo->setCurrentIndex(ui->modeSelectCombo->findData(mode.mk));
-
-        if ((mode.filter) && (mode.filter < 4)) {
-            ui->modeFilterCombo->blockSignals(true);
-            ui->modeFilterCombo->setCurrentIndex(ui->modeFilterCombo->findData(mode.filter));
-            ui->modeFilterCombo->blockSignals(false);            
-        }
-
-        finputbtns->updateCurrentMode(mode.mk);
-
-        rpt->handleUpdateCurrentMainMode(mode);
-        cw->handleCurrentModeUpdate(mode.mk);
-
-        if (maxPassbandHz != 0)
-        {
-            trxadj->setMaxPassband(maxPassbandHz);
-        }
-
-        // If we don't have selectedmode, query for datamode directly
-        if (!rigCaps.commands.contains(funcSelectedMode))
-        {
-            queue->add(priorityImmediate,funcDataModeWithFilter);
-        } else {
-            //receiveDataModeStatus(mode.data,mode.filter);
-            finputbtns->updateFilterSelection(mode.filter);
-        }
-
-        currentModeInfo = mode;
-
-        return; // We have nothing more to process
-    }
+    Q_UNUSED(mode)
+    Q_UNUSED(sub)
+    qInfo() << "Deprecated receiveMode() called";
+    // Deprecated
+    return; // We have nothing more to process
 }
 
 void wfmain::receiveDataModeStatus(uchar data, uchar filter)
@@ -5437,7 +5338,6 @@ void wfmain::handleBandStackReg(freqt freqGo, char mode, char filter, bool dataO
             queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<modeInfo>(md),false));
             queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),QVariant::fromValue<modeInfo>(md),false));
             ui->mainScope->receiveMode(md);
-            //receiveMode(md); // update UI
             break;
         }
     }
@@ -7390,11 +7290,10 @@ void wfmain::receiveValue(cacheItem val){
     case funcModeGet:
     case funcModeTR:        
     case funcSelectedMode:
+        ui->mainScope->receiveMode(val.value.value<modeInfo>());
+        break;
     case funcUnselectedMode:
-        if (val.sub)
-            ui->subScope->receiveMode(val.value.value<modeInfo>());
-        else
-            ui->mainScope->receiveMode(val.value.value<modeInfo>());
+        ui->subScope->receiveMode(val.value.value<modeInfo>());
         break;
     case funcSatelliteMemory:
     case funcMemoryContents:
@@ -7627,7 +7526,7 @@ void wfmain::receiveValue(cacheItem val){
                     md.data=bsr.data;
                     queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<modeInfo>(md),false));
                     queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),QVariant::fromValue<modeInfo>(md),false));
-                    receiveMode(md); // update UI
+
                     break;
                 }
         }

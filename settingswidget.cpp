@@ -1041,21 +1041,6 @@ void settingswidget::updateAllPrefs()
     updatingUIFromPrefs = false;
 }
 
-void settingswidget::updateAudioInputs(QStringList deviceList, int currentIndex, int chars)
-{
-}
-
-void settingswidget::updateAudioOutputs(QStringList deviceList, int currentIndex, int chars)
-{
-}
-
-void settingswidget::updateServerTXAudioOutputs(QStringList deviceList, int currentIndex, int chars)
-{
-}
-
-void settingswidget::updateServerRXAudioInputs(QStringList deviceList, int currentIndex, int chars)
-{
-}
 
 void settingswidget::updateSerialPortList(QStringList deviceList, QVector<int> data)
 {
