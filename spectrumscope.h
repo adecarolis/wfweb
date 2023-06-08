@@ -81,7 +81,7 @@ public:
     void addData(QString text, QVariant data) {dataCombo->blockSignals(true); dataCombo->addItem(text,data); dataCombo->blockSignals(false);}
     void addFilter(QString text, QVariant data) {filterCombo->blockSignals(true); filterCombo->addItem(text,data); filterCombo->blockSignals(false);}
 
-
+    void selected(bool);
 
 public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);
@@ -100,6 +100,8 @@ private slots:
     void updatedTheme(int index);
     void updatedEdge(int index);
     void updatedMode(int index);
+    void updatedSpeed(int index);
+    void holdPressed(bool en);
     void toFixedPressed();
     void customSpanPressed();
 
@@ -143,6 +145,9 @@ private:
     QComboBox* dataCombo;
     QComboBox* filterCombo;
     QComboBox* antennaCombo;
+    QPushButton* holdButton;
+    QComboBox* speedCombo;
+
     QCheckBox* rxCheckBox;
     QComboBox* themeCombo;
 

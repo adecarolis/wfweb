@@ -94,7 +94,7 @@ struct SERVERCONFIG {
 	QList <RIGCONFIG*> rigs;
 };
 
-enum serverItems {
+enum prefServerItem {
     s_enabled = 1 << 0,
     s_lan = 1 << 1,
     s_controlPort = 1 << 2,

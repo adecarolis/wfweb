@@ -61,9 +61,9 @@ public slots:
     void updateCtPref(prefCtItem pct);
     void updateLanPref(prefLanItem plan);
     void updateClusterPref(prefClusterItem pcl);
-    void updateServerConfig(serverItems si);
+    void updateServerConfig(prefServerItem si);
 
-    void updateUdpPref(udpPrefsItem upi);
+    void updateUdpPref(prefUDPItem upi);
     void updateUdpPrefs(int items);
 
 
@@ -79,7 +79,7 @@ signals:
     void changedLanPrefs(quint64 items);
     void changedClusterPrefs(quint64 items);
     void changedUdpPrefs(quint64 items);
-    void changedServerConfigs(quint64 items);
+    void changedServerPrefs(quint64 items);
 
     void changedAudioOutputCombo(int index);
     void changedAudioInputCombo(int index);
@@ -93,8 +93,8 @@ signals:
     void changedCtPref(prefCtItem i);
     void changedLanPref(prefLanItem i);
     void changedClusterPref(prefClusterItem i);
-    void changedUdpPref(udpPrefsItem i);
-    void changedServerConfig(serverItems i);
+    void changedUdpPref(prefUDPItem i);
+    void changedServerPref(prefServerItem i);
 
     void changedModInput(uchar num, inputTypes input);    
 
@@ -137,7 +137,7 @@ private slots:
     void on_clusterServerNameCombo_currentIndexChanged(int index);
     void on_clusterUdpEnable_clicked(bool checked);
     void on_clusterTcpEnable_clicked(bool checked);
-    void on_clusterTcpSetNowBtn_clicked();
+    void on_clusterTcpAddBtn_clicked();
     void on_clusterServerNameCombo_currentTextChanged(const QString &arg1);
     void on_clusterTcpPortLineEdit_editingFinished();
     void on_clusterUsernameLineEdit_editingFinished();
@@ -159,8 +159,6 @@ private slots:
     void on_audioRXCodecCombo_currentIndexChanged(int value);
     void on_audioTXCodecCombo_currentIndexChanged(int value);
     void on_audioSampleRateCombo_currentIndexChanged(int value);
-
-    void on_serverAddUserBtn_clicked();
 
     void on_modInputCombo_activated(int index);
     void on_modInputData1Combo_activated(int index);

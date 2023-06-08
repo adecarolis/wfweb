@@ -7,7 +7,6 @@
 #include "audioconverter.h"
 #include "rigidentities.h"
 #include "wfviewtypes.h"
-#include "udpserver.h"
 
 enum prefIfItem {
     if_useFullScreen = 1 << 0,
@@ -120,7 +119,7 @@ enum prefClusterItem {
     cl_all = 1 << 9
 };
 
-enum udpPrefsItem {
+enum prefUDPItem {
     u_enabled = 1 << 0,
     u_ipAddress = 1 << 1,
     u_controlLANPort = 1 << 2,
@@ -207,7 +206,6 @@ struct preferences {
     QString clusterTcpUserName;
     QString clusterTcpPassword;
 
-    SERVERCONFIG server;    // Contains server settings
     // Temporary settings
     inputTypes inputDataOff=inputNone;
     inputTypes inputData1=inputNone;

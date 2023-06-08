@@ -313,6 +313,7 @@ private slots:
     void extChangedLanPrefs(quint64 items);
     void extChangedClusterPrefs(quint64 items);
     void extChangedUdpPrefs(quint64 items);
+    void extChangedServerPrefs(quint64 items);
 
     void extChangedIfPref(prefIfItem i);
     void extChangedColPref(prefColItem i);
@@ -321,7 +322,8 @@ private slots:
     void extChangedCtPref(prefCtItem i);
     void extChangedLanPref(prefLanItem i);
     void extChangedClusterPref(prefClusterItem i);
-    void extChangedUdpPref(udpPrefsItem i);
+    void extChangedUdpPref(prefUDPItem i);
+    void extChangedServerPref(prefServerItem i);
 
     void enableUsbControllers(bool enabled);
 
@@ -548,6 +550,9 @@ private slots:
     void on_showSettingsBtn_clicked();
 
     void on_rigCreatorBtn_clicked();
+
+    void on_scopeMainSubBtn_clicked();
+    void on_scopeDualBtn_clicked();
 
 private:
     Ui::wfmain *ui;
@@ -849,6 +854,9 @@ private:
     double passbandCenterFrequency = 0.0;
     double pbtDefault = 0.0;
     quint16 cwPitch = 600;
+
+    bool subScope = false;
+    bool dualScope = false;
 
     availableBands lastRequestedBand=bandGen;
 

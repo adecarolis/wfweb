@@ -1168,8 +1168,11 @@ void wfmain::connectSettingsWidget()
     connect(setupui, SIGNAL(changedRsPref(prefRsItem)), this, SLOT(extChangedRsPref(prefRsItem)));
     connect(setupui, SIGNAL(changedRsPrefs(quint64)), this, SLOT(extChangedRsPrefs(quint64)));
 
-    connect(setupui, SIGNAL(changedUdpPref(udpPrefsItem)), this, SLOT(extChangedUdpPref(udpPrefsItem)));
+    connect(setupui, SIGNAL(changedUdpPref(prefUDPItem)), this, SLOT(extChangedUdpPref(prefUDPItem)));
     connect(setupui, SIGNAL(changedUdpPrefs(quint64)), this, SLOT(extChangedUdpPrefs(quint64)));
+
+    connect(setupui, SIGNAL(changedServerPref(prefServerItem)), this, SLOT(extChangedServerPref(prefServerItem)));
+    connect(setupui, SIGNAL(changedServerPrefs(quint64)), this, SLOT(extChangedServerPrefs(quint64)));
 
     connect(this, SIGNAL(haveClusterList(QList<clusterSettings>)), setupui, SLOT(copyClusterList(QList<clusterSettings>)));
 
@@ -1288,7 +1291,7 @@ void wfmain::setServerToPrefs()
 {
 	
     // Start server if enabled in config
-    ui->serverSetupGroup->setEnabled(serverConfig.enabled);
+    //ui->serverSetupGroup->setEnabled(serverConfig.enabled);
     if (serverThread != Q_NULLPTR) {
         serverThread->quit();
         serverThread->wait();
@@ -2626,7 +2629,7 @@ void wfmain::extChangedClusterPrefs(quint64 items)
 
 void wfmain::extChangedUdpPrefs(quint64 items)
 {
-    udpPrefsItem upi;
+    prefUDPItem upi;
     if(items & (int)u_all)
     {
         items = 0xffffffff;
@@ -2636,8 +2639,27 @@ void wfmain::extChangedUdpPrefs(quint64 items)
         if(items & i)
         {
             qDebug(logSystem()) << "Updating UDP preference in wfmain:" << i;
-            upi = (udpPrefsItem)i;
+            upi = (prefUDPItem)i;
             extChangedUdpPref(upi);
+        }
+    }
+}
+
+
+void wfmain::extChangedServerPrefs(quint64 items)
+{
+    prefServerItem svi;
+    if(items & (int)u_all)
+    {
+        items = 0xffffffff;
+    }
+    for(int i=1; i < (int)u_all; i = i << 1)
+    {
+        if(items & i)
+        {
+            qDebug(logSystem()) << "Updating Server preference in wfmain:" << i;
+            svi = (prefServerItem)i;
+            extChangedServerPref(svi);
         }
     }
 }
@@ -2989,7 +3011,7 @@ void wfmain::extChangedClusterPref(prefClusterItem i)
     }
 }
 
-void wfmain::extChangedUdpPref(udpPrefsItem i)
+void wfmain::extChangedUdpPref(prefUDPItem i)
 {
     prefs.settingsChanged = true;
     switch(i)
@@ -3034,6 +3056,41 @@ void wfmain::extChangedUdpPref(udpPrefsItem i)
         break;
     default:
         qWarning(logGui()) << "Did not find matching pref element in wfmain for UDP pref item " << (int)i;
+        break;
+    }
+}
+
+
+void wfmain::extChangedServerPref(prefServerItem i)
+{
+    prefs.settingsChanged = true;
+    switch(i)
+    {
+    case s_enabled:
+        setServerToPrefs();
+        break;
+    case s_lan:
+        break;
+    case s_controlPort:
+        break;
+    case s_civPort:
+        break;
+    case s_audioPort:
+        break;
+    case s_audioOutput:
+        break;
+    case s_audioInput:
+        break;
+    case s_resampleQuality:
+        break;
+    case s_baudRate:
+        break;
+    case s_users:
+        break;
+    case s_rigs:
+        break;
+    default:
+        qWarning(logGui()) << "Did not find matching pref element in wfmain for Server pref item " << (int)i;
         break;
     }
 }
@@ -4456,64 +4513,43 @@ void wfmain::initPeriodicCommands()
     // Can be run multiple times as it will remove all existing entries.
 
     queue->clear();
-    queue->add(priorityMedium,(rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),true,false);
-    queue->add(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),true,false);
-    queue->add(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),true,false);
-    queue->add(priorityMedium,(rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),true,true);
-    queue->add(priorityMedium,(rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),true,true);
 
-    if(rigCaps.hasTransmit) {
-        queue->add(priorityHigh,funcTransceiverStatus,true,false);
-        queue->add(priorityMediumHigh,(rigCaps.commands.contains(funcDATAOffMod)?funcDATAOffMod:funcNone),true,false);
-        queue->add(priorityMediumHigh,(rigCaps.commands.contains(funcDATA1Mod)?funcDATA1Mod:funcNone),true,false);
-        queue->add(priorityMediumHigh,(rigCaps.commands.contains(funcDATA2Mod)?funcDATA2Mod:funcNone),true,false);
-        queue->add(priorityMediumHigh,(rigCaps.commands.contains(funcDATA3Mod)?funcDATA3Mod:funcNone),true,false);
-    }
-    if (rigCaps.commands.contains(funcRFPower))
-        queue->add(priorityMedium,funcRFPower,true,false);
-
-    if (rigCaps.commands.contains(funcRfGain))
-        queue->add(priorityMedium,funcRfGain,true,false);
-
-    if (rigCaps.commands.contains(funcMonitorGain))
-        queue->add(priorityMediumLow,funcMonitorGain,true,false);
-
-    if (rigCaps.commands.contains(funcMonitor))
-        queue->add(priorityMediumLow,funcMonitor,true,false);
-
-    if(rigCaps.commands.contains(funcAttenuator))
-        queue->add(priorityMediumLow,funcAttenuator,true,false);
-
-    if(rigCaps.commands.contains(funcPreamp))
-        queue->add(priorityMediumLow,funcPreamp,true,false);
-
-    if (rigCaps.commands.contains(funcAntenna))
-        queue->add(priorityMediumLow,funcAntenna,true,false);
-
-    if (rigCaps.commands.contains(funcSplitStatus))
-        queue->add(priorityMediumLow,funcSplitStatus,true,false);
-
-    if(rigCaps.commands.contains(funcToneSquelchType))
-        queue->add(priorityMediumLow,funcToneSquelchType,true,false);
-
-    if (rigCaps.commands.contains(funcSMeter))
-        queue->add(priorityHighest,queueItem(funcSMeter,true,false));
-
-    if (rigCaps.commands.contains(funcOverflowStatus))
-        queue->add(priorityHigh,queueItem(funcOverflowStatus,true,false));
-
+    queue->add(priorityMedium,funcSelectedFreq,true,false);
+    queue->add(priorityMedium,funcSelectedMode,true,false);
+    //queue->add(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),true,false);
+    queue->add(priorityMedium,funcUnselectedFreq,true,true);
+    queue->add(priorityMedium,funcUnselectedMode,true,true);
 
     if (rigCaps.hasSpectrum)
     {
-        queue->add(priorityMediumHigh,queueItem(rigCaps.commands.contains(funcScopeMainMode)?funcScopeMainMode:funcNone,true,false));
-        queue->add(priorityMediumHigh,queueItem(rigCaps.commands.contains(funcScopeSubMode)?funcScopeSubMode:funcNone,true,false));
-
-        queue->add(priorityMediumHigh,queueItem(rigCaps.commands.contains(funcScopeMainSpan)?funcScopeMainSpan:funcNone,true,false));
-        queue->add(priorityMediumHigh,queueItem(rigCaps.commands.contains(funcScopeSubSpan)?funcScopeSubSpan:funcNone,true,false));
-
+        queue->add(priorityHigh,funcOverflowStatus,true,false);
+        queue->add(priorityMediumHigh,funcScopeMainMode,true,false);
+        queue->add(priorityMediumHigh,funcScopeSubMode,true,false);
+        queue->add(priorityMediumHigh,funcScopeMainSpan,true,false);
+        queue->add(priorityMediumHigh,funcScopeSubSpan,true,false);
         queue->add(priorityMediumHigh,queueItem(funcScopeSingleDual,true,false));
         queue->add(priorityMediumHigh,queueItem(funcScopeMainSub,true,false));
     }
+
+    if(rigCaps.hasTransmit) {
+        queue->add(priorityHigh,funcTransceiverStatus,true,false);
+        queue->add(priorityMediumHigh,funcDATAOffMod,true,false);
+        queue->add(priorityMediumHigh,funcDATA1Mod,true,false);
+        queue->add(priorityMediumHigh,funcDATA2Mod,true,false);
+        queue->add(priorityMediumHigh,funcDATA3Mod,true,false);
+        queue->add(priorityMedium,funcRFPower,true,false);
+        queue->add(priorityMediumLow,funcMonitorGain,true,false);
+        queue->add(priorityMediumLow,funcMonitor,true,false);
+    }
+
+    queue->add(priorityMedium,funcRfGain,true,false);
+    queue->add(priorityMediumLow,funcAttenuator,true,false);
+    queue->add(priorityMediumLow,funcPreamp,true,false);
+    queue->add(priorityMediumLow,funcAntenna,true,false);
+    queue->add(priorityMediumLow,funcSplitStatus,true,false);
+    queue->add(priorityMediumLow,funcToneSquelchType,true,false);
+
+    queue->add(priorityHighest,queueItem(funcSMeter,true,false));
 }
 
 void wfmain::receiveFreq(freqt freqStruct)
@@ -7263,21 +7299,30 @@ void wfmain::receiveValue(cacheItem val){
     case funcScopeMainSub:
     {
         // This tells us whether we are receiving main or sub data
-        bool sub = val.value.value<bool>();
-        if (!sub && !ui->mainScope->isVisible()) {
+        subScope = val.value.value<bool>();
+        if (!subScope && !ui->mainScope->isVisible()) {
                 ui->subScope->setVisible(false);
                 ui->mainScope->setVisible(true);
-        } else if (sub && !ui->subScope->isVisible()) {
+        } else if (subScope && !ui->subScope->isVisible()) {
                 ui->mainScope->setVisible(false);
                 ui->subScope->setVisible(true);
         }
+
+        if (dualScope) {
+            ui->mainScope->selected(!subScope);
+            ui->subScope->selected(subScope);
+        } else {
+            ui->mainScope->selected(false);
+            ui->subScope->selected(false);
+        }
+
         break;
     }
     case funcScopeSingleDual:
     {
         // This tells us whether we are receiving single or dual scopes
-        bool dual = val.value.value<bool>();
-        if (dual) {
+        dualScope = val.value.value<bool>();
+        if (dualScope) {
             if (!ui->subScope->isVisible())
             {
                 ui->subScope->setVisible(true);
@@ -7362,6 +7407,19 @@ void wfmain::on_showFreqBtn_clicked()
 void wfmain::on_showSettingsBtn_clicked()
 {
     showAndRaiseWidget(setupui);
+}
+
+void wfmain::on_scopeMainSubBtn_clicked()
+{
+    subScope = !subScope;
+    queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(subScope),false,false));
+}
+
+void wfmain::on_scopeDualBtn_clicked()
+{
+    dualScope = !dualScope;
+    queue->add(priorityImmediate,queueItem(funcScopeSingleDual,QVariant::fromValue(dualScope),false,false));
+    queue->add(priorityImmediate,funcScopeMainSub,false,false);
 }
 
 

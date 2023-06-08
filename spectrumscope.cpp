@@ -36,7 +36,15 @@ spectrumScope::spectrumScope(QWidget *parent)
     edgeButton->setToolTip("Define a custom (fixed) scope edge");
     toFixedButton = new QPushButton("To Fixed");
     toFixedButton->setToolTip("&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;The currently-selected edge slot will be overridden.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;");
-    //themeLabel = new QLabel("Theme:");
+
+    holdButton = new QPushButton("HOLD");
+    holdButton->setCheckable(true);
+    holdButton->setFocusPolicy(Qt::NoFocus);
+    speedCombo = new QComboBox();
+    speedCombo->addItem("Speed Fast",QVariant::fromValue(uchar(0)));
+    speedCombo->addItem("Speed Mid",QVariant::fromValue(uchar(1)));
+    speedCombo->addItem("Speed Slow",QVariant::fromValue(uchar(2)));
+
     controlSpacer = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
     midSpacer = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
     clearPeaksButton = new QPushButton("Clear Peaks");
@@ -66,15 +74,13 @@ spectrumScope::spectrumScope(QWidget *parent)
 
     layout->addLayout(controlLayout);
     controlLayout->addWidget(enableCheckBox);
-    //controlLayout->addWidget(scopeModeLabel);
     controlLayout->addWidget(scopeModeCombo);
-    //controlLayout->addWidget(spanLabel);
     controlLayout->addWidget(spanCombo);
-    //controlLayout->addWidget(edgeLabel);
     controlLayout->addWidget(edgeCombo);
     controlLayout->addWidget(edgeButton);
     controlLayout->addWidget(toFixedButton);
-    //controlLayout->addWidget(themeLabel);
+    controlLayout->addWidget(holdButton);
+    controlLayout->addWidget(speedCombo);
     controlLayout->addSpacerItem(controlSpacer);
     controlLayout->addWidget(modeCombo);
     controlLayout->addWidget(dataCombo);
@@ -184,6 +190,9 @@ spectrumScope::spectrumScope(QWidget *parent)
     connect(toFixedButton,SIGNAL(pressed()), this, SLOT(toFixedPressed()));
     connect(edgeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedEdge(int)));
     connect(edgeButton,SIGNAL(pressed()), this, SLOT(customSpanPressed()));
+
+    connect(speedCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedSpeed(int)));
+    connect(holdButton,SIGNAL(toggled(bool)), this, SLOT(holdPressed(bool)));
 
     connect(modeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedMode(int)));
     connect(filterCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedMode(int)));
@@ -1249,4 +1258,22 @@ void spectrumScope::receivePassband(quint16 pass)
         qInfo(logSystem()) << QString("%0 Received new IF Filter/Passband %1 Hz").arg(sub?"Sub":"Main").arg(pass);
         emit showStatusBarText(QString("%0 IF filter width %1 Hz (%2 MHz)").arg(sub?"Sub":"Main").arg(pass).arg(passbandWidth));
     }
+}
+
+void spectrumScope::selected(bool en)
+{
+    if (en)
+        this->setStyleSheet("QGroupBox { border:2px solid red;}");
+    else
+        this->setStyleSheet("QGroupBox { border:2px solid gray;}");
+}
+
+void spectrumScope::updatedSpeed(int index)
+{
+    queue->add(priorityImmediate,queueItem(sub?funcScopeSubSpeed:funcScopeMainSpeed,this->speedCombo->itemData(index),false,sub));
+}
+
+void spectrumScope::holdPressed(bool en)
+{
+    queue->add(priorityImmediate,queueItem(sub?funcScopeSubHold:funcScopeMainHold,QVariant::fromValue(en),false,sub));
 }

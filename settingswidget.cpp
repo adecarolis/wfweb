@@ -314,8 +314,8 @@ void settingswidget::updateCtPrefs(quint64 items)
 }
 
 void settingswidget::updateServerConfigs(quint64 items)
-{    
-    serverItems si;
+{
+    prefServerItem si;
     if(items & (int)s_all)
     {
         items = 0xffffffff;
@@ -325,7 +325,7 @@ void settingswidget::updateServerConfigs(quint64 items)
         if(items & i)
         {
             qDebug(logGui()) << "Updating ServerConfig" << (int)i;
-            si = (serverItems)i;
+            si = (prefServerItem)i;
             updateServerConfig(si);
         }
     }
@@ -832,6 +832,7 @@ void settingswidget::updateClusterPref(prefClusterItem pcl)
         ui->clusterUdpPortLineEdit->blockSignals(false);
         break;
     case cl_clusterTcpServerName:
+        ui->clusterTcpAddBtn->setEnabled(false);
         // Take this from the clusters list
         break;
     case cl_clusterTcpUserName:
@@ -855,7 +856,7 @@ void settingswidget::updateClusterPref(prefClusterItem pcl)
     updatingUIFromPrefs = false;
 }
 
-void settingswidget::updateServerConfig(serverItems si)
+void settingswidget::updateServerConfig(prefServerItem si)
 {
     if(serverConfig == NULL)
     {
@@ -872,7 +873,7 @@ void settingswidget::updateServerConfig(serverItems si)
         // Not used here
         break;
     case s_controlPort:
-        quietlyUpdateLineEdit(ui->serverControlPortText, QString::number(serverConfig->civPort));
+        quietlyUpdateLineEdit(ui->serverControlPortText, QString::number(serverConfig->controlPort));
         break;
     case s_civPort:
         quietlyUpdateLineEdit(ui->serverCivPortText, QString::number(serverConfig->civPort));
@@ -906,7 +907,7 @@ void settingswidget::updateServerConfig(serverItems si)
 
 void settingswidget::updateUdpPrefs(int items)
 {
-    udpPrefsItem upi;
+    prefUDPItem upi;
     if(items & (int)u_all)
     {
         items = 0xffffffff;
@@ -916,13 +917,13 @@ void settingswidget::updateUdpPrefs(int items)
         if(items & i)
         {
             qDebug(logGui()) << "Updating UDP preference " << i;
-            upi = (udpPrefsItem)i;
+            upi = (prefUDPItem)i;
             updateUdpPref(upi);
         }
     }
 }
 
-void settingswidget::updateUdpPref(udpPrefsItem upi)
+void settingswidget::updateUdpPref(prefUDPItem upi)
 {
     updatingUIFromPrefs = true;
     switch(upi)
@@ -1124,14 +1125,6 @@ void settingswidget::populateServerUsers()
         row++;
         user++;
     }
-    if (row==1 && blank)
-    {
-        // There are no defined users. The only user present is the blank one.
-        // The button is disabled, but it may be enabled
-        // when the user enters valid information for a potential new
-        // user account.
-        ui->serverAddUserBtn->setEnabled(false);
-    }
 }
 
 void settingswidget::serverAddUserLine(const QString &user, const QString &pass, const int &type)
@@ -1281,95 +1274,23 @@ void settingswidget::on_settingsList_currentRowChanged(int currentRow)
     ui->settingsStack->setCurrentIndex(currentRow);
 }
 
-void settingswidget::onServerUserFieldChanged()
-{
-    if(!haveServerConfig) {
-        qCritical(logGui()) << "Do not have serverConfig, cannot edit users.";
-        return;
-    }
-    int row = sender()->property("row").toInt();
-    int col = sender()->property("col").toInt();
-    qDebug() << "Server User field col" << col << "row" << row << "changed";
-
-    // This is a new user line so add to serverUsersTable
-    if (serverConfig->users.length() <= row)
-    {
-        qInfo() << "Something bad has happened, serverConfig.users is shorter than table!";
-    }
-    else
-    {
-        if (col == 0)
-        {
-            QLineEdit* username = (QLineEdit*)ui->serverUsersTable->cellWidget(row, 0);
-            if (username->text() != serverConfig->users[row].username) {
-                serverConfig->users[row].username = username->text();
-            }
-        }
-        else if (col == 1)
-        {
-            QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(row, 1);
-            QByteArray pass;
-            passcode(password->text(), pass);
-            if (QString(pass) != serverConfig->users[row].password) {
-                serverConfig->users[row].password = pass;
-            }
-        }
-        else if (col == 2)
-        {
-            QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(row, 2);
-            serverConfig->users[row].userType = comboBox->currentIndex();
-        }
-        else if (col == 3)
-        {
-            serverConfig->users.removeAt(row);
-            ui->serverUsersTable->setRowCount(0);
-            foreach(SERVERUSER user, serverConfig->users)
-            {
-                serverAddUserLine(user.username, user.password, user.userType);
-            }
-        }
-        if (row == ui->serverUsersTable->rowCount() - 1) {
-            ui->serverAddUserBtn->setEnabled(true);
-        }
-
-    }
-}
-
 void settingswidget::on_lanEnableBtn_clicked(bool checked)
 {
     // TODO: prefs.enableLAN = checked;
     // TOTO? ui->connectBtn->setEnabled(true); // move to other side
     ui->groupNetwork->setEnabled(checked);
     ui->groupSerial->setEnabled(!checked);
-/*
-    ui->ipAddressTxt->setEnabled(checked);
-    ui->controlPortTxt->setEnabled(checked);
-    ui->usernameTxt->setEnabled(checked);
-    ui->passwordTxt->setEnabled(checked);
-    ui->audioRXCodecCombo->setEnabled(checked);
-    ui->audioTXCodecCombo->setEnabled(checked);
-    ui->audioSampleRateCombo->setEnabled(checked);
-    ui->rxLatencySlider->setEnabled(checked);
-    ui->txLatencySlider->setEnabled(checked);
-    ui->rxLatencyValue->setEnabled(checked);
-    ui->txLatencyValue->setEnabled(checked);
-    ui->audioOutputCombo->setEnabled(checked);
-    ui->audioInputCombo->setEnabled(checked);
-    ui->baudRateCombo->setEnabled(!checked);
-    ui->serialDeviceListCombo->setEnabled(!checked);
-    ui->serverRXAudioInputCombo->setEnabled(!checked);
-    ui->serverTXAudioOutputCombo->setEnabled(!checked);
-    ui->useRTSforPTTchk->setEnabled(!checked);
-*/
+
     prefs->enableLAN = checked;
     emit changedLanPref(l_enableLAN);
 }
 
 void settingswidget::on_serialEnableBtn_clicked(bool checked)
 {
-    prefs->enableLAN = !checked;
     ui->groupSerial->setEnabled(checked);
     ui->groupNetwork->setEnabled(!checked);
+
+    prefs->enableLAN = !checked;
     emit changedLanPref(l_enableLAN);
 }
 
@@ -1736,11 +1657,12 @@ void settingswidget::on_clusterTcpEnable_clicked(bool checked)
     emit changedClusterPref(cl_clusterTcpEnable);
 }
 
-void settingswidget::on_clusterTcpSetNowBtn_clicked()
+void settingswidget::on_clusterTcpAddBtn_clicked()
 {
     // Maybe this will be easier than "hit enter" ?
     int index = ui->clusterServerNameCombo->currentIndex();
     on_clusterServerNameCombo_currentIndexChanged(index);
+    ui->clusterTcpAddBtn->setEnabled(false);
 }
 
 void settingswidget::on_clusterServerNameCombo_currentTextChanged(const QString &text)
@@ -1757,6 +1679,7 @@ void settingswidget::on_clusterServerNameCombo_currentTextChanged(const QString 
             ui->clusterTimeoutLineEdit->setEnabled(false);
         }
     }
+    ui->clusterTcpAddBtn->setEnabled(true);
 }
 
 void settingswidget::on_clusterTcpPortLineEdit_editingFinished()
@@ -1768,7 +1691,7 @@ void settingswidget::on_clusterTcpPortLineEdit_editingFinished()
         //emit setClusterTcpPort(clusters[index].port);
         prefs->clusterTcpPort = clusters[index].port;
         emit changedClusterPref(cl_clusterTcpPort);
-    }
+    }    
 }
 
 void settingswidget::on_clusterUsernameLineEdit_editingFinished()
@@ -2594,43 +2517,91 @@ void settingswidget::on_serverTXAudioOutputCombo_currentIndexChanged(int index)
 void settingswidget::on_serverEnableCheckbox_clicked(bool checked)
 {
     serverConfig->enabled = checked;
-    emit changedServerConfig(s_enabled);
+    emit changedServerPref(s_enabled);
 }
 
-void settingswidget::on_serverAddUserBtn_clicked()
+void settingswidget::on_serverControlPortText_textChanged(QString text)
 {
     if(!haveServerConfig)
     {
         qCritical(logGui()) << "Cannot modify users without valid serverConfig.";
         return;
     }
-    serverAddUserLine("", "", 0);
-    SERVERUSER user;
-    user.username = "";
-    user.password = "";
-    user.userType = 0;
-    serverConfig->users.append(user);
-
-    ui->serverAddUserBtn->setEnabled(false);
-}
-
-void settingswidget::on_serverControlPortText_textChanged(QString text)
-{
     serverConfig->controlPort = text.toInt();
-    emit changedServerConfig(s_controlPort);
+    emit changedServerPref(s_controlPort);
 }
 
 void settingswidget::on_serverCivPortText_textChanged(QString text)
 {
+    if(!haveServerConfig)
+    {
+        qCritical(logGui()) << "Cannot modify users without valid serverConfig.";
+        return;
+    }
     serverConfig->civPort = text.toInt();
-    emit changedServerConfig(s_civPort);
+    emit changedServerPref(s_civPort);
 }
 
 void settingswidget::on_serverAudioPortText_textChanged(QString text)
 {
+    if(!haveServerConfig)
+    {
+        qCritical(logGui()) << "Cannot modify users without valid serverConfig.";
+        return;
+    }
     serverConfig->audioPort = text.toInt();
-    emit changedServerConfig(s_audioPort);
+    emit changedServerPref(s_audioPort);
 }
 
+
+void settingswidget::onServerUserFieldChanged()
+{
+    if(!haveServerConfig) {
+        qCritical(logGui()) << "Do not have serverConfig, cannot edit users.";
+        return;
+    }
+    int row = sender()->property("row").toInt();
+    int col = sender()->property("col").toInt();
+    qDebug() << "Server User field col" << col << "row" << row << "changed";
+
+    // This is a new user line so add to serverUsersTable
+    if (serverConfig->users.length() <= row)
+    {
+        qInfo() << "Something bad has happened, serverConfig.users is shorter than table!";
+    }
+    else
+    {
+        if (col == 0)
+        {
+            QLineEdit* username = (QLineEdit*)ui->serverUsersTable->cellWidget(row, 0);
+            if (username->text() != serverConfig->users[row].username) {
+                serverConfig->users[row].username = username->text();
+            }
+        }
+        else if (col == 1)
+        {
+            QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(row, 1);
+            QByteArray pass;
+            passcode(password->text(), pass);
+            if (QString(pass) != serverConfig->users[row].password) {
+                serverConfig->users[row].password = pass;
+            }
+        }
+        else if (col == 2)
+        {
+            QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(row, 2);
+            serverConfig->users[row].userType = comboBox->currentIndex();
+        }
+        else if (col == 3)
+        {
+            serverConfig->users.removeAt(row);
+            ui->serverUsersTable->setRowCount(0);
+            foreach(SERVERUSER user, serverConfig->users)
+            {
+                serverAddUserLine(user.username, user.password, user.userType);
+            }
+        }
+    }
+}
 /* End of UDP Server settings */
 
