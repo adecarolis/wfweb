@@ -315,6 +315,7 @@ void rigCtlD::receiveRigCaps(rigCapabilities caps)
 rigCtlClient::rigCtlClient(int socketId, rigCapabilities caps, rigCtlD* parent) : QObject(parent)
 {
 
+    this->setObjectName("RigCtlD");
     queue = cachingQueue::getInstance(this);
     commandBuffer.clear();
     sessionId = socketId;

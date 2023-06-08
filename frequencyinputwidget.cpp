@@ -8,7 +8,7 @@ frequencyinputwidget::frequencyinputwidget(QWidget *parent) :
     ui->setupUi(this);
     this->setWindowTitle("Frequency Input");
     ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
-    this->setObjectName("freqInput");
+    this->setObjectName("freq Input");
     queue = cachingQueue::getInstance(this);
 }
 

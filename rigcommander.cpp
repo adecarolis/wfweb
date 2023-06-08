@@ -221,6 +221,7 @@ void rigCommander::commonSetup()
     rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),QByteArrayLiteral("\x19\x00"),0,0,false));
     rigCaps.commandsReverse.insert(QByteArrayLiteral("\x19\x00"),funcTransceiverId);
 
+    this->setObjectName("Rig Commander");
     queue = cachingQueue::getInstance(this);
     connect(queue,SIGNAL(haveCommand(funcs,QVariant,bool)),this,SLOT(receiveCommand(funcs,QVariant,bool)));
     oldScopeMode = spectModeUnknown;
@@ -6166,7 +6167,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
             {
                  if (func == funcFilterWidth) {
                     payload.append(makeFilterWidth(value.value<ushort>(),sub));
-                    qInfo() << "Setting filter width" << value.value<ushort>() << "sub" << sub << "hex" << payload.toHex();
+                    //qInfo() << "Setting filter width" << value.value<ushort>() << "sub" << sub << "hex" << payload.toHex();
 
                  }
                 else

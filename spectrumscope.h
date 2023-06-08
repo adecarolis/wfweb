@@ -50,6 +50,9 @@ public:
     void setIdentity(QString name, bool s) {this->setTitle(name), sub = s;}
     bool getSub() { return sub;}
 
+    void setTuningFloorZeros(bool tf) {this->tuningFloorZeros = tf;}
+    void setClickDragTuning(bool cg) { this->clickDragTuning = cg;}
+
     void receiveCwPitch(uchar p);
     quint16 getCwPitch() { return cwPitch;}
     void receivePassband(quint16 pass);
@@ -88,6 +91,8 @@ signals:
     void frequencyRange(double start, double end);
     void updateScopeMode(spectrumMode_t index);
     void updateSpan(centerSpanData s);
+    void showStatusBarText(QString text);
+
 
 private slots:
     void updatedScopeMode(int index);
@@ -197,11 +202,13 @@ private:
     QVector <QByteArray> wfimage;
 
     cachingQueue* queue;
-    bool sub=false;
-    bool tuningFloorZeros=false;
+    bool sub=false;    
     double startFrequency;
     QMap<QString, spotData*> clusterSpots;
 
+    // Assorted settings
+    bool tuningFloorZeros=false;
+    bool clickDragTuning=false;
 };
 
 #endif // SPECTRUMSCOPE_H

@@ -102,6 +102,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     haveRigCaps = false;
 
+    this->setObjectName("wfmain");
     queue = cachingQueue::getInstance(this);
 
     connect(queue,SIGNAL(sendValue(cacheItem)),this,SLOT(receiveValue(cacheItem)));
@@ -310,56 +311,9 @@ wfmain::~wfmain()
 
 void wfmain::closeEvent(QCloseEvent *event)
 {
-
-    if (prefs.settingsChanged)
-    {
-        // Settings have changed since last save
-        qInfo() << "Settings have changed since last save";
-        int reply = QMessageBox::question(this,"wfview","Settings have changed since last save, exit anyway?",QMessageBox::Save | QMessageBox::No |QMessageBox::Yes);
-        if (reply == QMessageBox::Save)
-        {
-            saveSettings();
-        } else if (reply == QMessageBox::No)
-        {
-            event->ignore();
-            return;
-        }
-    }
-
-    // Are you sure?
-    if (!prefs.confirmExit) {
-        QApplication::exit();
-    }
-    QCheckBox *cb = new QCheckBox("Don't ask me again");
-    cb->setToolTip("Don't ask me to confirm exit again");
-    QMessageBox msgbox;
-    msgbox.setText("Are you sure you wish to exit?\n");
-    msgbox.setIcon(QMessageBox::Icon::Question);
-    QAbstractButton *yesButton = msgbox.addButton(QMessageBox::Yes);
-    msgbox.addButton(QMessageBox::No);
-    msgbox.setDefaultButton(QMessageBox::Yes);
-    msgbox.setCheckBox(cb);
-
-    QObject::connect(cb, &QCheckBox::stateChanged, this, [this](int state){
-            if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked) {
-                prefs.confirmExit=false;
-            } else {
-                prefs.confirmExit=true;
-            }
-            settings->beginGroup("Interface");
-            settings->setValue("ConfirmExit", this->prefs.confirmExit);
-            settings->endGroup();
-            settings->sync();
-        });
-
-    msgbox.exec();
-
-    if (msgbox.clickedButton() == yesButton) {
-        QApplication::exit();
-    } else {
+    if (on_exitBtn_clicked())
         event->ignore();
-    }
-    delete cb;
+
 }
 
 void wfmain::openRig()
@@ -385,13 +339,11 @@ void wfmain::openRig()
 
     if (prefs.enableLAN)
     {
-        ui->lanEnableBtn->setChecked(true);
         usingLAN = true;
         // We need to setup the tx/rx audio:
         udpPrefs.waterfallFormat = prefs.waterfallFormat;
         emit sendCommSetup(rigList, prefs.radioCIVAddr, udpPrefs, prefs.rxSetup, prefs.txSetup, prefs.virtualSerialPort, prefs.tcpPort);
     } else {
-        ui->serialEnableBtn->setChecked(true);
         if( (prefs.serialPortRadio.toLower() == QString("auto")))
         {
             findSerialPort();
@@ -402,9 +354,6 @@ void wfmain::openRig()
         emit sendCommSetup(rigList, prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort, prefs.tcpPort,prefs.waterfallFormat);
         ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
     }
-
-
-
 }
 
 // Migrated
@@ -1057,55 +1006,12 @@ void wfmain::setupMainUI()
 {
     createSettingsListItems();
 
-    ui->baudRateCombo->insertItem(0, QString("115200"), 115200);
-    ui->baudRateCombo->insertItem(1, QString("57600"), 57600);
-    ui->baudRateCombo->insertItem(2, QString("38400"), 38400);
-    ui->baudRateCombo->insertItem(3, QString("28800"), 28800);
-    ui->baudRateCombo->insertItem(4, QString("19200"), 19200);
-    ui->baudRateCombo->insertItem(5, QString("9600"), 9600);
-    ui->baudRateCombo->insertItem(6, QString("4800"), 4800);
-    ui->baudRateCombo->insertItem(7, QString("2400"), 2400);
-    ui->baudRateCombo->insertItem(8, QString("1200"), 1200);
-    ui->baudRateCombo->insertItem(9, QString("300"), 300);
-
-    //ui->modeFilterCombo->addItem("1", 1);
-    //ui->modeFilterCombo->addItem("2", 2);
-    //ui->modeFilterCombo->addItem("3", 3);
-    //ui->modeFilterCombo->addItem("Setup...", 99);
-
-//    ui->meter2selectionCombo->addItem("None", meterNone);
-//    ui->meter2selectionCombo->addItem("SWR", meterSWR);
-//    ui->meter2selectionCombo->addItem("ALC", meterALC);
-//    ui->meter2selectionCombo->addItem("Compression", meterComp);
-//    ui->meter2selectionCombo->addItem("Voltage", meterVoltage);
-//    ui->meter2selectionCombo->addItem("Current", meterCurrent);
-//    ui->meter2selectionCombo->addItem("Center", meterCenter);
-//    ui->meter2selectionCombo->addItem("TxRxAudio", meterAudio);
-//    ui->meter2selectionCombo->addItem("RxAudio", meterRxAudio);
-//    ui->meter2selectionCombo->addItem("TxAudio", meterTxMod);
-
     ui->meter2Widget->hide();
-
-//    ui->meter2selectionCombo->show();
-//    ui->meter2selectionCombo->setCurrentIndex((int)prefs.meter2Type);
-
-//    ui->secondaryMeterSelectionLabel->show();
-
 
     // Future ideas:
     //ui->meter2selectionCombo->addItem("Transmit Audio", meterTxMod);
     //ui->meter2selectionCombo->addItem("Receive Audio", meterRxAudio);
     //ui->meter2selectionCombo->addItem("Latency", meterLatency);
-
-
-
-
-    //spans << "2.5k" << "5.0k" << "10k" << "25k";
-    //spans << "50k" << "100k" << "250k" << "500k";
-    //ui->scopeBWCombo->insertItems(0, spans);
-
-    //edges << "1" << "2" << "3" << "4";
-    //ui->scopeEdgeCombo->insertItems(0, edges);
 
     // Set scroll wheel response (tick interval)
     // and set arrow key response (single step)
@@ -1132,13 +1038,7 @@ void wfmain::setupMainUI()
 
     // Keep this code when the rest is removed from this function:
     qDebug(logSystem()) << "Running with debugging options enabled.";
-#ifdef QT_DEBUG
-    ui->debugBtn->setVisible(true);
-    ui->satOpsBtn->setVisible(true);
-#else
-    ui->debugBtn->setVisible(false);
-    ui->satOpsBtn->setVisible(false);
-#endif
+
 
     rigStatus = new QLabel(this);
     ui->statusBar->addPermanentWidget(rigStatus);
@@ -1166,6 +1066,9 @@ void wfmain::setupMainUI()
 
     ui->mainScope->setFrequency(f);
     ui->subScope->setFrequency(f);
+
+    connect(ui->mainScope,SIGNAL(showStatusBarText(QString)),this,SLOT(showStatusBarText(QString)));
+    connect(ui->subScope,SIGNAL(showStatusBarText(QString)),this,SLOT(showStatusBarText(QString)));
 
     oldFreqDialVal = ui->freqDial->value();
 
@@ -1267,11 +1170,6 @@ void wfmain::connectSettingsWidget()
 
     connect(setupui, SIGNAL(changedUdpPref(udpPrefsItem)), this, SLOT(extChangedUdpPref(udpPrefsItem)));
     connect(setupui, SIGNAL(changedUdpPrefs(quint64)), this, SLOT(extChangedUdpPrefs(quint64)));
-
-    connect(setupui, &settingswidget::showUSBControllerSetup, this, [=](){
-        if(usbWindow != Q_NULLPTR)
-            showAndRaiseWidget(usbWindow);
-    });
 
     connect(this, SIGNAL(haveClusterList(QList<clusterSettings>)), setupui, SLOT(copyClusterList(QList<clusterSettings>)));
 
@@ -1474,15 +1372,6 @@ void wfmain::setUIToPrefs()
 //            break;
 //    }
 
-    //ui->underlayBufferSlider->setValue(prefs.underlayBufferSize);
-    on_underlayBufferSlider_valueChanged(prefs.underlayBufferSize);
-
-    //ui->wfAntiAliasChk->setChecked(prefs.wfAntiAlias);
-    on_wfAntiAliasChk_clicked(prefs.wfAntiAlias);
-
-    //ui->wfInterpolateChk->setChecked(prefs.wfInterpolate);
-    on_wfInterpolateChk_clicked(prefs.wfInterpolate);
-
     ui->wfLengthSlider->setValue(prefs.wflength);
 
     ui->mainScope->prepareWf(prefs.wflength);
@@ -1496,97 +1385,15 @@ void wfmain::setUIToPrefs()
     ui->mainScope->setRange(prefs.plotFloor, prefs.plotCeiling);
     ui->subScope->setRange(prefs.plotFloor, prefs.plotCeiling);
 
-    colorPrefsType p;
-    for(int pn=0; pn < numColorPresetsTotal; pn++)
-    {
-        p = colorPreset[pn];
-        if(p.presetName != Q_NULLPTR)
-            ui->colorPresetCombo->setItemText(pn, *p.presetName);
-    }
-
-    ui->colorPresetCombo->setCurrentIndex(prefs.currentColorPresetNumber);
-    // TODO Load Initial color preset
-    //loadColorPresetToUIandPlots(prefs.currentColorPresetNumber);
-
-    //ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
     ui->mainScope->wfTheme(prefs.wftheme);
     ui->subScope->wfTheme(prefs.wftheme);
 
-//    ui->tuningFloorZerosChk->blockSignals(true);
-//    ui->tuningFloorZerosChk->setChecked(prefs.niceTS);
-//    ui->tuningFloorZerosChk->blockSignals(false);
-
     finputbtns->setAutomaticSidebandSwitching(prefs.automaticSidebandSwitching);
-
-    ui->useCIVasRigIDChk->blockSignals(true);
-    ui->useCIVasRigIDChk->setChecked(prefs.CIVisRadioModel);
-    ui->useCIVasRigIDChk->blockSignals(false);
 }
 
 void wfmain::setSerialDevicesUI()
 {
-    QStringList deviceList;
-    QVector<int> deviceData;
 
-    ui->serialDeviceListCombo->blockSignals(true);
-    ui->serialDeviceListCombo->addItem("Auto", 0);
-    int i = 0;
-    foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
-    {
-        portList.append(serialPortInfo.portName());
-#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
-        deviceData.append(i);
-        ui->serialDeviceListCombo->addItem(QString("/dev/") + serialPortInfo.portName(), i++);
-        deviceList.append(QString("/dev/") + serialPortInfo.portName());
-#else
-        ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
-        deviceList.append(serialPortInfo.portName());
-
-        //qInfo(logSystem()) << "Serial Port found: " << serialPortInfo.portName() << "Manufacturer:" << serialPortInfo.manufacturer() << "Product ID" << serialPortInfo.description() << "S/N" << serialPortInfo.serialNumber();
-#endif
-    }
-#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
-    ui->serialDeviceListCombo->addItem("Manual...", 256);
-#endif
-    ui->serialDeviceListCombo->blockSignals(false);
-
-    setupui->updateSerialPortList(deviceList, deviceData);
-
-
-    // VSP:
-    QStringList vspList;
-    QVector<int> vspData;
-    int vspCount=0;
-
-#ifdef Q_OS_WIN
-    vspList.append(QString("None")); // i=0 when this is run
-    vspData.append(vspCount);
-
-    foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
-    {
-        vspList.append(serialPortInfo.portName());
-        vspData.append(vspCount);
-        vspCount++;
-    }
-#else
-    // Provide reasonable names for the symbolic link to the pty device
-#ifdef Q_OS_MAC
-    QString vspName = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/rig-pty";
-#else
-    QString vspName = QDir::homePath() + "/rig-pty";
-#endif
-    for (i = 1; i < 8; i++) {
-        vspList.append(vspName + QString::number(i));
-        vspData.append(vspCount);
-        vspCount++;
-
-    }
-    vspList.append(vspName + QString::number(i));
-    vspData.append(vspCount);
-
-    setupui->updateVSPList(vspList, vspData);
-
-#endif
 }
 
 
@@ -2150,7 +1957,8 @@ void wfmain::loadSettings()
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
     prefs.meter2Type = static_cast<meter_t>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
     prefs.clickDragTuningEnable = settings->value("ClickDragTuning", false).toBool();
-    ui->clickDragTuningEnableChk->setChecked(prefs.clickDragTuningEnable);
+    ui->mainScope->setClickDragTuning(prefs.clickDragTuningEnable);
+    ui->subScope->setClickDragTuning(prefs.clickDragTuningEnable);
 
     prefs.rigCreatorEnable = settings->value("RigCreator",false).toBool();
     ui->rigCreatorBtn->setEnabled(prefs.rigCreatorEnable);
@@ -2212,33 +2020,10 @@ void wfmain::loadSettings()
     // Radio and Comms: C-IV addr, port to use
     settings->beginGroup("Radio");
     prefs.radioCIVAddr = (unsigned char)settings->value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
-    if (prefs.radioCIVAddr != 0)
-    {
-        ui->rigCIVManualAddrChk->setChecked(true);
-        ui->rigCIVaddrHexLine->blockSignals(true);
-        ui->rigCIVaddrHexLine->setText(QString("%1").arg(prefs.radioCIVAddr, 2, 16));
-        ui->rigCIVaddrHexLine->setEnabled(true);
-        ui->rigCIVaddrHexLine->blockSignals(false);
-    }
-    else {
-        ui->rigCIVManualAddrChk->setChecked(false);
-        ui->rigCIVaddrHexLine->setEnabled(false);
-    }
     prefs.CIVisRadioModel = (bool)settings->value("CIVisRadioModel", defPrefs.CIVisRadioModel).toBool();
     prefs.forceRTSasPTT = (bool)settings->value("ForceRTSasPTT", defPrefs.forceRTSasPTT).toBool();
-
-    //ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
-
     prefs.serialPortRadio = settings->value("SerialPortRadio", defPrefs.serialPortRadio).toString();
-    int serialIndex = ui->serialDeviceListCombo->findText(prefs.serialPortRadio);
-    if (serialIndex != -1) {
-        ui->serialDeviceListCombo->setCurrentIndex(serialIndex);
-    }
-
     prefs.serialPortBaud = (quint32)settings->value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
-    ui->baudRateCombo->blockSignals(true);
-    ui->baudRateCombo->setCurrentIndex(ui->baudRateCombo->findData(prefs.serialPortBaud));
-    ui->baudRateCombo->blockSignals(false);
 
     if (prefs.serialPortBaud > 0)
     {
@@ -2270,7 +2055,11 @@ void wfmain::loadSettings()
     // Misc. user settings (enable PTT, draw peaks, etc)
     settings->beginGroup("Controls");
     prefs.enablePTT = settings->value("EnablePTT", defPrefs.enablePTT).toBool();
+
     prefs.niceTS = settings->value("NiceTS", defPrefs.niceTS).toBool();
+    ui->mainScope->setTuningFloorZeros(prefs.niceTS);
+    ui->subScope->setTuningFloorZeros(prefs.niceTS);
+
     prefs.automaticSidebandSwitching = settings->value("automaticSidebandSwitching", defPrefs.automaticSidebandSwitching).toBool();
     settings->endGroup();
 
@@ -2288,10 +2077,6 @@ void wfmain::loadSettings()
     //ui->audioOutputCombo->setEnabled(prefs.enableLAN);
     //ui->audioInputCombo->setEnabled(prefs.enableLAN);
 
-    ui->baudRateCombo->setEnabled(!prefs.enableLAN);
-    ui->serialDeviceListCombo->setEnabled(!prefs.enableLAN);
-
-    ui->lanEnableBtn->setChecked(prefs.enableLAN);
     ui->connectBtn->setEnabled(true);
 
     prefs.enableRigCtlD = settings->value("EnableRigCtlD", defPrefs.enableRigCtlD).toBool();
@@ -2573,12 +2358,6 @@ void wfmain::loadSettings()
     settings->beginGroup("USB");
     /* Load USB buttons*/
     prefs.enableUSBControllers = settings->value("EnableUSBControllers", defPrefs.enableUSBControllers).toBool();
-    //ui->enableUsbChk->blockSignals(true);
-    //ui->enableUsbChk->setChecked(prefs.enableUSBControllers);
-    //ui->enableUsbChk->blockSignals(false);
-    ui->usbControllerBtn->setEnabled(prefs.enableUSBControllers);
-    ui->usbControllersResetBtn->setEnabled(prefs.enableUSBControllers);
-    ui->usbResetLbl->setVisible(prefs.enableUSBControllers);
 
     /*Ensure that no operations on the usb commands/buttons/knobs take place*/
     QMutexLocker locker(&usbMutex);
@@ -3049,6 +2828,29 @@ void wfmain::extChangedRsPref(prefRsItem i)
         break;
     case rs_data3Mod:
         break;
+    case rs_setClock:
+        setRadioTimeDatePrep();
+    case rs_pttOn:
+        if(!prefs.enablePTT)
+        {
+            showStatusBarText("PTT is disabled, not sending command. Change under Settings tab.");
+            return;
+        }
+        showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
+        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(true),false));
+        pttTimer->start();
+        break;
+    case rs_pttOff:
+        showStatusBarText("Sending PTT OFF command");
+        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false));
+        pttTimer->stop();
+        break;
+    case rs_satOps:
+        sat->show();
+        break;
+    case rs_adjRef:
+        cal->show();
+        break;
     case rs_clockUseUtc:
         break;
     default:
@@ -3065,18 +2867,57 @@ void wfmain::extChangedCtPref(prefCtItem i)
     case ct_enablePTT:
         break;
     case ct_niceTS:
-        //ui->mainScope.setNiceTS = prefs.niceTS;
-        //ui->subScope.setNiceTS = prefs.niceTS;
+        ui->mainScope->setTuningFloorZeros(prefs.niceTS);
+        ui->subScope->setTuningFloorZeros(prefs.niceTS);
         break;
     case ct_automaticSidebandSwitching:
         finputbtns->setAutomaticSidebandSwitching(prefs.automaticSidebandSwitching);
         break;
     case ct_enableUSBControllers:
-        //enableUsbControllers(prefs.enableUSBControllers);
+#if defined (USB_CONTROLLER)
+        if (usbControllerThread != Q_NULLPTR) {
+            usbControllerThread->quit();
+            usbControllerThread->wait();
+            usbControllerThread = Q_NULLPTR;
+            usbWindow = Q_NULLPTR;
+        }
+
+        if (prefs.enableUSBControllers) {
+            // Setup USB Controller
+            setupUsbControllerDevice();
+            emit initUsbController(&usbMutex,&usbDevices,&usbButtons,&usbKnobs);
+        }
+#endif
         break;
-    case ct_usbSensitivity:
-        // No UI element for this.
+    case ct_USBControllersSetup:
+        if (usbWindow != Q_NULLPTR) {
+            if (usbWindow->isVisible()) {
+                usbWindow->hide();
+            }
+            else {
+                qInfo(logUsbControl()) << "Showing USB Controller window";
+                usbWindow->show();
+                usbWindow->raise();
+            }
+        }
         break;
+    case ct_USBControllersReset:
+    {
+        int ret = QMessageBox::warning(this, tr("wfview"),
+                                       tr("Are you sure you wish to reset the USB controllers?"),
+                                       QMessageBox::Ok | QMessageBox::Cancel,
+                                       QMessageBox::Cancel);
+        if (ret == QMessageBox::Ok) {
+            qInfo(logUsbControl()) << "Resetting USB controllers to default values";
+
+            usbButtons.clear();
+            usbKnobs.clear();
+            usbDevices.clear();
+            if (prefs.enableUSBControllers)
+                extChangedCtPref(ct_enableUSBControllers);
+        }
+        break;
+    }
     default:
         qWarning(logGui()) << "No UI element matches setting" << (int)i;
         break;
@@ -3307,30 +3148,6 @@ void wfmain::on_serverAddUserBtn_clicked()
 
     ui->serverAddUserBtn->setEnabled(false);
 }
-
-
-void wfmain::on_serverEnableCheckbox_clicked(bool checked)
-{
-    ui->serverSetupGroup->setEnabled(checked);
-    serverConfig.enabled = checked;
-    setServerToPrefs();
-}
-
-void wfmain::on_serverControlPortText_textChanged(QString text)
-{
-    serverConfig.controlPort = text.toInt();
-}
-
-void wfmain::on_serverCivPortText_textChanged(QString text)
-{
-    serverConfig.civPort = text.toInt();
-}
-
-void wfmain::on_serverAudioPortText_textChanged(QString text)
-{
-    serverConfig.audioPort = text.toInt();
-}
-
 
 void wfmain::changedModInput(uchar val, inputTypes type)
 {
@@ -3822,14 +3639,13 @@ void wfmain::shortcutControlT()
     // Transmit
     qInfo(logSystem()) << "Activated Control-T shortcut";
     showStatusBarText(QString("Transmitting. Press Control-R to receive."));
-    ui->pttOnBtn->click();
+    extChangedRsPrefs(rs_pttOn);
 }
 
 void wfmain::shortcutControlR()
 {
     // Receive
-    queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false)));
-    pttTimer->stop();
+    extChangedRsPrefs(rs_pttOff);
 }
 
 void wfmain::shortcutControlI()
@@ -3890,6 +3706,8 @@ void wfmain::on_tuningStepCombo_currentIndexChanged(int index)
     foreach (auto s, rigCaps.steps) {
         if (tsWfScrollHz == s.hz)
         {
+            ui->mainScope->setStepSize(s.hz);
+            ui->subScope->setStepSize(s.hz);
             queue->add(priorityImmediate,queueItem(funcTuningStep,QVariant::fromValue<uchar>(s.num),false));
         }
     }
@@ -4394,7 +4212,7 @@ void wfmain::setDefaultColors(int presetNumber)
             break;
 
     }
-    ui->colorPresetCombo->setItemText(presetNumber, *(p->presetName));
+    //ui->colorPresetCombo->setItemText(presetNumber, *(p->presetName));
 }
 
 void wfmain::receiveRigID(rigCapabilities rigCaps)
@@ -4494,15 +4312,6 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         ui->tuningStepCombo->setCurrentIndex(2);
         ui->tuningStepCombo->blockSignals(false);
-
-        if(rigCaps.commands.contains(funcSatelliteMode))
-        {
-            ui->satOpsBtn->setDisabled(false);
-            ui->adjRefBtn->setDisabled(false);
-        } else {
-            ui->satOpsBtn->setDisabled(true);
-            ui->adjRefBtn->setDisabled(true);
-        }
 
         setupui->updateModSourceList(0, rigCaps.inputs);
         setupui->updateModSourceList(1, rigCaps.inputs);
@@ -5136,21 +4945,6 @@ void wfmain::handlePlotScroll(QWheelEvent *we)
 */
 }
 
-void wfmain::on_scopeEnableWFBtn_stateChanged(int state)
-{
-    if (state == Qt::Unchecked)
-    {
-        queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue<bool>(false),false));
-    }
-    else
-    {
-        queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue<bool>(true),false));
-    }
-    prefs.wfEnable = state;
-}
-
-
-
 void wfmain::receiveMode(modeInfo mode, bool sub)
 {
     Q_UNUSED(mode)
@@ -5175,11 +4969,6 @@ void wfmain::receiveDataModeStatus(uchar data, uchar filter)
     usingDataMode = data;
 }
 
-void wfmain::on_clearPeakBtn_clicked()
-{
-    ui->mainScope->setUnderlayMode(prefs.underlayMode);
-}
-
 void wfmain::changeFullScreenMode(bool checked)
 {
     if(checked)
@@ -5191,12 +4980,6 @@ void wfmain::changeFullScreenMode(bool checked)
         onFullscreen = false;
     }
     prefs.useFullScreen = checked;
-}
-
-
-void wfmain::on_scopeEdgeCombo_currentIndexChanged(int index)
-{
-    queue->add(priorityImmediate,queueItem(funcScopeMainEdge,QVariant::fromValue<uchar>(index+1)));
 }
 
 void wfmain::changeMode(rigMode_t mode)
@@ -5467,42 +5250,58 @@ void wfmain::on_tuneEnableChk_clicked(bool checked)
     showStatusBarText(QString("Turning %0 ATU").arg(checked?"on":"off"));
 }
 
-void wfmain::on_exitBtn_clicked()
+bool wfmain::on_exitBtn_clicked()
 {
-    // Are you sure?
-    QApplication::exit();
-}
-
-void wfmain::on_pttOnBtn_clicked()
-{
-    // is it enabled?
-
-    if(!prefs.enablePTT)
+    bool ret=false;
+    if (prefs.settingsChanged)
     {
-        showStatusBarText("PTT is disabled, not sending command. Change under Settings tab.");
-        return;
+        // Settings have changed since last save
+        qInfo() << "Settings have changed since last save";
+        int reply = QMessageBox::question(this,"wfview","Settings have changed since last save, exit anyway?",QMessageBox::Save | QMessageBox::No |QMessageBox::Yes);
+        if (reply == QMessageBox::Save)
+        {
+            saveSettings();
+        } else if (reply == QMessageBox::No)
+        {
+            return true;
+        }
     }
 
-    // Are we already PTT? Not a big deal, just send again anyway.
-    showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
+    // Are you sure?
+    if (!prefs.confirmExit) {
+        QApplication::exit();
+    }
+    QCheckBox *cb = new QCheckBox("Don't ask me again");
+    cb->setToolTip("Don't ask me to confirm exit again");
+    QMessageBox msgbox;
+    msgbox.setText("Are you sure you wish to exit?\n");
+    msgbox.setIcon(QMessageBox::Icon::Question);
+    QAbstractButton *yesButton = msgbox.addButton(QMessageBox::Yes);
+    msgbox.addButton(QMessageBox::No);
+    msgbox.setDefaultButton(QMessageBox::Yes);
+    msgbox.setCheckBox(cb);
 
-    queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(true),false));
+    QObject::connect(cb, &QCheckBox::stateChanged, this, [this](int state){
+        if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked) {
+            prefs.confirmExit=false;
+        } else {
+            prefs.confirmExit=true;
+        }
+        settings->beginGroup("Interface");
+        settings->setValue("ConfirmExit", this->prefs.confirmExit);
+        settings->endGroup();
+        settings->sync();
+    });
 
-    // send PTT
-    // Start 3 minute timer
-    pttTimer->start();
-    //issueDelayedCommand(cmdGetPTT);
-}
+    msgbox.exec();
+    delete cb;
 
-void wfmain::on_pttOffBtn_clicked()
-{
-    // Send the PTT OFF command (more than once?)
-    showStatusBarText("Sending PTT OFF command");
-    queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false));
-
-    // Stop the 3 min timer
-    pttTimer->stop();
-    //issueDelayedCommand(cmdGetPTT);
+    if (msgbox.clickedButton() == yesButton) {
+        QApplication::exit();
+    } else {
+        ret=true;
+    }
+    return ret;
 }
 
 void wfmain::handlePttLimit()
@@ -5549,12 +5348,6 @@ void wfmain::receiveATUStatus(unsigned char atustatus)
             break;
     }
 }
-
-void wfmain::on_toFixedBtn_clicked()
-{
-
-}
-
 
 void wfmain::on_connectBtn_clicked()
 {
@@ -5669,23 +5462,13 @@ void wfmain::on_transmitBtn_clicked()
     queue->add(priorityHighest,funcTransceiverStatus);
 }
 
-void wfmain::on_adjRefBtn_clicked()
-{
-    cal->show();
-}
-
-void wfmain::on_satOpsBtn_clicked()
-{
-    sat->show();
-}
-
 void wfmain::setRadioTimeDatePrep()
 {
     if(!waitingToSetTimeDate)
     {
         // 1: Find the current time and date
         QDateTime now;
-        if(ui->useUTCChk->isChecked())
+        if(prefs.useUTC)
         {
             now = QDateTime::currentDateTimeUtc();
             now.setTime(QTime::currentTime());
@@ -5930,6 +5713,8 @@ void wfmain::receiveTuningStep(unsigned char step)
             if (step == s.num && ui->tuningStepCombo->currentData().toUInt() != s.hz) {
                 qInfo(logSystem()) << QString("Received new Tuning Step %0").arg(s.name);
                 ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->findData(s.hz));
+                ui->mainScope->setStepSize(s.hz);
+                ui->subScope->setStepSize(s.hz);
                 break;
             }
         }
@@ -6108,14 +5893,13 @@ void wfmain::on_serialDeviceListCombo_textActivated(const QString &arg1)
                                            tr("/dev/device"), &ok);
         if(manualPort.isEmpty() || !ok)
         {
-            ui->serialDeviceListCombo->blockSignals(true);
-            ui->serialDeviceListCombo->setCurrentIndex(0);
-            ui->serialDeviceListCombo->blockSignals(false);
+            //ui->serialDeviceListCombo->blockSignals(true);
+            //ui->serialDeviceListCombo->setCurrentIndex(0);
+            //ui->serialDeviceListCombo->blockSignals(false);
             return;
         } else {
             prefs.serialPortRadio = manualPort;
             showStatusBarText("Setting preferences to use manually-assigned serial port: " + manualPort);
-            ui->serialEnableBtn->setChecked(true);
             return;
         }
     }
@@ -6123,13 +5907,11 @@ void wfmain::on_serialDeviceListCombo_textActivated(const QString &arg1)
     {
         prefs.serialPortRadio = "auto";
         showStatusBarText("Setting preferences to automatically find rig serial port.");
-        ui->serialEnableBtn->setChecked(true);
         return;
     }
 
     prefs.serialPortRadio = arg1;
     showStatusBarText("Setting preferences to use manually-assigned serial port: " + arg1);
-    ui->serialEnableBtn->setChecked(true);
 }
 
 void wfmain::on_rptSetupBtn_clicked()
@@ -6171,12 +5953,6 @@ void wfmain::on_rxAntennaCheck_clicked(bool value)
     ant.antenna = (unsigned char)ui->antennaSelCombo->currentData().toInt();
     ant.rx = value;
     queue->add(priorityImmediate,queueItem(funcAntenna,QVariant::fromValue<antennaInfo>(ant),false));
-}
-void wfmain::on_wfthemeCombo_activated(int index)
-{
-    //prefs.wftheme = ui->wfthemeCombo->itemData(index).toInt();
-    //ui->mainScope->wfTheme(prefs.wftheme);
-   // ui->subScope->wfTheme(prefs.wftheme);
 }
 
 void wfmain::receivePreamp(unsigned char pre)
@@ -6353,48 +6129,8 @@ void wfmain::hideButton(QPushButton *btn)
     btn->setHidden(true);
 }
 
-void wfmain::on_rigCIVManualAddrChk_clicked(bool checked)
-{
-    if(checked)
-    {
-        ui->rigCIVaddrHexLine->setEnabled(true);
-        ui->rigCIVaddrHexLine->setText(QString("%1").arg(prefs.radioCIVAddr, 2, 16));
-    } else {
-        ui->rigCIVaddrHexLine->setText("auto");
-        ui->rigCIVaddrHexLine->setEnabled(false);
-        prefs.radioCIVAddr = 0; // auto
-        showStatusBarText("Setting radio CI-V address to: 'auto'. Make sure CI-V Transceive is enabled on the radio.");
-    }
-}
-
-void wfmain::on_rigCIVaddrHexLine_editingFinished()
-{
-    bool okconvert=false;
-
-    unsigned char propCIVAddr = (unsigned char) ui->rigCIVaddrHexLine->text().toUInt(&okconvert, 16);
-
-    if(okconvert && (propCIVAddr < 0xe0) && (propCIVAddr != 0))
-    {
-        prefs.radioCIVAddr = propCIVAddr;
-        emit setCIVAddr(propCIVAddr);
-        showStatusBarText(QString("Setting radio CI-V address to: 0x%1. Press Save Settings to retain.").arg(propCIVAddr, 2, 16));
-    } else {
-        showStatusBarText(QString("Could not use provided CI-V address. Address must be < 0xE0"));
-    }
-
-}
-
 void wfmain::on_baudRateCombo_activated(int index)
 {
-    bool ok = false;
-    quint32 baud = ui->baudRateCombo->currentData().toUInt(&ok);
-    if(ok)
-    {
-        prefs.serialPortBaud = baud;
-        serverConfig.baudRate = baud;
-        showStatusBarText(QString("Changed baud rate to %1 bps. Press Save Settings to retain.").arg(baud));
-    }
-    (void)index;
 }
 
 void wfmain::on_wfLengthSlider_valueChanged(int value)
@@ -6402,20 +6138,6 @@ void wfmain::on_wfLengthSlider_valueChanged(int value)
     prefs.wflength = (unsigned int)(value);
     ui->mainScope->prepareWf(value);
     ui->subScope->prepareWf(value);
-}
-
-void wfmain::on_wfAntiAliasChk_clicked(bool checked)
-{
-    ui->mainScope->wfAntiAliased(checked);
-    ui->subScope->wfAntiAliased(checked);
-    prefs.wfAntiAlias = checked;
-}
-
-void wfmain::on_wfInterpolateChk_clicked(bool checked)
-{
-    ui->mainScope->wfInterpolate(checked);
-    ui->subScope->wfInterpolate(checked);
-    prefs.wfInterpolate = checked;
 }
 
 funcs wfmain::meter_tToMeterCommand(meter_t m)
@@ -6525,11 +6247,6 @@ void wfmain::on_moreControlsBtn_clicked()
     trxadj->activateWindow();
 }
 
-void wfmain::on_useCIVasRigIDChk_clicked(bool checked)
-{
-    prefs.CIVisRadioModel = checked;
-}
-
 void wfmain::on_setClockBtn_clicked()
 {
     setRadioTimeDatePrep();
@@ -6572,44 +6289,6 @@ void wfmain::on_botLevelSlider_valueChanged(int value)
     ui->subScope->setRange(plotFloor,plotCeiling);
 }
 
-void wfmain::on_underlayBufferSlider_valueChanged(int value)
-{
-    ui->mainScope->resizePlasmaBuffer(value);
-    ui->subScope->resizePlasmaBuffer(value);
-}
-
-void wfmain::on_underlayNone_toggled(bool checked)
-{
-    if(checked)
-        prefs.underlayMode = underlayNone;
-    ui->mainScope->setUnderlayMode(prefs.underlayMode);
-    ui->subScope->setUnderlayMode(prefs.underlayMode);
-}
-
-void wfmain::on_underlayPeakHold_toggled(bool checked)
-{
-    if(checked)
-        prefs.underlayMode = underlayPeakHold;
-    ui->mainScope->setUnderlayMode(prefs.underlayMode);
-    ui->subScope->setUnderlayMode(prefs.underlayMode);
-}
-
-void wfmain::on_underlayPeakBuffer_toggled(bool checked)
-{
-    if(checked)
-        prefs.underlayMode = underlayPeakBuffer;
-    ui->mainScope->setUnderlayMode(prefs.underlayMode);
-    ui->subScope->setUnderlayMode(prefs.underlayMode);
-}
-
-void wfmain::on_underlayAverageBuffer_toggled(bool checked)
-{
-    if(checked)
-        prefs.underlayMode = underlayAverageBuffer;
-    ui->mainScope->setUnderlayMode(prefs.underlayMode);
-    ui->subScope->setUnderlayMode(prefs.underlayMode);
-}
-
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
@@ -6631,13 +6310,6 @@ void wfmain::on_debugBtn_clicked()
 }
 
 // ----------   color helper functions:   ---------- //
-
-
-void wfmain::useCurrentColorPreset()
-{
-    int pos = ui->colorPresetCombo->currentIndex();
-    useColorPreset(&colorPreset[pos]);
-}
 
 void wfmain::useColorPreset(colorPrefsType *cp)
 {
@@ -6774,12 +6446,6 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     logTextMutex.unlock();
 
 }
-
-void wfmain::on_customEdgeBtn_clicked()
-{
-
-}
-
 
 void wfmain::receiveClusterOutput(QString text) {
     ui->clusterOutputTextEdit->moveCursor(QTextCursor::End);
@@ -7010,8 +6676,7 @@ void wfmain::on_clusterPopOutBtn_clicked()
         ui->tabWidget->removeTab(ui->tabWidget->indexOf(settingsTab));
         settingsWidgetTab->addTab(settingsTab, "Settings");
         settingsWidgetWindow->show();
-        ui->clusterPopOutBtn->setText("Re-attach");
-        ui->colorPopOutBtn->setText("Re-attach");
+
         ui->tabWidget->setCurrentIndex(0);
         settingsTabisAttached = false;
     }
@@ -7022,8 +6687,6 @@ void wfmain::on_clusterPopOutBtn_clicked()
         ui->tabWidget->addTab(settingsTab, "Settings");
         settingsWidgetWindow->close();
 
-        ui->clusterPopOutBtn->setText("Pop-Out");
-        ui->colorPopOutBtn->setText("Pop-Out");
         ui->tabWidget->setCurrentIndex(3);
         settingsTabisAttached = true;
     }
@@ -7036,33 +6699,9 @@ void wfmain::on_clusterSkimmerSpotsEnable_clicked(bool enable)
     emit setClusterSkimmerSpots(enable);
 }
 
-void wfmain::on_clickDragTuningEnableChk_clicked(bool checked)
-{
-    // migrated
-    prefs.clickDragTuningEnable = checked;
-}
-
 void wfmain::enableUsbControllers(bool checked)
 {
-    prefs.enableUSBControllers = checked;
-    ui->usbControllerBtn->setEnabled(checked);
-    ui->usbControllersResetBtn->setEnabled(checked);
-    ui->usbResetLbl->setVisible(checked);
 
-#if defined (USB_CONTROLLER)
-    if (usbControllerThread != Q_NULLPTR) {
-        usbControllerThread->quit();
-        usbControllerThread->wait();
-        usbControllerThread = Q_NULLPTR;
-        usbWindow = Q_NULLPTR;
-    }
-
-    if (checked) {
-        // Setup USB Controller
-        setupUsbControllerDevice();
-        emit initUsbController(&usbMutex,&usbDevices,&usbButtons,&usbKnobs);
-    }
-#endif
 }
 
 void wfmain::on_usbControllerBtn_clicked()
@@ -7213,15 +6852,15 @@ void wfmain::on_memoriesBtn_clicked()
 
             this->memWindow->connect(this->memWindow, &memories::memoryMode, rig, [=]() {
                 queue->add(priorityImmediate,funcMemoryMode);
-                queue->del((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet));
-                queue->del((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet));
+                queue->del((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),false);
+                queue->del((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),false);
                 queue->del((rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),true);
                 queue->del((rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),true);
             });
 
             this->memWindow->connect(this->memWindow, &memories::vfoMode, rig, [this]() {
-                queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),true);
-                queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),true);
+                queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),true,false);
+                queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),true,false);
                 queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),true,true);
                 queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),true,true);
             });
@@ -7229,13 +6868,13 @@ void wfmain::on_memoriesBtn_clicked()
             this->memWindow->connect(this->memWindow, &memories::setSatelliteMode, rig, [this](const bool &en) {
                 queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue<bool>(en)));
                 if (en) {
-                    queue->del((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet));
-                    queue->del((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet));
-                    queue->del((rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone));
-                    queue->del((rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone));
+                    queue->del((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),false);
+                    queue->del((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),false);
+                    queue->del((rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),true);
+                    queue->del((rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),true);
                 } else {
-                    queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),true);
-                    queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),true);
+                    queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),true,false);
+                    queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),true,false);
                     queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),true,true);
                     queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),true,true);
                 }

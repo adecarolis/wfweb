@@ -18,6 +18,7 @@ cwSender::cwSender(QWidget *parent) :
     ui->statusbar->setToolTipDuration(3000);
     this->setToolTipDuration(3000);
     connect(ui->textToSendEdit->lineEdit(), &QLineEdit::textEdited, this, &cwSender::textChanged);
+    this->setObjectName("CW Sender");
     queue = cachingQueue::getInstance(this);
 }
 

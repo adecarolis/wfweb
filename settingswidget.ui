@@ -41,7 +41,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>0</number>
+        <number>3</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -1152,16 +1152,6 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="colorSavePresetBtn">
-             <property name="toolTip">
-              <string>Saves the current preset to the settings file.</string>
-             </property>
-             <property name="text">
-              <string>Save Preset</string>
-             </property>
-            </widget>
-           </item>
-           <item>
             <widget class="QPushButton" name="colorRevertPresetBtn">
              <property name="toolTip">
               <string>Revert the selected color preset to the default.</string>
@@ -1245,8 +1235,8 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>453</width>
-                 <height>235</height>
+                 <width>925</width>
+                 <height>332</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">
@@ -2475,7 +2465,113 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_32">
                 <item>
-                 <widget class="QTableWidget" name="serverUsersTable">
+                 <widget class="QLineEdit" name="serverControlPortText_2">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="minimumSize">
+                   <size>
+                    <width>130</width>
+                    <height>25</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>130</width>
+                    <height>25</height>
+                   </size>
+                  </property>
+                  <property name="inputMask">
+                   <string>99999</string>
+                  </property>
+                  <property name="text">
+                   <string>50001</string>
+                  </property>
+                  <property name="frame">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="tableWidget" name="serverUsersTable_2">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="minimumSize">
+                   <size>
+                    <width>400</width>
+                    <height>160</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>750</width>
+                    <height>330</height>
+                   </size>
+                  </property>
+                  <property name="frameShape">
+                   <enum>QFrame::StyledPanel</enum>
+                  </property>
+                  <property name="lineWidth">
+                   <number>1</number>
+                  </property>
+                  <property name="midLineWidth">
+                   <number>0</number>
+                  </property>
+                  <property name="columnCount">
+                   <number>4</number>
+                  </property>
+                  <attribute name="horizontalHeaderCascadingSectionResizes">
+                   <bool>false</bool>
+                  </attribute>
+                  <attribute name="horizontalHeaderDefaultSectionSize">
+                   <number>100</number>
+                  </attribute>
+                  <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
+                   <bool>false</bool>
+                  </attribute>
+                  <attribute name="horizontalHeaderStretchLastSection">
+                   <bool>true</bool>
+                  </attribute>
+                  <attribute name="verticalHeaderVisible">
+                   <bool>false</bool>
+                  </attribute>
+                  <attribute name="verticalHeaderShowSortIndicator" stdset="0">
+                   <bool>true</bool>
+                  </attribute>
+                  <attribute name="verticalHeaderStretchLastSection">
+                   <bool>false</bool>
+                  </attribute>
+                  <column>
+                   <property name="text">
+                    <string>Username</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Password</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Admin</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Delete?</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="tableWidget" name="serverUsersTable">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                     <horstretch>0</horstretch>
@@ -2832,7 +2928,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="usbControllerBtn">
+            <widget class="QPushButton" name="usbControllersSetup">
              <property name="toolTip">
               <string/>
              </property>
@@ -2855,16 +2951,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
             </spacer>
            </item>
            <item>
-            <widget class="QPushButton" name="usbButtonsResetBtn">
+            <widget class="QPushButton" name="usbControllersReset">
              <property name="text">
               <string>Reset Buttons</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="usbCommandsResetBtn">
-             <property name="text">
-              <string>Reset Commands</string>
              </property>
             </widget>
            </item>
@@ -3231,6 +3320,11 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
    <extends>QWidget</extends>
    <header location="global">qledlabel.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>tableWidget</class>
+   <extends>QTableWidget</extends>
+   <header location="global">tablewidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

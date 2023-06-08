@@ -66,8 +66,6 @@ public slots:
     void updateUdpPref(udpPrefsItem upi);
     void updateUdpPrefs(int items);
 
-    void updateSerialPortList(QStringList deviceList, QVector<int> data);
-    void updateVSPList(QStringList deviceList, QVector<int> data);
 
     void updateModSourceList(uchar num, QVector<rigInput> data);
     void setAudioDevicesUI();
@@ -98,7 +96,6 @@ signals:
     void changedUdpPref(udpPrefsItem i);
     void changedServerConfig(serverItems i);
 
-    void showUSBControllerSetup();
     void changedModInput(uchar num, inputTypes input);    
 
 private slots:
@@ -108,7 +105,8 @@ private slots:
     void on_autoSSBchk_clicked(bool checked);
     void on_useSystemThemeChk_clicked(bool checked);
     void on_enableUsbChk_clicked(bool checked);
-    void on_usbControllerBtn_clicked();
+    void on_usbControllersSetup_clicked();
+    void on_usbControllersReset_clicked();
     void on_autoPollBtn_clicked(bool checked);
     void on_manualPollBtn_clicked(bool checked);
     void on_pollTimeMsSpin_valueChanged(int arg1);
@@ -128,9 +126,11 @@ private slots:
     void on_underlayAverageBuffer_clicked(bool checked);
     void on_underlayBufferSlider_valueChanged(int value);
     void on_pttEnableChk_clicked(bool checked);
-    void on_clickDragTuningEnableChk_clicked(bool checked);
     void on_rigCreatorChk_clicked(bool checked);
     void on_serialEnableBtn_clicked(bool checked);
+    void on_rigCIVManualAddrChk_clicked(bool checked);
+    void on_rigCIVaddrHexLine_editingFinished();
+    void on_useCIVasRigIDChk_clicked(bool checked);
     void on_enableRigctldChk_clicked(bool checked);
     void on_rigctldPortTxt_editingFinished();
     void on_tcpServerPortTxt_editingFinished();
@@ -153,9 +153,6 @@ private slots:
     void on_audioDuplexCombo_currentIndexChanged(int index);
     void on_audioOutputCombo_currentIndexChanged(int index);
     void on_audioInputCombo_currentIndexChanged(int index);
-    void on_serverRXAudioInputCombo_currentIndexChanged(int index);
-    void on_serverTXAudioOutputCombo_currentIndexChanged(int index);
-    void on_serverEnableCheckbox_clicked(bool checked);
 
     void on_rxLatencySlider_valueChanged(int value);
     void on_txLatencySlider_valueChanged(int value);
@@ -170,9 +167,22 @@ private slots:
     void on_modInputData2Combo_activated(int index);
     void on_modInputData3Combo_activated(int index);
 
+    void on_useUTCChk_clicked(bool checked);
+    void on_setClockBtn_clicked();
+    void on_pttOnBtn_clicked();
+    void on_pttOffBtn_clicked();
+    void on_adjRefBtn_clicked();
+    void on_satOpsBtn_clicked();
+
+    void on_serverEnableCheckbox_clicked(bool checked);
+    void on_serverRXAudioInputCombo_currentIndexChanged(int index);
+    void on_serverTXAudioOutputCombo_currentIndexChanged(int index);
+    void on_serverControlPortText_textChanged(QString text);
+    void on_serverCivPortText_textChanged(QString text);
+    void on_serverAudioPortText_textChanged(QString text);
+
     // Color slots
     void on_colorPresetCombo_currentIndexChanged(int index);
-    void on_colorSavePresetBtn_clicked();
 
     void on_colorSetBtnPlotBackground_clicked();
     void on_colorEditPlotBackground_editingFinished();

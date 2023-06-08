@@ -452,15 +452,12 @@ private slots:
 
     void buttonControl(const COMMAND* cmd);
 
-    void on_clearPeakBtn_clicked();
-
     void changeFullScreenMode(bool checked);
 
     void on_usbControllerBtn_clicked();
 
     void on_usbControllersResetBtn_clicked();
 
-    void on_scopeEdgeCombo_currentIndexChanged(int index);
     void on_modeSelectCombo_activated(int index);
     void on_freqDial_valueChanged(int value);
     void on_aboutBtn_clicked();
@@ -474,17 +471,12 @@ private slots:
 
     void on_tuneNowBtn_clicked();
     void on_tuneEnableChk_clicked(bool checked);
-    void on_exitBtn_clicked();
-    void on_pttOnBtn_clicked();
-    void on_pttOffBtn_clicked();
+    bool on_exitBtn_clicked();
     void on_saveSettingsBtn_clicked();
     void on_debugBtn_clicked();
 
-    void on_toFixedBtn_clicked();
     void on_connectBtn_clicked();
 
-
-    void on_scopeEnableWFBtn_stateChanged(int state);
     void on_sqlSlider_valueChanged(int value);
 
     void on_modeFilterCombo_activated(int index);
@@ -492,8 +484,6 @@ private slots:
     void on_datamodeCombo_activated(int index);
 
     void on_transmitBtn_clicked();
-    void on_adjRefBtn_clicked();
-    void on_satOpsBtn_clicked();
     void on_txPowerSlider_valueChanged(int value);
     void on_micGainSlider_valueChanged(int value);
     void on_scopeRefLevelSlider_valueChanged(int value);
@@ -508,31 +498,20 @@ private slots:
     void on_preampSelCombo_activated(int index);
     void on_antennaSelCombo_activated(int index);
     void on_rxAntennaCheck_clicked(bool value);
-    void on_wfthemeCombo_activated(int index);
     void on_rigPowerOnBtn_clicked();
     void on_rigPowerOffBtn_clicked();
     void on_ritTuneDial_valueChanged(int value);
     void on_ritEnableChk_clicked(bool checked);
-    void on_rigCIVManualAddrChk_clicked(bool checked);
-    void on_rigCIVaddrHexLine_editingFinished();
     void on_baudRateCombo_activated(int);
     void on_wfLengthSlider_valueChanged(int value);
-    void on_wfAntiAliasChk_clicked(bool checked);
-    void on_wfInterpolateChk_clicked(bool checked);
     void changeMeter2Type(meter_t m);
     void enableRigCtl(bool enabled);
     void on_moreControlsBtn_clicked();
 
     void on_memoriesBtn_clicked();
 
-    void on_useCIVasRigIDChk_clicked(bool checked);
-
     void on_settingsList_currentRowChanged(int currentRow);
     void on_setClockBtn_clicked();
-    void on_serverEnableCheckbox_clicked(bool checked);
-    void on_serverControlPortText_textChanged(QString text);
-    void on_serverCivPortText_textChanged(QString text);
-    void on_serverAudioPortText_textChanged(QString text);
 
     void onServerUserFieldChanged();
     void changedModInput(uchar val, inputTypes type);
@@ -542,15 +521,8 @@ private slots:
 
     void on_topLevelSlider_valueChanged(int value);
     void on_botLevelSlider_valueChanged(int value);
-    void on_underlayBufferSlider_valueChanged(int value);
-    void on_underlayNone_toggled(bool checked);
-    void on_underlayPeakHold_toggled(bool checked);
-    void on_underlayPeakBuffer_toggled(bool checked);
-    void on_underlayAverageBuffer_toggled(bool checked);
 
     void on_showLogBtn_clicked();
-
-    void on_customEdgeBtn_clicked();
 
     void on_clusterUdpEnable_clicked(bool enable);
     void on_clusterTcpEnable_clicked(bool enable);
@@ -563,8 +535,6 @@ private slots:
     void on_clusterTimeoutLineEdit_editingFinished();
     void on_clusterPopOutBtn_clicked();
     void on_clusterSkimmerSpotsEnable_clicked(bool enable);
-
-    void on_clickDragTuningEnableChk_clicked(bool checked);
 
     void receiveClusterOutput(QString text);
     void receiveSpots(QList<spotData> spots);
@@ -767,7 +737,6 @@ private:
     void useColors(); // set the plot up
     void setDefPrefs(); // populate default values to default prefs
     void setTuningSteps();
-    void useCurrentColorPreset();
 
     void calculateTimingParameters();
     void initPeriodicCommands();

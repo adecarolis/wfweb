@@ -7,6 +7,7 @@
 #include "audioconverter.h"
 #include "rigidentities.h"
 #include "wfviewtypes.h"
+#include "udpserver.h"
 
 enum prefIfItem {
     if_useFullScreen = 1 << 0,
@@ -61,8 +62,14 @@ enum prefRsItem {
     rs_data1Mod = 1 << 1,
     rs_data2Mod = 1 << 2,
     rs_data3Mod = 1 << 3,
-    rs_clockUseUtc = 1 << 4,
-    rs_all = 1 << 5
+    rs_setClock = 1 << 4,
+    rs_clockUseUtc = 1 << 5,
+    rs_pttOn = 1 << 6,
+    rs_pttOff = 1 << 7,
+    rs_satOps = 1 << 8,
+    rs_adjRef = 1 << 9,
+    rs_debug = 1 << 10,
+    rs_all = 1 << 11
 };
 
 enum prefRaItem {
@@ -85,7 +92,8 @@ enum prefCtItem {
     ct_niceTS = 1 << 1,
     ct_automaticSidebandSwitching = 1 << 2,
     ct_enableUSBControllers = 1 << 3,
-    ct_usbSensitivity = 1 << 4,
+    ct_USBControllersSetup = 1 << 4,
+    ct_USBControllersReset = 1 << 5,
     ct_all = 1 << 5
 };
 
@@ -132,6 +140,7 @@ enum udpPrefsItem {
     u_audioOutput = 1 << 16,
     u_all = 1 << 17
 };
+
 
 
 struct preferences {
@@ -198,11 +207,13 @@ struct preferences {
     QString clusterTcpUserName;
     QString clusterTcpPassword;
 
+    SERVERCONFIG server;    // Contains server settings
     // Temporary settings
     inputTypes inputDataOff=inputNone;
     inputTypes inputData1=inputNone;
     inputTypes inputData2=inputNone;
     inputTypes inputData3=inputNone;
+    bool useUTC = false;
 
     audioSetup rxSetup;
     audioSetup txSetup;

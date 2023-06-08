@@ -8,7 +8,7 @@ spectrumScope::spectrumScope(QWidget *parent)
 {
 
     QMutexLocker locker(&mutex);
-    this->setObjectName("SpectrumScope");
+    this->setObjectName("Spectrum Scope");
     this->setTitle("Band");
     queue = cachingQueue::getInstance();
     spectrum = new QCustomPlot();
@@ -861,15 +861,15 @@ void spectrumScope::scopeClick(QMouseEvent* me)
             }
         }
         // TODO clickdragtuning and sending messages to statusbar
-        /*
-        else if (prefs.clickDragTuningEnable)
+
+        else if (clickDragTuning)
         {
             showStatusBarText(QString("Selected %1 MHz").arg(this->mousePressFreq));
         }
         else {
-            //showStatusBarText(QString("Selected %1 MHz").arg(this->mousePressFreq));
+            showStatusBarText(QString("Selected %1 MHz").arg(this->mousePressFreq));
         }
-        */
+
     }
     else if (me->button() == Qt::RightButton)
     {
@@ -923,16 +923,16 @@ void spectrumScope::scopeClick(QMouseEvent* me)
 
 void spectrumScope::scopeMouseRelease(QMouseEvent* me)
 {
-    /*
+
     QCPAbstractItem* item = spectrum->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
 
-    if (textItem == nullptr && prefs.clickDragTuningEnable) {
-        this->mouseReleaseFreq = plot->xAxis->pixelToCoord(me->pos().x());
+    if (textItem == nullptr && clickDragTuning) {
+        this->mouseReleaseFreq = spectrum->xAxis->pixelToCoord(me->pos().x());
         double delta = mouseReleaseFreq - mousePressFreq;
         qInfo(logGui()) << "Mouse release delta: " << delta;
     }
-*/
+
     if (passbandAction != passbandStatic) {
         passbandAction = passbandStatic;
     }
@@ -1041,23 +1041,19 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
             lastFreq = movedFrequency;
         }
     }
-    else  if (passbandAction == passbandStatic && me->buttons() == Qt::LeftButton && textItem == nullptr)
+    else  if (passbandAction == passbandStatic && me->buttons() == Qt::LeftButton && textItem == nullptr && clickDragTuning)
     {
-    }
-    /* && prefs.clickDragTuningEnable)
-    {
-        double delta = plot->xAxis->pixelToCoord(cursor) - mousePressFreq;
+        double delta = spectrum->xAxis->pixelToCoord(cursor) - mousePressFreq;
         qDebug(logGui()) << "Mouse moving delta: " << delta;
         if( (( delta < -0.0001 ) || (delta > 0.0001)) && ((delta < 0.501) && (delta > -0.501)) )
         {
             freqt freqGo;
             freqGo.Hz = (freq.MHzDouble + delta) * 1E6;
-            //freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
+            freqGo.Hz = roundFrequency(freqGo.Hz, stepSize);
             freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
-            issueCmdUniquePriority(cmdSetFreq, freqGo);
+            queue->add(priorityImmediate,queueItem((sub?funcUnselectedFreq:funcSelectedFreq),QVariant::fromValue<freqt>(freqGo),false,sub));
         }
     }
-    */
     else {
         setCursor(Qt::ArrowCursor);
     }
@@ -1066,8 +1062,8 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
 
 void spectrumScope::waterfallClick(QMouseEvent *me)
 {
-        //double x = spectrum->xAxis->pixelToCoord(me->pos().x());
-        //showStatusBarText(QString("Selected %1 MHz").arg(x));
+        double x = spectrum->xAxis->pixelToCoord(me->pos().x());
+        emit showStatusBarText(QString("Selected %1 MHz").arg(x));
 }
 
 void spectrumScope::scroll(QWheelEvent *we)
@@ -1250,7 +1246,7 @@ void spectrumScope::receivePassband(quint16 pass)
     if (passbandWidth != pb) {
         passbandWidth = pb;
         //trxadj->updatePassband(pass);
-        qInfo(logSystem()) << QString("%0 Received new IF Filter/Passband %1 Hz").arg((sub?"Sub":"Main")).arg(pass);
-        //showStatusBarText(QString("IF filter width %0 Hz (%1 MHz)").arg(pass).arg(passbandWidth));
+        qInfo(logSystem()) << QString("%0 Received new IF Filter/Passband %1 Hz").arg(sub?"Sub":"Main").arg(pass);
+        emit showStatusBarText(QString("%0 IF filter width %1 Hz (%2 MHz)").arg(sub?"Sub":"Main").arg(pass).arg(passbandWidth));
     }
 }

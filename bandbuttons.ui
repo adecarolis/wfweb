@@ -571,6 +571,13 @@
         </property>
        </spacer>
       </item>
+      <item>
+       <widget class="QCheckBox" name="SubBandCheck">
+        <property name="text">
+         <string>Work on Sub Band</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>

@@ -8,6 +8,7 @@ debugWindow::debugWindow(QWidget *parent) :
     ui(new Ui::debugWindow)
 {
     ui->setupUi(this);
+    this->setObjectName("Debug Window");
     qDebug() << "debugWindow() Creating new window";
     queue = cachingQueue::getInstance();
     ui->cacheView->setColumnWidth(0,20);

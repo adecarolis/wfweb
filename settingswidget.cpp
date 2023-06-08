@@ -1,4 +1,5 @@
 #include "settingswidget.h"
+#include "qserialportinfo.h"
 #include "ui_settingswidget.h"
 
 #define setchk(a,b) quietlyUpdateCheckbox(a,b)
@@ -11,6 +12,15 @@ settingswidget::settingswidget(QWidget *parent) :
 
     createSettingsListItems();
     populateComboBoxes();
+
+#ifdef QT_DEBUG
+    ui->debugBtn->setVisible(true);
+    ui->satOpsBtn->setVisible(true);
+#else
+    ui->debugBtn->setVisible(false);
+    ui->satOpsBtn->setVisible(false);
+#endif
+
 }
 
 settingswidget::~settingswidget()
@@ -420,11 +430,20 @@ void settingswidget::updateIfPref(prefIfItem pif)
         break;
     case if_currentColorPresetNumber:
         //ui->colorPresetCombo->blockSignals(true);
-        ui->colorPresetCombo->setCurrentIndex(prefs->currentColorPresetNumber);
-        //ui->colorPresetCombo->blockSignals(false);
-        // activate? or done when prefs load? Maybe some of each?
-        // TODO
-        break;
+        {
+            colorPrefsType p;
+            for(int pn=0; pn < numColorPresetsTotal; pn++)
+            {
+                p = colorPreset[pn];
+                if(p.presetName != Q_NULLPTR)
+                    ui->colorPresetCombo->setItemText(pn, *p.presetName);
+            }
+            ui->colorPresetCombo->setCurrentIndex(prefs->currentColorPresetNumber);
+            //ui->colorPresetCombo->blockSignals(false);
+            // activate? or done when prefs load? Maybe some of each?
+            // TODO
+            break;
+        }
     case if_rigCreatorEnable:
         quietlyUpdateCheckbox(ui->rigCreatorChk, prefs->rigCreatorEnable);
     default:
@@ -634,28 +653,29 @@ void settingswidget::updateRaPref(prefRaItem pra)
         break;
     case ra_serialPortRadio:
     {
-        if(!haveSerialDevices)
+        ui->serialDeviceListCombo->blockSignals(true);
+        ui->serialDeviceListCombo->clear();
+        ui->serialDeviceListCombo->addItem("Auto", 0);
+        int i = 0;
+        foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
         {
-            qCritical(logGui()) << "Asked to show serial device without serial device list.";
-            break;
+#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
+            ui->serialDeviceListCombo->addItem(QString("/dev/") + serialPortInfo.portName(), i++);
+#else
+            ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
+#endif
         }
-        if(!prefs->serialPortRadio.isEmpty())
+
+#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
+        ui->serialDeviceListCombo->addItem("Manual...", 256);
+#endif
+
+        ui->serialDeviceListCombo->setCurrentIndex(ui->serialDeviceListCombo->findText(prefs->serialPortRadio));
+        if (ui->serialDeviceListCombo->currentIndex() == -1)
         {
-            int serialIndex = -1;
-            if(prefs->serialPortRadio.toLower() == "auto")
-            {
-                serialIndex = ui->serialDeviceListCombo->findText(QString("Auto"));
-            } else {
-                serialIndex = ui->serialDeviceListCombo->findText(prefs->serialPortRadio);
-            }
-            if (serialIndex != -1) {
-                ui->serialDeviceListCombo->setCurrentIndex(serialIndex);
-            } else {
-                qWarning(logGui()) << "Cannot find serial port" << prefs->serialPortRadio << "mentioned in preferences inside the serial combo box.";
-            }
-        } else {
-            qDebug(logGui()) << "Serial port in prefs is blank";
+            ui->serialDeviceListCombo->setCurrentIndex(0);
         }
+        ui->serialDeviceListCombo->blockSignals(false);
         break;
     }
     case ra_serialPortBaud:
@@ -663,22 +683,30 @@ void settingswidget::updateRaPref(prefRaItem pra)
         break;
     case ra_virtualSerialPort:
     {
-        if(!haveVspDevices)
+
+        ui->vspCombo->blockSignals(true);
+        ui->vspCombo->clear();
+        ui->vspCombo->addItem("Auto", 0);
+        int i = 0;
+        foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
         {
-            qCritical(logGui()) << "Asked to select VSP device without VSP device list.";
-            break;
+#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
+            ui->vspCombo->addItem(QString("/dev/") + serialPortInfo.portName(), i++);
+#else
+            ui->vspCombo->addItem(serialPortInfo.portName(), i++);
+#endif
         }
-        int vspIndex = ui->vspCombo->findText(prefs->virtualSerialPort);
-        if (vspIndex != -1) {
-            ui->vspCombo->setCurrentIndex(vspIndex);
-        } else {
-            // TODO: Are we sure this is a good idea?
-            if(!prefs->virtualSerialPort.isEmpty())
-            {
-                ui->vspCombo->addItem(prefs->virtualSerialPort);
-                ui->vspCombo->setCurrentIndex(ui->vspCombo->count() - 1);
-            }
+
+#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
+        ui->vspCombo->addItem("Manual...", 256);
+#endif
+
+        ui->vspCombo->setCurrentIndex(ui->vspCombo->findText(prefs->virtualSerialPort));
+        if (ui->vspCombo->currentIndex() == -1)
+        {
+            ui->vspCombo->setCurrentIndex(0);
         }
+        ui->vspCombo->blockSignals(false);
         break;
     }
     case ra_localAFgain:
@@ -745,9 +773,6 @@ void settingswidget::updateCtPref(prefCtItem pct)
         break;
     case ct_enableUSBControllers:
         quietlyUpdateCheckbox(ui->enableUsbChk, prefs->enableUSBControllers);
-        break;
-    case ct_usbSensitivity:
-        // No UI element for this.
         break;
     default:
         qWarning(logGui()) << "No UI element matches setting" << (int)pct;
@@ -1041,56 +1066,6 @@ void settingswidget::updateAllPrefs()
     updatingUIFromPrefs = false;
 }
 
-
-void settingswidget::updateSerialPortList(QStringList deviceList, QVector<int> data)
-{
-    if(deviceList.length() == data.length())
-    {
-        ui->serialDeviceListCombo->blockSignals(true);
-        ui->serialDeviceListCombo->addItem("Auto", 0);
-        for(int i=0; i < deviceList.length(); i++)
-        {
-            ui->serialDeviceListCombo->addItem(deviceList.at(i), data.at(i));
-        }
-#if defined(Q_OS_LINUX) || defined(Q_OS_MAC) || defined(Q_OS_UNIX)
-        ui->serialDeviceListCombo->addItem("Manual...", 256);
-#endif
-        ui->serialDeviceListCombo->blockSignals(false);
-        haveSerialDevices = true;
-    } else {
-        qCritical(logGui()) << "Cannot populate serial device list. Data of unequal length.";
-    }
-}
-
-void settingswidget::updateVSPList(QStringList deviceList, QVector<int> data)
-{
-    // Do not supply "None" device, that is a UI thing and it is done here.
-    // Supply the complete filename
-
-    // TODO: Should we clear the list first?
-    if(deviceList.length() == data.length())
-    {
-        ui->vspCombo->blockSignals(true);
-
-        for(int i=0; i < deviceList.length(); i++)
-        {
-            ui->vspCombo->addItem(deviceList.at(i), data.at(i));
-
-            if (QFile::exists(deviceList.at(i))) {
-                auto* model = qobject_cast<QStandardItemModel*>(ui->vspCombo->model());
-                auto* item = model->item(ui->vspCombo->count() - 1);
-                item->setEnabled(false);
-            }
-        }
-
-        ui->serialDeviceListCombo->addItem("None", deviceList.size());
-
-        ui->vspCombo->blockSignals(false);
-        haveVspDevices = true;
-    } else {
-        qCritical(logGui()) << "Cannot populate serial device list. Data of unequal length.";
-    }
-}
 
 void settingswidget::updateModSourceList(uchar num, QVector<rigInput> data)
 {
@@ -1395,34 +1370,43 @@ void settingswidget::on_serialEnableBtn_clicked(bool checked)
     prefs->enableLAN = !checked;
     ui->groupSerial->setEnabled(checked);
     ui->groupNetwork->setEnabled(!checked);
-
-/*
-    ui->serialDeviceListCombo->setEnabled(checked);
-
-    ui->ipAddressTxt->setEnabled(!checked);
-    ui->controlPortTxt->setEnabled(!checked);
-    ui->usernameTxt->setEnabled(!checked);
-    ui->passwordTxt->setEnabled(!checked);
-    ui->audioRXCodecCombo->setEnabled(!checked);
-    ui->audioTXCodecCombo->setEnabled(!checked);
-    ui->audioSampleRateCombo->setEnabled(!checked);
-    ui->rxLatencySlider->setEnabled(!checked);
-    ui->txLatencySlider->setEnabled(!checked);
-    ui->rxLatencyValue->setEnabled(!checked);
-    ui->txLatencyValue->setEnabled(!checked);
-    ui->audioOutputCombo->setEnabled(!checked);
-    ui->audioInputCombo->setEnabled(!checked);
-    ui->baudRateCombo->setEnabled(checked);
-    ui->serialDeviceListCombo->setEnabled(checked);
-    ui->serverRXAudioInputCombo->setEnabled(checked);
-    ui->serverTXAudioOutputCombo->setEnabled(checked);
-    ui->useRTSforPTTchk->setEnabled(checked);
-*/
     emit changedLanPref(l_enableLAN);
 }
 
+void settingswidget::on_rigCIVManualAddrChk_clicked(bool checked)
+{
+    if(checked)
+    {
+        ui->rigCIVaddrHexLine->setEnabled(true);
+        ui->rigCIVaddrHexLine->setText(QString("%1").arg(prefs->radioCIVAddr, 2, 16));
+    } else {
+        ui->rigCIVaddrHexLine->setText("auto");
+        ui->rigCIVaddrHexLine->setEnabled(false);
+        prefs->radioCIVAddr = 0; // auto
+    }
+    emit changedRaPref(ra_radioCIVAddr);
+}
 
+void settingswidget::on_rigCIVaddrHexLine_editingFinished()
+{
+    bool okconvert=false;
 
+    unsigned char propCIVAddr = (unsigned char) ui->rigCIVaddrHexLine->text().toUInt(&okconvert, 16);
+
+    if(okconvert && (propCIVAddr < 0xe0) && (propCIVAddr != 0))
+    {
+        prefs->radioCIVAddr = propCIVAddr;
+        emit changedRaPref(ra_radioCIVAddr);
+    } else {
+        ui->rigCIVaddrHexLine->setText("0");
+    }
+}
+
+void settingswidget::on_useCIVasRigIDChk_clicked(bool checked)
+{
+    prefs->CIVisRadioModel = checked;
+    emit changedRaPref(ra_CIVisRadioModel);
+}
 
 void settingswidget::on_autoSSBchk_clicked(bool checked)
 {
@@ -1439,17 +1423,20 @@ void settingswidget::on_useSystemThemeChk_clicked(bool checked)
 void settingswidget::on_enableUsbChk_clicked(bool checked)
 {
     prefs->enableUSBControllers = checked;
-    ui->usbControllerBtn->setEnabled(checked);
-    ui->usbButtonsResetBtn->setEnabled(checked);
-    ui->usbCommandsResetBtn->setEnabled(checked);
+    ui->usbControllersSetup->setEnabled(checked);
+    ui->usbControllersReset->setEnabled(checked);
     ui->usbResetLbl->setVisible(checked);
-
     emit changedCtPref(ct_enableUSBControllers);
 }
 
-void settingswidget::on_usbControllerBtn_clicked()
+void settingswidget::on_usbControllersSetup_clicked()
 {
-    emit showUSBControllerSetup();
+    emit changedCtPref(ct_USBControllersSetup);
+}
+
+void settingswidget::on_usbControllersReset_clicked()
+{
+    emit changedCtPref(ct_USBControllersReset);
 }
 
 void settingswidget::on_autoPollBtn_clicked(bool checked)
@@ -1639,11 +1626,6 @@ void settingswidget::on_pttEnableChk_clicked(bool checked)
     emit changedCtPref(ct_enablePTT);
 }
 
-void settingswidget::on_clickDragTuningEnableChk_clicked(bool checked)
-{
-    prefs->clickDragTuningEnable = checked;
-    emit changedIfPref(if_clickDragTuningEnable);
-}
 
 void settingswidget::on_rigCreatorChk_clicked(bool checked)
 {
@@ -1952,42 +1934,6 @@ void settingswidget::on_audioInputCombo_currentIndexChanged(int index)
 /* End of UDP connection settings */
 
 
-/* Beginning of UDP Server settings */
-void settingswidget::on_serverRXAudioInputCombo_currentIndexChanged(int index)
-{
-    emit changedServerRXAudioInputCombo(index);
-}
-
-void settingswidget::on_serverTXAudioOutputCombo_currentIndexChanged(int index)
-{
-    emit changedServerTXAudioOutputCombo(index);
-}
-
-void settingswidget::on_serverEnableCheckbox_clicked(bool checked)
-{
-    serverConfig->enabled = checked;
-    emit changedServerConfig(s_enabled);
-}
-
-void settingswidget::on_serverAddUserBtn_clicked()
-{
-    if(!haveServerConfig)
-    {
-        qCritical(logGui()) << "Cannot modify users without valid serverConfig.";
-        return;
-    }
-    serverAddUserLine("", "", 0);
-    SERVERUSER user;
-    user.username = "";
-    user.password = "";
-    user.userType = 0;
-    serverConfig->users.append(user);
-
-    ui->serverAddUserBtn->setEnabled(false);
-}
-
-/* End of UDP Server settings */
-
 
 /* Beginning of radio specific settings */
 void settingswidget::on_modInputCombo_activated(int index)
@@ -2243,49 +2189,7 @@ void settingswidget::on_colorRevertPresetBtn_clicked()
 
 // ----------       Color UI slots        ----------//
 
-
-void settingswidget::on_colorSavePresetBtn_clicked()
-{
-    int pn = ui->colorPresetCombo->currentIndex();
-
-    /*
-    settings->beginGroup("ColorPresets");
-    settings->setValue("currentColorPresetNumber", prefs.currentColorPresetNumber);
-    settings->beginWriteArray("ColorPreset", numColorPresetsTotal);
-
-    colorPrefsType *p;
-    p = &(colorPreset[pn]);
-    settings->setArrayIndex(pn);
-    settings->setValue("presetNum", p->presetNum);
-    settings->setValue("presetName", *(p->presetName));
-    settings->setValue("gridColor", p->gridColor.name(QColor::HexArgb));
-    settings->setValue("axisColor", p->axisColor.name(QColor::HexArgb));
-    settings->setValue("textColor", p->textColor.name(QColor::HexArgb));
-    settings->setValue("spectrumLine", p->spectrumLine.name(QColor::HexArgb));
-    settings->setValue("spectrumFill", p->spectrumFill.name(QColor::HexArgb));
-    settings->setValue("underlayLine", p->underlayLine.name(QColor::HexArgb));
-    settings->setValue("underlayFill", p->underlayFill.name(QColor::HexArgb));
-    settings->setValue("plotBackground", p->plotBackground.name(QColor::HexArgb));
-    settings->setValue("tuningLine", p->tuningLine.name(QColor::HexArgb));
-    settings->setValue("passband", p->passband.name(QColor::HexArgb));
-    settings->setValue("pbt", p->pbt.name(QColor::HexArgb));
-    settings->setValue("wfBackground", p->wfBackground.name(QColor::HexArgb));
-    settings->setValue("wfGrid", p->wfGrid.name(QColor::HexArgb));
-    settings->setValue("wfAxis", p->wfAxis.name(QColor::HexArgb));
-    settings->setValue("wfText", p->wfText.name(QColor::HexArgb));
-    settings->setValue("meterLevel", p->meterLevel.name(QColor::HexArgb));
-    settings->setValue("meterAverage", p->meterAverage.name(QColor::HexArgb));
-    settings->setValue("meterPeakScale", p->meterPeakScale.name(QColor::HexArgb));
-    settings->setValue("meterPeakLevel", p->meterPeakLevel.name(QColor::HexArgb));
-    settings->setValue("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb));
-    settings->setValue("meterLowText", p->meterLowText.name(QColor::HexArgb));
-    settings->setValue("clusterSpots", p->clusterSpots.name(QColor::HexArgb));
-
-    settings->endArray();
-    settings->endGroup();
-    settings->sync();
-*/
-}
+// Removed save preset button.
 
 // Grid:
 void settingswidget::on_colorSetBtnGrid_clicked()
@@ -2644,4 +2548,89 @@ void settingswidget::on_colorEditClusterSpots_editingFinished()
 
 // ----------   End color UI slots        ----------//
 
+void settingswidget::on_useUTCChk_clicked(bool checked)
+{
+    prefs->useUTC=checked;
+}
+
+void settingswidget::on_setClockBtn_clicked()
+{
+    emit changedRsPref(rs_setClock);
+}
+
+
+void settingswidget::on_pttOnBtn_clicked()
+{
+    emit changedRsPref(rs_pttOn);
+}
+
+void settingswidget::on_pttOffBtn_clicked()
+{
+    emit changedRsPref(rs_pttOff);
+}
+
+
+void settingswidget::on_adjRefBtn_clicked()
+{
+    emit changedRsPref(rs_adjRef);
+}
+
+void settingswidget::on_satOpsBtn_clicked()
+{
+    emit changedRsPref(rs_satOps);
+}
+
+/* Beginning of UDP Server settings */
+void settingswidget::on_serverRXAudioInputCombo_currentIndexChanged(int index)
+{
+    emit changedServerRXAudioInputCombo(index);
+}
+
+void settingswidget::on_serverTXAudioOutputCombo_currentIndexChanged(int index)
+{
+    emit changedServerTXAudioOutputCombo(index);
+}
+
+void settingswidget::on_serverEnableCheckbox_clicked(bool checked)
+{
+    serverConfig->enabled = checked;
+    emit changedServerConfig(s_enabled);
+}
+
+void settingswidget::on_serverAddUserBtn_clicked()
+{
+    if(!haveServerConfig)
+    {
+        qCritical(logGui()) << "Cannot modify users without valid serverConfig.";
+        return;
+    }
+    serverAddUserLine("", "", 0);
+    SERVERUSER user;
+    user.username = "";
+    user.password = "";
+    user.userType = 0;
+    serverConfig->users.append(user);
+
+    ui->serverAddUserBtn->setEnabled(false);
+}
+
+void settingswidget::on_serverControlPortText_textChanged(QString text)
+{
+    serverConfig->controlPort = text.toInt();
+    emit changedServerConfig(s_controlPort);
+}
+
+void settingswidget::on_serverCivPortText_textChanged(QString text)
+{
+    serverConfig->civPort = text.toInt();
+    emit changedServerConfig(s_civPort);
+}
+
+void settingswidget::on_serverAudioPortText_textChanged(QString text)
+{
+    serverConfig->audioPort = text.toInt();
+    emit changedServerConfig(s_audioPort);
+}
+
+/* End of UDP Server settings */
 
