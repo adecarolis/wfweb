@@ -232,6 +232,8 @@ private slots:
     void on_colorSetBtnMeterPeakScale_clicked();
     void on_colorEditMeterPeakScale_editingFinished();
 
+    void serverAddUserLine(int row,const QString& user="", const QString& pass="", const int& type=0);
+
 private:
     Ui::settingswidget *ui;
     void createSettingsListItems();
@@ -265,7 +267,6 @@ private:
     QString setColorFromString(QString aarrggbb, QLedLabel *led);
 
     void populateServerUsers();
-    void serverAddUserLine(const QString& user, const QString& pass, const int& type);
 
     preferences *prefs = NULL;
     colorPrefsType *colorPreset;

@@ -662,20 +662,33 @@ void spectrumScope::showHideControls(spectrumMode_t mode)
 {
     if((mode==spectModeCenter) || (mode==spectModeScrollC))
     {
-        //edgeLabel->hide();
         edgeCombo->hide();
         edgeButton->hide();
         toFixedButton->show();
-        //spanLabel->show();
         spanCombo->show();
     } else {
-        //edgeLabel->show();
         edgeCombo->show();
         edgeButton->show();
         toFixedButton->hide();
-        //spanLabel->hide();
         spanCombo->hide();
     }
+}
+
+
+void spectrumScope::enableScope(bool en)
+{
+    this->splitter->setVisible(en);
+    // Hide these controls if disabled
+    if (!en) {
+        this->edgeCombo->setVisible(en);
+        this->edgeButton->setVisible(en);
+        this->toFixedButton->setVisible(en);
+        this->spanCombo->setVisible(en);
+    }
+    this->themeCombo->setVisible(en);
+    this->clearPeaksButton->setVisible(en);
+    this->speedCombo->setVisible(en);
+    this->holdButton->setVisible(en);
 }
 
 void spectrumScope::selectScopeMode(spectrumMode_t m)

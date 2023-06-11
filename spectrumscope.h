@@ -54,6 +54,8 @@ public:
     void setTuningFloorZeros(bool tf) {this->tuningFloorZeros = tf;}
     void setClickDragTuning(bool cg) { this->clickDragTuning = cg;}
 
+    void enableScope(bool en);
+
     void receiveCwPitch(uchar p);
     quint16 getCwPitch() { return cwPitch;}
     void receivePassband(quint16 pass);

@@ -426,14 +426,7 @@ private slots:
     void receivePortError(errorType err);
     void receiveStatusUpdate(networkStatus status);
     void receiveNetworkAudioLevels(networkAudioLevels l);
-    void handlePlotClick(QMouseEvent *);
-    void handlePlotMouseRelease(QMouseEvent *);
-    void handlePlotMouseMove(QMouseEvent *);
-    void handlePlotDoubleClick(QMouseEvent *);
-    void handleWFClick(QMouseEvent *);
-    void handleWFDoubleClick(QMouseEvent *);
-    void handleWFScroll(QWheelEvent *);
-    void handlePlotScroll(QWheelEvent *);
+
     void showStatusBarText(QString text);
     void receiveBaudRate(quint32 baudrate);
     void radioSelection(QList<radio_cap_packet> radios);
@@ -506,13 +499,10 @@ private slots:
 
     void on_memoriesBtn_clicked();
 
-    void on_settingsList_currentRowChanged(int currentRow);
     void on_setClockBtn_clicked();
 
-    void onServerUserFieldChanged();
     void changedModInput(uchar val, inputTypes type);
 
-    void on_serverAddUserBtn_clicked();
     void on_radioStatusBtn_clicked();
 
     void on_topLevelSlider_valueChanged(int value);
@@ -546,8 +536,6 @@ private:
     void loadSettings();
     void saveSettings();
     void connectSettingsWidget();
-
-    void createSettingsListItems();
 
     void initLogging();
     QTimer logCheckingTimer;
@@ -725,16 +713,6 @@ private:
     void initPeriodicCommands();
     void changePollTiming(int timing_ms, bool setUI=false);
 
-
-    void detachSettingsTab();
-    void reattachSettingsTab();
-    void prepareSettingsWindow();
-    QWidget *settingsWidgetWindow;
-    QWidget *settingsTab;
-    QGridLayout *settingsWidgetLayout;
-    QTabWidget *settingsWidgetTab;
-    bool settingsTabisAttached = true;
-
     quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
     quint64 roundFrequencyWithStep(quint64 oldFreq, int steps,\
                                    unsigned int tsHz);
@@ -838,7 +816,6 @@ private:
     availableBands lastRequestedBand=bandGen;
 
     SERVERCONFIG serverConfig;
-    void serverAddUserLine(const QString& user, const QString& pass, const int& type);
 
     funcs getInputTypeCommand(inputTypes input);
 

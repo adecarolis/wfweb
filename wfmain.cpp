@@ -166,7 +166,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     setupMainUI();
     connectSettingsWidget();
-    prepareSettingsWindow();
 
     setSerialDevicesUI();
 
@@ -357,27 +356,6 @@ void wfmain::openRig()
         emit sendCommSetup(rigList, prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort, prefs.tcpPort,prefs.waterfallFormat);
         ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
     }
-}
-
-// Migrated
-void wfmain::createSettingsListItems()
-{
-    // Add items to the settings tab list widget
-    ui->settingsList->addItem("Radio Access");     // 0
-    ui->settingsList->addItem("User Interface");   // 1
-    ui->settingsList->addItem("Radio Settings");   // 2
-    ui->settingsList->addItem("Radio Server");     // 3
-    ui->settingsList->addItem("External Control"); // 4
-    ui->settingsList->addItem("DX Cluster"); // 5
-    ui->settingsList->addItem("Experimental");     // 6
-    //ui->settingsList->addItem("Audio Processing"); // 7
-    ui->settingsStack->setCurrentIndex(0);
-}
-
-// Migrated
-void wfmain::on_settingsList_currentRowChanged(int currentRow)
-{
-    ui->settingsStack->setCurrentIndex(currentRow);
 }
 
 void wfmain::rigConnections()
@@ -1007,8 +985,6 @@ void wfmain::receiveNetworkAudioLevels(networkAudioLevels l)
 
 void wfmain::setupMainUI()
 {
-    createSettingsListItems();
-
     ui->meter2Widget->hide();
 
     // Future ideas:
@@ -1077,8 +1053,6 @@ void wfmain::setupMainUI()
 
     ui->tuneLockChk->setChecked(false);
     freqLock = false;
-
-    connect(ui->tabWidget, SIGNAL(currentChanged(int)), this, SLOT(updateSizes(int)));
 
     connect(
         ui->txPowerSlider, &QSlider::valueChanged, this,
@@ -1185,22 +1159,6 @@ void wfmain::connectSettingsWidget()
     connect(setupui, SIGNAL(changedModInput(uchar,inputTypes)), this, SLOT(changedModInput(uchar,inputTypes)));
 }
 
-void wfmain::prepareSettingsWindow()
-{
-    settingsTabisAttached = true;
-
-    settingsWidgetWindow = new QWidget;
-    settingsWidgetLayout = new QGridLayout;
-    settingsWidgetTab = new QTabWidget;
-
-    settingsWidgetWindow->setLayout(settingsWidgetLayout);
-    settingsWidgetLayout->addWidget(settingsWidgetTab);
-    settingsWidgetWindow->setWindowFlag(Qt::WindowCloseButtonHint, false);
-    //settingsWidgetWindow->setWindowFlag(Qt::WindowMinimizeButtonHint, false);
-    //settingsWidgetWindow->setWindowFlag(Qt::WindowMaximizeButtonHint, false);
-    // TODO: Capture an event when the window closes and handle accordingly.
-}
-
 // NOT Migrated, EHL TODO, carefully remove this function
 void wfmain::updateSizes(int tabIndex)
 {
@@ -1209,38 +1167,13 @@ void wfmain::updateSizes(int tabIndex)
     // This is a hack. It is not great, but it seems to work ok.
     if(!rigCaps.hasSpectrum)
     {
-        // Set "ignore" size policy for non-selected tabs:
-        for(int i=1;i<ui->tabWidget->count();i++)
-            if((i!=tabIndex))
-                ui->tabWidget->widget(i)->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored); // allows size to be any size that fits the tab bar
+        this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+        this->setMaximumSize(QSize(940,380));
+        this->setMinimumSize(QSize(940,380));
 
-        if(tabIndex==0)
-        {
-
-            ui->tabWidget->widget(0)->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-            ui->tabWidget->widget(0)->setMaximumSize(ui->tabWidget->widget(0)->minimumSizeHint());
-            ui->tabWidget->widget(0)->adjustSize(); // tab
-            this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-            this->setMaximumSize(QSize(940,380));
-            this->setMinimumSize(QSize(940,380));
-
-            resize(minimumSize());
-            adjustSize(); // main window
-        } else {
-            // At some other tab, with or without spectrum:
-            ui->tabWidget->widget(tabIndex)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
-            this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-            this->setMinimumSize(QSize(1024, 600)); // not large enough for settings tab
-            this->setMaximumSize(QSize(65535,65535));
-            resize(minimumSize());
-            adjustSize();
-        }
-    } else {
-        ui->tabWidget->widget(tabIndex)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
-        ui->tabWidget->widget(tabIndex)->setMaximumSize(65535,65535);
-        //ui->tabWidget->widget(0)->setMinimumSize();
+        resize(minimumSize());
+        adjustSize(); // main window
     }
-
 }
 
 void wfmain::getSettingsFilePath(QString settingsFile)
@@ -2075,7 +2008,6 @@ void wfmain::loadSettings()
     // migrated, remove these
     //ui->serverRXAudioInputCombo->setEnabled(!prefs.enableLAN);
     //ui->serverTXAudioOutputCombo->setEnabled(!prefs.enableLAN);
-    ui->audioSystemServerCombo->setEnabled(!prefs.enableLAN);
 
     // If LAN is not enabled, disable local audio input/output
     //ui->audioOutputCombo->setEnabled(prefs.enableLAN);
@@ -2165,13 +2097,6 @@ void wfmain::loadSettings()
         }
     }
 
-
-    ui->serverEnableCheckbox->setChecked(serverConfig.enabled);
-    ui->serverControlPortText->setText(QString::number(serverConfig.controlPort));
-    ui->serverCivPortText->setText(QString::number(serverConfig.civPort));
-    ui->serverAudioPortText->setText(QString::number(serverConfig.audioPort));
-
-
     RIGCONFIG* rigTemp = new RIGCONFIG();
     rigTemp->rxAudioSetup.isinput = true;
     rigTemp->txAudioSetup.isinput = false;
@@ -2198,35 +2123,6 @@ void wfmain::loadSettings()
     rigTemp->rxAudioSetup.name = settings->value("ServerAudioInput", "Default Input Device").toString();
     rigTemp->txAudioSetup.name = settings->value("ServerAudioOutput", "Default Output Device").toString();
     serverConfig.rigs.append(rigTemp);
-
-    int row = 0;
-    ui->serverUsersTable->setRowCount(0);
-
-    QList<SERVERUSER>::iterator user = serverConfig.users.begin();
-
-    while (user != serverConfig.users.end())
-    {
-        if (user->username != "" && user->password != "")
-        {
-            serverAddUserLine(user->username, user->password, user->userType);
-            row++;
-            user++;
-        }
-        else {
-            user = serverConfig.users.erase(user);
-        }
-    }
-
-    if (row == 0) {
-        serverAddUserLine("", "", 0);
-        SERVERUSER user;
-        user.username = "";
-        user.password = "";
-        user.userType = 0;
-        serverConfig.users.append(user);
-
-        ui->serverAddUserBtn->setEnabled(false);
-    }
 
     // At this point, the users list has exactly one empty user.
     setupui->updateServerConfig(s_users);
@@ -3067,117 +2963,6 @@ void wfmain::extChangedServerPref(prefServerItem i)
     }
 }
 
-void wfmain::serverAddUserLine(const QString& user, const QString& pass, const int& type)
-{
-    // migrated
-    ui->serverUsersTable->blockSignals(true);
-
-    ui->serverUsersTable->insertRow(ui->serverUsersTable->rowCount());
-
-    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 0, new QTableWidgetItem());
-    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 1, new QTableWidgetItem());
-    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 2, new QTableWidgetItem());
-    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 3, new QTableWidgetItem());
-
-
-
-    QLineEdit* username = new QLineEdit();
-    username->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
-    username->setProperty("col", (int)0);
-    username->setText(user);
-    connect(username, SIGNAL(editingFinished()), this, SLOT(onServerUserFieldChanged()));
-    ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 0, username);
-
-    QLineEdit* password = new QLineEdit();
-    password->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
-    password->setProperty("col", (int)1);
-    password->setEchoMode(QLineEdit::PasswordEchoOnEdit);
-    password->setText(pass);
-    connect(password, SIGNAL(editingFinished()), this, SLOT(onServerUserFieldChanged()));
-    ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 1, password);
-
-    QComboBox* comboBox = new QComboBox();
-    comboBox->insertItems(0, { "Full User","Full with no TX","Monitor only" });
-    comboBox->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
-    comboBox->setProperty("col", (int)2);
-    comboBox->setCurrentIndex(type);
-    connect(comboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onServerUserFieldChanged()));
-    ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 2, comboBox);
-
-    QPushButton* button = new QPushButton();
-    button->setText("Delete");
-    button->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
-    button->setProperty("col", (int)3);
-    connect(button, SIGNAL(clicked()), this, SLOT(onServerUserFieldChanged()));
-    ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 3, button);
-
-    ui->serverUsersTable->blockSignals(false);
-
-}
-
-void wfmain::onServerUserFieldChanged()
-{
-
-    int row = sender()->property("row").toInt();
-    int col = sender()->property("col").toInt();
-    qDebug() << "Server User field col" << col << "row" << row << "changed";
-
-    // This is a new user line so add to serverUsersTable
-    if (serverConfig.users.length() <= row)
-    {
-        qInfo() << "Something bad has happened, serverConfig.users is shorter than table!";
-    }
-    else
-    {
-        if (col == 0)
-        {
-            QLineEdit* username = (QLineEdit*)ui->serverUsersTable->cellWidget(row, 0);
-            if (username->text() != serverConfig.users[row].username) {
-                serverConfig.users[row].username = username->text();
-            }
-        }
-        else if (col == 1)
-        {
-            QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(row, 1);
-            QByteArray pass;
-            passcode(password->text(), pass);
-            if (QString(pass) != serverConfig.users[row].password) {
-                serverConfig.users[row].password = pass;
-            }
-        }
-        else if (col == 2)
-        {
-            QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(row, 2);
-            serverConfig.users[row].userType = comboBox->currentIndex();
-        }
-        else if (col == 3)
-        {          
-            serverConfig.users.removeAt(row);
-            ui->serverUsersTable->setRowCount(0);
-            foreach(SERVERUSER user, serverConfig.users)
-            {
-                serverAddUserLine(user.username, user.password, user.userType);
-            }
-        }
-        if (row == ui->serverUsersTable->rowCount() - 1) {
-            ui->serverAddUserBtn->setEnabled(true);
-        }
-
-    }
-}
-
-void wfmain::on_serverAddUserBtn_clicked()
-{
-    serverAddUserLine("", "", 0);
-    SERVERUSER user;
-    user.username = "";
-    user.password = "";
-    user.userType = 0;
-    serverConfig.users.append(user);
-
-    ui->serverAddUserBtn->setEnabled(false);
-}
-
 void wfmain::changedModInput(uchar val, inputTypes type)
 {
 
@@ -3579,7 +3364,6 @@ void wfmain::showHideSpectrum(bool show)
     //ui->spectrumGroupBox->setEnabled(show);
 
     // Window resize:
-    updateSizes(ui->tabWidget->currentIndex());
 
 }
 
@@ -3608,7 +3392,7 @@ void wfmain::shortcutF11()
 
 void wfmain::shortcutF1()
 {
-    ui->tabWidget->setCurrentIndex(0);
+
 }
 
 void wfmain::shortcutF2()
@@ -3623,7 +3407,7 @@ void wfmain::shortcutF3()
 
 void wfmain::shortcutF4()
 {
-    ui->tabWidget->setCurrentIndex(1);
+
 }
 
 // Mode switch keys:
@@ -4025,27 +3809,18 @@ void wfmain:: getInitialRigState()
     */
     if(rigCaps.hasSpectrum)
     {
-
-        /*
-        if(ui->scopeEnableWFBtn->checkState() == Qt::Unchecked)
-        {
-            queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(0)),false));
-        }
-        else if (ui->scopeEnableWFBtn->checkState() == Qt::PartiallyChecked)
-        {
-            queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(0)),false));
-            queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
-        }
-        else
-        {
-            queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
-            queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
-        }
-        */
-        // TODO work out which scope to enable and when.
         queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
         queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
     }
+
+    ui->mainScope->enableScope(this->rigCaps.commands.contains(funcScopeMainMode));
+    ui->subScope->enableScope(this->rigCaps.commands.contains(funcScopeSubMode));
+
+    ui->scopeSettingsGroup->setVisible(rigCaps.hasSpectrum);
+    ui->scopeDualBtn->setVisible(rigCaps.commands.contains(funcScopeSingleDual));
+    ui->antennaGroup->setVisible(rigCaps.commands.contains(funcAntenna));
+
+    /*
 
     if (rigCaps.commands.contains(funcFilterWidth))
         queue->add(priorityHigh,funcFilterWidth,false);
@@ -4096,6 +3871,7 @@ void wfmain:: getInitialRigState()
     if(rigCaps.commands.contains(funcTunerStatus))
         queue->add(priorityImmediate,funcTunerStatus,false);
 
+    */
 }
 
 void wfmain::showStatusBarText(QString text)
@@ -4484,7 +4260,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 //            }
 //        }
     }
-    updateSizes(ui->tabWidget->currentIndex());
+
 }
 
 void wfmain::initPeriodicCommands()
@@ -4592,379 +4368,6 @@ void wfmain::changeTxBtn()
     } else {
         ui->transmitBtn->setText("Transmit");
     }
-}
-
-
-
-
-void wfmain::handlePlotDoubleClick(QMouseEvent *me)
-{
-    /*
-    if (me->button() == Qt::LeftButton) {
-
-        double x;
-        freqt freqGo;
-        //double y;
-        //double px;
-        if (!freqLock)
-        {
-            //y = plot->yAxis->pixelToCoord(me->pos().y());
-            x = plot->xAxis->pixelToCoord(me->pos().x());
-            freqGo.Hz = x * 1E6;
-
-            freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
-            freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
-
-            queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(freqGo),false));
-
-            ui->mainScope->setFrequency(freqGo);
-            setUIFreq();
-
-            showStatusBarText(QString("Going to %1 MHz").arg(x));
-        }
-    } else if (me->button() == Qt::RightButton) {
-        QCPAbstractItem* item = plot->itemAt(me->pos(), true);
-        QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
-        if (rectItem != nullptr) {
-            double pbFreq = (pbtDefault / passbandWidth) * 127.0;
-            qint16 newFreq = pbFreq + 128;
-            queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newFreq),false));
-            queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newFreq),false));
-            queue->add(priorityHighest,funcPBTInner);
-            queue->add(priorityHighest,funcPBTOuter);
-        }
-    }
-    */
-}
-
-void wfmain::handleWFDoubleClick(QMouseEvent *me)
-{
-    /*
-    double x;
-    freqt freqGo;
-    //double y;
-    //x = wf->xAxis->pixelToCoord(me->pos().x());
-    //y = wf->yAxis->pixelToCoord(me->pos().y());
-    // cheap trick until I figure out how the axis works on the WF:
-    if(!freqLock)
-    {
-        x = plot->xAxis->pixelToCoord(me->pos().x());
-        freqGo.Hz = x*1E6;
-
-        freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
-        freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
-
-        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(freqGo),false));
-
-        ui->mainScope->setFrequency(freqGo);
-        setUIFreq();
-        showStatusBarText(QString("Going to %1 MHz").arg(x));
-    }
-*/
-}
-
-void wfmain::handlePlotClick(QMouseEvent* me)
-{
-    /*
-    QCPAbstractItem* item = plot->itemAt(me->pos(), true);
-    QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
-    QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
-#if QCUSTOMPLOT_VERSION < 0x020000
-    int leftPix = (int)passbandIndicator->left->pixelPoint().x();
-    int rightPix = (int)passbandIndicator->right->pixelPoint().x();
-    int pbtLeftPix = (int)pbtIndicator->left->pixelPoint().x();
-    int pbtRightPix = (int)pbtIndicator->right->pixelPoint().x();
-#else
-    int leftPix = (int)passbandIndicator->left->pixelPosition().x();
-    int rightPix = (int)passbandIndicator->right->pixelPosition().x();
-    int pbtLeftPix = (int)pbtIndicator->left->pixelPosition().x();
-    int pbtRightPix = (int)pbtIndicator->right->pixelPosition().x();
-#endif
-    int pbtCenterPix = pbtLeftPix + ((pbtRightPix - pbtLeftPix) / 2);
-    int cursor = me->pos().x();
-
-    if (me->button() == Qt::LeftButton) {
-        if (textItem != nullptr)
-        {
-            QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
-            if (spot != clusterSpots.end() && spot.key() == textItem->text())
-            {
-                qInfo(logGui()) << "Clicked on spot:" << textItem->text();
-                freqt freqGo;
-                freqGo.Hz = (spot.value()->frequency) * 1E6;
-                freqGo.MHzDouble = spot.value()->frequency;
-                queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(freqGo),false));
-            }
-        }
-        else if (passbandAction == passbandStatic && rectItem != nullptr)
-        {
-            if ((cursor <= leftPix && cursor > leftPix - 10) || (cursor >= rightPix && cursor < rightPix + 10))
-            {
-                passbandAction = passbandResizing;
-            }
-        }
-        else if (prefs.clickDragTuningEnable)
-        {
-            this->mousePressFreq = plot->xAxis->pixelToCoord(cursor);
-            showStatusBarText(QString("Selected %1 MHz").arg(this->mousePressFreq));
-        }
-        else {
-            double x = plot->xAxis->pixelToCoord(cursor);
-            showStatusBarText(QString("Selected %1 MHz").arg(x));
-        }
-    } 
-    else if (me->button() == Qt::RightButton) 
-    {
-        if (textItem != nullptr) {
-            QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
-            if (spot != clusterSpots.end() && spot.key() == textItem->text()) {
-                // parent and children are destroyed on close
-                QDialog* spotDialog = new QDialog();
-                QVBoxLayout* vlayout = new QVBoxLayout;
-                //spotDialog->setFixedSize(240, 100);
-                spotDialog->setBaseSize(1, 1);
-                spotDialog->setWindowTitle(spot.value()->dxcall);
-                QLabel* dxcall = new QLabel(QString("DX:%1").arg(spot.value()->dxcall));
-                QLabel* spotter = new QLabel(QString("Spotter:%1").arg(spot.value()->spottercall));
-                QLabel* frequency = new QLabel(QString("Frequency:%1 MHz").arg(spot.value()->frequency));
-                QLabel* comment = new QLabel(QString("Comment:%1").arg(spot.value()->comment));
-                QAbstractButton* bExit = new QPushButton("Close");
-                vlayout->addWidget(dxcall);
-                vlayout->addWidget(spotter);
-                vlayout->addWidget(frequency);
-                vlayout->addWidget(comment);
-                vlayout->addWidget(bExit);
-                spotDialog->setLayout(vlayout);
-                spotDialog->show();
-                spotDialog->connect(bExit, SIGNAL(clicked()), spotDialog, SLOT(close()));
-            }
-        }
-        else if (passbandAction == passbandStatic && rectItem != nullptr)
-        {
-            if (cursor <= pbtLeftPix && cursor > pbtLeftPix - 10)
-            {
-                passbandAction = pbtInnerMove;
-            }
-            else if (cursor >= pbtRightPix && cursor < pbtRightPix + 10)
-            {
-                passbandAction = pbtOuterMove;
-            }
-            else if (cursor > pbtCenterPix - 20 && cursor < pbtCenterPix + 20)
-            {
-                passbandAction = pbtMoving;
-            }
-            this->mousePressFreq = plot->xAxis->pixelToCoord(cursor);
-        }
-    }
-    */
-}
-
-void wfmain::handlePlotMouseRelease(QMouseEvent* me)
-{
-    /*
-    QCPAbstractItem* item = plot->itemAt(me->pos(), true);
-    QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
-
-    if (textItem == nullptr && prefs.clickDragTuningEnable) {
-        this->mouseReleaseFreq = plot->xAxis->pixelToCoord(me->pos().x());
-        double delta = mouseReleaseFreq - mousePressFreq;
-        qInfo(logGui()) << "Mouse release delta: " << delta;
-
-    }
-    if (passbandAction != passbandStatic) {
-        passbandAction = passbandStatic;
-    }
-*/
-}
-
-void wfmain::handlePlotMouseMove(QMouseEvent* me)
-{
-    /*
-    QCPAbstractItem* item = plot->itemAt(me->pos(), true);
-    QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
-    QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
-#if QCUSTOMPLOT_VERSION < 0x020000
-    int leftPix = (int)passbandIndicator->left->pixelPoint().x();
-    int rightPix = (int)passbandIndicator->right->pixelPoint().x();
-    int pbtLeftPix = (int)pbtIndicator->left->pixelPoint().x();
-    int pbtRightPix = (int)pbtIndicator->right->pixelPoint().x();
-#else
-    int leftPix = (int)passbandIndicator->left->pixelPosition().x();
-    int rightPix = (int)passbandIndicator->right->pixelPosition().x();
-    int pbtLeftPix = (int)pbtIndicator->left->pixelPosition().x();
-    int pbtRightPix = (int)pbtIndicator->right->pixelPosition().x();
-#endif
-    int pbtCenterPix = pbtLeftPix + ((pbtRightPix - pbtLeftPix) / 2);
-    int cursor = me->pos().x();
-    double movedFrequency = plot->xAxis->pixelToCoord(cursor) - mousePressFreq;
-    if (passbandAction == passbandStatic && rectItem != nullptr)
-    {                
-        if ((cursor <= leftPix && cursor > leftPix - 10) ||
-            (cursor >= rightPix && cursor < rightPix + 10) ||
-            (cursor <= pbtLeftPix && cursor > pbtLeftPix - 10) ||
-            (cursor >= pbtRightPix && cursor < pbtRightPix + 10))
-        {
-            setCursor(Qt::SizeHorCursor);
-        }
-        else if (cursor > pbtCenterPix - 20 && cursor < pbtCenterPix + 20) {
-            setCursor(Qt::OpenHandCursor);
-        }
-    }
-    else if (passbandAction == passbandResizing)
-    {
-        static double lastFreq = movedFrequency;
-        if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
-
-            // We are currently resizing the passband.
-            double pb = 0.0;
-            double origin = 0.0;
-            switch (currentModeInfo.mk)
-            {
-            case modeCW:
-            case modeCW_R:
-                origin = 0.0;
-                break;
-            case modeLSB:
-                origin = -passbandCenterFrequency;
-                break;
-            default:
-                origin = passbandCenterFrequency;
-                break;
-            }
-
-            if (plot->xAxis->pixelToCoord(cursor) >= ui->mainScope->getFrequency().MHzDouble + origin) {
-                pb = plot->xAxis->pixelToCoord(cursor) - passbandIndicator->topLeft->coords().x();
-            }
-            else {
-                pb = passbandIndicator->bottomRight->coords().x() - plot->xAxis->pixelToCoord(cursor);
-            }
-            queue->add(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(pb * 1000000),false));
-            queue->add(priorityHigh,funcFilterWidth);
-            lastFreq = movedFrequency;
-        }
-    }
-    else if (passbandAction == pbtMoving) {
-
-        //qint16 shift = (qint16)(level - 128);
-        //PBTInner = (double)(shift / 127.0) * (passbandWidth);
-        // Only move if more than 100Hz
-        static double lastFreq = movedFrequency;
-        if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
-
-            double innerFreq = ((double)(PBTInner + movedFrequency) / passbandWidth) * 127.0;
-            double outerFreq = ((double)(PBTOuter + movedFrequency) / passbandWidth) * 127.0;
-
-            qint16 newInFreq = innerFreq + 128;
-            qint16 newOutFreq = outerFreq + 128;
-
-            if (newInFreq >= 0 && newInFreq <= 255 && newOutFreq >= 0 && newOutFreq <= 255) {
-                qDebug() << QString("Moving passband by %1 Hz (Inner %2) (Outer %3) Mode:%4").arg((qint16)(movedFrequency * 1000000))
-                    .arg(newInFreq).arg(newOutFreq).arg(currentModeInfo.mk);
-
-                queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newInFreq),false));
-                queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newOutFreq),false));
-                queue->add(priorityHighest,funcPBTInner);
-                queue->add(priorityHighest,funcPBTOuter);
-            }
-            lastFreq = movedFrequency;
-        }
-    }
-    else if (passbandAction == pbtInnerMove) {
-        static double lastFreq = movedFrequency;
-        if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
-            double pbFreq = ((double)(PBTInner + movedFrequency) / passbandWidth) * 127.0;
-            qint16 newFreq = pbFreq + 128;
-            if (newFreq >= 0 && newFreq <= 255) {
-                queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newFreq),false));
-                queue->add(priorityHighest,funcPBTInner);
-            }
-            lastFreq = movedFrequency;
-        }
-    }
-    else if (passbandAction == pbtOuterMove) {
-        static double lastFreq = movedFrequency;
-        if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
-            double pbFreq = ((double)(PBTOuter + movedFrequency) / passbandWidth) * 127.0;
-            qint16 newFreq = pbFreq + 128;
-            if (newFreq >= 0 && newFreq <= 255) {
-                queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newFreq),false));
-                queue->add(priorityHighest,funcPBTOuter);
-            }
-            lastFreq = movedFrequency;
-        }
-    }
-    else  if (passbandAction == passbandStatic && me->buttons() == Qt::LeftButton && textItem == nullptr && prefs.clickDragTuningEnable)
-    {
-        double delta = plot->xAxis->pixelToCoord(cursor) - mousePressFreq;
-        qDebug(logGui()) << "Mouse moving delta: " << delta;
-        if( (( delta < -0.0001 ) || (delta > 0.0001)) && ((delta < 0.501) && (delta > -0.501)) )
-        {
-            freqt freqGo;
-            freqGo.VFO = activeVFO;
-            freqGo.Hz = (ui->mainScope->getFrequency().MHzDouble + delta) * 1E6;
-            freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
-            queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(freqGo),false));
-        }
-    } else {
-        setCursor(Qt::ArrowCursor);
-    }
-    */
-}
-
-void wfmain::handleWFClick(QMouseEvent *me)
-{
-    //double x = plot->xAxis->pixelToCoord(me->pos().x());
-    //showStatusBarText(QString("Selected %1 MHz").arg(x));
-}
-
-void wfmain::handleWFScroll(QWheelEvent *we)
-{
-    /*
-    // The wheel event is typically
-    // .y() and is +/- 120.
-    // We will click the dial once for every 120 received.
-    //QPoint delta = we->angleDelta();
-
-    if (freqLock)
-        return;
-
-    freqt f;
-    f.Hz = 0;
-    f.MHzDouble = 0;
-
-    int clicks = we->angleDelta().y() / 120;
-
-    if (!clicks)
-        return;
-
-    unsigned int stepsHz = tsWfScrollHz;
-
-    Qt::KeyboardModifiers key = we->modifiers();
-
-    if ((key == Qt::ShiftModifier) && (stepsHz != 1))
-    {
-        stepsHz /= 10;
-    }
-    else if (key == Qt::ControlModifier)
-    {
-        stepsHz *= 10;
-    }
-
-    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, clicks, stepsHz);
-    f.MHzDouble = f.Hz / (double)1E6;
-    ui->mainScope->setFrequency(f);
-
-    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
-
-    ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
-*/
-}
-
-void wfmain::handlePlotScroll(QWheelEvent *we)
-{
-    /*
-    handleWFScroll(we);
-*/
 }
 
 void wfmain::receiveMode(modeInfo mode, bool sub)
@@ -5133,7 +4536,7 @@ void wfmain::handleBandStackReg(freqt freqGo, char mode, char filter, bool dataO
     ui->mainScope->setFrequency(freqGo);
     //setUIFreq();
 
-    ui->tabWidget->setCurrentIndex(0);
+
 
     foreach (auto md, rigCaps.modes)
     {
@@ -6863,7 +6266,7 @@ void wfmain::receiveValue(cacheItem val){
 
         ui->mainScope->setFrequency(bsr.freq);
 
-        ui->tabWidget->setCurrentIndex(0);
+
 
         foreach (auto md, rigCaps.modes)
         {

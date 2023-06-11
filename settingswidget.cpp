@@ -10,6 +10,7 @@ settingswidget::settingswidget(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    connect(ui->serverUsersTable,SIGNAL(rowAdded(int)),this, SLOT(serverAddUserLine(int)));
     createSettingsListItems();
     populateComboBoxes();
 
@@ -870,8 +871,10 @@ void settingswidget::updateServerConfig(prefServerItem si)
         quietlyUpdateLineEdit(ui->serverAudioPortText, QString::number(serverConfig->audioPort));
         break;
     case s_audioOutput:
+        ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name));
         break;
     case s_audioInput:
+        ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig->rigs.first()->rxAudioSetup.name));
         break;
     case s_resampleQuality:
         // Not used here
@@ -1107,7 +1110,8 @@ void settingswidget::populateServerUsers()
     QList<SERVERUSER>::iterator user = serverConfig->users.begin();
     while (user != serverConfig->users.end())
     {
-        serverAddUserLine(user->username, user->password, user->userType);
+        ui->serverUsersTable->insertRow(ui->serverUsersTable->rowCount());
+        serverAddUserLine(ui->serverUsersTable->rowCount()-1, user->username, user->password, user->userType);
         if((user->username == "") && !blank)
             blank = true;
         row++;
@@ -1115,13 +1119,11 @@ void settingswidget::populateServerUsers()
     }
 }
 
-void settingswidget::serverAddUserLine(const QString &user, const QString &pass, const int &type)
+void settingswidget::serverAddUserLine(int row, const QString &user, const QString &pass, const int &type)
 {
     // migration TODO: Review these signals/slots
 
     ui->serverUsersTable->blockSignals(true);
-
-    ui->serverUsersTable->insertRow(ui->serverUsersTable->rowCount());
 
     ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 0, new QTableWidgetItem());
     ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 1, new QTableWidgetItem());
@@ -2565,15 +2567,6 @@ void settingswidget::onServerUserFieldChanged()
         {
             QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(row, 2);
             serverConfig->users[row].userType = comboBox->currentIndex();
-        }
-        else if (col == 3)
-        {
-            serverConfig->users.removeAt(row);
-            ui->serverUsersTable->setRowCount(0);
-            foreach(SERVERUSER user, serverConfig->users)
-            {
-                serverAddUserLine(user.username, user.password, user.userType);
-            }
         }
     }
 }
