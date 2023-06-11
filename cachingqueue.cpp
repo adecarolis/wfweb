@@ -78,7 +78,7 @@ void cachingQueue::run()
                 emit haveCommand(item.command,item.param,item.sub);
                 if (item.recurring) {
                     queue.insert(queue.cend(),prio,item);
-                    updateCache(false,item.command);
+                    updateCache(false,item.command,item.param,item.sub);
                 }
                 it=queue.erase(it);
             }
@@ -128,7 +128,7 @@ void cachingQueue::add(queuePriority prio ,queueItem item)
                 }
                 queue.insert(queue.cend(),prio, item);
                 // Update cache with sent data (will be replaced if found to be invalid.)
-                updateCache(false,item.command,item.param);
+                updateCache(false,item.command,item.param,item.sub);
             }
         }
     }
@@ -171,7 +171,7 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
                 qInfo() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "sub" << item.sub;
             }
             queue.insert(queue.cend(),prio, item);
-            updateCache(false,item.command,item.param);
+            updateCache(false,item.command,item.param,item.sub);
         }
     }
 }

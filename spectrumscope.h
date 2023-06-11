@@ -30,6 +30,7 @@ public:
     explicit spectrumScope(QWidget *parent = nullptr);
 
     bool prepareWf(uint wfLength);
+    void prepareScope(uint ampMap, uint spectWidth);
     bool update(scopeData spectrum);
     void preparePlasma();
     void setRange(int floor, int ceiling);
@@ -82,13 +83,16 @@ public:
     void addFilter(QString text, QVariant data) {filterCombo->blockSignals(true); filterCombo->addItem(text,data); filterCombo->blockSignals(false);}
 
     void selected(bool);
+    void setHold(bool h);
+    void setSpeed(uchar s);
 
 public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);
     void selectSpan(centerSpanData s);
+    void receiveSpots(QList<spotData> spots);
 
 signals:    
-    void frequencyRange(double start, double end);
+    void frequencyRange(bool sub, double start, double end);
     void updateScopeMode(spectrumMode_t index);
     void updateSpan(centerSpanData s);
     void showStatusBarText(QString text);

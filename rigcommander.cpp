@@ -2296,8 +2296,7 @@ void rigCommander::parseCommand()
         break;
     case funcScopeSubHold:
     case funcScopeMainHold:
-        // Hold status (only 9700?)
-        value.setValue(static_cast<bool>(payloadIn[2]));
+        value.setValue(static_cast<bool>(payloadIn[3]));
         break;
     case funcScopeSubRef:
     case funcScopeMainRef:
@@ -2319,6 +2318,7 @@ void rigCommander::parseCommand()
     }
     case funcScopeSubSpeed:
     case funcScopeMainSpeed:
+        value.setValue(static_cast<uchar>(payloadIn[3]));
         break;
     case funcScopeSubVBW:
     case funcScopeMainVBW:

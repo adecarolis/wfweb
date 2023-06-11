@@ -325,8 +325,6 @@ private slots:
     void extChangedUdpPref(prefUDPItem i);
     void extChangedServerPref(prefServerItem i);
 
-    void enableUsbControllers(bool enabled);
-
     void receiveValue(cacheItem val);
     void setAudioDevicesUI();
     void updateSizes(int tabIndex);
@@ -456,10 +454,6 @@ private slots:
 
     void changeFullScreenMode(bool checked);
 
-    void on_usbControllerBtn_clicked();
-
-    void on_usbControllersResetBtn_clicked();
-
     void on_modeSelectCombo_activated(int index);
     void on_freqDial_valueChanged(int value);
     void on_aboutBtn_clicked();
@@ -526,20 +520,7 @@ private slots:
 
     void on_showLogBtn_clicked();
 
-    void on_clusterUdpEnable_clicked(bool enable);
-    void on_clusterTcpEnable_clicked(bool enable);
-    void on_clusterUdpPortLineEdit_editingFinished();
-    void on_clusterServerNameCombo_currentTextChanged(QString text);
-    void on_clusterServerNameCombo_currentIndexChanged(int index);
-    void on_clusterTcpPortLineEdit_editingFinished();
-    void on_clusterUsernameLineEdit_editingFinished();
-    void on_clusterPasswordLineEdit_editingFinished();
-    void on_clusterTimeoutLineEdit_editingFinished();
-    void on_clusterPopOutBtn_clicked();
-    void on_clusterSkimmerSpotsEnable_clicked(bool enable);
-
     void receiveClusterOutput(QString text);
-    void receiveSpots(QList<spotData> spots);
 
     void on_cwButton_clicked();
 
@@ -552,7 +533,8 @@ private slots:
     void on_rigCreatorBtn_clicked();
 
     void on_scopeMainSubBtn_clicked();
-    void on_scopeDualBtn_clicked();
+    void on_scopeDualBtn_toggled(bool en);
+    void on_dualWatchBtn_toggled(bool en);
 
 private:
     Ui::wfmain *ui;
@@ -676,10 +658,6 @@ private:
     QLabel* rigName;
     QLedLabel* pttLed;
     QLedLabel* connectedLed;
-
-    quint16 spectWidth;
-    quint16 wfLength;
-    bool spectrumDrawLock;
 
     double plotFloor = 0;
     double plotCeiling = 160;
@@ -856,7 +834,6 @@ private:
     quint16 cwPitch = 600;
 
     bool subScope = false;
-    bool dualScope = false;
 
     availableBands lastRequestedBand=bandGen;
 
@@ -887,7 +864,6 @@ private:
     QMap<QString, spotData*> clusterSpots;
     QTimer clusterTimer;
     QCPItemText* text=Q_NULLPTR;
-    QList<clusterSettings> clusters;
     QMutex clusterMutex;
     QColor clusterColor;
     audioDevices* audioDev = Q_NULLPTR;

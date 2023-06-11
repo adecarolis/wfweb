@@ -42,7 +42,6 @@ public slots:
     void acceptServerConfig(SERVERCONFIG *serverConfig);
     void acceptColorPresetPtr(colorPrefsType *cp);
 
-    void copyClusterList(QList<clusterSettings> c);
     void insertClusterOutputText(QString text);
 
     void updateIfPrefs(quint64 items);
@@ -135,9 +134,10 @@ private slots:
     void on_rigctldPortTxt_editingFinished();
     void on_tcpServerPortTxt_editingFinished();
     void on_clusterServerNameCombo_currentIndexChanged(int index);
-    void on_clusterUdpEnable_clicked(bool checked);
-    void on_clusterTcpEnable_clicked(bool checked);
     void on_clusterTcpAddBtn_clicked();
+    void on_clusterTcpDelBtn_clicked();
+    void on_clusterUdpGroup_clicked(bool checked);
+    void on_clusterTcpGroup_clicked(bool checked);
     void on_clusterServerNameCombo_currentTextChanged(const QString &arg1);
     void on_clusterTcpPortLineEdit_editingFinished();
     void on_clusterUsernameLineEdit_editingFinished();
@@ -145,6 +145,9 @@ private slots:
     void on_clusterTimeoutLineEdit_editingFinished();
     void on_clusterUdpPortLineEdit_editingFinished();
     void on_clusterSkimmerSpotsEnable_clicked(bool checked);
+    void on_clusterTcpConnectBtn_clicked();
+    void on_clusterTcpDisconnectBtn_clicked();
+
     void on_debugBtn_clicked();
     void on_ipAddressTxt_textChanged(const QString &arg1);
     void on_usernameTxt_textChanged(const QString &arg1);
@@ -244,6 +247,7 @@ private:
     void quietlyUpdateCombobox(QComboBox *cb, QString val);
     void quietlyUpdateSpinbox(QSpinBox *sb, int val);
     void quietlyUpdateCheckbox(QCheckBox *cb, bool isChecked);
+    void quietlyUpdateCheckbox(QGroupBox *gb, bool isChecked);
     void quietlyUpdateRadiobutton(QRadioButton *rb, bool isChecked);
     void quietlyUpdateLineEdit(QLineEdit *le, const QString text);
 
@@ -278,8 +282,6 @@ private:
     bool haveServerAudioOutputs = false;
     bool haveClusterList = false;
     bool updatingUIFromPrefs = false;
-
-    QList<clusterSettings> clusters;
 
     audioDevices* audioDev = Q_NULLPTR;
 

@@ -210,10 +210,12 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     connect(this, SIGNAL(setClusterUserName(QString)), cluster, SLOT(setTcpUserName(QString)));
     connect(this, SIGNAL(setClusterPassword(QString)), cluster, SLOT(setTcpPassword(QString)));
     connect(this, SIGNAL(setClusterTimeout(int)), cluster, SLOT(setTcpTimeout(int)));
-    connect(this, SIGNAL(setFrequencyRange(double, double)), cluster, SLOT(freqRange(double, double)));
     connect(this, SIGNAL(setClusterSkimmerSpots(bool)), cluster, SLOT(enableSkimmerSpots(bool)));
 
-    connect(cluster, SIGNAL(sendSpots(QList<spotData>)), this, SLOT(receiveSpots(QList<spotData>)));
+    connect(ui->mainScope, SIGNAL(frequencyRange(bool, double, double)), cluster, SLOT(freqRange(bool, double, double)));
+    connect(ui->subScope, SIGNAL(frequencyRange(bool, double, double)), cluster, SLOT(freqRange(bool, double, double)));
+    connect(cluster, SIGNAL(sendMainSpots(QList<spotData>)), ui->mainScope, SLOT(receiveSpots(QList<spotData>)));
+    connect(cluster, SIGNAL(sendSubSpots(QList<spotData>)), ui->subScope, SLOT(receiveSpots(QList<spotData>)));
     connect(cluster, SIGNAL(sendOutput(QString)), this, SLOT(receiveClusterOutput(QString)));
 
     connect(clusterThread, SIGNAL(finished()), cluster, SLOT(deleteLater()));
@@ -223,15 +225,16 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     emit setClusterUdpPort(prefs.clusterUdpPort);
     emit setClusterEnableUdp(prefs.clusterUdpEnable);
 
-    for (int f = 0; f < clusters.size(); f++)
+    for (int f = 0; f < prefs.clusters.size(); f++)
     {
-        if (clusters[f].isdefault)
+        if (prefs.clusters[f].isdefault)
         {
-            emit setClusterServerName(clusters[f].server);
-            emit setClusterTcpPort(clusters[f].port);
-            emit setClusterUserName(clusters[f].userName);
-            emit setClusterPassword(clusters[f].password);
-            emit setClusterTimeout(clusters[f].timeout);
+            emit setClusterServerName(prefs.clusters[f].server);
+            emit setClusterTcpPort(prefs.clusters[f].port);
+            emit setClusterUserName(prefs.clusters[f].userName);
+            emit setClusterPassword(prefs.clusters[f].password);
+            emit setClusterTimeout(prefs.clusters[f].timeout);
+            emit setClusterSkimmerSpots(prefs.clusterSkimmerSpotsEnable);
         }
     }
     emit setClusterEnableTcp(prefs.clusterTcpEnable);
@@ -1174,8 +1177,6 @@ void wfmain::connectSettingsWidget()
     connect(setupui, SIGNAL(changedServerPref(prefServerItem)), this, SLOT(extChangedServerPref(prefServerItem)));
     connect(setupui, SIGNAL(changedServerPrefs(quint64)), this, SLOT(extChangedServerPrefs(quint64)));
 
-    connect(this, SIGNAL(haveClusterList(QList<clusterSettings>)), setupui, SLOT(copyClusterList(QList<clusterSettings>)));
-
     connect(setupui, SIGNAL(changedAudioInputCombo(int)), this, SLOT(changedAudioInput(int)));
     connect(setupui, SIGNAL(changedAudioOutputCombo(int)), this, SLOT(changedAudioOutput(int)));
     connect(setupui, SIGNAL(changedServerRXAudioInputCombo(int)), this, SLOT(changedServerRXAudioInput(int)));
@@ -2088,12 +2089,8 @@ void wfmain::loadSettings()
     enableRigCtl(prefs.enableRigCtlD);
 
     prefs.tcpPort = settings->value("TcpServerPort", defPrefs.tcpPort).toInt();
-    ui->tcpServerPortTxt->setText(QString("%1").arg(prefs.tcpPort));
 
     prefs.waterfallFormat = settings->value("WaterfallFormat", defPrefs.waterfallFormat).toInt();
-    ui->waterfallFormatCombo->blockSignals(true);
-    ui->waterfallFormatCombo->setCurrentIndex(prefs.waterfallFormat);
-    ui->waterfallFormatCombo->blockSignals(false);
 
     udpPrefs.ipAddress = settings->value("IPAddress", udpDefPrefs.ipAddress).toString();
     udpPrefs.controlLANPort = settings->value("ControlLANPort", udpDefPrefs.controlLANPort).toInt();
@@ -2276,12 +2273,9 @@ void wfmain::loadSettings()
     prefs.clusterUdpEnable = settings->value("UdpEnabled", false).toBool();
     prefs.clusterTcpEnable = settings->value("TcpEnabled", false).toBool();
     prefs.clusterUdpPort = settings->value("UdpPort", 12060).toInt();
-    ui->clusterUdpPortLineEdit->setText(QString::number(prefs.clusterUdpPort));
-    ui->clusterUdpEnable->setChecked(prefs.clusterUdpEnable);
-    ui->clusterTcpEnable->setChecked(prefs.clusterTcpEnable);
 
     int numClusters = settings->beginReadArray("Servers");
-    clusters.clear();
+    prefs.clusters.clear();
     if (numClusters > 0) {
         {
             for (int f = 0; f < numClusters; f++)
@@ -2295,47 +2289,13 @@ void wfmain::loadSettings()
                 c.timeout = settings->value("Timeout", 0).toInt();
                 c.isdefault = settings->value("Default", false).toBool();
                 if (!c.server.isEmpty()) {
-                    clusters.append(c);
+                    prefs.clusters.append(c);
                 }
-            }
-            int defaultCluster = 0;
-            ui->clusterServerNameCombo->blockSignals(true);
-            for (int f = 0; f < clusters.size(); f++)
-            {
-                ui->clusterServerNameCombo->addItem(clusters[f].server);
-                if (clusters[f].isdefault) {
-                    defaultCluster = f;
-                }
-            }
-            ui->clusterServerNameCombo->blockSignals(false);
-
-            if (clusters.size() > defaultCluster)
-            {
-                ui->clusterServerNameCombo->setCurrentIndex(defaultCluster);
-                ui->clusterTcpPortLineEdit->blockSignals(true);
-                ui->clusterUsernameLineEdit->blockSignals(true);
-                ui->clusterPasswordLineEdit->blockSignals(true);
-                ui->clusterTimeoutLineEdit->blockSignals(true);
-                ui->clusterTcpPortLineEdit->setText(QString::number(clusters[defaultCluster].port));
-                ui->clusterUsernameLineEdit->setText(clusters[defaultCluster].userName);
-                ui->clusterPasswordLineEdit->setText(clusters[defaultCluster].password);
-                ui->clusterTimeoutLineEdit->setText(QString::number(clusters[defaultCluster].timeout));
-                ui->clusterTcpPortLineEdit->blockSignals(false);
-                ui->clusterUsernameLineEdit->blockSignals(false);
-                ui->clusterPasswordLineEdit->blockSignals(false);
-                ui->clusterTimeoutLineEdit->blockSignals(false);
             }
         }
     }
-    else {
-        ui->clusterTcpPortLineEdit->setEnabled(false);
-        ui->clusterUsernameLineEdit->setEnabled(false);
-        ui->clusterPasswordLineEdit->setEnabled(false);
-        ui->clusterTimeoutLineEdit->setEnabled(false);
-    }
     settings->endArray();
     settings->endGroup();
-    //emit haveClusterList(clusters);
 
     // CW Memory Load:
     settings->beginGroup("Keyer");
@@ -3002,8 +2962,20 @@ void wfmain::extChangedClusterPref(prefClusterItem i)
         emit setClusterTimeout(prefs.clusterTimeout);
         break;
     case cl_clusterSkimmerSpotsEnable:
-        // Used?
         emit setClusterSkimmerSpots(prefs.clusterSkimmerSpotsEnable);
+        break;
+    case cl_clusterTcpConnect:
+        emit setClusterEnableTcp(false);
+        emit setClusterServerName(prefs.clusterTcpServerName);
+        emit setClusterUserName(prefs.clusterTcpUserName);
+        emit setClusterPassword(prefs.clusterTcpPassword);
+        emit setClusterTcpPort(prefs.clusterTcpPort);
+        emit setClusterTimeout(prefs.clusterTimeout);
+        emit setClusterSkimmerSpots(prefs.clusterSkimmerSpotsEnable);
+        emit setClusterEnableTcp(true);
+        break;
+    case cl_clusterTcpDisconnect:
+        emit setClusterEnableTcp(false);
         break;
     default:
         qWarning(logSystem()) << "Did not find matching preference element in wfmain for cluster preference " << (int)i;
@@ -3439,15 +3411,22 @@ void wfmain::saveSettings()
 
     settings->beginWriteArray("Servers");
 
-    for (int f = 0; f < clusters.count(); f++)
+    for (int f = 0; f < prefs.clusters.count(); f++)
     {
         settings->setArrayIndex(f);
-        settings->setValue("ServerName", clusters[f].server);
-        settings->setValue("UserName", clusters[f].userName);
-        settings->setValue("Port", clusters[f].port);
-        settings->setValue("Password", clusters[f].password);
-        settings->setValue("Timeout", clusters[f].timeout);
-        settings->setValue("Default", clusters[f].isdefault);
+        settings->setValue("ServerName", prefs.clusters[f].server);
+        settings->setValue("UserName", prefs.clusters[f].userName);
+        settings->setValue("Port", prefs.clusters[f].port);
+        settings->setValue("Password", prefs.clusters[f].password);
+        settings->setValue("Timeout", prefs.clusters[f].timeout);
+        settings->setValue("Default", prefs.clusters[f].isdefault);
+        if (prefs.clusters[f].isdefault  == true) {
+            prefs.clusterTcpServerName = prefs.clusters[f].server;
+            prefs.clusterTcpUserName = prefs.clusters[f].userName;
+            prefs.clusterTcpPassword = prefs.clusters[f].password;
+            prefs.clusterTcpPort = prefs.clusters[f].port;
+            prefs.clusterTimeout = prefs.clusters[f].timeout;
+        }
     }
 
     settings->endArray();
@@ -4301,11 +4280,11 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             serverConfig.rigs.first()->baudRate = rigCaps.baudRate;
         }
         setWindowTitle(rigCaps.modelName);
-        this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
-        //wfCeiling = rigCaps.spectAmpMax;
-        //plotCeiling = rigCaps.spectAmpMax;
+
         if(rigCaps.hasSpectrum)
         {
+            ui->mainScope->prepareScope(rigCaps.spectAmpMax, rigCaps.spectLenMax);
+            ui->subScope->prepareScope(rigCaps.spectAmpMax, rigCaps.spectLenMax);
             ui->topLevelSlider->setVisible(true);
             ui->labelTop->setVisible(true);
             ui->botLevelSlider->setVisible(true);
@@ -4328,6 +4307,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->labelBot->setVisible(false);
         }
         haveRigCaps = true;
+
 
         if (rigCaps.bands.size() > 0) {
             lastRequestedBand = rigCaps.bands[0].band;
@@ -4512,6 +4492,8 @@ void wfmain::initPeriodicCommands()
     // This function places periodic polling commands into the queue.
     // Can be run multiple times as it will remove all existing entries.
 
+    qInfo(logSystem()) << "Start periodic commands (and delete unsupported)";
+
     queue->clear();
 
     queue->add(priorityMedium,funcSelectedFreq,true,false);
@@ -4524,11 +4506,15 @@ void wfmain::initPeriodicCommands()
     {
         queue->add(priorityHigh,funcOverflowStatus,true,false);
         queue->add(priorityMediumHigh,funcScopeMainMode,true,false);
-        queue->add(priorityMediumHigh,funcScopeSubMode,true,false);
+        queue->add(priorityMediumHigh,funcScopeSubMode,true,true);
         queue->add(priorityMediumHigh,funcScopeMainSpan,true,false);
-        queue->add(priorityMediumHigh,funcScopeSubSpan,true,false);
-        queue->add(priorityMediumHigh,queueItem(funcScopeSingleDual,true,false));
-        queue->add(priorityMediumHigh,queueItem(funcScopeMainSub,true,false));
+        queue->add(priorityMediumHigh,funcScopeSubSpan,true,true);
+        queue->add(priorityMediumHigh,funcScopeSingleDual,true,false);
+        queue->add(priorityMediumHigh,funcScopeMainSub,true,false);
+        queue->add(priorityMedium,funcScopeMainSpeed,true,false);
+        queue->add(priorityMedium,funcScopeSubSpeed,true,true);
+        queue->add(priorityMedium,funcScopeMainHold,true,false);
+        queue->add(priorityMedium,funcScopeSubHold,true,true);
     }
 
     if(rigCaps.hasTransmit) {
@@ -6484,327 +6470,10 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
 }
 
 void wfmain::receiveClusterOutput(QString text) {
-    ui->clusterOutputTextEdit->moveCursor(QTextCursor::End);
-    ui->clusterOutputTextEdit->insertPlainText(text);
-    ui->clusterOutputTextEdit->moveCursor(QTextCursor::End);
     setupui->insertClusterOutputText(text);
 }
 
-void wfmain::on_clusterUdpEnable_clicked(bool enable)
-{
-    prefs.clusterUdpEnable = enable;
-    emit setClusterEnableUdp(enable);
-}
 
-void wfmain::on_clusterTcpEnable_clicked(bool enable)
-{
-    prefs.clusterTcpEnable = enable;
-    emit setClusterEnableTcp(enable);
-}
-
-void wfmain::on_clusterUdpPortLineEdit_editingFinished()
-{
-    prefs.clusterUdpPort = ui->clusterUdpPortLineEdit->text().toInt();
-    emit setClusterUdpPort(prefs.clusterUdpPort);
-}
-
-void wfmain::on_clusterServerNameCombo_currentIndexChanged(int index) 
-{
-    if (index < 0)
-        return;
-
-    QString text = ui->clusterServerNameCombo->currentText();
-
-    if (clusters.size() <= index)
-    {
-        qInfo(logGui) << "Adding Cluster server" << text;
-        clusterSettings c;
-        c.server = text;
-        clusters.append(c);
-        ui->clusterTcpPortLineEdit->setEnabled(true);
-        ui->clusterUsernameLineEdit->setEnabled(true);
-        ui->clusterPasswordLineEdit->setEnabled(true);
-        ui->clusterTimeoutLineEdit->setEnabled(true);
-
-    }
-    else {
-        qInfo(logGui) << "Editing Cluster server" << text;
-        clusters[index].server = text;
-    }
-    ui->clusterUsernameLineEdit->blockSignals(true);
-    ui->clusterPasswordLineEdit->blockSignals(true);
-    ui->clusterTimeoutLineEdit->blockSignals(true);
-    ui->clusterTcpPortLineEdit->setText(QString::number(clusters[index].port));
-    ui->clusterUsernameLineEdit->setText(clusters[index].userName);
-    ui->clusterPasswordLineEdit->setText(clusters[index].password);
-    ui->clusterTimeoutLineEdit->setText(QString::number(clusters[index].timeout));
-    ui->clusterUsernameLineEdit->blockSignals(false);
-    ui->clusterPasswordLineEdit->blockSignals(false);
-    ui->clusterTimeoutLineEdit->blockSignals(false);
-
-
-    for (int i = 0; i < clusters.size(); i++) {
-        if (i == index)
-            clusters[i].isdefault = true;
-        else
-            clusters[i].isdefault = false;
-    }
-
-    emit setClusterServerName(clusters[index].server);
-    emit setClusterTcpPort(clusters[index].port);
-    emit setClusterUserName(clusters[index].userName);
-    emit setClusterPassword(clusters[index].password);
-    emit setClusterTimeout(clusters[index].timeout);
-
-}
-
-void wfmain::on_clusterServerNameCombo_currentTextChanged(QString text)
-{
-    if (text.isEmpty()) {
-        int index = ui->clusterServerNameCombo->currentIndex();
-        ui->clusterServerNameCombo->removeItem(index);
-        clusters.removeAt(index);
-        if (clusters.size() == 0)
-        {
-            ui->clusterTcpPortLineEdit->setEnabled(false);
-            ui->clusterUsernameLineEdit->setEnabled(false);
-            ui->clusterPasswordLineEdit->setEnabled(false);
-            ui->clusterTimeoutLineEdit->setEnabled(false);
-        }
-    }
-}
-
-void wfmain::on_clusterTcpPortLineEdit_editingFinished()
-{
-    int index = ui->clusterServerNameCombo->currentIndex();
-    if (index < clusters.size())
-    {
-        clusters[index].port = ui->clusterTcpPortLineEdit->displayText().toInt();
-        emit setClusterTcpPort(clusters[index].port);
-    }
-}
-
-void wfmain::on_clusterUsernameLineEdit_editingFinished()
-{
-    int index = ui->clusterServerNameCombo->currentIndex();
-    if (index < clusters.size())
-    {
-        clusters[index].userName = ui->clusterUsernameLineEdit->text();
-        emit setClusterUserName(clusters[index].userName);
-    }
-}
-
-void wfmain::on_clusterPasswordLineEdit_editingFinished()
-{
-    int index = ui->clusterServerNameCombo->currentIndex();
-    if (index < clusters.size())
-    {
-        clusters[index].password = ui->clusterPasswordLineEdit->text();
-        emit setClusterPassword(clusters[index].password);
-    }
-}
-
-void wfmain::on_clusterTimeoutLineEdit_editingFinished()
-{
-    int index = ui->clusterServerNameCombo->currentIndex();
-    if (index < clusters.size())
-    {
-        clusters[index].timeout = ui->clusterTimeoutLineEdit->displayText().toInt();
-        emit setClusterTimeout(clusters[index].timeout);
-    }
-}
-
-
-void wfmain::receiveSpots(QList<spotData> spots)
-{
-    //QElapsedTimer timer;
-    //timer.start();
-/*
-    bool current = false;
-    
-    if (clusterSpots.size() > 0) {
-        current=clusterSpots.begin().value()->current;
-    }
-
-    foreach(spotData s, spots)
-    {
-        bool found = false;
-        QMap<QString, spotData*>::iterator spot = clusterSpots.find(s.dxcall);
-
-        while (spot != clusterSpots.end() && spot.key() == s.dxcall && spot.value()->frequency == s.frequency) {
-            spot.value()->current = !current;
-            found = true;
-            ++spot;
-        }
-
-        if (!found)
-        {
-
-            spotData* sp = new spotData(s);
-
-            //qDebug(logCluster()) << "ADD:" << sp->dxcall;
-            sp->current = !current;
-            bool conflict = true;
-            double left = sp->frequency;
-            QCPRange range=plot->yAxis->range();
-            double top = range.upper-15.0;
-            sp->text = new QCPItemText(plot);
-            sp->text->setAntialiased(true);
-            sp->text->setColor(clusterColor);
-            sp->text->setText(sp->dxcall);
-            sp->text->setFont(QFont(font().family(), 10));
-            sp->text->setPositionAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
-            sp->text->position->setType(QCPItemPosition::ptPlotCoords);
-            sp->text->setSelectable(true);
-            QMargins margin;
-            int width = (sp->text->right - sp->text->left) / 2;
-            margin.setLeft(width);
-            margin.setRight(width);
-            sp->text->setPadding(margin);
-            sp->text->position->setCoords(left, top);
-            sp->text->setVisible(false);
-            while (conflict) {
-#if QCUSTOMPLOT_VERSION < 0x020000
-                QCPAbstractItem* item = plot->itemAt(sp->text->position->pixelPoint(), true);
-#else
-                QCPAbstractItem* item = plot->itemAt(sp->text->position->pixelPosition(), true);
-#endif
-
-                QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
-                if (textItem != nullptr && sp->text != textItem) {
-                    top = top - 5.0;
-                }
-                else {
-                    conflict = false;
-                }
-                sp->text->position->setCoords(left, top);
-            }
-
-            sp->text->setVisible(true);
-            clusterSpots.insert(sp->dxcall, sp);
-        }
-    }
-
-    QMap<QString, spotData*>::iterator spot2 = clusterSpots.begin();
-    while (spot2 != clusterSpots.end()) {
-        if (spot2.value()->current == current) {
-            plot->removeItem(spot2.value()->text);
-            //qDebug(logCluster()) << "REMOVE:" << spot2.value()->dxcall;
-            delete spot2.value(); // Stop memory leak?
-            spot2 = clusterSpots.erase(spot2);
-        }
-        else {
-            ++spot2;
-        }
-
-    }
-
-    //qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
-*/
-}
-
-void wfmain::on_clusterPopOutBtn_clicked()
-{
-    // can be removed now
-    if (settingsTabisAttached)
-    {
-        settingsTab = ui->tabWidget->currentWidget();
-        ui->tabWidget->removeTab(ui->tabWidget->indexOf(settingsTab));
-        settingsWidgetTab->addTab(settingsTab, "Settings");
-        settingsWidgetWindow->show();
-
-        ui->tabWidget->setCurrentIndex(0);
-        settingsTabisAttached = false;
-    }
-    else {
-        settingsTab = settingsWidgetTab->currentWidget();
-
-        settingsWidgetTab->removeTab(settingsWidgetTab->indexOf(settingsTab));
-        ui->tabWidget->addTab(settingsTab, "Settings");
-        settingsWidgetWindow->close();
-
-        ui->tabWidget->setCurrentIndex(3);
-        settingsTabisAttached = true;
-    }
-}
-
-void wfmain::on_clusterSkimmerSpotsEnable_clicked(bool enable)
-{
-    // migrated
-    prefs.clusterSkimmerSpotsEnable = enable;
-    emit setClusterSkimmerSpots(enable);
-}
-
-void wfmain::enableUsbControllers(bool checked)
-{
-
-}
-
-void wfmain::on_usbControllerBtn_clicked()
-{
-    if (usbWindow != Q_NULLPTR) {
-        if (usbWindow->isVisible()) {
-            usbWindow->hide();
-        }
-        else {
-            qInfo(logUsbControl()) << "Showing USB Controller window";
-            usbWindow->show();
-            usbWindow->raise();
-        }
-    }
-}
-
-
-void wfmain::on_usbControllersResetBtn_clicked()
-{
-    // TODO
-    int ret = QMessageBox::warning(this, tr("wfview"),
-        tr("Are you sure you wish to reset the USB controllers?"),
-        QMessageBox::Ok | QMessageBox::Cancel,
-        QMessageBox::Cancel);
-    if (ret == QMessageBox::Ok) {
-        qInfo(logUsbControl()) << "Resetting USB controllers to default values";
-        //bool enabled = ui->enableUsbChk->isChecked();
-        //if (enabled) on_enableUsbChk_clicked(false); // Force disconnect of USB controllers
-
-        usbButtons.clear();
-        usbKnobs.clear();
-        usbDevices.clear();
-
-        //if (enabled) on_enableUsbChk_clicked(true); // Force connect of USB controllers
-    }
-}
-
-/*
-void wfmain::on_autoPollBtn_clicked(bool checked)
-{
-    ui->pollTimeMsSpin->setEnabled(!checked);
-    if(checked)
-    {
-        prefs.polling_ms = 0;
-        qInfo(logSystem()) << "User set radio polling interval to automatic.";
-        calculateTimingParameters();
-    }
-}
-
-void wfmain::on_manualPollBtn_clicked(bool checked)
-{
-    ui->pollTimeMsSpin->setEnabled(checked);
-    if(checked)
-    {
-        prefs.polling_ms = ui->pollTimeMsSpin->value();
-        changePollTiming(prefs.polling_ms);
-    }
-}
-
-void wfmain::on_pollTimeMsSpin_valueChanged(int timing_ms)
-{
-    if(ui->manualPollBtn->isChecked())
-    {
-        changePollTiming(timing_ms);
-    }
-}
-*/
 
 void wfmain::changePollTiming(int timing_ms, bool setUI)
 {
@@ -6888,31 +6557,31 @@ void wfmain::on_memoriesBtn_clicked()
 
             this->memWindow->connect(this->memWindow, &memories::memoryMode, rig, [=]() {
                 queue->add(priorityImmediate,funcMemoryMode);
-                queue->del((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),false);
-                queue->del((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),false);
-                queue->del((rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),true);
-                queue->del((rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),true);
+                queue->del(funcSelectedFreq,false);
+                queue->del(funcSelectedMode,false);
+                queue->del(funcUnselectedFreq,true);
+                queue->del(funcUnselectedMode,true);
             });
 
             this->memWindow->connect(this->memWindow, &memories::vfoMode, rig, [this]() {
-                queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),true,false);
-                queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),true,false);
-                queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),true,true);
-                queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),true,true);
+                queue->addUnique(priorityMedium,funcSelectedFreq,true,false);
+                queue->addUnique(priorityMedium,funcSelectedMode,true,false);
+                queue->addUnique(priorityMedium,funcUnselectedFreq,true,true);
+                queue->addUnique(priorityMedium,funcUnselectedMode,true,true);
             });
 
             this->memWindow->connect(this->memWindow, &memories::setSatelliteMode, rig, [this](const bool &en) {
                 queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue<bool>(en)));
                 if (en) {
-                    queue->del((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),false);
-                    queue->del((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),false);
-                    queue->del((rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),true);
-                    queue->del((rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),true);
+                    queue->del(funcSelectedFreq,false);
+                    queue->del(funcSelectedMode,false);
+                    queue->del(funcUnselectedFreq,true);
+                    queue->del(funcUnselectedMode,true);
                 } else {
-                    queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),true,false);
-                    queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),true,false);
-                    queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),true,true);
-                    queue->addUnique(priorityMedium,(rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),true,true);
+                    queue->addUnique(priorityMedium,funcSelectedFreq,true,false);
+                    queue->addUnique(priorityMedium,funcSelectedMode,true,false);
+                    queue->addUnique(priorityMedium,funcUnselectedFreq,true,true);
+                    queue->addUnique(priorityMedium,funcUnselectedMode,true,true);
                 }
             });
 
@@ -6941,10 +6610,11 @@ void wfmain::receiveValue(cacheItem val){
 
     switch (val.command)
     {
+    case funcUnselectedFreq:
+        val.sub=true;
     case funcFreqGet:
     case funcFreqTR:
     case funcSelectedFreq:
-    case funcUnselectedFreq:
     {
         freqt f = val.value.value<freqt>();
 
@@ -6960,7 +6630,7 @@ void wfmain::receiveValue(cacheItem val){
     case funcReadTXFreq:
         break;
     case funcVFODualWatch:
-        // Not currently used, but will report the current dual-watch status
+        ui->dualWatchBtn->setChecked(val.value.value<bool>());
         break;
     case funcModeGet:
     case funcModeTR:        
@@ -6968,6 +6638,7 @@ void wfmain::receiveValue(cacheItem val){
         ui->mainScope->receiveMode(val.value.value<modeInfo>());
         break;
     case funcUnselectedMode:
+        val.sub=true;
         ui->subScope->receiveMode(val.value.value<modeInfo>());
         break;
     case funcSatelliteMemory:
@@ -7308,7 +6979,7 @@ void wfmain::receiveValue(cacheItem val){
                 ui->subScope->setVisible(true);
         }
 
-        if (dualScope) {
+        if (ui->scopeDualBtn->isChecked()) {
             ui->mainScope->selected(!subScope);
             ui->subScope->selected(subScope);
         } else {
@@ -7321,8 +6992,8 @@ void wfmain::receiveValue(cacheItem val){
     case funcScopeSingleDual:
     {
         // This tells us whether we are receiving single or dual scopes
-        dualScope = val.value.value<bool>();
-        if (dualScope) {
+        ui->scopeDualBtn->setChecked(val.value.value<bool>());
+        if (val.value.value<bool>()) {
             if (!ui->subScope->isVisible())
             {
                 ui->subScope->setVisible(true);
@@ -7361,7 +7032,10 @@ void wfmain::receiveValue(cacheItem val){
         // [2] 0x01, 0x02, 0x03: Edge 1,2,3
         break;
     case funcScopeMainHold:
-        // Hold status (only 9700?)
+        ui->mainScope->setHold(val.value.value<bool>());
+        break;
+    case funcScopeSubHold:
+        ui->subScope->setHold(val.value.value<bool>());
         break;
     case funcScopeMainRef:
     {
@@ -7374,6 +7048,11 @@ void wfmain::receiveValue(cacheItem val){
         break;
     }
     case funcScopeMainSpeed:
+        ui->mainScope->setSpeed(val.value.value<uchar>());
+        break;
+    case funcScopeSubSpeed:
+        ui->subScope->setSpeed(val.value.value<uchar>());
+        break;
     case funcScopeDuringTX:
     case funcScopeCenterType:
     case funcScopeMainVBW:
@@ -7415,11 +7094,16 @@ void wfmain::on_scopeMainSubBtn_clicked()
     queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(subScope),false,false));
 }
 
-void wfmain::on_scopeDualBtn_clicked()
+void wfmain::on_scopeDualBtn_toggled(bool en)
 {
-    dualScope = !dualScope;
-    queue->add(priorityImmediate,queueItem(funcScopeSingleDual,QVariant::fromValue(dualScope),false,false));
-    queue->add(priorityImmediate,funcScopeMainSub,false,false);
+    queue->add(priorityImmediate,queueItem(funcScopeSingleDual,QVariant::fromValue(en),false,false));
+    if (en)
+        queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(false),false,false)); // Set main scope
+}
+
+void wfmain::on_dualWatchBtn_toggled(bool en)
+{
+    queue->add(priorityImmediate,queueItem(funcVFODualWatch,QVariant::fromValue(en),false,false));
 }
 
 

@@ -5,6 +5,7 @@
 #include <QColor>
 #include <QMap>
 #include "audioconverter.h"
+#include "cluster.h"
 #include "rigidentities.h"
 #include "wfviewtypes.h"
 
@@ -116,7 +117,9 @@ enum prefClusterItem {
     cl_clusterTcpPort = 1 << 6,
     cl_clusterTimeout = 1 << 7,
     cl_clusterSkimmerSpotsEnable = 1 << 8,
-    cl_all = 1 << 9
+    cl_clusterTcpConnect = 1 << 9,
+    cl_clusterTcpDisconnect = 1 << 10,
+    cl_all = 1 << 11
 };
 
 enum prefUDPItem {
@@ -196,6 +199,7 @@ struct preferences {
     quint8 waterfallFormat;
 
     // Cluster:
+    QList<clusterSettings> clusters;
     bool clusterUdpEnable;
     bool clusterTcpEnable;
     int clusterUdpPort;
@@ -215,6 +219,7 @@ struct preferences {
 
     audioSetup rxSetup;
     audioSetup txSetup;
+
 };
 
 #endif // PREFS_H

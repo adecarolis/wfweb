@@ -64,6 +64,7 @@ void dxClusterClient::enableTcp(bool enable)
             tcpSocket = new QTcpSocket(this);
             tcpSocket->connectToHost(tcpServerName, tcpPort);
             qInfo(logCluster()) << "Starting tcpSocket() on:" << tcpPort;
+            emit sendOutput(QString("\nConnecting to %0 %1\n\n").arg(tcpServerName).arg(tcpPort));
 
             connect(tcpSocket, SIGNAL(readyRead()), this, SLOT(tcpDataReceived()), Qt::QueuedConnection);
             connect(tcpSocket, SIGNAL(disconnected()), this, SLOT(tcpDisconnected()));
@@ -80,6 +81,7 @@ void dxClusterClient::enableTcp(bool enable)
         {
             sendTcpData(QString("bye\n"));
             qInfo(logCluster()) << "Disconnecting tcpSocket() on:" << tcpPort;
+            emit sendOutput(QString("\nDisconnecting from %0 %1\n").arg(tcpServerName).arg(tcpPort));
             if (tcpCleanupTimer != Q_NULLPTR)
             {
                 tcpCleanupTimer->stop();
@@ -256,14 +258,20 @@ void dxClusterClient::tcpCleanup()
 
 void dxClusterClient::tcpDisconnected() {
     qWarning(logCluster()) << "TCP Cluster server disconnected...";
+    emit sendOutput(QString("\nDisconnected from %0 %1\n").arg(tcpServerName).arg(tcpPort));
+
     // Need to start a timer and attempt reconnect.
 }
 
-void dxClusterClient::freqRange(double low, double high)
+void dxClusterClient::freqRange(bool sub, double low, double high)
 {
-    lowFreq = low;
-    highFreq = high;
-    //qInfo(logCluster) << "New range" << low << "-" << high;
+    if (sub) {
+        lowSubFreq = low;
+        highSubFreq = high;
+    } else {
+        lowMainFreq = low;
+        highMainFreq = high;
+    }
     updateSpots();
 }
 
@@ -285,17 +293,47 @@ void dxClusterClient::updateSpots()
         spots.append(s);
     }
 #else
-    QMap<QString, spotData*>::iterator spot = allSpots.begin();;
-    while (spot != allSpots.end()) {
-        if (spot.value()->frequency > lowFreq && spot.value()->frequency < highFreq)
+    QMap<QString, spotData*>::iterator mainSpot = allSpots.begin();;
+    while (mainSpot != allSpots.end()) {
+        if (mainSpot.value()->frequency > lowMainFreq && mainSpot.value()->frequency < highMainFreq)
         {
-            spots.append(**spot);
+            spots.append(**mainSpot);
         }
-        ++spot;
+        ++mainSpot;
     }
 
 #endif
-    emit sendSpots(spots);
+    if (!spots.empty())
+        emit sendMainSpots(spots);
+
+    spots.clear();
+#ifdef USESQL
+    // Set the required frequency range.
+    QString queryText = QString("SELECT * FROM spots WHERE frequency > %1 AND frequency < %2").arg(lowFreq).arg(highFreq);
+    //QString queryText = QString("SELECT * FROM spots");
+    database db;
+    auto query = db.query(queryText);
+
+    while (query.next()) {
+        // Step through all current spots within range
+        spotData s = spotData();
+        s.dxcall = query.value(query.record().indexOf("dxcall")).toString();
+        s.frequency = query.value(query.record().indexOf("frequency")).toDouble();
+        spots.append(s);
+    }
+#else
+    QMap<QString, spotData*>::iterator subSpot = allSpots.begin();;
+    while (subSpot != allSpots.end()) {
+        if (subSpot.value()->frequency > lowSubFreq && subSpot.value()->frequency < highSubFreq)
+        {
+            spots.append(**subSpot);
+        }
+        ++subSpot;
+    }
+
+#endif
+    if (!spots.empty())
+        emit sendSubSpots(spots);
 }
 
 void dxClusterClient::enableSkimmerSpots(bool enable)
@@ -303,11 +341,13 @@ void dxClusterClient::enableSkimmerSpots(bool enable)
     skimmerSpots = enable;
     if (authenticated) {
         if (skimmerSpots) {
-            sendTcpData(QString("Set Dx Filter Skimmer\n"));
+            sendTcpData(QString("set/skimmer\n"));
+            sendTcpData(QString("set Dx Filter Skimmer\n"));
         }
         else
-        { 
-            sendTcpData(QString("Set Dx Filter Not Skimmer\n"));
+        {
+            sendTcpData(QString("unset/skimmer\n"));
+            //sendTcpData(QString("set Dx Filter Not Skimmer\n"));
         }
         
     }

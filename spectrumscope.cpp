@@ -211,7 +211,11 @@ spectrumScope::spectrumScope(QWidget *parent)
     showHideControls(spectrumMode_t::spectModeCenter);
 }
 
-
+void spectrumScope::prepareScope(uint maxAmp, uint spectWidth)
+{
+    this->spectWidth = spectWidth;
+    this->maxAmp = maxAmp;
+}
 
 bool spectrumScope::prepareWf(uint wf)
 {
@@ -346,7 +350,7 @@ bool spectrumScope::update(scopeData data)
             preparePlasma();
         }
         // Inform other threads (cluster) that the frequency range has changed.
-        //emit frequencyRange(data.startFreq, data.endFreq);
+        emit frequencyRange(sub, data.startFreq, data.endFreq);
     }
 
     lowerFreq = data.startFreq;
@@ -882,8 +886,6 @@ void spectrumScope::scopeClick(QMouseEvent* me)
     }
     else if (me->button() == Qt::RightButton)
     {
-        // TODO spots!
-        /*
         if (textItem != nullptr) {
             QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
             if (spot != clusterSpots.end() && spot.key() == textItem->text()) {
@@ -908,10 +910,7 @@ void spectrumScope::scopeClick(QMouseEvent* me)
                 spotDialog->connect(bExit, SIGNAL(clicked()), spotDialog, SLOT(close()));
             }
         }
-        else
-                */
-
-        if (passbandAction == passbandStatic && rectItem != nullptr)
+        else if (passbandAction == passbandStatic && rectItem != nullptr)
         {
             if (cursor <= pbtLeftPix && cursor > pbtLeftPix - 10)
             {
@@ -1276,4 +1275,108 @@ void spectrumScope::updatedSpeed(int index)
 void spectrumScope::holdPressed(bool en)
 {
     queue->add(priorityImmediate,queueItem(sub?funcScopeSubHold:funcScopeMainHold,QVariant::fromValue(en),false,sub));
+}
+
+void spectrumScope::setHold(bool h)
+{
+    this->holdButton->blockSignals(true);
+    this->holdButton->setChecked(h);
+    this->holdButton->blockSignals(false);
+}
+
+void spectrumScope::setSpeed(uchar s)
+{
+    this->speedCombo->blockSignals(true);
+    this->speedCombo->setCurrentIndex(this->speedCombo->findData(s));
+    this->speedCombo->blockSignals(false);
+}
+
+
+void spectrumScope::receiveSpots(QList<spotData> spots)
+{
+    //QElapsedTimer timer;
+    //timer.start();
+    bool current = false;
+
+    if (clusterSpots.size() > 0) {
+        current=clusterSpots.begin().value()->current;
+    }
+
+    foreach(spotData s, spots)
+    {
+        bool found = false;
+        QMap<QString, spotData*>::iterator spot = clusterSpots.find(s.dxcall);
+
+        while (spot != clusterSpots.end() && spot.key() == s.dxcall && spot.value()->frequency == s.frequency) {
+            spot.value()->current = !current;
+            found = true;
+            ++spot;
+        }
+
+        if (!found)
+        {
+
+            QCPRange xrange=spectrum->xAxis->range();
+            QCPRange yrange=spectrum->yAxis->range();
+            double left = s.frequency;
+            double top = yrange.upper-10.0;
+
+            bool conflict = true;
+            while (conflict) {
+#if QCUSTOMPLOT_VERSION < 0x020000
+                QCPItemText* item = spectrum->itemAt<QCPItemText>(QPointF(spectrum->xAxis->coordToPixel(left),spectrum->yAxis->coordToPixel(top)), true);
+#else
+                QCPItemText* item = spectrum->itemAt<QCPItemText>(QPointF(spectrum->xAxis->coordToPixel(left),spectrum->yAxis->coordToPixel(top)), true);
+#endif
+                if (item != nullptr) {
+                    top = top - 10.0;
+                    if (top < 10.0)
+                    {
+                        top = yrange.upper-10.0;
+                        left = left + (xrange.size()/20);
+                    }
+                }
+                else {
+                    conflict = false;
+                }
+            }
+            spotData* sp = new spotData(s);
+
+            //qDebug(logCluster()) << "ADD:" << sp->dxcall;
+            sp->current = !current;
+            sp->text = new QCPItemText(spectrum);
+            sp->text->setAntialiased(true);
+            sp->text->setColor(colors.clusterSpots);
+            sp->text->setText(sp->dxcall);
+            sp->text->setFont(QFont(font().family(), 10));
+            sp->text->setPositionAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
+            sp->text->position->setType(QCPItemPosition::ptPlotCoords);
+            sp->text->setSelectable(true);
+            QMargins margin;
+            int width = (sp->text->right - sp->text->left) / 2;
+            margin.setLeft(width);
+            margin.setRight(width);
+            sp->text->setPadding(margin);
+            sp->text->position->setCoords(left, top);
+            sp->text->setVisible(true);
+            clusterSpots.insert(sp->dxcall, sp);
+        }
+    }
+
+    QMap<QString, spotData*>::iterator spot2 = clusterSpots.begin();
+    while (spot2 != clusterSpots.end()) {
+        if (spot2.value()->current == current) {
+            spectrum->removeItem(spot2.value()->text);
+            //qDebug(logCluster()) << "REMOVE:" << spot2.value()->dxcall;
+            delete spot2.value(); // Stop memory leak?
+            spot2 = clusterSpots.erase(spot2);
+        }
+        else {
+            ++spot2;
+        }
+
+    }
+
+    //qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
+
 }

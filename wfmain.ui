@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1063</width>
+    <width>1086</width>
     <height>569</height>
    </rect>
   </property>
@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -1402,23 +1402,29 @@
                      <height>16777215</height>
                     </size>
                    </property>
+                   <property name="focusPolicy">
+                    <enum>Qt::NoFocus</enum>
+                   </property>
                    <property name="text">
                     <string>Main/Sub</string>
+                   </property>
+                   <property name="checkable">
+                    <bool>false</bool>
                    </property>
                   </widget>
                  </item>
                  <item>
-                  <spacer name="horizontalSpacer">
-                   <property name="orientation">
-                    <enum>Qt::Horizontal</enum>
+                  <widget class="QPushButton" name="dualWatchBtn">
+                   <property name="focusPolicy">
+                    <enum>Qt::NoFocus</enum>
                    </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>40</width>
-                     <height>20</height>
-                    </size>
+                   <property name="text">
+                    <string>Dual Watch</string>
                    </property>
-                  </spacer>
+                   <property name="checkable">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
                  </item>
                  <item>
                   <widget class="QPushButton" name="scopeDualBtn">
@@ -1434,8 +1440,14 @@
                      <height>16777215</height>
                     </size>
                    </property>
+                   <property name="focusPolicy">
+                    <enum>Qt::NoFocus</enum>
+                   </property>
                    <property name="text">
-                    <string>Dual</string>
+                    <string>Dual Scope</string>
+                   </property>
+                   <property name="checkable">
+                    <bool>true</bool>
                    </property>
                   </widget>
                  </item>
@@ -1620,7 +1632,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>2</number>
+             <number>5</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -2076,224 +2088,6 @@
             <widget class="QWidget" name="externalControl">
              <layout class="QVBoxLayout" name="verticalLayout_26">
               <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_34">
-                <property name="leftMargin">
-                 <number>0</number>
-                </property>
-                <property name="topMargin">
-                 <number>0</number>
-                </property>
-                <item>
-                 <spacer name="horizontalSpacer_18">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeType">
-                   <enum>QSizePolicy::Fixed</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-                <item>
-                 <widget class="QLabel" name="label_28">
-                  <property name="text">
-                   <string>Port</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <spacer name="horizontalSpacer_20">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>422</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
-              </item>
-              <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_36">
-                <item>
-                 <widget class="QLabel" name="vspLabel">
-                  <property name="text">
-                   <string>Virtual Serial Port</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <spacer name="horizontalSpacer_19">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
-              </item>
-              <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_42">
-                <item>
-                 <widget class="QLabel" name="label_26">
-                  <property name="text">
-                   <string>TCP Server Port</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLineEdit" name="tcpServerPortTxt">
-                  <property name="enabled">
-                   <bool>true</bool>
-                  </property>
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLabel" name="label_39">
-                  <property name="text">
-                   <string>Enter port for TCP server, 0 = disabled (restart required if changed)</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <spacer name="horizontalSpacer_26">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
-              </item>
-              <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_44">
-                <item>
-                 <widget class="QLabel" name="label_41">
-                  <property name="text">
-                   <string>Waterfall Format</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QComboBox" name="waterfallFormatCombo">
-                  <item>
-                   <property name="text">
-                    <string>Default</string>
-                   </property>
-                  </item>
-                  <item>
-                   <property name="text">
-                    <string>Single (network)</string>
-                   </property>
-                  </item>
-                  <item>
-                   <property name="text">
-                    <string>Multi (serial)</string>
-                   </property>
-                  </item>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLabel" name="label_52">
-                  <property name="text">
-                   <string>Only change this if you are absolutely sure you need it (connecting to N1MM+ or similar)</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <spacer name="horizontalSpacer_28">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
-              </item>
-              <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_46">
-                <item>
-                 <widget class="QPushButton" name="usbControllerBtn">
-                  <property name="toolTip">
-                   <string/>
-                  </property>
-                  <property name="text">
-                   <string>Setup USB Controllers</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <spacer name="horizontalSpacer_8">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="usbControllersResetBtn">
-                  <property name="text">
-                   <string>Reset Controllers</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLabel" name="usbResetLbl">
-                  <property name="text">
-                   <string>Reset all USB controllers to defaults (delete all knobs/buttons)</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <spacer name="horizontalSpacer_38">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
-              </item>
-              <item>
                <spacer name="verticalSpacer_4">
                 <property name="orientation">
                  <enum>Qt::Vertical</enum>
@@ -2312,207 +2106,6 @@
              <property name="enabled">
               <bool>true</bool>
              </property>
-             <widget class="QWidget" name="horizontalLayoutWidget">
-              <property name="geometry">
-               <rect>
-                <x>0</x>
-                <y>10</y>
-                <width>831</width>
-                <height>21</height>
-               </rect>
-              </property>
-              <layout class="QHBoxLayout" name="horizontalLayout_33">
-               <item>
-                <widget class="QLabel" name="label_25">
-                 <property name="text">
-                  <string>This page contains configuration for DX Cluster, either UDP style broadcast (from N1MM+/DXlog) or TCP connection to your favourite cluster</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-             <widget class="QGroupBox" name="groupBox_9">
-              <property name="geometry">
-               <rect>
-                <x>10</x>
-                <y>50</y>
-                <width>201</width>
-                <height>181</height>
-               </rect>
-              </property>
-              <property name="title">
-               <string>UDP Broadcast Connection</string>
-              </property>
-              <widget class="QWidget" name="formLayoutWidget">
-               <property name="geometry">
-                <rect>
-                 <x>20</x>
-                 <y>40</y>
-                 <width>161</width>
-                 <height>121</height>
-                </rect>
-               </property>
-               <layout class="QFormLayout" name="formLayout">
-                <item row="1" column="0">
-                 <widget class="QLabel" name="label_35">
-                  <property name="text">
-                   <string>UDP Port</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="1">
-                 <widget class="QLineEdit" name="clusterUdpPortLineEdit">
-                  <property name="inputMask">
-                   <string>00000</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="0">
-                 <widget class="QCheckBox" name="clusterUdpEnable">
-                  <property name="text">
-                   <string>Enable</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
-             </widget>
-             <widget class="QGroupBox" name="groupBox_10">
-              <property name="geometry">
-               <rect>
-                <x>330</x>
-                <y>50</y>
-                <width>311</width>
-                <height>241</height>
-               </rect>
-              </property>
-              <property name="title">
-               <string>TCP Cluster Connection</string>
-              </property>
-              <widget class="QWidget" name="formLayoutWidget_2">
-               <property name="geometry">
-                <rect>
-                 <x>20</x>
-                 <y>40</y>
-                 <width>271</width>
-                 <height>186</height>
-                </rect>
-               </property>
-               <layout class="QFormLayout" name="formLayout_2">
-                <item row="1" column="0">
-                 <widget class="QLabel" name="label_45">
-                  <property name="text">
-                   <string>Server Name</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="0">
-                 <widget class="QLabel" name="label_46">
-                  <property name="text">
-                   <string>Username</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="1">
-                 <widget class="QLineEdit" name="clusterUsernameLineEdit"/>
-                </item>
-                <item row="4" column="0">
-                 <widget class="QLabel" name="label_47">
-                  <property name="text">
-                   <string>Password</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="4" column="1">
-                 <widget class="QLineEdit" name="clusterPasswordLineEdit">
-                  <property name="echoMode">
-                   <enum>QLineEdit::PasswordEchoOnEdit</enum>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="0">
-                 <widget class="QCheckBox" name="clusterTcpEnable">
-                  <property name="text">
-                   <string>Enable</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="1">
-                 <widget class="QComboBox" name="clusterServerNameCombo">
-                  <property name="editable">
-                   <bool>true</bool>
-                  </property>
-                  <property name="duplicatesEnabled">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="5" column="0">
-                 <widget class="QLabel" name="label_48">
-                  <property name="text">
-                   <string>Spot Timeout (minutes)</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="5" column="1">
-                 <widget class="QLineEdit" name="clusterTimeoutLineEdit">
-                  <property name="inputMask">
-                   <string>0000</string>
-                  </property>
-                  <property name="text">
-                   <string/>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="0">
-                 <widget class="QLabel" name="label_49">
-                  <property name="text">
-                   <string>Server Port</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="1">
-                 <widget class="QLineEdit" name="clusterTcpPortLineEdit">
-                  <property name="inputMask">
-                   <string>00000</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
-             </widget>
-             <widget class="QPlainTextEdit" name="clusterOutputTextEdit">
-              <property name="geometry">
-               <rect>
-                <x>10</x>
-                <y>320</y>
-                <width>811</width>
-                <height>141</height>
-               </rect>
-              </property>
-              <property name="frameShadow">
-               <enum>QFrame::Raised</enum>
-              </property>
-              <property name="sizeAdjustPolicy">
-               <enum>QAbstractScrollArea::AdjustIgnored</enum>
-              </property>
-             </widget>
-             <widget class="QPushButton" name="clusterPopOutBtn">
-              <property name="geometry">
-               <rect>
-                <x>10</x>
-                <y>280</y>
-                <width>75</width>
-                <height>23</height>
-               </rect>
-              </property>
-              <property name="toolTip">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Pop out (or pop back in) the entire Settings tab. &lt;/p&gt;&lt;p&gt;NOTE: Press this button again to re-insert the tab when finished. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-              </property>
-              <property name="text">
-               <string>Pop-Out</string>
-              </property>
-             </widget>
              <widget class="QWidget" name="horizontalLayoutWidget_2">
               <property name="geometry">
                <rect>
@@ -2545,12 +2138,6 @@
                </item>
               </layout>
              </widget>
-             <zorder>groupBox_9</zorder>
-             <zorder>horizontalLayoutWidget</zorder>
-             <zorder>groupBox_10</zorder>
-             <zorder>clusterOutputTextEdit</zorder>
-             <zorder>clusterPopOutBtn</zorder>
-             <zorder>horizontalLayoutWidget_2</zorder>
             </widget>
             <widget class="QWidget" name="experimental">
              <layout class="QVBoxLayout" name="verticalLayout_28">
@@ -2762,7 +2349,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1063</width>
+     <width>1086</width>
      <height>20</height>
     </rect>
    </property>

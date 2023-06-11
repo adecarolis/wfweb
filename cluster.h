@@ -56,7 +56,8 @@ signals:
     void deleteSpot(QString dxcall);
     void deleteOldSpots(int minutes);
     void sendOutput(QString text);
-    void sendSpots(QList<spotData> spots);
+    void sendMainSpots(QList<spotData> spots);
+    void sendSubSpots(QList<spotData> spots);
 
 public slots:
     void udpDataReceived();
@@ -71,7 +72,7 @@ public slots:
     void setTcpPassword(QString s) { tcpPassword = s; }
     void setTcpTimeout(int p) { tcpTimeout = p; }
     void tcpCleanup();
-    void freqRange(double low, double high);
+    void freqRange(bool sub, double low, double high);
     void enableSkimmerSpots(bool enable);
 
 private:
@@ -97,8 +98,10 @@ private:
 #ifdef USESQL
     QSqlDatabase db;
 #endif
-    double lowFreq;
-    double highFreq;
+    double lowMainFreq;
+    double highMainFreq;
+    double lowSubFreq;
+    double highSubFreq;
     QMap<QString,spotData*> allSpots;
     bool skimmerSpots = false;
 };
