@@ -52,6 +52,7 @@
 #include "sidebandchooser.h"
 #include "debugwindow.h"
 #include "spectrumscope.h"
+#include "tciserver.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -780,6 +781,7 @@ private:
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
+    tciServer* tci = Q_NULLPTR;
     QThread* serverThread = Q_NULLPTR;
 
     void bandStackBtnClick();

@@ -174,6 +174,8 @@ void rigCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char
         connect(udp, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
         connect(udp, SIGNAL(setRadioUsage(quint8, quint8, QString, QString)), this, SLOT(radioUsage(quint8, quint8, QString, QString)));
         connect(this, SIGNAL(selectedRadio(quint8)), udp, SLOT(setCurrentRadio(quint8)));
+        connect(udp, SIGNAL(sendFloat(Eigen::VectorXf)), this, SLOT(receiveFloat(Eigen::VectorXf)));
+
         emit haveAfGain(rxSetup.localAFgain);
         localVolume = rxSetup.localAFgain;
 
@@ -6305,5 +6307,8 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
 }
 
 
-
+void rigCommander::receiveFloat(Eigen::VectorXf data)
+{
+    emit sendFloat(data);
+}
 

@@ -103,8 +103,9 @@ enum prefLanItem {
     l_enableRigCtlD = 1 << 1,
     l_rigCtlPort = 1 << 2,
     l_tcpPort = 1 << 3,
-    l_waterfallFormat = 1 << 4,
-    l_all = 1 << 5
+    l_tciPort = 1 << 4,
+    l_waterfallFormat = 1 << 5,
+    l_all = 1 << 6
 };
 
 enum prefClusterItem {
@@ -196,6 +197,7 @@ struct preferences {
     bool enableRigCtlD;
     quint16 rigCtlPort;
     quint16 tcpPort;
+    quint16 tciPort=50001;
     quint8 waterfallFormat;
 
     // Cluster:

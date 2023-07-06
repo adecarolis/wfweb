@@ -133,6 +133,7 @@ private slots:
     void on_enableRigctldChk_clicked(bool checked);
     void on_rigctldPortTxt_editingFinished();
     void on_tcpServerPortTxt_editingFinished();
+    void on_tciServerPortTxt_editingFinished();
     void on_clusterServerNameCombo_currentIndexChanged(int index);
     void on_clusterTcpAddBtn_clicked();
     void on_clusterTcpDelBtn_clicked();

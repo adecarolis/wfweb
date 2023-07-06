@@ -370,6 +370,8 @@ void udpHandler::dataReceived()
                             QObject::connect(this, SIGNAL(haveSetVolume(unsigned char)), audio, SLOT(setVolume(unsigned char)));
                             QObject::connect(audio, SIGNAL(haveRxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, quint16, bool, bool)));
                             QObject::connect(audio, SIGNAL(haveTxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, quint16, bool, bool)));
+                            connect(audio, SIGNAL(sendFloat(Eigen::VectorXf)), this, SLOT(receiveFloat(Eigen::VectorXf)));
+
                         }
 
                         qInfo(logUdp()) << this->metaObject()->className() << "Got serial and audio request success, device name: " << devName;
@@ -692,3 +694,7 @@ void udpHandler::sendToken(uint8_t magic)
     return;
 }
 
+void udpHandler::receiveFloat(Eigen::VectorXf data)
+{
+    emit sendFloat(data);
+}

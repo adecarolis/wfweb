@@ -229,19 +229,20 @@ bool spectrumScope::prepareWf(uint wf)
     QByteArray empty((int)spectWidth, '\x01');
     spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
 
-    if((unsigned int)wfimage.size() < wfLengthMax)
+    //unsigned int oldSize = wfimage.size();
+    if (!wfimage.empty() && wfimage.first().size() != spectWidth)
     {
-        unsigned int i=0;
-        unsigned int oldSize = wfimage.size();
-        for(i=oldSize; i<(wfLengthMax); i++)
-        {
-            wfimage.append(empty);
-        }
+        // Width of waterfall has changed!
+        wfimage.clear();
     }
 
-
+    for(unsigned int i = wfimage.size(); i < wfLength; i++)
+    {
+        wfimage.append(empty);
+    }
+    wfimage.remove(wfLength, wfimage.size()-wfLength);
     wfimage.squeeze();
-    //colorMap->clearData();
+
     colorMap->data()->clear();
 
     colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
@@ -255,7 +256,7 @@ bool spectrumScope::prepareWf(uint wf)
     }
     colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
 
-    colorMap->setData(colorMapData);
+    colorMap->setData(colorMapData,true); // Copy the colorMap so deleting it won't result in crash!
 
     waterfall->yAxis->setRangeReversed(true);
     waterfall->xAxis->setVisible(false);

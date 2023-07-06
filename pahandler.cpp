@@ -149,6 +149,11 @@ bool paHandler::init(audioSetup setup)
 	connect(this, SIGNAL(sendToConverter(audioPacket)), converter, SLOT(convert(audioPacket)));
 	converterThread->start(QThread::TimeCriticalPriority);
 
+    if (!setup.isinput)
+    {
+        connect(converter, SIGNAL(floatAudio(Eigen::VectorXf)), this, SLOT(receiveFloat(Eigen::VectorXf)));
+    }
+
 	aParams.hostApiSpecificStreamInfo = NULL;
 
 	// Per channel chunk size.

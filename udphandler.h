@@ -58,6 +58,7 @@ public slots:
 	void setCurrentRadio(quint8 radio);
     void getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
     void getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
+    void receiveFloat(Eigen::VectorXf data);
 
 signals:
 	void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
@@ -70,6 +71,8 @@ signals:
 	void haveBaudRate(quint32 baudrate);
 	void requestRadioSelection(QList<radio_cap_packet> radios);
 	void setRadioUsage(quint8, quint8 busy, QString name, QString mac);
+    void sendFloat(Eigen::VectorXf data);
+
 private:
 	
 	void sendAreYouThere();

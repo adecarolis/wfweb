@@ -65,6 +65,7 @@ signals:
     void setupConverter(QAudioFormat in, codecType codecIn, QAudioFormat out, codecType codecOut, quint8 opus, quint8 resamp);
     void sendToConverter(audioPacket audio);
 
+
 private:
 
 

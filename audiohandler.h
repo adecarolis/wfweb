@@ -74,7 +74,8 @@ public slots:
 
 private slots:
     virtual void stateChanged(QAudio::State state);
-    virtual void clearUnderrun();    
+    virtual void clearUnderrun();
+    void receiveFloat(Eigen::VectorXf data);
 
 
 signals:
@@ -84,7 +85,7 @@ signals:
     void haveLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16 latency,quint16 current,bool under,bool over);
     void setupConverter(QAudioFormat in, codecType codecIn, QAudioFormat out, codecType codecOut, quint8 opus, quint8 resamp);
     void sendToConverter(audioPacket audio);
-
+    void sendFloat(Eigen::VectorXf data);
 
 private:
 

@@ -178,6 +178,10 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     loadSettings(); // Look for saved preferences
 
+    if (prefs.tciPort > 0) {
+        tci = new tciServer(prefs.tciPort,this);
+    }
+
     //setAudioDevicesUI(); // no need to call this as it will be called by the updated() signal
 
     setTuningSteps(); // TODO: Combine into preferences
@@ -246,6 +250,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         [&](int value) {
           QToolTip::showText(QCursor::pos(), QString("%1").arg(value*100/255), nullptr);
         });
+
 
 #if !defined(USB_CONTROLLER)
     ui->enableUsbChk->setVisible(false);
@@ -750,6 +755,7 @@ void wfmain::makeRig()
         connect(rig, SIGNAL(havePortError(errorType)), this, SLOT(receivePortError(errorType)));
         connect(rig, SIGNAL(haveStatusUpdate(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
         connect(rig, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(receiveNetworkAudioLevels(networkAudioLevels)));
+
         connect(rig, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
         connect(rig, SIGNAL(setRadioUsage(quint8, quint8, QString, QString)), selRad, SLOT(setInUse(quint8, quint8, QString, QString)));
         connect(selRad, SIGNAL(selectedRadio(quint8)), rig, SLOT(setCurrentRadio(quint8)));
@@ -767,6 +773,9 @@ void wfmain::makeRig()
         connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
+        if (tci != Q_NULLPTR) {
+            connect(rig, SIGNAL(sendFloat(Eigen::VectorXf)), tci, SLOT(receiveFloat(Eigen::VectorXf)));
+        }
         // Create link for server so it can have easy access to rig.
         if (serverConfig.rigs.first() != Q_NULLPTR) {
             serverConfig.rigs.first()->rig = rig;
@@ -1828,6 +1837,7 @@ void wfmain::setDefPrefs()
     defPrefs.confirmPowerOff = true;
     defPrefs.meter2Type = meterNone;
     defPrefs.tcpPort = 0;
+    defPrefs.tciPort = 50001;
     defPrefs.waterfallFormat = 0;
     defPrefs.audioSystem = qtAudio;
     defPrefs.enableUSBControllers = false;
@@ -2020,7 +2030,8 @@ void wfmain::loadSettings()
     // Call the function to start rigctld if enabled.
     enableRigCtl(prefs.enableRigCtlD);
 
-    prefs.tcpPort = settings->value("TcpServerPort", defPrefs.tcpPort).toInt();
+    prefs.tcpPort = settings->value("TCPServerPort", defPrefs.tcpPort).toInt();
+    prefs.tciPort = settings->value("TCIServerPort", defPrefs.tciPort).toInt();
 
     prefs.waterfallFormat = settings->value("WaterfallFormat", defPrefs.waterfallFormat).toInt();
 
@@ -3078,7 +3089,8 @@ void wfmain::saveSettings()
     settings->setValue("EnableRigCtlD", prefs.enableRigCtlD);
     settings->setValue("TcpServerPort", prefs.tcpPort);
     settings->setValue("RigCtlPort", prefs.rigCtlPort);
-    settings->setValue("tcpServerPort", prefs.tcpPort);
+    settings->setValue("TCPServerPort", prefs.tcpPort);
+    settings->setValue("TCIServerPort", prefs.tciPort);
     settings->setValue("IPAddress", udpPrefs.ipAddress);
     settings->setValue("ControlLANPort", udpPrefs.controlLANPort);
     settings->setValue("SerialLANPort", udpPrefs.serialLANPort);
@@ -5562,7 +5574,7 @@ void wfmain::on_wfLengthSlider_valueChanged(int value)
 {
     prefs.wflength = (unsigned int)(value);
     ui->mainScope->prepareWf(value);
-    ui->subScope->prepareWf(value);
+    //ui->subScope->prepareWf(value);
 }
 
 funcs wfmain::meter_tToMeterCommand(meter_t m)
@@ -5703,15 +5715,15 @@ void wfmain::setAudioDevicesUI()
 void wfmain::on_topLevelSlider_valueChanged(int value)
 {
     prefs.plotCeiling = value;
-    ui->mainScope->setRange(plotFloor,plotCeiling);
-    ui->subScope->setRange(plotFloor,plotCeiling);
+    ui->mainScope->setRange(prefs.plotFloor,prefs.plotCeiling);
+    ui->subScope->setRange(prefs.plotFloor,prefs.plotCeiling);
 }
 
 void wfmain::on_botLevelSlider_valueChanged(int value)
 {
     prefs.plotFloor = value;
-    ui->mainScope->setRange(plotFloor,plotCeiling);
-    ui->subScope->setRange(plotFloor,plotCeiling);
+    ui->mainScope->setRange(prefs.plotFloor,prefs.plotCeiling);
+    ui->subScope->setRange(prefs.plotFloor,prefs.plotCeiling);
 }
 
 // --- DEBUG FUNCTION ---

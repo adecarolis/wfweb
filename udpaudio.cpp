@@ -258,6 +258,8 @@ void udpAudio::startAudio() {
     connect(this, SIGNAL(haveSetVolume(unsigned char)), rxaudio, SLOT(setVolume(unsigned char)));
     connect(rxaudio, SIGNAL(haveLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, quint16, bool, bool)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
+    connect(rxaudio, SIGNAL(sendFloat(Eigen::VectorXf)), this, SLOT(receiveFloat(Eigen::VectorXf)));
+
 
 
     sendControl(false, 0x03, 0x00); // First connect packet
@@ -297,5 +299,11 @@ void udpAudio::startAudio() {
     }
 
     emit setupRxAudio(rxSetup);
+
+}
+
+void udpAudio::receiveFloat(Eigen::VectorXf data)
+{
+    emit sendFloat(data);
 
 }

@@ -186,6 +186,9 @@ bool audioConverter::convert(audioPacket audio)
         if (samplesF.size() > 0)
 
         {
+            // samplesF is currently raw samples as received from the radio:
+            emit floatAudio(samplesF);
+
             audio.amplitudePeak = samplesF.array().abs().maxCoeff();
             //audio.amplitudeRMS = samplesF.array().abs().mean(); // zero for tx audio
             //audio.amplitudeRMS = samplesF.norm() / sqrt(samplesF.size()); // too high values. Zero for tx audio.

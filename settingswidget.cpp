@@ -790,6 +790,9 @@ void settingswidget::updateLanPref(prefLanItem plan)
     case l_tcpPort:
         ui->tcpServerPortTxt->setText(QString::number(prefs->tcpPort));
         break;
+    case l_tciPort:
+        ui->tciServerPortTxt->setText(QString::number(prefs->tciPort));
+        break;
     case l_waterfallFormat:
         // Not used here
         break;
@@ -1580,6 +1583,16 @@ void settingswidget::on_tcpServerPortTxt_editingFinished()
     }
 }
 
+void settingswidget::on_tciServerPortTxt_editingFinished()
+{
+    bool okconvert = false;
+    unsigned int port = ui->tciServerPortTxt->text().toUInt(&okconvert);
+    if (okconvert)
+    {
+        prefs->tciPort = port;
+        emit changedLanPref(l_tciPort);
+    }
+}
 /* Beginning of cluster settings */
 
 

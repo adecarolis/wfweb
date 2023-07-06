@@ -59,6 +59,7 @@ class cachingQueue : public QThread
 signals:
     void haveCommand(funcs func, QVariant param, bool sub);
     void sendValue(cacheItem item);
+    void cacheUpdated(cacheItem item);
 
 public slots:
     // Can be called directly or via emit.
@@ -78,6 +79,7 @@ private:
     // Command to set cache value
     void setCache(funcs func, QVariant val, bool sub=false);
     queuePriority isRecurring(funcs func, bool sub=false);
+    bool compare(QVariant a, QVariant b);
 
 
     // Various other values
@@ -112,7 +114,8 @@ public:
 
     QMultiMap<funcs,cacheItem> getCacheItems();
     QMultiMap <queuePriority,queueItem> getQueueItems();
-    void unlockMutex();
+    void lockMutex() {mutex.lock();}
+    void unlockMutex() {mutex.unlock();}
 };
 
 Q_DECLARE_METATYPE(queueItemType)

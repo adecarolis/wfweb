@@ -78,6 +78,7 @@ public slots:
 
 signals:
     void converted(audioPacket audio);
+    void floatAudio(Eigen::VectorXf audio);
 
 protected:
     QAudioFormat inFormat;

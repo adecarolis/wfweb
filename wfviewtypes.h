@@ -205,7 +205,7 @@ cmdLCDWaterfall, cmdLCDSpectrum, cmdLCDNothing, cmdSeparator
 
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 210
+#define NUMFUNCS 212
 
 enum funcs { funcNone,
 funcFreqTR,             funcModeTR,             funcBandEdgeFreq,           funcFreqGet,        	funcModeGet,        	funcFreqSet,			// \x00
@@ -242,7 +242,8 @@ funcScopeMainSpeed,     funcScopeSubSpeed,      funcScopeMainVBW,           func
 funcScopeDuringTX,      funcScopeCenterType,    funcScopeFixedEdgeFreq,     funcVoiceTX,			funcMainSubPrefix,		funcAFCSetting,
 funcGPSTXMode,          funcSatelliteMemory,    funcGPSPosition,            funcMemoryGroup,        funcSelectVFO,          funcSeparator,
 funcLCDWaterfall,       funcLCDSpectrum,        funcLCDNothing,             funcPageUp,             funcPageDown,           funcVFOFrequency,
-funcVFOMode,            funcRigctlFunction,     funcRigctlLevel,            funcRigctlParam,        funcFA,                 funcFB
+funcVFOMode,            funcRigctlFunction,     funcRigctlLevel,            funcRigctlParam,        funcRXAudio,            funcTXAudio,
+funcFA,                 funcFB
 };
 
 
@@ -282,7 +283,8 @@ static QString funcString[] { "None",
 "Scope During TX",      "Scope Center Type",    "Scope Fixed Edge Freq",    "Voice TX",             "Main/Sub Prefix",      "AFC Function",
 "GPS TX Mode",          "Satellite Memory",     "GPS Position",             "Memory Group",         "-Select VFO",          "-Seperator",
 "-LCD Waterfall",       "-LCD Spectrum",        "-LCD Nothing",             "-Page Up",             "-Page Down",           "-VFO Frequency",
-"-VFO Mode",            "-Rigctl Function",     "-Rigctl Level",            "-Rigctl Param",        "Command Error FA",     "Command OK FB"
+"-VFO Mode",            "-Rigctl Function",     "-Rigctl Level",            "-Rigctl Param",        "-RX Audio Data",       "-TX Audio Data",
+"Command Error FA",     "Command OK FB"
 };
 
 struct spanType {

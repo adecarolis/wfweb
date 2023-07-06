@@ -241,8 +241,13 @@ void cachingQueue::updateCache(bool reply, queueItem item)
             }
             // If we are sending an actual value, update the cache with it
             // Value will be replaced if invalid on next get()
-            if (item.param.isValid())
+
+            if (compare(item.param,cv.value().value))
+            {
                 cv->value = item.param;
+                emit cacheUpdated(cv.value());
+            }
+
             return;
             // We have found (and updated) a matching item so return
         }
@@ -308,7 +313,38 @@ QMultiMap <queuePriority,queueItem> cachingQueue::getQueueItems()
     return queue;
 }
 
-void cachingQueue::unlockMutex()
+bool cachingQueue::compare(QVariant a, QVariant b)
 {
-    mutex.unlock();
+    bool changed = false;
+    if (a.isValid() && b.isValid()) {
+        // Compare the details
+        if (!strcmp(a.typeName(),"bool") && a.value<bool>() != b.value<bool>())
+            changed=true;
+        else if (!strcmp(a.typeName(),"QString") && a.value<QString>() != b.value<QString>())
+            changed=true;
+        else if (!strcmp(a.typeName(),"uchar") && a.value<uchar>() != b.value<uchar>())
+            changed=true;
+        else if (!strcmp(a.typeName(),"ushort") && a.value<ushort>() != b.value<ushort>())
+            changed=true;
+        else if (!strcmp(a.typeName(),"short") && a.value<short>() != a.value<short>())
+            changed=true;
+        else if (!strcmp(a.typeName(),"uint") && a.value<uint>() != b.value<uint>())
+            changed=true;
+        else if (!strcmp(a.typeName(),"modeInfo") && a.value<modeInfo>().mk != a.value<modeInfo>().mk
+                        && a.value<modeInfo>().bw != a.value<modeInfo>().bw && a.value<modeInfo>().filter != a.value<modeInfo>().filter)
+            changed=true;
+        else if(!strcmp(a.typeName(),"freqt") && a.value<freqt>().Hz != b.value<freqt>().Hz)
+            changed=true;
+        else if(!strcmp(a.typeName(),"antennaInfo") && a.value<antennaInfo>().antenna != b.value<antennaInfo>().antenna && a.value<antennaInfo>().rx != b.value<antennaInfo>().rx)
+            changed=true;
+        else if(!strcmp(a.typeName(),"rigInput") && a.value<rigInput>().type != b.value<rigInput>().type)
+            changed=true;
+        else if (!strcmp(a.typeName(),"duplexMode_t") && a.value<duplexMode_t>() != b.value<duplexMode_t>())
+            changed=true;
+    } else if (a.isValid()) {
+        changed = true;
+    }
+
+    return changed;
 }
+
