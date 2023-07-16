@@ -409,7 +409,7 @@ private slots:
     void receiveCompLevel(unsigned char compLevel);
     void receiveVoxGain(unsigned char voxGain);
     void receiveAntiVoxGain(unsigned char antiVoxGain);
-    void receiveSpectrumRefLevel(int level);
+
 
     // Meters:
     void receiveMeter(meter_t meter, unsigned char level);
@@ -477,7 +477,6 @@ private slots:
     void on_transmitBtn_clicked();
     void on_txPowerSlider_valueChanged(int value);
     void on_micGainSlider_valueChanged(int value);
-    void on_scopeRefLevelSlider_valueChanged(int value);
     void useSystemTheme(bool checked);
 
     void on_tuneLockChk_clicked(bool checked);
@@ -494,7 +493,6 @@ private slots:
     void on_ritTuneDial_valueChanged(int value);
     void on_ritEnableChk_clicked(bool checked);
     void on_baudRateCombo_activated(int);
-    void on_wfLengthSlider_valueChanged(int value);
     void changeMeter2Type(meter_t m);
     void enableRigCtl(bool enabled);
     void on_moreControlsBtn_clicked();
@@ -506,9 +504,6 @@ private slots:
     void changedModInput(uchar val, inputTypes type);
 
     void on_radioStatusBtn_clicked();
-
-    void on_topLevelSlider_valueChanged(int value);
-    void on_botLevelSlider_valueChanged(int value);
 
     void on_showLogBtn_clicked();
 

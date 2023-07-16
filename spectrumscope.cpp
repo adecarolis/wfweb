@@ -1458,7 +1458,7 @@ void spectrumScope::configPressed()
 
     connect(theme, &QComboBox::currentIndexChanged, configDialog, [=](const int &val) {
         currentTheme = theme->currentData().value<QCPColorGradient::GradientPreset>();
-        colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(currentTheme));
+        colorMap->setGradient(currentTheme);
         emit updateTheme(sub,currentTheme);
     });
 

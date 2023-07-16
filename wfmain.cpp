@@ -1021,9 +1021,6 @@ void wfmain::setupMainUI()
     ui->micGainSlider->setTickInterval(100);
     ui->micGainSlider->setSingleStep(10);
 
-    ui->scopeRefLevelSlider->setTickInterval(50);
-    ui->scopeRefLevelSlider->setSingleStep(20);
-
     ui->monitorSlider->setTickInterval(100);
     ui->monitorSlider->setSingleStep(10);
 
@@ -1091,16 +1088,6 @@ void wfmain::setupMainUI()
                 [=](const int &newValue) { statusFromSliderPercent("Squelch", newValue);}
     );
 
-    // -200 0 +200.. take log?
-    connect(
-                ui->scopeRefLevelSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) { statusFromSliderRaw("Scope Ref Level", newValue);}
-    );
-
-    connect(
-                ui->wfLengthSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) { statusFromSliderRaw("Waterfall Length", newValue);}
-    );
 
     connect(this->trxadj, &transceiverAdjustments::setIFShift, this, [=](const unsigned char &newValue) {
         queue->add(priorityImmediate,queueItem(funcIFShift,QVariant::fromValue<uint>(newValue)));
@@ -1321,15 +1308,10 @@ void wfmain::setUIToPrefs()
 //            break;
 //    }
 
-    ui->wfLengthSlider->setValue(prefs.wflength);
-
     ui->mainScope->prepareWf(prefs.wflength);
     ui->mainScope->preparePlasma();
     ui->subScope->prepareWf(prefs.wflength);
     ui->subScope->preparePlasma();
-
-    ui->topLevelSlider->setValue(prefs.plotCeiling);
-    ui->botLevelSlider->setValue(prefs.plotFloor);
 
     ui->mainScope->setRange(prefs.plotFloor, prefs.plotCeiling);
     ui->subScope->setRange(prefs.plotFloor, prefs.plotCeiling);
@@ -3356,30 +3338,6 @@ void wfmain::showHideSpectrum(bool show)
 
     ui->mainScope->setVisible(show);
     ui->subScope->setVisible(false);
-
-    // Controls:
-    //ui->spectrumGroupBox->setVisible(show);
-    //ui->scopeEdgeCombo->setVisible(show);
-    //ui->scopeEnableWFBtn->setVisible(show);
-    //ui->scopeEnableWFBtn->setTristate(true);
-    ui->scopeRefLevelSlider->setEnabled(show);
-    ui->wfLengthSlider->setEnabled(show);
-    //ui->wfthemeCombo->setVisible(show);
-    //ui->toFixedBtn->setVisible(show);
-    //ui->customEdgeBtn->setVisible(show);
-   // ui->clearPeakBtn->setVisible(show);
-
-    // And the labels:
-    //ui->specEdgeLabel->setVisible(show);
-    //ui->specModeLabel->setVisible(show);
-    //ui->specSpanLabel->setVisible(show);
-    //ui->specThemeLabel->setVisible(show);
-
-    // And the layout for space:
-    //ui->spectrumGroupBox->setEnabled(show);
-
-    // Window resize:
-
 }
 
 void wfmain::prepareWf(unsigned int wfLength)
@@ -4076,27 +4034,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         {
             ui->mainScope->prepareScope(rigCaps.spectAmpMax, rigCaps.spectLenMax);
             ui->subScope->prepareScope(rigCaps.spectAmpMax, rigCaps.spectLenMax);
-            ui->topLevelSlider->setVisible(true);
-            ui->labelTop->setVisible(true);
-            ui->botLevelSlider->setVisible(true);
-            ui->labelBot->setVisible(true);
-            ui->scopeRefLevelSlider->setVisible(true);
-            ui->refLabel->setVisible(true);
-            ui->wfLengthSlider->setVisible(true);
-            ui->lenLabel->setVisible(true);
-
-            ui->topLevelSlider->setMaximum(rigCaps.spectAmpMax);
-            ui->botLevelSlider->setMaximum(rigCaps.spectAmpMax);
-        } else {
-            ui->scopeRefLevelSlider->setVisible(false);
-            ui->refLabel->setVisible(false);
-            ui->wfLengthSlider->setVisible(false);
-            ui->lenLabel->setVisible(false);
-            ui->topLevelSlider->setVisible(false);
-            ui->labelTop->setVisible(false);
-            ui->botLevelSlider->setVisible(false);
-            ui->labelBot->setVisible(false);
         }
+
         haveRigCaps = true;
 
 
@@ -4245,7 +4184,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->connectBtn->setText("Disconnect from Radio"); // We must be connected now.
 
 
-        prepareWf(ui->wfLengthSlider->value());
+        prepareWf(prefs.wflength);
         if(usingLAN)
         {
             ui->afGainSlider->setValue(prefs.localAFgain);
@@ -5261,18 +5200,6 @@ void wfmain::on_micGainSlider_valueChanged(int value)
     processChangingCurrentModLevel((unsigned char) value);
 }
 
-void wfmain::on_scopeRefLevelSlider_valueChanged(int value)
-{
-    value = (value/5) * 5; // rounded to "nearest 5"
-    emit setSpectrumRefLevel(value);
-}
-
-void wfmain::receiveSpectrumRefLevel(int level)
-{
-    changeSliderQuietly(ui->scopeRefLevelSlider, level);
-}
-
-
 
 void wfmain::changeModLabelAndSlider(rigInput source)
 {
@@ -5573,13 +5500,6 @@ void wfmain::on_baudRateCombo_activated(int index)
 {
 }
 
-void wfmain::on_wfLengthSlider_valueChanged(int value)
-{
-    prefs.wflength = (unsigned int)(value);
-    ui->mainScope->prepareWf(value);
-    //ui->subScope->prepareWf(value);
-}
-
 funcs wfmain::meter_tToMeterCommand(meter_t m)
 {
     funcs c;
@@ -5714,20 +5634,6 @@ void wfmain::setAudioDevicesUI()
 
 }
 
-
-void wfmain::on_topLevelSlider_valueChanged(int value)
-{
-    prefs.plotCeiling = value;
-    ui->mainScope->setRange(prefs.plotFloor,prefs.plotCeiling);
-    ui->subScope->setRange(prefs.plotFloor,prefs.plotCeiling);
-}
-
-void wfmain::on_botLevelSlider_valueChanged(int value)
-{
-    prefs.plotFloor = value;
-    ui->mainScope->setRange(prefs.plotFloor,prefs.plotCeiling);
-    ui->subScope->setRange(prefs.plotFloor,prefs.plotCeiling);
-}
 
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
