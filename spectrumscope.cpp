@@ -1431,7 +1431,7 @@ void spectrumScope::configPressed()
     theme->addItem("Theme Candy", QCPColorGradient::gpCandy);
     theme->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     qInfo() << "Selecting theme" << currentTheme << theme->itemText(currentTheme);
-    theme->setCurrentIndex(currentTheme);
+    theme->setCurrentIndex(theme->findData(currentTheme));
     layout->addRow("Theme",theme);
 
     connect(length, &QSlider::valueChanged, configDialog, [=](const int &val) {
@@ -1457,9 +1457,9 @@ void spectrumScope::configPressed()
     });
 
     connect(theme, &QComboBox::currentIndexChanged, configDialog, [=](const int &val) {
-        currentTheme = val;
+        currentTheme = theme->currentData().value<QCPColorGradient::GradientPreset>();
         colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(currentTheme));
-        emit updateTheme(sub,val);
+        emit updateTheme(sub,currentTheme);
     });
 
     configDialog->show();
@@ -1468,6 +1468,6 @@ void spectrumScope::configPressed()
 
 void spectrumScope::wfTheme(int num)
 {
-    currentTheme = num;
+    currentTheme = QCPColorGradient::GradientPreset(num);
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(num));
 }

@@ -159,7 +159,7 @@ private:
 
     QSpacerItem* controlSpacer;
     QSpacerItem* midSpacer;
-    int currentTheme = 1;
+    QCPColorGradient::GradientPreset currentTheme = QCPColorGradient::gpSpectrum;
     int currentRef = 0;
     uchar currentSpeed = 0;
     colorPrefsType colors;
