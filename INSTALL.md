@@ -18,6 +18,7 @@ sudo apt-get install libeigen3-dev
 sudo apt-get install portaudio19-dev
 sudo apt-get install librtaudio-dev
 sudo apt-get install libhidapi-dev libqt5gamepad5-dev
+sudo apt-get install libudev-dev
 ~~~
 Now you need to install qcustomplot. There are two versions that are commonly found in linux distros: 1.3 and 2.0. Either will work fine. If you are not sure which version your linux install comes with, simply run both commands. One will work and the other will fail, and that's fine!
 
