@@ -113,13 +113,7 @@ bool audioConverter::convert(audioPacket audio)
             QByteArray outPacket(nSamples * sizeof(float) * inFormat.channelCount(), (char)0xff); // Preset the output buffer size.
             float* out = (float*)outPacket.data();
 
-            //if (audio.seq > lastAudioSequence + 1) {
-            //	nSamples = opus_decode_float(opusDecoder, Q_NULLPTR, 0, out, nSamples, 1);
-            //}
-            //else {
-            nSamples = opus_decode_float(opusDecoder, in, audio.data.size(), out, nSamples, 0);
-            //}
-            //lastAudioSequence = audio.seq;
+            opus_decode_float(opusDecoder, in, audio.data.size(), out, nSamples, 0);
             audio.data.clear();
             audio.data = outPacket; // Replace incoming data with converted.
         }

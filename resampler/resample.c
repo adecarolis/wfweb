@@ -710,7 +710,7 @@ static int update_filter(SpeexResamplerState* st)
        /* Adding buffer_size to filt_len won't overflow here because filt_len
           could be multiplied by sizeof(spx_word16_t) above. */
     min_alloc_size = st->filt_len - 1 + st->buffer_size;
-    if (min_alloc_size > st->mem_alloc_size)
+    if (min_alloc_size > st->mem_alloc_size && st->nb_channels>0)
     {
         spx_word16_t* mem;
         if (INT_MAX / sizeof(spx_word16_t) / st->nb_channels < min_alloc_size)
