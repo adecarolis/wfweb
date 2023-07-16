@@ -40,18 +40,16 @@ spectrumScope::spectrumScope(QWidget *parent)
     holdButton = new QPushButton("HOLD");
     holdButton->setCheckable(true);
     holdButton->setFocusPolicy(Qt::NoFocus);
-    speedCombo = new QComboBox();
-    speedCombo->addItem("Speed Fast",QVariant::fromValue(uchar(0)));
-    speedCombo->addItem("Speed Mid",QVariant::fromValue(uchar(1)));
-    speedCombo->addItem("Speed Slow",QVariant::fromValue(uchar(2)));
 
     controlSpacer = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
     midSpacer = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
     clearPeaksButton = new QPushButton("Clear Peaks");
-    themeCombo = new QComboBox();
-    themeCombo->setAccessibleName("Waterfall display color themey");
-    themeCombo->setAccessibleDescription("Selects the theme for the color waterfall display");
-    themeCombo->setToolTip("Waterfall color theme");
+
+    configButton = new QPushButton("Conf");
+    configButton->setAccessibleName("Configure Scope");
+    configButton->setAccessibleDescription("Change various settings of the current Scope");
+    configButton->setToolTip("Configure Scope");
+
 
     modeCombo = new QComboBox();
     dataCombo = new QComboBox();
@@ -80,14 +78,13 @@ spectrumScope::spectrumScope(QWidget *parent)
     controlLayout->addWidget(edgeButton);
     controlLayout->addWidget(toFixedButton);
     controlLayout->addWidget(holdButton);
-    controlLayout->addWidget(speedCombo);
     controlLayout->addSpacerItem(controlSpacer);
     controlLayout->addWidget(modeCombo);
     controlLayout->addWidget(dataCombo);
     controlLayout->addWidget(filterCombo);
     controlLayout->addSpacerItem(midSpacer);
     controlLayout->addWidget(clearPeaksButton);
-    controlLayout->addWidget(themeCombo);
+    controlLayout->addWidget(configButton);
 
     this->layout->setContentsMargins(5,5,5,5);
 
@@ -96,20 +93,6 @@ spectrumScope::spectrumScope(QWidget *parent)
     scopeModeCombo->addItem("Scroll-C", (spectrumMode_t)spectModeScrollC);
     scopeModeCombo->addItem("Scroll-F", (spectrumMode_t)spectModeScrollF);
     scopeModeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-
-    themeCombo->addItem("Theme Jet", QCPColorGradient::gpJet);
-    themeCombo->addItem("Theme Cold", QCPColorGradient::gpCold);
-    themeCombo->addItem("Theme Hot", QCPColorGradient::gpHot);
-    themeCombo->addItem("Theme Therm", QCPColorGradient::gpThermal);
-    themeCombo->addItem("Theme Night", QCPColorGradient::gpNight);
-    themeCombo->addItem("Theme Ion", QCPColorGradient::gpIon);
-    themeCombo->addItem("Theme Gray", QCPColorGradient::gpGrayscale);
-    themeCombo->addItem("Theme Geo", QCPColorGradient::gpGeography);
-    themeCombo->addItem("Theme Hues", QCPColorGradient::gpHues);
-    themeCombo->addItem("Theme Polar", QCPColorGradient::gpPolar);
-    themeCombo->addItem("Theme Spect", QCPColorGradient::gpSpectrum);
-    themeCombo->addItem("Theme Candy", QCPColorGradient::gpCandy);
-    themeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
 
     edgeCombo->insertItems(0, QStringList({"Fixed Edge 1","Fixed Edge 2","Fixed Edge 3","Fixed Edge 4"}));
     //edgeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContentsOnFirstShow);
@@ -185,13 +168,12 @@ spectrumScope::spectrumScope(QWidget *parent)
 
     connect(scopeModeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedScopeMode(int)));
     connect(spanCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedSpan(int)));
-    connect(themeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedTheme(int)));
+    connect(configButton,SIGNAL(pressed()), this, SLOT(configPressed()));
 
     connect(toFixedButton,SIGNAL(pressed()), this, SLOT(toFixedPressed()));
     connect(edgeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedEdge(int)));
     connect(edgeButton,SIGNAL(pressed()), this, SLOT(customSpanPressed()));
 
-    connect(speedCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedSpeed(int)));
     connect(holdButton,SIGNAL(toggled(bool)), this, SLOT(holdPressed(bool)));
 
     connect(modeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedMode(int)));
@@ -686,10 +668,9 @@ void spectrumScope::enableScope(bool en)
         this->toFixedButton->setVisible(en);
         this->spanCombo->setVisible(en);
     }
-    this->themeCombo->setVisible(en);
     this->clearPeaksButton->setVisible(en);
-    this->speedCombo->setVisible(en);
     this->holdButton->setVisible(en);
+    this->configButton->setVisible(en);
 }
 
 void spectrumScope::selectScopeMode(spectrumMode_t m)
@@ -731,11 +712,6 @@ void spectrumScope::updatedMode(int index)
     queue->add(priorityImmediate,queueItem((sub?funcUnselectedMode:funcSelectedMode),QVariant::fromValue(mi),false,sub));
 }
 
-void spectrumScope::updatedTheme(int index)
-{
-    currentTheme = themeCombo->itemData(index).toInt();
-    colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(currentTheme));
-}
 
 void spectrumScope::updatedEdge(int index)
 {
@@ -1281,11 +1257,6 @@ void spectrumScope::selected(bool en)
         this->setStyleSheet("QGroupBox { border:2px solid gray;}");
 }
 
-void spectrumScope::updatedSpeed(int index)
-{
-    queue->add(priorityImmediate,queueItem(sub?funcScopeSubSpeed:funcScopeMainSpeed,this->speedCombo->itemData(index),false,sub));
-}
-
 void spectrumScope::holdPressed(bool en)
 {
     queue->add(priorityImmediate,queueItem(sub?funcScopeSubHold:funcScopeMainHold,QVariant::fromValue(en),false,sub));
@@ -1300,9 +1271,7 @@ void spectrumScope::setHold(bool h)
 
 void spectrumScope::setSpeed(uchar s)
 {
-    this->speedCombo->blockSignals(true);
-    this->speedCombo->setCurrentIndex(this->speedCombo->findData(s));
-    this->speedCombo->blockSignals(false);
+    this->currentSpeed = s;
 }
 
 
@@ -1393,4 +1362,112 @@ void spectrumScope::receiveSpots(QList<spotData> spots)
 
     //qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
 
+}
+
+void spectrumScope::configPressed()
+{
+    QDialog* configDialog = new QDialog(this);
+    configDialog->setModal(true);
+    QFormLayout* layout = new QFormLayout;
+    //spotDialog->setFixedSize(240, 100);
+    configDialog->setBaseSize(1, 1);
+    configDialog->setWindowTitle(QString("Config %0 Scope").arg(this->sub?"Sub":"Main"));
+    configDialog->setLayout(layout);
+    QSlider* ref = new QSlider(Qt::Orientation::Horizontal);
+    ref->setRange(-200,200);
+    ref->setTickInterval(50);
+    ref->setSingleStep(20);
+    ref->setValue(0);
+    ref->setAccessibleName("Scope display reference");
+    ref->setAccessibleDescription("Selects the display reference for the Scope display");
+    ref->setToolTip("Select display reference of scope");
+    layout->addRow("Ref",ref);
+
+    QSlider* length = new QSlider(Qt::Orientation::Horizontal);
+    length->setRange(100,1024);
+    length->setValue(400);
+    layout->addRow("Length",length);
+    QSlider* top = new QSlider(Qt::Orientation::Horizontal);
+    top->setRange(1,160);
+    top->setValue(160);
+    top->setAccessibleName("Scope display ceiling");
+    top->setAccessibleDescription("Selects the display ceiling for the Scope display");
+    top->setToolTip("Select display ceiling of scope");
+    layout->addRow("Ceiling",top);
+
+    QSlider* bottom = new QSlider(Qt::Orientation::Horizontal);
+    bottom->setRange(0,160);
+    bottom->setValue(0);
+    bottom->setAccessibleName("Scope display floor");
+    bottom->setAccessibleDescription("Selects the display floor for the Scope display");
+    bottom->setToolTip("Select display floor of scope");
+    layout->addRow("Floor",bottom);
+
+    QComboBox* speed = new QComboBox();
+    speed->addItem("Speed Fast",QVariant::fromValue(uchar(0)));
+    speed->addItem("Speed Mid",QVariant::fromValue(uchar(1)));
+    speed->addItem("Speed Slow",QVariant::fromValue(uchar(2)));
+    speed->setCurrentIndex(speed->findData(currentSpeed));
+    speed->setAccessibleName("Waterfall display speed");
+    speed->setAccessibleDescription("Selects the speed for the waterfall display");
+    speed->setToolTip("Waterfall Speed");
+    layout->addRow("Speed",speed);
+
+    QComboBox* theme = new QComboBox();
+    theme->setAccessibleName("Waterfall display color theme");
+    theme->setAccessibleDescription("Selects the color theme for the waterfall display");
+    theme->setToolTip("Waterfall color theme");
+    theme->addItem("Theme Jet", QCPColorGradient::gpJet);
+    theme->addItem("Theme Cold", QCPColorGradient::gpCold);
+    theme->addItem("Theme Hot", QCPColorGradient::gpHot);
+    theme->addItem("Theme Therm", QCPColorGradient::gpThermal);
+    theme->addItem("Theme Night", QCPColorGradient::gpNight);
+    theme->addItem("Theme Ion", QCPColorGradient::gpIon);
+    theme->addItem("Theme Gray", QCPColorGradient::gpGrayscale);
+    theme->addItem("Theme Geo", QCPColorGradient::gpGeography);
+    theme->addItem("Theme Hues", QCPColorGradient::gpHues);
+    theme->addItem("Theme Polar", QCPColorGradient::gpPolar);
+    theme->addItem("Theme Spect", QCPColorGradient::gpSpectrum);
+    theme->addItem("Theme Candy", QCPColorGradient::gpCandy);
+    theme->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    qInfo() << "Selecting theme" << currentTheme << theme->itemText(currentTheme);
+    theme->setCurrentIndex(currentTheme);
+    layout->addRow("Theme",theme);
+
+    connect(length, &QSlider::valueChanged, configDialog, [=](const int &val) {
+        prepareWf(val);
+    });
+
+    connect(bottom, &QSlider::valueChanged, configDialog, [=](const int &val) {
+        this->plotFloor = val;
+        this->setRange(plotFloor,plotCeiling);
+    });
+    connect(top, &QSlider::valueChanged, configDialog, [=](const int &val) {
+        this->plotCeiling = val;
+        this->setRange(plotFloor,plotCeiling);
+    });
+
+    connect(ref, &QSlider::valueChanged, configDialog, [=](const int &val) {
+        currentRef = (val/5) * 5; // rounded to "nearest 5"
+        queue->add(priorityImmediate,queueItem(sub?funcScopeSubRef:funcScopeMainRef,QVariant::fromValue(currentRef),false,sub));
+    });
+
+    connect(speed, &QComboBox::currentIndexChanged, configDialog, [=](const int &val) {
+        queue->add(priorityImmediate,queueItem(sub?funcScopeSubSpeed:funcScopeMainSpeed,speed->itemData(val),false,sub));
+    });
+
+    connect(theme, &QComboBox::currentIndexChanged, configDialog, [=](const int &val) {
+        currentTheme = val;
+        colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(currentTheme));
+        emit updateTheme(sub,val);
+    });
+
+    configDialog->show();
+}
+
+
+void spectrumScope::wfTheme(int num)
+{
+    currentTheme = num;
+    colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(num));
 }

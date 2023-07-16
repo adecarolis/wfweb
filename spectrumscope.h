@@ -36,7 +36,7 @@ public:
     void setRange(int floor, int ceiling);
     void wfInterpolate(bool en) { colorMap->setInterpolate(en); }
     void wfAntiAliased(bool en) { colorMap->setAntialiased(en); }
-    void wfTheme(int num) { colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(num));}
+    void wfTheme(int num);
     void setUnderlayMode(underlay_t un) { underlayMode = un; clearPeaks();}
     void overflow(bool en) {ovfIndicator->setVisible(en);}
     void resizePlasmaBuffer(int size);
@@ -98,18 +98,18 @@ signals:
     void updateScopeMode(spectrumMode_t index);
     void updateSpan(centerSpanData s);
     void showStatusBarText(QString text);
+    void updateTheme(bool sub, int value);
 
 
 private slots:
     void updatedScopeMode(int index);
     void updatedSpan(int index);
-    void updatedTheme(int index);
     void updatedEdge(int index);
     void updatedMode(int index);
-    void updatedSpeed(int index);
     void holdPressed(bool en);
     void toFixedPressed();
     void customSpanPressed();
+    void configPressed();
 
     // Mouse interaction with scope/waterfall
     void scopeClick(QMouseEvent *);
@@ -152,14 +152,16 @@ private:
     QComboBox* filterCombo;
     QComboBox* antennaCombo;
     QPushButton* holdButton;
-    QComboBox* speedCombo;
 
     QCheckBox* rxCheckBox;
-    QComboBox* themeCombo;
+
+    QPushButton* configButton;
 
     QSpacerItem* controlSpacer;
     QSpacerItem* midSpacer;
     int currentTheme = 1;
+    int currentRef = 0;
+    uchar currentSpeed = 0;
     colorPrefsType colors;
     freqt freq;
     modeInfo mode;

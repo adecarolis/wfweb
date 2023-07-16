@@ -326,6 +326,7 @@ private slots:
     void extChangedUdpPref(prefUDPItem i);
     void extChangedServerPref(prefServerItem i);
 
+    void receiveTheme(bool sub, int theme);
     void receiveValue(cacheItem val);
     void setAudioDevicesUI();
     void updateSizes(int tabIndex);

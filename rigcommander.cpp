@@ -6212,6 +6212,18 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
                 }
                 payload.append(bcdEncodeInt(value.value<uint>() & 0xffff));
             }
+            else if (!strcmp(value.typeName(),"int") && (func == funcScopeMainRef || func == funcScopeSubRef))
+            {
+                bool isNegative = false;
+                int level = value.value<int>();
+                if(level < 0)
+                {
+                    isNegative = true;
+                    level *= -1;
+                }
+                payload.append(bcdEncodeInt(level*10));
+                payload.append(static_cast<unsigned char>(isNegative));
+            }
             else if (!strcmp(value.typeName(),"modeInfo"))
             {
                 if (func == funcDataModeWithFilter)

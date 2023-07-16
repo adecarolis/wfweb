@@ -729,6 +729,9 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setUTCOffset(timekind)), rig, SLOT(setUTCOffset(timekind)));
     */
     connect(this, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
+
+    connect(ui->mainScope, SIGNAL(updateTheme(bool,int)), this, SLOT(receiveTheme(bool,int)));
+    connect(ui->subScope, SIGNAL(updateTheme(bool,int)), this, SLOT(receiveTheme(bool,int)));
 }
 
 //void wfmain::removeRigConnections()
@@ -5901,6 +5904,7 @@ void wfmain::changePollTiming(int timing_ms, bool setUI)
 
 void wfmain::connectionHandler(bool connect) 
 {
+    queue->clear();
     emit sendCloseComm();
     haveRigCaps = false;
     rigName->setText("NONE");
@@ -5917,8 +5921,6 @@ void wfmain::connectionHandler(bool connect)
         memWindow = Q_NULLPTR;
     }
 
-    // Also clear the queue
-    queue->clear();
 
 }
 
@@ -6519,6 +6521,12 @@ void wfmain::on_scopeDualBtn_toggled(bool en)
 void wfmain::on_dualWatchBtn_toggled(bool en)
 {
     queue->add(priorityImmediate,queueItem(funcVFODualWatch,QVariant::fromValue(en),false,false));
+}
+
+void wfmain::receiveTheme(bool sub, int theme)
+{
+    if (!sub)
+        prefs.wftheme = theme;
 }
 
 

@@ -5,14 +5,14 @@
 
 
 static const tciCommandStruct tci_commands[] =
-    {
+{
     { "vfo_limits",         funcNone,       'l', 'l'},
     { "if_limits",          funcNone,       'l', 'l'},
     { "trx_count",          funcNone,       'u'},
     { "channel_count",      funcNone,       'u'},
     { "device",             funcNone,       't'},
     { "receive_only",       funcNone,       'u'},
-    { "modulations_list",   funcNone  },
+    { "modulations_list",   funcNone,       's'},
     { "tx_enable",          funcNone,       'u','u'},
     { "ready",              funcNone, },
     { "tx_footswitch",      funcNone,       'u','b'},
@@ -31,7 +31,7 @@ static const tciCommandStruct tci_commands[] =
     { "trx_count",          funcNone,       'u'},
     { "trx_count",          funcNone,       'u'},
     { "", funcNone, 0x0 },
-        };
+};
 
 tciServer::tciServer(quint16 port, QObject *parent) :
     QObject(parent),
@@ -86,7 +86,7 @@ void tciServer::onNewConnection()
     pSocket->sendTextMessage(QString("audio_samplerate:48000;\n"));
     pSocket->sendTextMessage(QString("mute:false;\n"));
     pSocket->sendTextMessage(QString("vfo:0,0,%0;").arg(queue->getCache(funcSelectedFreq,false).value.value<freqt>().Hz));
-    pSocket->sendTextMessage(QString("modulation:0,%0;").arg(queue->getCache(funcSelectedMode,false).value.value<modeInfo>().name));
+    pSocket->sendTextMessage(QString("modulation:0,%0;").arg(queue->getCache(funcSelectedMode,false).value.value<modeInfo>().name.toLower()));
     pSocket->sendTextMessage(QString("start;\n"));
     pSocket->sendTextMessage(QString("ready;\n"));
 }
@@ -132,14 +132,49 @@ void tciServer::processIncomingTextMessage(QString message)
     else if (cmd == "audio_samplerate" ) {
     }
     else if (cmd == "trx" ) {
-        //if (arg.size() == 1)
-        //it.value().rxaudio=false;
+        if (arg.size() == 1) {
+            it.value().rxaudio=false;
+            reply = QString("trx:%0,%1;").arg(QString::number(sub)).arg(queue->getCache(funcTransceiverStatus).value.value<bool>()?"true":"false");
+        }
+        else if (arg.size() == 2) {
+            bool on = arg[1]=="true"?1:0;
+            queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue(on),false,sub));
+        }
     }
     else if (cmd == "vfo")
     {
-        reply = QString("%0:%1,%2,%3;").arg(cmd).arg(arg[0]).arg(arg[1])
-                    .arg(queue->getCache(sub?funcUnselectedFreq:funcSelectedFreq,sub).value.value<freqt>().Hz);
+        if (arg.size() == 2) {
+            reply = QString("%0:%1,%2,%3;").arg(cmd).arg(arg[0]).arg(arg[1])
+                        .arg(queue->getCache(sub?funcUnselectedFreq:funcSelectedFreq,sub).value.value<freqt>().Hz);
+        }
+        else if (arg.size() == 3) {
+            qInfo() << "Freq" << arg[2];
+            freqt f;
+            f.Hz = arg[2].toUInt();
+            f.MHzDouble = f.Hz / (double)1E6;
+            queue->add(priorityImmediate,queueItem(sub?funcUnselectedFreq:funcSelectedFreq,QVariant::fromValue(f),false,sub));
+        }
     }
+    else if (cmd == "modulation")
+    {
+        if (arg.size() == 1) {
+            reply = QString("modulation:%0,%1;").arg(QString::number(sub))
+                        .arg(queue->getCache(sub?funcUnselectedMode:funcSelectedMode,sub).value.value<modeInfo>().name.toLower());
+        }
+        else if (arg.size() == 2) {
+            qInfo() << "Mode (TODO)" << arg[1];
+            reply = QString("modulation:%0,%1;").arg(QString::number(sub))
+                        .arg(queue->getCache(sub?funcUnselectedMode:funcSelectedMode,sub).value.value<modeInfo>().name.toLower());
+            /*
+            freqt f;
+            f.Hz = arg[2].toUInt();
+            f.MHzDouble = f.Hz / (double)1E6;
+            queue->add(priorityImmediate,queueItem(sub?funcUnselectedFreq:funcSelectedFreq,QVariant::fromValue(f),false,sub));
+            */
+        }
+    }
+    //reply = QString("vfo:0,%0,%1;").arg(QString::number(item.sub)).arg(item.value.value<freqt>().Hz);
+
 
     if (pClient && !reply.isEmpty()) {
         qInfo() << "Reply:" << reply;
@@ -217,6 +252,7 @@ void tciServer::receiveCache(cacheItem item)
         qInfo() << "Changed Cache" << funcString[item.command];
 
     auto it = clients.begin();
+    QString reply;
     while (it != clients.end())
     {
         if (it.value().connected)
@@ -227,20 +263,26 @@ void tciServer::receiveCache(cacheItem item)
             case funcFreqTR:
             case funcSelectedFreq:
             case funcUnselectedFreq:
-                it.key()->sendTextMessage(QString("vfo:0,%0,%1;").arg(QString::number(item.sub)).arg(item.value.value<freqt>().Hz));
+                reply = QString("vfo:0,%0,%1;").arg(QString::number(item.sub)).arg(item.value.value<freqt>().Hz);
                 break;
             case funcModeTR:
             case funcSelectedMode:
             case funcUnselectedMode:
-                it.key()->sendTextMessage(QString("modulation:%0,%1;").arg(QString::number(item.sub)).arg(item.value.value<modeInfo>().name));
+                reply = QString("modulation:%0,%1;").arg(QString::number(item.sub)).arg(item.value.value<modeInfo>().name.toLower());
+                break;
+            case funcTransceiverStatus:
+                reply = QString("trx:%0,%1;").arg(QString::number(item.sub)).arg(item.value.value<bool>()?"true":"false");
                 break;
             default:
                 break;
+            }
+            if (!reply.isEmpty()) {
+                it.key()->sendTextMessage(reply);
+                qInfo() << "Sending TCI:" << reply;
             }
 
         }
         ++it;
     }
-
 
 }
