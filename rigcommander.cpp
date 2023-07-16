@@ -4773,6 +4773,8 @@ freqt rigCommander::parseFrequencyRptOffset(QByteArray data)
     f.Hz += (data[1] & 0x0f) *           100; // 100 Hz
     f.Hz += ((data[1] & 0xf0) >> 4) *   1000; // 1 KHz
 
+    f.MHzDouble=f.Hz/1E6;
+    f.VFO = activeVFO;
     return f;
 }
 

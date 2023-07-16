@@ -382,31 +382,32 @@ void udpServer::controlReceived()
                         qCritical(logAudio()) << "Unsupported Transmit Audio Handler selected!";
                     }
 
-                    //radio->txaudio = new audioHandler();
-                    radio->txAudioThread = new QThread(this);
-                    radio->txAudioThread->setObjectName("txAudio()");
+
+                    if (radio->txaudio != Q_NULLPTR) {
+                        radio->txAudioThread = new QThread(this);
+                        radio->txAudioThread->setObjectName("txAudio()");
 
 
-                    radio->txaudio->moveToThread(radio->txAudioThread);
+                        radio->txaudio->moveToThread(radio->txAudioThread);
 
-                    radio->txAudioThread->start(QThread::TimeCriticalPriority);
+                        radio->txAudioThread->start(QThread::TimeCriticalPriority);
 
-                    connect(this, SIGNAL(setupTxAudio(audioSetup)), radio->txaudio, SLOT(init(audioSetup)));
-                    connect(radio->txAudioThread, SIGNAL(finished()), radio->txaudio, SLOT(deleteLater()));
+                        connect(this, SIGNAL(setupTxAudio(audioSetup)), radio->txaudio, SLOT(init(audioSetup)));
+                        connect(radio->txAudioThread, SIGNAL(finished()), radio->txaudio, SLOT(deleteLater()));
 
-                    // Not sure how we make this work in QT5.9?
+                        // Not sure how we make this work in QT5.9?
 #if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
-                    QMetaObject::invokeMethod(radio->txaudio, [=]() {
-                        radio->txaudio->init(radio->txAudioSetup);
-                    }, Qt::QueuedConnection);
+                        QMetaObject::invokeMethod(radio->txaudio, [=]() {
+                            radio->txaudio->init(radio->txAudioSetup);
+                        }, Qt::QueuedConnection);
 #else
-                    emit setupTxAudio(radio->txAudioSetup);
-                    #warning "QT 5.9 is not fully supported multiple rigs will NOT work!"
+                        emit setupTxAudio(radio->txAudioSetup);
+                        #warning "QT 5.9 is not fully supported multiple rigs will NOT work!"
 #endif
-                    hasTxAudio = datagram.senderAddress();
+                        hasTxAudio = datagram.senderAddress();
 
-                    connect(this, SIGNAL(haveAudioData(audioPacket)), radio->txaudio, SLOT(incomingAudio(audioPacket)));
-
+                        connect(this, SIGNAL(haveAudioData(audioPacket)), radio->txaudio, SLOT(incomingAudio(audioPacket)));
+                    }
                 }
                 if ((!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size() == 1) && radio->rxaudio == Q_NULLPTR && !config->lan)
                 {
@@ -431,27 +432,30 @@ void udpServer::controlReceived()
                         qCritical(logAudio()) << "Unsupported Receive Audio Handler selected!";
                     }
 
+                    if (radio->rxaudio != Q_NULLPTR)
+                    {
 
-                    radio->rxAudioThread = new QThread(this);
-                    radio->rxAudioThread->setObjectName("rxAudio()");
+                        radio->rxAudioThread = new QThread(this);
+                        radio->rxAudioThread->setObjectName("rxAudio()");
 
-                    radio->rxaudio->moveToThread(radio->rxAudioThread);
+                        radio->rxaudio->moveToThread(radio->rxAudioThread);
 
-                    radio->rxAudioThread->start(QThread::TimeCriticalPriority);
+                        radio->rxAudioThread->start(QThread::TimeCriticalPriority);
 
-                    connect(radio->rxAudioThread, SIGNAL(finished()), radio->rxaudio, SLOT(deleteLater()));
-                    connect(radio->rxaudio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+                        connect(radio->rxAudioThread, SIGNAL(finished()), radio->rxaudio, SLOT(deleteLater()));
+                        connect(radio->rxaudio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
 
 #if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
-                    QMetaObject::invokeMethod(radio->rxaudio, [=]() {
-                        radio->rxaudio->init(radio->rxAudioSetup);
-                    }, Qt::QueuedConnection);
+                        QMetaObject::invokeMethod(radio->rxaudio, [=]() {
+                            radio->rxaudio->init(radio->rxAudioSetup);
+                        }, Qt::QueuedConnection);
 #else
-                    //#warning "QT 5.9 is not fully supported multiple rigs will NOT work!"
-                    connect(this, SIGNAL(setupRxAudio(audioSetup)), radio->rxaudio, SLOT(init(audioSetup)));
-                    setupRxAudio(radio->rxAudioSetup);
+                        //#warning "QT 5.9 is not fully supported multiple rigs will NOT work!"
+                        connect(this, SIGNAL(setupRxAudio(audioSetup)), radio->rxaudio, SLOT(init(audioSetup)));
+                        setupRxAudio(radio->rxAudioSetup);
 #endif
 
+                    }
                 }
 
             }

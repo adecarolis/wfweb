@@ -7245,7 +7245,7 @@ void wfmain::receiveModInput(rigInput input, bool dataOn)
 {
     QComboBox *box;
     QString inputName;
-    bool found;
+    bool found=false;
     bool foundCurrent = false;
 
     if(dataOn)

@@ -688,6 +688,7 @@ void repeaterSetup::on_splitPlusButton_clicked()
         txfreqhz = currentMainFrequency.Hz + hzOffset;
         f.Hz = txfreqhz;
         f.VFO = inactiveVFO;
+        f.MHzDouble = f.Hz/1E6;
         txString = QString::number(f.Hz / double(1E6), 'f', 6);
         ui->splitTransmitFreqEdit->setText(txString);
         usedPlusSplit = true;
@@ -707,6 +708,7 @@ void repeaterSetup::on_splitMinusBtn_clicked()
         txfreqhz = currentMainFrequency.Hz - hzOffset;
         f.Hz = txfreqhz;
         f.VFO = inactiveVFO;
+        f.MHzDouble = f.Hz/1E6;
         txString = QString::number(f.Hz / double(1E6), 'f', 6);
         ui->splitTransmitFreqEdit->setText(txString);
         usedPlusSplit = false;
@@ -723,6 +725,7 @@ void repeaterSetup::on_splitTxFreqSetBtn_clicked()
     {
         f.Hz = fHz;
         f.VFO = inactiveVFO;
+        f.MHzDouble = f.Hz/1E6;
         emit setTransmitFrequency(f);
         emit setTransmitMode(modeTransmitVFO);
     }
@@ -812,6 +815,8 @@ void repeaterSetup::on_rptrOffsetSetBtn_clicked()
 {
     freqt f;
     f.Hz = getFreqHzFromMHzString(ui->rptrOffsetEdit->text());
+    f.MHzDouble = f.Hz/1E6;
+    f.VFO=activeVFO;
     if(f.Hz != 0)
     {
         emit setRptDuplexOffset(f);

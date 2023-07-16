@@ -493,7 +493,7 @@ void meter::drawScalePo(QPainter *qp)
 
     // Here, P is now 60 watts:
     // Higher scale:
-    i = i - (int)(10*dnPerWatt); // back one tick first. Otherwise i starts at 178.
+    //i = i - (int)(10*dnPerWatt); // back one tick first. Otherwise i starts at 178. **Not used?**
     //qDebug() << "meter i: " << i;
     dnPerWatt = (213-143.0f) / 50.0f; // 1.4 dn per watt
     // P=5 here.
