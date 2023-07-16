@@ -6290,6 +6290,7 @@ void wfmain::changeMode(mode_kind mode, bool dataOn)
     mode_info m;
     m.filter = (unsigned char) filter;
     m.reg = (unsigned char) mode;
+    m.mk = mode;
     issueCmd(cmdSetMode, m);
 
     currentMode = mode;

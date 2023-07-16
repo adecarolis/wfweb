@@ -3543,7 +3543,7 @@ void rigCommander::determineRigCaps()
     bandType bandDef70cm = bandType(band70cm, 420000000, 450000000, modeUSB);
     bandType bandDef23cm = bandType(band23cm, 1240000000, 1400000000, modeUSB);
     bandType bandDef13cm = bandType(band13cm, 2300000000, 2450000000, modeUSB);
-    bandType bandDef9cm = bandType(band9cm, 3300000000, 3500000000, modeUSB);
+    //bandType bandDef9cm = bandType(band9cm, 3300000000, 3500000000, modeUSB);
     bandType bandDef6cm = bandType(band6cm, 5650000000, 5925000000, modeUSB);
     bandType bandDef3cm = bandType(band3cm, 10000000000, 10500000000, modeUSB);
 
