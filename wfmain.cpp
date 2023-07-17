@@ -340,14 +340,16 @@ void wfmain::openRig()
     //     showRigSettings(); // rig setting dialog box for network/serial, CIV, hostname, port, baud rate, serial device, etc
     // TODO: How do we know if the setting was loaded?
 
+    emit connectionStatus(true); // Signal any other parts that need to know if we are connecting/connected.
     ui->connectBtn->setText("Cancel connection"); // We are attempting to connect
+    connStatus = connConnecting;
 
     makeRig();
 
     if (prefs.enableLAN)
     {
         usingLAN = true;
-        // We need to setup the tx/rx audio:
+        // "We need to setup the tx/rx audio:
         udpPrefs.waterfallFormat = prefs.waterfallFormat;
         emit sendCommSetup(rigList, prefs.radioCIVAddr, udpPrefs, prefs.rxSetup, prefs.txSetup, prefs.virtualSerialPort, prefs.tcpPort);
     } else {
@@ -664,7 +666,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setPBTOuter(unsigned char)), rig, SLOT(setPBTOuter(unsigned char)));
     connect(this, SIGNAL(setTxPower(unsigned char)), rig, SLOT(setTxPower(unsigned char)));
     connect(this, SIGNAL(setMicGain(unsigned char)), rig, SLOT(setMicGain(unsigned char)));
-    connect(this, SIGNAL(setMonitorGain(unsigned char)), rig, SLOT(setMonitorGain(unsigned char)));
+    connect(this, SIGNAL(setMonitorGain(unsigned char)), rig, SLOT(setMonitorGafin(unsigned char)));
     connect(this, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
     connect(this, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
     connect(this, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
@@ -1088,21 +1090,6 @@ void wfmain::setupMainUI()
                 [=](const int &newValue) { statusFromSliderPercent("Squelch", newValue);}
     );
 
-
-    connect(this->trxadj, &transceiverAdjustments::setIFShift, this, [=](const unsigned char &newValue) {
-        queue->add(priorityImmediate,queueItem(funcIFShift,QVariant::fromValue<uint>(newValue)));
-    });
-
-    connect(this->trxadj, &transceiverAdjustments::setPBTInner, this, [=](const unsigned char &newValue) {
-        queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newValue)));
-    });
-
-    connect(this->trxadj, &transceiverAdjustments::setPBTOuter, this, [=](const unsigned char &newValue) {
-        queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newValue)));
-    });
-    connect(this->trxadj, &transceiverAdjustments::setPassband, this, [=](const quint16 &passbandHz) {
-        queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<short>(passbandHz)));
-    });
 /*
     connect(this->cw, &cwSender::sendCW,
             [=](const QString &cwMessage) { issueCmd(cmdSendCW, cwMessage);});
@@ -1156,24 +1143,11 @@ void wfmain::connectSettingsWidget()
     connect(setupui, SIGNAL(changedServerTXAudioOutputCombo(int)), this, SLOT(changedServerTXAudioOutput(int)));
 
     connect(setupui, SIGNAL(changedModInput(uchar,inputTypes)), this, SLOT(changedModInput(uchar,inputTypes)));
+
+    connect(this, SIGNAL(connectionStatus(bool)), setupui, SLOT(connectionStatus(bool)));
 }
 
 // NOT Migrated, EHL TODO, carefully remove this function
-void wfmain::updateSizes(int tabIndex)
-{
-
-    // This function does nothing unless you are using a rig without spectrum.
-    // This is a hack. It is not great, but it seems to work ok.
-    if(!rigCaps.hasSpectrum)
-    {
-        this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-        this->setMaximumSize(QSize(940,380));
-        this->setMinimumSize(QSize(940,380));
-
-        resize(minimumSize());
-        adjustSize(); // main window
-    }
-}
 
 void wfmain::getSettingsFilePath(QString settingsFile)
 {
@@ -1537,7 +1511,7 @@ void wfmain::setupKeyShortcuts()
 #else
     keyDebug->setKey(Qt::CTRL | Qt::Key_D);
 #endif
-    connect(keyDebug, SIGNAL(activated()), this, SLOT(on_debugBtn_clicked()));
+    connect(keyDebug, SIGNAL(activated()), this, SLOT(debugBtn_clicked()));
 }
 
 void wfmain::setupUsbControllerDevice()
@@ -3340,12 +3314,6 @@ void wfmain::showHideSpectrum(bool show)
     ui->subScope->setVisible(false);
 }
 
-void wfmain::prepareWf(unsigned int wfLength)
-{
-
-}
-
-
 // Key shortcuts (hotkeys)
 
 void wfmain::shortcutF11()
@@ -3462,8 +3430,8 @@ void wfmain::shortcutStar()
 void wfmain::shortcutSlash()
 {
     // Cycle through available modes
-    ui->modeSelectCombo->setCurrentIndex( (ui->modeSelectCombo->currentIndex()+1) % ui->modeSelectCombo->count() );
-    on_modeSelectCombo_activated( ui->modeSelectCombo->currentIndex() );
+    //ui->modeSelectCombo->setCurrentIndex( (ui->modeSelectCombo->currentIndex()+1) % ui->modeSelectCombo->count() );
+    //on_modeSelectCombo_activated( ui->modeSelectCombo->currentIndex() );
 }
 
 void wfmain::setTuningSteps()
@@ -4083,10 +4051,6 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         setupui->updateModSourceList(0, rigCaps.inputs);
         setupui->updateModSourceList(1, rigCaps.inputs);
 
-        ui->datamodeCombo->clear();
-        ui->datamodeCombo->addItem("Off",0);
-
-
         ui->mainScope->clearData();
         ui->subScope->clearData();
 
@@ -4182,9 +4146,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         //ui->audioSystemServerCombo->setEnabled(false);
 
         ui->connectBtn->setText("Disconnect from Radio"); // We must be connected now.
-
-
-        prepareWf(prefs.wflength);
+        connStatus = connConnected;
         if(usingLAN)
         {
             ui->afGainSlider->setValue(prefs.localAFgain);
@@ -4324,30 +4286,6 @@ void wfmain::changeTxBtn()
     }
 }
 
-void wfmain::receiveMode(modeInfo mode, bool sub)
-{
-    Q_UNUSED(mode)
-    Q_UNUSED(sub)
-    qInfo() << "Deprecated receiveMode() called";
-    // Deprecated
-    return; // We have nothing more to process
-}
-
-void wfmain::receiveDataModeStatus(uchar data, uchar filter)
-{
-    ui->datamodeCombo->blockSignals(true);
-    ui->datamodeCombo->setCurrentIndex(data);
-    ui->datamodeCombo->blockSignals(false);
-
-    if (filter)
-    {
-        ui->modeFilterCombo->blockSignals(true);
-        ui->modeFilterCombo->setCurrentIndex(ui->modeFilterCombo->findData(filter));
-        ui->modeFilterCombo->blockSignals(false);
-    }
-    usingDataMode = data;
-}
-
 void wfmain::changeFullScreenMode(bool checked)
 {
     if(checked)
@@ -4375,14 +4313,12 @@ void wfmain::changeMode(rigMode_t mode)
 
 void wfmain::changeMode(rigMode_t mode, unsigned char data)
 {
-
     foreach (modeInfo mi, rigCaps.modes)
     {
         if (mi.mk == mode)
         {
             modeInfo m;
             m = modeInfo(mi);
-            m.filter = ui->modeFilterCombo->currentData().toInt();
             m.data = data;
             m.VFO=selVFO_t::activeVFO;
             if((m.mk != currentModeInfo.mk) && prefs.automaticSidebandSwitching)
@@ -4396,31 +4332,6 @@ void wfmain::changeMode(rigMode_t mode, unsigned char data)
     }
 
     queue->add(priorityImmediate,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),false);
-    ui->datamodeCombo->blockSignals(true);
-    ui->datamodeCombo->setCurrentIndex(data);
-    ui->datamodeCombo->blockSignals(false);
-}
-
-void wfmain::on_modeSelectCombo_activated(int index)
-{
-    // The "activated" signal means the user initiated a mode change.
-    // This function is not called if code initiated the change.
-
-    rigMode_t newMode = static_cast<rigMode_t>(ui->modeSelectCombo->itemData(index).toUInt());
-
-    qInfo(logSystem()) << __func__ << " at index " << index << " has newMode: " << newMode;
-    foreach (modeInfo mi, rigCaps.modes)
-    {
-        if (mi.mk == newMode)
-        {
-            modeInfo m = modeInfo(mi);
-            m.filter = static_cast<uchar>(ui->modeFilterCombo->currentData().toInt());
-            m.data = usingDataMode;
-            m.VFO=selVFO_t::activeVFO;
-            queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<modeInfo>(m),false));
-            break;
-        }
-    }
 }
 
 void wfmain::on_freqDial_valueChanged(int value)
@@ -4525,12 +4436,12 @@ void wfmain::gotoMemoryPreset(int presetNumber)
     {
         qWarning(logGui()) << "Recalled Preset #" << presetNumber << "is not set.";
     }
-    setFilterVal = ui->modeFilterCombo->currentIndex()+1; // TODO, add to memory
+    //setFilterVal = ui->modeFilterCombo->currentIndex()+1; // TODO, add to memory
     setModeVal = temp.mode;
     freqt memFreq;
     modeInfo m;
     m.mk = temp.mode;
-    m.filter = ui->modeFilterCombo->currentIndex()+1;
+    //m.filter = ui->modeFilterCombo->currentIndex()+1;
     m.reg =(unsigned char) m.mk; // fallback, works only for some modes
     memFreq.Hz = temp.frequency * 1E6;
     //issueCmd(cmdSetFreq, memFreq);
@@ -4732,7 +4643,7 @@ void wfmain::on_connectBtn_clicked()
 {
     this->rigStatus->setText(""); // Clear status
 
-    if (ui->connectBtn->text() == "Connect to Radio") {
+    if (connStatus == connDisconnected) {
         connectionHandler(true);
     }
     else
@@ -4746,71 +4657,6 @@ void wfmain::on_connectBtn_clicked()
 void wfmain::on_sqlSlider_valueChanged(int value)
 {
     queue->addUnique(priorityImmediate,queueItem(funcSquelch,QVariant::fromValue<ushort>(value)));
-}
-// These three are from the transceiver adjustment window:
-void wfmain::changeIFShift(unsigned char level)
-{
-    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcFilterWidth)?funcFilterWidth:funcIFShift),QVariant::fromValue<ushort>(level),false));
-}
-void wfmain::changePBTInner(unsigned char level)
-{
-    queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(level)));
-}
-void wfmain::changePBTOuter(unsigned char level)
-{
-    queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(level)));
-}
-
-void wfmain::on_modeFilterCombo_activated(int index)
-{
-
-    int filterSelection = ui->modeFilterCombo->itemData(index).toInt();
-    if(filterSelection == 99)
-    {
-        // TODO:
-        // Bump the filter selected back to F1, F2, or F3
-        // possibly track the filter in the class. Would make this easier.
-        // filterSetup.show();
-        //
-
-    } else {
-        unsigned char newMode = static_cast<unsigned char>(ui->modeSelectCombo->currentData().toUInt());
-        foreach (modeInfo mi, rigCaps.modes)
-        {
-            if (mi.mk == (rigMode_t)newMode)
-            {
-                modeInfo m;
-                m = modeInfo(mi);
-                m.filter = filterSelection;
-                m.data = usingDataMode;
-                m.VFO=selVFO_t::activeVFO;
-                queue->add(priorityImmediate, queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<modeInfo>(m),false));
-                break;
-            }
-        }
-    }
-
-}
-
-void wfmain::on_datamodeCombo_activated(int index)
-{
-
-    modeInfo m;
-    m.filter = ui->modeFilterCombo->currentData().toInt();
-    m.data = index;
-
-    queue->add(priorityImmediate, queueItem(funcDataModeWithFilter,QVariant::fromValue<modeInfo>(m)));
-
-    usingDataMode = index;
-    if(usingDataMode == 0) {
-        changeModLabelAndSlider(currentModDataOffSrc);
-    } else if (usingDataMode == 1){
-        changeModLabelAndSlider(currentModData1Src);
-    } else if (usingDataMode == 2){
-        changeModLabelAndSlider(currentModData2Src);
-    } else if (usingDataMode == 3){
-        changeModLabelAndSlider(currentModData3Src);
-    }
 }
 
 void wfmain::on_transmitBtn_clicked()
@@ -5005,10 +4851,10 @@ void wfmain::receiveModInput(rigInput input, unsigned char data)
     if (item != rs_all)
     {
         setupui->updateRsPrefs(item);
-        if (ui->datamodeCombo->currentData().toUInt() == data) {
-            queue->add(priorityImmediate,getInputTypeCommand(input.type),false);
-            changeModLabel(input);
-        }
+        //if (ui->datamodeCombo->currentData().toUInt() == data) {
+        //    queue->add(priorityImmediate,getInputTypeCommand(input.type),false);
+        //    changeModLabel(input);
+        //}
 
     }
 }
@@ -5018,7 +4864,7 @@ void wfmain::receivePassband(quint16 pass)
     double pb = (double)(pass / 1000000.0);
     if (ui->mainScope->getPassbandWidth() != pb) {
         ui->mainScope->setPassbandWidth(pb);
-        trxadj->updatePassband(pass);
+
         qInfo(logSystem()) << QString("Received new IF Filter/Passband %0 Hz").arg(pass);
         showStatusBarText(QString("IF filter width %0 Hz (%1 MHz)").arg(pass).arg(passbandWidth));
     }
@@ -5248,39 +5094,6 @@ void wfmain::on_tuneLockChk_clicked(bool checked)
     freqLock = checked;
 }
 
-void wfmain::on_serialDeviceListCombo_textActivated(const QString &arg1)
-{
-    QString manualPort;
-    bool ok;
-    if(arg1==QString("Manual..."))
-    {
-        manualPort = QInputDialog::getText(this, tr("Manual port assignment"),
-                                           tr("Enter serial port assignment:"),
-                                           QLineEdit::Normal,
-                                           tr("/dev/device"), &ok);
-        if(manualPort.isEmpty() || !ok)
-        {
-            //ui->serialDeviceListCombo->blockSignals(true);
-            //ui->serialDeviceListCombo->setCurrentIndex(0);
-            //ui->serialDeviceListCombo->blockSignals(false);
-            return;
-        } else {
-            prefs.serialPortRadio = manualPort;
-            showStatusBarText("Setting preferences to use manually-assigned serial port: " + manualPort);
-            return;
-        }
-    }
-    if(arg1==QString("Auto"))
-    {
-        prefs.serialPortRadio = "auto";
-        showStatusBarText("Setting preferences to automatically find rig serial port.");
-        return;
-    }
-
-    prefs.serialPortRadio = arg1;
-    showStatusBarText("Setting preferences to use manually-assigned serial port: " + arg1);
-}
-
 void wfmain::on_rptSetupBtn_clicked()
 {
     if(rpt->isMinimized())
@@ -5496,10 +5309,6 @@ void wfmain::hideButton(QPushButton *btn)
     btn->setHidden(true);
 }
 
-void wfmain::on_baudRateCombo_activated(int index)
-{
-}
-
 funcs wfmain::meter_tToMeterCommand(meter_t m)
 {
     funcs c;
@@ -5594,24 +5403,6 @@ void wfmain::enableRigCtl(bool enabled)
     }    
 }
 
-void wfmain::on_moreControlsBtn_clicked()
-{
-    if(trxadj->isMinimized())
-    {
-        trxadj->raise();
-        trxadj->activateWindow();
-        return;
-    }
-    trxadj->show();
-    trxadj->raise();
-    trxadj->activateWindow();
-}
-
-void wfmain::on_setClockBtn_clicked()
-{
-    setRadioTimeDatePrep();
-}
-
 void wfmain::radioSelection(QList<radio_cap_packet> radios)
 {
     selRad->populate(radios);
@@ -5636,7 +5427,7 @@ void wfmain::setAudioDevicesUI()
 
 
 // --- DEBUG FUNCTION ---
-void wfmain::on_debugBtn_clicked()
+void wfmain::debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
     //qDebug(logSystem()) << "Query for repeater access mode (tone, tsql, etc) sent.";
@@ -5814,8 +5605,11 @@ void wfmain::connectionHandler(bool connect)
     emit sendCloseComm();
     haveRigCaps = false;
     rigName->setText("NONE");
+    connStatus = connDisconnected;
 
-    if (connect && ui->connectBtn->text() != "Cancel connection") {
+    emit connectionStatus(connect); // Signal any other parts that need to know if we are connecting/connected.
+
+    if (connect) {
         openRig();
     } else {
         ui->connectBtn->setText("Connect to Radio");
@@ -6186,8 +5980,6 @@ void wfmain::receiveValue(cacheItem val){
 
         ui->mainScope->setFrequency(bsr.freq);
 
-
-
         foreach (auto md, rigCaps.modes)
         {
                 if (md.reg == bsr.mode) {
@@ -6209,7 +6001,10 @@ void wfmain::receiveValue(cacheItem val){
         //receivePassband(val.value.value<ushort>());
         break;
     case funcDataModeWithFilter:
-        receiveDataModeStatus(val.value.value<modeInfo>().data,val.value.value<modeInfo>().filter);
+        if (val.sub)
+            ui->subScope->receiveMode(val.value.value<modeInfo>());
+        else
+            ui->mainScope->receiveMode(val.value.value<modeInfo>());
         break;
     case funcAFMute:
         break;

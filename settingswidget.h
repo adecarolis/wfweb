@@ -69,6 +69,8 @@ public slots:
     void updateModSourceList(uchar num, QVector<rigInput> data);
     void setAudioDevicesUI();
 
+    void connectionStatus(bool conn);
+
 signals:
     void changedIfPrefs(quint64 items);
     void changedColPrefs(quint64 items);

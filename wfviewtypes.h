@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <memory>
 
+enum connectionStatus_t { connDisconnected, connConnecting, connConnected };
+
 enum underlay_t { underlayNone, underlayPeakHold, underlayPeakBuffer, underlayAverageBuffer };
 
 enum meter_t {

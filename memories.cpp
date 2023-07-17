@@ -1314,6 +1314,8 @@ void memories::on_csvExport_clicked()
                         output << ",";
                     else
                         output << "\n";
+                } else if (i == ui->table->columnCount()-1) {
+                    output << "\n";
                 }
             }
 
@@ -1326,6 +1328,8 @@ void memories::on_csvExport_clicked()
                             output << ",";
                         else
                             output << "\n";
+                    } else if (j == ui->table->columnCount()-1) {
+                        output << "\n";
                     }
                 }
             }

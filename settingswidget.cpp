@@ -1685,6 +1685,7 @@ void settingswidget::on_clusterTcpGroup_clicked(bool checked)
 
 void settingswidget::on_clusterServerNameCombo_currentTextChanged(const QString &text)
 {
+    Q_UNUSED(text)
     ui->clusterTcpAddBtn->setEnabled(true);
 }
 
@@ -2585,3 +2586,9 @@ void settingswidget::onServerUserFieldChanged()
 }
 /* End of UDP Server settings */
 
+// This is a slot that receives a signal from wfmain when we are connecting/disconnected
+void settingswidget::connectionStatus(bool conn)
+{
+    ui->audioSystemCombo->setEnabled(!conn);
+    ui->audioSystemServerCombo->setEnabled(!conn);
+}

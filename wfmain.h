@@ -303,6 +303,7 @@ signals:
     void sendControllerRequest(USBDEVICE* dev, usbFeatureType request, int val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
     // Signals to forward incoming data onto other areas
     void haveMemory(memoryType mem);
+    void connectionStatus(bool conn);
 
 private slots:
     // Triggered from external preference changes:
@@ -329,7 +330,6 @@ private slots:
     void receiveTheme(bool sub, int theme);
     void receiveValue(cacheItem val);
     void setAudioDevicesUI();
-    void updateSizes(int tabIndex);
     void shortcutF1();
     void shortcutF2();
     void shortcutF3();
@@ -372,9 +372,8 @@ private slots:
 
     void receiveCommReady();
     void receiveFreq(freqt);
-    void receiveMode(modeInfo mode, bool sub=false);
+
     void receivePTTstatus(bool pttOn);
-    void receiveDataModeStatus(uchar data, uchar filter);
     void handleBandStackReg(freqt f, char mode, char filter, bool dataOn); // freq, mode, (filter,) datamode
     void receiveRITStatus(bool ritEnabled);
     void receiveRITValue(int ritValHz);
@@ -400,10 +399,6 @@ private slots:
     void receiveSql(unsigned char level);
     void receiveIFShift(unsigned char level);
 
-    // 'change' from data in transceiver controls window:
-    void changeIFShift(unsigned char level);
-    void changePBTInner(unsigned char level);
-    void changePBTOuter(unsigned char level);
     void receiveTxPower(unsigned char power);
     void receiveMicGain(unsigned char gain);
     void receiveCompLevel(unsigned char compLevel);
@@ -449,7 +444,6 @@ private slots:
 
     void changeFullScreenMode(bool checked);
 
-    void on_modeSelectCombo_activated(int index);
     void on_freqDial_valueChanged(int value);
     void on_aboutBtn_clicked();
 
@@ -464,15 +458,11 @@ private slots:
     void on_tuneEnableChk_clicked(bool checked);
     bool on_exitBtn_clicked();
     void on_saveSettingsBtn_clicked();
-    void on_debugBtn_clicked();
+    void debugBtn_clicked();
 
     void on_connectBtn_clicked();
 
     void on_sqlSlider_valueChanged(int value);
-
-    void on_modeFilterCombo_activated(int index);
-
-    void on_datamodeCombo_activated(int index);
 
     void on_transmitBtn_clicked();
     void on_txPowerSlider_valueChanged(int value);
@@ -482,7 +472,6 @@ private slots:
     void on_tuneLockChk_clicked(bool checked);
 
     void on_tuningStepCombo_currentIndexChanged(int index);
-    void on_serialDeviceListCombo_textActivated(const QString &arg1);
     void on_rptSetupBtn_clicked();
     void on_attSelCombo_activated(int index);
     void on_preampSelCombo_activated(int index);
@@ -492,14 +481,11 @@ private slots:
     void on_rigPowerOffBtn_clicked();
     void on_ritTuneDial_valueChanged(int value);
     void on_ritEnableChk_clicked(bool checked);
-    void on_baudRateCombo_activated(int);
+
     void changeMeter2Type(meter_t m);
     void enableRigCtl(bool enabled);
-    void on_moreControlsBtn_clicked();
 
     void on_memoriesBtn_clicked();
-
-    void on_setClockBtn_clicked();
 
     void changedModInput(uchar val, inputTypes type);
 
@@ -546,7 +532,6 @@ private:
     QCPItemText* oorIndicator;
     QCPItemText* ovfIndicator;
     void setAppTheme(bool isCustom);
-    void prepareWf(unsigned int wfLength);
 
     void showHideSpectrum(bool show);
     void getInitialRigState();
@@ -843,6 +828,7 @@ private:
     QColor clusterColor;
     audioDevices* audioDev = Q_NULLPTR;
     QImage lcdImage;
+    connectionStatus_t connStatus = connDisconnected;
 };
 
 Q_DECLARE_METATYPE(udpPreferences)

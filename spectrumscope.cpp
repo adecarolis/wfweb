@@ -1434,6 +1434,34 @@ void spectrumScope::configPressed()
     theme->setCurrentIndex(theme->findData(currentTheme));
     layout->addRow("Theme",theme);
 
+    QSlider* pbtInner = new QSlider(Qt::Orientation::Horizontal);
+    pbtInner->setRange(0,255);
+    double pbFreq = ((double)(this->PBTInner) / this->passbandWidth) * 127.0;
+    qint16 newFreq = pbFreq + 128;
+    if (newFreq >= 0 && newFreq <= 255) {
+        pbtInner->setValue(newFreq);
+    }
+    layout->addRow("PBT Inner",pbtInner);
+
+    QSlider* pbtOuter = new QSlider(Qt::Orientation::Horizontal);
+    pbtOuter->setRange(0,255);
+    pbFreq = ((double)(this->PBTOuter) / this->passbandWidth) * 127.0;
+    newFreq = pbFreq + 128;
+    if (newFreq >= 0 && newFreq <= 255) {
+        pbtOuter->setValue(newFreq);
+    }
+    layout->addRow("PBT Outer",pbtOuter);
+
+    QSlider* ifShift = new QSlider(Qt::Orientation::Horizontal);
+    length->setRange(0,255);
+    length->setValue(0);
+    layout->addRow("IF Shift",ifShift);
+
+    QSlider* filterWidth = new QSlider(Qt::Orientation::Horizontal);
+    length->setRange(0,10000);
+    length->setValue((this->passbandWidth*1E6));
+    layout->addRow("Fil Width",filterWidth);
+
     connect(length, &QSlider::valueChanged, configDialog, [=](const int &val) {
         prepareWf(val);
     });
@@ -1457,9 +1485,23 @@ void spectrumScope::configPressed()
     });
 
     connect(theme, &QComboBox::currentIndexChanged, configDialog, [=](const int &val) {
+        Q_UNUSED(val)
         currentTheme = theme->currentData().value<QCPColorGradient::GradientPreset>();
         colorMap->setGradient(currentTheme);
         emit updateTheme(sub,currentTheme);
+    });
+
+    connect(pbtInner, &QSlider::valueChanged, configDialog, [=](const int &val) {
+        queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(val),false,sub));
+    });
+    connect(pbtOuter, &QSlider::valueChanged, configDialog, [=](const int &val) {
+        queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(val),false,sub));
+    });
+    connect(ifShift, &QSlider::valueChanged, configDialog, [=](const int &val) {
+        queue->add(priorityImmediate,queueItem(funcIFShift,QVariant::fromValue<ushort>(val),false,sub));
+    });
+    connect(filterWidth, &QSlider::valueChanged, configDialog, [=](const int &val) {
+        queue->add(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<short>(val),false,sub));
     });
 
     configDialog->show();
