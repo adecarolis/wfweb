@@ -1137,10 +1137,10 @@ void wfmain::connectSettingsWidget()
     connect(setupui, SIGNAL(changedServerPref(prefServerItem)), this, SLOT(extChangedServerPref(prefServerItem)));
     connect(setupui, SIGNAL(changedServerPrefs(quint64)), this, SLOT(extChangedServerPrefs(quint64)));
 
-    connect(setupui, SIGNAL(changedAudioInputCombo(int)), this, SLOT(changedAudioInput(int)));
-    connect(setupui, SIGNAL(changedAudioOutputCombo(int)), this, SLOT(changedAudioOutput(int)));
-    connect(setupui, SIGNAL(changedServerRXAudioInputCombo(int)), this, SLOT(changedServerRXAudioInput(int)));
-    connect(setupui, SIGNAL(changedServerTXAudioOutputCombo(int)), this, SLOT(changedServerTXAudioOutput(int)));
+    //connect(setupui, SIGNAL(changedAudioInputCombo(int)), this, SLOT(changedAudioInput(int)));
+    //connect(setupui, SIGNAL(changedAudioOutputCombo(int)), this, SLOT(changedAudioOutput(int)));
+    //connect(setupui, SIGNAL(changedServerRXAudioInputCombo(int)), this, SLOT(changedServerRXAudioInput(int)));
+    //connect(setupui, SIGNAL(changedServerTXAudioOutputCombo(int)), this, SLOT(changedServerTXAudioOutput(int)));
 
     connect(setupui, SIGNAL(changedModInput(uchar,inputTypes)), this, SLOT(changedModInput(uchar,inputTypes)));
 
@@ -1705,28 +1705,21 @@ void wfmain::buttonControl(const COMMAND* cmd)
             //Potentially add option to select specific step size?
         }
         break;
-    case cmdSetFreq:
+    case funcSelectedFreq:
+    case funcUnselectedFreq:
     {
-        if (freqLock) break;
         freqt f;
-        if (cmd->suffix) {
+        bool sub=false;
+        if ((funcs)cmd->command == funcUnselectedFreq) {
             f.Hz = roundFrequencyWithStep(ui->subScope->getFrequency().Hz, cmd->value, tsWfScrollHz);
+            sub=true;
         } else {
             f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, cmd->value, tsWfScrollHz);
         }
         f.MHzDouble = f.Hz / (double)1E6;
         f.VFO=(selVFO_t)cmd->suffix;
-        if (f.VFO == activeVFO)
-            queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
-        else
-            queue->add(priorityImmediate,queueItem(funcUnselectedFreq,QVariant::fromValue<freqt>(f),false,true));
+        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<freqt>(f),false,sub));
 
-        if (!cmd->suffix) {
-            ui->mainScope->setFrequency(f);
-            ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
-        } else {
-            ui->subScope->setFrequency(f);
-        }
         break;
     }
     default:
@@ -2936,7 +2929,18 @@ void wfmain::extChangedServerPref(prefServerItem i)
 void wfmain::changedModInput(uchar val, inputTypes type)
 {
 
-    queue->del(getInputTypeCommand(currentModData1Src.type));
+    rigInput r=currentModDataOffSrc;
+
+    if (val == 1)
+        r = currentModData1Src;
+    else if (val == 2)
+        r = currentModData2Src;
+    else if (val == 3)
+        r = currentModData3Src;
+
+    queue->del(getInputTypeCommand(r.type));
+
+    qInfo(logSystem()) << "Changing Mod Input" << val << "from" << r.name;
 
     funcs func=funcNone;
 

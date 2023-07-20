@@ -115,16 +115,16 @@ struct rptrAccessData {
 };
 
 struct modeInfo {
-    modeInfo () {};
+    modeInfo ():mk(modeUnknown), reg(99), filter(1),VFO(activeVFO), data(0), name(""), bw(false), pass(0) {};
     modeInfo(rigMode_t mk, quint8 reg, QString name, bool bw): mk(mk), reg(reg), name(name),bw(bw) {};
-    rigMode_t mk=modeUnknown;
-    unsigned char reg=99;
-    unsigned char filter=1; // Default filter is always 1
-    selVFO_t VFO = activeVFO;
-    unsigned char data = 0;
-    QString name="";
-    bool bw=false; // Can the bandwidth of the current filter be changed?
-    quint16 pass = 0;
+    rigMode_t mk;
+    unsigned char reg;
+    unsigned char filter; // Default filter is always 1
+    selVFO_t VFO;
+    unsigned char data;
+    QString name;
+    bool bw; // Can the bandwidth of the current filter be changed?
+    quint16 pass;
 };
 
 struct antennaInfo {
@@ -403,7 +403,8 @@ enum passbandActions {passbandStatic, pbtInnerMove, pbtOuterMove, pbtMoving, pas
 enum usbDeviceType { usbNone = 0, shuttleXpress, shuttlePro2,
                      RC28, xBoxGamepad, unknownGamepad, eCoderPlus, QuickKeys,
                      StreamDeckMini,StreamDeckMiniV2,StreamDeckOriginal,StreamDeckOriginalV2,
-                     StreamDeckOriginalMK2,StreamDeckXL,StreamDeckXLV2,StreamDeckPedal, StreamDeckPlus
+                     StreamDeckOriginalMK2,StreamDeckXL,StreamDeckXLV2,StreamDeckPedal, StreamDeckPlus,
+                     XKeysXK3
                    };
 
 enum usbCommandType{ commandButton, commandKnob, commandAny };

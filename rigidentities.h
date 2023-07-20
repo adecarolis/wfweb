@@ -65,13 +65,13 @@ enum inputTypes{ inputMic=0,
 };
 
 struct rigInput {
-    rigInput() {}
-    rigInput(inputTypes type) : type(type) {}
+    rigInput() : type(inputUnknown),reg(0), name(""), level(0) {}
+    rigInput(inputTypes type) : type(type),reg(0) ,name(""),level(0) {}
     rigInput(inputTypes type, uchar reg, QString name) : type(type), reg(reg), name(name) {}
-    inputTypes type = inputUnknown;
-    uchar reg = 0;
-    QString name = "";
-    uchar level = 0;
+    inputTypes type;
+    uchar reg;
+    QString name;
+    uchar level;
 };
 
 
@@ -144,7 +144,7 @@ struct bandType {
 
 // Used for setting/retrieving BSR information
 struct bandStackType {
-    bandStackType() {}
+    bandStackType(): band(0),regCode(0),freq(freqt()),data(0),mode(0),filter(0) {}
     bandStackType(uchar band, uchar regCode): band(band),regCode(regCode), freq(), data(0), mode(0), filter(0) {}
     bandStackType(uchar band, uchar regCode, freqt freq, uchar data, uchar mode, uchar filter):
         band(band), regCode(regCode), freq(freq), data(data), mode(mode), filter(filter) {};
@@ -158,7 +158,7 @@ struct bandStackType {
 
 
 struct filterType {
-    filterType() {}
+    filterType():num(0),name(""),modes(0) {}
     filterType(unsigned char num, QString name, unsigned int modes) :
         num(num), name(name), modes(modes) {}
 
@@ -168,7 +168,7 @@ struct filterType {
 };
 
 struct genericType {
-    genericType() {}
+    genericType():num(0),name("") {}
     genericType(unsigned char num, QString name) :
         num(num), name(name) {}
     unsigned char num;

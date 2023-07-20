@@ -34,6 +34,7 @@ usbController::usbController()
     knownDevices.append(USBTYPE(StreamDeckXLV2, 0x0fd9, 0x008f, 0x0000, 0x0000,32,0,0,1024,96));
     knownDevices.append(USBTYPE(StreamDeckPedal, 0x0fd9, 0x0086, 0x0000, 0x0000,3,0,0,1024,0));
     knownDevices.append(USBTYPE(StreamDeckPlus, 0x0fd9, 0x0084, 0x0000, 0x0000,12,4,0,1024,120));
+    knownDevices.append(USBTYPE(XKeysXK3, 0x05f3, 0x04c5, 0x0001, 0x000c,3,0,2,32,0)); // So-called "splat" interface?
 }
 
 usbController::~usbController()
@@ -336,8 +337,14 @@ void usbController::run()
                         QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureEventsA); });
                         QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureEventsB); });
                     }
+                    else if (dev->type.model == XKeysXK3)
+                    {
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,1,"2"); });
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,2,"0"); });
+                        QTimer::singleShot(500, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,1,"0"); });
+                    }
 
-                    QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureSerial); });
+                    QTimer::singleShot(1000, this, [=]() { sendRequest(dev,usbFeatureType::featureSerial); });
                     QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureFirmware); });
                     QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureOverlay,5,"Hello from wfview"); });
                 }
@@ -600,6 +607,30 @@ void usbController::runTimer()
                     // Battery level
                     quint8 battery = (quint8)data[3];
                     qDebug(logUsbControl()) << QString("Battery level %1 %").arg(battery);
+                }
+            }
+            else if (dev->type.model == XKeysXK3) {
+                // Do something!
+                if ((quint8)data[1] == 214U) {
+                    qInfo(logUsbControl()) << QString("Keymapstart: %0, Layer2offset: %1, Outsize: %2, ReportSize: %3, MaxCol: %4 MaxRow: %5")
+                                                  .arg(QString::number((quint8)data[3]))
+                                                  .arg(QString::number((quint8)data[4]))
+                                                  .arg(QString::number((quint8)data[5]))
+                                                  .arg(QString::number((quint8)data[6]))
+                                                  .arg(QString::number((quint8)data[7]))
+                                                  .arg(QString::number((quint8)data[8]));
+                }
+                else
+                {
+                    bool show = false;
+                    for (int i=0;i<data.size();i++) {
+                        if (data[i] != 0U) {
+                            show = true;
+                            break;
+                        }
+                    }
+                    if (show)
+                       qInfo(logUsbControl()) << "Received:" << data;
                 }
             }
             // Is it any model of StreamDeck?
@@ -1275,6 +1306,26 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
         }
         res = hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
         break;
+    case XKeysXK3:
+        data.resize(80);
+        memset(data.data(),0x0,data.size());
+        switch (feature)
+        {
+        case usbFeatureType::featureSerial:
+            data[1] = 214U;
+            break;
+        case usbFeatureType::featureLEDControl:
+            data[1] = 179U;
+            data[2] = val+5;
+            data[3] = text.toInt(nullptr,10);
+            break;
+        default:
+            return; // No command
+            break;
+        }
+        res = hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
+        qInfo (logUsbControl()) << "Sending command to USB:" << data;
+        break;
     default:
         break;
     }
@@ -1584,7 +1635,7 @@ void usbController::loadCommands()
     commands.clear();
     int num = 0;
     // Important commands at the top!
-    commands.append(COMMAND(num++, "None", commandAny, cmdNone, (quint8)0x0));
+    commands.append(COMMAND(num++, "None", commandAny, funcNone, (quint8)0x0));
     commands.append(COMMAND(num++, "PTT On", commandButton, funcTransceiverStatus,  (quint8)0x1));
     commands.append(COMMAND(num++, "PTT Off", commandButton, funcTransceiverStatus, (quint8)0x0));
     commands.append(COMMAND(num++, "VFOA", commandKnob, funcSelectedFreq, (quint8)0x0));
@@ -1598,25 +1649,43 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Span/Step", commandButton, funcSeparator, (quint8)0x0));
     commands.append(COMMAND(num++, "Step+", commandButton, funcTuningStep, 100));
     commands.append(COMMAND(num++, "Step-", commandButton, funcTuningStep, -100));
-    commands.append(COMMAND(num++, "Span+", commandButton, funcScopeMainSpan, 100));
-    commands.append(COMMAND(num++, "Span-", commandButton, funcScopeMainSpan, -100));
+    commands.append(COMMAND(num++, "Main Span+", commandButton, funcScopeMainSpan, 100));
+    commands.append(COMMAND(num++, "Main Span-", commandButton, funcScopeMainSpan, -100));
+    commands.append(COMMAND(num++, "Sub Span+", commandButton, funcScopeSubSpan, 100));
+    commands.append(COMMAND(num++, "Sub Span-", commandButton, funcScopeSubSpan, -100));
     commands.append(COMMAND(num++, "Modes", commandButton, funcSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "Mode+", commandButton, funcSelectedMode, 100));
-    commands.append(COMMAND(num++, "Mode-", commandButton, funcSelectedMode, -100));
-    commands.append(COMMAND(num++, "Mode LSB", commandButton, funcSelectedMode, modeLSB));
-    commands.append(COMMAND(num++, "Mode USB", commandButton, funcSelectedMode, modeUSB));
-    commands.append(COMMAND(num++, "Mode LSBD", commandButton, funcSelectedMode, modeLSB_D));
-    commands.append(COMMAND(num++, "Mode USBD", commandButton, funcSelectedMode, modeUSB_D));
-    commands.append(COMMAND(num++, "Mode CW", commandButton, funcSelectedMode, modeCW));
-    commands.append(COMMAND(num++, "Mode CWR", commandButton, funcSelectedMode, modeCW_R));
-    commands.append(COMMAND(num++, "Mode FM", commandButton, funcSelectedMode, modeFM));
-    commands.append(COMMAND(num++, "Mode AM", commandButton, funcSelectedMode, modeAM));
-    commands.append(COMMAND(num++, "Mode RTTY", commandButton, funcSelectedMode, modeRTTY));
-    commands.append(COMMAND(num++, "Mode RTTYR", commandButton, funcSelectedMode, modeRTTY_R));
-    commands.append(COMMAND(num++, "Mode PSK", commandButton, funcSelectedMode, modePSK));
-    commands.append(COMMAND(num++, "Mode PSKR", commandButton, funcSelectedMode, modePSK_R));
-    commands.append(COMMAND(num++, "Mode DV", commandButton, funcSelectedMode, modeDV));
-    commands.append(COMMAND(num++, "Mode DD", commandButton, funcSelectedMode, modeDD));
+    commands.append(COMMAND(num++, "Main Mode+", commandButton, funcSelectedMode, 100));
+    commands.append(COMMAND(num++, "Main Mode-", commandButton, funcSelectedMode, -100));
+    commands.append(COMMAND(num++, "Sub Mode+", commandButton, funcUnselectedMode, 100));
+    commands.append(COMMAND(num++, "Sub Mode-", commandButton, funcUnselectedMode, -100));
+    commands.append(COMMAND(num++, "Main LSB", commandButton, funcSelectedMode, modeLSB));
+    commands.append(COMMAND(num++, "Main USB", commandButton, funcSelectedMode, modeUSB));
+    commands.append(COMMAND(num++, "Main LSBD", commandButton, funcSelectedMode, modeLSB_D));
+    commands.append(COMMAND(num++, "Main USBD", commandButton, funcSelectedMode, modeUSB_D));
+    commands.append(COMMAND(num++, "Main CW", commandButton, funcSelectedMode, modeCW));
+    commands.append(COMMAND(num++, "Main CWR", commandButton, funcSelectedMode, modeCW_R));
+    commands.append(COMMAND(num++, "Main FM", commandButton, funcSelectedMode, modeFM));
+    commands.append(COMMAND(num++, "Main AM", commandButton, funcSelectedMode, modeAM));
+    commands.append(COMMAND(num++, "Main RTTY", commandButton, funcSelectedMode, modeRTTY));
+    commands.append(COMMAND(num++, "Main RTTYR", commandButton, funcSelectedMode, modeRTTY_R));
+    commands.append(COMMAND(num++, "Main PSK", commandButton, funcSelectedMode, modePSK));
+    commands.append(COMMAND(num++, "Main PSKR", commandButton, funcSelectedMode, modePSK_R));
+    commands.append(COMMAND(num++, "Main DV", commandButton, funcSelectedMode, modeDV));
+    commands.append(COMMAND(num++, "Main DD", commandButton, funcSelectedMode, modeDD));
+    commands.append(COMMAND(num++, "Sub LSB", commandButton, funcUnselectedMode, modeLSB));
+    commands.append(COMMAND(num++, "Sub USB", commandButton, funcUnselectedMode, modeUSB));
+    commands.append(COMMAND(num++, "Sub LSBD", commandButton, funcUnselectedMode, modeLSB_D));
+    commands.append(COMMAND(num++, "Sub USBD", commandButton, funcUnselectedMode, modeUSB_D));
+    commands.append(COMMAND(num++, "Sub CW", commandButton, funcUnselectedMode, modeCW));
+    commands.append(COMMAND(num++, "Sub CWR", commandButton, funcUnselectedMode, modeCW_R));
+    commands.append(COMMAND(num++, "Sub FM", commandButton, funcUnselectedMode, modeFM));
+    commands.append(COMMAND(num++, "Sub AM", commandButton, funcUnselectedMode, modeAM));
+    commands.append(COMMAND(num++, "Sub RTTY", commandButton, funcUnselectedMode, modeRTTY));
+    commands.append(COMMAND(num++, "Sub RTTYR", commandButton, funcUnselectedMode, modeRTTY_R));
+    commands.append(COMMAND(num++, "Sub PSK", commandButton, funcUnselectedMode, modePSK));
+    commands.append(COMMAND(num++, "Sub PSKR", commandButton, funcUnselectedMode, modePSK_R));
+    commands.append(COMMAND(num++, "Sub DV", commandButton, funcUnselectedMode, modeDV));
+    commands.append(COMMAND(num++, "Sub DD", commandButton, funcUnselectedMode, modeDD));
     commands.append(COMMAND(num++, "Bands", commandButton, funcSeparator, (quint8)0x0));
     commands.append(COMMAND(num++, "Band+", commandButton, funcBandStackReg, 100));
     commands.append(COMMAND(num++, "Band-", commandButton, funcBandStackReg, -100));

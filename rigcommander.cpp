@@ -2177,10 +2177,11 @@ void rigCommander::parseCommand()
     case funcDataModeWithFilter:
     {
         modeInfo m;
-        m.data = static_cast<uchar>(payloadIn[2]);
-        if (payloadIn[3] != '\xfd')
-            m.filter = static_cast<uchar>(payloadIn[3]);
-        value.setValue(static_cast<modeInfo>(m));
+        // New format payload with mode+datamode+filter
+        m = parseMode(uchar(payloadIn[2]), uchar(payloadIn[4]),sub);
+        m.data = uchar(payloadIn[3]);
+        m.VFO = selVFO_t(payloadIn[1] & 0x01);
+        value.setValue(m);
         break;
     }
     case funcAFMute:
@@ -2244,7 +2245,6 @@ void rigCommander::parseCommand()
              break;
         ritHz = f.Hz*((payloadIn.at(4)=='\x01')?-1:1);
         value.setValue(ritHz);
-        qInfo() << "Have RIT" << ritHz;
         break;
     }
     // 0x27
@@ -5494,6 +5494,7 @@ modeInfo rigCommander::parseMode(quint8 mode, quint8 filter, bool sub)
         if (m.reg == mode)
         {
             mi = modeInfo(m);
+            mi.filter = filter;
             found = true;
             break;
         }

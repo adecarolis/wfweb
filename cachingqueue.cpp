@@ -247,7 +247,6 @@ void cachingQueue::updateCache(bool reply, queueItem item)
                 cv->value = item.param;
                 emit cacheUpdated(cv.value());
             }
-
             return;
             // We have found (and updated) a matching item so return
         }
@@ -294,7 +293,7 @@ cacheItem cachingQueue::getCache(funcs func, bool sub)
     // Using priorityhighest WILL slow down the S-Meter when a command intensive client is connected to rigctl
     if (func != funcNone && (!ret.value.isValid() || ret.reply.addSecs(QRandomGenerator::global()->bounded(5,20)) <= QDateTime::currentDateTime())) {
         //qInfo() << "No (or expired) cache found for" << funcString[func] << "requesting";
-        add(priorityHighest,func);
+        add(priorityHighest,func,false,sub);
     }
     return ret;
 }
@@ -318,29 +317,53 @@ bool cachingQueue::compare(QVariant a, QVariant b)
     bool changed = false;
     if (a.isValid() && b.isValid()) {
         // Compare the details
-        if (!strcmp(a.typeName(),"bool") && a.value<bool>() != b.value<bool>())
+        if (!strcmp(a.typeName(),"bool")){
+            if (a.value<bool>() != b.value<bool>())
+                changed=true;
+        } else if (!strcmp(a.typeName(),"QString")) {
+            if (a.value<QString>() != b.value<QString>())
+                changed=true;
+        } else if (!strcmp(a.typeName(),"uchar")) {
+            if (a.value<uchar>() != b.value<uchar>())
+                changed=true;
+        } else if (!strcmp(a.typeName(),"ushort")) {
+            if (a.value<ushort>() != b.value<ushort>())
+                changed=true;
+        } else if (!strcmp(a.typeName(),"short")) {
+            if (a.value<short>() != a.value<short>())
+                changed=true;
+        } else if (!strcmp(a.typeName(),"uint")) {
+            if (a.value<uint>() != b.value<uint>())
             changed=true;
-        else if (!strcmp(a.typeName(),"QString") && a.value<QString>() != b.value<QString>())
-            changed=true;
-        else if (!strcmp(a.typeName(),"uchar") && a.value<uchar>() != b.value<uchar>())
-            changed=true;
-        else if (!strcmp(a.typeName(),"ushort") && a.value<ushort>() != b.value<ushort>())
-            changed=true;
-        else if (!strcmp(a.typeName(),"short") && a.value<short>() != a.value<short>())
-            changed=true;
-        else if (!strcmp(a.typeName(),"uint") && a.value<uint>() != b.value<uint>())
-            changed=true;
-        else if (!strcmp(a.typeName(),"modeInfo") && a.value<modeInfo>().mk != a.value<modeInfo>().mk
-                        && a.value<modeInfo>().bw != a.value<modeInfo>().bw && a.value<modeInfo>().filter != a.value<modeInfo>().filter)
-            changed=true;
-        else if(!strcmp(a.typeName(),"freqt") && a.value<freqt>().Hz != b.value<freqt>().Hz)
-            changed=true;
-        else if(!strcmp(a.typeName(),"antennaInfo") && a.value<antennaInfo>().antenna != b.value<antennaInfo>().antenna && a.value<antennaInfo>().rx != b.value<antennaInfo>().rx)
-            changed=true;
-        else if(!strcmp(a.typeName(),"rigInput") && a.value<rigInput>().type != b.value<rigInput>().type)
-            changed=true;
-        else if (!strcmp(a.typeName(),"duplexMode_t") && a.value<duplexMode_t>() != b.value<duplexMode_t>())
-            changed=true;
+        } else if (!strcmp(a.typeName(),"modeInfo")) {
+            if (a.value<modeInfo>().mk != b.value<modeInfo>().mk || a.value<modeInfo>().reg != b.value<modeInfo>().reg
+                         || a.value<modeInfo>().bw != b.value<modeInfo>().bw || a.value<modeInfo>().filter != b.value<modeInfo>().filter) {
+                changed=true;
+            }
+        } else if(!strcmp(a.typeName(),"freqt")) {
+            if (a.value<freqt>().Hz != b.value<freqt>().Hz)
+                changed=true;
+        } else if(!strcmp(a.typeName(),"antennaInfo")) {
+            if (a.value<antennaInfo>().antenna != b.value<antennaInfo>().antenna || a.value<antennaInfo>().rx != b.value<antennaInfo>().rx)
+                changed=true;
+        } else if(!strcmp(a.typeName(),"rigInput")) {
+            if (a.value<rigInput>().type != b.value<rigInput>().type)
+                changed=true;
+        } else if (!strcmp(a.typeName(),"duplexMode_t")) {
+            if (a.value<duplexMode_t>() != b.value<duplexMode_t>())
+                changed=true;
+        } else if (!strcmp(a.typeName(),"spectrumMode_t")) {
+            if (a.value<spectrumMode_t>() != b.value<spectrumMode_t>())
+                changed=true;
+        } else if (!strcmp(a.typeName(),"centerSpanData")) {
+            if (a.value<centerSpanData>().cstype != b.value<centerSpanData>().cstype || a.value<centerSpanData>().freq != b.value<centerSpanData>().freq  )
+                changed=true;
+        } else if (!strcmp(a.typeName(),"scopeData")) {
+            changed=true; // Always different
+        } else {
+            // Maybe Try simple comparison?
+            qInfo () << "Unsupported cache value:" << a.typeName();
+        }
     } else if (a.isValid()) {
         changed = true;
     }

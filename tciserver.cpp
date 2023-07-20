@@ -248,9 +248,6 @@ void tciServer::receiveFloat(Eigen::VectorXf audio)
 
 void tciServer::receiveCache(cacheItem item)
 {
-    if (item.command != funcSMeter)
-        qInfo() << "Changed Cache" << funcString[item.command];
-
     auto it = clients.begin();
     QString reply;
     while (it != clients.end())

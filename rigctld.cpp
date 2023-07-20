@@ -578,6 +578,7 @@ QString rigCtlClient::getMode(modeInfo mode)
 
 bool rigCtlClient::getMode(QString modeString, modeInfo& mode)
 {
+    qInfo() << "Looking for mode (set)" << modeString;
     for (int i = 0; mode_str[i].str[0] != '\0'; i++)
     {
         if (QString(mode_str[i].str) == modeString)
@@ -588,6 +589,7 @@ bool rigCtlClient::getMode(QString modeString, modeInfo& mode)
                 {
                     mode = modeInfo(m);
                     mode.data = mode_str[i].data;
+                    mode.filter = 1;
                     return true;
                 }
             }
@@ -817,7 +819,11 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             modeInfo mi;
             if (getMode(params[0],mi))
             {
+                qInfo(logRigCtlD()) << "Mode:" << mi.name  << "mk" << mi.mk << "reg" << mi.reg << "data" << mi.data << "filter" << mi.filter;
                 val.setValue(mi);
+            } else {
+                qInfo(logRigCtlD()) << "Mode not found:" << params[0];
+                return -RIG_EINVAL;
             }
         }
         else
@@ -825,11 +831,14 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             qInfo(logRigCtlD()) << "Unable to parse value of type" << cmd.type;
             return -RIG_EINVAL;
         }
-        queue->addUnique(priorityImmediate, queueItem(func, val));
+        if (rigCaps.commands.contains(func))
+            queue->add(priorityImmediate, queueItem(func, val,false));
 
     } else {
         // Simple get command
-        cacheItem item = queue->getCache(func);
+        cacheItem item;
+        if (rigCaps.commands.contains(func))
+            item = queue->getCache(func);
         ret = RIG_OK;
         if (cmd.type == 'b') {
             bool b = item.value.toBool();
@@ -1000,10 +1009,13 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                         qInfo(logRigCtlD()) << "Unable to parse value of type" << sub[i].type;
                         return -RIG_EINVAL;
                     }
-                    queue->addUnique(priorityImmediate, queueItem(sub[i].func, val));
+                    if (rigCaps.commands.contains(sub[i].func))
+                        queue->add(priorityImmediate, queueItem(sub[i].func, val,false));
                 } else if (params.size() == 1){
                     // Not expecting a second argument as it is a get so dump the cache
-                    cacheItem item = queue->getCache(sub[i].func);
+                    cacheItem item;
+                    if (rigCaps.commands.contains(sub[i].func))
+                        item = queue->getCache(sub[i].func);
                     int val = 0;
                     // Special situation for S-Meter
                     if (params[0] == "STRENGTH") {
