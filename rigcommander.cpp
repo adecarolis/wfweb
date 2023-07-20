@@ -5212,8 +5212,8 @@ bool rigCommander::parseSpectrum(scopeData& d)
         // sequence numbers 2 through 10, 50 pixels each. Total after sequence 10 is 450 pixels.
         payloadIn.chop(1);
         spectrumLine.insert(spectrumLine.length(), payloadIn.right(payloadIn.length() - 5)); // write over the FD, last one doesn't, oh well.
-        ret = true;
-        //qInfo(logRig()) << "sequence: " << sequence << "spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
+        ret = false;
+        qInfo(logRig()) << "sequence: " << sequence << "spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
     } else if (sequence == rigCaps.spectSeqMax)
     {
         // last spectrum, a little bit different (last 25 pixels). Total at end is 475 pixels (7300).
@@ -5221,7 +5221,7 @@ bool rigCommander::parseSpectrum(scopeData& d)
         spectrumLine.insert(spectrumLine.length(), payloadIn.right(payloadIn.length() - 5));
         d.data = spectrumLine;
         ret = true;
-        //qInfo(logRig()) << "sequence: " << sequence << " spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
+        qInfo(logRig()) << "sequence: " << sequence << " spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
 
         //emit haveSpectrumData(spectrumLine, spectrumStartFreq, spectrumEndFreq);
     }

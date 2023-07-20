@@ -3754,8 +3754,8 @@ void wfmain:: getInitialRigState()
     */
     if(rigCaps.hasSpectrum)
     {
-        queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
         queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
+        queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
     }
 
     ui->mainScope->enableScope(this->rigCaps.commands.contains(funcScopeMainMode));
