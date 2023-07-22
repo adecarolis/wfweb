@@ -1307,10 +1307,11 @@ void spectrumScope::receiveSpots(QList<spotData> spots)
             bool conflict = true;
             while (conflict) {
 #if QCUSTOMPLOT_VERSION < 0x020000
-                QCPItemText* item = spectrum->itemAt<QCPItemText>(QPointF(spectrum->xAxis->coordToPixel(left),spectrum->yAxis->coordToPixel(top)), true);
+                QCPAbstractItem* absitem = spectrum->itemAt(QPointF(spectrum->xAxis->coordToPixel(left),spectrum->yAxis->coordToPixel(top)), true);
 #else
-                QCPItemText* item = spectrum->itemAt<QCPItemText>(QPointF(spectrum->xAxis->coordToPixel(left),spectrum->yAxis->coordToPixel(top)), true);
+                QCPAbstractItem* absitem = spectrum->itemAt(QPointF(spectrum->xAxis->coordToPixel(left),spectrum->yAxis->coordToPixel(top)), true);
 #endif
+                QCPItemText* item = dynamic_cast<QCPItemText*> (absitem);
                 if (item != nullptr) {
                     top = top - 10.0;
                     if (top < 10.0)
@@ -1480,16 +1481,19 @@ void spectrumScope::configPressed()
         queue->add(priorityImmediate,queueItem(sub?funcScopeSubRef:funcScopeMainRef,QVariant::fromValue(currentRef),false,sub));
     });
 
-    connect(speed, &QComboBox::currentIndexChanged, configDialog, [=](const int &val) {
+
+    connect(speed, QOverload<int>::of(&QComboBox::currentIndexChanged), configDialog, [=](const int &val) {
         queue->add(priorityImmediate,queueItem(sub?funcScopeSubSpeed:funcScopeMainSpeed,speed->itemData(val),false,sub));
     });
 
-    connect(theme, &QComboBox::currentIndexChanged, configDialog, [=](const int &val) {
+    connect(theme, QOverload<int>::of(&QComboBox::currentIndexChanged), configDialog, [=](const int &val) {
         Q_UNUSED(val)
         currentTheme = theme->currentData().value<QCPColorGradient::GradientPreset>();
         colorMap->setGradient(currentTheme);
         emit updateTheme(sub,currentTheme);
     });
+
+
 
     connect(pbtInner, &QSlider::valueChanged, configDialog, [=](const int &val) {
         queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(val),false,sub));
