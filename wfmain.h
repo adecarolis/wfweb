@@ -509,6 +509,8 @@ private slots:
     void on_scopeDualBtn_toggled(bool en);
     void on_dualWatchBtn_toggled(bool en);
 
+    void newFrequency(qint64 freq);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);

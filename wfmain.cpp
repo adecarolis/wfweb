@@ -278,7 +278,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     #endif
 #endif
 
-
 }
 
 wfmain::~wfmain()
@@ -373,6 +372,8 @@ void wfmain::rigConnections()
 
     connect(this, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
     connect(this, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
+
+    connect(ui->frequency, SIGNAL(newFrequency(qint64)), this, SLOT(newFrequency(qint64)));
 
     //connect(rig, SIGNAL(haveFrequency(freqt)), this, SLOT(receiveFreq(freqt)));
     //connect(this, SIGNAL(getFrequency()), rig, SLOT(getFrequency()));
@@ -1498,7 +1499,8 @@ void wfmain::setupKeyShortcuts()
         freqt f;
         f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, 1, tsKnobHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
+        ui->frequency->setFrequency(f.Hz);
+        //ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
         ui->mainScope->setFrequency(f);
         ui->subScope->setFrequency(f);
         setUIFreq();
@@ -1754,7 +1756,8 @@ void wfmain::changeFrequency(int value) {
     f.MHzDouble = f.Hz / (double)1E6;
     ui->mainScope->setFrequency(f);
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
-    ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
+    ui->frequency->setFrequency(f.Hz);
+    //ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 }
 
 void wfmain::setDefPrefs()
@@ -3656,7 +3659,8 @@ void wfmain::shortcutM()
 
 void wfmain::setUIFreq(double frequency)
 {
-    ui->freqLabel->setText(QString("%1").arg(frequency, 0, 'f'));
+    ui->frequency->setFrequency(frequency*1000000.0);
+    //ui->freqLabel->setText(QString("%1").arg(frequency, 0, 'f'));
 }
 
 void wfmain::setUIFreq()
@@ -3761,9 +3765,22 @@ void wfmain:: getInitialRigState()
     ui->mainScope->enableScope(this->rigCaps.commands.contains(funcScopeMainMode));
     ui->subScope->enableScope(this->rigCaps.commands.contains(funcScopeSubMode));
 
-    ui->scopeSettingsGroup->setVisible(rigCaps.hasSpectrum);
+    // Only show settingsgroup if rig has sub
+    ui->scopeSettingsGroup->setVisible(rigCaps.commands.contains(funcScopeSubWaveData));
+
     ui->scopeDualBtn->setVisible(rigCaps.commands.contains(funcScopeSingleDual));
     ui->antennaGroup->setVisible(rigCaps.commands.contains(funcAntenna));
+    ui->preampAttGroup->setVisible(rigCaps.commands.contains(funcPreamp));
+    quint64 start=UINT64_MAX;
+    quint64 end=0;
+    foreach (auto band, rigCaps.bands)
+    {
+        if (start > band.lowFreq)
+            start = band.lowFreq;
+        if (end < band.highFreq)
+            end = band.highFreq;
+    }
+    ui->frequency->setup(0, start, end, 1,FCTL_UNIT_MHZ);
 
     /*
 
@@ -4241,7 +4258,8 @@ void wfmain::receiveFreq(freqt freqStruct)
     if(tnow_ms - lastFreqCmdTime_ms > delayedCommand->interval() * 2)
     {
         if (freqStruct.VFO == selVFO_t::activeVFO) {
-            ui->freqLabel->setText(QString("%1").arg(freqStruct.MHzDouble, 0, 'f'));
+            ui->frequency->setFrequency(freqStruct.Hz);
+            //ui->freqLabel->setText(QString("%1").arg(freqStruct.MHzDouble, 0, 'f'));
             rpt->handleUpdateCurrentMainFrequency(freqStruct);
         }
 
@@ -4384,7 +4402,8 @@ void wfmain::on_freqDial_valueChanged(int value)
     {
         ui->mainScope->setFrequency(f);
         oldFreqDialVal = value;
-        ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
+        ui->frequency->setFrequency(f.Hz);
+        //ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
         queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
     } else {
         ui->freqDial->blockSignals(true);
@@ -6232,6 +6251,17 @@ void wfmain::receiveTheme(bool sub, int theme)
 {
     if (!sub)
         prefs.wftheme = theme;
+}
+
+void wfmain::newFrequency(qint64 freq)
+{
+    freqt f;
+    f.Hz = freq;
+    f.MHzDouble = f.Hz / (double)1E6;
+    if (f.Hz > 0)
+    {
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    }
 }
 
 
