@@ -5094,9 +5094,6 @@ bool rigCommander::parseSpectrum(scopeData& d)
 {
     bool ret = false;
 
-    qInfo() << "Parsing scope data";
-
-
     if(!haveRigCaps)
     {
         qDebug(logRig()) << "Spectrum received in rigCommander, but rigID is incomplete.";
