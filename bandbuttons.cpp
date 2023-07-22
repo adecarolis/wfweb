@@ -50,6 +50,9 @@ void bandbuttons::acceptRigCaps(rigCapabilities rc)
 void bandbuttons::setUIToRig()
 {
     // Turn off each button first:
+    hideButton(ui->band3cmbtn);
+    hideButton(ui->band6cmbtn);
+    hideButton(ui->band13cmbtn);
     hideButton(ui->band23cmbtn);
     hideButton(ui->band70cmbtn);
     hideButton(ui->band2mbtn);
@@ -77,6 +80,15 @@ void bandbuttons::setUIToRig()
     {
         switch(band.band)
         {
+            case(band3cm):
+                showButton(ui->band3cmbtn);
+                break;
+            case(band6cm):
+                showButton(ui->band6cmbtn);
+                break;
+            case(band13cm):
+                showButton(ui->band13cmbtn);
+                break;
             case(band23cm):
                 showButton(ui->band23cmbtn);
                 break;
@@ -300,6 +312,21 @@ void bandbuttons::on_band70cmbtn_clicked()
 void bandbuttons::on_band23cmbtn_clicked()
 {
     bandStackBtnClick(band23cm);
+}
+
+void bandbuttons::on_band13cmbtn_clicked()
+{
+    bandStackBtnClick(band13cm);
+}
+
+void bandbuttons::on_band6cmbtn_clicked()
+{
+    bandStackBtnClick(band6cm);
+}
+
+void bandbuttons::on_band3cmbtn_clicked()
+{
+    bandStackBtnClick(band3cm);
 }
 
 void bandbuttons::on_bandWFMbtn_clicked()

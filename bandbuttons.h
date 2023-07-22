@@ -73,6 +73,9 @@ private slots:
     void on_band2mbtn_clicked();
     void on_band70cmbtn_clicked();
     void on_band23cmbtn_clicked();
+    void on_band13cmbtn_clicked();
+    void on_band6cmbtn_clicked();
+    void on_band3cmbtn_clicked();
     void on_bandWFMbtn_clicked();
     void on_bandAirbtn_clicked();
     void on_bandGenbtn_clicked();
