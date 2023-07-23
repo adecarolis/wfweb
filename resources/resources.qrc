@@ -12,5 +12,6 @@
         <file>streamdeckxl.png</file>
         <file>streamdeckpedal.png</file>
         <file>streamdeckplus.png</file>
+        <file>frequency.ttf</file>
     </qresource>
 </RCC>

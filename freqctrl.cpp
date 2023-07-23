@@ -67,8 +67,13 @@
     m_ActiveEditDigit = -1;
     m_ResetLowerDigits = true;
     m_InvertScrolling = false;
-    m_UnitsFont = QFont("Arial", 12, QFont::Normal);
-    m_DigitFont = QFont("Arial", 12, QFont::Normal);
+    int fontid = QFontDatabase::addApplicationFont(":/resources/frequency.ttf");
+    QString font = QFontDatabase::applicationFontFamilies(fontid).at(0);
+
+    m_UnitsFont  = QFont(font,12,QFont::Normal);
+    m_DigitFont  = QFont(font,12,QFont::Normal);
+    //m_UnitsFont = QFont("Arial", 12, QFont::Normal);
+    //m_DigitFont = QFont("Arial", 12, QFont::Normal);
 
     setStatusTip(tr(STATUS_TIP));
 }
@@ -604,7 +609,7 @@ void freqCtrl::drawBkGround(QPainter &Painter)
                             2 * cellwidth, rect.height());
         Painter.fillRect(m_UnitsRect, m_BkColor); // FIXME: not necessary?
         m_UnitsFont.setPixelSize((UNITS_SIZE_PERCENT * rect.height()) / 100);
-        m_UnitsFont.setFamily("Arial");
+        //m_UnitsFont.setFamily("Arial");
         Painter.setFont(m_UnitsFont);
         Painter.setPen(m_UnitsColor);
         Painter.drawText(m_UnitsRect, Qt::AlignHCenter | Qt::AlignVCenter,
@@ -613,7 +618,7 @@ void freqCtrl::drawBkGround(QPainter &Painter)
 
     // draw digits
     m_DigitFont.setPixelSize((DIGIT_SIZE_PERCENT * rect.height()) / 100);
-    m_DigitFont.setFamily("Arial");
+    //m_DigitFont.setFamily("Arial");
     Painter.setFont(m_DigitFont);
     Painter.setPen(m_DigitColor);
 
