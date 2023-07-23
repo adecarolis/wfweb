@@ -182,10 +182,13 @@ void cachingQueue::del(funcs func, bool sub)
     if (func != funcNone)
     {
         QMutexLocker locker(&mutex);
-        auto it(queue.begin());
+        auto it = std::find_if(queue.begin(), queue.end(), [func,sub](const queueItem& c) {  return (c.command == func && c.sub == sub && c.recurring); });
+        //auto it(queue.begin());
+        if (it == queue.end())
+            qInfo() << "recurring command" << funcString[func] << "sub" << sub << "not found in queue";
         while (it != queue.end()) {
             if (it.value().command == func && it.value().sub == sub) {
-                qInfo() << "deleting" << funcString[it.value().command] << "sub" << it.value().sub << "recurring" << it.value().recurring;
+                    qInfo() << "deleting" << funcString[it.value().command] << "sub" << it.value().sub << "recurring" << it.value().recurring;
                 it = queue.erase(it);
             }
             else

@@ -1103,6 +1103,7 @@ void spectrumScope::receiveMode(modeInfo m)
     // Not all rigs send data so this "might" need to be updated independantly?
     if (mode.reg != m.reg || m.filter != mode.filter || m.data != mode.data)
     {
+
         qInfo(logSystem()) << __func__ << QString("Received new mode for %0: %1 (%2) filter:%3 data:%4")
                                               .arg((sub?"Sub":"Main")).arg(QString::number(m.mk,16)).arg(m.name).arg(m.filter).arg(m.data) ;
 
@@ -1138,44 +1139,35 @@ void spectrumScope::receiveMode(modeInfo m)
             // We have changed mode so "may" need to change regular commands
             passbandCenterFrequency = 0.0;
 
+            // If new mode doesn't allow bandwidth control, disable filterwidth and pbt.
+            if (m.bw) {
+                queue->addUnique(priorityHigh,funcPBTInner,true,sub);
+                queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
+                queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
+            } else{
+                queue->del(funcPBTInner,sub);
+                queue->del(funcPBTOuter,sub);
+                queue->del(funcFilterWidth,sub);
+            }
+
             switch (m.mk) {
             case modeLSB:
             case modeUSB:
                 passbandCenterFrequency = 0.0015;
-                queue->addUnique(priorityHigh,funcPBTInner,true,sub);
-                queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
-                queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
-                queue->del(funcCwPitch,sub);
-                queue->del(funcDashRatio,sub);
-                queue->del(funcKeySpeed,sub);
-                break;
             case modeRTTY:
             case modeRTTY_R:
             case modePSK:
             case modePSK_R:
-                queue->addUnique(priorityHigh,funcPBTInner,true,sub);
-                queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
-                queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
+            case modeAM:
                 queue->del(funcCwPitch,sub);
                 queue->del(funcDashRatio,sub);
                 queue->del(funcKeySpeed,sub);
                 break;
             case modeCW:
             case modeCW_R:
-                queue->addUnique(priorityHigh,funcPBTInner,true,sub);
-                queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
-                queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
                 queue->addUnique(priorityLow,funcCwPitch,true,sub);
                 queue->addUnique(priorityLow,funcDashRatio,true,sub);
                 queue->addUnique(priorityLow,funcKeySpeed,true,sub);
-                break;
-            case modeAM:
-                queue->addUnique(priorityHigh,funcPBTInner,true,sub);
-                queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
-                queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
-                queue->del(funcCwPitch,sub);
-                queue->del(funcDashRatio,sub);
-                queue->del(funcKeySpeed,sub);
                 break;
             default:
                 // FM and digital modes are fixed width, not sure about any other modes?
@@ -1189,9 +1181,6 @@ void spectrumScope::receiveMode(modeInfo m)
                 queue->del(funcCwPitch,sub);
                 queue->del(funcDashRatio,sub);
                 queue->del(funcKeySpeed,sub);
-                queue->del(funcPBTInner,sub);
-                queue->del(funcPBTOuter,sub);
-                queue->del(funcFilterWidth,sub);
                 break;
             }
 

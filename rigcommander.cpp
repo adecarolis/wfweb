@@ -337,6 +337,12 @@ bool rigCommander::getCommand(funcs func, QByteArray &payload, int value, bool s
                 // This can use cmd29 so add sub/main to the command
                 payload.append('\x29');
                 payload.append(static_cast<uchar>(sub));
+            } else if (!rigCaps.hasCommand29 && sub)
+            {
+                // We don't have command29 so can't select sub
+                qInfo(logRig()) << "Rig has no Command29, removing command:" << funcString[func] << "sub" << sub;
+                queue->del(func,sub);
+                return false;
             }
             payload.append(it.value().data);
             return true;
@@ -5504,7 +5510,14 @@ modeInfo rigCommander::parseMode(quint8 mode, quint8 filter, bool sub)
         qInfo(logRig()) << QString("parseMode() Couldn't find a matching mode %0 with filter %1").arg(mode).arg(filter);
     }
 
-    cacheItem item = queue->getCache(funcFilterWidth,sub);
+    // We cannot query sub VFO width without command29.
+    if (!rigCaps.hasCommand29)
+        sub = false;
+
+    cacheItem item;
+
+    if (mi.mk != modeFM)
+        queue->getCache(funcFilterWidth,sub);
 
     if (item.value.isValid()) {
         mi.pass = item.value.toInt();

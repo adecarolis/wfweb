@@ -42,6 +42,9 @@
             <height>128</height>
            </size>
           </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
+          </property>
           <property name="text">
            <string>2200m</string>
           </property>
@@ -61,6 +64,9 @@
             <height>128</height>
            </size>
           </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
+          </property>
           <property name="text">
            <string>630m</string>
           </property>
@@ -79,6 +85,9 @@
             <width>16777215</width>
             <height>128</height>
            </size>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
           </property>
           <property name="text">
            <string>160m</string>
@@ -101,6 +110,9 @@
             <width>16777215</width>
             <height>128</height>
            </size>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
           </property>
           <property name="text">
            <string>80m</string>
@@ -128,6 +140,9 @@
             <height>128</height>
            </size>
           </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
+          </property>
           <property name="text">
            <string>60m</string>
           </property>
@@ -149,6 +164,9 @@
             <width>16777215</width>
             <height>128</height>
            </size>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
           </property>
           <property name="text">
            <string>40m</string>
@@ -172,6 +190,9 @@
             <height>128</height>
            </size>
           </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
+          </property>
           <property name="text">
            <string>30m</string>
           </property>
@@ -193,6 +214,9 @@
             <width>16777215</width>
             <height>128</height>
            </size>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
           </property>
           <property name="text">
            <string>20m</string>
@@ -220,6 +244,9 @@
             <height>128</height>
            </size>
           </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
+          </property>
           <property name="text">
            <string>17m</string>
           </property>
@@ -241,6 +268,9 @@
             <width>16777215</width>
             <height>128</height>
            </size>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
           </property>
           <property name="text">
            <string>15m</string>
@@ -264,6 +294,9 @@
             <height>128</height>
            </size>
           </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
+          </property>
           <property name="text">
            <string>12m</string>
           </property>
@@ -285,6 +318,9 @@
             <width>16777215</width>
             <height>128</height>
            </size>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
           </property>
           <property name="text">
            <string>10m</string>
@@ -312,6 +348,9 @@
             <height>128</height>
            </size>
           </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
+          </property>
           <property name="text">
            <string>6m</string>
           </property>
@@ -333,6 +372,9 @@
             <width>16777215</width>
             <height>128</height>
            </size>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
           </property>
           <property name="text">
            <string>4m</string>
@@ -356,6 +398,9 @@
             <height>128</height>
            </size>
           </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
+          </property>
           <property name="text">
            <string>2m</string>
           </property>
@@ -378,6 +423,9 @@
             <height>128</height>
            </size>
           </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
+          </property>
           <property name="text">
            <string>70cm</string>
           </property>
@@ -399,6 +447,9 @@
             <width>16777215</width>
             <height>128</height>
            </size>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
           </property>
           <property name="text">
            <string>23cm</string>
@@ -426,6 +477,9 @@
             <height>128</height>
            </size>
           </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
+          </property>
           <property name="text">
            <string>13cm</string>
           </property>
@@ -445,6 +499,9 @@
             <height>128</height>
            </size>
           </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
+          </property>
           <property name="text">
            <string>6cm</string>
           </property>
@@ -463,6 +520,9 @@
             <width>16777215</width>
             <height>128</height>
            </size>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
           </property>
           <property name="text">
            <string>3cm</string>
@@ -487,6 +547,9 @@
             <height>128</height>
            </size>
           </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
+          </property>
           <property name="text">
            <string>WFM</string>
           </property>
@@ -509,6 +572,9 @@
             <height>128</height>
            </size>
           </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
+          </property>
           <property name="text">
            <string>Air</string>
           </property>
@@ -530,6 +596,9 @@
             <width>16777215</width>
             <height>128</height>
            </size>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::NoFocus</enum>
           </property>
           <property name="text">
            <string>Gen</string>

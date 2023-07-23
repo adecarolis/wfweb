@@ -4212,8 +4212,8 @@ void wfmain::initPeriodicCommands()
     queue->add(priorityMedium,funcSelectedFreq,true,false);
     queue->add(priorityMedium,funcSelectedMode,true,false);
     //queue->add(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),true,false);
-    queue->add(priorityMedium,funcUnselectedFreq,true,true);
-    queue->add(priorityMedium,funcUnselectedMode,true,true);
+    queue->add(priorityMedium,funcUnselectedFreq,true,false);
+    queue->add(priorityMedium,funcUnselectedMode,true,false);
 
     if (rigCaps.hasSpectrum)
     {

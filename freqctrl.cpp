@@ -34,6 +34,7 @@
  */
 #include <QDebug>
 #include "freqctrl.h"
+#include "logcategories.h"
 
 // Manual adjustment of Font size as percent of control height
 #define DIGIT_SIZE_PERCENT 90
