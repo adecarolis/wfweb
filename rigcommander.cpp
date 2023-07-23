@@ -5516,8 +5516,10 @@ modeInfo rigCommander::parseMode(quint8 mode, quint8 filter, bool sub)
 
     cacheItem item;
 
-    if (mi.mk != modeFM)
+    // Does the current mode support filterwidth?
+    if (mi.bw) {
         queue->getCache(funcFilterWidth,sub);
+    }
 
     if (item.value.isValid()) {
         mi.pass = item.value.toInt();
