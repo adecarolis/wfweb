@@ -620,17 +620,19 @@ void usbController::runTimer()
                                                   .arg(QString::number((quint8)data[7]))
                                                   .arg(QString::number((quint8)data[8]));
                 }
-                else
+                else if (data[2]) // This is a keypress
                 {
-                    bool show = false;
-                    for (int i=0;i<data.size();i++) {
-                        if (data[i] != 0U) {
-                            show = true;
-                            break;
-                        }
-                    }
-                    if (show)
-                       qInfo(logUsbControl()) << "Received:" << data;
+                    tempButtons = ((quint8)data[2] >> 1 & 0x01) | ((quint8)data[2] & 0x01)<<1 | ((quint8)data[2] >> 4 & 0x01) << 2;
+                    qInfo(logUsbControl()) << QString("ID: %0 Type:%1 SW1:%2 SW2:%3 SW3:%4 LCK:%5 STAMP:%6 REBOOTS:%7")
+                                                  .arg(quint8(data[0]))
+                                                  .arg(quint8(data[1]))
+                                                  .arg(tempButtons & 0x01)
+                                                  .arg(tempButtons >> 1 & 0x01)
+                                                  .arg(tempButtons >> 2 & 0x01)
+                                                  .arg(quint8(data[6]))
+                                                  .arg(quint32(data[31] | data[32] << 8 | data[33] << 16 | data[34] << 24))
+                                                  .arg(quint8(data[35]))
+                        ;
                 }
             }
             // Is it any model of StreamDeck?
@@ -1607,6 +1609,12 @@ void usbController::loadButtons()
     defaultButtons.append(BUTTON(StreamDeckPlus, 9, QRect(204, 358, 64, 52), Qt::white, &commands[0], &commands[0]));
     defaultButtons.append(BUTTON(StreamDeckPlus, 10, QRect(332, 358, 64, 52), Qt::white, &commands[0], &commands[0]));
     defaultButtons.append(BUTTON(StreamDeckPlus, 11, QRect(462, 358, 64, 52), Qt::white, &commands[0], &commands[0]));
+
+    // XKeysXK3
+    defaultButtons.append(BUTTON(XKeysXK3, 0, QRect(30, 45, 63, 63), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(XKeysXK3, 1, QRect(100, 45, 63, 63), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(XKeysXK3, 2, QRect(170, 45, 63, 63), Qt::white, &commands[0], &commands[0]));
+
 }
 
 void usbController::loadKnobs()

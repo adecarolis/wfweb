@@ -4242,6 +4242,7 @@ void wfmain::initPeriodicCommands()
     }
 
     queue->add(priorityMedium,funcRfGain,true,false);
+    queue->add(priorityMediumLow,funcTuningStep,true,false);
     queue->add(priorityMediumLow,funcAttenuator,true,false);
     queue->add(priorityMediumLow,funcPreamp,true,false);
     queue->add(priorityMediumLow,funcAntenna,true,false);
