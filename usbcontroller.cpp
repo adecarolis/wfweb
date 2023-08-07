@@ -1326,7 +1326,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
             break;
         }
         res = hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
-        qInfo (logUsbControl()) << "Sending command to USB:" << data;
+        //qInfo (logUsbControl()) << "Sending command to USB:" << data;
         break;
     default:
         break;
@@ -1898,7 +1898,7 @@ void usbController::buttonState(QString name, double val)
 
 /* End of Gamepad functions*/
 
-void usbController::receiveLevel(cmds cmd, unsigned char level)
+void usbController::receiveLevel(funcs cmd, unsigned char level)
 {
     // Update knob if relevant, step through all devices
     QMutexLocker locker(mutex);

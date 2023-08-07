@@ -109,7 +109,7 @@ public:
 
 signals:
     // Signal levels received to other parts of wfview
-    void sendLevel(cmds cmd, unsigned char level);
+    void sendLevel(funcs cmd, unsigned char level);
     void usbHotplug();
     // Basic to rig:
     void setCIVAddr(unsigned char newRigCIVAddr);

@@ -227,6 +227,13 @@ void controllerSetup::showMenu(controllerScene* scene, QPoint p)
             iconLabel->setText(currentButton->iconName);
             iconLabel->show();
             break;
+        case XKeysXK3:
+            ledNumber->show();
+            buttonOnColor->hide();
+            buttonOffColor->hide();
+            buttonIcon->hide();
+            iconLabel->hide();
+            break;
         default:
             buttonOnColor->hide();
             buttonOffColor->hide();
@@ -758,6 +765,20 @@ void controllerSetup::newDevice(USBDEVICE* dev)
         c->timeout->setVisible(false);
         c->orientation->setVisible(false);
         break;
+    case XKeysXK3:
+        c->sensLabel->setVisible(false);
+        c->sens->setVisible(false);
+        c->brightLabel->setVisible(false);
+        c->speedLabel->setVisible(false);
+        c->timeoutLabel->setVisible(false);
+        c->orientLabel->setVisible(false);
+        c->brightness->setVisible(false);
+        c->speed->setVisible(false);
+        c->timeout->setVisible(false);
+        c->orientation->setVisible(false);
+        c->color->setVisible(false);
+        break;
+
     default:
         break;
     }

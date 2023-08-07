@@ -4,7 +4,8 @@
 /*
  * Frequency controller widget (originally from CuteSDR)
  */
-
+#include "rigidentities.h"
+#include <wfviewtypes.h>
 #include <QFrame>
 #include <QImage>
 #include <QtGui>
@@ -37,7 +38,7 @@ public:
 
     // Use NumDigits=0 for auto
     void     setup(int NumDigits, qint64 Minf, qint64 Maxf, int MinStep,
-               FctlUnit unit);
+               FctlUnit unit,std::vector<bandType>* bands = Q_NULLPTR);
     void     setUnit(FctlUnit unit);
     void     setDigitColor(QColor col);
     void     setBgColor(QColor col);
@@ -133,6 +134,8 @@ private:
 
     QFont       m_DigitFont;
     QFont       m_UnitsFont;
+
+    std::vector<bandType>* m_Bands;
 
     struct DigStuct {
         qint64    weight;      // decimal weight of this digit

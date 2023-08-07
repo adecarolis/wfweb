@@ -146,7 +146,7 @@ static int fmax_to_numdigits(qint64 fmax)
 }
 
 void freqCtrl::setup(int NumDigits, qint64 Minf, qint64 Maxf, int MinStep,
-                      FctlUnit unit)
+                     FctlUnit unit, std::vector<bandType>* bands)
 {
     int       i;
     qint64    pwr = 1;
@@ -154,6 +154,8 @@ void freqCtrl::setup(int NumDigits, qint64 Minf, qint64 Maxf, int MinStep,
     m_Oldfreq = -1;
 
     m_NumDigits = NumDigits ? NumDigits : fmax_to_numdigits(Maxf);
+
+    m_Bands = bands;
 
     if (m_NumDigits > FCTL_MAX_DIGITS)
         m_NumDigits = FCTL_MAX_DIGITS;
@@ -227,15 +229,48 @@ void freqCtrl::setFrequency(qint64 freq)
     qint64    rem;
     int       val;
 
+
+
     if (freq == m_Oldfreq)
         return;
 
-    if (freq < m_MinFreq)
-        freq = m_MinFreq;
+    if (m_Bands != Q_NULLPTR) {
+        // We have bands so make sure the frequency is within at least one of them!
+        for (int i=0;i<m_Bands->size();i++)
+        {
+            if (freq >= m_Bands->at(i).lowFreq && freq <= m_Bands->at(i).highFreq)
+            {
+                break;
+            }
 
-    if (freq > m_MaxFreq)
-        freq = m_MaxFreq;
+            if (m_Oldfreq >= m_Bands->at(i).lowFreq && m_Oldfreq <= m_Bands->at(i).highFreq)
+            {
+                // The old frequency WAS in this band but it isn't now!
+                if (freq >= m_Bands->at(i).highFreq && i <= m_Bands->size()-1)
+                {
+                    freq=m_Bands->at(i+1).lowFreq;
+                }
+                else if (freq < m_Bands->at(i).lowFreq && i > 0)
+                {
+                    freq=m_Bands->at(i-1).highFreq;
+                }
+                else
+                {
+                    // Couldn't match it!
+                    freq = m_Oldfreq;
+                }
+                break;
+            }
 
+
+        }
+    } else {
+        if (freq < m_MinFreq)
+            freq = m_MinFreq;
+
+        if (freq > m_MaxFreq)
+            freq = m_MaxFreq;
+    }
     m_freq = freq - freq % m_MinStep;
     rem = m_freq;
     m_LeadZeroPos = m_NumDigits;

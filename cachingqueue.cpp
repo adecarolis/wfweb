@@ -153,9 +153,9 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
             auto it(queue.begin());
             // This is quite slow but a new unique command is only added in response to user interaction (mode change etc.)
             while (it != queue.end()) {
-                if (it.value().command == item.command && it.value().recurring == item.recurring && it.value().sub == item.sub)
+                if (it.value().command == item.command && it.value().recurring == item.recurring && it.value().sub == item.sub && it.value().param.isValid() == item.param.isValid())
                 {
-                    qInfo() << "deleting" << funcString[it.value().command] << "sub" << it.value().sub << "recurring" << it.value().recurring;
+                    qInfo() << "deleting" << it.value().id << funcString[it.value().command] << "sub" << it.value().sub << "recurring" << it.value().recurring ;
                     it = queue.erase(it);
                 }
                 else

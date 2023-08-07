@@ -39,6 +39,7 @@ struct queueItem {
     QVariant param;
     bool sub;
     bool recurring;
+    qint64 id = QDateTime::currentMSecsSinceEpoch();
 };
 
 struct cacheItem {

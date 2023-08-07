@@ -1546,7 +1546,7 @@ void wfmain::setupUsbControllerDevice()
     connect(this, SIGNAL(sendControllerRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)), usbControllerDev, SLOT(sendRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)));
     connect(usbWindow, SIGNAL(programPages(USBDEVICE*,int)), usbControllerDev, SLOT(programPages(USBDEVICE*,int)));
     connect(usbWindow, SIGNAL(programDisable(USBDEVICE*,bool)), usbControllerDev, SLOT(programDisable(USBDEVICE*,bool)));
-    connect(this, SIGNAL(sendLevel(cmds,unsigned char)), usbControllerDev, SLOT(receiveLevel(cmds,unsigned char)));
+    connect(this, SIGNAL(sendLevel(funcs,unsigned char)), usbControllerDev, SLOT(receiveLevel(funcs,unsigned char)));
     connect(this, SIGNAL(initUsbController(QMutex*,usbDevMap*,QVector<BUTTON>*,QVector<KNOB>*)), usbControllerDev, SLOT(init(QMutex*,usbDevMap*,QVector<BUTTON>*,QVector<KNOB>*)));
     connect(this, SIGNAL(usbHotplug()), usbControllerDev, SLOT(run()));
     connect(usbWindow, SIGNAL(backup(USBDEVICE*,QString)), usbControllerDev, SLOT(backupController(USBDEVICE*,QString)));
@@ -3780,7 +3780,7 @@ void wfmain:: getInitialRigState()
         if (end < band.highFreq)
             end = band.highFreq;
     }
-    ui->frequency->setup(0, start, end, 1,FCTL_UNIT_MHZ);
+    ui->frequency->setup(0, start, end, 1,FCTL_UNIT_MHZ,&rigCaps.bands);
 
     /*
 
@@ -4171,7 +4171,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         if(usingLAN)
         {
             ui->afGainSlider->setValue(prefs.localAFgain);
-            emit sendLevel(cmdGetAfGain,prefs.localAFgain);
+            emit sendLevel(funcAfGain,prefs.localAFgain);
         }
         // Adding these here because clearly at this point we have valid
         // rig comms. In the future, we should establish comms and then
@@ -4272,7 +4272,7 @@ void wfmain::receiveFreq(freqt freqStruct)
 
 void wfmain::receivePTTstatus(bool pttOn)
 {
-    emit sendLevel(cmdGetPTT,pttOn);
+    emit sendLevel(funcTransceiverStatus,pttOn);
 
     // This is the only place where amTransmitting and the transmit button text should be changed:
     if (pttOn && !amTransmitting)
@@ -4505,7 +4505,7 @@ void wfmain::on_afGainSlider_valueChanged(int value)
         prefs.rxSetup.localAFgain = (unsigned char)(value);
         prefs.localAFgain = (unsigned char)(value);
         emit setAfGain(value);
-        emit sendLevel(cmdGetAfGain,value);
+        emit sendLevel(funcAfGain,value);
     } else {
         queue->addUnique(priorityImmediate,queueItem(funcAfGain,QVariant::fromValue<ushort>(value),false));
     }
@@ -4527,7 +4527,7 @@ void wfmain::receiveRfGain(unsigned char level)
     ui->rfGainSlider->blockSignals(true);
     ui->rfGainSlider->setValue(level);
     ui->rfGainSlider->blockSignals(false);
-    emit sendLevel(cmdGetRxGain,level);
+    emit sendLevel(funcRfGain,level);
 }
 
 void wfmain::receiveAfGain(unsigned char level)
@@ -4536,19 +4536,19 @@ void wfmain::receiveAfGain(unsigned char level)
     ui->afGainSlider->blockSignals(true);
     ui->afGainSlider->setValue(level);
     ui->afGainSlider->blockSignals(false);
-    emit sendLevel(cmdGetAfGain,level);
+    emit sendLevel(funcAfGain,level);
 }
 
 void wfmain::receiveSql(unsigned char level)
 {
     ui->sqlSlider->setValue(level);
-    emit sendLevel(cmdGetSql,level);
+    emit sendLevel(funcSquelch,level);
 }
 
 void wfmain::receiveIFShift(unsigned char level)
 {
     trxadj->updateIFShift(level);
-    emit sendLevel(cmdGetIFShift,level);
+    emit sendLevel(funcIFShift,level);
 }
 
 void wfmain::on_tuneNowBtn_clicked()
@@ -4708,7 +4708,6 @@ void wfmain::on_transmitBtn_clicked()
 
         pttTimer->stop();
     }
-    queue->add(priorityHighest,funcTransceiverStatus);
 }
 
 void wfmain::setRadioTimeDatePrep()
@@ -4808,13 +4807,13 @@ void wfmain::statusFromSliderPercent(QString name, int rawValue)
 void wfmain::receiveTxPower(unsigned char power)
 {
     changeSliderQuietly(ui->txPowerSlider, power);
-    emit sendLevel(cmdGetTxPower,power);
+    emit sendLevel(funcRFPower,power);
 }
 
 void wfmain::receiveMicGain(unsigned char gain)
 {
     processModLevel(inputTypes(inputMic), gain);
-    emit sendLevel(cmdGetMicGain,gain);
+    emit sendLevel(funcMicGain,gain);
 }
 
 void wfmain::processModLevel(inputTypes source, unsigned char level)
@@ -4835,7 +4834,7 @@ void wfmain::processModLevel(inputTypes source, unsigned char level)
     {
         currentIn.level = level;
         changeSliderQuietly(ui->micGainSlider, level);
-        emit sendLevel(cmdGetModLevel,level);
+        emit sendLevel(funcLANModLevel,level);
     }
 
 }
@@ -4902,7 +4901,7 @@ void wfmain::receiveCwPitch(unsigned char pitch) {
             passbandCenterFrequency = p / 2000000.0;
             qInfo(logSystem()) << QString("Received new CW Pitch %0 Hz was %1 (center freq %2 MHz)").arg(p).arg(cwPitch).arg(passbandCenterFrequency);
             cwPitch = p;
-            emit sendLevel(cmdGetCwPitch,pitch);
+            emit sendLevel(funcCwPitch,pitch);
         }
     }
 }
@@ -4926,7 +4925,7 @@ void wfmain::receivePBTInner(unsigned char level) {
     {
         qInfo(logSystem()) << QString("Received new PBT Inner %0 MHz").arg(inner);
         PBTInner = inner;
-        emit sendLevel(cmdGetPBTInner,level);
+        emit sendLevel(funcPBTInner,level);
     }
 }
 
@@ -4949,7 +4948,7 @@ void wfmain::receivePBTOuter(unsigned char level) {
     {
         qInfo(logSystem()) << QString("Received new PBT Outer %0 MHz").arg(outer);
         PBTOuter = outer;
-        emit sendLevel(cmdGetPBTOuter,level);
+        emit sendLevel(funcPBTOuter,level);
     }
 }
 
@@ -5002,39 +5001,39 @@ void wfmain::receiveMeter(meter_t inMeter, unsigned char level)
 
 void wfmain::receiveCompLevel(unsigned char compLevel)
 {
-    emit sendLevel(cmdGetCompLevel,compLevel);
+    emit sendLevel(funcCompressorLevel,compLevel);
 }
 
 void wfmain::receiveMonitorGain(unsigned char monitorGain)
 {
     changeSliderQuietly(ui->monitorSlider, monitorGain);
-    emit sendLevel(cmdGetMonitorGain,monitorGain);
+    emit sendLevel(funcMonitorGain,monitorGain);
 }
 
 void wfmain::receiveVoxGain(unsigned char voxGain)
 {
-    emit sendLevel(cmdGetVoxGain,voxGain);
+    emit sendLevel(funcVoxGain,voxGain);
 }
 
 void wfmain::receiveAntiVoxGain(unsigned char antiVoxGain)
 {
-    emit sendLevel(cmdGetAntiVoxGain,antiVoxGain);
+    emit sendLevel(funcAntiVoxGain,antiVoxGain);
 }
 
 void wfmain::receiveNBLevel(unsigned char level)
 {
-    emit sendLevel(cmdGetNBLevel,level);
+    emit sendLevel(funcNBLevel,level);
 }
 
 void wfmain::receiveNRLevel(unsigned char level)
 {
-    emit sendLevel(cmdGetNRLevel,level);
+    emit sendLevel(funcNRLevel,level);
 }
 
 
 void wfmain::receiveComp(bool en)
 {
-    emit sendLevel(cmdGetComp,en);
+    emit sendLevel(funcCompressor,en);
 }
 
 void wfmain::receiveMonitor(bool en)
@@ -5042,22 +5041,22 @@ void wfmain::receiveMonitor(bool en)
     ui->monitorCheck->blockSignals(true);
     ui->monitorCheck->setChecked(en);
     ui->monitorCheck->blockSignals(false);
-    emit sendLevel(cmdGetMonitor,en);
+    emit sendLevel(funcMonitor,en);
 }
 
 void wfmain::receiveVox(bool en)
 {
-    emit sendLevel(cmdGetVox,en);
+    emit sendLevel(funcVox,en);
 }
 
 void wfmain::receiveNB(bool en)
 {
-    emit sendLevel(cmdGetNB,en);
+    emit sendLevel(funcNoiseBlanker,en);
 }
 
 void wfmain::receiveNR(bool en)
 {
-    emit sendLevel(cmdGetNR,en);
+    emit sendLevel(funcNoiseReduction,en);
 }
 
 void wfmain::on_txPowerSlider_valueChanged(int value)
