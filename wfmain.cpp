@@ -1040,7 +1040,7 @@ void wfmain::setupMainUI()
     ui->tuningStepCombo->addItem("1 kHz",     (unsigned int)    1000);
     ui->tuningStepCombo->addItem("2.5 kHz",   (unsigned int)    2500);
     ui->tuningStepCombo->addItem("5 kHz",     (unsigned int)    5000);
-    ui->tuningStepCombo->addItem("6.125 kHz", (unsigned int)    6125);	// PMR
+    ui->tuningStepCombo->addItem("6.25 kHz",  (unsigned int)    6250);	// PMR
     ui->tuningStepCombo->addItem("8.333 kHz", (unsigned int)    8333);	// airband stepsize
     ui->tuningStepCombo->addItem("9 kHz",     (unsigned int)    9000);	// European medium wave stepsize
     ui->tuningStepCombo->addItem("10 kHz",    (unsigned int)   10000);
