@@ -4108,15 +4108,23 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->mainScope->addData("Data Off",0);
         ui->subScope->addData("Data Off",0);
 
+        if (rigCaps.commands.contains(funcDATA1Mod))
+        {
+            setupui->updateModSourceList(1, rigCaps.inputs);
+            if (!rigCaps.commands.contains(funcDATA2Mod))
+            {
+                ui->mainScope->addData("Data On", 2);
+                ui->subScope->addData("Data On", 2);
+            }
+        }
+
         if (rigCaps.commands.contains(funcDATA2Mod))
         {
             setupui->updateModSourceList(2, rigCaps.inputs);
-            ui->mainScope->addData("Data 1", 1);
-            ui->subScope->addData("Data 1", 1);
+            ui->mainScope->addData("Data 1", 2);
+            ui->subScope->addData("Data 1", 2);
             ui->mainScope->addData("Data 2", 2);
             ui->subScope->addData("Data 2", 2);
-            //ui->datamodeCombo->addItem("Data1",1);
-            //ui->datamodeCombo->addItem("Data2",2);
         }
 
         if (rigCaps.commands.contains(funcDATA3Mod))
