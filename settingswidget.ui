@@ -41,7 +41,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>4</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -645,6 +645,11 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                     <string>RT Audio</string>
                    </property>
                   </item>
+                  <item>
+                   <property name="text">
+                    <string>TCI Audio</string>
+                   </property>
+                  </item>
                  </widget>
                 </item>
                 <item>
@@ -969,6 +974,42 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
             </widget>
            </item>
            <item>
+            <widget class="QLabel" name="label_3">
+             <property name="text">
+              <string>Frequency Units</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="frequencyUnitsCombo">
+             <item>
+              <property name="text">
+               <string>None</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Hz</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>KHz</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>MHz</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>GHz</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item>
             <spacer name="horizontalSpacer_27">
              <property name="orientation">
               <enum>Qt::Horizontal</enum>
@@ -1235,8 +1276,8 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>453</width>
-                 <height>235</height>
+                 <width>925</width>
+                 <height>330</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">

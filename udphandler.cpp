@@ -370,7 +370,6 @@ void udpHandler::dataReceived()
                             QObject::connect(this, SIGNAL(haveSetVolume(unsigned char)), audio, SLOT(setVolume(unsigned char)));
                             QObject::connect(audio, SIGNAL(haveRxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, quint16, bool, bool)));
                             QObject::connect(audio, SIGNAL(haveTxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, quint16, bool, bool)));
-                            connect(audio, SIGNAL(sendFloat(Eigen::VectorXf)), this, SLOT(receiveFloat(Eigen::VectorXf)));
 
                         }
 
@@ -595,7 +594,7 @@ void udpHandler::sendRequestStream()
     p.len = sizeof(p);
     p.sentid = myId;
     p.rcvdid = remoteId;
-    p.payloadsize = qToBigEndian((quint16)(sizeof(p) - 0x10));
+    p.payloadsize = qToBigEndian((quint32)(sizeof(p) - 0x10));
     p.requesttype = 0x03;
     p.requestreply = 0x01;
 
@@ -657,7 +656,7 @@ void udpHandler::sendLogin() // Only used on control stream.
     p.len = sizeof(p);
     p.sentid = myId;
     p.rcvdid = remoteId;
-    p.payloadsize = qToBigEndian((quint16)(sizeof(p) - 0x10));
+    p.payloadsize = qToBigEndian((quint32)(sizeof(p) - 0x10));
     p.requesttype = 0x00;
     p.requestreply = 0x01;
 
@@ -680,7 +679,7 @@ void udpHandler::sendToken(uint8_t magic)
     p.len = sizeof(p);
     p.sentid = myId;
     p.rcvdid = remoteId;
-    p.payloadsize = qToBigEndian((quint16)(sizeof(p) - 0x10));
+    p.payloadsize = qToBigEndian((quint32)(sizeof(p) - 0x10));
     p.requesttype = magic;
     p.requestreply = 0x01;
     p.innerseq = qToBigEndian(authSeq++);
@@ -694,7 +693,3 @@ void udpHandler::sendToken(uint8_t magic)
     return;
 }
 
-void udpHandler::receiveFloat(Eigen::VectorXf data)
-{
-    emit sendFloat(data);
-}

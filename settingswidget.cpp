@@ -435,6 +435,10 @@ void settingswidget::updateIfPref(prefIfItem pif)
         }
     case if_rigCreatorEnable:
         quietlyUpdateCheckbox(ui->rigCreatorChk, prefs->rigCreatorEnable);
+        break;
+    case if_frequencyUnits:
+        quietlyUpdateCombobox(ui->frequencyUnitsCombo, prefs->frequencyUnits);
+        break;
     default:
         qWarning(logGui()) << "Did not understand if pref update item " << (int)pif;
         break;
@@ -1553,6 +1557,12 @@ void settingswidget::on_rigCreatorChk_clicked(bool checked)
 {
     prefs->rigCreatorEnable = checked;
     emit changedIfPref(if_rigCreatorEnable);
+}
+
+void settingswidget::on_frequencyUnitsCombo_currentIndexChanged(int index)
+{
+    prefs->frequencyUnits = index;
+    emit changedIfPref(if_frequencyUnits);
 }
 
 void settingswidget::on_enableRigctldChk_clicked(bool checked)

@@ -178,9 +178,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     loadSettings(); // Look for saved preferences
 
-    if (prefs.tciPort > 0) {
-        tci = new tciServer(prefs.tciPort,this);
-    }
 
     //setAudioDevicesUI(); // no need to call this as it will be called by the updated() signal
 
@@ -284,6 +281,7 @@ wfmain::~wfmain()
 {
     rigThread->quit();
     rigThread->wait();
+
     if (serverThread != Q_NULLPTR) {
         serverThread->quit();
         serverThread->wait();
@@ -292,6 +290,12 @@ wfmain::~wfmain()
         clusterThread->quit();
         clusterThread->wait();
     }
+
+    if (tciThread != Q_NULLPTR) {
+        tciThread->quit();
+        tciThread->wait();
+    }
+
     if (rigCtl != Q_NULLPTR) {
         delete rigCtl;
     }
@@ -735,6 +739,9 @@ void wfmain::rigConnections()
 
     connect(ui->mainScope, SIGNAL(updateTheme(bool,int)), this, SLOT(receiveTheme(bool,int)));
     connect(ui->subScope, SIGNAL(updateTheme(bool,int)), this, SLOT(receiveTheme(bool,int)));
+
+    connect(ui->mainScope, SIGNAL(elapsedTime(bool,qint64)), this, SLOT(receiveElapsed(bool,qint64)));
+    connect(ui->subScope, SIGNAL(elapsedTime(bool,qint64)), this, SLOT(receiveElapsed(bool,qint64)));
 }
 
 //void wfmain::removeRigConnections()
@@ -779,9 +786,6 @@ void wfmain::makeRig()
         connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
-        if (tci != Q_NULLPTR) {
-            connect(rig, SIGNAL(sendFloat(Eigen::VectorXf)), tci, SLOT(receiveFloat(Eigen::VectorXf)));
-        }
         // Create link for server so it can have easy access to rig.
         if (serverConfig.rigs.first() != Q_NULLPTR) {
             serverConfig.rigs.first()->rig = rig;
@@ -953,6 +957,7 @@ void wfmain::receivePortError(errorType err)
 void wfmain::receiveStatusUpdate(networkStatus status)
 {
     
+    //this->rigStatus->setText(QString("%0/%1 %2").arg(mainElapsed).arg(subElapsed).arg(status.message));
     this->rigStatus->setText(status.message);
     selRad->audioOutputLevel(status.rxAudioLevel);
     selRad->audioInputLevel(status.txAudioLevel);
@@ -1865,6 +1870,8 @@ void wfmain::loadSettings()
     prefs.rigCreatorEnable = settings->value("RigCreator",false).toBool();
     ui->rigCreatorBtn->setEnabled(prefs.rigCreatorEnable);
 
+    prefs.frequencyUnits = settings->value("FrequencyUnits",3).toInt();
+
     settings->endGroup();
 
     // Load in the color presets. The default values are already loaded.
@@ -2013,6 +2020,25 @@ void wfmain::loadSettings()
     prefs.rxSetup.resampleQuality = settings->value("ResampleQuality", "4").toInt();
     prefs.txSetup.resampleQuality = prefs.rxSetup.resampleQuality;
 
+    if (prefs.tciPort > 0 && tci == Q_NULLPTR) {
+
+        tci = new tciServer(this);
+
+        tciThread = new QThread(this);
+        tciThread->setObjectName("TCIServer()");
+        tci->moveToThread(tciThread);
+        connect(this,SIGNAL(tciInit(quint16)),tci, SLOT(init(quint16)));
+        connect(tciThread, SIGNAL(finished()), tci, SLOT(deleteLater()));
+        tciThread->start(QThread::TimeCriticalPriority);
+        emit tciInit(prefs.tciPort);
+    }
+
+    if (prefs.audioSystem == tciAudio)
+    {
+        prefs.rxSetup.tci = tci;
+        prefs.txSetup.tci = tci;
+    }
+
     udpPrefs.clientName = settings->value("ClientName", udpDefPrefs.clientName).toString();
 
     udpPrefs.halfDuplex = settings->value("HalfDuplex", udpDefPrefs.halfDuplex).toBool();
@@ -2076,7 +2102,6 @@ void wfmain::loadSettings()
     rigTemp->baudRate = prefs.serialPortBaud;
     rigTemp->civAddr = prefs.radioCIVAddr;
     rigTemp->serialPort = prefs.serialPortRadio;
-
     QString guid = settings->value("GUID", "").toString();
     if (guid.isEmpty()) {
         guid = QUuid::createUuid().toString();
@@ -2088,6 +2113,7 @@ void wfmain::loadSettings()
 
     rigTemp->rxAudioSetup.name = settings->value("ServerAudioInput", "Default Input Device").toString();
     rigTemp->txAudioSetup.name = settings->value("ServerAudioOutput", "Default Output Device").toString();
+
     serverConfig.rigs.append(rigTemp);
 
     // At this point, the users list has exactly one empty user.
@@ -2560,6 +2586,9 @@ void wfmain::extChangedIfPref(prefIfItem i)
         // TODO.....
         break;
     }
+    case if_frequencyUnits:
+        ui->frequency->setUnit((FctlUnit)prefs.frequencyUnits);
+        break;
     default:
         qWarning(logSystem()) << "Did not understand if pref update in wfmain for item " << (int)i;
         break;
@@ -3026,6 +3055,7 @@ void wfmain::saveSettings()
     settings->setValue("Meter2Type", (int)prefs.meter2Type);
     settings->setValue("ClickDragTuning", prefs.clickDragTuningEnable);
     settings->setValue("RigCreator",prefs.rigCreatorEnable);
+    settings->setValue("FrequencyUnits",prefs.frequencyUnits);
 
     settings->endGroup();
 
@@ -3780,7 +3810,7 @@ void wfmain:: getInitialRigState()
         if (end < band.highFreq)
             end = band.highFreq;
     }
-    ui->frequency->setup(0, start, end, 1,FCTL_UNIT_MHZ,&rigCaps.bands);
+    ui->frequency->setup(0, start, end, 1,(FctlUnit)prefs.frequencyUnits,&rigCaps.bands);
 
     /*
 
@@ -6262,6 +6292,14 @@ void wfmain::newFrequency(qint64 freq)
     {
         queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
     }
+}
+
+void wfmain::receiveElapsed(bool sub, qint64 us)
+{
+    if (sub)
+        subElapsed = us;
+    else
+        mainElapsed = us;
 }
 
 

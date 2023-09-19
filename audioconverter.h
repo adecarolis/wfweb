@@ -1,5 +1,6 @@
 #ifndef AUDIOCONVERTER_H
 #define AUDIOCONVERTER_H
+
 #include <QObject>
 #include <QByteArray>
 #include <QTime>
@@ -62,6 +63,7 @@ struct audioSetup {
     unsigned char localAFgain;
     quint16 blockSize = 20; // Each 'block' of audio is 20ms long by default.
     quint8 guid[GUIDLEN];
+    void* tci = Q_NULLPTR;
 };
 
 class audioConverter : public QObject

@@ -80,10 +80,10 @@ typedef union ping_packet {
         quint32 rcvdid;     // 0x0c
         char  reply;        // 0x10
         union { // This contains differences between the send/receive packet
-            struct { // Ping
-                quint32 time;      // 0x11
+            struct { // Ping packet
+                quint32 time;      // 0x11 (uptime of device)
             };
-            struct { // Send
+            struct { // CIV header packet
                 quint16 datalen;    // 0x11
                 quint16 sendseq;    //0x13
             };
@@ -166,10 +166,9 @@ typedef union token_packet {
         quint16 seq;                // 0x06
         quint32 sentid;             // 0x08 
         quint32 rcvdid;             // 0x0c
-        char unuseda[2];          // 0x10
-        quint16 payloadsize;      // 0x12
-        quint8 requestreply;      // 0x13
-        quint8 requesttype;       // 0x14
+        quint32 payloadsize;      // 0x10
+        quint8 requestreply;      // 0x14
+        quint8 requesttype;       // 0x15
         quint16 innerseq;         // 0x16
         char unusedb[2];          // 0x18
         quint16 tokrequest;         // 0x1a
@@ -196,16 +195,15 @@ typedef union token_packet {
 typedef union status_packet {
     struct
     {
-        quint32 len;                // 0x00
-        quint16 type;               // 0x04
-        quint16 seq;                // 0x06
-        quint32 sentid;             // 0x08 
-        quint32 rcvdid;             // 0x0c
-        char unuseda[2];          // 0x10
-        quint16 payloadsize;      // 0x12
-        quint8 requestreply;      // 0x13
-        quint8 requesttype;       // 0x14
-        quint16 innerseq;         // 0x16
+        quint32 len;                // 0x00         0
+        quint16 type;               // 0x04         4
+        quint16 seq;                // 0x06         6
+        quint32 sentid;             // 0x08         8
+        quint32 rcvdid;             // 0x0c         12
+        quint32 payloadsize;      // 0x10           18
+        quint8 requestreply;      // 0x14           19
+        quint8 requesttype;       // 0x15           20
+        quint16 innerseq;         // 0x16           22
         char unusedb[2];          // 0x18
         quint16 tokrequest;         // 0x1a
         quint32 token;              // 0x1c 
@@ -240,10 +238,9 @@ typedef union login_response_packet {
         quint16 seq;                // 0x06
         quint32 sentid;             // 0x08 
         quint32 rcvdid;             // 0x0c
-        char unuseda[2];          // 0x10
-        quint16 payloadsize;      // 0x12
-        quint8 requestreply;      // 0x13
-        quint8 requesttype;       // 0x14
+        quint32 payloadsize;      // 0x10
+        quint8 requestreply;      // 0x14
+        quint8 requesttype;       // 0x15
         quint16 innerseq;         // 0x16
         char unusedb[2];          // 0x18
         quint16 tokrequest;         // 0x1a
@@ -267,10 +264,9 @@ typedef union login_packet {
         quint16 seq;                // 0x06
         quint32 sentid;             // 0x08 
         quint32 rcvdid;             // 0x0c
-        char unuseda[2];            // 0x10
-        quint16 payloadsize;        // 0x12
-        quint8 requestreply;      // 0x13
-        quint8 requesttype;       // 0x14
+        quint32 payloadsize;        // 0x10
+        quint8 requestreply;        // 0x14
+        quint8 requesttype;         // 0x15
         quint16 innerseq;           // 0x16
         char unusedb[2];            // 0x18
         quint16 tokrequest;         // 0x1a
@@ -293,10 +289,9 @@ typedef union conninfo_packet {
         quint16 seq;              // 0x06
         quint32 sentid;           // 0x08 
         quint32 rcvdid;           // 0x0c
-        char unuseda[2];          // 0x10
-        quint16 payloadsize;      // 0x12
-        quint8 requestreply;      // 0x13
-        quint8 requesttype;       // 0x14
+        quint32 payloadsize;      // 0x10
+        quint8 requestreply;      // 0x14
+        quint8 requesttype;       // 0x15
         quint16 innerseq;         // 0x16
         char unusedb[2];          // 0x18
         quint16 tokrequest;       // 0x1a
@@ -384,10 +379,9 @@ typedef union capabilities_packet {
         quint16 seq;              // 0x06
         quint32 sentid;           // 0x08 
         quint32 rcvdid;           // 0x0c
-        char unuseda[2];          // 0x10
-        quint16 payloadsize;      // 0x12
-        quint8 requestreply;      // 0x13
-        quint8 requesttype;       // 0x14
+        quint32 payloadsize;      // 0x10
+        quint8 requestreply;      // 0x14
+        quint8 requesttype;       // 0x15
         quint16 innerseq;         // 0x16
         char unusedb[2];          // 0x18
         quint16 tokrequest;       // 0x1a

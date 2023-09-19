@@ -15,7 +15,7 @@ DEFINES += USB_CONTROLLER
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport websockets
 
 contains(DEFINES,USB_CONTROLLER){
-    lessThan(QT_MAJOR_VERSION, 6): QT += gamepad
+lessThan(QT_MAJOR_VERSION, 6): QT += gamepad
 }
 
 TARGET = wfview
@@ -62,7 +62,6 @@ win32:INCLUDEPATH += ../portaudio/include
 # deprecated API in order to know how to port your code away from it.
 DEFINES += QT_DEPRECATED_WARNINGS
 DEFINES += QCUSTOMPLOT_USE_LIBRARY
-
 
 # These defines are used for the resampler
 equals(QT_ARCH, i386): win32:DEFINES += USE_SSE
@@ -243,6 +242,7 @@ SOURCES += main.cpp\
     rigcreator.cpp \
     spectrumscope.cpp \
     tablewidget.cpp \
+    tciaudiohandler.cpp \
     tciserver.cpp \
     wfmain.cpp \
     commhandler.cpp \
@@ -299,6 +299,7 @@ HEADERS  += wfmain.h \
     sidebandchooser.h \
     spectrumscope.h \
     tablewidget.h \
+    tciaudiohandler.h \
     tciserver.h \
     udpbase.h \
     udphandler.h \

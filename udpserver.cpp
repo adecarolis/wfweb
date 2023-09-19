@@ -1170,7 +1170,7 @@ void udpServer::sendLoginResponse(CLIENT* c, bool allowed)
     p.innerseq = c->authInnerSeq;
     p.tokrequest = c->tokenRx;
     p.token = c->tokenTx;
-    p.payloadsize = qToBigEndian((quint16)(sizeof(p) - 0x10));
+    p.payloadsize = qToBigEndian((quint32)(sizeof(p) - 0x10));
     p.requesttype = 0x00;
     p.requestreply = 0x01;
 
@@ -1315,7 +1315,7 @@ void udpServer::sendCapabilities(CLIENT* c)
     }
 
     p.len = (quint32)sizeof(p)+s.data.length();
-    p.payloadsize = qToBigEndian((quint16)(sizeof(p) + s.data.length() - 0x10));
+    p.payloadsize = qToBigEndian((quint32)(sizeof(p) + s.data.length() - 0x10));
 
     s.data.insert(0,QByteArray::fromRawData((const char*)p.packet, sizeof(p)));
 
@@ -1370,7 +1370,7 @@ void udpServer::sendConnectionInfo(CLIENT* c, quint8 guid[GUIDLEN])
             //p.innerseq = c->authInnerSeq; // Innerseq not used in user packet
             p.tokrequest = c->tokenRx;
             p.token = c->tokenTx;
-            p.payloadsize = qToBigEndian((quint16)(sizeof(p) - 0x10));
+            p.payloadsize = qToBigEndian((quint32)(sizeof(p) - 0x10));
             p.requesttype = 0x00;
             p.requestreply = 0x03;
 
@@ -1453,7 +1453,7 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
     p.innerseq = c->authInnerSeq;
     p.tokrequest = c->tokenRx;
     p.token = c->tokenTx;
-    p.payloadsize = qToBigEndian((quint16)(sizeof(p) - 0x10));
+    p.payloadsize = qToBigEndian((quint32)(sizeof(p) - 0x10));
 
     memcpy(p.guid, c->guid, GUIDLEN);
     p.requesttype = type;
@@ -1568,7 +1568,7 @@ void udpServer::sendStatus(CLIENT* c)
     p.innerseq = c->authInnerSeq;
     p.tokrequest = c->tokenRx;
     p.token = c->tokenTx;
-    p.payloadsize = qToBigEndian((quint16)(sizeof(p) - 0x10));
+    p.payloadsize = qToBigEndian((quint32)(sizeof(p) - 0x10));
     p.requestreply = 0x02;
     p.requesttype = 0x03;
     memcpy(p.guid, c->guid, GUIDLEN); // May be MAC address OR guid.

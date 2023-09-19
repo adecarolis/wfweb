@@ -33,10 +33,15 @@ static const tciCommandStruct tci_commands[] =
     { "", funcNone, 0x0 },
 };
 
-tciServer::tciServer(quint16 port, QObject *parent) :
-    QObject(parent),
-    server(new QWebSocketServer(QStringLiteral("TCI Server"), QWebSocketServer::NonSecureMode, this))
+tciServer::tciServer(QObject *parent) :
+    QObject(parent)
 {
+
+}
+
+void tciServer::init(quint16 port) {
+
+    server = new QWebSocketServer(QStringLiteral("TCI Server"), QWebSocketServer::NonSecureMode, this);
 
     if (server->listen(QHostAddress::Any,port)) {
         qInfo() << "tciServer() listening on" << port;
@@ -46,8 +51,23 @@ tciServer::tciServer(quint16 port, QObject *parent) :
     queue = cachingQueue::getInstance(this);
 
     connect(queue,SIGNAL(cacheUpdated(cacheItem)),this,SLOT(receiveCache(cacheItem)));
+
+    // Setup txChrono packet.
+    txChrono.resize(iqHeaderSize);
+    dataStream *pStream = reinterpret_cast<dataStream*>(txChrono.data());
+    pStream->receiver = 0;
+    pStream->sampleRate = 48000;
+    pStream->format = IqFloat32;
+    pStream->codec = 0u;
+    pStream->type = TxChrono;
+    pStream->crc = 0u;
+    pStream->length = TCI_AUDIO_LENGTH;
+
 }
 
+void tciServer::setupTxPacket(int length)
+{
+}
 tciServer::~tciServer()
 {
     server->close();
@@ -136,8 +156,8 @@ void tciServer::processIncomingTextMessage(QString message)
             it.value().rxaudio=false;
             reply = QString("trx:%0,%1;").arg(QString::number(sub)).arg(queue->getCache(funcTransceiverStatus).value.value<bool>()?"true":"false");
         }
-        else if (arg.size() == 2) {
-            bool on = arg[1]=="true"?1:0;
+        else if (arg.size() > 1) {
+            bool on = arg[1]=="true"?true:false;
             queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue(on),false,sub));
         }
     }
@@ -185,9 +205,15 @@ void tciServer::processIncomingTextMessage(QString message)
 void tciServer::processIncomingBinaryMessage(QByteArray message)
 {
     QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
-    qInfo() << "TCI Binary Message received:" << message;
     if (pClient) {
-        //pClient->sendBinaryMessage(message);
+        dataStream *pStream = reinterpret_cast<dataStream*>(message.data());
+        if (pStream->type == TxAudioStream && pStream->length > 0)
+        {
+            QByteArray tempData(pStream->length * sizeof(float),0x0);
+            memcpy(tempData.data(),pStream->data,tempData.size());
+            //qInfo() << QString("Received audio from client: %0 Sample: %1 Format: %2 Length: %3(%4 bytes) Type: %5").arg(pStream->receiver).arg(pStream->sampleRate).arg(pStream->format).arg(pStream->length).arg(tempData.size()).arg(pStream->type);
+            emit sendTCIAudio(tempData);
+        }
     }
 }
 
@@ -201,8 +227,7 @@ void tciServer::socketDisconnected()
     }
 }
 
-void tciServer::receiveFloat(Eigen::VectorXf audio)
-{
+void tciServer::receiveTCIAudio(audioPacket audio){
     /*
      *      quint32 receiver; //!< receiver’s periodic number
             quint32 sampleRate; //!< sample rate
@@ -217,7 +242,7 @@ void tciServer::receiveFloat(Eigen::VectorXf audio)
 
     //dataStream *pStream = reinterpret_cast<dataStream*>(audio.data());
 
-    rxAudioData.resize(iqHeaderSize + 2*audio.size()*sizeof (float));
+    rxAudioData.resize(iqHeaderSize + audio.data.size());
     dataStream *pStream = reinterpret_cast<dataStream*>(rxAudioData.data());
     pStream->receiver = 0;
     pStream->sampleRate = 48000;
@@ -225,24 +250,22 @@ void tciServer::receiveFloat(Eigen::VectorXf audio)
     pStream->codec = 0u;
     pStream->type = RxAudioStream;
     pStream->crc = 0u;
-    pStream->length = 2 * audio.size();
+    pStream->length = audio.data.size() / sizeof (float);
 
-    Eigen::VectorXf samples(audio.size() * 2);
-    Eigen::Map<Eigen::VectorXf, 0, Eigen::InnerStride<2> >(samples.data(), audio.size()) = audio;
-    Eigen::Map<Eigen::VectorXf, 0, Eigen::InnerStride<2> >(samples.data() + 1, audio.size()) = audio;
+    memcpy(pStream->data,audio.data.data(),audio.data.size());
 
-    memcpy(pStream->data,samples.data(),samples.size()*sizeof(float));
     auto it = clients.begin();
     while (it != clients.end())
     {
         if (it.value().connected && it.value().rxaudio)
         {
-            //shvqInfo() << "Sending audio to client" << it.key() << "size" << audio.size();
+            //qInfo() << "Sending audio to client:" << it.key() << "size" << audio.data.size();
+            it.key()->sendBinaryMessage(txChrono);
             it.key()->sendBinaryMessage(rxAudioData);
+
         }
         ++it;
     }
-
 }
 
 

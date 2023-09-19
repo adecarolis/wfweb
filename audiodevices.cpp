@@ -314,6 +314,12 @@ void audioDevices::enumerate()
             delete audio;
             break;
         }
+        case tciAudio:
+        {
+            inputs.append(new audioDevice("<TCI Audio>",0,1));
+            outputs.append(new audioDevice("<TCI Audio>",0,1));
+            break;
+        }
 
     }
     emit updated();

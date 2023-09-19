@@ -230,11 +230,6 @@ bool rtHandler::init(audioSetup setup)
 		connect(this, SIGNAL(sendToConverter(audioPacket)), converter, SLOT(convert(audioPacket)));
         converterThread->start(QThread::TimeCriticalPriority);
 
-        if (!setup.isinput)
-        {
-            connect(converter, SIGNAL(floatAudio(Eigen::VectorXf)), this, SLOT(receiveFloat(Eigen::VectorXf)));
-        }
-
 		// Per channel chunk size.
 		this->chunkSize = nativeFormat.framesForDuration(setup.blockSize * 1000);
 

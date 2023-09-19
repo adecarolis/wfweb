@@ -8,6 +8,7 @@ spectrumScope::spectrumScope(QWidget *parent)
 {
 
     QMutexLocker locker(&mutex);
+
     this->setObjectName("Spectrum Scope");
     this->setTitle("Band");
     queue = cachingQueue::getInstance();
@@ -319,6 +320,10 @@ bool spectrumScope::update(scopeData data)
     {
         return false;
     }
+
+    QElapsedTimer elapsed;
+    elapsed.start();
+
     bool updateRange = false;
 
     if (data.startFreq != lowerFreq || data.endFreq != upperFreq)
@@ -361,6 +366,7 @@ bool spectrumScope::update(scopeData data)
             y2[i] = (unsigned char)spectrumPeaks.at(i);
         }
     }
+
     plasmaMutex.lock();
     spectrumPlasma.push_front(data.data);
     if(spectrumPlasma.size() > (int)spectrumPlasmaSize)
@@ -368,7 +374,6 @@ bool spectrumScope::update(scopeData data)
         spectrumPlasma.pop_back();
     }
     plasmaMutex.unlock();
-
 
     QMutexLocker locker(&mutex);
     if ((plotFloor != oldPlotFloor) || (plotCeiling != oldPlotCeiling)){
@@ -463,6 +468,7 @@ bool spectrumScope::update(scopeData data)
         //qDebug() << "Default" << pbtDefault << "Inner" << PBTInner << "Outer" << PBTOuter << "Pass" << passbandWidth << "Center" << passbandCenterFrequency << "CW" << cwPitch;
     }
 
+
 #if QCUSTOMPLOT_VERSION < 0x020000
     if (underlayMode == underlayPeakHold) {
         spectrum->graph(1)->setData(x, y2); // peaks
@@ -487,6 +493,7 @@ bool spectrumScope::update(scopeData data)
         spectrum->graph(1)->setData(x, y2, true); // peaks, but probably cleared out
     }
 #endif
+
 
     if(updateRange)
         spectrum->yAxis->setRange(plotFloor, plotCeiling);
@@ -549,6 +556,7 @@ bool spectrumScope::update(scopeData data)
         oorIndicator->setVisible(false);
     }
 
+    emit elapsedTime(sub, elapsed.elapsed());
 
     return true;
 }

@@ -395,7 +395,7 @@ struct memParserFormat{
     int len;
 };
 
-enum audioType {qtAudio,portAudio,rtAudio};
+enum audioType {qtAudio,portAudio,rtAudio,tciAudio};
 enum codecType { LPCM, PCMU, OPUS };
 
 enum passbandActions {passbandStatic, pbtInnerMove, pbtOuterMove, pbtMoving, passbandResizing};

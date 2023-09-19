@@ -5,6 +5,7 @@
 #include <QtWebSockets/QtWebSockets>
 #include <QtWebSockets/QWebSocketServer>
 
+#include "audioconverter.h"
 #include "cachingqueue.h"
 
 /* Opus and Eigen */
@@ -14,6 +15,7 @@
 #include <eigen3/Eigen/Eigen>
 #endif
 
+#define TCI_AUDIO_LENGTH 4096
 struct tciCommandStruct
 {
     const char *str;
@@ -58,7 +60,7 @@ class tciServer : public QObject
         quint32 length;
         quint32 type;
         quint32 reserv[9];
-        float   data[4096];
+        float   data[TCI_AUDIO_LENGTH];
     }dataStream;
 
     struct connStatus {
@@ -69,14 +71,17 @@ class tciServer : public QObject
 
 
 public:
-    explicit tciServer(quint16 port, QObject *parent = nullptr);
+    explicit tciServer(QObject *parent = nullptr);
     ~tciServer();
 
 signals:
     void closed();
+    void sendTCIAudio(QByteArray audio);
 
 public slots:
-    void receiveFloat(Eigen::VectorXf audio);
+    void receiveTCIAudio(audioPacket audio);
+    void init(quint16 port);
+
 
 private slots:
     void onNewConnection();
@@ -84,6 +89,7 @@ private slots:
     void processIncomingBinaryMessage(QByteArray message);
     void socketDisconnected();
     void receiveCache(cacheItem item);
+    void setupTxPacket(int packetLen);
 
 private:
     QWebSocketServer *server;
@@ -91,6 +97,7 @@ private:
     cachingQueue *queue;
     QByteArray rxAudioData;
     QByteArray txAudioData;
+    QByteArray txChrono;
 };
 
 #endif // TCISERVER_H

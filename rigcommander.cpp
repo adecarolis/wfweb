@@ -174,7 +174,6 @@ void rigCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char
         connect(udp, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
         connect(udp, SIGNAL(setRadioUsage(quint8, quint8, QString, QString)), this, SLOT(radioUsage(quint8, quint8, QString, QString)));
         connect(this, SIGNAL(selectedRadio(quint8)), udp, SLOT(setCurrentRadio(quint8)));
-        connect(udp, SIGNAL(sendFloat(Eigen::VectorXf)), this, SLOT(receiveFloat(Eigen::VectorXf)));
 
         emit haveAfGain(rxSetup.localAFgain);
         localVolume = rxSetup.localAFgain;
@@ -5219,7 +5218,7 @@ bool rigCommander::parseSpectrum(scopeData& d)
         payloadIn.chop(1);
         spectrumLine.insert(spectrumLine.length(), payloadIn.right(payloadIn.length() - 5)); // write over the FD, last one doesn't, oh well.
         ret = false;
-        qInfo(logRig()) << "sequence: " << sequence << "spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
+        //qInfo(logRig()) << "sequence: " << sequence << "spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
     } else if (sequence == rigCaps.spectSeqMax)
     {
         // last spectrum, a little bit different (last 25 pixels). Total at end is 475 pixels (7300).
@@ -5227,7 +5226,7 @@ bool rigCommander::parseSpectrum(scopeData& d)
         spectrumLine.insert(spectrumLine.length(), payloadIn.right(payloadIn.length() - 5));
         d.data = spectrumLine;
         ret = true;
-        qInfo(logRig()) << "sequence: " << sequence << " spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
+        //qInfo(logRig()) << "sequence: " << sequence << " spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
 
         //emit haveSpectrumData(spectrumLine, spectrumStartFreq, spectrumEndFreq);
     }
@@ -6333,11 +6332,5 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
     {
         qDebug(logRig()) << "cachingQueue(): unimplemented command" << funcString[func];
     }
-}
-
-
-void rigCommander::receiveFloat(Eigen::VectorXf data)
-{
-    emit sendFloat(data);
 }
 

@@ -238,6 +238,9 @@ void udpAudio::startAudio() {
     else if (rxSetup.type == rtAudio) {
         rxaudio = new rtHandler();
     }
+    else if (rxSetup.type == tciAudio) {
+        rxaudio = new tciAudioHandler();
+    }
     else
     {
         qCritical(logAudio()) << "Unsupported Receive Audio Handler selected!";
@@ -258,7 +261,6 @@ void udpAudio::startAudio() {
     connect(this, SIGNAL(haveSetVolume(unsigned char)), rxaudio, SLOT(setVolume(unsigned char)));
     connect(rxaudio, SIGNAL(haveLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, quint16, bool, bool)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
-    connect(rxaudio, SIGNAL(sendFloat(Eigen::VectorXf)), this, SLOT(receiveFloat(Eigen::VectorXf)));
 
 
 
@@ -277,6 +279,9 @@ void udpAudio::startAudio() {
         }
         else if (txSetup.type == rtAudio) {
             txaudio = new rtHandler();
+        }
+        else if (txSetup.type == tciAudio) {
+            txaudio = new tciAudioHandler();
         }
         else
         {
@@ -302,8 +307,3 @@ void udpAudio::startAudio() {
 
 }
 
-void udpAudio::receiveFloat(Eigen::VectorXf data)
-{
-    emit sendFloat(data);
-
-}

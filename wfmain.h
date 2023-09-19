@@ -301,6 +301,8 @@ signals:
     void setClusterSkimmerSpots(bool enable);
     void setFrequencyRange(double low, double high);
     void sendControllerRequest(USBDEVICE* dev, usbFeatureType request, int val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
+    void tciInit(quint16 port);
+
     // Signals to forward incoming data onto other areas
     void haveMemory(memoryType mem);
     void connectionStatus(bool conn);
@@ -510,6 +512,8 @@ private slots:
     void on_dualWatchBtn_toggled(bool en);
 
     void newFrequency(qint64 freq);
+
+    void receiveElapsed(bool sub, qint64 us);
 
 private:
     Ui::wfmain *ui;
@@ -763,9 +767,10 @@ private:
 
 
     udpServer* udp = Q_NULLPTR;
+    QThread* serverThread = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
     tciServer* tci = Q_NULLPTR;
-    QThread* serverThread = Q_NULLPTR;
+    QThread* tciThread = Q_NULLPTR;
 
     void bandStackBtnClick();
     bool waitingForBandStackRtn;
@@ -801,6 +806,9 @@ private:
     availableBands lastRequestedBand=bandGen;
 
     SERVERCONFIG serverConfig;
+
+    quint64 mainElapsed=0;
+    quint64 subElapsed=0;
 
     funcs getInputTypeCommand(inputTypes input);
 

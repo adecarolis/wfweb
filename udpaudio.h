@@ -30,6 +30,7 @@
 #include "audiohandler.h"
 #include "pahandler.h"
 #include "rthandler.h"
+#include "tciaudiohandler.h"
 
 
 // Class for all audio communications.
@@ -53,7 +54,7 @@ signals:
 	void haveSetVolume(unsigned char value);
     void haveRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
     void haveTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
-    void sendFloat(Eigen::VectorXf data);
+
 
 public slots:
 	void changeLatency(quint16 value);
@@ -61,7 +62,7 @@ public slots:
     void getRxLevels(quint16 amplitude, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
     void getTxLevels(quint16 amplitude, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
 	void receiveAudioData(audioPacket audio);
-    void receiveFloat(Eigen::VectorXf data);
+
 
 private:
 

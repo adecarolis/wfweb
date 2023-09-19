@@ -207,7 +207,6 @@ audioHandler::~audioHandler()
 		connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
 		emit setupConverter(radioFormat, codec, nativeFormat, codecType::LPCM, 7, setup.resampleQuality);
         connect(converter, SIGNAL(converted(audioPacket)), this, SLOT(convertedOutput(audioPacket)));
-        connect(converter, SIGNAL(floatAudio(Eigen::VectorXf)), this, SLOT(receiveFloat(Eigen::VectorXf)));
     }
 
 
@@ -429,9 +428,4 @@ void audioHandler::stateChanged(QAudio::State state)
 void audioHandler::clearUnderrun()
 {
 	isUnderrun = false;
-}
-
-void audioHandler::receiveFloat(Eigen::VectorXf data)
-{
-    emit sendFloat(data);
 }

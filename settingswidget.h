@@ -128,6 +128,7 @@ private slots:
     void on_underlayBufferSlider_valueChanged(int value);
     void on_pttEnableChk_clicked(bool checked);
     void on_rigCreatorChk_clicked(bool checked);
+    void on_frequencyUnitsCombo_currentIndexChanged(int index);
     void on_serialEnableBtn_clicked(bool checked);
     void on_rigCIVManualAddrChk_clicked(bool checked);
     void on_rigCIVaddrHexLine_editingFinished();

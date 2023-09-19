@@ -28,7 +28,8 @@ enum prefIfItem {
     if_clickDragTuningEnable = 1 << 15,
     if_currentColorPresetNumber = 1 << 16,
     if_rigCreatorEnable = 1 << 17,
-    if_all = 1 << 18
+    if_frequencyUnits = 1 << 18,
+    if_all = 1 << 19
 };
 
 enum prefColItem {
@@ -174,6 +175,7 @@ struct preferences {
     bool clickDragTuningEnable;
     int currentColorPresetNumber = 0;
     bool rigCreatorEnable = false;
+    int frequencyUnits = 3;
 
     // Radio:
     unsigned char radioCIVAddr;

@@ -10,6 +10,7 @@
 #include <QCheckBox>
 #include <QPushButton>
 #include <QSpacerItem>
+#include <QElapsedTimer>
 #include <qcustomplot.h>
 #include "cluster.h"
 #include "wfviewtypes.h"
@@ -99,6 +100,7 @@ signals:
     void updateSpan(centerSpanData s);
     void showStatusBarText(QString text);
     void updateTheme(bool sub, int value);
+    void elapsedTime(bool sub, qint64 ns);
 
 
 private slots:

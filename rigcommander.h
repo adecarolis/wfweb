@@ -285,7 +285,6 @@ public slots:
     void setCurrentRadio(quint8 radio);
     void getDebug();
     void receiveCommand(funcs func, QVariant value, bool sub);
-    void receiveFloat(Eigen::VectorXf data);
 
 signals:
     // Communication:
@@ -400,7 +399,6 @@ signals:
     void getMoreDebug();
     void finished();
     void haveReceivedValue(funcs func, QVariant value);
-    void sendFloat(Eigen::VectorXf data);
 
 private:
     void commonSetup();
