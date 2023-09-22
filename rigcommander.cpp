@@ -711,6 +711,9 @@ QByteArray rigCommander::makeFreqPayload(freqt freq)
 
     unsigned char a;
     int numchars = 5;
+    if (freq.Hz >= 1E10)
+        numchars = 6;
+
     for (int i = 0; i < numchars; i++) {
         a = 0;
         a |= (freqInt) % 10;
@@ -733,6 +736,9 @@ QByteArray rigCommander::makeFreqPayload(double freq)
     QByteArray result;
     unsigned char a;
     int numchars = 5;
+    if (freqInt >= 1E10)
+        numchars = 6;
+
     for (int i = 0; i < numchars; i++) {
         a = 0;
         a |= (freqInt) % 10;
@@ -1913,8 +1919,6 @@ void rigCommander::parseData(QByteArray dataInput)
 void rigCommander::parseCommand()
 {
 
-
-
 #ifdef DEBUG_PARSE
     QElapsedTimer performanceTimer;
     performanceTimer.start();
@@ -1923,6 +1927,10 @@ void rigCommander::parseCommand()
     funcs func = funcNone;
     bool sub = false;
 
+    if (payloadIn.endsWith((char)0xfd))
+    {
+        payloadIn.chop(1);
+    }
 
     if (rigCaps.hasCommand29 && payloadIn[0] == '\x29')
     {
@@ -1932,15 +1940,20 @@ void rigCommander::parseCommand()
 
     // As some commands bave both single and multi-byte options, start at 4 characters and work down to 1.
     // This is quite wasteful as many commands are single-byte, but I can't think of an easier way?
+    int count = 0;
     for (int i=4;i>0;i--)
     {
         auto it = rigCaps.commandsReverse.find(payloadIn.left(i));
         if (it != rigCaps.commandsReverse.end())
         {
             func = it.value();
+            count = i;
             break;
         }
     }
+
+    // Remove the command so all we are left with is the data.
+    payloadIn.remove(0,count);
 
 #ifdef DEBUG_PARSE
     int currentParse=performanceTimer.nsecsElapsed();
@@ -1962,7 +1975,7 @@ void rigCommander::parseCommand()
     case funcFreqTR:
     case funcReadTXFreq:
     {
-        value.setValue(parseFrequency());
+        value.setValue(parseFreqData(payloadIn,sub));
         break;
     }
     case funcVFODualWatch:
@@ -1972,17 +1985,19 @@ void rigCommander::parseCommand()
         sub = true;
     case funcSelectedFreq:
     {
-        value.setValue(parseFrequency(payloadIn,5));
+        //qInfo(logRig()) << "Freq len:" << payloadIn.size() << "sub=" << sub << "data:" << payloadIn.toHex(' ');
+        value.setValue(parseFreqData(payloadIn,sub));
         break;
     }
     case funcModeGet:
     case funcModeTR:
     {
         modeInfo m;
-        m = parseMode(payloadIn[1], m.filter,sub);
-        if(payloadIn[2] != '\xFD')
+        m = parseMode(payloadIn[0], m.filter,sub);
+
+        if(payloadIn.size() > 1)
         {
-            m.filter = payloadIn[2];
+            m.filter = payloadIn[1];
         } else {
             m.filter = 0;
         }
@@ -1995,9 +2010,9 @@ void rigCommander::parseCommand()
     {
         modeInfo m;
         // New format payload with mode+datamode+filter
-        m = parseMode(uchar(payloadIn[2]), uchar(payloadIn[4]),sub);
-        m.data = uchar(payloadIn[3]);
-        m.VFO = selVFO_t(payloadIn[1] & 0x01);
+        m = parseMode(uchar(payloadIn[0]), uchar(payloadIn[2]),sub);
+        m.data = uchar(payloadIn[1]);
+        m.VFO = selVFO_t(sub);
         value.setValue(m);
         break;
     }
@@ -2033,20 +2048,20 @@ void rigCommander::parseCommand()
     case funcScanning:
         break;
     case funcReadFreqOffset:
-        value.setValue(parseFrequencyRptOffset(payloadIn));
+        value.setValue(parseFreqData(payloadIn,sub));
         break;
     // These return a single byte that we convert to a uchar (0-99)
     case funcTuningStep:
     case funcAttenuator:
     // Return a duplexMode_t for split or duplex (same function)
     case funcSplitStatus:
-        value.setValue(static_cast<duplexMode_t>(uchar(payloadIn[1])));
+        value.setValue(static_cast<duplexMode_t>(uchar(payloadIn[0])));
         break;
     case funcAntenna:
     {
         antennaInfo ant;
-        ant.antenna = static_cast<uchar>(payloadIn[1]);
-        ant.rx = static_cast<bool>(payloadIn[2]);
+        ant.antenna = static_cast<uchar>(payloadIn[0]);
+        ant.rx = static_cast<bool>(payloadIn[1]);
         value.setValue(ant);
         break;
     // Register 13 (speech) has no get values
@@ -2054,7 +2069,7 @@ void rigCommander::parseCommand()
     }
     case funcAfGain:        
         if (udp == Q_NULLPTR) {
-            value.setValue(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+            value.setValue(bcdHexToUChar(payloadIn[0],payloadIn[1]));
         } else {
             value.setValue(localVolume);
         }
@@ -2090,7 +2105,7 @@ void rigCommander::parseCommand()
     case funcCompMeter:
     case funcVdMeter:
     case funcIdMeter:
-        value.setValue(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        value.setValue(bcdHexToUChar(payloadIn[0],payloadIn[1]));
         break;
     // These are 2 byte commands that return a single byte (0-99) from position 2
     case funcBreakIn:   // This is 0,1 or 2
@@ -2098,7 +2113,7 @@ void rigCommander::parseCommand()
     case funcManualNotchWidth:
     case funcSSBTXBandwidth:
     case funcDSPIFFilter:
-        value.setValue(uchar(payloadIn[2]));
+        value.setValue(uchar(payloadIn[0]));
         break;
     // The following group ALL return bool
     case funcNoiseBlanker:
@@ -2120,24 +2135,24 @@ void rigCommander::parseCommand()
     case funcSMeterSqlStatus:
     case funcVariousSql:
     case funcRXAntenna:
-        value.setValue(static_cast<bool>(payloadIn[2]));
+        value.setValue(static_cast<bool>(payloadIn[0]));
         break;
     case funcMainSubTracking:
     case funcToneSquelchType:
-        emit haveRptAccessMode((rptAccessTxRx_t)payloadIn.at(2));
+        emit haveRptAccessMode((rptAccessTxRx_t)payloadIn.at(0));
         break;
     case funcIPPlus:
         break;
     // 0x17 is CW send and 0x18 is power control (no reply)
     // 0x19 it automatically added.
     case funcTransceiverId:
-        value.setValue(static_cast<uchar>(payloadIn[2]));
-        if (rigList.contains(uchar(payloadIn[2])))
+        value.setValue(static_cast<uchar>(payloadIn[0]));
+        if (rigList.contains(uchar(payloadIn[0])))
         {
-            this->model = rigList.find(uchar(payloadIn[2])).key();
+            this->model = rigList.find(uchar(payloadIn[0])).key();
         }
         //model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
-        rigCaps.modelID = payloadIn[2];
+        rigCaps.modelID = payloadIn[0];
         determineRigCaps();
         qInfo(logRig()) << "Have rig ID: " << QString::number(rigCaps.modelID,16);
         break;
@@ -2145,22 +2160,24 @@ void rigCommander::parseCommand()
     case funcBandStackReg:
     {
         bandStackType bsr;
-        bsr.band = payloadIn[2];
-        bsr.regCode = payloadIn[3];
-        bsr.freq = parseFrequency(payloadIn, 7);
+        bsr.band = payloadIn[0];
+        bsr.regCode = payloadIn[1];
+        bsr.freq = parseFreqData(payloadIn.mid(2,5),sub);
         // The Band Stacking command returns the regCode in the position that VFO is expected.
         // As BSR is always on the active VFO, just set that.
         bsr.freq.VFO = selVFO_t::activeVFO;
-        bsr.data = (payloadIn[11] & 0x10) >> 4; // not sure...
-        bsr.mode = payloadIn[9];
-        bsr.filter = payloadIn[10];
+        bsr.data = (payloadIn[9] & 0x10) >> 4; // not sure...
+        bsr.mode = payloadIn[7];
+        bsr.filter = payloadIn[8];
+        qInfo(logRig()) << QString("BSR: (%0) band:%1 regcode: %2 freq: %3: data: %4 mode: %5 filter %6")
+                               .arg(payloadIn.toHex(' ')).arg(bsr.band).arg(bsr.regCode).arg(bsr.freq.Hz).arg(bsr.data).arg(bsr.mode).arg(bsr.filter);
         value.setValue(bsr);
         break;
     }
     case funcFilterWidth:
     {
         quint16 calc;
-        quint8 pass = bcdHexToUChar((quint8)payloadIn[2]);
+        quint8 pass = bcdHexToUChar((quint8)payloadIn[0]);
         modeInfo m;
         m = queue->getCache((sub?funcUnselectedMode:funcSelectedMode),sub).value.value<modeInfo>();
 
@@ -2183,9 +2200,9 @@ void rigCommander::parseCommand()
     {
         modeInfo m;
         // New format payload with mode+datamode+filter
-        m = parseMode(uchar(payloadIn[2]), uchar(payloadIn[4]),sub);
-        m.data = uchar(payloadIn[3]);
-        m.VFO = selVFO_t(payloadIn[1] & 0x01);
+        m = parseMode(uchar(payloadIn[0]), uchar(payloadIn[2]),sub);
+        m.data = uchar(payloadIn[1]);
+        m.VFO = selVFO_t(sub & 0x01);
         value.setValue(m);
         break;
     }
@@ -2200,7 +2217,7 @@ void rigCommander::parseCommand()
     case funcUSBModLevel:
     case funcLANModLevel:
     case funcSPDIFModLevel:
-        value.setValue(bcdHexToUChar(payloadIn[4],payloadIn[5]));
+        value.setValue(bcdHexToUChar(payloadIn[0],payloadIn[1]));
         break;
     // Singla byte returned as uchar (0-99)
     case funcDATAOffMod:
@@ -2210,7 +2227,7 @@ void rigCommander::parseCommand()
     {
         foreach (auto r, rigCaps.inputs)
         {
-            if (r.reg == bcdHexToUChar(payloadIn[4]))
+            if (r.reg == bcdHexToUChar(payloadIn[0]))
             {
                 value.setValue(rigInput(r));
                 break;
@@ -2219,7 +2236,7 @@ void rigCommander::parseCommand()
         break;
     }
     case funcDashRatio:
-        value.setValue(bcdHexToUChar(payloadIn[4]));
+        value.setValue(bcdHexToUChar(payloadIn[0]));
         break;
     // 0x1b register (tones)
     case funcToneFreq:
@@ -2231,15 +2248,16 @@ void rigCommander::parseCommand()
     // 0x1c register (bool)
     case funcRitStatus:
     case funcTransceiverStatus:
-        value.setValue(static_cast<bool>(payloadIn[2]));
+        value.setValue(static_cast<bool>(payloadIn[0]));
         break;
     // tuner is 0-2
     case funcTunerStatus:
-        value.setValue(bcdHexToUChar(payloadIn[2]));
+        value.setValue(bcdHexToUChar(payloadIn[0]));
         break;
     // 0x21 RIT:
     case funcRITFreq:
     {
+        /* PET NEEEDS FIXING */
         short ritHz = 0;
         freqt f;
         QByteArray longfreq;
@@ -2257,7 +2275,7 @@ void rigCommander::parseCommand()
     case funcScopeMainWaveData:
     {
         scopeData d;
-        if (parseSpectrum(d))
+        if (parseSpectrum(d,sub))
             value.setValue(d);
         break;
     }
@@ -2269,7 +2287,7 @@ void rigCommander::parseCommand()
         // This tells us whether we are receiving main or sub data
     case funcScopeSingleDual:
         // This tells us whether we are receiving single or dual scopes
-        value.setValue(static_cast<bool>(payloadIn[2]));
+        value.setValue(static_cast<bool>(payloadIn[0]));
         break;
     case funcScopeSubMode:
         sub=true;
@@ -2278,12 +2296,12 @@ void rigCommander::parseCommand()
         // [1] 0x14
         // [2] 0x00
         // [3] 0x00 (center), 0x01 (fixed), 0x02, 0x03
-        value.setValue(static_cast<spectrumMode_t>(uchar(payloadIn[3])));
+        value.setValue(static_cast<spectrumMode_t>(uchar(payloadIn[0])));
         break;
     case funcScopeSubSpan:
     case funcScopeMainSpan:
     {
-        freqt f = parseFrequency(payloadIn, 6);
+        freqt f = parseFrequency(payloadIn, 3);
         foreach (auto s, rigCaps.scopeCenterSpans)
         {
             if (s.freq == f.Hz)
@@ -2298,12 +2316,12 @@ void rigCommander::parseCommand()
         // read edge mode center in edge mode
         // [1] 0x16
         // [2] 0x01, 0x02, 0x03: Edge 1,2,3
-        value.setValue(bcdHexToUChar(payloadIn[2]));
+        value.setValue(bcdHexToUChar(payloadIn[0]));
         //emit haveScopeEdge((char)payloadIn[2]);
         break;
     case funcScopeSubHold:
     case funcScopeMainHold:
-        value.setValue(static_cast<bool>(payloadIn[3]));
+        value.setValue(static_cast<bool>(payloadIn[0]));
         break;
     case funcScopeSubRef:
     case funcScopeMainRef:
@@ -2314,8 +2332,8 @@ void rigCommander::parseCommand()
         // [3] 10dB digit, 1dB digit
         // [4] 0.1dB digit, 0
         // [5] 0x00 = +, 0x01 = -
-        unsigned char negative = payloadIn[5];
-        short ref = bcdHexToUInt(payloadIn[3], payloadIn[4]);
+        unsigned char negative = payloadIn[2];
+        short ref = bcdHexToUInt(payloadIn[0], payloadIn[1]);
         ref = ref / 10;
         if(negative){
              ref *= (-1*negative);
@@ -2325,7 +2343,7 @@ void rigCommander::parseCommand()
     }
     case funcScopeSubSpeed:
     case funcScopeMainSpeed:
-        value.setValue(static_cast<uchar>(payloadIn[3]));
+        value.setValue(static_cast<uchar>(payloadIn[0]));
         break;
     case funcScopeSubVBW:
     case funcScopeMainVBW:
@@ -2355,7 +2373,16 @@ void rigCommander::parseCommand()
         break;
     }
 
-    if(func != funcScopeMainWaveData && func != funcScopeSubWaveData && payloadIn[00] != '\x15')
+    if(func != funcScopeMainWaveData
+        && func != funcScopeSubWaveData
+        && func != funcSMeter
+        && func != funcCenterMeter
+        && func != funcPowerMeter
+        && func != funcSWRMeter
+        && func != funcALCMeter
+        && func != funcCompMeter
+        && func != funcVdMeter
+        && func != funcIdMeter)
     {
         // We do not log spectrum and meter data,
         // as they tend to clog up any useful logging.
@@ -2406,13 +2433,15 @@ bool rigCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType* 
     memset(mem->R2, 0x0, sizeof(mem->R2));
     memset(mem->R2B, 0x0, sizeof(mem->R2B));
     memset(mem->name, 0x0, sizeof(mem->name));
-
+    // We need to add 2 characters so that the parser works!
+    payloadIn.insert(0,"**");
     foreach (auto parse, *memParser) {
         // non-existant memory is short so send what we have so far.
         if (payloadIn.size() < (parse.pos+1+parse.len)) {
              return true;
         }
         QByteArray data = payloadIn.mid(parse.pos+1,parse.len);
+        //qInfo(logRig()) << "Parse:" << data.toHex() << "pos" << parse.pos;
         switch (parse.spec)
         {
         case 'a':
@@ -5095,7 +5124,7 @@ void rigCommander::determineRigCaps()
     }
 }
 
-bool rigCommander::parseSpectrum(scopeData& d)
+bool rigCommander::parseSpectrum(scopeData& d, bool sub)
 {
     bool ret = false;
 
@@ -5146,13 +5175,10 @@ bool rigCommander::parseSpectrum(scopeData& d)
     freqt fStart;
     freqt fEnd;
 
-    d.mainSub = bcdHexToUChar(payloadIn[02]);
-    unsigned char sequence = bcdHexToUChar(payloadIn[03]);
+    d.mainSub = sub;
+    unsigned char sequence = bcdHexToUChar(payloadIn[1]);
 
-    //unsigned char sequenceMax = bcdHexToDecimal(payloadIn[04]);
-
-    // unsigned char waveInfo = payloadIn[06]; // really just one byte?
-    //qInfo(logRig()) << "Spectrum Data received: " << sequence << "/" << sequenceMax << " mode: " << scopeMode << " waveInfo: " << waveInfo << " length: " << payloadIn.length();
+    unsigned char sequenceMax = bcdHexToUChar(payloadIn[0]);
 
     // Sequnce 2, index 05 is the start of data
     // Sequence 11. index 05, is the last chunk
@@ -5164,7 +5190,7 @@ bool rigCommander::parseSpectrum(scopeData& d)
     if ((sequence == 1) && (sequence < rigCaps.spectSeqMax))
     {
 
-        spectrumMode_t scopeMode = (spectrumMode_t)bcdHexToUChar(payloadIn[05]); // 0=center, 1=fixed
+        spectrumMode_t scopeMode = (spectrumMode_t)bcdHexToUChar(payloadIn[2]); // 0=center, 1=fixed
 
         if(scopeMode != oldScopeMode)
         {
@@ -5178,9 +5204,9 @@ bool rigCommander::parseSpectrum(scopeData& d)
             oldScopeMode = scopeMode;
         }
 
-        if(payloadIn.length() >= 15)
+        if(payloadIn.length() >= 12)
         {
-            d.oor=(bool)payloadIn[16];
+            d.oor=(bool)payloadIn[13];
             if (d.oor) {
                 d.data = QByteArray(rigCaps.spectLenMax,'\0');
                 return true;
@@ -5192,9 +5218,9 @@ bool rigCommander::parseSpectrum(scopeData& d)
 
 
         // For Fixed, and both scroll modes, the following produces correct information:
-        fStart = parseFrequency(payloadIn, 9);
+        fStart = parseFrequency(payloadIn, 6);
         d.startFreq = fStart.MHzDouble;
-        fEnd = parseFrequency(payloadIn, 14);
+        fEnd = parseFrequency(payloadIn, 11);
         d.endFreq = fEnd.MHzDouble;
 
         if(scopeMode == spectModeCenter)
@@ -5206,24 +5232,22 @@ bool rigCommander::parseSpectrum(scopeData& d)
 
         if (payloadIn.length() > 400) // Must be a LAN packet.
         {
-            payloadIn.chop(1);
-            d.data.append(payloadIn.right(payloadIn.length()-17)); // write over the FD, last one doesn't, oh well.
+            d.data.append(payloadIn.right(payloadIn.length()-14));
             ret = true;
         }
+        //qInfo(logRig()) << "Spectrum Data received:" << sequence << "/" << sequenceMax << "mode:" << d.mode << "oor" << d.oor << "length:" << payloadIn.length();
     }
     else if ((sequence > 1) && (sequence < rigCaps.spectSeqMax))
     {
         // spectrum from index 05 to index 54, length is 55 per segment. Length is 56 total. Pixel data is 50 pixels.
         // sequence numbers 2 through 10, 50 pixels each. Total after sequence 10 is 450 pixels.
-        payloadIn.chop(1);
-        spectrumLine.insert(spectrumLine.length(), payloadIn.right(payloadIn.length() - 5)); // write over the FD, last one doesn't, oh well.
+        spectrumLine.insert(spectrumLine.length(), payloadIn.right(payloadIn.length() - 2));
         ret = false;
         //qInfo(logRig()) << "sequence: " << sequence << "spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
     } else if (sequence == rigCaps.spectSeqMax)
     {
         // last spectrum, a little bit different (last 25 pixels). Total at end is 475 pixels (7300).
-        payloadIn.chop(1);
-        spectrumLine.insert(spectrumLine.length(), payloadIn.right(payloadIn.length() - 5));
+        spectrumLine.insert(spectrumLine.length(), payloadIn.right(payloadIn.length() - 2));
         d.data = spectrumLine;
         ret = true;
         //qInfo(logRig()) << "sequence: " << sequence << " spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
@@ -5445,6 +5469,11 @@ freqt rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
     freqs.Hz = 0;
 
     // Does Frequency contain 100 MHz/1 GHz data?
+    if(data.length() > lastPosition+3)
+    {
+        freqs.Hz += (data[lastPosition+2] & 0x0f) * 1E9; //  1 GHz
+        freqs.Hz += ((data[lastPosition+2] & 0xf0) >> 4) * 1E9 * 10; // 10 GHz
+    }
     if(data.length() >= lastPosition+1)
     {
         freqs.Hz += (data[lastPosition+1] & 0x0f) * 1E6 *         100; //  100 MHz
@@ -5473,6 +5502,15 @@ freqt rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
     return freqs;
 }
 
+
+freqt rigCommander::parseFreqData(QByteArray data, bool sub)
+{
+    freqt freq;
+    freq.Hz = parseFreqDataToInt(data);
+    freq.MHzDouble = freq.Hz/1000000.0;
+    freq.VFO = selVFO_t(sub);
+    return freq;
+}
 
 quint64 rigCommander::parseFreqDataToInt(QByteArray data)
 {
@@ -6103,6 +6141,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
         if (func == funcMemoryContents || func == funcMemoryClear || func == funcMemoryWrite || func == funcMemoryMode)
         {
             // Strip out group number from memory for validation purposes.
+            qInfo(logRig()) << "Memory Command" << funcString[func] << "with valuetype "  << QString(value.typeName());
             val = val & 0xffff;
         }
     }
@@ -6212,6 +6251,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
             }
             else if (!strcmp(value.typeName(),"uint") && (func == funcMemoryContents || func == funcMemoryMode))
             {
+                qInfo(logRig()) << "Get Memory Contents" << (value.value<uint>() & 0xffff);
                 // Format is different for all radios!
                 foreach (auto parse, rigCaps.memParser) {
                     // If "a" exists, break out of the loop as soon as we have the value.
@@ -6227,6 +6267,182 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
                     }
                 }
                 payload.append(bcdEncodeInt(value.value<uint>() & 0xffff));
+            }
+            else if (!strcmp(value.typeName(),"memoryType")) {
+                // We need to iterate through memParser to build the correct format
+                bool finished=false;
+                char nul = 0x0;
+                uchar ffchar = 0xff;
+                QVector<memParserFormat> parser;
+                memoryType mem = value.value<memoryType>();
+
+                if (mem.sat)
+                {
+                    parser = rigCaps.satParser;
+                }
+                else
+                {
+                    parser = rigCaps.memParser;
+                }
+
+                // Format is different for all radios!
+                foreach (auto parse, parser) {
+                    switch (parse.spec)
+                    {
+                    case 'a':
+                        if (parse.len == 1) {
+                            payload.append(mem.group);
+                        }
+                        else if (parse.len == 2)
+                        {
+                            payload.append(bcdEncodeInt(mem.group));
+                        }
+                        break;
+                    case 'b':
+                        payload.append(bcdEncodeInt(mem.channel));
+                        break;
+                    case 'c':
+                        // Are we deleting the memory?
+                        if (mem.del) {
+                            payload.append(ffchar);
+                            finished=true;
+                            break;
+                        } else {
+                            payload.append(mem.scan);
+                        }
+                        break;
+                    case 'd': // combined split and scan
+                        payload.append(quint8((mem.split << 4 & 0xf0) | (mem.scan & 0x0f)));
+                        break;
+                    case 'e':
+                        payload.append(mem.vfo);
+                        break;
+                    case 'E':
+                        payload.append(mem.vfoB);
+                        break;
+                    case 'f':
+                        if (mem.del) {
+                            payload.append(ffchar);
+                            finished=true;
+                            break;
+                        } else {
+                            payload.append(makeFreqPayload(mem.frequency));
+                        }
+                        break;
+                    case 'F':
+                        payload.append(makeFreqPayload(mem.frequencyB));
+                        break;
+                    case 'g':
+                        payload.append(mem.mode);
+                        break;
+                    case 'G':
+                        payload.append(mem.modeB);
+                        break;
+                    case 'h':
+                        payload.append(mem.filter);
+                        break;
+                    case 'H':
+                        payload.append(mem.filterB);
+                        break;
+                    case 'i': // single datamode
+                        payload.append(mem.datamode);
+                        break;
+                    case 'I':
+                        payload.append(mem.datamodeB);
+                        break;
+                    case 'j': // combined duplex and tonemode
+                        payload.append((mem.duplex << 4) | mem.tonemode);
+                        break;
+                    case 'J': // combined duplex and tonemode
+                        payload.append((mem.duplexB << 4) | mem.tonemodeB);
+                        break;
+                    case 'k': // combined datamode and tonemode
+                        payload.append((mem.datamode << 4 & 0xf0) | (mem.tonemode & 0x0f));
+                        break;
+                    case 'K': // combined datamode and tonemode
+                        payload.append((mem.datamodeB << 4 & 0xf0) | (mem.tonemodeB & 0x0f));
+                        break;
+                    case 'l': // tonemode
+                        payload.append(mem.tonemode);
+                        break;
+                    case 'L':
+                        payload.append(mem.tonemodeB);
+                        break;
+                    case 'm':
+                        payload.append(mem.dsql << 4);
+                        break;
+                    case 'M':
+                        payload.append(mem.dsqlB << 4);
+                        break;
+                    case 'n':
+                        payload.append(nul);
+                        payload.append(bcdEncodeInt(mem.tone));
+                        break;
+                    case 'N':
+                        payload.append(nul);
+                        payload.append(bcdEncodeInt(mem.toneB));
+                        break;
+                    case 'o':
+                        payload.append(nul);
+                        payload.append(bcdEncodeInt(mem.tsql));
+                        break;
+                    case 'O':
+                        payload.append(nul);
+                        payload.append(bcdEncodeInt(mem.tsqlB));
+                        break;
+                    case 'p':
+                        payload.append((mem.dtcsp << 3 & 0x10) |  (mem.dtcsp & 0x01));
+                        break;
+                    case 'P':
+                        payload.append((mem.dtcspB << 3 & 0x10) |  (mem.dtcspB & 0x01));
+                        break;
+                    case 'q':
+                        payload.append(bcdEncodeInt(mem.dtcs));
+                        break;
+                    case 'Q':
+                        payload.append(bcdEncodeInt(mem.dtcsB));
+                        break;
+                    case 'r':
+                        payload.append(mem.dvsql);
+                        break;
+                    case 'R':
+                        payload.append(mem.dvsqlB);
+                        break;
+                    case 's':
+                        payload.append(makeFreqPayload(mem.duplexOffset).mid(1,3));
+                        break;
+                    case 'S':
+                        payload.append(makeFreqPayload(mem.duplexOffsetB).mid(1,3));
+                        break;
+                    case 't':
+                        payload.append(QByteArray(mem.UR).leftJustified(parse.len,' ',true));
+                        break;
+                    case 'T':
+                        payload.append(QByteArray(mem.URB).leftJustified(parse.len,' ',true));
+                        break;
+                    case 'u':
+                        payload.append(QByteArray(mem.R1).leftJustified(parse.len,' ',true));
+                        break;
+                    case 'U':
+                        payload.append(QByteArray(mem.R1B).leftJustified(parse.len,' ',true));
+                        break;
+                    case 'v':
+                        payload.append(QByteArray(mem.R2).leftJustified(parse.len,' ',true));
+                        break;
+                    case 'V':
+                        payload.append(QByteArray(mem.R2B).leftJustified(parse.len,' ',true));
+                        break;
+                    case 'z':
+                        payload.append(QByteArray(mem.name).leftJustified(parse.len,' ',true));
+                        break;
+                    default:
+                        break;
+                    }
+                    if (finished)
+                        break;
+                }
+                qInfo(logRig()) << "Writing memory:" << payload.toHex(' ');
+
             }
             else if (!strcmp(value.typeName(),"int") && (func == funcScopeMainRef || func == funcScopeSubRef))
             {
@@ -6272,10 +6488,6 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
             {
                 payload.append(bcdEncodeChar(value.value<rigInput>().reg));
             }
-            else if (!strcmp(value.typeName(),"memoryType"))
-            {
-                payload.append(setMemory(value.value<memoryType>()));
-            }
             else if (!strcmp(value.typeName(),"spectrumBounds"))
             {
                 spectrumBounds s = value.value<spectrumBounds>();
@@ -6315,6 +6527,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
                 bandStackType bsr = value.value<bandStackType>();
                 payload.append(bsr.band);
                 payload.append(bsr.regCode); // [01...03]. 01 = latest, 03 = oldest
+                qInfo(logRig()) << "Sending BSR, Band Code:" << bsr.band << "Register Code:" << bsr.regCode << "(Sent:" << payload.toHex(' ') << ")";
             }
             else
             {
@@ -6323,8 +6536,10 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
             }
             // This was a set command, so queue a get straight after to retrieve the updated value
             // will fail on some commands so they would need to be added here:
-            if (func != funcScopeFixedEdgeFreq && func != funcSpeech && func != funcBandStackReg)
+            if (func != funcScopeFixedEdgeFreq && func != funcSpeech && func != funcBandStackReg && func != funcMemoryContents)
+            {
                 queue->addUnique(priorityImmediate,func);
+            }
         }
         prepDataAndSend(payload);
     }

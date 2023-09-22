@@ -784,6 +784,7 @@ void settingswidget::updateLanPref(prefLanItem plan)
     {
     case l_enableLAN:
         quietlyUpdateRadiobutton(ui->lanEnableBtn, prefs->enableLAN);
+        quietlyUpdateRadiobutton(ui->serialEnableBtn, !prefs->enableLAN);
         break;
     case l_enableRigCtlD:
         quietlyUpdateCheckbox(ui->enableRigctldChk, prefs->enableRigCtlD);
@@ -1395,8 +1396,9 @@ void settingswidget::on_pollTimeMsSpin_valueChanged(int val)
     emit changedRaPref(ra_polling_ms);
 }
 
-void settingswidget::on_serialDeviceListCombo_activated(const QString &arg1)
+void settingswidget::on_serialDeviceListCombo_textActivated(const QString &arg1)
 {
+    qInfo(logGui()) << "Serial port combo changed" << arg1;
     QString manualPort;
     bool ok;
     if(arg1==QString("Manual..."))

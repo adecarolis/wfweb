@@ -9,17 +9,22 @@ rigCreator::rigCreator(QWidget *parent) :
     ui(new Ui::rigCreator)
 {
     ui->setupUi(this);
+    Qt::WindowFlags flags = Qt::Window | Qt::WindowSystemMenuHint
+                            | Qt::WindowMinimizeButtonHint
+                            | Qt::WindowMaximizeButtonHint
+                            | Qt::WindowCloseButtonHint;
+    this->setWindowFlags(flags);
 
     qInfo() << "Creating instance of rigCreator()";
     commandsList = new tableCombobox(createModel(commandsModel, funcString),true,ui->commands);
     ui->commands->setItemDelegateForColumn(0, commandsList);
-
+    /*
     ui->commands->setColumnWidth(0,120);
     ui->commands->setColumnWidth(1,100);
     ui->commands->setColumnWidth(2,50);
     ui->commands->setColumnWidth(3,50);
     ui->commands->setColumnWidth(4,40);
-
+    */
     connect(ui->commands,SIGNAL(rowAdded(int)),this,SLOT(commandRowAdded(int)));
 }
 

@@ -62,7 +62,6 @@ memories::memories(rigCapabilities rigCaps, bool slowLoad, QWidget *parent) :
 
     ui->table->setHorizontalHeaderLabels(headers);
 
-    ui->groupLabel->hide();
     ui->group->hide();
     ui->vfoMode->hide();
     ui->memoryMode->hide();
@@ -70,6 +69,7 @@ memories::memories(rigCapabilities rigCaps, bool slowLoad, QWidget *parent) :
     ui->loadingMemories->setStyleSheet("QLabel {color: #ff0000}");
 
     ui->group->blockSignals(true);
+    ui->group->addItem("Memory Group",-1);
     for (int i=rigCaps.memStart;i<=rigCaps.memGroups;i++) {
 
         ui->group->addItem(QString("Group %0").arg(i,2,10,QChar('0')),i);
@@ -456,7 +456,6 @@ void memories::on_group_currentIndexChanged(int index)
         switch (parse.spec)
         {
         case 'a':
-            ui->groupLabel->show();
             ui->group->show();
             ui->vfoMode->show();
             ui->memoryMode->show();

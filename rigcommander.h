@@ -413,6 +413,8 @@ private:
     QByteArray setMemory(memoryType mem);
     freqt parseFrequency();
     freqt parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
+
+    freqt parseFreqData(QByteArray data, bool sub);
     quint64 parseFreqDataToInt(QByteArray data);
     freqt parseFrequencyRptOffset(QByteArray data);
     bool parseMemory(QVector<memParserFormat>* memParser, memoryType* mem);
@@ -433,7 +435,7 @@ private:
     unsigned char audioLevelTxPeak[50];
 
     modeInfo parseMode(quint8 mode, quint8 filter, bool sub);
-    bool parseSpectrum(scopeData& d);
+    bool parseSpectrum(scopeData& d, bool sub);
     void parseWFData();
     void parseSpectrumRefLevel();
     void parseDetailedRegisters1A05();

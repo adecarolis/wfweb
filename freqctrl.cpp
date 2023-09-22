@@ -233,7 +233,8 @@ void freqCtrl::setFrequency(qint64 freq)
 
     if (freq == m_Oldfreq)
         return;
-
+/*
+ * This needs working on, to restrict to only valid bands!
     if (m_Bands != Q_NULLPTR) {
         // We have bands so make sure the frequency is within at least one of them!
         for (int i=0;i<m_Bands->size();i++)
@@ -265,12 +266,13 @@ void freqCtrl::setFrequency(qint64 freq)
 
         }
     } else {
-        if (freq < m_MinFreq)
-            freq = m_MinFreq;
+*/
+    if (freq < m_MinFreq)
+        freq = m_MinFreq;
 
-        if (freq > m_MaxFreq)
-            freq = m_MaxFreq;
-    }
+    if (freq > m_MaxFreq)
+        freq = m_MaxFreq;
+
     m_freq = freq - freq % m_MinStep;
     rem = m_freq;
     m_LeadZeroPos = m_NumDigits;

@@ -37,6 +37,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         .arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
         .arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture())
         .arg(QT_VERSION_STR).arg(qVersion());
+
     ui->setupUi(this);
     setWindowTitle(QString("wfview"));
 
@@ -107,10 +108,15 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     connect(queue,SIGNAL(sendValue(cacheItem)),this,SLOT(receiveValue(cacheItem)));
     // We need to populate the list of rigs as early as possible so do it now
+
+#ifndef Q_OS_LINUX
     QString systemRigLocation = QCoreApplication::applicationDirPath();
+#else
+    QString systemRigLocation = PREFIX;
+#endif
 
 #ifdef Q_OS_LINUX
-    systemRigLocation += "/../share/wfview/rigs";
+    systemRigLocation += "/share/wfview/rigs";
 #else
     systemRigLocation +="/rigs";
 #endif
@@ -1005,6 +1011,7 @@ void wfmain::receiveNetworkAudioLevels(networkAudioLevels l)
 
 void wfmain::setupMainUI()
 {
+    ui->frequencyb->hide();
     ui->meter2Widget->hide();
 
     // Future ideas:
@@ -2667,6 +2674,8 @@ void wfmain::extChangedRaPref(prefRaItem i)
         break;
     case ra_serialPortRadio:
     {
+        prefs.serialPortRadio = prefs.serialPortRadio;
+        showStatusBarText(QString("Changed serial port to %1. Press Save Settings to retain.").arg(prefs.serialPortRadio));
         break;
     }
     case ra_serialPortBaud:
@@ -4454,31 +4463,7 @@ void wfmain::on_freqDial_valueChanged(int value)
 
 void wfmain::handleBandStackReg(freqt freqGo, char mode, char filter, bool dataOn)
 {
-    // read the band stack and apply by sending out commands
-
-    qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << freqGo.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
-
-    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(freqGo),false));
-
-    ui->mainScope->setFrequency(freqGo);
-    //setUIFreq();
-
-
-
-    foreach (auto md, rigCaps.modes)
-    {
-        if (md.reg == mode) {
-            md.filter=filter;
-            md.data=dataOn;
-            queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<modeInfo>(md),false));
-            queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),QVariant::fromValue<modeInfo>(md),false));
-            ui->mainScope->receiveMode(md);
-            break;
-        }
-    }
-
-    queue->add(priorityHighest,(rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet));
-    queue->add(priorityHighest,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedFreq:funcModeGet));
+    // Deprecated
 }
 
 void wfmain::setBand(int band)
@@ -5715,10 +5700,7 @@ void wfmain::on_memoriesBtn_clicked()
             });
 
             this->memWindow->connect(this->memWindow, &memories::setMemory, rig, [=](const memoryType &mem) {
-                if (mem.sat)
-                    queue->add(priorityImmediate,queueItem(funcSatelliteMemory,QVariant::fromValue<ushort>(mem.channel & 0xffff)));
-                else
-                    queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(uint((mem.group << 16) | (mem.channel & 0xffff)))));
+                queue->add(priorityImmediate,queueItem((mem.sat?funcSatelliteMemory:funcMemoryContents),QVariant::fromValue<memoryType>(mem)));
             });
 
             this->memWindow->connect(this->memWindow, &memories::clearMemory, rig, [=](const quint32 &mem) {
@@ -6039,7 +6021,7 @@ void wfmain::receiveValue(cacheItem val){
 
         queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(bsr.freq),false));
 
-        ui->mainScope->setFrequency(bsr.freq);
+        //ui->mainScope->setFrequency(bsr.freq);
 
         foreach (auto md, rigCaps.modes)
         {

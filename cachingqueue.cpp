@@ -361,7 +361,7 @@ bool cachingQueue::compare(QVariant a, QVariant b)
         } else if (!strcmp(a.typeName(),"centerSpanData")) {
             if (a.value<centerSpanData>().cstype != b.value<centerSpanData>().cstype || a.value<centerSpanData>().freq != b.value<centerSpanData>().freq  )
                 changed=true;
-        } else if (!strcmp(a.typeName(),"scopeData")) {
+        } else if (!strcmp(a.typeName(),"scopeData") || !strcmp(a.typeName(),"memoryType") || !strcmp(a.typeName(),"bandStackType") ) {
             changed=true; // Always different
         } else {
             // Maybe Try simple comparison?

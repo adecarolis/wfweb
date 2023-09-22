@@ -22,13 +22,6 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
-        <widget class="QLabel" name="groupLabel">
-         <property name="text">
-          <string>Memory Group</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="QComboBox" name="group"/>
        </item>
        <item>

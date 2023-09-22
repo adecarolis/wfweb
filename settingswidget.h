@@ -111,7 +111,7 @@ private slots:
     void on_autoPollBtn_clicked(bool checked);
     void on_manualPollBtn_clicked(bool checked);
     void on_pollTimeMsSpin_valueChanged(int arg1);
-    void on_serialDeviceListCombo_activated(const QString &arg1);
+    void on_serialDeviceListCombo_textActivated(const QString &arg1);
     void on_baudRateCombo_activated(int index);
     void on_vspCombo_activated(int index);
     void on_audioSystemCombo_currentIndexChanged(int index);
