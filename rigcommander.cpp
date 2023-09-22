@@ -2169,8 +2169,8 @@ void rigCommander::parseCommand()
         bsr.data = (payloadIn[9] & 0x10) >> 4; // not sure...
         bsr.mode = payloadIn[7];
         bsr.filter = payloadIn[8];
-        qInfo(logRig()) << QString("BSR: (%0) band:%1 regcode: %2 freq: %3: data: %4 mode: %5 filter %6")
-                               .arg(payloadIn.toHex(' ')).arg(bsr.band).arg(bsr.regCode).arg(bsr.freq.Hz).arg(bsr.data).arg(bsr.mode).arg(bsr.filter);
+        //qInfo(logRig()) << QString("BSR: (%0) band:%1 regcode: %2 freq: %3: data: %4 mode: %5 filter %6")
+        //                       .arg(payloadIn.toHex(' ')).arg(bsr.band).arg(bsr.regCode).arg(bsr.freq.Hz).arg(bsr.data).arg(bsr.mode).arg(bsr.filter);
         value.setValue(bsr);
         break;
     }
