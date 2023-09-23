@@ -1079,11 +1079,14 @@ void spectrumScope::waterfallClick(QMouseEvent *me)
 
 void spectrumScope::scroll(QWheelEvent *we)
 {
+    // angleDelta is supposed to be eights of a degree of mouse wheel rotation
+    int clicks = we->angleDelta().y() / scrollYperClick;
 
-    int clicks = we->angleDelta().y() / 120;
-
-    if (!(we->angleDelta().y() / 120))
+    if (!clicks) {
+        qInfo() << "Rejecting minor scroll motion, too small. Clicks: " << clicks << ", angleDelta: " << we->angleDelta().y();
+        qInfo() << "ScrollY per click: " << scrollYperClick;
         return;
+    }
 
     unsigned int stepsHz = stepSize;
 

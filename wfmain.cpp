@@ -1271,11 +1271,13 @@ void wfmain::setUIToPrefs()
     ui->mainScope->wfAntiAliased(prefs.wfAntiAlias);
     ui->mainScope->wfInterpolate(prefs.wfInterpolate);
     ui->mainScope->wfTheme(prefs.wftheme);
+    ui->mainScope->setScrollSpeedXY(prefs.scopeScrollX, prefs.scopeScrollY);
 
     ui->subScope->setUnderlayMode(prefs.underlayMode);
     ui->subScope->wfAntiAliased(prefs.wfAntiAlias);
     ui->subScope->wfInterpolate(prefs.wfInterpolate);
     ui->subScope->wfTheme(prefs.wftheme);
+    ui->subScope->setScrollSpeedXY(prefs.scopeScrollX, prefs.scopeScrollY);
 
     //    switch(underlayMode)
 //    {
@@ -1800,6 +1802,8 @@ void wfmain::setDefPrefs()
     defPrefs.wftheme = static_cast<int>(QCPColorGradient::gpJet);
     defPrefs.plotFloor = 0;
     defPrefs.plotCeiling = 160;
+    defPrefs.scopeScrollX = 16;
+    defPrefs.scopeScrollY = 16;
     defPrefs.confirmExit = true;
     defPrefs.confirmPowerOff = true;
     defPrefs.meter2Type = meterNone;
@@ -1851,6 +1855,8 @@ void wfmain::loadSettings()
     prefs.wftheme = settings->value("WFTheme", defPrefs.wftheme).toInt();
     prefs.plotFloor = settings->value("plotFloor", defPrefs.plotFloor).toInt();
     prefs.plotCeiling = settings->value("plotCeiling", defPrefs.plotCeiling).toInt();
+    prefs.scopeScrollX = settings->value("scopeScrollX", defPrefs.scopeScrollX).toInt();
+    prefs.scopeScrollY = settings->value("scopeScrollY", defPrefs.scopeScrollY).toInt();
     plotFloor = prefs.plotFloor;
     plotCeiling = prefs.plotCeiling;
     wfFloor = prefs.plotFloor;

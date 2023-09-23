@@ -167,6 +167,8 @@ struct preferences {
     int wftheme;
     int plotFloor;
     int plotCeiling;
+    int scopeScrollX;
+    int scopeScrollY;
     QString stylesheetPath;
     unsigned int wflength;
     bool confirmExit;

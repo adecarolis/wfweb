@@ -54,6 +54,7 @@ public:
 
     void setTuningFloorZeros(bool tf) {this->tuningFloorZeros = tf;}
     void setClickDragTuning(bool cg) { this->clickDragTuning = cg;}
+    void setScrollSpeedXY(int clicksX, int clicksY) { this->scrollXperClick = clicksX; this->scrollYperClick = clicksY;}
 
     void enableScope(bool en);
 
@@ -199,6 +200,8 @@ private:
     double oldPlotCeiling = 999;
     double mousePressFreq = 0.0;
     double mouseReleaseFreq = 0.0;
+    int scrollYperClick = 24;
+    int scrollXperClick = 24;
 
     passbandActions passbandAction = passbandStatic;
 
