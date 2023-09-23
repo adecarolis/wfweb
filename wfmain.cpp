@@ -2718,6 +2718,7 @@ void wfmain::extChangedRsPref(prefRsItem i)
         break;
     case rs_setClock:
         setRadioTimeDatePrep();
+	break;
     case rs_pttOn:
         if(!prefs.enablePTT)
         {
@@ -5776,6 +5777,10 @@ void wfmain::receiveValue(cacheItem val){
 
     switch (val.command)
     {
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
     case funcUnselectedFreq:
         val.sub=true;
     case funcFreqGet:
@@ -5793,6 +5798,9 @@ void wfmain::receiveValue(cacheItem val){
                 receiveFreq(f);
         break;
     }
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
     case funcReadTXFreq:
         break;
     case funcVFODualWatch:
@@ -5972,8 +5980,8 @@ void wfmain::receiveValue(cacheItem val){
     case funcAutoNotch:
         break;
     case funcRepeaterTone:
-        break;
         rpt->handleRptAccessMode(rptAccessTxRx_t((val.value.value<bool>())?ratrTONEon:ratrTONEoff));
+        break;
     case funcRepeaterTSQL:
         rpt->handleRptAccessMode(rptAccessTxRx_t((val.value.value<bool>())?ratrTSQLon:ratrTSQLoff));
         break;

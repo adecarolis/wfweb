@@ -1981,6 +1981,10 @@ void rigCommander::parseCommand()
     case funcVFODualWatch:
         // Not currently used, but will report the current dual-watch status
         break;
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
     case funcUnselectedFreq:
         sub = true;
     case funcSelectedFreq:
@@ -2016,10 +2020,7 @@ void rigCommander::parseCommand()
         value.setValue(m);
         break;
     }
-#if defined __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#endif
+
     case funcSatelliteMemory:
         memParser=rigCaps.satParser;
     case funcMemoryContents:
@@ -2294,6 +2295,10 @@ void rigCommander::parseCommand()
         // This tells us whether we are receiving single or dual scopes
         value.setValue(static_cast<bool>(payloadIn[0]));
         break;
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
     case funcScopeSubMode:
         sub=true;
     case funcScopeMainMode:
@@ -2303,6 +2308,9 @@ void rigCommander::parseCommand()
         // [3] 0x00 (center), 0x01 (fixed), 0x02, 0x03
         value.setValue(static_cast<spectrumMode_t>(uchar(payloadIn[0])));
         break;
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
     case funcScopeSubSpan:
     case funcScopeMainSpan:
     {
@@ -5204,6 +5212,8 @@ bool rigCommander::parseSpectrum(scopeData& d, bool sub)
     // chop off FD.
     if (sequence == 1)
     {
+        // This should work on Qt5, but I need to test, use the switch below instead for now.
+        //d.mode = static_cast<spectrumMode_t>(payloadIn.at(2)); // 0=center, 1=fixed
 
         switch (payloadIn[2])
         {

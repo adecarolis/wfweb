@@ -116,7 +116,7 @@ struct rptrAccessData {
 
 struct modeInfo {
     modeInfo ():mk(modeUnknown), reg(99), filter(1),VFO(activeVFO), data(0), name(""), bw(false), pass(0) {};
-    modeInfo(rigMode_t mk, quint8 reg, QString name, bool bw): mk(mk), reg(reg), name(name),bw(bw) {};
+    modeInfo(rigMode_t mk, quint8 reg, QString name, bool bw): mk(mk), reg(reg), data(false), name(name),bw(bw), pass(0) {};
     rigMode_t mk;
     unsigned char reg;
     unsigned char filter; // Default filter is always 1
