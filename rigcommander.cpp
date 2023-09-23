@@ -2162,13 +2162,18 @@ void rigCommander::parseCommand()
         bandStackType bsr;
         bsr.band = payloadIn[0];
         bsr.regCode = payloadIn[1];
-        bsr.freq = parseFreqData(payloadIn.mid(2,5),sub);
+        int freqLen = 5;
+        // PET I want to find a better way to do this!
+        if (rigCaps.modelID == 0xAC && bsr.band == 6) {
+            freqLen = 6;
+        }
+        bsr.freq = parseFreqData(payloadIn.mid(2,freqLen),sub);
         // The Band Stacking command returns the regCode in the position that VFO is expected.
         // As BSR is always on the active VFO, just set that.
         bsr.freq.VFO = selVFO_t::activeVFO;
-        bsr.data = (payloadIn[9] & 0x10) >> 4; // not sure...
-        bsr.mode = payloadIn[7];
-        bsr.filter = payloadIn[8];
+        bsr.mode = payloadIn[freqLen+2];
+        bsr.filter = payloadIn[freqLen+3];
+        bsr.data = (payloadIn[freqLen+4] & 0x10) >> 4; // not sure...
         //qInfo(logRig()) << QString("BSR: (%0) band:%1 regcode: %2 freq: %3: data: %4 mode: %5 filter %6")
         //                       .arg(payloadIn.toHex(' ')).arg(bsr.band).arg(bsr.regCode).arg(bsr.freq.Hz).arg(bsr.data).arg(bsr.mode).arg(bsr.filter);
         value.setValue(bsr);
@@ -5140,6 +5145,11 @@ bool rigCommander::parseSpectrum(scopeData& d, bool sub)
         return ret;
     }
 
+    if (sub)
+        d = subScopeData;
+    else
+        d = mainScopeData;
+
     // Here is what to expect:
     // payloadIn[00] = '\x27';
     // payloadIn[01] = '\x00';
@@ -5176,9 +5186,12 @@ bool rigCommander::parseSpectrum(scopeData& d, bool sub)
     freqt fEnd;
 
     d.mainSub = sub;
-    unsigned char sequence = bcdHexToUChar(payloadIn[1]);
-
-    unsigned char sequenceMax = bcdHexToUChar(payloadIn[0]);
+    unsigned char sequence = bcdHexToUChar(payloadIn[0]);
+    unsigned char sequenceMax = bcdHexToUChar(payloadIn[1]);
+    int freqLen = 5;
+    if (rigCaps.modelID == 0xAC && payloadIn.size()==491) {
+        freqLen = 6;
+    }
 
     // Sequnce 2, index 05 is the start of data
     // Sequence 11. index 05, is the last chunk
@@ -5187,74 +5200,75 @@ bool rigCommander::parseSpectrum(scopeData& d, bool sub)
     // It looks like the data length may be variable, so we need to detect it each time.
     // start at payloadIn.length()-1 (to override the FD). Never mind, index -1 bad.
     // chop off FD.
-    if ((sequence == 1) && (sequence < rigCaps.spectSeqMax))
+    if (sequence == 1)
     {
 
-        spectrumMode_t scopeMode = (spectrumMode_t)bcdHexToUChar(payloadIn[2]); // 0=center, 1=fixed
+        d.mode = spectrumMode_t(payloadIn[2]); // 0=center, 1=fixed
 
-        if(scopeMode != oldScopeMode)
+        if(d.mode != oldScopeMode)
         {
-            //TODO: support the other two modes (firmware 1.40)
             // Modes:
             // 0x00 Center
             // 0x01 Fixed
             // 0x02 Scroll-C
             // 0x03 Scroll-F
-            emit havespectrumMode_t(scopeMode);
-            oldScopeMode = scopeMode;
+            oldScopeMode = d.mode;
         }
 
-        if(payloadIn.length() >= 12)
-        {
-            d.oor=(bool)payloadIn[13];
-            if (d.oor) {
-                d.data = QByteArray(rigCaps.spectLenMax,'\0');
-                return true;
-            }
+        d.oor=(bool)payloadIn[3+(freqLen*2)];
+        if (d.oor) {
+            d.data = QByteArray(rigCaps.spectLenMax,'\0');
+            d.valid=true;
+            return true;
         }
 
-        // wave information
-        spectrumLine.clear();
-
+        // clear wave information
+        d.data.clear();
 
         // For Fixed, and both scroll modes, the following produces correct information:
-        fStart = parseFrequency(payloadIn, 6);
+        fStart = parseFreqData(payloadIn.mid(3,freqLen),sub);
         d.startFreq = fStart.MHzDouble;
-        fEnd = parseFrequency(payloadIn, 11);
+        fEnd = parseFreqData(payloadIn.mid(3+freqLen,freqLen),sub);
         d.endFreq = fEnd.MHzDouble;
 
-        if(scopeMode == spectModeCenter)
+        if(d.mode == spectModeCenter)
         {
             // "center" mode, start is actual center, end is bandwidth.
             d.startFreq -= d.endFreq;
             d.endFreq = d.startFreq + 2*(d.endFreq);
         }
 
-        if (payloadIn.length() > 400) // Must be a LAN packet.
+        if (sequence == sequenceMax) // Must be a LAN packet.
         {
-            d.data.append(payloadIn.right(payloadIn.length()-14));
+            d.data.append(payloadIn.right(payloadIn.length()-4-(freqLen*2)));
             ret = true;
         }
-        //qInfo(logRig()) << "Spectrum Data received:" << sequence << "/" << sequenceMax << "mode:" << d.mode << "oor" << d.oor << "length:" << payloadIn.length();
+
+        //qInfo(logRig()) << "Spectrum Data received start:" << d.startFreq << "end:" << d.endFreq << "seq:" << sequence << "/" << sequenceMax << "mode:" << d.mode << "oor" << d.oor << "scopelen:" << d.data.size() << "length:" << payloadIn.length();
     }
-    else if ((sequence > 1) && (sequence < rigCaps.spectSeqMax))
+    else if ((sequence > 1) && (sequence < sequenceMax))
     {
         // spectrum from index 05 to index 54, length is 55 per segment. Length is 56 total. Pixel data is 50 pixels.
         // sequence numbers 2 through 10, 50 pixels each. Total after sequence 10 is 450 pixels.
-        spectrumLine.insert(spectrumLine.length(), payloadIn.right(payloadIn.length() - 2));
+        d.data.insert(d.data.length(), payloadIn.right(payloadIn.length() - 2));
         ret = false;
-        //qInfo(logRig()) << "sequence: " << sequence << "spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
-    } else if (sequence == rigCaps.spectSeqMax)
+        //qInfo(logRig()) << "sequence: " << sequence << "spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 2 << " payload length: " << payloadIn.length();
+    } else if (sequence == sequenceMax)
     {
         // last spectrum, a little bit different (last 25 pixels). Total at end is 475 pixels (7300).
-        spectrumLine.insert(spectrumLine.length(), payloadIn.right(payloadIn.length() - 2));
-        d.data = spectrumLine;
+        d.data.insert(d.data.length(), payloadIn.right(payloadIn.length() - 2));
         ret = true;
-        //qInfo(logRig()) << "sequence: " << sequence << " spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
-
-        //emit haveSpectrumData(spectrumLine, spectrumStartFreq, spectrumEndFreq);
+        //qInfo(logRig()) << "sequence: " << sequence << " spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 2 << " payload length: " << payloadIn.length();
     }
     d.valid=ret;
+
+    if (!ret) {
+        // We need to temporarilly store the scope data somewhere.
+        if (sub)
+            subScopeData = d;
+        else
+            mainScopeData = d;
+    }
     return ret;
 }
 

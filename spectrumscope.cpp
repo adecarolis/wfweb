@@ -347,6 +347,12 @@ bool spectrumScope::update(scopeData data)
     //qInfo(logSystem()) << "start: " << data.startFreq << " end: " << data.endFreq;
     quint16 specLen = data.data.length();
 
+    if (specLen != spectWidth)
+    {
+        qCritical(logSystem()) << "Spectrum length error! Expected" << spectWidth << "got" << specLen;
+        return false;
+    }
+
     QVector <double> x(spectWidth), y(spectWidth), y2(spectWidth);
 
     for(int i=0; i < spectWidth; i++)
@@ -374,7 +380,6 @@ bool spectrumScope::update(scopeData data)
         spectrumPlasma.pop_back();
     }
     plasmaMutex.unlock();
-
     QMutexLocker locker(&mutex);
     if ((plotFloor != oldPlotFloor) || (plotCeiling != oldPlotCeiling)){
         updateRange = true;

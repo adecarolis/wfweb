@@ -136,7 +136,7 @@ struct scopeData {
     bool valid=false;
     QByteArray data;
     bool mainSub;
-    uchar mode;
+    spectrumMode_t mode;
     bool oor;
     double startFreq;
     double endFreq;

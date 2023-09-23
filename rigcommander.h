@@ -501,6 +501,8 @@ private:
     bool useRTSforPTT_isSet = false;
     bool useRTSforPTT_manual = false;
 
+    scopeData mainScopeData;
+    scopeData subScopeData;
 
     QString rigSerialPort;
     quint32 rigBaudRate;
