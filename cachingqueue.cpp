@@ -79,8 +79,10 @@ void cachingQueue::run()
                 it=queue.erase(it);
                 if (item.recurring) {
                     while (it.key() == prio)
+                    {
                         it++;
-                    queue.insert(it,prio,item);
+                    }
+                    queue.insert(--it,prio,item);
                     updateCache(false,item.command,item.param,item.sub);
                 }
             }
