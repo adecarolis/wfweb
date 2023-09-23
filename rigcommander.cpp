@@ -5203,7 +5203,7 @@ bool rigCommander::parseSpectrum(scopeData& d, bool sub)
     if (sequence == 1)
     {
 
-        d.mode = spectrumMode_t(payloadIn[2]); // 0=center, 1=fixed
+        d.mode = static_cast<spectrumMode_t>(payloadIn[2]); // 0=center, 1=fixed
 
         if(d.mode != oldScopeMode)
         {
