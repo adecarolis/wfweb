@@ -5204,6 +5204,8 @@ bool rigCommander::parseSpectrum(scopeData& d, bool sub)
     // chop off FD.
     if (sequence == 1)
     {
+        // This should work on Qt5, but I need to test, use the switch below instead for now.
+        //d.mode = static_cast<spectrumMode_t>(payloadIn.at(2)); // 0=center, 1=fixed
 
         switch (payloadIn[2])
         {

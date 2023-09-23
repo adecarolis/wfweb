@@ -76,11 +76,13 @@ void cachingQueue::run()
             {
                 auto item = it.value();
                 emit haveCommand(item.command,item.param,item.sub);
+                it=queue.erase(it);
                 if (item.recurring) {
-                    queue.insert(queue.cend(),prio,item);
+                    while (it.key() == prio)
+                        it++;
+                    queue.insert(it,prio,item);
                     updateCache(false,item.command,item.param,item.sub);
                 }
-                it=queue.erase(it);
             }
 
             QCoreApplication::processEvents();
