@@ -61,6 +61,12 @@ spectrumScope::spectrumScope(QWidget *parent)
     edgeButton->setVisible(false);
     toFixedButton->setVisible(false);
 
+    dummySlider = new QSlider();
+    tickInterval = dummySlider->tickInterval();
+    pageStep = dummySlider->pageStep();
+    qInfo() << "------ EHL INFO: ------ tickInterval: " << tickInterval << ", pageStep: " << pageStep;
+    qInfo() << "singleStep: " << dummySlider->singleStep();
+
     spectrum = new QCustomPlot();
     waterfall = new QCustomPlot();
 

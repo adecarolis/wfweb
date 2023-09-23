@@ -5489,6 +5489,12 @@ void wfmain::debugBtn_clicked()
     debug->setAttribute(Qt::WA_DeleteOnClose);
     debug->show();
 
+    qInfo(logSystem()) << "Scroll wheel debug: ";
+    qInfo(logSystem()) << "tick interval: " << ui->afGainSlider->tickInterval();
+    qInfo(logSystem()) << "page step: " << ui->afGainSlider->pageStep();
+    qInfo(logSystem()) << "single step: " << ui->afGainSlider->singleStep();
+    qInfo(logSystem()) << "QApp wheel scroll lines: " << QApplication::wheelScrollLines();
+    qInfo(logSystem()) << "QStyleHint wheel scroll lines: " <<  QApplication::styleHints()->wheelScrollLines();
 
 
     //showAndRaiseWidget(setupui);

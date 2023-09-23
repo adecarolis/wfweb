@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QCheckBox>
 #include <QPushButton>
+#include <QSlider>
 #include <QSpacerItem>
 #include <QElapsedTimer>
 #include <qcustomplot.h>
@@ -155,6 +156,9 @@ private:
     QComboBox* filterCombo;
     QComboBox* antennaCombo;
     QPushButton* holdButton;
+    QSlider* dummySlider;
+    qreal tickInterval;
+    qreal pageStep;
 
     QCheckBox* rxCheckBox;
 
