@@ -5188,8 +5188,10 @@ bool rigCommander::parseSpectrum(scopeData& d, bool sub)
     d.mainSub = sub;
     unsigned char sequence = bcdHexToUChar(payloadIn[0]);
     unsigned char sequenceMax = bcdHexToUChar(payloadIn[1]);
+
     int freqLen = 5;
-    if (rigCaps.modelID == 0xAC && payloadIn.size()==491) {
+    // On the IC-905 10GHz+ uses 6 bytes for freq.
+    if (rigCaps.modelID == 0xAC && (payloadIn.size()==491 || payloadIn.size() == 16)) {
         freqLen = 6;
     }
 
@@ -5203,7 +5205,24 @@ bool rigCommander::parseSpectrum(scopeData& d, bool sub)
     if (sequence == 1)
     {
 
-        d.mode = static_cast<spectrumMode_t>(payloadIn[2]); // 0=center, 1=fixed
+        switch (payloadIn[2])
+        {
+        case 0:
+            d.mode = spectrumMode_t::spectModeCenter;
+            break;
+        case 1:
+            d.mode = spectrumMode_t::spectModeFixed;
+            break;
+        case 2:
+            d.mode = spectrumMode_t::spectModeScrollC;
+            break;
+        case 3:
+            d.mode = spectrumMode_t::spectModeScrollF;
+            break;
+        default:
+            d.mode = spectrumMode_t::spectModeUnknown;
+            break;
+        }
 
         if(d.mode != oldScopeMode)
         {
