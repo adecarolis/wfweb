@@ -23,6 +23,11 @@ debugWindow::debugWindow(QWidget *parent) :
     connect(&queueTimer,SIGNAL(timeout()),this,SLOT(getQueue()));
     cacheTimer.start();
     queueTimer.start();
+
+    connect(ui->scrolltester, &scrolltest::haveRawClicksXY,
+            [=](const int x, const int y) {
+            ui->scrollTestLabel->setText(QString("X: %1, Y: %2").arg(x).arg(y));
+    });
 }
 
 debugWindow::~debugWindow()
