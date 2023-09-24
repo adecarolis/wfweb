@@ -41,6 +41,9 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     ui->setupUi(this);
     setWindowTitle(QString("wfview"));
 
+    ui->monitorLabel->setText("<a href=\"#\" style=\"color:white; text-decoration:none;\">Mon</a>");
+
+
     logWindow = new loggingWindow(logFile);
     initLogging();
     logWindow->setInitialDebugState(debugMode);
@@ -304,6 +307,10 @@ wfmain::~wfmain()
 
     if (rigCtl != Q_NULLPTR) {
         delete rigCtl;
+    }
+
+    if (colorPrefs != Q_NULLPTR) {
+        delete colorPrefs;
     }
 
     delete rpt;
@@ -4540,9 +4547,11 @@ void wfmain::on_monitorSlider_valueChanged(int value)
     queue->addUnique(priorityImmediate,queueItem(funcMonitorGain,QVariant::fromValue<ushort>(value),false));
 }
 
-void wfmain::on_monitorCheck_clicked(bool checked)
+void wfmain::on_monitorLabel_linkActivated(const QString&)
 {
-    queue->add(priorityImmediate,queueItem(funcMonitor,QVariant::fromValue<bool>(checked)));
+    cacheItem ca = queue->getCache(funcMonitor);
+    bool mon = ca.value.toBool();
+    queue->add(priorityImmediate,queueItem(funcMonitor,QVariant::fromValue<bool>(!mon)));
 }
 
 void wfmain::receiveRfGain(unsigned char level)
@@ -5062,9 +5071,11 @@ void wfmain::receiveComp(bool en)
 
 void wfmain::receiveMonitor(bool en)
 {
-    ui->monitorCheck->blockSignals(true);
-    ui->monitorCheck->setChecked(en);
-    ui->monitorCheck->blockSignals(false);
+    qInfo() << "Text color:" << colorPrefs->textColor.name();
+    if (en)
+            ui->monitorLabel->setText(QString("<a href=\"#\" style=\"color:%0; text-decoration:none;\">Mon</a>").arg(colorPrefs->textColor.name()));
+    else
+        ui->monitorLabel->setText(QString("<a href=\"#\" style=\"color:%0; text-decoration:none; text-decoration:line-through;\">Mon</a>").arg(colorPrefs->textColor.name()));
     emit sendLevel(funcMonitor,en);
 }
 
@@ -5513,6 +5524,10 @@ void wfmain::useColorPreset(colorPrefsType *cp)
     ui->meter2Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
     ui->mainScope->colorPreset(cp);
     ui->subScope->colorPreset(cp);
+    if (this->colorPrefs != Q_NULLPTR)
+        delete this->colorPrefs;
+    this->colorPrefs = new colorPrefsType(*cp);
+    qInfo() << "Setting color Preset" << cp->presetNum << "name" << cp->presetName << "text color" << cp->textColor.name();
 }
 
 

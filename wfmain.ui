@@ -50,11 +50,34 @@
        </property>
        <item>
         <layout class="QVBoxLayout" name="verticalLayout_3">
+         <property name="spacing">
+          <number>0</number>
+         </property>
          <item>
-          <widget class="spectrumScope" name="mainScope" native="true"/>
+          <layout class="QHBoxLayout" name="horizontalLayout_8">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <property name="sizeConstraint">
+            <enum>QLayout::SetNoConstraint</enum>
+           </property>
+           <item>
+            <widget class="spectrumScope" name="mainScope" native="true"/>
+           </item>
+          </layout>
          </item>
          <item>
-          <widget class="spectrumScope" name="subScope" native="true"/>
+          <layout class="QHBoxLayout" name="horizontalLayout_9">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <property name="sizeConstraint">
+            <enum>QLayout::SetNoConstraint</enum>
+           </property>
+           <item>
+            <widget class="spectrumScope" name="subScope" native="true"/>
+           </item>
+          </layout>
          </item>
         </layout>
        </item>
@@ -794,28 +817,27 @@
             </widget>
            </item>
            <item>
-            <widget class="QLabel" name="label_54">
+            <widget class="QLabel" name="monitorLabel">
              <property name="maximumSize">
               <size>
                <width>16777215</width>
                <height>15</height>
               </size>
              </property>
-             <property name="text">
-              <string>Mon</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="monitorCheck">
-             <property name="minimumSize">
-              <size>
-               <width>20</width>
-               <height>20</height>
-              </size>
+             <property name="mouseTracking">
+              <bool>true</bool>
              </property>
              <property name="text">
-              <string/>
+              <string>&lt;a href='#'&gt;Mon&lt;/a&gt;</string>
+             </property>
+             <property name="textFormat">
+              <enum>Qt::AutoText</enum>
+             </property>
+             <property name="openExternalLinks">
+              <bool>false</bool>
+             </property>
+             <property name="textInteractionFlags">
+              <set>Qt::LinksAccessibleByMouse</set>
              </property>
             </widget>
            </item>
@@ -830,7 +852,7 @@
              <property name="sizeHint" stdset="0">
               <size>
                <width>20</width>
-               <height>5</height>
+               <height>40</height>
               </size>
              </property>
             </spacer>

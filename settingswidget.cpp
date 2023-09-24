@@ -2601,6 +2601,26 @@ void settingswidget::onServerUserFieldChanged()
 // This is a slot that receives a signal from wfmain when we are connecting/disconnected
 void settingswidget::connectionStatus(bool conn)
 {
+    ui->groupConnection->setEnabled(!conn);
+    ui->audioInputCombo->setEnabled(!conn);
+    ui->audioOutputCombo->setEnabled(!conn);
+    ui->audioDuplexCombo->setEnabled(!conn);
+    ui->audioRXCodecCombo->setEnabled(!conn);
+    ui->audioTXCodecCombo->setEnabled(!conn);
     ui->audioSystemCombo->setEnabled(!conn);
+    ui->audioSampleRateCombo->setEnabled(!conn);
+
+    ui->txLatencySlider->setEnabled(!conn);
+    ui->usernameTxt->setEnabled(!conn);
+    ui->passwordTxt->setEnabled(!conn);
+    ui->controlPortTxt->setEnabled(!conn);
+    ui->ipAddressTxt->setEnabled(!conn);
+
+    ui->serialDeviceListCombo->setEnabled(!conn);
+    ui->baudRateCombo->setEnabled(!conn);
+    ui->useRTSforPTTchk->setEnabled(!conn);
+
+    ui->serverRXAudioInputCombo->setEnabled(!conn);
+    ui->serverTXAudioOutputCombo->setEnabled(!conn);
     ui->audioSystemServerCombo->setEnabled(!conn);
 }

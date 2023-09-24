@@ -454,7 +454,7 @@ private slots:
 
     void on_monitorSlider_valueChanged(int value);
 
-    void on_monitorCheck_clicked(bool checked);
+    void on_monitorLabel_linkActivated(const QString&);
 
     void on_tuneNowBtn_clicked();
     void on_tuneEnableChk_clicked(bool checked);
@@ -809,6 +809,7 @@ private:
 
     quint64 mainElapsed=0;
     quint64 subElapsed=0;
+    colorPrefsType* colorPrefs=Q_NULLPTR;
 
     funcs getInputTypeCommand(inputTypes input);
 
