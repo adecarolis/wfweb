@@ -154,6 +154,21 @@ QString debugWindow::getValue(QVariant val)
             rigInput i = val.value<rigInput>();
             value = QString("Input:%0 R:%1 (%2)").arg(i.name).arg(i.reg).arg(i.type);
         }
+        else if (!strcmp(val.typeName(),"duplexMode_t"))
+        {
+            duplexMode_t i = val.value<duplexMode_t>();
+            value = QString("Mode:%0").arg(i);
+        }
+        else if (!strcmp(val.typeName(),"spectrumMode_t"))
+        {
+            spectrumMode_t i = val.value<spectrumMode_t>();
+            value = QString("Mode:%0").arg(i);
+        }
+        else if (!strcmp(val.typeName(),"centerSpanData"))
+        {
+            centerSpanData i = val.value<centerSpanData>();
+            value = QString("Type:%0 Freq:%1 Name:%2").arg(i.cstype).arg(i.freq).arg(i.name);
+        }
         else
         {
             value = QString("%0: <nosup>").arg(val.typeName());

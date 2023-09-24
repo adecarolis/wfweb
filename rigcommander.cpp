@@ -2054,6 +2054,8 @@ void rigCommander::parseCommand()
     // These return a single byte that we convert to a uchar (0-99)
     case funcTuningStep:
     case funcAttenuator:
+        value.setValue(static_cast<uchar>(uchar(payloadIn[0])));
+        break;
     // Return a duplexMode_t for split or duplex (same function)
     case funcSplitStatus:
         value.setValue(static_cast<duplexMode_t>(uchar(payloadIn[0])));
@@ -2308,10 +2310,8 @@ void rigCommander::parseCommand()
         // [3] 0x00 (center), 0x01 (fixed), 0x02, 0x03
         value.setValue(static_cast<spectrumMode_t>(uchar(payloadIn[0])));
         break;
-#if defined __GNUC__
-#pragma GCC diagnostic pop
-#endif
     case funcScopeSubSpan:
+        sub=true;
     case funcScopeMainSpan:
     {
         freqt f = parseFrequency(payloadIn, 3);
@@ -2325,6 +2325,7 @@ void rigCommander::parseCommand()
         break;
     }
     case funcScopeSubEdge:
+        sub=true;
     case funcScopeMainEdge:
         // read edge mode center in edge mode
         // [1] 0x16
@@ -2333,10 +2334,12 @@ void rigCommander::parseCommand()
         //emit haveScopeEdge((char)payloadIn[2]);
         break;
     case funcScopeSubHold:
+        sub=true;
     case funcScopeMainHold:
         value.setValue(static_cast<bool>(payloadIn[0]));
         break;
     case funcScopeSubRef:
+        sub=true;
     case funcScopeMainRef:
     {
         // scope reference level
@@ -2355,15 +2358,21 @@ void rigCommander::parseCommand()
         break;
     }
     case funcScopeSubSpeed:
+        sub=true;
     case funcScopeMainSpeed:
         value.setValue(static_cast<uchar>(payloadIn[0]));
         break;
     case funcScopeSubVBW:
+        sub=true;
     case funcScopeMainVBW:
         break;
     case funcScopeSubRBW:
+        sub=true;
     case funcScopeMainRBW:
         break;
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
     case funcScopeFixedEdgeFreq:
     case funcScopeDuringTX:
     case funcScopeCenterType:
