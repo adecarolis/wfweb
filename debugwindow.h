@@ -10,6 +10,7 @@
 
 #include "cachingqueue.h"
 #include "wfviewtypes.h"
+#include "scrolltest.h"
 
 namespace Ui {
 class debugWindow;

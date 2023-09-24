@@ -237,6 +237,7 @@ SOURCES += main.cpp\
     cwsidetone.cpp \
     debugwindow.cpp \
     loggingwindow.cpp \
+    scrolltest.cpp \
     settingswidget.cpp \
     memories.cpp \
     rigcreator.cpp \
@@ -295,6 +296,7 @@ HEADERS  += wfmain.h \
     freqmemory.h \
     rigcreator.h \
     rigidentities.h \
+    scrolltest.h \
     settingswidget.h \
     sidebandchooser.h \
     spectrumscope.h \
