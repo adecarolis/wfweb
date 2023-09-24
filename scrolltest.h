@@ -5,7 +5,6 @@
 #include <QPainter>
 #include <QWheelEvent>
 #include <QFont>
-#include <QFontMetrics>
 
 class scrolltest : public QWidget
 {
