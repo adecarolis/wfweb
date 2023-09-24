@@ -804,18 +804,11 @@ void wfmain::removeRig()
 {
     if (rigThread != Q_NULLPTR)
     {
-        if (rigCtl != Q_NULLPTR) {
-            rigCtl->disconnect();
-        }
-        rigThread->disconnect();
-
-        rig->disconnect();
-        
-        delete rigThread;
-        delete rig;
+        rigThread->quit();
+        rigThread->wait();
         rig = Q_NULLPTR;
+        rigThread = Q_NULLPTR;
     }
-
 }
 
 
@@ -2284,7 +2277,8 @@ void wfmain::loadSettings()
             butt.backgroundOn.setNamedColor(settings->value("BackgroundOn", QColor(Qt::lightGray).name(QColor::HexArgb)).toString());
             butt.backgroundOff.setNamedColor(settings->value("BackgroundOff", QColor(Qt::blue).name(QColor::HexArgb)).toString());
             butt.toggle = settings->value("Toggle", false).toBool();
-#if (QT_VERSION > QT_VERSION_CHECK(6,0,0))
+            // PET add Linux as it stops Qt6 building FIXME
+#if (QT_VERSION > QT_VERSION_CHECK(6,0,0) && !defined(Q_OS_LINUX))
             if (settings->value("Icon",NULL) != NULL) {
                 butt.icon = new QImage(settings->value("Icon",NULL).value<QImage>());
                 butt.iconName = settings->value("IconName", "").toString();
@@ -5672,6 +5666,7 @@ void wfmain::connectionHandler(bool connect)
         openRig();
     } else {
         ui->connectBtn->setText("Connect to Radio");
+        removeRig();
     }
 
     // Whatever happened, make sure we delete the memories window.

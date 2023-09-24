@@ -83,10 +83,10 @@ void cachingQueue::run()
                 auto item = it.value();
                 emit haveCommand(item.command,item.param,item.sub);
                 it=queue.erase(it);
-                if (item.recurring) {
+                if (item.recurring && prio != priorityImmediate) {
                     queue.insert(prio,item);
-                    updateCache(false,item.command,item.param,item.sub);
                 }
+                updateCache(false,item.command,item.param,item.sub);
             }
 
             QCoreApplication::processEvents();
@@ -132,9 +132,7 @@ void cachingQueue::add(queuePriority prio ,queueItem item)
                     queue.insert(queue.cend(),priorityHighest, it);
                     qInfo() << "adding" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "sub" << item.sub;
                 }
-                queue.insert(queue.cend(),prio, item);
-                // Update cache with sent data (will be replaced if found to be invalid.)
-                updateCache(false,item.command,item.param,item.sub);
+                queue.insert(prio, item);
             }
         }
     }
@@ -176,8 +174,7 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
                 queue.insert(queue.cend(),priorityHighest, it);
                 qInfo() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "sub" << item.sub;
             }
-            queue.insert(queue.cend(),prio, item);
-            updateCache(false,item.command,item.param,item.sub);
+            queue.insert(prio, item);
         }
     }
 }
