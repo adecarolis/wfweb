@@ -137,7 +137,7 @@ private:
     QCustomPlot* waterfall = Q_NULLPTR;
     QGroupBox* group;
     QSplitter* splitter;
-    QVBoxLayout* mainLayout;
+    QHBoxLayout* mainLayout;
     QVBoxLayout* layout;
     QHBoxLayout* controlLayout;
     QCheckBox* enableCheckBox;
@@ -157,6 +157,22 @@ private:
     QComboBox* antennaCombo;
     QPushButton* holdButton;
     QSlider* dummySlider;
+
+    // Config screen
+    QGroupBox* configGroup;
+    QFormLayout* configLayout;
+    QSlider* configRef;
+    QSlider* configLength;
+    QSlider* configBottom;
+    QSlider* configTop;
+    QComboBox* configSpeed;
+    QComboBox* configTheme;
+    QSlider* configPbtInner;
+    QSlider* configPbtOuter;
+    QSlider* configIfShift;
+    QSlider* configFilterWidth;
+
+
     qreal tickInterval;
     qreal pageStep;
 

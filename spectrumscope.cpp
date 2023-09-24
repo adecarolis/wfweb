@@ -13,10 +13,17 @@ spectrumScope::spectrumScope(QWidget *parent)
     this->setTitle("Band");
     queue = cachingQueue::getInstance();
     spectrum = new QCustomPlot();
+    mainLayout = new QHBoxLayout(this);
     layout = new QVBoxLayout(this);
+    mainLayout->addLayout(layout);
     splitter = new QSplitter(this);
     layout->addWidget(splitter);
     splitter->setOrientation(Qt::Vertical);
+
+    configGroup = new QGroupBox(this);
+    configLayout = new QFormLayout(this);
+    configGroup->setLayout(configLayout);
+    mainLayout->addWidget(configGroup);
 
     controlLayout = new QHBoxLayout();
     enableCheckBox = new QCheckBox("Enable");
@@ -172,6 +179,136 @@ spectrumScope::spectrumScope(QWidget *parent)
     this->addPlottable(colorMap);
 #endif
 
+    // Config Screen
+    QFont font = configGroup->font();
+    configGroup->setStyleSheet(QString("*{padding: 0px 0px 0px 0px; margin: 0px 0px 0px 0px;}*{font-size: %0px;}").arg(font.pointSize()-1));
+    configGroup->setMaximumWidth(240);
+    configRef = new QSlider(Qt::Orientation::Horizontal);
+    configRef->setRange(-200,200);
+    configRef->setTickInterval(50);
+    configRef->setSingleStep(20);
+    configRef->setValue(0);
+    configRef->setAccessibleName("Scope display reference");
+    configRef->setAccessibleDescription("Selects the display reference for the Scope display");
+    configRef->setToolTip("Select display reference of scope");
+    configLayout->addRow("Ref",configRef);
+
+    configLength = new QSlider(Qt::Orientation::Horizontal);
+    configLength->setRange(100,1024);
+    configLength->setValue(400);
+    configLayout->addRow("Length",configLength);
+
+    configTop = new QSlider(Qt::Orientation::Horizontal);
+    configTop->setRange(1,160);
+    configTop->setValue(160);
+    configTop->setAccessibleName("Scope display ceiling");
+    configTop->setAccessibleDescription("Selects the display ceiling for the Scope display");
+    configTop->setToolTip("Select display ceiling of scope");
+    configLayout->addRow("Ceiling",configTop);
+
+    configBottom = new QSlider(Qt::Orientation::Horizontal);
+    configBottom->setRange(0,160);
+    configBottom->setValue(0);
+    configBottom->setAccessibleName("Scope display floor");
+    configBottom->setAccessibleDescription("Selects the display floor for the Scope display");
+    configBottom->setToolTip("Select display floor of scope");
+    configLayout->addRow("Floor",configBottom);
+
+    configSpeed = new QComboBox();
+    configSpeed->addItem("Speed Fast",QVariant::fromValue(uchar(0)));
+    configSpeed->addItem("Speed Mid",QVariant::fromValue(uchar(1)));
+    configSpeed->addItem("Speed Slow",QVariant::fromValue(uchar(2)));
+    configSpeed->setCurrentIndex(configSpeed->findData(currentSpeed));
+    configSpeed->setAccessibleName("Waterfall display speed");
+    configSpeed->setAccessibleDescription("Selects the speed for the waterfall display");
+    configSpeed->setToolTip("Waterfall Speed");
+    configLayout->addRow("Speed",configSpeed);
+
+    configTheme = new QComboBox();
+    configTheme->setAccessibleName("Waterfall display color theme");
+    configTheme->setAccessibleDescription("Selects the color theme for the waterfall display");
+    configTheme->setToolTip("Waterfall color theme");
+    configTheme->addItem("Theme Jet", QCPColorGradient::gpJet);
+    configTheme->addItem("Theme Cold", QCPColorGradient::gpCold);
+    configTheme->addItem("Theme Hot", QCPColorGradient::gpHot);
+    configTheme->addItem("Theme Therm", QCPColorGradient::gpThermal);
+    configTheme->addItem("Theme Night", QCPColorGradient::gpNight);
+    configTheme->addItem("Theme Ion", QCPColorGradient::gpIon);
+    configTheme->addItem("Theme Gray", QCPColorGradient::gpGrayscale);
+    configTheme->addItem("Theme Geo", QCPColorGradient::gpGeography);
+    configTheme->addItem("Theme Hues", QCPColorGradient::gpHues);
+    configTheme->addItem("Theme Polar", QCPColorGradient::gpPolar);
+    configTheme->addItem("Theme Spect", QCPColorGradient::gpSpectrum);
+    configTheme->addItem("Theme Candy", QCPColorGradient::gpCandy);
+    configTheme->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    configLayout->addRow("Theme",configTheme);
+
+    configPbtInner = new QSlider(Qt::Orientation::Horizontal);
+    configPbtInner->setRange(0,255);
+    configLayout->addRow("PBT Inner",configPbtInner);
+
+    configPbtOuter = new QSlider(Qt::Orientation::Horizontal);
+    configPbtOuter->setRange(0,255);
+    configLayout->addRow("PBT Outer",configPbtOuter);
+
+    configIfShift = new QSlider(Qt::Orientation::Horizontal);
+    configIfShift->setRange(0,255);
+    configLayout->addRow("IF Shift",configIfShift);
+
+    configFilterWidth = new QSlider(Qt::Orientation::Horizontal);
+    configFilterWidth->setRange(0,10000);
+    configLayout->addRow("Fil Width",configFilterWidth);
+
+    connect(configLength, &QSlider::valueChanged, this, [=](const int &val) {
+        prepareWf(val);
+    });
+    connect(configBottom, &QSlider::valueChanged, this, [=](const int &val) {
+        this->plotFloor = val;
+        this->setRange(plotFloor,plotCeiling);
+    });
+    connect(configTop, &QSlider::valueChanged, this, [=](const int &val) {
+        this->plotCeiling = val;
+        this->setRange(plotFloor,plotCeiling);
+    });
+
+    connect(configRef, &QSlider::valueChanged, this, [=](const int &val) {
+        currentRef = (val/5) * 5; // rounded to "nearest 5"
+        queue->add(priorityImmediate,queueItem(sub?funcScopeSubRef:funcScopeMainRef,QVariant::fromValue(currentRef),false,sub));
+    });
+
+
+    connect(configSpeed, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](const int &val) {
+        queue->add(priorityImmediate,queueItem(sub?funcScopeSubSpeed:funcScopeMainSpeed,configSpeed->itemData(val),false,sub));
+    });
+
+    connect(configTheme, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](const int &val) {
+        Q_UNUSED(val)
+        currentTheme = configTheme->currentData().value<QCPColorGradient::GradientPreset>();
+        colorMap->setGradient(currentTheme);
+        emit updateTheme(sub,currentTheme);
+    });
+
+
+
+    connect(configPbtInner, &QSlider::valueChanged, this, [=](const int &val) {
+        queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(val),false,sub));
+    });
+    connect(configPbtOuter, &QSlider::valueChanged, this, [=](const int &val) {
+        queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(val),false,sub));
+    });
+    connect(configIfShift, &QSlider::valueChanged, this, [=](const int &val) {
+        queue->add(priorityImmediate,queueItem(funcIFShift,QVariant::fromValue<ushort>(val),false,sub));
+    });
+    connect(configFilterWidth, &QSlider::valueChanged, this, [=](const int &val) {
+        queue->add(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<short>(val),false,sub));
+    });
+
+    configGroup->setVisible(false);
+
+
+
+
+    // Connections
 
     connect(scopeModeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedScopeMode(int)));
     connect(spanCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedSpan(int)));
@@ -1378,148 +1515,7 @@ void spectrumScope::receiveSpots(QList<spotData> spots)
 
 void spectrumScope::configPressed()
 {
-    QDialog* configDialog = new QDialog(this);
-    configDialog->setModal(true);
-    QFormLayout* layout = new QFormLayout;
-    //spotDialog->setFixedSize(240, 100);
-    configDialog->setBaseSize(1, 1);
-    configDialog->setWindowTitle(QString("Config %0 Scope").arg(this->sub?"Sub":"Main"));
-    configDialog->setLayout(layout);
-    QSlider* ref = new QSlider(Qt::Orientation::Horizontal);
-    ref->setRange(-200,200);
-    ref->setTickInterval(50);
-    ref->setSingleStep(20);
-    ref->setValue(0);
-    ref->setAccessibleName("Scope display reference");
-    ref->setAccessibleDescription("Selects the display reference for the Scope display");
-    ref->setToolTip("Select display reference of scope");
-    layout->addRow("Ref",ref);
-
-    QSlider* length = new QSlider(Qt::Orientation::Horizontal);
-    length->setRange(100,1024);
-    length->setValue(400);
-    layout->addRow("Length",length);
-    QSlider* top = new QSlider(Qt::Orientation::Horizontal);
-    top->setRange(1,160);
-    top->setValue(160);
-    top->setAccessibleName("Scope display ceiling");
-    top->setAccessibleDescription("Selects the display ceiling for the Scope display");
-    top->setToolTip("Select display ceiling of scope");
-    layout->addRow("Ceiling",top);
-
-    QSlider* bottom = new QSlider(Qt::Orientation::Horizontal);
-    bottom->setRange(0,160);
-    bottom->setValue(0);
-    bottom->setAccessibleName("Scope display floor");
-    bottom->setAccessibleDescription("Selects the display floor for the Scope display");
-    bottom->setToolTip("Select display floor of scope");
-    layout->addRow("Floor",bottom);
-
-    QComboBox* speed = new QComboBox();
-    speed->addItem("Speed Fast",QVariant::fromValue(uchar(0)));
-    speed->addItem("Speed Mid",QVariant::fromValue(uchar(1)));
-    speed->addItem("Speed Slow",QVariant::fromValue(uchar(2)));
-    speed->setCurrentIndex(speed->findData(currentSpeed));
-    speed->setAccessibleName("Waterfall display speed");
-    speed->setAccessibleDescription("Selects the speed for the waterfall display");
-    speed->setToolTip("Waterfall Speed");
-    layout->addRow("Speed",speed);
-
-    QComboBox* theme = new QComboBox();
-    theme->setAccessibleName("Waterfall display color theme");
-    theme->setAccessibleDescription("Selects the color theme for the waterfall display");
-    theme->setToolTip("Waterfall color theme");
-    theme->addItem("Theme Jet", QCPColorGradient::gpJet);
-    theme->addItem("Theme Cold", QCPColorGradient::gpCold);
-    theme->addItem("Theme Hot", QCPColorGradient::gpHot);
-    theme->addItem("Theme Therm", QCPColorGradient::gpThermal);
-    theme->addItem("Theme Night", QCPColorGradient::gpNight);
-    theme->addItem("Theme Ion", QCPColorGradient::gpIon);
-    theme->addItem("Theme Gray", QCPColorGradient::gpGrayscale);
-    theme->addItem("Theme Geo", QCPColorGradient::gpGeography);
-    theme->addItem("Theme Hues", QCPColorGradient::gpHues);
-    theme->addItem("Theme Polar", QCPColorGradient::gpPolar);
-    theme->addItem("Theme Spect", QCPColorGradient::gpSpectrum);
-    theme->addItem("Theme Candy", QCPColorGradient::gpCandy);
-    theme->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-    qInfo() << "Selecting theme" << currentTheme << theme->itemText(currentTheme);
-    theme->setCurrentIndex(theme->findData(currentTheme));
-    layout->addRow("Theme",theme);
-
-    QSlider* pbtInner = new QSlider(Qt::Orientation::Horizontal);
-    pbtInner->setRange(0,255);
-    double pbFreq = ((double)(this->PBTInner) / this->passbandWidth) * 127.0;
-    qint16 newFreq = pbFreq + 128;
-    if (newFreq >= 0 && newFreq <= 255) {
-        pbtInner->setValue(newFreq);
-    }
-    layout->addRow("PBT Inner",pbtInner);
-
-    QSlider* pbtOuter = new QSlider(Qt::Orientation::Horizontal);
-    pbtOuter->setRange(0,255);
-    pbFreq = ((double)(this->PBTOuter) / this->passbandWidth) * 127.0;
-    newFreq = pbFreq + 128;
-    if (newFreq >= 0 && newFreq <= 255) {
-        pbtOuter->setValue(newFreq);
-    }
-    layout->addRow("PBT Outer",pbtOuter);
-
-    QSlider* ifShift = new QSlider(Qt::Orientation::Horizontal);
-    length->setRange(0,255);
-    length->setValue(0);
-    layout->addRow("IF Shift",ifShift);
-
-    QSlider* filterWidth = new QSlider(Qt::Orientation::Horizontal);
-    length->setRange(0,10000);
-    length->setValue((this->passbandWidth*1E6));
-    layout->addRow("Fil Width",filterWidth);
-
-    connect(length, &QSlider::valueChanged, configDialog, [=](const int &val) {
-        prepareWf(val);
-    });
-
-    connect(bottom, &QSlider::valueChanged, configDialog, [=](const int &val) {
-        this->plotFloor = val;
-        this->setRange(plotFloor,plotCeiling);
-    });
-    connect(top, &QSlider::valueChanged, configDialog, [=](const int &val) {
-        this->plotCeiling = val;
-        this->setRange(plotFloor,plotCeiling);
-    });
-
-    connect(ref, &QSlider::valueChanged, configDialog, [=](const int &val) {
-        currentRef = (val/5) * 5; // rounded to "nearest 5"
-        queue->add(priorityImmediate,queueItem(sub?funcScopeSubRef:funcScopeMainRef,QVariant::fromValue(currentRef),false,sub));
-    });
-
-
-    connect(speed, QOverload<int>::of(&QComboBox::currentIndexChanged), configDialog, [=](const int &val) {
-        queue->add(priorityImmediate,queueItem(sub?funcScopeSubSpeed:funcScopeMainSpeed,speed->itemData(val),false,sub));
-    });
-
-    connect(theme, QOverload<int>::of(&QComboBox::currentIndexChanged), configDialog, [=](const int &val) {
-        Q_UNUSED(val)
-        currentTheme = theme->currentData().value<QCPColorGradient::GradientPreset>();
-        colorMap->setGradient(currentTheme);
-        emit updateTheme(sub,currentTheme);
-    });
-
-
-
-    connect(pbtInner, &QSlider::valueChanged, configDialog, [=](const int &val) {
-        queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(val),false,sub));
-    });
-    connect(pbtOuter, &QSlider::valueChanged, configDialog, [=](const int &val) {
-        queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(val),false,sub));
-    });
-    connect(ifShift, &QSlider::valueChanged, configDialog, [=](const int &val) {
-        queue->add(priorityImmediate,queueItem(funcIFShift,QVariant::fromValue<ushort>(val),false,sub));
-    });
-    connect(filterWidth, &QSlider::valueChanged, configDialog, [=](const int &val) {
-        queue->add(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<short>(val),false,sub));
-    });
-
-    configDialog->show();
+    configGroup->setVisible(!configGroup->isVisible());
 }
 
 
