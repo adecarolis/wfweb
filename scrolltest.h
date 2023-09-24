@@ -15,7 +15,7 @@ class scrolltest : public QWidget
     int fontSize = 12;
     int rawClicksY;
     int rawClicksX;
-    QString resultText = "SCROLL";
+    QString resultText = "--- SCROLL HERE ---";
 
     int maxX=0;
     int maxY=0;
