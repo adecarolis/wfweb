@@ -317,18 +317,18 @@ spectrumScope::spectrumScope(QWidget *parent)
 
     connect(scopeModeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedScopeMode(int)));
     connect(spanCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedSpan(int)));
-    connect(confButton,SIGNAL(pressed()), this, SLOT(configPressed()),Qt::QueuedConnection);
+    connect(confButton,SIGNAL(clicked()), this, SLOT(configPressed()),Qt::QueuedConnection);
 
-    connect(toFixedButton,SIGNAL(pressed()), this, SLOT(toFixedPressed()));
+    connect(toFixedButton,SIGNAL(clicked()), this, SLOT(toFixedPressed()));
     connect(edgeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedEdge(int)));
-    connect(edgeButton,SIGNAL(pressed()), this, SLOT(customSpanPressed()));
+    connect(edgeButton,SIGNAL(clicked()), this, SLOT(customSpanPressed()));
 
     connect(holdButton,SIGNAL(toggled(bool)), this, SLOT(holdPressed(bool)));
 
     connect(modeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedMode(int)));
     connect(filterCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedMode(int)));
     connect(dataCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedMode(int)));
-    connect(clearPeaksButton,SIGNAL(pressed()), this, SLOT(clearPeaks()));
+    connect(clearPeaksButton,SIGNAL(clicked()), this, SLOT(clearPeaks()));
 
     connect(spectrum, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(doubleClick(QMouseEvent*)));
     connect(waterfall, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(doubleClick(QMouseEvent*)));
@@ -1551,12 +1551,12 @@ void spectrumScope::receiveSpots(QList<spotData> spots)
 void spectrumScope::configPressed()
 {
     this->configGroup->setVisible(!this->configGroup->isVisible());
-    QTimer::singleShot(200, this, [this]() {
+    //QTimer::singleShot(200, this, [this]() {
         if (this->configGroup->isVisible())
             this->confButton->setText(">");
         else
             this->confButton->setText("<");
-    });
+    //});
 }
 
 

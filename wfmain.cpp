@@ -277,9 +277,9 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
             qInfo(logUsbControl()) << "Cannot register udev_monitor, hotplug of USB devices is not available";
             return;
         }
-	int fd = udev_monitor_get_fd(uDevMonitor);
+    int fd = udev_monitor_get_fd(uDevMonitor);
         uDevNotifier = new QSocketNotifier(fd, QSocketNotifier::Read,this);
-	connect(uDevNotifier, SIGNAL(activated(int)), this, SLOT(uDevEvent()));
+    connect(uDevNotifier, SIGNAL(activated(int)), this, SLOT(uDevEvent()));
         udev_monitor_enable_receiving(uDevMonitor);
     #endif
 #endif
@@ -349,7 +349,7 @@ void wfmain::openRig()
     //TODO: if(hasRunPreviously)
 
     //TODO: if(useNetwork){...
-    
+
     // } else {
 
     // if (prefs.fileWasNotFound) {
@@ -952,7 +952,7 @@ void wfmain::receivePortError(errorType err)
         connectionHandler(false); // Force disconnect
         QMessageBox::critical(this, err.device, err.message, QMessageBox::Ok);
     }
-    else 
+    else
     {
         qInfo(logSystem()) << "wfmain: received error for device: " << err.device << " with message: " << err.message;
         ui->statusBar->showMessage(QString("ERROR: using device ").append(err.device).append(": ").append(err.message), 10000);
@@ -962,7 +962,7 @@ void wfmain::receivePortError(errorType err)
 
 void wfmain::receiveStatusUpdate(networkStatus status)
 {
-    
+
     //this->rigStatus->setText(QString("%0/%1 %2").arg(mainElapsed).arg(subElapsed).arg(status.message));
     this->rigStatus->setText(status.message);
     selRad->audioOutputLevel(status.rxAudioLevel);
@@ -1209,7 +1209,7 @@ void wfmain::setInitialTiming()
 
 void wfmain::setServerToPrefs()
 {
-	
+
     // Start server if enabled in config
     //ui->serverSetupGroup->setEnabled(serverConfig.enabled);
     if (serverThread != Q_NULLPTR) {
@@ -1555,7 +1555,7 @@ void wfmain::setupUsbControllerDevice()
     connect(usbControllerDev, SIGNAL(setConnected(USBDEVICE*)), usbWindow, SLOT(setConnected(USBDEVICE*)));
     connect(usbControllerDev, SIGNAL(newDevice(USBDEVICE*)), usbWindow, SLOT(newDevice(USBDEVICE*)));
     usbControllerThread->start(QThread::LowestPriority);
-    
+
     connect(usbWindow, SIGNAL(sendRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)), usbControllerDev, SLOT(sendRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)));
     connect(this, SIGNAL(sendControllerRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)), usbControllerDev, SLOT(sendRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)));
     connect(usbWindow, SIGNAL(programPages(USBDEVICE*,int)), usbControllerDev, SLOT(programPages(USBDEVICE*,int)));
@@ -2170,7 +2170,7 @@ void wfmain::loadSettings()
     settings->endGroup();
 
     settings->beginGroup("Cluster");
-    
+
     prefs.clusterUdpEnable = settings->value("UdpEnabled", false).toBool();
     prefs.clusterTcpEnable = settings->value("TcpEnabled", false).toBool();
     prefs.clusterUdpPort = settings->value("UdpPort", 12060).toInt();
@@ -2719,7 +2719,7 @@ void wfmain::extChangedRsPref(prefRsItem i)
         break;
     case rs_setClock:
         setRadioTimeDatePrep();
-	break;
+    break;
     case rs_pttOn:
         if(!prefs.enablePTT)
         {
@@ -3778,7 +3778,7 @@ void wfmain:: getInitialRigState()
     queue->add(priorityImmediate,(rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),false,true);
 
     // From left to right in the UI:
-    if (rigCaps.hasTransmit) 
+    if (rigCaps.hasTransmit)
     {
         queue->add(priorityImmediate,funcDataModeWithFilter);
         queue->add(priorityImmediate,(rigCaps.commands.contains(funcDATAOffMod)?funcDATAOffMod:funcNone),false);
@@ -4238,7 +4238,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         } else {
             calculateTimingParameters();
         }
-        
+
         // Set the second meter here as I suspect we need to be connected for it to work?
         changeMeter2Type(prefs.meter2Type);
 //        for (int i = 0; i < ui->meter2selectionCombo->count(); i++)
@@ -5453,7 +5453,7 @@ void wfmain::enableRigCtl(bool enabled)
             // We are already connected to a rig.
             emit sendRigCaps(rigCaps);
         }
-    }    
+    }
 }
 
 void wfmain::radioSelection(QList<radio_cap_packet> radios)
@@ -5662,7 +5662,7 @@ void wfmain::changePollTiming(int timing_ms, bool setUI)
     (void)setUI;
 }
 
-void wfmain::connectionHandler(bool connect) 
+void wfmain::connectionHandler(bool connect)
 {
     queue->clear();
     emit sendCloseComm();
@@ -5818,7 +5818,7 @@ void wfmain::receiveValue(cacheItem val){
         ui->dualWatchBtn->setChecked(val.value.value<bool>());
         break;
     case funcModeGet:
-    case funcModeTR:        
+    case funcModeTR:
     case funcSelectedMode:
         ui->mainScope->receiveMode(val.value.value<modeInfo>());
         break;
