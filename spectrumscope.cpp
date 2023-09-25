@@ -65,12 +65,6 @@ spectrumScope::spectrumScope(QWidget *parent)
     edgeButton->setVisible(false);
     toFixedButton->setVisible(false);
 
-    dummySlider = new QSlider();
-    tickInterval = dummySlider->tickInterval();
-    pageStep = dummySlider->pageStep();
-    qInfo() << "------ EHL INFO: ------ tickInterval: " << tickInterval << ", pageStep: " << pageStep;
-    qInfo() << "singleStep: " << dummySlider->singleStep();
-
     spectrum = new QCustomPlot();
     waterfall = new QCustomPlot();
 
@@ -1234,13 +1228,42 @@ void spectrumScope::waterfallClick(QMouseEvent *me)
 void spectrumScope::scroll(QWheelEvent *we)
 {
     // angleDelta is supposed to be eights of a degree of mouse wheel rotation
-    int clicks = we->angleDelta().y() / scrollYperClick;
+    int deltaY = we->angleDelta().y();
+    int deltaX = we->angleDelta().x();
+    int delta = (deltaX==0)?deltaY:deltaX;
+
+    qreal offset = qreal(delta) / qreal((deltaX==0)?scrollYperClick:scrollXperClick);
+    //qreal offset = qreal(delta) / 120;
+
+    qreal stepsToScroll = QApplication::wheelScrollLines() * offset;
+
+    // Did we change direction?
+    if( (scrollWheelOffsetAccumulated > 0) && (offset > 0) ) {
+        scrollWheelOffsetAccumulated += stepsToScroll;
+    } else if ((scrollWheelOffsetAccumulated < 0) && (offset < 0)) {
+        scrollWheelOffsetAccumulated += stepsToScroll;
+    } else {
+        // Changed direction, zap the old accumulation:
+        scrollWheelOffsetAccumulated = stepsToScroll;
+        //qInfo() << "Scroll changed direction";
+    }
+
+    int clicks = int(scrollWheelOffsetAccumulated);
 
     if (!clicks) {
-        qInfo() << "Rejecting minor scroll motion, too small. Clicks: " << clicks << ", angleDelta: " << we->angleDelta().y();
-        qInfo() << "ScrollY per click: " << scrollYperClick;
+//        qInfo() << "Rejecting minor scroll motion, too small. Wheel Clicks: " << clicks << ", angleDelta: " << delta;
+//        qInfo() << "Accumulator value: " << offsetAccumulated;
+//        qInfo() << "stepsToScroll: " << stepsToScroll;
+//        qInfo() << "Storing scroll motion for later use.";
         return;
+    } else {
+//        qInfo() << "Accepted scroll motion. Wheel Clicks: " << clicks << ", angleDelta: " << delta;
+//        qInfo() << "Accumulator value: " << offsetAccumulated;
+//        qInfo() << "stepsToScroll: " << stepsToScroll;
     }
+
+    // If we made it this far, it's time to scroll and to ultimately
+    // clear the scroll accumulator.
 
     unsigned int stepsHz = stepSize;
 
@@ -1261,8 +1284,8 @@ void spectrumScope::scroll(QWheelEvent *we)
     freq = f; // Do we need to do this?
 
     queue->add(priorityImmediate,queueItem((sub?funcUnselectedFreq:funcSelectedFreq),QVariant::fromValue<freqt>(f),false,sub));
-    //ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
-    qInfo() << "Moving to freq:" << f.Hz << "step" << stepsHz;
+    //qInfo() << "Moving to freq:" << f.Hz << "step" << stepsHz;
+    scrollWheelOffsetAccumulated = 0;
 }
 
 

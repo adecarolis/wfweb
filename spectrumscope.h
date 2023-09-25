@@ -179,8 +179,10 @@ private:
     QSlider* configFilterWidth;
 
 
-    qreal tickInterval;
-    qreal pageStep;
+    // These parameters relate to scroll wheel response:
+    int scrollYperClick = 24;
+    int scrollXperClick = 24;
+    float scrollWheelOffsetAccumulated=0;
 
     QCheckBox* rxCheckBox;
 
@@ -226,8 +228,6 @@ private:
     double oldPlotCeiling = 999;
     double mousePressFreq = 0.0;
     double mouseReleaseFreq = 0.0;
-    int scrollYperClick = 24;
-    int scrollXperClick = 24;
 
     passbandActions passbandAction = passbandStatic;
 

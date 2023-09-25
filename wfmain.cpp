@@ -1802,8 +1802,8 @@ void wfmain::setDefPrefs()
     defPrefs.wftheme = static_cast<int>(QCPColorGradient::gpJet);
     defPrefs.plotFloor = 0;
     defPrefs.plotCeiling = 160;
-    defPrefs.scopeScrollX = 16;
-    defPrefs.scopeScrollY = 16;
+    defPrefs.scopeScrollX = 120;
+    defPrefs.scopeScrollY = 120;
     defPrefs.confirmExit = true;
     defPrefs.confirmPowerOff = true;
     defPrefs.meter2Type = meterNone;
