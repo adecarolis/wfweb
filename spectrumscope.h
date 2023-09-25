@@ -186,8 +186,7 @@ private:
 
     QCheckBox* rxCheckBox;
 
-    QPushButton* configButton;
-
+    QPushButton* confButton;
     QSpacerItem* controlSpacer;
     QSpacerItem* midSpacer;
     QCPColorGradient::GradientPreset currentTheme = QCPColorGradient::gpSpectrum;

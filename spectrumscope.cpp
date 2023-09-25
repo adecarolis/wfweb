@@ -50,11 +50,11 @@ spectrumScope::spectrumScope(QWidget *parent)
 
     clearPeaksButton = new QPushButton("Clear Peaks");
 
-    configButton = new QPushButton(">");
-    configButton->setAccessibleName("Configure Scope");
-    configButton->setAccessibleDescription("Change various settings of the current Scope");
-    configButton->setToolTip("Configure Scope");
-    configButton->setFocusPolicy(Qt::NoFocus);
+    confButton = new QPushButton("<");
+    confButton->setAccessibleName("Configure Scope");
+    confButton->setAccessibleDescription("Change various settings of the current Scope");
+    confButton->setToolTip("Configure Scope");
+    confButton->setFocusPolicy(Qt::NoFocus);
 
     modeCombo = new QComboBox();
     dataCombo = new QComboBox();
@@ -89,7 +89,7 @@ spectrumScope::spectrumScope(QWidget *parent)
     controlLayout->addWidget(filterCombo);
     controlLayout->addSpacerItem(midSpacer);
     controlLayout->addWidget(clearPeaksButton);
-    controlLayout->addWidget(configButton);
+    controlLayout->addWidget(confButton);
 
     this->layout->setContentsMargins(5,5,5,5);
 
@@ -317,7 +317,7 @@ spectrumScope::spectrumScope(QWidget *parent)
 
     connect(scopeModeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedScopeMode(int)));
     connect(spanCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedSpan(int)));
-    connect(configButton,SIGNAL(pressed()), this, SLOT(configPressed()));
+    connect(confButton,SIGNAL(pressed()), this, SLOT(configPressed()),Qt::QueuedConnection);
 
     connect(toFixedButton,SIGNAL(pressed()), this, SLOT(toFixedPressed()));
     connect(edgeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedEdge(int)));
@@ -831,7 +831,6 @@ void spectrumScope::enableScope(bool en)
     }
     this->clearPeaksButton->setVisible(en);
     this->holdButton->setVisible(en);
-    this->configButton->setVisible(en);
 }
 
 void spectrumScope::selectScopeMode(spectrumMode_t m)
@@ -1551,12 +1550,13 @@ void spectrumScope::receiveSpots(QList<spotData> spots)
 
 void spectrumScope::configPressed()
 {
-    configGroup->setVisible(!configGroup->isVisible());
-    if (configGroup->isVisible())
-        configButton->setText("<");
-    else
-        configButton->setText(">");
-    configButton->setVisible(true);
+    this->configGroup->setVisible(!this->configGroup->isVisible());
+    QTimer::singleShot(200, this, [this]() {
+        if (this->configGroup->isVisible())
+            this->confButton->setText(">");
+        else
+            this->confButton->setText("<");
+    });
 }
 
 
