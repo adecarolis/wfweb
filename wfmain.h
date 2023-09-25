@@ -376,7 +376,6 @@ private slots:
     void receiveFreq(freqt);
 
     void receivePTTstatus(bool pttOn);
-    void handleBandStackReg(freqt f, char mode, char filter, bool dataOn); // freq, mode, (filter,) datamode
     void receiveRITStatus(bool ritEnabled);
     void receiveRITValue(int ritValHz);
     void receiveModInput(rigInput input, unsigned char data);

@@ -250,7 +250,7 @@ void tciServer::receiveTCIAudio(audioPacket audio){
     pStream->codec = 0u;
     pStream->type = RxAudioStream;
     pStream->crc = 0u;
-    pStream->length = audio.data.size() / sizeof (float);
+    pStream->length = quint32(audio.data.size() / sizeof (float));
 
     memcpy(pStream->data,audio.data.data(),audio.data.size());
 

@@ -1,5 +1,4 @@
 #include "spectrumscope.h"
-
 #include "logcategories.h"
 #include "rigidentities.h"
 
@@ -11,21 +10,18 @@ spectrumScope::spectrumScope(QWidget *parent)
 
     this->setObjectName("Spectrum Scope");
     this->setTitle("Band");
+    this->defaultStyleSheet = this->styleSheet();
+
     queue = cachingQueue::getInstance();
     spectrum = new QCustomPlot();
     mainLayout = new QHBoxLayout(this);
-    layout = new QVBoxLayout(this);
+    layout = new QVBoxLayout();
     mainLayout->addLayout(layout);
     splitter = new QSplitter(this);
     layout->addWidget(splitter);
     splitter->setOrientation(Qt::Vertical);
 
-    configGroup = new QGroupBox(this);
-    configLayout = new QFormLayout(this);
-    configGroup->setLayout(configLayout);
-    mainLayout->addWidget(configGroup);
-
-    controlLayout = new QHBoxLayout();
+    controlLayout = new QHBoxLayout();    
     enableCheckBox = new QCheckBox("Enable");
     enableCheckBox->setTristate(true);
     enableCheckBox->setToolTip("Checked=WF enable, Unchecked=WF disable, Partial=Enable WF but no local display");
@@ -51,13 +47,14 @@ spectrumScope::spectrumScope(QWidget *parent)
 
     controlSpacer = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
     midSpacer = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
+
     clearPeaksButton = new QPushButton("Clear Peaks");
 
-    configButton = new QPushButton("Conf");
+    configButton = new QPushButton(">");
     configButton->setAccessibleName("Configure Scope");
     configButton->setAccessibleDescription("Change various settings of the current Scope");
     configButton->setToolTip("Configure Scope");
-
+    configButton->setFocusPolicy(Qt::NoFocus);
 
     modeCombo = new QComboBox();
     dataCombo = new QComboBox();
@@ -180,8 +177,22 @@ spectrumScope::spectrumScope(QWidget *parent)
 #endif
 
     // Config Screen
+    rhsLayout = new QVBoxLayout();
+
+    rhsTopSpacer = new QSpacerItem(0,0,QSizePolicy::Fixed,QSizePolicy::Expanding);
+    rhsLayout->addSpacerItem(rhsTopSpacer);
+
+    configGroup = new QGroupBox();
+    rhsLayout->addWidget(configGroup);
+    configLayout = new QFormLayout();
+    configGroup->setLayout(configLayout);
+    mainLayout->addLayout(rhsLayout);
+
+    rhsBottomSpacer = new QSpacerItem(0,0,QSizePolicy::Fixed,QSizePolicy::Expanding);
+    rhsLayout->addSpacerItem(rhsBottomSpacer);
+
     QFont font = configGroup->font();
-    configGroup->setStyleSheet(QString("*{padding: 0px 0px 0px 0px; margin: 0px 0px 0px 0px;}*{font-size: %0px;}").arg(font.pointSize()-1));
+    configGroup->setStyleSheet(QString("QGroupBox{border:1px solid gray;} *{padding: 0px 0px 0px 0px; margin: 0px 0px 0px 0px; font-size: %0px;}").arg(font.pointSize()-1));
     configGroup->setMaximumWidth(240);
     configRef = new QSlider(Qt::Orientation::Horizontal);
     configRef->setRange(-200,200);
@@ -1400,9 +1411,10 @@ void spectrumScope::receivePassband(quint16 pass)
 void spectrumScope::selected(bool en)
 {
     if (en)
-        this->setStyleSheet("QGroupBox { border:2px solid red;}");
+        this->setStyleSheet("QGroupBox { border:1px solid red;}");
     else
-        this->setStyleSheet("QGroupBox { border:2px solid gray;}");
+        this->setStyleSheet(defaultStyleSheet);
+    //this->setStyleSheet("QGroupBox { border:2px solid gray;}");
 }
 
 void spectrumScope::holdPressed(bool en)
@@ -1420,6 +1432,7 @@ void spectrumScope::setHold(bool h)
 void spectrumScope::setSpeed(uchar s)
 {
     this->currentSpeed = s;
+    configSpeed->setCurrentIndex(configSpeed->findData(currentSpeed));
 }
 
 
@@ -1516,6 +1529,11 @@ void spectrumScope::receiveSpots(QList<spotData> spots)
 void spectrumScope::configPressed()
 {
     configGroup->setVisible(!configGroup->isVisible());
+    if (configGroup->isVisible())
+        configButton->setText("<");
+    else
+        configButton->setText(">");
+    configButton->setVisible(true);
 }
 
 
@@ -1523,4 +1541,25 @@ void spectrumScope::wfTheme(int num)
 {
     currentTheme = QCPColorGradient::GradientPreset(num);
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(num));
+    configTheme->setCurrentIndex(configTheme->findData(currentTheme));
 }
+
+void spectrumScope::setPBTInner (double hz) {
+    PBTInner = hz;
+    double pbFreq = ((double)(this->PBTInner) / this->passbandWidth) * 127.0;
+    qint16 newFreq = pbFreq + 128;
+    if (newFreq >= 0 && newFreq <= 255) {
+        configPbtInner->setValue(newFreq);
+    }
+}
+
+void spectrumScope::setPBTOuter (double hz) {
+    PBTOuter = hz;
+    double pbFreq = ((double)(this->PBTOuter) / this->passbandWidth) * 127.0;
+    qint16 newFreq = pbFreq + 128;
+    if (newFreq >= 0 && newFreq <= 255) {
+        configPbtOuter->setValue(newFreq);
+    }
+}
+
+

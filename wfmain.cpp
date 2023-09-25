@@ -4469,11 +4469,6 @@ void wfmain::on_freqDial_valueChanged(int value)
     }
 }
 
-void wfmain::handleBandStackReg(freqt freqGo, char mode, char filter, bool dataOn)
-{
-    // Deprecated
-}
-
 void wfmain::setBand(int band)
 {
     queue->add(priorityImmediate,queueItem(funcBandStackReg,QVariant::fromValue<uchar>(band),false));

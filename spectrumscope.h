@@ -48,7 +48,7 @@ public:
     double getCenterFreq () { return passbandCenterFrequency;}
 
     void setPassbandWidth(double hz) { passbandWidth = hz;}
-    double getPassbandWidth() { return passbandWidth;}
+    double getPassbandWidth() { configFilterWidth->setValue(passbandWidth*1E6); return passbandWidth;}
 
     void setIdentity(QString name, bool s) {this->setTitle(name), sub = s;}
     bool getSub() { return sub;}
@@ -64,16 +64,16 @@ public:
     void receivePassband(quint16 pass);
 
     double getPBTInner () { return PBTInner;}
-    void setPBTInner (double hz) { PBTInner = hz;}
+    void setPBTInner (double hz);
 
     double getPBTOuter () { return PBTOuter;}
-    void setPBTOuter (double hz) { PBTOuter = hz;}
+    void setPBTOuter (double hz);
 
     quint16 getStepSize () { return stepSize;}
     void setStepSize (quint16 hz) { stepSize = hz;}
 
-    void setFrequency (freqt f) { freq = f;}
     freqt getFrequency () { return freq;}
+    void setFrequency (freqt f) { freq = f;}
 
     void receiveMode (modeInfo m);
 
@@ -132,6 +132,8 @@ private:
     quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
     quint64 roundFrequency(quint64 frequency, int steps, unsigned int tsHz);
 
+    QString defaultStyleSheet;
+
     QMutex mutex;
     QCustomPlot* spectrum = Q_NULLPTR;
     QCustomPlot* waterfall = Q_NULLPTR;
@@ -139,6 +141,7 @@ private:
     QSplitter* splitter;
     QHBoxLayout* mainLayout;
     QVBoxLayout* layout;
+    QVBoxLayout* rhsLayout;
     QHBoxLayout* controlLayout;
     QCheckBox* enableCheckBox;
     QLabel* scopeModeLabel;
@@ -159,6 +162,9 @@ private:
     QSlider* dummySlider;
 
     // Config screen
+
+    QSpacerItem* rhsTopSpacer;
+    QSpacerItem* rhsBottomSpacer;
     QGroupBox* configGroup;
     QFormLayout* configLayout;
     QSlider* configRef;
