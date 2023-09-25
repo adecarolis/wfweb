@@ -17,11 +17,6 @@ QWidget {
     outline: 0;
 }
 
-QWidget:item:hover {
-    background-color: #18465d;
-    color: #eff0f1;
-}
-
 QWidget:item:selected {
     background-color: #18465d;
 }
