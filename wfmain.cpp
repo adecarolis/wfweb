@@ -392,68 +392,7 @@ void wfmain::rigConnections()
 
     connect(ui->frequency, SIGNAL(newFrequency(qint64)), this, SLOT(newFrequency(qint64)));
 
-    //connect(rig, SIGNAL(haveFrequency(freqt)), this, SLOT(receiveFreq(freqt)));
-    //connect(this, SIGNAL(getFrequency()), rig, SLOT(getFrequency()));
-    //connect(this, SIGNAL(getFrequency(unsigned char)), rig, SLOT(getFrequency(unsigned char)));
-    //connect(this, SIGNAL(getMode()), rig, SLOT(getMode()));
-    //connect(this, SIGNAL(getDataMode()), rig, SLOT(getDataMode()));
-    //connect(this, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
-    //connect(this, SIGNAL(getBandStackReg(char,char)), rig, SLOT(getBandStackReg(char,char)));
-    //connect(rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
-    //connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
-    //connect(this, SIGNAL(getPTT()), rig, SLOT(getPTT()));
-    //connect(rig, SIGNAL(haveTuningStep(unsigned char)), this, SLOT(receiveTuningStep(unsigned char)));
-    //connect(this, SIGNAL(setTuningStep(unsigned char)), rig, SLOT(setTuningStep(unsigned char)));
-    //connect(this, SIGNAL(getTuningStep()), rig, SLOT(getTuningStep()));
-
-    //connect(this, SIGNAL(getVox()), rig, SLOT(getVox()));
-    //connect(this, SIGNAL(getMonitor()), rig, SLOT(getMonitor()));
-    //connect(this, SIGNAL(getCompressor()), rig, SLOT(getCompressor()));
-    //connect(this, SIGNAL(getNB()), rig, SLOT(getNB()));
-    //connect(this, SIGNAL(getNR()), rig, SLOT(getNR()));
-
-    //connect(this, SIGNAL(selectVFO(vfo_t)), rig, SLOT(selectVFO(vfo_t)));
-    //connect(this, SIGNAL(sendVFOSwap()), rig, SLOT(exchangeVFOs()));
-    //connect(this, SIGNAL(sendVFOEqualAB()), rig, SLOT(equalizeVFOsAB()));
-    //connect(this, SIGNAL(sendVFOEqualMS()), rig, SLOT(equalizeVFOsMS()));
-
-    //connect(this, SIGNAL(sendCW(QString)), rig, SLOT(sendCW(QString)));
-    //connect(this, SIGNAL(stopCW()), rig, SLOT(sendStopCW()));
-    //connect(this, SIGNAL(setKeySpeed(unsigned char)), rig, SLOT(setKeySpeed(unsigned char)));
-    //connect(this, SIGNAL(getKeySpeed()), rig, SLOT(getKeySpeed()));
-    //connect(this, SIGNAL(setCwPitch(unsigned char)), rig, SLOT(setCwPitch(unsigned char)));
-    //connect(this, SIGNAL(setDashRatio(unsigned char)), rig, SLOT(setDashRatio(unsigned char)));
-    //connect(this, SIGNAL(setCWBreakMode(unsigned char)), rig, SLOT(setBreakIn(unsigned char)));
-    //connect(this, SIGNAL(getCWBreakMode()), rig, SLOT(getBreakIn()));
-
-
-    //connect(rig, SIGNAL(haveBandStackReg(freqt,char,char,bool)), this, SLOT(receiveBandStackReg(freqt,char,char,bool)));
-    //connect(this, SIGNAL(setRitEnable(bool)), rig, SLOT(setRitEnable(bool)));
-    //connect(this, SIGNAL(setRitValue(int)), rig, SLOT(setRitValue(int)));
-    //connect(rig, SIGNAL(haveRitEnabled(bool)), this, SLOT(receiveRITStatus(bool)));
-    //connect(rig, SIGNAL(haveRitFrequency(int)), this, SLOT(receiveRITValue(int)));
-    //connect(this, SIGNAL(getRitEnabled()), rig, SLOT(getRitEnabled()));
-    //connect(this, SIGNAL(getRitValue()), rig, SLOT(getRitValue()));
-
     connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
-
-    //connect(this, SIGNAL(spectOutputDisable()), rig, SLOT(disableSpectOutput()));
-    //connect(this, SIGNAL(spectOutputEnable()), rig, SLOT(enableSpectOutput()));
-    //connect(this, SIGNAL(scopeDisplayDisable()), rig, SLOT(disableSpectrumDisplay()));
-    //connect(this, SIGNAL(scopeDisplayEnable()), rig, SLOT(enableSpectrumDisplay()));
-    //connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
-    //connect(rig, SIGNAL(havePassband(quint16)), this, SLOT(receivePassband(quint16)));
-    //connect(rig, SIGNAL(haveCwPitch(unsigned char)), this, SLOT(receiveCwPitch(unsigned char)));
-    //connect(rig, SIGNAL(haveMonitorGain(unsigned char)), this, SLOT(receiveMonitorGain(unsigned char)));
-    //connect(rig, SIGNAL(haveVoxGain(unsigned char)), this, SLOT(receiveVoxGain(unsigned char)));
-    //connect(rig, SIGNAL(haveAntiVoxGain(unsigned char)), this, SLOT(receiveAntiVoxGain(unsigned char)));
-    //connect(rig, SIGNAL(haveNBLevel(unsigned char)), this, SLOT(receiveNBLevel(unsigned char)));
-    //connect(rig, SIGNAL(haveNRLevel(unsigned char)), this, SLOT(receiveNRLevel(unsigned char)));
-    //connect(rig, SIGNAL(haveNB(bool)), this, SLOT(receiveNB(bool)));
-    //connect(rig, SIGNAL(haveNR(bool)), this, SLOT(receiveNR(bool)));
-    //connect(rig, SIGNAL(haveComp(bool)), this, SLOT(receiveComp(bool)));
-    //connect(rig, SIGNAL(haveVox(bool)), this, SLOT(receiveVox(bool)));
-    //connect(rig, SIGNAL(haveMonitor(bool)), this, SLOT(receiveMonitor(bool)));
 
     // Repeater, duplex, and split:
     //connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
@@ -542,212 +481,6 @@ void wfmain::rigConnections()
     connect(this->rpt, &repeaterSetup::getRptDuplexOffset, this->rig,
             [=]() {  queue->add(priorityImmediate,funcReadFreqOffset);});
 
-
-    /*
-    connect(this, SIGNAL(setRptDuplexOffset(freqt)), rig, SLOT(setRptDuplexOffset(freqt)));
-    connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
-
-    // Band buttons:
-    connect(rig, &rigCommander::haveRigID,
-            [=](const rigCapabilities &rigid) {
-            bandbtns->acceptRigCaps(rigid);
-            qDebug() << "Rig caps going to band buttons";
-    });
-
-    if(haveRigCaps)
-    {
-        qDebug(logGui()) << "Already had rigCaps, sending to band buttons...";
-        bandbtns->acceptRigCaps(rigCaps);
-    }
-
-    connect(rig, SIGNAL(haveBandStackReg(freqt,char,char,bool)), bandbtns, SLOT(receiveBandStackReg(freqt,char,char,bool)));
-    connect(this->bandbtns, &bandbuttons::issueCmdF,
-            [=](const cmds cmd, freqt f) {
-        issueCmd(cmd, f);
-    });
-    connect(bandbtns, &bandbuttons::issueCmdUniquePriority,
-            [=](const cmds cmd, char c) {
-       issueCmdUniquePriority(cmd, c);
-    });
-    connect(bandbtns, &bandbuttons::issueCmd,
-            [=](cmds cmd, char c) {
-       issueCmd(cmd, c);
-    });
-    connect(bandbtns, &bandbuttons::issueDelayedCommand,
-            [=](cmds cmd) {
-       issueDelayedCommand(cmd);
-    });
-
-    // Frequency Buttons:
-    connect(finputbtns, &frequencyinputwidget::issueCmdF,
-            [=](cmds cmd, freqt f) {
-        issueCmd(cmd, f);
-    });
-    connect(finputbtns, &frequencyinputwidget::issueCmdM,
-            [=](cmds cmd, modeInfo m) {
-        issueCmd(cmd, m);
-    });
-    connect(finputbtns, &frequencyinputwidget::updateUIMode,
-            [=](rigMode_t m) {
-        // set the mode combo box, quietly, to the mode indicated.
-        ui->modeSelectCombo->blockSignals(true);
-        ui->modeSelectCombo->setCurrentIndex(ui->modeSelectCombo->findData(m));
-        ui->modeSelectCombo->blockSignals(false);
-    });
-    connect(finputbtns, &frequencyinputwidget::updateUIFrequency,
-            [=](freqt f) {
-        // f has both parts populated
-        ui->mainScope->setFrequency(f);
-        setUIFreq(); // requires f.MHzDouble
-    });
-    connect(finputbtns, &frequencyinputwidget::gotoMemoryPreset,
-            [=](int presetNumber) {
-        gotoMemoryPreset(presetNumber);
-    });
-    connect(finputbtns, &frequencyinputwidget::saveMemoryPreset,
-            [=](int presetNumber) {
-        saveMemoryPreset(presetNumber);
-    });
-
-    // Passband, CW Pitch, Tone, TSQL...
-    connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
-    connect(this, SIGNAL(setPassband(quint16)), rig, SLOT(setPassband(quint16)));
-    connect(this, SIGNAL(getCwPitch()), rig, SLOT(getCwPitch()));
-    connect(this, SIGNAL(getPskTone()), rig, SLOT(getPskTone()));
-    connect(this, SIGNAL(getRttyMark()), rig, SLOT(getRttyMark()));
-    connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
-    connect(this, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
-    connect(this, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
-
-    connect(this, SIGNAL(getModInput(bool)), rig, SLOT(getModInput(bool)));
-    connect(rig, SIGNAL(haveModInput(inputTypes,bool)), this, SLOT(receiveModInput(inputTypes, bool)));
-    connect(this, SIGNAL(setModInput(inputTypes, bool)), rig, SLOT(setModInput(inputTypes,bool)));
-
-    connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
-    connect(rig, SIGNAL(havespectrumMode_t(spectrumMode_t)), this, SLOT(receivespectrumMode_t(spectrumMode_t)));
-    connect(this, SIGNAL(setScopeMode(spectrumMode_t)), rig, SLOT(setspectrumMode_t(spectrumMode_t)));
-    connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
-
-    connect(this, SIGNAL(setFrequency(unsigned char, freqt)), rig, SLOT(setFrequency(unsigned char, freqt)));
-    connect(this, SIGNAL(setScopeEdge(char)), rig, SLOT(setScopeEdge(char)));
-    connect(this, SIGNAL(setScopeSpan(char)), rig, SLOT(setScopeSpan(char)));
-    connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
-    connect(this, SIGNAL(getScopeEdge()), rig, SLOT(getScopeEdge()));
-    connect(this, SIGNAL(getScopeSpan()), rig, SLOT(getScopeSpan()));
-    connect(rig, SIGNAL(haveScopeSpan(freqt,bool)), this, SLOT(receiveSpectrumSpan(freqt,bool)));
-    connect(this, SIGNAL(setScopeFixedEdge(double,double,unsigned char)), rig, SLOT(setSpectrumBounds(double,double,unsigned char)));
-
-    connect(this, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
-    connect(this, SIGNAL(setMode(modeInfo)), rig, SLOT(setMode(modeInfo)));
-
-    connect(this, SIGNAL(setVox(bool)), rig, SLOT(setVox(bool)));
-    connect(this, SIGNAL(setMonitor(bool)), rig, SLOT(setMonitor(bool)));
-    connect(this, SIGNAL(setCompressor(bool)), rig, SLOT(setCompressor(bool)));
-    connect(this, SIGNAL(setNB(bool)), rig, SLOT(setNB(bool)));
-    connect(this, SIGNAL(setNR(bool)), rig, SLOT(setNR(bool)));
-
-    connect(this, SIGNAL(setPassband(quint16)), rig, SLOT(setPassband(quint16)));
-
-    // Levels (read and write)
-    // Levels: Query:
-    connect(this, SIGNAL(getLevels()), rig, SLOT(getLevels()));
-    connect(this, SIGNAL(getRfGain()), rig, SLOT(getRfGain()));
-    connect(this, SIGNAL(getAfGain()), rig, SLOT(getAfGain()));
-    connect(this, SIGNAL(getSql()), rig, SLOT(getSql()));
-    connect(this, SIGNAL(getIfShift()), rig, SLOT(getIFShift()));
-    connect(this, SIGNAL(getPBTInner()), rig, SLOT(getPBTInner()));
-    connect(this, SIGNAL(getPBTOuter()), rig, SLOT(getPBTOuter()));
-    connect(this, SIGNAL(getTxPower()), rig, SLOT(getTxLevel()));
-    connect(this, SIGNAL(getMicGain()), rig, SLOT(getMicGain()));
-    connect(this, SIGNAL(getSpectrumRefLevel()), rig, SLOT(getSpectrumRefLevel()));
-    connect(this, SIGNAL(getModInputLevel(inputTypes)), rig, SLOT(getModInputLevel(inputTypes)));
-    connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
-    connect(this, SIGNAL(getMonitorGain()), rig, SLOT(getMonitorGain()));
-    connect(this, SIGNAL(getVoxGain()), rig, SLOT(getVoxGain()));
-    connect(this, SIGNAL(getAntiVoxGain()), rig, SLOT(getAntiVoxGain()));
-    connect(this, SIGNAL(getNBLevel()), rig, SLOT(getNBLevel()));
-    connect(this, SIGNAL(getNRLevel()), rig, SLOT(getNRLevel()));
-    connect(this, SIGNAL(getCompLevel()), rig, SLOT(getCompLevel()));
-    connect(this, SIGNAL(getCwPitch()), rig, SLOT(getCwPitch()));
-    connect(this, SIGNAL(getDashRatio()), rig, SLOT(getDashRatio()));
-    connect(this, SIGNAL(getPskTone()), rig, SLOT(getPskTone()));
-    connect(this, SIGNAL(getRttyMark()), rig, SLOT(getRttyMark()));
-    connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
-    connect(this, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
-    connect(this, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
-
-    // Levels: Set:
-    connect(this, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
-    connect(this, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
-    connect(this, SIGNAL(setIFShift(unsigned char)), rig, SLOT(setIFShift(unsigned char)));
-    connect(this, SIGNAL(setPBTInner(unsigned char)), rig, SLOT(setPBTInner(unsigned char)));
-    connect(this, SIGNAL(setPBTOuter(unsigned char)), rig, SLOT(setPBTOuter(unsigned char)));
-    connect(this, SIGNAL(setTxPower(unsigned char)), rig, SLOT(setTxPower(unsigned char)));
-    connect(this, SIGNAL(setMicGain(unsigned char)), rig, SLOT(setMicGain(unsigned char)));
-    connect(this, SIGNAL(setMonitorGain(unsigned char)), rig, SLOT(setMonitorGafin(unsigned char)));
-    connect(this, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
-    connect(this, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
-    connect(this, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
-    connect(this, SIGNAL(setModLevel(inputTypes, unsigned char)), rig, SLOT(setModInputLevel(inputTypes, unsigned char)));
-    connect(this, SIGNAL(setNBLevel(unsigned char)), rig, SLOT(setNBLevel(unsigned char)));
-    connect(this, SIGNAL(setNBLevel(unsigned char)), rig, SLOT(setNBLevel(unsigned char)));
-
-    // Levels: handle return on query:
-    connect(rig, SIGNAL(haveRfGain(unsigned char)), this, SLOT(receiveRfGain(unsigned char)));
-    connect(rig, SIGNAL(haveAfGain(unsigned char)), this, SLOT(receiveAfGain(unsigned char)));
-    connect(rig, SIGNAL(haveSql(unsigned char)), this, SLOT(receiveSql(unsigned char)));
-    connect(rig, SIGNAL(haveIFShift(unsigned char)), trxadj, SLOT(updateIFShift(unsigned char)));
-    connect(rig, SIGNAL(havePBTInner(unsigned char)), trxadj, SLOT(updatePBTInner(unsigned char)));
-    connect(rig, SIGNAL(havePBTOuter(unsigned char)), trxadj, SLOT(updatePBTOuter(unsigned char)));
-    connect(rig, SIGNAL(havePBTInner(unsigned char)), this, SLOT(receivePBTInner(unsigned char)));
-    connect(rig, SIGNAL(havePBTOuter(unsigned char)), this, SLOT(receivePBTOuter(unsigned char)));
-    connect(rig, SIGNAL(haveTxPower(unsigned char)), this, SLOT(receiveTxPower(unsigned char)));
-    connect(rig, SIGNAL(haveMicGain(unsigned char)), this, SLOT(receiveMicGain(unsigned char)));
-    connect(rig, SIGNAL(haveSpectrumRefLevel(int)), this, SLOT(receiveSpectrumRefLevel(int)));
-    connect(rig, SIGNAL(haveACCGain(unsigned char,unsigned char)), this, SLOT(receiveACCGain(unsigned char,unsigned char)));
-    connect(rig, SIGNAL(haveUSBGain(unsigned char)), this, SLOT(receiveUSBGain(unsigned char)));
-    connect(rig, SIGNAL(haveLANGain(unsigned char)), this, SLOT(receiveLANGain(unsigned char)));
-
-    //Metering:
-    connect(this, SIGNAL(getMeters(meter_t)), rig, SLOT(getMeters(meter_t)));
-    connect(rig, SIGNAL(haveMeter(meter_t,unsigned char)), this, SLOT(receiveMeter(meter_t,unsigned char)));
-
-    // Rig and ATU info:
-    connect(this, SIGNAL(startATU()), rig, SLOT(startATU()));
-    connect(this, SIGNAL(setATU(bool)), rig, SLOT(setATU(bool)));
-    connect(this, SIGNAL(getATUStatus()), rig, SLOT(getATUStatus()));
-    connect(this, SIGNAL(getRigID()), rig, SLOT(getRigID()));
-    connect(rig, SIGNAL(haveATUStatus(unsigned char)), this, SLOT(receiveATUStatus(unsigned char)));
-    connect(rig, SIGNAL(haveRigID(rigCapabilities)), this, SLOT(receiveRigID(rigCapabilities)));
-    connect(this, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
-    connect(this, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
-    connect(this, SIGNAL(setAntenna(unsigned char, bool)), rig, SLOT(setAntenna(unsigned char, bool)));
-    connect(this, SIGNAL(getPreamp()), rig, SLOT(getPreamp()));
-    connect(rig, SIGNAL(havePreamp(unsigned char)), this, SLOT(receivePreamp(unsigned char)));
-    connect(this, SIGNAL(getAttenuator()), rig, SLOT(getAttenuator()));
-    connect(rig, SIGNAL(haveAttenuator(unsigned char)), this, SLOT(receiveAttenuator(unsigned char)));
-    connect(this, SIGNAL(getAntenna()), rig, SLOT(getAntenna()));
-    connect(rig, SIGNAL(haveAntenna(unsigned char,bool)), this, SLOT(receiveAntennaSel(unsigned char,bool)));
-
-
-    // Speech (emitted from rig speaker)
-    connect(this, SIGNAL(sayAll()), rig, SLOT(sayAll()));
-    connect(this, SIGNAL(sayFrequency()), rig, SLOT(sayFrequency()));
-    connect(this, SIGNAL(sayMode()), rig, SLOT(sayMode()));
-
-    // calibration window:
-    connect(cal, SIGNAL(requestRefAdjustCourse()), rig, SLOT(getRefAdjustCourse()));
-    connect(cal, SIGNAL(requestRefAdjustFine()), rig, SLOT(getRefAdjustFine()));
-    connect(rig, SIGNAL(haveRefAdjustCourse(unsigned char)), cal, SLOT(handleRefAdjustCourse(unsigned char)));
-    connect(rig, SIGNAL(haveRefAdjustFine(unsigned char)), cal, SLOT(handleRefAdjustFine(unsigned char)));
-    connect(cal, SIGNAL(setRefAdjustCourse(unsigned char)), rig, SLOT(setRefAdjustCourse(unsigned char)));
-    connect(cal, SIGNAL(setRefAdjustFine(unsigned char)), rig, SLOT(setRefAdjustFine(unsigned char)));
-
-    // Date and Time:
-    connect(this, SIGNAL(setTime(timekind)), rig, SLOT(setTime(timekind)));
-    connect(this, SIGNAL(setDate(datekind)), rig, SLOT(setDate(datekind)));
-    connect(this, SIGNAL(setUTCOffset(timekind)), rig, SLOT(setUTCOffset(timekind)));
-    */
     connect(this, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
 
     connect(ui->mainScope, SIGNAL(updateSettings(bool,int,quint16,int,int)), this, SLOT(receiveScopeSettings(bool,int,quint16,int,int)));
@@ -756,11 +489,6 @@ void wfmain::rigConnections()
     connect(ui->mainScope, SIGNAL(elapsedTime(bool,qint64)), this, SLOT(receiveElapsed(bool,qint64)));
     connect(ui->subScope, SIGNAL(elapsedTime(bool,qint64)), this, SLOT(receiveElapsed(bool,qint64)));
 }
-
-//void wfmain::removeRigConnections()
-//{
-
-//}
 
 void wfmain::makeRig()
 {
@@ -1066,9 +794,6 @@ void wfmain::setupMainUI()
     f.Hz = 0;
     ui->mainScope->setIdentity("Main Band",false);
     ui->subScope->setIdentity("Sub Band",true);
-
-    ui->mainScope->setFrequency(f);
-    ui->subScope->setFrequency(f);
 
     connect(ui->mainScope,SIGNAL(showStatusBarText(QString)),this,SLOT(showStatusBarText(QString)));
     connect(ui->subScope,SIGNAL(showStatusBarText(QString)),this,SLOT(showStatusBarText(QString)));
@@ -1497,9 +1222,6 @@ void wfmain::setupKeyShortcuts()
         freqt f;
         f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, -1, tsKnobHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        ui->mainScope->setFrequency(f);
-        ui->subScope->setFrequency(f);
-        setUIFreq();
         queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f)));
     });
 
@@ -1513,11 +1235,6 @@ void wfmain::setupKeyShortcuts()
         freqt f;
         f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, 1, tsKnobHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        ui->frequency->setFrequency(f.Hz);
-        //ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
-        ui->mainScope->setFrequency(f);
-        ui->subScope->setFrequency(f);
-        setUIFreq();
         queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f)));
     });
 
@@ -1734,8 +1451,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
         }
         f.MHzDouble = f.Hz / (double)1E6;
         f.VFO=(selVFO_t)cmd->suffix;
-        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<freqt>(f),false,sub));
-
+        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<freqt>(f),sub));
         break;
     }
     default:
@@ -1768,10 +1484,7 @@ void wfmain::changeFrequency(int value) {
     freqt f;
     f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, value, tsWfScrollHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    ui->mainScope->setFrequency(f);
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
-    ui->frequency->setFrequency(f.Hz);
-    //ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 }
 
 void wfmain::setDefPrefs()
@@ -3570,9 +3283,6 @@ void wfmain::shortcutMinus()
     freqt f;
     f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, -1, tsPlusHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    ui->mainScope->setFrequency(f);
-    ui->subScope->setFrequency(f);
-    setUIFreq();
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
 
@@ -3583,9 +3293,6 @@ void wfmain::shortcutPlus()
     freqt f;
     f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, 1, tsPlusHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    ui->mainScope->setFrequency(f);
-    ui->subScope->setFrequency(f);
-    setUIFreq();
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
 
@@ -3595,9 +3302,7 @@ void wfmain::shortcutStepMinus()
 
     freqt f;
     f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, -1, ui->tuningStepCombo->currentData().toInt());
-
     f.MHzDouble = f.Hz / (double)1E6;
-    setUIFreq();
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 
 }
@@ -3610,7 +3315,6 @@ void wfmain::shortcutStepPlus()
     f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, 1, ui->tuningStepCombo->currentData().toInt());
 
     f.MHzDouble = f.Hz / (double)1E6;
-    setUIFreq();
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
 
@@ -3621,10 +3325,6 @@ void wfmain::shortcutShiftMinus()
     freqt f;
     f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, -1, tsPlusShiftHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    ui->mainScope->setFrequency(f);
-    ui->subScope->setFrequency(f);
-    setUIFreq();
-    //emit setFrequency(0,f);
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
 
@@ -3635,10 +3335,6 @@ void wfmain::shortcutShiftPlus()
     freqt f;
     f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, 1, tsPlusShiftHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    ui->mainScope->setFrequency(f);
-    ui->subScope->setFrequency(f);
-    setUIFreq();
-    //emit setFrequency(0,f);
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 
 }
@@ -3650,9 +3346,6 @@ void wfmain::shortcutControlMinus()
     freqt f;
     f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, -1, tsPlusControlHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    ui->mainScope->setFrequency(f);
-    ui->subScope->setFrequency(f);
-    setUIFreq();
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
 
@@ -3663,9 +3356,6 @@ void wfmain::shortcutControlPlus()
     freqt f;
     f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, 1, tsPlusControlHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    ui->mainScope->setFrequency(f);
-    ui->subScope->setFrequency(f);
-    setUIFreq();
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
 
@@ -3676,9 +3366,6 @@ void wfmain::shortcutPageUp()
     freqt f;
     f.Hz = ui->mainScope->getFrequency().Hz + tsPageHz;
     f.MHzDouble = f.Hz / (double)1E6;
-    ui->mainScope->setFrequency(f);
-    ui->subScope->setFrequency(f);
-    setUIFreq();
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
 
@@ -3689,9 +3376,6 @@ void wfmain::shortcutPageDown()
     freqt f;
     f.Hz = ui->mainScope->getFrequency().Hz - tsPageHz;
     f.MHzDouble = f.Hz / (double)1E6;
-    ui->mainScope->setFrequency(f);
-    ui->subScope->setFrequency(f);
-    setUIFreq();
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
 
@@ -3705,22 +3389,6 @@ void wfmain::shortcutM()
 {
     showStatusBarText("Sending speech command (mode) to radio.");
     emit sayMode();
-}
-
-void wfmain::setUIFreq(double frequency)
-{
-    ui->frequency->setFrequency(frequency*1000000.0);
-    //ui->freqLabel->setText(QString("%1").arg(frequency, 0, 'f'));
-}
-
-void wfmain::setUIFreq()
-{
-    // Call this function, without arguments, if you know that the
-    // freqMhz variable is already set correctly.
-    if (ui->mainScope->isVisible())
-        setUIFreq(ui->mainScope->getFrequency().MHzDouble);
-    else if (ui->subScope->isVisible())
-        setUIFreq(ui->subScope->getFrequency().MHzDouble);
 }
 
 funcs wfmain::getInputTypeCommand(inputTypes input)
@@ -4310,24 +3978,6 @@ void wfmain::initPeriodicCommands()
     queue->add(priorityHighest,queueItem(funcSMeter,true,false));
 }
 
-void wfmain::receiveFreq(freqt freqStruct)
-{
-
-    qint64 tnow_ms = QDateTime::currentMSecsSinceEpoch();
-    if(tnow_ms - lastFreqCmdTime_ms > delayedCommand->interval() * 2)
-    {
-        if (freqStruct.VFO == selVFO_t::activeVFO) {
-            ui->frequency->setFrequency(freqStruct.Hz);
-            //ui->freqLabel->setText(QString("%1").arg(freqStruct.MHzDouble, 0, 'f'));
-            rpt->handleUpdateCurrentMainFrequency(freqStruct);
-        }
-
-    } else {
-        qDebug(logSystem()) << "Rejecting stale frequency: " << freqStruct.Hz << " Hz, delta time ms = " << tnow_ms - lastFreqCmdTime_ms\
-                            << ", tnow_ms " << tnow_ms << ", last: " << lastFreqCmdTime_ms;
-    }
-}
-
 void wfmain::receivePTTstatus(bool pttOn)
 {
     emit sendLevel(funcTransceiverStatus,pttOn);
@@ -4459,10 +4109,7 @@ void wfmain::on_freqDial_valueChanged(int value)
     f.MHzDouble = f.Hz / (double)1E6;
     if (f.Hz > 0)
     {
-        ui->mainScope->setFrequency(f);
         oldFreqDialVal = value;
-        ui->frequency->setFrequency(f.Hz);
-        //ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
         queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
     } else {
         ui->freqDial->blockSignals(true);
@@ -4503,8 +4150,6 @@ void wfmain::gotoMemoryPreset(int presetNumber)
     memFreq.MHzDouble = memFreq.Hz / 1.0E6;
     ui->mainScope->setFrequency(memFreq);
     qDebug(logGui()) << "Recalling preset number " << presetNumber << " as frequency " << temp.frequency << "MHz";
-
-    setUIFreq();
 }
 
 void wfmain::saveMemoryPreset(int presetNumber)
@@ -5802,14 +5447,18 @@ void wfmain::receiveValue(cacheItem val){
     {
         freqt f = val.value.value<freqt>();
 
-        if (val.sub)
-            ui->subScope->setFrequency(f);
-        else
+        if (!val.sub)
+        {
+            ui->frequency->blockSignals(true);
+            ui->frequency->setFrequency(f.Hz);
+            ui->frequency->blockSignals(false);
             ui->mainScope->setFrequency(f);
-
-        if (f.VFO == activeVFO)
-                receiveFreq(f);
-        break;
+        } else {
+            ui->frequencyb->blockSignals(true);
+            ui->frequencyb->setFrequency(f.Hz);
+            ui->frequencyb->blockSignals(false);
+            ui->subScope->setFrequency(f);
+        }
     }
 #if defined __GNUC__
 #pragma GCC diagnostic pop
@@ -6047,8 +5696,6 @@ void wfmain::receiveValue(cacheItem val){
         qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << bsr.freq.Hz << ", mode: " << bsr.mode << ", filter: " << bsr.filter << ", data mode: " << bsr.data;
 
         queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(bsr.freq),false));
-
-        //ui->mainScope->setFrequency(bsr.freq);
 
         foreach (auto md, rigCaps.modes)
         {

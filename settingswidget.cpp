@@ -1130,7 +1130,6 @@ void settingswidget::populateServerUsers()
 void settingswidget::serverAddUserLine(int row, const QString &user, const QString &pass, const int &type)
 {
     // migration TODO: Review these signals/slots
-
     ui->serverUsersTable->blockSignals(true);
 
     ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 0, new QTableWidgetItem());

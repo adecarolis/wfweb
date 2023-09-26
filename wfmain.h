@@ -373,7 +373,6 @@ private slots:
     void doShuttle(bool up, unsigned char level);
 
     void receiveCommReady();
-    void receiveFreq(freqt);
 
     void receivePTTstatus(bool pttOn);
     void receiveRITStatus(bool ritEnabled);
@@ -696,9 +695,6 @@ private:
     quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
     quint64 roundFrequencyWithStep(quint64 oldFreq, int steps,\
                                    unsigned int tsHz);
-
-    void setUIFreq(double frequency);
-    void setUIFreq();
 
     void changeTxBtn();
     void changeSliderQuietly(QSlider *slider, int value);
