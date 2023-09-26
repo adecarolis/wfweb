@@ -5068,9 +5068,9 @@ void wfmain::receiveMonitor(bool en)
 {
     qInfo() << "Text color:" << colorPrefs->textColor.name();
     if (en)
-            ui->monitorLabel->setText(QString("<a href=\"#\" style=\"color:%0; text-decoration:none;\">Mon</a>").arg(colorPrefs->textColor.name()));
+            ui->monitorLabel->setText(QString("<b><a href=\"#\" style=\"color:%0; text-decoration:none;\">Mon</a></b>").arg(colorPrefs->textColor.name()));
     else
-        ui->monitorLabel->setText(QString("<a href=\"#\" style=\"color:%0; text-decoration:none; text-decoration:line-through;\">Mon</a>").arg(colorPrefs->textColor.name()));
+        ui->monitorLabel->setText(QString("<a href=\"#\" style=\"color:%0; text-decoration:none;\">Mon</a>").arg(colorPrefs->textColor.name()));
     emit sendLevel(funcMonitor,en);
 }
 

@@ -269,10 +269,12 @@ spectrumScope::spectrumScope(QWidget *parent)
     });
     connect(configBottom, &QSlider::valueChanged, this, [=](const int &val) {
         this->plotFloor = val;
+        this->wfFloor = val;
         this->setRange(plotFloor,plotCeiling);
     });
     connect(configTop, &QSlider::valueChanged, this, [=](const int &val) {
         this->plotCeiling = val;
+        this->wfCeiling = val;
         this->setRange(plotFloor,plotCeiling);
     });
 
