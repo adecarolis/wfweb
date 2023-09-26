@@ -310,7 +310,7 @@ spectrumScope::spectrumScope(QWidget *parent)
         queue->add(priorityImmediate,queueItem(funcIFShift,QVariant::fromValue<ushort>(val),false,sub));
     });
     connect(configFilterWidth, &QSlider::valueChanged, this, [=](const int &val) {
-        queue->add(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<short>(val),false,sub));
+        queue->add(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(val),false,sub));
     });
 
     configGroup->setVisible(false);

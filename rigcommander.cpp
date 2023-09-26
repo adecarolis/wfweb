@@ -6278,11 +6278,12 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
                     payload.append(makeFilterWidth(value.value<ushort>(),sub));
                     //qInfo() << "Setting filter width" << value.value<ushort>() << "sub" << sub << "hex" << payload.toHex();
 
-                 }
-                else
+                }
+                else {
                     payload.append(bcdEncodeInt(value.value<ushort>()));
+                }
             }
-            else if (!strcmp(value.typeName(),"short"))
+            else if (!strcmp(value.typeName(),"short") && func == funcRITFreq)
             {
                 // Currently only used for RIT (I think)
                 bool isNegative = false;

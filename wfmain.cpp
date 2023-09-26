@@ -5069,7 +5069,6 @@ void wfmain::receiveComp(bool en)
 
 void wfmain::receiveMonitor(bool en)
 {
-    qInfo() << "Text color:" << colorPrefs->textColor.name();
     if (en)
             ui->monitorLabel->setText(QString("<b><a href=\"#\" style=\"color:%0; text-decoration:none;\">Mon</a></b>").arg(colorPrefs->textColor.name()));
     else
@@ -5525,7 +5524,7 @@ void wfmain::useColorPreset(colorPrefsType *cp)
     if (this->colorPrefs != Q_NULLPTR)
         delete this->colorPrefs;
     this->colorPrefs = new colorPrefsType(*cp);
-    qInfo() << "Setting color Preset" << cp->presetNum << "name" << cp->presetName << "text color" << cp->textColor.name();
+    qInfo() << "Setting color Preset" << cp->presetNum << "name" << cp->presetName;
 }
 
 

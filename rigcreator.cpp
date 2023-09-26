@@ -189,7 +189,7 @@ void rigCreator::loadRigFile(QString file)
             ui->spans->insertRow(ui->spans->rowCount());
             ui->spans->model()->setData(ui->spans->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
             ui->spans->model()->setData(ui->spans->model()->index(c,1),settings->value("Name", "").toString());
-            ui->spans->model()->setData(ui->spans->model()->index(c,2),settings->value("Freq", 0U).toUInt());
+            ui->spans->model()->setData(ui->spans->model()->index(c,2),settings->value("Freq", 0U).toUInt(),Qt::DisplayRole);
 
         }
         settings->endArray();
@@ -226,11 +226,11 @@ void rigCreator::loadRigFile(QString file)
             ui->bands->insertRow(ui->bands->rowCount());
             ui->bands->model()->setData(ui->bands->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
             ui->bands->model()->setData(ui->bands->model()->index(c,1),QString::number(settings->value("BSR", 0).toUInt(),16).rightJustified(2,'0'));
-            ui->bands->model()->setData(ui->bands->model()->index(c,2),settings->value("Name", "").toString());
-            ui->bands->model()->setData(ui->bands->model()->index(c,3),settings->value("Start", 0ULL).toString());
-            ui->bands->model()->setData(ui->bands->model()->index(c,4),settings->value("End", 0ULL).toString());
-            ui->bands->model()->setData(ui->bands->model()->index(c,5),settings->value("Range", 0.0).toString());
-            ui->bands->model()->setData(ui->bands->model()->index(c,6),settings->value("MemoryGroup", -1).toString());
+            ui->bands->model()->setData(ui->bands->model()->index(c,2),settings->value("Start", 0ULL).toInt(),Qt::DisplayRole);
+            ui->bands->model()->setData(ui->bands->model()->index(c,3),settings->value("End", 0ULL).toInt(),Qt::DisplayRole);
+            ui->bands->model()->setData(ui->bands->model()->index(c,4),settings->value("Range", 0.0).toString());
+            ui->bands->model()->setData(ui->bands->model()->index(c,5),settings->value("MemoryGroup", -1).toString());
+            ui->bands->model()->setData(ui->bands->model()->index(c,6),settings->value("Name", "").toString());
         }
         settings->endArray();
     }
@@ -248,8 +248,30 @@ void rigCreator::loadRigFile(QString file)
             ui->modes->insertRow(ui->modes->rowCount());
             ui->modes->model()->setData(ui->modes->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
             ui->modes->model()->setData(ui->modes->model()->index(c,1),QString::number(settings->value("Reg", 0).toUInt(),16).rightJustified(2,'0'));
-            ui->modes->model()->setData(ui->modes->model()->index(c,2),settings->value("Name", "").toString());
-            ui->modes->model()->setData(ui->modes->model()->index(c,3),settings->value("BW", 0).toString().toInt());
+            ui->modes->model()->setData(ui->modes->model()->index(c,2),settings->value("BW", 0).toString().toInt());
+            /*
+            if (settings->value("Min", 0).toString().toInt() == 0 && settings->value("Max", 0).toString().toInt() ==0 && settings->value("Name", "").toString() != "FM") {
+				QString name = settings->value("Name", "").toString();
+				if (name == "LSB" || name == "USB" || name == "PSK" || name == "PSK-R" || name == "CW" || name == "CW-R")
+                {
+                    ui->modes->model()->setData(ui->modes->model()->index(c,3),50,Qt::DisplayRole);
+                    ui->modes->model()->setData(ui->modes->model()->index(c,4),3600,Qt::DisplayRole);
+				} else if (name == "RTTY" || name == "RTTY-R")
+				{
+                    ui->modes->model()->setData(ui->modes->model()->index(c,3),50,Qt::DisplayRole);
+                    ui->modes->model()->setData(ui->modes->model()->index(c,4),2700,Qt::DisplayRole);
+				} else if (name == "AM")
+				{
+                    ui->modes->model()->setData(ui->modes->model()->index(c,3),200,Qt::DisplayRole);
+                    ui->modes->model()->setData(ui->modes->model()->index(c,4),10000,Qt::DisplayRole);
+				}
+				
+            } else {
+            */
+            ui->modes->model()->setData(ui->modes->model()->index(c,3),settings->value("Min", 0).toString().toInt(),Qt::DisplayRole);
+            ui->modes->model()->setData(ui->modes->model()->index(c,4),settings->value("Max", 0).toString().toInt(),Qt::DisplayRole);
+            //}
+            ui->modes->model()->setData(ui->modes->model()->index(c,5),settings->value("Name", "").toString());
         }
         settings->endArray();
     }
@@ -317,7 +339,7 @@ void rigCreator::loadRigFile(QString file)
             ui->tuningSteps->insertRow(ui->tuningSteps->rowCount());
             ui->tuningSteps->model()->setData(ui->tuningSteps->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt(),16).rightJustified(2,'0'));
             ui->tuningSteps->model()->setData(ui->tuningSteps->model()->index(c,1),settings->value("Name", "").toString());
-            ui->tuningSteps->model()->setData(ui->tuningSteps->model()->index(c,2),settings->value("Hz", 0ULL).toString());
+            ui->tuningSteps->model()->setData(ui->tuningSteps->model()->index(c,2),settings->value("Hz", 0ULL).toInt(),Qt::DisplayRole);
         }
         settings->endArray();
     }
@@ -334,8 +356,8 @@ void rigCreator::loadRigFile(QString file)
             settings->setArrayIndex(c);
             ui->filters->insertRow(ui->filters->rowCount());
             ui->filters->model()->setData(ui->filters->model()->index(c,0),settings->value("Num", 0).toString());
-            ui->filters->model()->setData(ui->filters->model()->index(c,1),settings->value("Name", "").toString());
-            ui->filters->model()->setData(ui->filters->model()->index(c,2),QString::number(settings->value("Modes", 0xffffffff).toUInt(),16));
+            ui->filters->model()->setData(ui->filters->model()->index(c,1),QString::number(settings->value("Modes", 0xffffffff).toUInt(),16));
+            ui->filters->model()->setData(ui->filters->model()->index(c,2),settings->value("Name", "").toString());
         }
         settings->endArray();
     }
@@ -441,6 +463,7 @@ void rigCreator::saveRigFile(QString file)
 
 
     //settings->remove("Commands");
+    ui->commands->sortByColumn(1,Qt::AscendingOrder);
     settings->beginWriteArray("Commands");
     for (int n = 0; n<ui->commands->rowCount();n++)
     {
@@ -460,8 +483,8 @@ void rigCreator::saveRigFile(QString file)
     settings->endArray();
 
     //settings->remove("Spans");
+    ui->spans->sortByColumn(0,Qt::AscendingOrder);
     settings->beginWriteArray("Spans");
-
     for (int n = 0; n<ui->spans->rowCount();n++)
     {
         settings->setArrayIndex(n);
@@ -472,8 +495,8 @@ void rigCreator::saveRigFile(QString file)
     settings->endArray();
 
     //settings->remove("Inputs");
-    settings->beginWriteArray("Inputs");
-
+    ui->inputs->sortByColumn(0,Qt::AscendingOrder);
+    settings->beginWriteArray("Inputs");    
     for (int n = 0; n<ui->inputs->rowCount();n++)
     {
         settings->setArrayIndex(n);
@@ -484,34 +507,38 @@ void rigCreator::saveRigFile(QString file)
     settings->endArray();
 
     //settings->remove("Bands");
+    ui->bands->sortByColumn(0,Qt::AscendingOrder);
     settings->beginWriteArray("Bands");
     for (int n = 0; n<ui->bands->rowCount();n++)
     {
         settings->setArrayIndex(n);
         settings->setValue("Num", (ui->bands->item(n,0) == NULL) ? 0 : ui->bands->item(n,0)->text().toUInt() );
         settings->setValue("BSR", (ui->bands->item(n,1) == NULL) ? 0 : ui->bands->item(n,1)->text().toUInt(nullptr,16) );
-        settings->setValue("Name", (ui->bands->item(n,2) == NULL) ? "" : ui->bands->item(n,2)->text());
-        settings->setValue("Start", (ui->bands->item(n,3) == NULL) ? 0ULL : ui->bands->item(n,3)->text().toULongLong() );
-        settings->setValue("End", (ui->bands->item(n,4) == NULL) ? 0ULL : ui->bands->item(n,4)->text().toULongLong() );
-        settings->setValue("Range", (ui->bands->item(n,5) == NULL) ? 0.0 : ui->bands->item(n,5)->text().toDouble() );
-        settings->setValue("MemoryGroup", (ui->bands->item(n,6) == NULL) ? -1 : ui->bands->item(n,6)->text().toInt() );
+        settings->setValue("Start", (ui->bands->item(n,2) == NULL) ? 0ULL : ui->bands->item(n,2)->text().toULongLong() );
+        settings->setValue("End", (ui->bands->item(n,3) == NULL) ? 0ULL : ui->bands->item(n,3)->text().toULongLong() );
+        settings->setValue("Range", (ui->bands->item(n,4) == NULL) ? 0.0 : ui->bands->item(n,4)->text().toDouble() );
+        settings->setValue("MemoryGroup", (ui->bands->item(n,5) == NULL) ? -1 : ui->bands->item(n,5)->text().toInt() );
+        settings->setValue("Name", (ui->bands->item(n,6) == NULL) ? "" : ui->bands->item(n,6)->text());
     }
     settings->endArray();
 
     //settings->remove("Modes");
+    ui->modes->sortByColumn(0,Qt::AscendingOrder);
     settings->beginWriteArray("Modes");
-
     for (int n = 0; n<ui->modes->rowCount();n++)
     {
         settings->setArrayIndex(n);
         settings->setValue("Num", (ui->modes->item(n,0) == NULL) ? 0 : ui->modes->item(n,0)->text().toUInt());
         settings->setValue("Reg", (ui->modes->item(n,1) == NULL) ? 0 : ui->modes->item(n,1)->text().toInt(nullptr,16));
-        settings->setValue("Name",(ui->modes->item(n,2) == NULL) ? "" : ui->modes->item(n,2)->text());
-        settings->setValue("BW",(ui->modes->item(n,3) == NULL) ? 0 : ui->modes->item(n,3)->text().toInt());
+        settings->setValue("BW",(ui->modes->item(n,2) == NULL) ? 0 : ui->modes->item(n,2)->text().toInt());
+        settings->setValue("Min",(ui->modes->item(n,3) == NULL) ? 0 : ui->modes->item(n,3)->text().toInt());
+        settings->setValue("Max",(ui->modes->item(n,4) == NULL) ? 0 : ui->modes->item(n,4)->text().toInt());
+        settings->setValue("Name",(ui->modes->item(n,5) == NULL) ? "" : ui->modes->item(n,5)->text());
     }
     settings->endArray();
 
     //settings->remove("Attenuators");
+    ui->attenuators->sortByColumn(0,Qt::AscendingOrder);
     settings->beginWriteArray("Attenuators");
     for (int n = 0; n<ui->attenuators->rowCount();n++)
     {
@@ -521,6 +548,7 @@ void rigCreator::saveRigFile(QString file)
     settings->endArray();
 
     //settings->remove("Preamps");
+    ui->preamps->sortByColumn(0,Qt::AscendingOrder);
     settings->beginWriteArray("Preamps");
     for (int n = 0; n<ui->preamps->rowCount();n++)
     {
@@ -531,6 +559,7 @@ void rigCreator::saveRigFile(QString file)
     settings->endArray();
 
     //settings->remove("Antennas");
+    ui->antennas->sortByColumn(0,Qt::AscendingOrder);
     settings->beginWriteArray("Antennas");
     for (int n = 0; n<ui->antennas->rowCount();n++)
     {
@@ -541,6 +570,8 @@ void rigCreator::saveRigFile(QString file)
     settings->endArray();
 
     //settings->remove("Tuning Steps");
+    // First ensure they are ordered by bandwidth:
+    ui->tuningSteps->sortByColumn(2,Qt::AscendingOrder);
     settings->beginWriteArray("Tuning Steps");
     for (int n = 0; n<ui->tuningSteps->rowCount();n++)
     {
@@ -552,13 +583,14 @@ void rigCreator::saveRigFile(QString file)
     settings->endArray();
 
     //settings->remove("Filters");
+    ui->filters->sortByColumn(0,Qt::AscendingOrder);
     settings->beginWriteArray("Filters");
     for (int n = 0; n<ui->filters->rowCount();n++)
     {
         settings->setArrayIndex(n);
         settings->setValue("Num",(ui->filters->item(n,0) == NULL) ? 0 :  ui->filters->item(n,0)->text().toUInt(nullptr,16));
-        settings->setValue("Name",(ui->filters->item(n,1) == NULL) ? "" :  ui->filters->item(n,1)->text());
-        settings->setValue("Modes",(ui->filters->item(n,2) == NULL) ? 0xffffffff : ui->filters->item(n,2)->text().toUInt(nullptr,16));
+        settings->setValue("Modes",(ui->filters->item(n,1) == NULL) ? 0xffffffff : ui->filters->item(n,1)->text().toUInt(nullptr,16));
+        settings->setValue("Name",(ui->filters->item(n,2) == NULL) ? "" :  ui->filters->item(n,2)->text());
     }
     settings->endArray();
 

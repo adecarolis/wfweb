@@ -450,73 +450,6 @@
      </item>
     </layout>
    </item>
-   <item row="1" column="0" colspan="2">
-    <widget class="QGroupBox" name="groupBox_3">
-     <property name="title">
-      <string>Inputs</string>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout_18">
-      <item>
-       <widget class="tableWidget" name="inputs">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="alternatingRowColors">
-         <bool>true</bool>
-        </property>
-        <property name="selectionMode">
-         <enum>QAbstractItemView::SingleSelection</enum>
-        </property>
-        <property name="sortingEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="rowCount">
-         <number>0</number>
-        </property>
-        <property name="columnCount">
-         <number>3</number>
-        </property>
-        <attribute name="horizontalHeaderMinimumSectionSize">
-         <number>0</number>
-        </attribute>
-        <attribute name="horizontalHeaderDefaultSectionSize">
-         <number>120</number>
-        </attribute>
-        <attribute name="horizontalHeaderStretchLastSection">
-         <bool>true</bool>
-        </attribute>
-        <attribute name="verticalHeaderVisible">
-         <bool>false</bool>
-        </attribute>
-        <attribute name="verticalHeaderMinimumSectionSize">
-         <number>0</number>
-        </attribute>
-        <attribute name="verticalHeaderDefaultSectionSize">
-         <number>20</number>
-        </attribute>
-        <column>
-         <property name="text">
-          <string>Num</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Reg</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Name</string>
-         </property>
-        </column>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
    <item row="4" column="5" rowspan="4">
     <widget class="QGroupBox" name="groupBox_10">
      <property name="title">
@@ -633,75 +566,6 @@
      </item>
     </layout>
    </item>
-   <item row="1" column="2" colspan="2">
-    <widget class="QGroupBox" name="groupBox_6">
-     <property name="title">
-      <string>Modes</string>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout_19">
-      <item>
-       <widget class="tableWidget" name="modes">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="alternatingRowColors">
-         <bool>true</bool>
-        </property>
-        <property name="selectionMode">
-         <enum>QAbstractItemView::SingleSelection</enum>
-        </property>
-        <property name="sortingEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="rowCount">
-         <number>0</number>
-        </property>
-        <attribute name="horizontalHeaderMinimumSectionSize">
-         <number>0</number>
-        </attribute>
-        <attribute name="horizontalHeaderDefaultSectionSize">
-         <number>80</number>
-        </attribute>
-        <attribute name="horizontalHeaderStretchLastSection">
-         <bool>true</bool>
-        </attribute>
-        <attribute name="verticalHeaderVisible">
-         <bool>false</bool>
-        </attribute>
-        <attribute name="verticalHeaderMinimumSectionSize">
-         <number>0</number>
-        </attribute>
-        <attribute name="verticalHeaderDefaultSectionSize">
-         <number>20</number>
-        </attribute>
-        <column>
-         <property name="text">
-          <string>Num</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Reg</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Name</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>BW</string>
-         </property>
-        </column>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
    <item row="7" column="3" colspan="2">
     <widget class="QGroupBox" name="groupBox_11">
      <property name="title">
@@ -750,12 +614,12 @@
         </column>
         <column>
          <property name="text">
-          <string>Name</string>
+          <string>Modes</string>
          </property>
         </column>
         <column>
          <property name="text">
-          <string>Modes</string>
+          <string>Name</string>
          </property>
         </column>
        </widget>
@@ -1010,11 +874,6 @@
         </column>
         <column>
          <property name="text">
-          <string>Name</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
           <string>Start</string>
          </property>
         </column>
@@ -1031,6 +890,11 @@
         <column>
          <property name="text">
           <string>Mem</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Name</string>
          </property>
         </column>
        </widget>
@@ -1082,6 +946,152 @@
         <column>
          <property name="text">
           <string>dB</string>
+         </property>
+        </column>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QGroupBox" name="groupBox_3">
+     <property name="title">
+      <string>Inputs</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_18">
+      <item>
+       <widget class="tableWidget" name="inputs">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+        <property name="selectionMode">
+         <enum>QAbstractItemView::SingleSelection</enum>
+        </property>
+        <property name="sortingEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="rowCount">
+         <number>0</number>
+        </property>
+        <property name="columnCount">
+         <number>3</number>
+        </property>
+        <attribute name="horizontalHeaderMinimumSectionSize">
+         <number>0</number>
+        </attribute>
+        <attribute name="horizontalHeaderDefaultSectionSize">
+         <number>60</number>
+        </attribute>
+        <attribute name="horizontalHeaderStretchLastSection">
+         <bool>true</bool>
+        </attribute>
+        <attribute name="verticalHeaderVisible">
+         <bool>false</bool>
+        </attribute>
+        <attribute name="verticalHeaderMinimumSectionSize">
+         <number>0</number>
+        </attribute>
+        <attribute name="verticalHeaderDefaultSectionSize">
+         <number>20</number>
+        </attribute>
+        <column>
+         <property name="text">
+          <string>Num</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Reg</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Name</string>
+         </property>
+        </column>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="1" column="1" colspan="3">
+    <widget class="QGroupBox" name="groupBox_6">
+     <property name="title">
+      <string>Modes</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_19">
+      <item>
+       <widget class="tableWidget" name="modes">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+        <property name="selectionMode">
+         <enum>QAbstractItemView::SingleSelection</enum>
+        </property>
+        <property name="sortingEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="rowCount">
+         <number>0</number>
+        </property>
+        <attribute name="horizontalHeaderMinimumSectionSize">
+         <number>0</number>
+        </attribute>
+        <attribute name="horizontalHeaderDefaultSectionSize">
+         <number>80</number>
+        </attribute>
+        <attribute name="horizontalHeaderStretchLastSection">
+         <bool>true</bool>
+        </attribute>
+        <attribute name="verticalHeaderVisible">
+         <bool>false</bool>
+        </attribute>
+        <attribute name="verticalHeaderMinimumSectionSize">
+         <number>0</number>
+        </attribute>
+        <attribute name="verticalHeaderDefaultSectionSize">
+         <number>20</number>
+        </attribute>
+        <column>
+         <property name="text">
+          <string>Num</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Reg</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>BW</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Min BW</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Max BW</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Name</string>
          </property>
         </column>
        </widget>
