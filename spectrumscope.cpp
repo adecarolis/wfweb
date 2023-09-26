@@ -200,12 +200,12 @@ spectrumScope::spectrumScope(QWidget *parent)
 
     configLength = new QSlider(Qt::Orientation::Horizontal);
     configLength->setRange(100,1024);
-    configLength->setValue(400);
+    configLength->setValue(wfLength);
     configLayout->addRow("Length",configLength);
 
     configTop = new QSlider(Qt::Orientation::Horizontal);
     configTop->setRange(1,160);
-    configTop->setValue(160);
+    configTop->setValue(plotCeiling);
     configTop->setAccessibleName("Scope display ceiling");
     configTop->setAccessibleDescription("Selects the display ceiling for the Scope display");
     configTop->setToolTip("Select display ceiling of scope");
@@ -213,7 +213,7 @@ spectrumScope::spectrumScope(QWidget *parent)
 
     configBottom = new QSlider(Qt::Orientation::Horizontal);
     configBottom->setRange(0,160);
-    configBottom->setValue(0);
+    configBottom->setValue(plotFloor);
     configBottom->setAccessibleName("Scope display floor");
     configBottom->setAccessibleDescription("Selects the display floor for the Scope display");
     configBottom->setToolTip("Select display floor of scope");
@@ -266,14 +266,19 @@ spectrumScope::spectrumScope(QWidget *parent)
 
     connect(configLength, &QSlider::valueChanged, this, [=](const int &val) {
         prepareWf(val);
+        emit updateSettings(sub,currentTheme,wfLength,plotFloor,plotCeiling);
     });
     connect(configBottom, &QSlider::valueChanged, this, [=](const int &val) {
         this->plotFloor = val;
+        this->wfFloor = val;
         this->setRange(plotFloor,plotCeiling);
+        emit updateSettings(sub,currentTheme,wfLength,plotFloor,plotCeiling);
     });
     connect(configTop, &QSlider::valueChanged, this, [=](const int &val) {
         this->plotCeiling = val;
+        this->wfCeiling = val;
         this->setRange(plotFloor,plotCeiling);
+        emit updateSettings(sub,currentTheme,wfLength,plotFloor,plotCeiling);
     });
 
     connect(configRef, &QSlider::valueChanged, this, [=](const int &val) {
@@ -290,7 +295,7 @@ spectrumScope::spectrumScope(QWidget *parent)
         Q_UNUSED(val)
         currentTheme = configTheme->currentData().value<QCPColorGradient::GradientPreset>();
         colorMap->setGradient(currentTheme);
-        emit updateTheme(sub,currentTheme);
+        emit updateSettings(sub,currentTheme,wfLength,plotFloor,plotCeiling);
     });
 
 
@@ -354,6 +359,10 @@ bool spectrumScope::prepareWf(uint wf)
     bool ret=true;
 
     this->wfLength = wf;
+    configLength->blockSignals(true);
+    configLength->setValue(this->wfLength);
+    configLength->blockSignals(false);
+
     this->wfLengthMax = 1024;
 
     // Initialize before use!
@@ -398,11 +407,19 @@ bool spectrumScope::prepareWf(uint wf)
 
 void spectrumScope::setRange(int floor, int ceiling)
 {
+    plotFloor = floor;
+    plotCeiling = ceiling;
     maxAmp = ceiling;
     if (spectrum != Q_NULLPTR)
         spectrum->yAxis->setRange(QCPRange(floor, ceiling));
     if (colorMap != Q_NULLPTR)
         colorMap->setDataRange(QCPRange(floor,ceiling));
+    configBottom->blockSignals(true);
+    configBottom->setValue(floor);
+    configBottom->blockSignals(false);
+    configTop->blockSignals(true);
+    configTop->setValue(ceiling);
+    configTop->blockSignals(false);
 }
 
 void spectrumScope::colorPreset(colorPrefsType *cp)

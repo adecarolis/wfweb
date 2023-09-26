@@ -101,7 +101,7 @@ signals:
     void updateScopeMode(spectrumMode_t index);
     void updateSpan(centerSpanData s);
     void showStatusBarText(QString text);
-    void updateTheme(bool sub, int value);
+    void updateSettings(bool sub, int value, quint16 len, int floor, int ceiling);
     void elapsedTime(bool sub, qint64 ns);
 
 

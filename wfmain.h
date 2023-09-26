@@ -329,7 +329,7 @@ private slots:
     void extChangedUdpPref(prefUDPItem i);
     void extChangedServerPref(prefServerItem i);
 
-    void receiveTheme(bool sub, int theme);
+    void receiveScopeSettings(bool sub, int theme, quint16 len, int floor, int ceiling);
     void receiveValue(cacheItem val);
     void setAudioDevicesUI();
     void shortcutF1();
@@ -634,19 +634,12 @@ private:
     QLedLabel* pttLed;
     QLedLabel* connectedLed;
 
-    double plotFloor = 0;
-    double plotCeiling = 160;
-    double wfFloor = 0;
-    double wfCeiling = 160;
-    double oldPlotFloor = -1;
-    double oldPlotCeiling = 999;
     double passbandWidth = 0.0;
 
     double mousePressFreq = 0.0;
     double mouseReleaseFreq = 0.0;
 
     QVector <QByteArray> wfimage;
-    unsigned int wfLengthMax;
 
     bool onFullscreen;
     bool freqTextSelected;

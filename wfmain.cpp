@@ -750,8 +750,8 @@ void wfmain::rigConnections()
     */
     connect(this, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
 
-    connect(ui->mainScope, SIGNAL(updateTheme(bool,int)), this, SLOT(receiveTheme(bool,int)));
-    connect(ui->subScope, SIGNAL(updateTheme(bool,int)), this, SLOT(receiveTheme(bool,int)));
+    connect(ui->mainScope, SIGNAL(updateSettings(bool,int,quint16,int,int)), this, SLOT(receiveScopeSettings(bool,int,quint16,int,int)));
+    connect(ui->subScope, SIGNAL(updateSettings(bool,int,quint16,int,int)), this, SLOT(receiveScopeSettings(bool,int,quint16,int,int)));
 
     connect(ui->mainScope, SIGNAL(elapsedTime(bool,qint64)), this, SLOT(receiveElapsed(bool,qint64)));
     connect(ui->subScope, SIGNAL(elapsedTime(bool,qint64)), this, SLOT(receiveElapsed(bool,qint64)));
@@ -1270,13 +1270,13 @@ void wfmain::setUIToPrefs()
     ui->mainScope->setUnderlayMode(prefs.underlayMode);
     ui->mainScope->wfAntiAliased(prefs.wfAntiAlias);
     ui->mainScope->wfInterpolate(prefs.wfInterpolate);
-    ui->mainScope->wfTheme(prefs.wftheme);
+    ui->mainScope->wfTheme(prefs.mainWfTheme);
     ui->mainScope->setScrollSpeedXY(prefs.scopeScrollX, prefs.scopeScrollY);
 
     ui->subScope->setUnderlayMode(prefs.underlayMode);
     ui->subScope->wfAntiAliased(prefs.wfAntiAlias);
     ui->subScope->wfInterpolate(prefs.wfInterpolate);
-    ui->subScope->wfTheme(prefs.wftheme);
+    ui->subScope->wfTheme(prefs.subWfTheme);
     ui->subScope->setScrollSpeedXY(prefs.scopeScrollX, prefs.scopeScrollY);
 
     //    switch(underlayMode)
@@ -1297,16 +1297,16 @@ void wfmain::setUIToPrefs()
 //            break;
 //    }
 
-    ui->mainScope->prepareWf(prefs.wflength);
+    ui->mainScope->prepareWf(prefs.mainWflength);
     ui->mainScope->preparePlasma();
-    ui->subScope->prepareWf(prefs.wflength);
+    ui->subScope->prepareWf(prefs.subWflength);
     ui->subScope->preparePlasma();
 
-    ui->mainScope->setRange(prefs.plotFloor, prefs.plotCeiling);
-    ui->subScope->setRange(prefs.plotFloor, prefs.plotCeiling);
+    ui->mainScope->setRange(prefs.mainPlotFloor, prefs.mainPlotCeiling);
+    ui->subScope->setRange(prefs.subPlotFloor, prefs.subPlotCeiling);
 
-    ui->mainScope->wfTheme(prefs.wftheme);
-    ui->subScope->wfTheme(prefs.wftheme);
+    ui->mainScope->wfTheme(prefs.mainWfTheme);
+    ui->subScope->wfTheme(prefs.subWfTheme);
 
     finputbtns->setAutomaticSidebandSwitching(prefs.automaticSidebandSwitching);
 }
@@ -1798,10 +1798,14 @@ void wfmain::setDefPrefs()
     defPrefs.rigCtlPort = 4533;
     defPrefs.virtualSerialPort = QString("none");
     defPrefs.localAFgain = 255;
-    defPrefs.wflength = 160;
-    defPrefs.wftheme = static_cast<int>(QCPColorGradient::gpJet);
-    defPrefs.plotFloor = 0;
-    defPrefs.plotCeiling = 160;
+    defPrefs.mainWflength = 160;
+    defPrefs.mainWfTheme = static_cast<int>(QCPColorGradient::gpJet);
+    defPrefs.mainPlotFloor = 0;
+    defPrefs.mainPlotCeiling = 160;
+    defPrefs.subWflength = 160;
+    defPrefs.subWfTheme = static_cast<int>(QCPColorGradient::gpJet);
+    defPrefs.subPlotFloor = 0;
+    defPrefs.subPlotCeiling = 160;
     defPrefs.scopeScrollX = 120;
     defPrefs.scopeScrollY = 120;
     defPrefs.confirmExit = true;
@@ -1852,21 +1856,22 @@ void wfmain::loadSettings()
     prefs.useSystemTheme = settings->value("UseSystemTheme", defPrefs.useSystemTheme).toBool();
     prefs.wfEnable = settings->value("WFEnable", defPrefs.wfEnable).toInt();
     //ui->scopeEnableWFBtn->setCheckState(Qt::CheckState(prefs.wfEnable));
-    prefs.wftheme = settings->value("WFTheme", defPrefs.wftheme).toInt();
-    prefs.plotFloor = settings->value("plotFloor", defPrefs.plotFloor).toInt();
-    prefs.plotCeiling = settings->value("plotCeiling", defPrefs.plotCeiling).toInt();
+    prefs.mainWfTheme = settings->value("MainWFTheme", defPrefs.mainWfTheme).toInt();
+    prefs.subWfTheme = settings->value("SubWFTheme", defPrefs.subWfTheme).toInt();
+    prefs.mainPlotFloor = settings->value("MainPlotFloor", defPrefs.mainPlotFloor).toInt();
+    prefs.subPlotFloor = settings->value("SubPlotFloor", defPrefs.subPlotFloor).toInt();
+    prefs.mainPlotCeiling = settings->value("MainPlotCeiling", defPrefs.mainPlotCeiling).toInt();
+    prefs.subPlotCeiling = settings->value("SubPlotCeiling", defPrefs.subPlotCeiling).toInt();
     prefs.scopeScrollX = settings->value("scopeScrollX", defPrefs.scopeScrollX).toInt();
     prefs.scopeScrollY = settings->value("scopeScrollY", defPrefs.scopeScrollY).toInt();
-    plotFloor = prefs.plotFloor;
-    plotCeiling = prefs.plotCeiling;
-    wfFloor = prefs.plotFloor;
-    wfCeiling = prefs.plotCeiling;
+
     prefs.drawPeaks = settings->value("DrawPeaks", defPrefs.drawPeaks).toBool();
     prefs.underlayBufferSize = settings->value("underlayBufferSize", defPrefs.underlayBufferSize).toInt();
     prefs.underlayMode = static_cast<underlay_t>(settings->value("underlayMode", defPrefs.underlayMode).toInt());
     prefs.wfAntiAlias = settings->value("WFAntiAlias", defPrefs.wfAntiAlias).toBool();
     prefs.wfInterpolate = settings->value("WFInterpolate", defPrefs.wfInterpolate).toBool();
-    prefs.wflength = (unsigned int)settings->value("WFLength", defPrefs.wflength).toInt();
+    prefs.mainWflength = (unsigned int)settings->value("MainWFLength", defPrefs.mainWflength).toInt();
+    prefs.subWflength = (unsigned int)settings->value("SubWFLength", defPrefs.subWflength).toInt();
     prefs.stylesheetPath = settings->value("StylesheetPath", defPrefs.stylesheetPath).toString();
     //ui->splitter->restoreState(settings->value("splitter").toByteArray());
 
@@ -2558,18 +2563,12 @@ void wfmain::extChangedIfPref(prefIfItem i)
         break;
     case if_wftheme:
         // Not in settings widget
-        ui->mainScope->wfTheme(prefs.wftheme);
-        ui->subScope->wfTheme(prefs.wftheme);
         break;
     case if_plotFloor:
         // Not in settings widget
-        ui->mainScope->setRange(prefs.plotFloor,prefs.plotCeiling);
-        ui->subScope->setRange(prefs.plotFloor,prefs.plotCeiling);
         break;
     case if_plotCeiling:
         // Not in settings widget
-        ui->mainScope->setRange(prefs.plotFloor,prefs.plotCeiling);
-        ui->subScope->setRange(prefs.plotFloor,prefs.plotCeiling);
         break;
     case if_stylesheetPath:
         // Not in settings widget
@@ -3059,14 +3058,18 @@ void wfmain::saveSettings()
     settings->setValue("underlayBufferSize", prefs.underlayBufferSize);
     settings->setValue("WFAntiAlias", prefs.wfAntiAlias);
     settings->setValue("WFInterpolate", prefs.wfInterpolate);
-    settings->setValue("WFTheme", prefs.wftheme);
-    settings->setValue("plotFloor", prefs.plotFloor);
-    settings->setValue("plotCeiling", prefs.plotCeiling);
+    settings->setValue("MainWFTheme", prefs.mainWfTheme);
+    settings->setValue("SubWFTheme", prefs.subWfTheme);
+    settings->setValue("MainPlotFloor", prefs.mainPlotFloor);
+    settings->setValue("SubPlotFloor", prefs.subPlotFloor);
+    settings->setValue("MainPlotCeiling", prefs.mainPlotCeiling);
+    settings->setValue("SubPlotCeiling", prefs.subPlotCeiling);
     settings->setValue("StylesheetPath", prefs.stylesheetPath);
     //settings->setValue("splitter", ui->splitter->saveState());
     settings->setValue("windowGeometry", saveGeometry());
     settings->setValue("windowState", saveState());
-    settings->setValue("WFLength", prefs.wflength);
+    settings->setValue("MainWFLength", prefs.mainWflength);
+    settings->setValue("SubWFLength", prefs.subWflength);
     settings->setValue("ConfirmExit", prefs.confirmExit);
     settings->setValue("ConfirmPowerOff", prefs.confirmPowerOff);
     settings->setValue("Meter2Type", (int)prefs.meter2Type);
@@ -4202,8 +4205,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
                 ui->mainScope->addSpan(rigCaps.scopeCenterSpans.at(i).name, QVariant::fromValue(rigCaps.scopeCenterSpans.at(i)));
                 ui->subScope->addSpan(rigCaps.scopeCenterSpans.at(i).name, QVariant::fromValue(rigCaps.scopeCenterSpans.at(i)));
             }
-            ui->mainScope->setRange(prefs.plotFloor, prefs.plotCeiling);
-            ui->subScope->setRange(prefs.plotFloor, prefs.plotCeiling);
+            ui->mainScope->setRange(prefs.mainPlotFloor, prefs.mainPlotCeiling);
+            ui->subScope->setRange(prefs.subPlotFloor, prefs.subPlotCeiling);
         }// else {
             //ui->scopeBWCombo->setHidden(true);
        //}
@@ -6292,10 +6295,21 @@ void wfmain::on_dualWatchBtn_toggled(bool en)
     queue->add(priorityImmediate,queueItem(funcVFODualWatch,QVariant::fromValue(en),false,false));
 }
 
-void wfmain::receiveTheme(bool sub, int theme)
+void wfmain::receiveScopeSettings(bool sub, int theme, quint16 len, int floor, int ceiling)
 {
-    if (!sub)
-        prefs.wftheme = theme;
+    if (sub) {
+        prefs.subWfTheme = theme;
+        prefs.subWflength = len;
+        prefs.subPlotFloor = floor;
+        prefs.subPlotCeiling = ceiling;
+    }
+    else
+    {
+        prefs.mainWfTheme = theme;
+        prefs.mainWflength = len;
+        prefs.mainPlotFloor = floor;
+        prefs.mainPlotCeiling = ceiling;
+    }
 }
 
 void wfmain::newFrequency(qint64 freq)
