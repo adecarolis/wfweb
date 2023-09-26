@@ -457,7 +457,7 @@ private:
     void debugMe();
     void printHex(const QByteArray &pdata);
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
-    modeInfo createMode(rigMode_t m, unsigned char reg, QString name, bool bw);
+
     centerSpanData createScopeCenter(centerSpansType s, QString name);
 
     commHandler* comm = Q_NULLPTR;

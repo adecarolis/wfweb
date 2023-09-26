@@ -115,15 +115,16 @@ struct rptrAccessData {
 };
 
 struct modeInfo {
-    modeInfo ():mk(modeUnknown), reg(99), filter(1),VFO(activeVFO), data(0), name(""), bw(false), pass(0) {};
-    modeInfo(rigMode_t mk, quint8 reg, QString name, bool bw): mk(mk), reg(reg), data(false), name(name),bw(bw), pass(0) {};
+    modeInfo ():mk(modeUnknown), reg(99), filter(1),VFO(activeVFO), data(0), name(""), bwMin(0), bwMax(0), pass(0) {};
+    modeInfo(rigMode_t mk, quint8 reg, QString name, int bwMin, int bwMax): mk(mk), reg(reg), data(false), name(name),bwMin(bwMin), bwMax(bwMax), pass(0) {};
     rigMode_t mk;
     unsigned char reg;
     unsigned char filter; // Default filter is always 1
     selVFO_t VFO;
     unsigned char data;
     QString name;
-    bool bw; // Can the bandwidth of the current filter be changed?
+    int bwMin;
+    int bwMax;
     quint16 pass;
 };
 

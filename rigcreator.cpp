@@ -248,30 +248,9 @@ void rigCreator::loadRigFile(QString file)
             ui->modes->insertRow(ui->modes->rowCount());
             ui->modes->model()->setData(ui->modes->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
             ui->modes->model()->setData(ui->modes->model()->index(c,1),QString::number(settings->value("Reg", 0).toUInt(),16).rightJustified(2,'0'));
-            ui->modes->model()->setData(ui->modes->model()->index(c,2),settings->value("BW", 0).toString().toInt());
-            /*
-            if (settings->value("Min", 0).toString().toInt() == 0 && settings->value("Max", 0).toString().toInt() ==0 && settings->value("Name", "").toString() != "FM") {
-				QString name = settings->value("Name", "").toString();
-				if (name == "LSB" || name == "USB" || name == "PSK" || name == "PSK-R" || name == "CW" || name == "CW-R")
-                {
-                    ui->modes->model()->setData(ui->modes->model()->index(c,3),50,Qt::DisplayRole);
-                    ui->modes->model()->setData(ui->modes->model()->index(c,4),3600,Qt::DisplayRole);
-				} else if (name == "RTTY" || name == "RTTY-R")
-				{
-                    ui->modes->model()->setData(ui->modes->model()->index(c,3),50,Qt::DisplayRole);
-                    ui->modes->model()->setData(ui->modes->model()->index(c,4),2700,Qt::DisplayRole);
-				} else if (name == "AM")
-				{
-                    ui->modes->model()->setData(ui->modes->model()->index(c,3),200,Qt::DisplayRole);
-                    ui->modes->model()->setData(ui->modes->model()->index(c,4),10000,Qt::DisplayRole);
-				}
-				
-            } else {
-            */
-            ui->modes->model()->setData(ui->modes->model()->index(c,3),settings->value("Min", 0).toString().toInt(),Qt::DisplayRole);
-            ui->modes->model()->setData(ui->modes->model()->index(c,4),settings->value("Max", 0).toString().toInt(),Qt::DisplayRole);
-            //}
-            ui->modes->model()->setData(ui->modes->model()->index(c,5),settings->value("Name", "").toString());
+            ui->modes->model()->setData(ui->modes->model()->index(c,2),settings->value("Min", 0).toString().toInt(),Qt::DisplayRole);
+            ui->modes->model()->setData(ui->modes->model()->index(c,3),settings->value("Max", 0).toString().toInt(),Qt::DisplayRole);
+            ui->modes->model()->setData(ui->modes->model()->index(c,4),settings->value("Name", "").toString());
         }
         settings->endArray();
     }
@@ -530,10 +509,9 @@ void rigCreator::saveRigFile(QString file)
         settings->setArrayIndex(n);
         settings->setValue("Num", (ui->modes->item(n,0) == NULL) ? 0 : ui->modes->item(n,0)->text().toUInt());
         settings->setValue("Reg", (ui->modes->item(n,1) == NULL) ? 0 : ui->modes->item(n,1)->text().toInt(nullptr,16));
-        settings->setValue("BW",(ui->modes->item(n,2) == NULL) ? 0 : ui->modes->item(n,2)->text().toInt());
-        settings->setValue("Min",(ui->modes->item(n,3) == NULL) ? 0 : ui->modes->item(n,3)->text().toInt());
-        settings->setValue("Max",(ui->modes->item(n,4) == NULL) ? 0 : ui->modes->item(n,4)->text().toInt());
-        settings->setValue("Name",(ui->modes->item(n,5) == NULL) ? "" : ui->modes->item(n,5)->text());
+        settings->setValue("Min",(ui->modes->item(n,2) == NULL) ? 0 : ui->modes->item(n,2)->text().toInt());
+        settings->setValue("Max",(ui->modes->item(n,3) == NULL) ? 0 : ui->modes->item(n,3)->text().toInt());
+        settings->setValue("Name",(ui->modes->item(n,4) == NULL) ? "" : ui->modes->item(n,4)->text());
     }
     settings->endArray();
 

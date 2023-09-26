@@ -1349,7 +1349,7 @@ void spectrumScope::receiveMode(modeInfo m)
             passbandCenterFrequency = 0.0;
 
             // If new mode doesn't allow bandwidth control, disable filterwidth and pbt.
-            if (m.bw) {
+            if (m.bwMin > 0 && m.bwMax > 0) {
                 queue->addUnique(priorityHigh,funcPBTInner,true,sub);
                 queue->addUnique(priorityHigh,funcPBTOuter,true,sub);
                 queue->addUnique(priorityHigh,funcFilterWidth,true,sub);
