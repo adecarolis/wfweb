@@ -1642,6 +1642,6 @@ void spectrumScope::newFrequency(qint64 freq)
     f.MHzDouble = f.Hz / (double)1E6;
     if (f.Hz > 0)
     {
-        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),sub));
+        queue->add(priorityImmediate,queueItem((sub?funcUnselectedFreq:funcSelectedFreq),QVariant::fromValue<freqt>(f),false,sub));
     }
 }

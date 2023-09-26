@@ -13,7 +13,7 @@
 #include <QSpacerItem>
 #include <QElapsedTimer>
 #include <qcustomplot.h>
-#include "freqCtrl.h"
+#include "freqctrl.h"
 #include "cluster.h"
 #include "wfviewtypes.h"
 #include "colorprefs.h"
