@@ -5449,15 +5449,15 @@ void wfmain::receiveValue(cacheItem val){
 
         if (!val.sub)
         {
+            ui->mainScope->setFrequency(f);
             ui->frequency->blockSignals(true);
             ui->frequency->setFrequency(f.Hz);
             ui->frequency->blockSignals(false);
-            ui->mainScope->setFrequency(f);
         } else {
+            ui->subScope->setFrequency(f);
             ui->frequencyb->blockSignals(true);
             ui->frequencyb->setFrequency(f.Hz);
             ui->frequencyb->blockSignals(false);
-            ui->subScope->setFrequency(f);
         }
     }
 #if defined __GNUC__
