@@ -21,6 +21,16 @@ spectrumScope::spectrumScope(QWidget *parent)
     layout->addWidget(splitter);
     splitter->setOrientation(Qt::Vertical);
 
+    displayLayout = new QHBoxLayout();
+
+    freqDisplay = new freqCtrl();
+    freqDisplay->setMinimumSize(280,30);
+    freqDisplay->setMaximumSize(280,30);
+
+    displayLayout->addWidget(freqDisplay);
+    displaySpacer = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
+    displayLayout->addSpacerItem(displaySpacer);
+
     controlLayout = new QHBoxLayout();    
     enableCheckBox = new QCheckBox("Enable");
     enableCheckBox->setTristate(true);
@@ -75,6 +85,7 @@ spectrumScope::spectrumScope(QWidget *parent)
     spectrum->axisRect()->setMargins(QMargins(0,0,0,0));
     waterfall->axisRect()->setMargins(QMargins(0,0,0,0));
 
+    layout->addLayout(displayLayout);
     layout->addLayout(controlLayout);
     controlLayout->addWidget(enableCheckBox);
     controlLayout->addWidget(scopeModeCombo);
@@ -172,16 +183,13 @@ spectrumScope::spectrumScope(QWidget *parent)
 
     // Config Screen
     rhsLayout = new QVBoxLayout();
-
     rhsTopSpacer = new QSpacerItem(0,0,QSizePolicy::Fixed,QSizePolicy::Expanding);
     rhsLayout->addSpacerItem(rhsTopSpacer);
-
     configGroup = new QGroupBox();
     rhsLayout->addWidget(configGroup);
     configLayout = new QFormLayout();
     configGroup->setLayout(configLayout);
     mainLayout->addLayout(rhsLayout);
-
     rhsBottomSpacer = new QSpacerItem(0,0,QSizePolicy::Fixed,QSizePolicy::Expanding);
     rhsLayout->addSpacerItem(rhsBottomSpacer);
 
@@ -343,6 +351,8 @@ spectrumScope::spectrumScope(QWidget *parent)
     connect(spectrum, SIGNAL(mouseMove(QMouseEvent*)), this, SLOT(scopeMouseMove(QMouseEvent *)));
     connect(waterfall, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(scroll(QWheelEvent*)));
     connect(spectrum, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(scroll(QWheelEvent*)));
+
+    connect(freqDisplay, SIGNAL(newFrequency(qint64)), this, SLOT(newFrequency(qint64)));
 
     showHideControls(spectrumMode_t::spectModeCenter);
 }
@@ -982,6 +992,7 @@ void spectrumScope::doubleClick(QMouseEvent *me)
             freqGo.Hz = x * 1E6;
             freqGo.Hz = roundFrequency(freqGo.Hz, stepSize);
             freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
+            setFrequency(freqGo);
             queue->add(priorityImmediate,queueItem((sub?funcUnselectedFreq:funcSelectedFreq),QVariant::fromValue<freqt>(freqGo),false,sub));
 
         }
@@ -1030,6 +1041,7 @@ void spectrumScope::scopeClick(QMouseEvent* me)
                 freqt freqGo;
                 freqGo.Hz = (spot.value()->frequency) * 1E6;
                 freqGo.MHzDouble = spot.value()->frequency;
+                setFrequency(freqGo);
                 queue->add(priorityImmediate,queueItem((sub?funcUnselectedFreq:funcSelectedFreq),QVariant::fromValue<freqt>(freqGo),false,sub));
             }
         }
@@ -1226,6 +1238,7 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
             freqGo.Hz = (freq.MHzDouble + delta) * 1E6;
             freqGo.Hz = roundFrequency(freqGo.Hz, stepSize);
             freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
+            setFrequency(freqGo);
             queue->add(priorityImmediate,queueItem((sub?funcUnselectedFreq:funcSelectedFreq),QVariant::fromValue<freqt>(freqGo),false,sub));
         }
     }
@@ -1299,6 +1312,7 @@ void spectrumScope::scroll(QWheelEvent *we)
 
     freq = f; // Do we need to do this?
 
+    setFrequency(f);
     queue->add(priorityImmediate,queueItem((sub?funcUnselectedFreq:funcSelectedFreq),QVariant::fromValue<freqt>(f),false,sub));
     //qInfo() << "Moving to freq:" << f.Hz << "step" << stepsHz;
     scrollWheelOffsetAccumulated = 0;
@@ -1602,4 +1616,32 @@ void spectrumScope::setPBTOuter (double hz) {
     }
 }
 
+void spectrumScope::setFrequency(freqt f)
+{
+    freqDisplay->blockSignals(true);
+    freqDisplay->setFrequency(f.Hz);
+    freqDisplay->blockSignals(false);
+    freq = f;
+}
 
+void spectrumScope::displaySettings(int numDigits, qint64 minf, qint64 maxf, int minStep,FctlUnit unit,std::vector<bandType>* bands)
+{
+    freqDisplay->setup(numDigits, minf, maxf, minStep, unit, bands);
+}
+
+void spectrumScope::setUnit(FctlUnit unit)
+{
+    freqDisplay->setUnit(unit);
+}
+
+
+void spectrumScope::newFrequency(qint64 freq)
+{
+    freqt f;
+    f.Hz = freq;
+    f.MHzDouble = f.Hz / (double)1E6;
+    if (f.Hz > 0)
+    {
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),sub));
+    }
+}

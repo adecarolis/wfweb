@@ -390,7 +390,6 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
     connect(this, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
 
-    connect(ui->frequency, SIGNAL(newFrequency(qint64)), this, SLOT(newFrequency(qint64)));
 
     connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
 
@@ -739,7 +738,6 @@ void wfmain::receiveNetworkAudioLevels(networkAudioLevels l)
 
 void wfmain::setupMainUI()
 {
-    ui->frequencyb->hide();
     ui->meter2Widget->hide();
 
     // Future ideas:
@@ -2313,7 +2311,8 @@ void wfmain::extChangedIfPref(prefIfItem i)
         break;
     }
     case if_frequencyUnits:
-        ui->frequency->setUnit((FctlUnit)prefs.frequencyUnits);
+        ui->mainScope->setUnit((FctlUnit)prefs.frequencyUnits);
+        ui->subScope->setUnit((FctlUnit)prefs.frequencyUnits);
         break;
     default:
         qWarning(logSystem()) << "Did not understand if pref update in wfmain for item " << (int)i;
@@ -3498,7 +3497,8 @@ void wfmain:: getInitialRigState()
         if (end < band.highFreq)
             end = band.highFreq;
     }
-    ui->frequency->setup(0, start, end, 1,(FctlUnit)prefs.frequencyUnits,&rigCaps.bands);
+    ui->mainScope->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits,&rigCaps.bands);
+    ui->subScope->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits,&rigCaps.bands);
 
     /*
 
@@ -4110,6 +4110,7 @@ void wfmain::on_freqDial_valueChanged(int value)
     if (f.Hz > 0)
     {
         oldFreqDialVal = value;
+        ui->mainScope->setFrequency(f);
         queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
     } else {
         ui->freqDial->blockSignals(true);
@@ -5450,14 +5451,8 @@ void wfmain::receiveValue(cacheItem val){
         if (!val.sub)
         {
             ui->mainScope->setFrequency(f);
-            ui->frequency->blockSignals(true);
-            ui->frequency->setFrequency(f.Hz);
-            ui->frequency->blockSignals(false);
         } else {
             ui->subScope->setFrequency(f);
-            ui->frequencyb->blockSignals(true);
-            ui->frequencyb->setFrequency(f.Hz);
-            ui->frequencyb->blockSignals(false);
         }
     }
 #if defined __GNUC__
@@ -5958,16 +5953,6 @@ void wfmain::receiveScopeSettings(bool sub, int theme, quint16 len, int floor, i
     }
 }
 
-void wfmain::newFrequency(qint64 freq)
-{
-    freqt f;
-    f.Hz = freq;
-    f.MHzDouble = f.Hz / (double)1E6;
-    if (f.Hz > 0)
-    {
-        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
-    }
-}
 
 void wfmain::receiveElapsed(bool sub, qint64 us)
 {

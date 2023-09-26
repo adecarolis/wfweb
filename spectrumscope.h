@@ -13,6 +13,7 @@
 #include <QSpacerItem>
 #include <QElapsedTimer>
 #include <qcustomplot.h>
+#include "freqCtrl.h"
 #include "cluster.h"
 #include "wfviewtypes.h"
 #include "colorprefs.h"
@@ -73,7 +74,7 @@ public:
     void setStepSize (quint16 hz) { stepSize = hz;}
 
     freqt getFrequency () { return freq;}
-    void setFrequency (freqt f) { freq = f;}
+    void setFrequency (freqt f);
 
     void receiveMode (modeInfo m);
 
@@ -90,6 +91,8 @@ public:
     void selected(bool);
     void setHold(bool h);
     void setSpeed(uchar s);
+    void displaySettings(int NumDigits, qint64 Minf, qint64 Maxf, int MinStep,FctlUnit unit,std::vector<bandType>* bands = Q_NULLPTR);
+    void setUnit(FctlUnit unit);
 
 public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);
@@ -124,6 +127,8 @@ private slots:
     void scroll(QWheelEvent *);
 
     void clearPeaks();
+    void newFrequency(qint64 freq);
+
 
 private:
     void clearPlasma();
@@ -137,11 +142,14 @@ private:
     QMutex mutex;
     QCustomPlot* spectrum = Q_NULLPTR;
     QCustomPlot* waterfall = Q_NULLPTR;
+    freqCtrl* freqDisplay;
+    QSpacerItem* displaySpacer;
     QGroupBox* group;
     QSplitter* splitter;
     QHBoxLayout* mainLayout;
     QVBoxLayout* layout;
     QVBoxLayout* rhsLayout;
+    QHBoxLayout* displayLayout;
     QHBoxLayout* controlLayout;
     QCheckBox* enableCheckBox;
     QLabel* scopeModeLabel;
