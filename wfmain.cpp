@@ -288,8 +288,10 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
 wfmain::~wfmain()
 {
-    rigThread->quit();
-    rigThread->wait();
+    if(rigThread != Q_NULLPTR) {
+        rigThread->quit();
+        rigThread->wait();
+    }
 
     if (serverThread != Q_NULLPTR) {
         serverThread->quit();
@@ -4100,7 +4102,16 @@ void wfmain::on_freqDial_valueChanged(int value)
     }
 
     // The step size is 10, which forces the knob to not skip a step crossing zero.
-    delta = delta / ui->freqDial->singleStep();
+    if(abs(delta) < ui->freqDial->singleStep()) {
+        // Took a small step. Let's just round it up:
+        if(delta > 0)
+            delta = 1;
+        else
+            delta = -1;
+    } else {
+        delta = delta / ui->freqDial->singleStep();
+    }
+
 
     // With the number of steps and direction of steps established,
     // we can now adjust the frequency:
