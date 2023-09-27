@@ -340,7 +340,10 @@ bool cachingQueue::compare(QVariant a, QVariant b)
                 changed=true;
         } else if (!strcmp(a.typeName(),"uint")) {
             if (a.value<uint>() != b.value<uint>())
-            changed=true;
+                changed=true;
+        } else if (!strcmp(a.typeName(),"int")) {
+            if (a.value<int>() != b.value<int>())
+                changed=true;
         } else if (!strcmp(a.typeName(),"modeInfo")) {
             if (a.value<modeInfo>().mk != b.value<modeInfo>().mk || a.value<modeInfo>().reg != b.value<modeInfo>().reg
                          || a.value<modeInfo>().filter != b.value<modeInfo>().filter) {

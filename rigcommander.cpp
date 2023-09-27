@@ -5700,7 +5700,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
             // will fail on some commands so they would need to be added here:
             if (func != funcScopeFixedEdgeFreq && func != funcSpeech && func != funcBandStackReg && func != funcMemoryContents)
             {
-                queue->addUnique(priorityImmediate,func);
+                queue->addUnique(priorityImmediate,func,false,sub);
             }
         }
         prepDataAndSend(payload);

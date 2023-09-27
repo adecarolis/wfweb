@@ -300,12 +300,12 @@ spectrumScope::spectrumScope(QWidget *parent)
 
     connect(configRef, &QSlider::valueChanged, this, [=](const int &val) {
         currentRef = (val/5) * 5; // rounded to "nearest 5"
-        queue->add(priorityImmediate,queueItem(sub?funcScopeSubRef:funcScopeMainRef,QVariant::fromValue(currentRef),false,sub));
+        queue->add(priorityImmediate,queueItem(sub?funcScopeSubRef:funcScopeMainRef,QVariant::fromValue(currentRef),false,this->sub));
     });
 
 
     connect(configSpeed, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](const int &val) {
-        queue->add(priorityImmediate,queueItem(sub?funcScopeSubSpeed:funcScopeMainSpeed,configSpeed->itemData(val),false,sub));
+        queue->add(priorityImmediate,queueItem(sub?funcScopeSubSpeed:funcScopeMainSpeed,configSpeed->itemData(val),false,this->sub));
     });
 
     connect(configTheme, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](const int &val) {
@@ -1653,4 +1653,14 @@ void spectrumScope::newFrequency(qint64 freq)
     {
         queue->add(priorityImmediate,queueItem((sub?funcUnselectedFreq:funcSelectedFreq),QVariant::fromValue<freqt>(f),false,sub));
     }
+}
+
+void spectrumScope::setRef(int ref)
+{
+    configRef->setValue(ref);
+}
+
+void spectrumScope::setRefLimits(int lower, int upper)
+{
+    configRef->setRange(lower,upper);
 }

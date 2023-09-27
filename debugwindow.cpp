@@ -124,6 +124,10 @@ QString debugWindow::getValue(QVariant val)
         {
             value = QString("Gr: %0 Me: %1").arg(val.value<uint>() >> 16 & 0xffff).arg(val.value<uint>() & 0xffff);
         }
+        else if (!strcmp(val.typeName(),"int"))
+        {
+            value = QString("int: %0").arg(val.value<int>());
+        }
         else if (!strcmp(val.typeName(),"modeInfo"))
         {
             modeInfo mi = val.value<modeInfo>();

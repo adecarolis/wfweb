@@ -3435,6 +3435,7 @@ funcs wfmain::getInputTypeCommand(inputTypes input)
 
 void wfmain:: getInitialRigState()
 {
+
     // Initial list of queries to the radio.
     // These are made when the program starts up
     // and are used to adjust the UI to match the radio settings
@@ -3479,7 +3480,23 @@ void wfmain:: getInitialRigState()
     {
         queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
         queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
+
+        // Find the scope ref limits
+        auto mr = rigCaps.commands.find(funcScopeMainRef);
+        if (mr != rigCaps.commands.end())
+        {
+            ui->mainScope->setRefLimits(mr.value().minVal,mr.value().maxVal);
+            queue->add(priorityImmediate,(funcScopeMainRef),false,false);
+        }
+
+        auto sr = rigCaps.commands.find(funcScopeSubRef);
+        if (sr != rigCaps.commands.end())
+        {
+            ui->subScope->setRefLimits(sr.value().minVal,sr.value().maxVal);
+            queue->add(priorityImmediate,(funcScopeSubRef),false,true);
+        }
     }
+
 
     ui->mainScope->enableScope(this->rigCaps.commands.contains(funcScopeMainMode));
     ui->subScope->enableScope(this->rigCaps.commands.contains(funcScopeSubMode));
@@ -5883,15 +5900,11 @@ void wfmain::receiveValue(cacheItem val){
         ui->subScope->setHold(val.value.value<bool>());
         break;
     case funcScopeMainRef:
-    {
-        // scope reference level
-        // [1] 0x19
-        // [2] 0x00
-        // [3] 10dB digit, 1dB digit
-        // [4] 0.1dB digit, 0
-        // [5] 0x00 = +, 0x01 = -
+        ui->mainScope->setRef(val.value.value<int>());
         break;
-    }
+    case funcScopeSubRef:
+        ui->subScope->setRef(val.value.value<int>());
+        break;
     case funcScopeMainSpeed:
         ui->mainScope->setSpeed(val.value.value<uchar>());
         break;

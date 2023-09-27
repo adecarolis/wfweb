@@ -93,6 +93,8 @@ public:
     void setSpeed(uchar s);
     void displaySettings(int NumDigits, qint64 Minf, qint64 Maxf, int MinStep,FctlUnit unit,std::vector<bandType>* bands = Q_NULLPTR);
     void setUnit(FctlUnit unit);
+    void setRefLimits(int lower, int upper);
+    void setRef(int ref);
 
 public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);
@@ -128,7 +130,6 @@ private slots:
 
     void clearPeaks();
     void newFrequency(qint64 freq);
-
 
 private:
     void clearPlasma();
@@ -245,6 +246,8 @@ private:
     double pbtDefault = 0.0;
     quint16 cwPitch = 600;
     quint16 stepSize = 100;
+    int refLower=0;
+    int refUpper=0;
 
     // Waterfall items;
     QCPColorMap * colorMap = Q_NULLPTR;
