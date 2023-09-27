@@ -76,14 +76,23 @@ spectrumScope::spectrumScope(QWidget *parent)
     toFixedButton->setVisible(false);
 
     spectrum = new QCustomPlot();
+    spectrum->xAxis->axisRect()->setAutoMargins(QCP::MarginSide::msBottom);
+    spectrum->yAxis->axisRect()->setAutoMargins(QCP::MarginSide::msBottom);
+    spectrum->xAxis->setPadding(0);
+    spectrum->yAxis->setPadding(0);
+
     waterfall = new QCustomPlot();
+    waterfall->xAxis->axisRect()->setAutoMargins(QCP::MarginSide::msNone);
+    waterfall->yAxis->axisRect()->setAutoMargins(QCP::MarginSide::msNone);
+    waterfall->xAxis->setPadding(0);
+    waterfall->yAxis->setPadding(0);
 
     splitter->addWidget(spectrum);
     splitter->addWidget(waterfall);
     splitter->setHandleWidth(5);
 
-    spectrum->axisRect()->setMargins(QMargins(0,0,0,0));
-    waterfall->axisRect()->setMargins(QMargins(0,0,0,0));
+    spectrum->axisRect()->setMargins(QMargins(30,0,0,0));
+    waterfall->axisRect()->setMargins(QMargins(30,0,0,0));
 
     layout->addLayout(displayLayout);
     layout->addLayout(controlLayout);
