@@ -5478,6 +5478,10 @@ void wfmain::receiveValue(cacheItem val){
     case funcModeTR:
     case funcSelectedMode:
         ui->mainScope->receiveMode(val.value.value<modeInfo>());
+        finputbtns->updateCurrentMode(val.value.value<modeInfo>().mk);
+        finputbtns->updateFilterSelection(val.value.value<modeInfo>().filter);
+        rpt->handleUpdateCurrentMainMode(val.value.value<modeInfo>());
+        cw->handleCurrentModeUpdate(val.value.value<modeInfo>().mk);
         break;
     case funcUnselectedMode:
         val.sub=true;

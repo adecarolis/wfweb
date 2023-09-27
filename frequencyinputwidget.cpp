@@ -198,23 +198,21 @@ void frequencyinputwidget::on_goFreqBtn_clicked()
     if(ok)
     {
         modeInfo m;
-        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false,false));
         m.mk = sidebandChooser::getMode(f, currentMode);
         m.reg = (unsigned char) m.mk;
-
         m.filter = currentFilter;
         // TODO: usingDataMode
         // TODO: auto sideband preference
         if((m.mk != currentMode) && !usingDataMode && automaticSidebandSwitching)
         {
-            emit issueCmdM(cmdSetMode, m); // mode info or mode kind.....
-            emit updateUIMode(m.mk); // mode kind or mode info? Check UI code
+            queue->add(priorityImmediate,queueItem(funcSelectedMode,QVariant::fromValue<modeInfo>(m),false,false));
             currentMode = m.mk;
         }
 
         f.MHzDouble = (float)f.Hz / 1E6;
         //emit updateUIFrequency(f);
         currentFrequency = f;
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false,false));
     } else {
         qWarning(logGui()) << "Could not understand frequency" << ui->freqMhzLineEdit->text();
         ui->freqMhzLineEdit->clear();
