@@ -3973,6 +3973,7 @@ void wfmain::initPeriodicCommands()
         queue->add(priorityMedium,funcScopeSubSpeed,true,true);
         queue->add(priorityMedium,funcScopeMainHold,true,false);
         queue->add(priorityMedium,funcScopeSubHold,true,true);
+        queue->add(priorityMedium,funcVFODualWatch,true,false);
     }
 
     if(rigCaps.hasTransmit) {

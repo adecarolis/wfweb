@@ -19,6 +19,7 @@ class tableWidget : public QTableWidget
 
 public:
     explicit tableWidget(QWidget* parent = 0);
+    void editing(bool val) { editingEnabled = val; };
 
 signals:
     void rowAdded(int row);
@@ -26,6 +27,7 @@ signals:
 
 protected:
     void mouseReleaseEvent(QMouseEvent *event);
+    bool editingEnabled = true;
 };
 
 

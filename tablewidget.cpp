@@ -11,7 +11,7 @@ tableWidget::tableWidget(QWidget *parent): QTableWidget(parent)
 
 void tableWidget::mouseReleaseEvent(QMouseEvent *event)
 {
-    if(event->button() == Qt::RightButton)
+    if(event->button() == Qt::RightButton && editingEnabled)
     {
         QMenu menu;
         QAction *add= menu.addAction("Add Item");

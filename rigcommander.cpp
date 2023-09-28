@@ -1979,7 +1979,7 @@ void rigCommander::parseCommand()
         break;
     }
     case funcVFODualWatch:
-        // Not currently used, but will report the current dual-watch status
+        value.setValue(static_cast<bool>(bool(payloadIn[0])));
         break;
 #if defined __GNUC__
 #pragma GCC diagnostic push

@@ -12,6 +12,8 @@ memories::memories(rigCapabilities rigCaps, bool slowLoad, QWidget *parent) :
 {
     ui->setupUi(this);
     ui->table->setColumnCount(totalColumns);
+    ui->table->editing(false);
+
     QStringList headers;
 
     /*
@@ -922,7 +924,9 @@ void memories::receiveMemory(memoryType mem)
         ui->group->setEnabled(true);
         ui->loadingMemories->setVisible(false);
         if (!ui->disableEditing->isChecked())
+        {
             ui->table->setEditTriggers(QAbstractItemView::DoubleClicked);
+        }
     }
 
     timeoutCount=0; // We have received a memory, so set the timeout to zero.
@@ -1159,8 +1163,9 @@ void memories::timeout()
         timeoutTimer.stop();
         ui->group->setEnabled(true);
         if (!ui->disableEditing->isChecked())
+        {
             ui->table->setEditTriggers(QAbstractItemView::DoubleClicked);
-
+        }
         QMessageBox::information(this,"Timeout", "Timeout receiving memories, check rig connection", QMessageBox::Ok);
     }
 }
@@ -1399,8 +1404,12 @@ bool memories::readCSVRow(QTextStream &in, QStringList *row) {
 
 void memories::on_disableEditing_toggled(bool dis)
 {
-    if (dis)
+    if (dis) {
         ui->table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    else
+        ui->table->editing(false);
+    }
+    else {
+        ui->table->editing(true);
         ui->table->setEditTriggers(QAbstractItemView::DoubleClicked);
+    }
 }
