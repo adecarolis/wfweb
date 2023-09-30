@@ -728,16 +728,16 @@ void settingswidget::updateRsPref(prefRsItem prs)
     switch(prs)
     {
     case rs_dataOffMod:
-        quietlyUpdateCombobox(ui->modInputCombo,QVariant::fromValue(prefs->inputDataOff));
+        quietlyUpdateModCombo(ui->modInputCombo,QVariant::fromValue(prefs->inputSource[0]));
         break;
     case rs_data1Mod:
-        quietlyUpdateCombobox(ui->modInputData1Combo,QVariant::fromValue(prefs->inputData1));
+        quietlyUpdateModCombo(ui->modInputData1Combo,QVariant::fromValue(prefs->inputSource[1]));
         break;
     case rs_data2Mod:
-        quietlyUpdateCombobox(ui->modInputData2Combo,QVariant::fromValue(prefs->inputData2));
+        quietlyUpdateModCombo(ui->modInputData2Combo,QVariant::fromValue(prefs->inputSource[2]));
         break;
     case rs_data3Mod:
-        quietlyUpdateCombobox(ui->modInputData3Combo,QVariant::fromValue(prefs->inputData3));
+        quietlyUpdateModCombo(ui->modInputData3Combo,QVariant::fromValue(prefs->inputSource[3]));
         break;
     default:
         qWarning(logGui()) << "Cannot update rs pref" << (int)prs;
@@ -1096,11 +1096,11 @@ void settingswidget::updateModSourceList(uchar num, QVector<rigInput> data)
 
     foreach (auto input, data)
     {
-        combo->addItem(input.name, QVariant::fromValue(input.type));
+        combo->addItem(input.name, QVariant::fromValue(input));
     }
 
     if (data.length()==0){
-        combo->addItem("None", QVariant::fromValue(inputNone));
+        combo->addItem("None", QVariant::fromValue(rigInput()));
     }
 
     combo->setVisible(true);
@@ -1220,6 +1220,20 @@ void settingswidget::quietlyUpdateCombobox(QComboBox *cb, QVariant val)
 {
     cb->blockSignals(true);
     cb->setCurrentIndex(cb->findData(val));
+    cb->blockSignals(false);
+}
+
+void settingswidget::quietlyUpdateModCombo(QComboBox *cb, QVariant val)
+{
+    cb->blockSignals(true);
+    for (int i=0;i<cb->count();i++)
+    {
+        if (cb->itemData(i).value<rigInput>().type == val.value<rigInput>().type)
+        {
+            cb->setCurrentIndex(i);
+            break;
+        }
+    }
     cb->blockSignals(false);
 }
 
@@ -1862,24 +1876,28 @@ void settingswidget::on_audioInputCombo_currentIndexChanged(int index)
 /* Beginning of radio specific settings */
 void settingswidget::on_modInputCombo_activated(int index)
 {
-    emit changedModInput(0,ui->modInputCombo->currentData().value<inputTypes>());
+    prefs->inputSource[0]= ui->modInputCombo->currentData().value<rigInput>();
+    emit changedRsPref(rs_dataOffMod);
 }
 
 void settingswidget::on_modInputData1Combo_activated(int index)
 {
-    emit changedModInput(1,ui->modInputData1Combo->currentData().value<inputTypes>());
+    prefs->inputSource[1] = ui->modInputData1Combo->currentData().value<rigInput>();
+    emit changedRsPref(rs_data1Mod);
 }
 
 
 void settingswidget::on_modInputData2Combo_activated(int index)
 {
-    emit changedModInput(2,ui->modInputData2Combo->currentData().value<inputTypes>());
+    prefs->inputSource[2] = ui->modInputData2Combo->currentData().value<rigInput>();
+    emit changedRsPref(rs_data2Mod);
 }
 
 
 void settingswidget::on_modInputData3Combo_activated(int index)
 {
-    emit changedModInput(3,ui->modInputData3Combo->currentData().value<inputTypes>());
+    prefs->inputSource[3] = ui->modInputData3Combo->currentData().value<rigInput>();
+    emit changedRsPref(rs_data3Mod);
 }
 
 /* End of radio specific settings */

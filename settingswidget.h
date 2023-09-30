@@ -97,8 +97,6 @@ signals:
     void changedUdpPref(prefUDPItem i);
     void changedServerPref(prefServerItem i);
 
-    void changedModInput(uchar num, inputTypes input);    
-
 private slots:
     void on_settingsList_currentRowChanged(int currentRow);
     void onServerUserFieldChanged();
@@ -250,6 +248,7 @@ private:
     void quietlyUpdateSlider(QSlider* sl, int val);
     void quietlyUpdateCombobox(QComboBox *cb, int index);
     void quietlyUpdateCombobox(QComboBox *cb, QVariant val);
+    void quietlyUpdateModCombo(QComboBox *cb, QVariant val);
     void quietlyUpdateCombobox(QComboBox *cb, QString val);
     void quietlyUpdateSpinbox(QSpinBox *sb, int val);
     void quietlyUpdateCheckbox(QCheckBox *cb, bool isChecked);

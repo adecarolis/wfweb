@@ -95,6 +95,7 @@ public:
     void setUnit(FctlUnit unit);
     void setRefLimits(int lower, int upper);
     void setRef(int ref);
+    unsigned char getDataMode() { return static_cast<unsigned char>(dataCombo->currentIndex()); }
 
 public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);

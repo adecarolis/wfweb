@@ -880,8 +880,6 @@ void wfmain::connectSettingsWidget()
     //connect(setupui, SIGNAL(changedServerRXAudioInputCombo(int)), this, SLOT(changedServerRXAudioInput(int)));
     //connect(setupui, SIGNAL(changedServerTXAudioOutputCombo(int)), this, SLOT(changedServerTXAudioOutput(int)));
 
-    connect(setupui, SIGNAL(changedModInput(uchar,inputTypes)), this, SLOT(changedModInput(uchar,inputTypes)));
-
     connect(this, SIGNAL(connectionStatus(bool)), setupui, SLOT(connectionStatus(bool)));
 }
 
@@ -2148,7 +2146,7 @@ void wfmain::extChangedRsPrefs(quint64 items)
         {
             qDebug(logSystem()) << "Updating Rs pref in wfmain" << (int)i;
             prs = (prefRsItem)i;
-            extChangedRsPref(prs);
+            (prs);
         }
     }
 }
@@ -2423,16 +2421,25 @@ void wfmain::extChangedRsPref(prefRsItem i)
     switch(i)
     {
     case rs_dataOffMod:
+        queue->add(priorityImmediate,queueItem(funcDATAOffMod,QVariant::fromValue<rigInput>(prefs.inputSource[0]),false,false));
+        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[0].type),true,false));
+        qInfo(logSystem()) << "Data off mod changed to" << prefs.inputSource[0].name;
         break;
     case rs_data1Mod:
+        queue->add(priorityImmediate,queueItem(funcDATA1Mod,QVariant::fromValue<rigInput>(prefs.inputSource[1]),false,false));
+        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[1].type),true,false));
         break;
     case rs_data2Mod:
+        queue->add(priorityImmediate,queueItem(funcDATA2Mod,QVariant::fromValue<rigInput>(prefs.inputSource[2]),false,false));
+        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[2].type),true,false));
         break;
     case rs_data3Mod:
+        queue->add(priorityImmediate,queueItem(funcDATA3Mod,QVariant::fromValue<rigInput>(prefs.inputSource[3]),false,false));
+        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[3].type),true,false));
         break;
     case rs_setClock:
         setRadioTimeDatePrep();
-    break;
+        break;
     case rs_pttOn:
         if(!prefs.enablePTT)
         {
@@ -2687,57 +2694,6 @@ void wfmain::extChangedServerPref(prefServerItem i)
         break;
     }
 }
-
-void wfmain::changedModInput(uchar val, inputTypes type)
-{
-
-    rigInput r=currentModDataOffSrc;
-
-    if (val == 1)
-        r = currentModData1Src;
-    else if (val == 2)
-        r = currentModData2Src;
-    else if (val == 3)
-        r = currentModData3Src;
-
-    queue->del(getInputTypeCommand(r.type));
-
-    qInfo(logSystem()) << "Changing Mod Input" << val << "from" << r.name;
-
-    funcs func=funcNone;
-
-    switch (val)
-    {
-    case 0:
-        func = funcDATAOffMod;
-        break;
-    case 1:
-        func = funcDATA1Mod;
-        break;
-    case 2:
-        func = funcDATA2Mod;
-        break;
-    case 3:
-        func = funcDATA3Mod;
-        break;
-    default:
-        break;
-    }
-
-    foreach(auto inp, rigCaps.inputs)
-    {
-        if (inp.type == type)
-        {
-            queue->add(priorityImmediate,queueItem(func,QVariant::fromValue<rigInput>(inp)));
-            if(usingDataMode==val)
-            {
-                changeModLabel(inp);
-            }
-            break;
-        }
-    }
-}
-
 
 void wfmain::saveSettings()
 {
@@ -3395,7 +3351,6 @@ void wfmain::shortcutM()
 funcs wfmain::getInputTypeCommand(inputTypes input)
 {
     funcs func;
-
     switch(input)
     {
     case inputMICACCA:
@@ -3429,6 +3384,7 @@ funcs wfmain::getInputTypeCommand(inputTypes input)
         func = funcNone;
         break;
     }
+    qInfo(logSystem()) << "Input type command for" << input << "is" << funcString[func];
     return func;
 }
 
@@ -3807,7 +3763,6 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->tuningStepCombo->blockSignals(false);
 
         setupui->updateModSourceList(0, rigCaps.inputs);
-        setupui->updateModSourceList(1, rigCaps.inputs);
 
         ui->mainScope->clearData();
         ui->subScope->clearData();
@@ -4078,6 +4033,7 @@ void wfmain::changeMode(rigMode_t mode, unsigned char data)
                 if (!rigCaps.commands.contains(funcSelectedMode))
                     queue->add(priorityImmediate,queueItem(funcDataModeWithFilter,QVariant::fromValue<modeInfo>(m),false));
             }
+            usingDataMode = data;
             break;
         }
     }
@@ -4225,30 +4181,6 @@ void wfmain::on_monitorLabel_linkActivated(const QString&)
     cacheItem ca = queue->getCache(funcMonitor);
     bool mon = ca.value.toBool();
     queue->add(priorityImmediate,queueItem(funcMonitor,QVariant::fromValue<bool>(!mon)));
-}
-
-void wfmain::receiveRfGain(unsigned char level)
-{
-    // qInfo(logSystem()) << "Receive RF  level of" << (int)level << " = " << 100*level/255.0 << "%";
-    ui->rfGainSlider->blockSignals(true);
-    ui->rfGainSlider->setValue(level);
-    ui->rfGainSlider->blockSignals(false);
-    emit sendLevel(funcRfGain,level);
-}
-
-void wfmain::receiveAfGain(unsigned char level)
-{
-    // qInfo(logSystem()) << "Receive AF  level of" << (int)level << " = " << 100*level/255.0 << "%";
-    ui->afGainSlider->blockSignals(true);
-    ui->afGainSlider->setValue(level);
-    ui->afGainSlider->blockSignals(false);
-    emit sendLevel(funcAfGain,level);
-}
-
-void wfmain::receiveSql(unsigned char level)
-{
-    ui->sqlSlider->setValue(level);
-    emit sendLevel(funcSquelch,level);
 }
 
 void wfmain::receiveIFShift(unsigned char level)
@@ -4510,35 +4442,13 @@ void wfmain::statusFromSliderPercent(QString name, int rawValue)
     showStatusBarText(name + QString(": %1%").arg((int)(100*rawValue/255.0)));
 }
 
-void wfmain::receiveTxPower(unsigned char power)
-{
-    changeSliderQuietly(ui->txPowerSlider, power);
-    emit sendLevel(funcRFPower,power);
-}
-
-void wfmain::receiveMicGain(unsigned char gain)
-{
-    processModLevel(inputTypes(inputMic), gain);
-    emit sendLevel(funcMicGain,gain);
-}
-
 void wfmain::processModLevel(inputTypes source, unsigned char level)
 {
-    rigInput currentIn;
+    unsigned char data = ui->mainScope->getDataMode();
 
-    if (usingDataMode == 1) {
-        currentIn = currentModData1Src;
-    } else if (usingDataMode == 2) {
-        currentIn = currentModData2Src;
-    } else if (usingDataMode == 3) {
-        currentIn = currentModData3Src;
-    } else {
-        currentIn = currentModDataOffSrc;
-    }
-
-    if(currentIn.type == source)
+    if(prefs.inputSource[data].type == source)
     {
-        currentIn.level = level;
+        prefs.inputSource[data].level = level;
         changeSliderQuietly(ui->micGainSlider, level);
         emit sendLevel(funcLANModLevel,level);
     }
@@ -4547,44 +4457,32 @@ void wfmain::processModLevel(inputTypes source, unsigned char level)
 
 void wfmain::receiveModInput(rigInput input, unsigned char data)
 {
-
-    prefRsItem item= rs_all;
     // This will ONLY fire if the input type is different to the current one
-    if (data == 0 && currentModDataOffSrc.type != input.type) {
-        qInfo() << QString("Data: %0 Input: %1 current: %2").arg(data).arg(input.name).arg(currentModDataOffSrc.name);
-        queue->del(getInputTypeCommand(currentModDataOffSrc.type));
-        item = rs_dataOffMod;
-        prefs.inputDataOff = input.type;
-        currentModDataOffSrc = input;
-    } else if (data == 1 && currentModData1Src.type != input.type) {
-        qInfo() << QString("Data: %0 Input: %1 current: %2").arg(data).arg(input.name).arg(currentModData1Src.name);
-        queue->del(getInputTypeCommand(currentModData1Src.type));
-        item = rs_data1Mod;
-        prefs.inputData1 = input.type;
-        currentModData1Src = input;
-    } else if (data == 2 && currentModData2Src.type != input.type) {
-        qInfo() << QString("Data: %0 Input: %1 current: %2").arg(data).arg(input.name).arg(currentModData2Src.name);
-        queue->del(getInputTypeCommand(currentModData2Src.type));
-        item = rs_data2Mod;
-        prefs.inputData2 = input.type;
-        currentModData2Src = input;
-    } else if (data == 3 && currentModData3Src.type != input.type) {
-        qInfo() << QString("Data: %0 Input: %1 current: %2").arg(data).arg(input.name).arg(currentModData3Src.name);
-        queue->del(getInputTypeCommand(currentModData3Src.type));
-        item = rs_data3Mod;
-        prefs.inputData3 = input.type;
-        currentModData3Src = input;
-    }
-
-
-    if (item != rs_all)
+    if (currentModSrc[data].type != input.type)
     {
-        setupui->updateRsPrefs(item);
-        //if (ui->datamodeCombo->currentData().toUInt() == data) {
-        //    queue->add(priorityImmediate,getInputTypeCommand(input.type),false);
-        //    changeModLabel(input);
-        //}
-
+        qInfo() << QString("Data: %0 Input: %1 current: %2").arg(data).arg(input.name).arg(prefs.inputSource[data].name);
+        queue->del(getInputTypeCommand(prefs.inputSource[data].type),false);
+        prefs.inputSource[data] = rigInput(input);
+        if (ui->mainScope->getDataMode() == data)
+        {
+            queue->addUnique(priorityImmediate,getInputTypeCommand(input.type),true,false);
+            changeModLabel(input,false);
+        }
+        switch (data) {
+        case 0:
+            setupui->updateRsPrefs((int)rs_dataOffMod);
+            break;
+        case 1:
+            setupui->updateRsPrefs((int)rs_data1Mod);
+            break;
+        case 2:
+            setupui->updateRsPrefs((int)rs_data2Mod);
+            break;
+        case 3:
+            setupui->updateRsPrefs((int)rs_data3Mod);
+            break;
+        }
+        currentModSrc[data] = rigInput(input);
     }
 }
 
@@ -4705,38 +4603,6 @@ void wfmain::receiveMeter(meter_t inMeter, unsigned char level)
     }
 }
 
-void wfmain::receiveCompLevel(unsigned char compLevel)
-{
-    emit sendLevel(funcCompressorLevel,compLevel);
-}
-
-void wfmain::receiveMonitorGain(unsigned char monitorGain)
-{
-    changeSliderQuietly(ui->monitorSlider, monitorGain);
-    emit sendLevel(funcMonitorGain,monitorGain);
-}
-
-void wfmain::receiveVoxGain(unsigned char voxGain)
-{
-    emit sendLevel(funcVoxGain,voxGain);
-}
-
-void wfmain::receiveAntiVoxGain(unsigned char antiVoxGain)
-{
-    emit sendLevel(funcAntiVoxGain,antiVoxGain);
-}
-
-void wfmain::receiveNBLevel(unsigned char level)
-{
-    emit sendLevel(funcNBLevel,level);
-}
-
-void wfmain::receiveNRLevel(unsigned char level)
-{
-    emit sendLevel(funcNRLevel,level);
-}
-
-
 void wfmain::receiveComp(bool en)
 {
     emit sendLevel(funcCompressor,en);
@@ -4805,16 +4671,8 @@ void wfmain::processChangingCurrentModLevel(unsigned char level)
     // slider moved, so find the current mod and issue the level set command.
 
     funcs f = funcNone;
-    if(usingDataMode == 0)
-    {
-        f = getInputTypeCommand(currentModDataOffSrc.type);
-    } else if (usingDataMode == 1) {
-        f = getInputTypeCommand(currentModData1Src.type);
-    } else if (usingDataMode == 2) {
-        f = getInputTypeCommand(currentModData2Src.type);
-    } else if (usingDataMode == 3) {
-        f = getInputTypeCommand(currentModData3Src.type);
-    }
+    unsigned char d = ui->mainScope->getDataMode();
+    f = getInputTypeCommand(prefs.inputSource[d].type);
 
     queue->addUnique(priorityImmediate,queueItem(f,QVariant::fromValue<ushort>(level),false));
 }
@@ -5530,20 +5388,6 @@ void wfmain::receiveValue(cacheItem val){
     case funcAntenna:
         receiveAntennaSel(val.value.value<antennaInfo>().antenna,val.value.value<antennaInfo>().rx);
         break;
-    case funcAfGain:
-        receiveAfGain(val.value.value<uchar>());
-        break;
-    case funcRfGain:
-        receiveRfGain(val.value.value<uchar>());
-        break;
-    case funcSquelch:
-        receiveSql(val.value.value<uchar>());
-        break;
-    case funcAPFLevel:
-        break;
-    case funcNRLevel:
-        receiveNRLevel(val.value.value<uchar>());
-        break;
     case funcPBTOuter:
     case funcPBTInner:
     {
@@ -5589,9 +5433,6 @@ void wfmain::receiveValue(cacheItem val){
         //receiveCwPitch(val.value.value<uchar>());
         cw->handlePitch(val.value.value<uchar>());
         break;
-    case funcRFPower:
-        receiveTxPower(val.value.value<uchar>());
-        break;
     case funcMicGain:
         processModLevel(inputMic,val.value.value<uchar>());
         break;
@@ -5601,24 +5442,35 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcNotchFilter:
         break;
+    case funcAfGain:
+        changeSliderQuietly(ui->afGainSlider, val.value.value<uchar>());
+        emit sendLevel(val.command,val.value.value<uchar>());
+        break;
+    case funcMonitorGain:
+        changeSliderQuietly(ui->monitorSlider, val.value.value<uchar>());
+        emit sendLevel(val.command,val.value.value<uchar>());
+        break;
+    case funcRfGain:
+        changeSliderQuietly(ui->rfGainSlider, val.value.value<uchar>());
+        emit sendLevel(val.command,val.value.value<uchar>());
+        break;
+    case funcSquelch:
+        changeSliderQuietly(ui->sqlSlider, val.value.value<uchar>());
+        emit sendLevel(val.command,val.value.value<uchar>());
+        break;
+    case funcRFPower:
     case funcCompressorLevel:
-        receiveCompLevel(val.value.value<uchar>());
+    case funcNBLevel:
+    case funcNRLevel:
+    case funcAPFLevel:
+    case funcDriveGain:
+    case funcVoxGain:
+    case funcAntiVoxGain:
+        emit sendLevel(val.command,val.value.value<uchar>());
         break;
     case funcBreakInDelay:
         break;
-    case funcNBLevel:
-        receiveNBLevel(val.value.value<uchar>());
-        break;
     case funcDigiSelShift:
-        break;
-    case funcDriveGain:
-        break;
-    case funcMonitorGain:
-        receiveMonitorGain(val.value.value<uchar>());
-        break;
-    case funcVoxGain:
-        break;
-    case funcAntiVoxGain:
         break;
     // 0x15 Meters
     case funcSMeterSqlStatus:

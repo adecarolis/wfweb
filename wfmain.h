@@ -380,9 +380,6 @@ private slots:
     void receiveModInput(rigInput input, unsigned char data);
     //void receiveDuplexMode(duplexMode_t dm);
     void receivePassband(quint16 pass);
-    void receiveMonitorGain(unsigned char pass);
-    void receiveNBLevel(unsigned char pass);
-    void receiveNRLevel(unsigned char pass);
     void receiveCwPitch(unsigned char pitch);
     void receivePBTInner(unsigned char level);
     void receivePBTOuter(unsigned char level);
@@ -394,17 +391,7 @@ private slots:
     void receiveTuningStep(unsigned char step);
 
     // Levels:
-    void receiveRfGain(unsigned char level);
-    void receiveAfGain(unsigned char level);
-    void receiveSql(unsigned char level);
     void receiveIFShift(unsigned char level);
-
-    void receiveTxPower(unsigned char power);
-    void receiveMicGain(unsigned char gain);
-    void receiveCompLevel(unsigned char compLevel);
-    void receiveVoxGain(unsigned char voxGain);
-    void receiveAntiVoxGain(unsigned char antiVoxGain);
-
 
     // Meters:
     void receiveMeter(meter_t meter, unsigned char level);
@@ -486,8 +473,6 @@ private slots:
     void enableRigCtl(bool enabled);
 
     void on_memoriesBtn_clicked();
-
-    void changedModInput(uchar val, inputTypes type);
 
     void on_radioStatusBtn_clicked();
 
@@ -723,10 +708,7 @@ private:
     QHash<unsigned char,QString> rigList;
     rigCapabilities rigCaps;
 
-    rigInput currentModDataOffSrc = rigInput(inputUnknown);
-    rigInput currentModData1Src = rigInput(inputUnknown);
-    rigInput currentModData2Src = rigInput(inputUnknown);
-    rigInput currentModData3Src = rigInput(inputUnknown);
+    rigInput currentModSrc[4];
 
     rigMode_t currentMode = modeUnknown;
     modeInfo currentModeInfo = modeInfo();

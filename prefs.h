@@ -221,10 +221,7 @@ struct preferences {
     QString clusterTcpPassword;
 
     // Temporary settings
-    inputTypes inputDataOff=inputNone;
-    inputTypes inputData1=inputNone;
-    inputTypes inputData2=inputNone;
-    inputTypes inputData3=inputNone;
+    rigInput inputSource[4];
     bool useUTC = false;
 
     audioSetup rxSetup;

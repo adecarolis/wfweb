@@ -68,6 +68,7 @@ enum inputTypes{ inputMic=0,
 
 struct rigInput {
     rigInput() : type(inputUnknown),reg(0), name(""), level(0) {}
+    rigInput(rigInput const &r): type(r.type), reg(r.reg), name(r.name), level(r.level) {};
     rigInput(inputTypes type) : type(type),reg(0) ,name(""),level(0) {}
     rigInput(inputTypes type, uchar reg, QString name) : type(type), reg(reg), name(name) {}
     inputTypes type;
@@ -123,6 +124,7 @@ enum centerSpansType {
 
 struct centerSpanData {
     centerSpanData() {}
+    centerSpanData(centerSpanData const &c): cstype(c.cstype), name(c.name), freq(c.freq)  {}
     centerSpanData(centerSpansType cstype, QString name, unsigned int freq) :
         cstype(cstype), name(name), freq(freq){}
     centerSpansType cstype;
@@ -132,6 +134,7 @@ struct centerSpanData {
 
 struct bandType {
     bandType() {}
+    bandType(bandType const &b): band(b.band), bsr(b.bsr), lowFreq(b.lowFreq), highFreq(b.highFreq), range(b.range), memGroup(b.memGroup) {};
     bandType(availableBands band, uchar bsr, quint64 lowFreq, quint64 highFreq, double range, int memGroup) :
         band(band), bsr(bsr), lowFreq(lowFreq), highFreq(highFreq), range(range), memGroup(memGroup) {}
 
@@ -147,6 +150,7 @@ struct bandType {
 // Used for setting/retrieving BSR information
 struct bandStackType {
     bandStackType(): band(0),regCode(0),freq(freqt()),data(0),mode(0),filter(0) {}
+    bandStackType(bandStackType const &b): band(b.band),regCode(b.regCode),freq(b.freq),data(b.data),mode(b.mode),filter(b.filter) {}
     bandStackType(uchar band, uchar regCode): band(band),regCode(regCode), freq(), data(0), mode(0), filter(0) {}
     bandStackType(uchar band, uchar regCode, freqt freq, uchar data, uchar mode, uchar filter):
         band(band), regCode(regCode), freq(freq), data(data), mode(mode), filter(filter) {};
@@ -161,6 +165,7 @@ struct bandStackType {
 
 struct filterType {
     filterType():num(0),name(""),modes(0) {}
+    filterType(filterType const &f): num(f.num),name(f.name),modes(f.modes) {}
     filterType(unsigned char num, QString name, unsigned int modes) :
         num(num), name(name), modes(modes) {}
 
@@ -171,6 +176,7 @@ struct filterType {
 
 struct genericType {
     genericType():num(0),name("") {}
+    genericType(genericType const &g):num(g.num),name(g.name) {}
     genericType(unsigned char num, QString name) :
         num(num), name(name) {}
     unsigned char num;

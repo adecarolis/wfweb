@@ -986,7 +986,7 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                     // We are expecting a second argument to the command
                     QVariant val;
                     if (sub[i].type == 'i') {
-                        uchar v = static_cast<uchar>(params[1].toInt());
+                        uchar v = static_cast<uchar>(params[1].toInt(NULL,16));
                         if (params[0] == "FBKIN")
                             v = (v << 1) & 0x02; // BREAKIN is not bool!
                         val.setValue(v);
