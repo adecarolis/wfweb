@@ -109,7 +109,7 @@ signals:
     void showStatusBarText(QString text);
     void updateSettings(bool sub, int value, quint16 len, int floor, int ceiling);
     void elapsedTime(bool sub, qint64 ns);
-
+    void dataChanged(modeInfo m);
 
 private slots:
     void updatedScopeMode(int index);

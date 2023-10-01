@@ -489,6 +489,9 @@ void wfmain::rigConnections()
 
     connect(ui->mainScope, SIGNAL(elapsedTime(bool,qint64)), this, SLOT(receiveElapsed(bool,qint64)));
     connect(ui->subScope, SIGNAL(elapsedTime(bool,qint64)), this, SLOT(receiveElapsed(bool,qint64)));
+
+    connect(ui->mainScope, SIGNAL(dataChanged(modeInfo)), this, SLOT(dataModeChanged(modeInfo)));
+
 }
 
 void wfmain::makeRig()
@@ -2423,7 +2426,6 @@ void wfmain::extChangedRsPref(prefRsItem i)
     case rs_dataOffMod:
         queue->add(priorityImmediate,queueItem(funcDATAOffMod,QVariant::fromValue<rigInput>(prefs.inputSource[0]),false,false));
         queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[0].type),true,false));
-        qInfo(logSystem()) << "Data off mod changed to" << prefs.inputSource[0].name;
         break;
     case rs_data1Mod:
         queue->add(priorityImmediate,queueItem(funcDATA1Mod,QVariant::fromValue<rigInput>(prefs.inputSource[1]),false,false));
@@ -4462,7 +4464,7 @@ void wfmain::receiveModInput(rigInput input, unsigned char data)
     {
         qInfo() << QString("Data: %0 Input: %1 current: %2").arg(data).arg(input.name).arg(prefs.inputSource[data].name);
         queue->del(getInputTypeCommand(prefs.inputSource[data].type),false);
-        prefs.inputSource[data] = rigInput(input);
+        prefs.inputSource[data] = input;
         if (ui->mainScope->getDataMode() == data)
         {
             queue->addUnique(priorityImmediate,getInputTypeCommand(input.type),true,false);
@@ -5598,11 +5600,15 @@ void wfmain::receiveValue(cacheItem val){
         //receivePassband(val.value.value<ushort>());
         break;
     case funcDataModeWithFilter:
-        if (val.sub)
+        if (val.sub) {
             ui->subScope->receiveMode(val.value.value<modeInfo>());
-        else
+        } else {
             ui->mainScope->receiveMode(val.value.value<modeInfo>());
+        }
+        // Set the inputSource to invalid to ensure it gets updated
+        prefs.inputSource[ui->mainScope->getDataMode()] = rigInput();
         break;
+
     case funcAFMute:
         break;
     // 0x1a 0x05 various registers!
@@ -5815,6 +5821,32 @@ void wfmain::on_scopeDualBtn_toggled(bool en)
 void wfmain::on_dualWatchBtn_toggled(bool en)
 {
     queue->add(priorityImmediate,queueItem(funcVFODualWatch,QVariant::fromValue(en),false,false));
+}
+
+void wfmain::dataModeChanged(modeInfo m)
+{
+    // As the data mode may have changed, we need to make sure that we invalidate the input selection.
+    // Also request the current input from the rig.
+    qInfo(logSystem()) << "*** DATA MODE HAS CHANGED ***";
+    currentModSrc[m.data] = rigInput();
+
+    // Request the current inputSource.
+    switch(m.data)
+    {
+    case 0:
+        queue->add(priorityImmediate,funcDATAOffMod);
+        break;
+    case 1:
+        queue->add(priorityImmediate,funcDATA1Mod);
+        break;
+    case 2:
+        queue->add(priorityImmediate,funcDATA2Mod);
+        break;
+    case 3:
+        queue->add(priorityImmediate,funcDATA3Mod);
+        break;
+    }
+
 }
 
 void wfmain::receiveScopeSettings(bool sub, int theme, quint16 len, int floor, int ceiling)

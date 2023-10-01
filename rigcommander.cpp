@@ -2237,7 +2237,7 @@ void rigCommander::parseCommand()
         {
             if (r.reg == bcdHexToUChar(payloadIn[0]))
             {
-                value.setValue(rigInput(r));
+                value.setValue(r);
                 break;
             }
         }

@@ -415,6 +415,7 @@ private slots:
     void receiveBaudRate(quint32 baudrate);
     void radioSelection(QList<radio_cap_packet> radios);
 
+    void dataModeChanged(modeInfo m);
 
     // Added for RC28/Shuttle support
     void pttToggle(bool);

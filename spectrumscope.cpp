@@ -1362,6 +1362,7 @@ void spectrumScope::receiveMode(modeInfo m)
 
         if (mode.data != m.data)
         {
+            emit dataChanged(m); // Signal wfmain that the data mode has been changed.
             dataCombo->blockSignals(true);
             dataCombo->setCurrentIndex(m.data);
             dataCombo->blockSignals(false);
@@ -1369,6 +1370,7 @@ void spectrumScope::receiveMode(modeInfo m)
 
         if (m.mk != mode.mk) {
             // We have changed mode so "may" need to change regular commands
+
             passbandCenterFrequency = 0.0;
 
             // If new mode doesn't allow bandwidth control, disable filterwidth and pbt.
