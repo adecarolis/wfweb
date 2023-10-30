@@ -327,8 +327,7 @@ bool cachingQueue::compare(QVariant a, QVariant b)
             if (a.value<bool>() != b.value<bool>())
                 changed=true;
         } else if (!strcmp(a.typeName(),"QString")) {
-            if (a.value<QString>() != b.value<QString>())
-                changed=true;
+            changed=true;
         } else if (!strcmp(a.typeName(),"uchar")) {
             if (a.value<uchar>() != b.value<uchar>())
                 changed=true;

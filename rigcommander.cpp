@@ -2081,6 +2081,12 @@ void rigCommander::parseCommand()
         }
         break;
     // The following group are 2 bytes converted to uchar (0-255)
+    case funcKeySpeed: {
+        uchar level = bcdHexToUChar(payloadIn[0],payloadIn[1]);
+        value.setValue<ushort>(round((level / 6.071) + 6));
+        break;
+    }
+
     case funcAGCTime:
     case funcRfGain:
     case funcSquelch:
@@ -2092,7 +2098,6 @@ void rigCommander::parseCommand()
     case funcCwPitch:
     case funcRFPower:
     case funcMicGain:
-    case funcKeySpeed:
     case funcNotchFilter:
     case funcCompressorLevel:
     case funcBreakInDelay:
@@ -5313,6 +5318,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
     if (func == funcSendCW)
     {
         val = value.value<QString>().length();
+        qInfo(logRig()) << "Send CW received";
     }
 
     if (func == funcAfGain && value.isValid() && udp != Q_NULLPTR) {
@@ -5355,7 +5361,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
             else if (!strcmp(value.typeName(),"QString"))
             {
                  QString text = value.value<QString>();
-                 if (pttAllowed && func == funcSendCW)
+                 if (func == funcSendCW)
                  {
                     QByteArray textData = text.toLocal8Bit();
                     unsigned char p=0;
@@ -5369,7 +5375,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
                             (p==0x2D) || (p==0x2C) || (p==0x3A) ||
                             (p==0x27) || (p==0x28) || (p==0x29) ||
                             (p==0x3D) || (p==0x2B) || (p==0x22) ||
-                            (p==0x40) || (p==0x20) )
+                            (p==0x40) || (p==0x20) || p == 0xff)
                         {
                             // Allowed character, continue
                         } else {
@@ -5378,11 +5384,16 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
                         }
                     }
                     payload.append(textData);
+                    qInfo(logRig()) << "Sending CW: payload:" << payload.toHex(' ');
                  }
             }
             else if (!strcmp(value.typeName(),"uchar"))
             {
-                 payload.append(value.value<uchar>());
+                 if (func == funcDashRatio) {
+                    payload.append(bcdEncodeChar(value.value<uchar>()));
+                 } else {
+                     payload.append(value.value<uchar>());
+                 }
             }
             else if (!strcmp(value.typeName(),"ushort"))
             {
@@ -5390,6 +5401,15 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
                     payload.append(makeFilterWidth(value.value<ushort>(),sub));
                     //qInfo() << "Setting filter width" << value.value<ushort>() << "sub" << sub << "hex" << payload.toHex();
 
+                }
+                else if (func == funcKeySpeed){
+                    ushort wpm = round((value.value<ushort>()-6) * (6.071));
+                    payload.append(bcdEncodeInt(wpm));
+                }
+                else if (func == funcCwPitch) {
+                    ushort pitch = 0;
+                    pitch = ceil((value.value<ushort>() - 300) * (255.0 / 600.0));
+                    payload.append(bcdEncodeInt(pitch));
                 }
                 else {
                     payload.append(bcdEncodeInt(value.value<ushort>()));
@@ -5701,7 +5721,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
             }
             // This was a set command, so queue a get straight after to retrieve the updated value
             // will fail on some commands so they would need to be added here:
-            if (func != funcScopeFixedEdgeFreq && func != funcSpeech && func != funcBandStackReg && func != funcMemoryContents)
+            if (func != funcScopeFixedEdgeFreq && func != funcSpeech && func != funcBandStackReg && func != funcMemoryContents && func != funcSendCW)
             {
                 queue->addUnique(priorityImmediate,func,false,sub);
             }

@@ -5432,7 +5432,6 @@ void wfmain::receiveValue(cacheItem val){
         // There is only a single CW Pitch setting, so send to both scopes.
         ui->mainScope->receiveCwPitch(val.value.value<uchar>());
         ui->subScope->receiveCwPitch(val.value.value<uchar>());
-        //receiveCwPitch(val.value.value<uchar>());
         cw->handlePitch(val.value.value<uchar>());
         break;
     case funcMicGain:

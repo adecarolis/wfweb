@@ -20,6 +20,51 @@ cwSender::cwSender(QWidget *parent) :
     connect(ui->textToSendEdit->lineEdit(), &QLineEdit::textEdited, this, &cwSender::textChanged);
     this->setObjectName("CW Sender");
     queue = cachingQueue::getInstance(this);
+
+    connect(this, &cwSender::sendCW, queue, [=](const QString &cwMessage) {
+        queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<QString>(cwMessage)));
+    });
+
+    connect(this, &cwSender::stopCW, queue, [=]() {
+        queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<QString>(QChar(0xff))));
+    });
+
+    connect(this, &cwSender::setBreakInMode, queue, [=](const unsigned char &bmode) {
+        queue->add(priorityImmediate,queueItem(funcBreakIn,QVariant::fromValue<uchar>(bmode)));
+    });
+
+
+    connect(this, &cwSender::setDashRatio, queue, [=](const unsigned char& ratio) {
+        queue->add(priorityImmediate,queueItem(funcDashRatio,QVariant::fromValue<uchar>(ratio)));
+    });
+
+    connect(this, &cwSender::setPitch, queue, [=](const unsigned char& pitch) {
+        queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<ushort>(pitch)));
+    });
+
+    connect(this, &cwSender::getCWSettings, queue, [=]() {
+        queue->add(priorityImmediate,funcKeySpeed);
+        queue->add(priorityImmediate,funcBreakIn);
+        queue->add(priorityImmediate,funcCwPitch);
+        queue->add(priorityImmediate,funcDashRatio);
+    });
+
+    connect(this, &cwSender::setKeySpeed, tone,
+            [=](const unsigned char& wpm) { tone->setSpeed(wpm); });
+
+    connect(this, &cwSender::setDashRatio, tone,
+            [=](const unsigned char& ratio) { tone->setRatio(ratio); });
+
+    connect(this, &cwSender::setPitch, tone,
+            [=](const unsigned char& pitch) { tone->setFrequency(pitch); });
+
+    connect(this, &cwSender::setLevel, tone,
+            [=](const unsigned char& level) { tone->setLevel(level); });
+
+    connect(this, &cwSender::stopCW, tone,
+            [=]() { tone->stopSending(); });
+
+
 }
 
 cwSender::~cwSender()
@@ -51,6 +96,7 @@ void cwSender::showEvent(QShowEvent *event)
 
 void cwSender::handleKeySpeed(unsigned char wpm)
 {
+    qInfo(logCW()) << "Received key speed" << wpm;
     if (wpm != ui->wpmSpin->value() && (wpm >= ui->wpmSpin->minimum()) && (wpm <= ui->wpmSpin->maximum()))
     {
         ui->wpmSpin->blockSignals(true);
@@ -63,6 +109,7 @@ void cwSender::handleKeySpeed(unsigned char wpm)
 #else
         emit setKeySpeed(ratio);
 #endif
+
     }
 }
 
@@ -197,19 +244,19 @@ void cwSender::on_breakinCombo_activated(int brkmode)
 void cwSender::on_wpmSpin_valueChanged(int wpm)
 {
     emit setKeySpeed((unsigned char)wpm);
+    queue->add(priorityImmediate,queueItem(funcKeySpeed,QVariant::fromValue<ushort>(wpm)));
 }
 
 void cwSender::on_dashSpin_valueChanged(double ratio)
 {
-    emit setDashRatio((unsigned char)double(ratio * 10));
+    queue->add(priorityImmediate,queueItem(funcDashRatio,QVariant::fromValue<uchar>(ratio*10.0)));
 }
 
 void cwSender::on_pitchSpin_valueChanged(int arg1)
 {
     //    quint16 cwPitch = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
-    unsigned char pitch = 0;
-    pitch = ceil((arg1 - 300) * (255.0 / 600.0));
-    emit setPitch(pitch);
+    queue->add(priorityImmediate,queueItem(funcCwPitch,QVariant::fromValue<ushort>(arg1)));
+    //emit setPitch(pitch);
 }
 
 void cwSender::on_macro1btn_clicked()
@@ -282,52 +329,6 @@ void cwSender::on_sidetoneEnableChk_clicked(bool clicked)
         connect(this, &cwSender::sendCW, tone, [=](const QString& text) {
                tone->send(text); ui->sidetoneEnableChk->setEnabled(false);
         });
-
-        connect(this, &cwSender::sendCW, queue, [=](const QString &cwMessage) {
-            queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<QString>(cwMessage)));
-        });
-
-        connect(this, &cwSender::stopCW, queue, [=]() {
-            queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<QString>(QChar(0xff))));
-        });
-
-        connect(this, &cwSender::setBreakInMode, queue, [=](const unsigned char &bmode) {
-            queue->add(priorityImmediate,queueItem(funcBreakIn,QVariant::fromValue<uchar>(bmode)));
-        });
-
-        connect(this, &cwSender::setKeySpeed, queue, [=](const unsigned char& wpm) {
-            queue->add(priorityImmediate,queueItem(funcKeySpeed,QVariant::fromValue<ushort>(wpm)));
-        });
-
-        connect(this, &cwSender::setDashRatio, queue, [=](const unsigned char& ratio) {
-            queue->add(priorityImmediate,queueItem(funcDashRatio,QVariant::fromValue<uchar>(ratio)));
-        });
-
-        connect(this, &cwSender::setPitch, queue, [=](const unsigned char& pitch) {
-            queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<ushort>(pitch)));
-        });
-
-        connect(this, &cwSender::getCWSettings, queue, [=]() {
-            queue->add(priorityImmediate,funcKeySpeed);
-            queue->add(priorityImmediate,funcBreakIn);
-            queue->add(priorityImmediate,funcCwPitch);
-            queue->add(priorityImmediate,funcDashRatio);
-        });
-
-        connect(this, &cwSender::setKeySpeed, tone,
-            [=](const unsigned char& wpm) { tone->setSpeed(wpm); });
-
-        connect(this, &cwSender::setDashRatio, tone,
-            [=](const unsigned char& ratio) { tone->setRatio(ratio); });
-
-        connect(this, &cwSender::setPitch, tone,
-            [=](const unsigned char& pitch) { tone->setFrequency(pitch); });
-
-        connect(this, &cwSender::setLevel, tone,
-            [=](const unsigned char& level) { tone->setLevel(level); });
-
-        connect(this, &cwSender::stopCW, tone,
-            [=]() { tone->stopSending(); });
 
         connect(tone, &cwSidetone::finished, this,
             [=]() { ui->sidetoneEnableChk->setEnabled(true); });
