@@ -201,9 +201,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qDebug(logSystem()) << "Running openRig()";
     openRig();
 
-    qDebug(logSystem()) << "Running rigConnections()";
-    rigConnections();
-
     cluster = new dxClusterClient();
 
     clusterThread = new QThread(this);
@@ -383,115 +380,9 @@ void wfmain::openRig()
     }
 }
 
+// Deprecated (moved to makeRig())
 void wfmain::rigConnections()
 {
-
-
-    connect(this, SIGNAL(setCIVAddr(unsigned char)), rig, SLOT(setCIVAddr(unsigned char)));
-
-    connect(this, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
-    connect(this, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
-
-
-    connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
-
-    // Repeater, duplex, and split:
-    //connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
-    //connect(rpt, SIGNAL(setDuplexMode(duplexMode_t)), rig, SLOT(setDuplexMode(duplexMode_t)));
-    //connect(rig, SIGNAL(haveDuplexMode(duplexMode_t)), rpt, SLOT(receiveDuplexMode(duplexMode_t)));
-    //connect(this, SIGNAL(getRptDuplexOffset()), rig, SLOT(getRptDuplexOffset()));
-    connect(rig, SIGNAL(haveRptOffsetFrequency(freqt)), rpt, SLOT(handleRptOffsetFrequency(freqt)));
-
-    // Memories
-    //connect(this, SIGNAL(setMemoryMode()), rig, SLOT(setMemoryMode()));
-    //connect(this, SIGNAL(setSatelliteMode(bool)), rig, SLOT(setSatelliteMode(bool)));
-    //connect(this, SIGNAL(getMemory(quint32)), rig, SLOT(getMemory(quint32)));
-    //connect(this, SIGNAL(getSatMemory(quint32)), rig, SLOT(getSatMemory(quint32)));
-    //connect(this, SIGNAL(setMemory(memoryType)), rig, SLOT(setMemory(memoryType)));
-    //connect(this, SIGNAL(clearMemory(quint32)), rig, SLOT(clearMemory(quint32)));
-    //connect(this, SIGNAL(recallMemory(quint32)), rig, SLOT(recallMemory(quint32)));
-
-    connect(this->rpt, &repeaterSetup::setDuplexMode, this->rig,
-            [=](const duplexMode_t &t) { queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(t),false));});
-
-    connect(this->rpt, &repeaterSetup::getTone, this->rig,
-            [=]() { queue->add(priorityImmediate,funcRepeaterTone);});
-
-    connect(this->rpt, &repeaterSetup::setTSQL, this->rig,
-            [=](const toneInfo& t) { queue->add(priorityImmediate,queueItem(funcTSQLFreq,QVariant::fromValue<toneInfo>(t),false));});
-
-    connect(this->rpt, &repeaterSetup::getTSQL, this->rig,
-            [=]() { queue->add(priorityImmediate,funcRepeaterTSQL);});
-
-    connect(this->rpt, &repeaterSetup::setDTCS, this->rig,
-            [=](const toneInfo& t) { queue->add(priorityImmediate,queueItem(funcRepeaterDTCS,QVariant::fromValue<toneInfo>(t),false));});
-
-    connect(this->rpt, &repeaterSetup::getDTCS, this->rig,
-            [=]() { queue->add(priorityImmediate,funcRepeaterDTCS);});
-
-
-    connect(this->rpt, &repeaterSetup::getRptAccessMode, this->rig,
-            [=]() {
-            if (rigCaps.commands.contains(funcToneSquelchType)) {
-                queue->add(priorityImmediate,funcToneSquelchType,false);
-            } else {
-                queue->add(priorityImmediate,funcRepeaterTone,false);
-                queue->add(priorityImmediate,funcRepeaterTSQL,false);
-            }
-    });
-
-    connect(this->rpt, &repeaterSetup::setQuickSplit, this->rig,
-            [=](const bool &qsEnabled) {
-            queue->add(priorityImmediate,queueItem(funcQuickSplit,QVariant::fromValue<bool>(qsEnabled),false));
-    });
-
-    connect(this->rpt, &repeaterSetup::setRptAccessMode, this->rig,
-            [=](const rptrAccessData &rd) {
-                queue->add(priorityImmediate,queueItem(funcToneSquelchType,QVariant::fromValue<rptrAccessData>(rd),false));
-        });
-
-    connect(this->rig, &rigCommander::haveDuplexMode, this->rpt,
-            [=](const duplexMode_t &dm) {
-                if(dm==dmSplitOn)
-                    this->splitModeEnabled = true;
-                else
-                    this->splitModeEnabled = false;
-    });
-
-    connect(this->rpt, &repeaterSetup::setTransmitFrequency, this->rig,
-            [=](const freqt &transmitFreq) { queue->add(priorityImmediate,queueItem(funcFreqSet,QVariant::fromValue<freqt>(transmitFreq),false));});
-
-    connect(this->rpt, &repeaterSetup::setTransmitMode, this->rig,
-            [=](const modeInfo &transmitMode) {  queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(transmitMode),false));});
-
-    connect(this->rpt, &repeaterSetup::selectVFO, this->rig,
-            [=](const vfo_t &v) { queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(v),false));});
-
-    connect(this->rpt, &repeaterSetup::equalizeVFOsAB, this->rig,
-            [=]() { queue->add(priorityImmediate,funcVFOEqualAB);});
-
-    connect(this->rpt, &repeaterSetup::equalizeVFOsMS, this->rig,
-            [=]() {  queue->add(priorityImmediate,funcVFOEqualMS);});
-
-    connect(this->rpt, &repeaterSetup::swapVFOs, this->rig,
-            [=]() {  queue->add(priorityImmediate,funcVFOSwapMS);});
-
-    connect(this->rpt, &repeaterSetup::setRptDuplexOffset, this->rig,
-            [=](const freqt &fOffset) { queue->add(priorityImmediate,queueItem(funcSendFreqOffset,QVariant::fromValue<freqt>(fOffset),false));});
-
-    connect(this->rpt, &repeaterSetup::getRptDuplexOffset, this->rig,
-            [=]() {  queue->add(priorityImmediate,funcReadFreqOffset);});
-
-    connect(this, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
-
-    connect(ui->mainScope, SIGNAL(updateSettings(bool,int,quint16,int,int)), this, SLOT(receiveScopeSettings(bool,int,quint16,int,int)));
-    connect(ui->subScope, SIGNAL(updateSettings(bool,int,quint16,int,int)), this, SLOT(receiveScopeSettings(bool,int,quint16,int,int)));
-
-    connect(ui->mainScope, SIGNAL(elapsedTime(bool,qint64)), this, SLOT(receiveElapsed(bool,qint64)));
-    connect(ui->subScope, SIGNAL(elapsedTime(bool,qint64)), this, SLOT(receiveElapsed(bool,qint64)));
-
-    connect(ui->mainScope, SIGNAL(dataChanged(modeInfo)), this, SLOT(dataModeChanged(modeInfo)));
-
 }
 
 void wfmain::makeRig()
@@ -530,6 +421,113 @@ void wfmain::makeRig()
         connect(this, SIGNAL(setRigID(unsigned char)), rig, SLOT(setRigID(unsigned char)));
         connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
+
+
+
+        connect(this, SIGNAL(setCIVAddr(unsigned char)), rig, SLOT(setCIVAddr(unsigned char)));
+
+        connect(this, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
+        connect(this, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
+
+
+        connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
+
+        // Repeater, duplex, and split:
+        //connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
+        //connect(rpt, SIGNAL(setDuplexMode(duplexMode_t)), rig, SLOT(setDuplexMode(duplexMode_t)));
+        //connect(rig, SIGNAL(haveDuplexMode(duplexMode_t)), rpt, SLOT(receiveDuplexMode(duplexMode_t)));
+        //connect(this, SIGNAL(getRptDuplexOffset()), rig, SLOT(getRptDuplexOffset()));
+        connect(rig, SIGNAL(haveRptOffsetFrequency(freqt)), rpt, SLOT(handleRptOffsetFrequency(freqt)));
+
+        // Memories
+        //connect(this, SIGNAL(setMemoryMode()), rig, SLOT(setMemoryMode()));
+        //connect(this, SIGNAL(setSatelliteMode(bool)), rig, SLOT(setSatelliteMode(bool)));
+        //connect(this, SIGNAL(getMemory(quint32)), rig, SLOT(getMemory(quint32)));
+        //connect(this, SIGNAL(getSatMemory(quint32)), rig, SLOT(getSatMemory(quint32)));
+        //connect(this, SIGNAL(setMemory(memoryType)), rig, SLOT(setMemory(memoryType)));
+        //connect(this, SIGNAL(clearMemory(quint32)), rig, SLOT(clearMemory(quint32)));
+        //connect(this, SIGNAL(recallMemory(quint32)), rig, SLOT(recallMemory(quint32)));
+
+        connect(this->rpt, &repeaterSetup::setDuplexMode, this->rig,
+                [=](const duplexMode_t &t) { queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(t),false));});
+
+        connect(this->rpt, &repeaterSetup::getTone, this->rig,
+                [=]() { queue->add(priorityImmediate,funcRepeaterTone,false,false);});
+
+        connect(this->rpt, &repeaterSetup::setTSQL, this->rig,
+                [=](const toneInfo& t) { queue->add(priorityImmediate,queueItem(funcTSQLFreq,QVariant::fromValue<toneInfo>(t),false));});
+
+        connect(this->rpt, &repeaterSetup::getTSQL, this->rig,
+                [=]() { queue->add(priorityImmediate,funcRepeaterTSQL,false,false);});
+
+        connect(this->rpt, &repeaterSetup::setDTCS, this->rig,
+                [=](const toneInfo& t) { queue->add(priorityImmediate,queueItem(funcRepeaterDTCS,QVariant::fromValue<toneInfo>(t),false));});
+
+        connect(this->rpt, &repeaterSetup::getDTCS, this->rig,
+                [=]() { queue->add(priorityImmediate,funcRepeaterDTCS,false,false);});
+
+
+        connect(this->rpt, &repeaterSetup::getRptAccessMode, this->rig,
+                [=]() {
+                    if (rigCaps.commands.contains(funcToneSquelchType)) {
+                        queue->add(priorityImmediate,funcToneSquelchType,false,false);
+                    } else {
+                        queue->add(priorityImmediate,funcRepeaterTone,false,false);
+                        queue->add(priorityImmediate,funcRepeaterTSQL,false,false);
+                    }
+                });
+
+        connect(this->rpt, &repeaterSetup::setQuickSplit, this->rig,
+                [=](const bool &qsEnabled) {
+                    queue->add(priorityImmediate,queueItem(funcQuickSplit,QVariant::fromValue<bool>(qsEnabled),false));
+                });
+
+        connect(this->rpt, &repeaterSetup::setRptAccessMode, this->rig,
+                [=](const rptrAccessData &rd) {
+                    queue->add(priorityImmediate,queueItem(funcToneSquelchType,QVariant::fromValue<rptrAccessData>(rd),false));
+                });
+
+        connect(this->rig, &rigCommander::haveDuplexMode, this->rpt,
+                [=](const duplexMode_t &dm) {
+                    if(dm==dmSplitOn)
+                        this->splitModeEnabled = true;
+                    else
+                        this->splitModeEnabled = false;
+                });
+
+        connect(this->rpt, &repeaterSetup::setTransmitFrequency, this->rig,
+                [=](const freqt &transmitFreq) { queue->add(priorityImmediate,queueItem(funcFreqSet,QVariant::fromValue<freqt>(transmitFreq),false));});
+
+        connect(this->rpt, &repeaterSetup::setTransmitMode, this->rig,
+                [=](const modeInfo &transmitMode) {  queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(transmitMode),false));});
+
+        connect(this->rpt, &repeaterSetup::selectVFO, this->rig,
+                [=](const vfo_t &v) { queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(v),false));});
+
+        connect(this->rpt, &repeaterSetup::equalizeVFOsAB, this->rig,
+                [=]() { queue->add(priorityImmediate,funcVFOEqualAB,false,false);});
+
+        connect(this->rpt, &repeaterSetup::equalizeVFOsMS, this->rig,
+                [=]() {  queue->add(priorityImmediate,funcVFOEqualMS,false,false);});
+
+        connect(this->rpt, &repeaterSetup::swapVFOs, this->rig,
+                [=]() {  queue->add(priorityImmediate,funcVFOSwapMS,false,false);});
+
+        connect(this->rpt, &repeaterSetup::setRptDuplexOffset, this->rig,
+                [=](const freqt &fOffset) { queue->add(priorityImmediate,queueItem(funcSendFreqOffset,QVariant::fromValue<freqt>(fOffset),false));});
+
+        connect(this->rpt, &repeaterSetup::getRptDuplexOffset, this->rig,
+                [=]() {  queue->add(priorityImmediate,funcReadFreqOffset,false,false);});
+
+        connect(this, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
+
+        connect(ui->mainScope, SIGNAL(updateSettings(bool,int,quint16,int,int)), this, SLOT(receiveScopeSettings(bool,int,quint16,int,int)));
+        connect(ui->subScope, SIGNAL(updateSettings(bool,int,quint16,int,int)), this, SLOT(receiveScopeSettings(bool,int,quint16,int,int)));
+
+        connect(ui->mainScope, SIGNAL(elapsedTime(bool,qint64)), this, SLOT(receiveElapsed(bool,qint64)));
+        connect(ui->subScope, SIGNAL(elapsedTime(bool,qint64)), this, SLOT(receiveElapsed(bool,qint64)));
+
+        connect(ui->mainScope, SIGNAL(dataChanged(modeInfo)), this, SLOT(dataModeChanged(modeInfo)));
 
         // Create link for server so it can have easy access to rig.
         if (serverConfig.rigs.first() != Q_NULLPTR) {
@@ -1301,8 +1299,6 @@ void wfmain::pttToggle(bool status)
     // Start 3 minute timer
     if (status)
         pttTimer->start();
-
-    queue->add(priorityImmediate,funcTransceiverStatus);
 }
 
 void wfmain::doShuttle(bool up, unsigned char level)
@@ -3386,7 +3382,7 @@ funcs wfmain::getInputTypeCommand(inputTypes input)
         func = funcNone;
         break;
     }
-    qInfo(logSystem()) << "Input type command for" << input << "is" << funcString[func];
+    //qInfo(logSystem()) << "Input type command for" << input << "is" << funcString[func];
     return func;
 }
 
@@ -4162,6 +4158,8 @@ void wfmain::on_rfGainSlider_valueChanged(int value)
 
 void wfmain::on_afGainSlider_valueChanged(int value)
 {
+
+    qInfo(logGui()) << "AF Gain Slider value" << value << "LAN=" << usingLAN;
     if(usingLAN)
     {
         prefs.rxSetup.localAFgain = (unsigned char)(value);
@@ -4467,7 +4465,7 @@ void wfmain::receiveModInput(rigInput input, unsigned char data)
         prefs.inputSource[data] = input;
         if (ui->mainScope->getDataMode() == data)
         {
-            queue->addUnique(priorityImmediate,getInputTypeCommand(input.type),true,false);
+            queue->addUnique(priorityHigh,getInputTypeCommand(input.type),true,false);
             changeModLabel(input,false);
         }
         switch (data) {
@@ -5365,6 +5363,8 @@ void wfmain::receiveValue(cacheItem val){
         val.sub=true;
         ui->subScope->receiveMode(val.value.value<modeInfo>());
         break;
+    case funcVFOBandMS:
+        break;
     case funcSatelliteMemory:
     case funcMemoryContents:
         emit haveMemory(val.value.value<memoryType>());
@@ -5834,16 +5834,16 @@ void wfmain::dataModeChanged(modeInfo m)
     switch(m.data)
     {
     case 0:
-        queue->add(priorityImmediate,funcDATAOffMod);
+        queue->add(priorityImmediate,funcDATAOffMod,false,false);
         break;
     case 1:
-        queue->add(priorityImmediate,funcDATA1Mod);
+        queue->add(priorityImmediate,funcDATA1Mod,false,false);
         break;
     case 2:
-        queue->add(priorityImmediate,funcDATA2Mod);
+        queue->add(priorityImmediate,funcDATA2Mod,false,false);
         break;
     case 3:
-        queue->add(priorityImmediate,funcDATA3Mod);
+        queue->add(priorityImmediate,funcDATA3Mod,false,false);
         break;
     }
 

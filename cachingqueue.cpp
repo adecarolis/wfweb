@@ -159,7 +159,7 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
             while (it != queue.end()) {
                 if (it.value().command == item.command && it.value().recurring == item.recurring && it.value().sub == item.sub && it.value().param.isValid() == item.param.isValid())
                 {
-                    qInfo() << "deleting" << it.value().id << funcString[it.value().command] << "sub" << it.value().sub << "recurring" << it.value().recurring ;
+                    //qInfo() << "deleting" << it.value().id << funcString[it.value().command] << "sub" << it.value().sub << "recurring" << it.value().recurring ;
                     it = queue.erase(it);
                 }
                 else
@@ -191,7 +191,7 @@ void cachingQueue::del(funcs func, bool sub)
             qInfo() << "recurring command" << funcString[func] << "sub" << sub << "not found in queue";
         while (it != queue.end()) {
             if (it.value().command == func && it.value().sub == sub) {
-                    qInfo() << "deleting" << funcString[it.value().command] << "sub" << it.value().sub << "recurring" << it.value().recurring;
+                //qInfo() << "deleting" << funcString[it.value().command] << "sub" << it.value().sub << "recurring" << it.value().recurring;
                 it = queue.erase(it);
             }
             else

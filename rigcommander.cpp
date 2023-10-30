@@ -2021,6 +2021,9 @@ void rigCommander::parseCommand()
         break;
     }
 
+    case funcVFOBandMS:
+        value.setValue(payloadIn[0]);
+        break;
     case funcSatelliteMemory:
         memParser=rigCaps.satParser;
     case funcMemoryContents:
