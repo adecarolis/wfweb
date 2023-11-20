@@ -1,10 +1,11 @@
 #!/bin/bash
 echo "This script copies the following items into your system:" 
 echo ""
-echo "icon: wfview.png to /usr/share/pixmaps/"
+echo "icon: unix_icons/wfview.png to /usr/share/icons/hicolor/256x256/apps/"
 echo "wfview application to /usr/local/bin/"
 echo "wfview.desktop to /usr/share/applications/"
-echo "qdarkstyle stylesheet to /usr/share/wfview/stylesheets"
+echo "org.wfview.wfview.metainfo.xml metadata file to /usr/share/metainfo/"
+echo "qdarkstyle stylesheet to /usr/share/wfview/stylesheets/"
 
 echo ""
 echo "This script MUST be run from the build directory. Do not run it from the source directory!"
@@ -30,7 +31,8 @@ echo ""
 
 cp wfview /usr/local/bin/wfview
 cp wfview.desktop /usr/share/applications/
-cp wfview.png /usr/share/pixmaps/
+cp unix_icons/wfview.png /usr/share/icons/hicolor/256x256/apps/
+cp org.wfview.wfview.metainfo.xml /usr/share/metainfo/
 mkdir -p /usr/share/wfview/stylesheets
 cp -r qdarkstyle /usr/share/wfview/stylesheets/
 
