@@ -109,8 +109,9 @@ struct USBDEVICE {
     quint8 orientation=0;
     QColor color=Qt::darkGray;
     funcs lcd=funcNone;
-
+#if defined(USB_CONTROLLER)
     hid_device* handle = NULL;
+#endif
     QString product = "";
     QString manufacturer = "";
     QString serial = "<none>";

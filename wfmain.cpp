@@ -255,12 +255,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         });
 
 
-#if !defined(USB_CONTROLLER)
-    ui->enableUsbChk->setVisible(false);
-    ui->usbControllerBtn->setVisible(false);
-    ui->usbControllersResetBtn->setVisible(false);
-    ui->usbResetLbl->setVisible(false);
-#else
+#if defined(USB_CONTROLLER)
     #if defined(USB_HOTPLUG) && defined(Q_OS_LINUX)
         uDev = udev_new();
         if (!uDev)
@@ -2517,10 +2512,11 @@ void wfmain::extChangedCtPref(prefCtItem i)
                                        QMessageBox::Cancel);
         if (ret == QMessageBox::Ok) {
             qInfo(logUsbControl()) << "Resetting USB controllers to default values";
-
+#if defined(USB_CONTROLLER)
             usbButtons.clear();
             usbKnobs.clear();
             usbDevices.clear();
+#endif
             if (prefs.enableUSBControllers)
                 extChangedCtPref(ct_enableUSBControllers);
         }
