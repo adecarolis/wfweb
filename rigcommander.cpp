@@ -803,7 +803,7 @@ void rigCommander::parseCommand()
     }
 
     case funcVFOBandMS:
-        value.setValue(payloadIn[0]);
+        value.setValue(static_cast<bool>(payloadIn[0]));
         break;
     case funcSatelliteMemory:
         memParser=rigCaps.satParser;

@@ -14,7 +14,7 @@
 QScopedPointer<QFile> m_logFile;
 QMutex logMutex;
 QMutex logTextMutex;
-QVector<QString> logStringBuffer;
+QVector<QPair<QtMsgType,QString>> logStringBuffer;
 #ifdef QT_DEBUG
 bool debugModeLogging = true;
 #else
@@ -5116,10 +5116,10 @@ void wfmain::logCheck()
     }
 }
 
-void wfmain::handleLogText(QString text)
+void wfmain::handleLogText(QPair<QtMsgType,QString> logMessage)
 {
     // This function is just a pass-through
-    logWindow->acceptLogText(text);
+    logWindow->acceptLogText(logMessage);
 }
 
 void wfmain::setDebugLogging(bool debugModeOn)
@@ -5177,7 +5177,7 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     text.append(": ");
     text.append(msg);
     logTextMutex.lock();
-    logStringBuffer.push_front(text);
+    logStringBuffer.push_front(QPair<QtMsgType,QString>(type,text));
     logTextMutex.unlock();
 
 }

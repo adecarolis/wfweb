@@ -95,7 +95,7 @@ public:
     explicit wfmain(const QString settingsFile, const QString logFile, bool debugMode, QWidget *parent = 0);
     ~wfmain();
     static void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
-    void handleLogText(QString text);
+    void handleLogText(QPair<QtMsgType,QString> logMessage);
 
 #ifdef USB_HOTPLUG
     #if defined(Q_OS_WIN)

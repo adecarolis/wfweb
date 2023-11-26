@@ -27,7 +27,7 @@ class loggingWindow : public QWidget
 public:
     explicit loggingWindow(QString logFilename, QWidget *parent = 0);
     ~loggingWindow();
-    void acceptLogText(QString text);
+    void acceptLogText(QPair<QtMsgType,QString> text);
 
 public slots:
     void setInitialDebugState(bool debugModeEnabled);

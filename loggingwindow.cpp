@@ -58,10 +58,21 @@ void loggingWindow::setInitialDebugState(bool debugModeEnabled)
     ui->debugBtn->blockSignals(false);
 }
 
-void loggingWindow::acceptLogText(QString text)
+void loggingWindow::acceptLogText(QPair<QtMsgType,QString> text)
 {
     QMutexLocker lock(&textMutex);
-    ui->logTextDisplay->appendPlainText(text);
+    QString colour = "white";
+    if (text.first == QtDebugMsg)
+    {
+        colour = "grey";
+    } else if (text.first == QtWarningMsg)
+    {
+        colour = "yellow";
+    } else if (text.first == QtCriticalMsg || text.first == QtFatalMsg)
+    {
+        colour = "red";
+    }
+    ui->logTextDisplay->appendHtml(QString("<p><span style='color:%0'>%1</span></p>").arg(colour).arg(text.second));
     if(vertLogScroll->value() == vertLogScroll->maximum())
     {
         horizLogScroll->setValue(horizLogScroll->minimum());
