@@ -96,9 +96,9 @@ void cwSender::showEvent(QShowEvent *event)
 
 void cwSender::handleKeySpeed(unsigned char wpm)
 {
-    qInfo(logCW()) << "Received key speed" << wpm;
     if (wpm != ui->wpmSpin->value() && (wpm >= ui->wpmSpin->minimum()) && (wpm <= ui->wpmSpin->maximum()))
     {
+        qInfo(logCW()) << "Received new key speed" << wpm;
         ui->wpmSpin->blockSignals(true);
         QMetaObject::invokeMethod(ui->wpmSpin, "setValue", Qt::QueuedConnection, Q_ARG(int, wpm));
         ui->wpmSpin->blockSignals(false);
@@ -107,7 +107,7 @@ void cwSender::handleKeySpeed(unsigned char wpm)
             tone->setSpeed(wpm);
         }, Qt::QueuedConnection);
 #else
-        emit setKeySpeed(ratio);
+        emit setKeySpeed(ratio); // This will also send back to rig (but not a major issue)
 #endif
 
     }

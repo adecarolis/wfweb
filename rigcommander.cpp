@@ -2014,8 +2014,8 @@ void rigCommander::parseCommand()
     {
         modeInfo m;
         // New format payload with mode+datamode+filter
-        m = parseMode(uchar(payloadIn[0]), uchar(payloadIn[2]),sub);
-        m.data = uchar(payloadIn[1]);
+        m = parseMode(bcdHexToUChar(payloadIn[0]), bcdHexToUChar(payloadIn[2]),sub);
+        m.data = bcdHexToUChar(payloadIn[1]);
         m.VFO = selVFO_t(sub);
         value.setValue(m);
         break;
@@ -2057,7 +2057,7 @@ void rigCommander::parseCommand()
     // These return a single byte that we convert to a uchar (0-99)
     case funcTuningStep:
     case funcAttenuator:
-        value.setValue(static_cast<uchar>(uchar(payloadIn[0])));
+        value.setValue(bcdHexToUChar(payloadIn[0]));
         break;
     // Return a duplexMode_t for split or duplex (same function)
     case funcSplitStatus:
@@ -2066,7 +2066,7 @@ void rigCommander::parseCommand()
     case funcAntenna:
     {
         antennaInfo ant;
-        ant.antenna = static_cast<uchar>(payloadIn[0]);
+        ant.antenna = bcdHexToUChar(payloadIn[0]);
         ant.rx = static_cast<bool>(payloadIn[1]);
         value.setValue(ant);
         break;
@@ -2124,7 +2124,7 @@ void rigCommander::parseCommand()
     case funcManualNotchWidth:
     case funcSSBTXBandwidth:
     case funcDSPIFFilter:
-        value.setValue(uchar(payloadIn[0]));
+        value.setValue(bcdHexToUChar(payloadIn[0]));
         break;
     // The following group ALL return bool
     case funcNoiseBlanker:
@@ -4052,7 +4052,7 @@ void rigCommander::determineRigCaps()
                 funcs func = funcsLookup.find(settings->value("Type", "").toString().toUpper()).value();
                             rigCaps.commands.insert(func, funcType(func, funcString[int(func)],
                                 QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),
-                                settings->value("Min", 0).toString().toInt(), settings->value("Max", 0).toString().toInt(),
+                                                       settings->value("Min", 0).toInt(NULL), settings->value("Max", 0).toInt(NULL),
                                 settings->value("Command29",false).toBool()));
 
                             rigCaps.commandsReverse.insert(QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),func);
@@ -4127,7 +4127,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numPreamps; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.preamps.push_back(genericType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", 0).toString()));
+            rigCaps.preamps.push_back(genericType(settings->value("Num", 0).toString().toUInt(nullptr,16), settings->value("Name", 0).toString()));
         }
         settings->endArray();
     }
@@ -4140,7 +4140,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numAntennas; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.antennas.push_back(genericType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", 0).toString()));
+            rigCaps.antennas.push_back(genericType(settings->value("Num", 0).toString().toUInt(nullptr,16), settings->value("Name", 0).toString()));
         }
         settings->endArray();
     }
@@ -4153,7 +4153,8 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numAttenuators; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.attenuators.push_back((unsigned char)settings->value("dB", 0).toUInt());
+            qInfo(logRig()) << "** GOT ATTENUATOR" << settings->value("dB", 0).toString().toUInt();
+            rigCaps.attenuators.push_back((unsigned char)settings->value("dB", 0).toString().toUInt());
         }
         settings->endArray();
     }
@@ -4166,7 +4167,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numFilters; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.filters.push_back(filterType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", "").toString(), settings->value("Modes", 0).toUInt()));
+            rigCaps.filters.push_back(filterType(settings->value("Num", 0).toString().toUInt(nullptr,0), settings->value("Name", "").toString(), settings->value("Modes", 0).toUInt()));
         }
         settings->endArray();
     }
@@ -5389,11 +5390,8 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
             }
             else if (!strcmp(value.typeName(),"uchar"))
             {
-                 if (func == funcDashRatio) {
-                    payload.append(bcdEncodeChar(value.value<uchar>()));
-                 } else {
-                     payload.append(value.value<uchar>());
-                 }
+                payload.append(bcdEncodeChar(value.value<uchar>()));
+                //qInfo(logRig()) << "**** setting uchar value" << funcString[func] << "val" << value.value<uchar>();
             }
             else if (!strcmp(value.typeName(),"ushort"))
             {

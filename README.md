@@ -14,7 +14,7 @@ Other models to be tested/added (including the IC-705)..
 
 website - [WFVIEW](https://wfview.org/) wfview.org
 
-wfview supports viewing the spectrum display waterfall and most normal radio controls. Using wfview, the radio can be operated using the mouse, or just the keyboard (great for those with visual impairments), or even a touch screen display. The gorgous waterfall spectrum can be displayed on a monitor of any size, and can even projected onto a wall for a presentation. Even a VNC session can make use of wfview for interesting remote rig possibilities. wfview runs on humble hardware, ranging from the $35 Raspberry Pi, to laptops, to desktops. wfview is designed to run on GNU Linux, but can probably be adapted to run on other operating systems. In fact we do have  working example in windows as well.
+wfview supports viewing the spectrum display waterfall and most normal radio controls. Using wfview, the radio can be operated using the mouse, or just the keyboard (great for those with visual impairments), or even a touch screen display. The gorgous waterfall spectrum can be displayed on a monitor of any size, and can even projected onto a wall for a presentation. Even a VNC session can make use of wfview for interesting remote rig possibilities. wfview runs on humble hardware, ranging from the $35 Raspberry Pi, to laptops, to desktops. wfview was originally designed to run on GNU Linux, but has since been adapted to work on MacOS and Windows.
 
 
 
@@ -122,5 +122,5 @@ see [QCP] (https://www.qcustomplot.com/)
 
 
 
-If you feel that we forgot ayone, just drop a mail.
+If you feel that we forgot anyone, just drop a mail.
 

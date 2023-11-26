@@ -3800,7 +3800,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->attSelCombo->setDisabled(false);
             foreach (auto att, rigCaps.attenuators)
             {
-                ui->attSelCombo->addItem(((att == 0) ? QString("0 dB") : QString("-%1 dB").arg(att,2,16)),att);
+                ui->attSelCombo->addItem(((att == 0) ? QString("0 dB") : QString("-%1 dB").arg(att)),att);
             }
         } else {
             ui->attSelCombo->setDisabled(true);
