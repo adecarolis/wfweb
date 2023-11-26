@@ -2332,6 +2332,22 @@ void rigCommander::setCurrentRadio(quint8 radio) {
     emit selectedRadio(radio);
 }
 
+void rigCommander::setAfGain(unsigned char level)
+{
+    if (udp == Q_NULLPTR)
+    {
+        QByteArray payload;
+        if (getCommand(funcAfGain,payload,level))
+        {
+            payload.append(bcdEncodeInt(level));
+            prepDataAndSend(payload);
+        }
+    }
+    else {
+        emit haveSetVolume(level);
+        localVolume = level;
+    }
+}
 
 void rigCommander::getDebug()
 {

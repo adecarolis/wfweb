@@ -75,6 +75,7 @@ public slots:
     void setCurrentRadio(quint8 radio);
     void getDebug();
     void receiveCommand(funcs func, QVariant value, bool sub);
+    void setAfGain(unsigned char level);
 
 signals:
     // Communication:
