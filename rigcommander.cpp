@@ -938,15 +938,25 @@ void rigCommander::parseCommand()
     // 0x17 is CW send and 0x18 is power control (no reply)
     // 0x19 it automatically added.
     case funcTransceiverId:
-        value.setValue(static_cast<uchar>(payloadIn[0]));
-        if (rigList.contains(uchar(payloadIn[0])))
+        if (!rigCaps.modelID)
         {
-            this->model = rigList.find(uchar(payloadIn[0])).key();
+            if (payloadIn[0] == 0x0 && payloadIn.size() > 1)
+            {
+                payloadIn.remove(0,1); // Remove spurious response.
+            }
+            value.setValue(static_cast<uchar>(payloadIn[0]));
+            if (rigList.contains(uchar(payloadIn[0])))
+            {
+                this->model = rigList.find(uchar(payloadIn[0])).key();
+            }
+            //model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
+            rigCaps.modelID = payloadIn[0];
+            determineRigCaps();
+            qInfo(logRig()) << "Have rig ID: " << QString::number(rigCaps.modelID,16);
         }
-        //model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
-        rigCaps.modelID = payloadIn[0];
-        determineRigCaps();
-        qInfo(logRig()) << "Have rig ID: " << QString::number(rigCaps.modelID,16);
+        else {
+            qWarning(logRig()) << "Received transceiverID when we already have rigcaps: " << payloadIn.toHex(' ');
+        }
         break;
     // 0x1a
     case funcBandStackReg:
@@ -1259,7 +1269,6 @@ void rigCommander::determineRigCaps()
     rigCaps.steps.clear();
     rigCaps.memParser.clear();
     rigCaps.satParser.clear();
-
     // modelID should already be set!
     while (!rigList.contains(rigCaps.modelID))
     {
