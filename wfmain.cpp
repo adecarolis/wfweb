@@ -1745,7 +1745,7 @@ void wfmain::loadSettings()
 
     if (prefs.tciPort > 0 && tci == Q_NULLPTR) {
 
-        tci = new tciServer(this);
+        tci = new tciServer();
 
         tciThread = new QThread(this);
         tciThread->setObjectName("TCIServer()");

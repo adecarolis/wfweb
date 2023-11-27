@@ -49,22 +49,6 @@ cwSender::cwSender(QWidget *parent) :
         queue->add(priorityImmediate,funcDashRatio);
     });
 
-    connect(this, &cwSender::setKeySpeed, tone,
-            [=](const unsigned char& wpm) { tone->setSpeed(wpm); });
-
-    connect(this, &cwSender::setDashRatio, tone,
-            [=](const unsigned char& ratio) { tone->setRatio(ratio); });
-
-    connect(this, &cwSender::setPitch, tone,
-            [=](const unsigned char& pitch) { tone->setFrequency(pitch); });
-
-    connect(this, &cwSender::setLevel, tone,
-            [=](const unsigned char& level) { tone->setLevel(level); });
-
-    connect(this, &cwSender::stopCW, tone,
-            [=]() { tone->stopSending(); });
-
-
 }
 
 cwSender::~cwSender()
@@ -332,6 +316,22 @@ void cwSender::on_sidetoneEnableChk_clicked(bool clicked)
 
         connect(tone, &cwSidetone::finished, this,
             [=]() { ui->sidetoneEnableChk->setEnabled(true); });
+
+        connect(this, &cwSender::setKeySpeed, tone,
+                [=](const unsigned char& wpm) { tone->setSpeed(wpm); });
+
+        connect(this, &cwSender::setDashRatio, tone,
+                [=](const unsigned char& ratio) { tone->setRatio(ratio); });
+
+        connect(this, &cwSender::setPitch, tone,
+                [=](const unsigned char& pitch) { tone->setFrequency(pitch); });
+
+        connect(this, &cwSender::setLevel, tone,
+                [=](const unsigned char& level) { tone->setLevel(level); });
+
+        connect(this, &cwSender::stopCW, tone,
+                [=]() { tone->stopSending(); });
+
 
         emit initTone();
 

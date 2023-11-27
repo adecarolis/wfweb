@@ -1129,6 +1129,7 @@ void settingswidget::populateServerUsers()
 
 void settingswidget::serverAddUserLine(int row, const QString &user, const QString &pass, const int &type)
 {
+    Q_UNUSED(row)
     // migration TODO: Review these signals/slots
     ui->serverUsersTable->blockSignals(true);
 
@@ -1876,12 +1877,14 @@ void settingswidget::on_audioInputCombo_currentIndexChanged(int index)
 /* Beginning of radio specific settings */
 void settingswidget::on_modInputCombo_activated(int index)
 {
+    Q_UNUSED(index)
     prefs->inputSource[0]= ui->modInputCombo->currentData().value<rigInput>();
     emit changedRsPref(rs_dataOffMod);
 }
 
 void settingswidget::on_modInputData1Combo_activated(int index)
 {
+    Q_UNUSED(index)
     prefs->inputSource[1] = ui->modInputData1Combo->currentData().value<rigInput>();
     emit changedRsPref(rs_data1Mod);
 }
@@ -1889,6 +1892,7 @@ void settingswidget::on_modInputData1Combo_activated(int index)
 
 void settingswidget::on_modInputData2Combo_activated(int index)
 {
+    Q_UNUSED(index)
     prefs->inputSource[2] = ui->modInputData2Combo->currentData().value<rigInput>();
     emit changedRsPref(rs_data2Mod);
 }
@@ -1896,6 +1900,7 @@ void settingswidget::on_modInputData2Combo_activated(int index)
 
 void settingswidget::on_modInputData3Combo_activated(int index)
 {
+    Q_UNUSED(index)
     prefs->inputSource[3] = ui->modInputData3Combo->currentData().value<rigInput>();
     emit changedRsPref(rs_data3Mod);
 }

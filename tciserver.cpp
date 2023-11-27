@@ -67,6 +67,7 @@ void tciServer::init(quint16 port) {
 
 void tciServer::setupTxPacket(int length)
 {
+    Q_UNUSED(length)
 }
 
 tciServer::~tciServer()
