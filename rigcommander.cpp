@@ -571,9 +571,6 @@ void rigCommander::parseData(QByteArray dataInput)
     {
         data = dataList[index];
         data.append('\xFD'); // because we expect it to be there.
-    // foreach(listitem)
-    // listitem.append('\xFD');
-    // continue parsing...
 
         count++;
         // Data echo'd back from the rig start with this:
@@ -1032,7 +1029,7 @@ void rigCommander::parseCommand()
     case funcDATA2Mod:
     case funcDATA3Mod:
     {
-        foreach (auto r, rigCaps.inputs)
+        for (auto &r: rigCaps.inputs)
         {
             if (r.reg == bcdHexToUChar(payloadIn[0]))
             {
@@ -1114,7 +1111,7 @@ void rigCommander::parseCommand()
     case funcScopeMainSpan:
     {
         freqt f = parseFrequency(payloadIn, 3);
-        foreach (auto s, rigCaps.scopeCenterSpans)
+        for (auto &s: rigCaps.scopeCenterSpans)
         {
             if (s.freq == f.Hz)
             {
@@ -1989,7 +1986,7 @@ modeInfo rigCommander::parseMode(quint8 mode, quint8 filter, bool sub)
 {
     modeInfo mi;
     bool found=false;
-    foreach (auto& m, rigCaps.modes)
+    for (auto& m: rigCaps.modes)
     {
         if (m.reg == mode)
         {
@@ -2117,7 +2114,7 @@ bool rigCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType* 
     memset(mem->name, 0x0, sizeof(mem->name));
     // We need to add 2 characters so that the parser works!
     payloadIn.insert(0,"**");
-    foreach (auto parse, *memParser) {
+    for (auto &parse: *memParser) {
         // non-existant memory is short so send what we have so far.
         if (payloadIn.size() < (parse.pos+1+parse.len)) {
             return true;
@@ -2579,7 +2576,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
             {
                 qInfo(logRig()) << "Get Memory Contents" << (value.value<uint>() & 0xffff);
                 // Format is different for all radios!
-                foreach (auto parse, rigCaps.memParser) {
+                for (auto &parse: rigCaps.memParser) {
                     // If "a" exists, break out of the loop as soon as we have the value.
                     if (parse.spec == 'a') {
                         if (parse.len == 1) {
@@ -2612,7 +2609,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
                 }
 
                 // Format is different for all radios!
-                foreach (auto parse, parser) {
+                for (auto &parse: parser) {
                     switch (parse.spec)
                     {
                     case 'a':

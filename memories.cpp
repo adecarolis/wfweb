@@ -95,7 +95,7 @@ memories::memories(rigCapabilities rigCaps, bool slowLoad, QWidget *parent) :
         vfos << "MAIN" << "SUB";
     }
 
-    foreach (auto mode, rigCaps.modes){
+    for (auto &mode: rigCaps.modes){
         modes.append(mode.name);
     }
 
@@ -307,7 +307,7 @@ void memories::on_table_cellChanged(int row, int col)
     currentMemory.frequency.Hz = (ui->table->item(row,columnFrequency) == NULL) ? 0 : quint64(ui->table->item(row,columnFrequency)->text().toDouble()*1000000.0);
     currentMemory.frequencyB.Hz = (ui->table->item(row,columnFrequencyB) == NULL) ? 0 : quint64(ui->table->item(row,columnFrequencyB)->text().toDouble()*1000000.0);
 
-    foreach (auto m, rigCaps.modes){
+    for (auto &m: rigCaps.modes){
         if (!ui->table->isColumnHidden(columnMode) && ui->table->item(row,columnMode) != NULL && ui->table->item(row,columnMode)->text()==m.name) {
             currentMemory.mode=m.reg;
         }
@@ -454,7 +454,7 @@ void memories::on_group_currentIndexChanged(int index)
     }
 
 
-    foreach (auto parse, parser) {
+    for (auto &parse: parser) {
         switch (parse.spec)
         {
         case 'a':
@@ -883,7 +883,7 @@ void memories::on_group_currentIndexChanged(int index)
             QTimer::singleShot(MEMORY_SLOWLOAD, this, [this]{ emit getMemory(lastMemoryRequested); });
         } else {
             // Is the current group attached to a particular band?
-            foreach (auto band, rigCaps.bands)
+            for (auto &band: rigCaps.bands)
             {
                 if (band.memGroup==ui->group->currentData().toInt())
                 {

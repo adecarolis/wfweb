@@ -68,7 +68,7 @@ enum inputTypes{ inputMic=0,
 
 struct rigInput {
     rigInput() : type(inputUnknown),reg(0), name(""), level(0) {}
-    rigInput(rigInput const &r): type(r.type), reg(r.reg), name(r.name), level(r.level) {};
+    //rigInput(rigInput const &r): type(r.type), reg(r.reg), name(r.name), level(r.level) {};
     rigInput(inputTypes type) : type(type),reg(0) ,name(""),level(0) {}
     rigInput(inputTypes type, uchar reg, QString name) : type(type), reg(reg), name(name) {}
     inputTypes type;

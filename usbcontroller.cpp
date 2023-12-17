@@ -2083,8 +2083,8 @@ void usbController::restoreController(USBDEVICE* dev, QString file)
             but.backgroundOff.setNamedColor(settings->value("BackgroundOff", QColor(Qt::blue).name(QColor::HexArgb)).toString());
             but.toggle = settings->value("Toggle", false).toBool();
 #if (QT_VERSION > QT_VERSION_CHECK(6,0,0))
-            if (settings->value("Icon",NULL) != NULL) {
-                but.icon = new QImage(settings->value("Icon",NULL).value<QImage>());
+            if (settings->value("Icon","") != "") {
+                but.icon = new QImage(settings->value("Icon", "").value<QImage>());
                 but.iconName = settings->value("IconName", "").toString();
             }
 #endif
