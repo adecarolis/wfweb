@@ -39,6 +39,7 @@ rigCommander::rigCommander(quint8 guid[GUIDLEN], QObject* parent) : QObject(pare
 rigCommander::~rigCommander()
 {
     qInfo(logRig()) << "closing instance of rigCommander()";
+    queue->setRigCaps(Q_NULLPTR); // Remove access to rigCaps
     closeComm();
 }
 
@@ -1514,7 +1515,7 @@ void rigCommander::determineRigCaps()
     }
 
     haveRigCaps = true;
-
+    queue->setRigCaps(&rigCaps);
 
     // Copy received guid so we can recognise this radio.
     memcpy(rigCaps.guid, this->guid, GUIDLEN);
@@ -2534,7 +2535,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
             else if (!strcmp(value.typeName(),"uchar"))
             {
                 payload.append(bcdEncodeChar(value.value<uchar>()));
-                //qInfo(logRig()) << "**** setting uchar value" << funcString[func] << "val" << value.value<uchar>();
+                qInfo(logRig()) << "**** setting uchar value" << funcString[func] << "val" << value.value<uchar>();
             }
             else if (!strcmp(value.typeName(),"ushort"))
             {

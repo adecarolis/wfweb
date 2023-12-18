@@ -354,6 +354,13 @@ void wfmain::openRig()
     ui->connectBtn->setText("Cancel connection"); // We are attempting to connect
     connStatus = connConnecting;
 
+    // PET: This could be in a better place?
+    if (prefs.audioSystem == tciAudio)
+    {
+        prefs.rxSetup.tci = tci;
+        prefs.txSetup.tci = tci;
+    }
+
     makeRig();
 
     if (prefs.enableLAN)
@@ -1750,6 +1757,7 @@ void wfmain::loadSettings()
         tciThread = new QThread(this);
         tciThread->setObjectName("TCIServer()");
         tci->moveToThread(tciThread);
+        connect(queue,SIGNAL(rigCapsUpdated(rigCapabilities*)),tci, SLOT(receiveRigCaps(rigCapabilities*)));
         connect(this,SIGNAL(tciInit(quint16)),tci, SLOT(init(quint16)));
         connect(tciThread, SIGNAL(finished()), tci, SLOT(deleteLater()));
         tciThread->start(QThread::TimeCriticalPriority);

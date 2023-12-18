@@ -61,6 +61,7 @@ signals:
     void haveCommand(funcs func, QVariant param, bool sub);
     void sendValue(cacheItem item);
     void cacheUpdated(cacheItem item);
+    void rigCapsUpdated(rigCapabilities* caps);
 
 public slots:
     // Can be called directly or via emit.
@@ -87,7 +88,9 @@ private:
     bool aborted=false;
     QWaitCondition waiting;
     quint64 queueInterval=0; // Don't start the timer!
-
+    
+    rigCapabilities* rigCaps = Q_NULLPTR; // Must be NULL until a radio is connected
+    
     // Functions
     void run();
 
@@ -117,6 +120,8 @@ public:
     QMultiMap <queuePriority,queueItem> getQueueItems();
     void lockMutex() {mutex.lock();}
     void unlockMutex() {mutex.unlock();}
+    void setRigCaps(rigCapabilities* caps) { rigCaps = caps; emit rigCapsUpdated(rigCaps);}
+    rigCapabilities* getRigCaps() { return rigCaps; }
 };
 
 Q_DECLARE_METATYPE(queueItemType)

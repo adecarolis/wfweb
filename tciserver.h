@@ -80,6 +80,7 @@ signals:
 
 public slots:
     void receiveTCIAudio(audioPacket audio);
+    void receiveRigCaps(rigCapabilities* caps);
     void init(quint16 port);
 
 
@@ -98,6 +99,7 @@ private:
     QByteArray rxAudioData;
     QByteArray txAudioData;
     QByteArray txChrono;
+    rigCapabilities* rigCaps = Q_NULLPTR;
 };
 
 #endif // TCISERVER_H

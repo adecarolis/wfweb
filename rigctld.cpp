@@ -789,6 +789,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         ret = RIG_OK;
         if (cmd.type == 'i') {
             val.setValue(static_cast<uchar>(params[0].toInt()));
+            qInfo(logRigCtlD()) << "Setting char value" << val << "original" << params[0];
         }
         if (cmd.type == 's') {
             val.setValue(static_cast<short>(params[0].toInt()));
@@ -986,7 +987,7 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                     // We are expecting a second argument to the command
                     QVariant val;
                     if (sub[i].type == 'i') {
-                        uchar v = static_cast<uchar>(params[1].toInt(NULL,16));
+                        uchar v = static_cast<uchar>(params[1].toInt());
                         if (params[0] == "FBKIN")
                             v = (v << 1) & 0x02; // BREAKIN is not bool!
                         val.setValue(v);
@@ -1036,7 +1037,7 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                             int val = item.value.toInt();
                             if (params[0] == "FBKIN")
                                 val = (val >> 1) & 0x01;
-                            resp.append(QString::number(val,16)); // Base 16
+                            resp.append(QString::number(val));
                         }
                         else if (sub[i].type == 'f') {
                             resp.append(QString::number(item.value.toFloat() / 255.0,'F',6));
@@ -1177,7 +1178,7 @@ int rigCtlClient::dumpState(QStringList &response, bool extended)
         {
             if (att == 0)
                 continue;
-            attens.append(QString("%1 ").arg(att,0,16));
+            attens.append(QString("%1 ").arg(att));
         }
         if (attens.endsWith(" "))
             attens.chop(1);

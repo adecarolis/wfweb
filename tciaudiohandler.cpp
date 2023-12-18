@@ -88,6 +88,8 @@ bool tciAudioHandler::init(audioSetup setup)
             connect((tciServer*)setup.tci, SIGNAL(sendTCIAudio(QByteArray)), this, SLOT(receiveTCIAudio(QByteArray)));
             //connect(this,SIGNAL(setupTxPacket(int)), (tciServer*)setup.tci, SLOT(setupTxPacket(int)));
             //emit setupTxPacket((nativeFormat.bytesForDuration(setup.blockSize * 1000)*2)/sizeof(float));
+        } else {
+            qCritical(logAudio()) << "***** TCI NOT FOUND *****";
         }
     }
     else {

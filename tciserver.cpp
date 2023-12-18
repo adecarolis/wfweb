@@ -4,32 +4,92 @@
 
 
 
+// Based on TCI v1.9 commands
 static const tciCommandStruct tci_commands[] =
 {
-    { "vfo_limits",         funcNone,       'l', 'l'},
-    { "if_limits",          funcNone,       'l', 'l'},
+    // u=uchar s=short f=float b=bool x=hz m=mode s=string
+    { "vfo_limits",         funcNone,       'x', 'x'},
+    { "if_limits",          funcNone,       'x', 'x'},
     { "trx_count",          funcNone,       'u'},
     { "channel_count",      funcNone,       'u'},
-    { "device",             funcNone,       't'},
-    { "receive_only",       funcNone,       'u'},
+    { "device",             funcNone,       's'},
+    { "receive_only",       funcNone,       'b'},
     { "modulations_list",   funcNone,       's'},
+    { "protocol",           funcNone,       's'},
+    { "ready",              funcNone },
+    { "start",              funcNone },
+    { "stop",               funcNone },
+    { "dds",                funcNone, 'u','x'},
+    { "if",          funcNone,       'u','u','x'},
+    { "vfo",          funcNone,       'u','u','x'},
+    { "modulation",          funcNone,  'u','s'},
+    { "trx",          funcNone,       'u'},
+    { "tune",          funcNone,       'u'},
+    { "drive",          funcNone,       'u'},
+    { "tune_drive",          funcNone,       'u'},
+    { "rit_enable",          funcNone,       'u'},
+    { "xit_enable",          funcNone,       'u'},
+    { "split_enable",          funcNone,       'u'},
+    { "rit_offset",          funcNone,       'u'},
+    { "xit_offset",          funcNone,       'u'},
+    { "rx_channel_enable",          funcNone,       'u'},
+    { "rx_filter_band",          funcNone,       'u'},
+    { "cw_macros_speed",          funcNone,       'u'},
+    { "cw_macros_delay",          funcNone,       'u'},
+    { "cw_keyer_speed",          funcNone,       'u'},
+    { "volume",          funcNone,       'u'},
+    { "mute",          funcNone,       'u'},
+    { "rx_mute",          funcNone,       'u'},
+    { "rx_volume",          funcNone,       'u'},
+    { "rx_balance",          funcNone,       'u'},
+    { "mon_volume",          funcNone,       'u'},
+    { "mon_enable",          funcNone,       'u'},
+    { "agc_mode",          funcNone,       'u'},
+    { "agc_gain",          funcNone,       'u'},
+    { "rx_nb_enable",          funcNone,       'u'},
+    { "rx_nb_param",          funcNone,       'u'},
+    { "rx_bin_enable",          funcNone,       'u'},
+    { "rx_nr_enable",          funcNone,       'u'},
+    { "rx_anc_enable",          funcNone,       'u'},
+    { "rx_anf_enable",          funcNone,       'u'},
+    { "rx_apf_enable",          funcNone,       'u'},
+    { "rx_dse_enable",          funcNone,       'u'},
+    { "rx_nf_enable",          funcNone,       'u'},
+    { "lock",          funcNone,       'u'},
+    { "sql_enable",          funcNone,       'u'},
+    { "sql_level",          funcNone,       'u'},
     { "tx_enable",          funcNone,       'u','u'},
-    { "ready",              funcNone, },
+    { "cw_macros_speed_up",          funcNone,       'u','u'},
+    { "cw_macros_speed_down",          funcNone,       'u','u'},
+    { "spot",          funcNone,       'u','u'},
+    { "spot_delete",          funcNone,       'u','u'},
+    { "iq_samplerate",          funcNone,       'u'},
+    { "audio_samplerate",          funcNone,       'u'},
+    { "iq_start",          funcNone,       'u'},
+    { "iq_stop",          funcNone,       'u'},
+    { "audio_start",          funcNone,       'u'},
+    { "audio_stop",          funcNone,       'u'},
+    { "line_out_start",          funcNone,       'u'},
+    { "line_out_stop",          funcNone,       'u'},
+    { "line_out_recorder_start",          funcNone,       'u'},
+    { "line_out_recorder_save",          funcNone,       'u'},
+    { "line_out_recorder_start",          funcNone,       'u'},
+    { "clicked_on_spot",          funcNone,       'u'},
+    { "rx_clicked_on_spot",          funcNone,       'u'},
     { "tx_footswitch",      funcNone,       'u','b'},
-    { "start",              funcNone  },
-    { "stop",               funcNone  },
-    { "dds",                funcNone,       'u','u'},
-    { "trx_count",          funcNone,       'u'},
-    { "trx_count",          funcNone,       'u'},
-    { "trx_count",          funcNone,       'u'},
-    { "trx_count",          funcNone,       'u'},
-    { "trx_count",          funcNone,       'u'},
-    { "trx_count",          funcNone,       'u'},
-    { "trx_count",          funcNone,       'u'},
-    { "trx_count",          funcNone,       'u'},
-    { "trx_count",          funcNone,       'u'},
-    { "trx_count",          funcNone,       'u'},
-    { "trx_count",          funcNone,       'u'},
+    { "tx_frequency",      funcNone,       'u','b'},
+    { "app_focus",      funcNone,       'u','b'},
+    { "set_in_focus",      funcNone,       'u','b'},
+    { "keyer",      funcNone,       'u','b'},
+    { "rx_sensors_enable",      funcNone,       'u','b'},
+    { "tx_sensors_enable",      funcNone,       'u','b'},
+    { "rx_sensors",      funcNone,       'u','b'},
+    { "tx_sensors",      funcNone,       'u','b'},
+    { "audio_stream_sample_type",      funcNone,       'u','b'},
+    { "audio_stream_channels",      funcNone,       'u','b'},
+    { "audio_stream_samples",      funcNone,       'u','b'},
+    { "digl_offset",      funcNone,       'u','b'},
+    { "digu_offset",      funcNone,       'u','b'},
     { "", funcNone, 0x0 },
 };
 
@@ -48,6 +108,8 @@ void tciServer::init(quint16 port) {
         connect (server, &QWebSocketServer::newConnection, this, &tciServer::onNewConnection);
         connect (server, &QWebSocketServer::closed, this, &tciServer::socketDisconnected);
     }
+
+    this->setObjectName("TCI Server");
     queue = cachingQueue::getInstance(this);
 
     connect(queue,SIGNAL(cacheUpdated(cacheItem)),this,SLOT(receiveCache(cacheItem)));
@@ -80,15 +142,25 @@ tciServer::~tciServer()
         it.key()->deleteLater();
         it = clients.erase(it);
     }
+}
 
-    //qDeleteAll(clients.begin(), clients.end());
+void tciServer::receiveRigCaps(rigCapabilities *caps)
+{
+    rigCaps = caps;
 }
 
 void tciServer::onNewConnection()
 {
-
-    this->setObjectName("TCI Server");
+    
     QWebSocket *pSocket = server->nextPendingConnection();
+    if (rigCaps == Q_NULLPTR)
+    {
+        qWarning(logTCIServer()) << "No current rig connection, denying connection request.";
+        pSocket->abort();
+        return;
+    }
+
+    qInfo(logTCIServer()) << "Got rigCaps for" << rigCaps->modelName;
 
     connect(pSocket, &QWebSocket::textMessageReceived, this, &tciServer::processIncomingTextMessage);
     connect(pSocket, &QWebSocket::binaryMessageReceived, this, &tciServer::processIncomingBinaryMessage);
@@ -98,7 +170,7 @@ void tciServer::onNewConnection()
     clients.insert(pSocket,connStatus());
     pSocket->sendTextMessage(QString("protocol:WFVIEW,1.5;\n"));
     pSocket->sendTextMessage(QString("device:WFVIEW;\n"));
-    pSocket->sendTextMessage(QString("receive_only:false;\n"));
+    pSocket->sendTextMessage(QString("receive_only:%0;\n").arg(rigCaps->hasTransmit?"false":"true"));
     pSocket->sendTextMessage(QString("trx_count:1;\n"));
     pSocket->sendTextMessage(QString("channel_count:1;\n"));
     pSocket->sendTextMessage(QString("vfo_limits:10000,52000000;\n"));
