@@ -81,7 +81,6 @@ memories::memories(rigCapabilities rigCaps, bool slowLoad, QWidget *parent) :
         ui->group->addItem("Satellite",MEMORY_SATGROUP);
     }
 
-    ui->group->setCurrentIndex(-1);
     ui->group->blockSignals(false);
 
     for (int i=0;i<100;i++)
@@ -105,12 +104,21 @@ memories::memories(rigCapabilities rigCaps, bool slowLoad, QWidget *parent) :
 
     ui->table->sortByColumn(columnRecall,Qt::AscendingOrder);
 
+
 }
 
 
 void memories::populate()
 {
-    ui->group->setCurrentIndex(0);
+    if (ui->group->count() > 1)
+    {
+        qInfo() << "Memory group items:" << ui->group->count();
+        ui->group->setCurrentIndex(1);
+    }
+    else
+    {
+        ui->group->setCurrentIndex(0);
+    }
 }
 memories::~memories()
 {

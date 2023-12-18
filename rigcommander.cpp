@@ -2576,6 +2576,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
             else if (!strcmp(value.typeName(),"uint") && (func == funcMemoryContents || func == funcMemoryMode))
             {
                 qInfo(logRig()) << "Get Memory Contents" << (value.value<uint>() & 0xffff);
+                qInfo(logRig()) << "Get Memory Group (if exists)" << (value.value<uint>() >> 16 & 0xffff);
                 // Format is different for all radios!
                 for (auto &parse: rigCaps.memParser) {
                     // If "a" exists, break out of the loop as soon as we have the value.
