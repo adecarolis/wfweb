@@ -173,7 +173,7 @@ void rigCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char
         connect(this, SIGNAL(discoveredRigID(rigCapabilities)), ptty, SLOT(receiveFoundRigID(rigCapabilities)));
 
         connect(udp, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
-        connect(udp, SIGNAL(setRadioUsage(quint8, quint8, QString, QString)), this, SLOT(radioUsage(quint8, quint8, QString, QString)));
+        connect(udp, SIGNAL(setRadioUsage(quint8, bool, quint8, QString, QString)), this, SLOT(radioUsage(quint8, bool, quint8, QString, QString)));
         connect(this, SIGNAL(selectedRadio(quint8)), udp, SLOT(setCurrentRadio(quint8)));
 
         emit haveAfGain(rxSetup.localAFgain);
@@ -2331,8 +2331,8 @@ void rigCommander::radioSelection(QList<radio_cap_packet> radios)
     emit requestRadioSelection(radios);
 }
 
-void rigCommander::radioUsage(quint8 radio, quint8 busy, QString user, QString ip) {
-    emit setRadioUsage(radio, busy, user, ip);
+void rigCommander::radioUsage(quint8 radio, bool admin, quint8 busy, QString user, QString ip) {
+    emit setRadioUsage(radio, admin, busy, user, ip);
 }
 
 void rigCommander::setCurrentRadio(quint8 radio) {
@@ -2578,17 +2578,19 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
                 qInfo(logRig()) << "Get Memory Contents" << (value.value<uint>() & 0xffff);
                 qInfo(logRig()) << "Get Memory Group (if exists)" << (value.value<uint>() >> 16 & 0xffff);
                 // Format is different for all radios!
-                for (auto &parse: rigCaps.memParser) {
-                    // If "a" exists, break out of the loop as soon as we have the value.
-                    if (parse.spec == 'a') {
-                        if (parse.len == 1) {
-                            payload.append(bcdEncodeChar(value.value<uint>() >> 16 & 0xff));
+                if (func == funcMemoryContents) {
+                    for (auto &parse: rigCaps.memParser) {
+                        // If "a" exists, break out of the loop as soon as we have the value.
+                        if (parse.spec == 'a') {
+                            if (parse.len == 1) {
+                                payload.append(bcdEncodeChar(value.value<uint>() >> 16 & 0xff));
+                            }
+                            else if (parse.len == 2)
+                            {
+                                payload.append(bcdEncodeInt(value.value<uint>() >> 16 & 0xffff));
+                            }
+                            break;
                         }
-                        else if (parse.len == 2)
-                        {
-                            payload.append(bcdEncodeInt(value.value<uint>() >> 16 & 0xffff));
-                        }
-                        break;
                     }
                 }
                 payload.append(bcdEncodeInt(value.value<uint>() & 0xffff));

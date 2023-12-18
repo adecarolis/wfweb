@@ -71,7 +71,7 @@ public slots:
     void handleStatusUpdate(const networkStatus status);
     void handleNetworkAudioLevels(networkAudioLevels);
     void radioSelection(QList<radio_cap_packet> radios);
-    void radioUsage(quint8 radio, quint8 busy, QString name, QString ip);
+    void radioUsage(quint8 radio, bool admin, quint8 busy, QString name, QString ip);
     void setCurrentRadio(quint8 radio);
     void getDebug();
     void receiveCommand(funcs func, QVariant value, bool sub);
@@ -133,7 +133,7 @@ signals:
     void haveAfGain(unsigned char level);
     // Housekeeping:
     void requestRadioSelection(QList<radio_cap_packet> radios);
-    void setRadioUsage(quint8 radio, quint8 busy, QString user, QString ip);
+    void setRadioUsage(quint8 radio, bool admin, quint8 busy, QString user, QString ip);
     void selectedRadio(quint8 radio);
     void getMoreDebug();
     void finished();

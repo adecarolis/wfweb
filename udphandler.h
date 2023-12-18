@@ -69,7 +69,7 @@ signals:
     void haveNetworkAudioLevels(networkAudioLevels);
 	void haveBaudRate(quint32 baudrate);
 	void requestRadioSelection(QList<radio_cap_packet> radios);
-	void setRadioUsage(quint8, quint8 busy, QString name, QString mac);
+    void setRadioUsage(quint8, bool admin, quint8 busy, QString name, QString mac);
 
 private:
 	

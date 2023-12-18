@@ -24,7 +24,7 @@ public:
 
 public slots:
     void on_table_cellClicked(int row, int col);
-    void setInUse(quint8 radio, quint8 busy, QString user, QString ip);
+    void setInUse(quint8 radio, bool admin, quint8 busy, QString user, QString ip);
     void on_cancelButton_clicked();
 
 signals:

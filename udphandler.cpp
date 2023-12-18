@@ -454,7 +454,12 @@ void udpHandler::dataReceived()
                         radios[f].macaddress[5] == in->macaddress[5]) ||
                         !memcmp(radios[f].guid,in->guid, GUIDLEN))
                     {
-                        emit setRadioUsage(f, in->busy, QString(in->computer), ip.toString());
+
+                        bool admin=false;
+                        if (in->busy && in->computer[0] != '\x0')
+                            admin = true;
+
+                        emit setRadioUsage(f, admin, in->busy, QString(in->computer), ip.toString());
                         qDebug(logUdp()) << "Set radio usage num:" << f << in->name << "Busy:" << in->busy << "Computer" << in->computer << "IP" << ip.toString();
                     }
                 }

@@ -408,7 +408,7 @@ void wfmain::makeRig()
         connect(rig, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(receiveNetworkAudioLevels(networkAudioLevels)));
 
         connect(rig, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
-        connect(rig, SIGNAL(setRadioUsage(quint8, quint8, QString, QString)), selRad, SLOT(setInUse(quint8, quint8, QString, QString)));
+        connect(rig, SIGNAL(setRadioUsage(quint8, bool, quint8, QString, QString)), selRad, SLOT(setInUse(quint8, bool, quint8, QString, QString)));
         connect(selRad, SIGNAL(selectedRadio(quint8)), rig, SLOT(setCurrentRadio(quint8)));
         // Rig comm setup:
         connect(this, SIGNAL(sendCommSetup(rigTypedef,unsigned char, udpPreferences, audioSetup, audioSetup, QString, quint16)), rig, SLOT(commSetup(rigTypedef,unsigned char, udpPreferences, audioSetup, audioSetup, QString, quint16)));
