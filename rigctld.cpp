@@ -468,7 +468,7 @@ void rigCtlClient::socketReadyRead()
 
     // We have finished parsing all commands and have a response to send (hopefully)
     commandBuffer.clear();
-    foreach (QString str, response)
+    for (QString &str: response)
     {
         if (!str.isEmpty())
             sendData(QString("%1%2").arg(str,sep));
@@ -583,7 +583,7 @@ bool rigCtlClient::getMode(QString modeString, modeInfo& mode)
     {
         if (QString(mode_str[i].str) == modeString)
         {
-            foreach (auto m, rigCaps.modes)
+            for (auto &m: rigCaps.modes)
             {
                 if (m.mk == mode_str[i].mk)
                 {
@@ -602,7 +602,7 @@ bool rigCtlClient::getMode(QString modeString, modeInfo& mode)
 quint8 rigCtlClient::getAntennas()
 {
     quint8 ant=0;
-    foreach (auto i, rigCaps.antennas)
+    for (auto &i: rigCaps.antennas)
     {
         ant |= 1<<i.num;
     }
@@ -1108,7 +1108,7 @@ int rigCtlClient::dumpState(QStringList &response, bool extended)
         }
     }
     response.append("0 0 0 0 0 0 0");
-    foreach (auto step, rigCaps.steps)
+    for (auto& step: rigCaps.steps)
     {
         if (step.num > 0)
             response.append(QString("0x%1 %2").arg(modes, 0, 16).arg(step.hz));
@@ -1158,7 +1158,7 @@ int rigCtlClient::dumpState(QStringList &response, bool extended)
     response.append("0");
     QString preamps="";
     if(rigCaps.commands.contains(funcPreamp)) {
-        foreach (auto pre, rigCaps.preamps)
+        for (auto &pre: rigCaps.preamps)
         {
             if (pre.num == 0)
                 continue;

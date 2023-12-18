@@ -76,7 +76,7 @@ void bandbuttons::setUIToRig()
     hideButton(ui->band2200mbtn);
     hideButton(ui->bandGenbtn);
 
-    foreach (auto band, rigCaps.bands)
+    for (auto &band: rigCaps.bands)
     {
         switch(band.band)
         {
@@ -192,7 +192,7 @@ void bandbuttons::bandStackBtnClick(availableBands band)
 {
     if(haveRigCaps)
     {
-        foreach (auto b, rigCaps.bands)
+        for (auto &b: rigCaps.bands)
         {
             if (b.band == band)
             {
@@ -215,7 +215,7 @@ void bandbuttons::bandStackBtnClick(availableBands band)
 void bandbuttons::jumpToBandWithoutBSR(availableBands band)
 {
     // Sometimes we do not have a BSR for these bands:
-    foreach (auto b, rigCaps.bands)
+    for (auto &b: rigCaps.bands)
     {
         if (b.band == band)
         {

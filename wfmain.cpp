@@ -130,7 +130,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         qWarning() << "********* Rig directory does not exist ********";
     } else {
         QStringList rigs = systemRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
-        foreach (QString rig, rigs) {
+        for (QString &rig: rigs) {
             QSettings* rigSettings = new QSettings(systemRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
             if (!rigSettings->childGroups().contains("Rig"))
             {
@@ -151,7 +151,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     QDir userRigDir(userRigLocation);
     if (userRigDir.exists()){
         QStringList rigs = userRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
-        foreach (QString rig, rigs) {
+        for (QString& rig: rigs) {
             QSettings* rigSettings = new QSettings(userRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
             if (!rigSettings->childGroups().contains("Rig"))
             {
@@ -557,7 +557,7 @@ void wfmain::findSerialPort()
     // qInfo(logSystem()) << "Searching for serial port...";
     bool found = false;
     // First try to find first Icom port:
-    foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
+    for(const QSerialPortInfo & serialPortInfo: QSerialPortInfo::availablePorts())
     {
         if (serialPortInfo.serialNumber().left(3) == "IC-") {
             qInfo(logSystem()) << "Serial Port found: " << serialPortInfo.portName() << "Manufacturer:" << serialPortInfo.manufacturer() << "Product ID" << serialPortInfo.description() << "S/N" << serialPortInfo.serialNumber();
@@ -1353,7 +1353,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
                 }
             }
         } else {
-            foreach (auto band, rigCaps.bands)
+            for (auto &band: rigCaps.bands)
             {
                 if (band.band == cmd->value)
                 {
@@ -2148,7 +2148,6 @@ void wfmain::extChangedRsPrefs(quint64 items)
         {
             qDebug(logSystem()) << "Updating Rs pref in wfmain" << (int)i;
             prs = (prefRsItem)i;
-            (prs);
         }
     }
 }
@@ -3193,7 +3192,7 @@ void wfmain::on_tuningStepCombo_currentIndexChanged(int index)
 
     tsWfScrollHz = ui->tuningStepCombo->itemData(index).toUInt();
     tsKnobHz = ui->tuningStepCombo->itemData(index).toUInt();
-    foreach (auto s, rigCaps.steps) {
+    for (auto &s: rigCaps.steps) {
         if (tsWfScrollHz == s.hz)
         {
             ui->mainScope->setStepSize(s.hz);
@@ -3467,7 +3466,7 @@ void wfmain:: getInitialRigState()
     ui->preampAttGroup->setVisible(rigCaps.commands.contains(funcPreamp));
     quint64 start=UINT64_MAX;
     quint64 end=0;
-    foreach (auto band, rigCaps.bands)
+    for (auto &band: rigCaps.bands)
     {
         if (start > band.lowFreq)
             start = band.lowFreq;
@@ -3736,7 +3735,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->mainScope->clearMode();
         ui->subScope->clearMode();
 
-        foreach (auto m, rigCaps.modes)
+        for (auto &m: rigCaps.modes)
         {
             //ui->modeSelectCombo->addItem(m.name, m.mk);
             ui->mainScope->addMode("Mode "+m.name,QVariant::fromValue(m));
@@ -3746,7 +3745,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->mainScope->clearFilter();
         ui->subScope->clearFilter();
 
-        foreach (auto f, rigCaps.filters)
+        for (auto& f: rigCaps.filters)
         {
             ui->mainScope->addFilter(f.name,f.num);
             ui->subScope->addFilter(f.name,f.num);
@@ -3756,7 +3755,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // Set the tuning step combo box up:
         ui->tuningStepCombo->blockSignals(true);
         ui->tuningStepCombo->clear();
-        foreach (auto s, rigCaps.steps)
+        for (auto &s: rigCaps.steps)
         {
             ui->tuningStepCombo->addItem(s.name, s.hz);
         }
@@ -3802,7 +3801,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         if(rigCaps.commands.contains(funcAttenuator))
         {
             ui->attSelCombo->setDisabled(false);
-            foreach (auto att, rigCaps.attenuators)
+            for (auto &att: rigCaps.attenuators)
             {
                 ui->attSelCombo->addItem(((att == 0) ? QString("0 dB") : QString("-%1 dB").arg(att)),att);
             }
@@ -3814,7 +3813,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         if(rigCaps.commands.contains(funcPreamp))
         {
             ui->preampSelCombo->setDisabled(false);
-            foreach (auto pre, rigCaps.preamps)
+            for (auto &pre: rigCaps.preamps)
             {
                 ui->preampSelCombo->addItem(pre.name, pre.num);
             }
@@ -3826,7 +3825,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         if(rigCaps.commands.contains(funcAntenna))
         {
             ui->antennaSelCombo->setDisabled(false);
-            foreach (auto ant, rigCaps.antennas)
+            for (auto &ant: rigCaps.antennas)
             {
                 ui->antennaSelCombo->addItem(ant.name,ant.num);
             }
@@ -4021,7 +4020,7 @@ void wfmain::changeMode(rigMode_t mode)
 
 void wfmain::changeMode(rigMode_t mode, unsigned char data)
 {
-    foreach (modeInfo mi, rigCaps.modes)
+    for (modeInfo &mi: rigCaps.modes)
     {
         if (mi.mk == mode)
         {
@@ -4564,7 +4563,7 @@ void wfmain::receiveTuningStep(unsigned char step)
 {
     if (step > 0)
     {
-        foreach (auto s, rigCaps.steps)
+        for (auto &s: rigCaps.steps)
         {
             if (step == s.num && ui->tuningStepCombo->currentData().toUInt() != s.hz) {
                 qInfo(logSystem()) << QString("Received new Tuning Step %0").arg(s.name);
@@ -5582,7 +5581,7 @@ void wfmain::receiveValue(cacheItem val){
 
         queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(bsr.freq),false));
 
-        foreach (auto md, rigCaps.modes)
+        for (auto &md: rigCaps.modes)
         {
                 if (md.reg == bsr.mode) {
                     md.filter=bsr.filter;
