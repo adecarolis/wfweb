@@ -207,7 +207,7 @@ void rigCreator::loadRigFile(QString file)
             settings->setArrayIndex(c);
             ui->inputs->insertRow(ui->inputs->rowCount());
             ui->inputs->model()->setData(ui->inputs->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
-            ui->inputs->model()->setData(ui->inputs->model()->index(c,1),QString::number(settings->value("Reg", 0).toUInt(),16).rightJustified(2,'0'));
+            ui->inputs->model()->setData(ui->inputs->model()->index(c,1),QString::number(settings->value("Reg", 0).toUInt()).rightJustified(2,'0'));
             ui->inputs->model()->setData(ui->inputs->model()->index(c,2),settings->value("Name", "").toString());
         }
         settings->endArray();
@@ -225,7 +225,7 @@ void rigCreator::loadRigFile(QString file)
             settings->setArrayIndex(c);
             ui->bands->insertRow(ui->bands->rowCount());
             ui->bands->model()->setData(ui->bands->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
-            ui->bands->model()->setData(ui->bands->model()->index(c,1),QString::number(settings->value("BSR", 0).toUInt(),16).rightJustified(2,'0'));
+            ui->bands->model()->setData(ui->bands->model()->index(c,1),QString::number(settings->value("BSR", 0).toUInt()).rightJustified(2,'0'));
             ui->bands->model()->setData(ui->bands->model()->index(c,2),settings->value("Start", 0ULL).toInt(),Qt::DisplayRole);
             ui->bands->model()->setData(ui->bands->model()->index(c,3),settings->value("End", 0ULL).toInt(),Qt::DisplayRole);
             ui->bands->model()->setData(ui->bands->model()->index(c,4),settings->value("Range", 0.0).toString());
@@ -247,7 +247,7 @@ void rigCreator::loadRigFile(QString file)
             settings->setArrayIndex(c);
             ui->modes->insertRow(ui->modes->rowCount());
             ui->modes->model()->setData(ui->modes->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
-            ui->modes->model()->setData(ui->modes->model()->index(c,1),QString::number(settings->value("Reg", 0).toUInt(),16).rightJustified(2,'0'));
+            ui->modes->model()->setData(ui->modes->model()->index(c,1),QString::number(settings->value("Reg", 0).toUInt()).rightJustified(2,'0'));
             ui->modes->model()->setData(ui->modes->model()->index(c,2),settings->value("Min", 0).toString().toInt(),Qt::DisplayRole);
             ui->modes->model()->setData(ui->modes->model()->index(c,3),settings->value("Max", 0).toString().toInt(),Qt::DisplayRole);
             ui->modes->model()->setData(ui->modes->model()->index(c,4),settings->value("Name", "").toString());
