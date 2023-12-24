@@ -101,24 +101,10 @@ signals:
     void haveScopeSpan(freqt span, bool isSub);
     void havespectrumMode_t(spectrumMode_t spectmode);
     void haveScopeEdge(char edge);
-    void haveSpectrumRefLevel(int level);
 
     // Rig ID:
     void haveRigID(rigCapabilities rigCaps);
     void discoveredRigID(rigCapabilities rigCaps);
-
-    // Frequency, Mode, data, and bandstack:
-    void haveFrequency(freqt freqStruct);
-    void haveMode(unsigned char mode, unsigned char filter);
-    void haveDataMode(bool dataModeEnabled);
-    void haveBandStackReg(freqt f, char mode, char filter, bool dataOn);
-    void haveRitEnabled(bool ritEnabled);
-    void haveRitFrequency(int ritHz);
-    void havePassband(quint16 pass);
-    void haveCwPitch(unsigned char pitch);
-    void havePskTone(unsigned char tone);
-    void haveRttyMark(unsigned char mark);
-    void haveTuningStep(unsigned char step);
 
     // Repeater:
     void haveDuplexMode(duplexMode_t);
@@ -175,19 +161,8 @@ private:
 
     modeInfo parseMode(quint8 mode, quint8 filter, bool sub);
     bool parseSpectrum(scopeData& d, bool sub);
-    void parseWFData();
-    void parseSpectrumRefLevel();
-    void parseDetailedRegisters1A05();
-    void parseRegisters1A();
-    void parseRegister1B();
-    void parseRegisters1C();
-    void parseRegister16();
-    void parseRegister21();
-    void parseBandStackReg();
-    void parsePTT();
-    void parseATU();
-    void parseLevels(); // register 0x14
     bool getCommand(funcs func, QByteArray& payload, int value=INT_MIN, bool sub=false);
+
     QByteArray getLANAddr();
     QByteArray getUSBAddr();
     QByteArray getACCAddr(unsigned char ab);

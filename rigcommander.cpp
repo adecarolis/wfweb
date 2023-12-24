@@ -1713,24 +1713,6 @@ bool rigCommander::parseSpectrum(scopeData& d, bool sub)
     return ret;
 }
 
-void rigCommander::parseSpectrumRefLevel()
-{
-    // 00: 27
-    // 01: 19
-    // 02: 00 (fixed)
-    // 03: XX
-    // 04: x0
-    // 05: 00 (+) or 01 (-)
-
-    unsigned char negative = payloadIn[5];
-    int value = bcdHexToUInt(payloadIn[3], payloadIn[4]);
-    value = value / 10;
-    if(negative){
-        value *= (-1*negative);
-    }
-    emit haveSpectrumRefLevel(value);
-}
-
 unsigned char rigCommander::bcdHexToUChar(unsigned char in)
 {
     unsigned char out = 0;
