@@ -609,7 +609,7 @@ bool spectrumScope::update(scopeData data)
                 pbStart = freq.MHzDouble - passbandCenterFrequency;
                 pbEnd = freq.MHzDouble + passbandWidth - passbandCenterFrequency;
             }
-            break;
+            break;            
         default:
             pbStart = freq.MHzDouble + passbandCenterFrequency - (passbandWidth / 2);
             pbEnd = freq.MHzDouble + passbandCenterFrequency + (passbandWidth / 2);
@@ -906,6 +906,7 @@ void spectrumScope::updatedMode(int index)
     mi.filter = filterCombo->currentData().toInt();
     mi.data = dataCombo->currentIndex();
     queue->add(priorityImmediate,queueItem((sub?funcUnselectedMode:funcSelectedMode),QVariant::fromValue(mi),false,sub));
+
 }
 
 
@@ -1372,6 +1373,12 @@ void spectrumScope::receiveMode(modeInfo m)
             // We have changed mode so "may" need to change regular commands
 
             passbandCenterFrequency = 0.0;
+
+            // Set config specific options)
+            configFilterWidth->blockSignals(true);
+            configFilterWidth->setMinimum(m.bwMin);
+            configFilterWidth->setMaximum(m.bwMax);
+            configFilterWidth->blockSignals(false);
 
             // If new mode doesn't allow bandwidth control, disable filterwidth and pbt.
             if (m.bwMin > 0 && m.bwMax > 0) {
