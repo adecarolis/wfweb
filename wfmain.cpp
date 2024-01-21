@@ -1,7 +1,6 @@
 #include "wfmain.h"
 #include "ui_wfmain.h"
 
-#include "commhandler.h"
 #include "rigidentities.h"
 #include "logcategories.h"
 
@@ -3592,14 +3591,13 @@ void wfmain::setDefaultColors(int presetNumber)
     p->plotBackground = QColor(Qt::black);
     p->tuningLine = QColor(Qt::blue);
     p->passband = QColor(Qt::blue);
-    p->pbt = QColor("#32ff0000");
-
-    p->meterLevel = QColor("#148CD2").darker();
-    p->meterAverage = QColor("#3FB7CD");
-    p->meterPeakLevel = QColor("#3CA0DB").lighter();
+    p->pbt = QColor(0x32,0xff,0x00,0x00);
+    p->meterLevel = QColor(0x14,0x8c,0xd2).darker();
+    p->meterAverage = QColor(0x2f,0xb7,0xcd);
+    p->meterPeakLevel = QColor(0x3c,0xa0,0xdb).lighter();
     p->meterPeakScale = QColor(Qt::red);
-    p->meterLowerLine = QColor("#eff0f1");
-    p->meterLowText = QColor("#eff0f1");
+    p->meterLowerLine = QColor(0xed,0xf0,0xf1);
+    p->meterLowText = QColor(0xef,0xf0,0xf1);
 
     p->wfBackground = QColor(Qt::black);
     p->wfAxis = QColor(Qt::white);
@@ -3623,18 +3621,18 @@ void wfmain::setDefaultColors(int presetNumber)
             p->gridColor = QColor(0,0,0,255);
             p->spectrumFill = QColor("transparent");
             p->spectrumLine = QColor(Qt::yellow);
-            p->underlayLine = QColor("#9633ff55");
+            p->underlayLine = QColor(0x96,0x33,0xff,0xff);
             p->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
-            p->tuningLine = QColor("#ff55ffff");
-            p->passband = QColor("#32ffffff");
-            p->pbt = QColor("#32ff0000");
+            p->tuningLine = QColor(0xff,0x55,0xff,0xff);
+            p->passband = QColor(0x32,0xff,0xff,0xff);
+            p->pbt = QColor(0x32,0xff,0x00,0x00);
 
-            p->meterLevel = QColor("#148CD2").darker();
-            p->meterAverage = QColor("#3FB7CD");
+            p->meterLevel = QColor(0x14,0x8c,0xd2).darker();
+            p->meterAverage = QColor(0x3f,0xb7,0xcd);
             p->meterPeakScale = QColor(Qt::red);
-            p->meterPeakLevel = QColor("#3CA0DB").lighter();
-            p->meterLowerLine = QColor("#eff0f1");
-            p->meterLowText = QColor("#eff0f1");
+            p->meterPeakLevel = QColor(0x3c,0xa0,0xdb).lighter();
+            p->meterLowerLine = QColor(0xef,0xf0,0xf1);
+            p->meterLowText = QColor(0xef,0xf0,0xf1);
 
             p->wfBackground = QColor(Qt::black);
             p->wfAxis = QColor(Qt::white);
@@ -3656,11 +3654,11 @@ void wfmain::setDefaultColors(int presetNumber)
             p->spectrumLine = QColor(Qt::black);
             p->underlayLine = QColor(Qt::blue);
             p->tuningLine = QColor(Qt::darkBlue);
-            p->passband = QColor("#64000080");
-            p->pbt = QColor("#32ff0000");
+            p->passband = QColor(0x64,0x00,0x00,0x80);
+            p->pbt = QColor(0x32,0xff,0x00,0x00);
 
-            p->meterAverage = QColor("#3FB7CD");
-            p->meterPeakLevel = QColor("#3CA0DB");
+            p->meterAverage = QColor(0x3f,0xb7,0xcd);
+            p->meterPeakLevel = QColor(0x3c,0xa0,0xdb);
             p->meterPeakScale = QColor(Qt::darkRed);
             p->meterLowerLine = QColor(Qt::black);
             p->meterLowText = QColor(Qt::black);

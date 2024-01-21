@@ -259,7 +259,7 @@ void audioDevices::enumerate()
 #endif
             qInfo(logAudio()) << "Found:" << devicecount << " audio device(s) (*=default)";
 
-            for (unsigned int i = 1; i < devicecount; i++) {
+            for (unsigned int i = 0; i < devicecount; i++) {
 
 #if (RTAUDIO_VERSION_MAJOR > 5)
                 info = audio->getDeviceInfo(devices[i]);
@@ -356,6 +356,11 @@ QStringList audioDevices::getOutputs()
 
 int audioDevices::findInput(QString type, QString name) 
 {
+    if (type != "Server" && system == tciAudio)
+    {
+        return 0;
+    }
+
     int ret = -1;
     int def = -1;
     int usb = -1;
@@ -373,7 +378,7 @@ int audioDevices::findInput(QString type, QString name)
         {
             def = f;
         }
-        if (inputs[f]->name.toUpper().contains("USB")) {
+        if (inputs[f]->name.contains("USB",Qt::CaseInsensitive)) {
             // This is a USB device...
             usb = f;
         }
@@ -408,6 +413,11 @@ int audioDevices::findInput(QString type, QString name)
 
 int audioDevices::findOutput(QString type, QString name) 
 {
+    if (type != "Server" && system == tciAudio)
+    {
+        return 0;
+    }
+
     int ret = -1;
     int def = -1;
     int usb = -1;
@@ -425,7 +435,7 @@ int audioDevices::findOutput(QString type, QString name)
         {
             def = f;
         }
-        if (outputs[f]->name.toUpper().contains("USB")) {
+        if (outputs[f]->name.contains("USB",Qt::CaseInsensitive)) {
             // This is a USB device...
             usb = f;
         }

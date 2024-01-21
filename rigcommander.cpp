@@ -2801,7 +2801,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
             {
                 spectrumBounds s = value.value<spectrumBounds>();
                 uchar range=1;
-                for (bandType band: rigCaps.bands)
+                for (const bandType& band: rigCaps.bands)
                 {
                    if (band.range != 0.0 && s.start > band.range)
                         range++;

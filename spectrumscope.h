@@ -112,6 +112,7 @@ signals:
     void dataChanged(modeInfo m);
 
 private slots:
+    void detachScope(bool state);
     void updatedScopeMode(int index);
     void updatedSpan(int index);
     void updatedEdge(int index);
@@ -142,6 +143,8 @@ private:
     QString defaultStyleSheet;
 
     QMutex mutex;
+    QWidget* originalParent = Q_NULLPTR;
+    QLabel* windowLabel = Q_NULLPTR;
     QCustomPlot* spectrum = Q_NULLPTR;
     QCustomPlot* waterfall = Q_NULLPTR;
     freqCtrl* freqDisplay;
@@ -153,7 +156,7 @@ private:
     QVBoxLayout* rhsLayout;
     QHBoxLayout* displayLayout;
     QHBoxLayout* controlLayout;
-    QCheckBox* enableCheckBox;
+    QPushButton* detachButton;
     QLabel* scopeModeLabel;
     QComboBox* scopeModeCombo;
     QLabel* spanLabel;

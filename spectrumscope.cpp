@@ -31,11 +31,11 @@ spectrumScope::spectrumScope(QWidget *parent)
     displaySpacer = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
     displayLayout->addSpacerItem(displaySpacer);
 
-    controlLayout = new QHBoxLayout();    
-    enableCheckBox = new QCheckBox("Enable");
-    enableCheckBox->setTristate(true);
-    enableCheckBox->setToolTip("Checked=WF enable, Unchecked=WF disable, Partial=Enable WF but no local display");
-    enableCheckBox->setCheckState(Qt::CheckState::Checked);
+    controlLayout = new QHBoxLayout();
+    detachButton = new QPushButton("Detach");
+    detachButton->setCheckable(true);
+    detachButton->setToolTip("Detach/re-attach scope from main window");
+    detachButton->setChecked(false);
     //scopeModeLabel = new QLabel("Spectrum Mode:");
     scopeModeCombo = new QComboBox();
     scopeModeCombo->setAccessibleDescription("Spectrum Mode");
@@ -96,7 +96,7 @@ spectrumScope::spectrumScope(QWidget *parent)
 
     layout->addLayout(displayLayout);
     layout->addLayout(controlLayout);
-    controlLayout->addWidget(enableCheckBox);
+    controlLayout->addWidget(detachButton);
     controlLayout->addWidget(scopeModeCombo);
     controlLayout->addWidget(spanCombo);
     controlLayout->addWidget(edgeCombo);
@@ -337,6 +337,7 @@ spectrumScope::spectrumScope(QWidget *parent)
 
     // Connections
 
+    connect(detachButton,SIGNAL(toggled(bool)), this, SLOT(detachScope(bool)));
     connect(scopeModeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedScopeMode(int)));
     connect(spanCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedSpan(int)));
     connect(confButton,SIGNAL(clicked()), this, SLOT(configPressed()),Qt::QueuedConnection);
@@ -1672,4 +1673,26 @@ void spectrumScope::setRef(int ref)
 void spectrumScope::setRefLimits(int lower, int upper)
 {
     configRef->setRange(lower,upper);
+}
+
+void spectrumScope::detachScope(bool state)
+{
+    if (state)
+    {
+        windowLabel = new QLabel("Detached to window");
+        detachButton->setText("Attach");
+        qInfo(logGui()) << "Detaching scope" << (sub?"Sub":"Main");
+        this->parentWidget()->layout()->replaceWidget(this,windowLabel);
+        this->setParent(NULL);
+        this-> setWindowFlags(Qt::Window | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint);
+        this->move(screen()->geometry().center() - frameGeometry().center());
+        this->repaint();
+    } else {
+        detachButton->setText("Detach");
+        qInfo(logGui()) << "Attaching scope" << (sub?"Sub":"Main");
+        windowLabel->parentWidget()->layout()->replaceWidget(windowLabel,this);
+        windowLabel->setParent(NULL);
+        delete windowLabel;
+        this->repaint();
+    }
 }
