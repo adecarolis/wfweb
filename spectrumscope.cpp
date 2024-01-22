@@ -515,9 +515,8 @@ bool spectrumScope::update(scopeData data)
     }
 
     qint64 spectime = 0;
-    qint64 wftime = 0;
+
     QElapsedTimer elapsed;
-    elapsed.start();
 
     bool updateRange = false;
 
@@ -567,7 +566,6 @@ bool spectrumScope::update(scopeData data)
             y2[i] = (unsigned char)spectrumPeaks.at(i);
         }
     }
-    spectime = elapsed.elapsed();
     plasmaMutex.lock();
     spectrumPlasma.push_front(data.data);
     if(spectrumPlasma.size() > (int)spectrumPlasmaSize)
@@ -698,8 +696,8 @@ bool spectrumScope::update(scopeData data)
         spectrum->yAxis->setRange(plotFloor, plotCeiling);
 
     spectrum->xAxis->setRange(data.startFreq, data.endFreq);
+    elapsed.start();
     spectrum->replot();
-
     spectime = elapsed.elapsed();
 
     if(specLen == spectWidth)
@@ -723,7 +721,9 @@ bool spectrumScope::update(scopeData data)
 
         waterfall->yAxis->setRange(0,wfLength - 1);
         waterfall->xAxis->setRange(0, spectWidth-1);
+        elapsed.start();
         waterfall->replot();
+        redrawSpeed->setText(QString("%0ms/%1ms").arg(spectime).arg(elapsed.elapsed()));
 
 /*
 #if defined (USB_CONTROLLER)
@@ -756,7 +756,7 @@ bool spectrumScope::update(scopeData data)
     } else if (!data.oor && oorIndicator->visible()) {
         oorIndicator->setVisible(false);
     }
-    redrawSpeed->setText(QString("%0ms/%1ms").arg(spectime).arg(elapsed.elapsed()-spectime));
+
     emit elapsedTime(sub, elapsed.elapsed());
 
     return true;
