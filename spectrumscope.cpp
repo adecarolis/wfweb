@@ -11,7 +11,6 @@ spectrumScope::spectrumScope(QWidget *parent)
     this->setObjectName("Spectrum Scope");
     this->setTitle("Band");
     this->defaultStyleSheet = this->styleSheet();
-
     queue = cachingQueue::getInstance();
     spectrum = new QCustomPlot();
     mainLayout = new QHBoxLayout(this);
@@ -161,6 +160,15 @@ spectrumScope::spectrumScope(QWidget *parent)
     ovfIndicator->position->setType(QCPItemPosition::ptAxisRectRatio); // Positioned relative to the current plot rect
     ovfIndicator->setText(" OVF ");
     ovfIndicator->position->setCoords(0.01f,0.0f);
+
+    redrawSpeed = new QCPItemText(spectrum);
+    redrawSpeed->setVisible(true);
+    redrawSpeed->setColor(Qt::gray);
+    redrawSpeed->setFont(QFont(font().family(), 8));
+    redrawSpeed->setPositionAlignment(Qt::AlignRight | Qt::AlignTop);
+    redrawSpeed->position->setType(QCPItemPosition::ptAxisRectRatio);
+    redrawSpeed->setText("0ms/0ms");
+    redrawSpeed->position->setCoords(1.0f,0.0f);
 
     spectrum->addGraph(); // primary
     spectrum->addGraph(0, 0); // secondary, peaks, same axis as first.
@@ -506,6 +514,8 @@ bool spectrumScope::update(scopeData data)
         return false;
     }
 
+    qint64 spectime = 0;
+    qint64 wftime = 0;
     QElapsedTimer elapsed;
     elapsed.start();
 
@@ -557,7 +567,7 @@ bool spectrumScope::update(scopeData data)
             y2[i] = (unsigned char)spectrumPeaks.at(i);
         }
     }
-
+    spectime = elapsed.elapsed();
     plasmaMutex.lock();
     spectrumPlasma.push_front(data.data);
     if(spectrumPlasma.size() > (int)spectrumPlasmaSize)
@@ -574,6 +584,7 @@ bool spectrumScope::update(scopeData data)
 #else
     spectrum->graph(0)->setData(x, y, true);
 #endif
+
 
     if((freq.MHzDouble < data.endFreq) && (freq.MHzDouble > data.startFreq))
     {
@@ -658,7 +669,6 @@ bool spectrumScope::update(scopeData data)
         //qDebug() << "Default" << pbtDefault << "Inner" << PBTInner << "Outer" << PBTOuter << "Pass" << passbandWidth << "Center" << passbandCenterFrequency << "CW" << cwPitch;
     }
 
-
 #if QCUSTOMPLOT_VERSION < 0x020000
     if (underlayMode == underlayPeakHold) {
         spectrum->graph(1)->setData(x, y2); // peaks
@@ -684,12 +694,13 @@ bool spectrumScope::update(scopeData data)
     }
 #endif
 
-
     if(updateRange)
         spectrum->yAxis->setRange(plotFloor, plotCeiling);
 
     spectrum->xAxis->setRange(data.startFreq, data.endFreq);
     spectrum->replot();
+
+    spectime = elapsed.elapsed();
 
     if(specLen == spectWidth)
     {
@@ -745,7 +756,7 @@ bool spectrumScope::update(scopeData data)
     } else if (!data.oor && oorIndicator->visible()) {
         oorIndicator->setVisible(false);
     }
-
+    redrawSpeed->setText(QString("%0ms/%1ms").arg(spectime).arg(elapsed.elapsed()-spectime));
     emit elapsedTime(sub, elapsed.elapsed());
 
     return true;

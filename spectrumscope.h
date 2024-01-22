@@ -224,6 +224,7 @@ private:
     QCPItemRect* pbtIndicator;
     QCPItemText* oorIndicator;
     QCPItemText* ovfIndicator;
+    QCPItemText* redrawSpeed;
     QByteArray spectrumPeaks;
     QVector <double> spectrumPlasmaLine;
     QVector <QByteArray> spectrumPlasma;
