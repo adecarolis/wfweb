@@ -74,7 +74,7 @@ public slots:
     void radioUsage(quint8 radio, bool admin, quint8 busy, QString name, QString ip);
     void setCurrentRadio(quint8 radio);
     void getDebug();
-    void receiveCommand(funcs func, QVariant value, bool sub);
+    void receiveCommand(funcs func, QVariant value, uchar vfo);
     void setAfGain(unsigned char level);
 
 signals:
@@ -127,7 +127,7 @@ signals:
 
 private:
     void commonSetup();
-    QByteArray stripData(const QByteArray &data, unsigned char cutPosition);
+
     void parseData(QByteArray data); // new data come here
     void parseCommand(); // Entry point for complete commands
     unsigned char bcdHexToUChar(unsigned char in);
@@ -148,7 +148,7 @@ private:
     QByteArray makeFreqPayload(freqt freq);
     QByteArray encodeTone(quint16 tone, bool tinv, bool rinv);
     QByteArray encodeTone(quint16 tone);
-    unsigned char convertNumberToHex(unsigned char num);
+
     toneInfo decodeTone(QByteArray eTone);
     //quint16 decodeTone(QByteArray eTone, bool &tinv, bool &rinv);
     uchar makeFilterWidth(ushort width, bool sub);

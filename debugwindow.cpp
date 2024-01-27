@@ -58,7 +58,7 @@ void debugWindow::getCache()
         ui->cacheView->item(c,0)->setText(QString::number(i.value().command).rightJustified(3,'0'));
         ui->cacheView->item(c,1)->setText(funcString[i.value().command]);
         ui->cacheView->item(c,2)->setText(getValue(i.value().value));
-        ui->cacheView->item(c,3)->setText((i.value().sub)?"true":"false");
+        ui->cacheView->item(c,3)->setText(QString::number(i.value().vfo));
         ui->cacheView->item(c,4)->setText((i.value().req.isValid()?i.value().req.toString("hh:mm:ss.zzz"):"<none>"));
         ui->cacheView->item(c,5)->setText((i.value().reply.isValid()?i.value().reply.toString("hh:mm:ss.zzz"):"<none>"));
         c++;

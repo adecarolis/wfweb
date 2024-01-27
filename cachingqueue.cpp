@@ -81,12 +81,12 @@ void cachingQueue::run()
                 }
                 it--;
                 auto item = it.value();
-                emit haveCommand(item.command,item.param,item.sub);
+                emit haveCommand(item.command,item.param,item.vfo);
                 it=queue.erase(it);
                 if (item.recurring && prio != priorityImmediate) {
                     queue.insert(prio,item);
                 }
-                updateCache(false,item.command,item.param,item.sub);
+                updateCache(false,item.command,item.param,item.vfo);
             }
 
             QCoreApplication::processEvents();
@@ -109,9 +109,9 @@ void cachingQueue::interval(quint64 val)
     qInfo() << "Changing queue interval to" << val << "ms";
 }
 
-void cachingQueue::add(queuePriority prio ,funcs func, bool recurring, bool sub)
+void cachingQueue::add(queuePriority prio ,funcs func, bool recurring, uchar vfo)
 {
-    queueItem q(func,recurring,sub);
+    queueItem q(func,recurring,vfo);
     add(prio,q);
 }
 
@@ -130,7 +130,7 @@ void cachingQueue::add(queuePriority prio ,queueItem item)
                     queueItem it=item;
                     it.recurring=false;
                     queue.insert(queue.cend(),priorityHighest, it);
-                    qInfo() << "adding" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "sub" << item.sub;
+                    qInfo() << "adding" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "vfo" << item.vfo;
                 }
                 queue.insert(prio, item);
             }
@@ -138,9 +138,9 @@ void cachingQueue::add(queuePriority prio ,queueItem item)
     }
 }
 
-void cachingQueue::addUnique(queuePriority prio ,funcs func, bool recurring, bool sub)
+void cachingQueue::addUnique(queuePriority prio ,funcs func, bool recurring, uchar vfo)
 {
-    queueItem q(func,recurring, sub);
+    queueItem q(func,recurring, vfo);
     addUnique(prio,q);
 }
 
@@ -157,9 +157,9 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
             auto it(queue.begin());
             // This is quite slow but a new unique command is only added in response to user interaction (mode change etc.)
             while (it != queue.end()) {
-                if (it.value().command == item.command && it.value().recurring == item.recurring && it.value().sub == item.sub && it.value().param.isValid() == item.param.isValid())
+                if (it.value().command == item.command && it.value().recurring == item.recurring && it.value().vfo == item.vfo && it.value().param.isValid() == item.param.isValid())
                 {
-                    //qInfo() << "deleting" << it.value().id << funcString[it.value().command] << "sub" << it.value().sub << "recurring" << it.value().recurring ;
+                    //qInfo() << "deleting" << it.value().id << funcString[it.value().command] << "vfo" << it.value().vfo << "recurring" << it.value().recurring ;
                     it = queue.erase(it);
                 }
                 else
@@ -172,25 +172,25 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
                 queueItem it = item;
                 it.recurring=false;
                 queue.insert(queue.cend(),priorityHighest, it);
-                qInfo() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "sub" << item.sub;
+                qInfo() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "vfo" << item.vfo;
             }
             queue.insert(prio, item);
         }
     }
 }
 
-void cachingQueue::del(funcs func, bool sub)
+void cachingQueue::del(funcs func, uchar vfo)
 {
     // This will immediately delete any matching commands.
     if (func != funcNone)
     {
         QMutexLocker locker(&mutex);
-        auto it = std::find_if(queue.begin(), queue.end(), [func,sub](const queueItem& c) {  return (c.command == func && c.sub == sub && c.recurring); });
+        auto it = std::find_if(queue.begin(), queue.end(), [func,vfo](const queueItem& c) {  return (c.command == func && c.vfo == vfo && c.recurring); });
         //auto it(queue.begin());
         if (it == queue.end())
-            qInfo() << "recurring command" << funcString[func] << "sub" << sub << "not found in queue";
+            qInfo() << "recurring command" << funcString[func] << "vfo" << vfo << "not found in queue";
         while (it != queue.end()) {
-            if (it.value().command == func && it.value().sub == sub) {
+            if (it.value().command == func && it.value().vfo == vfo) {
                 //qInfo() << "deleting" << funcString[it.value().command] << "sub" << it.value().sub << "recurring" << it.value().recurring;
                 it = queue.erase(it);
             }
@@ -202,10 +202,10 @@ void cachingQueue::del(funcs func, bool sub)
     }
 }
 
-queuePriority cachingQueue::isRecurring(funcs func, bool sub)
+queuePriority cachingQueue::isRecurring(funcs func, uchar vfo)
 {
     // Does NOT lock the mutex
-    auto rec = std::find_if(queue.begin(), queue.end(), [func,sub](const queueItem& c) {  return (c.command == func && c.sub == sub && c.recurring); });
+    auto rec = std::find_if(queue.begin(), queue.end(), [func,vfo](const queueItem& c) {  return (c.command == func && c.vfo == vfo && c.recurring); });
     if (rec != queue.end())
     {
         return rec.key();
@@ -224,12 +224,12 @@ void cachingQueue::message(QString msg)
     waiting.wakeOne();
 }
 
-void cachingQueue::receiveValue(funcs func, QVariant value, bool sub)
+void cachingQueue::receiveValue(funcs func, QVariant value, uchar vfo)
 {
     QMutexLocker locker(&mutex);
-    cacheItem c = cacheItem(func,value,sub);
+    cacheItem c = cacheItem(func,value,vfo);
     items.enqueue(c);
-    updateCache(true,func,value,sub);
+    updateCache(true,func,value,vfo);
     waiting.wakeOne();
 }
 
@@ -239,7 +239,7 @@ void cachingQueue::updateCache(bool reply, queueItem item)
     // Mutex MUST be locked by the calling function.
     auto cv = cache.find(item.command);
     while (cv != cache.end() && cv->command == item.command) {
-        if (cv->sub == item.sub) {
+        if (cv->vfo == item.vfo) {
             if (reply) {
                 cv->reply = QDateTime::currentDateTime();
             } else {
@@ -261,7 +261,7 @@ void cachingQueue::updateCache(bool reply, queueItem item)
 
     cacheItem c;
     c.command = item.command;
-    c.sub = item.sub;
+    c.vfo = item.vfo;
     if (reply) {
         c.reply = QDateTime::currentDateTime();
     } else {
@@ -275,14 +275,14 @@ void cachingQueue::updateCache(bool reply, queueItem item)
 }
 
 
-void cachingQueue::updateCache(bool reply, funcs func, QVariant value, bool sub)
+void cachingQueue::updateCache(bool reply, funcs func, QVariant value, uchar vfo)
 {
-    queueItem q(func,value,false,sub);
+    queueItem q(func,value,false,vfo);
     updateCache(reply,q);
 }
 
 
-cacheItem cachingQueue::getCache(funcs func, bool sub)
+cacheItem cachingQueue::getCache(funcs func, uchar vfo)
 {
     cacheItem ret;
     if (func != funcNone) {
@@ -290,7 +290,7 @@ cacheItem cachingQueue::getCache(funcs func, bool sub)
         auto it = cache.find(func);
         while (it != cache.end() && it->command == func)
         {
-            if (it->sub == sub)
+            if (it->vfo == vfo)
                 ret = cacheItem(*it);
             ++it;
         }
@@ -299,7 +299,7 @@ cacheItem cachingQueue::getCache(funcs func, bool sub)
     // Using priorityhighest WILL slow down the S-Meter when a command intensive client is connected to rigctl
     if (func != funcNone && (!ret.value.isValid() || ret.reply.addSecs(QRandomGenerator::global()->bounded(5,20)) <= QDateTime::currentDateTime())) {
         //qInfo() << "No (or expired) cache found for" << funcString[func] << "requesting";
-        add(priorityHighest,func,false,sub);
+        add(priorityHighest,func,false,vfo);
     }
     return ret;
 }

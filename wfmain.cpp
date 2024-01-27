@@ -167,9 +167,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         }
     }
 
-    ui->subScope->setVisible(false); // Disable sub scope until we need it
-
-
     setupKeyShortcuts();
 
     setupMainUI();
@@ -191,8 +188,11 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     setTuningSteps(); // TODO: Combine into preferences
 
-    qDebug(logSystem()) << "Running setUIToPrefs()";
-    setUIToPrefs();
+    changeFullScreenMode(prefs.useFullScreen);
+    useSystemTheme(prefs.useSystemTheme);
+
+    finputbtns->setAutomaticSidebandSwitching(prefs.automaticSidebandSwitching);
+
 
     qDebug(logSystem()) << "Running setInititalTiming()";
     setInitialTiming();
@@ -216,12 +216,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     connect(this, SIGNAL(setClusterPassword(QString)), cluster, SLOT(setTcpPassword(QString)));
     connect(this, SIGNAL(setClusterTimeout(int)), cluster, SLOT(setTcpTimeout(int)));
     connect(this, SIGNAL(setClusterSkimmerSpots(bool)), cluster, SLOT(enableSkimmerSpots(bool)));
-
-    connect(ui->mainScope, SIGNAL(frequencyRange(bool, double, double)), cluster, SLOT(freqRange(bool, double, double)));
-    connect(ui->subScope, SIGNAL(frequencyRange(bool, double, double)), cluster, SLOT(freqRange(bool, double, double)));
-    connect(cluster, SIGNAL(sendMainSpots(QList<spotData>)), ui->mainScope, SLOT(receiveSpots(QList<spotData>)));
-    connect(cluster, SIGNAL(sendSubSpots(QList<spotData>)), ui->subScope, SLOT(receiveSpots(QList<spotData>)));
-    connect(cluster, SIGNAL(sendOutput(QString)), this, SLOT(receiveClusterOutput(QString)));
 
     connect(clusterThread, SIGNAL(finished()), cluster, SLOT(deleteLater()));
 
@@ -522,14 +516,6 @@ void wfmain::makeRig()
 
         connect(this, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
 
-        connect(ui->mainScope, SIGNAL(updateSettings(bool,int,quint16,int,int)), this, SLOT(receiveScopeSettings(bool,int,quint16,int,int)));
-        connect(ui->subScope, SIGNAL(updateSettings(bool,int,quint16,int,int)), this, SLOT(receiveScopeSettings(bool,int,quint16,int,int)));
-
-        connect(ui->mainScope, SIGNAL(elapsedTime(bool,qint64)), this, SLOT(receiveElapsed(bool,qint64)));
-        connect(ui->subScope, SIGNAL(elapsedTime(bool,qint64)), this, SLOT(receiveElapsed(bool,qint64)));
-
-        connect(ui->mainScope, SIGNAL(dataChanged(modeInfo)), this, SLOT(dataModeChanged(modeInfo)));
-
         // Create link for server so it can have easy access to rig.
         if (serverConfig.rigs.first() != Q_NULLPTR) {
             serverConfig.rigs.first()->rig = rig;
@@ -794,11 +780,6 @@ void wfmain::setupMainUI()
     freqt f;
     f.MHzDouble = 0.0;
     f.Hz = 0;
-    ui->mainScope->setIdentity("Main Band",false);
-    ui->subScope->setIdentity("Sub Band",true);
-
-    connect(ui->mainScope,SIGNAL(showStatusBarText(QString)),this,SLOT(showStatusBarText(QString)));
-    connect(ui->subScope,SIGNAL(showStatusBarText(QString)),this,SLOT(showStatusBarText(QString)));
 
     oldFreqDialVal = ui->freqDial->value();
 
@@ -984,56 +965,54 @@ void wfmain::setServerToPrefs()
     }
 }
 
-void wfmain::setUIToPrefs()
+void wfmain::configureVFOs()
 {
-    //ui->fullScreenChk->setChecked(prefs.useFullScreen);
-    changeFullScreenMode(prefs.useFullScreen);
+    qCritical(logSystem()) << "Running configureVFOs()";
 
-    //ui->useSystemThemeChk->setChecked(prefs.useSystemTheme);
-    useSystemTheme(prefs.useSystemTheme);
+    if (vfos.size()) {
+        foreach (spectrumScope* vfo, vfos)
+        {
+            ui->vfoLayout->removeWidget(vfo);
+            delete vfo;
+        }
+        vfos.clear();
+    }
 
-    ui->mainScope->setUnderlayMode(prefs.underlayMode);
-    ui->mainScope->wfAntiAliased(prefs.wfAntiAlias);
-    ui->mainScope->wfInterpolate(prefs.wfInterpolate);
-    ui->mainScope->wfTheme(prefs.mainWfTheme);
-    ui->mainScope->setScrollSpeedXY(prefs.scopeScrollX, prefs.scopeScrollY);
+    for(uchar i=0;i<rigCaps.numVFO;i++)
+    {
+        qCritical(logSystem()) << "Creating VFO" << i;
+        vfos.append(new spectrumScope(this));
+        vfos.last()->setUnderlayMode(prefs.underlayMode);
+        vfos.last()->wfAntiAliased(prefs.wfAntiAlias);
+        vfos.last()->wfInterpolate(prefs.wfInterpolate);
+        vfos.last()->setScrollSpeedXY(prefs.scopeScrollX, prefs.scopeScrollY);
+        vfos.last()->prepareWf(i==0?prefs.mainWflength:prefs.subWflength);
+        vfos.last()->preparePlasma();
+        vfos.last()->setRange(i==0?prefs.mainPlotFloor:prefs.subPlotFloor,i==0?prefs.mainPlotCeiling:prefs.subPlotCeiling);
+        vfos.last()->wfTheme(i==0?prefs.mainWfTheme:prefs.subWfTheme);
+        vfos.last()->setClickDragTuning(prefs.clickDragTuningEnable);
+        vfos.last()->setTuningFloorZeros(prefs.niceTS);
+        vfos.last()->resizePlasmaBuffer(prefs.underlayBufferSize);
+        vfos.last()->setUnit((FctlUnit)prefs.frequencyUnits);
+        vfos.last()->colorPreset(this->colorPrefs);
 
-    ui->subScope->setUnderlayMode(prefs.underlayMode);
-    ui->subScope->wfAntiAliased(prefs.wfAntiAlias);
-    ui->subScope->wfInterpolate(prefs.wfInterpolate);
-    ui->subScope->wfTheme(prefs.subWfTheme);
-    ui->subScope->setScrollSpeedXY(prefs.scopeScrollX, prefs.scopeScrollY);
+        // Hide any secondary VFOs until we need them!
+        if (i>0){
+            vfos.last()->setVisible(false);
+        }
+        ui->vfoLayout->addWidget(vfos.last());
 
-    //    switch(underlayMode)
-//    {
-//        case underlayNone:
-//            ui->underlayNone->setChecked(true);
-//            break;
-//        case underlayPeakHold:
-//            ui->underlayPeakHold->setChecked(true);
-//            break;
-//        case underlayPeakBuffer:
-//            ui->underlayPeakBuffer->setChecked(true);
-//            break;
-//        case underlayAverageBuffer:
-//            ui->underlayAverageBuffer->setChecked(true);
-//            break;
-//        default:
-//            break;
-//    }
+        connect(vfos.last(), SIGNAL(frequencyRange(uchar, double, double)), cluster, SLOT(freqRange(uchar, double, double)));
+        connect(cluster, SIGNAL(sendMainSpots(QList<spotData>)), vfos.last(), SLOT(receiveSpots(QList<spotData>)));
+        connect(cluster, SIGNAL(sendOutput(QString)), this, SLOT(receiveClusterOutput(QString)));
+        connect(vfos.last(), SIGNAL(updateSettings(uchar,int,quint16,int,int)), this, SLOT(receiveScopeSettings(uchar,int,quint16,int,int)));
 
-    ui->mainScope->prepareWf(prefs.mainWflength);
-    ui->mainScope->preparePlasma();
-    ui->subScope->prepareWf(prefs.subWflength);
-    ui->subScope->preparePlasma();
+        connect(vfos.last(), SIGNAL(dataChanged(modeInfo)), this, SLOT(dataModeChanged(modeInfo)));
+        vfos.last()->setIdentity(i==0?"Main Band":"Sub Band",i);
 
-    ui->mainScope->setRange(prefs.mainPlotFloor, prefs.mainPlotCeiling);
-    ui->subScope->setRange(prefs.subPlotFloor, prefs.subPlotCeiling);
+        connect(vfos.last(),SIGNAL(showStatusBarText(QString)),this,SLOT(showStatusBarText(QString)));
 
-    ui->mainScope->wfTheme(prefs.mainWfTheme);
-    ui->subScope->wfTheme(prefs.subWfTheme);
-
-    finputbtns->setAutomaticSidebandSwitching(prefs.automaticSidebandSwitching);
+    }
 }
 
 void wfmain::setSerialDevicesUI()
@@ -1220,7 +1199,8 @@ void wfmain::setupKeyShortcuts()
         if (freqLock) return;
 
         freqt f;
-        f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, -1, tsKnobHz);
+        if (vfos.size())
+           f.Hz = roundFrequencyWithStep(vfos.first()->getFrequency().Hz, -1, tsKnobHz);
         f.MHzDouble = f.Hz / (double)1E6;
         queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f)));
     });
@@ -1233,7 +1213,8 @@ void wfmain::setupKeyShortcuts()
         if (freqLock) return;
 
         freqt f;
-        f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, 1, tsKnobHz);
+        if (vfos.size())
+            f.Hz = roundFrequencyWithStep(vfos.first()->getFrequency().Hz, 1, tsKnobHz);
         f.MHzDouble = f.Hz / (double)1E6;
         queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f)));
     });
@@ -1436,20 +1417,20 @@ void wfmain::buttonControl(const COMMAND* cmd)
             //Potentially add option to select specific step size?
         }
         break;
-    case funcSelectedFreq:
     case funcUnselectedFreq:
+    case funcSelectedFreq:
     {
         freqt f;
-        bool sub=false;
-        if ((funcs)cmd->command == funcUnselectedFreq) {
-            f.Hz = roundFrequencyWithStep(ui->subScope->getFrequency().Hz, cmd->value, tsWfScrollHz);
-            sub=true;
-        } else {
-            f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, cmd->value, tsWfScrollHz);
+        bool vfo=0;
+        if ((funcs)cmd->command == funcUnselectedFreq && vfos.size()>1) {
+            f.Hz = roundFrequencyWithStep(vfos[1]->getFrequency().Hz, cmd->value, tsWfScrollHz);
+            vfo=1;
+        } else if (vfos.size()){
+            f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, cmd->value, tsWfScrollHz);
         }
         f.MHzDouble = f.Hz / (double)1E6;
         f.VFO=(selVFO_t)cmd->suffix;
-        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<freqt>(f),sub));
+        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<freqt>(f),vfo));
         break;
     }
     default:
@@ -1480,7 +1461,7 @@ void wfmain::changeFrequency(int value) {
     if (freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, value, tsWfScrollHz);
+    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, value, tsWfScrollHz);
     f.MHzDouble = f.Hz / (double)1E6;
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
@@ -1593,8 +1574,6 @@ void wfmain::loadSettings()
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
     prefs.meter2Type = static_cast<meter_t>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
     prefs.clickDragTuningEnable = settings->value("ClickDragTuning", false).toBool();
-    ui->mainScope->setClickDragTuning(prefs.clickDragTuningEnable);
-    ui->subScope->setClickDragTuning(prefs.clickDragTuningEnable);
 
     prefs.rigCreatorEnable = settings->value("RigCreator",false).toBool();
     ui->rigCreatorBtn->setEnabled(prefs.rigCreatorEnable);
@@ -1695,8 +1674,6 @@ void wfmain::loadSettings()
     prefs.enablePTT = settings->value("EnablePTT", defPrefs.enablePTT).toBool();
 
     prefs.niceTS = settings->value("NiceTS", defPrefs.niceTS).toBool();
-    ui->mainScope->setTuningFloorZeros(prefs.niceTS);
-    ui->subScope->setTuningFloorZeros(prefs.niceTS);
 
     prefs.automaticSidebandSwitching = settings->value("automaticSidebandSwitching", defPrefs.automaticSidebandSwitching).toBool();
     settings->endGroup();
@@ -2257,20 +2234,24 @@ void wfmain::extChangedIfPref(prefIfItem i)
         // depreciated;
         break;
     case if_underlayMode:
-        ui->mainScope->setUnderlayMode(prefs.underlayMode);
-        ui->subScope->setUnderlayMode(prefs.underlayMode);
+        foreach (auto vfo, vfos) {
+            vfo->setUnderlayMode(prefs.underlayMode);
+        }
         break;
     case if_underlayBufferSize:
-        ui->mainScope->resizePlasmaBuffer(prefs.underlayBufferSize);
-        ui->subScope->resizePlasmaBuffer(prefs.underlayBufferSize);
+        foreach (auto vfo, vfos) {
+            vfo->resizePlasmaBuffer(prefs.underlayBufferSize);
+        }
         break;
     case if_wfAntiAlias:
-        ui->mainScope->wfAntiAliased(prefs.wfAntiAlias);
-        ui->subScope->wfAntiAliased(prefs.wfAntiAlias);
+        foreach (auto vfo, vfos) {
+            vfo->wfAntiAliased(prefs.wfAntiAlias);
+        }
         break;
     case if_wfInterpolate:
-        ui->mainScope->wfInterpolate(prefs.wfInterpolate);
-        ui->subScope->wfInterpolate(prefs.wfInterpolate);
+        foreach (auto vfo, vfos) {
+            vfo->wfInterpolate(prefs.wfInterpolate);
+        }
         break;
     case if_wftheme:
         // Not in settings widget
@@ -2311,8 +2292,10 @@ void wfmain::extChangedIfPref(prefIfItem i)
         break;
     }
     case if_frequencyUnits:
-        ui->mainScope->setUnit((FctlUnit)prefs.frequencyUnits);
-        ui->subScope->setUnit((FctlUnit)prefs.frequencyUnits);
+        foreach (auto vfo, vfos)
+        {
+            vfo->setUnit((FctlUnit)prefs.frequencyUnits);
+        }
         break;
     default:
         qWarning(logSystem()) << "Did not understand if pref update in wfmain for item " << (int)i;
@@ -2344,8 +2327,10 @@ void wfmain::extChangedColPref(prefColItem i)
     case col_waterfallAxis:
     case col_waterfallText:
     case col_clusterSpots:
-        ui->mainScope->colorPreset(cp);
-        ui->subScope->colorPreset(cp);
+        foreach (auto vfo, vfos)
+        {
+            vfo->colorPreset(cp);
+        }
         break;
     case col_meterLevel:
     case col_meterAverage:
@@ -2422,19 +2407,19 @@ void wfmain::extChangedRsPref(prefRsItem i)
     {
     case rs_dataOffMod:
         queue->add(priorityImmediate,queueItem(funcDATAOffMod,QVariant::fromValue<rigInput>(prefs.inputSource[0]),false,false));
-        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[0].type),true,false));
+        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[0].type),true));
         break;
     case rs_data1Mod:
         queue->add(priorityImmediate,queueItem(funcDATA1Mod,QVariant::fromValue<rigInput>(prefs.inputSource[1]),false,false));
-        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[1].type),true,false));
+        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[1].type),true));
         break;
     case rs_data2Mod:
         queue->add(priorityImmediate,queueItem(funcDATA2Mod,QVariant::fromValue<rigInput>(prefs.inputSource[2]),false,false));
-        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[2].type),true,false));
+        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[2].type),true));
         break;
     case rs_data3Mod:
         queue->add(priorityImmediate,queueItem(funcDATA3Mod,QVariant::fromValue<rigInput>(prefs.inputSource[3]),false,false));
-        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[3].type),true,false));
+        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[3].type),true));
         break;
     case rs_setClock:
         setRadioTimeDatePrep();
@@ -2476,8 +2461,11 @@ void wfmain::extChangedCtPref(prefCtItem i)
     case ct_enablePTT:
         break;
     case ct_niceTS:
-        ui->mainScope->setTuningFloorZeros(prefs.niceTS);
-        ui->subScope->setTuningFloorZeros(prefs.niceTS);
+        foreach (auto vfo, vfos)
+        {
+            vfo->setTuningFloorZeros(prefs.niceTS);
+        }
+
         break;
     case ct_automaticSidebandSwitching:
         finputbtns->setAutomaticSidebandSwitching(prefs.automaticSidebandSwitching);
@@ -3034,13 +3022,6 @@ void wfmain::saveSettings()
 }
 
 
-void wfmain::showHideSpectrum(bool show)
-{
-
-    ui->mainScope->setVisible(show);
-    ui->subScope->setVisible(false);
-}
-
 // Key shortcuts (hotkeys)
 
 void wfmain::shortcutF11()
@@ -3194,8 +3175,11 @@ void wfmain::on_tuningStepCombo_currentIndexChanged(int index)
     for (auto &s: rigCaps.steps) {
         if (tsWfScrollHz == s.hz)
         {
-            ui->mainScope->setStepSize(s.hz);
-            ui->subScope->setStepSize(s.hz);
+            foreach (auto vfo, vfos)
+            {
+                vfo->setStepSize(s.hz);
+            }
+
             queue->add(priorityImmediate,queueItem(funcTuningStep,QVariant::fromValue<uchar>(s.num),false));
         }
     }
@@ -3238,7 +3222,7 @@ void wfmain::shortcutMinus()
     if (freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, -1, tsPlusHz);
+    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, -1, tsPlusHz);
     f.MHzDouble = f.Hz / (double)1E6;
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
@@ -3248,7 +3232,7 @@ void wfmain::shortcutPlus()
     if (freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, 1, tsPlusHz);
+    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, 1, tsPlusHz);
     f.MHzDouble = f.Hz / (double)1E6;
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
@@ -3258,7 +3242,7 @@ void wfmain::shortcutStepMinus()
     if (freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, -1, ui->tuningStepCombo->currentData().toInt());
+    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, -1, ui->tuningStepCombo->currentData().toInt());
     f.MHzDouble = f.Hz / (double)1E6;
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 
@@ -3269,7 +3253,7 @@ void wfmain::shortcutStepPlus()
     if (freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, 1, ui->tuningStepCombo->currentData().toInt());
+    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, 1, ui->tuningStepCombo->currentData().toInt());
 
     f.MHzDouble = f.Hz / (double)1E6;
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
@@ -3280,7 +3264,7 @@ void wfmain::shortcutShiftMinus()
     if(freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, -1, tsPlusShiftHz);
+    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, -1, tsPlusShiftHz);
     f.MHzDouble = f.Hz / (double)1E6;
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
@@ -3290,7 +3274,7 @@ void wfmain::shortcutShiftPlus()
     if(freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, 1, tsPlusShiftHz);
+    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, 1, tsPlusShiftHz);
     f.MHzDouble = f.Hz / (double)1E6;
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 
@@ -3301,7 +3285,7 @@ void wfmain::shortcutControlMinus()
     if(freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, -1, tsPlusControlHz);
+    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, -1, tsPlusControlHz);
     f.MHzDouble = f.Hz / (double)1E6;
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
@@ -3311,7 +3295,7 @@ void wfmain::shortcutControlPlus()
     if(freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, 1, tsPlusControlHz);
+    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, 1, tsPlusControlHz);
     f.MHzDouble = f.Hz / (double)1E6;
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
@@ -3321,7 +3305,7 @@ void wfmain::shortcutPageUp()
     if(freqLock) return;
 
     freqt f;
-    f.Hz = ui->mainScope->getFrequency().Hz + tsPageHz;
+    f.Hz = vfos[0]->getFrequency().Hz + tsPageHz;
     f.MHzDouble = f.Hz / (double)1E6;
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
@@ -3331,7 +3315,7 @@ void wfmain::shortcutPageDown()
     if(freqLock) return;
 
     freqt f;
-    f.Hz = ui->mainScope->getFrequency().Hz - tsPageHz;
+    f.Hz = vfos[0]->getFrequency().Hz - tsPageHz;
     f.MHzDouble = f.Hz / (double)1E6;
     queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
 }
@@ -3441,21 +3425,18 @@ void wfmain:: getInitialRigState()
         auto mr = rigCaps.commands.find(funcScopeMainRef);
         if (mr != rigCaps.commands.end())
         {
-            ui->mainScope->setRefLimits(mr.value().minVal,mr.value().maxVal);
+            vfos[0]->setRefLimits(mr.value().minVal,mr.value().maxVal);
             queue->add(priorityImmediate,(funcScopeMainRef),false,false);
         }
 
         auto sr = rigCaps.commands.find(funcScopeSubRef);
         if (sr != rigCaps.commands.end())
         {
-            ui->subScope->setRefLimits(sr.value().minVal,sr.value().maxVal);
+            vfos[1]->setRefLimits(sr.value().minVal,sr.value().maxVal);
             queue->add(priorityImmediate,(funcScopeSubRef),false,true);
         }
     }
 
-
-    ui->mainScope->enableScope(this->rigCaps.commands.contains(funcScopeMainMode));
-    ui->subScope->enableScope(this->rigCaps.commands.contains(funcScopeSubMode));
 
     // Only show settingsgroup if rig has sub
     ui->scopeSettingsGroup->setVisible(rigCaps.commands.contains(funcScopeSubWaveData));
@@ -3472,8 +3453,12 @@ void wfmain:: getInitialRigState()
         if (end < band.highFreq)
             end = band.highFreq;
     }
-    ui->mainScope->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits,&rigCaps.bands);
-    ui->subScope->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits,&rigCaps.bands);
+    foreach (auto vfo, vfos)
+    {
+        vfo->enableScope(this->rigCaps.commands.contains(funcScopeMainMode));
+        vfo->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits,&rigCaps.bands);
+
+    }
 
     /*
 
@@ -3702,6 +3687,9 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         qDebug(logSystem()) << "Rig ID received into wfmain: hasSpectrum: " << rigCaps.hasSpectrum;
 
         this->rigCaps = rigCaps;
+
+        configureVFOs(); // Now we have a rig connection, need to configure the VFOs
+
         rigName->setText(rigCaps.modelName);
         if (serverConfig.enabled) {
             serverConfig.rigs.first()->modelName = rigCaps.modelName;
@@ -3713,8 +3701,10 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         if(rigCaps.hasSpectrum)
         {
-            ui->mainScope->prepareScope(rigCaps.spectAmpMax, rigCaps.spectLenMax);
-            ui->subScope->prepareScope(rigCaps.spectAmpMax, rigCaps.spectLenMax);
+            foreach (auto vfo, vfos)
+            {
+                vfo->prepareScope(rigCaps.spectAmpMax, rigCaps.spectLenMax);
+            }
         }
 
         haveRigCaps = true;
@@ -3729,26 +3719,57 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         rpt->setRig(rigCaps);
         trxadj->setRig(rigCaps);
 
-        // Set the mode combo box up:
-        ui->mainScope->clearMode();
-        ui->subScope->clearMode();
+        foreach (auto vfo, vfos) {
+            // Setup various combo box up for each VFO:
+            vfo->clearMode();
+            for (auto &m: rigCaps.modes)
+            {
+                //ui->modeSelectCombo->addItem(m.name, m.mk);
+                vfo->addMode("Mode "+m.name,QVariant::fromValue(m));
+            }
 
-        for (auto &m: rigCaps.modes)
-        {
-            //ui->modeSelectCombo->addItem(m.name, m.mk);
-            ui->mainScope->addMode("Mode "+m.name,QVariant::fromValue(m));
-            ui->subScope->addMode("Mode "+m.name,QVariant::fromValue(m));
+            vfo->clearFilter();
+            for (auto& f: rigCaps.filters)
+            {
+                vfo->addFilter(f.name,f.num);
+            }
+
+            vfo->clearData();
+
+            vfo->addData("Data Off",0);
+
+            if (rigCaps.commands.contains(funcDATA1Mod))
+            {
+                setupui->updateModSourceList(1, rigCaps.inputs);
+                if (!rigCaps.commands.contains(funcDATA2Mod))
+                {
+                    vfo->addData("Data On", 2);
+                }
+            }
+
+            if (rigCaps.commands.contains(funcDATA2Mod))
+            {
+                setupui->updateModSourceList(2, rigCaps.inputs);
+                vfo->addData("Data 1", 2);
+                vfo->addData("Data 2", 2);
+            }
+
+            if (rigCaps.commands.contains(funcDATA3Mod))
+            {
+                setupui->updateModSourceList(3, rigCaps.inputs);
+                vfo->addData("Data 3", 3);
+            }
+
+            vfo->clearSpans();
+            if(rigCaps.hasSpectrum)
+            {
+                for(unsigned int i=0; i < rigCaps.scopeCenterSpans.size(); i++)
+                {
+                    vfo->addSpan(rigCaps.scopeCenterSpans.at(i).name, QVariant::fromValue(rigCaps.scopeCenterSpans.at(i)));
+                }
+                vfo->setRange(prefs.mainPlotFloor, prefs.mainPlotCeiling);
+            }
         }
-
-        ui->mainScope->clearFilter();
-        ui->subScope->clearFilter();
-
-        for (auto& f: rigCaps.filters)
-        {
-            ui->mainScope->addFilter(f.name,f.num);
-            ui->subScope->addFilter(f.name,f.num);
-        }
-
 
         // Set the tuning step combo box up:
         ui->tuningStepCombo->blockSignals(true);
@@ -3763,37 +3784,6 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         setupui->updateModSourceList(0, rigCaps.inputs);
 
-        ui->mainScope->clearData();
-        ui->subScope->clearData();
-
-        ui->mainScope->addData("Data Off",0);
-        ui->subScope->addData("Data Off",0);
-
-        if (rigCaps.commands.contains(funcDATA1Mod))
-        {
-            setupui->updateModSourceList(1, rigCaps.inputs);
-            if (!rigCaps.commands.contains(funcDATA2Mod))
-            {
-                ui->mainScope->addData("Data On", 2);
-                ui->subScope->addData("Data On", 2);
-            }
-        }
-
-        if (rigCaps.commands.contains(funcDATA2Mod))
-        {
-            setupui->updateModSourceList(2, rigCaps.inputs);
-            ui->mainScope->addData("Data 1", 2);
-            ui->subScope->addData("Data 1", 2);
-            ui->mainScope->addData("Data 2", 2);
-            ui->subScope->addData("Data 2", 2);
-        }
-
-        if (rigCaps.commands.contains(funcDATA3Mod))
-        {
-            setupui->updateModSourceList(3, rigCaps.inputs);
-            ui->mainScope->addData("Data 3", 3);
-            ui->subScope->addData("Data 3", 3);
-        }
 
         ui->attSelCombo->clear();
         if(rigCaps.commands.contains(funcAttenuator))
@@ -3836,24 +3826,6 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         //ui->scopeBWCombo->blockSignals(true);
         //ui->scopeBWCombo->clear();
-        ui->mainScope->clearSpans();
-        ui->subScope->clearSpans();
-        if(rigCaps.hasSpectrum)
-        {
-            //ui->scopeBWCombo->setHidden(false);
-            for(unsigned int i=0; i < rigCaps.scopeCenterSpans.size(); i++)
-            {
-                ui->mainScope->addSpan(rigCaps.scopeCenterSpans.at(i).name, QVariant::fromValue(rigCaps.scopeCenterSpans.at(i)));
-                ui->subScope->addSpan(rigCaps.scopeCenterSpans.at(i).name, QVariant::fromValue(rigCaps.scopeCenterSpans.at(i)));
-            }
-            ui->mainScope->setRange(prefs.mainPlotFloor, prefs.mainPlotCeiling);
-            ui->subScope->setRange(prefs.subPlotFloor, prefs.subPlotCeiling);
-        }// else {
-            //ui->scopeBWCombo->setHidden(true);
-       //}
-        //ui->scopeBWCombo->blockSignals(false);
-
-        //setBandButtons();
 
         ui->tuneEnableChk->setEnabled(rigCaps.commands.contains(funcTunerStatus));
         ui->tuneNowBtn->setEnabled(rigCaps.commands.contains(funcTunerStatus));
@@ -3949,7 +3921,7 @@ void wfmain::initPeriodicCommands()
     queue->add(priorityMediumLow,funcSplitStatus,true,false);
     queue->add(priorityMediumLow,funcToneSquelchType,true,false);
 
-    queue->add(priorityHighest,queueItem(funcSMeter,true,false));
+    queue->add(priorityHighest,queueItem(funcSMeter,true));
 }
 
 void wfmain::receivePTTstatus(bool pttOn)
@@ -4089,12 +4061,12 @@ void wfmain::on_freqDial_valueChanged(int value)
     // With the number of steps and direction of steps established,
     // we can now adjust the frequency:
 
-    f.Hz = roundFrequencyWithStep(ui->mainScope->getFrequency().Hz, delta, tsKnobHz);
+    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, delta, tsKnobHz);
     f.MHzDouble = f.Hz / (double)1E6;
     if (f.Hz > 0)
     {
         oldFreqDialVal = value;
-        ui->mainScope->setFrequency(f);
+        vfos[0]->setFrequency(f);
         queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
     } else {
         ui->freqDial->blockSignals(true);
@@ -4133,7 +4105,7 @@ void wfmain::gotoMemoryPreset(int presetNumber)
     //issueDelayedCommand(cmdSetModeFilter); // goes to setModeVal
     //issueCmd(cmdSetMode, m);
     memFreq.MHzDouble = memFreq.Hz / 1.0E6;
-    ui->mainScope->setFrequency(memFreq);
+    vfos[0]->setFrequency(memFreq);
     qDebug(logGui()) << "Recalling preset number " << presetNumber << " as frequency " << temp.frequency << "MHz";
 }
 
@@ -4141,11 +4113,11 @@ void wfmain::saveMemoryPreset(int presetNumber)
 {
     // int, double, rigMode_t
     double frequency;
-    if(ui->mainScope->getFrequency().Hz == 0)
+    if(vfos[0]->getFrequency().Hz == 0)
     {
-        frequency = ui->mainScope->getFrequency().MHzDouble;
+        frequency = vfos[0]->getFrequency().MHzDouble;
     } else {
-        frequency = ui->mainScope->getFrequency().Hz / 1.0E6;
+        frequency = vfos[0]->getFrequency().Hz / 1.0E6;
     }
     rigMode_t mode = currentMode;
     qDebug(logGui()) << "Saving preset number " << presetNumber << " to frequency " << frequency << " MHz";
@@ -4445,7 +4417,7 @@ void wfmain::statusFromSliderPercent(QString name, int rawValue)
 
 void wfmain::processModLevel(inputTypes source, unsigned char level)
 {
-    unsigned char data = ui->mainScope->getDataMode();
+    unsigned char data = vfos[0]->getDataMode();
 
     if(prefs.inputSource[data].type == source)
     {
@@ -4464,7 +4436,7 @@ void wfmain::receiveModInput(rigInput input, unsigned char data)
         qInfo() << QString("Data: %0 Input: %1 current: %2").arg(data).arg(input.name).arg(prefs.inputSource[data].name);
         queue->del(getInputTypeCommand(prefs.inputSource[data].type),false);
         prefs.inputSource[data] = input;
-        if (ui->mainScope->getDataMode() == data)
+        if (vfos[0]->getDataMode() == data)
         {
             queue->addUnique(priorityHigh,getInputTypeCommand(input.type),true,false);
             changeModLabel(input,false);
@@ -4490,8 +4462,8 @@ void wfmain::receiveModInput(rigInput input, unsigned char data)
 void wfmain::receivePassband(quint16 pass)
 {
     double pb = (double)(pass / 1000000.0);
-    if (ui->mainScope->getPassbandWidth() != pb) {
-        ui->mainScope->setPassbandWidth(pb);
+    if (vfos[0]->getPassbandWidth() != pb) {
+        vfos[0]->setPassbandWidth(pb);
 
         qInfo(logSystem()) << QString("Received new IF Filter/Passband %0 Hz").arg(pass);
         showStatusBarText(QString("IF filter width %0 Hz (%1 MHz)").arg(pass).arg(passbandWidth));
@@ -4511,52 +4483,6 @@ void wfmain::receiveCwPitch(unsigned char pitch) {
     }
 }
 
-void wfmain::receivePBTInner(unsigned char level) {
-    /*
-    * This is written like this as although PBT is supposed to be sent in 25Hz steps,
-    * sometimes it sends the 'nearest' value. This results in math errors.
-    * In CW mode, the value is also dependant on the CW Pitch setting
-    */
-    qint16 shift = (qint16)(level - 128);
-    double tempVar = ceil((shift / 127.0) * ui->mainScope->getPassbandWidth() * 20000.0) / 20000.0;
-    // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
-    double pitch = 0.0;
-    if ((currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) && ui->mainScope->getPassbandWidth() > 0.0006)
-    {
-        pitch = (600.0 - cwPitch) / 1000000.0;
-    }
-    double inner = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
-    if (inner != PBTInner)
-    {
-        qInfo(logSystem()) << QString("Received new PBT Inner %0 MHz").arg(inner);
-        PBTInner = inner;
-        emit sendLevel(funcPBTInner,level);
-    }
-}
-
-void wfmain::receivePBTOuter(unsigned char level) {
-    /*
-    * This is written like this as although PBT is supposed to be sent in 25Hz steps,
-    * sometimes it sends the 'nearest' value. This results in math errors.
-    * In CW mode, the value is also dependant on the CW Pitch setting
-    */
-    qint16 shift = (qint16)(level - 128);
-    double tempVar = ceil((shift / 127.0) * ui->mainScope->getPassbandWidth() * 20000.0) / 20000.0;
-    // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
-    double pitch = 0.0;
-    if ((currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) && ui->mainScope->getPassbandWidth() > 0.0006)
-    {
-        pitch = (600.0 - cwPitch) / 1000000.0;
-    }
-    double outer = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
-    if (outer != PBTOuter)
-    {
-        qInfo(logSystem()) << QString("Received new PBT Outer %0 MHz").arg(outer);
-        PBTOuter = outer;
-        emit sendLevel(funcPBTOuter,level);
-    }
-}
-
 void wfmain::receiveTuningStep(unsigned char step)
 {
     if (step > 0)
@@ -4566,8 +4492,10 @@ void wfmain::receiveTuningStep(unsigned char step)
             if (step == s.num && ui->tuningStepCombo->currentData().toUInt() != s.hz) {
                 qInfo(logSystem()) << QString("Received new Tuning Step %0").arg(s.name);
                 ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->findData(s.hz));
-                ui->mainScope->setStepSize(s.hz);
-                ui->subScope->setStepSize(s.hz);
+                foreach (auto vfo, vfos)
+                {
+                    vfo->setStepSize(s.hz);
+                }
                 break;
             }
         }
@@ -4672,7 +4600,7 @@ void wfmain::processChangingCurrentModLevel(unsigned char level)
     // slider moved, so find the current mod and issue the level set command.
 
     funcs f = funcNone;
-    unsigned char d = ui->mainScope->getDataMode();
+    unsigned char d = vfos[0]->getDataMode();
     f = getInputTypeCommand(prefs.inputSource[d].type);
 
     queue->addUnique(priorityImmediate,queueItem(f,QVariant::fromValue<ushort>(level),false));
@@ -4966,7 +4894,7 @@ void wfmain::changeMeter2Type(meter_t m)
         ui->meter2Widget->show();
         ui->meter2Widget->setMeterType(newMeterType);
         if((newMeterType!=meterRxAudio) && (newMeterType!=meterTxMod) && (newMeterType!=meterAudio))
-            queue->add(priorityHighest,queueItem(newCmd,true,false));
+            queue->add(priorityHighest,queueItem(newCmd,true));
     }
 }
 
@@ -5053,8 +4981,9 @@ void wfmain::useColorPreset(colorPrefsType *cp)
     //qInfo(logSystem()) << "Setting plots to color preset number " << cp->presetNum << ", with name " << *(cp->presetName);
     ui->meterSPoWidget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
     ui->meter2Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
-    ui->mainScope->colorPreset(cp);
-    ui->subScope->colorPreset(cp);
+    foreach(auto vfo, vfos) {
+        vfo->colorPreset(cp);
+    }
     if (this->colorPrefs != Q_NULLPTR)
         delete this->colorPrefs;
     this->colorPrefs = new colorPrefsType(*cp);
@@ -5329,19 +5258,15 @@ void wfmain::receiveValue(cacheItem val){
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
     case funcUnselectedFreq:
-        val.sub=true;
+        if (vfos.size() > 1)
+            val.vfo=1;
     case funcFreqGet:
     case funcFreqTR:
     case funcSelectedFreq:
     {
         freqt f = val.value.value<freqt>();
 
-        if (!val.sub)
-        {
-            ui->mainScope->setFrequency(f);
-        } else {
-            ui->subScope->setFrequency(f);
-        }
+        vfos[val.vfo]->setFrequency(f);
     }
 #if defined __GNUC__
 #pragma GCC diagnostic pop
@@ -5354,15 +5279,17 @@ void wfmain::receiveValue(cacheItem val){
     case funcModeGet:
     case funcModeTR:
     case funcSelectedMode:
-        ui->mainScope->receiveMode(val.value.value<modeInfo>());
+        if (vfos.size())
+            vfos[0]->receiveMode(val.value.value<modeInfo>());
         finputbtns->updateCurrentMode(val.value.value<modeInfo>().mk);
         finputbtns->updateFilterSelection(val.value.value<modeInfo>().filter);
         rpt->handleUpdateCurrentMainMode(val.value.value<modeInfo>());
         cw->handleCurrentModeUpdate(val.value.value<modeInfo>().mk);
         break;
     case funcUnselectedMode:
-        val.sub=true;
-        ui->subScope->receiveMode(val.value.value<modeInfo>());
+        val.vfo=1;
+        if (vfos.size()>1)
+            vfos[1]->receiveMode(val.value.value<modeInfo>());
         break;
     case funcVFOBandMS:
         break;
@@ -5396,27 +5323,20 @@ void wfmain::receiveValue(cacheItem val){
     {
         uchar level = val.value.value<uchar>();
         qint16 shift = (qint16)(level - 128);
-        double tempVar = ceil((shift / 127.0) * ui->mainScope->getPassbandWidth() * 20000.0) / 20000.0;
+        double tempVar = ceil((shift / 127.0) * vfos[val.vfo]->getPassbandWidth() * 20000.0) / 20000.0;
         // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
         double pitch = 0.0;
-        if ((currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) && ui->mainScope->getPassbandWidth() > 0.0006)
+        modeInfo mode = vfos[val.vfo]->currentMode();
+        if ((mode.mk == modeCW || mode.mk == modeCW_R) && vfos[val.vfo]->getPassbandWidth() > 0.0006)
         {
                 pitch = (600.0 - cwPitch) / 1000000.0;
         }
         double newVal = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
 
         if (val.command == funcPBTInner) {
-            if (val.sub) {
-                ui->subScope->setPBTInner(newVal);
-            } else {
-                ui->mainScope->setPBTInner(newVal);
-            }
+            vfos[val.vfo]->setPBTInner(newVal);
         } else {
-            if (val.sub) {
-                ui->subScope->setPBTOuter(newVal);
-            } else {
-                ui->mainScope->setPBTOuter(newVal);
-            }
+            vfos[val.vfo]->setPBTOuter(newVal);
         }
         break;
     }
@@ -5430,9 +5350,10 @@ void wfmain::receiveValue(cacheItem val){
             [=](const unsigned char &bm) { cw->handleBreakInMode(bm);});
 */
     case funcCwPitch:
-        // There is only a single CW Pitch setting, so send to both scopes.
-        ui->mainScope->receiveCwPitch(val.value.value<uchar>());
-        ui->subScope->receiveCwPitch(val.value.value<uchar>());
+        // There is only a single CW Pitch setting, so send to all scopes
+        foreach (auto vfo, vfos) {
+            vfo->receiveCwPitch(val.value.value<uchar>());
+        }
         cw->handlePitch(val.value.value<uchar>());
         break;
     case funcMicGain:
@@ -5483,8 +5404,9 @@ void wfmain::receiveValue(cacheItem val){
     case funcVariousSql:
         break;
     case funcOverflowStatus:
-        ui->mainScope->overflow(val.value.value<bool>());
-        ui->subScope->overflow(val.value.value<bool>());
+        foreach (auto vfo, vfos) {
+            vfo->overflow(val.value.value<bool>());
+        }
         break;
     case funcCenterMeter:
         receiveMeter(meter_t::meterCenter,val.value.value<uchar>());
@@ -5593,20 +5515,13 @@ void wfmain::receiveValue(cacheItem val){
         break;
     }
     case funcFilterWidth:
-        if (val.sub)
-            ui->subScope->receivePassband(val.value.value<ushort>());
-        else
-            ui->mainScope->receivePassband(val.value.value<ushort>());
-        //receivePassband(val.value.value<ushort>());
+        vfos[val.vfo]->receivePassband(val.value.value<ushort>());
         break;
     case funcDataModeWithFilter:
-        if (val.sub) {
-            ui->subScope->receiveMode(val.value.value<modeInfo>());
-        } else {
-            ui->mainScope->receiveMode(val.value.value<modeInfo>());
-        }
+        vfos[val.vfo]->receiveMode(val.value.value<modeInfo>());
+
         // Set the inputSource to invalid to ensure it gets updated
-        prefs.inputSource[ui->mainScope->getDataMode()] = rigInput();
+        prefs.inputSource[vfos[0]->getDataMode()] = rigInput();
         break;
 
     case funcAFMute:
@@ -5677,10 +5592,12 @@ void wfmain::receiveValue(cacheItem val){
         break;
     // 0x27
     case funcScopeMainWaveData:
-        ui->mainScope->update(val.value.value<scopeData>());
+        if (vfos.size())
+            vfos[0]->updateScope(val.value.value<scopeData>());
         break;
     case funcScopeSubWaveData:
-        ui->subScope->update(val.value.value<scopeData>());
+        if (vfos.size()>1)
+            vfos[1]->updateScope(val.value.value<scopeData>());
         break;
     case funcScopeOnOff:
         // confirming scope is on
@@ -5690,62 +5607,71 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcScopeMainSub:
     {
-        // This tells us whether we are receiving main or sub data
-        subScope = val.value.value<bool>();
-        if (!subScope && !ui->mainScope->isVisible()) {
-                ui->subScope->setVisible(false);
-                ui->mainScope->setVisible(true);
-        } else if (subScope && !ui->subScope->isVisible()) {
-                ui->mainScope->setVisible(false);
-                ui->subScope->setVisible(true);
-        }
+        if (vfos.size()>1)
+        {
+            // This tells us whether we are receiving main or sub data
+            subScope = val.value.value<bool>();
+            if (!subScope && !vfos[0]->isVisible()) {
+                    vfos[1]->setVisible(false);
+                    vfos[0]->setVisible(true);
+            } else if (subScope && !vfos[1]->isVisible()) {
+                    vfos[0]->setVisible(false);
+                    vfos[1]->setVisible(true);
+            }
 
-        if (ui->scopeDualBtn->isChecked()) {
-            ui->mainScope->selected(!subScope);
-            ui->subScope->selected(subScope);
-        } else {
-            ui->mainScope->selected(false);
-            ui->subScope->selected(false);
+            if (ui->scopeDualBtn->isChecked()) {
+                vfos[0]->selected(!subScope);
+                vfos[1]->selected(subScope);
+            } else {
+                vfos[0]->selected(false);
+                vfos[1]->selected(false);
+            }
         }
-
         break;
     }
     case funcScopeSingleDual:
     {
-        // This tells us whether we are receiving single or dual scopes
-        ui->scopeDualBtn->setChecked(val.value.value<bool>());
-        if (val.value.value<bool>()) {
-            if (!ui->subScope->isVisible())
-            {
-                ui->subScope->setVisible(true);
-            }
-            else if (!ui->mainScope->isVisible())
-            {
-                ui->subScope->setVisible(true);
-            }
-        } else {
-            if (ui->mainScope->isVisible())
-            {
-                ui->subScope->setVisible(false);
-            }
-            else if (ui->subScope->isVisible())
-            {
-                ui->mainScope->setVisible(false);
+        if (vfos.size()>1)
+        {
+            // This tells us whether we are receiving single or dual scopes
+            ui->scopeDualBtn->setChecked(val.value.value<bool>());
+            if (val.value.value<bool>()) {
+                if (!vfos[1]->isVisible())
+                {
+                    vfos[1]->setVisible(true);
+                }
+                else if (!vfos[0]->isVisible())
+                {
+                    vfos[0]->setVisible(true);
+                }
+            } else {
+                if (vfos[0]->isVisible())
+                {
+                    vfos[1]->setVisible(false);
+                }
+                else if (vfos[1]->isVisible())
+                {
+                    vfos[0]->setVisible(false);
+                }
             }
         }
         break;
     }
     case funcScopeMainMode:
-        ui->mainScope->selectScopeMode(val.value.value<spectrumMode_t>());
+        if (vfos.size())
+            vfos[0]->selectScopeMode(val.value.value<spectrumMode_t>());
         break;
     case funcScopeSubMode:
-        ui->subScope->selectScopeMode(val.value.value<spectrumMode_t>());
+        if (vfos.size()>1)
+            vfos[1]->selectScopeMode(val.value.value<spectrumMode_t>());
         break;
     case funcScopeMainSpan:
-        ui->mainScope->selectSpan(val.value.value<centerSpanData>());
+        if (vfos.size())
+            vfos[0]->selectSpan(val.value.value<centerSpanData>());
         break;
     case funcScopeSubSpan:
-        ui->subScope->selectSpan(val.value.value<centerSpanData>());
+        if (vfos.size()>1)
+            vfos[1]->selectSpan(val.value.value<centerSpanData>());
         break;
     case funcScopeMainEdge:
         // read edge mode center in edge mode
@@ -5753,22 +5679,28 @@ void wfmain::receiveValue(cacheItem val){
         // [2] 0x01, 0x02, 0x03: Edge 1,2,3
         break;
     case funcScopeMainHold:
-        ui->mainScope->setHold(val.value.value<bool>());
+        if (vfos.size())
+            vfos[0]->setHold(val.value.value<bool>());
         break;
     case funcScopeSubHold:
-        ui->subScope->setHold(val.value.value<bool>());
+        if (vfos.size()>1)
+            vfos[1]->setHold(val.value.value<bool>());
         break;
     case funcScopeMainRef:
-        ui->mainScope->setRef(val.value.value<int>());
+        if (vfos.size())
+            vfos[0]->setRef(val.value.value<int>());
         break;
     case funcScopeSubRef:
-        ui->subScope->setRef(val.value.value<int>());
+        if (vfos.size()>1)
+            vfos[1]->setRef(val.value.value<int>());
         break;
     case funcScopeMainSpeed:
-        ui->mainScope->setSpeed(val.value.value<uchar>());
+        if (vfos.size())
+            vfos[0]->setSpeed(val.value.value<uchar>());
         break;
     case funcScopeSubSpeed:
-        ui->subScope->setSpeed(val.value.value<uchar>());
+        if (vfos.size()>1)
+            vfos[1]->setSpeed(val.value.value<uchar>());
         break;
     case funcScopeDuringTX:
     case funcScopeCenterType:
@@ -5849,9 +5781,9 @@ void wfmain::dataModeChanged(modeInfo m)
 
 }
 
-void wfmain::receiveScopeSettings(bool sub, int theme, quint16 len, int floor, int ceiling)
+void wfmain::receiveScopeSettings(uchar vfo, int theme, quint16 len, int floor, int ceiling)
 {
-    if (sub) {
+    if (vfo) {
         prefs.subWfTheme = theme;
         prefs.subWflength = len;
         prefs.subPlotFloor = floor;

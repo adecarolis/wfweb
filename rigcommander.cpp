@@ -225,7 +225,7 @@ void rigCommander::commonSetup()
 
     this->setObjectName("Rig Commander");
     queue = cachingQueue::getInstance(this);
-    connect(queue,SIGNAL(haveCommand(funcs,QVariant,bool)),this,SLOT(receiveCommand(funcs,QVariant,bool)));
+    connect(queue,SIGNAL(haveCommand(funcs,QVariant,uchar)),this,SLOT(receiveCommand(funcs,QVariant,uchar)));
     oldScopeMode = spectModeUnknown;
 
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
@@ -1235,22 +1235,6 @@ void rigCommander::parseCommand()
 
 }
 
-unsigned char rigCommander::convertNumberToHex(unsigned char num)
-{
-    // Two digit only
-    if(num > 99)
-    {
-        qInfo(logRig()) << "Invalid numeric conversion from num " << num << " to hex.";
-        return 0xFA;
-    }
-    unsigned char result = 0;
-    result =  (num/10) << 4;
-    result |= (num - 10*(num/10));
-    //qDebug(logRig()) << "Converting number: " << num << " to hex: " + QString("0x%1").arg(result, 2, 16, QChar('0');
-    return result;
-}
-
-
 void rigCommander::determineRigCaps()
 {
     // First clear all of the current settings
@@ -1291,6 +1275,7 @@ void rigCommander::determineRigCaps()
     rigCaps.modelName = settings->value("Model", "").toString();
     qInfo(logRig()) << QString("Loading Rig: %0 from %1").arg(rigCaps.modelName,rigCaps.filename);
 
+    rigCaps.numVFO = settings->value("NumberOfVFOs",1).toUInt();
     rigCaps.spectSeqMax = settings->value("SpectrumSeqMax",0).toUInt();
     rigCaps.spectAmpMax = settings->value("SpectrumAmpMax",0).toUInt();
     rigCaps.spectLenMax = settings->value("SpectrumLenMax",0).toUInt();
@@ -2294,19 +2279,6 @@ void rigCommander::changeLatency(const quint16 value)
     emit haveChangeLatency(value);
 }
 
-// Other:
-
-QByteArray rigCommander::stripData(const QByteArray &data, unsigned char cutPosition)
-{
-    QByteArray rtndata;
-    if(data.length() < cutPosition)
-    {
-        return rtndata;
-    }
-
-    rtndata = data.right(cutPosition);
-    return rtndata;
-}
 
 void rigCommander::radioSelection(QList<radio_cap_packet> radios)
 {
@@ -2423,7 +2395,7 @@ uchar rigCommander::makeFilterWidth(ushort pass,bool sub)
     return b1;
 }
 
-void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
+void rigCommander::receiveCommand(funcs func, QVariant value, uchar vfo)
 {
     //qInfo() << "Got command:" << funcString[func];
     int val=INT_MIN;
@@ -2474,7 +2446,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
     }
 
     QByteArray payload;
-    if (getCommand(func,payload,val,sub))
+    if (getCommand(func,payload,val,vfo))
     {
         if (value.isValid())
         {
@@ -2519,8 +2491,8 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
             else if (!strcmp(value.typeName(),"ushort"))
             {
                  if (func == funcFilterWidth) {
-                    payload.append(makeFilterWidth(value.value<ushort>(),sub));
-                    //qInfo() << "Setting filter width" << value.value<ushort>() << "sub" << sub << "hex" << payload.toHex();
+                    payload.append(makeFilterWidth(value.value<ushort>(),vfo));
+                    //qInfo() << "Setting filter width" << value.value<ushort>() << "VFO" << vfo << "hex" << payload.toHex();
 
                 }
                 else if (func == funcKeySpeed){
@@ -2847,7 +2819,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, bool sub)
             // will fail on some commands so they would need to be added here:
             if (func != funcScopeFixedEdgeFreq && func != funcSpeech && func != funcBandStackReg && func != funcMemoryContents && func != funcSendCW)
             {
-                queue->addUnique(priorityImmediate,func,false,sub);
+                queue->addUnique(priorityImmediate,func,false,vfo);
             }
         }
         prepDataAndSend(payload);

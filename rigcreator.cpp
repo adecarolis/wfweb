@@ -121,6 +121,7 @@ void rigCreator::loadRigFile(QString file)
     ui->model->setText(settings->value("Model","").toString());
     ui->civAddress->setText(QString("%1").arg(settings->value("CIVAddress",0).toInt(),2,16));
     ui->rigctldModel->setText(settings->value("RigCtlDModel","").toString());
+    ui->numVFO->setText(settings->value("NumberOfVFOs","1").toString());
     ui->seqMax->setText(settings->value("SpectrumSeqMax","").toString());
     ui->ampMax->setText(settings->value("SpectrumAmpMax","").toString());
     ui->lenMax->setText(settings->value("SpectrumLenMax","").toString());
@@ -421,6 +422,7 @@ void rigCreator::saveRigFile(QString file)
     settings->setValue("Model",ui->model->text());
     settings->setValue("CIVAddress",ui->civAddress->text().toInt(nullptr,16));
     settings->setValue("RigCtlDModel",ui->rigctldModel->text().toInt());
+    settings->setValue("NumberOfVFOs",ui->numVFO->text().toInt());
     settings->setValue("SpectrumSeqMax",ui->seqMax->text().toInt());
     settings->setValue("SpectrumAmpMax",ui->ampMax->text().toInt());
     settings->setValue("SpectrumLenMax",ui->lenMax->text().toInt());

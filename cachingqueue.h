@@ -29,28 +29,28 @@ enum queueItemType {
 // Command with no param is a get by default
 struct queueItem {
     queueItem () {}
-    queueItem (funcs command, QVariant param, bool recurring, bool sub) : command(command), param(param), sub(sub), recurring(recurring){};
-    queueItem (funcs command, QVariant param, bool recurring) : command(command), param(param), sub(false), recurring(recurring){};
-    queueItem (funcs command, QVariant param) : command(command), param(param), sub(false), recurring(false){};
-    queueItem (funcs command, bool recurring, bool sub=false) : command(command), param(QVariant()), sub(sub), recurring(recurring) {};
-    queueItem (funcs command, bool recurring) : command(command), param(QVariant()), sub(false), recurring(recurring) {};
-    queueItem (funcs command) : command(command), param(QVariant()), sub(false), recurring(false){};
+    queueItem (funcs command, QVariant param, bool recurring, uchar vfo) : command(command), param(param), vfo(vfo), recurring(recurring){};
+    queueItem (funcs command, QVariant param, bool recurring) : command(command), param(param), vfo(false), recurring(recurring){};
+    queueItem (funcs command, QVariant param) : command(command), param(param),vfo(0), recurring(false){};
+    queueItem (funcs command, bool recurring, uchar vfo) : command(command), param(QVariant()), vfo(vfo), recurring(recurring) {};
+    queueItem (funcs command, bool recurring) : command(command), param(QVariant()), vfo(0), recurring(recurring) {};
+    queueItem (funcs command) : command(command), param(QVariant()), vfo(0), recurring(false){};
     funcs command;
     QVariant param;
-    bool sub;
+    uchar vfo;
     bool recurring;
     qint64 id = QDateTime::currentMSecsSinceEpoch();
 };
 
 struct cacheItem {
     cacheItem () {};
-    cacheItem (funcs command, QVariant value, bool sub=false) : command(command), req(QDateTime()), reply(QDateTime()), value(value), sub(sub){};
+    cacheItem (funcs command, QVariant value, uchar vfo=0) : command(command), req(QDateTime()), reply(QDateTime()), value(value), vfo(vfo){};
 
     funcs command;
     QDateTime req;
     QDateTime reply;
     QVariant value;
-    bool sub;
+    uchar vfo;
 };
 
 class cachingQueue : public QThread
@@ -58,14 +58,14 @@ class cachingQueue : public QThread
     Q_OBJECT
 
 signals:
-    void haveCommand(funcs func, QVariant param, bool sub);
+    void haveCommand(funcs func, QVariant param, uchar vfo);
     void sendValue(cacheItem item);
     void cacheUpdated(cacheItem item);
     void rigCapsUpdated(rigCapabilities* caps);
 
 public slots:
     // Can be called directly or via emit.
-    void receiveValue(funcs func, QVariant value, bool sub);
+    void receiveValue(funcs func, QVariant value, uchar vfo);
 
 private:
 
@@ -79,8 +79,8 @@ private:
     QQueue<cacheItem> items;
 
     // Command to set cache value
-    void setCache(funcs func, QVariant val, bool sub=false);
-    queuePriority isRecurring(funcs func, bool sub=false);
+    void setCache(funcs func, QVariant val, uchar vfo=0);
+    queuePriority isRecurring(funcs func, uchar vfo=0);
     bool compare(QVariant a, QVariant b);
 
 
@@ -104,17 +104,17 @@ public:
 
     static cachingQueue *getInstance(QObject* parent = Q_NULLPTR);
     void message(QString msg);
-    void add(queuePriority prio ,funcs func, bool recurring=false, bool sub=false);
+    void add(queuePriority prio ,funcs func, bool recurring=false, uchar vfo=0);
     void add(queuePriority prio,queueItem item);
-    void addUnique(queuePriority prio ,funcs func, bool recurring=false, bool sub=false);
+    void addUnique(queuePriority prio ,funcs func, bool recurring=false, uchar vfo=0);
     void addUnique(queuePriority prio,queueItem item);
-    void del(funcs func, bool sub=false);
+    void del(funcs func, uchar vfo=0);
     void clear();
     void interval(quint64 val);
     void updateCache(bool reply, queueItem item);
-    void updateCache(bool reply, funcs func, QVariant value=QVariant(), bool sub=false);
+    void updateCache(bool reply, funcs func, QVariant value=QVariant(), uchar vfo=0);
 
-    cacheItem getCache(funcs func, bool sub=false);
+    cacheItem getCache(funcs func, uchar vfo=0);
 
     QMultiMap<funcs,cacheItem> getCacheItems();
     QMultiMap <queuePriority,queueItem> getQueueItems();

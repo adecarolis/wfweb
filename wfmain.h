@@ -329,7 +329,7 @@ private slots:
     void extChangedUdpPref(prefUDPItem i);
     void extChangedServerPref(prefServerItem i);
 
-    void receiveScopeSettings(bool sub, int theme, quint16 len, int floor, int ceiling);
+    void receiveScopeSettings(uchar vfo, int theme, quint16 len, int floor, int ceiling);
     void receiveValue(cacheItem val);
     void setAudioDevicesUI();
     void shortcutF1();
@@ -381,8 +381,6 @@ private slots:
     //void receiveDuplexMode(duplexMode_t dm);
     void receivePassband(quint16 pass);
     void receiveCwPitch(unsigned char pitch);
-    void receivePBTInner(unsigned char level);
-    void receivePBTOuter(unsigned char level);
     void receiveVox(bool en);
     void receiveMonitor(bool en);
     void receiveComp(bool en);
@@ -498,7 +496,8 @@ private slots:
     void receiveElapsed(bool sub, qint64 us);
 
 private:
-    Ui::wfmain *ui;
+    Ui::wfmain *ui; // Main UI
+    QList<spectrumScope*>vfos;   // Spectrum Scope/VFO item.
     void closeEvent(QCloseEvent *event);
     QString logFilename;
     bool debugMode;
@@ -521,7 +520,6 @@ private:
     QCPItemText* ovfIndicator;
     void setAppTheme(bool isCustom);
 
-    void showHideSpectrum(bool show);
     void getInitialRigState();
     void showButton(QPushButton *btn);
     void hideButton(QPushButton *btn);
@@ -600,7 +598,7 @@ private:
 
     void setupKeyShortcuts();
     void setupMainUI();
-    void setUIToPrefs();
+    void configureVFOs();
     void setSerialDevicesUI();
     void setServerToPrefs();
     void setupUsbControllerDevice();
@@ -809,6 +807,7 @@ private:
     audioDevices* audioDev = Q_NULLPTR;
     QImage lcdImage;
     connectionStatus_t connStatus = connDisconnected;
+
 };
 
 Q_DECLARE_METATYPE(udpPreferences)

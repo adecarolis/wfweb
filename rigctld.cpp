@@ -833,7 +833,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             return -RIG_EINVAL;
         }
         if (rigCaps.commands.contains(func))
-            queue->add(priorityImmediate, queueItem(func, val,false));
+            queue->add(priorityImmediate, queueItem(func, val,false,0));
 
     } else {
         // Simple get command
@@ -1011,7 +1011,7 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                         return -RIG_EINVAL;
                     }
                     if (rigCaps.commands.contains(sub[i].func))
-                        queue->add(priorityImmediate, queueItem(sub[i].func, val,false));
+                        queue->add(priorityImmediate, queueItem(sub[i].func, val,false,0));
                 } else if (params.size() == 1){
                     // Not expecting a second argument as it is a get so dump the cache
                     cacheItem item;

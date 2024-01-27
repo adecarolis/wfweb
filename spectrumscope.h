@@ -34,7 +34,7 @@ public:
 
     bool prepareWf(uint wfLength);
     void prepareScope(uint ampMap, uint spectWidth);
-    bool update(scopeData spectrum);
+    bool updateScope(scopeData spectrum);
     void preparePlasma();
     void setRange(int floor, int ceiling);
     void wfInterpolate(bool en) { colorMap->setInterpolate(en); }
@@ -51,8 +51,8 @@ public:
     void setPassbandWidth(double hz) { passbandWidth = hz;}
     double getPassbandWidth() { configFilterWidth->setValue(passbandWidth*1E6); return passbandWidth;}
 
-    void setIdentity(QString name, bool s) {this->setTitle(name), sub = s;}
-    bool getSub() { return sub;}
+    void setIdentity(QString name, uchar v) {this->setTitle(name), vfo = v;}
+    bool getVfo() { return vfo;}
 
     void setTuningFloorZeros(bool tf) {this->tuningFloorZeros = tf;}
     void setClickDragTuning(bool cg) { this->clickDragTuning = cg;}
@@ -77,7 +77,7 @@ public:
     void setFrequency (freqt f);
 
     void receiveMode (modeInfo m);
-
+    modeInfo currentMode() {return mode;};
     void clearSpans() { spanCombo->clear();}
     void clearMode() { modeCombo->clear();}
     void clearData() { dataCombo->clear();}
@@ -103,12 +103,12 @@ public slots: // Can be called directly or updated via signal/slot
     void receiveSpots(QList<spotData> spots);
 
 signals:    
-    void frequencyRange(bool sub, double start, double end);
+    void frequencyRange(uchar vfo, double start, double end);
     void updateScopeMode(spectrumMode_t index);
     void updateSpan(centerSpanData s);
     void showStatusBarText(QString text);
-    void updateSettings(bool sub, int value, quint16 len, int floor, int ceiling);
-    void elapsedTime(bool sub, qint64 ns);
+    void updateSettings(uchar vfo, int value, quint16 len, int floor, int ceiling);
+    void elapsedTime(uchar vfo, qint64 ns);
     void dataChanged(modeInfo m);
 
 private slots:
@@ -261,7 +261,7 @@ private:
     QVector <QByteArray> wfimage;
 
     cachingQueue* queue;
-    bool sub=false;    
+    uchar vfo=0;
     double startFrequency;
     QMap<QString, spotData*> clusterSpots;
 

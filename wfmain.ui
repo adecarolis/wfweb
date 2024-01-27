@@ -49,36 +49,10 @@
         <number>3</number>
        </property>
        <item>
-        <layout class="QVBoxLayout" name="verticalLayout_3">
+        <layout class="QVBoxLayout" name="vfoLayout">
          <property name="spacing">
           <number>0</number>
          </property>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_8">
-           <property name="spacing">
-            <number>0</number>
-           </property>
-           <property name="sizeConstraint">
-            <enum>QLayout::SetNoConstraint</enum>
-           </property>
-           <item>
-            <widget class="spectrumScope" name="mainScope" native="true"/>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_9">
-           <property name="spacing">
-            <number>0</number>
-           </property>
-           <property name="sizeConstraint">
-            <enum>QLayout::SetNoConstraint</enum>
-           </property>
-           <item>
-            <widget class="spectrumScope" name="subScope" native="true"/>
-           </item>
-          </layout>
-         </item>
         </layout>
        </item>
        <item>
@@ -1280,12 +1254,6 @@
    <class>meter</class>
    <extends>QWidget</extends>
    <header>meter.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>spectrumScope</class>
-   <extends>QWidget</extends>
-   <header>spectrumscope.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
