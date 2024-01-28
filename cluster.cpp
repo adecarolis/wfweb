@@ -263,9 +263,10 @@ void dxClusterClient::tcpDisconnected() {
     // Need to start a timer and attempt reconnect.
 }
 
-void dxClusterClient::freqRange(bool sub, double low, double high)
+void dxClusterClient::freqRange(uchar vfo, double low, double high)
 {
-    if (sub) {
+    freqRanges[vfo] = {low,high};
+    if (vfo) {
         lowSubFreq = low;
         highSubFreq = high;
     } else {
@@ -293,47 +294,28 @@ void dxClusterClient::updateSpots()
         spots.append(s);
     }
 #else
-    QMap<QString, spotData*>::iterator mainSpot = allSpots.begin();;
-    while (mainSpot != allSpots.end()) {
-        if (mainSpot.value()->frequency > lowMainFreq && mainSpot.value()->frequency < highMainFreq)
+    QMap<uchar, rangeValues>::iterator range = freqRanges.begin();
+    while (range != freqRanges.end())
+    {
+        spots.clear();
+        QMap<QString, spotData*>::iterator mainSpot = allSpots.begin();
+        while (mainSpot != allSpots.end())
         {
-            spots.append(**mainSpot);
+            if (mainSpot.value()->frequency >= range->low && mainSpot.value()->frequency <= range->high)
+            {
+                spots.append(**mainSpot);
+            }
+            ++mainSpot;
         }
-        ++mainSpot;
+        if (!spots.empty()) {
+            emit sendSpots(range.key(),spots);
+            //qInfo(logCluster()) << "Sending" << spots.size() << "DX spots to vfo" << range.key();
+        }
+        ++range;
     }
 
 #endif
-    if (!spots.empty())
-        emit sendMainSpots(spots);
 
-    spots.clear();
-#ifdef USESQL
-    // Set the required frequency range.
-    QString queryText = QString("SELECT * FROM spots WHERE frequency > %1 AND frequency < %2").arg(lowFreq).arg(highFreq);
-    //QString queryText = QString("SELECT * FROM spots");
-    database db;
-    auto query = db.query(queryText);
-
-    while (query.next()) {
-        // Step through all current spots within range
-        spotData s = spotData();
-        s.dxcall = query.value(query.record().indexOf("dxcall")).toString();
-        s.frequency = query.value(query.record().indexOf("frequency")).toDouble();
-        spots.append(s);
-    }
-#else
-    QMap<QString, spotData*>::iterator subSpot = allSpots.begin();;
-    while (subSpot != allSpots.end()) {
-        if (subSpot.value()->frequency > lowSubFreq && subSpot.value()->frequency < highSubFreq)
-        {
-            spots.append(**subSpot);
-        }
-        ++subSpot;
-    }
-
-#endif
-    if (!spots.empty())
-        emit sendSubSpots(spots);
 }
 
 void dxClusterClient::enableSkimmerSpots(bool enable)

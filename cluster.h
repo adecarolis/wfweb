@@ -43,6 +43,13 @@ struct clusterSettings {
     bool isdefault;
 };
 
+struct rangeValues {
+    rangeValues() {};
+    rangeValues(double low, double high): low(low), high(high) {};
+    double low;
+    double high;
+};
+
 class dxClusterClient : public QObject
 {
     Q_OBJECT
@@ -56,7 +63,7 @@ signals:
     void deleteSpot(QString dxcall);
     void deleteOldSpots(int minutes);
     void sendOutput(QString text);
-    void sendMainSpots(QList<spotData> spots);
+    void sendSpots(uchar vfo, QList<spotData> spots);
     void sendSubSpots(QList<spotData> spots);
 
 public slots:
@@ -72,7 +79,7 @@ public slots:
     void setTcpPassword(QString s) { tcpPassword = s; }
     void setTcpTimeout(int p) { tcpTimeout = p; }
     void tcpCleanup();
-    void freqRange(bool sub, double low, double high);
+    void freqRange(uchar vfo, double low, double high);
     void enableSkimmerSpots(bool enable);
 
 private:
@@ -102,6 +109,7 @@ private:
     double highMainFreq;
     double lowSubFreq;
     double highSubFreq;
+    QMap<uchar,rangeValues> freqRanges;
     QMap<QString,spotData*> allSpots;
     bool skimmerSpots = false;
 };

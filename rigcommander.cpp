@@ -1423,7 +1423,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numAttenuators; c++)
         {
             settings->setArrayIndex(c);
-            qInfo(logRig()) << "** GOT ATTENUATOR" << settings->value("dB", 0).toString().toUInt();
+            //qInfo(logRig()) << "** GOT ATTENUATOR" << settings->value("dB", 0).toString().toUInt();
             rigCaps.attenuators.push_back((unsigned char)settings->value("dB", 0).toString().toUInt());
         }
         settings->endArray();

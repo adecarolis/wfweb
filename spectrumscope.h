@@ -100,7 +100,7 @@ public:
 public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);
     void selectSpan(centerSpanData s);
-    void receiveSpots(QList<spotData> spots);
+    void receiveSpots(uchar vfo, QList<spotData> spots);
 
 signals:    
     void frequencyRange(uchar vfo, double start, double end);

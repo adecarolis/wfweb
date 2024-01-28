@@ -1003,7 +1003,8 @@ void wfmain::configureVFOs()
         ui->vfoLayout->addWidget(vfos.last());
 
         connect(vfos.last(), SIGNAL(frequencyRange(uchar, double, double)), cluster, SLOT(freqRange(uchar, double, double)));
-        connect(cluster, SIGNAL(sendMainSpots(QList<spotData>)), vfos.last(), SLOT(receiveSpots(QList<spotData>)));
+
+        connect(cluster, SIGNAL(sendSpots(uchar, QList<spotData>)), vfos.last(), SLOT(receiveSpots(uchar, QList<spotData>)));
         connect(cluster, SIGNAL(sendOutput(QString)), this, SLOT(receiveClusterOutput(QString)));
         connect(vfos.last(), SIGNAL(updateSettings(uchar,int,quint16,int,int)), this, SLOT(receiveScopeSettings(uchar,int,quint16,int,int)));
 

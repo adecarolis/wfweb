@@ -71,6 +71,12 @@ void loggingWindow::acceptLogText(QPair<QtMsgType,QString> text)
     } else if (text.first == QtCriticalMsg || text.first == QtFatalMsg)
     {
         colour = "red";
+    } else if (text.first == QtInfoMsg) {
+        colour = "white";
+    }
+    else
+    {
+        colour = "green";
     }
     ui->logTextDisplay->appendHtml(QString("<p><span style='color:%0'>%1</span></p>").arg(colour).arg(text.second));
     if(vertLogScroll->value() == vertLogScroll->maximum())

@@ -1533,8 +1533,11 @@ void spectrumScope::setSpeed(uchar s)
 }
 
 
-void spectrumScope::receiveSpots(QList<spotData> spots)
+void spectrumScope::receiveSpots(uchar vfo, QList<spotData> spots)
 {
+    if (vfo != this->vfo) {
+        return;
+    }
     //QElapsedTimer timer;
     //timer.start();
     bool current = false;
@@ -1620,7 +1623,6 @@ void spectrumScope::receiveSpots(QList<spotData> spots)
     }
 
     //qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
-
 }
 
 void spectrumScope::configPressed()
