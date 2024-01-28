@@ -1370,7 +1370,7 @@ void rigCommander::determineRigCaps()
         {
             settings->setArrayIndex(c);
             rigCaps.inputs.append(rigInput(inputTypes(settings->value("Num", 0).toUInt()),
-                settings->value("Reg", 0).toString().toUInt(nullptr,16),settings->value("Name", "").toString()));
+                settings->value("Reg", 0).toString().toUInt(),settings->value("Name", "").toString()));
         }
         settings->endArray();
     }
@@ -1397,7 +1397,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numPreamps; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.preamps.push_back(genericType(settings->value("Num", 0).toString().toUInt(nullptr,16), settings->value("Name", 0).toString()));
+            rigCaps.preamps.push_back(genericType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", 0).toString()));
         }
         settings->endArray();
     }
@@ -1410,7 +1410,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numAntennas; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.antennas.push_back(genericType(settings->value("Num", 0).toString().toUInt(nullptr,16), settings->value("Name", 0).toString()));
+            rigCaps.antennas.push_back(genericType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", 0).toString()));
         }
         settings->endArray();
     }
@@ -1437,7 +1437,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numFilters; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.filters.push_back(filterType(settings->value("Num", 0).toString().toUInt(nullptr,0), settings->value("Name", "").toString(), settings->value("Modes", 0).toUInt()));
+            rigCaps.filters.push_back(filterType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", "").toString(), settings->value("Modes", 0).toUInt()));
         }
         settings->endArray();
     }
@@ -2761,7 +2761,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, uchar vfo)
             }
             else if(!strcmp(value.typeName(),"antennaInfo"))
             {
-                payload.append(value.value<antennaInfo>().antenna);
+                payload.append(bcdEncodeChar(value.value<antennaInfo>().antenna));
                 if (rigCaps.commands.contains(funcRXAntenna))
                     payload.append(value.value<antennaInfo>().rx);
             }
