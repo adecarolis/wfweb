@@ -15,7 +15,7 @@ DEFINES += USB_CONTROLLER
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport websockets
 
 contains(DEFINES,USB_CONTROLLER){
-lessThan(QT_MAJOR_VERSION, 6): QT += gamepad
+    lessThan(QT_MAJOR_VERSION, 6): QT += gamepad
 }
 
 TARGET = wfview

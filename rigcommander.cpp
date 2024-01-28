@@ -1342,7 +1342,7 @@ void rigCommander::determineRigCaps()
         {
             settings->setArrayIndex(c);
             rigCaps.modes.push_back(modeInfo(rigMode_t(settings->value("Num", 0).toUInt()),
-                settings->value("Reg", 0).toString().toUInt(nullptr,16), settings->value("Name", "").toString(), settings->value("Min", 0).toInt(), settings->value("Max", 0).toInt()));
+                settings->value("Reg", 0).toString().toUInt(), settings->value("Name", "").toString(), settings->value("Min", 0).toInt(), settings->value("Max", 0).toInt()));
         }
         settings->endArray();
     }
@@ -2741,11 +2741,11 @@ void rigCommander::receiveCommand(funcs func, QVariant value, uchar vfo)
             {
                 if (func == funcDataModeWithFilter)
                 {
-                    payload.append(value.value<modeInfo>().data);
+                    payload.append(bcdEncodeChar(value.value<modeInfo>().data));
                     if (value.value<modeInfo>().data != 0)
                        payload.append(value.value<modeInfo>().filter);
                 } else {
-                    payload.append(value.value<modeInfo>().reg);
+                    payload.append(bcdEncodeChar(value.value<modeInfo>().reg));
                     if (func == funcSelectedMode || func == funcUnselectedMode)
                        payload.append(value.value<modeInfo>().data);
                     payload.append(value.value<modeInfo>().filter);

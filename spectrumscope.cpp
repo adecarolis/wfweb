@@ -916,7 +916,14 @@ void spectrumScope::updatedMode(int index)
     Q_UNUSED(index) // We don't know where it came from!
     modeInfo mi = modeCombo->currentData().value<modeInfo>();
     mi.filter = filterCombo->currentData().toInt();
-    mi.data = dataCombo->currentIndex();
+    if (mi.mk == modeCW || mi.mk == modeCW_R || mi.mk == modeRTTY || mi.mk == modeRTTY_R || mi.mk == modePSK || mi.mk == modePSK_R)
+    {
+        mi.data = 0;
+        dataCombo->setEnabled(false);
+    } else {
+        mi.data = dataCombo->currentIndex();
+        dataCombo->setEnabled(true);
+    }
     queue->add(priorityImmediate,queueItem((vfo?funcUnselectedMode:funcSelectedMode),QVariant::fromValue(mi),false,vfo));
 
 }
@@ -1379,6 +1386,13 @@ void spectrumScope::receiveMode(modeInfo m)
             dataCombo->blockSignals(true);
             dataCombo->setCurrentIndex(m.data);
             dataCombo->blockSignals(false);
+        }
+
+        if (m.mk == modeCW || m.mk == modeCW_R || m.mk == modeRTTY || m.mk == modeRTTY_R || m.mk == modePSK || m.mk == modePSK_R)
+        {
+            dataCombo->setEnabled(false);
+        } else {
+            dataCombo->setEnabled(true);
         }
 
         if (m.mk != mode.mk) {
