@@ -995,12 +995,13 @@ void wfmain::configureVFOs()
         vfos.last()->resizePlasmaBuffer(prefs.underlayBufferSize);
         vfos.last()->setUnit((FctlUnit)prefs.frequencyUnits);
         vfos.last()->colorPreset(this->colorPrefs);
+        vfos.last()->setIdentity(i==0?"Main Band":"Sub Band",i);
+        ui->vfoLayout->addWidget(vfos.last());
 
         // Hide any secondary VFOs until we need them!
         if (i>0){
             vfos.last()->setVisible(false);
         }
-        ui->vfoLayout->addWidget(vfos.last());
 
         connect(vfos.last(), SIGNAL(frequencyRange(uchar, double, double)), cluster, SLOT(freqRange(uchar, double, double)));
 
@@ -1009,7 +1010,6 @@ void wfmain::configureVFOs()
         connect(vfos.last(), SIGNAL(updateSettings(uchar,int,quint16,int,int)), this, SLOT(receiveScopeSettings(uchar,int,quint16,int,int)));
 
         connect(vfos.last(), SIGNAL(dataChanged(modeInfo)), this, SLOT(dataModeChanged(modeInfo)));
-        vfos.last()->setIdentity(i==0?"Main Band":"Sub Band",i);
 
         connect(vfos.last(),SIGNAL(showStatusBarText(QString)),this,SLOT(showStatusBarText(QString)));
 
