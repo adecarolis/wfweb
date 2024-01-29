@@ -5769,19 +5769,19 @@ void wfmain::on_showSettingsBtn_clicked()
 void wfmain::on_scopeMainSubBtn_clicked()
 {
     subScope = !subScope;
-    queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(subScope),false,false));
+    queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(subScope),false));
 }
 
 void wfmain::on_scopeDualBtn_toggled(bool en)
 {
-    queue->add(priorityImmediate,queueItem(funcScopeSingleDual,QVariant::fromValue(en),false,false));
+    queue->add(priorityImmediate,queueItem(funcScopeSingleDual,QVariant::fromValue(en),false));
     if (en)
-        queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(false),false,false)); // Set main scope
+        queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(false),false)); // Set main scope
 }
 
 void wfmain::on_dualWatchBtn_toggled(bool en)
 {
-    queue->add(priorityImmediate,queueItem(funcVFODualWatch,QVariant::fromValue(en),false,false));
+    queue->add(priorityImmediate,queueItem(funcVFODualWatch,QVariant::fromValue(en),false));
 }
 
 void wfmain::dataModeChanged(modeInfo m)
