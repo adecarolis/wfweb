@@ -967,7 +967,7 @@ void wfmain::setServerToPrefs()
 
 void wfmain::configureVFOs()
 {
-    qCritical(logSystem()) << "Running configureVFOs()";
+    qInfo(logSystem()) << "Running configureVFOs()";
 
     if (vfos.size()) {
         foreach (spectrumScope* vfo, vfos)
@@ -980,38 +980,39 @@ void wfmain::configureVFOs()
 
     for(uchar i=0;i<rigCaps.numVFO;i++)
     {
-        qCritical(logSystem()) << "Creating VFO" << i;
-        vfos.append(new spectrumScope());
-        vfos.last()->setUnderlayMode(prefs.underlayMode);
-        vfos.last()->wfAntiAliased(prefs.wfAntiAlias);
-        vfos.last()->wfInterpolate(prefs.wfInterpolate);
-        vfos.last()->setScrollSpeedXY(prefs.scopeScrollX, prefs.scopeScrollY);
-        vfos.last()->prepareWf(i==0?prefs.mainWflength:prefs.subWflength);
-        vfos.last()->preparePlasma();
-        vfos.last()->setRange(i==0?prefs.mainPlotFloor:prefs.subPlotFloor,i==0?prefs.mainPlotCeiling:prefs.subPlotCeiling);
-        vfos.last()->wfTheme(i==0?prefs.mainWfTheme:prefs.subWfTheme);
-        vfos.last()->setClickDragTuning(prefs.clickDragTuningEnable);
-        vfos.last()->setTuningFloorZeros(prefs.niceTS);
-        vfos.last()->resizePlasmaBuffer(prefs.underlayBufferSize);
-        vfos.last()->setUnit((FctlUnit)prefs.frequencyUnits);
-        vfos.last()->colorPreset(this->colorPrefs);
-        vfos.last()->setIdentity(i==0?"Main Band":"Sub Band",i);
-        ui->vfoLayout->addWidget(vfos.last());
+        spectrumScope* vfo = new spectrumScope;
+
+        vfo->setUnderlayMode(prefs.underlayMode);
+        vfo->wfAntiAliased(prefs.wfAntiAlias);
+        vfo->wfInterpolate(prefs.wfInterpolate);
+        vfo->setScrollSpeedXY(prefs.scopeScrollX, prefs.scopeScrollY);
+        vfo->prepareWf(i==0?prefs.mainWflength:prefs.subWflength);
+        vfo->preparePlasma();
+        vfo->setRange(i==0?prefs.mainPlotFloor:prefs.subPlotFloor,i==0?prefs.mainPlotCeiling:prefs.subPlotCeiling);
+        vfo->wfTheme(i==0?prefs.mainWfTheme:prefs.subWfTheme);
+        vfo->setClickDragTuning(prefs.clickDragTuningEnable);
+        vfo->setTuningFloorZeros(prefs.niceTS);
+        vfo->resizePlasmaBuffer(prefs.underlayBufferSize);
+        vfo->setUnit((FctlUnit)prefs.frequencyUnits);
+        vfo->colorPreset(this->colorPrefs);
+        vfo->setIdentity(i==0?"Main Band":"Sub Band",i);
+        ui->vfoLayout->addWidget(vfo);
 
         // Hide any secondary VFOs until we need them!
         if (i>0){
-            vfos.last()->setVisible(false);
+            vfo->setVisible(false);
         }
 
-        connect(vfos.last(), SIGNAL(frequencyRange(uchar, double, double)), cluster, SLOT(freqRange(uchar, double, double)));
+        connect(vfo, SIGNAL(frequencyRange(uchar, double, double)), cluster, SLOT(freqRange(uchar, double, double)));
 
-        connect(cluster, SIGNAL(sendSpots(uchar, QList<spotData>)), vfos.last(), SLOT(receiveSpots(uchar, QList<spotData>)));
+        connect(cluster, SIGNAL(sendSpots(uchar, QList<spotData>)), vfo, SLOT(receiveSpots(uchar, QList<spotData>)));
         connect(cluster, SIGNAL(sendOutput(QString)), this, SLOT(receiveClusterOutput(QString)));
-        connect(vfos.last(), SIGNAL(updateSettings(uchar,int,quint16,int,int)), this, SLOT(receiveScopeSettings(uchar,int,quint16,int,int)));
+        connect(vfo, SIGNAL(updateSettings(uchar,int,quint16,int,int)), this, SLOT(receiveScopeSettings(uchar,int,quint16,int,int)));
 
-        connect(vfos.last(), SIGNAL(dataChanged(modeInfo)), this, SLOT(dataModeChanged(modeInfo)));
+        connect(vfo, SIGNAL(dataChanged(modeInfo)), this, SLOT(dataModeChanged(modeInfo)));
 
-        connect(vfos.last(),SIGNAL(showStatusBarText(QString)),this,SLOT(showStatusBarText(QString)));
+        connect(vfo,SIGNAL(showStatusBarText(QString)),this,SLOT(showStatusBarText(QString)));
+        vfos.append(vfo);
 
     }
 }

@@ -497,7 +497,7 @@ private slots:
 
 private:
     Ui::wfmain *ui; // Main UI
-    QList<spectrumScope*>vfos;   // Spectrum Scope/VFO item.
+    QVector<spectrumScope*>vfos;   // Spectrum Scope/VFO item.
     void closeEvent(QCloseEvent *event);
     QString logFilename;
     bool debugMode;
