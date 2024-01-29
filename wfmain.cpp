@@ -5287,8 +5287,7 @@ void wfmain::receiveValue(cacheItem val){
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
     case funcUnselectedFreq:
-        if (vfos.size() > 1)
-            val.vfo=1;
+        val.vfo=1;
     case funcFreqGet:
     case funcFreqTR:
     case funcSelectedFreq:
@@ -5308,12 +5307,13 @@ void wfmain::receiveValue(cacheItem val){
     case funcModeGet:
     case funcModeTR:
     case funcSelectedMode:
-        if (vfos.size())
+        if (vfos.size()) {
             vfos[0]->receiveMode(val.value.value<modeInfo>());
-        finputbtns->updateCurrentMode(val.value.value<modeInfo>().mk);
-        finputbtns->updateFilterSelection(val.value.value<modeInfo>().filter);
-        rpt->handleUpdateCurrentMainMode(val.value.value<modeInfo>());
-        cw->handleCurrentModeUpdate(val.value.value<modeInfo>().mk);
+            finputbtns->updateCurrentMode(val.value.value<modeInfo>().mk);
+            finputbtns->updateFilterSelection(val.value.value<modeInfo>().filter);
+            rpt->handleUpdateCurrentMainMode(val.value.value<modeInfo>());
+            cw->handleCurrentModeUpdate(val.value.value<modeInfo>().mk);
+        }
         break;
     case funcUnselectedMode:
         val.vfo=1;
