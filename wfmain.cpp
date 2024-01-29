@@ -414,7 +414,7 @@ void wfmain::makeRig()
         connect(this, SIGNAL(sendChangeLatency(quint16)), rig, SLOT(changeLatency(quint16)));
         connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
         connect(this, SIGNAL(setRigID(unsigned char)), rig, SLOT(setRigID(unsigned char)));
-        connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
+        connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)),Qt::QueuedConnection);
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
 
