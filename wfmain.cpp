@@ -1461,10 +1461,13 @@ void wfmain::stepDown()
 void wfmain::changeFrequency(int value) {
     if (freqLock) return;
 
-    freqt f;
-    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, value, tsWfScrollHz);
-    f.MHzDouble = f.Hz / (double)1E6;
-    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    if (vfos.size())
+    {
+        freqt f;
+        f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, value, tsWfScrollHz);
+        f.MHzDouble = f.Hz / (double)1E6;
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    }
 }
 
 void wfmain::setDefPrefs()
@@ -3221,104 +3224,116 @@ quint64 wfmain::roundFrequencyWithStep(quint64 frequency, int steps, unsigned in
 void wfmain::shortcutMinus()
 {
     if (freqLock) return;
-
-    freqt f;
-    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, -1, tsPlusHz);
-    f.MHzDouble = f.Hz / (double)1E6;
-    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    if (vfos.size()) {
+        freqt f;
+        f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, -1, tsPlusHz);
+        f.MHzDouble = f.Hz / (double)1E6;
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    }
 }
 
 void wfmain::shortcutPlus()
 {
     if (freqLock) return;
 
-    freqt f;
-    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, 1, tsPlusHz);
-    f.MHzDouble = f.Hz / (double)1E6;
-    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    if (vfos.size()) {
+        freqt f;
+        f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, 1, tsPlusHz);
+        f.MHzDouble = f.Hz / (double)1E6;
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    }
 }
 
 void wfmain::shortcutStepMinus()
 {
     if (freqLock) return;
-
-    freqt f;
-    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, -1, ui->tuningStepCombo->currentData().toInt());
-    f.MHzDouble = f.Hz / (double)1E6;
-    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
-
+    if (vfos.size())
+    {
+        freqt f;
+        f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, -1, ui->tuningStepCombo->currentData().toInt());
+        f.MHzDouble = f.Hz / (double)1E6;
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    }
 }
 
 void wfmain::shortcutStepPlus()
 {
     if (freqLock) return;
 
-    freqt f;
-    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, 1, ui->tuningStepCombo->currentData().toInt());
+    if (vfos.size()) {
+        freqt f;
+        f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, 1, ui->tuningStepCombo->currentData().toInt());
 
-    f.MHzDouble = f.Hz / (double)1E6;
-    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+        f.MHzDouble = f.Hz / (double)1E6;
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    }
 }
 
 void wfmain::shortcutShiftMinus()
 {
     if(freqLock) return;
-
-    freqt f;
-    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, -1, tsPlusShiftHz);
-    f.MHzDouble = f.Hz / (double)1E6;
-    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    if (vfos.size()) {
+        freqt f;
+        f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, -1, tsPlusShiftHz);
+        f.MHzDouble = f.Hz / (double)1E6;
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    }
 }
 
 void wfmain::shortcutShiftPlus()
 {
     if(freqLock) return;
-
-    freqt f;
-    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, 1, tsPlusShiftHz);
-    f.MHzDouble = f.Hz / (double)1E6;
-    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
-
+    if (vfos.size()) {
+        freqt f;
+        f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, 1, tsPlusShiftHz);
+        f.MHzDouble = f.Hz / (double)1E6;
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    }
 }
 
 void wfmain::shortcutControlMinus()
 {
     if(freqLock) return;
 
-    freqt f;
-    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, -1, tsPlusControlHz);
-    f.MHzDouble = f.Hz / (double)1E6;
-    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    if (vfos.size()) {
+        freqt f;
+        f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, -1, tsPlusControlHz);
+        f.MHzDouble = f.Hz / (double)1E6;
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    }
 }
 
 void wfmain::shortcutControlPlus()
 {
     if(freqLock) return;
-
-    freqt f;
-    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, 1, tsPlusControlHz);
-    f.MHzDouble = f.Hz / (double)1E6;
-    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    if (vfos.size()) {
+        freqt f;
+        f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, 1, tsPlusControlHz);
+        f.MHzDouble = f.Hz / (double)1E6;
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    }
 }
 
 void wfmain::shortcutPageUp()
 {
     if(freqLock) return;
-
-    freqt f;
-    f.Hz = vfos[0]->getFrequency().Hz + tsPageHz;
-    f.MHzDouble = f.Hz / (double)1E6;
-    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    if (vfos.size()) {
+        freqt f;
+        f.Hz = vfos[0]->getFrequency().Hz + tsPageHz;
+        f.MHzDouble = f.Hz / (double)1E6;
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    }
 }
 
 void wfmain::shortcutPageDown()
 {
     if(freqLock) return;
-
-    freqt f;
-    f.Hz = vfos[0]->getFrequency().Hz - tsPageHz;
-    f.MHzDouble = f.Hz / (double)1E6;
-    queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    if (vfos.size()) {
+        freqt f;
+        f.Hz = vfos[0]->getFrequency().Hz - tsPageHz;
+        f.MHzDouble = f.Hz / (double)1E6;
+        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+    }
 }
 
 void wfmain::shortcutF()
@@ -3417,7 +3432,7 @@ void wfmain:: getInitialRigState()
     queue->add(priorityImmediate,funcMonitorGain,false);
 
     */
-    if(rigCaps.hasSpectrum)
+    if(rigCaps.hasSpectrum && vfos.size())
     {
         queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
         queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
@@ -4061,19 +4076,20 @@ void wfmain::on_freqDial_valueChanged(int value)
 
     // With the number of steps and direction of steps established,
     // we can now adjust the frequency:
-
-    f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, delta, tsKnobHz);
-    f.MHzDouble = f.Hz / (double)1E6;
-    if (f.Hz > 0)
-    {
-        oldFreqDialVal = value;
-        vfos[0]->setFrequency(f);
-        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
-    } else {
-        ui->freqDial->blockSignals(true);
-        ui->freqDial->setValue(oldFreqDialVal);
-        ui->freqDial->blockSignals(false);
-        return;
+    if (vfos.size()) {
+        f.Hz = roundFrequencyWithStep(vfos[0]->getFrequency().Hz, delta, tsKnobHz);
+        f.MHzDouble = f.Hz / (double)1E6;
+        if (f.Hz > 0)
+        {
+            oldFreqDialVal = value;
+            vfos[0]->setFrequency(f);
+            queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false));
+        } else {
+            ui->freqDial->blockSignals(true);
+            ui->freqDial->setValue(oldFreqDialVal);
+            ui->freqDial->blockSignals(false);
+            return;
+        }
     }
 }
 
@@ -4106,7 +4122,8 @@ void wfmain::gotoMemoryPreset(int presetNumber)
     //issueDelayedCommand(cmdSetModeFilter); // goes to setModeVal
     //issueCmd(cmdSetMode, m);
     memFreq.MHzDouble = memFreq.Hz / 1.0E6;
-    vfos[0]->setFrequency(memFreq);
+    if (vfos.size())
+        vfos[0]->setFrequency(memFreq);
     qDebug(logGui()) << "Recalling preset number " << presetNumber << " as frequency " << temp.frequency << "MHz";
 }
 
@@ -4114,15 +4131,17 @@ void wfmain::saveMemoryPreset(int presetNumber)
 {
     // int, double, rigMode_t
     double frequency;
-    if(vfos[0]->getFrequency().Hz == 0)
-    {
-        frequency = vfos[0]->getFrequency().MHzDouble;
-    } else {
-        frequency = vfos[0]->getFrequency().Hz / 1.0E6;
+    if (vfos.size()) {
+        if(vfos[0]->getFrequency().Hz == 0)
+        {
+            frequency = vfos[0]->getFrequency().MHzDouble;
+        } else {
+            frequency = vfos[0]->getFrequency().Hz / 1.0E6;
+        }
+        rigMode_t mode = currentMode;
+        qDebug(logGui()) << "Saving preset number " << presetNumber << " to frequency " << frequency << " MHz";
+        mem.setPreset(presetNumber, frequency, mode);
     }
-    rigMode_t mode = currentMode;
-    qDebug(logGui()) << "Saving preset number " << presetNumber << " to frequency " << frequency << " MHz";
-    mem.setPreset(presetNumber, frequency, mode);
 }
 
 void wfmain::on_rfGainSlider_valueChanged(int value)
@@ -4418,21 +4437,22 @@ void wfmain::statusFromSliderPercent(QString name, int rawValue)
 
 void wfmain::processModLevel(inputTypes source, unsigned char level)
 {
-    unsigned char data = vfos[0]->getDataMode();
+    if (vfos.size()) {
+        unsigned char data = vfos[0]->getDataMode();
 
-    if(prefs.inputSource[data].type == source)
-    {
-        prefs.inputSource[data].level = level;
-        changeSliderQuietly(ui->micGainSlider, level);
-        emit sendLevel(funcLANModLevel,level);
+        if(prefs.inputSource[data].type == source)
+        {
+            prefs.inputSource[data].level = level;
+            changeSliderQuietly(ui->micGainSlider, level);
+            emit sendLevel(funcLANModLevel,level);
+        }
     }
-
 }
 
 void wfmain::receiveModInput(rigInput input, unsigned char data)
 {
     // This will ONLY fire if the input type is different to the current one
-    if (currentModSrc[data].type != input.type)
+    if (currentModSrc[data].type != input.type && vfos.size())
     {
         qInfo() << QString("Data: %0 Input: %1 current: %2").arg(data).arg(input.name).arg(prefs.inputSource[data].name);
         queue->del(getInputTypeCommand(prefs.inputSource[data].type),false);
@@ -4463,7 +4483,7 @@ void wfmain::receiveModInput(rigInput input, unsigned char data)
 void wfmain::receivePassband(quint16 pass)
 {
     double pb = (double)(pass / 1000000.0);
-    if (vfos[0]->getPassbandWidth() != pb) {
+    if (vfos.size() && vfos[0]->getPassbandWidth() != pb) {
         vfos[0]->setPassbandWidth(pb);
 
         qInfo(logSystem()) << QString("Received new IF Filter/Passband %0 Hz").arg(pass);
@@ -4601,10 +4621,13 @@ void wfmain::processChangingCurrentModLevel(unsigned char level)
     // slider moved, so find the current mod and issue the level set command.
 
     funcs f = funcNone;
-    unsigned char d = vfos[0]->getDataMode();
-    f = getInputTypeCommand(prefs.inputSource[d].type);
+    if (vfos.size()) {
+        unsigned char d = vfos[0]->getDataMode();
+        f = getInputTypeCommand(prefs.inputSource[d].type);
 
-    queue->addUnique(priorityImmediate,queueItem(f,QVariant::fromValue<ushort>(level),false));
+        queue->addUnique(priorityImmediate,queueItem(f,QVariant::fromValue<ushort>(level),false));
+
+    }
 }
 
 void wfmain::on_tuneLockChk_clicked(bool checked)
@@ -5252,6 +5275,11 @@ void wfmain::on_rigCreatorBtn_clicked()
 void wfmain::receiveValue(cacheItem val){
 
 
+    if (val.vfo >= vfos.size())
+    {
+        qCritical(logSystem()) << "Data received for VFO that doesn't exist!" << val.vfo;
+        return;
+    }
     switch (val.command)
     {
 #if defined __GNUC__

@@ -294,6 +294,7 @@ void dxClusterClient::updateSpots()
         spots.append(s);
     }
 #else
+    // Iterate through all available VFO frequency ranges and send all relevant spots.
     QMap<uchar, rangeValues>::iterator range = freqRanges.begin();
     while (range != freqRanges.end())
     {
