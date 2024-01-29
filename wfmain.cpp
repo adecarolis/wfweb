@@ -414,7 +414,7 @@ void wfmain::makeRig()
         connect(this, SIGNAL(sendChangeLatency(quint16)), rig, SLOT(changeLatency(quint16)));
         connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
         connect(this, SIGNAL(setRigID(unsigned char)), rig, SLOT(setRigID(unsigned char)));
-        connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)),Qt::QueuedConnection);
+        connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
 
@@ -968,6 +968,12 @@ void wfmain::setServerToPrefs()
 void wfmain::configureVFOs()
 {
     qInfo(logSystem()) << "Running configureVFOs()";
+
+    if (QThread::currentThread() != QCoreApplication::instance()->thread())
+    {
+        qCritical(logSystem()) << "Thread is NOT the main UI thread, cannot create VFO";
+        return;
+    }
 
     if (vfos.size()) {
         foreach (spectrumScope* vfo, vfos)
@@ -5641,22 +5647,28 @@ void wfmain::receiveValue(cacheItem val){
     {
         if (vfos.size()>1)
         {
-            // This tells us whether we are receiving main or sub data
-            subScope = val.value.value<bool>();
-            if (!subScope && !vfos[0]->isVisible()) {
-                    vfos[1]->setVisible(false);
-                    vfos[0]->setVisible(true);
-            } else if (subScope && !vfos[1]->isVisible()) {
-                    vfos[0]->setVisible(false);
-                    vfos[1]->setVisible(true);
-            }
-
-            if (ui->scopeDualBtn->isChecked()) {
-                vfos[0]->selected(!subScope);
-                vfos[1]->selected(subScope);
+            if (QThread::currentThread() != QCoreApplication::instance()->thread())
+            {
+                qCritical(logSystem()) << "Thread is NOT the main UI thread, cannot hide/unhide VFO";
             } else {
-                vfos[0]->selected(false);
-                vfos[1]->selected(false);
+
+                // This tells us whether we are receiving main or sub data
+                subScope = val.value.value<bool>();
+                if (!subScope && !vfos[0]->isVisible()) {
+                        vfos[1]->setVisible(false);
+                        vfos[0]->setVisible(true);
+                } else if (subScope && !vfos[1]->isVisible()) {
+                        vfos[0]->setVisible(false);
+                        vfos[1]->setVisible(true);
+                }
+
+                if (ui->scopeDualBtn->isChecked()) {
+                    vfos[0]->selected(!subScope);
+                    vfos[1]->selected(subScope);
+                } else {
+                    vfos[0]->selected(false);
+                    vfos[1]->selected(false);
+                }
             }
         }
         break;
@@ -5665,25 +5677,30 @@ void wfmain::receiveValue(cacheItem val){
     {
         if (vfos.size()>1)
         {
-            // This tells us whether we are receiving single or dual scopes
-            ui->scopeDualBtn->setChecked(val.value.value<bool>());
-            if (val.value.value<bool>()) {
-                if (!vfos[1]->isVisible())
-                {
-                    vfos[1]->setVisible(true);
-                }
-                else if (!vfos[0]->isVisible())
-                {
-                    vfos[0]->setVisible(true);
-                }
+            if (QThread::currentThread() != QCoreApplication::instance()->thread())
+            {
+                qCritical(logSystem()) << "Thread is NOT the main UI thread, cannot hide/unhide VFO";
             } else {
-                if (vfos[0]->isVisible())
-                {
-                    vfos[1]->setVisible(false);
-                }
-                else if (vfos[1]->isVisible())
-                {
-                    vfos[0]->setVisible(false);
+                // This tells us whether we are receiving single or dual scopes
+                ui->scopeDualBtn->setChecked(val.value.value<bool>());
+                if (val.value.value<bool>()) {
+                    if (!vfos[1]->isVisible())
+                    {
+                        vfos[1]->setVisible(true);
+                    }
+                    else if (!vfos[0]->isVisible())
+                    {
+                        vfos[0]->setVisible(true);
+                    }
+                } else {
+                    if (vfos[0]->isVisible())
+                    {
+                        vfos[1]->setVisible(false);
+                    }
+                    else if (vfos[1]->isVisible())
+                    {
+                        vfos[0]->setVisible(false);
+                    }
                 }
             }
         }
