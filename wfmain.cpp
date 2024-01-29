@@ -1200,11 +1200,12 @@ void wfmain::setupKeyShortcuts()
             [=]() {
         if (freqLock) return;
 
-        freqt f;
-        if (vfos.size())
-           f.Hz = roundFrequencyWithStep(vfos.first()->getFrequency().Hz, -1, tsKnobHz);
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f)));
+        if (vfos.size()) {
+            freqt f;
+            f.Hz = roundFrequencyWithStep(vfos.first()->getFrequency().Hz, -1, tsKnobHz);
+            f.MHzDouble = f.Hz / (double)1E6;
+            queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f)));
+        }
     });
 
     // L = Up
@@ -1215,10 +1216,11 @@ void wfmain::setupKeyShortcuts()
         if (freqLock) return;
 
         freqt f;
-        if (vfos.size())
+        if (vfos.size()) {
             f.Hz = roundFrequencyWithStep(vfos.first()->getFrequency().Hz, 1, tsKnobHz);
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f)));
+            f.MHzDouble = f.Hz / (double)1E6;
+            queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f)));
+        }
     });
 
     keyDebug = new QShortcut(this);
