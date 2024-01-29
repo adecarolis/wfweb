@@ -981,7 +981,7 @@ void wfmain::configureVFOs()
     for(uchar i=0;i<rigCaps.numVFO;i++)
     {
         qCritical(logSystem()) << "Creating VFO" << i;
-        vfos.append(new spectrumScope(this));
+        vfos.append(new spectrumScope());
         vfos.last()->setUnderlayMode(prefs.underlayMode);
         vfos.last()->wfAntiAliased(prefs.wfAntiAlias);
         vfos.last()->wfInterpolate(prefs.wfInterpolate);
@@ -998,7 +998,7 @@ void wfmain::configureVFOs()
 
         // Hide any secondary VFOs until we need them!
         if (i>0){
-            vfos.last()->setVisible(false);
+           // vfos.last()->setVisible(false);
         }
         ui->vfoLayout->addWidget(vfos.last());
 
