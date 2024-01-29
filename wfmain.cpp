@@ -998,7 +998,7 @@ void wfmain::configureVFOs()
 
         // Hide any secondary VFOs until we need them!
         if (i>0){
-           // vfos.last()->setVisible(false);
+            vfos.last()->setVisible(false);
         }
         ui->vfoLayout->addWidget(vfos.last());
 
