@@ -1092,7 +1092,7 @@ void rigCommander::parseCommand()
         // This tells us whether we are receiving main or sub data
     case funcScopeSingleDual:
         // This tells us whether we are receiving single or dual scopes
-        qInfo(logRig()) << "funcScopeSingleDual" << payloadIn[0];
+        qInfo(logRig()) << "funcScopeSingleDual" << static_cast<bool>(payloadIn[0]);
         value.setValue(static_cast<bool>(payloadIn[0]));
         break;
 #if defined __GNUC__
