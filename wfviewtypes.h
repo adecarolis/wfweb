@@ -136,7 +136,7 @@ struct antennaInfo {
 struct scopeData {
     bool valid=false;
     QByteArray data;
-    bool mainSub;
+    uchar vfo;
     spectrumMode_t mode;
     bool oor;
     double startFreq;

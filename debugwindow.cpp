@@ -141,7 +141,7 @@ QString debugWindow::getValue(QVariant val)
         else if(!strcmp(val.typeName(),"scopeData"))
         {
             scopeData s = val.value<scopeData>();
-            value = QString("(V:%0) %1").arg(s.mainSub).arg((s.valid?"Valid":"Invalid"));
+            value = QString("(V:%0) %1").arg(s.vfo).arg((s.valid?"Valid":"Invalid"));
         }
         else if (!strcmp(val.typeName(),"antennaInfo"))
         {

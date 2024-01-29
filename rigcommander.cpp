@@ -320,7 +320,7 @@ void rigCommander::prepDataAndSend(QByteArray data)
     emit dataForComm(data);
 }
 
-bool rigCommander::getCommand(funcs func, QByteArray &payload, int value, bool sub)
+bool rigCommander::getCommand(funcs func, QByteArray &payload, int value, uchar vfo)
 {
     // Value is set to INT_MIN by default as this should be outside any "real" values
     auto it = rigCaps.commands.find(func);
@@ -336,12 +336,12 @@ bool rigCommander::getCommand(funcs func, QByteArray &payload, int value, bool s
             {
                 // This can use cmd29 so add sub/main to the command
                 payload.append('\x29');
-                payload.append(static_cast<uchar>(sub));
-            } else if (!rigCaps.hasCommand29 && sub)
+                payload.append(static_cast<uchar>(vfo));
+            } else if (!rigCaps.hasCommand29 && vfo)
             {
                 // We don't have command29 so can't select sub
-                qInfo(logRig()) << "Rig has no Command29, removing command:" << funcString[func] << "sub" << sub;
-                queue->del(func,sub);
+                qInfo(logRig()) << "Rig has no Command29, removing command:" << funcString[func] << "VFO" << vfo;
+                queue->del(func,vfo);
                 return false;
             }
             payload.append(it.value().data);
@@ -353,8 +353,8 @@ bool rigCommander::getCommand(funcs func, QByteArray &payload, int value, bool s
         }
     } else {
         // Don't try this command again as the rig doesn't support it!
-        qInfo(logRig()) << "Removing unsupported command from queue" << funcString[func] << "sub" << sub;
-        queue->del(func,sub);
+        qInfo(logRig()) << "Removing unsupported command from queue" << funcString[func] << "VFO" << vfo;
+        queue->del(func,vfo);
     }
     return false;
 }
@@ -704,7 +704,7 @@ void rigCommander::parseCommand()
 #endif
 
     funcs func = funcNone;
-    bool sub = false;
+    uchar vfo = 0;
 
     if (payloadIn.endsWith((char)0xfd))
     {
@@ -713,7 +713,7 @@ void rigCommander::parseCommand()
 
     if (rigCaps.hasCommand29 && payloadIn[0] == '\x29')
     {
-        sub = static_cast<bool>(payloadIn[1]);
+        vfo = static_cast<uchar>(payloadIn[1]);
         payloadIn.remove(0,2);      
     }
 
@@ -754,7 +754,7 @@ void rigCommander::parseCommand()
     case funcFreqTR:
     case funcReadTXFreq:
     {
-        value.setValue(parseFreqData(payloadIn,sub));
+        value.setValue(parseFreqData(payloadIn,vfo));
         break;
     }
     case funcVFODualWatch:
@@ -765,18 +765,18 @@ void rigCommander::parseCommand()
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
     case funcUnselectedFreq:
-        sub = true;
+        vfo = 1;
     case funcSelectedFreq:
     {
-        //qInfo(logRig()) << "Freq len:" << payloadIn.size() << "sub=" << sub << "data:" << payloadIn.toHex(' ');
-        value.setValue(parseFreqData(payloadIn,sub));
+        //qInfo(logRig()) << "Freq len:" << payloadIn.size() << "VFO=" << vfo << "data:" << payloadIn.toHex(' ');
+        value.setValue(parseFreqData(payloadIn,vfo));
         break;
     }
     case funcModeGet:
     case funcModeTR:
     {
         modeInfo m;
-        m = parseMode(payloadIn[0], m.filter,sub);
+        m = parseMode(payloadIn[0], m.filter,vfo);
 
         if(payloadIn.size() > 1)
         {
@@ -788,14 +788,14 @@ void rigCommander::parseCommand()
         break;
     }
     case funcUnselectedMode:
-        sub = true;
+        vfo = 1;
     case funcSelectedMode:
     {
         modeInfo m;
         // New format payload with mode+datamode+filter
-        m = parseMode(bcdHexToUChar(payloadIn[0]), bcdHexToUChar(payloadIn[2]),sub);
+        m = parseMode(bcdHexToUChar(payloadIn[0]), bcdHexToUChar(payloadIn[2]),vfo);
         m.data = bcdHexToUChar(payloadIn[1]);
-        m.VFO = selVFO_t(sub);
+        m.VFO = selVFO_t(vfo);
         value.setValue(m);
         break;
     }
@@ -831,7 +831,7 @@ void rigCommander::parseCommand()
     case funcScanning:
         break;
     case funcReadFreqOffset:
-        value.setValue(parseFreqData(payloadIn,sub));
+        value.setValue(parseFreqData(payloadIn,vfo));
         break;
     // These return a single byte that we convert to a uchar (0-99)
     case funcTuningStep:
@@ -967,7 +967,7 @@ void rigCommander::parseCommand()
         if (rigCaps.modelID == 0xAC && bsr.band == 6) {
             freqLen = 6;
         }
-        bsr.freq = parseFreqData(payloadIn.mid(2,freqLen),sub);
+        bsr.freq = parseFreqData(payloadIn.mid(2,freqLen),vfo);
         // The Band Stacking command returns the regCode in the position that VFO is expected.
         // As BSR is always on the active VFO, just set that.
         bsr.freq.VFO = selVFO_t::activeVFO;
@@ -984,7 +984,7 @@ void rigCommander::parseCommand()
         quint16 calc;
         quint8 pass = bcdHexToUChar((quint8)payloadIn[0]);
         modeInfo m;
-        m = queue->getCache((sub?funcUnselectedMode:funcSelectedMode),sub).value.value<modeInfo>();
+        m = queue->getCache((vfo?funcUnselectedMode:funcSelectedMode),vfo).value.value<modeInfo>();
 
         if (m.mk == modeAM)
         {
@@ -998,16 +998,16 @@ void rigCommander::parseCommand()
              calc = 600 + ((pass - 10) * 100);
         }
         value.setValue(calc);
-        //qInfo() << "Got filter width" << calc << "sub" << sub;
+        //qInfo() << "Got filter width" << calc << "VFO" << vfo;
         break;
     }
     case funcDataModeWithFilter:
     {
         modeInfo m;
         // New format payload with mode+datamode+filter
-        m = parseMode(uchar(payloadIn[0]), uchar(payloadIn[2]),sub);
+        m = parseMode(uchar(payloadIn[0]), uchar(payloadIn[2]),vfo);
         m.data = uchar(payloadIn[1]);
-        m.VFO = selVFO_t(sub & 0x01);
+        m.VFO = selVFO_t(vfo & 0x01);
         value.setValue(m);
         break;
     }
@@ -1080,7 +1080,7 @@ void rigCommander::parseCommand()
     case funcScopeMainWaveData:
     {
         scopeData d;
-        if (parseSpectrum(d,sub))
+        if (parseSpectrum(d,vfo))
             value.setValue(d);
         break;
     }
@@ -1099,7 +1099,7 @@ void rigCommander::parseCommand()
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
     case funcScopeSubMode:
-        sub=true;
+        vfo=1;
     case funcScopeMainMode:
         // fixed or center
         // [1] 0x14
@@ -1108,7 +1108,7 @@ void rigCommander::parseCommand()
         value.setValue(static_cast<spectrumMode_t>(uchar(payloadIn[0])));
         break;
     case funcScopeSubSpan:
-        sub=true;
+        vfo=1;
     case funcScopeMainSpan:
     {
         freqt f = parseFrequency(payloadIn, 3);
@@ -1122,7 +1122,7 @@ void rigCommander::parseCommand()
         break;
     }
     case funcScopeSubEdge:
-        sub=true;
+        vfo=1;
     case funcScopeMainEdge:
         // read edge mode center in edge mode
         // [1] 0x16
@@ -1131,12 +1131,12 @@ void rigCommander::parseCommand()
         //emit haveScopeEdge((char)payloadIn[2]);
         break;
     case funcScopeSubHold:
-        sub=true;
+        vfo=1;
     case funcScopeMainHold:
         value.setValue(static_cast<bool>(payloadIn[0]));
         break;
     case funcScopeSubRef:
-        sub=true;
+        vfo=1;
     case funcScopeMainRef:
     {
         // scope reference level
@@ -1155,16 +1155,16 @@ void rigCommander::parseCommand()
         break;
     }
     case funcScopeSubSpeed:
-        sub=true;
+        vfo=1;
     case funcScopeMainSpeed:
         value.setValue(static_cast<uchar>(payloadIn[0]));
         break;
     case funcScopeSubVBW:
-        sub=true;
+        vfo=1;
     case funcScopeMainVBW:
         break;
     case funcScopeSubRBW:
-        sub=true;
+        vfo=1;
     case funcScopeMainRBW:
         break;
 #if defined __GNUC__
@@ -1230,7 +1230,7 @@ void rigCommander::parseCommand()
 #endif
 
     if (value.isValid() && queue != Q_NULLPTR) {
-        queue->receiveValue(func,value,sub);
+        queue->receiveValue(func,value,vfo);
     }
 
 }
@@ -1534,7 +1534,7 @@ void rigCommander::determineRigCaps()
     }
 }
 
-bool rigCommander::parseSpectrum(scopeData& d, bool sub)
+bool rigCommander::parseSpectrum(scopeData& d, uchar vfo)
 {
     bool ret = false;
 
@@ -1550,7 +1550,7 @@ bool rigCommander::parseSpectrum(scopeData& d, bool sub)
         return ret;
     }
 
-    if (sub)
+    if (vfo)
         d = subScopeData;
     else
         d = mainScopeData;
@@ -1590,7 +1590,7 @@ bool rigCommander::parseSpectrum(scopeData& d, bool sub)
     freqt fStart;
     freqt fEnd;
 
-    d.mainSub = sub;
+    d.vfo = vfo;
     unsigned char sequence = bcdHexToUChar(payloadIn[0]);
     unsigned char sequenceMax = bcdHexToUChar(payloadIn[1]);
 
@@ -1652,9 +1652,9 @@ bool rigCommander::parseSpectrum(scopeData& d, bool sub)
         d.data.clear();
 
         // For Fixed, and both scroll modes, the following produces correct information:
-        fStart = parseFreqData(payloadIn.mid(3,freqLen),sub);
+        fStart = parseFreqData(payloadIn.mid(3,freqLen),vfo);
         d.startFreq = fStart.MHzDouble;
-        fEnd = parseFreqData(payloadIn.mid(3+freqLen,freqLen),sub);
+        fEnd = parseFreqData(payloadIn.mid(3+freqLen,freqLen),vfo);
         d.endFreq = fEnd.MHzDouble;
 
         if(d.mode == spectModeCenter)
@@ -1690,7 +1690,7 @@ bool rigCommander::parseSpectrum(scopeData& d, bool sub)
 
     if (!ret) {
         // We need to temporarilly store the scope data somewhere.
-        if (sub)
+        if (vfo)
             subScopeData = d;
         else
             mainScopeData = d;
@@ -1925,12 +1925,12 @@ freqt rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
 }
 
 
-freqt rigCommander::parseFreqData(QByteArray data, bool sub)
+freqt rigCommander::parseFreqData(QByteArray data, uchar vfo)
 {
     freqt freq;
     freq.Hz = parseFreqDataToInt(data);
     freq.MHzDouble = freq.Hz/1000000.0;
-    freq.VFO = selVFO_t(sub);
+    freq.VFO = selVFO_t(vfo);
     return freq;
 }
 
@@ -1950,7 +1950,7 @@ quint64 rigCommander::parseFreqDataToInt(QByteArray data)
 }
 
 
-modeInfo rigCommander::parseMode(quint8 mode, quint8 filter, bool sub)
+modeInfo rigCommander::parseMode(quint8 mode, quint8 filter, uchar vfo)
 {
     modeInfo mi;
     bool found=false;
@@ -1971,13 +1971,13 @@ modeInfo rigCommander::parseMode(quint8 mode, quint8 filter, bool sub)
 
     // We cannot query sub VFO width without command29.
     if (!rigCaps.hasCommand29)
-        sub = false;
+        vfo = 0;
 
     cacheItem item;
 
     // Does the current mode support filterwidth?
     if (mi.bwMin >0  && mi.bwMax > 0) {
-        queue->getCache(funcFilterWidth,sub);
+        queue->getCache(funcFilterWidth,vfo);
     }
 
     if (item.value.isValid()) {
@@ -2362,10 +2362,10 @@ quint8* rigCommander::getGUID() {
     return guid;
 }
 
-uchar rigCommander::makeFilterWidth(ushort pass,bool sub)
+uchar rigCommander::makeFilterWidth(ushort pass,uchar vfo)
 {
     unsigned char calc;
-    modeInfo mi = queue->getCache((sub?funcUnselectedMode:funcSelectedMode),sub).value.value<modeInfo>();
+    modeInfo mi = queue->getCache((vfo==1?funcUnselectedMode:funcSelectedMode),vfo).value.value<modeInfo>();
     if (mi.mk == modeAM) { // AM 0-49
 
         calc = quint16((pass / 200) - 1);
@@ -2439,8 +2439,8 @@ void rigCommander::receiveCommand(funcs func, QVariant value, uchar vfo)
             func = funcModeGet;
     } else if (func == funcSelectVFO) {
         // Special command
-        vfo_t vfo = value.value<vfo_t>();
-        func = (vfo == vfoA)?funcVFOASelect:(vfo == vfoB)?funcVFOBSelect:(vfo == vfoMain)?funcVFOMainSelect:funcVFOSubSelect;
+        vfo_t v = value.value<vfo_t>();
+        func = (v == vfoA)?funcVFOASelect:(v == vfoB)?funcVFOBSelect:(v == vfoMain)?funcVFOMainSelect:funcVFOSubSelect;
         value.clear();
         val = INT_MIN;
     }

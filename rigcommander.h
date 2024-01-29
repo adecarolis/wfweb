@@ -139,7 +139,7 @@ private:
     freqt parseFrequency();
     freqt parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
 
-    freqt parseFreqData(QByteArray data, bool sub);
+    freqt parseFreqData(QByteArray data, uchar vfo);
     quint64 parseFreqDataToInt(QByteArray data);
     freqt parseFrequencyRptOffset(QByteArray data);
     bool parseMemory(QVector<memParserFormat>* memParser, memoryType* mem);
@@ -151,7 +151,7 @@ private:
 
     toneInfo decodeTone(QByteArray eTone);
     //quint16 decodeTone(QByteArray eTone, bool &tinv, bool &rinv);
-    uchar makeFilterWidth(ushort width, bool sub);
+    uchar makeFilterWidth(ushort width, uchar vfo);
 
 
     unsigned char audioLevelRxMean[50];
@@ -159,9 +159,9 @@ private:
     unsigned char audioLevelTxMean[50];
     unsigned char audioLevelTxPeak[50];
 
-    modeInfo parseMode(quint8 mode, quint8 filter, bool sub);
-    bool parseSpectrum(scopeData& d, bool sub);
-    bool getCommand(funcs func, QByteArray& payload, int value=INT_MIN, bool sub=false);
+    modeInfo parseMode(quint8 mode, quint8 filter, uchar vfo);
+    bool parseSpectrum(scopeData& d, uchar vfo);
+    bool getCommand(funcs func, QByteArray& payload, int value=INT_MIN, uchar vfo=0);
 
     QByteArray getLANAddr();
     QByteArray getUSBAddr();
