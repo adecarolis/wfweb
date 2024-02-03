@@ -6,6 +6,7 @@ Manufacturer=Icom
 Model=IC-785x
 CIVAddress=142
 RigCtlDModel=3075
+NumberOfVFOs=2
 SpectrumSeqMax=15
 SpectrumAmpMax=200
 SpectrumLenMax=689
