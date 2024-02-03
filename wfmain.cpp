@@ -3441,7 +3441,7 @@ void wfmain:: getInitialRigState()
     queue->add(priorityImmediate,funcMonitorGain,false);
 
     */
-    if(rigCaps.hasSpectrum && vfos.size())
+    if(rigCaps.hasSpectrum)
     {
         queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
         queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
@@ -3457,7 +3457,8 @@ void wfmain:: getInitialRigState()
         auto sr = rigCaps.commands.find(funcScopeSubRef);
         if (sr != rigCaps.commands.end())
         {
-            vfos[1]->setRefLimits(sr.value().minVal,sr.value().maxVal);
+            if (vfos.size()>1)
+                vfos[1]->setRefLimits(sr.value().minVal,sr.value().maxVal);
             queue->add(priorityImmediate,(funcScopeSubRef),false,true);
         }
     }
