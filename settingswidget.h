@@ -236,6 +236,8 @@ private slots:
 
     void serverAddUserLine(int row,const QString& user="", const QString& pass="", const int& type=0);
 
+    void on_meter3selectionCombo_currentIndexChanged(int index);
+
 private:
     Ui::settingswidget *ui;
     void createSettingsListItems();

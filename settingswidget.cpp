@@ -81,6 +81,20 @@ void settingswidget::populateComboBoxes()
     ui->meter2selectionCombo->show();
     ui->meter2selectionCombo->blockSignals(false);
 
+    ui->meter3selectionCombo->blockSignals(true);
+    ui->meter3selectionCombo->addItem("None", meterNone);
+    ui->meter3selectionCombo->addItem("SWR", meterSWR);
+    ui->meter3selectionCombo->addItem("ALC", meterALC);
+    ui->meter3selectionCombo->addItem("Compression", meterComp);
+    ui->meter3selectionCombo->addItem("Voltage", meterVoltage);
+    ui->meter3selectionCombo->addItem("Current", meterCurrent);
+    ui->meter3selectionCombo->addItem("Center", meterCenter);
+    ui->meter3selectionCombo->addItem("TxRxAudio", meterAudio);
+    ui->meter3selectionCombo->addItem("RxAudio", meterRxAudio);
+    ui->meter3selectionCombo->addItem("TxAudio", meterTxMod);
+    ui->meter3selectionCombo->show();
+    ui->meter3selectionCombo->blockSignals(false);
+
     ui->secondaryMeterSelectionLabel->show();
 
     ui->audioRXCodecCombo->blockSignals(true);
@@ -412,6 +426,14 @@ void settingswidget::updateIfPref(prefIfItem pif)
         int m = ui->meter2selectionCombo->findData(prefs->meter2Type);
         ui->meter2selectionCombo->setCurrentIndex(m);
         ui->meter2selectionCombo->blockSignals(false);
+        break;
+    }
+    case if_meter3Type:
+    {
+        ui->meter3selectionCombo->blockSignals(true);
+        int m = ui->meter3selectionCombo->findData(prefs->meter3Type);
+        ui->meter3selectionCombo->setCurrentIndex(m);
+        ui->meter3selectionCombo->blockSignals(false);
         break;
     }
     case if_clickDragTuningEnable:
@@ -1490,6 +1512,12 @@ void settingswidget::on_meter2selectionCombo_currentIndexChanged(int index)
 {
     prefs->meter2Type = static_cast<meter_t>(ui->meter2selectionCombo->itemData(index).toInt());
     emit changedIfPref(if_meter2Type);
+}
+
+void settingswidget::on_meter3selectionCombo_currentIndexChanged(int index)
+{
+    prefs->meter3Type = static_cast<meter_t>(ui->meter3selectionCombo->itemData(index).toInt());
+    emit changedIfPref(if_meter3Type);
 }
 
 void settingswidget::on_tuningFloorZerosChk_clicked(bool checked)
@@ -2646,3 +2674,4 @@ void settingswidget::connectionStatus(bool conn)
     ui->serverTXAudioOutputCombo->setEnabled(!conn);
     ui->audioSystemServerCombo->setEnabled(!conn);
 }
+

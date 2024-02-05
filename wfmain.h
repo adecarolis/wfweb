@@ -469,7 +469,7 @@ private slots:
     void on_ritTuneDial_valueChanged(int value);
     void on_ritEnableChk_clicked(bool checked);
 
-    void changeMeter2Type(meter_t m);
+    void changeMeterType(meter_t m, int meterNum);
     void enableRigCtl(bool enabled);
 
     void on_memoriesBtn_clicked();

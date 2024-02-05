@@ -729,6 +729,7 @@ void wfmain::receiveNetworkAudioLevels(networkAudioLevels l)
 void wfmain::setupMainUI()
 {
     ui->meter2Widget->hide();
+    ui->meter3Widget->hide();
 
     // Future ideas:
     //ui->meter2selectionCombo->addItem("Transmit Audio", meterTxMod);
@@ -1519,6 +1520,8 @@ void wfmain::setDefPrefs()
     defPrefs.confirmExit = true;
     defPrefs.confirmPowerOff = true;
     defPrefs.meter2Type = meterNone;
+    defPrefs.meter3Type = meterNone;
+
     defPrefs.tcpPort = 0;
     defPrefs.tciPort = 50001;
     defPrefs.waterfallFormat = 0;
@@ -1589,6 +1592,8 @@ void wfmain::loadSettings()
     prefs.confirmExit = settings->value("ConfirmExit", defPrefs.confirmExit).toBool();
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
     prefs.meter2Type = static_cast<meter_t>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
+    prefs.meter3Type = static_cast<meter_t>(settings->value("Meter3Type", defPrefs.meter3Type).toInt());
+
     prefs.clickDragTuningEnable = settings->value("ClickDragTuning", false).toBool();
 
     prefs.rigCreatorEnable = settings->value("RigCreator",false).toBool();
@@ -2292,7 +2297,10 @@ void wfmain::extChangedIfPref(prefIfItem i)
         // Not in settings widget
         break;
     case if_meter2Type:
-        changeMeter2Type(prefs.meter2Type);
+        changeMeterType(prefs.meter2Type, 2);
+        break;
+    case if_meter3Type:
+        changeMeterType(prefs.meter3Type, 3);
         break;
     case if_clickDragTuningEnable:
         // There's nothing to do here since the code
@@ -2357,6 +2365,7 @@ void wfmain::extChangedColPref(prefColItem i)
     case col_meterText:
         ui->meterSPoWidget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
         ui->meter2Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
+        ui->meter3Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
         break;
     default:
         qWarning(logSystem()) << "Cannot update wfmain col pref" << (int)i;
@@ -2748,6 +2757,7 @@ void wfmain::saveSettings()
     settings->setValue("ConfirmExit", prefs.confirmExit);
     settings->setValue("ConfirmPowerOff", prefs.confirmPowerOff);
     settings->setValue("Meter2Type", (int)prefs.meter2Type);
+    settings->setValue("Meter3Type", (int)prefs.meter3Type);
     settings->setValue("ClickDragTuning", prefs.clickDragTuningEnable);
     settings->setValue("RigCreator",prefs.rigCreatorEnable);
     settings->setValue("FrequencyUnits",prefs.frequencyUnits);
@@ -3897,7 +3907,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         }
 
         // Set the second meter here as I suspect we need to be connected for it to work?
-        changeMeter2Type(prefs.meter2Type);
+        changeMeterType(prefs.meter2Type, 2);
+        changeMeterType(prefs.meter3Type, 3);
 //        for (int i = 0; i < ui->meter2selectionCombo->count(); i++)
 //        {
 //            if (static_cast<meter_t>(ui->meter2selectionCombo->itemData(i).toInt()) == prefs.meter2Type)
@@ -3963,6 +3974,17 @@ void wfmain::initPeriodicCommands()
     queue->add(priorityMediumLow,funcToneSquelchType,true,false);
 
     queue->add(priorityHighest,queueItem(funcSMeter,true));
+    meter* marray[2];
+    marray[0] = ui->meter2Widget;
+    marray[1] = ui->meter3Widget;
+    for(int m=0; m < 2; m++) {
+        funcs meterCmd = meter_tToMeterCommand(marray[m]->getMeterType());
+        if(meterCmd != funcNone) {
+            qDebug() << "Adding meter command per current UI meters.";
+            queue->add(priorityHighest,queueItem(meterCmd,true));
+        }
+    }
+
 }
 
 void wfmain::receivePTTstatus(bool pttOn)
@@ -4578,9 +4600,10 @@ void wfmain::receiveTuningStep(unsigned char step)
 
 void wfmain::receiveMeter(meter_t inMeter, unsigned char level)
 {
-
     switch(inMeter)
     {
+    // These first two meters, S and Power,
+    // are automatically assigned to the primary meter.
         case meterS:
             ui->meterSPoWidget->setMeterType(meterS);
             ui->meterSPoWidget->setLevel(level);
@@ -4592,17 +4615,23 @@ void wfmain::receiveMeter(meter_t inMeter, unsigned char level)
             ui->meterSPoWidget->update();
             break;
         default:
-            if(ui->meter2Widget->getMeterType() == inMeter)
-            {
-                // The incoming meter data matches the UI meter
-                ui->meter2Widget->setLevel(level);
-            } else if ( (ui->meter2Widget->getMeterType() == meterAudio) &&
-                        (inMeter == meterTxMod) && amTransmitting) {
-                ui->meter2Widget->setLevel(level);
-            } else if (  (ui->meter2Widget->getMeterType() == meterAudio) &&
-                         (inMeter == meterRxAudio) && !amTransmitting) {
-                ui->meter2Widget->setLevel(level);
+            meter* marray[2];
+            marray[0] = ui->meter2Widget;
+            marray[1] = ui->meter3Widget;
+            for(int m=0; m < 2; m++) {
+                if(marray[m]->getMeterType() == inMeter)
+                {
+                    // The incoming meter data matches the UI meter
+                    marray[m]->setLevel(level);
+                } else if ( (marray[m]->getMeterType() == meterAudio) &&
+                            (inMeter == meterTxMod) && amTransmitting) {
+                    marray[m]->setLevel(level);
+                } else if (  (marray[m]->getMeterType() == meterAudio) &&
+                             (inMeter == meterRxAudio) && !amTransmitting) {
+                    marray[m]->setLevel(level);
+                }
             }
+
             break;
     }
 }
@@ -4946,15 +4975,26 @@ funcs wfmain::meter_tToMeterCommand(meter_t m)
 }
 
 
-void wfmain::changeMeter2Type(meter_t m)
+void wfmain::changeMeterType(meter_t m, int meterNum)
 {
+    qDebug() << "Changing meter type.";
     meter_t newMeterType;
     meter_t oldMeterType;
-    newMeterType = m;
-    oldMeterType = ui->meter2Widget->getMeterType();
-
-    if(newMeterType == oldMeterType)
+    meter* uiMeter = NULL;
+    if(meterNum == 2) {
+        uiMeter = ui->meter2Widget;
+    } else if (meterNum == 3) {
+        uiMeter = ui->meter3Widget;
+    } else {
+        qCritical() << "Error, invalid meter requested: meterNum ==" << meterNum;
         return;
+    }
+    newMeterType = m;
+    oldMeterType = uiMeter->getMeterType();
+
+    if(newMeterType == oldMeterType) {
+        qDebug() << "Debug note: the old meter was the same as the new meter.";
+    }
 
     funcs newCmd = meter_tToMeterCommand(newMeterType);
     funcs oldCmd = meter_tToMeterCommand(oldMeterType);
@@ -4966,11 +5006,11 @@ void wfmain::changeMeter2Type(meter_t m)
 
     if(newMeterType==meterNone)
     {
-        ui->meter2Widget->hide();
-        ui->meter2Widget->setMeterType(newMeterType);
+        uiMeter->hide();
+        uiMeter->setMeterType(newMeterType);
     } else {
-        ui->meter2Widget->show();
-        ui->meter2Widget->setMeterType(newMeterType);
+        uiMeter->show();
+        uiMeter->setMeterType(newMeterType);
         if((newMeterType!=meterRxAudio) && (newMeterType!=meterTxMod) && (newMeterType!=meterAudio))
             queue->add(priorityHighest,queueItem(newCmd,true));
     }
@@ -5059,6 +5099,7 @@ void wfmain::useColorPreset(colorPrefsType *cp)
     //qInfo(logSystem()) << "Setting plots to color preset number " << cp->presetNum << ", with name " << *(cp->presetName);
     ui->meterSPoWidget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
     ui->meter2Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
+    ui->meter3Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
     foreach(auto vfo, vfos) {
         vfo->colorPreset(cp);
     }

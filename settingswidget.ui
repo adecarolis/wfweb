@@ -41,7 +41,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>0</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -1052,12 +1052,15 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <widget class="QLabel" name="secondaryMeterSelectionLabel">
              <property name="text">
-              <string>Secondary Meter Selection:</string>
+              <string>Additional Meter Selection:</string>
              </property>
             </widget>
            </item>
            <item>
             <widget class="QComboBox" name="meter2selectionCombo"/>
+           </item>
+           <item>
+            <widget class="QComboBox" name="meter3selectionCombo"/>
            </item>
            <item>
             <widget class="QRadioButton" name="autoPollBtn">
@@ -1276,8 +1279,8 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>925</width>
-                 <height>330</height>
+                 <width>916</width>
+                 <height>309</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">
