@@ -1087,6 +1087,10 @@ void wfmain::setupKeyShortcuts()
     keyControlR->setKey(Qt::CTRL | Qt::Key_R);
     connect(keyControlR, SIGNAL(activated()), this, SLOT(shortcutControlR()));
 
+    keyControlR = new QShortcut(this);
+    keyControlR->setKey(Qt::CTRL | Qt::Key_P);
+    connect(keyControlR, SIGNAL(activated()), this, SLOT(shortcutControlP()));
+
     keyControlI = new QShortcut(this);
     keyControlI->setKey(Qt::CTRL | Qt::Key_I);
     connect(keyControlI, SIGNAL(activated()), this, SLOT(shortcutControlI()));
@@ -3129,6 +3133,17 @@ void wfmain::shortcutControlR()
 {
     // Receive
     extChangedRsPrefs(rs_pttOff);
+}
+
+void wfmain::shortcutControlP()
+{
+    // Toggle PTT
+    if(amTransmitting) {
+        extChangedRsPrefs(rs_pttOff);
+    } else {
+        extChangedRsPrefs(rs_pttOn);
+        showStatusBarText(QString("Transmitting. Press Control-P again to receive."));
+    }
 }
 
 void wfmain::shortcutControlI()

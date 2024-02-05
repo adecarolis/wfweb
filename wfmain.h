@@ -348,6 +348,7 @@ private slots:
 
     void shortcutControlT();
     void shortcutControlR();
+    void shortcutControlP();
     void shortcutControlI();
     void shortcutControlU();
 
