@@ -1,7 +1,7 @@
 #ifndef MEMORIES_H
 #define MEMORIES_H
 
-#include <QDialog>
+#include <QWidget>
 #include <QItemDelegate>
 #include <QStandardItem>
 #include <QStandardItemModel>
@@ -24,7 +24,7 @@ namespace Ui {
 class memories;
 }
 
-class memories : public QDialog
+class memories : public QWidget
 {
     Q_OBJECT
 

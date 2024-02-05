@@ -5,7 +5,7 @@
 #include "ui_memories.h"
 
 memories::memories(rigCapabilities rigCaps, bool slowLoad, QWidget *parent) :
-    QDialog(parent),
+    QWidget(parent),
     slowLoad(slowLoad),
     rigCaps(rigCaps),
     ui(new Ui::memories)

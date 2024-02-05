@@ -5224,6 +5224,7 @@ void wfmain::connectionHandler(bool connect)
 
     // Whatever happened, make sure we delete the memories window.
     if (memWindow != Q_NULLPTR) {
+        memWindow->close();
         delete memWindow;
         memWindow = Q_NULLPTR;
     }
@@ -5249,7 +5250,7 @@ void wfmain::on_memoriesBtn_clicked()
     if (haveRigCaps) {
         if (memWindow == Q_NULLPTR) {
             // Add slowload option for background loading.
-            memWindow = new memories(rigCaps,false,this);
+            memWindow = new memories(rigCaps,false);
             this->memWindow->connect(this, SIGNAL(haveMemory(memoryType)), memWindow, SLOT(receiveMemory(memoryType)));
 
             this->memWindow->connect(this->memWindow, &memories::getMemory, rig,[=](const quint32 &mem) {
