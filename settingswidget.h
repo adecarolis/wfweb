@@ -257,6 +257,9 @@ private:
     void quietlyUpdateCheckbox(QGroupBox *gb, bool isChecked);
     void quietlyUpdateRadiobutton(QRadioButton *rb, bool isChecked);
     void quietlyUpdateLineEdit(QLineEdit *le, const QString text);
+    void setComboBoxItemEnabled(QComboBox *comboBox, int index, bool enabled);
+    void enableAllComboBoxItems(QComboBox *combobox);
+    void muteSingleComboItem(QComboBox *comboBox, int index);
 
     // Colors (helper functions)
     void setEditAndLedFromColor(QColor c, QLineEdit *e, QLedLabel *d);

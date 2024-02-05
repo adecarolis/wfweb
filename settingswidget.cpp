@@ -426,6 +426,9 @@ void settingswidget::updateIfPref(prefIfItem pif)
         int m = ui->meter2selectionCombo->findData(prefs->meter2Type);
         ui->meter2selectionCombo->setCurrentIndex(m);
         ui->meter2selectionCombo->blockSignals(false);
+        if(prefs->meter2Type != meterNone) {
+            muteSingleComboItem(ui->meter3selectionCombo, m);
+        }
         break;
     }
     case if_meter3Type:
@@ -434,6 +437,9 @@ void settingswidget::updateIfPref(prefIfItem pif)
         int m = ui->meter3selectionCombo->findData(prefs->meter3Type);
         ui->meter3selectionCombo->setCurrentIndex(m);
         ui->meter3selectionCombo->blockSignals(false);
+        if(prefs->meter3Type != meterNone) {
+            muteSingleComboItem(ui->meter2selectionCombo, m);
+        }
         break;
     }
     case if_clickDragTuningEnable:
@@ -1512,12 +1518,45 @@ void settingswidget::on_meter2selectionCombo_currentIndexChanged(int index)
 {
     prefs->meter2Type = static_cast<meter_t>(ui->meter2selectionCombo->itemData(index).toInt());
     emit changedIfPref(if_meter2Type);
+    enableAllComboBoxItems(ui->meter3selectionCombo);
+    if(prefs->meter2Type != meterNone) {
+        setComboBoxItemEnabled(ui->meter3selectionCombo, index, false);
+    }
 }
 
 void settingswidget::on_meter3selectionCombo_currentIndexChanged(int index)
 {
     prefs->meter3Type = static_cast<meter_t>(ui->meter3selectionCombo->itemData(index).toInt());
     emit changedIfPref(if_meter3Type);
+    // Since the meter combo boxes have the same items in each list,
+    // we can disable an item from the other list with confidence.
+    enableAllComboBoxItems(ui->meter2selectionCombo);
+    if(prefs->meter3Type != meterNone) {
+        setComboBoxItemEnabled(ui->meter2selectionCombo, index, false);
+    }
+}
+
+void settingswidget::muteSingleComboItem(QComboBox *comboBox, int index) {
+    enableAllComboBoxItems(comboBox);
+    setComboBoxItemEnabled(comboBox, index, false);
+}
+
+void settingswidget::enableAllComboBoxItems(QComboBox *combobox) {
+    for(int i=0; i < combobox->count(); i++) {
+        setComboBoxItemEnabled(combobox, i, true);
+    }
+}
+
+void settingswidget::setComboBoxItemEnabled(QComboBox * comboBox, int index, bool enabled)
+{
+    auto * model = qobject_cast<QStandardItemModel*>(comboBox->model());
+    assert(model);
+    if(!model) return;
+
+    auto * item = model->item(index);
+    assert(item);
+    if(!item) return;
+    item->setEnabled(enabled);
 }
 
 void settingswidget::on_tuningFloorZerosChk_clicked(bool checked)
