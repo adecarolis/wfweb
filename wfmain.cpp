@@ -3133,7 +3133,7 @@ void wfmain::shortcutF12()
 void wfmain::shortcutControlT()
 {
     // Transmit
-    qInfo(logSystem()) << "Activated Control-T shortcut";
+    qDebug(logSystem()) << "Activated Control-T shortcut";
     showStatusBarText(QString("Transmitting. Press Control-R to receive."));
     extChangedRsPrefs(rs_pttOn);
 }
