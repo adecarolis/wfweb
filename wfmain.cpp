@@ -2137,6 +2137,7 @@ void wfmain::extChangedRsPrefs(quint64 items)
         {
             qDebug(logSystem()) << "Updating Rs pref in wfmain" << (int)i;
             prs = (prefRsItem)i;
+            extChangedRsPref(prs);
         }
     }
 }
