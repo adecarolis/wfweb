@@ -5466,6 +5466,9 @@ void wfmain::receiveValue(cacheItem val){
         emit sendLevel(val.command,val.value.value<uchar>());
         break;
     case funcRFPower:
+        changeSliderQuietly(ui->txPowerSlider, val.value.value<uchar>());
+        emit sendLevel(val.command,val.value.value<uchar>());
+        break;
     case funcCompressorLevel:
     case funcNBLevel:
     case funcNRLevel:
