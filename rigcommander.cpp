@@ -938,7 +938,7 @@ void rigCommander::parseCommand()
     case funcTransceiverId:
         if (!rigCaps.modelID)
         {
-            if (payloadIn[0] == 0x0 && payloadIn.size() > 1)
+            if (payloadIn[0] == (char)0x0 && payloadIn.size() > 1)
             {
                 payloadIn.remove(0,1); // Remove spurious response.
             }
@@ -2415,7 +2415,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, uchar vfo)
     if (func == funcSendCW)
     {
         val = value.value<QString>().length();
-        qInfo(logRig()) << "Send CW received";
+        qDebug(logRig()) << "Send CW received";
     }
 
     if (func == funcAfGain && value.isValid() && udp != Q_NULLPTR) {
@@ -2481,13 +2481,13 @@ void rigCommander::receiveCommand(funcs func, QVariant value, uchar vfo)
                         }
                     }
                     payload.append(textData);
-                    qInfo(logRig()) << "Sending CW: payload:" << payload.toHex(' ');
+                    qDebug(logRig()) << "Sending CW: payload:" << payload.toHex(' ');
                  }
             }
             else if (!strcmp(value.typeName(),"uchar"))
             {
                 payload.append(bcdEncodeChar(value.value<uchar>()));
-                qInfo(logRig()) << "**** setting uchar value" << funcString[func] << "val" << value.value<uchar>();
+                qDebug(logRig()) << "**** setting uchar value" << funcString[func] << "val" << value.value<uchar>();
             }
             else if (!strcmp(value.typeName(),"ushort"))
             {
