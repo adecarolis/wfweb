@@ -993,7 +993,6 @@ void wfmain::configureVFOs()
         vfo->wfInterpolate(prefs.wfInterpolate);
         vfo->setScrollSpeedXY(prefs.scopeScrollX, prefs.scopeScrollY);
         vfo->prepareWf(i==0?prefs.mainWflength:prefs.subWflength);
-        vfo->preparePlasma();
         vfo->setRange(i==0?prefs.mainPlotFloor:prefs.subPlotFloor,i==0?prefs.mainPlotCeiling:prefs.subPlotCeiling);
         vfo->wfTheme(i==0?prefs.mainWfTheme:prefs.subWfTheme);
         vfo->setClickDragTuning(prefs.clickDragTuningEnable);

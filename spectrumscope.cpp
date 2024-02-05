@@ -175,6 +175,11 @@ spectrumScope::spectrumScope(QWidget *parent)
     spectrum->addLayer( "Top Layer", spectrum->layer("main"));
     spectrum->graph(0)->setLayer("Top Layer");
 
+    spectrumPlasma.resize(spectrumPlasmaSizeMax);
+    for(int p=0; p < spectrumPlasmaSizeMax; p++) {
+        spectrumPlasma[p] = 0;
+    }
+
     QColor color(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
     spectrum->graph(1)->setLineStyle(QCPGraph::lsLine);
     spectrum->graph(1)->setPen(QPen(color.lighter(200)));
@@ -429,6 +434,10 @@ bool spectrumScope::prepareWf(uint wf)
     waterfall->yAxis->setRangeReversed(true);
     waterfall->xAxis->setVisible(false);
 
+    clearPeaks();
+    clearPlasma();
+
+
     scopePrepared = true;
     return ret;
 }
@@ -527,9 +536,6 @@ bool spectrumScope::updateScope(scopeData data)
             // TODO: create non-button function to do this
             // This will break if the button is ever moved or renamed.
             clearPeaks();
-        } else {
-            plasmaPrepared = false;
-            preparePlasma();
         }
         // Inform other threads (cluster) that the frequency range has changed.
         emit frequencyRange(vfo, data.startFreq, data.endFreq);
@@ -567,11 +573,15 @@ bool spectrumScope::updateScope(scopeData data)
         }
     }
     plasmaMutex.lock();
-    spectrumPlasma.push_front(data.data);
-    if(spectrumPlasma.size() > (int)spectrumPlasmaSize)
-    {
-        spectrumPlasma.pop_back();
-    }
+    spectrumPlasma[spectrumPlasmaPosition] = data.data;
+    spectrumPlasmaPosition = (spectrumPlasmaPosition+1) % spectrumPlasmaSizeCurrent;
+    //spectrumPlasma.push_front(data.data);
+//    if(spectrumPlasma.size() > (int)spectrumPlasmaSizeCurrent)
+//    {
+//        // If we have pushed_front more than spectrumPlasmaSize,
+//        // then we cut one off the back.
+//        spectrumPlasma.pop_back();
+//    }
     plasmaMutex.unlock();
     QMutexLocker locker(&mutex);
     if ((plotFloor != oldPlotFloor) || (plotCeiling != oldPlotCeiling)){
@@ -766,52 +776,25 @@ bool spectrumScope::updateScope(scopeData data)
 
 
 // Plasma functions
-void spectrumScope::preparePlasma()
-{
-    QMutexLocker locker(&plasmaMutex);
-
-    if(plasmaPrepared)
-        return;
-
-    if(spectrumPlasmaSize == 0)
-        spectrumPlasmaSize = 128;
-
-    spectrumPlasma.clear();
-    spectrumPlasma.squeeze();
-    plasmaPrepared = true;
-}
 
 void spectrumScope::resizePlasmaBuffer(int size) {
-    QMutexLocker locker(&plasmaMutex);
-    QByteArray empty((int)spectWidth, '\x01');
-
-    int oldSize = spectrumPlasma.size();
-
-    if(oldSize < size)
-    {
-        spectrumPlasma.resize(size);
-        for(int p=oldSize; p < size; p++)
-        {
-            spectrumPlasma.append(empty);
-        }
-    } else if (oldSize > size){
-        for(int p = oldSize; p > size; p--)
-        {
-            spectrumPlasma.pop_back();
-        }
-    }
-
-    spectrumPlasma.squeeze();
+    // QMutexLocker locker(&plasmaMutex);
+    qDebug() << "Resizing plasma buffer via parameter, from oldsize " << spectrumPlasmaSizeCurrent << " to new size: " << size;
+    spectrumPlasmaSizeCurrent = size;
+    return;
 }
 
 void spectrumScope::clearPeaks()
 {
+    // Clear the spectrum peaks as well as the plasma buffer
     spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
-    clearPlasma();
+    //clearPlasma();
 }
 
 void spectrumScope::clearPlasma()
 {
+    // Clear the buffer of spectrum used for peak and average computation.
+    // This is only needed one time, when the VFO is created with spectrum size info.
     QMutexLocker locker(&plasmaMutex);
     QByteArray empty((int)spectWidth, '\x01');
     int pSize = spectrumPlasma.size();
@@ -824,27 +807,35 @@ void spectrumScope::clearPlasma()
 void spectrumScope::computePlasma()
 {
     QMutexLocker locker(&plasmaMutex);
-    spectrumPlasmaLine.clear();
-    spectrumPlasmaLine.resize(spectWidth);
-    int specPlasmaSize = spectrumPlasma.size();
+    // Spec PlasmaLine is a single line of spectrum, ~~600 pixels or however many the radio provides.
+    // This changes width only when we connect to a new radio.
+    if(spectrumPlasmaLine.size() != spectWidth) {
+        spectrumPlasmaLine.clear();
+        spectrumPlasmaLine.resize(spectWidth);
+    }
+
+    // spectrumPlasma is the bufffer of spectrum lines to use when computing the average or peak.
+
+    int specPlasmaSize = spectrumPlasmaSizeCurrent; // go only this far in
     if(underlayMode == underlayAverageBuffer)
     {
         for(int col=0; col < spectWidth; col++)
         {
             for(int pos=0; pos < specPlasmaSize; pos++)
             {
-                spectrumPlasmaLine[col] += (unsigned char)spectrumPlasma[pos][col];
+                spectrumPlasmaLine[col] += (unsigned char)spectrumPlasma.at(pos).at(col);
             }
-            spectrumPlasmaLine[col] = spectrumPlasmaLine[col] / specPlasmaSize;
+            spectrumPlasmaLine[col] = spectrumPlasmaLine.at(col) / specPlasmaSize;
         }
     } else if (underlayMode == underlayPeakBuffer){
         // peak mode, running peak display
         for(int col=0; col < spectWidth; col++)
         {
+            spectrumPlasmaLine[col] = spectrumPlasma.at(0).at(col); // initial value
             for(int pos=0; pos < specPlasmaSize; pos++)
             {
-                if((double)((unsigned char)spectrumPlasma[pos][col]) > spectrumPlasmaLine[col])
-                    spectrumPlasmaLine[col] = (unsigned char)spectrumPlasma[pos][col];
+                if((double)((unsigned char)spectrumPlasma.at(pos).at(col)) > spectrumPlasmaLine.at(col))
+                    spectrumPlasmaLine[col] = (unsigned char)spectrumPlasma.at(pos).at(col);
             }
         }
     }
@@ -865,7 +856,6 @@ void spectrumScope::showHideControls(spectrumMode_t mode)
         spanCombo->hide();
     }
 }
-
 
 void spectrumScope::enableScope(bool en)
 {

@@ -35,7 +35,6 @@ public:
     bool prepareWf(uint wfLength);
     void prepareScope(uint ampMap, uint spectWidth);
     bool updateScope(scopeData spectrum);
-    void preparePlasma();
     void setRange(int floor, int ceiling);
     void wfInterpolate(bool en) { colorMap->setInterpolate(en); }
     void wfAntiAliased(bool en) { colorMap->setAntialiased(en); }
@@ -77,7 +76,7 @@ public:
     void setFrequency (freqt f);
 
     void receiveMode (modeInfo m);
-    modeInfo currentMode() {return mode;};
+    modeInfo currentMode() {return mode;}
     void clearSpans() { spanCombo->clear();}
     void clearMode() { modeCombo->clear();}
     void clearData() { dataCombo->clear();}
@@ -228,9 +227,11 @@ private:
     QByteArray spectrumPeaks;
     QVector <double> spectrumPlasmaLine;
     QVector <QByteArray> spectrumPlasma;
-    unsigned int spectrumPlasmaSize = 64;
+    unsigned int spectrumPlasmaSizeCurrent = 64;
+    unsigned int spectrumPlasmaSizeMax = 128;
+    unsigned int spectrumPlasmaPosition = 0;
+
     underlay_t underlayMode = underlayNone;
-    bool plasmaPrepared = false;
     QMutex plasmaMutex;
 
     double plotFloor = 0;
