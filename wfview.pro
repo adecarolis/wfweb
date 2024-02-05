@@ -39,8 +39,6 @@ CONFIG(debug, release|debug) {
     win32:DESTDIR = wfview-debug
 }
 
-linux:QMAKE_CXXFLAGS += -fopenmp
-linux:QMAKE_LFLAGS += -fopenmp
 
 # RTAudio defines
 win32:DEFINES += __WINDOWS_WASAPI__
