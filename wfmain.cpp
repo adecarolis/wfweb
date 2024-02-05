@@ -3976,6 +3976,7 @@ void wfmain::receivePTTstatus(bool pttOn)
 
         pttLed->setState(QLedLabel::State::StateError);
         pttLed->setToolTip("Transmitting");
+        changePrimaryMeter(true);
         if(splitModeEnabled)
         {
             pttLed->setState(QLedLabel::State::StateSplitErrorOk);
@@ -3989,6 +3990,8 @@ void wfmain::receivePTTstatus(bool pttOn)
     {
         pttLed->setState(QLedLabel::State::StateOk);
         pttLed->setToolTip("Receiving");
+        changePrimaryMeter(false);
+
     }
     amTransmitting = pttOn;
     rpt->handleTransmitStatus(pttOn);
@@ -4000,9 +4003,34 @@ void wfmain::changeTxBtn()
     if(amTransmitting)
     {
         ui->transmitBtn->setText("Receive");
+
     } else {
         ui->transmitBtn->setText("Transmit");
     }
+}
+
+void wfmain::changePrimaryMeter(bool transmitOn) {
+    // Change the Primary UI Meter and alter the queue
+
+    // This function is only called from one place:
+    // When we receive a new PTT status.
+    // It is not called by UI changes, since we receive
+    // PTT status regularly and quite frequently.
+
+    funcs newCmd;
+    funcs oldCmd;
+
+    if(transmitOn) {
+        oldCmd = meter_tToMeterCommand(meterS);
+        newCmd = meter_tToMeterCommand(meterPower);
+        ui->meterSPoWidget->setMeterType(meterPower);
+    } else {
+        oldCmd = meter_tToMeterCommand(meterPower);
+        newCmd = meter_tToMeterCommand(meterS);
+        ui->meterSPoWidget->setMeterType(meterS);
+    }
+    queue->del(oldCmd);
+    queue->add(priorityHighest,queueItem(newCmd,true));
 }
 
 void wfmain::changeFullScreenMode(bool checked)
@@ -4567,6 +4595,7 @@ void wfmain::receiveMeter(meter_t inMeter, unsigned char level)
         default:
             if(ui->meter2Widget->getMeterType() == inMeter)
             {
+                // The incoming meter data matches the UI meter
                 ui->meter2Widget->setLevel(level);
             } else if ( (ui->meter2Widget->getMeterType() == meterAudio) &&
                         (inMeter == meterTxMod) && amTransmitting) {

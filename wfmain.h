@@ -680,6 +680,7 @@ private:
                                    unsigned int tsHz);
 
     void changeTxBtn();
+    void changePrimaryMeter(bool transmitOn);
     void changeSliderQuietly(QSlider *slider, int value);
     void showAndRaiseWidget(QWidget *w);
     void statusFromSliderPercent(QString name, int percentValue);
