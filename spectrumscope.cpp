@@ -176,7 +176,7 @@ spectrumScope::spectrumScope(QWidget *parent)
     spectrum->graph(0)->setLayer("Top Layer");
 
     spectrumPlasma.resize(spectrumPlasmaSizeMax);
-    for(int p=0; p < spectrumPlasmaSizeMax; p++) {
+    for(unsigned int p=0; p < spectrumPlasmaSizeMax; p++) {
         spectrumPlasma[p] = 0;
     }
 
