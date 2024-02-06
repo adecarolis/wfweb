@@ -1542,6 +1542,7 @@ void wfmain::setDefPrefs()
     defPrefs.confirmPowerOff = true;
     defPrefs.meter2Type = meterNone;
     defPrefs.meter3Type = meterNone;
+    defPrefs.compMeterReverse = false;
 
     defPrefs.tcpPort = 0;
     defPrefs.tciPort = 50001;
@@ -1614,7 +1615,7 @@ void wfmain::loadSettings()
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
     prefs.meter2Type = static_cast<meter_t>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
     prefs.meter3Type = static_cast<meter_t>(settings->value("Meter3Type", defPrefs.meter3Type).toInt());
-
+    prefs.compMeterReverse = settings->value("compMeterReverse", defPrefs.compMeterReverse).toBool();
     prefs.clickDragTuningEnable = settings->value("ClickDragTuning", false).toBool();
 
     prefs.rigCreatorEnable = settings->value("RigCreator",false).toBool();
@@ -2327,6 +2328,10 @@ void wfmain::extChangedIfPref(prefIfItem i)
         // There's nothing to do here since the code
         // already uses the preference variable as state.
         break;
+    case if_compMeterReverse:
+        ui->meter2Widget->setCompReverse(prefs.compMeterReverse);
+        ui->meter3Widget->setCompReverse(prefs.compMeterReverse);
+        break;
     case if_rigCreatorEnable:
         ui->rigCreatorBtn->setEnabled(prefs.rigCreatorEnable);
         break;
@@ -2779,6 +2784,7 @@ void wfmain::saveSettings()
     settings->setValue("ConfirmPowerOff", prefs.confirmPowerOff);
     settings->setValue("Meter2Type", (int)prefs.meter2Type);
     settings->setValue("Meter3Type", (int)prefs.meter3Type);
+    settings->setValue("compMeterReverse", prefs.compMeterReverse);
     settings->setValue("ClickDragTuning", prefs.clickDragTuningEnable);
     settings->setValue("RigCreator",prefs.rigCreatorEnable);
     settings->setValue("FrequencyUnits",prefs.frequencyUnits);
@@ -3930,6 +3936,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // Set the second meter here as I suspect we need to be connected for it to work?
         changeMeterType(prefs.meter2Type, 2);
         changeMeterType(prefs.meter3Type, 3);
+        ui->meter2Widget->setCompReverse(prefs.compMeterReverse);
+        ui->meter3Widget->setCompReverse(prefs.compMeterReverse);
 //        for (int i = 0; i < ui->meter2selectionCombo->count(); i++)
 //        {
 //            if (static_cast<meter_t>(ui->meter2selectionCombo->itemData(i).toInt()) == prefs.meter2Type)

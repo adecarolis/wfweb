@@ -442,6 +442,11 @@ void settingswidget::updateIfPref(prefIfItem pif)
         }
         break;
     }
+    case if_compMeterReverse:
+    {
+        quietlyUpdateCheckbox(ui->revCompMeterBtn, prefs->compMeterReverse);
+        break;
+    }
     case if_clickDragTuningEnable:
         quietlyUpdateCheckbox(ui->clickDragTuningEnableChk, prefs->clickDragTuningEnable);
         break;
@@ -1534,6 +1539,12 @@ void settingswidget::on_meter3selectionCombo_currentIndexChanged(int index)
     if(prefs->meter3Type != meterNone) {
         setComboBoxItemEnabled(ui->meter2selectionCombo, index, false);
     }
+}
+
+void settingswidget::on_revCompMeterBtn_clicked(bool checked)
+{
+    prefs->compMeterReverse = checked;
+    emit changedIfPref(if_compMeterReverse);
 }
 
 void settingswidget::muteSingleComboItem(QComboBox *comboBox, int index) {
@@ -2713,4 +2724,5 @@ void settingswidget::connectionStatus(bool conn)
     ui->serverTXAudioOutputCombo->setEnabled(!conn);
     ui->audioSystemServerCombo->setEnabled(!conn);
 }
+
 

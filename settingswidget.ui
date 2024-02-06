@@ -795,9 +795,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
             </widget>
            </item>
            <item>
-            <widget class="QCheckBox" name="clickDragTuningEnableChk">
+            <widget class="QCheckBox" name="pttEnableChk">
              <property name="text">
-              <string>Allow tuning via click and drag (experimental)</string>
+              <string>Enable PTT Controls</string>
              </property>
             </widget>
            </item>
@@ -845,6 +845,13 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
             <widget class="QCheckBox" name="wfAntiAliasChk">
              <property name="text">
               <string>Anti-Alias Waterfall</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="clickDragTuningEnableChk">
+             <property name="text">
+              <string>Allow tuning via click and drag (experimental)</string>
              </property>
             </widget>
            </item>
@@ -1027,13 +1034,6 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_28">
            <item>
-            <widget class="QCheckBox" name="pttEnableChk">
-             <property name="text">
-              <string>Enable PTT Controls</string>
-             </property>
-            </widget>
-           </item>
-           <item>
             <spacer name="horizontalSpacer_30">
              <property name="orientation">
               <enum>Qt::Horizontal</enum>
@@ -1061,6 +1061,16 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            </item>
            <item>
             <widget class="QComboBox" name="meter3selectionCombo"/>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="revCompMeterBtn">
+             <property name="toolTip">
+              <string>Broadcast-style reduction meter</string>
+             </property>
+             <property name="text">
+              <string>Reverse Comp Meter</string>
+             </property>
+            </widget>
            </item>
            <item>
             <widget class="QRadioButton" name="autoPollBtn">

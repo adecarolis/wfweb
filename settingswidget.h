@@ -238,6 +238,8 @@ private slots:
 
     void on_meter3selectionCombo_currentIndexChanged(int index);
 
+    void on_revCompMeterBtn_clicked(bool checked);
+
 private:
     Ui::settingswidget *ui;
     void createSettingsListItems();

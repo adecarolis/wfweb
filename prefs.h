@@ -26,11 +26,12 @@ enum prefIfItem {
     if_confirmPowerOff = 1 << 13,
     if_meter2Type = 1 << 14,
     if_meter3Type = 1 << 15,
-    if_clickDragTuningEnable = 1 << 16,
-    if_currentColorPresetNumber = 1 << 17,
-    if_rigCreatorEnable = 1 << 18,
-    if_frequencyUnits = 1 << 19,
-    if_all = 1 << 20
+    if_compMeterReverse = 1 << 16,
+    if_clickDragTuningEnable = 1 << 17,
+    if_currentColorPresetNumber = 1 << 18,
+    if_rigCreatorEnable = 1 << 19,
+    if_frequencyUnits = 1 << 20,
+    if_all = 1 << 21
 };
 
 enum prefColItem {
@@ -180,6 +181,7 @@ struct preferences {
     bool confirmPowerOff;
     meter_t meter2Type;
     meter_t meter3Type;
+    bool compMeterReverse = false;
     bool clickDragTuningEnable;
     int currentColorPresetNumber = 0;
     bool rigCreatorEnable = false;

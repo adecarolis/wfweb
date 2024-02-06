@@ -30,6 +30,7 @@ public slots:
     void setLevels(int current, int peak, int average);
     void setLevels(int current, int peak); // calculate avg
     void setLevel(int current);
+    void setCompReverse(bool reverse);
     void clearMeterOnPTTtoggle();
     void clearMeter();
     void setMeterType(meter_t type);
@@ -58,6 +59,7 @@ private:
     int current=0;
     int peak = 0;
     int average = 0;
+    bool reverseCompMeter = true;
 
     int averageBalisticLength = 30;
     int peakBalisticLength = 30;
@@ -85,6 +87,7 @@ private:
     void drawScaleVd(QPainter *qp);
     void drawScaleId(QPainter *qp);
     void drawScaleComp(QPainter *qp);
+    void drawScaleCompInverted(QPainter *qp);
     void drawScale_dBFs(QPainter *qp);
     void drawScaleRaw(QPainter *qp);
 

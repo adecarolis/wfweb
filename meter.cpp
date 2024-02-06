@@ -68,6 +68,10 @@ meter::meter(QWidget *parent) : QWidget(parent)
 
 }
 
+void meter::setCompReverse(bool reverse) {
+    this->reverseCompMeter = reverse;
+}
+
 void meter::setColors(QColor current, QColor peakScale, QColor peakLevel,
                       QColor average, QColor lowLine,
                       QColor lowText)
@@ -242,7 +246,11 @@ void meter::paintEvent(QPaintEvent *)
         case meterComp:
             label = "CMP(dB)";
             peakRedLevel = 100;
-            drawScaleComp(&painter);
+            if(reverseCompMeter) {
+                drawScaleCompInverted(&painter);
+            } else {
+                drawScaleComp(&painter);
+            }
             break;
         case meterNone:
             return;
@@ -304,6 +312,7 @@ void meter::paintEvent(QPaintEvent *)
         int logAverage = (int)((1-audiopot[255-average])*255);
         int logPeak = (int)((1-audiopot[255-peak])*255);
 
+        // Current value:
         // X, Y, Width, Height
         painter.drawRect(mXstart,mYstart,logCurrent,barHeight);
 
@@ -325,15 +334,22 @@ void meter::paintEvent(QPaintEvent *)
 
     } else {
 
-
+        // Current value:
         // X, Y, Width, Height
-        painter.drawRect(mXstart,mYstart,current,barHeight);
+        if(meterType==meterComp && reverseCompMeter) {
+            painter.drawRect(255+mXstart,mYstart,-current,barHeight);
+        } else {
+            painter.drawRect(mXstart,mYstart,current,barHeight);
+        }
 
         // Average:
         painter.setPen(averageColor);
         painter.setBrush(averageColor);
-        painter.drawRect(mXstart+average-1,mYstart,1,barHeight); // bar is 1 pixel wide, height = meter start?
-
+        if(meterType==meterComp && reverseCompMeter) {
+            painter.drawRect(255+mXstart-average,mYstart,-1,barHeight); // bar is 1 pixel wide, height = meter start?
+        } else {
+            painter.drawRect(mXstart+average-1,mYstart,1,barHeight); // bar is 1 pixel wide, height = meter start?
+        }
         // Peak:
         painter.setPen(peakColor);
         painter.setBrush(peakColor);
@@ -342,9 +358,13 @@ void meter::paintEvent(QPaintEvent *)
             painter.setBrush(Qt::red);
             painter.setPen(Qt::red);
         }
-
-        painter.drawRect(mXstart+peak-1,mYstart,2,barHeight);
+        if(meterType==meterComp && reverseCompMeter) {
+            painter.drawRect(255+mXstart-peak+1,mYstart,-1,barHeight);
+        } else {
+            painter.drawRect(mXstart+peak-1,mYstart,2,barHeight);
+        }
     }
+
     if(drawLabels)
     {
         drawLabel(&painter);
@@ -668,6 +688,50 @@ void meter::drawScaleComp(QPainter *qp)
     qp->drawLine(mXstart,scaleLineYstart,peakRedLevel+mXstart,scaleLineYstart);
     qp->setPen(highLineColor);
     qp->drawLine(peakRedLevel+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
+}
+
+void meter::drawScaleCompInverted(QPainter *qp) {
+    // inverted scale
+    //
+    // 0000=0 dB, 0130=15 dB,0241=30 dB
+    //
+
+    qp->setPen(lowTextColor);
+
+    int midPointDn = 130;
+    int midPointdB = 15;
+
+    int highPointDn = 241;
+    int highPointdB = 30;
+    float dBperDn = (float)(highPointdB-midPointdB) / float(highPointDn-midPointDn);
+
+    int i=mXstart;
+    //i+=midPointDn/4; // skip the 0 for cleaner label space
+
+    // Vertical graticules and text
+
+    // drawLine expects two sets of coordinates dictating start and end position.
+    for(; i<mXstart+midPointDn; i+=midPointDn/4)
+    {
+        qp->drawText(255+mXstart-i+(midPointDn/4),scaleTextYstart, QString("%1").arg( (int)((i-mXstart) * (float(midPointdB) / float(midPointDn)) )) );
+        qp->drawLine(255+mXstart-i+(midPointDn/4),scaleTextYstart, 255+mXstart-i+(midPointDn/4), scaleTextYstart+5);
+    }
+
+    i = midPointDn+60;
+    // The "-60" blocks the last digit which runs over the label text
+    for(; i<mXstart+255-60; i+= 30)
+    {
+        qp->drawText(255+mXstart-i,scaleTextYstart, QString("%1").arg( (int) std::round( ((i-mXstart-midPointDn) * (dBperDn) ) + (midPointdB) )));
+        qp->drawLine(255+mXstart-i,scaleTextYstart, 255+mXstart-i, scaleTextYstart+5);
+    }
+
+    // Now the lines:
+    qp->setPen(lowLineColor);
+
+    // Line: X1, Y1 -->to--> X2, Y2
+    qp->drawLine(255+mXstart,scaleLineYstart,255-peakRedLevel+mXstart,scaleLineYstart);
+    qp->setPen(highLineColor);
+    qp->drawLine(255-peakRedLevel+mXstart,scaleLineYstart,mXstart,scaleLineYstart);
 }
 
 void meter::drawScaleSWR(QPainter *qp)
