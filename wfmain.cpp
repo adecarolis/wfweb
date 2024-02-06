@@ -5207,6 +5207,12 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
         return;
     }
 
+    if( (type == QtWarningMsg) && (msg.contains("QPainter::")) ) {
+        // This is a message from QCP about a collapsed plot area.
+        // Ignore.
+        return;
+    }
+
     QMutexLocker locker(&logMutex);
     QTextStream out(m_logFile.data());
     QString text;
@@ -5249,7 +5255,6 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     logTextMutex.lock();
     logStringBuffer.push_front(QPair<QtMsgType,QString>(type,text));
     logTextMutex.unlock();
-
 }
 
 void wfmain::receiveClusterOutput(QString text) {
