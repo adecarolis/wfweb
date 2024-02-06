@@ -52,6 +52,7 @@ private:
     QComboBox *combo = NULL;
     meter_t meterType;
     QString meterShortString;
+    bool haveUpdatedData = false;
     int fontSize = 10;
     int length=30;
     int current=0;

@@ -446,6 +446,8 @@ void spectrumScope::setRange(int floor, int ceiling)
 {
     plotFloor = floor;
     plotCeiling = ceiling;
+    wfFloor = floor;
+    wfCeiling = ceiling;
     maxAmp = ceiling;
     if (spectrum != Q_NULLPTR)
         spectrum->yAxis->setRange(QCPRange(floor, ceiling));

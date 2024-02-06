@@ -190,6 +190,7 @@ void meter::paintEvent(QPaintEvent *)
 {
     if(freezeDrawing)
         return;
+
     QPainter painter(this);
     // This next line sets up a canvis within the
     // space of the widget, and gives it coordinates.
@@ -348,6 +349,7 @@ void meter::paintEvent(QPaintEvent *)
     {
         drawLabel(&painter);
     }
+    haveUpdatedData = false;
 }
 
 void meter::drawLabel(QPainter *qp)
@@ -379,6 +381,7 @@ void meter::setLevel(int current)
             this->peak = peakLevels.at(i);
     }
 
+    haveUpdatedData = true;
     this->update();
 }
 
@@ -395,7 +398,8 @@ void meter::setLevels(int current, int peak)
     }
     this->average = sum / std::min(avgPosition, (int)avgLevels.size());
 
-    this->update();
+    haveUpdatedData = true;
+    this->update(); // place repaint event on the event queue
 }
 
 void meter::setLevels(int current, int peak, int average)
@@ -404,7 +408,8 @@ void meter::setLevels(int current, int peak, int average)
     this->peak = peak;
     this->average = average;
 
-    this->update();
+    haveUpdatedData = true;
+    this->update(); // place repaint event on the event queue
 }
 
 void meter::updateDrawing(int num)
