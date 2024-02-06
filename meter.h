@@ -1,6 +1,9 @@
 #ifndef METER_H
 #define METER_H
 
+#include <QDebug>
+#include <QStandardItemModel>
+#include <QComboBox>
 #include <QWidget>
 #include <QPainter>
 #include <vector>
@@ -18,6 +21,7 @@ public:
     explicit meter(QWidget *parent = nullptr);
 
 signals:
+    void configureMeterSignal(meter_t type);
 
 public slots:
     void paintEvent(QPaintEvent *);
@@ -35,10 +39,17 @@ public slots:
     void setColors(QColor current, QColor peakScale, QColor peakLevel,
                    QColor average, QColor lowLine,
                    QColor lowText);
+    void blockMeterType(meter_t type);
 
+private slots:
+    void acceptComboItem(int item);
 
 private:
     //QPainter painter;
+    bool eventFilter(QObject *object, QEvent *event);
+    void handleDoubleClick();
+    bool freezeDrawing = false;
+    QComboBox *combo = NULL;
     meter_t meterType;
     QString meterShortString;
     int fontSize = 10;
@@ -77,6 +88,10 @@ private:
     void drawScaleRaw(QPainter *qp);
 
     void drawLabel(QPainter *qp);
+
+    void muteSingleComboItem(QComboBox *comboBox, int index);
+    void enableAllComboBoxItems(QComboBox *combobox);
+    void setComboBoxItemEnabled(QComboBox * comboBox, int index, bool enabled);
 
     QString label;
 

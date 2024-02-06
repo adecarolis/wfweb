@@ -29,6 +29,7 @@ enum meter_t {
     meterLatency
 };
 
+
 enum spectrumMode_t {
     spectModeCenter=0x00,
     spectModeFixed=0x01,
@@ -412,6 +413,54 @@ enum usbCommandType{ commandButton, commandKnob, commandAny };
 enum usbFeatureType { featureReset,featureResetKeys, featureEventsA, featureEventsB, featureFirmware, featureSerial, featureButton, featureSensitivity, featureBrightness,
                       featureOrientation, featureSpeed, featureColor, featureOverlay, featureTimeout, featureLCD, featureGraph, featureLEDControl };
 
+inline QString getMeterDebug(meter_t m) {
+    QString rtn = QString("Meter name: ");
+    switch(m) {
+    case meterNone:
+        rtn.append("meterNone");
+        break;
+    case meterS:
+        rtn.append("meterS");
+        break;
+    case meterCenter:
+        rtn.append("meterCenter");
+        break;
+    case meterSWR:
+        rtn.append("meterSWR");
+        break;
+    case meterPower:
+        rtn.append("meterPower");
+        break;
+    case meterALC:
+        rtn.append("meterALC");
+        break;
+    case meterComp:
+        rtn.append("meterComp");
+        break;
+    case meterVoltage:
+        rtn.append("meterVoltage");
+        break;
+    case meterCurrent:
+        rtn.append("meterCurrent");
+        break;
+    case meterRxdB:
+        rtn.append("meterRxdB");
+        break;
+    case meterTxMod:
+        rtn.append("meterTxMod");
+        break;
+    case meterRxAudio:
+        rtn.append("meterRxAudio");
+        break;
+    case meterLatency:
+        rtn.append("meterLatency");
+        break;
+    default:
+        rtn.append("UNKNOWN");
+        break;
+    }
+    return rtn;
+}
 
 Q_DECLARE_METATYPE(freqt)
 Q_DECLARE_METATYPE(spectrumMode_t)

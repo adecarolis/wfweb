@@ -247,6 +247,27 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
           QToolTip::showText(QCursor::pos(), QString("%1").arg(value*100/255), nullptr);
         });
 
+    connect(ui->meter2Widget, &meter::configureMeterSignal,
+            [=](const meter_t &meterTypeRequested) {
+        // Change the preferences and update settings widget to reflect new meter selection:
+        prefs.meter2Type = meterTypeRequested;
+        setupui->updateIfPref(if_meter2Type);
+        // Change the meter locally:
+        changeMeterType(meterTypeRequested, 2);
+        // Block duplicate meter selection in the other meter:
+        ui->meter3Widget->blockMeterType(meterTypeRequested);
+    });
+
+    connect(ui->meter3Widget, &meter::configureMeterSignal,
+            [=](const meter_t &meterTypeRequested) {
+        // Change the preferences and update settings widget to reflect new meter selection:
+        prefs.meter3Type = meterTypeRequested;
+        setupui->updateIfPref(if_meter3Type);
+        // Change the meter locally:
+        changeMeterType(meterTypeRequested, 3);
+        // Block duplicate meter selection in the other meter:
+        ui->meter2Widget->blockMeterType(meterTypeRequested);
+    });
 
 #if defined(USB_CONTROLLER)
     #if defined(USB_HOTPLUG) && defined(Q_OS_LINUX)

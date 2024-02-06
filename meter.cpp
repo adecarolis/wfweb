@@ -46,6 +46,26 @@ meter::meter(QWidget *parent) : QWidget(parent)
     avgLevels.resize(averageBalisticLength, 0);
     peakLevels.resize(peakBalisticLength, 0);
 
+    combo = new QComboBox(this);
+    combo->blockSignals(true);
+    combo->addItem("None", meterNone);
+    combo->addItem("SWR", meterSWR);
+    combo->addItem("ALC", meterALC);
+    combo->addItem("Compression", meterComp);
+    combo->addItem("Voltage", meterVoltage);
+    combo->addItem("Current", meterCurrent);
+    combo->addItem("Center", meterCenter);
+    combo->addItem("TxRxAudio", meterAudio);
+    combo->addItem("RxAudio", meterRxAudio);
+    combo->addItem("TxAudio", meterTxMod);
+    combo->blockSignals(false);
+
+    connect(combo, SIGNAL(activated(int)), this, SLOT(acceptComboItem(int)));
+    //connect(combo, SIGNAL(currentIndexChanged(int)), this, SLOT(acceptComboItem(int)));
+
+    combo->hide();
+    this->installEventFilter(this);
+
 }
 
 void meter::setColors(QColor current, QColor peakScale, QColor peakLevel,
@@ -111,6 +131,16 @@ void meter::setMeterType(meter_t type)
     this->clearMeter();
 }
 
+void meter::blockMeterType(meter_t mtype) {
+    // TODO: Code to block off duplicate meter types from the selection menu
+    enableAllComboBoxItems(combo);
+    qDebug() << "Asked to block meter of type: " << getMeterDebug(mtype);
+    if(mtype != meterNone) {
+        int m_index = combo->findData(mtype);
+        setComboBoxItemEnabled(combo, m_index, false);
+    }
+}
+
 meter_t meter::getMeterType()
 {
     return meterType;
@@ -126,8 +156,38 @@ QString meter::getMeterShortString()
     return meterShortString;
 }
 
+void meter::acceptComboItem(int item) {
+    qDebug() << "Meter selected combo item number: " << item;
+
+    meter_t meterTypeRequested = static_cast<meter_t>(combo->itemData(item).toInt());
+    if(meterType != meterTypeRequested) {
+        qDebug() << "Changing meter to type: " << getMeterDebug(meterTypeRequested) << ", with item index: " << item;
+        emit configureMeterSignal(meterTypeRequested);
+    }
+
+    combo->hide();
+    freezeDrawing = false;
+}
+
+void meter::handleDoubleClick() {
+    freezeDrawing = true;
+    combo->show();
+}
+
+bool meter::eventFilter(QObject *object, QEvent *event) {
+    if(event->type() == QEvent::MouseButtonDblClick) {
+        qDebug() << "Mouse double click event in meter widget";
+        handleDoubleClick();
+        return true;
+    }
+    (void)object;
+    return false;
+}
+
 void meter::paintEvent(QPaintEvent *)
 {
+    if(freezeDrawing)
+        return;
     QPainter painter(this);
     // This next line sets up a canvis within the
     // space of the widget, and gives it coordinates.
@@ -714,3 +774,27 @@ void meter::drawScaleS(QPainter *qp)
     qp->setPen(highLineColor);
     qp->drawLine(peakRedLevel+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
 }
+
+void meter::muteSingleComboItem(QComboBox *comboBox, int index) {
+    enableAllComboBoxItems(comboBox);
+    setComboBoxItemEnabled(comboBox, index, false);
+}
+
+void meter::enableAllComboBoxItems(QComboBox *combobox) {
+    for(int i=0; i < combobox->count(); i++) {
+        setComboBoxItemEnabled(combobox, i, true);
+    }
+}
+
+void meter::setComboBoxItemEnabled(QComboBox * comboBox, int index, bool enabled)
+{
+    auto * model = qobject_cast<QStandardItemModel*>(comboBox->model());
+    assert(model);
+    if(!model) return;
+
+    auto * item = model->item(index);
+    assert(item);
+    if(!item) return;
+    item->setEnabled(enabled);
+}
+
