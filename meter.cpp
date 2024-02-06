@@ -177,7 +177,9 @@ void meter::handleDoubleClick() {
 bool meter::eventFilter(QObject *object, QEvent *event) {
     if(event->type() == QEvent::MouseButtonDblClick) {
         qDebug() << "Mouse double click event in meter widget";
-        handleDoubleClick();
+        if( !(meterType == meterS || meterType == meterPower)) {
+            handleDoubleClick();
+        }
         return true;
     }
     (void)object;
