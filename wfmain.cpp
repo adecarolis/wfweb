@@ -3995,7 +3995,10 @@ void wfmain::initPeriodicCommands()
         queue->add(priorityMediumLow,funcMonitor,true,false);
     }
 
+    // Medium/MediumLow Priority commands on all rigs (if supported)
     queue->add(priorityMedium,funcRfGain,true,false);
+    queue->add(priorityMedium,funcTunerStatus,true,false);
+
     queue->add(priorityMediumLow,funcTuningStep,true,false);
     queue->add(priorityMediumLow,funcAttenuator,true,false);
     queue->add(priorityMediumLow,funcPreamp,true,false);
@@ -4014,6 +4017,8 @@ void wfmain::initPeriodicCommands()
             queue->add(priorityHighest,queueItem(meterCmd,true));
         }
     }
+
+
 
 }
 
