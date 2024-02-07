@@ -695,6 +695,9 @@ void meter::drawScaleCompInverted(QPainter *qp) {
     //
     // 0000=0 dB, 0130=15 dB,0241=30 dB
     //
+    // rev DN  :        255 ------------------------------------- 0
+    // Geometry:  0---mXstart------------------------------------255+mXstart-----
+    // norm DN :         0  -------------------------------------255
 
     qp->setPen(lowTextColor);
 
@@ -711,18 +714,21 @@ void meter::drawScaleCompInverted(QPainter *qp) {
     // Vertical graticules and text
 
     // drawLine expects two sets of coordinates dictating start and end position.
+
+    // numbers 0-14:
     for(; i<mXstart+midPointDn; i+=midPointDn/4)
     {
         qp->drawText(255+mXstart-i+(midPointDn/4),scaleTextYstart, QString("%1").arg( (int)((i-mXstart) * (float(midPointdB) / float(midPointDn)) )) );
         qp->drawLine(255+mXstart-i+(midPointDn/4),scaleTextYstart, 255+mXstart-i+(midPointDn/4), scaleTextYstart+5);
     }
 
+    // numbers 19-30
     i = midPointDn+60;
-    // The "-60" blocks the last digit which runs over the label text
-    for(; i<mXstart+255-60; i+= 30)
+    // The "-30" blocks the last digit which runs over the label text
+    for(; i<mXstart+255-30; i+= 30)
     {
-        qp->drawText(255+mXstart-i,scaleTextYstart, QString("%1").arg( (int) std::round( ((i-mXstart-midPointDn) * (dBperDn) ) + (midPointdB) )));
-        qp->drawLine(255+mXstart-i,scaleTextYstart, 255+mXstart-i, scaleTextYstart+5);
+        qp->drawText(255+mXstart+32-i,scaleTextYstart, QString("%1").arg( (int) std::round( ((i-mXstart-midPointDn) * (dBperDn) ) + (midPointdB) )));
+        qp->drawLine(255+mXstart+32-i,scaleTextYstart, 255+mXstart+32-i, scaleTextYstart+5);
     }
 
     // Now the lines:
