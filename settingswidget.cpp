@@ -2723,6 +2723,18 @@ void settingswidget::connectionStatus(bool conn)
     ui->serverRXAudioInputCombo->setEnabled(!conn);
     ui->serverTXAudioOutputCombo->setEnabled(!conn);
     ui->audioSystemServerCombo->setEnabled(!conn);
+
+    if(conn) {
+        ui->connectBtn->setText("Disconnect from radio");
+    } else {
+        ui->connectBtn->setText("Connect to radio");
+    }
 }
 
+
+
+void settingswidget::on_connectBtn_clicked()
+{
+    emit connectButtonPressed();
+}
 

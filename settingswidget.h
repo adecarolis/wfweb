@@ -96,6 +96,7 @@ signals:
     void changedClusterPref(prefClusterItem i);
     void changedUdpPref(prefUDPItem i);
     void changedServerPref(prefServerItem i);
+    void connectButtonPressed();
 
 private slots:
     void on_settingsList_currentRowChanged(int currentRow);
@@ -239,6 +240,8 @@ private slots:
     void on_meter3selectionCombo_currentIndexChanged(int index);
 
     void on_revCompMeterBtn_clicked(bool checked);
+
+    void on_connectBtn_clicked();
 
 private:
     Ui::settingswidget *ui;

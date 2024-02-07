@@ -41,7 +41,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>1</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -734,6 +734,13 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <property name="topMargin">
             <number>0</number>
            </property>
+           <item>
+            <widget class="QPushButton" name="connectBtn">
+             <property name="text">
+              <string>Connect To Radio</string>
+             </property>
+            </widget>
+           </item>
            <item>
             <spacer name="horizontalSpacer_5">
              <property name="orientation">

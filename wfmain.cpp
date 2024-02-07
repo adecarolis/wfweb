@@ -886,6 +886,7 @@ void wfmain::connectSettingsWidget()
     //connect(setupui, SIGNAL(changedServerTXAudioOutputCombo(int)), this, SLOT(changedServerTXAudioOutput(int)));
 
     connect(this, SIGNAL(connectionStatus(bool)), setupui, SLOT(connectionStatus(bool)));
+    connect(setupui, SIGNAL(connectButtonPressed()), this, SLOT(handleExtConnectBtn()));
 }
 
 // NOT Migrated, EHL TODO, carefully remove this function
@@ -4396,6 +4397,11 @@ void wfmain::receiveATUStatus(unsigned char atustatus)
             qInfo(logSystem()) << "Did not understand ATU status: " << (unsigned int) atustatus;
             break;
     }
+}
+
+void wfmain::handleExtConnectBtn() {
+    // from settings widget
+    on_connectBtn_clicked();
 }
 
 void wfmain::on_connectBtn_clicked()

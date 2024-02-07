@@ -329,6 +329,8 @@ private slots:
     void extChangedUdpPref(prefUDPItem i);
     void extChangedServerPref(prefServerItem i);
 
+    void handleExtConnectBtn();
+
     void receiveScopeSettings(uchar vfo, int theme, quint16 len, int floor, int ceiling);
     void receiveValue(cacheItem val);
     void setAudioDevicesUI();
