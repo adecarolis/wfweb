@@ -21,7 +21,7 @@ cachingQueue *cachingQueue::getInstance(QObject* parent)
         connect (instance, SIGNAL(finished()),instance, SLOT(deleteLater()));
         instance->start(QThread::HighPriority);
     }
-    qInfo() << "Returning instance of cachingQueue() to calling process:" << ((parent != Q_NULLPTR) ? parent->objectName(): "<unknown>");
+    qDebug() << "Returning instance of cachingQueue() to calling process:" << ((parent != Q_NULLPTR) ? parent->objectName(): "<unknown>");
     return instance;
 }
 
@@ -130,7 +130,7 @@ void cachingQueue::add(queuePriority prio ,queueItem item)
                     queueItem it=item;
                     it.recurring=false;
                     queue.insert(queue.cend(),priorityHighest, it);
-                    qInfo() << "adding" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "vfo" << item.vfo;
+                    qDebug() << "adding" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "vfo" << item.vfo;
                 }
                 queue.insert(prio, item);
             }
@@ -159,7 +159,7 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
             while (it != queue.end()) {
                 if (it.value().command == item.command && it.value().recurring == item.recurring && it.value().vfo == item.vfo && it.value().param.isValid() == item.param.isValid())
                 {
-                    //qInfo() << "deleting" << it.value().id << funcString[it.value().command] << "vfo" << it.value().vfo << "recurring" << it.value().recurring ;
+                    qDebug() << "deleting" << it.value().id << funcString[it.value().command] << "VFO" << it.value().vfo << "recurring" << it.value().recurring ;
                     it = queue.erase(it);
                 }
                 else
@@ -172,7 +172,7 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
                 queueItem it = item;
                 it.recurring=false;
                 queue.insert(queue.cend(),priorityHighest, it);
-                qInfo() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "vfo" << item.vfo;
+                qDebug() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "vfo" << item.vfo;
             }
             queue.insert(prio, item);
         }
@@ -191,7 +191,7 @@ void cachingQueue::del(funcs func, uchar vfo)
             qInfo() << "recurring command" << funcString[func] << "vfo" << vfo << "not found in queue";
         while (it != queue.end()) {
             if (it.value().command == func && it.value().vfo == vfo) {
-                //qInfo() << "deleting" << funcString[it.value().command] << "sub" << it.value().sub << "recurring" << it.value().recurring;
+                qDebug() << "deleting" << funcString[it.value().command] << "VFO" << it.value().vfo << "recurring" << it.value().recurring;
                 it = queue.erase(it);
             }
             else

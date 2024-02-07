@@ -317,6 +317,7 @@ void rigCommander::prepDataAndSend(QByteArray data)
         qDebug(logRigTraffic()) << "Final payload in rig commander to be sent to rig: ";
         printHexNow(data, logRigTraffic());
     }
+    lastCommandToRig = data;
     emit dataForComm(data);
 }
 
@@ -1185,9 +1186,15 @@ void rigCommander::parseCommand()
     case funcFB:
         break;
     case funcFA:
-        qInfo(logRig()) << "Error (FA) received from rig.";
-        printHex(payloadIn, false ,true);
+    {
+        qWarning(logRig()) << "Error (FA) received from rig, last command sent:";
+
+        QStringList messages = getHexArray(lastCommandToRig);
+        foreach (auto msg, messages)
+            qWarning(logRig()) << msg;
+
         break;
+    }
     default:
         qWarning(logRig()) << "Unhandled command received from rig" << payloadIn.toHex().mid(0,10) << "Contact support!";
         break;
@@ -1424,7 +1431,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numAttenuators; c++)
         {
             settings->setArrayIndex(c);
-            //qInfo(logRig()) << "** GOT ATTENUATOR" << settings->value("dB", 0).toString().toUInt();
+            qDebug(logRig()) << "** GOT ATTENUATOR" << settings->value("dB", 0).toString().toUInt();
             rigCaps.attenuators.push_back((unsigned char)settings->value("dB", 0).toString().toUInt());
         }
         settings->endArray();
@@ -1460,7 +1467,7 @@ void rigCommander::determineRigCaps()
 
             rigCaps.bands.push_back(bandType(band,bsr,start,end,range,memGroup));
             rigCaps.bsr[band] = bsr;
-            qInfo(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << QString::number(bsr,16);
+            qDebug(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << QString::number(bsr,16);
         }
         settings->endArray();
     }

@@ -459,7 +459,7 @@ void udpHandler::dataReceived()
                         if (in->busy && in->computer[0] != '\x0')
                             admin = true;
 
-                        qCritical(logUdp()) << "Is the user an admin? " << admin;
+                        qDebug(logUdp()) << "Is the user an admin? " << admin;
                         emit setRadioUsage(f, admin, in->busy, QString(in->computer), ip.toString());
                         qDebug(logUdp()) << "Set radio usage num:" << f << in->name << "Busy:" << in->busy << "Computer" << in->computer << "IP" << ip.toString();
                     }

@@ -5,6 +5,24 @@
 
 #include "logcategories.h"
 
+
+QStringList inline getHexArray(const QByteArray &pdata)
+{
+    QString head = "---- Begin hex dump -----:";
+    QString sdata("DATA:  ");
+    QString index("INDEX: ");
+
+    for(int i=0; i < pdata.length(); i++)
+    {
+        sdata.append(QString("%1 ").arg((unsigned char)pdata[i], 2, 16, QChar('0')) );
+        index.append(QString("%1 ").arg(i, 2, 10, QChar('0')));
+    }
+
+    QString tail = "----  End hex dump  -----";
+
+    return {head, sdata, index, tail};
+}
+
 QString inline getHex(const QByteArray &pdata)
 {
     QString head = "---- Begin hex dump -----:\n";

@@ -221,6 +221,8 @@ private:
     QString rigSerialPort;
     quint32 rigBaudRate;
 
+    QByteArray lastCommandToRig;
+
     QString ip;
     int cport;
     int sport;

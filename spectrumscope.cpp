@@ -1477,11 +1477,11 @@ void spectrumScope::receiveCwPitch(uchar pitch)
 {
     if (mode.mk == modeCW || mode.mk == modeCW_R) {
         quint16 p = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
-        if (p != cwPitch)
+        if (p != this->cwPitch)
         {
             passbandCenterFrequency = p / 2000000.0;
             qInfo(logSystem()) << QString("%0 Received new CW Pitch %1 Hz was %2 (center freq %3 MHz)").arg((vfo?"Sub":"Main")).arg(p).arg(cwPitch).arg(passbandCenterFrequency);
-            cwPitch = p;
+            this->cwPitch = p;
         }
     }
 }

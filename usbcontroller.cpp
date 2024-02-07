@@ -113,11 +113,11 @@ void usbController::init(QMutex* mut,usbDevMap* devs ,QVector<BUTTON>* buts,QVec
 #endif
 #endif
         
-        qInfo(logUsbControl()) << "Found available HID devices (not all will be suitable for use):";
+        qDebug(logUsbControl()) << "Found available HID devices (not all will be suitable for use):";
         struct hid_device_info* devs;
         devs = hid_enumerate(0x0, 0x0);
         while (devs) {
-            qInfo(logUsbControl()) << QString("Device found: (%0:%1) %2 manufacturer: (%3)%4 usage: 0x%5 usage_page 0x%6")
+            qDebug(logUsbControl()) << QString("Device found: (%0:%1) %2 manufacturer: (%3)%4 usage: 0x%5 usage_page 0x%6")
                                       .arg(devs->vendor_id, 4, 16, QChar('0'))
                                       .arg(devs->product_id, 4, 16, QChar('0'))
                                       .arg(QString::fromWCharArray(devs->product_string),QString::fromWCharArray(devs->product_string),QString::fromWCharArray(devs->manufacturer_string))
