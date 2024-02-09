@@ -413,6 +413,17 @@ enum usbCommandType{ commandButton, commandKnob, commandAny };
 enum usbFeatureType { featureReset,featureResetKeys, featureEventsA, featureEventsB, featureFirmware, featureSerial, featureButton, featureSensitivity, featureBrightness,
                       featureOrientation, featureSpeed, featureColor, featureOverlay, featureTimeout, featureLCD, featureGraph, featureLEDControl };
 
+
+struct periodicType {
+    periodicType() {};
+    periodicType(funcs func, QString priority, char vfo) : func(func), priority(priority), prioVal(0), vfo(vfo) {};
+    periodicType(funcs func, QString priority, int prioVal, char vfo) : func(func), priority(priority), prioVal(prioVal), vfo(vfo) {};
+    funcs func;
+    QString priority;
+    int prioVal;
+    char vfo;
+};
+
 inline QString getMeterDebug(meter_t m) {
     QString rtn = QString("Meter name: ");
     switch(m) {

@@ -22,9 +22,7 @@ enum queuePriority {
     priorityNone=0, priorityImmediate=1, priorityHighest=2, priorityHigh=3, priorityMediumHigh=5, priorityMedium=7, priorityMediumLow=11, priorityLow=19, priorityLowest=23
 };
 
-enum queueItemType {
-    queueCommandNone,queueCommandGet, queueCommandSet, queueMessage
-};
+inline QMap<QString,int> priorityMap = {{"None",0},{"Immediate",1},{"Highest",2},{"High",3},{"Medium High",5},{"Medium",7},{"Medium Low",11},{"Low",19},{"Lowest",23}};
 
 // Command with no param is a get by default
 struct queueItem {
@@ -124,7 +122,6 @@ public:
     rigCapabilities* getRigCaps() { return rigCaps; }
 };
 
-Q_DECLARE_METATYPE(queueItemType)
 Q_DECLARE_METATYPE(queueItem)
 Q_DECLARE_METATYPE(cacheItem)
 #endif // CACHINGQUEUE_H

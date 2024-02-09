@@ -96,7 +96,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<memoryType>();
     qRegisterMetaType<antennaInfo>();
     qRegisterMetaType<scopeData>();
-    qRegisterMetaType<queueItemType>();
     qRegisterMetaType<queueItem>();
     qRegisterMetaType<cacheItem>();
     qRegisterMetaType<spectrumBounds>();
@@ -3962,6 +3961,20 @@ void wfmain::initPeriodicCommands()
 
     queue->clear();
 
+    foreach (auto cap, rigCaps.periodic) {
+        qDebug(logRig()) << "Inserting command" << funcString[cap.func] << "priority" << cap.priority << "on VFO" << QString::number(cap.vfo);
+        if (cap.vfo == -1) {
+            for (uchar v=0;v<rigCaps.numVFO;v++)
+            {
+                queue->add(queuePriority(cap.prioVal),cap.func,true,v);
+            }
+        }
+        else {
+            queue->add(queuePriority(cap.prioVal),cap.func,true,cap.vfo);
+        }
+    }
+
+/*
     queue->add(priorityMedium,funcSelectedFreq,true,false);
     queue->add(priorityMedium,funcSelectedMode,true,false);
     //queue->add(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),true,false);
@@ -4007,6 +4020,9 @@ void wfmain::initPeriodicCommands()
     queue->add(priorityMediumLow,funcToneSquelchType,true,false);
 
     queue->add(priorityHighest,queueItem(funcSMeter,true));
+
+
+    */
     meter* marray[2];
     marray[0] = ui->meter2Widget;
     marray[1] = ui->meter3Widget;

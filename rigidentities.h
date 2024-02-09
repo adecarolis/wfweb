@@ -272,6 +272,7 @@ struct rigCapabilities {
     quint16 satMemories;
     QString satFormat;
     QVector<memParserFormat> satParser;
+    QVector<periodicType> periodic;
 };
 
 Q_DECLARE_METATYPE(rigCapabilities)

@@ -1259,6 +1259,7 @@ void rigCommander::determineRigCaps()
     rigCaps.steps.clear();
     rigCaps.memParser.clear();
     rigCaps.satParser.clear();
+    rigCaps.periodic.clear();
     // modelID should already be set!
     while (!rigList.contains(rigCaps.modelID))
     {
@@ -1336,6 +1337,26 @@ void rigCommander::determineRigCaps()
                             rigCaps.commandsReverse.insert(QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),func);
             } else {
                 qWarning(logRig()) << "**** Function" << settings->value("Type", "").toString() << "Not Found, rig file may be out of date?";
+            }
+        }
+        settings->endArray();
+    }
+
+    int numPeriodic = settings->beginReadArray("Periodic");
+    if (numPeriodic == 0){
+        qWarning(logRig())<< "No periodic commands defined, please check rigcaps file";
+        settings->endArray();
+    } else {
+        for (int c=0; c < numPeriodic; c++)
+        {
+            settings->setArrayIndex(c);
+            funcs func = funcsLookup.find(settings->value("Command", "").toString().toUpper()).value();
+            if (!rigCaps.commands.contains(func)) {
+                qWarning(logRig()) << "Cannot find periodic command" << settings->value("Command", "").toString() << "in rigcaps, ignoring";
+            } else {
+                rigCaps.periodic.append(periodicType(func,
+                     settings->value("Priority","").toString(),priorityMap[settings->value("Priority","").toString()],
+                     settings->value("VFO",-1).toInt()));
             }
         }
         settings->endArray();

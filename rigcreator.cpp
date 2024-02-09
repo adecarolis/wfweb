@@ -16,8 +16,24 @@ rigCreator::rigCreator(QWidget *parent) :
     this->setWindowFlags(flags);
 
     qInfo() << "Creating instance of rigCreator()";
-    commandsList = new tableCombobox(createModel(commandsModel, funcString),true,ui->commands);
+    commandsList = new tableCombobox(createModel(NUMFUNCS, commandsModel, funcString),true,ui->commands);
     ui->commands->setItemDelegateForColumn(0, commandsList);
+
+    priorityModel = new QStandardItemModel();
+
+    foreach (auto key, priorityMap.keys())
+    {
+        QStandardItem *itemName = new QStandardItem(key);
+        QStandardItem *itemId = new QStandardItem(priorityMap.value(key));
+
+        QList<QStandardItem*> row;
+        row << itemName << itemId;
+        priorityModel->appendRow(row);
+    }
+
+    priorityList = new tableCombobox(priorityModel,true,ui->periodicCommands);
+    ui->periodicCommands->setItemDelegateForColumn(0, priorityList);
+    ui->periodicCommands->setItemDelegateForColumn(1, commandsList);
     /*
     ui->commands->setColumnWidth(0,120);
     ui->commands->setColumnWidth(1,100);
@@ -173,6 +189,34 @@ void rigCreator::loadRigFile(QString file)
             ui->commands->model()->setData(ui->commands->model()->index(c,3),QString::number(settings->value("Max", 0).toInt()));
             ui->commands->setCellWidget(c,4, checkBoxWidget);
 
+        }
+        settings->endArray();
+    }
+
+    ui->periodicCommands->clearContents();
+    ui->periodicCommands->model()->removeRows(0,ui->periodicCommands->rowCount());
+    int numPeriodic = settings->beginReadArray("Periodic");
+    if (numPeriodic == 0) {
+        settings->endArray();
+
+        int c=0;
+        foreach (auto p, defaultPeriodic)
+        {
+            ui->periodicCommands->insertRow(ui->periodicCommands->rowCount());
+            ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,0),p.priority);
+            ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,1),funcString[p.func]);
+            ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,2),QString::number(p.vfo));
+            c++;
+        }
+    }
+    else {
+        for (int c = 0; c < numPeriodic; c++)
+        {
+            settings->setArrayIndex(c);
+            ui->periodicCommands->insertRow(ui->periodicCommands->rowCount());
+            ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,0),settings->value("Priority", "").toString());
+            ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,1),settings->value("Command", "").toString());
+            ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,2),QString::number(settings->value("VFO", 0).toInt()));
         }
         settings->endArray();
     }
@@ -372,6 +416,7 @@ void rigCreator::loadRigFile(QString file)
     connect(ui->memoryFormat,SIGNAL(editingFinished()),SLOT(changed()));
     connect(ui->satMemories,SIGNAL(editingFinished()),SLOT(changed()));
     connect(ui->satelliteFormat,SIGNAL(editingFinished()),SLOT(changed()));
+    connect(ui->periodicCommands,SIGNAL(editingFinished()),SLOT(changed()));
 
     settingsChanged = false;
 }
@@ -462,6 +507,18 @@ void rigCreator::saveRigFile(QString file)
 
     }
     settings->endArray();
+
+    ui->periodicCommands->sortByColumn(1,Qt::AscendingOrder);
+    settings->beginWriteArray("Periodic");
+    for (int n = 0; n<ui->periodicCommands->rowCount();n++)
+    {
+        settings->setArrayIndex(n);
+        settings->setValue("Priority", (ui->periodicCommands->item(n,0) == NULL) ? "" : ui->periodicCommands->item(n,0)->text());
+        settings->setValue("Command", (ui->periodicCommands->item(n,1) == NULL) ? "" : ui->periodicCommands->item(n,1)->text());
+        settings->setValue("VFO", (ui->periodicCommands->item(n,2) == NULL) ? -1 : ui->periodicCommands->item(n,2)->text().toInt());
+    }
+    settings->endArray();
+
 
     //settings->remove("Spans");
     ui->spans->sortByColumn(0,Qt::AscendingOrder);
@@ -587,12 +644,12 @@ void rigCreator::saveRigFile(QString file)
 
 // Create model for comboBox, takes un-initialized model object and populates it.
 // This will be deleted by the comboBox on destruction.
-QStandardItemModel* rigCreator::createModel(QStandardItemModel* model, QString strings[])
+QStandardItemModel* rigCreator::createModel(int num,QStandardItemModel* model, QString strings[])
 {
 
     model = new QStandardItemModel();
 
-    for (int i=0; i < NUMFUNCS;i++)
+    for (int i=0; i < num;i++)
     {
         if (!strings[i].startsWith('-')) {
             QStandardItem *itemName = new QStandardItem(strings[i]);
@@ -603,6 +660,24 @@ QStandardItemModel* rigCreator::createModel(QStandardItemModel* model, QString s
 
             model->appendRow(row);
         }
+    }
+
+    return model;
+}
+
+QStandardItemModel* rigCreator::createModel(QStandardItemModel* model, QStringList strings)
+{
+    model = new QStandardItemModel();
+
+    for (int i=0; i < strings.size();i++)
+    {
+        QStandardItem *itemName = new QStandardItem(strings[i]);
+        QStandardItem *itemId = new QStandardItem(i);
+
+        QList<QStandardItem*> row;
+        row << itemName << itemId;
+
+        model->appendRow(row);
     }
 
     return model;
