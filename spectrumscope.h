@@ -64,10 +64,10 @@ public:
     void receivePassband(quint16 pass);
 
     double getPBTInner () { return PBTInner;}
-    void setPBTInner (double hz);
+    void setPBTInner (uchar val);
 
     double getPBTOuter () { return PBTOuter;}
-    void setPBTOuter (double hz);
+    void setPBTOuter (uchar val);
 
     quint16 getStepSize () { return stepSize;}
     void setStepSize (quint16 hz) { stepSize = hz;}

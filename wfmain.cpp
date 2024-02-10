@@ -5510,25 +5510,11 @@ void wfmain::receiveValue(cacheItem val){
         receiveAntennaSel(val.value.value<antennaInfo>().antenna,val.value.value<antennaInfo>().rx);
         break;
     case funcPBTOuter:
+        vfos[val.vfo]->setPBTOuter(val.value.value<uchar>());
+        break;
     case funcPBTInner:
     {
-        uchar level = val.value.value<uchar>();
-        qint16 shift = (qint16)(level - 128);
-        double tempVar = ceil((shift / 127.0) * vfos[val.vfo]->getPassbandWidth() * 20000.0) / 20000.0;
-        // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
-        double pitch = 0.0;
-        modeInfo mode = vfos[val.vfo]->currentMode();
-        if ((mode.mk == modeCW || mode.mk == modeCW_R) && vfos[val.vfo]->getPassbandWidth() > 0.0006)
-        {
-                pitch = (600.0 - cwPitch) / 1000000.0;
-        }
-        double newVal = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
-
-        if (val.command == funcPBTInner) {
-            vfos[val.vfo]->setPBTInner(newVal);
-        } else {
-            vfos[val.vfo]->setPBTOuter(newVal);
-        }
+        vfos[val.vfo]->setPBTInner(val.value.value<uchar>());
         break;
     }
     case funcIFShift:
