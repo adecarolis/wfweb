@@ -748,14 +748,6 @@ void wfmain::receiveNetworkAudioLevels(networkAudioLevels l)
 
 void wfmain::setupMainUI()
 {
-    ui->meter2Widget->hide();
-    ui->meter3Widget->hide();
-
-    // Future ideas:
-    //ui->meter2selectionCombo->addItem("Transmit Audio", meterTxMod);
-    //ui->meter2selectionCombo->addItem("Receive Audio", meterRxAudio);
-    //ui->meter2selectionCombo->addItem("Latency", meterLatency);
-
     // Set scroll wheel response (tick interval)
     // and set arrow key response (single step)
     ui->rfGainSlider->setTickInterval(100);
@@ -5085,7 +5077,6 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
 
     if(newMeterType==meterNone)
     {
-        uiMeter->hide();
         uiMeter->setMeterType(newMeterType);
     } else {
         uiMeter->show();

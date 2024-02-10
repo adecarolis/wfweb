@@ -277,6 +277,8 @@ void meter::paintEvent(QPaintEvent *)
             }
             break;
         case meterNone:
+            label = "Double-click to set meter";
+            drawLabel(&painter);
             return;
             break;
         case meterAudio:
