@@ -3936,8 +3936,13 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // Set the second meter here as I suspect we need to be connected for it to work?
         changeMeterType(prefs.meter2Type, 2);
         changeMeterType(prefs.meter3Type, 3);
+        ui->meter2Widget->blockMeterType(prefs.meter3Type);
+        ui->meter3Widget->blockMeterType(prefs.meter2Type);
         ui->meter2Widget->setCompReverse(prefs.compMeterReverse);
         ui->meter3Widget->setCompReverse(prefs.compMeterReverse);
+
+
+
 //        for (int i = 0; i < ui->meter2selectionCombo->count(); i++)
 //        {
 //            if (static_cast<meter_t>(ui->meter2selectionCombo->itemData(i).toInt()) == prefs.meter2Type)
