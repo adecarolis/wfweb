@@ -395,7 +395,7 @@ private slots:
     void receiveIFShift(unsigned char level);
 
     // Meters:
-    void receiveMeter(meter_t meter, unsigned char level);
+    void receiveMeter(meter_t meter, unsigned char level, unsigned char vfo=0);
 //    void receiveSMeter(unsigned char level);
 //    void receivePowerMeter(unsigned char level);
 //    void receiveALCMeter(unsigned char level);
@@ -403,9 +403,9 @@ private slots:
 
 
     void receiveATUStatus(unsigned char atustatus);
-    void receivePreamp(unsigned char pre);
-    void receiveAttenuator(unsigned char att);
-    void receiveAntennaSel(unsigned char ant, bool rx);
+    void receivePreamp(unsigned char pre, uchar vfo);
+    void receiveAttenuator(unsigned char att, uchar vfo);
+    void receiveAntennaSel(unsigned char ant, bool rx,uchar vfo);
     void receiveRigID(rigCapabilities rigCaps);
     void receiveFoundRigID(rigCapabilities rigCaps);
     void receivePortError(errorType err);

@@ -1,0 +1,11 @@
+
+
+in order to be able to autostart wfserver, this simple unitfile made by
+Mick VK3ADD, will help you.
+
+path and suggested name of the file:
+
+
+/etc/systemd/system/wfserver.service
+
+

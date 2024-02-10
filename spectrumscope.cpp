@@ -1499,6 +1499,7 @@ void spectrumScope::receivePassband(quint16 pass)
 
 void spectrumScope::selected(bool en)
 {
+    isActive = en;
     if (en)
         this->setStyleSheet("QGroupBox { border:1px solid red;}");
     else
@@ -1636,21 +1637,53 @@ void spectrumScope::wfTheme(int num)
     configTheme->setCurrentIndex(configTheme->findData(currentTheme));
 }
 
-void spectrumScope::setPBTInner (double hz) {
-    PBTInner = hz;
-    double pbFreq = ((double)(this->PBTInner) / this->passbandWidth) * 127.0;
-    qint16 newFreq = pbFreq + 128;
-    if (newFreq >= 0 && newFreq <= 255) {
-        configPbtInner->setValue(newFreq);
+void spectrumScope::setPBTInner (uchar val) {
+    qint16 shift = (qint16)(val - 128);
+    double tempVar = ceil((shift / 127.0) * passbandWidth * 20000.0) / 20000.0;
+    // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
+    double pitch = 0.0;
+    if ((this->mode.mk == modeCW || this->mode.mk == modeCW_R) && this->passbandWidth > 0.0006)
+    {
+        pitch = (600.0 - cwPitch) / 1000000.0;
+    }
+
+    double newPBT = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
+
+    if (newPBT != this->PBTInner) {
+        this->PBTInner = newPBT;
+        qInfo(logSystem()) << "New PBT Inner value received" << this->PBTInner << "CW Pitch" << this->cwPitch << "Passband" << this->passbandWidth;
+        double pbFreq = ((double)(this->PBTInner) / this->passbandWidth) * 127.0;
+        qint16 newFreq = pbFreq + 128;
+        if (newFreq >= 0 && newFreq <= 255) {
+            configPbtInner->blockSignals(true);
+            configPbtInner->setValue(newFreq);
+            configPbtInner->blockSignals(false);
+        }
     }
 }
 
-void spectrumScope::setPBTOuter (double hz) {
-    PBTOuter = hz;
-    double pbFreq = ((double)(this->PBTOuter) / this->passbandWidth) * 127.0;
-    qint16 newFreq = pbFreq + 128;
-    if (newFreq >= 0 && newFreq <= 255) {
-        configPbtOuter->setValue(newFreq);
+void spectrumScope::setPBTOuter (uchar val) {
+    qint16 shift = (qint16)(val - 128);
+    double tempVar = ceil((shift / 127.0) * this->passbandWidth * 20000.0) / 20000.0;
+    // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
+    double pitch = 0.0;
+    if ((this->mode.mk == modeCW || this->mode.mk == modeCW_R) && this->passbandWidth > 0.0006)
+    {
+        pitch = (600.0 - cwPitch) / 1000000.0;
+    }
+
+    double newPBT = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
+
+    if (newPBT != this->PBTOuter) {
+        this->PBTOuter = newPBT;
+        qInfo(logSystem()) << "New PBT Outer value received" << this->PBTOuter << "CW Pitch" << this->cwPitch << "Passband" << this->passbandWidth;
+        double pbFreq = ((double)(this->PBTOuter) / this->passbandWidth) * 127.0;
+        qint16 newFreq = pbFreq + 128;
+        if (newFreq >= 0 && newFreq <= 255) {
+            configPbtOuter->blockSignals(true);
+            configPbtOuter->setValue(newFreq);
+            configPbtOuter->blockSignals(false);
+        }
     }
 }
 

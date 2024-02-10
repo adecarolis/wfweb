@@ -3962,14 +3962,15 @@ void wfmain::initPeriodicCommands()
     queue->clear();
 
     foreach (auto cap, rigCaps.periodic) {
-        qDebug(logRig()) << "Inserting command" << funcString[cap.func] << "priority" << cap.priority << "on VFO" << QString::number(cap.vfo);
         if (cap.vfo == -1) {
             for (uchar v=0;v<rigCaps.numVFO;v++)
             {
+                qDebug(logSystem()) << "Inserting command" << funcString[cap.func] << "priority" << cap.priority << "on VFO" << QString::number(v);
                 queue->add(queuePriority(cap.prioVal),cap.func,true,v);
             }
         }
         else {
+            qDebug(logSystem()) << "Inserting command" << funcString[cap.func] << "priority" << cap.priority << "on VFO" << QString::number(cap.vfo);
             queue->add(queuePriority(cap.prioVal),cap.func,true,cap.vfo);
         }
     }
@@ -4661,8 +4662,12 @@ void wfmain::receiveTuningStep(unsigned char step)
     }
 }
 
-void wfmain::receiveMeter(meter_t inMeter, unsigned char level)
+void wfmain::receiveMeter(meter_t inMeter, unsigned char level,unsigned char vfo)
 {
+    // Currently do nothing with meters from second VFO
+    if (vfo)
+        return;
+
     switch(inMeter)
     {
     // These first two meters, S and Power,
@@ -4822,20 +4827,26 @@ void wfmain::on_rxAntennaCheck_clicked(bool value)
     queue->add(priorityImmediate,queueItem(funcAntenna,QVariant::fromValue<antennaInfo>(ant),false));
 }
 
-void wfmain::receivePreamp(unsigned char pre)
+void wfmain::receivePreamp(unsigned char pre, uchar vfo)
 {
-    ui->preampSelCombo->setCurrentIndex(ui->preampSelCombo->findData(pre));
+    if (!vfo) {
+        ui->preampSelCombo->setCurrentIndex(ui->preampSelCombo->findData(pre));
+    }
 }
 
-void wfmain::receiveAttenuator(unsigned char att)
+void wfmain::receiveAttenuator(unsigned char att, uchar vfo)
 {
-    ui->attSelCombo->setCurrentIndex(ui->attSelCombo->findData(att));
+    if (!vfo) {
+        ui->attSelCombo->setCurrentIndex(ui->attSelCombo->findData(att));
+    }
 }
 
-void wfmain::receiveAntennaSel(unsigned char ant, bool rx)
+void wfmain::receiveAntennaSel(unsigned char ant, bool rx, uchar vfo)
 {
-    ui->antennaSelCombo->setCurrentIndex(ant);
-    ui->rxAntennaCheck->setChecked(rx);
+    if (!vfo) {
+        ui->antennaSelCombo->setCurrentIndex(ant);
+        ui->rxAntennaCheck->setChecked(rx);
+    }
 }
 
 void wfmain::calculateTimingParameters()
@@ -5446,23 +5457,26 @@ void wfmain::receiveValue(cacheItem val){
     }
     switch (val.command)
     {
+    case funcFreqGet:
+    case funcFreqTR:
+        // If current VFO (0) isn't selected, then send this to other VFO
+        if (!vfos[val.vfo]->isSelected()){
+            val.vfo=!bool(val.vfo);
+        }
+        vfos[val.vfo]->setFrequency(val.value.value<freqt>());
+        break;
+
 #if defined __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
+
     case funcUnselectedFreq:
         val.vfo=1;
-    case funcFreqGet:
-    case funcFreqTR:
     case funcSelectedFreq:
     {
-        freqt f = val.value.value<freqt>();
-
-        vfos[val.vfo]->setFrequency(f);
+        vfos[val.vfo]->setFrequency(val.value.value<freqt>());
     }
-#if defined __GNUC__
-#pragma GCC diagnostic pop
-#endif
     case funcReadTXFreq:
         break;
     case funcVFODualWatch:
@@ -5470,20 +5484,24 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcModeGet:
     case funcModeTR:
-    case funcSelectedMode:
-        if (vfos.size()) {
-            vfos[0]->receiveMode(val.value.value<modeInfo>());
-            finputbtns->updateCurrentMode(val.value.value<modeInfo>().mk);
-            finputbtns->updateFilterSelection(val.value.value<modeInfo>().filter);
-            rpt->handleUpdateCurrentMainMode(val.value.value<modeInfo>());
-            cw->handleCurrentModeUpdate(val.value.value<modeInfo>().mk);
+        // If current VFO (0) isn't selected, then send this to other VFO
+        if (!vfos[val.vfo]->isSelected()){
+            val.vfo=!bool(val.vfo);
         }
+    case funcSelectedMode:
+        vfos[val.vfo]->receiveMode(val.value.value<modeInfo>());
+        finputbtns->updateCurrentMode(val.value.value<modeInfo>().mk);
+        finputbtns->updateFilterSelection(val.value.value<modeInfo>().filter);
+        rpt->handleUpdateCurrentMainMode(val.value.value<modeInfo>());
+        cw->handleCurrentModeUpdate(val.value.value<modeInfo>().mk);
         break;
     case funcUnselectedMode:
         val.vfo=1;
-        if (vfos.size()>1)
-            vfos[1]->receiveMode(val.value.value<modeInfo>());
+        vfos[val.vfo]->receiveMode(val.value.value<modeInfo>());
         break;
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
     case funcVFOBandMS:
         break;
     case funcSatelliteMemory:
@@ -5506,31 +5524,17 @@ void wfmain::receiveValue(cacheItem val){
         receiveTuningStep(val.value.value<uchar>());
         break;
     case funcAttenuator:
-        receiveAttenuator(val.value.value<uchar>());
+        receiveAttenuator(val.value.value<uchar>(),val.vfo);
         break;
     case funcAntenna:
-        receiveAntennaSel(val.value.value<antennaInfo>().antenna,val.value.value<antennaInfo>().rx);
+        receiveAntennaSel(val.value.value<antennaInfo>().antenna,val.value.value<antennaInfo>().rx,val.vfo);
         break;
     case funcPBTOuter:
+        vfos[val.vfo]->setPBTOuter(val.value.value<uchar>());
+        break;
     case funcPBTInner:
     {
-        uchar level = val.value.value<uchar>();
-        qint16 shift = (qint16)(level - 128);
-        double tempVar = ceil((shift / 127.0) * vfos[val.vfo]->getPassbandWidth() * 20000.0) / 20000.0;
-        // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
-        double pitch = 0.0;
-        modeInfo mode = vfos[val.vfo]->currentMode();
-        if ((mode.mk == modeCW || mode.mk == modeCW_R) && vfos[val.vfo]->getPassbandWidth() > 0.0006)
-        {
-                pitch = (600.0 - cwPitch) / 1000000.0;
-        }
-        double newVal = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
-
-        if (val.command == funcPBTInner) {
-            vfos[val.vfo]->setPBTInner(newVal);
-        } else {
-            vfos[val.vfo]->setPBTOuter(newVal);
-        }
+        vfos[val.vfo]->setPBTInner(val.value.value<uchar>());
         break;
     }
     case funcIFShift:
@@ -5547,6 +5551,7 @@ void wfmain::receiveValue(cacheItem val){
         foreach (auto vfo, vfos) {
             vfo->receiveCwPitch(val.value.value<uchar>());
         }
+        // Also send to CW window
         cw->handlePitch(val.value.value<uchar>());
         break;
     case funcMicGain:
@@ -5595,7 +5600,7 @@ void wfmain::receiveValue(cacheItem val){
     case funcSMeterSqlStatus:
         break;
     case funcSMeter:
-        receiveMeter(meter_t::meterS,val.value.value<uchar>());
+        receiveMeter(meter_t::meterS,val.value.value<uchar>(),val.vfo);
         break;
     case funcVariousSql:
         break;
@@ -5605,29 +5610,29 @@ void wfmain::receiveValue(cacheItem val){
         }
         break;
     case funcCenterMeter:
-        receiveMeter(meter_t::meterCenter,val.value.value<uchar>());
+        receiveMeter(meter_t::meterCenter,val.value.value<uchar>(),val.vfo);
         break;
     case funcPowerMeter:
-        receiveMeter(meter_t::meterPower,val.value.value<uchar>());
+        receiveMeter(meter_t::meterPower,val.value.value<uchar>(),val.vfo);
         break;
     case funcSWRMeter:
-        receiveMeter(meter_t::meterSWR,val.value.value<uchar>());
+        receiveMeter(meter_t::meterSWR,val.value.value<uchar>(),val.vfo);
         break;
     case funcALCMeter:
-        receiveMeter(meter_t::meterALC,val.value.value<uchar>());
+        receiveMeter(meter_t::meterALC,val.value.value<uchar>(),val.vfo);
         break;
     case funcCompMeter:
-        receiveMeter(meter_t::meterComp,val.value.value<uchar>());
+        receiveMeter(meter_t::meterComp,val.value.value<uchar>(),val.vfo);
         break;
     case funcVdMeter:
-        receiveMeter(meter_t::meterVoltage,val.value.value<uchar>());
+        receiveMeter(meter_t::meterVoltage,val.value.value<uchar>(),val.vfo);
         break;
     case funcIdMeter:
-        receiveMeter(meter_t::meterCurrent,val.value.value<uchar>());
+        receiveMeter(meter_t::meterCurrent,val.value.value<uchar>(),val.vfo);
         break;
     // 0x16 enable/disable functions:
     case funcPreamp:
-        receivePreamp(val.value.value<uchar>());
+        receivePreamp(val.value.value<uchar>(),val.vfo);
         break;
     case funcAGCTime:
         break;
@@ -5824,7 +5829,7 @@ void wfmain::receiveValue(cacheItem val){
                     vfos[0]->selected(!subScope);
                     vfos[1]->selected(subScope);
                 } else {
-                    vfos[0]->selected(false);
+                    vfos[0]->selected(true);
                     vfos[1]->selected(false);
                 }
             }

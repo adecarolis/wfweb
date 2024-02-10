@@ -209,7 +209,7 @@ cmdLCDWaterfall, cmdLCDSpectrum, cmdLCDNothing, cmdSeparator
 
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 212
+#define NUMFUNCS 244
 
 enum funcs { funcNone,
 funcFreqTR,             funcModeTR,             funcBandEdgeFreq,           funcFreqGet,        	funcModeGet,        	funcFreqSet,			// \x00
@@ -244,6 +244,12 @@ funcScopeMainSub,       funcScopeSingleDual,	funcScopeMainMode,          funcSco
 funcScopeMainEdge,      funcScopeSubEdge,       funcScopeMainHold,          funcScopeSubHold,       funcScopeMainRef,       funcScopeSubRef,
 funcScopeMainSpeed,     funcScopeSubSpeed,      funcScopeMainVBW,           funcScopeSubVBW,        funcScopeMainRBW,       funcScopeSubRBW,
 funcScopeDuringTX,      funcScopeCenterType,    funcScopeFixedEdgeFreq,     funcVoiceTX,			funcMainSubPrefix,		funcAFCSetting,
+funcSSBRXHPFLPF,        funcSSBRXBass,          funcSSBRXTreble,            FuncAMRXHPFLPF,         funcAMRXBass,           funcAMRXTreble,
+funcFMRXHPFLPF,         funcFMRXBass,           funcFMRXTreble,             FuncCWRXHPFLPF,         funcCWRXTreble,         funcCWRXBass,
+funcSSBTXHLPLPF,        funcSSBTXBass,          funcSSBTXTreble,            FuncAMTXHPFLPF,         funcAMTXBass,           funcAMTXTreble,
+funcFMTXHPFLPF,         funcFMTXBass,           funcFMTXTreble,             funcBeepLevel,          funcBeepLevelLimit,     funcBeepConfirmation,
+funcBandEdgeBeep,       funcBeepMain,           funcBeepSub,                funcRFSQLControl,       funcTXDelayHF,          funcTXDelay50m,
+funcTimeOutTimer,       funcTimeOutCIV,
 funcGPSTXMode,          funcSatelliteMemory,    funcGPSPosition,            funcMemoryGroup,        funcSelectVFO,          funcSeparator,
 funcLCDWaterfall,       funcLCDSpectrum,        funcLCDNothing,             funcPageUp,             funcPageDown,           funcVFOFrequency,
 funcVFOMode,            funcRigctlFunction,     funcRigctlLevel,            funcRigctlParam,        funcRXAudio,            funcTXAudio,
@@ -285,6 +291,12 @@ static QString funcString[] { "None",
 "Scope Main Edge",      "Scope Sub Edge",       "Scope Main Hold",          "Scope Sub Hold",       "Scope Main Ref",       "Scope Sub Ref",
 "Scope Main Speed",     "Scope Sub Speed",      "Scope Main VBW",           "Scope Sub VBW",        "Scope Main RBW",       "Scope Sub RBW",
 "Scope During TX",      "Scope Center Type",    "Scope Fixed Edge Freq",    "Voice TX",             "Main/Sub Prefix",      "AFC Function",
+"SSB RX HPFLPF",        "SSB RX Bass",          "SSB RX Treble",            "AM RX HPFLPF",         "AM RX Bass",           "AM RX Treble",
+"FM RX HPFLPF",         "FM RX Bass",           "FM RX Treble",             "CW RX HPFLPF",         "CW RX Bass",           "CW RX Treble",
+"SSB TX HPFLPF",        "SSB TX Bass",          "SSB TX Treble",            "AM TX HPFLPF",         "AM TX Bass",           "AM TX Treble",
+"FM TX HPFLPF",         "FM TX Bass",           "FM TX Treble",             "Beep Level",           "Beep Level Limit",     "Beep Confirmation",
+"Band Edge Beep",       "Beep Main Band",       "Beep Sub Band",            "RF SQL Control",       "TX Delay HF",          "TX Delay 50m",
+"Timeout Timer",        "Timeout C-IV",
 "GPS TX Mode",          "Satellite Memory",     "GPS Position",             "Memory Group",         "-Select VFO",          "-Seperator",
 "-LCD Waterfall",       "-LCD Spectrum",        "-LCD Nothing",             "-Page Up",             "-Page Down",           "-VFO Frequency",
 "-VFO Mode",            "-Rigctl Function",     "-Rigctl Level",            "-Rigctl Param",        "-RX Audio Data",       "-TX Audio Data",
