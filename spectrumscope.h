@@ -88,6 +88,7 @@ public:
     void addFilter(QString text, QVariant data) {filterCombo->blockSignals(true); filterCombo->addItem(text,data); filterCombo->blockSignals(false);}
 
     void selected(bool);
+    bool isSelected() {return isActive;}
     void setHold(bool h);
     void setSpeed(uchar s);
     void displaySettings(int NumDigits, qint64 Minf, qint64 Maxf, int MinStep,FctlUnit unit,std::vector<bandType>* bands = Q_NULLPTR);
@@ -269,6 +270,7 @@ private:
     // Assorted settings
     bool tuningFloorZeros=false;
     bool clickDragTuning=false;
+    bool isActive;
 };
 
 #endif // SPECTRUMSCOPE_H

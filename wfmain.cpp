@@ -4820,20 +4820,26 @@ void wfmain::on_rxAntennaCheck_clicked(bool value)
     queue->add(priorityImmediate,queueItem(funcAntenna,QVariant::fromValue<antennaInfo>(ant),false));
 }
 
-void wfmain::receivePreamp(unsigned char pre)
+void wfmain::receivePreamp(unsigned char pre, uchar vfo)
 {
-    ui->preampSelCombo->setCurrentIndex(ui->preampSelCombo->findData(pre));
+    if (!vfo) {
+        ui->preampSelCombo->setCurrentIndex(ui->preampSelCombo->findData(pre));
+    }
 }
 
-void wfmain::receiveAttenuator(unsigned char att)
+void wfmain::receiveAttenuator(unsigned char att, uchar vfo)
 {
-    ui->attSelCombo->setCurrentIndex(ui->attSelCombo->findData(att));
+    if (!vfo) {
+        ui->attSelCombo->setCurrentIndex(ui->attSelCombo->findData(att));
+    }
 }
 
-void wfmain::receiveAntennaSel(unsigned char ant, bool rx)
+void wfmain::receiveAntennaSel(unsigned char ant, bool rx, uchar vfo)
 {
-    ui->antennaSelCombo->setCurrentIndex(ant);
-    ui->rxAntennaCheck->setChecked(rx);
+    if (!vfo) {
+        ui->antennaSelCombo->setCurrentIndex(ant);
+        ui->rxAntennaCheck->setChecked(rx);
+    }
 }
 
 void wfmain::calculateTimingParameters()
@@ -5444,23 +5450,26 @@ void wfmain::receiveValue(cacheItem val){
     }
     switch (val.command)
     {
+    case funcFreqGet:
+    case funcFreqTR:
+        // If current VFO (0) isn't selected, then send this to other VFO
+        if (!vfos[val.vfo]->isSelected()){
+            val.vfo=!bool(val.vfo);
+        }
+        vfos[val.vfo]->setFrequency(val.value.value<freqt>());
+        break;
+
 #if defined __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
+
     case funcUnselectedFreq:
         val.vfo=1;
-    case funcFreqGet:
-    case funcFreqTR:
     case funcSelectedFreq:
     {
-        freqt f = val.value.value<freqt>();
-
-        vfos[val.vfo]->setFrequency(f);
+        vfos[val.vfo]->setFrequency(val.value.value<freqt>());
     }
-#if defined __GNUC__
-#pragma GCC diagnostic pop
-#endif
     case funcReadTXFreq:
         break;
     case funcVFODualWatch:
@@ -5468,20 +5477,24 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcModeGet:
     case funcModeTR:
-    case funcSelectedMode:
-        if (vfos.size()) {
-            vfos[0]->receiveMode(val.value.value<modeInfo>());
-            finputbtns->updateCurrentMode(val.value.value<modeInfo>().mk);
-            finputbtns->updateFilterSelection(val.value.value<modeInfo>().filter);
-            rpt->handleUpdateCurrentMainMode(val.value.value<modeInfo>());
-            cw->handleCurrentModeUpdate(val.value.value<modeInfo>().mk);
+        // If current VFO (0) isn't selected, then send this to other VFO
+        if (!vfos[val.vfo]->isSelected()){
+            val.vfo=!bool(val.vfo);
         }
+    case funcSelectedMode:
+        vfos[val.vfo]->receiveMode(val.value.value<modeInfo>());
+        finputbtns->updateCurrentMode(val.value.value<modeInfo>().mk);
+        finputbtns->updateFilterSelection(val.value.value<modeInfo>().filter);
+        rpt->handleUpdateCurrentMainMode(val.value.value<modeInfo>());
+        cw->handleCurrentModeUpdate(val.value.value<modeInfo>().mk);
         break;
     case funcUnselectedMode:
         val.vfo=1;
-        if (vfos.size()>1)
-            vfos[1]->receiveMode(val.value.value<modeInfo>());
+        vfos[val.vfo]->receiveMode(val.value.value<modeInfo>());
         break;
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
     case funcVFOBandMS:
         break;
     case funcSatelliteMemory:
@@ -5504,10 +5517,10 @@ void wfmain::receiveValue(cacheItem val){
         receiveTuningStep(val.value.value<uchar>());
         break;
     case funcAttenuator:
-        receiveAttenuator(val.value.value<uchar>());
+        receiveAttenuator(val.value.value<uchar>(),val.vfo);
         break;
     case funcAntenna:
-        receiveAntennaSel(val.value.value<antennaInfo>().antenna,val.value.value<antennaInfo>().rx);
+        receiveAntennaSel(val.value.value<antennaInfo>().antenna,val.value.value<antennaInfo>().rx,val.vfo);
         break;
     case funcPBTOuter:
         vfos[val.vfo]->setPBTOuter(val.value.value<uchar>());
@@ -5531,6 +5544,7 @@ void wfmain::receiveValue(cacheItem val){
         foreach (auto vfo, vfos) {
             vfo->receiveCwPitch(val.value.value<uchar>());
         }
+        // Also send to CW window
         cw->handlePitch(val.value.value<uchar>());
         break;
     case funcMicGain:
@@ -5611,7 +5625,7 @@ void wfmain::receiveValue(cacheItem val){
         break;
     // 0x16 enable/disable functions:
     case funcPreamp:
-        receivePreamp(val.value.value<uchar>());
+        receivePreamp(val.value.value<uchar>(),val.vfo);
         break;
     case funcAGCTime:
         break;
@@ -5808,7 +5822,7 @@ void wfmain::receiveValue(cacheItem val){
                     vfos[0]->selected(!subScope);
                     vfos[1]->selected(subScope);
                 } else {
-                    vfos[0]->selected(false);
+                    vfos[0]->selected(true);
                     vfos[1]->selected(false);
                 }
             }

@@ -403,9 +403,9 @@ private slots:
 
 
     void receiveATUStatus(unsigned char atustatus);
-    void receivePreamp(unsigned char pre);
-    void receiveAttenuator(unsigned char att);
-    void receiveAntennaSel(unsigned char ant, bool rx);
+    void receivePreamp(unsigned char pre, uchar vfo);
+    void receiveAttenuator(unsigned char att, uchar vfo);
+    void receiveAntennaSel(unsigned char ant, bool rx,uchar vfo);
     void receiveRigID(rigCapabilities rigCaps);
     void receiveFoundRigID(rigCapabilities rigCaps);
     void receivePortError(errorType err);

@@ -1499,6 +1499,7 @@ void spectrumScope::receivePassband(quint16 pass)
 
 void spectrumScope::selected(bool en)
 {
+    isActive = en;
     if (en)
         this->setStyleSheet("QGroupBox { border:1px solid red;}");
     else
