@@ -4312,13 +4312,16 @@ void wfmain::on_tuneNowBtn_clicked()
 {
     queue->addUnique(priorityImmediate,queueItem(funcTunerStatus,QVariant::fromValue<uchar>(2U)));
     showStatusBarText("Starting ATU tuning cycle...");
+    ATUCheckTimer.setSingleShot(true);
+    ATUCheckTimer.start(5000);
 }
 
 void wfmain::on_tuneEnableChk_clicked(bool checked)
 {
     queue->addUnique(priorityImmediate,queueItem(funcTunerStatus,QVariant::fromValue<uchar>(checked)));
-
     showStatusBarText(QString("Turning %0 ATU").arg(checked?"on":"off"));
+    ATUCheckTimer.setSingleShot(true);
+    ATUCheckTimer.start(5000);
 }
 
 bool wfmain::on_exitBtn_clicked()
@@ -4398,20 +4401,24 @@ void wfmain::receiveATUStatus(unsigned char atustatus)
             ui->tuneEnableChk->blockSignals(true);
             ui->tuneEnableChk->setChecked(false);
             ui->tuneEnableChk->blockSignals(false);
-            showStatusBarText("ATU not enabled.");
+            if(ATUCheckTimer.isActive())
+                showStatusBarText("ATU not enabled.");
             break;
         case 0x01:
             // ATU enabled
             ui->tuneEnableChk->blockSignals(true);
             ui->tuneEnableChk->setChecked(true);
             ui->tuneEnableChk->blockSignals(false);
-            showStatusBarText("ATU enabled.");
+            if(ATUCheckTimer.isActive())
+                showStatusBarText("ATU enabled.");
             break;
         case 0x02:
             // ATU tuning in-progress.
             // Add command queue to check again and update status bar
             // qInfo(logSystem()) << "Received ATU status update that *tuning* is taking place";
             showStatusBarText("ATU is Tuning...");
+            ATUCheckTimer.stop();
+            ATUCheckTimer.start(5000);
             queue->add(priorityHighest,funcTunerStatus);
             break;
         default:

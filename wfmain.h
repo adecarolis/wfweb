@@ -513,6 +513,7 @@ private:
     void initLogging();
     QTimer logCheckingTimer;
     int logCheckingOldPosition = 0;
+    QTimer ATUCheckTimer;
 
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image
