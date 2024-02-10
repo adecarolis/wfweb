@@ -120,7 +120,7 @@ void cachingQueue::add(queuePriority prio ,queueItem item)
     if (item.command != funcNone)
     {
         QMutexLocker locker(&mutex);
-        if (!item.recurring || isRecurring(item.command) != prio)
+        if (!item.recurring || isRecurring(item.command,item.vfo) != prio)
         {
             if (item.recurring && prio == queuePriority::priorityImmediate) {
                 qWarning() << "Warning, cannot add recurring command with immediate priority!" << funcString[item.command];

@@ -395,7 +395,7 @@ private slots:
     void receiveIFShift(unsigned char level);
 
     // Meters:
-    void receiveMeter(meter_t meter, unsigned char level);
+    void receiveMeter(meter_t meter, unsigned char level, unsigned char vfo=0);
 //    void receiveSMeter(unsigned char level);
 //    void receivePowerMeter(unsigned char level);
 //    void receiveALCMeter(unsigned char level);

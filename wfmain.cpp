@@ -3962,14 +3962,15 @@ void wfmain::initPeriodicCommands()
     queue->clear();
 
     foreach (auto cap, rigCaps.periodic) {
-        qDebug(logRig()) << "Inserting command" << funcString[cap.func] << "priority" << cap.priority << "on VFO" << QString::number(cap.vfo);
         if (cap.vfo == -1) {
             for (uchar v=0;v<rigCaps.numVFO;v++)
             {
+                qDebug(logSystem()) << "Inserting command" << funcString[cap.func] << "priority" << cap.priority << "on VFO" << QString::number(v);
                 queue->add(queuePriority(cap.prioVal),cap.func,true,v);
             }
         }
         else {
+            qDebug(logSystem()) << "Inserting command" << funcString[cap.func] << "priority" << cap.priority << "on VFO" << QString::number(cap.vfo);
             queue->add(queuePriority(cap.prioVal),cap.func,true,cap.vfo);
         }
     }
@@ -4654,8 +4655,12 @@ void wfmain::receiveTuningStep(unsigned char step)
     }
 }
 
-void wfmain::receiveMeter(meter_t inMeter, unsigned char level)
+void wfmain::receiveMeter(meter_t inMeter, unsigned char level,unsigned char vfo)
 {
+    // Currently do nothing with meters from second VFO
+    if (vfo)
+        return;
+
     switch(inMeter)
     {
     // These first two meters, S and Power,
@@ -5588,7 +5593,7 @@ void wfmain::receiveValue(cacheItem val){
     case funcSMeterSqlStatus:
         break;
     case funcSMeter:
-        receiveMeter(meter_t::meterS,val.value.value<uchar>());
+        receiveMeter(meter_t::meterS,val.value.value<uchar>(),val.vfo);
         break;
     case funcVariousSql:
         break;
@@ -5598,25 +5603,25 @@ void wfmain::receiveValue(cacheItem val){
         }
         break;
     case funcCenterMeter:
-        receiveMeter(meter_t::meterCenter,val.value.value<uchar>());
+        receiveMeter(meter_t::meterCenter,val.value.value<uchar>(),val.vfo);
         break;
     case funcPowerMeter:
-        receiveMeter(meter_t::meterPower,val.value.value<uchar>());
+        receiveMeter(meter_t::meterPower,val.value.value<uchar>(),val.vfo);
         break;
     case funcSWRMeter:
-        receiveMeter(meter_t::meterSWR,val.value.value<uchar>());
+        receiveMeter(meter_t::meterSWR,val.value.value<uchar>(),val.vfo);
         break;
     case funcALCMeter:
-        receiveMeter(meter_t::meterALC,val.value.value<uchar>());
+        receiveMeter(meter_t::meterALC,val.value.value<uchar>(),val.vfo);
         break;
     case funcCompMeter:
-        receiveMeter(meter_t::meterComp,val.value.value<uchar>());
+        receiveMeter(meter_t::meterComp,val.value.value<uchar>(),val.vfo);
         break;
     case funcVdMeter:
-        receiveMeter(meter_t::meterVoltage,val.value.value<uchar>());
+        receiveMeter(meter_t::meterVoltage,val.value.value<uchar>(),val.vfo);
         break;
     case funcIdMeter:
-        receiveMeter(meter_t::meterCurrent,val.value.value<uchar>());
+        receiveMeter(meter_t::meterCurrent,val.value.value<uchar>(),val.vfo);
         break;
     // 0x16 enable/disable functions:
     case funcPreamp:
