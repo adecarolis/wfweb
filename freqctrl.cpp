@@ -536,8 +536,29 @@ void freqCtrl::wheelEvent(QWheelEvent *event)
     QPointF   pt = event->position();
 #endif
     int       delta = m_InvertScrolling ? -event->angleDelta().y() : event->angleDelta().y();
-    int       numDegrees = delta / 8;
-    int       numSteps = numDegrees / 15;
+    qreal       numDegrees = delta / 8;
+    qreal       offset = numDegrees / 15;
+
+
+    qreal stepsToScroll = QApplication::wheelScrollLines() * offset;
+
+    if( (scrollWheelOffsetAccumulated > 0) && (offset > 0) ) {
+        scrollWheelOffsetAccumulated += stepsToScroll;
+    } else if ((scrollWheelOffsetAccumulated < 0) && (offset < 0)) {
+        scrollWheelOffsetAccumulated += stepsToScroll;
+    } else {
+        // Changed direction, zap the old accumulation:
+        scrollWheelOffsetAccumulated = stepsToScroll;
+        //qInfo() << "Scroll changed direction";
+    }
+
+    int numSteps = int(scrollWheelOffsetAccumulated);
+
+    if(!numSteps) {
+        // we have not accumulated enough for a complete step.
+        // come back later.
+        return;
+    }
 
     for (int i = m_DigStart; i < m_NumDigits; i++)
     {
@@ -549,6 +570,7 @@ void freqCtrl::wheelEvent(QWheelEvent *event)
                 decFreq();
         }
     }
+    scrollWheelOffsetAccumulated = 0;
 }
 
 void freqCtrl::keyPressEvent(QKeyEvent *event)

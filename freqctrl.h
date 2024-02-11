@@ -9,6 +9,7 @@
 #include <QFrame>
 #include <QImage>
 #include <QtGui>
+#include <QApplication>
 
 enum FctlUnit {
     FCTL_UNIT_NONE,            // Freq displayed without unit: 14.236.000
@@ -109,6 +110,10 @@ private:
     int         m_LastEditDigit;
     int         m_DecPos;
     int         m_NumSeps;
+
+    int scrollYperClick = 24;
+    int scrollXperClick = 24;
+    qreal scrollWheelOffsetAccumulated=0;
 
     qint64      m_MinStep;
     qint64      m_freq;

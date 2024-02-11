@@ -714,29 +714,6 @@ void wfmain::receiveStatusUpdate(networkStatus status)
 
 void wfmain::receiveNetworkAudioLevels(networkAudioLevels l)
 {
-    /*
-    meter_t m2mtr = ui->meter2Widget->getMeterType();
-
-    if(m2mtr == meterAudio)
-    {
-        if(amTransmitting)
-        {
-            if(l.haveTxLevels)
-                ui->meter2Widget->setLevels(l.txAudioRMS, l.txAudioPeak);
-        } else {
-            if(l.haveRxLevels)
-                ui->meter2Widget->setLevels(l.rxAudioRMS, l.rxAudioPeak);
-        }
-    } else if (m2mtr == meterTxMod) {
-        if(l.haveTxLevels)
-            ui->meter2Widget->setLevels(l.txAudioRMS, l.txAudioPeak);
-    } else if (m2mtr == meterRxAudio) {
-        if(l.haveRxLevels)
-            ui->meter2Widget->setLevels(l.rxAudioRMS, l.rxAudioPeak);
-    }
-    */
-
-
     meter_t m = meterNone;
     if(l.haveRxLevels)
     {
@@ -748,19 +725,10 @@ void wfmain::receiveNetworkAudioLevels(networkAudioLevels l)
         m = meterTxMod;
         receiveMeter(m, l.txAudioPeak);
     }
-
 }
 
 void wfmain::setupMainUI()
 {
-    ui->meter2Widget->hide();
-    ui->meter3Widget->hide();
-
-    // Future ideas:
-    //ui->meter2selectionCombo->addItem("Transmit Audio", meterTxMod);
-    //ui->meter2selectionCombo->addItem("Receive Audio", meterRxAudio);
-    //ui->meter2selectionCombo->addItem("Latency", meterLatency);
-
     // Set scroll wheel response (tick interval)
     // and set arrow key response (single step)
     ui->rfGainSlider->setTickInterval(100);
@@ -3941,8 +3909,13 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // Set the second meter here as I suspect we need to be connected for it to work?
         changeMeterType(prefs.meter2Type, 2);
         changeMeterType(prefs.meter3Type, 3);
+        ui->meter2Widget->blockMeterType(prefs.meter3Type);
+        ui->meter3Widget->blockMeterType(prefs.meter2Type);
         ui->meter2Widget->setCompReverse(prefs.compMeterReverse);
         ui->meter3Widget->setCompReverse(prefs.compMeterReverse);
+
+
+
 //        for (int i = 0; i < ui->meter2selectionCombo->count(); i++)
 //        {
 //            if (static_cast<meter_t>(ui->meter2selectionCombo->itemData(i).toInt()) == prefs.meter2Type)
@@ -4318,13 +4291,16 @@ void wfmain::on_tuneNowBtn_clicked()
 {
     queue->addUnique(priorityImmediate,queueItem(funcTunerStatus,QVariant::fromValue<uchar>(2U)));
     showStatusBarText("Starting ATU tuning cycle...");
+    ATUCheckTimer.setSingleShot(true);
+    ATUCheckTimer.start(5000);
 }
 
 void wfmain::on_tuneEnableChk_clicked(bool checked)
 {
     queue->addUnique(priorityImmediate,queueItem(funcTunerStatus,QVariant::fromValue<uchar>(checked)));
-
     showStatusBarText(QString("Turning %0 ATU").arg(checked?"on":"off"));
+    ATUCheckTimer.setSingleShot(true);
+    ATUCheckTimer.start(5000);
 }
 
 bool wfmain::on_exitBtn_clicked()
@@ -4404,20 +4380,24 @@ void wfmain::receiveATUStatus(unsigned char atustatus)
             ui->tuneEnableChk->blockSignals(true);
             ui->tuneEnableChk->setChecked(false);
             ui->tuneEnableChk->blockSignals(false);
-            showStatusBarText("ATU not enabled.");
+            if(ATUCheckTimer.isActive())
+                showStatusBarText("ATU not enabled.");
             break;
         case 0x01:
             // ATU enabled
             ui->tuneEnableChk->blockSignals(true);
             ui->tuneEnableChk->setChecked(true);
             ui->tuneEnableChk->blockSignals(false);
-            showStatusBarText("ATU enabled.");
+            if(ATUCheckTimer.isActive())
+                showStatusBarText("ATU enabled.");
             break;
         case 0x02:
             // ATU tuning in-progress.
             // Add command queue to check again and update status bar
             // qInfo(logSystem()) << "Received ATU status update that *tuning* is taking place";
             showStatusBarText("ATU is Tuning...");
+            ATUCheckTimer.stop();
+            ATUCheckTimer.start(5000);
             queue->add(priorityHighest,funcTunerStatus);
             break;
         default:
@@ -5078,7 +5058,6 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
 
     if(newMeterType==meterNone)
     {
-        uiMeter->hide();
         uiMeter->setMeterType(newMeterType);
     } else {
         uiMeter->show();

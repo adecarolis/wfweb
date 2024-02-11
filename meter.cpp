@@ -63,9 +63,9 @@ meter::meter(QWidget *parent) : QWidget(parent)
     connect(combo, SIGNAL(activated(int)), this, SLOT(acceptComboItem(int)));
     //connect(combo, SIGNAL(currentIndexChanged(int)), this, SLOT(acceptComboItem(int)));
 
+    this->setToolTip("");
     combo->hide();
     this->installEventFilter(this);
-
 }
 
 void meter::setCompReverse(bool reverse) {
@@ -125,12 +125,23 @@ void meter::clearMeter()
     update();
 }
 
-void meter::setMeterType(meter_t type)
+void meter::setMeterType(meter_t m_type_req)
 {
-    if(type == meterType)
+    if(m_type_req == meterType)
         return;
 
-    meterType = type;
+    if( (m_type_req == meterS) || (m_type_req == meterPower) ) {
+        this->setToolTip("");
+    } else {
+        this->setToolTip("Double-click to select meter type.");
+    }
+
+    int m_index = combo->findData(m_type_req);
+    combo->blockSignals(true);
+    combo->setCurrentIndex(m_index);
+    combo->blockSignals(false);
+
+    meterType = m_type_req;
     // clear average and peak vectors:
     this->clearMeter();
 }
@@ -179,13 +190,26 @@ void meter::handleDoubleClick() {
 }
 
 bool meter::eventFilter(QObject *object, QEvent *event) {
+
+    if( (freezeDrawing) && (event->type() == QEvent::MouseButtonPress) ) {
+        combo->hide();
+        freezeDrawing = false;
+        return true;
+    }
+
+    if( (freezeDrawing) && (event->type() == QEvent::MouseButtonDblClick) ) {
+        combo->hide();
+        freezeDrawing = false;
+        return true;
+    }
+
     if(event->type() == QEvent::MouseButtonDblClick) {
-        qDebug() << "Mouse double click event in meter widget";
         if( !(meterType == meterS || meterType == meterPower)) {
             handleDoubleClick();
         }
         return true;
     }
+
     (void)object;
     return false;
 }
@@ -253,6 +277,8 @@ void meter::paintEvent(QPaintEvent *)
             }
             break;
         case meterNone:
+            label = "Double-click to set meter";
+            drawLabel(&painter);
             return;
             break;
         case meterAudio:
