@@ -1409,14 +1409,25 @@ void spectrumScope::receiveMode(modeInfo m)
                 queue->del(funcFilterWidth,vfo);
             }
 
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
+
             switch (m.mk) {
-            case modeLSB:
-            case modeUSB:
-                passbandCenterFrequency = 0.0015;
+                // M0VSE this needs to be replaced with 1/2 the "actual" width of the RTTY signal+the mark freq.
             case modeRTTY:
             case modeRTTY_R:
+                passbandCenterFrequency = 0.00008925;
+                queue->del(funcCwPitch,vfo);
+                queue->del(funcDashRatio,vfo);
+                queue->del(funcKeySpeed,vfo);
+                break;
+            case modeLSB:
+            case modeUSB:
             case modePSK:
             case modePSK_R:
+                passbandCenterFrequency = 0.0015;
             case modeAM:
                 queue->del(funcCwPitch,vfo);
                 queue->del(funcDashRatio,vfo);
@@ -1442,6 +1453,9 @@ void spectrumScope::receiveMode(modeInfo m)
                 queue->del(funcKeySpeed,vfo);
                 break;
             }
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
         }
         mode = m;
