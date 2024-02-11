@@ -132,7 +132,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
             QSettings* rigSettings = new QSettings(systemRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-            settings->setIniCodec("UTF-8");
+            rigSettings->setIniCodec("UTF-8");
 #endif
 
             if (!rigSettings->childGroups().contains("Rig"))
