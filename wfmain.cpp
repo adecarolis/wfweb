@@ -130,6 +130,11 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         QStringList rigs = systemRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
         for (QString &rig: rigs) {
             QSettings* rigSettings = new QSettings(systemRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+            settings->setIniCodec("UTF-8");
+#endif
+
             if (!rigSettings->childGroups().contains("Rig"))
             {
                 qWarning() << rig << "Does not seem to be a rig description file";

@@ -1273,6 +1273,9 @@ void rigCommander::determineRigCaps()
     }
     rigCaps.filename = rigList.find(rigCaps.modelID).value();
     QSettings* settings = new QSettings(rigCaps.filename, QSettings::Format::IniFormat);
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+    settings->setIniCodec("UTF-8");
+#endif
     if (!settings->childGroups().contains("Rig"))
     {
         qWarning(logRig()) << rigCaps.filename << "Cannot be loaded!";

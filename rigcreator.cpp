@@ -119,6 +119,10 @@ void rigCreator::loadRigFile(QString file)
     this->currentFile = file;
     QSettings* settings = new QSettings(file, QSettings::Format::IniFormat);
 
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+    settings->setIniCodec("UTF-8");
+#endif
+
     if (!settings->childGroups().contains("Rig"))
     {
         QFileInfo info(file);
