@@ -360,6 +360,9 @@ bool cachingQueue::compare(QVariant a, QVariant b)
         } else if (!strcmp(a.typeName(),"duplexMode_t")) {
             if (a.value<duplexMode_t>() != b.value<duplexMode_t>())
                 changed=true;
+        } else if (!strcmp(a.typeName(),"toneInfo")) {
+            if (a.value<toneInfo>().tone != b.value<toneInfo>().tone)
+                changed=true;
         } else if (!strcmp(a.typeName(),"spectrumMode_t")) {
             if (a.value<spectrumMode_t>() != b.value<spectrumMode_t>())
                 changed=true;

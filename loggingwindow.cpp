@@ -64,7 +64,7 @@ void loggingWindow::acceptLogText(QPair<QtMsgType,QString> text)
     QString colour = "white";
     if (text.first == QtDebugMsg)
     {
-        colour = "#ffbc11";
+        colour = "#ffbc11"; // orange
     } else if (text.first == QtWarningMsg)
     {
         colour = "yellow";

@@ -479,22 +479,28 @@ void wfmain::makeRig()
 
         connect(this->rpt, &repeaterSetup::setTone, this->rig,
                 [=](const toneInfo& t) {
-            qDebug(logSystem()) << "Setting TONE for VFO [" << t.useSecondaryVFO << "]";
+            qDebug(logSystem()) << "Setting TONE for VFO, useInactiveVFO= [" << t.useSecondaryVFO << "], tone=" << t.tone;
             queue->add(priorityImmediate,queueItem(funcToneFreq,QVariant::fromValue<toneInfo>(t),false, t.useSecondaryVFO));});
 
         connect(this->rpt, &repeaterSetup::setTSQL, this->rig,
                 [=](const toneInfo& t) {
-            qDebug(logSystem()) << "Setting TSQL for VFO [" << t.useSecondaryVFO << "]";
+            qDebug(logSystem()) << "Setting TSQL for VFO, useInactiveVFO= [" << t.useSecondaryVFO << "], tone=" << t.tone;
             queue->add(priorityImmediate,queueItem(funcTSQLFreq,QVariant::fromValue<toneInfo>(t),false, t.useSecondaryVFO));});
 
         connect(this->rpt, &repeaterSetup::getTSQL, this->rig,
-                [=]() { queue->add(priorityImmediate,funcRepeaterTSQL,false,false);});
+                [=]() {
+            qDebug(logSystem()) << "Asking for TSQL";
+            queue->add(priorityImmediate,funcRepeaterTSQL,false,false);});
 
         connect(this->rpt, &repeaterSetup::setDTCS, this->rig,
-                [=](const toneInfo& t) { queue->add(priorityImmediate,queueItem(funcRepeaterDTCS,QVariant::fromValue<toneInfo>(t),false));});
+                [=](const toneInfo& t) {
+            qDebug(logSystem()) << "Setting DCS, code =" << t.tone;
+            queue->add(priorityImmediate,queueItem(funcRepeaterDTCS,QVariant::fromValue<toneInfo>(t),false));});
 
         connect(this->rpt, &repeaterSetup::getDTCS, this->rig,
-                [=]() { queue->add(priorityImmediate,funcRepeaterDTCS,false,false);});
+                [=]() {
+            qDebug(logSystem()) << "Asking for DCS";
+            queue->add(priorityImmediate,funcRepeaterDTCS,false,false);});
 
 
         connect(this->rpt, &repeaterSetup::getRptAccessMode, this->rig,

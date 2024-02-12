@@ -368,6 +368,7 @@ void repeaterSetup::handleRptAccessMode(rptAccessTxRx_t tmode)
 
 void repeaterSetup::handleTone(quint16 tone)
 {
+    qDebug(logRptr()) << "Handling incoming tone request of tone = " << tone;
     int tindex = ui->rptToneCombo->findData(tone);
     ui->rptToneCombo->setCurrentIndex(tindex);
 }
@@ -375,12 +376,14 @@ void repeaterSetup::handleTone(quint16 tone)
 void repeaterSetup::handleTSQL(quint16 tsql)
 {
     // TODO: Consider a second combo box for the TSQL
+    qDebug(logRptr()) << "Handling incoming TSQL request of tone = " << tsql;
     int tindex = ui->rptToneCombo->findData(tsql);
     ui->rptToneCombo->setCurrentIndex(tindex);
 }
 
 void repeaterSetup::handleDTCS(quint16 dcode, bool tinv, bool rinv)
 {
+    qDebug(logRptr()) << "Handling incoming DTCS request of dcode = " << dcode;
     int dindex = ui->rptDTCSCombo->findData(dcode);
     ui->rptDTCSCombo->setCurrentIndex(dindex);
     ui->rptDTCSInvertTx->setChecked(tinv);
