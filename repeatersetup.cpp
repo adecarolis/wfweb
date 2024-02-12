@@ -378,6 +378,10 @@ void repeaterSetup::handleDTCS(quint16 dcode, bool tinv, bool rinv)
 
 void repeaterSetup::handleUpdateCurrentMainFrequency(freqt mainfreq)
 {
+    if(mainfreq.VFO == inactiveVFO)
+        return;
+
+    haveReceivedFrequency = true;
     if(amTransmitting)
         return;
 
@@ -684,6 +688,10 @@ void repeaterSetup::on_splitPlusButton_clicked()
     quint64 txfreqhz;
     freqt f;
     QString txString;
+    if(!haveReceivedFrequency) {
+        qWarning(logRptr()) << "Cannot compute offset without first receiving a frequency.";
+        return;
+    }
     if(hzOffset)
     {
         txfreqhz = currentMainFrequency.Hz + hzOffset;
@@ -693,8 +701,16 @@ void repeaterSetup::on_splitPlusButton_clicked()
         txString = QString::number(f.Hz / double(1E6), 'f', 6);
         ui->splitTransmitFreqEdit->setText(txString);
         usedPlusSplit = true;
+
+    } else {
+        qWarning(logRptr()) << "Cannot set split using supplied offset value.";
+        return;
+    }
+    if(ui->splitEnableChk->isChecked() || ui->quickSplitChk->isChecked()) {
         emit setTransmitFrequency(f);
         emit setTransmitMode(modeTransmitVFO);
+    } else {
+        qWarning(logRptr()) << "Not setting transmit frequency until split mode is enabled.";
     }
 }
 
@@ -704,6 +720,10 @@ void repeaterSetup::on_splitMinusBtn_clicked()
     quint64 txfreqhz;
     freqt f;
     QString txString;
+    if(!haveReceivedFrequency) {
+        qWarning(logRptr()) << "Cannot compute offset without first receiving a frequency.";
+        return;
+    }
     if(hzOffset)
     {
         txfreqhz = currentMainFrequency.Hz - hzOffset;
@@ -713,13 +733,26 @@ void repeaterSetup::on_splitMinusBtn_clicked()
         txString = QString::number(f.Hz / double(1E6), 'f', 6);
         ui->splitTransmitFreqEdit->setText(txString);
         usedPlusSplit = false;
+    } else {
+        qWarning(logRptr()) << "Cannot set split using supplied offset value.";
+        return;
+    }
+
+    if(ui->splitEnableChk->isChecked() || ui->quickSplitChk->isChecked()) {
         emit setTransmitFrequency(f);
         emit setTransmitMode(modeTransmitVFO);
+    } else {
+        qWarning(logRptr()) << "Not setting transmit frequency until split mode is enabled.";
+        return;
     }
 }
 
 void repeaterSetup::on_splitTxFreqSetBtn_clicked()
 {
+    if(!haveReceivedFrequency) {
+        qWarning(logRptr()) << "Cannot compute offset without first receiving a frequency.";
+        return;
+    }
     quint64 fHz = getFreqHzFromMHzString(ui->splitTransmitFreqEdit->text());
     freqt f;
     if(fHz)

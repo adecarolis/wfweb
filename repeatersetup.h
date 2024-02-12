@@ -6,6 +6,7 @@
 
 #include "repeaterattributes.h"
 #include "rigidentities.h"
+#include "logcategories.h"
 
 namespace Ui {
 class repeaterSetup;
@@ -103,6 +104,7 @@ private:
 
     rigCapabilities rig;
     bool haveRig = false;
+    bool haveReceivedFrequency = false;
     duplexMode_t currentdm;
     modeInfo currentModeMain;
     modeInfo modeTransmitVFO;
