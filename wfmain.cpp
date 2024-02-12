@@ -516,14 +516,10 @@ void wfmain::makeRig()
                 });
 
         connect(this->rpt, &repeaterSetup::setTransmitFrequency, this->rig,
-                [=](const freqt &transmitFreq) {
-            // TODO: Find a way to set the transmit frequency on any connected radio
-            queue->add(priorityImmediate,queueItem(funcUnselectedFreq,QVariant::fromValue<freqt>(transmitFreq),false));});
-
-           // queue->add(priorityImmediate,queueItem(funcFreqSet,QVariant::fromValue<freqt>(transmitFreq),false));});
+                [=](const freqt &transmitFreq) { queue->add(priorityImmediate,queueItem(funcUnselectedFreq,QVariant::fromValue<freqt>(transmitFreq),false));});
 
         connect(this->rpt, &repeaterSetup::setTransmitMode, this->rig,
-                [=](const modeInfo &transmitMode) {  queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(transmitMode),false));});
+                [=](const modeInfo &transmitMode) { queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(transmitMode),false));});
 
         connect(this->rpt, &repeaterSetup::selectVFO, this->rig,
                 [=](const vfo_t &v) { queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(v),false));});
