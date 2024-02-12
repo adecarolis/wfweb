@@ -513,20 +513,19 @@ toneInfo rigCommander::decodeTone(QByteArray eTone)
     // D(T)CS: 1B 01  TR 01 23 = T/R Invert bits + DCS code 123
 
     toneInfo t;
-
-    if (eTone.length() < 5) {
+    if (eTone.length() < 3) {
         return t;
     }
 
-    if((eTone.at(2) & 0x01) == 0x01)
+    if((eTone.at(0) & 0x01) == 0x01)
         t.tinv = true;
-    if((eTone.at(2) & 0x10) == 0x10)
+    if((eTone.at(0) & 0x10) == 0x10)
         t.rinv = true;
 
-    t.tone += (eTone.at(4) & 0x0f);
-    t.tone += ((eTone.at(4) & 0xf0) >> 4) *   10;
-    t.tone += (eTone.at(3) & 0x0f) *  100;
-    t.tone += ((eTone.at(3) & 0xf0) >> 4) * 1000;
+    t.tone += (eTone.at(2) & 0x0f);
+    t.tone += ((eTone.at(2) & 0xf0) >> 4) *   10;
+    t.tone += (eTone.at(1) & 0x0f) *  100;
+    t.tone += ((eTone.at(1) & 0xf0) >> 4) * 1000;
 
     return t;
 }
@@ -717,7 +716,7 @@ void rigCommander::parseCommand()
     if (rigCaps.hasCommand29 && payloadIn[0] == '\x29')
     {
         vfo = static_cast<uchar>(payloadIn[1]);
-        payloadIn.remove(0,2);      
+        payloadIn.remove(0,2);
     }
 
     // As some commands bave both single and multi-byte options, start at 4 characters and work down to 1.
