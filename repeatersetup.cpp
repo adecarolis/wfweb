@@ -31,16 +31,27 @@ void repeaterSetup::setRig(rigCapabilities inRig)
 {
     this->rig = inRig;
     haveRig = true;
+    if(rig.commands.contains(funcRepeaterTone)) {
+        ui->rptToneCombo->setDisabled(false);
+        ui->toneTone->setDisabled(false);
+    } else {
+        ui->rptToneCombo->setDisabled(true);
+        ui->toneTone->setDisabled(true);
+    }
+
+    if(rig.commands.contains(funcRepeaterTSQL)) {
+        ui->toneTSQL->setDisabled(false);
+    } else {
+        ui->toneTSQL->setDisabled(true);
+    }
+
     if(rig.commands.contains(funcToneSquelchType))
     {
         ui->rptToneCombo->setDisabled(false);
         ui->toneTone->setDisabled(false);
         ui->toneTSQL->setDisabled(false);
-    } else {
-        ui->rptToneCombo->setDisabled(true);
-        ui->toneTone->setDisabled(true);
-        ui->toneTSQL->setDisabled(true);
     }
+
     if(rig.commands.contains(funcRepeaterDTCS))
     {
         ui->rptDTCSCombo->setDisabled(false);
@@ -521,7 +532,7 @@ void repeaterSetup::on_rptToneCombo_activated(int tindex)
         emit setTone(rt);
         if(updateSub)
         {
-            //rt.useSecondaryVFO = true;
+            rt.useSecondaryVFO = true;
             emit setTone(rt);
         }
 
@@ -529,7 +540,7 @@ void repeaterSetup::on_rptToneCombo_activated(int tindex)
         emit setTSQL(rt);
         if(updateSub)
         {
-            //rt.useSecondaryVFO = true;
+            rt.useSecondaryVFO = true;
             emit setTone(rt);
         }
     }
@@ -575,8 +586,8 @@ void repeaterSetup::on_toneTone_clicked()
 
     if(updateSub)
     {
-        //rd.useSecondaryVFO = true;
-        //rt.useSecondaryVFO = true;
+        rd.useSecondaryVFO = true;
+        rt.useSecondaryVFO = true;
         emit setRptAccessMode(rd);
         emit setTone(rt);
     }
@@ -596,8 +607,8 @@ void repeaterSetup::on_toneTSQL_clicked()
 
     if(updateSub)
     {
-        //rd.useSecondaryVFO = true;
-        //rt.useSecondaryVFO = true;
+        rd.useSecondaryVFO = true;
+        rt.useSecondaryVFO = true;
         emit setRptAccessMode(rd);
         emit setTone(rt);
     }
@@ -822,7 +833,7 @@ void repeaterSetup::on_setToneSubVFOBtn_clicked()
     // TODO: DTCS
     toneInfo rt;
     rt.tone = (quint16)ui->rptToneCombo->currentData().toUInt();
-    //rt.useSecondaryVFO = true;
+    rt.useSecondaryVFO = true;
     emit setTone(rt);
 }
 

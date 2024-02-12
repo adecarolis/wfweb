@@ -329,10 +329,12 @@ bool rigCommander::getCommand(funcs func, QByteArray &payload, int value, uchar 
     {
         if (value == INT_MIN || (value>=it.value().minVal && value <= it.value().maxVal))
         {
+            /*
             if (value == INT_MIN)
                 qDebug(logRig()) << QString("%0 with no value (get)").arg(funcString[func]);
             else
                 qDebug(logRig()) << QString("%0 with value %1 (Range: %2-%3)").arg(funcString[func]).arg(value).arg(it.value().minVal).arg(it.value().maxVal);
+            */
             if (rigCaps.hasCommand29 && it.value().cmd29)
             {
                 // This can use cmd29 so add sub/main to the command
@@ -350,11 +352,11 @@ bool rigCommander::getCommand(funcs func, QByteArray &payload, int value, uchar 
         }
         else if (value != INT_MIN)
         {
-            qInfo(logRig()) << QString("Value %0 for %1 is outside of allowed range (%2-%3)").arg(value).arg(funcString[func]).arg(it.value().minVal).arg(it.value().maxVal);
+            qDebug(logRig()) << QString("Value %0 for %1 is outside of allowed range (%2-%3)").arg(value).arg(funcString[func]).arg(it.value().minVal).arg(it.value().maxVal);
         }
     } else {
         // Don't try this command again as the rig doesn't support it!
-        qInfo(logRig()) << "Removing unsupported command from queue" << funcString[func] << "VFO" << vfo;
+        qDebug(logRig()) << "Removing unsupported command from queue" << funcString[func] << "VFO" << vfo;
         queue->del(func,vfo);
     }
     return false;

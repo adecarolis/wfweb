@@ -148,6 +148,7 @@ struct toneInfo {
     quint16 tone=0;
     bool tinv=false;
     bool rinv=false;
+    bool useSecondaryVFO = false;
 };
 
 enum breakIn_t {

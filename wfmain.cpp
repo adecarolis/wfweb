@@ -64,6 +64,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<duplexMode_t>();
     qRegisterMetaType<rptAccessTxRx_t>();
     qRegisterMetaType<rptrAccessData>();
+    qRegisterMetaType<toneInfo>();
     qRegisterMetaType<rigInput>();
     qRegisterMetaType<inputTypes>();
     qRegisterMetaType<meter_t>();
@@ -472,10 +473,19 @@ void wfmain::makeRig()
                 [=](const duplexMode_t &t) { queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(t),false));});
 
         connect(this->rpt, &repeaterSetup::getTone, this->rig,
-                [=]() { queue->add(priorityImmediate,funcRepeaterTone,false,false);});
+                [=]() {
+            qDebug(logSystem()) << "Asking for TONE";
+            queue->add(priorityImmediate,funcRepeaterTone,false,false);});
+
+        connect(this->rpt, &repeaterSetup::setTone, this->rig,
+                [=](const toneInfo& t) {
+            qDebug(logSystem()) << "Setting TONE for VFO [" << t.useSecondaryVFO << "]";
+            queue->add(priorityImmediate,queueItem(funcToneFreq,QVariant::fromValue<toneInfo>(t),false, t.useSecondaryVFO));});
 
         connect(this->rpt, &repeaterSetup::setTSQL, this->rig,
-                [=](const toneInfo& t) { queue->add(priorityImmediate,queueItem(funcTSQLFreq,QVariant::fromValue<toneInfo>(t),false));});
+                [=](const toneInfo& t) {
+            qDebug(logSystem()) << "Setting TSQL for VFO [" << t.useSecondaryVFO << "]";
+            queue->add(priorityImmediate,queueItem(funcTSQLFreq,QVariant::fromValue<toneInfo>(t),false, t.useSecondaryVFO));});
 
         connect(this->rpt, &repeaterSetup::getTSQL, this->rig,
                 [=]() { queue->add(priorityImmediate,funcRepeaterTSQL,false,false);});
@@ -504,8 +514,20 @@ void wfmain::makeRig()
 
         connect(this->rpt, &repeaterSetup::setRptAccessMode, this->rig,
                 [=](const rptrAccessData &rd) {
+            if (rigCaps.commands.contains(funcToneSquelchType)) {
                     queue->add(priorityImmediate,queueItem(funcToneSquelchType,QVariant::fromValue<rptrAccessData>(rd),false));
-                });
+            } else {
+                if(rd.accessMode == ratrTN) {
+                    // recuring=false, vfo if rd.useSEcondaryVFO
+                    queue->add(priorityImmediate,queueItem(funcRepeaterTone, QVariant::fromValue<bool>(true), false, rd.useSecondaryVFO));
+                } else if (rd.accessMode == ratrTT) {
+                    queue->add(priorityImmediate,queueItem(funcRepeaterTSQL, QVariant::fromValue<bool>(true), false, rd.useSecondaryVFO));
+                } else if (rd.accessMode == ratrNN) {
+                    queue->add(priorityImmediate,queueItem(funcRepeaterTone, QVariant::fromValue<bool>(false), false, rd.useSecondaryVFO));
+                    queue->add(priorityImmediate,queueItem(funcRepeaterTSQL, QVariant::fromValue<bool>(false), false, rd.useSecondaryVFO));
+                }
+             }
+        });
 
         connect(this->rig, &rigCommander::haveDuplexMode, this->rpt,
                 [=](const duplexMode_t &dm) {
@@ -5231,7 +5253,7 @@ void wfmain::setDebugLogging(bool debugModeOn)
 void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
 {
     // Open stream file writes
-
+    bool insaneDebugLogging = false;
     if (type == QtDebugMsg && !debugModeLogging)
     {
         return;
@@ -5240,6 +5262,10 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     if( (type == QtWarningMsg) && (msg.contains("QPainter::")) ) {
         // This is a message from QCP about a collapsed plot area.
         // Ignore.
+        return;
+    }
+
+    if( (type == QtDebugMsg) && (!insaneDebugLogging) && (qstrncmp(context.category, "rigTraffic", 10)==0) ) {
         return;
     }
 
