@@ -613,7 +613,7 @@ void repeaterSetup::on_toneTSQL_clicked()
         rd.useSecondaryVFO = true;
         rt.useSecondaryVFO = true;
         emit setRptAccessMode(rd);
-        emit setTone(rt);
+        emit setTSQL(rt);
     }
 }
 
