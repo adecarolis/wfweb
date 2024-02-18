@@ -801,7 +801,7 @@ void usbController::runTimer()
                     if (kb != knobList->end()) {
                         // sendCommand mustn't be deleted so we ensure it stays in-scope by declaring it private (we will only ever send one command).
                         sendCommand = *kb->command;
-                        if (sendCommand.command != cmdSetFreq) {
+                        if (sendCommand.command != funcSelectedFreq && sendCommand.command != funcUnselectedFreq) {
                             int tempVal = dev->knobValues[i].value * dev->sensitivity;
                             tempVal = qMin(qMax(tempVal,0),255);
                             sendCommand.suffix = quint8(tempVal);
@@ -816,7 +816,7 @@ void usbController::runTimer()
                         
                         emit button(&sendCommand);
 
-                        if (sendCommand.command == cmdSetFreq) {
+                        if (sendCommand.command == funcSelectedFreq || sendCommand.command == funcUnselectedFreq) {
                             dev->knobValues[i].value = 0;
                         }
                         dev->knobValues[i].previous=dev->knobValues[i].value;
@@ -1737,7 +1737,7 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Spectrum", commandButton, funcLCDSpectrum, (quint8)0x0));
     commands.append(COMMAND(num++, "Waterfall", commandButton, funcLCDWaterfall, (quint8)0x0));
     commands.append(COMMAND(num++, "No Display", commandButton, funcLCDNothing, (quint8)0x0));
-    commands.append(COMMAND(num++, "Pages", commandButton, cmdSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "Pages", commandButton, funcSeparator, (quint8)0x0));
     commands.append(COMMAND(num++, "Page Down", commandButton, funcPageDown, (quint8)0x0));
     commands.append(COMMAND(num++, "Page Up", commandButton, funcPageUp, (quint8)0x0));
 
@@ -1754,11 +1754,11 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Anti-Vox", commandKnob, funcAntiVoxGain, (quint8)0xff));
     commands.append(COMMAND(num++, "NB Level", commandKnob, funcNBLevel, (quint8)0xff));
     commands.append(COMMAND(num++, "NR Level", commandKnob, funcNRLevel, (quint8)0xff));
-    commands.append(COMMAND(num++, "Span/Step", commandKnob, cmdSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "Span/Step", commandKnob, funcSeparator, (quint8)0x0));
     commands.append(COMMAND(num++, "IF Shift", commandKnob, funcIFShift, (quint8)0xff));
     commands.append(COMMAND(num++, "In PBT", commandKnob, funcPBTInner, (quint8)0xff));
     commands.append(COMMAND(num++, "Out PBT", commandKnob, funcPBTOuter, (quint8)0xff));
-    commands.append(COMMAND(num++, "Span/Step", commandKnob, cmdSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "Span/Step", commandKnob, funcSeparator, (quint8)0x0));
     commands.append(COMMAND(num++, "CW Pitch", commandKnob, funcCwPitch, (quint8)0xff));
     commands.append(COMMAND(num++, "CW Speed", commandKnob, funcKeySpeed, (quint8)0xff));
 }
