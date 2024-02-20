@@ -70,18 +70,19 @@ using namespace std;
 
 struct USBTYPE {
     USBTYPE() {}
-    USBTYPE(usbDeviceType model,quint32 manufacturerId, quint32 productId , quint32 usage, quint32 usagePage, int buttons, int knobs, int leds,  int maxPayload, int iconSize) :
-        model(model), manufacturerId(manufacturerId), productId(productId), usage(usage), usagePage(usagePage), buttons(buttons), knobs(knobs), leds(leds), maxPayload(maxPayload), iconSize(iconSize) {}
+    USBTYPE(usbDeviceType model,quint32 manufacturerId, quint32 productId , quint32 usage, quint32 usagePage, int buttons, int cols, int knobs, int leds,  int maxPayload, int iconSize) :
+        model(model), manufacturerId(manufacturerId), productId(productId), usage(usage), usagePage(usagePage), buttons(buttons), cols(cols), knobs(knobs), leds(leds), maxPayload(maxPayload), iconSize(iconSize) {}
 
     usbDeviceType model = usbNone;
     quint32 manufacturerId=0;
     quint32 productId=0;
     quint32 usage=0;
     quint32 usagePage=0;
-    int buttons=0;
-    int knobs=0;
-    int leds=0;
-    int maxPayload=0;
+    int buttons=0; // How many buttons
+    int cols=0; // How many columns of buttons
+    int knobs=0;    // How many knobs
+    int leds=0;     // how many leds
+    int maxPayload=0;   // Max allowed payload
     int iconSize=0;
 };
 

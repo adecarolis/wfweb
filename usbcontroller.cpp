@@ -18,23 +18,23 @@ usbController::usbController()
     loadKnobs();
 
     // This is a the "master" list of supported devices. Maybe move to settings at some point?
-    // usbDeviceType, manufacturer, product, usage, usagePage, butons, knobs, leds, maxPayload, iconSize
-    knownDevices.append(USBTYPE(shuttleXpress,0x0b33,0x0020,0x0000,0x0000,15,2,0,5,0));
-    knownDevices.append(USBTYPE(shuttlePro2,0x0b33,0x0030,0x0000,0x0000,15,2,0,5,0));
-    knownDevices.append(USBTYPE(shuttlePro2,0x0b33,0x0011,0x0000,0x0000,15,2,0,5,0)); // Actually a ShuttlePro but hopefully will work?
-    knownDevices.append(USBTYPE(RC28,0x0c26,0x001e,0x0000,0x0000,3,1,3,64,0));
-    knownDevices.append(USBTYPE(eCoderPlus, 0x1fc9, 0x0003,0x0000,0x0000,22,4,0,32,0)); // Actually 20 but some bit0 and bit15 aren't used
-    knownDevices.append(USBTYPE(QuickKeys, 0x28bd, 0x5202,0x0001,0xff0a,10,1,0,32,0));
-    knownDevices.append(USBTYPE(StreamDeckMini, 0x0fd9, 0x0063, 0x0000, 0x0000,6,0,0,1024,80));
-    knownDevices.append(USBTYPE(StreamDeckMiniV2, 0x0fd9, 0x0090, 0x0000, 0x0000,6,0,0,1024,80));
-    knownDevices.append(USBTYPE(StreamDeckOriginal, 0x0fd9, 0x0060, 0x0000, 0x0000,15,0,0,8191,72));
-    knownDevices.append(USBTYPE(StreamDeckOriginalV2, 0x0fd9, 0x006d, 0x0000, 0x0000,15,0,0,1024,72));
-    knownDevices.append(USBTYPE(StreamDeckOriginalMK2, 0x0fd9, 0x0080, 0x0000, 0x0000,15,0,0,1024,72));
-    knownDevices.append(USBTYPE(StreamDeckXL, 0x0fd9, 0x006c, 0x0000, 0x0000,32,0,0,1024,96));
-    knownDevices.append(USBTYPE(StreamDeckXLV2, 0x0fd9, 0x008f, 0x0000, 0x0000,32,0,0,1024,96));
-    knownDevices.append(USBTYPE(StreamDeckPedal, 0x0fd9, 0x0086, 0x0000, 0x0000,3,0,0,1024,0));
-    knownDevices.append(USBTYPE(StreamDeckPlus, 0x0fd9, 0x0084, 0x0000, 0x0000,12,4,0,1024,120));
-    knownDevices.append(USBTYPE(XKeysXK3, 0x05f3, 0x04c5, 0x0001, 0x000c,3,0,2,32,0)); // So-called "splat" interface?
+    // usbDeviceType, manufacturer, product, usage, usagePage, buttons, columns, knobs, leds, maxPayload, iconSize
+    knownDevices.append(USBTYPE(shuttleXpress,0x0b33,0x0020,0x0000,0x0000,15,0,2,0,5,0));
+    knownDevices.append(USBTYPE(shuttlePro2,0x0b33,0x0030,0x0000,0x0000,15,0,2,0,5,0));
+    knownDevices.append(USBTYPE(shuttlePro2,0x0b33,0x0011,0x0000,0x0000,15,0,2,0,5,0)); // Actually a ShuttlePro but hopefully will work?
+    knownDevices.append(USBTYPE(RC28,0x0c26,0x001e,0x0000,0x0000,3,0,1,3,64,0));
+    knownDevices.append(USBTYPE(eCoderPlus, 0x1fc9, 0x0003,0x0000,0x0000,22,0,4,0,32,0)); // Actually 20 but some bit0 and bit15 aren't used
+    knownDevices.append(USBTYPE(QuickKeys, 0x28bd, 0x5202,0x0001,0xff0a,10,0,1,0,32,0));
+    knownDevices.append(USBTYPE(StreamDeckMini, 0x0fd9, 0x0063, 0x0000, 0x0000,6,0,0,0,1024,80));
+    knownDevices.append(USBTYPE(StreamDeckMiniV2, 0x0fd9, 0x0090, 0x0000, 0x0000,6,0,0,0,1024,80));
+    knownDevices.append(USBTYPE(StreamDeckOriginal, 0x0fd9, 0x0060, 0x0000, 0x0000,15,5,0,0,8191,72));
+    knownDevices.append(USBTYPE(StreamDeckOriginalV2, 0x0fd9, 0x006d, 0x0000, 0x0000,15,5,0,0,1024,72));
+    knownDevices.append(USBTYPE(StreamDeckOriginalMK2, 0x0fd9, 0x0080, 0x0000, 0x0000,15,5,0,0,1024,72));
+    knownDevices.append(USBTYPE(StreamDeckXL, 0x0fd9, 0x006c, 0x0000, 0x0000,32,8,0,0,1024,96));
+    knownDevices.append(USBTYPE(StreamDeckXLV2, 0x0fd9, 0x008f, 0x0000, 0x0000,32,8,0,0,1024,96));
+    knownDevices.append(USBTYPE(StreamDeckPedal, 0x0fd9, 0x0086, 0x0000, 0x0000,3,0,0,0,1024,0));
+    knownDevices.append(USBTYPE(StreamDeckPlus, 0x0fd9, 0x0084, 0x0000, 0x0000,12,0,4,0,1024,120));
+    knownDevices.append(USBTYPE(XKeysXK3, 0x05f3, 0x04c5, 0x0001, 0x000c,3,0,0,2,32,0)); // So-called "splat" interface?
 }
 
 usbController::~usbController()
@@ -639,61 +639,73 @@ void usbController::runTimer()
             else if (res>=dev->type.buttons && dev->type.model != usbNone)
             {
                 // Main buttons
-                if ((quint8)data[1] == 0x00)
+                if (dev->type.model == usbDeviceType::StreamDeckOriginal)
                 {
-                    for (int i=dev->type.buttons-dev->type.knobs;i>0;i--) {
-                        tempButtons |= ((quint8)data[i+3] & 0x01) << (i-1);
+
+                    for (int i = dev->type.buttons-1;i>=0;i--) {
+                        quint8 val = ((i - (i % dev->type.cols)) + (dev->type.cols-1)) - (i % dev->type.cols);
+                        tempButtons |= ((quint8)data[val+1] & 0x01) << (i);
                     }
+
+                    qInfo(logUsbControl()) << "RX:" << data.toHex(' ');
                 }
-
-                // Knobs and secondary buttons
-                if (dev->type.model == StreamDeckPlus) {
-                    if ((quint8)data[1] == 0x03 && (quint8)data[2] == 0x05)
+                else
+                {
+                    if ((quint8)data[1] == 0x00)
                     {
-                        // Knob action!
-                        switch ((quint8)data[4])
-                        {
-                        case 0x00:
-                            // Knob button
-                            for (int i=dev->type.buttons;i>7;i--)
-                            {
-                                tempButtons |= ((quint8)data[i-4] & 0x01) << (i-1);
-                            }
-                            break;
-                        case 0x01:
-                            // Knob moved
-                            for (int i=0;i<dev->type.knobs;i++)
-                            {
-                                dev->knobValues[i].value += (qint8)data[i+5];
-                            }
-                            break;
+                        for (int i = dev->type.buttons - dev->type.knobs;i>0;i--) {
+                            tempButtons |= ((quint8)data[i+3] & 0x01) << (i-1);
                         }
                     }
-                    else if ((quint8)data[1] == 0x02 && (quint8)data[2] == 0x0E)
-                    {
-                        // LCD touch event
-                        int x = ((quint8)data[7] << 8) | ((quint8)data[6] & 0xff);
-                        int y = ((quint8)data[9] << 8) | ((quint8)data[8] & 0xff);
-                        int x2=0;
-                        int y2=0;
-                        QString tt="";
-                        switch ((quint8)data[4])
-                        {
-                        case 0x01:
-                            tt="Short";
-                            break;
-                        case 0x02:
-                            tt="Long";
-                            break;
-                        case 0x03:
-                            tt="Swipe";
-                            x2 = ((quint8)data[11] << 8) | ((quint8)data[10] & 0xff);
-                            y2 = ((quint8)data[13] << 8) | ((quint8)data[12] & 0xff);
-                            break;
-                        }
-                        qInfo(logUsbControl()) << QString("%0 touch: %1,%2 to %3,%4").arg(tt).arg(x).arg(y).arg(x2).arg(y2);
-                    }
 
+                    // Knobs and secondary buttons
+                    if (dev->type.model == StreamDeckPlus) {
+                        if ((quint8)data[1] == 0x03 && (quint8)data[2] == 0x05)
+                        {
+                            // Knob action!
+                            switch ((quint8)data[4])
+                            {
+                            case 0x00:
+                                // Knob button
+                                for (int i=dev->type.buttons;i>7;i--)
+                                {
+                                    tempButtons |= ((quint8)data[i-4] & 0x01) << (i-1);
+                                }
+                                break;
+                            case 0x01:
+                                // Knob moved
+                                for (int i=0;i<dev->type.knobs;i++)
+                                {
+                                    dev->knobValues[i].value += (qint8)data[i+5];
+                                }
+                                break;
+                            }
+                        }
+                        else if ((quint8)data[1] == 0x02 && (quint8)data[2] == 0x0E)
+                        {
+                            // LCD touch event
+                            int x = ((quint8)data[7] << 8) | ((quint8)data[6] & 0xff);
+                            int y = ((quint8)data[9] << 8) | ((quint8)data[8] & 0xff);
+                            int x2=0;
+                            int y2=0;
+                            QString tt="";
+                            switch ((quint8)data[4])
+                            {
+                            case 0x01:
+                                tt="Short";
+                                break;
+                            case 0x02:
+                                tt="Long";
+                                break;
+                            case 0x03:
+                                tt="Swipe";
+                                x2 = ((quint8)data[11] << 8) | ((quint8)data[10] & 0xff);
+                                y2 = ((quint8)data[13] << 8) | ((quint8)data[12] & 0xff);
+                                break;
+                            }
+                            qInfo(logUsbControl()) << QString("%0 touch: %1,%2 to %3,%4").arg(tt).arg(x).arg(y).arg(x2).arg(y2);
+                        }
+                    }
                 }
             }
 
@@ -999,7 +1011,9 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
     case StreamDeckXLV2:
     case StreamDeckPlus:
     case StreamDeckPedal:
-        data.resize(32);
+        if (!sdv1)
+            data.resize(32);
+
         switch (feature)
         {
         case usbFeatureType::featureFirmware:
@@ -1204,7 +1218,8 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                 ((dev->type.model == usbDeviceType::StreamDeckPlus  && val < 8) ||
                 (val < dev->type.buttons)))
             {
-                if (val < 8) {
+                if (val < 8 || dev->type.model != usbDeviceType::StreamDeckPlus) {
+
                     QImage butImage(dev->type.iconSize,dev->type.iconSize, QImage::Format_RGB888);
                     if (color != Q_NULLPTR)
                         butImage.fill(*color);
@@ -1214,7 +1229,11 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                     QPainter butPaint(&butImage);
 
                     if ( img == Q_NULLPTR) {
-                        butPaint.setFont(QFont("times",16));
+                        if (dev->type.iconSize == 72)
+                            butPaint.setFont(QFont("times",10));
+                        else
+                            butPaint.setFont(QFont("times",16));
+
                         butPaint.drawText(butImage.rect(),Qt::AlignCenter | Qt::AlignVCenter, text);
                     } else {
                         butPaint.setCompositionMode(QPainter::CompositionMode_SourceAtop);
@@ -1222,12 +1241,27 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                     }
 
                     QBuffer butBuffer(&data2);
+                    QTransform myTransform;
+                    if (dev->type.model == usbDeviceType::StreamDeckOriginal || dev->type.model == usbDeviceType::StreamDeckXL)
+                    {
+                        myTransform.rotate(180);
+                    }
+                    QImage myImage = butImage.transformed(myTransform);
 
                     if (sdv1)
                     {
-                        butImage.save(&butBuffer, "BMP");
+
+                        myImage.save(&butBuffer, "BMP");
+                        quint16 payloadLen = dev->type.maxPayload - sizeof(streamdeck_v1_image_header);
+
+                        if (dev->type.model == usbDeviceType::StreamDeckOriginal) {
+                            // Special case for buttons on original StreamDeck
+                            val = ((val - (val % dev->type.cols)) + (dev->type.cols-1)) - (val % dev->type.cols) + 1;
+                            payloadLen = data2.size()/2;
+                        }
+
                         quint32 rem = data2.size();
-                        quint16 index = 0;
+                        quint16 index = 1;
                         streamdeck_v1_image_header h1;
                         memset(h1.packet, 0x0, sizeof(h1)); // We can't be sure it is initialized with 0x00!
                         h1.cmd = 0x02;
@@ -1235,24 +1269,24 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                         h1.button = val;
                         while (rem > 0)
                         {
-                            quint16 length = qMin(quint16(rem),quint16(dev->type.maxPayload-sizeof(h1)));
+                            quint32 length = qMin(quint16(rem),quint16(payloadLen));
                             data.clear();
-                            h1.isLast = (quint8)(rem <= dev->type.maxPayload-sizeof(h1) ? 1 : 0); // isLast ? 1 : 0,3
+                            data.squeeze();
+                            h1.isLast = (quint8)(rem <= payloadLen ? 1 : 0); // isLast ? 1 : 0,3
                             h1.index = index;
-                            data.append(QByteArray::fromRawData((const char*)h1.packet,sizeof(h1)));
-                            rem -= length;
-                            data.append(data2.mid(0,length));
+                            data.append(QByteArray::fromRawData((const char*)h1.packet,0x16));
                             data.resize(dev->type.maxPayload);
-                            memset(data.data()+length+sizeof(h1),0x0,data.size()-(length+sizeof(h1)));
+                            rem -= length;
+                            data=data.replace(0x10,length,data2.mid(0,length));
                             res=hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
-                            //qInfo(logUsbControl()) << "Sending" << (((quint8)data[7] << 8) | ((quint8)data[6] & 0xff)) << "total=" << data.size()  << "payload=" << (((quint8)data[5] << 8) | ((quint8)data[4] & 0xff)) << "last" << (quint8)data[3];
+                            //qInfo(logUsbControl()) << "Sending len=" << dev->type.maxPayload << h1.index << "total=" << data.size()  << "payload=" << length << "last" << h1.isLast;
                             data2.remove(0,length);
                             index++;
                         }
                     }
                     else
                     {
-                        butImage.save(&butBuffer, "JPG");
+                        myImage.save(&butBuffer, "JPG");
                         quint32 rem = data2.size();
                         quint16 index = 0;
                         streamdeck_image_header h;
@@ -1467,11 +1501,11 @@ void usbController::loadButtons()
     defaultButtons.append(BUTTON(StreamDeckOriginal, 7, QRect(263, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
     defaultButtons.append(BUTTON(StreamDeckOriginal, 8, QRect(364, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
     defaultButtons.append(BUTTON(StreamDeckOriginal, 9, QRect(462, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(StreamDeckOriginal, 10, QRect(332, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(StreamDeckOriginal, 11, QRect(462, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(StreamDeckOriginal, 12, QRect(74, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(StreamDeckOriginal, 13, QRect(204, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(StreamDeckOriginal, 14, QRect(332, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 10, QRect(65, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 11, QRect(165, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 12, QRect(263, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 13, QRect(364, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 14, QRect(462, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
 
     // StreamDeckOriginalMK2
     defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 0, QRect(65, 91, 75, 75), Qt::white, &commands[0], &commands[0],true));
@@ -1484,11 +1518,11 @@ void usbController::loadButtons()
     defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 7, QRect(263, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
     defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 8, QRect(364, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
     defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 9, QRect(462, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 10, QRect(332, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 11, QRect(462, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 12, QRect(74, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 13, QRect(204, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 14, QRect(332, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 10, QRect(65, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 11, QRect(165, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 12, QRect(263, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 13, QRect(364, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 14, QRect(462, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
 
     // StreamDeckOriginalV2
     defaultButtons.append(BUTTON(StreamDeckOriginalV2, 0, QRect(65, 91, 75, 75), Qt::white, &commands[0], &commands[0],true));
@@ -1501,11 +1535,11 @@ void usbController::loadButtons()
     defaultButtons.append(BUTTON(StreamDeckOriginalV2, 7, QRect(263, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
     defaultButtons.append(BUTTON(StreamDeckOriginalV2, 8, QRect(364, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
     defaultButtons.append(BUTTON(StreamDeckOriginalV2, 9, QRect(462, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 10, QRect(332, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 11, QRect(462, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 12, QRect(74, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 13, QRect(204, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 14, QRect(332, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 10, QRect(65, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 11, QRect(165, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 12, QRect(263, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 13, QRect(364, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 14, QRect(462, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
 
     // StreamDeckMini
     defaultButtons.append(BUTTON(StreamDeckMini, 0, QRect(113, 86, 100, 80), Qt::white, &commands[0], &commands[0],true));
