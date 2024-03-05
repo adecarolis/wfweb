@@ -8,6 +8,9 @@
 #include <stdint.h>
 #include <memory>
 
+
+enum valueType { typeNone=0, typeFloat, typeFloatDiv, typeFloatDiv5, typeUChar, typeChar, typeShort, typeBinary , typeFreq, typeMode,typeLevel,typeVFO};
+
 enum connectionStatus_t { connDisconnected, connConnecting, connConnected };
 
 enum underlay_t { underlayNone, underlayPeakHold, underlayPeakBuffer, underlayAverageBuffer };

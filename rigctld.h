@@ -21,6 +21,7 @@
 
 #include "rigcommander.h"
 #include "cachingqueue.h"
+#include "wfviewtypes.h"
 
 #define CONSTANT_64BIT_FLAG(BIT) (1ull << (BIT))
 
@@ -66,7 +67,7 @@ struct commandStruct
     uchar sstr;
     const char *str;
     funcs func;
-    char type;
+    valueType type;
     int flags = 0;
     const char* arg1=nullptr;
     const char* arg2=nullptr;
@@ -277,7 +278,7 @@ public:
 
     int startServer(qint16 port);
     void stopServer();
-    rigCapabilities rigCaps;
+    rigCapabilities* rigCaps;
 
 signals:
     void onStarted();
@@ -312,7 +313,6 @@ signals:
 
 public slots:
     virtual void incomingConnection(qintptr socketDescriptor);
-    void receiveRigCaps(rigCapabilities caps);
 //    void receiveFrequency(freqt freq);
 
 };
@@ -324,7 +324,7 @@ class rigCtlClient : public QObject
 
 public:
 
-    explicit rigCtlClient(int socket, rigCapabilities caps, rigCtlD* parent = Q_NULLPTR);
+    explicit rigCtlClient(int socket, rigCtlD* parent = Q_NULLPTR);
     int getSocketId();
 
 
@@ -333,6 +333,7 @@ public slots:
     void socketDisconnected();
     void closeSocket();
     void sendData(QString data);
+    void receiveRigCaps(rigCapabilities* caps);
 
 protected:
     int sessionId;
@@ -341,7 +342,7 @@ protected:
 
 private:
     cachingQueue* queue;
-    rigCapabilities rigCaps;
+    rigCapabilities* rigCaps;
     rigCtlD* parent;
     bool chkVfoEecuted=false;
     unsigned long crcTable[256];

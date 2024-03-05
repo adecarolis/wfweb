@@ -3688,7 +3688,7 @@ void wfmain::setDefaultColors(int presetNumber)
             p->underlayLine = QColor(0x96,0x33,0xff,0xff);
             p->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
             p->tuningLine = QColor(0xff,0x55,0xff,0xff);
-            p->passband = QColor(0x32,0xff,0xff,0xff);
+            p->passband = QColor(0x32,0xff,0xff,0x80);
             p->pbt = QColor(0x32,0xff,0x00,0x00);
 
             p->meterLevel = QColor(0x14,0x8c,0xd2).darker();
@@ -5109,7 +5109,6 @@ void wfmain::enableRigCtl(bool enabled)
         // Start rigctld
         rigCtl = new rigCtlD(this);
         rigCtl->startServer(prefs.rigCtlPort);
-        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), rigCtl, SLOT(receiveRigCaps(rigCapabilities)));
         if (rig != Q_NULLPTR) {
             // We are already connected to a rig.
             emit sendRigCaps(rigCaps);

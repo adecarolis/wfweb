@@ -1,6 +1,7 @@
 *.pro.user
 .vs
 .qmake.stash
+.qtc_clangd
 debug
 release
 wfview-debug
@@ -10,3 +11,6 @@ wfserver-release
 ui_*
 portaudio_x86.dll
 qcustomplot2.dll
+Makefile
+Makefile.Debug
+Makefile.Release

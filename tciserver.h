@@ -20,9 +20,9 @@ struct tciCommandStruct
 {
     const char *str;
     funcs func;
-    char arg1=0;
-    char arg2=0;
-    char arg3=0;
+    valueType arg1;
+    valueType arg2;
+    valueType arg3;
 };
 
 
