@@ -84,23 +84,6 @@ void usbController::init(QMutex* mut,usbDevMap* devs ,QVector<BUTTON>* buts,QVec
     // We need to make sure that all buttons/knobs have a command assigned, this is a fairly expensive operation
     // Perform a deep copy of the command to ensure that each controller is using a unique copy of the command.
     
-#ifdef HID_API_VERSION_MAJOR
-    if (HID_API_VERSION == HID_API_MAKE_VERSION(hid_version()->major, hid_version()->minor, hid_version()->patch)) {
-        qInfo(logUsbControl) << QString("Compile-time version matches runtime version of hidapi: %0.%1.%2")
-                                .arg(hid_version()->major)
-                                .arg(hid_version()->minor)
-                                .arg(hid_version()->patch);
-    }
-    else {
-        qInfo(logUsbControl) << QString("Compile-time and runtime versions of hidapi do not match (%0.%1.%2 vs %0.%1.%2)")
-                                .arg(HID_API_VERSION_MAJOR)
-                                .arg(HID_API_VERSION_MINOR)
-                                .arg(HID_API_VERSION_PATCH)
-                                .arg(hid_version()->major)
-                                .arg(hid_version()->minor)
-                                .arg(hid_version()->patch);
-    }
-#endif
     hidStatus = hid_init();
     if (hidStatus) {
         qInfo(logUsbControl()) << "Failed to intialize HID Devices";

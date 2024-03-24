@@ -48,7 +48,7 @@ bool audioConverter::init(QAudioFormat inFormat, codecType inCodec, QAudioFormat
 		//opus_encoder_ctl(opusEncoder, OPUS_SET_DTX(1));
 		//opus_encoder_ctl(opusEncoder, OPUS_SET_PACKET_LOSS_PERC(5));
 		opus_encoder_ctl(opusEncoder, OPUS_SET_COMPLEXITY(opusComplexity)); // Reduce complexity to maybe lower CPU?
-		qInfo(logAudioConverter()) << "Creating opus encoder: " << opus_strerror(opus_err);
+        qInfo(logAudioConverter()) << "Creating opus encoder: " << opus_strerror(opus_err);
 	}
 
 	if (inFormat.sampleRate() != outFormat.sampleRate()) 

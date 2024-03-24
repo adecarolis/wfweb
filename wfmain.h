@@ -497,6 +497,7 @@ private slots:
     void on_dualWatchBtn_toggled(bool en);
 
     void receiveElapsed(bool sub, qint64 us);
+    void connectionTimeout();
 
 private:
     Ui::wfmain *ui; // Main UI
@@ -514,6 +515,7 @@ private:
     QTimer logCheckingTimer;
     int logCheckingOldPosition = 0;
     QTimer ATUCheckTimer;
+    QTimer ConnectionTimer;
 
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image

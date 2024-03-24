@@ -31,12 +31,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     setWindowIcon(QIcon( QString(":resources/wfview.png")));
     this->debugMode = debugMode;
     debugModeLogging = debugMode;
-    version = QString("wfview version: %1 (Git:%2 on %3 at %4 by %5@%6). Operating System: %7 (%8). Build Qt Version %9. Current Qt Version: %10")
-        .arg(QString(WFVIEW_VERSION))
-        .arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
-        .arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture())
-        .arg(QT_VERSION_STR).arg(qVersion());
-
     ui->setupUi(this);
     setWindowTitle(QString("wfview"));
 
@@ -46,7 +40,50 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     logWindow = new loggingWindow(logFile);
     initLogging();
     logWindow->setInitialDebugState(debugMode);
-    qInfo(logSystem()) << version;
+    qInfo(logSystem()).noquote() << QString("wfview version: %1 (Git:%2 on %3 at %4 by %5@%6)")
+                          .arg(QString(WFVIEW_VERSION),GITSHORT,__DATE__,__TIME__,UNAME,HOST);
+
+    qInfo(logSystem()).noquote() << QString("Operating System: %0 (%1)").arg(QSysInfo::prettyProductName(),QSysInfo::buildCpuArchitecture());
+    qInfo(logSystem()).noquote() << "Looking for External Dependencies:";
+    qInfo(logSystem()).noquote() << QString("QT Runtime Version: %0").arg(qVersion());
+    if (strncmp(QT_VERSION_STR, qVersion(),sizeof(QT_VERSION_STR)))
+    {
+        qWarning(logSystem()).noquote() << QString("QT Build Version Mismatch: %0").arg(QT_VERSION_STR);
+    }
+
+    qInfo(logSystem()).noquote()  << QString("OPUS Version: %0").arg(opus_get_version_string());
+
+#ifdef HID_API_VERSION_MAJOR
+    qInfo(logSystem()).noquote() << QString("HIDAPI Version: %0.%1.%2")
+            .arg(HID_API_VERSION_MAJOR)
+            .arg(HID_API_VERSION_MINOR)
+            .arg(HID_API_VERSION_PATCH);
+
+    if (HID_API_VERSION != HID_API_MAKE_VERSION(hid_version()->major, hid_version()->minor, hid_version()->patch)) {
+        qWarning(logSystem()).noquote() << QString("HIDAPI Version mismatch: %0.%1.%2")
+                .arg(hid_version()->major)
+                .arg(hid_version()->minor)
+                .arg(hid_version()->patch);
+    }
+#endif
+
+#ifdef EIGEN_WORLD_VERSION
+    qInfo(logSystem()).noquote() << QString("EIGEN Version: %0.%1.%2").arg(EIGEN_WORLD_VERSION).arg(EIGEN_MAJOR_VERSION).arg(EIGEN_MINOR_VERSION);
+#endif
+
+#ifdef QCUSTOMPLOT_VERSION_STR
+    qInfo(logSystem()).noquote() << QString("QCUSTOMPLOT Version: %0").arg(QCUSTOMPLOT_VERSION_STR);
+#endif
+
+#ifdef RTAUDIO_VERSION
+    qInfo(logSystem()).noquote() << QString("RTAUDIO Version: %0").arg(RTAUDIO_VERSION);
+    if (RTAUDIO_VERSION != RtAudio::getVersion())
+    {
+        qWarning(logSystem()).noquote() << QString("RTAUDIO Version Mismatch: %0").arg(RtAudio::getVersion().c_str());
+    }
+#endif
+
+    qInfo(logSystem()).noquote() << QString("PORTAUDIO Version: %0").arg(Pa_GetVersionText());
 
     cal = new calibrationWindow();
     rpt = new repeaterSetup();
@@ -58,6 +95,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     bandbtns = new bandbuttons();
     finputbtns = new frequencyinputwidget();
     setupui = new settingswidget();
+
 
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
     qRegisterMetaType<rigCapabilities>();
@@ -172,6 +210,11 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         }
     }
 
+    // Setup the connectiontimer as we will need it soon!
+    ConnectionTimer.setSingleShot(true);
+    connect(&ConnectionTimer,SIGNAL(timeout()), this,SLOT(connectionTimeout()));
+
+
     setupKeyShortcuts();
 
     setupMainUI();
@@ -187,7 +230,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     setDefaultColorPresets();
 
     loadSettings(); // Look for saved preferences
-
 
     //setAudioDevicesUI(); // no need to call this as it will be called by the updated() signal
 
@@ -381,6 +423,9 @@ void wfmain::openRig()
     }
 
     makeRig();
+
+    // 10 second connection timeout.
+    ConnectionTimer.start(10000);
 
     if (prefs.enableLAN)
     {
@@ -660,7 +705,7 @@ void wfmain::findSerialPort()
 
 void wfmain::receiveCommReady()
 {
-    qInfo(logSystem()) << "Received CommReady!! ";
+    //qInfo(logSystem()) << "Received CommReady!! ";
     if(!usingLAN)
     {
         // usingLAN gets set when we emit the sendCommSetup signal.
@@ -3747,9 +3792,13 @@ void wfmain::setDefaultColors(int presetNumber)
 
 void wfmain::receiveRigID(rigCapabilities rigCaps)
 {
+    // We have heard from the rig, so if the connection is pending, stop the timer immediately
+    ConnectionTimer.stop();
+
     // Note: We intentionally request rigID several times
     // because without rigID, we can't do anything with the waterfall.
     bandbtns->acceptRigCaps(rigCaps);
+
     if(haveRigCaps)
     {
         // Note: This line makes it difficult to accept a different radio connecting.
@@ -5358,6 +5407,13 @@ void wfmain::connectionHandler(bool connect)
     }
 
 
+}
+
+void wfmain::connectionTimeout()
+{
+    qWarning(logSystem()) << "No response received to connection request";
+    connectionHandler(false);
+    connectionHandler(true);
 }
 
 void wfmain::on_cwButton_clicked()

@@ -198,25 +198,25 @@ CONFIG(debug, release|debug) {
   win32:LIBS += -lqcustomplot2
   win32 {
     contains(QMAKE_TARGET.arch, x86_64) {
-      LIBS += -L../opus/win32/VS2015/x64/ReleaseDLL/
+      LIBS += -L../opus/win32/x64/ReleaseDLL/src
       LIBS += -L../qcustomplot/x64
       LIBS += -L../portaudio/msvc/X64/Release/ -lportaudio_x64
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\x64\qcustomplot2.dll wfview-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfview-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\hidapi\windows\X64\Release\hidapi.dll wfview-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\x64\ReleaseDLL\opus.dll wfview-release $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\x64\ReleaseDLL\src\opus-0.dll wfview-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfview-release\rigs\*.* $$escape_expand(\\n\\t))
       contains(DEFINES,USB_CONTROLLER){
             LIBS += -L../hidapi/windows/x64/release -lhidapi
       }
     } else {
-      LIBS += -L../opus/win32/VS2015/win32/ReleaseDLL/
+      LIBS += -L../opus/win32/win32/ReleaseDLL/src
       LIBS += -L../qcustomplot/win32
       LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\win32\qcustomplot2.dll wfview-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Release\portaudio_x86.dll wfview-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\hidapi\windows\Release\hidapi.dll wfview-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\ReleaseDLL\opus.dll wfview-release $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\win32\ReleaseDLL\opus-0.dll wfview-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfview-release\rigs\*.* $$escape_expand(\\n\\t))
       contains(DEFINES,USB_CONTROLLER){
             win32:LIBS += -L../hidapi/windows/release -lhidapi
