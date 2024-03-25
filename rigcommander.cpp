@@ -2542,7 +2542,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, uchar vfo)
                 // Currently only used for RIT (I think)
                 bool isNegative = false;
                 short val = value.value<short>();
-                qInfo() << "Setting rit to " << val;
+                qDebug() << "Setting RIT to " << val;
                 if(val < 0)
                 {
                     isNegative = true;
