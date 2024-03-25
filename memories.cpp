@@ -20,9 +20,9 @@ memories::memories(bool slowLoad, QWidget *parent) :
     if (rigCaps == Q_NULLPTR)
     {
         // We have no rigCaps, so cannot continue
-        qFatal(logSystem()) << "No rigCaps, memory window cannot open";
         return;
     }
+
     QStringList headers;
 
     /*
