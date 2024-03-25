@@ -4053,7 +4053,7 @@ void wfmain::on_rfGainSlider_valueChanged(int value)
 void wfmain::on_afGainSlider_valueChanged(int value)
 {
 
-    qInfo(logGui()) << "AF Gain Slider value" << value << "LAN=" << usingLAN;
+    qDebug(logGui()) << "AF Gain Slider value" << value << "LAN=" << usingLAN;
     if(usingLAN)
     {
         prefs.rxSetup.localAFgain = (unsigned char)(value);
@@ -4398,7 +4398,7 @@ void wfmain::receivePassband(quint16 pass)
     if (vfos.size() && vfos[0]->getPassbandWidth() != pb) {
         vfos[0]->setPassbandWidth(pb);
 
-        qInfo(logSystem()) << QString("Received new IF Filter/Passband %0 Hz").arg(pass);
+        qDebug(logSystem()) << QString("Received new IF Filter/Passband %0 Hz").arg(pass);
         showStatusBarText(QString("IF filter width %0 Hz (%1 MHz)").arg(pass).arg(passbandWidth));
     }
 }
@@ -4409,7 +4409,7 @@ void wfmain::receiveCwPitch(unsigned char pitch) {
         if (p != cwPitch)
         {
             passbandCenterFrequency = p / 2000000.0;
-            qInfo(logSystem()) << QString("Received new CW Pitch %0 Hz was %1 (center freq %2 MHz)").arg(p).arg(cwPitch).arg(passbandCenterFrequency);
+            qDebug(logSystem()) << QString("Received new CW Pitch %0 Hz was %1 (center freq %2 MHz)").arg(p).arg(cwPitch).arg(passbandCenterFrequency);
             cwPitch = p;
             emit sendLevel(funcCwPitch,pitch);
         }
@@ -4423,7 +4423,7 @@ void wfmain::receiveTuningStep(unsigned char step)
         for (auto &s: rigCaps->steps)
         {
             if (step == s.num && ui->tuningStepCombo->currentData().toUInt() != s.hz) {
-                qInfo(logSystem()) << QString("Received new Tuning Step %0").arg(s.name);
+                qDebug(logSystem()) << QString("Received new Tuning Step %0").arg(s.name);
                 ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->findData(s.hz));
                 foreach (auto vfo, vfos)
                 {
@@ -5155,60 +5155,6 @@ void wfmain::on_memoriesBtn_clicked()
             memWindow = new memories(false);
             this->memWindow->connect(this, SIGNAL(haveMemory(memoryType)), memWindow, SLOT(receiveMemory(memoryType)));
 
-            this->memWindow->connect(this->memWindow, &memories::getMemory, rig,[=](const quint32 &mem) {
-                queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(mem)));
-            });
-
-            this->memWindow->connect(this->memWindow, &memories::getSatMemory, rig, [=](const quint32 &mem) {
-                queue->add(priorityImmediate,queueItem(funcSatelliteMemory,QVariant::fromValue<ushort>(mem & 0xffff)));
-            });
-
-            this->memWindow->connect(this->memWindow, &memories::setMemory, rig, [=](const memoryType &mem) {
-                queue->add(priorityImmediate,queueItem((mem.sat?funcSatelliteMemory:funcMemoryContents),QVariant::fromValue<memoryType>(mem)));
-            });
-
-            this->memWindow->connect(this->memWindow, &memories::clearMemory, rig, [=](const quint32 &mem) {
-                queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(mem)));
-            });
-
-            this->memWindow->connect(this->memWindow, &memories::recallMemory, rig, [=](const quint32 &mem) {
-                queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>(mem)));
-            });
-
-            this->memWindow->connect(this->memWindow, &memories::setBand, rig, [=](const char &band) {
-                queue->add(priorityImmediate,queueItem(funcBandStackReg,QVariant::fromValue<uchar>(band)));
-            });
-
-            this->memWindow->connect(this->memWindow, &memories::memoryMode, rig, [=]() {
-                queue->add(priorityImmediate,funcMemoryMode);
-                queue->del(funcSelectedFreq,false);
-                queue->del(funcSelectedMode,false);
-                queue->del(funcUnselectedFreq,true);
-                queue->del(funcUnselectedMode,true);
-            });
-
-            this->memWindow->connect(this->memWindow, &memories::vfoMode, rig, [this]() {
-                queue->addUnique(priorityMedium,funcSelectedFreq,true,false);
-                queue->addUnique(priorityMedium,funcSelectedMode,true,false);
-                queue->addUnique(priorityMedium,funcUnselectedFreq,true,true);
-                queue->addUnique(priorityMedium,funcUnselectedMode,true,true);
-            });
-
-            this->memWindow->connect(this->memWindow, &memories::setSatelliteMode, rig, [this](const bool &en) {
-                queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue<bool>(en)));
-                if (en) {
-                    queue->del(funcSelectedFreq,false);
-                    queue->del(funcSelectedMode,false);
-                    queue->del(funcUnselectedFreq,true);
-                    queue->del(funcUnselectedMode,true);
-                } else {
-                    queue->addUnique(priorityMedium,funcSelectedFreq,true,false);
-                    queue->addUnique(priorityMedium,funcSelectedMode,true,false);
-                    queue->addUnique(priorityMedium,funcUnselectedFreq,true,true);
-                    queue->addUnique(priorityMedium,funcUnselectedMode,true,true);
-                }
-            });
-
             memWindow->populate(); // Call populate to get the initial memories
         }
         memWindow->show();
@@ -5754,7 +5700,7 @@ void wfmain::dataModeChanged(modeInfo m)
 {
     // As the data mode may have changed, we need to make sure that we invalidate the input selection.
     // Also request the current input from the rig.
-    qInfo(logSystem()) << "*** DATA MODE HAS CHANGED ***";
+    //qInfo(logSystem()) << "*** DATA MODE HAS CHANGED ***";
     currentModSrc[m.data] = rigInput();
 
     // Request the current inputSource.

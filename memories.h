@@ -34,19 +34,6 @@ public:
     ~memories();
     void populate();
 
-signals:
-    void setMemory(memoryType mem);
-    void getMemory(quint32 mem);
-    void setSatelliteMode(bool en);
-    void getSatMemory(quint32 mem);
-    void recallMemory(quint32 mem);
-    void clearMemory(quint32 mem);
-    void clearSatMemory(quint32 mem);
-    void memoryMode();
-    void vfoMode();
-    void setBand(char band);
-
-
 private slots:
     void on_table_cellChanged(int row, int col);
     void on_group_currentIndexChanged(int index);

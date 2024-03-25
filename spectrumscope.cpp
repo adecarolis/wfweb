@@ -1348,7 +1348,7 @@ void spectrumScope::receiveMode(modeInfo m)
     if (mode.reg != m.reg || m.filter != mode.filter || m.data != mode.data)
     {
 
-        qInfo(logSystem()) << __func__ << QString("Received new mode for %0: %1 (%2) filter:%3 data:%4")
+        qDebug(logSystem()) << __func__ << QString("Received new mode for %0: %1 (%2) filter:%3 data:%4")
                                               .arg((vfo?"Sub":"Main")).arg(QString::number(m.mk,16)).arg(m.name).arg(m.filter).arg(m.data) ;
 
         if (mode.mk != m.mk) {
@@ -1494,7 +1494,7 @@ void spectrumScope::receiveCwPitch(uchar pitch)
         if (p != this->cwPitch)
         {
             passbandCenterFrequency = p / 2000000.0;
-            qInfo(logSystem()) << QString("%0 Received new CW Pitch %1 Hz was %2 (center freq %3 MHz)").arg((vfo?"Sub":"Main")).arg(p).arg(cwPitch).arg(passbandCenterFrequency);
+            qDebug(logSystem()) << QString("%0 Received new CW Pitch %1 Hz was %2 (center freq %3 MHz)").arg((vfo?"Sub":"Main")).arg(p).arg(cwPitch).arg(passbandCenterFrequency);
             this->cwPitch = p;
         }
     }
@@ -1506,7 +1506,7 @@ void spectrumScope::receivePassband(quint16 pass)
     if (passbandWidth != pb) {
         passbandWidth = pb;
         //trxadj->updatePassband(pass);
-        qInfo(logSystem()) << QString("%0 Received new IF Filter/Passband %1 Hz").arg(vfo?"Sub":"Main").arg(pass);
+        qDebug(logSystem()) << QString("%0 Received new IF Filter/Passband %1 Hz").arg(vfo?"Sub":"Main").arg(pass);
         emit showStatusBarText(QString("%0 IF filter width %1 Hz (%2 MHz)").arg(vfo?"Sub":"Main").arg(pass).arg(passbandWidth));
     }
 }

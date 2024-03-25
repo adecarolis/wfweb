@@ -82,7 +82,7 @@ void cwSender::handleKeySpeed(unsigned char wpm)
 {
     if (wpm != ui->wpmSpin->value() && (wpm >= ui->wpmSpin->minimum()) && (wpm <= ui->wpmSpin->maximum()))
     {
-        qInfo(logCW()) << "Received new key speed" << wpm;
+        qDebug(logCW()) << "Received new key speed" << wpm;
         ui->wpmSpin->blockSignals(true);
         QMetaObject::invokeMethod(ui->wpmSpin, "setValue", Qt::QueuedConnection, Q_ARG(int, wpm));
         ui->wpmSpin->blockSignals(false);
