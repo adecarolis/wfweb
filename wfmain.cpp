@@ -624,6 +624,7 @@ void wfmain::makeRig()
 
 void wfmain::removeRig()
 {
+    ConnectionTimer.stop();
     if (rigThread != Q_NULLPTR)
     {
         rigThread->quit();
