@@ -17,6 +17,12 @@ memories::memories(bool slowLoad, QWidget *parent) :
     queue = cachingQueue::getInstance(this);
     rigCaps = queue->getRigCaps();
 
+    if (rigCaps == Q_NULLPTR)
+    {
+        // We have no rigCaps, so cannot continue
+        qFatal(logSystem()) << "No rigCaps, memory window cannot open";
+        return;
+    }
     QStringList headers;
 
     /*
