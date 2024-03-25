@@ -129,7 +129,7 @@ void cachingQueue::add(queuePriority prio ,queueItem item)
                     // also insert an immediate command to get the current value "now" (removes the need to get rigstate)
                     queueItem it=item;
                     it.recurring=false;
-                    queue.insert(queue.cend(),priorityHighest, it);
+                    queue.insert(queue.cend(),priorityImmediate, it);
                     qDebug() << "adding" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "vfo" << item.vfo;
                 }
                 queue.insert(prio, item);
@@ -171,7 +171,7 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
                 // also insert an immediate command to get the current value "now" (removes the need to get initial rigstate)
                 queueItem it = item;
                 it.recurring=false;
-                queue.insert(queue.cend(),priorityHighest, it);
+                queue.insert(queue.cend(),priorityImmediate, it);
                 qDebug() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "vfo" << item.vfo;
             }
             queue.insert(prio, item);

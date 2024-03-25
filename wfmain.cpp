@@ -3798,55 +3798,6 @@ void wfmain::initPeriodicCommands()
         }
     }
 
-/*
-    queue->add(priorityMedium,funcSelectedFreq,true,false);
-    queue->add(priorityMedium,funcSelectedMode,true,false);
-    //queue->add(priorityMedium,(rigCaps->commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),true,false);
-    queue->add(priorityMedium,funcUnselectedFreq,true,true);
-    queue->add(priorityMedium,funcUnselectedMode,true,true);
-
-    if (rigCaps->hasSpectrum)
-    {
-        queue->add(priorityHigh,funcOverflowStatus,true,false);
-        queue->add(priorityMediumHigh,funcScopeMainMode,true,false);
-        queue->add(priorityMediumHigh,funcScopeSubMode,true,true);
-        queue->add(priorityMediumHigh,funcScopeMainSpan,true,false);
-        queue->add(priorityMediumHigh,funcScopeSubSpan,true,true);
-        queue->add(priorityMediumHigh,funcScopeSingleDual,true,false);
-        queue->add(priorityMediumHigh,funcScopeMainSub,true,false);
-        queue->add(priorityMedium,funcScopeMainSpeed,true,false);
-        queue->add(priorityMedium,funcScopeSubSpeed,true,true);
-        queue->add(priorityMedium,funcScopeMainHold,true,false);
-        queue->add(priorityMedium,funcScopeSubHold,true,true);
-        queue->add(priorityMedium,funcVFODualWatch,true,false);
-    }
-
-    if(rigCaps->hasTransmit) {
-        queue->add(priorityHigh,funcTransceiverStatus,true,false);
-        queue->add(priorityMediumHigh,funcDATAOffMod,true,false);
-        queue->add(priorityMediumHigh,funcDATA1Mod,true,false);
-        queue->add(priorityMediumHigh,funcDATA2Mod,true,false);
-        queue->add(priorityMediumHigh,funcDATA3Mod,true,false);
-        queue->add(priorityMedium,funcRFPower,true,false);
-        queue->add(priorityMediumLow,funcMonitorGain,true,false);
-        queue->add(priorityMediumLow,funcMonitor,true,false);
-    }
-
-    // Medium/MediumLow Priority commands on all rigs (if supported)
-    queue->add(priorityMedium,funcRfGain,true,false);
-    queue->add(priorityMedium,funcTunerStatus,true,false);
-
-    queue->add(priorityMediumLow,funcTuningStep,true,false);
-    queue->add(priorityMediumLow,funcAttenuator,true,false);
-    queue->add(priorityMediumLow,funcPreamp,true,false);
-    queue->add(priorityMediumLow,funcAntenna,true,false);
-    queue->add(priorityMediumLow,funcSplitStatus,true,false);
-    queue->add(priorityMediumLow,funcToneSquelchType,true,false);
-
-    queue->add(priorityHighest,queueItem(funcSMeter,true));
-
-
-    */
     meter* marray[2];
     marray[0] = ui->meter2Widget;
     marray[1] = ui->meter3Widget;
