@@ -118,7 +118,7 @@ public:
     QMultiMap <queuePriority,queueItem> getQueueItems();
     void lockMutex() {mutex.lock();}
     void unlockMutex() {mutex.unlock();}
-    void setRigCaps(rigCapabilities* caps) { rigCaps = caps; emit rigCapsUpdated(rigCaps);}
+    void setRigCaps(rigCapabilities* caps) { if (rigCaps != caps) { rigCaps = caps; emit rigCapsUpdated(rigCaps);} }
     rigCapabilities* getRigCaps() { return rigCaps; }
 };
 

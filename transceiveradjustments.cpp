@@ -33,11 +33,6 @@ transceiverAdjustments::transceiverAdjustments(QWidget *parent) :
 
 transceiverAdjustments::~transceiverAdjustments()
 {
-    rigCaps.inputs.clear();
-    rigCaps.preamps.clear();
-    rigCaps.attenuators.clear();
-    rigCaps.antennas.clear();
-
     delete ui;
 }
 

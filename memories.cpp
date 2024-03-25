@@ -4,15 +4,18 @@
 #include "memories.h"
 #include "ui_memories.h"
 
-memories::memories(rigCapabilities rigCaps, bool slowLoad, QWidget *parent) :
+memories::memories(bool slowLoad, QWidget *parent) :
     QWidget(parent),
     slowLoad(slowLoad),
-    rigCaps(rigCaps),
     ui(new Ui::memories)
 {
     ui->setupUi(this);
     ui->table->setColumnCount(totalColumns);
     ui->table->editing(false);
+
+    this->setObjectName("RigCtlD");
+    queue = cachingQueue::getInstance(this);
+    rigCaps = queue->getRigCaps();
 
     QStringList headers;
 
@@ -32,9 +35,9 @@ memories::memories(rigCapabilities rigCaps, bool slowLoad, QWidget *parent) :
     split << "OFF" << "ON";
 
     dataModes << "OFF" << "DATA1";
-    if (rigCaps.commands.contains(funcDATA2Mod))
+    if (rigCaps->commands.contains(funcDATA2Mod))
         dataModes.append("DATA2");
-    if (rigCaps.commands.contains(funcDATA3Mod))
+    if (rigCaps->commands.contains(funcDATA3Mod))
         dataModes.append("DATA3");
 
     filters << "FIL1" << "FIL2" << "FIL3";
@@ -42,7 +45,7 @@ memories::memories(rigCapabilities rigCaps, bool slowLoad, QWidget *parent) :
     duplexModes << "OFF" << "DUP-" << "DUP+" << "RPS";
 
     toneModes << "OFF" << "TONE" << "TSQL";
-    if (rigCaps.commands.contains(funcRepeaterDTCS))
+    if (rigCaps->commands.contains(funcRepeaterDTCS))
         toneModes.append("DTCS");
 
 
@@ -72,12 +75,12 @@ memories::memories(rigCapabilities rigCaps, bool slowLoad, QWidget *parent) :
 
     ui->group->blockSignals(true);
     ui->group->addItem("Memory Group",-1);
-    for (int i=rigCaps.memStart;i<=rigCaps.memGroups;i++) {
+    for (int i=rigCaps->memStart;i<=rigCaps->memGroups;i++) {
 
         ui->group->addItem(QString("Group %0").arg(i,2,10,QChar('0')),i);
     }
 
-    if (rigCaps.satMemories && rigCaps.commands.contains(funcSatelliteMode)){
+    if (rigCaps->satMemories && rigCaps->commands.contains(funcSatelliteMode)){
         ui->group->addItem("Satellite",MEMORY_SATGROUP);
     }
 
@@ -88,13 +91,13 @@ memories::memories(rigCapabilities rigCaps, bool slowLoad, QWidget *parent) :
         dvsql.append(QString::number(i).rightJustified(2,'0'));
     }
 
-    if (rigCaps.commands.contains(funcVFOEqualAB)) {
+    if (rigCaps->commands.contains(funcVFOEqualAB)) {
         vfos << "VFOA" << "VFOB";
-    } else if (rigCaps.commands.contains(funcVFOEqualMS)) {
+    } else if (rigCaps->commands.contains(funcVFOEqualMS)) {
         vfos << "MAIN" << "SUB";
     }
 
-    for (auto &mode: rigCaps.modes){
+    for (auto &mode: rigCaps->modes){
         modes.append(mode.name);
     }
 
@@ -131,7 +134,7 @@ void memories::rowAdded(int row)
 {
     // Find the next available memory number:
 
-    quint32 num=rigCaps.memStart;
+    quint32 num=rigCaps->memStart;
 
     /* This feels unnecessarily complicated, but here we are:
         * Set the memory number to 1
@@ -160,11 +163,11 @@ void memories::rowAdded(int row)
         if (i == rows.end())
         {
             // No gaps found so work on highest value found
-            if ((ui->group->currentData().toInt() != 200 && rows.back() < groupMemories-1) || (ui->group->currentData().toInt() == MEMORY_SATGROUP && rows.back() < rigCaps.satMemories-1))
+            if ((ui->group->currentData().toInt() != 200 && rows.back() < groupMemories-1) || (ui->group->currentData().toInt() == MEMORY_SATGROUP && rows.back() < rigCaps->satMemories-1))
             {
                 num = rows.back() + 1;
             }
-            else if (rows.front() == rigCaps.memStart)
+            else if (rows.front() == rigCaps->memStart)
             {
                 qWarning() << "Sorry no free memory slots found, please delete one first";
                 ui->table->removeRow(row);
@@ -177,7 +180,9 @@ void memories::rowAdded(int row)
     QPushButton* recall = new QPushButton("Recall");
     ui->table->setCellWidget(row,columnRecall,recall);
     connect(recall, &QPushButton::clicked, this,
-            [=]() { qInfo() << "Recalling" << num; emit recallMemory((quint32((ui->group->currentData().toUInt() << 16) | num)));});
+            [=]() { qInfo() << "Recalling" << num;
+            queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>((quint32((ui->group->currentData().toUInt() << 16) | num)))));
+    });
     ui->table->model()->setData(ui->table->model()->index(row,columnNum),QString::number(num).rightJustified(3,'0'));
     // Set default values (where possible) for all other values:
     if (ui->table->item(row,columnSplit) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnSplit),split[0]);
@@ -219,7 +224,7 @@ void memories::rowAdded(int row)
 void memories::rowDeleted(quint32 mem)
 
 {
-    if (mem >= rigCaps.memStart && mem <= rigCaps.memories) {
+    if (mem >= rigCaps->memStart && mem <= rigCaps->memories) {
         qInfo() << "Mem Deleted" << mem;
         memoryType currentMemory;
         if (ui->group->currentData().toInt() == MEMORY_SATGROUP)
@@ -230,7 +235,7 @@ void memories::rowDeleted(quint32 mem)
         currentMemory.group=ui->group->currentData().toInt();
         currentMemory.channel = mem;
         currentMemory.del = true;
-        emit setMemory(currentMemory);
+        queue->add(priorityImmediate,queueItem((currentMemory.sat?funcSatelliteMemory:funcMemoryContents),QVariant::fromValue<memoryType>(currentMemory)));
     }
 }
 
@@ -315,7 +320,7 @@ void memories::on_table_cellChanged(int row, int col)
     currentMemory.frequency.Hz = (ui->table->item(row,columnFrequency) == NULL) ? 0 : quint64(ui->table->item(row,columnFrequency)->text().toDouble()*1000000.0);
     currentMemory.frequencyB.Hz = (ui->table->item(row,columnFrequencyB) == NULL) ? 0 : quint64(ui->table->item(row,columnFrequencyB)->text().toDouble()*1000000.0);
 
-    for (auto &m: rigCaps.modes){
+    for (auto &m: rigCaps->modes){
         if (!ui->table->isColumnHidden(columnMode) && ui->table->item(row,columnMode) != NULL && ui->table->item(row,columnMode)->text()==m.name) {
             currentMemory.mode=m.reg;
         }
@@ -412,8 +417,7 @@ void memories::on_table_cellChanged(int row, int col)
             write=false;
     }
     if (write) {
-        emit setMemory(currentMemory);
-
+        queue->add(priorityImmediate,queueItem((currentMemory.sat?funcSatelliteMemory:funcMemoryContents),QVariant::fromValue<memoryType>(currentMemory)));
         qInfo() << "Sending memory, group:" << currentMemory.group << "channel" << currentMemory.channel;
         // Set number to not be editable once written. Not sure why but this crashes?
         //ui->table->item(row,columnNum)->setFlags(ui->table->item(row,columnNum)->flags() & (~Qt::ItemIsEditable));
@@ -431,11 +435,11 @@ void memories::on_group_currentIndexChanged(int index)
 
     // Special case for group 100 on the IC705!
     if (ui->group->currentData().toInt() ==  MEMORY_SATGROUP)
-        groupMemories=rigCaps.satMemories;
+        groupMemories=rigCaps->satMemories;
     else if (ui->group->currentData().toInt() == MEMORY_SHORTGROUP)
         groupMemories=3;
     else
-        groupMemories=rigCaps.memories;
+        groupMemories=rigCaps->memories;
 
     ui->loadingMemories->setVisible(true);
     ui->table->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -453,14 +457,20 @@ void memories::on_group_currentIndexChanged(int index)
 
     QVector<memParserFormat> parser;
 
+    queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue<bool>(ui->group->currentData().toInt() == MEMORY_SATGROUP)));
     if (ui->group->currentData().toInt() == MEMORY_SATGROUP) {
-        emit setSatelliteMode(true);
-        parser = rigCaps.satParser;
+        queue->del(funcSelectedFreq,false);
+        queue->del(funcSelectedMode,false);
+        queue->del(funcUnselectedFreq,true);
+        queue->del(funcUnselectedMode,true);
+        parser = rigCaps->satParser;
     } else {
-        emit setSatelliteMode(false);
-        parser = rigCaps.memParser;
+        queue->addUnique(priorityMedium,funcSelectedFreq,true,false);
+        queue->addUnique(priorityMedium,funcSelectedMode,true,false);
+        queue->addUnique(priorityMedium,funcUnselectedFreq,true,true);
+        queue->addUnique(priorityMedium,funcUnselectedMode,true,true);
+        parser = rigCaps->memParser;
     }
-
 
     for (auto &parse: parser) {
         switch (parse.spec)
@@ -879,38 +889,49 @@ void memories::on_group_currentIndexChanged(int index)
 
     if (ui->group->currentData().toInt() == MEMORY_SATGROUP) {
 
-        lastMemoryRequested = rigCaps.memStart;
+        lastMemoryRequested = rigCaps->memStart;
         if (slowLoad) {
-            QTimer::singleShot(MEMORY_SLOWLOAD, this, [this]{ emit getSatMemory(lastMemoryRequested); });
+            QTimer::singleShot(MEMORY_SLOWLOAD, this, [this]{
+                queue->add(priorityImmediate,queueItem(funcSatelliteMemory,QVariant::fromValue<ushort>(lastMemoryRequested & 0xffff)));
+            });
         } else {
-            emit getSatMemory(lastMemoryRequested);
+            queue->add(priorityImmediate,queueItem(funcSatelliteMemory,QVariant::fromValue<ushort>(lastMemoryRequested & 0xffff)));
         }
     } else {
-        lastMemoryRequested = quint32((ui->group->currentData().toInt())<<16) | (rigCaps.memStart & 0xffff);
+        lastMemoryRequested = quint32((ui->group->currentData().toInt())<<16) | (rigCaps->memStart & 0xffff);
         if (slowLoad) {
-            QTimer::singleShot(MEMORY_SLOWLOAD, this, [this]{ emit getMemory(lastMemoryRequested); });
+            QTimer::singleShot(MEMORY_SLOWLOAD, this, [this]{
+                queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(lastMemoryRequested)));
+            });
         } else {
             // Is the current group attached to a particular band?
-            for (auto &band: rigCaps.bands)
+            for (auto &band: rigCaps->bands)
             {
                 if (band.memGroup==ui->group->currentData().toInt())
                 {
-                    emit setBand(band.band);
+                     queue->add(priorityImmediate,queueItem(funcBandStackReg,QVariant::fromValue<uchar>(band.band)));
                 }
             }
-            emit getMemory(lastMemoryRequested);
+            queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(lastMemoryRequested)));
         }
     }
 }
 
 void memories::on_vfoMode_clicked()
 {
-    emit vfoMode();
+    queue->addUnique(priorityMedium,funcSelectedFreq,true,false);
+    queue->addUnique(priorityMedium,funcSelectedMode,true,false);
+    queue->addUnique(priorityMedium,funcUnselectedFreq,true,true);
+    queue->addUnique(priorityMedium,funcUnselectedMode,true,true);
 }
 
 void memories::on_memoryMode_clicked()
 {
-    emit memoryMode();
+    queue->add(priorityImmediate,funcMemoryMode);
+    queue->del(funcSelectedFreq,false);
+    queue->del(funcSelectedMode,false);
+    queue->del(funcUnselectedFreq,true);
+    queue->del(funcUnselectedMode,true);
 }
 
 
@@ -921,9 +942,9 @@ void memories::receiveMemory(memoryType mem)
     {
         lastMemoryRequested++;
         if (mem.sat)
-            emit getSatMemory(lastMemoryRequested);
+            queue->add(priorityImmediate,queueItem(funcSatelliteMemory,QVariant::fromValue<ushort>(lastMemoryRequested & 0xffff)));
         else
-            emit getMemory(lastMemoryRequested);
+            queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(lastMemoryRequested)));
         timeoutTimer.start(MEMORY_TIMEOUT);
     }
     else if (mem.channel == groupMemories)
@@ -946,7 +967,8 @@ void memories::receiveMemory(memoryType mem)
 
     for (int n = 0; n<ui->table->rowCount();n++)
     {
-        if (ui->table->item(n,columnNum) != NULL && ui->table->item(n,columnNum)->text().toInt() == mem.channel && (rigCaps.memGroups < 2 || mem.sat || mem.group == ui->group->currentData().toInt()))
+        if (ui->table->item(n,columnNum) != NULL && ui->table->item(n,columnNum)->text().toInt() == mem.channel &&
+                    (rigCaps->memGroups < 2 || mem.sat || mem.group == ui->group->currentData().toInt()))
         {
             row = n;
             break;
@@ -961,8 +983,10 @@ void memories::receiveMemory(memoryType mem)
             row=ui->table->rowCount()-1;
             QPushButton* recall = new QPushButton("Recall");
             ui->table->setCellWidget(row,columnRecall,recall);
-            connect(recall, &QPushButton::clicked, this,
-                    [=]() { qInfo() << "Recalling" << mem.channel; emit recallMemory((quint32((ui->group->currentData().toUInt() << 16) | mem.channel)));});
+            connect(recall, &QPushButton::clicked, this, [=]() {
+                qInfo() << "Recalling" << mem.channel;
+                queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | mem.channel))));
+            });
         }
 
         ui->table->model()->setData(ui->table->model()->index(row,columnNum),QString::number(mem.channel & 0xffff).rightJustified(3,'0'));
@@ -981,12 +1005,12 @@ void memories::receiveMemory(memoryType mem)
         ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),QString::number(double(mem.frequencyB.Hz/1000000.0),'f',3));
         validData++;
 
-        for (uint i=0;i<rigCaps.modes.size();i++)
+        for (uint i=0;i<rigCaps->modes.size();i++)
         {
-            if (mem.mode == rigCaps.modes[i].reg)
+            if (mem.mode == rigCaps->modes[i].reg)
                 validData += updateCombo(modes,row,columnMode,i);
 
-            if (mem.modeB == rigCaps.modes[i].reg)
+            if (mem.modeB == rigCaps->modes[i].reg)
                 validData += updateCombo(modes,row,columnModeB,i);
         }
 
@@ -1094,10 +1118,11 @@ void memories::receiveMemory(memoryType mem)
 
         if (validData < visibleColumns) {
             qInfo(logRig()) << "Memory" << mem.channel << "Received valid data for" << validData << "columns, " << "expected" << visibleColumns << "requesting again";
-            if (mem.sat)
-                emit getSatMemory(mem.channel & 0xffff);
-            else
-                emit getMemory(quint32((ui->group->currentData().toInt())<<16) | (mem.channel & 0xffff));
+            if (mem.sat) {
+                queue->add(priorityImmediate,queueItem(funcSatelliteMemory,QVariant::fromValue<ushort>(mem.channel & 0xffff)));
+            } else {
+                queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(mem.channel & 0xffff)));
+            }
             retries++;
         }
 
@@ -1155,14 +1180,15 @@ bool memories::checkASCII(QString str)
 
 
 void memories::timeout()
-{
+{    
     if (timeoutCount < 10 )
     {
         qInfo(logRig()) << "Timeout receiving memory:" << (lastMemoryRequested & 0xffff) << "in group" << (lastMemoryRequested >> 16 & 0xffff);
-        if (ui->group->currentData().toInt() == MEMORY_SATGROUP)
-            emit getSatMemory(lastMemoryRequested);
-        else
-            emit getMemory(lastMemoryRequested);
+        if (ui->group->currentData().toInt() == MEMORY_SATGROUP) {
+            queue->add(priorityImmediate,queueItem(funcSatelliteMemory,QVariant::fromValue<ushort>(lastMemoryRequested & 0xffff)));
+        } else {
+            queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(lastMemoryRequested)));
+        }
         timeoutTimer.start(MEMORY_TIMEOUT);
         timeoutCount++;
     } else {
@@ -1241,8 +1267,10 @@ void memories::on_csvImport_clicked()
                 ui->table->insertRow(rownum);
                 QPushButton* recall = new QPushButton("Recall");
                 ui->table->setCellWidget(rownum,columnRecall,recall);
-                connect(recall, &QPushButton::clicked, this,
-                        [=]() { qInfo() << "Recalling" << row[0].toInt(); emit recallMemory((quint32((ui->group->currentData().toUInt() << 16) | row[0].toInt())));});
+                connect(recall, &QPushButton::clicked, this,  [=]() {
+                    qInfo() << "Recalling" << row[0].toInt();
+                    queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | row[0].toInt()))));
+                });
             }
             // rownum is now the row we need to work on.
 

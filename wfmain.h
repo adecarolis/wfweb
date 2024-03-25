@@ -35,7 +35,7 @@
 #include "calibrationwindow.h"
 #include "repeatersetup.h"
 #include "satellitesetup.h"
-#include "transceiveradjustments.h"
+//#include "transceiveradjustments.h"
 #include "cwsender.h"
 #include "bandbuttons.h"
 #include "frequencyinputwidget.h"
@@ -406,8 +406,7 @@ private slots:
     void receivePreamp(unsigned char pre, uchar vfo);
     void receiveAttenuator(unsigned char att, uchar vfo);
     void receiveAntennaSel(unsigned char ant, bool rx,uchar vfo);
-    void receiveRigID(rigCapabilities rigCaps);
-    void receiveFoundRigID(rigCapabilities rigCaps);
+
     void receivePortError(errorType err);
     void receiveStatusUpdate(networkStatus status);
     void receiveNetworkAudioLevels(networkAudioLevels l);
@@ -498,6 +497,8 @@ private slots:
 
     void receiveElapsed(bool sub, qint64 us);
     void connectionTimeout();
+    void receiveRigCaps(rigCapabilities* caps);
+
 
 private:
     Ui::wfmain *ui; // Main UI
@@ -712,7 +713,7 @@ private:
     int oldFreqDialVal;
 
     QHash<unsigned char,QString> rigList;
-    rigCapabilities rigCaps;
+    rigCapabilities* rigCaps = Q_NULLPTR;
 
     rigInput currentModSrc[4];
 
@@ -728,7 +729,7 @@ private:
     calibrationWindow *cal = Q_NULLPTR;
     repeaterSetup *rpt = Q_NULLPTR;
     satelliteSetup *sat = Q_NULLPTR;
-    transceiverAdjustments *trxadj = Q_NULLPTR;
+    //transceiverAdjustments *trxadj = Q_NULLPTR;
     cwSender *cw = Q_NULLPTR;
     controllerSetup* usbWindow = Q_NULLPTR;
     aboutbox *abtBox = Q_NULLPTR;

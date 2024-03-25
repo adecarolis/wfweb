@@ -16,6 +16,12 @@
 pttyHandler::pttyHandler(QString pty, QObject* parent) : QObject(parent)
 {
     //constructor
+
+    this->setObjectName("pttyHandler");
+    queue = cachingQueue::getInstance(this);
+    connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
+    rigCaps = queue->getRigCaps();
+
     if (pty == "" || pty.toLower() == "none")
     {
         // Just return if pty is not configured.
@@ -222,7 +228,7 @@ void pttyHandler::receiveDataIn(int fd) {
                 qInfo(logSerial()) << "pty remote CI-V changed:" << QString("0x%1").arg((quint8)civId,0,16);
             }
             // filter C-IV transceive command before forwarding on.
-            if (inPortData.contains(rigCaps.transceiveCommand))
+            if (rigCaps != Q_NULLPTR && inPortData.contains(rigCaps->transceiveCommand))
             {
                 //qInfo(logSerial()) << "Filtered transceive command";
                 //printHex(inPortData, false, true);
@@ -337,10 +343,12 @@ void pttyHandler::printHex(const QByteArray& pdata, bool printVert, bool printHo
     qDebug(logSerial()) << "----- End hex dump -----";
 }
 
-void pttyHandler::receiveFoundRigID(rigCapabilities rigCaps) {
-    this->rigCaps = rigCaps;
-    qInfo(logSerial) << "Received rigCapabilities for" << rigCaps.modelName;
 
+void pttyHandler::receiveRigCaps(rigCapabilities* caps)
+{
+    if (caps != Q_NULLPTR) {
+        qInfo(logSerial()) << "Got rigcaps for:" << caps->modelName;
+    }
+    this->rigCaps = caps;
 }
-
 

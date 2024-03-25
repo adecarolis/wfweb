@@ -88,7 +88,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     cal = new calibrationWindow();
     rpt = new repeaterSetup();
     sat = new satelliteSetup();
-    trxadj = new transceiverAdjustments();
     cw = new cwSender();
     abtBox = new aboutbox();
     selRad = new selectRadio();
@@ -140,8 +139,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<spectrumBounds>();
     qRegisterMetaType<centerSpanData>();
     qRegisterMetaType<bandStackType>();
-
-    haveRigCaps = false;
 
     this->setObjectName("wfmain");
     queue = cachingQueue::getInstance(this);
@@ -214,6 +211,8 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     ConnectionTimer.setSingleShot(true);
     connect(&ConnectionTimer,SIGNAL(timeout()), this,SLOT(connectionTimeout()));
 
+    // Make sure we know about any changes to rigCaps
+    connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
 
     setupKeyShortcuts();
 
@@ -485,7 +484,7 @@ void wfmain::makeRig()
         connect(this, SIGNAL(sendChangeLatency(quint16)), rig, SLOT(changeLatency(quint16)));
         connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
         connect(this, SIGNAL(setRigID(unsigned char)), rig, SLOT(setRigID(unsigned char)));
-        connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
+
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
 
@@ -512,7 +511,7 @@ void wfmain::makeRig()
         //connect(this, SIGNAL(getSatMemory(quint32)), rig, SLOT(getSatMemory(quint32)));
         //connect(this, SIGNAL(setMemory(memoryType)), rig, SLOT(setMemory(memoryType)));
         //connect(this, SIGNAL(clearMemory(quint32)), rig, SLOT(clearMemory(quint32)));
-        //connect(this, SIGNAL(recallMemory(quint32)), rig, SLOT(recallMemory(quint32)));
+        //connect(this, SIGNAL(rigCaps->ry(quint32)), rig, SLOT(rigCaps->ry(quint32)));
 
         connect(this->rpt, &repeaterSetup::setDuplexMode, this->rig,
                 [=](const duplexMode_t &t) { queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(t),false));});
@@ -550,7 +549,7 @@ void wfmain::makeRig()
 
         connect(this->rpt, &repeaterSetup::getRptAccessMode, this->rig,
                 [=]() {
-                    if (rigCaps.commands.contains(funcToneSquelchType)) {
+                    if (rigCaps->commands.contains(funcToneSquelchType)) {
                         queue->add(priorityImmediate,funcToneSquelchType,false,false);
                     } else {
                         queue->add(priorityImmediate,funcRepeaterTone,false,false);
@@ -565,7 +564,7 @@ void wfmain::makeRig()
 
         connect(this->rpt, &repeaterSetup::setRptAccessMode, this->rig,
                 [=](const rptrAccessData &rd) {
-            if (rigCaps.commands.contains(funcToneSquelchType)) {
+            if (rigCaps->commands.contains(funcToneSquelchType)) {
                     queue->add(priorityImmediate,queueItem(funcToneSquelchType,QVariant::fromValue<rptrAccessData>(rd),false));
             } else {
                 if(rd.accessMode == ratrTN) {
@@ -745,21 +744,6 @@ void wfmain::receiveCommReady()
             //delayedCommand->start();
         }
     }
-}
-
-
-void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
-{
-    // Entry point for unknown rig being identified at the start of the program.
-    //now we know what the rig ID is:
-    //qInfo(logSystem()) << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
-
-    receiveRigID(rigCaps);
-
-    initPeriodicCommands();
-    getInitialRigState();
-
-    return;
 }
 
 void wfmain::receivePortError(errorType err)
@@ -1027,7 +1011,7 @@ void wfmain::setServerToPrefs()
 
         emit initServer();
 
-        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
+        //connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
 
         ui->statusBar->showMessage(QString("Server enabled"), 1000);
 
@@ -1053,7 +1037,7 @@ void wfmain::configureVFOs()
         vfos.clear();
     }
 
-    for(uchar i=0;i<rigCaps.numVFO;i++)
+    for(uchar i=0;i<rigCaps->numVFO;i++)
     {
         spectrumScope* vfo = new spectrumScope;
 
@@ -1222,7 +1206,7 @@ void wfmain::setupKeyShortcuts()
     // Alternate for plus:
     keyK = new QShortcut(this);
     keyK->setKey(Qt::Key_K);
-    connect(keyK, &QShortcut::activated,
+    connect(keyK, &QShortcut::activated, this,
             [=]() {
         if (freqLock) return;
         this->shortcutPlus();
@@ -1231,7 +1215,7 @@ void wfmain::setupKeyShortcuts()
     // Alternate for minus:
     keyJ = new QShortcut(this);
     keyJ->setKey(Qt::Key_J);
-    connect(keyJ, &QShortcut::activated,
+    connect(keyJ, &QShortcut::activated, this,
             [=]() {
         if (freqLock) return;
         this->shortcutMinus();
@@ -1239,7 +1223,7 @@ void wfmain::setupKeyShortcuts()
 
     keyShiftK = new QShortcut(this);
     keyShiftK->setKey(Qt::SHIFT | Qt::Key_K);
-    connect(keyShiftK, &QShortcut::activated,
+    connect(keyShiftK, &QShortcut::activated, this,
             [=]() {
         if (freqLock) return;
         this->shortcutShiftPlus();
@@ -1248,7 +1232,7 @@ void wfmain::setupKeyShortcuts()
 
     keyShiftJ = new QShortcut(this);
     keyShiftJ->setKey(Qt::SHIFT | Qt::Key_J);
-    connect(keyShiftJ, &QShortcut::activated,
+    connect(keyShiftJ, &QShortcut::activated, this,
             [=]() {
         if (freqLock) return;
         this->shortcutShiftMinus();
@@ -1256,7 +1240,7 @@ void wfmain::setupKeyShortcuts()
 
     keyControlK = new QShortcut(this);
     keyControlK->setKey(Qt::CTRL | Qt::Key_K);
-    connect(keyControlK, &QShortcut::activated,
+    connect(keyControlK, &QShortcut::activated, this,
             [=]() {
         if (freqLock) return;
         this->shortcutControlPlus();
@@ -1265,7 +1249,7 @@ void wfmain::setupKeyShortcuts()
 
     keyControlJ = new QShortcut(this);
     keyControlJ->setKey(Qt::CTRL | Qt::Key_J);
-    connect(keyControlJ, &QShortcut::activated,
+    connect(keyControlJ, &QShortcut::activated, this,
             [=]() {
         if (freqLock) return;
         this->shortcutControlMinus();
@@ -1274,7 +1258,7 @@ void wfmain::setupKeyShortcuts()
     // H = Down
     keyH = new QShortcut(this);
     keyH->setKey(Qt::Key_H);
-    connect(keyH, &QShortcut::activated,
+    connect(keyH, &QShortcut::activated, this,
             [=]() {
         if (freqLock) return;
 
@@ -1289,7 +1273,7 @@ void wfmain::setupKeyShortcuts()
     // L = Up
     keyL = new QShortcut(this);
     keyL->setKey(Qt::Key_L);
-    connect(keyL, &QShortcut::activated,
+    connect(keyL, &QShortcut::activated, this,
             [=]() {
         if (freqLock) return;
 
@@ -1391,31 +1375,31 @@ void wfmain::buttonControl(const COMMAND* cmd)
     switch (cmd->command) {
     case funcBandStackReg:
         if (cmd->value == 100) {
-            for (size_t i = 0; i < rigCaps.bands.size(); i++) {
-                if (rigCaps.bands[i].band == lastRequestedBand)
+            for (size_t i = 0; i < rigCaps->bands.size(); i++) {
+                if (rigCaps->bands[i].band == lastRequestedBand)
                 {
                     if (i > 0) {
-                        //issueCmd(cmdGetBandStackReg, rigCaps.bands[i - 1].band);
+                        //issueCmd(cmdGetBandStackReg, rigCaps->bands[i - 1].band);
                     }
                     else {
-                        //issueCmd(cmdGetBandStackReg, rigCaps.bands[rigCaps.bands.size() - 1].band);
+                        //issueCmd(cmdGetBandStackReg, rigCaps->bands[rigCaps->bands.size() - 1].band);
                     }
                 }
             }
         } else if (cmd->value == -100) {
-            for (size_t i = 0; i < rigCaps.bands.size(); i++) {
-                if (rigCaps.bands[i].band == lastRequestedBand)
+            for (size_t i = 0; i < rigCaps->bands.size(); i++) {
+                if (rigCaps->bands[i].band == lastRequestedBand)
                 {
-                    if (i + 1 < rigCaps.bands.size()) {
-                        //issueCmd(cmdGetBandStackReg, rigCaps.bands[i + 1].band);
+                    if (i + 1 < rigCaps->bands.size()) {
+                        //issueCmd(cmdGetBandStackReg, rigCaps->bands[i + 1].band);
                     }
                     else {
-                        //issueCmd(cmdGetBandStackReg, rigCaps.bands[0].band);
+                        //issueCmd(cmdGetBandStackReg, rigCaps->bands[0].band);
                     }
                 }
             }
         } else {
-            for (auto &band: rigCaps.bands)
+            for (auto &band: rigCaps->bands)
             {
                 if (band.band == cmd->value)
                 {
@@ -1426,26 +1410,26 @@ void wfmain::buttonControl(const COMMAND* cmd)
         break;
     case funcModeSet:
         if (cmd->value == 100) {
-            for (size_t i = 0; i < rigCaps.modes.size(); i++) {
-                if (rigCaps.modes[i].mk == currentModeInfo.mk)
+            for (size_t i = 0; i < rigCaps->modes.size(); i++) {
+                if (rigCaps->modes[i].mk == currentModeInfo.mk)
                 {
-                    if (i + 1 < rigCaps.modes.size()) {
-                        changeMode(rigCaps.modes[i + 1].mk);
+                    if (i + 1 < rigCaps->modes.size()) {
+                        changeMode(rigCaps->modes[i + 1].mk);
                     }
                     else {
-                        changeMode(rigCaps.modes[0].mk);
+                        changeMode(rigCaps->modes[0].mk);
                     }
                 }
             }
         } else if (cmd->value == -100) {
-            for (size_t i = 0; i < rigCaps.modes.size(); i++) {
-                if (rigCaps.modes[i].mk == currentModeInfo.mk)
+            for (size_t i = 0; i < rigCaps->modes.size(); i++) {
+                if (rigCaps->modes[i].mk == currentModeInfo.mk)
                 {
                     if (i>0) {
-                        changeMode(rigCaps.modes[i - 1].mk);
+                        changeMode(rigCaps->modes[i - 1].mk);
                     }
                     else {
-                        changeMode(rigCaps.modes[rigCaps.modes.size()-1].mk);
+                        changeMode(rigCaps->modes[rigCaps->modes.size()-1].mk);
                     }
                 }
             }
@@ -3284,7 +3268,7 @@ void wfmain::on_tuningStepCombo_currentIndexChanged(int index)
 
     tsWfScrollHz = ui->tuningStepCombo->itemData(index).toUInt();
     tsKnobHz = ui->tuningStepCombo->itemData(index).toUInt();
-    for (auto &s: rigCaps.steps) {
+    for (auto &s: rigCaps->steps) {
         if (tsWfScrollHz == s.hz)
         {
             foreach (auto vfo, vfos)
@@ -3509,25 +3493,25 @@ void wfmain:: getInitialRigState()
     queue->del(funcTransceiverId); // This command is no longer required
 
     /*
-    queue->add(priorityImmediate,(rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),false);
-    queue->add(priorityImmediate,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),false);
-    queue->add(priorityImmediate,(rigCaps.commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),false,true);
-    queue->add(priorityImmediate,(rigCaps.commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),false,true);
+    queue->add(priorityImmediate,(rigCaps->commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqGet),false);
+    queue->add(priorityImmediate,(rigCaps->commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),false);
+    queue->add(priorityImmediate,(rigCaps->commands.contains(funcUnselectedFreq)?funcUnselectedFreq:funcNone),false,true);
+    queue->add(priorityImmediate,(rigCaps->commands.contains(funcUnselectedMode)?funcUnselectedMode:funcNone),false,true);
 
     // From left to right in the UI:
-    if (rigCaps.hasTransmit)
+    if (rigCaps->hasTransmit)
     {
         queue->add(priorityImmediate,funcDataModeWithFilter);
-        queue->add(priorityImmediate,(rigCaps.commands.contains(funcDATAOffMod)?funcDATAOffMod:funcNone),false);
-        queue->add(priorityImmediate,(rigCaps.commands.contains(funcDATA1Mod)?funcDATA1Mod:funcNone),false);
-        queue->add(priorityImmediate,(rigCaps.commands.contains(funcDATA2Mod)?funcDATA2Mod:funcNone),false);
-        queue->add(priorityImmediate,(rigCaps.commands.contains(funcDATA3Mod)?funcDATA3Mod:funcNone),false);
-        queue->add(priorityImmediate,(rigCaps.commands.contains(funcRFPower)?funcRFPower:funcNone),false);
+        queue->add(priorityImmediate,(rigCaps->commands.contains(funcDATAOffMod)?funcDATAOffMod:funcNone),false);
+        queue->add(priorityImmediate,(rigCaps->commands.contains(funcDATA1Mod)?funcDATA1Mod:funcNone),false);
+        queue->add(priorityImmediate,(rigCaps->commands.contains(funcDATA2Mod)?funcDATA2Mod:funcNone),false);
+        queue->add(priorityImmediate,(rigCaps->commands.contains(funcDATA3Mod)?funcDATA3Mod:funcNone),false);
+        queue->add(priorityImmediate,(rigCaps->commands.contains(funcRFPower)?funcRFPower:funcNone),false);
         queue->add(priorityImmediate,getInputTypeCommand(currentModDataOffSrc.type),false);
         queue->add(priorityImmediate,getInputTypeCommand(currentModData1Src.type),false);
-        if (rigCaps.commands.contains(funcDATA2Mod))
+        if (rigCaps->commands.contains(funcDATA2Mod))
             queue->add(priorityImmediate,getInputTypeCommand(currentModData2Src.type),false);
-        if (rigCaps.commands.contains(funcDATA3Mod))
+        if (rigCaps->commands.contains(funcDATA3Mod))
             queue->add(priorityImmediate,getInputTypeCommand(currentModData3Src.type),false);
     }
 
@@ -3540,21 +3524,21 @@ void wfmain:: getInitialRigState()
     queue->add(priorityImmediate,funcMonitorGain,false);
 
     */
-    if(rigCaps.hasSpectrum)
+    if(rigCaps->hasSpectrum)
     {
         queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
         queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
 
         // Find the scope ref limits
-        auto mr = rigCaps.commands.find(funcScopeMainRef);
-        if (mr != rigCaps.commands.end())
+        auto mr = rigCaps->commands.find(funcScopeMainRef);
+        if (mr != rigCaps->commands.end())
         {
             vfos[0]->setRefLimits(mr.value().minVal,mr.value().maxVal);
             queue->add(priorityImmediate,(funcScopeMainRef),false,false);
         }
 
-        auto sr = rigCaps.commands.find(funcScopeSubRef);
-        if (sr != rigCaps.commands.end())
+        auto sr = rigCaps->commands.find(funcScopeSubRef);
+        if (sr != rigCaps->commands.end())
         {
             if (vfos.size()>1)
                 vfos[1]->setRefLimits(sr.value().minVal,sr.value().maxVal);
@@ -3564,14 +3548,14 @@ void wfmain:: getInitialRigState()
 
 
     // Only show settingsgroup if rig has sub
-    ui->scopeSettingsGroup->setVisible(rigCaps.commands.contains(funcScopeSubWaveData));
+    ui->scopeSettingsGroup->setVisible(rigCaps->commands.contains(funcScopeSubWaveData));
 
-    ui->scopeDualBtn->setVisible(rigCaps.commands.contains(funcScopeSingleDual));
-    ui->antennaGroup->setVisible(rigCaps.commands.contains(funcAntenna));
-    ui->preampAttGroup->setVisible(rigCaps.commands.contains(funcPreamp));
+    ui->scopeDualBtn->setVisible(rigCaps->commands.contains(funcScopeSingleDual));
+    ui->antennaGroup->setVisible(rigCaps->commands.contains(funcAntenna));
+    ui->preampAttGroup->setVisible(rigCaps->commands.contains(funcPreamp));
     quint64 start=UINT64_MAX;
     quint64 end=0;
-    for (auto &band: rigCaps.bands)
+    for (auto &band: rigCaps->bands)
     {
         if (start > band.lowFreq)
             start = band.lowFreq;
@@ -3580,60 +3564,60 @@ void wfmain:: getInitialRigState()
     }
     foreach (auto vfo, vfos)
     {
-        vfo->enableScope(this->rigCaps.commands.contains(funcScopeMainMode));
-        vfo->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits,&rigCaps.bands);
+        vfo->enableScope(this->rigCaps->commands.contains(funcScopeMainMode));
+        vfo->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits,&rigCaps->bands);
 
     }
 
     /*
 
-    if (rigCaps.commands.contains(funcFilterWidth))
+    if (rigCaps->commands.contains(funcFilterWidth))
         queue->add(priorityHigh,funcFilterWidth,false);
 
 
-    if (rigCaps.commands.contains(funcSplitStatus))
+    if (rigCaps->commands.contains(funcSplitStatus))
         queue->add(priorityHigh,funcSplitStatus,false);
 
-    if(rigCaps.commands.contains(funcTuningStep))
+    if(rigCaps->commands.contains(funcTuningStep))
         queue->add(priorityImmediate,funcTuningStep,false);
 
-    if(rigCaps.commands.contains(funcRepeaterTone))
+    if(rigCaps->commands.contains(funcRepeaterTone))
     {
         queue->add(priorityImmediate,funcRepeaterTone,false);
         queue->add(priorityImmediate,funcRepeaterTSQL,false);
     }
 
-    if(rigCaps.commands.contains(funcRepeaterDTCS))
+    if(rigCaps->commands.contains(funcRepeaterDTCS))
         queue->add(priorityImmediate,funcRepeaterDTCS,false);
 
-    if(rigCaps.commands.contains(funcToneSquelchType))
+    if(rigCaps->commands.contains(funcToneSquelchType))
         queue->add(priorityImmediate,funcToneSquelchType,false);
 
-    if(rigCaps.commands.contains(funcAntenna))
+    if(rigCaps->commands.contains(funcAntenna))
         queue->add(priorityImmediate,funcAntenna,false);
 
-    if(rigCaps.commands.contains(funcAttenuator))
+    if(rigCaps->commands.contains(funcAttenuator))
         queue->add(priorityImmediate,funcAttenuator,false);
 
-    if(rigCaps.commands.contains(funcPreamp))
+    if(rigCaps->commands.contains(funcPreamp))
         queue->add(priorityImmediate,funcPreamp,false);
 
-    if (rigCaps.commands.contains(funcRitStatus))
+    if (rigCaps->commands.contains(funcRitStatus))
     {
         queue->add(priorityImmediate,funcRITFreq,false);
         queue->add(priorityImmediate,funcRitStatus,false);
     }
 
-    if(rigCaps.commands.contains(funcIFShift))
+    if(rigCaps->commands.contains(funcIFShift))
         queue->add(priorityImmediate,funcIFShift,false);
 
-    if(rigCaps.commands.contains(funcPBTInner) && rigCaps.commands.contains(funcPBTOuter))
+    if(rigCaps->commands.contains(funcPBTInner) && rigCaps->commands.contains(funcPBTOuter))
     {
         queue->add(priorityImmediate,funcPBTInner,false);
         queue->add(priorityImmediate,funcPBTOuter,false);
     }
 
-    if(rigCaps.commands.contains(funcTunerStatus))
+    if(rigCaps->commands.contains(funcTunerStatus))
         queue->add(priorityImmediate,funcTunerStatus,false);
 
     */
@@ -3791,223 +3775,6 @@ void wfmain::setDefaultColors(int presetNumber)
     //ui->colorPresetCombo->setItemText(presetNumber, *(p->presetName));
 }
 
-void wfmain::receiveRigID(rigCapabilities rigCaps)
-{
-    // We have heard from the rig, so if the connection is pending, stop the timer immediately
-    ConnectionTimer.stop();
-
-    // Note: We intentionally request rigID several times
-    // because without rigID, we can't do anything with the waterfall.
-    bandbtns->acceptRigCaps(rigCaps);
-
-    if(haveRigCaps)
-    {
-        // Note: This line makes it difficult to accept a different radio connecting.
-        return;
-    } else {
-
-        showStatusBarText(QString("Found radio at address 0x%1 of name %2 and model ID %3.").arg(rigCaps.civ,2,16).arg(rigCaps.modelName).arg(rigCaps.modelID));
-
-        qDebug(logSystem()) << "Rig name: " << rigCaps.modelName;
-        qDebug(logSystem()) << "Has LAN capabilities: " << rigCaps.hasLan;
-        qDebug(logSystem()) << "Rig ID received into wfmain: spectLenMax: " << rigCaps.spectLenMax;
-        qDebug(logSystem()) << "Rig ID received into wfmain: spectAmpMax: " << rigCaps.spectAmpMax;
-        qDebug(logSystem()) << "Rig ID received into wfmain: spectSeqMax: " << rigCaps.spectSeqMax;
-        qDebug(logSystem()) << "Rig ID received into wfmain: hasSpectrum: " << rigCaps.hasSpectrum;
-
-        this->rigCaps = rigCaps;
-
-        configureVFOs(); // Now we have a rig connection, need to configure the VFOs
-
-        rigName->setText(rigCaps.modelName);
-        if (serverConfig.enabled) {
-            serverConfig.rigs.first()->modelName = rigCaps.modelName;
-            serverConfig.rigs.first()->rigName = rigCaps.modelName;
-            serverConfig.rigs.first()->civAddr = rigCaps.civ;
-            serverConfig.rigs.first()->baudRate = rigCaps.baudRate;
-        }
-        setWindowTitle(rigCaps.modelName);
-
-        if(rigCaps.hasSpectrum)
-        {
-            foreach (auto vfo, vfos)
-            {
-                vfo->prepareScope(rigCaps.spectAmpMax, rigCaps.spectLenMax);
-            }
-        }
-
-        haveRigCaps = true;
-
-
-        if (rigCaps.bands.size() > 0) {
-            lastRequestedBand = rigCaps.bands[0].band;
-        }
-
-        // Added so that server receives rig capabilities.
-        emit sendRigCaps(rigCaps);
-        rpt->setRig(rigCaps);
-        trxadj->setRig(rigCaps);
-
-        foreach (auto vfo, vfos) {
-            // Setup various combo box up for each VFO:
-            vfo->clearMode();
-            for (auto &m: rigCaps.modes)
-            {
-                //ui->modeSelectCombo->addItem(m.name, m.mk);
-                vfo->addMode("Mode "+m.name,QVariant::fromValue(m));
-            }
-
-            vfo->clearFilter();
-            for (auto& f: rigCaps.filters)
-            {
-                vfo->addFilter(f.name,f.num);
-            }
-
-            vfo->clearData();
-
-            vfo->addData("Data Off",0);
-
-            if (rigCaps.commands.contains(funcDATA1Mod))
-            {
-                setupui->updateModSourceList(1, rigCaps.inputs);
-                if (!rigCaps.commands.contains(funcDATA2Mod))
-                {
-                    vfo->addData("Data On", 2);
-                }
-            }
-
-            if (rigCaps.commands.contains(funcDATA2Mod))
-            {
-                setupui->updateModSourceList(2, rigCaps.inputs);
-                vfo->addData("Data 1", 2);
-                vfo->addData("Data 2", 2);
-            }
-
-            if (rigCaps.commands.contains(funcDATA3Mod))
-            {
-                setupui->updateModSourceList(3, rigCaps.inputs);
-                vfo->addData("Data 3", 3);
-            }
-
-            vfo->clearSpans();
-            if(rigCaps.hasSpectrum)
-            {
-                for(unsigned int i=0; i < rigCaps.scopeCenterSpans.size(); i++)
-                {
-                    vfo->addSpan(rigCaps.scopeCenterSpans.at(i).name, QVariant::fromValue(rigCaps.scopeCenterSpans.at(i)));
-                }
-                vfo->setRange(prefs.mainPlotFloor, prefs.mainPlotCeiling);
-            }
-        }
-
-        // Set the tuning step combo box up:
-        ui->tuningStepCombo->blockSignals(true);
-        ui->tuningStepCombo->clear();
-        for (auto &s: rigCaps.steps)
-        {
-            ui->tuningStepCombo->addItem(s.name, s.hz);
-        }
-
-        ui->tuningStepCombo->setCurrentIndex(2);
-        ui->tuningStepCombo->blockSignals(false);
-
-        setupui->updateModSourceList(0, rigCaps.inputs);
-
-
-        ui->attSelCombo->clear();
-        if(rigCaps.commands.contains(funcAttenuator))
-        {
-            ui->attSelCombo->setDisabled(false);
-            for (auto &att: rigCaps.attenuators)
-            {
-                ui->attSelCombo->addItem(((att == 0) ? QString("0 dB") : QString("-%1 dB").arg(att)),att);
-            }
-        } else {
-            ui->attSelCombo->setDisabled(true);
-        }
-
-        ui->preampSelCombo->clear();
-        if(rigCaps.commands.contains(funcPreamp))
-        {
-            ui->preampSelCombo->setDisabled(false);
-            for (auto &pre: rigCaps.preamps)
-            {
-                ui->preampSelCombo->addItem(pre.name, pre.num);
-            }
-        } else {
-            ui->preampSelCombo->setDisabled(true);
-        }
-
-        ui->antennaSelCombo->clear();
-        if(rigCaps.commands.contains(funcAntenna))
-        {
-            ui->antennaSelCombo->setDisabled(false);
-            for (auto &ant: rigCaps.antennas)
-            {
-                ui->antennaSelCombo->addItem(ant.name,ant.num);
-            }
-        } else {
-            ui->antennaSelCombo->setDisabled(true);
-        }
-
-        ui->rxAntennaCheck->setEnabled(rigCaps.commands.contains(funcRXAntenna));
-        ui->rxAntennaCheck->setChecked(false);
-
-        //ui->scopeBWCombo->blockSignals(true);
-        //ui->scopeBWCombo->clear();
-
-        ui->tuneEnableChk->setEnabled(rigCaps.commands.contains(funcTunerStatus));
-        ui->tuneNowBtn->setEnabled(rigCaps.commands.contains(funcTunerStatus));
-
-        ui->memoriesBtn->setEnabled(rigCaps.commands.contains(funcMemoryContents));
-
-        //ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
-
-       // ui->audioSystemCombo->setEnabled(false);
-        //ui->audioSystemServerCombo->setEnabled(false);
-
-        ui->connectBtn->setText("Disconnect from Radio"); // We must be connected now.
-        connStatus = connConnected;
-        if(usingLAN)
-        {
-            ui->afGainSlider->setValue(prefs.localAFgain);
-            emit sendLevel(funcAfGain,prefs.localAFgain);
-        }
-        // Adding these here because clearly at this point we have valid
-        // rig comms. In the future, we should establish comms and then
-        // do all the initial grabs. For now, this hack of adding them here and there:
-        // recalculate command timing now that we know the rig better:
-        if(prefs.polling_ms != 0)
-        {
-            changePollTiming(prefs.polling_ms, true);
-        } else {
-            calculateTimingParameters();
-        }
-
-        // Set the second meter here as I suspect we need to be connected for it to work?
-        changeMeterType(prefs.meter2Type, 2);
-        changeMeterType(prefs.meter3Type, 3);
-        ui->meter2Widget->blockMeterType(prefs.meter3Type);
-        ui->meter3Widget->blockMeterType(prefs.meter2Type);
-        ui->meter2Widget->setCompReverse(prefs.compMeterReverse);
-        ui->meter3Widget->setCompReverse(prefs.compMeterReverse);
-
-
-
-//        for (int i = 0; i < ui->meter2selectionCombo->count(); i++)
-//        {
-//            if (static_cast<meter_t>(ui->meter2selectionCombo->itemData(i).toInt()) == prefs.meter2Type)
-//            {
-//                // I thought that setCurrentIndex() would call the activated() function for the combobox
-//                // but it doesn't, so call it manually.
-//                //ui->meter2selectionCombo->setCurrentIndex(i);
-//                changeMeter2Type(i);
-//            }
-//        }
-    }
-
-}
-
 void wfmain::initPeriodicCommands()
 {
     // This function places periodic polling commands into the queue.
@@ -4017,9 +3784,9 @@ void wfmain::initPeriodicCommands()
 
     queue->clear();
 
-    foreach (auto cap, rigCaps.periodic) {
+    foreach (auto cap, rigCaps->periodic) {
         if (cap.vfo == -1) {
-            for (uchar v=0;v<rigCaps.numVFO;v++)
+            for (uchar v=0;v<rigCaps->numVFO;v++)
             {
                 qDebug(logSystem()) << "Inserting command" << funcString[cap.func] << "priority" << cap.priority << "on VFO" << QString::number(v);
                 queue->add(queuePriority(cap.prioVal),cap.func,true,v);
@@ -4034,11 +3801,11 @@ void wfmain::initPeriodicCommands()
 /*
     queue->add(priorityMedium,funcSelectedFreq,true,false);
     queue->add(priorityMedium,funcSelectedMode,true,false);
-    //queue->add(priorityMedium,(rigCaps.commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),true,false);
+    //queue->add(priorityMedium,(rigCaps->commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),true,false);
     queue->add(priorityMedium,funcUnselectedFreq,true,true);
     queue->add(priorityMedium,funcUnselectedMode,true,true);
 
-    if (rigCaps.hasSpectrum)
+    if (rigCaps->hasSpectrum)
     {
         queue->add(priorityHigh,funcOverflowStatus,true,false);
         queue->add(priorityMediumHigh,funcScopeMainMode,true,false);
@@ -4054,7 +3821,7 @@ void wfmain::initPeriodicCommands()
         queue->add(priorityMedium,funcVFODualWatch,true,false);
     }
 
-    if(rigCaps.hasTransmit) {
+    if(rigCaps->hasTransmit) {
         queue->add(priorityHigh,funcTransceiverStatus,true,false);
         queue->add(priorityMediumHigh,funcDATAOffMod,true,false);
         queue->add(priorityMediumHigh,funcDATA1Mod,true,false);
@@ -4189,7 +3956,7 @@ void wfmain::changeMode(rigMode_t mode)
 
 void wfmain::changeMode(rigMode_t mode, unsigned char data)
 {
-    for (modeInfo &mi: rigCaps.modes)
+    for (modeInfo &mi: rigCaps->modes)
     {
         if (mi.mk == mode)
         {
@@ -4199,8 +3966,8 @@ void wfmain::changeMode(rigMode_t mode, unsigned char data)
             m.VFO=selVFO_t::activeVFO;
             if((m.mk != currentModeInfo.mk) && prefs.automaticSidebandSwitching)
             {
-                queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),QVariant::fromValue<modeInfo>(m),false));
-                if (!rigCaps.commands.contains(funcSelectedMode))
+                queue->add(priorityImmediate,queueItem((rigCaps->commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),QVariant::fromValue<modeInfo>(m),false));
+                if (!rigCaps->commands.contains(funcSelectedMode))
                     queue->add(priorityImmediate,queueItem(funcDataModeWithFilter,QVariant::fromValue<modeInfo>(m),false));
             }
             usingDataMode = data;
@@ -4208,7 +3975,7 @@ void wfmain::changeMode(rigMode_t mode, unsigned char data)
         }
     }
 
-    queue->add(priorityImmediate,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),false);
+    queue->add(priorityImmediate,(rigCaps->commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),false);
 }
 
 void wfmain::on_freqDial_valueChanged(int value)
@@ -4361,7 +4128,6 @@ void wfmain::on_monitorLabel_linkActivated(const QString&)
 
 void wfmain::receiveIFShift(unsigned char level)
 {
-    trxadj->updateIFShift(level);
     emit sendLevel(funcIFShift,level);
 }
 
@@ -4703,7 +4469,7 @@ void wfmain::receiveTuningStep(unsigned char step)
 {
     if (step > 0)
     {
-        for (auto &s: rigCaps.steps)
+        for (auto &s: rigCaps->steps)
         {
             if (step == s.num && ui->tuningStepCombo->currentData().toUInt() != s.hz) {
                 qInfo(logSystem()) << QString("Received new Tuning Step %0").arg(s.name);
@@ -4926,7 +4692,7 @@ void wfmain::calculateTimingParameters()
     if(msMinTiming < 25)
         msMinTiming = 25;
 
-    if(haveRigCaps && rigCaps.hasFDcomms)
+    if(rigCaps != Q_NULLPTR && rigCaps->hasFDcomms)
     {
         delayedCommand->setInterval( msMinTiming); // 20 byte message
         queue->interval(msMinTiming);
@@ -5159,10 +4925,10 @@ void wfmain::enableRigCtl(bool enabled)
         // Start rigctld
         rigCtl = new rigCtlD(this);
         rigCtl->startServer(prefs.rigCtlPort);
-        if (rig != Q_NULLPTR) {
-            // We are already connected to a rig.
-            emit sendRigCaps(rigCaps);
-        }
+        //if (rig != Q_NULLPTR) {
+        //    // We are already connected to a rig.
+        //    emit sendRigCaps(rigCaps);
+        //}
     }
 }
 
@@ -5387,7 +5153,7 @@ void wfmain::connectionHandler(bool connect)
 {
     queue->clear();
     emit sendCloseComm();
-    haveRigCaps = false;
+
     rigName->setText("NONE");
     connStatus = connDisconnected;
 
@@ -5432,10 +5198,10 @@ void wfmain::on_cwButton_clicked()
 
 void wfmain::on_memoriesBtn_clicked()
 {
-    if (haveRigCaps) {
+    if (rigCaps != Q_NULLPTR) {
         if (memWindow == Q_NULLPTR) {
             // Add slowload option for background loading.
-            memWindow = new memories(rigCaps,false);
+            memWindow = new memories(false);
             this->memWindow->connect(this, SIGNAL(haveMemory(memoryType)), memWindow, SLOT(receiveMemory(memoryType)));
 
             this->memWindow->connect(this->memWindow, &memories::getMemory, rig,[=](const quint32 &mem) {
@@ -5768,13 +5534,13 @@ void wfmain::receiveValue(cacheItem val){
 
         queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(bsr.freq),false));
 
-        for (auto &md: rigCaps.modes)
+        for (auto &md: rigCaps->modes)
         {
                 if (md.reg == bsr.mode) {
                     md.filter=bsr.filter;
                     md.data=bsr.data;
-                    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<modeInfo>(md),false));
-                    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),QVariant::fromValue<modeInfo>(md),false));
+                    queue->add(priorityImmediate,queueItem((rigCaps->commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<modeInfo>(md),false));
+                    queue->add(priorityImmediate,queueItem((rigCaps->commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),QVariant::fromValue<modeInfo>(md),false));
 
                     break;
                 }
@@ -6085,6 +5851,205 @@ void wfmain::receiveElapsed(bool sub, qint64 us)
         mainElapsed = us;
 }
 
+void wfmain::receiveRigCaps(rigCapabilities* caps)
+{
+    this->rigCaps = caps;
+
+    // Convenient place to stop the connection timer as rigCaps has changed.
+    ConnectionTimer.stop();
+
+    //bandbtns->acceptRigCaps(rigCaps);
+
+    if(caps == Q_NULLPTR)
+    {
+        // Note: This line makes it difficult to accept a different radio connecting.
+        return;
+    } else {
+
+        showStatusBarText(QString("Found radio at address 0x%1 of name %2 and model ID %3.").arg(rigCaps->civ,2,16).arg(rigCaps->modelName).arg(rigCaps->modelID));
+
+        qDebug(logSystem()) << "Rig name: " << rigCaps->modelName;
+        qDebug(logSystem()) << "Has LAN capabilities: " << rigCaps->hasLan;
+        qDebug(logSystem()) << "Rig ID received into wfmain: spectLenMax: " << rigCaps->spectLenMax;
+        qDebug(logSystem()) << "Rig ID received into wfmain: spectAmpMax: " << rigCaps->spectAmpMax;
+        qDebug(logSystem()) << "Rig ID received into wfmain: spectSeqMax: " << rigCaps->spectSeqMax;
+        qDebug(logSystem()) << "Rig ID received into wfmain: hasSpectrum: " << rigCaps->hasSpectrum;
+
+        configureVFOs(); // Now we have a rig connection, need to configure the VFOs
+
+        rigName->setText(rigCaps->modelName);
+        if (serverConfig.enabled) {
+            serverConfig.rigs.first()->modelName = rigCaps->modelName;
+            serverConfig.rigs.first()->rigName = rigCaps->modelName;
+            serverConfig.rigs.first()->civAddr = rigCaps->civ;
+            serverConfig.rigs.first()->baudRate = rigCaps->baudRate;
+        }
+        setWindowTitle(rigCaps->modelName);
+
+        if(rigCaps->hasSpectrum)
+        {
+            foreach (auto vfo, vfos)
+            {
+                vfo->prepareScope(rigCaps->spectAmpMax, rigCaps->spectLenMax);
+            }
+        }
+
+        if (rigCaps->bands.size() > 0) {
+            lastRequestedBand = rigCaps->bands[0].band;
+        }
+
+        // Added so that server receives rig capabilities.
+        //emit sendRigCaps(rigCaps);
+        //rpt->setRig(rigCaps);
+
+        foreach (auto vfo, vfos) {
+            // Setup various combo box up for each VFO:
+            vfo->clearMode();
+            for (auto &m: rigCaps->modes)
+            {
+                //ui->modeSelectCombo->addItem(m.name, m.mk);
+                vfo->addMode("Mode "+m.name,QVariant::fromValue(m));
+            }
+
+            vfo->clearFilter();
+            for (auto& f: rigCaps->filters)
+            {
+                vfo->addFilter(f.name,f.num);
+            }
+
+            vfo->clearData();
+
+            vfo->addData("Data Off",0);
+
+            if (rigCaps->commands.contains(funcDATA1Mod))
+            {
+                setupui->updateModSourceList(1, rigCaps->inputs);
+                if (!rigCaps->commands.contains(funcDATA2Mod))
+                {
+                    vfo->addData("Data On", 2);
+                }
+            }
+
+            if (rigCaps->commands.contains(funcDATA2Mod))
+            {
+                setupui->updateModSourceList(2, rigCaps->inputs);
+                vfo->addData("Data 1", 2);
+                vfo->addData("Data 2", 2);
+            }
+
+            if (rigCaps->commands.contains(funcDATA3Mod))
+            {
+                setupui->updateModSourceList(3, rigCaps->inputs);
+                vfo->addData("Data 3", 3);
+            }
+
+            vfo->clearSpans();
+            if(rigCaps->hasSpectrum)
+            {
+                for(unsigned int i=0; i < rigCaps->scopeCenterSpans.size(); i++)
+                {
+                    vfo->addSpan(rigCaps->scopeCenterSpans.at(i).name, QVariant::fromValue(rigCaps->scopeCenterSpans.at(i)));
+                }
+                vfo->setRange(prefs.mainPlotFloor, prefs.mainPlotCeiling);
+            }
+        }
+
+        // Set the tuning step combo box up:
+        ui->tuningStepCombo->blockSignals(true);
+        ui->tuningStepCombo->clear();
+        for (auto &s: rigCaps->steps)
+        {
+            ui->tuningStepCombo->addItem(s.name, s.hz);
+        }
+
+        ui->tuningStepCombo->setCurrentIndex(2);
+        ui->tuningStepCombo->blockSignals(false);
+
+        setupui->updateModSourceList(0, rigCaps->inputs);
+
+
+        ui->attSelCombo->clear();
+        if(rigCaps->commands.contains(funcAttenuator))
+        {
+            ui->attSelCombo->setDisabled(false);
+            for (auto &att: rigCaps->attenuators)
+            {
+                ui->attSelCombo->addItem(((att == 0) ? QString("0 dB") : QString("-%1 dB").arg(att)),att);
+            }
+        } else {
+            ui->attSelCombo->setDisabled(true);
+        }
+
+        ui->preampSelCombo->clear();
+        if(rigCaps->commands.contains(funcPreamp))
+        {
+            ui->preampSelCombo->setDisabled(false);
+            for (auto &pre: rigCaps->preamps)
+            {
+                ui->preampSelCombo->addItem(pre.name, pre.num);
+            }
+        } else {
+            ui->preampSelCombo->setDisabled(true);
+        }
+
+        ui->antennaSelCombo->clear();
+        if(rigCaps->commands.contains(funcAntenna))
+        {
+            ui->antennaSelCombo->setDisabled(false);
+            for (auto &ant: rigCaps->antennas)
+            {
+                ui->antennaSelCombo->addItem(ant.name,ant.num);
+            }
+        } else {
+            ui->antennaSelCombo->setDisabled(true);
+        }
+
+        ui->rxAntennaCheck->setEnabled(rigCaps->commands.contains(funcRXAntenna));
+        ui->rxAntennaCheck->setChecked(false);
+
+        //ui->scopeBWCombo->blockSignals(true);
+        //ui->scopeBWCombo->clear();
+
+        ui->tuneEnableChk->setEnabled(rigCaps->commands.contains(funcTunerStatus));
+        ui->tuneNowBtn->setEnabled(rigCaps->commands.contains(funcTunerStatus));
+
+        ui->memoriesBtn->setEnabled(rigCaps->commands.contains(funcMemoryContents));
+
+        //ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
+
+       // ui->audioSystemCombo->setEnabled(false);
+        //ui->audioSystemServerCombo->setEnabled(false);
+
+        ui->connectBtn->setText("Disconnect from Radio"); // We must be connected now.
+        connStatus = connConnected;
+        if(usingLAN)
+        {
+            ui->afGainSlider->setValue(prefs.localAFgain);
+            emit sendLevel(funcAfGain,prefs.localAFgain);
+        }
+        // Adding these here because clearly at this point we have valid
+        // rig comms. In the future, we should establish comms and then
+        // do all the initial grabs. For now, this hack of adding them here and there:
+        // recalculate command timing now that we know the rig better:
+        if(prefs.polling_ms != 0)
+        {
+            changePollTiming(prefs.polling_ms, true);
+        } else {
+            calculateTimingParameters();
+        }
+
+        // Set the second meter here as I suspect we need to be connected for it to work?
+        changeMeterType(prefs.meter2Type, 2);
+        changeMeterType(prefs.meter3Type, 3);
+        ui->meter2Widget->blockMeterType(prefs.meter3Type);
+        ui->meter3Widget->blockMeterType(prefs.meter2Type);
+        ui->meter2Widget->setCompReverse(prefs.compMeterReverse);
+        ui->meter3Widget->setCompReverse(prefs.compMeterReverse);
+    }
+
+    initPeriodicCommands();
+    getInitialRigState();
+}
 
 /* USB Hotplug support added at the end of the file for convenience */
 #ifdef USB_HOTPLUG

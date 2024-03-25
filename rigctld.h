@@ -278,7 +278,6 @@ public:
 
     int startServer(qint16 port);
     void stopServer();
-    rigCapabilities* rigCaps;
 
 signals:
     void onStarted();
@@ -342,7 +341,7 @@ protected:
 
 private:
     cachingQueue* queue;
-    rigCapabilities* rigCaps;
+    rigCapabilities* rigCaps=Q_NULLPTR;
     rigCtlD* parent;
     bool chkVfoEecuted=false;
     unsigned long crcTable[256];

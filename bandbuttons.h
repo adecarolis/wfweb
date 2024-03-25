@@ -51,9 +51,7 @@ signals:
 
 
 public slots:
-    // These should come from connections to rigCommander:
-    void acceptRigCaps(rigCapabilities rc);
-    void receiveBandStackReg(freqt freqGo, char mode, char filter, bool dataOn);
+    void receiveRigCaps(rigCapabilities* rc);
 
 private slots:
     void on_band2200mbtn_clicked();
@@ -90,7 +88,7 @@ private:
     char bandStkRegCode;
 
     bool waitingForBSR = false;
-    rigCapabilities rigCaps;
+    rigCapabilities* rigCaps=Q_NULLPTR;
     bool haveRigCaps = false;
     cachingQueue* queue;
 };

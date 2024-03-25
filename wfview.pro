@@ -287,7 +287,7 @@ SOURCES += main.cpp\
     rigctld.cpp \
     usbcontroller.cpp \
     controllersetup.cpp \
-    transceiveradjustments.cpp \
+ #   transceiveradjustments.cpp \
     selectradio.cpp \
     tcpserver.cpp \
     cluster.cpp \
@@ -345,7 +345,7 @@ HEADERS  += wfmain.h \
     ulaw.h \
     usbcontroller.h \
     controllersetup.h \
-    transceiveradjustments.h \
+ #   transceiveradjustments.h \
     audiotaper.h \
     selectradio.h \
     tcpserver.h \
@@ -368,7 +368,7 @@ FORMS    += wfmain.ui \
     selectradio.ui \
     repeatersetup.ui \
     settingswidget.ui \
-    transceiveradjustments.ui \
+ #   transceiveradjustments.ui \
     controllersetup.ui \
     aboutbox.ui
 

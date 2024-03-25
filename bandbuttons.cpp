@@ -13,6 +13,7 @@ bandbuttons::bandbuttons(QWidget *parent) :
     this->setWindowTitle("Band Switcher");
     this->setObjectName("bandButtons");
     queue = cachingQueue::getInstance(this);
+    connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
 }
 
 bandbuttons::~bandbuttons()
@@ -25,26 +26,24 @@ int bandbuttons::getBSRNumber()
     return ui->bandStkPopdown->currentIndex()+1;
 }
 
-void bandbuttons::acceptRigCaps(rigCapabilities rc)
+void bandbuttons::receiveRigCaps(rigCapabilities* rc)
 {
     this->rigCaps = rc;
     qDebug(logGui()) << "Accepting new rigcaps into band buttons.";
-    if(haveRigCaps)
-        qDebug(logGui()) << "Accepting additional rigcaps into band buttons.";
 
-    qDebug(logGui()) << "Bands in this rigcaps: ";
-    for(size_t i=0; i < rigCaps.bands.size(); i++)
-    {
-        qDebug(logGui()) << "band[" << i << "]: " << (unsigned char)rigCaps.bands.at(i).band;
+    if (rigCaps != Q_NULLPTR) {
+        qDebug(logGui()) << "Bands in this rigcaps: ";
+        for(size_t i=0; i < rigCaps->bands.size(); i++)
+        {
+            qDebug(logGui()) << "band[" << i << "]: " << (unsigned char)rigCaps->bands.at(i).band;
+        }
+
+        for(size_t i=0; i < 20; i++)
+        {
+            qDebug(logGui()) << "bsr[" << i << "]: " << (unsigned char)rigCaps->bsr[i];
+        }
     }
-
-    for(size_t i=0; i < 20; i++)
-    {
-        qDebug(logGui()) << "bsr[" << i << "]: " << (unsigned char)rigCaps.bsr[i];
-    }
-
     setUIToRig();
-    haveRigCaps = true;
 }
 
 void bandbuttons::setUIToRig()
@@ -76,82 +75,84 @@ void bandbuttons::setUIToRig()
     hideButton(ui->band2200mbtn);
     hideButton(ui->bandGenbtn);
 
-    for (auto &band: rigCaps.bands)
-    {
-        switch(band.band)
+    if (rigCaps != Q_NULLPTR) {
+        for (auto &band: rigCaps->bands)
         {
-            case(band3cm):
-                showButton(ui->band3cmbtn);
-                break;
-            case(band6cm):
-                showButton(ui->band6cmbtn);
-                break;
-            case(band13cm):
-                showButton(ui->band13cmbtn);
-                break;
-            case(band23cm):
-                showButton(ui->band23cmbtn);
-                break;
-            case(band70cm):
-                showButton(ui->band70cmbtn);
-                break;
-            case(band2m):
-                showButton(ui->band2mbtn);
-                break;
-            case(bandAir):
-                showButton(ui->bandAirbtn);
-                break;
-            case(bandWFM):
-                showButton(ui->bandWFMbtn);
-                break;
-            case(band4m):
-                showButton(ui->band4mbtn);
-                break;
-            case(band6m):
-                showButton(ui->band6mbtn);
-                break;
-            case(band10m):
-                showButton(ui->band10mbtn);
-                break;
-            case(band12m):
-                showButton(ui->band12mbtn);
-                break;
-            case(band15m):
-                showButton(ui->band15mbtn);
-                break;
-            case(band17m):
-                showButton(ui->band17mbtn);
-                break;
-            case(band20m):
-                showButton(ui->band20mbtn);
-                break;
-            case(band30m):
-                showButton(ui->band30mbtn);
-                break;
-            case(band40m):
-                showButton(ui->band40mbtn);
-                break;
-            case(band60m):
-                showButton(ui->band60mbtn);
-                break;
-            case(band80m):
-                showButton(ui->band80mbtn);
-                break;
-            case(band160m):
-                showButton(ui->band160mbtn);
-                break;
-            case(band630m):
-                showButton(ui->band630mbtn);
-                break;
-            case(band2200m):
-                showButton(ui->band2200mbtn);
-                break;
-            case(bandGen):
-                showButton(ui->bandGenbtn);
-                break;
+            switch(band.band)
+            {
+                case(band3cm):
+                    showButton(ui->band3cmbtn);
+                    break;
+                case(band6cm):
+                    showButton(ui->band6cmbtn);
+                    break;
+                case(band13cm):
+                    showButton(ui->band13cmbtn);
+                    break;
+                case(band23cm):
+                    showButton(ui->band23cmbtn);
+                    break;
+                case(band70cm):
+                    showButton(ui->band70cmbtn);
+                    break;
+                case(band2m):
+                    showButton(ui->band2mbtn);
+                    break;
+                case(bandAir):
+                    showButton(ui->bandAirbtn);
+                    break;
+                case(bandWFM):
+                    showButton(ui->bandWFMbtn);
+                    break;
+                case(band4m):
+                    showButton(ui->band4mbtn);
+                    break;
+                case(band6m):
+                    showButton(ui->band6mbtn);
+                    break;
+                case(band10m):
+                    showButton(ui->band10mbtn);
+                    break;
+                case(band12m):
+                    showButton(ui->band12mbtn);
+                    break;
+                case(band15m):
+                    showButton(ui->band15mbtn);
+                    break;
+                case(band17m):
+                    showButton(ui->band17mbtn);
+                    break;
+                case(band20m):
+                    showButton(ui->band20mbtn);
+                    break;
+                case(band30m):
+                    showButton(ui->band30mbtn);
+                    break;
+                case(band40m):
+                    showButton(ui->band40mbtn);
+                    break;
+                case(band60m):
+                    showButton(ui->band60mbtn);
+                    break;
+                case(band80m):
+                    showButton(ui->band80mbtn);
+                    break;
+                case(band160m):
+                    showButton(ui->band160mbtn);
+                    break;
+                case(band630m):
+                    showButton(ui->band630mbtn);
+                    break;
+                case(band2200m):
+                    showButton(ui->band2200mbtn);
+                    break;
+                case(bandGen):
+                    showButton(ui->bandGenbtn);
+                    break;
 
-            default:
-                break;
+                default:
+                    break;
+            }
         }
     }
 }
@@ -166,33 +167,11 @@ void bandbuttons::hideButton(QPushButton *b)
     b->setHidden(true);
 }
 
-void bandbuttons::receiveBandStackReg(freqt freqGo, char mode, char filter, bool dataOn)
-{
-    // This function is not currently used, but perhaps it should be?
-    // Issue: wfmain is also waiting for a BSR and acts upon it.
-    if(waitingForBSR)
-    {
-        qDebug(logGui()) << "Received band stack register and was waiting for one.";
-        emit issueCmdF(cmdSetFreq, freqGo);
-        emit issueCmd(cmdSetMode, mode);
-        //emit issueCmd(cmdSetFilter, filter); // TODO
-        if(dataOn)
-            emit issueDelayedCommand(cmdSetDataModeOn);
-        else
-            emit issueDelayedCommand(cmdSetDataModeOff);
-
-        waitingForBSR = false;
-    } else {
-        qWarning(logGui()) << "Received a BSR but did not expect one.";
-    }
-    (void)filter;
-}
-
 void bandbuttons::bandStackBtnClick(availableBands band)
 {
-    if(haveRigCaps)
+    if(rigCaps != Q_NULLPTR)
     {
-        for (auto &b: rigCaps.bands)
+        for (auto &b: rigCaps->bands)
         {
             if (b.band == band)
             {
@@ -215,16 +194,19 @@ void bandbuttons::bandStackBtnClick(availableBands band)
 void bandbuttons::jumpToBandWithoutBSR(availableBands band)
 {
     // Sometimes we do not have a BSR for these bands:
-    for (auto &b: rigCaps.bands)
+    if (rigCaps != Q_NULLPTR)
     {
-        if (b.band == band)
+        for (auto &b: rigCaps->bands)
         {
-            freqt f;
-            f.Hz = (b.lowFreq+b.highFreq)/2.0;
-            f.MHzDouble = f.Hz/1000000.0;
-            f.VFO = activeVFO;
-            queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false,false));
-            break;
+            if (b.band == band)
+            {
+                freqt f;
+                f.Hz = (b.lowFreq+b.highFreq)/2.0;
+                f.MHzDouble = f.Hz/1000000.0;
+                f.VFO = activeVFO;
+                queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false,false));
+                break;
+            }
         }
     }
 }

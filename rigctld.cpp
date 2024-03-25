@@ -310,7 +310,9 @@ void rigCtlD::stopServer()
 
 void rigCtlClient::receiveRigCaps(rigCapabilities* caps)
 {
-    qInfo(logRigCtlD()) << "Got rigcaps for:" << caps->modelName;
+    if (caps != Q_NULLPTR) {
+        qInfo(logRigCtlD()) << "Got rigcaps for:" << caps->modelName;
+    }
     this->rigCaps = caps;
 }
 

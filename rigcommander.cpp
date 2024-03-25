@@ -95,8 +95,6 @@ void rigCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char
     connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
     connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
 
-    connect(this, SIGNAL(discoveredRigID(rigCapabilities)), ptty, SLOT(receiveFoundRigID(rigCapabilities)));
-
     commonSetup();
 }
 
@@ -169,8 +167,6 @@ void rigCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char
 
         connect(ptty, SIGNAL(havePortError(errorType)), this, SLOT(handlePortError(errorType)));
         connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
-
-        connect(this, SIGNAL(discoveredRigID(rigCapabilities)), ptty, SLOT(receiveFoundRigID(rigCapabilities)));
 
         connect(udp, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
         connect(udp, SIGNAL(setRadioUsage(quint8, bool, quint8, QString, QString)), this, SLOT(radioUsage(quint8, bool, quint8, QString, QString)));

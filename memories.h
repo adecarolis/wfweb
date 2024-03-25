@@ -14,6 +14,7 @@
 #include "tablewidget.h"
 #include "wfviewtypes.h"
 #include "rigidentities.h"
+#include "cachingqueue.h"
 
 #define MEMORY_TIMEOUT 1000
 #define MEMORY_SLOWLOAD 500
@@ -29,7 +30,7 @@ class memories : public QWidget
     Q_OBJECT
 
 public:
-    explicit memories(rigCapabilities rigCaps,bool slowLoad=false,QWidget *parent = nullptr);
+    explicit memories(bool slowLoad=false,QWidget *parent = nullptr);
     ~memories();
     void populate();
 
@@ -64,6 +65,7 @@ private slots:
     void timeout();
 
 private:
+    cachingQueue* queue;
     quint32 groupMemories=0;
     quint32 lastMemoryRequested=0;
     QTimer timeoutTimer;
@@ -175,7 +177,7 @@ private:
     tableEditor* r1EditorB = Q_NULLPTR;
     tableEditor* r2EditorB = Q_NULLPTR;
 
-    rigCapabilities rigCaps;
+    rigCapabilities* rigCaps = Q_NULLPTR;
 
     Ui::memories *ui;
     bool extended = false;
