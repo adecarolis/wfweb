@@ -5201,7 +5201,8 @@ void wfmain::receiveValue(cacheItem val){
 #endif
 
     case funcUnselectedFreq:
-        val.vfo=1;
+        if (vfos.size())
+            val.vfo=1;
     case funcSelectedFreq:
     {
         vfos[val.vfo]->setFrequency(val.value.value<freqt>());
@@ -5226,7 +5227,8 @@ void wfmain::receiveValue(cacheItem val){
         cw->handleCurrentModeUpdate(val.value.value<modeInfo>().mk);
         break;
     case funcUnselectedMode:
-        val.vfo=1;
+        if (vfos.size())
+            val.vfo=1;
         vfos[val.vfo]->receiveMode(val.value.value<modeInfo>());
         break;
 #if defined __GNUC__
