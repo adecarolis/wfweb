@@ -5189,8 +5189,10 @@ void wfmain::receiveValue(cacheItem val){
     case funcFreqGet:
     case funcFreqTR:
         // If current VFO (0) isn't selected, then send this to other VFO
-        if (!vfos[val.vfo]->isSelected()){
-            val.vfo=!bool(val.vfo);
+        if (vfos.size()>1) {
+            if (!vfos[val.vfo]->isSelected()){
+                val.vfo=!bool(val.vfo);
+            }
         }
         vfos[val.vfo]->setFrequency(val.value.value<freqt>());
         break;
@@ -5216,8 +5218,10 @@ void wfmain::receiveValue(cacheItem val){
     case funcModeGet:
     case funcModeTR:
         // If current VFO (0) isn't selected, then send this to other VFO
-        if (!vfos[val.vfo]->isSelected()){
-            val.vfo=!bool(val.vfo);
+        if (vfos.size()>1) {
+            if (!vfos[val.vfo]->isSelected()){
+                val.vfo=!bool(val.vfo);
+            }
         }
     case funcSelectedMode:
         vfos[val.vfo]->receiveMode(val.value.value<modeInfo>());
