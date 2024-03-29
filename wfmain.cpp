@@ -5201,7 +5201,7 @@ void wfmain::receiveValue(cacheItem val){
 #endif
 
     case funcUnselectedFreq:
-        if (vfos.size())
+        if (vfos.size()>1)
             val.vfo=1;
     case funcSelectedFreq:
     {
@@ -5227,7 +5227,7 @@ void wfmain::receiveValue(cacheItem val){
         cw->handleCurrentModeUpdate(val.value.value<modeInfo>().mk);
         break;
     case funcUnselectedMode:
-        if (vfos.size())
+        if (vfos.size()>1)
             val.vfo=1;
         vfos[val.vfo]->receiveMode(val.value.value<modeInfo>());
         break;
