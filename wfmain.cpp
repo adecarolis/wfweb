@@ -1684,28 +1684,28 @@ void wfmain::loadSettings()
                     p->presetName->clear();
                     p->presetName->append(tempName);
             }
-            p->gridColor.fromString(settings->value("gridColor", p->gridColor.name(QColor::HexArgb)).toString());
-            p->axisColor.fromString(settings->value("axisColor", p->axisColor.name(QColor::HexArgb)).toString());
-            p->textColor.fromString(settings->value("textColor", p->textColor.name(QColor::HexArgb)).toString());
-            p->spectrumLine.fromString(settings->value("spectrumLine", p->spectrumLine.name(QColor::HexArgb)).toString());
-            p->spectrumFill.fromString(settings->value("spectrumFill", p->spectrumFill.name(QColor::HexArgb)).toString());
-            p->underlayLine.fromString(settings->value("underlayLine", p->underlayLine.name(QColor::HexArgb)).toString());
-            p->underlayFill.fromString(settings->value("underlayFill", p->underlayFill.name(QColor::HexArgb)).toString());
-            p->plotBackground.fromString(settings->value("plotBackground", p->plotBackground.name(QColor::HexArgb)).toString());
-            p->tuningLine.fromString(settings->value("tuningLine", p->tuningLine.name(QColor::HexArgb)).toString());
-            p->passband.fromString(settings->value("passband", p->passband.name(QColor::HexArgb)).toString());
-            p->pbt.fromString(settings->value("pbt", p->pbt.name(QColor::HexArgb)).toString());
-            p->wfBackground.fromString(settings->value("wfBackground", p->wfBackground.name(QColor::HexArgb)).toString());
-            p->wfGrid.fromString(settings->value("wfGrid", p->wfGrid.name(QColor::HexArgb)).toString());
-            p->wfAxis.fromString(settings->value("wfAxis", p->wfAxis.name(QColor::HexArgb)).toString());
-            p->wfText.fromString(settings->value("wfText", p->wfText.name(QColor::HexArgb)).toString());
-            p->meterLevel.fromString(settings->value("meterLevel", p->meterLevel.name(QColor::HexArgb)).toString());
-            p->meterAverage.fromString(settings->value("meterAverage", p->meterAverage.name(QColor::HexArgb)).toString());
-            p->meterPeakLevel.fromString(settings->value("meterPeakLevel", p->meterPeakLevel.name(QColor::HexArgb)).toString());
-            p->meterPeakScale.fromString(settings->value("meterPeakScale", p->meterPeakScale.name(QColor::HexArgb)).toString());
-            p->meterLowerLine.fromString(settings->value("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb)).toString());
-            p->meterLowText.fromString(settings->value("meterLowText", p->meterLowText.name(QColor::HexArgb)).toString());
-            p->clusterSpots.fromString(settings->value("clusterSpots", p->clusterSpots.name(QColor::HexArgb)).toString());
+            p->gridColor.setNamedColor(settings->value("gridColor", p->gridColor.name(QColor::HexArgb)).toString());
+            p->axisColor.setNamedColor(settings->value("axisColor", p->axisColor.name(QColor::HexArgb)).toString());
+            p->textColor.setNamedColor(settings->value("textColor", p->textColor.name(QColor::HexArgb)).toString());
+            p->spectrumLine.setNamedColor(settings->value("spectrumLine", p->spectrumLine.name(QColor::HexArgb)).toString());
+            p->spectrumFill.setNamedColor(settings->value("spectrumFill", p->spectrumFill.name(QColor::HexArgb)).toString());
+            p->underlayLine.setNamedColor(settings->value("underlayLine", p->underlayLine.name(QColor::HexArgb)).toString());
+            p->underlayFill.setNamedColor(settings->value("underlayFill", p->underlayFill.name(QColor::HexArgb)).toString());
+            p->plotBackground.setNamedColor(settings->value("plotBackground", p->plotBackground.name(QColor::HexArgb)).toString());
+            p->tuningLine.setNamedColor(settings->value("tuningLine", p->tuningLine.name(QColor::HexArgb)).toString());
+            p->passband.setNamedColor(settings->value("passband", p->passband.name(QColor::HexArgb)).toString());
+            p->pbt.setNamedColor(settings->value("pbt", p->pbt.name(QColor::HexArgb)).toString());
+            p->wfBackground.setNamedColor(settings->value("wfBackground", p->wfBackground.name(QColor::HexArgb)).toString());
+            p->wfGrid.setNamedColor(settings->value("wfGrid", p->wfGrid.name(QColor::HexArgb)).toString());
+            p->wfAxis.setNamedColor(settings->value("wfAxis", p->wfAxis.name(QColor::HexArgb)).toString());
+            p->wfText.setNamedColor(settings->value("wfText", p->wfText.name(QColor::HexArgb)).toString());
+            p->meterLevel.setNamedColor(settings->value("meterLevel", p->meterLevel.name(QColor::HexArgb)).toString());
+            p->meterAverage.setNamedColor(settings->value("meterAverage", p->meterAverage.name(QColor::HexArgb)).toString());
+            p->meterPeakLevel.setNamedColor(settings->value("meterPeakLevel", p->meterPeakLevel.name(QColor::HexArgb)).toString());
+            p->meterPeakScale.setNamedColor(settings->value("meterPeakScale", p->meterPeakScale.name(QColor::HexArgb)).toString());
+            p->meterLowerLine.setNamedColor(settings->value("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb)).toString());
+            p->meterLowText.setNamedColor(settings->value("meterLowText", p->meterLowText.name(QColor::HexArgb)).toString());
+            p->clusterSpots.setNamedColor(settings->value("clusterSpots", p->clusterSpots.name(QColor::HexArgb)).toString());
         }
     }
     settings->endArray();
@@ -2015,7 +2015,7 @@ void wfmain::loadSettings()
             tempPrefs.orientation = (quint8)settings->value("Orientation", 2).toInt();
             tempPrefs.speed = (quint8)settings->value("Speed", 2).toInt();
             tempPrefs.timeout = (quint8)settings->value("Timeout", 30).toInt();
-            tempPrefs.color.fromString(settings->value("Color", QColor(Qt::white).name(QColor::HexArgb)).toString());
+            tempPrefs.color.setNamedColor(settings->value("Color", QColor(Qt::white).name(QColor::HexArgb)).toString());
             tempPrefs.lcd = (funcs)settings->value("LCD",0).toInt();
 
             if (!tempPrefs.path.isEmpty()) {
@@ -2051,9 +2051,9 @@ void wfmain::loadSettings()
                 settings->value("Top", 0).toInt(),
                 settings->value("Width", 0).toInt(),
                 settings->value("Height", 0).toInt());
-            butt.textColour.fromString(settings->value("Colour", QColor(Qt::white).name(QColor::HexArgb)).toString());
-            butt.backgroundOn.fromString(settings->value("BackgroundOn", QColor(Qt::lightGray).name(QColor::HexArgb)).toString());
-            butt.backgroundOff.fromString(settings->value("BackgroundOff", QColor(Qt::blue).name(QColor::HexArgb)).toString());
+            butt.textColour.setNamedColor(settings->value("Colour", QColor(Qt::white).name(QColor::HexArgb)).toString());
+            butt.backgroundOn.setNamedColor(settings->value("BackgroundOn", QColor(Qt::lightGray).name(QColor::HexArgb)).toString());
+            butt.backgroundOff.setNamedColor(settings->value("BackgroundOff", QColor(Qt::blue).name(QColor::HexArgb)).toString());
             butt.toggle = settings->value("Toggle", false).toBool();
             // PET add Linux as it stops Qt6 building FIXME
 #if (QT_VERSION > QT_VERSION_CHECK(6,0,0) && !defined(Q_OS_LINUX))
