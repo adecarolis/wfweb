@@ -38,6 +38,15 @@ spectrumScope::spectrumScope(uchar receiver, uchar vfo, QWidget *parent)
             freqDisplay[i]->setMaximumSize(180,20);
             displayLayout->addWidget(freqDisplay[i]);
         }
+        connect(this->freqDisplay[i], &freqCtrl::newFrequency, this,
+                [=](const qint64 &freq) { this->newFrequency(freq,i);});
+
+
+        //connect(this->rig, &rigCommander::haveDashRatio,
+        //        [=](const unsigned char& ratio) { cw->handleDashRatio(ratio); });
+
+        //connect(freqDisplay[i], SIGNAL(newFrequency(qint64)), this, SLOT(newFrequency(qint64,i)));
+
     }
 
 
@@ -386,7 +395,6 @@ spectrumScope::spectrumScope(uchar receiver, uchar vfo, QWidget *parent)
     connect(waterfall, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(scroll(QWheelEvent*)));
     connect(spectrum, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(scroll(QWheelEvent*)));
 
-    connect(freqDisplay[0], SIGNAL(newFrequency(qint64)), this, SLOT(newFrequency(qint64)));
 
     showHideControls(spectrumMode_t::spectModeCenter);
 }
@@ -1741,14 +1749,21 @@ void spectrumScope::setUnit(FctlUnit unit)
 }
 
 
-void spectrumScope::newFrequency(qint64 freq)
+void spectrumScope::newFrequency(qint64 freq,uchar vfo)
 {
     freqt f;
     f.Hz = freq;
     f.MHzDouble = f.Hz / (double)1E6;
     if (f.Hz > 0)
     {
-        queue->add(priorityImmediate,queueItem((receiver?funcSubFreq:funcMainFreq),QVariant::fromValue<freqt>(f),false,receiver));
+        if (vfo > 0)
+        {
+            queue->add(priorityImmediate,queueItem((funcUnselectedFreq),QVariant::fromValue<freqt>(f),false,receiver));
+        }
+        else
+        {
+            queue->add(priorityImmediate,queueItem((receiver?funcSubFreq:funcMainFreq),QVariant::fromValue<freqt>(f),false,receiver));
+        }
     }
 }
 

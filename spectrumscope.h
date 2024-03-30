@@ -133,7 +133,7 @@ private slots:
     void scroll(QWheelEvent *);
 
     void clearPeaks();
-    void newFrequency(qint64 freq);
+    void newFrequency(qint64 freq,uchar i=0);
 
 private:
     void clearPlasma();
