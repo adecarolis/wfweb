@@ -41,10 +41,10 @@ public:
 
 signals:
     // look at what cmdSetModeFilter does, can we depreciate it?
-    void issueCmdUniquePriority(cmds cmd, char c); // to go to a mode
-    void issueDelayedCommand(cmds cmd); // for data mode and filter
-    void issueCmdF(cmds cmd, freqt f); // go to frequency
-    void issueCmd(cmds, char); // to get BSR of a specific band
+    //void issueCmdUniquePriority(cmds cmd, char c); // to go to a mode
+    //void issueDelayedCommand(cmds cmd); // for data mode and filter
+    //void issueCmdF(cmds cmd, freqt f); // go to frequency
+    //void issueCmd(cmds, char); // to get BSR of a specific band
 
     // void getBandStackReg(char band, char regCode); // no, use the queue.
     // void gotoFreqMode(); // TODO, arguments will contain BSR data

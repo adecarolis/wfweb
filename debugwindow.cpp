@@ -58,7 +58,7 @@ void debugWindow::getCache()
         ui->cacheView->item(c,0)->setText(QString::number(i.value().command).rightJustified(3,'0'));
         ui->cacheView->item(c,1)->setText(funcString[i.value().command]);
         ui->cacheView->item(c,2)->setText(getValue(i.value().value));
-        ui->cacheView->item(c,3)->setText(QString::number(i.value().vfo));
+        ui->cacheView->item(c,3)->setText(QString::number(i.value().receiver));
         ui->cacheView->item(c,4)->setText((i.value().req.isValid()?i.value().req.toString("hh:mm:ss.zzz"):"<none>"));
         ui->cacheView->item(c,5)->setText((i.value().reply.isValid()?i.value().reply.toString("hh:mm:ss.zzz"):"<none>"));
         c++;
@@ -141,7 +141,7 @@ QString debugWindow::getValue(QVariant val)
         else if(!strcmp(val.typeName(),"scopeData"))
         {
             scopeData s = val.value<scopeData>();
-            value = QString("(V:%0) %1").arg(s.vfo).arg((s.valid?"Valid":"Invalid"));
+            value = QString("(V:%0) %1").arg(s.receiver).arg((s.valid?"Valid":"Invalid"));
         }
         else if (!strcmp(val.typeName(),"antennaInfo"))
         {

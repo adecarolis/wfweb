@@ -204,7 +204,7 @@ void bandbuttons::jumpToBandWithoutBSR(availableBands band)
                 f.Hz = (b.lowFreq+b.highFreq)/2.0;
                 f.MHzDouble = f.Hz/1000000.0;
                 f.VFO = activeVFO;
-                queue->add(priorityImmediate,queueItem(funcSelectedFreq,QVariant::fromValue<freqt>(f),false,false));
+                queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f),false,false));
                 break;
             }
         }

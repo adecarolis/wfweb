@@ -141,6 +141,7 @@ void rigCreator::loadRigFile(QString file)
     ui->model->setText(settings->value("Model","").toString());
     ui->civAddress->setText(QString("%1").arg(settings->value("CIVAddress",0).toInt(),2,16));
     ui->rigctldModel->setText(settings->value("RigCtlDModel","").toString());
+    ui->numReceiver->setText(settings->value("NumberOfReceivers","1").toString());
     ui->numVFO->setText(settings->value("NumberOfVFOs","1").toString());
     ui->seqMax->setText(settings->value("SpectrumSeqMax","").toString());
     ui->ampMax->setText(settings->value("SpectrumAmpMax","").toString());
@@ -209,12 +210,11 @@ void rigCreator::loadRigFile(QString file)
             ui->periodicCommands->insertRow(ui->periodicCommands->rowCount());
             ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,0),p.priority);
             ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,1),funcString[p.func]);
-            ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,2),QString::number(p.vfo));
+            ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,2),QString::number(p.receiver));
             c++;
         }
     }
-    else {
-        for (int c = 0; c < numPeriodic; c++)
+    else { for (int c = 0; c < numPeriodic; c++)
         {
             settings->setArrayIndex(c);
             ui->periodicCommands->insertRow(ui->periodicCommands->rowCount());
@@ -403,6 +403,8 @@ void rigCreator::loadRigFile(QString file)
     connect(ui->modes,SIGNAL(cellChanged(int,int)),SLOT(changed()));
     connect(ui->preamps,SIGNAL(cellChanged(int,int)),SLOT(changed()));
     connect(ui->spans,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->periodicCommands,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+
     connect(ui->hasCommand29,SIGNAL(stateChanged(int)),SLOT(changed()));
     connect(ui->hasEthernet,SIGNAL(stateChanged(int)),SLOT(changed()));
     connect(ui->hasFDComms,SIGNAL(stateChanged(int)),SLOT(changed()));
@@ -410,6 +412,7 @@ void rigCreator::loadRigFile(QString file)
     connect(ui->hasSpectrum,SIGNAL(stateChanged(int)),SLOT(changed()));
     connect(ui->hasTransmit,SIGNAL(stateChanged(int)),SLOT(changed()));
     connect(ui->hasWifi,SIGNAL(stateChanged(int)),SLOT(changed()));
+
     connect(ui->civAddress,SIGNAL(editingFinished()),SLOT(changed()));
     connect(ui->rigctldModel,SIGNAL(editingFinished()),SLOT(changed()));
     connect(ui->model,SIGNAL(editingFinished()),SLOT(changed()));
@@ -420,7 +423,6 @@ void rigCreator::loadRigFile(QString file)
     connect(ui->memoryFormat,SIGNAL(editingFinished()),SLOT(changed()));
     connect(ui->satMemories,SIGNAL(editingFinished()),SLOT(changed()));
     connect(ui->satelliteFormat,SIGNAL(editingFinished()),SLOT(changed()));
-    connect(ui->periodicCommands,SIGNAL(editingFinished()),SLOT(changed()));
 
     settingsChanged = false;
 }
@@ -429,6 +431,7 @@ void rigCreator::changed()
 {
     settingsChanged = true;
 }
+
 void rigCreator::on_saveFile_clicked(bool clicked)
 {
     Q_UNUSED(clicked)
@@ -471,6 +474,7 @@ void rigCreator::saveRigFile(QString file)
     settings->setValue("Model",ui->model->text());
     settings->setValue("CIVAddress",ui->civAddress->text().toInt(nullptr,16));
     settings->setValue("RigCtlDModel",ui->rigctldModel->text().toInt());
+    settings->setValue("NumberOfReceivers",ui->numReceiver->text().toInt());
     settings->setValue("NumberOfVFOs",ui->numVFO->text().toInt());
     settings->setValue("SpectrumSeqMax",ui->seqMax->text().toInt());
     settings->setValue("SpectrumAmpMax",ui->ampMax->text().toInt());

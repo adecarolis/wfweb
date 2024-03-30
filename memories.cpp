@@ -465,16 +465,16 @@ void memories::on_group_currentIndexChanged(int index)
 
     queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue<bool>(ui->group->currentData().toInt() == MEMORY_SATGROUP)));
     if (ui->group->currentData().toInt() == MEMORY_SATGROUP) {
-        queue->del(funcSelectedFreq,false);
-        queue->del(funcSelectedMode,false);
-        queue->del(funcUnselectedFreq,true);
-        queue->del(funcUnselectedMode,true);
+        queue->del(funcMainFreq,false);
+        queue->del(funcMainMode,false);
+        queue->del(funcSubFreq,true);
+        queue->del(funcSubMode,true);
         parser = rigCaps->satParser;
     } else {
-        queue->addUnique(priorityMedium,funcSelectedFreq,true,false);
-        queue->addUnique(priorityMedium,funcSelectedMode,true,false);
-        queue->addUnique(priorityMedium,funcUnselectedFreq,true,true);
-        queue->addUnique(priorityMedium,funcUnselectedMode,true,true);
+        queue->addUnique(priorityMedium,funcMainFreq,true,false);
+        queue->addUnique(priorityMedium,funcMainMode,true,false);
+        queue->addUnique(priorityMedium,funcSubFreq,true,true);
+        queue->addUnique(priorityMedium,funcSubMode,true,true);
         parser = rigCaps->memParser;
     }
 
@@ -925,19 +925,19 @@ void memories::on_group_currentIndexChanged(int index)
 
 void memories::on_vfoMode_clicked()
 {
-    queue->addUnique(priorityMedium,funcSelectedFreq,true,false);
-    queue->addUnique(priorityMedium,funcSelectedMode,true,false);
-    queue->addUnique(priorityMedium,funcUnselectedFreq,true,true);
-    queue->addUnique(priorityMedium,funcUnselectedMode,true,true);
+    queue->addUnique(priorityMedium,funcMainFreq,true,false);
+    queue->addUnique(priorityMedium,funcMainMode,true,false);
+    queue->addUnique(priorityMedium,funcSubFreq,true,true);
+    queue->addUnique(priorityMedium,funcSubMode,true,true);
 }
 
 void memories::on_memoryMode_clicked()
 {
     queue->add(priorityImmediate,funcMemoryMode);
-    queue->del(funcSelectedFreq,false);
-    queue->del(funcSelectedMode,false);
-    queue->del(funcUnselectedFreq,true);
-    queue->del(funcUnselectedMode,true);
+    queue->del(funcMainFreq,false);
+    queue->del(funcMainMode,false);
+    queue->del(funcSubFreq,true);
+    queue->del(funcSubMode,true);
 }
 
 

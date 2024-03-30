@@ -127,7 +127,7 @@ void controllerSetup::init(usbDevMap* dev, QVector<BUTTON>* but, QVector<KNOB>* 
 
     for (COMMAND& c : *commands) {
         if (c.cmdType == commandButton || c.cmdType == commandAny) {
-            if (c.command == cmdSeparator) {
+            if (c.command == funcSeparator) {
                 onEvent->insertSeparator(onEvent->count());
                 offEvent->insertSeparator(offEvent->count());
 
@@ -137,7 +137,7 @@ void controllerSetup::init(usbDevMap* dev, QVector<BUTTON>* but, QVector<KNOB>* 
             }
         }
         if (c.cmdType == commandKnob || c.cmdType == commandAny) {
-            if (c.command == cmdSeparator) {
+            if (c.command == funcSeparator) {
                 knobEvent->insertSeparator(knobEvent->count());
             } else {
                 knobEvent->addItem(c.text, c.index);

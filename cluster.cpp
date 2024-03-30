@@ -263,10 +263,10 @@ void dxClusterClient::tcpDisconnected() {
     // Need to start a timer and attempt reconnect.
 }
 
-void dxClusterClient::freqRange(uchar vfo, double low, double high)
+void dxClusterClient::freqRange(uchar receiver, double low, double high)
 {
-    freqRanges[vfo] = {low,high};
-    if (vfo) {
+    freqRanges[receiver] = {low,high};
+    if (receiver) {
         lowSubFreq = low;
         highSubFreq = high;
     } else {
@@ -310,7 +310,7 @@ void dxClusterClient::updateSpots()
         }
         if (!spots.empty()) {
             emit sendSpots(range.key(),spots);
-            //qInfo(logCluster()) << "Sending" << spots.size() << "DX spots to vfo" << range.key();
+            //qInfo(logCluster()) << "Sending" << spots.size() << "DX spots to receiver" << range.key();
         }
         ++range;
     }

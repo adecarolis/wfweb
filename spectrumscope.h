@@ -30,7 +30,7 @@ class spectrumScope : public QGroupBox
 {
     Q_OBJECT
 public:
-    explicit spectrumScope(QWidget *parent = nullptr);
+    explicit spectrumScope(uchar receiver = 0, uchar vfo = 1, QWidget *parent = nullptr);
 
     bool prepareWf(uint wfLength);
     void prepareScope(uint ampMap, uint spectWidth);
@@ -50,8 +50,8 @@ public:
     void setPassbandWidth(double hz) { passbandWidth = hz;}
     double getPassbandWidth() { configFilterWidth->setValue(passbandWidth*1E6); return passbandWidth;}
 
-    void setIdentity(QString name, uchar v) {this->setTitle(name), vfo = v;}
-    bool getVfo() { return vfo;}
+    void setIdentity(QString name) {this->setTitle(name);}
+    bool getVfo() { return receiver;}
 
     void setTuningFloorZeros(bool tf) {this->tuningFloorZeros = tf;}
     void setClickDragTuning(bool cg) { this->clickDragTuning = cg;}
@@ -73,9 +73,11 @@ public:
     void setStepSize (quint16 hz) { stepSize = hz;}
 
     freqt getFrequency () { return freq;}
-    void setFrequency (freqt f);
+    void setFrequency (freqt f,uchar vfo=0);
 
-    void receiveMode (modeInfo m);
+    uchar getNumVFO () { return numVFO;}
+
+    void receiveMode (modeInfo m, uchar vfo=0);
     modeInfo currentMode() {return mode;}
     void clearSpans() { spanCombo->clear();}
     void clearMode() { modeCombo->clear();}
@@ -100,15 +102,15 @@ public:
 public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);
     void selectSpan(centerSpanData s);
-    void receiveSpots(uchar vfo, QList<spotData> spots);
+    void receiveSpots(uchar receiver, QList<spotData> spots);
 
 signals:    
-    void frequencyRange(uchar vfo, double start, double end);
+    void frequencyRange(uchar receiver, double start, double end);
     void updateScopeMode(spectrumMode_t index);
     void updateSpan(centerSpanData s);
     void showStatusBarText(QString text);
-    void updateSettings(uchar vfo, int value, quint16 len, int floor, int ceiling);
-    void elapsedTime(uchar vfo, qint64 ns);
+    void updateSettings(uchar receiver, int value, quint16 len, int floor, int ceiling);
+    void elapsedTime(uchar receiver, qint64 ns);
     void dataChanged(modeInfo m);
 
 private slots:
@@ -147,7 +149,7 @@ private:
     QLabel* windowLabel = Q_NULLPTR;
     QCustomPlot* spectrum = Q_NULLPTR;
     QCustomPlot* waterfall = Q_NULLPTR;
-    freqCtrl* freqDisplay;
+    freqCtrl* freqDisplay[2];
     QSpacerItem* displaySpacer;
     QGroupBox* group;
     QSplitter* splitter;
@@ -263,7 +265,7 @@ private:
     QVector <QByteArray> wfimage;
 
     cachingQueue* queue;
-    uchar vfo=0;
+    uchar receiver=0;
     double startFrequency;
     QMap<QString, spotData*> clusterSpots;
 
@@ -271,6 +273,7 @@ private:
     bool tuningFloorZeros=false;
     bool clickDragTuning=false;
     bool isActive;
+    uchar numVFO=1;
 };
 
 #endif // SPECTRUMSCOPE_H

@@ -211,6 +211,7 @@ struct rigCapabilities {
     quint8 spectSeqMax;
     quint16 spectAmpMax;
     quint16 spectLenMax;
+    quint8 numReceiver;
     quint8 numVFO;
 
     bool hasNB = false;

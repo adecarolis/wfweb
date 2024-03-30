@@ -74,7 +74,7 @@ public slots:
     void radioUsage(quint8 radio, bool admin, quint8 busy, QString name, QString ip);
     void setCurrentRadio(quint8 radio);
     void getDebug();
-    void receiveCommand(funcs func, QVariant value, uchar vfo);
+    void receiveCommand(funcs func, QVariant value, uchar receiver);
     void setAfGain(unsigned char level);
 
 signals:
@@ -139,7 +139,7 @@ private:
     freqt parseFrequency();
     freqt parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
 
-    freqt parseFreqData(QByteArray data, uchar vfo);
+    freqt parseFreqData(QByteArray data, uchar receiver);
     quint64 parseFreqDataToInt(QByteArray data);
     freqt parseFrequencyRptOffset(QByteArray data);
     bool parseMemory(QVector<memParserFormat>* memParser, memoryType* mem);
@@ -151,7 +151,7 @@ private:
 
     toneInfo decodeTone(QByteArray eTone);
     //quint16 decodeTone(QByteArray eTone, bool &tinv, bool &rinv);
-    uchar makeFilterWidth(ushort width, uchar vfo);
+    uchar makeFilterWidth(ushort width, uchar receiver);
 
 
     unsigned char audioLevelRxMean[50];
@@ -159,9 +159,9 @@ private:
     unsigned char audioLevelTxMean[50];
     unsigned char audioLevelTxPeak[50];
 
-    modeInfo parseMode(quint8 mode, quint8 filter, uchar vfo);
-    bool parseSpectrum(scopeData& d, uchar vfo);
-    bool getCommand(funcs func, QByteArray& payload, int value=INT_MIN, uchar vfo=0);
+    modeInfo parseMode(quint8 mode, quint8 filter, uchar receiver);
+    bool parseSpectrum(scopeData& d, uchar receiver);
+    bool getCommand(funcs func, QByteArray& payload, int value=INT_MIN, uchar receiver=0);
 
     QByteArray getLANAddr();
     QByteArray getUSBAddr();

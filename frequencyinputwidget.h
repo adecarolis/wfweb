@@ -22,8 +22,8 @@ public:
     ~frequencyinputwidget();
 
 signals:
-    void issueCmdF(cmds cmd, freqt f);
-    void issueCmdM(cmds cmd, modeInfo m);
+    //void issueCmdF(cmds cmd, freqt f);
+    //void issueCmdM(cmds cmd, modeInfo m);
     void updateUIMode(rigMode_t mode);
     void updateUIFrequency(freqt f);
     void gotoMemoryPreset(int presetNumber);

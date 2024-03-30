@@ -123,7 +123,7 @@ signals:
     // Frequency, mode, band:
     void getFrequency();
     void getFrequency(unsigned char);
-    void setFrequency(unsigned char vfo, freqt freq);
+    void setFrequency(unsigned char receiver, freqt freq);
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
     void setMode(modeInfo);
@@ -331,7 +331,7 @@ private slots:
 
     void handleExtConnectBtn();
 
-    void receiveScopeSettings(uchar vfo, int theme, quint16 len, int floor, int ceiling);
+    void receiveScopeSettings(uchar receiver, int theme, quint16 len, int floor, int ceiling);
     void receiveValue(cacheItem val);
     void setAudioDevicesUI();
     void shortcutF1();
@@ -395,7 +395,7 @@ private slots:
     void receiveIFShift(unsigned char level);
 
     // Meters:
-    void receiveMeter(meter_t meter, unsigned char level, unsigned char vfo=0);
+    void receiveMeter(meter_t meter, unsigned char level, unsigned char receiver=0);
 //    void receiveSMeter(unsigned char level);
 //    void receivePowerMeter(unsigned char level);
 //    void receiveALCMeter(unsigned char level);
@@ -403,9 +403,9 @@ private slots:
 
 
     void receiveATUStatus(unsigned char atustatus);
-    void receivePreamp(unsigned char pre, uchar vfo);
-    void receiveAttenuator(unsigned char att, uchar vfo);
-    void receiveAntennaSel(unsigned char ant, bool rx,uchar vfo);
+    void receivePreamp(unsigned char pre, uchar receiver);
+    void receiveAttenuator(unsigned char att, uchar receiver);
+    void receiveAntennaSel(unsigned char ant, bool rx,uchar receiver);
 
     void receivePortError(errorType err);
     void receiveStatusUpdate(networkStatus status);
@@ -502,7 +502,7 @@ private slots:
 
 private:
     Ui::wfmain *ui; // Main UI
-    QVector<spectrumScope*>vfos;   // Spectrum Scope/VFO item.
+    QVector<spectrumScope*>receivers;   // Spectrum Scope items.
     void closeEvent(QCloseEvent *event);
     QString logFilename;
     bool debugMode;
@@ -709,6 +709,9 @@ private:
     funcs meter_tToMeterCommand(meter_t m);
 
     void updateUsbButtons();
+
+    void displayReceiver(uchar rx, bool active, bool swtch);
+
 
     int oldFreqDialVal;
 

@@ -17,10 +17,10 @@
 
 
 inline QList<periodicType> defaultPeriodic = {
-    {funcSelectedFreq,"Medium",0},
-    {funcSelectedMode,"Medium",0},
-    {funcUnselectedFreq,"Medium",1},
-    {funcUnselectedMode,"Medium",1},
+    {funcMainFreq,"Medium",0},
+    {funcMainMode,"Medium",0},
+    {funcSubFreq,"Medium",1},
+    {funcSubMode,"Medium",1},
     {funcOverflowStatus,"Medium",0},
     {funcScopeMainMode,"Medium High",0},
     {funcScopeSubMode,"Medium High",1},

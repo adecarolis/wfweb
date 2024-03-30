@@ -785,10 +785,10 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
     int ret = -RIG_EINVAL;
     funcs func;
     // Use selected/unselected mode/freq if available
-    if ((cmd.func == funcFreqGet || cmd.func == funcFreqSet) && rigCaps->commands.contains(funcSelectedFreq)) {
-        func = funcSelectedFreq;
-    } else if ((cmd.func == funcModeGet || cmd.func == funcModeSet) && rigCaps->commands.contains(funcSelectedMode)) {
-        func = funcSelectedMode;
+    if ((cmd.func == funcFreqGet || cmd.func == funcFreqSet) && rigCaps->commands.contains(funcMainFreq)) {
+        func = funcMainFreq;
+    } else if ((cmd.func == funcModeGet || cmd.func == funcModeSet) && rigCaps->commands.contains(funcMainMode)) {
+        func = funcMainMode;
     } else {
         func = cmd.func;
     }

@@ -2090,7 +2090,7 @@ void settingswidget::setColorButtonOperations(QColor *colorStore,
     }
     getSetColor(d, e);
     QColor t = d->getColor();
-    colorStore->setNamedColor(t.name(QColor::HexArgb));
+    colorStore->fromString(t.name(QColor::HexArgb));
     //useCurrentColorPreset();
 }
 
@@ -2107,7 +2107,7 @@ void settingswidget::setColorLineEditOperations(QColor *colorStore,
 
     QString colorStrValidated = setColorFromString(e->text(), d);
     e->setText(colorStrValidated);
-    colorStore->setNamedColor(colorStrValidated);
+    colorStore->fromString(colorStrValidated);
     //useCurrentColorPreset();
 }
 

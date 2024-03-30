@@ -140,7 +140,7 @@ struct antennaInfo {
 struct scopeData {
     bool valid=false;
     QByteArray data;
-    uchar vfo;
+    uchar receiver;
     spectrumMode_t mode;
     bool oor;
     double startFreq;
@@ -178,6 +178,7 @@ struct timekind {
     bool isMinus;
 };
 
+/*
 enum cmds {
 cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetFreqB, cmdSetFreq, cmdGetMode, cmdSetMode,
 cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
@@ -211,9 +212,11 @@ cmdSetSpanUp, cmdSetSpanDown, cmdIFFilterUp, cmdIFFilterDown, cmdPageDown, cmdPa
 cmdLCDWaterfall, cmdLCDSpectrum, cmdLCDNothing, cmdSeparator
 };
 
+*/
+
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 244
+#define NUMFUNCS 248
 
 enum funcs { funcNone,
 funcFreqTR,             funcModeTR,             funcBandEdgeFreq,           funcFreqGet,        	funcModeGet,        	funcFreqSet,			// \x00
@@ -242,8 +245,9 @@ funcRecorderPTTAuto,    funcRecorderPreRec,		funcRXAntConnector,         funcAnt
 funcVOXDelay,           funcVOXVoiceDelay,		funcAPFType,                funcAPFTypeLevel,       funcPSKTone,            funcRTTYMarkTone,
 funcDataModeWithFilter, funcAFMute,				funcToneFreq,               funcTSQLFreq,           funcDTCSCode,           funcCSQLCode,
 funcTransceiverStatus,  funcXFCStatus,			funcReadTXFreq,             funcCIVOutput,          funcReadTXFreqs,        funcReadUserTXFreqs,
-funcUserTXBandEdgeFreq, funcRITFreq,			funcRitStatus,              funcRitTXStatus,        funcSelectedFreq,       funcSelectedMode,
-funcUnselectedFreq,     funcUnselectedMode,     funcScopeMainWaveData,      funcScopeSubWaveData,   funcScopeOnOff,         funcScopeDataOutput,
+funcUserTXBandEdgeFreq, funcRITFreq,			funcRitStatus,              funcRitTXStatus,        funcSelectedFreq,       funcUnselectedFreq,
+funcSelectedMode,       funcUnselectedMode,     funcMainFreq,               funcSubFreq,            funcMainMode,           funcSubMode,
+funcScopeMainWaveData,  funcScopeSubWaveData,   funcScopeOnOff,             funcScopeDataOutput,
 funcScopeMainSub,       funcScopeSingleDual,	funcScopeMainMode,          funcScopeSubMode,       funcScopeMainSpan,      funcScopeSubSpan,
 funcScopeMainEdge,      funcScopeSubEdge,       funcScopeMainHold,          funcScopeSubHold,       funcScopeMainRef,       funcScopeSubRef,
 funcScopeMainSpeed,     funcScopeSubSpeed,      funcScopeMainVBW,           funcScopeSubVBW,        funcScopeMainRBW,       funcScopeSubRBW,
@@ -289,8 +293,9 @@ static QString funcString[] { "None",
 "VOX Delay",            "VOX Voice Delay",      "APF Type",                 "APF Type Level",       "PSK Tone",             "RTTY Mark Tone",
 "Data Mode Filter",     "AF Mute Status",       "Tone Frequency",           "TSQL Frequency",       "DTCS Code/Polarity",   "CSQL Code",
 "Transceiver Status",   "XFC Status",           "Read TX Freq",             "CI-V Output",          "Read TX Freqs",        "Read User TX Freqs",
-"User TX Band Edge Freq","RIT Frequency",       "RIT Status",               "RIT TX Status",        "Selected Freq",        "Selected Mode",
-"Unselected Freq",      "Unselected Mode",      "Scope Main Wave Data",     "Scope Sub Wave Data",  "Scope On/Off",         "Scope Data Output",
+"User TX Band Edge Freq","RIT Frequency",       "RIT Status",               "RIT TX Status",        "Selected Freq",        "Unselected Freq",
+"Selected Mode",        "Unselected Mode",      "Main RX Frequency",        "Sub RX Frequency",     "Main RX Mode",         "Sub RX Mode",
+"Scope Main Wave Data", "Scope Sub Wave Data",  "Scope On/Off",             "Scope Data Output",
 "Scope Main/Sub",       "Scope Single/Dual",    "Scope Main Mode",          "Scope Sub Mode",       "Scope Main Span",      "Scope Sub Span",
 "Scope Main Edge",      "Scope Sub Edge",       "Scope Main Hold",          "Scope Sub Hold",       "Scope Main Ref",       "Scope Sub Ref",
 "Scope Main Speed",     "Scope Sub Speed",      "Scope Main VBW",           "Scope Sub VBW",        "Scope Main RBW",       "Scope Sub RBW",
@@ -326,10 +331,10 @@ struct funcType {
     bool cmd29;
 };
 
-struct commandtype {
-    cmds cmd;
-    std::shared_ptr<void> data;
-};
+//struct commandtype {
+//    cmds cmd;
+//    std::shared_ptr<void> data;
+//};
 
 struct stepType {
     stepType(){};
@@ -432,12 +437,12 @@ enum usbFeatureType { featureReset,featureResetKeys, featureEventsA, featureEven
 
 struct periodicType {
     periodicType() {};
-    periodicType(funcs func, QString priority, char vfo) : func(func), priority(priority), prioVal(0), vfo(vfo) {};
-    periodicType(funcs func, QString priority, int prioVal, char vfo) : func(func), priority(priority), prioVal(prioVal), vfo(vfo) {};
+    periodicType(funcs func, QString priority, char receiver) : func(func), priority(priority), prioVal(0), receiver(receiver) {};
+    periodicType(funcs func, QString priority, int prioVal, char receiver) : func(func), priority(priority), prioVal(prioVal), receiver(receiver) {};
     funcs func;
     QString priority;
     int prioVal;
-    char vfo;
+    char receiver;
 };
 
 inline QString getMeterDebug(meter_t m) {
@@ -497,7 +502,7 @@ Q_DECLARE_METATYPE(duplexMode_t)
 Q_DECLARE_METATYPE(rptAccessTxRx_t)
 Q_DECLARE_METATYPE(rptrAccessData)
 Q_DECLARE_METATYPE(usbFeatureType)
-Q_DECLARE_METATYPE(cmds)
+//Q_DECLARE_METATYPE(cmds)
 Q_DECLARE_METATYPE(funcs)
 Q_DECLARE_METATYPE(memoryType)
 Q_DECLARE_METATYPE(antennaInfo)
