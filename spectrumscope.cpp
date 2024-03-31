@@ -1725,7 +1725,8 @@ void spectrumScope::setPBTOuter (uchar val) {
 
 void spectrumScope::setFrequency(freqt f, uchar vfo)
 {
-    // Currently set both VFO to the same value, needs fixing (M0VSE)
+    //qInfo() << "Setting Frequency vfo=" << vfo << "Freq:" << f.Hz;
+
     if (vfo < numVFO)
     {
         freqDisplay[vfo]->blockSignals(true);
@@ -1734,6 +1735,7 @@ void spectrumScope::setFrequency(freqt f, uchar vfo)
     }
     if (vfo==0)
         freq = f;
+
 }
 
 void spectrumScope::displaySettings(int numDigits, qint64 minf, qint64 maxf, int minStep,FctlUnit unit,std::vector<bandType>* bands)

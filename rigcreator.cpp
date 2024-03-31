@@ -275,8 +275,8 @@ void rigCreator::loadRigFile(QString file)
             ui->bands->insertRow(ui->bands->rowCount());
             ui->bands->model()->setData(ui->bands->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
             ui->bands->model()->setData(ui->bands->model()->index(c,1),QString::number(settings->value("BSR", 0).toUInt()).rightJustified(2,'0'));
-            ui->bands->model()->setData(ui->bands->model()->index(c,2),settings->value("Start", 0ULL).toInt(),Qt::DisplayRole);
-            ui->bands->model()->setData(ui->bands->model()->index(c,3),settings->value("End", 0ULL).toInt(),Qt::DisplayRole);
+            ui->bands->model()->setData(ui->bands->model()->index(c,2),settings->value("Start", 0ULL).toString(),Qt::DisplayRole);
+            ui->bands->model()->setData(ui->bands->model()->index(c,3),settings->value("End", 0ULL).toString(),Qt::DisplayRole);
             ui->bands->model()->setData(ui->bands->model()->index(c,4),settings->value("Range", 0.0).toString());
             ui->bands->model()->setData(ui->bands->model()->index(c,5),settings->value("MemoryGroup", -1).toString());
             ui->bands->model()->setData(ui->bands->model()->index(c,6),settings->value("Name", "").toString());
@@ -529,7 +529,7 @@ void rigCreator::saveRigFile(QString file)
 
 
     //settings->remove("Spans");
-    ui->spans->sortByColumn(0,Qt::AscendingOrder);
+    ui->spans->sortByColumn(2,Qt::AscendingOrder);
     settings->beginWriteArray("Spans");
     for (int n = 0; n<ui->spans->rowCount();n++)
     {

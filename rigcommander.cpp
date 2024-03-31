@@ -746,15 +746,9 @@ void rigCommander::parseCommand()
     freqt test;
     QVector<memParserFormat> memParser;
     QVariant value;
+    uchar vfo=0; // Used for second VFO
     switch (func)
     {
-    case funcFreqGet:
-    case funcFreqTR:
-    case funcReadTXFreq:
-    {
-        value.setValue(parseFreqData(payloadIn,receiver));
-        break;
-    }
     case funcVFODualWatch:
         value.setValue(static_cast<bool>(bool(payloadIn[0])));
         break;
@@ -764,12 +758,19 @@ void rigCommander::parseCommand()
 #endif
     case funcSubFreq:
         receiver = 1;
-    case funcSelectedFreq:
     case funcUnselectedFreq:
+        if (func == funcUnselectedFreq)
+            vfo=1;
+    case funcSelectedFreq:
     case funcMainFreq:
+    case funcFreqGet:
+    case funcFreqTR:
+    case funcReadTXFreq:
     {
-        //qInfo(logRig()) << "Freq len:" << payloadIn.size() << "receiver=" << receiver << "data:" << payloadIn.toHex(' ');
-        value.setValue(parseFreqData(payloadIn,receiver));
+        value.setValue(parseFreqData(payloadIn,vfo));
+        //qInfo(logRig()) << funcString[func] << "len:" << payloadIn.size() << "receiver=" << receiver << "vfo=" << vfo <<
+        //    "value:" << value.value<freqt>().Hz << "data:" << payloadIn.toHex(' ');
+
         break;
     }
     case funcModeGet:
@@ -1965,6 +1966,7 @@ freqt rigCommander::parseFreqData(QByteArray data, uchar receiver)
     freq.Hz = parseFreqDataToInt(data);
     freq.MHzDouble = freq.Hz/1000000.0;
     freq.VFO = selVFO_t(receiver);
+    //qInfo(logRig()) << "Received Frequency" << freq.Hz << "vfo" << receiver;
     return freq;
 }
 

@@ -3568,6 +3568,7 @@ void wfmain:: getInitialRigState()
     foreach (auto receiver, receivers)
     {
         receiver->enableScope(this->rigCaps->commands.contains(funcScopeMainMode));
+        //qInfo(logSystem()) << "Display Settings start:" << start << "end:" << end;
         receiver->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits,&rigCaps->bands);
 
     }
