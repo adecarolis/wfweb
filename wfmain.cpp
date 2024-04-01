@@ -513,23 +513,10 @@ void wfmain::makeRig()
         //connect(this, SIGNAL(clearMemory(quint32)), rig, SLOT(clearMemory(quint32)));
         //connect(this, SIGNAL(rigCaps->ry(quint32)), rig, SLOT(rigCaps->ry(quint32)));
 
-        connect(this->rpt, &repeaterSetup::setDuplexMode, this->rig,
-                [=](const duplexMode_t &t) { queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(t),false));});
-
         connect(this->rpt, &repeaterSetup::getTone, this->rig,
                 [=]() {
             qDebug(logSystem()) << "Asking for TONE";
             queue->add(priorityImmediate,funcRepeaterTone,false,false);});
-
-        connect(this->rpt, &repeaterSetup::setTone, this->rig,
-                [=](const toneInfo& t) {
-            qDebug(logSystem()) << "Setting TONE for VFO, useInactiveVFO= [" << t.useSecondaryVFO << "], tone=" << t.tone;
-            queue->add(priorityImmediate,queueItem(funcToneFreq,QVariant::fromValue<toneInfo>(t),false, t.useSecondaryVFO));});
-
-        connect(this->rpt, &repeaterSetup::setTSQL, this->rig,
-                [=](const toneInfo& t) {
-            qDebug(logSystem()) << "Setting TSQL for VFO, useInactiveVFO= [" << t.useSecondaryVFO << "], tone=" << t.tone;
-            queue->add(priorityImmediate,queueItem(funcTSQLFreq,QVariant::fromValue<toneInfo>(t),false, t.useSecondaryVFO));});
 
         connect(this->rpt, &repeaterSetup::getTSQL, this->rig,
                 [=]() {
@@ -541,12 +528,6 @@ void wfmain::makeRig()
             qDebug(logSystem()) << "Setting DCS, code =" << t.tone;
             queue->add(priorityImmediate,queueItem(funcRepeaterDTCS,QVariant::fromValue<toneInfo>(t),false));});
 
-        connect(this->rpt, &repeaterSetup::getDTCS, this->rig,
-                [=]() {
-            qDebug(logSystem()) << "Asking for DCS";
-            queue->add(priorityImmediate,funcRepeaterDTCS,false,false);});
-
-
         connect(this->rpt, &repeaterSetup::getRptAccessMode, this->rig,
                 [=]() {
                     if (rigCaps->commands.contains(funcToneSquelchType)) {
@@ -557,27 +538,6 @@ void wfmain::makeRig()
                     }
                 });
 
-        connect(this->rpt, &repeaterSetup::setQuickSplit, this->rig,
-                [=](const bool &qsEnabled) {
-                    queue->add(priorityImmediate,queueItem(funcQuickSplit,QVariant::fromValue<bool>(qsEnabled),false));
-                });
-
-        connect(this->rpt, &repeaterSetup::setRptAccessMode, this->rig,
-                [=](const rptrAccessData &rd) {
-            if (rigCaps->commands.contains(funcToneSquelchType)) {
-                    queue->add(priorityImmediate,queueItem(funcToneSquelchType,QVariant::fromValue<rptrAccessData>(rd),false));
-            } else {
-                if(rd.accessMode == ratrTN) {
-                    // recuring=false, vfo if rd.useSEcondaryVFO
-                    queue->add(priorityImmediate,queueItem(funcRepeaterTone, QVariant::fromValue<bool>(true), false, rd.useSecondaryVFO));
-                } else if (rd.accessMode == ratrTT) {
-                    queue->add(priorityImmediate,queueItem(funcRepeaterTSQL, QVariant::fromValue<bool>(true), false, rd.useSecondaryVFO));
-                } else if (rd.accessMode == ratrNN) {
-                    queue->add(priorityImmediate,queueItem(funcRepeaterTone, QVariant::fromValue<bool>(false), false, rd.useSecondaryVFO));
-                    queue->add(priorityImmediate,queueItem(funcRepeaterTSQL, QVariant::fromValue<bool>(false), false, rd.useSecondaryVFO));
-                }
-             }
-        });
 
         connect(this->rig, &rigCommander::haveDuplexMode, this->rpt,
                 [=](const duplexMode_t &dm) {
@@ -586,12 +546,6 @@ void wfmain::makeRig()
                     else
                         this->splitModeEnabled = false;
                 });
-
-        connect(this->rpt, &repeaterSetup::setTransmitFrequency, this->rig,
-                [=](const freqt &transmitFreq) { queue->add(priorityImmediate,queueItem(funcSubFreq,QVariant::fromValue<freqt>(transmitFreq),false));});
-
-        connect(this->rpt, &repeaterSetup::setTransmitMode, this->rig,
-                [=](const modeInfo &transmitMode) { queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(transmitMode),false));});
 
         connect(this->rpt, &repeaterSetup::selectVFO, this->rig,
                 [=](const vfo_t &v) { queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(v),false));});
@@ -5857,7 +5811,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
 
         // Added so that server receives rig capabilities.
         //emit sendRigCaps(rigCaps);
-        //rpt->setRig(rigCaps);
+
 
         foreach (auto receiver, receivers) {
             // Setup various combo box up for each VFO:

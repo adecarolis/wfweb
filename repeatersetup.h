@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QDebug>
 
+#include "cachingqueue.h"
 #include "repeaterattributes.h"
 #include "rigidentities.h"
 #include "logcategories.h"
@@ -30,7 +31,6 @@ signals:
     void getTone();
     void getTSQL();
     void getDTCS();
-    void setRptAccessMode(rptrAccessData rd);
     void getRptAccessMode();
     void setRptDuplexOffset(freqt f);
     void getRptDuplexOffset();
@@ -60,6 +60,8 @@ public slots:
     void handleUpdateCurrentMainMode(modeInfo m);
     void handleTransmitStatus(bool amTransmitting);
     void handleRptOffsetFrequency(freqt f);
+    void receiveRigCaps(rigCapabilities* caps);
+
 
 private slots:
     void showEvent(QShowEvent *event);
@@ -101,6 +103,7 @@ private:
     void populateDTCS();
     quint64 getFreqHzFromKHzString(QString khz);
     quint64 getFreqHzFromMHzString(QString MHz);
+    void setRptAccessMode(rptrAccessData rd);
 
     rigCapabilities rig;
     bool haveRig = false;
@@ -111,6 +114,8 @@ private:
     freqt currentOffset;
     bool usedPlusSplit = false;
     bool amTransmitting = false;
+    cachingQueue* queue = Q_NULLPTR;
+    rigCapabilities* rigCaps = Q_NULLPTR;
 };
 
 #endif // REPEATERSETUP_H

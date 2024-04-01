@@ -7,6 +7,12 @@ repeaterSetup::repeaterSetup(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    this->setObjectName("RepeaterSetup");
+    queue = cachingQueue::getInstance(this);
+    connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
+    rigCaps = queue->getRigCaps();
+    receiveRigCaps(rigCaps);
+
     ui->autoTrackLiveBtn->setEnabled(false); // until we set split enabled.
     ui->warningFMLabel->setVisible(false);
     // populate the CTCSS combo box:
@@ -19,103 +25,9 @@ repeaterSetup::repeaterSetup(QWidget *parent) :
 repeaterSetup::~repeaterSetup()
 {
     // Trying this for more consistent destruction
-    rig.inputs.clear();
-    rig.preamps.clear();
-    rig.attenuators.clear();
-    rig.antennas.clear();
-
     delete ui;
 }
 
-void repeaterSetup::setRig(rigCapabilities inRig)
-{
-    this->rig = inRig;
-    haveRig = true;
-    if(rig.commands.contains(funcRepeaterTone)) {
-        ui->rptToneCombo->setDisabled(false);
-        ui->toneTone->setDisabled(false);
-    } else {
-        ui->rptToneCombo->setDisabled(true);
-        ui->toneTone->setDisabled(true);
-    }
-
-    if(rig.commands.contains(funcRepeaterTSQL)) {
-        ui->toneTSQL->setDisabled(false);
-    } else {
-        ui->toneTSQL->setDisabled(true);
-    }
-
-    if(rig.commands.contains(funcToneSquelchType))
-    {
-        ui->rptToneCombo->setDisabled(false);
-        ui->toneTone->setDisabled(false);
-        ui->toneTSQL->setDisabled(false);
-    }
-
-    if(rig.commands.contains(funcRepeaterDTCS))
-    {
-        ui->rptDTCSCombo->setDisabled(false);
-        ui->toneDTCS->setDisabled(false);
-        ui->rptDTCSInvertRx->setDisabled(false);
-        ui->rptDTCSInvertTx->setDisabled(false);
-    } else {
-        ui->rptDTCSCombo->setDisabled(true);
-        ui->toneDTCS->setDisabled(true);
-        ui->rptDTCSInvertRx->setDisabled(true);
-        ui->rptDTCSInvertTx->setDisabled(true);
-    }
-    if(rig.commands.contains(funcVFOEqualAB))
-    {
-        ui->selABtn->setDisabled(false);
-        ui->selBBtn->setDisabled(false);
-        ui->aEqBBtn->setDisabled(false);
-        ui->swapABBtn->setDisabled(false);
-    } else {
-        ui->selABtn->setDisabled(true);
-        ui->selBBtn->setDisabled(true);
-        ui->aEqBBtn->setDisabled(true);
-        ui->swapABBtn->setDisabled(true);
-    }
-    if(rig.commands.contains(funcVFOEqualMS))
-    {
-        ui->selMainBtn->setDisabled(false);
-        ui->selSubBtn->setDisabled(false);
-        ui->mEqSBtn->setDisabled(false);
-        ui->swapMSBtn->setDisabled(false);
-    } else {
-        ui->selMainBtn->setDisabled(true);
-        ui->selSubBtn->setDisabled(true);
-        ui->mEqSBtn->setDisabled(true);
-        ui->swapMSBtn->setDisabled(true);
-    }
-    if(rig.commands.contains(funcVFOEqualAB) && rig.commands.contains(funcVFOEqualMS))
-    {
-        // Rigs that have both AB and MS
-        // do not have a swap AB command.
-        ui->swapABBtn->setDisabled(true);
-    }
-    bool mainSub = rig.commands.contains(funcVFOMainSelect);
-    if(mainSub)
-    {
-        ui->setRptrSubVFOBtn->setEnabled(true);
-        ui->setToneSubVFOBtn->setEnabled(true);
-        ui->setSplitRptrToneChk->setEnabled(true);
-    } else {
-        ui->setRptrSubVFOBtn->setDisabled(true);
-        ui->setToneSubVFOBtn->setDisabled(true);
-        ui->setSplitRptrToneChk->setDisabled(true);
-    }
-    bool rpt = rig.commands.contains(funcToneSquelchType);
-    ui->rptAutoBtn->setEnabled(rpt);
-    ui->rptDupMinusBtn->setEnabled(rpt);
-    ui->rptDupPlusBtn->setEnabled(rpt);
-    ui->rptSimplexBtn->setEnabled(rpt);
-    ui->rptrOffsetEdit->setEnabled(rpt);
-    ui->rptrOffsetSetBtn->setEnabled(rpt);
-    ui->setToneSubVFOBtn->setEnabled(mainSub);
-    ui->setRptrSubVFOBtn->setEnabled(mainSub);
-    ui->quickSplitChk->setVisible(rig.commands.contains(funcQuickSplit));
-}
 
 void repeaterSetup::populateTones()
 {
@@ -461,17 +373,17 @@ void repeaterSetup::handleTransmitStatus(bool amTransmitting)
 
 void repeaterSetup::showEvent(QShowEvent *event)
 {
-    emit getDuplexMode();
-    emit getSplitModeEnabled();
-    if(rig.commands.contains(funcToneSquelchType))
-        emit getRptDuplexOffset();
+
+    queue->add(priorityImmediate,funcSplitStatus,false,false);
+    if(rigCaps->commands.contains(funcToneSquelchType))
+        queue->add(priorityImmediate,funcReadFreqOffset,false,false);
     QMainWindow::showEvent(event);
     (void)event;
 }
 
 void repeaterSetup::on_splitEnableChk_clicked()
 {
-    emit setDuplexMode(dmSplitOn);
+    queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmSplitOn),false));
     ui->autoTrackLiveBtn->setEnabled(true);
 
     if(ui->autoTrackLiveBtn->isChecked() && !ui->splitOffsetEdit->text().isEmpty())
@@ -487,40 +399,40 @@ void repeaterSetup::on_splitEnableChk_clicked()
 
 void repeaterSetup::on_splitOffBtn_clicked()
 {
-    emit setDuplexMode(dmSplitOff);
+    queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmSplitOff),false));
     ui->autoTrackLiveBtn->setDisabled(true);
 }
 
 void repeaterSetup::on_rptSimplexBtn_clicked()
 {
     // Simplex
-    emit setDuplexMode(dmSplitOff);
-    if(rig.commands.contains(funcToneSquelchType))
+    queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmSplitOn),false));
+    if(rigCaps->commands.contains(funcToneSquelchType))
     {
-        emit setDuplexMode(dmDupAutoOff);
-        emit setDuplexMode(dmSimplex);
+        queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmDupAutoOff),false));
+        queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmSimplex),false));
     }
 }
 
 void repeaterSetup::on_rptDupPlusBtn_clicked()
 {
     // DUP+
-    emit setDuplexMode(dmDupAutoOff);
-    emit setDuplexMode(dmDupPlus);
+    queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmDupAutoOff),false));
+    queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmDupPlus),false));
 }
 
 void repeaterSetup::on_rptDupMinusBtn_clicked()
 {
     // DUP-
-    emit setDuplexMode(dmDupAutoOff);
-    emit setDuplexMode(dmDupMinus);
+    queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmDupAutoOff),false));
+    queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmDupMinus),false));
 }
 
 void repeaterSetup::on_rptAutoBtn_clicked()
 {
     // Auto Rptr (enable this feature)
     // TODO: Hide an AutoOff button somewhere for non-US users
-    emit setDuplexMode(dmDupAutoOn);
+    queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmDupAutoOn),false));
 }
 
 void repeaterSetup::on_rptToneCombo_activated(int tindex)
@@ -532,19 +444,19 @@ void repeaterSetup::on_rptToneCombo_activated(int tindex)
     bool updateSub = ui->setSplitRptrToneChk->isEnabled() && ui->setSplitRptrToneChk->isChecked();
     if(ui->toneTone->isChecked())
     {
-        emit setTone(rt);
+        queue->add(priorityImmediate,queueItem(funcToneFreq,QVariant::fromValue<toneInfo>(rt),false, rt.useSecondaryVFO));
         if(updateSub)
         {
             rt.useSecondaryVFO = true;
-            emit setTone(rt);
+            queue->add(priorityImmediate,queueItem(funcToneFreq,QVariant::fromValue<toneInfo>(rt),false, rt.useSecondaryVFO));
         }
 
     } else if (ui->toneTSQL->isChecked()) {
-        emit setTSQL(rt);
+        queue->add(priorityImmediate,queueItem(funcToneFreq,QVariant::fromValue<toneInfo>(rt),false, rt.useSecondaryVFO));
         if(updateSub)
         {
             rt.useSecondaryVFO = true;
-            emit setTone(rt);
+            queue->add(priorityImmediate,queueItem(funcToneFreq,QVariant::fromValue<toneInfo>(rt),false, rt.useSecondaryVFO));
         }
     }
 }
@@ -555,7 +467,24 @@ void repeaterSetup::on_rptDTCSCombo_activated(int index)
     tone.tinv = ui->rptDTCSInvertTx->isChecked();
     tone.rinv = ui->rptDTCSInvertRx->isChecked();
     tone.tone = (quint16)ui->rptDTCSCombo->itemData(index).toUInt();
-    emit setDTCS(tone);
+    queue->add(priorityImmediate,queueItem(funcRepeaterDTCS,QVariant::fromValue<toneInfo>(tone),false));
+}
+
+void repeaterSetup::setRptAccessMode(rptrAccessData rd)
+{
+    if (rigCaps->commands.contains(funcToneSquelchType)) {
+        queue->add(priorityImmediate,queueItem(funcToneSquelchType,QVariant::fromValue<rptrAccessData>(rd),false));
+    } else {
+        if(rd.accessMode == ratrTN) {
+            // recuring=false, vfo if rd.useSEcondaryVFO
+            queue->add(priorityImmediate,queueItem(funcRepeaterTone, QVariant::fromValue<bool>(true), false, rd.useSecondaryVFO));
+        } else if (rd.accessMode == ratrTT) {
+            queue->add(priorityImmediate,queueItem(funcRepeaterTSQL, QVariant::fromValue<bool>(true), false, rd.useSecondaryVFO));
+        } else if (rd.accessMode == ratrNN) {
+            queue->add(priorityImmediate,queueItem(funcRepeaterTone, QVariant::fromValue<bool>(false), false, rd.useSecondaryVFO));
+            queue->add(priorityImmediate,queueItem(funcRepeaterTSQL, QVariant::fromValue<bool>(false), false, rd.useSecondaryVFO));
+        }
+    }
 }
 
 void repeaterSetup::on_toneNone_clicked()
@@ -564,13 +493,13 @@ void repeaterSetup::on_toneNone_clicked()
     rptrAccessData rd;
     rm = ratrNN;
     rd.accessMode = rm;
-    emit setRptAccessMode(rd);
+    setRptAccessMode(rd);
     bool updateSub = ui->setSplitRptrToneChk->isEnabled() && ui->setSplitRptrToneChk->isChecked();
 
     if(updateSub)
     {
         rd.useSecondaryVFO = true;
-        emit setRptAccessMode(rd);
+        setRptAccessMode(rd);
     }
 }
 
@@ -582,8 +511,8 @@ void repeaterSetup::on_toneTone_clicked()
     rd.accessMode = rm;
     toneInfo rt;
     rt.tone = (quint16)ui->rptToneCombo->currentData().toUInt();
-    emit setRptAccessMode(rd);
-    emit setTone(rt);
+    setRptAccessMode(rd);
+    queue->add(priorityImmediate,queueItem(funcToneFreq,QVariant::fromValue<toneInfo>(rt),false, rt.useSecondaryVFO));
 
     bool updateSub = ui->setSplitRptrToneChk->isEnabled() && ui->setSplitRptrToneChk->isChecked();
 
@@ -591,8 +520,8 @@ void repeaterSetup::on_toneTone_clicked()
     {
         rd.useSecondaryVFO = true;
         rt.useSecondaryVFO = true;
-        emit setRptAccessMode(rd);
-        emit setTone(rt);
+        setRptAccessMode(rd);
+        queue->add(priorityImmediate,queueItem(funcToneFreq,QVariant::fromValue<toneInfo>(rt),false, rt.useSecondaryVFO));
     }
 }
 
@@ -604,16 +533,16 @@ void repeaterSetup::on_toneTSQL_clicked()
     toneInfo rt;
     rt.tone = (quint16)ui->rptToneCombo->currentData().toUInt();
     rd.accessMode = rm;
-    emit setRptAccessMode(rd);
-    emit setTSQL(rt);
+    setRptAccessMode(rd);
+    queue->add(priorityImmediate,queueItem(funcTSQLFreq,QVariant::fromValue<toneInfo>(rt),false, rt.useSecondaryVFO));
     bool updateSub = ui->setSplitRptrToneChk->isEnabled() && ui->setSplitRptrToneChk->isChecked();
 
     if(updateSub)
     {
         rd.useSecondaryVFO = true;
         rt.useSecondaryVFO = true;
-        emit setRptAccessMode(rd);
-        emit setTSQL(rt);
+        setRptAccessMode(rd);
+        queue->add(priorityImmediate,queueItem(funcTSQLFreq,QVariant::fromValue<toneInfo>(rt),false, rt.useSecondaryVFO));
     }
 }
 
@@ -622,12 +551,12 @@ void repeaterSetup::on_toneDTCS_clicked()
     rptrAccessData rd;
 
     rd.accessMode = ratrDD;
-    emit setRptAccessMode(rd);
+    setRptAccessMode(rd);
     toneInfo tone;
     tone.tinv = ui->rptDTCSInvertTx->isChecked();
     tone.rinv = ui->rptDTCSInvertRx->isChecked();
     tone.tone = (quint16)ui->rptDTCSCombo->currentData().toUInt();
-    emit setDTCS(tone);
+    queue->add(priorityImmediate,queueItem(funcRepeaterDTCS,QVariant::fromValue<toneInfo>(tone),false));
     // TODO: DTCS with subband
 }
 
@@ -721,8 +650,8 @@ void repeaterSetup::on_splitPlusButton_clicked()
         return;
     }
     if(ui->splitEnableChk->isChecked() || ui->quickSplitChk->isChecked()) {
-        emit setTransmitFrequency(f);
-        emit setTransmitMode(modeTransmitVFO);
+        queue->add(priorityImmediate,queueItem(funcSubFreq,QVariant::fromValue<freqt>(f),false));
+        queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(modeTransmitVFO),false));
     } else {
         qWarning(logRptr()) << "Not setting transmit frequency until split mode is enabled.";
     }
@@ -753,8 +682,8 @@ void repeaterSetup::on_splitMinusBtn_clicked()
     }
 
     if(ui->splitEnableChk->isChecked() || ui->quickSplitChk->isChecked()) {
-        emit setTransmitFrequency(f);
-        emit setTransmitMode(modeTransmitVFO);
+        queue->add(priorityImmediate,queueItem(funcSubFreq,QVariant::fromValue<freqt>(f),false));
+        queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(modeTransmitVFO),false));
     } else {
         qWarning(logRptr()) << "Not setting transmit frequency until split mode is enabled.";
         return;
@@ -774,8 +703,8 @@ void repeaterSetup::on_splitTxFreqSetBtn_clicked()
         f.Hz = fHz;
         f.VFO = inactiveVFO;
         f.MHzDouble = f.Hz/1E6;
-        emit setTransmitFrequency(f);
-        emit setTransmitMode(modeTransmitVFO);
+        queue->add(priorityImmediate,queueItem(funcSubFreq,QVariant::fromValue<freqt>(f),false));
+        queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(modeTransmitVFO),false));
     }
 }
 
@@ -788,45 +717,45 @@ void repeaterSetup::on_splitTransmitFreqEdit_returnPressed()
 void repeaterSetup::on_selABtn_clicked()
 {
     vfo_t v = vfoA;
-    emit selectVFO(v);
+    queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(v),false));
 }
 
 void repeaterSetup::on_selBBtn_clicked()
 {
     vfo_t v = vfoB;
-    emit selectVFO(v);
+    queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(v),false));
 }
 
 void repeaterSetup::on_aEqBBtn_clicked()
 {
-    emit equalizeVFOsAB();
+    queue->add(priorityImmediate,funcVFOEqualAB,false,false);
 }
 
 void repeaterSetup::on_swapABBtn_clicked()
 {
-    emit swapVFOs();
+    queue->add(priorityImmediate,funcVFOSwapAB,false,false);
 }
 
 void repeaterSetup::on_selMainBtn_clicked()
 {
     vfo_t v = vfoMain;
-    emit selectVFO(v);
+    queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(v),false));
 }
 
 void repeaterSetup::on_selSubBtn_clicked()
 {
     vfo_t v = vfoSub;
-    emit selectVFO(v);
+    queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(v),false));
 }
 
 void repeaterSetup::on_mEqSBtn_clicked()
 {
-    emit equalizeVFOsMS();
+    queue->add(priorityImmediate,funcVFOEqualMS,false,false);
 }
 
 void repeaterSetup::on_swapMSBtn_clicked()
 {
-    emit swapVFOs();
+    queue->add(priorityImmediate,funcVFOSwapMS,false,false);
 }
 
 void repeaterSetup::on_setToneSubVFOBtn_clicked()
@@ -837,7 +766,7 @@ void repeaterSetup::on_setToneSubVFOBtn_clicked()
     toneInfo rt;
     rt.tone = (quint16)ui->rptToneCombo->currentData().toUInt();
     rt.useSecondaryVFO = true;
-    emit setTone(rt);
+    queue->add(priorityImmediate,queueItem(funcToneFreq,QVariant::fromValue<toneInfo>(rt),false, rt.useSecondaryVFO));
 }
 
 void repeaterSetup::on_setRptrSubVFOBtn_clicked()
@@ -856,7 +785,7 @@ void repeaterSetup::on_setRptrSubVFOBtn_clicked()
     if(ui->toneDTCS->isChecked())
         rd.accessMode=ratrDD;
 
-    emit setRptAccessMode(rd);
+    setRptAccessMode(rd);
 }
 
 void repeaterSetup::on_rptrOffsetSetBtn_clicked()
@@ -867,7 +796,7 @@ void repeaterSetup::on_rptrOffsetSetBtn_clicked()
     f.VFO=activeVFO;
     if(f.Hz != 0)
     {
-        emit setRptDuplexOffset(f);
+        queue->add(priorityImmediate,queueItem(funcSendFreqOffset,QVariant::fromValue<freqt>(f),false));
     }
     ui->rptrOffsetEdit->clearFocus();
 }
@@ -888,5 +817,101 @@ void repeaterSetup::on_setSplitRptrToneChk_clicked(bool checked)
 
 void repeaterSetup::on_quickSplitChk_clicked(bool checked)
 {
-    emit setQuickSplit(checked);
+    queue->add(priorityImmediate,queueItem(funcQuickSplit,QVariant::fromValue<bool>(checked),false));
+}
+
+void repeaterSetup::receiveRigCaps(rigCapabilities* rig)
+{
+    this->rigCaps = rig;
+    if (rig != Q_NULLPTR)
+    {
+        qInfo() << "Got rigcaps for:" << rig->modelName;
+
+        if(rig->commands.contains(funcRepeaterTone)) {
+            ui->rptToneCombo->setDisabled(false);
+            ui->toneTone->setDisabled(false);
+        } else {
+            ui->rptToneCombo->setDisabled(true);
+            ui->toneTone->setDisabled(true);
+        }
+
+        if(rig->commands.contains(funcRepeaterTSQL)) {
+            ui->toneTSQL->setDisabled(false);
+        } else {
+            ui->toneTSQL->setDisabled(true);
+        }
+
+        if(rig->commands.contains(funcToneSquelchType))
+        {
+            ui->rptToneCombo->setDisabled(false);
+            ui->toneTone->setDisabled(false);
+            ui->toneTSQL->setDisabled(false);
+        }
+
+        if(rig->commands.contains(funcRepeaterDTCS))
+        {
+            ui->rptDTCSCombo->setDisabled(false);
+            ui->toneDTCS->setDisabled(false);
+            ui->rptDTCSInvertRx->setDisabled(false);
+            ui->rptDTCSInvertTx->setDisabled(false);
+        } else {
+            ui->rptDTCSCombo->setDisabled(true);
+            ui->toneDTCS->setDisabled(true);
+            ui->rptDTCSInvertRx->setDisabled(true);
+            ui->rptDTCSInvertTx->setDisabled(true);
+        }
+        if(rig->commands.contains(funcVFOEqualAB))
+        {
+            ui->selABtn->setDisabled(false);
+            ui->selBBtn->setDisabled(false);
+            ui->aEqBBtn->setDisabled(false);
+            ui->swapABBtn->setDisabled(false);
+        } else {
+            ui->selABtn->setDisabled(true);
+            ui->selBBtn->setDisabled(true);
+            ui->aEqBBtn->setDisabled(true);
+            ui->swapABBtn->setDisabled(true);
+        }
+        if(rig->commands.contains(funcVFOEqualMS))
+        {
+            ui->selMainBtn->setDisabled(false);
+            ui->selSubBtn->setDisabled(false);
+            ui->mEqSBtn->setDisabled(false);
+            ui->swapMSBtn->setDisabled(false);
+        } else {
+            ui->selMainBtn->setDisabled(true);
+            ui->selSubBtn->setDisabled(true);
+            ui->mEqSBtn->setDisabled(true);
+            ui->swapMSBtn->setDisabled(true);
+        }
+        if(rig->commands.contains(funcVFOEqualAB) && rig->commands.contains(funcVFOEqualMS))
+        {
+            // Rigs that have both AB and MS
+            // do not have a swap AB command.
+            //ui->swapABBtn->setDisabled(true);
+        }
+
+        bool mainSub = rig->commands.contains(funcVFOMainSelect);
+        if(mainSub)
+        {
+            ui->setRptrSubVFOBtn->setEnabled(true);
+            ui->setToneSubVFOBtn->setEnabled(true);
+            ui->setSplitRptrToneChk->setEnabled(true);
+        } else {
+            ui->setRptrSubVFOBtn->setDisabled(true);
+            ui->setToneSubVFOBtn->setDisabled(true);
+            ui->setSplitRptrToneChk->setDisabled(true);
+        }
+
+        bool rpt = rig->commands.contains(funcToneSquelchType);
+        ui->rptAutoBtn->setEnabled(rpt);
+        ui->rptDupMinusBtn->setEnabled(rpt);
+        ui->rptDupPlusBtn->setEnabled(rpt);
+        ui->rptSimplexBtn->setEnabled(rpt);
+        ui->rptrOffsetEdit->setEnabled(rpt);
+        ui->rptrOffsetSetBtn->setEnabled(rpt);
+        ui->setToneSubVFOBtn->setEnabled(mainSub);
+        ui->setRptrSubVFOBtn->setEnabled(mainSub);
+        ui->quickSplitChk->setVisible(rig->commands.contains(funcQuickSplit));
+    }
 }
