@@ -105,7 +105,7 @@ static const subCommandStruct levels_str[] =
 
 static const subCommandStruct functions_str[] =
 {
-    {"FAGC",funcAGCTime,typeUChar},
+    {"FAGC",funcNone,typeBinary},
     {"NB",funcNoiseBlanker,typeBinary},
     {"COMP",funcCompressor,typeBinary},
     {"VOX",funcVox,typeBinary},
@@ -232,7 +232,7 @@ static const commandStruct commands_list[] =
     { '*',  "reset",            funcNone,               typeUChar,    ARG_IN, "Reset" },
     { 'w',  "send_cmd",         funcNone,               typeUChar,    ARG_IN1 | ARG_IN_LINE | ARG_OUT2 | ARG_NOVFO, "Cmd", "Reply" },
     { 'W',  "send_cmd_rx",      funcNone,               typeUChar,    ARG_IN | ARG_OUT2 | ARG_NOVFO, "Cmd", "Reply"},
-    { 'b',  "send_morse",       funcSendCW,             typeUChar,    ARG_IN | ARG_NOVFO  | ARG_IN_LINE, "Morse" },
+    { 'b',  "send_morse",       funcSendCW,             typeString,    ARG_IN | ARG_NOVFO  | ARG_IN_LINE, "Morse" },
     { 0xbb, "stop_morse",       funcSendCW,             typeUChar,    },
     { 0xbc, "wait_morse",       funcSendCW,             typeUChar,    },
     { 0x94, "send_voice_mem",   funcNone,               typeUChar,    ARG_IN, "Voice Mem#" },
@@ -847,6 +847,11 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             // Setting VFO:
             qInfo(logRigCtlD()) << "Setting VFO to" << params[0];
             break;
+        case typeString:
+        {
+            // Only used for CW?
+            val.setValue(params[0]);
+        }
         default:
             qInfo(logRigCtlD()) << "Unable to parse value of type" << cmd.type << "Command" << cmd.str;
             return -RIG_EINVAL;
@@ -1030,6 +1035,8 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                         uchar v = static_cast<uchar>(params[1].toInt());
                         if (params[0] == "FBKIN")
                             v = (v << 1) & 0x02; // BREAKIN is not bool!
+                        if (params[0] == "AGC")
+                            v = (v << 1);
                         val.setValue(v);
                         break;
                     }
@@ -1080,6 +1087,8 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                             int val = item.value.toInt();
                             if (params[0] == "FBKIN")
                                 val = (val >> 1) & 0x01;
+                            if (params[0] == "AGC")
+                                val = (val >> 1);
                             resp.append(QString::number(val));
                             break;
                         }
@@ -1207,7 +1216,7 @@ int rigCtlClient::dumpState(QStringList &response, bool extended)
         {
             if (pre.num == 0)
                 continue;
-            preamps.append(QString("%1 ").arg(pre.num*10));
+            preamps.append(QString(" %1").arg(pre.num*10));
         }
         if (preamps.endsWith(" "))
             preamps.chop(1);
@@ -1223,7 +1232,7 @@ int rigCtlClient::dumpState(QStringList &response, bool extended)
         {
             if (att == 0)
                 continue;
-            attens.append(QString("%1 ").arg(att));
+            attens.append(QString(" %1").arg(att));
         }
         if (attens.endsWith(" "))
             attens.chop(1);

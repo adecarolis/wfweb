@@ -869,7 +869,6 @@ void rigCommander::parseCommand()
         break;
     }
 
-    case funcAGCTime:
     case funcRfGain:
     case funcSquelch:
     case funcAPFLevel:
@@ -901,6 +900,7 @@ void rigCommander::parseCommand()
         value.setValue(bcdHexToUChar(payloadIn[0],payloadIn[1]));
         break;
     // These are 2 byte commands that return a single byte (0-99) from position 2
+    case funcAGCTime:
     case funcBreakIn:   // This is 0,1 or 2
     case funcPreamp:
     case funcManualNotchWidth:

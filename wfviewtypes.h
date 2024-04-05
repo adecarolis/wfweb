@@ -9,7 +9,7 @@
 #include <memory>
 
 
-enum valueType { typeNone=0, typeFloat, typeFloatDiv, typeFloatDiv5, typeUChar, typeChar, typeShort, typeBinary , typeFreq, typeMode,typeLevel,typeVFO};
+enum valueType { typeNone=0, typeFloat, typeFloatDiv, typeFloatDiv5, typeUChar, typeChar, typeShort, typeBinary , typeFreq, typeMode, typeLevel, typeVFO, typeString};
 
 enum connectionStatus_t { connDisconnected, connConnecting, connConnected };
 
