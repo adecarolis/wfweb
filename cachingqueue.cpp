@@ -384,7 +384,7 @@ bool cachingQueue::compare(QVariant a, QVariant b)
                 changed=true;
         } else if (!strcmp(a.typeName(),"modeInfo")) {
             if (a.value<modeInfo>().mk != b.value<modeInfo>().mk || a.value<modeInfo>().reg != b.value<modeInfo>().reg
-                         || a.value<modeInfo>().filter != b.value<modeInfo>().filter) {
+                || a.value<modeInfo>().filter != b.value<modeInfo>().filter || a.value<modeInfo>().data != b.value<modeInfo>().data) {
                 changed=true;
             }
         } else if(!strcmp(a.typeName(),"freqt")) {

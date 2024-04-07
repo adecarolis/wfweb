@@ -100,6 +100,8 @@ private:
     QByteArray txAudioData;
     QByteArray txChrono;
     rigCapabilities* rigCaps = Q_NULLPTR;
+    QString tciMode(modeInfo m);
+    modeInfo rigMode(QString);
 };
 
 #endif // TCISERVER_H

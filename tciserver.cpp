@@ -8,89 +8,89 @@
 static const tciCommandStruct tci_commands[] =
 {
     // u=uchar s=short f=float b=bool x=hz m=mode s=string
-    { "vfo_limits",         funcNone,       typeFreq, typeFreq},
-    { "if_limits",          funcNone,       typeFreq, typeFreq},
-    { "trx_count",          funcNone,       typeUChar},
-    { "channel_count",      funcNone,       typeUChar},
-    { "device",             funcNone,       typeShort},
-    { "receive_only",       funcNone,       typeBinary},
-    { "modulations_list",   funcNone,       typeShort},
-    { "protocol",           funcNone,       typeShort},
-    { "ready",              funcNone },
-    { "start",              funcNone },
-    { "stop",               funcNone },
-    { "dds",                funcNone, typeUChar,typeFreq},
-    { "if",                 funcNone,       typeUChar,typeUChar,typeFreq},
-    { "vfo",                funcNone,       typeUChar,typeUChar,typeFreq},
-    { "modulation",         funcMainMode,  typeUChar,typeShort},
-    { "trx",                funcTransceiverStatus,       typeUChar},
-    { "tune",               funcTunerStatus,       typeUChar},
-    { "drive",              funcNone,       typeUChar},
-    { "tune_drive",         funcNone,       typeUChar},
-    { "rit_enable",         funcRitStatus,       typeUChar},
-    { "xit_enable",         funcNone,       typeUChar},
-    { "split_enable",       funcSplitStatus,       typeUChar},
-    { "rit_offset",         funcRITFreq,       typeUChar},
-    { "xit_offset",         funcNone,       typeUChar},
-    { "rx_channel_enable",  funcNone,       typeUChar},
-    { "rx_filter_band",     funcNone,       typeUChar},
-    { "cw_macros_speed",    funcNone,       typeUChar},
-    { "cw_macros_delay",    funcNone,       typeUChar},
-    { "cw_keyer_speed",     funcKeySpeed,       typeUChar},
-    { "volume",             funcNone,       typeUChar},
-    { "mute",               funcNone,       typeUChar},
-    { "rx_mute",            funcNone,       typeUChar},
-    { "rx_volume",          funcNone,       typeUChar},
-    { "rx_balance",         funcNone,       typeUChar},
-    { "mon_volume",         funcNone,       typeUChar},
-    { "mon_enable",         funcNone,       typeUChar},
-    { "agc_mode",           funcNone,       typeUChar},
-    { "agc_gain",           funcNone,       typeUChar},
-    { "rx_nb_enable",       funcNone,       typeUChar},
-    { "rx_nb_param",        funcNone,       typeUChar},
-    { "rx_bin_enable",      funcNone,       typeUChar},
-    { "rx_nr_enable",       funcNone,       typeUChar},
-    { "rx_anc_enable",      funcNone,       typeUChar},
-    { "rx_anf_enable",      funcNone,       typeUChar},
-    { "rx_apf_enable",      funcNone,       typeUChar},
-    { "rx_dse_enable",      funcNone,       typeUChar},
-    { "rx_nf_enable",       funcNone,       typeUChar},
-    { "lock",               funcNone,       typeUChar},
-    { "sql_enable",         funcNone,       typeUChar},
-    { "sql_level",          funcSquelch,       typeUChar},
-    { "tx_enable",          funcNone,       typeUChar,typeUChar},
-    { "cw_macros_speed_up", funcNone,       typeUChar,typeUChar},
-    { "cw_macros_speed_down", funcNone,       typeUChar,typeUChar},
-    { "spot",               funcNone,       typeUChar,typeUChar},
-    { "spot_delete",        funcNone,       typeUChar,typeUChar},
-    { "iq_samplerate",      funcNone,       typeUChar},
-    { "audio_samplerate",   funcNone,       typeUChar},
-    { "iq_start",           funcNone,       typeUChar},
-    { "iq_stop",            funcNone,       typeUChar},
-    { "audio_start",        funcNone,       typeUChar},
-    { "audio_stop",         funcNone,       typeUChar},
-    { "line_out_start",     funcNone,       typeUChar},
-    { "line_out_stop",      funcNone,       typeUChar},
-    { "line_out_recorder_start", funcNone,       typeUChar},
-    { "line_out_recorder_save",  funcNone,       typeUChar},
-    { "line_out_recorder_start", funcNone,       typeUChar},
-    { "clicked_on_spot",    funcNone,       typeUChar},
-    { "rx_clicked_on_spot", funcNone,       typeUChar},
-    { "tx_footswitch",      funcNone,       typeUChar,typeBinary},
-    { "tx_frequency",       funcNone,       typeUChar,typeBinary},
-    { "app_focus",          funcNone,       typeUChar,typeBinary},
-    { "set_in_focus",       funcNone,       typeUChar,typeBinary},
-    { "keyer",              funcNone,       typeUChar,typeBinary},
-    { "rx_sensors_enable",  funcNone,       typeUChar,typeBinary},
-    { "tx_sensors_enable",  funcNone,       typeUChar,typeBinary},
-    { "rx_sensors",         funcNone,       typeUChar,typeBinary},
-    { "tx_sensors",         funcNone,       typeUChar,typeBinary},
-    { "audio_stream_sample_type", funcNone,       typeUChar,typeBinary},
-    { "audio_stream_channels", funcNone,       typeUChar,typeBinary},
-    { "audio_stream_samples", funcNone,       typeUChar,typeBinary},
-    { "digl_offset",        funcNone,       typeUChar,typeBinary},
-    { "digu_offset",        funcNone,       typeUChar,typeBinary},
-    { "", funcNone, typeNone },
+    { "vfo_limits",         funcNone,       typeFreq,   typeFreq,   typeNone},
+    { "if_limits",          funcNone,       typeFreq,   typeFreq,   typeNone},
+    { "trx_count",          funcNone,       typeUChar,  typeNone,   typeNone},
+    { "channel_count",      funcNone,       typeUChar,  typeNone,   typeNone},
+    { "device",             funcNone,       typeShort,  typeNone,   typeNone},
+    { "receive_only",       funcNone,       typeBinary, typeNone,   typeNone},
+    { "modulations_list",   funcNone,       typeShort,  typeNone,   typeNone},
+    { "protocol",           funcNone,       typeShort,  typeNone,   typeNone},
+    { "ready",              funcNone,       typeNone,   typeNone,   typeNone},
+    { "start",              funcNone,       typeNone,   typeNone,   typeNone},
+    { "stop",               funcNone,       typeNone,   typeNone,   typeNone},
+    { "dds",                funcNone,       typeUChar,  typeFreq,   typeNone},
+    { "if",                 funcNone,       typeUChar,  typeUChar,  typeFreq},
+    { "vfo",                funcMainFreq,   typeUChar,  typeUChar,  typeFreq},
+    { "modulation",         funcMainMode,   typeUChar,  typeMode,   typeNone},
+    { "trx",                funcTransceiverStatus,       typeUChar, typeBinary, typeNone},
+    { "tune",               funcTunerStatus,typeUChar,  typeNone,   typeNone},
+    { "drive",              funcRFPower,    typeUShort,  typeNone,   typeNone},
+    { "tune_drive",         funcNone,       typeUChar,  typeNone,   typeNone},
+    { "rit_enable",         funcRitStatus,  typeUChar,  typeNone,   typeNone},
+    { "xit_enable",         funcNone,       typeUChar,  typeNone,   typeNone},
+    { "split_enable",       funcSplitStatus,typeUChar,  typeBinary, typeNone},
+    { "rit_offset",         funcRITFreq,    typeUChar,  typeNone,   typeNone},
+    { "xit_offset",         funcNone,       typeUChar,  typeNone,   typeNone},
+    { "rx_channel_enable",  funcNone,       typeUChar,  typeNone,   typeNone},
+    { "rx_filter_band",     funcNone,       typeUChar,  typeNone,   typeNone},
+    { "cw_macros_speed",    funcNone,       typeUChar,  typeNone,   typeNone},
+    { "cw_macros_delay",    funcNone,       typeUChar,  typeNone,   typeNone},
+    { "cw_keyer_speed",     funcKeySpeed,   typeUChar,  typeNone,   typeNone},
+    { "volume",             funcAfGain,     typeUChar,  typeNone,   typeNone},
+    { "mute",               funcNone,       typeUChar,  typeNone,   typeNone},
+    { "rx_mute",            funcNone,       typeUChar,  typeNone,   typeNone},
+    { "rx_volume",          funcNone,       typeUChar,  typeNone,   typeNone},
+    { "rx_balance",         funcNone,       typeUChar,  typeNone,   typeNone},
+    { "mon_volume",         funcNone,       typeUChar,  typeNone,   typeNone},
+    { "mon_enable",         funcNone,       typeUChar,  typeNone,   typeNone},
+    { "agc_mode",           funcNone,       typeUChar,  typeNone,   typeNone},
+    { "agc_gain",           funcNone,       typeUChar,  typeNone,   typeNone},
+    { "rx_nb_enable",       funcNone,       typeUChar,  typeNone,   typeNone},
+    { "rx_nb_param",        funcNone,       typeUChar,  typeNone,   typeNone},
+    { "rx_bin_enable",      funcNone,       typeUChar,  typeNone,   typeNone},
+    { "rx_nr_enable",       funcNone,       typeUChar,  typeNone,   typeNone},
+    { "rx_anc_enable",      funcNone,       typeUChar,  typeNone,   typeNone},
+    { "rx_anf_enable",      funcNone,       typeUChar,  typeNone,   typeNone},
+    { "rx_apf_enable",      funcNone,       typeUChar,  typeNone,   typeNone},
+    { "rx_dse_enable",      funcNone,       typeUChar,  typeNone,   typeNone},
+    { "rx_nf_enable",       funcNone,       typeUChar,  typeNone,   typeNone},
+    { "lock",               funcNone,       typeUChar,  typeNone,   typeNone},
+    { "sql_enable",         funcNone,       typeUChar,  typeNone,   typeNone},
+    { "sql_level",          funcSquelch,    typeUChar,  typeNone,   typeNone},
+    { "tx_enable",          funcNone,       typeUChar,  typeUChar,  typeNone},
+    { "cw_macros_speed_up", funcNone,       typeUChar,  typeUChar,  typeNone},
+    { "cw_macros_speed_down", funcNone,     typeUChar,  typeUChar,  typeNone},
+    { "spot",               funcNone,       typeUChar,  typeUChar,  typeNone},
+    { "spot_delete",        funcNone,       typeUChar,  typeUChar,  typeNone},
+    { "iq_samplerate",      funcNone,       typeUChar,  typeNone,   typeNone},
+    { "audio_samplerate",   funcNone,       typeUChar,  typeNone,   typeNone},
+    { "iq_start",           funcNone,       typeUChar,  typeNone,   typeNone},
+    { "iq_stop",            funcNone,       typeUChar,  typeNone,   typeNone},
+    { "audio_start",        funcNone,       typeUChar,  typeNone,   typeNone},
+    { "audio_stop",         funcNone,       typeUChar,  typeNone,   typeNone},
+    { "line_out_start",     funcNone,       typeUChar,  typeNone,   typeNone},
+    { "line_out_stop",      funcNone,       typeUChar,  typeNone,   typeNone},
+    { "line_out_recorder_start", funcNone,  typeUChar,  typeNone,   typeNone},
+    { "line_out_recorder_save",  funcNone,  typeUChar,  typeNone,   typeNone},
+    { "line_out_recorder_start", funcNone,  typeUChar,  typeNone,   typeNone},
+    { "clicked_on_spot",    funcNone,       typeUChar,  typeNone,   typeNone},
+    { "rx_clicked_on_spot", funcNone,       typeUChar,  typeNone,   typeNone},
+    { "tx_footswitch",      funcNone,       typeUChar,  typeBinary,   typeNone},
+    { "tx_frequency",       funcNone,       typeUChar,  typeBinary,   typeNone},
+    { "app_focus",          funcNone,       typeUChar,  typeBinary,   typeNone},
+    { "set_in_focus",       funcNone,       typeUChar,  typeBinary,   typeNone},
+    { "keyer",              funcNone,       typeUChar,  typeBinary,   typeNone},
+    { "rx_sensors_enable",  funcNone,       typeUChar,  typeBinary,   typeNone},
+    { "tx_sensors_enable",  funcNone,       typeUChar,  typeBinary,   typeNone},
+    { "rx_sensors",         funcNone,       typeUChar,  typeBinary,   typeNone},
+    { "tx_sensors",         funcNone,       typeUChar,  typeBinary,   typeNone},
+    { "audio_stream_sample_type", funcNone, typeUChar,  typeBinary,   typeNone},
+    { "audio_stream_channels", funcNone,    typeUChar,  typeBinary,   typeNone},
+    { "audio_stream_samples", funcNone,     typeUChar,  typeBinary,   typeNone},
+    { "digl_offset",        funcNone,       typeUChar,  typeBinary,   typeNone},
+    { "digu_offset",        funcNone,       typeUChar,  typeBinary,   typeNone},
+    { "",                   funcNone,       typeNone,   typeNone,     typeNone },
 };
 
 #define MAXNAMESIZE 32
@@ -183,7 +183,7 @@ void tciServer::onNewConnection()
     pSocket->sendTextMessage(QString("audio_samplerate:48000;\n"));
     pSocket->sendTextMessage(QString("mute:false;\n"));
     pSocket->sendTextMessage(QString("vfo:0,0,%0;").arg(queue->getCache(funcMainFreq,false).value.value<freqt>().Hz));
-    pSocket->sendTextMessage(QString("modulation:0,%0;").arg(queue->getCache(funcMainMode,false).value.value<modeInfo>().name.toLower()));
+    pSocket->sendTextMessage(QString("modulation:0,%0;").arg(tciMode(queue->getCache(funcMainMode,false).value.value<modeInfo>())));
     pSocket->sendTextMessage(QString("start;\n"));
     pSocket->sendTextMessage(QString("ready;\n"));
 }
@@ -208,17 +208,136 @@ void tciServer::processIncomingTextMessage(QString message)
     arg[arg.length()-1].chop(1);
     QString reply = message;
     uchar sub = arg[0].toUInt();
+    bool set = false;
 
-    /*
     for (int i=0; tci_commands[i].str != 0x00; i++)
     {
-        if (!strncmp(cmd.toLocal8Bit(), tci_commands[i].str,MAXNAMESIZE))
+        if (!strncmp(cmd.toLower().toLocal8Bit(), tci_commands[i].str,MAXNAMESIZE))
         {
-            qDebug() << "Found command:" << cmd;
+            tciCommandStruct tc = tci_commands[i];
+            uchar numArgs=0;
+            if (tc.arg1 != typeNone)
+                numArgs++;
+            if (tc.arg2 != typeNone)
+                numArgs++;
+            if (tc.arg3 != typeNone)
+                numArgs++;
+
+            // Some clients seem to send additional text that's unexpected!
+            if (numArgs <= arg.count())
+            {
+                set = true;
+                qInfo() << "This is a set command";
+            }
+
+            qDebug() << "Found command:" << tc.str;
+
+            if (cmd == "rx_mute" )
+            {
+            }
+            else if (cmd == "audio_samplerate" )
+            {
+            }
+            else if (set)
+            {
+                QVariant val;
+                if (arg.count() == 1 && tc.arg1 == typeUChar)
+                    val = QVariant::fromValue(uchar(arg[0].toInt(NULL)));
+                if (arg.count() == 1 && tc.arg1 == typeUShort)
+                    val = QVariant::fromValue(ushort(arg[0].toInt(NULL)*2.55));
+                if (arg.count() == 2 && tc.arg2 == typeUChar)
+                    val = QVariant::fromValue(uchar(arg[1].toInt(NULL)));
+                if (arg.count() == 2 && tc.arg2 == typeUShort)
+                    val = QVariant::fromValue(ushort(arg[1].toInt(NULL)*2.55));
+                else if (arg.count() == 3 && tc.arg3 == typeFreq)
+                {
+                    freqt f;
+                    f.Hz = arg[2].toUInt();
+                    f.MHzDouble = f.Hz / (double)1E6;
+                    val=QVariant::fromValue(f);
+                }
+                else if (tc.arg2 == typeMode)
+                    val = QVariant::fromValue(rigMode(arg[1]));
+                else if (tc.arg2 == typeBinary)
+                    val = QVariant::fromValue(arg[1]=="true"?true:false);
+
+                if (tc.func != funcNone && val.isValid()) {
+                    queue->add(priorityImmediate,queueItem(tc.func,val,false,sub));
+                    if (tc.func != funcMainMode)
+                        continue;
+                }
+            }
+
+            if (cmd == "audio_start" )
+            {
+                qInfo() << "Starting audio";
+                it.value().rxaudio=true;
+            }
+            else if (cmd == "audio_stop" )
+            {
+                it.value().rxaudio=false;
+                qInfo() << "Stopping audio";
+            }
+
+            if (tc.func != funcNone)
+            {
+                reply = QString("%0").arg(cmd);
+
+                if (tc.arg1 == typeUChar && numArgs > 1)
+                    // Multi arg replies always contain receiver number
+                    reply += QString(":%0").arg(sub);
+
+                if (numArgs == 1 && tc.arg1 == typeUChar)
+
+                    reply += QString(":%0").arg(queue->getCache(tc.func,sub).value.value<uchar>());
+
+                else if (numArgs ==1 && tc.arg1 == typeUShort)
+
+                    reply += QString(":%0").arg(round(queue->getCache(tc.func,sub).value.value<ushort>()/2.55));
+
+                else if (numArgs == 2 && tc.arg2 == typeUChar)
+
+                    reply += QString(",%0").arg(queue->getCache(tc.func,sub).value.value<uchar>());
+
+                else if (numArgs == 2 && tc.arg2 == typeUShort)
+
+                    reply += QString(",%0").arg(round(queue->getCache(tc.func,sub).value.value<ushort>()/2.55));
+
+                else if (numArgs == 3 &&  tc.arg3 == typeFreq &&
+                         (!set || queue->getCache(tc.func,sub).value.value<freqt>().Hz == arg[2].toULongLong()))
+
+                    reply += QString(",%0,%1").arg(arg[1].toInt(NULL)).arg(quint64(queue->getCache(tc.func,sub).value.value<freqt>().Hz));
+
+                else if (tc.arg2 == typeMode && (!set ||
+                         tciMode(queue->getCache(tc.func,sub).value.value<modeInfo>()) == arg[1].toLower()))
+
+                    reply += QString(",%0").arg(tciMode(queue->getCache(tc.func,sub).value.value<modeInfo>()));
+
+                else if (tc.arg2 == typeBinary)
+
+                    reply += QString(",%0").arg(queue->getCache(tc.func,sub).value.value<bool>()?"true":"false");
+
+                else
+                {
+                    // Nothing to say!
+                    qInfo() << "Nothing to say:" << reply;
+                    return;
+                }
+                reply += ";";
+            }
+            else
+            {
+                reply = message; // Reply with the sent message
+            }
+
+            if (pClient) {
+                qInfo() << "Reply:" << reply;
+                pClient->sendTextMessage(reply);
+            }
         }
     }
-    */
 
+    /*
     if (cmd.toLower() == "modulation")
     {
         reply = QString("%0:%1,%2;").arg(cmd).arg(sub)
@@ -274,21 +393,12 @@ void tciServer::processIncomingTextMessage(QString message)
             qInfo() << "Mode (TODO)" << arg[1];
             reply = QString("modulation:%0,%1;").arg(
                         QString::number(sub),queue->getCache(sub?funcSubMode:funcMainMode,sub).value.value<modeInfo>().name.toLower());
-            /*
-            freqt f;
-            f.Hz = arg[2].toUInt();
-            f.MHzDouble = f.Hz / (double)1E6;
-            queue->add(priorityImmediate,queueItem(sub?funcSubFreq:funcMainFreq,QVariant::fromValue(f),false,sub));
-            */
         }
     }
     //reply = QString("vfo:0,%0,%1;").arg(QString::number(item.sub)).arg(item.value.value<freqt>().Hz);
 
+    */
 
-    if (pClient && !reply.isEmpty()) {
-        qInfo() << "Reply:" << reply;
-        pClient->sendTextMessage(reply);
-    }
 }
 
 void tciServer::processIncomingBinaryMessage(QByteArray message)
@@ -362,36 +472,126 @@ void tciServer::receiveCache(cacheItem item)
 {
     auto it = clients.begin();
     QString reply;
+
+    // Special case for different commands
+    funcs func = item.command;
+    uchar vfo = 0;
+    if (func == funcModeTR || func == funcSelectedMode || func == funcSubMode)
+    {
+        func = funcMainMode;
+    }
+    else if (func == funcFreqTR || func == funcSelectedFreq || func == funcSubFreq)
+    {
+        func = funcMainFreq;
+    }
+    else if (func == funcUnselectedMode)
+    {
+        func = funcMainMode;
+        vfo = 1;
+    }
+    else if (func == funcUnselectedFreq)
+    {
+        func = funcMainFreq;
+        vfo = 1;
+    }
+
     while (it != clients.end())
     {
         if (it.value().connected)
         {
-
-            switch (item.command)
+            for (int i=0; tci_commands[i].str != 0x00; i++)
             {
-            case funcFreqTR:
-            case funcMainFreq:
-            case funcSubFreq:
-                reply = QString("vfo:0,%0,%1;").arg(QString::number(item.receiver),item.value.value<freqt>().Hz);
-                break;
-            case funcModeTR:
-            case funcMainMode:
-            case funcSubMode:
-                reply = QString("modulation:%0,%1;").arg(QString::number(item.receiver),item.value.value<modeInfo>().name.toLower());
-                break;
-            case funcTransceiverStatus:
-                reply = QString("trx:%0,%1;").arg(QString::number(item.receiver),item.value.value<bool>()?"true":"false");
-                break;
-            default:
-                break;
-            }
-            if (!reply.isEmpty()) {
-                it.key()->sendTextMessage(reply);
-                qInfo() << "Sending TCI:" << reply;
+                if (func == tci_commands[i].func)
+                {
+                    // Found a matching command, send a reply based on param type
+                    tciCommandStruct tc = tci_commands[i];
+                    // Here we can process the arguments
+
+                    uchar numArgs=0;
+                    if (tc.arg1 != typeNone)
+                        numArgs++;
+                    if (tc.arg2 != typeNone)
+                        numArgs++;
+                    if (tc.arg3 != typeNone)
+                        numArgs++;
+
+                    if (tc.func != funcNone)
+                    {
+                        if (tc.arg1 == typeUChar && numArgs > 1)
+                            // Multi arg replies always contain receiver number
+                            reply = QString("%0:%1").arg(tc.str).arg(QString::number(item.receiver));
+                            // Single arg replies don't!
+                        else if (numArgs == 1 && tc.arg1 == typeUChar)
+                            reply = QString("%0:%1").arg(tc.str).arg(item.value.value<uchar>());
+                        else if (numArgs == 1 && tc.arg1 == typeUShort)
+                            reply = QString("%0:%1").arg(tc.str).arg(round(item.value.value<ushort>()/2.55));
+
+
+                        if (numArgs == 2 && tc.arg2 == typeUChar)
+                            reply += QString(",%0").arg(item.value.value<uchar>());
+                        else if (numArgs == 2 && tc.arg2 == typeUShort)
+                            reply += QString(",%0").arg(round(item.value.value<ushort>()/2.55));
+                        else if (numArgs == 3 && tc.arg3 == typeFreq)
+                            reply += QString(",%0,%1").arg(vfo).arg(quint64(item.value.value<freqt>().Hz));
+                        else if (tc.arg2 == typeMode)
+                            reply += QString(",%0").arg(tciMode(item.value.value<modeInfo>()));
+                        else if (tc.arg2 == typeBinary)
+                            reply += QString(",%0").arg(item.value.value<bool>()?"true":"false");
+
+                        reply += ";";
+                        it.key()->sendTextMessage(reply);
+                        qInfo() << "Sending TCI:" << reply;
+                    }
+                }
             }
 
         }
         ++it;
     }
+}
 
+
+QString tciServer::tciMode(modeInfo m)
+{
+    QString ret="";
+    if (m.mk == modeUSB && m.data > 0)
+        ret="digu";
+    else if (m.mk == modeLSB && m.data > 0)
+        ret="digl";
+    else if (m.mk == modeFM)
+        ret="nfm";
+    else
+        ret = m.name.toLower();
+    return ret;
+}
+
+modeInfo tciServer::rigMode(QString mode)
+{
+    modeInfo m;
+    qInfo() << "Searching for mode" << mode;
+    for (modeInfo &mi: rigCaps->modes)
+    {
+        if (mode.toLower() =="digl" && mi.mk == modeLSB)
+        {
+            m = modeInfo(mi);
+            m.data = true;
+            m.filter = 1;
+            break;
+        } else if (mode.toLower() =="digu" && mi.mk == modeUSB)
+        {
+            m = modeInfo(mi);
+            m.data = true;
+            break;
+        } else if (mode.toLower() == "nfm" && mi.mk == modeFM)
+        {
+            m = modeInfo(mi);
+            break;
+        } else if (mode.toLower() == mi.name.toLower())
+        {
+            m = modeInfo(mi);
+            break;
+        }
+    }
+    m.filter = 1;
+    return m;
 }

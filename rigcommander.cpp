@@ -794,12 +794,12 @@ void rigCommander::parseCommand()
     case funcUnselectedMode:
     case funcMainMode:
     {
-        modeInfo m;
         // New format payload with mode+datamode+filter
-        m = parseMode(bcdHexToUChar(payloadIn[0]), bcdHexToUChar(payloadIn[2]),receiver);
+        modeInfo m = parseMode(bcdHexToUChar(payloadIn[0]), bcdHexToUChar(payloadIn[2]),receiver);
         m.data = bcdHexToUChar(payloadIn[1]);
         m.VFO = selVFO_t(receiver);
         value.setValue(m);
+        //qDebug(logRig()) << "Got Mode" << m.name << "data" << m.data;
         break;
     }
 
