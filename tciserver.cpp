@@ -172,7 +172,7 @@ void tciServer::onNewConnection()
     qInfo() << "TCI client connected:" << pSocket;
     clients.insert(pSocket,connStatus());
     pSocket->sendTextMessage(QString("protocol:WFVIEW,1.5;\n"));
-    pSocket->sendTextMessage(QString("device:WFVIEW;\n"));
+    pSocket->sendTextMessage(QString("device:%0;\n").arg(rigCaps->modelName));
     pSocket->sendTextMessage(QString("receive_only:%0;\n").arg(rigCaps->hasTransmit?"false":"true"));
     pSocket->sendTextMessage(QString("trx_count:1;\n"));
     pSocket->sendTextMessage(QString("channel_count:1;\n"));
