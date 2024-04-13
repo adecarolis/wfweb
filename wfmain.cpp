@@ -1026,7 +1026,7 @@ void wfmain::configureVFOs()
         connect(receiver,SIGNAL(showStatusBarText(QString)),this,SLOT(showStatusBarText(QString)));
         receivers.append(receiver);
 
-        ui->scopeSpacer->changeSize(0,0,QSizePolicy::Minimum);
+        //ui->scopeSpacer->changeSize(0,0,QSizePolicy::Minimum);
     }
 }
 
