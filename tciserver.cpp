@@ -90,6 +90,7 @@ static const tciCommandStruct tci_commands[] =
     { "audio_stream_samples", funcNone,     typeUChar,  typeBinary,   typeNone},
     { "digl_offset",        funcNone,       typeUChar,  typeBinary,   typeNone},
     { "digu_offset",        funcNone,       typeUChar,  typeBinary,   typeNone},
+    { "rx_smeter",          funcSMeter,     typeUChar,  typeUChar,    typedB},
     { "",                   funcNone,       typeNone,   typeNone,     typeNone },
 };
 
@@ -176,9 +177,33 @@ void tciServer::onNewConnection()
     pSocket->sendTextMessage(QString("receive_only:%0;\n").arg(rigCaps->hasTransmit?"false":"true"));
     pSocket->sendTextMessage(QString("trx_count:1;\n"));
     pSocket->sendTextMessage(QString("channel_count:1;\n"));
-    pSocket->sendTextMessage(QString("vfo_limits:10000,52000000;\n"));
+    quint64 start=UINT64_MAX;
+    quint64 end=0;
+    for (auto &band: rigCaps->bands)
+    {
+        if (start > band.lowFreq)
+            start = band.lowFreq;
+        if (end < band.highFreq)
+            end = band.highFreq;
+    }
+    pSocket->sendTextMessage(QString("vfo_limits:%0,%1;\n").arg(start).arg(end));
     pSocket->sendTextMessage(QString("if_limits:-48000,48000;\n"));
-    pSocket->sendTextMessage(QString("modulations_list:AM,LSB,USB,CW,NFM,WSPR,FT8,FT4,JT65,JT9,RTTY,BPSK,DIGL,DIGU,WFM,DRM;\n"));
+    QString mods = "modulations_list:";
+    for (modeInfo &mi: rigCaps->modes)
+    {
+
+        mods+=mi.name.toUpper();
+        mods+=",";
+        if (mi.reg == modeUSB || mi.reg == modeLSB)
+        {
+            mods+=QString("DIG%0").arg(mi.name.at(0));
+            mods+=",";
+        }
+    }
+    mods.chop(1);
+    mods+=";\n";
+    pSocket->sendTextMessage(mods);
+    // pSocket->sendTextMessage(QString("modulations_list:AM,LSB,USB,CW,NFM,WSPR,FT8,FT4,JT65,JT9,RTTY,BPSK,DIGL,DIGU,WFM,DRM;\n"));
     pSocket->sendTextMessage(QString("iq_samplerate:48000;\n"));
     pSocket->sendTextMessage(QString("audio_samplerate:48000;\n"));
     pSocket->sendTextMessage(QString("mute:false;\n"));
@@ -212,7 +237,8 @@ void tciServer::processIncomingTextMessage(QString message)
 
     for (int i=0; tci_commands[i].str != 0x00; i++)
     {
-        if (!strncmp(cmd.toLower().toLocal8Bit(), tci_commands[i].str,MAXNAMESIZE))
+        cmd=cmd.toLower();
+        if (!strncmp(cmd.toLocal8Bit(), tci_commands[i].str,MAXNAMESIZE))
         {
             tciCommandStruct tc = tci_commands[i];
             uchar numArgs=0;
@@ -527,20 +553,24 @@ void tciServer::receiveCache(cacheItem item)
                             reply = QString("%0:%1").arg(tc.str).arg(round(item.value.value<ushort>()/2.55));
 
 
-                        if (numArgs == 2 && tc.arg2 == typeUChar)
+                        if (numArgs == 2 && tc.arg2 == typeUChar) {
                             reply += QString(",%0").arg(item.value.value<uchar>());
-                        else if (numArgs == 2 && tc.arg2 == typeUShort)
+                        } else if (numArgs == 2 && tc.arg2 == typeUShort) {
                             reply += QString(",%0").arg(round(item.value.value<ushort>()/2.55));
-                        else if (numArgs == 3 && tc.arg3 == typeFreq)
+                        } else if (numArgs == 3 && tc.arg3 == typedB) {
+                            int val = item.value.value<uchar>();
+                            val = (val/2.42) - 120; // Approximate s-meter.
+                            reply += QString(",%0,%1").arg(vfo).arg(val);
+                        } else if (numArgs == 3 && tc.arg3 == typeFreq) {
                             reply += QString(",%0,%1").arg(vfo).arg(quint64(item.value.value<freqt>().Hz));
-                        else if (tc.arg2 == typeMode)
+                        } else if (tc.arg2 == typeMode) {
                             reply += QString(",%0").arg(tciMode(item.value.value<modeInfo>()));
-                        else if (tc.arg2 == typeBinary)
+                        } else if (tc.arg2 == typeBinary) {
                             reply += QString(",%0").arg(item.value.value<bool>()?"true":"false");
-
+                        }
                         reply += ";";
                         it.key()->sendTextMessage(reply);
-                        qInfo() << "Sending TCI:" << reply;
+                        //qInfo() << "Sending TCI:" << reply;
                     }
                 }
             }
