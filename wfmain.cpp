@@ -4834,7 +4834,6 @@ funcs wfmain::meter_tToMeterCommand(meter_t m)
     return c;
 }
 
-
 void wfmain::changeMeterType(meter_t m, int meterNum)
 {
     qDebug() << "Changing meter type.";
@@ -4923,26 +4922,9 @@ void wfmain::setAudioDevicesUI()
 void wfmain::debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    //qDebug(logSystem()) << "Query for repeater access mode (tone, tsql, etc) sent.";
-    //issueDelayedCommand(cmdGetRptAccessMode);
     debugWindow* debug = new debugWindow();
     debug->setAttribute(Qt::WA_DeleteOnClose);
     debug->show();
-
-    qInfo(logSystem()) << "Scroll wheel debug: ";
-    qInfo(logSystem()) << "tick interval: " << ui->afGainSlider->tickInterval();
-    qInfo(logSystem()) << "page step: " << ui->afGainSlider->pageStep();
-    qInfo(logSystem()) << "single step: " << ui->afGainSlider->singleStep();
-    qInfo(logSystem()) << "QApp wheel scroll lines: " << QApplication::wheelScrollLines();
-    qInfo(logSystem()) << "QStyleHint wheel scroll lines: " <<  QApplication::styleHints()->wheelScrollLines();
-
-
-    //showAndRaiseWidget(setupui);
-    //setupui->updateIfPrefs((int)if_all);
-    //setupui->updateRaPrefs((int)ra_all);
-    //setupui->updateCtPrefs((int)ct_all);
-    //setupui->updateClusterPrefs((int)cl_all);
-    //setupui->updateUdpPrefs((int)u_all);
 }
 
 // ----------   color helper functions:   ---------- //
