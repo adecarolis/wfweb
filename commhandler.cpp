@@ -342,10 +342,10 @@ void commHandler::openPort()
         qInfo(logSerial()) << "Opened port: " << portName;
         return;
     } else {
-        qInfo(logSerial()) << "Could not open serial port " << portName << " , please restart.";
+        qInfo(logSerial()) << "Could not open serial port " << portName << " , please check Radio Access under Settings.";
         isConnected = false;
         serialError = true;
-        emit havePortError(errorType(true, portName, "Could not open port. Please restart."));
+        emit havePortError(errorType(true, portName, "Could not open Serial or USB port.\nPlease check Radio Access under Settings."));
         return;
     }
 }
