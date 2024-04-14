@@ -91,7 +91,7 @@ static const tciCommandStruct tci_commands[] =
     { "digl_offset",        funcNone,       typeUChar,  typeBinary,   typeNone},
     { "digu_offset",        funcNone,       typeUChar,  typeBinary,   typeNone},
     { "rx_smeter",          funcSMeter,     typeUChar,  typeUChar,    typedB},
-    { "",                   funcNone,       typeNone,   typeNone,     typeNone },
+    { 0x0,                   funcNone,       typeNone,   typeNone,     typeNone },
 };
 
 #define MAXNAMESIZE 32

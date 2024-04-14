@@ -155,6 +155,7 @@ struct preferences {
     int majorVersion = 0;
     int minorVersion = 0;
     QString gitShort;
+    bool hasRunSetup = false;
     bool settingsChanged = false;
 
     // Interface:

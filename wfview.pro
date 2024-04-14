@@ -249,6 +249,7 @@ SOURCES += main.cpp\
     bandbuttons.cpp \
     cachingqueue.cpp \
     cwsender.cpp \
+    firsttimesetup.cpp \
     freqctrl.cpp \
     frequencyinputwidget.cpp \
     cwsidetone.cpp \
@@ -301,6 +302,7 @@ HEADERS  += wfmain.h \
     colorprefs.h \
     commhandler.h \
     cwsender.h \
+    firsttimesetup.h \
     freqctrl.h \
     frequencyinputwidget.h \
     cwsidetone.h \
@@ -359,6 +361,7 @@ FORMS    += wfmain.ui \
     bandbuttons.ui \
     calibrationwindow.ui \
     cwsender.ui \
+    firsttimesetup.ui \
     frequencyinputwidget.ui \
     debugwindow.ui \
     loggingwindow.ui \

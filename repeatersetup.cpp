@@ -373,11 +373,12 @@ void repeaterSetup::handleTransmitStatus(bool amTransmitting)
 
 void repeaterSetup::showEvent(QShowEvent *event)
 {
-
-    queue->add(priorityImmediate,funcSplitStatus,false,false);
-    if(rigCaps->commands.contains(funcToneSquelchType))
-        queue->add(priorityImmediate,funcReadFreqOffset,false,false);
-    QMainWindow::showEvent(event);
+    if(haveRig) {
+        queue->add(priorityImmediate,funcSplitStatus,false,false);
+        if(rigCaps->commands.contains(funcToneSquelchType))
+            queue->add(priorityImmediate,funcReadFreqOffset,false,false);
+        QMainWindow::showEvent(event);
+    }
     (void)event;
 }
 

@@ -243,8 +243,38 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qDebug(logSystem()) << "Running setInititalTiming()";
     setInitialTiming();
 
-    qDebug(logSystem()) << "Running openRig()";
-    openRig();
+    fts = new FirstTimeSetup();
+
+    if(prefs.hasRunSetup) {
+        qDebug(logSystem()) << "Running openRig()";
+        openRig();
+    } else {
+        qInfo(logSystem()) << "Detected first-time run. Showing the First Time Setup widget.";
+
+        connect(fts, &FirstTimeSetup::exitProgram, [=]() {
+            qInfo(logSystem()) << "User elected exit program.";
+            prefs.settingsChanged = false;
+            prefs.confirmExit = false;
+            QTimer::singleShot(10, [&](){
+                on_exitBtn_clicked();
+            });
+        });
+        connect(fts, &FirstTimeSetup::showSettings, [=](const bool networkEnabled) {
+            qInfo(logSystem()) << "User elected to visit the Settings UI.";
+            prefs.enableLAN = networkEnabled;
+            setupui->updateLanPrefs((int)l_all);
+            showAndRaiseWidget(setupui);
+            prefs.settingsChanged = true;
+            prefs.hasRunSetup = true;
+        });
+        connect(fts, &FirstTimeSetup::skipSetup, [=]() {
+            qInfo(logSystem()) << "User elected to skip the setup. Marking setup complete.";
+            prefs.settingsChanged = true;
+            prefs.hasRunSetup = true;
+        });
+
+        fts->exec();
+    }
 
     cluster = new dxClusterClient();
 
@@ -329,9 +359,9 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
             qInfo(logUsbControl()) << "Cannot register udev_monitor, hotplug of USB devices is not available";
             return;
         }
-    int fd = udev_monitor_get_fd(uDevMonitor);
+        int fd = udev_monitor_get_fd(uDevMonitor);
         uDevNotifier = new QSocketNotifier(fd, QSocketNotifier::Read,this);
-    connect(uDevNotifier, SIGNAL(activated(int)), this, SLOT(uDevEvent()));
+        connect(uDevNotifier, SIGNAL(activated(int)), this, SLOT(uDevEvent()));
         udev_monitor_enable_receiving(uDevMonitor);
     #endif
 #endif
@@ -1496,6 +1526,7 @@ void wfmain::changeFrequency(int value) {
 
 void wfmain::setDefPrefs()
 {
+    defPrefs.hasRunSetup = false;
     defPrefs.useFullScreen = false;
     defPrefs.useSystemTheme = false;
     defPrefs.drawPeaks = true;
@@ -1574,6 +1605,7 @@ void wfmain::loadSettings()
     prefs.version = priorVersionString;
     prefs.majorVersion = settings->value("majorVersion", defPrefs.majorVersion).toInt();
     prefs.minorVersion = settings->value("minorVersion", defPrefs.minorVersion).toInt();
+    prefs.hasRunSetup = settings->value("hasRunSetup", defPrefs.hasRunSetup).toBool();
     settings->endGroup();
 
     // UI: (full screen, dark theme, draw peaks, colors, etc)
@@ -2747,6 +2779,7 @@ void wfmain::saveSettings()
     settings->setValue("majorVersion", int(majorVersion.toInt()));
     settings->setValue("minorVersion", int(minorVersion.toInt()));
     settings->setValue("gitShort", QString(GITSHORT));
+    settings->setValue("hasRunSetup", prefs.hasRunSetup);
     settings->endGroup();
 
     // UI: (full screen, dark theme, draw peaks, colors, etc)

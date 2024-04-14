@@ -302,7 +302,7 @@ private:
     bool haveServerAudioOutputs = false;
     bool haveClusterList = false;
     bool updatingUIFromPrefs = false;
-
+    bool connectedStatus = false;
     audioDevices* audioDev = Q_NULLPTR;
 
 };

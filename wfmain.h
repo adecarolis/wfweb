@@ -30,6 +30,7 @@
 #include "rigidentities.h"
 #include "repeaterattributes.h"
 #include "memories.h"
+#include "firsttimesetup.h"
 
 #include "packettypes.h"
 #include "calibrationwindow.h"
@@ -532,6 +533,7 @@ private:
     void showButton(QPushButton *btn);
     void hideButton(QPushButton *btn);
 
+    FirstTimeSetup *fts = Q_NULLPTR;
     void openRig();
     void powerRigOff();
     void powerRigOn();

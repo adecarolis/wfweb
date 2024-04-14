@@ -818,6 +818,10 @@ void settingswidget::updateLanPref(prefLanItem plan)
     case l_enableLAN:
         quietlyUpdateRadiobutton(ui->lanEnableBtn, prefs->enableLAN);
         quietlyUpdateRadiobutton(ui->serialEnableBtn, !prefs->enableLAN);
+        if(!connectedStatus) {
+            ui->groupNetwork->setEnabled(prefs->enableLAN);
+            ui->groupSerial->setEnabled(!prefs->enableLAN);
+        }
         break;
     case l_enableRigCtlD:
         quietlyUpdateCheckbox(ui->enableRigctldChk, prefs->enableRigCtlD);
@@ -2701,6 +2705,7 @@ void settingswidget::onServerUserFieldChanged()
 // This is a slot that receives a signal from wfmain when we are connecting/disconnected
 void settingswidget::connectionStatus(bool conn)
 {
+    connectedStatus = conn;
     ui->groupConnection->setEnabled(!conn);
     ui->audioInputCombo->setEnabled(!conn);
     ui->audioOutputCombo->setEnabled(!conn);
