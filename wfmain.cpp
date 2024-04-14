@@ -871,6 +871,8 @@ void wfmain::connectSettingsWidget()
 
     connect(this, SIGNAL(connectionStatus(bool)), setupui, SLOT(connectionStatus(bool)));
     connect(setupui, SIGNAL(connectButtonPressed()), this, SLOT(handleExtConnectBtn()));
+    connect(setupui, SIGNAL(saveSettingsButtonPressed()), this, SLOT(on_saveSettingsBtn_clicked()));
+    connect(setupui, SIGNAL(revertSettingsButtonPressed()), this, SLOT(handleRevertSettingsBtn()));
 }
 
 // NOT Migrated, EHL TODO, carefully remove this function
@@ -1509,6 +1511,7 @@ void wfmain::setDefPrefs()
     defPrefs.forceRTSasPTT = false;
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.serialPortBaud = 115200;
+    defPrefs.enableLAN = false;
     defPrefs.polling_ms = 0; // 0 = Automatic
     defPrefs.enablePTT = true;
     defPrefs.niceTS = true;
@@ -1534,6 +1537,8 @@ void wfmain::setDefPrefs()
 
     defPrefs.tcpPort = 0;
     defPrefs.tciPort = 50001;
+    defPrefs.clusterUdpEnable = false;
+    defPrefs.clusterTcpEnable = false;
     defPrefs.waterfallFormat = 0;
     defPrefs.audioSystem = qtAudio;
     defPrefs.enableUSBControllers = false;
@@ -1780,8 +1785,6 @@ void wfmain::loadSettings()
     udpPrefs.clientName = settings->value("ClientName", udpDefPrefs.clientName).toString();
 
     udpPrefs.halfDuplex = settings->value("HalfDuplex", udpDefPrefs.halfDuplex).toBool();
-    //ui->audioDuplexCombo->setVisible(false);
-    //ui->label_51->setVisible(false);
 
     settings->endGroup();
 
@@ -4162,6 +4165,25 @@ void wfmain::receiveATUStatus(unsigned char atustatus)
 void wfmain::handleExtConnectBtn() {
     // from settings widget
     on_connectBtn_clicked();
+}
+
+void wfmain::handleRevertSettingsBtn() {
+    // from settings widget
+    int ret = QMessageBox::warning(this, tr("Revert settings"),
+                                   tr("Are you sure you wish to reset all wfview settings?\nIf so, wfview will exit and you will need to start the program again."),
+                                   QMessageBox::Ok | QMessageBox::Cancel,
+                                   QMessageBox::Cancel);
+    if (ret == QMessageBox::Ok) {
+        qInfo(logSystem()) << "Per user request, resetting preferences.";
+        prefs = defPrefs;
+        udpPrefs = udpDefPrefs;
+        serverConfig.enabled = false;
+        serverConfig.users.clear();
+
+        saveSettings();
+        qInfo(logSystem()) << "Closing wfview for full preference-reset.";
+        QApplication::exit();
+    }
 }
 
 void wfmain::on_connectBtn_clicked()

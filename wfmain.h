@@ -330,6 +330,7 @@ private slots:
     void extChangedServerPref(prefServerItem i);
 
     void handleExtConnectBtn();
+    void handleRevertSettingsBtn();
 
     void receiveScopeSettings(uchar receiver, int theme, quint16 len, int floor, int ceiling);
     void receiveValue(cacheItem val);
