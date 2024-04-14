@@ -19,6 +19,7 @@ spectrumScope::spectrumScope(uchar receiver, uchar vfo, QWidget *parent)
     splitter = new QSplitter(this);
     layout->addWidget(splitter);
     splitter->setOrientation(Qt::Vertical);
+    originalParent = parent;
 
     displayLayout = new QHBoxLayout();
 
@@ -1787,13 +1788,29 @@ void spectrumScope::detachScope(bool state)
         detachButton->setText("Attach");
         qInfo(logGui()) << "Detaching scope" << (receiver?"Sub":"Main");
         this->parentWidget()->layout()->replaceWidget(this,windowLabel);
+
+        QTimer::singleShot(1, [&](){
+            if(originalParent) {
+                this->originalParent->resize(1,1);
+            }
+        });
+
+        this->parentWidget()->resize(1,1);
         this->setParent(NULL);
+
         this-> setWindowFlags(Qt::Window | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint);
         this->move(screen()->geometry().center() - frameGeometry().center());
     } else {
         detachButton->setText("Detach");
         qInfo(logGui()) << "Attaching scope" << (receiver?"Sub":"Main");
         windowLabel->parentWidget()->layout()->replaceWidget(windowLabel,this);
+
+        QTimer::singleShot(1, [&](){
+            if(originalParent) {
+                this->originalParent->resize(1,1);
+            }
+        });
+
         windowLabel->setParent(NULL);
         delete windowLabel;
     }

@@ -97,6 +97,8 @@ signals:
     void changedUdpPref(prefUDPItem i);
     void changedServerPref(prefServerItem i);
     void connectButtonPressed();
+    void saveSettingsButtonPressed();
+    void revertSettingsButtonPressed();
 
 private slots:
     void on_settingsList_currentRowChanged(int currentRow);
@@ -242,6 +244,10 @@ private slots:
     void on_revCompMeterBtn_clicked(bool checked);
 
     void on_connectBtn_clicked();
+
+    void on_saveSettingsBtn_clicked();
+
+    void on_revertSettingsBtn_clicked();
 
 private:
     Ui::settingswidget *ui;
