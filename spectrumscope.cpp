@@ -284,18 +284,18 @@ spectrumScope::spectrumScope(uchar receiver, uchar vfo, QWidget *parent)
     configTheme->setAccessibleName("Waterfall display color theme");
     configTheme->setAccessibleDescription("Selects the color theme for the waterfall display");
     configTheme->setToolTip("Waterfall color theme");
-    configTheme->addItem("Theme Jet", QCPColorGradient::gpJet);
-    configTheme->addItem("Theme Cold", QCPColorGradient::gpCold);
-    configTheme->addItem("Theme Hot", QCPColorGradient::gpHot);
-    configTheme->addItem("Theme Therm", QCPColorGradient::gpThermal);
-    configTheme->addItem("Theme Night", QCPColorGradient::gpNight);
-    configTheme->addItem("Theme Ion", QCPColorGradient::gpIon);
-    configTheme->addItem("Theme Gray", QCPColorGradient::gpGrayscale);
-    configTheme->addItem("Theme Geo", QCPColorGradient::gpGeography);
-    configTheme->addItem("Theme Hues", QCPColorGradient::gpHues);
-    configTheme->addItem("Theme Polar", QCPColorGradient::gpPolar);
-    configTheme->addItem("Theme Spect", QCPColorGradient::gpSpectrum);
-    configTheme->addItem("Theme Candy", QCPColorGradient::gpCandy);
+    configTheme->addItem("Jet", QCPColorGradient::gpJet);
+    configTheme->addItem("Cold", QCPColorGradient::gpCold);
+    configTheme->addItem("Hot", QCPColorGradient::gpHot);
+    configTheme->addItem("Therm", QCPColorGradient::gpThermal);
+    configTheme->addItem("Night", QCPColorGradient::gpNight);
+    configTheme->addItem("Ion", QCPColorGradient::gpIon);
+    configTheme->addItem("Gray", QCPColorGradient::gpGrayscale);
+    configTheme->addItem("Geo", QCPColorGradient::gpGeography);
+    configTheme->addItem("Hues", QCPColorGradient::gpHues);
+    configTheme->addItem("Polar", QCPColorGradient::gpPolar);
+    configTheme->addItem("Spect", QCPColorGradient::gpSpectrum);
+    configTheme->addItem("Candy", QCPColorGradient::gpCandy);
     configTheme->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     configLayout->addRow("Theme",configTheme);
 
@@ -313,7 +313,7 @@ spectrumScope::spectrumScope(uchar receiver, uchar vfo, QWidget *parent)
 
     configFilterWidth = new QSlider(Qt::Orientation::Horizontal);
     configFilterWidth->setRange(0,10000);
-    configLayout->addRow("Fil Width",configFilterWidth);
+    configLayout->addRow("Fill Width",configFilterWidth);
 
     connect(configLength, &QSlider::valueChanged, this, [=](const int &val) {
         prepareWf(val);
@@ -518,10 +518,28 @@ void spectrumScope::colorPreset(colorPrefsType *cp)
     pbtIndicator->setBrush(QBrush(cp->pbt));
 
     spectrum->graph(0)->setPen(QPen(cp->spectrumLine));
-    spectrum->graph(0)->setBrush(QBrush(cp->spectrumFill));
+    if(cp->useSpectrumFillGradient) {
+        spectrumGradient.setStart(QPointF(0,1));
+        spectrumGradient.setFinalStop(QPointF(0,0));
+        spectrumGradient.setCoordinateMode(QLinearGradient::ObjectMode);
+        spectrumGradient.setColorAt(0, cp->spectrumFillBot);
+        spectrumGradient.setColorAt(1, cp->spectrumFillTop);
+        spectrum->graph(0)->setBrush(QBrush(spectrumGradient));
+    } else {
+        spectrum->graph(0)->setBrush(QBrush(cp->spectrumFill));
+    }
 
     spectrum->graph(1)->setPen(QPen(cp->underlayLine));
-    spectrum->graph(1)->setBrush(QBrush(cp->underlayFill));
+    if(cp->useUnderlayFillGradient) {
+        underlayGradient.setStart(QPointF(0,1));
+        underlayGradient.setFinalStop(QPointF(0,0));
+        underlayGradient.setCoordinateMode(QLinearGradient::ObjectMode);
+        underlayGradient.setColorAt(0, cp->underlayFillBot);
+        underlayGradient.setColorAt(1, cp->underlayFillTop);
+        spectrum->graph(1)->setBrush(QBrush(underlayGradient));
+    } else {
+        spectrum->graph(1)->setBrush(QBrush(cp->underlayFill));
+    }
 
     waterfall->yAxis->setBasePen(cp->wfAxis);
     waterfall->yAxis->setTickPen(cp->wfAxis);

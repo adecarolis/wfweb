@@ -524,6 +524,23 @@ void settingswidget::updateColPref(prefColItem col)
         setColorElement(c, ui->colorSwatchSpecFill, ui->colorEditSpecFill);
         break;
     }
+    case col_useSpectrumFillGradient:
+    {
+        quietlyUpdateCheckbox(ui->useSpectrumFillGradientChk, colorPreset[pos].useSpectrumFillGradient);
+        break;
+    }
+    case col_spectrumFillTop:
+    {
+        QColor c = (colorPreset[pos].spectrumFillTop);
+        setColorElement(c, ui->colorSwatchSpecFillTop, ui->colorEditSpecFillTop);
+        break;
+    }
+    case col_spectrumFillBot:
+    {
+        QColor c = (colorPreset[pos].spectrumFillBot);
+        setColorElement(c, ui->colorSwatchSpecFillBot, ui->colorEditSpecFillBot);
+        break;
+    }
     case col_underlayLine:
     {
         QColor c = (colorPreset[pos].underlayLine);
@@ -534,6 +551,23 @@ void settingswidget::updateColPref(prefColItem col)
     {
         QColor c = (colorPreset[pos].underlayFill);
         setColorElement(c, ui->colorSwatchUnderlayFill, ui->colorEditUnderlayFill);
+        break;
+    }
+    case col_useUnderlayFillGradient:
+    {
+        quietlyUpdateCheckbox(ui->useUnderlayFillGradientChk, colorPreset[pos].useUnderlayFillGradient);
+        break;
+    }
+    case col_underlayFillTop:
+    {
+        QColor c = (colorPreset[pos].underlayFillTop);
+        setColorElement(c, ui->colorSwatchUnderlayFillTop, ui->colorEditUnderlayFillTop);
+        break;
+    }
+    case col_underlayFillBot:
+    {
+        QColor c = (colorPreset[pos].underlayFillBot);
+        setColorElement(c, ui->colorSwatchUnderlayFillBot, ui->colorEditUnderlayFillBot);
         break;
     }
     case col_tuningLine:
@@ -2147,9 +2181,16 @@ void settingswidget::loadColorPresetToUIandPlots(int presetNumber)
     setEditAndLedFromColor(p.textColor, ui->colorEditText, ui->colorSwatchText);
     setEditAndLedFromColor(p.spectrumLine, ui->colorEditSpecLine, ui->colorSwatchSpecLine);
     setEditAndLedFromColor(p.spectrumFill, ui->colorEditSpecFill, ui->colorSwatchSpecFill);
+    quietlyUpdateCheckbox(ui->useSpectrumFillGradientChk, p.useSpectrumFillGradient);
+    setEditAndLedFromColor(p.spectrumFillTop, ui->colorEditSpecFillTop, ui->colorSwatchSpecFillTop);
+    setEditAndLedFromColor(p.spectrumFillBot, ui->colorEditSpecFillBot, ui->colorSwatchSpecFillBot);
     setEditAndLedFromColor(p.underlayLine, ui->colorEditUnderlayLine, ui->colorSwatchUnderlayLine);
     setEditAndLedFromColor(p.underlayFill, ui->colorEditUnderlayFill, ui->colorSwatchUnderlayFill);
+    setEditAndLedFromColor(p.underlayFillTop, ui->colorEditUnderlayFillTop, ui->colorSwatchUnderlayFillTop);
+    setEditAndLedFromColor(p.underlayFillBot, ui->colorEditUnderlayFillBot, ui->colorSwatchUnderlayFillBot);
+    quietlyUpdateCheckbox(ui->useUnderlayFillGradientChk, p.useUnderlayFillGradient);
     setEditAndLedFromColor(p.plotBackground, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
+
     setEditAndLedFromColor(p.tuningLine, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
     setEditAndLedFromColor(p.passband, ui->colorEditPassband, ui->colorSwatchPassband);
     setEditAndLedFromColor(p.pbt, ui->colorEditPBT, ui->colorSwatchPBT);
@@ -2299,6 +2340,44 @@ void settingswidget::on_colorEditSpecFill_editingFinished()
     setColorLineEditOperations(c, ui->colorEditSpecFill, ui->colorSwatchSpecFill);
     emit changedColPref(col_spectrumFill);
 }
+void settingswidget::on_useSpectrumFillGradientChk_clicked(bool checked)
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    colorPreset[pos].useSpectrumFillGradient = checked;
+    emit changedColPref(col_useSpectrumFillGradient);
+}
+
+// SpecFill Top:
+void settingswidget::on_colorSetBtnSpectFillTop_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumFillTop);
+    setColorButtonOperations(c, ui->colorEditSpecFillTop, ui->colorSwatchSpecFillTop);
+    emit changedColPref(col_spectrumFillTop);
+}
+void settingswidget::on_colorEditSpecFillTop_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumFillTop);
+    setColorLineEditOperations(c, ui->colorEditSpecFillTop, ui->colorSwatchSpecFillTop);
+    emit changedColPref(col_spectrumFillTop);
+}
+
+// SpecFill Bot:
+void settingswidget::on_colorSetBtnSpectFillBot_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumFillBot);
+    setColorButtonOperations(c, ui->colorEditSpecFillBot, ui->colorSwatchSpecFillBot);
+    emit changedColPref(col_spectrumFillBot);
+}
+void settingswidget::on_colorEditSpecFillBot_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumFillBot);
+    setColorLineEditOperations(c, ui->colorEditSpecFillBot, ui->colorSwatchSpecFillBot);
+    emit changedColPref(col_spectrumFillBot);
+}
 
 // PlotBackground:
 void settingswidget::on_colorEditPlotBackground_editingFinished()
@@ -2347,6 +2426,44 @@ void settingswidget::on_colorEditUnderlayFill_editingFinished()
     QColor *c = &(colorPreset[pos].underlayFill);
     setColorLineEditOperations(c, ui->colorEditUnderlayFill, ui->colorSwatchUnderlayFill);
     emit changedColPref(col_underlayFill);
+}
+void settingswidget::on_useUnderlayFillGradientChk_clicked(bool checked)
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    colorPreset[pos].useUnderlayFillGradient = checked;
+    emit changedColPref(col_useUnderlayFillGradient);
+}
+
+// Underlay Fill Top:
+void settingswidget::on_colorSetBtnUnderlayFillTop_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayFillTop);
+    setColorButtonOperations(c, ui->colorEditUnderlayFillTop, ui->colorSwatchUnderlayFillTop);
+    emit changedColPref(col_underlayFillTop);
+}
+void settingswidget::on_colorEditUnderlayFillTop_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayFillTop);
+    setColorLineEditOperations(c, ui->colorEditUnderlayFillTop, ui->colorSwatchUnderlayFillTop);
+    emit changedColPref(col_underlayFillTop);
+}
+
+// Underlay Fill Bot:
+void settingswidget::on_colorSetBtnUnderlayFillBot_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayFillBot);
+    setColorButtonOperations(c, ui->colorEditUnderlayFillBot, ui->colorSwatchUnderlayFillBot);
+    emit changedColPref(col_underlayFillBot);
+}
+void settingswidget::on_colorEditUnderlayFillBot_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayFillBot);
+    setColorLineEditOperations(c, ui->colorEditUnderlayFillBot, ui->colorSwatchUnderlayFillBot);
+    emit changedColPref(col_underlayFillBot);
 }
 
 // WF Background:
@@ -2736,8 +2853,6 @@ void settingswidget::connectionStatus(bool conn)
     }
 }
 
-
-
 void settingswidget::on_connectBtn_clicked()
 {
     emit connectButtonPressed();
@@ -2749,9 +2864,7 @@ void settingswidget::on_saveSettingsBtn_clicked()
     emit saveSettingsButtonPressed();
 }
 
-
 void settingswidget::on_revertSettingsBtn_clicked()
 {
     emit revertSettingsButtonPressed();
 }
-

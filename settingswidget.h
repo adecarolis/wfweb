@@ -249,6 +249,26 @@ private slots:
 
     void on_revertSettingsBtn_clicked();
 
+    void on_colorSetBtnSpectFillTop_clicked();
+
+    void on_colorEditSpecFillTop_editingFinished();
+
+    void on_colorSetBtnSpectFillBot_clicked();
+
+    void on_colorEditSpecFillBot_editingFinished();
+
+    void on_useSpectrumFillGradientChk_clicked(bool checked);
+
+    void on_colorSetBtnUnderlayFillTop_clicked();
+
+    void on_colorEditUnderlayFillTop_editingFinished();
+
+    void on_colorSetBtnUnderlayFillBot_clicked();
+
+    void on_colorEditUnderlayFillBot_editingFinished();
+
+    void on_useUnderlayFillGradientChk_clicked(bool checked);
+
 private:
     Ui::settingswidget *ui;
     void createSettingsListItems();

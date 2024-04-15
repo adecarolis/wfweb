@@ -16,8 +16,14 @@ struct colorPrefsType{
     QColor textColor;
     QColor spectrumLine;
     QColor spectrumFill;
+    QColor spectrumFillTop;
+    QColor spectrumFillBot;
+    bool useSpectrumFillGradient = false;
     QColor underlayLine;
     QColor underlayFill;
+    bool useUnderlayFillGradient = false;
+    QColor underlayFillTop;
+    QColor underlayFillBot;
     QColor plotBackground;
     QColor tuningLine;
     QColor passband;

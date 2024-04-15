@@ -149,6 +149,8 @@ private:
     QLabel* windowLabel = Q_NULLPTR;
     QCustomPlot* spectrum = Q_NULLPTR;
     QCustomPlot* waterfall = Q_NULLPTR;
+    QLinearGradient spectrumGradient;
+    QLinearGradient underlayGradient;
     freqCtrl* freqDisplay[2];
     QSpacerItem* displaySpacer;
     QGroupBox* group;

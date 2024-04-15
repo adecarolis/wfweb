@@ -1680,8 +1680,14 @@ void wfmain::loadSettings()
             p->textColor.setNamedColor(settings->value("textColor", p->textColor.name(QColor::HexArgb)).toString());
             p->spectrumLine.setNamedColor(settings->value("spectrumLine", p->spectrumLine.name(QColor::HexArgb)).toString());
             p->spectrumFill.setNamedColor(settings->value("spectrumFill", p->spectrumFill.name(QColor::HexArgb)).toString());
+            p->useSpectrumFillGradient = settings->value("useSpectrumFillGradient", p->useSpectrumFillGradient).toBool();
+            p->spectrumFillTop.setNamedColor(settings->value("spectrumFillTop", p->spectrumFillTop.name(QColor::HexArgb)).toString());
+            p->spectrumFillBot.setNamedColor(settings->value("spectrumFillBot", p->spectrumFillBot.name(QColor::HexArgb)).toString());
             p->underlayLine.setNamedColor(settings->value("underlayLine", p->underlayLine.name(QColor::HexArgb)).toString());
             p->underlayFill.setNamedColor(settings->value("underlayFill", p->underlayFill.name(QColor::HexArgb)).toString());
+            p->useUnderlayFillGradient = settings->value("useUnderlayFillGradient", p->useUnderlayFillGradient).toBool();
+            p->underlayFillTop.setNamedColor(settings->value("underlayFillTop", p->underlayFillTop.name(QColor::HexArgb)).toString());
+            p->underlayFillBot.setNamedColor(settings->value("underlayFillBot", p->underlayFillBot.name(QColor::HexArgb)).toString());
             p->plotBackground.setNamedColor(settings->value("plotBackground", p->plotBackground.name(QColor::HexArgb)).toString());
             p->tuningLine.setNamedColor(settings->value("tuningLine", p->tuningLine.name(QColor::HexArgb)).toString());
             p->passband.setNamedColor(settings->value("passband", p->passband.name(QColor::HexArgb)).toString());
@@ -2391,8 +2397,14 @@ void wfmain::extChangedColPref(prefColItem i)
     case col_plotBackground:
     case col_spectrumLine:
     case col_spectrumFill:
+    case col_useSpectrumFillGradient:
+    case col_spectrumFillTop:
+    case col_spectrumFillBot:
     case col_underlayLine:
     case col_underlayFill:
+    case col_underlayFillTop:
+    case col_underlayFillBot:
+    case col_useUnderlayFillGradient:
     case col_tuningLine:
     case col_passband:
     case col_pbtIndicator:
@@ -2898,8 +2910,14 @@ void wfmain::saveSettings()
         settings->setValue("textColor", p->textColor.name(QColor::HexArgb));
         settings->setValue("spectrumLine", p->spectrumLine.name(QColor::HexArgb));
         settings->setValue("spectrumFill", p->spectrumFill.name(QColor::HexArgb));
+        settings->setValue("useSpectrumFillGradient", p->useSpectrumFillGradient);
+        settings->setValue("spectrumFillTop", p->spectrumFillTop.name(QColor::HexArgb));
+        settings->setValue("spectrumFillBot", p->spectrumFillBot.name(QColor::HexArgb));
         settings->setValue("underlayLine", p->underlayLine.name(QColor::HexArgb));
         settings->setValue("underlayFill", p->underlayFill.name(QColor::HexArgb));
+        settings->setValue("useUnderlayFillGradient", p->useUnderlayFillGradient);
+        settings->setValue("underlayFillTop", p->underlayFillTop.name(QColor::HexArgb));
+        settings->setValue("underlayFillBot", p->underlayFillBot.name(QColor::HexArgb));
         settings->setValue("plotBackground", p->plotBackground.name(QColor::HexArgb));
         settings->setValue("tuningLine", p->tuningLine.name(QColor::HexArgb));
         settings->setValue("passband", p->passband.name(QColor::HexArgb));
@@ -4960,8 +4978,6 @@ void wfmain::setDefaultColorPresets()
     }
 }
 
-
-
 void wfmain::on_showLogBtn_clicked()
 {
     if(logWindow->isMinimized())
@@ -5083,8 +5099,6 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
 void wfmain::receiveClusterOutput(QString text) {
     setupui->insertClusterOutputText(text);
 }
-
-
 
 void wfmain::changePollTiming(int timing_ms, bool setUI)
 {
