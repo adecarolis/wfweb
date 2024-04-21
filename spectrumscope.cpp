@@ -882,7 +882,6 @@ void spectrumScope::computePlasma()
 
 void spectrumScope::showHideControls(spectrumMode_t mode)
 {
-    qInfo("ShowHideControls() called");
     if (!hasScope) {
         spectrum->hide();
         waterfall->hide();
