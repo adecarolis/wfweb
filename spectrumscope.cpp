@@ -898,13 +898,12 @@ void spectrumScope::showHideControls(spectrumMode_t mode)
         return;
     }
 
-    if((mode==spectModeCenter || mode==spectModeScrollC) && !spanCombo->isVisible())
-    {
+    if((mode==spectModeCenter || mode==spectModeScrollC) && !spanCombo->isVisible()) {
         edgeCombo->hide();
         edgeButton->hide();
         toFixedButton->show();
         spanCombo->show();
-    } else if ((mode==spectModeFixed || mode == spectModeScrollC || mode == spectModeScrollF) && spanCombo->isVisible()){
+    } else if ((mode==spectModeFixed || mode == spectModeScrollC || mode == spectModeScrollF) && spanCombo->isVisible()) {
         edgeCombo->show();
         edgeButton->show();
         toFixedButton->hide();
