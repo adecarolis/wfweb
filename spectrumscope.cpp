@@ -2,8 +2,8 @@
 #include "logcategories.h"
 #include "rigidentities.h"
 
-spectrumScope::spectrumScope(uchar receiver, uchar vfo, QWidget *parent)
-    : QGroupBox{parent}, receiver(receiver), numVFO(vfo)
+spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *parent)
+    : QGroupBox{parent}, receiver(receiver), numVFO(vfo),hasScope(scope)
 {
 
     QMutexLocker locker(&mutex);
@@ -12,7 +12,7 @@ spectrumScope::spectrumScope(uchar receiver, uchar vfo, QWidget *parent)
     this->setTitle("Band");
     this->defaultStyleSheet = this->styleSheet();
     queue = cachingQueue::getInstance();
-    spectrum = new QCustomPlot();
+    //spectrum = new QCustomPlot();
     mainLayout = new QHBoxLayout(this);
     layout = new QVBoxLayout();
     mainLayout->addLayout(layout);
@@ -395,7 +395,6 @@ spectrumScope::spectrumScope(uchar receiver, uchar vfo, QWidget *parent)
     connect(spectrum, SIGNAL(mouseMove(QMouseEvent*)), this, SLOT(scopeMouseMove(QMouseEvent *)));
     connect(waterfall, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(scroll(QWheelEvent*)));
     connect(spectrum, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(scroll(QWheelEvent*)));
-
 
     showHideControls(spectrumMode_t::spectModeCenter);
 }
@@ -883,6 +882,23 @@ void spectrumScope::computePlasma()
 
 void spectrumScope::showHideControls(spectrumMode_t mode)
 {
+    qInfo("ShowHideControls() called");
+    if (!hasScope) {
+        spectrum->hide();
+        waterfall->hide();
+        splitter->hide();
+        detachButton->hide();
+        scopeModeCombo->hide();
+        edgeCombo->hide();
+        edgeButton->hide();
+        holdButton->hide();
+        toFixedButton->hide();
+        spanCombo->hide();
+        clearPeaksButton->hide();
+        confButton->hide();
+        return;
+    }
+
     if((mode==spectModeCenter) || (mode==spectModeScrollC))
     {
         edgeCombo->hide();

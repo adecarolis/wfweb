@@ -30,7 +30,7 @@ class spectrumScope : public QGroupBox
 {
     Q_OBJECT
 public:
-    explicit spectrumScope(uchar receiver = 0, uchar vfo = 1, QWidget *parent = nullptr);
+    explicit spectrumScope(bool scope, uchar receiver = 0, uchar vfo = 1, QWidget *parent = nullptr);
 
     bool prepareWf(uint wfLength);
     void prepareScope(uint ampMap, uint spectWidth);
@@ -276,6 +276,7 @@ private:
     bool clickDragTuning=false;
     bool isActive;
     uchar numVFO=1;
+    bool hasScope=false;
 };
 
 #endif // SPECTRUMSCOPE_H

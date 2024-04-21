@@ -1025,7 +1025,7 @@ void wfmain::configureVFOs()
 
     for(uchar i=0;i<rigCaps->numReceiver;i++)
     {
-        spectrumScope* receiver = new spectrumScope(i,rigCaps->numVFO,this);
+        spectrumScope* receiver = new spectrumScope(rigCaps->hasSpectrum,i,rigCaps->numVFO,this);
 
         receiver->setUnderlayMode(prefs.underlayMode);
         receiver->wfAntiAliased(prefs.wfAntiAlias);
