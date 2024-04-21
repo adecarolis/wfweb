@@ -895,19 +895,30 @@ void spectrumScope::showHideControls(spectrumMode_t mode)
         spanCombo->hide();
         clearPeaksButton->hide();
         confButton->hide();
-        return;
-    }
-
-    if((mode==spectModeCenter || mode==spectModeScrollC) && !spanCombo->isVisible()) {
+    } else if (hasScope && (mode==spectModeCenter || mode==spectModeScrollC) && !spanCombo->isVisible()) {
+        spectrum->show();
+        waterfall->show();
+        splitter->show();
+        detachButton->show();
+        scopeModeCombo->show();
         edgeCombo->hide();
         edgeButton->hide();
         toFixedButton->show();
         spanCombo->show();
-    } else if ((mode==spectModeFixed || mode == spectModeScrollC || mode == spectModeScrollF) && spanCombo->isVisible()) {
+        clearPeaksButton->show();
+        confButton->show();
+    } else if (hasScope && (mode==spectModeFixed || mode == spectModeScrollC || mode == spectModeScrollF) && spanCombo->isVisible()) {
+        spectrum->show();
+        waterfall->show();
+        splitter->show();
+        detachButton->show();
+        scopeModeCombo->show();
         edgeCombo->show();
         edgeButton->show();
         toFixedButton->hide();
         spanCombo->hide();
+        clearPeaksButton->show();
+        confButton->show();
     }
 }
 
