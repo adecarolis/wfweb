@@ -882,7 +882,7 @@ void spectrumScope::computePlasma()
 
 void spectrumScope::showHideControls(spectrumMode_t mode)
 {
-    if (!hasScope) {
+    if (!hasScope && spectrum->isVisible()) {
         spectrum->hide();
         waterfall->hide();
         splitter->hide();
@@ -898,13 +898,13 @@ void spectrumScope::showHideControls(spectrumMode_t mode)
         return;
     }
 
-    if((mode==spectModeCenter) || (mode==spectModeScrollC))
+    if((mode==spectModeCenter || mode==spectModeScrollC) && !spanCombo->isVisible())
     {
         edgeCombo->hide();
         edgeButton->hide();
         toFixedButton->show();
         spanCombo->show();
-    } else {
+    } else if ((mode==spectModeFixed || mode == spectModeScrollC || mode == spectModeScrollF) && spanCombo->isVisible()){
         edgeCombo->show();
         edgeButton->show();
         toFixedButton->hide();

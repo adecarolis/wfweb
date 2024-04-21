@@ -276,7 +276,7 @@ private:
     bool clickDragTuning=false;
     bool isActive;
     uchar numVFO=1;
-    bool hasScope=false;
+    bool hasScope=true;
 };
 
 #endif // SPECTRUMSCOPE_H
