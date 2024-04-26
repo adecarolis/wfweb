@@ -216,7 +216,7 @@ void rigCommander::commonSetup()
     // Add the below commands so we can get a response until we have received rigCaps
     rigCaps.commands.clear();
     rigCaps.commandsReverse.clear();
-    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),QByteArrayLiteral("\x19\x00"),0,0,false));
+    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),QByteArrayLiteral("\x19\x00"),0,0,false,true,false));
     rigCaps.commandsReverse.insert(QByteArrayLiteral("\x19\x00"),funcTransceiverId);
 
     this->setObjectName("Rig Commander");
@@ -1338,7 +1338,9 @@ void rigCommander::determineRigCaps()
                             rigCaps.commands.insert(func, funcType(func, funcString[int(func)],
                                 QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),
                                                        settings->value("Min", 0).toInt(NULL), settings->value("Max", 0).toInt(NULL),
-                                settings->value("Command29",false).toBool()));
+                                                       settings->value("Command29",false).toBool(),
+                                                       settings->value("GetCommand",true).toBool(),
+                                                       settings->value("SetCommand",true).toBool()));
 
                             rigCaps.commandsReverse.insert(QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),func);
             } else {
@@ -2485,10 +2487,27 @@ void rigCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
     }
 
     QByteArray payload;
+    auto cmd = rigCaps.commands.find(func);
+    if (cmd == rigCaps.commands.end())
+    {
+        // Command not found, remove from queue
+        qDebug(logRig()) << "Removing unsupported command from queue" << funcString[func] << "VFO" << receiver;
+        queue->del(func,receiver);
+        return;
+    }
+
     if (getCommand(func,payload,val,receiver))
     {
         if (value.isValid())
         {
+            if (!cmd->setCmd) {
+                qDebug(logRig()) << "Removing unsupported set command from queue" << funcString[func] << "VFO" << receiver;
+                queue->del(func,receiver);
+                return;
+            } else if (cmd->getCmd && func != funcScopeFixedEdgeFreq && func != funcSpeech && func != funcBandStackReg && func != funcMemoryContents && func != funcSendCW) {
+                queue->addUnique(priorityImmediate,func,false,receiver);
+            }
+
             if (!strcmp(value.typeName(),"bool"))
             {
                  payload.append(value.value<bool>());
@@ -2855,10 +2874,15 @@ void rigCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 return;
             }
             // This was a set command, so queue a get straight after to retrieve the updated value
-            // will fail on some commands so they would need to be added here:
-            if (func != funcScopeFixedEdgeFreq && func != funcSpeech && func != funcBandStackReg && func != funcMemoryContents && func != funcSendCW)
+            // will fail on some commands so they would need to be added here:                
+        } else {
+            // This is a get command
+            if (!cmd->getCmd)
             {
-                queue->addUnique(priorityImmediate,func,false,receiver);
+                // Get command not supported
+                qDebug(logRig()) << "Removing unsupported get command from queue" << funcString[func] << "VFO" << receiver;
+                queue->del(func,receiver);
+                return;
             }
         }
         prepDataAndSend(payload);

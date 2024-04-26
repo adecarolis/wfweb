@@ -55,6 +55,21 @@ void rigCreator::commandRowAdded(int row)
     layoutCheckBox->setAlignment(Qt::AlignCenter);  // Center the checkbox
     layoutCheckBox->setContentsMargins(0,0,0,0);    // Set the zero padding
     ui->commands->setCellWidget(row,4, checkBoxWidget);
+
+    QWidget *getSetWidget = new QWidget();
+    QCheckBox *get = new QCheckBox();      // We declare and initialize the checkbox
+    QCheckBox *set = new QCheckBox();      // We declare and initialize the checkbox
+    get->setChecked(true);
+    set->setChecked(true);
+    get->setObjectName("get");
+    set->setObjectName("set");
+    QHBoxLayout *layoutGetSet = new QHBoxLayout(getSetWidget); // create a layer with reference to the widget
+    layoutGetSet->addWidget(get);            // Set the checkbox in the layer
+    layoutGetSet->addWidget(set);            // Set the checkbox in the layer
+    layoutGetSet->setAlignment(Qt::AlignCenter);  // Center the checkbox
+    layoutGetSet->setContentsMargins(0,0,0,0);    // Set the zero padding
+    ui->commands->setCellWidget(row,5, getSetWidget);
+
 }
 
 
@@ -194,6 +209,27 @@ void rigCreator::loadRigFile(QString file)
             ui->commands->model()->setData(ui->commands->model()->index(c,3),QString::number(settings->value("Max", 0).toInt()));
             ui->commands->setCellWidget(c,4, checkBoxWidget);
 
+            QWidget *getSetWidget = new QWidget();
+            QCheckBox *get = new QCheckBox();      // We declare and initialize the checkbox
+            QCheckBox *set = new QCheckBox();      // We declare and initialize the checkbox
+            if (settings->value("GetCommand",true).toBool()) {
+                get->setChecked(true);
+            } else {
+                get->setChecked(false);
+            }
+            if (settings->value("SetCommand",true).toBool()) {
+                set->setChecked(true);
+            } else {
+                set->setChecked(false);
+            }
+            get->setObjectName("get");
+            set->setObjectName("set");
+            QHBoxLayout *layoutGetSet = new QHBoxLayout(getSetWidget); // create a layer with reference to the widget
+            layoutGetSet->addWidget(get);            // Set the checkbox in the layer
+            layoutGetSet->addWidget(set);            // Set the checkbox in the layer
+            layoutGetSet->setAlignment(Qt::AlignCenter);  // Center the checkbox
+            layoutGetSet->setContentsMargins(0,0,0,0);    // Set the zero padding
+            ui->commands->setCellWidget(c,5, getSetWidget);
         }
         settings->endArray();
     }
@@ -513,6 +549,15 @@ void rigCreator::saveRigFile(QString file)
             settings->setValue("Command29", chk->isChecked());
         }
 
+        QList<QCheckBox*> getSet =ui->commands->cellWidget(n,5)->findChildren<QCheckBox*>(QString(), Qt::FindChildrenRecursively);
+        qDebug() << "size = "<<getSet.size();
+        foreach (auto c, getSet)
+        {
+            if (c->objectName() == "get")
+                settings->setValue("GetCommand", c->isChecked());
+            else if (c->objectName() == "set")
+                settings->setValue("SetCommand", c->isChecked());
+        }
     }
     settings->endArray();
 

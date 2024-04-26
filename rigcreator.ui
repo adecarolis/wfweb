@@ -199,7 +199,7 @@
          <number>0</number>
         </property>
         <property name="columnCount">
-         <number>5</number>
+         <number>6</number>
         </property>
         <attribute name="horizontalHeaderCascadingSectionResizes">
          <bool>false</bool>
@@ -251,6 +251,11 @@
         <column>
          <property name="text">
           <string>29</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>G/S</string>
          </property>
         </column>
        </widget>

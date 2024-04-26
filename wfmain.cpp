@@ -3989,19 +3989,24 @@ void wfmain::on_freqDial_valueChanged(int value)
 
     // With the number of steps and direction of steps established,
     // we can now adjust the frequency:
-    if (receivers.size()) {
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, delta, tsKnobHz);
-        f.MHzDouble = f.Hz / (double)1E6;
-        if (f.Hz > 0)
+
+    for (uchar i=0;i<rigCaps->numReceiver;i++)
+    {
+        if (receivers[i]->isSelected())
         {
-            oldFreqDialVal = value;
-            receivers[0]->setFrequency(f);
-            queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f),false));
-        } else {
-            ui->freqDial->blockSignals(true);
-            ui->freqDial->setValue(oldFreqDialVal);
-            ui->freqDial->blockSignals(false);
-            return;
+            f.Hz = roundFrequencyWithStep(receivers[i]->getFrequency().Hz, delta, tsKnobHz);
+            f.MHzDouble = f.Hz / (double)1E6;
+            if (f.Hz > 0)
+            {
+                oldFreqDialVal = value;
+                receivers[i]->setFrequency(f);
+                queue->addUnique(priorityImmediate,queueItem((i==0)?funcMainFreq:funcSubFreq,QVariant::fromValue<freqt>(f),false,i));
+            } else {
+                ui->freqDial->blockSignals(true);
+                ui->freqDial->setValue(oldFreqDialVal);
+                ui->freqDial->blockSignals(false);
+                return;
+            }
         }
     }
 }

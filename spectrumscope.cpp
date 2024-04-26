@@ -1804,11 +1804,11 @@ void spectrumScope::newFrequency(qint64 freq,uchar vfo)
     {
         if (vfo > 0)
         {
-            queue->add(priorityImmediate,queueItem((funcUnselectedFreq),QVariant::fromValue<freqt>(f),false,receiver));
+            queue->addUnique(priorityImmediate,queueItem((funcUnselectedFreq),QVariant::fromValue<freqt>(f),false,receiver));
         }
         else
         {
-            queue->add(priorityImmediate,queueItem((receiver?funcSubFreq:funcMainFreq),QVariant::fromValue<freqt>(f),false,receiver));
+            queue->addUnique(priorityImmediate,queueItem((receiver?funcSubFreq:funcMainFreq),QVariant::fromValue<freqt>(f),false,receiver));
         }
     }
 }
