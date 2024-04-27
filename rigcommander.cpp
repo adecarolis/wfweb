@@ -317,8 +317,9 @@ void rigCommander::prepDataAndSend(QByteArray data)
     emit dataForComm(data);
 }
 
-bool rigCommander::getCommand(funcs func, QByteArray &payload, int value, uchar receiver)
+funcType rigCommander::getCommand(funcs func, QByteArray &payload, int value, uchar receiver)
 {
+    funcType cmd;
     // Value is set to INT_MIN by default as this should be outside any "real" values
     auto it = rigCaps.commands.find(func);
     if (it != rigCaps.commands.end())
@@ -341,10 +342,9 @@ bool rigCommander::getCommand(funcs func, QByteArray &payload, int value, uchar 
                 // We don't have command29 so can't select sub
                 qInfo(logRig()) << "Rig has no Command29, removing command:" << funcString[func] << "VFO" << receiver;
                 queue->del(func,receiver);
-                return false;
             }
             payload.append(it.value().data);
-            return true;
+            cmd = it.value();
         }
         else if (value != INT_MIN)
         {
@@ -355,7 +355,7 @@ bool rigCommander::getCommand(funcs func, QByteArray &payload, int value, uchar 
         qDebug(logRig()) << "Removing unsupported command from queue" << funcString[func] << "VFO" << receiver;
         queue->del(func,receiver);
     }
-    return false;
+    return cmd;
 }
 
 void rigCommander::powerOn()
@@ -391,7 +391,7 @@ void rigCommander::powerOn()
 
     unsigned char cmd = 0x01;
     payload.append(payloadPrefix);
-    if (getCommand(funcPowerControl,payload,cmd))
+    if (getCommand(funcPowerControl,payload,cmd).cmd != funcNone)
     {
         payload.append(cmd);
         payload.append(payloadSuffix); // FD
@@ -414,7 +414,7 @@ void rigCommander::powerOff()
 {
     QByteArray payload;
     unsigned char cmd = '\x00';
-    if (getCommand(funcPowerControl,payload,cmd))
+    if (getCommand(funcPowerControl,payload,cmd).cmd != funcNone)
     {
         payload.append(cmd);
         prepDataAndSend(payload);
@@ -939,47 +939,45 @@ void rigCommander::parseCommand()
     // 0x17 is CW send and 0x18 is power control (no reply)
     // 0x19 it automatically added.
     case funcTransceiverId:
-        if (!rigCaps.modelID)
+        value.setValue(static_cast<uchar>(payloadIn[0]));
+        if (!rigCaps.modelID || quint8(payloadIn[0]) != rigCaps.modelID)
         {
-            if (payloadIn[0] == (char)0x0 && payloadIn.size() > 1)
-            {
-                payloadIn.remove(0,1); // Remove spurious response.
-            }
-            value.setValue(static_cast<uchar>(payloadIn[0]));
             if (rigList.contains(uchar(payloadIn[0])))
             {
                 this->model = rigList.find(uchar(payloadIn[0])).key();
             }
-            //model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
             rigCaps.modelID = payloadIn[0];
+            qInfo(logRig()) << QString("Have new rig ID: 0x%0").arg(rigCaps.modelID,1,16);
             determineRigCaps();
-            qInfo(logRig()) << "Have rig ID: " << QString::number(rigCaps.modelID,16);
-        }
-        else {
-            qWarning(logRig()) << "Received transceiverID when we already have rigcaps: " << payloadIn.toHex(' ');
         }
         break;
     // 0x1a
     case funcBandStackReg:
     {
         bandStackType bsr;
-        bsr.band = payloadIn[0];
-        bsr.regCode = payloadIn[1];
-        int freqLen = 5;
-        // PET I want to find a better way to do this!
-        if (rigCaps.modelID == 0xAC && bsr.band == 6) {
-            freqLen = 6;
+        bsr.band = bcdHexToUChar(payloadIn[0]);
+        bsr.regCode = bcdHexToUChar(payloadIn[1]);
+        foreach (bandType b, rigCaps.bands)
+        {
+            if (b.bsr == bsr.band)
+            {
+                bsr.freq = parseFreqData(payloadIn.mid(2,b.bytes),receiver);
+                // The Band Stacking command returns the regCode in the position that VFO is expected.
+                // As BSR is always on the active VFO, just set that.
+                bsr.freq.VFO = selVFO_t::activeVFO;
+                bsr.mode = bcdHexToUChar(payloadIn[b.bytes+2]);
+                bsr.filter = bcdHexToUChar(payloadIn[b.bytes+3]);
+                bsr.data = (payloadIn[b.bytes+4] & 0x10) >> 4; // not sure...
+                qDebug(logRig()) << QString("BSR received, band:%0 regcode:%1 freq:%2 data:%3 mode:%4 filter:%5")
+                                       .arg(bsr.band).arg(bsr.regCode).arg(bsr.freq.Hz).arg(bsr.data).arg(bsr.mode).arg(bsr.filter);
+                value.setValue(bsr);
+                break;
+            }
+
         }
-        bsr.freq = parseFreqData(payloadIn.mid(2,freqLen),receiver);
-        // The Band Stacking command returns the regCode in the position that VFO is expected.
-        // As BSR is always on the active VFO, just set that.
-        bsr.freq.VFO = selVFO_t::activeVFO;
-        bsr.mode = payloadIn[freqLen+2];
-        bsr.filter = payloadIn[freqLen+3];
-        bsr.data = (payloadIn[freqLen+4] & 0x10) >> 4; // not sure...
-        //qInfo(logRig()) << QString("BSR: (%0) band:%1 regcode: %2 freq: %3: data: %4 mode: %5 filter %6")
-        //                       .arg(payloadIn.toHex(' ')).arg(bsr.band).arg(bsr.regCode).arg(bsr.freq.Hz).arg(bsr.data).arg(bsr.mode).arg(bsr.filter);
-        value.setValue(bsr);
+        if (!value.isValid()) {
+            qWarning(logRig()) << QString("Unknown BSR received (%0) check rig file").arg(payloadIn.toHex(' '));
+        }
         break;
     }
     case funcFilterWidth:
@@ -1065,7 +1063,7 @@ void rigCommander::parseCommand()
     // 0x21 RIT:
     case funcRITFreq:
     {
-        /* PET NEEEDS FIXING */
+        /* M0VSE DOES THIS NEEED FIXING? */
         short ritHz = 0;
         freqt f;
         QByteArray longfreq;
@@ -1215,7 +1213,7 @@ void rigCommander::parseCommand()
     {
         // We do not log spectrum and meter data,
         // as they tend to clog up any useful logging.
-        qDebug(logRigTraffic()) << "Received from radio:";
+        qDebug(logRigTraffic()) << QString("Received from radio: %0").arg(funcString[func]);
         printHexNow(payloadIn, logRigTraffic());
     }
 
@@ -1493,8 +1491,9 @@ void rigCommander::determineRigCaps()
             uchar bsr = static_cast<uchar>(settings->value("BSR", 0).toInt());
             double range = settings->value("Range", 0.0).toDouble();
             int memGroup = settings->value("MemoryGroup", -1).toInt();
+            char bytes = settings->value("Bytes", 5).toInt();
 
-            rigCaps.bands.push_back(bandType(band,bsr,start,end,range,memGroup));
+            rigCaps.bands.push_back(bandType(band,bsr,start,end,range,memGroup,bytes));
             rigCaps.bsr[band] = bsr;
             qDebug(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << QString::number(bsr,16);
         }
@@ -1632,7 +1631,8 @@ bool rigCommander::parseSpectrum(scopeData& d, uchar receiver)
     unsigned char sequenceMax = bcdHexToUChar(payloadIn[1]);
 
     int freqLen = 5;
-    // On the IC-905 10GHz+ uses 6 bytes for freq.
+    // M0VSE THIS SHOULD BE FIXED, BUT NOT SURE HOW AS WE DON'T KNOW WHICH BAND WE ARE ON?
+    // On the IC-905 10GHz+ uses 6 bytes for freq!
     if (rigCaps.modelID == 0xAC && (payloadIn.size()==491 || payloadIn.size() == 16)) {
         freqLen = 6;
     }
@@ -2277,7 +2277,7 @@ bool rigCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType* 
 void rigCommander::getRigID()
 {
     QByteArray payload;
-    if (getCommand(funcTransceiverId,payload))
+    if (getCommand(funcTransceiverId,payload).cmd != funcNone)
     {
         prepDataAndSend(payload);
     } else {
@@ -2293,8 +2293,7 @@ void rigCommander::setRigID(unsigned char rigID)
     // It can be used for radios without Rig ID commands,
     // or to force a specific radio model
 
-    qInfo(logRig()) << "Setting rig ID to: (int)" << (int)rigID;
-
+    qInfo(logRig()).noquote() << QString("Setting rig ID to: 0x%d").arg(rigID,1,16);
 
     lookingForRig = true;
     foundRig = false;
@@ -2307,9 +2306,6 @@ void rigCommander::setRigID(unsigned char rigID)
     rigCaps.modelID = rigID;
     rigCaps.model = this->model;
     determineRigCaps();
-
-    //this->model = determineRadioModel(rigID);
-    //rigCaps.model = determineRadioModel(rigID);
 }
 
 void rigCommander::changeLatency(const quint16 value)
@@ -2336,7 +2332,7 @@ void rigCommander::setAfGain(unsigned char level)
     if (udp == Q_NULLPTR)
     {
         QByteArray payload;
-        if (getCommand(funcAfGain,payload,level))
+        if (getCommand(funcAfGain,payload,level).cmd != funcNone)
         {
             payload.append(bcdEncodeInt(level));
             prepDataAndSend(payload);
@@ -2481,30 +2477,24 @@ void rigCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
     if (func == funcSelectVFO) {
         // Special command
         vfo_t v = value.value<vfo_t>();
-        func = (v == vfoA)?funcVFOASelect:(v == vfoB)?funcVFOBSelect:(v = vfoMain)?funcVFOMainSelect:funcVFOSubSelect;
+        func = (v == vfoA)?funcVFOASelect:(v == vfoB)?funcVFOBSelect:(v == vfoMain)?funcVFOMainSelect:funcVFOSubSelect;
         value.clear();
         val = INT_MIN;
     }
 
     QByteArray payload;
-    auto cmd = rigCaps.commands.find(func);
-    if (cmd == rigCaps.commands.end())
-    {
-        // Command not found, remove from queue
-        qDebug(logRig()) << "Removing unsupported command from queue" << funcString[func] << "VFO" << receiver;
-        queue->del(func,receiver);
-        return;
-    }
-
-    if (getCommand(func,payload,val,receiver))
+    funcType cmd;
+    cmd = getCommand(func,payload,val,receiver);
+    if (cmd.cmd != funcNone)
     {
         if (value.isValid())
         {
-            if (!cmd->setCmd) {
+            if (!cmd.setCmd) {
                 qDebug(logRig()) << "Removing unsupported set command from queue" << funcString[func] << "VFO" << receiver;
                 queue->del(func,receiver);
                 return;
-            } else if (cmd->getCmd && func != funcScopeFixedEdgeFreq && func != funcSpeech && func != funcBandStackReg && func != funcMemoryContents && func != funcSendCW) {
+            } else if (cmd.getCmd && func != funcScopeFixedEdgeFreq && func != funcSpeech && func != funcBandStackReg && func != funcMemoryContents && func != funcSendCW) {
+                // This was a set command, so queue a get to retrieve the updated value
                 queue->addUnique(priorityImmediate,func,false,receiver);
             }
 
@@ -2864,20 +2854,18 @@ void rigCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             else if (!strcmp(value.typeName(),"bandStackType"))
             {
                 bandStackType bsr = value.value<bandStackType>();
-                payload.append(bsr.band);
-                payload.append(bsr.regCode); // [01...03]. 01 = latest, 03 = oldest
+                payload.append(bcdEncodeChar(bsr.band));
+                payload.append(bcdEncodeChar(bsr.regCode)); // [01...03]. 01 = latest, 03 = oldest
                 qInfo(logRig()) << "Sending BSR, Band Code:" << bsr.band << "Register Code:" << bsr.regCode << "(Sent:" << payload.toHex(' ') << ")";
             }
             else
             {
                 qInfo(logRig()) << "Got unknown value type" << QString(value.typeName());
                 return;
-            }
-            // This was a set command, so queue a get straight after to retrieve the updated value
-            // will fail on some commands so they would need to be added here:                
+            }              
         } else {
             // This is a get command
-            if (!cmd->getCmd)
+            if (!cmd.getCmd)
             {
                 // Get command not supported
                 qDebug(logRig()) << "Removing unsupported get command from queue" << funcString[func] << "VFO" << receiver;
@@ -2890,6 +2878,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
     else
     {
         qDebug(logRig()) << "cachingQueue(): unimplemented command" << funcString[func];
+        queue->del(func,receiver);
     }
 }
 

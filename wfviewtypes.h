@@ -322,7 +322,7 @@ struct spanType {
 };
 
 struct funcType {
-    funcType() {}
+    funcType() {cmd=funcNone;}
     funcType(funcs cmd, QString name, QByteArray data, int minVal, int maxVal, bool cmd29, bool getCmd, bool setCmd) : cmd(cmd), name(name), data(data), minVal(minVal), maxVal(maxVal), cmd29(cmd29), getCmd(getCmd), setCmd(setCmd) {}
     funcs cmd;
     QString name;

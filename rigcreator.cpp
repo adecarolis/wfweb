@@ -316,6 +316,7 @@ void rigCreator::loadRigFile(QString file)
             ui->bands->model()->setData(ui->bands->model()->index(c,4),settings->value("Range", 0.0).toString());
             ui->bands->model()->setData(ui->bands->model()->index(c,5),settings->value("MemoryGroup", -1).toString());
             ui->bands->model()->setData(ui->bands->model()->index(c,6),settings->value("Name", "").toString());
+            ui->bands->model()->setData(ui->bands->model()->index(c,7),settings->value("Bytes", 5).toString());
         }
         settings->endArray();
     }
@@ -610,6 +611,7 @@ void rigCreator::saveRigFile(QString file)
         settings->setValue("Range", (ui->bands->item(n,4) == NULL) ? 0.0 : ui->bands->item(n,4)->text().toDouble() );
         settings->setValue("MemoryGroup", (ui->bands->item(n,5) == NULL) ? -1 : ui->bands->item(n,5)->text().toInt() );
         settings->setValue("Name", (ui->bands->item(n,6) == NULL) ? "" : ui->bands->item(n,6)->text());
+        settings->setValue("Bytes", (ui->bands->item(n,7) == NULL) ? 0 : ui->bands->item(n,7)->text().toUInt() );
     }
     settings->endArray();
 

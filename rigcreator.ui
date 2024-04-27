@@ -108,6 +108,11 @@
           <string>Name</string>
          </property>
         </column>
+        <column>
+         <property name="text">
+          <string>Bytes</string>
+         </property>
+        </column>
        </widget>
       </item>
      </layout>
