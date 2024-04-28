@@ -12,8 +12,11 @@ memories::memories(bool slowLoad, QWidget *parent) :
     ui->setupUi(this);
     ui->table->setColumnCount(totalColumns);
     ui->table->editing(false);
-
-    this->setObjectName("RigCtlD");
+    statusBar = new QStatusBar(this);
+    ui->verticalLayout->addWidget(statusBar);
+    progress = new QProgressBar(this);
+    statusBar->addWidget(progress,1);
+    this->setObjectName("memories");
     queue = cachingQueue::getInstance(this);
     rigCaps = queue->getRigCaps();
 
@@ -22,6 +25,9 @@ memories::memories(bool slowLoad, QWidget *parent) :
         // We have no rigCaps, so cannot continue
         return;
     }
+
+
+    progress->setRange(rigCaps->memStart,rigCaps->memories);
 
     QStringList headers;
 
@@ -951,6 +957,7 @@ void memories::on_memoryMode_clicked()
 void memories::receiveMemory(memoryType mem)
 {
     ui->loadingMemories->setText(QString("Loading Memory %0/%1 (this may take a while!)").arg(lastMemoryRequested&0xffff,3,10,QLatin1Char('0')).arg(rigCaps->memories,3,10,QLatin1Char('0')));
+    progress->setValue(lastMemoryRequested & 0xffff);
     // First, do we need to request the next memory?
     if ((lastMemoryRequested & 0xffff) < groupMemories)
     {

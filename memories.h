@@ -10,6 +10,8 @@
 #include <QFileDialog>
 #include <QTimer>
 #include <QMessageBox>
+#include <QStatusBar>
+#include <QProgressBar>
 
 #include "tablewidget.h"
 #include "wfviewtypes.h"
@@ -165,6 +167,9 @@ private:
     tableEditor* r2EditorB = Q_NULLPTR;
 
     rigCapabilities* rigCaps = Q_NULLPTR;
+
+    QStatusBar* statusBar;
+    QProgressBar* progress;
 
     Ui::memories *ui;
     bool extended = false;
