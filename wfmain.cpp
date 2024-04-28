@@ -4256,7 +4256,7 @@ void wfmain::on_connectBtn_clicked()
 
 void wfmain::on_sqlSlider_valueChanged(int value)
 {
-    queue->addUnique(priorityImmediate,queueItem(funcSquelch,QVariant::fromValue<ushort>(value)));
+    queue->addUnique(priorityImmediate,queueItem(funcSquelch,QVariant::fromValue<ushort>(value),false,currentReceiver));
 }
 
 void wfmain::on_transmitBtn_clicked()
@@ -5363,8 +5363,10 @@ void wfmain::receiveValue(cacheItem val){
         emit sendLevel(val.command,val.value.value<uchar>());
         break;
     case funcSquelch:
-        changeSliderQuietly(ui->sqlSlider, val.value.value<uchar>());
-        emit sendLevel(val.command,val.value.value<uchar>());
+        if (val.receiver == currentReceiver) {
+            changeSliderQuietly(ui->sqlSlider, val.value.value<uchar>());
+            emit sendLevel(val.command,val.value.value<uchar>());
+        }
         break;
     case funcRFPower:
         changeSliderQuietly(ui->txPowerSlider, val.value.value<uchar>());
@@ -5392,9 +5394,7 @@ void wfmain::receiveValue(cacheItem val){
     case funcVariousSql:
         break;
     case funcOverflowStatus:
-        foreach (auto receiver, receivers) {
-            receiver->overflow(val.value.value<bool>());
-        }
+        receivers[val.receiver]->overflow(val.value.value<bool>());
         break;
     case funcCenterMeter:
         receiveMeter(meter_t::meterCenter,val.value.value<uchar>(),val.receiver);
@@ -5782,6 +5782,7 @@ void wfmain::on_scopeMainSubBtn_clicked()
     queue->add(priorityImmediate,queueItem(funcPreamp,false,currentReceiver));
     queue->add(priorityImmediate,queueItem(funcAttenuator,false,currentReceiver));
     queue->add(priorityImmediate,queueItem(funcAntenna,false,currentReceiver));
+    queue->add(priorityImmediate,queueItem(funcSquelch,false,currentReceiver));
 }
 
 void wfmain::on_scopeDualBtn_toggled(bool en)
