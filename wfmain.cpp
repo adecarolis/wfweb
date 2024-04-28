@@ -1046,7 +1046,7 @@ void wfmain::configureVFOs()
             receiver->setVisible(false);
         } else {
             receiver->setVisible(true);
-            receiver->selected(true);
+            //receiver->selected(true);
         }
 
         connect(receiver, SIGNAL(frequencyRange(uchar, double, double)), cluster, SLOT(freqRange(uchar, double, double)));
@@ -1059,6 +1059,7 @@ void wfmain::configureVFOs()
 
         connect(receiver,SIGNAL(showStatusBarText(QString)),this,SLOT(showStatusBarText(QString)));
         receivers.append(receiver);
+        queue->add(priorityImmediate,queueItem(funcScopeMainSub,false)); // Get current scope
 
         //ui->scopeSpacer->changeSize(0,0,QSizePolicy::Minimum);
     }
@@ -5616,6 +5617,11 @@ void wfmain::receiveValue(cacheItem val){
                         receivers[rx]->selected(false);
                     }
 
+                    if (!receivers[rx]->isVisible() && (rx == currentReceiver || ui->scopeDualBtn->isChecked())) {
+                        receivers[rx]->setVisible(true);
+                    } else if (rx != currentReceiver && !ui->scopeDualBtn->isChecked() && receivers[rx]->isVisible()) {
+                        receivers[rx]->setVisible(false);
+                    }
                 }
 
                 /*
@@ -5653,9 +5659,9 @@ void wfmain::receiveValue(cacheItem val){
                 // This tells us whether we are receiving single or dual scopes
                 ui->scopeDualBtn->setChecked(val.value.value<bool>());
                 for (uchar rx=0;rx<receivers.size();rx++) {
-                    if (!receivers[rx]->isVisible() && (rx == currentReceiver || val.value.value<bool>())) {
+                    if (!receivers[rx]->isVisible() && (rx == currentReceiver || ui->scopeDualBtn->isChecked())) {
                         receivers[rx]->setVisible(true);
-                    } else if (rx != currentReceiver && !val.value.value<bool>() && receivers[rx]->isVisible()) {
+                    } else if (rx != currentReceiver && !ui->scopeDualBtn->isChecked() && receivers[rx]->isVisible()) {
                         receivers[rx]->setVisible(false);
                     }
                 }
@@ -5772,6 +5778,10 @@ void wfmain::on_scopeMainSubBtn_clicked()
         currentReceiver = 0;
     }
     queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(currentReceiver),false));
+    // As the current receiver has changed, queue commands to get the current preamp/filter/ant/rx amp
+    queue->add(priorityImmediate,queueItem(funcPreamp,false,currentReceiver));
+    queue->add(priorityImmediate,queueItem(funcAttenuator,false,currentReceiver));
+    queue->add(priorityImmediate,queueItem(funcAntenna,false,currentReceiver));
 }
 
 void wfmain::on_scopeDualBtn_toggled(bool en)
