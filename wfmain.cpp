@@ -1026,7 +1026,6 @@ void wfmain::configureVFOs()
     for(uchar i=0;i<rigCaps->numReceiver;i++)
     {
         spectrumScope* receiver = new spectrumScope(rigCaps->hasSpectrum,i,rigCaps->numVFO,this);
-
         receiver->setUnderlayMode(prefs.underlayMode);
         receiver->wfAntiAliased(prefs.wfAntiAlias);
         receiver->wfInterpolate(prefs.wfInterpolate);
@@ -1045,6 +1044,9 @@ void wfmain::configureVFOs()
         // Hide any secondary receivers until we need them!
         if (i>0){
             receiver->setVisible(false);
+        } else {
+            receiver->setVisible(true);
+            receiver->selected(true);
         }
 
         connect(receiver, SIGNAL(frequencyRange(uchar, double, double)), cluster, SLOT(freqRange(uchar, double, double)));
@@ -3888,8 +3890,8 @@ void wfmain::changePrimaryMeter(bool transmitOn) {
         newCmd = meter_tToMeterCommand(meterS);
         ui->meterSPoWidget->setMeterType(meterS);
     }
-    queue->del(oldCmd);
-    queue->add(priorityHighest,queueItem(newCmd,true));
+    queue->del(oldCmd,currentReceiver);
+    queue->add(priorityHighest,queueItem(newCmd,true,currentReceiver));
 }
 
 void wfmain::changeFullScreenMode(bool checked)
@@ -3990,24 +3992,18 @@ void wfmain::on_freqDial_valueChanged(int value)
     // With the number of steps and direction of steps established,
     // we can now adjust the frequency:
 
-    for (uchar i=0;i<rigCaps->numReceiver;i++)
+    f.Hz = roundFrequencyWithStep(receivers[currentReceiver]->getFrequency().Hz, delta, tsKnobHz);
+    f.MHzDouble = f.Hz / (double)1E6;
+    if (f.Hz > 0)
     {
-        if (receivers[i]->isSelected())
-        {
-            f.Hz = roundFrequencyWithStep(receivers[i]->getFrequency().Hz, delta, tsKnobHz);
-            f.MHzDouble = f.Hz / (double)1E6;
-            if (f.Hz > 0)
-            {
-                oldFreqDialVal = value;
-                receivers[i]->setFrequency(f);
-                queue->addUnique(priorityImmediate,queueItem((i==0)?funcMainFreq:funcSubFreq,QVariant::fromValue<freqt>(f),false,i));
-            } else {
-                ui->freqDial->blockSignals(true);
-                ui->freqDial->setValue(oldFreqDialVal);
-                ui->freqDial->blockSignals(false);
-                return;
-            }
-        }
+        oldFreqDialVal = value;
+        receivers[currentReceiver]->setFrequency(f);
+        queue->addUnique(priorityImmediate,queueItem((currentReceiver==0)?funcMainFreq:funcSubFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+    } else {
+        ui->freqDial->blockSignals(true);
+        ui->freqDial->setValue(oldFreqDialVal);
+        ui->freqDial->blockSignals(false);
+        return;
     }
 }
 
@@ -4473,10 +4469,10 @@ void wfmain::receiveTuningStep(unsigned char step)
 
 void wfmain::receiveMeter(meter_t inMeter, unsigned char level,unsigned char receiver)
 {
-    // Currently do nothing with meters from second VFO
-    if (receiver)
+    // Do nothing with s-meter from non-current receiver
+    if (receiver != currentReceiver && inMeter == meterS) {
         return;
-
+    }
     switch(inMeter)
     {
     // These first two meters, S and Power,
@@ -4610,13 +4606,13 @@ void wfmain::on_rptSetupBtn_clicked()
 
 void wfmain::on_attSelCombo_activated(int index)
 {
-    queue->add(priorityImmediate,queueItem(funcAttenuator,QVariant::fromValue<uchar>(ui->attSelCombo->itemData(index).toInt()),false));
+    queue->add(priorityImmediate,queueItem(funcAttenuator,QVariant::fromValue<uchar>(ui->attSelCombo->itemData(index).toInt()),false,currentReceiver));
     queue->add(priorityHigh,funcPreamp,false);
 }
 
 void wfmain::on_preampSelCombo_activated(int index)
 {
-    queue->add(priorityImmediate,queueItem(funcPreamp,QVariant::fromValue<uchar>(ui->preampSelCombo->itemData(index).toInt()),false));
+    queue->add(priorityImmediate,queueItem(funcPreamp,QVariant::fromValue<uchar>(ui->preampSelCombo->itemData(index).toInt()),false,currentReceiver));
     queue->add(priorityHigh,funcAttenuator,false);
 }
 
@@ -4625,7 +4621,7 @@ void wfmain::on_antennaSelCombo_activated(int index)
     antennaInfo ant;
     ant.antenna = (unsigned char)ui->antennaSelCombo->itemData(index).toInt();
     ant.rx = ui->rxAntennaCheck->isChecked();
-    queue->add(priorityImmediate,queueItem(funcAntenna,QVariant::fromValue<antennaInfo>(ant),false));
+    queue->add(priorityImmediate,queueItem(funcAntenna,QVariant::fromValue<antennaInfo>(ant),false,currentReceiver));
 }
 
 void wfmain::on_rxAntennaCheck_clicked(bool value)
@@ -4633,26 +4629,26 @@ void wfmain::on_rxAntennaCheck_clicked(bool value)
     antennaInfo ant;
     ant.antenna = (unsigned char)ui->antennaSelCombo->currentData().toInt();
     ant.rx = value;
-    queue->add(priorityImmediate,queueItem(funcAntenna,QVariant::fromValue<antennaInfo>(ant),false));
+    queue->add(priorityImmediate,queueItem(funcAntenna,QVariant::fromValue<antennaInfo>(ant),false,currentReceiver));
 }
 
 void wfmain::receivePreamp(unsigned char pre, uchar receiver)
 {
-    if (!receiver) {
+    if (receiver == currentReceiver) {
         ui->preampSelCombo->setCurrentIndex(ui->preampSelCombo->findData(pre));
     }
 }
 
 void wfmain::receiveAttenuator(unsigned char att, uchar receiver)
 {
-    if (!receiver) {
+    if (receiver == currentReceiver) {
         ui->attSelCombo->setCurrentIndex(ui->attSelCombo->findData(att));
     }
 }
 
 void wfmain::receiveAntennaSel(unsigned char ant, bool rx, uchar receiver)
 {
-    if (!receiver) {
+    if (receiver == currentReceiver) {
         ui->antennaSelCombo->setCurrentIndex(ant);
         ui->rxAntennaCheck->setChecked(rx);
     }
@@ -5221,12 +5217,7 @@ void wfmain::receiveValue(cacheItem val){
     case funcFreqGet:
     case funcFreqTR:
         // If current receiver (0) isn't selected, then send this to other VFO
-        if (receivers.size()>1) {
-            if (!receivers[val.receiver]->isSelected()){
-                val.receiver=!bool(val.receiver);
-            }
-        }
-        receivers[val.receiver]->setFrequency(val.value.value<freqt>(),vfo);
+        receivers[currentReceiver]->setFrequency(val.value.value<freqt>(),vfo);
         break;
 
 #if defined __GNUC__
@@ -5278,11 +5269,7 @@ void wfmain::receiveValue(cacheItem val){
     case funcModeGet:
     case funcModeTR:
         // If current VFO (0) isn't selected, then send this to other VFO
-        if (receivers.size()>1) {
-            if (!receivers[val.receiver]->isSelected()){
-                val.receiver=!bool(val.receiver);
-            }
-        }
+        val.receiver = currentReceiver;
     case funcSelectedMode:
     case funcMainMode:
         receivers[val.receiver]->receiveMode(val.value.value<modeInfo>(),vfo);
@@ -5614,7 +5601,24 @@ void wfmain::receiveValue(cacheItem val){
                 qCritical(logSystem()) << "Thread is NOT the main UI thread, cannot hide/unhide VFO";
             } else {
 
-                subScope = val.value.value<bool>();
+                currentReceiver = val.value.value<uchar>();
+
+                for (uchar rx=0;rx<receivers.size();rx++) {
+                    //if (!receivers[rx]->isVisible() && (rx == currentReceiver || ui->scopeDualBtn->isChecked())) {
+                    //    receivers[rx]->setVisible(true);
+                    //} else if (rx != currentReceiver && !ui->scopeDualBtn->isChecked() && receivers[rx]->isVisible()) {
+                    //    receivers[rx]->setVisible(false);
+                    //}
+
+                    if (rx == currentReceiver && !receivers[rx]->isSelected()) {
+                        receivers[rx]->selected(true);
+                    } else if (rx != currentReceiver && receivers[rx]->isSelected()) {
+                        receivers[rx]->selected(false);
+                    }
+
+                }
+
+                /*
                 // This tells us whether we are receiving main or sub data
                 if (!subScope && !receivers[0]->isVisible()) {
                         receivers[1]->setVisible(false);
@@ -5627,10 +5631,13 @@ void wfmain::receiveValue(cacheItem val){
                 if (ui->scopeDualBtn->isChecked()) {
                     receivers[0]->selected(!subScope);
                     receivers[1]->selected(subScope);
+
                 } else {
                     receivers[0]->selected(true);
                     receivers[1]->selected(false);
+                    currentReceiver = 0;
                 }
+                */
             }
         }
         break;
@@ -5645,6 +5652,14 @@ void wfmain::receiveValue(cacheItem val){
             } else {
                 // This tells us whether we are receiving single or dual scopes
                 ui->scopeDualBtn->setChecked(val.value.value<bool>());
+                for (uchar rx=0;rx<receivers.size();rx++) {
+                    if (!receivers[rx]->isVisible() && (rx == currentReceiver || val.value.value<bool>())) {
+                        receivers[rx]->setVisible(true);
+                    } else if (rx != currentReceiver && !val.value.value<bool>() && receivers[rx]->isVisible()) {
+                        receivers[rx]->setVisible(false);
+                    }
+                }
+                /*
                 if (val.value.value<bool>()) {
                     if (!receivers[1]->isVisible())
                     {
@@ -5664,6 +5679,7 @@ void wfmain::receiveValue(cacheItem val){
                         receivers[0]->setVisible(false);
                     }
                 }
+                */
             }
         }
         break;
@@ -5750,8 +5766,12 @@ void wfmain::on_showSettingsBtn_clicked()
 
 void wfmain::on_scopeMainSubBtn_clicked()
 {
-    subScope = !subScope;
-    queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(subScope),false));
+    if (currentReceiver<receivers.size()-1){
+        currentReceiver++;
+    } else {
+        currentReceiver = 0;
+    }
+    queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(currentReceiver),false));
 }
 
 void wfmain::on_scopeDualBtn_toggled(bool en)

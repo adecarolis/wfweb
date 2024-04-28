@@ -821,6 +821,7 @@ private:
     audioDevices* audioDev = Q_NULLPTR;
     QImage lcdImage;
     connectionStatus_t connStatus = connDisconnected;
+    uchar currentReceiver = 0;
 
 };
 
