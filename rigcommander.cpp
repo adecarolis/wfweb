@@ -976,7 +976,7 @@ void rigCommander::parseCommand()
 
         }
         if (!value.isValid()) {
-            qWarning(logRig()) << QString("Unknown BSR received (%0) check rig file").arg(payloadIn.toHex(' '));
+            qWarning(logRig()) << "Unknown BSR received, check rig file:" << payloadIn.toHex(' ');
         }
         break;
     }
