@@ -2163,22 +2163,22 @@ bool rigCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType* 
             mem->frequencyB.Hz = parseFreqDataToInt(data);
             break;
         case 'g':
-            mem->mode=data[0];
+            mem->mode=bcdHexToUChar(data[0]);
             break;
         case 'G':
-            mem->modeB=data[0];
+            mem->modeB=bcdHexToUChar(data[0]);
             break;
         case 'h':
-            mem->filter=data[0];
+            mem->filter=bcdHexToUChar(data[0]);
             break;
         case 'H':
-            mem->filterB=data[0];
+            mem->filterB=bcdHexToUChar(data[0]);
             break;
         case 'i': // single datamode
-            mem->datamode=data[0];
+            mem->datamode=bcdHexToUChar(data[0]);
             break;
         case 'I': // single datamode
-            mem->datamodeB=data[0];
+            mem->datamodeB=bcdHexToUChar(data[0]);
             break;
         case 'j': // combined duplex and tonemode
             mem->duplex=duplexMode_t(quint8(data[0] >> 4 & 0x0f));
@@ -2668,22 +2668,22 @@ void rigCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         payload.append(makeFreqPayload(mem.frequencyB));
                         break;
                     case 'g':
-                        payload.append(mem.mode);
+                        payload.append(bcdEncodeChar(mem.mode));
                         break;
                     case 'G':
-                        payload.append(mem.modeB);
+                        payload.append(bcdEncodeChar(mem.modeB));
                         break;
                     case 'h':
-                        payload.append(mem.filter);
+                        payload.append(bcdEncodeChar(mem.filter));
                         break;
                     case 'H':
-                        payload.append(mem.filterB);
+                        payload.append(bcdEncodeChar(mem.filterB));
                         break;
                     case 'i': // single datamode
-                        payload.append(mem.datamode);
+                        payload.append(bcdEncodeChar(mem.datamode));
                         break;
                     case 'I':
-                        payload.append(mem.datamodeB);
+                        payload.append(bcdEncodeChar(mem.datamodeB));
                         break;
                     case 'j': // combined duplex and tonemode
                         payload.append((mem.duplex << 4) | mem.tonemode);

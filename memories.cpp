@@ -927,6 +927,7 @@ void memories::on_group_currentIndexChanged(int index)
             queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(lastMemoryRequested)));
         }
     }
+    ui->loadingMemories->setText(QString("Loading Memory %0/%1 (this may take a while!)").arg(lastMemoryRequested&0xffff,3,10,QLatin1Char('0')).arg(rigCaps->memories,3,10,QLatin1Char('0')));
 }
 
 void memories::on_vfoMode_clicked()
@@ -949,6 +950,7 @@ void memories::on_memoryMode_clicked()
 
 void memories::receiveMemory(memoryType mem)
 {
+    ui->loadingMemories->setText(QString("Loading Memory %0/%1 (this may take a while!)").arg(lastMemoryRequested&0xffff,3,10,QLatin1Char('0')).arg(rigCaps->memories,3,10,QLatin1Char('0')));
     // First, do we need to request the next memory?
     if ((lastMemoryRequested & 0xffff) < groupMemories)
     {
