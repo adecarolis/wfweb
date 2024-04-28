@@ -666,7 +666,7 @@ void rigCommander::parseData(QByteArray dataInput)
                     // This is an echo of our own broadcast request.
                     // The data are "to 00" and "from E1"
                     // Don't use it!
-                    qDebug(logRig()) << "Caught it! Found the echo'd broadcast request from us! Rig has not responded to broadcast query yet.";
+                    qDebug(logRig()) << "Echo caught:" << data.toHex(' ');
                 } else {
                     payloadIn = data.right(data.length() - 4); // Removes FE FE E0 94 part
                     if(payloadIn.contains("\xFE"))
@@ -777,7 +777,7 @@ void rigCommander::parseCommand()
     case funcModeTR:
     {
         modeInfo m;
-        m = parseMode(payloadIn[0], m.filter,receiver);
+        m = parseMode(bcdHexToUChar(payloadIn[0]), m.filter,receiver);
 
         if(payloadIn.size() > 1)
         {
@@ -794,12 +794,14 @@ void rigCommander::parseCommand()
     case funcUnselectedMode:
     case funcMainMode:
     {
-        // New format payload with mode+datamode+filter
-        modeInfo m = parseMode(bcdHexToUChar(payloadIn[0]), bcdHexToUChar(payloadIn[2]),receiver);
-        m.data = bcdHexToUChar(payloadIn[1]);
-        m.VFO = selVFO_t(receiver);
-        value.setValue(m);
-        //qDebug(logRig()) << "Got Mode" << m.name << "data" << m.data;
+        // If in an invalid mode, the radio may respond with 0xff
+        if (uchar(payloadIn[0]) != 0xff) {
+            // New format payload with mode+datamode+filter
+            modeInfo m = parseMode(bcdHexToUChar(payloadIn[0]), bcdHexToUChar(payloadIn[2]),receiver);
+            m.data = bcdHexToUChar(payloadIn[1]);
+            m.VFO = selVFO_t(receiver);
+            value.setValue(m);
+        }
         break;
     }
 
@@ -2004,7 +2006,7 @@ modeInfo rigCommander::parseMode(quint8 mode, quint8 filter, uchar receiver)
     }
 
     if (!found) {
-        qInfo(logRig()) << QString("parseMode() Couldn't find a matching mode %0 with filter %1").arg(mode).arg(filter);
+        qInfo(logRig()) << QString("parseMode() No such mode %0 with filter %1").arg(mode).arg(filter) << payloadIn.toHex(' ') ;
     }
 
     // We cannot query sub VFO width without command29.
@@ -2493,6 +2495,10 @@ void rigCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 qDebug(logRig()) << "Removing unsupported set command from queue" << funcString[func] << "VFO" << receiver;
                 queue->del(func,receiver);
                 return;
+            } if (func == funcFreqSet) {
+                queue->addUnique(priorityImmediate,funcFreqGet,false,receiver);
+            } else if (func == funcModeSet) {
+                queue->addUnique(priorityImmediate,funcModeGet,false,receiver);
             } else if (cmd.getCmd && func != funcScopeFixedEdgeFreq && func != funcSpeech && func != funcBandStackReg && func != funcMemoryContents && func != funcSendCW) {
                 // This was a set command, so queue a get to retrieve the updated value
                 queue->addUnique(priorityImmediate,func,false,receiver);

@@ -191,7 +191,7 @@ void commHandler::receiveDataIn()
     if (inPortData.startsWith("\xFC\xFC\xFC\xFC\xFC"))
     {
         // Collision detected by remote end, re-send previous command.
-        qInfo(logSerial()) << "Collision detected by remote, resending previous command";
+        qInfo(logSerial()) << "COLLISION, resending:"<<previousSent.toHex(' ');
         port->commitTransaction();
         emit sendDataOutToPort(previousSent);
         return;
@@ -216,7 +216,7 @@ void commHandler::receiveDataIn()
     {
         if(inPortData.contains("\xFC"))
         {
-            //qInfo(logSerial()) << "Transaction contains collision data. Dumping.";
+            qInfo(logSerial()) << "Transaction contains collision data. Dumping.";
             //printHex(inPortData, false, true);
             port->commitTransaction();
             return;

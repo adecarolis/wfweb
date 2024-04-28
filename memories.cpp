@@ -82,7 +82,11 @@ memories::memories(bool slowLoad, QWidget *parent) :
     ui->group->blockSignals(true);
     ui->group->addItem("Memory Group",-1);
     for (int i=rigCaps->memStart;i<=rigCaps->memGroups;i++) {
-
+        if (i == rigCaps->memStart) {
+            // Disable title if any groups to stop it being selected.
+            auto* model = qobject_cast<QStandardItemModel*>(ui->group->model());
+            model->item(0)->setEnabled(false);
+        }
         ui->group->addItem(QString("Group %0").arg(i,2,10,QChar('0')),i);
     }
 
@@ -463,14 +467,16 @@ void memories::on_group_currentIndexChanged(int index)
 
     QVector<memParserFormat> parser;
 
-    queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue<bool>(ui->group->currentData().toInt() == MEMORY_SATGROUP)));
     if (ui->group->currentData().toInt() == MEMORY_SATGROUP) {
+        queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue<bool>(ui->group->currentData().toInt() == MEMORY_SATGROUP)));
         queue->del(funcMainFreq,false);
         queue->del(funcMainMode,false);
         queue->del(funcSubFreq,true);
         queue->del(funcSubMode,true);
         parser = rigCaps->satParser;
     } else {
+        // If the rig has memory groups, select it now.
+        queue->add(priorityImmediate,queueItem(funcMemoryGroup,QVariant::fromValue<uchar>(ui->group->currentData().toInt())));
         queue->addUnique(priorityMedium,funcMainFreq,true,false);
         queue->addUnique(priorityMedium,funcMainMode,true,false);
         queue->addUnique(priorityMedium,funcSubFreq,true,true);
@@ -992,6 +998,9 @@ void memories::receiveMemory(memoryType mem)
             connect(recall, &QPushButton::clicked, this, [=]() {
                 qInfo() << "Recalling" << mem.channel;
                 queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | mem.channel))));
+                // We also should request the current frequency/mode etc so that the UI is updated.
+                queue->add(priorityImmediate,funcSelectedFreq,false,0);
+                queue->add(priorityImmediate,funcSelectedMode,false,0);
             });
         }
 

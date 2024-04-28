@@ -414,7 +414,7 @@ void rigCtlClient::socketReadyRead()
 
                 if (((commands_list[i].flags & ARG_IN) == ARG_IN))
                 {
-                    // For debugging only REMOVE next line
+                    // For debugging only comment next line M0VSE
                     qInfo(logRigCtlD()) << "Received set command" << commands;
                     setCommand=true;
                 }
@@ -789,7 +789,12 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         func = funcMainFreq;
     } else if ((cmd.func == funcModeGet || cmd.func == funcModeSet) && rigCaps->commands.contains(funcMainMode)) {
         func = funcMainMode;
-    } else {
+    } else if ((cmd.func == funcFreqGet || cmd.func == funcFreqSet) && rigCaps->commands.contains(funcSelectedFreq)) {
+            func = funcSelectedFreq;
+        } else if ((cmd.func == funcModeGet || cmd.func == funcModeSet) && rigCaps->commands.contains(funcSelectedMode)) {
+            func = funcSelectedMode;
+    }
+    else {
         func = cmd.func;
     }
     if (((cmd.flags & ARG_IN) == ARG_IN) && params.size())
