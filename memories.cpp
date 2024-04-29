@@ -4,7 +4,7 @@
 #include "memories.h"
 #include "ui_memories.h"
 
-memories::memories(bool slowLoad, QWidget *parent) :
+memories::memories(bool isAdmin, bool slowLoad, QWidget *parent) :
     QWidget(parent),
     slowLoad(slowLoad),
     ui(new Ui::memories)
@@ -19,7 +19,10 @@ memories::memories(bool slowLoad, QWidget *parent) :
     this->setObjectName("memories");
     queue = cachingQueue::getInstance(this);
     rigCaps = queue->getRigCaps();
-
+    if (!isAdmin)
+    {
+        ui->disableEditing->setEnabled(false);
+    }
     if (rigCaps == Q_NULLPTR)
     {
         // We have no rigCaps, so cannot continue

@@ -443,8 +443,8 @@ void wfmain::openRig()
     emit connectionStatus(true); // Signal any other parts that need to know if we are connecting/connected.
     ui->connectBtn->setText("Cancel connection"); // We are attempting to connect
     connStatus = connConnecting;
-
-    // PET: This could be in a better place?
+    isRadioAdmin = true; // Set user to admin, will be reset if not.
+    // M0VSE: This could be in a better place maybe?
     if (prefs.audioSystem == tciAudio)
     {
         prefs.rxSetup.tci = tci;
@@ -502,6 +502,7 @@ void wfmain::makeRig()
 
         connect(rig, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
         connect(rig, SIGNAL(setRadioUsage(quint8, bool, quint8, QString, QString)), selRad, SLOT(setInUse(quint8, bool, quint8, QString, QString)));
+        connect(rig, SIGNAL(setRadioUsage(quint8, bool, quint8, QString, QString)), this, SLOT(radioInUse(quint8, bool, quint8, QString, QString)));
         connect(selRad, SIGNAL(selectedRadio(quint8)), rig, SLOT(setCurrentRadio(quint8)));
         // Rig comm setup:
         connect(this, SIGNAL(sendCommSetup(rigTypedef,unsigned char, udpPreferences, audioSetup, audioSetup, QString, quint16)), rig, SLOT(commSetup(rigTypedef,unsigned char, udpPreferences, audioSetup, audioSetup, QString, quint16)));
@@ -5163,7 +5164,7 @@ void wfmain::on_memoriesBtn_clicked()
     if (rigCaps != Q_NULLPTR) {
         if (memWindow == Q_NULLPTR) {
             // Add slowload option for background loading.
-            memWindow = new memories(false);
+            memWindow = new memories(isRadioAdmin, false);
             this->memWindow->connect(this, SIGNAL(haveMemory(memoryType)), memWindow, SLOT(receiveMemory(memoryType)));
 
             memWindow->populate(); // Call populate to get the initial memories
@@ -6047,6 +6048,15 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
 
     initPeriodicCommands();
     getInitialRigState();
+}
+
+
+void wfmain::radioInUse(quint8 radio, bool admin, quint8 busy, QString user, QString ip)
+{
+   Q_UNUSED(busy)
+   Q_UNUSED(radio)
+   qDebug(logSystem()) << "Is this user an admin?" << user << admin;
+   isRadioAdmin = admin;
 }
 
 /* USB Hotplug support added at the end of the file for convenience */

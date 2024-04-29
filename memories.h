@@ -32,7 +32,7 @@ class memories : public QWidget
     Q_OBJECT
 
 public:
-    explicit memories(bool slowLoad=false,QWidget *parent = nullptr);
+    explicit memories(bool isAdmin, bool slowLoad=false,QWidget *parent = nullptr);
     ~memories();
     void populate();
 

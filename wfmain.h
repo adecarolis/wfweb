@@ -500,7 +500,7 @@ private slots:
     void receiveElapsed(bool sub, qint64 us);
     void connectionTimeout();
     void receiveRigCaps(rigCapabilities* caps);
-
+    void radioInUse(quint8 radio, bool admin, quint8 busy, QString user, QString ip);
 
 private:
     Ui::wfmain *ui; // Main UI
@@ -822,7 +822,7 @@ private:
     QImage lcdImage;
     connectionStatus_t connStatus = connDisconnected;
     uchar currentReceiver = 0;
-
+    bool isRadioAdmin = true;
 };
 
 Q_DECLARE_METATYPE(udpPreferences)
