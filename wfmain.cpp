@@ -207,7 +207,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         }
     }
 
-    // Setup the connectiontimer as we will need it soon!
+    // Setup the connectiontimer as we may need it soon!
     ConnectionTimer.setSingleShot(true);
     connect(&ConnectionTimer,SIGNAL(timeout()), this,SLOT(connectionTimeout()));
 
@@ -453,14 +453,14 @@ void wfmain::openRig()
 
     makeRig();
 
-    // 10 second connection timeout.
-    ConnectionTimer.start(10000);
 
     if (prefs.enableLAN)
     {
         usingLAN = true;
         // "We need to setup the tx/rx audio:
         udpPrefs.waterfallFormat = prefs.waterfallFormat;
+        // 10 second connection timeout.
+        ConnectionTimer.start(10000);
         emit sendCommSetup(rigList, prefs.radioCIVAddr, udpPrefs, prefs.rxSetup, prefs.txSetup, prefs.virtualSerialPort, prefs.tcpPort);
     } else {
         if( (prefs.serialPortRadio.toLower() == QString("auto")))
