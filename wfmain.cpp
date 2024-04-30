@@ -144,6 +144,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     queue = cachingQueue::getInstance(this);
 
     connect(queue,SIGNAL(sendValue(cacheItem)),this,SLOT(receiveValue(cacheItem)));
+    connect(queue,SIGNAL(sendMessage(QString)),this,SLOT(showStatusBarText(QString)));
     // We need to populate the list of rigs as early as possible so do it now
 
 #ifndef Q_OS_LINUX
@@ -704,11 +705,7 @@ void wfmain::receiveCommReady()
         // qInfo(logSystem()) << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
         ui->statusBar->showMessage(QString("Searching CI-V bus for connected radios."), 1000);
 
-        //emit getRigCIV();
-        //queue->add(priorityImmediate,funcTransceiverId,false);
         queue->addUnique(priorityHighest,funcTransceiverId,true);
-        //issueDelayedCommand(cmdGetRigCIV);
-        //delayedCommand->start();
     } else {
         // don't bother, they told us the CIV they want, stick with it.
         // We still query the rigID to find the model, but at least we know the CIV.
@@ -721,12 +718,8 @@ void wfmain::receiveCommReady()
             emit setRigID(prefs.radioCIVAddr);
         } else {
             emit setCIVAddr(prefs.radioCIVAddr);
-            //emit getRigCIV();
-            //queue->add(priorityImmediate,funcTransceiverId,false);
             queue->addUnique(priorityHighest,funcTransceiverId,true);
-            //emit getRigID();
-            //issueDelayedCommand(cmdGetRigID);
-            //delayedCommand->start();
+
         }
     }
 }
@@ -848,22 +841,6 @@ void wfmain::setupMainUI()
                 [=](const int &newValue) { statusFromSliderPercent("Squelch", newValue);}
     );
 
-/*
-    connect(this->cw, &cwSender::sendCW,
-            [=](const QString &cwMessage) { issueCmd(cmdSendCW, cwMessage);});
-    connect(this->cw, &cwSender::stopCW,
-            [=]() { issueDelayedCommand(cmdStopCW);});
-    connect(this->cw, &cwSender::setBreakInMode,
-            [=](const unsigned char &bmode) { issueCmd(cmdSetBreakMode, bmode);});
-    connect(this->cw, &cwSender::setKeySpeed,
-        [=](const unsigned char& wpm) { issueCmd(cmdSetKeySpeed, wpm); });
-    connect(this->cw, &cwSender::setPitch,
-        [=](const unsigned char& pitch) { issueCmd(cmdSetCwPitch, pitch); });
-    connect(this->cw, &cwSender::getCWSettings,
-            [=]() { issueDelayedCommand(cmdGetKeySpeed);
-                    issueDelayedCommand(cmdGetBreakMode);});
-*/
-
 }
 
 void wfmain::connectSettingsWidget()
@@ -939,7 +916,6 @@ void wfmain::setInitialTiming()
     delayedCmdIntervalLAN_ms = 70; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdIntervalSerial_ms = 100; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdStartupInterval_ms = 250; // interval for rigID polling
-    delayedCommand = new QTimer(this);
     queue->interval(delayedCmdStartupInterval_ms);
 
     pttTimer = new QTimer(this);
@@ -3507,38 +3483,6 @@ void wfmain:: getInitialRigState()
 
     queue->del(funcTransceiverId); // This command is no longer required
 
-    /*
-    queue->add(priorityImmediate,(rigCaps->commands.contains(funcMainFreq)?funcMainFreq:funcFreqGet),false);
-    queue->add(priorityImmediate,(rigCaps->commands.contains(funcSubMode)?funcSubMode:funcModeGet),false);
-    queue->add(priorityImmediate,(rigCaps->commands.contains(funcSubFreq)?funcSubFreq:funcNone),false,true);
-    queue->add(priorityImmediate,(rigCaps->commands.contains(funcSubMode)?funcSubMode:funcNone),false,true);
-
-    // From left to right in the UI:
-    if (rigCaps->hasTransmit)
-    {
-        queue->add(priorityImmediate,funcDataModeWithFilter);
-        queue->add(priorityImmediate,(rigCaps->commands.contains(funcDATAOffMod)?funcDATAOffMod:funcNone),false);
-        queue->add(priorityImmediate,(rigCaps->commands.contains(funcDATA1Mod)?funcDATA1Mod:funcNone),false);
-        queue->add(priorityImmediate,(rigCaps->commands.contains(funcDATA2Mod)?funcDATA2Mod:funcNone),false);
-        queue->add(priorityImmediate,(rigCaps->commands.contains(funcDATA3Mod)?funcDATA3Mod:funcNone),false);
-        queue->add(priorityImmediate,(rigCaps->commands.contains(funcRFPower)?funcRFPower:funcNone),false);
-        queue->add(priorityImmediate,getInputTypeCommand(currentModDataOffSrc.type),false);
-        queue->add(priorityImmediate,getInputTypeCommand(currentModData1Src.type),false);
-        if (rigCaps->commands.contains(funcDATA2Mod))
-            queue->add(priorityImmediate,getInputTypeCommand(currentModData2Src.type),false);
-        if (rigCaps->commands.contains(funcDATA3Mod))
-            queue->add(priorityImmediate,getInputTypeCommand(currentModData3Src.type),false);
-    }
-
-    queue->add(priorityImmediate,funcRfGain,false,false);
-
-    if (!usingLAN)
-        queue->add(priorityImmediate,funcAfGain,false);
-
-    queue->add(priorityImmediate,funcMonitor,false);
-    queue->add(priorityImmediate,funcMonitorGain,false);
-
-    */
     if(rigCaps->hasSpectrum)
     {
         queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
@@ -3584,59 +3528,6 @@ void wfmain:: getInitialRigState()
         receiver->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits,&rigCaps->bands);
 
     }
-
-    /*
-
-    if (rigCaps->commands.contains(funcFilterWidth))
-        queue->add(priorityHigh,funcFilterWidth,false);
-
-
-    if (rigCaps->commands.contains(funcSplitStatus))
-        queue->add(priorityHigh,funcSplitStatus,false);
-
-    if(rigCaps->commands.contains(funcTuningStep))
-        queue->add(priorityImmediate,funcTuningStep,false);
-
-    if(rigCaps->commands.contains(funcRepeaterTone))
-    {
-        queue->add(priorityImmediate,funcRepeaterTone,false);
-        queue->add(priorityImmediate,funcRepeaterTSQL,false);
-    }
-
-    if(rigCaps->commands.contains(funcRepeaterDTCS))
-        queue->add(priorityImmediate,funcRepeaterDTCS,false);
-
-    if(rigCaps->commands.contains(funcToneSquelchType))
-        queue->add(priorityImmediate,funcToneSquelchType,false);
-
-    if(rigCaps->commands.contains(funcAntenna))
-        queue->add(priorityImmediate,funcAntenna,false);
-
-    if(rigCaps->commands.contains(funcAttenuator))
-        queue->add(priorityImmediate,funcAttenuator,false);
-
-    if(rigCaps->commands.contains(funcPreamp))
-        queue->add(priorityImmediate,funcPreamp,false);
-
-    if (rigCaps->commands.contains(funcRitStatus))
-    {
-        queue->add(priorityImmediate,funcRITFreq,false);
-        queue->add(priorityImmediate,funcRitStatus,false);
-    }
-
-    if(rigCaps->commands.contains(funcIFShift))
-        queue->add(priorityImmediate,funcIFShift,false);
-
-    if(rigCaps->commands.contains(funcPBTInner) && rigCaps->commands.contains(funcPBTOuter))
-    {
-        queue->add(priorityImmediate,funcPBTInner,false);
-        queue->add(priorityImmediate,funcPBTOuter,false);
-    }
-
-    if(rigCaps->commands.contains(funcTunerStatus))
-        queue->add(priorityImmediate,funcTunerStatus,false);
-
-    */
 }
 
 void wfmain::showStatusBarText(QString text)
@@ -4034,9 +3925,6 @@ void wfmain::gotoMemoryPreset(int presetNumber)
     //m.filter = ui->modeFilterCombo->currentIndex()+1;
     m.reg =(unsigned char) m.mk; // fallback, works only for some modes
     memFreq.Hz = temp.frequency * 1E6;
-    //issueCmd(cmdSetFreq, memFreq);
-    //issueDelayedCommand(cmdSetModeFilter); // goes to setModeVal
-    //issueCmd(cmdSetMode, m);
     memFreq.MHzDouble = memFreq.Hz / 1.0E6;
     if (receivers.size())
         receivers[0]->setFrequency(memFreq);
@@ -4171,8 +4059,7 @@ void wfmain::handlePttLimit()
 {
     // transmission time exceeded!
     showStatusBarText("Transmit timeout at 3 minutes. Sending PTT OFF command now.");
-    //queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false));
-    //issueDelayedCommand(cmdGetPTT);
+    queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false));
 }
 
 void wfmain::on_saveSettingsBtn_clicked()
@@ -4679,21 +4566,19 @@ void wfmain::calculateTimingParameters()
 
     if(rigCaps != Q_NULLPTR && rigCaps->hasFDcomms)
     {
-        delayedCommand->setInterval( msMinTiming); // 20 byte message
         queue->interval(msMinTiming);
     } else {
-        delayedCommand->setInterval( msMinTiming * 4); // Multiply by 4 to allow rigMemories to be received.
         queue->interval(msMinTiming * 4);
     }
 
-    qInfo(logSystem()) << "Delay command interval timing: " << delayedCommand->interval() << "ms";
+    qInfo(logSystem()) << "Delay command interval timing: " << queue->interval() << "ms";
 
     // Normal:
-    delayedCmdIntervalLAN_ms =  delayedCommand->interval();
-    delayedCmdIntervalSerial_ms = delayedCommand->interval();
+    delayedCmdIntervalLAN_ms =  queue->interval();
+    delayedCmdIntervalSerial_ms = queue->interval();
 
     // startup initial state:
-    delayedCmdStartupInterval_ms =  delayedCommand->interval() * 3;
+    delayedCmdStartupInterval_ms =  queue->interval() * 3;
 }
 
 void wfmain::receiveBaudRate(quint32 baud)
@@ -4747,32 +4632,23 @@ void wfmain::on_rigPowerOffBtn_clicked()
 
 void wfmain::powerRigOn()
 {
-
+    // Bypass the queue
     emit sendPowerOn();
-
-    delayedCommand->setInterval(3000); // 3 seconds
-    //if(ui->scopeEnableWFBtn->checkState() != Qt::Unchecked)
-    //{
-        //issueDelayedCommand(cmdDispEnable);
-        //issueDelayedCommand(cmdQueNormalSpeed);
-        //issueDelayedCommand(cmdSpecOn);
-        //issueDelayedCommand(cmdStartRegularPolling); // s-meter, etc
-    //} else {
-        //issueDelayedCommand(cmdQueNormalSpeed);
-        //issueDelayedCommand(cmdSpecOff);
-        //issueDelayedCommand(cmdStartRegularPolling); // s-meter, etc
-    //}
-    delayedCommand->start();
-    calculateTimingParameters(); // Set queue interval
-
+    // Need to allow time for the rig to power-on.
+    // If we have no rigCaps then usual rig detection should occur.
+    if (rigCaps != Q_NULLPTR) {
+        calculateTimingParameters(); // Set queue interval
+        QTimer::singleShot(5000, this, SLOT(initPeriodicCommands()));
+        QTimer::singleShot(6500, this, SLOT(getInitialRigState()));
+    }
 }
 
 void wfmain::powerRigOff()
 {
-    delayedCommand->stop();
-    queue->interval(0);
-
+    // Clear the queue to stop sending lots of data.
+    queue->clear();
     emit sendPowerOff();
+    queue->interval(0);
 }
 
 void wfmain::on_ritTuneDial_valueChanged(int value)
@@ -4879,7 +4755,6 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
     funcs newCmd = meter_tToMeterCommand(newMeterType);
     funcs oldCmd = meter_tToMeterCommand(oldMeterType);
 
-    //removePeriodicCommand(oldCmd);
     if (oldCmd != funcSMeter && oldCmd != funcNone)
         queue->del(oldCmd);
 
@@ -4909,10 +4784,6 @@ void wfmain::enableRigCtl(bool enabled)
         // Start rigctld
         rigCtl = new rigCtlD(this);
         rigCtl->startServer(prefs.rigCtlPort);
-        //if (rig != Q_NULLPTR) {
-        //    // We are already connected to a rig.
-        //    emit sendRigCaps(rigCaps);
-        //}
     }
 }
 
@@ -6055,7 +5926,8 @@ void wfmain::radioInUse(quint8 radio, bool admin, quint8 busy, QString user, QSt
 {
    Q_UNUSED(busy)
    Q_UNUSED(radio)
-   qDebug(logSystem()) << "Is this user an admin?" << user << admin;
+   Q_UNUSED(user)
+   qDebug(logSystem()) << "Is this user an admin? " << ((admin)?"yes":"no");
    isRadioAdmin = admin;
 }
 

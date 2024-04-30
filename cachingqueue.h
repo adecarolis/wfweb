@@ -58,6 +58,7 @@ class cachingQueue : public QThread
 signals:
     void haveCommand(funcs func, QVariant param, uchar receiver);
     void sendValue(cacheItem item);
+    void sendMessage(QString msg);
     void cacheUpdated(cacheItem item);
     void rigCapsUpdated(rigCapabilities* caps);
 
@@ -75,6 +76,7 @@ private:
     QMultiMap <queuePriority,queueItem> queue;
     QMultiMap<funcs,cacheItem> cache;
     QQueue<cacheItem> items;
+    QQueue<QString> messages;
 
     // Command to set cache value
     void setCache(funcs func, QVariant val, uchar receiver=0);
@@ -110,6 +112,7 @@ public:
     void del(funcs func, uchar receiver=0);
     void clear();
     void interval(quint64 val);
+    quint64 interval() {return queueInterval;}
     void updateCache(bool reply, queueItem item);
     void updateCache(bool reply, funcs func, QVariant value=QVariant(), uchar receiver=0);
 

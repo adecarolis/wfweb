@@ -104,18 +104,19 @@ void commHandler::sendDataOut(const QByteArray &writeData)
     }
 
     // Recycle port to attempt reconnection.
-    if (lastDataReceived.msecsTo(QTime::currentTime()) > 2000) {
+    if (lastDataReceived.msecsTo(QTime::currentTime()) > 10000) {
         qDebug(logSerial()) << "Serial port error? Attempting reconnect...";
         lastDataReceived = QTime::currentTime();
-        QTimer::singleShot(500, this, SLOT(init()));
+        QTimer::singleShot(100, this, SLOT(init()));
+        QTimer::singleShot(500, this, [=]() { sendDataOut(writeData); });
         return;
     }
 
     mutex.lock();
 
-    qint64 bytesWritten;
-
     previousSent = writeData;
+
+    qint64 bytesWritten;
 
     if(PTTviaRTS)
     {

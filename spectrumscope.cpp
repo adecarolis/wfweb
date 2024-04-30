@@ -1140,10 +1140,10 @@ void spectrumScope::scopeClick(QMouseEvent* me)
 
         else if (clickDragTuning)
         {
-            showStatusBarText(QString("Selected %1 MHz").arg(this->mousePressFreq));
+            emit showStatusBarText(QString("Selected %1 MHz").arg(this->mousePressFreq));
         }
         else {
-            showStatusBarText(QString("Selected %1 MHz").arg(this->mousePressFreq));
+            emit showStatusBarText(QString("Selected %1 MHz").arg(this->mousePressFreq));
         }
 
     }

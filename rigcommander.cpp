@@ -667,6 +667,8 @@ void rigCommander::parseData(QByteArray dataInput)
                     // The data are "to 00" and "from E1"
                     // Don't use it!
                     qDebug(logRig()) << "Echo caught:" << data.toHex(' ');
+                    queue->message("Radio is available but may be powered-off");
+
                 } else {
                     payloadIn = data.right(data.length() - 4); // Removes FE FE E0 94 part
                     if(payloadIn.contains("\xFE"))

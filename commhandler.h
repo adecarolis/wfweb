@@ -91,7 +91,7 @@ private:
     quint8 spectrumCenterOrFixed;
     quint8 spectrumInformation;
     quint8 lastSpectrum = 0;
-    QTime lastDataReceived;
+    QTime lastDataReceived = QTime::currentTime();
 };
 
 #endif // COMMHANDLER_H

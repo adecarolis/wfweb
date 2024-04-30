@@ -502,6 +502,11 @@ private slots:
     void receiveRigCaps(rigCapabilities* caps);
     void radioInUse(quint8 radio, bool admin, quint8 busy, QString user, QString ip);
 
+    // Moved to slots to allow them to be delayed.
+    void getInitialRigState();
+    void initPeriodicCommands();
+
+
 private:
     Ui::wfmain *ui; // Main UI
     QVector<spectrumScope*>receivers;   // Spectrum Scope items.
@@ -529,7 +534,6 @@ private:
     QCPItemText* ovfIndicator;
     void setAppTheme(bool isCustom);
 
-    void getInitialRigState();
     void showButton(QPushButton *btn);
     void hideButton(QPushButton *btn);
 
@@ -681,7 +685,6 @@ private:
     void setTuningSteps();
 
     void calculateTimingParameters();
-    void initPeriodicCommands();
     void changePollTiming(int timing_ms, bool setUI=false);
 
     quint64 roundFrequency(quint64 frequency, unsigned int tsHz);

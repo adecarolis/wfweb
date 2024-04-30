@@ -98,6 +98,9 @@ void cachingQueue::run()
             while (!items.isEmpty()) {
                 emit sendValue(items.dequeue());
             }
+            while (!messages.isEmpty()) {
+                emit sendMessage(messages.dequeue());
+            }
         }
     }
 }
@@ -259,6 +262,8 @@ void cachingQueue::clear()
 }
 void cachingQueue::message(QString msg)
 {
+    QMutexLocker locker(&mutex);
+    messages.append(msg);
     qInfo() << "Received:" << msg;
     waiting.wakeOne();
 }
