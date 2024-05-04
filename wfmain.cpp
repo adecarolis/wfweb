@@ -1542,6 +1542,7 @@ void wfmain::setDefPrefs()
     defPrefs.scopeScrollY = 120;
     defPrefs.confirmExit = true;
     defPrefs.confirmPowerOff = true;
+    defPrefs.confirmSettingsChanged = true;
     defPrefs.meter2Type = meterNone;
     defPrefs.meter3Type = meterNone;
     defPrefs.compMeterReverse = false;
@@ -1618,6 +1619,7 @@ void wfmain::loadSettings()
     setWindowState(Qt::WindowActive); // Works around QT bug to returns window+keyboard focus.
     prefs.confirmExit = settings->value("ConfirmExit", defPrefs.confirmExit).toBool();
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
+    prefs.confirmSettingsChanged = settings->value("ConfirmSettingsChanged", defPrefs.confirmSettingsChanged).toBool();
     prefs.meter2Type = static_cast<meter_t>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
     prefs.meter3Type = static_cast<meter_t>(settings->value("Meter3Type", defPrefs.meter3Type).toInt());
     prefs.compMeterReverse = settings->value("compMeterReverse", defPrefs.compMeterReverse).toBool();
@@ -2798,6 +2800,7 @@ void wfmain::saveSettings()
     settings->setValue("SubWFLength", prefs.subWflength);
     settings->setValue("ConfirmExit", prefs.confirmExit);
     settings->setValue("ConfirmPowerOff", prefs.confirmPowerOff);
+    settings->setValue("ConfirmSettingsChanged", prefs.confirmSettingsChanged);
     settings->setValue("Meter2Type", (int)prefs.meter2Type);
     settings->setValue("Meter3Type", (int)prefs.meter3Type);
     settings->setValue("compMeterReverse", prefs.compMeterReverse);
@@ -4004,53 +4007,78 @@ void wfmain::on_tuneEnableChk_clicked(bool checked)
 bool wfmain::on_exitBtn_clicked()
 {
     bool ret=false;
-    if (prefs.settingsChanged)
+    if (prefs.settingsChanged && prefs.confirmSettingsChanged)
     {
-        // Settings have changed since last save
-        qInfo() << "Settings have changed since last save";
-        int reply = QMessageBox::question(this,"wfview","Settings have changed since last save, exit anyway?",QMessageBox::Save | QMessageBox::No |QMessageBox::Yes);
-        if (reply == QMessageBox::Save)
-        {
+        QCheckBox *cb = new QCheckBox("Don't ask me again");
+        cb->setToolTip("Don't ask me to confirm exit again");
+        QMessageBox msgbox;
+        msgbox.setText("Settings have changed since last save, exit anyway?\n");
+        msgbox.setIcon(QMessageBox::Icon::Question);
+        QAbstractButton *yesButton = msgbox.addButton(QMessageBox::Yes);
+        QAbstractButton *saveButton = msgbox.addButton(QMessageBox::Save);
+        msgbox.addButton(QMessageBox::No);
+        msgbox.setDefaultButton(QMessageBox::Yes);
+        msgbox.setCheckBox(cb);
+
+        QObject::connect(cb, &QCheckBox::stateChanged, this, [this](int state){
+            if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked) {
+                prefs.confirmSettingsChanged=false;
+            } else {
+                prefs.confirmSettingsChanged=true;
+            }
+            settings->beginGroup("Interface");
+            settings->setValue("ConfirmSettingsChanged", this->prefs.confirmSettingsChanged);
+            settings->endGroup();
+            settings->sync();
+        });
+
+        msgbox.exec();
+        delete cb;
+
+        if (msgbox.clickedButton() == yesButton) {
+            QApplication::exit();
+        } else if (msgbox.clickedButton() == saveButton) {
             saveSettings();
-        } else if (reply == QMessageBox::No)
-        {
+        } else {
             return true;
         }
+
     }
 
     // Are you sure?
     if (!prefs.confirmExit) {
         QApplication::exit();
-    }
-    QCheckBox *cb = new QCheckBox("Don't ask me again");
-    cb->setToolTip("Don't ask me to confirm exit again");
-    QMessageBox msgbox;
-    msgbox.setText("Are you sure you wish to exit?\n");
-    msgbox.setIcon(QMessageBox::Icon::Question);
-    QAbstractButton *yesButton = msgbox.addButton(QMessageBox::Yes);
-    msgbox.addButton(QMessageBox::No);
-    msgbox.setDefaultButton(QMessageBox::Yes);
-    msgbox.setCheckBox(cb);
-
-    QObject::connect(cb, &QCheckBox::stateChanged, this, [this](int state){
-        if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked) {
-            prefs.confirmExit=false;
-        } else {
-            prefs.confirmExit=true;
-        }
-        settings->beginGroup("Interface");
-        settings->setValue("ConfirmExit", this->prefs.confirmExit);
-        settings->endGroup();
-        settings->sync();
-    });
-
-    msgbox.exec();
-    delete cb;
-
-    if (msgbox.clickedButton() == yesButton) {
-        QApplication::exit();
     } else {
-        ret=true;
+        QCheckBox *cb = new QCheckBox("Don't ask me again");
+        cb->setToolTip("Don't ask me to confirm exit again");
+        QMessageBox msgbox;
+        msgbox.setText("Are you sure you wish to exit?\n");
+        msgbox.setIcon(QMessageBox::Icon::Question);
+        QAbstractButton *yesButton = msgbox.addButton(QMessageBox::Yes);
+        msgbox.addButton(QMessageBox::No);
+        msgbox.setDefaultButton(QMessageBox::Yes);
+        msgbox.setCheckBox(cb);
+
+        QObject::connect(cb, &QCheckBox::stateChanged, this, [this](int state){
+            if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked) {
+                prefs.confirmExit=false;
+            } else {
+                prefs.confirmExit=true;
+            }
+            settings->beginGroup("Interface");
+            settings->setValue("ConfirmExit", this->prefs.confirmExit);
+            settings->endGroup();
+            settings->sync();
+        });
+
+        msgbox.exec();
+        delete cb;
+
+        if (msgbox.clickedButton() == yesButton) {
+            QApplication::exit();
+        } else {
+            ret=true;
+        }
     }
     return ret;
 }
@@ -5798,6 +5826,8 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
                 {
                     receiver->addData("Data On", 2);
                 }
+            } else {
+                setupui->hideModSource(1);
             }
 
             if (rigCaps->commands.contains(funcDATA2Mod))
@@ -5805,12 +5835,16 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
                 setupui->updateModSourceList(2, rigCaps->inputs);
                 receiver->addData("Data 1", 2);
                 receiver->addData("Data 2", 2);
+            } else {
+                setupui->hideModSource(2);
             }
 
             if (rigCaps->commands.contains(funcDATA3Mod))
             {
                 setupui->updateModSourceList(3, rigCaps->inputs);
                 receiver->addData("Data 3", 3);
+            } else {
+                setupui->hideModSource(3);
             }
 
             receiver->clearSpans();

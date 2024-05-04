@@ -1137,6 +1137,30 @@ void settingswidget::updateAllPrefs()
     updatingUIFromPrefs = false;
 }
 
+void settingswidget::hideModSource(uchar num)
+{
+    QComboBox* combo;
+    switch (num)
+    {
+    case 0:
+        combo = ui->modInputCombo;
+        break;
+    case 1:
+        combo = ui->modInputData1Combo;
+        break;
+    case 2:
+        combo = ui->modInputData2Combo;
+        ui->modInputData2ComboText->setVisible(false);
+        break;
+    case 3:
+        combo = ui->modInputData3Combo;
+        ui->modInputData3ComboText->setVisible(false);
+        break;
+    default:
+        return;
+    }
+    combo->setVisible(false);
+}
 
 void settingswidget::updateModSourceList(uchar num, QVector<rigInput> data)
 {

@@ -186,6 +186,7 @@ struct preferences {
     QString stylesheetPath;
     bool confirmExit;
     bool confirmPowerOff;
+    bool confirmSettingsChanged;
     meter_t meter2Type;
     meter_t meter3Type;
     bool compMeterReverse = false;

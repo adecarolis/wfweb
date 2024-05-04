@@ -67,6 +67,7 @@ public slots:
 
 
     void updateModSourceList(uchar num, QVector<rigInput> data);
+    void hideModSource(uchar num);
     void setAudioDevicesUI();
 
     void connectionStatus(bool conn);
