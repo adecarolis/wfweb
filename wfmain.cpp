@@ -4010,7 +4010,7 @@ bool wfmain::on_exitBtn_clicked()
     if (prefs.settingsChanged && prefs.confirmSettingsChanged)
     {
         QCheckBox *cb = new QCheckBox("Don't ask me again");
-        cb->setToolTip("Don't ask me to confirm exit again");
+        cb->setToolTip("Don't ask me to confirm saving settings again");
         QMessageBox msgbox;
         msgbox.setText("Settings have changed since last save, exit anyway?\n");
         msgbox.setIcon(QMessageBox::Icon::Question);
