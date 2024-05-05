@@ -485,7 +485,7 @@ void wfmain::makeRig()
 {
     if (rigThread == Q_NULLPTR)
     {
-        rig = new rigCommander();
+        rig = new icomCommander();
         rigThread = new QThread(this);
         rigThread->setObjectName("rigCommander()");
 

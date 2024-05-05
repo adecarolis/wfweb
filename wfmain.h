@@ -26,6 +26,7 @@
 #include "prefs.h"
 #include "commhandler.h"
 #include "rigcommander.h"
+#include "icomcommander.h"
 #include "freqmemory.h"
 #include "rigidentities.h"
 #include "repeaterattributes.h"

@@ -254,6 +254,7 @@ SOURCES += main.cpp\
     frequencyinputwidget.cpp \
     cwsidetone.cpp \
     debugwindow.cpp \
+    icomcommander.cpp \
     loggingwindow.cpp \
     scrolltest.cpp \
     settingswidget.cpp \
@@ -307,6 +308,7 @@ HEADERS  += wfmain.h \
     frequencyinputwidget.h \
     cwsidetone.h \
     debugwindow.h \
+    icomcommander.h \
     loggingwindow.h \
     memories.h \
     prefs.h \

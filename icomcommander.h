@@ -1,0 +1,176 @@
+#ifndef ICOMCOMMANDER_H
+#define ICOMCOMMANDER_H
+
+#include "rigcommander.h"
+
+// This file figures out what to send to the comm and also
+// parses returns into useful things.
+
+// 0xE1 is new default, 0xE0 was before.
+// note: using a define because switch case doesn't even work with const unsigned char. Surprised me.
+#define compCivAddr 0xE1
+
+//#define DEBUG_PARSE // Enable to output Info messages every 10s with command parse timing.
+
+class icomCommander : public rigCommander
+{
+    Q_OBJECT
+
+public:
+    explicit icomCommander(QObject* parent=nullptr);
+    explicit icomCommander(quint8 guid[GUIDLEN], QObject* parent = nullptr);
+    ~icomCommander();
+
+public slots:
+    void process();
+    void commSetup(rigTypedef rigList, unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf);
+    void commSetup(rigTypedef rigList, unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
+    void closeComm();
+    void setRTSforPTT(bool enabled);
+
+    // Power:
+    void powerOn();
+    void powerOff();
+
+
+    // Rig ID and CIV:
+    void getRigID();
+    void findRigs();
+    void setRigID(unsigned char rigID);
+    void setCIVAddr(unsigned char civAddr);
+
+    // UDP:
+    void handleNewData(const QByteArray& data);
+    void receiveBaudRate(quint32 baudrate);
+
+    // Housekeeping:
+    void receiveCommand(funcs func, QVariant value, uchar receiver);
+    void setAfGain(unsigned char level);
+
+signals:
+    // All signals are defined in rigcommander.h as they should be common for all rig types.
+
+private:
+    void commonSetup();
+
+    void parseData(QByteArray data); // new data come here
+    void parseCommand(); // Entry point for complete commands
+    unsigned char bcdHexToUChar(unsigned char in);
+    unsigned char bcdHexToUChar(unsigned char hundreds, unsigned char tensunits);
+    unsigned int bcdHexToUInt(unsigned char hundreds, unsigned char tensunits);
+    QByteArray bcdEncodeChar(unsigned char num);
+    QByteArray bcdEncodeInt(unsigned int);
+    QByteArray setMemory(memoryType mem);
+    freqt parseFrequency();
+    freqt parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
+
+    freqt parseFreqData(QByteArray data, uchar receiver);
+    quint64 parseFreqDataToInt(QByteArray data);
+    freqt parseFrequencyRptOffset(QByteArray data);
+    bool parseMemory(QVector<memParserFormat>* memParser, memoryType* mem);
+    QByteArray makeFreqPayloadRptOffset(freqt freq);
+    QByteArray makeFreqPayload(double frequency);
+    QByteArray makeFreqPayload(freqt freq);
+    QByteArray encodeTone(quint16 tone, bool tinv, bool rinv);
+    QByteArray encodeTone(quint16 tone);
+
+    toneInfo decodeTone(QByteArray eTone);
+    //quint16 decodeTone(QByteArray eTone, bool &tinv, bool &rinv);
+    uchar makeFilterWidth(ushort width, uchar receiver);
+
+
+    unsigned char audioLevelRxMean[50];
+    unsigned char audioLevelRxPeak[50];
+    unsigned char audioLevelTxMean[50];
+    unsigned char audioLevelTxPeak[50];
+
+    modeInfo parseMode(quint8 mode, quint8 filter, uchar receiver);
+    bool parseSpectrum(scopeData& d, uchar receiver);
+    funcType getCommand(funcs func, QByteArray& payload, int value=INT_MIN, uchar receiver=0);
+
+    QByteArray getLANAddr();
+    QByteArray getUSBAddr();
+    QByteArray getACCAddr(unsigned char ab);
+    void sendDataOut();
+    void prepDataAndSend(QByteArray data);
+    void debugMe();
+
+    centerSpanData createScopeCenter(centerSpansType s, QString name);
+
+    commHandler* comm = Q_NULLPTR;
+    pttyHandler* ptty = Q_NULLPTR;
+    tcpServer* tcp = Q_NULLPTR;
+    udpHandler* udp=Q_NULLPTR;
+    QThread* udpHandlerThread = Q_NULLPTR;
+
+    void determineRigCaps();
+    QByteArray payloadIn;
+    QByteArray echoPerfix;
+    QByteArray replyPrefix;
+    QByteArray genericReplyPrefix;
+
+    QByteArray payloadPrefix;
+    QByteArray payloadSuffix;
+
+    QByteArray rigData;
+
+    QByteArray spectrumLine;
+    //double spectrumStartFreq;
+    //double spectrumEndFreq;
+
+    struct rigCapabilities rigCaps;
+
+    bool haveRigCaps=false;
+    quint8 model = 0; // Was model_kind but that makes no sense when users can create their own rigs!
+    quint8 spectSeqMax;
+    quint16 spectAmpMax;
+    quint16 spectLenMax;
+    spectrumMode_t oldScopeMode;
+
+    bool usingNativeLAN; // indicates using OEM LAN connection (705,7610,9700,7850)
+    bool lookingForRig;
+    bool foundRig;
+
+    double frequencyMhz;
+    unsigned char civAddr;
+    unsigned char incomingCIVAddr; // place to store the incoming CIV.
+    bool pttAllowed;
+    bool useRTSforPTT_isSet = false;
+    bool useRTSforPTT_manual = false;
+
+    scopeData mainScopeData;
+    scopeData subScopeData;
+
+    QString rigSerialPort;
+    quint32 rigBaudRate;
+
+    QByteArray lastCommandToRig;
+
+    QString ip;
+    int cport;
+    int sport;
+    int aport;
+    QString username;
+    QString password;
+
+    QString serialPortError;
+    unsigned char localVolume=0;
+
+    QHash<unsigned char,QString> rigList;
+
+    quint64 pow10[12] = {
+        1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000, 100000000000
+    };
+
+    cachingQueue* queue;
+
+#ifdef DEBUG_PARSE
+    quint64 averageParseTime=0;
+    int numParseSamples = 0;
+    int lowParse=9999;
+    int highParse=0;
+    QTime lastParseReport = QTime::currentTime();
+#endif
+};
+
+#endif // ICOMCOMMANDER_H
