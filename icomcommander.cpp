@@ -38,8 +38,22 @@ icomCommander::icomCommander(quint8 guid[GUIDLEN], rigCommander* parent) : rigCo
 icomCommander::~icomCommander()
 {
     qInfo(logRig()) << "closing instance of icomCommander()";
+
     queue->setRigCaps(Q_NULLPTR); // Remove access to rigCaps
-    closeComm();
+
+    qDebug(logRig()) << "Closing rig comms";
+    if (comm != Q_NULLPTR) {
+        delete comm;
+    }
+
+    if (udpHandlerThread != Q_NULLPTR) {
+        udpHandlerThread->quit();
+        udpHandlerThread->wait();
+    }
+
+    if (ptty != Q_NULLPTR) {
+        delete ptty;
+    }
 }
 
 
@@ -218,8 +232,6 @@ void icomCommander::commonSetup()
     rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),QByteArrayLiteral("\x19\x00"),0,0,false,true,false));
     rigCaps.commandsReverse.insert(QByteArrayLiteral("\x19\x00"),funcTransceiverId);
 
-    this->setObjectName("Icom Commander");
-    queue = cachingQueue::getInstance(this);
     connect(queue,SIGNAL(haveCommand(funcs,QVariant,uchar)),this,SLOT(receiveCommand(funcs,QVariant,uchar)));
     oldScopeMode = spectModeUnknown;
 

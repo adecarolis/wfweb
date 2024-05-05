@@ -133,6 +133,8 @@ signals:
     void haveReceivedValue(funcs func, QVariant value);
 
 protected:
+    cachingQueue* queue;
+
     void printHex(const QByteArray &pdata);
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
 

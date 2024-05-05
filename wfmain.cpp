@@ -489,7 +489,6 @@ void wfmain::makeRig()
         rigThread = new QThread(this);
         rigThread->setObjectName("rigCommander()");
 
-
         // Thread:
         rig->moveToThread(rigThread);
         connect(rigThread, SIGNAL(started()), rig, SLOT(process()));

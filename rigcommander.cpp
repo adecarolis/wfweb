@@ -12,14 +12,17 @@
 rigCommander::rigCommander(QObject* parent) : QObject(parent)
 {
     qInfo(logRig()) << "creating instance of rigCommander()";
+    queue = cachingQueue::getInstance(this);
+
 }
 
 rigCommander::rigCommander(quint8 guid[GUIDLEN], QObject* parent) : QObject(parent)
 {
 
-    qInfo(logRig()) << "creating instance of rigCommander()";
+    qInfo(logRig()) << "creating instance of rigCommander(guid)";
     memcpy(this->guid, guid, GUIDLEN);
     // Add some commands that is a minimum for rig detection
+    queue = cachingQueue::getInstance(this);
 }
 
 rigCommander::~rigCommander()
