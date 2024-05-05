@@ -90,12 +90,18 @@ macx:LIBS += -L/usr/local/lib -L/opt/local/lib
 
 macx:ICON = ../wfview/resources/wfview.icns
 win32:RC_ICONS = ../wfview/resources/wfview.ico
-macx:QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.14
+macx:QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
 macx:QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
 macx:MY_ENTITLEMENTS.name = CODE_SIGN_ENTITLEMENTS
 macx:MY_ENTITLEMENTS.value = ../wfview/resources/wfview.entitlements
 macx:QMAKE_MAC_XCODE_SETTINGS += MY_ENTITLEMENTS
 macx:QMAKE_INFO_PLIST = ../wfview/resources/Info.plist
+
+macx{
+    rigFiles.files = rigs
+    rigFiles.path = Contents/MacOS
+    QMAKE_BUNDLE_DATA += rigFiles
+}
 
 QMAKE_TARGET_BUNDLE_PREFIX = org.wfview
 

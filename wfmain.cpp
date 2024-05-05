@@ -2033,7 +2033,7 @@ void wfmain::loadSettings()
             butt.backgroundOff.setNamedColor(settings->value("BackgroundOff", QColor(Qt::blue).name(QColor::HexArgb)).toString());
             butt.toggle = settings->value("Toggle", false).toBool();
             // PET add Linux as it stops Qt6 building FIXME
-#if (QT_VERSION > QT_VERSION_CHECK(6,0,0) && !defined(Q_OS_LINUX))
+#if (QT_VERSION > QT_VERSION_CHECK(6,0,0) && !defined(Q_OS_LINUX) && !defined(Q_OS_MACOS))
             if (settings->value("Icon",NULL) != NULL) {
                 butt.icon = new QImage(settings->value("Icon",NULL).value<QImage>());
                 butt.iconName = settings->value("IconName", "").toString();
