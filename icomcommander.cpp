@@ -21,14 +21,14 @@
 
 // Note: When sending \x00, must use QByteArray.setRawData()
 
-icomCommander::icomCommander(QObject* parent) : rigCommander(parent)
+icomCommander::icomCommander(rigCommander* parent) : rigCommander(parent)
 {
 
     qInfo(logRig()) << "creating instance of icomCommander()";
 
 }
 
-icomCommander::icomCommander(quint8 guid[GUIDLEN], QObject* parent) : rigCommander(parent)
+icomCommander::icomCommander(quint8 guid[GUIDLEN], rigCommander* parent) : rigCommander(parent)
 {
     qInfo(logRig()) << "creating instance of icomCommander() with GUID";
     memcpy(this->guid, guid, GUIDLEN);

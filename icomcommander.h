@@ -17,8 +17,8 @@ class icomCommander : public rigCommander
     Q_OBJECT
 
 public:
-    explicit icomCommander(QObject* parent=nullptr);
-    explicit icomCommander(quint8 guid[GUIDLEN], QObject* parent = nullptr);
+    explicit icomCommander(rigCommander* parent=nullptr);
+    explicit icomCommander(quint8 guid[GUIDLEN], rigCommander* parent = nullptr);
     ~icomCommander();
 
 public slots:
