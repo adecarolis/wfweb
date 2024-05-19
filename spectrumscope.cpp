@@ -565,6 +565,8 @@ bool spectrumScope::updateScope(scopeData data)
     qint64 spectime = 0;
 
     QElapsedTimer elapsed;
+    QElapsedTimer totalUpdateTime;
+    totalUpdateTime.start();
 
     bool updateRange = false;
 
@@ -601,14 +603,14 @@ bool spectrumScope::updateScope(scopeData data)
 
     for(int i=0; i< specLen; i++)
     {
-        y[i] = (unsigned char)data.data.at(i);
+        y[i] = (unsigned char)data.data[i];
         if(underlayMode == underlayPeakHold)
         {
-            if((unsigned char)data.data.at(i) > (unsigned char)spectrumPeaks.at(i))
+            if((unsigned char)data.data[i] > (unsigned char)spectrumPeaks[i])
             {
-                spectrumPeaks[i] = data.data.at(i);
+                spectrumPeaks[i] = data.data[i];
             }
-            y2[i] = (unsigned char)spectrumPeaks.at(i);
+            y2[i] = (unsigned char)spectrumPeaks[i];
         }
     }
     plasmaMutex.lock();
@@ -757,10 +759,10 @@ bool spectrumScope::updateScope(scopeData data)
         // Waterfall:
         for(int row = 0; row < wfLength; row++)
         {
-            wfRow = wfimage.at(row);
+            wfRow = wfimage[row];
             for(int col = 0; col < spectWidth; col++)
             {
-                colorMap->data()->setCell( col, row, (unsigned char)wfRow.at(col));
+                colorMap->data()->setCell( col, row, (unsigned char)wfRow[col]);
             }
         }
         if(updateRange)
@@ -772,7 +774,7 @@ bool spectrumScope::updateScope(scopeData data)
         waterfall->xAxis->setRange(0, spectWidth-1);
         elapsed.start();
         waterfall->replot();
-        redrawSpeed->setText(QString("%0ms/%1ms").arg(spectime).arg(elapsed.elapsed()));
+        redrawSpeed->setText(QString("%0ms/%1ms").arg(spectime).arg(totalUpdateTime.elapsed()));
 
 /*
 #if defined (USB_CONTROLLER)
@@ -862,19 +864,19 @@ void spectrumScope::computePlasma()
         {
             for(int pos=0; pos < specPlasmaSize; pos++)
             {
-                spectrumPlasmaLine[col] += (unsigned char)spectrumPlasma.at(pos).at(col);
+                spectrumPlasmaLine[col] += (unsigned char)spectrumPlasma[pos][col];
             }
-            spectrumPlasmaLine[col] = spectrumPlasmaLine.at(col) / specPlasmaSize;
+            spectrumPlasmaLine[col] = spectrumPlasmaLine[col] / specPlasmaSize;
         }
     } else if (underlayMode == underlayPeakBuffer){
         // peak mode, running peak display
         for(int col=0; col < spectWidth; col++)
         {
-            spectrumPlasmaLine[col] = spectrumPlasma.at(0).at(col); // initial value
+            spectrumPlasmaLine[col] = spectrumPlasma[0][col]; // initial value
             for(int pos=0; pos < specPlasmaSize; pos++)
             {
-                if((double)((unsigned char)spectrumPlasma.at(pos).at(col)) > spectrumPlasmaLine.at(col))
-                    spectrumPlasmaLine[col] = (unsigned char)spectrumPlasma.at(pos).at(col);
+                if((double)((unsigned char)spectrumPlasma[pos][col]) > spectrumPlasmaLine[col])
+                    spectrumPlasmaLine[col] = (unsigned char)spectrumPlasma[pos][col];
             }
         }
     }
