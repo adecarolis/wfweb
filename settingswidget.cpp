@@ -1103,9 +1103,9 @@ void settingswidget::setAudioDevicesUI()
         serverConfig->rigs.first()->txAudioSetup.type = prefs->audioSystem;
 
         ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig->rigs.first()->rxAudioSetup.name));
-        serverOutputIndex = audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name);
+        //serverOutputIndex = audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name);
         ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name));
-        serverInputIndex = audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name);
+        //serverInputIndex = audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name);
     }
 
     qDebug(logSystem()) << "Audio devices done.";
@@ -1249,7 +1249,7 @@ void settingswidget::serverAddUserLine(int row, const QString &user, const QStri
     ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 1, password);
 
     QComboBox* comboBox = new QComboBox();
-    comboBox->insertItems(0, { "Full User","Full with no TX","Monitor only" });
+    comboBox->insertItems(0, { "Admin User", "Normal User","Normal with no TX","Monitor only" });
     comboBox->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
     comboBox->setProperty("col", (int)2);
     comboBox->setCurrentIndex(type);
@@ -2753,12 +2753,35 @@ void settingswidget::on_satOpsBtn_clicked()
 /* Beginning of UDP Server settings */
 void settingswidget::on_serverRXAudioInputCombo_currentIndexChanged(int index)
 {
-    emit changedServerRXAudioInputCombo(index);
+    if (index >= 0) {
+        if (prefs->audioSystem == qtAudio) {
+            serverConfig->rigs.first()->rxAudioSetup.port = audioDev->getInputDeviceInfo(index);
+        }
+        else {
+            serverConfig->rigs.first()->rxAudioSetup.portInt = audioDev->getInputDeviceInt(index);
+        }
+        serverConfig->rigs.first()->rxAudioSetup.name = audioDev->getInputName(index);
+    }
+    qDebug(logGui()) << "Changed server audio input to:" << serverConfig->rigs.first()->rxAudioSetup.name;
+
+    emit changedServerPref(s_audioInput);
 }
 
 void settingswidget::on_serverTXAudioOutputCombo_currentIndexChanged(int index)
 {
-    emit changedServerTXAudioOutputCombo(index);
+
+    if (index >= 0) {
+        if (prefs->audioSystem == qtAudio) {
+            serverConfig->rigs.first()->txAudioSetup.port = audioDev->getOutputDeviceInfo(index);
+        }
+        else {
+            serverConfig->rigs.first()->txAudioSetup.portInt = audioDev->getOutputDeviceInt(index);
+        }
+        serverConfig->rigs.first()->txAudioSetup.name = audioDev->getOutputName(index);
+    }
+    qDebug(logGui()) << "Changed server audio output to:" << serverConfig->rigs.first()->txAudioSetup.name;
+
+    emit changedServerPref(s_audioOutput);
 }
 
 void settingswidget::on_serverEnableCheckbox_clicked(bool checked)

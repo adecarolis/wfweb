@@ -231,6 +231,8 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     loadSettings(); // Look for saved preferences
 
+    setServerToPrefs();
+
     //setAudioDevicesUI(); // no need to call this as it will be called by the updated() signal
 
     setTuningSteps(); // TODO: Combine into preferences
@@ -314,8 +316,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         }
     }
     emit setClusterEnableTcp(prefs.clusterTcpEnable);
-
-    setServerToPrefs();
 
     amTransmitting = false;
 
@@ -474,6 +474,7 @@ void wfmain::openRig()
         emit sendCommSetup(rigList, prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort, prefs.tcpPort,prefs.waterfallFormat);
         ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
     }
+
 }
 
 // Deprecated (moved to makeRig())
@@ -518,7 +519,14 @@ void wfmain::makeRig()
 
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
-
+        if (serverConfig.enabled) {
+            qInfo(logUdpServer()) << "**** Connecting rig instance to server";
+            connect(rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
+            // Need to add a signal/slot for audio from the client to rig.
+            //connect(udp, SIGNAL(haveAudioData(audioPacket)), rig, SLOT(receiveAudioData(audioPacket)));
+            connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
+            connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
+        }
 
         connect(this, SIGNAL(setCIVAddr(unsigned char)), rig, SLOT(setCIVAddr(unsigned char)));
 
@@ -950,24 +958,15 @@ void wfmain::setServerToPrefs()
 
         udp->moveToThread(serverThread);
 
-
-        connect(this, SIGNAL(initServer()), udp, SLOT(init()));
-        connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
-
-        if (rig != Q_NULLPTR) {
-            connect(rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
-            // Need to add a signal/slot for audio from the client to rig.
-            //connect(udp, SIGNAL(haveAudioData(audioPacket)), rig, SLOT(receiveAudioData(audioPacket)));
-            connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
-            connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
-        }
-
         if (serverConfig.lan) {
             connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
         } else {
             qInfo(logAudio()) << "Audio Input device " << serverConfig.rigs.first()->rxAudioSetup.name;
             qInfo(logAudio()) << "Audio Output device " << serverConfig.rigs.first()->txAudioSetup.name;
         }
+
+        connect(this, SIGNAL(initServer()), udp, SLOT(init()));
+        connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
 
         serverThread->start();
 
@@ -4675,7 +4674,7 @@ void wfmain::powerRigOff()
     // Clear the queue to stop sending lots of data.
     queue->clear();
     emit sendPowerOff();
-    queue->interval(0);
+    queue->interval(-1); // Queue Disabled
 }
 
 void wfmain::on_ritTuneDial_valueChanged(int value)
@@ -5794,10 +5793,6 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         if (rigCaps->bands.size() > 0) {
             lastRequestedBand = rigCaps->bands[0].band;
         }
-
-        // Added so that server receives rig capabilities.
-        //emit sendRigCaps(rigCaps);
-
 
         foreach (auto receiver, receivers) {
             // Setup various combo box up for each VFO:

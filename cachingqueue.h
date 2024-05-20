@@ -87,7 +87,7 @@ private:
     // Various other values
     bool aborted=false;
     QWaitCondition waiting;
-    quint64 queueInterval=0; // Don't start the timer!
+    qint64 queueInterval=-1; // Don't start the timer!
     
     rigCapabilities* rigCaps = Q_NULLPTR; // Must be NULL until a radio is connected
     
@@ -111,8 +111,8 @@ public:
     void addUnique(queuePriority prio,queueItem item);
     void del(funcs func, uchar receiver=0);
     void clear();
-    void interval(quint64 val);
-    quint64 interval() {return queueInterval;}
+    void interval(qint64 val);
+    qint64 interval() {return queueInterval;}
     void updateCache(bool reply, queueItem item);
     void updateCache(bool reply, funcs func, QVariant value=QVariant(), uchar receiver=0);
 
