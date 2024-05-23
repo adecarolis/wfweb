@@ -40,6 +40,16 @@ CONFIG(debug, release|debug) {
 }
 
 
+TRANSLATIONS += translations/wfview_en.ts \
+                translations/wfview_gb.ts \
+                translations/wfview_it.ts \
+                translations/wfview_tr.ts \
+                translations/wfview_de.ts \
+                translations/wfview_jp.ts \
+                translations/wfview_zh_TW.ts
+
+
+
 # RTAudio defines
 win32:DEFINES += __WINDOWS_WASAPI__
 #win32:DEFINES += __WINDOWS_DS__ # Requires DirectSound libraries
@@ -115,7 +125,9 @@ win32:DEFINES += UNAME=\\\"build\\\"
 
 
 RESOURCES += qdarkstyle/style.qrc \
-    resources/resources.qrc
+    resources/resources.qrc \
+    translations/translation.qrc
+
 
 unix:target.path = $$PREFIX/bin
 INSTALLS += target
