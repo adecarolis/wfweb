@@ -2,7 +2,7 @@ Steps to contribute a translation:
 
 1. Sign up for a free GitLab.com account
 
-2. Fork the wfview repository. Be sure to work from our current development branch. 
+2. Fork the wfview repository. Be sure to work from our "translations" branch. 
 
 3. Clone the repository to your desktop computer. 
 
