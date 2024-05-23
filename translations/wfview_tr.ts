@@ -3027,6 +3027,41 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
         <translation>Varsayılana Geri Dön</translation>
     </message>
     <message>
+        <location filename="../settingswidget.cpp" line="44"/>
+        <source>Radio Access</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.cpp" line="45"/>
+        <source>User Interface</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.cpp" line="46"/>
+        <source>Radio Settings</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.cpp" line="47"/>
+        <source>Radio Server</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.cpp" line="48"/>
+        <source>External Control</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.cpp" line="49"/>
+        <source>DX Cluster</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.cpp" line="50"/>
+        <source>Experimental</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../settingswidget.cpp" line="1515"/>
         <source>Manual port assignment</source>
         <translation>Manuel Port Atanması</translation>

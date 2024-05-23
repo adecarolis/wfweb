@@ -41,13 +41,13 @@ settingswidget::~settingswidget()
 void settingswidget::createSettingsListItems()
 {
     // Add items to the settings tab list widget
-    ui->settingsList->addItem("Radio Access");     // 0
-    ui->settingsList->addItem("User Interface");   // 1
-    ui->settingsList->addItem("Radio Settings");   // 2
-    ui->settingsList->addItem("Radio Server");     // 3
-    ui->settingsList->addItem("External Control"); // 4
-    ui->settingsList->addItem("DX Cluster");       // 5
-    ui->settingsList->addItem("Experimental");     // 6
+    ui->settingsList->addItem(tr("Radio Access"));     // 0
+    ui->settingsList->addItem(tr("User Interface"));   // 1
+    ui->settingsList->addItem(tr("Radio Settings"));   // 2
+    ui->settingsList->addItem(tr("Radio Server"));     // 3
+    ui->settingsList->addItem(tr("External Control")); // 4
+    ui->settingsList->addItem(tr("DX Cluster"));       // 5
+    ui->settingsList->addItem(tr("Experimental"));     // 6
     //ui->settingsList->addItem("Audio Processing"); // 7
     ui->settingsStack->setCurrentIndex(0);
 }
