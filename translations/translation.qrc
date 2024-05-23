@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/translations">
+        <file>wfview_en.qm</file>
+        <file>wfview_gb.qm</file>
+        <file>wfview_it.qm</file>
+        <file>wfview_tr.qm</file>
+        <file>wfview_de.qm</file>
+        <file>wfview_jp.qm</file>
+        <file>wfview_zh_TW.qm</file>
+    </qresource>
+</RCC>
