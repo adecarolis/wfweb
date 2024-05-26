@@ -103,7 +103,7 @@ You will see this dialog box the next time you open wfview.</source>
     <message>
         <location filename="../firsttimesetup.ui" line="234"/>
         <source>Press to go back to the prior step. </source>
-        <translation>Önceki adıma geçmek için tıklayınız.</translation>
+        <translation>Önceki adıma geçmek için tıklayınız. </translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="237"/>
@@ -400,13 +400,13 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../bandbuttons.ui" line="631"/>
         <source>&amp;Last Used</source>
-        <translation>Son kullanılan</translation>
+        <translation>&amp;Son kullanılan</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="647"/>
         <source>Band Stack Selection:</source>
         <translatorcomment>Pek bir bilgim yok.</translatorcomment>
-        <translation>Bant Kümesi Seçimi</translation>
+        <translation>Bant Kümesi Seçimi:</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="655"/>
@@ -436,7 +436,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../bandbuttons.ui" line="687"/>
         <source>&amp;CW</source>
-        <translation>CW (Mors)</translation>
+        <translation>&amp;CW (Mors)</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="707"/>
@@ -490,7 +490,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../calibrationwindow.ui" line="189"/>
         <source>Slot:</source>
-        <translation>Slot</translation>
+        <translation>Slot:</translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="200"/>
@@ -612,7 +612,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../cwsender.ui" line="60"/>
         <source>Check this box to enter edit mode, where you can then press the macro buttons to edit the macros.</source>
-        <translation>Makro düzenleme moduna girmek için bu kutucuğu işaretleyin</translation>
+        <translation>Makro düzenleme moduna girmek için bu kutucuğu işaretleyin.</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="63"/>
@@ -727,7 +727,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../cwsender.ui" line="349"/>
         <source>PITCH  (Hz):</source>
-        <translation>PITCH (HZ)</translation>
+        <translation>PITCH (Hz):</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="359"/>
@@ -875,7 +875,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../frequencyinputwidget.ui" line="22"/>
         <source>Frequency:</source>
-        <translation>Frekans</translation>
+        <translation>Frekans:</translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="41"/>
@@ -1025,7 +1025,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../loggingwindow.ui" line="53"/>
         <source>Annotation:</source>
-        <translation>Dipnot (Yorum)</translation>
+        <translation>Dipnot (Yorum):</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="66"/>
@@ -1035,7 +1035,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../loggingwindow.ui" line="85"/>
         <source>Adds user-text to the log.</source>
-        <translation>Kullanıcı yazısını Log&apos;a ekler</translation>
+        <translation>Kullanıcı yazısını Log&apos;a ekler.</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="88"/>
@@ -1045,7 +1045,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../loggingwindow.ui" line="105"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enable or disable debug logging. Use the &amp;quot;-d&amp;quot; or &amp;quot;--debug&amp;quot; flag to open wfview with debug logging enabled on startup. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation></translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Debug Loglamayı aç veya kapat.  &amp;quot;-d&amp;quot; veya &amp;quot;--debug&amp;quot; tuşlarını kullanarak wfview&apos;i debug loglaması aktıf bir şekilde açmaya işaretleyebilirsiniz. &lt;/p&gt;&lt;/body&gt;&lt;/html</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="108"/>
@@ -1055,12 +1055,12 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../loggingwindow.ui" line="115"/>
         <source>Scroll to bottom</source>
-        <translation>Aşşağıya Kaydır</translation>
+        <translation>Aşağıya Kaydır</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="118"/>
         <source>Scroll Down</source>
-        <translation>Aşşağıya Kaydır</translation>
+        <translation>Aşağıya Kaydır</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="125"/>
@@ -1095,7 +1095,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../loggingwindow.ui" line="155"/>
         <source>Copy the path of the log file to your clipboard.</source>
-        <translation>Log defterinin dosya konumunu kopyalar</translation>
+        <translation>Log defterinin dosya konumunu kopyalar.</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="158"/>
@@ -1199,7 +1199,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../repeatersetup.ui" line="98"/>
         <source>Set Offset (MHz):</source>
-        <translation>Offset Ayarla (MHz)</translation>
+        <translation>Offset Ayarla (MHz):</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="107"/>
@@ -1239,7 +1239,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../repeatersetup.ui" line="168"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click here to automatically set the sub VFO (transmit VFO) tone. Only available on some radios. Other radios may take care of this for you.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation></translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Otomatik olarak Sub VFO (TX VFO) Tonunu seçmek için buraya tıklayın. Sadece bazı radyolarda olan bir özelliktir. Başka radyolar sizin için bunu da yapabilir.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="171"/>
@@ -1259,7 +1259,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../repeatersetup.ui" line="195"/>
         <source>Offset (KHz):</source>
-        <translation>Offset (KHz)</translation>
+        <translation>Offset (KHz):</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="214"/>
@@ -1285,7 +1285,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../repeatersetup.ui" line="257"/>
         <source>Tx Freq (MHz):</source>
-        <translation>TX Frek (MHz)</translation>
+        <translation>TX Frek (MHz):</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="286"/>
@@ -1416,7 +1416,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../repeatersetup.ui" line="455"/>
         <source>Set the Tone Mode for the Sub VFO. Not available on all radios.</source>
-        <translation>Sub VFO için Ton Modunu ayarla (Tüm radyolarda mevcut değil)</translation>
+        <translation>Sub VFO için Ton Modunu ayarla (Tüm radyolarda mevcut değildir).</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="458"/>
@@ -1447,7 +1447,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../repeatersetup.ui" line="526"/>
         <source>Set the Sub VFO to the selected Tone. Not available on all radios and not available for DTCS.</source>
-        <translation>Sub VFO&apos;yu Seçili Ton&apos;a ayarla (Tüm Radyolarda mevcut değil ve DTCS&apos;te mevcut değil</translation>
+        <translation>Sub VFO&apos;yu Seçili Ton&apos;a ayarla (Tüm Radyolarda mevcut değil ve DTCS&apos;te mevcut değil.</translation>
     </message>
 </context>
 <context>
@@ -1884,7 +1884,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../satellitesetup.ui" line="409"/>
         <source>Telemetry: </source>
-        <translation>Telemetri:</translation>
+        <translation>Telemetri: </translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="452"/>
@@ -2227,7 +2227,7 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.ui" line="675"/>
         <source>Audio Output </source>
-        <translation>Ses Çıkışı</translation>
+        <translation>Ses Çıkışı </translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="688"/>
@@ -2252,13 +2252,13 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.ui" line="781"/>
         <source>When tuning, set lower digits to zero</source>
-        <translation>Tune yaparken duşuk haneleri sıfıra ayarla</translation>
+        <translation>Tune yaparken düşük haneleri sıfıra ayarla</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="791"/>
         <location filename="../settingswidget.ui" line="797"/>
         <source>When using SSB, automatically switch to the standard sideband for a given band.</source>
-        <translation>SSB Kullanırken otomatık olarak bant için standart sideband&apos;e geç (20M&apos;de USB, 40M&apos;de LSB)</translation>
+        <translation>SSB Kullanırken otomatık olarak bant için standart sideband&apos;e geç (20M&apos;de USB, 40M&apos;de LSB).</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="794"/>
@@ -2288,7 +2288,7 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.ui" line="841"/>
         <source>Enables interpolation between pixels. Note that this will increase CPU usage.</source>
-        <translation>Pikseller arası İnterpolasyonu aktifleştirir (CPU kullanımını arttırır)</translation>
+        <translation>Pikseller arası İnterpolasyonu aktifleştirir (CPU kullanımını arttırır).</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="844"/>
@@ -2364,12 +2364,12 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.ui" line="961"/>
         <source>Underlay Buffer Size:</source>
-        <translation>Buffer boyutunu Underlay yap</translation>
+        <translation>Underlay Buffer Boyutu:</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="974"/>
         <source>Size of buffer for spectrum data. Shorter values are more responsive.</source>
-        <translation>Spektrum verisi için Buffer boyutu, Kısa değerler daha seri cevap verir (CPU Kullanımını arttırabilir)</translation>
+        <translation>Spektrum verisi için Buffer boyutu, Kısa değerler daha seri cevap verir (CPU Kullanımını arttırabilir).</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="993"/>
@@ -2399,7 +2399,7 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.ui" line="1062"/>
         <source>Additional Meter Selection:</source>
-        <translation>Ek olarak Metre Seçimi</translation>
+        <translation>Ek olarak Metre Seçimi:</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="1075"/>
@@ -2414,7 +2414,7 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.ui" line="1085"/>
         <source>wfview will automatically calculate command polling. Recommended.</source>
-        <translation>wfview otomatik olarak command polling&apos;i hesaplar (Tavsiye Edilir)</translation>
+        <translation>wfview otomatik olarak command polling&apos;i hesaplar (Tavsiye Edilir).</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="1088"/>
@@ -2429,7 +2429,7 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.ui" line="1104"/>
         <source>Manual Polling Inteval:</source>
-        <translation>Manuel Polling Aralığı</translation>
+        <translation>Manuel Polling Aralığı:</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="1114"/>
@@ -2449,7 +2449,7 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.ui" line="1164"/>
         <source>Preset:</source>
-        <translation>Hazır Ayar</translation>
+        <translation>Hazır Ayar:</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="1186"/>
@@ -2484,7 +2484,7 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.ui" line="1218"/>
         <source>Revert the selected color preset to the default.</source>
-        <translation>Seçilen Renk Ayarını varsayılan yap</translation>
+        <translation>Seçilen Renk Ayarını varsayılan yap.</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="1221"/>
@@ -2494,7 +2494,7 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.ui" line="1228"/>
         <source>Rename the selected color preset. Max length is 10 characters.</source>
-        <translation>Seçilen Renk Hazır Ayarının adını değiştir (Maksimum 10 hane)</translation>
+        <translation>Seçilen Renk Hazır Ayarının adını değiştir (Maksimum 10 hane).</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="1231"/>
@@ -2685,7 +2685,7 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.ui" line="2157"/>
         <source>Data Off Modulation Input:</source>
-        <translation>Veri Modulasyon Girintisi</translation>
+        <translation>Veri Modulasyon Girintisi:</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="2164"/>
@@ -2725,7 +2725,7 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.ui" line="2234"/>
         <source>Press here to set the clock of the radio. The command will be sent to the radio when the seconds go to zero. </source>
-        <translation>Radyonun Saatini ayarlamak için buraya tıklayın. Saniye Sıfıra vardığında komut Radyo&apos;ya gönderilecektir</translation>
+        <translation>Radyonun Saatini ayarlamak için buraya tıklayın. Saniye Sıfıra vardığında komut Radyo&apos;ya gönderilecektir. </translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="2237"/>
@@ -2735,7 +2735,7 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.ui" line="2244"/>
         <source>Check this box to set the radio&apos;s clock to UTC. Otherwise, the clock will be set to the local timezone of this computer. </source>
-        <translation>Radyo&apos;nun saatini UTC&apos;ye ayarlamak için bu kutucuğu işaretleyin. Yoksa saat bu bilgisayarın yerel saatine ayarlanacaktır</translation>
+        <translation>Radyo&apos;nun saatini UTC&apos;ye ayarlamak için bu kutucuğu işaretleyin. Yoksa saat bu bilgisayarın yerel saatine ayarlanacaktır. </translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="2247"/>
@@ -2922,7 +2922,7 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.ui" line="3038"/>
         <source>Only reset buttons/commands if you have issues. </source>
-        <translation>buton/komutları sadece sorun yaşıyorsanız resetleyin</translation>
+        <translation>buton/komutları sadece sorun yaşıyorsanız resetleyin. </translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="3082"/>
@@ -2999,7 +2999,7 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.ui" line="3313"/>
         <source>This page contains experimental features. Use at your own risk.</source>
-        <translation>Bu sayfa Deneysel özellikleri çierir, Riskleri göze alarak kullanın</translation>
+        <translation>Bu sayfa Deneysel özellikleri çierir, Riskleri göze alarak kullanın.</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="3324"/>
@@ -3029,37 +3029,37 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.cpp" line="44"/>
         <source>Radio Access</source>
-        <translation type="unfinished"></translation>
+        <translation>Radyo Erişimi</translation>
     </message>
     <message>
         <location filename="../settingswidget.cpp" line="45"/>
         <source>User Interface</source>
-        <translation type="unfinished"></translation>
+        <translation>Kullanıcı Arayüzü</translation>
     </message>
     <message>
         <location filename="../settingswidget.cpp" line="46"/>
         <source>Radio Settings</source>
-        <translation type="unfinished"></translation>
+        <translation>Radyo Ayarları</translation>
     </message>
     <message>
         <location filename="../settingswidget.cpp" line="47"/>
         <source>Radio Server</source>
-        <translation type="unfinished"></translation>
+        <translation>Radyo Sunucusu</translation>
     </message>
     <message>
         <location filename="../settingswidget.cpp" line="48"/>
         <source>External Control</source>
-        <translation type="unfinished"></translation>
+        <translation>Dış Kontrol</translation>
     </message>
     <message>
         <location filename="../settingswidget.cpp" line="49"/>
         <source>DX Cluster</source>
-        <translation type="unfinished"></translation>
+        <translation>DX Cluster</translation>
     </message>
     <message>
         <location filename="../settingswidget.cpp" line="50"/>
         <source>Experimental</source>
-        <translation type="unfinished"></translation>
+        <translation>Deneysel (Dikkatli Kullanınız)</translation>
     </message>
     <message>
         <location filename="../settingswidget.cpp" line="1515"/>
@@ -3069,7 +3069,7 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     <message>
         <location filename="../settingswidget.cpp" line="1516"/>
         <source>Enter serial port assignment:</source>
-        <translation>Serial Port Atanmasını Girin</translation>
+        <translation>Serial Port Atanmasını Girin:</translation>
     </message>
     <message>
         <location filename="../settingswidget.cpp" line="1518"/>
@@ -3090,7 +3090,7 @@ Do you want to change it? (0=transparent, 255=opaque)</source>
     <message>
         <location filename="../settingswidget.cpp" line="2249"/>
         <source>Preset Name (10 characters max):</source>
-        <translation>Hazır Ayar Adı (10 hane maks)</translation>
+        <translation>Hazır Ayar Adı (10 hane maks):</translation>
     </message>
 </context>
 <context>
@@ -3128,7 +3128,7 @@ Do you want to change it? (0=transparent, 255=opaque)</source>
     <message>
         <location filename="../wfmain.ui" line="266"/>
         <source>Tuning Step Selection possibly. Or not...</source>
-        <translation>Ayar adım seçeneği.. Muhtemelen... Mı Acaba?</translation>
+        <translation>Ayar adım seçeneği.. Muhtemelen... Mı Acaba?...</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="269"/>
@@ -3193,7 +3193,7 @@ Do you want to change it? (0=transparent, 255=opaque)</source>
     <message>
         <location filename="../wfmain.ui" line="463"/>
         <source>Receive Audio Level. Sets rig volume on USB rigs, and sets PC volume on LAN rigs.</source>
-        <translation>USB Sistemlerde, Radyo sisteminin ses şiddetini belirler</translation>
+        <translation>USB Sistemlerde, Radyo sisteminin ses şiddetini belirler.</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="482"/>
@@ -3213,7 +3213,7 @@ Do you want to change it? (0=transparent, 255=opaque)</source>
     <message>
         <location filename="../wfmain.ui" line="520"/>
         <source>Squelch control. Top is fully-muted, bottom is wide open.</source>
-        <translation>Squelch Kontrolu, En üst konum tamamen sessiz, En altı ise sesi tamamen alır</translation>
+        <translation>Squelch Kontrolu, En üst konum tamamen sessiz, En altı ise sesi tamamen alır.</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="539"/>
@@ -3365,7 +3365,7 @@ Do you want to change it? (0=transparent, 255=opaque)</source>
     <message>
         <location filename="../wfmain.ui" line="964"/>
         <source>Attenuator:</source>
-        <translation>Attenuator</translation>
+        <translation>Attenuator:</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="971"/>
@@ -3435,7 +3435,7 @@ Do you want to change it? (0=transparent, 255=opaque)</source>
     <message>
         <location filename="../wfmain.ui" line="1154"/>
         <source> Exit Program</source>
-        <translation>Programdan Çık</translation>
+        <translation> Programdan Çık</translation>
     </message>
     <message>
         <location filename="../wfmain.cpp" line="2571"/>
