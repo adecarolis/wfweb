@@ -1152,6 +1152,14 @@ p, li { white-space: pre-wrap; }
     </message>
 </context>
 <context>
+    <name>meter</name>
+    <message>
+        <location filename="../meter.cpp" line="280"/>
+        <source>Double-click to set meter</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>pttyHandler</name>
     <message>
         <location filename="../pttyhandler.cpp" line="204"/>
@@ -1821,6 +1829,36 @@ p, li { white-space: pre-wrap; }
         <location filename="../rigcreator.ui" line="1173"/>
         <source>VFO</source>
         <translation>VFO</translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.cpp" line="91"/>
+        <location filename="../rigcreator.cpp" line="94"/>
+        <location filename="../rigcreator.cpp" line="117"/>
+        <location filename="../rigcreator.cpp" line="119"/>
+        <location filename="../rigcreator.cpp" line="489"/>
+        <location filename="../rigcreator.cpp" line="491"/>
+        <source>Select Rig Filename</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.cpp" line="145"/>
+        <source>Not a rig definition</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.cpp" line="146"/>
+        <source>File %0 does not appear to be a valid Rig definition file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.cpp" line="754"/>
+        <source>rig creator</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.cpp" line="754"/>
+        <source>Changes will be lost!</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -3094,6 +3132,271 @@ Do you want to change it? (0=transparent, 255=opaque)</source>
     </message>
 </context>
 <context>
+    <name>spectrumScope</name>
+    <message>
+        <location filename="../spectrumscope.cpp" line="55"/>
+        <source>Detach</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="57"/>
+        <source>Detach/re-attach scope from main window</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="61"/>
+        <source>Spectrum Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="64"/>
+        <source>Spectrum Span</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="68"/>
+        <source>Spectrum Edge</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="69"/>
+        <source>Custom Edge</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="70"/>
+        <source>Define a custom (fixed) scope edge</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="71"/>
+        <source>To Fixed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="72"/>
+        <source>&amp;lt;html&amp;gt;&amp;lt;head/&amp;gt;&amp;lt;body&amp;gt;&amp;lt;p&amp;gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;&amp;lt;br/&amp;gt;&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;The currently-selected edge slot will be overridden.&amp;lt;/p&amp;gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="84"/>
+        <location filename="../spectrumscope.cpp" line="86"/>
+        <source>Configure Scope</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="85"/>
+        <source>Change various settings of the current Scope</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="136"/>
+        <source>Center Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="137"/>
+        <source>Fixed Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="138"/>
+        <source>Scroll-C</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="139"/>
+        <source>Scroll-F</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="142"/>
+        <source>Fixed Edge 1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="142"/>
+        <source>Fixed Edge 2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="142"/>
+        <source>Fixed Edge 3</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="142"/>
+        <source>Fixed Edge 4</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="171"/>
+        <source>SCOPE OUT OF RANGE</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="182"/>
+        <source> OVF </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="247"/>
+        <source>Scope display reference</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="248"/>
+        <source>Selects the display reference for the Scope display</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="249"/>
+        <source>Select display reference of scope</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="250"/>
+        <source>Ref</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="255"/>
+        <source>Length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="260"/>
+        <source>Scope display ceiling</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="261"/>
+        <source>Selects the display ceiling for the Scope display</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="262"/>
+        <source>Select display ceiling of scope</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="263"/>
+        <source>Ceiling</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="268"/>
+        <source>Scope display floor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="269"/>
+        <source>Selects the display floor for the Scope display</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="270"/>
+        <source>Select display floor of scope</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="271"/>
+        <source>Floor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="274"/>
+        <source>Speed Fast</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="275"/>
+        <source>Speed Mid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="276"/>
+        <source>Speed Slow</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="278"/>
+        <source>Waterfall display speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="279"/>
+        <source>Selects the speed for the waterfall display</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="280"/>
+        <source>Waterfall Speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="281"/>
+        <source>Speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="284"/>
+        <source>Waterfall display color theme</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="285"/>
+        <source>Selects the color theme for the waterfall display</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="286"/>
+        <source>Waterfall color theme</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="300"/>
+        <source>Theme</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="304"/>
+        <source>PBT Inner</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="308"/>
+        <source>PBT Outer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="312"/>
+        <source>IF Shift</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="316"/>
+        <source>Fill Width</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="1026"/>
+        <source>Scope Edges</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="1027"/>
+        <source>Please enter desired scope edges, in MHz,
+with a comma between the low and high range.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../spectrumscope.cpp" line="1056"/>
+        <source>Error, could not interpret your input.                          &lt;br/&gt;Please make sure to place a comma between the frequencies.                          &lt;br/&gt;For example: &apos;7.200, 7.300&apos;</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>wfmain</name>
     <message>
         <location filename="../wfmain.ui" line="17"/>
@@ -3448,6 +3751,23 @@ Do you want to change it? (0=transparent, 255=opaque)</source>
         <translation>USB Kontrollerlerini resetlemek istediğinize emin misiniz?</translation>
     </message>
     <message>
+        <location filename="../wfmain.cpp" line="4051"/>
+        <location filename="../wfmain.cpp" line="4630"/>
+        <source>Don&apos;t ask me again</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../wfmain.cpp" line="4052"/>
+        <source>Don&apos;t ask me to confirm exit again</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../wfmain.cpp" line="4054"/>
+        <source>Are you sure you wish to exit?
+</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../wfmain.cpp" line="4140"/>
         <source>Revert settings</source>
         <translation>Ayarları Geri Al</translation>
@@ -3457,6 +3777,17 @@ Do you want to change it? (0=transparent, 255=opaque)</source>
         <source>Are you sure you wish to reset all wfview settings?
 If so, wfview will exit and you will need to start the program again.</source>
         <translation>Tüm wfview ayarlarını sıfırlamak istediğinize emin misiniz? Eğer eminseniz wfview çıkış yapacak ve programı tekrardan başlatmanız gerekecek.</translation>
+    </message>
+    <message>
+        <location filename="../wfmain.cpp" line="4632"/>
+        <source>Power</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../wfmain.cpp" line="4633"/>
+        <source>Power down the radio?
+</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 </TS>

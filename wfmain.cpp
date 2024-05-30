@@ -4048,10 +4048,10 @@ bool wfmain::on_exitBtn_clicked()
     if (!prefs.confirmExit) {
         QApplication::exit();
     } else {
-        QCheckBox *cb = new QCheckBox("Don't ask me again");
-        cb->setToolTip("Don't ask me to confirm exit again");
+        QCheckBox *cb = new QCheckBox(tr("Don't ask me again"));
+        cb->setToolTip(tr("Don't ask me to confirm exit again"));
         QMessageBox msgbox;
-        msgbox.setText("Are you sure you wish to exit?\n");
+        msgbox.setText(tr("Are you sure you wish to exit?\n"));
         msgbox.setIcon(QMessageBox::Icon::Question);
         QAbstractButton *yesButton = msgbox.addButton(QMessageBox::Yes);
         msgbox.addButton(QMessageBox::No);
@@ -4627,10 +4627,10 @@ void wfmain::on_rigPowerOffBtn_clicked()
         powerRigOff();
         return;
     }
-    QCheckBox* cb = new QCheckBox("Don't ask me again");
+    QCheckBox* cb = new QCheckBox(tr("Don't ask me again"));
     QMessageBox msgbox;
-    msgbox.setWindowTitle("Power");
-    msgbox.setText("Power down the radio?\n");
+    msgbox.setWindowTitle(tr("Power"));
+    msgbox.setText(tr("Power down the radio?\n"));
     msgbox.setIcon(QMessageBox::Icon::Question);
     QAbstractButton* yesButton = msgbox.addButton(QMessageBox::Yes);
     msgbox.addButton(QMessageBox::No);

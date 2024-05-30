@@ -88,10 +88,10 @@ void rigCreator::on_defaultRigs_clicked(bool clicked)
 
 #ifdef Q_OS_LINUX
      appdata += "/../share/wfview/rigs";
-     QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata,"Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
+     QString file = QFileDialog::getOpenFileName(this,tr("Select Rig Filename"),appdata,"Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
 #else
      appdata +="/rigs";
-     QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata,"Rig Files (*.rig)");
+     QString file = QFileDialog::getOpenFileName(this,tr("Select Rig Filename"),appdata,"Rig Files (*.rig)");
 #endif
 
     if (!file.isEmpty())
@@ -114,9 +114,9 @@ void rigCreator::on_loadFile_clicked(bool clicked)
     }
 
 #ifdef Q_OS_LINUX
-    QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata+"/rigs","Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
+    QString file = QFileDialog::getOpenFileName(this,tr("Select Rig Filename"),appdata+"/rigs","Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
 #else
-    QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata+"/rigs","Rig Files (*.rig)");
+    QString file = QFileDialog::getOpenFileName(this,tr("Select Rig Filename"),appdata+"/rigs","Rig Files (*.rig)");
 #endif
 
     if (!file.isEmpty())
@@ -142,8 +142,8 @@ void rigCreator::loadRigFile(QString file)
     {
         QFileInfo info(file);
         QMessageBox msgBox;
-        msgBox.setText("Not a rig definition");
-        msgBox.setInformativeText(QString("File %0 does not appear to be a valid Rig definition file").arg(info.fileName()));
+        msgBox.setText(tr("Not a rig definition"));
+        msgBox.setInformativeText(QString(tr("File %0 does not appear to be a valid Rig definition file")).arg(info.fileName()));
         msgBox.setStandardButtons(QMessageBox::Ok);
         msgBox.exec();
         delete settings;
@@ -486,9 +486,9 @@ void rigCreator::on_saveFile_clicked(bool clicked)
 
     QFileInfo fileInfo(currentFile);
 #ifdef Q_OS_LINUX
-    QString file = QFileDialog::getSaveFileName(this,"Select Rig Filename",appdata+"/rigs/"+fileInfo.fileName(),"Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
+    QString file = QFileDialog::getSaveFileName(this,tr("Select Rig Filename"),appdata+"/rigs/"+fileInfo.fileName(),"Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
 #else
-    QString file = QFileDialog::getSaveFileName(this,"Select Rig Filename",appdata+"/rigs/"+fileInfo.fileName(),"Rig Files (*.rig)");
+    QString file = QFileDialog::getSaveFileName(this,tr("Select Rig Filename"),appdata+"/rigs/"+fileInfo.fileName(),"Rig Files (*.rig)");
 #endif
 
     if (!file.isEmpty())
@@ -751,7 +751,7 @@ void rigCreator::closeEvent(QCloseEvent *event)
     {
         // Settings have changed since last save
         qInfo() << "Settings have changed since last save";
-        int reply = QMessageBox::question(this,"rig creator","Changes will be lost!",QMessageBox::Cancel |QMessageBox::Ok);
+        int reply = QMessageBox::question(this,tr("rig creator"),tr("Changes will be lost!"),QMessageBox::Cancel |QMessageBox::Ok);
         if (reply == QMessageBox::Cancel)
         {
             event->ignore();

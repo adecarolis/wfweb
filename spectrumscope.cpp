@@ -52,24 +52,24 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
 
 
     controlLayout = new QHBoxLayout();
-    detachButton = new QPushButton("Detach");
+    detachButton = new QPushButton(tr("Detach"));
     detachButton->setCheckable(true);
-    detachButton->setToolTip("Detach/re-attach scope from main window");
+    detachButton->setToolTip(tr("Detach/re-attach scope from main window"));
     detachButton->setChecked(false);
     //scopeModeLabel = new QLabel("Spectrum Mode:");
     scopeModeCombo = new QComboBox();
-    scopeModeCombo->setAccessibleDescription("Spectrum Mode");
+    scopeModeCombo->setAccessibleDescription(tr("Spectrum Mode"));
     //spanLabel = new QLabel("Span:");
     spanCombo = new QComboBox();
-    spanCombo->setAccessibleDescription("Spectrum Span");
+    spanCombo->setAccessibleDescription(tr("Spectrum Span"));
     spanCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     //edgeLabel = new QLabel("Edge:");
     edgeCombo = new QComboBox();
-    edgeCombo->setAccessibleDescription("Spectrum Edge");
-    edgeButton = new QPushButton("Custom Edge");
-    edgeButton->setToolTip("Define a custom (fixed) scope edge");
-    toFixedButton = new QPushButton("To Fixed");
-    toFixedButton->setToolTip("&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;The currently-selected edge slot will be overridden.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;");
+    edgeCombo->setAccessibleDescription(tr("Spectrum Edge"));
+    edgeButton = new QPushButton(tr("Custom Edge"));
+    edgeButton->setToolTip(tr("Define a custom (fixed) scope edge"));
+    toFixedButton = new QPushButton(tr("To Fixed"));
+    toFixedButton->setToolTip(tr("&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;The currently-selected edge slot will be overridden.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;"));
 
     holdButton = new QPushButton("HOLD");
     holdButton->setCheckable(true);
@@ -81,9 +81,9 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     clearPeaksButton = new QPushButton("Clear Peaks");
 
     confButton = new QPushButton("<");
-    confButton->setAccessibleName("Configure Scope");
-    confButton->setAccessibleDescription("Change various settings of the current Scope");
-    confButton->setToolTip("Configure Scope");
+    confButton->setAccessibleName(tr("Configure Scope"));
+    confButton->setAccessibleDescription(tr("Change various settings of the current Scope"));
+    confButton->setToolTip(tr("Configure Scope"));
     confButton->setFocusPolicy(Qt::NoFocus);
 
     modeCombo = new QComboBox();
@@ -133,13 +133,13 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
 
     this->layout->setContentsMargins(5,5,5,5);
 
-    scopeModeCombo->addItem("Center Mode", (spectrumMode_t)spectModeCenter);
-    scopeModeCombo->addItem("Fixed Mode", (spectrumMode_t)spectModeFixed);
-    scopeModeCombo->addItem("Scroll-C", (spectrumMode_t)spectModeScrollC);
-    scopeModeCombo->addItem("Scroll-F", (spectrumMode_t)spectModeScrollF);
+    scopeModeCombo->addItem(tr("Center Mode"), (spectrumMode_t)spectModeCenter);
+    scopeModeCombo->addItem(tr("Fixed Mode"), (spectrumMode_t)spectModeFixed);
+    scopeModeCombo->addItem(tr("Scroll-C"), (spectrumMode_t)spectModeScrollC);
+    scopeModeCombo->addItem(tr("Scroll-F"), (spectrumMode_t)spectModeScrollF);
     scopeModeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
 
-    edgeCombo->insertItems(0, QStringList({"Fixed Edge 1","Fixed Edge 2","Fixed Edge 3","Fixed Edge 4"}));
+    edgeCombo->insertItems(0, QStringList({tr("Fixed Edge 1"),tr("Fixed Edge 2"),tr("Fixed Edge 3"),tr("Fixed Edge 4")}));
     //edgeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContentsOnFirstShow);
 
     // Spectrum Plot setup
@@ -168,7 +168,7 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     oorIndicator->setFont(QFont(font().family(), 14));
     oorIndicator->setPositionAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
     oorIndicator->position->setType(QCPItemPosition::ptAxisRectRatio); // Positioned relative to the current plot rect
-    oorIndicator->setText("SCOPE OUT OF RANGE");
+    oorIndicator->setText(tr("SCOPE OUT OF RANGE"));
     oorIndicator->position->setCoords(0.5f,0.5f);
 
     ovfIndicator = new QCPItemText(spectrum);
@@ -179,7 +179,7 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     ovfIndicator->setFont(QFont(font().family(), 10));
     ovfIndicator->setPositionAlignment(Qt::AlignLeft | Qt::AlignTop);
     ovfIndicator->position->setType(QCPItemPosition::ptAxisRectRatio); // Positioned relative to the current plot rect
-    ovfIndicator->setText(" OVF ");
+    ovfIndicator->setText(tr(" OVF "));
     ovfIndicator->position->setCoords(0.01f,0.0f);
 
     redrawSpeed = new QCPItemText(spectrum);
@@ -244,46 +244,46 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     configRef->setTickInterval(50);
     configRef->setSingleStep(20);
     configRef->setValue(0);
-    configRef->setAccessibleName("Scope display reference");
-    configRef->setAccessibleDescription("Selects the display reference for the Scope display");
-    configRef->setToolTip("Select display reference of scope");
-    configLayout->addRow("Ref",configRef);
+    configRef->setAccessibleName(tr("Scope display reference"));
+    configRef->setAccessibleDescription(tr("Selects the display reference for the Scope display"));
+    configRef->setToolTip(tr("Select display reference of scope"));
+    configLayout->addRow(tr("Ref"),configRef);
 
     configLength = new QSlider(Qt::Orientation::Horizontal);
     configLength->setRange(100,1024);
     configLength->setValue(wfLength);
-    configLayout->addRow("Length",configLength);
+    configLayout->addRow(tr("Length"),configLength);
 
     configTop = new QSlider(Qt::Orientation::Horizontal);
     configTop->setRange(1,160);
     configTop->setValue(plotCeiling);
-    configTop->setAccessibleName("Scope display ceiling");
-    configTop->setAccessibleDescription("Selects the display ceiling for the Scope display");
-    configTop->setToolTip("Select display ceiling of scope");
-    configLayout->addRow("Ceiling",configTop);
+    configTop->setAccessibleName(tr("Scope display ceiling"));
+    configTop->setAccessibleDescription(tr("Selects the display ceiling for the Scope display"));
+    configTop->setToolTip(tr("Select display ceiling of scope"));
+    configLayout->addRow(tr("Ceiling"),configTop);
 
     configBottom = new QSlider(Qt::Orientation::Horizontal);
     configBottom->setRange(0,160);
     configBottom->setValue(plotFloor);
-    configBottom->setAccessibleName("Scope display floor");
-    configBottom->setAccessibleDescription("Selects the display floor for the Scope display");
-    configBottom->setToolTip("Select display floor of scope");
-    configLayout->addRow("Floor",configBottom);
+    configBottom->setAccessibleName(tr("Scope display floor"));
+    configBottom->setAccessibleDescription(tr("Selects the display floor for the Scope display"));
+    configBottom->setToolTip(tr("Select display floor of scope"));
+    configLayout->addRow(tr("Floor"),configBottom);
 
     configSpeed = new QComboBox();
-    configSpeed->addItem("Speed Fast",QVariant::fromValue(uchar(0)));
-    configSpeed->addItem("Speed Mid",QVariant::fromValue(uchar(1)));
-    configSpeed->addItem("Speed Slow",QVariant::fromValue(uchar(2)));
+    configSpeed->addItem(tr("Speed Fast"),QVariant::fromValue(uchar(0)));
+    configSpeed->addItem(tr("Speed Mid"),QVariant::fromValue(uchar(1)));
+    configSpeed->addItem(tr("Speed Slow"),QVariant::fromValue(uchar(2)));
     configSpeed->setCurrentIndex(configSpeed->findData(currentSpeed));
-    configSpeed->setAccessibleName("Waterfall display speed");
-    configSpeed->setAccessibleDescription("Selects the speed for the waterfall display");
-    configSpeed->setToolTip("Waterfall Speed");
-    configLayout->addRow("Speed",configSpeed);
+    configSpeed->setAccessibleName(tr("Waterfall display speed"));
+    configSpeed->setAccessibleDescription(tr("Selects the speed for the waterfall display"));
+    configSpeed->setToolTip(tr("Waterfall Speed"));
+    configLayout->addRow(tr("Speed"),configSpeed);
 
     configTheme = new QComboBox();
-    configTheme->setAccessibleName("Waterfall display color theme");
-    configTheme->setAccessibleDescription("Selects the color theme for the waterfall display");
-    configTheme->setToolTip("Waterfall color theme");
+    configTheme->setAccessibleName(tr("Waterfall display color theme"));
+    configTheme->setAccessibleDescription(tr("Selects the color theme for the waterfall display"));
+    configTheme->setToolTip(tr("Waterfall color theme"));
     configTheme->addItem("Jet", QCPColorGradient::gpJet);
     configTheme->addItem("Cold", QCPColorGradient::gpCold);
     configTheme->addItem("Hot", QCPColorGradient::gpHot);
@@ -297,23 +297,23 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     configTheme->addItem("Spect", QCPColorGradient::gpSpectrum);
     configTheme->addItem("Candy", QCPColorGradient::gpCandy);
     configTheme->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-    configLayout->addRow("Theme",configTheme);
+    configLayout->addRow(tr("Theme"),configTheme);
 
     configPbtInner = new QSlider(Qt::Orientation::Horizontal);
     configPbtInner->setRange(0,255);
-    configLayout->addRow("PBT Inner",configPbtInner);
+    configLayout->addRow(tr("PBT Inner"),configPbtInner);
 
     configPbtOuter = new QSlider(Qt::Orientation::Horizontal);
     configPbtOuter->setRange(0,255);
-    configLayout->addRow("PBT Outer",configPbtOuter);
+    configLayout->addRow(tr("PBT Outer"),configPbtOuter);
 
     configIfShift = new QSlider(Qt::Orientation::Horizontal);
     configIfShift->setRange(0,255);
-    configLayout->addRow("IF Shift",configIfShift);
+    configLayout->addRow(tr("IF Shift"),configIfShift);
 
     configFilterWidth = new QSlider(Qt::Orientation::Horizontal);
     configFilterWidth->setRange(0,10000);
-    configLayout->addRow("Fill Width",configFilterWidth);
+    configLayout->addRow(tr("Fill Width"),configFilterWidth);
 
     connect(configLength, &QSlider::valueChanged, this, [=](const int &val) {
         prepareWf(val);
@@ -1023,8 +1023,8 @@ void spectrumScope::customSpanPressed()
     QString freqstring = QString("%1, %2").arg(lowFreq).arg(highFreq);
     bool ok;
 
-    QString userFreq = QInputDialog::getText(this, "Scope Edges",
-                          "Please enter desired scope edges, in MHz,\nwith a comma between the low and high range.",
+    QString userFreq = QInputDialog::getText(this, tr("Scope Edges"),
+                          tr("Please enter desired scope edges, in MHz,\nwith a comma between the low and high range."),
     QLineEdit::Normal, freqstring, &ok);
     if(!ok)
         return;
@@ -1053,9 +1053,9 @@ void spectrumScope::customSpanPressed()
 errMsg:
     {
         QMessageBox URLmsgBox;
-        URLmsgBox.setText("Error, could not interpret your input.\
+        URLmsgBox.setText(tr("Error, could not interpret your input.\
                           <br/>Please make sure to place a comma between the frequencies.\
-                          <br/>For example: '7.200, 7.300'");
+                          <br/>For example: '7.200, 7.300'"));
         URLmsgBox.exec();
 
         return;
