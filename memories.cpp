@@ -557,7 +557,7 @@ void memories::on_group_currentIndexChanged(int index)
         case 'f':
             if (freqEditor != Q_NULLPTR)
                 delete freqEditor;
-            freqEditor = new tableEditor("00000.0000000",ui->table);
+            freqEditor = new tableEditor("00000.00000",ui->table);
             ui->table->setItemDelegateForColumn(columnFrequency, freqEditor);
 
             ui->table->showColumn(columnFrequency);
@@ -566,7 +566,7 @@ void memories::on_group_currentIndexChanged(int index)
         case 'F':
             if (freqEditorB != Q_NULLPTR)
                 delete freqEditorB;
-            freqEditorB = new tableEditor("00000.000000",ui->table);
+            freqEditorB = new tableEditor("00000.00000",ui->table);
             ui->table->setItemDelegateForColumn(columnFrequencyB, freqEditorB);
 
             ui->table->showColumn(columnFrequencyB);
@@ -1026,10 +1026,10 @@ void memories::receiveMemory(memoryType mem)
         validData += updateCombo(scan,row,columnScan,mem.scan);
 
 
-        ui->table->model()->setData(ui->table->model()->index(row,columnFrequency),QString::number(double(mem.frequency.Hz/1000000.0),'f',3));
+        ui->table->model()->setData(ui->table->model()->index(row,columnFrequency),QString::number(double(mem.frequency.Hz/1000000.0),'f',5));
         validData++;
 
-        ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),QString::number(double(mem.frequencyB.Hz/1000000.0),'f',3));
+        ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),QString::number(double(mem.frequencyB.Hz/1000000.0),'f',5));
         validData++;
 
         for (uint i=0;i<rigCaps->modes.size();i++)
@@ -1204,7 +1204,6 @@ bool memories::checkASCII(QString str)
     bool containsNonASCII = str.contains(exp);
     return !containsNonASCII;
 }
-
 
 void memories::timeout()
 {    

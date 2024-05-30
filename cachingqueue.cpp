@@ -68,7 +68,7 @@ void cachingQueue::run()
                     prio = priorityLow;
                 else if (counter % priorityLowest == 0)
                     prio = priorityLowest;
-            }            
+            }
             counter++;
 
 
@@ -89,8 +89,9 @@ void cachingQueue::run()
                 updateCache(false,item.command,item.param,item.receiver);
             }
 
-            QCoreApplication::processEvents();
             deadline.setRemainingTime(queueInterval); // reset the deadline to the poll frequency
+
+            QCoreApplication::processEvents();
 
         }
         else if (!aborted) {
@@ -101,14 +102,16 @@ void cachingQueue::run()
             while (!messages.isEmpty()) {
                 emit sendMessage(messages.dequeue());
             }
+            if (queueInterval != -1 && deadline.isForever())
+                deadline.setRemainingTime(queueInterval); // reset the deadline to the poll frequency
         }
     }
 }
 
-void cachingQueue::interval(quint64 val)
+void cachingQueue::interval(qint64 val)
 {
     this->queueInterval = val;
-    waiting.wakeOne();
+    waiting.wakeAll();
     qInfo() << "Changing queue interval to" << val << "ms";
 }
 

@@ -9,11 +9,13 @@ udpServer::udpServer(SERVERCONFIG* config, QObject* parent) :
     config(config)
 {
     qInfo(logUdpServer()) << "Starting udp server";
+    queue=cachingQueue::getInstance();
 }
 
 void udpServer::init()
 {
 
+    connect(queue,SIGNAL(rigCapsUpdated(rigCapabilities*)),this, SLOT(receiveRigCaps(rigCapabilities*)));
     for (RIGCONFIG* rig : config->rigs)
     {
         qDebug(logUdpServer()) << "CIV:" << rig->civAddr;
@@ -157,16 +159,19 @@ udpServer::~udpServer()
 }
 
 
-void udpServer::receiveRigCaps(rigCapabilities caps)
+void udpServer::receiveRigCaps(rigCapabilities* caps)
 {
+    if (caps == Q_NULLPTR)
+        return;
+
     for (RIGCONFIG* rig: config->rigs) {
-        if (!memcmp(rig->guid, caps.guid, GUIDLEN) || config->rigs.size()==1) {
+        if (!memcmp(rig->guid, caps->guid, GUIDLEN) || config->rigs.size()==1) {
             // Matching rig, fill-in missing details
             rig->rigAvailable = true;
-            rig->modelName = caps.modelName;
-            rig->civAddr = caps.civ;
+            rig->modelName = caps->modelName;
+            rig->civAddr = caps->civ;
             if (rig->rigName == "<NONE>") {
-                rig->rigName = caps.modelName;
+                rig->rigName = caps->modelName;
             }
         }
     }
@@ -360,6 +365,10 @@ void udpServer::controlReceived()
         }
         case (CONNINFO_SIZE):
         {
+            //bool admin=false;
+            //if (in->busy && in->computer[0] != '\x0')
+            //    admin = true;
+
             conninfo_packet_t in = (conninfo_packet_t)r.constData();
             qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received request for radio connection";
             // Request to start audio and civ!
@@ -461,7 +470,9 @@ void udpServer::controlReceived()
 
                     if (radio->rxaudio != Q_NULLPTR)
                     {
-
+                        // This is the first client, so stop running the queue.
+                        radio->queueInterval = queue->interval();
+                        queue->interval(-1);
                         radio->rxAudioThread = new QThread(this);
                         radio->rxAudioThread->setObjectName("rxAudio()");
 
@@ -484,7 +495,6 @@ void udpServer::controlReceived()
 
                     }
                 }
-
             }
 
             break;
@@ -1392,7 +1402,13 @@ void udpServer::sendConnectionInfo(CLIENT* c, quint8 guid[GUIDLEN])
  
             // This is the current streaming client (should we support multiple clients?)
             if (c->isStreaming) {
-                memcpy(p.computer, c->clientName.constData(), c->clientName.length());
+
+                // If not an admin user, send an empty client name.
+                if(c->user.userType > 0)
+                    memcpy(p.computer, c->clientName.constData(), c->clientName.length());
+                else
+                    memset(p.computer,0x0,c->clientName.length());
+
                 p.ipaddress = qToBigEndian(c->ipAddress.toIPv4Address());
  
             }
@@ -1619,6 +1635,7 @@ void udpServer::dataForServer(QByteArray d)
 {
     rigCommander* sender = qobject_cast<rigCommander*>(QObject::sender());
 
+    //qInfo(logUdpServer()) << "Received data for server clients";
     if (sender == Q_NULLPTR)
     {
         return;
@@ -1957,11 +1974,12 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
         qInfo(logUdpServer()) << "Unable to lock connMutex()";
     }
 
-    if (len == 0) {
+    if (l->length() == 0) {
+        // We have no clients connected
         for (RIGCONFIG* radio : config->rigs) {
             if (!memcmp(radio->guid, guid, GUIDLEN) || config->rigs.size() == 1)
             {
-
+                queue->interval(radio->queueInterval);
                 if (radio->rxAudioThread != Q_NULLPTR) {
                     radio->rxAudioThread->quit();
                     radio->rxAudioThread->wait();

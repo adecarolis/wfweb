@@ -62,12 +62,12 @@ struct RIGCONFIG {
 			quint16 commoncap;      // 0x27
 			quint8 unusedb;           // 0x29
 			quint8 macaddress[6];     // 0x2a
-		};
+        };
 		quint8 guid[GUIDLEN];                  // 0x20
 	};
 #pragma pack(pop)
 	bool rigAvailable=false;
-	rigCapabilities rigCaps;
+    rigCapabilities* rigCaps = Q_NULLPTR;
 	rigCommander* rig = Q_NULLPTR;
 	QThread* rigThread = Q_NULLPTR;
 	audioHandler* rxaudio = Q_NULLPTR;
@@ -77,6 +77,7 @@ struct RIGCONFIG {
 	QTimer* rxAudioTimer = Q_NULLPTR;
 	QTimer* connectTimer = Q_NULLPTR;
 	quint8 waterfallFormat;
+    quint64 queueInterval=0;
 };
 
 
@@ -122,7 +123,7 @@ public slots:
 	void init();
 	void dataForServer(QByteArray);
 	void receiveAudioData(const audioPacket &data);
-	void receiveRigCaps(rigCapabilities caps);
+    void receiveRigCaps(rigCapabilities* caps);
 
 signals:
 	void haveDataFromServer(QByteArray);
@@ -248,6 +249,7 @@ private:
 	QTimer* wdTimer;
 
 	networkStatus status;
+    cachingQueue* queue;
 };
 
 
