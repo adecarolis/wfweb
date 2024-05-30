@@ -3737,39 +3737,39 @@ with a comma between the low and high range.</source>
         <translation>Zavřít program</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="2571"/>
+        <location filename="../wfmain.cpp" line="2570"/>
         <source>wfview</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="2572"/>
+        <location filename="../wfmain.cpp" line="2571"/>
         <source>Are you sure you wish to reset the USB controllers?</source>
         <translation>Jste si jistí, že chcete smazat USB kontroléry ?</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4051"/>
-        <location filename="../wfmain.cpp" line="4630"/>
+        <location filename="../wfmain.cpp" line="4050"/>
+        <location filename="../wfmain.cpp" line="4629"/>
         <source>Don&apos;t ask me again</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4052"/>
+        <location filename="../wfmain.cpp" line="4051"/>
         <source>Don&apos;t ask me to confirm exit again</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4054"/>
+        <location filename="../wfmain.cpp" line="4053"/>
         <source>Are you sure you wish to exit?
 </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4140"/>
+        <location filename="../wfmain.cpp" line="4139"/>
         <source>Revert settings</source>
         <translation>Vrátit nastavení</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4141"/>
+        <location filename="../wfmain.cpp" line="4140"/>
         <source>Are you sure you wish to reset all wfview settings?
 If so, wfview will exit and you will need to start the program again.</source>
         <translation>Jste si jistí, že chcete smazat všechna nastavení ?
@@ -3777,12 +3777,12 @@ Pokud ano, budete muset znovu spustit prohram.
 </translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4632"/>
+        <location filename="../wfmain.cpp" line="4631"/>
         <source>Power</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4633"/>
+        <location filename="../wfmain.cpp" line="4632"/>
         <source>Power down the radio?
 </source>
         <translation type="unfinished"></translation>
