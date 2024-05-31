@@ -1,5 +1,5 @@
 [General]
-Version=1.64
+Version=1.90
 
 [Rig]
 Manufacturer=Icom
@@ -21,7 +21,7 @@ HasCommand29=false
 MemGroups=100
 Memories=99
 MemStart=0
-MemFormat=%1.2a %3.2b %5.1d %6.5f %11.1g %12.1h %13.1i %14.1j %15.1m %16.3l %19.3o %22.1np %23.2q %25.1r %26.3s %29.8t %37.8u %45.8v %53.5F %58.1G %59.1H %60.1I %61.1J %62.1M %63.3N %66.3O %69.1P %70.2Q %72.1R %73.3S %76.8T %84.8U %92.8V %100.16z
+MemFormat=%1.2a %3.2b %5.1d %6.5f %11.1g %12.1h %13.1i %14.1j %15.1m %16.3n %19.3o %22.1p %23.2q %25.1r %26.3s %29.8t %37.8u %45.8v %53.5F %58.1G %59.1H %60.1I %61.1J %62.1M %63.3N %66.3O %69.1P %70.2Q %72.1R %73.3S %76.8T %84.8U %92.8V %100.16z
 SatMemories=0
 SatFormat=
 Commands\1\Type=Freq (TRX)

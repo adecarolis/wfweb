@@ -4,6 +4,7 @@
 #include "memories.h"
 #include "ui_memories.h"
 
+
 memories::memories(bool isAdmin, bool slowLoad, QWidget *parent) :
     QWidget(parent),
     slowLoad(slowLoad),
@@ -25,7 +26,7 @@ memories::memories(bool isAdmin, bool slowLoad, QWidget *parent) :
     }
     if (rigCaps == Q_NULLPTR)
     {
-        // We have no rigCaps, so cannot continue
+        qInfo() << "We have no rigCaps, so cannot continue";
         return;
     }
 
@@ -90,6 +91,8 @@ memories::memories(bool isAdmin, bool slowLoad, QWidget *parent) :
 
     ui->group->blockSignals(true);
     ui->group->addItem("Memory Group",-1);
+    // Set currentIndex to an invalid value to force an update.
+    ui->group->setCurrentIndex(-1);
     for (int i=rigCaps->memStart;i<=rigCaps->memGroups;i++) {
         if (i == rigCaps->memStart) {
             // Disable title if any groups to stop it being selected.
@@ -1137,7 +1140,7 @@ void memories::receiveMemory(memoryType mem)
 
         ui->table->blockSignals(false);
 
-        if (retries > 10)
+        if (retries > 2)
         {
             retries=0;
             return;
@@ -1173,9 +1176,10 @@ int  memories::updateCombo(QStringList& combo, int row, columns column, unsigned
     }
     else if (!ui->table->isColumnHidden(column))
     {
-        qInfo() << "Column" << column << "Hidden or invalid:" << data;
+        qInfo() << "Column" << ui->table->horizontalHeaderItem(column)->text() << "Invalid data received:" << data;
         ret=0;
     } else {
+        qInfo() << "Column" << ui->table->horizontalHeaderItem(column)->text() << "data received for disabled column!";
         ret=0;
     }
     return ret;
@@ -1190,9 +1194,10 @@ int  memories::updateCombo(QStringList& combo, int row, columns column, QString 
     }
     else if (!ui->table->isColumnHidden(column))
     {
-        qInfo() << "Column" << column << "Hidden or invalid:" << data;
+        qInfo() << "Column" << ui->table->horizontalHeaderItem(column)->text() << "Invalid data received:" << data;
         ret=0;
     } else {
+        qInfo() << "Column" << ui->table->horizontalHeaderItem(column)->text() << "data received for disabled column!";
         ret=0;
     }
     return ret;
