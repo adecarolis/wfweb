@@ -25,6 +25,8 @@ DEFINES += WFVIEW_VERSION=\\\"1.90\\\"
 
 DEFINES += BUILD_WFVIEW
 
+CONFIG += c++17
+
 CONFIG(debug, release|debug) {
     # For Debug builds only:
     linux:QMAKE_CXXFLAGS += -faligned-new
@@ -38,7 +40,6 @@ CONFIG(debug, release|debug) {
     linux:QMAKE_LFLAGS += -O2 -s
     win32:DESTDIR = wfview-debug
 }
-
 
 TRANSLATIONS += translations/wfview_en.ts \
                 translations/wfview_gb.ts \
