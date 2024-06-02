@@ -11,7 +11,7 @@
     <message>
         <location filename="../firsttimesetup.ui" line="20"/>
         <source>First Time Setup</source>
-        <translation>初回時のセットアップ</translation>
+        <translation>初回時のセットアップ画面</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="37"/>
@@ -51,13 +51,13 @@
     <message>
         <location filename="../firsttimesetup.ui" line="117"/>
         <source>You will now be taken to the Radio Access page under Settings.</source>
-        <translation>「設定」グループ内の「接続設定」のページが表示されます。</translation>
+        <translation>「設定」グループ内の「無線機との接続方法」のページが表示されます。</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="124"/>
         <source>Please fill in the relevant details for this connection type:</source>
         <oldsource>Please fill in the relevent details for this connection type:</oldsource>
-        <translation>選択した接続方法に関連する詳細を入力します:</translation>
+        <translation>選択した接続方法に関連する詳細を入力します：</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="163"/>
@@ -119,7 +119,7 @@ You will see this dialog box the next time you open wfview.</source>
     <message>
         <location filename="../firsttimesetup.ui" line="244"/>
         <source>Press for the next step.</source>
-        <translation>次のステップに進むには、 を押します。</translation>
+        <translation>押すと、次のステップに進みます。</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="247"/>
@@ -140,7 +140,7 @@ You will see this dialog box the next time you open wfview.</source>
     <message>
         <location filename="../firsttimesetup.cpp" line="21"/>
         <source>Radio IP address, UDP Port Numbers</source>
-        <translation>無線機のIPアドレスとコントロールポート番号(UDP)</translation>
+        <translation>無線機のホストネーム（IPアドレスでもよい）とコントロールポート番号(UDP)</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.cpp" line="22"/>
@@ -163,7 +163,7 @@ You will see this dialog box the next time you open wfview.</source>
     <message>
         <location filename="../aboutbox.ui" line="14"/>
         <source>Form</source>
-        <translation>wfviewへようこそ</translation>
+        <translation>プログラムの説明画面</translation>
     </message>
     <message>
         <location filename="../aboutbox.ui" line="48"/>
@@ -190,7 +190,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../bandbuttons.ui" line="14"/>
         <source>Form</source>
-        <translation>wfviewへようこそ</translation>
+        <translation>バンド設定画面</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="20"/>
@@ -210,7 +210,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../bandbuttons.ui" line="93"/>
         <source>160m</source>
-        <translation>1.9MHz帯</translation>
+        <translation>1.8 1.9MHz帯</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="96"/>
@@ -456,7 +456,7 @@ p, li { white-space: pre-wrap; }
         <location filename="../calibrationwindow.ui" line="32"/>
         <location filename="../calibrationwindow.ui" line="56"/>
         <source>Reference Adjustment</source>
-        <translation>基準周波数調整</translation>
+        <translation>基準周波数調整画面</translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="49"/>
@@ -476,7 +476,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../calibrationwindow.ui" line="163"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Save the calibration data to the indicated slot in the preference file. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;キャリブレーションデータを設定ファイルの指定されたSlotに保存します。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;キャリブレーションデータを設定ファイルの指定されたスロットに保存します。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="166"/>
@@ -486,7 +486,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../calibrationwindow.ui" line="176"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Load the calibration data from the indicated slot in the preference file. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;設定ファイル内の指定されたSlotから調整データをロードします。 &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;設定ファイル内の指定されたスロットから調整データを読込ます。 &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="179"/>
@@ -496,7 +496,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../calibrationwindow.ui" line="189"/>
         <source>Slot:</source>
-        <translation></translation>
+        <translation>スロット：</translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="200"/>
@@ -526,7 +526,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../calibrationwindow.ui" line="243"/>
         <source>Read Current Rig Calibration</source>
-        <translation>現在の無線機のキャリブレーションを読み取る</translation>
+        <translation>現在の無線機のキャリブレーションを</translation>
     </message>
 </context>
 <context>
@@ -534,7 +534,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../controllersetup.ui" line="14"/>
         <source>Controller setup</source>
-        <translation>USBコントローラの設定</translation>
+        <translation>USBコントローラの設定画面</translation>
     </message>
     <message>
         <location filename="../controllersetup.ui" line="27"/>
@@ -572,7 +572,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../cwsender.ui" line="14"/>
         <source>MainWindow</source>
-        <translation></translation>
+        <translation>ＣＷ運用画面</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="17"/>
@@ -706,12 +706,12 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../cwsender.ui" line="293"/>
         <source>Type here to send text as CW</source>
-        <translation>CW として送信する文字は、ここに入力します</translation>
+        <translation>送信する文字は、ここに入力します</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="327"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the desired break-in mode:&lt;/p&gt;&lt;p&gt;1. None: You must manually key and unkey the radio.&lt;/p&gt;&lt;p&gt;2. Semi: Transmit is automatic and switches to receive at the end of the text.&lt;/p&gt;&lt;p&gt;3. Full: Same as semi, but with breaks between characters when possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;ブレークイン モードを設定します。&lt;/p&gt;&lt;p&gt;1. Off: 無線のキーを手動で入力およびキー解除する必要があります。&lt;/p&gt;&lt;p&gt;2. Semi:送信は自動的に行われ、テキストの終わりで受信に切り替わります。&lt;/p&gt;&lt;p&gt;3. Full:Semi と同じですが、可能な場合は文字間に休憩を入れます。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;ブレークインモードを設定します。&lt;/p&gt;&lt;p&gt;1. Off：無線のキーを手動で入力およびキー解除する必要があります。&lt;/p&gt;&lt;p&gt;2. Semi：送信は自動的に行われ、送信文が終わると受信に切り替わります。&lt;/p&gt;&lt;p&gt;3. Full:Semi：と同じですが、可能な場合は文字間に休憩を入れます。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="331"/>
@@ -873,7 +873,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../frequencyinputwidget.ui" line="14"/>
         <source>Form</source>
-        <translation>wfviewへようこそ</translation>
+        <translation>周波数設定画面</translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="22"/>
@@ -888,12 +888,12 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../frequencyinputwidget.ui" line="44"/>
         <source>Return</source>
-        <translation></translation>
+        <translation>変更</translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="56"/>
         <source>Entry</source>
-        <translation>一覧</translation>
+        <translation>パッド</translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="74"/>
@@ -931,7 +931,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../frequencyinputwidget.ui" line="168"/>
         <source>&amp;CE</source>
-        <translation></translation>
+        <translation>クリア</translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="171"/>
@@ -979,7 +979,7 @@ p, li { white-space: pre-wrap; }
         <location filename="../frequencyinputwidget.ui" line="281"/>
         <location filename="../frequencyinputwidget.ui" line="284"/>
         <source>Enter</source>
-        <translation></translation>
+        <translation>実行</translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="303"/>
@@ -1023,22 +1023,22 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../loggingwindow.ui" line="14"/>
         <source>Form</source>
-        <translation>wfviewへようこそ</translation>
+        <translation>プログラムログ管理画面</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="53"/>
         <source>Annotation:</source>
-        <translation> 注釈文:</translation>
+        <translation> 注釈文：</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="66"/>
         <source>You may enter your own log notes here.</source>
-        <translation>ここに独自のログメモを入力できます。</translation>
+        <translation>ここに独自のログ用メモを入力できます。</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="85"/>
         <source>Adds user-text to the log.</source>
-        <translation>ユーザーテキストをログに追加します。</translation>
+        <translation>注釈文をログに追加します。</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="88"/>
@@ -1078,7 +1078,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../loggingwindow.ui" line="135"/>
         <source>Makes a best-effort to ask the host system to open the log file directory.</source>
-        <translation>ホスト システムにログ ファイル ディレクトリを開くよう最善の努力を尽くします。</translation>
+        <translation>ホストシステムにログファイルディレクトリを開くよう最善の努力を尽くします。</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="138"/>
@@ -1088,7 +1088,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../loggingwindow.ui" line="145"/>
         <source>Makes a best-effort to ask the host system to open the logfile.</source>
-        <translation>ホスト システムにログファイルを開くよう最善の努力を尽くします。</translation>
+        <translation>ホストシステムにログファイルを開くよう最善の努力を尽くします。</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="148"/>
@@ -1108,7 +1108,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../loggingwindow.ui" line="165"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Sends text to termbin.com. Some personal information (such as your username) is in the log file, so do not click this button unless you are ok sharing your log file. This is a quick way to receive a URL, pointing to your log file text, that you can send to other people. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;termbin.com にテキストを送信します。※一部の個人情報(ユーザー名当)はログ ファイル内にあるため、ログ ファイルを共有しても問題ない場合を除き、このボタンをクリックしないでください。これは、ログ ファイルのテキストを指す URL を簡単に受け取り、他の人に送信できます。 &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;termbin.com にテキストを送信します。※一部の個人情報(ユーザー名等)はログファイル内にあるため、ログファイルを共有しても問題ない場合を除き、このボタンをクリックしないでください。これの機能は、ログファイルのテキストを指す URLを簡単に受け取り、他の人に送信できます。 &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="168"/>
@@ -1121,7 +1121,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../memories.ui" line="14"/>
         <source>Memory Management</source>
-        <translation></translation>
+        <translation>メモリ管理画面</translation>
     </message>
     <message>
         <location filename="../memories.ui" line="43"/>
@@ -1159,7 +1159,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../meter.cpp" line="280"/>
         <source>Double-click to set meter</source>
-        <translation type="unfinished"></translation>
+        <translation>ダブルクリックしてメーターを設定します</translation>
     </message>
 </context>
 <context>
@@ -1167,7 +1167,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../pttyhandler.cpp" line="204"/>
         <source>Read failed: %1</source>
-        <translation>読込不可:</translation>
+        <translation>読込不可：</translation>
     </message>
 </context>
 <context>
@@ -1175,7 +1175,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../repeatersetup.ui" line="26"/>
         <source>Repeater Setup</source>
-        <translation>レピータモードの設定</translation>
+        <translation>レピータモードとＶＦＯの設定画面</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="47"/>
@@ -1411,7 +1411,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../repeatersetup.ui" line="425"/>
         <source>Transmit Tone only</source>
-        <translation>送信時にトーン</translation>
+        <translation>送信時に付加</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="435"/>
@@ -1466,7 +1466,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../rigcreator.ui" line="20"/>
         <source>Rig Creator</source>
-        <translation>無線機クリエーター</translation>
+        <translation>無線機クリエーター画面</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="32"/>
@@ -1688,17 +1688,17 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../rigcreator.ui" line="631"/>
         <source>Icom</source>
-        <translation></translation>
+        <translation>ＩＣＯＭ</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="636"/>
         <source>Yaesu</source>
-        <translation></translation>
+        <translation>ＹＡＥＳＵ</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="641"/>
         <source>Kenwood</source>
-        <translation></translation>
+        <translation>KENWOOD</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="649"/>
@@ -1841,27 +1841,27 @@ p, li { white-space: pre-wrap; }
         <location filename="../rigcreator.cpp" line="489"/>
         <location filename="../rigcreator.cpp" line="491"/>
         <source>Select Rig Filename</source>
-        <translation type="unfinished"></translation>
+        <translation>無線機用ファイル名を選択</translation>
     </message>
     <message>
         <location filename="../rigcreator.cpp" line="145"/>
         <source>Not a rig definition</source>
-        <translation type="unfinished"></translation>
+        <translation>無線機の定義ではありません</translation>
     </message>
     <message>
         <location filename="../rigcreator.cpp" line="146"/>
         <source>File %0 does not appear to be a valid Rig definition file</source>
-        <translation type="unfinished"></translation>
+        <translation>ファイル %0 は有効な無線機定義ファイルではないようです</translation>
     </message>
     <message>
         <location filename="../rigcreator.cpp" line="754"/>
         <source>rig creator</source>
-        <translation type="unfinished"></translation>
+        <translation>無線機クリエーター</translation>
     </message>
     <message>
         <location filename="../rigcreator.cpp" line="754"/>
         <source>Changes will be lost!</source>
-        <translation type="unfinished"></translation>
+        <translation>変更は失われます!</translation>
     </message>
 </context>
 <context>
@@ -1869,7 +1869,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../satellitesetup.ui" line="32"/>
         <source>Satellite Setup</source>
-        <translation>サテライト通信の設定</translation>
+        <translation>サテライト通信の設定画面</translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="102"/>
@@ -1930,7 +1930,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../satellitesetup.ui" line="452"/>
         <source>Additional Spectrum Margin (KHz)</source>
-        <translation></translation>
+        <translation>追加スペクトルマージン(KHz)</translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="469"/>
@@ -1958,7 +1958,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../selectradio.ui" line="14"/>
         <source>Select Radio From List</source>
-        <translation>無線機一覧</translation>
+        <translation>無線機一覧画面</translation>
     </message>
     <message>
         <location filename="../selectradio.ui" line="35"/>
@@ -2006,7 +2006,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../settingswidget.ui" line="14"/>
         <source>Settings</source>
-        <translation>設定</translation>
+        <translation>設定画面</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="59"/>
@@ -2046,7 +2046,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../settingswidget.ui" line="113"/>
         <source>Use CI-V address as Model ID too</source>
-        <translation>CI-VアドレスをモデルIDとしても使用する</translation>
+        <translation>CI-VアドレスをモデルIDとして使用する</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="135"/>
@@ -2158,8 +2158,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="467"/>
         <source>RX Latency (ms)</source>
-        <translatorcomment>受信遅延時間</translatorcomment>
-        <translation></translation>
+        <translation>受信遅延時間(ms)</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="493"/>
@@ -2170,13 +2169,12 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="500"/>
         <source>TX Latency (ms)</source>
-        <translatorcomment>送信遅延時間</translatorcomment>
-        <translation></translation>
+        <translation>送信遅延時間(ms)</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="527"/>
         <source>RX Codec</source>
-        <translation></translation>
+        <translation>受信用コーデック</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="534"/>
@@ -2186,7 +2184,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="541"/>
         <source>TX Codec</source>
-        <translation></translation>
+        <translation>送信用コーデック</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="548"/>
@@ -2226,17 +2224,17 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="606"/>
         <source>Duplex</source>
-        <translation></translation>
+        <translation>デュプレックス</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="614"/>
         <source>Full Duplex</source>
-        <translation></translation>
+        <translation>全二重</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="619"/>
         <source>Half Duplex</source>
-        <translation></translation>
+        <translation>半二重</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="627"/>
@@ -2290,7 +2288,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="740"/>
         <source>Connect To Radio</source>
-        <translation>無線機と接続</translation>
+        <translation>無線機と接続する</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="781"/>
@@ -2321,7 +2319,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="814"/>
         <source>Rig creator allows changing of all rig features and adding new rig profiles</source>
-        <translation>無線機クリエーターにより、すべての無線機機能の変更と新しい無線機プロファイルの追加が可能になります。</translation>
+        <translation>無線機クリエーター機能により、すべての無線機機能の変更と新しい無線機プロファイルの追加が可能になります。</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="817"/>
@@ -2331,7 +2329,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="841"/>
         <source>Enables interpolation between pixels. Note that this will increase CPU usage.</source>
-        <translation>ピクセル間の補間を有効にします。これにより、CPU 使用率が増加することに注意してください。</translation>
+        <translation>ピクセル間の補間を有効にします。これにより、CPU使用率が増加することに注意してください。</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="844"/>
@@ -2640,7 +2638,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="1807"/>
         <source>Meter Average</source>
-        <translation>メーター平均</translation>
+        <translation>メーター平均値</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="1827"/>
@@ -3073,7 +3071,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.cpp" line="44"/>
         <source>Radio Access</source>
-        <translation>無線機へアクセス</translation>
+        <translation>無線機との接続方法</translation>
     </message>
     <message>
         <location filename="../settingswidget.cpp" line="45"/>
@@ -3088,7 +3086,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.cpp" line="47"/>
         <source>Radio Server</source>
-        <translation></translation>
+        <translation>リモートサーバの設定</translation>
     </message>
     <message>
         <location filename="../settingswidget.cpp" line="48"/>
@@ -3098,12 +3096,12 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.cpp" line="49"/>
         <source>DX Cluster</source>
-        <translation>DXクラスタ</translation>
+        <translation>DXクラスタの設定</translation>
     </message>
     <message>
         <location filename="../settingswidget.cpp" line="50"/>
         <source>Experimental</source>
-        <translation>実験的</translation>
+        <translation>実験内容</translation>
     </message>
     <message>
         <location filename="../settingswidget.cpp" line="1515"/>
@@ -3143,264 +3141,269 @@ Do you want to change it? (0=transparent, 255=opaque)</source>
     <message>
         <location filename="../spectrumscope.cpp" line="55"/>
         <source>Detach</source>
-        <translation type="unfinished"></translation>
+        <translation>切り離す</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="57"/>
         <source>Detach/re-attach scope from main window</source>
-        <translation type="unfinished"></translation>
+        <translation>メインウィンドウからスコープを切り離す/再接続する</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="61"/>
         <source>Spectrum Mode</source>
-        <translation type="unfinished"></translation>
+        <translation>スペクトルモード</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="64"/>
         <source>Spectrum Span</source>
-        <translation type="unfinished"></translation>
+        <translation>スペクトルスパン</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="68"/>
         <source>Spectrum Edge</source>
-        <translation type="unfinished"></translation>
+        <translation>スペクトルエッジ</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="69"/>
         <source>Custom Edge</source>
-        <translation type="unfinished"></translation>
+        <translation>カスタムエッジ</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="70"/>
         <source>Define a custom (fixed) scope edge</source>
-        <translation type="unfinished"></translation>
+        <translation>カスタム(固定)スコープエッジを定義する</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="71"/>
         <source>To Fixed</source>
-        <translation type="unfinished"></translation>
+        <translation>固定する</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="72"/>
         <source>&amp;lt;html&amp;gt;&amp;lt;head/&amp;gt;&amp;lt;body&amp;gt;&amp;lt;p&amp;gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;&amp;lt;br/&amp;gt;&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;The currently-selected edge slot will be overridden.&amp;lt;/p&amp;gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;</source>
-        <translation type="unfinished"></translation>
+        <translation>&amp;lt;html&amp;gt;&amp;lt;head/&amp;gt;&amp;lt;body&amp;gt;&amp;lt;p&amp;gt;ボタンを押すと、範囲を維持しながらセンター モードのスペクトルが固定モードに変換されます。これにより、スペクトルを移動させることなく、現在表示されているのと同じ範囲で調整できます。.&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;&amp;lt;br/&amp;gt;&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;現在選択されているエッジ スロットは上書きされます。.&amp;lt;/p&amp;gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="84"/>
         <location filename="../spectrumscope.cpp" line="86"/>
         <source>Configure Scope</source>
-        <translation type="unfinished"></translation>
+        <translation>スコープの構成</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="85"/>
         <source>Change various settings of the current Scope</source>
-        <translation type="unfinished"></translation>
+        <translation>スコープの各種設定を変更します</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="136"/>
         <source>Center Mode</source>
-        <translation type="unfinished"></translation>
+        <translation>センターモード</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="137"/>
         <source>Fixed Mode</source>
-        <translation type="unfinished"></translation>
+        <translation>固定モード</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="138"/>
         <source>Scroll-C</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="139"/>
         <source>Scroll-F</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="142"/>
         <source>Fixed Edge 1</source>
-        <translation type="unfinished"></translation>
+        <translation>固定エッジ1</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="142"/>
         <source>Fixed Edge 2</source>
-        <translation type="unfinished"></translation>
+        <translation>固定エッジ2</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="142"/>
         <source>Fixed Edge 3</source>
-        <translation type="unfinished"></translation>
+        <translation>固定エッジ3</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="142"/>
         <source>Fixed Edge 4</source>
-        <translation type="unfinished"></translation>
+        <translation>固定エッジ4</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="171"/>
         <source>SCOPE OUT OF RANGE</source>
-        <translation type="unfinished"></translation>
+        <translation>スコープ：範囲外</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="182"/>
         <source> OVF </source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="247"/>
         <source>Scope display reference</source>
-        <translation type="unfinished"></translation>
+        <translation>スコープ：表示リファレンス</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="248"/>
         <source>Selects the display reference for the Scope display</source>
-        <translation type="unfinished"></translation>
+        <translation>スコープ表示の表示基準を選択します</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="249"/>
         <source>Select display reference of scope</source>
-        <translation type="unfinished"></translation>
+        <translation>スコープの表示参照を選択</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="250"/>
         <source>Ref</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="255"/>
         <source>Length</source>
-        <translation type="unfinished"></translation>
+        <translation>文字数</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="260"/>
         <source>Scope display ceiling</source>
-        <translation type="unfinished"></translation>
+        <translation>スコープ展示天井</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="261"/>
         <source>Selects the display ceiling for the Scope display</source>
-        <translation type="unfinished"></translation>
+        <translation>スコープ表示の表示上限を選択します</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="262"/>
         <source>Select display ceiling of scope</source>
-        <translation type="unfinished"></translation>
+        <translation>スコープの表示上限を選択</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="263"/>
         <source>Ceiling</source>
-        <translation type="unfinished"></translation>
+        <translatorcomment>シーリング</translatorcomment>
+        <translation></translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="268"/>
         <source>Scope display floor</source>
-        <translation type="unfinished"></translation>
+        <translation>スコープ展示フロア</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="269"/>
         <source>Selects the display floor for the Scope display</source>
-        <translation type="unfinished"></translation>
+        <translation>スコープ表示の表示フロアを選択します</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="270"/>
         <source>Select display floor of scope</source>
-        <translation type="unfinished"></translation>
+        <translation>スコープの表示フロアを選択します</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="271"/>
         <source>Floor</source>
-        <translation type="unfinished"></translation>
+        <translatorcomment>床</translatorcomment>
+        <translation></translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="274"/>
         <source>Speed Fast</source>
-        <translation type="unfinished"></translation>
+        <translatorcomment>速度が速い</translatorcomment>
+        <translation></translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="275"/>
         <source>Speed Mid</source>
-        <translation type="unfinished"></translation>
+        <translation>速度が中</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="276"/>
         <source>Speed Slow</source>
-        <translation type="unfinished"></translation>
+        <translatorcomment>速度が速い</translatorcomment>
+        <translation>速度が遅い</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="278"/>
         <source>Waterfall display speed</source>
-        <translation type="unfinished"></translation>
+        <translation>ウォーターフォールの表示速度</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="279"/>
         <source>Selects the speed for the waterfall display</source>
-        <translation type="unfinished"></translation>
+        <translation>ウォーターフォール表示の速度を選択します</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="280"/>
         <source>Waterfall Speed</source>
-        <translation type="unfinished"></translation>
+        <translation>ウォーターフォールの速さ</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="281"/>
         <source>Speed</source>
-        <translation type="unfinished"></translation>
+        <translation>速度</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="284"/>
         <source>Waterfall display color theme</source>
-        <translation type="unfinished"></translation>
+        <translation>ウォーターフォールの表示色のテーマ</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="285"/>
         <source>Selects the color theme for the waterfall display</source>
-        <translation type="unfinished"></translation>
+        <translation>ウォーターフォール表示のカラーテーマを選択します</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="286"/>
         <source>Waterfall color theme</source>
-        <translation type="unfinished"></translation>
+        <translation>ウォーターフォールの色のテーマ</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="300"/>
         <source>Theme</source>
-        <translation type="unfinished"></translation>
+        <translation>テーマ</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="304"/>
         <source>PBT Inner</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="308"/>
         <source>PBT Outer</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="312"/>
         <source>IF Shift</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="316"/>
         <source>Fill Width</source>
-        <translation type="unfinished"></translation>
+        <translation>塗りつぶし幅</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="1026"/>
         <source>Scope Edges</source>
-        <translation type="unfinished"></translation>
+        <translation>スコープエッジ</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="1027"/>
         <source>Please enter desired scope edges, in MHz,
 with a comma between the low and high range.</source>
-        <translation type="unfinished"></translation>
+        <translation>希望するスコープのエッジをMHz単位で入力してください。
+低音域と高音域の間にカンマを入れます。</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="1056"/>
         <source>Error, could not interpret your input.                          &lt;br/&gt;Please make sure to place a comma between the frequencies.                          &lt;br/&gt;For example: &apos;7.200, 7.300&apos;</source>
-        <translation type="unfinished"></translation>
+        <translation>エラー。入力を解釈できませんでした。                          &lt;br/&gt;周波数の間には必ずカンマを入れてください。                          &lt;br/&gt;例：「7.000、7.200」</translation>
     </message>
 </context>
 <context>
@@ -3700,12 +3703,12 @@ with a comma between the low and high range.</source>
     <message>
         <location filename="../wfmain.ui" line="1059"/>
         <source>About</source>
-        <translation>プログラム説明</translation>
+        <translation>プログラムの説明</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="1066"/>
         <source>Settings</source>
-        <translation>設定画面</translation>
+        <translation>設&#x3000;定</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="1073"/>
@@ -3740,7 +3743,7 @@ with a comma between the low and high range.</source>
     <message>
         <location filename="../wfmain.ui" line="1128"/>
         <source>Connect to Radio</source>
-        <translation>無線機と接続</translation>
+        <translation>無線機と接続する</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="1154"/>
@@ -3761,18 +3764,19 @@ with a comma between the low and high range.</source>
         <location filename="../wfmain.cpp" line="4050"/>
         <location filename="../wfmain.cpp" line="4629"/>
         <source>Don&apos;t ask me again</source>
-        <translation type="unfinished"></translation>
+        <translation>今後確認は不要</translation>
     </message>
     <message>
         <location filename="../wfmain.cpp" line="4051"/>
         <source>Don&apos;t ask me to confirm exit again</source>
-        <translation type="unfinished"></translation>
+        <translation>今後終了確認は不要</translation>
     </message>
     <message>
         <location filename="../wfmain.cpp" line="4053"/>
         <source>Are you sure you wish to exit?
 </source>
-        <translation type="unfinished"></translation>
+        <translation>終了してもよろしいですか?
+</translation>
     </message>
     <message>
         <location filename="../wfmain.cpp" line="4139"/>
@@ -3789,13 +3793,14 @@ If so, wfview will exit and you will need to start the program again.</source>
     <message>
         <location filename="../wfmain.cpp" line="4631"/>
         <source>Power</source>
-        <translation type="unfinished"></translation>
+        <translation>電源</translation>
     </message>
     <message>
         <location filename="../wfmain.cpp" line="4632"/>
         <source>Power down the radio?
 </source>
-        <translation type="unfinished"></translation>
+        <translation>無線機の電源を切りますか？
+</translation>
     </message>
 </context>
 </TS>
