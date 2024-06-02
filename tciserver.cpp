@@ -298,11 +298,13 @@ void tciServer::processIncomingTextMessage(QString message)
             {
                 qInfo() << "Starting audio";
                 it.value().rxaudio=true;
+                reply = QString("audio_start:%0;").arg(sub);
             }
             else if (cmd == "audio_stop" )
             {
                 it.value().rxaudio=false;
                 qInfo() << "Stopping audio";
+                reply = QString("audio_stop:%0;").arg(sub);
             }
 
             if (tc.func != funcNone)
