@@ -251,7 +251,6 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
 
     configLength = new QSlider(Qt::Orientation::Horizontal);
     configLength->setRange(100,1024);
-    configLength->setValue(wfLength);
     configLayout->addRow("Length",configLength);
 
     configTop = new QSlider(Qt::Orientation::Horizontal);

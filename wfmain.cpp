@@ -13,6 +13,9 @@
 QScopedPointer<QFile> m_logFile;
 QMutex logMutex;
 QMutex logTextMutex;
+QScopedPointer<QTextStream> logStream;
+//QTextStream* logStream = Q_NULLPTR;
+
 QVector<QPair<QtMsgType,QString>> logStringBuffer;
 #ifdef QT_DEBUG
 bool debugModeLogging = true;
@@ -420,7 +423,10 @@ wfmain::~wfmain()
             delete uDevNotifier;
         }
     #endif
+
 #endif
+
+    logStream->flush();
 }
 
 void wfmain::closeEvent(QCloseEvent *event)
@@ -4903,6 +4909,7 @@ void wfmain::initLogging()
     m_logFile.reset(new QFile(logFilename));
     // Open the file logging
     m_logFile.data()->open(QFile::WriteOnly | QFile::Truncate | QFile::Text);
+    logStream.reset(new QTextStream(m_logFile.data()));
     // Set handler
     qInstallMessageHandler(messageHandler);
 
@@ -4959,41 +4966,39 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     }
 
     QMutexLocker locker(&logMutex);
-    QTextStream out = QTextStream(m_logFile.data());
     QString text;
 
     // Write the date of recording
-    out << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ");
+    *logStream << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ");
     text.append(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz "));
     // By type determine to what level belongs message
 
     switch (type)
     {
         case QtDebugMsg:
-            out << "DBG ";
+            *logStream << "DBG ";
             text.append("DBG ");
             break;
         case QtInfoMsg:
-            out << "INF ";
+            *logStream << "INF ";
             text.append("INF ");
             break;
         case QtWarningMsg:
-            out << "WRN ";
+            *logStream << "WRN ";
             text.append("WRN ");
             break;
         case QtCriticalMsg:
-            out << "CRT ";
+            *logStream << "CRT ";
             text.append("CRT ");
             break;
         case QtFatalMsg:
-            out << "FTL ";
+            *logStream << "FTL ";
             text.append("FLT ");
             break;
     }
     // Write to the output category of the message and the message itself
-    out << context.category << ": " << msg << "\n";
-    out.flush();    // Clear the buffered data
-
+    *logStream << context.category << ": " << msg << "\n";
+    logStream->flush();    // Clear the buffered data
     text.append(context.category);
     text.append(": ");
     text.append(msg);
