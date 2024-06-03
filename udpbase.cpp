@@ -31,31 +31,13 @@ udpBase::~udpBase()
         udp->close();
         delete udp;
     }
-    if (areYouThereTimer != Q_NULLPTR)
-    {
-        areYouThereTimer->stop();
-        delete areYouThereTimer;
-    }
-
-    if (pingTimer != Q_NULLPTR)
-    {
-        pingTimer->stop();
-        delete pingTimer;
-    }
-    if (idleTimer != Q_NULLPTR)
-    {
-        idleTimer->stop();
-        delete idleTimer;
-    }
     if (retransmitTimer != Q_NULLPTR)
     {
-        retransmitTimer->stop();
+        qDebug(logUdp()) << "Stopping retransmit timer";
+        if (retransmitTimer->isActive())
+           retransmitTimer->stop();
         delete retransmitTimer;
     }
-
-    pingTimer = Q_NULLPTR;
-    idleTimer = Q_NULLPTR;
-    areYouThereTimer = Q_NULLPTR;
     retransmitTimer = Q_NULLPTR;
 
 }

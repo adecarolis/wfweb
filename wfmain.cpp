@@ -380,6 +380,12 @@ wfmain::~wfmain()
         serverThread->quit();
         serverThread->wait();
     }
+
+    // Each rig needs deleting before we close.
+    foreach (auto rig, serverConfig.rigs) {
+        delete rig;
+    }
+
     if (clusterThread != Q_NULLPTR) {
         clusterThread->quit();
         clusterThread->wait();

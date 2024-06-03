@@ -151,7 +151,7 @@ static const subCommandStruct params_str[] =
     {"TIME",funcTime,typeUChar},
     {"BAT",funcNone,typeUChar},
     {"KEYLIGHT",funcNone,typeUChar},
-    {"",funcNone}
+    {"",funcNone,typeNone}
 };
 
 #define ARG_IN1  0x01
@@ -856,6 +856,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         {
             // Only used for CW?
             val.setValue(params[0]);
+            break;
         }
         default:
             qInfo(logRigCtlD()) << "Unable to parse value of type" << cmd.type << "Command" << cmd.str;

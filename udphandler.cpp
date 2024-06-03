@@ -97,20 +97,38 @@ udpHandler::~udpHandler()
             delete civ;
             civ = Q_NULLPTR;
         }
+
         qInfo(logUdp()) << "Sending token removal packet";
         sendToken(0x01);
+
         if (tokenTimer != Q_NULLPTR)
         {
-            tokenTimer->stop();
+            if (tokenTimer->isActive())
+                tokenTimer->stop();
             delete tokenTimer;
+            tokenTimer = Q_NULLPTR;
         }
-        if (watchdogTimer != Q_NULLPTR)
+        if (pingTimer != Q_NULLPTR)
         {
-            watchdogTimer->stop();
-            delete watchdogTimer;
+            if (pingTimer->isActive())
+                pingTimer->stop();
+            delete pingTimer;
+            pingTimer = Q_NULLPTR;
         }
-
-
+        if (idleTimer != Q_NULLPTR)
+        {
+            if (idleTimer->isActive())
+                idleTimer->stop();
+            delete idleTimer;
+            idleTimer = Q_NULLPTR;
+        }
+        if (areYouThereTimer != Q_NULLPTR)
+        {
+            if (areYouThereTimer->isActive())
+                areYouThereTimer->stop();
+            delete areYouThereTimer;
+            areYouThereTimer = Q_NULLPTR;
+        }
     }
 }
 
