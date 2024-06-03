@@ -399,6 +399,13 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     showHideControls(spectrumMode_t::spectModeCenter);
 }
 
+
+spectrumScope::~spectrumScope(){
+    if(colorMapData != Q_NULLPTR)
+    {
+        delete colorMapData;
+    }
+}
 void spectrumScope::prepareScope(uint maxAmp, uint spectWidth)
 {
     this->spectWidth = spectWidth;

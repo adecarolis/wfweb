@@ -4959,7 +4959,7 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     }
 
     QMutexLocker locker(&logMutex);
-    QTextStream out(m_logFile.data());
+    QTextStream out = QTextStream(m_logFile.data());
     QString text;
 
     // Write the date of recording

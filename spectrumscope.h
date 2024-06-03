@@ -31,6 +31,7 @@ class spectrumScope : public QGroupBox
     Q_OBJECT
 public:
     explicit spectrumScope(bool scope, uchar receiver = 0, uchar vfo = 1, QWidget *parent = nullptr);
+    ~spectrumScope();
 
     bool prepareWf(uint wfLength);
     void prepareScope(uint ampMap, uint spectWidth);
