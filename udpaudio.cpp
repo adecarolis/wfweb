@@ -32,33 +32,6 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
 udpAudio::~udpAudio()
 {
-
-    if (areYouThereTimer != Q_NULLPTR)
-    {
-        qDebug(logUdp()) << "Stopping areYouThereTimer";
-        if (areYouThereTimer->isActive())
-            areYouThereTimer->stop();
-        delete areYouThereTimer;
-        areYouThereTimer = Q_NULLPTR;
-    }
-
-    if (pingTimer != Q_NULLPTR)
-    {
-        qDebug(logUdp()) << "Stopping pingTimer";
-        if (pingTimer->isActive())
-            pingTimer->stop();
-        delete pingTimer;
-        pingTimer = Q_NULLPTR;
-    }
-
-    if (watchdogTimer != Q_NULLPTR)
-    {
-        qDebug(logUdp()) << "Stopping watchdogTimer";
-        watchdogTimer->stop();
-        delete watchdogTimer;
-        watchdogTimer = Q_NULLPTR;
-    }
-
     if (rxAudioThread != Q_NULLPTR) {
         qDebug(logUdp()) << "Stopping rxaudio thread";
         rxAudioThread->quit();

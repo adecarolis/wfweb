@@ -31,15 +31,6 @@ udpBase::~udpBase()
         udp->close();
         delete udp;
     }
-    if (retransmitTimer != Q_NULLPTR)
-    {
-        qDebug(logUdp()) << "Stopping retransmit timer";
-        if (retransmitTimer->isActive())
-           retransmitTimer->stop();
-        delete retransmitTimer;
-    }
-    retransmitTimer = Q_NULLPTR;
-
 }
 
 // Base class!

@@ -42,44 +42,6 @@ udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort, boo
 udpCivData::~udpCivData()
 {
     sendOpenClose(true);
-    if (startCivDataTimer != Q_NULLPTR)
-    {
-        qDebug(logUdp()) << "Stopping CivDataTimer";
-        if (pingTimer->isActive())
-            startCivDataTimer->stop();
-        delete startCivDataTimer;
-        startCivDataTimer = Q_NULLPTR;
-    }
-    if (pingTimer != Q_NULLPTR)
-    {
-        if (pingTimer->isActive())
-            pingTimer->stop();
-        delete pingTimer;
-        pingTimer = Q_NULLPTR;
-    }
-    if (idleTimer != Q_NULLPTR)
-    {
-        if (idleTimer->isActive())
-            idleTimer->stop();
-        delete idleTimer;
-        idleTimer = Q_NULLPTR;
-    }
-    if (watchdogTimer != Q_NULLPTR)
-    {
-        if (watchdogTimer->isActive())
-            watchdogTimer->stop();
-        delete watchdogTimer;
-        watchdogTimer = Q_NULLPTR;
-    }
-    if (areYouThereTimer != Q_NULLPTR)
-    {
-        qDebug(logUdp()) << "Stopping areYouThereTimer";
-        if (areYouThereTimer->isActive())
-            areYouThereTimer->stop();
-        delete areYouThereTimer;
-        areYouThereTimer = Q_NULLPTR;
-    }
-
 }
 
 void udpCivData::watchdog()
