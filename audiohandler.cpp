@@ -213,7 +213,7 @@ audioHandler::~audioHandler()
 
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "thread id" << QThread::currentThreadId();
 
-	underTimer = new QTimer();
+    underTimer = new QTimer(this);
 	underTimer->setSingleShot(true);
 	connect(underTimer, SIGNAL(timeout()), this, SLOT(clearUnderrun()));
 

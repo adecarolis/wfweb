@@ -17,7 +17,7 @@ void udpBase::init(quint16 lport)
         uint32_t addr = localIP.toIPv4Address();
         myId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (localPort & 0xffff);
 
-        retransmitTimer = new QTimer();
+        retransmitTimer = new QTimer(this);
         connect(retransmitTimer, &QTimer::timeout, this, &udpBase::sendRetransmitRequest);
         retransmitTimer->start(RETRANSMIT_PERIOD);
     }

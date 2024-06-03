@@ -19,11 +19,11 @@ udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort, boo
     /*
         Connect various timers
     */
-    pingTimer = new QTimer();
-    idleTimer = new QTimer();
-    areYouThereTimer = new QTimer();
-    startCivDataTimer = new QTimer();
-    watchdogTimer = new QTimer();
+    pingTimer = new QTimer(this);
+    idleTimer = new QTimer(this);
+    areYouThereTimer = new QTimer(this);
+    startCivDataTimer = new QTimer(this);
+    watchdogTimer = new QTimer(this);
 
     connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
     connect(watchdogTimer, &QTimer::timeout, this, &udpCivData::watchdog);

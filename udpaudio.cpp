@@ -21,11 +21,11 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
  
     startAudio();
 
-    watchdogTimer = new QTimer();
+    watchdogTimer = new QTimer(this);
     connect(watchdogTimer, &QTimer::timeout, this, &udpAudio::watchdog);
     watchdogTimer->start(WATCHDOG_PERIOD);
 
-    areYouThereTimer = new QTimer();
+    areYouThereTimer = new QTimer(this);
     connect(areYouThereTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, false, 0x03, 0));
     areYouThereTimer->start(AREYOUTHERE_PERIOD);
 }
@@ -268,7 +268,7 @@ void udpAudio::startAudio() {
 
     sendControl(false, 0x03, 0x00); // First connect packet
 
-    pingTimer = new QTimer();
+    pingTimer = new QTimer(this);
     connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
     pingTimer->start(PING_PERIOD); // send ping packets every 100ms
 

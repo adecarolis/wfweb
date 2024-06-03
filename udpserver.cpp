@@ -117,7 +117,7 @@ void udpServer::init()
         QUdpSocket::connect(udpAudio, &QUdpSocket::readyRead, this, &udpServer::audioReceived);
     }
 
-    wdTimer = new QTimer();
+    wdTimer = new QTimer(this);
     connect(wdTimer, &QTimer::timeout, this, &udpServer::watchdog);
     wdTimer->start(500);
 }
@@ -215,15 +215,15 @@ void udpServer::controlReceived()
             current->socket = udpControl;
             current->pingSeq = (quint8)rand() << 8 | (quint8)rand();
 
-            current->pingTimer = new QTimer();
+            current->pingTimer = new QTimer(this);
             connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, &controlClients, current, (quint16)0x00, false));
             current->pingTimer->start(100);
 
-            current->idleTimer = new QTimer();
+            current->idleTimer = new QTimer(this);
             connect(current->idleTimer, &QTimer::timeout, this, std::bind(&udpServer::sendControl, this, current, (quint8)0x00, (quint16)0x00));
             current->idleTimer->start(100);
 
-            current->retransmitTimer = new QTimer();
+            current->retransmitTimer = new QTimer(this);
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
             current->retransmitTimer->start(RETRANSMIT_PERIOD);
 
@@ -571,15 +571,15 @@ void udpServer::civReceived()
             current->socket = udpCiv;
             current->pingSeq = (quint8)rand() << 8 | (quint8)rand();
 
-            current->pingTimer = new QTimer();
+            current->pingTimer = new QTimer(this);
             connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, &civClients, current, (quint16)0x00, false));
             current->pingTimer->start(100);
 
-            current->idleTimer = new QTimer();
+            current->idleTimer = new QTimer(this);
             connect(current->idleTimer, &QTimer::timeout, this, std::bind(&udpServer::sendControl, this, current, 0x00, (quint16)0x00));
             //current->idleTimer->start(100); // Start idleTimer after receiving iamready.
 
-            current->retransmitTimer = new QTimer();
+            current->retransmitTimer = new QTimer(this);
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
             current->retransmitTimer->start(RETRANSMIT_PERIOD);
 
@@ -739,11 +739,11 @@ void udpServer::audioReceived()
             current->socket = udpAudio;
             current->pingSeq = (quint8)rand() << 8 | (quint8)rand();
 
-            current->pingTimer = new QTimer();
+            current->pingTimer = new QTimer(this);
             connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, &audioClients, current, (quint16)0x00, false));
             current->pingTimer->start(PING_PERIOD);
 
-            current->retransmitTimer = new QTimer();
+            current->retransmitTimer = new QTimer(this);
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
             current->retransmitTimer->start(RETRANSMIT_PERIOD);
             current->seqPrefix = 0;
