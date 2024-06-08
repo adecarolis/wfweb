@@ -1840,7 +1840,7 @@ void spectrumScope::detachScope(bool state)
         qInfo(logGui()) << "Detaching scope" << (receiver?"Sub":"Main");
         this->parentWidget()->layout()->replaceWidget(this,windowLabel);
 
-        QTimer::singleShot(1, [&](){
+        QTimer::singleShot(1, this, [&](){
             if(originalParent) {
                 this->originalParent->resize(1,1);
             }
@@ -1856,7 +1856,7 @@ void spectrumScope::detachScope(bool state)
         qInfo(logGui()) << "Attaching scope" << (receiver?"Sub":"Main");
         windowLabel->parentWidget()->layout()->replaceWidget(windowLabel,this);
 
-        QTimer::singleShot(1, [&](){
+        QTimer::singleShot(1, this, [&](){
             if(originalParent) {
                 this->originalParent->resize(1,1);
             }

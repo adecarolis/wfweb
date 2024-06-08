@@ -17,9 +17,9 @@ cachingQueue *cachingQueue::getInstance(QObject* parent)
     if (instance == Q_NULLPTR)
     {
         instance = new cachingQueue(parent);
-        instance->setObjectName(("Command Queue"));
+        instance->setObjectName(("cachingQueue()"));
         connect (instance, SIGNAL(finished()),instance, SLOT(deleteLater()));
-        instance->start(QThread::HighPriority);
+        instance->start(QThread::TimeCriticalPriority);
     }
     qDebug() << "Returning instance of cachingQueue() to calling process:" << ((parent != Q_NULLPTR) ? parent->objectName(): "<unknown>");
     return instance;
