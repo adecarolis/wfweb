@@ -2233,27 +2233,27 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
             mem->duplexOffsetB.Hz = parseFreqDataToInt(data);
             break;
         case 't':
-            memcpy(mem->UR,data.data(),qMin(qint64(sizeof mem->UR),data.size()));
+            memcpy(mem->UR,data.data(),qMin(int(sizeof mem->UR),data.size()));
             break;
         case 'T':
-            memcpy(mem->URB,data.data(),qMin(qint64(sizeof mem->URB),data.size()));
+            memcpy(mem->URB,data.data(),qMin(int(sizeof mem->URB),data.size()));
             break;
         case 'u':
-            memcpy(mem->R1,data.data(),qMin(qint64(sizeof mem->R1),data.size()));
+            memcpy(mem->R1,data.data(),qMin(int(sizeof mem->R1),data.size()));
             break;
         case 'U':
-            memcpy(mem->R1B,data.data(),qMin(qint64(sizeof mem->R1B),data.size()));
+            memcpy(mem->R1B,data.data(),qMin(int(sizeof mem->R1B),data.size()));
             break;
         case 'v':
-            memcpy(mem->R2,data.data(),qMin(qint64(sizeof mem->R2),data.size()));
+            memcpy(mem->R2,data.data(),qMin(int(sizeof mem->R2),data.size()));
             break;
         case 'V':
-            memcpy(mem->R2B,data.data(),qMin(qint64(sizeof mem->R2B),data.size()));
+            memcpy(mem->R2B,data.data(),qMin(int(sizeof mem->R2B),data.size()));
             break;
         case 'z':
             if (mem->scan == 0xfe)
                 mem->scan = 0;
-            memcpy(mem->name,data.data(),qMin(qint64(sizeof mem->name),data.size()));
+            memcpy(mem->name,data.data(),qMin(int(sizeof mem->name),data.size()));
             break;
         default:
             qInfo() << "Parser didn't match!" << "spec:" << parse.spec << "pos:" << parse.pos << "len" << parse.len;
