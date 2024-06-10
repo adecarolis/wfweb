@@ -1179,7 +1179,6 @@ int  memories::updateCombo(QStringList& combo, int row, columns column, unsigned
         qInfo() << "Column" << ui->table->horizontalHeaderItem(column)->text() << "Invalid data received:" << data;
         ret=0;
     } else {
-        qInfo() << "Column" << ui->table->horizontalHeaderItem(column)->text() << "data received for disabled column!";
         ret=0;
     }
     return ret;
@@ -1197,7 +1196,6 @@ int  memories::updateCombo(QStringList& combo, int row, columns column, QString 
         qInfo() << "Column" << ui->table->horizontalHeaderItem(column)->text() << "Invalid data received:" << data;
         ret=0;
     } else {
-        qInfo() << "Column" << ui->table->horizontalHeaderItem(column)->text() << "data received for disabled column!";
         ret=0;
     }
     return ret;

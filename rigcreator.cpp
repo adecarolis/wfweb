@@ -42,6 +42,7 @@ rigCreator::rigCreator(QWidget *parent) :
     ui->commands->setColumnWidth(4,40);
     */
     connect(ui->commands,SIGNAL(rowAdded(int)),this,SLOT(commandRowAdded(int)));
+    connect(ui->bands,SIGNAL(rowAdded(int)),this,SLOT(bandRowAdded(int)));
 }
 
 void rigCreator::commandRowAdded(int row)
@@ -69,9 +70,22 @@ void rigCreator::commandRowAdded(int row)
     layoutGetSet->setAlignment(Qt::AlignCenter);  // Center the checkbox
     layoutGetSet->setContentsMargins(0,0,0,0);    // Set the zero padding
     ui->commands->setCellWidget(row,5, getSetWidget);
-
 }
 
+void rigCreator::bandRowAdded(int row)
+{
+    QPushButton *color = new QPushButton();
+    color->setStyleSheet("QPushButton { background-color : #00000000; }");
+
+    connect(color, &QPushButton::clicked, this, [=]() {
+        QColor col = QColorDialog::getColor(color->palette().button().color(),this,"Pick band color",QColorDialog::ShowAlphaChannel);
+        if (col.isValid()) {
+            qInfo(logSystem()) << "Got Color: " << col.HexArgb;
+            color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(col.name(QColor::HexArgb)));
+        }
+    });
+    ui->bands->setCellWidget(row,8, color);
+}
 
 rigCreator::~rigCreator()
 {
@@ -317,9 +331,21 @@ void rigCreator::loadRigFile(QString file)
             ui->bands->model()->setData(ui->bands->model()->index(c,5),settings->value("MemoryGroup", -1).toString());
             ui->bands->model()->setData(ui->bands->model()->index(c,6),settings->value("Name", "").toString());
             ui->bands->model()->setData(ui->bands->model()->index(c,7),settings->value("Bytes", 5).toString());
+            QPushButton *color = new QPushButton();
+            color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(settings->value("Color", "#00000000").toString()));
+            connect(color, &QPushButton::clicked, this, [=]() {
+                QColor col = QColorDialog::getColor(color->palette().button().color(),this,"Pick band color",QColorDialog::ShowAlphaChannel);
+                if (col.isValid()) {
+                    qInfo(logSystem()) << "Got Color: " << col.HexArgb;
+                    color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(col.name(QColor::HexArgb)));
+                }
+             });
+            ui->bands->setCellWidget(c,8, color);
+
         }
         settings->endArray();
     }
+
 
     ui->modes->clearContents();
     ui->modes->model()->removeRows(0,ui->modes->rowCount());
@@ -612,6 +638,11 @@ void rigCreator::saveRigFile(QString file)
         settings->setValue("MemoryGroup", (ui->bands->item(n,5) == NULL) ? -1 : ui->bands->item(n,5)->text().toInt() );
         settings->setValue("Name", (ui->bands->item(n,6) == NULL) ? "" : ui->bands->item(n,6)->text());
         settings->setValue("Bytes", (ui->bands->item(n,7) == NULL) ? 0 : ui->bands->item(n,7)->text().toUInt() );
+        QPushButton* color = static_cast<QPushButton*>(ui->bands->cellWidget(n,8));
+        if (color != nullptr)
+        {
+            settings->setValue("Color", color->palette().button().color().name(QColor::HexArgb));
+        }
     }
     settings->endArray();
 

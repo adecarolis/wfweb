@@ -3,7 +3,7 @@
 #include "rigidentities.h"
 
 spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *parent)
-    : QGroupBox{parent}, receiver(receiver), numVFO(vfo),hasScope(scope)
+    : QGroupBox{parent}, receiver(receiver), numVFO(vfo)
 {
 
     QMutexLocker locker(&mutex);
@@ -411,6 +411,7 @@ void spectrumScope::prepareScope(uint maxAmp, uint spectWidth)
     this->maxAmp = maxAmp;
 }
 
+
 bool spectrumScope::prepareWf(uint wf)
 {
     QMutexLocker locker(&mutex);
@@ -484,6 +485,19 @@ void spectrumScope::setRange(int floor, int ceiling)
     configTop->blockSignals(true);
     configTop->setValue(ceiling);
     configTop->blockSignals(false);
+
+    // Redraw band lines and eventually memory markers!
+    for (auto &line: bandLines)
+    {
+        line->start->setCoords(line->start->coords().x(), spectrum->yAxis->range().upper-5);
+        line->end->setCoords(line->end->coords().x(), spectrum->yAxis->range().upper-5);
+    }
+
+    for (auto &text: bandText)
+    {
+        text->position->setCoords(text->position->coords().x(), spectrum->yAxis->range().upper-10);
+    }
+
 }
 
 void spectrumScope::colorPreset(colorPrefsType *cp)
@@ -652,7 +666,7 @@ bool spectrumScope::updateScope(scopeData data)
         switch (mode.mk)
         {
         case modeLSB:
-        case modeRTTY:
+        case modeRTTY_R:
         case modePSK_R:
             pbStart = freq.MHzDouble - passbandCenterFrequency - (passbandWidth / 2);
             pbEnd = freq.MHzDouble - passbandCenterFrequency + (passbandWidth / 2);
@@ -1794,6 +1808,32 @@ void spectrumScope::displaySettings(int numDigits, qint64 minf, qint64 maxf, int
 {
     for (uchar i=0;i<numVFO;i++)
         freqDisplay[i]->setup(numDigits, minf, maxf, minStep, unit, bands);
+
+    // Step through the bands and add all indicators!
+
+    for (auto &band: *bands)
+    {
+        // Add band line to current scope!
+        QCPItemLine* b = new QCPItemLine(spectrum);
+        b->setHead(QCPLineEnding::esLineArrow);
+        b->setTail(QCPLineEnding::esLineArrow);
+        b->setVisible(true);
+        b->setPen(QPen(band.color));
+        b->start->setCoords(double(band.lowFreq/1000000.0), spectrum->yAxis->range().upper-5);
+        b->end->setCoords(double(band.highFreq/1000000.0), spectrum->yAxis->range().upper-5);
+        bandLines.append(b);
+
+        QCPItemText* n = new QCPItemText(spectrum);
+        n->setVisible(true);
+        n->setAntialiased(true);
+        n->setColor(band.color);
+        n->setFont(QFont(font().family(), 8));
+        n->setPositionAlignment(Qt::AlignTop);
+        n->setText(band.name);
+        n->position->setCoords(double(band.lowFreq/1000000.0), spectrum->yAxis->range().upper-10);
+        bandText.append(n);
+    }
+
 }
 
 void spectrumScope::setUnit(FctlUnit unit)

@@ -1482,8 +1482,9 @@ void icomCommander::determineRigCaps()
             double range = settings->value("Range", 0.0).toDouble();
             int memGroup = settings->value("MemoryGroup", -1).toInt();
             char bytes = settings->value("Bytes", 5).toInt();
-
-            rigCaps.bands.push_back(bandType(band,bsr,start,end,range,memGroup,bytes));
+            QColor color(settings->value("Color", "#00000000").toString()); // Default color should be none!
+            QString name(settings->value("Name", "None").toString());
+            rigCaps.bands.push_back(bandType(band,bsr,start,end,range,memGroup,bytes,color,name));
             rigCaps.bsr[band] = bsr;
             qDebug(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << QString::number(bsr,16);
         }

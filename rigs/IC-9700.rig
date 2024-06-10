@@ -1,5 +1,5 @@
 [General]
-Version=1.64
+Version=1.90
 
 [Rig]
 Manufacturer=Icom
@@ -1043,6 +1043,7 @@ Bands\1\Range=1300
 Bands\1\MemoryGroup=3
 Bands\1\Name=23cm
 Bands\1\Bytes=5
+Bands\1\Color=#ffff0000
 Bands\2\Num=5
 Bands\2\BSR=2
 Bands\2\Start=430000000
@@ -1051,6 +1052,7 @@ Bands\2\Range=450
 Bands\2\MemoryGroup=2
 Bands\2\Name=70cm
 Bands\2\Bytes=5
+Bands\2\Color=#ff00ff00
 Bands\3\Num=6
 Bands\3\BSR=1
 Bands\3\Start=144000000
@@ -1059,6 +1061,7 @@ Bands\3\Range=148
 Bands\3\MemoryGroup=1
 Bands\3\Name=2m
 Bands\3\Bytes=5
+Bands\3\Color=#ff0000ff
 Bands\size=3
 Modes\1\Num=0
 Modes\1\Reg=0

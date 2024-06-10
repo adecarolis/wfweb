@@ -257,7 +257,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     } else {
         qInfo(logSystem()) << "Detected first-time run. Showing the First Time Setup widget.";
 
-        connect(fts, &FirstTimeSetup::exitProgram, [=]() {
+        connect(fts, &FirstTimeSetup::exitProgram, this, [=]() {
             qInfo(logSystem()) << "User elected exit program.";
             prefs.settingsChanged = false;
             prefs.confirmExit = false;
@@ -265,7 +265,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
                 on_exitBtn_clicked();
             });
         });
-        connect(fts, &FirstTimeSetup::showSettings, [=](const bool networkEnabled) {
+        connect(fts, &FirstTimeSetup::showSettings, this, [=](const bool networkEnabled) {
             qInfo(logSystem()) << "User elected to visit the Settings UI.";
             prefs.enableLAN = networkEnabled;
             setupui->updateLanPrefs((int)l_all);

@@ -26,6 +26,7 @@ enum scopeTypes {
     scopeNone
 };
 
+
 class spectrumScope : public QGroupBox
 {
     Q_OBJECT
@@ -233,6 +234,8 @@ private:
     QByteArray spectrumPeaks;
     QVector <double> spectrumPlasmaLine;
     QVector <QByteArray> spectrumPlasma;
+    QVector<QCPItemLine *> bandLines;
+    QVector<QCPItemText *> bandText;
     unsigned int spectrumPlasmaSizeCurrent = 64;
     unsigned int spectrumPlasmaSizeMax = 128;
     unsigned int spectrumPlasmaPosition = 0;

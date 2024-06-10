@@ -297,7 +297,9 @@ void cachingQueue::updateCache(bool reply, queueItem item)
 
             if (compare(item.param,cv.value().value))
             {
-                cv->value = item.param;
+                cv->value.clear();
+                cv->value.setValue(item.param);
+
                 emit cacheUpdated(cv.value());
             }
             return;
@@ -316,8 +318,9 @@ void cachingQueue::updateCache(bool reply, queueItem item)
     }
     // If we are sending an actual value, update the cache with it
     // Value will be replaced if invalid on next get()
-    if (item.param.isValid())
+    if (item.param.isValid()) {
         c.value = item.param;
+    }
     cache.insert(item.command,c);
 }
 

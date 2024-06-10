@@ -6,6 +6,7 @@
 #include <QList>
 #include <vector>
 #include <QHash>
+#include <QColor>
 
 #include "freqmemory.h"
 #include "packettypes.h"
@@ -134,9 +135,9 @@ struct centerSpanData {
 
 struct bandType {
     bandType() {}
-    bandType(bandType const &b): band(b.band), bsr(b.bsr), lowFreq(b.lowFreq), highFreq(b.highFreq), range(b.range), memGroup(b.memGroup), bytes(b.bytes) {};
-    bandType(availableBands band, uchar bsr, quint64 lowFreq, quint64 highFreq, double range, int memGroup, char bytes) :
-        band(band), bsr(bsr), lowFreq(lowFreq), highFreq(highFreq), range(range), memGroup(memGroup), bytes(bytes) {}
+    bandType(bandType const &b): band(b.band), bsr(b.bsr), lowFreq(b.lowFreq), highFreq(b.highFreq), range(b.range), memGroup(b.memGroup), bytes(b.bytes), color(b.color), name(b.name){};
+    bandType(availableBands band, uchar bsr, quint64 lowFreq, quint64 highFreq, double range, int memGroup, char bytes, QColor color, QString name) :
+        band(band), bsr(bsr), lowFreq(lowFreq), highFreq(highFreq), range(range), memGroup(memGroup), bytes(bytes), color(color), name(name) {}
 
     availableBands band;
     uchar bsr;
@@ -146,6 +147,8 @@ struct bandType {
     double range;
     int memGroup;
     char bytes;
+    QColor color;
+    QString name;
 };
 
 // Used for setting/retrieving BSR information
