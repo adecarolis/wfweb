@@ -71,14 +71,20 @@ void cachingQueue::run()
             }
             counter++;
 
-            //QMutableMultiMapIterator<queuePriority,queueItem> i(queue);
-
-            auto it = queue.upperBound(prio);
-            it--; //upperBound returns the item immediately following the last key.
-            if (it != queue.end() && it.key() == prio)
+            //auto it = queue.upperBound(prio);
+            //it--; //upperBound returns the item immediately following the last key.
+            //if (it != queue.end() && it.key() == prio)
+            auto it = queue.find(prio);
+            if (it != queue.end())
             {
+                while (it != queue.end() && it.key() == prio)
+                {
+                    it++;
+                }
+                it--;
                 auto item = it.value();
                 emit haveCommand(item.command,item.param,item.receiver);
+                //it=queue.erase(it);
                 queue.remove(prio,it.value());
                 if (item.recurring && prio != priorityImmediate) {
                     queue.insert(prio,item);
