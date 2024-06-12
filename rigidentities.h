@@ -135,10 +135,11 @@ struct centerSpanData {
 
 struct bandType {
     bandType() {}
-    bandType(bandType const &b): band(b.band), bsr(b.bsr), lowFreq(b.lowFreq), highFreq(b.highFreq), range(b.range), memGroup(b.memGroup), bytes(b.bytes), color(b.color), name(b.name){};
-    bandType(availableBands band, uchar bsr, quint64 lowFreq, quint64 highFreq, double range, int memGroup, char bytes, QColor color, QString name) :
-        band(band), bsr(bsr), lowFreq(lowFreq), highFreq(highFreq), range(range), memGroup(memGroup), bytes(bytes), color(color), name(name) {}
+    bandType(bandType const &b): region(b.region), band(b.band), bsr(b.bsr), lowFreq(b.lowFreq), highFreq(b.highFreq), range(b.range), memGroup(b.memGroup), bytes(b.bytes), color(b.color), name(b.name){};
+    bandType(QString region, availableBands band, uchar bsr, quint64 lowFreq, quint64 highFreq, double range, int memGroup, char bytes, QColor color, QString name) :
+        region(region), band(band), bsr(bsr), lowFreq(lowFreq), highFreq(highFreq), range(range), memGroup(memGroup), bytes(bytes), color(color), name(name) {}
 
+    QString region;
     availableBands band;
     uchar bsr;
     quint64 lowFreq;

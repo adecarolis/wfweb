@@ -472,6 +472,13 @@ void settingswidget::updateIfPref(prefIfItem pif)
     case if_frequencyUnits:
         quietlyUpdateCombobox(ui->frequencyUnitsCombo, prefs->frequencyUnits);
         break;
+    case if_region:
+        quietlyUpdateLineEdit(ui->regionTxt,prefs->region);
+        break;
+    case if_showBands:
+        qInfo() << "************* SHOWBANDS **********" << prefs->showBands;
+        quietlyUpdateCheckbox(ui->showBandsChk, prefs->showBands);
+        break;
     default:
         qWarning(logGui()) << "Did not understand if pref update item " << (int)pif;
         break;
@@ -1708,6 +1715,17 @@ void settingswidget::on_pttEnableChk_clicked(bool checked)
     emit changedCtPref(ct_enablePTT);
 }
 
+void settingswidget::on_regionTxt_textChanged(QString text)
+{
+    prefs->region = text;
+    emit changedIfPref(if_region);
+}
+
+void settingswidget::on_showBandsChk_clicked(bool checked)
+{
+    prefs->showBands = checked;
+    emit changedIfPref(if_showBands);
+}
 
 void settingswidget::on_rigCreatorChk_clicked(bool checked)
 {

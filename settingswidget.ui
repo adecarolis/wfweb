@@ -41,7 +41,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>0</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -831,6 +831,29 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
              </property>
             </spacer>
            </item>
+           <item>
+            <widget class="QLabel" name="label_8">
+             <property name="text">
+              <string>Region:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="regionTxt">
+             <property name="maximumSize">
+              <size>
+               <width>35</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="maxLength">
+              <number>32767</number>
+             </property>
+             <property name="placeholderText">
+              <string>1</string>
+             </property>
+            </widget>
+           </item>
           </layout>
          </item>
          <item>
@@ -1021,6 +1044,13 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                <string>GHz</string>
               </property>
              </item>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="showBandsChk">
+             <property name="text">
+              <string>Show Bands</string>
+             </property>
             </widget>
            </item>
            <item>
@@ -1297,7 +1327,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                  <x>0</x>
                  <y>0</y>
                  <width>916</width>
-                 <height>346</height>
+                 <height>325</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">

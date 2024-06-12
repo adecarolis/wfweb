@@ -71,24 +71,20 @@ void cachingQueue::run()
             }
             counter++;
 
+            //QMutableMultiMapIterator<queuePriority,queueItem> i(queue);
 
-            auto it = queue.find(prio);
-            if (it != queue.end())
+            auto it = queue.upperBound(prio);
+            it--; //upperBound returns the item immediately following the last key.
+            if (it != queue.end() && it.key() == prio)
             {
-                while (it != queue.end() && it.key() == prio)
-                {
-                    it++;
-                }
-                it--;
                 auto item = it.value();
                 emit haveCommand(item.command,item.param,item.receiver);
-                it=queue.erase(it);
+                queue.remove(prio,it.value());
                 if (item.recurring && prio != priorityImmediate) {
                     queue.insert(prio,item);
                 }
                 updateCache(false,item.command,item.param,item.receiver);
             }
-
             deadline.setRemainingTime(queueInterval); // reset the deadline to the poll frequency
 
             QCoreApplication::processEvents();
@@ -205,12 +201,9 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
                 if (it.value().command == item.command && it.value().recurring == item.recurring && it.value().receiver == item.receiver && it.value().param.isValid() == item.param.isValid())
                 {
                     qDebug() << "deleting" << it.value().id << funcString[it.value().command] << "VFO" << it.value().receiver << "recurring" << it.value().recurring ;
-                    it = queue.erase(it);
+                    queue.remove(it.key(),it.value());
                 }
-                else
-                {
-                    it++;
-                }
+                it++;
             }
             if (item.recurring) {
                 // also insert an immediate command to get the current value "now" (removes the need to get initial rigstate)
@@ -237,12 +230,9 @@ void cachingQueue::del(funcs func, uchar receiver)
         while (it != queue.end()) {
             if (it.value().command == func && it.value().receiver == receiver) {
                 qDebug() << "deleting" << funcString[it.value().command] << "VFO" << it.value().receiver << "recurring" << it.value().recurring;
-                it = queue.erase(it);
+                queue.remove(it.key(),it.value());
             }
-            else
-            {
-                it++;
-            }
+            it++;
         }
     }
 }

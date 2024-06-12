@@ -1556,6 +1556,8 @@ void wfmain::setDefPrefs()
     defPrefs.meter2Type = meterNone;
     defPrefs.meter3Type = meterNone;
     defPrefs.compMeterReverse = false;
+    defPrefs.region = "1";
+    defPrefs.showBands = true;
 
     defPrefs.tcpPort = 0;
     defPrefs.tciPort = 50001;
@@ -1636,6 +1638,9 @@ void wfmain::loadSettings()
     prefs.clickDragTuningEnable = settings->value("ClickDragTuning", false).toBool();
 
     prefs.rigCreatorEnable = settings->value("RigCreator",false).toBool();
+    prefs.region = settings->value("Region",defPrefs.region).toString();
+    prefs.showBands = settings->value("ShowBands",defPrefs.showBands).toBool();
+
     ui->rigCreatorBtn->setEnabled(prefs.rigCreatorEnable);
 
     prefs.frequencyUnits = settings->value("FrequencyUnits",3).toInt();
@@ -2369,6 +2374,13 @@ void wfmain::extChangedIfPref(prefIfItem i)
             receiver->setUnit((FctlUnit)prefs.frequencyUnits);
         }
         break;
+    case if_region:
+    case if_showBands:
+        foreach (auto receiver, receivers)
+        {
+            receiver->setBandIndicators(prefs.showBands, prefs.region, &rigCaps->bands);
+        }
+        break;
     default:
         qWarning(logSystem()) << "Did not understand if pref update in wfmain for item " << (int)i;
         break;
@@ -2817,6 +2829,8 @@ void wfmain::saveSettings()
     settings->setValue("ClickDragTuning", prefs.clickDragTuningEnable);
     settings->setValue("RigCreator",prefs.rigCreatorEnable);
     settings->setValue("FrequencyUnits",prefs.frequencyUnits);
+    settings->setValue("Region",prefs.region);
+    settings->setValue("ShowBands",prefs.showBands);
 
     settings->endGroup();
 
@@ -3529,17 +3543,20 @@ void wfmain:: getInitialRigState()
     quint64 end=0;
     for (auto &band: rigCaps->bands)
     {
-        if (start > band.lowFreq)
-            start = band.lowFreq;
-        if (end < band.highFreq)
-            end = band.highFreq;
+        if (band.region == "" || band.region == prefs.region) {
+            if (start > band.lowFreq)
+                start = band.lowFreq;
+            if (end < band.highFreq)
+                end = band.highFreq;
+        }
     }
+
     foreach (auto receiver, receivers)
     {
         receiver->enableScope(this->rigCaps->commands.contains(funcScopeMainMode));
         //qInfo(logSystem()) << "Display Settings start:" << start << "end:" << end;
-        receiver->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits,&rigCaps->bands);
-
+        receiver->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits, &rigCaps->bands);
+        receiver->setBandIndicators(prefs.showBands, prefs.region, &rigCaps->bands);
     }
 }
 

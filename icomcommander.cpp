@@ -1475,6 +1475,7 @@ void icomCommander::determineRigCaps()
         for (int c = 0; c < numBands; c++)
         {
             settings->setArrayIndex(c);
+            QString region = settings->value("Region","").toString();
             availableBands band =  availableBands(settings->value("Num", 0).toInt());
             quint64 start = settings->value("Start", 0ULL).toULongLong();
             quint64 end = settings->value("End", 0ULL).toULongLong();
@@ -1484,7 +1485,7 @@ void icomCommander::determineRigCaps()
             char bytes = settings->value("Bytes", 5).toInt();
             QColor color(settings->value("Color", "#00000000").toString()); // Default color should be none!
             QString name(settings->value("Name", "None").toString());
-            rigCaps.bands.push_back(bandType(band,bsr,start,end,range,memGroup,bytes,color,name));
+            rigCaps.bands.push_back(bandType(region,band,bsr,start,end,range,memGroup,bytes,color,name));
             rigCaps.bsr[band] = bsr;
             qDebug(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << QString::number(bsr,16);
         }

@@ -400,6 +400,25 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
 
 
 spectrumScope::~spectrumScope(){
+
+    QMutableVectorIterator<bandIndicator> it(bandIndicators);
+    while (it.hasNext())
+    {
+        auto band = it.next();
+        spectrum->removeItem(band.line);
+        spectrum->removeItem(band.text);
+        it.remove();
+    }
+
+    QMutableMapIterator<QString, spotData *> sp(clusterSpots);
+    while (sp.hasNext())
+    {
+        auto spot = sp.next();
+        spectrum->removeItem(spot.value()->text);
+        delete spot.value();
+        sp.remove();
+    }
+
     if(colorMapData != Q_NULLPTR)
     {
         delete colorMapData;
@@ -487,17 +506,12 @@ void spectrumScope::setRange(int floor, int ceiling)
     configTop->blockSignals(false);
 
     // Redraw band lines and eventually memory markers!
-    for (auto &line: bandLines)
+    for (auto &b: bandIndicators)
     {
-        line->start->setCoords(line->start->coords().x(), spectrum->yAxis->range().upper-5);
-        line->end->setCoords(line->end->coords().x(), spectrum->yAxis->range().upper-5);
+        b.line->start->setCoords(b.line->start->coords().x(), spectrum->yAxis->range().upper-5);
+        b.line->end->setCoords(b.line->end->coords().x(), spectrum->yAxis->range().upper-5);
+        b.text->position->setCoords(b.text->position->coords().x(), spectrum->yAxis->range().upper-10);
     }
-
-    for (auto &text: bandText)
-    {
-        text->position->setCoords(text->position->coords().x(), spectrum->yAxis->range().upper-10);
-    }
-
 }
 
 void spectrumScope::colorPreset(colorPrefsType *cp)
@@ -1703,18 +1717,15 @@ void spectrumScope::receiveSpots(uchar receiver, QList<spotData> spots)
         }
     }
 
-    QMap<QString, spotData*>::iterator spot2 = clusterSpots.begin();
-    while (spot2 != clusterSpots.end()) {
-        if (spot2.value()->current == current) {
-            spectrum->removeItem(spot2.value()->text);
-            //qDebug(logCluster()) << "REMOVE:" << spot2.value()->dxcall;
-            delete spot2.value(); // Stop memory leak?
-            spot2 = clusterSpots.erase(spot2);
+    QMutableMapIterator<QString, spotData *> sp(clusterSpots);
+    while (sp.hasNext())
+    {
+        auto spot = sp.next();
+        if (spot.value()->current == current) {
+            spectrum->removeItem(spot.value()->text);
+            delete spot.value();
+            sp.remove();
         }
-        else {
-            ++spot2;
-        }
-
     }
 
     //qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
@@ -1804,36 +1815,55 @@ void spectrumScope::setFrequency(freqt f, uchar vfo)
 
 }
 
-void spectrumScope::displaySettings(int numDigits, qint64 minf, qint64 maxf, int minStep,FctlUnit unit,std::vector<bandType>* bands)
+void spectrumScope::setBandIndicators(bool show, QString region, std::vector<bandType>* bands)
 {
-    for (uchar i=0;i<numVFO;i++)
-        freqDisplay[i]->setup(numDigits, minf, maxf, minStep, unit, bands);
+    this->currentRegion = region;
+
+    QMutableVectorIterator<bandIndicator> it(bandIndicators);
+    while (it.hasNext())
+    {
+        bandIndicator band = it.next();
+        spectrum->removeItem(band.line);
+        spectrum->removeItem(band.text);
+        it.remove();
+    }
 
     // Step through the bands and add all indicators!
 
-    for (auto &band: *bands)
-    {
-        // Add band line to current scope!
-        QCPItemLine* b = new QCPItemLine(spectrum);
-        b->setHead(QCPLineEnding::esLineArrow);
-        b->setTail(QCPLineEnding::esLineArrow);
-        b->setVisible(true);
-        b->setPen(QPen(band.color));
-        b->start->setCoords(double(band.lowFreq/1000000.0), spectrum->yAxis->range().upper-5);
-        b->end->setCoords(double(band.highFreq/1000000.0), spectrum->yAxis->range().upper-5);
-        bandLines.append(b);
+    if (show) {
+        for (auto &band: *bands)
+        {
+            if (band.region == "" || band.region == region) {
+                // Add band line to current scope!
+                bandIndicator b;
+                b.line = new QCPItemLine(spectrum);
+                b.line->setHead(QCPLineEnding::esLineArrow);
+                b.line->setTail(QCPLineEnding::esLineArrow);
+                b.line->setVisible(true);
+                b.line->setPen(QPen(band.color));
+                b.line->start->setCoords(double(band.lowFreq/1000000.0), spectrum->yAxis->range().upper-5);
+                b.line->end->setCoords(double(band.highFreq/1000000.0), spectrum->yAxis->range().upper-5);
 
-        QCPItemText* n = new QCPItemText(spectrum);
-        n->setVisible(true);
-        n->setAntialiased(true);
-        n->setColor(band.color);
-        n->setFont(QFont(font().family(), 8));
-        n->setPositionAlignment(Qt::AlignTop);
-        n->setText(band.name);
-        n->position->setCoords(double(band.lowFreq/1000000.0), spectrum->yAxis->range().upper-10);
-        bandText.append(n);
+                b.text = new QCPItemText(spectrum);
+                b.text->setVisible(true);
+                b.text->setAntialiased(true);
+                b.text->setColor(band.color);
+                b.text->setFont(QFont(font().family(), 8));
+                b.text->setPositionAlignment(Qt::AlignTop);
+                b.text->setText(band.name);
+                b.text->position->setCoords(double(band.lowFreq/1000000.0), spectrum->yAxis->range().upper-10);
+                bandIndicators.append(b);
+            }
+        }
     }
+}
 
+void spectrumScope::displaySettings(int numDigits, qint64 minf, qint64 maxf, int minStep,FctlUnit unit, std::vector<bandType>* bands)
+{
+    // Delete all band indicators first
+
+    for (uchar i=0;i<numVFO;i++)
+        freqDisplay[i]->setup(numDigits, minf, maxf, minStep, unit, bands);
 }
 
 void spectrumScope::setUnit(FctlUnit unit)
