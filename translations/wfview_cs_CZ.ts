@@ -3095,6 +3095,27 @@ Manual CI-V použijte pouze, když rádio neumí CI-V Transcieve
         <translation>Experimentální</translation>
     </message>
     <message>
+        <location filename="../settingswidget.cpp" line="1252"/>
+        <source>Admin User</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.cpp" line="1252"/>
+        <source>Normal User</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.cpp" line="1252"/>
+        <source>Normal with no TX</source>
+        <comment>Monitor only</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.cpp" line="1260"/>
+        <source>Delete</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../settingswidget.cpp" line="1515"/>
         <source>Manual port assignment</source>
         <translation>Ruční přiřazení portu</translation>

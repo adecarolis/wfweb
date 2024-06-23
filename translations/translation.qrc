@@ -5,8 +5,8 @@
         <file>wfview_it.qm</file>
         <file>wfview_tr.qm</file>
         <file>wfview_de.qm</file>
-        <file>wfview_jp.qm</file>
         <file>wfview_zh_TW.qm</file>
         <file>wfview_cs_CZ.qm</file>
+        <file>wfview_ja.qm</file>
     </qresource>
 </RCC>
