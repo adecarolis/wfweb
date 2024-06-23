@@ -75,8 +75,7 @@ void cachingQueue::run()
             //it--; //upperBound returns the item immediately following the last key.
             //if (it != queue.end() && it.key() == prio)
             auto it = queue.find(prio);
-            if (it != queue.end())
-            {
+            if (it != queue.end())            {
                 while (it != queue.end() && it.key() == prio)
                 {
                     it++;

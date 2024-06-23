@@ -5,6 +5,8 @@
 spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *parent)
     : QGroupBox{parent}, receiver(receiver), numVFO(vfo)
 {
+    // Not sure if this should actually be used?
+    Q_UNUSED(scope)
 
     QMutexLocker locker(&mutex);
 

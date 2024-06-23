@@ -2046,7 +2046,7 @@ void usbController::restoreController(USBDEVICE* dev, QString file)
     dev->orientation = (quint8)settings->value("Orientation", 2).toInt();
     dev->speed = (quint8)settings->value("Speed", 2).toInt();
     dev->timeout = (quint8)settings->value("Timeout", 30).toInt();
-    dev->color.setNamedColor(settings->value("Color", QColor(Qt::white).name(QColor::HexArgb)).toString());
+    dev->color = colorFromString(settings->value("Color", QColor(Qt::white).name(QColor::HexArgb)).toString());
     dev->lcd = (funcs)settings->value("LCD",0).toInt();
 
     qInfo(logUsbControl()) << "Restore of" << dev->product << "path" << dev->path << "from" << file;
@@ -2095,9 +2095,9 @@ void usbController::restoreController(USBDEVICE* dev, QString file)
                             settings->value("Top", 0).toInt(),
                             settings->value("Width", 0).toInt(),
                             settings->value("Height", 0).toInt());
-            but.textColour.setNamedColor(settings->value("Colour", QColor(Qt::white).name(QColor::HexArgb)).toString());
-            but.backgroundOn.setNamedColor(settings->value("BackgroundOn", QColor(Qt::lightGray).name(QColor::HexArgb)).toString());
-            but.backgroundOff.setNamedColor(settings->value("BackgroundOff", QColor(Qt::blue).name(QColor::HexArgb)).toString());
+            but.textColour = colorFromString(settings->value("Colour", QColor(Qt::white).name(QColor::HexArgb)).toString());
+            but.backgroundOn = colorFromString(settings->value("BackgroundOn", QColor(Qt::lightGray).name(QColor::HexArgb)).toString());
+            but.backgroundOff = colorFromString(settings->value("BackgroundOff", QColor(Qt::blue).name(QColor::HexArgb)).toString());
             but.toggle = settings->value("Toggle", false).toBool();
 #if (QT_VERSION > QT_VERSION_CHECK(6,0,0))
             if (settings->value("Icon","") != "") {

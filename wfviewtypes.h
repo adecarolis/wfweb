@@ -5,8 +5,9 @@
 #include <QObject>
 #include <QString>
 #include <QtGlobal>
+#include <QColor>
 #include <stdint.h>
-#include <memory>
+//#include <memory>
 
 
 enum valueType { typeNone=0, typeFloat, typeFloatDiv, typeFloatDiv5, typeUChar, typeUShort,
@@ -178,42 +179,6 @@ struct timekind {
     unsigned char minutes;
     bool isMinus;
 };
-
-/*
-enum cmds {
-cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetFreqB, cmdSetFreq, cmdGetMode, cmdSetMode,
-cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
-cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
-cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetNRLevel, cmdSetNRLevel, cmdGetPBTInner, cmdSetPBTInner,
-cmdGetPBTOuter, cmdSetPBTOuter, cmdGetPassband, cmdSetPassband, cmdGetNBLevel, cmdSetNBLevel,
-cmdGetCompLevel, cmdSetCompLevel, cmdGetTuningStep, cmdSetTuningStep,
-cmdGetMonitorGain, cmdSetMonitorGain, cmdGetVoxGain, cmdSetVoxGain, cmdGetAntiVoxGain, cmdSetAntiVoxGain,
-cmdGetCwPitch, cmdGetPskTone, cmdGetRttyMark, cmdSetCwPitch, cmdSetPskTone, cmdSetRttyMark,
-cmdGetVox,cmdSetVox, cmdGetMonitor,cmdSetMonitor, cmdGetComp, cmdSetComp, cmdGetNB, cmdSetNB, cmdGetNR, cmdSetNR,
-cmdSetATU, cmdStartATU, cmdGetATUStatus,
-cmdGetspectrumMode_t, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode,
-cmdGetPTT, cmdSetPTT,cmdPTTToggle,
-cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdGetModLevel, cmdSetModLevel,
-cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
-cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
-cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
-cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
-cmdGetTone, cmdGetTSQL, cmdGetToneEnabled, cmdGetTSQLEnabled, cmdGetDTCS,
-cmdSetToneEnabled, cmdSetTSQLEnabled, cmdGetRptAccessMode, cmdSetTone, cmdSetTSQL,
-cmdSetRptAccessMode, cmdSetRptDuplexOffset, cmdGetRptDuplexOffset,
-cmdSelVFO, cmdVFOSwap, cmdVFOEqualAB, cmdVFOEqualMS, cmdSetQuickSplit,
-cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
-cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW, cmdGetDashRatio, cmdSetDashRatio,
-cmdSetTime, cmdSetDate, cmdSetUTCOffset,
-cmdGetTransceive, cmdSetTransceive,cmdGetPower,cmdSetPower,
-cmdGetMemory, cmdGetSatMemory, cmdSetMemory, cmdClearMemory,cmdRecallMemory, cmdSetVFOMode, cmdSetMemoryMode, cmdSetSatelliteMode,
-// Below Only used for USB Controller at the moment.
-cmdSetBandUp, cmdSetBandDown, cmdSetModeUp, cmdSetModeDown, cmdSetStepUp, cmdSetStepDown,
-cmdSetSpanUp, cmdSetSpanDown, cmdIFFilterUp, cmdIFFilterDown, cmdPageDown, cmdPageUp,
-cmdLCDWaterfall, cmdLCDSpectrum, cmdLCDNothing, cmdSeparator
-};
-
-*/
 
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
@@ -448,6 +413,18 @@ struct periodicType {
     char receiver;
 };
 
+// Some global "helper" functions can go here for now, maybe look at a better location at some point?
+inline QColor colorFromString(const QString& color)
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
+    return QColor::fromString(color);
+#else
+    QColor c;
+    c.setNamedColor(color);
+    return c;
+#endif
+}
+
 inline QString getMeterDebug(meter_t m) {
     QString rtn = QString("Meter name: ");
     switch(m) {
@@ -505,7 +482,6 @@ Q_DECLARE_METATYPE(duplexMode_t)
 Q_DECLARE_METATYPE(rptAccessTxRx_t)
 Q_DECLARE_METATYPE(rptrAccessData)
 Q_DECLARE_METATYPE(usbFeatureType)
-//Q_DECLARE_METATYPE(cmds)
 Q_DECLARE_METATYPE(funcs)
 Q_DECLARE_METATYPE(memoryType)
 Q_DECLARE_METATYPE(antennaInfo)

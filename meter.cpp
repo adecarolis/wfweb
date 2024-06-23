@@ -32,15 +32,15 @@ meter::meter(QWidget *parent) : QWidget(parent)
 
     meterType = meterS;
 
-    currentColor.setNamedColor("#148CD2");
+    currentColor = colorFromString("#148CD2");
     currentColor = currentColor.darker();
 
-    peakColor.setNamedColor("#3CA0DB");
+    peakColor = colorFromString("#3CA0DB");
     peakColor = peakColor.lighter();
 
-    averageColor.setNamedColor("#3FB7CD");
+    averageColor = colorFromString("#3FB7CD");
 
-    lowTextColor.setNamedColor("#eff0f1");
+    lowTextColor = colorFromString("#eff0f1");
     lowLineColor = lowTextColor;
 
     avgLevels.resize(averageBalisticLength, 0);

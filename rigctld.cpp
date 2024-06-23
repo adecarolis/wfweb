@@ -445,7 +445,7 @@ void rigCtlClient::socketReadyRead()
                     break;
                 } else if (commands_list[i].sstr == '3')
                 {
-                    response.append("Model: WFVIEW");
+                    response.append(QString("Model: WFVIEW(%0)").arg(rigCaps->modelName));
                     ret = RIG_OK;
                     break;
                 } else if (commands_list[i].sstr == 0xf0)
@@ -1148,7 +1148,7 @@ int rigCtlClient::dumpState(QStringList &response, bool extended)
     // Supported RX bands (startf,endf,modes,low_power,high_power,vfo,ant)
     quint32 lowFreq = 0;
     quint32 highFreq = 0;
-    for (bandType band : rigCaps->bands)
+    for (const bandType &band : std::as_const(rigCaps->bands))
     {
         if (lowFreq == 0 || band.lowFreq < lowFreq)
             lowFreq = band.lowFreq;
@@ -1161,7 +1161,7 @@ int rigCtlClient::dumpState(QStringList &response, bool extended)
 
     if (rigCaps->hasTransmit) {
         // Supported TX bands (startf,endf,modes,low_power,high_power,vfo,ant)
-        for (bandType band : rigCaps->bands)
+        for (const bandType &band : std::as_const(rigCaps->bands))
         {
             response.append(QString("%1.000000 %2.000000 0x%3 %4 %5 0x%6 0x%7").arg(band.lowFreq).arg(band.highFreq)
                                 .arg(modes, 0, 16).arg(2000).arg(100000).arg(0x16000000, 0, 16).arg(getAntennas(), 0, 16));

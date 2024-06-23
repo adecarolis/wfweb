@@ -1091,7 +1091,6 @@ void settingswidget::setAudioDevicesUI()
     ui->serverTXAudioOutputCombo->setCurrentIndex(-1);
     ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsOut() + 30));
     ui->serverTXAudioOutputCombo->blockSignals(false);
-    int serverOutputIndex = -1;
 
     ui->serverRXAudioInputCombo->blockSignals(true);
     ui->serverRXAudioInputCombo->clear();
@@ -1099,7 +1098,6 @@ void settingswidget::setAudioDevicesUI()
     ui->serverRXAudioInputCombo->setCurrentIndex(-1);
     ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn()+30));
     ui->serverRXAudioInputCombo->blockSignals(false);
-    int serverInputIndex = -1;
 
     prefs->rxSetup.type = prefs->audioSystem;
     prefs->txSetup.type = prefs->audioSystem;
@@ -1110,9 +1108,7 @@ void settingswidget::setAudioDevicesUI()
         serverConfig->rigs.first()->txAudioSetup.type = prefs->audioSystem;
 
         ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig->rigs.first()->rxAudioSetup.name));
-        //serverOutputIndex = audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name);
         ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name));
-        //serverInputIndex = audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name);
     }
 
     qDebug(logSystem()) << "Audio devices done.";
@@ -1214,7 +1210,6 @@ void settingswidget::populateServerUsers()
     // Copy data from serverConfig.users into the server UI table
     // We will assume the data are safe to use.
     bool blank = false;
-    int row=0;
     qDebug(logGui()) << "Adding server users. Size: " << serverConfig->users.size();
 
     QList<SERVERUSER>::iterator user = serverConfig->users.begin();
@@ -1224,7 +1219,6 @@ void settingswidget::populateServerUsers()
         serverAddUserLine(ui->serverUsersTable->rowCount()-1, user->username, user->password, user->userType);
         if((user->username == "") && !blank)
             blank = true;
-        row++;
         user++;
     }
 }
@@ -2170,7 +2164,11 @@ void settingswidget::setColorButtonOperations(QColor *colorStore,
     }
     getSetColor(d, e);
     QColor t = d->getColor();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
+    colorStore->fromString(t.name(QColor::HexArgb));
+#else
     colorStore->setNamedColor(t.name(QColor::HexArgb));
+#endif
     //useCurrentColorPreset();
 }
 
@@ -2187,7 +2185,11 @@ void settingswidget::setColorLineEditOperations(QColor *colorStore,
 
     QString colorStrValidated = setColorFromString(e->text(), d);
     e->setText(colorStrValidated);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
+    colorStore->fromString(colorStrValidated);
+#else
     colorStore->setNamedColor(colorStrValidated);
+#endif
     //useCurrentColorPreset();
 }
 
