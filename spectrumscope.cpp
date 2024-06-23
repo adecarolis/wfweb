@@ -3,8 +3,10 @@
 #include "rigidentities.h"
 
 spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *parent)
-    : QGroupBox{parent}, receiver(receiver), numVFO(vfo),hasScope(scope)
+    : QGroupBox{parent}, receiver(receiver), numVFO(vfo)
 {
+    // Not sure if this should actually be used?
+    Q_UNUSED(scope)
 
     QMutexLocker locker(&mutex);
 
@@ -251,7 +253,6 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
 
     configLength = new QSlider(Qt::Orientation::Horizontal);
     configLength->setRange(100,1024);
-    configLength->setValue(wfLength);
     configLayout->addRow(tr("Length"),configLength);
 
     configTop = new QSlider(Qt::Orientation::Horizontal);
@@ -399,11 +400,38 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     showHideControls(spectrumMode_t::spectModeCenter);
 }
 
+
+spectrumScope::~spectrumScope(){
+
+    QMutableVectorIterator<bandIndicator> it(bandIndicators);
+    while (it.hasNext())
+    {
+        auto band = it.next();
+        spectrum->removeItem(band.line);
+        spectrum->removeItem(band.text);
+        it.remove();
+    }
+
+    QMutableMapIterator<QString, spotData *> sp(clusterSpots);
+    while (sp.hasNext())
+    {
+        auto spot = sp.next();
+        spectrum->removeItem(spot.value()->text);
+        delete spot.value();
+        sp.remove();
+    }
+
+    if(colorMapData != Q_NULLPTR)
+    {
+        delete colorMapData;
+    }
+}
 void spectrumScope::prepareScope(uint maxAmp, uint spectWidth)
 {
     this->spectWidth = spectWidth;
     this->maxAmp = maxAmp;
 }
+
 
 bool spectrumScope::prepareWf(uint wf)
 {
@@ -478,6 +506,14 @@ void spectrumScope::setRange(int floor, int ceiling)
     configTop->blockSignals(true);
     configTop->setValue(ceiling);
     configTop->blockSignals(false);
+
+    // Redraw band lines and eventually memory markers!
+    for (auto &b: bandIndicators)
+    {
+        b.line->start->setCoords(b.line->start->coords().x(), spectrum->yAxis->range().upper-5);
+        b.line->end->setCoords(b.line->end->coords().x(), spectrum->yAxis->range().upper-5);
+        b.text->position->setCoords(b.text->position->coords().x(), spectrum->yAxis->range().upper-10);
+    }
 }
 
 void spectrumScope::colorPreset(colorPrefsType *cp)
@@ -646,7 +682,7 @@ bool spectrumScope::updateScope(scopeData data)
         switch (mode.mk)
         {
         case modeLSB:
-        case modeRTTY:
+        case modeRTTY_R:
         case modePSK_R:
             pbStart = freq.MHzDouble - passbandCenterFrequency - (passbandWidth / 2);
             pbEnd = freq.MHzDouble - passbandCenterFrequency + (passbandWidth / 2);
@@ -1683,18 +1719,15 @@ void spectrumScope::receiveSpots(uchar receiver, QList<spotData> spots)
         }
     }
 
-    QMap<QString, spotData*>::iterator spot2 = clusterSpots.begin();
-    while (spot2 != clusterSpots.end()) {
-        if (spot2.value()->current == current) {
-            spectrum->removeItem(spot2.value()->text);
-            //qDebug(logCluster()) << "REMOVE:" << spot2.value()->dxcall;
-            delete spot2.value(); // Stop memory leak?
-            spot2 = clusterSpots.erase(spot2);
+    QMutableMapIterator<QString, spotData *> sp(clusterSpots);
+    while (sp.hasNext())
+    {
+        auto spot = sp.next();
+        if (spot.value()->current == current) {
+            spectrum->removeItem(spot.value()->text);
+            delete spot.value();
+            sp.remove();
         }
-        else {
-            ++spot2;
-        }
-
     }
 
     //qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
@@ -1784,8 +1817,53 @@ void spectrumScope::setFrequency(freqt f, uchar vfo)
 
 }
 
-void spectrumScope::displaySettings(int numDigits, qint64 minf, qint64 maxf, int minStep,FctlUnit unit,std::vector<bandType>* bands)
+void spectrumScope::setBandIndicators(bool show, QString region, std::vector<bandType>* bands)
 {
+    this->currentRegion = region;
+
+    QMutableVectorIterator<bandIndicator> it(bandIndicators);
+    while (it.hasNext())
+    {
+        bandIndicator band = it.next();
+        spectrum->removeItem(band.line);
+        spectrum->removeItem(band.text);
+        it.remove();
+    }
+
+    // Step through the bands and add all indicators!
+
+    if (show) {
+        for (auto &band: *bands)
+        {
+            if (band.region == "" || band.region == region) {
+                // Add band line to current scope!
+                bandIndicator b;
+                b.line = new QCPItemLine(spectrum);
+                b.line->setHead(QCPLineEnding::esLineArrow);
+                b.line->setTail(QCPLineEnding::esLineArrow);
+                b.line->setVisible(true);
+                b.line->setPen(QPen(band.color));
+                b.line->start->setCoords(double(band.lowFreq/1000000.0), spectrum->yAxis->range().upper-5);
+                b.line->end->setCoords(double(band.highFreq/1000000.0), spectrum->yAxis->range().upper-5);
+
+                b.text = new QCPItemText(spectrum);
+                b.text->setVisible(true);
+                b.text->setAntialiased(true);
+                b.text->setColor(band.color);
+                b.text->setFont(QFont(font().family(), 8));
+                b.text->setPositionAlignment(Qt::AlignTop);
+                b.text->setText(band.name);
+                b.text->position->setCoords(double(band.lowFreq/1000000.0), spectrum->yAxis->range().upper-10);
+                bandIndicators.append(b);
+            }
+        }
+    }
+}
+
+void spectrumScope::displaySettings(int numDigits, qint64 minf, qint64 maxf, int minStep,FctlUnit unit, std::vector<bandType>* bands)
+{
+    // Delete all band indicators first
+
     for (uchar i=0;i<numVFO;i++)
         freqDisplay[i]->setup(numDigits, minf, maxf, minStep, unit, bands);
 }
@@ -1834,7 +1912,7 @@ void spectrumScope::detachScope(bool state)
         qInfo(logGui()) << "Detaching scope" << (receiver?"Sub":"Main");
         this->parentWidget()->layout()->replaceWidget(this,windowLabel);
 
-        QTimer::singleShot(1, [&](){
+        QTimer::singleShot(1, this, [&](){
             if(originalParent) {
                 this->originalParent->resize(1,1);
             }
@@ -1850,7 +1928,7 @@ void spectrumScope::detachScope(bool state)
         qInfo(logGui()) << "Attaching scope" << (receiver?"Sub":"Main");
         windowLabel->parentWidget()->layout()->replaceWidget(windowLabel,this);
 
-        QTimer::singleShot(1, [&](){
+        QTimer::singleShot(1, this, [&](){
             if(originalParent) {
                 this->originalParent->resize(1,1);
             }

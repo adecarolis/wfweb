@@ -39,6 +39,7 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
         }
         else if( selectedAction == clone )
         {
+            this->setSortingEnabled(false);
             int row=this->currentRow(); // This will be the new row with the old one as row+1
             this->insertRow(this->currentRow());
             for (int i=0;i<this->columnCount();i++)
@@ -47,6 +48,7 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
                     this->model()->setData(this->model()->index(row,i),this->item(row+1,i)->text());
             }
             emit rowAdded(row);
+            this->setSortingEnabled(true);
         }
         else if( selectedAction == del )
         {

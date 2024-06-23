@@ -796,6 +796,7 @@ private:
     quint64 subElapsed=0;
     colorPrefsType* colorPrefs=Q_NULLPTR;
 
+    QString currentRegion = "1";
     funcs getInputTypeCommand(inputTypes input);
 
 #if defined (USB_CONTROLLER)

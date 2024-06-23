@@ -19,11 +19,11 @@ udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort, boo
     /*
         Connect various timers
     */
-    pingTimer = new QTimer();
-    idleTimer = new QTimer();
-    areYouThereTimer = new QTimer();
-    startCivDataTimer = new QTimer();
-    watchdogTimer = new QTimer();
+    pingTimer = new QTimer(this);
+    idleTimer = new QTimer(this);
+    areYouThereTimer = new QTimer(this);
+    startCivDataTimer = new QTimer(this);
+    watchdogTimer = new QTimer(this);
 
     connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
     connect(watchdogTimer, &QTimer::timeout, this, &udpCivData::watchdog);
@@ -42,30 +42,6 @@ udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort, boo
 udpCivData::~udpCivData()
 {
     sendOpenClose(true);
-    if (startCivDataTimer != Q_NULLPTR)
-    {
-        startCivDataTimer->stop();
-        delete startCivDataTimer;
-        startCivDataTimer = Q_NULLPTR;
-    }
-    if (pingTimer != Q_NULLPTR)
-    {
-        pingTimer->stop();
-        delete pingTimer;
-        pingTimer = Q_NULLPTR;
-    }
-    if (idleTimer != Q_NULLPTR)
-    {
-        idleTimer->stop();
-        delete idleTimer;
-        idleTimer = Q_NULLPTR;
-    }
-    if (watchdogTimer != Q_NULLPTR)
-    {
-        watchdogTimer->stop();
-        delete watchdogTimer;
-        watchdogTimer = Q_NULLPTR;
-    }
 }
 
 void udpCivData::watchdog()

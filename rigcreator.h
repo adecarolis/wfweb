@@ -10,6 +10,7 @@
 #include <QMessageBox>
 #include <QHeaderView>
 #include <QStandardPaths>
+#include <QColorDialog>
 #include "wfviewtypes.h"
 #include "rigidentities.h"
 #include "tablewidget.h"
@@ -71,6 +72,7 @@ private slots:
     void loadRigFile(QString filename);
     void saveRigFile(QString filename);
     void commandRowAdded(int row);
+    void bandRowAdded(int row);
     void changed();
 
 

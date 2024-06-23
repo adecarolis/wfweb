@@ -140,6 +140,7 @@ struct USBDEVICE {
     quint8 ledStatus=0x07;
 };
 
+enum cmdValueType {cmdValueInc, cmdValueDec, cmdValueAbs };
 struct COMMAND {
     COMMAND() {}
     COMMAND(int index, QString text, usbCommandType cmdType, int command, int value) :
@@ -159,6 +160,7 @@ struct COMMAND {
     int value=0;
     availableBands band=bandGen;
     rigMode_t mode=modeLSB;
+    cmdValueType cmdValue=cmdValueAbs;
 };
 
 struct BUTTON {

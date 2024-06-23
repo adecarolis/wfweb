@@ -71,10 +71,10 @@ void udpHandler::init()
     /*
         Connect various timers
     */
-    tokenTimer = new QTimer();
-    areYouThereTimer = new QTimer();
-    pingTimer = new QTimer();
-    idleTimer = new QTimer();
+    tokenTimer = new QTimer(this);
+    areYouThereTimer = new QTimer(this);
+    pingTimer = new QTimer(this);
+    idleTimer = new QTimer(this);
 
     connect(tokenTimer, &QTimer::timeout, this, std::bind(&udpHandler::sendToken, this, 0x05));
     connect(areYouThereTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, false, 0x03, 0));
@@ -97,20 +97,9 @@ udpHandler::~udpHandler()
             delete civ;
             civ = Q_NULLPTR;
         }
+
         qInfo(logUdp()) << "Sending token removal packet";
         sendToken(0x01);
-        if (tokenTimer != Q_NULLPTR)
-        {
-            tokenTimer->stop();
-            delete tokenTimer;
-        }
-        if (watchdogTimer != Q_NULLPTR)
-        {
-            watchdogTimer->stop();
-            delete watchdogTimer;
-        }
-
-
     }
 }
 

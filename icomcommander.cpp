@@ -1475,6 +1475,7 @@ void icomCommander::determineRigCaps()
         for (int c = 0; c < numBands; c++)
         {
             settings->setArrayIndex(c);
+            QString region = settings->value("Region","").toString();
             availableBands band =  availableBands(settings->value("Num", 0).toInt());
             quint64 start = settings->value("Start", 0ULL).toULongLong();
             quint64 end = settings->value("End", 0ULL).toULongLong();
@@ -1482,8 +1483,9 @@ void icomCommander::determineRigCaps()
             double range = settings->value("Range", 0.0).toDouble();
             int memGroup = settings->value("MemoryGroup", -1).toInt();
             char bytes = settings->value("Bytes", 5).toInt();
-
-            rigCaps.bands.push_back(bandType(band,bsr,start,end,range,memGroup,bytes));
+            QColor color(settings->value("Color", "#00000000").toString()); // Default color should be none!
+            QString name(settings->value("Name", "None").toString());
+            rigCaps.bands.push_back(bandType(region,band,bsr,start,end,range,memGroup,bytes,color,name));
             rigCaps.bsr[band] = bsr;
             qDebug(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << QString::number(bsr,16);
         }
@@ -2233,27 +2235,27 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
             mem->duplexOffsetB.Hz = parseFreqDataToInt(data);
             break;
         case 't':
-            memcpy(mem->UR,data,sizeof(mem->UR));
+            memcpy(mem->UR,data.data(),qMin(int(sizeof mem->UR),data.size()));
             break;
         case 'T':
-            memcpy(mem->URB,data,sizeof(mem->UR));
+            memcpy(mem->URB,data.data(),qMin(int(sizeof mem->URB),data.size()));
             break;
         case 'u':
-            memcpy(mem->R1,data,sizeof(mem->R1));
+            memcpy(mem->R1,data.data(),qMin(int(sizeof mem->R1),data.size()));
             break;
         case 'U':
-            memcpy(mem->R1B,data,sizeof(mem->R1));
+            memcpy(mem->R1B,data.data(),qMin(int(sizeof mem->R1B),data.size()));
             break;
         case 'v':
-            memcpy(mem->R2,data,sizeof(mem->R2));
+            memcpy(mem->R2,data.data(),qMin(int(sizeof mem->R2),data.size()));
             break;
         case 'V':
-            memcpy(mem->R2B,data,sizeof(mem->R2));
+            memcpy(mem->R2B,data.data(),qMin(int(sizeof mem->R2B),data.size()));
             break;
         case 'z':
             if (mem->scan == 0xfe)
                 mem->scan = 0;
-            memcpy(mem->name,data,sizeof(mem->name));
+            memcpy(mem->name,data.data(),qMin(int(sizeof mem->name),data.size()));
             break;
         default:
             qInfo() << "Parser didn't match!" << "spec:" << parse.spec << "pos:" << parse.pos << "len" << parse.len;

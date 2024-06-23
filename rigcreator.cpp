@@ -42,6 +42,10 @@ rigCreator::rigCreator(QWidget *parent) :
     ui->commands->setColumnWidth(4,40);
     */
     connect(ui->commands,SIGNAL(rowAdded(int)),this,SLOT(commandRowAdded(int)));
+    connect(ui->bands,SIGNAL(rowAdded(int)),this,SLOT(bandRowAdded(int)));
+
+    ui->bands->sortByColumn(1,Qt::AscendingOrder);
+
 }
 
 void rigCreator::commandRowAdded(int row)
@@ -69,9 +73,22 @@ void rigCreator::commandRowAdded(int row)
     layoutGetSet->setAlignment(Qt::AlignCenter);  // Center the checkbox
     layoutGetSet->setContentsMargins(0,0,0,0);    // Set the zero padding
     ui->commands->setCellWidget(row,5, getSetWidget);
-
 }
 
+void rigCreator::bandRowAdded(int row)
+{
+    QPushButton *color = new QPushButton();
+    color->setStyleSheet("QPushButton { background-color : #00000000; }");
+
+    connect(color, &QPushButton::clicked, this, [=]() {
+        QColor col = QColorDialog::getColor(color->palette().button().color(),this,"Pick band color",QColorDialog::ShowAlphaChannel);
+        if (col.isValid()) {
+            qInfo(logSystem()) << "Got Color: " << col.HexArgb;
+            color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(col.name(QColor::HexArgb)));
+        }
+    });
+    ui->bands->setCellWidget(row,9, color);
+}
 
 rigCreator::~rigCreator()
 {
@@ -179,6 +196,7 @@ void rigCreator::loadRigFile(QString file)
 
     ui->commands->clearContents();
     ui->commands->model()->removeRows(0,ui->commands->rowCount());
+    ui->commands->setSortingEnabled(false);
     int numCommands = settings->beginReadArray("Commands");
     if (numCommands == 0) {
         settings->endArray();
@@ -233,9 +251,12 @@ void rigCreator::loadRigFile(QString file)
         }
         settings->endArray();
     }
+    ui->commands->setSortingEnabled(true);
 
     ui->periodicCommands->clearContents();
     ui->periodicCommands->model()->removeRows(0,ui->periodicCommands->rowCount());
+    ui->periodicCommands->setSortingEnabled(false);
+
     int numPeriodic = settings->beginReadArray("Periodic");
     if (numPeriodic == 0) {
         settings->endArray();
@@ -260,9 +281,12 @@ void rigCreator::loadRigFile(QString file)
         }
         settings->endArray();
     }
+    ui->periodicCommands->setSortingEnabled(true);
 
     ui->spans->clearContents();
     ui->spans->model()->removeRows(0,ui->spans->rowCount());
+    ui->spans->setSortingEnabled(false);
+
     int numSpans = settings->beginReadArray("Spans");
     if (numSpans == 0) {
         settings->endArray();
@@ -279,9 +303,12 @@ void rigCreator::loadRigFile(QString file)
         }
         settings->endArray();
     }
+    ui->spans->setSortingEnabled(true);
 
     ui->inputs->clearContents();
     ui->inputs->model()->removeRows(0,ui->inputs->rowCount());
+    ui->inputs->setSortingEnabled(false);
+
     int numInputs = settings->beginReadArray("Inputs");
     if (numInputs == 0) {
         settings->endArray();
@@ -297,9 +324,12 @@ void rigCreator::loadRigFile(QString file)
         }
         settings->endArray();
     }
+    ui->inputs->setSortingEnabled(true);
 
     ui->bands->clearContents();
     ui->bands->model()->removeRows(0,ui->bands->rowCount());
+    ui->bands->setSortingEnabled(false);
+
     int numBands = settings->beginReadArray("Bands");
     if (numBands == 0) {
         settings->endArray();
@@ -309,20 +339,35 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->bands->insertRow(ui->bands->rowCount());
-            ui->bands->model()->setData(ui->bands->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
-            ui->bands->model()->setData(ui->bands->model()->index(c,1),QString::number(settings->value("BSR", 0).toUInt()).rightJustified(2,'0'));
-            ui->bands->model()->setData(ui->bands->model()->index(c,2),settings->value("Start", 0ULL).toString(),Qt::DisplayRole);
-            ui->bands->model()->setData(ui->bands->model()->index(c,3),settings->value("End", 0ULL).toString(),Qt::DisplayRole);
-            ui->bands->model()->setData(ui->bands->model()->index(c,4),settings->value("Range", 0.0).toString());
-            ui->bands->model()->setData(ui->bands->model()->index(c,5),settings->value("MemoryGroup", -1).toString());
-            ui->bands->model()->setData(ui->bands->model()->index(c,6),settings->value("Name", "").toString());
-            ui->bands->model()->setData(ui->bands->model()->index(c,7),settings->value("Bytes", 5).toString());
+            ui->bands->model()->setData(ui->bands->model()->index(c,0),settings->value("Region", "").toString());
+            ui->bands->model()->setData(ui->bands->model()->index(c,1),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
+            ui->bands->model()->setData(ui->bands->model()->index(c,2),QString::number(settings->value("BSR", 0).toUInt()).rightJustified(2,'0'));
+            ui->bands->model()->setData(ui->bands->model()->index(c,3),settings->value("Start", 0ULL).toString(),Qt::DisplayRole);
+            ui->bands->model()->setData(ui->bands->model()->index(c,4),settings->value("End", 0ULL).toString(),Qt::DisplayRole);
+            ui->bands->model()->setData(ui->bands->model()->index(c,5),settings->value("Range", 0.0).toString());
+            ui->bands->model()->setData(ui->bands->model()->index(c,6),settings->value("MemoryGroup", -1).toString());
+            ui->bands->model()->setData(ui->bands->model()->index(c,7),settings->value("Name", "").toString());
+            ui->bands->model()->setData(ui->bands->model()->index(c,8),settings->value("Bytes", 5).toString());
+            QPushButton *color = new QPushButton();
+            color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(settings->value("Color", "#00000000").toString()));
+            connect(color, &QPushButton::clicked, this, [=]() {
+                QColor col = QColorDialog::getColor(color->palette().button().color(),this,"Pick band color",QColorDialog::ShowAlphaChannel);
+                if (col.isValid()) {
+                    qInfo(logSystem()) << "Got Color: " << col.HexArgb;
+                    color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(col.name(QColor::HexArgb)));
+                }
+             });
+            ui->bands->setCellWidget(c,9, color);
+
         }
         settings->endArray();
     }
+    ui->bands->setSortingEnabled(true);
 
     ui->modes->clearContents();
     ui->modes->model()->removeRows(0,ui->modes->rowCount());
+    ui->modes->setSortingEnabled(false);
+
     int numModes = settings->beginReadArray("Modes");
     if (numModes == 0) {
         settings->endArray();
@@ -340,9 +385,12 @@ void rigCreator::loadRigFile(QString file)
         }
         settings->endArray();
     }
+    ui->modes->setSortingEnabled(true);
 
     ui->attenuators->clearContents();
     ui->attenuators->model()->removeRows(0,ui->attenuators->rowCount());
+    ui->attenuators->setSortingEnabled(false);
+
     int numAttenuators = settings->beginReadArray("Attenuators");
     if (numAttenuators == 0) {
         settings->endArray();
@@ -356,9 +404,12 @@ void rigCreator::loadRigFile(QString file)
         }
         settings->endArray();
     }
+    ui->attenuators->setSortingEnabled(true);
 
     ui->preamps->clearContents();
     ui->preamps->model()->removeRows(0,ui->preamps->rowCount());
+    ui->preamps->setSortingEnabled(false);
+
     int numPreamps = settings->beginReadArray("Preamps");
     if (numPreamps == 0) {
         settings->endArray();
@@ -373,9 +424,12 @@ void rigCreator::loadRigFile(QString file)
         }
         settings->endArray();
     }
+    ui->preamps->setSortingEnabled(true);
 
     ui->antennas->clearContents();
     ui->antennas->model()->removeRows(0,ui->antennas->rowCount());
+    ui->antennas->setSortingEnabled(false);
+
     int numAntennas = settings->beginReadArray("Antennas");
     if (numAntennas == 0) {
         settings->endArray();
@@ -390,9 +444,12 @@ void rigCreator::loadRigFile(QString file)
         }
         settings->endArray();
     }
+    ui->antennas->setSortingEnabled(true);
 
     ui->tuningSteps->clearContents();
     ui->tuningSteps->model()->removeRows(0,ui->tuningSteps->rowCount());
+    ui->tuningSteps->setSortingEnabled(false);
+
     int numSteps = settings->beginReadArray("Tuning Steps");
     if (numSteps == 0) {
         settings->endArray();
@@ -408,9 +465,12 @@ void rigCreator::loadRigFile(QString file)
         }
         settings->endArray();
     }
+    ui->tuningSteps->setSortingEnabled(true);
 
     ui->filters->clearContents();
     ui->filters->model()->removeRows(0,ui->filters->rowCount());
+    ui->filters->setSortingEnabled(false);
+
     int numFilters = settings->beginReadArray("Filters");
     if (numFilters == 0) {
         settings->endArray();
@@ -426,6 +486,7 @@ void rigCreator::loadRigFile(QString file)
         }
         settings->endArray();
     }
+    ui->filters->setSortingEnabled(true);
 
     settings->endGroup();
     delete settings;
@@ -599,19 +660,25 @@ void rigCreator::saveRigFile(QString file)
     settings->endArray();
 
     //settings->remove("Bands");
-    ui->bands->sortByColumn(0,Qt::AscendingOrder);
+    ui->bands->sortByColumn(1,Qt::AscendingOrder);
     settings->beginWriteArray("Bands");
     for (int n = 0; n<ui->bands->rowCount();n++)
     {
         settings->setArrayIndex(n);
-        settings->setValue("Num", (ui->bands->item(n,0) == NULL) ? 0 : ui->bands->item(n,0)->text().toUInt() );
-        settings->setValue("BSR", (ui->bands->item(n,1) == NULL) ? 0 : ui->bands->item(n,1)->text().toUInt() );
-        settings->setValue("Start", (ui->bands->item(n,2) == NULL) ? 0ULL : ui->bands->item(n,2)->text().toULongLong() );
-        settings->setValue("End", (ui->bands->item(n,3) == NULL) ? 0ULL : ui->bands->item(n,3)->text().toULongLong() );
-        settings->setValue("Range", (ui->bands->item(n,4) == NULL) ? 0.0 : ui->bands->item(n,4)->text().toDouble() );
-        settings->setValue("MemoryGroup", (ui->bands->item(n,5) == NULL) ? -1 : ui->bands->item(n,5)->text().toInt() );
-        settings->setValue("Name", (ui->bands->item(n,6) == NULL) ? "" : ui->bands->item(n,6)->text());
-        settings->setValue("Bytes", (ui->bands->item(n,7) == NULL) ? 0 : ui->bands->item(n,7)->text().toUInt() );
+        settings->setValue("Region", (ui->bands->item(n,0) == NULL) ? "" : ui->bands->item(n,0)->text() );
+        settings->setValue("Num", (ui->bands->item(n,1) == NULL) ? 0 : ui->bands->item(n,1)->text().toUInt() );
+        settings->setValue("BSR", (ui->bands->item(n,2) == NULL) ? 0 : ui->bands->item(n,2)->text().toUInt() );
+        settings->setValue("Start", (ui->bands->item(n,3) == NULL) ? 0ULL : ui->bands->item(n,3)->text().toULongLong() );
+        settings->setValue("End", (ui->bands->item(n,4) == NULL) ? 0ULL : ui->bands->item(n,4)->text().toULongLong() );
+        settings->setValue("Range", (ui->bands->item(n,5) == NULL) ? 0.0 : ui->bands->item(n,5)->text().toDouble() );
+        settings->setValue("MemoryGroup", (ui->bands->item(n,6) == NULL) ? -1 : ui->bands->item(n,6)->text().toInt() );
+        settings->setValue("Name", (ui->bands->item(n,7) == NULL) ? "" : ui->bands->item(n,7)->text());
+        settings->setValue("Bytes", (ui->bands->item(n,8) == NULL) ? 0 : ui->bands->item(n,8)->text().toUInt() );
+        QPushButton* color = static_cast<QPushButton*>(ui->bands->cellWidget(n,9));
+        if (color != nullptr)
+        {
+            settings->setValue("Color", color->palette().button().color().name(QColor::HexArgb));
+        }
     }
     settings->endArray();
 

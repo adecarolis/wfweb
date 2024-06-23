@@ -26,11 +26,17 @@ enum scopeTypes {
     scopeNone
 };
 
+struct bandIndicator {
+    QCPItemLine* line;
+    QCPItemText* text;
+};
+
 class spectrumScope : public QGroupBox
 {
     Q_OBJECT
 public:
     explicit spectrumScope(bool scope, uchar receiver = 0, uchar vfo = 1, QWidget *parent = nullptr);
+    ~spectrumScope();
 
     bool prepareWf(uint wfLength);
     void prepareScope(uint ampMap, uint spectWidth);
@@ -94,6 +100,7 @@ public:
     void setHold(bool h);
     void setSpeed(uchar s);
     void displaySettings(int NumDigits, qint64 Minf, qint64 Maxf, int MinStep,FctlUnit unit,std::vector<bandType>* bands = Q_NULLPTR);
+    void setBandIndicators(bool show, QString region, std::vector<bandType>* bands);
     void setUnit(FctlUnit unit);
     void setRefLimits(int lower, int upper);
     void setRef(int ref);
@@ -232,6 +239,7 @@ private:
     QByteArray spectrumPeaks;
     QVector <double> spectrumPlasmaLine;
     QVector <QByteArray> spectrumPlasma;
+    QVector<bandIndicator> bandIndicators;
     unsigned int spectrumPlasmaSizeCurrent = 64;
     unsigned int spectrumPlasmaSizeMax = 128;
     unsigned int spectrumPlasmaPosition = 0;
@@ -277,6 +285,7 @@ private:
     bool isActive;
     uchar numVFO=1;
     bool hasScope=true;
+    QString currentRegion="1";
 };
 
 #endif // SPECTRUMSCOPE_H

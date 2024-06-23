@@ -17,7 +17,7 @@ void udpBase::init(quint16 lport)
         uint32_t addr = localIP.toIPv4Address();
         myId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (localPort & 0xffff);
 
-        retransmitTimer = new QTimer();
+        retransmitTimer = new QTimer(this);
         connect(retransmitTimer, &QTimer::timeout, this, &udpBase::sendRetransmitRequest);
         retransmitTimer->start(RETRANSMIT_PERIOD);
     }
@@ -31,33 +31,6 @@ udpBase::~udpBase()
         udp->close();
         delete udp;
     }
-    if (areYouThereTimer != Q_NULLPTR)
-    {
-        areYouThereTimer->stop();
-        delete areYouThereTimer;
-    }
-
-    if (pingTimer != Q_NULLPTR)
-    {
-        pingTimer->stop();
-        delete pingTimer;
-    }
-    if (idleTimer != Q_NULLPTR)
-    {
-        idleTimer->stop();
-        delete idleTimer;
-    }
-    if (retransmitTimer != Q_NULLPTR)
-    {
-        retransmitTimer->stop();
-        delete retransmitTimer;
-    }
-
-    pingTimer = Q_NULLPTR;
-    idleTimer = Q_NULLPTR;
-    areYouThereTimer = Q_NULLPTR;
-    retransmitTimer = Q_NULLPTR;
-
 }
 
 // Base class!

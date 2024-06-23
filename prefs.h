@@ -31,7 +31,9 @@ enum prefIfItem {
     if_currentColorPresetNumber = 1 << 18,
     if_rigCreatorEnable = 1 << 19,
     if_frequencyUnits = 1 << 20,
-    if_all = 1 << 21
+    if_region = 1 << 21,
+    if_showBands = 1 << 22,
+    if_all = 1 << 23
 };
 
 enum prefColItem {
@@ -194,6 +196,8 @@ struct preferences {
     int currentColorPresetNumber = 0;
     bool rigCreatorEnable = false;
     int frequencyUnits = 3;
+    QString region;
+    bool showBands;
 
     // Radio:
     unsigned char radioCIVAddr;
