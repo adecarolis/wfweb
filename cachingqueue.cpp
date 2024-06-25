@@ -200,18 +200,8 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
         if (item.recurring && prio == queuePriority::priorityImmediate) {
             qWarning() << "Warning, cannot add unique recurring command with immediate priority!" << funcString[item.command];
         } else {
-            auto it(queue.begin());
-            // This is quite slow but a new unique command is only added in response to user interaction (mode change etc.)
-            while (it != queue.end()) {
-                if (it.value().command == item.command && it.value().recurring == item.recurring && it.value().receiver == item.receiver && it.value().param.isValid() == item.param.isValid())
-                {
-                    qDebug() << "deleting" << it.value().id << funcString[it.value().command] << "VFO" << it.value().receiver << "recurring" << it.value().recurring ;
-                    //queue.remove(it.key(),it.value());
-                    it = queue.erase(it);
-                } else {
-                    it++;
-                }
-            }
+            queue.remove(prio,item);
+
             if (item.recurring) {
                 // also insert an immediate command to get the current value "now" (removes the need to get initial rigstate)
                 queueItem it = item;
@@ -232,16 +222,8 @@ void cachingQueue::del(funcs func, uchar receiver)
         QMutexLocker locker(&mutex);
         auto it = std::find_if(queue.begin(), queue.end(), [func,receiver](const queueItem& c) {  return (c.command == func && c.receiver == receiver && c.recurring); });
         //auto it(queue.begin());
-        if (it == queue.end())
-            qInfo() << "recurring command" << funcString[func] << "receiver" << receiver << "not found in queue";
-        while (it != queue.end()) {
-            if (it.value().command == func && it.value().receiver == receiver) {
-                qDebug() << "deleting" << funcString[it.value().command] << "VFO" << it.value().receiver << "recurring" << it.value().recurring;
-                //queue.remove(it.key(),it.value());
-                it = queue.erase(it);
-            } else {
-                it++;
-            }
+        if (it != queue.end()) {
+            queue.remove(it.key(),it.value());
         }
     }
 }
