@@ -206,9 +206,11 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
                 if (it.value().command == item.command && it.value().recurring == item.recurring && it.value().receiver == item.receiver && it.value().param.isValid() == item.param.isValid())
                 {
                     qDebug() << "deleting" << it.value().id << funcString[it.value().command] << "VFO" << it.value().receiver << "recurring" << it.value().recurring ;
-                    queue.remove(it.key(),it.value());
+                    //queue.remove(it.key(),it.value());
+                    it = queue.erase(it);
+                } else {
+                    it++;
                 }
-                it++;
             }
             if (item.recurring) {
                 // also insert an immediate command to get the current value "now" (removes the need to get initial rigstate)
@@ -235,9 +237,11 @@ void cachingQueue::del(funcs func, uchar receiver)
         while (it != queue.end()) {
             if (it.value().command == func && it.value().receiver == receiver) {
                 qDebug() << "deleting" << funcString[it.value().command] << "VFO" << it.value().receiver << "recurring" << it.value().recurring;
-                queue.remove(it.key(),it.value());
+                //queue.remove(it.key(),it.value());
+                it = queue.erase(it);
+            } else {
+                it++;
             }
-            it++;
         }
     }
 }
