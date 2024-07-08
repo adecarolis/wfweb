@@ -1461,397 +1461,407 @@ p, li { white-space: pre-wrap; }
         <translation>Tvorba definice transcieveru</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="32"/>
+        <location filename="../rigcreator.ui" line="1092"/>
         <source>Bands</source>
         <translation>Pásma</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="78"/>
-        <location filename="../rigcreator.ui" line="167"/>
-        <location filename="../rigcreator.ui" line="392"/>
-        <location filename="../rigcreator.ui" line="448"/>
-        <location filename="../rigcreator.ui" line="730"/>
-        <location filename="../rigcreator.ui" line="804"/>
-        <location filename="../rigcreator.ui" line="871"/>
-        <location filename="../rigcreator.ui" line="986"/>
+        <location filename="../rigcreator.ui" line="241"/>
+        <location filename="../rigcreator.ui" line="389"/>
+        <location filename="../rigcreator.ui" line="453"/>
+        <location filename="../rigcreator.ui" line="517"/>
+        <location filename="../rigcreator.ui" line="573"/>
+        <location filename="../rigcreator.ui" line="946"/>
+        <location filename="../rigcreator.ui" line="1010"/>
+        <location filename="../rigcreator.ui" line="1143"/>
         <source>Num</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="83"/>
+        <location filename="../rigcreator.ui" line="1148"/>
         <source>BSR</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="88"/>
-        <location filename="../rigcreator.ui" line="324"/>
+        <location filename="../rigcreator.ui" line="82"/>
+        <location filename="../rigcreator.ui" line="1153"/>
         <source>Start</source>
         <translation>Začátek</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="93"/>
+        <location filename="../rigcreator.ui" line="1138"/>
+        <source>Region</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="1158"/>
         <source>End</source>
         <translation>Konec</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="98"/>
+        <location filename="../rigcreator.ui" line="1163"/>
         <source>Range</source>
         <translation>Rozsah</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="103"/>
-        <location filename="../rigcreator.ui" line="289"/>
+        <location filename="../rigcreator.ui" line="47"/>
+        <location filename="../rigcreator.ui" line="1168"/>
         <source>Mem</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="108"/>
-        <location filename="../rigcreator.ui" line="172"/>
-        <location filename="../rigcreator.ui" line="397"/>
+        <location filename="../rigcreator.ui" line="246"/>
+        <location filename="../rigcreator.ui" line="399"/>
         <location filename="../rigcreator.ui" line="458"/>
-        <location filename="../rigcreator.ui" line="750"/>
-        <location filename="../rigcreator.ui" line="809"/>
-        <location filename="../rigcreator.ui" line="881"/>
-        <location filename="../rigcreator.ui" line="991"/>
+        <location filename="../rigcreator.ui" line="522"/>
+        <location filename="../rigcreator.ui" line="583"/>
+        <location filename="../rigcreator.ui" line="951"/>
+        <location filename="../rigcreator.ui" line="1030"/>
+        <location filename="../rigcreator.ui" line="1173"/>
         <source>Name</source>
         <translation>Jméno</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="113"/>
+        <location filename="../rigcreator.ui" line="1178"/>
         <source>Bytes</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="124"/>
+        <location filename="../rigcreator.ui" line="474"/>
         <source>Antennas</source>
         <translation>Antény</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="183"/>
+        <location filename="../rigcreator.ui" line="101"/>
         <source>Commands</source>
         <translation>Příkazy</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="238"/>
-        <location filename="../rigcreator.ui" line="1168"/>
+        <location filename="../rigcreator.ui" line="156"/>
+        <location filename="../rigcreator.ui" line="275"/>
         <source>Command</source>
         <translation>Příkaz</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="243"/>
+        <location filename="../rigcreator.ui" line="161"/>
         <source>String</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="248"/>
+        <location filename="../rigcreator.ui" line="166"/>
         <source>Min</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="253"/>
+        <location filename="../rigcreator.ui" line="171"/>
         <source>Max</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="258"/>
+        <location filename="../rigcreator.ui" line="176"/>
         <source>29</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="263"/>
+        <location filename="../rigcreator.ui" line="181"/>
         <source>G/S</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="274"/>
+        <location filename="../rigcreator.ui" line="32"/>
         <source>Memories</source>
         <translation>Paměti</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="282"/>
+        <location filename="../rigcreator.ui" line="40"/>
         <source>Grp</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="296"/>
-        <location filename="../rigcreator.ui" line="303"/>
-        <location filename="../rigcreator.ui" line="310"/>
-        <location filename="../rigcreator.ui" line="331"/>
+        <location filename="../rigcreator.ui" line="54"/>
+        <location filename="../rigcreator.ui" line="61"/>
+        <location filename="../rigcreator.ui" line="68"/>
+        <location filename="../rigcreator.ui" line="89"/>
         <source>999</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="317"/>
+        <location filename="../rigcreator.ui" line="75"/>
         <source>Sat</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="349"/>
+        <location filename="../rigcreator.ui" line="198"/>
         <source>Preamps</source>
         <translation>Předzesilovače</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="408"/>
+        <location filename="../rigcreator.ui" line="533"/>
         <source>Flters</source>
         <translation>Filtry</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="453"/>
-        <location filename="../rigcreator.ui" line="687"/>
+        <location filename="../rigcreator.ui" line="578"/>
+        <location filename="../rigcreator.ui" line="967"/>
         <source>Modes</source>
         <translation>Režimy</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="473"/>
+        <location filename="../rigcreator.ui" line="295"/>
         <source>Main Memory Format</source>
         <translation>Hlavní formát pamětí</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="486"/>
-        <location filename="../rigcreator.ui" line="510"/>
+        <location filename="../rigcreator.ui" line="308"/>
+        <location filename="../rigcreator.ui" line="332"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format %&amp;lt;start&amp;gt;.&amp;lt;len&amp;gt;&amp;lt;specifier&amp;gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;specifier from list below:&lt;/p&gt;&lt;p&gt;a = Group&lt;/p&gt;&lt;p&gt;b = Num&lt;/p&gt;&lt;p&gt;c = Scan&lt;/p&gt;&lt;p&gt;d = Scan/Split&lt;/p&gt;&lt;p&gt;e = VFO A		E = VFO B&lt;/p&gt;&lt;p&gt;f = Frequency A 	F = Frequency B&lt;/p&gt;&lt;p&gt;g = Mode A		G = Mode B&lt;/p&gt;&lt;p&gt;h = Filter 		H = Filter B&lt;/p&gt;&lt;p&gt;i = Data 		I = Data B&lt;/p&gt;&lt;p&gt;j = Duplex/Tonemode A	J = Duplex B/Tonemode B&lt;/p&gt;&lt;p&gt;k = Data/Tonemode A	K = Data B/Tonemode B&lt;/p&gt;&lt;p&gt;l = Tonemode A	L = Tonemode B&lt;/p&gt;&lt;p&gt;m = DSQL A 		M = DSQL B&lt;/p&gt;&lt;p&gt;n = Tone type A	N = Tone type B&lt;/p&gt;&lt;p&gt;o = TSQL A		O = TSQL B&lt;/p&gt;&lt;p&gt;p = DTCS Polarity A 	P = DTCS Polarity B&lt;/p&gt;&lt;p&gt;q = DTCS A		Q = DTCS B&lt;/p&gt;&lt;p&gt;r = DV Squelch A 	R = DV Squelch B&lt;/p&gt;&lt;p&gt;s = Duplex Offset A 	S = Duplex Offset B&lt;/p&gt;&lt;p&gt;t = DV UR A		T = DV UR B&lt;/p&gt;&lt;p&gt;u = DV R1 A		U = DV R1 B&lt;/p&gt;&lt;p&gt;v = DV R2 A 		V = DV R2 B&lt;/p&gt;&lt;p&gt;z = Memory Name&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="497"/>
+        <location filename="../rigcreator.ui" line="319"/>
         <source>Satellite Memory Format</source>
         <translation>Formát satelitních pamětí</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="527"/>
+        <location filename="../rigcreator.ui" line="600"/>
         <source>Features</source>
         <translation>Vlastnosti</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="533"/>
+        <location filename="../rigcreator.ui" line="606"/>
         <source>Has Spectrum</source>
         <translation>Má spektrák</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="540"/>
+        <location filename="../rigcreator.ui" line="613"/>
         <source>Has LAN</source>
         <translation>Má LAN</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="547"/>
+        <location filename="../rigcreator.ui" line="620"/>
         <source>Has Ethernet</source>
         <translation>Má Ethernet</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="554"/>
+        <location filename="../rigcreator.ui" line="627"/>
         <source>Has WiFi</source>
         <translation>Má WiFi</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="561"/>
+        <location filename="../rigcreator.ui" line="634"/>
         <source>Has Transmit</source>
         <translation>Může vysílat</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="568"/>
+        <location filename="../rigcreator.ui" line="641"/>
         <source>HasFDComms</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="575"/>
+        <location filename="../rigcreator.ui" line="648"/>
         <source>Has Command 29</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="589"/>
+        <location filename="../rigcreator.ui" line="662"/>
         <source>Load File</source>
         <translation>Nahrát soubor</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="596"/>
+        <location filename="../rigcreator.ui" line="669"/>
         <source>Save File</source>
         <translation>Uložit soubor</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="616"/>
+        <location filename="../rigcreator.ui" line="689"/>
         <source>Default Rigs</source>
         <translation>Výchozí rádia</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="623"/>
+        <location filename="../rigcreator.ui" line="696"/>
         <source>Manufacturer</source>
         <translation>Výrobce</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="631"/>
+        <location filename="../rigcreator.ui" line="704"/>
         <source>Icom</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="636"/>
+        <location filename="../rigcreator.ui" line="709"/>
         <source>Yaesu</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="641"/>
+        <location filename="../rigcreator.ui" line="714"/>
         <source>Kenwood</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="649"/>
+        <location filename="../rigcreator.ui" line="722"/>
         <source>Model</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="659"/>
+        <location filename="../rigcreator.ui" line="732"/>
         <source>C-IV Address</source>
         <translation>CI-V Adresy</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="669"/>
+        <location filename="../rigcreator.ui" line="742"/>
         <source>RigCtlD Model</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="676"/>
+        <location filename="../rigcreator.ui" line="749"/>
         <source>9999</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="735"/>
-        <location filename="../rigcreator.ui" line="876"/>
+        <location filename="../rigcreator.ui" line="1183"/>
+        <source>Colour</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="394"/>
+        <location filename="../rigcreator.ui" line="1015"/>
         <source>Reg</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="740"/>
+        <location filename="../rigcreator.ui" line="1020"/>
         <source>Min BW</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="745"/>
+        <location filename="../rigcreator.ui" line="1025"/>
         <source>Max BW</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="761"/>
+        <location filename="../rigcreator.ui" line="903"/>
         <source>Tuning Steps</source>
         <translation>Ladící kroky</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="814"/>
+        <location filename="../rigcreator.ui" line="956"/>
         <source>Hz</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="825"/>
+        <location filename="../rigcreator.ui" line="343"/>
         <source>Inputs</source>
         <translation>Vstupy</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="892"/>
+        <location filename="../rigcreator.ui" line="1041"/>
         <source>Atten</source>
         <translation>Attenuátor</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="932"/>
+        <location filename="../rigcreator.ui" line="1081"/>
         <source>dB</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="943"/>
+        <location filename="../rigcreator.ui" line="410"/>
         <source>Spans</source>
         <translation>Span</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="996"/>
+        <location filename="../rigcreator.ui" line="463"/>
         <source>Freq</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1013"/>
+        <location filename="../rigcreator.ui" line="766"/>
         <source>Spectrum</source>
         <translation>Spektrum</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1021"/>
+        <location filename="../rigcreator.ui" line="774"/>
         <source>Seq Max</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1028"/>
+        <location filename="../rigcreator.ui" line="781"/>
         <source>Len Max</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1035"/>
+        <location filename="../rigcreator.ui" line="788"/>
         <source>Amp Max</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1054"/>
-        <location filename="../rigcreator.ui" line="1073"/>
+        <location filename="../rigcreator.ui" line="807"/>
+        <location filename="../rigcreator.ui" line="826"/>
         <source>000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1098"/>
+        <location filename="../rigcreator.ui" line="851"/>
         <source>00</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1105"/>
+        <location filename="../rigcreator.ui" line="858"/>
         <source>Num RX</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1118"/>
-        <location filename="../rigcreator.ui" line="1138"/>
+        <location filename="../rigcreator.ui" line="871"/>
+        <location filename="../rigcreator.ui" line="891"/>
         <source>1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1125"/>
+        <location filename="../rigcreator.ui" line="878"/>
         <source>VFO per RX</source>
         <translation>VFO na RX</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1150"/>
+        <location filename="../rigcreator.ui" line="257"/>
         <source>Periodic Commands</source>
         <translation>Periodické příkazy</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1163"/>
+        <location filename="../rigcreator.ui" line="270"/>
         <source>Priority</source>
         <translation>Priorita</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1173"/>
+        <location filename="../rigcreator.ui" line="280"/>
         <source>VFO</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.cpp" line="91"/>
-        <location filename="../rigcreator.cpp" line="94"/>
-        <location filename="../rigcreator.cpp" line="117"/>
-        <location filename="../rigcreator.cpp" line="119"/>
-        <location filename="../rigcreator.cpp" line="489"/>
-        <location filename="../rigcreator.cpp" line="491"/>
+        <location filename="../rigcreator.cpp" line="108"/>
+        <location filename="../rigcreator.cpp" line="111"/>
+        <location filename="../rigcreator.cpp" line="134"/>
+        <location filename="../rigcreator.cpp" line="136"/>
+        <location filename="../rigcreator.cpp" line="550"/>
+        <location filename="../rigcreator.cpp" line="552"/>
         <source>Select Rig Filename</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.cpp" line="145"/>
+        <location filename="../rigcreator.cpp" line="162"/>
         <source>Not a rig definition</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.cpp" line="146"/>
+        <location filename="../rigcreator.cpp" line="163"/>
         <source>File %0 does not appear to be a valid Rig definition file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.cpp" line="754"/>
+        <location filename="../rigcreator.cpp" line="821"/>
         <source>rig creator</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.cpp" line="754"/>
+        <location filename="../rigcreator.cpp" line="821"/>
         <source>Changes will be lost!</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2124,27 +2134,27 @@ Manual CI-V použijte pouze, když rádio neumí CI-V Transcieve
     </message>
     <message>
         <location filename="../settingswidget.ui" line="355"/>
-        <location filename="../settingswidget.ui" line="2408"/>
+        <location filename="../settingswidget.ui" line="2438"/>
         <source>Control Port</source>
         <translation>Port</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="368"/>
-        <location filename="../settingswidget.ui" line="2436"/>
+        <location filename="../settingswidget.ui" line="2466"/>
         <source>50001</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="401"/>
-        <location filename="../settingswidget.ui" line="2701"/>
-        <location filename="../settingswidget.ui" line="3163"/>
+        <location filename="../settingswidget.ui" line="2731"/>
+        <location filename="../settingswidget.ui" line="3193"/>
         <source>Username</source>
         <translation>Uživatelské jméno</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="424"/>
-        <location filename="../settingswidget.ui" line="2706"/>
-        <location filename="../settingswidget.ui" line="3173"/>
+        <location filename="../settingswidget.ui" line="2736"/>
+        <location filename="../settingswidget.ui" line="3203"/>
         <source>Password</source>
         <translation>Heslo</translation>
     </message>
@@ -2231,25 +2241,25 @@ Manual CI-V použijte pouze, když rádio neumí CI-V Transcieve
     </message>
     <message>
         <location filename="../settingswidget.ui" line="627"/>
-        <location filename="../settingswidget.ui" line="2597"/>
+        <location filename="../settingswidget.ui" line="2627"/>
         <source>Audio System</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="635"/>
-        <location filename="../settingswidget.ui" line="2605"/>
+        <location filename="../settingswidget.ui" line="2635"/>
         <source>Qt Audio</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="640"/>
-        <location filename="../settingswidget.ui" line="2610"/>
+        <location filename="../settingswidget.ui" line="2640"/>
         <source>PortAudio</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="645"/>
-        <location filename="../settingswidget.ui" line="2615"/>
+        <location filename="../settingswidget.ui" line="2645"/>
         <source>RT Audio</source>
         <translation></translation>
     </message>
@@ -2320,742 +2330,753 @@ Manual CI-V použijte pouze, když rádio neumí CI-V Transcieve
         <translation>Povolit Rig Creator ( používejte s rozumem!)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="841"/>
+        <location filename="../settingswidget.ui" line="864"/>
         <source>Enables interpolation between pixels. Note that this will increase CPU usage.</source>
         <translation>Povolit interpolaci mezi pixely. Toto může zvýšit zátěž procesoru.</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="844"/>
+        <location filename="../settingswidget.ui" line="867"/>
         <source>Interpolate Waterfall</source>
         <translation>Interpolovat vodopád</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="854"/>
+        <location filename="../settingswidget.ui" line="877"/>
         <source>Anti-Alias Waterfall</source>
         <translation>Anti-Alias pro vodopád</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="861"/>
+        <location filename="../settingswidget.ui" line="884"/>
         <source>Allow tuning via click and drag (experimental)</source>
         <translation>Povolit laděni přes kliknutí a potáhnutí</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="868"/>
+        <location filename="../settingswidget.ui" line="891"/>
         <source>Use System Theme</source>
         <translation>Použít vzhled šablony systému</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="875"/>
+        <location filename="../settingswidget.ui" line="898"/>
         <source>Show full screen (F11)</source>
         <translation>FullScreen (F11)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="911"/>
+        <location filename="../settingswidget.ui" line="934"/>
         <source>Underlay Mode</source>
         <translation>Paměťový režim</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="918"/>
+        <location filename="../settingswidget.ui" line="941"/>
         <source>No underlay graphics</source>
         <translation>Žádná paměťová grafika</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="921"/>
-        <location filename="../settingswidget.ui" line="1001"/>
+        <location filename="../settingswidget.ui" line="944"/>
+        <location filename="../settingswidget.ui" line="1024"/>
         <source>None</source>
         <translation>Ne</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="931"/>
+        <location filename="../settingswidget.ui" line="954"/>
         <source>Indefinite peak hold</source>
         <translation>Neurčitý režim peak hold</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="934"/>
+        <location filename="../settingswidget.ui" line="957"/>
         <source>Peak Hold</source>
         <translation>Peak Hold</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="941"/>
+        <location filename="../settingswidget.ui" line="964"/>
         <source>Peak value within the buffer</source>
         <translation>Špiičková hodnota v zásobníku</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="944"/>
+        <location filename="../settingswidget.ui" line="967"/>
         <source>Peak</source>
         <translation>Špička</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="951"/>
+        <location filename="../settingswidget.ui" line="974"/>
         <source>Average value within the buffer</source>
         <translation>Průměrová hodnota v zásobníku</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="954"/>
+        <location filename="../settingswidget.ui" line="977"/>
         <source>Average</source>
         <translation>Průměr</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="961"/>
+        <location filename="../settingswidget.ui" line="984"/>
         <source>Underlay Buffer Size:</source>
         <translation>Velikost zásobníku</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="974"/>
+        <location filename="../settingswidget.ui" line="997"/>
         <source>Size of buffer for spectrum data. Shorter values are more responsive.</source>
         <translation>Velikost zásobníku pro spektrální data. Menší hodnoty poskytují čerstvější data</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="993"/>
+        <location filename="../settingswidget.ui" line="1016"/>
         <source>Frequency Units</source>
         <translation>Jednotky frekvence</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1006"/>
+        <location filename="../settingswidget.ui" line="1029"/>
         <source>Hz</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1011"/>
+        <location filename="../settingswidget.ui" line="1034"/>
         <source>KHz</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1016"/>
+        <location filename="../settingswidget.ui" line="1039"/>
         <source>MHz</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1021"/>
+        <location filename="../settingswidget.ui" line="1044"/>
         <source>GHz</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1062"/>
+        <location filename="../settingswidget.ui" line="1092"/>
         <source>Additional Meter Selection:</source>
         <translation>Přídavná volba měřáku:</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1075"/>
+        <location filename="../settingswidget.ui" line="1105"/>
         <source>Broadcast-style reduction meter</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1078"/>
+        <location filename="../settingswidget.ui" line="1108"/>
         <source>Reverse Comp Meter</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1085"/>
+        <location filename="../settingswidget.ui" line="1115"/>
         <source>wfview will automatically calculate command polling. Recommended.</source>
         <translation>Wfview automaticky spočítá požadavky. Doporučeno.</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1088"/>
+        <location filename="../settingswidget.ui" line="1118"/>
         <source>AutoPolling</source>
         <translation>Automatické vyčítání</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1101"/>
+        <location filename="../settingswidget.ui" line="1131"/>
         <source>Manual (user-defined) command polling</source>
         <translation>Ruční (uživatelsky definované) vyčítání</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1104"/>
+        <location filename="../settingswidget.ui" line="1134"/>
         <source>Manual Polling Inteval:</source>
         <translation>Ruční interval vyčítání:</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1114"/>
+        <location filename="../settingswidget.ui" line="1144"/>
         <source>Sets the polling interval, in ms. Automatic polling is recommended. Serial port and USB port radios should not poll quicker than about 75ms.</source>
         <translation>Nastaví interval vyčítání v ms. Automatické vyčítání je doporučeno. Rádia připojené sériovým portem, nebo usb nezvládají rychlejší, než cca 75ms.</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1127"/>
+        <location filename="../settingswidget.ui" line="1157"/>
         <source>ms</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1157"/>
+        <location filename="../settingswidget.ui" line="1187"/>
         <source>Color scheme</source>
         <translation>Barevné schéma</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1164"/>
+        <location filename="../settingswidget.ui" line="1194"/>
         <source>Preset:</source>
         <translation>Předvolba:</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1186"/>
+        <location filename="../settingswidget.ui" line="1216"/>
         <source>Select a color preset here.</source>
         <translation>Zvolte barevné schéma.</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1190"/>
+        <location filename="../settingswidget.ui" line="853"/>
+        <location filename="../settingswidget.ui" line="1220"/>
         <source>1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1195"/>
+        <location filename="../settingswidget.ui" line="837"/>
+        <source>Region:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="1052"/>
+        <source>Show Bands</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="1225"/>
         <source>2</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1200"/>
+        <location filename="../settingswidget.ui" line="1230"/>
         <source>3</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1205"/>
+        <location filename="../settingswidget.ui" line="1235"/>
         <source>4</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1210"/>
+        <location filename="../settingswidget.ui" line="1240"/>
         <source>5</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1218"/>
+        <location filename="../settingswidget.ui" line="1248"/>
         <source>Revert the selected color preset to the default.</source>
         <translation>Vrátit zvolené barevné schéma do výchozí hodnoty.</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1221"/>
+        <location filename="../settingswidget.ui" line="1251"/>
         <source>Revert</source>
         <translation>Vrátit</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1228"/>
+        <location filename="../settingswidget.ui" line="1258"/>
         <source>Rename the selected color preset. Max length is 10 characters.</source>
         <translation>Přejmenovat zvolené barevné schéma. Maximállní délka je 10 znaků.</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1231"/>
-        <location filename="../settingswidget.cpp" line="2248"/>
+        <location filename="../settingswidget.ui" line="1261"/>
+        <location filename="../settingswidget.cpp" line="2268"/>
         <source>Rename Preset</source>
         <translation>Přejmenovat předvolbu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1271"/>
+        <location filename="../settingswidget.ui" line="1301"/>
         <source>User-defined Color Editor</source>
         <translation>Uživatelské nastavení barevného schématu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1337"/>
-        <location filename="../settingswidget.ui" line="1363"/>
+        <location filename="../settingswidget.ui" line="1367"/>
         <location filename="../settingswidget.ui" line="1393"/>
-        <location filename="../settingswidget.ui" line="1406"/>
-        <location filename="../settingswidget.ui" line="1429"/>
-        <location filename="../settingswidget.ui" line="1442"/>
-        <location filename="../settingswidget.ui" line="1469"/>
-        <location filename="../settingswidget.ui" line="1485"/>
-        <location filename="../settingswidget.ui" line="1542"/>
-        <location filename="../settingswidget.ui" line="1565"/>
-        <location filename="../settingswidget.ui" line="1578"/>
-        <location filename="../settingswidget.ui" line="1621"/>
-        <location filename="../settingswidget.ui" line="1634"/>
-        <location filename="../settingswidget.ui" line="1647"/>
-        <location filename="../settingswidget.ui" line="1660"/>
-        <location filename="../settingswidget.ui" line="1673"/>
-        <location filename="../settingswidget.ui" line="1696"/>
-        <location filename="../settingswidget.ui" line="1736"/>
-        <location filename="../settingswidget.ui" line="1820"/>
+        <location filename="../settingswidget.ui" line="1423"/>
+        <location filename="../settingswidget.ui" line="1436"/>
+        <location filename="../settingswidget.ui" line="1459"/>
+        <location filename="../settingswidget.ui" line="1472"/>
+        <location filename="../settingswidget.ui" line="1499"/>
+        <location filename="../settingswidget.ui" line="1515"/>
+        <location filename="../settingswidget.ui" line="1572"/>
+        <location filename="../settingswidget.ui" line="1595"/>
+        <location filename="../settingswidget.ui" line="1608"/>
+        <location filename="../settingswidget.ui" line="1651"/>
+        <location filename="../settingswidget.ui" line="1664"/>
+        <location filename="../settingswidget.ui" line="1677"/>
+        <location filename="../settingswidget.ui" line="1690"/>
+        <location filename="../settingswidget.ui" line="1703"/>
+        <location filename="../settingswidget.ui" line="1726"/>
+        <location filename="../settingswidget.ui" line="1766"/>
         <location filename="../settingswidget.ui" line="1850"/>
-        <location filename="../settingswidget.ui" line="1884"/>
-        <location filename="../settingswidget.ui" line="1921"/>
-        <location filename="../settingswidget.ui" line="2023"/>
-        <location filename="../settingswidget.ui" line="2059"/>
-        <location filename="../settingswidget.ui" line="2092"/>
-        <location filename="../settingswidget.ui" line="2115"/>
+        <location filename="../settingswidget.ui" line="1880"/>
+        <location filename="../settingswidget.ui" line="1914"/>
+        <location filename="../settingswidget.ui" line="1951"/>
+        <location filename="../settingswidget.ui" line="2053"/>
+        <location filename="../settingswidget.ui" line="2089"/>
+        <location filename="../settingswidget.ui" line="2122"/>
+        <location filename="../settingswidget.ui" line="2145"/>
         <source>#AARRGGBB</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1370"/>
+        <location filename="../settingswidget.ui" line="1400"/>
         <source>Spectrum Line</source>
         <translation>Linka spektra</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1449"/>
+        <location filename="../settingswidget.ui" line="1479"/>
         <source>Axis</source>
         <translation>Osa</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1456"/>
+        <location filename="../settingswidget.ui" line="1486"/>
         <source>Grid</source>
         <translation>Mřížka</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1482"/>
+        <location filename="../settingswidget.ui" line="1512"/>
         <source>Color text format is #AARRGGBB, where AA is the &quot;alpha&quot; channel, and value &quot;00&quot; is totally transparent, and &quot;ff&quot; is totally opaque.</source>
         <translation>Formát barevného textu je  #AARRGGBB,¨kde AA je &quot;alfa&quot; kanál, a hodnota &quot;00&quot;  je transparentní a &quot;ff&quot; je nejtmavší.</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1492"/>
+        <location filename="../settingswidget.ui" line="1522"/>
         <source>Meter Peak Level</source>
         <translation>Špičková hodnota</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1499"/>
+        <location filename="../settingswidget.ui" line="1529"/>
         <source>Underlay Line</source>
         <translation>Podkladová linka</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1601"/>
+        <location filename="../settingswidget.ui" line="1631"/>
         <source>Text</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1608"/>
+        <location filename="../settingswidget.ui" line="1638"/>
         <source>Spectrum Fill Top</source>
         <translation>Výplň spektra nahoře</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1723"/>
+        <location filename="../settingswidget.ui" line="1753"/>
         <source>Plot Background</source>
         <translation>Pozadí</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1753"/>
+        <location filename="../settingswidget.ui" line="1783"/>
         <source>Spectrum Gradient</source>
         <translation>Gradient spektra</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1760"/>
+        <location filename="../settingswidget.ui" line="1790"/>
         <source>Underlay Fill</source>
         <translation>Výplň pozadí</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1807"/>
+        <location filename="../settingswidget.ui" line="1837"/>
         <source>Meter Average</source>
         <translation>Průměrné hodnoty</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1827"/>
+        <location filename="../settingswidget.ui" line="1857"/>
         <source>Passband</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1857"/>
+        <location filename="../settingswidget.ui" line="1887"/>
         <source>Waterfall Grid</source>
         <translation>Mřížka vodopádu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1864"/>
+        <location filename="../settingswidget.ui" line="1894"/>
         <source>Waterfall Back</source>
         <translation>Pozadí vodopádu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1871"/>
+        <location filename="../settingswidget.ui" line="1901"/>
         <source>Tuning Line</source>
         <translation>Ladící linka</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1901"/>
+        <location filename="../settingswidget.ui" line="1931"/>
         <source>Waterfall Axis</source>
         <translation>Osa vodopádu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1908"/>
+        <location filename="../settingswidget.ui" line="1938"/>
         <source>Waterfall Text</source>
         <translation>Text vodopádu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1928"/>
+        <location filename="../settingswidget.ui" line="1958"/>
         <source>Meter Level</source>
         <translation>Měřená hodnota</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1955"/>
+        <location filename="../settingswidget.ui" line="1985"/>
         <source>Meter Text</source>
         <translation>Text měřáku</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1962"/>
+        <location filename="../settingswidget.ui" line="1992"/>
         <source>Spectrum Fill Bot</source>
         <translation>Výplň spektra spodní</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1979"/>
+        <location filename="../settingswidget.ui" line="2009"/>
         <source>Spectrum Fill</source>
         <translation>Výpln spektra</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1996"/>
+        <location filename="../settingswidget.ui" line="2026"/>
         <source>PBT Indicator</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2003"/>
+        <location filename="../settingswidget.ui" line="2033"/>
         <source>Meter Scale</source>
         <translation>Škála měřáku</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2010"/>
+        <location filename="../settingswidget.ui" line="2040"/>
         <source>Meter High Scale</source>
         <translation>Škála měřáku maxima</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2040"/>
+        <location filename="../settingswidget.ui" line="2070"/>
         <source>Cluster Spots</source>
         <translation>Spoty v clusteru</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2076"/>
+        <location filename="../settingswidget.ui" line="2106"/>
         <source>Underlay Gradient</source>
         <translation>Gradient podkladu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2099"/>
+        <location filename="../settingswidget.ui" line="2129"/>
         <source>Underlay Fill Top</source>
         <translation>Výplň podkladu horní</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2122"/>
+        <location filename="../settingswidget.ui" line="2152"/>
         <source>Underlay Fill Bot</source>
         <translation>Výplň podkladu spodní</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2157"/>
+        <location filename="../settingswidget.ui" line="2187"/>
         <source>Data Off Modulation Input:</source>
         <translation>Data z modulačního vstupu:</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2164"/>
+        <location filename="../settingswidget.ui" line="2194"/>
         <source>Modulation Input</source>
         <translation>Modulační vstup</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2167"/>
+        <location filename="../settingswidget.ui" line="2197"/>
         <source>Transmit modulation source</source>
         <translation>Modulační vstup pro vysílání</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2177"/>
+        <location filename="../settingswidget.ui" line="2207"/>
         <source>(Data Mod Inputs) DATA1:</source>
         <translation>Vstup DATA moduilace          DATA1:</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2184"/>
+        <location filename="../settingswidget.ui" line="2214"/>
         <source>Data Modulation Input</source>
         <translation>Vstup data modulace</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2187"/>
+        <location filename="../settingswidget.ui" line="2217"/>
         <source>Transmit Data-mode modulation input source</source>
         <translation>Zdroj vysílací modulace pro data režimy</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2197"/>
+        <location filename="../settingswidget.ui" line="2227"/>
         <source>DATA2:</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2207"/>
+        <location filename="../settingswidget.ui" line="2237"/>
         <source>DATA3:</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2234"/>
+        <location filename="../settingswidget.ui" line="2264"/>
         <source>Press here to set the clock of the radio. The command will be sent to the radio when the seconds go to zero. </source>
         <translation>Zmáčkněte zde pro nastavení hodin rádia. Příkazd bude odesán do rádia  v průchodu sekund nulou.</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2237"/>
+        <location filename="../settingswidget.ui" line="2267"/>
         <source>Set Clock</source>
         <translation>Nastavit hodiny</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2244"/>
+        <location filename="../settingswidget.ui" line="2274"/>
         <source>Check this box to set the radio&apos;s clock to UTC. Otherwise, the clock will be set to the local timezone of this computer. </source>
         <translation>Zaškrkněte zde pro nastavení hodin v rádiu na UTC, jinak budou hodiny rádia nastaveny na hodiny v počítači.</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2247"/>
+        <location filename="../settingswidget.ui" line="2277"/>
         <source>Use UTC</source>
         <translation>Použít UTC</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2254"/>
+        <location filename="../settingswidget.ui" line="2284"/>
         <source>Satellite Ops</source>
         <translation>Satelitní nastavení</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2261"/>
+        <location filename="../settingswidget.ui" line="2291"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click here to adjust the frequency reference on the IC-9700.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Klikněte zde pro nastavení frekvenční reference IC-9700.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2264"/>
+        <location filename="../settingswidget.ui" line="2294"/>
         <source>Adjust Reference</source>
         <translation>Nastavit referenci</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2291"/>
+        <location filename="../settingswidget.ui" line="2321"/>
         <source>Manual PTT Toggle</source>
         <translation>Manuální ovládání PTT</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2298"/>
+        <location filename="../settingswidget.ui" line="2328"/>
         <source>PTT On</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2301"/>
+        <location filename="../settingswidget.ui" line="2331"/>
         <source>Ctrl+S</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2308"/>
+        <location filename="../settingswidget.ui" line="2338"/>
         <source>PTT Off</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2364"/>
+        <location filename="../settingswidget.ui" line="2394"/>
         <source>Enable</source>
         <translation>Povolit SERVER</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2388"/>
+        <location filename="../settingswidget.ui" line="2418"/>
         <source>Server Setup</source>
         <translation>Nastavení SERVERU</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2433"/>
-        <location filename="../settingswidget.ui" line="2483"/>
-        <location filename="../settingswidget.ui" line="2524"/>
+        <location filename="../settingswidget.ui" line="2463"/>
+        <location filename="../settingswidget.ui" line="2513"/>
+        <location filename="../settingswidget.ui" line="2554"/>
         <source>99999</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2464"/>
+        <location filename="../settingswidget.ui" line="2494"/>
         <source>Civ Port</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2486"/>
+        <location filename="../settingswidget.ui" line="2516"/>
         <source>50002</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2505"/>
+        <location filename="../settingswidget.ui" line="2535"/>
         <source>Audio Port</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2527"/>
+        <location filename="../settingswidget.ui" line="2557"/>
         <source>50003</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2551"/>
+        <location filename="../settingswidget.ui" line="2581"/>
         <source>RX Audio Input</source>
         <translation>Vstup RX Audia</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2574"/>
+        <location filename="../settingswidget.ui" line="2604"/>
         <source>TX Audio Output</source>
         <translation>Výstup TX audia</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2640"/>
+        <location filename="../settingswidget.ui" line="2670"/>
         <source>Users</source>
         <translation>Uživatelé</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2711"/>
+        <location filename="../settingswidget.ui" line="2741"/>
         <source>Admin</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2757"/>
+        <location filename="../settingswidget.ui" line="2787"/>
         <source>Enable RigCtld</source>
         <translation>Povolit RigCtld</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2780"/>
+        <location filename="../settingswidget.ui" line="2810"/>
         <source>Port</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2820"/>
+        <location filename="../settingswidget.ui" line="2850"/>
         <source>Virtual Serial Port</source>
         <translation>Virtuální sériový port</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2839"/>
+        <location filename="../settingswidget.ui" line="2869"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use this to define a virtual serial port. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;On Windows, the virtual serial port can be used to connect to a serial port loopback device, through which other programs can connect to the radio. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;On Linux and macOS, the port defined here is a pseudo-terminal device, which may be connected to directly by any program designed for a serial connection. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt; Použijte pro nastavení virtuálního sériového portu. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt; Na windows bude virtuální sériový port vytvořený pro připojení ostatních aplikací k rádiu najednou. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt; Na Linuxu, nebo macOS bude vytvořeno zařízení typu  pseudo-terminál, který lze připojit k jakékoliv aplikaci používající sériové připojení &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2842"/>
+        <location filename="../settingswidget.ui" line="2872"/>
         <source>Virtual Serial Port Selector</source>
         <translation>Volba virtuálního sériového portu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2866"/>
+        <location filename="../settingswidget.ui" line="2896"/>
         <source>TCP Server Port</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2886"/>
+        <location filename="../settingswidget.ui" line="2916"/>
         <source>Enter port for TCP server, 0 = disabled (restart required if changed)</source>
         <translation>Nastavte port pro TCP Server. 0= vypnuto (je nutné restartovat program)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2910"/>
+        <location filename="../settingswidget.ui" line="2940"/>
         <source>TCI Server Port</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2927"/>
+        <location filename="../settingswidget.ui" line="2957"/>
         <source>Enter port for TCI server 0 = disabled (restart required if changed)</source>
         <translation>Nastavte port pro TCI Server. 0= vypnuto (je nutné restartovat program)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2951"/>
+        <location filename="../settingswidget.ui" line="2981"/>
         <source>Waterfall Format</source>
         <translation>Formát vodopádu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2959"/>
+        <location filename="../settingswidget.ui" line="2989"/>
         <source>Default</source>
         <translation>Výchozí</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2964"/>
+        <location filename="../settingswidget.ui" line="2994"/>
         <source>Single (network)</source>
         <translation>Jednoduchý (síť)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2969"/>
+        <location filename="../settingswidget.ui" line="2999"/>
         <source>Multi (serial)</source>
         <translation>Multi (232/USB)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2977"/>
+        <location filename="../settingswidget.ui" line="3007"/>
         <source>Only change this if you are absolutely sure you need it (connecting to N1MM+ or similar)</source>
         <translation>Změnte pouze v případě absolutní jistoty, že to potřebujete. ( Připojení k N1MM+ a podobně)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3001"/>
+        <location filename="../settingswidget.ui" line="3031"/>
         <source>Enable USB Controllers</source>
         <translation>Povolit USB kontroléry</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3011"/>
+        <location filename="../settingswidget.ui" line="3041"/>
         <source>Setup USB Controller</source>
         <translation>Nastavit USB kontrolér</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3031"/>
+        <location filename="../settingswidget.ui" line="3061"/>
         <source>Reset Buttons</source>
         <translation>Resetovat tlačítka</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3038"/>
+        <location filename="../settingswidget.ui" line="3068"/>
         <source>Only reset buttons/commands if you have issues. </source>
         <translation>Resetujte tlačítka / příkazy pouze v případě potíží.</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3082"/>
+        <location filename="../settingswidget.ui" line="3112"/>
         <source>This page contains configuration for DX Cluster, either UDP style broadcast (from N1MM+/DXlog) or TCP connection to your favourite cluster</source>
         <translation>Tato stránka obsahje nastaveníí pro DX Clustery. UDP broadcast ( pro N1MM+/DXlod), nebo TCP spojení pro váš oblíbený cluster.</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3091"/>
+        <location filename="../settingswidget.ui" line="3121"/>
         <source>TCP Cluster Connection</source>
         <translation>TCP připojení ke clusteru</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3102"/>
+        <location filename="../settingswidget.ui" line="3132"/>
         <source>Server Name</source>
         <translation>Název serveru</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3127"/>
+        <location filename="../settingswidget.ui" line="3157"/>
         <source>Add/Update</source>
         <translation>Přidat / Upravit</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3140"/>
+        <location filename="../settingswidget.ui" line="3170"/>
         <source>Del</source>
         <translation>Smazat</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3149"/>
+        <location filename="../settingswidget.ui" line="3179"/>
         <source>Server Port</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3156"/>
-        <location filename="../settingswidget.ui" line="3258"/>
+        <location filename="../settingswidget.ui" line="3186"/>
+        <location filename="../settingswidget.ui" line="3288"/>
         <source>00000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3187"/>
+        <location filename="../settingswidget.ui" line="3217"/>
         <source>Spot Timeout (minutes)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3194"/>
+        <location filename="../settingswidget.ui" line="3224"/>
         <source>0000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3206"/>
+        <location filename="../settingswidget.ui" line="3236"/>
         <source>Connect</source>
         <translation>Připojit</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3213"/>
+        <location filename="../settingswidget.ui" line="3243"/>
         <source>Disconnect</source>
         <translation>Odpojit</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3240"/>
+        <location filename="../settingswidget.ui" line="3270"/>
         <source>UDP Broadcast Connection</source>
         <translation>UDP Broadcast spojení</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3251"/>
+        <location filename="../settingswidget.ui" line="3281"/>
         <source>UDP Port</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3282"/>
+        <location filename="../settingswidget.ui" line="3312"/>
         <source>Show Skimmer Spots</source>
         <translation>Zobrazit spoty ze Skimmeru</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3313"/>
+        <location filename="../settingswidget.ui" line="3343"/>
         <source>This page contains experimental features. Use at your own risk.</source>
         <translation>Tato stránka obsahuje experimentální nastavení. Používáte na vlastní riziko!</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3324"/>
+        <location filename="../settingswidget.ui" line="3354"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This button runs debug functions, and is provided as a convenience for programmers. The functions executed are under:&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; color:#ffff55;&quot;&gt;void&lt;/span&gt;&lt;span style=&quot; color:#55ff55;&quot;&gt;wfmain&lt;/span&gt;&lt;span style=&quot; color:#aaaaaa;&quot;&gt;::&lt;/span&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;on_debugBtn_clicked&lt;/span&gt;&lt;span style=&quot; color:#aaaaaa;&quot;&gt;()&lt;/span&gt;&lt;/p&gt;&lt;p&gt;in wfmain.cpp.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Toto tlačítko spustí debuggovací funkce a je poskytováno jako služba programátorům. Spuštěné funkce jsou pod:&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; color:#ffff55;&quot;&gt;void&lt;/span&gt;&lt;span style=&quot; color:#55ff55;&quot;&gt;wfmain&lt;/span&gt;&lt;span style=&quot; color:#aaaaaa;&quot;&gt;::&lt;/span&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;on_debugBtn_clicked&lt;/span&gt;&lt;span style=&quot; color:#aaaaaa;&quot;&gt;()&lt;/span&gt;&lt;/p&gt;&lt;p&gt;in wfmain.cpp.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3327"/>
+        <location filename="../settingswidget.ui" line="3357"/>
         <source>Debug</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3330"/>
+        <location filename="../settingswidget.ui" line="3360"/>
         <source>Ctrl+Alt+D</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3401"/>
+        <location filename="../settingswidget.ui" line="3431"/>
         <source>Save Settings</source>
         <translation>Uložit nastavení</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3408"/>
+        <location filename="../settingswidget.ui" line="3438"/>
         <source>Revert to Default</source>
         <translation>Vrátit na výchozí</translation>
     </message>
@@ -3095,55 +3116,55 @@ Manual CI-V použijte pouze, když rádio neumí CI-V Transcieve
         <translation>Experimentální</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1252"/>
+        <location filename="../settingswidget.cpp" line="1253"/>
         <source>Admin User</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1252"/>
+        <location filename="../settingswidget.cpp" line="1253"/>
         <source>Normal User</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1252"/>
+        <location filename="../settingswidget.cpp" line="1253"/>
         <source>Normal with no TX</source>
         <comment>Monitor only</comment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1260"/>
+        <location filename="../settingswidget.cpp" line="1261"/>
         <source>Delete</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1515"/>
+        <location filename="../settingswidget.cpp" line="1516"/>
         <source>Manual port assignment</source>
         <translation>Ruční přiřazení portu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1516"/>
+        <location filename="../settingswidget.cpp" line="1517"/>
         <source>Enter serial port assignment:</source>
         <translation>Vložte ruční přiřazení:</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1518"/>
+        <location filename="../settingswidget.cpp" line="1519"/>
         <source>/dev/device</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="2094"/>
+        <location filename="../settingswidget.cpp" line="2106"/>
         <source>Specify Opacity</source>
         <translation>Nastavení průhlednosti</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="2095"/>
+        <location filename="../settingswidget.cpp" line="2107"/>
         <source>You specified an opacity value of 0. 
 Do you want to change it? (0=transparent, 255=opaque)</source>
         <translation>Zvolili jste nastavení průhledosti na  0. 
 Jste si tím jistí ?  (0=průhledný, 255=nejtmavší)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="2249"/>
+        <location filename="../settingswidget.cpp" line="2269"/>
         <source>Preset Name (10 characters max):</source>
         <translation>Jméno předvolby ( max 10 znaků)</translation>
     </message>
@@ -3151,264 +3172,264 @@ Jste si tím jistí ?  (0=průhledný, 255=nejtmavší)</translation>
 <context>
     <name>spectrumScope</name>
     <message>
-        <location filename="../spectrumscope.cpp" line="55"/>
+        <location filename="../spectrumscope.cpp" line="57"/>
         <source>Detach</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="57"/>
+        <location filename="../spectrumscope.cpp" line="59"/>
         <source>Detach/re-attach scope from main window</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="61"/>
+        <location filename="../spectrumscope.cpp" line="63"/>
         <source>Spectrum Mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="64"/>
+        <location filename="../spectrumscope.cpp" line="66"/>
         <source>Spectrum Span</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="68"/>
+        <location filename="../spectrumscope.cpp" line="70"/>
         <source>Spectrum Edge</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="69"/>
+        <location filename="../spectrumscope.cpp" line="71"/>
         <source>Custom Edge</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="70"/>
+        <location filename="../spectrumscope.cpp" line="72"/>
         <source>Define a custom (fixed) scope edge</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="71"/>
+        <location filename="../spectrumscope.cpp" line="73"/>
         <source>To Fixed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="72"/>
+        <location filename="../spectrumscope.cpp" line="74"/>
         <source>&amp;lt;html&amp;gt;&amp;lt;head/&amp;gt;&amp;lt;body&amp;gt;&amp;lt;p&amp;gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;&amp;lt;br/&amp;gt;&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;The currently-selected edge slot will be overridden.&amp;lt;/p&amp;gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="84"/>
         <location filename="../spectrumscope.cpp" line="86"/>
+        <location filename="../spectrumscope.cpp" line="88"/>
         <source>Configure Scope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="85"/>
+        <location filename="../spectrumscope.cpp" line="87"/>
         <source>Change various settings of the current Scope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="136"/>
+        <location filename="../spectrumscope.cpp" line="138"/>
         <source>Center Mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="137"/>
+        <location filename="../spectrumscope.cpp" line="139"/>
         <source>Fixed Mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="138"/>
+        <location filename="../spectrumscope.cpp" line="140"/>
         <source>Scroll-C</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="139"/>
+        <location filename="../spectrumscope.cpp" line="141"/>
         <source>Scroll-F</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="142"/>
+        <location filename="../spectrumscope.cpp" line="144"/>
         <source>Fixed Edge 1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="142"/>
+        <location filename="../spectrumscope.cpp" line="144"/>
         <source>Fixed Edge 2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="142"/>
+        <location filename="../spectrumscope.cpp" line="144"/>
         <source>Fixed Edge 3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="142"/>
+        <location filename="../spectrumscope.cpp" line="144"/>
         <source>Fixed Edge 4</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="171"/>
+        <location filename="../spectrumscope.cpp" line="173"/>
         <source>SCOPE OUT OF RANGE</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="182"/>
+        <location filename="../spectrumscope.cpp" line="184"/>
         <source> OVF </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="247"/>
+        <location filename="../spectrumscope.cpp" line="249"/>
         <source>Scope display reference</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="248"/>
+        <location filename="../spectrumscope.cpp" line="250"/>
         <source>Selects the display reference for the Scope display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="249"/>
+        <location filename="../spectrumscope.cpp" line="251"/>
         <source>Select display reference of scope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="250"/>
+        <location filename="../spectrumscope.cpp" line="252"/>
         <source>Ref</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="255"/>
+        <location filename="../spectrumscope.cpp" line="256"/>
         <source>Length</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="260"/>
+        <location filename="../spectrumscope.cpp" line="261"/>
         <source>Scope display ceiling</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="261"/>
+        <location filename="../spectrumscope.cpp" line="262"/>
         <source>Selects the display ceiling for the Scope display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="262"/>
+        <location filename="../spectrumscope.cpp" line="263"/>
         <source>Select display ceiling of scope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="263"/>
+        <location filename="../spectrumscope.cpp" line="264"/>
         <source>Ceiling</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="268"/>
+        <location filename="../spectrumscope.cpp" line="269"/>
         <source>Scope display floor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="269"/>
+        <location filename="../spectrumscope.cpp" line="270"/>
         <source>Selects the display floor for the Scope display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="270"/>
+        <location filename="../spectrumscope.cpp" line="271"/>
         <source>Select display floor of scope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="271"/>
+        <location filename="../spectrumscope.cpp" line="272"/>
         <source>Floor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="274"/>
+        <location filename="../spectrumscope.cpp" line="275"/>
         <source>Speed Fast</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="275"/>
+        <location filename="../spectrumscope.cpp" line="276"/>
         <source>Speed Mid</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="276"/>
+        <location filename="../spectrumscope.cpp" line="277"/>
         <source>Speed Slow</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="278"/>
+        <location filename="../spectrumscope.cpp" line="279"/>
         <source>Waterfall display speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="279"/>
+        <location filename="../spectrumscope.cpp" line="280"/>
         <source>Selects the speed for the waterfall display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="280"/>
+        <location filename="../spectrumscope.cpp" line="281"/>
         <source>Waterfall Speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="281"/>
+        <location filename="../spectrumscope.cpp" line="282"/>
         <source>Speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="284"/>
+        <location filename="../spectrumscope.cpp" line="285"/>
         <source>Waterfall display color theme</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="285"/>
+        <location filename="../spectrumscope.cpp" line="286"/>
         <source>Selects the color theme for the waterfall display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="286"/>
+        <location filename="../spectrumscope.cpp" line="287"/>
         <source>Waterfall color theme</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="300"/>
+        <location filename="../spectrumscope.cpp" line="301"/>
         <source>Theme</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="304"/>
+        <location filename="../spectrumscope.cpp" line="305"/>
         <source>PBT Inner</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="308"/>
+        <location filename="../spectrumscope.cpp" line="309"/>
         <source>PBT Outer</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="312"/>
+        <location filename="../spectrumscope.cpp" line="313"/>
         <source>IF Shift</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="316"/>
+        <location filename="../spectrumscope.cpp" line="317"/>
         <source>Fill Width</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="1026"/>
+        <location filename="../spectrumscope.cpp" line="1062"/>
         <source>Scope Edges</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="1027"/>
+        <location filename="../spectrumscope.cpp" line="1063"/>
         <source>Please enter desired scope edges, in MHz,
 with a comma between the low and high range.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="1056"/>
+        <location filename="../spectrumscope.cpp" line="1092"/>
         <source>Error, could not interpret your input.                          &lt;br/&gt;Please make sure to place a comma between the frequencies.                          &lt;br/&gt;For example: &apos;7.200, 7.300&apos;</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3758,39 +3779,39 @@ with a comma between the low and high range.</source>
         <translation>Zavřít program</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="2570"/>
+        <location filename="../wfmain.cpp" line="2596"/>
         <source>wfview</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="2571"/>
+        <location filename="../wfmain.cpp" line="2597"/>
         <source>Are you sure you wish to reset the USB controllers?</source>
         <translation>Jste si jistí, že chcete smazat USB kontroléry ?</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4050"/>
-        <location filename="../wfmain.cpp" line="4629"/>
+        <location filename="../wfmain.cpp" line="4081"/>
+        <location filename="../wfmain.cpp" line="4660"/>
         <source>Don&apos;t ask me again</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4051"/>
+        <location filename="../wfmain.cpp" line="4082"/>
         <source>Don&apos;t ask me to confirm exit again</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4053"/>
+        <location filename="../wfmain.cpp" line="4084"/>
         <source>Are you sure you wish to exit?
 </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4139"/>
+        <location filename="../wfmain.cpp" line="4170"/>
         <source>Revert settings</source>
         <translation>Vrátit nastavení</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4140"/>
+        <location filename="../wfmain.cpp" line="4171"/>
         <source>Are you sure you wish to reset all wfview settings?
 If so, wfview will exit and you will need to start the program again.</source>
         <translation>Jste si jistí, že chcete smazat všechna nastavení ?
@@ -3798,12 +3819,12 @@ Pokud ano, budete muset znovu spustit prohram.
 </translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4631"/>
+        <location filename="../wfmain.cpp" line="4662"/>
         <source>Power</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4632"/>
+        <location filename="../wfmain.cpp" line="4663"/>
         <source>Power down the radio?
 </source>
         <translation type="unfinished"></translation>

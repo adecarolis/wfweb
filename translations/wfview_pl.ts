@@ -1,158 +1,154 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.1" language="zh_TW">
+<TS version="2.1" language="pl_PL">
 <context>
     <name>FirstTimeSetup</name>
     <message>
         <location filename="../firsttimesetup.ui" line="20"/>
         <source>First Time Setup</source>
-        <translation>首次設定</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="37"/>
         <source>Welcome to wfview!</source>
-        <translation>歡迎來到wfview!</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="53"/>
         <source>How is your radio connected?</source>
-        <translation>您的收音機是如何連接的？</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="59"/>
         <source>Serial Port on this PC</source>
-        <translation>此 PC 上的序列埠</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="69"/>
         <source>USB Port on This PC</source>
-        <translation>此電腦上的 USB 連接埠</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="79"/>
         <source>Ethernet Network</source>
-        <translation>乙太網路</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="89"/>
         <source>WiFi Network</source>
-        <translation>Wi-Fi 網路</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="111"/>
         <source>Next Steps:</source>
-        <translation>下一步：</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="117"/>
         <source>You will now be taken to the Radio Access page under Settings.</source>
-        <translation>現在，您將進入「設定」下的「無線電存取」頁面。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="124"/>
         <source>Please fill in the relevant details for this connection type:</source>
-        <translation>請填寫該連接類型的相關詳細資訊：</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="163"/>
         <source>1</source>
-        <translatorcomment>not shown in program</translatorcomment>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="170"/>
         <source>2</source>
-        <translatorcomment>not shown in program</translatorcomment>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="177"/>
         <source>3</source>
-        <translatorcomment>not shown in program</translatorcomment>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="188"/>
         <source>Note: If you do not have this information, press Exit Program, and return later.</source>
-        <translation>注意：如果您沒有此訊息，請按“退出程序”，然後稍後返回。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="204"/>
         <source>Even if you have run wfview before, please take a moment to review your settings.</source>
-        <translation>即使您以前曾執行過 wfview，也請花點時間檢查您的設定。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="213"/>
         <source>Press to exit the program.
 You will see this dialog box the next time you open wfview.</source>
-        <translation>按 退出程序。
-下次打開 wfview 時您將看到此對話框。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="217"/>
         <source>Exit Program</source>
-        <translation>退出程序</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="224"/>
         <source>Press to skip the setup.</source>
-        <translation>按此鍵可跳過設定。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="227"/>
         <source>Skip</source>
-        <translation>跳過</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="234"/>
         <source>Press to go back to the prior step. </source>
-        <translation>按 返回上一步。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="237"/>
         <source>Back</source>
-        <translation>後退</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="244"/>
         <source>Press for the next step.</source>
-        <translation>按下一步。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="247"/>
         <location filename="../firsttimesetup.cpp" line="103"/>
         <source>Next</source>
-        <translation>下一個</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.cpp" line="17"/>
         <source>Serial Port Name</source>
-        <translation>串口名稱</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.cpp" line="18"/>
         <source>Baud Rate</source>
-        <translation>波特率</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.cpp" line="21"/>
         <source>Radio IP address, UDP Port Numbers</source>
-        <translation>無線電 IP 位址、UDP 連接埠號</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.cpp" line="22"/>
         <source>Radio Username, Radio Password</source>
-        <translation>電台使用者名稱、電台密碼</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.cpp" line="23"/>
         <source>Mic and Speaker on THIS PC</source>
-        <translation>此電腦上的麥克風和揚聲器</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.cpp" line="44"/>
         <source>Finish</source>
-        <translation>結束</translation>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -963,7 +959,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../frequencyinputwidget.ui" line="259"/>
         <source>Back</source>
-        <translation type="unfinished">後退</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="262"/>
@@ -1464,46 +1460,13 @@ p, li { white-space: pre-wrap; }
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1092"/>
-        <source>Bands</source>
+        <location filename="../rigcreator.ui" line="32"/>
+        <source>Memories</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="241"/>
-        <location filename="../rigcreator.ui" line="389"/>
-        <location filename="../rigcreator.ui" line="453"/>
-        <location filename="../rigcreator.ui" line="517"/>
-        <location filename="../rigcreator.ui" line="573"/>
-        <location filename="../rigcreator.ui" line="946"/>
-        <location filename="../rigcreator.ui" line="1010"/>
-        <location filename="../rigcreator.ui" line="1143"/>
-        <source>Num</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="1148"/>
-        <source>BSR</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="82"/>
-        <location filename="../rigcreator.ui" line="1153"/>
-        <source>Start</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="1138"/>
-        <source>Region</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="1158"/>
-        <source>End</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="1163"/>
-        <source>Range</source>
+        <location filename="../rigcreator.ui" line="40"/>
+        <source>Grp</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1513,25 +1476,22 @@ p, li { white-space: pre-wrap; }
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="246"/>
-        <location filename="../rigcreator.ui" line="399"/>
-        <location filename="../rigcreator.ui" line="458"/>
-        <location filename="../rigcreator.ui" line="522"/>
-        <location filename="../rigcreator.ui" line="583"/>
-        <location filename="../rigcreator.ui" line="951"/>
-        <location filename="../rigcreator.ui" line="1030"/>
-        <location filename="../rigcreator.ui" line="1173"/>
-        <source>Name</source>
+        <location filename="../rigcreator.ui" line="54"/>
+        <location filename="../rigcreator.ui" line="61"/>
+        <location filename="../rigcreator.ui" line="68"/>
+        <location filename="../rigcreator.ui" line="89"/>
+        <source>999</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1178"/>
-        <source>Bytes</source>
+        <location filename="../rigcreator.ui" line="75"/>
+        <source>Sat</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="474"/>
-        <source>Antennas</source>
+        <location filename="../rigcreator.ui" line="82"/>
+        <location filename="../rigcreator.ui" line="1153"/>
+        <source>Start</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1571,42 +1531,47 @@ p, li { white-space: pre-wrap; }
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="32"/>
-        <source>Memories</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="40"/>
-        <source>Grp</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="54"/>
-        <location filename="../rigcreator.ui" line="61"/>
-        <location filename="../rigcreator.ui" line="68"/>
-        <location filename="../rigcreator.ui" line="89"/>
-        <source>999</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="75"/>
-        <source>Sat</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="../rigcreator.ui" line="198"/>
         <source>Preamps</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="533"/>
-        <source>Flters</source>
+        <location filename="../rigcreator.ui" line="241"/>
+        <location filename="../rigcreator.ui" line="389"/>
+        <location filename="../rigcreator.ui" line="453"/>
+        <location filename="../rigcreator.ui" line="517"/>
+        <location filename="../rigcreator.ui" line="573"/>
+        <location filename="../rigcreator.ui" line="946"/>
+        <location filename="../rigcreator.ui" line="1010"/>
+        <location filename="../rigcreator.ui" line="1143"/>
+        <source>Num</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="578"/>
-        <location filename="../rigcreator.ui" line="967"/>
-        <source>Modes</source>
+        <location filename="../rigcreator.ui" line="246"/>
+        <location filename="../rigcreator.ui" line="399"/>
+        <location filename="../rigcreator.ui" line="458"/>
+        <location filename="../rigcreator.ui" line="522"/>
+        <location filename="../rigcreator.ui" line="583"/>
+        <location filename="../rigcreator.ui" line="951"/>
+        <location filename="../rigcreator.ui" line="1030"/>
+        <location filename="../rigcreator.ui" line="1173"/>
+        <source>Name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="257"/>
+        <source>Periodic Commands</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="270"/>
+        <source>Priority</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="280"/>
+        <source>VFO</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1623,6 +1588,43 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../rigcreator.ui" line="319"/>
         <source>Satellite Memory Format</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="343"/>
+        <source>Inputs</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="394"/>
+        <location filename="../rigcreator.ui" line="1015"/>
+        <source>Reg</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="410"/>
+        <source>Spans</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="463"/>
+        <source>Freq</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="474"/>
+        <source>Antennas</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="533"/>
+        <source>Flters</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="578"/>
+        <location filename="../rigcreator.ui" line="967"/>
+        <source>Modes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1721,62 +1723,6 @@ p, li { white-space: pre-wrap; }
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1183"/>
-        <source>Colour</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="394"/>
-        <location filename="../rigcreator.ui" line="1015"/>
-        <source>Reg</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="1020"/>
-        <source>Min BW</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="1025"/>
-        <source>Max BW</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="903"/>
-        <source>Tuning Steps</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="956"/>
-        <source>Hz</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="343"/>
-        <source>Inputs</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="1041"/>
-        <source>Atten</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="1081"/>
-        <source>dB</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="410"/>
-        <source>Spans</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rigcreator.ui" line="463"/>
-        <source>Freq</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="../rigcreator.ui" line="766"/>
         <source>Spectrum</source>
         <translation type="unfinished"></translation>
@@ -1824,18 +1770,68 @@ p, li { white-space: pre-wrap; }
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="257"/>
-        <source>Periodic Commands</source>
+        <location filename="../rigcreator.ui" line="903"/>
+        <source>Tuning Steps</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="270"/>
-        <source>Priority</source>
+        <location filename="../rigcreator.ui" line="956"/>
+        <source>Hz</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="280"/>
-        <source>VFO</source>
+        <location filename="../rigcreator.ui" line="1020"/>
+        <source>Min BW</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="1025"/>
+        <source>Max BW</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="1041"/>
+        <source>Atten</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="1081"/>
+        <source>dB</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="1092"/>
+        <source>Bands</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="1138"/>
+        <source>Region</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="1148"/>
+        <source>BSR</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="1158"/>
+        <source>End</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="1163"/>
+        <source>Range</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="1178"/>
+        <source>Bytes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="1183"/>
+        <source>Colour</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1983,7 +1979,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../selectradio.ui" line="66"/>
         <source>Baud Rate</source>
-        <translation type="unfinished">波特率</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../selectradio.ui" line="71"/>
@@ -2099,7 +2095,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="244"/>
         <source>Baud Rate</source>
-        <translation type="unfinished">波特率</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="261"/>
@@ -2319,6 +2315,17 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../settingswidget.ui" line="837"/>
+        <source>Region:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="853"/>
+        <location filename="../settingswidget.ui" line="1220"/>
+        <source>1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../settingswidget.ui" line="864"/>
         <source>Enables interpolation between pixels. Note that this will increase CPU usage.</source>
         <translation type="unfinished"></translation>
@@ -2430,6 +2437,11 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../settingswidget.ui" line="1052"/>
+        <source>Show Bands</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../settingswidget.ui" line="1092"/>
         <source>Additional Meter Selection:</source>
         <translation type="unfinished"></translation>
@@ -2487,22 +2499,6 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="1216"/>
         <source>Select a color preset here.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../settingswidget.ui" line="853"/>
-        <location filename="../settingswidget.ui" line="1220"/>
-        <source>1</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../settingswidget.ui" line="837"/>
-        <source>Region:</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../settingswidget.ui" line="1052"/>
-        <source>Show Bands</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

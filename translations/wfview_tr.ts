@@ -1466,397 +1466,407 @@ p, li { white-space: pre-wrap; }
         <translation>Sistem Oluşturucu</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="32"/>
+        <location filename="../rigcreator.ui" line="1092"/>
         <source>Bands</source>
         <translation>Bantlar</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="78"/>
-        <location filename="../rigcreator.ui" line="167"/>
-        <location filename="../rigcreator.ui" line="392"/>
-        <location filename="../rigcreator.ui" line="448"/>
-        <location filename="../rigcreator.ui" line="730"/>
-        <location filename="../rigcreator.ui" line="804"/>
-        <location filename="../rigcreator.ui" line="871"/>
-        <location filename="../rigcreator.ui" line="986"/>
+        <location filename="../rigcreator.ui" line="241"/>
+        <location filename="../rigcreator.ui" line="389"/>
+        <location filename="../rigcreator.ui" line="453"/>
+        <location filename="../rigcreator.ui" line="517"/>
+        <location filename="../rigcreator.ui" line="573"/>
+        <location filename="../rigcreator.ui" line="946"/>
+        <location filename="../rigcreator.ui" line="1010"/>
+        <location filename="../rigcreator.ui" line="1143"/>
         <source>Num</source>
         <translation>Num</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="83"/>
+        <location filename="../rigcreator.ui" line="1148"/>
         <source>BSR</source>
         <translation>BSR</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="88"/>
-        <location filename="../rigcreator.ui" line="324"/>
+        <location filename="../rigcreator.ui" line="82"/>
+        <location filename="../rigcreator.ui" line="1153"/>
         <source>Start</source>
         <translation>Başlangız</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="93"/>
+        <location filename="../rigcreator.ui" line="1138"/>
+        <source>Region</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="1158"/>
         <source>End</source>
         <translation>Son</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="98"/>
+        <location filename="../rigcreator.ui" line="1163"/>
         <source>Range</source>
         <translation>Menzil</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="103"/>
-        <location filename="../rigcreator.ui" line="289"/>
+        <location filename="../rigcreator.ui" line="47"/>
+        <location filename="../rigcreator.ui" line="1168"/>
         <source>Mem</source>
         <translation>Mem</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="108"/>
-        <location filename="../rigcreator.ui" line="172"/>
-        <location filename="../rigcreator.ui" line="397"/>
+        <location filename="../rigcreator.ui" line="246"/>
+        <location filename="../rigcreator.ui" line="399"/>
         <location filename="../rigcreator.ui" line="458"/>
-        <location filename="../rigcreator.ui" line="750"/>
-        <location filename="../rigcreator.ui" line="809"/>
-        <location filename="../rigcreator.ui" line="881"/>
-        <location filename="../rigcreator.ui" line="991"/>
+        <location filename="../rigcreator.ui" line="522"/>
+        <location filename="../rigcreator.ui" line="583"/>
+        <location filename="../rigcreator.ui" line="951"/>
+        <location filename="../rigcreator.ui" line="1030"/>
+        <location filename="../rigcreator.ui" line="1173"/>
         <source>Name</source>
         <translation>İsim</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="113"/>
+        <location filename="../rigcreator.ui" line="1178"/>
         <source>Bytes</source>
         <translation>Bytes</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="124"/>
+        <location filename="../rigcreator.ui" line="474"/>
         <source>Antennas</source>
         <translation>Antenler</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="183"/>
+        <location filename="../rigcreator.ui" line="101"/>
         <source>Commands</source>
         <translation>Komutlar</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="238"/>
-        <location filename="../rigcreator.ui" line="1168"/>
+        <location filename="../rigcreator.ui" line="156"/>
+        <location filename="../rigcreator.ui" line="275"/>
         <source>Command</source>
         <translation>Komut</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="243"/>
+        <location filename="../rigcreator.ui" line="161"/>
         <source>String</source>
         <translation>String</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="248"/>
+        <location filename="../rigcreator.ui" line="166"/>
         <source>Min</source>
         <translation>Min</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="253"/>
+        <location filename="../rigcreator.ui" line="171"/>
         <source>Max</source>
         <translation>Max</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="258"/>
+        <location filename="../rigcreator.ui" line="176"/>
         <source>29</source>
         <translation>29</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="263"/>
+        <location filename="../rigcreator.ui" line="181"/>
         <source>G/S</source>
         <translation>G/S</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="274"/>
+        <location filename="../rigcreator.ui" line="32"/>
         <source>Memories</source>
         <translation>Memories</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="282"/>
+        <location filename="../rigcreator.ui" line="40"/>
         <source>Grp</source>
         <translation>Grp</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="296"/>
-        <location filename="../rigcreator.ui" line="303"/>
-        <location filename="../rigcreator.ui" line="310"/>
-        <location filename="../rigcreator.ui" line="331"/>
+        <location filename="../rigcreator.ui" line="54"/>
+        <location filename="../rigcreator.ui" line="61"/>
+        <location filename="../rigcreator.ui" line="68"/>
+        <location filename="../rigcreator.ui" line="89"/>
         <source>999</source>
         <translation>999</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="317"/>
+        <location filename="../rigcreator.ui" line="75"/>
         <source>Sat</source>
         <translation>Sat</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="349"/>
+        <location filename="../rigcreator.ui" line="198"/>
         <source>Preamps</source>
         <translation>Preampler</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="408"/>
+        <location filename="../rigcreator.ui" line="533"/>
         <source>Flters</source>
         <translation>Filtreler</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="453"/>
-        <location filename="../rigcreator.ui" line="687"/>
+        <location filename="../rigcreator.ui" line="578"/>
+        <location filename="../rigcreator.ui" line="967"/>
         <source>Modes</source>
         <translation>Modlar</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="473"/>
+        <location filename="../rigcreator.ui" line="295"/>
         <source>Main Memory Format</source>
         <translation>Ana Memory Formatı</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="486"/>
-        <location filename="../rigcreator.ui" line="510"/>
+        <location filename="../rigcreator.ui" line="308"/>
+        <location filename="../rigcreator.ui" line="332"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format %&amp;lt;start&amp;gt;.&amp;lt;len&amp;gt;&amp;lt;specifier&amp;gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;specifier from list below:&lt;/p&gt;&lt;p&gt;a = Group&lt;/p&gt;&lt;p&gt;b = Num&lt;/p&gt;&lt;p&gt;c = Scan&lt;/p&gt;&lt;p&gt;d = Scan/Split&lt;/p&gt;&lt;p&gt;e = VFO A		E = VFO B&lt;/p&gt;&lt;p&gt;f = Frequency A 	F = Frequency B&lt;/p&gt;&lt;p&gt;g = Mode A		G = Mode B&lt;/p&gt;&lt;p&gt;h = Filter 		H = Filter B&lt;/p&gt;&lt;p&gt;i = Data 		I = Data B&lt;/p&gt;&lt;p&gt;j = Duplex/Tonemode A	J = Duplex B/Tonemode B&lt;/p&gt;&lt;p&gt;k = Data/Tonemode A	K = Data B/Tonemode B&lt;/p&gt;&lt;p&gt;l = Tonemode A	L = Tonemode B&lt;/p&gt;&lt;p&gt;m = DSQL A 		M = DSQL B&lt;/p&gt;&lt;p&gt;n = Tone type A	N = Tone type B&lt;/p&gt;&lt;p&gt;o = TSQL A		O = TSQL B&lt;/p&gt;&lt;p&gt;p = DTCS Polarity A 	P = DTCS Polarity B&lt;/p&gt;&lt;p&gt;q = DTCS A		Q = DTCS B&lt;/p&gt;&lt;p&gt;r = DV Squelch A 	R = DV Squelch B&lt;/p&gt;&lt;p&gt;s = Duplex Offset A 	S = Duplex Offset B&lt;/p&gt;&lt;p&gt;t = DV UR A		T = DV UR B&lt;/p&gt;&lt;p&gt;u = DV R1 A		U = DV R1 B&lt;/p&gt;&lt;p&gt;v = DV R2 A 		V = DV R2 B&lt;/p&gt;&lt;p&gt;z = Memory Name&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="497"/>
+        <location filename="../rigcreator.ui" line="319"/>
         <source>Satellite Memory Format</source>
         <translation>Uydu Memory Formatı</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="527"/>
+        <location filename="../rigcreator.ui" line="600"/>
         <source>Features</source>
         <translation>Özellikler</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="533"/>
+        <location filename="../rigcreator.ui" line="606"/>
         <source>Has Spectrum</source>
         <translation>Spektrumu Var</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="540"/>
+        <location filename="../rigcreator.ui" line="613"/>
         <source>Has LAN</source>
         <translation>LAN Var</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="547"/>
+        <location filename="../rigcreator.ui" line="620"/>
         <source>Has Ethernet</source>
         <translation>Ethernet Var</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="554"/>
+        <location filename="../rigcreator.ui" line="627"/>
         <source>Has WiFi</source>
         <translation>WiFi Var</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="561"/>
+        <location filename="../rigcreator.ui" line="634"/>
         <source>Has Transmit</source>
         <translation>Transmit Var</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="568"/>
+        <location filename="../rigcreator.ui" line="641"/>
         <source>HasFDComms</source>
         <translation>FDComms Var</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="575"/>
+        <location filename="../rigcreator.ui" line="648"/>
         <source>Has Command 29</source>
         <translation>Command 29 Var</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="589"/>
+        <location filename="../rigcreator.ui" line="662"/>
         <source>Load File</source>
         <translation>Dosya Yükle</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="596"/>
+        <location filename="../rigcreator.ui" line="669"/>
         <source>Save File</source>
         <translation>Dosyayı Kaydet</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="616"/>
+        <location filename="../rigcreator.ui" line="689"/>
         <source>Default Rigs</source>
         <translation>Standart Sistemler</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="623"/>
+        <location filename="../rigcreator.ui" line="696"/>
         <source>Manufacturer</source>
         <translation>Üretici</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="631"/>
+        <location filename="../rigcreator.ui" line="704"/>
         <source>Icom</source>
         <translation>Icom</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="636"/>
+        <location filename="../rigcreator.ui" line="709"/>
         <source>Yaesu</source>
         <translation>Yaesu</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="641"/>
+        <location filename="../rigcreator.ui" line="714"/>
         <source>Kenwood</source>
         <translation>Kenwood</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="649"/>
+        <location filename="../rigcreator.ui" line="722"/>
         <source>Model</source>
         <translation>Model</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="659"/>
+        <location filename="../rigcreator.ui" line="732"/>
         <source>C-IV Address</source>
         <translation>C-IV Adresi</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="669"/>
+        <location filename="../rigcreator.ui" line="742"/>
         <source>RigCtlD Model</source>
         <translation>RigCtID Modeli</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="676"/>
+        <location filename="../rigcreator.ui" line="749"/>
         <source>9999</source>
         <translation>9999</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="735"/>
-        <location filename="../rigcreator.ui" line="876"/>
+        <location filename="../rigcreator.ui" line="1183"/>
+        <source>Colour</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="394"/>
+        <location filename="../rigcreator.ui" line="1015"/>
         <source>Reg</source>
         <translation>Reg</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="740"/>
+        <location filename="../rigcreator.ui" line="1020"/>
         <source>Min BW</source>
         <translation>Min BW</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="745"/>
+        <location filename="../rigcreator.ui" line="1025"/>
         <source>Max BW</source>
         <translation>Max BW</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="761"/>
+        <location filename="../rigcreator.ui" line="903"/>
         <source>Tuning Steps</source>
         <translation>Tuning Steps</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="814"/>
+        <location filename="../rigcreator.ui" line="956"/>
         <source>Hz</source>
         <translation>Hz</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="825"/>
+        <location filename="../rigcreator.ui" line="343"/>
         <source>Inputs</source>
         <translation>Giriş</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="892"/>
+        <location filename="../rigcreator.ui" line="1041"/>
         <source>Atten</source>
         <translation>Atten</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="932"/>
+        <location filename="../rigcreator.ui" line="1081"/>
         <source>dB</source>
         <translation>dB</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="943"/>
+        <location filename="../rigcreator.ui" line="410"/>
         <source>Spans</source>
         <translation>Spans</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="996"/>
+        <location filename="../rigcreator.ui" line="463"/>
         <source>Freq</source>
         <translation>Freq</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1013"/>
+        <location filename="../rigcreator.ui" line="766"/>
         <source>Spectrum</source>
         <translation>Spektrum</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1021"/>
+        <location filename="../rigcreator.ui" line="774"/>
         <source>Seq Max</source>
         <translation>Seq Max</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1028"/>
+        <location filename="../rigcreator.ui" line="781"/>
         <source>Len Max</source>
         <translation>Len Max</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1035"/>
+        <location filename="../rigcreator.ui" line="788"/>
         <source>Amp Max</source>
         <translation>Amp Max</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1054"/>
-        <location filename="../rigcreator.ui" line="1073"/>
+        <location filename="../rigcreator.ui" line="807"/>
+        <location filename="../rigcreator.ui" line="826"/>
         <source>000</source>
         <translation>000</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1098"/>
+        <location filename="../rigcreator.ui" line="851"/>
         <source>00</source>
         <translation>00</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1105"/>
+        <location filename="../rigcreator.ui" line="858"/>
         <source>Num RX</source>
         <translation>Num RX</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1118"/>
-        <location filename="../rigcreator.ui" line="1138"/>
+        <location filename="../rigcreator.ui" line="871"/>
+        <location filename="../rigcreator.ui" line="891"/>
         <source>1</source>
         <translation>1</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1125"/>
+        <location filename="../rigcreator.ui" line="878"/>
         <source>VFO per RX</source>
         <translation>VFO başı RX</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1150"/>
+        <location filename="../rigcreator.ui" line="257"/>
         <source>Periodic Commands</source>
         <translation>Periyodik Komutlar</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1163"/>
+        <location filename="../rigcreator.ui" line="270"/>
         <source>Priority</source>
         <translation>Öncelik</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="1173"/>
+        <location filename="../rigcreator.ui" line="280"/>
         <source>VFO</source>
         <translation>VFO</translation>
     </message>
     <message>
-        <location filename="../rigcreator.cpp" line="91"/>
-        <location filename="../rigcreator.cpp" line="94"/>
-        <location filename="../rigcreator.cpp" line="117"/>
-        <location filename="../rigcreator.cpp" line="119"/>
-        <location filename="../rigcreator.cpp" line="489"/>
-        <location filename="../rigcreator.cpp" line="491"/>
+        <location filename="../rigcreator.cpp" line="108"/>
+        <location filename="../rigcreator.cpp" line="111"/>
+        <location filename="../rigcreator.cpp" line="134"/>
+        <location filename="../rigcreator.cpp" line="136"/>
+        <location filename="../rigcreator.cpp" line="550"/>
+        <location filename="../rigcreator.cpp" line="552"/>
         <source>Select Rig Filename</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.cpp" line="145"/>
+        <location filename="../rigcreator.cpp" line="162"/>
         <source>Not a rig definition</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.cpp" line="146"/>
+        <location filename="../rigcreator.cpp" line="163"/>
         <source>File %0 does not appear to be a valid Rig definition file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.cpp" line="754"/>
+        <location filename="../rigcreator.cpp" line="821"/>
         <source>rig creator</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rigcreator.cpp" line="754"/>
+        <location filename="../rigcreator.cpp" line="821"/>
         <source>Changes will be lost!</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2128,27 +2138,27 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     </message>
     <message>
         <location filename="../settingswidget.ui" line="355"/>
-        <location filename="../settingswidget.ui" line="2408"/>
+        <location filename="../settingswidget.ui" line="2438"/>
         <source>Control Port</source>
         <translation>Control Port</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="368"/>
-        <location filename="../settingswidget.ui" line="2436"/>
+        <location filename="../settingswidget.ui" line="2466"/>
         <source>50001</source>
         <translation>5001</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="401"/>
-        <location filename="../settingswidget.ui" line="2701"/>
-        <location filename="../settingswidget.ui" line="3163"/>
+        <location filename="../settingswidget.ui" line="2731"/>
+        <location filename="../settingswidget.ui" line="3193"/>
         <source>Username</source>
         <translation>Kullanıcı Adı</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="424"/>
-        <location filename="../settingswidget.ui" line="2706"/>
-        <location filename="../settingswidget.ui" line="3173"/>
+        <location filename="../settingswidget.ui" line="2736"/>
+        <location filename="../settingswidget.ui" line="3203"/>
         <source>Password</source>
         <translation>Şifre</translation>
     </message>
@@ -2235,25 +2245,25 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     </message>
     <message>
         <location filename="../settingswidget.ui" line="627"/>
-        <location filename="../settingswidget.ui" line="2597"/>
+        <location filename="../settingswidget.ui" line="2627"/>
         <source>Audio System</source>
         <translation>Ses Sistemi</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="635"/>
-        <location filename="../settingswidget.ui" line="2605"/>
+        <location filename="../settingswidget.ui" line="2635"/>
         <source>Qt Audio</source>
         <translation>Qt Audio</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="640"/>
-        <location filename="../settingswidget.ui" line="2610"/>
+        <location filename="../settingswidget.ui" line="2640"/>
         <source>PortAudio</source>
         <translation>PortAudio</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="645"/>
-        <location filename="../settingswidget.ui" line="2615"/>
+        <location filename="../settingswidget.ui" line="2645"/>
         <source>RT Audio</source>
         <translation>RT Audio</translation>
     </message>
@@ -2324,743 +2334,754 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
         <translation>Sistem Oluşturucu özelliğini aktifleştir (Dikkatli Kullanınız)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="841"/>
+        <location filename="../settingswidget.ui" line="864"/>
         <source>Enables interpolation between pixels. Note that this will increase CPU usage.</source>
         <translation>Pikseller arası İnterpolasyonu aktifleştirir (CPU kullanımını arttırır).</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="844"/>
+        <location filename="../settingswidget.ui" line="867"/>
         <source>Interpolate Waterfall</source>
         <translation>Waterfall&apos;ı İnterpole et</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="854"/>
+        <location filename="../settingswidget.ui" line="877"/>
         <source>Anti-Alias Waterfall</source>
         <translation>Anti-Alias Waterfall</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="861"/>
+        <location filename="../settingswidget.ui" line="884"/>
         <source>Allow tuning via click and drag (experimental)</source>
         <translation>Bas-Çek ile VFO ayarlamayı aktifleştir (Deneysel)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="868"/>
+        <location filename="../settingswidget.ui" line="891"/>
         <source>Use System Theme</source>
         <translation>Sistem Temasını Kullan</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="875"/>
+        <location filename="../settingswidget.ui" line="898"/>
         <source>Show full screen (F11)</source>
         <translation>Ful Ekran Göster (F11)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="911"/>
+        <location filename="../settingswidget.ui" line="934"/>
         <source>Underlay Mode</source>
         <translation>Underlay Modu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="918"/>
+        <location filename="../settingswidget.ui" line="941"/>
         <source>No underlay graphics</source>
         <translation>Underlay Grafikleri Yok</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="921"/>
-        <location filename="../settingswidget.ui" line="1001"/>
+        <location filename="../settingswidget.ui" line="944"/>
+        <location filename="../settingswidget.ui" line="1024"/>
         <source>None</source>
         <translation>Hiçbiri</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="931"/>
+        <location filename="../settingswidget.ui" line="954"/>
         <source>Indefinite peak hold</source>
         <translation>Kesintisiz Peak&apos;te Tut</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="934"/>
+        <location filename="../settingswidget.ui" line="957"/>
         <source>Peak Hold</source>
         <translation>Peak&apos;te Tut</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="941"/>
+        <location filename="../settingswidget.ui" line="964"/>
         <source>Peak value within the buffer</source>
         <translation>Buffer&apos;da Peak değeri</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="944"/>
+        <location filename="../settingswidget.ui" line="967"/>
         <source>Peak</source>
         <translation>Peak</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="951"/>
+        <location filename="../settingswidget.ui" line="974"/>
         <source>Average value within the buffer</source>
         <translation>Buffer&apos;daki ortalama değer</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="954"/>
+        <location filename="../settingswidget.ui" line="977"/>
         <source>Average</source>
         <translation>Ortalama</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="961"/>
+        <location filename="../settingswidget.ui" line="984"/>
         <source>Underlay Buffer Size:</source>
         <translation>Underlay Buffer Boyutu:</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="974"/>
+        <location filename="../settingswidget.ui" line="997"/>
         <source>Size of buffer for spectrum data. Shorter values are more responsive.</source>
         <translation>Spektrum verisi için Buffer boyutu, Kısa değerler daha seri cevap verir (CPU Kullanımını arttırabilir).</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="993"/>
+        <location filename="../settingswidget.ui" line="1016"/>
         <source>Frequency Units</source>
         <translation>Frkans Birimleri</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1006"/>
+        <location filename="../settingswidget.ui" line="1029"/>
         <source>Hz</source>
         <translation>Hz</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1011"/>
+        <location filename="../settingswidget.ui" line="1034"/>
         <source>KHz</source>
         <translation>KHz</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1016"/>
+        <location filename="../settingswidget.ui" line="1039"/>
         <source>MHz</source>
         <translation>MHz</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1021"/>
+        <location filename="../settingswidget.ui" line="1044"/>
         <source>GHz</source>
         <translation>GHz</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1062"/>
+        <location filename="../settingswidget.ui" line="1092"/>
         <source>Additional Meter Selection:</source>
         <translation>Ek olarak Metre Seçimi:</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1075"/>
+        <location filename="../settingswidget.ui" line="1105"/>
         <source>Broadcast-style reduction meter</source>
         <translation>Yayın tipi reduksiyon metresi</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1078"/>
+        <location filename="../settingswidget.ui" line="1108"/>
         <source>Reverse Comp Meter</source>
         <translation>Ters Komp Metresi</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1085"/>
+        <location filename="../settingswidget.ui" line="1115"/>
         <source>wfview will automatically calculate command polling. Recommended.</source>
         <translation>wfview otomatik olarak command polling&apos;i hesaplar (Tavsiye Edilir).</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1088"/>
+        <location filename="../settingswidget.ui" line="1118"/>
         <source>AutoPolling</source>
         <translation>OtoPolling</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1101"/>
+        <location filename="../settingswidget.ui" line="1131"/>
         <source>Manual (user-defined) command polling</source>
         <translation>Manuel (Kullanıcı tarafından belirlenen) command polling</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1104"/>
+        <location filename="../settingswidget.ui" line="1134"/>
         <source>Manual Polling Inteval:</source>
         <translation>Manuel Polling Aralığı:</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1114"/>
+        <location filename="../settingswidget.ui" line="1144"/>
         <source>Sets the polling interval, in ms. Automatic polling is recommended. Serial port and USB port radios should not poll quicker than about 75ms.</source>
         <translation>Yoklama aralığını ms cinsinden ayarlar. Auto Polling önerilir. Seri bağlantı noktası ve USB bağlantı noktası radyoları yaklaşık 75 ms&apos;den daha hızlı Polling yapmamalıdır.</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1127"/>
+        <location filename="../settingswidget.ui" line="1157"/>
         <source>ms</source>
         <translation>ms</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1157"/>
+        <location filename="../settingswidget.ui" line="1187"/>
         <source>Color scheme</source>
         <translation>Renk Şeması</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1164"/>
+        <location filename="../settingswidget.ui" line="1194"/>
         <source>Preset:</source>
         <translation>Hazır Ayar:</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1186"/>
+        <location filename="../settingswidget.ui" line="1216"/>
         <source>Select a color preset here.</source>
         <translation>Burdan Renk Hazır Ayarı seçin.</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1190"/>
+        <location filename="../settingswidget.ui" line="853"/>
+        <location filename="../settingswidget.ui" line="1220"/>
         <source>1</source>
         <translation>1</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1195"/>
+        <location filename="../settingswidget.ui" line="837"/>
+        <source>Region:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="1052"/>
+        <source>Show Bands</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="1225"/>
         <source>2</source>
         <translation>2</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1200"/>
+        <location filename="../settingswidget.ui" line="1230"/>
         <source>3</source>
         <translation>3</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1205"/>
+        <location filename="../settingswidget.ui" line="1235"/>
         <source>4</source>
         <translation>4</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1210"/>
+        <location filename="../settingswidget.ui" line="1240"/>
         <source>5</source>
         <translation>5</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1218"/>
+        <location filename="../settingswidget.ui" line="1248"/>
         <source>Revert the selected color preset to the default.</source>
         <translation>Seçilen Renk Ayarını varsayılan yap.</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1221"/>
+        <location filename="../settingswidget.ui" line="1251"/>
         <source>Revert</source>
         <translation>Geri Al</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1228"/>
+        <location filename="../settingswidget.ui" line="1258"/>
         <source>Rename the selected color preset. Max length is 10 characters.</source>
         <translation>Seçilen Renk Hazır Ayarının adını değiştir (Maksimum 10 hane).</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1231"/>
-        <location filename="../settingswidget.cpp" line="2248"/>
+        <location filename="../settingswidget.ui" line="1261"/>
+        <location filename="../settingswidget.cpp" line="2268"/>
         <source>Rename Preset</source>
         <translation>Hazır Ayarın adını değiştir</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1271"/>
+        <location filename="../settingswidget.ui" line="1301"/>
         <source>User-defined Color Editor</source>
         <translation>Kullanıcı-Belirlemeli Renk Editoru</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1337"/>
-        <location filename="../settingswidget.ui" line="1363"/>
+        <location filename="../settingswidget.ui" line="1367"/>
         <location filename="../settingswidget.ui" line="1393"/>
-        <location filename="../settingswidget.ui" line="1406"/>
-        <location filename="../settingswidget.ui" line="1429"/>
-        <location filename="../settingswidget.ui" line="1442"/>
-        <location filename="../settingswidget.ui" line="1469"/>
-        <location filename="../settingswidget.ui" line="1485"/>
-        <location filename="../settingswidget.ui" line="1542"/>
-        <location filename="../settingswidget.ui" line="1565"/>
-        <location filename="../settingswidget.ui" line="1578"/>
-        <location filename="../settingswidget.ui" line="1621"/>
-        <location filename="../settingswidget.ui" line="1634"/>
-        <location filename="../settingswidget.ui" line="1647"/>
-        <location filename="../settingswidget.ui" line="1660"/>
-        <location filename="../settingswidget.ui" line="1673"/>
-        <location filename="../settingswidget.ui" line="1696"/>
-        <location filename="../settingswidget.ui" line="1736"/>
-        <location filename="../settingswidget.ui" line="1820"/>
+        <location filename="../settingswidget.ui" line="1423"/>
+        <location filename="../settingswidget.ui" line="1436"/>
+        <location filename="../settingswidget.ui" line="1459"/>
+        <location filename="../settingswidget.ui" line="1472"/>
+        <location filename="../settingswidget.ui" line="1499"/>
+        <location filename="../settingswidget.ui" line="1515"/>
+        <location filename="../settingswidget.ui" line="1572"/>
+        <location filename="../settingswidget.ui" line="1595"/>
+        <location filename="../settingswidget.ui" line="1608"/>
+        <location filename="../settingswidget.ui" line="1651"/>
+        <location filename="../settingswidget.ui" line="1664"/>
+        <location filename="../settingswidget.ui" line="1677"/>
+        <location filename="../settingswidget.ui" line="1690"/>
+        <location filename="../settingswidget.ui" line="1703"/>
+        <location filename="../settingswidget.ui" line="1726"/>
+        <location filename="../settingswidget.ui" line="1766"/>
         <location filename="../settingswidget.ui" line="1850"/>
-        <location filename="../settingswidget.ui" line="1884"/>
-        <location filename="../settingswidget.ui" line="1921"/>
-        <location filename="../settingswidget.ui" line="2023"/>
-        <location filename="../settingswidget.ui" line="2059"/>
-        <location filename="../settingswidget.ui" line="2092"/>
-        <location filename="../settingswidget.ui" line="2115"/>
+        <location filename="../settingswidget.ui" line="1880"/>
+        <location filename="../settingswidget.ui" line="1914"/>
+        <location filename="../settingswidget.ui" line="1951"/>
+        <location filename="../settingswidget.ui" line="2053"/>
+        <location filename="../settingswidget.ui" line="2089"/>
+        <location filename="../settingswidget.ui" line="2122"/>
+        <location filename="../settingswidget.ui" line="2145"/>
         <source>#AARRGGBB</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1370"/>
+        <location filename="../settingswidget.ui" line="1400"/>
         <source>Spectrum Line</source>
         <translation>Spektrum Çizgisi</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1449"/>
+        <location filename="../settingswidget.ui" line="1479"/>
         <source>Axis</source>
         <translation>Eksen</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1456"/>
+        <location filename="../settingswidget.ui" line="1486"/>
         <source>Grid</source>
         <translation>Izgara</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1482"/>
+        <location filename="../settingswidget.ui" line="1512"/>
         <source>Color text format is #AARRGGBB, where AA is the &quot;alpha&quot; channel, and value &quot;00&quot; is totally transparent, and &quot;ff&quot; is totally opaque.</source>
         <translation>Renkli metin formatı #AARRGGBB&apos;dir; burada AA &quot;alfa&quot; kanalıdır ve &quot;00&quot; değeri tamamen şeffaftır ve &quot;ff&quot; tamamen opaktır.</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1492"/>
+        <location filename="../settingswidget.ui" line="1522"/>
         <source>Meter Peak Level</source>
         <translation>Metre Tepe Değeri</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1499"/>
+        <location filename="../settingswidget.ui" line="1529"/>
         <source>Underlay Line</source>
         <translation>Underlay Çizgisi</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1601"/>
+        <location filename="../settingswidget.ui" line="1631"/>
         <source>Text</source>
         <translation>Yazı</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1608"/>
+        <location filename="../settingswidget.ui" line="1638"/>
         <source>Spectrum Fill Top</source>
         <translation>Spektrum Üstü Doldurma</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1723"/>
+        <location filename="../settingswidget.ui" line="1753"/>
         <source>Plot Background</source>
         <translation>Plan Arkaplanı</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1753"/>
+        <location filename="../settingswidget.ui" line="1783"/>
         <source>Spectrum Gradient</source>
         <translation>Spektrum Gradyanı</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1760"/>
+        <location filename="../settingswidget.ui" line="1790"/>
         <source>Underlay Fill</source>
         <translation>Underlay Doldurması</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1807"/>
+        <location filename="../settingswidget.ui" line="1837"/>
         <source>Meter Average</source>
         <translation>Metre Ortalaması</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1827"/>
+        <location filename="../settingswidget.ui" line="1857"/>
         <source>Passband</source>
         <translation>Passband</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1857"/>
+        <location filename="../settingswidget.ui" line="1887"/>
         <source>Waterfall Grid</source>
         <translation>Waterfall Izgarası</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1864"/>
+        <location filename="../settingswidget.ui" line="1894"/>
         <source>Waterfall Back</source>
         <translation>Waterfal Arkası</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1871"/>
+        <location filename="../settingswidget.ui" line="1901"/>
         <source>Tuning Line</source>
         <translation>Tune Çizgisi</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1901"/>
+        <location filename="../settingswidget.ui" line="1931"/>
         <source>Waterfall Axis</source>
         <translation>Waterfall Ekseni</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1908"/>
+        <location filename="../settingswidget.ui" line="1938"/>
         <source>Waterfall Text</source>
         <translation>Waterfal Yazısı</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1928"/>
+        <location filename="../settingswidget.ui" line="1958"/>
         <source>Meter Level</source>
         <translation>Metre Seviyesi</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1955"/>
+        <location filename="../settingswidget.ui" line="1985"/>
         <source>Meter Text</source>
         <translation>Metre Yazısı</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1962"/>
+        <location filename="../settingswidget.ui" line="1992"/>
         <source>Spectrum Fill Bot</source>
         <translation>Spektrum Bot Doldurma</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1979"/>
+        <location filename="../settingswidget.ui" line="2009"/>
         <source>Spectrum Fill</source>
         <translation>Spektrum Doldurması</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1996"/>
+        <location filename="../settingswidget.ui" line="2026"/>
         <source>PBT Indicator</source>
         <translation>PBT İndikatörü</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2003"/>
+        <location filename="../settingswidget.ui" line="2033"/>
         <source>Meter Scale</source>
         <translation>Metre Skalası</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2010"/>
+        <location filename="../settingswidget.ui" line="2040"/>
         <source>Meter High Scale</source>
         <translation>Metre Yüksek Skalası</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2040"/>
+        <location filename="../settingswidget.ui" line="2070"/>
         <source>Cluster Spots</source>
         <translation>Cluster Spotları</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2076"/>
+        <location filename="../settingswidget.ui" line="2106"/>
         <source>Underlay Gradient</source>
         <translation>Underlay Gradyanı</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2099"/>
+        <location filename="../settingswidget.ui" line="2129"/>
         <source>Underlay Fill Top</source>
         <translation>Underlay Tepe Doldurması</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2122"/>
+        <location filename="../settingswidget.ui" line="2152"/>
         <source>Underlay Fill Bot</source>
         <translation>Underlay Alt Doldurması</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2157"/>
+        <location filename="../settingswidget.ui" line="2187"/>
         <source>Data Off Modulation Input:</source>
         <translation>Veri Modulasyon Girintisi:</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2164"/>
+        <location filename="../settingswidget.ui" line="2194"/>
         <source>Modulation Input</source>
         <translation>Modulaston Girintisi</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2167"/>
+        <location filename="../settingswidget.ui" line="2197"/>
         <source>Transmit modulation source</source>
         <translation>Transmit Modulasyon Kaynağı</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2177"/>
+        <location filename="../settingswidget.ui" line="2207"/>
         <source>(Data Mod Inputs) DATA1:</source>
         <translation>(Veri Mod Girişi) DATA1:</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2184"/>
+        <location filename="../settingswidget.ui" line="2214"/>
         <source>Data Modulation Input</source>
         <translation>Data Modulasyon Girişi</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2187"/>
+        <location filename="../settingswidget.ui" line="2217"/>
         <source>Transmit Data-mode modulation input source</source>
         <translation>Transmit Data-modu Modulasyon giriş kaynağı</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2197"/>
+        <location filename="../settingswidget.ui" line="2227"/>
         <source>DATA2:</source>
         <translation>DATA2:</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2207"/>
+        <location filename="../settingswidget.ui" line="2237"/>
         <source>DATA3:</source>
         <translation>DATA3:</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2234"/>
+        <location filename="../settingswidget.ui" line="2264"/>
         <source>Press here to set the clock of the radio. The command will be sent to the radio when the seconds go to zero. </source>
         <translation>Radyonun Saatini ayarlamak için buraya tıklayın. Saniye Sıfıra vardığında komut Radyo&apos;ya gönderilecektir. </translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2237"/>
+        <location filename="../settingswidget.ui" line="2267"/>
         <source>Set Clock</source>
         <translation>Saati Ayarla</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2244"/>
+        <location filename="../settingswidget.ui" line="2274"/>
         <source>Check this box to set the radio&apos;s clock to UTC. Otherwise, the clock will be set to the local timezone of this computer. </source>
         <translation>Radyo&apos;nun saatini UTC&apos;ye ayarlamak için bu kutucuğu işaretleyin. Yoksa saat bu bilgisayarın yerel saatine ayarlanacaktır. </translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2247"/>
+        <location filename="../settingswidget.ui" line="2277"/>
         <source>Use UTC</source>
         <translation>UTC Kullan</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2254"/>
+        <location filename="../settingswidget.ui" line="2284"/>
         <source>Satellite Ops</source>
         <translation>Satellite Ops</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2261"/>
+        <location filename="../settingswidget.ui" line="2291"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click here to adjust the frequency reference on the IC-9700.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Frekans Referansını IC-9700&apos;de ayarlamak için tıklayın.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2264"/>
+        <location filename="../settingswidget.ui" line="2294"/>
         <source>Adjust Reference</source>
         <translation>Referansı Ayarla</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2291"/>
+        <location filename="../settingswidget.ui" line="2321"/>
         <source>Manual PTT Toggle</source>
         <translation>Manuel PTT Aç-Kapa</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2298"/>
+        <location filename="../settingswidget.ui" line="2328"/>
         <source>PTT On</source>
         <translation>PTT Açık</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2301"/>
+        <location filename="../settingswidget.ui" line="2331"/>
         <source>Ctrl+S</source>
         <translation>Ctrl+S</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2308"/>
+        <location filename="../settingswidget.ui" line="2338"/>
         <source>PTT Off</source>
         <translation>PTT Kapalı</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2364"/>
+        <location filename="../settingswidget.ui" line="2394"/>
         <source>Enable</source>
         <translation>Aktifleştir</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2388"/>
+        <location filename="../settingswidget.ui" line="2418"/>
         <source>Server Setup</source>
         <translation>Sunucu Kurulumu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2433"/>
-        <location filename="../settingswidget.ui" line="2483"/>
-        <location filename="../settingswidget.ui" line="2524"/>
+        <location filename="../settingswidget.ui" line="2463"/>
+        <location filename="../settingswidget.ui" line="2513"/>
+        <location filename="../settingswidget.ui" line="2554"/>
         <source>99999</source>
         <translation>99999</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2464"/>
+        <location filename="../settingswidget.ui" line="2494"/>
         <source>Civ Port</source>
         <translation>Civ Port</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2486"/>
+        <location filename="../settingswidget.ui" line="2516"/>
         <source>50002</source>
         <translation>50002</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2505"/>
+        <location filename="../settingswidget.ui" line="2535"/>
         <source>Audio Port</source>
         <translation>Ses Portu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2527"/>
+        <location filename="../settingswidget.ui" line="2557"/>
         <source>50003</source>
         <translation>50003</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2551"/>
+        <location filename="../settingswidget.ui" line="2581"/>
         <source>RX Audio Input</source>
         <translation>RX Ses Girişi</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2574"/>
+        <location filename="../settingswidget.ui" line="2604"/>
         <source>TX Audio Output</source>
         <translation>TX Ses Çıkışı</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2640"/>
+        <location filename="../settingswidget.ui" line="2670"/>
         <source>Users</source>
         <translation>Kullanıcılar</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2711"/>
+        <location filename="../settingswidget.ui" line="2741"/>
         <source>Admin</source>
         <translation>Admin</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2757"/>
+        <location filename="../settingswidget.ui" line="2787"/>
         <source>Enable RigCtld</source>
         <translation>RigCtld&apos;yi aktifleştir</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2780"/>
+        <location filename="../settingswidget.ui" line="2810"/>
         <source>Port</source>
         <translation>Port</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2820"/>
+        <location filename="../settingswidget.ui" line="2850"/>
         <source>Virtual Serial Port</source>
         <translation>Sanal Serial Port</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2839"/>
+        <location filename="../settingswidget.ui" line="2869"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use this to define a virtual serial port. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;On Windows, the virtual serial port can be used to connect to a serial port loopback device, through which other programs can connect to the radio. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;On Linux and macOS, the port defined here is a pseudo-terminal device, which may be connected to directly by any program designed for a serial connection. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Sanal seri bağlantı noktasını tanımlamak için bunu kullanın. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Windows&apos;ta sanal seri bağlantı noktası, diğer programların radyoya bağlanabileceği bir seri bağlantı noktası geri döngü aygıtına bağlanmak için kullanılabilir. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Linux ve macOS&apos;ta burada tanımlanan bağlantı noktası, seri bağlantı için tasarlanmış herhangi bir program tarafından doğrudan bağlanabilen bir sözde terminal aygıtıdır. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2842"/>
+        <location filename="../settingswidget.ui" line="2872"/>
         <source>Virtual Serial Port Selector</source>
         <translation>Sanal Serial Port Seçicisi</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2866"/>
+        <location filename="../settingswidget.ui" line="2896"/>
         <source>TCP Server Port</source>
         <translation>TCP Server Portu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2886"/>
+        <location filename="../settingswidget.ui" line="2916"/>
         <source>Enter port for TCP server, 0 = disabled (restart required if changed)</source>
         <translation>TCP Serveri için Port Girin, 0=disabled (değiştirildiğinde yeniden başlatma gerekir)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2910"/>
+        <location filename="../settingswidget.ui" line="2940"/>
         <source>TCI Server Port</source>
         <translation>TCI Sunucu Portu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2927"/>
+        <location filename="../settingswidget.ui" line="2957"/>
         <source>Enter port for TCI server 0 = disabled (restart required if changed)</source>
         <translation>TCI Sunucusu için Port girin . 0=disabled (değiştirildiğinde yeniden başlatma gerekir)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2951"/>
+        <location filename="../settingswidget.ui" line="2981"/>
         <source>Waterfall Format</source>
         <translation>Waterfall Formatı</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2959"/>
+        <location filename="../settingswidget.ui" line="2989"/>
         <source>Default</source>
         <translation>Standart</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2964"/>
+        <location filename="../settingswidget.ui" line="2994"/>
         <source>Single (network)</source>
         <translation>Tekil (Ağ)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2969"/>
+        <location filename="../settingswidget.ui" line="2999"/>
         <source>Multi (serial)</source>
         <translation>Çoklu (Seri)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2977"/>
+        <location filename="../settingswidget.ui" line="3007"/>
         <source>Only change this if you are absolutely sure you need it (connecting to N1MM+ or similar)</source>
         <translation>Bunu sadece değiştirmeniz gerektiğine tamamen eminseniz değiştirin (Ör. N1MM&apos;e bağlanırken vb.)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3001"/>
+        <location filename="../settingswidget.ui" line="3031"/>
         <source>Enable USB Controllers</source>
         <translation>USB Kontrollerlere izin ver</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3011"/>
+        <location filename="../settingswidget.ui" line="3041"/>
         <source>Setup USB Controller</source>
         <translation>USB Kontrolleri Kur</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3031"/>
+        <location filename="../settingswidget.ui" line="3061"/>
         <source>Reset Buttons</source>
         <translation>Reset butonları</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3038"/>
+        <location filename="../settingswidget.ui" line="3068"/>
         <source>Only reset buttons/commands if you have issues. </source>
         <translation>buton/komutları sadece sorun yaşıyorsanız resetleyin. </translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3082"/>
+        <location filename="../settingswidget.ui" line="3112"/>
         <source>This page contains configuration for DX Cluster, either UDP style broadcast (from N1MM+/DXlog) or TCP connection to your favourite cluster</source>
         <translatorcomment>Bu sayfa DX cluster için konfigurasyon içerir, hem UDP stili hem de TCP stili bağlantıyı favori clusterinizla yapar.</translatorcomment>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3091"/>
+        <location filename="../settingswidget.ui" line="3121"/>
         <source>TCP Cluster Connection</source>
         <translation>TCP Cluster bağlantısı</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3102"/>
+        <location filename="../settingswidget.ui" line="3132"/>
         <source>Server Name</source>
         <translation>Sunucu Adı</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3127"/>
+        <location filename="../settingswidget.ui" line="3157"/>
         <source>Add/Update</source>
         <translation>Ekle/Güncelle</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3140"/>
+        <location filename="../settingswidget.ui" line="3170"/>
         <source>Del</source>
         <translation>Sil</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3149"/>
+        <location filename="../settingswidget.ui" line="3179"/>
         <source>Server Port</source>
         <translation>Sunucu Portu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3156"/>
-        <location filename="../settingswidget.ui" line="3258"/>
+        <location filename="../settingswidget.ui" line="3186"/>
+        <location filename="../settingswidget.ui" line="3288"/>
         <source>00000</source>
         <translation>00000</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3187"/>
+        <location filename="../settingswidget.ui" line="3217"/>
         <source>Spot Timeout (minutes)</source>
         <translation>Spot Zaman Aşımı (Dakika)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3194"/>
+        <location filename="../settingswidget.ui" line="3224"/>
         <source>0000</source>
         <translation>0000</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3206"/>
+        <location filename="../settingswidget.ui" line="3236"/>
         <source>Connect</source>
         <translation>Bağlan</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3213"/>
+        <location filename="../settingswidget.ui" line="3243"/>
         <source>Disconnect</source>
         <translation>Bağlantıyı Kes</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3240"/>
+        <location filename="../settingswidget.ui" line="3270"/>
         <source>UDP Broadcast Connection</source>
         <translation>UDP Yayın Bağlantısı</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3251"/>
+        <location filename="../settingswidget.ui" line="3281"/>
         <source>UDP Port</source>
         <translation>UDP Portu</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3282"/>
+        <location filename="../settingswidget.ui" line="3312"/>
         <source>Show Skimmer Spots</source>
         <translation>Skimmer Spotlarını Göster</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3313"/>
+        <location filename="../settingswidget.ui" line="3343"/>
         <source>This page contains experimental features. Use at your own risk.</source>
         <translation>Bu sayfa Deneysel özellikleri çierir, Riskleri göze alarak kullanın.</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3324"/>
+        <location filename="../settingswidget.ui" line="3354"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This button runs debug functions, and is provided as a convenience for programmers. The functions executed are under:&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; color:#ffff55;&quot;&gt;void&lt;/span&gt;&lt;span style=&quot; color:#55ff55;&quot;&gt;wfmain&lt;/span&gt;&lt;span style=&quot; color:#aaaaaa;&quot;&gt;::&lt;/span&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;on_debugBtn_clicked&lt;/span&gt;&lt;span style=&quot; color:#aaaaaa;&quot;&gt;()&lt;/span&gt;&lt;/p&gt;&lt;p&gt;in wfmain.cpp.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Bu düğme hata ayıklama işlevlerini çalıştırır ve programcılara kolaylık sağlamak amacını sağlarr. Yürütülen işlevler şunlardır:&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; color:#ffff55;&quot;&gt;void&lt;/span&gt;&lt;span style=&quot; color:#55ff55;&quot;&gt;wfmain&lt;/span&gt;&lt;span style =&quot; color:#aaaaaa;&quot;&gt;::&lt;/span&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;on_debugBtn_clicked&lt;/span&gt;&lt;span style=&quot; color:#aaaaaa;&quot;&gt;()&lt;/span &gt;&lt;/p&gt;&lt;p&gt;wfmain.cpp&apos;de.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3327"/>
+        <location filename="../settingswidget.ui" line="3357"/>
         <source>Debug</source>
         <translation>Debug</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3330"/>
+        <location filename="../settingswidget.ui" line="3360"/>
         <source>Ctrl+Alt+D</source>
         <translation>Ctrl+Alt+D</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3401"/>
+        <location filename="../settingswidget.ui" line="3431"/>
         <source>Save Settings</source>
         <translation>Ayarları Kaydet</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3408"/>
+        <location filename="../settingswidget.ui" line="3438"/>
         <source>Revert to Default</source>
         <translation>Varsayılana Geri Dön</translation>
     </message>
@@ -3100,54 +3121,54 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
         <translation>Deneysel (Dikkatli Kullanınız)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1252"/>
+        <location filename="../settingswidget.cpp" line="1253"/>
         <source>Admin User</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1252"/>
+        <location filename="../settingswidget.cpp" line="1253"/>
         <source>Normal User</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1252"/>
+        <location filename="../settingswidget.cpp" line="1253"/>
         <source>Normal with no TX</source>
         <comment>Monitor only</comment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1260"/>
+        <location filename="../settingswidget.cpp" line="1261"/>
         <source>Delete</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1515"/>
+        <location filename="../settingswidget.cpp" line="1516"/>
         <source>Manual port assignment</source>
         <translation>Manuel Port Atanması</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1516"/>
+        <location filename="../settingswidget.cpp" line="1517"/>
         <source>Enter serial port assignment:</source>
         <translation>Serial Port Atanmasını Girin:</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1518"/>
+        <location filename="../settingswidget.cpp" line="1519"/>
         <source>/dev/device</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="2094"/>
+        <location filename="../settingswidget.cpp" line="2106"/>
         <source>Specify Opacity</source>
         <translation>Opakliği Belirtin</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="2095"/>
+        <location filename="../settingswidget.cpp" line="2107"/>
         <source>You specified an opacity value of 0. 
 Do you want to change it? (0=transparent, 255=opaque)</source>
         <translation>Opaklık değeri olarak 0 belirlediniz. Değiştirmek istiyor musunuz? (0=transparant, 255=Opak)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="2249"/>
+        <location filename="../settingswidget.cpp" line="2269"/>
         <source>Preset Name (10 characters max):</source>
         <translation>Hazır Ayar Adı (10 hane maks):</translation>
     </message>
@@ -3155,264 +3176,264 @@ Do you want to change it? (0=transparent, 255=opaque)</source>
 <context>
     <name>spectrumScope</name>
     <message>
-        <location filename="../spectrumscope.cpp" line="55"/>
+        <location filename="../spectrumscope.cpp" line="57"/>
         <source>Detach</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="57"/>
+        <location filename="../spectrumscope.cpp" line="59"/>
         <source>Detach/re-attach scope from main window</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="61"/>
+        <location filename="../spectrumscope.cpp" line="63"/>
         <source>Spectrum Mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="64"/>
+        <location filename="../spectrumscope.cpp" line="66"/>
         <source>Spectrum Span</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="68"/>
+        <location filename="../spectrumscope.cpp" line="70"/>
         <source>Spectrum Edge</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="69"/>
+        <location filename="../spectrumscope.cpp" line="71"/>
         <source>Custom Edge</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="70"/>
+        <location filename="../spectrumscope.cpp" line="72"/>
         <source>Define a custom (fixed) scope edge</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="71"/>
+        <location filename="../spectrumscope.cpp" line="73"/>
         <source>To Fixed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="72"/>
+        <location filename="../spectrumscope.cpp" line="74"/>
         <source>&amp;lt;html&amp;gt;&amp;lt;head/&amp;gt;&amp;lt;body&amp;gt;&amp;lt;p&amp;gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;&amp;lt;br/&amp;gt;&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;The currently-selected edge slot will be overridden.&amp;lt;/p&amp;gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="84"/>
         <location filename="../spectrumscope.cpp" line="86"/>
+        <location filename="../spectrumscope.cpp" line="88"/>
         <source>Configure Scope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="85"/>
+        <location filename="../spectrumscope.cpp" line="87"/>
         <source>Change various settings of the current Scope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="136"/>
+        <location filename="../spectrumscope.cpp" line="138"/>
         <source>Center Mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="137"/>
+        <location filename="../spectrumscope.cpp" line="139"/>
         <source>Fixed Mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="138"/>
+        <location filename="../spectrumscope.cpp" line="140"/>
         <source>Scroll-C</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="139"/>
+        <location filename="../spectrumscope.cpp" line="141"/>
         <source>Scroll-F</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="142"/>
+        <location filename="../spectrumscope.cpp" line="144"/>
         <source>Fixed Edge 1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="142"/>
+        <location filename="../spectrumscope.cpp" line="144"/>
         <source>Fixed Edge 2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="142"/>
+        <location filename="../spectrumscope.cpp" line="144"/>
         <source>Fixed Edge 3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="142"/>
+        <location filename="../spectrumscope.cpp" line="144"/>
         <source>Fixed Edge 4</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="171"/>
+        <location filename="../spectrumscope.cpp" line="173"/>
         <source>SCOPE OUT OF RANGE</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="182"/>
+        <location filename="../spectrumscope.cpp" line="184"/>
         <source> OVF </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="247"/>
+        <location filename="../spectrumscope.cpp" line="249"/>
         <source>Scope display reference</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="248"/>
+        <location filename="../spectrumscope.cpp" line="250"/>
         <source>Selects the display reference for the Scope display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="249"/>
+        <location filename="../spectrumscope.cpp" line="251"/>
         <source>Select display reference of scope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="250"/>
+        <location filename="../spectrumscope.cpp" line="252"/>
         <source>Ref</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="255"/>
+        <location filename="../spectrumscope.cpp" line="256"/>
         <source>Length</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="260"/>
+        <location filename="../spectrumscope.cpp" line="261"/>
         <source>Scope display ceiling</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="261"/>
+        <location filename="../spectrumscope.cpp" line="262"/>
         <source>Selects the display ceiling for the Scope display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="262"/>
+        <location filename="../spectrumscope.cpp" line="263"/>
         <source>Select display ceiling of scope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="263"/>
+        <location filename="../spectrumscope.cpp" line="264"/>
         <source>Ceiling</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="268"/>
+        <location filename="../spectrumscope.cpp" line="269"/>
         <source>Scope display floor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="269"/>
+        <location filename="../spectrumscope.cpp" line="270"/>
         <source>Selects the display floor for the Scope display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="270"/>
+        <location filename="../spectrumscope.cpp" line="271"/>
         <source>Select display floor of scope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="271"/>
+        <location filename="../spectrumscope.cpp" line="272"/>
         <source>Floor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="274"/>
+        <location filename="../spectrumscope.cpp" line="275"/>
         <source>Speed Fast</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="275"/>
+        <location filename="../spectrumscope.cpp" line="276"/>
         <source>Speed Mid</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="276"/>
+        <location filename="../spectrumscope.cpp" line="277"/>
         <source>Speed Slow</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="278"/>
+        <location filename="../spectrumscope.cpp" line="279"/>
         <source>Waterfall display speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="279"/>
+        <location filename="../spectrumscope.cpp" line="280"/>
         <source>Selects the speed for the waterfall display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="280"/>
+        <location filename="../spectrumscope.cpp" line="281"/>
         <source>Waterfall Speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="281"/>
+        <location filename="../spectrumscope.cpp" line="282"/>
         <source>Speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="284"/>
+        <location filename="../spectrumscope.cpp" line="285"/>
         <source>Waterfall display color theme</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="285"/>
+        <location filename="../spectrumscope.cpp" line="286"/>
         <source>Selects the color theme for the waterfall display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="286"/>
+        <location filename="../spectrumscope.cpp" line="287"/>
         <source>Waterfall color theme</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="300"/>
+        <location filename="../spectrumscope.cpp" line="301"/>
         <source>Theme</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="304"/>
+        <location filename="../spectrumscope.cpp" line="305"/>
         <source>PBT Inner</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="308"/>
+        <location filename="../spectrumscope.cpp" line="309"/>
         <source>PBT Outer</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="312"/>
+        <location filename="../spectrumscope.cpp" line="313"/>
         <source>IF Shift</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="316"/>
+        <location filename="../spectrumscope.cpp" line="317"/>
         <source>Fill Width</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="1026"/>
+        <location filename="../spectrumscope.cpp" line="1062"/>
         <source>Scope Edges</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="1027"/>
+        <location filename="../spectrumscope.cpp" line="1063"/>
         <source>Please enter desired scope edges, in MHz,
 with a comma between the low and high range.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="1056"/>
+        <location filename="../spectrumscope.cpp" line="1092"/>
         <source>Error, could not interpret your input.                          &lt;br/&gt;Please make sure to place a comma between the frequencies.                          &lt;br/&gt;For example: &apos;7.200, 7.300&apos;</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3762,50 +3783,50 @@ with a comma between the low and high range.</source>
         <translation> Programdan Çık</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="2570"/>
+        <location filename="../wfmain.cpp" line="2596"/>
         <source>wfview</source>
         <translation>Wfview</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="2571"/>
+        <location filename="../wfmain.cpp" line="2597"/>
         <source>Are you sure you wish to reset the USB controllers?</source>
         <translation>USB Kontrollerlerini resetlemek istediğinize emin misiniz?</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4050"/>
-        <location filename="../wfmain.cpp" line="4629"/>
+        <location filename="../wfmain.cpp" line="4081"/>
+        <location filename="../wfmain.cpp" line="4660"/>
         <source>Don&apos;t ask me again</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4051"/>
+        <location filename="../wfmain.cpp" line="4082"/>
         <source>Don&apos;t ask me to confirm exit again</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4053"/>
+        <location filename="../wfmain.cpp" line="4084"/>
         <source>Are you sure you wish to exit?
 </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4139"/>
+        <location filename="../wfmain.cpp" line="4170"/>
         <source>Revert settings</source>
         <translation>Ayarları Geri Al</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4140"/>
+        <location filename="../wfmain.cpp" line="4171"/>
         <source>Are you sure you wish to reset all wfview settings?
 If so, wfview will exit and you will need to start the program again.</source>
         <translation>Tüm wfview ayarlarını sıfırlamak istediğinize emin misiniz? Eğer eminseniz wfview çıkış yapacak ve programı tekrardan başlatmanız gerekecek.</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4631"/>
+        <location filename="../wfmain.cpp" line="4662"/>
         <source>Power</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4632"/>
+        <location filename="../wfmain.cpp" line="4663"/>
         <source>Power down the radio?
 </source>
         <translation type="unfinished"></translation>
