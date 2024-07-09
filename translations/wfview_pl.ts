@@ -6,52 +6,52 @@
     <message>
         <location filename="../firsttimesetup.ui" line="20"/>
         <source>First Time Setup</source>
-        <translation type="unfinished"></translation>
+        <translation>Pierwsza konfiguracja</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="37"/>
         <source>Welcome to wfview!</source>
-        <translation type="unfinished"></translation>
+        <translation>Witaj w wfview!</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="53"/>
         <source>How is your radio connected?</source>
-        <translation type="unfinished"></translation>
+        <translation>Jak jest podłączone Twoje radio?</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="59"/>
         <source>Serial Port on this PC</source>
-        <translation type="unfinished"></translation>
+        <translation>Port szeregowy</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="69"/>
         <source>USB Port on This PC</source>
-        <translation type="unfinished"></translation>
+        <translation>Port USB</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="79"/>
         <source>Ethernet Network</source>
-        <translation type="unfinished"></translation>
+        <translation>Sieć Ethernet</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="89"/>
         <source>WiFi Network</source>
-        <translation type="unfinished"></translation>
+        <translation>Sieć WiFi</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="111"/>
         <source>Next Steps:</source>
-        <translation type="unfinished"></translation>
+        <translation>Następne kroki:</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="117"/>
         <source>You will now be taken to the Radio Access page under Settings.</source>
-        <translation type="unfinished"></translation>
+        <translation>Zostaniesz teraz zabrany do sekcji Dostęp do radia w Ustawieniach.</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="124"/>
         <source>Please fill in the relevant details for this connection type:</source>
-        <translation type="unfinished"></translation>
+        <translation>Wypełnij odpowiednie pola, dla tego typu połączenia:</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="163"/>
@@ -71,84 +71,85 @@
     <message>
         <location filename="../firsttimesetup.ui" line="188"/>
         <source>Note: If you do not have this information, press Exit Program, and return later.</source>
-        <translation type="unfinished"></translation>
+        <translation>Jeśli nie posiadasz tych informacji, naciśnij Wyjdź, i wróć później.</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="204"/>
         <source>Even if you have run wfview before, please take a moment to review your settings.</source>
-        <translation type="unfinished"></translation>
+        <translation>Nawet jeśli już korzystałeś z wfview, kolejny raz sprawdź ustawienia.</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="213"/>
         <source>Press to exit the program.
 You will see this dialog box the next time you open wfview.</source>
-        <translation type="unfinished"></translation>
+        <translation>Wciśnij, aby wyjść z programu.
+Zobaczysz to okno dialogowe, następnym razem gdy uruchomisz wfview.</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="217"/>
         <source>Exit Program</source>
-        <translation type="unfinished"></translation>
+        <translation>Wyjdź</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="224"/>
         <source>Press to skip the setup.</source>
-        <translation type="unfinished"></translation>
+        <translation>Naciśnij aby pominąć konfigurację.</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="227"/>
         <source>Skip</source>
-        <translation type="unfinished"></translation>
+        <translation>Pomiń</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="234"/>
         <source>Press to go back to the prior step. </source>
-        <translation type="unfinished"></translation>
+        <translation>Naciśnij aby powrócić. </translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="237"/>
         <source>Back</source>
-        <translation type="unfinished"></translation>
+        <translation>Wstecz</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="244"/>
         <source>Press for the next step.</source>
-        <translation type="unfinished"></translation>
+        <translation>Naciśnij aby przejść dalej.</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="247"/>
         <location filename="../firsttimesetup.cpp" line="103"/>
         <source>Next</source>
-        <translation type="unfinished"></translation>
+        <translation>Następny</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.cpp" line="17"/>
         <source>Serial Port Name</source>
-        <translation type="unfinished"></translation>
+        <translation>Nazwa portu szeregowego</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.cpp" line="18"/>
         <source>Baud Rate</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../firsttimesetup.cpp" line="21"/>
         <source>Radio IP address, UDP Port Numbers</source>
-        <translation type="unfinished"></translation>
+        <translation>Adres IP radia, Porty UDP</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.cpp" line="22"/>
         <source>Radio Username, Radio Password</source>
-        <translation type="unfinished"></translation>
+        <translation>Nazwa użytkownika, Hasło</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.cpp" line="23"/>
         <source>Mic and Speaker on THIS PC</source>
-        <translation type="unfinished"></translation>
+        <translation>Mikrofon i Głośnik na TYM PC</translation>
     </message>
     <message>
         <location filename="../firsttimesetup.cpp" line="44"/>
         <source>Finish</source>
-        <translation type="unfinished"></translation>
+        <translation>Zakończ</translation>
     </message>
 </context>
 <context>
@@ -156,12 +157,12 @@ You will see this dialog box the next time you open wfview.</source>
     <message>
         <location filename="../aboutbox.ui" line="14"/>
         <source>Form</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../aboutbox.ui" line="48"/>
         <source>wfview version</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../aboutbox.ui" line="55"/>
@@ -170,12 +171,12 @@ You will see this dialog box the next time you open wfview.</source>
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:&apos;Noto Sans&apos;; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Detailed text here&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../aboutbox.ui" line="69"/>
         <source>Build String</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
 </context>
 <context>
@@ -183,262 +184,262 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../bandbuttons.ui" line="14"/>
         <source>Form</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="20"/>
         <source>Band</source>
-        <translation type="unfinished"></translation>
+        <translation>Pasmo</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="49"/>
         <source>2200m</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="71"/>
         <source>630m</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="93"/>
         <source>160m</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="96"/>
         <source>L</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="118"/>
         <source>80m</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="121"/>
         <source>8</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="147"/>
         <source>60m</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="150"/>
         <source>S</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="172"/>
         <source>40m</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="175"/>
         <source>4</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="197"/>
         <source>30m</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="200"/>
         <source>3</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="222"/>
         <source>20m</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="225"/>
         <source>2</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="251"/>
         <source>17m</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="254"/>
         <source>7</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="276"/>
         <source>15m</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="279"/>
         <source>5</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="301"/>
         <source>12m</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="304"/>
         <source>T</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="326"/>
         <source>10m</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="329"/>
         <source>1</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="355"/>
         <source>6m</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="358"/>
         <source>6</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="380"/>
         <source>4m</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="383"/>
         <source>$</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="405"/>
         <source>2m</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="408"/>
         <source>V</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="430"/>
         <source>70cm</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="433"/>
         <source>U</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="455"/>
         <source>23cm</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="484"/>
         <source>13cm</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="506"/>
         <source>6cm</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="528"/>
         <source>3cm</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="554"/>
         <source>WFM</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="557"/>
         <source>W</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="579"/>
         <source>Air</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="582"/>
         <source>A</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="604"/>
         <source>Gen</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="607"/>
         <source>G</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="625"/>
         <source>Segment</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="631"/>
         <source>&amp;Last Used</source>
-        <translation type="unfinished"></translation>
+        <translation>Ostatnie</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="647"/>
         <source>Band Stack Selection:</source>
-        <translation type="unfinished"></translation>
+        <translation>Wybór zestawu pasm:</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="655"/>
         <source>1 - Latest Used</source>
-        <translation type="unfinished"></translation>
+        <translation>1 - ostatnio użyte</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="660"/>
         <source>2 - Older</source>
-        <translation type="unfinished"></translation>
+        <translation>2 - Starsze</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="665"/>
         <source>3 - Oldest Used</source>
-        <translation type="unfinished"></translation>
+        <translation>3 - Najstarsze</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="673"/>
         <source>Voice</source>
-        <translation type="unfinished"></translation>
+        <translation>Głos</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="680"/>
         <source>Data</source>
-        <translation type="unfinished"></translation>
+        <translation>Dane</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="687"/>
         <source>&amp;CW</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="707"/>
         <source>Work on Sub Band</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
 </context>
 <context>
@@ -447,77 +448,77 @@ p, li { white-space: pre-wrap; }
         <location filename="../calibrationwindow.ui" line="32"/>
         <location filename="../calibrationwindow.ui" line="56"/>
         <source>Reference Adjustment</source>
-        <translation type="unfinished"></translation>
+        <translation>Ustawienia referencji</translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="49"/>
         <source>IC-9700</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="69"/>
         <source>Course</source>
-        <translation type="unfinished"></translation>
+        <translation>Zgrubne</translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="76"/>
         <source>Fine</source>
-        <translation type="unfinished"></translation>
+        <translation>Dokładne</translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="163"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Save the calibration data to the indicated slot in the preference file. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Zapisz dane kalibracyjne do wybranego slotu w pliku preferencji. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="166"/>
         <source>Save</source>
-        <translation type="unfinished"></translation>
+        <translation>Zapisz</translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="176"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Load the calibration data from the indicated slot in the preference file. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Załaduj dane kalibracyjne z wybranego slotu w pliku preferencji. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="179"/>
         <source>Load</source>
-        <translation type="unfinished"></translation>
+        <translation>Załaduj</translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="189"/>
         <source>Slot:</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="200"/>
         <source>1</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="205"/>
         <source>2</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="210"/>
         <source>3</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="215"/>
         <source>4</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="220"/>
         <source>5</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../calibrationwindow.ui" line="243"/>
         <source>Read Current Rig Calibration</source>
-        <translation type="unfinished"></translation>
+        <translation>Wczytaj akutalną kalibrację radia</translation>
     </message>
 </context>
 <context>
@@ -525,37 +526,37 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../controllersetup.ui" line="14"/>
         <source>Controller setup</source>
-        <translation type="unfinished"></translation>
+        <translation>Ustawienia kontrolera</translation>
     </message>
     <message>
         <location filename="../controllersetup.ui" line="27"/>
         <source>Tab 1</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../controllersetup.ui" line="32"/>
         <source>Tab 2</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../controllersetup.ui" line="57"/>
         <source>Backup</source>
-        <translation type="unfinished"></translation>
+        <translation>Kopia zapasowa</translation>
     </message>
     <message>
         <location filename="../controllersetup.ui" line="64"/>
         <source>Restore</source>
-        <translation type="unfinished"></translation>
+        <translation>Odtwórz</translation>
     </message>
     <message>
         <location filename="../controllersetup.ui" line="84"/>
         <source>OK</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../controllersetup.ui" line="91"/>
         <source>Cancel</source>
-        <translation type="unfinished"></translation>
+        <translation>Anuluj</translation>
     </message>
 </context>
 <context>
@@ -563,17 +564,17 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../cwsender.ui" line="14"/>
         <source>MainWindow</source>
-        <translation type="unfinished"></translation>
+        <translation>Okno główne</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="17"/>
         <source>Send the text in the edit box</source>
-        <translation type="unfinished"></translation>
+        <translation>Wyślij tekst z okienka edycji</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="24"/>
         <source>Macros</source>
-        <translation type="unfinished"></translation>
+        <translation>Makra</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="30"/>
@@ -587,172 +588,172 @@ p, li { white-space: pre-wrap; }
         <location filename="../cwsender.ui" line="120"/>
         <location filename="../cwsender.ui" line="130"/>
         <source>Macro Access Button</source>
-        <translation type="unfinished"></translation>
+        <translation>Przycisk makra</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="33"/>
         <source>Macro 5</source>
-        <translation type="unfinished"></translation>
+        <translation>Makro 5</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="43"/>
         <source>Macro 2</source>
-        <translation type="unfinished"></translation>
+        <translation>Makro 2</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="53"/>
         <source>Macro 4</source>
-        <translation type="unfinished"></translation>
+        <translation>Makro 4</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="60"/>
         <source>Check this box to enter edit mode, where you can then press the macro buttons to edit the macros.</source>
-        <translation type="unfinished"></translation>
+        <translation>Zaznacz aby wejść w tryb edycji, możesz potem nacisnąć przycisk makra aby je edytować.</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="63"/>
         <source>Edit Mode</source>
-        <translation type="unfinished"></translation>
+        <translation>Tryb edycji</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="73"/>
         <source>Macro 7</source>
-        <translation type="unfinished"></translation>
+        <translation>Makro 7</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="83"/>
         <source>Macro 3</source>
-        <translation type="unfinished"></translation>
+        <translation>Makro 3</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="93"/>
         <source>Macro 6</source>
-        <translation type="unfinished"></translation>
+        <translation>Makro 6</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="103"/>
         <source>Macro 10</source>
-        <translation type="unfinished"></translation>
+        <translation>Makro 10</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="113"/>
         <source>Macro 9</source>
-        <translation type="unfinished"></translation>
+        <translation>Makro 9</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="123"/>
         <source>Macro 8</source>
-        <translation type="unfinished"></translation>
+        <translation>Makro 8</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="133"/>
         <source>Macro 1</source>
-        <translation type="unfinished"></translation>
+        <translation>Makro 1</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="142"/>
         <source>Seq</source>
-        <translation type="unfinished"></translation>
+        <translation>Sekw</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="149"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Sequence number, for contests. &lt;/p&gt;&lt;p&gt;Substitute &amp;quot;%1&amp;quot; in your macro text to use it. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Numer kolejny, do zawodów. &lt;/p&gt;&lt;p&gt;Zamień &amp;quot;%1&amp;quot; w makrach aby go użyć. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="170"/>
         <source>CW Transmission Transcript</source>
-        <translation type="unfinished"></translation>
+        <translation>Historia nadawania CW</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="210"/>
         <source>Stop sending CW</source>
-        <translation type="unfinished"></translation>
+        <translation>Zatrzymaj nadawanie CW</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="216"/>
         <source>Stop</source>
-        <translation type="unfinished"></translation>
+        <translation>Zatrzymaj</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="223"/>
         <source>Local Sidetone Level</source>
-        <translation type="unfinished"></translation>
+        <translation>Głośność tonu CW</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="240"/>
         <source>Enable</source>
-        <translation type="unfinished"></translation>
+        <translation>Aktywuj</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="274"/>
         <source>Send</source>
-        <translation type="unfinished"></translation>
+        <translation>Wyślij</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="277"/>
         <source>Return</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="293"/>
         <source>Type here to send text as CW</source>
-        <translation type="unfinished"></translation>
+        <translation>Pisz tutaj aby nadać tekst za pomocą CW</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="327"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the desired break-in mode:&lt;/p&gt;&lt;p&gt;1. None: You must manually key and unkey the radio.&lt;/p&gt;&lt;p&gt;2. Semi: Transmit is automatic and switches to receive at the end of the text.&lt;/p&gt;&lt;p&gt;3. Full: Same as semi, but with breaks between characters when possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Wybierz tryb break-in:&lt;/p&gt;&lt;p&gt;1. Off: Musisz ręcznie kluczować radio.&lt;/p&gt;&lt;p&gt;2. Semi: Nadawanie jest automatyczne i przełącza się na odbiór po wysłaniu całego tekstu.&lt;/p&gt;&lt;p&gt;3. Full: Tak samo jak  Semi, ale z przerwami między znakami jeśli to możliwe.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="331"/>
         <source>Off</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="336"/>
         <source>Semi</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="341"/>
         <source>Full</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="349"/>
         <source>PITCH  (Hz):</source>
-        <translation type="unfinished"></translation>
+        <translation>Ton</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="359"/>
         <source>WPM:</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="391"/>
         <source>Break In</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="420"/>
         <source>Dash Ratio</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="433"/>
         <source>Set the Words Per Minute</source>
-        <translation type="unfinished"></translation>
+        <translation>Ustaw WPM</translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="449"/>
         <source>Cut Num</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../cwsender.ui" line="456"/>
         <source>Send Immed</source>
-        <translation type="unfinished"></translation>
+        <translation>Wyślij natychmiast</translation>
     </message>
 </context>
 <context>
@@ -760,103 +761,104 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../debugwindow.ui" line="14"/>
         <source>Dialog</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="22"/>
         <source>Current cache items in cachingView()</source>
-        <translation type="unfinished"></translation>
+        <translation>Aktualne elementy pamięci cache w cachingView()</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="32"/>
         <source>Current queue items in cachingView()</source>
-        <translation type="unfinished"></translation>
+        <translation>Aktualne elementy w kolejce w cachingView()</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="67"/>
         <location filename="../debugwindow.ui" line="107"/>
         <source>ID</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="72"/>
         <location filename="../debugwindow.ui" line="112"/>
         <source>Function</source>
-        <translation type="unfinished"></translation>
+        <translation>Funkcja</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="77"/>
         <location filename="../debugwindow.ui" line="127"/>
         <source>Value</source>
-        <translation type="unfinished"></translation>
+        <translation>Wartość</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="82"/>
         <source>Sub</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="87"/>
         <source>Request</source>
-        <translation type="unfinished"></translation>
+        <translation>Żądanie</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="92"/>
         <source>Reply</source>
-        <translation type="unfinished"></translation>
+        <translation>Odpowiedź</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="117"/>
         <source>Priority</source>
-        <translation type="unfinished"></translation>
+        <translation>Priorytet</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="122"/>
         <source>Get/Set</source>
-        <translation type="unfinished"></translation>
+        <translation>Pobierz/Ustaw</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="132"/>
         <source>Recurring</source>
-        <translation type="unfinished"></translation>
+        <translatorcomment>nie jestem pewien</translatorcomment>
+        <translation>Powtórzenia</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="144"/>
         <location filename="../debugwindow.ui" line="181"/>
         <source>Pause refresh</source>
-        <translation type="unfinished"></translation>
+        <translation>Zatrzymaj odświeżanie</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="164"/>
         <location filename="../debugwindow.ui" line="201"/>
         <source>Refresh Interval (ms)</source>
-        <translation type="unfinished"></translation>
+        <translation>Częstotliwość odświeżania</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="171"/>
         <location filename="../debugwindow.ui" line="214"/>
         <source>99999</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="174"/>
         <source>500</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="217"/>
         <source>1000</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="240"/>
         <source>Scroll test:</source>
-        <translation type="unfinished"></translation>
+        <translation>Test przewijania:</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="269"/>
         <source>TextLabel</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
 </context>
 <context>
@@ -864,149 +866,149 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../frequencyinputwidget.ui" line="14"/>
         <source>Form</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="22"/>
         <source>Frequency:</source>
-        <translation type="unfinished"></translation>
+        <translation>Częstotliwość:</translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="41"/>
         <source>Go</source>
-        <translation type="unfinished"></translation>
+        <translation>Przejdź</translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="44"/>
         <source>Return</source>
-        <translation type="unfinished"></translation>
+        <translation>Powrót</translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="56"/>
         <source>Entry</source>
-        <translation type="unfinished"></translation>
+        <translation>Wprowadzanie</translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="74"/>
         <location filename="../frequencyinputwidget.ui" line="77"/>
         <source>5</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="96"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;To recall a preset memory:&lt;/p&gt;&lt;p&gt;1. Type in the preset number (0 through 99)&lt;/p&gt;&lt;p&gt;2. Press RCL (or use hotkey &amp;quot;R&amp;quot;)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Aby użyć wartości z pamięci:&lt;/p&gt;&lt;p&gt;1. Podaj numer pamięci (0 do 99)&lt;/p&gt;&lt;p&gt;2. Wciśnij RCL (albo użyj klawisza &amp;quot;R&amp;quot;)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="99"/>
         <source>&amp;RCL</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="102"/>
         <source>R</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="121"/>
         <location filename="../frequencyinputwidget.ui" line="124"/>
         <source>6</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="143"/>
         <location filename="../frequencyinputwidget.ui" line="146"/>
         <source>3</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="168"/>
         <source>&amp;CE</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="171"/>
         <source>C</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="190"/>
         <location filename="../frequencyinputwidget.ui" line="193"/>
         <source>4</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="212"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;To store a preset:&lt;/p&gt;&lt;p&gt;1. Set the desired frequency and mode per normal methods&lt;/p&gt;&lt;p&gt;2. Type the index to to store to (0 through 99)&lt;/p&gt;&lt;p&gt;3. Press STO (or use hotkey &amp;quot;S&amp;quot;)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Aby zapamiętać&lt;/p&gt;&lt;p&gt;1. Ustaw częstotliwość oraz tryb pracy normalnym sposobem&lt;/p&gt;&lt;p&gt;2. Podaj numer pamięci (0 do 99)&lt;/p&gt;&lt;p&gt;3. Wciśnij STO (albo użyj klawisza &amp;quot;S&amp;quot;)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="215"/>
         <source>&amp;STO</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="218"/>
         <source>S</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="237"/>
         <location filename="../frequencyinputwidget.ui" line="240"/>
         <source>9</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="259"/>
         <source>Back</source>
-        <translation type="unfinished"></translation>
+        <translation>Wróć</translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="262"/>
         <source>Backspace</source>
-        <translation type="unfinished"></translation>
+        <translation>Cofnij</translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="281"/>
         <location filename="../frequencyinputwidget.ui" line="284"/>
         <source>Enter</source>
-        <translation type="unfinished"></translation>
+        <translation>Wprowadź</translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="303"/>
         <location filename="../frequencyinputwidget.ui" line="306"/>
         <source>0</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="325"/>
         <location filename="../frequencyinputwidget.ui" line="328"/>
         <source>.</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="347"/>
         <location filename="../frequencyinputwidget.ui" line="350"/>
         <source>1</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="369"/>
         <location filename="../frequencyinputwidget.ui" line="372"/>
         <source>2</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="391"/>
         <location filename="../frequencyinputwidget.ui" line="394"/>
         <source>7</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../frequencyinputwidget.ui" line="413"/>
         <location filename="../frequencyinputwidget.ui" line="416"/>
         <source>8</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
 </context>
 <context>
@@ -1014,97 +1016,97 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../loggingwindow.ui" line="14"/>
         <source>Form</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="53"/>
         <source>Annotation:</source>
-        <translation type="unfinished"></translation>
+        <translation>Notatka:</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="66"/>
         <source>You may enter your own log notes here.</source>
-        <translation type="unfinished"></translation>
+        <translation>Możesz tu wprowadzić własne notatki do logu.</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="85"/>
         <source>Adds user-text to the log.</source>
-        <translation type="unfinished"></translation>
+        <translation>Dodaj tekst użytkownika do logu.</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="88"/>
         <source>Annotate</source>
-        <translation type="unfinished"></translation>
+        <translation>Zanotuj</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="105"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enable or disable debug logging. Use the &amp;quot;-d&amp;quot; or &amp;quot;--debug&amp;quot; flag to open wfview with debug logging enabled on startup. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Włącz lub wyłącz logowanie debug. Użyj paramatrów &amp;quot;-d&amp;quot; lub &amp;quot;--debug&amp;quot; aby uruchomić wfview w trybie logowania od momentu uruchomienia. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="108"/>
         <source>Debug</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="115"/>
         <source>Scroll to bottom</source>
-        <translation type="unfinished"></translation>
+        <translation>Przesuń w dół</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="118"/>
         <source>Scroll Down</source>
-        <translation type="unfinished"></translation>
+        <translation>Przesuń w dół</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="125"/>
         <source>Clears the display. Does not clear the log file.</source>
-        <translation type="unfinished"></translation>
+        <translation>Wyczyść ekran. Nie usuwa pliku z logiem.</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="128"/>
         <source>Clear</source>
-        <translation type="unfinished"></translation>
+        <translation>Wyczyść</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="135"/>
         <source>Makes a best-effort to ask the host system to open the log file directory.</source>
-        <translation type="unfinished"></translation>
+        <translation>Otwiera folder z plikami logów.</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="138"/>
         <source>Open Log Directory</source>
-        <translation type="unfinished"></translation>
+        <translation>Otwórz folder z logami</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="145"/>
         <source>Makes a best-effort to ask the host system to open the logfile.</source>
-        <translation type="unfinished"></translation>
+        <translation>Otwórz plik logu.</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="148"/>
         <source>Open Log</source>
-        <translation type="unfinished"></translation>
+        <translation>Otwórz log</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="155"/>
         <source>Copy the path of the log file to your clipboard.</source>
-        <translation type="unfinished"></translation>
+        <translation>Skopiuj ścieżkę do logu do schowka.</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="158"/>
         <source>Copy Path</source>
-        <translation type="unfinished"></translation>
+        <translation>Skopiuj ścieżkę</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="165"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Sends text to termbin.com. Some personal information (such as your username) is in the log file, so do not click this button unless you are ok sharing your log file. This is a quick way to receive a URL, pointing to your log file text, that you can send to other people. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Wysyła tekst do termbin.com. Niektóre informacje osobiste (takie jak Twoja nazwa użytkownika) znajdują się w logu, dlatego nie naciskaj tego przycisku, jeśli nie jesteś pewien, że chcesz wysłać te dane. To jest szybka metoda aby otrzymać adres URL, wskazujący na plik z logami, który możesz wysłać do innych osób. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../loggingwindow.ui" line="168"/>
         <source>Send to termbin.com</source>
-        <translation type="unfinished"></translation>
+        <translation>Wyślij do termbin.com</translation>
     </message>
 </context>
 <context>
@@ -1112,37 +1114,37 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../memories.ui" line="14"/>
         <source>Memory Management</source>
-        <translation type="unfinished"></translation>
+        <translation>Zarządzanie pamięcią</translation>
     </message>
     <message>
         <location filename="../memories.ui" line="43"/>
         <source>Disable Editing</source>
-        <translation type="unfinished"></translation>
+        <translation>Wyłącz edycję</translation>
     </message>
     <message>
         <location filename="../memories.ui" line="106"/>
         <source>Loading Memories (this may take a while!)</source>
-        <translation type="unfinished"></translation>
+        <translation>Załaduj pamięci (to może chwilę zająć)</translation>
     </message>
     <message>
         <location filename="../memories.ui" line="126"/>
         <source>.csv Import</source>
-        <translation type="unfinished"></translation>
+        <translation>Import .csv</translation>
     </message>
     <message>
         <location filename="../memories.ui" line="133"/>
         <source>.csv Export</source>
-        <translation type="unfinished"></translation>
+        <translation>Eksport .csv</translation>
     </message>
     <message>
         <location filename="../memories.ui" line="153"/>
         <source>Memory Mode</source>
-        <translation type="unfinished"></translation>
+        <translation>Tryb pamięci</translation>
     </message>
     <message>
         <location filename="../memories.ui" line="160"/>
         <source>VFO Mode</source>
-        <translation type="unfinished"></translation>
+        <translation>Tryb VFO</translation>
     </message>
 </context>
 <context>
@@ -1150,7 +1152,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../meter.cpp" line="280"/>
         <source>Double-click to set meter</source>
-        <translation type="unfinished"></translation>
+        <translation>Kliknij dwa razy aby ustawić miernik</translation>
     </message>
 </context>
 <context>
@@ -1158,7 +1160,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../pttyhandler.cpp" line="204"/>
         <source>Read failed: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Odczyt nieudany %1</translation>
     </message>
 </context>
 <context>
@@ -1166,290 +1168,291 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../repeatersetup.ui" line="26"/>
         <source>Repeater Setup</source>
-        <translation type="unfinished"></translation>
+        <translation>Ustawienia przemiennika</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="47"/>
         <source>Repeater Duplex</source>
-        <translation type="unfinished"></translation>
+        <translation>Tryb pracy</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="53"/>
         <source>Simplex</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="63"/>
         <source>Dup+</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="73"/>
         <source>Dup-</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="83"/>
         <source>Auto</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="95"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the repeater offset for radios using Repeater modes. Only available on radios that have repeater modes. Radios using Split should instead use the provided Split Mode section with a custom Offset. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translatorcomment>poor translation</translatorcomment>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="98"/>
         <source>Set Offset (MHz):</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="107"/>
         <source>Rpt Offset (MHz)</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="123"/>
         <source>Split Mode</source>
-        <translation type="unfinished"></translation>
+        <translation>Tryb Split</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="131"/>
         <source>Turn on Split</source>
-        <translation type="unfinished"></translation>
+        <translation>Włącz Split</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="134"/>
         <source>Split On</source>
-        <translation type="unfinished"></translation>
+        <translation>Split Wł</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="144"/>
         <source>Turn off Split</source>
-        <translation type="unfinished"></translation>
+        <translation>Wyłącz Split</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="147"/>
         <source>Split Off</source>
-        <translation type="unfinished"></translation>
+        <translation>Split Wył</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="157"/>
         <source>QuickSplit</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="168"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click here to automatically set the sub VFO (transmit VFO) tone. Only available on some radios. Other radios may take care of this for you.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="171"/>
         <source>Set Rpt Tone</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="181"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click here to continually set the transmit VFO to match the receive VFO with the offset accounted for.  &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="184"/>
         <source>AutoTrack</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="195"/>
         <source>Offset (KHz):</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="214"/>
         <source>Enter the desired split offset in KHz.</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="227"/>
         <location filename="../repeatersetup.ui" line="243"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the transmit frequency to the receive frequency PLUS the offset. Sets the radio sub VFO and also populates the wfview text box (as a convenience). &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="230"/>
         <source>Split+</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="246"/>
         <source>Split-</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="257"/>
         <source>Tx Freq (MHz):</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="286"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the transmit frequency manually. Not needed if the Split+ or Split- button was used. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="289"/>
         <source>Set</source>
-        <translation type="unfinished"></translation>
+        <translation>Ustaw</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="307"/>
         <source>VFO</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="313"/>
         <source>Swap VFO A with VFO B. Some radios do not support this.</source>
-        <translation type="unfinished"></translation>
+        <translation>Zamień VFO A z VFO B. Nie wszystkie radia to wspierają.</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="316"/>
         <source>Swap AB</source>
-        <translation type="unfinished"></translation>
+        <translation>Zamień AB</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="323"/>
         <source>Select the Sub VFO</source>
-        <translation type="unfinished"></translation>
+        <translation>Wybierz Sub VFO</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="326"/>
         <source>Sel Sub</source>
-        <translation type="unfinished"></translation>
+        <translation>Wybierz Sub</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="333"/>
         <source>Select the Main VFO</source>
-        <translation type="unfinished"></translation>
+        <translation>Wybierz Main VFO</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="336"/>
         <source>Sel Main</source>
-        <translation type="unfinished"></translation>
+        <translation>Wybierz Main</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="343"/>
         <source>Select VFO B</source>
-        <translation type="unfinished"></translation>
+        <translation>Wybierz VFO B</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="346"/>
         <source>Sel B</source>
-        <translation type="unfinished"></translation>
+        <translation>Wyb B</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="353"/>
         <source>Select VFO A</source>
-        <translation type="unfinished"></translation>
+        <translation>Wybierz VFO A</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="356"/>
         <source>Sel A</source>
-        <translation type="unfinished"></translation>
+        <translation>Wyb A</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="363"/>
         <source>Set VFO B to VFO A</source>
-        <translation type="unfinished"></translation>
+        <translation>Ustaw VFO B na VFO A</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="366"/>
         <source>A=B</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="373"/>
         <source>Set the SUB VFO to match the Main VFO</source>
-        <translation type="unfinished"></translation>
+        <translation>Ustaw VFO B aby odpowiadało VFO B</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="376"/>
         <source>M=&gt;S</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="383"/>
         <source>Swap the Main VFO and Sub VFO</source>
-        <translation type="unfinished"></translation>
+        <translation>Zamień Main VFO i Sub VFO</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="386"/>
         <source>Swap MS</source>
-        <translation type="unfinished"></translation>
+        <translation>Zamień MS</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="402"/>
         <source>Repeater Tone Type</source>
-        <translation type="unfinished"></translation>
+        <translation>Typ Tonu Przemiennika</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="408"/>
         <source>Only available in FM</source>
-        <translation type="unfinished"></translation>
+        <translation>Dostępne tylko w FM</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="415"/>
         <source>None</source>
-        <translation type="unfinished"></translation>
+        <translation>Brak</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="425"/>
         <source>Transmit Tone only</source>
-        <translation type="unfinished"></translation>
+        <translation>Tylko To Nadawczy</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="435"/>
         <source>Tone Squelch</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="445"/>
         <location filename="../repeatersetup.ui" line="496"/>
         <source>DTCS</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="455"/>
         <source>Set the Tone Mode for the Sub VFO. Not available on all radios.</source>
-        <translation type="unfinished"></translation>
+        <translation>Ustaw Ton dla Sub VFO. Dostępe tylko w niektórych radiach.</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="458"/>
         <location filename="../repeatersetup.ui" line="529"/>
         <source>Set Sub VFO</source>
-        <translation type="unfinished"></translation>
+        <translation>Ustaw Sub VFO</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="474"/>
         <source>Tone Selection</source>
-        <translation type="unfinished"></translation>
+        <translation>Wybór Tonu</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="482"/>
         <source>Tone</source>
-        <translation type="unfinished"></translation>
+        <translation>Ton</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="510"/>
         <source>Invert Tx</source>
-        <translation type="unfinished"></translation>
+        <translation>Odwróć Tx</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="517"/>
         <source>Invert Rx</source>
-        <translation type="unfinished"></translation>
+        <translation>Odwróć RX</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="526"/>
         <source>Set the Sub VFO to the selected Tone. Not available on all radios and not available for DTCS.</source>
-        <translation type="unfinished"></translation>
+        <translation>Ustaw Sub VFO na wybrany Ton. Nie dostępne we wszystkich radia i nie dostępne dla DTCS.</translation>
     </message>
 </context>
 <context>
@@ -1457,23 +1460,23 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../rigcreator.ui" line="20"/>
         <source>Rig Creator</source>
-        <translation type="unfinished"></translation>
+        <translation>Konfigurator radia</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="32"/>
         <source>Memories</source>
-        <translation type="unfinished"></translation>
+        <translation>Pamięci</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="40"/>
         <source>Grp</source>
-        <translation type="unfinished"></translation>
+        <translation>Grupa</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="47"/>
         <location filename="../rigcreator.ui" line="1168"/>
         <source>Mem</source>
-        <translation type="unfinished"></translation>
+        <translation>Pamięć</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="54"/>
@@ -1481,59 +1484,59 @@ p, li { white-space: pre-wrap; }
         <location filename="../rigcreator.ui" line="68"/>
         <location filename="../rigcreator.ui" line="89"/>
         <source>999</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="75"/>
         <source>Sat</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="82"/>
         <location filename="../rigcreator.ui" line="1153"/>
         <source>Start</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="101"/>
         <source>Commands</source>
-        <translation type="unfinished"></translation>
+        <translation>Polecenia</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="156"/>
         <location filename="../rigcreator.ui" line="275"/>
         <source>Command</source>
-        <translation type="unfinished"></translation>
+        <translation>Polecenie</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="161"/>
         <source>String</source>
-        <translation type="unfinished"></translation>
+        <translation>Ciąg</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="166"/>
         <source>Min</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="171"/>
         <source>Max</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="176"/>
         <source>29</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="181"/>
         <source>G/S</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="198"/>
         <source>Preamps</source>
-        <translation type="unfinished"></translation>
+        <translation>Przedwzmacniacze</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="241"/>
@@ -1545,7 +1548,7 @@ p, li { white-space: pre-wrap; }
         <location filename="../rigcreator.ui" line="1010"/>
         <location filename="../rigcreator.ui" line="1143"/>
         <source>Num</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="246"/>
@@ -1557,282 +1560,282 @@ p, li { white-space: pre-wrap; }
         <location filename="../rigcreator.ui" line="1030"/>
         <location filename="../rigcreator.ui" line="1173"/>
         <source>Name</source>
-        <translation type="unfinished"></translation>
+        <translation>Nazwa</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="257"/>
         <source>Periodic Commands</source>
-        <translation type="unfinished"></translation>
+        <translation>Polecenia okresowe</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="270"/>
         <source>Priority</source>
-        <translation type="unfinished"></translation>
+        <translation>Priorytet</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="280"/>
         <source>VFO</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="295"/>
         <source>Main Memory Format</source>
-        <translation type="unfinished"></translation>
+        <translation>Format Głównej Pamięci</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="308"/>
         <location filename="../rigcreator.ui" line="332"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format %&amp;lt;start&amp;gt;.&amp;lt;len&amp;gt;&amp;lt;specifier&amp;gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;specifier from list below:&lt;/p&gt;&lt;p&gt;a = Group&lt;/p&gt;&lt;p&gt;b = Num&lt;/p&gt;&lt;p&gt;c = Scan&lt;/p&gt;&lt;p&gt;d = Scan/Split&lt;/p&gt;&lt;p&gt;e = VFO A		E = VFO B&lt;/p&gt;&lt;p&gt;f = Frequency A 	F = Frequency B&lt;/p&gt;&lt;p&gt;g = Mode A		G = Mode B&lt;/p&gt;&lt;p&gt;h = Filter 		H = Filter B&lt;/p&gt;&lt;p&gt;i = Data 		I = Data B&lt;/p&gt;&lt;p&gt;j = Duplex/Tonemode A	J = Duplex B/Tonemode B&lt;/p&gt;&lt;p&gt;k = Data/Tonemode A	K = Data B/Tonemode B&lt;/p&gt;&lt;p&gt;l = Tonemode A	L = Tonemode B&lt;/p&gt;&lt;p&gt;m = DSQL A 		M = DSQL B&lt;/p&gt;&lt;p&gt;n = Tone type A	N = Tone type B&lt;/p&gt;&lt;p&gt;o = TSQL A		O = TSQL B&lt;/p&gt;&lt;p&gt;p = DTCS Polarity A 	P = DTCS Polarity B&lt;/p&gt;&lt;p&gt;q = DTCS A		Q = DTCS B&lt;/p&gt;&lt;p&gt;r = DV Squelch A 	R = DV Squelch B&lt;/p&gt;&lt;p&gt;s = Duplex Offset A 	S = Duplex Offset B&lt;/p&gt;&lt;p&gt;t = DV UR A		T = DV UR B&lt;/p&gt;&lt;p&gt;u = DV R1 A		U = DV R1 B&lt;/p&gt;&lt;p&gt;v = DV R2 A 		V = DV R2 B&lt;/p&gt;&lt;p&gt;z = Memory Name&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="319"/>
         <source>Satellite Memory Format</source>
-        <translation type="unfinished"></translation>
+        <translation>Format Pamięci Satelitarnej</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="343"/>
         <source>Inputs</source>
-        <translation type="unfinished"></translation>
+        <translation>Wejścia</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="394"/>
         <location filename="../rigcreator.ui" line="1015"/>
         <source>Reg</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="410"/>
         <source>Spans</source>
-        <translation type="unfinished"></translation>
+        <translation>Zakresy</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="463"/>
         <source>Freq</source>
-        <translation type="unfinished"></translation>
+        <translation>Częstotliwość</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="474"/>
         <source>Antennas</source>
-        <translation type="unfinished"></translation>
+        <translation>Anteny</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="533"/>
         <source>Flters</source>
-        <translation type="unfinished"></translation>
+        <translation>Filtry</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="578"/>
         <location filename="../rigcreator.ui" line="967"/>
         <source>Modes</source>
-        <translation type="unfinished"></translation>
+        <translation>Tryby</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="600"/>
         <source>Features</source>
-        <translation type="unfinished"></translation>
+        <translation>Funkcje</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="606"/>
         <source>Has Spectrum</source>
-        <translation type="unfinished"></translation>
+        <translation>Posiada Spectrum</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="613"/>
         <source>Has LAN</source>
-        <translation type="unfinished"></translation>
+        <translation>Posiada LAN</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="620"/>
         <source>Has Ethernet</source>
-        <translation type="unfinished"></translation>
+        <translation>Posiada Ethernet</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="627"/>
         <source>Has WiFi</source>
-        <translation type="unfinished"></translation>
+        <translation>Posiada WiFi</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="634"/>
         <source>Has Transmit</source>
-        <translation type="unfinished"></translation>
+        <translation>Posiada Nadawanie</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="641"/>
         <source>HasFDComms</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="648"/>
         <source>Has Command 29</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="662"/>
         <source>Load File</source>
-        <translation type="unfinished"></translation>
+        <translation>Wgraj Plik</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="669"/>
         <source>Save File</source>
-        <translation type="unfinished"></translation>
+        <translation>Zapisz Plik</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="689"/>
         <source>Default Rigs</source>
-        <translation type="unfinished"></translation>
+        <translation>Domyślne radia</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="696"/>
         <source>Manufacturer</source>
-        <translation type="unfinished"></translation>
+        <translation>Producent</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="704"/>
         <source>Icom</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="709"/>
         <source>Yaesu</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="714"/>
         <source>Kenwood</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="722"/>
         <source>Model</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="732"/>
         <source>C-IV Address</source>
-        <translation type="unfinished"></translation>
+        <translation>Adres C-IV</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="742"/>
         <source>RigCtlD Model</source>
-        <translation type="unfinished"></translation>
+        <translation>Model RigCtlD</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="749"/>
         <source>9999</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="766"/>
         <source>Spectrum</source>
-        <translation type="unfinished"></translation>
+        <translation>Spektrum</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="774"/>
         <source>Seq Max</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="781"/>
         <source>Len Max</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="788"/>
         <source>Amp Max</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="807"/>
         <location filename="../rigcreator.ui" line="826"/>
         <source>000</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="851"/>
         <source>00</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="858"/>
         <source>Num RX</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="871"/>
         <location filename="../rigcreator.ui" line="891"/>
         <source>1</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="878"/>
         <source>VFO per RX</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="903"/>
         <source>Tuning Steps</source>
-        <translation type="unfinished"></translation>
+        <translation>Krok strojenia</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="956"/>
         <source>Hz</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="1020"/>
         <source>Min BW</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="1025"/>
         <source>Max BW</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="1041"/>
         <source>Atten</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="1081"/>
         <source>dB</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="1092"/>
         <source>Bands</source>
-        <translation type="unfinished"></translation>
+        <translation>Pasma</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="1138"/>
         <source>Region</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="1148"/>
         <source>BSR</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="1158"/>
         <source>End</source>
-        <translation type="unfinished"></translation>
+        <translation>Koniec</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="1163"/>
         <source>Range</source>
-        <translation type="unfinished"></translation>
+        <translation>Zakres</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="1178"/>
         <source>Bytes</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="1183"/>
         <source>Colour</source>
-        <translation type="unfinished"></translation>
+        <translation>Kolor</translation>
     </message>
     <message>
         <location filename="../rigcreator.cpp" line="108"/>
@@ -1842,27 +1845,27 @@ p, li { white-space: pre-wrap; }
         <location filename="../rigcreator.cpp" line="550"/>
         <location filename="../rigcreator.cpp" line="552"/>
         <source>Select Rig Filename</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.cpp" line="162"/>
         <source>Not a rig definition</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.cpp" line="163"/>
         <source>File %0 does not appear to be a valid Rig definition file</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.cpp" line="821"/>
         <source>rig creator</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../rigcreator.cpp" line="821"/>
         <source>Changes will be lost!</source>
-        <translation type="unfinished"></translation>
+        <translation>Zmiany zostaną utracone!</translation>
     </message>
 </context>
 <context>
@@ -1870,88 +1873,88 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../satellitesetup.ui" line="32"/>
         <source>Satellite Setup</source>
-        <translation type="unfinished"></translation>
+        <translation>Konfiguracja Satelity</translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="102"/>
         <source>Satellite Setup:</source>
-        <translation type="unfinished"></translation>
+        <translation>Konfiguracja Satelity:</translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="142"/>
         <source>Type:</source>
-        <translation type="unfinished"></translation>
+        <translation>Rodzaj:</translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="149"/>
         <source>Linear Inverting</source>
-        <translation type="unfinished"></translation>
+        <translation>Liniowy odwracający</translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="156"/>
         <source>Linear Non-Inverting</source>
-        <translation type="unfinished"></translation>
+        <translation>Liniowy nie-odwracający</translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="163"/>
         <source>FM</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="190"/>
         <source>Uplink:</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="213"/>
         <source>Downlink:</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="259"/>
         <source>Uplink from:</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="282"/>
         <location filename="../satellitesetup.ui" line="357"/>
         <source>To:</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="334"/>
         <source>Downlink from:</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="409"/>
         <source>Telemetry: </source>
-        <translation type="unfinished"></translation>
+        <translation>Telemetria: </translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="452"/>
         <source>Additional Spectrum Margin (KHz)</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="469"/>
         <source>(added to both sides)</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="496"/>
         <source>Set VFOs</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="503"/>
         <source>Set Spectrum</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../satellitesetup.ui" line="510"/>
         <source>Add Markers</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
 </context>
 <context>
@@ -1959,17 +1962,17 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../selectradio.ui" line="14"/>
         <source>Select Radio From List</source>
-        <translation type="unfinished"></translation>
+        <translation>Wybierz radio z listy</translation>
     </message>
     <message>
         <location filename="../selectradio.ui" line="35"/>
         <source>Cancel</source>
-        <translation type="unfinished"></translation>
+        <translation>Anuluj</translation>
     </message>
     <message>
         <location filename="../selectradio.ui" line="56"/>
         <source>Rig Name</source>
-        <translation type="unfinished"></translation>
+        <translation>Nazwa radia</translation>
     </message>
     <message>
         <location filename="../selectradio.ui" line="61"/>
@@ -1984,12 +1987,12 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../selectradio.ui" line="71"/>
         <source>Current User</source>
-        <translation type="unfinished"></translation>
+        <translation>Aktualny użytkownik</translation>
     </message>
     <message>
         <location filename="../selectradio.ui" line="76"/>
         <source>User IP Address</source>
-        <translation type="unfinished"></translation>
+        <translation>Adres IP użytkownika</translation>
     </message>
     <message>
         <location filename="../selectradio.ui" line="99"/>
@@ -2007,7 +2010,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../settingswidget.ui" line="14"/>
         <source>Settings</source>
-        <translation type="unfinished"></translation>
+        <translation>Ustawienia</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="59"/>
@@ -3254,7 +3257,7 @@ Do you want to change it? (0=transparent, 255=opaque)</source>
     <message>
         <location filename="../spectrumscope.cpp" line="173"/>
         <source>SCOPE OUT OF RANGE</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">POZA ZAKRESEM</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="184"/>
@@ -3433,7 +3436,7 @@ with a comma between the low and high range.</source>
     <message>
         <location filename="../wfmain.ui" line="197"/>
         <source>Power On</source>
-        <translation type="unfinished"></translation>
+        <translation>Włącz</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="204"/>
@@ -3443,27 +3446,27 @@ with a comma between the low and high range.</source>
     <message>
         <location filename="../wfmain.ui" line="207"/>
         <source>Power Off</source>
-        <translation type="unfinished"></translation>
+        <translation>Wyłącz</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="241"/>
         <source>Tuning Dial</source>
-        <translation type="unfinished"></translation>
+        <translation>Pokrętło strojenia</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="266"/>
         <source>Tuning Step Selection possibly. Or not...</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="269"/>
         <source>Tuning Step Selection</source>
-        <translation type="unfinished"></translation>
+        <translation>Wybór kroku strojenia</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="279"/>
         <source>Frequency Lock</source>
-        <translation type="unfinished"></translation>
+        <translation>Blokada częstotliwości</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="282"/>
@@ -3569,12 +3572,12 @@ with a comma between the low and high range.</source>
         <location filename="../wfmain.ui" line="628"/>
         <location filename="../wfmain.ui" line="631"/>
         <source>Transmit Power</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Moc nadawania</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="634"/>
         <source>Transmit power level</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Poziom mocy nadawnia</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="653"/>
@@ -3594,38 +3597,38 @@ with a comma between the low and high range.</source>
     <message>
         <location filename="../wfmain.ui" line="753"/>
         <source>Transmit and Receive button</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Przycisk Nadawanie Odbiór</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="756"/>
         <source>Transmit</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Nadawanie</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="763"/>
         <source>Enable the Automatic Antenna Tuner</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Włącz Automatyczny Tuner Antenowy</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="766"/>
         <location filename="../wfmain.ui" line="772"/>
         <source>Enable ATU</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Aktywuj ATU</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="769"/>
         <source>Enable or disable the automatic antenna tuner</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Włącz lub wyłącz automatyczny tuner antenowy</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="779"/>
         <source>Start the automatic antenna tuner cycle</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Rozpocznij automatyczne strojenie anteny</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="782"/>
         <source>Tune</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Strojenie</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="789"/>
@@ -3650,7 +3653,7 @@ with a comma between the low and high range.</source>
     <message>
         <location filename="../wfmain.ui" line="809"/>
         <source>Memories</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Pamięci</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="832"/>
@@ -3715,17 +3718,17 @@ with a comma between the low and high range.</source>
     <message>
         <location filename="../wfmain.ui" line="1059"/>
         <source>About</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">O Aplikacji</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="1066"/>
         <source>Settings</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Ustawienia</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="1073"/>
         <source>Save Settings</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Zapisz ustawienia</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="1080"/>
@@ -3740,12 +3743,12 @@ with a comma between the low and high range.</source>
     <message>
         <location filename="../wfmain.ui" line="1094"/>
         <source>Bands</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Pasma</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="1101"/>
         <source>Frequency</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Częstotliwość</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="1108"/>
@@ -3755,50 +3758,50 @@ with a comma between the low and high range.</source>
     <message>
         <location filename="../wfmain.ui" line="1128"/>
         <source>Connect to Radio</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Połącz się do radia</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="1154"/>
         <source> Exit Program</source>
-        <translation type="unfinished"></translation>
+        <translation> Wyjdź z programu</translation>
     </message>
     <message>
         <location filename="../wfmain.cpp" line="2596"/>
         <source>wfview</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../wfmain.cpp" line="2597"/>
         <source>Are you sure you wish to reset the USB controllers?</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../wfmain.cpp" line="4081"/>
         <location filename="../wfmain.cpp" line="4660"/>
         <source>Don&apos;t ask me again</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../wfmain.cpp" line="4082"/>
         <source>Don&apos;t ask me to confirm exit again</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../wfmain.cpp" line="4084"/>
         <source>Are you sure you wish to exit?
 </source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../wfmain.cpp" line="4170"/>
         <source>Revert settings</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../wfmain.cpp" line="4171"/>
         <source>Are you sure you wish to reset all wfview settings?
 If so, wfview will exit and you will need to start the program again.</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../wfmain.cpp" line="4662"/>
