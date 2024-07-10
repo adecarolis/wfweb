@@ -472,8 +472,8 @@ void wfmain::openRig()
         usingLAN = true;
         // "We need to setup the tx/rx audio:
         udpPrefs.waterfallFormat = prefs.waterfallFormat;
-        // 10 second connection timeout.
-        ConnectionTimer.start(10000);
+        // 60 second connection timeout.
+        ConnectionTimer.start(60000);
         emit sendCommSetup(rigList, prefs.radioCIVAddr, udpPrefs, prefs.rxSetup, prefs.txSetup, prefs.virtualSerialPort, prefs.tcpPort);
     } else {
         if( (prefs.serialPortRadio.toLower() == QString("auto")))
@@ -4968,7 +4968,7 @@ void wfmain::setDebugLogging(bool debugModeOn)
 void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
 {
     // Open stream file writes
-    bool insaneDebugLogging = false;
+    bool insaneDebugLogging = true;
     if (type == QtDebugMsg && !debugModeLogging)
     {
         return;

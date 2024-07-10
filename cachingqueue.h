@@ -77,10 +77,10 @@ private:
 
     QMutex mutex;
 
-    QMultiMap <queuePriority,queueItem> queue;
-    QMultiMap<funcs,cacheItem> cache;
-    QQueue<cacheItem> items;
-    QQueue<QString> messages;
+    QMultiMap <queuePriority,queueItem>* queue = Q_NULLPTR;
+    QMultiMap<funcs,cacheItem>* cache = Q_NULLPTR;
+    QQueue<cacheItem>* items = Q_NULLPTR;
+    QQueue<QString>* messages = Q_NULLPTR;
 
     // Command to set cache value
     void setCache(funcs func, QVariant val, uchar receiver=0);
@@ -90,7 +90,7 @@ private:
 
     // Various other values
     bool aborted=false;
-    QWaitCondition waiting;
+    QWaitCondition* waiting = Q_NULLPTR;
     qint64 queueInterval=-1; // Don't start the timer!
     
     rigCapabilities* rigCaps = Q_NULLPTR; // Must be NULL until a radio is connected
@@ -122,8 +122,8 @@ public:
 
     cacheItem getCache(funcs func, uchar receiver=0);
 
-    QMultiMap<funcs,cacheItem> getCacheItems();
-    QMultiMap <queuePriority,queueItem> getQueueItems();
+    QMultiMap <funcs,cacheItem>* getCacheItems();
+    QMultiMap <queuePriority,queueItem>* getQueueItems();
     void lockMutex() {mutex.lock();}
     void unlockMutex() {mutex.unlock();}
     void setRigCaps(rigCapabilities* caps) { if (rigCaps != caps) { rigCaps = caps; emit rigCapsUpdated(rigCaps);} }
