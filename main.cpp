@@ -3,6 +3,7 @@
 #include "keyboard.h"
 #else
 #include <QApplication>
+#include <QTranslator>
 #endif
 
 #ifdef Q_OS_WIN
@@ -93,6 +94,20 @@ int main(int argc, char *argv[])
         .arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture())
         .arg(QT_VERSION_STR).arg(qVersion());
 #endif
+
+    QTranslator myappTranslator;
+    qDebug() << "Current translation language: " << myappTranslator.language();
+
+    bool trResult = myappTranslator.load(QLocale(), QLatin1String("wfview"), QLatin1String("_"), QLatin1String(":/translations"));
+    if(trResult) {
+        qDebug() << "Recognized requested language and loaded the translations (or at least found the /translations resource folder). Installing translator.";
+        a.installTranslator(&myappTranslator);
+    } else {
+        qDebug() << "Could not load translation.";
+    }
+
+    qDebug() << "Changed to translation language: " << myappTranslator.language();
+
     for(int c=1; c<argc; c++)
     {
         //qInfo() << "Argc: " << c << " argument: " << argv[c];

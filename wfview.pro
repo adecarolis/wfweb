@@ -25,6 +25,8 @@ DEFINES += WFVIEW_VERSION=\\\"1.90\\\"
 
 DEFINES += BUILD_WFVIEW
 
+CONFIG += c++17
+
 CONFIG(debug, release|debug) {
     # For Debug builds only:
     linux:QMAKE_CXXFLAGS += -faligned-new
@@ -38,6 +40,17 @@ CONFIG(debug, release|debug) {
     linux:QMAKE_LFLAGS += -O2 -s
     win32:DESTDIR = wfview-debug
 }
+
+TRANSLATIONS += translations/wfview_en.ts \
+                translations/wfview_gb.ts \
+                translations/wfview_it.ts \
+                translations/wfview_tr.ts \
+                translations/wfview_de.ts \
+                translations/wfview_ja.ts \
+                translations/wfview_zh_TW.ts \
+                translations/wfview_cs_CZ.ts \
+                translations/wfview_pl.ts
+
 
 
 # RTAudio defines
@@ -106,16 +119,17 @@ macx{
 QMAKE_TARGET_BUNDLE_PREFIX = org.wfview
 
 !win32:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
-
 !win32:DEFINES += GITSHORT="\\\"$(shell git -C \"$$PWD\" rev-parse --short HEAD)\\\""
-win32:DEFINES += GITSHORT=\\\"$$system(git -C $$PWD rev-parse --short HEAD)\\\"
 
-win32:DEFINES += HOST=\\\"wfview.org\\\"
-win32:DEFINES += UNAME=\\\"build\\\"
+win32:DEFINES += GITSHORT=\\\"$$system(git -C $$PWD rev-parse --short HEAD)\\\"
+win32:DEFINES += HOST=\\\"$$system(hostname)\\\"
+win32:DEFINES += UNAME=\\\"$$system(echo %USER%)\\\"
 
 
 RESOURCES += qdarkstyle/style.qrc \
-    resources/resources.qrc
+    resources/resources.qrc \
+    translations/translation.qrc
+
 
 unix:target.path = $$PREFIX/bin
 INSTALLS += target
