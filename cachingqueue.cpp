@@ -200,7 +200,9 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
         if (item.recurring && prio == queuePriority::priorityImmediate) {
             qWarning() << "Warning, cannot add unique recurring command with immediate priority!" << funcString[item.command];
         } else {
-            queue.remove(prio,item);
+            int count=queue.remove(prio,item);
+            if (count>0)
+                qDebug() << "cachingQueue()::addUnique deleted" << count << "entries from queue for" << funcString[item.command] << "on receiver" << item.receiver;
 
             if (item.recurring) {
                 // also insert an immediate command to get the current value "now" (removes the need to get initial rigstate)
@@ -223,7 +225,9 @@ void cachingQueue::del(funcs func, uchar receiver)
         auto it = std::find_if(queue.begin(), queue.end(), [func,receiver](const queueItem& c) {  return (c.command == func && c.receiver == receiver && c.recurring); });
         //auto it(queue.begin());
         if (it != queue.end()) {
-            queue.remove(it.key(),it.value());
+            int count = queue.remove(it.key(),it.value());
+            if (count>0)
+                qDebug() << "cachingQueue()::del" << count << "entries from queue for" << funcString[func] << "on receiver" << receiver;
         }
     }
 }
