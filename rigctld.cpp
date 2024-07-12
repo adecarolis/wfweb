@@ -859,6 +859,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             for (QString &cmd : params) {
                 sendCmd=sendCmd+cmd+" ";
             }
+            sendCmd.chop(1);
             val.setValue(sendCmd);
             break;
         }
@@ -997,7 +998,9 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         }
         case typeString:
         {
+            // Stop sending CW if a blank command is received.
             queue->add(priorityImmediate, queueItem(func, QString(QChar(0xff)),false,0));
+            ret = RIG_OK;
         }
         default:
             qInfo(logRigCtlD()) << "Unsupported type (FIXME):" << item.value.typeName();
