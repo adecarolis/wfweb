@@ -4968,7 +4968,7 @@ void wfmain::setDebugLogging(bool debugModeOn)
 void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
 {
     // Open stream file writes
-    bool insaneDebugLogging = true;
+    bool insaneDebugLogging = false;
     if (type == QtDebugMsg && !debugModeLogging)
     {
         return;

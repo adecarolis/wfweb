@@ -173,6 +173,10 @@ QString debugWindow::getValue(QVariant val)
             centerSpanData i = val.value<centerSpanData>();
             value = QString("Type:%0 Freq:%1 Name:%2").arg(i.cstype).arg(i.freq).arg(i.name);
         }
+        else if (!strcmp(val.typeName(),"QString"))
+        {
+            value = val.value<QString>();
+        }
         else
         {
             value = QString("%0: <nosup>").arg(val.typeName());

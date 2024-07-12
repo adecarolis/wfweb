@@ -855,7 +855,11 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         case typeString:
         {
             // Only used for CW?
-            val.setValue(params[0]);
+            QString sendCmd;
+            for (QString &cmd : params) {
+                sendCmd=sendCmd+cmd+" ";
+            }
+            val.setValue(sendCmd);
             break;
         }
         default:
@@ -990,6 +994,10 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
                 response.append(QString("%0").arg(m.pass));
             }
             break;
+        }
+        case typeString:
+        {
+            queue->add(priorityImmediate, queueItem(func, QString(QChar(0xff)),false,0));
         }
         default:
             qInfo(logRigCtlD()) << "Unsupported type (FIXME):" << item.value.typeName();
