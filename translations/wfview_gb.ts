@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.1">
+<TS version="2.1" language="en_GB">
 <context>
     <name>FirstTimeSetup</name>
     <message>
@@ -2474,7 +2474,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="1187"/>
         <source>Color scheme</source>
-        <translation type="unfinished"></translation>
+        <translation>Colour scheme</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="1194"/>
@@ -2484,7 +2484,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="1216"/>
         <source>Select a color preset here.</source>
-        <translation type="unfinished"></translation>
+        <translation>Select a colour preset here.</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="853"/>
@@ -2525,7 +2525,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="1248"/>
         <source>Revert the selected color preset to the default.</source>
-        <translation type="unfinished"></translation>
+        <translation>Revert the selected colour preset to the default.</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="1251"/>
@@ -2535,7 +2535,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="1258"/>
         <source>Rename the selected color preset. Max length is 10 characters.</source>
-        <translation type="unfinished"></translation>
+        <translation>Rename the selected colour preset. Max length is 10 characters.</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="1261"/>
@@ -2546,7 +2546,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="1301"/>
         <source>User-defined Color Editor</source>
-        <translation type="unfinished"></translation>
+        <translation>User-defined Colour Editor</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="1367"/>
@@ -2596,7 +2596,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="1512"/>
         <source>Color text format is #AARRGGBB, where AA is the &quot;alpha&quot; channel, and value &quot;00&quot; is totally transparent, and &quot;ff&quot; is totally opaque.</source>
-        <translation type="unfinished"></translation>
+        <translation>Colour text format is #AARRGGBB, where AA is the &quot;alpha&quot; channel, and value &quot;00&quot; is totally transparent, and &quot;ff&quot; is totally opaque.</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="1522"/>
@@ -3365,17 +3365,17 @@ Do you want to change it? (0=transparent, 255=opaque)</source>
     <message>
         <location filename="../spectrumscope.cpp" line="285"/>
         <source>Waterfall display color theme</source>
-        <translation type="unfinished"></translation>
+        <translation>Waterfall display colour theme</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="286"/>
         <source>Selects the color theme for the waterfall display</source>
-        <translation type="unfinished"></translation>
+        <translation>Selects the colour theme for the waterfall display</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="287"/>
         <source>Waterfall color theme</source>
-        <translation type="unfinished"></translation>
+        <translation>Waterfall colour theme</translation>
     </message>
     <message>
         <location filename="../spectrumscope.cpp" line="301"/>
