@@ -41,13 +41,13 @@ settingswidget::~settingswidget()
 void settingswidget::createSettingsListItems()
 {
     // Add items to the settings tab list widget
-    ui->settingsList->addItem("Radio Access");     // 0
-    ui->settingsList->addItem("User Interface");   // 1
-    ui->settingsList->addItem("Radio Settings");   // 2
-    ui->settingsList->addItem("Radio Server");     // 3
-    ui->settingsList->addItem("External Control"); // 4
-    ui->settingsList->addItem("DX Cluster");       // 5
-    ui->settingsList->addItem("Experimental");     // 6
+    ui->settingsList->addItem(tr("Radio Access"));     // 0
+    ui->settingsList->addItem(tr("User Interface"));   // 1
+    ui->settingsList->addItem(tr("Radio Settings"));   // 2
+    ui->settingsList->addItem(tr("Radio Server"));     // 3
+    ui->settingsList->addItem(tr("External Control")); // 4
+    ui->settingsList->addItem(tr("DX Cluster"));       // 5
+    ui->settingsList->addItem(tr("Experimental"));     // 6
     //ui->settingsList->addItem("Audio Processing"); // 7
     ui->settingsStack->setCurrentIndex(0);
 }
@@ -1250,7 +1250,7 @@ void settingswidget::serverAddUserLine(int row, const QString &user, const QStri
     ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 1, password);
 
     QComboBox* comboBox = new QComboBox();
-    comboBox->insertItems(0, { "Admin User", "Normal User","Normal with no TX","Monitor only" });
+    comboBox->insertItems(0, { tr("Admin User"), tr("Normal User"), tr("Normal with no TX","Monitor only")});
     comboBox->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
     comboBox->setProperty("col", (int)2);
     comboBox->setCurrentIndex(type);
@@ -1258,7 +1258,7 @@ void settingswidget::serverAddUserLine(int row, const QString &user, const QStri
     ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 2, comboBox);
 
     QPushButton* button = new QPushButton();
-    button->setText("Delete");
+    button->setText(tr("Delete"));
     button->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
     button->setProperty("col", (int)3);
     connect(button, SIGNAL(clicked()), this, SLOT(onServerUserFieldChanged()));

@@ -14,13 +14,14 @@ FirstTimeSetup::FirstTimeSetup(QWidget *parent) :
     ui->step2GroupBox->setHidden(true);
     ui->backBtn->setHidden(true);
 
-    serialText1 = QString("Serial Port Name");
-    serialText2 = QString("Baud Rate");
+    serialText1 = QString(tr("Serial Port Name"));
+    serialText2 = QString(tr("Baud Rate"));
     serialText3 = QString("");
 
-    networkText1 = QString("Radio IP address, UDP Port Numbers");
-    networkText2 = QString("Radio Username, Radio Password");
-    networkText2 = QString("Mic and Speaker on THIS PC");
+    networkText1 = QString(tr("Radio IP address, UDP Port Numbers"));
+    networkText2 = QString(tr("Radio Username, Radio Password"));
+    networkText2 = QString(tr("Mic and Speaker on THIS PC"));
+
 }
 
 FirstTimeSetup::~FirstTimeSetup()
@@ -40,7 +41,7 @@ void FirstTimeSetup::on_nextBtn_clicked()
     switch (setupState) {
     case setupInitial:
         // go to step 2:
-        ui->nextBtn->setText("Finish");
+        ui->nextBtn->setText(tr("Finish"));
         ui->step1GroupBox->setHidden(true);
         ui->step2GroupBox->setHidden(false);
         if(isNetwork) {
@@ -99,7 +100,7 @@ void FirstTimeSetup::on_serialPortThisPC_clicked(bool checked)
 void FirstTimeSetup::on_backBtn_clicked()
 {
     setupState = setupInitial;
-    ui->nextBtn->setText("Next");
+    ui->nextBtn->setText(tr("Next"));
     ui->step1GroupBox->setHidden(false);
     ui->step2GroupBox->setHidden(true);
     ui->backBtn->setHidden(true);
