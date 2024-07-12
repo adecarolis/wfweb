@@ -42,7 +42,7 @@ CONFIG(debug, release|debug) {
 }
 
 TRANSLATIONS += translations/wfview_en.ts \
-                translations/wfview_gb.ts \
+                translations/wfview_en_GB.ts \
                 translations/wfview_it.ts \
                 translations/wfview_tr.ts \
                 translations/wfview_de.ts \
