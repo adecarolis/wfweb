@@ -233,7 +233,7 @@ static const commandStruct commands_list[] =
     { 'w',  "send_cmd",         funcNone,               typeUChar,    ARG_IN1 | ARG_IN_LINE | ARG_OUT2 | ARG_NOVFO, "Cmd", "Reply" },
     { 'W',  "send_cmd_rx",      funcNone,               typeUChar,    ARG_IN | ARG_OUT2 | ARG_NOVFO, "Cmd", "Reply"},
     { 'b',  "send_morse",       funcSendCW,             typeString,    ARG_IN | ARG_NOVFO  | ARG_IN_LINE, "Morse" },
-    { 0xbb, "stop_morse",       funcSendCW,             typeUChar,    },
+    { 0xbb, "stop_morse",       funcSendCW,             typeString,   },
     { 0xbc, "wait_morse",       funcSendCW,             typeUChar,    },
     { 0x94, "send_voice_mem",   funcNone,               typeUChar,    ARG_IN, "Voice Mem#" },
     { 0x8b, "get_dcd",          funcNone,               typeUChar,    ARG_OUT, "DCD" },
@@ -857,7 +857,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             // Only used for CW?
             QString sendCmd;
             for (QString &cmd : params) {
-                sendCmd=sendCmd+cmd+" ";
+                sendCmd =sendCmd+cmd+" ";
             }
             sendCmd.chop(1);
             val.setValue(sendCmd);
