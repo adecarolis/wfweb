@@ -2372,7 +2372,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
         <location filename="../settingswidget.ui" line="944"/>
         <location filename="../settingswidget.ui" line="1024"/>
         <source>None</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Brak</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="954"/>
@@ -2823,7 +2823,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="2394"/>
         <source>Enable</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Aktywuj</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="2418"/>
@@ -3061,7 +3061,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     <message>
         <location filename="../settingswidget.ui" line="3431"/>
         <source>Save Settings</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Zapisz ustawienia</translation>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="3438"/>
@@ -3753,7 +3753,7 @@ with a comma between the low and high range.</source>
     <message>
         <location filename="../wfmain.ui" line="1108"/>
         <source>Rig Creator</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Konfigurator radia</translation>
     </message>
     <message>
         <location filename="../wfmain.ui" line="1128"/>
