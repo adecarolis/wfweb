@@ -396,7 +396,7 @@ enum usbDeviceType { usbNone = 0, shuttleXpress, shuttlePro2,
                      StreamDeckMini,StreamDeckMiniV2,StreamDeckOriginal,StreamDeckOriginalV2,
                      StreamDeckOriginalMK2,StreamDeckXL,StreamDeckXLV2,StreamDeckPedal, StreamDeckPlus,
                      XKeysXK3
-                   };
+};
 
 enum usbCommandType{ commandButton, commandKnob, commandAny };
 enum usbFeatureType { featureReset,featureResetKeys, featureEventsA, featureEventsB, featureFirmware, featureSerial, featureButton, featureSensitivity, featureBrightness,

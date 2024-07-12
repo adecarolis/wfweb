@@ -1235,7 +1235,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                     {
 
                         myImage.save(&butBuffer, "BMP");
-                        quint16 payloadLen = dev->type.maxPayload - quint16(sizeof(streamdeck_v1_image_header));
+						quint16 payloadLen = dev->type.maxPayload - quint16(sizeof(streamdeck_v1_image_header));
 
                         if (dev->type.model == usbDeviceType::StreamDeckOriginal) {
                             // Special case for buttons on original StreamDeck
