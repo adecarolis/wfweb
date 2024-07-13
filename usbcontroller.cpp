@@ -426,10 +426,12 @@ void usbController::run()
                         }
                     }
                 }
-                // Let the UI know we have a new controller
+                // Let the UI know we have a new controller, but unlock the mutex first!
+                mutex->unlock();
                 emit newDevice(dev);
 
             } else {
+                mutex->unlock();
                 emit setConnected(dev);
             }
         }

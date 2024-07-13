@@ -3541,6 +3541,13 @@ void wfmain:: getInitialRigState()
     ui->scopeDualBtn->setVisible(rigCaps->commands.contains(funcScopeSingleDual));
     ui->antennaGroup->setVisible(rigCaps->commands.contains(funcAntenna));
     ui->preampAttGroup->setVisible(rigCaps->commands.contains(funcPreamp));
+
+    ui->nbEnableChk->setEnabled(rigCaps->commands.contains(funcNoiseBlanker));
+    ui->nrEnableChk->setEnabled(rigCaps->commands.contains(funcNoiseReduction));
+    ui->ipPlusEnableChk->setEnabled(rigCaps->commands.contains(funcIPPlus));
+    ui->compEnableChk->setEnabled(rigCaps->commands.contains(funcCompressor));
+    ui->voxEnableChk->setEnabled(rigCaps->commands.contains(funcVox));
+
     quint64 start=UINT64_MAX;
     quint64 end=0;
     for (auto &band: rigCaps->bands)
@@ -4455,10 +4462,6 @@ void wfmain::receiveMeter(meter_t inMeter, unsigned char level,unsigned char rec
     }
 }
 
-void wfmain::receiveComp(bool en)
-{
-    emit sendLevel(funcCompressor,en);
-}
 
 void wfmain::receiveMonitor(bool en)
 {
@@ -4469,20 +4472,7 @@ void wfmain::receiveMonitor(bool en)
     emit sendLevel(funcMonitor,en);
 }
 
-void wfmain::receiveVox(bool en)
-{
-    emit sendLevel(funcVox,en);
-}
 
-void wfmain::receiveNB(bool en)
-{
-    emit sendLevel(funcNoiseBlanker,en);
-}
-
-void wfmain::receiveNR(bool en)
-{
-    emit sendLevel(funcNoiseReduction,en);
-}
 
 void wfmain::on_txPowerSlider_valueChanged(int value)
 {
@@ -5352,12 +5342,18 @@ void wfmain::receiveValue(cacheItem val){
     case funcAGCTime:
         break;
     case funcNoiseBlanker:
-        receiveNB(val.value.value<bool>());
+        if (val.receiver == currentReceiver) {
+            ui->nbEnableChk->setChecked(val.value.value<bool>());
+            emit sendLevel(funcNoiseBlanker,val.value.value<bool>());
+        }
         break;
     case funcAudioPeakFilter:
         break;
     case funcNoiseReduction:
-        receiveNR(val.value.value<bool>());
+        if (val.receiver == currentReceiver) {
+            ui->nrEnableChk->setChecked(val.value.value<bool>());
+            emit sendLevel(funcNoiseReduction,val.value.value<bool>());
+        }
         break;
     case funcAutoNotch:
         break;
@@ -5372,12 +5368,17 @@ void wfmain::receiveValue(cacheItem val){
     case funcRepeaterCSQL:
         break;
     case funcCompressor:
-        receiveComp(val.value.value<bool>());
+        if (val.receiver == currentReceiver) {
+            ui->compEnableChk->setChecked(val.value.value<bool>());
+            emit sendLevel(funcCompressor,val.value.value<bool>());
+        }
         break;
     case funcMonitor:
         receiveMonitor(val.value.value<bool>());
         break;
     case funcVox:
+        ui->voxEnableChk->setChecked(val.value.value<bool>());
+        emit sendLevel(funcVox,val.value.value<bool>());
         break;
     case funcManualNotch:
         break;
@@ -5401,6 +5402,10 @@ void wfmain::receiveValue(cacheItem val){
     case funcToneSquelchType:
         break;
     case funcIPPlus:
+        if (val.receiver == currentReceiver) {
+            ui->ipPlusEnableChk->setChecked(val.value.value<bool>());
+            emit sendLevel(funcIPPlus,val.value.value<bool>());
+        }
         break;
     case funcBreakIn:
         cw->handleBreakInMode(val.value.value<uchar>());
@@ -5988,6 +5993,34 @@ void wfmain::radioInUse(quint8 radio, bool admin, quint8 busy, QString user, QSt
    qDebug(logSystem()) << "Is this user an admin? " << ((admin)?"yes":"no");
    isRadioAdmin = admin;
 }
+
+
+// Assorted checkboxes
+void wfmain::on_nbEnableChk_clicked(bool checked)
+{
+    queue->addUnique(priorityImmediate,queueItem(funcNoiseBlanker,QVariant::fromValue<bool>(checked),false,currentReceiver));
+}
+
+void wfmain::on_nrEnableChk_clicked(bool checked)
+{
+    queue->addUnique(priorityImmediate,queueItem(funcNoiseReduction,QVariant::fromValue<bool>(checked),false,currentReceiver));
+}
+
+void wfmain::on_ipPlusEnableChk_clicked(bool checked)
+{
+    queue->addUnique(priorityImmediate,queueItem(funcIPPlus,QVariant::fromValue<bool>(checked),false,currentReceiver));
+}
+
+void wfmain::on_compEnableChk_clicked(bool checked)
+{
+    queue->addUnique(priorityImmediate,queueItem(funcCompressor,QVariant::fromValue<bool>(checked),false,currentReceiver));
+}
+
+void wfmain::on_voxEnableChk_clicked(bool checked)
+{
+    queue->addUnique(priorityImmediate,queueItem(funcVox,QVariant::fromValue<bool>(checked),false,currentReceiver));
+}
+
 
 /* USB Hotplug support added at the end of the file for convenience */
 #ifdef USB_HOTPLUG

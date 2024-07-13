@@ -387,11 +387,7 @@ private slots:
     //void receiveDuplexMode(duplexMode_t dm);
     void receivePassband(quint16 pass);
     void receiveCwPitch(unsigned char pitch);
-    void receiveVox(bool en);
     void receiveMonitor(bool en);
-    void receiveComp(bool en);
-    void receiveNB(bool en);
-    void receiveNR(bool en);
     void receiveTuningStep(unsigned char step);
 
     // Levels:
@@ -507,6 +503,12 @@ private slots:
     void getInitialRigState();
     void initPeriodicCommands();
 
+    // Assorted checkboxes
+    void on_nbEnableChk_clicked(bool checked);
+    void on_nrEnableChk_clicked(bool checked);
+    void on_ipPlusEnableChk_clicked(bool checked);
+    void on_compEnableChk_clicked(bool checked);
+    void on_voxEnableChk_clicked(bool checked);
 
 private:
     Ui::wfmain *ui; // Main UI

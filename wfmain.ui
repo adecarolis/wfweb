@@ -336,14 +336,14 @@
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_4">
            <item>
-            <spacer name="verticalSpacer_2">
+            <spacer name="verticalSpacer">
              <property name="orientation">
               <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
                <width>20</width>
-               <height>40</height>
+               <height>5</height>
               </size>
              </property>
             </spacer>
@@ -381,7 +381,7 @@
                  <property name="minimumSize">
                   <size>
                    <width>0</width>
-                   <height>100</height>
+                   <height>120</height>
                   </size>
                  </property>
                  <property name="maximumSize">
@@ -444,7 +444,7 @@
                  <property name="minimumSize">
                   <size>
                    <width>0</width>
-                   <height>100</height>
+                   <height>120</height>
                   </size>
                  </property>
                  <property name="maximumSize">
@@ -501,7 +501,7 @@
                  <property name="minimumSize">
                   <size>
                    <width>0</width>
-                   <height>100</height>
+                   <height>120</height>
                   </size>
                  </property>
                  <property name="maximumSize">
@@ -558,7 +558,7 @@
                  <property name="minimumSize">
                   <size>
                    <width>0</width>
-                   <height>100</height>
+                   <height>120</height>
                   </size>
                  </property>
                  <property name="maximumSize">
@@ -615,7 +615,7 @@
                  <property name="minimumSize">
                   <size>
                    <width>0</width>
-                   <height>100</height>
+                   <height>120</height>
                   </size>
                  </property>
                  <property name="maximumSize">
@@ -669,7 +669,7 @@
                  <property name="minimumSize">
                   <size>
                    <width>0</width>
-                   <height>100</height>
+                   <height>120</height>
                   </size>
                  </property>
                  <property name="maximumSize">
@@ -719,17 +719,77 @@
             </layout>
            </item>
            <item>
-            <spacer name="verticalSpacer">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
+            <widget class="QGroupBox" name="OtherControlsGrp">
+             <property name="title">
+              <string/>
              </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
+             <layout class="QVBoxLayout" name="verticalLayout_3">
+              <property name="spacing">
+               <number>3</number>
+              </property>
+              <property name="leftMargin">
+               <number>3</number>
+              </property>
+              <property name="topMargin">
+               <number>3</number>
+              </property>
+              <property name="rightMargin">
+               <number>3</number>
+              </property>
+              <property name="bottomMargin">
+               <number>3</number>
+              </property>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_6">
+                <property name="spacing">
+                 <number>3</number>
+                </property>
+                <item>
+                 <widget class="QCheckBox" name="nbEnableChk">
+                  <property name="text">
+                   <string>NB</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="nrEnableChk">
+                  <property name="text">
+                   <string>NR</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="ipPlusEnableChk">
+                  <property name="text">
+                   <string>IP+</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout">
+                <property name="spacing">
+                 <number>3</number>
+                </property>
+                <item>
+                 <widget class="QCheckBox" name="compEnableChk">
+                  <property name="text">
+                   <string>COMP</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="voxEnableChk">
+                  <property name="text">
+                   <string>VOX</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </widget>
            </item>
           </layout>
          </item>
@@ -1146,7 +1206,6 @@
         <widget class="QPushButton" name="exitBtn">
          <property name="font">
           <font>
-           <weight>50</weight>
            <bold>false</bold>
           </font>
          </property>
