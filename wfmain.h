@@ -710,7 +710,7 @@ private:
 
     void changeModLabelAndSlider(rigInput source);
 
-    void changeMode(rigMode_t mode);
+    void changeMode(rigMode_t mode, unsigned char rx=0);
     void changeMode(rigMode_t mode, unsigned char data, unsigned char rx=0);
 
     void connectionHandler(bool connect);
@@ -790,7 +790,7 @@ private:
 
     bool subScope = false;
 
-    availableBands lastRequestedBand=bandGen;
+    //availableBands lastRequestedBand=bandGen;
 
     SERVERCONFIG serverConfig;
 

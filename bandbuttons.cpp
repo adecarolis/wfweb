@@ -35,12 +35,16 @@ void bandbuttons::receiveRigCaps(rigCapabilities* rc)
         qDebug(logGui()) << "Bands in this rigcaps: ";
         for(size_t i=0; i < rigCaps->bands.size(); i++)
         {
-            qDebug(logGui()) << "band[" << i << "]: " << (unsigned char)rigCaps->bands.at(i).band;
+            qDebug(logGui()) << "band[" << i << "]: " << (unsigned char)rigCaps->bands[i].band;
         }
 
         for(size_t i=0; i < 20; i++)
         {
             qDebug(logGui()) << "bsr[" << i << "]: " << (unsigned char)rigCaps->bsr[i];
+        }
+        if (rigCaps->bands.size()) {
+            // Set current band to the first one (as we don't know what it actually is yet!)
+            requestedBand = rigCaps->bands[0].band;
         }
     }
     setUIToRig();
@@ -183,6 +187,7 @@ void bandbuttons::bandStackBtnClick(availableBands band)
                     queue->add(priorityImmediate,queueItem(funcBandStackReg,
                             QVariant::fromValue<bandStackType>(bandStackType(b.bsr,ui->bandStkPopdown->currentIndex()+1)),false,false));
                 }
+                requestedBand = band;
                 break;
             }
         }

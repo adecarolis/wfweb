@@ -1353,35 +1353,36 @@ void wfmain::buttonControl(const COMMAND* cmd)
     switch (cmd->command) {
     case funcBandStackReg:
         if (cmd->value == 100) {
+
             for (size_t i = 0; i < rigCaps->bands.size(); i++) {
-                if (rigCaps->bands[i].band == lastRequestedBand)
+                if (rigCaps->bands[i].band == bandbtns->currentBand())
                 {
                     if (i > 0) {
-                        //issueCmd(cmdGetBandStackReg, rigCaps->bands[i - 1].band);
+                        bandbtns->setBand(rigCaps->bands[i - 1].band);
                     }
                     else {
-                        //issueCmd(cmdGetBandStackReg, rigCaps->bands[rigCaps->bands.size() - 1].band);
+                        bandbtns->setBand(rigCaps->bands[rigCaps->bands.size() - 1].band);
                     }
                 }
             }
         } else if (cmd->value == -100) {
             for (size_t i = 0; i < rigCaps->bands.size(); i++) {
-                if (rigCaps->bands[i].band == lastRequestedBand)
+                if (rigCaps->bands[i].band == bandbtns->currentBand())
                 {
                     if (i + 1 < rigCaps->bands.size()) {
-                        //issueCmd(cmdGetBandStackReg, rigCaps->bands[i + 1].band);
+                        bandbtns->setBand(rigCaps->bands[i + 1].band);
                     }
                     else {
-                        //issueCmd(cmdGetBandStackReg, rigCaps->bands[0].band);
+                        bandbtns->setBand(rigCaps->bands[0].band);
                     }
                 }
             }
         } else {
             for (auto &band: rigCaps->bands)
             {
-                if (band.band == cmd->value)
+                if (band.band == cmd->band)
                 {
-                    //issueCmd((cmds)cmd->command, cmd->band);
+                    bandbtns->setBand(cmd->band);
                 }
             }
         }
@@ -3139,37 +3140,37 @@ void wfmain::shortcutF4()
 void wfmain::shortcutF5()
 {
     // LSB
-    changeMode(modeLSB, false);
+    changeMode(modeLSB, false, currentReceiver);
 }
 
 void wfmain::shortcutF6()
 {
     // USB
-    changeMode(modeUSB, false);
+    changeMode(modeUSB, false, currentReceiver);
 }
 
 void wfmain::shortcutF7()
 {
     // AM
-    changeMode(modeAM, false);
+    changeMode(modeAM, false, currentReceiver);
 }
 
 void wfmain::shortcutF8()
 {
     // CW
-    changeMode(modeCW, false);
+    changeMode(modeCW, false, currentReceiver);
 }
 
 void wfmain::shortcutF9()
 {
     // USB-D
-    changeMode(modeUSB, true);
+    changeMode(modeUSB, true, currentReceiver);
 }
 
 void wfmain::shortcutF10()
 {
     // FM
-    changeMode(modeFM, false);
+    changeMode(modeFM, false, currentReceiver);
 }
 
 void wfmain::shortcutF12()
@@ -3810,7 +3811,7 @@ void wfmain::changeFullScreenMode(bool checked)
     prefs.useFullScreen = checked;
 }
 
-void wfmain::changeMode(rigMode_t mode)
+void wfmain::changeMode(rigMode_t mode, unsigned char rx)
 {
     bool dataOn = false;
     if(((unsigned char) mode >> 4) == 0x08)
@@ -3819,7 +3820,7 @@ void wfmain::changeMode(rigMode_t mode)
         mode = (rigMode_t)((int)mode & 0x0f);
     }
 
-    changeMode(mode, dataOn);
+    changeMode(mode, dataOn, rx);
 }
 
 void wfmain::changeMode(rigMode_t mode, unsigned char data, unsigned char rx)
@@ -5794,10 +5795,6 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
             {
                 receiver->prepareScope(rigCaps->spectAmpMax, rigCaps->spectLenMax);
             }
-        }
-
-        if (rigCaps->bands.size() > 0) {
-            lastRequestedBand = rigCaps->bands[0].band;
         }
 
         foreach (auto receiver, receivers) {

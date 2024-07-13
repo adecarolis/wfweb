@@ -22,7 +22,8 @@ public:
     ~bandbuttons();
 
     int getBSRNumber(); // returns the BSR combo box position
-
+    void setBand(availableBands band) { bandStackBtnClick(band);};
+    availableBands currentBand() {return requestedBand;};
 
     // flow:
     // User presses button
@@ -91,6 +92,7 @@ private:
     rigCapabilities* rigCaps=Q_NULLPTR;
     bool haveRigCaps = false;
     cachingQueue* queue;
+    availableBands requestedBand;
 };
 
 #endif // BANDBUTTONS_H
