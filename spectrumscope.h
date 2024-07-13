@@ -286,6 +286,7 @@ private:
     uchar numVFO=1;
     bool hasScope=true;
     QString currentRegion="1";
+    spectrumMode_t currentScopeMode=spectrumMode_t::spectModeCenter;
 };
 
 #endif // SPECTRUMSCOPE_H

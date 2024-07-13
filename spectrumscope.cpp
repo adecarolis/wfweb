@@ -976,10 +976,13 @@ void spectrumScope::enableScope(bool en)
 
 void spectrumScope::selectScopeMode(spectrumMode_t m)
 {
-    scopeModeCombo->blockSignals(true);
-    scopeModeCombo->setCurrentIndex(scopeModeCombo->findData(m));
-    scopeModeCombo->blockSignals(false);
-    showHideControls(m);
+    if (m != currentScopeMode) {
+        currentScopeMode = m;
+        scopeModeCombo->blockSignals(true);
+        scopeModeCombo->setCurrentIndex(scopeModeCombo->findData(m));
+        scopeModeCombo->blockSignals(false);
+        showHideControls(m);
+    }
 }
 
 void spectrumScope::selectSpan(centerSpanData s)
@@ -995,7 +998,7 @@ void spectrumScope::updatedScopeMode(int index)
     spectrumMode_t s = scopeModeCombo->itemData(index).value<spectrumMode_t>();
 
     queue->add(priorityImmediate,queueItem((receiver?funcScopeSubMode:funcScopeMainMode),QVariant::fromValue(s),false,receiver));
-
+    currentScopeMode = s;
     showHideControls(s);
 }
 
