@@ -1,14 +1,32 @@
 
-The following highlights are in this 1.6x-release since v1.60:
+The following highlights are in this 1.9x-release since v1.64:
+e.g. since Date:   Sun Jul 16 14:05:53 2023 +0100
 
-+1.60		released
-+1.61		many small fixes for several platforms
-+1.62		cw side tone added
-		performance fix for 9700		
-+1.63		started adding IC-905 (obviously untested)
-		started multi-usb 
+WOW, where to start, eh?
 
-Notes:
+- IP+, NB, NR on/off controls for main RX
+- VOX, COMP on/off
+- rig definition files. Adding a new rig was never so easy
+- dual scope plus controls
+- dual rx
+- Main/Sub swithing
+- translations
+- tabs changed into separate windows
+- scope detach/attach capabilities
+- rewritten rigctld
+- experimental TCI support for rig-control/audio
+- last tuning step store
+- default usb/lsb selection
+- band-limit support on scope radios
+- Tuning by clicking/scrolling on frequency display
+- improved power on/off handling
+- admin memory management mode
+- IC905 support
+- improved caching
+- add support for XKeysXK3
+
+
+
 
 - We know about high CPU usage on RPi.
 - try the audiostack you like the most/what works for you
