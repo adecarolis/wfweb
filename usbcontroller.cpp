@@ -86,7 +86,7 @@ void usbController::init(QMutex* mut,usbDevMap* devs ,QVector<BUTTON>* buts,QVec
     
     hidStatus = hid_init();
     if (hidStatus) {
-        qInfo(logUsbControl()) << "Failed to intialize HID Devices";
+        qInfo(logUsbControl()) << "Failed to initialize HID Devices";
     }
     else {
         
@@ -242,7 +242,7 @@ void usbController::run()
 
     struct hid_device_info* devs;
     devs = hid_enumerate(0x0, 0x0);
-    // Step through all currenly connected devices and add any newly discovered ones to usbDevices.
+    // Step through all currently connected devices and add any newly discovered ones to usbDevices.
     while (devs) {
         auto i = std::find_if(knownDevices.begin(), knownDevices.end(), [devs](const USBTYPE& d)
         { return ((devs->vendor_id == d.manufacturerId) && (devs->product_id == d.productId)
@@ -884,7 +884,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
     int res=0;
     bool sdv1=false;
 
-    // If feature is sensitivity, this is not model dependant and will update the internal sensitivity divider.
+    // If feature is sensitivity, this is not model dependent and will update the internal sensitivity divider.
     if (feature == usbFeatureType::featureSensitivity)
     {
         dev->sensitivity=val;
@@ -1787,7 +1787,7 @@ void usbController::programPages(USBDEVICE* dev, int val)
     
     if (dev->pages > val) {
         qInfo(logUsbControl()) << "Removing unused pages from " << dev->product;
-        // Remove unneded pages
+        // Remove unneeded pages
 
         // Remove old buttons
         for (auto b = buttonList->begin();b != buttonList->end();)

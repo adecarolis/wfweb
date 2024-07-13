@@ -2472,7 +2472,7 @@ Manual CI-V použijte pouze, když rádio neumí CI-V Transcieve
     </message>
     <message>
         <location filename="../settingswidget.ui" line="1134"/>
-        <source>Manual Polling Inteval:</source>
+        <source>Manual Polling Interval:</source>
         <translation>Ruční interval vyčítání:</translation>
     </message>
     <message>

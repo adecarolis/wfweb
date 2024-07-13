@@ -1131,7 +1131,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
               <string>Manual (user-defined) command polling</string>
              </property>
              <property name="text">
-              <string>Manual Polling Inteval:</string>
+              <string>Manual Polling Interval:</string>
              </property>
              <attribute name="buttonGroup">
               <string notr="true">pollingButtonGroup</string>
