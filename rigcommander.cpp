@@ -5,7 +5,7 @@
 #include "logcategories.h"
 #include "printhex.h"
 
-// Copyright 2017-2023 Elliott H. Liggett W6EL and Phil E. Taylor M0VSE
+// Copyright 2017-2024 Elliott H. Liggett W6EL and Phil E. Taylor M0VSE
 
 // This is the master class for rigCommander, subclassed by each manufacturer
 

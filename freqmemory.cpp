@@ -1,7 +1,7 @@
 #include "freqmemory.h"
 #include "logcategories.h"
 
-// Copyright 2017-2020 Elliott H. Liggett
+// Copyright 2017-2024 Elliott H. Liggett
 
 freqMemory::freqMemory()
 {

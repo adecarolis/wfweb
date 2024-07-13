@@ -5,7 +5,7 @@
  *
  * Copyright 2010 Moe Wheatley AE4JY
  * Copyright 2012-2017 Alexandru Csete OZ9AEC
- * Copyright 2023 Phil Taylor M0VSE
+ * Copyright 2024 Phil Taylor M0VSE
  * All rights reserved.
  *
  * This software is released under the "Simplified BSD License".

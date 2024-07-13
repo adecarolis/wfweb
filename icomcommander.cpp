@@ -5,7 +5,7 @@
 #include "logcategories.h"
 #include "printhex.h"
 
-// Copyright 2017-2023 Elliott H. Liggett W6EL and Phil E. Taylor M0VSE
+// Copyright 2017-2024 Elliott H. Liggett W6EL and Phil E. Taylor M0VSE
 
 // This file parses data from the radio and also forms commands to the radio.
 // The radio physical interface is handled by the commHandler() instance "comm"
