@@ -682,7 +682,7 @@ void freqCtrl::drawBkGround(QPainter &Painter)
     Painter.setFont(m_DigitFont);
     Painter.setPen(m_DigitColor);
 
-    char    dgsep = ' ';       // digit group separator
+    char    dgsep = QLocale().groupSeparator().at(0).toLatin1();       // digit group separator
     int     digpos = rect.right() - m_NumDigitsForUnit * cellwidth - 1; // starting digit x position
     for (int i = m_DigStart; i < m_NumDigits; i++)
     {
@@ -697,16 +697,12 @@ void freqCtrl::drawBkGround(QPainter &Painter)
             if (m_Unit == FCTL_UNIT_NONE)
             {
                 if (m_LeadZeroPos > i)
-                    dgsep = '.';
-                else
-                    dgsep = ' ';
+                    dgsep = QLocale().decimalPoint().at(0).toLatin1();
             }
             else
             {
                 if (i == m_DecPos)
-                    dgsep = '.';
-                else
-                    dgsep = ' ';
+                    dgsep = QLocale().decimalPoint().at(0).toLatin1();
             }
             Painter.drawText(m_SepRect[i], Qt::AlignHCenter | Qt::AlignVCenter,
                              QChar(dgsep));
