@@ -2476,7 +2476,7 @@ Manuel CI-V&apos;yi SADECE Transcieve modu desteklenmiyorsa kullanın</translati
     </message>
     <message>
         <location filename="../settingswidget.ui" line="1134"/>
-        <source>Manual Polling Inteval:</source>
+        <source>Manual Polling Interval:</source>
         <translation>Manuel Polling Aralığı:</translation>
     </message>
     <message>
