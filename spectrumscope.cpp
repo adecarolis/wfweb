@@ -1443,8 +1443,6 @@ void spectrumScope::scroll(QWheelEvent *we)
     scrollWheelOffsetAccumulated = 0;
 }
 
-
-
 void spectrumScope::receiveMode(modeInfo m, uchar vfo)
 {
     // Update mode information if mode/filter/data has changed.
@@ -1942,4 +1940,20 @@ void spectrumScope::detachScope(bool state)
     }
     // Force a redraw?
     this->show();
+}
+
+void spectrumScope::changeSpan(char val)
+{
+    if ((val > 0 && spanCombo->currentIndex() < spanCombo->count()-val) ||
+        (val < 0 && spanCombo->currentIndex() > 0))
+    {
+        spanCombo->setCurrentIndex(spanCombo->currentIndex() + val);
+    }
+    else
+    {
+        if (val<0)
+            spanCombo->setCurrentIndex(spanCombo->count()-1);
+        else
+            spanCombo->setCurrentIndex(0);
+    }
 }

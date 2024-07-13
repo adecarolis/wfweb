@@ -1349,6 +1349,7 @@ void wfmain::doShuttle(bool up, unsigned char level)
 void wfmain::buttonControl(const COMMAND* cmd)
 {
     qDebug(logUsbControl()) << QString("executing command: %0 (%1) suffix:%2 value:%3" ).arg(cmd->text).arg(cmd->command).arg(cmd->suffix).arg(cmd->value);
+    unsigned char rx=0;
     switch (cmd->command) {
     case funcBandStackReg:
         if (cmd->value == 100) {
@@ -1385,10 +1386,13 @@ void wfmain::buttonControl(const COMMAND* cmd)
             }
         }
         break;
+    case funcSubMode:
+        rx=1;
+    case funcMainMode:
     case funcModeSet:
         if (cmd->value == 100) {
             for (size_t i = 0; i < rigCaps->modes.size(); i++) {
-                if (rigCaps->modes[i].mk == currentModeInfo.mk)
+                if (rigCaps->modes[i].mk == receivers[rx]->currentMode().mk)
                 {
                     if (i + 1 < rigCaps->modes.size()) {
                         changeMode(rigCaps->modes[i + 1].mk);
@@ -1400,7 +1404,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
             }
         } else if (cmd->value == -100) {
             for (size_t i = 0; i < rigCaps->modes.size(); i++) {
-                if (rigCaps->modes[i].mk == currentModeInfo.mk)
+                if (rigCaps->modes[i].mk == receivers[rx]->currentMode().mk)
                 {
                     if (i>0) {
                         changeMode(rigCaps->modes[i - 1].mk);
@@ -1415,80 +1419,47 @@ void wfmain::buttonControl(const COMMAND* cmd)
         }
         break;
     case funcTuningStep:
-        if (cmd->value == 100) {
-            if (ui->tuningStepCombo->currentIndex() < ui->tuningStepCombo->count()-1)
-            {
-                ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->currentIndex() + 1);
-            }
+        if ((cmd->value > 0 && ui->tuningStepCombo->currentIndex()  < ui->tuningStepCombo->count()-cmd->value) ||
+            (cmd->value < 0 && ui->tuningStepCombo->currentIndex() > 0))
+        {
+            ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->currentIndex() + cmd->value);
+        }
+        else
+        {
+            if (cmd->value < 0)
+                ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->count()-1);
             else
-            {
                 ui->tuningStepCombo->setCurrentIndex(0);
-            }
-        } else if (cmd->value == -100) {
-            if (ui->tuningStepCombo->currentIndex() > 0)
-            {
-                ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->currentIndex() - 1);
-            }
-            else
-            {
-                ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->count() - 1);
-            }
-        } else {
-            //Potentially add option to select specific step size?
         }
         break;
+    case funcScopeSubSpan:
+        rx=1;
     case funcScopeMainSpan:
-        if (cmd->value == 100) {
-            //if (ui->scopeBWCombo->currentIndex() < ui->scopeBWCombo->count()-1)
-            //{
-            //    ui->scopeBWCombo->setCurrentIndex(ui->scopeBWCombo->currentIndex() + 1);
-            //}
-            //else
-            //{
-            //    ui->scopeBWCombo->setCurrentIndex(0);
-            //}
-        } else if (cmd->value == -100) {
-            //if (ui->scopeBWCombo->currentIndex() > 0)
-            //{
-            //    ui->scopeBWCombo->setCurrentIndex(ui->scopeBWCombo->currentIndex() - 1);
-            //}
-            //else
-            //{
-            //    ui->scopeBWCombo->setCurrentIndex(ui->scopeBWCombo->count() - 1);
-            //}
-        } else {
-            //Potentially add option to select specific step size?
+        if (receivers.size()>rx) {
+            receivers[rx]->changeSpan(cmd->value);
         }
         break;
     case funcSubFreq:
+    case funcUnselectedFreq:
+        rx=1;
     case funcMainFreq:
     case funcSelectedFreq:
-    case funcUnselectedFreq:
     {
         freqt f;
-        bool receiver=0;
-        if ((funcs)cmd->command == funcSubFreq && receivers.size()>1) {
-            f.Hz = roundFrequencyWithStep(receivers[1]->getFrequency().Hz, cmd->value, tsWfScrollHz);
-            receiver=1;
-        } else if (receivers.size()){
-            f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, cmd->value, tsWfScrollHz);
+        if (receivers.size()>rx) {
+            f.Hz = roundFrequencyWithStep(receivers[rx]->getFrequency().Hz, cmd->value, tsWfScrollHz);
         } else {
             f.Hz = 0;
         }
         f.MHzDouble = f.Hz / double(1E6);
         f.VFO=(selVFO_t)cmd->suffix;
-        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<freqt>(f),receiver));
+        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<freqt>(f),false,rx));
         break;
     }
     default:
         qInfo(logUsbControl()) << "Command" << cmd->command << "Suffix" << cmd->suffix;
-        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->suffix),false));
+        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->suffix),false,rx));
         break;
-    }
-
-    // Make sure we get status quickly by sending a get command
-    if (cmd->command != funcNone) {
-        queue->add(priorityHigh,(funcs)cmd->command);
     }
 }
 
@@ -3851,28 +3822,28 @@ void wfmain::changeMode(rigMode_t mode)
     changeMode(mode, dataOn);
 }
 
-void wfmain::changeMode(rigMode_t mode, unsigned char data)
+void wfmain::changeMode(rigMode_t mode, unsigned char data, unsigned char rx)
 {
     for (modeInfo &mi: rigCaps->modes)
     {
         if (mi.mk == mode)
         {
-            modeInfo m;
-            m = modeInfo(mi);
-            m.data = data;
-            m.VFO=selVFO_t::activeVFO;
-            if((m.mk != currentModeInfo.mk) && prefs.automaticSidebandSwitching)
+            if(receivers.size() > rx && mi.mk != receivers[rx]->currentMode().mk)
             {
-                queue->add(priorityImmediate,queueItem((rigCaps->commands.contains(funcMainMode)?funcMainMode:funcModeGet),QVariant::fromValue<modeInfo>(m),false));
-                if (!rigCaps->commands.contains(funcMainMode))
-                    queue->add(priorityImmediate,queueItem(funcDataModeWithFilter,QVariant::fromValue<modeInfo>(m),false));
+                modeInfo m;
+                m = modeInfo(mi);
+                m.data = data;
+                m.VFO=selVFO_t::activeVFO;
+                m.filter = receivers[rx]->currentFilter();
+                if (rigCaps->commands.contains(funcMainMode))
+                    queue->add(priorityImmediate,queueItem((rx==0?funcMainMode:funcSubMode),QVariant::fromValue<modeInfo>(m),false,rx));
+                else
+                    queue->add(priorityImmediate,queueItem(funcDataModeWithFilter,QVariant::fromValue<modeInfo>(m),false,rx));
             }
-            usingDataMode = data;
+
             break;
         }
     }
-
-    queue->add(priorityImmediate,(rigCaps->commands.contains(funcMainMode)?funcMainMode:funcModeGet),false);
 }
 
 void wfmain::on_freqDial_valueChanged(int value)

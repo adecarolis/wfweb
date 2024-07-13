@@ -85,6 +85,7 @@ public:
 
     void receiveMode (modeInfo m, uchar vfo=0);
     modeInfo currentMode() {return mode;}
+    uchar currentFilter() {return filterCombo->currentData().toInt();}
     void clearSpans() { spanCombo->clear();}
     void clearMode() { modeCombo->clear();}
     void clearData() { dataCombo->clear();}
@@ -105,6 +106,8 @@ public:
     void setRefLimits(int lower, int upper);
     void setRef(int ref);
     unsigned char getDataMode() { return static_cast<unsigned char>(dataCombo->currentIndex()); }
+
+    void changeSpan(char val);
 
 public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);

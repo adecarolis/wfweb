@@ -711,7 +711,7 @@ private:
     void changeModLabelAndSlider(rigInput source);
 
     void changeMode(rigMode_t mode);
-    void changeMode(rigMode_t mode, unsigned char data);
+    void changeMode(rigMode_t mode, unsigned char data, unsigned char rx=0);
 
     void connectionHandler(bool connect);
 
