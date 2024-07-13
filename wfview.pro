@@ -49,7 +49,8 @@ TRANSLATIONS += translations/wfview_en.ts \
                 translations/wfview_ja.ts \
                 translations/wfview_zh_TW.ts \
                 translations/wfview_cs_CZ.ts \
-                translations/wfview_pl.ts
+                translations/wfview_pl.ts \
+                translations/wfview_nl_NL.ts
 
 
 
