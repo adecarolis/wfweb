@@ -3793,52 +3793,52 @@ with a comma between the low and high range.</source>
         <translation>プログラムの終了</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="2596"/>
+        <location filename="../wfmain.cpp" line="2594"/>
         <source>wfview</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="2597"/>
+        <location filename="../wfmain.cpp" line="2595"/>
         <source>Are you sure you wish to reset the USB controllers?</source>
         <translation>USBコントローラをリセットしてもよろしいですか?</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4081"/>
-        <location filename="../wfmain.cpp" line="4660"/>
+        <location filename="../wfmain.cpp" line="4079"/>
+        <location filename="../wfmain.cpp" line="4658"/>
         <source>Don&apos;t ask me again</source>
         <translation>今後確認は不要</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4082"/>
+        <location filename="../wfmain.cpp" line="4080"/>
         <source>Don&apos;t ask me to confirm exit again</source>
         <translation>今後終了確認は不要</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4084"/>
+        <location filename="../wfmain.cpp" line="4082"/>
         <source>Are you sure you wish to exit?
 </source>
         <translation>終了してもよろしいですか?
 </translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4170"/>
+        <location filename="../wfmain.cpp" line="4168"/>
         <source>Revert settings</source>
         <translation>設定を元に戻す</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4171"/>
+        <location filename="../wfmain.cpp" line="4169"/>
         <source>Are you sure you wish to reset all wfview settings?
 If so, wfview will exit and you will need to start the program again.</source>
         <translation>すべてのwfview設定をリセットしてもよろしいですか?
 その場合、wfviewは終了し、プログラムを再度開始する必要があります。</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4662"/>
+        <location filename="../wfmain.cpp" line="4660"/>
         <source>Power</source>
         <translation>電源</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4663"/>
+        <location filename="../wfmain.cpp" line="4661"/>
         <source>Power down the radio?
 </source>
         <translation>無線機の電源を切りますか？
