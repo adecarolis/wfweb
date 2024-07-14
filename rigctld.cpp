@@ -405,6 +405,7 @@ void rigCtlClient::socketReadyRead()
 
 
         QStringList command = commands.split(" ");
+        command.removeAll({}); // Remove any empty strings (double-whitespace issue)
         for (int i=0; commands_list[i].sstr != 0x00; i++)
         {
             if ((longCommand && !strncmp(command[0].toLocal8Bit(), commands_list[i].str,MAXNAMESIZE)) ||
@@ -785,6 +786,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
     int ret = -RIG_EINVAL;
     funcs func;
     // Use selected/unselected mode/freq if available
+    /*
     if ((cmd.func == funcFreqGet || cmd.func == funcFreqSet) && rigCaps->commands.contains(funcMainFreq)) {
         func = funcMainFreq;
     } else if ((cmd.func == funcModeGet || cmd.func == funcModeSet) && rigCaps->commands.contains(funcMainMode)) {
@@ -794,9 +796,16 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         } else if ((cmd.func == funcModeGet || cmd.func == funcModeSet) && rigCaps->commands.contains(funcSelectedMode)) {
             func = funcSelectedMode;
     }
-    else {
+    */
+
+    if (cmd.type == typeFreq)
+        func = currentVfoFreqFunc;
+    else if (cmd.type == typeMode)
+        func = currentVfoModeFunc;
+    else
         func = cmd.func;
-    }
+
+
     if (((cmd.flags & ARG_IN) == ARG_IN) && params.size())
     {
         // We are expecting a second argument to the command as it is a set
@@ -851,6 +860,30 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         case typeVFO:
             // Setting VFO:
             qInfo(logRigCtlD()) << "Setting VFO to" << params[0];
+            // Choose the current VFO command.
+
+            if (params[0] == "Main" || params[0] == "VFOA")
+            {
+                if (rigCaps->commands.contains(funcMainFreq)) {
+                    currentVfoFreqFunc = funcMainFreq;
+                    currentVfoModeFunc = funcMainMode;
+                } else if (rigCaps->commands.contains(funcSelectedFreq)) {
+                    currentVfoFreqFunc = funcSelectedFreq;
+                    currentVfoModeFunc = funcSelectedMode;
+                    currentVfoNum = 0;
+                }
+                currentVfoNum = 0;
+            } else if (params[0] == "Sub" || params[0] == "VFOB")
+            {
+                if (rigCaps->commands.contains(funcSubFreq)) {
+                    currentVfoFreqFunc = funcSubFreq;
+                    currentVfoModeFunc = funcSubMode;
+                } else if (rigCaps->commands.contains(funcUnselectedFreq)) {
+                    currentVfoFreqFunc = funcUnselectedFreq;
+                    currentVfoModeFunc = funcUnselectedMode;
+                }
+                currentVfoNum = 1;
+            }
             break;
         case typeString:
         {
@@ -869,11 +902,12 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         }
 
         if (rigCaps->commands.contains(func))
-            queue->add(priorityImmediate, queueItem(func, val,false,0));
+            queue->add(priorityImmediate, queueItem(func, val,false,currentVfoNum));
 
     } else {
         // Simple get command
         cacheItem item;
+
         if (rigCaps->commands.contains(func))
             item = queue->getCache(func);
         ret = RIG_OK;
