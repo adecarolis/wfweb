@@ -133,6 +133,8 @@ private slots:
     void toFixedPressed();
     void customSpanPressed();
     void configPressed();
+    void showBandIndicators(bool en);
+
 
     // Mouse interaction with scope/waterfall
     void scopeClick(QMouseEvent *);
@@ -290,6 +292,7 @@ private:
     bool hasScope=true;
     QString currentRegion="1";
     spectrumMode_t currentScopeMode=spectrumMode_t::spectModeCenter;
+    bool bandIndicatorsVisible=false;
 };
 
 #endif // SPECTRUMSCOPE_H

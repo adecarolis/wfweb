@@ -598,6 +598,10 @@ bool spectrumScope::updateScope(scopeData data)
         return false;
     }
 
+    if (!bandIndicatorsVisible) {
+        showBandIndicators(true);
+    }
+
     qint64 spectime = 0;
 
     QElapsedTimer elapsed;
@@ -1818,6 +1822,21 @@ void spectrumScope::setFrequency(freqt f, uchar vfo)
 
 }
 
+void spectrumScope::showBandIndicators(bool en)
+{
+    for (auto &bi: bandIndicators)
+    {
+        bi.line->setVisible(en);
+        bi.text->setVisible(en);
+    }
+    if (!bandIndicators.empty())
+    {
+        bandIndicatorsVisible=en;
+    }
+}
+
+
+
 void spectrumScope::setBandIndicators(bool show, QString region, std::vector<bandType>* bands)
 {
     this->currentRegion = region;
@@ -1842,13 +1861,13 @@ void spectrumScope::setBandIndicators(bool show, QString region, std::vector<ban
                 b.line = new QCPItemLine(spectrum);
                 b.line->setHead(QCPLineEnding::esLineArrow);
                 b.line->setTail(QCPLineEnding::esLineArrow);
-                b.line->setVisible(true);
+                b.line->setVisible(false);
                 b.line->setPen(QPen(band.color));
                 b.line->start->setCoords(double(band.lowFreq/1000000.0), spectrum->yAxis->range().upper-5);
                 b.line->end->setCoords(double(band.highFreq/1000000.0), spectrum->yAxis->range().upper-5);
 
                 b.text = new QCPItemText(spectrum);
-                b.text->setVisible(true);
+                b.text->setVisible(false);
                 b.text->setAntialiased(true);
                 b.text->setColor(band.color);
                 b.text->setFont(QFont(font().family(), 8));
@@ -1863,8 +1882,6 @@ void spectrumScope::setBandIndicators(bool show, QString region, std::vector<ban
 
 void spectrumScope::displaySettings(int numDigits, qint64 minf, qint64 maxf, int minStep,FctlUnit unit, std::vector<bandType>* bands)
 {
-    // Delete all band indicators first
-
     for (uchar i=0;i<numVFO;i++)
         freqDisplay[i]->setup(numDigits, minf, maxf, minStep, unit, bands);
 }

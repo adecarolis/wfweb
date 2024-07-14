@@ -1378,13 +1378,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
                 }
             }
         } else {
-            for (auto &band: rigCaps->bands)
-            {
-                if (band.band == cmd->band)
-                {
-                    bandbtns->setBand(cmd->band);
-                }
-            }
+            bandbtns->setBand(cmd->band);
         }
         break;
     case funcSubMode:
