@@ -701,8 +701,9 @@ QString rigCtlClient::getVfoName(quint8 vfo)
 {
     QString ret;
     switch (vfo) {
-    case 0: ret = "VFOA"; break;
-    case 1: ret = "VFOB"; break;
+
+    case 0: ret = rigCaps->commands.contains(funcMainFreq)?"Main":"VFOA"; break;
+    case 1: ret = rigCaps->commands.contains(funcSubFreq)?"Sub":"VFOB"; break;
     default: ret = "MEM"; break;
     }
 
@@ -798,9 +799,9 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
     }
     */
 
-    if (cmd.type == typeFreq)
+    if (cmd.func == funcFreqGet || cmd.func == funcFreqSet)
         func = currentVfoFreqFunc;
-    else if (cmd.type == typeMode)
+    else if (cmd.func == funcModeGet || cmd.func == funcModeSet)
         func = currentVfoModeFunc;
     else
         func = cmd.func;
@@ -884,6 +885,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
                 }
                 currentVfoNum = 1;
             }
+            currentVfo = params[0];
             break;
         case typeString:
         {
