@@ -1352,35 +1352,53 @@ void wfmain::buttonControl(const COMMAND* cmd)
     unsigned char rx=0;
     switch (cmd->command) {
     case funcBandStackReg:
+    {
+        bool found = false;
+        availableBands band = bandUnknown;
         if (cmd->value == 100) {
-
-            for (size_t i = 0; i < rigCaps->bands.size(); i++) {
-                if (rigCaps->bands[i].band == bandbtns->currentBand())
+            auto b = rigCaps->bands.cend();
+            while (b != rigCaps->bands.cbegin())
+            {
+                b--;
+                if ((b->region == "" || prefs.region == b->region))
                 {
-                    if (i > 0) {
-                        bandbtns->setBand(rigCaps->bands[i - 1].band);
-                    }
-                    else {
-                        bandbtns->setBand(rigCaps->bands[rigCaps->bands.size() - 1].band);
+                    if (!found && b->band == bandbtns->currentBand()) {
+                        found = true;
+                    } else if (found && b->band != bandbtns->currentBand()) {
+                        qInfo() << "Got new band:" << b->band << "Name:" << b->name << "region" << b->region;
+                        band = b->band;
+                        break;
                     }
                 }
+            }
+            if (band == bandUnknown)
+            {
+                band = rigCaps->bands[rigCaps->bands.size() - 1].band;
             }
         } else if (cmd->value == -100) {
-            for (size_t i = 0; i < rigCaps->bands.size(); i++) {
-                if (rigCaps->bands[i].band == bandbtns->currentBand())
+            auto b = rigCaps->bands.cbegin();
+            while (b != rigCaps->bands.cend())
+            {
+                if ((b->region == "" || prefs.region == b->region))
                 {
-                    if (i + 1 < rigCaps->bands.size()) {
-                        bandbtns->setBand(rigCaps->bands[i + 1].band);
-                    }
-                    else {
-                        bandbtns->setBand(rigCaps->bands[0].band);
+                    if (!found && b->band == bandbtns->currentBand()) {
+                        found = true;
+                    } else if (found && b->band != bandbtns->currentBand()) {
+                        qInfo() << "Got band:" << b->band << "Name:" << b->name << "region" << b->region;
+                        band = b->band;
+                        break;
                     }
                 }
+                b++;
+            }
+            if (band == bandUnknown) {
+                band = rigCaps->bands[0].band;
             }
         } else {
-            bandbtns->setBand(cmd->band);
+            band=cmd->band;
         }
-        break;
+        bandbtns->setBand(band);
+    }
     case funcSubMode:
         rx=1;
     case funcMainMode:

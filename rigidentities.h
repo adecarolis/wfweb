@@ -104,7 +104,8 @@ enum availableBands {
                 band160m,   //20
                 band630m,   //21
                 band2200m,  //22
-                bandGen     //23
+                bandGen,     //23
+                bandUnknown // 24
 };
 
 enum centerSpansType {
