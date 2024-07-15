@@ -47,6 +47,7 @@ void bandbuttons::receiveRigCaps(rigCapabilities* rc)
             requestedBand = rigCaps->bands[0].band;
         }
     }
+
     setUIToRig();
 }
 

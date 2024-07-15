@@ -1681,10 +1681,10 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Sub Span+", commandButton, funcScopeSubSpan, 1));
     commands.append(COMMAND(num++, "Sub Span-", commandButton, funcScopeSubSpan, -1));
     commands.append(COMMAND(num++, "Modes", commandButton, funcSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "Main Mode+", commandButton, funcMainMode, 100));
-    commands.append(COMMAND(num++, "Main Mode-", commandButton, funcMainMode, -100));
-    commands.append(COMMAND(num++, "Sub Mode+", commandButton, funcMainMode, 100));
-    commands.append(COMMAND(num++, "Sub Mode-", commandButton, funcMainMode, -100));
+    commands.append(COMMAND(num++, "Main Mode+", commandButton, funcMainMode, 1));
+    commands.append(COMMAND(num++, "Main Mode-", commandButton, funcMainMode, -1));
+    commands.append(COMMAND(num++, "Sub Mode+", commandButton, funcMainMode, 1));
+    commands.append(COMMAND(num++, "Sub Mode-", commandButton, funcMainMode, -1));
     commands.append(COMMAND(num++, "Main LSB", commandButton, funcMainMode, modeLSB));
     commands.append(COMMAND(num++, "Main USB", commandButton, funcMainMode, modeUSB));
     commands.append(COMMAND(num++, "Main LSBD", commandButton, funcMainMode, modeLSB_D));
@@ -1714,8 +1714,8 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Sub DV", commandButton, funcMainMode, modeDV));
     commands.append(COMMAND(num++, "Sub DD", commandButton, funcMainMode, modeDD));
     commands.append(COMMAND(num++, "Bands", commandButton, funcSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "Band+", commandButton, funcBandStackReg, 100));
-    commands.append(COMMAND(num++, "Band-", commandButton, funcBandStackReg, -100));
+    commands.append(COMMAND(num++, "Band+", commandButton, funcBandStackReg, 1));
+    commands.append(COMMAND(num++, "Band-", commandButton, funcBandStackReg, -1));
     commands.append(COMMAND(num++, "Band 23cm", commandButton, funcBandStackReg, band23cm));
     commands.append(COMMAND(num++, "Band 70cm", commandButton, funcBandStackReg, band70cm));
     commands.append(COMMAND(num++, "Band 2m", commandButton, funcBandStackReg, band2m));

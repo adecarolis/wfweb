@@ -1355,7 +1355,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
     {
         bool found = false;
         availableBands band = bandUnknown;
-        if (cmd->value == 100) {
+        if (cmd->value == 1) {
             auto b = rigCaps->bands.cend();
             while (b != rigCaps->bands.cbegin())
             {
@@ -1375,7 +1375,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
             {
                 band = rigCaps->bands[rigCaps->bands.size() - 1].band;
             }
-        } else if (cmd->value == -100) {
+        } else if (cmd->value == -1) {
             auto b = rigCaps->bands.cbegin();
             while (b != rigCaps->bands.cend())
             {
@@ -1403,7 +1403,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
         rx=1;
     case funcMainMode:
     case funcModeSet:
-        if (cmd->value == 100) {
+        if (cmd->value == 1) {
             for (size_t i = 0; i < rigCaps->modes.size(); i++) {
                 if (rigCaps->modes[i].mk == receivers[rx]->currentMode().mk)
                 {
@@ -1415,7 +1415,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
                     }
                 }
             }
-        } else if (cmd->value == -100) {
+        } else if (cmd->value == -1) {
             for (size_t i = 0; i < rigCaps->modes.size(); i++) {
                 if (rigCaps->modes[i].mk == receivers[rx]->currentMode().mk)
                 {
