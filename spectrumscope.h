@@ -108,7 +108,6 @@ public:
     unsigned char getDataMode() { return static_cast<unsigned char>(dataCombo->currentIndex()); }
 
     void changeSpan(char val);
-    void showBandIndicators(bool en);
 
 public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);
@@ -151,6 +150,7 @@ private:
     void clearPlasma();
     void computePlasma();
     void showHideControls(spectrumMode_t mode);
+    void showBandIndicators(bool en);
     quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
     quint64 roundFrequency(quint64 frequency, int steps, unsigned int tsHz);
 

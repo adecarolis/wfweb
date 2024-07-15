@@ -1878,6 +1878,7 @@ void spectrumScope::setBandIndicators(bool show, QString region, std::vector<ban
             }
         }
     }
+    bandIndicatorsVisible=false;
 }
 
 void spectrumScope::displaySettings(int numDigits, qint64 minf, qint64 maxf, int minStep,FctlUnit unit, std::vector<bandType>* bands)
