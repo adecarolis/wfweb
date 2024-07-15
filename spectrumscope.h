@@ -108,6 +108,7 @@ public:
     unsigned char getDataMode() { return static_cast<unsigned char>(dataCombo->currentIndex()); }
 
     void changeSpan(char val);
+    void showBandIndicators(bool en);
 
 public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);
@@ -133,7 +134,6 @@ private slots:
     void toFixedPressed();
     void customSpanPressed();
     void configPressed();
-    void showBandIndicators(bool en);
 
 
     // Mouse interaction with scope/waterfall

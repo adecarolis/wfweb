@@ -2365,6 +2365,7 @@ void wfmain::extChangedIfPref(prefIfItem i)
         foreach (auto receiver, receivers)
         {
             receiver->setBandIndicators(prefs.showBands, prefs.region, &rigCaps->bands);
+            receiver->showBandIndicators(true);
         }
         break;
     default:

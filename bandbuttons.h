@@ -53,6 +53,7 @@ signals:
 
 public slots:
     void receiveRigCaps(rigCapabilities* rc);
+    void receiveCache(cacheItem item);
 
 private slots:
     void on_band2200mbtn_clicked();
@@ -92,7 +93,7 @@ private:
     rigCapabilities* rigCaps=Q_NULLPTR;
     bool haveRigCaps = false;
     cachingQueue* queue;
-    availableBands requestedBand;
+    availableBands requestedBand = bandUnknown;
 };
 
 #endif // BANDBUTTONS_H

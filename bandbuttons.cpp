@@ -14,6 +14,8 @@ bandbuttons::bandbuttons(QWidget *parent) :
     this->setObjectName("bandButtons");
     queue = cachingQueue::getInstance(this);
     connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
+    connect(queue,SIGNAL(cacheUpdated(cacheItem)),this,SLOT(receiveCache(cacheItem)));
+
 }
 
 bandbuttons::~bandbuttons()
@@ -26,12 +28,49 @@ int bandbuttons::getBSRNumber()
     return ui->bandStkPopdown->currentIndex()+1;
 }
 
+void bandbuttons::receiveCache(cacheItem item)
+{
+    // Only used to receive initial frequency!
+    if (requestedBand == bandUnknown) {
+        bool sub=false;
+        switch (item.command)
+        {
+        case funcSubFreq:
+        case funcUnselectedFreq:
+            sub=true;
+        case funcMainFreq:
+        case funcSelectedFreq:
+        case funcFreqGet:
+            // Here we will process incoming frequency.
+            {
+                if (ui->SubBandCheck->isChecked() == sub) {
+                    quint64 freq = quint64(item.value.value<freqt>().Hz);
+                    for (auto &b: rigCaps->bands)
+                    {
+                        // Highest frequency band is always first!
+                        if (freq >= b.lowFreq && freq <= b.highFreq)
+                        {
+                            // This frequency is contained within this band!
+                            qInfo() << "Band Buttons found current band:" << b.name;
+                            requestedBand = b.band;
+                            break;
+                        }
+                    }
+                }
+            }
+            break;
+        default:
+            break;
+        }
+    }
+}
+
 void bandbuttons::receiveRigCaps(rigCapabilities* rc)
 {
     this->rigCaps = rc;
     qDebug(logGui()) << "Accepting new rigcaps into band buttons.";
 
-    if (rigCaps != Q_NULLPTR) {
+    if (rc != Q_NULLPTR) {
         qDebug(logGui()) << "Bands in this rigcaps: ";
         for(size_t i=0; i < rigCaps->bands.size(); i++)
         {
@@ -42,10 +81,8 @@ void bandbuttons::receiveRigCaps(rigCapabilities* rc)
         {
             qDebug(logGui()) << "bsr[" << i << "]: " << (unsigned char)rigCaps->bsr[i];
         }
-        if (rigCaps->bands.size()) {
-            // Set current band to the first one (as we don't know what it actually is yet!)
-            requestedBand = rigCaps->bands[0].band;
-        }
+    } else {
+        requestedBand = bandUnknown;
     }
 
     setUIToRig();
