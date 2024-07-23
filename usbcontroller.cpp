@@ -116,12 +116,12 @@ void usbController::init(QMutex* mut,usbDevMap* devs ,QVector<BUTTON>* buts,QVec
 /* run() is called every 2s and attempts to connect to a supported controller */
 void usbController::run()
 {
-    QMutexLocker locker(mutex);
     if (hidStatus) {
         // We are not ready yet, hid hasn't been initialized!
         QTimer::singleShot(2000, this, SLOT(run()));
         return;
     }
+    QMutexLocker locker(mutex);
 
 #ifdef USB_HOTPLUG
    qDebug(logUsbControl()) << "Re-enumerating USB devices due to program startup or hotplug event";
@@ -429,10 +429,12 @@ void usbController::run()
                 // Let the UI know we have a new controller, but unlock the mutex first!
                 mutex->unlock();
                 emit newDevice(dev);
+                mutex->lock();
 
             } else {
                 mutex->unlock();
                 emit setConnected(dev);
+                mutex->lock();
             }
         }
     }

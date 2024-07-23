@@ -421,7 +421,6 @@ private slots:
     void stepUp();
     void stepDown();
     void changeFrequency(int value);
-    void setBand(int band);
 
     void setRadioTimeDateSend();
     void logCheck();
@@ -509,6 +508,7 @@ private slots:
     void on_ipPlusEnableChk_clicked(bool checked);
     void on_compEnableChk_clicked(bool checked);
     void on_voxEnableChk_clicked(bool checked);
+    void on_digiselEnableChk_clicked(bool checked);
 
 private:
     Ui::wfmain *ui; // Main UI

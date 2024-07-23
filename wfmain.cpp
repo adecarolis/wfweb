@@ -1013,6 +1013,7 @@ void wfmain::configureVFOs()
     for(uchar i=0;i<rigCaps->numReceiver;i++)
     {
         spectrumScope* receiver = new spectrumScope(rigCaps->hasSpectrum,i,rigCaps->numVFO,this);
+        receiver->setSeparators(prefs.groupSeparator,prefs.decimalSeparator);
         receiver->setUnderlayMode(prefs.underlayMode);
         receiver->wfAntiAliased(prefs.wfAntiAlias);
         receiver->wfInterpolate(prefs.wfInterpolate);
@@ -1289,7 +1290,6 @@ void wfmain::setupUsbControllerDevice()
     connect(usbControllerDev, SIGNAL(sendJog(int)), this, SLOT(changeFrequency(int)));
     connect(usbControllerDev, SIGNAL(doShuttle(bool,unsigned char)), this, SLOT(doShuttle(bool,unsigned char)));
     connect(usbControllerDev, SIGNAL(button(const COMMAND*)), this, SLOT(buttonControl(const COMMAND*)));
-    connect(usbControllerDev, SIGNAL(setBand(int)), this, SLOT(setBand(int)));
     connect(usbControllerDev, SIGNAL(removeDevice(USBDEVICE*)), usbWindow, SLOT(removeDevice(USBDEVICE*)));
     connect(usbControllerDev, SIGNAL(initUI(usbDevMap*, QVector<BUTTON>*, QVector<KNOB>*, QVector<COMMAND>*, QMutex*)), usbWindow, SLOT(init(usbDevMap*, QVector<BUTTON>*, QVector<KNOB>*, QVector<COMMAND>*, QMutex*)));
     connect(usbControllerDev, SIGNAL(changePage(USBDEVICE*,int)), usbWindow, SLOT(pageChanged(USBDEVICE*,int)));
@@ -1552,6 +1552,13 @@ void wfmain::setDefPrefs()
     defPrefs.waterfallFormat = 0;
     defPrefs.audioSystem = qtAudio;
     defPrefs.enableUSBControllers = false;
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+    defPrefs.groupSeparator = QLocale().groupSeparator();
+    defPrefs.decimalSeparator = QLocale().decimalPoint();
+#else
+    defPrefs.groupSeparator = QLocale().groupSeparator().at(0);       // digit group separator
+    defPrefs.decimalSeparator = QLocale().decimalPoint().at(0);       // digit group separator
+#endif
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -1601,6 +1608,9 @@ void wfmain::loadSettings()
     prefs.subPlotCeiling = settings->value("SubPlotCeiling", defPrefs.subPlotCeiling).toInt();
     prefs.scopeScrollX = settings->value("scopeScrollX", defPrefs.scopeScrollX).toInt();
     prefs.scopeScrollY = settings->value("scopeScrollY", defPrefs.scopeScrollY).toInt();
+    prefs.decimalSeparator = settings->value("GroupSeparator", defPrefs.groupSeparator).toChar();
+    prefs.groupSeparator = settings->value("DecimalSeparator", defPrefs.decimalSeparator).toChar();
+
 
     prefs.drawPeaks = settings->value("DrawPeaks", defPrefs.drawPeaks).toBool();
     prefs.underlayBufferSize = settings->value("underlayBufferSize", defPrefs.underlayBufferSize).toInt();
@@ -2367,6 +2377,12 @@ void wfmain::extChangedIfPref(prefIfItem i)
             receiver->setBandIndicators(prefs.showBands, prefs.region, &rigCaps->bands);
         }
         break;
+    case if_separators:
+        foreach (auto receiver, receivers)
+        {
+            receiver->setSeparators(prefs.groupSeparator,prefs.decimalSeparator);
+        }
+        break;
     default:
         qWarning(logSystem()) << "Did not understand if pref update in wfmain for item " << (int)i;
         break;
@@ -2817,8 +2833,9 @@ void wfmain::saveSettings()
     settings->setValue("FrequencyUnits",prefs.frequencyUnits);
     settings->setValue("Region",prefs.region);
     settings->setValue("ShowBands",prefs.showBands);
-
-    settings->endGroup();
+    settings->setValue("GroupSeparator",prefs.groupSeparator);
+    settings->setValue("DecimalSeparator",prefs.decimalSeparator);
+        settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
     settings->beginGroup("Radio");
@@ -3531,6 +3548,7 @@ void wfmain:: getInitialRigState()
     ui->ipPlusEnableChk->setEnabled(rigCaps->commands.contains(funcIPPlus));
     ui->compEnableChk->setEnabled(rigCaps->commands.contains(funcCompressor));
     ui->voxEnableChk->setEnabled(rigCaps->commands.contains(funcVox));
+    ui->digiselEnableChk->setEnabled(rigCaps->commands.contains(funcDigiSel));
 
     quint64 start=UINT64_MAX;
     quint64 end=0;
@@ -3921,11 +3939,6 @@ void wfmain::on_freqDial_valueChanged(int value)
         ui->freqDial->blockSignals(false);
         return;
     }
-}
-
-void wfmain::setBand(int band)
-{
-    queue->add(priorityImmediate,queueItem(funcBandStackReg,QVariant::fromValue<uchar>(band),false));
 }
 
 void wfmain::on_aboutBtn_clicked()
@@ -5176,6 +5189,7 @@ void wfmain::receiveValue(cacheItem val){
     case funcSelectedMode:
     case funcMainMode:
         receivers[val.receiver]->receiveMode(val.value.value<modeInfo>(),vfo);
+
         finputbtns->updateCurrentMode(val.value.value<modeInfo>().mk);
         finputbtns->updateFilterSelection(val.value.value<modeInfo>().filter);
         rpt->handleUpdateCurrentMainMode(val.value.value<modeInfo>());
@@ -5367,6 +5381,8 @@ void wfmain::receiveValue(cacheItem val){
     case funcManualNotch:
         break;
     case funcDigiSel:
+        ui->digiselEnableChk->setChecked(val.value.value<bool>());
+        emit sendLevel(funcDigiSel,val.value.value<bool>());
         break;
     case funcTwinPeakFilter:
         break;
@@ -5406,14 +5422,22 @@ void wfmain::receiveValue(cacheItem val){
 
         queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(bsr.freq),false));
 
+        modeInfo m;
         for (auto &md: rigCaps->modes)
         {
                 if (md.reg == bsr.mode) {
-                    md.filter=bsr.filter;
-                    md.data=bsr.data;
-                    queue->add(priorityImmediate,queueItem((rigCaps->commands.contains(funcMainMode)?funcMainMode:funcModeSet),QVariant::fromValue<modeInfo>(md),false));
-                    queue->add(priorityImmediate,queueItem((rigCaps->commands.contains(funcMainMode)?funcNone:funcDataModeWithFilter),QVariant::fromValue<modeInfo>(md),false));
-
+                    m.VFO=md.VFO;
+                    m.bwMax=md.bwMax;
+                    m.bwMin=md.bwMin;
+                    m.mk=md.mk;
+                    m.name=md.name;
+                    m.pass=md.pass;
+                    m.reg=md.reg;
+                    m.filter=bsr.filter;
+                    m.data=bsr.data;
+                    qInfo(logSystem()) << __func__ << "Setting Mode/Data for new mode" << m.name << "data" << m.data << "filter" << m.filter << "reg" << m.reg;
+                    queue->add(priorityImmediate,queueItem(funcMainMode,QVariant::fromValue(m),false,0));
+                    //queue->add(priorityImmediate,queueItem((rigCaps->commands.contains(funcMainMode)?funcNone:funcDataModeWithFilter),QVariant::fromValue<modeInfo>(m),false,0));
                     break;
                 }
         }
@@ -5999,6 +6023,11 @@ void wfmain::on_compEnableChk_clicked(bool checked)
 void wfmain::on_voxEnableChk_clicked(bool checked)
 {
     queue->addUnique(priorityImmediate,queueItem(funcVox,QVariant::fromValue<bool>(checked),false,currentReceiver));
+}
+
+void wfmain::on_digiselEnableChk_clicked(bool checked)
+{
+    queue->addUnique(priorityImmediate,queueItem(funcDigiSel,QVariant::fromValue<bool>(checked),false,currentReceiver));
 }
 
 

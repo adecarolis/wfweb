@@ -273,6 +273,10 @@ private slots:
 
     void on_useUnderlayFillGradientChk_clicked(bool checked);
 
+    void on_decimalSeparatorsCombo_currentIndexChanged(int index);
+    void on_groupSeparatorsCombo_currentIndexChanged(int index);
+
+
 private:
     Ui::settingswidget *ui;
     void createSettingsListItems();

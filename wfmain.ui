@@ -728,13 +728,13 @@
                <number>3</number>
               </property>
               <property name="leftMargin">
-               <number>3</number>
+               <number>0</number>
               </property>
               <property name="topMargin">
                <number>3</number>
               </property>
               <property name="rightMargin">
-               <number>3</number>
+               <number>0</number>
               </property>
               <property name="bottomMargin">
                <number>3</number>
@@ -742,10 +742,13 @@
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_6">
                 <property name="spacing">
-                 <number>3</number>
+                 <number>0</number>
                 </property>
                 <item>
                  <widget class="QCheckBox" name="nbEnableChk">
+                  <property name="toolTip">
+                   <string>Noise Blanker</string>
+                  </property>
                   <property name="text">
                    <string>NB</string>
                   </property>
@@ -753,6 +756,9 @@
                 </item>
                 <item>
                  <widget class="QCheckBox" name="nrEnableChk">
+                  <property name="toolTip">
+                   <string>Noise Reduction</string>
+                  </property>
                   <property name="text">
                    <string>NR</string>
                   </property>
@@ -760,6 +766,9 @@
                 </item>
                 <item>
                  <widget class="QCheckBox" name="ipPlusEnableChk">
+                  <property name="toolTip">
+                   <string>IP+ Funcion</string>
+                  </property>
                   <property name="text">
                    <string>IP+</string>
                   </property>
@@ -770,17 +779,33 @@
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout">
                 <property name="spacing">
-                 <number>3</number>
+                 <number>0</number>
                 </property>
                 <item>
-                 <widget class="QCheckBox" name="compEnableChk">
+                 <widget class="QCheckBox" name="digiselEnableChk">
+                  <property name="toolTip">
+                   <string>Digi-Sel</string>
+                  </property>
                   <property name="text">
-                   <string>COMP</string>
+                   <string>DS</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="compEnableChk">
+                  <property name="toolTip">
+                   <string>Compressor</string>
+                  </property>
+                  <property name="text">
+                   <string>CMP</string>
                   </property>
                  </widget>
                 </item>
                 <item>
                  <widget class="QCheckBox" name="voxEnableChk">
+                  <property name="toolTip">
+                   <string>Vox Enable</string>
+                  </property>
                   <property name="text">
                    <string>VOX</string>
                   </property>

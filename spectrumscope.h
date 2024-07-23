@@ -108,6 +108,8 @@ public:
     unsigned char getDataMode() { return static_cast<unsigned char>(dataCombo->currentIndex()); }
 
     void changeSpan(char val);
+    void setSeparators(QChar group, QChar decimal);
+
 
 public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);
@@ -163,7 +165,7 @@ private:
     QCustomPlot* waterfall = Q_NULLPTR;
     QLinearGradient spectrumGradient;
     QLinearGradient underlayGradient;
-    freqCtrl* freqDisplay[2];
+    QList <freqCtrl*> freqDisplay;
     QSpacerItem* displaySpacer;
     QGroupBox* group;
     QSplitter* splitter;

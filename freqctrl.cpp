@@ -681,14 +681,9 @@ void freqCtrl::drawBkGround(QPainter &Painter)
     //m_DigitFont.setFamily("Arial");
     Painter.setFont(m_DigitFont);
     Painter.setPen(m_DigitColor);
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-    QChar    gsep = QLocale().groupSeparator();
-    QChar    dsep = QLocale().decimalPoint();
-#else
-    QChar    gsep = QLocale().groupSeparator().at(0);       // digit group separator
-    QChar    dsep = QLocale().decimalPoint().at(0);       // digit group separator
-#endif
+
     QChar    dgsep = gsep;       // digit group separator
+
     int     digpos = rect.right() - m_NumDigitsForUnit * cellwidth - 1; // starting digit x position
     for (int i = m_DigStart; i < m_NumDigits; i++)
     {

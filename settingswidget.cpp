@@ -126,6 +126,31 @@ void settingswidget::populateComboBoxes()
     ui->colorPresetCombo->blockSignals(true);
     ui->colorPresetCombo->setCurrentIndex(-1);
     ui->colorPresetCombo->blockSignals(false);
+
+    ui->decimalSeparatorsCombo->blockSignals(true);
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+    ui->decimalSeparatorsCombo->addItem("Default",QLocale().decimalPoint());
+#else
+    ui->decimalSeparatorsCombo->addItem("Default",QLocale().decimalPoint().at(0));
+#endif
+    ui->decimalSeparatorsCombo->addItem("\",\"",QChar(','));
+    ui->decimalSeparatorsCombo->addItem("\".\"",QChar('.'));
+    ui->decimalSeparatorsCombo->addItem("\" \"",QChar(' '));
+    ui->decimalSeparatorsCombo->setCurrentIndex(0);
+    ui->decimalSeparatorsCombo->blockSignals(false);
+
+    ui->groupSeparatorsCombo->blockSignals(true);
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+    ui->groupSeparatorsCombo->addItem("Default",QLocale().groupSeparator());
+#else
+    ui->groupSeparatorsCombo->addItem("Default",QLocale().groupSeparator().at(0));
+#endif
+    ui->groupSeparatorsCombo->addItem("\",\"",QChar(','));
+    ui->groupSeparatorsCombo->addItem("\".\"",QChar('.'));
+    ui->groupSeparatorsCombo->addItem("\" \"",QChar(' '));
+    ui->groupSeparatorsCombo->setCurrentIndex(0);
+    ui->groupSeparatorsCombo->blockSignals(false);
+
 }
 
 // Updating Preferences:
@@ -478,6 +503,10 @@ void settingswidget::updateIfPref(prefIfItem pif)
     case if_showBands:
         qInfo() << "************* SHOWBANDS **********" << prefs->showBands;
         quietlyUpdateCheckbox(ui->showBandsChk, prefs->showBands);
+        break;
+    case if_separators:
+        quietlyUpdateCombobox(ui->groupSeparatorsCombo,QVariant(prefs->groupSeparator));
+        quietlyUpdateCombobox(ui->decimalSeparatorsCombo,QVariant(prefs->decimalSeparator));
         break;
     default:
         qWarning(logGui()) << "Did not understand if pref update item " << (int)pif;
@@ -2055,6 +2084,18 @@ void settingswidget::on_modInputData3Combo_activated(int index)
     Q_UNUSED(index)
     prefs->inputSource[3] = ui->modInputData3Combo->currentData().value<rigInput>();
     emit changedRsPref(rs_data3Mod);
+}
+
+void settingswidget::on_decimalSeparatorsCombo_currentIndexChanged(int index)
+{
+    prefs->decimalSeparator = ui->decimalSeparatorsCombo->currentData().toChar();
+    emit changedIfPref(if_separators);
+}
+
+void settingswidget::on_groupSeparatorsCombo_currentIndexChanged(int index)
+{
+    prefs->groupSeparator = ui->groupSeparatorsCombo->currentData().toChar();
+    emit changedIfPref(if_separators);
 }
 
 /* End of radio specific settings */

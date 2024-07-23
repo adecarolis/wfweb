@@ -27,29 +27,24 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
 
     for (uchar i=0;i<numVFO;i++)
     {
+        freqCtrl* fr = new freqCtrl(this);
         qInfo() << "****Adding VFO" << i << "on receiver" << receiver;
-        freqDisplay[i] = new freqCtrl();
         if (i==0)
         {
-            freqDisplay[i]->setMinimumSize(280,30);
-            freqDisplay[i]->setMaximumSize(280,30);
-            displayLayout->addWidget(freqDisplay[i]);
+            fr->setMinimumSize(280,30);
+            fr->setMaximumSize(280,30);
+            displayLayout->addWidget(fr);
             displaySpacer = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
             displayLayout->addSpacerItem(displaySpacer);
         } else {
-            freqDisplay[i]->setMinimumSize(180,20);
-            freqDisplay[i]->setMaximumSize(180,20);
-            displayLayout->addWidget(freqDisplay[i]);
+            fr->setMinimumSize(180,20);
+            fr->setMaximumSize(180,20);
+            displayLayout->addWidget(fr);
         }
-        connect(this->freqDisplay[i], &freqCtrl::newFrequency, this,
+        connect(fr, &freqCtrl::newFrequency, this,
                 [=](const qint64 &freq) { this->newFrequency(freq,i);});
 
-
-        //connect(this->rig, &rigCommander::haveDashRatio,
-        //        [=](const unsigned char& ratio) { cw->handleDashRatio(ratio); });
-
-        //connect(freqDisplay[i], SIGNAL(newFrequency(qint64)), this, SLOT(newFrequency(qint64,i)));
-
+        freqDisplay.append(fr);
     }
 
 
@@ -426,6 +421,16 @@ spectrumScope::~spectrumScope(){
         delete colorMapData;
     }
 }
+
+void spectrumScope::setSeparators(QChar gsep, QChar dsep)
+{
+    for (auto disp : freqDisplay)
+    {
+        qInfo() << "Separators:" << gsep << "and" << dsep;
+        disp->setSeparators(gsep,dsep);
+    }
+}
+
 void spectrumScope::prepareScope(uint maxAmp, uint spectWidth)
 {
     this->spectWidth = spectWidth;

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1118</width>
-    <height>585</height>
+    <width>1020</width>
+    <height>606</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -915,6 +915,93 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
           </layout>
          </item>
          <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_6">
+           <item>
+            <widget class="QLabel" name="label_3">
+             <property name="text">
+              <string>Frequency Display:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_11">
+             <property name="text">
+              <string>Units</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="frequencyUnitsCombo">
+             <item>
+              <property name="text">
+               <string>None</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Hz</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>KHz</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>MHz</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>GHz</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_9">
+             <property name="text">
+              <string>Separators:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_12">
+             <property name="text">
+              <string>Decimal</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="decimalSeparatorsCombo"/>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_10">
+             <property name="text">
+              <string>Groups</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="groupSeparatorsCombo"/>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_9">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </item>
+         <item>
           <layout class="QHBoxLayout" name="horizontalLayout_43">
            <property name="leftMargin">
             <number>0</number>
@@ -1008,42 +1095,6 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
              <property name="orientation">
               <enum>Qt::Horizontal</enum>
              </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="label_3">
-             <property name="text">
-              <string>Frequency Units</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QComboBox" name="frequencyUnitsCombo">
-             <item>
-              <property name="text">
-               <string>None</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Hz</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>KHz</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>MHz</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>GHz</string>
-              </property>
-             </item>
             </widget>
            </item>
            <item>
@@ -1326,8 +1377,8 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>916</width>
-                 <height>325</height>
+                 <width>804</width>
+                 <height>320</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">

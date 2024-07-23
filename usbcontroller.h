@@ -248,7 +248,6 @@ signals:
     void jogMinus();
     void sendJog(int counter);
     void doShuttle(bool plus, quint8 level);
-    void setBand(int band);
     void button(const COMMAND* cmd);
     void initUI(usbDevMap* devs, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut);
     void newDevice(USBDEVICE* dev);

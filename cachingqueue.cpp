@@ -97,13 +97,17 @@ void cachingQueue::run()
             //it--; //upperBound returns the item immediately following the last key.
             //if (it != queue.end() && it.key() == prio)
             auto it = queue->find(prio);
-            if (it != queue->end())            {
+            if (it != queue->end()) {
                 while (it != queue->end() && it.key() == prio)
                 {
                     it++;
                 }
                 it--;
                 auto item = it.value();
+                if (item.command == funcMainMode && item.param.isValid()) {
+                    modeInfo m = item.param.value<modeInfo>();
+                    qInfo() << "Queue funcMainMode:" << m.name << "reg:" << m.reg;
+                }
                 emit haveCommand(item.command,item.param,item.receiver);
                 //it=queue.erase(it);
                 queue->remove(prio,it.value());
@@ -219,17 +223,21 @@ void cachingQueue::add(queuePriority prio ,queueItem item)
             QMutexLocker locker(&mutex);
             if (!item.recurring || isRecurring(item.command,item.receiver) != prio)
             {
+                queueItem it=item;
                 if (item.recurring && prio == queuePriority::priorityImmediate) {
                     qWarning() << "Warning, cannot add recurring command with immediate priority!" << funcString[item.command];
                 } else {
-                    if (item.recurring) {
+                    if (it.recurring) {
                         // also insert an immediate command to get the current value "now" (removes the need to get rigstate)
-                        queueItem it=item;
                         it.recurring=false;
+                        it.param.clear();
                         queue->insert(queue->cend(),priorityImmediate, it);
-                        qDebug() << "adding" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "receiver" << item.receiver;
+                        qDebug() << "adding" << funcString[item.command] << "recurring" << it.recurring << "priority" << prio << "receiver" << it.receiver;
                     }
-                    queue->insert(prio, item);
+                    queue->insert(prio, it);
+                    if (item.command == funcMainMode && item.param.isValid()) {
+                        qInfo() << "Queue Adding funcMainMode:" << it.param.value<modeInfo>().name << "reg:" << it.param.value<modeInfo>().reg;
+                    }
                 }
             }
         }
@@ -265,10 +273,14 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
                     // also insert an immediate command to get the current value "now" (removes the need to get initial rigstate)
                     queueItem it = item;
                     it.recurring=false;
+                    it.param.clear();
                     queue->insert(queue->cend(),priorityImmediate, it);
                     qDebug() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "receiver" << item.receiver;
                 }
                 queue->insert(prio, item);
+                if (item.command == funcMainMode && item.param.isValid()) {
+                    qInfo() << "Queue Adding unique funcMainMode:" << item.param.value<modeInfo>().name << "reg:" << item.param.value<modeInfo>().reg;
+                }
             }
         }
     }
