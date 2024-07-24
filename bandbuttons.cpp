@@ -223,7 +223,7 @@ void bandbuttons::bandStackBtnClick(availableBands band)
                     jumpToBandWithoutBSR(band);
                 } else {
                     queue->add(priorityImmediate,queueItem(funcBandStackReg,
-                            QVariant::fromValue<bandStackType>(bandStackType(b.bsr,ui->bandStkPopdown->currentIndex()+1)),false,false));
+                        QVariant::fromValue<bandStackType>(bandStackType(b.bsr,ui->bandStkPopdown->currentIndex()+1)),false,ui->SubBandCheck->isChecked()));
                 }
                 requestedBand = band;
                 break;
@@ -247,7 +247,7 @@ void bandbuttons::jumpToBandWithoutBSR(availableBands band)
                 f.Hz = (b.lowFreq+b.highFreq)/2.0;
                 f.MHzDouble = f.Hz/1000000.0;
                 f.VFO = activeVFO;
-                queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f),false,false));
+                queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f),false,ui->SubBandCheck->isChecked()));
                 break;
             }
         }
