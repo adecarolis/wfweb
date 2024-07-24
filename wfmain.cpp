@@ -1609,8 +1609,8 @@ void wfmain::loadSettings()
     prefs.subPlotCeiling = settings->value("SubPlotCeiling", defPrefs.subPlotCeiling).toInt();
     prefs.scopeScrollX = settings->value("scopeScrollX", defPrefs.scopeScrollX).toInt();
     prefs.scopeScrollY = settings->value("scopeScrollY", defPrefs.scopeScrollY).toInt();
-    prefs.decimalSeparator = settings->value("GroupSeparator", defPrefs.groupSeparator).toChar();
-    prefs.groupSeparator = settings->value("DecimalSeparator", defPrefs.decimalSeparator).toChar();
+    prefs.decimalSeparator = settings->value("DecimalSeparator", defPrefs.decimalSeparator).toChar();
+    prefs.groupSeparator = settings->value("GroupSeparator", defPrefs.groupSeparator).toChar();
 
 
     prefs.drawPeaks = settings->value("DrawPeaks", defPrefs.drawPeaks).toBool();

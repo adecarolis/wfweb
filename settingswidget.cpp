@@ -129,24 +129,26 @@ void settingswidget::populateComboBoxes()
 
     ui->decimalSeparatorsCombo->blockSignals(true);
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-    ui->decimalSeparatorsCombo->addItem("Default",QLocale().decimalPoint());
+    ui->decimalSeparatorsCombo->addItem(QString("\"%0\"").arg(QLocale().decimalPoint()),QLocale().decimalPoint());
 #else
-    ui->decimalSeparatorsCombo->addItem("Default",QLocale().decimalPoint().at(0));
+    ui->decimalSeparatorsCombo->addItem(QString("\"%0\"").arg(QLocale().decimalPoint()),QLocale().decimalPoint().at(0));
 #endif
     ui->decimalSeparatorsCombo->addItem("\",\"",QChar(','));
     ui->decimalSeparatorsCombo->addItem("\".\"",QChar('.'));
+    ui->decimalSeparatorsCombo->addItem("\":\"",QChar(':'));
     ui->decimalSeparatorsCombo->addItem("\" \"",QChar(' '));
     ui->decimalSeparatorsCombo->setCurrentIndex(0);
     ui->decimalSeparatorsCombo->blockSignals(false);
 
     ui->groupSeparatorsCombo->blockSignals(true);
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-    ui->groupSeparatorsCombo->addItem("Default",QLocale().groupSeparator());
+    ui->groupSeparatorsCombo->addItem(QString("\"%0\"").arg(QLocale().groupSeparator()),QLocale().groupSeparator());
 #else
-    ui->groupSeparatorsCombo->addItem("Default",QLocale().groupSeparator().at(0));
+    ui->groupSeparatorsCombo->addItem(QString("\"%0\"").arg(QLocale().groupSeparator()),QLocale().groupSeparator().at(0));
 #endif
     ui->groupSeparatorsCombo->addItem("\",\"",QChar(','));
     ui->groupSeparatorsCombo->addItem("\".\"",QChar('.'));
+    ui->groupSeparatorsCombo->addItem("\":\"",QChar(':'));
     ui->groupSeparatorsCombo->addItem("\" \"",QChar(' '));
     ui->groupSeparatorsCombo->setCurrentIndex(0);
     ui->groupSeparatorsCombo->blockSignals(false);
