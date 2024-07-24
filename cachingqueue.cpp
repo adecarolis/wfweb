@@ -104,10 +104,6 @@ void cachingQueue::run()
                 }
                 it--;
                 auto item = it.value();
-                if (item.command == funcMainMode && item.param.isValid()) {
-                    modeInfo m = item.param.value<modeInfo>();
-                    qInfo() << "Queue funcMainMode:" << m.name << "reg:" << m.reg;
-                }
                 emit haveCommand(item.command,item.param,item.receiver);
                 //it=queue.erase(it);
                 queue->remove(prio,it.value());
@@ -235,9 +231,6 @@ void cachingQueue::add(queuePriority prio ,queueItem item)
                         qDebug() << "adding" << funcString[item.command] << "recurring" << it.recurring << "priority" << prio << "receiver" << it.receiver;
                     }
                     queue->insert(prio, it);
-                    if (item.command == funcMainMode && item.param.isValid()) {
-                        qInfo() << "Queue Adding funcMainMode:" << it.param.value<modeInfo>().name << "reg:" << it.param.value<modeInfo>().reg;
-                    }
                 }
             }
         }
@@ -278,9 +271,6 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
                     qDebug() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "receiver" << item.receiver;
                 }
                 queue->insert(prio, item);
-                if (item.command == funcMainMode && item.param.isValid()) {
-                    qInfo() << "Queue Adding unique funcMainMode:" << item.param.value<modeInfo>().name << "reg:" << item.param.value<modeInfo>().reg;
-                }
             }
         }
     }
@@ -327,7 +317,7 @@ void cachingQueue::message(QString msg)
     if (messages != Q_NULLPTR) {
         QMutexLocker locker(&mutex);
         messages->append(msg);
-        qInfo() << "Received:" << msg;
+        qDebug() << "Received:" << msg;
         waiting->wakeOne();
     }
 }

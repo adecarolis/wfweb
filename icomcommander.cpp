@@ -2725,7 +2725,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         if (func == funcMainMode || func == funcSubMode || func == funcSelectedMode || func == funcUnselectedMode)
                            payload.append(m.data);
                         payload.append(m.filter);
-                        qInfo() << "Sending mode command, mode:" << m.name;
+                        qDebug(logRig()) << "Sending mode command, mode:" << m.name;
                     }
                 }
             }

@@ -5419,24 +5419,17 @@ void wfmain::receiveValue(cacheItem val){
     case funcBandStackReg:
     {
         bandStackType bsr = val.value.value<bandStackType>();
-        qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << bsr.freq.Hz << ", mode: " << bsr.mode << ", filter: " << bsr.filter << ", data mode: " << bsr.data;
+        qDebug(logRig()) << __func__ << "BSR received into main: Freq: " << bsr.freq.Hz << ", mode: " << bsr.mode << ", filter: " << bsr.filter << ", data mode: " << bsr.data;
 
         queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(bsr.freq),false,val.receiver));
 
-        modeInfo m;
         for (auto &md: rigCaps->modes)
         {
                 if (md.reg == bsr.mode) {
-                    m.VFO=md.VFO;
-                    m.bwMax=md.bwMax;
-                    m.bwMin=md.bwMin;
-                    m.mk=md.mk;
-                    m.name=md.name;
-                    m.pass=md.pass;
-                    m.reg=md.reg;
+                    modeInfo m(md);
                     m.filter=bsr.filter;
                     m.data=bsr.data;
-                    qInfo(logSystem()) << __func__ << "Setting Mode/Data for new mode" << m.name << "data" << m.data << "filter" << m.filter << "reg" << m.reg;
+                    qDebug(logRig()) << __func__ << "Setting Mode/Data for new mode" << m.name << "data" << m.data << "filter" << m.filter << "reg" << m.reg;
                     queue->add(priorityImmediate,queueItem(funcMainMode,QVariant::fromValue<modeInfo>(m),false,val.receiver));
                     break;
                 }
