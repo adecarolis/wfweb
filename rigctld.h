@@ -346,6 +346,10 @@ private:
     bool chkVfoEecuted=false;
     unsigned long crcTable[256];
     unsigned long doCrc(unsigned char* p, size_t n);
+    funcs currentVfoFreqFunc=funcMainFreq;
+    funcs currentVfoModeFunc=funcMainMode;
+    QString currentVfo ="Main";
+    unsigned char currentVfoNum=0;
     void genCrc(unsigned long crcTable[]);
     QString getMode(modeInfo mode);
     bool getMode(QString modeString, modeInfo& mode);

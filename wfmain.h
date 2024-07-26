@@ -387,11 +387,7 @@ private slots:
     //void receiveDuplexMode(duplexMode_t dm);
     void receivePassband(quint16 pass);
     void receiveCwPitch(unsigned char pitch);
-    void receiveVox(bool en);
     void receiveMonitor(bool en);
-    void receiveComp(bool en);
-    void receiveNB(bool en);
-    void receiveNR(bool en);
     void receiveTuningStep(unsigned char step);
 
     // Levels:
@@ -425,7 +421,6 @@ private slots:
     void stepUp();
     void stepDown();
     void changeFrequency(int value);
-    void setBand(int band);
 
     void setRadioTimeDateSend();
     void logCheck();
@@ -507,6 +502,13 @@ private slots:
     void getInitialRigState();
     void initPeriodicCommands();
 
+    // Assorted checkboxes
+    void on_nbEnableChk_clicked(bool checked);
+    void on_nrEnableChk_clicked(bool checked);
+    void on_ipPlusEnableChk_clicked(bool checked);
+    void on_compEnableChk_clicked(bool checked);
+    void on_voxEnableChk_clicked(bool checked);
+    void on_digiselEnableChk_clicked(bool checked);
 
 private:
     Ui::wfmain *ui; // Main UI
@@ -708,8 +710,8 @@ private:
 
     void changeModLabelAndSlider(rigInput source);
 
-    void changeMode(rigMode_t mode);
-    void changeMode(rigMode_t mode, unsigned char data);
+    void changeMode(rigMode_t mode, unsigned char rx=0);
+    void changeMode(rigMode_t mode, unsigned char data, unsigned char rx=0);
 
     void connectionHandler(bool connect);
 
@@ -788,7 +790,7 @@ private:
 
     bool subScope = false;
 
-    availableBands lastRequestedBand=bandGen;
+    //availableBands lastRequestedBand=bandGen;
 
     SERVERCONFIG serverConfig;
 

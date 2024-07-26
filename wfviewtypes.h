@@ -163,9 +163,11 @@ enum breakIn_t {
 };
 
 struct freqt {
+    freqt ():Hz(0), MHzDouble(0.0), VFO(activeVFO) {};
+    freqt(quint64 Hz, double MHzDouble, selVFO_t VFO): Hz(Hz), MHzDouble(MHzDouble), VFO(VFO) {};
     quint64 Hz;
     double MHzDouble;
-    selVFO_t VFO = activeVFO;
+    selVFO_t VFO;
 };
 
 struct datekind {
@@ -396,7 +398,7 @@ enum usbDeviceType { usbNone = 0, shuttleXpress, shuttlePro2,
                      StreamDeckMini,StreamDeckMiniV2,StreamDeckOriginal,StreamDeckOriginalV2,
                      StreamDeckOriginalMK2,StreamDeckXL,StreamDeckXLV2,StreamDeckPedal, StreamDeckPlus,
                      XKeysXK3
-                   };
+};
 
 enum usbCommandType{ commandButton, commandKnob, commandAny };
 enum usbFeatureType { featureReset,featureResetKeys, featureEventsA, featureEventsB, featureFirmware, featureSerial, featureButton, featureSensitivity, featureBrightness,

@@ -86,7 +86,7 @@ void usbController::init(QMutex* mut,usbDevMap* devs ,QVector<BUTTON>* buts,QVec
     
     hidStatus = hid_init();
     if (hidStatus) {
-        qInfo(logUsbControl()) << "Failed to intialize HID Devices";
+        qInfo(logUsbControl()) << "Failed to initialize HID Devices";
     }
     else {
         
@@ -116,12 +116,12 @@ void usbController::init(QMutex* mut,usbDevMap* devs ,QVector<BUTTON>* buts,QVec
 /* run() is called every 2s and attempts to connect to a supported controller */
 void usbController::run()
 {
-    QMutexLocker locker(mutex);
     if (hidStatus) {
         // We are not ready yet, hid hasn't been initialized!
         QTimer::singleShot(2000, this, SLOT(run()));
         return;
     }
+    QMutexLocker locker(mutex);
 
 #ifdef USB_HOTPLUG
    qDebug(logUsbControl()) << "Re-enumerating USB devices due to program startup or hotplug event";
@@ -242,7 +242,7 @@ void usbController::run()
 
     struct hid_device_info* devs;
     devs = hid_enumerate(0x0, 0x0);
-    // Step through all currenly connected devices and add any newly discovered ones to usbDevices.
+    // Step through all currently connected devices and add any newly discovered ones to usbDevices.
     while (devs) {
         auto i = std::find_if(knownDevices.begin(), knownDevices.end(), [devs](const USBTYPE& d)
         { return ((devs->vendor_id == d.manufacturerId) && (devs->product_id == d.productId)
@@ -426,11 +426,15 @@ void usbController::run()
                         }
                     }
                 }
-                // Let the UI know we have a new controller
+                // Let the UI know we have a new controller, but unlock the mutex first!
+                mutex->unlock();
                 emit newDevice(dev);
+                mutex->lock();
 
             } else {
+                mutex->unlock();
                 emit setConnected(dev);
+                mutex->lock();
             }
         }
     }
@@ -884,7 +888,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
     int res=0;
     bool sdv1=false;
 
-    // If feature is sensitivity, this is not model dependant and will update the internal sensitivity divider.
+    // If feature is sensitivity, this is not model dependent and will update the internal sensitivity divider.
     if (feature == usbFeatureType::featureSensitivity)
     {
         dev->sensitivity=val;
@@ -1235,7 +1239,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                     {
 
                         myImage.save(&butBuffer, "BMP");
-                        quint16 payloadLen = dev->type.maxPayload - quint16(sizeof(streamdeck_v1_image_header));
+						quint16 payloadLen = dev->type.maxPayload - quint16(sizeof(streamdeck_v1_image_header));
 
                         if (dev->type.model == usbDeviceType::StreamDeckOriginal) {
                             // Special case for buttons on original StreamDeck
@@ -1667,22 +1671,21 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "VFOB", commandKnob, funcSubFreq, (quint8)0x1));
     commands.append(COMMAND(num++, "Freq Down", commandButton, funcMainFreq,(int)-1));
     commands.append(COMMAND(num++, "Freq Up", commandButton, funcMainFreq, (int)1));
-    commands.append(COMMAND(num++, "PTT Off", commandButton, funcTransceiverStatus, (quint8)0x0));
-    commands.append(COMMAND(num++, "PTT Toggle", commandButton, funcTransceiverStatus,  (quint8)0x0));
+    commands.append(COMMAND(num++, "PTT Toggle", commandButton, funcTransceiverStatus,  (int)-1));
     commands.append(COMMAND(num++, "Span/Step", commandKnob, funcSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "Tune", commandButton, funcTunerStatus, (quint8)0x0));
+    commands.append(COMMAND(num++, "Tune", commandButton, funcTunerStatus, (quint8)0x1));
     commands.append(COMMAND(num++, "Span/Step", commandButton, funcSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "Step+", commandButton, funcTuningStep, 100));
-    commands.append(COMMAND(num++, "Step-", commandButton, funcTuningStep, -100));
-    commands.append(COMMAND(num++, "Main Span+", commandButton, funcScopeMainSpan, 100));
-    commands.append(COMMAND(num++, "Main Span-", commandButton, funcScopeMainSpan, -100));
-    commands.append(COMMAND(num++, "Sub Span+", commandButton, funcScopeSubSpan, 100));
-    commands.append(COMMAND(num++, "Sub Span-", commandButton, funcScopeSubSpan, -100));
+    commands.append(COMMAND(num++, "Step+", commandButton, funcTuningStep, 1));
+    commands.append(COMMAND(num++, "Step-", commandButton, funcTuningStep, -1));
+    commands.append(COMMAND(num++, "Main Span+", commandButton, funcScopeMainSpan, 1));
+    commands.append(COMMAND(num++, "Main Span-", commandButton, funcScopeMainSpan, -1));
+    commands.append(COMMAND(num++, "Sub Span+", commandButton, funcScopeSubSpan, 1));
+    commands.append(COMMAND(num++, "Sub Span-", commandButton, funcScopeSubSpan, -1));
     commands.append(COMMAND(num++, "Modes", commandButton, funcSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "Main Mode+", commandButton, funcMainMode, 100));
-    commands.append(COMMAND(num++, "Main Mode-", commandButton, funcMainMode, -100));
-    commands.append(COMMAND(num++, "Sub Mode+", commandButton, funcMainMode, 100));
-    commands.append(COMMAND(num++, "Sub Mode-", commandButton, funcMainMode, -100));
+    commands.append(COMMAND(num++, "Main Mode+", commandButton, funcMainMode, 1));
+    commands.append(COMMAND(num++, "Main Mode-", commandButton, funcMainMode, -1));
+    commands.append(COMMAND(num++, "Sub Mode+", commandButton, funcMainMode, 1));
+    commands.append(COMMAND(num++, "Sub Mode-", commandButton, funcMainMode, -1));
     commands.append(COMMAND(num++, "Main LSB", commandButton, funcMainMode, modeLSB));
     commands.append(COMMAND(num++, "Main USB", commandButton, funcMainMode, modeUSB));
     commands.append(COMMAND(num++, "Main LSBD", commandButton, funcMainMode, modeLSB_D));
@@ -1712,8 +1715,8 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Sub DV", commandButton, funcMainMode, modeDV));
     commands.append(COMMAND(num++, "Sub DD", commandButton, funcMainMode, modeDD));
     commands.append(COMMAND(num++, "Bands", commandButton, funcSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "Band+", commandButton, funcBandStackReg, 100));
-    commands.append(COMMAND(num++, "Band-", commandButton, funcBandStackReg, -100));
+    commands.append(COMMAND(num++, "Band+", commandButton, funcBandStackReg, 1));
+    commands.append(COMMAND(num++, "Band-", commandButton, funcBandStackReg, -1));
     commands.append(COMMAND(num++, "Band 23cm", commandButton, funcBandStackReg, band23cm));
     commands.append(COMMAND(num++, "Band 70cm", commandButton, funcBandStackReg, band70cm));
     commands.append(COMMAND(num++, "Band 2m", commandButton, funcBandStackReg, band2m));
@@ -1746,8 +1749,8 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Vox On", commandButton, funcVox, (quint8)0x01));
     commands.append(COMMAND(num++, "Vox Off", commandButton, funcVox, (quint8)0x0));
     commands.append(COMMAND(num++, "Split", commandButton, funcSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "Split On", commandButton, funcQuickSplit, (quint8)0x01));
-    commands.append(COMMAND(num++, "Split Off", commandButton, funcQuickSplit, (quint8)0x0));
+    commands.append(COMMAND(num++, "Split On", commandButton, funcSplitStatus, (quint8)0x01));
+    commands.append(COMMAND(num++, "Split Off", commandButton, funcSplitStatus, (quint8)0x0));
     commands.append(COMMAND(num++, "Swap VFO AB", commandButton, funcVFOSwapAB, (quint8)0x0));
     commands.append(COMMAND(num++, "Swap VFO MS", commandButton, funcVFOSwapMS, (quint8)0x0));
     commands.append(COMMAND(num++, "Scope", commandButton, funcSeparator, (quint8)0x0));
@@ -1787,7 +1790,7 @@ void usbController::programPages(USBDEVICE* dev, int val)
     
     if (dev->pages > val) {
         qInfo(logUsbControl()) << "Removing unused pages from " << dev->product;
-        // Remove unneded pages
+        // Remove unneeded pages
 
         // Remove old buttons
         for (auto b = buttonList->begin();b != buttonList->end();)

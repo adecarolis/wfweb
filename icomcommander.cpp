@@ -413,15 +413,18 @@ void icomCommander::powerOff()
 }
 
 
-QByteArray icomCommander::makeFreqPayload(freqt freq)
+QByteArray icomCommander::makeFreqPayload(freqt freq,uchar numchars)
 {
     QByteArray result;
     quint64 freqInt = freq.Hz;
 
     unsigned char a;
-    int numchars = 5;
-    if (freq.Hz >= 1E10)
+
+    if (numchars == 5 && freq.Hz >= 1E10)
+    {
+        // Quick fix for IC905, will need to do something better eventually M0VSE
         numchars = 6;
+    }
 
     for (int i = 0; i < numchars; i++) {
         a = 0;
@@ -957,9 +960,12 @@ void icomCommander::parseCommand()
                 bsr.freq.VFO = selVFO_t::activeVFO;
                 bsr.mode = bcdHexToUChar(payloadIn[b.bytes+2]);
                 bsr.filter = bcdHexToUChar(payloadIn[b.bytes+3]);
-                bsr.data = (payloadIn[b.bytes+4] & 0x10) >> 4; // not sure...
-                qDebug(logRig()) << QString("BSR received, band:%0 regcode:%1 freq:%2 data:%3 mode:%4 filter:%5")
-                                       .arg(bsr.band).arg(bsr.regCode).arg(bsr.freq.Hz).arg(bsr.data).arg(bsr.mode).arg(bsr.filter);
+                bsr.data = (payloadIn[b.bytes+4] & 0xf0) >> 4;
+                bsr.sql = (payloadIn[b.bytes+4] & 0x0f);
+                bsr.tone = decodeTone(payloadIn.mid(b.bytes+5,3));
+                bsr.tsql = decodeTone(payloadIn.mid(b.bytes+8,3));
+                qDebug(logRig()) << QString("BSR received, band:%0 code:%1 freq:%2 data:%3 mode:%4 filter:%5")
+                                        .arg(bsr.band).arg(bsr.regCode).arg(bsr.freq.Hz).arg(bsr.data).arg(bsr.mode).arg(bsr.filter);
                 value.setValue(bsr);
                 break;
             }
@@ -967,6 +973,8 @@ void icomCommander::parseCommand()
         }
         if (!value.isValid()) {
             qWarning(logRig()) << "Unknown BSR received, check rig file:" << payloadIn.toHex(' ');
+        } else {
+            qInfo(logRig()) << "BSR received:" << payloadIn.toHex(' ');
         }
         break;
     }
@@ -2713,16 +2721,20 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             }
             else if (!strcmp(value.typeName(),"modeInfo"))
             {
-                if (func == funcDataModeWithFilter)
                 {
-                    payload.append(bcdEncodeChar(value.value<modeInfo>().data));
-                    if (value.value<modeInfo>().data != 0)
-                       payload.append(value.value<modeInfo>().filter);
-                } else {
-                    payload.append(bcdEncodeChar(value.value<modeInfo>().reg));
-                    if (func == funcMainMode || func == funcSubMode || func == funcSelectedMode || func == funcUnselectedMode)
-                       payload.append(value.value<modeInfo>().data);
-                    payload.append(value.value<modeInfo>().filter);
+                    modeInfo m = value.value<modeInfo>();
+                    if (func == funcDataModeWithFilter)
+                    {
+                        payload.append(bcdEncodeChar(m.data));
+                        if (m.data != 0)
+                           payload.append(m.filter);
+                    } else {
+                        payload.append(bcdEncodeChar(m.reg));
+                        if (func == funcMainMode || func == funcSubMode || func == funcSelectedMode || func == funcUnselectedMode)
+                           payload.append(m.data);
+                        payload.append(m.filter);
+                        qDebug(logRig()) << "Sending mode command, mode:" << m.name;
+                    }
                 }
             }
             else if(!strcmp(value.typeName(),"freqt"))
@@ -2779,9 +2791,28 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             }
             else if (!strcmp(value.typeName(),"bandStackType"))
             {
+
                 bandStackType bsr = value.value<bandStackType>();
-                payload.append(bcdEncodeChar(bsr.band));
-                payload.append(bcdEncodeChar(bsr.regCode)); // [01...03]. 01 = latest, 03 = oldest
+                payload.append(bcdEncodeChar(bsr.band));        //byte 0
+                payload.append(bcdEncodeChar(bsr.regCode));     //byte 1
+                if (bsr.freq.Hz != 0) {
+                    // We are setting the bsr so send freq/mode data.
+                    // First find which band we are working on.
+                    foreach (bandType b, rigCaps.bands)
+                    {
+                        if (b.bsr == bsr.band)
+                        {
+                            payload.append(makeFreqPayload(bsr.freq,b.bytes));
+                            payload.append(bcdEncodeChar(bsr.mode));
+                            payload.append(bcdEncodeChar(bsr.filter));
+                            payload.append((bsr.data << 4 & 0xf0) + (bsr.sql & 0x0f));
+                            payload.append(encodeTone(bsr.tone.tone));
+                            payload.append(encodeTone(bsr.tsql.tone));
+                            break;
+                        }
+
+                    }
+                }
                 qInfo(logRig()) << "Sending BSR, Band Code:" << bsr.band << "Register Code:" << bsr.regCode << "(Sent:" << payload.toHex(' ') << ")";
             }
             else

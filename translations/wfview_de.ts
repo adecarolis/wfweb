@@ -2458,7 +2458,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
     </message>
     <message>
         <location filename="../settingswidget.ui" line="1134"/>
-        <source>Manual Polling Inteval:</source>
+        <source>Manual Polling Interval:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

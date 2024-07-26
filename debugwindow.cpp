@@ -41,10 +41,10 @@ debugWindow::~debugWindow()
 void debugWindow::getCache()
 {
     auto cacheItems = queue->getCacheItems();
-    ui->cacheLabel->setText(QString("Current cache items in cachingView(%0)").arg(cacheItems.size()));
+    ui->cacheLabel->setText(QString("Current cache items in cachingView(%0)").arg(cacheItems->size()));
     int c=0;
-    auto i = cacheItems.cbegin();
-    while (i != cacheItems.cend())
+    auto i = cacheItems->cbegin();
+    while (i != cacheItems->cend())
     {
         if (c >= ui->cacheView->rowCount())
         {
@@ -72,10 +72,10 @@ void debugWindow::getCache()
 void debugWindow::getQueue()
 {
     auto queueItems = queue->getQueueItems();
-    ui->queueLabel->setText(QString("Current queue items in cachingView(%0)").arg(queueItems.size()));
+    ui->queueLabel->setText(QString("Current queue items in cachingView(%0)").arg(queueItems->size()));
     int c=0;
-    auto i = queueItems.cbegin();
-    while (i != queueItems.cend())
+    auto i = queueItems->cbegin();
+    while (i != queueItems->cend())
     {
         if (c >= ui->queueView->rowCount())
         {
@@ -172,6 +172,10 @@ QString debugWindow::getValue(QVariant val)
         {
             centerSpanData i = val.value<centerSpanData>();
             value = QString("Type:%0 Freq:%1 Name:%2").arg(i.cstype).arg(i.freq).arg(i.name);
+        }
+        else if (!strcmp(val.typeName(),"QString"))
+        {
+            value = val.value<QString>();
         }
         else
         {

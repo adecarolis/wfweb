@@ -33,7 +33,8 @@ enum prefIfItem {
     if_frequencyUnits = 1 << 20,
     if_region = 1 << 21,
     if_showBands = 1 << 22,
-    if_all = 1 << 23
+    if_separators = 1 << 23,
+    if_all = 1 << 24
 };
 
 enum prefColItem {
@@ -242,6 +243,9 @@ struct preferences {
 
     audioSetup rxSetup;
     audioSetup txSetup;
+
+    QChar decimalSeparator;
+    QChar groupSeparator;
 
 };
 

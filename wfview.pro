@@ -124,7 +124,7 @@ QMAKE_TARGET_BUNDLE_PREFIX = org.wfview
 
 win32:DEFINES += GITSHORT=\\\"$$system(git -C $$PWD rev-parse --short HEAD)\\\"
 win32:DEFINES += HOST=\\\"$$system(hostname)\\\"
-win32:DEFINES += UNAME=\\\"$$system(echo %USER%)\\\"
+win32:DEFINES += UNAME=\\\"$$system(echo %USERNAME%)\\\"
 
 
 RESOURCES += qdarkstyle/style.qrc \

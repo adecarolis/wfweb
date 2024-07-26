@@ -86,6 +86,7 @@ public:
 
     void receiveMode (modeInfo m, uchar vfo=0);
     modeInfo currentMode() {return mode;}
+    uchar currentFilter() {return filterCombo->currentData().toInt();}
     void clearSpans() { spanCombo->clear();}
     void clearMode() { modeCombo->clear();}
     void clearData() { dataCombo->clear();}
@@ -106,6 +107,11 @@ public:
     void setRefLimits(int lower, int upper);
     void setRef(int ref);
     unsigned char getDataMode() { return static_cast<unsigned char>(dataCombo->currentIndex()); }
+
+    void changeSpan(char val);
+    void setSeparators(QChar group, QChar decimal);
+    void updateBSR(std::vector<bandType>* bands);
+
 
 public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);
@@ -132,6 +138,7 @@ private slots:
     void customSpanPressed();
     void configPressed();
 
+
     // Mouse interaction with scope/waterfall
     void scopeClick(QMouseEvent *);
     void scopeMouseRelease(QMouseEvent *);
@@ -147,6 +154,7 @@ private:
     void clearPlasma();
     void computePlasma();
     void showHideControls(spectrumMode_t mode);
+    void showBandIndicators(bool en);
     quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
     quint64 roundFrequency(quint64 frequency, int steps, unsigned int tsHz);
 
@@ -159,7 +167,7 @@ private:
     QCustomPlot* waterfall = Q_NULLPTR;
     QLinearGradient spectrumGradient;
     QLinearGradient underlayGradient;
-    freqCtrl* freqDisplay[2];
+    QList <freqCtrl*> freqDisplay;
     QSpacerItem* displaySpacer;
     QGroupBox* group;
     QSplitter* splitter;
@@ -287,6 +295,8 @@ private:
     uchar numVFO=1;
     bool hasScope=true;
     QString currentRegion="1";
+    spectrumMode_t currentScopeMode=spectrumMode_t::spectModeCenter;
+    bool bandIndicatorsVisible=false;
 };
 
 #endif // SPECTRUMSCOPE_H

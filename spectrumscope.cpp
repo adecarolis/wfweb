@@ -27,29 +27,24 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
 
     for (uchar i=0;i<numVFO;i++)
     {
+        freqCtrl* fr = new freqCtrl(this);
         qInfo() << "****Adding VFO" << i << "on receiver" << receiver;
-        freqDisplay[i] = new freqCtrl();
         if (i==0)
         {
-            freqDisplay[i]->setMinimumSize(280,30);
-            freqDisplay[i]->setMaximumSize(280,30);
-            displayLayout->addWidget(freqDisplay[i]);
+            fr->setMinimumSize(280,30);
+            fr->setMaximumSize(280,30);
+            displayLayout->addWidget(fr);
             displaySpacer = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
             displayLayout->addSpacerItem(displaySpacer);
         } else {
-            freqDisplay[i]->setMinimumSize(180,20);
-            freqDisplay[i]->setMaximumSize(180,20);
-            displayLayout->addWidget(freqDisplay[i]);
+            fr->setMinimumSize(180,20);
+            fr->setMaximumSize(180,20);
+            displayLayout->addWidget(fr);
         }
-        connect(this->freqDisplay[i], &freqCtrl::newFrequency, this,
+        connect(fr, &freqCtrl::newFrequency, this,
                 [=](const qint64 &freq) { this->newFrequency(freq,i);});
 
-
-        //connect(this->rig, &rigCommander::haveDashRatio,
-        //        [=](const unsigned char& ratio) { cw->handleDashRatio(ratio); });
-
-        //connect(freqDisplay[i], SIGNAL(newFrequency(qint64)), this, SLOT(newFrequency(qint64,i)));
-
+        freqDisplay.append(fr);
     }
 
 
@@ -427,6 +422,16 @@ spectrumScope::~spectrumScope(){
         delete colorMapData;
     }
 }
+
+void spectrumScope::setSeparators(QChar gsep, QChar dsep)
+{
+    for (auto disp : freqDisplay)
+    {
+        qInfo() << "Separators:" << gsep << "and" << dsep;
+        disp->setSeparators(gsep,dsep);
+    }
+}
+
 void spectrumScope::prepareScope(uint maxAmp, uint spectWidth)
 {
     this->spectWidth = spectWidth;
@@ -631,6 +636,10 @@ bool spectrumScope::updateScope(scopeData data)
     if (!scopePrepared )
     {
         return false;
+    }
+
+    if (!bandIndicatorsVisible) {
+        showBandIndicators(true);
     }
 
     qint64 spectime = 0;
@@ -1011,10 +1020,13 @@ void spectrumScope::enableScope(bool en)
 
 void spectrumScope::selectScopeMode(spectrumMode_t m)
 {
-    scopeModeCombo->blockSignals(true);
-    scopeModeCombo->setCurrentIndex(scopeModeCombo->findData(m));
-    scopeModeCombo->blockSignals(false);
-    showHideControls(m);
+    if (m != currentScopeMode) {
+        currentScopeMode = m;
+        scopeModeCombo->blockSignals(true);
+        scopeModeCombo->setCurrentIndex(scopeModeCombo->findData(m));
+        scopeModeCombo->blockSignals(false);
+        showHideControls(m);
+    }
 }
 
 void spectrumScope::selectSpan(centerSpanData s)
@@ -1030,7 +1042,7 @@ void spectrumScope::updatedScopeMode(int index)
     spectrumMode_t s = scopeModeCombo->itemData(index).value<spectrumMode_t>();
 
     queue->add(priorityImmediate,queueItem((receiver?funcScopeSubMode:funcScopeMainMode),QVariant::fromValue(s),false,receiver));
-
+    currentScopeMode = s;
     showHideControls(s);
 }
 
@@ -1475,8 +1487,6 @@ void spectrumScope::scroll(QWheelEvent *we)
     scrollWheelOffsetAccumulated = 0;
 }
 
-
-
 void spectrumScope::receiveMode(modeInfo m, uchar vfo)
 {
     // Update mode information if mode/filter/data has changed.
@@ -1852,6 +1862,21 @@ void spectrumScope::setFrequency(freqt f, uchar vfo)
 
 }
 
+void spectrumScope::showBandIndicators(bool en)
+{
+    for (auto &bi: bandIndicators)
+    {
+        bi.line->setVisible(en);
+        bi.text->setVisible(en);
+    }
+    if (!bandIndicators.empty())
+    {
+        bandIndicatorsVisible=en;
+    }
+}
+
+
+
 void spectrumScope::setBandIndicators(bool show, QString region, std::vector<bandType>* bands)
 {
     this->currentRegion = region;
@@ -1876,13 +1901,13 @@ void spectrumScope::setBandIndicators(bool show, QString region, std::vector<ban
                 b.line = new QCPItemLine(spectrum);
                 b.line->setHead(QCPLineEnding::esLineArrow);
                 b.line->setTail(QCPLineEnding::esLineArrow);
-                b.line->setVisible(true);
+                b.line->setVisible(false);
                 b.line->setPen(QPen(band.color));
                 b.line->start->setCoords(double(band.lowFreq/1000000.0), spectrum->yAxis->range().upper-5);
                 b.line->end->setCoords(double(band.highFreq/1000000.0), spectrum->yAxis->range().upper-5);
 
                 b.text = new QCPItemText(spectrum);
-                b.text->setVisible(true);
+                b.text->setVisible(false);
                 b.text->setAntialiased(true);
                 b.text->setColor(band.color);
                 b.text->setFont(QFont(font().family(), 8));
@@ -1893,12 +1918,11 @@ void spectrumScope::setBandIndicators(bool show, QString region, std::vector<ban
             }
         }
     }
+    bandIndicatorsVisible=false;
 }
 
 void spectrumScope::displaySettings(int numDigits, qint64 minf, qint64 maxf, int minStep,FctlUnit unit, std::vector<bandType>* bands)
 {
-    // Delete all band indicators first
-
     for (uchar i=0;i<numVFO;i++)
         freqDisplay[i]->setup(numDigits, minf, maxf, minStep, unit, bands);
 }
@@ -1974,4 +1998,43 @@ void spectrumScope::detachScope(bool state)
     }
     // Force a redraw?
     this->show();
+}
+
+void spectrumScope::changeSpan(char val)
+{
+    if ((val > 0 && spanCombo->currentIndex() < spanCombo->count()-val) ||
+        (val < 0 && spanCombo->currentIndex() > 0))
+    {
+        spanCombo->setCurrentIndex(spanCombo->currentIndex() + val);
+    }
+    else
+    {
+        if (val<0)
+            spanCombo->setCurrentIndex(spanCombo->count()-1);
+        else
+            spanCombo->setCurrentIndex(0);
+    }
+}
+
+void spectrumScope::updateBSR(std::vector<bandType>* bands)
+{
+    // Send a new BSR value for the current frequency.
+    for (auto &b: *bands)
+    {
+        if (freqDisplay[0]->getFrequency() >= b.lowFreq && freqDisplay[0]->getFrequency() <= b.highFreq)
+        {
+            if(b.bsr != 0)
+            {
+                bandStackType bs(b.bsr,1);
+                bs.data=dataCombo->currentIndex();
+                bs.filter=filterCombo->currentData().toInt();
+                bs.freq.Hz = freqDisplay[0]->getFrequency();
+                bs.freq.MHzDouble=bs.freq.Hz/1000000.0;
+                bs.mode=scopeModeCombo->currentData().toInt();
+                queue->add(priorityImmediate,queueItem(funcBandStackReg,
+                                                        QVariant::fromValue<bandStackType>(bs),false,receiver));
+            }
+            break;
+        }
+    }
 }
