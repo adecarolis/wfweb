@@ -1996,6 +1996,9 @@ void spectrumScope::updateBSR(std::vector<bandType>* bands)
                 bs.freq.Hz = freqDisplay[0]->getFrequency();
                 bs.freq.MHzDouble=bs.freq.Hz/1000000.0;
                 bs.mode=scopeModeCombo->currentData().toInt();
+                bs.sql=0;
+                bs.tone.tone=77;
+                bs.tsql.tone=77;
                 queue->add(priorityImmediate,queueItem(funcBandStackReg,
                                                         QVariant::fromValue<bandStackType>(bs),false,receiver));
             }
