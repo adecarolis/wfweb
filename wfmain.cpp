@@ -1470,6 +1470,17 @@ void wfmain::buttonControl(const COMMAND* cmd)
         queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<freqt>(f),false,rx));
         break;
     }
+    case funcTransceiverStatus:
+    {
+        if (cmd->value == -1)
+        {
+            // toggle PTT
+            on_transmitBtn_clicked();
+            break;
+        }
+
+        // We want to fall through if it is not a toggle.
+    }
     default:
         qInfo(logUsbControl()) << "Command" << cmd->command << "Suffix" << cmd->suffix;
         queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->suffix),false,rx));
@@ -3787,7 +3798,8 @@ void wfmain::receivePTTstatus(bool pttOn)
         pttLed->setState(QLedLabel::State::StateOk);
         pttLed->setToolTip("Receiving");
         changePrimaryMeter(false);
-
+        // Send updated BSR? Currently a work-in-progress M0VSE
+        //receivers[currentReceiver]->updateBSR(&rigCaps->bands);
     }
     amTransmitting = pttOn;
     rpt->handleTransmitStatus(pttOn);

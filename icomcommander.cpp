@@ -960,7 +960,10 @@ void icomCommander::parseCommand()
                 bsr.freq.VFO = selVFO_t::activeVFO;
                 bsr.mode = bcdHexToUChar(payloadIn[b.bytes+2]);
                 bsr.filter = bcdHexToUChar(payloadIn[b.bytes+3]);
-                bsr.data = (payloadIn[b.bytes+4] & 0x10) >> 4; // not sure...
+                bsr.data = (payloadIn[b.bytes+4] & 0xf0) >> 4;
+                bsr.sql = (payloadIn[b.bytes+4] & 0x0f);
+                bsr.tone = decodeTone(payloadIn.mid(b.bytes+5,3));
+                bsr.tsql = decodeTone(payloadIn.mid(b.bytes+8,3));
                 qDebug(logRig()) << QString("BSR received, band:%0 code:%1 freq:%2 data:%3 mode:%4 filter:%5")
                                         .arg(bsr.band).arg(bsr.regCode).arg(bsr.freq.Hz).arg(bsr.data).arg(bsr.mode).arg(bsr.filter);
                 value.setValue(bsr);
@@ -970,6 +973,8 @@ void icomCommander::parseCommand()
         }
         if (!value.isValid()) {
             qWarning(logRig()) << "Unknown BSR received, check rig file:" << payloadIn.toHex(' ');
+        } else {
+            qInfo(logRig()) << "BSR received:" << payloadIn.toHex(' ');
         }
         break;
     }
@@ -2800,12 +2805,13 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                             payload.append(makeFreqPayload(bsr.freq,b.bytes));
                             payload.append(bcdEncodeChar(bsr.mode));
                             payload.append(bcdEncodeChar(bsr.filter));
-                            payload.append(bcdEncodeChar(bsr.data));
+                            payload.append((bsr.data << 4 & 0xf0) + (bsr.sql & 0x0f));
+                            payload.append(encodeTone(bsr.tone.tone));
+                            payload.append(encodeTone(bsr.tsql.tone));
                             break;
                         }
 
                     }
-
                 }
                 qInfo(logRig()) << "Sending BSR, Band Code:" << bsr.band << "Register Code:" << bsr.regCode << "(Sent:" << payload.toHex(' ') << ")";
             }

@@ -1980,3 +1980,26 @@ void spectrumScope::changeSpan(char val)
             spanCombo->setCurrentIndex(0);
     }
 }
+
+void spectrumScope::updateBSR(std::vector<bandType>* bands)
+{
+    // Send a new BSR value for the current frequency.
+    for (auto &b: *bands)
+    {
+        if (freqDisplay[0]->getFrequency() >= b.lowFreq && freqDisplay[0]->getFrequency() <= b.highFreq)
+        {
+            if(b.bsr != 0)
+            {
+                bandStackType bs(b.bsr,1);
+                bs.data=dataCombo->currentIndex();
+                bs.filter=filterCombo->currentData().toInt();
+                bs.freq.Hz = freqDisplay[0]->getFrequency();
+                bs.freq.MHzDouble=bs.freq.Hz/1000000.0;
+                bs.mode=scopeModeCombo->currentData().toInt();
+                queue->add(priorityImmediate,queueItem(funcBandStackReg,
+                                                        QVariant::fromValue<bandStackType>(bs),false,receiver));
+            }
+            break;
+        }
+    }
+}

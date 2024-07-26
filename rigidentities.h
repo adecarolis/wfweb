@@ -167,6 +167,9 @@ struct bandStackType {
     uchar data;
     uchar mode;
     uchar filter;
+    uchar sql;
+    toneInfo tone;
+    toneInfo tsql;
 };
 
 

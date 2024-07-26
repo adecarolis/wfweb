@@ -1671,8 +1671,7 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "VFOB", commandKnob, funcSubFreq, (quint8)0x1));
     commands.append(COMMAND(num++, "Freq Down", commandButton, funcMainFreq,(int)-1));
     commands.append(COMMAND(num++, "Freq Up", commandButton, funcMainFreq, (int)1));
-    commands.append(COMMAND(num++, "PTT Off", commandButton, funcTransceiverStatus, (quint8)0x0));
-    commands.append(COMMAND(num++, "PTT Toggle", commandButton, funcTransceiverStatus,  (quint8)0x0));
+    commands.append(COMMAND(num++, "PTT Toggle", commandButton, funcTransceiverStatus,  (int)-1));
     commands.append(COMMAND(num++, "Span/Step", commandKnob, funcSeparator, (quint8)0x0));
     commands.append(COMMAND(num++, "Tune", commandButton, funcTunerStatus, (quint8)0x1));
     commands.append(COMMAND(num++, "Span/Step", commandButton, funcSeparator, (quint8)0x0));

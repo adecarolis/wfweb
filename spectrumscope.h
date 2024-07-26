@@ -109,6 +109,7 @@ public:
 
     void changeSpan(char val);
     void setSeparators(QChar group, QChar decimal);
+    void updateBSR(std::vector<bandType>* bands);
 
 
 public slots: // Can be called directly or updated via signal/slot
