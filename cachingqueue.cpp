@@ -219,18 +219,18 @@ void cachingQueue::add(queuePriority prio ,queueItem item)
             QMutexLocker locker(&mutex);
             if (!item.recurring || isRecurring(item.command,item.receiver) != prio)
             {
-                queueItem it=item;
                 if (item.recurring && prio == queuePriority::priorityImmediate) {
                     qWarning() << "Warning, cannot add recurring command with immediate priority!" << funcString[item.command];
                 } else {
-                    if (it.recurring) {
+                    if (item.recurring) {
                         // also insert an immediate command to get the current value "now" (removes the need to get rigstate)
+                        queueItem it=item;
                         it.recurring=false;
                         it.param.clear();
+                        //qDebug() << "adding" << funcString[item.command] << "recurring" << it.recurring << "priority" << prio << "receiver" << it.receiver;
                         queue->insert(queue->cend(),priorityImmediate, it);
-                        qDebug() << "adding" << funcString[item.command] << "recurring" << it.recurring << "priority" << prio << "receiver" << it.receiver;
                     }
-                    queue->insert(prio, it);
+                    queue->insert(prio, item);
                 }
             }
         }

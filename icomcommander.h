@@ -70,7 +70,7 @@ private:
     bool parseMemory(QVector<memParserFormat>* memParser, memoryType* mem);
     QByteArray makeFreqPayloadRptOffset(freqt freq);
     QByteArray makeFreqPayload(double frequency);
-    QByteArray makeFreqPayload(freqt freq);
+    QByteArray makeFreqPayload(freqt freq,uchar numchars=5);
     QByteArray encodeTone(quint16 tone, bool tinv, bool rinv);
     QByteArray encodeTone(quint16 tone);
 

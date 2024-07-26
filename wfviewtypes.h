@@ -163,9 +163,11 @@ enum breakIn_t {
 };
 
 struct freqt {
+    freqt ():Hz(0), MHzDouble(0.0), VFO(activeVFO) {};
+    freqt(quint64 Hz, double MHzDouble, selVFO_t VFO): Hz(Hz), MHzDouble(MHzDouble), VFO(VFO) {};
     quint64 Hz;
     double MHzDouble;
-    selVFO_t VFO = activeVFO;
+    selVFO_t VFO;
 };
 
 struct datekind {

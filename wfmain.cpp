@@ -2836,7 +2836,7 @@ void wfmain::saveSettings()
     settings->setValue("ShowBands",prefs.showBands);
     settings->setValue("GroupSeparator",prefs.groupSeparator);
     settings->setValue("DecimalSeparator",prefs.decimalSeparator);
-        settings->endGroup();
+    settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
     settings->beginGroup("Radio");
