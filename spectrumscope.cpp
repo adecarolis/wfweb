@@ -317,7 +317,8 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     configLayout->addRow(tr("Fill Width"),configFilterWidth);
 
     connect(configLength, &QSlider::valueChanged, this, [=](const int &val) {
-        prepareWf(val);
+        //prepareWf(val);
+        changeWfLength(val);
         emit updateSettings(receiver,currentTheme,wfLength,plotFloor,plotCeiling);
     });
     connect(configBottom, &QSlider::valueChanged, this, [=](const int &val) {
@@ -432,6 +433,40 @@ void spectrumScope::prepareScope(uint maxAmp, uint spectWidth)
     this->maxAmp = maxAmp;
 }
 
+void spectrumScope::changeWfLength(uint wf)
+{
+    if(!scopePrepared)
+        return;
+
+    QMutexLocker locker(&mutex);
+
+    this->wfLength = wf;
+    QByteArray empty((int)spectWidth, '\x01');
+
+    for(unsigned int i = wfimage.size(); i < wfLength; i++)
+    {
+        wfimage.append(empty);
+    }
+    wfimage.remove(wfLength, wfimage.size()-wfLength);
+    wfimage.squeeze();
+
+    colorMap->data()->clear();
+
+    colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
+    colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
+    colorMap->setDataRange(QCPRange(plotFloor, plotCeiling));
+    colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(currentTheme));
+
+    if(colorMapData != Q_NULLPTR)
+    {
+        delete colorMapData;
+    }
+    colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
+
+    colorMap->setData(colorMapData,true); // Copy the colorMap so deleting it won't result in crash!
+    waterfall->yAxis->setRange(0,wfLength - 1);
+    waterfall->replot();
+}
 
 bool spectrumScope::prepareWf(uint wf)
 {
