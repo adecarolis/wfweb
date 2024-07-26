@@ -40,6 +40,7 @@ public:
 
     bool prepareWf(uint wfLength);
     void prepareScope(uint ampMap, uint spectWidth);
+    void changeWfLength(uint wf);
     bool updateScope(scopeData spectrum);
     void setRange(int floor, int ceiling);
     void wfInterpolate(bool en) { colorMap->setInterpolate(en); }

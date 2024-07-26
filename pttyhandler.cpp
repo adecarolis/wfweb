@@ -11,7 +11,7 @@
 #include <errno.h>
 #endif
 
-// Copyright 2017-2021 Elliott H. Liggett & Phil Taylor 
+// Copyright 2017-2024 Elliott H. Liggett & Phil Taylor
 
 pttyHandler::pttyHandler(QString pty, QObject* parent) : QObject(parent)
 {

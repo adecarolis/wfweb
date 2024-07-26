@@ -15,11 +15,11 @@ aboutbox::aboutbox(QWidget *parent) :
     ui->topText->setText("wfview version " + QString(WFVIEW_VERSION));
 
     QString head = QString("<html><head></head><body>");
-    QString copyright = QString("Copyright 2017-2023 Elliott H. Liggett, W6EL and Phil E. Taylor, M0VSE. All rights reserved.<br/>wfview source code is <a href=\"https://gitlab.com/eliggett/wfview/-/blob/master/LICENSE\">licensed</a> under the GNU GPLv3.");
+    QString copyright = QString("Copyright 2017-2024 Elliott H. Liggett, W6EL and Phil E. Taylor, M0VSE. All rights reserved.<br/>wfview source code is <a href=\"https://gitlab.com/eliggett/wfview/-/blob/master/LICENSE\">licensed</a> under the GNU GPLv3.");
     QString scm = QString("<br/><br/>Source code and issues managed by Roeland Jansen, PA3MET");
     QString doctest = QString("<br/><br/>Testing and development mentorship from Jim Nijkamp, PA8E.");
 
-    QString dedication = QString("<br/><br/>Special thanks to our translators:<br/>Siwij Cat TA1YEP (Turkish)<br/>OK2HAM (Czech)<br/>JG3HLX (Japanese)");
+    QString dedication = QString("<br/><br/>Special thanks to our translators:<br/>Siwij Cat TA1YEP (Turkish)<br/>OK2HAM (Czech)<br/>JG3HLX (Japanese)<br/>Dawid SQ6EMM (Polish)<br/>Jim PA8E (Dutch)");
 
 #if defined(Q_OS_LINUX)
     QString ssCredit = QString("<br/><br/>Stylesheet <a href=\"https://github.com/ColinDuquesnoy/QDarkStyleSheet/tree/master/qdarkstyle\"  style=\"color: cyan;\">qdarkstyle</a> used under MIT license, stored in /usr/share/wfview/stylesheets/.");

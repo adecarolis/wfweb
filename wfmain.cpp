@@ -5,16 +5,14 @@
 #include "logcategories.h"
 
 
-// This code is copyright 2017-2022 Elliott H. Liggett
+// This code is copyright 2017-2024 Elliott H. Liggett and Phil E. Taylor
 // All rights reserved
 
 // Log support:
-//static void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
 QScopedPointer<QFile> m_logFile;
 QMutex logMutex;
 QMutex logTextMutex;
 QScopedPointer<QTextStream> logStream;
-//QTextStream* logStream = Q_NULLPTR;
 
 QVector<QPair<QtMsgType,QString>> logStringBuffer;
 #ifdef QT_DEBUG

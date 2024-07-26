@@ -1,4 +1,4 @@
-// Copyright 2021 Phil Taylor M0VSE
+// Copyright 2020-2024 Phil Taylor M0VSE
 // This code is heavily based on "Kappanhang" by HA2NON, ES1AKOS and W6EL!
 
 #include "udphandler.h"
