@@ -446,14 +446,6 @@ void spectrumScope::changeWfLength(uint wf)
     QMutexLocker locker(&mutex);
 
     this->wfLength = wf;
-    QByteArray empty((int)spectWidth, '\x01');
-
-    for(unsigned int i = wfimage.size(); i < wfLength; i++)
-    {
-        wfimage.append(empty);
-    }
-    wfimage.remove(wfLength, wfimage.size()-wfLength);
-    wfimage.squeeze();
 
     colorMap->data()->clear();
 
@@ -470,7 +462,7 @@ void spectrumScope::changeWfLength(uint wf)
 
     colorMap->setData(colorMapData,true); // Copy the colorMap so deleting it won't result in crash!
     waterfall->yAxis->setRange(0,wfLength - 1);
-    waterfall->replot();
+    //waterfall->replot();
 }
 
 bool spectrumScope::prepareWf(uint wf)
@@ -496,11 +488,11 @@ bool spectrumScope::prepareWf(uint wf)
         wfimage.clear();
     }
 
-    for(unsigned int i = wfimage.size(); i < wfLength; i++)
+    for(unsigned int i = wfimage.size(); i < wfLengthMax; i++)
     {
         wfimage.append(empty);
     }
-    wfimage.remove(wfLength, wfimage.size()-wfLength);
+    //wfimage.remove(wfLength, wfimage.size()-wfLength);
     wfimage.squeeze();
 
     colorMap->data()->clear();
