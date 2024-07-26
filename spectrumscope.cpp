@@ -1649,6 +1649,9 @@ void spectrumScope::receivePassband(quint16 pass)
         //trxadj->updatePassband(pass);
         qDebug(logSystem()) << QString("%0 Received new IF Filter/Passband %1 Hz").arg(receiver?"Sub":"Main").arg(pass);
         emit showStatusBarText(QString("%0 IF filter width %1 Hz (%2 MHz)").arg(receiver?"Sub":"Main").arg(pass).arg(passbandWidth));
+        configFilterWidth->blockSignals(true);
+        configFilterWidth->setValue(pass);
+        configFilterWidth->blockSignals(false);
     }
 }
 
