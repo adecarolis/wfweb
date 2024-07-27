@@ -267,8 +267,8 @@ private:
 
     passbandActions passbandAction = passbandStatic;
 
-    double PBTInner = 0.0;
-    double PBTOuter = 0.0;
+    double PBTInner = 1.0; // Invalid value to start.
+    double PBTOuter = 1.0; // Invalid value to start.
     double passbandWidth = 0.0;
     double passbandCenterFrequency = 0.0;
     double pbtDefault = 0.0;
