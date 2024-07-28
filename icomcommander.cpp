@@ -2419,6 +2419,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
     {
         if (value.isValid())
         {
+
             if (!cmd.setCmd) {
                 qDebug(logRig()) << "Removing unsupported set command from queue" << funcString[func] << "VFO" << receiver;
                 queue->del(func,receiver);
@@ -2432,9 +2433,17 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 queue->addUnique(priorityImmediate,func,false,receiver);
             }
 
+            // Special option to capture RTS PTT and fake a return value
+            if (func == funcTransceiverStatus && cmd.data.startsWith("RTS")) {
+                qInfo(logRig()) << "Setting RTS for PTT to" << value.value<bool>();
+                emit toggleRTS(value.value<bool>());
+                queue->receiveValue(func,value,receiver);
+                return;
+            }
+
             if (!strcmp(value.typeName(),"bool"))
             {
-                 payload.append(value.value<bool>());
+                payload.append(value.value<bool>());
             }
             else if (!strcmp(value.typeName(),"QString"))
             {
@@ -2732,7 +2741,8 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         payload.append(bcdEncodeChar(m.reg));
                         if (func == funcMainMode || func == funcSubMode || func == funcSelectedMode || func == funcUnselectedMode)
                            payload.append(m.data);
-                        payload.append(m.filter);
+                        if (!rigCaps.filters.empty())
+                            payload.append(m.filter);
                         qDebug(logRig()) << "Sending mode command, mode:" << m.name;
                     }
                 }
