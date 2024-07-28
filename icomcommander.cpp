@@ -2732,7 +2732,8 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         payload.append(bcdEncodeChar(m.reg));
                         if (func == funcMainMode || func == funcSubMode || func == funcSelectedMode || func == funcUnselectedMode)
                            payload.append(m.data);
-                        payload.append(m.filter);
+                        if (!rigCaps.filters.empty())
+                            payload.append(m.filter);
                         qDebug(logRig()) << "Sending mode command, mode:" << m.name;
                     }
                 }
