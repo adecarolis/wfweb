@@ -78,7 +78,8 @@ void loggingWindow::acceptLogText(QPair<QtMsgType,QString> text)
     {
         colour = "green";
     }
-    ui->logTextDisplay->appendHtml(QString("<p><span style='color:%0'>%1</span></p>").arg(colour,text.second));
+    QString sanitized = text.second.replace(" ", "&nbsp;");
+    ui->logTextDisplay->appendHtml(QString("<p><span style='color:%0'>%1</span></p>").arg(colour,sanitized));
     if(vertLogScroll->value() == vertLogScroll->maximum())
     {
         horizLogScroll->setValue(horizLogScroll->minimum());
