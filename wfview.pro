@@ -136,7 +136,7 @@ unix:target.path = $$PREFIX/bin
 INSTALLS += target
 
 # Why doesn't this seem to do anything?
-unix:DISTFILES += resources/unix_icons/wfview.png \
+unix:DISTFILES += resources/icons/bitmap/wfview.png \
     resources/install.sh
 unix:DISTFILES += resources/wfview.desktop
 unix:DISTFILES += resources/org.wfview.wfview.metainfo.xml
@@ -145,7 +145,7 @@ unix:applications.files = resources/wfview.desktop
 unix:applications.path = $$PREFIX/share/applications
 INSTALLS += applications
 
-unix:icons.files = resources/unix_icons/wfview.png
+unix:icons.files = resources/icons/bitmap/wfview.png
 unix:icons.path = $$PREFIX/share/icons/hicolor/256x256/apps
 INSTALLS += icons
 

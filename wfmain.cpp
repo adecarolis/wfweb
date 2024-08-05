@@ -609,7 +609,8 @@ void wfmain::makeRig()
                 [=]() {  queue->add(priorityImmediate,funcVFOSwapMS,false,false);});
 
         connect(this->rpt, &repeaterSetup::setRptDuplexOffset, this->rig,
-                [=](const freqt &fOffset) { queue->add(priorityImmediate,queueItem(funcSendFreqOffset,QVariant::fromValue<freqt>(fOffset),false));});
+                [=](const freqt &fOffset) {
+            queue->add(priorityImmediate,queueItem(funcSendFreqOffset,QVariant::fromValue<freqt>(fOffset),false));});
 
         connect(this->rpt, &repeaterSetup::getRptDuplexOffset, this->rig,
                 [=]() {  queue->add(priorityImmediate,funcReadFreqOffset,false,false);});
@@ -4002,8 +4003,6 @@ void wfmain::on_rfGainSlider_valueChanged(int value)
 
 void wfmain::on_afGainSlider_valueChanged(int value)
 {
-
-    qDebug(logGui()) << "AF Gain Slider value" << value << "LAN=" << usingLAN;
     if(usingLAN)
     {
         prefs.rxSetup.localAFgain = (unsigned char)(value);

@@ -1812,7 +1812,6 @@ void spectrumScope::setPBTInner (uchar val) {
 
     if (newPBT != this->PBTInner) {
         this->PBTInner = newPBT;
-        qInfo(logSystem()) << "New PBT Inner value received" << this->PBTInner << "CW Pitch" << this->cwPitch << "Passband" << this->passbandWidth;
         double pbFreq = ((double)(this->PBTInner) / this->passbandWidth) * 127.0;
         qint16 newFreq = pbFreq + 128;
         if (newFreq >= 0 && newFreq <= 255) {
@@ -1837,7 +1836,6 @@ void spectrumScope::setPBTOuter (uchar val) {
 
     if (newPBT != this->PBTOuter) {
         this->PBTOuter = newPBT;
-        qInfo(logSystem()) << "New PBT Outer value received" << this->PBTOuter << "CW Pitch" << this->cwPitch << "Passband" << this->passbandWidth;
         double pbFreq = ((double)(this->PBTOuter) / this->passbandWidth) * 127.0;
         qint16 newFreq = pbFreq + 128;
         if (newFreq >= 0 && newFreq <= 255) {
