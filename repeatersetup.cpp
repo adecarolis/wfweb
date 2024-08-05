@@ -10,8 +10,6 @@ repeaterSetup::repeaterSetup(QWidget *parent) :
     this->setObjectName("RepeaterSetup");
     queue = cachingQueue::getInstance(this);
     connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
-    rigCaps = queue->getRigCaps();
-    receiveRigCaps(rigCaps);
 
     ui->autoTrackLiveBtn->setEnabled(false); // until we set split enabled.
     ui->warningFMLabel->setVisible(false);
@@ -826,7 +824,7 @@ void repeaterSetup::receiveRigCaps(rigCapabilities* rig)
     this->rigCaps = rig;
     if (rig != Q_NULLPTR)
     {
-        qInfo() << "Got rigcaps for:" << rig->modelName;
+        qInfo() << "repeaterSetup got rigcaps for:" << rig->modelName;
 
         if(rig->commands.contains(funcRepeaterTone)) {
             ui->rptToneCombo->setDisabled(false);
