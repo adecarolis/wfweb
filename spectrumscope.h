@@ -227,7 +227,7 @@ private:
     uchar currentSpeed = 0;
     colorPrefsType colors;
     freqt freq;
-    modeInfo mode;
+    modeInfo mode = modeInfo(modeUnknown,0,"",0,0);
     bool lock = false;
     bool scopePrepared=false;
     quint16 spectWidth=689;

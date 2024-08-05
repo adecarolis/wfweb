@@ -1550,19 +1550,36 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
                 queue->del(funcFilterWidth,receiver);
             }
 
+            if (m.mk == modeDD || m.mk == modeDV)
+            {
+                queue->del(funcUnselectedMode,receiver);
+                queue->del(funcUnselectedFreq,receiver);
+            } else {
+                queue->addUnique(priorityHigh,funcUnselectedMode,true,receiver);
+                queue->addUnique(priorityHigh,funcUnselectedFreq,true,receiver);
+            }
+
+            if (m.mk == modeCW || m.mk == modeCW_R)
+            {
+                queue->addUnique(priorityLow,funcCwPitch,true,receiver);
+                queue->addUnique(priorityLow,funcDashRatio,true,receiver);
+                queue->addUnique(priorityLow,funcKeySpeed,true,receiver);
+            } else {
+                queue->del(funcCwPitch,receiver);
+                queue->del(funcDashRatio,receiver);
+                queue->del(funcKeySpeed,receiver);
+            }
+
 #if defined __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
 
             switch (m.mk) {
-                // M0VSE this needs to be replaced with 1/2 the "actual" width of the RTTY signal+the mark freq.
+            // M0VSE this needs to be replaced with 1/2 the "actual" width of the RTTY signal+the mark freq.
             case modeRTTY:
             case modeRTTY_R:
                 passbandCenterFrequency = 0.00008925;
-                queue->del(funcCwPitch,receiver);
-                queue->del(funcDashRatio,receiver);
-                queue->del(funcKeySpeed,receiver);
                 break;
             case modeLSB:
             case modeUSB:
@@ -1570,15 +1587,8 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
             case modePSK_R:
                 passbandCenterFrequency = 0.0015;
             case modeAM:
-                queue->del(funcCwPitch,receiver);
-                queue->del(funcDashRatio,receiver);
-                queue->del(funcKeySpeed,receiver);
-                break;
             case modeCW:
             case modeCW_R:
-                queue->addUnique(priorityLow,funcCwPitch,true,receiver);
-                queue->addUnique(priorityLow,funcDashRatio,true,receiver);
-                queue->addUnique(priorityLow,funcKeySpeed,true,receiver);
                 break;
             default:
                 // FM and digital modes are fixed width, not sure about any other modes?
@@ -1588,10 +1598,6 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
                     passbandWidth = 0.010;
                 else
                     passbandWidth = 0.007;
-                break;
-                queue->del(funcCwPitch,receiver);
-                queue->del(funcDashRatio,receiver);
-                queue->del(funcKeySpeed,receiver);
                 break;
             }
 #if defined __GNUC__
