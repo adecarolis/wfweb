@@ -277,9 +277,17 @@ void udpServer::controlReceived()
             if (in->type == 0x07)
             {
                 // It is a ping request/response
-
                 if (in->reply == 0x00)
                 {
+                    if (!current->clientTime.isValid() ||
+                        ((in->time-current->timeOffset)+current->startTime < QTime::currentTime().msecsSinceStartOfDay())) {
+                        // Either a new day or first connection.
+                        current->timeOffset = in->time;
+                        current->startTime = QTime::currentTime().msecsSinceStartOfDay();
+                    }
+                    current->clientTime = QTime::fromMSecsSinceStartOfDay(current->startTime+(in->time-current->timeOffset));
+                    current->timeDifference = QTime::currentTime().msecsSinceStartOfDay() - (current->startTime + (in->time - current->timeOffset));
+
                     current->rxPingTime = in->time;
                     sendPing(&controlClients, current, in->seq, true);
                 }
@@ -612,6 +620,15 @@ void udpServer::civReceived()
 
                 if (in->reply == 0x00)
                 {
+                    if (!current->clientTime.isValid() ||
+                        ((in->time-current->timeOffset)+current->startTime < QTime::currentTime().msecsSinceStartOfDay())) {
+                        // Either a new day or first connection.
+                        current->timeOffset = in->time;
+                        current->startTime = QTime::currentTime().msecsSinceStartOfDay();
+                    }
+                    current->clientTime = QTime::fromMSecsSinceStartOfDay(current->startTime+(in->time-current->timeOffset));
+                    current->timeDifference = QTime::currentTime().msecsSinceStartOfDay() - (current->startTime + (in->time - current->timeOffset));
+
                     current->rxPingTime = in->time;
                     sendPing(&civClients, current, in->seq, true);
                 }
@@ -771,6 +788,15 @@ void udpServer::audioReceived()
 
                 if (in->reply == 0x00)
                 {
+                    if (!current->clientTime.isValid() ||
+                        ((in->time-current->timeOffset)+current->startTime < QTime::currentTime().msecsSinceStartOfDay())) {
+                        // Either a new day or first connection.
+                        current->timeOffset = in->time;
+                        current->startTime = QTime::currentTime().msecsSinceStartOfDay();
+                    }
+                    current->clientTime = QTime::fromMSecsSinceStartOfDay(current->startTime+(in->time-current->timeOffset));
+                    current->timeDifference = QTime::currentTime().msecsSinceStartOfDay() - (current->startTime + (in->time - current->timeOffset));
+
                     current->rxPingTime = in->time;
                     sendPing(&audioClients, current, in->seq, true);
                 }
@@ -802,18 +828,17 @@ void udpServer::audioReceived()
                     current->seqPrefix++;
                 }
 
-                if (hasTxAudio == current->ipAddress)
+                QTime lastReceived = QTime::currentTime().addMSecs(current->timeDifference);
+                if (hasTxAudio == current->ipAddress && lastReceived < QTime::currentTime().addMSecs(current->txBufferLen))
                 {
                     // 0xac is the smallest possible audio packet.
                     audioPacket tempAudio;
                     tempAudio.seq = (quint32)current->seqPrefix << 16 | in->seq;
-                    tempAudio.time = QTime::currentTime();;
+                    tempAudio.time = lastReceived;
                     tempAudio.sent = 0;
                     tempAudio.data = r.mid(0x18);
                     //qInfo(logUdpServer()) << "sending tx audio " << in->seq;
                     emit haveAudioData(tempAudio);
-                    //txaudio->incomingAudio(tempAudio);
-
                 }
             }
             break;
@@ -1195,8 +1220,7 @@ void udpServer::sendLoginResponse(CLIENT* c, bool allowed)
             c->retransmitTimer->stop();
     }
     else {
-        strcpy(p.connection, "WFVIEW");
-        //strcpy(p.connection, "FTTH");
+        strncpy_s(p.connection, "WFVIEW",6);
     }
 
     SEQBUFENTRY s;

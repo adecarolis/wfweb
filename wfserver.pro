@@ -13,7 +13,7 @@ TEMPLATE = app
 
 CONFIG += console
 
-DEFINES += WFVIEW_VERSION=\\\"1.65\\\"
+DEFINES += WFVIEW_VERSION=\\\"1.91\\\"
 
 DEFINES += BUILD_WFSERVER
 
@@ -23,15 +23,19 @@ CONFIG(debug, release|debug) {
   linux:QMAKE_CXXFLAGS += -faligned-new
   win32 {
     contains(QMAKE_TARGET.arch, x86_64) {
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfview-debug $$escape_expand(\\n\\t))
+      LIBS += -L../opus/win32/VS2015/x64/DebugDLL/
       LIBS += -L../portaudio/msvc/X64/Debug/ -lportaudio_x64
-      LIBS += -L../opus/win32/VS2015/x64/Debug/ -lopus -lole32
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfserver-debug $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\x64\DebugDLL\opus-0.dll wfserver-debug $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfserver-debug\rigs\*.* $$escape_expand(\\n\\t))
     } else {
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll wfview-debug\$$escape_expand(\\n\\t))
+      LIBS += -L../opus/win32/VS2015/win32/DebugDLL/
       LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86
-      LIBS += -L../opus/win32/VS2015/Win32/Debug/ -lopus -lole32
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll wfserver-debug\$$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\DebugDLL\opus-0.dll wfserver-debug $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfserver-debug\rigs\*.* $$escape_expand(\\n\\t))
     }
-    DESTDIR = wfview-release
+    DESTDIR = wfserver-debug
   }
 } else {
   # For Release builds only:
@@ -43,15 +47,19 @@ CONFIG(debug, release|debug) {
 
   win32 {
     contains(QMAKE_TARGET.arch, x86_64) {
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfview-release $$escape_expand(\\n\\t))
+      LIBS += -L../opus/win32/VS2015/x64/ReleaseDLL/
       LIBS += -L../portaudio/msvc/X64/Release/ -lportaudio_x64
-      LIBS += -L../opus/win32/VS2015/x64/Release/ -lopus -lole32
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfserver-release $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\x64\ReleaseDLL\opus-0.dll wfserver-release $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfserver-release\rigs\*.* $$escape_expand(\\n\\t))
     } else {
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Release\portaudio_x86.dll wfview-release $$escape_expand(\\n\\t))
+      LIBS += -L../opus/win32/VS2015/win32/ReleaseDLL/
       LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
-      LIBS += -L../opus/win32/VS2015/Win32/Release/ -lopus -lole32
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Release\portaudio_x86.dll wfserver-release $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\ReleaseDLL\opus-0.dll wfserver-release $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfserver-release\rigs\*.* $$escape_expand(\\n\\t))
     }
-    DESTDIR = wfview-debug
+    DESTDIR = wfserver-release
   }
 }
 
@@ -69,6 +77,8 @@ macx:DEFINES += __MACOSX_CORE__
 linux:LIBS += -lpulse -lpulse-simple -lrtaudio -lpthread
 
 win32:INCLUDEPATH += ../portaudio/include
+
+win32:LIBS += -lopus -lole32 -luser32
 !win32:LIBS += -lportaudio
 
 # The following define makes your compiler emit warnings if you use
@@ -102,8 +112,8 @@ macx:INCLUDEPATH += /usr/local/include /opt/local/include
 macx:LIBS += -L/usr/local/lib -L/opt/local/lib
 
 macx:ICON = ../wfview/resources/wfview.icns
-win32:RC_ICONS = ../wfview/resources/wfview.ico
-QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.13
+win32:RC_ICONS = "../wfview/resources/icons/Windows/wfview 512x512.ico"
+QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
 QMAKE_TARGET_BUNDLE_PREFIX = org.wfview
 MY_ENTITLEMENTS.name = CODE_SIGN_ENTITLEMENTS
 MY_ENTITLEMENTS.value = ../wfview/resources/wfview.entitlements
@@ -136,9 +146,11 @@ macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
 INCLUDEPATH += resampler
 
 SOURCES += main.cpp\
+    cachingqueue.cpp \
     servermain.cpp \
     commhandler.cpp \
     rigcommander.cpp \
+    icomcommander.cpp \
     freqmemory.cpp \
     rigidentities.cpp \
     udpbase.cpp \
@@ -159,8 +171,10 @@ SOURCES += main.cpp\
     audiodevices.cpp
 
 HEADERS  += servermain.h \
+    cachingqueue.h \
     commhandler.h \
     rigcommander.h \
+    icomcommander.h \
     freqmemory.h \
     rigidentities.h \
     udpbase.h \

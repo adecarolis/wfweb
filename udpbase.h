@@ -149,6 +149,12 @@ public:
 	QString connectionType = "";
 	int congestion = 0;
 
+protected:
+    qint64 startTime;
+    QTime radioTime;
+    qint64 timeOffset;
+    qint64 timeDifference = 0;
+
 
 private:
 	void sendRetransmitRequest();

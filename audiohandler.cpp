@@ -185,7 +185,7 @@ audioHandler::~audioHandler()
 	connect(this, SIGNAL(sendToConverter(audioPacket)), converter, SLOT(convert(audioPacket)));
 	converterThread->start(QThread::TimeCriticalPriority);
 
-	if (setup.isinput) {
+    if (setup.isinput) {
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 		audioInput = new QAudioInput(setup.port, nativeFormat, this);
@@ -342,9 +342,13 @@ void audioHandler::getNextAudioChunk()
 		emit sendToConverter(packet);
 	}
 
-    /* If there is still enough data in the buffer, call myself again in 20ms */
+    /* If there is still enough data in the buffer, call myself again
+     * Should this happen immediately? or in 20ms (setup.blockSize)
+     * I think that we should clear the buffer as soon as possible?
+    */
     if (tempBuf.data.length() >= nativeFormat.bytesForDuration(setup.blockSize * 1000)) {
-        QTimer::singleShot(setup.blockSize, this, &audioHandler::getNextAudioChunk);
+        //QTimer::singleShot(setup.blockSize, this, &audioHandler::getNextAudioChunk);
+        QTimer::singleShot(0, this, &audioHandler::getNextAudioChunk);
     }
 
 	return;

@@ -13,15 +13,8 @@ servermain::servermain(const QString settingsFile)
 
     qRegisterMetaType <udpPreferences>(); // Needs to be registered early.
     qRegisterMetaType <rigCapabilities>();
-    qRegisterMetaType <duplexMode>();
-    qRegisterMetaType <rptAccessTxRx>();
-    qRegisterMetaType <rptrAccessData_t>();
-    qRegisterMetaType <rptAccessTxRx>();
     qRegisterMetaType <rigInput>();
-    qRegisterMetaType <meterKind>();
-    qRegisterMetaType <spectrumMode>();
     qRegisterMetaType <freqt>();
-    qRegisterMetaType <mode_info>();
     qRegisterMetaType <audioPacket>();
     qRegisterMetaType <audioSetup>();
     qRegisterMetaType <SERVERCONFIG>();
@@ -32,6 +25,73 @@ servermain::servermain(const QString settingsFile)
     qRegisterMetaType<networkStatus>();
     qRegisterMetaType<codecType>();
     qRegisterMetaType<errorType>();
+
+    queue = cachingQueue::getInstance(this);
+    // We need to open rig files
+
+#ifndef Q_OS_LINUX
+    QString systemRigLocation = QCoreApplication::applicationDirPath();
+#else
+    QString systemRigLocation = PREFIX;
+#endif
+
+#ifdef Q_OS_LINUX
+    systemRigLocation += "/share/wfview/rigs";
+#else
+    systemRigLocation +="/rigs";
+#endif
+
+    QDir systemRigDir(systemRigLocation);
+
+    if (!systemRigDir.exists()) {
+        qWarning() << "********* Rig directory does not exist ********";
+    } else {
+        QStringList rigs = systemRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
+        for (QString &rig: rigs) {
+            QSettings* rigSettings = new QSettings(systemRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+            rigSettings->setIniCodec("UTF-8");
+#endif
+
+            if (!rigSettings->childGroups().contains("Rig"))
+            {
+                qWarning() << rig << "Does not seem to be a rig description file";
+                delete rigSettings;
+                continue;
+            }
+            rigSettings->beginGroup("Rig");
+            qDebug() << QString("Found Rig %0 with CI-V address of %1").arg(rigSettings->value("Model","").toString(), rigSettings->value("CIVAddress",0).toString());
+            // Any user modified rig files will override system provided ones.
+            this->rigList.insert(rigSettings->value("CIVAddress",0).toInt(),systemRigDir.absoluteFilePath(rig));
+            rigSettings->endGroup();
+            delete rigSettings;
+        }
+    }
+
+    QString userRigLocation = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)+"/rigs";
+    QDir userRigDir(userRigLocation);
+    if (userRigDir.exists()){
+        QStringList rigs = userRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
+        for (QString& rig: rigs) {
+            QSettings* rigSettings = new QSettings(userRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
+            if (!rigSettings->childGroups().contains("Rig"))
+            {
+                qWarning() << rig << "Does not seem to be a rig description file";
+                delete rigSettings;
+                continue;
+            }
+            rigSettings->beginGroup("Rig");
+            qDebug() << QString("Found User Rig %0 with CI-V address of %1").arg(rigSettings->value("Model","").toString(), rigSettings->value("CIVAddress",0).toString());
+            // Any user modified rig files will override system provided ones.
+            this->rigList.insert(rigSettings->value("CIVAddress",0).toInt(),userRigDir.absoluteFilePath(rig));
+            rigSettings->endGroup();
+            delete rigSettings;
+        }
+    }
+
+    // Make sure we know about any changes to rigCaps
+    connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
 
     setDefPrefs();
 
@@ -99,7 +159,7 @@ void servermain::openRig()
         {
             //qInfo(logSystem()) << "Got rig";
             QMetaObject::invokeMethod(radio->rig, [=]() {
-                radio->rig->commSetup(radio->civAddr, radio->serialPort, radio->baudRate, QString("none"),0 ,radio->waterfallFormat);
+                radio->rig->commSetup(rigList,radio->civAddr, radio->serialPort, radio->baudRate, QString("none"),0 ,radio->waterfallFormat);
             }, Qt::QueuedConnection);
         }
     }
@@ -112,7 +172,7 @@ void servermain::makeRig()
         if (radio->rigThread == Q_NULLPTR)
         {
             qInfo(logSystem()) << "Creating new rigThread()";
-            radio->rig = new rigCommander(radio->guid);
+            radio->rig = new icomCommander(radio->guid);
             radio->rigThread = new QThread(this);
             radio->rigThread->setObjectName("rigCommander()");
 
@@ -134,19 +194,18 @@ void servermain::makeRig()
             connect(this, SIGNAL(sendChangeLatency(quint16)), radio->rig, SLOT(changeLatency(quint16)));
             //connect(this, SIGNAL(getRigCIV()), radio->rig, SLOT(findRigs()));
             //connect(this, SIGNAL(setRigID(unsigned char)), radio->rig, SLOT(setRigID(unsigned char)));
-            connect(radio->rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
             connect(radio->rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
-            connect(this, SIGNAL(requestRigState()), radio->rig, SLOT(sendState()));
-            connect(this, SIGNAL(stateUpdated()), radio->rig, SLOT(stateUpdated()));
-            connect(radio->rig, SIGNAL(stateInfo(rigstate*)), this, SLOT(receiveStateInfo(rigstate*)));
+            //connect(this, SIGNAL(requestRigState()), radio->rig, SLOT(sendState()));
+            //connect(this, SIGNAL(stateUpdated()), radio->rig, SLOT(stateUpdated()));
+            //connect(radio->rig, SIGNAL(stateInfo(rigstate*)), this, SLOT(receiveStateInfo(rigstate*)));
 
             //Other connections
             connect(this, SIGNAL(setCIVAddr(unsigned char)), radio->rig, SLOT(setCIVAddr(unsigned char)));
 
-            connect(radio->rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
-            connect(this, SIGNAL(setPTT(bool)), radio->rig, SLOT(setPTT(bool)));
-            connect(this, SIGNAL(getPTT()), radio->rig, SLOT(getPTT()));
+            //connect(radio->rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
+            //connect(this, SIGNAL(setPTT(bool)), radio->rig, SLOT(setPTT(bool)));
+            //connect(this, SIGNAL(getPTT()), radio->rig, SLOT(getPTT()));
             connect(this, SIGNAL(getDebug()), radio->rig, SLOT(getDebug()));
             if (radio->rigThread->isRunning()) {
                 qInfo(logSystem()) << "Rig thread is running";
@@ -285,8 +344,9 @@ void servermain::connectToRig(RIGCONFIG* rig)
     }
 }
 
-void servermain::receiveFoundRigID(rigCapabilities rigCaps)
+void servermain::receiveRigCaps(rigCapabilities* rigCaps)
 {
+
     // Entry point for unknown rig being identified at the start of the program.
     //now we know what the rig ID is:
 
@@ -299,33 +359,33 @@ void servermain::receiveFoundRigID(rigCapabilities rigCaps)
         if (sender != Q_NULLPTR && radio->rig != Q_NULLPTR && !radio->rigAvailable && !memcmp(sender->getGUID(), radio->guid, GUIDLEN))
         {
 
-            qDebug(logSystem()) << "Rig name: " << rigCaps.modelName;
-            qDebug(logSystem()) << "Has LAN capabilities: " << rigCaps.hasLan;
-            qDebug(logSystem()) << "Rig ID received into servermain: spectLenMax: " << rigCaps.spectLenMax;
-            qDebug(logSystem()) << "Rig ID received into servermain: spectAmpMax: " << rigCaps.spectAmpMax;
-            qDebug(logSystem()) << "Rig ID received into servermain: spectSeqMax: " << rigCaps.spectSeqMax;
-            qDebug(logSystem()) << "Rig ID received into servermain: hasSpectrum: " << rigCaps.hasSpectrum;
+            qDebug(logSystem()) << "Rig name: " << rigCaps->modelName;
+            qDebug(logSystem()) << "Has LAN capabilities: " << rigCaps->hasLan;
+            qDebug(logSystem()) << "Rig ID received into servermain: spectLenMax: " << rigCaps->spectLenMax;
+            qDebug(logSystem()) << "Rig ID received into servermain: spectAmpMax: " << rigCaps->spectAmpMax;
+            qDebug(logSystem()) << "Rig ID received into servermain: spectSeqMax: " << rigCaps->spectSeqMax;
+            qDebug(logSystem()) << "Rig ID received into servermain: hasSpectrum: " << rigCaps->hasSpectrum;
             qDebug(logSystem()).noquote() << QString("Rig ID received into servermain: GUID: {%1%2%3%4-%5%6-%7%8-%9%10-%11%12%13%14%15%16}")
-                .arg(rigCaps.guid[0], 2, 16, QLatin1Char('0'))
-                .arg(rigCaps.guid[1], 2, 16, QLatin1Char('0'))
-                .arg(rigCaps.guid[2], 2, 16, QLatin1Char('0'))
-                .arg(rigCaps.guid[3], 2, 16, QLatin1Char('0'))
-                .arg(rigCaps.guid[4], 2, 16, QLatin1Char('0'))
-                .arg(rigCaps.guid[5], 2, 16, QLatin1Char('0'))
-                .arg(rigCaps.guid[6], 2, 16, QLatin1Char('0'))
-                .arg(rigCaps.guid[7], 2, 16, QLatin1Char('0'))
-                .arg(rigCaps.guid[8], 2, 16, QLatin1Char('0'))
-                .arg(rigCaps.guid[9], 2, 16, QLatin1Char('0'))
-                .arg(rigCaps.guid[10], 2, 16, QLatin1Char('0'))
-                .arg(rigCaps.guid[11], 2, 16, QLatin1Char('0'))
-                .arg(rigCaps.guid[12], 2, 16, QLatin1Char('0'))
-                .arg(rigCaps.guid[13], 2, 16, QLatin1Char('0'))
-                .arg(rigCaps.guid[14], 2, 16, QLatin1Char('0'))
-                .arg(rigCaps.guid[15], 2, 16, QLatin1Char('0'))
+                                                 .arg(rigCaps->guid[0], 2, 16, QLatin1Char('0'))
+                .arg(rigCaps->guid[1], 2, 16, QLatin1Char('0'))
+                .arg(rigCaps->guid[2], 2, 16, QLatin1Char('0'))
+                .arg(rigCaps->guid[3], 2, 16, QLatin1Char('0'))
+                .arg(rigCaps->guid[4], 2, 16, QLatin1Char('0'))
+                .arg(rigCaps->guid[5], 2, 16, QLatin1Char('0'))
+                .arg(rigCaps->guid[6], 2, 16, QLatin1Char('0'))
+                .arg(rigCaps->guid[7], 2, 16, QLatin1Char('0'))
+                .arg(rigCaps->guid[8], 2, 16, QLatin1Char('0'))
+                .arg(rigCaps->guid[9], 2, 16, QLatin1Char('0'))
+                .arg(rigCaps->guid[10], 2, 16, QLatin1Char('0'))
+                .arg(rigCaps->guid[11], 2, 16, QLatin1Char('0'))
+                .arg(rigCaps->guid[12], 2, 16, QLatin1Char('0'))
+                .arg(rigCaps->guid[13], 2, 16, QLatin1Char('0'))
+                .arg(rigCaps->guid[14], 2, 16, QLatin1Char('0'))
+                .arg(rigCaps->guid[15], 2, 16, QLatin1Char('0'))
                 ;
             radio->rigCaps = rigCaps;
             // Added so that server receives rig capabilities.
-            emit sendRigCaps(rigCaps);
+            //emit sendRigCaps(rigCaps);
         }
     }
     return;
@@ -407,7 +467,7 @@ void servermain::setServerToPrefs()
                 connect(radio->rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
                 connect(radio->rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
                 //connect(udp, SIGNAL(haveDataFromServer(QByteArray)), radio->rig, SLOT(dataFromServer(QByteArray)));
-                connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
+                //connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
             }
         }
     }

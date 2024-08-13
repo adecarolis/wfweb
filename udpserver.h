@@ -196,6 +196,11 @@ private:
 		CLIENT* civClient = Q_NULLPTR;
 		CLIENT* audioClient = Q_NULLPTR;
 		quint8 guid[GUIDLEN];
+
+        qint64 startTime;
+        QTime clientTime;
+        qint64 timeOffset;
+        qint64 timeDifference = 0;
 	};
 
 	void controlReceived();

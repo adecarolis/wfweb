@@ -89,7 +89,7 @@ audioConverter::~audioConverter()
 	if (resampler != Q_NULLPTR) {
 		speex_resampler_destroy(resampler);
 		qDebug(logAudioConverter()) << "Resampler closed";
-	}
+    }
 
 }
 

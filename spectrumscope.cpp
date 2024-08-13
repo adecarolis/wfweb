@@ -2020,7 +2020,7 @@ void spectrumScope::updateBSR(std::vector<bandType>* bands)
     // Send a new BSR value for the current frequency.
     for (auto &b: *bands)
     {
-        if (freqDisplay[0]->getFrequency() >= b.lowFreq && freqDisplay[0]->getFrequency() <= b.highFreq)
+        if (quint64(freqDisplay[0]->getFrequency()) >= b.lowFreq && quint64(freqDisplay[0]->getFrequency()) <= b.highFreq)
         {
             if(b.bsr != 0)
             {

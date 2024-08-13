@@ -35,6 +35,7 @@ void selectRadio::populate(QList<radio_cap_packet> radios)
 
 void selectRadio::setInUse(quint8 radio, bool admin, quint8 busy, QString user, QString ip)
 {
+    Q_UNUSED(admin)
     //if ((radio > 0)&& !this->isVisible()) {
     //    qInfo() << "setInUse: radio:" << radio <<"busy" << busy << "user" << user << "ip"<<ip;
     //    this->setVisible(true);

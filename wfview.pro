@@ -30,7 +30,7 @@ CONFIG += c++17
 CONFIG(debug, release|debug) {
     # For Debug builds only:
     linux:QMAKE_CXXFLAGS += -faligned-new
-    win32:DESTDIR = wfview-release
+    win32:DESTDIR = wfview-debug
 } else {
     # For Release builds only:
     linux:QMAKE_CXXFLAGS += -s
@@ -38,7 +38,7 @@ CONFIG(debug, release|debug) {
     linux:QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
     linux:QMAKE_CXXFLAGS += -faligned-new
     linux:QMAKE_LFLAGS += -O2 -s
-    win32:DESTDIR = wfview-debug
+    win32:DESTDIR = wfview-release
 }
 
 TRANSLATIONS += translations/wfview_en.ts \
@@ -103,7 +103,7 @@ macx:INCLUDEPATH += /usr/local/include /opt/local/include
 macx:LIBS += -L/usr/local/lib -L/opt/local/lib
 
 macx:ICON = ../wfview/resources/wfview.icns
-win32:RC_ICONS = ../wfview/resources/wfview.ico
+win32:RC_ICONS = "../wfview/resources/icons/Windows/wfview 512x512.ico"
 macx:QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
 macx:QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
 macx:MY_ENTITLEMENTS.name = CODE_SIGN_ENTITLEMENTS

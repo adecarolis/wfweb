@@ -16,11 +16,13 @@
 #include "logcategories.h"
 #include "commhandler.h"
 #include "rigcommander.h"
+#include "icomcommander.h"
 #include "rigstate.h"
 #include "freqmemory.h"
 #include "rigidentities.h"
 #include "repeaterattributes.h"
 #include "audiodevices.h"
+#include "cachingqueue.h"
 
 #include "udpserver.h"
 #include "rigctld.h"
@@ -65,7 +67,7 @@ signals:
     void setFrequency(unsigned char vfo, freqt freq);
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
-    void setMode(mode_info);
+    void setMode(modeInfo);
     void setDataMode(bool dataOn, unsigned char filter);
     void getDataMode();
     void getModInput(bool dataOn);
@@ -123,7 +125,7 @@ signals:
     void setUSBGain(unsigned char level);
     void setLANGain(unsigned char level);
 
-    void getMeters(meterKind meter);
+    void getMeters(meter_t meter);
 
 
     // PTT, ATU, ATT, Antenna, Preamp:
@@ -150,7 +152,7 @@ signals:
     void spectOutputDisable();
     void scopeDisplayEnable();
     void scopeDisplayDisable();
-    void setScopeMode(spectrumMode spectMode);
+    void setScopeMode(spectrumMode_t spectMode);
     void setScopeSpan(char span);
     void setScopeEdge(char edge);
     void setScopeFixedEdge(double startFreq, double endFreq, unsigned char edgeNumber);
@@ -174,7 +176,7 @@ private slots:
     void receiveCommReady();
     void receivePTTstatus(bool pttOn);
 
-    void receiveFoundRigID(rigCapabilities rigCaps);
+    void receiveRigCaps(rigCapabilities* rigCaps);
     void receivePortError(errorType err);
     void receiveBaudRate(quint32 baudrate);
 
@@ -287,29 +289,21 @@ private:
     audioDevices* audioDev = Q_NULLPTR;
 
     SERVERCONFIG serverConfig;
+
+    QHash<unsigned char,QString> rigList;
+    cachingQueue* queue;
 };
 
-Q_DECLARE_METATYPE(struct rigCapabilities)
-Q_DECLARE_METATYPE(struct freqt)
-Q_DECLARE_METATYPE(struct mode_info)
-Q_DECLARE_METATYPE(struct udpPreferences)
-Q_DECLARE_METATYPE(struct audioPacket)
-Q_DECLARE_METATYPE(struct audioSetup)
-Q_DECLARE_METATYPE(struct SERVERCONFIG)
-Q_DECLARE_METATYPE(struct timekind)
-Q_DECLARE_METATYPE(struct datekind)
-Q_DECLARE_METATYPE(struct networkStatus)
-Q_DECLARE_METATYPE(enum rigInput)
-Q_DECLARE_METATYPE(QList<radio_cap_packet>)
-Q_DECLARE_METATYPE(enum meterKind)
-Q_DECLARE_METATYPE(enum spectrumMode)
-Q_DECLARE_METATYPE(rigstate*)
+
+Q_DECLARE_METATYPE(udpPreferences)
+Q_DECLARE_METATYPE(audioPacket)
+Q_DECLARE_METATYPE(audioSetup)
+Q_DECLARE_METATYPE(SERVERCONFIG)
+Q_DECLARE_METATYPE(networkStatus)
+Q_DECLARE_METATYPE(networkAudioLevels)
+Q_DECLARE_METATYPE(radio_cap_packet)
 Q_DECLARE_METATYPE(codecType)
 Q_DECLARE_METATYPE(errorType)
-Q_DECLARE_METATYPE(enum duplexMode)
-Q_DECLARE_METATYPE(enum rptAccessTxRx)
-Q_DECLARE_METATYPE(struct rptrTone_t)
-Q_DECLARE_METATYPE(struct rptrAccessData_t)
-
+Q_DECLARE_METATYPE(rigTypedef)
 
 #endif // WFMAIN_H

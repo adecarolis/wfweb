@@ -176,21 +176,21 @@ void udpAudio::dataReceived()
                     seqPrefix++;
                 }
 
-                // 0xac is the smallest possible audio packet.
-                lastReceived = QTime::currentTime();
-                audioPacket tempAudio;
-                tempAudio.seq = (quint32)seqPrefix << 16 | in->seq;
-                tempAudio.time = lastReceived;
-                tempAudio.sent = 0;
-                tempAudio.data = r.mid(0x18);
-                // Prefer signal/slot to forward audio as it is thread/safe
-                // Need to do more testing but latency appears fine.
-                //rxaudio->incomingAudio(tempAudio);
-                if (rxAudioThread == Q_NULLPTR)
+                lastReceived = QTime::currentTime().addMSecs(timeDifference);
+                if (lastReceived < QTime::currentTime().addMSecs(rxaudio->getLatency()))
+                {    if (rxAudioThread == Q_NULLPTR)
                 {
                     startAudio();
                 }
-                emit haveAudioData(tempAudio);
+
+
+                    audioPacket tempAudio;
+                    tempAudio.seq = (quint32)seqPrefix << 16 | in->seq;
+                    tempAudio.time = lastReceived;
+                    tempAudio.sent = 0;
+                    tempAudio.data = r.mid(0x18);
+                    emit haveAudioData(tempAudio);
+                }
             }
             break;
         }
@@ -213,9 +213,11 @@ void udpAudio::startAudio() {
     else if (rxSetup.type == rtAudio) {
         rxaudio = new rtHandler();
     }
+#ifndef BUILD_WFSERVER
     else if (rxSetup.type == tciAudio) {
         rxaudio = new tciAudioHandler();
     }
+#endif
     else
     {
         qCritical(logAudio()) << "Unsupported Receive Audio Handler selected!";
@@ -255,9 +257,11 @@ void udpAudio::startAudio() {
         else if (txSetup.type == rtAudio) {
             txaudio = new rtHandler();
         }
+#ifndef BUILD_WFSERVER
         else if (txSetup.type == tciAudio) {
             txaudio = new tciAudioHandler();
         }
+#endif
         else
         {
             qCritical(logAudio()) << "Unsupported Transmit Audio Handler selected!";

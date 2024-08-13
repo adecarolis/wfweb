@@ -94,9 +94,18 @@ void udpBase::dataReceived(QByteArray r)
         ping_packet_t in = (ping_packet_t)r.constData();
         if (in->type == 0x07)
         {
+
             // It is a ping request/response
             if (in->reply == 0x00)
             {
+                if (!radioTime.isValid() ||
+                    ((in->time-timeOffset)+startTime < QTime::currentTime().msecsSinceStartOfDay())) {
+                    // Either a new day or first connection.
+                    timeOffset = in->time;
+                    startTime = QTime::currentTime().msecsSinceStartOfDay();
+                }
+                radioTime = QTime::fromMSecsSinceStartOfDay(startTime+(in->time-timeOffset));
+                timeDifference = QTime::currentTime().msecsSinceStartOfDay() - (startTime + (in->time - timeOffset));
                 ping_packet p;
                 memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
                 p.len = sizeof(p);

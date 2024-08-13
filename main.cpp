@@ -93,8 +93,8 @@ int main(int argc, char *argv[])
         .arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
         .arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture())
         .arg(QT_VERSION_STR).arg(qVersion());
-#endif
 
+    // Translator doesn't really make sense for wfserver right now.
     QTranslator myappTranslator;
     qDebug() << "Current translation language: " << myappTranslator.language();
 
@@ -107,6 +107,7 @@ int main(int argc, char *argv[])
     }
 
     qDebug() << "Changed to translation language: " << myappTranslator.language();
+#endif
 
     for(int c=1; c<argc; c++)
     {
