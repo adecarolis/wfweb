@@ -120,6 +120,16 @@ MY_ENTITLEMENTS.value = ../wfview/resources/wfview.entitlements
 QMAKE_MAC_XCODE_SETTINGS += MY_ENTITLEMENTS
 QMAKE_INFO_PLIST = ../wfview/resources/Info.plist
 
+macx{
+    rigFiles.files = rigs
+    rigFiles.path = Contents/MacOS
+    QMAKE_BUNDLE_DATA += rigFiles
+}
+
+unix:rigs.files = rigs/*
+unix:rigs.path = $$PREFIX/share/wfview/rigs
+INSTALLS += rigs
+
 !win32:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
 
 !win32:DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""

@@ -2002,13 +2002,13 @@ void spectrumScope::detachScope(bool state)
 void spectrumScope::changeSpan(char val)
 {
     if ((val > 0 && spanCombo->currentIndex() < spanCombo->count()-val) ||
-        (val < 0 && spanCombo->currentIndex() > 0))
+        (int(val) < 0 && spanCombo->currentIndex() > 0))
     {
         spanCombo->setCurrentIndex(spanCombo->currentIndex() + val);
     }
     else
     {
-        if (val<0)
+        if (int(val)<0)
             spanCombo->setCurrentIndex(spanCombo->count()-1);
         else
             spanCombo->setCurrentIndex(0);
