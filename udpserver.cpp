@@ -829,7 +829,7 @@ void udpServer::audioReceived()
                 }
 
                 QTime lastReceived = QTime::currentTime().addMSecs(current->timeDifference);
-                if (hasTxAudio == current->ipAddress && lastReceived < QTime::currentTime().addMSecs(current->txBufferLen))
+                if (hasTxAudio == current->ipAddress && lastReceived < QTime::currentTime().addMSecs(current->controlClient->txBufferLen))
                 {
                     // 0xac is the smallest possible audio packet.
                     audioPacket tempAudio;
@@ -840,9 +840,9 @@ void udpServer::audioReceived()
                     //qInfo(logUdpServer()) << "sending tx audio " << in->seq;
                     emit haveAudioData(tempAudio);
                 }
-                else if (lastReceived >= QTime::currentTime().addMSecs(current->txBufferLen))
+                else if (lastReceived >= QTime::currentTime().addMSecs(current->controlClient->txBufferLen))
                 {
-                    qInfo(logUdpServer()) << "Audio timestamp is older than" << current->txBufferLen << "ms, dropped";
+                    qInfo(logUdpServer()) << "Audio timestamp is older than" << current->controlClient->txBufferLen << "ms, dropped";
                 }
             }
             break;
