@@ -304,8 +304,7 @@ Q_DECLARE_METATYPE(networkAudioLevels)
 Q_DECLARE_METATYPE(radio_cap_packet)
 Q_DECLARE_METATYPE(codecType)
 Q_DECLARE_METATYPE(errorType)
-Q_DECLARE_METATYPE(rigTypedeef)
 Q_DECLARE_METATYPE(rigTypedef)
-Q_DECLARE_METATYPE(rigstate)
+Q_DECLARE_METATYPE(rigstate*)
 
 #endif // WFMAIN_H
