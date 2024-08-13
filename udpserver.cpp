@@ -1221,9 +1221,9 @@ void udpServer::sendLoginResponse(CLIENT* c, bool allowed)
     }
     else {
 #ifdef Q_OS_WINDOWS
-        strncpy_s(p.connection, "WFVIEW",6);
+        strncpy_s(p.connection, "WFVIEW",7);
 #else
-        strncpy(p.connection, "WFVIEW",6);
+        strncpy(p.connection, "WFVIEW",7);
 #endif
     }
 

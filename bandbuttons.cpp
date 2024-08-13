@@ -36,9 +36,16 @@ void bandbuttons::receiveCache(cacheItem item)
         switch (item.command)
         {
         case funcSubFreq:
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
         case funcUnselectedFreq:
             sub=true;
         case funcMainFreq:
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
         case funcSelectedFreq:
         case funcFreqGet:
             // Here we will process incoming frequency.

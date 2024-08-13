@@ -1399,6 +1399,10 @@ void wfmain::buttonControl(const COMMAND* cmd)
         bandbtns->setBand(band);
         break;
     }
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
     case funcSubMode:
         rx=1;
     case funcMainMode:
@@ -1485,6 +1489,9 @@ void wfmain::buttonControl(const COMMAND* cmd)
         queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->suffix),false,rx));
         break;
     }
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
 }
 
 void wfmain::stepUp()
