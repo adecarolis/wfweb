@@ -9,43 +9,81 @@
 #ifdef Q_OS_WIN
 #include <windows.h>
 #include <csignal>
+#else
+#include <fcntl.h>
+#include <signal.h>
 #endif
 
 #include <iostream>
 #include "wfmain.h"
 
-// Copyright 2017-2022 Elliott H. Liggett
 #include "logcategories.h"
+
+bool debugMode=false;
 
 #ifdef BUILD_WFSERVER
 // Smart pointer to log file
 QScopedPointer<QFile>   m_logFile;
 QMutex logMutex;
-#endif
+servermain* w=Q_NULLPTR;
 
-bool debugMode=false;
-
-#ifdef BUILD_WFSERVER
-    servermain* w=Q_NULLPTR;
-
-    #ifdef Q_OS_WIN
-    bool __stdcall cleanup(DWORD sig)
-    #else
-    static void cleanup(int sig)
-    #endif
-    {
-        Q_UNUSED(sig)
-        qDebug() << "Exiting via SIGNAL";
+ #ifdef Q_OS_WIN
+bool __stdcall cleanup(DWORD sig)
+ #else
+static void cleanup(int sig)
+ #endif
+{
+    switch(sig) {
+    case SIGHUP:
+        qInfo() << "hangup signal";
+        break;
+    case SIGTERM:
+        qInfo() << "terminate signal catched";
         if (w!=Q_NULLPTR) w->deleteLater();
         QCoreApplication::quit();
-
-        #ifdef Q_OS_WIN
-            return true;
-        #else
-            return;
-        #endif
+        break;
+    default:
+        break;
     }
 
+ #ifdef Q_OS_WIN
+    return true;
+ #else
+    return;
+ #endif
+}
+
+
+ #ifndef Q_OS_WIN
+void initDaemon()
+{
+    int i;
+    if(getppid()==1)
+        return; /* already a daemon */
+    i=fork();
+    if (i<0)
+        exit(1); /* fork error */
+    if (i>0)
+        exit(0); /* parent exits */
+
+    setsid(); /* obtain a new process group */
+
+    for (i=getdtablesize();i>=0;--i)
+        close(i); /* close all descriptors */
+    i=open("/dev/null",O_RDWR); dup(i); dup(i);
+
+    signal(SIGCHLD,SIG_IGN);
+    signal(SIGTSTP,SIG_IGN);
+    signal(SIGTTOU,SIG_IGN);
+    signal(SIGTTIN,SIG_IGN);
+}
+
+ #else
+
+void initDaemon() {
+}
+
+ #endif
 
 void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
 #endif
@@ -80,7 +118,7 @@ int main(int argc, char *argv[])
     QString currentArg;
 
 
-    const QString helpText = QString("\nUsage: -l --logfile filename.log, -s --settings filename.ini, -d --debug, -v --version\n"); // TODO...
+    const QString helpText = QString("\nUsage: -l --logfile filename.log, -s --settings filename.ini, -b --background (not Windows), -d --debug, -v --version\n"); // TODO...
 #ifdef BUILD_WFSERVER
     const QString version = QString("wfserver version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
         .arg(QString(WFVIEW_VERSION))
@@ -117,7 +155,7 @@ int main(int argc, char *argv[])
         if ((currentArg == "-d") || (currentArg == "--debug"))
         {
             debugMode = true;
-        } 
+        }
         else if ((currentArg == "-l") || (currentArg == "--logfile"))
         {
             if (argc > c)
@@ -134,6 +172,12 @@ int main(int argc, char *argv[])
                 c += 1;
             }
         }
+#ifdef BUILD_WFSERVER
+        else if ((currentArg == "-b") || (currentArg == "--background"))
+        {
+            initDaemon();
+        }
+#endif
         else if ((currentArg == "-?") || (currentArg == "--help"))
         {
             std::cout << helpText.toStdString();
@@ -143,7 +187,8 @@ int main(int argc, char *argv[])
         {
             std::cout << version.toStdString();
             return 0;
-        } else {
+	}
+        else {
             std::cout << "Unrecognized option: " << currentArg.toStdString();
             std::cout << helpText.toStdString();
             return -1;
@@ -163,20 +208,21 @@ int main(int argc, char *argv[])
     qInfo(logSystem()) << version;
 
 #endif
+
 #ifdef BUILD_WFSERVER
-#ifdef Q_OS_WIN
+ #ifdef Q_OS_WIN
     SetConsoleCtrlHandler((PHANDLER_ROUTINE)cleanup, TRUE);
-#else
+ #else
     signal(SIGINT, cleanup);
     signal(SIGTERM, cleanup);
     signal(SIGKILL, cleanup);
-#endif
+ #endif
     w = new servermain(settingsFile);
 #else
     a.setWheelScrollLines(1); // one line per wheel click
     wfmain w(settingsFile, logFilename, debugMode);
     w.show();
-    
+
 #endif
     return a.exec();
 
