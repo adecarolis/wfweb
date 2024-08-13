@@ -1220,7 +1220,11 @@ void udpServer::sendLoginResponse(CLIENT* c, bool allowed)
             c->retransmitTimer->stop();
     }
     else {
+#ifdef Q_OS_WINDOWS
         strncpy_s(p.connection, "WFVIEW",6);
+#else
+        strncpy(p.connection, "WFVIEW",6);
+#endif
     }
 
     SEQBUFENTRY s;
