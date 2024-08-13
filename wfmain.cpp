@@ -516,8 +516,8 @@ void wfmain::makeRig()
         connect(rig, SIGNAL(setRadioUsage(quint8, bool, quint8, QString, QString)), this, SLOT(radioInUse(quint8, bool, quint8, QString, QString)));
         connect(selRad, SIGNAL(selectedRadio(quint8)), rig, SLOT(setCurrentRadio(quint8)));
         // Rig comm setup:
-        connect(this, SIGNAL(sendCommSetup(rigTypedef,unsigned char, udpPreferences, audioSetup, audioSetup, QString, quint16)), rig, SLOT(commSetup(rigTypedef,unsigned char, udpPreferences, audioSetup, audioSetup, QString, quint16)));
-        connect(this, SIGNAL(sendCommSetup(rigTypedef,unsigned char, QString, quint32,QString, quint16,quint8)), rig, SLOT(commSetup(rigTypedef,unsigned char, QString, quint32,QString, quint16,quint8)));
+        connect(this, SIGNAL(sendCommSetup(rigTypedef,quint8, udpPreferences, audioSetup, audioSetup, QString, quint16)), rig, SLOT(commSetup(rigTypedef,quint8, udpPreferences, audioSetup, audioSetup, QString, quint16)));
+        connect(this, SIGNAL(sendCommSetup(rigTypedef,quint8, QString, quint32,QString, quint16,quint8)), rig, SLOT(commSetup(rigTypedef,quint8, QString, quint32,QString, quint16,quint8)));
         connect(this, SIGNAL(setRTSforPTT(bool)), rig, SLOT(setRTSforPTT(bool)));
 
         connect(rig, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
@@ -525,7 +525,7 @@ void wfmain::makeRig()
         connect(this, SIGNAL(sendCloseComm()), rig, SLOT(closeComm()));
         connect(this, SIGNAL(sendChangeLatency(quint16)), rig, SLOT(changeLatency(quint16)));
         connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
-        connect(this, SIGNAL(setRigID(unsigned char)), rig, SLOT(setRigID(unsigned char)));
+        connect(this, SIGNAL(setRigID(quint8)), rig, SLOT(setRigID(quint8)));
 
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
@@ -538,7 +538,7 @@ void wfmain::makeRig()
             connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
         }
 
-        connect(this, SIGNAL(setCIVAddr(unsigned char)), rig, SLOT(setCIVAddr(unsigned char)));
+        connect(this, SIGNAL(setCIVAddr(quint8)), rig, SLOT(setCIVAddr(quint8)));
 
         connect(this, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
         connect(this, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
@@ -615,7 +615,7 @@ void wfmain::makeRig()
         connect(this->rpt, &repeaterSetup::getRptDuplexOffset, this->rig,
                 [=]() {  queue->add(priorityImmediate,funcReadFreqOffset,false,false);});
 
-        connect(this, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
+        connect(this, SIGNAL(setAfGain(quint8)), rig, SLOT(setAfGain(quint8)));
 
         // Create link for server so it can have easy access to rig.
         if (serverConfig.rigs.first() != Q_NULLPTR) {
@@ -1287,7 +1287,7 @@ void wfmain::setupUsbControllerDevice()
     connect(usbControllerThread, SIGNAL(finished()), usbControllerDev, SLOT(deleteLater()));
     connect(usbControllerThread, SIGNAL(finished()), usbWindow, SLOT(deleteLater())); // Delete window when controller is deleted
     connect(usbControllerDev, SIGNAL(sendJog(int)), this, SLOT(changeFrequency(int)));
-    connect(usbControllerDev, SIGNAL(doShuttle(bool,unsigned char)), this, SLOT(doShuttle(bool,unsigned char)));
+    connect(usbControllerDev, SIGNAL(doShuttle(bool,quint8)), this, SLOT(doShuttle(bool,quint8)));
     connect(usbControllerDev, SIGNAL(button(const COMMAND*)), this, SLOT(buttonControl(const COMMAND*)));
     connect(usbControllerDev, SIGNAL(removeDevice(USBDEVICE*)), usbWindow, SLOT(removeDevice(USBDEVICE*)));
     connect(usbControllerDev, SIGNAL(initUI(usbDevMap*, QVector<BUTTON>*, QVector<KNOB>*, QVector<COMMAND>*, QMutex*)), usbWindow, SLOT(init(usbDevMap*, QVector<BUTTON>*, QVector<KNOB>*, QVector<COMMAND>*, QMutex*)));
@@ -1300,7 +1300,7 @@ void wfmain::setupUsbControllerDevice()
     connect(this, SIGNAL(sendControllerRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)), usbControllerDev, SLOT(sendRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)));
     connect(usbWindow, SIGNAL(programPages(USBDEVICE*,int)), usbControllerDev, SLOT(programPages(USBDEVICE*,int)));
     connect(usbWindow, SIGNAL(programDisable(USBDEVICE*,bool)), usbControllerDev, SLOT(programDisable(USBDEVICE*,bool)));
-    connect(this, SIGNAL(sendLevel(funcs,unsigned char)), usbControllerDev, SLOT(receiveLevel(funcs,unsigned char)));
+    connect(this, SIGNAL(sendLevel(funcs,quint8)), usbControllerDev, SLOT(receiveLevel(funcs,quint8)));
     connect(this, SIGNAL(initUsbController(QMutex*,usbDevMap*,QVector<BUTTON>*,QVector<KNOB>*)), usbControllerDev, SLOT(init(QMutex*,usbDevMap*,QVector<BUTTON>*,QVector<KNOB>*)));
     connect(this, SIGNAL(usbHotplug()), usbControllerDev, SLOT(run()));
     connect(usbWindow, SIGNAL(backup(USBDEVICE*,QString)), usbControllerDev, SLOT(backupController(USBDEVICE*,QString)));
@@ -1325,7 +1325,7 @@ void wfmain::pttToggle(bool status)
         pttTimer->start();
 }
 
-void wfmain::doShuttle(bool up, unsigned char level)
+void wfmain::doShuttle(bool up, quint8 level)
 {
     if (level == 1 && up)
             shortcutShiftPlus();
@@ -1348,7 +1348,7 @@ void wfmain::doShuttle(bool up, unsigned char level)
 void wfmain::buttonControl(const COMMAND* cmd)
 {
     qDebug(logUsbControl()) << QString("executing command: %0 (%1) suffix:%2 value:%3" ).arg(cmd->text).arg(cmd->command).arg(cmd->suffix).arg(cmd->value);
-    unsigned char rx=0;
+    quint8 rx=0;
     switch (cmd->command) {
     case funcBandStackReg:
     {
@@ -1721,7 +1721,7 @@ void wfmain::loadSettings()
 
     // Radio and Comms: C-IV addr, port to use
     settings->beginGroup("Radio");
-    prefs.radioCIVAddr = (unsigned char)settings->value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
+    prefs.radioCIVAddr = (quint8)settings->value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
     prefs.CIVisRadioModel = (bool)settings->value("CIVisRadioModel", defPrefs.CIVisRadioModel).toBool();
     prefs.forceRTSasPTT = (bool)settings->value("ForceRTSasPTT", defPrefs.forceRTSasPTT).toBool();
     prefs.serialPortRadio = settings->value("SerialPortRadio", defPrefs.serialPortRadio).toString();
@@ -1746,7 +1746,7 @@ void wfmain::loadSettings()
     prefs.virtualSerialPort = settings->value("VirtualSerialPort", defPrefs.virtualSerialPort).toString();
 
 
-    prefs.localAFgain = (unsigned char)settings->value("localAFgain", defPrefs.localAFgain).toUInt();
+    prefs.localAFgain = (quint8)settings->value("localAFgain", defPrefs.localAFgain).toUInt();
     prefs.rxSetup.localAFgain = prefs.localAFgain;
     prefs.txSetup.localAFgain = 255;
 
@@ -1918,7 +1918,7 @@ void wfmain::loadSettings()
     int size = settings->beginReadArray("Channel");
     int chan = 0;
     double freq;
-    unsigned char mode;
+    quint8 mode;
     bool isSet;
 
     // Annoying: QSettings will write the array to the
@@ -3860,10 +3860,10 @@ void wfmain::changeFullScreenMode(bool checked)
     prefs.useFullScreen = checked;
 }
 
-void wfmain::changeMode(rigMode_t mode, unsigned char rx)
+void wfmain::changeMode(rigMode_t mode, quint8 rx)
 {
     bool dataOn = false;
-    if(((unsigned char) mode >> 4) == 0x08)
+    if(((quint8) mode >> 4) == 0x08)
     {
         dataOn = true;
         mode = (rigMode_t)((int)mode & 0x0f);
@@ -3872,7 +3872,7 @@ void wfmain::changeMode(rigMode_t mode, unsigned char rx)
     changeMode(mode, dataOn, rx);
 }
 
-void wfmain::changeMode(rigMode_t mode, unsigned char data, unsigned char rx)
+void wfmain::changeMode(rigMode_t mode, quint8 data, quint8 rx)
 {
     for (modeInfo &mi: rigCaps->modes)
     {
@@ -3978,7 +3978,7 @@ void wfmain::gotoMemoryPreset(int presetNumber)
     modeInfo m;
     m.mk = temp.mode;
     //m.filter = ui->modeFilterCombo->currentIndex()+1;
-    m.reg =(unsigned char) m.mk; // fallback, works only for some modes
+    m.reg =(quint8) m.mk; // fallback, works only for some modes
     memFreq.Hz = temp.frequency * 1E6;
     memFreq.MHzDouble = memFreq.Hz / 1.0E6;
     if (receivers.size())
@@ -4012,8 +4012,8 @@ void wfmain::on_afGainSlider_valueChanged(int value)
 {
     if(usingLAN)
     {
-        prefs.rxSetup.localAFgain = (unsigned char)(value);
-        prefs.localAFgain = (unsigned char)(value);
+        prefs.rxSetup.localAFgain = (quint8)(value);
+        prefs.localAFgain = (quint8)(value);
         emit setAfGain(value);
         emit sendLevel(funcAfGain,value);
     } else {
@@ -4033,7 +4033,7 @@ void wfmain::on_monitorLabel_linkActivated(const QString&)
     queue->add(priorityImmediate,queueItem(funcMonitor,QVariant::fromValue<bool>(!mon)));
 }
 
-void wfmain::receiveIFShift(unsigned char level)
+void wfmain::receiveIFShift(quint8 level)
 {
     emit sendLevel(funcIFShift,level);
 }
@@ -4145,7 +4145,7 @@ void wfmain::on_saveSettingsBtn_clicked()
     saveSettings(); // save memory, UI, and radio settings
 }
 
-void wfmain::receiveATUStatus(unsigned char atustatus)
+void wfmain::receiveATUStatus(quint8 atustatus)
 {
     // qInfo(logSystem()) << "Received ATU status update: " << (unsigned int) atustatus;
     switch(atustatus)
@@ -4276,10 +4276,10 @@ void wfmain::setRadioTimeDatePrep()
         QDateTime setpoint = now.addMSecs(msecdelay); // at HMS or possibly HMS + some ms. Never under though.
 
         // 4: Prepare data structs for the time at one minute later
-        timesetpoint.hours = (unsigned char)setpoint.time().hour();
-        timesetpoint.minutes = (unsigned char)setpoint.time().minute();
-        datesetpoint.day = (unsigned char)setpoint.date().day();
-        datesetpoint.month = (unsigned char)setpoint.date().month();
+        timesetpoint.hours = (quint8)setpoint.time().hour();
+        timesetpoint.minutes = (quint8)setpoint.time().minute();
+        datesetpoint.day = (quint8)setpoint.date().day();
+        datesetpoint.month = (quint8)setpoint.date().month();
         datesetpoint.year = (uint16_t)setpoint.date().year();
         unsigned int utcOffsetSeconds = (unsigned int)abs(setpoint.offsetFromUtc());
         bool isMinus = setpoint.offsetFromUtc() < 0;
@@ -4346,10 +4346,10 @@ void wfmain::statusFromSliderPercent(QString name, int rawValue)
     showStatusBarText(name + QString(": %1%").arg((int)(100*rawValue/255.0)));
 }
 
-void wfmain::processModLevel(inputTypes source, unsigned char level)
+void wfmain::processModLevel(inputTypes source, quint8 level)
 {
     if (receivers.size()) {
-        unsigned char data = receivers[0]->getDataMode();
+        quint8 data = receivers[0]->getDataMode();
 
         if(prefs.inputSource[data].type == source)
         {
@@ -4360,7 +4360,7 @@ void wfmain::processModLevel(inputTypes source, unsigned char level)
     }
 }
 
-void wfmain::receiveModInput(rigInput input, unsigned char data)
+void wfmain::receiveModInput(rigInput input, quint8 data)
 {
     // This will ONLY fire if the input type is different to the current one
     if (currentModSrc[data].type != input.type && receivers.size())
@@ -4402,7 +4402,7 @@ void wfmain::receivePassband(quint16 pass)
     }
 }
 
-void wfmain::receiveCwPitch(unsigned char pitch) {
+void wfmain::receiveCwPitch(quint8 pitch) {
     if (currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) {
         quint16 p = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
         if (p != cwPitch)
@@ -4415,7 +4415,7 @@ void wfmain::receiveCwPitch(unsigned char pitch) {
     }
 }
 
-void wfmain::receiveTuningStep(unsigned char step)
+void wfmain::receiveTuningStep(quint8 step)
 {
     if (step > 0)
     {
@@ -4434,7 +4434,7 @@ void wfmain::receiveTuningStep(unsigned char step)
     }
 }
 
-void wfmain::receiveMeter(meter_t inMeter, unsigned char level,unsigned char receiver)
+void wfmain::receiveMeter(meter_t inMeter, quint8 level,quint8 receiver)
 {
     // Do nothing with s-meter from non-current receiver
     if (receiver != currentReceiver && inMeter == meterS) {
@@ -4495,7 +4495,7 @@ void wfmain::on_txPowerSlider_valueChanged(int value)
 
 void wfmain::on_micGainSlider_valueChanged(int value)
 {
-    processChangingCurrentModLevel((unsigned char) value);
+    processChangingCurrentModLevel((quint8) value);
 }
 
 
@@ -4522,13 +4522,13 @@ void wfmain::changeModLabel(rigInput input, bool updateLevel)
     }
 }
 
-void wfmain::processChangingCurrentModLevel(unsigned char level)
+void wfmain::processChangingCurrentModLevel(quint8 level)
 {
     // slider moved, so find the current mod and issue the level set command.
 
     funcs f = funcNone;
     if (receivers.size()) {
-        unsigned char d = receivers[0]->getDataMode();
+        quint8 d = receivers[0]->getDataMode();
         f = getInputTypeCommand(prefs.inputSource[d].type);
 
         queue->addUnique(priorityImmediate,queueItem(f,QVariant::fromValue<ushort>(level),false));
@@ -4569,7 +4569,7 @@ void wfmain::on_preampSelCombo_activated(int index)
 void wfmain::on_antennaSelCombo_activated(int index)
 {
     antennaInfo ant;
-    ant.antenna = (unsigned char)ui->antennaSelCombo->itemData(index).toInt();
+    ant.antenna = (quint8)ui->antennaSelCombo->itemData(index).toInt();
     ant.rx = ui->rxAntennaCheck->isChecked();
     queue->add(priorityImmediate,queueItem(funcAntenna,QVariant::fromValue<antennaInfo>(ant),false,currentReceiver));
 }
@@ -4577,26 +4577,26 @@ void wfmain::on_antennaSelCombo_activated(int index)
 void wfmain::on_rxAntennaCheck_clicked(bool value)
 {
     antennaInfo ant;
-    ant.antenna = (unsigned char)ui->antennaSelCombo->currentData().toInt();
+    ant.antenna = (quint8)ui->antennaSelCombo->currentData().toInt();
     ant.rx = value;
     queue->add(priorityImmediate,queueItem(funcAntenna,QVariant::fromValue<antennaInfo>(ant),false,currentReceiver));
 }
 
-void wfmain::receivePreamp(unsigned char pre, uchar receiver)
+void wfmain::receivePreamp(quint8 pre, uchar receiver)
 {
     if (receiver == currentReceiver) {
         ui->preampSelCombo->setCurrentIndex(ui->preampSelCombo->findData(pre));
     }
 }
 
-void wfmain::receiveAttenuator(unsigned char att, uchar receiver)
+void wfmain::receiveAttenuator(quint8 att, uchar receiver)
 {
     if (receiver == currentReceiver) {
         ui->attSelCombo->setCurrentIndex(ui->attSelCombo->findData(att));
     }
 }
 
-void wfmain::receiveAntennaSel(unsigned char ant, bool rx, uchar receiver)
+void wfmain::receiveAntennaSel(quint8 ant, bool rx, uchar receiver)
 {
     if (receiver == currentReceiver) {
         ui->antennaSelCombo->setCurrentIndex(ant);
@@ -5262,9 +5262,9 @@ void wfmain::receiveValue(cacheItem val){
         break;
         /*
     connect(this->rig, &rigCommander::haveDashRatio,
-        [=](const unsigned char& ratio) { cw->handleDashRatio(ratio); });
+        [=](const quint8& ratio) { cw->handleDashRatio(ratio); });
     connect(this->rig, &rigCommander::haveCWBreakMode,
-            [=](const unsigned char &bm) { cw->handleBreakInMode(bm);});
+            [=](const quint8 &bm) { cw->handleBreakInMode(bm);});
 */
     case funcCwPitch:
         // There is only a single CW Pitch setting, so send to all scopes

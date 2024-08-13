@@ -129,7 +129,7 @@ void udpAudio::changeLatency(quint16 value)
     emit haveChangeLatency(value);
 }
 
-void udpAudio::setVolume(unsigned char value)
+void udpAudio::setVolume(quint8 value)
 {
     emit haveSetVolume(value);
 }
@@ -235,7 +235,7 @@ void udpAudio::startAudio() {
     // signal/slot not currently used.
     connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
     connect(this, SIGNAL(haveChangeLatency(quint16)), rxaudio, SLOT(changeLatency(quint16)));
-    connect(this, SIGNAL(haveSetVolume(unsigned char)), rxaudio, SLOT(setVolume(unsigned char)));
+    connect(this, SIGNAL(haveSetVolume(quint8)), rxaudio, SLOT(setVolume(quint8)));
     connect(rxaudio, SIGNAL(haveLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, quint16, bool, bool)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 

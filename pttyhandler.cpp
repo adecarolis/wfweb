@@ -135,14 +135,14 @@ void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
         printHex(data,false,true);
     }
 
-    if (disableTransceive && ((unsigned char)data[fePos + 2] == 0x00 || (unsigned char)data[fePos + 3] == 0x00))
+    if (disableTransceive && ((quint8)data[fePos + 2] == 0x00 || (quint8)data[fePos + 3] == 0x00))
     {
         // Ignore data that is sent to/from transceive address as client has requested transceive disabled.
         qDebug(logSerial()) << "Transceive command filtered";
         return;
     }
 
-    if (isConnected && (unsigned char)data[fePos + 2] != 0xE1 && (unsigned char)data[fePos + 3] != 0xE1)
+    if (isConnected && (quint8)data[fePos + 2] != 0xE1 && (quint8)data[fePos + 3] != 0xE1)
     {
         // send to the pseudo port as well
         // index 2 is dest, 0xE1 is wfview, 0xE0 is assumed to be the other device.
@@ -321,8 +321,8 @@ void pttyHandler::printHex(const QByteArray& pdata, bool printVert, bool printHo
 
     for (int i = 0; i < pdata.length(); i++)
     {
-        strings << QString("[%1]: %2").arg(i, 8, 10, QChar('0')).arg((unsigned char)pdata[i], 2, 16, QChar('0'));
-        sdata.append(QString("%1 ").arg((unsigned char)pdata[i], 2, 16, QChar('0')));
+        strings << QString("[%1]: %2").arg(i, 8, 10, QChar('0')).arg((quint8)pdata[i], 2, 16, QChar('0'));
+        sdata.append(QString("%1 ").arg((quint8)pdata[i], 2, 16, QChar('0')));
         index.append(QString("%1 ").arg(i, 2, 10, QChar('0')));
     }
 

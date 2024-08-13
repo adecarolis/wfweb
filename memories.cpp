@@ -1167,7 +1167,7 @@ void memories::receiveMemory(memoryType mem)
 }
 
 
-int  memories::updateCombo(QStringList& combo, int row, columns column, unsigned char data)
+int  memories::updateCombo(QStringList& combo, int row, columns column, quint8 data)
 {
     int ret=1;
     if (!ui->table->isColumnHidden(column) && combo.size() > data)

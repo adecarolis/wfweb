@@ -3,7 +3,7 @@
 
 // Copyright 2017-2024 Elliott H. Liggett
 
-model_kind determineRadioModel(unsigned char rigID)
+model_kind determineRadioModel(quint8 rigID)
 {
 
     model_kind rig;

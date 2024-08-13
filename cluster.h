@@ -63,7 +63,7 @@ signals:
     void deleteSpot(QString dxcall);
     void deleteOldSpots(int minutes);
     void sendOutput(QString text);
-    void sendSpots(uchar receiver, QList<spotData> spots);
+    void sendSpots(quint8 receiver, QList<spotData> spots);
     void sendSubSpots(QList<spotData> spots);
 
 public slots:
@@ -79,7 +79,7 @@ public slots:
     void setTcpPassword(QString s) { tcpPassword = s; }
     void setTcpTimeout(int p) { tcpTimeout = p; }
     void tcpCleanup();
-    void freqRange(uchar receiver, double low, double high);
+    void freqRange(quint8 receiver, double low, double high);
     void enableSkimmerSpots(bool enable);
 
 private:

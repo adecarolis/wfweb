@@ -46,7 +46,7 @@ struct SERVERUSER {
 struct RIGCONFIG {
 	QString serialPort;
 	quint32 baudRate;
-	unsigned char civAddr;
+	quint8 civAddr;
 	bool civIsRadioModel;
 	bool forceRTSasPTT;
 	bool hasWiFi = false;

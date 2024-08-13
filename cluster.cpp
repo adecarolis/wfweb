@@ -263,7 +263,7 @@ void dxClusterClient::tcpDisconnected() {
     // Need to start a timer and attempt reconnect.
 }
 
-void dxClusterClient::freqRange(uchar receiver, double low, double high)
+void dxClusterClient::freqRange(quint8 receiver, double low, double high)
 {
     freqRanges[receiver] = {low,high};
     if (receiver) {

@@ -276,7 +276,7 @@ void audioHandler::stop()
 	audioDevice = Q_NULLPTR;
 }
 
-void audioHandler::setVolume(unsigned char volume)
+void audioHandler::setVolume(quint8 volume)
 {
     this->volume = audiopot[volume];
 }

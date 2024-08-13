@@ -287,7 +287,7 @@ errorHandler:
 }
 
 
-void rtHandler::setVolume(unsigned char volume)
+void rtHandler::setVolume(quint8 volume)
 {
 	this->volume = audiopot[volume];
 }

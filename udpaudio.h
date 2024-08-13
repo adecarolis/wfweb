@@ -51,14 +51,14 @@ signals:
 	void setupRxAudio(audioSetup setup);
 
 	void haveChangeLatency(quint16 value);
-	void haveSetVolume(unsigned char value);
+	void haveSetVolume(quint8 value);
     void haveRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
     void haveTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
 
 
 public slots:
 	void changeLatency(quint16 value);
-	void setVolume(unsigned char value);
+	void setVolume(quint8 value);
     void getRxLevels(quint16 amplitude, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
     void getTxLevels(quint16 amplitude, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
 	void receiveAudioData(audioPacket audio);

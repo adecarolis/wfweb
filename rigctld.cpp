@@ -742,7 +742,7 @@ int rigCtlClient::getCalibratedValue(quint8 meter,cal_table_t cal) {
     return cal.table[i].val - interp;
 }
 
-unsigned long rigCtlClient::doCrc(unsigned char* p, size_t n)
+unsigned long rigCtlClient::doCrc(quint8* p, size_t n)
 {
     unsigned long crc = 0xfffffffful;
     size_t i;
@@ -760,7 +760,7 @@ unsigned long rigCtlClient::doCrc(unsigned char* p, size_t n)
 void rigCtlClient::genCrc(unsigned long crcTable[])
 {
     unsigned long POLYNOMIAL = 0xEDB88320;
-    unsigned char b = 0;
+    quint8 b = 0;
 
     while (0 != ++b)
     {

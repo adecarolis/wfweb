@@ -41,9 +41,9 @@ signals:
     void finished();
 public slots:
     void send(QString text);
-    void setSpeed(unsigned char speed);
-    void setFrequency(unsigned char frequency);
-    void setRatio(unsigned char ratio);
+    void setSpeed(quint8 speed);
+    void setFrequency(quint8 frequency);
+    void setRatio(quint8 ratio);
     void setLevel(int level);
     void stopSending();
     void init();

@@ -65,12 +65,12 @@ private:
     //QDataStream outStream;
     //QDataStream inStream;
 
-    unsigned char buffer[256];
+    quint8 buffer[256];
 
     QString portName;
     QSerialPort *port=Q_NULLPTR;
     qint32 baudrate;
-    unsigned char stopbits;
+    quint8 stopbits;
     bool rolledBack;
 
     QSerialPort *pseudoterm;

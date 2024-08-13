@@ -475,7 +475,7 @@ void usbController::runTimer()
         while (res > 0) {
             quint32 tempButtons = 0;
             QByteArray data(HIDDATALENGTH, 0x0);
-            res = hid_read(dev->handle, (unsigned char*)data.data(), HIDDATALENGTH);
+            res = hid_read(dev->handle, (quint8*)data.data(), HIDDATALENGTH);
             if (res < 0)
             {
                 qInfo(logUsbControl()) << "USB Device disconnected" << dev->product;
@@ -500,8 +500,8 @@ void usbController::runTimer()
             if (res == 5 && (dev->type.model == shuttleXpress || dev->type.model == shuttlePro2))
             {
                 tempButtons = ((quint8)data[4] << 8) | ((quint8)data[3] & 0xff);
-                unsigned char tempJogpos = (unsigned char)data[1];
-                unsigned char tempShutpos = (unsigned char)data[0];
+                quint8 tempJogpos = (quint8)data[1];
+                quint8 tempShutpos = (quint8)data[0];
 
                 /* Button matrix:
                     1000000000000000 = button15
@@ -536,7 +536,7 @@ void usbController::runTimer()
             else if ((res > 31) && dev->type.model == RC28)
             {
                 // This is a response from the Icom RC28
-                if ((unsigned char)data[0] == 0x02) {
+                if ((quint8)data[0] == 0x02) {
                     qInfo(logUsbControl()) << QString("Received RC-28 Firmware Version: %0").arg(QString(data.mid(1,data.indexOf(" ")-1)));
                 }
                 else
@@ -544,13 +544,13 @@ void usbController::runTimer()
                     tempButtons |= !((quint8)data[5] ^ 0x06) << 0;
                     tempButtons |= !((quint8)data[5] ^ 0x05) << 1;
                     tempButtons |= !((quint8)data[5] ^ 0x03) << 2;
-                    if ((unsigned char)data[5] == 0x07)
+                    if ((quint8)data[5] == 0x07)
                     {
-                        if ((unsigned char)data[3] == 0x01)
+                        if ((quint8)data[3] == 0x01)
                         {
                             dev->knobValues[0].value = dev->knobValues[0].value + data[1];
                         }
-                        else if ((unsigned char)data[3] == 0x02)
+                        else if ((quint8)data[3] == 0x02)
                         {
                             dev->knobValues[0].value = dev->knobValues[0].value - data[1];
                         }
@@ -561,11 +561,11 @@ void usbController::runTimer()
                 tempButtons = ((quint8)data[3] << 16) | ((quint8)data[2] << 8) | ((quint8)data[1] & 0xff);
                 quint32 tempKnobs = ((quint8)data[16] << 24) | ((quint8)data[15] << 16) | ((quint8)data[14] << 8) | ((quint8)data[13]  & 0xff);
                 
-                for (unsigned char i = 0; i < dev->knobValues.size(); i++)
+                for (quint8 i = 0; i < dev->knobValues.size(); i++)
                 {
                     if (dev->knobs != tempKnobs) {
                         // One of the knobs has moved
-                        for (unsigned char i = 0; i < 4; i++) {
+                        for (quint8 i = 0; i < 4; i++) {
                             if ((tempKnobs >> (i * 8) & 0xff) != (dev->knobs >> (i * 8) & 0xff)) {
                                 dev->knobValues[i].value = dev->knobValues[i].value + (qint8)((dev->knobs >> (i * 8)) & 0xff);
                             }
@@ -702,7 +702,7 @@ void usbController::runTimer()
             {
                 qDebug(logUsbControl()) << "Got Buttons:" << QString::number(tempButtons,2);
                 // Step through all buttons and emit ones that have been pressed.
-                for (unsigned char i = 0; i <dev->type.buttons; i++)
+                for (quint8 i = 0; i <dev->type.buttons; i++)
                 {
                     auto but = std::find_if(buttonList->begin(), buttonList->end(), [dev, i](const BUTTON& b)
                     { return (b.path == dev->path && b.page == dev->currentPage && b.num == i); });
@@ -792,7 +792,7 @@ void usbController::runTimer()
                     }
                 }
                 
-                for (unsigned char i = 0; i < dev->knobValues.size(); i++)
+                for (quint8 i = 0; i < dev->knobValues.size(); i++)
                 {
                     auto kb = std::find_if(knobList->begin(), knobList->end(), [dev, i](const KNOB& k)
                     { return (k.command && k.path == dev->path && k.page == dev->currentPage && k.num == i && dev->knobValues[i].value != dev->knobValues[i].previous); });
@@ -966,7 +966,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                 data.replace(16, data2.size(), data2);
                 data[5] = text.mid(i, 8).length() * 2;
                 data[6] = (i > 0 && text.mid(i).size() > 8) ? 0x01 : 0x00;
-                hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
+                hid_write(dev->handle, (const quint8*)data.constData(), data.size());
             }
             break;
         case usbFeatureType::featureTimeout:
@@ -982,7 +982,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
             break;
         }
         data.replace(10, dev->deviceId.size(), dev->deviceId.toLocal8Bit());
-        hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
+        hid_write(dev->handle, (const quint8*)data.constData(), data.size());
         break;
 
         // Below are Stream Deck Generation 1 h/w
@@ -1009,7 +1009,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
             } else {
                 data[0] = 0x05;
             }
-            hid_get_feature_report(dev->handle,(unsigned char*)data.data(),(size_t)data.size());
+            hid_get_feature_report(dev->handle,(quint8*)data.data(),(size_t)data.size());
             qInfo(logUsbControl()) << QString("%0: Firmware = %1").arg(dev->product,QString::fromLatin1(data.mid(2,12)));
             break;
         case usbFeatureType::featureSerial:
@@ -1018,7 +1018,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
             } else {
                 data[0] = 0x06;
             }
-            hid_get_feature_report(dev->handle,(unsigned char*)data.data(),(size_t)data.size());
+            hid_get_feature_report(dev->handle,(quint8*)data.data(),(size_t)data.size());
             qInfo(logUsbControl()) << QString("%0: Serial Number = %1").arg(dev->product,QString::fromLatin1(data.mid(5,8)));
             break;
         case usbFeatureType::featureReset:
@@ -1029,13 +1029,13 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                 data[0] = (qint8)0x03;
                 data[1] = (qint8)0x02;
             }
-            hid_send_feature_report(dev->handle, (const unsigned char*)data.constData(), data.size());
+            hid_send_feature_report(dev->handle, (const quint8*)data.constData(), data.size());
             break;
         case usbFeatureType::featureResetKeys:
             data.resize(dev->type.maxPayload);
             memset(data.data(),0x0,data.size());
             data[0] = (qint8)0x02;
-            res=hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
+            res=hid_write(dev->handle, (const quint8*)data.constData(), data.size());
             break;
         case usbFeatureType::featureBrightness:
             if (sdv1) {
@@ -1050,7 +1050,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                 data[1] = (qint8)0x08;
                 data[2] = val*33; // Stream Deck brightness is in %
             }
-            res = hid_send_feature_report(dev->handle, (const unsigned char*)data.constData(), data.size());
+            res = hid_send_feature_report(dev->handle, (const quint8*)data.constData(), data.size());
             dev->brightness = val;
             break;
         case usbFeatureType::featureSensitivity:
@@ -1106,7 +1106,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                     data.append(data2.mid(0,length));
                     data.resize(dev->type.maxPayload);
                     memset(data.data()+length+sizeof(h),0x0,data.size()-(length+sizeof(h)));
-                    res=hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
+                    res=hid_write(dev->handle, (const quint8*)data.constData(), data.size());
                     //qInfo(logUsbControl()) << "Sending" << (((quint8)data[7] << 8) | ((quint8)data[6] & 0xff)) << "total=" << data.size()  << "payload=" << (((quint8)data[5] << 8) | ((quint8)data[4] & 0xff)) << "last" << (quint8)data[3];
                     data2.remove(0,length);
                     index++;
@@ -1190,7 +1190,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                     data.append(data2.mid(0,length));
                     data.resize(dev->type.maxPayload);
                     memset(data.data()+length+sizeof(h),0x0,data.size()-(length+sizeof(h)));
-                    res=hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
+                    res=hid_write(dev->handle, (const quint8*)data.constData(), data.size());
                     //qInfo(logUsbControl()) << "Sending" << (((quint8)data[7] << 8) | ((quint8)data[6] & 0xff)) << "total=" << data.size()  << "payload=" << (((quint8)data[5] << 8) | ((quint8)data[4] & 0xff)) << "last" << (quint8)data[3];
                     data2.remove(0,length);
                     index++;
@@ -1265,7 +1265,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                             data.resize(dev->type.maxPayload);
                             rem -= length;
                             data=data.replace(0x10,length,data2.mid(0,length));
-                            res=hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
+                            res=hid_write(dev->handle, (const quint8*)data.constData(), data.size());
                             //qInfo(logUsbControl()) << "Sending len=" << dev->type.maxPayload << h1.index << "total=" << data.size()  << "payload=" << length << "last" << h1.isLast;
                             data2.remove(0,length);
                             index++;
@@ -1293,7 +1293,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                             data.append(data2.mid(0,length));
                             data.resize(dev->type.maxPayload);
                             memset(data.data()+length+sizeof(h),0x0,data.size()-(length+sizeof(h)));
-                            res=hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
+                            res=hid_write(dev->handle, (const quint8*)data.constData(), data.size());
                              //qInfo(logUsbControl()) << "Sending" << (((quint8)data[7] << 8) | ((quint8)data[6] & 0xff)) << "total=" << data.size()  << "payload=" << (((quint8)data[5] << 8) | ((quint8)data[4] & 0xff)) << "last" << (quint8)data[3];
                             data2.remove(0,length);
                             index++;
@@ -1327,7 +1327,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
             return; // No command
             break;
         }
-        res = hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
+        res = hid_write(dev->handle, (const quint8*)data.constData(), data.size());
         break;
     case XKeysXK3:
         data.resize(80);
@@ -1346,7 +1346,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
             return; // No command
             break;
         }
-        res = hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
+        res = hid_write(dev->handle, (const quint8*)data.constData(), data.size());
         //qInfo (logUsbControl()) << "Sending command to USB:" << data;
         break;
     default:
@@ -1918,7 +1918,7 @@ void usbController::buttonState(QString name, double val)
 
 /* End of Gamepad functions*/
 
-void usbController::receiveLevel(funcs cmd, unsigned char level)
+void usbController::receiveLevel(funcs cmd, quint8 level)
 {
     // Update knob if relevant, step through all devices
     QMutexLocker locker(mutex);

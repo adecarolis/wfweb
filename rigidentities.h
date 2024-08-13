@@ -176,10 +176,10 @@ struct bandStackType {
 struct filterType {
     filterType():num(0),name(""),modes(0) {}
     filterType(filterType const &f): num(f.num),name(f.name),modes(f.modes) {}
-    filterType(unsigned char num, QString name, unsigned int modes) :
+    filterType(quint8 num, QString name, unsigned int modes) :
         num(num), name(name), modes(modes) {}
 
-    unsigned char num;
+    quint8 num;
     QString name;
     unsigned int modes;
 };
@@ -187,15 +187,15 @@ struct filterType {
 struct genericType {
     genericType():num(0),name("") {}
     genericType(genericType const &g):num(g.num),name(g.name) {}
-    genericType(unsigned char num, QString name) :
+    genericType(quint8 num, QString name) :
         num(num), name(name) {}
-    unsigned char num;
+    quint8 num;
     QString name;
 };
 
 
 
-//model_kind determineRadioModel(unsigned char rigID);
+//model_kind determineRadioModel(quint8 rigID);
 
 struct bsrRequest {
     availableBands band;
@@ -260,7 +260,7 @@ struct rigCapabilities {
     QHash<funcs,funcType> commands;
     QHash<QByteArray,funcs> commandsReverse;
 
-    std::vector <unsigned char> attenuators;
+    std::vector <quint8> attenuators;
     std::vector <genericType> preamps;
     std::vector <genericType> antennas;
     std::vector <filterType> filters;
@@ -268,7 +268,7 @@ struct rigCapabilities {
     std::vector <bandType> bands;
     //std::vector <spanType> spans;
     std::vector <stepType> steps;
-    unsigned char bsr[24] = {0};
+    quint8 bsr[24] = {0};
 
     std::vector <modeInfo> modes;
 

@@ -14,7 +14,7 @@ QStringList inline getHexArray(const QByteArray &pdata)
 
     for(int i=0; i < pdata.length(); i++)
     {
-        sdata.append(QString("%1 ").arg((unsigned char)pdata[i], 2, 16, QChar('0')) );
+        sdata.append(QString("%1 ").arg((quint8)pdata[i], 2, 16, QChar('0')) );
         index.append(QString("%1 ").arg(i, 2, 10, QChar('0')));
     }
 
@@ -31,7 +31,7 @@ QString inline getHex(const QByteArray &pdata)
 
     for(int i=0; i < pdata.length(); i++)
     {
-        sdata.append(QString("%1 ").arg((unsigned char)pdata[i], 2, 16, QChar('0')) );
+        sdata.append(QString("%1 ").arg((quint8)pdata[i], 2, 16, QChar('0')) );
         index.append(QString("%1 ").arg(i, 2, 10, QChar('0')));
     }
 

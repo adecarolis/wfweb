@@ -229,7 +229,7 @@ void repeaterSetup::receiveDuplexMode(duplexMode_t dm)
             ui->autoTrackLiveBtn->setDisabled(true);
             break;
         default:
-            qDebug() << "Did not understand duplex/split/repeater value of " << (unsigned char)dm;
+            qDebug() << "Did not understand duplex/split/repeater value of " << (quint8)dm;
             break;
     }
     ui->splitEnableChk->blockSignals(false);

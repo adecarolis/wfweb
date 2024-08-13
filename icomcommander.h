@@ -7,7 +7,7 @@
 // parses returns into useful things.
 
 // 0xE1 is new default, 0xE0 was before.
-// note: using a define because switch case doesn't even work with const unsigned char. Surprised me.
+// note: using a define because switch case doesn't even work with const quint8. Surprised me.
 #define compCivAddr 0xE1
 
 //#define DEBUG_PARSE // Enable to output Info messages every 10s with command parse timing.
@@ -23,8 +23,8 @@ public:
 
 public slots:
     void process();
-    void commSetup(rigTypedef rigList, unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf);
-    void commSetup(rigTypedef rigList, unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
+    void commSetup(rigTypedef rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf);
+    void commSetup(rigTypedef rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     void closeComm();
     void setRTSforPTT(bool enabled);
 
@@ -36,8 +36,8 @@ public slots:
     // Rig ID and CIV:
     void getRigID();
     void findRigs();
-    void setRigID(unsigned char rigID);
-    void setCIVAddr(unsigned char civAddr);
+    void setRigID(quint8 rigID);
+    void setCIVAddr(quint8 civAddr);
 
     // UDP:
     void handleNewData(const QByteArray& data);
@@ -45,7 +45,7 @@ public slots:
 
     // Housekeeping:
     void receiveCommand(funcs func, QVariant value, uchar receiver);
-    void setAfGain(unsigned char level);
+    void setAfGain(quint8 level);
 
 signals:
     // All signals are defined in rigcommander.h as they should be common for all rig types.
@@ -55,14 +55,14 @@ private:
 
     void parseData(QByteArray data); // new data come here
     void parseCommand(); // Entry point for complete commands
-    unsigned char bcdHexToUChar(unsigned char in);
-    unsigned char bcdHexToUChar(unsigned char hundreds, unsigned char tensunits);
-    unsigned int bcdHexToUInt(unsigned char hundreds, unsigned char tensunits);
-    QByteArray bcdEncodeChar(unsigned char num);
+    quint8 bcdHexToUChar(quint8 in);
+    quint8 bcdHexToUChar(quint8 hundreds, quint8 tensunits);
+    unsigned int bcdHexToUInt(quint8 hundreds, quint8 tensunits);
+    QByteArray bcdEncodeChar(quint8 num);
     QByteArray bcdEncodeInt(unsigned int);
     QByteArray setMemory(memoryType mem);
     freqt parseFrequency();
-    freqt parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
+    freqt parseFrequency(QByteArray data, quint8 lastPosition); // supply index where Mhz is found
 
     freqt parseFreqData(QByteArray data, uchar receiver);
     quint64 parseFreqDataToInt(QByteArray data);
@@ -79,10 +79,10 @@ private:
     uchar makeFilterWidth(ushort width, uchar receiver);
 
 
-    unsigned char audioLevelRxMean[50];
-    unsigned char audioLevelRxPeak[50];
-    unsigned char audioLevelTxMean[50];
-    unsigned char audioLevelTxPeak[50];
+    quint8 audioLevelRxMean[50];
+    quint8 audioLevelRxPeak[50];
+    quint8 audioLevelTxMean[50];
+    quint8 audioLevelTxPeak[50];
 
     modeInfo parseMode(quint8 mode, quint8 filter, uchar receiver);
     bool parseSpectrum(scopeData& d, uchar receiver);
@@ -90,7 +90,7 @@ private:
 
     QByteArray getLANAddr();
     QByteArray getUSBAddr();
-    QByteArray getACCAddr(unsigned char ab);
+    QByteArray getACCAddr(quint8 ab);
     void sendDataOut();
     void prepDataAndSend(QByteArray data);
     void debugMe();
@@ -132,8 +132,8 @@ private:
     bool foundRig;
 
     double frequencyMhz;
-    unsigned char civAddr;
-    unsigned char incomingCIVAddr; // place to store the incoming CIV.
+    quint8 civAddr;
+    quint8 incomingCIVAddr; // place to store the incoming CIV.
     bool pttAllowed;
     bool useRTSforPTT_isSet = false;
     bool useRTSforPTT_manual = false;
@@ -154,9 +154,9 @@ private:
     QString password;
 
     QString serialPortError;
-    unsigned char localVolume=0;
+    quint8 localVolume=0;
 
-    QHash<unsigned char,QString> rigList;
+    QHash<quint8,QString> rigList;
 
     quint64 pow10[12] = {
         1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000, 100000000000

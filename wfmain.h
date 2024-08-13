@@ -111,11 +111,11 @@ public:
 
 signals:
     // Signal levels received to other parts of wfview
-    void sendLevel(funcs cmd, unsigned char level);
+    void sendLevel(funcs cmd, quint8 level);
     void usbHotplug();
     // Basic to rig:
-    void setCIVAddr(unsigned char newRigCIVAddr);
-    void setRigID(unsigned char rigID);
+    void setCIVAddr(quint8 newRigCIVAddr);
+    void setRigID(quint8 rigID);
     void setRTSforPTT(bool enabled);
 
     
@@ -124,16 +124,16 @@ signals:
 
     // Frequency, mode, band:
     void getFrequency();
-    void getFrequency(unsigned char);
-    void setFrequency(unsigned char receiver, freqt freq);
+    void getFrequency(quint8);
+    void setFrequency(quint8 receiver, freqt freq);
     void getMode();
-    void setMode(unsigned char modeIndex, unsigned char modeFilter);
+    void setMode(quint8 modeIndex, quint8 modeFilter);
     void setMode(modeInfo);
     void selectVFO(vfo_t vfo);
     void sendVFOSwap();
     void sendVFOEqualAB();
     void sendVFOEqualMS();
-    void setDataMode(bool dataOn, unsigned char filter);
+    void setDataMode(bool dataOn, quint8 filter);
     void getDataMode();
     void getModInput(bool dataOn);
     void setModInput(inputTypes input, bool dataOn);
@@ -144,7 +144,7 @@ signals:
     void setRitValue(int ritValue);
     void setRitEnable(bool ritEnabled);
     void getTuningStep();
-    void setTuningStep(unsigned char);
+    void setTuningStep(quint8);
 
     // Repeater:
     void getDuplexMode();
@@ -203,24 +203,24 @@ signals:
     void getRttyMark();
 
     // Level set:
-    void setRfGain(unsigned char level);
-    void setAfGain(unsigned char level);
-    void setSql(unsigned char level);
-    void setIFShift(unsigned char level);
-    void setPBTInner(unsigned char level);
-    void setPBTOuter(unsigned char level);
+    void setRfGain(quint8 level);
+    void setAfGain(quint8 level);
+    void setSql(quint8 level);
+    void setIFShift(quint8 level);
+    void setPBTInner(quint8 level);
+    void setPBTOuter(quint8 level);
   
-    void setIFShiftWindow(unsigned char level);
-    void setPBTInnerWindow(unsigned char level);
-    void setPBTOuterWindow(unsigned char level);
-    void setMicGain(unsigned char);
-    void setCompLevel(unsigned char);
-    void setTxPower(unsigned char);
-    void setMonitorGain(unsigned char);
-    void setVoxGain(unsigned char);
-    void setAntiVoxGain(unsigned char);
-    void setNBLevel(unsigned char level);
-    void setNRLevel(unsigned char level);
+    void setIFShiftWindow(quint8 level);
+    void setPBTInnerWindow(quint8 level);
+    void setPBTOuterWindow(quint8 level);
+    void setMicGain(quint8);
+    void setCompLevel(quint8);
+    void setTxPower(quint8);
+    void setMonitorGain(quint8);
+    void setVoxGain(quint8);
+    void setAntiVoxGain(quint8);
+    void setNBLevel(quint8 level);
+    void setNRLevel(quint8 level);
 
     void setVox(bool en);
     void setMonitor(bool en);
@@ -230,12 +230,12 @@ signals:
 
     void setSpectrumRefLevel(int);
 
-    void setModLevel(inputTypes input, unsigned char level);
-    void setACCGain(unsigned char level);
-    void setACCAGain(unsigned char level);
-    void setACCBGain(unsigned char level);
-    void setUSBGain(unsigned char level);
-    void setLANGain(unsigned char level);
+    void setModLevel(inputTypes input, quint8 level);
+    void setACCGain(quint8 level);
+    void setACCAGain(quint8 level);
+    void setACCBGain(quint8 level);
+    void setUSBGain(quint8 level);
+    void setLANGain(quint8 level);
 
     void setPassband(quint16 pass);
 
@@ -245,9 +245,9 @@ signals:
     void getAttenuator();
     void getPreamp();
     void getAntenna();
-    void setAttenuator(unsigned char att);
-    void setPreamp(unsigned char pre);
-    void setAntenna(unsigned char ant, bool rx);
+    void setAttenuator(quint8 att);
+    void setPreamp(quint8 pre);
+    void setAntenna(quint8 ant, bool rx);
     void startATU();
     void setATU(bool atuEnabled);
     void getATUStatus();
@@ -256,10 +256,10 @@ signals:
     void sendCW(QString message);
     void stopCW();
     void getKeySpeed();
-    void setKeySpeed(unsigned char wpm);
-    void setCwPitch(unsigned char pitch);
-    void setDashRatio(unsigned char ratio);
-    void setCWBreakMode(unsigned char breakMode);
+    void setKeySpeed(quint8 wpm);
+    void setCwPitch(quint8 pitch);
+    void setDashRatio(quint8 ratio);
+    void setCWBreakMode(quint8 breakMode);
     void getCWBreakMode();
 
     // Time and date:
@@ -276,15 +276,15 @@ signals:
     void setScopeMode(spectrumMode_t spectMode);
     void setScopeSpan(char span);
     void setScopeEdge(char edge);
-    void setScopeFixedEdge(double startFreq, double endFreq, unsigned char edgeNumber);
+    void setScopeFixedEdge(double startFreq, double endFreq, quint8 edgeNumber);
     void getScopeMode();
     void getScopeEdge();
     void getScopeSpan();
     void sayFrequency();
     void sayMode();
     void sayAll();
-    void sendCommSetup(rigTypedef rigList, unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp, quint16 tcp, quint8 wf);
-    void sendCommSetup(rigTypedef rigList, unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
+    void sendCommSetup(rigTypedef rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp, quint16 tcp, quint8 wf);
+    void sendCommSetup(rigTypedef rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     void sendCloseComm();
     void sendChangeLatency(quint16 latency);
     void initServer();
@@ -376,35 +376,35 @@ private slots:
 
     void handlePttLimit(); // hit at 3 min transmit length
 
-    void doShuttle(bool up, unsigned char level);
+    void doShuttle(bool up, quint8 level);
 
     void receiveCommReady();
 
     void receivePTTstatus(bool pttOn);
     void receiveRITStatus(bool ritEnabled);
     void receiveRITValue(int ritValHz);
-    void receiveModInput(rigInput input, unsigned char data);
+    void receiveModInput(rigInput input, quint8 data);
     //void receiveDuplexMode(duplexMode_t dm);
     void receivePassband(quint16 pass);
-    void receiveCwPitch(unsigned char pitch);
+    void receiveCwPitch(quint8 pitch);
     void receiveMonitor(bool en);
-    void receiveTuningStep(unsigned char step);
+    void receiveTuningStep(quint8 step);
 
     // Levels:
-    void receiveIFShift(unsigned char level);
+    void receiveIFShift(quint8 level);
 
     // Meters:
-    void receiveMeter(meter_t meter, unsigned char level, unsigned char receiver=0);
-//    void receiveSMeter(unsigned char level);
-//    void receivePowerMeter(unsigned char level);
-//    void receiveALCMeter(unsigned char level);
-//    void receiveCompMeter(unsigned char level);
+    void receiveMeter(meter_t meter, quint8 level, quint8 receiver=0);
+//    void receiveSMeter(quint8 level);
+//    void receivePowerMeter(quint8 level);
+//    void receiveALCMeter(quint8 level);
+//    void receiveCompMeter(quint8 level);
 
 
-    void receiveATUStatus(unsigned char atustatus);
-    void receivePreamp(unsigned char pre, uchar receiver);
-    void receiveAttenuator(unsigned char att, uchar receiver);
-    void receiveAntennaSel(unsigned char ant, bool rx,uchar receiver);
+    void receiveATUStatus(quint8 atustatus);
+    void receivePreamp(quint8 pre, uchar receiver);
+    void receiveAttenuator(quint8 att, uchar receiver);
+    void receiveAntennaSel(quint8 ant, bool rx,uchar receiver);
 
     void receivePortError(errorType err);
     void receiveStatusUpdate(networkStatus status);
@@ -648,8 +648,8 @@ private:
     //freqt freqb;
     float tsKnobMHz;
 
-    unsigned char setModeVal=0;
-    unsigned char setFilterVal=0;
+    quint8 setModeVal=0;
+    quint8 setFilterVal=0;
     qint64 lastFreqCmdTime_ms;
 
     int pCmdNum = 0;
@@ -701,17 +701,17 @@ private:
     void statusFromSliderPercent(QString name, int percentValue);
     void statusFromSliderRaw(QString name, int rawValue);
 
-    void processModLevel(inputTypes source, unsigned char level);
+    void processModLevel(inputTypes source, quint8 level);
 
-    void processChangingCurrentModLevel(unsigned char level);
+    void processChangingCurrentModLevel(quint8 level);
 
     void changeModLabel(rigInput source);
     void changeModLabel(rigInput source, bool updateLevel);
 
     void changeModLabelAndSlider(rigInput source);
 
-    void changeMode(rigMode_t mode, unsigned char rx=0);
-    void changeMode(rigMode_t mode, unsigned char data, unsigned char rx=0);
+    void changeMode(rigMode_t mode, quint8 rx=0);
+    void changeMode(rigMode_t mode, quint8 data, quint8 rx=0);
 
     void connectionHandler(bool connect);
 
@@ -724,7 +724,7 @@ private:
 
     int oldFreqDialVal;
 
-    QHash<unsigned char,QString> rigList;
+    QHash<quint8,QString> rigList;
     rigCapabilities* rigCaps = Q_NULLPTR;
 
     rigInput currentModSrc[4];
@@ -735,7 +735,7 @@ private:
     bool haveRigCaps;
     bool amTransmitting = false;
     bool splitModeEnabled = false;
-    unsigned char usingDataMode = 99; // Set to invalid value initially
+    quint8 usingDataMode = 99; // Set to invalid value initially
 
     // Widgets and Special Windows:
     calibrationWindow *cal = Q_NULLPTR;

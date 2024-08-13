@@ -109,7 +109,7 @@ void udpHandler::changeLatency(quint16 value)
     emit haveChangeLatency(value);
 }
 
-void udpHandler::setVolume(unsigned char value)
+void udpHandler::setVolume(quint8 value)
 {
     emit haveSetVolume(value);
 }
@@ -144,8 +144,8 @@ void udpHandler::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16
     if((audioLevelsRxPosition)%4 == 0)
     {
         // calculate mean and emit signal
-        unsigned char meanPeak = findMax(audioLevelsRxPeak);
-        unsigned char meanRMS = findMean(audioLevelsRxRMS);
+        quint8 meanPeak = findMax(audioLevelsRxPeak);
+        quint8 meanRMS = findMean(audioLevelsRxRMS);
         networkAudioLevels l;
         l.haveRxLevels = true;
         l.rxAudioPeak = meanPeak;
@@ -167,8 +167,8 @@ void udpHandler::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,quint1
     if((audioLevelsTxPosition)%4 == 0)
     {
         // calculate mean and emit signal
-        unsigned char meanPeak = findMax(audioLevelsTxPeak);
-        unsigned char meanRMS = findMean(audioLevelsTxRMS);
+        quint8 meanPeak = findMax(audioLevelsTxPeak);
+        quint8 meanRMS = findMean(audioLevelsTxRMS);
         networkAudioLevels l;
         l.haveTxLevels = true;
         l.txAudioPeak = meanPeak;
@@ -178,7 +178,7 @@ void udpHandler::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,quint1
     audioLevelsTxPosition++;
 }
 
-unsigned char udpHandler::findMean(unsigned char *data)
+quint8 udpHandler::findMean(quint8 *data)
 {
     unsigned int sum=0;
     for(int p=0; p < audioLevelBufferSize; p++)
@@ -188,7 +188,7 @@ unsigned char udpHandler::findMean(unsigned char *data)
     return sum / audioLevelBufferSize;
 }
 
-unsigned char udpHandler::findMax(unsigned char *data)
+quint8 udpHandler::findMax(quint8 *data)
 {
     unsigned int max=0;
     for(int p=0; p < audioLevelBufferSize; p++)
@@ -356,7 +356,7 @@ void udpHandler::dataReceived()
 
                             QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
                             QObject::connect(this, SIGNAL(haveChangeLatency(quint16)), audio, SLOT(changeLatency(quint16)));
-                            QObject::connect(this, SIGNAL(haveSetVolume(unsigned char)), audio, SLOT(setVolume(unsigned char)));
+                            QObject::connect(this, SIGNAL(haveSetVolume(quint8)), audio, SLOT(setVolume(quint8)));
                             QObject::connect(audio, SIGNAL(haveRxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, quint16, bool, bool)));
                             QObject::connect(audio, SIGNAL(haveTxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, quint16, bool, bool)));
 
@@ -431,7 +431,7 @@ void udpHandler::dataReceived()
                 qInfo(logUdp()) << "Got Connection status for:" << in->name << "Busy:" << in->busy << "Computer" << in->computer << "IP" << ip.toString();
 
                 // First we need to find this radio in our capabilities packet, there aren't many so just step through
-                for (unsigned char f = 0; f < radios.size(); f++)
+                for (quint8 f = 0; f < radios.size(); f++)
                 {
 
                     if ((radios[f].commoncap == 0x8010 &&
@@ -505,7 +505,7 @@ void udpHandler::dataReceived()
                     memcpy(&rad, tmpRad+f, RADIO_CAP_SIZE);
                     radios.append(rad);
                     qInfo(logUdp()) << this->metaObject()->className() << QString("Received radio capabilities, Name: %1, Audio: %2, CIV: %3, MAC: %4:%5:%6:%7:%8:%9 CAPF: %10")
-                        .arg(rad.name).arg(rad.audio).arg((unsigned char)rad.civ, 2, 16, QChar('0'))
+                        .arg(rad.name).arg(rad.audio).arg((quint8)rad.civ, 2, 16, QChar('0'))
                         .arg(rad.macaddress[0], 2, 16, QChar('0')).arg(rad.macaddress[1], 2, 16, QChar('0'))
                         .arg(rad.macaddress[2], 2, 16, QChar('0')).arg(rad.macaddress[3], 2, 16, QChar('0'))
                         .arg(rad.macaddress[4], 2, 16, QChar('0')).arg(rad.macaddress[5], 2, 16, QChar('0')).arg(rad.capf, 4, 16, QChar('0'));

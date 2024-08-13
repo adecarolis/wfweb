@@ -30,7 +30,7 @@ void calibrationWindow::handleSpectrumPeak(double peakFreq)
     (void)peakFreq;
 }
 
-void calibrationWindow::handleRefAdjustCourse(unsigned char value)
+void calibrationWindow::handleRefAdjustCourse(quint8 value)
 {
     ui->calCourseSlider->setDisabled(false);
     ui->calCourseSpinbox->setDisabled(false);
@@ -45,7 +45,7 @@ void calibrationWindow::handleRefAdjustCourse(unsigned char value)
     ui->calCourseSpinbox->blockSignals(false);
 }
 
-void calibrationWindow::handleRefAdjustFine(unsigned char value)
+void calibrationWindow::handleRefAdjustFine(quint8 value)
 {
     ui->calFineSlider->setDisabled(false);
     ui->calFineSpinbox->setDisabled(false);
@@ -72,7 +72,7 @@ void calibrationWindow::on_calCourseSlider_valueChanged(int value)
     ui->calCourseSpinbox->setValue((int) value);
     ui->calCourseSpinbox->blockSignals(false);
 
-    emit setRefAdjustCourse((unsigned char) value);
+    emit setRefAdjustCourse((quint8) value);
 
 }
 
@@ -82,7 +82,7 @@ void calibrationWindow::on_calFineSlider_valueChanged(int value)
     ui->calFineSpinbox->setValue((int) value);
     ui->calFineSpinbox->blockSignals(false);
 
-    emit setRefAdjustFine((unsigned char) value);
+    emit setRefAdjustFine((quint8) value);
 }
 
 void calibrationWindow::on_calCourseSpinbox_valueChanged(int value)
@@ -100,7 +100,7 @@ void calibrationWindow::on_calCourseSpinbox_valueChanged(int value)
     ui->calCourseSlider->setValue(value);
     ui->calCourseSlider->blockSignals(false);
 
-    emit setRefAdjustCourse((unsigned char) value);
+    emit setRefAdjustCourse((quint8) value);
 
 
 }
@@ -113,7 +113,7 @@ void calibrationWindow::on_calFineSpinbox_valueChanged(int value)
     ui->calFineSlider->setValue(value);
     ui->calFineSlider->blockSignals(false);
 
-    emit setRefAdjustFine((unsigned char) value);
+    emit setRefAdjustFine((quint8) value);
 }
 
 void calibrationWindow::on_calFineSpinbox_editingFinished()

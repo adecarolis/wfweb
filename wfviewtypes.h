@@ -124,10 +124,10 @@ struct modeInfo {
     modeInfo ():mk(modeUnknown), reg(99), filter(1),VFO(activeVFO), data(0), name(""), bwMin(0), bwMax(0), pass(0) {};
     modeInfo(rigMode_t mk, quint8 reg, QString name, int bwMin, int bwMax): mk(mk), reg(reg), filter(1), VFO(activeVFO), data(false), name(name),bwMin(bwMin), bwMax(bwMax), pass(0) {};
     rigMode_t mk;
-    unsigned char reg;
-    unsigned char filter; // Default filter is always 1
+    quint8 reg;
+    quint8 filter; // Default filter is always 1
     selVFO_t VFO;
-    unsigned char data;
+    quint8 data;
     QString name;
     int bwMin;
     int bwMax;
@@ -172,13 +172,13 @@ struct freqt {
 
 struct datekind {
     uint16_t year;
-    unsigned char month;
-    unsigned char day;
+    quint8 month;
+    quint8 day;
 };
 
 struct timekind {
-    unsigned char hours;
-    unsigned char minutes;
+    quint8 hours;
+    quint8 minutes;
     bool isMinus;
 };
 
@@ -308,8 +308,8 @@ struct funcType {
 
 struct stepType {
     stepType(){};
-    stepType(unsigned char num, QString name, quint64 hz) : num(num), name(name), hz(hz) {};
-    unsigned char num;
+    stepType(quint8 num, QString name, quint64 hz) : num(num), name(name), hz(hz) {};
+    quint8 num;
     QString name;
     quint64 hz;
 };

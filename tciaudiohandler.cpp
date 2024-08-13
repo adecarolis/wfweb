@@ -106,7 +106,7 @@ bool tciAudioHandler::init(audioSetup setup)
     return isInitialized;
 }
 
-void tciAudioHandler::setVolume(unsigned char volume)
+void tciAudioHandler::setVolume(quint8 volume)
 {
 	this->volume = audiopot[volume];
 }

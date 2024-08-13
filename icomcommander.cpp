@@ -57,7 +57,7 @@ icomCommander::~icomCommander()
 }
 
 
-void icomCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
+void icomCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
 {
     // construct
 
@@ -111,7 +111,7 @@ void icomCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned cha
     commonSetup();
 }
 
-void icomCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
+void icomCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -169,7 +169,7 @@ void icomCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned cha
         }
 
         connect(this, SIGNAL(haveChangeLatency(quint16)), udp, SLOT(changeLatency(quint16)));
-        connect(this, SIGNAL(haveSetVolume(unsigned char)), udp, SLOT(setVolume(unsigned char)));
+        connect(this, SIGNAL(haveSetVolume(quint8)), udp, SLOT(setVolume(quint8)));
         connect(udp, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
 
         // Connect for errors/alerts
@@ -380,7 +380,7 @@ void icomCommander::powerOn()
         }
     }
 
-    unsigned char cmd = 0x01;
+    quint8 cmd = 0x01;
     payload.append(payloadPrefix);
     if (getCommand(funcPowerControl,payload,cmd).cmd != funcNone)
     {
@@ -404,7 +404,7 @@ void icomCommander::powerOn()
 void icomCommander::powerOff()
 {
     QByteArray payload;
-    unsigned char cmd = '\x00';
+    quint8 cmd = '\x00';
     if (getCommand(funcPowerControl,payload,cmd).cmd != funcNone)
     {
         payload.append(cmd);
@@ -418,7 +418,7 @@ QByteArray icomCommander::makeFreqPayload(freqt freq,uchar numchars)
     QByteArray result;
     quint64 freqInt = freq.Hz;
 
-    unsigned char a;
+    quint8 a;
 
     if (numchars == 5 && freq.Hz >= 1E10)
     {
@@ -446,7 +446,7 @@ QByteArray icomCommander::makeFreqPayload(double freq)
     quint64 freqInt = (quint64) (freq * 1E6);
 
     QByteArray result;
-    unsigned char a;
+    quint8 a;
     int numchars = 5;
     if (freqInt >= 1E10)
         numchars = 6;
@@ -478,16 +478,16 @@ QByteArray icomCommander::encodeTone(quint16 tone, bool tinv, bool rinv)
     // This function is fine to use for DTCS and TONE
     QByteArray enct;
 
-    unsigned char inv=0;
-    inv = inv | (unsigned char)rinv;
-    inv = inv | ((unsigned char)tinv) << 4;
+    quint8 inv=0;
+    inv = inv | (quint8)rinv;
+    inv = inv | ((quint8)tinv) << 4;
 
     enct.append(inv);
 
-    unsigned char hundreds = tone / 1000;
-    unsigned char tens = (tone-(hundreds*1000)) / 100;
-    unsigned char ones = (tone -(hundreds*1000)-(tens*100)) / 10;
-    unsigned char dec =  (tone -(hundreds*1000)-(tens*100)-(ones*10));
+    quint8 hundreds = tone / 1000;
+    quint8 tens = (tone-(hundreds*1000)) / 100;
+    quint8 ones = (tone -(hundreds*1000)-(tens*100)) / 10;
+    quint8 dec =  (tone -(hundreds*1000)-(tens*100)-(ones*10));
 
     enct.append(tens | (hundreds<<4));
     enct.append(dec | (ones <<4));
@@ -520,7 +520,7 @@ toneInfo icomCommander::decodeTone(QByteArray eTone)
     return t;
 }
 
-void icomCommander::setCIVAddr(unsigned char civAddr)
+void icomCommander::setCIVAddr(quint8 civAddr)
 {
     // Note: This sets the radio's CIV address
     // the computer's CIV address is defined in the header file.
@@ -607,7 +607,7 @@ void icomCommander::parseData(QByteArray dataInput)
             }
         }
 
-        if((unsigned char)data[02] == civAddr)
+        if((quint8)data[02] == civAddr)
         {
             // data is or begins with an echoback from what we sent
             // find the first 'fd' and cut it. Then continue.
@@ -650,7 +650,7 @@ void icomCommander::parseData(QByteArray dataInput)
             case '\x00':
                 // data send initiated by the rig due to user control
                 // extract the payload out and parse.
-                if((unsigned char)data[03]==compCivAddr)
+                if((quint8)data[03]==compCivAddr)
                 {
                     // This is an echo of our own broadcast request.
                     // The data are "to 00" and "from E1"
@@ -1145,7 +1145,7 @@ void icomCommander::parseCommand()
         // [3] 10dB digit, 1dB digit
         // [4] 0.1dB digit, 0
         // [5] 0x00 = +, 0x01 = -
-        unsigned char negative = payloadIn[2];
+        quint8 negative = payloadIn[2];
         short ref = bcdHexToUInt(payloadIn[0], payloadIn[1]);
         ref = ref / 10;
         if(negative){
@@ -1457,7 +1457,7 @@ void icomCommander::determineRigCaps()
         {
             settings->setArrayIndex(c);
             qDebug(logRig()) << "** GOT ATTENUATOR" << settings->value("dB", 0).toString().toUInt();
-            rigCaps.attenuators.push_back((unsigned char)settings->value("dB", 0).toString().toUInt());
+            rigCaps.attenuators.push_back((quint8)settings->value("dB", 0).toString().toUInt());
         }
         settings->endArray();
     }
@@ -1627,8 +1627,8 @@ bool icomCommander::parseSpectrum(scopeData& d, uchar receiver)
     freqt fEnd;
 
     d.receiver = receiver;
-    unsigned char sequence = bcdHexToUChar(payloadIn[0]);
-    unsigned char sequenceMax = bcdHexToUChar(payloadIn[1]);
+    quint8 sequence = bcdHexToUChar(payloadIn[0]);
+    quint8 sequenceMax = bcdHexToUChar(payloadIn[1]);
 
     int freqLen = 5;
     // M0VSE THIS SHOULD BE FIXED, BUT NOT SURE HOW AS WE DON'T KNOW WHICH BAND WE ARE ON?
@@ -1735,21 +1735,21 @@ bool icomCommander::parseSpectrum(scopeData& d, uchar receiver)
     return ret;
 }
 
-unsigned char icomCommander::bcdHexToUChar(unsigned char in)
+quint8 icomCommander::bcdHexToUChar(quint8 in)
 {
-    unsigned char out = 0;
+    quint8 out = 0;
     out = in & 0x0f;
     out += ((in & 0xf0) >> 4)*10;
     return out;
 }
 
-unsigned int icomCommander::bcdHexToUInt(unsigned char hundreds, unsigned char tensunits)
+unsigned int icomCommander::bcdHexToUInt(quint8 hundreds, quint8 tensunits)
 {
     // convert:
     // hex data: 0x41 0x23
     // convert to uint:
     // uchar: 4123
-    unsigned char thousands = ((hundreds & 0xf0)>>4);
+    quint8 thousands = ((hundreds & 0xf0)>>4);
     unsigned int rtnVal;
     rtnVal = (hundreds & 0x0f)*100;
     rtnVal += ((tensunits & 0xf0)>>4)*10;
@@ -1759,14 +1759,14 @@ unsigned int icomCommander::bcdHexToUInt(unsigned char hundreds, unsigned char t
     return rtnVal;
 }
 
-unsigned char icomCommander::bcdHexToUChar(unsigned char hundreds, unsigned char tensunits)
+quint8 icomCommander::bcdHexToUChar(quint8 hundreds, quint8 tensunits)
 {
     // convert:
     // hex data: 0x01 0x23
     // convert to uchar:
     // uchar: 123
 
-    unsigned char rtnVal;
+    quint8 rtnVal;
     rtnVal = (hundreds & 0x0f)*100;
     rtnVal += ((tensunits & 0xf0)>>4)*10;
     rtnVal += (tensunits & 0x0f);
@@ -1800,7 +1800,7 @@ QByteArray icomCommander::bcdEncodeInt(unsigned int num)
     return result;
 }
 
-QByteArray icomCommander::bcdEncodeChar(unsigned char num)
+QByteArray icomCommander::bcdEncodeChar(quint8 num)
 {
     if(num > 99)
     {
@@ -1907,7 +1907,7 @@ freqt icomCommander::parseFrequencyRptOffset(QByteArray data)
     return f;
 }
 
-freqt icomCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
+freqt icomCommander::parseFrequency(QByteArray data, quint8 lastPosition)
 {
     // process payloadIn, which is stripped.
     // float frequencyMhz
@@ -2287,7 +2287,7 @@ void icomCommander::getRigID()
     }
 }
 
-void icomCommander::setRigID(unsigned char rigID)
+void icomCommander::setRigID(quint8 rigID)
 {
     // This function overrides radio model detection.
     // It can be used for radios without Rig ID commands,
@@ -2309,7 +2309,7 @@ void icomCommander::setRigID(unsigned char rigID)
 }
 
 
-void icomCommander::setAfGain(unsigned char level)
+void icomCommander::setAfGain(quint8 level)
 {
     if (udp == Q_NULLPTR)
     {
@@ -2328,7 +2328,7 @@ void icomCommander::setAfGain(unsigned char level)
 
 uchar icomCommander::makeFilterWidth(ushort pass,uchar receiver)
 {
-    unsigned char calc;
+    quint8 calc;
     modeInfo mi = queue->getCache((receiver==1?funcSubMode:funcMainMode),receiver).value.value<modeInfo>();
     if (mi.mk == modeAM) { // AM 0-49
 
@@ -2451,7 +2451,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                  if (func == funcSendCW)
                  {
                     QByteArray textData = text.toLocal8Bit();
-                    unsigned char p=0;
+                    quint8 p=0;
                     for(int c=0; c < textData.length(); c++)
                     {
                         p = textData.at(c);
@@ -2726,7 +2726,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                     level *= -1;
                 }
                 payload.append(bcdEncodeInt(level*10));
-                payload.append(static_cast<unsigned char>(isNegative));
+                payload.append(static_cast<quint8>(isNegative));
             }
             else if (!strcmp(value.typeName(),"modeInfo"))
             {

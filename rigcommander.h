@@ -21,12 +21,12 @@
 // parses returns into useful things.
 
 // 0xE1 is new default, 0xE0 was before.
-// note: using a define because switch case doesn't even work with const unsigned char. Surprised me.
+// note: using a define because switch case doesn't even work with const quint8. Surprised me.
 #define compCivAddr 0xE1
 
 //#define DEBUG_PARSE // Enable to output Info messages every 10s with command parse timing.
 
-typedef QHash<unsigned char, QString> rigTypedef;
+typedef QHash<quint8, QString> rigTypedef;
 
 class rigCommander : public QObject
 {
@@ -57,8 +57,8 @@ public slots:
     void dataFromServer(QByteArray data);
 
     virtual void process();
-    virtual void commSetup(rigTypedef rigList, unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf);
-    virtual void commSetup(rigTypedef rigList, unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
+    virtual void commSetup(rigTypedef rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf);
+    virtual void commSetup(rigTypedef rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     virtual void closeComm();
     virtual void setRTSforPTT(bool enabled);
 
@@ -70,8 +70,8 @@ public slots:
     // Rig ID and CIV:
     virtual void getRigID();
     virtual void findRigs();
-    virtual void setRigID(unsigned char rigID);
-    virtual void setCIVAddr(unsigned char civAddr);
+    virtual void setRigID(quint8 rigID);
+    virtual void setCIVAddr(quint8 civAddr);
 
     // UDP:
     virtual void handleNewData(const QByteArray& data);
@@ -79,7 +79,7 @@ public slots:
 
     // Housekeeping:
     virtual void receiveCommand(funcs func, QVariant value, uchar receiver);
-    virtual void setAfGain(unsigned char level);
+    virtual void setAfGain(quint8 level);
 
 signals:
     // Right now, all signals are defined here as they should be rig agnostic.
@@ -99,7 +99,7 @@ signals:
     void haveDataForServer(QByteArray outData);
     void haveAudioData(audioPacket data);
     void initUdpHandler();
-    void haveSetVolume(unsigned char level);
+    void haveSetVolume(quint8 level);
     void haveBaudRate(quint32 baudrate);
 
     // Spectrum:
@@ -123,7 +123,7 @@ signals:
     void haveMemory(memoryType mem);
 
     // Levels:
-    void haveAfGain(unsigned char level);
+    void haveAfGain(quint8 level);
     // Housekeeping:
     void requestRadioSelection(QList<radio_cap_packet> radios);
     void setRadioUsage(quint8 radio, bool admin, quint8 busy, QString user, QString ip);

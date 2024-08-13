@@ -201,14 +201,14 @@ struct preferences {
     bool showBands;
 
     // Radio:
-    unsigned char radioCIVAddr;
+    quint8 radioCIVAddr;
     bool CIVisRadioModel;
     bool forceRTSasPTT;
     int polling_ms;
     QString serialPortRadio;
     quint32 serialPortBaud;
     QString virtualSerialPort;
-    unsigned char localAFgain;
+    quint8 localAFgain;
     audioType audioSystem;
 
     // Controls:

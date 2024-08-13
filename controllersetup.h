@@ -164,7 +164,7 @@ private:
     Ui::controllerSetup* ui;
     QGraphicsTextItem* textItem;
     QLabel* imgLabel;
-    unsigned char currentDevice = 0;
+    quint8 currentDevice = 0;
     QVector<BUTTON>* buttons;
     QVector<KNOB>* knobs;
     QVector<COMMAND>* commands;

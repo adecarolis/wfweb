@@ -199,7 +199,7 @@ void frequencyinputwidget::on_goFreqBtn_clicked()
     {
         modeInfo m;
         m.mk = sidebandChooser::getMode(f, currentMode);
-        m.reg = (unsigned char) m.mk;
+        m.reg = (quint8) m.mk;
         m.filter = currentFilter;
         // TODO: usingDataMode
         // TODO: auto sideband preference

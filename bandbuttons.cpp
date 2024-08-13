@@ -81,12 +81,12 @@ void bandbuttons::receiveRigCaps(rigCapabilities* rc)
         qDebug(logGui()) << "Bands in this rigcaps: ";
         for(size_t i=0; i < rigCaps->bands.size(); i++)
         {
-            qDebug(logGui()) << "band[" << i << "]: " << (unsigned char)rigCaps->bands[i].band;
+            qDebug(logGui()) << "band[" << i << "]: " << (quint8)rigCaps->bands[i].band;
         }
 
         for(size_t i=0; i < 20; i++)
         {
-            qDebug(logGui()) << "bsr[" << i << "]: " << (unsigned char)rigCaps->bsr[i];
+            qDebug(logGui()) << "bsr[" << i << "]: " << (quint8)rigCaps->bsr[i];
         }
     } else {
         requestedBand = bandUnknown;

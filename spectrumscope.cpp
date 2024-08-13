@@ -675,14 +675,14 @@ bool spectrumScope::updateScope(scopeData data)
 
     for(int i=0; i< specLen; i++)
     {
-        y[i] = (unsigned char)data.data[i];
+        y[i] = (quint8)data.data[i];
         if(underlayMode == underlayPeakHold)
         {
-            if((unsigned char)data.data[i] > (unsigned char)spectrumPeaks[i])
+            if((quint8)data.data[i] > (quint8)spectrumPeaks[i])
             {
                 spectrumPeaks[i] = data.data[i];
             }
-            y2[i] = (unsigned char)spectrumPeaks[i];
+            y2[i] = (quint8)spectrumPeaks[i];
         }
     }
     plasmaMutex.lock();
@@ -834,7 +834,7 @@ bool spectrumScope::updateScope(scopeData data)
             wfRow = wfimage[row];
             for(int col = 0; col < spectWidth; col++)
             {
-                colorMap->data()->setCell( col, row, (unsigned char)wfRow[col]);
+                colorMap->data()->setCell( col, row, (quint8)wfRow[col]);
             }
         }
         if(updateRange)
@@ -936,7 +936,7 @@ void spectrumScope::computePlasma()
         {
             for(int pos=0; pos < specPlasmaSize; pos++)
             {
-                spectrumPlasmaLine[col] += (unsigned char)spectrumPlasma[pos][col];
+                spectrumPlasmaLine[col] += (quint8)spectrumPlasma[pos][col];
             }
             spectrumPlasmaLine[col] = spectrumPlasmaLine[col] / specPlasmaSize;
         }
@@ -947,8 +947,8 @@ void spectrumScope::computePlasma()
             spectrumPlasmaLine[col] = spectrumPlasma[0][col]; // initial value
             for(int pos=0; pos < specPlasmaSize; pos++)
             {
-                if((double)((unsigned char)spectrumPlasma[pos][col]) > spectrumPlasmaLine[col])
-                    spectrumPlasmaLine[col] = (unsigned char)spectrumPlasma[pos][col];
+                if((double)((quint8)spectrumPlasma[pos][col]) > spectrumPlasmaLine[col])
+                    spectrumPlasmaLine[col] = (quint8)spectrumPlasma[pos][col];
             }
         }
     }
@@ -1999,7 +1999,7 @@ void spectrumScope::detachScope(bool state)
     this->show();
 }
 
-void spectrumScope::changeSpan(char val)
+void spectrumScope::changeSpan(qint8 val)
 {
     if ((val > 0 && spanCombo->currentIndex() < spanCombo->count()-val) ||
         (val < char(0) && spanCombo->currentIndex() > 0))

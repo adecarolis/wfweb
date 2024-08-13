@@ -31,7 +31,7 @@ rigCommander::~rigCommander()
 }
 
 
-void rigCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
+void rigCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
 {
     Q_UNUSED(rigList)
     Q_UNUSED(rigCivAddr)
@@ -43,7 +43,7 @@ void rigCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char
     qWarning(logRig()) << "commSetup() (serial) not implemented by rig type";
 }
 
-void rigCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
+void rigCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
 {
     Q_UNUSED(rigList)
     Q_UNUSED(rigCivAddr)
@@ -70,7 +70,7 @@ void rigCommander::getRigID()
     qWarning(logRig()) << "getRigID() not implemented by rig type";
 }
 
-void rigCommander::setRigID(unsigned char rigID)
+void rigCommander::setRigID(quint8 rigID)
 {
     Q_UNUSED(rigID)
 
@@ -107,7 +107,7 @@ void rigCommander::powerOff()
     qWarning(logRig()) << "powerOff() not implemented by rig type";
 }
 
-void rigCommander::setCIVAddr(unsigned char civAddr)
+void rigCommander::setCIVAddr(quint8 civAddr)
 {
     Q_UNUSED(civAddr)
 
@@ -123,7 +123,7 @@ void rigCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
     qWarning(logRig()) << "receiveCommand() not implemented by rig type";
 }
 
-void rigCommander::setAfGain(unsigned char level)
+void rigCommander::setAfGain(quint8 level)
 {
     Q_UNUSED(level)
 
@@ -216,8 +216,8 @@ void rigCommander::printHex(const QByteArray &pdata, bool printVert, bool printH
 
     for(int i=0; i < pdata.length(); i++)
     {
-        strings << QString("[%1]: %2").arg(i,8,10,QChar('0')).arg((unsigned char)pdata[i], 2, 16, QChar('0'));
-        sdata.append(QString("%1 ").arg((unsigned char)pdata[i], 2, 16, QChar('0')) );
+        strings << QString("[%1]: %2").arg(i,8,10,QChar('0')).arg((quint8)pdata[i], 2, 16, QChar('0'));
+        sdata.append(QString("%1 ").arg((quint8)pdata[i], 2, 16, QChar('0')) );
         index.append(QString("%1 ").arg(i, 2, 10, QChar('0')));
     }
 

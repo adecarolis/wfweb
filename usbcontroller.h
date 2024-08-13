@@ -119,9 +119,9 @@ struct USBDEVICE {
     QString deviceId = "";
     QString path = "";
     int sensitivity = 1;
-    unsigned char jogpos=0;
-    unsigned char shutpos=0;
-    unsigned char shutMult = 0;
+    quint8 jogpos=0;
+    quint8 shutpos=0;
+    quint8 shutMult = 0;
     int jogCounter = 0;
     quint32 buttons = 0;
     quint32 knobs = 0;
@@ -129,7 +129,7 @@ struct USBDEVICE {
 
     QTime lastusbController = QTime::currentTime();
     QByteArray lastData = QByteArray(8,0x0);
-    unsigned char lastDialPos=0;
+    quint8 lastDialPos=0;
     QUuid uuid;
     QLabel *message;
     int pages=1;
@@ -145,7 +145,7 @@ struct COMMAND {
     COMMAND() {}
     COMMAND(int index, QString text, usbCommandType cmdType, int command, int value) :
         index(index), text(text), cmdType(cmdType), command(command), value(value) {}
-    COMMAND(int index, QString text, usbCommandType cmdType, int command, unsigned char suffix) :
+    COMMAND(int index, QString text, usbCommandType cmdType, int command, quint8 suffix) :
         index(index), text(text), cmdType(cmdType), command(command), suffix(suffix) {}
     COMMAND(int index, QString text, usbCommandType cmdType, int command, availableBands band) :
         index(index), text(text), cmdType(cmdType), command(command), band(band) {}
@@ -156,7 +156,7 @@ struct COMMAND {
     QString text;
     usbCommandType cmdType = commandButton;
     int command=funcNone;
-    unsigned char suffix=0x0;
+    quint8 suffix=0x0;
     int value=0;
     availableBands band=bandGen;
     rigMode_t mode=modeLSB;
@@ -234,7 +234,7 @@ public slots:
     void run();
     void runTimer();
     void receivePTTStatus(bool on);
-    void receiveLevel(funcs cmd, unsigned char level);
+    void receiveLevel(funcs cmd, quint8 level);
     void programPages(USBDEVICE* dev, int pages);
     void programDisable(USBDEVICE* dev, bool disabled);
 

@@ -106,9 +106,9 @@ public:
     void setUnit(FctlUnit unit);
     void setRefLimits(int lower, int upper);
     void setRef(int ref);
-    unsigned char getDataMode() { return static_cast<unsigned char>(dataCombo->currentIndex()); }
+    quint8 getDataMode() { return static_cast<quint8>(dataCombo->currentIndex()); }
 
-    void changeSpan(char val);
+    void changeSpan(qint8 val);
     void setSeparators(QChar group, QChar decimal);
     void updateBSR(std::vector<bandType>* bands);
 

@@ -66,7 +66,7 @@ public:
 public slots:
     virtual bool init(audioSetup setup);
     virtual void changeLatency(const quint16 newSize);
-    virtual void setVolume(unsigned char volume);
+    virtual void setVolume(quint8 volume);
     virtual void incomingAudio(const audioPacket data);
     virtual void convertedInput(audioPacket audio);
     virtual void convertedOutput(audioPacket audio);

@@ -217,7 +217,7 @@ private:
         totalColumns        
     };
 
-    int updateCombo(QStringList& combo, int row, columns column, unsigned char data);
+    int updateCombo(QStringList& combo, int row, columns column, quint8 data);
     int updateCombo(QStringList& combo, int row, columns column, QString data);
 
 };

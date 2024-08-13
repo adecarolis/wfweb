@@ -102,7 +102,7 @@ bool audioConverter::convert(audioPacket audio)
 
         if (inCodec == OPUS)
         {
-            unsigned char* in = (unsigned char*)audio.data.data();
+            quint8* in = (quint8*)audio.data.data();
 
             //Decode the frame.
             int nSamples = opus_packet_get_nb_samples(in, audio.data.size(), inFormat.sampleRate());
@@ -252,7 +252,7 @@ bool audioConverter::convert(audioPacket audio)
             {
                 float* in = (float*)samplesF.data();
                 QByteArray outPacket(1275, (char)0xff); // Preset the output buffer size to MAXIMUM possible Opus frame size
-                unsigned char* out = (unsigned char*)outPacket.data();
+                quint8* out = (quint8*)outPacket.data();
 
                 int nbBytes = opus_encode_float(opusEncoder, in, (samplesF.size() / outFormat.channelCount()), out, outPacket.length());
                 if (nbBytes < 0)

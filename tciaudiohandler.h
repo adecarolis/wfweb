@@ -44,7 +44,7 @@ public:
 public slots:
     bool init(audioSetup setup);
     void changeLatency(const quint16 newSize);
-    void setVolume(unsigned char volume);
+    void setVolume(quint8 volume);
     void convertedInput(audioPacket audio);
     void convertedOutput(audioPacket audio);
     void incomingAudio(const audioPacket data);

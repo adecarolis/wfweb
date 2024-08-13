@@ -29,16 +29,16 @@ cwSender::cwSender(QWidget *parent) :
         queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<QString>(QChar(0xff))));
     });
 
-    connect(this, &cwSender::setBreakInMode, queue, [=](const unsigned char &bmode) {
+    connect(this, &cwSender::setBreakInMode, queue, [=](const quint8 &bmode) {
         queue->add(priorityImmediate,queueItem(funcBreakIn,QVariant::fromValue<uchar>(bmode)));
     });
 
 
-    connect(this, &cwSender::setDashRatio, queue, [=](const unsigned char& ratio) {
+    connect(this, &cwSender::setDashRatio, queue, [=](const quint8& ratio) {
         queue->add(priorityImmediate,queueItem(funcDashRatio,QVariant::fromValue<uchar>(ratio)));
     });
 
-    connect(this, &cwSender::setPitch, queue, [=](const unsigned char& pitch) {
+    connect(this, &cwSender::setPitch, queue, [=](const quint8& pitch) {
         queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<ushort>(pitch)));
     });
 
@@ -78,7 +78,7 @@ void cwSender::showEvent(QShowEvent *event)
     QMainWindow::showEvent(event);
 }
 
-void cwSender::handleKeySpeed(unsigned char wpm)
+void cwSender::handleKeySpeed(quint8 wpm)
 {
     if (wpm != ui->wpmSpin->value() && (wpm >= ui->wpmSpin->minimum()) && (wpm <= ui->wpmSpin->maximum()))
     {
@@ -97,7 +97,7 @@ void cwSender::handleKeySpeed(unsigned char wpm)
     }
 }
 
-void cwSender::handleDashRatio(unsigned char ratio)
+void cwSender::handleDashRatio(quint8 ratio)
 {
     double calc = double(ratio/10);
     if (calc != ui->dashSpin->value() && (calc >= ui->dashSpin->minimum()) && (ratio <= ui->dashSpin->maximum()))
@@ -115,7 +115,7 @@ void cwSender::handleDashRatio(unsigned char ratio)
     }
 }
 
-void cwSender::handlePitch(unsigned char pitch) {
+void cwSender::handlePitch(quint8 pitch) {
     int cwPitch = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
     if (cwPitch != ui->pitchSpin->value() && cwPitch >= ui->pitchSpin->minimum() && cwPitch <= ui->pitchSpin->maximum())
     {
@@ -132,7 +132,7 @@ void cwSender::handlePitch(unsigned char pitch) {
     }
 }
 
-void cwSender::handleBreakInMode(unsigned char b)
+void cwSender::handleBreakInMode(quint8 b)
 {
     if(b < 3)
     {
@@ -221,13 +221,13 @@ void cwSender::on_stopBtn_clicked()
 void cwSender::on_breakinCombo_activated(int brkmode)
 {
     // 0 = off, 1 = semi, 2 = full
-    emit setBreakInMode((unsigned char)brkmode);
+    emit setBreakInMode((quint8)brkmode);
     ui->textToSendEdit->setFocus();
 }
 
 void cwSender::on_wpmSpin_valueChanged(int wpm)
 {
-    emit setKeySpeed((unsigned char)wpm);
+    emit setKeySpeed((quint8)wpm);
     queue->add(priorityImmediate,queueItem(funcKeySpeed,QVariant::fromValue<ushort>(wpm)));
 }
 
@@ -318,16 +318,16 @@ void cwSender::on_sidetoneEnableChk_clicked(bool clicked)
             [=]() { ui->sidetoneEnableChk->setEnabled(true); });
 
         connect(this, &cwSender::setKeySpeed, tone,
-                [=](const unsigned char& wpm) { tone->setSpeed(wpm); });
+                [=](const quint8& wpm) { tone->setSpeed(wpm); });
 
         connect(this, &cwSender::setDashRatio, tone,
-                [=](const unsigned char& ratio) { tone->setRatio(ratio); });
+                [=](const quint8& ratio) { tone->setRatio(ratio); });
 
         connect(this, &cwSender::setPitch, tone,
-                [=](const unsigned char& pitch) { tone->setFrequency(pitch); });
+                [=](const quint8& pitch) { tone->setFrequency(pitch); });
 
         connect(this, &cwSender::setLevel, tone,
-                [=](const unsigned char& level) { tone->setLevel(level); });
+                [=](const quint8& level) { tone->setLevel(level); });
 
         connect(this, &cwSender::stopCW, tone,
                 [=]() { tone->stopSending(); });

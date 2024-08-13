@@ -65,8 +65,8 @@ private:
     int peakBalisticLength = 30;
     int avgPosition=0;
     int peakPosition=0;
-    std::vector<unsigned char> avgLevels;
-    std::vector<unsigned char> peakLevels;
+    std::vector<quint8> avgLevels;
+    std::vector<quint8> peakLevels;
 
     int peakRedLevel=0;
     bool drawLabels = true;

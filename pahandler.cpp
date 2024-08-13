@@ -235,7 +235,7 @@ bool paHandler::init(audioSetup setup)
 }
 
 
-void paHandler::setVolume(unsigned char volume)
+void paHandler::setVolume(quint8 volume)
 {
 #ifdef Q_OS_WIN
 	this->volume = audiopot[volume] * 5;

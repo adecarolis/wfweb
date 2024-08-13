@@ -38,11 +38,11 @@ public:
 signals:
     void sendCW(QString cwMessage);
     void stopCW();
-    void setKeySpeed(unsigned char wpm);
-    void setDashRatio(unsigned char ratio);
-    void setPitch(unsigned char pitch);
+    void setKeySpeed(quint8 wpm);
+    void setDashRatio(quint8 ratio);
+    void setPitch(quint8 pitch);
     void setLevel(int level);
-    void setBreakInMode(unsigned char b);
+    void setBreakInMode(quint8 b);
     void getCWSettings();
     void sidetone(QString text);
     void pitchChanged(int val);
@@ -51,10 +51,10 @@ signals:
     void initTone();
 
 public slots:
-    void handleKeySpeed(unsigned char wpm);
-    void handleDashRatio(unsigned char ratio);
-    void handlePitch(unsigned char pitch);
-    void handleBreakInMode(unsigned char b);
+    void handleKeySpeed(quint8 wpm);
+    void handleDashRatio(quint8 ratio);
+    void handlePitch(quint8 pitch);
+    void handleBreakInMode(quint8 b);
     void handleCurrentModeUpdate(rigMode_t mode);
 
 private slots:

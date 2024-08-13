@@ -380,8 +380,8 @@ void commHandler::printHex(const QByteArray &pdata, bool printVert, bool printHo
 
     for(int i=0; i < pdata.length(); i++)
     {
-        strings << QString("[%1]: %2").arg(i,8,10,QChar('0')).arg((unsigned char)pdata[i], 2, 16, QChar('0'));
-        sdata.append(QString("%1 ").arg((unsigned char)pdata[i], 2, 16, QChar('0')) );
+        strings << QString("[%1]: %2").arg(i,8,10,QChar('0')).arg((quint8)pdata[i], 2, 16, QChar('0'));
+        sdata.append(QString("%1 ").arg((quint8)pdata[i], 2, 16, QChar('0')) );
         index.append(QString("%1 ").arg(i, 2, 10, QChar('0')));
     }
 

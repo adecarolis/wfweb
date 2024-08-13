@@ -243,7 +243,7 @@ QByteArray cwSidetone::generateData(qint64 len, qint64 freq)
     Q_UNUSED(sampleBytes) // suppress warning in release builds
 
     data.resize(length);
-    unsigned char *ptr = reinterpret_cast<unsigned char *>(data.data());
+    quint8 *ptr = reinterpret_cast<quint8 *>(data.data());
     int sampleIndex = 0;
 
     while (length) {
@@ -282,17 +282,17 @@ QByteArray cwSidetone::generateData(qint64 len, qint64 freq)
     return data;
 }
 
-void cwSidetone::setSpeed(unsigned char speed)
+void cwSidetone::setSpeed(quint8 speed)
 {
     this->speed = (int)speed;
 }
 
-void cwSidetone::setFrequency(unsigned char frequency)
+void cwSidetone::setFrequency(quint8 frequency)
 {
     this->frequency = round((((600.0 / 255.0) * frequency) + 300) / 5.0) * 5.0;
 }
 
-void cwSidetone::setRatio(unsigned char ratio)
+void cwSidetone::setRatio(quint8 ratio)
 {
     this->ratio = (double)ratio/10.0;
 }

@@ -60,7 +60,7 @@ struct audioSetup {
 #endif
     int portInt;
     quint8 resampleQuality;
-    unsigned char localAFgain;
+    quint8 localAFgain;
     quint16 blockSize = 20; // Each 'block' of audio is 20ms long by default.
     quint8 guid[GUIDLEN];
     void* tci = Q_NULLPTR;

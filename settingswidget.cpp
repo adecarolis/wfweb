@@ -1459,7 +1459,7 @@ void settingswidget::on_rigCIVaddrHexLine_editingFinished()
 {
     bool okconvert=false;
 
-    unsigned char propCIVAddr = (unsigned char) ui->rigCIVaddrHexLine->text().toUInt(&okconvert, 16);
+    quint8 propCIVAddr = (quint8) ui->rigCIVaddrHexLine->text().toUInt(&okconvert, 16);
 
     if(okconvert && (propCIVAddr < 0xe0) && (propCIVAddr != 0))
     {

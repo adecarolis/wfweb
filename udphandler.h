@@ -45,7 +45,7 @@ public:
 	udpCivData* civ = Q_NULLPTR;
 	udpAudio* audio = Q_NULLPTR;
 
-	unsigned char numRadios;
+	quint8 numRadios;
 	QList<radio_cap_packet> radios;
 
 public slots:
@@ -53,7 +53,7 @@ public slots:
 	void receiveFromCivStream(QByteArray);
 	void receiveAudioData(const audioPacket &data);
 	void changeLatency(quint16 value);
-	void setVolume(unsigned char value);
+	void setVolume(quint8 value);
 	void init();
 	void setCurrentRadio(quint8 radio);
     void getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
@@ -64,7 +64,7 @@ signals:
 	void haveAudioData(audioPacket data); // emit this when we have data, connect to rigcommander
 	void haveNetworkError(errorType);
 	void haveChangeLatency(quint16 value);
-	void haveSetVolume(unsigned char value);
+	void haveSetVolume(quint8 value);
 	void haveNetworkStatus(networkStatus);
     void haveNetworkAudioLevels(networkAudioLevels);
 	void haveBaudRate(quint32 baudrate);
@@ -124,16 +124,16 @@ private:
 	networkStatus status;
 	bool splitWf = false;
 
-    unsigned char audioLevelsTxPeak[audioLevelBufferSize];
-    unsigned char audioLevelsRxPeak[audioLevelBufferSize];
+    quint8 audioLevelsTxPeak[audioLevelBufferSize];
+    quint8 audioLevelsRxPeak[audioLevelBufferSize];
 
-    unsigned char audioLevelsTxRMS[audioLevelBufferSize];
-    unsigned char audioLevelsRxRMS[audioLevelBufferSize];
+    quint8 audioLevelsTxRMS[audioLevelBufferSize];
+    quint8 audioLevelsRxRMS[audioLevelBufferSize];
 
-    unsigned char audioLevelsTxPosition = 0;
-    unsigned char audioLevelsRxPosition = 0;
-    unsigned char findMean(unsigned char *d);
-    unsigned char findMax(unsigned char *d);
+    quint8 audioLevelsTxPosition = 0;
+    quint8 audioLevelsRxPosition = 0;
+    quint8 findMean(quint8 *d);
+    quint8 findMax(quint8 *d);
 
 
 };
