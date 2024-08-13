@@ -77,7 +77,7 @@ struct RIGCONFIG {
 	QTimer* rxAudioTimer = Q_NULLPTR;
 	QTimer* connectTimer = Q_NULLPTR;
 	quint8 waterfallFormat;
-    quint64 queueInterval=0;
+     quint64 queueInterval=1000;
 };
 
 
