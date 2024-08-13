@@ -3751,7 +3751,7 @@ void wfmain::initPeriodicCommands()
     queue->clear();
 
     foreach (auto cap, rigCaps->periodic) {
-        if (cap.receiver == -1) {
+        if (cap.receiver == char(-1)) {
             for (uchar v=0;v<rigCaps->numReceiver;v++)
             {
                 qDebug(logSystem()) << "Inserting command" << funcString[cap.func] << "priority" << cap.priority << "on Receiver" << QString::number(v);
@@ -6003,6 +6003,7 @@ void wfmain::radioInUse(quint8 radio, bool admin, quint8 busy, QString user, QSt
    Q_UNUSED(busy)
    Q_UNUSED(radio)
    Q_UNUSED(user)
+   Q_UNUSED(ip)
    qDebug(logSystem()) << "Is this user an admin? " << ((admin)?"yes":"no");
    isRadioAdmin = admin;
 }

@@ -124,10 +124,10 @@ void tciAudioHandler::convertedOutput(audioPacket packet)
 	amplitude = packet.amplitudePeak;
     currentLatency = 0;
 	emit haveLevels(getAmplitude(), packet.amplitudeRMS, setup.latency, currentLatency, isUnderrun, isOverrun);
-    if (arrayBuffer.length() >= TCI_AUDIO_LENGTH * sizeof(float)) {
+    if (arrayBuffer.length() >= qsizetype(TCI_AUDIO_LENGTH * sizeof(float))) {
         packet.data.clear();
-        packet.data = arrayBuffer.mid(0, TCI_AUDIO_LENGTH * sizeof(float));
-        arrayBuffer.remove(0, TCI_AUDIO_LENGTH * sizeof(float));
+        packet.data = arrayBuffer.mid(0, qsizetype(TCI_AUDIO_LENGTH * sizeof(float)));
+        arrayBuffer.remove(0, qsizetype(TCI_AUDIO_LENGTH * sizeof(float)));
         emit sendTCIAudio(packet);
     }
 }
