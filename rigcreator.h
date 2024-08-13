@@ -44,12 +44,12 @@ inline QList<periodicType> defaultPeriodic = {
     {funcMonitor,"Medium Low",0},
     {funcRfGain,"Medium",0},
     {funcTunerStatus,"Medium",0},
-    {funcTuningStep,"Medium Low",-1},
-    {funcAttenuator,"Medium Low",-1},
-    {funcPreamp,"Medium Low",-1},
-    {funcAntenna,"Medium Low",-1},
-    {funcToneSquelchType,"Medium Low",-1},
-    {funcSMeter,"Highest",-1}
+    {funcTuningStep,"Medium Low",char(-1)},
+    {funcAttenuator,"Medium Low",char(-1)},
+    {funcPreamp,"Medium Low",char(-1)},
+    {funcAntenna,"Medium Low",char(-1)},
+    {funcToneSquelchType,"Medium Low",char(-1)},
+    {funcSMeter,"Highest",char(-1)}
 };
 
 namespace Ui {
