@@ -840,6 +840,10 @@ void udpServer::audioReceived()
                     //qInfo(logUdpServer()) << "sending tx audio " << in->seq;
                     emit haveAudioData(tempAudio);
                 }
+                else if (lastReceived >= QTime::currentTime().addMSecs(current->txBufferLen))
+                {
+                    qInfo(logUdpServer()) << "Audio timestamp is older than" << current->txBufferLen << "ms, dropped";
+                }
             }
             break;
         }
