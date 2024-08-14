@@ -177,7 +177,7 @@ void udpAudio::dataReceived()
                 }
 
                 lastReceived = QTime::currentTime().addMSecs(timeDifference);
-                if (lastReceived < QTime::currentTime().addMSecs(rxaudio->getLatency()))
+                if (lastReceived < QTime::currentTime().addMSecs(rxSetup.latency))
                 {
                     if (rxAudioThread == Q_NULLPTR)
                     {
@@ -191,9 +191,9 @@ void udpAudio::dataReceived()
                     tempAudio.sent = 0;
                     tempAudio.data = r.mid(0x18);
                     emit haveAudioData(tempAudio);
-                } else if (lastReceived >= QTime::currentTime().addMSecs(rxaudio->getLatency()))
+                } else if (lastReceived >= QTime::currentTime().addMSecs(rxSetup.latency))
                 {
-                    qInfo(logUdp()) << "Audio timestamp is older than" << rxaudio->getLatency() << "ms, dropped";
+                    qInfo(logUdp()) << "Audio timestamp is older than" << rxSetup.latency << "ms, dropped";
                 }
             }
             break;
