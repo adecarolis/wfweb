@@ -1185,12 +1185,13 @@ void icomCommander::parseCommand()
         break;
     case funcFA:
     {
-        qWarning(logRig()) << "Error (FA) received from rig, last command sent:";
+        if (!lastCommandToRig.isEmpty()) {
+            qWarning(logRig()) << "Error (FA) received from rig, last command sent:";
 
-        QStringList messages = getHexArray(lastCommandToRig);
-        foreach (auto msg, messages)
-            qWarning(logRig()) << msg;
-
+            QStringList messages = getHexArray(lastCommandToRig);
+            foreach (auto msg, messages)
+                qWarning(logRig()) << msg;
+            }
         break;
     }
     default:
