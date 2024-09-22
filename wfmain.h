@@ -425,6 +425,7 @@ private slots:
     void setRadioTimeDateSend();
     void logCheck();
     void setDebugLogging(bool debugModeOn);
+    void setInsaneDebugLogging(bool insaneLoggingOn);
 
     void buttonControl(const COMMAND* cmd);
 

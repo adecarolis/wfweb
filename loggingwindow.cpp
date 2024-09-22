@@ -225,6 +225,11 @@ void loggingWindow::on_debugBtn_clicked(bool checked)
     emit setDebugMode(checked);
 }
 
+void loggingWindow::on_commDebugChk_clicked(bool checked)
+{
+    emit setInsaneLoggingMode(checked);
+}
+
 void loggingWindow::on_toBottomBtn_clicked()
 {
     vertLogScroll->setValue(vertLogScroll->maximum());

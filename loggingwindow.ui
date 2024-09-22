@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>625</width>
+    <width>819</width>
     <height>300</height>
    </rect>
   </property>
@@ -106,6 +106,16 @@
        </property>
        <property name="text">
         <string>Debug</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="commDebugChk">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This enables the logging of nearly all CI-V traffic. &lt;span style=&quot; font-weight:600;&quot;&gt;Use with caution&lt;/span&gt;. It is a lot of data. Meter levels and scope data are not shown. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>CommDebug</string>
        </property>
       </widget>
      </item>
