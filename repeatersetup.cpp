@@ -26,8 +26,12 @@ repeaterSetup::~repeaterSetup()
 {
     // Trying this for more consistent destruction
     delete ui;
+    if(queue) {
+        qDebug() << "Deleting the queue from within repeaterSetup.";
+        queue->deleteLater();
+        queue=nullptr;
+    }
 }
-
 
 void repeaterSetup::populateTones()
 {
