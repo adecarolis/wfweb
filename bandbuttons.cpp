@@ -50,6 +50,9 @@ void bandbuttons::receiveCache(cacheItem item)
         case funcFreqGet:
             // Here we will process incoming frequency.
             {
+            if(!rigCaps) {
+                return;
+            }
                 if (ui->SubBandCheck->isChecked() == sub) {
                     quint64 freq = quint64(item.value.value<freqt>().Hz);
                     for (auto &b: rigCaps->bands)

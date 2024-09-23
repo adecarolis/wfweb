@@ -709,8 +709,15 @@ void freqCtrl::drawBkGround(QPainter &Painter)
                 else
                     dgsep = gsep;
             }
-            Painter.drawText(m_SepRect[i], Qt::AlignHCenter | Qt::AlignVCenter,
-                             dgsep);
+            if( (i==m_NumDigits-1) && (m_DigitInfo[i].val==0) ) {
+                Painter.drawText(m_SepRect[i], Qt::AlignHCenter | Qt::AlignVCenter,
+                                                 " ");
+            } else {
+                // Only draw the digit separator if we are within a number.
+                // This eliminates drawing a comma after the last (MSB) digit.
+                Painter.drawText(m_SepRect[i], Qt::AlignHCenter | Qt::AlignVCenter,
+                                 dgsep);
+            }
         }
         else
         {

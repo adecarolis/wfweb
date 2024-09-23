@@ -21,6 +21,8 @@ bool debugModeLogging = true;
 bool debugModeLogging = false;
 #endif
 
+bool insaneDebugLogging = false;
+
 wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode, QWidget *parent ) :
     QMainWindow(parent),
     ui(new Ui::wfmain),
@@ -4937,6 +4939,7 @@ void wfmain::initLogging()
     qInstallMessageHandler(messageHandler);
 
     connect(logWindow, SIGNAL(setDebugMode(bool)), this, SLOT(setDebugLogging(bool)));
+    connect(logWindow, SIGNAL(setInsaneLoggingMode(bool)), this, SLOT(setInsaneDebugLogging(bool)));
 
     // Interval timer for log window updates:
     logCheckingTimer.setInterval(100);
@@ -4969,10 +4972,15 @@ void wfmain::setDebugLogging(bool debugModeOn)
     debugModeLogging = debugModeOn;
 }
 
+void wfmain::setInsaneDebugLogging(bool insaneLoggingOn)
+{
+    insaneDebugLogging = insaneLoggingOn;
+}
+
 void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
 {
     // Open stream file writes
-    bool insaneDebugLogging = false;
+    // bool insaneDebugLogging = true;// global
     if (type == QtDebugMsg && !debugModeLogging)
     {
         return;

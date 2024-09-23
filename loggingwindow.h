@@ -56,8 +56,11 @@ private slots:
 
     void on_toBottomBtn_clicked();
 
+    void on_commDebugChk_clicked(bool checked);
+
 signals:
     void setDebugMode(bool debugOn);
+    void setInsaneLoggingMode(bool insaneLoggingOn);
 
 private:
     Ui::loggingWindow* ui;

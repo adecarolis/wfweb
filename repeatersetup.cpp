@@ -24,8 +24,12 @@ repeaterSetup::~repeaterSetup()
 {
     // Trying this for more consistent destruction
     delete ui;
+    if(queue) {
+        qDebug() << "Deleting the queue from within repeaterSetup.";
+        queue->deleteLater();
+        queue=nullptr;
+    }
 }
-
 
 void repeaterSetup::populateTones()
 {
@@ -405,25 +409,25 @@ void repeaterSetup::on_splitOffBtn_clicked()
 void repeaterSetup::on_rptSimplexBtn_clicked()
 {
     // Simplex
-    queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmSplitOn),false));
-    if(rigCaps->commands.contains(funcToneSquelchType))
-    {
-        queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmDupAutoOff),false));
+    //queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmSplitOn),false));
+    //if(rigCaps->commands.contains(funcToneSquelchType))
+    //{
+        //queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmDupAutoOff),false));
         queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmSimplex),false));
-    }
+    //}
 }
 
 void repeaterSetup::on_rptDupPlusBtn_clicked()
 {
     // DUP+
-    queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmDupAutoOff),false));
+    //queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmDupAutoOff),false));
     queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmDupPlus),false));
 }
 
 void repeaterSetup::on_rptDupMinusBtn_clicked()
 {
     // DUP-
-    queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmDupAutoOff),false));
+    //queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmDupAutoOff),false));
     queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<duplexMode_t>(dmDupMinus),false));
 }
 
@@ -796,6 +800,8 @@ void repeaterSetup::on_rptrOffsetSetBtn_clicked()
     if(f.Hz != 0)
     {
         queue->add(priorityImmediate,queueItem(funcSendFreqOffset,QVariant::fromValue<freqt>(f),false));
+    } else {
+        qWarning() << "Could not convert frequency text of repeater offset to integer.";
     }
     ui->rptrOffsetEdit->clearFocus();
 }
@@ -821,6 +827,7 @@ void repeaterSetup::on_quickSplitChk_clicked(bool checked)
 
 void repeaterSetup::receiveRigCaps(rigCapabilities* rig)
 {
+    qInfo() << "Receiving rigcaps into repeater setup.";
     this->rigCaps = rig;
     if (rig != Q_NULLPTR)
     {
