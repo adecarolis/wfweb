@@ -35,21 +35,13 @@ aboutbox::aboutbox(QWidget *parent) :
     QString support = QString("<br/><br/>For support, please visit <a href=\"https://forum.wfview.org/\">the official wfview support forum</a>.");
     QString gitcodelink = QString("<a href=\"https://gitlab.com/eliggett/wfview/-/tree/%1\"  style=\"color: cyan;\">").arg(GITSHORT);
 
-    QString contact = QString("<br/>email W6EL: kilocharlie8 at gmail.com");
-
     QString buildInfo = QString("<br/><br/>Build " + gitcodelink + QString(GITSHORT) + "</a> on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
     QString end = QString("</body></html>");
 
     // Short credit strings:
     QString rsCredit = QString("<br/><br/><a href=\"https://www.speex.org/\"  style=\"color: cyan;\">Speex</a> Resample library Copyright 2003-2008 Jean-Marc Valin");
-#if defined(RTAUDIO)
     QString rtaudiocredit = QString("<br/><br/>RT Audio, from <a href=\"https://www.music.mcgill.ca/~gary/rtaudio/index.html\">Gary P. Scavone</a>");
-#endif
-
-#if defined(PORTAUDIO)
     QString portaudiocredit = QString("<br/><br/>Port Audio, from <a href=\"http://portaudio.com\">The Port Audio Community</a>");
-#endif
-
     QString qcpcredit = QString("<br/><br/>The waterfall and spectrum plot graphics use QCustomPlot, from  <a href=\"https://www.qcustomplot.com/\">Emanuel Eichhammer</a>");
     QString qtcredit = QString("<br/><br/>This copy of wfview was built against Qt version %1").arg(QT_VERSION_STR);
 
@@ -80,26 +72,58 @@ PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\n\
 PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF\n\
 LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING\n\
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\n\
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n");
 
+QString freqCtlCredit = QString("/*"
+    "* Frequency controller widget (originally from CuteSDR)\n"
+    "*\n"
+    "* This code is used within wfview and was modified\n"
+    "* You can download the source code from here: \n"
+    "* https://gitlab.com/eliggett/wfview/\n"
+    "*\n"
+    "* Copyright 2010 Moe Wheatley AE4JY \n"
+    "* Copyright 2012-2017 Alexandru Csete OZ9AEC\n"
+    "* Copyright 2024 Phil Taylor M0VSE\n"
+    "* All rights reserved.\n"
+    "*\n"
+    "* This software is released under the \"Simplified BSD License\".\n"
+    "*\n"
+    "* Redistribution and use in source and binary forms, with or without\n"
+    "* modification, are permitted provided that the following conditions are met:\n"
+    "*\n"
+    "* 1. Redistributions of source code must retain the above copyright notice,\n"
+    "*    this list of conditions and the following disclaimer.\n"
+    "*\n"
+    "* 2. Redistributions in binary form must reproduce the above copyright notice,\n"
+    "*    this list of conditions and the following disclaimer in the documentation\n"
+    "*    and/or other materials provided with the distribution.\n"
+    "*\n"
+    "* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\n"
+    "* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\n"
+    "* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE\n"
+    "* ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE\n"
+    "* LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR\n"
+    "* CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF\n"
+    "* SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS\n"
+    "* INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN\n"
+    "* CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)\n"
+    "* ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE\n"
+    "* POSSIBILITY OF SUCH DAMAGE.\n"
+    "*/\n");
 
     // String it all together:
 
     QString aboutText = head + copyright + "\n" + "\n" + scm + "\n" + doctest + dedication + wfviewcommunityack;
-    aboutText.append(website + "\n" + donate + "\n"+ docs + support + contact +"\n");
+    aboutText.append(website + "\n" + donate + "\n"+ docs + support +"\n");
     aboutText.append("\n" + ssCredit + "\n" + rsCredit + "\n");
 
-#if defined(RTAUDIO)
     aboutText.append(rtaudiocredit);
-#endif
 
-#if defined(PORTAUDIO)
     aboutText.append(portaudiocredit);
-#endif
 
     aboutText.append(kappanhangack + qcpcredit + qtcredit);
     aboutText.append("<br/><br/>");
-    aboutText.append("<pre>" + sxcreditcopyright + "</pre>");
+    aboutText.append("<pre>" + sxcreditcopyright + freqCtlCredit + "</pre>");
     aboutText.append("<br/><br/>");
 
     aboutText.append(end);
