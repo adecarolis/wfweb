@@ -833,6 +833,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            </item>
            <item>
             <widget class="QLabel" name="label_8">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;ITU Region. Used to display band limits. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Region 1&lt;/span&gt; comprises Europe, Africa, the Commonwealth of Independent States, Mongolia, and the Middle East west of the Persian Gulf, including Iraq.&lt;/p&gt;&lt;p&gt;The western boundary is defined by Line B.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Region 2&lt;/span&gt; covers the Americas including Greenland, and some of the eastern Pacific Islands.&lt;/p&gt;&lt;p&gt;The eastern boundary is defined by Line B.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Region 3&lt;/span&gt; contains most of non-FSU Asia east of and including Iran, and most of Oceania.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Line B&lt;/span&gt; is a line running from the North Pole along meridian 10° West of Greenwich to its intersection with parallel 72° North; thence by great circle arc to the intersection of meridian 50° West and parallel 40° North; thence by great circle arc to the intersection of meridian 20° West and parallel 10° South; thence along meridian 20° West to the South Pole.&lt;/p&gt;&lt;p&gt;(Text is from the English wikipedia)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
              <property name="text">
               <string>Region:</string>
              </property>
@@ -845,6 +848,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                <width>35</width>
                <height>16777215</height>
               </size>
+             </property>
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;ITU Region. Used to display band limits. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Region 1&lt;/span&gt; comprises Europe, Africa, the Commonwealth of Independent States, Mongolia, and the Middle East west of the Persian Gulf, including Iraq.&lt;/p&gt;&lt;p&gt;The western boundary is defined by Line B.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Region 2&lt;/span&gt; covers the Americas including Greenland, and some of the eastern Pacific Islands.&lt;/p&gt;&lt;p&gt;The eastern boundary is defined by Line B.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Region 3&lt;/span&gt; contains most of non-FSU Asia east of and including Iran, and most of Oceania.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Line B&lt;/span&gt; is a line running from the North Pole along meridian 10° West of Greenwich to its intersection with parallel 72° North; thence by great circle arc to the intersection of meridian 50° West and parallel 40° North; thence by great circle arc to the intersection of meridian 20° West and parallel 10° South; thence along meridian 20° West to the South Pole.&lt;/p&gt;&lt;p&gt;(Text is from the English wikipedia)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
              <property name="maxLength">
               <number>32767</number>
