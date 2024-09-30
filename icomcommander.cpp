@@ -750,8 +750,9 @@ void icomCommander::parseCommand()
     case funcSubFreq:
         receiver = 1;
     case funcUnselectedFreq:
-        if (func == funcUnselectedFreq)
+        if (func == funcUnselectedFreq) {
             vfo=1;
+        }
     case funcSelectedFreq:
     case funcMainFreq:
     case funcFreqGet:
@@ -768,7 +769,7 @@ void icomCommander::parseCommand()
     case funcModeTR:
     {
         modeInfo m;
-        m = parseMode(bcdHexToUChar(payloadIn[0]), m.filter,receiver);
+        m = parseMode(bcdHexToUChar(payloadIn[0]), m.filter,receiver,vfo);
 
         if(payloadIn.size() > 1)
         {
@@ -781,14 +782,17 @@ void icomCommander::parseCommand()
     }
     case funcSubMode:
         receiver = 1;
-    case funcSelectedMode:
     case funcUnselectedMode:
+        if (func == funcUnselectedMode) {
+            vfo=1;
+        }
+    case funcSelectedMode:
     case funcMainMode:
     {
         // If in an invalid mode, the radio may respond with 0xff
         if (uchar(payloadIn[0]) != 0xff) {
             // New format payload with mode+datamode+filter
-            modeInfo m = parseMode(bcdHexToUChar(payloadIn[0]), bcdHexToUChar(payloadIn[2]),receiver);
+            modeInfo m = parseMode(bcdHexToUChar(payloadIn[0]), bcdHexToUChar(payloadIn[2]),receiver,vfo);
             m.data = bcdHexToUChar(payloadIn[1]);
             m.VFO = selVFO_t(receiver);
             value.setValue(m);
@@ -1004,7 +1008,7 @@ void icomCommander::parseCommand()
     {
         modeInfo m;
         // New format payload with mode+datamode+filter
-        m = parseMode(uchar(payloadIn[0]), uchar(payloadIn[2]),receiver);
+        m = parseMode(uchar(payloadIn[0]), uchar(payloadIn[2]),receiver,vfo);
         m.data = uchar(payloadIn[1]);
         m.VFO = selVFO_t(receiver & 0x01);
         value.setValue(m);
@@ -1989,7 +1993,7 @@ quint64 icomCommander::parseFreqDataToInt(QByteArray data)
 }
 
 
-modeInfo icomCommander::parseMode(quint8 mode, quint8 filter, uchar receiver)
+modeInfo icomCommander::parseMode(quint8 mode, quint8 filter, uchar receiver,uchar vfo)
 {
     modeInfo mi;
     bool found=false;
@@ -2012,11 +2016,13 @@ modeInfo icomCommander::parseMode(quint8 mode, quint8 filter, uchar receiver)
     if (!rigCaps.hasCommand29)
         receiver = 0;
 
+
     cacheItem item;
 
     // Does the current mode support filterwidth?
-    if (mi.bwMin >0  && mi.bwMax > 0) {
-        queue->getCache(funcFilterWidth,receiver);
+    // Cannot get the filterwidth of the second VFO, so use the default values.
+    if (vfo == 0 && mi.bwMin >0  && mi.bwMax > 0) {
+        item = queue->getCache(funcFilterWidth,receiver);
     }
 
     if (item.value.isValid()) {

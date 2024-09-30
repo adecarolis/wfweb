@@ -84,7 +84,7 @@ private:
     quint8 audioLevelTxMean[50];
     quint8 audioLevelTxPeak[50];
 
-    modeInfo parseMode(quint8 mode, quint8 filter, uchar receiver);
+    modeInfo parseMode(quint8 mode, quint8 filter, uchar receiver=0,uchar vfo=0);
     bool parseSpectrum(scopeData& d, uchar receiver);
     funcType getCommand(funcs func, QByteArray& payload, int value=INT_MIN, uchar receiver=0);
 
