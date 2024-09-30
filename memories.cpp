@@ -18,7 +18,7 @@ memories::memories(bool isAdmin, bool slowLoad, QWidget *parent) :
     progress = new QProgressBar(this);
     statusBar->addWidget(progress,1);
     this->setObjectName("memories");
-    queue = cachingQueue::getInstance(this);
+    queue = cachingQueue::getInstance();
     rigCaps = queue->getRigCaps();
     if (!isAdmin)
     {

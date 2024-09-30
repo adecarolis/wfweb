@@ -19,7 +19,7 @@ cwSender::cwSender(QWidget *parent) :
     this->setToolTipDuration(3000);
     connect(ui->textToSendEdit->lineEdit(), &QLineEdit::textEdited, this, &cwSender::textChanged);
     this->setObjectName("CW Sender");
-    queue = cachingQueue::getInstance(this);
+    queue = cachingQueue::getInstance();
 
     connect(this, &cwSender::sendCW, queue, [=](const QString &cwMessage) {
         queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<QString>(cwMessage)));

@@ -427,6 +427,13 @@ wfmain::~wfmain()
 #endif
 
     logStream->flush();
+
+    // As this is the end of everything, finally delete the queue.
+    if(queue) {
+        qDebug() << "Deleting the queue from within wfmain().";
+        queue->deleteLater();
+        queue=nullptr;
+    }
 }
 
 void wfmain::closeEvent(QCloseEvent *event)

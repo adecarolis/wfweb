@@ -12,7 +12,7 @@ bandbuttons::bandbuttons(QWidget *parent) :
     ui->bandStkCWBtn->setVisible(false);
     this->setWindowTitle("Band Switcher");
     this->setObjectName("bandButtons");
-    queue = cachingQueue::getInstance(this);
+    queue = cachingQueue::getInstance();
     connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
     connect(queue,SIGNAL(cacheUpdated(cacheItem)),this,SLOT(receiveCache(cacheItem)));
 

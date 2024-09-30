@@ -18,7 +18,7 @@ pttyHandler::pttyHandler(QString pty, QObject* parent) : QObject(parent)
     //constructor
 
     this->setObjectName("pttyHandler");
-    queue = cachingQueue::getInstance(this);
+    queue = cachingQueue::getInstance();
     connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
     rigCaps = queue->getRigCaps();
 

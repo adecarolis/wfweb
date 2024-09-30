@@ -320,7 +320,7 @@ rigCtlClient::rigCtlClient(int socketId, rigCtlD* parent) : QObject(parent)
 {
 
     this->setObjectName("RigCtlD");
-    queue = cachingQueue::getInstance(this);
+    queue = cachingQueue::getInstance();
     connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
     rigCaps = queue->getRigCaps();
     commandBuffer.clear();

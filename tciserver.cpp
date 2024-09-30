@@ -113,7 +113,7 @@ void tciServer::init(quint16 port) {
     }
 
     this->setObjectName("TCI Server");
-    queue = cachingQueue::getInstance(this);
+    queue = cachingQueue::getInstance();
     rigCaps = queue->getRigCaps();
 
     connect(queue,SIGNAL(cacheUpdated(cacheItem)),this,SLOT(receiveCache(cacheItem)));

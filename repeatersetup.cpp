@@ -8,7 +8,7 @@ repeaterSetup::repeaterSetup(QWidget *parent) :
     ui->setupUi(this);
 
     this->setObjectName("RepeaterSetup");
-    queue = cachingQueue::getInstance(this);
+    queue = cachingQueue::getInstance();
     connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
 
     ui->autoTrackLiveBtn->setEnabled(false); // until we set split enabled.
@@ -24,11 +24,7 @@ repeaterSetup::~repeaterSetup()
 {
     // Trying this for more consistent destruction
     delete ui;
-    if(queue) {
-        qDebug() << "Deleting the queue from within repeaterSetup.";
-        queue->deleteLater();
-        queue=nullptr;
-    }
+
 }
 
 void repeaterSetup::populateTones()
