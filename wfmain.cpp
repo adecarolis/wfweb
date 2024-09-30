@@ -148,6 +148,8 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     connect(queue,SIGNAL(sendValue(cacheItem)),this,SLOT(receiveValue(cacheItem)));
     connect(queue,SIGNAL(sendMessage(QString)),this,SLOT(showStatusBarText(QString)));
+    connect(queue, SIGNAL(finished()), queue, SLOT(deleteLater()));
+
     // We need to populate the list of rigs as early as possible so do it now
 
 #ifndef Q_OS_LINUX
@@ -427,13 +429,6 @@ wfmain::~wfmain()
 #endif
 
     logStream->flush();
-
-    // As this is the end of everything, finally delete the queue.
-    if(queue) {
-        qDebug() << "Deleting the queue from within wfmain().";
-        queue->deleteLater();
-        queue=nullptr;
-    }
 }
 
 void wfmain::closeEvent(QCloseEvent *event)
