@@ -77,6 +77,12 @@ audioHandler::~audioHandler()
 
 
 	nativeFormat = setup.port.preferredFormat();
+    if (nativeFormat.channelCount() < 1){
+        // Something is seriously wrong with this device!
+        qCritical(logAudio()).noquote() << "Cannot initialize audio" << (setup.isinput ? "input" : "output") << " device " << setup.name << ", no channels found";
+        isInitialized = false;
+        return false;
+    }
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Preferred Format: SampleSize" << nativeFormat.sampleSize() << "Channel Count" << nativeFormat.channelCount() <<
