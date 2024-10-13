@@ -156,18 +156,18 @@ void cwSender::textChanged(QString text)
 {
     if (ui->sendImmediateChk->isChecked() && text.size() && text.back() == ' ')
     {
-        int toSend = text.mid(0, 30).size();
-        if (toSend > 0) {
-            ui->textToSendEdit->clearEditText();
-            ui->transcriptText->moveCursor(QTextCursor::End);
-            ui->transcriptText->insertPlainText(text.mid(0, 30).toUpper());
-            ui->transcriptText->moveCursor(QTextCursor::End);
-
-            emit sendCW(text.mid(0, 30));
-        }
         if( (currentMode != modeCW) && (currentMode != modeCW_R) )
         {
             ui->statusbar->showMessage("Note: Mode needs to be set to CW or CW-R to send CW.", 3000);
+        } else {
+            int toSend = text.mid(0, 30).size();
+            if (toSend > 0) {
+                ui->textToSendEdit->clearEditText();
+                ui->transcriptText->moveCursor(QTextCursor::End);
+                ui->transcriptText->insertPlainText(text.mid(0, 30).toUpper());
+                ui->transcriptText->moveCursor(QTextCursor::End);
+                emit sendCW(text.mid(0, 30));
+            }
         }
     }
 }
@@ -177,33 +177,33 @@ void cwSender::on_sendBtn_clicked()
     if( (ui->textToSendEdit->currentText().length() > 0) &&
         (ui->textToSendEdit->currentText().length() <= 30) )
     {
-        QString text = ui->textToSendEdit->currentText();
-
-        ui->transcriptText->moveCursor(QTextCursor::End);
-        ui->transcriptText->insertPlainText(ui->textToSendEdit->currentText().toUpper()+"\n");
-        ui->transcriptText->moveCursor(QTextCursor::End);
-        if (!ui->sendImmediateChk->isChecked())
+        if( (currentMode != modeCW) && (currentMode != modeCW_R) )
         {
-            ui->textToSendEdit->addItem(ui->textToSendEdit->currentText());
-            if (ui->textToSendEdit->count() > 5) {
-                ui->textToSendEdit->removeItem(0);
-            }
-            ui->textToSendEdit->setCurrentIndex(-1);
+            ui->statusbar->showMessage("Note: Mode needs to be set to CW or CW-R to send CW.", 3000);
         } else {
-            ui->textToSendEdit->clearEditText();
-            ui->textToSendEdit->clear();
+            QString text = ui->textToSendEdit->currentText();
+
+            ui->transcriptText->moveCursor(QTextCursor::End);
+            ui->transcriptText->insertPlainText(ui->textToSendEdit->currentText().toUpper()+"\n");
+            ui->transcriptText->moveCursor(QTextCursor::End);
+            if (!ui->sendImmediateChk->isChecked())
+            {
+                ui->textToSendEdit->addItem(ui->textToSendEdit->currentText());
+                if (ui->textToSendEdit->count() > 5) {
+                    ui->textToSendEdit->removeItem(0);
+                }
+                ui->textToSendEdit->setCurrentIndex(-1);
+            } else {
+                ui->textToSendEdit->clearEditText();
+                ui->textToSendEdit->clear();
+            }
+
+            ui->textToSendEdit->setFocus();
+            ui->statusbar->showMessage("Sending CW", 3000);
+            emit sendCW(text);
         }
-
-        ui->textToSendEdit->setFocus();
-        ui->statusbar->showMessage("Sending CW", 3000);
-
-        emit sendCW(text);
     }
 
-    if( (currentMode != modeCW) && (currentMode != modeCW_R) )
-    {
-        ui->statusbar->showMessage("Note: Mode needs to be set to CW or CW-R to send CW.", 3000);
-    }
 }
 
 void cwSender::on_stopBtn_clicked()
@@ -372,39 +372,39 @@ void cwSender::processMacroButton(int buttonNumber, QPushButton *btn)
 void cwSender::runMacroButton(int buttonNumber)
 {
     if(macroText[buttonNumber].isEmpty())
-        return;
-    QString outText;
-    if(macroText[buttonNumber].contains("%1"))
-    {
-        outText = macroText[buttonNumber].arg(sequenceNumber, 3, 10, QChar('0'));
-        sequenceNumber++;
-        ui->sequenceSpin->blockSignals(true);
-        QMetaObject::invokeMethod(ui->sequenceSpin, "setValue", Qt::QueuedConnection, Q_ARG(int, sequenceNumber));
-        ui->sequenceSpin->blockSignals(false);
-    } else {
-        outText = macroText[buttonNumber];
-    }
-
-    if (ui->cutNumbersChk->isChecked())
-    {
-        outText.replace("0", "T");
-        outText.replace("9", "N");
-    }
-
-    ui->transcriptText->moveCursor(QTextCursor::End);
-    ui->transcriptText->insertPlainText(outText.toUpper()+"\n");
-    ui->transcriptText->moveCursor(QTextCursor::End);
-
-    for (int i = 0; i < outText.size(); i = i + 30) {
-        emit sendCW(outText.mid(i,30));
-    }
-
-    ui->textToSendEdit->setFocus();
-   
+        return;   
 
     if( (currentMode==modeCW) || (currentMode==modeCW_R) )
     {
+        QString outText;
+        if(macroText[buttonNumber].contains("%1"))
+        {
+            outText = macroText[buttonNumber].arg(sequenceNumber, 3, 10, QChar('0'));
+            sequenceNumber++;
+            ui->sequenceSpin->blockSignals(true);
+            QMetaObject::invokeMethod(ui->sequenceSpin, "setValue", Qt::QueuedConnection, Q_ARG(int, sequenceNumber));
+            ui->sequenceSpin->blockSignals(false);
+        } else {
+            outText = macroText[buttonNumber];
+        }
+
+        if (ui->cutNumbersChk->isChecked())
+        {
+            outText.replace("0", "T");
+            outText.replace("9", "N");
+        }
+
+        ui->transcriptText->moveCursor(QTextCursor::End);
+        ui->transcriptText->insertPlainText(outText.toUpper()+"\n");
+        ui->transcriptText->moveCursor(QTextCursor::End);
+
         ui->statusbar->showMessage(QString("Sending CW macro %1").arg(buttonNumber));
+
+        for (int i = 0; i < outText.size(); i = i + 30) {
+            emit sendCW(outText.mid(i,30));
+        }
+
+        ui->textToSendEdit->setFocus();
     } else {
         ui->statusbar->showMessage("Note: Mode needs to be set to CW or CW-R to send CW.");
     }
