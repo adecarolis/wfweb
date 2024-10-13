@@ -352,7 +352,7 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
         queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(val),false,receiver));
     });
     connect(configPbtOuter, &QSlider::valueChanged, this, [=](const int &val) {
-        queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(val),false,receiver));
+        queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(val),false,receiver));
     });
     connect(configIfShift, &QSlider::valueChanged, this, [=](const int &val) {
         queue->add(priorityImmediate,queueItem(funcIFShift,QVariant::fromValue<ushort>(val),false,receiver));
