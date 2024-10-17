@@ -76,6 +76,8 @@ public:
     double getPBTOuter () { return PBTOuter;}
     void setPBTOuter (uchar val);
 
+    void setIFShift (uchar val);
+
     quint16 getStepSize () { return stepSize;}
     void setStepSize (quint16 hz) { stepSize = hz;}
 
@@ -227,7 +229,7 @@ private:
     uchar currentSpeed = 0;
     colorPrefsType colors;
     freqt freq;
-    modeInfo mode = modeInfo(modeUnknown,0,"",0,0);
+    modeInfo mode = modeInfo(modeUnknown,0,"Unk",0,0);
     bool lock = false;
     bool scopePrepared=false;
     quint16 spectWidth=689;
@@ -274,6 +276,7 @@ private:
     double pbtDefault = 0.0;
     quint16 cwPitch = 600;
     quint16 stepSize = 100;
+    uchar ifShift = 0;
     int refLower=0;
     int refUpper=0;
 

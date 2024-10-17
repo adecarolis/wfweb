@@ -2204,7 +2204,7 @@ void settingswidget::setColorButtonOperations(QColor *colorStore,
     getSetColor(d, e);
     QColor t = d->getColor();
 #if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
-    colorStore->fromString(t.name(QColor::HexArgb));
+    *(colorStore) = colorStore->fromString(t.name(QColor::HexArgb));
 #else
     colorStore->setNamedColor(t.name(QColor::HexArgb));
 #endif
@@ -2225,7 +2225,7 @@ void settingswidget::setColorLineEditOperations(QColor *colorStore,
     QString colorStrValidated = setColorFromString(e->text(), d);
     e->setText(colorStrValidated);
 #if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
-    colorStore->fromString(colorStrValidated);
+    *(colorStore) = colorStore->fromString(colorStrValidated);
 #else
     colorStore->setNamedColor(colorStrValidated);
 #endif

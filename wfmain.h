@@ -390,9 +390,6 @@ private slots:
     void receiveMonitor(bool en);
     void receiveTuningStep(quint8 step);
 
-    // Levels:
-    void receiveIFShift(quint8 level);
-
     // Meters:
     void receiveMeter(meter_t meter, quint8 level, quint8 receiver=0);
 //    void receiveSMeter(quint8 level);

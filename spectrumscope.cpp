@@ -305,6 +305,7 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
 
     configIfShift = new QSlider(Qt::Orientation::Horizontal);
     configIfShift->setRange(0,255);
+    configIfShift->setEnabled(false);
     configLayout->addRow(tr("IF Shift"),configIfShift);
 
     configFilterWidth = new QSlider(Qt::Orientation::Horizontal);
@@ -1486,13 +1487,13 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
     if (vfo > 0)
         return;
 
-    if (mode.reg != m.reg || m.filter != mode.filter || m.data != mode.data)
+    if (m.reg != this->mode.reg || m.filter != this->mode.filter || m.data != this->mode.data)
     {
 
         qDebug(logSystem()) << __func__ << QString("Received new mode for %0: %1 (%2) filter:%3 data:%4")
                                               .arg((receiver?"Sub":"Main")).arg(QString::number(m.mk,16)).arg(m.name).arg(m.filter).arg(m.data) ;
 
-        if (mode.mk != m.mk) {
+        if (this->mode.mk != m.mk) {
             for (int i=0;i<modeCombo->count();i++)
             {
                 modeInfo mi = modeCombo->itemData(i).value<modeInfo>();
@@ -1506,14 +1507,14 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
             }
         }
 
-        if (m.filter && mode.filter != m.filter)
+        if (m.filter && this->mode.filter != m.filter)
         {
             filterCombo->blockSignals(true);
             filterCombo->setCurrentIndex(filterCombo->findData(m.filter));
             filterCombo->blockSignals(false);
         }
 
-        if (mode.data != m.data)
+        if (this->mode.data != m.data)
         {
             emit dataChanged(m); // Signal wfmain that the data mode has been changed.
             dataCombo->blockSignals(true);
@@ -1533,21 +1534,28 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
 
             passbandCenterFrequency = 0.0;
 
-            // Set config specific options)
-            configFilterWidth->blockSignals(true);
-            configFilterWidth->setMinimum(m.bwMin);
-            configFilterWidth->setMaximum(m.bwMax);
-            configFilterWidth->blockSignals(false);
 
             // If new mode doesn't allow bandwidth control, disable filterwidth and pbt.
             if (m.bwMin > 0 && m.bwMax > 0) {
+                // Set config specific options)
+                configFilterWidth->blockSignals(true);
+                configFilterWidth->setMinimum(m.bwMin);
+                configFilterWidth->setMaximum(m.bwMax);
+                configFilterWidth->blockSignals(false);
+                configFilterWidth->setEnabled(true);
+                configPbtInner->setEnabled(true);
+                configPbtOuter->setEnabled(true);
                 queue->addUnique(priorityHigh,funcPBTInner,true,receiver);
                 queue->addUnique(priorityHigh,funcPBTOuter,true,receiver);
                 queue->addUnique(priorityHigh,funcFilterWidth,true,receiver);
+
             } else{
                 queue->del(funcPBTInner,receiver);
                 queue->del(funcPBTOuter,receiver);
                 queue->del(funcFilterWidth,receiver);
+                configFilterWidth->setEnabled(false);
+                configPbtInner->setEnabled(false);
+                configPbtOuter->setEnabled(false);
             }
 
             if (m.mk == modeDD || m.mk == modeDV)
@@ -1605,7 +1613,7 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
 #endif
 
         }
-        mode = m;
+        this->mode = m;
     }
 }
 
@@ -1843,6 +1851,18 @@ void spectrumScope::setPBTOuter (uchar val) {
             configPbtOuter->setValue(newFreq);
             configPbtOuter->blockSignals(false);
         }
+    }
+}
+
+void spectrumScope::setIFShift(uchar val)
+{
+    configIfShift->setEnabled(true);
+    if (val != this->ifShift)
+    {
+        configIfShift->blockSignals(true);
+        configIfShift->setValue(val);
+        configIfShift->blockSignals(false);
+        this->ifShift = val;
     }
 }
 

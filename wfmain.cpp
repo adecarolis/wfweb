@@ -2419,6 +2419,7 @@ void wfmain::extChangedColPref(prefColItem i)
     // These are all updated by the widget itself
     switch(i)
     {
+    // Any updated scope colors will cause the scope colorPreset to be changed.
     case col_grid:
     case col_axis:
     case col_text:
@@ -2446,6 +2447,7 @@ void wfmain::extChangedColPref(prefColItem i)
             receiver->colorPreset(cp);
         }
         break;
+    // Any updated meter colors, will cause the meter to be updated.
     case col_meterLevel:
     case col_meterAverage:
     case col_meterPeakLevel:
@@ -4037,10 +4039,6 @@ void wfmain::on_monitorLabel_linkActivated(const QString&)
     queue->add(priorityImmediate,queueItem(funcMonitor,QVariant::fromValue<bool>(!mon)));
 }
 
-void wfmain::receiveIFShift(quint8 level)
-{
-    emit sendLevel(funcIFShift,level);
-}
 
 void wfmain::on_tuneNowBtn_clicked()
 {
@@ -4903,7 +4901,7 @@ void wfmain::useColorPreset(colorPrefsType *cp)
     if (this->colorPrefs != Q_NULLPTR)
         delete this->colorPrefs;
     this->colorPrefs = new colorPrefsType(*cp);
-    qInfo() << "Setting color Preset" << cp->presetNum << "name" << cp->presetName;
+    qInfo() << "Setting color Preset" << cp->presetNum << "name" << *(cp->presetName);
 }
 
 
@@ -5268,7 +5266,7 @@ void wfmain::receiveValue(cacheItem val){
         break;
     }
     case funcIFShift:
-        receiveIFShift(val.value.value<uchar>());
+        receivers[val.receiver]->setIFShift(val.value.value<uchar>());
         break;
         /*
     connect(this->rig, &rigCommander::haveDashRatio,
