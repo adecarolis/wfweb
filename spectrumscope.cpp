@@ -14,6 +14,7 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     this->setTitle("Band");
     this->defaultStyleSheet = this->styleSheet();
     queue = cachingQueue::getInstance();
+    rigCaps = queue->getRigCaps();
     //spectrum = new QCustomPlot();
     mainLayout = new QHBoxLayout(this);
     layout = new QVBoxLayout();
@@ -303,10 +304,19 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     configPbtOuter->setRange(0,255);
     configLayout->addRow(tr("PBT Outer"),configPbtOuter);
 
+    configIfLayout = new QHBoxLayout();
     configIfShift = new QSlider(Qt::Orientation::Horizontal);
     configIfShift->setRange(0,255);
-    configIfShift->setEnabled(false);
-    configLayout->addRow(tr("IF Shift"),configIfShift);
+    if (rigCaps != Q_NULLPTR && !rigCaps->commands.contains(funcIFShift)){
+        configIfShift->setEnabled(true);
+        configIfShift->setValue(128);
+    } else {
+        configIfShift->setEnabled(false);
+    }
+    configResetIf = new QPushButton("R");
+    configIfLayout->addWidget(configIfShift);
+    configIfLayout->addWidget(configResetIf);
+    configLayout->addRow(tr("IF Shift"),configIfLayout);
 
     configFilterWidth = new QSlider(Qt::Orientation::Horizontal);
     configFilterWidth->setRange(0,10000);
@@ -350,16 +360,42 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
 
 
     connect(configPbtInner, &QSlider::valueChanged, this, [=](const int &val) {
-        queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(val),false,receiver));
+        queue->addUnique(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(val),false,receiver));
     });
     connect(configPbtOuter, &QSlider::valueChanged, this, [=](const int &val) {
-        queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(val),false,receiver));
+        queue->addUnique(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(val),false,receiver));
     });
     connect(configIfShift, &QSlider::valueChanged, this, [=](const int &val) {
-        queue->add(priorityImmediate,queueItem(funcIFShift,QVariant::fromValue<ushort>(val),false,receiver));
+        if (rigCaps != Q_NULLPTR && rigCaps->commands.contains(funcIFShift)) {
+            queue->addUnique(priorityImmediate,queueItem(funcIFShift,QVariant::fromValue<ushort>(val),false,receiver));
+        } else {
+            static int previousIFShift=128; // Default value
+            unsigned char inner = configPbtInner->value();
+            unsigned char outer = configPbtOuter->value();
+            int shift = val - previousIFShift;
+            inner = qMax( 0, qMin(255,int (inner + shift)) );
+            outer = qMax( 0, qMin(255,int (outer + shift)) );
+
+            configPbtInner->setValue(inner);
+            configPbtOuter->setValue(outer);
+            previousIFShift = val;
+        }
     });
+
+
+    connect(configResetIf, &QPushButton::clicked, this, [=](const bool &val) {
+        double pbFreq = (pbtDefault / passbandWidth) * 127.0;
+        qint16 newFreq = pbFreq + 128;
+        queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newFreq),false,receiver));
+        queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newFreq),false,receiver));
+        configIfShift->blockSignals(true);
+        configIfShift->setValue(128);
+        configIfShift->blockSignals(false);
+    });
+
+
     connect(configFilterWidth, &QSlider::valueChanged, this, [=](const int &val) {
-        queue->add(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(val),false,receiver));
+        queue->addUnique(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(val),false,receiver));
     });
 
     configGroup->setVisible(false);
@@ -1161,14 +1197,14 @@ void spectrumScope::doubleClick(QMouseEvent *me)
     }
     else if (me->button() == Qt::RightButton)
     {
-        QCPAbstractItem* item = spectrum->itemAt(me->pos(), true);
+        QCPAbstractItem* item = spectrum->itemAt(me->pos(), true);            double pbFreq = (pbtDefault / passbandWidth) * 127.0;
+        qint16 newFreq = pbFreq + 128;
+        queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newFreq),false,receiver));
+        queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newFreq),false,receiver));
         QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
         if (rectItem != nullptr)
         {
-            double pbFreq = (pbtDefault / passbandWidth) * 127.0;
-            qint16 newFreq = pbFreq + 128;
-            queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newFreq),false,receiver));
-            queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newFreq),false,receiver));
+
         }
     }
 }

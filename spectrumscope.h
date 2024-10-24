@@ -202,6 +202,7 @@ private:
     QSpacerItem* rhsBottomSpacer;
     QGroupBox* configGroup;
     QFormLayout* configLayout;
+    QHBoxLayout* configIfLayout;
     QSlider* configRef;
     QSlider* configLength;
     QSlider* configBottom;
@@ -211,6 +212,7 @@ private:
     QSlider* configPbtInner;
     QSlider* configPbtOuter;
     QSlider* configIfShift;
+    QPushButton* configResetIf;
     QSlider* configFilterWidth;
 
 
@@ -300,6 +302,7 @@ private:
     QString currentRegion="1";
     spectrumMode_t currentScopeMode=spectrumMode_t::spectModeCenter;
     bool bandIndicatorsVisible=false;
+    rigCapabilities* rigCaps=Q_NULLPTR;
 };
 
 #endif // SPECTRUMSCOPE_H
