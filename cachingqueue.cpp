@@ -8,6 +8,8 @@
 #include "logcategories.h"
 #include "cachingqueue.h"
 
+#define CACHE_LOCK_TIME 100
+
 cachingQueue* cachingQueue::instance{};
 QMutex cachingQueue::instanceMutex;
 
@@ -28,8 +30,12 @@ cachingQueue *cachingQueue::getInstance(QObject* parent)
 cachingQueue::~cachingQueue()
 {
     aborted = true;
-    if (queue != Q_NULLPTR) {
-        waiting->wakeOne(); // wake the thread and signal it to exit.
+    if (mutex.tryLock(CACHE_LOCK_TIME)) {
+        mutex.unlock();
+        waiting.wakeOne(); // wake the thread and signal it to exit.
+    }
+    else {
+        qWarning(logRig()) << "Failed to delete cachingQueue() after" << CACHE_LOCK_TIME << "ms, mutex locked";
     }
     qInfo() << "Destroying caching queue (parent closing)";
 }
@@ -39,35 +45,14 @@ void cachingQueue::run()
     // Setup queue.
     qInfo() << "Starting caching queue handler thread (ThreadId:" << QThread::currentThreadId() << ")";
 
-    if (queue == Q_NULLPTR){
-        queue = new QMultiMap <queuePriority,queueItem>;
-    }
-
-    if (cache == Q_NULLPTR){
-        cache = new QMultiMap<funcs,cacheItem>;
-    }
-
-    if (items == Q_NULLPTR){
-        items = new QQueue<cacheItem>;
-    }
-
-    if (messages == Q_NULLPTR){
-        messages = new QQueue<QString>;
-    }
-
-    if (waiting == Q_NULLPTR) {
-        waiting = new QWaitCondition();
-    }
-
-    QElapsedTimer timer;
-    timer.start();
-
     QDeadlineTimer deadline(queueInterval);
     QMutexLocker locker(&mutex);
-    quint64 counter=0; // Will run for many years!
+
+    quint16 counter=priorityImmediate;
+
     while (!aborted)
     {
-        if (!waiting->wait(&mutex, deadline.remainingTime()))
+        if (!waiting.wait(&mutex, deadline.remainingTime()))
         {
             // Time to process the queue - mutex is locked
             queuePriority prio = priorityImmediate;
@@ -75,7 +60,7 @@ void cachingQueue::run()
             // priorityNone=0, priorityImmediate=1, priorityHighest=2, priorityHigh=3, priorityMediumHigh=5, priorityMedium=7, priorityMediumLow=11, priorityLow=19, priorityLowest=23
 
             // If no immediate commands then process the rest of the queue
-            if (!queue->contains(prio)) {
+            if (!queue.contains(prio)) {
                 if (counter % priorityHighest == 0)
                     prio = priorityHighest;
                 else if (counter % priorityHigh == 0)
@@ -88,17 +73,19 @@ void cachingQueue::run()
                     prio = priorityMediumLow;
                 else if (counter % priorityLow == 0)
                     prio = priorityLow;
-                else if (counter % priorityLowest == 0)
+                else if (counter % priorityLowest == 0) {
                     prio = priorityLowest;
+                    counter = priorityImmediate;
+                }
             }
             counter++;
 
             //auto it = queue.upperBound(prio);
             //it--; //upperBound returns the item immediately following the last key.
             //if (it != queue.end() && it.key() == prio)
-            auto it = queue->find(prio);
-            if (it != queue->end()) {
-                while (it != queue->end() && it.key() == prio)
+            auto it = queue.find(prio);
+            if (it != queue.end()) {
+                while (it != queue.end() && it.key() == prio)
                 {
                     it++;
                 }
@@ -106,9 +93,9 @@ void cachingQueue::run()
                 auto item = it.value();
                 emit haveCommand(item.command,item.param,item.receiver);
                 //it=queue.erase(it);
-                queue->remove(prio,it.value());
+                queue.remove(prio,it.value());
                 if (item.recurring && prio != priorityImmediate) {
-                    queue->insert(prio,item);
+                    queue.insert(prio,item);
                 }
                 updateCache(false,item.command,item.param,item.receiver);
             }
@@ -119,49 +106,24 @@ void cachingQueue::run()
         }
         else if (!aborted) {
             // Mutex is locked
-            while (!items->isEmpty()) {
-                emit sendValue(items->dequeue());
+            while (!items.isEmpty()) {
+                emit sendValue(items.dequeue());
             }
-            while (!messages->isEmpty()) {
-                emit sendMessage(messages->dequeue());
+            while (!messages.isEmpty()) {
+                emit sendMessage(messages.dequeue());
             }
             if (queueInterval != -1 && deadline.isForever())
                 deadline.setRemainingTime(queueInterval); // reset the deadline to the poll frequency
         }
     }
-
-    if (waiting != Q_NULLPTR) {
-        delete waiting;
-        waiting = Q_NULLPTR;
-    }
-
-    if (queue != Q_NULLPTR){
-        delete queue;
-        queue = Q_NULLPTR;
-    }
-
-    if (cache != Q_NULLPTR){
-        delete cache;
-        cache = Q_NULLPTR;
-    }
-
-    if (items != Q_NULLPTR){
-        delete items;
-        items = Q_NULLPTR;
-    }
-
-    if (messages != Q_NULLPTR){
-        delete messages;
-        messages = Q_NULLPTR;
-    }
-
 }
 
 void cachingQueue::interval(qint64 val)
 {
     this->queueInterval = val;
-    if (queue != Q_NULLPTR) {
-        waiting->wakeAll();
+    if (mutex.tryLock()) {
+        mutex.unlock();
+        waiting.wakeAll();
     }
     qInfo() << "Changing queue interval to" << val << "ms";
 }
@@ -204,34 +166,30 @@ funcs cachingQueue::checkCommandAvailable(funcs cmd,bool set)
 
 void cachingQueue::add(queuePriority prio ,funcs func, bool recurring, uchar receiver)
 {
-    if (queue != Q_NULLPTR) {
-        queueItem q(func,recurring,receiver);
-        add(prio,q);
-    }
+    queueItem q(func,recurring,receiver);
+    add(prio,q);
 }
 
 void cachingQueue::add(queuePriority prio ,queueItem item)
 {
-    if (queue != Q_NULLPTR) {
-        item.command=checkCommandAvailable(item.command,item.param.isValid());
-        if (item.command != funcNone)
+    item.command=checkCommandAvailable(item.command,item.param.isValid());
+    if (item.command != funcNone)
+    {
+        QMutexLocker locker(&mutex);
+        if (!item.recurring || isRecurring(item.command,item.receiver) != prio)
         {
-            QMutexLocker locker(&mutex);
-            if (!item.recurring || isRecurring(item.command,item.receiver) != prio)
-            {
-                if (item.recurring && prio == queuePriority::priorityImmediate) {
-                    qWarning() << "Warning, cannot add recurring command with immediate priority!" << funcString[item.command];
-                } else {
-                    if (item.recurring) {
-                        // also insert an immediate command to get the current value "now" (removes the need to get rigstate)
-                        queueItem it=item;
-                        it.recurring=false;
-                        it.param.clear();
-                        //qDebug() << "adding" << funcString[item.command] << "recurring" << it.recurring << "priority" << prio << "receiver" << it.receiver;
-                        queue->insert(queue->cend(),priorityImmediate, it);
-                    }
-                    queue->insert(prio, item);
+            if (item.recurring && prio == queuePriority::priorityImmediate) {
+                qWarning() << "Warning, cannot add recurring command with immediate priority!" << funcString[item.command];
+            } else {
+                if (item.recurring) {
+                    // also insert an immediate command to get the current value "now" (removes the need to get rigstate)
+                    queueItem it=item;
+                    it.recurring=false;
+                    it.param.clear();
+                    //qDebug() << "adding" << funcString[item.command] << "recurring" << it.recurring << "priority" << prio << "receiver" << it.receiver;
+                    queue.insert(queue.cend(),priorityImmediate, it);
                 }
+                queue.insert(prio, item);
             }
         }
     }
@@ -240,38 +198,34 @@ void cachingQueue::add(queuePriority prio ,queueItem item)
 
 void cachingQueue::addUnique(queuePriority prio ,funcs func, bool recurring, uchar receiver)
 {
-    if (queue != Q_NULLPTR) {
-        queueItem q(func,recurring, receiver);
-        addUnique(prio,q);
-    }
+    queueItem q(func,recurring, receiver);
+    addUnique(prio,q);
 }
 
 
 
 void cachingQueue::addUnique(queuePriority prio ,queueItem item)
 {
-    if (queue != Q_NULLPTR) {
-        item.command=checkCommandAvailable(item.command,item.param.isValid());
-        if (item.command != funcNone)
-        {
-            QMutexLocker locker(&mutex);
-            if (item.recurring && prio == queuePriority::priorityImmediate) {
-                qWarning() << "Warning, cannot add unique recurring command with immediate priority!" << funcString[item.command];
-            } else {
-                int count=queue->remove(prio,item);
-                if (count>0)
-                    qDebug() << "cachingQueue()::addUnique deleted" << count << "entries from queue for" << funcString[item.command] << "on receiver" << item.receiver;
+    item.command=checkCommandAvailable(item.command,item.param.isValid());
+    if (item.command != funcNone)
+    {
+        QMutexLocker locker(&mutex);
+        if (item.recurring && prio == queuePriority::priorityImmediate) {
+            qWarning() << "Warning, cannot add unique recurring command with immediate priority!" << funcString[item.command];
+        } else {
+            int count=queue.remove(prio,item);
+            if (count>0)
+                qDebug() << "cachingQueue()::addUnique deleted" << count << "entries from queue for" << funcString[item.command] << "on receiver" << item.receiver;
 
-                if (item.recurring) {
-                    // also insert an immediate command to get the current value "now" (removes the need to get initial rigstate)
-                    queueItem it = item;
-                    it.recurring=false;
-                    it.param.clear();
-                    queue->insert(queue->cend(),priorityImmediate, it);
-                    qDebug() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "receiver" << item.receiver;
-                }
-                queue->insert(prio, item);
+            if (item.recurring) {
+                // also insert an immediate command to get the current value "now" (removes the need to get initial rigstate)
+                queueItem it = item;
+                it.recurring=false;
+                it.param.clear();
+                queue.insert(queue.cend(),priorityImmediate, it);
+                qDebug() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "receiver" << item.receiver;
             }
+            queue.insert(prio, item);
         }
     }
 }
@@ -279,13 +233,13 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
 void cachingQueue::del(funcs func, uchar receiver)
 {
     // This will immediately delete any matching commands.
-    if (queue != Q_NULLPTR && func != funcNone)
+    if (func != funcNone)
     {
         QMutexLocker locker(&mutex);
-        auto it = std::find_if(queue->begin(), queue->end(), [func,receiver](const queueItem& c) {  return (c.command == func && c.receiver == receiver && c.recurring); });
+        auto it = std::find_if(queue.begin(), queue.end(), [func,receiver](const queueItem& c) {  return (c.command == func && c.receiver == receiver && c.recurring); });
         //auto it(queue.begin());
-        if (it != queue->end()) {
-            int count = queue->remove(it.key(),it.value());
+        if (it != queue.end()) {
+            int count = queue.remove(it.key(),it.value());
             if (count>0)
                 qDebug() << "cachingQueue()::del" << count << "entries from queue for" << funcString[func] << "on receiver" << receiver;
         }
@@ -295,41 +249,41 @@ void cachingQueue::del(funcs func, uchar receiver)
 queuePriority cachingQueue::isRecurring(funcs func, uchar receiver)
 {
     // Does NOT lock the mutex
-    if (queue != Q_NULLPTR) {
-        auto rec = std::find_if(queue->begin(), queue->end(), [func,receiver](const queueItem& c) {  return (c.command == func && c.receiver == receiver && c.recurring); });
-        if (rec != queue->end())
-        {
-            return rec.key();
-        }
+    auto rec = std::find_if(queue.begin(), queue.end(), [func,receiver](const queueItem& c) {  return (c.command == func && c.receiver == receiver && c.recurring); });
+    if (rec != queue.end())
+    {
+        return rec.key();
     }
     return queuePriority::priorityNone;
 }
 
 void cachingQueue::clear()
 {
-    if (queue != Q_NULLPTR) {
-        QMutexLocker locker(&mutex);
-        queue->clear();
-    }
+    QMutexLocker locker(&mutex);
+    queue.clear();
 }
 void cachingQueue::message(QString msg)
 {
-    if (messages != Q_NULLPTR) {
-        QMutexLocker locker(&mutex);
-        messages->append(msg);
+    if (mutex.tryLock(CACHE_LOCK_TIME)) {
+        messages.append(msg);
+        mutex.unlock();
         qDebug() << "Received:" << msg;
-        waiting->wakeOne();
+        waiting.wakeOne();
+    } else {
+        qWarning(logRig()) << "Queue failed to send message() after" << CACHE_LOCK_TIME << "ms, mutex locked";
     }
 }
 
 void cachingQueue::receiveValue(funcs func, QVariant value, uchar receiver)
 {
-    if (cache != Q_NULLPTR) {
-        QMutexLocker locker(&mutex);
+    if (mutex.tryLock(CACHE_LOCK_TIME)) {
         cacheItem c = cacheItem(func,value,receiver);
-        items->enqueue(c);
+        items.enqueue(c);
         updateCache(true,func,value,receiver);
-        waiting->wakeOne();
+        mutex.unlock();
+        waiting.wakeOne();
+    } else {
+        qWarning(logRig()) << "Failed to receiveValue() after" << CACHE_LOCK_TIME << "ms, mutex locked";
     }
 }
 
@@ -337,65 +291,62 @@ void cachingQueue::receiveValue(funcs func, QVariant value, uchar receiver)
 void cachingQueue::updateCache(bool reply, queueItem item)
 {
     // Mutex MUST be locked by the calling function.
-    if (cache != Q_NULLPTR) {
-        auto cv = cache->find(item.command);
-        while (cv != cache->end() && cv->command == item.command) {
-            if (cv->receiver == item.receiver) {
-                if (reply) {
-                    cv->reply = QDateTime::currentDateTime();
-                } else {
-                    cv->req = QDateTime::currentDateTime();
-                }
-                // If we are sending an actual value, update the cache with it
-                // Value will be replaced if invalid on next get()
-
-                if (compare(item.param,cv.value().value))
-                {
-                    cv->value.clear();
-                    cv->value.setValue(item.param);
-
-                    emit cacheUpdated(cv.value());
-                }
-                return;
-                // We have found (and updated) a matching item so return
+    auto cv = cache.find(item.command);
+    while (cv != cache.end() && cv->command == item.command) {
+        if (cv->receiver == item.receiver) {
+            if (reply) {
+                cv->reply = QDateTime::currentDateTime();
+            } else {
+                cv->req = QDateTime::currentDateTime();
             }
-            ++cv;
-        }
+            // If we are sending an actual value, update the cache with it
+            // Value will be replaced if invalid on next get()
 
-        cacheItem c;
-        c.command = item.command;
-        c.receiver = item.receiver;
-        if (reply) {
-            c.reply = QDateTime::currentDateTime();
-        } else {
-            c.req = QDateTime::currentDateTime();
+            if (compare(item.param,cv.value().value))
+            {
+                cv->value.clear();
+                cv->value.setValue(item.param);
+
+                emit cacheUpdated(cv.value());
+            }
+            return;
+            // We have found (and updated) a matching item so return
         }
-        // If we are sending an actual value, update the cache with it
-        // Value will be replaced if invalid on next get()
-        if (item.param.isValid()) {
-            c.value = item.param;
-        }
-        cache->insert(item.command,c);
+        ++cv;
     }
+
+    cacheItem c;
+    c.command = item.command;
+    c.receiver = item.receiver;
+    if (reply) {
+        c.reply = QDateTime::currentDateTime();
+    } else {
+        c.req = QDateTime::currentDateTime();
+    }
+    // If we are sending an actual value, update the cache with it
+    // Value will be replaced if invalid on next get()
+    if (item.param.isValid()) {
+        c.value = item.param;
+    }
+    cache.insert(item.command,c);
+
 }
 
 
 void cachingQueue::updateCache(bool reply, funcs func, QVariant value, uchar receiver)
 {
-    if (cache != Q_NULLPTR) {
-        queueItem q(func,value,false,receiver);
-        updateCache(reply,q);
-    }
+    queueItem q(func,value,false,receiver);
+    updateCache(reply,q);
 }
 
 
 cacheItem cachingQueue::getCache(funcs func, uchar receiver)
 {
     cacheItem ret;
-    if (cache != Q_NULLPTR && func != funcNone) {
+    if (func != funcNone) {
         QMutexLocker locker(&mutex);
-        auto it = cache->find(func);
-        while (it != cache->end() && it->command == func)
+        auto it = cache.find(func);
+        while (it != cache.end() && it->command == func)
         {
             if (it->receiver == receiver)
                 ret = cacheItem(*it);
@@ -415,14 +366,14 @@ cacheItem cachingQueue::getCache(funcs func, uchar receiver)
 QMultiMap<funcs,cacheItem>* cachingQueue::getCacheItems()
 {
     mutex.lock();
-    return cache;
+    return &cache;
 }
 
 //Calling function MUST call unlockMutex() once finished with data
 QMultiMap <queuePriority,queueItem>* cachingQueue::getQueueItems()
 {
     mutex.lock();
-    return queue;
+    return &queue;
 }
 
 bool cachingQueue::compare(QVariant a, QVariant b)
