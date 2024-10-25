@@ -24,5 +24,7 @@
         <string>Microphone required for TX audio</string>
         <key>NSDownloadsFolderUsageDescription</key>
         <string>Storing temporary files</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Allow access to local network</string>
 </dict>
 </plist>

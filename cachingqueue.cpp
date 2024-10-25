@@ -99,9 +99,17 @@ void cachingQueue::run()
                 }
                 updateCache(false,item.command,item.param,item.receiver);
             }
-            deadline.setRemainingTime(queueInterval); // reset the deadline to the poll frequency
-
+#ifdef Q_OS_MACOS
+            while (!items.isEmpty()) {
+                emit sendValue(items.dequeue());
+            }
+            while (!messages.isEmpty()) {
+                emit sendMessage(messages.dequeue());
+            }
+#else
             QCoreApplication::processEvents();
+#endif
+            deadline.setRemainingTime(queueInterval); // reset the deadline to the poll frequency
 
         }
         else if (!aborted) {
@@ -264,11 +272,14 @@ void cachingQueue::clear()
 }
 void cachingQueue::message(QString msg)
 {
+
     if (mutex.tryLock(CACHE_LOCK_TIME)) {
         messages.append(msg);
         mutex.unlock();
         qDebug() << "Received:" << msg;
+#ifndef Q_OS_MACOS
         waiting.wakeOne();
+#endif
     } else {
         qWarning(logRig()) << "Queue failed to send message() after" << CACHE_LOCK_TIME << "ms, mutex locked";
     }
@@ -281,7 +292,9 @@ void cachingQueue::receiveValue(funcs func, QVariant value, uchar receiver)
         items.enqueue(c);
         updateCache(true,func,value,receiver);
         mutex.unlock();
+#ifndef Q_OS_MACOS
         waiting.wakeOne();
+#endif
     } else {
         qWarning(logRig()) << "Failed to receiveValue() after" << CACHE_LOCK_TIME << "ms, mutex locked";
     }
