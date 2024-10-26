@@ -176,12 +176,11 @@ CONFIG(debug, release|debug) {
     linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libqcustomplotd2qt6.so/ {print \"-lqcustomplotd2qt6\"}'")
     linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libqcustomplotdqt6.so/ {print \"-lqcustomplotdqt6\"}'")
   }
-  macos:LIBS += -lqcustomplotd
-  win32:LIBS += -lqcustomplotd2
+
   win32 {
     contains(QMAKE_TARGET.arch, x86_64) {
       LIBS += -L../opus/win32/VS2015/x64/DebugDLL/
-      LIBS += -L../qcustomplot/x64
+      LIBS += -L../qcustomplot/x64 -lqcustomplotd2
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\x64\qcustomplotd2.dll wfview-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfview-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\hidapi\windows\X64\Debug\hidapi.dll wfview-debug $$escape_expand(\\n\\t))
@@ -193,7 +192,7 @@ CONFIG(debug, release|debug) {
       }
     } else {
       LIBS += -L../opus/win32/VS2015/win32/DebugDLL/
-      LIBS += -L../qcustomplot/win32
+      LIBS += -L../qcustomplot/win32 -lqcustomplotd2
       LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y .\qcustomplot\win32\qcustomplotd2.dll wfview-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll wfview-debug\$$escape_expand(\\n\\t))
@@ -216,11 +215,10 @@ CONFIG(debug, release|debug) {
     linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libqcustomplotqt6.so/ {print \"-lqcustomplotqt6\"}'")
   }
   macos:LIBS += -lqcustomplot
-  win32:LIBS += -lqcustomplot2
   win32 {
     contains(QMAKE_TARGET.arch, x86_64) {
       LIBS += -L../opus/win32/VS2015/x64/ReleaseDLL/
-      LIBS += -L../qcustomplot/x64
+      LIBS += -L../qcustomplot/x64 -lqcustomplot2
       LIBS += -L../portaudio/msvc/X64/Release/ -lportaudio_x64
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\x64\qcustomplot2.dll wfview-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfview-release $$escape_expand(\\n\\t))
@@ -232,7 +230,7 @@ CONFIG(debug, release|debug) {
       }
     } else {
       LIBS += -L../opus/win32/VS2015/win32/ReleaseDLL/
-      LIBS += -L../qcustomplot/win32
+      LIBS += -L../qcustomplot/win32 -lqcustomplot2
       LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\win32\qcustomplot2.dll wfview-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Release\portaudio_x86.dll wfview-release $$escape_expand(\\n\\t))

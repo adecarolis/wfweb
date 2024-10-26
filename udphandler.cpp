@@ -33,7 +33,7 @@ udpHandler::udpHandler(udpPreferences prefs, audioSetup rx, audioSetup tx) :
     if (!radioIP.setAddress(prefs.ipAddress))
     {
         QHostInfo remote = QHostInfo::fromName(prefs.ipAddress);
-        foreach(QHostAddress addr, remote.addresses())
+        for(const auto &addr: remote.addresses())
         {
             if (addr.protocol() == QAbstractSocket::IPv4Protocol) {
                 radioIP = addr;
@@ -51,7 +51,7 @@ udpHandler::udpHandler(udpPreferences prefs, audioSetup rx, audioSetup tx) :
     // Convoluted way to find the external IP address, there must be a better way????
     QString localhostname = QHostInfo::localHostName();
     QList<QHostAddress> hostList = QHostInfo::fromName(localhostname).addresses();
-    foreach(const QHostAddress & address, hostList)
+    for(const auto &address: hostList)
     {
         if (address.protocol() == QAbstractSocket::IPv4Protocol && address.isLoopback() == false)
         {

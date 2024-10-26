@@ -78,6 +78,7 @@ private:
     //quint16 decodeTone(QByteArray eTone, bool &tinv, bool &rinv);
     uchar makeFilterWidth(ushort width, uchar receiver);
 
+    uchar convertNumberToHex(uchar num);
 
     quint8 audioLevelRxMean[50];
     quint8 audioLevelRxPeak[50];

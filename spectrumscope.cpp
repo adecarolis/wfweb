@@ -384,6 +384,7 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
 
 
     connect(configResetIf, &QPushButton::clicked, this, [=](const bool &val) {
+        Q_UNUSED(val)
         double pbFreq = (pbtDefault / passbandWidth) * 127.0;
         qint16 newFreq = pbFreq + 128;
         queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newFreq),false,receiver));
@@ -1747,7 +1748,7 @@ void spectrumScope::receiveSpots(uchar receiver, QList<spotData> spots)
         current=clusterSpots.begin().value()->current;
     }
 
-    foreach(spotData s, spots)
+    for(const auto &s: spots)
     {
         bool found = false;
         QMap<QString, spotData*>::iterator spot = clusterSpots.find(s.dxcall);

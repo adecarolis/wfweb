@@ -311,7 +311,7 @@ void settingswidget::updateRsPrefs(quint64 items)
     {
         if(items & i)
         {
-            qInfo(logGui()) << "Updating Rs pref" << (int)i;
+            qDebug(logGui()) << "Updating Rs pref" << (int)i;
             prs = (prefRsItem)i;
             updateRsPref(prs);
         }
@@ -381,7 +381,7 @@ void settingswidget::updateClusterPrefs(quint64 items)
         items = 0xffffffff;
         // Initial setup, populate combobox
         ui->clusterServerNameCombo->clear();
-        foreach (auto c, prefs->clusters)
+        for (const auto &c: prefs->clusters)
         {
             ui->clusterServerNameCombo->addItem(c.server);
         }
@@ -503,7 +503,6 @@ void settingswidget::updateIfPref(prefIfItem pif)
         quietlyUpdateLineEdit(ui->regionTxt,prefs->region);
         break;
     case if_showBands:
-        qInfo() << "************* SHOWBANDS **********" << prefs->showBands;
         quietlyUpdateCheckbox(ui->showBandsChk, prefs->showBands);
         break;
     case if_separators:
@@ -755,7 +754,7 @@ void settingswidget::updateRaPref(prefRaItem pra)
         ui->serialDeviceListCombo->clear();
         ui->serialDeviceListCombo->addItem("Auto", 0);
         int i = 0;
-        foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
+        for(const auto &serialPortInfo: QSerialPortInfo::availablePorts())
         {
 #if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
             ui->serialDeviceListCombo->addItem(QString("/dev/") + serialPortInfo.portName(), i++);
@@ -786,7 +785,7 @@ void settingswidget::updateRaPref(prefRaItem pra)
         ui->vspCombo->clear();
         ui->vspCombo->addItem("Auto", 0);
         int i = 0;
-        foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
+        for(const auto &serialPortInfo: QSerialPortInfo::availablePorts())
         {
 #if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
             ui->vspCombo->addItem(QString("/dev/") + serialPortInfo.portName(), i++);
@@ -843,6 +842,17 @@ void settingswidget::updateRsPref(prefRsItem prs)
         break;
     case rs_data3Mod:
         quietlyUpdateModCombo(ui->modInputData3Combo,QVariant::fromValue(prefs->inputSource[3]));
+        break;
+    case rs_clockUseUtc:
+        quietlyUpdateCheckbox(ui->useUTCChk,prefs->useUTC);
+        break;
+        // Not used
+    case rs_setClock:
+    case rs_pttOn:
+    case rs_pttOff:
+    case rs_satOps:
+    case rs_adjRef:
+    case rs_debug:
         break;
     default:
         qWarning(logGui()) << "Cannot update rs pref" << (int)prs;
@@ -1223,7 +1233,7 @@ void settingswidget::updateModSourceList(uchar num, QVector<rigInput> data)
     combo->blockSignals(true);
     combo->clear();
 
-    foreach (auto input, data)
+    for (const auto &input: data)
     {
         combo->addItem(input.name, QVariant::fromValue(input));
     }

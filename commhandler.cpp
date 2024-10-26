@@ -28,7 +28,7 @@ commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat, QO
 
     if (wfFormat == 1) { // Single waterfall packet
         combineWf = true;
-        qDebug(logSerial()) << "*********** Combine Waterfall Mode Enabled!";
+        qDebug(logSerial()) << "Combine Waterfall Mode Enabled!";
     }
 
     // TODO: The following should become arguments and/or functions

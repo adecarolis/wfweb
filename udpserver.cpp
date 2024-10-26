@@ -46,7 +46,7 @@ void udpServer::init()
     // Convoluted way to find the external IP address, there must be a better way????
     QString localhostname = QHostInfo::localHostName();
     QList<QHostAddress> hostList = QHostInfo::fromName(localhostname).addresses();
-    foreach(const QHostAddress & address, hostList)
+    for(const auto &address: hostList)
     {
         if (address.protocol() == QAbstractSocket::IPv4Protocol && address.isLoopback() == false)
         {
@@ -55,7 +55,7 @@ void udpServer::init()
     }
 
     QString macTemp;
-    foreach(QNetworkInterface netInterface, QNetworkInterface::allInterfaces())
+    for(const auto &netInterface: QNetworkInterface::allInterfaces())
     {
         // Return only the first non-loopback MAC Address
         if (!(netInterface.flags() & QNetworkInterface::IsLoopBack)) {

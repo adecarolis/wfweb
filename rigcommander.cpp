@@ -189,7 +189,6 @@ void rigCommander::getDebug()
 
 void rigCommander::dataFromServer(QByteArray data)
 {
-    //qInfo(logRig()) << "***************** emit dataForComm()" << data;
     emit dataForComm(data);
 }
 

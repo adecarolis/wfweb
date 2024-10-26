@@ -190,7 +190,7 @@ void cachingQueue::add(queuePriority prio ,queueItem item)
                 qWarning() << "Warning, cannot add recurring command with immediate priority!" << funcString[item.command];
             } else {
                 if (item.recurring) {
-                    // also insert an immediate command to get the current value "now" (removes the need to get rigstate)
+                    // also insert an immediate command to get the current value "now" (removes the need to get rigstate)                    
                     queueItem it=item;
                     it.recurring=false;
                     it.param.clear();
@@ -440,7 +440,8 @@ bool cachingQueue::compare(QVariant a, QVariant b)
         } else if (!strcmp(a.typeName(),"centerSpanData")) {
             if (a.value<centerSpanData>().cstype != b.value<centerSpanData>().cstype || a.value<centerSpanData>().freq != b.value<centerSpanData>().freq  )
                 changed=true;
-        } else if (!strcmp(a.typeName(),"scopeData") || !strcmp(a.typeName(),"memoryType") || !strcmp(a.typeName(),"bandStackType") ) {
+        } else if (!strcmp(a.typeName(),"scopeData") || !strcmp(a.typeName(),"memoryType")
+                   || !strcmp(a.typeName(),"bandStackType")  || !strcmp(a.typeName(),"timekind") || !strcmp(a.typeName(),"datekind") ) {
             changed=true; // Always different
         } else {
             // Maybe Try simple comparison?

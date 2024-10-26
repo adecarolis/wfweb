@@ -21,7 +21,7 @@ rigCreator::rigCreator(QWidget *parent) :
 
     priorityModel = new QStandardItemModel();
 
-    foreach (auto key, priorityMap.keys())
+    for (const auto &key: priorityMap.keys())
     {
         QStandardItem *itemName = new QStandardItem(key);
         QStandardItem *itemId = new QStandardItem(priorityMap.value(key));
@@ -262,7 +262,7 @@ void rigCreator::loadRigFile(QString file)
         settings->endArray();
 
         int c=0;
-        foreach (auto p, defaultPeriodic)
+        for (const auto &p: defaultPeriodic)
         {
             ui->periodicCommands->insertRow(ui->periodicCommands->rowCount());
             ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,0),p.priority);
@@ -613,7 +613,7 @@ void rigCreator::saveRigFile(QString file)
 
         QList<QCheckBox*> getSet =ui->commands->cellWidget(n,5)->findChildren<QCheckBox*>(QString(), Qt::FindChildrenRecursively);
         qDebug() << "size = "<<getSet.size();
-        foreach (auto c, getSet)
+        for (const auto &c: getSet)
         {
             if (c->objectName() == "get")
                 settings->setValue("GetCommand", c->isChecked());

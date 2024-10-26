@@ -40,7 +40,7 @@ void audioDevices::enumerate()
             qInfo(logAudio()) << "Audio device(s) found (*=default)";
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-            foreach(const QAudioDeviceInfo & deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioInput))
+            for(const auto &deviceInfo: QAudioDeviceInfo::availableDevices(QAudio::AudioInput))
 #else
             const auto audioInputs = mediaDevices.audioInputs();
             for (const QAudioDevice& deviceInfo : audioInputs)
@@ -99,7 +99,7 @@ void audioDevices::enumerate()
             }
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-            foreach(const QAudioDeviceInfo & deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
+            for(const auto &deviceInfo: QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
 #else
             const auto audioOutputs = mediaDevices.audioOutputs();
             for (const QAudioDevice& deviceInfo : audioOutputs)

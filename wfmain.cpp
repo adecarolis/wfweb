@@ -387,7 +387,7 @@ wfmain::~wfmain()
     }
 
     // Each rig needs deleting before we close.
-    foreach (auto rig, serverConfig.rigs) {
+    for (auto &rig: serverConfig.rigs) {
         delete rig;
     }
 
@@ -4071,9 +4071,14 @@ bool wfmain::on_exitBtn_clicked()
         msgbox.addButton(QMessageBox::No);
         msgbox.setDefaultButton(QMessageBox::Yes);
         msgbox.setCheckBox(cb);
-
-        QObject::connect(cb, &QCheckBox::stateChanged, this, [this](int state){
-            if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked) {
+#if (QT_VERSION < QT_VERSION_CHECK(6,7,0))
+        QObject::connect(cb, &QCheckBox::stateChanged, this, [this](Qt::CheckState state){
+            if (state == Qt::CheckState::Checked)
+#else
+        QObject::connect(cb, &QCheckBox::checkStateChanged, this, [this](int state){
+            if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked)
+#endif
+            {
                 prefs.confirmSettingsChanged=false;
             } else {
                 prefs.confirmSettingsChanged=true;
@@ -4110,9 +4115,14 @@ bool wfmain::on_exitBtn_clicked()
         msgbox.addButton(QMessageBox::No);
         msgbox.setDefaultButton(QMessageBox::Yes);
         msgbox.setCheckBox(cb);
-
-        QObject::connect(cb, &QCheckBox::stateChanged, this, [this](int state){
-            if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked) {
+#if (QT_VERSION < QT_VERSION_CHECK(6,7,0))
+        QObject::connect(cb, &QCheckBox::stateChanged, this, [this](Qt::CheckState state){
+            if (state == Qt::CheckState::Checked)
+#else
+        QObject::connect(cb, &QCheckBox::checkStateChanged, this, [this](int state){
+            if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked)
+#endif
+            {
                 prefs.confirmExit=false;
             } else {
                 prefs.confirmExit=true;
@@ -4672,9 +4682,14 @@ void wfmain::on_rigPowerOffBtn_clicked()
     msgbox.addButton(QMessageBox::No);
     msgbox.setDefaultButton(QMessageBox::Yes);
     msgbox.setCheckBox(cb);
-
-    QObject::connect(cb, &QCheckBox::stateChanged, this, [this](int state) {
-        if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked) {
+#if (QT_VERSION < QT_VERSION_CHECK(6,7,0))
+        QObject::connect(cb, &QCheckBox::stateChanged, this, [this](Qt::CheckState state){
+            if (state == Qt::CheckState::Checked)
+#else
+        QObject::connect(cb, &QCheckBox::checkStateChanged, this, [this](int state){
+            if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked)
+#endif
+        {
             prefs.confirmPowerOff = false;
         }
         else {

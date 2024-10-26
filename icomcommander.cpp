@@ -954,7 +954,7 @@ void icomCommander::parseCommand()
         bandStackType bsr;
         bsr.band = bcdHexToUChar(payloadIn[0]);
         bsr.regCode = bcdHexToUChar(payloadIn[1]);
-        foreach (bandType b, rigCaps.bands)
+        for (const auto &b: rigCaps.bands)
         {
             if (b.bsr == bsr.band)
             {
@@ -1193,13 +1193,13 @@ void icomCommander::parseCommand()
             qWarning(logRig()) << "Error (FA) received from rig, last command sent:";
 
             QStringList messages = getHexArray(lastCommandToRig);
-            foreach (auto msg, messages)
+            for (const auto &msg: messages)
                 qWarning(logRig()) << msg;
             }
         break;
     }
     default:
-        qWarning(logRig()) << "Unhandled command received from rig" << payloadIn.toHex().mid(0,10) << "Contact support!";
+        qWarning(logRig()).noquote() << "Unhandled command received from rig " << payloadIn.toHex().mid(0,10);
         break;
     }
 
@@ -2366,6 +2366,20 @@ uchar icomCommander::makeFilterWidth(ushort pass,uchar receiver)
     return b1;
 }
 
+unsigned char icomCommander::convertNumberToHex(unsigned char num)
+{
+    // Two digit only
+    if(num > 99)
+    {
+        qInfo(logRig()) << "Invalid numeric conversion from num " << num << " to hex.";
+        return 0xFA;
+    }
+    unsigned char result = 0;
+    result =  (num/10) << 4;
+    result |= (num - 10*(num/10));
+    return result;
+}
+
 void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
 {
     //qInfo() << "Got command:" << funcString[func];
@@ -2815,7 +2829,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 if (bsr.freq.Hz != 0) {
                     // We are setting the bsr so send freq/mode data.
                     // First find which band we are working on.
-                    foreach (bandType b, rigCaps.bands)
+                    for (const auto &b: rigCaps.bands)
                     {
                         if (b.bsr == bsr.band)
                         {
@@ -2831,6 +2845,33 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                     }
                 }
                 qInfo(logRig()) << "Sending BSR, Band Code:" << bsr.band << "Register Code:" << bsr.regCode << "(Sent:" << payload.toHex(' ') << ")";
+            }
+            else if (!strcmp(value.typeName(),"datekind"))
+            {
+                datekind d = value.value<datekind>();
+                qInfo(logRig()) << QString("Sending new date: (MM-DD-YYYY) %0-%1-%2").arg(d.month).arg(d.day).arg(d.year);
+                // YYYYMMDD
+                payload.append(convertNumberToHex(d.year/100)); // 20
+                payload.append(convertNumberToHex(d.year - 100*(d.year/100))); // 21
+                payload.append(convertNumberToHex(d.month));
+                payload.append(convertNumberToHex(d.day));
+
+            }
+            else if (!strcmp(value.typeName(),"timekind"))
+            {
+                timekind t = value.value<timekind>();
+                if (cmd.cmd == funcTime) {
+                    qInfo(logRig()) << QString("Sending new time: (HH:MM) %0:%1").arg(t.hours).arg(t.minutes);
+                    payload.append(convertNumberToHex(t.hours));
+                    payload.append(convertNumberToHex(t.minutes));
+
+                } else if (cmd.cmd == funcUTCOffset) {
+                    qInfo(logRig()) << QString("Sending new UTC offset: %0%1:%2").arg(t.isMinus?"-":"+").arg(t.hours).arg(t.minutes);
+                    payload.append(convertNumberToHex(t.hours));
+                    payload.append(convertNumberToHex(t.minutes));
+                    payload.append((uchar)t.isMinus);
+
+                }
             }
             else
             {
