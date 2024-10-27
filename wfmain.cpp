@@ -4071,11 +4071,11 @@ bool wfmain::on_exitBtn_clicked()
         msgbox.addButton(QMessageBox::No);
         msgbox.setDefaultButton(QMessageBox::Yes);
         msgbox.setCheckBox(cb);
-#if (QT_VERSION < QT_VERSION_CHECK(6,7,0))
-        QObject::connect(cb, &QCheckBox::stateChanged, this, [this](Qt::CheckState state){
+#if (QT_VERSION >= QT_VERSION_CHECK(6,7,0))
+        QObject::connect(cb, &QCheckBox::checkStateChanged, this, [this](Qt::CheckState state){
             if (state == Qt::CheckState::Checked)
 #else
-        QObject::connect(cb, &QCheckBox::checkStateChanged, this, [this](int state){
+        QObject::connect(cb, &QCheckBox::checkState, this, [this](int state){
             if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked)
 #endif
             {
@@ -4115,11 +4115,11 @@ bool wfmain::on_exitBtn_clicked()
         msgbox.addButton(QMessageBox::No);
         msgbox.setDefaultButton(QMessageBox::Yes);
         msgbox.setCheckBox(cb);
-#if (QT_VERSION < QT_VERSION_CHECK(6,7,0))
-        QObject::connect(cb, &QCheckBox::stateChanged, this, [this](Qt::CheckState state){
+#if (QT_VERSION >= QT_VERSION_CHECK(6,7,0))
+        QObject::connect(cb, &QCheckBox::checkStateChanged, this, [this](Qt::CheckState state){
             if (state == Qt::CheckState::Checked)
 #else
-        QObject::connect(cb, &QCheckBox::checkStateChanged, this, [this](int state){
+        QObject::connect(cb, &QCheckBox::stateChanged, this, [this](int state){
             if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked)
 #endif
             {
@@ -4682,11 +4682,11 @@ void wfmain::on_rigPowerOffBtn_clicked()
     msgbox.addButton(QMessageBox::No);
     msgbox.setDefaultButton(QMessageBox::Yes);
     msgbox.setCheckBox(cb);
-#if (QT_VERSION < QT_VERSION_CHECK(6,7,0))
-        QObject::connect(cb, &QCheckBox::stateChanged, this, [this](Qt::CheckState state){
+#if (QT_VERSION >= QT_VERSION_CHECK(6,7,0))
+        QObject::connect(cb, &QCheckBox::checkStateChanged, this, [this](Qt::CheckState state){
             if (state == Qt::CheckState::Checked)
 #else
-        QObject::connect(cb, &QCheckBox::checkStateChanged, this, [this](int state){
+        QObject::connect(cb, &QCheckBox::stateChanged, this, [this](int state){
             if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked)
 #endif
         {
