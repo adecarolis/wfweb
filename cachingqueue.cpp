@@ -92,8 +92,8 @@ void cachingQueue::run()
                 it--;
                 auto item = it.value();
                 emit haveCommand(item.command,item.param,item.receiver);
-                //it=queue.erase(it);
-                queue.remove(prio,it.value());
+                it=queue.erase(it);
+                //queue.remove(prio,it.value()); // Will remove ALL matching commands which breaks some things (memory bulk write)
                 if (item.recurring && prio != priorityImmediate) {
                     queue.insert(prio,item);
                 }

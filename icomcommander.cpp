@@ -1510,7 +1510,7 @@ void icomCommander::determineRigCaps()
 
 
     // Setup memory formats.
-    static QRegularExpression memFmtEx("%(?<flags>[-+#0])?(?<pos>\\d+|\\*)?(?:\\.(?<width>\\d+|\\*))?(?<spec>[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ])");
+    static QRegularExpression memFmtEx("%(?<flags>[-+#0])?(?<pos>\\d+|\\*)?(?:\\.(?<width>\\d+|\\*))?(?<spec>[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+])");
     QRegularExpressionMatchIterator i = memFmtEx.globalMatch(rigCaps.memFormat);
     while (i.hasNext()) {
         QRegularExpressionMatch qmatch = i.next();
@@ -2129,7 +2129,7 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
     payloadIn.insert(0,"**");
     for (auto &parse: *memParser) {
         // non-existant memory is short so send what we have so far.
-        if (payloadIn.size() < (parse.pos+1+parse.len)) {
+        if (payloadIn.size() < (parse.pos+1+parse.len) && parse.spec != 'Z') {
             return true;
         }
         QByteArray data = payloadIn.mid(parse.pos+1,parse.len);
@@ -2151,9 +2151,16 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
         case 'c':
             mem->scan = data[0];
             break;
+        case 'C':
+            mem->skip = data[0] >> 4 & 0xf;
+            mem->scan = data[0] & 0xf;
+            break;
         case 'd': // combined split and scan
             mem->split = quint8(data[0] >> 4 & 0x0f);
             mem->scan = quint8(data[0] & 0x0f);
+            break;
+        case 'D': // duplex only (used for IC-R8600)
+            mem->duplex = quint8(data[0] & 0x0f);
             break;
         case 'e':
             mem->vfo=data[0];
@@ -2263,14 +2270,32 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
             break;
         case 'v':
             memcpy(mem->R2,data.data(),qMin(int(sizeof mem->R2),data.size()));
-            break;
+            break;            
         case 'V':
             memcpy(mem->R2B,data.data(),qMin(int(sizeof mem->R2B),data.size()));
+            break;
+        case 'w': // Tuning step
+            if (bool(data[0])) { // Only set if enabled.
+                mem->tuningStep = quint8(data[1]);
+                mem->progTs = bcdHexToUInt(data[2],data[3]);
+            }
+            break;
+        case 'x': // Attenuator & Preamp
+            mem->atten = bcdHexToUChar(data[0]);
+            mem->preamp = bcdHexToUChar(data[1]);
+            break;
+        case 'y': // Antenna
+            mem->antenna = bcdHexToUChar(data[0]);
+            break;
+        case '+': // IP Plus
+            mem->ipplus=bool(data[0] & 0x0f);
             break;
         case 'z':
             if (mem->scan == 0xfe)
                 mem->scan = 0;
             memcpy(mem->name,data.data(),qMin(int(sizeof mem->name),data.size()));
+            break;
+        case 'Z': // Special mode dependant features (I have no idea how to make these work!)
             break;
         default:
             qInfo() << "Parser didn't match!" << "spec:" << parse.spec << "pos:" << parse.pos << "len" << parse.len;
@@ -2391,7 +2416,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
         if (func == funcMemoryContents || func == funcMemoryClear || func == funcMemoryWrite || func == funcMemoryMode)
         {
             // Strip out group number from memory for validation purposes.
-            qInfo(logRig()) << "Memory Command" << funcString[func] << "with valuetype "  << QString(value.typeName());
+            qDebug(logRig()) << "Memory Command" << funcString[func] << "with valuetype "  << QString(value.typeName());
             val = val & 0xffff;
         }
     }
@@ -2541,8 +2566,8 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             }
             else if (!strcmp(value.typeName(),"uint") && (func == funcMemoryContents || func == funcMemoryMode))
             {
-                qInfo(logRig()) << "Get Memory Contents" << (value.value<uint>() & 0xffff);
-                qInfo(logRig()) << "Get Memory Group (if exists)" << (value.value<uint>() >> 16 & 0xffff);
+                qDebug(logRig()) << "Get Memory Contents" << (value.value<uint>() & 0xffff);
+                qDebug(logRig()) << "Get Memory Group (if exists)" << (value.value<uint>() >> 16 & 0xffff);
                 // Format is different for all radios!
                 if (func == funcMemoryContents) {
                     for (auto &parse: rigCaps.memParser) {
@@ -2604,8 +2629,21 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                             payload.append(mem.scan);
                         }
                         break;
+                    case 'C':
+                        // Are we deleting the memory?
+                        if (mem.del) {
+                            payload.append(ffchar);
+                            finished=true;
+                            break;
+                        } else {
+                            payload.append(mem.scan);
+                        }
+                        break;
                     case 'd': // combined split and scan
                         payload.append(quint8((mem.split << 4 & 0xf0) | (mem.scan & 0x0f)));
+                        break;
+                    case 'D': // Duplex only
+                        payload.append(mem.duplex);
                         break;
                     case 'e':
                         payload.append(mem.vfo);
@@ -2725,8 +2763,25 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                     case 'V':
                         payload.append(QByteArray(mem.R2B).leftJustified(parse.len,' ',true));
                         break;
+                    case 'w': // Tuning step
+                        payload.append(quint8(mem.tuningStep!=0?true:false));
+                        payload.append(quint8(mem.tuningStep));
+                        payload.append(bcdEncodeInt(mem.progTs));
+                        break;
+                    case 'x': // Attenuator & Preamp
+                        payload.append(bcdEncodeChar(mem.atten));
+                        payload.append(bcdEncodeChar(mem.preamp));
+                        break;
+                    case 'y': // Antenna
+                        payload.append(bcdEncodeChar(mem.antenna));
+                        break;
+                    case '+': // IP Plus
+                        payload.append(bcdEncodeChar(mem.ipplus));
+                        break;
                     case 'z':
                         payload.append(QByteArray(mem.name).leftJustified(parse.len,' ',true));
+                        break;
+                    case 'Z': // Special mode dependant features (I have no idea how to make these work!)
                         break;
                     default:
                         break;

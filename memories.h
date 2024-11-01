@@ -43,6 +43,7 @@ private slots:
     void on_memoryMode_clicked();
     void on_csvImport_clicked();
     void on_csvExport_clicked();
+    void on_scanButton_toggled(bool scan);
     void on_disableEditing_toggled(bool dis);
     bool readCSVRow (QTextStream &in, QStringList *row);
 
@@ -69,6 +70,7 @@ private:
 
     QStringList split;
     QStringList scan;
+    QStringList skip;
     QStringList vfos;
     QStringList duplexModes;
     QStringList modes;
@@ -80,6 +82,11 @@ private:
     QStringList dtcsp;
     QStringList dsql;
     QStringList dvsql;
+    QStringList tuningSteps;
+    QStringList preamps;
+    QStringList attenuators;
+    QStringList antennas;
+    QStringList ipplus;
 
     /*
         columnFrequencyB,
@@ -98,6 +105,7 @@ private:
         columnR2B,
     */
     QStandardItemModel* splitModel = Q_NULLPTR;
+    QStandardItemModel* skipModel = Q_NULLPTR;
     QStandardItemModel* scanModel = Q_NULLPTR;
     QStandardItemModel* filterModel = Q_NULLPTR;
     QStandardItemModel* vfoModel = Q_NULLPTR;
@@ -111,6 +119,11 @@ private:
     QStandardItemModel* dtcspModel = Q_NULLPTR;
     QStandardItemModel* dtcsModel = Q_NULLPTR;
     QStandardItemModel* dvsqlModel = Q_NULLPTR;
+    QStandardItemModel* tuningStepsModel = Q_NULLPTR;
+    QStandardItemModel* preampsModel = Q_NULLPTR;
+    QStandardItemModel* attenuatorsModel = Q_NULLPTR;
+    QStandardItemModel* antennasModel = Q_NULLPTR;
+    QStandardItemModel* ipplusModel = Q_NULLPTR;
 
     QStandardItemModel* vfoModelB = Q_NULLPTR;
     QStandardItemModel* modesModelB = Q_NULLPTR;
@@ -124,11 +137,17 @@ private:
     QStandardItemModel* duplexModelB = Q_NULLPTR;
     QStandardItemModel* dtcsModelB = Q_NULLPTR;
     QStandardItemModel* dvsqlModelB = Q_NULLPTR;
-
+    // I don't know of any radio that uses these!
+    QStandardItemModel* tuningStepsModelB = Q_NULLPTR;
+    QStandardItemModel* preampsModelB = Q_NULLPTR;
+    QStandardItemModel* attenuatorsModelB = Q_NULLPTR;
+    QStandardItemModel* antennasModelB = Q_NULLPTR;
+    QStandardItemModel* ipplusModelB = Q_NULLPTR;
 
     tableEditor* numEditor = Q_NULLPTR;
     tableCombobox* splitList = Q_NULLPTR;
     tableCombobox* scanList = Q_NULLPTR;
+    tableCombobox* skipList = Q_NULLPTR;
     tableCombobox* vfoList = Q_NULLPTR;
     tableEditor* nameEditor = Q_NULLPTR;
     tableEditor* freqEditor = Q_NULLPTR;
@@ -147,6 +166,12 @@ private:
     tableEditor* urEditor = Q_NULLPTR;
     tableEditor* r1Editor = Q_NULLPTR;
     tableEditor* r2Editor = Q_NULLPTR;
+    tableCombobox* tuningStepsList = Q_NULLPTR;
+    tableEditor* tuningStepEditor = Q_NULLPTR;
+    tableCombobox* preampsList = Q_NULLPTR;
+    tableCombobox* attenuatorsList = Q_NULLPTR;
+    tableCombobox* antennasList = Q_NULLPTR;
+    tableCombobox* ipplusList = Q_NULLPTR;
 
     tableCombobox* vfoListB = Q_NULLPTR;
     tableEditor* freqEditorB = Q_NULLPTR;
@@ -165,6 +190,12 @@ private:
     tableEditor* urEditorB = Q_NULLPTR;
     tableEditor* r1EditorB = Q_NULLPTR;
     tableEditor* r2EditorB = Q_NULLPTR;
+    tableCombobox* tuningStepsListB = Q_NULLPTR;
+    tableEditor* tuningStepEditorB = Q_NULLPTR;
+    tableCombobox* preampsListB = Q_NULLPTR;
+    tableCombobox* attenuatorsListB = Q_NULLPTR;
+    tableCombobox* antennasListB = Q_NULLPTR;
+    tableCombobox* ipplusListBB = Q_NULLPTR;
 
     rigCapabilities* rigCaps = Q_NULLPTR;
 
@@ -179,6 +210,7 @@ private:
         columnNum,
         columnName,
         columnSplit,
+        columnSkip,
         columnScan,
         columnVFO,
         columnFrequency,
@@ -187,6 +219,12 @@ private:
         columnData,
         columnDuplex,
         columnToneMode,
+        columnTuningStep,
+        columnCustomTuningStep,
+        columnAttenuator,
+        columnPreamplifier,
+        columnAntenna,
+        columnIPPlus,
         columnDSQL,
         columnTone,
         columnTSQL,
@@ -204,6 +242,12 @@ private:
         columnDataB,
         columnDuplexB,
         columnToneModeB,
+        columnTuningStepB,
+        columnCustomTuningStepB,
+        columnAttenuatorB,
+        columnPreamplifierB,
+        columnAntennaB,
+        columnIPPlusB,
         columnDSQLB,
         columnToneB,
         columnTSQLB,

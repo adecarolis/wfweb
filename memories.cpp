@@ -33,19 +33,30 @@ memories::memories(bool isAdmin, bool slowLoad, QWidget *parent) :
 
     progress->setRange(rigCaps->memStart,rigCaps->memories);
 
+    if (!rigCaps->commands.contains(funcScanning))
+    {
+        ui->scanButton->setVisible(false);
+    } else {
+        ui->scanButton->setCheckable(true);
+    }
     QStringList headers;
 
     /*
 
-        columnRecall=0, columnNum,columnSplit,columnScan,columnFrequency,columnMode,columnFilter,columnData,columnDuplex,columnToneMode,columnDSQL,columnTone,columnTSQL,columnDTCS,
-        columnDTCSPolarity,columnDVSquelch,columnOffset,columnUR,columnR1,columnR2,columnFrequencyB,columnModeB,columnFilterB,columnDataB,columnDuplexB,columnToneModeB, columnDSQLB
-        columnToneB,columnTSQLB,columnDTCSB,columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B,columnName,
+columnRecall=0, columnNum,columnSplit,columnSkip,columnScan,columnFrequency,columnMode,columnFilter,columnData,columnDuplex,columnToneMode,
+columnTuningStep, columnCustomTuningStep, columnAttenuator, columnPreamplifier, columnAntenna, columnIPPlus,columnDSQL,columnTone,columnTSQL,columnDTCS,
+columnDTCSPolarity,columnDVSquelch,columnOffset,columnUR,columnR1,columnR2,columnFrequencyB,columnModeB,columnFilterB,columnDataB,columnDuplexB,columnToneModeB,
+columnTuningStepB, columnCustomTuningStepB, columnAttenuatorB, columnPreamplifierB, columnAntennaB, columnIPPlusB, columnDSQLB
+columnToneB,columnTSQLB,columnDTCSB,columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B,columnName,
      */
 
-    headers << "" << "Num" << "Name" << "Split" << "Scan" << "VFO" << "Freq" << "Mode" << "Filter" << "Data" <<"Duplex" << "Tn Mode" << "DSQL" << "Tone" << "TSQL" <<
-        "DTCS" << "DTCS Pol" << "DV Sql" << "Offset" << "UR" << "R1" << "R2" << "VFO B" << "Freq B" << "Mode B" << "Filter B" << "Data B" << "Duplex B" <<
-        "Tn Mode B" << "DSQL B" << "Tone B" << "TSQL B" << "DTCS B" << "DTCSP B" << "DV Sql B" << "Offset B" << "UR B" << "R1 B" << "R2 B";
+    headers << "" << "Num" << "Name" << "Split" << "Skip" << "Scan" << "VFO" << "Freq" << "Mode" << "Filter" << "Data" <<"Duplex" << "Tn Mode" <<
+        "Step" << "Prog Step" << "Atten" << "Preamp" << "Ant" << "IP Plus" << "DSQL" << "Tone" << "TSQL" << "DTCS" << "DTCS Pol" << "DV Sql" <<
+        "Offset" << "UR" << "R1" << "R2" << "VFO B" << "Freq B" << "Mode B" << "Filter B" << "Data B" << "Duplex B" << "Tn Mode B" << "Step B" <<
+        "Prog Step B" << "Atten B" << "Preamp B" << "Ant B" << "IP Plus B" << "DSQL B" << "Tone B" << "TSQL B" << "DTCS B" << "DTCSP B" <<
+        "DV Sql B" << "Offset B" << "UR B" << "R1 B" << "R2 B";
 
+    skip << "OFF" << "SKIP" << "PSKIP";
     scan << "OFF" << "*1" << "*2" << "*3";
 
     split << "OFF" << "ON";
@@ -80,14 +91,37 @@ memories::memories(bool isAdmin, bool slowLoad, QWidget *parent) :
 
     dtcsp << "BOTH N" << "N/R" << "R/N" << "BOTH R";
 
+    ipplus << "OFF" << "ON";
+
+    // We can populate the other comboboxes from RigCaps (ensuring they are valid)
+    tuningSteps << "None";
+    for (const auto &step: rigCaps->steps)
+    {
+        if (step.num)
+        {
+            tuningSteps.append(step.name);
+        }
+    }
+
+    for (const auto &atten: rigCaps->attenuators) {
+        attenuators.append(QString("%0").arg(atten));
+    }
+
+    for (const auto &preamp: rigCaps->preamps) {
+        preamps.append(preamp.name);
+    }
+
+    for (const auto &ant: rigCaps->antennas) {
+        antennas.append(ant.name);
+    }
 
     ui->table->setHorizontalHeaderLabels(headers);
 
     ui->group->hide();
     ui->vfoMode->hide();
     ui->memoryMode->hide();
-    ui->loadingMemories->setVisible(false);
-    ui->loadingMemories->setStyleSheet("QLabel {color: #ff0000}");
+    //ui->loadingMemories->setVisible(false);
+    //ui->loadingMemories->setStyleSheet("QLabel {color: #ff0000}");
 
     ui->group->blockSignals(true);
     ui->group->addItem("Memory Group",-1);
@@ -208,11 +242,26 @@ void memories::rowAdded(int row)
     ui->table->model()->setData(ui->table->model()->index(row,columnNum),QString::number(num).rightJustified(3,'0'));
     // Set default values (where possible) for all other values:
     if (ui->table->item(row,columnSplit) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnSplit),split[0]);
+    if (ui->table->item(row,columnSkip) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnSkip),skip[0]);
     if (ui->table->item(row,columnScan) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnScan),scan[0]);
     if (ui->table->item(row,columnData) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnData),dataModes[0]);
     if (ui->table->item(row,columnFilter) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnFilter),filters[0]);
     if (ui->table->item(row,columnDuplex) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDuplex),duplexModes[0]);
     if (ui->table->item(row,columnToneMode) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnToneMode),toneModes[0]);
+    if (ui->table->item(row,columnTuningStep) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnTuningStep),tuningSteps[0]);
+    if (ui->table->item(row,columnCustomTuningStep) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnCustomTuningStep),"0.000");
+    if (ui->table->item(row,columnAttenuator) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnAttenuator),attenuators[0]);
+    if (ui->table->item(row,columnPreamplifier) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnPreamplifier),preamps[0]);
+    if (ui->table->item(row,columnAntenna) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnAntenna),antennas[0]);
+    if (ui->table->item(row,columnIPPlus) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnIPPlus),ipplus[0]);
+
+    /*        columnTuningStep,
+        columnCustomTuningStep,
+        columnAttenuator,
+        columnPreamplifier,
+        columnAntenna,
+        columnIPPlus,
+     */
     if (ui->table->item(row,columnDSQL) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDSQL),dsql[0]);
     if (ui->table->item(row,columnTone) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnTone),tones[0]);
     if (ui->table->item(row,columnTSQL) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnTSQL),tones[0]);
@@ -226,6 +275,12 @@ void memories::rowAdded(int row)
     if (ui->table->item(row,columnDataB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDataB),dataModes[0]);
     if (ui->table->item(row,columnFilterB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnFilterB),filters[0]);
     if (ui->table->item(row,columnToneModeB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnToneModeB),toneModes[0]);
+    if (ui->table->item(row,columnTuningStepB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnTuningStepB),tuningSteps[0]);
+    if (ui->table->item(row,columnCustomTuningStepB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnCustomTuningStepB),"0.000");
+    if (ui->table->item(row,columnAttenuatorB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnAttenuatorB),attenuators[0]);
+    if (ui->table->item(row,columnPreamplifierB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnPreamplifierB),preamps[0]);
+    if (ui->table->item(row,columnAntennaB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnAntennaB),antennas[0]);
+    if (ui->table->item(row,columnIPPlusB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnIPPlusB),ipplus[0]);
     if (ui->table->item(row,columnDSQLB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDSQLB),dsql[0]);
     if (ui->table->item(row,columnToneB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnToneB),tones[0]);
     if (ui->table->item(row,columnTSQLB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnTSQLB),tones[0]);
@@ -327,6 +382,10 @@ void memories::on_table_cellChanged(int row, int col)
         currentMemory.split = split.indexOf(ui->table->item(row,columnSplit)->text().toUpper());
     }
 
+    if (!ui->table->isColumnHidden(columnSkip) && ui->table->item(row,columnSkip) != NULL) {
+        currentMemory.skip = skip.indexOf(ui->table->item(row,columnSkip)->text().toUpper());
+    }
+
     if (!ui->table->isColumnHidden(columnScan) && ui->table->item(row,columnScan) != NULL) {
         currentMemory.scan = scan.indexOf(ui->table->item(row,columnScan)->text().toUpper());
     }
@@ -381,6 +440,54 @@ void memories::on_table_cellChanged(int row, int col)
 
     if (!ui->table->isColumnHidden(columnToneModeB) && ui->table->item(row,columnToneModeB) != NULL) {
         currentMemory.tonemodeB = toneModes.indexOf(ui->table->item(row,columnToneModeB)->text().toUpper());
+    }
+
+    if (!ui->table->isColumnHidden(columnTuningStep) && ui->table->item(row,columnTuningStep) != NULL) {
+        currentMemory.tuningStep = tuningSteps.indexOf(ui->table->item(row,columnTuningStep)->text().toUpper());
+    }
+
+    if (!ui->table->isColumnHidden(columnTuningStepB) && ui->table->item(row,columnTuningStepB) != NULL) {
+        currentMemory.tuningStepB = tuningSteps.indexOf(ui->table->item(row,columnTuningStepB)->text().toUpper());
+    }
+
+    if (!ui->table->isColumnHidden(columnCustomTuningStep) && ui->table->item(row,columnCustomTuningStep) != NULL) {
+        currentMemory.progTs =(ui->table->item(row,columnCustomTuningStep) == NULL) ? 0 : int(ui->table->item(row,columnCustomTuningStep)->text().toUInt());
+    }
+
+    if (!ui->table->isColumnHidden(columnCustomTuningStepB) && ui->table->item(row,columnCustomTuningStepB) != NULL) {
+        currentMemory.progTsB =(ui->table->item(row,columnCustomTuningStepB) == NULL) ? 0 : int(ui->table->item(row,columnCustomTuningStepB)->text().toUInt());
+    }
+
+    if (!ui->table->isColumnHidden(columnAttenuator) && ui->table->item(row,columnAttenuator) != NULL) {
+        currentMemory.atten = (ui->table->item(row,columnAttenuator) == NULL) ? 0 : int(ui->table->item(row,columnAttenuator)->text().toUInt());
+    }
+
+    if (!ui->table->isColumnHidden(columnAttenuatorB) && ui->table->item(row,columnAttenuatorB) != NULL) {
+        currentMemory.attenB = (ui->table->item(row,columnAttenuatorB) == NULL) ? 0 : int(ui->table->item(row,columnAttenuatorB)->text().toUInt());
+    }
+
+    if (!ui->table->isColumnHidden(columnPreamplifier) && ui->table->item(row,columnPreamplifier) != NULL) {
+        currentMemory.preamp = preamps.indexOf(ui->table->item(row,columnPreamplifier)->text().toUpper());
+    }
+
+    if (!ui->table->isColumnHidden(columnPreamplifierB) && ui->table->item(row,columnPreamplifierB) != NULL) {
+        currentMemory.preampB = preamps.indexOf(ui->table->item(row,columnPreamplifierB)->text().toUpper());
+    }
+
+    if (!ui->table->isColumnHidden(columnAntenna) && ui->table->item(row,columnAntenna) != NULL) {
+        currentMemory.antenna = antennas.indexOf(ui->table->item(row,columnAntenna)->text().toUpper());
+    }
+
+    if (!ui->table->isColumnHidden(columnAntennaB) && ui->table->item(row,columnAntennaB) != NULL) {
+        currentMemory.antennaB = antennas.indexOf(ui->table->item(row,columnAntennaB)->text().toUpper());
+    }
+
+    if (!ui->table->isColumnHidden(columnIPPlus) && ui->table->item(row,columnIPPlus) != NULL) {
+        currentMemory.ipplus = ipplus.indexOf(ui->table->item(row,columnIPPlus)->text().toUpper());
+    }
+
+    if (!ui->table->isColumnHidden(columnIPPlusB) && ui->table->item(row,columnIPPlusB) != NULL) {
+        currentMemory.ipplusB = ipplus.indexOf(ui->table->item(row,columnIPPlusB)->text().toUpper());
     }
 
     if (!ui->table->isColumnHidden(columnDSQL) && ui->table->item(row,columnDSQL) != NULL) {
@@ -439,7 +546,7 @@ void memories::on_table_cellChanged(int row, int col)
             write=false;
     }
     if (write) {
-        queue->add(priorityImmediate,queueItem((currentMemory.sat?funcSatelliteMemory:funcMemoryContents),QVariant::fromValue<memoryType>(currentMemory)));
+        queue->add(priorityHighest,queueItem((currentMemory.sat?funcSatelliteMemory:funcMemoryContents),QVariant::fromValue<memoryType>(currentMemory)));
         qInfo() << "Sending memory, group:" << currentMemory.group << "channel" << currentMemory.channel;
         // Set number to not be editable once written. Not sure why but this crashes?
         //ui->table->item(row,columnNum)->setFlags(ui->table->item(row,columnNum)->flags() & (~Qt::ItemIsEditable));
@@ -463,7 +570,7 @@ void memories::on_group_currentIndexChanged(int index)
     else
         groupMemories=rigCaps->memories;
 
-    ui->loadingMemories->setVisible(true);
+    //ui->loadingMemories->setVisible(true);
     ui->table->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     ui->group->setEnabled(false);
@@ -512,6 +619,20 @@ void memories::on_group_currentIndexChanged(int index)
             ui->table->showColumn(columnNum);
             visibleColumns++;
             break;
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
+        case 'C':
+            if (skipList != Q_NULLPTR)
+                delete skipList;
+            skipList = new tableCombobox(createModel(skipModel, skip),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnSkip, skipList);
+            ui->table->showColumn(columnSkip);
+            visibleColumns++;
+            // Fallthrough to add Scanlist column as well.
+            scan.clear();
+            scan << "OFF" << "*1" << "*2" << "*3" << "*4" << "*5" << "*6" << "*7" << "*8" << "*9";
         case 'c':
             if (scanList != Q_NULLPTR)
                 delete scanList;
@@ -521,6 +642,9 @@ void memories::on_group_currentIndexChanged(int index)
             ui->table->showColumn(columnScan);
             visibleColumns++;
             break;
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
         case 'd':
             if (splitList != Q_NULLPTR)
                 delete splitList;
@@ -538,7 +662,14 @@ void memories::on_group_currentIndexChanged(int index)
             visibleColumns++;
             visibleColumns++;
             break;
-
+        case 'D': // Duplex only added for IC-R8600 (most rigs use j for duplex+tone)
+            if (duplexList != Q_NULLPTR)
+                delete duplexList;
+            duplexList = new tableCombobox(createModel(duplexModel, duplexModes),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDuplex, duplexList);
+            ui->table->showColumn(columnDuplex);
+            visibleColumns++;
+            break;
         case 'e':
             if (vfoList != Q_NULLPTR)
                 delete vfoList;
@@ -889,6 +1020,53 @@ void memories::on_group_currentIndexChanged(int index)
             ui->table->showColumn(columnR2B);
             visibleColumns++;
             break;
+        case 'w':
+            if (tuningStepsList != Q_NULLPTR)
+                delete tuningStepsList;
+            tuningStepsList = new tableCombobox(createModel(tuningStepsModel, tuningSteps),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnTuningStep, tuningStepsList);
+            ui->table->showColumn(columnTuningStep);
+            visibleColumns++;
+
+            if (tuningStepEditor != Q_NULLPTR)
+                delete tuningStepEditor;
+            tuningStepEditor = new tableEditor("0000",ui->table);
+            ui->table->setItemDelegateForColumn(columnCustomTuningStep, tuningStepEditor);
+            ui->table->showColumn(columnCustomTuningStep);
+            visibleColumns++;
+
+            break;
+        case 'x':
+            if (attenuatorsList != Q_NULLPTR)
+                delete attenuatorsList;
+            attenuatorsList = new tableCombobox(createModel(attenuatorsModel, attenuators),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnAttenuator, attenuatorsList);
+            ui->table->showColumn(columnAttenuator);
+            visibleColumns++;
+
+            if (preampsList != Q_NULLPTR)
+                delete preampsList;
+            preampsList = new tableCombobox(createModel(preampsModel, preamps),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnPreamplifier, preampsList);
+            ui->table->showColumn(columnPreamplifier);
+            visibleColumns++;
+            break;
+        case 'y':
+            if (antennasList != Q_NULLPTR)
+                delete antennasList;
+            antennasList = new tableCombobox(createModel(antennasModel, antennas),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnAntenna, antennasList);
+            ui->table->showColumn(columnAntenna);
+            visibleColumns++;
+            break;
+        case '+':
+            if (ipplusList != Q_NULLPTR)
+                delete ipplusList;
+            ipplusList = new tableCombobox(createModel(ipplusModel, ipplus),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnIPPlus, ipplusList);
+            ui->table->showColumn(columnIPPlus);
+            visibleColumns++;
+            break;
         case 'z':
             if (nameEditor != Q_NULLPTR)
                 delete nameEditor;
@@ -897,6 +1075,8 @@ void memories::on_group_currentIndexChanged(int index)
 
             ui->table->showColumn(columnName);
             visibleColumns++;
+            break;
+        case 'Z':
             break;
         default:
             break;
@@ -939,7 +1119,7 @@ void memories::on_group_currentIndexChanged(int index)
             queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(lastMemoryRequested)));
         }
     }
-    ui->loadingMemories->setText(QString("Loading Memory %0/%1 (this may take a while!)").arg(lastMemoryRequested&0xffff,3,10,QLatin1Char('0')).arg(rigCaps->memories,3,10,QLatin1Char('0')));
+    //ui->loadingMemories->setText(QString("Loading Memory %0/%1 (this may take a while!)").arg(lastMemoryRequested&0xffff,3,10,QLatin1Char('0')).arg(rigCaps->memories,3,10,QLatin1Char('0')));
 }
 
 void memories::on_vfoMode_clicked()
@@ -962,7 +1142,7 @@ void memories::on_memoryMode_clicked()
 
 void memories::receiveMemory(memoryType mem)
 {
-    ui->loadingMemories->setText(QString("Loading Memory %0/%1 (this may take a while!)").arg(lastMemoryRequested&0xffff,3,10,QLatin1Char('0')).arg(rigCaps->memories,3,10,QLatin1Char('0')));
+    //ui->loadingMemories->setText(QString("Loading Memory %0/%1 (this may take a while!)").arg(lastMemoryRequested&0xffff,3,10,QLatin1Char('0')).arg(rigCaps->memories,3,10,QLatin1Char('0')));
     progress->setValue(lastMemoryRequested & 0xffff);
     // First, do we need to request the next memory?
     if ((lastMemoryRequested & 0xffff) < groupMemories)
@@ -978,7 +1158,7 @@ void memories::receiveMemory(memoryType mem)
     {
         timeoutTimer.stop();
         ui->group->setEnabled(true);
-        ui->loadingMemories->setVisible(false);
+        //ui->loadingMemories->setVisible(false);
         if (!ui->disableEditing->isChecked())
         {
             ui->table->setEditTriggers(QAbstractItemView::DoubleClicked);
@@ -1026,6 +1206,8 @@ void memories::receiveMemory(memoryType mem)
 
         validData += updateCombo(split,row,columnSplit,mem.split);
 
+        validData += updateCombo(skip,row,columnSkip,mem.skip);
+
         validData += updateCombo(scan,row,columnScan,mem.scan);
 
 
@@ -1045,43 +1227,54 @@ void memories::receiveMemory(memoryType mem)
         }
 
         validData += updateCombo(dataModes,row,columnData,mem.datamode);
-
         validData += updateCombo(dataModes,row,columnDataB,mem.datamodeB);
 
         validData += updateCombo(toneModes,row,columnToneMode,mem.tonemode);
-
         validData += updateCombo(toneModes,row,columnToneModeB,mem.tonemodeB);
 
         validData += updateCombo(filters,row,columnFilter,mem.filter-1);
-
         validData += updateCombo(filters,row,columnFilterB,mem.filterB-1);
 
         validData += updateCombo(duplexModes,row,columnDuplex,mem.duplex);
-
         validData += updateCombo(duplexModes,row,columnDuplexB,mem.duplexB);
 
         validData += updateCombo(dsql,row,columnDSQL,mem.dsql);
-
         validData += updateCombo(dsql,row,columnDSQLB,mem.dsqlB);
 
         validData += updateCombo(tones,row,columnTone,QString::number((float)mem.tone/10,'f',1));
-
         validData += updateCombo(tones,row,columnToneB,QString::number((float)mem.toneB/10,'f',1));
 
-        validData += updateCombo(tones,row,columnTSQL,QString::number((float)mem.tsql/10,'f',1));
+        validData += updateCombo(tuningSteps,row,columnTuningStep,mem.tuningStep);
+        validData += updateCombo(tuningSteps,row,columnTuningStepB,mem.tuningStepB);
 
+        ui->table->model()->setData(ui->table->model()->index(row,columnCustomTuningStep),QString::number(mem.progTs));
+        validData++;
+
+        ui->table->model()->setData(ui->table->model()->index(row,columnCustomTuningStepB),QString::number(mem.progTsB));
+        validData++;
+
+        validData += updateCombo(attenuators,row,columnAttenuator,mem.atten);
+        validData += updateCombo(attenuators,row,columnAttenuatorB,mem.attenB);
+
+        validData += updateCombo(attenuators,row,columnPreamplifier,mem.preamp);
+        validData += updateCombo(attenuators,row,columnPreamplifierB,mem.preampB);
+
+        validData += updateCombo(antennas,row,columnAntenna,mem.antenna);
+        validData += updateCombo(antennas,row,columnAntennaB,mem.antennaB);
+
+        validData += updateCombo(ipplus,row,columnIPPlus,mem.ipplus);
+        validData += updateCombo(ipplus,row,columnIPPlusB,mem.ipplusB);
+
+        validData += updateCombo(tones,row,columnTSQL,QString::number((float)mem.tsql/10,'f',1));
         validData += updateCombo(tones,row,columnTSQLB,QString::number((float)mem.tsqlB/10,'f',1));
 
         validData += updateCombo(dvsql,row,columnDVSquelch,QString::number(mem.dvsql).rightJustified(2,'0'));
-
         validData += updateCombo(dvsql,row,columnDVSquelchB,QString::number(mem.dvsqlB).rightJustified(2,'0'));
 
         validData += updateCombo(dtcsp,row,columnDTCSPolarity,mem.dtcsp);
-
         validData += updateCombo(dtcsp,row,columnDTCSPolarityB,mem.dtcspB);
 
         validData += updateCombo(dtcs,row,columnDTCS,QString::number(mem.dtcs).rightJustified(3,'0'));
-
         validData += updateCombo(dtcs,row,columnDTCSB,QString::number(mem.dtcsB).rightJustified(3,'0'));
 
         ui->table->model()->setData(ui->table->model()->index(row,columnOffset),QString::number(double(mem.duplexOffset.Hz/10000.0),'f',3));
@@ -1160,7 +1353,7 @@ void memories::receiveMemory(memoryType mem)
     else if (row != -1)
     {
         // Check if we already have this memory as it might have failed to write?
-        ui->loadingMemories->setStyleSheet("QLabel {color: #ff0000}");
+        //ui->loadingMemories->setStyleSheet("QLabel {color: #ff0000}");
         ui->table->item(row,columnNum)->setBackground(Qt::red);
     }
 
@@ -1222,7 +1415,7 @@ void memories::timeout()
         timeoutCount++;
     } else {
         timeoutCount=0;
-        ui->loadingMemories->setVisible(false);
+        //ui->loadingMemories->setVisible(false);
         timeoutTimer.stop();
         ui->group->setEnabled(true);
         if (!ui->disableEditing->isChecked())
@@ -1258,6 +1451,8 @@ void memories::on_csvImport_clicked()
 
     if (!file.isEmpty())
     {
+        ui->table->blockSignals(true);
+
         ui->table->sortByColumn(0,Qt::AscendingOrder); // Force natural order
 
         QFile data(file);
@@ -1305,7 +1500,6 @@ void memories::on_csvImport_clicked()
 
             int colnum=1;
 
-            ui->table->blockSignals(true);
             for (int i=0; i<row.size();i++)
             {
                 while (colnum < ui->table->columnCount() && ui->table->isColumnHidden(colnum)) {
@@ -1353,14 +1547,18 @@ void memories::on_csvImport_clicked()
                         break;
                     }
 
-                    if (colnum == lastcol)
-                        ui->table->blockSignals(false);
-
                     ui->table->model()->setData(ui->table->model()->index(rownum,colnum),data);
+
+                    if (colnum == lastcol) {
+                        on_table_cellChanged(rownum,colnum); // store this row.
+                    }
                     colnum++;
                 }
             }
         }
+
+        ui->table->blockSignals(false);
+
     }
 }
 
@@ -1477,4 +1675,15 @@ void memories::on_disableEditing_toggled(bool dis)
         ui->table->editing(true);
         ui->table->setEditTriggers(QAbstractItemView::DoubleClicked);
     }
+}
+
+void memories::on_scanButton_toggled(bool scan)
+{
+    if (scan) {
+        ui->scanButton->setText("Stop Scan");
+
+    } else {
+        ui->scanButton->setText("Start Scan");
+    }
+    queue->add(priorityImmediate,queueItem(funcScanning,QVariant::fromValue<uchar>(uchar(scan))));
 }
