@@ -2338,6 +2338,7 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
 #pragma GCC diagnostic pop
 #endif
 
+
                     break;
                 }
             }

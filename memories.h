@@ -285,6 +285,8 @@ private:
         funcMainFreq,funcSubFreq,funcMainMode,funcSubMode,funcSelectedFreq,funcSelectedMode,funcPBTInner,funcPBTOuter,
         funcAttenuator, funcPreamp, funcAntenna, funcIPPlus, funcFilterWidth
     };
+
+    void enableCell(int col, int row, bool en);
 };
 
 #endif // MEMORIES_H

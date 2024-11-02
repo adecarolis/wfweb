@@ -174,6 +174,14 @@ columnToneB,columnTSQLB,columnDTCSB,columnDTCSPolarityB,columnDVSquelchB,columnO
 
 }
 
+void memories::enableCell(int row, int col, bool en) {
+    if (!ui->table->isColumnHidden(col) && ui->table->item(row,col) != NULL) {
+        if (en)
+            ui->table->item(row,col)->setFlags(ui->table->item(row,col)->flags() | Qt::ItemIsEnabled);
+        else
+            ui->table->item(row,col)->setFlags(ui->table->item(row,col)->flags() & ~Qt::ItemIsEnabled);
+    }
+}
 
 void memories::populate()
 {
@@ -333,108 +341,6 @@ void memories::on_table_cellChanged(int row, int col)
     if (currentMemory.group == MEMORY_SATGROUP) {
         currentMemory.sat=true;
     }
-
-    // This may update any dependant columns so signals must be blocked.
-    ui->table->blockSignals(true);
-    switch (col)
-    {
-    case columnVFO:
-    case columnVFOB:
-        if (!ui->table->isColumnHidden(columnVFOB) && ui->table->item(row,columnVFOB) == NULL)
-            ui->table->model()->setData(ui->table->model()->index(row,columnVFOB),ui->table->item(row,columnVFO)->text());
-        else if (!ui->table->isColumnHidden(columnVFO) && ui->table->item(row,columnVFO) == NULL)
-            ui->table->model()->setData(ui->table->model()->index(row,columnVFO),ui->table->item(row,columnVFOB)->text());
-        break;
-    case columnFrequency:
-    case columnFrequencyB:
-        if (!ui->table->isColumnHidden(columnFrequencyB) && ui->table->item(row,columnFrequencyB) == NULL)
-            ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),ui->table->item(row,columnFrequency)->text());
-        else if (!ui->table->isColumnHidden(columnFrequency) && ui->table->item(row,columnFrequency) == NULL)
-            ui->table->model()->setData(ui->table->model()->index(row,columnFrequency),ui->table->item(row,columnFrequencyB)->text());
-        break;
-    case columnMode:
-    case columnModeB:
-    {
-        if (!ui->table->isColumnHidden(columnModeB) && ui->table->item(row,columnModeB) == NULL)
-            ui->table->model()->setData(ui->table->model()->index(row,columnModeB),ui->table->item(row,columnMode)->text());
-        else if (!ui->table->isColumnHidden(columnMode) && ui->table->item(row,columnMode) == NULL)
-            ui->table->model()->setData(ui->table->model()->index(row,columnMode),ui->table->item(row,columnModeB)->text());
-
-        for (auto &m: rigCaps->modes){
-            if (!ui->table->isColumnHidden(columnMode) && ui->table->item(row,columnMode) != NULL && ui->table->item(row,columnMode)->text()==m.name) {
-                // This mode is the one we are interested in!
-
-#if defined __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#endif
-
-                switch (m.mk)
-                {
-                case modeFM:
-                    ui->table->item(row,columnToneMode)->setFlags(ui->table->item(row,columnToneMode)->flags() | Qt::ItemIsEnabled);
-                    ui->table->item(row,columnTSQL)->setFlags(ui->table->item(row,columnTSQL)->flags() | Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDTCS)->setFlags(ui->table->item(row,columnDTCS)->flags() | Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDTCSPolarity)->setFlags(ui->table->item(row,columnDTCSPolarity)->flags() | Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDVSquelch)->setFlags(ui->table->item(row,columnDVSquelch)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDSQL)->setFlags(ui->table->item(row,columnDSQL)->flags() & ~Qt::ItemIsEnabled);
-                    break;
-                case modeDV:
-                    ui->table->item(row,columnDVSquelch)->setFlags(ui->table->item(row,columnDVSquelch)->flags() | Qt::ItemIsEnabled);
-                case modeP25:
-                case modedPMR:
-                case modeNXDN_N:
-                case modeNXDN_VN:
-                case modeDCR:
-                    ui->table->item(row,columnDSQL)->setFlags(ui->table->item(row,columnDSQL)->flags() | Qt::ItemIsEnabled);
-                    ui->table->item(row,columnToneMode)->setFlags(ui->table->item(row,columnToneMode)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnTSQL)->setFlags(ui->table->item(row,columnTSQL)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDTCS)->setFlags(ui->table->item(row,columnDTCS)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDTCSPolarity)->setFlags(ui->table->item(row,columnDTCSPolarity)->flags() & ~Qt::ItemIsEnabled);
-                    break;
-                default:
-                    ui->table->item(row,columnToneMode)->setFlags(ui->table->item(row,columnToneMode)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnTSQL)->setFlags(ui->table->item(row,columnTSQL)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDTCS)->setFlags(ui->table->item(row,columnDTCS)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDTCSPolarity)->setFlags(ui->table->item(row,columnDTCSPolarity)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDVSquelch)->setFlags(ui->table->item(row,columnDVSquelch)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDSQL)->setFlags(ui->table->item(row,columnDSQL)->flags() & ~Qt::ItemIsEnabled);
-                    break;
-                }
-
-#if defined __GNUC__
-#pragma GCC diagnostic pop
-#endif
-
-                break;
-            }
-        }
-        break;
-    }
-    case columnDuplex:
-        ui->table->model()->setData(ui->table->model()->index(row,columnDuplexB),ui->table->item(row,columnDuplex)->text());
-        break;
-    case columnDuplexB:
-        ui->table->model()->setData(ui->table->model()->index(row,columnDuplex),ui->table->item(row,columnDuplexB)->text());
-        break;
-    case columnOffset:
-        ui->table->model()->setData(ui->table->model()->index(row,columnOffsetB),ui->table->item(row,columnOffset)->text());
-        break;
-    case columnOffsetB:
-        ui->table->model()->setData(ui->table->model()->index(row,columnOffset),ui->table->item(row,columnOffsetB)->text());
-        break;
-    case columnTuningStep:
-        if (ui->table->item(row,columnTuningStep) != NULL && ui->table->item(row,columnTuningStep)->text() == "Prog")
-            ui->table->item(row,columnCustomTuningStep)->setFlags(ui->table->item(row,columnCustomTuningStep)->flags() | Qt::ItemIsEnabled);
-         else
-            ui->table->item(row,columnCustomTuningStep)->setFlags(ui->table->item(row,columnCustomTuningStep)->flags() & ~Qt::ItemIsEnabled);
-
-        break;
-    default:
-        break;
-    }
-
-    ui->table->blockSignals(false);
 
     // The table shouldn't be updated below, simply queried for data.
 
@@ -601,6 +507,122 @@ void memories::on_table_cellChanged(int row, int col)
     memcpy(currentMemory.R2B,((ui->table->item(row,columnR2B) == NULL) ? "" : ui->table->item(row,columnR2B)->text()).toStdString().c_str(),8);
 
     memcpy(currentMemory.name,((ui->table->item(row,columnName) == NULL) ? "" : ui->table->item(row,columnName)->text()).toStdString().c_str(),16);
+
+
+
+    // This may update any dependant columns so signals must be blocked.
+    ui->table->blockSignals(true);
+    switch (col)
+    {
+    case columnVFO:
+    case columnVFOB:
+        if (!ui->table->isColumnHidden(columnVFOB) && ui->table->item(row,columnVFOB) == NULL)
+            ui->table->model()->setData(ui->table->model()->index(row,columnVFOB),ui->table->item(row,columnVFO)->text());
+        else if (!ui->table->isColumnHidden(columnVFO) && ui->table->item(row,columnVFO) == NULL)
+            ui->table->model()->setData(ui->table->model()->index(row,columnVFO),ui->table->item(row,columnVFOB)->text());
+        break;
+    case columnFrequency:
+    case columnFrequencyB:
+        if (!ui->table->isColumnHidden(columnFrequencyB) && ui->table->item(row,columnFrequencyB) == NULL)
+            ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),ui->table->item(row,columnFrequency)->text());
+        else if (!ui->table->isColumnHidden(columnFrequency) && ui->table->item(row,columnFrequency) == NULL)
+            ui->table->model()->setData(ui->table->model()->index(row,columnFrequency),ui->table->item(row,columnFrequencyB)->text());
+        break;
+    case columnMode:
+    case columnModeB:
+    {
+        if (!ui->table->isColumnHidden(columnModeB) && ui->table->item(row,columnModeB) == NULL)
+            ui->table->model()->setData(ui->table->model()->index(row,columnModeB),ui->table->item(row,columnMode)->text());
+        else if (!ui->table->isColumnHidden(columnMode) && ui->table->item(row,columnMode) == NULL)
+            ui->table->model()->setData(ui->table->model()->index(row,columnMode),ui->table->item(row,columnModeB)->text());
+
+        for (auto &m: rigCaps->modes){
+            if (!ui->table->isColumnHidden(columnMode) && ui->table->item(row,columnMode) != NULL && ui->table->item(row,columnMode)->text()==m.name) {
+                // This mode is the one we are interested in!
+
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
+
+                switch (m.mk)
+                {
+                case modeFM:
+                    enableCell(row,columnToneMode,true);
+                    enableCell(row,columnTSQL,true);
+                    enableCell(row,columnDTCS,true);
+                    enableCell(row,columnDTCSPolarity,true);
+                    enableCell(row,columnDVSquelch,false);
+                    enableCell(row,columnDSQL,false);
+                    enableCell(row,columnR1,false);
+                    enableCell(row,columnR2,false);
+                    enableCell(row,columnUR,false);
+                    break;
+                case modeDV:
+                    enableCell(row,columnDVSquelch,true);
+                    enableCell(row,columnR1,true);
+                    enableCell(row,columnR2,true);
+                    enableCell(row,columnUR,true);
+                case modeP25:
+                case modedPMR:
+                case modeNXDN_N:
+                case modeNXDN_VN:
+                case modeDCR:
+                    enableCell(row,columnDSQL,true);
+                    enableCell(row,columnToneMode,false);
+                    enableCell(row,columnTSQL,false);
+                    enableCell(row,columnDTCS,false);
+                    enableCell(row,columnDTCSPolarity,false);
+                    enableCell(row,columnR1,false);
+                    enableCell(row,columnR2,false);
+                    enableCell(row,columnUR,false);
+                    break;
+                default:
+                    enableCell(row,columnToneMode,false);
+                    enableCell(row,columnTSQL,false);
+                    enableCell(row,columnDTCS,false);
+                    enableCell(row,columnDTCSPolarity,false);
+                    enableCell(row,columnDVSquelch,false);
+                    enableCell(row,columnDSQL,false);
+                    enableCell(row,columnR1,false);
+                    enableCell(row,columnR2,false);
+                    enableCell(row,columnUR,false);
+                    break;
+                }
+
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
+                break;
+            }
+        }
+        break;
+    }
+    case columnDuplex:
+        ui->table->model()->setData(ui->table->model()->index(row,columnDuplexB),ui->table->item(row,columnDuplex)->text());
+        break;
+    case columnDuplexB:
+        ui->table->model()->setData(ui->table->model()->index(row,columnDuplex),ui->table->item(row,columnDuplexB)->text());
+        break;
+    case columnOffset:
+        ui->table->model()->setData(ui->table->model()->index(row,columnOffsetB),ui->table->item(row,columnOffset)->text());
+        break;
+    case columnOffsetB:
+        ui->table->model()->setData(ui->table->model()->index(row,columnOffset),ui->table->item(row,columnOffsetB)->text());
+        break;
+    case columnTuningStep:
+        if (ui->table->item(row,columnTuningStep) != NULL && ui->table->item(row,columnTuningStep)->text() == "Prog")
+            enableCell(row,columnCustomTuningStep,true);
+        else
+            enableCell(row,columnCustomTuningStep,false);
+
+        break;
+    default:
+        break;
+    }
+    ui->table->blockSignals(false);
+
 
     // Only write the memory if ALL values are non-null
     bool write=true;
@@ -1369,56 +1391,6 @@ void memories::receiveMemory(memoryType mem)
         validData += updateCombo(dtcsp,row,columnDTCSPolarity,mem.dtcsp);
         validData += updateCombo(dtcsp,row,columnDTCSPolarityB,mem.dtcspB);
 
-        for (uint i=0;i<rigCaps->modes.size();i++)
-        {
-            if (mem.mode == rigCaps->modes[i].reg)
-            {
-                validData += updateCombo(modes,row,columnMode,i);
-                // This mode is the one we are interested in!
-#if defined __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#endif
-
-                switch (rigCaps->modes[i].mk)
-                {
-                case modeFM:
-                    ui->table->item(row,columnDVSquelch)->setFlags(ui->table->item(row,columnDVSquelch)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDSQL)->setFlags(ui->table->item(row,columnDSQL)->flags() & ~Qt::ItemIsEnabled);
-                    break;
-                case modeP25:
-                case modedPMR:
-                case modeNXDN_N:
-                case modeNXDN_VN:
-                case modeDCR:
-                    ui->table->item(row,columnDVSquelch)->setFlags(ui->table->item(row,columnDVSquelch)->flags() & ~Qt::ItemIsEnabled);
-                case modeDV:
-                    ui->table->item(row,columnToneMode)->setFlags(ui->table->item(row,columnToneMode)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnTSQL)->setFlags(ui->table->item(row,columnTSQL)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDTCS)->setFlags(ui->table->item(row,columnDTCS)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDTCSPolarity)->setFlags(ui->table->item(row,columnDTCSPolarity)->flags() & ~Qt::ItemIsEnabled);
-                    break;
-                default:
-                    ui->table->item(row,columnToneMode)->setFlags(ui->table->item(row,columnToneMode)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnTSQL)->setFlags(ui->table->item(row,columnTSQL)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDTCS)->setFlags(ui->table->item(row,columnDTCS)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDTCSPolarity)->setFlags(ui->table->item(row,columnDTCSPolarity)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDVSquelch)->setFlags(ui->table->item(row,columnDVSquelch)->flags() & ~Qt::ItemIsEnabled);
-                    ui->table->item(row,columnDSQL)->setFlags(ui->table->item(row,columnDSQL)->flags() & ~Qt::ItemIsEnabled);
-                    break;
-                }
-            }
-
-#if defined __GNUC__
-#pragma GCC diagnostic pop
-#endif
-
-            if (mem.modeB == rigCaps->modes[i].reg)
-            {
-                validData += updateCombo(modes,row,columnModeB,i);
-            }
-        }
-
         validData += updateCombo(dataModes,row,columnData,mem.datamode);
         validData += updateCombo(dataModes,row,columnDataB,mem.datamodeB);
 
@@ -1507,6 +1479,68 @@ void memories::receiveMemory(memoryType mem)
             validData++;
         } else {
             qInfo() << "Invalid data in name";
+        }
+
+
+        // Do this after all other fields to ensure they have been populated.
+        for (uint i=0;i<rigCaps->modes.size();i++)
+        {
+            if (mem.mode == rigCaps->modes[i].reg)
+            {
+                validData += updateCombo(modes,row,columnMode,i);
+                // This mode is the one we are interested in!
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
+
+                switch (rigCaps->modes[i].mk)
+                {
+                case modeFM:
+                    enableCell(row,columnDVSquelch,false);
+                    enableCell(row,columnDSQL,false);
+                    enableCell(row,columnR1,false);
+                    enableCell(row,columnR2,false);
+                    enableCell(row,columnUR,false);
+                    break;
+                case modeP25:
+                case modedPMR:
+                case modeNXDN_N:
+                case modeNXDN_VN:
+                case modeDCR:
+                    enableCell(row,columnDVSquelch,false);
+                    enableCell(row,columnR1,false);
+                    enableCell(row,columnR2,false);
+                    enableCell(row,columnUR,false);
+                    break;
+                case modeDV:
+                    enableCell(row,columnToneMode,false);
+                    enableCell(row,columnTSQL,false);
+                    enableCell(row,columnDTCS,false);
+                    enableCell(row,columnDTCSPolarity,false);
+                    break;
+                default:
+                    enableCell(row,columnToneMode,false);
+                    enableCell(row,columnTSQL,false);
+                    enableCell(row,columnDTCS,false);
+                    enableCell(row,columnDTCSPolarity,false);
+                    enableCell(row,columnDVSquelch,false);
+                    enableCell(row,columnDSQL,false);
+                    enableCell(row,columnR1,false);
+                    enableCell(row,columnR2,false);
+                    enableCell(row,columnUR,false);
+                    break;
+                }
+            }
+
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
+            if (mem.modeB == rigCaps->modes[i].reg)
+            {
+                validData += updateCombo(modes,row,columnModeB,i);
+            }
         }
 
         ui->table->blockSignals(false);
