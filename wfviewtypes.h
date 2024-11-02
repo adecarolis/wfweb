@@ -362,8 +362,8 @@ struct memoryType {
     quint16 tsqlB=670;
     quint8 dsql=0;
     quint8 dsqlB=0;
-    quint16 dtcs=0;
-    quint16 dtcsB=0;
+    quint16 dtcs=23;
+    quint16 dtcsB=23;
     quint8 dtcsp=0;
     quint8 dtcspB=0;
     quint8 dvsql=0;
@@ -388,6 +388,21 @@ struct memoryType {
     quint8 antennaB=0;
     bool ipplus=false;
     bool ipplusB=false;
+    bool p25Sql=false;
+    quint16 p25Nac=0x293; // The default NAC?
+    quint8 dPmrSql=0;
+    quint16 dPmrComid=0;
+    quint8 dPmrCc;
+    bool dPmrScrambler=false;
+    quint16 dPmrKey=0;
+    bool nxdnSql=false;
+    quint8 nxdnRan=0;
+    bool nxdnEnc=false;
+    quint16 nxdnKey=0;
+    bool dcrSql=false;
+    quint16 dcrUc=0;
+    bool dcrEnc=0;
+    quint16 dcrKey=0;
     char name[24]; // 1 more than the absolute max
     bool sat=false;
     bool del=false;

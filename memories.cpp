@@ -511,7 +511,11 @@ void memories::on_table_cellChanged(int row, int col)
 
 
     // This may update any dependant columns so signals must be blocked.
-    ui->table->blockSignals(true);
+    bool block=false;
+    if (!ui->table->signalsBlocked()) {
+        block=true;
+        ui->table->blockSignals(true);
+    }
     switch (col)
     {
     case columnVFO:
@@ -621,7 +625,9 @@ void memories::on_table_cellChanged(int row, int col)
     default:
         break;
     }
-    ui->table->blockSignals(false);
+
+    if (block)
+        ui->table->blockSignals(false);
 
 
     // Only write the memory if ALL values are non-null
@@ -1684,8 +1690,9 @@ void memories::on_csvImport_clicked()
         QTextStream input(&data);
         QStringList row;
         int rows=0;
+        progress->setRange(rigCaps->memStart,rigCaps->memories);
         while (readCSVRow(input, &row)) {
-            qInfo() << row;
+            progress->setValue(rows);
             if (!rows++)
                 continue; // Skip the first row
 
@@ -1776,7 +1783,7 @@ void memories::on_csvImport_clicked()
         }
 
         ui->table->blockSignals(false);
-
+        progress->setValue(rigCaps->memories);
     }
 }
 

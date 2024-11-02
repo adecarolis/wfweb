@@ -2317,21 +2317,35 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
                         mem->tsql = bcdHexToUInt(data[2],data[3]); // First byte is not used
                         mem->dtcsp = quint8(data[4] & 0x0f);
                         mem->dtcs = bcdHexToUInt(data[5],data[6]);
-                        mem->dsql = 0;
                         break;
                     case modeDV:
                         mem->dvsql = bcdHexToUChar(data[1]);
+                        mem->dsql = (quint8(data[0] >> 4 & 0x0f));
+                        break;
                     case modeP25:
+                        mem->p25Sql = bool(data[0]&0x01);
+                        mem->p25Nac = quint16(quint16(bcdHexToUChar(data[0])*100)+(bcdHexToUChar(data[1])*10)+(bcdHexToUChar(data[2])));
+                        break;
                     case modedPMR:
+                        mem->dPmrSql = bcdHexToUChar(data[0]);
+                        mem->dPmrComid = bcdHexToUInt(data[1],data[2]);
+                        mem->dPmrCc = bcdHexToUChar(data[3]);
+                        //mem->dPmrKey = ?? (3 bytes)
+                        break;
                     case modeNXDN_N:
                     case modeNXDN_VN:
+                        mem->nxdnSql = bool(data[0]&0x01);
+                        mem->nxdnRan = bcdHexToUChar(data[1]);
+                        mem->nxdnEnc = bool(data[2]&0x01);
+                        //mem->nxdnKey = ?? (3 bytes)
+                        break;
                     case modeDCR:
-                        mem->dsql = (quint8(data[0] >> 4 & 0x0f));
+                        mem->dcrSql = bool(data[0]&0x01);
+                        mem->dcrUc = bcdHexToUInt(data[1],data[2]);
+                        mem->dcrEnc = bool(data[3]&0x01);
+                        //mem->dcrKey = ?? (3 bytes)
+                        break;
                     default:
-                        mem->tonemode = 0;
-                        mem->tsql = 770;
-                        mem->dtcsp = 0;
-                        mem->dtcs = 23;
                         break;
                     }
 #if defined __GNUC__
@@ -2829,7 +2843,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         payload.append(QByteArray(mem.name).leftJustified(parse.len,' ',true));
                         break;
                     case 'Z': // Special mode dependant features (I have no idea how to make these work!)
-                        qInfo() << "Looking for mode:" << mem.mode;
+                        //qInfo() << "Looking for mode:" << mem.mode;
                         for (const auto &m: rigCaps.modes)
                         {
                             if (m.reg == mem.mode)

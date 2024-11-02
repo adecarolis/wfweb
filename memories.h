@@ -282,7 +282,7 @@ private:
 
     QList<commandList> activeCommands;
     QList<funcs> disabledCommands{
-        funcMainFreq,funcSubFreq,funcMainMode,funcSubMode,funcSelectedFreq,funcSelectedMode,funcPBTInner,funcPBTOuter,
+        funcMainFreq,funcSubFreq,funcMainMode,funcSubMode,funcPBTInner,funcPBTOuter,
         funcAttenuator, funcPreamp, funcAntenna, funcIPPlus, funcFilterWidth
     };
 
