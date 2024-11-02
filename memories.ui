@@ -108,16 +108,9 @@
         </spacer>
        </item>
        <item>
-        <widget class="QPushButton" name="memoryMode">
+        <widget class="QPushButton" name="modeButton">
          <property name="text">
-          <string>Memory Mode</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="vfoMode">
-         <property name="text">
-          <string>VFO Mode</string>
+          <string>Select Memory Mode</string>
          </property>
         </widget>
        </item>

@@ -184,14 +184,14 @@ struct timekind {
 
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 248
+#define NUMFUNCS 249
 
 enum funcs { funcNone,
 funcFreqTR,             funcModeTR,             funcBandEdgeFreq,           funcFreqGet,        	funcModeGet,        	funcFreqSet,			// \x00
 funcModeSet,            funcVFOSwapAB,          funcVFOSwapMS,              funcVFOEqualAB,     	funcVFOEqualMS,     	funcVFODualWatchOff,	// \x06
 funcVFODualWatchOn,     funcVFODualWatch,       funcVFOMainSelect,          funcVFOSubSelect,   	funcVFOASelect,     	funcVFOBSelect,			// \x07
 funcVFOBandMS,          funcMemoryMode,         funcMemoryWrite,            funcMemoryToVFO,    	funcMemoryClear,    	funcReadFreqOffset,
-funcSendFreqOffset,		funcScanning,			funcSplitStatus,      		funcTuningStep,         funcAttenuator,
+funcSendFreqOffset,		funcScanning,		    funcVFOModeSelect,          funcSplitStatus,        funcTuningStep,         funcAttenuator,
 funcAntenna,        	funcSpeech,        		funcAfGain,                 funcRfGain,             funcSquelch,            funcAPFLevel,
 funcNRLevel,       		funcIFShift,            funcPBTInner,               funcPBTOuter,			funcCwPitch,            funcRFPower,
 funcMicGain,            funcKeySpeed,			funcNotchFilter,            funcCompressorLevel,	funcBreakInDelay,		funcNBLevel,
@@ -239,7 +239,7 @@ static QString funcString[] { "None",
 "Mode Set",             "VFO Swap A/B",         "VFO Swap M/S",             "VFO Equal AB",         "VFO Equal MS",         "VFO Dual Watch Off",
 "VFO Dual Watch On",	"VFO Dual Watch",       "VFO Main Select",          "VFO Sub Select",       "VFO A Select",         "VFO B Select",
 "VFO Main/Sub Band",    "Memory Mode",          "Memory Write",             "Memory to VFO",        "Memory Clear",         "Read Freq Offset",
-"Send Freq Offset",		"Scanning",				"Split/Duplex",             "Tuning Step",          "Attenuator Status",
+"Send Freq Offset",		"Scanning",				"VFO Mode Select",          "Split/Duplex",             "Tuning Step",          "Attenuator Status",
 "Antenna",          	"Speech",           	"AF Gain",                  "RF Gain",              "Squelch",              "APF Level",
 "NR Level",  			"IF Shift",             "PBT Inner",                "PBT Outer",            "CW Pitch",             "RF Power",
 "Mic Gain",             "Key Speed",			"Notch Filter",             "Compressor Level",     "Break-In Delay",       "NB Level",
@@ -340,6 +340,7 @@ struct memoryType {
     quint16 group=0;
     quint16 channel=0;
     quint8 split=0;
+    quint8 skip=0;
     quint8 scan=0;
     quint8 vfo=0;
     quint8 vfoB=0;
@@ -375,6 +376,18 @@ struct memoryType {
     char R2[9];
     char R1B[9];
     char R2B[9];
+    uchar tuningStep=0;
+    uchar tuningStepB=0;
+    quint16 progTs=0;
+    quint16 progTsB=0;
+    quint8 atten=0;
+    quint8 attenB=0;
+    quint8 preamp=0;
+    quint8 preampB=0;
+    quint8 antenna=0;
+    quint8 antennaB=0;
+    bool ipplus=false;
+    bool ipplusB=false;
     char name[24]; // 1 more than the absolute max
     bool sat=false;
     bool del=false;

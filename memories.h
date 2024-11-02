@@ -39,8 +39,7 @@ public:
 private slots:
     void on_table_cellChanged(int row, int col);
     void on_group_currentIndexChanged(int index);
-    void on_vfoMode_clicked();
-    void on_memoryMode_clicked();
+    void on_modeButton_clicked(bool on);
     void on_csvImport_clicked();
     void on_csvExport_clicked();
     void on_scanButton_toggled(bool scan);
@@ -63,6 +62,7 @@ private:
     int retries=0;
     int visibleColumns=1;
     bool slowLoad=false;
+
 
     bool checkASCII(QString str);
 
@@ -264,6 +264,27 @@ private:
     int updateCombo(QStringList& combo, int row, columns column, quint8 data);
     int updateCombo(QStringList& combo, int row, columns column, QString data);
 
+    struct stepType {
+        stepType(){};
+        stepType(quint8 num, QString name, quint64 hz) : num(num), name(name), hz(hz) {};
+        quint8 num;
+        QString name;
+        quint64 hz;
+    };
+
+    struct commandList {
+        commandList(){};
+        commandList(queuePriority prio, funcs func, uchar receiver) : prio(prio),func(func), receiver(receiver) {};
+        queuePriority prio;
+        funcs func;
+        uchar receiver;
+    };
+
+    QList<commandList> activeCommands;
+    QList<funcs> disabledCommands{
+        funcMainFreq,funcSubFreq,funcMainMode,funcSubMode,funcSelectedFreq,funcSelectedMode,funcPBTInner,funcPBTOuter,
+        funcAttenuator, funcPreamp, funcAntenna, funcIPPlus, funcFilterWidth
+    };
 };
 
 #endif // MEMORIES_H

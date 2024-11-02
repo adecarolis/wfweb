@@ -50,7 +50,6 @@ signals:
     // void getBandStackReg(char band, char regCode); // no, use the queue.
     // void gotoFreqMode(); // TODO, arguments will contain BSR data
 
-
 public slots:
     void receiveRigCaps(rigCapabilities* rc);
     void receiveCache(cacheItem item);

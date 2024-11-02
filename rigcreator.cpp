@@ -77,6 +77,16 @@ void rigCreator::commandRowAdded(int row)
 
 void rigCreator::bandRowAdded(int row)
 {
+
+    QWidget *checkBoxWidget = new QWidget();
+    QCheckBox *checkBox = new QCheckBox();      // We declare and initialize the checkbox
+    checkBox->setObjectName("ants");
+    QHBoxLayout *layoutCheckBox = new QHBoxLayout(checkBoxWidget); // create a layer with reference to the widget
+    layoutCheckBox->addWidget(checkBox);            // Set the checkbox in the layer
+    layoutCheckBox->setAlignment(Qt::AlignCenter);  // Center the checkbox
+    layoutCheckBox->setContentsMargins(0,0,0,0);    // Set the zero padding
+    ui->bands->setCellWidget(row,9, checkBoxWidget);
+
     QPushButton *color = new QPushButton();
     color->setStyleSheet("QPushButton { background-color : #00000000; }");
 
@@ -87,7 +97,7 @@ void rigCreator::bandRowAdded(int row)
             color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(col.name(QColor::HexArgb)));
         }
     });
-    ui->bands->setCellWidget(row,9, color);
+    ui->bands->setCellWidget(row,10, color);
 }
 
 rigCreator::~rigCreator()
@@ -348,6 +358,23 @@ void rigCreator::loadRigFile(QString file)
             ui->bands->model()->setData(ui->bands->model()->index(c,6),settings->value("MemoryGroup", -1).toString());
             ui->bands->model()->setData(ui->bands->model()->index(c,7),settings->value("Name", "").toString());
             ui->bands->model()->setData(ui->bands->model()->index(c,8),settings->value("Bytes", 5).toString());
+
+            // Create a widget that will contain a checkbox
+            QWidget *checkBoxWidget = new QWidget();
+            QCheckBox *checkBox = new QCheckBox();      // We declare and initialize the checkbox
+            checkBox->setObjectName("ants");
+            QHBoxLayout *layoutCheckBox = new QHBoxLayout(checkBoxWidget); // create a layer with reference to the widget
+            layoutCheckBox->addWidget(checkBox);            // Set the checkbox in the layer
+            layoutCheckBox->setAlignment(Qt::AlignCenter);  // Center the checkbox
+            layoutCheckBox->setContentsMargins(0,0,0,0);    // Set the zero padding
+
+            if (settings->value("Antennas",true).toBool()) {
+                checkBox->setChecked(true);
+            } else {
+                checkBox->setChecked(false);
+            }
+            ui->bands->setCellWidget(c,9, checkBoxWidget);
+
             QPushButton *color = new QPushButton();
             color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(settings->value("Color", "#00000000").toString()));
             connect(color, &QPushButton::clicked, this, [=]() {
@@ -357,7 +384,7 @@ void rigCreator::loadRigFile(QString file)
                     color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(col.name(QColor::HexArgb)));
                 }
              });
-            ui->bands->setCellWidget(c,9, color);
+            ui->bands->setCellWidget(c,10, color);
 
         }
         settings->endArray();
@@ -674,7 +701,15 @@ void rigCreator::saveRigFile(QString file)
         settings->setValue("MemoryGroup", (ui->bands->item(n,6) == NULL) ? -1 : ui->bands->item(n,6)->text().toInt() );
         settings->setValue("Name", (ui->bands->item(n,7) == NULL) ? "" : ui->bands->item(n,7)->text());
         settings->setValue("Bytes", (ui->bands->item(n,8) == NULL) ? 0 : ui->bands->item(n,8)->text().toUInt() );
-        QPushButton* color = static_cast<QPushButton*>(ui->bands->cellWidget(n,9));
+
+        // Need to use findchild as it has a layout.
+        QCheckBox* chk = ui->bands->cellWidget(n,9)->findChild<QCheckBox*>();
+        if (chk != nullptr)
+        {
+            settings->setValue("Antennas", chk->isChecked());
+        }
+
+        QPushButton* color = static_cast<QPushButton*>(ui->bands->cellWidget(n,10));
         if (color != nullptr)
         {
             settings->setValue("Color", color->palette().button().color().name(QColor::HexArgb));

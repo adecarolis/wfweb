@@ -114,6 +114,7 @@ public:
     void setSeparators(QChar group, QChar decimal);
     void updateBSR(std::vector<bandType>* bands);
 
+    bandType getCurrentBand();
 
 public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);
@@ -128,6 +129,7 @@ signals:
     void updateSettings(uchar receiver, int value, quint16 len, int floor, int ceiling);
     void elapsedTime(uchar receiver, qint64 ns);
     void dataChanged(modeInfo m);
+    void bandChanged(uchar receiver, bandType b);
 
 private slots:
     void detachScope(bool state);
@@ -303,6 +305,7 @@ private:
     spectrumMode_t currentScopeMode=spectrumMode_t::spectModeCenter;
     bool bandIndicatorsVisible=false;
     rigCapabilities* rigCaps=Q_NULLPTR;
+    bandType currentBand;
 };
 
 #endif // SPECTRUMSCOPE_H

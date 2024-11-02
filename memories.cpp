@@ -71,7 +71,11 @@ columnToneB,columnTSQLB,columnDTCSB,columnDTCSPolarityB,columnDVSquelchB,columnO
 
     duplexModes << "OFF" << "DUP-" << "DUP+" << "RPS";
 
-    toneModes << "OFF" << "TONE" << "TSQL";
+    if (rigCaps->hasTransmit)
+        toneModes << "OFF" << "TONE" << "TSQL";
+    else
+        toneModes << "OFF" << "TSQL";
+
     if (rigCaps->commands.contains(funcRepeaterDTCS))
         toneModes.append("DTCS");
 
@@ -89,7 +93,11 @@ columnToneB,columnTSQLB,columnDTCSB,columnDTCSPolarityB,columnDVSquelchB,columnO
 
     dsql << "OFF" << "DSQL" << "CSQL";
 
-    dtcsp << "BOTH N" << "N/R" << "R/N" << "BOTH R";
+    if (rigCaps->hasTransmit)
+        dtcsp << "BOTH N" << "N/R" << "R/N" << "BOTH R";
+    else
+        dtcsp << "NORMAL" << "REVERSE";
+
 
     ipplus << "OFF" << "ON";
 
@@ -118,8 +126,8 @@ columnToneB,columnTSQLB,columnDTCSB,columnDTCSPolarityB,columnDVSquelchB,columnO
     ui->table->setHorizontalHeaderLabels(headers);
 
     ui->group->hide();
-    ui->vfoMode->hide();
-    ui->memoryMode->hide();
+    ui->modeButton->hide();
+    ui->modeButton->setCheckable(true);
     //ui->loadingMemories->setVisible(false);
     //ui->loadingMemories->setStyleSheet("QLabel {color: #ff0000}");
 
@@ -237,6 +245,11 @@ void memories::rowAdded(int row)
     ui->table->setCellWidget(row,columnRecall,recall);
     connect(recall, &QPushButton::clicked, this,
             [=]() { qInfo() << "Recalling" << num;
+            if (ui->modeButton->isVisible() && !ui->modeButton->isChecked())
+            {
+                ui->modeButton->setChecked(true);
+                on_modeButton_clicked(true);
+            }
             queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>((quint32((ui->group->currentData().toUInt() << 16) | num)))));
     });
     ui->table->model()->setData(ui->table->model()->index(row,columnNum),QString::number(num).rightJustified(3,'0'));
@@ -254,14 +267,6 @@ void memories::rowAdded(int row)
     if (ui->table->item(row,columnPreamplifier) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnPreamplifier),preamps[0]);
     if (ui->table->item(row,columnAntenna) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnAntenna),antennas[0]);
     if (ui->table->item(row,columnIPPlus) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnIPPlus),ipplus[0]);
-
-    /*        columnTuningStep,
-        columnCustomTuningStep,
-        columnAttenuator,
-        columnPreamplifier,
-        columnAntenna,
-        columnIPPlus,
-     */
     if (ui->table->item(row,columnDSQL) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDSQL),dsql[0]);
     if (ui->table->item(row,columnTone) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnTone),tones[0]);
     if (ui->table->item(row,columnTSQL) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnTSQL),tones[0]);
@@ -299,7 +304,6 @@ void memories::rowAdded(int row)
 }
 
 void memories::rowDeleted(quint32 mem)
-
 {
     if (mem >= rigCaps->memStart && mem <= rigCaps->memories) {
         qInfo() << "Mem Deleted" << mem;
@@ -315,7 +319,7 @@ void memories::rowDeleted(quint32 mem)
         queue->add(priorityImmediate,queueItem((currentMemory.sat?funcSatelliteMemory:funcMemoryContents),QVariant::fromValue<memoryType>(currentMemory)));
     }
 }
-
+/* A cell has been updated, verify the data and send to the radio */
 void memories::on_table_cellChanged(int row, int col)
 {
     // If the import is updating a hidden column, ignore it.
@@ -330,34 +334,83 @@ void memories::on_table_cellChanged(int row, int col)
         currentMemory.sat=true;
     }
 
+    // This may update any dependant columns so signals must be blocked.
     ui->table->blockSignals(true);
-
     switch (col)
     {
     case columnVFO:
-        if (ui->table->item(row,columnVFOB) == NULL)
-            ui->table->model()->setData(ui->table->model()->index(row,columnVFOB),ui->table->item(row,columnVFO)->text());
-        break;
     case columnVFOB:
-        if (ui->table->item(row,columnVFO) == NULL)
+        if (!ui->table->isColumnHidden(columnVFOB) && ui->table->item(row,columnVFOB) == NULL)
+            ui->table->model()->setData(ui->table->model()->index(row,columnVFOB),ui->table->item(row,columnVFO)->text());
+        else if (!ui->table->isColumnHidden(columnVFO) && ui->table->item(row,columnVFO) == NULL)
             ui->table->model()->setData(ui->table->model()->index(row,columnVFO),ui->table->item(row,columnVFOB)->text());
         break;
     case columnFrequency:
-        if (ui->table->item(row,columnFrequencyB) == NULL)
-            ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),ui->table->item(row,columnFrequency)->text());
-        break;
     case columnFrequencyB:
-        if (ui->table->item(row,columnFrequency) == NULL)
+        if (!ui->table->isColumnHidden(columnFrequencyB) && ui->table->item(row,columnFrequencyB) == NULL)
+            ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),ui->table->item(row,columnFrequency)->text());
+        else if (!ui->table->isColumnHidden(columnFrequency) && ui->table->item(row,columnFrequency) == NULL)
             ui->table->model()->setData(ui->table->model()->index(row,columnFrequency),ui->table->item(row,columnFrequencyB)->text());
         break;
     case columnMode:
-        if (ui->table->item(row,columnModeB) == NULL)
-            ui->table->model()->setData(ui->table->model()->index(row,columnModeB),ui->table->item(row,columnMode)->text());
-        break;
     case columnModeB:
-        if (ui->table->item(row,columnMode) == NULL)
+    {
+        if (!ui->table->isColumnHidden(columnModeB) && ui->table->item(row,columnModeB) == NULL)
+            ui->table->model()->setData(ui->table->model()->index(row,columnModeB),ui->table->item(row,columnMode)->text());
+        else if (!ui->table->isColumnHidden(columnMode) && ui->table->item(row,columnMode) == NULL)
             ui->table->model()->setData(ui->table->model()->index(row,columnMode),ui->table->item(row,columnModeB)->text());
+
+        for (auto &m: rigCaps->modes){
+            if (!ui->table->isColumnHidden(columnMode) && ui->table->item(row,columnMode) != NULL && ui->table->item(row,columnMode)->text()==m.name) {
+                // This mode is the one we are interested in!
+
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
+
+                switch (m.mk)
+                {
+                case modeFM:
+                    ui->table->item(row,columnToneMode)->setFlags(ui->table->item(row,columnToneMode)->flags() | Qt::ItemIsEnabled);
+                    ui->table->item(row,columnTSQL)->setFlags(ui->table->item(row,columnTSQL)->flags() | Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDTCS)->setFlags(ui->table->item(row,columnDTCS)->flags() | Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDTCSPolarity)->setFlags(ui->table->item(row,columnDTCSPolarity)->flags() | Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDVSquelch)->setFlags(ui->table->item(row,columnDVSquelch)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDSQL)->setFlags(ui->table->item(row,columnDSQL)->flags() & ~Qt::ItemIsEnabled);
+                    break;
+                case modeDV:
+                    ui->table->item(row,columnDVSquelch)->setFlags(ui->table->item(row,columnDVSquelch)->flags() | Qt::ItemIsEnabled);
+                case modeP25:
+                case modedPMR:
+                case modeNXDN_N:
+                case modeNXDN_VN:
+                case modeDCR:
+                    ui->table->item(row,columnDSQL)->setFlags(ui->table->item(row,columnDSQL)->flags() | Qt::ItemIsEnabled);
+                    ui->table->item(row,columnToneMode)->setFlags(ui->table->item(row,columnToneMode)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnTSQL)->setFlags(ui->table->item(row,columnTSQL)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDTCS)->setFlags(ui->table->item(row,columnDTCS)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDTCSPolarity)->setFlags(ui->table->item(row,columnDTCSPolarity)->flags() & ~Qt::ItemIsEnabled);
+                    break;
+                default:
+                    ui->table->item(row,columnToneMode)->setFlags(ui->table->item(row,columnToneMode)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnTSQL)->setFlags(ui->table->item(row,columnTSQL)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDTCS)->setFlags(ui->table->item(row,columnDTCS)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDTCSPolarity)->setFlags(ui->table->item(row,columnDTCSPolarity)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDVSquelch)->setFlags(ui->table->item(row,columnDVSquelch)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDSQL)->setFlags(ui->table->item(row,columnDSQL)->flags() & ~Qt::ItemIsEnabled);
+                    break;
+                }
+
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
+                break;
+            }
+        }
         break;
+    }
     case columnDuplex:
         ui->table->model()->setData(ui->table->model()->index(row,columnDuplexB),ui->table->item(row,columnDuplex)->text());
         break;
@@ -370,6 +423,13 @@ void memories::on_table_cellChanged(int row, int col)
     case columnOffsetB:
         ui->table->model()->setData(ui->table->model()->index(row,columnOffset),ui->table->item(row,columnOffsetB)->text());
         break;
+    case columnTuningStep:
+        if (ui->table->item(row,columnTuningStep) != NULL && ui->table->item(row,columnTuningStep)->text() == "Prog")
+            ui->table->item(row,columnCustomTuningStep)->setFlags(ui->table->item(row,columnCustomTuningStep)->flags() | Qt::ItemIsEnabled);
+         else
+            ui->table->item(row,columnCustomTuningStep)->setFlags(ui->table->item(row,columnCustomTuningStep)->flags() & ~Qt::ItemIsEnabled);
+
+        break;
     default:
         break;
     }
@@ -377,6 +437,17 @@ void memories::on_table_cellChanged(int row, int col)
     ui->table->blockSignals(false);
 
     // The table shouldn't be updated below, simply queried for data.
+
+    // We need to do this here to ensure we have the correct mode.
+    for (auto &m: rigCaps->modes){
+        if (!ui->table->isColumnHidden(columnModeB) && ui->table->item(row,columnModeB) != NULL && ui->table->item(row,columnModeB)->text()==m.name) {
+            currentMemory.modeB=m.reg;
+        }
+
+        if (!ui->table->isColumnHidden(columnMode) && ui->table->item(row,columnMode) != NULL && ui->table->item(row,columnMode)->text()==m.name) {
+            currentMemory.mode=m.reg;
+        }
+    }
 
     if (!ui->table->isColumnHidden(columnSplit) && ui->table->item(row,columnSplit) != NULL) {
         currentMemory.split = split.indexOf(ui->table->item(row,columnSplit)->text().toUpper());
@@ -401,14 +472,7 @@ void memories::on_table_cellChanged(int row, int col)
     currentMemory.frequency.Hz = (ui->table->item(row,columnFrequency) == NULL) ? 0 : quint64(ui->table->item(row,columnFrequency)->text().toDouble()*1000000.0);
     currentMemory.frequencyB.Hz = (ui->table->item(row,columnFrequencyB) == NULL) ? 0 : quint64(ui->table->item(row,columnFrequencyB)->text().toDouble()*1000000.0);
 
-    for (auto &m: rigCaps->modes){
-        if (!ui->table->isColumnHidden(columnMode) && ui->table->item(row,columnMode) != NULL && ui->table->item(row,columnMode)->text()==m.name) {
-            currentMemory.mode=m.reg;
-        }
-        if (!ui->table->isColumnHidden(columnModeB) && ui->table->item(row,columnModeB) != NULL && ui->table->item(row,columnModeB)->text()==m.name) {
-            currentMemory.modeB=m.reg;
-        }
-    }
+
 
     if (!ui->table->isColumnHidden(columnData) && ui->table->item(row,columnData) != NULL) {
         currentMemory.datamode = dataModes.indexOf(ui->table->item(row,columnData)->text().toUpper());
@@ -443,7 +507,7 @@ void memories::on_table_cellChanged(int row, int col)
     }
 
     if (!ui->table->isColumnHidden(columnTuningStep) && ui->table->item(row,columnTuningStep) != NULL) {
-        currentMemory.tuningStep = tuningSteps.indexOf(ui->table->item(row,columnTuningStep)->text().toUpper());
+        currentMemory.tuningStep = tuningSteps.indexOf(ui->table->item(row,columnTuningStep)->text());
     }
 
     if (!ui->table->isColumnHidden(columnTuningStepB) && ui->table->item(row,columnTuningStepB) != NULL) {
@@ -542,8 +606,10 @@ void memories::on_table_cellChanged(int row, int col)
     bool write=true;
     for (int f=1; f<ui->table->columnCount();f++)
     {
-        if (!ui->table->isColumnHidden(f) && ui->table->item(row,f) == NULL)
+        if (!ui->table->isColumnHidden(f) && ui->table->item(row,f) == NULL) {
             write=false;
+            qInfo() << "Invalid entry, row:" << row << "col:" << f;
+        }
     }
     if (write) {
         queue->add(priorityHighest,queueItem((currentMemory.sat?funcSatelliteMemory:funcMemoryContents),QVariant::fromValue<memoryType>(currentMemory)));
@@ -553,7 +619,11 @@ void memories::on_table_cellChanged(int row, int col)
     }
 }
 
-
+/*
+ * This function is called whenever the group changes (and on startup)
+ * It configures the table with the required columns and requests the
+ * first memory from the radio.
+ */
 void memories::on_group_currentIndexChanged(int index)
 {
     Q_UNUSED(index)
@@ -588,18 +658,10 @@ void memories::on_group_currentIndexChanged(int index)
 
     if (ui->group->currentData().toInt() == MEMORY_SATGROUP) {
         queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue<bool>(ui->group->currentData().toInt() == MEMORY_SATGROUP)));
-        queue->del(funcMainFreq,false);
-        queue->del(funcMainMode,false);
-        queue->del(funcSubFreq,true);
-        queue->del(funcSubMode,true);
         parser = rigCaps->satParser;
     } else {
         // If the rig has memory groups, select it now.
         queue->add(priorityImmediate,queueItem(funcMemoryGroup,QVariant::fromValue<uchar>(ui->group->currentData().toInt())));
-        queue->addUnique(priorityMedium,funcMainFreq,true,false);
-        queue->addUnique(priorityMedium,funcMainMode,true,false);
-        queue->addUnique(priorityMedium,funcSubFreq,true,true);
-        queue->addUnique(priorityMedium,funcSubMode,true,true);
         parser = rigCaps->memParser;
     }
 
@@ -608,8 +670,7 @@ void memories::on_group_currentIndexChanged(int index)
         {
         case 'a':
             ui->group->show();
-            ui->vfoMode->show();
-            ui->memoryMode->show();
+            ui->modeButton->show();
             break;
         case 'b':
             if (numEditor != Q_NULLPTR)
@@ -1077,6 +1138,52 @@ void memories::on_group_currentIndexChanged(int index)
             visibleColumns++;
             break;
         case 'Z':
+            if (toneModesList != Q_NULLPTR)
+                delete toneModesList;
+            toneModesList = new tableCombobox(createModel(toneModesModel, toneModes),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnToneMode, toneModesList);
+
+            ui->table->showColumn(columnToneMode);
+            visibleColumns++;
+
+            if (tsqlList != Q_NULLPTR)
+                delete tsqlList;
+            tsqlList = new tableCombobox(createModel(tsqlModel, tones),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnTSQL, tsqlList);
+
+            ui->table->showColumn(columnTSQL);
+            visibleColumns++;
+
+            if (dtcsList != Q_NULLPTR)
+                delete dtcsList;
+            dtcsList = new tableCombobox(createModel(dtcsModel, dtcs),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDTCS, dtcsList);
+
+            ui->table->showColumn(columnDTCS);
+            visibleColumns++;
+
+            if (dtcspList != Q_NULLPTR)
+                delete dtcspList;
+            dtcspList = new tableCombobox(createModel(dtcspModel, dtcsp),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDTCSPolarity, dtcspList);
+
+            ui->table->showColumn(columnDTCSPolarity);
+            visibleColumns++;
+
+            if (dsqlList != Q_NULLPTR)
+                delete dsqlList;
+            dsqlList = new tableCombobox(createModel(dsqlModel, dsql),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDSQL, dsqlList);
+            ui->table->showColumn(columnDSQL);
+            visibleColumns++;
+
+            if (dvsqlList != Q_NULLPTR)
+                delete dvsqlList;
+            dvsqlList = new tableCombobox(createModel(dvsqlModel, dvsql),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDVSquelch, dvsqlList);
+            ui->table->showColumn(columnDVSquelch);
+            visibleColumns++;
+
             break;
         default:
             break;
@@ -1119,24 +1226,42 @@ void memories::on_group_currentIndexChanged(int index)
             queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(lastMemoryRequested)));
         }
     }
+
+    // Force rig into memory mode if available.
+    //if (ui->modeButton->isVisible() && !ui->modeButton->isChecked())
+    //{
+    //    on_modeButton_clicked(true);
+    //}
     //ui->loadingMemories->setText(QString("Loading Memory %0/%1 (this may take a while!)").arg(lastMemoryRequested&0xffff,3,10,QLatin1Char('0')).arg(rigCaps->memories,3,10,QLatin1Char('0')));
 }
 
-void memories::on_vfoMode_clicked()
+void memories::on_modeButton_clicked(bool on)
 {
-    queue->addUnique(priorityMedium,funcMainFreq,true,false);
-    queue->addUnique(priorityMedium,funcMainMode,true,false);
-    queue->addUnique(priorityMedium,funcSubFreq,true,true);
-    queue->addUnique(priorityMedium,funcSubMode,true,true);
-}
+    if (!on) {
+        ui->modeButton->setText("Select Memory Mode");
+        for (int i=0;i<rigCaps->numReceiver;i++) {
+            for( const commandList &c: activeCommands) {
+                queue->add(c.prio,c.func,true,c.receiver);
+            }
+        }
+        activeCommands.clear();
+        queue->add(priorityImmediate,funcVFOModeSelect);
 
-void memories::on_memoryMode_clicked()
-{
-    queue->add(priorityImmediate,funcMemoryMode);
-    queue->del(funcMainFreq,false);
-    queue->del(funcMainMode,false);
-    queue->del(funcSubFreq,true);
-    queue->del(funcSubMode,true);
+    } else {
+        ui->modeButton->setText("Select VFO Mode");
+        queue->add(priorityImmediate,funcMemoryMode);
+        activeCommands.clear();
+        for (int i=0;i<rigCaps->numReceiver;i++) {
+            for (const funcs &func:disabledCommands)
+            {
+                queuePriority prio = queue->del(func,i);
+                if (prio != priorityNone) {
+                    activeCommands.append(commandList(prio,func,i));
+                }
+            }
+        }
+    }
+
 }
 
 
@@ -1192,12 +1317,19 @@ void memories::receiveMemory(memoryType mem)
             ui->table->setCellWidget(row,columnRecall,recall);
             connect(recall, &QPushButton::clicked, this, [=]() {
                 qInfo() << "Recalling" << mem.channel;
+                if (ui->modeButton->isVisible() && !ui->modeButton->isChecked())
+                {
+                    ui->modeButton->setChecked(true);
+                    on_modeButton_clicked(true);
+                }
                 queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | mem.channel))));
                 // We also should request the current frequency/mode etc so that the UI is updated.
                 queue->add(priorityImmediate,funcSelectedFreq,false,0);
                 queue->add(priorityImmediate,funcSelectedMode,false,0);
             });
+
         }
+
 
         ui->table->model()->setData(ui->table->model()->index(row,columnNum),QString::number(mem.channel & 0xffff).rightJustified(3,'0'));
         ui->table->item(row,columnNum)->setFlags(ui->table->item(row,columnNum)->flags() & (~Qt::ItemIsEditable));
@@ -1217,29 +1349,84 @@ void memories::receiveMemory(memoryType mem)
         ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),QString::number(double(mem.frequencyB.Hz/1000000.0),'f',5));
         validData++;
 
+
+        // Make sure these are populated before mode so they can be enabled/disabled.
+        validData += updateCombo(toneModes,row,columnToneMode,mem.tonemode);
+        validData += updateCombo(toneModes,row,columnToneModeB,mem.tonemodeB);
+
+        validData += updateCombo(dsql,row,columnDSQL,mem.dsql);
+        validData += updateCombo(dsql,row,columnDSQLB,mem.dsqlB);
+
+        validData += updateCombo(tones,row,columnTSQL,QString::number((float)mem.tsql/10,'f',1));
+        validData += updateCombo(tones,row,columnTSQLB,QString::number((float)mem.tsqlB/10,'f',1));
+
+        validData += updateCombo(dvsql,row,columnDVSquelch,QString::number(mem.dvsql).rightJustified(2,'0'));
+        validData += updateCombo(dvsql,row,columnDVSquelchB,QString::number(mem.dvsqlB).rightJustified(2,'0'));
+
+        validData += updateCombo(dtcs,row,columnDTCS,QString::number(mem.dtcs).rightJustified(3,'0'));
+        validData += updateCombo(dtcs,row,columnDTCSB,QString::number(mem.dtcsB).rightJustified(3,'0'));
+
+        validData += updateCombo(dtcsp,row,columnDTCSPolarity,mem.dtcsp);
+        validData += updateCombo(dtcsp,row,columnDTCSPolarityB,mem.dtcspB);
+
         for (uint i=0;i<rigCaps->modes.size();i++)
         {
             if (mem.mode == rigCaps->modes[i].reg)
+            {
                 validData += updateCombo(modes,row,columnMode,i);
+                // This mode is the one we are interested in!
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
+
+                switch (rigCaps->modes[i].mk)
+                {
+                case modeFM:
+                    ui->table->item(row,columnDVSquelch)->setFlags(ui->table->item(row,columnDVSquelch)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDSQL)->setFlags(ui->table->item(row,columnDSQL)->flags() & ~Qt::ItemIsEnabled);
+                    break;
+                case modeP25:
+                case modedPMR:
+                case modeNXDN_N:
+                case modeNXDN_VN:
+                case modeDCR:
+                    ui->table->item(row,columnDVSquelch)->setFlags(ui->table->item(row,columnDVSquelch)->flags() & ~Qt::ItemIsEnabled);
+                case modeDV:
+                    ui->table->item(row,columnToneMode)->setFlags(ui->table->item(row,columnToneMode)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnTSQL)->setFlags(ui->table->item(row,columnTSQL)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDTCS)->setFlags(ui->table->item(row,columnDTCS)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDTCSPolarity)->setFlags(ui->table->item(row,columnDTCSPolarity)->flags() & ~Qt::ItemIsEnabled);
+                    break;
+                default:
+                    ui->table->item(row,columnToneMode)->setFlags(ui->table->item(row,columnToneMode)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnTSQL)->setFlags(ui->table->item(row,columnTSQL)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDTCS)->setFlags(ui->table->item(row,columnDTCS)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDTCSPolarity)->setFlags(ui->table->item(row,columnDTCSPolarity)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDVSquelch)->setFlags(ui->table->item(row,columnDVSquelch)->flags() & ~Qt::ItemIsEnabled);
+                    ui->table->item(row,columnDSQL)->setFlags(ui->table->item(row,columnDSQL)->flags() & ~Qt::ItemIsEnabled);
+                    break;
+                }
+            }
+
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
             if (mem.modeB == rigCaps->modes[i].reg)
+            {
                 validData += updateCombo(modes,row,columnModeB,i);
+            }
         }
 
         validData += updateCombo(dataModes,row,columnData,mem.datamode);
         validData += updateCombo(dataModes,row,columnDataB,mem.datamodeB);
-
-        validData += updateCombo(toneModes,row,columnToneMode,mem.tonemode);
-        validData += updateCombo(toneModes,row,columnToneModeB,mem.tonemodeB);
 
         validData += updateCombo(filters,row,columnFilter,mem.filter-1);
         validData += updateCombo(filters,row,columnFilterB,mem.filterB-1);
 
         validData += updateCombo(duplexModes,row,columnDuplex,mem.duplex);
         validData += updateCombo(duplexModes,row,columnDuplexB,mem.duplexB);
-
-        validData += updateCombo(dsql,row,columnDSQL,mem.dsql);
-        validData += updateCombo(dsql,row,columnDSQLB,mem.dsqlB);
 
         validData += updateCombo(tones,row,columnTone,QString::number((float)mem.tone/10,'f',1));
         validData += updateCombo(tones,row,columnToneB,QString::number((float)mem.toneB/10,'f',1));
@@ -1253,29 +1440,20 @@ void memories::receiveMemory(memoryType mem)
         ui->table->model()->setData(ui->table->model()->index(row,columnCustomTuningStepB),QString::number(mem.progTsB));
         validData++;
 
+        if (ui->table->item(row,columnTuningStep) != NULL && ui->table->item(row,columnTuningStep)->text() != "Prog")
+            ui->table->item(row,columnCustomTuningStep)->setFlags(ui->table->item(row,columnCustomTuningStep)->flags() & ~Qt::ItemIsEnabled);
+
         validData += updateCombo(attenuators,row,columnAttenuator,mem.atten);
         validData += updateCombo(attenuators,row,columnAttenuatorB,mem.attenB);
 
-        validData += updateCombo(attenuators,row,columnPreamplifier,mem.preamp);
-        validData += updateCombo(attenuators,row,columnPreamplifierB,mem.preampB);
+        validData += updateCombo(preamps,row,columnPreamplifier,mem.preamp);
+        validData += updateCombo(preamps,row,columnPreamplifierB,mem.preampB);
 
         validData += updateCombo(antennas,row,columnAntenna,mem.antenna);
         validData += updateCombo(antennas,row,columnAntennaB,mem.antennaB);
 
         validData += updateCombo(ipplus,row,columnIPPlus,mem.ipplus);
         validData += updateCombo(ipplus,row,columnIPPlusB,mem.ipplusB);
-
-        validData += updateCombo(tones,row,columnTSQL,QString::number((float)mem.tsql/10,'f',1));
-        validData += updateCombo(tones,row,columnTSQLB,QString::number((float)mem.tsqlB/10,'f',1));
-
-        validData += updateCombo(dvsql,row,columnDVSquelch,QString::number(mem.dvsql).rightJustified(2,'0'));
-        validData += updateCombo(dvsql,row,columnDVSquelchB,QString::number(mem.dvsqlB).rightJustified(2,'0'));
-
-        validData += updateCombo(dtcsp,row,columnDTCSPolarity,mem.dtcsp);
-        validData += updateCombo(dtcsp,row,columnDTCSPolarityB,mem.dtcspB);
-
-        validData += updateCombo(dtcs,row,columnDTCS,QString::number(mem.dtcs).rightJustified(3,'0'));
-        validData += updateCombo(dtcs,row,columnDTCSB,QString::number(mem.dtcsB).rightJustified(3,'0'));
 
         ui->table->model()->setData(ui->table->model()->index(row,columnOffset),QString::number(double(mem.duplexOffset.Hz/10000.0),'f',3));
         validData++;
@@ -1493,6 +1671,12 @@ void memories::on_csvImport_clicked()
                 ui->table->setCellWidget(rownum,columnRecall,recall);
                 connect(recall, &QPushButton::clicked, this,  [=]() {
                     qInfo() << "Recalling" << row[0].toInt();
+                    if (ui->modeButton->isVisible() && !ui->modeButton->isChecked())
+                    {
+                        ui->modeButton->setChecked(true);
+                        on_modeButton_clicked(true);
+                    }
+
                     queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | row[0].toInt()))));
                 });
             }

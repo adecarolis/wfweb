@@ -95,6 +95,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     abtBox = new aboutbox();
     selRad = new selectRadio();
     bandbtns = new bandbuttons();
+
     finputbtns = new frequencyinputwidget();
     setupui = new settingswidget();
 
@@ -511,7 +512,7 @@ void wfmain::makeRig()
         rigThread->start();
 
         // Rig status and Errors:
-        connect(rig, SIGNAL(havePortError(errorType)), this, SLOT(receivePortError(errorType)));
+        (rig, SIGNAL(havePortError(errorType)), this, SLOT(receivePortError(errorType)));
         connect(rig, SIGNAL(haveStatusUpdate(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
         connect(rig, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(receiveNetworkAudioLevels(networkAudioLevels)));
 
@@ -1047,6 +1048,17 @@ void wfmain::configureVFOs()
         connect(receiver, SIGNAL(updateSettings(uchar,int,quint16,int,int)), this, SLOT(receiveScopeSettings(uchar,int,quint16,int,int)));
 
         connect(receiver, SIGNAL(dataChanged(modeInfo)), this, SLOT(dataModeChanged(modeInfo)));
+
+        connect(receiver, &spectrumScope::bandChanged, receiver, [=](const uchar& rx, const bandType& b) {
+            if (rx == currentReceiver && rigCaps->commands.contains(funcAntenna)) {
+                ui->antennaSelCombo->setEnabled(b.ants);
+                if (b.ants) {
+                    queue->addUnique(priorityMediumHigh,queueItem(funcAntenna,false,true,i));
+                } else {
+                    queue->del(funcAntenna,i);
+                }
+            }
+        });
 
         connect(receiver,SIGNAL(showStatusBarText(QString)),this,SLOT(showStatusBarText(QString)));
         receivers.append(receiver);
@@ -3537,6 +3549,9 @@ void wfmain:: getInitialRigState()
 
     queue->del(funcTransceiverId); // This command is no longer required
 
+    if (rigCaps->commands.contains(funcVFOModeSelect))
+        queue->add(priorityImmediate,funcVFOModeSelect); // Make sure we are in VFO mode.
+
     if(rigCaps->hasSpectrum)
     {
         queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
@@ -3593,6 +3608,7 @@ void wfmain:: getInitialRigState()
         receiver->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits, &rigCaps->bands);
         receiver->setBandIndicators(prefs.showBands, prefs.region, &rigCaps->bands);
     }
+
 }
 
 void wfmain::showStatusBarText(QString text)

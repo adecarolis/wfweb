@@ -846,7 +846,8 @@ void icomCommander::parseCommand()
     {
         antennaInfo ant;
         ant.antenna = bcdHexToUChar(payloadIn[0]);
-        ant.rx = static_cast<bool>(payloadIn[1]);
+        if (payloadIn.size()>1)
+            ant.rx = static_cast<bool>(payloadIn[1]);
         value.setValue(ant);
         break;
     // Register 13 (speech) has no get values
@@ -1496,9 +1497,10 @@ void icomCommander::determineRigCaps()
             double range = settings->value("Range", 0.0).toDouble();
             int memGroup = settings->value("MemoryGroup", -1).toInt();
             char bytes = settings->value("Bytes", 5).toInt();
+            bool ants = settings->value("Antennas",true).toBool();
             QColor color(settings->value("Color", "#00000000").toString()); // Default color should be none!
             QString name(settings->value("Name", "None").toString());
-            rigCaps.bands.push_back(bandType(region,band,bsr,start,end,range,memGroup,bytes,color,name));
+            rigCaps.bands.push_back(bandType(region,band,bsr,start,end,range,memGroup,bytes,ants,color,name));
             rigCaps.bsr[band] = bsr;
             qDebug(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << QString::number(bsr,16);
         }
@@ -2276,8 +2278,11 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
             break;
         case 'w': // Tuning step
             if (bool(data[0])) { // Only set if enabled.
-                mem->tuningStep = quint8(data[1]);
+                mem->tuningStep = bcdHexToUChar(data[1]);
                 mem->progTs = bcdHexToUInt(data[2],data[3]);
+            } else {
+                mem->tuningStep = 0;
+                mem->progTs = 5;
             }
             break;
         case 'x': // Attenuator & Preamp
@@ -2296,6 +2301,47 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
             memcpy(mem->name,data.data(),qMin(int(sizeof mem->name),data.size()));
             break;
         case 'Z': // Special mode dependant features (I have no idea how to make these work!)
+            for (const auto &m: rigCaps.modes)
+            {
+                if (m.reg == mem->mode)
+                {
+                    // This mode is the one we are interested in!
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
+                    switch (m.mk)
+                    {
+                    case modeFM:
+                        mem->tonemode=data[0] & 0x0f;
+                        mem->tsql = bcdHexToUInt(data[2],data[3]); // First byte is not used
+                        mem->dtcsp = quint8(data[4] & 0x0f);
+                        mem->dtcs = bcdHexToUInt(data[5],data[6]);
+                        mem->dsql = 0;
+                        break;
+                    case modeDV:
+                        mem->dvsql = bcdHexToUChar(data[1]);
+                    case modeP25:
+                    case modedPMR:
+                    case modeNXDN_N:
+                    case modeNXDN_VN:
+                    case modeDCR:
+                        mem->dsql = (quint8(data[0] >> 4 & 0x0f));
+                    default:
+                        mem->tonemode = 0;
+                        mem->tsql = 770;
+                        mem->dtcsp = 0;
+                        mem->dtcs = 23;
+                        break;
+                    }
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
+                    break;
+                }
+            }
+
             break;
         default:
             qInfo() << "Parser didn't match!" << "spec:" << parse.spec << "pos:" << parse.pos << "len" << parse.len;
@@ -2740,10 +2786,10 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         payload.append(mem.dvsqlB);
                         break;
                     case 's':
-                        payload.append(makeFreqPayload(mem.duplexOffset).mid(1,3));
+                        payload.append(makeFreqPayload(mem.duplexOffset).mid(1,parse.len));
                         break;
                     case 'S':
-                        payload.append(makeFreqPayload(mem.duplexOffsetB).mid(1,3));
+                        payload.append(makeFreqPayload(mem.duplexOffsetB).mid(1,parse.len));
                         break;
                     case 't':
                         payload.append(QByteArray(mem.UR).leftJustified(parse.len,' ',true));
@@ -2764,8 +2810,8 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         payload.append(QByteArray(mem.R2B).leftJustified(parse.len,' ',true));
                         break;
                     case 'w': // Tuning step
-                        payload.append(quint8(mem.tuningStep!=0?true:false));
-                        payload.append(quint8(mem.tuningStep));
+                        payload.append(quint8(mem.tuningStep!=0?1:0));
+                        payload.append(bcdEncodeChar(qMax(uchar(1),mem.tuningStep))); // 0 is invalid.
                         payload.append(bcdEncodeInt(mem.progTs));
                         break;
                     case 'x': // Attenuator & Preamp
@@ -2782,6 +2828,44 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         payload.append(QByteArray(mem.name).leftJustified(parse.len,' ',true));
                         break;
                     case 'Z': // Special mode dependant features (I have no idea how to make these work!)
+                        qInfo() << "Looking for mode:" << mem.mode;
+                        for (const auto &m: rigCaps.modes)
+                        {
+                            if (m.reg == mem.mode)
+                            {
+                                // This mode is the one we are interested in!
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
+                                switch (m.mk)
+                                {
+                                case modeFM:
+                                    payload.append(bcdEncodeChar(mem.tonemode));
+                                    payload.append(nul);
+                                    payload.append(bcdEncodeInt(mem.tsql));
+                                    payload.append(bcdEncodeChar(mem.dtcsp));
+                                    payload.append(bcdEncodeInt(mem.dtcs));
+                                    break;
+                                case modeDV:
+                                    payload.append(bcdEncodeChar(mem.dsql));
+                                    payload.append(bcdEncodeChar(mem.dvsql));
+                                case modeP25:
+                                case modedPMR:
+                                case modeNXDN_N:
+                                case modeNXDN_VN:
+                                case modeDCR:
+                                    break;
+                                default:
+                                    break;
+                                }
+                                break;
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
+                            }
+                        }
                         break;
                     default:
                         break;

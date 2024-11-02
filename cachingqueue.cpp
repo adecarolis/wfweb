@@ -238,20 +238,39 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
     }
 }
 
-void cachingQueue::del(funcs func, uchar receiver)
+queuePriority cachingQueue::del(funcs func, uchar receiver)
 {
     // This will immediately delete any matching commands.
+    queuePriority prio = priorityNone;
     if (func != funcNone)
     {
         QMutexLocker locker(&mutex);
         auto it = std::find_if(queue.begin(), queue.end(), [func,receiver](const queueItem& c) {  return (c.command == func && c.receiver == receiver && c.recurring); });
         //auto it(queue.begin());
         if (it != queue.end()) {
+            prio = it.key();
             int count = queue.remove(it.key(),it.value());
             if (count>0)
                 qDebug() << "cachingQueue()::del" << count << "entries from queue for" << funcString[func] << "on receiver" << receiver;
         }
     }
+    return prio;
+}
+
+
+queuePriority cachingQueue::getQueued(funcs func, uchar receiver)
+{
+    queuePriority prio = priorityNone;
+    if (func != funcNone)
+    {
+        QMutexLocker locker(&mutex);
+        auto it = std::find_if(queue.begin(), queue.end(), [func,receiver](const queueItem& c) {  return (c.command == func && c.receiver == receiver && c.recurring); });
+        //auto it(queue.begin());
+        if (it != queue.end()) {
+            prio = it.key();
+        }
+    }
+    return prio;
 }
 
 queuePriority cachingQueue::isRecurring(funcs func, uchar receiver)

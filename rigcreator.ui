@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1616</width>
+    <width>1704</width>
     <height>1042</height>
    </rect>
   </property>
@@ -24,7 +24,7 @@
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
    <property name="sizeConstraint">
-    <enum>QLayout::SetDefaultConstraint</enum>
+    <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
    </property>
    <item row="4" column="5" rowspan="3">
     <widget class="QGroupBox" name="groupBox_12">
@@ -113,7 +113,7 @@
          <bool>true</bool>
         </property>
         <property name="selectionMode">
-         <enum>QAbstractItemView::SingleSelection</enum>
+         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
         </property>
         <property name="sortingEnabled">
          <bool>true</bool>
@@ -210,7 +210,7 @@
          <bool>true</bool>
         </property>
         <property name="selectionMode">
-         <enum>QAbstractItemView::SingleSelection</enum>
+         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
         </property>
         <property name="sortingEnabled">
          <bool>true</bool>
@@ -305,7 +305,7 @@
           </sizepolicy>
          </property>
          <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format %&amp;lt;start&amp;gt;.&amp;lt;len&amp;gt;&amp;lt;specifier&amp;gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;specifier from list below:&lt;/p&gt;&lt;p&gt;a = Group&lt;/p&gt;&lt;p&gt;b = Num&lt;/p&gt;&lt;p&gt;c = Scan&lt;/p&gt;&lt;p&gt;d = Scan/Split&lt;/p&gt;&lt;p&gt;e = VFO A		E = VFO B&lt;/p&gt;&lt;p&gt;f = Frequency A 	F = Frequency B&lt;/p&gt;&lt;p&gt;g = Mode A		G = Mode B&lt;/p&gt;&lt;p&gt;h = Filter 		H = Filter B&lt;/p&gt;&lt;p&gt;i = Data 		I = Data B&lt;/p&gt;&lt;p&gt;j = Duplex/Tonemode A	J = Duplex B/Tonemode B&lt;/p&gt;&lt;p&gt;k = Data/Tonemode A	K = Data B/Tonemode B&lt;/p&gt;&lt;p&gt;l = Tonemode A	L = Tonemode B&lt;/p&gt;&lt;p&gt;m = DSQL A 		M = DSQL B&lt;/p&gt;&lt;p&gt;n = Tone type A	N = Tone type B&lt;/p&gt;&lt;p&gt;o = TSQL A		O = TSQL B&lt;/p&gt;&lt;p&gt;p = DTCS Polarity A 	P = DTCS Polarity B&lt;/p&gt;&lt;p&gt;q = DTCS A		Q = DTCS B&lt;/p&gt;&lt;p&gt;r = DV Squelch A 	R = DV Squelch B&lt;/p&gt;&lt;p&gt;s = Duplex Offset A 	S = Duplex Offset B&lt;/p&gt;&lt;p&gt;t = DV UR A		T = DV UR B&lt;/p&gt;&lt;p&gt;u = DV R1 A		U = DV R1 B&lt;/p&gt;&lt;p&gt;v = DV R2 A 		V = DV R2 B&lt;/p&gt;&lt;p&gt;z = Memory Name&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format %&amp;lt;start&amp;gt;.&amp;lt;len&amp;gt;&amp;lt;specifier&amp;gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;specifier from list below:&lt;/p&gt;&lt;p&gt;a = Group&lt;/p&gt;&lt;p&gt;b = Num&lt;/p&gt;&lt;p&gt;c = Scan&lt;/p&gt;&lt;p&gt;d = Scan/Split&lt;/p&gt;&lt;p&gt;D = Duplex Setting (use j for most rigs)&lt;/p&gt;&lt;p&gt;e = VFO A E = VFO B&lt;/p&gt;&lt;p&gt;f = Frequency A F = Frequency B&lt;/p&gt;&lt;p&gt;g = Mode A G = Mode B&lt;/p&gt;&lt;p&gt;h = Filter H = Filter B&lt;/p&gt;&lt;p&gt;i = Data I = Data B&lt;/p&gt;&lt;p&gt;j = Duplex/Tonemode A J = Duplex B/Tonemode B&lt;/p&gt;&lt;p&gt;k = Data/Tonemode A K = Data B/Tonemode B&lt;/p&gt;&lt;p&gt;l = Tonemode A L = Tonemode B&lt;/p&gt;&lt;p&gt;m = DSQL A M = DSQL B&lt;/p&gt;&lt;p&gt;n = Tone type A N = Tone type B&lt;/p&gt;&lt;p&gt;o = TSQL A O = TSQL B&lt;/p&gt;&lt;p&gt;p = DTCS Polarity A P = DTCS Polarity B&lt;/p&gt;&lt;p&gt;q = DTCS A Q = DTCS B&lt;/p&gt;&lt;p&gt;r = DV Squelch A R = DV Squelch B&lt;/p&gt;&lt;p&gt;s = Duplex Offset A S = Duplex Offset B&lt;/p&gt;&lt;p&gt;t = DV UR A T = DV UR B&lt;/p&gt;&lt;p&gt;u = DV R1 A U = DV R1 B&lt;/p&gt;&lt;p&gt;v = DV R2 A V = DV R2 B&lt;/p&gt;&lt;p&gt;w = Tuning Step (+custom)&lt;/p&gt;&lt;p&gt;x = Preamp + Attenuator&lt;/p&gt;&lt;p&gt;y = Antenna&lt;/p&gt;&lt;p&gt;+ = IP Plus&lt;/p&gt;&lt;p&gt;z = Memory Name&lt;/p&gt;&lt;p&gt;Z = Mode specific columns&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
         </widget>
        </item>
@@ -329,7 +329,7 @@
           </sizepolicy>
          </property>
          <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format %&amp;lt;start&amp;gt;.&amp;lt;len&amp;gt;&amp;lt;specifier&amp;gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;specifier from list below:&lt;/p&gt;&lt;p&gt;a = Group&lt;/p&gt;&lt;p&gt;b = Num&lt;/p&gt;&lt;p&gt;c = Scan&lt;/p&gt;&lt;p&gt;d = Scan/Split&lt;/p&gt;&lt;p&gt;e = VFO A		E = VFO B&lt;/p&gt;&lt;p&gt;f = Frequency A 	F = Frequency B&lt;/p&gt;&lt;p&gt;g = Mode A		G = Mode B&lt;/p&gt;&lt;p&gt;h = Filter 		H = Filter B&lt;/p&gt;&lt;p&gt;i = Data 		I = Data B&lt;/p&gt;&lt;p&gt;j = Duplex/Tonemode A	J = Duplex B/Tonemode B&lt;/p&gt;&lt;p&gt;k = Data/Tonemode A	K = Data B/Tonemode B&lt;/p&gt;&lt;p&gt;l = Tonemode A	L = Tonemode B&lt;/p&gt;&lt;p&gt;m = DSQL A 		M = DSQL B&lt;/p&gt;&lt;p&gt;n = Tone type A	N = Tone type B&lt;/p&gt;&lt;p&gt;o = TSQL A		O = TSQL B&lt;/p&gt;&lt;p&gt;p = DTCS Polarity A 	P = DTCS Polarity B&lt;/p&gt;&lt;p&gt;q = DTCS A		Q = DTCS B&lt;/p&gt;&lt;p&gt;r = DV Squelch A 	R = DV Squelch B&lt;/p&gt;&lt;p&gt;s = Duplex Offset A 	S = Duplex Offset B&lt;/p&gt;&lt;p&gt;t = DV UR A		T = DV UR B&lt;/p&gt;&lt;p&gt;u = DV R1 A		U = DV R1 B&lt;/p&gt;&lt;p&gt;v = DV R2 A 		V = DV R2 B&lt;/p&gt;&lt;p&gt;z = Memory Name&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format %&amp;lt;start&amp;gt;.&amp;lt;len&amp;gt;&amp;lt;specifier&amp;gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;specifier from list below:&lt;/p&gt;&lt;p&gt;a = Group&lt;/p&gt;&lt;p&gt;b = Num&lt;/p&gt;&lt;p&gt;c = Scan&lt;/p&gt;&lt;p&gt;d = Scan/Split&lt;/p&gt;&lt;p&gt;D = Duplex Setting (use j for most rigs)&lt;/p&gt;&lt;p&gt;e = VFO A E = VFO B&lt;/p&gt;&lt;p&gt;f = Frequency A F = Frequency B&lt;/p&gt;&lt;p&gt;g = Mode A G = Mode B&lt;/p&gt;&lt;p&gt;h = Filter H = Filter B&lt;/p&gt;&lt;p&gt;i = Data I = Data B&lt;/p&gt;&lt;p&gt;j = Duplex/Tonemode A J = Duplex B/Tonemode B&lt;/p&gt;&lt;p&gt;k = Data/Tonemode A K = Data B/Tonemode B&lt;/p&gt;&lt;p&gt;l = Tonemode A L = Tonemode B&lt;/p&gt;&lt;p&gt;m = DSQL A M = DSQL B&lt;/p&gt;&lt;p&gt;n = Tone type A N = Tone type B&lt;/p&gt;&lt;p&gt;o = TSQL A O = TSQL B&lt;/p&gt;&lt;p&gt;p = DTCS Polarity A P = DTCS Polarity B&lt;/p&gt;&lt;p&gt;q = DTCS A Q = DTCS B&lt;/p&gt;&lt;p&gt;r = DV Squelch A R = DV Squelch B&lt;/p&gt;&lt;p&gt;s = Duplex Offset A S = Duplex Offset B&lt;/p&gt;&lt;p&gt;t = DV UR A T = DV UR B&lt;/p&gt;&lt;p&gt;u = DV R1 A U = DV R1 B&lt;/p&gt;&lt;p&gt;v = DV R2 A V = DV R2 B&lt;/p&gt;&lt;p&gt;w = Tuning Step (+custom)&lt;/p&gt;&lt;p&gt;x = Preamp + Attenuator&lt;/p&gt;&lt;p&gt;y = Antenna&lt;/p&gt;&lt;p&gt;+ = IP Plus&lt;/p&gt;&lt;p&gt;z = Memory Name&lt;/p&gt;&lt;p&gt;Z = Mode specific columns&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
         </widget>
        </item>
@@ -355,7 +355,7 @@
          <bool>true</bool>
         </property>
         <property name="selectionMode">
-         <enum>QAbstractItemView::SingleSelection</enum>
+         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
         </property>
         <property name="sortingEnabled">
          <bool>true</bool>
@@ -422,7 +422,7 @@
          <bool>true</bool>
         </property>
         <property name="selectionMode">
-         <enum>QAbstractItemView::SingleSelection</enum>
+         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
         </property>
         <property name="sortingEnabled">
          <bool>true</bool>
@@ -486,7 +486,7 @@
          <bool>true</bool>
         </property>
         <property name="selectionMode">
-         <enum>QAbstractItemView::SingleSelection</enum>
+         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
         </property>
         <property name="sortingEnabled">
          <bool>true</bool>
@@ -545,7 +545,7 @@
          <bool>true</bool>
         </property>
         <property name="selectionMode">
-         <enum>QAbstractItemView::SingleSelection</enum>
+         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
         </property>
         <property name="sortingEnabled">
          <bool>true</bool>
@@ -673,7 +673,7 @@
        <item>
         <spacer name="horizontalSpacer_2">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -915,7 +915,7 @@
          <bool>true</bool>
         </property>
         <property name="selectionMode">
-         <enum>QAbstractItemView::MultiSelection</enum>
+         <enum>QAbstractItemView::SelectionMode::MultiSelection</enum>
         </property>
         <property name="sortingEnabled">
          <bool>true</bool>
@@ -979,7 +979,7 @@
          <bool>true</bool>
         </property>
         <property name="selectionMode">
-         <enum>QAbstractItemView::SingleSelection</enum>
+         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
         </property>
         <property name="sortingEnabled">
          <bool>true</bool>
@@ -1053,7 +1053,7 @@
          <bool>true</bool>
         </property>
         <property name="selectionMode">
-         <enum>QAbstractItemView::SingleSelection</enum>
+         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
         </property>
         <property name="sortingEnabled">
          <bool>true</bool>
@@ -1104,7 +1104,7 @@
          <bool>true</bool>
         </property>
         <property name="selectionMode">
-         <enum>QAbstractItemView::SingleSelection</enum>
+         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
         </property>
         <property name="sortingEnabled">
          <bool>true</bool>
@@ -1176,6 +1176,11 @@
         <column>
          <property name="text">
           <string>Bytes</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Ant</string>
          </property>
         </column>
         <column>

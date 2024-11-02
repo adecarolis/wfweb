@@ -112,7 +112,7 @@ public:
     void add(queuePriority prio,queueItem item);
     void addUnique(queuePriority prio ,funcs func, bool recurring=false, uchar receiver=0);
     void addUnique(queuePriority prio,queueItem item);
-    void del(funcs func, uchar receiver=0);
+    queuePriority del(funcs func, uchar receiver=0);
     void clear();
     void interval(qint64 val);
     qint64 interval() {return queueInterval;}
@@ -120,6 +120,8 @@ public:
     void updateCache(bool reply, funcs func, QVariant value=QVariant(), uchar receiver=0);
 
     cacheItem getCache(funcs func, uchar receiver=0);
+
+    queuePriority getQueued(funcs func, uchar receiver=0);
 
     QMultiMap <funcs,cacheItem>* getCacheItems();
     QMultiMap <queuePriority,queueItem>* getQueueItems();

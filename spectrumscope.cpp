@@ -1913,9 +1913,23 @@ void spectrumScope::setFrequency(freqt f, uchar vfo)
         freqDisplay[vfo]->setFrequency(f.Hz);
         freqDisplay[vfo]->blockSignals(false);
     }
-    if (vfo==0)
+    if (vfo==0) {
         freq = f;
-
+        quint64 freq = quint64(f.Hz);
+        for (const auto &b: rigCaps->bands)
+        {
+            // Highest frequency band is always first!
+            if (freq >= b.lowFreq && freq <= b.highFreq)
+            {
+                // This frequency is contained within this band!
+                if (currentBand.band != b.band) {
+                    currentBand = b;
+                    emit bandChanged(this->receiver,b);
+                }
+                break;
+            }
+        }
+    }
 }
 
 void spectrumScope::showBandIndicators(bool en)
