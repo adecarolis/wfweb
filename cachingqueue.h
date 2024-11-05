@@ -123,6 +123,8 @@ public:
 
     queuePriority getQueued(funcs func, uchar receiver=0);
 
+    queuePriority changePriority(queuePriority prio, funcs func, uchar receiver=0);
+
     QMultiMap <funcs,cacheItem>* getCacheItems();
     QMultiMap <queuePriority,queueItem>* getQueueItems();
     void lockMutex() {mutex.lock();}

@@ -24,17 +24,18 @@ enum prefIfItem {
     if_wflength = 1 << 11,
     if_confirmExit = 1 << 12,
     if_confirmPowerOff = 1 << 13,
-    if_meter2Type = 1 << 14,
-    if_meter3Type = 1 << 15,
-    if_compMeterReverse = 1 << 16,
-    if_clickDragTuningEnable = 1 << 17,
-    if_currentColorPresetNumber = 1 << 18,
-    if_rigCreatorEnable = 1 << 19,
-    if_frequencyUnits = 1 << 20,
-    if_region = 1 << 21,
-    if_showBands = 1 << 22,
-    if_separators = 1 << 23,
-    if_all = 1 << 24
+    if_meter1Type = 1 << 14,
+    if_meter2Type = 1 << 15,
+    if_meter3Type = 1 << 16,
+    if_compMeterReverse = 1 << 17,
+    if_clickDragTuningEnable = 1 << 18,
+    if_currentColorPresetNumber = 1 << 19,
+    if_rigCreatorEnable = 1 << 20,
+    if_frequencyUnits = 1 << 21,
+    if_region = 1 << 22,
+    if_showBands = 1 << 23,
+    if_separators = 1 << 24,
+    if_all = 1 << 25
 };
 
 enum prefColItem {
@@ -106,7 +107,7 @@ enum prefCtItem {
     ct_enableUSBControllers = 1 << 3,
     ct_USBControllersSetup = 1 << 4,
     ct_USBControllersReset = 1 << 5,
-    ct_all = 1 << 5
+    ct_all = 1 << 6
 };
 
 enum prefLanItem {
@@ -190,6 +191,7 @@ struct preferences {
     bool confirmExit;
     bool confirmPowerOff;
     bool confirmSettingsChanged;
+    meter_t meter1Type;
     meter_t meter2Type;
     meter_t meter3Type;
     bool compMeterReverse = false;

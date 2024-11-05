@@ -168,6 +168,11 @@ QString debugWindow::getValue(QVariant val)
             spectrumMode_t i = val.value<spectrumMode_t>();
             value = QString("Mode:%0").arg(i);
         }
+        else if (!strcmp(val.typeName(),"meterkind"))
+        {
+            meterkind i = val.value<meterkind>();
+            value = QString("Type:%0 Value:%1").arg(i.type).arg(i.value);
+        }
         else if (!strcmp(val.typeName(),"centerSpanData"))
         {
             centerSpanData i = val.value<centerSpanData>();

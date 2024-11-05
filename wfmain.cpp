@@ -330,6 +330,16 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
           QToolTip::showText(QCursor::pos(), QString("%1").arg(value*100/255), nullptr);
         });
 
+    connect(ui->meterSPoWidget, &meter::configureMeterSignal, this,
+            [=](const meter_t &meterTypeRequested) {
+        // Change the preferences and update settings widget to reflect new meter selection:
+        prefs.meter1Type = meterTypeRequested;
+        setupui->updateIfPref(if_meter1Type);
+        // Change the meter locally:
+        qInfo() << "New meter type" << meterTypeRequested;
+        changeMeterType(meterTypeRequested, 1);
+    });
+
     connect(ui->meter2Widget, &meter::configureMeterSignal, this,
             [=](const meter_t &meterTypeRequested) {
         // Change the preferences and update settings widget to reflect new meter selection:
@@ -1573,6 +1583,7 @@ void wfmain::setDefPrefs()
     defPrefs.confirmExit = true;
     defPrefs.confirmPowerOff = true;
     defPrefs.confirmSettingsChanged = true;
+    defPrefs.meter1Type = meterS;
     defPrefs.meter2Type = meterNone;
     defPrefs.meter3Type = meterNone;
     defPrefs.compMeterReverse = false;
@@ -1662,6 +1673,7 @@ void wfmain::loadSettings()
     prefs.confirmExit = settings->value("ConfirmExit", defPrefs.confirmExit).toBool();
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
     prefs.confirmSettingsChanged = settings->value("ConfirmSettingsChanged", defPrefs.confirmSettingsChanged).toBool();
+    prefs.meter1Type = static_cast<meter_t>(settings->value("Meter1Type", defPrefs.meter1Type).toInt());
     prefs.meter2Type = static_cast<meter_t>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
     prefs.meter3Type = static_cast<meter_t>(settings->value("Meter3Type", defPrefs.meter3Type).toInt());
     prefs.compMeterReverse = settings->value("compMeterReverse", defPrefs.compMeterReverse).toBool();
@@ -2374,6 +2386,9 @@ void wfmain::extChangedIfPref(prefIfItem i)
     case if_confirmPowerOff:
         // Not in settings widget
         break;
+    case if_meter1Type:
+        changeMeterType(prefs.meter1Type, 1);
+        break;
     case if_meter2Type:
         changeMeterType(prefs.meter2Type, 2);
         break;
@@ -2861,6 +2876,7 @@ void wfmain::saveSettings()
     settings->setValue("ConfirmExit", prefs.confirmExit);
     settings->setValue("ConfirmPowerOff", prefs.confirmPowerOff);
     settings->setValue("ConfirmSettingsChanged", prefs.confirmSettingsChanged);
+    settings->setValue("Meter1Type", (int)prefs.meter1Type);
     settings->setValue("Meter2Type", (int)prefs.meter2Type);
     settings->setValue("Meter3Type", (int)prefs.meter3Type);
     settings->setValue("compMeterReverse", prefs.compMeterReverse);
@@ -3786,17 +3802,33 @@ void wfmain::initPeriodicCommands()
         }
     }
 
-    meter* marray[2];
-    marray[0] = ui->meter2Widget;
-    marray[1] = ui->meter3Widget;
-    for(int m=0; m < 2; m++) {
+
+    // Set the second meter here as I suspect we need to be connected for it to work?
+    if (!rigCaps->commands.contains(funcMeterType))
+    {
+        prefs.meter1Type = meterS; // Just in case we have previously connected to a radio with meter type options.
+    }
+    changeMeterType(prefs.meter1Type, 1);
+    changeMeterType(prefs.meter2Type, 2);
+    changeMeterType(prefs.meter3Type, 3);
+    ui->meter2Widget->blockMeterType(prefs.meter3Type);
+    ui->meter3Widget->blockMeterType(prefs.meter2Type);
+    ui->meter2Widget->setCompReverse(prefs.compMeterReverse);
+    ui->meter3Widget->setCompReverse(prefs.compMeterReverse);
+
+/*
+    meter* marray[3];
+    marray[0] = ui->meterSPoWidget;
+    marray[1] = ui->meter2Widget;
+    marray[2] = ui->meter3Widget;
+    for(int m=0; m < 3; m++) {
         funcs meterCmd = meter_tToMeterCommand(marray[m]->getMeterType());
         if(meterCmd != funcNone) {
             qDebug() << "Adding meter command per current UI meters.";
             queue->add(priorityHighest,queueItem(meterCmd,true));
         }
     }
-
+*/
 
 
 }
@@ -4817,6 +4849,11 @@ funcs wfmain::meter_tToMeterCommand(meter_t m)
         case meterVoltage:
             c = funcVdMeter;
             break;
+        case meterdBu:
+        case meterdBm:
+        case meterdBuEMF:
+            c = funcAbsoluteMeter;
+            break;
         default:
             c = funcNone;
             break;
@@ -4831,7 +4868,9 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
     meter_t newMeterType;
     meter_t oldMeterType;
     meter* uiMeter = NULL;
-    if(meterNum == 2) {
+    if(meterNum == 1) {
+        uiMeter = ui->meterSPoWidget;
+    } else if(meterNum == 2) {
         uiMeter = ui->meter2Widget;
     } else if (meterNum == 3) {
         uiMeter = ui->meter3Widget;
@@ -4849,18 +4888,32 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
     funcs newCmd = meter_tToMeterCommand(newMeterType);
     funcs oldCmd = meter_tToMeterCommand(oldMeterType);
 
-    if (oldCmd != funcSMeter && oldCmd != funcNone)
-        queue->del(oldCmd);
-
+    //if (oldCmd != funcSMeter && oldCmd != funcNone)
+    queue->del(oldCmd,currentReceiver);
 
     if(newMeterType==meterNone)
     {
         uiMeter->setMeterType(newMeterType);
-    } else {
+    } else if (rigCaps != Q_NULLPTR){
         uiMeter->show();
         uiMeter->setMeterType(newMeterType);
+
         if((newMeterType!=meterRxAudio) && (newMeterType!=meterTxMod) && (newMeterType!=meterAudio))
-            queue->add(priorityHighest,queueItem(newCmd,true));
+            queue->addUnique(priorityHighest,queueItem(newCmd,true,currentReceiver));
+
+        if (rigCaps->commands.contains(funcMeterType))
+        {
+            if (newMeterType == meterS)
+                queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(0),false,currentReceiver));
+            else if (newMeterType == meterdBu)
+                queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(1),false,currentReceiver));
+            else if (newMeterType == meterdBuEMF)
+                queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(2),false,currentReceiver));
+            else if (newMeterType == meterdBm)
+                queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(3),false,currentReceiver));
+        }
+
+
     }
 }
 
@@ -5363,6 +5416,14 @@ void wfmain::receiveValue(cacheItem val){
     case funcSMeter:
         receiveMeter(meter_t::meterS,val.value.value<uchar>(),val.receiver);
         break;
+    case funcAbsoluteMeter:
+    {
+        meterkind m = val.value.value<meterkind>();
+        ui->meterSPoWidget->setMeterType(m.type);
+        ui->meterSPoWidget->setLevel(m.value);
+        ui->meterSPoWidget->repaint();
+        break;
+    }
     case funcVariousSql:
         break;
     case funcOverflowStatus:
@@ -6023,13 +6084,6 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
             calculateTimingParameters();
         }
 
-        // Set the second meter here as I suspect we need to be connected for it to work?
-        changeMeterType(prefs.meter2Type, 2);
-        changeMeterType(prefs.meter3Type, 3);
-        ui->meter2Widget->blockMeterType(prefs.meter3Type);
-        ui->meter3Widget->blockMeterType(prefs.meter2Type);
-        ui->meter2Widget->setCompReverse(prefs.compMeterReverse);
-        ui->meter3Widget->setCompReverse(prefs.compMeterReverse);
     }
 
     initPeriodicCommands();

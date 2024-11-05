@@ -30,7 +30,7 @@ meter::meter(QWidget *parent) : QWidget(parent)
         mXstart = 0;
     }
 
-    meterType = meterS;
+    meterType = meterNone;
 
     currentColor = colorFromString("#148CD2");
     currentColor = currentColor.darker();
@@ -46,20 +46,10 @@ meter::meter(QWidget *parent) : QWidget(parent)
     avgLevels.resize(averageBalisticLength, 0);
     peakLevels.resize(peakBalisticLength, 0);
 
-    combo = new QComboBox(this);
-    combo->blockSignals(true);
-    combo->addItem("None", meterNone);
-    combo->addItem("SWR", meterSWR);
-    combo->addItem("ALC", meterALC);
-    combo->addItem("Compression", meterComp);
-    combo->addItem("Voltage", meterVoltage);
-    combo->addItem("Current", meterCurrent);
-    combo->addItem("Center", meterCenter);
-    combo->addItem("TxRxAudio", meterAudio);
-    combo->addItem("RxAudio", meterRxAudio);
-    combo->addItem("TxAudio", meterTxMod);
-    combo->blockSignals(false);
 
+    combo = new QComboBox(this);
+
+    combo->blockSignals(false);
     connect(combo, SIGNAL(activated(int)), this, SLOT(acceptComboItem(int)));
     //connect(combo, SIGNAL(currentIndexChanged(int)), this, SLOT(acceptComboItem(int)));
 
@@ -130,14 +120,41 @@ void meter::setMeterType(meter_t m_type_req)
     if(m_type_req == meterType)
         return;
 
-    if( (m_type_req == meterS) || (m_type_req == meterPower) ) {
-        this->setToolTip("");
-    } else {
-        this->setToolTip("Double-click to select meter type.");
+    //if( (m_type_req == meterS) || (m_type_req == meterPower) ) {
+    //    this->setToolTip("");
+    //} else {
+    this->setToolTip("Double-click to select meter type.");
+    //}
+
+    combo->blockSignals(true);
+    combo->clear();
+    switch (m_type_req)
+    {
+    case meterS:
+    case meterPower:
+    case meterdBm:
+    case meterdBu:
+    case meterdBuEMF:
+        combo->addItem("S-Meter", meterS);
+        combo->addItem("dBu Meter", meterdBu);
+        combo->addItem("dBu EMF", meterdBuEMF);
+        combo->addItem("dBm Meter", meterdBm);
+        break;
+    default:
+        combo->addItem("None", meterNone);
+        combo->addItem("SWR", meterSWR);
+        combo->addItem("ALC", meterALC);
+        combo->addItem("Compression", meterComp);
+        combo->addItem("Voltage", meterVoltage);
+        combo->addItem("Current", meterCurrent);
+        combo->addItem("Center", meterCenter);
+        combo->addItem("TxRxAudio", meterAudio);
+        combo->addItem("RxAudio", meterRxAudio);
+        combo->addItem("TxAudio", meterTxMod);
+        break;
     }
 
     int m_index = combo->findData(m_type_req);
-    combo->blockSignals(true);
     combo->setCurrentIndex(m_index);
     combo->blockSignals(false);
 
@@ -204,9 +221,9 @@ bool meter::eventFilter(QObject *object, QEvent *event) {
     }
 
     if(event->type() == QEvent::MouseButtonDblClick) {
-        if( !(meterType == meterS || meterType == meterPower)) {
-            handleDoubleClick();
-        }
+        //if( !(meterType == meterS || meterType == meterPower)) {
+        handleDoubleClick();
+        //}
         return true;
     }
 
@@ -296,7 +313,21 @@ void meter::paintEvent(QPaintEvent *)
             peakRedLevel = 241;
             drawScale_dBFs(&painter);
             break;
-
+        case meterdBu:
+            label = "dBu";
+            peakRedLevel = 255;
+            drawScaledB(&painter,0,80,20);
+            break;
+        case meterdBuEMF:
+            label = "dBu(EMF)";
+            peakRedLevel = 255;
+            drawScaledB(&painter,0,85,20);
+            break;
+        case meterdBm:
+            label = "dBm";
+            peakRedLevel = 255;
+            drawScaledB(&painter,-100,-20,20);
+            break;
         default:
             label = "DN";
             peakRedLevel = 241;
@@ -358,6 +389,47 @@ void meter::paintEvent(QPaintEvent *)
 
         painter.drawRect(mXstart+logPeak-1,mYstart,2,barHeight);
 
+    } else if (meterType==meterdBu || meterType==meterdBuEMF || meterType==meterdBm) {
+
+        // Current value:
+        // X, Y, Width, Height
+        float myValue=flCurrent;
+
+        if (meterType == meterdBm) {
+            if (flCurrent<-100.0)
+                myValue=0.0;
+            else if (flCurrent < 0.0)
+                myValue=flCurrent+100.0;
+        } else if (flCurrent < 0.0)
+        {
+            myValue = 0.0;
+        }
+
+        myValue=(float(256.0/80.0))*myValue;
+
+
+        // Absolute ranges for each meter:
+
+
+//        myValue = myValue*5.0;
+
+        painter.drawRect(mXstart,mYstart,myValue,barHeight);
+
+        // Average:
+        painter.setPen(averageColor);
+        painter.setBrush(averageColor);
+        painter.drawRect(mXstart+average-1,mYstart,1,barHeight); // bar is 1 pixel wide, height = meter start?
+
+        // Peak:
+        painter.setPen(peakColor);
+        painter.setBrush(peakColor);
+        if(peak > peakRedLevel)
+        {
+            painter.setBrush(Qt::red);
+            painter.setPen(Qt::red);
+        }
+        painter.drawRect(mXstart+peak-1,mYstart,2,barHeight);
+        drawValue(&painter,flCurrent);
     } else {
 
         // Current value:
@@ -391,10 +463,13 @@ void meter::paintEvent(QPaintEvent *)
         }
     }
 
+
     if(drawLabels)
     {
         drawLabel(&painter);
     }
+
+
     haveUpdatedData = false;
 }
 
@@ -402,6 +477,23 @@ void meter::drawLabel(QPainter *qp)
 {
     qp->setPen(lowTextColor);
     qp->drawText(0,scaleTextYstart, label );
+}
+
+void meter::drawValue(QPainter *qp, float value)
+{
+    qp->setPen(lowTextColor);
+    uchar prec=1;
+    if (value >= 100.0 || value <= -100.0)
+        prec=0;
+    qp->drawText(0,scaleTextYstart+20, QString("%0").arg(value,0,'f',prec,'0'));
+
+}
+
+void meter::setLevel(float current)
+{
+    this->flCurrent = current;
+    haveUpdatedData = true;
+    this->update();
 }
 
 void meter::setLevel(int current)
@@ -475,6 +567,36 @@ void meter::drawScaleRaw(QPainter *qp)
     {
         qp->drawText(i,scaleTextYstart, QString("%1").arg(i) );
     }
+
+    // Now the lines:
+    qp->setPen(lowLineColor);
+
+    // Line: X1, Y1 -->to--> X2, Y2
+    qp->drawLine(mXstart,scaleLineYstart,peakRedLevel+mXstart,scaleLineYstart);
+    qp->setPen(highLineColor);
+    qp->drawLine(peakRedLevel+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
+}
+
+void meter::drawScaledB(QPainter *qp, int start, int end,int step) {
+    qp->setPen(lowTextColor);
+
+    //qp->setFont(QFont("Arial", fontSize));
+    int y=start;
+    int range=(float(256.0/(end-start))*step);
+
+    //double step = static_cast<double>(end - start) / (count - 1);
+
+    for(int i=mXstart; i<mXstart+256; i+=range)
+    {
+        qp->drawText(i,scaleTextYstart, QString("%1").arg(y) );
+        y=y+step;
+    }
+
+    for(int i=mXstart; i<mXstart+256; i+=(range/2))
+    {
+        qp->drawLine(i,scaleTextYstart, i, scaleTextYstart+5);
+    }
+
 
     // Now the lines:
     qp->setPen(lowLineColor);

@@ -447,6 +447,11 @@ void settingswidget::updateIfPref(prefIfItem pif)
     case if_confirmPowerOff:
         // No UI element for this.
         break;
+    case if_meter1Type:
+    {
+        // No local widget for this
+        break;
+    }
     case if_meter2Type:
     {
         ui->meter2selectionCombo->blockSignals(true);

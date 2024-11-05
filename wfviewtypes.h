@@ -31,7 +31,10 @@ enum meter_t {
     meterTxMod,
     meterRxAudio,
     meterAudio,
-    meterLatency
+    meterLatency,
+    meterdBu,
+    meterdBuEMF,
+    meterdBm
 };
 
 
@@ -182,9 +185,13 @@ struct timekind {
     bool isMinus;
 };
 
+struct meterkind {
+    float value;
+    meter_t type;
+};
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 249
+#define NUMFUNCS 251
 
 enum funcs { funcNone,
 funcFreqTR,             funcModeTR,             funcBandEdgeFreq,           funcFreqGet,        	funcModeGet,        	funcFreqSet,			// \x00
@@ -196,7 +203,8 @@ funcAntenna,        	funcSpeech,        		funcAfGain,                 funcRfGain
 funcNRLevel,       		funcIFShift,            funcPBTInner,               funcPBTOuter,			funcCwPitch,            funcRFPower,
 funcMicGain,            funcKeySpeed,			funcNotchFilter,            funcCompressorLevel,	funcBreakInDelay,		funcNBLevel,
 funcDigiSelShift,		funcDriveGain,			funcMonitorGain,            funcVoxGain,			funcAntiVoxGain,		funcBackLight,
-funcSMeterSqlStatus,    funcSMeter,             funcCenterMeter,            funcVariousSql,         funcOverflowStatus,     funcPowerMeter,
+funcSMeterSqlStatus,    funcSMeter,             funcAbsoluteMeter,          funcMeterType,
+funcCenterMeter,        funcVariousSql,         funcOverflowStatus,         funcPowerMeter,
 funcSWRMeter,			funcALCMeter,          	funcCompMeter,              funcVdMeter,            funcIdMeter,			funcPreamp,
 funcAGCTime,			funcNoiseBlanker,       funcAudioPeakFilter,        funcNoiseReduction,		funcAutoNotch,          funcRepeaterTone,
 funcRepeaterTSQL,		funcRepeaterDTCS,       funcRepeaterCSQL,           funcCompressor,			funcMonitor,            funcVox,
@@ -239,12 +247,13 @@ static QString funcString[] { "None",
 "Mode Set",             "VFO Swap A/B",         "VFO Swap M/S",             "VFO Equal AB",         "VFO Equal MS",         "VFO Dual Watch Off",
 "VFO Dual Watch On",	"VFO Dual Watch",       "VFO Main Select",          "VFO Sub Select",       "VFO A Select",         "VFO B Select",
 "VFO Main/Sub Band",    "Memory Mode",          "Memory Write",             "Memory to VFO",        "Memory Clear",         "Read Freq Offset",
-"Send Freq Offset",		"Scanning",				"VFO Mode Select",          "Split/Duplex",             "Tuning Step",          "Attenuator Status",
+"Send Freq Offset",		"Scanning",				"VFO Mode Select",          "Split/Duplex",         "Tuning Step",          "Attenuator Status",
 "Antenna",          	"Speech",           	"AF Gain",                  "RF Gain",              "Squelch",              "APF Level",
 "NR Level",  			"IF Shift",             "PBT Inner",                "PBT Outer",            "CW Pitch",             "RF Power",
 "Mic Gain",             "Key Speed",			"Notch Filter",             "Compressor Level",     "Break-In Delay",       "NB Level",
 "DIGI-SEL Shift",		"Drive Gain",			"Monitor Gain",             "Vox Gain",             "Anti-Vox Gain",        "Backlight Level",
-"S Meter Sql Status",   "S Meter",				"Center Meter",             "Various Squelch",      "Overflow Status",      "Power Meter",
+"S Meter Sql Status",   "S Meter",				"Absolute Meter",           "Meter Type",
+"Center Meter",         "Various Squelch",      "Overflow Status",          "Power Meter",
 "SWR Meter",            "ALC Meter",            "Comp Meter",               "Vd Meter",             "Id Meter",             "Preamp Status",
 "AGC Time Constant",    "Noise Blanker",        "Audio Peak Filter",        "Noise Reduction",      "Auto Notch",           "Repeater Tone",
 "Repeater TSQL",        "Repeater DTCS",        "Repeater CSQL",            "Compressor Status",    "Monitor Status",       "Vox Status",
@@ -496,6 +505,15 @@ inline QString getMeterDebug(meter_t m) {
         break;
     case meterLatency:
         rtn.append("meterLatency");
+        break;
+    case meterdBu:
+        rtn.append("meterdBu");
+        break;
+    case meterdBuEMF:
+        rtn.append("meterdBuEMF");
+        break;
+    case meterdBm:
+        rtn.append("meterdBm");
         break;
     default:
         rtn.append("UNKNOWN");

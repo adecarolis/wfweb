@@ -273,6 +273,24 @@ queuePriority cachingQueue::getQueued(funcs func, uchar receiver)
     return prio;
 }
 
+queuePriority cachingQueue::changePriority(queuePriority newprio, funcs func, uchar receiver)
+{
+    queuePriority prio = priorityNone;
+    if (func != funcNone && newprio != priorityImmediate)
+    {
+        QMutexLocker locker(&mutex);
+        auto it = std::find_if(queue.begin(), queue.end(), [func,receiver](const queueItem& c) {  return (c.command == func && c.receiver == receiver && c.recurring); });
+        //auto it(queue.begin());
+        if (it != queue.end()) {
+            prio = it.key();
+            auto item = it.value();
+            it=queue.erase(it);
+            queue.insert(newprio,item);
+        }
+    }
+    return prio;
+}
+
 queuePriority cachingQueue::isRecurring(funcs func, uchar receiver)
 {
     // Does NOT lock the mutex
@@ -460,7 +478,8 @@ bool cachingQueue::compare(QVariant a, QVariant b)
             if (a.value<centerSpanData>().cstype != b.value<centerSpanData>().cstype || a.value<centerSpanData>().freq != b.value<centerSpanData>().freq  )
                 changed=true;
         } else if (!strcmp(a.typeName(),"scopeData") || !strcmp(a.typeName(),"memoryType")
-                   || !strcmp(a.typeName(),"bandStackType")  || !strcmp(a.typeName(),"timekind") || !strcmp(a.typeName(),"datekind") ) {
+                   || !strcmp(a.typeName(),"bandStackType")  || !strcmp(a.typeName(),"timekind") || !strcmp(a.typeName(),"datekind")
+                   || !strcmp(a.typeName(),"meterkind")) {
             changed=true; // Always different
         } else {
             // Maybe Try simple comparison?

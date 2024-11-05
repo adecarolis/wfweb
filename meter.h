@@ -30,6 +30,7 @@ public slots:
     void setLevels(int current, int peak, int average);
     void setLevels(int current, int peak); // calculate avg
     void setLevel(int current);
+    void setLevel(float current);
     void setCompReverse(bool reverse);
     void clearMeterOnPTTtoggle();
     void clearMeter();
@@ -59,6 +60,10 @@ private:
     int current=0;
     int peak = 0;
     int average = 0;
+    float flCurrent=0.0;
+    float flPeak=0.0;
+    float flAverage=0.0;
+
     bool reverseCompMeter = true;
 
     int averageBalisticLength = 30;
@@ -90,9 +95,10 @@ private:
     void drawScaleCompInverted(QPainter *qp);
     void drawScale_dBFs(QPainter *qp);
     void drawScaleRaw(QPainter *qp);
+    void drawScaledB(QPainter *qp, int start=-100, int end=-20,int interval=20);
 
     void drawLabel(QPainter *qp);
-
+    void drawValue(QPainter *qp,float value);
     void muteSingleComboItem(QComboBox *comboBox, int index);
     void enableAllComboBoxItems(QComboBox *combobox);
     void setComboBoxItemEnabled(QComboBox * comboBox, int index, bool enabled);

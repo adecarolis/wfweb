@@ -906,6 +906,26 @@ void icomCommander::parseCommand()
     case funcDSPIFFilter:
         value.setValue(bcdHexToUChar(payloadIn[0]));
         break;
+    case funcAbsoluteMeter:
+    {
+        meterkind m;
+        m.value = float(bcdHexToUInt(payloadIn[0],payloadIn[1]))/10.0;
+        if (bool(payloadIn[2])== true) {
+            m.value=-m.value;
+        }
+        if (payloadIn[3]==0)
+            m.type=meterdBu;
+        else if (payloadIn[3]==1)
+            m.type=meterdBuEMF;
+        else if (payloadIn[3]==2)
+            m.type=meterdBm;
+        else {
+            qWarning(logRig()) << "Unknown meter type received!";
+            m.type = meterNone;
+        }
+        value.setValue(m);
+        break;
+    }
     // The following group ALL return bool
     case funcNoiseBlanker:
     case funcAudioPeakFilter:
@@ -1207,6 +1227,7 @@ void icomCommander::parseCommand()
     if(func != funcScopeMainWaveData
         && func != funcScopeSubWaveData
         && func != funcSMeter
+        && func != funcAbsoluteMeter
         && func != funcCenterMeter
         && func != funcPowerMeter
         && func != funcSWRMeter
@@ -1360,13 +1381,16 @@ void icomCommander::determineRigCaps()
         for (int c=0; c < numPeriodic; c++)
         {
             settings->setArrayIndex(c);
-            funcs func = funcsLookup.find(settings->value("Command", "").toString().toUpper()).value();
-            if (!rigCaps.commands.contains(func)) {
-                qWarning(logRig()) << "Cannot find periodic command" << settings->value("Command", "").toString() << "in rigcaps, ignoring";
-            } else {
-                rigCaps.periodic.append(periodicType(func,
-                     settings->value("Priority","").toString(),priorityMap[settings->value("Priority","").toString()],
-                     settings->value("VFO",-1).toInt()));
+
+            if(funcsLookup.contains(settings->value("Command", "****").toString().toUpper())) {
+                funcs func = funcsLookup.find(settings->value("Command", "").toString().toUpper()).value();
+                if (!rigCaps.commands.contains(func)) {
+                    qWarning(logRig()) << "Cannot find periodic command" << settings->value("Command", "").toString() << "in rigcaps, ignoring";
+                } else {
+                    rigCaps.periodic.append(periodicType(func,
+                         settings->value("Priority","").toString(),priorityMap[settings->value("Priority","").toString()],
+                         settings->value("VFO",-1).toInt()));
+                }
             }
         }
         settings->endArray();

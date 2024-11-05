@@ -640,7 +640,9 @@ void memories::on_table_cellChanged(int row, int col)
         }
     }
     if (write) {
+        //Sent command to write memory followed by slightly lower priority command to read.
         queue->add(priorityHighest,queueItem((currentMemory.sat?funcSatelliteMemory:funcMemoryContents),QVariant::fromValue<memoryType>(currentMemory)));
+        queue->add(priorityHigh,queueItem(funcMemoryContents,QVariant::fromValue<uint>((currentMemory.group<<16) | (currentMemory.channel & 0xffff))));
         qInfo() << "Sending memory, group:" << currentMemory.group << "channel" << currentMemory.channel;
         // Set number to not be editable once written. Not sure why but this crashes?
         //ui->table->item(row,columnNum)->setFlags(ui->table->item(row,columnNum)->flags() & (~Qt::ItemIsEditable));
@@ -1904,11 +1906,16 @@ void memories::on_disableEditing_toggled(bool dis)
 
 void memories::on_scanButton_toggled(bool scan)
 {
+    // Change the priority of funcSelectedFreq so that it updates quicker during scans!
+    static queuePriority prio = priorityNone;
     if (scan) {
         ui->scanButton->setText("Stop Scan");
+        prio=queue->changePriority(priorityHighest,funcSelectedFreq,0);
 
     } else {
         ui->scanButton->setText("Start Scan");
+        if (prio != priorityNone)
+            queue->changePriority(prio,funcSelectedFreq,0);
     }
     queue->add(priorityImmediate,queueItem(funcScanning,QVariant::fromValue<uchar>(uchar(scan))));
 }
