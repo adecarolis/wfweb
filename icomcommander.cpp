@@ -910,18 +910,36 @@ void icomCommander::parseCommand()
     {
         meterkind m;
         m.value = float(bcdHexToUInt(payloadIn[0],payloadIn[1]))/10.0;
-        if (bool(payloadIn[2])== true) {
+        if (bool(payloadIn[2]) == true) {
             m.value=-m.value;
         }
-        if (payloadIn[3]==0)
+        if (payloadIn[3] == 0)
             m.type=meterdBu;
-        else if (payloadIn[3]==1)
+        else if (payloadIn[3] == 1)
             m.type=meterdBuEMF;
-        else if (payloadIn[3]==2)
+        else if (payloadIn[3] == 2)
             m.type=meterdBm;
         else {
             qWarning(logRig()) << "Unknown meter type received!";
             m.type = meterNone;
+        }
+        value.setValue(m);
+        break;
+    }
+    case funcMeterType:
+    {
+        meter_t m;
+        if (payloadIn[0] == 0)
+            m = meterS;
+        else if (payloadIn[0] == 1)
+            m = meterdBu;
+        else if (payloadIn[0] == 2)
+            m = meterdBuEMF;
+        else if (payloadIn[0] == 3)
+            m = meterdBm;
+        else {
+            qWarning(logRig()) << "Unknown meterType received!";
+            m = meterNone;
         }
         value.setValue(m);
         break;

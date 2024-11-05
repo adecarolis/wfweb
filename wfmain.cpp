@@ -5424,6 +5424,14 @@ void wfmain::receiveValue(cacheItem val){
         ui->meterSPoWidget->repaint();
         break;
     }
+    case funcMeterType:
+    {
+        meter_t m = val.value.value<meter_t>();
+        if (ui->meterSPoWidget->getMeterType() != m)
+            changeMeterType(m, 1);
+        break;
+
+    }
     case funcVariousSql:
         break;
     case funcOverflowStatus:

@@ -160,18 +160,20 @@ QString debugWindow::getValue(QVariant val)
         }
         else if (!strcmp(val.typeName(),"duplexMode_t"))
         {
-            duplexMode_t i = val.value<duplexMode_t>();
-            value = QString("Mode:%0").arg(i);
+            value = QString("Mode:%0").arg(val.value<duplexMode_t>());
         }
         else if (!strcmp(val.typeName(),"spectrumMode_t"))
         {
-            spectrumMode_t i = val.value<spectrumMode_t>();
-            value = QString("Mode:%0").arg(i);
+            value = QString("Mode:%0").arg(val.value<spectrumMode_t>());
         }
         else if (!strcmp(val.typeName(),"meterkind"))
         {
             meterkind i = val.value<meterkind>();
             value = QString("Type:%0 Value:%1").arg(i.type).arg(i.value);
+        }
+        else if (!strcmp(val.typeName(),"meter_t"))
+        {
+            value = QString("Type:%0").arg(val.value<meter_t>());
         }
         else if (!strcmp(val.typeName(),"centerSpanData"))
         {
