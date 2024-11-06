@@ -4901,19 +4901,21 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
         if((newMeterType!=meterRxAudio) && (newMeterType!=meterTxMod) && (newMeterType!=meterAudio))
             queue->addUnique(priorityHighest,queueItem(newCmd,true,currentReceiver));
 
-        if (rigCaps->commands.contains(funcMeterType))
+        if (meterNum == 1)
         {
-            if (newMeterType == meterS)
-                queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(0),false,currentReceiver));
-            else if (newMeterType == meterdBu)
-                queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(1),false,currentReceiver));
-            else if (newMeterType == meterdBuEMF)
-                queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(2),false,currentReceiver));
-            else if (newMeterType == meterdBm)
-                queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(3),false,currentReceiver));
+            if (rigCaps->commands.contains(funcMeterType))
+            {
+                if (newMeterType == meterS)
+                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(0),false,currentReceiver));
+                else if (newMeterType == meterdBu)
+                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(1),false,currentReceiver));
+                else if (newMeterType == meterdBuEMF)
+                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(2),false,currentReceiver));
+                else if (newMeterType == meterdBm)
+                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(3),false,currentReceiver));
+            }
+            uiMeter->enableCombo(rigCaps->commands.contains(funcMeterType));
         }
-
-
     }
 }
 

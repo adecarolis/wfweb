@@ -43,6 +43,8 @@ public slots:
                    QColor lowText);
     void blockMeterType(meter_t type);
 
+    void enableCombo(bool en) { combo->setEnabled(en); }
+
 private slots:
     void acceptComboItem(int item);
 
@@ -100,7 +102,7 @@ private:
     void drawLabel(QPainter *qp);
     void drawValue(QPainter *qp,float value);
     void muteSingleComboItem(QComboBox *comboBox, int index);
-    void enableAllComboBoxItems(QComboBox *combobox);
+    void enableAllComboBoxItems(QComboBox *combobox, bool en=true);
     void setComboBoxItemEnabled(QComboBox * comboBox, int index, bool enabled);
 
     QString label;

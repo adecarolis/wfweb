@@ -1005,9 +1005,9 @@ void meter::muteSingleComboItem(QComboBox *comboBox, int index) {
     setComboBoxItemEnabled(comboBox, index, false);
 }
 
-void meter::enableAllComboBoxItems(QComboBox *combobox) {
+void meter::enableAllComboBoxItems(QComboBox *combobox, bool en) {
     for(int i=0; i < combobox->count(); i++) {
-        setComboBoxItemEnabled(combobox, i, true);
+        setComboBoxItemEnabled(combobox, i, en);
     }
 }
 
