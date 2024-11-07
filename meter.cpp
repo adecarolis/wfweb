@@ -48,6 +48,16 @@ meter::meter(QWidget *parent) : QWidget(parent)
 
 
     combo = new QComboBox(this);
+    combo->addItem("None", meterNone);
+    combo->addItem("SWR", meterSWR);
+    combo->addItem("ALC", meterALC);
+    combo->addItem("Compression", meterComp);
+    combo->addItem("Voltage", meterVoltage);
+    combo->addItem("Current", meterCurrent);
+    combo->addItem("Center", meterCenter);
+    combo->addItem("TxRxAudio", meterAudio);
+    combo->addItem("RxAudio", meterRxAudio);
+    combo->addItem("TxAudio", meterTxMod);
 
     combo->blockSignals(false);
     connect(combo, SIGNAL(activated(int)), this, SLOT(acceptComboItem(int)));
@@ -1018,7 +1028,7 @@ void meter::setComboBoxItemEnabled(QComboBox * comboBox, int index, bool enabled
     if(!model) return;
 
     auto * item = model->item(index);
-    //assert(item);
+    assert(item);
     if(!item) return;
     item->setEnabled(enabled);
 }
