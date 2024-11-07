@@ -5953,6 +5953,10 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
             }
         }
 
+        ui->transmitBtn->setEnabled(rigCaps->hasTransmit);
+        ui->cwButton->setEnabled(rigCaps->commands.contains(funcSendCW));
+        ui->memoriesBtn->setEnabled(rigCaps->commands.contains(funcMemoryContents));
+
         foreach (auto receiver, receivers) {
             // Setup various combo box up for each VFO:
             receiver->clearMode();
