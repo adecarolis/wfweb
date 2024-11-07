@@ -2491,6 +2491,7 @@ uchar icomCommander::makeFilterWidth(ushort pass,uchar receiver)
 
     char b1 = (units) | (tens << 4);
 
+    //qDebug(logRig()) << "Requested filter width" << pass << "sending value" << uchar(b1);
     return b1;
 }
 

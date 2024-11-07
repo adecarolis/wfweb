@@ -109,6 +109,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<rigInput>();
     qRegisterMetaType<inputTypes>();
     qRegisterMetaType<meter_t>();
+    qRegisterMetaType<meterkind>();
     qRegisterMetaType<spectrumMode_t>();
     qRegisterMetaType<freqt>();
     qRegisterMetaType<vfo_t>();
