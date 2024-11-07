@@ -1025,8 +1025,7 @@ void icomCommander::parseCommand()
     {
         quint16 calc;
         quint8 pass = bcdHexToUChar((quint8)payloadIn[0]);
-        modeInfo m;
-        m = queue->getCache((receiver?funcSubMode:funcMainMode),receiver).value.value<modeInfo>();
+        modeInfo m = queue->getCache(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcMainMode,receiver).value.value<modeInfo>();
 
         if (m.mk == modeAM)
         {
@@ -2464,7 +2463,7 @@ void icomCommander::setAfGain(quint8 level)
 uchar icomCommander::makeFilterWidth(ushort pass,uchar receiver)
 {
     quint8 calc;
-    modeInfo mi = queue->getCache((receiver==1?funcSubMode:funcMainMode),receiver).value.value<modeInfo>();
+    modeInfo mi = queue->getCache(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcMainMode,receiver).value.value<modeInfo>();
     if (mi.mk == modeAM) { // AM 0-49
 
         calc = quint16((pass / 200) - 1);
@@ -2633,7 +2632,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             {
                  if (func == funcFilterWidth) {
                     payload.append(makeFilterWidth(value.value<ushort>(),receiver));
-                    //qInfo() << "Setting filter width" << value.value<ushort>() << "VFO" << receiver << "hex" << payload.toHex();
+                    qInfo() << "Setting filter width" << value.value<ushort>() << "VFO" << receiver << "hex" << payload.toHex();
 
                 }
                 else if (func == funcKeySpeed){
