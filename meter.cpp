@@ -1018,7 +1018,7 @@ void meter::setComboBoxItemEnabled(QComboBox * comboBox, int index, bool enabled
     if(!model) return;
 
     auto * item = model->item(index);
-    assert(item);
+    //assert(item);
     if(!item) return;
     item->setEnabled(enabled);
 }

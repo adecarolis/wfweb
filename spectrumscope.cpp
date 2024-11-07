@@ -799,7 +799,7 @@ bool spectrumScope::updateScope(scopeData data)
             pbtDefault = 0.0;
         }
 
-        if ((PBTInner - pbtDefault || PBTOuter - pbtDefault) && passbandAction != passbandResizing && mode.mk != modeFM)
+        if ((PBTInner - pbtDefault || PBTOuter - pbtDefault) && passbandAction != passbandResizing && mode.mk != modeFM && mode.mk != modeWFM)
         {
             pbtIndicator->setVisible(true);
         }
@@ -1593,6 +1593,7 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
                 configFilterWidth->setEnabled(false);
                 configPbtInner->setEnabled(false);
                 configPbtOuter->setEnabled(false);
+                passbandWidth = double(m.pass/1000000.0);
             }
 
             if (m.mk == modeDD || m.mk == modeDV)
@@ -1637,12 +1638,12 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
                 break;
             default:
                 // FM and digital modes are fixed width, not sure about any other modes?
-                if (mode.filter == 1)
-                    passbandWidth = 0.015;
-                else if (mode.filter == 2)
-                    passbandWidth = 0.010;
-                else
-                    passbandWidth = 0.007;
+                //if (mode.filter == 1)
+                //    passbandWidth = 0.015;
+                //else if (mode.filter == 2)
+                //    passbandWidth = 0.010;
+                //else
+                //    passbandWidth = 0.007;
                 break;
             }
 #if defined __GNUC__

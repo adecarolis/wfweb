@@ -134,7 +134,7 @@ struct modeInfo {
     QString name;
     int bwMin;
     int bwMax;
-    quint16 pass;
+    int pass;
 };
 
 struct antennaInfo {

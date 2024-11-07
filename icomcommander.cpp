@@ -2076,7 +2076,9 @@ modeInfo icomCommander::parseMode(quint8 mode, quint8 filter, uchar receiver,uch
 
         /*  We haven't got a valid passband from the rig yet so we
             need to create a 'fake' one from default values
-            This will be replaced with a valid one if we get it */
+            This will be replaced with a valid one if we get it
+
+            Also use default widths for modes that have no control*/
 
         if (mi.mk == modeCW || mi.mk == modeCW_R || mi.mk == modePSK || mi.mk == modePSK_R) {
             switch (filter) {
@@ -2133,6 +2135,10 @@ modeInfo icomCommander::parseMode(quint8 mode, quint8 filter, uchar receiver,uch
                 break;
             }
         }
+        else if (mi.mk == modeWFM)
+        {
+            mi.pass=200000;
+        }
         else { // SSB or unknown mode
             switch (filter) {
             case 1:
@@ -2148,6 +2154,7 @@ modeInfo icomCommander::parseMode(quint8 mode, quint8 filter, uchar receiver,uch
         }
     }
 
+    //qInfo() << "Mode" << mi.name << "Passband" << mi.pass;
     return mi;
 }
 
@@ -2632,7 +2639,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             {
                  if (func == funcFilterWidth) {
                     payload.append(makeFilterWidth(value.value<ushort>(),receiver));
-                    qInfo() << "Setting filter width" << value.value<ushort>() << "VFO" << receiver << "hex" << payload.toHex();
+                    //qInfo() << "Setting filter width" << value.value<ushort>() << "VFO" << receiver << "hex" << payload.toHex();
 
                 }
                 else if (func == funcKeySpeed){
