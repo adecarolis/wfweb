@@ -807,6 +807,7 @@ void icomCommander::parseCommand()
         memParser=rigCaps.satParser;
     case funcMemoryContents:
     {
+        qInfo() << "Received mem:" << payloadIn.toHex(' ');
         memoryType mem;
         if (memParser.isEmpty()) {
              memParser=rigCaps.memParser;
@@ -964,13 +965,12 @@ void icomCommander::parseCommand()
     case funcSMeterSqlStatus:
     case funcVariousSql:
     case funcRXAntenna:
+    case funcIPPlus:
         value.setValue(static_cast<bool>(payloadIn[0]));
         break;
     case funcMainSubTracking:
     case funcToneSquelchType:
         emit haveRptAccessMode((rptAccessTxRx_t)payloadIn.at(0));
-        break;
-    case funcIPPlus:
         break;
     // 0x17 is CW send and 0x18 is power control (no reply)
     // 0x19 it automatically added.
@@ -1807,6 +1807,21 @@ unsigned int icomCommander::bcdHexToUInt(quint8 hundreds, quint8 tensunits)
     return rtnVal;
 }
 
+unsigned int icomCommander::bcdHexToUInt(quint8 tenthou, quint8 hundreds, quint8 tensunits)
+{
+    // convert:
+    // hex data: 0x41 0x23
+    // convert to uint:
+    // uchar: 4123
+    quint8 thousands = ((hundreds & 0xf0)>>4);
+    unsigned int rtnVal;
+    rtnVal = (hundreds & 0x0f)*100;
+    rtnVal += ((tensunits & 0xf0)>>4)*10;
+    rtnVal += (tensunits & 0x0f);
+    rtnVal += thousands * 1000;
+    rtnVal += (tenthou & 0x0f) * 10000;
+    return rtnVal;
+}
 quint8 icomCommander::bcdHexToUChar(quint8 hundreds, quint8 tensunits)
 {
     // convert:
@@ -1822,7 +1837,7 @@ quint8 icomCommander::bcdHexToUChar(quint8 hundreds, quint8 tensunits)
     return rtnVal;
 }
 
-QByteArray icomCommander::bcdEncodeInt(unsigned int num)
+QByteArray icomCommander::bcdEncodeInt(quint16 num)
 {
     if(num > 9999)
     {
@@ -1838,16 +1853,37 @@ QByteArray icomCommander::bcdEncodeInt(unsigned int num)
     char b0 = hundreds | (thousands << 4);
     char b1 = units | (tens << 4);
 
-    //qInfo(logRig()) << __FUNCTION__ << " encoding value " << num << " as hex:";
-    //printHex(QByteArray(b0), false, true);
-    //printHex(QByteArray(b1), false, true);
-
-
     QByteArray result;
     result.append(b0).append(b1);
     return result;
 }
 
+
+
+QByteArray icomCommander::bcdEncodeInt(unsigned int num)
+{
+    if(num > 999999)
+    {
+        qInfo(logRig()) << __FUNCTION__ << "Error, number is too big for six-digit conversion: " << num;
+        return QByteArray();
+    }
+
+    char tenthou = num / 10000;
+    char thousands = (num - (10000*tenthou)) / 1000;
+    char hundreds = (num - (10000*tenthou) - (1000*thousands)) / 100;
+    char tens = (num - (10000*tenthou) - (1000*thousands) - (100*hundreds)) / 10;
+    char units = (num - (10000*tenthou) - (1000*thousands) - (100*hundreds) - (10*tens));
+
+    char b0 = tenthou;
+    char b1 = hundreds | (thousands << 4);
+    char b2 = units | (tens << 4);
+
+    QByteArray result;
+    result.append(b0).append(b1).append(b2);
+    qInfo(logRig()) << __FUNCTION__ << " encoding value " << num << " as hex:" << result.toHex(' ');
+
+    return result;
+}
 QByteArray icomCommander::bcdEncodeChar(quint8 num)
 {
     if(num > 99)
@@ -2367,31 +2403,32 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
                         mem->dtcs = bcdHexToUInt(data[5],data[6]);
                         break;
                     case modeDV:
+                        mem->dsql = (quint8(data[0] & 0x0f));
                         mem->dvsql = bcdHexToUChar(data[1]);
-                        mem->dsql = (quint8(data[0] >> 4 & 0x0f));
                         break;
                     case modeP25:
                         mem->p25Sql = bool(data[0]&0x01);
-                        mem->p25Nac = quint16(quint16(bcdHexToUChar(data[0])*100)+(bcdHexToUChar(data[1])*10)+(bcdHexToUChar(data[2])));
+                        mem->p25Nac = quint16((quint16(data[1] & 0x0f) << 8) | (quint16(data[2]&0x0f) << 4) | quint16(data[3]&0x0f));
                         break;
                     case modedPMR:
                         mem->dPmrSql = bcdHexToUChar(data[0]);
                         mem->dPmrComid = bcdHexToUInt(data[1],data[2]);
                         mem->dPmrCc = bcdHexToUChar(data[3]);
-                        //mem->dPmrKey = ?? (3 bytes)
+                        mem->dPmrSCRM = bool(data[4]&0x01);
+                        mem->dPmrKey = bcdHexToUInt(data[5],data[6],data[7]);
                         break;
                     case modeNXDN_N:
                     case modeNXDN_VN:
                         mem->nxdnSql = bool(data[0]&0x01);
                         mem->nxdnRan = bcdHexToUChar(data[1]);
                         mem->nxdnEnc = bool(data[2]&0x01);
-                        //mem->nxdnKey = ?? (3 bytes)
+                        mem->nxdnKey = bcdHexToUInt(data[3],data[4],data[5]);
                         break;
                     case modeDCR:
                         mem->dcrSql = bool(data[0]&0x01);
                         mem->dcrUc = bcdHexToUInt(data[1],data[2]);
                         mem->dcrEnc = bool(data[3]&0x01);
-                        //mem->dcrKey = ?? (3 bytes)
+                        mem->dcrKey = bcdHexToUInt(data[4],data[5],data[6]);
                         break;
                     default:
                         break;
@@ -2457,7 +2494,7 @@ void icomCommander::setAfGain(quint8 level)
         QByteArray payload;
         if (getCommand(funcAfGain,payload,level).cmd != funcNone)
         {
-            payload.append(bcdEncodeInt(level));
+            payload.append(bcdEncodeInt(quint16(level)));
             prepDataAndSend(payload);
         }
     }
@@ -2684,17 +2721,17 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         // If "a" exists, break out of the loop as soon as we have the value.
                         if (parse.spec == 'a') {
                             if (parse.len == 1) {
-                                payload.append(bcdEncodeChar(value.value<uint>() >> 16 & 0xff));
+                                payload.append(bcdEncodeChar(quint16(value.value<uint>() >> 16 & 0xff)));
                             }
                             else if (parse.len == 2)
                             {
-                                payload.append(bcdEncodeInt(value.value<uint>() >> 16 & 0xffff));
+                                payload.append(bcdEncodeInt(quint16(value.value<uint>() >> 16 & 0xffff)));
                             }
                             break;
                         }
                     }
                 }
-                payload.append(bcdEncodeInt(value.value<uint>() & 0xffff));
+                payload.append(bcdEncodeInt(quint16(value.value<uint>() & 0xffff)));
             }
             else if (!strcmp(value.typeName(),"memoryType")) {
                 // We need to iterate through memParser to build the correct format
@@ -2905,20 +2942,54 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                                 switch (m.mk)
                                 {
                                 case modeFM:
-                                    payload.append(bcdEncodeChar(mem.tonemode));
-                                    payload.append(nul);
-                                    payload.append(bcdEncodeInt(mem.tsql));
-                                    payload.append(bcdEncodeChar(mem.dtcsp));
-                                    payload.append(bcdEncodeInt(mem.dtcs));
+                                    if (mem.tonemode) {
+                                        payload.append(bcdEncodeChar(mem.tonemode));
+                                        payload.append(nul);
+                                        payload.append(bcdEncodeInt(mem.tsql));
+                                        payload.append(bcdEncodeChar(mem.dtcsp));
+                                        payload.append(bcdEncodeInt(mem.dtcs));
+                                    }
                                     break;
                                 case modeDV:
-                                    payload.append(bcdEncodeChar(mem.dsql));
-                                    payload.append(bcdEncodeChar(mem.dvsql));
+                                    if (mem.dsql) {
+                                        payload.append(bcdEncodeChar(mem.dsql?2:0)); // Set must be 2 but radio returns 1?
+                                        payload.append(bcdEncodeChar(mem.dvsql));
+                                    }
+                                    break;
                                 case modeP25:
+                                    if (mem.p25Sql) {
+                                        payload.append(bcdEncodeChar(mem.p25Sql));
+                                        payload.append(uchar((mem.p25Nac & 0xf00) >> 8));
+                                        payload.append(uchar((mem.p25Nac & 0x0f0) >> 4));
+                                        payload.append(uchar(mem.p25Nac & 0x00f));
+                                    }
+                                    break;
                                 case modedPMR:
+                                    qInfo() << "Sending dPMR sq:" << mem.dPmrSql << "Com ID:" << mem.dPmrComid << "CC:" << mem.dPmrCc << "SCRM:" << mem.dPmrSCRM << "Key:" << mem.dPmrKey;;
+                                    if (mem.dPmrSql || mem.dPmrSCRM) {
+                                        payload.append(bcdEncodeChar(mem.dPmrSql));
+                                        payload.append(bcdEncodeInt(mem.dPmrComid));
+                                        payload.append(bcdEncodeChar(mem.dPmrCc));
+                                        payload.append(bcdEncodeChar(mem.dPmrSCRM));
+                                        payload.append(bcdEncodeInt(mem.dPmrKey));
+                                    }
+                                    break;
                                 case modeNXDN_N:
                                 case modeNXDN_VN:
+                                    if (mem.nxdnSql || mem.nxdnEnc) {
+                                    payload.append(bcdEncodeChar(mem.nxdnSql));
+                                    payload.append(bcdEncodeChar(mem.nxdnRan));
+                                    payload.append(bcdEncodeChar(mem.nxdnEnc));
+                                    payload.append(bcdEncodeInt(mem.nxdnKey));
+                                    }
+                                    break;
                                 case modeDCR:
+                                    if (mem.dcrSql || mem.dcrEnc) {
+                                        payload.append(bcdEncodeChar(mem.dcrSql));
+                                        payload.append(bcdEncodeInt(mem.dcrUc));
+                                        payload.append(bcdEncodeChar(mem.dcrEnc));
+                                        payload.append(bcdEncodeInt(mem.dcrKey));
+                                    }
                                     break;
                                 default:
                                     break;
@@ -2949,7 +3020,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                     isNegative = true;
                     level *= -1;
                 }
-                payload.append(bcdEncodeInt(level*10));
+                payload.append(bcdEncodeInt(quint16(level*10)));
                 payload.append(static_cast<quint8>(isNegative));
             }
             else if (!strcmp(value.typeName(),"modeInfo"))

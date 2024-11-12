@@ -598,7 +598,8 @@ void meter::drawScaledB(QPainter *qp, int start, int end,int step) {
 
     for(int i=mXstart; i<mXstart+256; i+=range)
     {
-        qp->drawText(i,scaleTextYstart, QString("%1").arg(y) );
+        if (meterType != meterdBuEMF || (meterType == meterdBuEMF && y != 0))
+            qp->drawText(i,scaleTextYstart, QString("%1").arg(y) );
         y=y+step;
     }
 

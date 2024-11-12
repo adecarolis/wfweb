@@ -191,6 +191,7 @@ struct preferences {
     bool confirmExit;
     bool confirmPowerOff;
     bool confirmSettingsChanged;
+    bool confirmMemories;
     meter_t meter1Type;
     meter_t meter2Type;
     meter_t meter3Type;

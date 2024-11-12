@@ -58,8 +58,11 @@ private:
     quint8 bcdHexToUChar(quint8 in);
     quint8 bcdHexToUChar(quint8 hundreds, quint8 tensunits);
     unsigned int bcdHexToUInt(quint8 hundreds, quint8 tensunits);
+    unsigned int bcdHexToUInt(quint8 tenthou, quint8 hundreds, quint8 tensunits);
+
     QByteArray bcdEncodeChar(quint8 num);
-    QByteArray bcdEncodeInt(unsigned int);
+    QByteArray bcdEncodeInt(quint16 num);
+    QByteArray bcdEncodeInt(unsigned int num);
     QByteArray setMemory(memoryType mem);
     freqt parseFrequency();
     freqt parseFrequency(QByteArray data, quint8 lastPosition); // supply index where Mhz is found

@@ -62,7 +62,7 @@ private:
     int retries=0;
     int visibleColumns=1;
     bool slowLoad=false;
-
+    bool extendedView = false;
 
     bool checkASCII(QString str);
 
@@ -87,6 +87,14 @@ private:
     QStringList attenuators;
     QStringList antennas;
     QStringList ipplus;
+    QStringList p25Sql;
+    QStringList dPmrSql;
+    QStringList dPmrSCRM;
+    QStringList nxdnSql;
+    QStringList nxdnEnc;
+    QStringList dcrSql;
+    QStringList dcrEnc;
+
 
     /*
         columnFrequencyB,
@@ -124,6 +132,13 @@ private:
     QStandardItemModel* attenuatorsModel = Q_NULLPTR;
     QStandardItemModel* antennasModel = Q_NULLPTR;
     QStandardItemModel* ipplusModel = Q_NULLPTR;
+    QStandardItemModel* p25SqlModel = Q_NULLPTR;
+    QStandardItemModel* dPmrSqlModel = Q_NULLPTR;
+    QStandardItemModel* dPmrSCRMModel = Q_NULLPTR;
+    QStandardItemModel* nxdnSqlModel = Q_NULLPTR;
+    QStandardItemModel* nxdnEncModel = Q_NULLPTR;
+    QStandardItemModel* dcrSqlModel = Q_NULLPTR;
+    QStandardItemModel* dcrEncModel = Q_NULLPTR;
 
     QStandardItemModel* vfoModelB = Q_NULLPTR;
     QStandardItemModel* modesModelB = Q_NULLPTR;
@@ -137,12 +152,6 @@ private:
     QStandardItemModel* duplexModelB = Q_NULLPTR;
     QStandardItemModel* dtcsModelB = Q_NULLPTR;
     QStandardItemModel* dvsqlModelB = Q_NULLPTR;
-    // I don't know of any radio that uses these!
-    QStandardItemModel* tuningStepsModelB = Q_NULLPTR;
-    QStandardItemModel* preampsModelB = Q_NULLPTR;
-    QStandardItemModel* attenuatorsModelB = Q_NULLPTR;
-    QStandardItemModel* antennasModelB = Q_NULLPTR;
-    QStandardItemModel* ipplusModelB = Q_NULLPTR;
 
     tableEditor* numEditor = Q_NULLPTR;
     tableCombobox* splitList = Q_NULLPTR;
@@ -173,6 +182,22 @@ private:
     tableCombobox* antennasList = Q_NULLPTR;
     tableCombobox* ipplusList = Q_NULLPTR;
 
+    tableCombobox* p25SqlList = Q_NULLPTR;
+    tableEditor* p25NacEditor = Q_NULLPTR;
+    tableCombobox* dPmrSqlList = Q_NULLPTR;
+    tableEditor* dPmrComIdEditor = Q_NULLPTR;
+    tableEditor* dPmrCcEditor = Q_NULLPTR;
+    tableCombobox* dPmrSCRMList = Q_NULLPTR;
+    tableEditor* dPmrKeyEditor = Q_NULLPTR;
+    tableCombobox* nxdnSqlList = Q_NULLPTR;
+    tableEditor* nxdnRanEditor = Q_NULLPTR;
+    tableCombobox* nxdnEncList = Q_NULLPTR;
+    tableEditor* nxdnKeyEditor = Q_NULLPTR;
+    tableCombobox* dcrSqlList = Q_NULLPTR;
+    tableEditor* dcrUcEditor = Q_NULLPTR;
+    tableCombobox* dcrEncList = Q_NULLPTR;
+    tableEditor* dcrKeyEditor = Q_NULLPTR;
+
     tableCombobox* vfoListB = Q_NULLPTR;
     tableEditor* freqEditorB = Q_NULLPTR;
     tableCombobox* filterListB = Q_NULLPTR;
@@ -191,11 +216,6 @@ private:
     tableEditor* r1EditorB = Q_NULLPTR;
     tableEditor* r2EditorB = Q_NULLPTR;
     tableCombobox* tuningStepsListB = Q_NULLPTR;
-    tableEditor* tuningStepEditorB = Q_NULLPTR;
-    tableCombobox* preampsListB = Q_NULLPTR;
-    tableCombobox* attenuatorsListB = Q_NULLPTR;
-    tableCombobox* antennasListB = Q_NULLPTR;
-    tableCombobox* ipplusListBB = Q_NULLPTR;
 
     rigCapabilities* rigCaps = Q_NULLPTR;
 
@@ -235,6 +255,21 @@ private:
         columnUR,
         columnR1,
         columnR2,
+        columnP25Sql,
+        columnP25Nac,
+        columnDPmrSql,
+        columnDPmrComid,
+        columnDPmrCc,
+        columnDPmrSCRM,
+        columnDPmrKey,
+        columnNxdnSql,
+        columnNxdnRan,
+        columnNxdnEnc,
+        columnNxdnKey,
+        columnDcrSql,
+        columnDcrUc,
+        columnDcrEnc,
+        columnDcrKey,
         columnVFOB,
         columnFrequencyB,
         columnModeB,
@@ -242,12 +277,6 @@ private:
         columnDataB,
         columnDuplexB,
         columnToneModeB,
-        columnTuningStepB,
-        columnCustomTuningStepB,
-        columnAttenuatorB,
-        columnPreamplifierB,
-        columnAntennaB,
-        columnIPPlusB,
         columnDSQLB,
         columnToneB,
         columnTSQLB,
@@ -287,6 +316,7 @@ private:
     };
 
     void enableCell(int col, int row, bool en);
+    void configColumns(int row, modeInfo mode);
 };
 
 #endif // MEMORIES_H

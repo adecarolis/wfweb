@@ -569,15 +569,6 @@ void wfmain::makeRig()
         //connect(this, SIGNAL(getRptDuplexOffset()), rig, SLOT(getRptDuplexOffset()));
         connect(rig, SIGNAL(haveRptOffsetFrequency(freqt)), rpt, SLOT(handleRptOffsetFrequency(freqt)));
 
-        // Memories
-        //connect(this, SIGNAL(setMemoryMode()), rig, SLOT(setMemoryMode()));
-        //connect(this, SIGNAL(setSatelliteMode(bool)), rig, SLOT(setSatelliteMode(bool)));
-        //connect(this, SIGNAL(getMemory(quint32)), rig, SLOT(getMemory(quint32)));
-        //connect(this, SIGNAL(getSatMemory(quint32)), rig, SLOT(getSatMemory(quint32)));
-        //connect(this, SIGNAL(setMemory(memoryType)), rig, SLOT(setMemory(memoryType)));
-        //connect(this, SIGNAL(clearMemory(quint32)), rig, SLOT(clearMemory(quint32)));
-        //connect(this, SIGNAL(rigCaps->ry(quint32)), rig, SLOT(rigCaps->ry(quint32)));
-
         connect(this->rpt, &repeaterSetup::getTone, this->rig,
                 [=]() {
             qDebug(logSystem()) << "Asking for TONE";
@@ -1584,6 +1575,7 @@ void wfmain::setDefPrefs()
     defPrefs.confirmExit = true;
     defPrefs.confirmPowerOff = true;
     defPrefs.confirmSettingsChanged = true;
+    defPrefs.confirmMemories = false;
     defPrefs.meter1Type = meterS;
     defPrefs.meter2Type = meterNone;
     defPrefs.meter3Type = meterNone;
@@ -1674,6 +1666,7 @@ void wfmain::loadSettings()
     prefs.confirmExit = settings->value("ConfirmExit", defPrefs.confirmExit).toBool();
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
     prefs.confirmSettingsChanged = settings->value("ConfirmSettingsChanged", defPrefs.confirmSettingsChanged).toBool();
+    prefs.confirmMemories = settings->value("ConfirmMemories", defPrefs.confirmMemories).toBool();
     prefs.meter1Type = static_cast<meter_t>(settings->value("Meter1Type", defPrefs.meter1Type).toInt());
     prefs.meter2Type = static_cast<meter_t>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
     prefs.meter3Type = static_cast<meter_t>(settings->value("Meter3Type", defPrefs.meter3Type).toInt());
@@ -2877,6 +2870,7 @@ void wfmain::saveSettings()
     settings->setValue("ConfirmExit", prefs.confirmExit);
     settings->setValue("ConfirmPowerOff", prefs.confirmPowerOff);
     settings->setValue("ConfirmSettingsChanged", prefs.confirmSettingsChanged);
+    settings->setValue("ConfirmMmories", prefs.confirmMemories);
     settings->setValue("Meter1Type", (int)prefs.meter1Type);
     settings->setValue("Meter2Type", (int)prefs.meter2Type);
     settings->setValue("Meter3Type", (int)prefs.meter3Type);
@@ -5188,6 +5182,7 @@ void wfmain::on_cwButton_clicked()
 void wfmain::on_memoriesBtn_clicked()
 {
     if (rigCaps != Q_NULLPTR) {
+
         if (memWindow == Q_NULLPTR) {
             // Add slowload option for background loading.
             memWindow = new memories(isRadioAdmin, false);
@@ -5195,7 +5190,45 @@ void wfmain::on_memoriesBtn_clicked()
 
             memWindow->populate(); // Call populate to get the initial memories
         }
-        memWindow->show();
+
+        // Are you sure?
+        if (prefs.confirmMemories) {
+            memWindow->show();
+        } else {
+            QCheckBox *cb = new QCheckBox(tr("Don't ask me again"));
+            cb->setToolTip(tr("Don't ask me to confirm memories again"));
+            QMessageBox msgbox;
+            msgbox.setText(tr("Memories are considered an experimental feature,\nPlease make sure you have a full backup of your radio before making changes.\nAre you sure you want to continue?\n"));
+            msgbox.setIcon(QMessageBox::Icon::Question);
+            QAbstractButton *yesButton = msgbox.addButton(QMessageBox::Yes);
+            msgbox.addButton(QMessageBox::No);
+            msgbox.setDefaultButton(QMessageBox::Yes);
+            msgbox.setCheckBox(cb);
+    #if (QT_VERSION >= QT_VERSION_CHECK(6,7,0))
+            QObject::connect(cb, &QCheckBox::checkStateChanged, this, [this](Qt::CheckState state){
+                if (state == Qt::CheckState::Checked)
+    #else
+            QObject::connect(cb, &QCheckBox::stateChanged, this, [this](int state){
+                if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked)
+    #endif
+                {
+                    prefs.confirmMemories=true;
+                } else {
+                    prefs.confirmMemories=false;
+                }
+                settings->beginGroup("Interface");
+                settings->setValue("ConfirmMemories", this->prefs.confirmMemories);
+                settings->endGroup();
+                settings->sync();
+            });
+
+            msgbox.exec();
+            delete cb;
+
+            if (msgbox.clickedButton() == yesButton) {
+                memWindow->show();
+            }
+        }
     } else {
         if (memWindow != Q_NULLPTR)
         {
@@ -5510,6 +5543,7 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcDigiSel:
         ui->digiselEnableChk->setChecked(val.value.value<bool>());
+        ui->preampSelCombo->setEnabled(!val.value.value<bool>());
         emit sendLevel(funcDigiSel,val.value.value<bool>());
         break;
     case funcTwinPeakFilter:
@@ -5954,8 +5988,13 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         }
 
         ui->transmitBtn->setEnabled(rigCaps->hasTransmit);
+        ui->micGainSlider->setEnabled(rigCaps->hasTransmit);
+        ui->txPowerSlider->setEnabled(rigCaps->hasTransmit);
+
         ui->cwButton->setEnabled(rigCaps->commands.contains(funcSendCW));
         ui->memoriesBtn->setEnabled(rigCaps->commands.contains(funcMemoryContents));
+        ui->monitorSlider->setEnabled(rigCaps->commands.contains(funcMonitorGain));
+        ui->rfGainSlider->setEnabled(rigCaps->commands.contains(funcRfGain));
 
         foreach (auto receiver, receivers) {
             // Setup various combo box up for each VFO:

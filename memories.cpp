@@ -43,17 +43,21 @@ memories::memories(bool isAdmin, bool slowLoad, QWidget *parent) :
 
     /*
 
-columnRecall=0, columnNum,columnSplit,columnSkip,columnScan,columnFrequency,columnMode,columnFilter,columnData,columnDuplex,columnToneMode,
-columnTuningStep, columnCustomTuningStep, columnAttenuator, columnPreamplifier, columnAntenna, columnIPPlus,columnDSQL,columnTone,columnTSQL,columnDTCS,
-columnDTCSPolarity,columnDVSquelch,columnOffset,columnUR,columnR1,columnR2,columnFrequencyB,columnModeB,columnFilterB,columnDataB,columnDuplexB,columnToneModeB,
-columnTuningStepB, columnCustomTuningStepB, columnAttenuatorB, columnPreamplifierB, columnAntennaB, columnIPPlusB, columnDSQLB
-columnToneB,columnTSQLB,columnDTCSB,columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B,columnName,
+columnRecall=0, columnNum,columnSplit,columnSkip,columnScan,columnFrequency,columnMode,columnFilter,columnData,columnDuplex,
+columnToneMode,columnTuningStep, columnCustomTuningStep, columnAttenuator, columnPreamplifier, columnAntenna, columnIPPlus,
+columnDSQL,columnTone,columnTSQL,columnDTCS,columnDTCSPolarity,columnDVSquelch,columnOffset,columnUR,columnR1,columnR2,
+columnP25Sql,columnP25Nac,columnDPmrSql,columnDPmrComid,columnDPmrCc,columnDPmrSCRM,columnDPmrKey,columnNxdnSql,
+columnNnxdnRan,columnNxdnEnc,columnNxdnKey,columnDcrSql,columnDcrUc,columnDcrEnc,columnDcrKey,columnFrequencyB,
+columnModeB,columnFilterB,columnDataB,columnDuplexB,columnToneModeB,columnDSQLB,columnToneB,columnTSQLB,columnDTCSB,
+columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B,columnName,
      */
 
     headers << "" << "Num" << "Name" << "Split" << "Skip" << "Scan" << "VFO" << "Freq" << "Mode" << "Filter" << "Data" <<"Duplex" << "Tn Mode" <<
         "Step" << "Prog Step" << "Atten" << "Preamp" << "Ant" << "IP Plus" << "DSQL" << "Tone" << "TSQL" << "DTCS" << "DTCS Pol" << "DV Sql" <<
-        "Offset" << "UR" << "R1" << "R2" << "VFO B" << "Freq B" << "Mode B" << "Filter B" << "Data B" << "Duplex B" << "Tn Mode B" << "Step B" <<
-        "Prog Step B" << "Atten B" << "Preamp B" << "Ant B" << "IP Plus B" << "DSQL B" << "Tone B" << "TSQL B" << "DTCS B" << "DTCSP B" <<
+        "Offset" << "UR" << "R1" << "R2" << "P25 SQL" << "P25 NAC" << "dPMR SQL" << "dPMR COM ID" << "dPMR CC" << "dPMR SCRM" << "dPMR Key" <<
+        "NXDN SQL" << "NXDN RAN" << "NXDN Enc" << "NXDN Key" << "DCR SQL" << "DCR UC" << "DCR Enc"  << "DCR Key" <<
+        "VFO B" << "Freq B" << "Mode B" << "Filter B" << "Data B" << "Duplex B" << "Tn Mode B" << "DSQL B" <<
+        "Tone B" << "TSQL B" << "DTCS B" << "DTCSP B" <<
         "DV Sql B" << "Offset B" << "UR B" << "R1 B" << "R2 B";
 
     skip << "OFF" << "SKIP" << "PSKIP";
@@ -92,6 +96,13 @@ columnToneB,columnTSQLB,columnDTCSB,columnDTCSPolarityB,columnDVSquelchB,columnO
         "732" << "734" << "743" << "754";
 
     dsql << "OFF" << "DSQL" << "CSQL";
+    p25Sql << "OFF" << "NAC";
+    dPmrSql << "OFF" << "COM ID" << "CC";
+    dPmrSCRM << "OFF" << "ON";
+    nxdnSql << "OFF" << "ON";
+    nxdnEnc << "OFF" << "ON";
+    dcrSql << "OFF" << "UC";
+    dcrEnc << "OFF" << "ON";
 
     if (rigCaps->hasTransmit)
         dtcsp << "BOTH N" << "N/R" << "R/N" << "BOTH R";
@@ -270,7 +281,7 @@ void memories::rowAdded(int row)
     if (ui->table->item(row,columnDuplex) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDuplex),duplexModes[0]);
     if (ui->table->item(row,columnToneMode) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnToneMode),toneModes[0]);
     if (ui->table->item(row,columnTuningStep) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnTuningStep),tuningSteps[0]);
-    if (ui->table->item(row,columnCustomTuningStep) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnCustomTuningStep),"0.000");
+    if (ui->table->item(row,columnCustomTuningStep) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnCustomTuningStep),"5");
     if (ui->table->item(row,columnAttenuator) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnAttenuator),attenuators[0]);
     if (ui->table->item(row,columnPreamplifier) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnPreamplifier),preamps[0]);
     if (ui->table->item(row,columnAntenna) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnAntenna),antennas[0]);
@@ -285,15 +296,29 @@ void memories::rowAdded(int row)
     if (ui->table->item(row,columnUR) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnUR),"CQCQCQ  ");
     if (ui->table->item(row,columnR1) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnR1),"        ");
     if (ui->table->item(row,columnR2) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnR2),"        ");
+
+    if (ui->table->item(row,columnP25Sql) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnP25Sql),p25Sql[0]);
+    if (ui->table->item(row,columnP25Nac) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnP25Nac),"293");
+
+    if (ui->table->item(row,columnDPmrSql) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDPmrSql),dPmrSql[0]);
+    if (ui->table->item(row,columnDPmrComid) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDPmrComid),"000");
+    if (ui->table->item(row,columnDPmrCc) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDPmrCc),"00");
+    if (ui->table->item(row,columnDPmrSCRM) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDPmrSCRM),dPmrSCRM[0]);
+    if (ui->table->item(row,columnDPmrKey) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDPmrKey),"00001");
+
+    if (ui->table->item(row,columnNxdnSql) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnNxdnSql),nxdnSql[0]);
+    if (ui->table->item(row,columnNxdnRan) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnNxdnRan),"00");
+    if (ui->table->item(row,columnNxdnEnc) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnNxdnEnc),nxdnEnc[0]);
+    if (ui->table->item(row,columnNxdnKey) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnNxdnKey),"00001");
+
+    if (ui->table->item(row,columnDcrSql) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDcrSql),dcrSql[0]);
+    if (ui->table->item(row,columnDcrUc) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDcrUc),"000");
+    if (ui->table->item(row,columnDcrEnc) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDcrEnc),dcrEnc[0]);
+    if (ui->table->item(row,columnDcrKey) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDcrKey),"00001");
+
     if (ui->table->item(row,columnDataB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDataB),dataModes[0]);
     if (ui->table->item(row,columnFilterB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnFilterB),filters[0]);
     if (ui->table->item(row,columnToneModeB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnToneModeB),toneModes[0]);
-    if (ui->table->item(row,columnTuningStepB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnTuningStepB),tuningSteps[0]);
-    if (ui->table->item(row,columnCustomTuningStepB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnCustomTuningStepB),"0.000");
-    if (ui->table->item(row,columnAttenuatorB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnAttenuatorB),attenuators[0]);
-    if (ui->table->item(row,columnPreamplifierB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnPreamplifierB),preamps[0]);
-    if (ui->table->item(row,columnAntennaB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnAntennaB),antennas[0]);
-    if (ui->table->item(row,columnIPPlusB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnIPPlusB),ipplus[0]);
     if (ui->table->item(row,columnDSQLB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDSQLB),dsql[0]);
     if (ui->table->item(row,columnToneB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnToneB),tones[0]);
     if (ui->table->item(row,columnTSQLB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnTSQLB),tones[0]);
@@ -416,48 +441,24 @@ void memories::on_table_cellChanged(int row, int col)
         currentMemory.tuningStep = tuningSteps.indexOf(ui->table->item(row,columnTuningStep)->text());
     }
 
-    if (!ui->table->isColumnHidden(columnTuningStepB) && ui->table->item(row,columnTuningStepB) != NULL) {
-        currentMemory.tuningStepB = tuningSteps.indexOf(ui->table->item(row,columnTuningStepB)->text().toUpper());
-    }
-
     if (!ui->table->isColumnHidden(columnCustomTuningStep) && ui->table->item(row,columnCustomTuningStep) != NULL) {
         currentMemory.progTs =(ui->table->item(row,columnCustomTuningStep) == NULL) ? 0 : int(ui->table->item(row,columnCustomTuningStep)->text().toUInt());
-    }
-
-    if (!ui->table->isColumnHidden(columnCustomTuningStepB) && ui->table->item(row,columnCustomTuningStepB) != NULL) {
-        currentMemory.progTsB =(ui->table->item(row,columnCustomTuningStepB) == NULL) ? 0 : int(ui->table->item(row,columnCustomTuningStepB)->text().toUInt());
     }
 
     if (!ui->table->isColumnHidden(columnAttenuator) && ui->table->item(row,columnAttenuator) != NULL) {
         currentMemory.atten = (ui->table->item(row,columnAttenuator) == NULL) ? 0 : int(ui->table->item(row,columnAttenuator)->text().toUInt());
     }
 
-    if (!ui->table->isColumnHidden(columnAttenuatorB) && ui->table->item(row,columnAttenuatorB) != NULL) {
-        currentMemory.attenB = (ui->table->item(row,columnAttenuatorB) == NULL) ? 0 : int(ui->table->item(row,columnAttenuatorB)->text().toUInt());
-    }
-
     if (!ui->table->isColumnHidden(columnPreamplifier) && ui->table->item(row,columnPreamplifier) != NULL) {
         currentMemory.preamp = preamps.indexOf(ui->table->item(row,columnPreamplifier)->text().toUpper());
-    }
-
-    if (!ui->table->isColumnHidden(columnPreamplifierB) && ui->table->item(row,columnPreamplifierB) != NULL) {
-        currentMemory.preampB = preamps.indexOf(ui->table->item(row,columnPreamplifierB)->text().toUpper());
     }
 
     if (!ui->table->isColumnHidden(columnAntenna) && ui->table->item(row,columnAntenna) != NULL) {
         currentMemory.antenna = antennas.indexOf(ui->table->item(row,columnAntenna)->text().toUpper());
     }
 
-    if (!ui->table->isColumnHidden(columnAntennaB) && ui->table->item(row,columnAntennaB) != NULL) {
-        currentMemory.antennaB = antennas.indexOf(ui->table->item(row,columnAntennaB)->text().toUpper());
-    }
-
     if (!ui->table->isColumnHidden(columnIPPlus) && ui->table->item(row,columnIPPlus) != NULL) {
         currentMemory.ipplus = ipplus.indexOf(ui->table->item(row,columnIPPlus)->text().toUpper());
-    }
-
-    if (!ui->table->isColumnHidden(columnIPPlusB) && ui->table->item(row,columnIPPlusB) != NULL) {
-        currentMemory.ipplusB = ipplus.indexOf(ui->table->item(row,columnIPPlusB)->text().toUpper());
     }
 
     if (!ui->table->isColumnHidden(columnDSQL) && ui->table->item(row,columnDSQL) != NULL) {
@@ -509,6 +510,38 @@ void memories::on_table_cellChanged(int row, int col)
     memcpy(currentMemory.name,((ui->table->item(row,columnName) == NULL) ? "" : ui->table->item(row,columnName)->text()).toStdString().c_str(),16);
 
 
+    if (ui->table->item(row,columnP25Sql) != NULL) {
+        currentMemory.p25Sql = p25Sql.indexOf(ui->table->item(row,columnP25Sql)->text().toUpper());
+    }
+    currentMemory.p25Nac = (ui->table->item(row,columnP25Nac) == NULL) ? 0 : int(ui->table->item(row,columnP25Nac)->text().toUInt(nullptr,16));
+
+    if (ui->table->item(row,columnDPmrSql) != NULL) {
+        currentMemory.dPmrSql = dPmrSql.indexOf(ui->table->item(row,columnDPmrSql)->text().toUpper());
+    }
+    currentMemory.dPmrComid = (ui->table->item(row,columnDPmrComid) == NULL) ? 0 : int(ui->table->item(row,columnDPmrComid)->text().toUInt());
+    currentMemory.dPmrCc = (ui->table->item(row,columnDPmrCc) == NULL) ? 0 : int(ui->table->item(row,columnDPmrCc)->text().toUInt());
+    if (ui->table->item(row,columnDPmrSCRM) != NULL) {
+        currentMemory.dPmrSCRM = dPmrSCRM.indexOf(ui->table->item(row,columnDPmrSCRM)->text().toUpper());
+    }
+    currentMemory.dPmrKey = (ui->table->item(row,columnDPmrKey) == NULL) ? 0 : int(ui->table->item(row,columnDPmrKey)->text().toUInt());
+
+    if (ui->table->item(row,columnNxdnSql) != NULL) {
+        currentMemory.nxdnSql = nxdnSql.indexOf(ui->table->item(row,columnNxdnSql)->text().toUpper());
+    }
+    currentMemory.nxdnRan = (ui->table->item(row,columnNxdnRan) == NULL) ? 0 : int(ui->table->item(row,columnNxdnRan)->text().toUInt());
+    if (ui->table->item(row,columnNxdnEnc) != NULL) {
+        currentMemory.nxdnEnc = nxdnEnc.indexOf(ui->table->item(row,columnNxdnEnc)->text().toUpper());
+    }
+    currentMemory.nxdnKey = (ui->table->item(row,columnNxdnKey) == NULL) ? 0 : int(ui->table->item(row,columnNxdnKey)->text().toUInt());
+
+    if (ui->table->item(row,columnDcrSql) != NULL) {
+        currentMemory.dcrSql = dcrSql.indexOf(ui->table->item(row,columnDcrSql)->text().toUpper());
+    }
+    currentMemory.dcrUc = (ui->table->item(row,columnDcrUc) == NULL) ? 0 : int(ui->table->item(row,columnDcrUc)->text().toUInt());
+    if (ui->table->item(row,columnDcrEnc) != NULL) {
+        currentMemory.dcrEnc = dcrEnc.indexOf(ui->table->item(row,columnDcrEnc)->text().toUpper());
+    }
+    currentMemory.dcrKey = (ui->table->item(row,columnDcrKey) == NULL) ? 0 : int(ui->table->item(row,columnDcrKey)->text().toUInt());
 
     // This may update any dependant columns so signals must be blocked.
     bool block=false;
@@ -542,62 +575,8 @@ void memories::on_table_cellChanged(int row, int col)
 
         for (auto &m: rigCaps->modes){
             if (!ui->table->isColumnHidden(columnMode) && ui->table->item(row,columnMode) != NULL && ui->table->item(row,columnMode)->text()==m.name) {
-                // This mode is the one we are interested in!
-
-#if defined __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#endif
-
-                switch (m.mk)
-                {
-                case modeFM:
-                    enableCell(row,columnToneMode,true);
-                    enableCell(row,columnTSQL,true);
-                    enableCell(row,columnDTCS,true);
-                    enableCell(row,columnDTCSPolarity,true);
-                    enableCell(row,columnDVSquelch,false);
-                    enableCell(row,columnDSQL,false);
-                    enableCell(row,columnR1,false);
-                    enableCell(row,columnR2,false);
-                    enableCell(row,columnUR,false);
-                    break;
-                case modeDV:
-                    enableCell(row,columnDVSquelch,true);
-                    enableCell(row,columnR1,true);
-                    enableCell(row,columnR2,true);
-                    enableCell(row,columnUR,true);
-                case modeP25:
-                case modedPMR:
-                case modeNXDN_N:
-                case modeNXDN_VN:
-                case modeDCR:
-                    enableCell(row,columnDSQL,true);
-                    enableCell(row,columnToneMode,false);
-                    enableCell(row,columnTSQL,false);
-                    enableCell(row,columnDTCS,false);
-                    enableCell(row,columnDTCSPolarity,false);
-                    enableCell(row,columnR1,false);
-                    enableCell(row,columnR2,false);
-                    enableCell(row,columnUR,false);
-                    break;
-                default:
-                    enableCell(row,columnToneMode,false);
-                    enableCell(row,columnTSQL,false);
-                    enableCell(row,columnDTCS,false);
-                    enableCell(row,columnDTCSPolarity,false);
-                    enableCell(row,columnDVSquelch,false);
-                    enableCell(row,columnDSQL,false);
-                    enableCell(row,columnR1,false);
-                    enableCell(row,columnR2,false);
-                    enableCell(row,columnUR,false);
-                    break;
-                }
-
-#if defined __GNUC__
-#pragma GCC diagnostic pop
-#endif
-
+                // This mode is the one we are interested in!                
+                configColumns(row,m);
                 break;
             }
         }
@@ -1168,51 +1147,159 @@ void memories::on_group_currentIndexChanged(int index)
             visibleColumns++;
             break;
         case 'Z':
+            extendedView = true;
             if (toneModesList != Q_NULLPTR)
                 delete toneModesList;
             toneModesList = new tableCombobox(createModel(toneModesModel, toneModes),false,ui->table);
             ui->table->setItemDelegateForColumn(columnToneMode, toneModesList);
 
             ui->table->showColumn(columnToneMode);
-            visibleColumns++;
+            //visibleColumns++;
 
             if (tsqlList != Q_NULLPTR)
                 delete tsqlList;
             tsqlList = new tableCombobox(createModel(tsqlModel, tones),false,ui->table);
             ui->table->setItemDelegateForColumn(columnTSQL, tsqlList);
-
             ui->table->showColumn(columnTSQL);
-            visibleColumns++;
+            //visibleColumns++;
 
             if (dtcsList != Q_NULLPTR)
                 delete dtcsList;
             dtcsList = new tableCombobox(createModel(dtcsModel, dtcs),false,ui->table);
             ui->table->setItemDelegateForColumn(columnDTCS, dtcsList);
-
             ui->table->showColumn(columnDTCS);
-            visibleColumns++;
+            //visibleColumns++;
 
             if (dtcspList != Q_NULLPTR)
                 delete dtcspList;
             dtcspList = new tableCombobox(createModel(dtcspModel, dtcsp),false,ui->table);
             ui->table->setItemDelegateForColumn(columnDTCSPolarity, dtcspList);
-
             ui->table->showColumn(columnDTCSPolarity);
-            visibleColumns++;
+            //visibleColumns++;
 
             if (dsqlList != Q_NULLPTR)
                 delete dsqlList;
             dsqlList = new tableCombobox(createModel(dsqlModel, dsql),false,ui->table);
             ui->table->setItemDelegateForColumn(columnDSQL, dsqlList);
             ui->table->showColumn(columnDSQL);
-            visibleColumns++;
+            //visibleColumns++;
 
             if (dvsqlList != Q_NULLPTR)
                 delete dvsqlList;
             dvsqlList = new tableCombobox(createModel(dvsqlModel, dvsql),false,ui->table);
             ui->table->setItemDelegateForColumn(columnDVSquelch, dvsqlList);
             ui->table->showColumn(columnDVSquelch);
-            visibleColumns++;
+            //visibleColumns++;
+
+            /* P25 */
+            if (p25SqlList != Q_NULLPTR)
+                delete p25SqlList;
+            p25SqlList = new tableCombobox(createModel(p25SqlModel, p25Sql),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnP25Sql, p25SqlList);
+            ui->table->showColumn(columnP25Sql);
+            //visibleColumns++;
+
+            if (p25NacEditor != Q_NULLPTR)
+                delete p25NacEditor;
+            p25NacEditor = new tableEditor("HHH",ui->table);
+            ui->table->setItemDelegateForColumn(columnP25Nac, p25NacEditor);
+            ui->table->showColumn(columnP25Nac);
+            //visibleColumns++;
+
+            /* dPMR */
+            if (dPmrSqlList != Q_NULLPTR)
+                delete dPmrSqlList;
+            dPmrSqlList = new tableCombobox(createModel(dPmrSqlModel, dPmrSql),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDPmrSql, dPmrSqlList);
+            ui->table->showColumn(columnDPmrSql);
+            //visibleColumns++;
+
+            if (dPmrComIdEditor != Q_NULLPTR)
+                delete dPmrComIdEditor;
+            dPmrComIdEditor = new tableEditor("999",ui->table);
+            ui->table->setItemDelegateForColumn(columnDPmrComid, dPmrComIdEditor);
+            ui->table->showColumn(columnDPmrComid);
+            //visibleColumns++;
+
+            if (dPmrCcEditor != Q_NULLPTR)
+                delete dPmrCcEditor;
+            dPmrCcEditor = new tableEditor("99",ui->table);
+            ui->table->setItemDelegateForColumn(columnDPmrCc, dPmrCcEditor);
+            ui->table->showColumn(columnDPmrCc);
+            //visibleColumns++;
+
+            if (dPmrSCRMList != Q_NULLPTR)
+                delete dPmrSCRMList;
+            dPmrSCRMList = new tableCombobox(createModel(dPmrSCRMModel, dPmrSCRM),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDPmrSCRM, dPmrSCRMList);
+            ui->table->showColumn(columnDPmrSCRM);
+            //visibleColumns++;
+
+            if (dPmrKeyEditor != Q_NULLPTR)
+                delete dPmrKeyEditor;
+            dPmrKeyEditor = new tableEditor("99999",ui->table);
+            ui->table->setItemDelegateForColumn(columnDPmrKey, dPmrKeyEditor);
+            ui->table->showColumn(columnDPmrKey);
+            //visibleColumns++;
+
+
+            /* NXDN */
+            if (nxdnSqlList != Q_NULLPTR)
+                delete nxdnSqlList;
+            nxdnSqlList = new tableCombobox(createModel(nxdnSqlModel, nxdnSql),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnNxdnSql, nxdnSqlList);
+            ui->table->showColumn(columnNxdnSql);
+            //visibleColumns++;
+
+            if (nxdnRanEditor != Q_NULLPTR)
+                delete nxdnRanEditor;
+            nxdnRanEditor = new tableEditor("99",ui->table);
+            ui->table->setItemDelegateForColumn(columnNxdnRan, nxdnRanEditor);
+            ui->table->showColumn(columnNxdnRan);
+            //visibleColumns++;
+
+            if (nxdnEncList != Q_NULLPTR)
+                delete nxdnEncList;
+            nxdnEncList = new tableCombobox(createModel(nxdnEncModel, nxdnEnc),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnNxdnEnc, nxdnEncList);
+            ui->table->showColumn(columnNxdnEnc);
+            //visibleColumns++;
+
+            if (nxdnKeyEditor != Q_NULLPTR)
+                delete nxdnKeyEditor;
+            nxdnKeyEditor = new tableEditor("99999",ui->table);
+            ui->table->setItemDelegateForColumn(columnNxdnKey, nxdnKeyEditor);
+            ui->table->showColumn(columnNxdnKey);
+            //visibleColumns++;
+
+            /* DCR */
+            if (dcrSqlList != Q_NULLPTR)
+                delete dcrSqlList;
+            dcrSqlList = new tableCombobox(createModel(dcrSqlModel, dcrSql),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDcrSql, dcrSqlList);
+            ui->table->showColumn(columnDcrSql);
+            //visibleColumns++;
+
+            if (dcrUcEditor != Q_NULLPTR)
+                delete dcrUcEditor;
+            dcrUcEditor = new tableEditor("999",ui->table);
+            ui->table->setItemDelegateForColumn(columnDcrUc, dcrUcEditor);
+            ui->table->showColumn(columnDcrUc);
+            //visibleColumns++;
+
+            if (dcrEncList != Q_NULLPTR)
+                delete dcrEncList;
+            dcrEncList = new tableCombobox(createModel(dcrEncModel, dcrEnc),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDcrEnc, dcrEncList);
+            ui->table->showColumn(columnDcrEnc);
+            //visibleColumns++;
+
+            if (dcrKeyEditor != Q_NULLPTR)
+                delete dcrKeyEditor;
+            dcrKeyEditor = new tableEditor("99999",ui->table);
+            ui->table->setItemDelegateForColumn(columnDcrKey, dcrKeyEditor);
+            ui->table->showColumn(columnDcrKey);
+            //visibleColumns++;
 
             break;
         default:
@@ -1220,7 +1307,7 @@ void memories::on_group_currentIndexChanged(int index)
         }
     }
 
-    if (visibleColumns > 15) {
+    if (visibleColumns > 15 || extendedView) {
         ui->table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     }
     else
@@ -1389,7 +1476,7 @@ void memories::receiveMemory(memoryType mem)
 
         validData += updateCombo(tones,row,columnTSQL,QString::number((float)mem.tsql/10,'f',1));
         validData += updateCombo(tones,row,columnTSQLB,QString::number((float)mem.tsqlB/10,'f',1));
-
+        
         validData += updateCombo(dvsql,row,columnDVSquelch,QString::number(mem.dvsql).rightJustified(2,'0'));
         validData += updateCombo(dvsql,row,columnDVSquelchB,QString::number(mem.dvsqlB).rightJustified(2,'0'));
 
@@ -1412,28 +1499,17 @@ void memories::receiveMemory(memoryType mem)
         validData += updateCombo(tones,row,columnToneB,QString::number((float)mem.toneB/10,'f',1));
 
         validData += updateCombo(tuningSteps,row,columnTuningStep,mem.tuningStep);
-        validData += updateCombo(tuningSteps,row,columnTuningStepB,mem.tuningStepB);
 
         ui->table->model()->setData(ui->table->model()->index(row,columnCustomTuningStep),QString::number(mem.progTs));
-        validData++;
-
-        ui->table->model()->setData(ui->table->model()->index(row,columnCustomTuningStepB),QString::number(mem.progTsB));
         validData++;
 
         if (ui->table->item(row,columnTuningStep) != NULL && ui->table->item(row,columnTuningStep)->text() != "Prog")
             ui->table->item(row,columnCustomTuningStep)->setFlags(ui->table->item(row,columnCustomTuningStep)->flags() & ~Qt::ItemIsEnabled);
 
         validData += updateCombo(attenuators,row,columnAttenuator,mem.atten);
-        validData += updateCombo(attenuators,row,columnAttenuatorB,mem.attenB);
-
         validData += updateCombo(preamps,row,columnPreamplifier,mem.preamp);
-        validData += updateCombo(preamps,row,columnPreamplifierB,mem.preampB);
-
         validData += updateCombo(antennas,row,columnAntenna,mem.antenna);
-        validData += updateCombo(antennas,row,columnAntennaB,mem.antennaB);
-
         validData += updateCombo(ipplus,row,columnIPPlus,mem.ipplus);
-        validData += updateCombo(ipplus,row,columnIPPlusB,mem.ipplusB);
 
         ui->table->model()->setData(ui->table->model()->index(row,columnOffset),QString::number(double(mem.duplexOffset.Hz/10000.0),'f',3));
         validData++;
@@ -1489,6 +1565,22 @@ void memories::receiveMemory(memoryType mem)
             qInfo() << "Invalid data in name";
         }
 
+        // These are optional so don't update validdata
+        updateCombo(p25Sql,row,columnP25Sql,mem.p25Sql);
+        ui->table->model()->setData(ui->table->model()->index(row,columnP25Nac),QString::number(mem.p25Nac,16).rightJustified(3,'0'));
+        updateCombo(dPmrSql,row,columnDPmrSql,mem.dPmrSql);
+        ui->table->model()->setData(ui->table->model()->index(row,columnDPmrComid),QString::number(mem.dPmrComid).rightJustified(3,'0'));
+        ui->table->model()->setData(ui->table->model()->index(row,columnDPmrCc),QString::number(mem.dPmrCc).rightJustified(2,'0'));
+        updateCombo(dPmrSCRM,row,columnDPmrSCRM,mem.dPmrSCRM);
+        ui->table->model()->setData(ui->table->model()->index(row,columnDPmrKey),QString::number(mem.dPmrKey).rightJustified(5,'0'));
+        updateCombo(nxdnSql,row,columnNxdnSql,mem.nxdnSql);
+        ui->table->model()->setData(ui->table->model()->index(row,columnNxdnRan),QString::number(mem.nxdnRan).rightJustified(2,'0'));
+        updateCombo(nxdnEnc,row,columnNxdnEnc,mem.nxdnEnc);
+        ui->table->model()->setData(ui->table->model()->index(row,columnNxdnKey),QString::number(mem.nxdnKey).rightJustified(5,'0'));
+        updateCombo(dcrSql,row,columnDcrSql,mem.dcrSql);
+        ui->table->model()->setData(ui->table->model()->index(row,columnDcrUc),QString::number(mem.dcrUc).rightJustified(3,'0'));
+        updateCombo(dcrEnc,row,columnDcrEnc,mem.dcrEnc);
+        ui->table->model()->setData(ui->table->model()->index(row,columnDcrKey),QString::number(mem.dcrKey).rightJustified(5,'0'));
 
         // Do this after all other fields to ensure they have been populated.
         for (uint i=0;i<rigCaps->modes.size();i++)
@@ -1497,54 +1589,8 @@ void memories::receiveMemory(memoryType mem)
             {
                 validData += updateCombo(modes,row,columnMode,i);
                 // This mode is the one we are interested in!
-#if defined __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#endif
-
-                switch (rigCaps->modes[i].mk)
-                {
-                case modeFM:
-                    enableCell(row,columnDVSquelch,false);
-                    enableCell(row,columnDSQL,false);
-                    enableCell(row,columnR1,false);
-                    enableCell(row,columnR2,false);
-                    enableCell(row,columnUR,false);
-                    break;
-                case modeP25:
-                case modedPMR:
-                case modeNXDN_N:
-                case modeNXDN_VN:
-                case modeDCR:
-                    enableCell(row,columnDVSquelch,false);
-                    enableCell(row,columnR1,false);
-                    enableCell(row,columnR2,false);
-                    enableCell(row,columnUR,false);
-                    break;
-                case modeDV:
-                    enableCell(row,columnToneMode,false);
-                    enableCell(row,columnTSQL,false);
-                    enableCell(row,columnDTCS,false);
-                    enableCell(row,columnDTCSPolarity,false);
-                    break;
-                default:
-                    enableCell(row,columnToneMode,false);
-                    enableCell(row,columnTSQL,false);
-                    enableCell(row,columnDTCS,false);
-                    enableCell(row,columnDTCSPolarity,false);
-                    enableCell(row,columnDVSquelch,false);
-                    enableCell(row,columnDSQL,false);
-                    enableCell(row,columnR1,false);
-                    enableCell(row,columnR2,false);
-                    enableCell(row,columnUR,false);
-                    break;
-                }
+                configColumns(row, rigCaps->modes[i]);
             }
-
-#if defined __GNUC__
-#pragma GCC diagnostic pop
-#endif
-
             if (mem.modeB == rigCaps->modes[i].reg)
             {
                 validData += updateCombo(modes,row,columnModeB,i);
@@ -1729,13 +1775,13 @@ void memories::on_csvImport_clicked()
 
             for (int i=0; i<row.size();i++)
             {
-                while (colnum < ui->table->columnCount() && ui->table->isColumnHidden(colnum)) {
-                    colnum++;
+                if (!ui->checkAllFields->isChecked()) {
+                    while (colnum < ui->table->columnCount() && ui->table->isColumnHidden(colnum)) {
+                        colnum++;
+                    }
                 }
 
-                // Stop blocking signals for last column (should force it to be sent to rig)
-
-                if (colnum < ui->table->columnCount())
+                if (colnum < ui->table->columnCount() && row.size() > i)
                 {
                     QString data = row[i];
                     for (int n= data.size(); n<=0; --n)
@@ -1770,6 +1816,8 @@ void memories::on_csvImport_clicked()
                     case columnFilterB:
                         if (!data.startsWith("FIL")) data = "FIL"+data;
                         break;
+                    case columnAntenna:
+                        if (!data.startsWith("ANT")) data = "ANT "+data;
                     default:
                         break;
                     }
@@ -1801,28 +1849,30 @@ void memories::on_csvExport_clicked()
         if (data.open(QFile::WriteOnly | QIODevice::Truncate)) {
             QTextStream output(&data);
             for(int i=1;i<ui->table->columnCount();i++) {
-                if (!ui->table->isColumnHidden(i))
+                if (!ui->table->isColumnHidden(i) || ui->checkAllFields->isChecked())
                 {
                     output << "\"" << ui->table->horizontalHeaderItem(i)->text() << "\"";
                     if (i < ui->table->columnCount()-1)
                         output << ",";
                     else
                         output << "\n";
-                } else if (i == ui->table->columnCount()-1) {
+                }
+                else if (i == ui->table->columnCount()-1) {
                     output << "\n";
                 }
             }
 
             for(int i=0;i<ui->table->rowCount();i++) {
                 for(int j=1;j<ui->table->columnCount();j++) {
-                    if (!ui->table->isColumnHidden(j))
+                    if (!ui->table->isColumnHidden(j) || ui->checkAllFields->isChecked())
                     {
                         output << "\"" << ((ui->table->item(i,j) == NULL) ? "" : ui->table->item(i,j)->text()) << "\"";
                         if (j < ui->table->columnCount()-1)
                             output << ",";
                         else
                             output << "\n";
-                    } else if (j == ui->table->columnCount()-1) {
+                    }
+                    else if (j == ui->table->columnCount()-1) {
                         output << "\n";
                     }
                 }
@@ -1918,4 +1968,76 @@ void memories::on_scanButton_toggled(bool scan)
             queue->changePriority(prio,funcSelectedFreq,0);
     }
     queue->add(priorityImmediate,queueItem(funcScanning,QVariant::fromValue<uchar>(uchar(scan))));
+}
+
+void memories::configColumns(int row, modeInfo mode) {
+
+    enableCell(row,columnToneMode,false);
+    enableCell(row,columnTSQL,false);
+    enableCell(row,columnDTCS,false);
+    enableCell(row,columnDTCSPolarity,false);
+    enableCell(row,columnDVSquelch,false);
+    enableCell(row,columnDSQL,false);
+    enableCell(row,columnR1,false);
+    enableCell(row,columnR2,false);
+    enableCell(row,columnUR,false);
+    enableCell(row,columnP25Nac,false);
+    enableCell(row,columnP25Sql,false);
+    enableCell(row,columnDPmrSql,false);
+    enableCell(row,columnDPmrComid,false);
+    enableCell(row,columnDPmrCc,false);
+    enableCell(row,columnDPmrSCRM,false);
+    enableCell(row,columnDPmrKey,false);
+    enableCell(row,columnNxdnSql,false);
+    enableCell(row,columnNxdnRan,false);
+    enableCell(row,columnNxdnEnc,false);
+    enableCell(row,columnNxdnKey,false);
+    enableCell(row,columnDcrSql,false);
+    enableCell(row,columnDcrUc,false);
+    enableCell(row,columnDcrEnc,false);
+    enableCell(row,columnDcrKey,false);
+
+
+    switch (mode.mk)
+    {
+    case modeFM:
+        enableCell(row,columnToneMode,true);
+        enableCell(row,columnTSQL,true);
+        enableCell(row,columnDTCS,true);
+        enableCell(row,columnDTCSPolarity,true);
+        break;
+    case modeP25:
+        enableCell(row,columnP25Nac,true);
+        enableCell(row,columnP25Sql,true);
+        break;
+    case modedPMR:
+        enableCell(row,columnDPmrSql,true);
+        enableCell(row,columnDPmrComid,true);
+        enableCell(row,columnDPmrCc,true);
+        enableCell(row,columnDPmrSCRM,true);
+        enableCell(row,columnDPmrKey,true);
+        break;
+    case modeNXDN_N:
+    case modeNXDN_VN:
+        enableCell(row,columnNxdnSql,true);
+        enableCell(row,columnNxdnRan,true);
+        enableCell(row,columnNxdnEnc,true);
+        enableCell(row,columnNxdnKey,true);
+        break;
+    case modeDCR:
+        enableCell(row,columnDcrSql,true);
+        enableCell(row,columnDcrUc,true);
+        enableCell(row,columnDcrEnc,true);
+        enableCell(row,columnDcrKey,true);
+        break;
+    case modeDV:
+        enableCell(row,columnDVSquelch,true);
+        enableCell(row,columnDSQL,true);
+        enableCell(row,columnR1,true);
+        enableCell(row,columnR2,true);
+        enableCell(row,columnUR,true);
+        break;
+    default:
+        break;
+    }
 }

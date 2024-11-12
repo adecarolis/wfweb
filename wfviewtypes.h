@@ -400,18 +400,18 @@ struct memoryType {
     bool p25Sql=false;
     quint16 p25Nac=0x293; // The default NAC?
     quint8 dPmrSql=0;
-    quint16 dPmrComid=0;
-    quint8 dPmrCc;
-    bool dPmrScrambler=false;
-    quint16 dPmrKey=0;
+    quint16 dPmrComid=254;
+    quint8 dPmrCc=0;
+    bool dPmrSCRM=false;
+    unsigned int dPmrKey=1;
     bool nxdnSql=false;
     quint8 nxdnRan=0;
     bool nxdnEnc=false;
-    quint16 nxdnKey=0;
+    unsigned int nxdnKey=0;
     bool dcrSql=false;
     quint16 dcrUc=0;
     bool dcrEnc=0;
-    quint16 dcrKey=0;
+    unsigned int dcrKey=0;
     char name[24]; // 1 more than the absolute max
     bool sat=false;
     bool del=false;
