@@ -466,7 +466,7 @@ void repeaterSetup::on_rptDTCSCombo_activated(int index)
     tone.tinv = ui->rptDTCSInvertTx->isChecked();
     tone.rinv = ui->rptDTCSInvertRx->isChecked();
     tone.tone = (quint16)ui->rptDTCSCombo->itemData(index).toUInt();
-    queue->add(priorityImmediate,queueItem(funcRepeaterDTCS,QVariant::fromValue<toneInfo>(tone),false));
+    queue->add(priorityImmediate,queueItem(funcDTCSCode,QVariant::fromValue<toneInfo>(tone),false));
 }
 
 void repeaterSetup::setRptAccessMode(rptrAccessData rd)
@@ -555,7 +555,7 @@ void repeaterSetup::on_toneDTCS_clicked()
     tone.tinv = ui->rptDTCSInvertTx->isChecked();
     tone.rinv = ui->rptDTCSInvertRx->isChecked();
     tone.tone = (quint16)ui->rptDTCSCombo->currentData().toUInt();
-    queue->add(priorityImmediate,queueItem(funcRepeaterDTCS,QVariant::fromValue<toneInfo>(tone),false));
+    queue->add(priorityImmediate,queueItem(funcDTCSCode,QVariant::fromValue<toneInfo>(tone),false));
     // TODO: DTCS with subband
 }
 
