@@ -115,7 +115,6 @@ signals:
 
     // Repeater:
     void haveDuplexMode(duplexMode_t);
-    void haveRptAccessMode(rptAccessTxRx_t ratr);
     void haveTone(quint16 tone);
     void haveTSQL(quint16 tsql);
     void haveDTCS(quint16 dcscode, bool tinv, bool rinv);

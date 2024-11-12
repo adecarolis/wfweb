@@ -480,6 +480,11 @@ bool cachingQueue::compare(QVariant a, QVariant b)
         } else if (!strcmp(a.typeName(),"centerSpanData")) {
             if (a.value<centerSpanData>().cstype != b.value<centerSpanData>().cstype || a.value<centerSpanData>().freq != b.value<centerSpanData>().freq  )
                 changed=true;
+        } else if (!strcmp(a.typeName(),"rptrAccessData")) {
+            if (a.value<rptrAccessData>().accessMode != b.value<rptrAccessData>().accessMode ||
+                            a.value<rptrAccessData>().turnOffTSQL != b.value<rptrAccessData>().turnOffTSQL ||
+                            a.value<rptrAccessData>().turnOffTone != b.value<rptrAccessData>().turnOffTone)
+                changed=true;
         } else if (!strcmp(a.typeName(),"scopeData") || !strcmp(a.typeName(),"memoryType")
                    || !strcmp(a.typeName(),"bandStackType")  || !strcmp(a.typeName(),"timekind") || !strcmp(a.typeName(),"datekind")
                    || !strcmp(a.typeName(),"meterkind")) {

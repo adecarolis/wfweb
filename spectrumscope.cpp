@@ -29,7 +29,7 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     for (uchar i=0;i<numVFO;i++)
     {
         freqCtrl* fr = new freqCtrl(this);
-        qInfo() << "****Adding VFO" << i << "on receiver" << receiver;
+        qDebug() << "Adding VFO" << i << "on receiver" << receiver;
         if (i==0)
         {
             fr->setMinimumSize(280,30);
@@ -465,7 +465,7 @@ void spectrumScope::setSeparators(QChar gsep, QChar dsep)
 {
     for (auto disp : freqDisplay)
     {
-        qInfo() << "Separators:" << gsep << "and" << dsep;
+        qDebug(logRig()) << "Configuring separators:" << gsep << "and" << dsep;
         disp->setSeparators(gsep,dsep);
     }
 }

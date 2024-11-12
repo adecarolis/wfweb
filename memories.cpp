@@ -622,7 +622,7 @@ void memories::on_table_cellChanged(int row, int col)
         //Sent command to write memory followed by slightly lower priority command to read.
         queue->add(priorityHighest,queueItem((currentMemory.sat?funcSatelliteMemory:funcMemoryContents),QVariant::fromValue<memoryType>(currentMemory)));
         queue->add(priorityHigh,queueItem(funcMemoryContents,QVariant::fromValue<uint>((currentMemory.group<<16) | (currentMemory.channel & 0xffff))));
-        qInfo() << "Sending memory, group:" << currentMemory.group << "channel" << currentMemory.channel;
+        qDebug() << "Sending memory, group:" << currentMemory.group << "channel" << currentMemory.channel;
         // Set number to not be editable once written. Not sure why but this crashes?
         //ui->table->item(row,columnNum)->setFlags(ui->table->item(row,columnNum)->flags() & (~Qt::ItemIsEditable));
     }

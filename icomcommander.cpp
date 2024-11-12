@@ -807,7 +807,7 @@ void icomCommander::parseCommand()
         memParser=rigCaps.satParser;
     case funcMemoryContents:
     {
-        qInfo() << "Received mem:" << payloadIn.toHex(' ');
+        qDebug() << "Received mem:" << payloadIn.toHex(' ');
         memoryType mem;
         if (memParser.isEmpty()) {
              memParser=rigCaps.memParser;
@@ -970,8 +970,13 @@ void icomCommander::parseCommand()
         break;
     case funcMainSubTracking:
     case funcToneSquelchType:
-        emit haveRptAccessMode((rptAccessTxRx_t)payloadIn.at(0));
+    {
+        rptrAccessData r;
+        r.accessMode = static_cast<rptAccessTxRx_t>(payloadIn[0]);
+        r.useSecondaryVFO = static_cast<bool>(vfo);
+        value.setValue(r);
         break;
+    }
     // 0x17 is CW send and 0x18 is power control (no reply)
     // 0x19 it automatically added.
     case funcTransceiverId:
@@ -3008,7 +3013,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                     if (finished)
                         break;
                 }
-                qInfo(logRig()) << "Writing memory:" << payload.toHex(' ');
+                qDebug(logRig()) << "Writing memory location:" << payload.toHex(' ');
 
             }
             else if (!strcmp(value.typeName(),"int") && (func == funcScopeMainRef || func == funcScopeSubRef))
@@ -3146,6 +3151,12 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                     payload.append((uchar)t.isMinus);
 
                 }
+            }
+            else if (!strcmp(value.typeName(),"rptrAccessData"))
+            {
+                rptrAccessData r = value.value<rptrAccessData>();
+                qDebug(logRig()) << "Sending rptrAccessData Mode" << r.accessMode;
+                payload.append(bcdEncodeChar(static_cast<uchar>(r.accessMode)));
             }
             else
             {
