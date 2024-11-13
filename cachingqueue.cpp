@@ -143,23 +143,19 @@ funcs cachingQueue::checkCommandAvailable(funcs cmd,bool set)
     if (rigCaps != Q_NULLPTR && cmd != funcNone && !rigCaps->commands.contains(cmd)) {
         // We don't have the requested command, so lets see if we can change it to something we do have.
         // WFVIEW functions should use funcMain/Sub commands by default,
-        if (cmd == funcMainFreq && rigCaps->commands.contains(funcSelectedFreq))
+        if (cmd == funcFreq && rigCaps->commands.contains(funcSelectedFreq))
             cmd = funcSelectedFreq;
-        else if (cmd == funcSubFreq && rigCaps->commands.contains(funcUnselectedFreq))
-            cmd = funcSelectedFreq;
-        else if (cmd == funcMainMode && rigCaps->commands.contains(funcSelectedMode))
+        else if (cmd == funcMode && rigCaps->commands.contains(funcSelectedMode))
             cmd = funcSelectedMode;
-        else if (cmd == funcSubMode && rigCaps->commands.contains(funcUnselectedMode))
-            cmd = funcUnselectedFreq;
         // These are fallback commands for older radios that don't have command 25/26
-        else if(cmd == funcMainMode)
+        else if(cmd == funcMode)
         {
             if (set)
                 cmd = funcModeSet;
             else
                 cmd = funcModeGet;
         }
-        else if(cmd == funcMainFreq)
+        else if(cmd == funcFreq)
         {
             if (set)
                 cmd = funcFreqSet;

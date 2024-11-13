@@ -35,14 +35,13 @@ void bandbuttons::receiveCache(cacheItem item)
         bool sub=false;
         switch (item.command)
         {
-        case funcSubFreq:
 #if defined __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
         case funcUnselectedFreq:
             sub=true;
-        case funcMainFreq:
+        case funcFreq:
 #if defined __GNUC__
 #pragma GCC diagnostic pop
 #endif
@@ -53,7 +52,7 @@ void bandbuttons::receiveCache(cacheItem item)
             if(!rigCaps) {
                 return;
             }
-                if (ui->SubBandCheck->isChecked() == sub) {
+            if (ui->SubBandCheck->isChecked() == item.value.value<freqt>().VFO) {
                     quint64 freq = quint64(item.value.value<freqt>().Hz);
                     for (auto &b: rigCaps->bands)
                     {
@@ -257,7 +256,7 @@ void bandbuttons::jumpToBandWithoutBSR(availableBands band)
                 f.Hz = (b.lowFreq+b.highFreq)/2.0;
                 f.MHzDouble = f.Hz/1000000.0;
                 f.VFO = activeVFO;
-                queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f),false,ui->SubBandCheck->isChecked()));
+                queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,ui->SubBandCheck->isChecked()));
                 break;
             }
         }

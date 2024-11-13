@@ -342,12 +342,12 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
 
     connect(configRef, &QSlider::valueChanged, this, [=](const int &val) {
         currentRef = (val/5) * 5; // rounded to "nearest 5"
-        queue->add(priorityImmediate,queueItem(receiver?funcScopeSubRef:funcScopeMainRef,QVariant::fromValue(currentRef),false,this->receiver));
+        queue->add(priorityImmediate,queueItem(funcScopeRef,QVariant::fromValue(currentRef),false,this->receiver));
     });
 
 
     connect(configSpeed, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](const int &val) {
-        queue->add(priorityImmediate,queueItem(receiver?funcScopeSubSpeed:funcScopeMainSpeed,configSpeed->itemData(val),false,this->receiver));
+        queue->add(priorityImmediate,queueItem(funcScopeSpeed,configSpeed->itemData(val),false,this->receiver));
     });
 
     connect(configTheme, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](const int &val) {
@@ -1071,14 +1071,14 @@ void spectrumScope::updatedScopeMode(int index)
     //spectrumMode_t s = static_cast<spectrumMode_t>(scopeModeCombo->itemData(index).toInt());
     spectrumMode_t s = scopeModeCombo->itemData(index).value<spectrumMode_t>();
 
-    queue->add(priorityImmediate,queueItem((receiver?funcScopeSubMode:funcScopeMainMode),QVariant::fromValue(s),false,receiver));
+    queue->add(priorityImmediate,queueItem(funcScopeMode,QVariant::fromValue(s),false,receiver));
     currentScopeMode = s;
     showHideControls(s);
 }
 
 void spectrumScope::updatedSpan(int index)
 {
-    queue->add(priorityImmediate,queueItem((receiver?funcScopeSubSpan:funcScopeMainSpan),spanCombo->itemData(index),false,receiver));
+    queue->add(priorityImmediate,queueItem(funcScopeSpan,spanCombo->itemData(index),false,receiver));
 }
 
 void spectrumScope::updatedMode(int index)
@@ -1094,14 +1094,14 @@ void spectrumScope::updatedMode(int index)
         mi.data = dataCombo->currentIndex();
         dataCombo->setEnabled(true);
     }
-    queue->add(priorityImmediate,queueItem((receiver?funcSubMode:funcMainMode),QVariant::fromValue(mi),false,receiver));
+    queue->add(priorityImmediate,queueItem(funcMode,QVariant::fromValue(mi),false,receiver));
 
 }
 
 
 void spectrumScope::updatedEdge(int index)
 {
-    queue->add(priorityImmediate,queueItem((receiver?funcScopeSubEdge:funcScopeMainEdge),QVariant::fromValue<uchar>(index+1),false,receiver));
+    queue->add(priorityImmediate,queueItem(funcScopeEdge,QVariant::fromValue<uchar>(index+1),false,receiver));
 }
 
 void spectrumScope::toFixedPressed()
@@ -1124,7 +1124,7 @@ void spectrumScope::toFixedPressed()
             edgeCombo->setCurrentIndex(edge-1);
             edgeCombo->blockSignals(false);
             queue->add(priorityImmediate,queueItem(funcScopeFixedEdgeFreq,QVariant::fromValue(spectrumBounds(lowerFreq, upperFreq, edge)),false,receiver));
-            queue->add(priorityImmediate,queueItem((receiver?funcScopeSubMode:funcScopeMainMode),QVariant::fromValue<uchar>(spectrumMode_t::spectModeFixed),false,receiver));
+            queue->add(priorityImmediate,queueItem(funcScopeMode,QVariant::fromValue<uchar>(spectrumMode_t::spectModeFixed),false,receiver));
         }
     }
 }
@@ -1192,7 +1192,7 @@ void spectrumScope::doubleClick(QMouseEvent *me)
             freqGo.Hz = roundFrequency(freqGo.Hz, stepSize);
             freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
             setFrequency(freqGo);
-            queue->add(priorityImmediate,queueItem((receiver?funcSubFreq:funcMainFreq),QVariant::fromValue<freqt>(freqGo),false,receiver));
+            queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(freqGo),false,receiver));
 
         }
     }
@@ -1241,7 +1241,7 @@ void spectrumScope::scopeClick(QMouseEvent* me)
                 freqGo.Hz = (spot.value()->frequency) * 1E6;
                 freqGo.MHzDouble = spot.value()->frequency;
                 setFrequency(freqGo);
-                queue->add(priorityImmediate,queueItem((receiver?funcSubFreq:funcMainFreq),QVariant::fromValue<freqt>(freqGo),false,receiver));
+                queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(freqGo),false,receiver));
             }
         }
         else if (passbandAction == passbandStatic && rectItem != nullptr)
@@ -1438,7 +1438,7 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
             freqGo.Hz = roundFrequency(freqGo.Hz, stepSize);
             freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
             setFrequency(freqGo);
-            queue->add(priorityImmediate,queueItem((receiver?funcSubFreq:funcMainFreq),QVariant::fromValue<freqt>(freqGo),false,receiver));
+            queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(freqGo),false,receiver));
         }
     }
     else {
@@ -1512,7 +1512,7 @@ void spectrumScope::scroll(QWheelEvent *we)
     freq = f; // Do we need to do this?
 
     setFrequency(f);
-    queue->add(priorityImmediate,queueItem((receiver?funcSubFreq:funcMainFreq),QVariant::fromValue<freqt>(f),false,receiver));
+    queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,receiver));
     //qInfo() << "Moving to freq:" << f.Hz << "step" << stepsHz;
     scrollWheelOffsetAccumulated = 0;
 }
@@ -1719,7 +1719,7 @@ void spectrumScope::selected(bool en)
 
 void spectrumScope::holdPressed(bool en)
 {
-    queue->add(priorityImmediate,queueItem(receiver?funcScopeSubHold:funcScopeMainHold,QVariant::fromValue(en),false,receiver));
+    queue->add(priorityImmediate,queueItem(funcScopeHold,QVariant::fromValue(en),false,receiver));
 }
 
 void spectrumScope::setHold(bool h)
@@ -2018,7 +2018,7 @@ void spectrumScope::newFrequency(qint64 freq,uchar vfo)
         }
         else
         {
-            queue->addUnique(priorityImmediate,queueItem((receiver?funcSubFreq:funcMainFreq),QVariant::fromValue<freqt>(f),false,receiver));
+            queue->addUnique(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,receiver));
         }
     }
 }

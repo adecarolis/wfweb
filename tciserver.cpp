@@ -21,8 +21,8 @@ static const tciCommandStruct tci_commands[] =
     { "stop",               funcNone,       typeNone,   typeNone,   typeNone},
     { "dds",                funcNone,       typeUChar,  typeFreq,   typeNone},
     { "if",                 funcNone,       typeUChar,  typeUChar,  typeFreq},
-    { "vfo",                funcMainFreq,   typeUChar,  typeUChar,  typeFreq},
-    { "modulation",         funcMainMode,   typeUChar,  typeMode,   typeNone},
+    { "vfo",                funcFreq,   typeUChar,  typeUChar,  typeFreq},
+    { "modulation",         funcMode,   typeUChar,  typeMode,   typeNone},
     { "trx",                funcTransceiverStatus,       typeUChar, typeBinary, typeNone},
     { "tune",               funcTunerStatus,typeUChar,  typeNone,   typeNone},
     { "drive",              funcRFPower,    typeUShort,  typeNone,   typeNone},
@@ -207,8 +207,8 @@ void tciServer::onNewConnection()
     pSocket->sendTextMessage(QString("iq_samplerate:48000;\n"));
     pSocket->sendTextMessage(QString("audio_samplerate:48000;\n"));
     pSocket->sendTextMessage(QString("mute:false;\n"));
-    pSocket->sendTextMessage(QString("vfo:0,0,%0;").arg(queue->getCache(funcMainFreq,false).value.value<freqt>().Hz));
-    pSocket->sendTextMessage(QString("modulation:0,%0;").arg(tciMode(queue->getCache(funcMainMode,false).value.value<modeInfo>())));
+    pSocket->sendTextMessage(QString("vfo:0,0,%0;").arg(queue->getCache(funcFreq,0).value.value<freqt>().Hz));
+    pSocket->sendTextMessage(QString("modulation:0,%0;").arg(tciMode(queue->getCache(funcMode,0).value.value<modeInfo>())));
     pSocket->sendTextMessage(QString("start;\n"));
     pSocket->sendTextMessage(QString("ready;\n"));
 }
@@ -289,7 +289,7 @@ void tciServer::processIncomingTextMessage(QString message)
 
                 if (tc.func != funcNone && val.isValid()) {
                     queue->add(priorityImmediate,queueItem(tc.func,val,false,sub));
-                    if (tc.func != funcMainMode)
+                    if (tc.func != funcMode)
                         continue;
                 }
             }
@@ -504,22 +504,22 @@ void tciServer::receiveCache(cacheItem item)
     // Special case for different commands
     funcs func = item.command;
     uchar vfo = 0;
-    if (func == funcModeTR || func == funcSelectedMode || func == funcSubMode)
+    if (func == funcModeTR || func == funcSelectedMode)
     {
-        func = funcMainMode;
+        func = funcMode;
     }
-    else if (func == funcFreqTR || func == funcSelectedFreq || func == funcSubFreq)
+    else if (func == funcFreqTR || func == funcSelectedFreq)
     {
-        func = funcMainFreq;
+        func = funcFreq;
     }
     else if (func == funcUnselectedMode)
     {
-        func = funcMainMode;
+        func = funcMode;
         vfo = 1;
     }
     else if (func == funcUnselectedFreq)
     {
-        func = funcMainFreq;
+        func = funcFreq;
         vfo = 1;
     }
 

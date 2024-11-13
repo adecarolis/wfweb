@@ -702,8 +702,8 @@ QString rigCtlClient::getVfoName(quint8 vfo)
     QString ret;
     switch (vfo) {
 
-    case 0: ret = rigCaps->commands.contains(funcMainFreq)?"Main":"VFOA"; break;
-    case 1: ret = rigCaps->commands.contains(funcSubFreq)?"Sub":"VFOB"; break;
+    case 0: ret = rigCaps->commands.contains(funcFreq)?"Main":"VFOA"; break;
+    //case 1: ret = rigCaps->commands.contains(funcFreq)?"Sub":"VFOB"; break;
     default: ret = "MEM"; break;
     }
 
@@ -865,9 +865,9 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
 
             if (params[0] == "Main" || params[0] == "VFOA")
             {
-                if (rigCaps->commands.contains(funcMainFreq)) {
-                    currentVfoFreqFunc = funcMainFreq;
-                    currentVfoModeFunc = funcMainMode;
+                if (rigCaps->commands.contains(funcFreq)) {
+                    currentVfoFreqFunc = funcFreq;
+                    currentVfoModeFunc = funcMode;
                 } else if (rigCaps->commands.contains(funcSelectedFreq)) {
                     currentVfoFreqFunc = funcSelectedFreq;
                     currentVfoModeFunc = funcSelectedMode;
@@ -876,9 +876,9 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
                 currentVfoNum = 0;
             } else if (params[0] == "Sub" || params[0] == "VFOB")
             {
-                if (rigCaps->commands.contains(funcSubFreq)) {
-                    currentVfoFreqFunc = funcSubFreq;
-                    currentVfoModeFunc = funcSubMode;
+                if (rigCaps->commands.contains(funcFreq)) {
+                    currentVfoFreqFunc = funcFreq;
+                    currentVfoModeFunc = funcMode;
                 } else if (rigCaps->commands.contains(funcUnselectedFreq)) {
                     currentVfoFreqFunc = funcUnselectedFreq;
                     currentVfoModeFunc = funcUnselectedMode;

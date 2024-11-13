@@ -523,7 +523,7 @@ void wfmain::makeRig()
         rigThread->start();
 
         // Rig status and Errors:
-        (rig, SIGNAL(havePortError(errorType)), this, SLOT(receivePortError(errorType)));
+        connect(rig, SIGNAL(havePortError(errorType)), this, SLOT(receivePortError(errorType)));
         connect(rig, SIGNAL(haveStatusUpdate(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
         connect(rig, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(receiveNetworkAudioLevels(networkAudioLevels)));
 
@@ -1261,7 +1261,7 @@ void wfmain::setupKeyShortcuts()
             freqt f;
             f.Hz = roundFrequencyWithStep(receivers.first()->getFrequency().Hz, -1, tsKnobHz);
             f.MHzDouble = f.Hz / (double)1E6;
-            queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f)));
+            queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
         }
     });
 
@@ -1276,7 +1276,7 @@ void wfmain::setupKeyShortcuts()
         if (receivers.size()) {
             f.Hz = roundFrequencyWithStep(receivers.first()->getFrequency().Hz, 1, tsKnobHz);
             f.MHzDouble = f.Hz / (double)1E6;
-            queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f)));
+            queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
         }
     });
 
@@ -1421,9 +1421,9 @@ void wfmain::buttonControl(const COMMAND* cmd)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
-    case funcSubMode:
+    case funcUnselectedMode:
         rx=1;
-    case funcMainMode:
+    case funcMode:
     case funcModeSet:
         if (cmd->value == 1) {
             for (size_t i = 0; i < rigCaps->modes.size(); i++) {
@@ -1467,17 +1467,14 @@ void wfmain::buttonControl(const COMMAND* cmd)
                 ui->tuningStepCombo->setCurrentIndex(0);
         }
         break;
-    case funcScopeSubSpan:
-        rx=1;
-    case funcScopeMainSpan:
+    case funcScopeSpan:
         if (receivers.size()>rx) {
             receivers[rx]->changeSpan(cmd->value);
         }
         break;
-    case funcSubFreq:
     case funcUnselectedFreq:
         rx=1;
-    case funcMainFreq:
+    case funcFreq:
     case funcSelectedFreq:
     {
         freqt f;
@@ -1532,7 +1529,7 @@ void wfmain::changeFrequency(int value) {
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, value, tsWfScrollHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f),false));
+        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
     }
 }
 
@@ -3388,7 +3385,7 @@ void wfmain::shortcutMinus()
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f),false));
+        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
     }
 }
 
@@ -3400,7 +3397,7 @@ void wfmain::shortcutPlus()
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f),false));
+        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
     }
 }
 
@@ -3412,7 +3409,7 @@ void wfmain::shortcutStepMinus()
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, ui->tuningStepCombo->currentData().toInt());
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f),false));
+        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
     }
 }
 
@@ -3425,7 +3422,7 @@ void wfmain::shortcutStepPlus()
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, ui->tuningStepCombo->currentData().toInt());
 
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f),false));
+        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
     }
 }
 
@@ -3436,7 +3433,7 @@ void wfmain::shortcutShiftMinus()
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusShiftHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f),false));
+        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
     }
 }
 
@@ -3447,7 +3444,7 @@ void wfmain::shortcutShiftPlus()
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusShiftHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f),false));
+        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
     }
 }
 
@@ -3459,7 +3456,7 @@ void wfmain::shortcutControlMinus()
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusControlHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f),false));
+        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
     }
 }
 
@@ -3470,7 +3467,7 @@ void wfmain::shortcutControlPlus()
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusControlHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f),false));
+        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
     }
 }
 
@@ -3481,7 +3478,7 @@ void wfmain::shortcutPageUp()
         freqt f;
         f.Hz = receivers[0]->getFrequency().Hz + tsPageHz;
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f),false));
+        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
     }
 }
 
@@ -3492,7 +3489,7 @@ void wfmain::shortcutPageDown()
         freqt f;
         f.Hz = receivers[0]->getFrequency().Hz - tsPageHz;
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(f),false));
+        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
     }
 }
 
@@ -3569,25 +3566,19 @@ void wfmain:: getInitialRigState()
         queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
 
         // Find the scope ref limits
-        auto mr = rigCaps->commands.find(funcScopeMainRef);
+        auto mr = rigCaps->commands.find(funcScopeRef);
         if (mr != rigCaps->commands.end())
         {
-            receivers[0]->setRefLimits(mr.value().minVal,mr.value().maxVal);
-            queue->add(priorityImmediate,(funcScopeMainRef),false,false);
-        }
-
-        auto sr = rigCaps->commands.find(funcScopeSubRef);
-        if (sr != rigCaps->commands.end())
-        {
-            if (receivers.size()>1)
-                receivers[1]->setRefLimits(sr.value().minVal,sr.value().maxVal);
-            queue->add(priorityImmediate,(funcScopeSubRef),false,true);
+            for (uchar f = 0; f<receivers.size();f++) {
+                receivers[f]->setRefLimits(mr.value().minVal,mr.value().maxVal);
+                queue->add(priorityImmediate,funcScopeRef,false,f);
+            }
         }
     }
 
 
     // Only show settingsgroup if rig has sub
-    ui->scopeSettingsGroup->setVisible(rigCaps->commands.contains(funcScopeSubWaveData));
+    ui->scopeSettingsGroup->setVisible(rigCaps->commands.contains(funcScopeWaveData));
 
     ui->scopeDualBtn->setVisible(rigCaps->commands.contains(funcScopeSingleDual));
     ui->antennaGroup->setVisible(rigCaps->commands.contains(funcAntenna));
@@ -3614,7 +3605,7 @@ void wfmain:: getInitialRigState()
 
     foreach (auto receiver, receivers)
     {
-        receiver->enableScope(this->rigCaps->commands.contains(funcScopeMainMode));
+        receiver->enableScope(this->rigCaps->commands.contains(funcScopeMode));
         //qInfo(logSystem()) << "Display Settings start:" << start << "end:" << end;
         receiver->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits, &rigCaps->bands);
         receiver->setBandIndicators(prefs.showBands, prefs.region, &rigCaps->bands);
@@ -3934,8 +3925,8 @@ void wfmain::changeMode(rigMode_t mode, quint8 data, quint8 rx)
                 m.data = data;
                 m.VFO=selVFO_t::activeVFO;
                 m.filter = receivers[rx]->currentFilter();
-                if (rigCaps->commands.contains(funcMainMode))
-                    queue->add(priorityImmediate,queueItem((rx==0?funcMainMode:funcSubMode),QVariant::fromValue<modeInfo>(m),false,rx));
+                if (rigCaps->commands.contains(funcMode))
+                    queue->add(priorityImmediate,queueItem(funcMode,QVariant::fromValue<modeInfo>(m),false,rx));
                 else
                     queue->add(priorityImmediate,queueItem(funcDataModeWithFilter,QVariant::fromValue<modeInfo>(m),false,rx));
             }
@@ -4000,7 +3991,7 @@ void wfmain::on_freqDial_valueChanged(int value)
     {
         oldFreqDialVal = value;
         receivers[currentReceiver]->setFrequency(f);
-        queue->addUnique(priorityImmediate,queueItem((currentReceiver==0)?funcMainFreq:funcSubFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+        queue->addUnique(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
     } else {
         ui->freqDial->blockSignals(true);
         ui->freqDial->setValue(oldFreqDialVal);
@@ -5286,17 +5277,12 @@ void wfmain::receiveValue(cacheItem val){
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
 
-    case funcSubFreq:
-        if (receivers.size()>1)
-            val.receiver=1;
-        receivers[val.receiver]->setFrequency(val.value.value<freqt>(),vfo);
-        break;
     case funcUnselectedFreq:
         vfo=1;
+    case funcFreq:
     case funcSelectedFreq:
-    case funcMainFreq:
         receivers[val.receiver]->setFrequency(val.value.value<freqt>(),vfo);
-        if (!vfo)
+        if (val.receiver==0 || vfo == 0)
             rpt->handleUpdateCurrentMainFrequency(val.value.value<freqt>());
         break;
     case funcReadTXFreq:
@@ -5332,20 +5318,17 @@ void wfmain::receiveValue(cacheItem val){
         // If current VFO (0) isn't selected, then send this to other VFO
         val.receiver = currentReceiver;
     case funcSelectedMode:
-    case funcMainMode:
-        receivers[val.receiver]->receiveMode(val.value.value<modeInfo>(),vfo);
-
-        finputbtns->updateCurrentMode(val.value.value<modeInfo>().mk);
-        finputbtns->updateFilterSelection(val.value.value<modeInfo>().filter);
-        rpt->handleUpdateCurrentMainMode(val.value.value<modeInfo>());
-        cw->handleCurrentModeUpdate(val.value.value<modeInfo>().mk);
-        break;
     case funcUnselectedMode:
-        vfo=1;
-    case funcSubMode:
-        if (receivers.size()>1)
-            val.receiver=1;
+        if (val.command == funcUnselectedMode)
+            vfo=1;
+    case funcMode:
         receivers[val.receiver]->receiveMode(val.value.value<modeInfo>(),vfo);
+        if (val.receiver == currentReceiver) {
+            finputbtns->updateCurrentMode(val.value.value<modeInfo>().mk);
+            finputbtns->updateFilterSelection(val.value.value<modeInfo>().filter);
+            rpt->handleUpdateCurrentMainMode(val.value.value<modeInfo>());
+            cw->handleCurrentModeUpdate(val.value.value<modeInfo>().mk);
+        }
         break;
 #if defined __GNUC__
 #pragma GCC diagnostic pop
@@ -5582,7 +5565,7 @@ void wfmain::receiveValue(cacheItem val){
         bandStackType bsr = val.value.value<bandStackType>();
         qDebug(logRig()) << __func__ << "BSR received into main: Freq: " << bsr.freq.Hz << ", mode: " << bsr.mode << ", filter: " << bsr.filter << ", data mode: " << bsr.data;
 
-        queue->add(priorityImmediate,queueItem(funcMainFreq,QVariant::fromValue<freqt>(bsr.freq),false,val.receiver));
+        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(bsr.freq),false,val.receiver));
 
         for (auto &md: rigCaps->modes)
         {
@@ -5591,7 +5574,7 @@ void wfmain::receiveValue(cacheItem val){
                     m.filter=bsr.filter;
                     m.data=bsr.data;
                     qDebug(logRig()) << __func__ << "Setting Mode/Data for new mode" << m.name << "data" << m.data << "filter" << m.filter << "reg" << m.reg;
-                    queue->add(priorityImmediate,queueItem(funcMainMode,QVariant::fromValue<modeInfo>(m),false,val.receiver));
+                    queue->add(priorityImmediate,queueItem(funcMode,QVariant::fromValue<modeInfo>(m),false,val.receiver));
                     break;
                 }
         }
@@ -5674,13 +5657,8 @@ void wfmain::receiveValue(cacheItem val){
         receiveRITValue(val.value.value<short>());
         break;
     // 0x27
-    case funcScopeMainWaveData:
-        if (receivers.size())
-            receivers[0]->updateScope(val.value.value<scopeData>());
-        break;
-    case funcScopeSubWaveData:
-        if (receivers.size()>1)
-            receivers[1]->updateScope(val.value.value<scopeData>());
+    case funcScopeWaveData:
+        receivers[val.receiver]->updateScope(val.value.value<scopeData>());
         break;
     case funcScopeOnOff:
         // confirming scope is on
@@ -5785,56 +5763,31 @@ void wfmain::receiveValue(cacheItem val){
         }
         break;
     }
-    case funcScopeMainMode:
-        if (receivers.size())
-            receivers[0]->selectScopeMode(val.value.value<spectrumMode_t>());
+    case funcScopeMode:
+        receivers[val.receiver]->selectScopeMode(val.value.value<spectrumMode_t>());
         break;
-    case funcScopeSubMode:
-        if (receivers.size()>1)
-            receivers[1]->selectScopeMode(val.value.value<spectrumMode_t>());
+    case funcScopeSpan:
+        receivers[val.receiver]->selectSpan(val.value.value<centerSpanData>());
         break;
-    case funcScopeMainSpan:
-        if (receivers.size())
-            receivers[0]->selectSpan(val.value.value<centerSpanData>());
-        break;
-    case funcScopeSubSpan:
-        if (receivers.size()>1)
-            receivers[1]->selectSpan(val.value.value<centerSpanData>());
-        break;
-    case funcScopeMainEdge:
+    case funcScopeEdge:
         // read edge mode center in edge mode
         // [1] 0x16
         // [2] 0x01, 0x02, 0x03: Edge 1,2,3
         break;
-    case funcScopeMainHold:
-        if (receivers.size())
-            receivers[0]->setHold(val.value.value<bool>());
+    case funcScopeHold:
+        receivers[val.receiver]->setHold(val.value.value<bool>());
         break;
-    case funcScopeSubHold:
-        if (receivers.size()>1)
-            receivers[1]->setHold(val.value.value<bool>());
+    case funcScopeRef:
+        receivers[val.receiver]->setRef(val.value.value<int>());
         break;
-    case funcScopeMainRef:
-        if (receivers.size())
-            receivers[0]->setRef(val.value.value<int>());
-        break;
-    case funcScopeSubRef:
-        if (receivers.size()>1)
-            receivers[1]->setRef(val.value.value<int>());
-        break;
-    case funcScopeMainSpeed:
-        if (receivers.size())
-            receivers[0]->setSpeed(val.value.value<uchar>());
-        break;
-    case funcScopeSubSpeed:
-        if (receivers.size()>1)
-            receivers[1]->setSpeed(val.value.value<uchar>());
+    case funcScopeSpeed:
+        receivers[val.receiver]->setSpeed(val.value.value<uchar>());
         break;
     case funcScopeDuringTX:
     case funcScopeCenterType:
-    case funcScopeMainVBW:
+    case funcScopeVBW:
     case funcScopeFixedEdgeFreq:
-    case funcScopeMainRBW:
+    case funcScopeRBW:
         break;
     // 0x28
     case funcVoiceTX:

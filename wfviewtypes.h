@@ -191,7 +191,7 @@ struct meterkind {
 };
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 251
+#define NUMFUNCS 240
 
 enum funcs { funcNone,
 funcFreqTR,             funcModeTR,             funcBandEdgeFreq,           funcFreqGet,        	funcModeGet,        	funcFreqSet,			// \x00
@@ -222,11 +222,9 @@ funcVOXDelay,           funcVOXVoiceDelay,		funcAPFType,                funcAPFT
 funcDataModeWithFilter, funcAFMute,				funcToneFreq,               funcTSQLFreq,           funcDTCSCode,           funcCSQLCode,
 funcTransceiverStatus,  funcXFCStatus,			funcReadTXFreq,             funcCIVOutput,          funcReadTXFreqs,        funcReadUserTXFreqs,
 funcUserTXBandEdgeFreq, funcRITFreq,			funcRitStatus,              funcRitTXStatus,        funcSelectedFreq,       funcUnselectedFreq,
-funcSelectedMode,       funcUnselectedMode,     funcMainFreq,               funcSubFreq,            funcMainMode,           funcSubMode,
-funcScopeMainWaveData,  funcScopeSubWaveData,   funcScopeOnOff,             funcScopeDataOutput,
-funcScopeMainSub,       funcScopeSingleDual,	funcScopeMainMode,          funcScopeSubMode,       funcScopeMainSpan,      funcScopeSubSpan,
-funcScopeMainEdge,      funcScopeSubEdge,       funcScopeMainHold,          funcScopeSubHold,       funcScopeMainRef,       funcScopeSubRef,
-funcScopeMainSpeed,     funcScopeSubSpeed,      funcScopeMainVBW,           funcScopeSubVBW,        funcScopeMainRBW,       funcScopeSubRBW,
+funcSelectedMode,       funcUnselectedMode,     funcFreq,                   funcMode,               funcScopeWaveData,      funcScopeOnOff,
+funcScopeDataOutput,    funcScopeMainSub,       funcScopeSingleDual,        funcScopeMode,          funcScopeSpan,          funcScopeEdge,
+funcScopeHold,          funcScopeRef,           funcScopeSpeed,             funcScopeVBW,           funcScopeRBW,
 funcScopeDuringTX,      funcScopeCenterType,    funcScopeFixedEdgeFreq,     funcVoiceTX,			funcMainSubPrefix,		funcAFCSetting,
 funcSSBRXHPFLPF,        funcSSBRXBass,          funcSSBRXTreble,            FuncAMRXHPFLPF,         funcAMRXBass,           funcAMRXTreble,
 funcFMRXHPFLPF,         funcFMRXBass,           funcFMRXTreble,             FuncCWRXHPFLPF,         funcCWRXTreble,         funcCWRXBass,
@@ -271,11 +269,9 @@ static QString funcString[] { "None",
 "Data Mode Filter",     "AF Mute Status",       "Tone Frequency",           "TSQL Frequency",       "DTCS Code/Polarity",   "CSQL Code",
 "Transceiver Status",   "XFC Status",           "Read TX Freq",             "CI-V Output",          "Read TX Freqs",        "Read User TX Freqs",
 "User TX Band Edge Freq","RIT Frequency",       "RIT Status",               "RIT TX Status",        "Selected Freq",        "Unselected Freq",
-"Selected Mode",        "Unselected Mode",      "Main RX Frequency",        "Sub RX Frequency",     "Main RX Mode",         "Sub RX Mode",
-"Scope Main Wave Data", "Scope Sub Wave Data",  "Scope On/Off",             "Scope Data Output",
-"Scope Main/Sub",       "Scope Single/Dual",    "Scope Main Mode",          "Scope Sub Mode",       "Scope Main Span",      "Scope Sub Span",
-"Scope Main Edge",      "Scope Sub Edge",       "Scope Main Hold",          "Scope Sub Hold",       "Scope Main Ref",       "Scope Sub Ref",
-"Scope Main Speed",     "Scope Sub Speed",      "Scope Main VBW",           "Scope Sub VBW",        "Scope Main RBW",       "Scope Sub RBW",
+"Selected Mode",        "Unselected Mode",      "RX Frequency",             "RX Mode",              "Scope Wave Data",      "Scope On/Off",
+"Scope Data Output",    "Scope Main/Sub",       "Scope Single/Dual",        "Scope Mode",           "Scope Span",           "Scope Edge",
+"Scope Hold",           "Scope Ref",            "Scope Speed",              "Scope VBW",            "Scope RBW",
 "Scope During TX",      "Scope Center Type",    "Scope Fixed Edge Freq",    "Voice TX",             "Main/Sub Prefix",      "AFC Function",
 "SSB RX HPFLPF",        "SSB RX Bass",          "SSB RX Treble",            "AM RX HPFLPF",         "AM RX Bass",           "AM RX Treble",
 "FM RX HPFLPF",         "FM RX Bass",           "FM RX Treble",             "CW RX HPFLPF",         "CW RX Bass",           "CW RX Treble",
