@@ -750,7 +750,6 @@ void icomCommander::parseCommand()
     case funcFreq:
         receiver = payloadIn.at(0);
         payloadIn.remove(0,1);
-        qDebug() << "Received freq for receiver" << receiver;
     case funcSelectedFreq:
     case funcUnselectedFreq:
         if (func == funcUnselectedFreq) {
