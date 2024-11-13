@@ -1008,10 +1008,10 @@ void icomCommander::parseCommand()
                 // The Band Stacking command returns the regCode in the position that VFO is expected.
                 // As BSR is always on the active VFO, just set that.
                 bsr.freq.VFO = selVFO_t::activeVFO;
-                bsr.mode = bcdHexToUChar(payloadIn[b.bytes+2]);
-                bsr.filter = bcdHexToUChar(payloadIn[b.bytes+3]);
-                bsr.data = (payloadIn[b.bytes+4] & 0xf0) >> 4;
-                bsr.sql = (payloadIn[b.bytes+4] & 0x0f);
+                bsr.mode = bcdHexToUChar(payloadIn.at(b.bytes+2));
+                bsr.filter = bcdHexToUChar(payloadIn.at(b.bytes+3));
+                bsr.data = (payloadIn.at(b.bytes+4) & 0xf0) >> 4;
+                bsr.sql = (payloadIn.at(b.bytes+4) & 0x0f);
                 bsr.tone = decodeTone(payloadIn.mid(b.bytes+5,3));
                 bsr.tsql = decodeTone(payloadIn.mid(b.bytes+8,3));
                 qDebug(logRig()) << QString("BSR received, band:%0 code:%1 freq:%2 data:%3 mode:%4 filter:%5")
