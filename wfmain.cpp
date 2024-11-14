@@ -3340,7 +3340,6 @@ void wfmain::on_tuningStepCombo_currentIndexChanged(int index)
             {
                 receiver->setStepSize(s.hz);
             }
-
             queue->add(priorityImmediate,queueItem(funcTuningStep,QVariant::fromValue<uchar>(s.num),false));
         }
     }

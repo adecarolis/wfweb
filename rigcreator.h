@@ -18,15 +18,15 @@
 
 
 inline QList<periodicType> defaultPeriodic = {
-    {funcFreq,"Medium",-1},
-    {funcMode,"Medium",-1},
+    {funcFreq,"Medium",0},
+    {funcMode,"Medium",0},
     {funcOverflowStatus,"Medium",0},
-    {funcScopeMode,"Medium High",-1},
-    {funcScopeSpan,"Medium High",-1},
+    {funcScopeMode,"Medium High",0},
+    {funcScopeSpan,"Medium High",0},
     {funcScopeSingleDual,"Medium High",0},
     {funcScopeMainSub,"Medium High",0},
-    {funcScopeSpeed,"Medium",-1},
-    {funcScopeHold,"Medium",-1},
+    {funcScopeSpeed,"Medium",0},
+    {funcScopeHold,"Medium",0},
     {funcVFODualWatch,"Medium",0},
     {funcTransceiverStatus,"High",0},
     {funcDATAOffMod,"Medium High",0},
@@ -38,12 +38,12 @@ inline QList<periodicType> defaultPeriodic = {
     {funcMonitor,"Medium Low",0},
     {funcRfGain,"Medium",0},
     {funcTunerStatus,"Medium",0},
-    {funcTuningStep,"Medium Low",char(-1)},
-    {funcAttenuator,"Medium Low",char(-1)},
-    {funcPreamp,"Medium Low",char(-1)},
-    {funcAntenna,"Medium Low",char(-1)},
-    {funcToneSquelchType,"Medium Low",char(-1)},
-    {funcSMeter,"Highest",char(-1)}
+    {funcTuningStep,"Medium Low",0},
+    {funcAttenuator,"Medium Low",0},
+    {funcPreamp,"Medium Low",0},
+    {funcAntenna,"Medium Low",0},
+    {funcToneSquelchType,"Medium Low",0},
+    {funcSMeter,"Highest",0}
 };
 
 namespace Ui {

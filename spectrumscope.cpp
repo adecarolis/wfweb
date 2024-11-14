@@ -1389,7 +1389,10 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
             else {
                 pb = passbandIndicator->bottomRight->coords().x() - spectrum->xAxis->pixelToCoord(cursor);
             }
-            queue->add(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(pb * 1000000),false,receiver));
+
+            if (mode.bwMax != 0 && mode.bwMin != 0) {
+                queue->add(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(pb * 1000000),false,receiver));
+            }
             //qInfo() << "New passband" << uint(pb * 1000000);
 
             lastFreq = movedFrequency;
@@ -1409,7 +1412,8 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
             qint16 newInFreq = innerFreq + 128;
             qint16 newOutFreq = outerFreq + 128;
 
-            if (newInFreq >= 0 && newInFreq <= 255 && newOutFreq >= 0 && newOutFreq <= 255) {
+            if (newInFreq >= 0 && newInFreq <= 255 && newOutFreq >= 0 && newOutFreq <= 255 && mode.bwMax != 0)
+            {
                 qDebug() << QString("Moving passband by %1 Hz (Inner %2) (Outer %3) Mode:%4").arg((qint16)(movedFrequency * 1000000))
                                 .arg(newInFreq).arg(newOutFreq).arg(mode.mk);
                 queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newInFreq),false,receiver));
@@ -1423,7 +1427,7 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
         if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
             double pbFreq = ((double)(PBTInner + movedFrequency) / passbandWidth) * 127.0;
             qint16 newFreq = pbFreq + 128;
-            if (newFreq >= 0 && newFreq <= 255) {
+            if (newFreq >= 0 && newFreq <= 255 && mode.bwMax != 0) {
                 queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newFreq),false,receiver));
             }
             lastFreq = movedFrequency;
@@ -1434,7 +1438,7 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
         if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
             double pbFreq = ((double)(PBTOuter + movedFrequency) / passbandWidth) * 127.0;
             qint16 newFreq = pbFreq + 128;
-            if (newFreq >= 0 && newFreq <= 255) {
+            if (newFreq >= 0 && newFreq <= 255 && mode.bwMax != 0) {
                 queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newFreq),false,receiver));
             }
             lastFreq = movedFrequency;
@@ -1579,7 +1583,7 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
             dataCombo->setEnabled(true);
         }
 
-        if (m.mk != mode.mk) {
+        if (m.mk != mode.mk || m.filter != mode.filter) {
             // We have changed mode so "may" need to change regular commands
 
             passbandCenterFrequency = 0.0;
@@ -1629,6 +1633,7 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
                 queue->del(funcKeySpeed,receiver);
             }
 
+
 #if defined __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
@@ -1650,13 +1655,6 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
             case modeCW_R:
                 break;
             default:
-                // FM and digital modes are fixed width, not sure about any other modes?
-                //if (mode.filter == 1)
-                //    passbandWidth = 0.015;
-                //else if (mode.filter == 2)
-                //    passbandWidth = 0.010;
-                //else
-                //    passbandWidth = 0.007;
                 break;
             }
 #if defined __GNUC__
@@ -1664,6 +1662,7 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
 #endif
 
         }
+
         this->mode = m;
     }
 }
