@@ -669,6 +669,11 @@ bool spectrumScope::updateScope(scopeData data)
         return false;
     }
 
+    if (!lastData.isValid())
+    {
+        lastData.start();
+    }
+
     if (!bandIndicatorsVisible) {
         showBandIndicators(true);
     }
@@ -877,19 +882,15 @@ bool spectrumScope::updateScope(scopeData data)
         waterfall->yAxis->setRange(0,wfLength - 1);
         waterfall->xAxis->setRange(0, spectWidth-1);
 
-        int spectrumTime = static_cast<int>(spectrum->replotTime(false));
-        int waterfallTime = static_cast<int>(waterfall->replotTime(false));
-        QString missed = "";
-
-        if (lastData.elapsed() > spectrumTime && lastData.elapsed() > waterfallTime)
+        if (lastData.elapsed() > (spectrum->replotTime(false)+waterfall->replotTime(false)))
         {
             spectrum->replot();
             waterfall->replot();
             lastData.restart();
+            redrawSpeed->setText(" ");
         } else {
-            missed = "*";
+            redrawSpeed->setText("*");
         }
-        redrawSpeed->setText(QString("%0%1ms/%2ms").arg(missed).arg(spectrumTime).arg(waterfallTime));
 
 /*
 #if defined (USB_CONTROLLER)
