@@ -3578,7 +3578,7 @@ void wfmain:: getInitialRigState()
 
 
     // Only show settingsgroup if rig has sub
-    ui->scopeSettingsGroup->setVisible(rigCaps->commands.contains(funcScopeMainSub));
+    ui->scopeSettingsGroup->setVisible(rigCaps->commands.contains(funcVFODualWatch));
 
     ui->scopeDualBtn->setVisible(rigCaps->commands.contains(funcVFODualWatch));
     ui->antennaGroup->setVisible(rigCaps->commands.contains(funcAntenna));

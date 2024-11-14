@@ -882,16 +882,6 @@ bool spectrumScope::updateScope(scopeData data)
         waterfall->yAxis->setRange(0,wfLength - 1);
         waterfall->xAxis->setRange(0, spectWidth-1);
 
-        if (lastData.elapsed() > (spectrum->replotTime(false)+waterfall->replotTime(false)))
-        {
-            spectrum->replot();
-            waterfall->replot();
-            lastData.restart();
-            redrawSpeed->setText(" ");
-        } else {
-            redrawSpeed->setText("*");
-        }
-
 /*
 #if defined (USB_CONTROLLER)
         // Send to USB Controllers if requested
@@ -924,7 +914,24 @@ bool spectrumScope::updateScope(scopeData data)
         oorIndicator->setVisible(false);
     }
 
-    //emit elapsedTime(receiver, elapsed.elapsed());
+
+    /*
+     * Hopefully temporary workaround for large scopes taking longer to replot than the time
+     * between scope data packets arriving from the radio, which were causing the UI to freeze
+     *
+     * Long term we should rewrite the scope/waterfall code to either use custom widgets, or
+     * convert to Qwt (or other suitable package) with better performance than QCP.
+     *
+     */
+    if (lastData.elapsed() > (spectrum->replotTime(false)+waterfall->replotTime(false)))
+    {
+        spectrum->replot();
+        waterfall->replot();
+        lastData.restart();
+        redrawSpeed->setText(" ");
+    } else {
+        redrawSpeed->setText("*");
+    }
 
     return true;
 }
