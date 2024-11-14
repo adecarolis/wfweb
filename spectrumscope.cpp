@@ -432,6 +432,7 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     connect(spectrum, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(scroll(QWheelEvent*)));
 
     showHideControls(spectrumMode_t::spectModeCenter);
+    lastData.start();
 }
 
 
@@ -672,11 +673,7 @@ bool spectrumScope::updateScope(scopeData data)
         showBandIndicators(true);
     }
 
-    qint64 spectime = 0;
-
-    QElapsedTimer elapsed;
-    QElapsedTimer totalUpdateTime;
-    totalUpdateTime.start();
+    //qint64 spectime = 0;
 
     bool updateRange = false;
 
@@ -857,9 +854,6 @@ bool spectrumScope::updateScope(scopeData data)
         spectrum->yAxis->setRange(plotFloor, plotCeiling);
 
     spectrum->xAxis->setRange(data.startFreq, data.endFreq);
-    elapsed.start();
-    spectrum->replot();
-    spectime = elapsed.elapsed();
 
     if(specLen == spectWidth)
     {
@@ -882,9 +876,20 @@ bool spectrumScope::updateScope(scopeData data)
 
         waterfall->yAxis->setRange(0,wfLength - 1);
         waterfall->xAxis->setRange(0, spectWidth-1);
-        elapsed.start();
-        waterfall->replot();
-        redrawSpeed->setText(QString("%0ms/%1ms").arg(spectime).arg(totalUpdateTime.elapsed()));
+
+        int spectrumTime = static_cast<int>(spectrum->replotTime(false));
+        int waterfallTime = static_cast<int>(waterfall->replotTime(false));
+        QString missed = "";
+
+        if (lastData.elapsed() > spectrumTime && lastData.elapsed() > waterfallTime)
+        {
+            spectrum->replot();
+            waterfall->replot();
+            lastData.restart();
+        } else {
+            missed = "*";
+        }
+        redrawSpeed->setText(QString("%0%1ms/%2ms").arg(missed).arg(spectrumTime).arg(waterfallTime));
 
 /*
 #if defined (USB_CONTROLLER)
@@ -918,7 +923,7 @@ bool spectrumScope::updateScope(scopeData data)
         oorIndicator->setVisible(false);
     }
 
-    emit elapsedTime(receiver, elapsed.elapsed());
+    //emit elapsedTime(receiver, elapsed.elapsed());
 
     return true;
 }

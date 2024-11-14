@@ -306,6 +306,7 @@ private:
     bool bandIndicatorsVisible=false;
     rigCapabilities* rigCaps=Q_NULLPTR;
     bandType currentBand;
+    QElapsedTimer lastData;
 };
 
 #endif // SPECTRUMSCOPE_H
