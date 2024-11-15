@@ -22,7 +22,7 @@
         <string>Current cache items in cachingView()</string>
        </property>
        <property name="alignment">
-        <set>Qt::AlignCenter</set>
+        <set>Qt::AlignmentFlag::AlignCenter</set>
        </property>
       </widget>
      </item>
@@ -32,7 +32,7 @@
         <string>Current queue items in cachingView()</string>
        </property>
        <property name="alignment">
-        <set>Qt::AlignCenter</set>
+        <set>Qt::AlignmentFlag::AlignCenter</set>
        </property>
       </widget>
      </item>
@@ -45,7 +45,7 @@
        <item>
         <widget class="QTableWidget" name="cacheView">
          <property name="editTriggers">
-          <set>QAbstractItemView::NoEditTriggers</set>
+          <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
          </property>
          <property name="alternatingRowColors">
           <bool>true</bool>
@@ -79,7 +79,7 @@
          </column>
          <column>
           <property name="text">
-           <string>Sub</string>
+           <string>RX</string>
           </property>
          </column>
          <column>
@@ -97,7 +97,7 @@
        <item>
         <widget class="QTableWidget" name="queueView">
          <property name="editTriggers">
-          <set>QAbstractItemView::NoEditTriggers</set>
+          <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
          </property>
          <attribute name="horizontalHeaderDefaultSectionSize">
           <number>80</number>
@@ -120,6 +120,11 @@
          <column>
           <property name="text">
            <string>Get/Set</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>RX</string>
           </property>
          </column>
          <column>
@@ -148,7 +153,7 @@
        <item>
         <spacer name="horizontalSpacer">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -185,7 +190,7 @@
        <item>
         <spacer name="horizontalSpacer_2">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -273,7 +278,7 @@
        <item>
         <spacer name="horizontalSpacer_3">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -288,10 +293,10 @@
      <item>
       <widget class="QDialogButtonBox" name="buttonBox">
        <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Orientation::Horizontal</enum>
        </property>
        <property name="standardButtons">
-        <set>QDialogButtonBox::Apply|QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+        <set>QDialogButtonBox::StandardButton::Apply|QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
        </property>
       </widget>
      </item>

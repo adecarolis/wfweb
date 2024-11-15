@@ -649,6 +649,8 @@ void memories::on_group_currentIndexChanged(int index)
     else
         groupMemories=rigCaps->memories;
 
+    progress->setRange(rigCaps->memStart,groupMemories);
+
     //ui->loadingMemories->setVisible(true);
     ui->table->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
@@ -666,10 +668,13 @@ void memories::on_group_currentIndexChanged(int index)
     QVector<memParserFormat> parser;
 
     if (ui->group->currentData().toInt() == MEMORY_SATGROUP) {
-        queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue<bool>(ui->group->currentData().toInt() == MEMORY_SATGROUP)));
+        ui->modeButton->setChecked(true);
+        on_modeButton_clicked(true);
+        queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue(true),false,0));
         parser = rigCaps->satParser;
     } else {
         // If the rig has memory groups, select it now.
+        queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue(false),false,0)); // Make sure we are in not in satellite mode.
         queue->add(priorityImmediate,queueItem(funcMemoryGroup,QVariant::fromValue<uchar>(ui->group->currentData().toInt())));
         parser = rigCaps->memParser;
     }
@@ -1355,18 +1360,21 @@ void memories::on_group_currentIndexChanged(int index)
 void memories::on_modeButton_clicked(bool on)
 {
     if (!on) {
+        qInfo() << "Selecting VFO Mode";
+        // The IC9700 may be in satellite mode, so disable that first.
+        if (rigCaps->commands.contains(funcSatelliteMode))
+           queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue(false),false,0)); // Make sure we are in not in satellite mode.
         ui->modeButton->setText("Select Memory Mode");
-        for (int i=0;i<rigCaps->numReceiver;i++) {
-            for( const commandList &c: activeCommands) {
-                queue->add(c.prio,c.func,true,c.receiver);
-            }
+        for( const commandList &c: activeCommands) {
+            queue->add(c.prio,c.func,true,c.receiver);
         }
         activeCommands.clear();
-        queue->add(priorityImmediate,funcVFOModeSelect);
+        queue->add(priorityImmediate,funcVFOModeSelect,false,0);
 
     } else {
+        qInfo() << "Selecting Memory Mode";
         ui->modeButton->setText("Select VFO Mode");
-        queue->add(priorityImmediate,funcMemoryMode);
+        queue->add(priorityImmediate,funcMemoryMode,false,0);
         activeCommands.clear();
         for (int i=0;i<rigCaps->numReceiver;i++) {
             for (const funcs &func:disabledCommands)
@@ -1441,8 +1449,8 @@ void memories::receiveMemory(memoryType mem)
                 }
                 queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | mem.channel))));
                 // We also should request the current frequency/mode etc so that the UI is updated.
-                queue->add(priorityImmediate,funcSelectedFreq,false,0);
-                queue->add(priorityImmediate,funcSelectedMode,false,0);
+                queue->add(priorityImmediate,funcFreqGet,false,0);
+                queue->add(priorityImmediate,funcModeGet,false,0);
             });
 
         }

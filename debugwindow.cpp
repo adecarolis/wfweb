@@ -90,8 +90,9 @@ void debugWindow::getQueue()
         ui->queueView->item(c,1)->setText(funcString[i.value().command]);
         ui->queueView->item(c,2)->setText(QString::number(i.key()));
         ui->queueView->item(c,3)->setText((i.value().param.isValid()?"Set":"Get"));
-        ui->queueView->item(c,4)->setText(getValue(i.value().param));
-        ui->queueView->item(c,5)->setText((i.value().recurring?"True":"False"));
+        ui->queueView->item(c,4)->setText(getValue(i->receiver));
+        ui->queueView->item(c,5)->setText(getValue(i.value().param));
+        ui->queueView->item(c,6)->setText((i.value().recurring?"True":"False"));
         c++;
         i++;
     }

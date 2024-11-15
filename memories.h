@@ -312,7 +312,8 @@ private:
     QList<commandList> activeCommands;
     QList<funcs> disabledCommands{
         funcFreq,funcMode, funcPBTInner,funcPBTOuter,
-        funcAttenuator, funcPreamp, funcAntenna, funcIPPlus, funcFilterWidth
+        funcAttenuator, funcPreamp, funcAntenna, funcIPPlus, funcFilterWidth,
+        funcSelectedFreq, funcUnselectedFreq, funcSelectedMode, funcUnselectedMode
     };
 
     void enableCell(int col, int row, bool en);

@@ -3556,6 +3556,9 @@ void wfmain:: getInitialRigState()
 
     queue->del(funcTransceiverId); // This command is no longer required
 
+    if (rigCaps->commands.contains(funcSatelliteMode))
+        queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue(bool(0)),false,0)); // Make sure we are in not in satellite mode.
+
     if (rigCaps->commands.contains(funcVFOModeSelect))
         queue->add(priorityImmediate,funcVFOModeSelect); // Make sure we are in VFO mode.
 
@@ -3582,6 +3585,7 @@ void wfmain:: getInitialRigState()
     ui->scopeDualBtn->setVisible(rigCaps->commands.contains(funcVFODualWatch));
     ui->antennaGroup->setVisible(rigCaps->commands.contains(funcAntenna));
     ui->preampAttGroup->setVisible(rigCaps->commands.contains(funcPreamp));
+    ui->dualWatchBtn->setVisible(rigCaps->subDirect);
 
     ui->nbEnableChk->setEnabled(rigCaps->commands.contains(funcNoiseBlanker));
     ui->nrEnableChk->setEnabled(rigCaps->commands.contains(funcNoiseReduction));
@@ -5263,21 +5267,26 @@ void wfmain::receiveValue(cacheItem val){
         qCritical(logSystem()) << "Data received for VFO that doesn't exist!" << val.receiver;
         return;
     }
+
+    /* Certain radios (IC-9700) cannot provide direct access to Sub receiver
+     * In this situation, set the receiver to currentReceiver so all commands received
+     * work on this receiver only.
+     */
+    if (!rigCaps->subDirect && val.receiver != currentReceiver &&
+            val.command != funcSelectedFreq && val.command != funcUnselectedFreq &&
+            val.command != funcSelectedFreq && val.command != funcUnselectedMode)
+        val.receiver=currentReceiver;
+
     switch (val.command)
     {
-    case funcFreqGet:
-    case funcFreqTR:
-        // If current receiver (0) isn't selected, then send this to other VFO
-        receivers[currentReceiver]->setFrequency(val.value.value<freqt>(),vfo);
-        break;
-
 #if defined __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
-
     case funcUnselectedFreq:
-        vfo=1;
+        vfo = 1;
+    case funcFreqGet:
+    case funcFreqTR:
     case funcFreq:
     case funcSelectedFreq:
         receivers[val.receiver]->setFrequency(val.value.value<freqt>(),vfo);
@@ -5312,14 +5321,11 @@ void wfmain::receiveValue(cacheItem val){
         }
 
         break;
+    case funcUnselectedMode:
+        vfo=1;
     case funcModeGet:
     case funcModeTR:
-        // If current VFO (0) isn't selected, then send this to other VFO
-        val.receiver = currentReceiver;
     case funcSelectedMode:
-    case funcUnselectedMode:
-        if (val.command == funcUnselectedMode)
-            vfo=1;
     case funcMode:
         receivers[val.receiver]->receiveMode(val.value.value<modeInfo>(),vfo);
         if (val.receiver == currentReceiver) {
@@ -5333,6 +5339,17 @@ void wfmain::receiveValue(cacheItem val){
 #pragma GCC diagnostic pop
 #endif
     case funcVFOBandMS:
+        break;
+    case funcSatelliteMode:
+        // If satellite mode is enabled, disable mode/freq query commands.
+        for (auto r: receivers){
+            if (val.value.value<bool>()) {
+                queue->del(funcUnselectedMode,r->getReceiver());
+                queue->del(funcUnselectedFreq,r->getReceiver());
+            }
+            r->setSatMode(val.value.value<bool>());
+        }
+        qInfo(logRig()) << "Is radio currently in satellite mode?" << val.value.value<bool>();
         break;
     case funcSatelliteMemory:
     case funcMemoryContents:
@@ -5360,6 +5377,7 @@ void wfmain::receiveValue(cacheItem val){
         receiveAntennaSel(val.value.value<antennaInfo>().antenna,val.value.value<antennaInfo>().rx,val.receiver);
         break;
     case funcPBTOuter:
+
         receivers[val.receiver]->setPBTOuter(val.value.value<uchar>());
         break;
     case funcPBTInner:
@@ -5677,16 +5695,13 @@ void wfmain::receiveValue(cacheItem val){
                 currentReceiver = val.value.value<uchar>();
 
                 for (uchar rx=0;rx<receivers.size();rx++) {
-                    //if (!receivers[rx]->isVisible() && (rx == currentReceiver || ui->scopeDualBtn->isChecked())) {
-                    //    receivers[rx]->setVisible(true);
-                    //} else if (rx != currentReceiver && !ui->scopeDualBtn->isChecked() && receivers[rx]->isVisible()) {
-                    //    receivers[rx]->setVisible(false);
-                    //}
 
                     if (rx == currentReceiver && !receivers[rx]->isSelected()) {
                         receivers[rx]->selected(true);
+                        receivers[rx]->setEnabled(true);
                     } else if (rx != currentReceiver && receivers[rx]->isSelected()) {
                         receivers[rx]->selected(false);
+                        receivers[rx]->setEnabled(false);
                     }
 
                     if (!receivers[rx]->isVisible() && (rx == currentReceiver || ui->scopeDualBtn->isChecked())) {
@@ -5695,27 +5710,6 @@ void wfmain::receiveValue(cacheItem val){
                         receivers[rx]->setVisible(false);
                     }
                 }
-
-                /*
-                // This tells us whether we are receiving main or sub data
-                if (!subScope && !receivers[0]->isVisible()) {
-                        receivers[1]->setVisible(false);
-                        receivers[0]->setVisible(true);
-                } else if (subScope && !receivers[1]->isVisible()) {
-                        receivers[0]->setVisible(false);
-                        receivers[1]->setVisible(true);
-                }
-
-                if (ui->scopeDualBtn->isChecked()) {
-                    receivers[0]->selected(!subScope);
-                    receivers[1]->selected(subScope);
-
-                } else {
-                    receivers[0]->selected(true);
-                    receivers[1]->selected(false);
-                    currentReceiver = 0;
-                }
-                */
             }
         }
         break;
@@ -5737,27 +5731,7 @@ void wfmain::receiveValue(cacheItem val){
                         receivers[rx]->setVisible(false);
                     }
                 }
-                /*
-                if (val.value.value<bool>()) {
-                    if (!receivers[1]->isVisible())
-                    {
-                        receivers[1]->setVisible(true);
-                    }
-                    else if (!receivers[0]->isVisible())
-                    {
-                        receivers[0]->setVisible(true);
-                    }
-                } else {
-                    if (receivers[0]->isVisible())
-                    {
-                        receivers[1]->setVisible(false);
-                    }
-                    else if (receivers[1]->isVisible())
-                    {
-                        receivers[0]->setVisible(false);
-                    }
-                }
-                */
+
             }
         }
         break;
@@ -5825,6 +5799,13 @@ void wfmain::on_scopeMainSubBtn_clicked()
         currentReceiver = 0;
     }
     queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(currentReceiver),false));
+    if (rigCaps->commands.contains(funcVFOBandMS)) {
+        queue->add(priorityImmediate,queueItem(funcVFOBandMS,QVariant::fromValue(currentReceiver),false));
+        // We need to manually get the frequency/mode
+        queue->add(priorityImmediate,queueItem(funcFreqGet,false,currentReceiver));
+        queue->add(priorityImmediate,queueItem(funcModeGet,false,currentReceiver));
+    }
+
     // As the current receiver has changed, queue commands to get the current preamp/filter/ant/rx amp
     queue->add(priorityImmediate,queueItem(funcPreamp,false,currentReceiver));
     queue->add(priorityImmediate,queueItem(funcAttenuator,false,currentReceiver));
@@ -5835,8 +5816,10 @@ void wfmain::on_scopeMainSubBtn_clicked()
 void wfmain::on_scopeDualBtn_toggled(bool en)
 {
     queue->add(priorityImmediate,queueItem(funcScopeSingleDual,QVariant::fromValue(en),false));
+    queue->add(priorityImmediate,queueItem(funcVFODualWatch,QVariant::fromValue(en),false));
     if (en)
-        queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(false),false)); // Set main scope
+        queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(uchar(0)),false)); // Set main scope
+
 }
 
 void wfmain::on_dualWatchBtn_toggled(bool en)

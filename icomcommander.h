@@ -135,6 +135,7 @@ private:
     bool lookingForRig;
     bool foundRig;
 
+    bool warnedAboutFA=false;
     double frequencyMhz;
     quint8 civAddr;
     quint8 incomingCIVAddr; // place to store the incoming CIV.

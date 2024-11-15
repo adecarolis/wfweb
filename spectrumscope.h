@@ -58,10 +58,12 @@ public:
     double getPassbandWidth() { configFilterWidth->setValue(passbandWidth*1E6); return passbandWidth;}
 
     void setIdentity(QString name) {this->setTitle(name);}
-    bool getVfo() { return receiver;}
+    bool getReceiver() { return receiver;}
 
     void setTuningFloorZeros(bool tf) {this->tuningFloorZeros = tf;}
     void setClickDragTuning(bool cg) { this->clickDragTuning = cg;}
+    void setSatMode(bool sm) { this->satMode = sm;}
+
     void setScrollSpeedXY(int clicksX, int clicksY) { this->scrollXperClick = clicksX; this->scrollYperClick = clicksY;}
 
     void enableScope(bool en);
@@ -307,6 +309,7 @@ private:
     rigCapabilities* rigCaps=Q_NULLPTR;
     bandType currentBand;
     QElapsedTimer lastData;
+    bool satMode = false;
 };
 
 #endif // SPECTRUMSCOPE_H

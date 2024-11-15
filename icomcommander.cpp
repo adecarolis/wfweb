@@ -331,7 +331,7 @@ funcType icomCommander::getCommand(funcs func, QByteArray &payload, int value, u
             } else if (!rigCaps.hasCommand29 && receiver)
             {
                 // We don't have command29 so can't select sub
-                qInfo(logRig()) << "Rig has no Command29, removing command:" << funcString[func] << "VFO" << receiver;
+                qDebug(logRig()) << "Rig has no Command29, removing command:" << funcString[func] << "VFO" << receiver;
                 queue->del(func,receiver);
             }
             payload.append(it.value().data);
@@ -752,9 +752,8 @@ void icomCommander::parseCommand()
         payloadIn.remove(0,1);
     case funcSelectedFreq:
     case funcUnselectedFreq:
-        if (func == funcUnselectedFreq) {
+        if (func == funcUnselectedFreq)
             vfo=1;
-        }
     case funcFreqGet:
     case funcFreqTR:
     case funcReadTXFreq:
@@ -947,6 +946,8 @@ void icomCommander::parseCommand()
         break;
     }
     // The following group ALL return bool
+    case funcMainSubTracking:
+    case funcSatelliteMode:
     case funcNoiseBlanker:
     case funcAudioPeakFilter:
     case funcNoiseReduction:
@@ -969,7 +970,6 @@ void icomCommander::parseCommand()
     case funcIPPlus:
         value.setValue(static_cast<bool>(payloadIn.at(0)));
         break;
-    case funcMainSubTracking:
     case funcToneSquelchType:
     {
         rptrAccessData r;
@@ -1227,6 +1227,10 @@ void icomCommander::parseCommand()
     case funcFA:
     {
         if (!lastCommandToRig.isEmpty()) {
+            if (!warnedAboutFA) {
+                qInfo(logRig()) << "Occasional error response (FA) from rig can safely be ignored";
+                 warnedAboutFA=true;
+            }
             qWarning(logRig()) << "Error (FA) received from rig, last command sent:";
 
             QStringList messages = getHexArray(lastCommandToRig);
@@ -1343,6 +1347,7 @@ void icomCommander::determineRigCaps()
     rigCaps.hasTransmit = settings->value("HasTransmit",false).toBool();
     rigCaps.hasFDcomms = settings->value("HasFDComms",false).toBool();
     rigCaps.hasCommand29 = settings->value("HasCommand29",false).toBool();
+    rigCaps.subDirect = settings->value("SubDirectAccess",false).toBool();
     rigCaps.useRTSforPTT = settings->value("UseRTSforPTT",false).toBool();
 
     rigCaps.memGroups = settings->value("MemGroups",0).toUInt();
@@ -2629,7 +2634,8 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 queue->addUnique(priorityImmediate,funcFreqGet,false,receiver);
             } else if (func == funcModeSet) {
                 queue->addUnique(priorityImmediate,funcModeGet,false,receiver);
-            } else if (cmd.getCmd && func != funcScopeFixedEdgeFreq && func != funcSpeech && func != funcBandStackReg && func != funcMemoryContents && func != funcSendCW) {
+            } else if (cmd.getCmd && func != funcScopeFixedEdgeFreq && func != funcSpeech &&
+                       func != funcBandStackReg && func != funcMemoryContents && func != funcSatelliteMemory && func != funcSendCW) {
                 // This was a set command, so queue a get to retrieve the updated value
                 queue->addUnique(priorityImmediate,func,false,receiver);
             }
@@ -3174,6 +3180,8 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 qDebug(logRig()) << "Removing unsupported get command from queue" << funcString[func] << "VFO" << receiver;
                 queue->del(func,receiver);
                 return;
+            } else if (cmd.cmd == funcVFOModeSelect) {
+                qInfo(logRig()) << "Attempting to select VFO mode:" << payload.toHex(' ');
             }
         }
         prepDataAndSend(payload);
