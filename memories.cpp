@@ -266,7 +266,6 @@ void memories::rowAdded(int row)
             [=]() { qInfo() << "Recalling" << num;
             if (ui->modeButton->isVisible() && !ui->modeButton->isChecked())
             {
-                ui->modeButton->setChecked(true);
                 on_modeButton_clicked(true);
             }
             queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>((quint32((ui->group->currentData().toUInt() << 16) | num)))));
@@ -668,7 +667,6 @@ void memories::on_group_currentIndexChanged(int index)
     QVector<memParserFormat> parser;
 
     if (ui->group->currentData().toInt() == MEMORY_SATGROUP) {
-        ui->modeButton->setChecked(true);
         on_modeButton_clicked(true);
         queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue(true),false,0));
         parser = rigCaps->satParser;
@@ -1348,18 +1346,12 @@ void memories::on_group_currentIndexChanged(int index)
             queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(lastMemoryRequested)));
         }
     }
-
-    // Force rig into memory mode if available.
-    //if (ui->modeButton->isVisible() && !ui->modeButton->isChecked())
-    //{
-    //    on_modeButton_clicked(true);
-    //}
-    //ui->loadingMemories->setText(QString("Loading Memory %0/%1 (this may take a while!)").arg(lastMemoryRequested&0xffff,3,10,QLatin1Char('0')).arg(rigCaps->memories,3,10,QLatin1Char('0')));
 }
 
 void memories::on_modeButton_clicked(bool on)
 {
-    if (!on) {
+    static bool checked=false;
+    if (!on && checked) {
         qInfo() << "Selecting VFO Mode";
         // The IC9700 may be in satellite mode, so disable that first.
         if (rigCaps->commands.contains(funcSatelliteMode))
@@ -1370,8 +1362,8 @@ void memories::on_modeButton_clicked(bool on)
         }
         activeCommands.clear();
         queue->add(priorityImmediate,funcVFOModeSelect,false,0);
-
-    } else {
+        checked=false;
+    } else if (on && !checked) {
         qInfo() << "Selecting Memory Mode";
         ui->modeButton->setText("Select VFO Mode");
         queue->add(priorityImmediate,funcMemoryMode,false,0);
@@ -1385,8 +1377,9 @@ void memories::on_modeButton_clicked(bool on)
                 }
             }
         }
+        checked=true;
     }
-
+    ui->modeButton->setChecked(checked);
 }
 
 
@@ -1444,7 +1437,6 @@ void memories::receiveMemory(memoryType mem)
                 qInfo() << "Recalling" << mem.channel;
                 if (ui->modeButton->isVisible() && !ui->modeButton->isChecked())
                 {
-                    ui->modeButton->setChecked(true);
                     on_modeButton_clicked(true);
                 }
                 queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | mem.channel))));
@@ -1770,7 +1762,6 @@ void memories::on_csvImport_clicked()
                     qInfo() << "Recalling" << row[0].toInt();
                     if (ui->modeButton->isVisible() && !ui->modeButton->isChecked())
                     {
-                        ui->modeButton->setChecked(true);
                         on_modeButton_clicked(true);
                     }
 
