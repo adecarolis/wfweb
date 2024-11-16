@@ -306,16 +306,14 @@ void cwSender::on_sidetoneEnableChk_clicked(bool clicked)
         toneThread->start();
 
         connect(this,SIGNAL(initTone()),tone,SLOT(init()));
+        connect(this,SIGNAL(sidetone(QString)),tone,SLOT(send(QString)));
 
         connect(toneThread, &QThread::finished, tone,
             [=]() { tone->deleteLater(); });
 
         connect(this, &cwSender::sendCW, tone, [=](const QString& text) {
-               tone->send(text); ui->sidetoneEnableChk->setEnabled(false);
+               emit sidetone(text);
         });
-
-        connect(tone, &cwSidetone::finished, this,
-            [=]() { ui->sidetoneEnableChk->setEnabled(true); });
 
         connect(this, &cwSender::setKeySpeed, tone,
                 [=](const quint8& wpm) { tone->setSpeed(wpm); });

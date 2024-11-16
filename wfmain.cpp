@@ -91,7 +91,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     cal = new calibrationWindow();
     rpt = new repeaterSetup();
     sat = new satelliteSetup();
-    cw = new cwSender();
     abtBox = new aboutbox();
     selRad = new selectRadio();
     bandbtns = new bandbuttons();
@@ -641,6 +640,19 @@ void wfmain::removeRig()
         rigThread->wait();
         rig = Q_NULLPTR;
         rigThread = Q_NULLPTR;
+    }
+
+    if (cw != Q_NULLPTR)
+    {
+        prefs.cwCutNumbers = cw->getCutNumbers();
+        prefs.cwSendImmediate = cw->getSendImmediate();
+        prefs.cwSidetoneEnabled = cw->getSidetoneEnable();
+        prefs.cwSidetoneLevel = cw->getSidetoneLevel();
+        prefs.cwMacroList = cw->getMacroText();
+
+        delete cw;
+        cw = Q_NULLPTR;
+        ui->cwButton->setEnabled(false);
     }
 }
 
@@ -1996,20 +2008,19 @@ void wfmain::loadSettings()
 
     // CW Memory Load:
     settings->beginGroup("Keyer");
-    cw->setCutNumbers(settings->value("CutNumbers", false).toBool());
-    cw->setSendImmediate(settings->value("SendImmediate", false).toBool());
-    cw->setSidetoneEnable(settings->value("SidetoneEnabled", true).toBool());
-    cw->setSidetoneLevel(settings->value("SidetoneLevel", 100).toInt());
+    prefs.cwCutNumbers=settings->value("CutNumbers", false).toBool();
+    prefs.cwSendImmediate=settings->value("SendImmediate", false).toBool();
+    prefs.cwSidetoneEnabled=settings->value("SidetoneEnabled", true).toBool();
+    prefs.cwSidetoneLevel=settings->value("SidetoneLevel", 100).toInt();
+
     int numMemories = settings->beginReadArray("macros");
     if(numMemories==10)
     {
-        QStringList macroList;
         for(int m=0; m < 10; m++)
         {
             settings->setArrayIndex(m);
-            macroList << settings->value("macroText", "").toString();
+            prefs.cwMacroList << settings->value("macroText", "").toString();
         }
-        cw->setMacroText(macroList);
     }
     settings->endArray();
     settings->endGroup();
@@ -3054,22 +3065,31 @@ void wfmain::saveSettings()
     settings->endGroup();
 
     settings->beginGroup("Keyer");
-    settings->setValue("CutNumbers", cw->getCutNumbers());
-    settings->setValue("SendImmediate", cw->getSendImmediate());
-    settings->setValue("SidetoneEnabled", cw->getSidetoneEnable());
-    settings->setValue("SidetoneLevel", cw->getSidetoneLevel());
-    QStringList macroList = cw->getMacroText();
-    if(macroList.length() == 10)
+
+    if (cw != Q_NULLPTR) {
+        prefs.cwCutNumbers = cw->getCutNumbers();
+        prefs.cwSendImmediate = cw->getSendImmediate();
+        prefs.cwSidetoneEnabled = cw->getSidetoneEnable();
+        prefs.cwSidetoneLevel = cw->getSidetoneLevel();
+        prefs.cwMacroList = cw->getMacroText();
+    }
+
+    settings->setValue("CutNumbers", prefs.cwCutNumbers);
+    settings->setValue("SendImmediate", prefs.cwSendImmediate);
+    settings->setValue("SidetoneEnabled", prefs.cwSidetoneEnabled);
+    settings->setValue("SidetoneLevel", prefs.cwSidetoneLevel);
+
+    if(prefs.cwMacroList.length() == 10)
     {
         settings->beginWriteArray("macros");
         for(int m=0; m < 10; m++)
         {
             settings->setArrayIndex(m);
-            settings->setValue("macroText", macroList.at(m));
+            settings->setValue("macroText", prefs.cwMacroList.at(m));
         }
         settings->endArray();
     } else {
-        qDebug(logSystem()) << "Error, CW macro list is wrong length: " << macroList.length();
+        qDebug(logSystem()) << "Error, CW macro list is wrong length: " << prefs.cwMacroList.length();
     }
     settings->endGroup();
 
@@ -3578,21 +3598,6 @@ void wfmain:: getInitialRigState()
         }
     }
 
-
-    // Only show settingsgroup if rig has sub
-    ui->scopeSettingsGroup->setVisible(rigCaps->commands.contains(funcVFODualWatch));
-
-    ui->scopeDualBtn->setVisible(rigCaps->commands.contains(funcVFODualWatch));
-    ui->antennaGroup->setVisible(rigCaps->commands.contains(funcAntenna));
-    ui->preampAttGroup->setVisible(rigCaps->commands.contains(funcPreamp));
-    ui->dualWatchBtn->setVisible(rigCaps->subDirect);
-
-    ui->nbEnableChk->setEnabled(rigCaps->commands.contains(funcNoiseBlanker));
-    ui->nrEnableChk->setEnabled(rigCaps->commands.contains(funcNoiseReduction));
-    ui->ipPlusEnableChk->setEnabled(rigCaps->commands.contains(funcIPPlus));
-    ui->compEnableChk->setEnabled(rigCaps->commands.contains(funcCompressor));
-    ui->voxEnableChk->setEnabled(rigCaps->commands.contains(funcVox));
-    ui->digiselEnableChk->setEnabled(rigCaps->commands.contains(funcDigiSel));
 
     quint64 start=UINT64_MAX;
     quint64 end=0;
@@ -5162,15 +5167,17 @@ void wfmain::connectionTimeout()
 
 void wfmain::on_cwButton_clicked()
 {
-    if(cw->isMinimized())
-    {
+    if (cw != Q_NULLPTR) {
+        if(cw->isMinimized())
+        {
+            cw->raise();
+            cw->activateWindow();
+            return;
+        }
+        cw->show();
         cw->raise();
         cw->activateWindow();
-        return;
     }
-    cw->show();
-    cw->raise();
-    cw->activateWindow();
 }
 
 void wfmain::on_memoriesBtn_clicked()
@@ -5332,7 +5339,9 @@ void wfmain::receiveValue(cacheItem val){
             finputbtns->updateCurrentMode(val.value.value<modeInfo>().mk);
             finputbtns->updateFilterSelection(val.value.value<modeInfo>().filter);
             rpt->handleUpdateCurrentMainMode(val.value.value<modeInfo>());
-            cw->handleCurrentModeUpdate(val.value.value<modeInfo>().mk);
+            if (cw != Q_NULLPTR) {
+                cw->handleCurrentModeUpdate(val.value.value<modeInfo>().mk);
+            }
         }
         break;
 #if defined __GNUC__
@@ -5400,14 +5409,18 @@ void wfmain::receiveValue(cacheItem val){
             receiver->receiveCwPitch(val.value.value<uchar>());
         }
         // Also send to CW window
-        cw->handlePitch(val.value.value<uchar>());
+        if (cw != Q_NULLPTR) {
+            cw->handlePitch(val.value.value<uchar>());
+        }
         break;
     case funcMicGain:
         processModLevel(inputMic,val.value.value<uchar>());
         break;
     case funcKeySpeed:
         // Only used by CW window
-        cw->handleKeySpeed(val.value.value<uchar>());
+        if (cw != Q_NULLPTR) {
+            cw->handleKeySpeed(val.value.value<uchar>());
+        }
         break;
     case funcNotchFilter:
         break;
@@ -5570,7 +5583,9 @@ void wfmain::receiveValue(cacheItem val){
         }
         break;
     case funcBreakIn:
-        cw->handleBreakInMode(val.value.value<uchar>());
+        if (cw != Q_NULLPTR) {
+            cw->handleBreakInMode(val.value.value<uchar>());
+        }
         break;
     // 0x17 is CW send and 0x18 is power control (no reply)
     // 0x19 it automatically added.
@@ -5642,7 +5657,9 @@ void wfmain::receiveValue(cacheItem val){
         receiveModInput(val.value.value<rigInput>(), 3);
         break;
     case funcDashRatio:
-        cw->handleDashRatio(val.value.value<uchar>());
+        if (cw != Q_NULLPTR) {
+            cw->handleDashRatio(val.value.value<uchar>());
+        }
         break;
     // 0x1b register
     case funcToneFreq:
@@ -5926,10 +5943,35 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         ui->micGainSlider->setEnabled(rigCaps->hasTransmit);
         ui->txPowerSlider->setEnabled(rigCaps->hasTransmit);
 
+        if (rigCaps->commands.contains(funcSendCW)) {
+            // We have a send CW function, so enable the window.
+            cw = new cwSender(this);
+            cw->setCutNumbers(prefs.cwCutNumbers);
+            cw->setSendImmediate(prefs.cwSendImmediate);
+            cw->setSidetoneEnable(prefs.cwSidetoneEnabled);
+            cw->setSidetoneLevel(prefs.cwSidetoneLevel);
+            cw->setMacroText(prefs.cwMacroList);
+        }
+
         ui->cwButton->setEnabled(rigCaps->commands.contains(funcSendCW));
         ui->memoriesBtn->setEnabled(rigCaps->commands.contains(funcMemoryContents));
         ui->monitorSlider->setEnabled(rigCaps->commands.contains(funcMonitorGain));
         ui->rfGainSlider->setEnabled(rigCaps->commands.contains(funcRfGain));
+
+        // Only show settingsgroup if rig has sub
+        ui->scopeSettingsGroup->setVisible(rigCaps->commands.contains(funcVFODualWatch));
+
+        ui->scopeDualBtn->setVisible(rigCaps->commands.contains(funcVFODualWatch));
+        ui->antennaGroup->setVisible(rigCaps->commands.contains(funcAntenna));
+        ui->preampAttGroup->setVisible(rigCaps->commands.contains(funcPreamp));
+        ui->dualWatchBtn->setVisible(rigCaps->subDirect);
+
+        ui->nbEnableChk->setEnabled(rigCaps->commands.contains(funcNoiseBlanker));
+        ui->nrEnableChk->setEnabled(rigCaps->commands.contains(funcNoiseReduction));
+        ui->ipPlusEnableChk->setEnabled(rigCaps->commands.contains(funcIPPlus));
+        ui->compEnableChk->setEnabled(rigCaps->commands.contains(funcCompressor));
+        ui->voxEnableChk->setEnabled(rigCaps->commands.contains(funcVox));
+        ui->digiselEnableChk->setEnabled(rigCaps->commands.contains(funcDigiSel));
 
         foreach (auto receiver, receivers) {
             // Setup various combo box up for each VFO:

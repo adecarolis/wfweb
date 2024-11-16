@@ -247,7 +247,8 @@ QByteArray cwSidetone::generateData(qint64 len, qint64 freq)
     int sampleIndex = 0;
 
     while (length) {
-        const qreal x = (qSin(2 * M_PI * freq * qreal(sampleIndex % sampleRate) / sampleRate)) * qreal(volume/100.0);
+        const qreal x = (qSin(2 * M_PI * freq * qreal(sampleIndex % sampleRate) / sampleRate)) * qreal((volume/100.0));
+
         for (int i=0; i<channels; ++i) {
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
             if (format.sampleSize() == 8 && format.sampleType() == QAudioFormat::UnSignedInt)

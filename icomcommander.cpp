@@ -767,6 +767,10 @@ void icomCommander::parseCommand()
     case funcModeGet:
     case funcModeTR:
     {
+        if (static_cast<quint8>(payloadIn.at(0)) == 0xff) {
+            qWarning(logRig()) << "Invalid mode received, 0xff";
+            return;
+        }
         modeInfo m;
         m = parseMode(bcdHexToUChar(payloadIn.at(0)), m.filter,receiver,vfo);
 
@@ -2259,6 +2263,7 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
             break;
         case 'f':
             mem->frequency.Hz = parseFreqDataToInt(data);
+            qInfo(logRig) << "Got freq:" << mem->frequency.Hz << "from:" << data.toHex(' ');
             break;
         case 'F':
             mem->frequencyB.Hz = parseFreqDataToInt(data);
@@ -2309,8 +2314,9 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
         case 'M':
             mem->dsqlB = (quint8(data[0] >> 4 & 0x0f));
             break;
-        case 'n':
+        case 'n':            
             mem->tone = bcdHexToUInt(data[1],data[2]); // First byte is not used
+            qInfo(logRig) << "Got tone" << mem->tone << "from:" << data.toHex(' ');
             break;
         case 'N':
             mem->toneB = bcdHexToUInt(data[1],data[2]); // First byte is not used
@@ -2334,10 +2340,10 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
             mem->dtcsB = bcdHexToUInt(data[0],data[1]);
             break;
         case 'r':
-            mem->dvsql = bcdHexToUInt(data[0],data[1]);
+            mem->dvsql = bcdHexToUChar(data[0]);
             break;
         case 'R':
-            mem->dvsqlB = bcdHexToUInt(data[0],data[1]);
+            mem->dvsqlB = bcdHexToUChar(data[0]);
             break;
         case 's':
             mem->duplexOffset.Hz = parseFreqDataToInt(data);
@@ -2818,12 +2824,26 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                             finished=true;
                             break;
                         } else {
-                            payload.append(makeFreqPayload(mem.frequency));
+                            // IC905 memories use 6 byte freq (despite the docs saying 5)
+                            // This workaround will add any missing bytes.
+                            QByteArray f = makeFreqPayload(mem.frequency);
+                            for (int i=f.size(); i<parse.len;i++) {
+                                f.append(nul);
+                            }
+                            payload.append(f);
+                            qInfo(logRig) << "Sending freq:" << mem.frequency.Hz << "data:" << f.toHex(' ');
                         }
                         break;
                     case 'F':
-                        payload.append(makeFreqPayload(mem.frequencyB));
+                    {
+                        QByteArray f = makeFreqPayload(mem.frequencyB);
+                        for (int i=f.size(); i<parse.len;i++) {
+                            f.append(nul);
+                        }
+                        payload.append(f);
+                        qInfo(logRig) << "Sending freqb:" << mem.frequencyB.Hz << "data:" << f.toHex(' ');
                         break;
+                    }
                     case 'g':
                         payload.append(bcdEncodeChar(mem.mode));
                         break;
@@ -2895,10 +2915,10 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         payload.append(bcdEncodeInt(mem.dtcsB));
                         break;
                     case 'r':
-                        payload.append(mem.dvsql);
+                        payload.append(bcdEncodeChar(mem.dvsql));
                         break;
                     case 'R':
-                        payload.append(mem.dvsqlB);
+                        payload.append(bcdEncodeChar(mem.dvsqlB));
                         break;
                     case 's':
                         payload.append(makeFreqPayload(mem.duplexOffset).mid(1,parse.len));

@@ -49,7 +49,7 @@ columnDSQL,columnTone,columnTSQL,columnDTCS,columnDTCSPolarity,columnDVSquelch,c
 columnP25Sql,columnP25Nac,columnDPmrSql,columnDPmrComid,columnDPmrCc,columnDPmrSCRM,columnDPmrKey,columnNxdnSql,
 columnNnxdnRan,columnNxdnEnc,columnNxdnKey,columnDcrSql,columnDcrUc,columnDcrEnc,columnDcrKey,columnFrequencyB,
 columnModeB,columnFilterB,columnDataB,columnDuplexB,columnToneModeB,columnDSQLB,columnToneB,columnTSQLB,columnDTCSB,
-columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B,columnName,
+columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B,totalColumns,
      */
 
     headers << "" << "Num" << "Name" << "Split" << "Skip" << "Scan" << "VFO" << "Freq" << "Mode" << "Filter" << "Data" <<"Duplex" << "Tn Mode" <<
@@ -125,14 +125,17 @@ columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B
     for (const auto &atten: rigCaps->attenuators) {
         attenuators.append(QString("%0").arg(atten));
     }
+    if (attenuators.isEmpty()) attenuators.append("None");
 
     for (const auto &preamp: rigCaps->preamps) {
         preamps.append(preamp.name);
     }
+    if (preamps.isEmpty()) preamps.append("None");
 
     for (const auto &ant: rigCaps->antennas) {
         antennas.append(ant.name);
     }
+    if (antennas.isEmpty()) antennas.append("None");
 
     ui->table->setHorizontalHeaderLabels(headers);
 
@@ -175,6 +178,7 @@ columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B
     for (auto &mode: rigCaps->modes){
         modes.append(mode.name);
     }
+    if (modes.isEmpty()) modes.append("None");
 
     connect(ui->table,SIGNAL(rowAdded(int)),this,SLOT(rowAdded(int)));
     connect(ui->table,SIGNAL(rowDeleted(quint32)),this,SLOT(rowDeleted(quint32)));
@@ -268,6 +272,7 @@ void memories::rowAdded(int row)
             {
                 on_modeButton_clicked(true);
             }
+            queue->add(priorityImmediate,queueItem(funcMemoryGroup,QVariant::fromValue<uint>(quint16(ui->group->currentData().toUInt()))));
             queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>((quint32((ui->group->currentData().toUInt() << 16) | num)))));
     });
     ui->table->model()->setData(ui->table->model()->index(row,columnNum),QString::number(num).rightJustified(3,'0'));
@@ -576,6 +581,7 @@ void memories::on_table_cellChanged(int row, int col)
             if (!ui->table->isColumnHidden(columnMode) && ui->table->item(row,columnMode) != NULL && ui->table->item(row,columnMode)->text()==m.name) {
                 // This mode is the one we are interested in!                
                 configColumns(row,m);
+                qInfo() << "Updating row" << row << "with mode" << m.name;
                 break;
             }
         }
@@ -1439,6 +1445,7 @@ void memories::receiveMemory(memoryType mem)
                 {
                     on_modeButton_clicked(true);
                 }
+                queue->add(priorityImmediate,queueItem(funcMemoryGroup,QVariant::fromValue<uint>(quint16(ui->group->currentData().toUInt()))));
                 queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | mem.channel))));
                 // We also should request the current frequency/mode etc so that the UI is updated.
                 queue->add(priorityImmediate,funcFreqGet,false,0);
@@ -1765,6 +1772,7 @@ void memories::on_csvImport_clicked()
                         on_modeButton_clicked(true);
                     }
 
+                    queue->add(priorityImmediate,queueItem(funcMemoryGroup,QVariant::fromValue<uint>(quint16(ui->group->currentData().toUInt()))));
                     queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | row[0].toInt()))));
                 });
             }
@@ -1971,6 +1979,7 @@ void memories::on_scanButton_toggled(bool scan)
 
 void memories::configColumns(int row, modeInfo mode) {
 
+    enableCell(row,columnTone,false);
     enableCell(row,columnToneMode,false);
     enableCell(row,columnTSQL,false);
     enableCell(row,columnDTCS,false);
@@ -2000,6 +2009,7 @@ void memories::configColumns(int row, modeInfo mode) {
     switch (mode.mk)
     {
     case modeFM:
+        enableCell(row,columnTone,true);
         enableCell(row,columnToneMode,true);
         enableCell(row,columnTSQL,true);
         enableCell(row,columnDTCS,true);

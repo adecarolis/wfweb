@@ -240,6 +240,13 @@ struct preferences {
     QString clusterTcpUserName;
     QString clusterTcpPassword;
 
+    // CW Sender settings
+    bool cwCutNumbers=false;
+    bool cwSendImmediate=false;
+    bool cwSidetoneEnabled=true;
+    bool cwSidetoneLevel=50;
+    QStringList cwMacroList;
+
     // Temporary settings
     rigInput inputSource[4];
     bool useUTC = false;
