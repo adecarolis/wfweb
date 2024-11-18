@@ -244,7 +244,7 @@ struct preferences {
     bool cwCutNumbers=false;
     bool cwSendImmediate=false;
     bool cwSidetoneEnabled=true;
-    bool cwSidetoneLevel=50;
+    int cwSidetoneLevel=50;
     QStringList cwMacroList;
 
     // Temporary settings

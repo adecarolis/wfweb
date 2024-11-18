@@ -96,16 +96,23 @@ void udpBase::dataReceived(QByteArray r)
         {
 
             // It is a ping request/response
+            /* in->time will contain the ms since radio startup
+             * We calculate any offset so we can work out if packets have been delayed.
+             */
             if (in->reply == 0x00)
             {
-                if (!radioTime.isValid() ||
-                    ((in->time-timeOffset)+startTime < QTime::currentTime().msecsSinceStartOfDay())) {
-                    // Either a new day or first connection.
-                    timeOffset = in->time;
-                    startTime = QTime::currentTime().msecsSinceStartOfDay();
+                if (!radioTime.isValid() || !radioTime.addMSecs(timeOffset).isValid() ||
+                    (radioTime > QTime::fromMSecsSinceStartOfDay(in->time)) || startTime > QTime::currentTime() ) {
+                    // Either a new connection, new day or radio has been on for over 24 hours.
+                    startTime = QTime::currentTime();
+                    radioTime = QTime::fromMSecsSinceStartOfDay(in->time);
+                    timeOffset = radioTime.msecsTo(QTime::currentTime());
+                    qInfo(logUdp).noquote() << this->metaObject()->className() <<
+                        "Got new radio time: "<< radioTime.toString(Qt::TextDate) << " Offset:" << timeOffset << "Calc time: " << QTime::fromMSecsSinceStartOfDay(timeOffset);
                 }
-                radioTime = QTime::fromMSecsSinceStartOfDay(startTime+(in->time-timeOffset));
-                timeDifference = QTime::currentTime().msecsSinceStartOfDay() - (startTime + (in->time - timeOffset));
+                radioTime = QTime::fromMSecsSinceStartOfDay(in->time);
+                timeDifference = QTime::currentTime().msecsTo(radioTime.addMSecs(timeOffset));
+                //qInfo(logUdp).noquote() << "Time difference: " << timeDifference << "ms";
                 ping_packet p;
                 memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
                 p.len = sizeof(p);

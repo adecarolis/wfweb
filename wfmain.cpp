@@ -782,6 +782,7 @@ void wfmain::receiveStatusUpdate(networkStatus status)
     this->rigStatus->setText(status.message);
     selRad->audioOutputLevel(status.rxAudioLevel);
     selRad->audioInputLevel(status.txAudioLevel);
+    selRad->addTimeDifference(status.timeDifference);
     //qInfo(logSystem()) << "Got Status Update" << status.rxAudioLevel;
 }
 
@@ -5188,7 +5189,9 @@ void wfmain::on_memoriesBtn_clicked()
             // Add slowload option for background loading.
             memWindow = new memories(isRadioAdmin, false);
             this->memWindow->connect(this, SIGNAL(haveMemory(memoryType)), memWindow, SLOT(receiveMemory(memoryType)));
-
+            for(const auto& r: receivers) {
+                connect(memWindow,SIGNAL(memoryMode(bool)),r,SLOT(memoryMode(bool)));
+            }
             memWindow->populate(); // Call populate to get the initial memories
         }
 
@@ -5974,6 +5977,11 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         ui->digiselEnableChk->setEnabled(rigCaps->commands.contains(funcDigiSel));
 
         foreach (auto receiver, receivers) {
+            if (receiver->getReceiver() == 0) {
+                // Report scope redraw time to Select Radio window (only scope 0)
+                connect(receiver,SIGNAL(spectrumTime(double)),selRad,SLOT(spectrumTime(double)));
+                connect(receiver,SIGNAL(waterfallTime(double)),selRad,SLOT(waterfallTime(double)));
+            }
             // Setup various combo box up for each VFO:
             receiver->clearMode();
             for (auto &m: rigCaps->modes)

@@ -35,6 +35,8 @@ public:
     explicit memories(bool isAdmin, bool slowLoad=false,QWidget *parent = nullptr);
     ~memories();
     void populate();
+signals:
+    void memoryMode(bool en);
 
 private slots:
     void on_table_cellChanged(int row, int col);

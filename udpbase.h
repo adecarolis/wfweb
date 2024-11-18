@@ -62,6 +62,7 @@ struct networkStatus {
 	quint32 packetsLost = 0;
 	quint16 rtt = 0;
 	quint32 networkLatency = 0;
+    qint64 timeDifference = 0;
 	QString message;
 };
 
@@ -87,6 +88,7 @@ public:
 	void printHex(const QByteArray& pdata);
 	void printHex(const QByteArray& pdata, bool printVert, bool printHoriz);
 
+    qint64 getTimeDifference() { return timeDifference;}
 
 	//QTime timeStarted;
 
@@ -150,7 +152,7 @@ public:
 	int congestion = 0;
 
 protected:
-    qint64 startTime;
+    QTime startTime;
     QTime radioTime;
     qint64 timeOffset;
     qint64 timeDifference = 0;

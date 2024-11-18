@@ -807,6 +807,9 @@ void icomCommander::parseCommand()
     case funcVFOBandMS:
         value.setValue(static_cast<bool>(payloadIn.at(0)));
         break;
+    case funcMemoryMode:
+        qInfo(logRig) << "Memory Mode command!";
+        break;
     case funcSatelliteMemory:
         memParser=rigCaps.satParser;
     case funcMemoryContents:
@@ -2263,7 +2266,6 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
             break;
         case 'f':
             mem->frequency.Hz = parseFreqDataToInt(data);
-            qInfo(logRig) << "Got freq:" << mem->frequency.Hz << "from:" << data.toHex(' ');
             break;
         case 'F':
             mem->frequencyB.Hz = parseFreqDataToInt(data);
@@ -2316,7 +2318,6 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
             break;
         case 'n':            
             mem->tone = bcdHexToUInt(data[1],data[2]); // First byte is not used
-            qInfo(logRig) << "Got tone" << mem->tone << "from:" << data.toHex(' ');
             break;
         case 'N':
             mem->toneB = bcdHexToUInt(data[1],data[2]); // First byte is not used
@@ -2831,7 +2832,6 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                                 f.append(nul);
                             }
                             payload.append(f);
-                            qInfo(logRig) << "Sending freq:" << mem.frequency.Hz << "data:" << f.toHex(' ');
                         }
                         break;
                     case 'F':
@@ -2841,7 +2841,6 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                             f.append(nul);
                         }
                         payload.append(f);
-                        qInfo(logRig) << "Sending freqb:" << mem.frequencyB.Hz << "data:" << f.toHex(' ');
                         break;
                     }
                     case 'g':

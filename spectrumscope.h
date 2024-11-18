@@ -122,6 +122,7 @@ public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);
     void selectSpan(centerSpanData s);
     void receiveSpots(uchar receiver, QList<spotData> spots);
+    void memoryMode(bool en);
 
 signals:    
     void frequencyRange(uchar receiver, double start, double end);
@@ -132,6 +133,8 @@ signals:
     void elapsedTime(uchar receiver, qint64 ns);
     void dataChanged(modeInfo m);
     void bandChanged(uchar receiver, bandType b);
+    void spectrumTime(double time);
+    void waterfallTime(double time);
 
 private slots:
     void detachScope(bool state);
@@ -310,6 +313,7 @@ private:
     bandType currentBand;
     QElapsedTimer lastData;
     bool satMode = false;
+    bool memMode = false;
 };
 
 #endif // SPECTRUMSCOPE_H

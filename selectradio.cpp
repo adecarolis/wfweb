@@ -8,6 +8,32 @@ selectRadio::selectRadio(QWidget* parent) :
     ui(new Ui::selectRadio)
 {
     ui->setupUi(this);
+    ui->timeDifference->plotLayout()->insertRow(0);
+    QCPTextElement *title = new QCPTextElement(ui->timeDifference, "UDP time difference", QFont("sans", 8, QFont::Bold));
+    ui->timeDifference->plotLayout()->addElement(0, 0, title);
+    ui->timeDifference->addGraph(0);
+    ui->timeDifference->yAxis->setLabel("ms");
+    ui->timeDifference->yAxis->setRange(-10,10);
+    ui->timeDifference->xAxis->setRange(0,100);
+    ui->timeDifference->xAxis->setTickLabels(false);
+
+    ui->waterfall->plotLayout()->insertRow(0);
+    QCPTextElement *wfTitle = new QCPTextElement(ui->waterfall, "Waterfall plot time", QFont("sans", 8, QFont::Bold));
+    ui->waterfall->plotLayout()->addElement(0, 0, wfTitle);
+    ui->waterfall->addGraph(0);
+    ui->waterfall->yAxis->setLabel("ms");
+    ui->waterfall->yAxis->setRange(-10,10);
+    ui->waterfall->xAxis->setRange(0,1000);
+    ui->waterfall->xAxis->setTickLabels(false);
+
+    ui->spectrum->plotLayout()->insertRow(0);
+    QCPTextElement *spTitle = new QCPTextElement(ui->spectrum, "Spectrum plot time", QFont("sans", 8, QFont::Bold));
+    ui->spectrum->plotLayout()->addElement(0, 0, spTitle);
+    ui->spectrum->addGraph(0);
+    ui->spectrum->yAxis->setLabel("ms");
+    ui->spectrum->yAxis->setRange(0,50);
+    ui->spectrum->xAxis->setRange(0,1000);
+    ui->spectrum->xAxis->setTickLabels(false);
 }
 
 selectRadio::~selectRadio()
@@ -84,3 +110,59 @@ void selectRadio::audioOutputLevel(quint16 level) {
 void selectRadio::audioInputLevel(quint16 level) {
     ui->modLevel->setValue(level);
 }
+
+void selectRadio::addTimeDifference(qint64 time) {
+    auto data = ui->timeDifference->graph(0)->data();
+
+    static int counter=0;
+    if (data->size() >= 100) {
+        data->remove(counter-100);
+        ui->timeDifference->xAxis->rescale();
+    }
+
+    ui->timeDifference->graph(0)->addData(counter,time);
+    ui->timeDifference->yAxis->rescale();
+
+    if (this->isVisible()) {
+        ui->timeDifference->replot();
+    }
+    counter++;
+}
+
+void selectRadio::waterfallTime(double time) {
+    auto data = ui->waterfall->graph(0)->data();
+
+    static int counter=0;
+    if (data->size() >= 1000) {
+        data->remove(counter-1000);
+        ui->waterfall->xAxis->rescale();
+    }
+
+    ui->waterfall->graph(0)->addData(counter,time);
+
+    if (this->isVisible()) {
+        ui->waterfall->yAxis->rescale();
+        ui->waterfall->replot();
+    }
+    counter++;
+}
+
+void selectRadio::spectrumTime(double time) {
+    //qInfo() << "Adding time difference" << time;
+    auto data = ui->spectrum->graph(0)->data();
+
+    static int counter=0;
+    if (data->size() >= 1000) {
+        data->remove(counter-1000);
+        ui->spectrum->xAxis->rescale();
+    }
+
+    ui->spectrum->graph(0)->addData(counter,time);
+
+    if (this->isVisible()) {
+        ui->spectrum->yAxis->rescale();
+        ui->spectrum->replot();
+    }
+    counter++;
+}
+

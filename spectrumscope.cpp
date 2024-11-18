@@ -933,6 +933,9 @@ bool spectrumScope::updateScope(scopeData data)
         redrawSpeed->setText("*");
     }
 
+    emit spectrumTime(spectrum->replotTime(false));
+    emit waterfallTime(waterfall->replotTime(false));
+
     return true;
 }
 
@@ -1618,7 +1621,7 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
             {
                 queue->del(funcUnselectedMode,receiver);
                 queue->del(funcUnselectedFreq,receiver);
-            } else if (!satMode) {
+            } else if (!satMode && !memMode) {
                 queue->addUnique(priorityHigh,funcUnselectedMode,true,receiver);
                 queue->addUnique(priorityHigh,funcUnselectedFreq,true,receiver);
             }
@@ -2123,5 +2126,15 @@ void spectrumScope::updateBSR(std::vector<bandType>* bands)
             }
             break;
         }
+    }
+}
+
+void spectrumScope::memoryMode(bool en)
+{
+    this->memMode=en;
+    qInfo(logRig) << "Receiver" << receiver << "Memory mode:" << en;
+    if (en) {
+        queue->del(funcUnselectedMode,receiver);
+        queue->del(funcUnselectedFreq,receiver);
     }
 }

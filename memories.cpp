@@ -1356,6 +1356,8 @@ void memories::on_group_currentIndexChanged(int index)
 
 void memories::on_modeButton_clicked(bool on)
 {
+    emit memoryMode(on);
+
     static bool checked=false;
     if (!on && checked) {
         qInfo() << "Selecting VFO Mode";
