@@ -1147,9 +1147,9 @@ void wfmain::setupKeyShortcuts()
     keyControlR->setKey(Qt::CTRL | Qt::Key_R);
     connect(keyControlR, SIGNAL(activated()), this, SLOT(shortcutControlR()));
 
-    keyControlR = new QShortcut(this);
-    keyControlR->setKey(Qt::CTRL | Qt::Key_P);
-    connect(keyControlR, SIGNAL(activated()), this, SLOT(shortcutControlP()));
+    keyControlP = new QShortcut(this);
+    keyControlP->setKey(Qt::CTRL | Qt::Key_P);
+    connect(keyControlP, SIGNAL(activated()), this, SLOT(shortcutControlP()));
 
     keyControlI = new QShortcut(this);
     keyControlI->setKey(Qt::CTRL | Qt::Key_I);
