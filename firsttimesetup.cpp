@@ -20,7 +20,7 @@ FirstTimeSetup::FirstTimeSetup(QWidget *parent) :
 
     networkText1 = QString(tr("Radio IP address, UDP Port Numbers"));
     networkText2 = QString(tr("Radio Username, Radio Password"));
-    networkText2 = QString(tr("Mic and Speaker on THIS PC"));
+    networkText3 = QString(tr("Mic and Speaker on THIS PC"));
 
 }
 
@@ -44,6 +44,7 @@ void FirstTimeSetup::on_nextBtn_clicked()
         ui->nextBtn->setText(tr("Finish"));
         ui->step1GroupBox->setHidden(true);
         ui->step2GroupBox->setHidden(false);
+        ui->neededDetailsLabel2->setHidden(false);
         if(isNetwork) {
             ui->neededDetailsLabel1->setText(networkText1);
             ui->neededDetailsLabel2->setText(networkText2);
