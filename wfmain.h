@@ -561,6 +561,7 @@ private:
 
     QShortcut *keyControlT;
     QShortcut *keyControlR;
+    QShortcut *keyControlP;
     QShortcut *keyControlI;
     QShortcut *keyControlU;
 

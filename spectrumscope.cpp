@@ -915,6 +915,8 @@ bool spectrumScope::updateScope(scopeData data)
     }
 
 
+#if QCUSTOMPLOT_VERSION >= 0x020100
+
     /*
      * Hopefully temporary workaround for large scopes taking longer to replot than the time
      * between scope data packets arriving from the radio, which were causing the UI to freeze
@@ -935,6 +937,11 @@ bool spectrumScope::updateScope(scopeData data)
 
     emit spectrumTime(spectrum->replotTime(false));
     emit waterfallTime(waterfall->replotTime(false));
+#else
+    spectrum->replot();
+    waterfall->replot();
+    lastData.restart();
+#endif
 
     return true;
 }
