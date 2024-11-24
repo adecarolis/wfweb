@@ -168,6 +168,7 @@ void udpAudio::dataReceived()
 
             */
             control_packet_t in = (control_packet_t)r.constData();
+            static int latencyCounter = 0;
 
             if (in->type != 0x01 && in->len >= 0x20) {
                 if (in->seq == 0)
@@ -176,24 +177,30 @@ void udpAudio::dataReceived()
                     seqPrefix++;
                 }
 
-                lastReceived = QTime::currentTime().addMSecs(timeDifference);
-                if (lastReceived < QTime::currentTime().addMSecs(rxSetup.latency))
+                if (timeDifference < rxSetup.latency)
                 {
                     if (rxAudioThread == Q_NULLPTR)
                     {
                         startAudio();
                     }
 
-
                     audioPacket tempAudio;
                     tempAudio.seq = (quint32)seqPrefix << 16 | in->seq;
-                    tempAudio.time = lastReceived;
+                    tempAudio.time = QTime::currentTime().addMSecs(timeDifference);;
                     tempAudio.sent = 0;
                     tempAudio.data = r.mid(0x18);
                     emit haveAudioData(tempAudio);
-                } else if (lastReceived >= QTime::currentTime().addMSecs(rxSetup.latency))
+                }
+
+                if (abs(timeDifference) > rxSetup.latency) {
+                    qDebug(logUdp()) << "Audio timestamp is" << rxSetup.latency << "ms, away";
+                    latencyCounter++;
+                }
+
+                if (latencyCounter > 5)
                 {
-                    qInfo(logUdp()) << "Audio timestamp is older than" << rxSetup.latency << "ms, dropped";
+                    radioTime = QTime(); // Invalidate radioTime to force it to be reset.
+                    latencyCounter=0;
                 }
             }
             break;

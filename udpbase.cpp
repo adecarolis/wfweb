@@ -101,6 +101,7 @@ void udpBase::dataReceived(QByteArray r)
              */
             if (in->reply == 0x00)
             {
+                in->time = in->time % 86400000; // We are only interested in 24 hours.
                 if (!radioTime.isValid() || !radioTime.addMSecs(timeOffset).isValid() ||
                     (radioTime > QTime::fromMSecsSinceStartOfDay(in->time)) || startTime > QTime::currentTime() ) {
                     // Either a new connection, new day or radio has been on for over 24 hours.
@@ -108,9 +109,9 @@ void udpBase::dataReceived(QByteArray r)
                     radioTime = QTime::fromMSecsSinceStartOfDay(in->time);
                     timeOffset = radioTime.msecsTo(QTime::currentTime());
                     qInfo(logUdp).noquote() << this->metaObject()->className() <<
-                        "Got new radio time: "<< radioTime.toString(Qt::TextDate) << " Offset:" << timeOffset << "Calc time: " << QTime::fromMSecsSinceStartOfDay(timeOffset);
+                        "Got new radio time: (" << in->time << ")" << radioTime << " Offset:" << timeOffset << "Calc time: " << QTime::fromMSecsSinceStartOfDay(timeOffset);
                 }
-                radioTime = QTime::fromMSecsSinceStartOfDay(in->time);
+                radioTime = QTime::fromMSecsSinceStartOfDay(in->time);                
                 timeDifference = QTime::currentTime().msecsTo(radioTime.addMSecs(timeOffset));
                 //qInfo(logUdp).noquote() << "Time difference: " << timeDifference << "ms";
                 ping_packet p;
