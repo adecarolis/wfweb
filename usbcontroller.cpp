@@ -35,6 +35,8 @@ usbController::usbController()
     knownDevices.append(USBTYPE(StreamDeckPedal, 0x0fd9, 0x0086, 0x0000, 0x0000,3,0,0,0,1024,0));
     knownDevices.append(USBTYPE(StreamDeckPlus, 0x0fd9, 0x0084, 0x0000, 0x0000,12,0,4,0,1024,120));
     knownDevices.append(USBTYPE(XKeysXK3, 0x05f3, 0x04c5, 0x0001, 0x000c,3,0,0,2,32,0)); // So-called "splat" interface?
+    knownDevices.append(USBTYPE(MiraBox293, 0x5500, 0x1001, 0x0000, 0x0000,15,0,0,0,1024,100));
+    knownDevices.append(USBTYPE(MiraBoxN3, 0x6603, 0x1003, 0x0001, 0xffa0,12,0,3,0,1024,72));
 }
 
 usbController::~usbController()
@@ -100,7 +102,7 @@ void usbController::init(QMutex* mut,usbDevMap* devs ,QVector<BUTTON>* buts,QVec
         struct hid_device_info* devs;
         devs = hid_enumerate(0x0, 0x0);
         while (devs) {
-            qDebug(logUsbControl()) << QString("Device found: (%0:%1) %2 manufacturer: (%3)%4 usage: 0x%5 usage_page 0x%6")
+            qInfo(logUsbControl()) << QString("Device found: (%0:%1) %2 manufacturer: (%3)%4 usage: 0x%5 usage_page 0x%6")
                                       .arg(devs->vendor_id, 4, 16, QChar('0'))
                                       .arg(devs->product_id, 4, 16, QChar('0'))
                                       .arg(QString::fromWCharArray(devs->product_string),QString::fromWCharArray(devs->product_string),QString::fromWCharArray(devs->manufacturer_string))
@@ -325,6 +327,13 @@ void usbController::run()
                         QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,1,"2"); });
                         QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,2,"0"); });
                         QTimer::singleShot(500, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,1,"0"); });
+                    }
+                    else if (dev->type.model == MiraBoxN3 || dev->type.model == MiraBox293)
+                    {
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureWakeScreen); });
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureBrightness,0x03,""); });
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureClearScreen,0xff,""); });
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureClearScreen,0xff,""); });
                     }
 
                     QTimer::singleShot(1000, this, [=]() { sendRequest(dev,usbFeatureType::featureSerial); });
@@ -620,6 +629,53 @@ void usbController::runTimer()
                                                   .arg(quint32(data[31] | data[32] << 8 | data[33] << 16 | data[34] << 24))
                                                   .arg(quint8(data[35]))
                         ;
+                }
+            }
+            else if (dev->type.model == MiraBox293 || dev->type.model == MiraBoxN3) {
+                if (data[9]) {
+                    // This is a keypress
+                    //qInfo(logUsbControl()) << data.toHex(' ');
+                    //qInfo(logUsbControl()) << QString("Key:%0 State:%1").arg(quint8(data[9]),8,2,QChar('0')).arg(quint8(data[10]));
+                    if (data[9] < 0x07) {
+                        tempButtons |= (data[10] & 0x01) << (data[9]-1);
+                    } else if (data[9] == 0x25) {
+                        tempButtons |= (data[10] & 0x01) << 6;
+                    } else if (data[9] == 0x30) {
+                        tempButtons |= (data[10] & 0x01) << 7;
+                    } else if (data[9] == 0x31) {
+                        tempButtons |= (data[10] & 0x01) << 8;
+                    } else if (data[9] == 0x35) {
+                        tempButtons |= (data[10] & 0x01) << 9;
+                    } else if (data[9] == 0x33) {
+                        tempButtons |= (data[10] & 0x01) << 10;
+                    } else if (data[9] == 0x34) {
+                        tempButtons |= (data[10] & 0x01) << 11;
+                    }
+
+                    if (((quint8)data[9] >> 4 & 0x0f) == 0x05) {
+                        if ((qint8)data[9] & 0x01) {
+                            dev->knobValues[0].value++;
+                        } else {
+                            dev->knobValues[0].value--;
+                        }
+                    }
+
+                    if (((quint8)data[9] >> 4 & 0x0f) == 0x09) {
+                        if ((qint8)data[9] & 0x01) {
+                            dev->knobValues[1].value++;
+                        } else {
+                            dev->knobValues[1].value--;
+                        }
+                    }
+
+                    if (((quint8)data[9] >> 4 & 0x0f) == 0x06) {
+                        if ((qint8)data[9] & 0x01) {
+                            dev->knobValues[2].value++;
+                        } else {
+                            dev->knobValues[2].value--;
+                        }
+                    }
+
                 }
             }
             // Is it any model of StreamDeck?
@@ -924,9 +980,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
             break;
         case usbFeatureType::featureBrightness:
             qDebug(logUsbControl()) << QString("Setting brightness to %0").arg(val);
-            data[1] = (qint8)0xb1;
-            data[2] = (qint8)0x0a;
-            data[3] = (qint8)0x01;
+            data.replace(1,3,QByteArrayLiteral("\xb1\x0a\x01"));
             data[4] = val;
             dev->brightness = val;
             break;
@@ -936,17 +990,12 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
             dev->orientation = val;
             break;
         case usbFeatureType::featureSpeed:
-            data[1] = (qint8)0xb4;
-            data[2] = (qint8)0x04;
-            data[3] = (qint8)0x01;
-            data[4] = (qint8)0x01;
+            data.replace(1,4,QByteArrayLiteral("\xb4\x04\x01\x01"));
             data[5] = val+1;
             dev->speed = val;
             break;
         case usbFeatureType::featureColor: {
-            data[1] = (qint8)0xb4;
-            data[2] = (qint8)0x01;
-            data[3] = (qint8)0x01;
+            data.replace(1,3,QByteArrayLiteral("\xb4\x01\x01"));
             data[6] = (qint8)color->red();
             data[7] = (qint8)color->green();
             data[8] = (qint8)color->blue();
@@ -970,9 +1019,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
             }
             break;
         case usbFeatureType::featureTimeout:
-            data[1] = (qint8)0xb4;
-            data[2] = (qint8)0x08;
-            data[3] = (qint8)0x01;
+            data.replace(1,3,QByteArrayLiteral("\xb4\x08\x01"));
             data[4] = val;
             dev->timeout = val;
             break;
@@ -1039,15 +1086,10 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
             break;
         case usbFeatureType::featureBrightness:
             if (sdv1) {
-                data[0] = (qint8)0x05;
-                data[1] = (qint8)0x55;
-                data[2] = (qint8)0xaa;
-                data[3] = (qint8)0xd1;
-                data[4] = (qint8)0x01;
+                data.replace(0,5,QByteArrayLiteral("\x05\x55\xaa\xd1\x01"));
                 data[5] = val*25;
             } else {
-                data[0] = (qint8)0x03;
-                data[1] = (qint8)0x08;
+                data.replace(0,2,QByteArrayLiteral("\x03\x08"));
                 data[2] = val*33; // Stream Deck brightness is in %
             }
             res = hid_send_feature_report(dev->handle, (const quint8*)data.constData(), data.size());
@@ -1066,7 +1108,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                     QPainter paint(&image);
                     int x=qMin(190,(dev->knobValues[val].value * dev->sensitivity) * 190 / 255);
                     paint.fillRect(5,5,x,20, Qt::darkGreen);
-                    paint.setFont(QFont("times",10));
+                    paint.setFont(QFont("serif",10));
                     paint.setPen(Qt::white);
                     int perc=qMin(100,(dev->knobValues[val].value * dev->sensitivity) * 100 / 255);
                     paint.drawText(5,5,190,20, Qt::AlignCenter | Qt::AlignVCenter, QString("%0 %1%").arg(dev->knobValues[val].name).arg(perc));
@@ -1093,22 +1135,21 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                 h.y=75;
                 h.width=200;
                 h.height=25;
-
-                while (rem > 0)
+                quint32 start = 0;
+                while (start < rem)
                 {
-                    quint16 length = qMin(quint16(rem),quint16(dev->type.maxPayload-sizeof(h)));
+                    quint16 length = qMin(quint16(rem-start),quint16(dev->type.maxPayload-sizeof(h)));
                     data.clear();
                     h.isLast = (quint8)(rem <= dev->type.maxPayload-sizeof(h) ? 1 : 0); // isLast ? 1 : 0,3
                     h.length = length;
                     h.index = index;
-                    rem -= length;
                     data.append(QByteArray::fromRawData((const char*)h.packet,sizeof(h)));
-                    data.append(data2.mid(0,length));
+                    data.append(data2.mid(start,length));
                     data.resize(dev->type.maxPayload);
                     memset(data.data()+length+sizeof(h),0x0,data.size()-(length+sizeof(h)));
                     res=hid_write(dev->handle, (const quint8*)data.constData(), data.size());
                     //qInfo(logUsbControl()) << "Sending" << (((quint8)data[7] << 8) | ((quint8)data[6] & 0xff)) << "total=" << data.size()  << "payload=" << (((quint8)data[5] << 8) | ((quint8)data[4] & 0xff)) << "last" << (quint8)data[3];
-                    data2.remove(0,length);
+                    start+=length;
                     index++;
                 }
                 if (text != "**REMOVE**") {
@@ -1129,7 +1170,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                 QImage image(800,100, QImage::Format_RGB888);
                 QPainter paint(&image);
                 if (val) {
-                    paint.setFont(QFont("times",16));
+                    paint.setFont(QFont("serif",16));
                     paint.fillRect(image.rect(), dev->color);
                     paint.drawText(image.rect(),Qt::AlignCenter | Qt::AlignVCenter, text);
                     if (val)
@@ -1156,7 +1197,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                             paint.fillRect(200*i,75,200,25, Qt::black);
                             int x=qMin(190,(dev->knobValues[i].value * dev->sensitivity) * 190 / 255);
                             paint.fillRect((200*i)+5,80,x,20, Qt::darkGreen);
-                            paint.setFont(QFont("times",10));
+                            paint.setFont(QFont("serif",10));
                             paint.setPen(Qt::white);
                             int perc=qMin(100,(dev->knobValues[i].value * dev->sensitivity) * 100 / 255);
                             paint.drawText((200*i)+5,80,190,20, Qt::AlignCenter | Qt::AlignVCenter, QString("%0 %1%").arg(dev->knobValues[i].name).arg(perc));
@@ -1178,21 +1219,21 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                 h.width=800;
                 h.height=100;
 
-                while (rem > 0)
+                quint32 start = 0;
+                while (start < rem)
                 {
-                    quint16 length = qMin(quint16(rem),quint16(dev->type.maxPayload-sizeof(h)));
+                    quint16 length = qMin(quint16(rem-start),quint16(dev->type.maxPayload-sizeof(h)));
                     data.clear();
-                    h.isLast = (quint8)(rem <= dev->type.maxPayload-sizeof(h) ? 1 : 0); // isLast ? 1 : 0,3
+                    h.isLast = (quint8)((rem-start) <= dev->type.maxPayload-sizeof(h) ? 1 : 0); // isLast ? 1 : 0,3
                     h.length = length;
                     h.index = index;
-                    rem -= length;
                     data.append(QByteArray::fromRawData((const char*)h.packet,sizeof(h)));
-                    data.append(data2.mid(0,length));
+                    data.append(data2.mid(start,length));
                     data.resize(dev->type.maxPayload);
                     memset(data.data()+length+sizeof(h),0x0,data.size()-(length+sizeof(h)));
                     res=hid_write(dev->handle, (const quint8*)data.constData(), data.size());
                     //qInfo(logUsbControl()) << "Sending" << (((quint8)data[7] << 8) | ((quint8)data[6] & 0xff)) << "total=" << data.size()  << "payload=" << (((quint8)data[5] << 8) | ((quint8)data[4] & 0xff)) << "last" << (quint8)data[3];
-                    data2.remove(0,length);
+                    start += length;
                     index++;
                 }
             }
@@ -1217,11 +1258,11 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
 
                     if ( img == Q_NULLPTR) {
                         if (dev->type.iconSize == 72)
-                            butPaint.setFont(QFont("times",10));
+                            butPaint.setFont(QFont("serif",14));
                         else
-                            butPaint.setFont(QFont("times",16));
+                            butPaint.setFont(QFont("serif",20));
 
-                        butPaint.drawText(butImage.rect(),Qt::AlignCenter | Qt::AlignVCenter, text);
+                        butPaint.drawText(butImage.rect(),Qt::AlignCenter | Qt::AlignVCenter | Qt::TextWordWrap, text);
                     } else {
                         butPaint.setCompositionMode(QPainter::CompositionMode_SourceAtop);
                         butPaint.drawImage(0, 0, *img);
@@ -1254,20 +1295,22 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                         h1.cmd = 0x02;
                         h1.suffix = 0x01;
                         h1.button = val;
-                        while (rem > 0)
+
+                        quint32 start = 0;
+
+                        while (start < rem)
                         {
-                            quint32 length = qMin(quint16(rem),quint16(payloadLen));
+                            quint32 length = qMin(quint16(rem-start),quint16(payloadLen));
                             data.clear();
                             data.squeeze();
-                            h1.isLast = (quint8)(rem <= payloadLen ? 1 : 0); // isLast ? 1 : 0,3
+                            h1.isLast = (quint8)((rem-start) <= payloadLen ? 1 : 0); // isLast ? 1 : 0,3
                             h1.index = index;
                             data.append(QByteArray::fromRawData((const char*)h1.packet,0x16));
                             data.resize(dev->type.maxPayload);
-                            rem -= length;
-                            data=data.replace(0x10,length,data2.mid(0,length));
+                            data=data.replace(0x10,length,data2.mid(start,length));
                             res=hid_write(dev->handle, (const quint8*)data.constData(), data.size());
                             //qInfo(logUsbControl()) << "Sending len=" << dev->type.maxPayload << h1.index << "total=" << data.size()  << "payload=" << length << "last" << h1.isLast;
-                            data2.remove(0,length);
+                            start += length;
                             index++;
                         }
                     }
@@ -1281,21 +1324,22 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                         h.cmd = 0x02;
                         h.suffix = 0x07;
                         h.button = val;
-                        while (rem > 0)
+
+                        quint32 start = 0;
+                        while (start < rem)
                         {
-                            quint16 length = qMin(quint16(rem),quint16(dev->type.maxPayload-sizeof(h)));
+                            quint16 length = qMin(quint16(rem-start),quint16(dev->type.maxPayload-sizeof(h)));
                             data.clear();
-                            h.isLast = (quint8)(rem <= dev->type.maxPayload-sizeof(h) ? 1 : 0); // isLast ? 1 : 0,3
+                            h.isLast = (quint8)((rem-start) <= dev->type.maxPayload-sizeof(h) ? 1 : 0); // isLast ? 1 : 0,3
                             h.length = length;
                             h.index = index;
                             data.append(QByteArray::fromRawData((const char*)h.packet,sizeof(h)));
-                            rem -= length;
-                            data.append(data2.mid(0,length));
+                            data.append(data2.mid(start,length));
                             data.resize(dev->type.maxPayload);
                             memset(data.data()+length+sizeof(h),0x0,data.size()-(length+sizeof(h)));
                             res=hid_write(dev->handle, (const quint8*)data.constData(), data.size());
                              //qInfo(logUsbControl()) << "Sending" << (((quint8)data[7] << 8) | ((quint8)data[6] & 0xff)) << "total=" << data.size()  << "payload=" << (((quint8)data[5] << 8) | ((quint8)data[4] & 0xff)) << "last" << (quint8)data[3];
-                            data2.remove(0,length);
+                            start += length;
                             index++;
                         }
                     }
@@ -1348,6 +1392,99 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
         }
         res = hid_write(dev->handle, (const quint8*)data.constData(), data.size());
         //qInfo (logUsbControl()) << "Sending command to USB:" << data;
+        break;
+    case MiraBox293:
+    case MiraBoxN3:
+        data.resize(dev->type.maxPayload); // Make sure buffer is 512 bytes
+        data.fill(0,dev->type.maxPayload); // Replace with zeros.
+        data.replace(1,3,QByteArrayLiteral("\x43\x52\x54")); //Command prefix
+        switch (feature) {
+        case usbFeatureType::featureWakeScreen:
+            data.replace(6,3,QByteArrayLiteral("\x44\x49\x53"));
+            break;
+        case usbFeatureType::featureClearScreen:
+            data.replace(6,3,QByteArrayLiteral("\x43\x4c\x45"));
+            data[12] = val;
+            break;
+        case usbFeatureType::featureBrightness:
+            data.replace(6,3,QByteArrayLiteral("\x4c\x49\x47"));
+            data[11] = val*43;
+            dev->brightness = val;
+            break;
+        case usbFeatureType::featureFirmware:
+            data.fill(0,dev->type.maxPayload); // Replace with zeros.
+            data[0]= 0x01;
+            hid_get_feature_report(dev->handle,(quint8*)data.data(),(size_t)data.size());
+            qInfo(logUsbControl()) << QString("%0: Firmware = %1").arg(dev->product,QString::fromLatin1(data.mid(0,19)));
+            return;
+            break;
+        case usbFeatureType::featureButton:
+            if ((dev->type.model == usbDeviceType::MiraBoxN3 && val < 6) || (dev->type.model == usbDeviceType::MiraBox293))
+            {
+                data.replace(6,3,QByteArrayLiteral("\x42\x41\x54"));
+
+                QImage butImage(dev->type.iconSize,dev->type.iconSize, QImage::Format_RGB888);
+                if (color != Q_NULLPTR)
+                    butImage.fill(*color);
+                else
+                    butImage.fill(dev->color);
+
+                QPainter butPaint(&butImage);
+
+                if ( img == Q_NULLPTR) {
+                    if (dev->type.iconSize == 72)
+                        butPaint.setFont(QFont("serif",14));
+                    else
+                        butPaint.setFont(QFont("serif",16));
+
+                    butPaint.drawText(butImage.rect(),Qt::AlignCenter | Qt::AlignVCenter | Qt::TextWordWrap,  text);
+                } else {
+                    butPaint.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+                    butPaint.drawImage(0, 0, *img);
+                }
+
+                QBuffer butBuffer(&data2);
+                QTransform myTransform;
+                myTransform.rotate(90);
+                QImage myImage = butImage.transformed(myTransform);
+
+                myImage.save(&butBuffer, "JPG");
+                quint32 rem = data2.size();
+
+                data[9] = rem >> 24;
+                data[10] = rem >> 16;
+                data[11] = rem >> 8;
+                data[12] = rem;
+                data[13] = val+1;
+                //qInfo(logUsbControl()) << "Programming button" << (quint8)data[13] << "with" << rem << "bytes of jpeg";
+
+                res=hid_write(dev->handle, (const quint8*)data.constData(), data.size());
+
+                quint32 start = 0;
+                while (start < rem)
+                {
+                    //qInfo(logUsbControl()) << "Return" << res << "length:" << data.size() << ":" << data.mid(0,16).toHex(' ');
+                    //res = hid_read_timeout(dev->handle,(quint8*)data.data(),dev->type.maxPayload,40);
+                    quint32 length = qMin(quint32(rem-start),quint32((dev->type.maxPayload)));
+                    data.resize(1);
+                    //data.clear();
+                    data.append(data2.mid(start,length));
+                    data.resize(dev->type.maxPayload+1);
+                    res=hid_write(dev->handle, (const quint8*)data.constData(), data.size());
+                    start += length;
+                }
+                return;
+            } else {
+                // Send Refresh()
+                data.replace(6,3,QByteArrayLiteral("\x53\x54\x50"));
+                break;
+            }
+            break;
+        default:
+            return;
+            break;
+        }
+        res = hid_write(dev->handle, (const quint8*)data.constData(), data.size());
         break;
     default:
         break;
@@ -1636,6 +1773,38 @@ void usbController::loadButtons()
     defaultButtons.append(BUTTON(XKeysXK3, 1, QRect(100, 45, 63, 63), Qt::white, &commands[0], &commands[0]));
     defaultButtons.append(BUTTON(XKeysXK3, 2, QRect(170, 45, 63, 63), Qt::white, &commands[0], &commands[0]));
 
+    // MiraBox 293
+    defaultButtons.append(BUTTON(MiraBox293, 0, QRect(65, 91, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 1, QRect(165, 91, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 2, QRect(263, 91, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 3, QRect(364, 91, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 4, QRect(462, 91, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 5, QRect(65, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 6, QRect(165, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 7, QRect(263, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 8, QRect(364, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 9, QRect(462, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 10, QRect(65, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 11, QRect(165, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 12, QRect(263, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 13, QRect(364, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 14, QRect(462, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+
+    // MiraBox N3
+    defaultButtons.append(BUTTON(MiraBoxN3, 0, QRect(121, 103, 88, 88), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBoxN3, 1, QRect(248, 103, 88, 88), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBoxN3, 2, QRect(376, 103, 88, 88), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBoxN3, 3, QRect(121, 231, 88, 88), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBoxN3, 4, QRect(248, 231, 88, 88), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBoxN3, 5, QRect(376, 231, 88, 88), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBoxN3, 6, QRect(118, 430, 90, 30), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(MiraBoxN3, 7, QRect(244, 430, 90, 30), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(MiraBoxN3, 8, QRect(373, 430, 90, 30), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(MiraBoxN3, 9, QRect(633, 154, 100, 25), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(MiraBoxN3, 10, QRect(555, 417, 75, 25), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(MiraBoxN3, 11, QRect(737, 417, 75, 25), Qt::white, &commands[0], &commands[0]));
+
+
 }
 
 void usbController::loadKnobs()
@@ -1657,6 +1826,11 @@ void usbController::loadKnobs()
     defaultKnobs.append(KNOB(StreamDeckPlus, 1, QRect(204, 413, 64, 28), Qt::green, &commands[0]));
     defaultKnobs.append(KNOB(StreamDeckPlus, 2, QRect(332, 413, 64, 28), Qt::green, &commands[0]));
     defaultKnobs.append(KNOB(StreamDeckPlus, 3, QRect(462, 413, 64, 28), Qt::green, &commands[0]));
+
+    // MiraboxN3
+    defaultKnobs.append(KNOB(MiraBoxN3, 0, QRect(633, 233, 100, 25), Qt::green, &commands[3]));
+    defaultKnobs.append(KNOB(MiraBoxN3, 1, QRect(555, 448, 75, 25), Qt::green, &commands[0]));
+    defaultKnobs.append(KNOB(MiraBoxN3, 2, QRect(737, 448, 75, 25), Qt::green, &commands[0]));
 }
 
 void usbController::loadCommands()
@@ -1689,13 +1863,13 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Main CW", commandButton, funcMode, modeCW));
     commands.append(COMMAND(num++, "Main CWR", commandButton, funcMode, modeCW_R));
     commands.append(COMMAND(num++, "Main FM", commandButton, funcMode, modeFM));
+    commands.append(COMMAND(num++, "Main WFM", commandButton, funcMode, modeWFM));
     commands.append(COMMAND(num++, "Main AM", commandButton, funcMode, modeAM));
     commands.append(COMMAND(num++, "Main RTTY", commandButton, funcMode, modeRTTY));
     commands.append(COMMAND(num++, "Main RTTYR", commandButton, funcMode, modeRTTY_R));
     commands.append(COMMAND(num++, "Main PSK", commandButton, funcMode, modePSK));
     commands.append(COMMAND(num++, "Main PSKR", commandButton, funcMode, modePSK_R));
     commands.append(COMMAND(num++, "Main DV", commandButton, funcMode, modeDV));
-    commands.append(COMMAND(num++, "Main DD", commandButton, funcMode, modeDD));
     commands.append(COMMAND(num++, "Bands", commandButton, funcSeparator, (quint8)0x0));
     commands.append(COMMAND(num++, "Band+", commandButton, funcBandStackReg, 1));
     commands.append(COMMAND(num++, "Band-", commandButton, funcBandStackReg, -1));

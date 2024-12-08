@@ -234,6 +234,15 @@ void controllerSetup::showMenu(controllerScene* scene, QPoint p)
             buttonIcon->hide();
             iconLabel->hide();
             break;
+        case MiraBoxN3:
+            buttonOnColor->setStyleSheet(QString("background-color: %1").arg(currentButton->backgroundOn.name(QColor::HexArgb)));
+            buttonOffColor->setStyleSheet(QString("background-color: %1").arg(currentButton->backgroundOff.name(QColor::HexArgb)));
+            buttonOnColor->show();
+            buttonOffColor->show();
+            buttonIcon->show();
+            iconLabel->setText(currentButton->iconName);
+            iconLabel->show();
+            break;
         default:
             buttonOnColor->hide();
             buttonOffColor->hide();
@@ -530,7 +539,7 @@ void controllerSetup::newDevice(USBDEVICE* dev)
 
     c->disabled = new QCheckBox("Disable");
     c->topLayout->addWidget(c->disabled);
-    connect(c->disabled, qOverload<bool>(&QCheckBox::clicked),
+    connect(c->disabled, qOverload<bool>(&QCheckBox::clicked), c->disabled,
         [dev,this,c](bool checked) { this->disableClicked(dev,checked,c->widget); });
     c->disabled->setChecked(dev->disabled);
 
@@ -557,7 +566,7 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     c->sens->setInvertedAppearance(true);
     c->sensLayout->addWidget(c->sens);
     c->sens->setValue(dev->sensitivity);
-    connect(c->sens, &QSlider::valueChanged,
+    connect(c->sens, &QSlider::valueChanged, c->sens,
         [dev,this](int val) { this->sensitivityMoved(dev,val); });
 
     c->sensLayout->addStretch(0);
@@ -611,6 +620,12 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     case StreamDeckPedal:
         c->image->load(":/resources/streamdeckpedal.png");
         break;
+    case MiraBox293:
+        c->image->load(":/resources/mirabox293.png");
+        break;
+    case MiraBoxN3:
+        c->image->load(":/resources/miraboxn3.png");
+        break;
     default:
         this->adjustSize();
         break;
@@ -637,7 +652,7 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     c->brightness->addItem("High");
     c->brightness->setCurrentIndex(dev->brightness);
     c->grid->addWidget(c->brightness,1,0);
-    connect(c->brightness, qOverload<int>(&QComboBox::currentIndexChanged),
+    connect(c->brightness, qOverload<int>(&QComboBox::currentIndexChanged), c->brightness,
         [dev,this](int index) { this->brightnessChanged(dev,index); });
 
     c->speedLabel = new QLabel("Speed");
@@ -650,7 +665,7 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     c->speed->addItem("Slowest");
     c->speed->setCurrentIndex(dev->speed);
     c->grid->addWidget(c->speed,1,1);
-    connect(c->speed, qOverload<int>(&QComboBox::currentIndexChanged),
+    connect(c->speed, qOverload<int>(&QComboBox::currentIndexChanged), c->speed,
         [dev,this](int index) { this->speedChanged(dev,index); });
 
     c->orientLabel = new QLabel("Orientation");
@@ -662,13 +677,13 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     c->orientation->addItem("Rotate 270");
     c->orientation->setCurrentIndex(dev->orientation);
     c->grid->addWidget(c->orientation,1,2);
-    connect(c->orientation, qOverload<int>(&QComboBox::currentIndexChanged),
+    connect(c->orientation, qOverload<int>(&QComboBox::currentIndexChanged), c->orientation,
         [dev,this](int index) { this->orientationChanged(dev,index); });
 
     c->color = new QPushButton("Color");
     c->color->setStyleSheet(QString("background-color: %1").arg(dev->color.name(QColor::HexArgb)));
     c->grid->addWidget(c->color,1,3);
-    connect(c->color, &QPushButton::clicked,
+    connect(c->color, &QPushButton::clicked, c->color,
         [dev,c,this]() { this->colorPicker(dev,c->color,dev->color); });
 
     c->timeoutLabel = new QLabel("Timeout");
@@ -676,7 +691,7 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     c->timeout = new QSpinBox();
     c->timeout->setValue(dev->timeout);
     c->grid->addWidget(c->timeout,1,4);
-    connect(c->timeout, qOverload<int>(&QSpinBox::valueChanged),
+    connect(c->timeout, qOverload<int>(&QSpinBox::valueChanged), c->timeout,
         [dev,this](int index) { this->timeoutChanged(dev,index); });
 
     c->pagesLabel = new QLabel("Num Pages");
@@ -685,7 +700,7 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     c->pages->setValue(dev->pages);
     c->pages->setMinimum(1);
     c->grid->addWidget(c->pages,1,5);
-    connect(c->pages, qOverload<int>(&QSpinBox::valueChanged),
+    connect(c->pages, qOverload<int>(&QSpinBox::valueChanged), c->pages,
         [dev,this](int index) { this->pagesChanged(dev,index); });
 
     for (int i=0;i<6;i++)
@@ -717,7 +732,7 @@ void controllerSetup::newDevice(USBDEVICE* dev)
 
 
     // Attach pageChanged() here so we have access to all necessary vars
-    connect(c->page, qOverload<int>(&QSpinBox::valueChanged),
+    connect(c->page, qOverload<int>(&QSpinBox::valueChanged), c->page,
             [dev, this](int index) { this->pageChanged(dev, index); });
 
 // Hide all controls that are not relevant to this controller

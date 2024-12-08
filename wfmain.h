@@ -390,6 +390,7 @@ private slots:
     void receiveMonitor(bool en);
     void receiveTuningStep(quint8 step);
 
+    void receiveScopeImage(uchar receiver);
     // Meters:
     void receiveMeter(meter_t meter, quint8 level, quint8 receiver=0);
 //    void receiveSMeter(quint8 level);
@@ -401,7 +402,6 @@ private slots:
     void receiveATUStatus(quint8 atustatus);
     void receivePreamp(quint8 pre, uchar receiver);
     void receiveAttenuator(quint8 att, uchar receiver);
-    void receiveAntennaSel(quint8 ant, bool rx,uchar receiver);
 
     void receivePortError(errorType err);
     void receiveStatusUpdate(networkStatus status);

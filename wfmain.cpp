@@ -1068,7 +1068,7 @@ void wfmain::configureVFOs()
             if (rx == currentReceiver && rigCaps->commands.contains(funcAntenna)) {
                 ui->antennaSelCombo->setEnabled(b.ants);
                 if (b.ants) {
-                    queue->addUnique(priorityMediumHigh,queueItem(funcAntenna,false,true,i));
+                    queue->addUnique(priorityMediumHigh,queueItem(funcAntenna,true,i));
                 } else {
                     queue->del(funcAntenna,i);
                 }
@@ -1076,6 +1076,7 @@ void wfmain::configureVFOs()
         });
 
         connect(receiver,SIGNAL(showStatusBarText(QString)),this,SLOT(showStatusBarText(QString)));
+        connect(receiver,SIGNAL(sendScopeImage(uchar)),this,SLOT(receiveScopeImage(uchar)));
         receivers.append(receiver);
         queue->add(priorityImmediate,queueItem(funcScopeMainSub,false)); // Get current scope
 
@@ -1380,6 +1381,9 @@ void wfmain::buttonControl(const COMMAND* cmd)
 {
     qDebug(logUsbControl()) << QString("executing command: %0 (%1) suffix:%2 value:%3" ).arg(cmd->text).arg(cmd->command).arg(cmd->suffix).arg(cmd->value);
     quint8 rx=0;
+    if (rigCaps == Q_NULLPTR) {
+        return;
+    }
     switch (cmd->command) {
     case funcBandStackReg:
     {
@@ -1438,15 +1442,16 @@ void wfmain::buttonControl(const COMMAND* cmd)
         rx=1;
     case funcMode:
     case funcModeSet:
+        qInfo(logRig()) << "Setting mode" << cmd->value << "or" << cmd->mode;
         if (cmd->value == 1) {
             for (size_t i = 0; i < rigCaps->modes.size(); i++) {
                 if (rigCaps->modes[i].mk == receivers[rx]->currentMode().mk)
                 {
                     if (i + 1 < rigCaps->modes.size()) {
-                        changeMode(rigCaps->modes[i + 1].mk);
+                        changeMode(rigCaps->modes[i + 1].mk,false,rx);
                     }
                     else {
-                        changeMode(rigCaps->modes[0].mk);
+                        changeMode(rigCaps->modes[0].mk,false,rx);
                     }
                 }
             }
@@ -1455,15 +1460,15 @@ void wfmain::buttonControl(const COMMAND* cmd)
                 if (rigCaps->modes[i].mk == receivers[rx]->currentMode().mk)
                 {
                     if (i>0) {
-                        changeMode(rigCaps->modes[i - 1].mk);
+                        changeMode(rigCaps->modes[i - 1].mk,false,rx);
                     }
                     else {
-                        changeMode(rigCaps->modes[rigCaps->modes.size()-1].mk);
+                        changeMode(rigCaps->modes[rigCaps->modes.size()-1].mk,false,rx);
                     }
                 }
             }
         } else {
-            changeMode(cmd->mode);
+            changeMode(cmd->mode,false,rx);
         }
         break;
     case funcTuningStep:
@@ -1514,7 +1519,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
     }
     default:
         qInfo(logUsbControl()) << "Command" << cmd->command << "Suffix" << cmd->suffix;
-        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->suffix),false,rx));
+        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<ushort>(cmd->suffix),false,rx));
         break;
     }
 #if defined __GNUC__
@@ -3934,10 +3939,17 @@ void wfmain::changeMode(rigMode_t mode, quint8 data, quint8 rx)
                 m.data = data;
                 m.VFO=selVFO_t::activeVFO;
                 m.filter = receivers[rx]->currentFilter();
-                if (rigCaps->commands.contains(funcMode))
+                qDebug(logRig()) << "changeMode:" << mode << "data" << data << "rx" << rx;
+                if (rigCaps->commands.contains(funcMode)) {
                     queue->add(priorityImmediate,queueItem(funcMode,QVariant::fromValue<modeInfo>(m),false,rx));
-                else
+                }
+                else if (rigCaps->commands.contains(funcSelectedMode)) {
+                    queue->add(priorityImmediate,queueItem(funcSelectedMode,QVariant::fromValue<modeInfo>(m),false,rx));
+                }
+                else { // Fallback to old style mode commands.
+                    queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(m),false,rx));
                     queue->add(priorityImmediate,queueItem(funcDataModeWithFilter,QVariant::fromValue<modeInfo>(m),false,rx));
+                }
             }
 
             break;
@@ -4651,13 +4663,6 @@ void wfmain::receiveAttenuator(quint8 att, uchar receiver)
     }
 }
 
-void wfmain::receiveAntennaSel(quint8 ant, bool rx, uchar receiver)
-{
-    if (receiver == currentReceiver) {
-        ui->antennaSelCombo->setCurrentIndex(ant);
-        ui->rxAntennaCheck->setChecked(rx);
-    }
-}
 
 void wfmain::calculateTimingParameters()
 {
@@ -5386,7 +5391,10 @@ void wfmain::receiveValue(cacheItem val){
         receiveAttenuator(val.value.value<uchar>(),val.receiver);
         break;
     case funcAntenna:
-        receiveAntennaSel(val.value.value<antennaInfo>().antenna,val.value.value<antennaInfo>().rx,val.receiver);
+        if (val.receiver == currentReceiver) {
+            ui->antennaSelCombo->setCurrentIndex(val.value.value<antennaInfo>().antenna);
+            ui->rxAntennaCheck->setChecked(val.value.value<antennaInfo>().rx);
+        }
         break;
     case funcPBTOuter:
 
@@ -6140,6 +6148,31 @@ void wfmain::radioInUse(quint8 radio, bool admin, quint8 busy, QString user, QSt
    isRadioAdmin = admin;
 }
 
+void wfmain::receiveScopeImage(uchar receiver)
+{
+
+    #if defined (USB_CONTROLLER)
+            // Send to USB Controllers if requested
+        if (receiver == 0) {
+            auto i = usbDevices.begin();
+            while (i != usbDevices.end())
+            {
+                if (i.value().connected && i.value().type.model == usbDeviceType::StreamDeckPlus && i.value().lcd == funcLCDWaterfall )
+                {
+                    lcdImage = receivers[receiver]->getWaterfallImage();
+                    emit sendControllerRequest(&i.value(), usbFeatureType::featureLCD, 0, "", &lcdImage);
+                }
+                else if (i.value().connected && i.value().type.model == usbDeviceType::StreamDeckPlus && i.value().lcd == funcLCDSpectrum)
+                {
+                    lcdImage = receivers[receiver]->getSpectrumImage();
+                    emit sendControllerRequest(&i.value(), usbFeatureType::featureLCD, 0, "", &lcdImage);
+                }
+                ++i;
+            }
+        }
+    #endif
+
+}
 
 // Assorted checkboxes
 void wfmain::on_nbEnableChk_clicked(bool checked)

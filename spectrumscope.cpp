@@ -882,26 +882,6 @@ bool spectrumScope::updateScope(scopeData data)
         waterfall->yAxis->setRange(0,wfLength - 1);
         waterfall->xAxis->setRange(0, spectWidth-1);
 
-/*
-#if defined (USB_CONTROLLER)
-        // Send to USB Controllers if requested
-        auto i = usbDevices.begin();
-        while (i != usbDevices.end())
-        {
-            if (i.value().connected && i.value().type.model == usbDeviceType::StreamDeckPlus && i.value().lcd == funcLCDWaterfall )
-            {
-                lcdImage = waterfall->toPixmap().toImage();
-                emit sendControllerRequest(&i.value(), usbFeatureType::featureLCD, 0, "", &lcdImage);
-            }
-            else if (i.value().connected && i.value().type.model == usbDeviceType::StreamDeckPlus && i.value().lcd == funcLCDSpectrum)
-            {
-                lcdImage = spectrum->toPixmap().toImage();
-                emit sendControllerRequest(&i.value(), usbFeatureType::featureLCD, 0, "", &lcdImage);
-            }
-            ++i;
-        }
-#endif
-  */
     }
 
     oldPlotFloor = plotFloor;
@@ -943,6 +923,8 @@ bool spectrumScope::updateScope(scopeData data)
     lastData.restart();
 #endif
 
+    mutex.unlock();
+    emit sendScopeImage(receiver);
     return true;
 }
 
@@ -1283,7 +1265,7 @@ void spectrumScope::scopeClick(QMouseEvent* me)
         }
         else {
             emit showStatusBarText(QString("Selected %1 MHz").arg(this->mousePressFreq));
-        }
+        }    
 
     }
     else if (me->button() == Qt::RightButton)
@@ -2144,4 +2126,15 @@ void spectrumScope::memoryMode(bool en)
         queue->del(funcUnselectedMode,receiver);
         queue->del(funcUnselectedFreq,receiver);
     }
+}
+
+QImage spectrumScope::getSpectrumImage()
+{
+    QMutexLocker locker(&mutex);
+    return spectrum->toPixmap().toImage();
+}
+QImage spectrumScope::getWaterfallImage()
+{
+    QMutexLocker locker(&mutex);
+    return waterfall->toPixmap().toImage();
 }

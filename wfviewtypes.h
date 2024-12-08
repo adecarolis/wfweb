@@ -430,12 +430,13 @@ enum usbDeviceType { usbNone = 0, shuttleXpress, shuttlePro2,
                      RC28, xBoxGamepad, unknownGamepad, eCoderPlus, QuickKeys,
                      StreamDeckMini,StreamDeckMiniV2,StreamDeckOriginal,StreamDeckOriginalV2,
                      StreamDeckOriginalMK2,StreamDeckXL,StreamDeckXLV2,StreamDeckPedal, StreamDeckPlus,
-                     XKeysXK3
+                     XKeysXK3,MiraBox293, MiraBoxN3
 };
 
 enum usbCommandType{ commandButton, commandKnob, commandAny };
 enum usbFeatureType { featureReset,featureResetKeys, featureEventsA, featureEventsB, featureFirmware, featureSerial, featureButton, featureSensitivity, featureBrightness,
-                      featureOrientation, featureSpeed, featureColor, featureOverlay, featureTimeout, featureLCD, featureGraph, featureLEDControl };
+                      featureOrientation, featureSpeed, featureColor, featureOverlay, featureTimeout, featureLCD, featureGraph, featureLEDControl,
+                      featureWakeScreen, featureClearScreen, featureRefresh, featureGetImageBuffer};
 
 
 struct periodicType {

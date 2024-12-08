@@ -115,7 +115,8 @@ public:
     void changeSpan(qint8 val);
     void setSeparators(QChar group, QChar decimal);
     void updateBSR(std::vector<bandType>* bands);
-
+    QImage getSpectrumImage();
+    QImage getWaterfallImage();
     bandType getCurrentBand();
 
 public slots: // Can be called directly or updated via signal/slot
@@ -135,6 +136,7 @@ signals:
     void bandChanged(uchar receiver, bandType b);
     void spectrumTime(double time);
     void waterfallTime(double time);
+    void sendScopeImage(uchar receiver);
 
 private slots:
     void detachScope(bool state);

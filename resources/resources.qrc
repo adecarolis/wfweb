@@ -12,6 +12,8 @@
         <file>streamdeckxl.png</file>
         <file>streamdeckpedal.png</file>
         <file>streamdeckplus.png</file>
+        <file>mirabox293.png</file>
+        <file>miraboxn3.png</file>
         <file>frequency.ttf</file>
     </qresource>
 </RCC>
