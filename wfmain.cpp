@@ -1506,6 +1506,31 @@ void wfmain::buttonControl(const COMMAND* cmd)
         queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<freqt>(f),false,rx));
         break;
     }
+    // These are 2 byte values, so use ushort (even though they would fit in a uchar)
+    case funcRfGain:
+    case funcSquelch:
+    case funcAPFLevel:
+    case funcNRLevel:
+    case funcPBTInner:
+    case funcPBTOuter:
+    case funcIFShift:
+    case funcCwPitch:
+    case funcRFPower:
+    case funcMicGain:
+    case funcNotchFilter:
+    case funcCompressorLevel:
+    case funcBreakInDelay:
+    case funcNBLevel:
+    case funcDigiSelShift:
+    case funcDriveGain:
+    case funcMonitorGain:
+    case funcVoxGain:
+    case funcAntiVoxGain:
+    case funcKeySpeed:
+        qInfo(logUsbControl()) << "Command" << cmd->command << "Suffix (2 byte)" << cmd->suffix;
+        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<ushort>(cmd->suffix),false,rx));
+        break;
+
     case funcTransceiverStatus:
     {
         if (cmd->value == -1)
@@ -1515,11 +1540,10 @@ void wfmain::buttonControl(const COMMAND* cmd)
             break;
         }
 
-        // We want to fall through if it is not a toggle.
     }
     default:
         qInfo(logUsbControl()) << "Command" << cmd->command << "Suffix" << cmd->suffix;
-        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<ushort>(cmd->suffix),false,rx));
+        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->suffix),false,rx));
         break;
     }
 #if defined __GNUC__
