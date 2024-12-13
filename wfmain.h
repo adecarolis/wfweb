@@ -110,8 +110,6 @@ public:
 #endif
 
 signals:
-    // Signal levels received to other parts of wfview
-    void sendLevel(funcs cmd, quint8 level);
     void usbHotplug();
     // Basic to rig:
     void setCIVAddr(quint8 newRigCIVAddr);

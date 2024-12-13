@@ -116,6 +116,7 @@ void tciServer::init(quint16 port) {
     queue = cachingQueue::getInstance();
     rigCaps = queue->getRigCaps();
 
+    connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
     connect(queue,SIGNAL(cacheUpdated(cacheItem)),this,SLOT(receiveCache(cacheItem)));
 
     // Setup txChrono packet.

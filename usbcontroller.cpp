@@ -36,7 +36,7 @@ usbController::usbController()
     knownDevices.append(USBTYPE(StreamDeckPlus, 0x0fd9, 0x0084, 0x0000, 0x0000,12,0,4,0,1024,120));
     knownDevices.append(USBTYPE(XKeysXK3, 0x05f3, 0x04c5, 0x0001, 0x000c,3,0,0,2,32,0)); // So-called "splat" interface?
     knownDevices.append(USBTYPE(MiraBox293, 0x5500, 0x1001, 0x0000, 0x0000,15,0,0,0,1024,100));
-    knownDevices.append(USBTYPE(MiraBoxN3, 0x6603, 0x1003, 0x0001, 0xffa0,12,0,3,0,1024,72));
+    knownDevices.append(USBTYPE(MiraBoxN3, 0x6603, 0x1003, 0x0001, 0xffa0,12,0,3,0,1024,72));    
 }
 
 usbController::~usbController()
@@ -79,6 +79,13 @@ void usbController::init(QMutex* mut,usbDevMap* devs ,QVector<BUTTON>* buts,QVec
     this->buttonList = buts;
     this->knobList = knobs;
     
+    this->setObjectName("USB Controller");
+    queue = cachingQueue::getInstance();
+    rigCaps = queue->getRigCaps();
+
+    connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
+    connect(queue,SIGNAL(cacheUpdated(cacheItem)),this,SLOT(receiveCacheItem(cacheItem)));
+
     emit initUI(this->devices, this->buttonList, this->knobList,&this->commands,this->mutex);
     
     QMutexLocker locker(mutex);
@@ -857,12 +864,25 @@ void usbController::runTimer()
                         // sendCommand mustn't be deleted so we ensure it stays in-scope by declaring it private (we will only ever send one command).
                         sendCommand = *kb->command;
                         if (sendCommand.command != funcFreq) {
-                            int tempVal = dev->knobValues[i].value * dev->sensitivity;
-                            tempVal = qMin(qMax(tempVal,0),255);
-                            sendCommand.suffix = quint8(tempVal);
-                            dev->knobValues[i].value=tempVal/dev->sensitivity; // This ensures that dial can't go outside 0-255
-                            dev->knobValues[i].name = kb->command->text;
-                            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureGraph,i,"",Q_NULLPTR,&dev->color); });
+                            auto cv = rigCaps->commands.find(funcs(sendCommand.command));
+                            if (cv != rigCaps->commands.end()) {
+                                int tempVal = dev->knobValues[i].value;
+                                if (tempVal == 0)
+                                {
+                                    // The value stored should always be int convertable...
+                                    tempVal = queue->getCache(funcs(sendCommand.command),0).value.toInt();
+                                }
+                                tempVal = qMin(qMax(tempVal,cv.value().minVal),cv.value().maxVal);
+                                sendCommand.value = tempVal;
+                                dev->knobValues[i].value=tempVal;
+                                dev->knobValues[i].name = kb->command->text;
+                                QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureGraph,i,"",Q_NULLPTR,&dev->color); });
+                            } else {
+                                // We don't have this command available
+                                qInfo(logUsbControl()) << "Requested command" << funcString[sendCommand.command] << "Not available on this rig";
+                                dev->lastusbController = QTime::currentTime();
+                                return;
+                            }
                         }
                         else
                         {
@@ -1847,7 +1867,9 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Freq Up", commandButton, funcFreq, (int)1));
     commands.append(COMMAND(num++, "PTT Toggle", commandButton, funcTransceiverStatus,  (int)-1));
     commands.append(COMMAND(num++, "Span/Step", commandKnob, funcSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "Tune", commandButton, funcTunerStatus, (quint8)0x1));
+    commands.append(COMMAND(num++, "Tuner Enable", commandButton, funcTunerStatus, (quint8)0x1));
+    commands.append(COMMAND(num++, "Tuner Disable", commandButton, funcTunerStatus, (quint8)0x0));
+    commands.append(COMMAND(num++, "Tune", commandButton, funcTunerStatus, (quint8)0x2));
     commands.append(COMMAND(num++, "Span/Step", commandButton, funcSeparator, (quint8)0x0));
     commands.append(COMMAND(num++, "Step+", commandButton, funcTuningStep, 1));
     commands.append(COMMAND(num++, "Step-", commandButton, funcTuningStep, -1));
@@ -2074,8 +2096,12 @@ void usbController::buttonState(QString name, double val)
 
 /* End of Gamepad functions*/
 
+
+/* This should be replaced with the cache */
 void usbController::receiveLevel(funcs cmd, quint8 level)
 {
+
+    /*
     // Update knob if relevant, step through all devices
     QMutexLocker locker(mutex);
 
@@ -2098,6 +2124,7 @@ void usbController::receiveLevel(funcs cmd, quint8 level)
             QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,bt->led,QString("%1").arg(level)); });
         }
     }
+    */
 }
 
 void usbController::backupController(USBDEVICE* dev, QString file)
@@ -2332,6 +2359,40 @@ void usbController::restoreController(USBDEVICE* dev, QString file)
     dev->uiCreated = false;
     devicesConnected--;
     QTimer::singleShot(250, this, SLOT(run())); // Call run to cleanup connectons after 250ms
+}
+
+void usbController::receiveRigCaps(rigCapabilities *caps)
+{
+    rigCaps = caps;
+}
+
+// This will be triggered every time a cached item is updated
+// We can use this to update the button/knob values I think.
+void usbController::receiveCacheItem(cacheItem item)
+{
+    // Update knob if relevant, step through all devices
+    QMutexLocker locker(mutex);
+
+    for (auto devIt = devices->begin(); devIt != devices->end(); devIt++)
+    {
+        auto dev = &devIt.value();
+
+        auto kb = std::find_if(knobList->begin(), knobList->end(), [dev, item](const KNOB& k)
+                               { return (k.command && dev->connected && k.path == dev->path && k.page == dev->currentPage && k.command->command == int(item.command));});
+        if (kb != knobList->end() && kb->num < dev->knobValues.size()) {
+            qInfo(logUsbControl()) << "Received value:" << item.value.toInt() << "for knob" << kb->num;
+            // Set both current and previous knobvalue to the received value
+            dev->knobValues[kb->num].value = item.value.toInt();
+            dev->knobValues[kb->num].previous = item.value.toInt();
+        }
+        auto bt = std::find_if(buttonList->begin(), buttonList->end(), [dev, item](const BUTTON& b)
+                               { return (b.onCommand && dev->connected && b.path == dev->path && b.page == dev->currentPage && b.onCommand->command == int(item.command) && b.led != 0 &&  b.led <= dev->type.leds);});
+        if (bt != buttonList->end()) {
+            // qInfo(logUsbControl()) << "Received value:" << level << "for led" << bt->led;
+            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,bt->led,QString("%1").arg(item.value.toInt())); });
+        }
+    }
+
 }
 
 #endif

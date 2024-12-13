@@ -1332,7 +1332,6 @@ void wfmain::setupUsbControllerDevice()
     connect(this, SIGNAL(sendControllerRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)), usbControllerDev, SLOT(sendRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)));
     connect(usbWindow, SIGNAL(programPages(USBDEVICE*,int)), usbControllerDev, SLOT(programPages(USBDEVICE*,int)));
     connect(usbWindow, SIGNAL(programDisable(USBDEVICE*,bool)), usbControllerDev, SLOT(programDisable(USBDEVICE*,bool)));
-    connect(this, SIGNAL(sendLevel(funcs,quint8)), usbControllerDev, SLOT(receiveLevel(funcs,quint8)));
     connect(this, SIGNAL(initUsbController(QMutex*,usbDevMap*,QVector<BUTTON>*,QVector<KNOB>*)), usbControllerDev, SLOT(init(QMutex*,usbDevMap*,QVector<BUTTON>*,QVector<KNOB>*)));
     connect(this, SIGNAL(usbHotplug()), usbControllerDev, SLOT(run()));
     connect(usbWindow, SIGNAL(backup(USBDEVICE*,QString)), usbControllerDev, SLOT(backupController(USBDEVICE*,QString)));
@@ -1384,6 +1383,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
     if (rigCaps == Q_NULLPTR) {
         return;
     }
+
     switch (cmd->command) {
     case funcBandStackReg:
     {
@@ -1506,7 +1506,11 @@ void wfmain::buttonControl(const COMMAND* cmd)
         queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<freqt>(f),false,rx));
         break;
     }
+
     // These are 2 byte values, so use ushort (even though they would fit in a uchar)
+    case funcCwPitch:
+    case funcKeySpeed:
+    case funcAfGain:
     case funcRfGain:
     case funcSquelch:
     case funcAPFLevel:
@@ -1514,7 +1518,6 @@ void wfmain::buttonControl(const COMMAND* cmd)
     case funcPBTInner:
     case funcPBTOuter:
     case funcIFShift:
-    case funcCwPitch:
     case funcRFPower:
     case funcMicGain:
     case funcNotchFilter:
@@ -1526,9 +1529,8 @@ void wfmain::buttonControl(const COMMAND* cmd)
     case funcMonitorGain:
     case funcVoxGain:
     case funcAntiVoxGain:
-    case funcKeySpeed:
-        qInfo(logUsbControl()) << "Command" << cmd->command << "Suffix (2 byte)" << cmd->suffix;
-        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<ushort>(cmd->suffix),false,rx));
+        qInfo(logUsbControl()) << "Command" << cmd->command << "Value" << cmd->value;
+        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<ushort>(cmd->value),false,rx));
         break;
 
     case funcTransceiverStatus:
@@ -1542,8 +1544,12 @@ void wfmain::buttonControl(const COMMAND* cmd)
 
     }
     default:
-        qInfo(logUsbControl()) << "Command" << cmd->command << "Suffix" << cmd->suffix;
-        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->suffix),false,rx));
+        qInfo(logUsbControl()) << "Command" << cmd->command << "Value" << cmd->value << "Suffix" << cmd->suffix;
+        if (cmd->suffix == 0xff) {
+            queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->value),false,rx));
+        } else {
+            queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->suffix),false,rx));
+        }
         break;
     }
 #if defined __GNUC__
@@ -3859,8 +3865,6 @@ void wfmain::initPeriodicCommands()
 
 void wfmain::receivePTTstatus(bool pttOn)
 {
-    emit sendLevel(funcTransceiverStatus,pttOn);
-
     // This is the only place where amTransmitting and the transmit button text should be changed:
     if (pttOn && !amTransmitting)
     {
@@ -4100,7 +4104,8 @@ void wfmain::on_afGainSlider_valueChanged(int value)
         prefs.rxSetup.localAFgain = (quint8)(value);
         prefs.localAFgain = (quint8)(value);
         emit setAfGain(value);
-        emit sendLevel(funcAfGain,value);
+        // Fake the queue into thinking it has received a value for AfGain.
+        queue->receiveValue(funcAfGain,quint8(value),currentReceiver);
     } else {
         queue->addUnique(priorityImmediate,queueItem(funcAfGain,QVariant::fromValue<ushort>(value),false));
     }
@@ -4446,7 +4451,6 @@ void wfmain::processModLevel(inputTypes source, quint8 level)
         {
             prefs.inputSource[data].level = level;
             changeSliderQuietly(ui->micGainSlider, level);
-            emit sendLevel(funcLANModLevel,level);
         }
     }
 }
@@ -4501,7 +4505,6 @@ void wfmain::receiveCwPitch(quint8 pitch) {
             passbandCenterFrequency = p / 2000000.0;
             qDebug(logSystem()) << QString("Received new CW Pitch %0 Hz was %1 (center freq %2 MHz)").arg(p).arg(cwPitch).arg(passbandCenterFrequency);
             cwPitch = p;
-            emit sendLevel(funcCwPitch,pitch);
         }
     }
 }
@@ -4571,10 +4574,9 @@ void wfmain::receiveMeter(meter_t inMeter, quint8 level,quint8 receiver)
 void wfmain::receiveMonitor(bool en)
 {
     if (en)
-            ui->monitorLabel->setText(QString("<b><a href=\"#\" style=\"color:%0; text-decoration:none;\">Mon</a></b>").arg(colorPrefs->textColor.name()));
+        ui->monitorLabel->setText(QString("<b><a href=\"#\" style=\"color:%0; text-decoration:none;\">Mon</a></b>").arg(colorPrefs->textColor.name()));
     else
         ui->monitorLabel->setText(QString("<a href=\"#\" style=\"color:%0; text-decoration:none;\">Mon</a>").arg(colorPrefs->textColor.name()));
-    emit sendLevel(funcMonitor,en);
 }
 
 
@@ -5461,25 +5463,20 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcAfGain:
         changeSliderQuietly(ui->afGainSlider, val.value.value<uchar>());
-        emit sendLevel(val.command,val.value.value<uchar>());
         break;
     case funcMonitorGain:
         changeSliderQuietly(ui->monitorSlider, val.value.value<uchar>());
-        emit sendLevel(val.command,val.value.value<uchar>());
         break;
     case funcRfGain:
         changeSliderQuietly(ui->rfGainSlider, val.value.value<uchar>());
-        emit sendLevel(val.command,val.value.value<uchar>());
         break;
     case funcSquelch:
         if (val.receiver == currentReceiver) {
             changeSliderQuietly(ui->sqlSlider, val.value.value<uchar>());
-            emit sendLevel(val.command,val.value.value<uchar>());
         }
         break;
     case funcRFPower:
         changeSliderQuietly(ui->txPowerSlider, val.value.value<uchar>());
-        emit sendLevel(val.command,val.value.value<uchar>());
         break;
     case funcCompressorLevel:
     case funcNBLevel:
@@ -5488,7 +5485,6 @@ void wfmain::receiveValue(cacheItem val){
     case funcDriveGain:
     case funcVoxGain:
     case funcAntiVoxGain:
-        emit sendLevel(val.command,val.value.value<uchar>());
         break;
     case funcBreakInDelay:
         break;
@@ -5551,7 +5547,6 @@ void wfmain::receiveValue(cacheItem val){
     case funcNoiseBlanker:
         if (val.receiver == currentReceiver) {
             ui->nbEnableChk->setChecked(val.value.value<bool>());
-            emit sendLevel(funcNoiseBlanker,val.value.value<bool>());
         }
         break;
     case funcAudioPeakFilter:
@@ -5559,7 +5554,6 @@ void wfmain::receiveValue(cacheItem val){
     case funcNoiseReduction:
         if (val.receiver == currentReceiver) {
             ui->nrEnableChk->setChecked(val.value.value<bool>());
-            emit sendLevel(funcNoiseReduction,val.value.value<bool>());
         }
         break;
     case funcAutoNotch:
@@ -5577,7 +5571,6 @@ void wfmain::receiveValue(cacheItem val){
     case funcCompressor:
         if (val.receiver == currentReceiver) {
             ui->compEnableChk->setChecked(val.value.value<bool>());
-            emit sendLevel(funcCompressor,val.value.value<bool>());
         }
         break;
     case funcMonitor:
@@ -5585,14 +5578,12 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcVox:
         ui->voxEnableChk->setChecked(val.value.value<bool>());
-        emit sendLevel(funcVox,val.value.value<bool>());
         break;
     case funcManualNotch:
         break;
     case funcDigiSel:
         ui->digiselEnableChk->setChecked(val.value.value<bool>());
         ui->preampSelCombo->setEnabled(!val.value.value<bool>());
-        emit sendLevel(funcDigiSel,val.value.value<bool>());
         break;
     case funcTwinPeakFilter:
         break;
@@ -5614,7 +5605,6 @@ void wfmain::receiveValue(cacheItem val){
     case funcIPPlus:
         if (val.receiver == currentReceiver) {
             ui->ipPlusEnableChk->setChecked(val.value.value<bool>());
-            emit sendLevel(funcIPPlus,val.value.value<bool>());
         }
         break;
     case funcBreakIn:
@@ -6142,7 +6132,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         if(usingLAN)
         {
             ui->afGainSlider->setValue(prefs.localAFgain);
-            emit sendLevel(funcAfGain,prefs.localAFgain);
+            queue->receiveValue(funcAfGain,quint8(prefs.localAFgain),currentReceiver);
         }
         // Adding these here because clearly at this point we have valid
         // rig comms. In the future, we should establish comms and then

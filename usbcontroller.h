@@ -1,6 +1,7 @@
 #ifndef usbController_H
 #define usbController_H
 
+#include "cachingqueue.h"
 #include <iostream>
 #include <QThread>
 #include <QCoreApplication>
@@ -243,6 +244,9 @@ public slots:
     void backupController(USBDEVICE* dev, QString file);
     void restoreController(USBDEVICE* dev, QString file);
 
+    void receiveRigCaps(rigCapabilities* caps);
+    void receiveCacheItem(cacheItem cache);
+
 signals:
     void jogPlus();
     void jogMinus();
@@ -271,7 +275,10 @@ private:
     QVector<KNOB> defaultKnobs;
     QVector<USBTYPE> knownDevices;
     QVector<COMMAND> commands;
-    usbDevMap* devices;    
+    usbDevMap* devices;
+
+    cachingQueue *queue;
+    rigCapabilities* rigCaps = Q_NULLPTR;
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QGamepad* gamepad=Q_NULLPTR;
