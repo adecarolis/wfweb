@@ -850,6 +850,9 @@ void icomCommander::parseCommand()
     case funcSplitStatus:
         value.setValue(static_cast<duplexMode_t>(uchar(payloadIn.at(0))));
         break;
+    case funcQuickSplit:
+        value.setValue(bcdHexToUChar(payloadIn.at(0)));
+        break;
     case funcAntenna:
     {
         antennaInfo ant;
@@ -1247,7 +1250,7 @@ void icomCommander::parseCommand()
         break;
     }
     default:
-        qWarning(logRig()).noquote() << "Unhandled command received from rig " << payloadIn.toHex().mid(0,10);
+        qWarning(logRig()).noquote() << "Unhandled command received from rig:" << funcString[func] << "value:" << payloadIn.toHex().mid(0,10);
         break;
     }
 

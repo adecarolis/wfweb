@@ -392,17 +392,19 @@ void usbController::run()
                         if (but->path == dev->path)
                         {
                             auto bon = std::find_if(commands.begin(), commands.end(), [but](const COMMAND& c) { return (c.text == but->on); });
-                            if (bon != commands.end())
+                            if (bon != commands.end()) {
                                 but->onCommand = &(*bon);
-                            else
-                                qWarning(logUsbControl()) << "On Command" << but->on << "not found";
-
+                            } else {
+                                qWarning(logUsbControl()) << "On Command" << but->on << "not found, setting to none";
+                                but->onCommand = &commands[0];
+                            }
                             auto boff = std::find_if(commands.begin(), commands.end(), [but](const COMMAND& c) { return (c.text == but->off); });
-                            if (boff != commands.end())
+                            if (boff != commands.end()) {
                                 but->offCommand = &(*boff);
-                            else
-                                qWarning(logUsbControl()) << "Off Command" << but->off << "not found";
-
+                            } else {
+                                qWarning(logUsbControl()) << "Off Command" << but->off << "not found, setting to none";
+                                but->offCommand = &commands[0];
+                            }
                             but->parent = dev;
                         }
                     }
@@ -431,11 +433,12 @@ void usbController::run()
                         if (kb->path == dev->path)
                         {
                             auto k = std::find_if(commands.begin(), commands.end(), [kb](const COMMAND& c) { return (c.text == kb->cmd); });
-                            if (k != commands.end())
+                            if (k != commands.end()) {
                                 kb->command = &(*k);
-                            else
-                                qWarning(logUsbControl()) << "Knob Command" << kb->cmd << "not found";
-
+                            } else {
+                                qWarning(logUsbControl()) << "Knob Command" << kb->cmd << "not found, setting to none";
+                                kb->command = &commands[0];
+                            }
                             kb->parent = dev;
                             if (kb->page == 1)
                                 dev->knobValues[kb->num].name = kb->cmd;
@@ -881,6 +884,8 @@ void usbController::runTimer()
                                 // We don't have this command available
                                 qInfo(logUsbControl()) << "Requested command" << funcString[sendCommand.command] << "Not available on this rig";
                                 dev->lastusbController = QTime::currentTime();
+                                dev->knobValues[i].value = 0;
+                                dev->knobValues[i].name = 0;
                                 return;
                             }
                         }
@@ -1931,6 +1936,15 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Split Off", commandButton, funcSplitStatus, (quint8)0x0));
     commands.append(COMMAND(num++, "Swap VFO AB", commandButton, funcVFOSwapAB, (quint8)0x0));
     commands.append(COMMAND(num++, "Swap VFO MS", commandButton, funcVFOSwapMS, (quint8)0x0));
+    commands.append(COMMAND(num++, "Mod Source", commandButton, funcSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "D-OFF MIC", commandButton, funcDATAOffMod, (quint8)0x00));
+    commands.append(COMMAND(num++, "D-OFF ACC", commandButton, funcDATAOffMod, (quint8)0x01));
+    commands.append(COMMAND(num++, "D-OFF USB", commandButton, funcDATAOffMod, (quint8)0x03));
+    commands.append(COMMAND(num++, "D-OFF LAN", commandButton, funcDATAOffMod, (quint8)0x05));
+    commands.append(COMMAND(num++, "DATA MIC", commandButton, funcDATA1Mod, (quint8)0x00));
+    commands.append(COMMAND(num++, "DATA ACC", commandButton, funcDATA1Mod, (quint8)0x01));
+    commands.append(COMMAND(num++, "DATA USB", commandButton, funcDATA1Mod, (quint8)0x03));
+    commands.append(COMMAND(num++, "DATA LAN", commandButton, funcDATA1Mod, (quint8)0x05));
     commands.append(COMMAND(num++, "Scope", commandButton, funcSeparator, (quint8)0x0));
     commands.append(COMMAND(num++, "Spectrum", commandButton, funcLCDSpectrum, (quint8)0x0));
     commands.append(COMMAND(num++, "Waterfall", commandButton, funcLCDWaterfall, (quint8)0x0));
@@ -1943,8 +1957,9 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "RF Gain", commandKnob, funcRfGain,  (quint8)0xff));
     commands.append(COMMAND(num++, "TX Power", commandKnob, funcRFPower, (quint8)0xff));
     commands.append(COMMAND(num++, "Mic Gain", commandKnob, funcMicGain, (quint8)0xff));
-    commands.append(COMMAND(num++, "Mod Level", commandKnob, funcDATAOffMod, (quint8)0xff));
-    commands.append(COMMAND(num++, "Data Mod", commandKnob, funcDATAOffMod, (quint8)0xff));
+    commands.append(COMMAND(num++, "USB Gain", commandKnob, funcUSBModLevel, (quint8)0xff));
+    commands.append(COMMAND(num++, "LAN Gain", commandKnob, funcLANModLevel, (quint8)0xff));
+    commands.append(COMMAND(num++, "ACC Gain", commandKnob, funcACCAModLevel, (quint8)0xff));
     commands.append(COMMAND(num++, "Squelch", commandKnob, funcSquelch, (quint8)0xff));
     commands.append(COMMAND(num++, "Monitor", commandKnob, funcMonitorGain, (quint8)0xff));
     commands.append(COMMAND(num++, "Compressor", commandKnob, funcCompressorLevel, (quint8)0xff));
@@ -2370,6 +2385,13 @@ void usbController::receiveRigCaps(rigCapabilities *caps)
 // We can use this to update the button/knob values I think.
 void usbController::receiveCacheItem(cacheItem item)
 {
+
+    // Currently only work on receiver 0, M0VSE look into supporting RX1
+
+    if (item.receiver > 0)
+    {
+        return;
+    }
     // Update knob if relevant, step through all devices
     QMutexLocker locker(mutex);
 
@@ -2378,18 +2400,44 @@ void usbController::receiveCacheItem(cacheItem item)
         auto dev = &devIt.value();
 
         auto kb = std::find_if(knobList->begin(), knobList->end(), [dev, item](const KNOB& k)
-                               { return (k.command && dev->connected && k.path == dev->path && k.page == dev->currentPage && k.command->command == int(item.command));});
+                               { return (k.command && dev->connected && k.path == dev->path && k.command->command == int(item.command));});
         if (kb != knobList->end() && kb->num < dev->knobValues.size()) {
-            qInfo(logUsbControl()) << "Received value:" << item.value.toInt() << "for knob" << kb->num;
-            // Set both current and previous knobvalue to the received value
-            dev->knobValues[kb->num].value = item.value.toInt();
-            dev->knobValues[kb->num].previous = item.value.toInt();
+            qDebug(logUsbControl()) << "Received value:" << item.value.toInt() << "for knob" << kb->num << "on page" << kb->page;
+            kb->value = item.value.toInt();
+
+            if (kb->page == dev->currentPage) {
+                // Set both current and previous knobvalue to the received value
+                dev->knobValues[kb->num].value = item.value.toInt();
+                dev->knobValues[kb->num].previous = item.value.toInt();
+            }
         }
+
         auto bt = std::find_if(buttonList->begin(), buttonList->end(), [dev, item](const BUTTON& b)
-                               { return (b.onCommand && dev->connected && b.path == dev->path && b.page == dev->currentPage && b.onCommand->command == int(item.command) && b.led != 0 &&  b.led <= dev->type.leds);});
-        if (bt != buttonList->end()) {
-            // qInfo(logUsbControl()) << "Received value:" << level << "for led" << bt->led;
-            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,bt->led,QString("%1").arg(item.value.toInt())); });
+                               { return (b.onCommand && dev->connected && b.path == dev->path && b.onCommand->command == int(item.command) &&  b.led <= dev->type.leds);});
+        if (bt != buttonList->end())
+        {
+            if (bt->led != 0  && bt->page == dev->currentPage) {
+                //qInfo(logUsbControl()) << "Received value:" << level << "for led" << bt->led;
+                QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,bt->led,QString("%1").arg(item.value.toInt())); });
+            }
+
+            if (bt->toggle) {
+                if (bt->onCommand->suffix == item.value.toInt()) {
+                    qDebug(logUsbControl()) << "onCommand" << funcString[item.command] << "value:" << item.value.toInt() << "for button" << bt->num  << "on page" << bt->page;
+                    if (bt->page == dev->currentPage) {
+                        if (bt->offCommand->index != 0)
+                            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureButton,bt->num,bt->offCommand->text, bt->icon, &bt->backgroundOff); });
+                        else
+                            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureButton,bt->num,bt->onCommand->text, bt->icon, &bt->backgroundOn); });
+                    }
+                    bt->isOn=true;
+                } else {
+                    qDebug(logUsbControl()) << "offCommand" << funcString[item.command] << "value:" << item.value.toInt() << "for button" << bt->num  << "on page" << bt->page;
+                    if (bt->page == dev->currentPage)
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureButton,bt->num,bt->onCommand->text, bt->icon, &bt->backgroundOn); });
+                    bt->isOn=false;
+                }
+            }
         }
     }
 

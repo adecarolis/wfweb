@@ -145,16 +145,15 @@ enum prefUDPItem {
     u_username = 1 << 5,
     u_password = 1 << 6,
     u_clientName = 1 << 7,
-    u_waterfallFormat = 1 << 8,
-    u_halfDuplex = 1 << 9,
-    u_sampleRate = 1 << 10,
-    u_rxCodec = 1 << 11,
-    u_txCodec = 1 << 12,
-    u_rxLatency = 1 << 13,
-    u_txLatency = 1 << 14,
-    u_audioInput = 1 << 15,
-    u_audioOutput = 1 << 16,
-    u_all = 1 << 17
+    u_halfDuplex = 1 << 8,
+    u_sampleRate = 1 << 9,
+    u_rxCodec = 1 << 10,
+    u_txCodec = 1 << 11,
+    u_rxLatency = 1 << 12,
+    u_txLatency = 1 << 13,
+    u_audioInput = 1 << 14,
+    u_audioOutput = 1 << 15,
+    u_all = 1 << 16
 };
 
 

@@ -119,6 +119,7 @@ public:
     QImage getWaterfallImage();
     bandType getCurrentBand();
 
+
 public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);
     void selectSpan(centerSpanData s);

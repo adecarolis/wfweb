@@ -1520,6 +1520,9 @@ void wfmain::buttonControl(const COMMAND* cmd)
     case funcIFShift:
     case funcRFPower:
     case funcMicGain:
+    case funcLANModLevel:
+    case funcUSBModLevel:
+    case funcACCAModLevel:
     case funcNotchFilter:
     case funcCompressorLevel:
     case funcBreakInDelay:
@@ -2801,9 +2804,6 @@ void wfmain::extChangedUdpPref(prefUDPItem i)
     case u_password:
         break;
     case u_clientName:
-        // Not used in the UI.
-        break;
-    case u_waterfallFormat:
         // Not used in the UI.
         break;
     case u_halfDuplex:

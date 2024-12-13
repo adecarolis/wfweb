@@ -923,7 +923,7 @@ void settingswidget::updateLanPref(prefLanItem plan)
         ui->tciServerPortTxt->setText(QString::number(prefs->tciPort));
         break;
     case l_waterfallFormat:
-        // Not used here
+        quietlyUpdateCombobox(ui->waterfallFormatCombo,int(prefs->waterfallFormat));
         break;
     default:
         qWarning(logGui()) << "Did not find matching preference for LAN ui update:" << (int)plan;
@@ -1075,9 +1075,6 @@ void settingswidget::updateUdpPref(prefUDPItem upi)
         break;
     case u_clientName:
         // Not used in the UI.
-        break;
-    case u_waterfallFormat:
-        quietlyUpdateCombobox(ui->waterfallFormatCombo,int(prefs->waterfallFormat));
         break;
     case u_halfDuplex:
         quietlyUpdateCombobox(ui->audioDuplexCombo,int(udpPrefs->halfDuplex));
@@ -1817,6 +1814,13 @@ void settingswidget::on_tciServerPortTxt_editingFinished()
         emit changedLanPref(l_tciPort);
     }
 }
+
+void settingswidget::on_waterfallFormatCombo_currentIndexChanged(int index)
+{
+    prefs->waterfallFormat = index;
+    emit changedLanPref(l_waterfallFormat);
+}
+
 /* Beginning of cluster settings */
 
 

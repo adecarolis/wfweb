@@ -164,6 +164,7 @@ void udpCivData::dataReceived()
                             // We need to split waterfall data into its component parts
                             // There are only 2 types that we are currently aware of
                             int numDivisions = 0;
+                            int divSize = 50;
                             if (len == 490) // IC705, IC9700, IC7300(LAN) 
                             {
                                 numDivisions = 11;
@@ -188,12 +189,9 @@ void udpCivData::dataReceived()
                             // "INDEX: 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 "
                             // "DATA:  27 00 00 11 11 0b 13 21 23 1a 1b 22 1e 1a 1d 13 21 1d 26 28 1f 19 1a 18 09 2c 2c 2c 1a 1b fd "
 
-                            int divSize = (len / numDivisions) + 6;
+                            //int divSize = (len / numDivisions) + 6;
                             QByteArray wfPacket;
                             for (int i = 0; i < numDivisions; i++) {
-
-                                wfPacket = r.mid(pos - 6, 9); // First part of packet 
-
                                 wfPacket = r.mid(pos - 6, 9); // First part of packet 
                                 char tens = ((i + 1) / 10);
                                 char units = ((i + 1) - (10 * tens));
@@ -214,13 +212,13 @@ void udpCivData::dataReceived()
                                 if (i < numDivisions - 1) {
                                     wfPacket.append('\xfd');
                                 }
-                                //printHex(wfPacket, false, true);
-
+                                qInfo(logUdp()) << "WF:" << wfPacket.toHex(' ');
                                 emit receive(wfPacket);
                                 wfPacket.clear();
 
                             }
-                            //qDebug(logUdp()) << "Waterfall packet len" << len << "Num Divisions" << numDivisions << "Division Size" << divSize;
+                            qInfo(logUdp()) << "IN:" << r.mid(0x15).toHex(' ');
+                            qInfo(logUdp()) << "Waterfall packet len" << len << "Num Divisions" << numDivisions << "Division Size" << divSize;
                         }
                         else {
                             // Not waterfall data or split not enabled.

@@ -911,7 +911,11 @@ void controllerSetup::pageChanged(USBDEVICE* dev, int val)
                 tab.value()->scene->addItem(b->text);
                 b->text->setPos(b->pos.center().x() - b->text->boundingRect().width() / 2,
                     (b->pos.center().y() - b->text->boundingRect().height() / 2));
-                emit sendRequest(dev,usbFeatureType::featureButton,b->num,b->onCommand->text,b->icon,&b->backgroundOn);
+                if (b->isOn && b->toggle)
+                    emit sendRequest(dev,usbFeatureType::featureButton,b->num,b->offCommand->text,b->icon,&b->backgroundOff);
+                else
+                    emit sendRequest(dev,usbFeatureType::featureButton,b->num,b->onCommand->text,b->icon,&b->backgroundOn);
+
             }
         }
     }
@@ -927,6 +931,10 @@ void controllerSetup::pageChanged(USBDEVICE* dev, int val)
             }
             if (k->page == dev->currentPage)
             {
+                // We may have received the current value from the radio,
+                // Update it here.
+                dev->knobValues[k->num].value = k->value;
+                dev->knobValues[k->num].previous = k->value;
                 k->text = new QGraphicsTextItem(k->command->text);
                 k->text->setDefaultTextColor(k->textColour);
                 tab.value()->scene->addItem(k->text);

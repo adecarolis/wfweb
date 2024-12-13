@@ -214,6 +214,7 @@ struct KNOB {
     QGraphicsTextItem* text = Q_NULLPTR;
     QString cmd;
     QString path;
+    int value=0;
 };
 
 
