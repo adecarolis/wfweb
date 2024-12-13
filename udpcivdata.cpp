@@ -212,13 +212,13 @@ void udpCivData::dataReceived()
                                 if (i < numDivisions - 1) {
                                     wfPacket.append('\xfd');
                                 }
-                                qInfo(logUdp()) << "WF:" << wfPacket.toHex(' ');
+                                //qInfo(logUdp()) << "WF:" << wfPacket.toHex(' ');
                                 emit receive(wfPacket);
                                 wfPacket.clear();
 
                             }
-                            qInfo(logUdp()) << "IN:" << r.mid(0x15).toHex(' ');
-                            qInfo(logUdp()) << "Waterfall packet len" << len << "Num Divisions" << numDivisions << "Division Size" << divSize;
+                            //qInfo(logUdp()) << "IN:" << r.mid(0x15).toHex(' ');
+                            //qInfo(logUdp()) << "Waterfall packet len" << len << "Num Divisions" << numDivisions << "Division Size" << divSize;
                         }
                         else {
                             // Not waterfall data or split not enabled.
