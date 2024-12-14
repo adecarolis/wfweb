@@ -288,9 +288,9 @@ void cwSidetone::setSpeed(quint8 speed)
     this->speed = (int)speed;
 }
 
-void cwSidetone::setFrequency(quint8 frequency)
+void cwSidetone::setFrequency(quint16 freq)
 {
-    this->frequency = round((((600.0 / 255.0) * frequency) + 300) / 5.0) * 5.0;
+    this->frequency = freq;
 }
 
 void cwSidetone::setRatio(quint8 ratio)

@@ -40,7 +40,7 @@ signals:
     void stopCW();
     void setKeySpeed(quint8 wpm);
     void setDashRatio(quint8 ratio);
-    void setPitch(quint8 pitch);
+    void setPitch(quint16 pitch);
     void setLevel(int level);
     void setBreakInMode(quint8 b);
     void getCWSettings();
@@ -53,7 +53,7 @@ signals:
 public slots:
     void handleKeySpeed(quint8 wpm);
     void handleDashRatio(quint8 ratio);
-    void handlePitch(quint8 pitch);
+    void handlePitch(quint16 pitch);
     void handleBreakInMode(quint8 b);
     void handleCurrentModeUpdate(rigMode_t mode);
 

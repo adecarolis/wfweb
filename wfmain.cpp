@@ -5443,13 +5443,14 @@ void wfmain::receiveValue(cacheItem val){
     case funcCwPitch:
         // There is only a single CW Pitch setting, so send to all scopes
         foreach (auto receiver, receivers) {
-            receiver->receiveCwPitch(val.value.value<uchar>());
+            receiver->receiveCwPitch(val.value.value<quint16>());
         }
         // Also send to CW window
         if (cw != Q_NULLPTR) {
-            cw->handlePitch(val.value.value<uchar>());
+            cw->handlePitch(val.value.value<quint16>());
         }
         break;
+
     case funcMicGain:
         processModLevel(inputMic,val.value.value<uchar>());
         break;

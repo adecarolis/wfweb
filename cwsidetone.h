@@ -42,7 +42,7 @@ signals:
 public slots:
     void send(QString text);
     void setSpeed(quint8 speed);
-    void setFrequency(quint8 frequency);
+    void setFrequency(quint16 frequency);
     void setRatio(quint8 ratio);
     void setLevel(int level);
     void stopSending();

@@ -68,7 +68,7 @@ public:
 
     void enableScope(bool en);
 
-    void receiveCwPitch(uchar p);
+    void receiveCwPitch(quint16 p);
     quint16 getCwPitch() { return cwPitch;}
     void receivePassband(quint16 pass);
 

@@ -907,6 +907,11 @@ void icomCommander::parseCommand()
     case funcVdMeter:
     case funcIdMeter:
         value.setValue(bcdHexToUChar(payloadIn.at(0),payloadIn.at(1)));
+        if (func == funcCwPitch) {
+            quint16 p = round((((600.0 / 255.0) * value.toInt()) + 300) / 5.0) * 5.0;
+            value.setValue(p);
+            qInfo() << "Received cwPitch" << value.toInt() << "For RX" << receiver ;
+        }
         break;
     // These are 2 byte commands that return a single byte (0-99) from position 2
     case funcAGCTime:

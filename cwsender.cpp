@@ -38,7 +38,7 @@ cwSender::cwSender(QWidget *parent) :
         queue->addUnique(priorityImmediate,queueItem(funcDashRatio,QVariant::fromValue<uchar>(ratio)));
     });
 
-    connect(this, &cwSender::setPitch, queue, [=](const quint8& pitch) {
+    connect(this, &cwSender::setPitch, queue, [=](const quint16& pitch) {
         queue->addUnique(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<ushort>(pitch)));
     });
 
@@ -115,8 +115,7 @@ void cwSender::handleDashRatio(quint8 ratio)
     }
 }
 
-void cwSender::handlePitch(quint8 pitch) {
-    int cwPitch = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
+void cwSender::handlePitch(quint16 cwPitch) {
     if (cwPitch != ui->pitchSpin->value() && cwPitch >= ui->pitchSpin->minimum() && cwPitch <= ui->pitchSpin->maximum())
     {
         ui->pitchSpin->blockSignals(true);
@@ -124,7 +123,7 @@ void cwSender::handlePitch(quint8 pitch) {
         ui->pitchSpin->blockSignals(false);
 #if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
         QMetaObject::invokeMethod(tone, [=]() {
-            tone->setFrequency(pitch);
+            tone->setFrequency(cwPitch);
         }, Qt::QueuedConnection);
 #else
         emit setPitch(tone);
@@ -322,7 +321,7 @@ void cwSender::on_sidetoneEnableChk_clicked(bool clicked)
                 [=](const quint8& ratio) { tone->setRatio(ratio); });
 
         connect(this, &cwSender::setPitch, tone,
-                [=](const quint8& pitch) { tone->setFrequency(pitch); });
+                [=](const quint16& pitch) { tone->setFrequency(pitch); });
 
         connect(this, &cwSender::setLevel, tone,
                 [=](const quint8& level) { tone->setLevel(level); });

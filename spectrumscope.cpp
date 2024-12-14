@@ -1685,15 +1685,14 @@ quint64 spectrumScope::roundFrequency(quint64 frequency, int steps, unsigned int
 }
 
 
-void spectrumScope::receiveCwPitch(uchar pitch)
+void spectrumScope::receiveCwPitch(quint16 pitch)
 {
-    if (mode.mk == modeCW || mode.mk == modeCW_R) {
-        quint16 p = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
-        if (p != this->cwPitch)
+    if (mode.mk == modeCW || mode.mk == modeCW_R) {        
+        if (pitch != this->cwPitch)
         {
-            passbandCenterFrequency = p / 2000000.0;
-            qDebug(logSystem()) << QString("%0 Received new CW Pitch %1 Hz was %2 (center freq %3 MHz)").arg((receiver?"Sub":"Main")).arg(p).arg(cwPitch).arg(passbandCenterFrequency);
-            this->cwPitch = p;
+            passbandCenterFrequency = pitch / 2000000.0;
+            qDebug(logSystem()) << QString("%0 Received new CW Pitch %1 Hz was %2 (center freq %3 MHz)").arg((receiver?"Sub":"Main")).arg(pitch).arg(cwPitch).arg(passbandCenterFrequency);
+            this->cwPitch = pitch;
         }
     }
 }
