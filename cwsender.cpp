@@ -35,11 +35,11 @@ cwSender::cwSender(QWidget *parent) :
 
 
     connect(this, &cwSender::setDashRatio, queue, [=](const quint8& ratio) {
-        queue->add(priorityImmediate,queueItem(funcDashRatio,QVariant::fromValue<uchar>(ratio)));
+        queue->addUnique(priorityImmediate,queueItem(funcDashRatio,QVariant::fromValue<uchar>(ratio)));
     });
 
     connect(this, &cwSender::setPitch, queue, [=](const quint8& pitch) {
-        queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<ushort>(pitch)));
+        queue->addUnique(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<ushort>(pitch)));
     });
 
     connect(this, &cwSender::getCWSettings, queue, [=]() {
@@ -239,7 +239,7 @@ void cwSender::on_dashSpin_valueChanged(double ratio)
 void cwSender::on_pitchSpin_valueChanged(int arg1)
 {
     //    quint16 cwPitch = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
-    queue->add(priorityImmediate,queueItem(funcCwPitch,QVariant::fromValue<ushort>(arg1)));
+    queue->addUnique(priorityImmediate,queueItem(funcCwPitch,QVariant::fromValue<ushort>(arg1)));
     //emit setPitch(pitch);
 }
 
