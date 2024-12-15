@@ -382,9 +382,6 @@ private slots:
     void receiveRITStatus(bool ritEnabled);
     void receiveRITValue(int ritValHz);
     void receiveModInput(rigInput input, quint8 data);
-    //void receiveDuplexMode(duplexMode_t dm);
-    void receivePassband(quint16 pass);
-    void receiveCwPitch(quint8 pitch);
     void receiveMonitor(bool en);
     void receiveTuningStep(quint8 step);
 

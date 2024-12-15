@@ -236,7 +236,6 @@ public slots:
     void run();
     void runTimer();
     void receivePTTStatus(bool on);
-    void receiveLevel(funcs cmd, quint8 level);
     void programPages(USBDEVICE* dev, int pages);
     void programDisable(USBDEVICE* dev, bool disabled);
 

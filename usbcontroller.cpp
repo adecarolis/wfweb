@@ -2111,37 +2111,6 @@ void usbController::buttonState(QString name, double val)
 
 /* End of Gamepad functions*/
 
-
-/* This should be replaced with the cache */
-void usbController::receiveLevel(funcs cmd, quint8 level)
-{
-
-    /*
-    // Update knob if relevant, step through all devices
-    QMutexLocker locker(mutex);
-
-    for (auto devIt = devices->begin(); devIt != devices->end(); devIt++)
-    {
-        auto dev = &devIt.value();
-
-        auto kb = std::find_if(knobList->begin(), knobList->end(), [dev, cmd](const KNOB& k)
-                               { return (k.command && dev->connected && k.path == dev->path && k.page == dev->currentPage && k.command->command == cmd);});
-        if (kb != knobList->end() && kb->num < dev->knobValues.size()) {
-            // qInfo(logUsbControl()) << "Received value:" << level << "for knob" << kb->num;
-            // Set both current and previous knobvalue to the received value
-            dev->knobValues[kb->num].value = level/dev->sensitivity;
-            dev->knobValues[kb->num].previous = level/dev->sensitivity;
-        }
-        auto bt = std::find_if(buttonList->begin(), buttonList->end(), [dev, cmd](const BUTTON& b)
-                               { return (b.onCommand && dev->connected && b.path == dev->path && b.page == dev->currentPage && b.onCommand->command == cmd && b.led != 0 &&  b.led <= dev->type.leds);});
-        if (bt != buttonList->end()) {
-            // qInfo(logUsbControl()) << "Received value:" << level << "for led" << bt->led;
-            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,bt->led,QString("%1").arg(level)); });
-        }
-    }
-    */
-}
-
 void usbController::backupController(USBDEVICE* dev, QString file)
 {
     QMutexLocker locker(mutex);

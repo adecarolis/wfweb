@@ -564,7 +564,6 @@ void wfmain::makeRig()
         // Repeater, duplex, and split:
         //connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
         //connect(rpt, SIGNAL(setDuplexMode(duplexMode_t)), rig, SLOT(setDuplexMode(duplexMode_t)));
-        //connect(rig, SIGNAL(haveDuplexMode(duplexMode_t)), rpt, SLOT(receiveDuplexMode(duplexMode_t)));
         //connect(this, SIGNAL(getRptDuplexOffset()), rig, SLOT(getRptDuplexOffset()));
         connect(rig, SIGNAL(haveRptOffsetFrequency(freqt)), rpt, SLOT(handleRptOffsetFrequency(freqt)));
 
@@ -4483,29 +4482,6 @@ void wfmain::receiveModInput(rigInput input, quint8 data)
             break;
         }
         currentModSrc[data] = rigInput(input);
-    }
-}
-
-void wfmain::receivePassband(quint16 pass)
-{
-    double pb = (double)(pass / 1000000.0);
-    if (receivers.size() && receivers[0]->getPassbandWidth() != pb) {
-        receivers[0]->setPassbandWidth(pb);
-
-        qDebug(logSystem()) << QString("Received new IF Filter/Passband %0 Hz").arg(pass);
-        showStatusBarText(QString("IF filter width %0 Hz (%1 MHz)").arg(pass).arg(passbandWidth));
-    }
-}
-
-void wfmain::receiveCwPitch(quint8 pitch) {
-    if (currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) {
-        quint16 p = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
-        if (p != cwPitch)
-        {
-            passbandCenterFrequency = p / 2000000.0;
-            qDebug(logSystem()) << QString("Received new CW Pitch %0 Hz was %1 (center freq %2 MHz)").arg(p).arg(cwPitch).arg(passbandCenterFrequency);
-            cwPitch = p;
-        }
     }
 }
 
