@@ -646,19 +646,19 @@ void usbController::runTimer()
                     // This is a keypress
                     //qInfo(logUsbControl()) << data.toHex(' ');
                     //qInfo(logUsbControl()) << QString("Key:%0 State:%1").arg(quint8(data[9]),8,2,QChar('0')).arg(quint8(data[10]));
-                    if (data[9] < 0x07) {
+                    if ((quint8)data[9] < 0x07) {
                         tempButtons |= (data[10] & 0x01) << (data[9]-1);
-                    } else if (data[9] == 0x25) {
+                    } else if ((quint8)data[9] == 0x25) {
                         tempButtons |= (data[10] & 0x01) << 6;
-                    } else if (data[9] == 0x30) {
+                    } else if ((quint8)data[9] == 0x30) {
                         tempButtons |= (data[10] & 0x01) << 7;
-                    } else if (data[9] == 0x31) {
+                    } else if ((quint8)data[9] == 0x31) {
                         tempButtons |= (data[10] & 0x01) << 8;
-                    } else if (data[9] == 0x35) {
+                    } else if ((quint8)data[9] == 0x35) {
                         tempButtons |= (data[10] & 0x01) << 9;
-                    } else if (data[9] == 0x33) {
+                    } else if ((quint8)data[9] == 0x33) {
                         tempButtons |= (data[10] & 0x01) << 10;
-                    } else if (data[9] == 0x34) {
+                    } else if ((quint8)data[9] == 0x34) {
                         tempButtons |= (data[10] & 0x01) << 11;
                     }
 
@@ -885,7 +885,7 @@ void usbController::runTimer()
                                 qInfo(logUsbControl()) << "Requested command" << funcString[sendCommand.command] << "Not available on this rig";
                                 dev->lastusbController = QTime::currentTime();
                                 dev->knobValues[i].value = 0;
-                                dev->knobValues[i].name = 0;
+                                dev->knobValues[i].name = kb->command->text;
                                 return;
                             }
                         }
