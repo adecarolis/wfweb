@@ -61,7 +61,7 @@ public slots:
     void handleTransmitStatus(bool amTransmitting);
     void handleRptOffsetFrequency(freqt f);
     void receiveRigCaps(rigCapabilities* caps);
-
+    void receiveQuickSplit(bool on);
 
 private slots:
     void showEvent(QShowEvent *event);

@@ -5410,6 +5410,9 @@ void wfmain::receiveValue(cacheItem val){
     case funcSplitStatus:
         rpt->receiveDuplexMode(val.value.value<duplexMode_t>());
         break;
+    case funcQuickSplit:
+        rpt->receiveQuickSplit(val.value.value<bool>());
+        break;
     case funcTuningStep:
         receiveTuningStep(val.value.value<uchar>());
         break;

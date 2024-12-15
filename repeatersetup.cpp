@@ -926,3 +926,10 @@ void repeaterSetup::receiveRigCaps(rigCapabilities* rig)
         ui->quickSplitChk->setVisible(rig->commands.contains(funcQuickSplit));
     }
 }
+
+void repeaterSetup::receiveQuickSplit(bool on)
+{
+    ui->quickSplitChk->blockSignals(true);
+    ui->quickSplitChk->setChecked(on);
+    ui->quickSplitChk->blockSignals(false);
+}
