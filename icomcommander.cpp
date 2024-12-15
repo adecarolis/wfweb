@@ -871,13 +871,17 @@ void icomCommander::parseCommand()
             value.setValue(localVolume);
         }
         break;
-    // The following group are 2 bytes converted to uchar (0-255)
+    // The following group are 2 bytes converted to uchar (0-255) but require special processing
     case funcKeySpeed: {
         uchar level = bcdHexToUChar(payloadIn.at(0),payloadIn.at(1));
         value.setValue<ushort>(round((level / 6.071) + 6));
         break;
     }
-
+    case funcCwPitch: {
+        uchar level = bcdHexToUChar(payloadIn.at(0),payloadIn.at(1));
+        value.setValue<ushort>(round((((600.0 / 255.0) * level) + 300) / 5.0) * 5.0);
+        break;
+    }
     case funcRfGain:
     case funcSquelch:
     case funcAPFLevel:
@@ -885,7 +889,6 @@ void icomCommander::parseCommand()
     case funcPBTInner:
     case funcPBTOuter:
     case funcIFShift:
-    case funcCwPitch:
     case funcRFPower:
     case funcMicGain:
     case funcNotchFilter:
@@ -907,11 +910,6 @@ void icomCommander::parseCommand()
     case funcVdMeter:
     case funcIdMeter:
         value.setValue(bcdHexToUChar(payloadIn.at(0),payloadIn.at(1)));
-        if (func == funcCwPitch) {
-            quint16 p = round((((600.0 / 255.0) * value.toInt()) + 300) / 5.0) * 5.0;
-            value.setValue(p);
-            qInfo() << "Received cwPitch" << value.toInt() << "For RX" << receiver ;
-        }
         break;
     // These are 2 byte commands that return a single byte (0-99) from position 2
     case funcAGCTime:
