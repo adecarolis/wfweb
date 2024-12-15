@@ -74,7 +74,7 @@ cwSender::~cwSender()
 void cwSender::showEvent(QShowEvent *event)
 {
     (void)event;
-    emit getCWSettings();
+    //emit getCWSettings();
     QMainWindow::showEvent(event);
 }
 
@@ -226,8 +226,6 @@ void cwSender::on_breakinCombo_activated(int brkmode)
 
 void cwSender::on_wpmSpin_valueChanged(int wpm)
 {
-    emit setKeySpeed((quint8)wpm);
-    qDebug() << "CW Sender sending new key speed" << wpm;
     queue->addUnique(priorityImmediate,queueItem(funcKeySpeed,QVariant::fromValue<ushort>(wpm)));
 }
 
@@ -239,7 +237,6 @@ void cwSender::on_dashSpin_valueChanged(double ratio)
 void cwSender::on_pitchSpin_valueChanged(int arg1)
 {
     queue->addUnique(priorityImmediate,queueItem(funcCwPitch,QVariant::fromValue<ushort>(arg1)));
-    emit setPitch(arg1);
 }
 
 void cwSender::on_macro1btn_clicked()
