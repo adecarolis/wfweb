@@ -2708,6 +2708,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 }
                 else if (func == funcKeySpeed){
                     ushort wpm = round((value.value<ushort>()-6) * (6.071));
+                    qDebug(logRig()) << "Sending key speed orig:" << value.value<ushort>() << "sent:" << wpm;
                     payload.append(bcdEncodeInt(wpm));
                 }
                 else if (func == funcCwPitch) {

@@ -91,7 +91,7 @@ void cwSender::handleKeySpeed(quint8 wpm)
             tone->setSpeed(wpm);
         }, Qt::QueuedConnection);
 #else
-        emit setKeySpeed(ratio); // This will also send back to rig (but not a major issue)
+        emit setKeySpeed((quint8)wpm);
 #endif
 
     }
@@ -126,7 +126,7 @@ void cwSender::handlePitch(quint16 cwPitch) {
             tone->setFrequency(cwPitch);
         }, Qt::QueuedConnection);
 #else
-        emit setPitch(tone);
+        emit setPitch(cwPitch);
 #endif
     }
 }
@@ -227,19 +227,19 @@ void cwSender::on_breakinCombo_activated(int brkmode)
 void cwSender::on_wpmSpin_valueChanged(int wpm)
 {
     emit setKeySpeed((quint8)wpm);
-    queue->add(priorityImmediate,queueItem(funcKeySpeed,QVariant::fromValue<ushort>(wpm)));
+    qDebug() << "CW Sender sending new key speed" << wpm;
+    queue->addUnique(priorityImmediate,queueItem(funcKeySpeed,QVariant::fromValue<ushort>(wpm)));
 }
 
 void cwSender::on_dashSpin_valueChanged(double ratio)
 {
-    queue->add(priorityImmediate,queueItem(funcDashRatio,QVariant::fromValue<uchar>(ratio*10.0)));
+    queue->addUnique(priorityImmediate,queueItem(funcDashRatio,QVariant::fromValue<uchar>(ratio*10.0)));
 }
 
 void cwSender::on_pitchSpin_valueChanged(int arg1)
 {
-    //    quint16 cwPitch = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
     queue->addUnique(priorityImmediate,queueItem(funcCwPitch,QVariant::fromValue<ushort>(arg1)));
-    //emit setPitch(pitch);
+    emit setPitch(arg1);
 }
 
 void cwSender::on_macro1btn_clicked()
