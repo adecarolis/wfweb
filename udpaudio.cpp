@@ -49,13 +49,13 @@ udpAudio::~udpAudio()
 void udpAudio::watchdog()
 {
     static bool alerted = false;
-    if (lastReceived.msecsTo(QTime::currentTime()) > 2000)
+    if (lastReceived.msecsTo(QTime::currentTime()) > 30000)
     {
         if (!alerted) {
             /* Just log it at the moment, maybe try signalling the control channel that it needs to
                 try requesting civ/audio again? */
 
-            qInfo(logUdp()) << " Audio Watchdog: no audio data received for 2s, restart required?";
+            qInfo(logUdp()) << " Audio Watchdog: no audio data received for 30s, restart required? last:" << lastReceived  ;
             alerted = true;
             if (rxAudioThread != Q_NULLPTR) {
                 qDebug(logUdp()) << "Stopping rxaudio thread";
