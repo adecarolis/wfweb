@@ -736,7 +736,7 @@ bool spectrumScope::updateScope(scopeData data)
 //        spectrumPlasma.pop_back();
 //    }
     plasmaMutex.unlock();
-    QMutexLocker locker(&mutex);
+    mutex.lock();
     if ((plotFloor != oldPlotFloor) || (plotCeiling != oldPlotCeiling)){
         updateRange = true;
     }

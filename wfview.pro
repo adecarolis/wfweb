@@ -194,8 +194,8 @@ CONFIG(debug, release|debug) {
       LIBS += -L../opus/win32/VS2015/win32/DebugDLL/
       LIBS += -L../qcustomplot/win32 -lqcustomplotd2
       LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y .\qcustomplot\win32\qcustomplotd2.dll wfview-debug $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll wfview-debug\$$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\win32\qcustomplotd2.dll wfview-debug $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll wfview-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\hidapi\windows\Debug\hidapi.dll wfview-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\DebugDLL\opus-0.dll wfview-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfview-debug\rigs\*.* $$escape_expand(\\n\\t))
