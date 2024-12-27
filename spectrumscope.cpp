@@ -2094,6 +2094,7 @@ void spectrumScope::changeSpan(qint8 val)
 void spectrumScope::updateBSR(std::vector<bandType>* bands)
 {
     // Send a new BSR value for the current frequency.
+    // Not currently used.
     for (auto &b: *bands)
     {
         if (quint64(freqDisplay[0]->getFrequency()) >= b.lowFreq && quint64(freqDisplay[0]->getFrequency()) <= b.highFreq)
@@ -2107,8 +2108,8 @@ void spectrumScope::updateBSR(std::vector<bandType>* bands)
                 bs.freq.MHzDouble=bs.freq.Hz/1000000.0;
                 bs.mode=scopeModeCombo->currentData().toInt();
                 bs.sql=0;
-                bs.tone.tone=77;
-                bs.tsql.tone=77;
+                bs.tone.tone=770;
+                bs.tsql.tone=770;
                 queue->add(priorityImmediate,queueItem(funcBandStackReg,
                                                         QVariant::fromValue<bandStackType>(bs),false,receiver));
             }

@@ -27,6 +27,7 @@ inline QMap<QString,int> priorityMap = {{"None",0},{"Immediate",1},{"Highest",2}
 // Command with no param is a get by default
 struct queueItem {
     queueItem () {}
+    queueItem (queueItem const &q): command(q.command), param(q.param), receiver(q.receiver), recurring(q.recurring) {};
     queueItem (funcs command, QVariant param, bool recurring, uchar receiver) : command(command), param(param), receiver(receiver), recurring(recurring){};
     queueItem (funcs command, QVariant param, bool recurring) : command(command), param(param), receiver(false), recurring(recurring){};
     queueItem (funcs command, QVariant param) : command(command), param(param),receiver(0), recurring(false){};
@@ -46,6 +47,7 @@ struct queueItem {
 
 struct cacheItem {
     cacheItem () {};
+    cacheItem (cacheItem const &c): command(c.command), req(c.req), reply(c.reply), value(c.value), receiver(c.receiver) {};
     cacheItem (funcs command, QVariant value, uchar receiver=0) : command(command), req(QDateTime()), reply(QDateTime()), value(value), receiver(receiver){};
 
     funcs command;

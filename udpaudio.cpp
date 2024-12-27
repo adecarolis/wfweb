@@ -202,6 +202,7 @@ void udpAudio::dataReceived()
                     radioTime = QTime(); // Invalidate radioTime to force it to be reset.
                     latencyCounter=0;
                 }
+                lastReceived=QTime::currentTime();
             }
             break;
         }

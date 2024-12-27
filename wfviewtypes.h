@@ -153,10 +153,14 @@ struct scopeData {
 };
 
 struct toneInfo {
-    quint16 tone=0;
-    bool tinv=false;
-    bool rinv=false;
-    bool useSecondaryVFO = false;
+    toneInfo ():tone(0), tinv(false),rinv(false),useSecondaryVFO(false) {};
+    toneInfo (toneInfo const &t): tone(t.tone), tinv(t.tinv), rinv(t.rinv), useSecondaryVFO(t.useSecondaryVFO) {};
+    toneInfo (quint16 tone):tone(tone), tinv(false),rinv(false),useSecondaryVFO(false) {};
+    toneInfo (quint16 tone, bool tinv, bool rinv, bool useSecondaryVFO):tone(tone), tinv(tinv),rinv(rinv),useSecondaryVFO(useSecondaryVFO) {};
+    quint16 tone;
+    bool tinv;
+    bool rinv;
+    bool useSecondaryVFO;
 };
 
 enum breakIn_t {

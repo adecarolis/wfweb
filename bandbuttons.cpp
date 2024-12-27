@@ -31,28 +31,26 @@ int bandbuttons::getBSRNumber()
 void bandbuttons::receiveCache(cacheItem item)
 {
     // Only used to receive initial frequency!
-    if (requestedBand == bandUnknown) {
-        bool sub=false;
-        switch (item.command)
-        {
+    bool sub=false;
+    switch (item.command)
+    {
 #if defined __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
-        case funcUnselectedFreq:
-            sub=true;
-        case funcFreq:
-#if defined __GNUC__
-#pragma GCC diagnostic pop
-#endif
-        case funcSelectedFreq:
-        case funcFreqGet:
-            // Here we will process incoming frequency.
-            {
-            if(!rigCaps) {
-                return;
-            }
-            if (ui->SubBandCheck->isChecked() == item.value.value<freqt>().VFO) {
+    case funcUnselectedFreq:
+        sub=true;
+    case funcFreq:
+    case funcSelectedFreq:
+    case funcFreqGet:
+    case funcFreqTR:
+        // Here we will process incoming frequency.
+        {
+        if(!rigCaps) {
+            return;
+        }
+        if (requestedBand == bandUnknown) {
+            if (ui->SubBandCheck->isChecked() == bool(item.value.value<freqt>().VFO)) {
                     quint64 freq = quint64(item.value.value<freqt>().Hz);
                     for (auto &b: rigCaps->bands)
                     {
@@ -67,10 +65,37 @@ void bandbuttons::receiveCache(cacheItem item)
                     }
                 }
             }
-            break;
-        default:
+        }
+        if (sub == ui->SubBandCheck->isChecked()) {
+            currentFrequency = item.value.value<freqt>();
+        }
+        break;
+    case funcUnselectedMode:
+        sub=true;
+    case funcMode:
+    case funcSelectedMode:
+    case funcModeGet:
+    case funcModeTR:
+        {
+        if(!rigCaps) {
+            return;
+        }
+        if (sub == ui->SubBandCheck->isChecked()) {
+            currentMode = item.value.value<modeInfo>();
+        }
             break;
         }
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
+        case funcBandStackReg:
+            if(!rigCaps) {
+                return;
+            }
+            currentBSR = item.value.value<bandStackType>();
+
+    default:
+        break;
     }
 }
 
@@ -376,4 +401,39 @@ void bandbuttons::on_bandAirbtn_clicked()
 void bandbuttons::on_bandGenbtn_clicked()
 {
     bandStackBtnClick(bandGen);
+}
+
+void bandbuttons::on_bandSetBtn_clicked()
+{
+    if(rigCaps != Q_NULLPTR)
+    {
+        qInfo() << "Setting BSR to current freq/mode, first find band that contains frequency:" << currentFrequency.MHzDouble;
+        // First find which band we are in
+        for (auto &band: rigCaps->bands)
+        {
+            if (band.region == "" || band.region == region) {
+                if (band.bsr != 0 && currentFrequency.Hz >= band.lowFreq && currentFrequency.Hz <= band.highFreq)
+                {
+                   // qInfo() << "Found band" << band.name;
+                    // This frequency is within this band
+                    bandStackType bs=currentBSR;
+                    bs.band = band.bsr;
+                    bs.data = currentMode.data;
+                    bs.freq = currentFrequency;
+                    bs.filter = currentMode.filter;
+                    bs.regCode = ui->bandStkPopdown->currentIndex()+1;
+                    bs.mode = currentMode.reg;
+                    // If we haven't received a tone yet, use default.
+                    if (bs.tone.tone == 0) {
+                        bs.tone.tone = 885;
+                        bs.tsql.tone = 885;
+                    }
+                    queue->add(priorityImmediate,queueItem(funcBandStackReg, QVariant::fromValue<bandStackType>(bs),false,ui->SubBandCheck->isChecked()));
+                    break;
+                }
+            }
+        }
+    } else {
+        qWarning(logGui()) << "bandbuttons, Asked to go to a band but do not have rigCaps yet.";
+    }
 }

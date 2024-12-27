@@ -1722,6 +1722,7 @@ void wfmain::loadSettings()
 
     prefs.rigCreatorEnable = settings->value("RigCreator",false).toBool();
     prefs.region = settings->value("Region",defPrefs.region).toString();
+    bandbtns->setRegion(prefs.region);
     prefs.showBands = settings->value("ShowBands",defPrefs.showBands).toBool();
 
     ui->rigCreatorBtn->setEnabled(prefs.rigCreatorEnable);
@@ -2459,13 +2460,22 @@ void wfmain::extChangedIfPref(prefIfItem i)
             receiver->setUnit((FctlUnit)prefs.frequencyUnits);
         }
         break;
-    case if_region:
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
+    case if_region:        
+        bandbtns->setRegion(prefs.region);
+        // Allow to fallthrough so that band indicators are updated correctly on region change.
     case if_showBands:
         foreach (auto receiver, receivers)
         {
             receiver->setBandIndicators(prefs.showBands, prefs.region, &rigCaps->bands);
         }
         break;
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
     case if_separators:
         foreach (auto receiver, receivers)
         {
@@ -3653,6 +3663,7 @@ void wfmain:: getInitialRigState()
         receiver->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits, &rigCaps->bands);
         receiver->setBandIndicators(prefs.showBands, prefs.region, &rigCaps->bands);
     }
+
 
 }
 

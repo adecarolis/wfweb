@@ -23,6 +23,9 @@ public:
 
     int getBSRNumber(); // returns the BSR combo box position
     void setBand(availableBands band) { bandStackBtnClick(band);};
+
+    void setRegion(QString reg) { region=reg; }
+
     availableBands currentBand() {return requestedBand;};
 
     // flow:
@@ -78,6 +81,7 @@ private slots:
     void on_bandWFMbtn_clicked();
     void on_bandAirbtn_clicked();
     void on_bandGenbtn_clicked();
+    void on_bandSetBtn_clicked();
 
 private:
     Ui::bandbuttons *ui;
@@ -87,12 +91,16 @@ private:
     void showButton(QPushButton *b);
     void hideButton(QPushButton *b);
     char bandStkRegCode;
+    freqt currentFrequency;
+    modeInfo currentMode;
+    bandStackType currentBSR;
 
     bool waitingForBSR = false;
     rigCapabilities* rigCaps=Q_NULLPTR;
     bool haveRigCaps = false;
     cachingQueue* queue;
     availableBands requestedBand = bandUnknown;
+    QString region="";
 };
 
 #endif // BANDBUTTONS_H
