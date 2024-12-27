@@ -430,7 +430,7 @@ enum usbDeviceType { usbNone = 0, shuttleXpress, shuttlePro2,
                      RC28, xBoxGamepad, unknownGamepad, eCoderPlus, QuickKeys,
                      StreamDeckMini,StreamDeckMiniV2,StreamDeckOriginal,StreamDeckOriginalV2,
                      StreamDeckOriginalMK2,StreamDeckXL,StreamDeckXLV2,StreamDeckPedal, StreamDeckPlus,
-                     XKeysXK3,MiraBox293, MiraBoxN3
+                     XKeysXK3,MiraBox293, MiraBox293S, MiraBoxN3
 };
 
 enum usbCommandType{ commandButton, commandKnob, commandAny };

@@ -35,8 +35,9 @@ usbController::usbController()
     knownDevices.append(USBTYPE(StreamDeckPedal, 0x0fd9, 0x0086, 0x0000, 0x0000,3,0,0,0,1024,0));
     knownDevices.append(USBTYPE(StreamDeckPlus, 0x0fd9, 0x0084, 0x0000, 0x0000,12,0,4,0,1024,120));
     knownDevices.append(USBTYPE(XKeysXK3, 0x05f3, 0x04c5, 0x0001, 0x000c,3,0,0,2,32,0)); // So-called "splat" interface?
-    knownDevices.append(USBTYPE(MiraBox293, 0x5500, 0x1001, 0x0000, 0x0000,15,0,0,0,1024,100));
-    knownDevices.append(USBTYPE(MiraBoxN3, 0x6603, 0x1003, 0x0001, 0xffa0,12,0,3,0,1024,72));    
+    knownDevices.append(USBTYPE(MiraBox293, 0x5500, 0x1001, 0x0000, 0x0000,15,0,0,0,512,100));
+    knownDevices.append(USBTYPE(MiraBox293S, 0x5548, 0x6670, 0x0001, 0xffa0,15,0,0,0,512,85)); // Boot logo 854 x 480.
+    knownDevices.append(USBTYPE(MiraBoxN3, 0x6603, 0x1003, 0x0001, 0xffa0,12,0,3,0,1024,72));
 }
 
 usbController::~usbController()
@@ -335,7 +336,7 @@ void usbController::run()
                         QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,2,"0"); });
                         QTimer::singleShot(500, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,1,"0"); });
                     }
-                    else if (dev->type.model == MiraBoxN3 || dev->type.model == MiraBox293)
+                    else if (dev->type.model == MiraBoxN3 || dev->type.model == MiraBox293 || dev->type.model == MiraBox293S)
                     {
                         QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureWakeScreen); });
                         QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureBrightness,0x03,""); });
@@ -641,25 +642,37 @@ void usbController::runTimer()
                         ;
                 }
             }
-            else if (dev->type.model == MiraBox293 || dev->type.model == MiraBoxN3) {
+            else if (dev->type.model == MiraBox293 || dev->type.model == MiraBox293S)
+            {
+                // This is a keypress
+                // The 293S only presents a button-up event, so fake a button down/up
+                if (data[9]) {
+                    qInfo(logUsbControl()) << QString("Key:%0 (%1) State:Was on").arg(quint8(data[9]),8,2,QChar('0')).arg(quint8(data[9]));
+                    tempButtons = quint32(1) << data[9];
+                } else if (!res && dev->buttons)
+                {
+                    res=1;
+                }
+
+            }
+            else if(dev->type.model == MiraBoxN3) {
                 if (data[9]) {
                     // This is a keypress
-                    //qInfo(logUsbControl()) << data.toHex(' ');
-                    //qInfo(logUsbControl()) << QString("Key:%0 State:%1").arg(quint8(data[9]),8,2,QChar('0')).arg(quint8(data[10]));
+                    qInfo(logUsbControl()) << QString("Key:%0 (%1) State:%2").arg(quint8(data[9]),8,2,QChar('0')).arg(quint8(data[9])).arg(quint8(data[10]));
                     if ((quint8)data[9] < 0x07) {
-                        tempButtons |= (data[10] & 0x01) << (data[9]-1);
+                        tempButtons |= (data[10] & 0x01) << (data[9]);
                     } else if ((quint8)data[9] == 0x25) {
-                        tempButtons |= (data[10] & 0x01) << 6;
-                    } else if ((quint8)data[9] == 0x30) {
                         tempButtons |= (data[10] & 0x01) << 7;
-                    } else if ((quint8)data[9] == 0x31) {
+                    } else if ((quint8)data[9] == 0x30) {
                         tempButtons |= (data[10] & 0x01) << 8;
-                    } else if ((quint8)data[9] == 0x35) {
+                    } else if ((quint8)data[9] == 0x31) {
                         tempButtons |= (data[10] & 0x01) << 9;
-                    } else if ((quint8)data[9] == 0x33) {
+                    } else if ((quint8)data[9] == 0x35) {
                         tempButtons |= (data[10] & 0x01) << 10;
-                    } else if ((quint8)data[9] == 0x34) {
+                    } else if ((quint8)data[9] == 0x33) {
                         tempButtons |= (data[10] & 0x01) << 11;
+                    } else if ((quint8)data[9] == 0x34) {
+                        tempButtons |= (data[10] & 0x01) << 12;
                     }
 
                     if (((quint8)data[9] >> 4 & 0x0f) == 0x05) {
@@ -764,77 +777,75 @@ void usbController::runTimer()
 
             // Step through all buttons and emit ones that have been pressed.
             // Only do it if actual data has been received.
-            if (res > 0 && dev->buttons != tempButtons)
+            if (res && dev->buttons != tempButtons)
             {
                 qDebug(logUsbControl()) << "Got Buttons:" << QString::number(tempButtons,2);
                 // Step through all buttons and emit ones that have been pressed.
-                for (quint8 i = 0; i <dev->type.buttons; i++)
-                {
-                    auto but = std::find_if(buttonList->begin(), buttonList->end(), [dev, i](const BUTTON& b)
-                    { return (b.path == dev->path && b.page == dev->currentPage && b.num == i); });
-                    if (but != buttonList->end()) {
-                        if ((!but->isOn) && ((tempButtons >> i & 1) && !(dev->buttons >> i & 1)))
-                        {
-                            qDebug(logUsbControl()) << QString("On Button event for button %0: %1").arg(but->num).arg(but->onCommand->text);
-                            if (but->onCommand->command == funcPageUp)
-                                emit changePage(dev, dev->currentPage+1);
-                            else if (but->onCommand->command == funcPageDown)
-                                emit changePage(dev, dev->currentPage-1);
-                            else if (but->onCommand->command == funcLCDSpectrum)
-                                dev->lcd = funcLCDSpectrum;
-                            else if (but->onCommand->command == funcLCDWaterfall)
-                                dev->lcd = funcLCDWaterfall;
-                            else if (but->onCommand->command == funcLCDNothing) {
-                                dev->lcd = funcLCDNothing;
-                                QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureColor,i,"",Q_NULLPTR, &dev->color); });
-                            }else {
-                                emit button(but->onCommand);
-                            }
-                            // Change the button text to reflect the off Button
-                            if (but->offCommand->index != 0) {
-                                QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureButton,i,but->offCommand->text, but->icon, &but->backgroundOff); });
-                            }
-                            but->isOn=true;
+                auto but = std::find_if(buttonList->begin(), buttonList->end(), [dev](const BUTTON& b)
+                { return (b.path == dev->path && b.page == dev->currentPage); });
+                while (but != buttonList->end() && but->path == dev->path && but->page == dev->currentPage ) {
+                    if ((!but->isOn) && ((tempButtons >> but->num & 1) && !(dev->buttons >> but->num & 1)))
+                    {
+                        qDebug(logUsbControl()) << QString("On Button event for button %0: %1").arg(but->num).arg(but->onCommand->text);
+                        if (but->onCommand->command == funcPageUp)
+                            emit changePage(dev, dev->currentPage+1);
+                        else if (but->onCommand->command == funcPageDown)
+                            emit changePage(dev, dev->currentPage-1);
+                        else if (but->onCommand->command == funcLCDSpectrum)
+                            dev->lcd = funcLCDSpectrum;
+                        else if (but->onCommand->command == funcLCDWaterfall)
+                            dev->lcd = funcLCDWaterfall;
+                        else if (but->onCommand->command == funcLCDNothing) {
+                            dev->lcd = funcLCDNothing;
+                            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureColor,but->num,"",Q_NULLPTR, &dev->color); });
+                        }else {
+                            emit button(but->onCommand);
                         }
-                        else if ((but->toggle && but->isOn) && ((tempButtons >> i & 1) && !(dev->buttons >> i & 1)))
-                        {
-                            qDebug(logUsbControl()) << QString("Off Button (toggle) event for button %0: %1").arg(but->num).arg(but->onCommand->text);
-                            if (but->offCommand->command == funcPageUp)
-                                emit changePage(dev, dev->currentPage+1);
-                            else if (but->offCommand->command == funcPageDown)
-                                emit changePage(dev, dev->currentPage-1);
-                            else if (but->offCommand->command == funcLCDSpectrum)
-                                dev->lcd = funcLCDSpectrum;
-                            else if (but->offCommand->command == funcLCDWaterfall)
-                                dev->lcd = funcLCDWaterfall;
-                            else if (but->offCommand->command == funcLCDNothing) {
-                                dev->lcd = funcLCDNothing;
-                                QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureColor,i,"",Q_NULLPTR, &dev->color); });
-                            } else {
-                                emit button(but->offCommand);
-                            }
-                            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureButton,i,but->onCommand->text, but->icon, &but->backgroundOn); });
-                            but->isOn=false;
+                        // Change the button text to reflect the off Button
+                        if (but->offCommand->index != 0) {
+                            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureButton,but->num,but->offCommand->text, but->icon, &but->backgroundOff); });
                         }
-                        else if ((!but->toggle && but->isOn) && ((dev->buttons >> i & 1) && !(tempButtons >> i & 1)))
-                        {
-                            if (but->offCommand->command == funcLCDSpectrum)
-                                dev->lcd = funcLCDSpectrum;
-                            else if (but->offCommand->command == funcLCDWaterfall)
-                                dev->lcd = funcLCDWaterfall;
-                            else if (but->offCommand->command == funcLCDNothing) {
-                                QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureColor,i,"",Q_NULLPTR, &dev->color); });
-                                dev->lcd = funcLCDNothing;
-                            } else
-                            {
-                                qDebug(logUsbControl()) << QString("Off Button event for button %0: %1").arg(but->num).arg(but->offCommand->text);
-                                emit button(but->offCommand);
-                            }
-                            // Change the button text to reflect the on Button
-                            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureButton,i,but->onCommand->text, but->icon, &but->backgroundOn); });
-                            but->isOn=false;
-                        }
+                        but->isOn=true;
                     }
+                    else if ((but->toggle && but->isOn) && ((tempButtons >> but->num & 1) && !(dev->buttons >> but->num & 1)))
+                    {
+                        qDebug(logUsbControl()) << QString("Off Button (toggle) event for button %0: %1").arg(but->num).arg(but->onCommand->text);
+                        if (but->offCommand->command == funcPageUp)
+                            emit changePage(dev, dev->currentPage+1);
+                        else if (but->offCommand->command == funcPageDown)
+                            emit changePage(dev, dev->currentPage-1);
+                        else if (but->offCommand->command == funcLCDSpectrum)
+                            dev->lcd = funcLCDSpectrum;
+                        else if (but->offCommand->command == funcLCDWaterfall)
+                            dev->lcd = funcLCDWaterfall;
+                        else if (but->offCommand->command == funcLCDNothing) {
+                            dev->lcd = funcLCDNothing;
+                            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureColor,but->num,"",Q_NULLPTR, &dev->color); });
+                        } else {
+                            emit button(but->offCommand);
+                        }
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureButton,but->num,but->onCommand->text, but->icon, &but->backgroundOn); });
+                        but->isOn=false;
+                    }
+                    else if ((!but->toggle && but->isOn) && ((dev->buttons >> but->num & 1) && !(tempButtons >> but->num & 1)))
+                    {
+                        if (but->offCommand->command == funcLCDSpectrum)
+                            dev->lcd = funcLCDSpectrum;
+                        else if (but->offCommand->command == funcLCDWaterfall)
+                            dev->lcd = funcLCDWaterfall;
+                        else if (but->offCommand->command == funcLCDNothing) {
+                            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureColor,but->num,"",Q_NULLPTR, &dev->color); });
+                            dev->lcd = funcLCDNothing;
+                        } else
+                        {
+                            qDebug(logUsbControl()) << QString("Off Button event for button %0: %1").arg(but->num).arg(but->offCommand->text);
+                            emit button(but->offCommand);
+                        }
+                        // Change the button text to reflect the on Button
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureButton,but->num,but->onCommand->text, but->icon, &but->backgroundOn); });
+                        but->isOn=false;
+                    }
+                    but++;
                 }
                 dev->buttons = tempButtons;
             }
@@ -996,7 +1007,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                 return;
             }
             text = text.mid(0, 10); // Make sure text is no more than 10 characters.
-            qDebug(logUsbControl()) << QString("Programming button %0 with %1").arg(val).arg(text);
+            //qDebug(logUsbControl()) << QString("Programming button %0 with %1").arg(val).arg(text);
             data[1] = (qint8)0xb1;
             data[3] = val + 1;
             data[5] = text.length() * 2;
@@ -1319,6 +1330,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                         memset(h1.packet, 0x0, sizeof(h1)); // We can't be sure it is initialized with 0x00!
                         h1.cmd = 0x02;
                         h1.suffix = 0x01;
+
                         h1.button = val;
 
                         quint32 start = 0;
@@ -1419,9 +1431,10 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
         //qInfo (logUsbControl()) << "Sending command to USB:" << data;
         break;
     case MiraBox293:
+    case MiraBox293S:
     case MiraBoxN3:
-        data.resize(dev->type.maxPayload); // Make sure buffer is 512 bytes
-        data.fill(0,dev->type.maxPayload); // Replace with zeros.
+        data.resize(dev->type.maxPayload+1); // Make sure buffer is 512 bytes
+        data.fill(0,dev->type.maxPayload+1); // Replace with zeros.
         data.replace(1,3,QByteArrayLiteral("\x43\x52\x54")); //Command prefix
         switch (feature) {
         case usbFeatureType::featureWakeScreen:
@@ -1437,14 +1450,17 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
             dev->brightness = val;
             break;
         case usbFeatureType::featureFirmware:
-            data.fill(0,dev->type.maxPayload); // Replace with zeros.
-            data[0]= 0x01;
-            hid_get_feature_report(dev->handle,(quint8*)data.data(),(size_t)data.size());
-            qInfo(logUsbControl()) << QString("%0: Firmware = %1").arg(dev->product,QString::fromLatin1(data.mid(0,19)));
+            // HIDAPI doesn't expose the GET_REPORT function
+            //data.fill(0,dev->type.maxPayload+1); // Replace with zeros.
+            //data.replace(1,8,QByteArrayLiteral("\xa1\x01\x00\x01\x00\x00\x00\x02"));
+            //hid_get_feature_report(dev->handle,(quint8*)data.data(),(size_t)data.size());
+            //qInfo(logUsbControl()) << QString("%0: Firmware = %1").arg(dev->product,QString::fromLatin1(data.mid(0,19)));
             return;
             break;
         case usbFeatureType::featureButton:
-            if ((dev->type.model == usbDeviceType::MiraBoxN3 && val < 6) || (dev->type.model == usbDeviceType::MiraBox293))
+        {
+
+            if ((dev->type.model == usbDeviceType::MiraBoxN3 && val < 7) || (dev->type.model == usbDeviceType::MiraBox293) || (dev->type.model == usbDeviceType::MiraBox293S))
             {
                 data.replace(6,3,QByteArrayLiteral("\x42\x41\x54"));
 
@@ -1470,7 +1486,12 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
 
                 QBuffer butBuffer(&data2);
                 QTransform myTransform;
-                myTransform.rotate(90);
+
+                if (dev->type.model == usbDeviceType::MiraBox293 || dev->type.model == usbDeviceType::MiraBox293S)
+                    myTransform.rotate(270);
+                else
+                    myTransform.rotate(90);
+
                 QImage myImage = butImage.transformed(myTransform);
 
                 myImage.save(&butBuffer, "JPG");
@@ -1480,7 +1501,13 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                 data[10] = rem >> 16;
                 data[11] = rem >> 8;
                 data[12] = rem;
-                data[13] = val+1;
+                //if (dev->type.model == usbDeviceType::MiraBox293S)
+                //    data[13]=mirabox293SKeyMap[val];
+                //else if (dev->type.model == usbDeviceType::MiraBox293)
+                //    data[13]=mirabox293KeyMap[val];
+                //else
+                data[13] = val;
+
                 //qInfo(logUsbControl()) << "Programming button" << (quint8)data[13] << "with" << rem << "bytes of jpeg";
 
                 res=hid_write(dev->handle, (const quint8*)data.constData(), data.size());
@@ -1498,19 +1525,23 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                     res=hid_write(dev->handle, (const quint8*)data.constData(), data.size());
                     start += length;
                 }
-                return;
+                data.resize(dev->type.maxPayload+1);
+                data.fill(0,dev->type.maxPayload+1); // Replace with zeros.
+                data.replace(1,3,QByteArrayLiteral("\x43\x52\x54")); //Command prefix
+                data.replace(6,3,QByteArrayLiteral("\x53\x54\x50"));
             } else {
                 // Send Refresh()
-                data.replace(6,3,QByteArrayLiteral("\x53\x54\x50"));
                 break;
             }
             break;
+        }
         default:
             return;
             break;
         }
         res = hid_write(dev->handle, (const quint8*)data.constData(), data.size());
         break;
+
     default:
         break;
     }
@@ -1798,36 +1829,56 @@ void usbController::loadButtons()
     defaultButtons.append(BUTTON(XKeysXK3, 1, QRect(100, 45, 63, 63), Qt::white, &commands[0], &commands[0]));
     defaultButtons.append(BUTTON(XKeysXK3, 2, QRect(170, 45, 63, 63), Qt::white, &commands[0], &commands[0]));
 
+
+    //const uchar mirabox293SKeyMap[15] = {0x0d,0x0a,0x07,0x04,0x01,0x0e,0x0b,0x08,0x05,0x02,0x0f,0x0c,0x09,0x06,0x03};
+    //const uchar mirabox293KeyMap[15] = {0x0b,0x0c,0x0d,0x0e,0x0f,0x06,0x07,0x08,0x09,0x0a,0x01,0x02,0x03,0x04,0x05};
+    // MiraBox 293S - Use same
+    defaultButtons.append(BUTTON(MiraBox293S, 0x0d, QRect(109, 86, 90, 90), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293S, 0x0a, QRect(240, 86, 90, 90), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293S, 0x07, QRect(369, 86, 90, 90), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293S, 0x04, QRect(502, 86, 90, 90), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293S, 0x01, QRect(636, 86, 90, 90), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293S, 0x0e, QRect(109, 218, 90, 90), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293S, 0x0b, QRect(240, 218, 90, 90), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293S, 0x08, QRect(369, 218, 90, 90), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293S, 0x05, QRect(502, 218, 90, 90), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293S, 0x02, QRect(636, 218, 90, 90), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293S, 0x0f, QRect(109, 349, 90, 90), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293S, 0x0c, QRect(240, 349, 90, 90), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293S, 0x09, QRect(369, 349, 90, 90), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293S, 0x06, QRect(502, 349, 90, 90), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293S, 0x03, QRect(636, 349, 90, 90), Qt::white, &commands[0], &commands[0],true));
+
     // MiraBox 293
-    defaultButtons.append(BUTTON(MiraBox293, 0, QRect(65, 91, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBox293, 1, QRect(165, 91, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBox293, 2, QRect(263, 91, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBox293, 3, QRect(364, 91, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBox293, 4, QRect(462, 91, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBox293, 5, QRect(65, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBox293, 6, QRect(165, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBox293, 7, QRect(263, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBox293, 8, QRect(364, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBox293, 9, QRect(462, 190, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBox293, 10, QRect(65, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBox293, 11, QRect(165, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBox293, 12, QRect(263, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBox293, 13, QRect(364, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBox293, 14, QRect(462, 291, 75, 75), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 0x0b, QRect(89, 108, 85, 85), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 0x0c, QRect(229, 108, 85, 85), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 0x0d, QRect(380, 108, 85, 85), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 0x0e, QRect(522, 108, 85, 85), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 0x0f, QRect(668, 108, 85, 85), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 0x06, QRect(89, 250, 85, 85), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 0x07, QRect(229, 250, 85, 85), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 0x08, QRect(380, 250, 85, 85), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 0x09, QRect(522, 250, 85, 85), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 0x0a, QRect(668, 250, 85, 85), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 0x01, QRect(89, 395, 85, 85), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 0x02, QRect(229, 395, 85, 85), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 0x03, QRect(380, 395, 85, 85), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 0x04, QRect(522, 395, 85, 85), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBox293, 0x05, QRect(668, 395, 85, 85), Qt::white, &commands[0], &commands[0],true));
 
     // MiraBox N3
-    defaultButtons.append(BUTTON(MiraBoxN3, 0, QRect(121, 103, 88, 88), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBoxN3, 1, QRect(248, 103, 88, 88), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBoxN3, 2, QRect(376, 103, 88, 88), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBoxN3, 3, QRect(121, 231, 88, 88), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBoxN3, 4, QRect(248, 231, 88, 88), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBoxN3, 5, QRect(376, 231, 88, 88), Qt::white, &commands[0], &commands[0],true));
-    defaultButtons.append(BUTTON(MiraBoxN3, 6, QRect(118, 430, 90, 30), Qt::white, &commands[0], &commands[0]));
-    defaultButtons.append(BUTTON(MiraBoxN3, 7, QRect(244, 430, 90, 30), Qt::white, &commands[0], &commands[0]));
-    defaultButtons.append(BUTTON(MiraBoxN3, 8, QRect(373, 430, 90, 30), Qt::white, &commands[0], &commands[0]));
-    defaultButtons.append(BUTTON(MiraBoxN3, 9, QRect(633, 154, 100, 25), Qt::white, &commands[0], &commands[0]));
-    defaultButtons.append(BUTTON(MiraBoxN3, 10, QRect(555, 417, 75, 25), Qt::white, &commands[0], &commands[0]));
-    defaultButtons.append(BUTTON(MiraBoxN3, 11, QRect(737, 417, 75, 25), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(MiraBoxN3, 1, QRect(121, 103, 88, 88), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBoxN3, 2, QRect(248, 103, 88, 88), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBoxN3, 3, QRect(376, 103, 88, 88), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBoxN3, 4, QRect(121, 231, 88, 88), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBoxN3, 5, QRect(248, 231, 88, 88), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBoxN3, 6, QRect(376, 231, 88, 88), Qt::white, &commands[0], &commands[0],true));
+    defaultButtons.append(BUTTON(MiraBoxN3, 7, QRect(118, 430, 90, 30), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(MiraBoxN3, 8, QRect(244, 430, 90, 30), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(MiraBoxN3, 9, QRect(373, 430, 90, 30), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(MiraBoxN3, 10, QRect(633, 154, 100, 25), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(MiraBoxN3, 11, QRect(555, 417, 75, 25), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(MiraBoxN3, 12, QRect(737, 417, 75, 25), Qt::white, &commands[0], &commands[0]));
 
 
 }

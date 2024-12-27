@@ -184,10 +184,15 @@ void controllerSetup::showMenu(controllerScene* scene, QPoint p)
         onEvent->blockSignals(false);
 
         offEvent->blockSignals(true);
+        if (currentButton->dev == MiraBox293S)
+        {
+            offEvent->setEnabled(currentButton->toggle);
+        }
         offEvent->setCurrentIndex(offEvent->findData(currentButton->offCommand->index));
         offEvent->show();
         offLabel->show();
         offEvent->blockSignals(false);
+
         knobEvent->hide();
         knobLabel->hide();
 
@@ -195,6 +200,7 @@ void controllerSetup::showMenu(controllerScene* scene, QPoint p)
         buttonLatch->setChecked(currentButton->toggle);
         buttonLatch->blockSignals(false);
         buttonLatch->show();
+
 
         ledNumber->blockSignals(true);
         ledNumber->setMaximum(currentButton->parent->type.leds);
@@ -226,6 +232,7 @@ void controllerSetup::showMenu(controllerScene* scene, QPoint p)
             buttonIcon->show();
             iconLabel->setText(currentButton->iconName);
             iconLabel->show();
+            ledNumber->hide();
             break;
         case XKeysXK3:
             ledNumber->show();
@@ -235,6 +242,8 @@ void controllerSetup::showMenu(controllerScene* scene, QPoint p)
             iconLabel->hide();
             break;
         case MiraBoxN3:
+        case MiraBox293:
+        case MiraBox293S:
             buttonOnColor->setStyleSheet(QString("background-color: %1").arg(currentButton->backgroundOn.name(QColor::HexArgb)));
             buttonOffColor->setStyleSheet(QString("background-color: %1").arg(currentButton->backgroundOff.name(QColor::HexArgb)));
             buttonOnColor->show();
@@ -242,6 +251,7 @@ void controllerSetup::showMenu(controllerScene* scene, QPoint p)
             buttonIcon->show();
             iconLabel->setText(currentButton->iconName);
             iconLabel->show();
+            ledNumber->hide();
             break;
         default:
             buttonOnColor->hide();
@@ -412,6 +422,10 @@ void controllerSetup::latchStateChanged(int state)
 {
     if (currentButton != Q_NULLPTR) {
         QMutexLocker locker(mutex);
+        if (currentButton->dev == MiraBox293S)
+        {
+            offEvent->setEnabled(state);
+        }
         currentButton->toggle=(int)state;
     }
 }
@@ -622,6 +636,9 @@ void controllerSetup::newDevice(USBDEVICE* dev)
         break;
     case MiraBox293:
         c->image->load(":/resources/mirabox293.png");
+        break;
+    case MiraBox293S:
+        c->image->load(":/resources/mirabox293s.png");
         break;
     case MiraBoxN3:
         c->image->load(":/resources/miraboxn3.png");
