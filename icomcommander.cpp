@@ -856,11 +856,14 @@ void icomCommander::parseCommand()
     case funcAntenna:
     {
         antennaInfo ant;
+        ant.rx=false;
         ant.antenna = bcdHexToUChar(payloadIn.at(0));
         if (payloadIn.size()>1)
             ant.rx = static_cast<bool>(payloadIn.at(1));
         value.setValue(ant);
+        //qInfo(logRig()) << "Got antenna" << ant.antenna << "rx" << ant.rx;
         break;
+
     // Register 13 (speech) has no get values
     // Register 14 (levels) starts here:
     }
@@ -3097,6 +3100,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 payload.append(bcdEncodeChar(value.value<antennaInfo>().antenna));
                 if (rigCaps.commands.contains(funcRXAntenna))
                     payload.append(value.value<antennaInfo>().rx);
+                //qInfo(logRig) << "Sending antenna info" << payload.toHex(' ');
             }
             else if(!strcmp(value.typeName(),"rigInput"))
             {

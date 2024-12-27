@@ -1,5 +1,5 @@
 
-The following highlights are in this 1.9x-release since v1.64:
+The following highlights are in this 2.0-release since v1.64:
 e.g. since Date:   Sun Jul 16 14:05:53 2023 +0100
 
 WOW, where to start, eh?
@@ -23,7 +23,7 @@ WOW, where to start, eh?
 - admin memory management mode
 - IC905 support
 - improved caching
-- add support for XKeysXK3
+- add support for more USB controllers, XKeysXK3, Mirabox
 
 
 
