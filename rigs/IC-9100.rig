@@ -4,7 +4,7 @@ Version=2.00
 [Rig]
 Manufacturer=Icom
 Model=IC-9100
-CIVAddress=136
+CIVAddress=124
 RigCtlDModel=3068
 NumberOfReceivers=2
 NumberOfVFOs=2
