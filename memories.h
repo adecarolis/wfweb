@@ -320,6 +320,7 @@ private:
 
     void enableCell(int col, int row, bool en);
     void configColumns(int row, modeInfo mode);
+    bool disableCommands = false;
 };
 
 #endif // MEMORIES_H

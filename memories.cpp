@@ -140,7 +140,7 @@ columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B
     ui->table->setHorizontalHeaderLabels(headers);
 
     ui->group->hide();
-    ui->modeButton->hide();
+    //ui->modeButton->hide();
     ui->modeButton->setCheckable(true);
     //ui->loadingMemories->setVisible(false);
     //ui->loadingMemories->setStyleSheet("QLabel {color: #ff0000}");
@@ -688,7 +688,7 @@ void memories::on_group_currentIndexChanged(int index)
         {
         case 'a':
             ui->group->show();
-            ui->modeButton->show();
+            disableCommands = true;
             break;
         case 'b':
             if (numEditor != Q_NULLPTR)
@@ -1365,23 +1365,31 @@ void memories::on_modeButton_clicked(bool on)
         if (rigCaps->commands.contains(funcSatelliteMode))
            queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue(false),false,0)); // Make sure we are in not in satellite mode.
         ui->modeButton->setText("Select Memory Mode");
-        for( const commandList &c: activeCommands) {
-            queue->add(c.prio,c.func,true,c.receiver);
+        if (disableCommands) {
+            for( const commandList &c: activeCommands) {
+                queue->add(c.prio,c.func,true,c.receiver);
+            }
+            activeCommands.clear();
         }
-        activeCommands.clear();
-        queue->add(priorityImmediate,funcVFOModeSelect,false,0);
+        for (uchar i = 0;i < rigCaps->numReceiver;i++) {
+            queue->add(priorityImmediate,funcVFOModeSelect,false,i);
+        }
         checked=false;
     } else if (on && !checked) {
         qInfo() << "Selecting Memory Mode";
         ui->modeButton->setText("Select VFO Mode");
-        queue->add(priorityImmediate,funcMemoryMode,false,0);
-        activeCommands.clear();
-        for (int i=0;i<rigCaps->numReceiver;i++) {
-            for (const funcs &func:disabledCommands)
-            {
-                queuePriority prio = queue->del(func,i);
-                if (prio != priorityNone) {
-                    activeCommands.append(commandList(prio,func,i));
+        for (uchar i = 0;i < rigCaps->numReceiver;i++) {
+            queue->add(priorityImmediate,funcMemoryMode,false,i);
+        }
+        if (disableCommands) {
+            activeCommands.clear();
+            for (int i=0;i<rigCaps->numReceiver;i++) {
+                for (const funcs &func:disabledCommands)
+                {
+                    queuePriority prio = queue->del(func,i);
+                    if (prio != priorityNone) {
+                        activeCommands.append(commandList(prio,func,i));
+                    }
                 }
             }
         }
