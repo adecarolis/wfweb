@@ -4,7 +4,7 @@
 [wfview](https://gitlab.com/eliggett/wfview) is an open-source front-end application for the 
 
 - [Icom IC-705 ](https://www.icomamerica.com/en/products/amateur/hf/705/default.aspx) HF portable SDR Amateur Radio
-- [Icom IC-805 ](https://www.icomamerica.com/lineup/products/IC-905/) Multiband VHF/UHF/SHF portable SDR Amateur Radio
+- [Icom IC-905 ](https://www.icomamerica.com/lineup/products/IC-905/) Multiband VHF/UHF/SHF portable SDR Amateur Radio
 - [Icom IC-7300](https://www.icomamerica.com/en/products/amateur/hf/7300/default.aspx) HF SDR Amateur Radio
 - [Icom IC-7610](https://www.icomamerica.com/en/products/amateur/hf/7610/default.aspx) HF SDR Amateur Radio
 - [Icom IC-7850](https://www.icomamerica.com/en/products/amateur/hf/7850/default.aspx) HF Hybrid SDR Amateur Radio
