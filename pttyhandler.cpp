@@ -93,7 +93,7 @@ void pttyHandler::openPort()
     if (!success)
     {
         ptfd = 0;
-        qInfo(logSerial()) << "Could not open pseudo terminal port, please restart.";
+        qWarning(logSerial()) << "Could not open pseudo terminal port, please restart.";
         isConnected = false;
         serialError = true;
         emit havePortError(errorType(portName, "Could not open pseudo terminal port. Please restart."));
@@ -140,9 +140,10 @@ void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
         // Ignore data that is sent to/from transceive address as client has requested transceive disabled.
         qDebug(logSerial()) << "Transceive command filtered";
         return;
+
     }
 
-    if (isConnected && (quint8)data[fePos + 2] != 0xE1 && (quint8)data[fePos + 3] != 0xE1)
+    if (isConnected && (quint8)data[fePos + 2] != quint8(0xE1) && (quint8)data[fePos + 3] != quint8(0xE1))
     {
         // send to the pseudo port as well
         // index 2 is dest, 0xE1 is wfview, 0xE0 is assumed to be the other device.
@@ -150,7 +151,7 @@ void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
         // 0xE1 = wfview
         // 0xE0 = pseudo-term host
         // 0x00 = broadcast to all
-        //qInfo(logSerial()) << "Sending data from radio to pseudo-terminal";        
+        //qInfo(logSerial()) << "Sending data from radio to pseudo-terminal" << data.toHex(' ');
         sendDataOut(data);
     }
 }
@@ -159,7 +160,7 @@ void pttyHandler::sendDataOut(const QByteArray& writeData)
 {
     qint64 bytesWritten = 0;
 
-    //qInfo(logSerial()) << "Data to pseudo term:";
+    //qInfo(logSerial()) << "Data to pseudo term:" << writeData.toHex(' ');
     //printHex(writeData, false, true);
     if (isConnected) {
         mutex.lock();
@@ -228,7 +229,7 @@ void pttyHandler::receiveDataIn(int fd) {
                 qInfo(logSerial()) << "pty remote CI-V changed:" << QString("0x%1").arg((quint8)civId,0,16);
             }
             // filter C-IV transceive command before forwarding on.
-            if (rigCaps != Q_NULLPTR && inPortData.contains(rigCaps->transceiveCommand))
+            if (rigCaps != Q_NULLPTR && rigCaps->commands.contains(funcCIVTransceive) && inPortData.contains(rigCaps->commands.find(funcCIVTransceive).value().data))
             {
                 //qInfo(logSerial()) << "Filtered transceive command";
                 //printHex(inPortData, false, true);
@@ -242,11 +243,12 @@ void pttyHandler::receiveDataIn(int fd) {
                     disableTransceive = true;
                 }
             }
-            else if (inPortData.length() > lastFE + 2 && ((quint8)inPortData[lastFE + 1] == civId || (quint8)inPortData[lastFE + 2] == civId))
+            else if (inPortData.length() > lastFE + 2 && (quint8(inPortData[lastFE + 1]) == civId || quint8(inPortData[lastFE + 2]) == civId))
             {
+                //qInfo(logSerial()) << "Got data from pseudo-terminal to radio" << inPortData.toHex(' ');
                 emit haveDataFromPort(inPortData);
-                qDebug(logSerial()) << "Data from pseudo term:";
-                printHex(inPortData, false, true);
+                //qDebug(logSerial()) << "Data from pseudo term:";
+                //printHex(inPortData, false, true);
             }
 
             if (rolledBack)
