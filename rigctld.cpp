@@ -611,7 +611,7 @@ QString rigCtlClient::getMode(modeInfo mode)
 
 bool rigCtlClient::getMode(QString modeString, modeInfo& mode)
 {
-    qInfo() << "Looking for mode (set)" << modeString;
+    //qInfo() << "Looking for mode (set)" << modeString;
     for (int i = 0; mode_str[i].str[0] != '\0'; i++)
     {
         if (QString(mode_str[i].str) == modeString)
@@ -1451,40 +1451,42 @@ int rigCtlClient::dumpCaps(QStringList &response, bool extended)
 
 funcs rigCtlClient::getFreqFunc(vfo_t, bool set)
 {
-    funcs func=funcFreqGet;
+    funcs func = ((rigCaps->commands.contains(funcFreq)) ? funcFreq: funcFreqGet) ;
 
     if (set)
-        func = funcFreqSet;
+        func = ((rigCaps->commands.contains(funcFreq)) ? funcFreq: funcFreqSet) ;
 
-    if (rigCaps != Q_NULLPTR) {
-        if (currentVfo == vfoMain || currentVfo == vfoSub) {
-            func = ((rigCaps->commands.contains(funcFreq)) ? funcFreq: func);
-        } else if (currentVfo == vfoA){
-            func = ((rigCaps->commands.contains(funcSelectedFreq)) ? funcSelectedFreq: func);
-        } else if (currentVfo == vfoB){
-            func = ((rigCaps->commands.contains(funcUnselectedFreq)) ? funcUnselectedFreq: func);
-        }
-        //qDebug(logRigCtlD) << "Frequency function is:" << funcString[func];
+    if (currentVfo == vfoA)
+    {
+        func = ((rigCaps->commands.contains(funcSelectedFreq)) ? funcSelectedFreq: func);
     }
+    else if (currentVfo == vfoB)
+    {
+        func = ((rigCaps->commands.contains(funcUnselectedFreq)) ? funcUnselectedFreq: func);
+    }
+    //qDebug(logRigCtlD) << "Frequency function is:" << funcString[func];
     return func;
 }
 
 funcs rigCtlClient::getModeFunc(vfo_t, bool set)
 {
-    funcs func=funcModeGet;
+    funcs func = ((rigCaps->commands.contains(funcMode)) ? funcMode: funcModeGet) ;
 
     if (set)
-        func = funcModeSet;
+        func = ((rigCaps->commands.contains(funcMode)) ? funcMode: funcModeSet) ;
 
-    if (rigCaps != Q_NULLPTR) {
-        if (currentVfo == vfoMain || currentVfo == vfoSub) {
-            func = ((rigCaps->commands.contains(funcMode)) ? funcMode: func);
-        } else if (currentVfo == vfoA){
-            func = ((rigCaps->commands.contains(funcSelectedMode)) ? funcSelectedMode: func);
-        } else if (currentVfo == vfoB){
-            func = ((rigCaps->commands.contains(funcUnselectedMode)) ? funcUnselectedMode: func);
-        }
-        //qDebug(logRigCtlD) << "Mode function is:" << funcString[func];
+
+    if (currentVfo == vfoA){
+        func = ((rigCaps->commands.contains(funcSelectedMode)) ? funcSelectedMode: func);
     }
+    else if (currentVfo == vfoB)
+    {
+        func = ((rigCaps->commands.contains(funcUnselectedMode)) ? funcUnselectedMode: func);
+    }
+    else if (currentVfo == vfoMain || currentVfo == vfoSub)
+    {
+        func = ((rigCaps->commands.contains(funcMode)) ? funcMode: func);
+    }
+    //qDebug(logRigCtlD) << "Mode function is:" << funcString[func];
     return func;
 }
