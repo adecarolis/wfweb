@@ -109,47 +109,30 @@ wfview is now installed in /usr/local/bin
 
 ### Fedora install ###
 ---
+Tested under Fedora 41 Workstation.
 
-Tested under Fedora 33/34.
+Install dependencies:
 
-Install qt5 dependencies:
-- sudo dnf install qt5-qtbase-common qt5-qtbase qt5-qtbase-gui qt5-qtserialport qt5-qtmultimedia mingw64-qt5-qmake qt5-qtbase-devel qt5-qtserialport-devel qt5-qtmultimedia-devel libopus-dev 
-
-Install qcustomplot:
-- sudo dnf install qcustomplot qcustomplot-devel
+```bash
+dnf install -y qt6-qtbase-devel qt6-qtmultimedia-devel qt6-serialport-devel \
+  qt6-qtwebsocket-devel qcustomplot-qt6-devel opus-devel eigen3-devel \
+  portaudio-devel rtaudio-devel hidapi-devel systemd-devel
+```
 
 When done, create a build area, clone the repo, build and install:
 
-- mkdir -p ~/src/build && cd src
-- git clone https://gitlab.com/eliggett/wfview.git
-- cd build
-- qmake-qt5 ../wfview/wfview.pro
-- make -j
-- sudo ./install.sh
+```bash
+mkdir -p $HOME/src && cd $HOME/src
+git clone https://gitlab.com/eliggett/wfview.git
+cd wfview
+mkdir -p build && cd build
+qmake ../wfview.pro
+sed -i 's/^LIBS.*/& -lqcustomplot-qt6/' Makefile
+make -j4
+sudo make install
+```
 
-wfview is now installed in /usr/local/bin
-
-
-Fedora 36:
-
-2023-04-11/Knud OZ1DGN
-
-
-Precondition:
-
-F36 KDE plasma desktop
-wfview 1.61 prebuild binary
-
-Install following packages:
-sudo dnf install qcustomplot-qt5 qt5-qtmultimedia qt5-qtserialport rtaudio portaudio hidapi qt5-qtgamepad
-
-sudo ln -s /usr/lib64/libqcustomplot-qt5.so.2 /usr/lib64/libqcustomplot.so.2
-
-Move /usr/share/wfview to /usr/local/share:
-
-sudo mv /usr/share/wfview/stylesheets/*  /usr/local/share/wfview
-
-
+wfview is now installed in /usr/local/bin and you can start it from launcher or from command line with command `wfview`.
 
 # How to configure your RC-28 knob under Linux
 
