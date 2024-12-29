@@ -175,16 +175,16 @@ static const commandStruct commands_list[] =
 {
     { 'F',  "set_freq",         funcFreqSet,       typeFreq,    ARG_IN, "Frequency" },
     { 'f',  "get_freq",         funcFreqGet,       typeFreq,    ARG_OUT, "Frequency" },
-    { 'M',  "set_mode",         funcModeSet,            typeMode,    ARG_IN, "Mode", "Passband" },
-    { 'm',  "get_mode",         funcModeGet,            typeMode,    ARG_OUT, "Mode", "Passband" },
-    { 'I',  "set_split_freq",   funcSendFreqOffset,     typeFreq,    ARG_IN, "TX Frequency" },
-    { 'i',  "get_split_freq",   funcReadFreqOffset,     typeFreq,    ARG_OUT, "TX Frequency" },
-    { 'X',  "set_split_mode",   funcSplitStatus,        typeMode,    ARG_IN, "TX Mode", "TX Passband" },
-    { 'x',  "get_split_mode",   funcSplitStatus,        typeMode,    ARG_OUT, "TX Mode", "TX Passband" },
-    { 'K',  "set_split_freq_mode",  funcNone,           typeFreq,    ARG_IN,    "TX Frequency", "TX Mode", "TX Passband" },
-    { 'k',  "get_split_freq_mode",  funcNone,           typeFreq,    ARG_OUT,   "TX Frequency", "TX Mode", "TX Passband" },
-    { 'S',  "set_split_vfo",    funcSplitStatus,        typeBinary,    ARG_IN, "Split", "TX VFO" },
-    { 's',  "get_split_vfo",    funcSplitStatus,        typeBinary,    ARG_OUT, "Split", "TX VFO" },
+    { 'M',  "set_mode",         funcModeSet,            typeMode,     ARG_IN, "Mode", "Passband" },
+    { 'm',  "get_mode",         funcModeGet,            typeMode,     ARG_OUT, "Mode", "Passband" },
+    { 'I',  "set_split_freq",   funcSendFreqOffset,     typeFreq,     ARG_IN, "TX Frequency" },
+    { 'i',  "get_split_freq",   funcReadFreqOffset,     typeFreq,     ARG_OUT, "TX Frequency" },
+    { 'X',  "set_split_mode",   funcSplitStatus,        typeMode,     ARG_IN, "TX Mode", "TX Passband" },
+    { 'x',  "get_split_mode",   funcSplitStatus,        typeMode,     ARG_OUT, "TX Mode", "TX Passband" },
+    { 'K',  "set_split_freq_mode",  funcNone,           typeFreq,     ARG_IN,    "TX Frequency", "TX Mode", "TX Passband" },
+    { 'k',  "get_split_freq_mode",  funcNone,           typeFreq,     ARG_OUT,   "TX Frequency", "TX Mode", "TX Passband" },
+    { 'S',  "set_split_vfo",    funcSplitStatus,        typeSplitVFO, ARG_IN, "Split", "TX VFO" },
+    { 's',  "get_split_vfo",    funcSplitStatus,        typeSplitVFO, ARG_OUT, "Split", "TX VFO" },
     { 'N',  "set_ts",           funcTuningStep,         typeUChar,    ARG_IN, "Tuning Step" },
     { 'n',  "get_ts",           funcTuningStep,         typeUChar,    ARG_OUT, "Tuning Step" },
     { 'L',  "set_level",        funcRigctlLevel,        typeLevel,    ARG_IN, "Level", "Level Value" },
@@ -232,7 +232,7 @@ static const commandStruct commands_list[] =
     { '*',  "reset",            funcNone,               typeUChar,    ARG_IN, "Reset" },
     { 'w',  "send_cmd",         funcNone,               typeUChar,    ARG_IN1 | ARG_IN_LINE | ARG_OUT2 | ARG_NOVFO, "Cmd", "Reply" },
     { 'W',  "send_cmd_rx",      funcNone,               typeUChar,    ARG_IN | ARG_OUT2 | ARG_NOVFO, "Cmd", "Reply"},
-    { 'b',  "send_morse",       funcSendCW,             typeString,    ARG_IN | ARG_NOVFO  | ARG_IN_LINE, "Morse" },
+    { 'b',  "send_morse",       funcSendCW,             typeString,   ARG_IN | ARG_NOVFO  | ARG_IN_LINE, "Morse" },
     { 0xbb, "stop_morse",       funcSendCW,             typeString,   },
     { 0xbc, "wait_morse",       funcSendCW,             typeUChar,    },
     { 0x94, "send_voice_mem",   funcNone,               typeUChar,    ARG_IN, "Voice Mem#" },
@@ -247,9 +247,9 @@ static const commandStruct commands_list[] =
     { '1',  "dump_caps",        funcNone,               typeUChar,    ARG_NOVFO },
     { '3',  "dump_conf",        funcNone,               typeUChar,    ARG_NOVFO },
     { 0x8f, "dump_state",       funcNone,               typeUChar,    ARG_OUT | ARG_NOVFO },
-    { 0xf0, "chk_vfo",          funcSelectVFO,          typeVFO,    ARG_NOVFO, "ChkVFO" },   /* rigctld only--check for VFO mode */
+    { 0xf0, "chk_vfo",          funcSelectVFO,          typeUChar,    ARG_NOVFO, "ChkVFO" },   /* rigctld only--check for VFO mode */
     { 0xf2, "set_vfo_opt",      funcNone,               typeUChar,    ARG_NOVFO | ARG_IN, "Status" }, /* turn vfo option on/off */
-    { 0xf3, "get_vfo_info",     funcNone,               typeUChar,    ARG_IN1 | ARG_NOVFO | ARG_OUT5, "VFO", "Freq", "Mode", "Width", "Split", "SatMode" }, /* get several vfo parameters at once */
+    { 0xf3, "get_vfo_info",     funcSelectVFO,          typeVFOInfo,    ARG_IN1 | ARG_NOVFO | ARG_OUT5, "VFO", "Freq", "Mode", "Width", "Split", "SatMode" }, /* get several vfo parameters at once */
     { 0xf5, "get_rig_info",     funcNone,               typeUChar,    ARG_NOVFO | ARG_OUT, "RigInfo" }, /* get several vfo parameters at once */
     { 0xf4, "get_vfo_list",     funcNone,               typeUChar,    ARG_OUT | ARG_NOVFO, "VFOs" },
     { 0xf6, "get_modes",        funcNone,               typeUChar,    ARG_OUT | ARG_NOVFO, "Modes" },
@@ -312,6 +312,10 @@ void rigCtlClient::receiveRigCaps(rigCapabilities* caps)
 {
     if (caps != Q_NULLPTR) {
         qInfo(logRigCtlD()) << "Got rigcaps for:" << caps->modelName;
+    } else
+    {
+        qInfo(logRigCtlD()) << "Rig has gone away, close connection now!";
+        closeSocket();
     }
     this->rigCaps = caps;
 }
@@ -337,29 +341,43 @@ rigCtlClient::rigCtlClient(int socketId, rigCtlD* parent) : QObject(parent)
     connect(parent, SIGNAL(sendData(QString)), this, SLOT(sendData(QString)), Qt::DirectConnection);
     qInfo(logRigCtlD()) << " session connected: " << sessionId;
 
+    // set sensible values for default VFOs
+    // Prefer VFOA/B for split operation, as some radios have both A/B and Main/Sub.
+    if (rigCaps->commands.contains(funcVFOASelect))
+        currentVfo = vfoA;
+    else if (rigCaps->commands.contains(funcVFOMainSelect))
+        currentVfo = vfoMain;
+
+    if (rigCaps->commands.contains(funcVFOBSelect))
+        splitVfo = vfoB;
+    else if (rigCaps->commands.contains(funcVFOSubSelect))
+        splitVfo = vfoSub;
+
 }
 
 void rigCtlClient::socketReadyRead()
 {
+
+    if (this->rigCaps == Q_NULLPTR) {
+        qWarning(logRigCtlD) << "Rig has gone away, closing connection";
+        closeSocket();
+        return;
+    }
+
     QByteArray data = socket->readAll();
     commandBuffer.append(data);
     QStringList commandList(commandBuffer.split('\n'));
     QString sep = "\n";
 
-    if (rigCaps == Q_NULLPTR){
-        // RigCaps not received yet, cannot continue
-        qWarning(logRigCtlD()) << " No RigCaps available, aborting connection";
-        return;
-    }
     int ret = -RIG_EINVAL;
 
     bool setCommand = false;
+    bool longCommand = false;
     QStringList response;
 
     for (QString &commands : commandList)
     {
         bool extended = false;
-        bool longCommand = false;
         restart:
 
         if (commands.endsWith('\r'))
@@ -374,6 +392,8 @@ void rigCtlClient::socketReadyRead()
 
         // We have a full line so process command.
 
+        qDebug(logRigCtlD) << sessionId  << "RX:" << commands;
+
         if (commands[0] == ';' || commands[0] == '|' || commands[0] == ',')
         {
             sep = commands[0].toLatin1();
@@ -381,6 +401,7 @@ void rigCtlClient::socketReadyRead()
         }
         else if (commands[0] == '+')
         {
+            //qDebug(logRigCtlD) << "Extended response requested for this command";
             extended = true;
             sep = "\n";
             commands.remove(0,1);
@@ -399,10 +420,11 @@ void rigCtlClient::socketReadyRead()
         if (commands[0] == '\\')
         {
             commands.remove(0,1);
+            //qDebug(logRigCtlD) << "This is a long form command";
             longCommand = true;
         }
 
-
+        //qDebug(logRigCtlD) << "Got command to parse:" << commands;
 
         QStringList command = commands.split(" ");
         command.removeAll({}); // Remove any empty strings (double-whitespace issue)
@@ -416,7 +438,7 @@ void rigCtlClient::socketReadyRead()
                 if (((commands_list[i].flags & ARG_IN) == ARG_IN))
                 {
                     // For debugging only comment next line M0VSE
-                    qInfo(logRigCtlD()) << "Received set command" << commands;
+                    //qInfo(logRigCtlD()) << "Received set command" << commands;
                     setCommand=true;
                 }
 
@@ -482,14 +504,14 @@ void rigCtlClient::socketReadyRead()
     for (QString &str: response)
     {
         if (!str.isEmpty())
-            sendData(QString("%1%2").arg(str,sep));
+            sendData(QString("%0%1").arg(str,sep));
     }
 
     if (sep != "\n") {
         sendData(QString("\n"));
     }
-    if (ret < 0 || setCommand )
-        sendData(QString("RPRT %1\n").arg(ret));
+    if (ret < 0 || setCommand)
+        sendData(QString("RPRT %0\n").arg(QString::number(ret)));
 }
 
 void rigCtlClient::socketDisconnected()
@@ -506,7 +528,7 @@ void rigCtlClient::closeSocket()
 
 void rigCtlClient::sendData(QString data)
 {
-    //qDebug(logRigCtlD()) << sessionId << "TX:" << data;
+    qDebug(logRigCtlD()) << sessionId << "TX:" << data;
     if (socket != Q_NULLPTR && socket->isValid() && socket->isOpen())
     {
         socket->write(data.toLatin1());
@@ -689,22 +711,44 @@ quint8 rigCtlClient::antFromName(QString name) {
     return ret;
 }
 
-quint8 rigCtlClient::vfoFromName(QString vfo) {
+vfo_t rigCtlClient::vfoFromName(QString vfo) {
 
-    if (vfo.toUpper() == "VFOA" || vfo.toUpper() == "MAIN") return 0;
-    if (vfo.toUpper() == "VFOB" || vfo.toUpper() == "SUB") return 1;
-    if (vfo.toUpper() == "MEM") return 2;
-    return 0;
+    vfo_t v = vfoUnknown;
+    if (vfo.toUpper() == "VFOA")
+        v = vfoA;
+    else if (vfo.toUpper() == "MAIN")
+        v = vfoMain;
+    else if (vfo.toUpper() == "VFOB")
+        v = vfoB;
+    else if (vfo.toUpper() == "SUB")
+        v = vfoSub;
+    else if (vfo.toUpper() == "MEM")
+        v = vfoMem;
+    return v;
 }
 
-QString rigCtlClient::getVfoName(quint8 vfo)
+QString rigCtlClient::getVfoName(vfo_t vfo)
 {
     QString ret;
     switch (vfo) {
-
-    case 0: ret = rigCaps->commands.contains(funcFreq)?"Main":"VFOA"; break;
-    //case 1: ret = rigCaps->commands.contains(funcFreq)?"Sub":"VFOB"; break;
-    default: ret = "MEM"; break;
+    case vfoMain:
+        ret = "Main";
+        break;
+    case vfoSub:
+        ret = "Sub";
+        break;
+    case vfoA:
+        ret = "VFOA";
+        break;
+    case vfoB:
+        ret = "VFOB";
+        break;
+    case vfoMem:
+        ret = "MEM";
+        break;
+    default:
+        ret = "Unknown";
+        break;
     }
 
     return ret;
@@ -785,27 +829,10 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
 {
     // This is a main command
     int ret = -RIG_EINVAL;
-    funcs func;
-    // Use selected/unselected mode/freq if available
-    /*
-    if ((cmd.func == funcFreqGet || cmd.func == funcFreqSet) && rigCaps->commands.contains(funcMainFreq)) {
-        func = funcMainFreq;
-    } else if ((cmd.func == funcModeGet || cmd.func == funcModeSet) && rigCaps->commands.contains(funcMainMode)) {
-        func = funcMainMode;
-    } else if ((cmd.func == funcFreqGet || cmd.func == funcFreqSet) && rigCaps->commands.contains(funcSelectedFreq)) {
-            func = funcSelectedFreq;
-        } else if ((cmd.func == funcModeGet || cmd.func == funcModeSet) && rigCaps->commands.contains(funcSelectedMode)) {
-            func = funcSelectedMode;
-    }
-    */
+    funcs func = cmd.func;
 
-    if (cmd.func == funcFreqGet || cmd.func == funcFreqSet)
-        func = currentVfoFreqFunc;
-    else if (cmd.func == funcModeGet || cmd.func == funcModeSet)
-        func = currentVfoModeFunc;
-    else
-        func = cmd.func;
-
+    if (rigCaps == Q_NULLPTR)
+        return ret;
 
     if (((cmd.flags & ARG_IN) == ARG_IN) && params.size())
     {
@@ -815,16 +842,16 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         switch (cmd.type)
         {
         case typeUChar:
-            val.setValue(static_cast<uchar>(params[0].toInt()));
-            qInfo(logRigCtlD()) << "Setting char value" << val << "original" << params[0];
+            if (cmd.func == funcLockFunction)
+                val.setValue(modeLock);
+            else
+                val.setValue(static_cast<uchar>(params[0].toInt()));
             break;
         case typeShort:
             val.setValue(static_cast<short>(params[0].toInt()));
-            qInfo(logRigCtlD()) << "Setting short value" << val << "original" << params[0];
             break;
         case typeFloat:
             val.setValue(static_cast<ushort>(float(params[0].toFloat() * 255.0)));  // rigctl sends 0.0-1.0, we expect 0-255
-            qInfo(logRigCtlD()) << "Setting float value" << val << "original" << params[0];
             break;
         case typeFloatDiv:
             val.setValue(static_cast<uchar>(float(params[0].toFloat() / 10.0)));
@@ -837,20 +864,26 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             break;
         case typeFreq:
         {
+            func = getFreqFunc(currentVfo,true);
             freqt f;
             f.Hz = static_cast<quint64>(params[0].toFloat());
             f.VFO = activeVFO;
             f.MHzDouble = f.Hz/1000000.0;
             val.setValue(f);
-            qInfo(logRigCtlD()) << "Setting" << funcString[func] << "to" << f.Hz << "on VFO" << f.VFO << "with" << params[0];
             break;
         }
+        case typeSplitVFO:
+            val.setValue(static_cast<bool>(params[0].toInt()));
+            if (params.size() > 1) // Just in case we have invalid info
+                splitVfo = vfoFromName(params[1]);
+            break;
+
         case typeMode:
         {
+            func = getModeFunc(currentVfo,true);
             modeInfo mi;
             if (getMode(params[0],mi))
             {
-                qInfo(logRigCtlD()) << "Mode:" << mi.name  << "mk" << mi.mk << "reg" << mi.reg << "data" << mi.data << "filter" << mi.filter;
                 val.setValue(mi);
             } else {
                 qInfo(logRigCtlD()) << "Mode not found:" << params[0];
@@ -860,32 +893,32 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         }
         case typeVFO:
             // Setting VFO:
-            qInfo(logRigCtlD()) << "Setting VFO to" << params[0];
-            // Choose the current VFO command.
-
-            if (params[0] == "Main" || params[0] == "VFOA")
-            {
-                if (rigCaps->commands.contains(funcFreq)) {
-                    currentVfoFreqFunc = funcFreq;
-                    currentVfoModeFunc = funcMode;
-                } else if (rigCaps->commands.contains(funcSelectedFreq)) {
-                    currentVfoFreqFunc = funcSelectedFreq;
-                    currentVfoModeFunc = funcSelectedMode;
-                    currentVfoNum = 0;
-                }
-                currentVfoNum = 0;
-            } else if (params[0] == "Sub" || params[0] == "VFOB")
-            {
-                if (rigCaps->commands.contains(funcFreq)) {
-                    currentVfoFreqFunc = funcFreq;
-                    currentVfoModeFunc = funcMode;
-                } else if (rigCaps->commands.contains(funcUnselectedFreq)) {
-                    currentVfoFreqFunc = funcUnselectedFreq;
-                    currentVfoModeFunc = funcUnselectedMode;
-                }
-                currentVfoNum = 1;
+            if (params[0] == "?") {
+                // This is a query for a list of values
+                QString vfo;
+                if (rigCaps->numVFO > 0 && rigCaps->commands.contains(funcVFOASelect))
+                    vfo.append("VFOA ");
+                if (rigCaps->numVFO > 1 && rigCaps->commands.contains(funcVFOASelect))
+                    vfo.append("VFOB ");
+                if (rigCaps->numReceiver > 0 && rigCaps->commands.contains(funcVFOMainSelect))
+                    vfo.append("Main ");
+                if (rigCaps->numReceiver > 1 && rigCaps->commands.contains(funcVFOSubSelect))
+                    vfo.append("Sub ");
+                if (rigCaps->commands.contains(funcMemoryMode))
+                    vfo.append("MEM ");
+                vfo.chop(1);
+                vfo.append("\n");
+                response.append(vfo);
             }
-            currentVfo = params[0];
+            else
+            {
+                currentVfo = vfoFromName(params[0]);
+
+                if (currentVfo == vfoSub && rigCaps->numReceiver > 1)
+                    currentRx = 1;
+                else
+                    currentRx = 0;
+            }
             break;
         case typeString:
         {
@@ -904,27 +937,59 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         }
 
         if (rigCaps->commands.contains(func))
-            queue->add(priorityImmediate, queueItem(func, val,false,currentVfoNum));
+            queue->add(priorityImmediate, queueItem(func, val,false,currentRx));
 
     } else {
         // Simple get command
         cacheItem item;
 
+        // Build QStringList of Prefixes. This is a bit messy, but not sure how else do to it?
+        QStringList prefixes;
+        if (extended) {
+            if (cmd.arg1 != NULL)
+                prefixes.append(QString("%0: ").arg(cmd.arg1));
+            if (cmd.arg2 != NULL)
+                prefixes.append(QString("%0: ").arg(cmd.arg2));
+            if (cmd.arg3 != NULL)
+                prefixes.append(QString("%0: ").arg(cmd.arg3));
+            if (cmd.arg4 != NULL)
+                prefixes.append(QString("%0: ").arg(cmd.arg4));
+            if (cmd.arg5 != NULL)
+                prefixes.append(QString("%0: ").arg(cmd.arg5));
+            if (cmd.arg6 != NULL)
+                prefixes.append(QString("%0: ").arg(cmd.arg6));
+        } else {
+            if (cmd.arg1 != NULL)
+                prefixes.append("");
+            if (cmd.arg2 != NULL)
+                prefixes.append("");
+            if (cmd.arg3 != NULL)
+                prefixes.append("");
+            if (cmd.arg4 != NULL)
+                prefixes.append("");
+            if (cmd.arg5 != NULL)
+                prefixes.append("");
+            if (cmd.arg6 != NULL)
+                prefixes.append("");
+        }
+
+        if (func == funcFreqGet) {
+            func = getFreqFunc(currentVfo);
+        } else if (func == funcModeGet) {
+            func = getModeFunc(currentVfo);
+        }
+
         if (rigCaps->commands.contains(func))
-            item = queue->getCache(func);
+            item = queue->getCache(func,currentRx);
+
         ret = RIG_OK;
         switch (cmd.type){
         case typeBinary:
         {
             bool b = item.value.toBool();
-            if (extended)
+            if (prefixes.length())
             {
-                if (cmd.arg1 != NULL)
-                    response.append(QString("%0: %1").arg(cmd.arg1, b));
-            }
-            else
-            {
-                response.append(QString::number(b));
+                response.append(QString("%0%1").arg(prefixes[0], QString::number(b)));
             }
             break;
         }
@@ -932,56 +997,40 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         case typeShort:
         {
             int i = item.value.toInt();
-            if (extended)
+
+            if (cmd.func == funcLockFunction)
+                i = modeLock;
+
+            if (prefixes.length())
             {
-                if (cmd.arg1 != NULL)
-                    response.append(QString("%0: %1").arg(cmd.arg1, i));
-            }
-            else
-            {
-                response.append(QString::number(i));
+                response.append(QString("%0%1").arg(prefixes[0], QString::number(i)));
             }
             break;
         }
         case typeFloat:
         {
             float f = item.value.toFloat() / 255.0;
-            if (extended)
+            if (prefixes.length())
             {
-                if (cmd.arg1 != NULL)
-                    response.append(QString("%0: %1").arg(cmd.arg1, f));
-            }
-            else
-            {
-                response.append(QString::number(f,typeFloat,6));
+                response.append(QString("%0%1").arg(prefixes[0],QString::number(f,typeFloat,6)));
             }
             break;
         }
         case typeFloatDiv:
         {
             float f = item.value.toFloat() * 10;
-            if (extended)
+            if (prefixes.length())
             {
-                if (cmd.arg1 != NULL)
-                    response.append(QString("%0: %1").arg(cmd.arg1, f));
-            }
-            else
-            {
-                response.append(QString::number(f,typeFloat,6));
+                response.append(QString("%0%1").arg(prefixes[0],QString::number(f,typeFloat,6)));
             }
             break;
         }
         case typeFloatDiv5:
         {
             float f = item.value.toFloat() / 5.1;
-            if (extended)
+            if (prefixes.length())
             {
-                if (cmd.arg1 != NULL)
-                    response.append(QString("%0: %1").arg(cmd.arg1, f));
-            }
-            else
-            {
-                response.append(QString::number(f,typeFloat,6));
+                response.append(QString("%0%1").arg(prefixes[0],QString::number(f,typeFloat,6)));
             }
             break;
         }
@@ -989,47 +1038,72 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         { // Frequency
             freqt f = item.value.value<freqt>();
             //qInfo(logRigCtlD()) << "Got Freq" << funcString[func] << f.Hz << "on VFO" << f.VFO;
-            if (extended)
+            if (prefixes.length())
             {
-                if (cmd.arg1 != NULL)
-                    response.append(QString("%0: %1").arg(cmd.arg1, f.Hz));
-            }
-            else
-            {
-                response.append(QString::number(f.Hz,typeFloat,6));
+                response.append(QString("%0%1").arg(prefixes[0],QString::number(f.Hz)));
             }
             break;
         }
         case typeVFO:
         { // VFO
-            uchar v = item.value.value<uchar>();
-            if (extended)
+            //uchar v = item.value.value<uchar>();
+            if (prefixes.length())
             {
-                if (cmd.arg1 != NULL)
-                    response.append(QString("%0: %1").arg(cmd.arg1, getVfoName(v)));
-            }
-            else
-            {
-                response.append(getVfoName(v));
+                response.append(QString("%0%1").arg(prefixes[0],getVfoName(currentVfo)));
             }
             break;
         }
+        case typeSplitVFO:
+        { // VFO
+            bool v = item.value.value<uchar>();
+            if (prefixes.length()>0)
+                response.append(QString("%0%1").arg(prefixes[0],QString::number(v)));
+            if (prefixes.length()>1)
+                response.append(QString("%0%1").arg(prefixes[1],getVfoName(splitVfo)));
+            break;
+        }
+
+        case typeVFOInfo:
+        {
+            uchar rx = 0;
+            funcs freqFunc = getFreqFunc(vfoFromName(params[0]));
+            funcs modeFunc = getModeFunc(vfoFromName(params[0]));
+
+
+            if (rigCaps->numReceiver > 1 && params.size() && params[0] == "Sub") {
+                rx=1;
+            }
+
+            // VFO Info.
+            if (extended)
+                response.append(QString("%0: %1").arg(cmd.str,params[0]));
+            else
+                response.append(QString("%0").arg(params[0]));
+
+            if (prefixes.length()>1)
+                response.append(QString("%0%1").arg(prefixes[1],QString::number(queue->getCache(freqFunc,rx).value.value<freqt>().Hz)));
+            if (prefixes.length()>2)
+                response.append(QString("%0%1").arg(prefixes[2],getMode(queue->getCache(modeFunc,rx).value.value<modeInfo>())));
+            if (prefixes.length()>3)
+                response.append(QString("%0%1").arg(prefixes[3],QString::number(queue->getCache(funcFilterWidth,rx).value.value<ushort>())));
+            if (prefixes.length()>4)
+                response.append(QString("%0%1").arg(prefixes[4],QString::number(queue->getCache(funcSplitStatus,rx).value.value<duplexMode_t>())));
+            if (prefixes.length()>5)
+                response.append(QString("%0%1").arg(prefixes[5],QString::number(queue->getCache(funcSatelliteMode,rx).value.value<bool>())));
+
+            if (extended)
+                response.append(QString("RPRT %0\n").arg(QString::number(RIG_OK)));
+
+            break;
+        }
+
         case typeMode:
         { // Mode
             modeInfo m = item.value.value<modeInfo>();
-            if (extended)
-            {
-
-                if (cmd.arg1 != NULL)
-                    response.append(QString("%0: %1").arg(cmd.arg1, getMode(m)));
-                if (cmd.arg2 != NULL)
-                    response.append(QString("%0: %1").arg(cmd.arg2, m.pass));
-            }
-            else
-            {
-                response.append(QString("%0").arg(getMode(m)));
-                response.append(QString("%0").arg(m.pass));
-            }
+            if (prefixes.length() > 0)
+                response.append(QString("%0%1").arg(prefixes[0],getMode(m)));
+            if (prefixes.length() > 1)
+                response.append(QString("%0%1").arg(prefixes[1],QString::number(m.pass)));
             break;
         }
         case typeString:
@@ -1053,6 +1127,10 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
 int rigCtlClient::getSubCommand(QStringList& response, bool extended, const commandStruct cmd, const subCommandStruct sub[], QStringList params)
 {
     int ret = -RIG_EINVAL;
+
+    if (rigCaps == Q_NULLPTR)
+        return ret;
+
 
     QString resp;
     // Get the required subCommand and process it
@@ -1085,7 +1163,8 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                     QVariant val;
                     switch (sub[i].type)
                     {
-                    case typeUChar: {
+                    case typeUChar:
+                    {
                         uchar v = static_cast<uchar>(params[1].toInt());
                         if (params[0] == "FBKIN")
                             v = (v << 1) & 0x02; // BREAKIN is not bool!
@@ -1096,7 +1175,7 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                     }
                     case typeFloat:
                         val.setValue(static_cast<ushort>(float(params[1].toFloat() * 255.0)));  // rigctl sends 0.0-1.0, we expect 0-255
-                        qInfo(logRigCtlD()) << "Setting float value" << params[0] << "to" << val << "original" << params[1];
+                        //qInfo(logRigCtlD()) << "Setting float value" << params[0] << "to" << val << "original" << params[1];
                         break;
                     case typeFloatDiv:
                         val.setValue(static_cast<uchar>(float(params[1].toFloat() / 10.0)));
@@ -1112,12 +1191,12 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                         return -RIG_EINVAL;
                     }
                     if (rigCaps->commands.contains(sub[i].func))
-                        queue->add(priorityImmediate, queueItem(sub[i].func, val,false,0));
+                        queue->add(priorityImmediate, queueItem(sub[i].func, val,false,currentRx));
                 } else if (params.size() == 1){
                     // Not expecting a second argument as it is a get so dump the cache
                     cacheItem item;
                     if (rigCaps->commands.contains(sub[i].func))
-                        item = queue->getCache(sub[i].func);
+                        item = queue->getCache(sub[i].func,currentRx);
                     int val = 0;
                     // Special situation for S-Meter
                     if (params[0] == "STRENGTH") {
@@ -1368,4 +1447,44 @@ int rigCtlClient::dumpCaps(QStringList &response, bool extended)
     response.append(QString("DCD type:\tRig capable"));
     response.append(QString("Port type:\tNetwork link"));
     return RIG_OK;
+}
+
+funcs rigCtlClient::getFreqFunc(vfo_t, bool set)
+{
+    funcs func=funcFreqGet;
+
+    if (set)
+        func = funcFreqSet;
+
+    if (rigCaps != Q_NULLPTR) {
+        if (currentVfo == vfoMain || currentVfo == vfoSub) {
+            func = ((rigCaps->commands.contains(funcFreq)) ? funcFreq: func);
+        } else if (currentVfo == vfoA){
+            func = ((rigCaps->commands.contains(funcSelectedFreq)) ? funcSelectedFreq: func);
+        } else if (currentVfo == vfoB){
+            func = ((rigCaps->commands.contains(funcUnselectedFreq)) ? funcUnselectedFreq: func);
+        }
+        //qDebug(logRigCtlD) << "Frequency function is:" << funcString[func];
+    }
+    return func;
+}
+
+funcs rigCtlClient::getModeFunc(vfo_t, bool set)
+{
+    funcs func=funcModeGet;
+
+    if (set)
+        func = funcModeSet;
+
+    if (rigCaps != Q_NULLPTR) {
+        if (currentVfo == vfoMain || currentVfo == vfoSub) {
+            func = ((rigCaps->commands.contains(funcMode)) ? funcMode: func);
+        } else if (currentVfo == vfoA){
+            func = ((rigCaps->commands.contains(funcSelectedMode)) ? funcSelectedMode: func);
+        } else if (currentVfo == vfoB){
+            func = ((rigCaps->commands.contains(funcUnselectedMode)) ? funcUnselectedMode: func);
+        }
+        //qDebug(logRigCtlD) << "Mode function is:" << funcString[func];
+    }
+    return func;
 }

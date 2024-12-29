@@ -346,10 +346,10 @@ private:
     bool chkVfoEecuted=false;
     unsigned long crcTable[256];
     unsigned long doCrc(quint8* p, size_t n);
-    funcs currentVfoFreqFunc=funcFreq;
-    funcs currentVfoModeFunc=funcMode;
-    QString currentVfo ="Main";
-    quint8 currentVfoNum=0;
+    //funcs currentVfoFreqFunc=funcFreq;
+    //funcs currentVfoModeFunc=funcMode;
+    //QString currentVfo ="Main";
+    //quint8 currentVfoNum=0;
     void genCrc(unsigned long crcTable[]);
     QString getMode(modeInfo mode);
     bool getMode(QString modeString, modeInfo& mode);
@@ -358,13 +358,19 @@ private:
     quint64 getRadioModes(QString mode = "");
     QString getAntName(quint8 ant);
     quint8 antFromName(QString name);
-    quint8 vfoFromName(QString vfo);
-    QString getVfoName(quint8 vfo);
+    vfo_t vfoFromName(QString vfo);
+    QString getVfoName(vfo_t vfo);
+    funcs getFreqFunc(vfo_t, bool set=false);
+    funcs getModeFunc(vfo_t, bool set=false);
     int getCommand(QStringList& respone, bool extended, const commandStruct cmd, QStringList params );
     int getSubCommand(QStringList& response, bool extended, const commandStruct cmd, const subCommandStruct sub[], QStringList params);
     int dumpState(QStringList &response, bool extended);
     int dumpCaps(QStringList &response, bool extended);
     int getCalibratedValue(quint8 meter,cal_table_t cal);
+    vfo_t currentVfo = vfoUnknown;
+    vfo_t splitVfo = vfoUnknown;
+    uchar currentRx = 0;
+    uchar modeLock = 1;
 };
 
 

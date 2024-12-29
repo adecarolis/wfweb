@@ -11,7 +11,7 @@
 
 
 enum valueType { typeNone=0, typeFloat, typeFloatDiv, typeFloatDiv5, typeUChar, typeUShort,
-                 typeChar, typeShort, typeBinary , typeFreq, typeMode, typeLevel, typeVFO, typeString, typedB};
+                 typeChar, typeShort, typeBinary , typeFreq, typeMode, typeLevel, typeVFO, typeString, typedB, typeSplitVFO,typeVFOInfo};
 
 enum connectionStatus_t { connDisconnected, connConnecting, connConnected };
 
@@ -83,7 +83,9 @@ enum vfo_t {
     vfoA=0,
     vfoB=1,
     vfoMain = 0xD0,
-    vfoSub = 0xD1
+    vfoSub = 0xD1,
+    vfoMem = 0xfe,
+    vfoUnknown = 0xff
 };
 
 enum duplexMode_t {

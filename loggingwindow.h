@@ -58,9 +58,12 @@ private slots:
 
     void on_commDebugChk_clicked(bool checked);
 
+    void on_rigctlDebugChk_clicked(bool checked);
+
 signals:
     void setDebugMode(bool debugOn);
     void setInsaneLoggingMode(bool insaneLoggingOn);
+    void setRigctlLoggingMode(bool rigctlLoggingOn);
 
 private:
     Ui::loggingWindow* ui;

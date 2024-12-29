@@ -646,6 +646,12 @@ void icomCommander::parseData(QByteArray dataInput)
                     break;
                 }
                 parseCommand();
+                // We can use this to indicate power status I think
+                if (!rigPoweredOn) {
+                    queue->receiveValue(funcPowerControl,true,0);
+                    rigPoweredOn = true;
+                }
+
                 break;
             case '\x00':
                 // data send initiated by the rig due to user control
@@ -655,9 +661,13 @@ void icomCommander::parseData(QByteArray dataInput)
                     // This is an echo of our own broadcast request.
                     // The data are "to 00" and "from E1"
                     // Don't use it!
-                    qDebug(logRig()) << "Echo caught:" << data.toHex(' ');
-                    queue->message("Radio is available but may be powered-off");
-
+                    // We can use this to indicate power status I think.
+                    if (rigPoweredOn) {
+                        qDebug(logRig()) << "Echo caught:" << data.toHex(' ');
+                        queue->message("Radio is available but may be powered-off");
+                        queue->receiveValue(funcPowerControl,false,0);
+                        rigPoweredOn = false;
+                    }
                 } else {
                     payloadIn = data.right(data.length() - 4); // Removes FE FE E0 94 part
                     if(payloadIn.contains("\xFE"))
@@ -1347,6 +1357,7 @@ void icomCommander::determineRigCaps()
     // Populate rigcaps
 
     rigCaps.modelName = settings->value("Model", "").toString();
+    rigCaps.rigctlModel = settings->value("RigCtlDModel", 0).toInt();
     qInfo(logRig()) << QString("Loading Rig: %0 from %1").arg(rigCaps.modelName,rigCaps.filename);
 
     rigCaps.numReceiver = settings->value("NumberOfReceivers",1).toUInt();

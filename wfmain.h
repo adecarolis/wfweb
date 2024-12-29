@@ -418,6 +418,7 @@ private slots:
     void logCheck();
     void setDebugLogging(bool debugModeOn);
     void setInsaneDebugLogging(bool insaneLoggingOn);
+    void setRigctlDebugLogging(bool rigctlLoggingOn);
 
     void buttonControl(const COMMAND* cmd);
 

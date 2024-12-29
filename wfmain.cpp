@@ -22,6 +22,7 @@ bool debugModeLogging = false;
 #endif
 
 bool insaneDebugLogging = false;
+bool rigctlDebugLogging = false;
 
 wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode, QWidget *parent ) :
     QMainWindow(parent),
@@ -1850,8 +1851,6 @@ void wfmain::loadSettings()
 
     prefs.enableRigCtlD = settings->value("EnableRigCtlD", defPrefs.enableRigCtlD).toBool();
     prefs.rigCtlPort = settings->value("RigCtlPort", defPrefs.rigCtlPort).toInt();
-    // Call the function to start rigctld if enabled.
-    enableRigCtl(prefs.enableRigCtlD);
 
     prefs.tcpPort = settings->value("TCPServerPort", defPrefs.tcpPort).toInt();
     prefs.tciPort = settings->value("TCIServerPort", defPrefs.tciPort).toInt();
@@ -2725,7 +2724,8 @@ void wfmain::extChangedLanPref(prefLanItem i)
         ui->connectBtn->setEnabled(true); // always set, not sure why.
         break;
     case l_enableRigCtlD:
-        enableRigCtl(prefs.enableRigCtlD);
+        if (connStatus == connConnected)
+            enableRigCtl(prefs.enableRigCtlD);
         break;
     case l_rigCtlPort:
         // no action
@@ -5039,6 +5039,7 @@ void wfmain::initLogging()
 
     connect(logWindow, SIGNAL(setDebugMode(bool)), this, SLOT(setDebugLogging(bool)));
     connect(logWindow, SIGNAL(setInsaneLoggingMode(bool)), this, SLOT(setInsaneDebugLogging(bool)));
+    connect(logWindow, SIGNAL(setRigctlLoggingMode(bool)), this, SLOT(setRigctlDebugLogging(bool)));
 
     // Interval timer for log window updates:
     logCheckingTimer.setInterval(100);
@@ -5076,6 +5077,11 @@ void wfmain::setInsaneDebugLogging(bool insaneLoggingOn)
     insaneDebugLogging = insaneLoggingOn;
 }
 
+void wfmain::setRigctlDebugLogging(bool rigctlLoggingOn)
+{
+    rigctlDebugLogging = rigctlLoggingOn;
+}
+
 void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
 {
     // Open stream file writes
@@ -5092,6 +5098,10 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     }
 
     if( (type == QtDebugMsg) && (!insaneDebugLogging) && (qstrncmp(context.category, "rigTraffic", 10)==0) ) {
+        return;
+    }
+
+    if( (type == QtDebugMsg) && (!rigctlDebugLogging) && (qstrncmp(context.category, "rigctld", 10)==0) ) {
         return;
     }
 
@@ -5160,10 +5170,12 @@ void wfmain::connectionHandler(bool connect)
 
     emit connectionStatus(connect); // Signal any other parts that need to know if we are connecting/connected.
 
+
     if (connect) {
         openRig();
     } else {
         ui->connectBtn->setText("Connect to Radio");
+        enableRigCtl(false);
         removeRig();
     }
 
@@ -5288,17 +5300,26 @@ void wfmain::displayReceiver(uchar rx, bool active, bool swtch)
 
 void wfmain::receiveValue(cacheItem val){
 
-
     uchar vfo=0;
-    if (val.receiver >= receivers.size())
+
+    // Sometimes we can receive data before the rigCaps have been determined, so return if this happens:
+
+    if (rigCaps == Q_NULLPTR)
     {
-        qCritical(logSystem()) << "Data received for VFO that doesn't exist!" << val.receiver;
+        qWarning(logSystem()) << "Data received before we have rigCaps(), aborting";
+        return;
+    }
+    else if (val.receiver >= receivers.size())
+    {
+        qWarning(logSystem()) << "Data received for Radio/VFO that doesn't exist!" << val.receiver;
         return;
     }
 
     /* Certain radios (IC-9700) cannot provide direct access to Sub receiver
      * In this situation, set the receiver to currentReceiver so all commands received
      * work on this receiver only.
+     *
+     *
      */
     if (!rigCaps->subDirect && val.receiver != currentReceiver &&
             val.command != funcSelectedFreq && val.command != funcUnselectedFreq &&
@@ -5802,6 +5823,9 @@ void wfmain::receiveValue(cacheItem val){
     // If we use it for get commands, need to parse the \x29\x<VFO> first.
     case funcMainSubPrefix:
         break;
+    case funcPowerControl:
+        // We could indicate the rig being powered-on somehow?
+        break;
     default:
         qWarning(logSystem()) << "Unhandled command received from rigcommander()" << funcString[val.command] << "Contact support!";
         break;
@@ -5999,7 +6023,6 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
             receiver->clearMode();
             for (auto &m: rigCaps->modes)
             {
-                //ui->modeSelectCombo->addItem(m.name, m.mk);
                 receiver->addMode(m.name+" Mode",QVariant::fromValue(m));
             }
 
@@ -6120,6 +6143,9 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
 
         ui->connectBtn->setText("Disconnect from Radio"); // We must be connected now.
         connStatus = connConnected;
+
+        enableRigCtl(prefs.enableRigCtlD);
+
         if(usingLAN)
         {
             ui->afGainSlider->setValue(prefs.localAFgain);
