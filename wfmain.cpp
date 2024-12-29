@@ -6000,7 +6000,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
             for (auto &m: rigCaps->modes)
             {
                 //ui->modeSelectCombo->addItem(m.name, m.mk);
-                receiver->addMode("Mode "+m.name,QVariant::fromValue(m));
+                receiver->addMode(m.name+" Mode",QVariant::fromValue(m));
             }
 
             receiver->clearFilter();
