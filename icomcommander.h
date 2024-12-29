@@ -22,30 +22,30 @@ public:
     ~icomCommander();
 
 public slots:
-    void process();
-    void commSetup(rigTypedef rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf);
-    void commSetup(rigTypedef rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
-    void closeComm();
-    void setRTSforPTT(bool enabled);
+    void process() override;
+    void commSetup(rigTypedef rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf) override;
+    void commSetup(rigTypedef rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp) override;
+    void closeComm() override;
+    void setRTSforPTT(bool enabled) override;
 
     // Power:
-    void powerOn();
-    void powerOff();
+    void powerOn() override;
+    void powerOff() override;
 
 
     // Rig ID and CIV:
-    void getRigID();
-    void findRigs();
-    void setRigID(quint8 rigID);
-    void setCIVAddr(quint8 civAddr);
+    void getRigID() override;
+    void findRigs() override;
+    void setRigID(quint8 rigID) override;
+    void setCIVAddr(quint8 civAddr) override;
 
     // UDP:
-    void handleNewData(const QByteArray& data);
-    void receiveBaudRate(quint32 baudrate);
+    void handleNewData(const QByteArray& data) override;
+    void receiveBaudRate(quint32 baudrate) override;
 
     // Housekeeping:
-    void receiveCommand(funcs func, QVariant value, uchar receiver);
-    void setAfGain(quint8 level);
+    void receiveCommand(funcs func, QVariant value, uchar receiver) override;
+    void setAfGain(quint8 level) override;
 
 signals:
     // All signals are defined in rigcommander.h as they should be common for all rig types.

@@ -1,5 +1,5 @@
 [General]
-Version=1.94
+Version=2.00
 
 [Rig]
 Manufacturer=Icom
@@ -151,21 +151,28 @@ Commands\18\Max=9
 Commands\18\Command29=false
 Commands\18\GetCommand=true
 Commands\18\SetCommand=true
-Commands\19\Type=Command Error FA
-Commands\19\String=\\xfa
+Commands\19\Type=Transceiver Status
+Commands\19\String=\\x1c\\x00
 Commands\19\Min=0
-Commands\19\Max=0
+Commands\19\Max=1
 Commands\19\Command29=false
-Commands\19\GetCommand=false
-Commands\19\SetCommand=false
-Commands\20\Type=Command OK FB
-Commands\20\String=\\xfb
+Commands\19\GetCommand=true
+Commands\19\SetCommand=true
+Commands\20\Type=Command Error FA
+Commands\20\String=\\xfa
 Commands\20\Min=0
 Commands\20\Max=0
 Commands\20\Command29=false
 Commands\20\GetCommand=false
 Commands\20\SetCommand=false
-Commands\size=20
+Commands\21\Type=Command OK FB
+Commands\21\String=\\xfb
+Commands\21\Min=0
+Commands\21\Max=0
+Commands\21\Command29=false
+Commands\21\GetCommand=false
+Commands\21\SetCommand=false
+Commands\size=21
 Periodic\1\Priority=Medium
 Periodic\1\Command=Freq Set
 Periodic\1\VFO=0

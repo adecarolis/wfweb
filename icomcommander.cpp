@@ -2669,13 +2669,6 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 queue->addUnique(priorityImmediate,func,false,receiver);
             }
 
-            // Special option to capture RTS PTT and fake a return value
-            if (func == funcTransceiverStatus && cmd.data.startsWith("RTS")) {
-                qInfo(logRig()) << "Setting RTS for PTT to" << value.value<bool>();
-                emit toggleRTS(value.value<bool>());
-                queue->receiveValue(func,value,receiver);
-                return;
-            }
 
             if (!strcmp(value.typeName(),"bool"))
             {

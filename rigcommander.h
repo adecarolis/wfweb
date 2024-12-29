@@ -54,12 +54,13 @@ public slots:
     void radioUsage(quint8 radio, bool admin, quint8 busy, QString name, QString ip);
     void setCurrentRadio(quint8 radio);
     void getDebug();
-    void dataFromServer(QByteArray data);
 
+    void dataFromServer(QByteArray data);
     virtual void process();
     virtual void commSetup(rigTypedef rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf);
     virtual void commSetup(rigTypedef rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     virtual void closeComm();
+
     virtual void setRTSforPTT(bool enabled);
 
     // Power:
