@@ -84,7 +84,7 @@ sudo zypper in --type pattern devel_basis
 for qt5:
 
 sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel libqt5-qtmultimedia-devel lv2-devel libopus-devel eigen3-devel libQt5Xml-devel portaud
-io-devel rtaudio-devel libqt5-qtgamepad-devel libQt5Gamepad5 libqt5-qtwebsockets-devel-5.15.16+kde2-1.1.x86_64 libqt5-qtgamepad-devel-5.15.16+kde0-1.1.x86_64 portaudio-devel-190700_20210406-1.11.x86_64 rtaudio-devel-6.0.1-1.3.x86_64 libhidapi-devel-0.14.0-1.3.x86_64
+io-devel rtaudio-devel libqt5-qtgamepad-devel libQt5Gamepad5 libqt5-qtwebsockets-devel libqt5-qtgamepad-devel portaudio-devel rtaudio-devel libhidapi-devel
 
 mkdir -p ~/src/build
 cd ~/src
