@@ -78,10 +78,14 @@ sudo usermod -aG dialout $USER
 install wfview on suse 15.3 & up, sles 15.x or tumbleweed; this was done on a clean install/updated OS. 
 
 
+There are two options, QT5 (out of the box)  and QT6 (almost out of the box)
+
+
+for qt5 and 6:
 
 sudo zypper in --type pattern devel_basis
 
-for qt5:
+for qt5 only:
 
 sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel libqt5-qtmultimedia-devel lv2-devel libopus-devel eigen3-devel libQt5Xml-devel portaud
 io-devel rtaudio-devel libqt5-qtgamepad-devel libQt5Gamepad5 libqt5-qtwebsockets-devel libqt5-qtgamepad-devel portaudio-devel rtaudio-devel libhidapi-devel
@@ -94,7 +98,30 @@ qmake-qt5 ../wfview/wfview.pro
 make
 sudo make install
 
-wfview is now installed in /usr/local/bin
+
+for qt6 only:
+sudo zypper in qt6-base-common-devel qt6-gui-devel qt6-serialport-devel qt6-multimedia-devel qt6-printsupport-devel qt6-websockets-devel qt6-widgets-devel rtaudio-devel libhidapi-devel qt6-xml-devel
+
+as there is no qt6 version so far for qcustomplot yes for suse:
+
+download qnd rpm -ivh customplot-qt5 qcustomplot-qt5-devel qcustomplot-qt6 qcustomplot-qt6-devel rpm's from fedora41
+(or better, add repo and install from there)
+
+Now:
+
+mkdir -p ~/src/build
+cd ~/src
+git clone https://gitlab.com/eliggett/wfview.git
+cd build
+qmake6 ../wfview/wfview.pro
+make
+
+the linking fails because of slightly different cusomplot names so:
+
+g++ -O2 -s -Wl,-O1 -Wl,-rpath,/usr/lib64 -Wl,-rpath-link,/usr/lib64 -o wfview  main.o bandbuttons.o cachingqueue.o cwsender.o firsttimesetup.o freqctrl.o frequencyinputwidget.o cwsidetone.o debugwindow.o icomcommander.o loggingwindow.o scrolltest.o settingswidget.o memories.o rigcreator.o spectrumscope.o tablewidget.o tciaudiohandler.o tciserver.o wfmain.o commhandler.o rigcommander.o freqmemory.o rigidentities.o udpbase.o udphandler.o udpcivdata.o udpaudio.o logcategories.o pahandler.o rthandler.o audiohandler.o audioconverter.o calibrationwindow.o satellitesetup.o udpserver.o meter.o qledlabel.o pttyhandler.o resample.o repeatersetup.o rigctld.o usbcontroller.o controllersetup.o selectradio.o tcpserver.o cluster.o database.o aboutbox.o audiodevices.o qrc_style.o qrc_resources.o moc_wfmain.o moc_bandbuttons.o moc_cachingqueue.o moc_commhandler.o moc_cwsender.o moc_firsttimesetup.o moc_freqctrl.o moc_frequencyinputwidget.o moc_cwsidetone.o moc_debugwindow.o moc_icomcommander.o moc_loggingwindow.o moc_memories.o moc_rigcommander.o moc_rigcreator.o moc_scrolltest.o moc_settingswidget.o moc_spectrumscope.o moc_tablewidget.o moc_tciaudiohandler.o moc_tciserver.o moc_udphandler.o moc_udpcivdata.o moc_udpaudio.o moc_pahandler.o moc_rthandler.o moc_audiohandler.o moc_audioconverter.o moc_calibrationwindow.o moc_satellitesetup.o moc_udpserver.o moc_meter.o moc_qledlabel.o moc_pttyhandler.o moc_repeatersetup.o moc_rigctld.o moc_usbcontroller.o moc_controllersetup.o moc_selectradio.o moc_tcpserver.o moc_cluster.o moc_aboutbox.o moc_audiodevices.o   -lpulse -lpulse-simple -lrtaudio -ludev -lportaudio -L./ -lhidapi-libusb -lopus /usr/lib64/libQt6Multimedia.so /usr/lib64/libQt6PrintSupport.so /usr/lib64/libQt6Widgets.so /usr/lib64/libQt6Gui.so /usr/lib64/libGLX.so /usr/lib64/libOpenGL.so /usr/lib64/libQt6SerialPort.so /usr/lib64/libQt6WebSockets.so /usr/lib64/libQt6Network.so /usr/lib64/libQt6Xml.so /usr/lib64/libQt6Core.so /usr/lib64/libqcustomplot-qt6.so -lpthread -lGL
+
+sudo make install
+
 
 
 ---
