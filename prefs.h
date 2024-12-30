@@ -67,7 +67,9 @@ enum prefColItem {
     col_waterfallAxis = 1 << 25,
     col_waterfallText = 1 << 26,
     col_clusterSpots = 1 << 27,
-    col_all = 1 << 28
+    col_buttonOff = 1 << 28,
+    col_buttonOn = 1 << 29,
+    col_all = 1 << 30
 };
 
 enum prefRsItem {

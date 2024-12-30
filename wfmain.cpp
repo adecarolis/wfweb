@@ -1797,6 +1797,8 @@ void wfmain::loadSettings()
             p->meterLowerLine = colorFromString(settings->value("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb)).toString());
             p->meterLowText = colorFromString(settings->value("meterLowText", p->meterLowText.name(QColor::HexArgb)).toString());
             p->clusterSpots = colorFromString(settings->value("clusterSpots", p->clusterSpots.name(QColor::HexArgb)).toString());
+            p->buttonOff = colorFromString(settings->value("buttonOff", p->buttonOff.name(QColor::HexArgb)).toString());
+            p->buttonOn = colorFromString(settings->value("buttonOn", p->buttonOn.name(QColor::HexArgb)).toString());
         }
     }
     settings->endArray();
@@ -2511,7 +2513,20 @@ void wfmain::extChangedColPref(prefColItem i)
     // These are all updated by the widget itself
     switch(i)
     {
+
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
+
     // Any updated scope colors will cause the scope colorPreset to be changed.
+    case col_buttonOff:
+    case col_buttonOn:
+        ui->scopeDualBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
+                                        .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
+        ui->dualWatchBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
+                                        .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
+
     case col_grid:
     case col_axis:
     case col_text:
@@ -2550,6 +2565,11 @@ void wfmain::extChangedColPref(prefColItem i)
         ui->meter2Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
         ui->meter3Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
         break;
+
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
     default:
         qWarning(logSystem()) << "Cannot update wfmain col pref" << (int)i;
     }
@@ -3059,6 +3079,8 @@ void wfmain::saveSettings()
         settings->setValue("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb));
         settings->setValue("meterLowText", p->meterLowText.name(QColor::HexArgb));
         settings->setValue("clusterSpots", p->clusterSpots.name(QColor::HexArgb));
+        settings->setValue("buttonOff", p->buttonOff.name(QColor::HexArgb));
+        settings->setValue("buttonOn", p->buttonOn.name(QColor::HexArgb));
     }
     settings->endArray();
     settings->endGroup();
@@ -3760,6 +3782,10 @@ void wfmain::setDefaultColors(int presetNumber)
 
     p->clusterSpots = QColor(Qt::red);
 
+    p->buttonOff = QColor("transparent");
+    p->buttonOn = QColor(0x50,0x50,0x50);
+
+
     //qInfo(logSystem()) << "default color preset [" << pn << "] set to pn.presetNum index [" << p->presetNum << "]" << ", with name " << *(p->presetName);
 
     switch (presetNumber)
@@ -3793,6 +3819,8 @@ void wfmain::setDefaultColors(int presetNumber)
             p->wfGrid = QColor("transparent");
             p->wfText = QColor(Qt::white);
             p->clusterSpots = QColor(Qt::red);
+            p->buttonOff = QColor("transparent");
+            p->buttonOn = QColor(0x50,0x50,0x50);
             break;
         }
         case 1:
@@ -3822,6 +3850,8 @@ void wfmain::setDefaultColors(int presetNumber)
             p->wfGrid = QColor("transparent");
             p->wfText = QColor(Qt::black);
             p->clusterSpots = QColor(Qt::red);
+            p->buttonOff = QColor("transparent");
+            p->buttonOn = QColor(0x50,0x50,0x50);
             break;
         }
 
@@ -5010,6 +5040,12 @@ void wfmain::useColorPreset(colorPrefsType *cp)
     ui->meterSPoWidget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
     ui->meter2Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
     ui->meter3Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
+
+    ui->scopeDualBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
+                                    .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
+    ui->dualWatchBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
+                                    .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
+
     foreach(auto receiver, receivers) {
         receiver->colorPreset(cp);
     }

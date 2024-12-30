@@ -696,6 +696,18 @@ void settingswidget::updateColPref(prefColItem col)
         setColorElement(c, ui->colorSwatchClusterSpots, ui->colorEditClusterSpots);
         break;
     }
+    case col_buttonOff:
+    {
+        QColor c = (colorPreset[pos].buttonOff);
+        setColorElement(c, ui->colorSwatchButtonOff, ui->colorEditButtonOff);
+        break;
+    }
+    case col_buttonOn:
+    {
+        QColor c = (colorPreset[pos].buttonOn);
+        setColorElement(c, ui->colorSwatchButtonOn, ui->colorEditButtonOn);
+        break;
+    }
     default:
         qWarning(logGui()) << "Did not understand color pref update item " << (int)col;
         break;
@@ -2333,6 +2345,8 @@ void settingswidget::loadColorPresetToUIandPlots(int presetNumber)
     setEditAndLedFromColor(p.wfText, ui->colorEditWfText, ui->colorSwatchWfText);
 
     setEditAndLedFromColor(p.clusterSpots, ui->colorEditClusterSpots, ui->colorSwatchClusterSpots);
+    setEditAndLedFromColor(p.buttonOff, ui->colorEditButtonOff, ui->colorSwatchButtonOff);
+    setEditAndLedFromColor(p.buttonOn, ui->colorEditButtonOn, ui->colorSwatchButtonOn);
 
     //useColorPreset(&p);
     prefs->currentColorPresetNumber = presetNumber;
@@ -2815,6 +2829,37 @@ void settingswidget::on_colorEditClusterSpots_editingFinished()
     QColor* c = &(colorPreset[pos].clusterSpots);
     setColorLineEditOperations(c, ui->colorEditClusterSpots, ui->colorSwatchClusterSpots);
     emit changedColPref(col_clusterSpots);
+}
+
+
+// Buttons:
+void settingswidget::on_colorSetBtnButtonOff_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].buttonOff);
+    setColorButtonOperations(c, ui->colorEditButtonOff, ui->colorSwatchButtonOff);
+    emit changedColPref(col_buttonOff);
+}
+void settingswidget::on_colorEditButtonOff_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].buttonOff);
+    setColorLineEditOperations(c, ui->colorEditButtonOff, ui->colorSwatchButtonOff);
+    emit changedColPref(col_buttonOff);
+}
+void settingswidget::on_colorSetBtnButtonOn_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].buttonOn);
+    setColorButtonOperations(c, ui->colorEditButtonOn, ui->colorSwatchButtonOn);
+    emit changedColPref(col_buttonOn);
+}
+void settingswidget::on_colorEditButtonOn_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].buttonOn);
+    setColorLineEditOperations(c, ui->colorEditButtonOn, ui->colorSwatchButtonOn);
+    emit changedColPref(col_buttonOn);
 }
 
 // ----------   End color UI slots        ----------//

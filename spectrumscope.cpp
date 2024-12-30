@@ -660,6 +660,9 @@ void spectrumScope::colorPreset(colorPrefsType *cp)
 
     waterfall->setBackground(cp->wfBackground);
 
+    holdButton->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border:1px solid;}")
+                                        .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
+
 }
 
 bool spectrumScope::updateScope(scopeData data)

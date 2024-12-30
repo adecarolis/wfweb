@@ -279,6 +279,15 @@ private slots:
     void on_decimalSeparatorsCombo_currentIndexChanged(int index);
     void on_groupSeparatorsCombo_currentIndexChanged(int index);
 
+    void on_colorSetBtnButtonOff_clicked();
+
+    void on_colorEditButtonOff_editingFinished();
+
+    void on_colorSetBtnButtonOn_clicked();
+
+    void on_colorEditButtonOn_editingFinished();
+
+
 
 private:
     Ui::settingswidget *ui;
