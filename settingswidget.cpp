@@ -1166,7 +1166,7 @@ void settingswidget::setAudioDevicesUI()
     ui->serverRXAudioInputCombo->clear();
     ui->serverRXAudioInputCombo->addItems(audioDev->getInputs());
     ui->serverRXAudioInputCombo->setCurrentIndex(-1);
-    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn()+30));
+    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn() + 30));
     ui->serverRXAudioInputCombo->blockSignals(false);
 
     prefs->rxSetup.type = prefs->audioSystem;

@@ -901,11 +901,6 @@ void wfmain::connectSettingsWidget()
     connect(setupui, SIGNAL(changedServerPref(prefServerItem)), this, SLOT(extChangedServerPref(prefServerItem)));
     connect(setupui, SIGNAL(changedServerPrefs(quint64)), this, SLOT(extChangedServerPrefs(quint64)));
 
-    //connect(setupui, SIGNAL(changedAudioInputCombo(int)), this, SLOT(changedAudioInput(int)));
-    //connect(setupui, SIGNAL(changedAudioOutputCombo(int)), this, SLOT(changedAudioOutput(int)));
-    //connect(setupui, SIGNAL(changedServerRXAudioInputCombo(int)), this, SLOT(changedServerRXAudioInput(int)));
-    //connect(setupui, SIGNAL(changedServerTXAudioOutputCombo(int)), this, SLOT(changedServerTXAudioOutput(int)));
-
     connect(this, SIGNAL(connectionStatus(bool)), setupui, SLOT(connectionStatus(bool)));
     connect(setupui, SIGNAL(connectButtonPressed()), this, SLOT(handleExtConnectBtn()));
     connect(setupui, SIGNAL(saveSettingsButtonPressed()), this, SLOT(on_saveSettingsBtn_clicked()));
