@@ -625,6 +625,7 @@ void wfmain::makeRig()
 void wfmain::removeRig()
 {
     ConnectionTimer.stop();
+
     if (rigThread != Q_NULLPTR)
     {
         rigThread->quit();
@@ -645,6 +646,12 @@ void wfmain::removeRig()
         cw = Q_NULLPTR;
         ui->cwButton->setEnabled(false);
     }
+
+    for (const auto &receiver:receivers) {
+        delete receiver;
+    }
+    receivers.clear();
+
 }
 
 
@@ -2399,22 +2406,22 @@ void wfmain::extChangedIfPref(prefIfItem i)
         // depreciated;
         break;
     case if_underlayMode:
-        foreach (auto receiver, receivers) {
+        for (const auto& receiver: receivers) {
             receiver->setUnderlayMode(prefs.underlayMode);
         }
         break;
     case if_underlayBufferSize:
-        foreach (auto receiver, receivers) {
+        for (const auto& receiver: receivers) {
             receiver->resizePlasmaBuffer(prefs.underlayBufferSize);
         }
         break;
     case if_wfAntiAlias:
-        foreach (auto receiver, receivers) {
+        for (const auto& receiver: receivers) {
             receiver->wfAntiAliased(prefs.wfAntiAlias);
         }
         break;
     case if_wfInterpolate:
-        foreach (auto receiver, receivers) {
+        for (const auto& receiver: receivers) {
             receiver->wfInterpolate(prefs.wfInterpolate);
         }
         break;
@@ -2467,7 +2474,7 @@ void wfmain::extChangedIfPref(prefIfItem i)
         break;
     }
     case if_frequencyUnits:
-        foreach (auto receiver, receivers)
+        for (const auto& receiver: receivers)
         {
             receiver->setUnit((FctlUnit)prefs.frequencyUnits);
         }
@@ -2480,7 +2487,7 @@ void wfmain::extChangedIfPref(prefIfItem i)
         bandbtns->setRegion(prefs.region);
         // Allow to fallthrough so that band indicators are updated correctly on region change.
     case if_showBands:
-        foreach (auto receiver, receivers)
+        for (const auto& receiver: receivers)
         {
             receiver->setBandIndicators(prefs.showBands, prefs.region, &rigCaps->bands);
         }
@@ -2489,7 +2496,7 @@ void wfmain::extChangedIfPref(prefIfItem i)
 #pragma GCC diagnostic pop
 #endif
     case if_separators:
-        foreach (auto receiver, receivers)
+        for (const auto& receiver: receivers)
         {
             receiver->setSeparators(prefs.groupSeparator,prefs.decimalSeparator);
         }
@@ -2544,7 +2551,7 @@ void wfmain::extChangedColPref(prefColItem i)
     case col_waterfallAxis:
     case col_waterfallText:
     case col_clusterSpots:
-        foreach (auto receiver, receivers)
+        for (const auto& receiver: receivers)
         {
             receiver->colorPreset(cp);
         }
@@ -2685,7 +2692,7 @@ void wfmain::extChangedCtPref(prefCtItem i)
     case ct_enablePTT:
         break;
     case ct_niceTS:
-        foreach (auto receiver, receivers)
+        for (const auto& receiver: receivers)
         {
             receiver->setTuningFloorZeros(prefs.niceTS);
         }
@@ -3434,7 +3441,7 @@ void wfmain::on_tuningStepCombo_currentIndexChanged(int index)
     for (auto &s: rigCaps->steps) {
         if (tsWfScrollHz == s.hz)
         {
-            foreach (auto receiver, receivers)
+            for (const auto& receiver: receivers)
             {
                 receiver->setStepSize(s.hz);
             }
@@ -3689,7 +3696,7 @@ void wfmain:: getInitialRigState()
         }
     }
 
-    foreach (auto receiver, receivers)
+    for (const auto& receiver: receivers)
     {
         receiver->enableScope(this->rigCaps->commands.contains(funcScopeMode));
         //qInfo(logSystem()) << "Display Settings start:" << start << "end:" << end;
@@ -4546,7 +4553,7 @@ void wfmain::receiveTuningStep(quint8 step)
             if (step == s.num && ui->tuningStepCombo->currentData().toUInt() != s.hz) {
                 qDebug(logSystem()) << QString("Received new Tuning Step %0").arg(s.name);
                 ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->findData(s.hz));
-                foreach (auto receiver, receivers)
+                for (const auto& receiver: receivers)
                 {
                     receiver->setStepSize(s.hz);
                 }
@@ -5041,7 +5048,7 @@ void wfmain::useColorPreset(colorPrefsType *cp)
     ui->dualWatchBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
                                     .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
 
-    foreach(auto receiver, receivers) {
+    for (const auto& receiver: receivers) {
         receiver->colorPreset(cp);
     }
     if (this->colorPrefs != Q_NULLPTR)
@@ -5501,7 +5508,7 @@ void wfmain::receiveValue(cacheItem val){
 */
     case funcCwPitch:
         // There is only a single CW Pitch setting, so send to all scopes
-        foreach (auto receiver, receivers) {
+        for (const auto& receiver: receivers) {
             receiver->receiveCwPitch(val.value.value<quint16>());
         }
         // Also send to CW window
@@ -6021,7 +6028,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
 
         if(rigCaps->hasSpectrum)
         {
-            foreach (auto receiver, receivers)
+            for (const auto& receiver: receivers)
             {
                 receiver->prepareScope(rigCaps->spectAmpMax, rigCaps->spectLenMax);
             }
@@ -6061,7 +6068,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         ui->voxEnableChk->setEnabled(rigCaps->commands.contains(funcVox));
         ui->digiselEnableChk->setEnabled(rigCaps->commands.contains(funcDigiSel));
 
-        foreach (auto receiver, receivers) {
+        for (const auto& receiver: receivers) {
             if (receiver->getReceiver() == 0) {
                 // Report scope redraw time to Select Radio window (only scope 0)
                 connect(receiver,SIGNAL(spectrumTime(double)),selRad,SLOT(spectrumTime(double)));
