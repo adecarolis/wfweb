@@ -129,13 +129,14 @@ void commHandler::sendDataOut(const QByteArray &writeData)
         if(writeData.endsWith(QByteArrayLiteral("\x1C\x00\xFD")))
         {
             // Query
-            //qDebug(logSerial()) << "Looks like PTT Query";
             bool ptt = false;
 
             if (pttType == pttRTS)
                 ptt = port->isRequestToSend();
             else if (pttType == pttDTR)
                 ptt = port->isDataTerminalReady();
+
+            //qDebug(logSerial()) << "Looks like PTT Query, ptt is:"<<ptt;
 
             QByteArray pttreturncmd = QByteArray("\xFE\xFE");
             pttreturncmd.append(writeData.at(3));
@@ -151,22 +152,23 @@ void commHandler::sendDataOut(const QByteArray &writeData)
         } else if(writeData.endsWith(QByteArrayLiteral("\x1C\x00\x01\xFD")))
         {
             // PTT ON
-            qDebug(logRig) << "PTT On port" << pttType;
-            if (pttType == pttRTS)
+            if (pttType == pttRTS) {
                 port->setRequestToSend(true);
-            else if (pttType == pttDTR)
+            }
+            else if (pttType == pttDTR) {
                 port->setDataTerminalReady(true);
-
+            }
             mutex.unlock();
             return;
         } else if(writeData.endsWith(QByteArrayLiteral("\x1C\x00\x00\xFD")))
         {
             // PTT OFF
-            qDebug(logRig) << "PTT Off port" << pttType;
-            if (pttType == pttRTS)
+            if (pttType == pttRTS) {
                 port->setRequestToSend(false);
-            else if (pttType == pttDTR)
+            }
+            else if (pttType == pttDTR) {
                 port->setDataTerminalReady(false);
+            }
 
             mutex.unlock();
             return;

@@ -50,6 +50,7 @@ struct RIGCONFIG {
 	bool civIsRadioModel;
 	bool hasWiFi = false;
 	bool hasEthernet=false;
+    pttType_t pttType=pttCIV;
 	audioSetup rxAudioSetup;
 	audioSetup txAudioSetup;
 	QString modelName;

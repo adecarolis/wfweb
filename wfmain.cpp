@@ -548,24 +548,15 @@ void wfmain::makeRig()
         if (serverConfig.enabled) {
             qInfo(logUdpServer()) << "**** Connecting rig instance to server";
             connect(rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
-            // Need to add a signal/slot for audio from the client to rig.
-            //connect(udp, SIGNAL(haveAudioData(audioPacket)), rig, SLOT(receiveAudioData(audioPacket)));
             connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
             connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
         }
 
         connect(this, SIGNAL(setCIVAddr(quint8)), rig, SLOT(setCIVAddr(quint8)));
-
         connect(this, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
         connect(this, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
-
-
         connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
 
-        // Repeater, duplex, and split:
-        //connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
-        //connect(rpt, SIGNAL(setDuplexMode(duplexMode_t)), rig, SLOT(setDuplexMode(duplexMode_t)));
-        //connect(this, SIGNAL(getRptDuplexOffset()), rig, SLOT(getRptDuplexOffset()));
         connect(rig, SIGNAL(haveRptOffsetFrequency(freqt)), rpt, SLOT(handleRptOffsetFrequency(freqt)));
 
         connect(this->rpt, &repeaterSetup::getTone, this->rig,
@@ -1981,6 +1972,7 @@ void wfmain::loadSettings()
     rigTemp->txAudioSetup.resampleQuality = 4;
     rigTemp->rxAudioSetup.type = prefs.audioSystem;
     rigTemp->txAudioSetup.type = prefs.audioSystem;
+    rigTemp->pttType = prefs.pttType; // Use the global PTT type.
 
     rigTemp->baudRate = prefs.serialPortBaud;
     rigTemp->civAddr = prefs.radioCIVAddr;
