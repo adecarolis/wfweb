@@ -5401,7 +5401,8 @@ void wfmain::receiveValue(cacheItem val){
     case funcSelectedMode:
     case funcMode:
         receivers[val.receiver]->receiveMode(val.value.value<modeInfo>(),vfo);
-        if (val.receiver == currentReceiver) {
+        // We are ONLY interested in VFOA
+        if (val.receiver == currentReceiver && vfo == 0) {
             finputbtns->updateCurrentMode(val.value.value<modeInfo>().mk);
             finputbtns->updateFilterSelection(val.value.value<modeInfo>().filter);
             rpt->handleUpdateCurrentMainMode(val.value.value<modeInfo>());
