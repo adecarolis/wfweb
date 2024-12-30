@@ -259,6 +259,7 @@ void icomCommander::receiveBaudRate(quint32 baudrate) {
 
 void icomCommander::setRTSforPTT(bool enabled)
 {
+    qDebug(logRig()) << "Received request to set RTSforPTT to:" << enabled;
     if(!usingNativeLAN)
     {
         useRTSforPTT_isSet = true;

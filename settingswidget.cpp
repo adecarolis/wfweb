@@ -1468,6 +1468,13 @@ void settingswidget::on_serialEnableBtn_clicked(bool checked)
     emit changedLanPref(l_enableLAN);
 }
 
+void settingswidget::on_useRTSforPTTchk_clicked(bool checked)
+{
+    prefs->forceRTSasPTT = checked;
+    emit changedRaPref(ra_forceRTSasPTT);
+}
+
+
 void settingswidget::on_rigCIVManualAddrChk_clicked(bool checked)
 {
     if(checked)

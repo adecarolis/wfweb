@@ -6153,30 +6153,24 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         ui->rxAntennaCheck->setEnabled(rigCaps->commands.contains(funcRXAntenna));
         ui->rxAntennaCheck->setChecked(false);
 
-        //ui->scopeBWCombo->blockSignals(true);
-        //ui->scopeBWCombo->clear();
-
         ui->tuneEnableChk->setEnabled(rigCaps->commands.contains(funcTunerStatus));
         ui->tuneNowBtn->setEnabled(rigCaps->commands.contains(funcTunerStatus));
 
         ui->memoriesBtn->setEnabled(rigCaps->commands.contains(funcMemoryContents));
-
-        //ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
-
-       // ui->audioSystemCombo->setEnabled(false);
-        //ui->audioSystemServerCombo->setEnabled(false);
 
         ui->connectBtn->setText("Disconnect from Radio"); // We must be connected now.
         connStatus = connConnected;
 
         // Now we know that we are connected, enable rigctld and (if used) forceRTS
         enableRigCtl(prefs.enableRigCtlD);
-        emit setRTSforPTT(prefs.forceRTSasPTT);
 
         if(usingLAN)
         {
             ui->afGainSlider->setValue(prefs.localAFgain);
             queue->receiveValue(funcAfGain,quint8(prefs.localAFgain),currentReceiver);
+        } else {
+            // If not network connected, select the requested PTT type.
+            emit setRTSforPTT(prefs.forceRTSasPTT);
         }
         // Adding these here because clearly at this point we have valid
         // rig comms. In the future, we should establish comms and then
