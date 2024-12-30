@@ -77,33 +77,25 @@ sudo usermod -aG dialout $USER
 
 install wfview on suse 15.3 & up, sles 15.x or tumbleweed; this was done on a clean install/updated OS. 
 
-we need to add packages to be able to build the stuff.
-
-- sudo zypper in --type pattern devel_basis
-- sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel libqt5-qtmultimedia-devel lv2-devel libopus-devel eigen3-devel libQt5Xml-devel portaudio-devel rtaudio-devel libqt5-qtgamepad-devel libQt5Gamepad5
-
-optional (mainly for development specifics): get and install qt5:
-
-- wget http://download.qt.io/official_releases/online_installers/qt-unified-linux-x64-online.run
-- chmod +x qt-unified-linux-x64-online.run
 
 
-- kdesu ./qt-unified-linux-x64-online.run
+sudo zypper in --type pattern devel_basis
 
-install Qt 5.15.2 for GCC for desktop application development
+for qt5:
 
-when done, create the place where to build:
+sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel libqt5-qtmultimedia-devel lv2-devel libopus-devel eigen3-devel libQt5Xml-devel portaud
+io-devel rtaudio-devel libqt5-qtgamepad-devel libQt5Gamepad5 libqt5-qtwebsockets-devel-5.15.16+kde2-1.1.x86_64 libqt5-qtgamepad-devel-5.15.16+kde0-1.1.x86_64 portaudio-devel-190700_20210406-1.11.x86_64 rtaudio-devel-6.0.1-1.3.x86_64 libhidapi-devel-0.14.0-1.3.x86_64
 
-in this case, use your homedir:
-
-- mkdir -p ~/src/build && cd src
-- git clone https://gitlab.com/eliggett/wfview.git
-- cd build
-- qmake-qt5 ../wfview/wfview.pro  (wfserver.pro if you build the server version)
-- make -j
-- sudo make install
+mkdir -p ~/src/build
+cd ~/src
+git clone https://gitlab.com/eliggett/wfview.git
+cd build
+qmake-qt5 ../wfview/wfview.pro
+make
+sudo make install
 
 wfview is now installed in /usr/local/bin
+
 
 ---
 
