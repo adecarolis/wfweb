@@ -135,7 +135,7 @@ private slots:
     void on_rigCreatorChk_clicked(bool checked);
     void on_frequencyUnitsCombo_currentIndexChanged(int index);
     void on_serialEnableBtn_clicked(bool checked);
-    void on_useRTSforPTTchk_clicked(bool checked);
+    void on_pttTypeCombo_currentIndexChanged(int index);
 
     void on_rigCIVManualAddrChk_clicked(bool checked);
     void on_rigCIVaddrHexLine_editingFinished();

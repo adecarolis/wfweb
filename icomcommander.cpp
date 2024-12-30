@@ -97,7 +97,6 @@ void icomCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, 
         connect(tcp, SIGNAL(receiveData(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
         connect(comm, SIGNAL(haveDataFromPort(QByteArray)), tcp, SLOT(sendData(QByteArray)));
     }
-    connect(this, SIGNAL(toggleRTS(bool)), comm, SLOT(setRTS(bool)));
 
     // data from the rig to the ptty:
     connect(comm, SIGNAL(haveDataFromPort(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
@@ -257,17 +256,14 @@ void icomCommander::receiveBaudRate(quint32 baudrate) {
     emit haveBaudRate(baudrate);
 }
 
-void icomCommander::setRTSforPTT(bool enabled)
+void icomCommander::setPTTType(pttType_t ptt)
 {
-    qDebug(logRig()) << "Received request to set RTSforPTT to:" << enabled;
+    qDebug(logRig()) << "Received request to set PTT Type to:" << ptt;
     if(!usingNativeLAN)
     {
-        useRTSforPTT_isSet = true;
-        useRTSforPTT_manual = enabled;
-        if(comm != NULL)
+        if(comm != Q_NULLPTR)
         {
-            rigCaps.useRTSforPTT=enabled;
-            comm->setUseRTSforPTT(enabled);
+            comm->setPTTType(ptt);
         }
     }
 }
@@ -1378,7 +1374,6 @@ void icomCommander::determineRigCaps()
     rigCaps.hasFDcomms = settings->value("HasFDComms",false).toBool();
     rigCaps.hasCommand29 = settings->value("HasCommand29",false).toBool();
     rigCaps.subDirect = settings->value("SubDirectAccess",false).toBool();
-    rigCaps.useRTSforPTT = settings->value("UseRTSforPTT",false).toBool();
 
     rigCaps.memGroups = settings->value("MemGroups",0).toUInt();
     rigCaps.memories = settings->value("Memories",0).toUInt();
@@ -1618,15 +1613,6 @@ void icomCommander::determineRigCaps()
 
     // Copy received guid so we can recognise this radio.
     memcpy(rigCaps.guid, this->guid, GUIDLEN);
-
-    if(!usingNativeLAN)
-    {
-        if(useRTSforPTT_isSet)
-        {
-            rigCaps.useRTSforPTT = useRTSforPTT_manual;
-        }
-        comm->setUseRTSforPTT(rigCaps.useRTSforPTT);
-    }
 
     if(lookingForRig)
     {

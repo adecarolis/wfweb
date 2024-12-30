@@ -41,7 +41,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>2</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -256,13 +256,29 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                </widget>
               </item>
               <item>
-               <widget class="QCheckBox" name="useRTSforPTTchk">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This feature is for older radios that respond best to an RTS serial port signal than a PTT command.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;For radios lacking PTT commands, this is automatic and transparent, but for radios which have a PTT command, you can check this box to override and force the PTT to be done using RTS. Do not check this box unless you really need this and have an appropriate adapter with RTS connected to the PTT line of the transceiver. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
+               <widget class="QLabel" name="pttTypeLabel">
                 <property name="text">
-                 <string>Send RTS for PTT</string>
+                 <string>PTT Type</string>
                 </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QComboBox" name="pttTypeCombo">
+                <item>
+                 <property name="text">
+                  <string>CI-V</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>RTS</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>DTR</string>
+                 </property>
+                </item>
                </widget>
               </item>
               <item>
@@ -1386,8 +1402,8 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>902</width>
-                 <height>352</height>
+                 <width>510</width>
+                 <height>257</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">

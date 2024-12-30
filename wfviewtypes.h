@@ -116,6 +116,12 @@ enum rptAccessTxRx_t {
     ratrTSQLon
 };
 
+enum pttType_t {
+    pttCIV=0x00,
+    pttRTS=0x01,
+    pttDTR=0x01
+};
+
 struct rptrAccessData {
     rptAccessTxRx_t accessMode = ratrNN;
     bool useSecondaryVFO = false;

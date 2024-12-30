@@ -534,7 +534,7 @@ void wfmain::makeRig()
         // Rig comm setup:
         connect(this, SIGNAL(sendCommSetup(rigTypedef,quint8, udpPreferences, audioSetup, audioSetup, QString, quint16)), rig, SLOT(commSetup(rigTypedef,quint8, udpPreferences, audioSetup, audioSetup, QString, quint16)));
         connect(this, SIGNAL(sendCommSetup(rigTypedef,quint8, QString, quint32,QString, quint16,quint8)), rig, SLOT(commSetup(rigTypedef,quint8, QString, quint32,QString, quint16,quint8)));
-        connect(this, SIGNAL(setRTSforPTT(bool)), rig, SLOT(setRTSforPTT(bool)));
+        connect(this, SIGNAL(setPTTType(pttType_t)), rig, SLOT(setPTTType(pttType_t)));
 
         connect(rig, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
 
@@ -1599,7 +1599,7 @@ void wfmain::setDefPrefs()
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
     defPrefs.radioCIVAddr = 0x00; // previously was 0x94 for 7300.
     defPrefs.CIVisRadioModel = false;
-    defPrefs.forceRTSasPTT = false;
+    defPrefs.pttType = pttCIV;
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.serialPortBaud = 115200;
     defPrefs.enableLAN = false;
@@ -1815,7 +1815,7 @@ void wfmain::loadSettings()
     settings->beginGroup("Radio");
     prefs.radioCIVAddr = (quint8)settings->value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
     prefs.CIVisRadioModel = (bool)settings->value("CIVisRadioModel", defPrefs.CIVisRadioModel).toBool();
-    prefs.forceRTSasPTT = (bool)settings->value("ForceRTSasPTT", defPrefs.forceRTSasPTT).toBool();
+    prefs.pttType = (pttType_t)settings->value("PTTType", defPrefs.pttType).toInt();
     prefs.serialPortRadio = settings->value("SerialPortRadio", defPrefs.serialPortRadio).toString();
     prefs.serialPortBaud = (quint32)settings->value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
 
@@ -2578,8 +2578,8 @@ void wfmain::extChangedRaPref(prefRaItem i)
         break;
     case ra_CIVisRadioModel:
         break;
-    case ra_forceRTSasPTT:
-        emit setRTSforPTT(prefs.forceRTSasPTT);
+    case ra_pttType:
+        // Not used as cannot be connected to radio when this is updated.
         break;
     case ra_polling_ms:
         if(prefs.polling_ms == 0)
@@ -2965,7 +2965,7 @@ void wfmain::saveSettings()
     settings->beginGroup("Radio");
     settings->setValue("RigCIVuInt", prefs.radioCIVAddr);
     settings->setValue("CIVisRadioModel", prefs.CIVisRadioModel);
-    settings->setValue("ForceRTSasPTT", prefs.forceRTSasPTT);
+    settings->setValue("PTTType", prefs.pttType);
     settings->setValue("polling_ms", prefs.polling_ms); // 0 = automatic
     settings->setValue("SerialPortRadio", prefs.serialPortRadio);
     settings->setValue("SerialPortBaud", prefs.serialPortBaud);
@@ -6161,7 +6161,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         ui->connectBtn->setText("Disconnect from Radio"); // We must be connected now.
         connStatus = connConnected;
 
-        // Now we know that we are connected, enable rigctld and (if used) forceRTS
+        // Now we know that we are connected, enable rigctld
         enableRigCtl(prefs.enableRigCtlD);
 
         if(usingLAN)
@@ -6170,7 +6170,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
             queue->receiveValue(funcAfGain,quint8(prefs.localAFgain),currentReceiver);
         } else {
             // If not network connected, select the requested PTT type.
-            emit setRTSforPTT(prefs.forceRTSasPTT);
+            emit setPTTType(prefs.pttType);
         }
         // Adding these here because clearly at this point we have valid
         // rig comms. In the future, we should establish comms and then

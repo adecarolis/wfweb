@@ -26,7 +26,7 @@ public slots:
     void commSetup(rigTypedef rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf) override;
     void commSetup(rigTypedef rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp) override;
     void closeComm() override;
-    void setRTSforPTT(bool enabled) override;
+    void setPTTType(pttType_t) override;
 
     // Power:
     void powerOn() override;
@@ -140,8 +140,6 @@ private:
     quint8 civAddr;
     quint8 incomingCIVAddr; // place to store the incoming CIV.
     bool pttAllowed;
-    bool useRTSforPTT_isSet = false;
-    bool useRTSforPTT_manual = false;
 
     scopeData mainScopeData;
     scopeData subScopeData;

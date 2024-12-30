@@ -84,11 +84,11 @@ void rigCommander::receiveBaudRate(quint32 baudrate)
     qWarning(logRig()) << "receiveBaudRate() not implemented by rig type";
 }
 
-void rigCommander::setRTSforPTT(bool enabled)
+void rigCommander::setPTTType(pttType_t ptt)
 {
-    Q_UNUSED(enabled)
+    Q_UNUSED(ptt)
 
-    qWarning(logRig()) << "setRTSforPTT() not implemented by rig type";
+    qWarning(logRig()) << "setPTTType() not implemented by rig type";
 }
 
 void rigCommander::findRigs()

@@ -114,7 +114,7 @@ signals:
     // Basic to rig:
     void setCIVAddr(quint8 newRigCIVAddr);
     void setRigID(quint8 rigID);
-    void setRTSforPTT(bool enabled);
+    void setPTTType(pttType_t enabled);
 
     
     void sendPowerOn();

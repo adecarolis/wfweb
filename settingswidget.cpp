@@ -729,8 +729,8 @@ void settingswidget::updateRaPref(prefRaItem pra)
     case ra_CIVisRadioModel:
         quietlyUpdateCheckbox(ui->useCIVasRigIDChk, prefs->CIVisRadioModel);
         break;
-    case ra_forceRTSasPTT:
-        quietlyUpdateCheckbox(ui->useRTSforPTTchk, prefs->forceRTSasPTT);
+    case ra_pttType:
+        quietlyUpdateCombobox(ui->pttTypeCombo, prefs->pttType);
         break;
     case ra_polling_ms:
         if(prefs->polling_ms == 0)
@@ -1468,10 +1468,11 @@ void settingswidget::on_serialEnableBtn_clicked(bool checked)
     emit changedLanPref(l_enableLAN);
 }
 
-void settingswidget::on_useRTSforPTTchk_clicked(bool checked)
+
+void settingswidget::on_pttTypeCombo_currentIndexChanged(int index)
 {
-    prefs->forceRTSasPTT = checked;
-    emit changedRaPref(ra_forceRTSasPTT);
+    prefs->pttType = pttType_t(index);
+    emit changedRaPref(ra_pttType);
 }
 
 
@@ -2987,7 +2988,8 @@ void settingswidget::connectionStatus(bool conn)
 
     ui->serialDeviceListCombo->setEnabled(!conn);
     ui->baudRateCombo->setEnabled(!conn);
-    ui->useRTSforPTTchk->setEnabled(!conn);
+    ui->pttTypeLabel->setEnabled(!conn);
+    ui->pttTypeCombo->setEnabled(!conn);
 
     ui->serverRXAudioInputCombo->setEnabled(!conn);
     ui->serverTXAudioOutputCombo->setEnabled(!conn);

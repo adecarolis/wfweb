@@ -27,8 +27,7 @@ public:
     ~commHandler();
 
 public slots:
-    void setUseRTSforPTT(bool useRTS);
-    void setRTS(bool rtsOn);
+    void setPTTType(pttType_t ptt);
     void handleError(QSerialPort::SerialPortError error);
     void init();
 
@@ -79,7 +78,7 @@ private:
     bool havePt;
     QString ptDevSlave;
 
-    bool PTTviaRTS = false;
+    pttType_t pttType = pttCIV;
 
     bool isConnected; // port opened
     mutable QMutex mutex;
