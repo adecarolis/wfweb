@@ -164,7 +164,7 @@
     <item row="0" column="0" colspan="12">
      <widget class="QPlainTextEdit" name="transcriptText">
       <property name="focusPolicy">
-       <enum>Qt::NoFocus</enum>
+       <enum>Qt::FocusPolicy::NoFocus</enum>
       </property>
       <property name="toolTip">
        <string>CW Transmission Transcript</string>
@@ -230,7 +230,7 @@
            <number>100</number>
           </property>
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
          </widget>
         </item>
@@ -293,7 +293,7 @@
            <string>Type here to send text as CW</string>
           </property>
           <property name="inputMethodHints">
-           <set>Qt::ImhUppercaseOnly</set>
+           <set>Qt::InputMethodHint::ImhUppercaseOnly</set>
           </property>
           <property name="editable">
            <bool>true</bool>
@@ -302,7 +302,7 @@
            <string notr="true"/>
           </property>
           <property name="insertPolicy">
-           <enum>QComboBox::InsertAtTop</enum>
+           <enum>QComboBox::InsertPolicy::InsertAtTop</enum>
           </property>
          </widget>
         </item>
@@ -313,7 +313,7 @@
     <item row="1" column="3" colspan="2">
      <layout class="QGridLayout" name="gridLayout_3">
       <property name="sizeConstraint">
-       <enum>QLayout::SetMinimumSize</enum>
+       <enum>QLayout::SizeConstraint::SetMinimumSize</enum>
       </property>
       <item row="3" column="0">
        <widget class="QComboBox" name="breakinCombo">
@@ -349,7 +349,7 @@
          <string>PITCH  (Hz):</string>
         </property>
         <property name="alignment">
-         <set>Qt::AlignCenter</set>
+         <set>Qt::AlignmentFlag::AlignCenter</set>
         </property>
        </widget>
       </item>
@@ -359,7 +359,7 @@
          <string>WPM:</string>
         </property>
         <property name="alignment">
-         <set>Qt::AlignCenter</set>
+         <set>Qt::AlignmentFlag::AlignCenter</set>
         </property>
        </widget>
       </item>
@@ -391,12 +391,18 @@
          <string>Break In</string>
         </property>
         <property name="alignment">
-         <set>Qt::AlignCenter</set>
+         <set>Qt::AlignmentFlag::AlignCenter</set>
         </property>
        </widget>
       </item>
       <item row="3" column="3">
        <widget class="QDoubleSpinBox" name="dashSpin">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Minimum">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="decimals">
          <number>1</number>
         </property>

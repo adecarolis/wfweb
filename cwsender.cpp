@@ -144,9 +144,8 @@ void cwSender::handleBreakInMode(quint8 b)
 void cwSender::handleCurrentModeUpdate(rigMode_t mode)
 {
     this->currentMode = mode;
-    if( (currentMode==modeCW) || (currentMode==modeCW_R) )
+    if( this->currentMode!=modeCW && this->currentMode!=modeCW_R )
     {
-    } else {
         ui->statusbar->showMessage("Note: Mode needs to be set to CW or CW-R to send CW.", 3000);
     }
 }
@@ -155,7 +154,7 @@ void cwSender::textChanged(QString text)
 {
     if (ui->sendImmediateChk->isChecked() && text.size() && text.back() == ' ')
     {
-        if( (currentMode != modeCW) && (currentMode != modeCW_R) )
+        if( (this->currentMode != modeCW) && (this->currentMode != modeCW_R) )
         {
             ui->statusbar->showMessage("Note: Mode needs to be set to CW or CW-R to send CW.", 3000);
         } else {
@@ -176,7 +175,7 @@ void cwSender::on_sendBtn_clicked()
     if( (ui->textToSendEdit->currentText().length() > 0) &&
         (ui->textToSendEdit->currentText().length() <= 30) )
     {
-        if( (currentMode != modeCW) && (currentMode != modeCW_R) )
+        if( (this->currentMode != modeCW) && (this->currentMode != modeCW_R) )
         {
             ui->statusbar->showMessage("Note: Mode needs to be set to CW or CW-R to send CW.", 3000);
         } else {
@@ -368,7 +367,7 @@ void cwSender::runMacroButton(int buttonNumber)
     if(macroText[buttonNumber].isEmpty())
         return;   
 
-    if( (currentMode==modeCW) || (currentMode==modeCW_R) )
+    if( (this->currentMode==modeCW) || (this->currentMode==modeCW_R) )
     {
         QString outText;
         if(macroText[buttonNumber].contains("%1"))
