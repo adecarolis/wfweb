@@ -788,21 +788,36 @@ void settingswidget::updateRaPref(prefRaItem pra)
 
         ui->vspCombo->blockSignals(true);
         ui->vspCombo->clear();
-        ui->vspCombo->addItem("Auto", 0);
+
         int i = 0;
-        for(const auto &serialPortInfo: QSerialPortInfo::availablePorts())
+
+#ifdef Q_OS_WIN
+        ui->vspCombo->addItem(QString("None"), i++);
+
+        foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
         {
-#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
-            ui->vspCombo->addItem(QString("/dev/") + serialPortInfo.portName(), i++);
-#else
-            ui->vspCombo->addItem(serialPortInfo.portName(), i++);
-#endif
+            ui->vspCombo->addItem(serialPortInfo.portName());
         }
-
-#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
-        ui->vspCombo->addItem("Manual...", 256);
+#else
+        // Provide reasonable names for the symbolic link to the pty device
+#ifdef Q_OS_MAC
+        QString vspName = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/rig-pty";
+#else
+        QString vspName = QDir::homePath() + "/rig-pty";
 #endif
+        for (i = 1; i < 8; i++) {
+            ui->vspCombo->addItem(vspName + QString::number(i));
 
+            if (QFile::exists(vspName + QString::number(i))) {
+                auto* model = qobject_cast<QStandardItemModel*>(ui->vspCombo->model());
+                auto* item = model->item(ui->vspCombo->count() - 1);
+                item->setEnabled(false);
+            }
+        }
+        ui->vspCombo->addItem(vspName + QString::number(i));
+        ui->vspCombo->addItem(QString("None"), i++);
+        ui->vspCombo->setEditable(true);
+#endif
         ui->vspCombo->setCurrentIndex(ui->vspCombo->findText(prefs->virtualSerialPort));
         if (ui->vspCombo->currentIndex() == -1)
         {

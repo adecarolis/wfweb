@@ -1646,6 +1646,27 @@ void wfmain::setDefPrefs()
     defPrefs.decimalSeparator = QLocale().decimalPoint().at(0);       // digit group separator
 #endif
 
+    // Audio
+    defPrefs.rxSetup.latency = 150;
+    defPrefs.txSetup.latency = 150;
+    defPrefs.rxSetup.isinput = false;
+    defPrefs.txSetup.isinput = true;
+    defPrefs.rxSetup.sampleRate = 48000;
+    defPrefs.rxSetup.codec = 4;
+    defPrefs.txSetup.codec = 4;
+    defPrefs.rxSetup.resampleQuality = 4;
+	
+	// Cluster
+	defPrefs.clusterUdpEnable = false;
+    defPrefs.clusterTcpEnable = false;
+    defPrefs.clusterUdpPort = 12060;
+	
+	// CW
+	defPrefs.cwCutNumbers=false;
+    defPrefs.cwSendImmediate=false;
+    defPrefs.cwSidetoneEnabled=true;
+    defPrefs.cwSidetoneLevel=100;
+
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
     udpDefPrefs.serialLANPort = 50002;
@@ -1861,23 +1882,24 @@ void wfmain::loadSettings()
     udpPrefs.controlLANPort = settings->value("ControlLANPort", udpDefPrefs.controlLANPort).toInt();
     udpPrefs.username = settings->value("Username", udpDefPrefs.username).toString();
     udpPrefs.password = settings->value("Password", udpDefPrefs.password).toString();
-    prefs.rxSetup.isinput = false;
-    prefs.txSetup.isinput = true;
-    prefs.rxSetup.latency = settings->value("AudioRXLatency", "150").toInt();
-    prefs.txSetup.latency = settings->value("AudioTXLatency", "150").toInt();
+    prefs.rxSetup.isinput = defPrefs.rxSetup.isinput;
+    prefs.txSetup.isinput = defPrefs.txSetup.isinput;
 
-    prefs.rxSetup.sampleRate=settings->value("AudioRXSampleRate", "48000").toInt();
+    prefs.rxSetup.latency = settings->value("AudioRXLatency", defPrefs.rxSetup.latency).toInt();
+    prefs.txSetup.latency = settings->value("AudioTXLatency", defPrefs.txSetup.latency).toInt();
+
+    prefs.rxSetup.sampleRate=settings->value("AudioRXSampleRate", defPrefs.rxSetup.sampleRate).toInt();
     prefs.txSetup.sampleRate=prefs.rxSetup.sampleRate;
 
-    prefs.rxSetup.codec = settings->value("AudioRXCodec", "4").toInt();
-    prefs.txSetup.codec = settings->value("AudioTXCodec", "4").toInt();
+    prefs.rxSetup.codec = settings->value("AudioRXCodec", defPrefs.rxSetup.codec).toInt();
+    prefs.txSetup.codec = settings->value("AudioTXCodec", defPrefs.txSetup.codec).toInt();
     prefs.rxSetup.name = settings->value("AudioOutput", "Default Output Device").toString();
     qInfo(logGui()) << "Got Audio Output from Settings: " << prefs.rxSetup.name;
 
     prefs.txSetup.name = settings->value("AudioInput", "Default Input Device").toString();
     qInfo(logGui()) << "Got Audio Input from Settings: " << prefs.txSetup.name;
 
-    prefs.rxSetup.resampleQuality = settings->value("ResampleQuality", "4").toInt();
+    prefs.rxSetup.resampleQuality = settings->value("ResampleQuality", defPrefs.rxSetup.resampleQuality).toInt();
     prefs.txSetup.resampleQuality = prefs.rxSetup.resampleQuality;
 
     if (prefs.tciPort > 0 && tci == Q_NULLPTR) {
@@ -1908,9 +1930,11 @@ void wfmain::loadSettings()
 
     settings->beginGroup("Server");
     serverConfig.enabled = settings->value("ServerEnabled", false).toBool();
-    serverConfig.controlPort = settings->value("ServerControlPort", 50001).toInt();
-    serverConfig.civPort = settings->value("ServerCivPort", 50002).toInt();
-    serverConfig.audioPort = settings->value("ServerAudioPort", 50003).toInt();
+    // These defPrefs are actually for the client, but they are the same.
+    serverConfig.controlPort = settings->value("ServerControlPort", udpDefPrefs.controlLANPort).toInt();
+    serverConfig.civPort = settings->value("ServerCivPort", udpDefPrefs.serialLANPort).toInt();
+    serverConfig.audioPort = settings->value("ServerAudioPort", udpDefPrefs.audioLANPort).toInt();
+
 
     setupui->updateServerConfigs((int)(s_enabled |
                                  s_controlPort |
@@ -2017,9 +2041,9 @@ void wfmain::loadSettings()
 
     settings->beginGroup("Cluster");
 
-    prefs.clusterUdpEnable = settings->value("UdpEnabled", false).toBool();
-    prefs.clusterTcpEnable = settings->value("TcpEnabled", false).toBool();
-    prefs.clusterUdpPort = settings->value("UdpPort", 12060).toInt();
+    prefs.clusterUdpEnable = settings->value("UdpEnabled", defPrefs.clusterUdpEnable).toBool();
+    prefs.clusterTcpEnable = settings->value("TcpEnabled", defPrefs.clusterTcpEnable).toBool();
+    prefs.clusterUdpPort = settings->value("UdpPort", defPrefs.clusterUdpPort).toInt();
 
     int numClusters = settings->beginReadArray("Servers");
     prefs.clusters.clear();
@@ -2046,10 +2070,10 @@ void wfmain::loadSettings()
 
     // CW Memory Load:
     settings->beginGroup("Keyer");
-    prefs.cwCutNumbers=settings->value("CutNumbers", false).toBool();
-    prefs.cwSendImmediate=settings->value("SendImmediate", false).toBool();
-    prefs.cwSidetoneEnabled=settings->value("SidetoneEnabled", true).toBool();
-    prefs.cwSidetoneLevel=settings->value("SidetoneLevel", 100).toInt();
+    prefs.cwCutNumbers=settings->value("CutNumbers", defPrefs.cwCutNumbers).toBool();
+    prefs.cwSendImmediate=settings->value("SendImmediate", defPrefs.cwSendImmediate).toBool();
+    prefs.cwSidetoneEnabled=settings->value("SidetoneEnabled", defPrefs.cwSidetoneEnabled).toBool();
+    prefs.cwSidetoneLevel=settings->value("SidetoneLevel", defPrefs.cwSidetoneLevel).toInt();
 
     int numMemories = settings->beginReadArray("macros");
     if(numMemories==10)
@@ -6144,7 +6168,9 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         ui->connectBtn->setText("Disconnect from Radio"); // We must be connected now.
         connStatus = connConnected;
 
+        // Now we know that we are connected, enable rigctld and (if used) forceRTS
         enableRigCtl(prefs.enableRigCtlD);
+        emit setRTSforPTT(prefs.forceRTSasPTT);
 
         if(usingLAN)
         {
