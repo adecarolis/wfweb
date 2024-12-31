@@ -651,7 +651,7 @@ void wfmain::removeRig()
         delete receiver;
     }
     receivers.clear();
-
+    currentReceiver=0;
 }
 
 
@@ -1046,7 +1046,7 @@ void wfmain::configureVFOs()
             receiver->setVisible(false);
         } else {
             receiver->setVisible(true);
-            //receiver->selected(true);
+            receiver->selected(true);
         }
 
         connect(receiver, SIGNAL(frequencyRange(uchar, double, double)), cluster, SLOT(freqRange(uchar, double, double)));
@@ -2686,6 +2686,7 @@ void wfmain::extChangedRsPref(prefRsItem i)
 
 void wfmain::extChangedCtPref(prefCtItem i)
 {
+
     prefs.settingsChanged = true;
     switch(i)
     {
@@ -3667,6 +3668,13 @@ void wfmain:: getInitialRigState()
     if (rigCaps->commands.contains(funcVFOModeSelect))
         queue->add(priorityImmediate,funcVFOModeSelect); // Make sure we are in VFO mode.
 
+    if (rigCaps->commands.contains(funcScopeMainSub))
+        queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(uchar(0)),false,0)); // Set main scope
+    if (rigCaps->commands.contains(funcVFOBandMS))
+        queue->add(priorityImmediate,queueItem(funcVFOBandMS,QVariant::fromValue(uchar(0)),false,0));
+
+    queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue(uchar(0)),false,0)); // Set primary VFO
+
     if(rigCaps->hasSpectrum)
     {
         queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
@@ -3682,7 +3690,6 @@ void wfmain:: getInitialRigState()
             }
         }
     }
-
 
     quint64 start=UINT64_MAX;
     quint64 end=0;
@@ -5370,15 +5377,21 @@ void wfmain::receiveValue(cacheItem val){
     }
 
     /* Certain radios (IC-9700) cannot provide direct access to Sub receiver
-     * In this situation, set the receiver to currentReceiver so all commands received
+     * In this situation, set the receiver to currentReceiver so most commands received
      * work on this receiver only.
      *
-     *
      */
-    if (!rigCaps->subDirect && val.receiver != currentReceiver &&
-            val.command != funcSelectedFreq && val.command != funcUnselectedFreq &&
-            val.command != funcSelectedFreq && val.command != funcUnselectedMode)
-        val.receiver=currentReceiver;
+    if (!rigCaps->hasCommand29 && val.receiver != currentReceiver)
+    {
+        switch (val.command) {
+        case funcSelectedFreq: case funcSelectedMode: case funcUnselectedFreq: case funcUnselectedMode: case funcScopeMode: case funcScopeSpan:
+        case funcScopeRef: case funcScopeHold: case funcScopeSpeed: case funcScopeRBW: case funcScopeVBW: case funcScopeCenterType: case funcScopeEdge:
+           break;
+        default:
+            val.receiver=currentReceiver;
+            break;
+        }
+    }
 
     switch (val.command)
     {
@@ -5472,6 +5485,7 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcSplitStatus:
         rpt->receiveDuplexMode(val.value.value<duplexMode_t>());
+        receivers[val.receiver]->setSplit(val.value.value<duplexMode_t>()==dmSplitOn?true:false);
         break;
     case funcQuickSplit:
         rpt->receiveQuickSplit(val.value.value<bool>());
@@ -5807,10 +5821,10 @@ void wfmain::receiveValue(cacheItem val){
 
                     if (rx == currentReceiver && !receivers[rx]->isSelected()) {
                         receivers[rx]->selected(true);
-                        receivers[rx]->setEnabled(true);
+                        if (!rigCaps->hasCommand29) receivers[rx]->setEnabled(true);
                     } else if (rx != currentReceiver && receivers[rx]->isSelected()) {
                         receivers[rx]->selected(false);
-                        receivers[rx]->setEnabled(false);
+                        if (!rigCaps->hasCommand29) receivers[rx]->setEnabled(false);
                     }
 
                     if (!receivers[rx]->isVisible() && (rx == currentReceiver || ui->scopeDualBtn->isChecked())) {
@@ -5846,6 +5860,7 @@ void wfmain::receiveValue(cacheItem val){
         break;
     }
     case funcScopeMode:
+        //qDebug() << "Got new scope mode for receiver" << val.receiver << "mode" << val.value.value<spectrumMode_t>();
         receivers[val.receiver]->selectScopeMode(val.value.value<spectrumMode_t>());
         break;
     case funcScopeSpan:
@@ -6059,7 +6074,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         ui->scopeDualBtn->setVisible(rigCaps->commands.contains(funcVFODualWatch));
         ui->antennaGroup->setVisible(rigCaps->commands.contains(funcAntenna));
         ui->preampAttGroup->setVisible(rigCaps->commands.contains(funcPreamp));
-        ui->dualWatchBtn->setVisible(rigCaps->subDirect);
+        ui->dualWatchBtn->setVisible(rigCaps->hasCommand29);
 
         ui->nbEnableChk->setEnabled(rigCaps->commands.contains(funcNoiseBlanker));
         ui->nrEnableChk->setEnabled(rigCaps->commands.contains(funcNoiseReduction));

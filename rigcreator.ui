@@ -649,13 +649,6 @@
         </property>
        </widget>
       </item>
-      <item>
-       <widget class="QCheckBox" name="subDirect">
-        <property name="text">
-         <string>Sub Direct Access</string>
-        </property>
-       </widget>
-      </item>
      </layout>
     </widget>
    </item>

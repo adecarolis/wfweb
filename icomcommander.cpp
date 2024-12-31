@@ -311,9 +311,17 @@ funcType icomCommander::getCommand(funcs func, QByteArray &payload, int value, u
                 payload.append(static_cast<uchar>(receiver));
             } else if (!rigCaps.hasCommand29 && receiver)
             {
-                // We don't have command29 so can't select sub
-                qDebug(logRig()) << "Rig has no Command29, removing command:" << funcString[func] << "VFO" << receiver;
-                queue->del(func,receiver);
+                // We don't have command29 so can't select sub, but if this is a scope command, let it through.
+                switch (func)
+                {
+                case funcScopeMode: case funcScopeSpan: case funcScopeRef: case funcScopeHold:
+                case funcScopeSpeed: case funcScopeRBW: case funcScopeVBW: case funcScopeCenterType: case funcScopeEdge:
+                    break;
+                default:
+                    qDebug(logRig()) << "Rig has no Command29, removing command:" << funcString[func] << "VFO" << receiver;
+                    queue->del(func,receiver);
+                    break;
+                }
             }
             payload.append(it.value().data);
             cmd = it.value();
@@ -1357,7 +1365,6 @@ void icomCommander::determineRigCaps()
     rigCaps.hasTransmit = settings->value("HasTransmit",false).toBool();
     rigCaps.hasFDcomms = settings->value("HasFDComms",false).toBool();
     rigCaps.hasCommand29 = settings->value("HasCommand29",false).toBool();
-    rigCaps.subDirect = settings->value("SubDirectAccess",false).toBool();
 
     rigCaps.memGroups = settings->value("MemGroups",0).toUInt();
     rigCaps.memories = settings->value("Memories",0).toUInt();

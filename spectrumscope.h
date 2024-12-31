@@ -118,7 +118,7 @@ public:
     QImage getSpectrumImage();
     QImage getWaterfallImage();
     bandType getCurrentBand();
-
+    void setSplit(bool en) { splitButton->setChecked(en); }
 
 public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);
@@ -167,6 +167,12 @@ private:
     void computePlasma();
     void showHideControls(spectrumMode_t mode);
     void showBandIndicators(bool en);
+    void sendCommand(queuePriority prio, funcs func, bool recur=false, bool unique=false, QVariant val=QVariant());
+    void delCommand(funcs func);
+    void vfoSwap();
+    funcs getFreqFunc(uchar vfo, bool set=false);
+    funcs getModeFunc(uchar vfo, bool set=false);
+
     quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
     quint64 roundFrequency(quint64 frequency, int steps, unsigned int tsHz);
 
@@ -180,7 +186,13 @@ private:
     QLinearGradient spectrumGradient;
     QLinearGradient underlayGradient;
     QList <freqCtrl*> freqDisplay;
-    QSpacerItem* displaySpacer;
+    QSpacerItem* displayLSpacer;
+    QPushButton* vfoSelectButton;
+    QSpacerItem* displayCSpacer;
+    QPushButton* vfoSwapButton;
+    QPushButton* vfoEqualsButton;
+    QPushButton* splitButton;
+    QSpacerItem* displayRSpacer;
     QGroupBox* group;
     QSplitter* splitter;
     QHBoxLayout* mainLayout;
@@ -240,8 +252,10 @@ private:
     int currentRef = 0;
     uchar currentSpeed = 0;
     colorPrefsType colors;
-    freqt freq;
+    freqt freq = freqt(0,0.0,selVFO_t::activeVFO);
     modeInfo mode = modeInfo(modeUnknown,0,"Unk",0,0);
+    modeInfo unselectedMode = modeInfo(modeUnknown,0,"Unk",0,0);
+    freqt unselectedFreq = freqt(0,0.0,selVFO_t::activeVFO);
     bool lock = false;
     bool scopePrepared=false;
     quint16 spectWidth=689;
@@ -300,6 +314,7 @@ private:
 
     cachingQueue* queue;
     uchar receiver=0;
+    uchar rxcmd=0;
     double startFrequency;
     QMap<QString, spotData*> clusterSpots;
 
@@ -308,6 +323,7 @@ private:
     bool clickDragTuning=false;
     bool isActive;
     uchar numVFO=1;
+    uchar selectedVFO=0;
     bool hasScope=true;
     QString currentRegion="1";
     spectrumMode_t currentScopeMode=spectrumMode_t::spectModeCenter;

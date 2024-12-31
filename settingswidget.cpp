@@ -1034,10 +1034,12 @@ void settingswidget::updateServerConfig(prefServerItem si)
         quietlyUpdateLineEdit(ui->serverAudioPortText, QString::number(serverConfig->audioPort));
         break;
     case s_audioOutput:
-        ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name));
+        if (serverConfig->enabled)
+            ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name));
         break;
     case s_audioInput:
-        ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig->rigs.first()->rxAudioSetup.name));
+        if (serverConfig->enabled)
+            ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig->rigs.first()->rxAudioSetup.name));
         break;
     case s_resampleQuality:
         // Not used here
@@ -1142,7 +1144,6 @@ void settingswidget::updateUdpPref(prefUDPItem upi)
 void settingswidget::setAudioDevicesUI()
 {
     qInfo() << "Looking for inputs";
-
     ui->audioInputCombo->blockSignals(true);
     ui->audioInputCombo->clear();
     ui->audioInputCombo->addItems(audioDev->getInputs());
@@ -1150,8 +1151,14 @@ void settingswidget::setAudioDevicesUI()
     ui->audioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn() + 30));
     ui->audioInputCombo->blockSignals(false);
 
+    ui->serverRXAudioInputCombo->blockSignals(true);
+    ui->serverRXAudioInputCombo->clear();
+    ui->serverRXAudioInputCombo->addItems(audioDev->getInputs());
+    ui->serverRXAudioInputCombo->setCurrentIndex(-1);
+    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn() + 30));
+    ui->serverRXAudioInputCombo->blockSignals(false);
+
     qInfo() << "Looking for outputs";
-    // done:
     ui->audioOutputCombo->blockSignals(true);
     ui->audioOutputCombo->clear();
     ui->audioOutputCombo->addItems(audioDev->getOutputs());
@@ -1166,17 +1173,11 @@ void settingswidget::setAudioDevicesUI()
     ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsOut() + 30));
     ui->serverTXAudioOutputCombo->blockSignals(false);
 
-    ui->serverRXAudioInputCombo->blockSignals(true);
-    ui->serverRXAudioInputCombo->clear();
-    ui->serverRXAudioInputCombo->addItems(audioDev->getInputs());
-    ui->serverRXAudioInputCombo->setCurrentIndex(-1);
-    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn() + 30));
-    ui->serverRXAudioInputCombo->blockSignals(false);
 
     prefs->rxSetup.type = prefs->audioSystem;
     prefs->txSetup.type = prefs->audioSystem;
 
-    if (!serverConfig->rigs.isEmpty())
+    if (serverConfig->enabled && !serverConfig->rigs.isEmpty())
     {
         serverConfig->rigs.first()->rxAudioSetup.type = prefs->audioSystem;
         serverConfig->rigs.first()->txAudioSetup.type = prefs->audioSystem;

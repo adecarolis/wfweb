@@ -256,7 +256,6 @@ struct rigCapabilities {
     bool hasQuickSplitCommand = false;
 
     bool hasCommand29 = false;
-    bool subDirect = false;
 
     QByteArray quickSplitCommand;
     QHash<funcs,funcType> commands;

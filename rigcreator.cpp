@@ -196,7 +196,6 @@ void rigCreator::loadRigFile(QString file)
     ui->hasTransmit->setChecked(settings->value("HasTransmit",false).toBool());
     ui->hasFDComms->setChecked(settings->value("HasFDComms",false).toBool());
     ui->hasCommand29->setChecked(settings->value("HasCommand29",false).toBool());
-    ui->subDirect->setChecked(settings->value("SubDirectAccess",false).toBool());
 
     ui->memGroups->setText(settings->value("MemGroups","0").toString());
     ui->memories->setText(settings->value("Memories","0").toString());
@@ -531,7 +530,6 @@ void rigCreator::loadRigFile(QString file)
     connect(ui->spans,SIGNAL(cellChanged(int,int)),SLOT(changed()));
     connect(ui->periodicCommands,SIGNAL(cellChanged(int,int)),SLOT(changed()));
 
-    connect(ui->subDirect,SIGNAL(stateChanged(int)),SLOT(changed()));
     connect(ui->hasCommand29,SIGNAL(stateChanged(int)),SLOT(changed()));
     connect(ui->hasEthernet,SIGNAL(stateChanged(int)),SLOT(changed()));
     connect(ui->hasFDComms,SIGNAL(stateChanged(int)),SLOT(changed()));
@@ -614,7 +612,6 @@ void rigCreator::saveRigFile(QString file)
     settings->setValue("HasTransmit",ui->hasTransmit->isChecked());
     settings->setValue("HasFDComms",ui->hasFDComms->isChecked());
     settings->setValue("HasCommand29",ui->hasCommand29->isChecked());
-    settings->setValue("SubDirectAccess",ui->subDirect->isChecked());
 
     settings->setValue("MemGroups",ui->memGroups->text().toInt());
     settings->setValue("Memories",ui->memories->text().toInt());
