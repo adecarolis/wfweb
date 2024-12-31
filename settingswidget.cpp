@@ -914,10 +914,14 @@ void settingswidget::updateCtPref(prefCtItem pct)
     case ct_enableUSBControllers:
         quietlyUpdateCheckbox(ui->enableUsbChk, prefs->enableUSBControllers);
         break;
+    case ct_USBControllersReset:
+    case ct_USBControllersSetup:
+        break;
     default:
         qWarning(logGui()) << "No UI element matches setting" << (int)pct;
         break;
     }
+
     updatingUIFromPrefs = false;
 }
 

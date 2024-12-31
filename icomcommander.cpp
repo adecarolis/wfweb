@@ -71,41 +71,35 @@ void icomCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, 
     this->rigBaudRate = rigBaudRate;
     rigCaps.baudRate = rigBaudRate;
 
+
     comm = new commHandler(rigSerialPort, rigBaudRate,wf,this);
-    ptty = new pttyHandler(vsp,this);
+    // data from the comm port to the program:
+    connect(comm, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
+    // data from the program to the comm port:
+    connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
+    // Whether radio is half duplex only
+    connect(this, SIGNAL(setHalfDuplex(bool)), comm, SLOT(setHalfDuplex(bool)));
+    connect(comm, SIGNAL(havePortError(errorType)), this, SLOT(handlePortError(errorType)));
+    connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
+
+
+    if (vsp != "None") {
+        ptty = new pttyHandler(vsp,this);
+        // data from the ptty to the rig:
+        connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
+        // data from the rig to the ptty:
+        connect(comm, SIGNAL(haveDataFromPort(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
+        connect(ptty, SIGNAL(havePortError(errorType)), this, SLOT(handlePortError(errorType)));
+        connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
+    }
 
     if (tcpPort > 0) {
         tcp = new tcpServer(this);
         tcp->startServer(tcpPort);
-    }
-
-
-    // data from the comm port to the program:
-    connect(comm, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
-
-    // data from the ptty to the rig:
-    connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
-
-    // data from the program to the comm port:
-    connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
-
-    // Whether radio is half duplex only
-    connect(this, SIGNAL(setHalfDuplex(bool)), comm, SLOT(setHalfDuplex(bool)));
-
-    if (tcpPort > 0) {
         // data from the tcp port to the rig:
         connect(tcp, SIGNAL(receiveData(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
         connect(comm, SIGNAL(haveDataFromPort(QByteArray)), tcp, SLOT(sendData(QByteArray)));
     }
-
-    // data from the rig to the ptty:
-    connect(comm, SIGNAL(haveDataFromPort(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
-
-    connect(comm, SIGNAL(havePortError(errorType)), this, SLOT(handlePortError(errorType)));
-    connect(ptty, SIGNAL(havePortError(errorType)), this, SLOT(handlePortError(errorType)));
-
-    connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
-    connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
 
     commonSetup();
 }
@@ -120,74 +114,64 @@ void icomCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, 
     civAddr = rigCivAddr; // address of the radio
     usingNativeLAN = true;
 
+    if (udp != Q_NULLPTR) {
+        closeComm();
+    }
 
-    if (udp == Q_NULLPTR) {
+    udp = new udpHandler(prefs,rxSetup,txSetup);
 
-        udp = new udpHandler(prefs,rxSetup,txSetup);
+    udpHandlerThread = new QThread(this);
+    udpHandlerThread->setObjectName("udpHandler()");
 
-        udpHandlerThread = new QThread(this);
-        udpHandlerThread->setObjectName("udpHandler()");
+    udp->moveToThread(udpHandlerThread);
 
-        udp->moveToThread(udpHandlerThread);
+    connect(this, SIGNAL(initUdpHandler()), udp, SLOT(init()));
+    connect(udpHandlerThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
+    udpHandlerThread->start();
 
-        connect(this, SIGNAL(initUdpHandler()), udp, SLOT(init()));
-        connect(udpHandlerThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
+    emit initUdpHandler();
 
-        udpHandlerThread->start();
+    // Data from UDP to the program
+    connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
+    // data from the program to the rig:
+    connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
+    // Audio from UDP
+    connect(udp, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
 
-        emit initUdpHandler();
+    connect(this, SIGNAL(haveChangeLatency(quint16)), udp, SLOT(changeLatency(quint16)));
+    connect(this, SIGNAL(haveSetVolume(quint8)), udp, SLOT(setVolume(quint8)));
+    connect(udp, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
+    // Connect for errors/alerts
+    connect(udp, SIGNAL(haveNetworkError(errorType)), this, SLOT(handlePortError(errorType)));
+    connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(handleStatusUpdate(networkStatus)));
+    connect(udp, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(handleNetworkAudioLevels(networkAudioLevels)));
+    // Other assorted UDP connections
+    connect(udp, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
+    connect(udp, SIGNAL(setRadioUsage(quint8, bool, quint8, QString, QString)), this, SLOT(radioUsage(quint8, bool, quint8, QString, QString)));
+    connect(this, SIGNAL(selectedRadio(quint8)), udp, SLOT(setCurrentRadio(quint8)));
 
-        //this->rigSerialPort = rigSerialPort;
-        //this->rigBaudRate = rigBaudRate;
-
+    if (vsp != "None") {
         ptty = new pttyHandler(vsp,this);
-
-        if (tcpPort > 0) {
-            tcp = new tcpServer(this);
-            tcp->startServer(tcpPort);
-        }
-        // Data from UDP to the program
-        connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
-
+        // data from the ptty to the rig:
+        connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
         // data from the rig to the ptty:
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
 
-        // Audio from UDP
-        connect(udp, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
-
-        // data from the program to the rig:
-        connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
-
-        // data from the ptty to the rig:
-        connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
-
-        if (tcpPort > 0) {
-            // data from the tcp port to the rig:
-            connect(tcp, SIGNAL(receiveData(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
-            connect(udp, SIGNAL(haveDataFromPort(QByteArray)), tcp, SLOT(sendData(QByteArray)));
-        }
-
-        connect(this, SIGNAL(haveChangeLatency(quint16)), udp, SLOT(changeLatency(quint16)));
-        connect(this, SIGNAL(haveSetVolume(quint8)), udp, SLOT(setVolume(quint8)));
-        connect(udp, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
-
-        // Connect for errors/alerts
-        connect(udp, SIGNAL(haveNetworkError(errorType)), this, SLOT(handlePortError(errorType)));
-        connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(handleStatusUpdate(networkStatus)));
-        connect(udp, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(handleNetworkAudioLevels(networkAudioLevels)));
-
-
         connect(ptty, SIGNAL(havePortError(errorType)), this, SLOT(handlePortError(errorType)));
         connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
-
-        connect(udp, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
-        connect(udp, SIGNAL(setRadioUsage(quint8, bool, quint8, QString, QString)), this, SLOT(radioUsage(quint8, bool, quint8, QString, QString)));
-        connect(this, SIGNAL(selectedRadio(quint8)), udp, SLOT(setCurrentRadio(quint8)));
-
-        emit haveAfGain(rxSetup.localAFgain);
-        localVolume = rxSetup.localAFgain;
-
     }
+
+    if (tcpPort > 0) {
+        tcp = new tcpServer(this);
+        tcp->startServer(tcpPort);
+        // data from the tcp port to the rig:
+        connect(tcp, SIGNAL(receiveData(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
+        // data from the rig to the tcp port:
+        connect(udp, SIGNAL(haveDataFromPort(QByteArray)), tcp, SLOT(sendData(QByteArray)));
+    }
+
+    emit haveAfGain(rxSetup.localAFgain);
+    localVolume = rxSetup.localAFgain;
 
     commonSetup();
 
