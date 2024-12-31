@@ -5468,7 +5468,7 @@ void wfmain::receiveValue(cacheItem val){
             }
             r->setSatMode(val.value.value<bool>());
         }
-        qInfo(logRig()) << "Is radio currently in satellite mode?" << val.value.value<bool>();
+        //qInfo(logRig()) << "Is radio currently in satellite mode?" << val.value.value<bool>();
         break;
     case funcSatelliteMemory:
     case funcMemoryContents:
