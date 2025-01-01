@@ -910,7 +910,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
             }
             else {
                 // Just send an idle!
-                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << 
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type <<
                     "): Requested (single) packet " << QString("0x%1").arg(in->seq, 0, 16) << 
                     "not found, have " << QString("0x%1").arg(current->txSeqBuf.firstKey(), 0, 16) <<
                     "to" << QString("0x%1").arg(current->txSeqBuf.lastKey(), 0, 16);
@@ -935,7 +935,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
             quint16 seq = (quint8)r[i] | (quint8)r[i + 1] << 8;
             auto match = current->txSeqBuf.find(seq);
             if (match == current->txSeqBuf.end()) {
-                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << 
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type <<
                     "): Requested (multiple) packet " << QString("0x%1").arg(seq,0,16) << 
                     "not found, have " << QString("0x%1").arg(current->txSeqBuf.firstKey(), 0, 16) <<
                     "to" << QString("0x%1").arg(current->txSeqBuf.lastKey(), 0, 16);

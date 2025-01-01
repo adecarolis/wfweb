@@ -739,7 +739,11 @@ void spectrumScope::colorPreset(colorPrefsType *cp)
     waterfall->setBackground(cp->wfBackground);
 
     holdButton->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border:1px solid;}")
-                                        .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
+                                  .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
+    splitButton->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border:1px solid;}")
+                                   .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
+    vfoSelectButton->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border:1px solid;}")
+                                   .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
 
 }
 
@@ -1275,9 +1279,11 @@ void spectrumScope::doubleClick(QMouseEvent *me)
             freqGo.Hz = x * 1E6;
             freqGo.Hz = roundFrequency(freqGo.Hz, stepSize);
             freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
+
+            emit sendTrack(freqGo.Hz-this->freq.Hz);
+
             setFrequency(freqGo);
             sendCommand(priorityImmediate,getFreqFunc(0,true),false,false,QVariant::fromValue<freqt>(freqGo));
-
         }
     }
     else if (me->button() == Qt::RightButton)
@@ -1324,8 +1330,12 @@ void spectrumScope::scopeClick(QMouseEvent* me)
                 freqt freqGo;
                 freqGo.Hz = (spot.value()->frequency) * 1E6;
                 freqGo.MHzDouble = spot.value()->frequency;
+
+                emit sendTrack(freqGo.Hz-this->freq.Hz);
+
                 setFrequency(freqGo);
                 sendCommand(priorityImmediate,getFreqFunc(0,true),false,false,QVariant::fromValue<freqt>(freqGo));
+
             }
         }
         else if (passbandAction == passbandStatic && rectItem != nullptr)
@@ -1526,6 +1536,8 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
             freqGo.Hz = (freq.MHzDouble + delta) * 1E6;
             freqGo.Hz = roundFrequency(freqGo.Hz, stepSize);
             freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
+            emit sendTrack(freqGo.Hz-this->freq.Hz);
+
             setFrequency(freqGo);
             sendCommand(priorityImmediate,getFreqFunc(0,true),false,false,QVariant::fromValue<freqt>(freqGo));
         }
@@ -1598,7 +1610,7 @@ void spectrumScope::scroll(QWheelEvent *we)
     f.Hz = roundFrequency(freq.Hz, clicks, stepsHz);
     f.MHzDouble = f.Hz / (double)1E6;
 
-    freq = f; // Do we need to do this?
+    emit sendTrack(f.Hz-this->freq.Hz);
 
     setFrequency(f);
     sendCommand(priorityImmediate,getFreqFunc(0,true),false,false,QVariant::fromValue<freqt>(f));
@@ -2008,13 +2020,13 @@ void spectrumScope::setFrequency(freqt f, uchar vfo)
         freqDisplay[vfo]->setFrequency(f.Hz);
         freqDisplay[vfo]->blockSignals(false);
     }
+
     if (vfo==0) {
-        freq = f;
-        quint64 freq = quint64(f.Hz);
+        this->freq = f;
         for (const auto &b: rigCaps->bands)
         {
             // Highest frequency band is always first!
-            if (freq >= b.lowFreq && freq <= b.highFreq)
+            if (f.Hz >= b.lowFreq && f.Hz <= b.highFreq)
             {
                 // This frequency is contained within this band!
                 if (currentBand.band != b.band) {
@@ -2026,7 +2038,7 @@ void spectrumScope::setFrequency(freqt f, uchar vfo)
         }
     } else if (vfo==1)
     {
-        unselectedFreq=f;
+        this->unselectedFreq=f;
     }
 }
 
@@ -2109,7 +2121,9 @@ void spectrumScope::newFrequency(qint64 freq,uchar vfo)
     f.MHzDouble = f.Hz / (double)1E6;
     if (f.Hz > 0)
     {
-        sendCommand(priorityImmediate,getFreqFunc(vfo,true),false,true,QVariant::fromValue<freqt>(f));
+        emit sendTrack(f.Hz-this->freq.Hz);
+
+        sendCommand(priorityImmediate,getFreqFunc(vfo,true),false,false,QVariant::fromValue<freqt>(f));
     }
 }
 
@@ -2300,17 +2314,32 @@ funcs spectrumScope::getModeFunc(uchar vfo, bool set)
 
 void spectrumScope::vfoSwap()
 {
-    if (rigCaps->commands.contains(funcVFOSwapAB))
-    {
-        sendCommand(priorityImmediate,funcVFOSwapAB,false,false);
+    if (!tracking) {
+        if (rigCaps->commands.contains(funcVFOSwapAB))
+        {
+            sendCommand(priorityImmediate,funcVFOSwapAB,false,false);
+        }
+        else
+        {
+            // Manufacture a VFO Swap (should be fun!)
+            sendCommand(priorityImmediate,getFreqFunc(0,true),false,true,QVariant::fromValue(unselectedFreq));
+            sendCommand(priorityImmediate,getFreqFunc(1,true),false,true,QVariant::fromValue(freq));
+            sendCommand(priorityImmediate,getModeFunc(0,true),false,true,QVariant::fromValue(unselectedMode));
+            sendCommand(priorityImmediate,getModeFunc(1,true),false,true,QVariant::fromValue(mode));
+        }
     }
-    else
-    {
-        // Manufacture a VFO Swap (should be fun!)
-        sendCommand(priorityImmediate,getFreqFunc(0),false,true,QVariant::fromValue(unselectedFreq));
-        sendCommand(priorityImmediate,getFreqFunc(1),false,true,QVariant::fromValue(freq));
-        sendCommand(priorityImmediate,getModeFunc(0),false,true,QVariant::fromValue(unselectedMode));
-        sendCommand(priorityImmediate,getModeFunc(1),false,true,QVariant::fromValue(mode));
-    }
+}
 
+void spectrumScope::receiveTrack(int f)
+{
+    qInfo(logRig) << "Got tracking for rx" << receiver<< "amount" << f << "Hz";
+    if (tracking && receiver) {
+        // OK I am the sub receiver so lets try this.
+        freqt freqGo;
+        freqGo.Hz=this->freq.Hz+f;
+        freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
+        freqGo.VFO = activeVFO;
+        sendCommand(priorityImmediate,getFreqFunc(0,true),false,false,QVariant::fromValue(freqGo));
+        freq=freqGo;
+    }
 }

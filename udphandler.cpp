@@ -213,7 +213,7 @@ void udpHandler::dataReceived()
                 control_packet_t in = (control_packet_t)r.constData();
                 if (in->type == 0x04) {
                     // If timer is active, stop it as they are obviously there!
-                    qInfo(logUdp()) << this->metaObject()->className() << ": Received I am here from: " <<datagram.senderAddress().toIPv4Address();
+                    qInfo(logUdp()) << this->metaObject()->className() << ": Received I am here from: " <<datagram.senderAddress().toString();
 
                     if (areYouThereTimer->isActive()) {
                         // send ping packets every second

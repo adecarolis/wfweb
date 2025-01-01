@@ -63,6 +63,7 @@ enum inputTypes{ inputMic=0,
                   inputMICUSB=10,
                   inputAV=11,
                   inputMICAV=12,
+                  inputACCUSB=13,
                   inputNone,
                   inputUnknown=0xff
 };

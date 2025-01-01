@@ -152,6 +152,8 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     connect(queue,SIGNAL(sendMessage(QString)),this,SLOT(showStatusBarText(QString)));
     connect(queue, SIGNAL(finished()), queue, SLOT(deleteLater()));
 
+    ui->mainGroup->setEnabled(false); // Disable all controls until connected.
+
     // We need to populate the list of rigs as early as possible so do it now
 
 #ifndef Q_OS_LINUX
@@ -652,6 +654,9 @@ void wfmain::removeRig()
     }
     receivers.clear();
     currentReceiver=0;
+    // Disable other controls
+    ui->mainGroup->setEnabled(false);
+
 }
 
 
@@ -1071,9 +1076,11 @@ void wfmain::configureVFOs()
         connect(receiver,SIGNAL(showStatusBarText(QString)),this,SLOT(showStatusBarText(QString)));
         connect(receiver,SIGNAL(sendScopeImage(uchar)),this,SLOT(receiveScopeImage(uchar)));
         receivers.append(receiver);
-        queue->add(priorityImmediate,queueItem(funcScopeMainSub,false)); // Get current scope
-
         //ui->scopeSpacer->changeSize(0,0,QSizePolicy::Minimum);
+        if (receivers.size() > 1)
+        {
+            connect(receivers[0], SIGNAL(sendTrack(int)),receivers[1], SLOT(receiveTrack(int)));
+        }
     }
 }
 
@@ -2528,7 +2535,8 @@ void wfmain::extChangedColPref(prefColItem i)
                                         .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
         ui->dualWatchBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
                                         .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
-
+        ui->mainSubTrackingBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
+                                        .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
     case col_grid:
     case col_axis:
     case col_text:
@@ -3625,6 +3633,7 @@ funcs wfmain::getInputTypeCommand(inputTypes input)
 
     case inputACCAACCB:
     case inputACCA:
+    case inputACCUSB:
         func = funcACCAModLevel;
         break;
 
@@ -3669,9 +3678,12 @@ void wfmain:: getInitialRigState()
         queue->add(priorityImmediate,funcVFOModeSelect); // Make sure we are in VFO mode.
 
     if (rigCaps->commands.contains(funcScopeMainSub))
-        queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(uchar(0)),false,0)); // Set main scope
-    if (rigCaps->commands.contains(funcVFOBandMS))
-        queue->add(priorityImmediate,queueItem(funcVFOBandMS,QVariant::fromValue(uchar(0)),false,0));
+        queue->add(priorityImmediate,funcScopeMainSub); // get scope
+
+    //queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(uchar(0)),false,0)); // Set main scope
+
+    //if (rigCaps->commands.contains(funcVFOBandMS))
+    //    queue->add(priorityImmediate,queueItem(funcVFOBandMS,QVariant::fromValue(uchar(0)),false,0));
 
     queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue(uchar(0)),false,0)); // Set primary VFO
 
@@ -4663,11 +4675,11 @@ void wfmain::processChangingCurrentModLevel(quint8 level)
 
     funcs f = funcNone;
     if (receivers.size()) {
-        quint8 d = receivers[0]->getDataMode();
+        quint8 d = receivers[currentReceiver]->getDataMode();
         f = getInputTypeCommand(prefs.inputSource[d].type);
 
+        qDebug(logSystem()) << "Updating mod level for" << funcString[f] << "setting to" << level;
         queue->addUnique(priorityImmediate,queueItem(f,QVariant::fromValue<ushort>(level),false));
-
     }
 }
 
@@ -5054,6 +5066,8 @@ void wfmain::useColorPreset(colorPrefsType *cp)
                                     .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
     ui->dualWatchBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
                                     .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
+    ui->mainSubTrackingBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
+                                    .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
 
     for (const auto& receiver: receivers) {
         receiver->colorPreset(cp);
@@ -5420,20 +5434,22 @@ void wfmain::receiveValue(cacheItem val){
             if (QThread::currentThread() != QCoreApplication::instance()->thread())
             {
                 qCritical(logSystem()) << "Thread is NOT the main UI thread, cannot hide/unhide VFO";
-            } else {
-                // This tells us whether we are receiving single or dual scopes
-                if (!ui->scopeDualBtn->isVisible())
-                {
-                    if (en && !receivers[1]->isVisible())
-                    {
-                        receivers[1]->setVisible(true);
-                    }
-                    else if (!en && receivers[1]->isVisible())
-                    {
-                        receivers[1]->setVisible(false);
-                    }
-                }
             }
+            /*
+            else {
+                // This tells us whether we are receiving single or dual scopes
+                if (en && !receivers[1]->isVisible())
+                {
+                    receivers[1]->setVisible(true);
+                }
+                else if (!en && receivers[1]->isVisible())
+                {
+                    receivers[1]->setVisible(false);
+                }
+            } */
+            ui->scopeMainSubBtn->setEnabled(en);
+            ui->scopeDualBtn->setEnabled(en);
+            ui->swapMainSubBtn->setEnabled(en);
         }
 
         break;
@@ -5680,6 +5696,11 @@ void wfmain::receiveValue(cacheItem val){
     case funcSSBTXBandwidth:
         break;
     case funcMainSubTracking:
+        ui->mainSubTrackingBtn->setChecked(val.value.value<bool>());
+        for (const auto& receiver:receivers)
+        {
+            receiver->setTracking(val.value.value<bool>());
+        }
         break;
     case funcToneSquelchType:
         break;
@@ -5943,15 +5964,68 @@ void wfmain::on_scopeMainSubBtn_clicked()
 void wfmain::on_scopeDualBtn_toggled(bool en)
 {
     queue->add(priorityImmediate,queueItem(funcScopeSingleDual,QVariant::fromValue(en),false));
-    queue->add(priorityImmediate,queueItem(funcVFODualWatch,QVariant::fromValue(en),false));
-    if (en)
-        queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(uchar(0)),false)); // Set main scope
-
+    queue->add(priorityImmediate,funcScopeMainSub);
 }
 
 void wfmain::on_dualWatchBtn_toggled(bool en)
 {
     queue->add(priorityImmediate,queueItem(funcVFODualWatch,QVariant::fromValue(en),false));
+    queue->add(priorityImmediate,funcScopeMainSub);
+
+    if (!en)
+    {
+        ui->scopeDualBtn->setChecked(false);
+    }
+}
+
+void wfmain::on_swapMainSubBtn_clicked()
+{
+    queue->add(priorityImmediate,funcVFOSwapMS);
+    if (!rigCaps->hasCommand29) {
+        if (receivers[0]->isSelected()) {
+            queue->add(priorityHighest,funcSelectedFreq);
+            queue->add(priorityHighest,funcSelectedMode);
+            queue->add(priorityHighest,funcUnselectedFreq);
+            queue->add(priorityHighest,funcUnselectedMode);
+        } else {
+            queue->add(priorityHighest,funcFreqGet);
+            queue->add(priorityHighest,funcModeGet);
+        }
+    } else {
+        for (const auto &receiver: receivers)
+        {
+            queue->add(priorityHighest,funcFreq,false,receiver->getReceiver());
+            queue->add(priorityHighest,funcMode,false,receiver->getReceiver());
+        }
+    }
+
+}
+
+void wfmain::on_mainSubTrackingBtn_toggled(bool en)
+{
+    queue->add(priorityImmediate,queueItem(funcMainSubTracking,QVariant::fromValue(en),false));
+}
+
+void wfmain::on_mainEqualsSubBtn_clicked()
+{
+    queue->add(priorityImmediate,funcVFOEqualMS);
+    if (!rigCaps->hasCommand29) {
+        if (receivers[0]->isSelected()) {
+            queue->add(priorityHighest,funcSelectedFreq);
+            queue->add(priorityHighest,funcSelectedMode);
+            queue->add(priorityHighest,funcUnselectedFreq);
+            queue->add(priorityHighest,funcUnselectedMode);
+        } else {
+            queue->add(priorityHighest,funcFreqGet);
+            queue->add(priorityHighest,funcModeGet);
+        }
+    } else {
+        for (const auto &receiver: receivers)
+        {
+            queue->add(priorityHighest,funcFreq,false,receiver->getReceiver());
+            queue->add(priorityHighest,funcMode,false,receiver->getReceiver());
+        }
+    }
 }
 
 void wfmain::dataModeChanged(modeInfo m)
@@ -6021,6 +6095,9 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         return;
     } else {
 
+        // Enable other controls
+        ui->mainGroup->setEnabled(true);
+
         showStatusBarText(QString("Found radio at address 0x%1 of name %2 and model ID %3.").arg(rigCaps->civ,2,16).arg(rigCaps->modelName).arg(rigCaps->modelID));
 
         qDebug(logSystem()) << "Rig name: " << rigCaps->modelName;
@@ -6072,9 +6149,12 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         ui->scopeSettingsGroup->setVisible(rigCaps->commands.contains(funcVFODualWatch));
 
         ui->scopeDualBtn->setVisible(rigCaps->commands.contains(funcVFODualWatch));
+        ui->mainEqualsSubBtn->setVisible(rigCaps->commands.contains(funcVFOEqualMS));
+        ui->swapMainSubBtn->setVisible(rigCaps->commands.contains(funcVFOSwapMS));
+        ui->mainSubTrackingBtn->setVisible(rigCaps->commands.contains(funcMainSubTracking));
         ui->antennaGroup->setVisible(rigCaps->commands.contains(funcAntenna));
         ui->preampAttGroup->setVisible(rigCaps->commands.contains(funcPreamp));
-        ui->dualWatchBtn->setVisible(rigCaps->hasCommand29);
+        //ui->dualWatchBtn->setVisible(rigCaps->hasCommand29);
 
         ui->nbEnableChk->setEnabled(rigCaps->commands.contains(funcNoiseBlanker));
         ui->nrEnableChk->setEnabled(rigCaps->commands.contains(funcNoiseReduction));

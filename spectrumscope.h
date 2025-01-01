@@ -119,6 +119,7 @@ public:
     QImage getWaterfallImage();
     bandType getCurrentBand();
     void setSplit(bool en) { splitButton->setChecked(en); }
+    void setTracking(bool en) { tracking=en; }
 
 public slots: // Can be called directly or updated via signal/slot
     void selectScopeMode(spectrumMode_t m);
@@ -138,6 +139,7 @@ signals:
     void spectrumTime(double time);
     void waterfallTime(double time);
     void sendScopeImage(uchar receiver);
+    void sendTrack(int f);
 
 private slots:
     void detachScope(bool state);
@@ -161,6 +163,7 @@ private slots:
 
     void clearPeaks();
     void newFrequency(qint64 freq,uchar i=0);
+    void receiveTrack(int f);
 
 private:
     void clearPlasma();
@@ -333,6 +336,7 @@ private:
     QElapsedTimer lastData;
     bool satMode = false;
     bool memMode = false;
+    bool tracking = false;
 };
 
 #endif // SPECTRUMSCOPE_H
