@@ -1,5 +1,5 @@
 [General]
-Version=1.94
+Version=2.02
 
 [Rig]
 Manufacturer=Icom
@@ -18,7 +18,6 @@ HasWiFi=false
 HasTransmit=true
 HasFDComms=true
 HasCommand29=false
-SubDirectAccess=false
 MemGroups=100
 Memories=99
 MemStart=0
@@ -891,21 +890,15 @@ Inputs\1\Num=0
 Inputs\1\Reg=0
 Inputs\1\Name=MIC
 Inputs\2\Num=3
-Inputs\2\Reg=3
+Inputs\2\Reg=1
 Inputs\2\Name=USB
 Inputs\3\Num=4
-Inputs\3\Reg=5
+Inputs\3\Reg=3
 Inputs\3\Name=LAN
 Inputs\4\Num=10
-Inputs\4\Reg=4
+Inputs\4\Reg=2
 Inputs\4\Name=M/U
-Inputs\5\Num=11
-Inputs\5\Reg=1
-Inputs\5\Name=AV
-Inputs\6\Num=12
-Inputs\6\Reg=2
-Inputs\6\Name=M/A
-Inputs\size=6
+Inputs\size=4
 Bands\1\Region=
 Bands\1\Num=0
 Bands\1\BSR=6
