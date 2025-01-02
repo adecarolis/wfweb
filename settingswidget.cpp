@@ -3057,7 +3057,6 @@ void settingswidget::on_connectBtn_clicked()
     emit connectButtonPressed();
 }
 
-
 void settingswidget::on_saveSettingsBtn_clicked()
 {
     emit saveSettingsButtonPressed();

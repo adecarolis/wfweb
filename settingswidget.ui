@@ -41,7 +41,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>1</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -746,33 +746,6 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
           </layout>
          </item>
          <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_15">
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <item>
-            <widget class="QPushButton" name="connectBtn">
-             <property name="text">
-              <string>Connect To Radio</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="horizontalSpacer_5">
-             <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </item>
-         <item>
           <spacer name="verticalSpacer">
            <property name="orientation">
             <enum>Qt::Orientation::Vertical</enum>
@@ -1402,8 +1375,8 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>911</width>
-                 <height>367</height>
+                 <width>573</width>
+                 <height>286</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">
@@ -3600,6 +3573,26 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
       <widget class="QPushButton" name="revertSettingsBtn">
        <property name="text">
         <string>Revert to Default</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_32">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="connectBtn">
+       <property name="text">
+        <string>Connect to Radio</string>
        </property>
       </widget>
      </item>
