@@ -178,6 +178,13 @@ struct toneInfo {
     bool tinv;
     bool rinv;
     bool useSecondaryVFO;
+    toneInfo &operator=(const toneInfo &i) {
+        this->tone=i.tone;
+        this->tinv=i.tinv;
+        this->rinv=i.rinv;
+        this->useSecondaryVFO=i.useSecondaryVFO;
+        return *this;
+    }
 };
 
 enum breakIn_t {

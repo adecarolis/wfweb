@@ -133,6 +133,13 @@ struct centerSpanData {
     centerSpansType cstype;
     QString name;
     unsigned int freq;
+
+    centerSpanData &operator=(const centerSpanData &i) {
+        this->cstype=i.cstype;
+        this->name=i.name;
+        this->freq=i.freq;
+        return *this;
+    }
 };
 
 struct bandType {
@@ -154,6 +161,21 @@ struct bandType {
     QColor color;
     QString name;
     qint64 newFreq=0;
+    bandType &operator=(const bandType &i) {
+        this->region=i.region;
+        this->band=i.band;
+        this->bsr=i.bsr;
+        this->lowFreq=i.highFreq;
+        this->defaultMode=i.defaultMode;
+        this->range=i.range;
+        this->memGroup=i.memGroup;
+        this->bytes=i.bytes;
+        this->ants=i.ants;
+        this->color=i.color;
+        this->name=i.name;
+        this->newFreq=i.newFreq;
+        return *this;
+    }
 };
 
 // Used for setting/retrieving BSR information
@@ -173,6 +195,19 @@ struct bandStackType {
     uchar sql;
     toneInfo tone;
     toneInfo tsql;
+    bandStackType &operator=(const bandStackType &i) {
+        this->band=i.band;
+        this->regCode=i.regCode;
+        this->freq=i.freq;
+        this->data=i.data;
+        this->mode=i.mode;
+        this->filter=i.filter;
+        this->sql=i.sql;
+        this->tone=i.tone;
+        this->tsql=i.tsql;
+        return *this;
+    }
+
 };
 
 

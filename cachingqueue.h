@@ -55,6 +55,14 @@ struct cacheItem {
     QDateTime reply;
     QVariant value;
     uchar receiver;
+    cacheItem &operator=(const cacheItem &i) {
+        this->receiver=i.receiver;
+        this->command=i.command;
+        this->reply=i.reply;
+        this->req=i.req;
+        this->value=i.value;
+        return *this;
+    }
 };
 
 class cachingQueue : public QThread

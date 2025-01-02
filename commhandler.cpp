@@ -244,13 +244,13 @@ void commHandler::receiveDataIn()
             //payloadIn = data.right(data.length() - 4);
 
             // Do we need to combine waterfall into single packet?
-            int combined = 0;
+            //int combined = 0;
             if (combineWf) {
                 int pos = inPortData.indexOf(QByteArrayLiteral("\x27\x00\x00"));
                 int fdPos = inPortData.mid(pos).indexOf(QByteArrayLiteral("\xfd"));
                 //printHex(inPortData, false, true);
                 while (pos > -1 && fdPos > -1) {
-                    combined++;
+
                     spectrumDivisionNumber = inPortData[pos + 3] & 0x0f;
                     spectrumDivisionNumber += ((inPortData[pos + 3] & 0xf0) >> 4) * 10;
 

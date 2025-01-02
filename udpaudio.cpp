@@ -95,7 +95,6 @@ void udpAudio::receiveAudioData(audioPacket audio) {
         return;
     }
     if (audio.data.length() > 0) {
-        int counter = 1;
         int len = 0;
 
         while (len < audio.data.length()) {
@@ -119,7 +118,6 @@ void udpAudio::receiveAudioData(audioPacket audio) {
             //qInfo(logUdp()) << "Sending audio packet length: " << tx.length();
             sendTrackedPacket(tx);
             sendAudioSeq++;
-            counter++;
         }
     }
 }

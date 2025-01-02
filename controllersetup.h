@@ -37,7 +37,7 @@
 class controllerScene : public QGraphicsScene
 {
     Q_OBJECT
-        QGraphicsLineItem* item = Q_NULLPTR;
+        //QGraphicsLineItem* item = Q_NULLPTR;
 
 signals:
         void showMenu(controllerScene* scene, QPoint p);
