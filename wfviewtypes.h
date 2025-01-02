@@ -145,6 +145,15 @@ struct modeInfo {
     int pass;
 };
 
+struct rigInfo {
+    rigInfo (): civ(0), model(""), path(""),version(0.0) {};
+    rigInfo (uchar civ, QString model, QString path, float version): civ(civ), model(model), path(path), version(version) {};
+    uchar civ;
+    QString model;
+    QString path;
+    float version;
+};
+
 struct antennaInfo {
     quint8 antenna;
     bool rx;
@@ -549,5 +558,6 @@ Q_DECLARE_METATYPE(toneInfo)
 Q_DECLARE_METATYPE(meter_t)
 Q_DECLARE_METATYPE(meterkind)
 Q_DECLARE_METATYPE(spectrumBounds)
+Q_DECLARE_METATYPE(rigInfo)
 
 #endif // WFVIEWTYPES_H

@@ -159,7 +159,7 @@ private:
     QString serialPortError;
     quint8 localVolume=0;
 
-    QHash<quint8,QString> rigList;
+    QHash<quint8,rigInfo> rigList;
 
     quint64 pow10[12] = {
         1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000, 100000000000

@@ -723,7 +723,7 @@ private:
 
     int oldFreqDialVal;
 
-    QHash<quint8,QString> rigList;
+    QHash<quint8,rigInfo> rigList;
     rigCapabilities* rigCaps = Q_NULLPTR;
 
     rigInput currentModSrc[4];

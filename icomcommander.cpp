@@ -57,7 +57,7 @@ icomCommander::~icomCommander()
 }
 
 
-void icomCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
+void icomCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
 {
     // construct
 
@@ -104,7 +104,7 @@ void icomCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, 
     commonSetup();
 }
 
-void icomCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
+void icomCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -1332,7 +1332,7 @@ void icomCommander::determineRigCaps()
         qInfo(logRig()) << QString("No rig definition found for CI-V address: 0x%0, using defaults (some functions may not be available)").arg(rigCaps.modelID,2,16);
         rigCaps.modelID=0;
     }
-    rigCaps.filename = rigList.find(rigCaps.modelID).value();
+    rigCaps.filename = rigList.find(rigCaps.modelID).value().path;
     QSettings* settings = new QSettings(rigCaps.filename, QSettings::Format::IniFormat);
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     settings->setIniCodec("UTF-8");

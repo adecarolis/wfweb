@@ -787,7 +787,7 @@ bool spectrumScope::updateScope(scopeData data)
 
     if (specLen != spectWidth)
     {
-        qCritical(logSystem()) << "Spectrum length error! Expected" << spectWidth << "got" << specLen;
+        qWarning(logSystem()) << "Spectrum length error, expected" << spectWidth << "got" << specLen << "(one can be ignored for USB connection)";
         return false;
     }
 

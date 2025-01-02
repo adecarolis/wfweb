@@ -31,7 +31,7 @@ rigCommander::~rigCommander()
 }
 
 
-void rigCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
+void rigCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
 {
     Q_UNUSED(rigList)
     Q_UNUSED(rigCivAddr)
@@ -43,7 +43,7 @@ void rigCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, Q
     qWarning(logRig()) << "commSetup() (serial) not implemented by rig type";
 }
 
-void rigCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
+void rigCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
 {
     Q_UNUSED(rigList)
     Q_UNUSED(rigCivAddr)

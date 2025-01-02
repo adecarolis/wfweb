@@ -144,6 +144,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<spectrumBounds>();
     qRegisterMetaType<centerSpanData>();
     qRegisterMetaType<bandStackType>();
+    qRegisterMetaType<rigInfo>();
 
     this->setObjectName("wfmain");
     queue = cachingQueue::getInstance(this);
@@ -188,10 +189,17 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
                 delete rigSettings;
                 continue;
             }
+
+            float ver = rigSettings->value("Version","0.0").toString().toFloat();
+
             rigSettings->beginGroup("Rig");
-            qDebug() << QString("Found Rig %0 with CI-V address of %1").arg(rigSettings->value("Model","").toString(), rigSettings->value("CIVAddress",0).toString());
+            uchar civ = rigSettings->value("CIVAddress",0).toInt();
+            QString model = rigSettings->value("Model","").toString();
+            QString path = systemRigDir.absoluteFilePath(rig);
+
+            qDebug() << QString("Found Rig %0 with CI-V address of 0x%1 and version %2").arg(model).arg(civ,2,16,QChar('0')).arg(ver);
             // Any user modified rig files will override system provided ones.
-            this->rigList.insert(rigSettings->value("CIVAddress",0).toInt(),systemRigDir.absoluteFilePath(rig));
+            this->rigList.insert(civ,rigInfo(civ,model,path,ver));
             rigSettings->endGroup();
             delete rigSettings;
         }
@@ -203,16 +211,39 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         QStringList rigs = userRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
         for (QString& rig: rigs) {
             QSettings* rigSettings = new QSettings(userRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+            rigSettings->setIniCodec("UTF-8");
+#endif
+
             if (!rigSettings->childGroups().contains("Rig"))
             {
                 qWarning() << rig << "Does not seem to be a rig description file";
                 delete rigSettings;
                 continue;
             }
+
+            float ver = rigSettings->value("Version","0.0").toString().toFloat();
+
             rigSettings->beginGroup("Rig");
-            qDebug() << QString("Found User Rig %0 with CI-V address of %1").arg(rigSettings->value("Model","").toString(), rigSettings->value("CIVAddress",0).toString());
+
+            uchar civ = rigSettings->value("CIVAddress",0).toInt();
+            QString model = rigSettings->value("Model","").toString();
+            QString path = userRigDir.absoluteFilePath(rig);
+
+            auto it = this->rigList.find(civ);
+
+            if (it != this->rigList.end())
+            {
+                if (ver >= it.value().version) {
+                    qInfo() << QString("Found User Rig %0 with CI-V address of 0x%1 and newer or same version than system one (%2>=%3)").arg(model).arg(civ,2,16,QChar('0')).arg(ver).arg(it.value().version);
+                    this->rigList.insert(civ,rigInfo(civ,model,path,ver));
+                }
+            } else {
+                qInfo() << QString("Found New User Rig %0 with CI-V address of 0x%1").arg(model).arg(civ,2,16,QChar('0'));
+                this->rigList.insert(civ,rigInfo(civ,model,path,ver));
+            }
             // Any user modified rig files will override system provided ones.
-            this->rigList.insert(rigSettings->value("CIVAddress",0).toInt(),userRigDir.absoluteFilePath(rig));
             rigSettings->endGroup();
             delete rigSettings;
         }

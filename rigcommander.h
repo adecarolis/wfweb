@@ -26,7 +26,7 @@
 
 //#define DEBUG_PARSE // Enable to output Info messages every 10s with command parse timing.
 
-typedef QHash<quint8, QString> rigTypedef;
+typedef QHash<quint8, rigInfo> rigTypedef;
 
 class rigCommander : public QObject
 {
