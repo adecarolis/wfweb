@@ -152,7 +152,8 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     connect(queue,SIGNAL(sendMessage(QString)),this,SLOT(showStatusBarText(QString)));
     connect(queue, SIGNAL(finished()), queue, SLOT(deleteLater()));
 
-    ui->mainGroup->setEnabled(false); // Disable all controls until connected.
+    // Disable all controls until connected.
+    enableControls(false);
 
     // We need to populate the list of rigs as early as possible so do it now
 
@@ -654,8 +655,8 @@ void wfmain::removeRig()
     }
     receivers.clear();
     currentReceiver=0;
-    // Disable other controls
-    ui->mainGroup->setEnabled(false);
+    // Disable all controls until connected.
+    enableControls(false);
 
 }
 
@@ -6095,8 +6096,8 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         return;
     } else {
 
-        // Enable other controls
-        ui->mainGroup->setEnabled(true);
+        // Enable all controls
+        enableControls(true);
 
         showStatusBarText(QString("Found radio at address 0x%1 of name %2 and model ID %3.").arg(rigCaps->civ,2,16).arg(rigCaps->modelName).arg(rigCaps->modelID));
 
@@ -6380,6 +6381,37 @@ void wfmain::on_voxEnableChk_clicked(bool checked)
 void wfmain::on_digiselEnableChk_clicked(bool checked)
 {
     queue->addUnique(priorityImmediate,queueItem(funcDigiSel,QVariant::fromValue<bool>(checked),false,currentReceiver));
+}
+
+void wfmain::enableControls(bool en)
+{
+    // This should contain all of the controls within the main window (other than power buttons)
+    // So should be updated if any are added/removed/renamed.
+
+    ui->freqDial->setEnabled(en);
+    ui->tuningStepCombo->setEnabled(en);
+    ui->tuneLockChk->setEnabled(en);
+    ui->ritEnableChk->setEnabled(en);
+    ui->ritTuneDial->setEnabled(en);
+    ui->afGainSlider->setEnabled(en);
+    ui->micGainSlider->setEnabled(en);
+    ui->monitorSlider->setEnabled(en);
+    ui->rfGainSlider->setEnabled(en);
+    ui->sqlSlider->setEnabled(en);
+    ui->txPowerSlider->setEnabled(en);
+
+    ui->OtherControlsGrp->setEnabled(en);
+
+    ui->cwButton->setEnabled(en);
+    ui->memoriesBtn->setEnabled(en);
+    ui->rptSetupBtn->setEnabled(en);
+    ui->transmitBtn->setEnabled(en);
+    ui->tuneEnableChk->setEnabled(en);
+    ui->tuneNowBtn->setEnabled(en);
+
+    ui->scopeSettingsGroup->setEnabled(en);
+    ui->preampAttGroup->setEnabled(en);
+    ui->antennaGroup->setEnabled(en);
 }
 
 

@@ -619,6 +619,7 @@ private:
     void setupUsbControllerDevice();
     void setInitialTiming();
     void getSettingsFilePath(QString settingsFile);
+    void enableControls(bool en);
 
     QStringList modes;
     int currentModeIndex;

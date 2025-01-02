@@ -340,7 +340,7 @@
           </layout>
          </item>
          <item>
-          <layout class="QVBoxLayout" name="verticalLayout_4">
+          <layout class="QVBoxLayout" name="controlsLayout">
            <item>
             <spacer name="verticalSpacer">
              <property name="orientation">
@@ -919,7 +919,7 @@
           </layout>
          </item>
          <item>
-          <layout class="QVBoxLayout" name="verticalLayout_18">
+          <layout class="QVBoxLayout" name="rightControlsLayout">
            <property name="spacing">
             <number>2</number>
            </property>
