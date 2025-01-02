@@ -116,6 +116,12 @@ enum rptAccessTxRx_t {
     ratrTSQLon
 };
 
+enum pttType_t {
+    pttCIV=0x00,
+    pttRTS=0x01,
+    pttDTR=0x01
+};
+
 struct rptrAccessData {
     rptAccessTxRx_t accessMode = ratrNN;
     bool useSecondaryVFO = false;
@@ -137,6 +143,15 @@ struct modeInfo {
     int bwMin;
     int bwMax;
     int pass;
+};
+
+struct rigInfo {
+    rigInfo (): civ(0), model(""), path(""),version(0.0) {};
+    rigInfo (uchar civ, QString model, QString path, float version): civ(civ), model(model), path(path), version(version) {};
+    uchar civ;
+    QString model;
+    QString path;
+    float version;
 };
 
 struct antennaInfo {
@@ -163,6 +178,13 @@ struct toneInfo {
     bool tinv;
     bool rinv;
     bool useSecondaryVFO;
+    toneInfo &operator=(const toneInfo &i) {
+        this->tone=i.tone;
+        this->tinv=i.tinv;
+        this->rinv=i.rinv;
+        this->useSecondaryVFO=i.useSecondaryVFO;
+        return *this;
+    }
 };
 
 enum breakIn_t {
@@ -531,6 +553,7 @@ Q_DECLARE_METATYPE(rigMode_t)
 Q_DECLARE_METATYPE(vfo_t)
 Q_DECLARE_METATYPE(duplexMode_t)
 Q_DECLARE_METATYPE(rptAccessTxRx_t)
+Q_DECLARE_METATYPE(pttType_t)
 Q_DECLARE_METATYPE(rptrAccessData)
 Q_DECLARE_METATYPE(usbFeatureType)
 Q_DECLARE_METATYPE(funcs)
@@ -543,5 +566,6 @@ Q_DECLARE_METATYPE(toneInfo)
 Q_DECLARE_METATYPE(meter_t)
 Q_DECLARE_METATYPE(meterkind)
 Q_DECLARE_METATYPE(spectrumBounds)
+Q_DECLARE_METATYPE(rigInfo)
 
 #endif // WFVIEWTYPES_H

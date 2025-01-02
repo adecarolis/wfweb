@@ -9,9 +9,11 @@
 #include "cachingqueue.h"
 
 /* Opus and Eigen */
-#ifdef Q_OS_WIN
+#ifndef Q_OS_LINUX
+#include "opus.h"
 #include <Eigen/Eigen>
 #else
+#include "opus/opus.h"
 #include <eigen3/Eigen/Eigen>
 #endif
 

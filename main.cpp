@@ -27,18 +27,20 @@ QScopedPointer<QFile>   m_logFile;
 QMutex logMutex;
 servermain* w=Q_NULLPTR;
 
- #ifdef Q_OS_WIN
+#ifdef Q_OS_WIN
 bool __stdcall cleanup(DWORD sig)
  #else
 static void cleanup(int sig)
  #endif
 {
     switch(sig) {
+#ifndef Q_OS_WIN
     case SIGHUP:
         qInfo() << "hangup signal";
         break;
+#endif
     case SIGTERM:
-        qInfo() << "terminate signal catched";
+        qInfo() << "terminate signal caught";
         if (w!=Q_NULLPTR) w->deleteLater();
         QCoreApplication::quit();
         break;
@@ -81,6 +83,8 @@ void initDaemon()
  #else
 
 void initDaemon() {
+    std::cout << "Background mode does not currently work in Windows\n";
+    exit(1);
 }
 
  #endif
@@ -99,7 +103,9 @@ int main(int argc, char *argv[])
     keyboard* kb = new keyboard();
     kb->start();
 #else
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+#endif
     QApplication a(argc, argv);
     a.setOrganizationName("wfview");
     a.setOrganizationDomain("wfview.org");

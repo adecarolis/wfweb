@@ -67,7 +67,9 @@ enum prefColItem {
     col_waterfallAxis = 1 << 25,
     col_waterfallText = 1 << 26,
     col_clusterSpots = 1 << 27,
-    col_all = 1 << 28
+    col_buttonOff = 1 << 28,
+    col_buttonOn = 1 << 29,
+    col_all = 1 << 30
 };
 
 enum prefRsItem {
@@ -89,7 +91,7 @@ enum prefRaItem {
 
     ra_radioCIVAddr = 1 << 0,
     ra_CIVisRadioModel = 1 << 1,
-    ra_forceRTSasPTT = 1 << 2,
+    ra_pttType = 1 << 2,
     ra_polling_ms = 1 << 3,
     ra_serialEnabled = 1 << 4,
     ra_serialPortRadio = 1 << 5,
@@ -205,7 +207,7 @@ struct preferences {
     // Radio:
     quint8 radioCIVAddr;
     bool CIVisRadioModel;
-    bool forceRTSasPTT;
+    pttType_t pttType;
     int polling_ms;
     QString serialPortRadio;
     quint32 serialPortBaud;

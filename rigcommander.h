@@ -26,7 +26,7 @@
 
 //#define DEBUG_PARSE // Enable to output Info messages every 10s with command parse timing.
 
-typedef QHash<quint8, QString> rigTypedef;
+typedef QHash<quint8, rigInfo> rigTypedef;
 
 class rigCommander : public QObject
 {
@@ -61,7 +61,7 @@ public slots:
     virtual void commSetup(rigTypedef rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     virtual void closeComm();
 
-    virtual void setRTSforPTT(bool enabled);
+    virtual void setPTTType(pttType_t ptt);
 
     // Power:
     virtual void powerOn();
@@ -92,7 +92,7 @@ signals:
 
     void haveNetworkAudioLevels(const networkAudioLevels l);
     void dataForComm(const QByteArray &outData);
-    void toggleRTS(bool rtsOn);
+
     void setHalfDuplex(bool en);
 
     // UDP:

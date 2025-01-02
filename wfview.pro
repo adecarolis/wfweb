@@ -21,7 +21,7 @@ contains(DEFINES,USB_CONTROLLER){
 TARGET = wfview
 TEMPLATE = app
 
-DEFINES += WFVIEW_VERSION=\\\"2.01\\\"
+DEFINES += WFVIEW_VERSION=\\\"2.02\\\"
 
 DEFINES += BUILD_WFVIEW
 
@@ -99,8 +99,8 @@ isEmpty(PREFIX) {
 
 DEFINES += PREFIX=\\\"$$PREFIX\\\"
 
-macx:INCLUDEPATH += /usr/local/include /opt/local/include 
-macx:LIBS += -L/usr/local/lib -L/opt/local/lib
+macx:INCLUDEPATH += /usr/local/include
+macx:LIBS += -L/usr/local/lib
 
 win32:RC_ICONS = "resources/icons/Windows/wfview 512x512.ico"
 
@@ -258,7 +258,6 @@ win32:LIBS += -lopus -lole32 -luser32
 
 win32:INCLUDEPATH += ../qcustomplot
 !linux:INCLUDEPATH += ../opus/include
-
 !linux:INCLUDEPATH += ../eigen
 !linux:INCLUDEPATH += ../r8brain-free-src
 

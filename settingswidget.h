@@ -135,6 +135,8 @@ private slots:
     void on_rigCreatorChk_clicked(bool checked);
     void on_frequencyUnitsCombo_currentIndexChanged(int index);
     void on_serialEnableBtn_clicked(bool checked);
+    void on_pttTypeCombo_currentIndexChanged(int index);
+
     void on_rigCIVManualAddrChk_clicked(bool checked);
     void on_rigCIVaddrHexLine_editingFinished();
     void on_useCIVasRigIDChk_clicked(bool checked);
@@ -276,6 +278,15 @@ private slots:
 
     void on_decimalSeparatorsCombo_currentIndexChanged(int index);
     void on_groupSeparatorsCombo_currentIndexChanged(int index);
+
+    void on_colorSetBtnButtonOff_clicked();
+
+    void on_colorEditButtonOff_editingFinished();
+
+    void on_colorSetBtnButtonOn_clicked();
+
+    void on_colorEditButtonOn_editingFinished();
+
 
 
 private:

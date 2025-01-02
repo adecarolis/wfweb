@@ -308,12 +308,12 @@ void usbController::run()
             if (!dev->disabled && !dev->connected)
             {
                         
-                qInfo(logUsbControl()) << QString("Attempting to connect to %0").arg(dev->product);
+                qInfo(logUsbControl()) << QString("Attempting to connect to USB Controller: %0").arg(dev->product);
                 dev->handle = hid_open_path(dev->path.toLocal8Bit());
 
                 if (dev->handle)
                 {
-                    qInfo(logUsbControl()) << QString("Connected to device: %0 from %1 S/N %2").arg(dev->product,dev->manufacturer,dev->serial);
+                    qInfo(logUsbControl()) << QString("Connected to USB device: %0 from %1 S/N %2").arg(dev->product,dev->manufacturer,dev->serial);
                     hid_set_nonblocking(dev->handle, 1);
                     devicesConnected++;
                     dev->connected=true;

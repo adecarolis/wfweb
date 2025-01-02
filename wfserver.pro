@@ -13,7 +13,7 @@ TEMPLATE = app
 
 CONFIG += console
 
-DEFINES += WFVIEW_VERSION=\\\"1.91\\\"
+DEFINES += WFVIEW_VERSION=\\\"2.02\\\"
 
 DEFINES += BUILD_WFSERVER
 
@@ -31,7 +31,7 @@ CONFIG(debug, release|debug) {
     } else {
       LIBS += -L../opus/win32/VS2015/win32/DebugDLL/
       LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll wfserver-debug\$$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll wfserver-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\DebugDLL\opus-0.dll wfserver-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfserver-debug\rigs\*.* $$escape_expand(\\n\\t))
     }

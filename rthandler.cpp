@@ -71,7 +71,7 @@ bool rtHandler::init(audioSetup setup)
 		", samplerate" << radioFormat.sampleRate() <<
 		", uLaw" << setup.ulaw;
 
-#if !defined(Q_OS_MACX)
+#if !defined(Q_OS_MAC)
 	options.flags = ((!RTAUDIO_HOG_DEVICE) | (RTAUDIO_MINIMIZE_LATENCY));
 	//options.flags = RTAUDIO_MINIMIZE_LATENCY;
 #endif
@@ -80,7 +80,7 @@ bool rtHandler::init(audioSetup setup)
 	audio = new RtAudio(RtAudio::Api::LINUX_ALSA);
 #elif defined(Q_OS_WIN)
 	audio = new RtAudio(RtAudio::Api::WINDOWS_WASAPI);
-#elif defined(Q_OS_MACX)
+#elif defined(Q_OS_MACOS)
 	audio = new RtAudio(RtAudio::Api::MACOSX_CORE);
 #endif
 

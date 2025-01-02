@@ -139,6 +139,12 @@ void cachingQueue::interval(qint64 val)
 funcs cachingQueue::checkCommandAvailable(funcs cmd,bool set)
 {
 
+    // We need to ignore special commands:
+
+    if (cmd == funcSelectVFO)
+        return cmd;
+
+
     // If we don't have rigCaps yet, simply return the command.
     if (rigCaps != Q_NULLPTR && cmd != funcNone && !rigCaps->commands.contains(cmd)) {
         // We don't have the requested command, so lets see if we can change it to something we do have.

@@ -51,9 +51,9 @@ static struct
 
 static const subCommandStruct levels_str[] =
 {
-    {"PREAMP",funcPreamp,typeFloatDiv},
+    {"PREAMP",funcPreamp,typeUChar},
     {"ATT",funcAttenuator,typeUChar},
-    {"VOXDELAY",funcVOXDelay,typeFloat},
+    {"VOXDELAY",funcVOXDelay,typeUChar},
     {"AF",funcAfGain,typeFloat},
     {"RF",funcRfGain,typeFloat},
     {"SQL",funcSquelch,typeFloat},
@@ -65,7 +65,7 @@ static const subCommandStruct levels_str[] =
     {"CWPITCH",funcCwPitch,typeFloat},
     {"RFPOWER",funcRFPower,typeFloat},
     {"MICGAIN",funcMicGain,typeFloat},
-    {"KEYSPD",funcKeySpeed,typeFloatDiv5},
+    {"KEYSPD",funcKeySpeed,typeUChar},
     {"NOTCHF",funcNotchFilter,typeUChar},
     {"COMP",funcCompressorLevel,typeFloat},
     {"AGC",funcAGCTime,typeUChar},

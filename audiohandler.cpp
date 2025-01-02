@@ -360,7 +360,6 @@ void audioHandler::getNextAudioChunk()
 	return;
 }
 
-
 void audioHandler::convertedInput(audioPacket audio) 
 {
     if (audio.data.size() > 0) {
@@ -386,6 +385,7 @@ void audioHandler::changeLatency(const quint16 newSize)
 	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Configured latency: " << setup.latency << "Buffer Duration:" << nativeFormat.durationForBytes(audioOutput->bufferSize())/1000 << "ms";
 
 }
+
 int audioHandler::getLatency()
 {
 	return currentLatency;

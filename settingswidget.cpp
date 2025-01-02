@@ -696,6 +696,18 @@ void settingswidget::updateColPref(prefColItem col)
         setColorElement(c, ui->colorSwatchClusterSpots, ui->colorEditClusterSpots);
         break;
     }
+    case col_buttonOff:
+    {
+        QColor c = (colorPreset[pos].buttonOff);
+        setColorElement(c, ui->colorSwatchButtonOff, ui->colorEditButtonOff);
+        break;
+    }
+    case col_buttonOn:
+    {
+        QColor c = (colorPreset[pos].buttonOn);
+        setColorElement(c, ui->colorSwatchButtonOn, ui->colorEditButtonOn);
+        break;
+    }
     default:
         qWarning(logGui()) << "Did not understand color pref update item " << (int)col;
         break;
@@ -729,8 +741,8 @@ void settingswidget::updateRaPref(prefRaItem pra)
     case ra_CIVisRadioModel:
         quietlyUpdateCheckbox(ui->useCIVasRigIDChk, prefs->CIVisRadioModel);
         break;
-    case ra_forceRTSasPTT:
-        quietlyUpdateCheckbox(ui->useRTSforPTTchk, prefs->forceRTSasPTT);
+    case ra_pttType:
+        quietlyUpdateCombobox(ui->pttTypeCombo, prefs->pttType);
         break;
     case ra_polling_ms:
         if(prefs->polling_ms == 0)
@@ -902,10 +914,14 @@ void settingswidget::updateCtPref(prefCtItem pct)
     case ct_enableUSBControllers:
         quietlyUpdateCheckbox(ui->enableUsbChk, prefs->enableUSBControllers);
         break;
+    case ct_USBControllersReset:
+    case ct_USBControllersSetup:
+        break;
     default:
         qWarning(logGui()) << "No UI element matches setting" << (int)pct;
         break;
     }
+
     updatingUIFromPrefs = false;
 }
 
@@ -1018,10 +1034,12 @@ void settingswidget::updateServerConfig(prefServerItem si)
         quietlyUpdateLineEdit(ui->serverAudioPortText, QString::number(serverConfig->audioPort));
         break;
     case s_audioOutput:
-        ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name));
+        if (serverConfig->enabled)
+            ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name));
         break;
     case s_audioInput:
-        ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig->rigs.first()->rxAudioSetup.name));
+        if (serverConfig->enabled)
+            ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig->rigs.first()->rxAudioSetup.name));
         break;
     case s_resampleQuality:
         // Not used here
@@ -1126,7 +1144,6 @@ void settingswidget::updateUdpPref(prefUDPItem upi)
 void settingswidget::setAudioDevicesUI()
 {
     qInfo() << "Looking for inputs";
-
     ui->audioInputCombo->blockSignals(true);
     ui->audioInputCombo->clear();
     ui->audioInputCombo->addItems(audioDev->getInputs());
@@ -1134,8 +1151,14 @@ void settingswidget::setAudioDevicesUI()
     ui->audioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn() + 30));
     ui->audioInputCombo->blockSignals(false);
 
+    ui->serverRXAudioInputCombo->blockSignals(true);
+    ui->serverRXAudioInputCombo->clear();
+    ui->serverRXAudioInputCombo->addItems(audioDev->getInputs());
+    ui->serverRXAudioInputCombo->setCurrentIndex(-1);
+    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn() + 30));
+    ui->serverRXAudioInputCombo->blockSignals(false);
+
     qInfo() << "Looking for outputs";
-    // done:
     ui->audioOutputCombo->blockSignals(true);
     ui->audioOutputCombo->clear();
     ui->audioOutputCombo->addItems(audioDev->getOutputs());
@@ -1150,17 +1173,11 @@ void settingswidget::setAudioDevicesUI()
     ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsOut() + 30));
     ui->serverTXAudioOutputCombo->blockSignals(false);
 
-    ui->serverRXAudioInputCombo->blockSignals(true);
-    ui->serverRXAudioInputCombo->clear();
-    ui->serverRXAudioInputCombo->addItems(audioDev->getInputs());
-    ui->serverRXAudioInputCombo->setCurrentIndex(-1);
-    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn()+30));
-    ui->serverRXAudioInputCombo->blockSignals(false);
 
     prefs->rxSetup.type = prefs->audioSystem;
     prefs->txSetup.type = prefs->audioSystem;
 
-    if (!serverConfig->rigs.isEmpty())
+    if (serverConfig->enabled && !serverConfig->rigs.isEmpty())
     {
         serverConfig->rigs.first()->rxAudioSetup.type = prefs->audioSystem;
         serverConfig->rigs.first()->txAudioSetup.type = prefs->audioSystem;
@@ -1467,6 +1484,14 @@ void settingswidget::on_serialEnableBtn_clicked(bool checked)
     prefs->enableLAN = !checked;
     emit changedLanPref(l_enableLAN);
 }
+
+
+void settingswidget::on_pttTypeCombo_currentIndexChanged(int index)
+{
+    prefs->pttType = pttType_t(index);
+    emit changedRaPref(ra_pttType);
+}
+
 
 void settingswidget::on_rigCIVManualAddrChk_clicked(bool checked)
 {
@@ -2325,6 +2350,8 @@ void settingswidget::loadColorPresetToUIandPlots(int presetNumber)
     setEditAndLedFromColor(p.wfText, ui->colorEditWfText, ui->colorSwatchWfText);
 
     setEditAndLedFromColor(p.clusterSpots, ui->colorEditClusterSpots, ui->colorSwatchClusterSpots);
+    setEditAndLedFromColor(p.buttonOff, ui->colorEditButtonOff, ui->colorSwatchButtonOff);
+    setEditAndLedFromColor(p.buttonOn, ui->colorEditButtonOn, ui->colorSwatchButtonOn);
 
     //useColorPreset(&p);
     prefs->currentColorPresetNumber = presetNumber;
@@ -2809,6 +2836,37 @@ void settingswidget::on_colorEditClusterSpots_editingFinished()
     emit changedColPref(col_clusterSpots);
 }
 
+
+// Buttons:
+void settingswidget::on_colorSetBtnButtonOff_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].buttonOff);
+    setColorButtonOperations(c, ui->colorEditButtonOff, ui->colorSwatchButtonOff);
+    emit changedColPref(col_buttonOff);
+}
+void settingswidget::on_colorEditButtonOff_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].buttonOff);
+    setColorLineEditOperations(c, ui->colorEditButtonOff, ui->colorSwatchButtonOff);
+    emit changedColPref(col_buttonOff);
+}
+void settingswidget::on_colorSetBtnButtonOn_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].buttonOn);
+    setColorButtonOperations(c, ui->colorEditButtonOn, ui->colorSwatchButtonOn);
+    emit changedColPref(col_buttonOn);
+}
+void settingswidget::on_colorEditButtonOn_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].buttonOn);
+    setColorLineEditOperations(c, ui->colorEditButtonOn, ui->colorSwatchButtonOn);
+    emit changedColPref(col_buttonOn);
+}
+
 // ----------   End color UI slots        ----------//
 
 void settingswidget::on_useUTCChk_clicked(bool checked)
@@ -2980,7 +3038,8 @@ void settingswidget::connectionStatus(bool conn)
 
     ui->serialDeviceListCombo->setEnabled(!conn);
     ui->baudRateCombo->setEnabled(!conn);
-    ui->useRTSforPTTchk->setEnabled(!conn);
+    ui->pttTypeLabel->setEnabled(!conn);
+    ui->pttTypeCombo->setEnabled(!conn);
 
     ui->serverRXAudioInputCombo->setEnabled(!conn);
     ui->serverTXAudioOutputCombo->setEnabled(!conn);
@@ -2997,7 +3056,6 @@ void settingswidget::on_connectBtn_clicked()
 {
     emit connectButtonPressed();
 }
-
 
 void settingswidget::on_saveSettingsBtn_clicked()
 {

@@ -56,7 +56,7 @@ signals:
     // Basic to rig:
     void setCIVAddr(unsigned char newRigCIVAddr);
     void setRigID(unsigned char rigID);
-    void setRTSforPTT(bool enabled);
+    void setPTTType(pttType_t ptt);
 
     // Power
     void sendPowerOn();
@@ -194,7 +194,6 @@ private:
     void powerRigOff();
     void powerRigOn();
     QStringList portList;
-    QString serialPortRig;
 
     QTimer * delayedCommand;
     QTimer * pttTimer;
@@ -204,7 +203,6 @@ private:
 
     void makeRig();
     void removeRig();
-    void findSerialPort();
 
     void setServerToPrefs();
     void setInitialTiming();
@@ -243,7 +241,7 @@ private:
     struct preferences {
         unsigned char radioCIVAddr;
         bool CIVisRadioModel;
-        bool forceRTSasPTT;
+        bool pttType;
         QString serialPortRadio;
         quint32 serialPortBaud;
         unsigned char localAFgain;
@@ -290,7 +288,7 @@ private:
 
     SERVERCONFIG serverConfig;
 
-    QHash<unsigned char,QString> rigList;
+    QHash<unsigned char,rigInfo> rigList;
     cachingQueue* queue;
 };
 

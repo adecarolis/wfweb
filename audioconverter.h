@@ -20,7 +20,7 @@
 #endif
 
 /* Opus and Eigen */
-#ifdef Q_OS_WIN
+#ifndef Q_OS_LINUX
 #include "opus.h"
 #include <Eigen/Eigen>
 #else

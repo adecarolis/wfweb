@@ -29,6 +29,7 @@ servermain::servermain(const QString settingsFile)
     queue = cachingQueue::getInstance(this);
     // We need to open rig files
 
+
 #ifndef Q_OS_LINUX
     QString systemRigLocation = QCoreApplication::applicationDirPath();
 #else
@@ -60,10 +61,17 @@ servermain::servermain(const QString settingsFile)
                 delete rigSettings;
                 continue;
             }
+
+            float ver = rigSettings->value("Version","0.0").toString().toFloat();
+
             rigSettings->beginGroup("Rig");
-            qDebug() << QString("Found Rig %0 with CI-V address of %1").arg(rigSettings->value("Model","").toString(), rigSettings->value("CIVAddress",0).toString());
+            uchar civ = rigSettings->value("CIVAddress",0).toInt();
+            QString model = rigSettings->value("Model","").toString();
+            QString path = systemRigDir.absoluteFilePath(rig);
+
+            qDebug() << QString("Found Rig %0 with CI-V address of 0x%1 and version %2").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2);
             // Any user modified rig files will override system provided ones.
-            this->rigList.insert(rigSettings->value("CIVAddress",0).toInt(),systemRigDir.absoluteFilePath(rig));
+            this->rigList.insert(civ,rigInfo(civ,model,path,ver));
             rigSettings->endGroup();
             delete rigSettings;
         }
@@ -75,16 +83,39 @@ servermain::servermain(const QString settingsFile)
         QStringList rigs = userRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
         for (QString& rig: rigs) {
             QSettings* rigSettings = new QSettings(userRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+            rigSettings->setIniCodec("UTF-8");
+#endif
+
             if (!rigSettings->childGroups().contains("Rig"))
             {
                 qWarning() << rig << "Does not seem to be a rig description file";
                 delete rigSettings;
                 continue;
             }
+
+            float ver = rigSettings->value("Version","0.0").toString().toFloat();
+
             rigSettings->beginGroup("Rig");
-            qDebug() << QString("Found User Rig %0 with CI-V address of %1").arg(rigSettings->value("Model","").toString(), rigSettings->value("CIVAddress",0).toString());
+
+            uchar civ = rigSettings->value("CIVAddress",0).toInt();
+            QString model = rigSettings->value("Model","").toString();
+            QString path = userRigDir.absoluteFilePath(rig);
+
+            auto it = this->rigList.find(civ);
+
+            if (it != this->rigList.end())
+            {
+                if (ver >= it.value().version) {
+                    qInfo() << QString("Found User Rig %0 with CI-V address of 0x%1 and newer or same version than system one (%2>=%3)").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2).arg(it.value().version,0,'f',2);
+                    this->rigList.insert(civ,rigInfo(civ,model,path,ver));
+                }
+            } else {
+                qInfo() << QString("Found New User Rig %0 with CI-V address of 0x%1 and version %2").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2);
+                this->rigList.insert(civ,rigInfo(civ,model,path,ver));
+            }
             // Any user modified rig files will override system provided ones.
-            this->rigList.insert(rigSettings->value("CIVAddress",0).toInt(),userRigDir.absoluteFilePath(rig));
             rigSettings->endGroup();
             delete rigSettings;
         }
@@ -186,7 +217,7 @@ void servermain::makeRig()
             connect(radio->rig, SIGNAL(haveStatusUpdate(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
 
             // Rig comm setup:
-            connect(this, SIGNAL(setRTSforPTT(bool)), radio->rig, SLOT(setRTSforPTT(bool)));
+            connect(this, SIGNAL(setPTTType(pttType_t)), radio->rig, SLOT(setPTTType(pttType_t)));
 
             connect(radio->rig, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
 
@@ -235,57 +266,6 @@ void servermain::removeRig()
     }
 }
 
-
-void servermain::findSerialPort()
-{
-    // Find the ICOM radio connected, or, if none, fall back to OS default.
-    // qInfo(logSystem()) << "Searching for serial port...";
-    QDirIterator it73("/dev/serial/by-id", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
-    QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*A*", QDir::Files, QDirIterator::Subdirectories);
-    QDirIterator it785x("/dev/serial", QStringList() << "*IC-785*A*", QDir::Files, QDirIterator::Subdirectories);
-    QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
-    QDirIterator it7610("/dev/serial", QStringList() << "*IC-7610*A", QDir::Files, QDirIterator::Subdirectories);
-    QDirIterator itR8600("/dev/serial", QStringList() << "*IC-R8600*A", QDir::Files, QDirIterator::Subdirectories);
-
-    if(!it73.filePath().isEmpty())
-    {
-        // IC-7300
-        serialPortRig = it73.filePath(); // first
-    } else if(!it97.filePath().isEmpty())
-    {
-        // IC-9700
-        serialPortRig = it97.filePath();
-    } else if(!it785x.filePath().isEmpty())
-    {
-        // IC-785x
-        serialPortRig = it785x.filePath();
-    } else if(!it705.filePath().isEmpty())
-    {
-        // IC-705
-        serialPortRig = it705.filePath();
-    } else if(!it7610.filePath().isEmpty())
-    {
-        // IC-7610
-        serialPortRig = it7610.filePath();
-    } else if(!itR8600.filePath().isEmpty())
-    {
-        // IC-R8600
-        serialPortRig = itR8600.filePath();
-    } else {
-        //fall back:
-        qInfo(logSystem()) << "Could not find Icom serial port. Falling back to OS default. Use --port to specify, or modify preferences.";
-#ifdef Q_OS_MAC
-        serialPortRig = QString("/dev/tty.SLAB_USBtoUART");
-#endif
-#ifdef Q_OS_LINUX
-        serialPortRig = QString("/dev/ttyUSB0");
-#endif
-#ifdef Q_OS_WIN
-        serialPortRig = QString("COM1");
-#endif
-    }
-}
-
 void servermain::receiveStatusUpdate(networkStatus status)
 {
     if (status.message != lastMessage) {
@@ -293,7 +273,6 @@ void servermain::receiveStatusUpdate(networkStatus status)
         lastMessage = status.message;
     }
 }
-
 
 void servermain::receiveCommReady()
 {
@@ -484,7 +463,7 @@ void servermain::setDefPrefs()
 {
     defPrefs.radioCIVAddr = 0x00; // previously was 0x94 for 7300.
     defPrefs.CIVisRadioModel = false;
-    defPrefs.forceRTSasPTT = false;
+    defPrefs.pttType = pttCIV;
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.serialPortBaud = 115200;
     defPrefs.localAFgain = 255;
@@ -521,7 +500,7 @@ void servermain::loadSettings()
         {
             settings->setArrayIndex(i);
             settings->setValue("RigCIVuInt", defPrefs.radioCIVAddr);
-            settings->setValue("ForceRTSasPTT", defPrefs.forceRTSasPTT);
+            settings->setValue("PTTType", defPrefs.pttType);
             settings->setValue("SerialPortRadio", defPrefs.serialPortRadio);
             settings->setValue("RigName", "<NONE>");
             settings->setValue("SerialPortBaud", defPrefs.serialPortBaud);
@@ -561,7 +540,11 @@ void servermain::loadSettings()
         settings->setArrayIndex(i);
         RIGCONFIG* tempPrefs = new RIGCONFIG();
         tempPrefs->civAddr = (unsigned char)settings->value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
-        tempPrefs->forceRTSasPTT = (bool)settings->value("ForceRTSasPTT", defPrefs.forceRTSasPTT).toBool();
+
+        tempPrefs->pttType = (pttType_t)settings->value("PTTType", defPrefs.pttType).toInt();
+        // Workaround for old config option
+        if ((bool)settings->value("ForceRTSasPTT", false).toBool())
+            tempPrefs->pttType = pttRTS;
         tempPrefs->serialPort = settings->value("SerialPortRadio", defPrefs.serialPortRadio).toString();
         tempPrefs->rigName = settings->value("RigName", "<NONE>").toString();
         tempPrefs->baudRate = (quint32)settings->value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
@@ -572,15 +555,81 @@ void servermain::loadSettings()
         tempPrefs->txAudioSetup.type = prefs.audioSystem;
 
         if (tempPrefs->serialPort == "auto") {
-            foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
+            // Find the ICOM radio connected, or, if none, fall back to OS default.
+            // qInfo(logSystem()) << "Searching for serial port...";
+            QString serialPortRig="";
+            bool found = false;
+            // First try to find first Icom port:
+            for(const QSerialPortInfo & serialPortInfo: QSerialPortInfo::availablePorts())
             {
-                qDebug(logSystem()) << "Serial Port found: " << serialPortInfo.portName() << "Manufacturer:" << serialPortInfo.manufacturer() << "Product ID" << serialPortInfo.description() << "S/N" << serialPortInfo.serialNumber();
-                if (serialPortInfo.serialNumber().startsWith("IC-") && tempPrefs->serialPort == "auto") {
-                    tempPrefs->rigName = serialPortInfo.serialNumber();
+                if (serialPortInfo.serialNumber().left(3) == "IC-") {
+                    qInfo(logSystem()) << "Icom Serial Port found: " << serialPortInfo.portName() << "S/N" << serialPortInfo.serialNumber();
+#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
+                    tempPrefs->serialPort = (QString("/dev/") + serialPortInfo.portName());
+#else
                     tempPrefs->serialPort = serialPortInfo.portName();
+#endif
+                    tempPrefs->rigName = serialPortInfo.serialNumber();
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                QDirIterator it73("/dev/serial/by-id", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
+                QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*A*", QDir::Files, QDirIterator::Subdirectories);
+                QDirIterator it785x("/dev/serial", QStringList() << "*IC-785*A*", QDir::Files, QDirIterator::Subdirectories);
+                QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
+                QDirIterator it7610("/dev/serial", QStringList() << "*IC-7610*A", QDir::Files, QDirIterator::Subdirectories);
+                QDirIterator itR8600("/dev/serial", QStringList() << "*IC-R8600*A", QDir::Files, QDirIterator::Subdirectories);
+
+                if(!it73.filePath().isEmpty())
+                {
+                    // IC-7300
+                    tempPrefs->serialPort = it73.filePath(); // first
+                } else if(!it97.filePath().isEmpty())
+                {
+                    // IC-9700
+                    tempPrefs->serialPort = it97.filePath();
+                } else if(!it785x.filePath().isEmpty())
+                {
+                    // IC-785x
+                    tempPrefs->serialPort = it785x.filePath();
+                } else if(!it705.filePath().isEmpty())
+                {
+                    // IC-705
+                    tempPrefs->serialPort = it705.filePath();
+                } else if(!it7610.filePath().isEmpty())
+                {
+                    // IC-7610
+                    tempPrefs->serialPort = it7610.filePath();
+                } else if(!itR8600.filePath().isEmpty())
+                {
+                    // IC-R8600
+                    tempPrefs->serialPort = itR8600.filePath();
+                }
+                else {
+                    //fall back:
+                    qInfo(logSystem()) << "Could not find an Icom serial port. Falling back to OS default. Use --port to specify, or modify preferences.";
+                    qInfo(logSystem()) << "Found serial ports:";
+                    for(const QSerialPortInfo & serialPortInfo: QSerialPortInfo::availablePorts())
+                    {
+                            qInfo(logSystem()) << serialPortInfo.portName() << "Manufacturer:" << serialPortInfo.manufacturer() << "S/N:" << serialPortInfo.serialNumber();
+                    }
+
+#ifdef Q_OS_MAC
+                    tempPrefs->serialPort = QString("/dev/tty.SLAB_USBtoUART");
+#endif
+#ifdef Q_OS_LINUX
+                    tempPrefs->serialPort = QString("/dev/ttyUSB0");
+#endif
+#ifdef Q_OS_WIN
+                    tempPrefs->serialPort = QString("COM1");
+#endif
                 }
             }
         }
+
         QString guid = settings->value("GUID", "").toString();
         if (guid.isEmpty()) {
             guid = QUuid::createUuid().toString();

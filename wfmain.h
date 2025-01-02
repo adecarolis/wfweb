@@ -114,7 +114,7 @@ signals:
     // Basic to rig:
     void setCIVAddr(quint8 newRigCIVAddr);
     void setRigID(quint8 rigID);
-    void setRTSforPTT(bool enabled);
+    void setPTTType(pttType_t enabled);
 
     
     void sendPowerOn();
@@ -486,6 +486,9 @@ private slots:
     void on_scopeMainSubBtn_clicked();
     void on_scopeDualBtn_toggled(bool en);
     void on_dualWatchBtn_toggled(bool en);
+    void on_swapMainSubBtn_clicked();
+    void on_mainSubTrackingBtn_toggled(bool en);
+    void on_mainEqualsSubBtn_clicked();
 
     void receiveElapsed(bool sub, qint64 us);
     void connectionTimeout();
@@ -616,6 +619,7 @@ private:
     void setupUsbControllerDevice();
     void setInitialTiming();
     void getSettingsFilePath(QString settingsFile);
+    void enableControls(bool en);
 
     QStringList modes;
     int currentModeIndex;
@@ -719,7 +723,7 @@ private:
 
     int oldFreqDialVal;
 
-    QHash<quint8,QString> rigList;
+    QHash<quint8,rigInfo> rigList;
     rigCapabilities* rigCaps = Q_NULLPTR;
 
     rigInput currentModSrc[4];

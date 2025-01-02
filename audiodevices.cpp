@@ -221,7 +221,7 @@ void audioDevices::enumerate()
             RtAudio* audio = new RtAudio(RtAudio::Api::LINUX_ALSA);
 #elif defined(Q_OS_WIN)
             RtAudio* audio = new RtAudio(RtAudio::Api::WINDOWS_WASAPI);
-#elif defined(Q_OS_MACX)
+#elif defined(Q_OS_MACOS)
             RtAudio* audio = new RtAudio(RtAudio::Api::MACOSX_CORE);
 #endif
 

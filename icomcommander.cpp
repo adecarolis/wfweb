@@ -57,7 +57,7 @@ icomCommander::~icomCommander()
 }
 
 
-void icomCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
+void icomCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
 {
     // construct
 
@@ -71,47 +71,41 @@ void icomCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, 
     this->rigBaudRate = rigBaudRate;
     rigCaps.baudRate = rigBaudRate;
 
+
     comm = new commHandler(rigSerialPort, rigBaudRate,wf,this);
-    ptty = new pttyHandler(vsp,this);
+    // data from the comm port to the program:
+    connect(comm, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
+    // data from the program to the comm port:
+    connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
+    // Whether radio is half duplex only
+    connect(this, SIGNAL(setHalfDuplex(bool)), comm, SLOT(setHalfDuplex(bool)));
+    connect(comm, SIGNAL(havePortError(errorType)), this, SLOT(handlePortError(errorType)));
+    connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
+
+
+    if (vsp.toLower() != "none") {
+        qInfo(logRig()) << "Attempting to connect to vsp/pty:" << vsp;
+        ptty = new pttyHandler(vsp,this);
+        // data from the ptty to the rig:
+        connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
+        // data from the rig to the ptty:
+        connect(comm, SIGNAL(haveDataFromPort(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
+        connect(ptty, SIGNAL(havePortError(errorType)), this, SLOT(handlePortError(errorType)));
+        connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
+    }
 
     if (tcpPort > 0) {
         tcp = new tcpServer(this);
         tcp->startServer(tcpPort);
-    }
-
-
-    // data from the comm port to the program:
-    connect(comm, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
-
-    // data from the ptty to the rig:
-    connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
-
-    // data from the program to the comm port:
-    connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
-
-    // Whether radio is half duplex only
-    connect(this, SIGNAL(setHalfDuplex(bool)), comm, SLOT(setHalfDuplex(bool)));
-
-    if (tcpPort > 0) {
         // data from the tcp port to the rig:
         connect(tcp, SIGNAL(receiveData(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
         connect(comm, SIGNAL(haveDataFromPort(QByteArray)), tcp, SLOT(sendData(QByteArray)));
     }
-    connect(this, SIGNAL(toggleRTS(bool)), comm, SLOT(setRTS(bool)));
-
-    // data from the rig to the ptty:
-    connect(comm, SIGNAL(haveDataFromPort(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
-
-    connect(comm, SIGNAL(havePortError(errorType)), this, SLOT(handlePortError(errorType)));
-    connect(ptty, SIGNAL(havePortError(errorType)), this, SLOT(handlePortError(errorType)));
-
-    connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
-    connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
 
     commonSetup();
 }
 
-void icomCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
+void icomCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -121,74 +115,64 @@ void icomCommander::commSetup(QHash<quint8,QString> rigList, quint8 rigCivAddr, 
     civAddr = rigCivAddr; // address of the radio
     usingNativeLAN = true;
 
+    if (udp != Q_NULLPTR) {
+        closeComm();
+    }
 
-    if (udp == Q_NULLPTR) {
+    udp = new udpHandler(prefs,rxSetup,txSetup);
 
-        udp = new udpHandler(prefs,rxSetup,txSetup);
+    udpHandlerThread = new QThread(this);
+    udpHandlerThread->setObjectName("udpHandler()");
 
-        udpHandlerThread = new QThread(this);
-        udpHandlerThread->setObjectName("udpHandler()");
+    udp->moveToThread(udpHandlerThread);
 
-        udp->moveToThread(udpHandlerThread);
+    connect(this, SIGNAL(initUdpHandler()), udp, SLOT(init()));
+    connect(udpHandlerThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
+    udpHandlerThread->start();
 
-        connect(this, SIGNAL(initUdpHandler()), udp, SLOT(init()));
-        connect(udpHandlerThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
+    emit initUdpHandler();
 
-        udpHandlerThread->start();
+    // Data from UDP to the program
+    connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
+    // data from the program to the rig:
+    connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
+    // Audio from UDP
+    connect(udp, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
 
-        emit initUdpHandler();
+    connect(this, SIGNAL(haveChangeLatency(quint16)), udp, SLOT(changeLatency(quint16)));
+    connect(this, SIGNAL(haveSetVolume(quint8)), udp, SLOT(setVolume(quint8)));
+    connect(udp, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
+    // Connect for errors/alerts
+    connect(udp, SIGNAL(haveNetworkError(errorType)), this, SLOT(handlePortError(errorType)));
+    connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(handleStatusUpdate(networkStatus)));
+    connect(udp, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(handleNetworkAudioLevels(networkAudioLevels)));
+    // Other assorted UDP connections
+    connect(udp, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
+    connect(udp, SIGNAL(setRadioUsage(quint8, bool, quint8, QString, QString)), this, SLOT(radioUsage(quint8, bool, quint8, QString, QString)));
+    connect(this, SIGNAL(selectedRadio(quint8)), udp, SLOT(setCurrentRadio(quint8)));
 
-        //this->rigSerialPort = rigSerialPort;
-        //this->rigBaudRate = rigBaudRate;
-
+    if (vsp != "None") {
         ptty = new pttyHandler(vsp,this);
-
-        if (tcpPort > 0) {
-            tcp = new tcpServer(this);
-            tcp->startServer(tcpPort);
-        }
-        // Data from UDP to the program
-        connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
-
+        // data from the ptty to the rig:
+        connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
         // data from the rig to the ptty:
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
 
-        // Audio from UDP
-        connect(udp, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
-
-        // data from the program to the rig:
-        connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
-
-        // data from the ptty to the rig:
-        connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
-
-        if (tcpPort > 0) {
-            // data from the tcp port to the rig:
-            connect(tcp, SIGNAL(receiveData(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
-            connect(udp, SIGNAL(haveDataFromPort(QByteArray)), tcp, SLOT(sendData(QByteArray)));
-        }
-
-        connect(this, SIGNAL(haveChangeLatency(quint16)), udp, SLOT(changeLatency(quint16)));
-        connect(this, SIGNAL(haveSetVolume(quint8)), udp, SLOT(setVolume(quint8)));
-        connect(udp, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
-
-        // Connect for errors/alerts
-        connect(udp, SIGNAL(haveNetworkError(errorType)), this, SLOT(handlePortError(errorType)));
-        connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(handleStatusUpdate(networkStatus)));
-        connect(udp, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(handleNetworkAudioLevels(networkAudioLevels)));
-
-
         connect(ptty, SIGNAL(havePortError(errorType)), this, SLOT(handlePortError(errorType)));
         connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
-
-        connect(udp, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
-        connect(udp, SIGNAL(setRadioUsage(quint8, bool, quint8, QString, QString)), this, SLOT(radioUsage(quint8, bool, quint8, QString, QString)));
-        connect(this, SIGNAL(selectedRadio(quint8)), udp, SLOT(setCurrentRadio(quint8)));
-
-        emit haveAfGain(rxSetup.localAFgain);
-        localVolume = rxSetup.localAFgain;
-
     }
+
+    if (tcpPort > 0) {
+        tcp = new tcpServer(this);
+        tcp->startServer(tcpPort);
+        // data from the tcp port to the rig:
+        connect(tcp, SIGNAL(receiveData(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
+        // data from the rig to the tcp port:
+        connect(udp, SIGNAL(haveDataFromPort(QByteArray)), tcp, SLOT(sendData(QByteArray)));
+    }
+
+    emit haveAfGain(rxSetup.localAFgain);
+    localVolume = rxSetup.localAFgain;
 
     commonSetup();
 
@@ -257,16 +241,14 @@ void icomCommander::receiveBaudRate(quint32 baudrate) {
     emit haveBaudRate(baudrate);
 }
 
-void icomCommander::setRTSforPTT(bool enabled)
+void icomCommander::setPTTType(pttType_t ptt)
 {
+    qDebug(logRig()) << "Received request to set PTT Type to:" << ptt;
     if(!usingNativeLAN)
     {
-        useRTSforPTT_isSet = true;
-        useRTSforPTT_manual = enabled;
-        if(comm != NULL)
+        if(comm != Q_NULLPTR)
         {
-            rigCaps.useRTSforPTT=enabled;
-            comm->setUseRTSforPTT(enabled);
+            comm->setPTTType(ptt);
         }
     }
 }
@@ -330,9 +312,17 @@ funcType icomCommander::getCommand(funcs func, QByteArray &payload, int value, u
                 payload.append(static_cast<uchar>(receiver));
             } else if (!rigCaps.hasCommand29 && receiver)
             {
-                // We don't have command29 so can't select sub
-                qDebug(logRig()) << "Rig has no Command29, removing command:" << funcString[func] << "VFO" << receiver;
-                queue->del(func,receiver);
+                // We don't have command29 so can't select sub, but if this is a scope command, let it through.
+                switch (func)
+                {
+                case funcScopeMode: case funcScopeSpan: case funcScopeRef: case funcScopeHold:
+                case funcScopeSpeed: case funcScopeRBW: case funcScopeVBW: case funcScopeCenterType: case funcScopeEdge:
+                    break;
+                default:
+                    qDebug(logRig()) << "Rig has no Command29, removing command:" << funcString[func] << "VFO" << receiver;
+                    queue->del(func,receiver);
+                    break;
+                }
             }
             payload.append(it.value().data);
             cmd = it.value();
@@ -1343,7 +1333,7 @@ void icomCommander::determineRigCaps()
         qInfo(logRig()) << QString("No rig definition found for CI-V address: 0x%0, using defaults (some functions may not be available)").arg(rigCaps.modelID,2,16);
         rigCaps.modelID=0;
     }
-    rigCaps.filename = rigList.find(rigCaps.modelID).value();
+    rigCaps.filename = rigList.find(rigCaps.modelID).value().path;
     QSettings* settings = new QSettings(rigCaps.filename, QSettings::Format::IniFormat);
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     settings->setIniCodec("UTF-8");
@@ -1376,8 +1366,6 @@ void icomCommander::determineRigCaps()
     rigCaps.hasTransmit = settings->value("HasTransmit",false).toBool();
     rigCaps.hasFDcomms = settings->value("HasFDComms",false).toBool();
     rigCaps.hasCommand29 = settings->value("HasCommand29",false).toBool();
-    rigCaps.subDirect = settings->value("SubDirectAccess",false).toBool();
-    rigCaps.useRTSforPTT = settings->value("UseRTSforPTT",false).toBool();
 
     rigCaps.memGroups = settings->value("MemGroups",0).toUInt();
     rigCaps.memories = settings->value("Memories",0).toUInt();
@@ -1617,15 +1605,6 @@ void icomCommander::determineRigCaps()
 
     // Copy received guid so we can recognise this radio.
     memcpy(rigCaps.guid, this->guid, GUIDLEN);
-
-    if(!usingNativeLAN)
-    {
-        if(useRTSforPTT_isSet)
-        {
-            rigCaps.useRTSforPTT = useRTSforPTT_manual;
-        }
-        comm->setUseRTSforPTT(rigCaps.useRTSforPTT);
-    }
 
     if(lookingForRig)
     {

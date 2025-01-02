@@ -48,9 +48,9 @@ struct RIGCONFIG {
 	quint32 baudRate;
 	quint8 civAddr;
 	bool civIsRadioModel;
-	bool forceRTSasPTT;
 	bool hasWiFi = false;
 	bool hasEthernet=false;
+    pttType_t pttType=pttCIV;
 	audioSetup rxAudioSetup;
 	audioSetup txAudioSetup;
 	QString modelName;
