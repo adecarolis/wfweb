@@ -2332,6 +2332,7 @@ void spectrumScope::vfoSwap()
 
 void spectrumScope::receiveTrack(int f)
 {
+    return; // Disabled for now.
     qInfo(logRig) << "Got tracking for rx" << receiver<< "amount" << f << "Hz";
     if (tracking && receiver) {
         // OK I am the sub receiver so lets try this.
