@@ -160,14 +160,20 @@ void udpCivData::dataReceived()
                         int pos = r.indexOf(QByteArrayLiteral("\x27\x00\x00")) + 2;
                         int len = r.mid(pos).indexOf(QByteArrayLiteral("\xfd"));
                         //splitWaterfall = false;
-                        if (splitWaterfall && pos > 1 && len > 100) {
+                        if (splitWaterfall && pos > 1 && len >= 490) {
                             // We need to split waterfall data into its component parts
                             // There are only 2 types that we are currently aware of
                             int numDivisions = 0;
                             int divSize = 50;
-                            if (len == 490) // IC705, IC9700, IC7300(LAN) 
+                            int splitPos = 12;
+                            if (len == 490) // IC705, IC9700, IC7300(LAN), IC-905
                             {
                                 numDivisions = 11;
+                            }
+                            else if (len == 492) // IC-905 in 10Ghz band
+                            {
+                                numDivisions = 11;
+                                splitPos = 14;
                             }
                             else if (len == 704) // IC7610, IC7851, ICR8600
                             {
@@ -203,11 +209,11 @@ void udpCivData::dataReceived()
 
                                 if (i == 0) {
                                     //Just send initial data, first BCD encode the max number:
-                                    wfPacket.append(r.mid(pos + 3, 12));
+                                    wfPacket.append(r.mid(pos + 3, splitPos));
                                 }
                                 else
                                 {
-                                    wfPacket.append(r.mid((pos + 15) + ((i - 1) * divSize), divSize));
+                                    wfPacket.append(r.mid((pos + splitPos+3) + ((i - 1) * divSize), divSize));
                                 }
                                 if (i < numDivisions - 1) {
                                     wfPacket.append('\xfd');
