@@ -1108,11 +1108,12 @@ void wfmain::configureVFOs()
         connect(receiver,SIGNAL(showStatusBarText(QString)),this,SLOT(showStatusBarText(QString)));
         connect(receiver,SIGNAL(sendScopeImage(uchar)),this,SLOT(receiveScopeImage(uchar)));
         receivers.append(receiver);
-        //ui->scopeSpacer->changeSize(0,0,QSizePolicy::Minimum);
-        if (receivers.size() > 1)
-        {
-            connect(receivers[0], SIGNAL(sendTrack(int)),receivers[1], SLOT(receiveTrack(int)));
-        }
+
+        // Currently tracking is disabled
+        //if (receivers.size() > 1)
+        //{
+        //    connect(receivers[0], SIGNAL(sendTrack(int)),receivers[1], SLOT(receiveTrack(int)));
+        //}
     }
 }
 
