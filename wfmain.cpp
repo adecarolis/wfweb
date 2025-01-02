@@ -115,6 +115,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<vfo_t>();
     qRegisterMetaType<modeInfo>();
     qRegisterMetaType<rigMode_t>();
+    qRegisterMetaType<pttType_t>();
     qRegisterMetaType<audioPacket>();
     qRegisterMetaType<audioSetup>();
     qRegisterMetaType<SERVERCONFIG>();
@@ -133,7 +134,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<codecType>();
     qRegisterMetaType<errorType>();
     qRegisterMetaType<usbFeatureType>();
-    //qRegisterMetaType<cmds>();
     qRegisterMetaType<funcs>();
     qRegisterMetaType<rigTypedef>();
     qRegisterMetaType<memoryType>();
