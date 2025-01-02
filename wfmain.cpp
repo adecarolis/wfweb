@@ -197,7 +197,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
             QString model = rigSettings->value("Model","").toString();
             QString path = systemRigDir.absoluteFilePath(rig);
 
-            qDebug() << QString("Found Rig %0 with CI-V address of 0x%1 and version %2").arg(model).arg(civ,2,16,QChar('0')).arg(ver);
+            qDebug() << QString("Found Rig %0 with CI-V address of 0x%1 and version %2").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2);
             // Any user modified rig files will override system provided ones.
             this->rigList.insert(civ,rigInfo(civ,model,path,ver));
             rigSettings->endGroup();
@@ -236,11 +236,11 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
             if (it != this->rigList.end())
             {
                 if (ver >= it.value().version) {
-                    qInfo() << QString("Found User Rig %0 with CI-V address of 0x%1 and newer or same version than system one (%2>=%3)").arg(model).arg(civ,2,16,QChar('0')).arg(ver).arg(it.value().version);
+                    qInfo() << QString("Found User Rig %0 with CI-V address of 0x%1 and newer or same version than system one (%2>=%3)").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2).arg(it.value().version,0,'f',2);
                     this->rigList.insert(civ,rigInfo(civ,model,path,ver));
                 }
             } else {
-                qInfo() << QString("Found New User Rig %0 with CI-V address of 0x%1").arg(model).arg(civ,2,16,QChar('0'));
+                qInfo() << QString("Found New User Rig %0 with CI-V address of 0x%1 version %2").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2);
                 this->rigList.insert(civ,rigInfo(civ,model,path,ver));
             }
             // Any user modified rig files will override system provided ones.

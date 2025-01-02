@@ -83,7 +83,8 @@ void icomCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAddr, 
     connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
 
 
-    if (vsp != "None") {
+    if (vsp.toLower() != "none") {
+        qInfo(logRig()) << "Attempting to connect to vsp/pty:" << vsp;
         ptty = new pttyHandler(vsp,this);
         // data from the ptty to the rig:
         connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
