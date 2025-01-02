@@ -288,7 +288,7 @@ private:
 
     SERVERCONFIG serverConfig;
 
-    QHash<unsigned char,QString> rigList;
+    QHash<unsigned char,rigInfo> rigList;
     cachingQueue* queue;
 };
 
