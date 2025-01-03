@@ -78,7 +78,7 @@ static const subCommandStruct levels_str[] =
     {"SLOPE_HIGH",funcNone,typeFloat},
     {"BKIN_DLYMS",funcBreakInDelay,typeFloat},
     {"RAWSTR",funcNone,typeFloat},
-    {"SWR",funcSMeter,typeFloat},
+    {"SWR",funcSMeter,typeSWR},
     {"ALC",funcALCMeter,typeFloat},
     {"STRENGTH",funcSMeter,typeFloat},
     {"RFPOWER_METER",funcPowerMeter,typeFloat},
@@ -355,6 +355,8 @@ rigCtlClient::rigCtlClient(int socketId, rigCtlD* parent) : QObject(parent)
         vfoList |= 1<<25;
     if (rigCaps->commands.contains(funcMemoryMode))
         vfoList |= 1<<28;
+
+    swrCal = ICOM_SWR_CAL;
 }
 
 void rigCtlClient::socketReadyRead()
@@ -400,6 +402,7 @@ void rigCtlClient::socketReadyRead()
         {
             sep = commands[0].toLatin1();
             commands.remove(0,1);
+            extended=true;
         }
         else if (commands[0] == '+')
         {
@@ -439,7 +442,7 @@ void rigCtlClient::socketReadyRead()
 
                 if (extended){
                     // First we need to repeat the original command back:
-                    QString repeat=QString("%0:").arg(commands_list[i].str);
+                    QString repeat=QString("%1:").arg(commands_list[i].str);
                     for( const auto &c: command)
                     {
                         repeat+=QString(" %0").arg(c);
@@ -531,17 +534,18 @@ void rigCtlClient::socketReadyRead()
 
     // We have finished parsing all commands and have a response to send (hopefully)
     commandBuffer.clear();
-    for (QString &str: response)
+    for (int i = 0;i<response.size();i++)
     {
-        if (!str.isEmpty())
-            sendData(QString("%0%1").arg(str,sep));
+        if (!response[i].isEmpty()) {
+            sendData(QString("%0%1").arg(response[i],(i<response.size()-1)?sep:""));
+        }
     }
 
-    if (sep != "\n") {
-        sendData(QString("\n"));
-    }
     if (ret < 0 || setCommand || extended)
-        sendData(QString("RPRT %0\n").arg(QString::number(ret)));
+        sendData(QString("%0RPRT %1\n").arg(response.isEmpty()?"":sep).arg(QString::number(ret)));
+    else if (sep == '\n')
+        sendData("\n");
+
 }
 
 void rigCtlClient::socketDisconnected()
@@ -1007,7 +1011,6 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
                 if (rigCaps->commands.contains(funcMemoryMode))
                     vfo.append("MEM ");
                 vfo.chop(1);
-                vfo.append("\n");
                 response.append(vfo);
             }
             else
@@ -1161,12 +1164,6 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
                 rx=1;
             }
 
-            // VFO Info.
-            if (extended)
-                response.append(QString("%0: %1").arg(cmd.str,params[0]));
-            else
-                response.append(QString("%0").arg(params[0]));
-
             if (prefixes.length()>1)
                 response.append(QString("%0%1").arg(prefixes[1],QString::number(queue->getCache(freqFunc,rx).value.value<freqt>().Hz)));
             if (prefixes.length()>2)
@@ -1177,10 +1174,6 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
                 response.append(QString("%0%1").arg(prefixes[4],QString::number(queue->getCache(funcSplitStatus,rx).value.value<duplexMode_t>())));
             if (prefixes.length()>5)
                 response.append(QString("%0%1").arg(prefixes[5],QString::number(queue->getCache(funcSatelliteMode,rx).value.value<bool>())));
-
-            if (extended)
-                response.append(QString("RPRT %0\n").arg(QString::number(RIG_OK)));
-
             break;
         }
 
@@ -1214,6 +1207,8 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
 
 int rigCtlClient::getSubCommand(QStringList& response, bool extended, const commandStruct cmd, const subCommandStruct sub[], QStringList params)
 {
+    Q_UNUSED(extended)
+
     int ret = -RIG_EINVAL;
 
     if (rigCaps == Q_NULLPTR)
@@ -1319,18 +1314,23 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                             resp.append(QString::number(val));
                             break;
                         }
+                        case typeSWR:{
+                            float f=rawToFloat(item.value.toInt(),&swrCal);
+                            resp.append(QString::number(f,'f',6));
+                            break;
+                        }
                         case typeUShort:
                         case typeShort:
                             resp.append(QString::number(item.value.toInt()));
                             break;
                         case typeFloat:
-                            resp.append(QString::number(item.value.toFloat() / 255.0,typeFloat,6));
+                            resp.append(QString::number(item.value.toFloat() / 255.0,'f',6));
                             break;
                         case typeFloatDiv:
-                            resp.append(QString::number(item.value.toFloat() * 10.0,typeFloat,6));
+                            resp.append(QString::number(item.value.toFloat() * 10.0,'f',6));
                             break;
                         case typeFloatDiv5:
-                            resp.append(QString::number(item.value.toFloat()/5.1,typeFloat,6));
+                            resp.append(QString::number(item.value.toFloat()/5.1,'f',6));
                             break;
                         default:
                             qInfo(logRigCtlD()) << "Unhandled:" << item.value.toUInt() << "OUT" << val;
@@ -1708,3 +1708,50 @@ int rigCtlClient::mW2power(QStringList& response, bool extended, const commandSt
 
     return ret;
 }
+
+float rigCtlClient::rawToFloat(int raw, const cal_table_float_t *cal)
+{
+
+    int i;
+    float val;
+
+    if (cal->size == 0)
+    {
+        return raw;
+    }
+
+    for (i = 0; i<cal->size; i++)
+    {
+        if (raw < cal->table[i].raw)
+        {
+            break;
+        }
+    }
+
+    if (raw == cal->table[i - 1].raw)
+    {
+        return cal->table[i - 1].val;
+    }
+
+    if (i == 0)
+    {
+        return cal->table[0].val;
+    }
+
+    if (i >= cal->size)
+    {
+        return cal->table[i - 1].val;
+    }
+
+    if (cal->table[i].raw == cal->table[i - 1].raw)
+    {
+        return cal->table[i].val;
+    }
+
+    val = ((cal->table[i].raw - raw)
+                     * (float)(cal->table[i].val - cal->table[i - 1].val))
+                    / (float)(cal->table[i].raw - cal->table[i - 1].raw);
+
+    return float(cal->table[i].val - val);
+}
+
