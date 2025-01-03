@@ -370,7 +370,7 @@ private:
     vfo_t currentVfo = vfoUnknown;
     vfo_t splitVfo = vfoUnknown;
     uchar currentRx = 0;
-    uchar modeLock = 1;
+    uchar modeLock = 0;
 };
 
 

@@ -3066,7 +3066,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                            payload.append(m.data);
                         if (!rigCaps.filters.empty() && m.mk != modeWFM)
                             payload.append(m.filter);
-                        qDebug(logRig()) << "Sending mode command, mode:" << m.name;
+                        qDebug(logRig()) << "Sending mode command" << funcString[func] << " mode:" << m.name<< "data:" << m.data << "filter" << m.filter;
                     }
                 }
             }
