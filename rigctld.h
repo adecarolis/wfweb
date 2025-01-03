@@ -268,6 +268,25 @@ typedef struct cal_table cal_table_t;
         { 241,  64 } \
     } }
 
+struct cal_table_float {
+    int size;
+    struct {
+        int raw;
+        float val;
+    } table[32];   };
+
+typedef struct cal_table_float cal_table_float_t;
+
+#define ICOM_SWR_CAL { 5, \
+{ \
+        { 0, 1.0f }, \
+        { 48, 1.5f }, \
+        { 80, 2.0f }, \
+        { 120, 3.0f }, \
+        { 240, 6.0f } \
+} }
+
+
 class rigCtlD : public QTcpServer
 {
     Q_OBJECT
@@ -363,14 +382,20 @@ private:
     funcs getFreqFunc(vfo_t, bool set=false);
     funcs getModeFunc(vfo_t, bool set=false);
     int getCommand(QStringList& respone, bool extended, const commandStruct cmd, QStringList params );
+    int power2mW(QStringList& respone, bool extended, const commandStruct cmd, QStringList params );
+    int mW2power(QStringList& respone, bool extended, const commandStruct cmd, QStringList params );
     int getSubCommand(QStringList& response, bool extended, const commandStruct cmd, const subCommandStruct sub[], QStringList params);
     int dumpState(QStringList &response, bool extended);
     int dumpCaps(QStringList &response, bool extended);
     int getCalibratedValue(quint8 meter,cal_table_t cal);
+    float rawToFloat(int raw, const cal_table_float_t *cal);
+    QStringList buildPrefixes(commandStruct cmd, bool extended);
     vfo_t currentVfo = vfoUnknown;
     vfo_t splitVfo = vfoUnknown;
     uchar currentRx = 0;
     uchar modeLock = 0;
+    uint vfoList = 0x0;
+    cal_table_float_t swrCal;
 };
 
 

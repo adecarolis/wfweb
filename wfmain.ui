@@ -1021,12 +1021,12 @@
                    </widget>
                   </item>
                   <item row="2" column="2">
-                   <widget class="QPushButton" name="mainSubTrackingBtn">
+                   <widget class="QPushButton" name="splitBtn">
                     <property name="focusPolicy">
                      <enum>Qt::FocusPolicy::NoFocus</enum>
                     </property>
                     <property name="text">
-                     <string>TRACKING</string>
+                     <string>Split</string>
                     </property>
                     <property name="checkable">
                      <bool>true</bool>

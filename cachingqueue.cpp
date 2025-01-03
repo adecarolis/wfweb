@@ -479,6 +479,9 @@ bool cachingQueue::compare(QVariant a, QVariant b)
         } else if (!strcmp(a.typeName(),"meter_t")) {
             if (a.value<meter_t>() != b.value<meter_t>())
                 changed=true;
+        } else if (!strcmp(a.typeName(),"vfo_t")) {
+                if (a.value<vfo_t>() != b.value<vfo_t>())
+                    changed=true;
         } else if (!strcmp(a.typeName(),"centerSpanData")) {
             if (a.value<centerSpanData>().cstype != b.value<centerSpanData>().cstype || a.value<centerSpanData>().freq != b.value<centerSpanData>().freq  )
                 changed=true;

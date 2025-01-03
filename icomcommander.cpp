@@ -638,7 +638,7 @@ void icomCommander::parseData(QByteArray dataInput)
                 parseCommand();
                 // We can use this to indicate power status I think
                 if (!rigPoweredOn) {
-                    queue->receiveValue(funcPowerControl,true,0);
+                    queue->receiveValue(funcPowerControl,QVariant::fromValue<bool>(true),0);
                     rigPoweredOn = true;
                 }
 
@@ -655,7 +655,7 @@ void icomCommander::parseData(QByteArray dataInput)
                     if (rigPoweredOn) {
                         qDebug(logRig()) << "Echo caught:" << data.toHex(' ');
                         queue->message("Radio is available but may be powered-off");
-                        queue->receiveValue(funcPowerControl,false,0);
+                        queue->receiveValue(funcPowerControl,QVariant::fromValue<bool>(false),0);
                         rigPoweredOn = false;
                     }
                 } else {
@@ -1561,7 +1561,8 @@ void icomCommander::determineRigCaps()
             bool ants = settings->value("Antennas",true).toBool();
             QColor color(settings->value("Color", "#00000000").toString()); // Default color should be none!
             QString name(settings->value("Name", "None").toString());
-            rigCaps.bands.push_back(bandType(region,band,bsr,start,end,range,memGroup,bytes,ants,color,name));
+            float power = settings->value("Power", 0.0f).toFloat();
+            rigCaps.bands.push_back(bandType(region,band,bsr,start,end,range,memGroup,bytes,ants,power,color,name));
             rigCaps.bsr[band] = bsr;
             qDebug(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << QString::number(bsr,16);
         }
@@ -2611,7 +2612,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
     if (func == funcSelectVFO) {
         // Special command
         vfo_t v = value.value<vfo_t>();
-        func = (v == vfoA)?funcVFOASelect:(v == vfoB)?funcVFOBSelect:(v == vfoMain)?funcVFOMainSelect:funcVFOSubSelect;
+        func = (v == vfoA)?funcVFOASelect:(v == vfoB)?funcVFOBSelect:(v == vfoMain)?funcVFOMainSelect:(v == vfoSub)?funcVFOSubSelect:funcNone;
         value.clear();
         val = INT_MIN;
     }
@@ -3197,9 +3198,10 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 qDebug(logRig()) << "Removing unsupported get command from queue" << funcString[func] << "VFO" << receiver;
                 queue->del(func,receiver);
                 return;
-            } else if (cmd.cmd == funcVFOModeSelect) {
-                qInfo(logRig()) << "Attempting to select VFO mode:" << payload.toHex(' ');
             }
+            //else if (cmd.cmd == funcVFOModeSelect) {
+                //qInfo(logRig()) << "Attempting to select VFO mode:" << payload.toHex(' ');
+            //}
         }
         prepDataAndSend(payload);
     }
