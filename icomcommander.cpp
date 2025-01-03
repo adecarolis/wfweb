@@ -2612,7 +2612,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
     if (func == funcSelectVFO) {
         // Special command
         vfo_t v = value.value<vfo_t>();
-        func = (v == vfoA)?funcVFOASelect:(v == vfoB)?funcVFOBSelect:(v == vfoMain)?funcVFOMainSelect:funcVFOSubSelect;
+        func = (v == vfoA)?funcVFOASelect:(v == vfoB)?funcVFOBSelect:(v == vfoMain)?funcVFOMainSelect:(v == vfoSub)?funcVFOSubSelect:funcNone;
         value.clear();
         val = INT_MIN;
     }

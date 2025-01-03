@@ -85,7 +85,7 @@ void rigCreator::bandRowAdded(int row)
     layoutCheckBox->addWidget(checkBox);            // Set the checkbox in the layer
     layoutCheckBox->setAlignment(Qt::AlignCenter);  // Center the checkbox
     layoutCheckBox->setContentsMargins(0,0,0,0);    // Set the zero padding
-    ui->bands->setCellWidget(row,9, checkBoxWidget);
+    ui->bands->setCellWidget(row,10, checkBoxWidget);
 
     QPushButton *color = new QPushButton();
     color->setStyleSheet("QPushButton { background-color : #00000000; }");
@@ -97,7 +97,7 @@ void rigCreator::bandRowAdded(int row)
             color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(col.name(QColor::HexArgb)));
         }
     });
-    ui->bands->setCellWidget(row,10, color);
+    ui->bands->setCellWidget(row,11, color);
 }
 
 rigCreator::~rigCreator()

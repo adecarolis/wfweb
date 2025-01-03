@@ -785,6 +785,7 @@ vfo_t rigCtlClient::vfoFromName(QString vfo) {
         v = vfoMem;
     }
 
+    qInfo() << "vfoFromName" << vfo << "returns" << v;
     return v;
 }
 
@@ -806,6 +807,7 @@ QString rigCtlClient::getVfoName(vfo_t vfo)
         break;
     case vfoCurrent:
         ret = "currVFO";
+        break;
     case vfoMem:
         ret = "MEM";
         break;
@@ -813,6 +815,8 @@ QString rigCtlClient::getVfoName(vfo_t vfo)
         ret = "None";
         break;
     }
+
+    qInfo() << "vfoName" << vfo << "returns" << ret;
 
     return ret;
 }
@@ -931,10 +935,14 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         case typeFreq:
         {
             freqt f;
-            if (cmd.sstr == 'I')
+            currentRx=0;
+            if (cmd.sstr == 'I') {
                 func = getFreqFunc(splitVfo,true);
-            else
+                if (splitVfo == vfoSub && rigCaps->numReceiver > 1)
+                    currentRx=1;
+            } else {
                 func = getFreqFunc(currentVfo,true);
+            }
 
             //queue->add(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(currentVfo),false,currentRx));
 
@@ -945,19 +953,24 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             break;
         }
         case typeSplitVFO:
+
             val.setValue(static_cast<bool>(params[0].toInt()));
             if (params.size() > 1) {// Just in case we have invalid info
+                qInfo() << "Split VFO" << params[0] << "VFO" << params[1];
                 splitVfo = vfoFromName(params[1]);
             }
             break;
 
         case typeMode:
         {
-            if (cmd.sstr == 'X')
+            currentRx=0;
+            if (cmd.sstr == 'X') {
                 func = getModeFunc(splitVfo,true);
-            else
+                if (splitVfo == vfoSub && rigCaps->numReceiver > 1)
+                    currentRx=1;
+            } else {
                 func = getModeFunc(currentVfo,true);
-
+            }
             //queue->add(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(currentVfo),false,currentRx));
 
             modeInfo mi;
@@ -1034,9 +1047,14 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
 
         if (cmd.sstr=='i') {
             func = getFreqFunc(splitVfo);
+            if (splitVfo == vfoSub && rigCaps->numReceiver > 1)
+                currentRx=1;
+
         }
         else if (cmd.sstr=='x') {
             func = getModeFunc(splitVfo);
+            if (splitVfo == vfoSub && rigCaps->numReceiver > 1)
+                currentRx=1;
         } else {
 
             if (func == funcFreqGet) {
@@ -1046,7 +1064,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             }
         }
 
-        //qInfo() << "getting Cache Value for func" << funcString[func] << "on rx" << currentRx;
+        qInfo() << "getting Cache Value for func" << funcString[func] << "on rx" << currentRx;
         if (rigCaps->commands.contains(func))
             item = queue->getCache(func,currentRx);
 
@@ -1138,7 +1156,6 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             uchar rx = 0;
             funcs freqFunc = getFreqFunc(vfoFromName(params[0]));
             funcs modeFunc = getModeFunc(vfoFromName(params[0]));
-
 
             if (rigCaps->numReceiver > 1 && params.size() && params[0] == "Sub") {
                 rx=1;
@@ -1545,10 +1562,6 @@ funcs rigCtlClient::getFreqFunc(vfo_t vfo, bool set)
     else if ((vfo == vfoA && currentVfo == vfoB) || (vfo == vfoB && currentVfo == vfoA))
     {
         func = ((rigCaps->commands.contains(funcUnselectedFreq)) ? funcUnselectedFreq: func);
-        if (currentVfo == vfoSub && rigCaps->numReceiver>1)
-        {
-            currentRx=1;
-        }
     }
     else if (vfo == vfoMain || vfo == vfoSub)
     {
@@ -1578,10 +1591,6 @@ funcs rigCtlClient::getModeFunc(vfo_t vfo, bool set)
     else if (vfo == vfoMain || vfo == vfoSub)
     {
         func = ((rigCaps->commands.contains(funcMode)) ? funcMode: func);
-        if (currentVfo == vfoSub && rigCaps->numReceiver>1)
-        {
-            currentRx=1;
-        }
     }
     //qDebug(logRigCtlD) << "Mode function is:" << funcString[func];
     return func;
