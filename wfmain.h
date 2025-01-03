@@ -487,7 +487,8 @@ private slots:
     void on_scopeDualBtn_toggled(bool en);
     void on_dualWatchBtn_toggled(bool en);
     void on_swapMainSubBtn_clicked();
-    void on_mainSubTrackingBtn_toggled(bool en);
+    //void on_mainSubTrackingBtn_toggled(bool en);
+    void on_splitBtn_toggled(bool en);
     void on_mainEqualsSubBtn_clicked();
 
     void receiveElapsed(bool sub, qint64 us);

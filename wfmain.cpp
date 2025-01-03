@@ -2568,8 +2568,10 @@ void wfmain::extChangedColPref(prefColItem i)
                                         .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
         ui->dualWatchBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
                                         .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
-        ui->mainSubTrackingBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
+        ui->splitBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
                                         .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
+        //    ui->mainSubTrackingBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
+        //                                    .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
     case col_grid:
     case col_axis:
     case col_text:
@@ -5099,8 +5101,10 @@ void wfmain::useColorPreset(colorPrefsType *cp)
                                     .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
     ui->dualWatchBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
                                     .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
-    ui->mainSubTrackingBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
+    ui->splitBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
                                     .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
+    //ui->mainSubTrackingBtn->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border: 1px solid;}")
+    //                                .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
 
     for (const auto& receiver: receivers) {
         receiver->colorPreset(cp);
@@ -5533,6 +5537,7 @@ void wfmain::receiveValue(cacheItem val){
     case funcReadFreqOffset:
         break;
     case funcSplitStatus:
+        ui->splitBtn->setChecked(val.value.value<duplexMode_t>()==dmSplitOn?true:false);
         rpt->receiveDuplexMode(val.value.value<duplexMode_t>());
         receivers[val.receiver]->setSplit(val.value.value<duplexMode_t>()==dmSplitOn?true:false);
         break;
@@ -5729,11 +5734,11 @@ void wfmain::receiveValue(cacheItem val){
     case funcSSBTXBandwidth:
         break;
     case funcMainSubTracking:
-        ui->mainSubTrackingBtn->setChecked(val.value.value<bool>());
-        for (const auto& receiver:receivers)
-        {
-            receiver->setTracking(val.value.value<bool>());
-        }
+        //ui->mainSubTrackingBtn->setChecked(val.value.value<bool>());
+        //for (const auto& receiver:receivers)
+        //{
+        //    receiver->setTracking(val.value.value<bool>());
+        //}
         break;
     case funcToneSquelchType:
         break;
@@ -6034,9 +6039,16 @@ void wfmain::on_swapMainSubBtn_clicked()
 
 }
 
+/*
 void wfmain::on_mainSubTrackingBtn_toggled(bool en)
 {
     queue->add(priorityImmediate,queueItem(funcMainSubTracking,QVariant::fromValue(en),false));
+}
+*/
+
+void wfmain::on_splitBtn_toggled(bool en)
+{
+    queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue(en),false));
 }
 
 void wfmain::on_mainEqualsSubBtn_clicked()
@@ -6184,7 +6196,9 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         ui->scopeDualBtn->setVisible(rigCaps->commands.contains(funcVFODualWatch));
         ui->mainEqualsSubBtn->setVisible(rigCaps->commands.contains(funcVFOEqualMS));
         ui->swapMainSubBtn->setVisible(rigCaps->commands.contains(funcVFOSwapMS));
-        ui->mainSubTrackingBtn->setVisible(rigCaps->commands.contains(funcMainSubTracking));
+        //ui->mainSubTrackingBtn->setVisible(rigCaps->commands.contains(funcMainSubTracking));
+        // Only show this split button on IC7610/IC785x
+        ui->splitBtn->setVisible(rigCaps->commands.contains(funcSplitStatus) && rigCaps->commands.contains(funcVFOEqualMS));
         ui->antennaGroup->setVisible(rigCaps->commands.contains(funcAntenna));
         ui->preampAttGroup->setVisible(rigCaps->commands.contains(funcPreamp));
         //ui->dualWatchBtn->setVisible(rigCaps->hasCommand29);
