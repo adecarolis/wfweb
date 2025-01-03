@@ -1710,13 +1710,15 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
 
             if (m.mk == modeCW || m.mk == modeCW_R)
             {
-                sendCommand(priorityHigh,funcCwPitch,true,true);
-                sendCommand(priorityHigh,funcDashRatio,true,true);
-                sendCommand(priorityHigh,funcKeySpeed,true,true);
+                sendCommand(priorityMediumHigh,funcCwPitch,true,true);
+                sendCommand(priorityMediumHigh,funcDashRatio,true,true);
+                sendCommand(priorityMediumHigh,funcKeySpeed,true,true);
+                sendCommand(priorityMediumHigh,funcBreakIn,true,true);
             } else {
                 delCommand(funcCwPitch);
                 delCommand(funcDashRatio);
                 delCommand(funcKeySpeed);
+                delCommand(funcBreakIn);
             }
 
 
