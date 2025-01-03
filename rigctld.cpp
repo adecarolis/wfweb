@@ -785,7 +785,7 @@ vfo_t rigCtlClient::vfoFromName(QString vfo) {
         v = vfoMem;
     }
 
-    qInfo() << "vfoFromName" << vfo << "returns" << v;
+    //qInfo() << "vfoFromName" << vfo << "returns" << v;
     return v;
 }
 
@@ -816,7 +816,7 @@ QString rigCtlClient::getVfoName(vfo_t vfo)
         break;
     }
 
-    qInfo() << "vfoName" << vfo << "returns" << ret;
+    //qInfo() << "vfoName" << vfo << "returns" << ret;
 
     return ret;
 }
@@ -956,7 +956,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
 
             val.setValue(static_cast<bool>(params[0].toInt()));
             if (params.size() > 1) {// Just in case we have invalid info
-                qInfo() << "Split VFO" << params[0] << "VFO" << params[1];
+                //qInfo() << "Split VFO" << params[0] << "VFO" << params[1];
                 splitVfo = vfoFromName(params[1]);
             }
             break;
@@ -1064,7 +1064,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             }
         }
 
-        qInfo() << "getting Cache Value for func" << funcString[func] << "on rx" << currentRx;
+        //qInfo() << "getting Cache Value for func" << funcString[func] << "on rx" << currentRx;
         if (rigCaps->commands.contains(func))
             item = queue->getCache(func,currentRx);
 
