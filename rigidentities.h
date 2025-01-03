@@ -144,9 +144,9 @@ struct centerSpanData {
 
 struct bandType {
     bandType() {band=bandUnknown;}
-    bandType(bandType const &b): region(b.region), band(b.band), bsr(b.bsr), lowFreq(b.lowFreq), highFreq(b.highFreq), range(b.range), memGroup(b.memGroup), bytes(b.bytes), ants(b.ants), color(b.color), name(b.name){};
-    bandType(QString region, availableBands band, uchar bsr, quint64 lowFreq, quint64 highFreq, double range, int memGroup, char bytes, bool ants, QColor color, QString name) :
-         region(region), band(band), bsr(bsr), lowFreq(lowFreq), highFreq(highFreq), range(range), memGroup(memGroup), bytes(bytes), ants(ants), color(color), name(name) {}
+    bandType(bandType const &b): region(b.region), band(b.band), bsr(b.bsr), lowFreq(b.lowFreq), highFreq(b.highFreq), range(b.range), memGroup(b.memGroup), bytes(b.bytes), ants(b.ants), power(b.power), color(b.color), name(b.name){};
+    bandType(QString region, availableBands band, uchar bsr, quint64 lowFreq, quint64 highFreq, double range, int memGroup, char bytes, bool ants, float power, QColor color, QString name) :
+         region(region), band(band), bsr(bsr), lowFreq(lowFreq), highFreq(highFreq), range(range), memGroup(memGroup), bytes(bytes), ants(ants), power(power), color(color), name(name) {}
 
     QString region;
     availableBands band;
@@ -158,6 +158,7 @@ struct bandType {
     int memGroup;
     char bytes;
     bool ants;
+    float power;
     QColor color;
     QString name;
     qint64 newFreq=0;
@@ -171,6 +172,7 @@ struct bandType {
         this->memGroup=i.memGroup;
         this->bytes=i.bytes;
         this->ants=i.ants;
+        this->power=i.power;
         this->color=i.color;
         this->name=i.name;
         this->newFreq=i.newFreq;

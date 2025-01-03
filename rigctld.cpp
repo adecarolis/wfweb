@@ -177,12 +177,12 @@ static const commandStruct commands_list[] =
     { 'f',  "get_freq",         funcFreqGet,       typeFreq,    ARG_OUT, "Frequency" },
     { 'M',  "set_mode",         funcModeSet,            typeMode,     ARG_IN, "Mode", "Passband" },
     { 'm',  "get_mode",         funcModeGet,            typeMode,     ARG_OUT, "Mode", "Passband" },
-    { 'I',  "set_split_freq",   funcSendFreqOffset,     typeFreq,     ARG_IN, "TX Frequency" },
-    { 'i',  "get_split_freq",   funcReadFreqOffset,     typeFreq,     ARG_OUT, "TX Frequency" },
+    { 'I',  "set_split_freq",   funcFreqSet,     typeFreq,     ARG_IN, "TX Frequency" },
+    { 'i',  "get_split_freq",   funcFreqGet,     typeFreq,     ARG_OUT, "TX Frequency" },
     { 'X',  "set_split_mode",   funcSplitStatus,        typeMode,     ARG_IN, "TX Mode", "TX Passband" },
     { 'x',  "get_split_mode",   funcSplitStatus,        typeMode,     ARG_OUT, "TX Mode", "TX Passband" },
-    { 'K',  "set_split_freq_mode",  funcNone,           typeFreq,     ARG_IN,    "TX Frequency", "TX Mode", "TX Passband" },
-    { 'k',  "get_split_freq_mode",  funcNone,           typeFreq,     ARG_OUT,   "TX Frequency", "TX Mode", "TX Passband" },
+    { 'K',  "set_split_freq_mode",  funcModeSet,           typeFreq,     ARG_IN,    "TX Frequency", "TX Mode", "TX Passband" },
+    { 'k',  "get_split_freq_mode",  funcModeGet,           typeFreq,     ARG_OUT,   "TX Frequency", "TX Mode", "TX Passband" },
     { 'S',  "set_split_vfo",    funcSplitStatus,        typeSplitVFO, ARG_IN, "Split", "TX VFO" },
     { 's',  "get_split_vfo",    funcSplitStatus,        typeSplitVFO, ARG_OUT, "Split", "TX VFO" },
     { 'N',  "set_ts",           funcTuningStep,         typeUChar,    ARG_IN, "Tuning Step" },
@@ -341,18 +341,20 @@ rigCtlClient::rigCtlClient(int socketId, rigCtlD* parent) : QObject(parent)
     connect(parent, SIGNAL(sendData(QString)), this, SLOT(sendData(QString)), Qt::DirectConnection);
     qInfo(logRigCtlD()) << " session connected: " << sessionId;
 
-    // set sensible values for default VFOs
-    // Prefer VFOA/B for split operation, as some radios have both A/B and Main/Sub.
-    if (rigCaps->commands.contains(funcVFOASelect))
-        currentVfo = vfoA;
-    else if (rigCaps->commands.contains(funcVFOMainSelect))
-        currentVfo = vfoMain;
+    currentVfo = vfoUnknown;
 
-    if (rigCaps->commands.contains(funcVFOBSelect))
-        splitVfo = vfoB;
-    else if (rigCaps->commands.contains(funcVFOSubSelect))
-        splitVfo = vfoSub;
+    // Find what VFOs we have:
 
+    if (rigCaps->numVFO > 0 && rigCaps->commands.contains(funcVFOASelect))
+        vfoList |= 1<<0;
+    if (rigCaps->numVFO > 1 && rigCaps->commands.contains(funcVFOBSelect))
+        vfoList |= 1<<1;
+    if (rigCaps->numReceiver > 0 && rigCaps->commands.contains(funcVFOMainSelect))
+        vfoList |= 1<<26;
+    if (rigCaps->numReceiver > 1 && rigCaps->commands.contains(funcVFOSubSelect))
+        vfoList |= 1<<25;
+    if (rigCaps->commands.contains(funcMemoryMode))
+        vfoList |= 1<<28;
 }
 
 void rigCtlClient::socketReadyRead()
@@ -373,11 +375,11 @@ void rigCtlClient::socketReadyRead()
 
     bool setCommand = false;
     bool longCommand = false;
+    bool extended = false;
     QStringList response;
 
     for (QString &commands : commandList)
     {
-        bool extended = false;
         restart:
 
         if (commands.endsWith('\r'))
@@ -435,6 +437,16 @@ void rigCtlClient::socketReadyRead()
             {
                 command.removeFirst(); // Remove the actual command so it only contains params
 
+                if (extended){
+                    // First we need to repeat the original command back:
+                    QString repeat=QString("%0:").arg(commands_list[i].str);
+                    for( const auto &c: command)
+                    {
+                        repeat+=QString(" %0").arg(c);
+                    }
+                    response.append(repeat);
+                }
+
                 if (((commands_list[i].flags & ARG_IN) == ARG_IN))
                 {
                     // For debugging only comment next line M0VSE
@@ -466,12 +478,29 @@ void rigCtlClient::socketReadyRead()
                     ret = dumpCaps(response, extended);
                     setCommand=true;
                     break;
-                } else if (commands_list[i].sstr == '3')
+                }
+                else if (commands_list[i].sstr == '2')
+                {
+                    // power2mW
+                    ret = power2mW(response, extended, commands_list[i], command);
+                    setCommand=true;
+                    break;
+                }
+                else if (commands_list[i].sstr == '3')
                 {
                     response.append(QString("Model: WFVIEW(%0)").arg(rigCaps->modelName));
                     ret = RIG_OK;
                     break;
-                } else if (commands_list[i].sstr == 0xf0)
+
+                }
+                else if (commands_list[i].sstr == '4')
+                {
+                    // mW2power
+                    ret = mW2power(response, extended, commands_list[i], command);
+                    setCommand=true;
+                    break;
+                }
+                else if (commands_list[i].sstr == 0xf0)
                 {
                     chkVfoEecuted = true;
                     //ret = RIG_OK;
@@ -510,7 +539,7 @@ void rigCtlClient::socketReadyRead()
     if (sep != "\n") {
         sendData(QString("\n"));
     }
-    if (ret < 0 || setCommand)
+    if (ret < 0 || setCommand || extended)
         sendData(QString("RPRT %0\n").arg(QString::number(ret)));
 }
 
@@ -747,7 +776,7 @@ QString rigCtlClient::getVfoName(vfo_t vfo)
         ret = "MEM";
         break;
     default:
-        ret = "Unknown";
+        ret = "None";
         break;
     }
 
@@ -864,8 +893,14 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             break;
         case typeFreq:
         {
-            func = getFreqFunc(currentVfo,true);
             freqt f;
+            if (cmd.sstr == 'I')
+                func = getFreqFunc(splitVfo,true);
+            else
+                func = getFreqFunc(currentVfo,true);
+
+            //queue->add(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(currentVfo),false,currentRx));
+
             f.Hz = static_cast<quint64>(params[0].toFloat());
             f.VFO = activeVFO;
             f.MHzDouble = f.Hz/1000000.0;
@@ -874,13 +909,20 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         }
         case typeSplitVFO:
             val.setValue(static_cast<bool>(params[0].toInt()));
-            if (params.size() > 1) // Just in case we have invalid info
+            if (params.size() > 1) {// Just in case we have invalid info
                 splitVfo = vfoFromName(params[1]);
+            }
             break;
 
         case typeMode:
         {
-            func = getModeFunc(currentVfo,true);
+            if (cmd.sstr == 'X')
+                func = getModeFunc(splitVfo,true);
+            else
+                func = getModeFunc(currentVfo,true);
+
+            //queue->add(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(currentVfo),false,currentRx));
+
             modeInfo mi;
             if (getMode(params[0],mi))
             {
@@ -913,7 +955,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             else
             {
                 currentVfo = vfoFromName(params[0]);
-
+                val.setValue(currentVfo);
                 if (currentVfo == vfoSub && rigCaps->numReceiver > 1)
                     currentRx = 1;
                 else
@@ -936,49 +978,30 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             return -RIG_EINVAL;
         }
 
-        if (rigCaps->commands.contains(func))
-            queue->add(priorityImmediate, queueItem(func, val,false,currentRx));
+        queue->add(priorityImmediate, queueItem(func, val,false,currentRx));
 
     } else {
         // Simple get command
         cacheItem item;
 
         // Build QStringList of Prefixes. This is a bit messy, but not sure how else do to it?
-        QStringList prefixes;
-        if (extended) {
-            if (cmd.arg1 != NULL)
-                prefixes.append(QString("%0: ").arg(cmd.arg1));
-            if (cmd.arg2 != NULL)
-                prefixes.append(QString("%0: ").arg(cmd.arg2));
-            if (cmd.arg3 != NULL)
-                prefixes.append(QString("%0: ").arg(cmd.arg3));
-            if (cmd.arg4 != NULL)
-                prefixes.append(QString("%0: ").arg(cmd.arg4));
-            if (cmd.arg5 != NULL)
-                prefixes.append(QString("%0: ").arg(cmd.arg5));
-            if (cmd.arg6 != NULL)
-                prefixes.append(QString("%0: ").arg(cmd.arg6));
+        QStringList prefixes=buildPrefixes(cmd,extended);
+
+        if (cmd.sstr=='i') {
+            func = getFreqFunc(splitVfo);
+        }
+        else if (cmd.sstr=='x') {
+            func = getModeFunc(splitVfo);
         } else {
-            if (cmd.arg1 != NULL)
-                prefixes.append("");
-            if (cmd.arg2 != NULL)
-                prefixes.append("");
-            if (cmd.arg3 != NULL)
-                prefixes.append("");
-            if (cmd.arg4 != NULL)
-                prefixes.append("");
-            if (cmd.arg5 != NULL)
-                prefixes.append("");
-            if (cmd.arg6 != NULL)
-                prefixes.append("");
+
+            if (func == funcFreqGet) {
+                func = getFreqFunc(currentVfo);
+            } else if (func == funcModeGet) {
+                func = getModeFunc(currentVfo);
+            }
         }
 
-        if (func == funcFreqGet) {
-            func = getFreqFunc(currentVfo);
-        } else if (func == funcModeGet) {
-            func = getModeFunc(currentVfo);
-        }
-
+        //qInfo() << "getting Cache Value for func" << funcString[func] << "on rx" << currentRx;
         if (rigCaps->commands.contains(func))
             item = queue->getCache(func,currentRx);
 
@@ -1037,6 +1060,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         case typeFreq:
         { // Frequency
             freqt f = item.value.value<freqt>();
+
             //qInfo(logRigCtlD()) << "Got Freq" << funcString[func] << f.Hz << "on VFO" << f.VFO;
             if (prefixes.length())
             {
@@ -1239,15 +1263,15 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                             ret = -RIG_EINVAL;
                         }
                     }
-                    if (extended && cmd.arg2 != NULL)
-                    {
-                        response.append(QString("%0: %1").arg(cmd.str, params[0]));
-                        response.append(QString("%0: %1").arg(cmd.arg2, resp));
-                    }
-                    else
-                    {
+                    //if (extended && cmd.arg2 != NULL)
+                    //{
+                    //    response.append(QString("%0: %1").arg(cmd.str, params[0]));
+                    //    response.append(QString("%0: %1").arg(cmd.arg2, resp));
+                    //}
+                    //else
+                    //{
                         response.append(resp);
-                    }
+                    //}
                 } else {
                     qInfo(logRigCtlD()) << "Invalid number of params" <<  params.size();
                     ret = -RIG_EINVAL;
@@ -1283,7 +1307,7 @@ int rigCtlClient::dumpState(QStringList &response, bool extended)
             highFreq = band.highFreq;
     }
     response.append(QString("%1.000000 %2.000000 0x%3 %4 %5 0x%6 0x%7").arg(lowFreq).arg(highFreq)
-                        .arg(modes, 0, 16).arg(-1).arg(-1).arg(0x16000000, 0, 16).arg(getAntennas(), 0, 16));
+                        .arg(modes, 0, 16).arg(-1).arg(-1).arg(vfoList, 0, 16).arg(getAntennas(), 0, 16));
     response.append("0 0 0 0 0 0 0");
 
     if (rigCaps->hasTransmit) {
@@ -1449,44 +1473,161 @@ int rigCtlClient::dumpCaps(QStringList &response, bool extended)
     return RIG_OK;
 }
 
-funcs rigCtlClient::getFreqFunc(vfo_t, bool set)
+funcs rigCtlClient::getFreqFunc(vfo_t vfo, bool set)
 {
     funcs func = ((rigCaps->commands.contains(funcFreq)) ? funcFreq: funcFreqGet) ;
 
     if (set)
         func = ((rigCaps->commands.contains(funcFreq)) ? funcFreq: funcFreqSet) ;
 
-    if (currentVfo == vfoA)
+    if ((vfo == vfoA && currentVfo == vfoA) || (vfo == vfoB && currentVfo == vfoB))
     {
         func = ((rigCaps->commands.contains(funcSelectedFreq)) ? funcSelectedFreq: func);
     }
-    else if (currentVfo == vfoB)
+    else if ((vfo == vfoA && currentVfo == vfoB) || (vfo == vfoB && currentVfo == vfoA))
     {
         func = ((rigCaps->commands.contains(funcUnselectedFreq)) ? funcUnselectedFreq: func);
     }
-    //qDebug(logRigCtlD) << "Frequency function is:" << funcString[func];
+    else if (vfo == vfoMain || vfo == vfoSub)
+    {
+        func = ((rigCaps->commands.contains(funcFreq)) ? funcFreq: func);
+    }
+     //qDebug(logRigCtlD) << "Frequency function is:" << funcString[func];
     return func;
 }
 
-funcs rigCtlClient::getModeFunc(vfo_t, bool set)
+funcs rigCtlClient::getModeFunc(vfo_t vfo, bool set)
 {
     funcs func = ((rigCaps->commands.contains(funcMode)) ? funcMode: funcModeGet) ;
 
     if (set)
         func = ((rigCaps->commands.contains(funcMode)) ? funcMode: funcModeSet) ;
 
-
-    if (currentVfo == vfoA){
+    if ((vfo == vfoA && currentVfo == vfoA) || (vfo == vfoB && currentVfo == vfoB))
+    {
         func = ((rigCaps->commands.contains(funcSelectedMode)) ? funcSelectedMode: func);
     }
-    else if (currentVfo == vfoB)
+    else if ((vfo == vfoA && currentVfo == vfoB) || (vfo == vfoB && currentVfo == vfoA))
     {
         func = ((rigCaps->commands.contains(funcUnselectedMode)) ? funcUnselectedMode: func);
     }
-    else if (currentVfo == vfoMain || currentVfo == vfoSub)
+    else if (vfo == vfoMain || vfo == vfoSub)
     {
         func = ((rigCaps->commands.contains(funcMode)) ? funcMode: func);
     }
     //qDebug(logRigCtlD) << "Mode function is:" << funcString[func];
     return func;
+}
+
+QStringList rigCtlClient::buildPrefixes(commandStruct cmd,bool extended)
+{
+    QStringList prefixes;
+    if (extended) {
+        if (cmd.arg1 != NULL)
+            prefixes.append(QString("%0: ").arg(cmd.arg1));
+        if (cmd.arg2 != NULL)
+            prefixes.append(QString("%0: ").arg(cmd.arg2));
+        if (cmd.arg3 != NULL)
+            prefixes.append(QString("%0: ").arg(cmd.arg3));
+        if (cmd.arg4 != NULL)
+            prefixes.append(QString("%0: ").arg(cmd.arg4));
+        if (cmd.arg5 != NULL)
+            prefixes.append(QString("%0: ").arg(cmd.arg5));
+        if (cmd.arg6 != NULL)
+            prefixes.append(QString("%0: ").arg(cmd.arg6));
+    } else {
+        if (cmd.arg1 != NULL)
+            prefixes.append("");
+        if (cmd.arg2 != NULL)
+            prefixes.append("");
+        if (cmd.arg3 != NULL)
+            prefixes.append("");
+        if (cmd.arg4 != NULL)
+            prefixes.append("");
+        if (cmd.arg5 != NULL)
+            prefixes.append("");
+        if (cmd.arg6 != NULL)
+            prefixes.append("");
+    }
+    return prefixes;
+}
+
+int rigCtlClient::power2mW(QStringList& response, bool extended, const commandStruct cmd, QStringList params )
+{
+    int ret=RIG_OK;
+    QStringList prefixes = buildPrefixes(cmd,extended);
+    if (params.size() >= 2)
+    {
+        bool ok=false;
+        float power = params[0].toFloat(&ok);
+        quint64 freq = params[1].toULongLong(&ok);
+        if (ok)
+        {
+            if (freq == 0)
+            {
+                // Frequency was zero, so get cached freq
+                freq = queue->getCache(getFreqFunc(currentVfo,false),currentRx).value.value<freqt>().Hz;
+            }
+            for (auto &b: rigCaps->bands)
+            {
+                // Highest frequency band is always first!
+                if (freq >= b.lowFreq && freq <= b.highFreq)
+                {
+                    // This frequency is contained within this band!
+                    int p = int((b.power * power) * 1000);
+                    if (prefixes.length()>3)
+                        response.append(QString("%0%1").arg(prefixes[3],QString::number(p)));
+                    break;
+                }
+            }
+        }
+        else
+        {
+            ret = RIG_EINVAL;
+        }
+    } else {
+        ret = RIG_EINVAL;
+    }
+    return ret;
+}
+
+int rigCtlClient::mW2power(QStringList& response, bool extended, const commandStruct cmd, QStringList params )
+{
+    int ret=RIG_OK;
+    QStringList prefixes = buildPrefixes(cmd,extended);
+    if (params.size() > 2)
+    {
+        bool ok=false;
+        int power = params[0].toInt(&ok);
+        quint64 freq = params[1].toULongLong(&ok);
+        if (ok)
+        {
+            if (freq == 0)
+            {
+                // Frequency was zero, so get cached freq
+                freq = queue->getCache(getFreqFunc(currentVfo,false),currentRx).value.value<freqt>().Hz;
+            }
+            for (auto &b: rigCaps->bands)
+            {
+                // Highest frequency band is always first!
+                if (freq >= b.lowFreq && freq <= b.highFreq)
+                {
+                    // This frequency is contained within this band!
+                    float p = float(power / (b.power * 1000.0));
+                    if (prefixes.length()>3)
+                        response.append(QString("%0%1").arg(prefixes[3],QString::number(p,'f',5)));
+                    break;
+                }
+            }
+        }
+        else
+        {
+            ret = RIG_EINVAL;
+        }
+
+    } else {
+        ret = RIG_EINVAL;
+    }
+
+    return ret;
 }

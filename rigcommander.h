@@ -140,7 +140,7 @@ protected:
 
     quint8 guid[GUIDLEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
     bool usingNativeLAN;
-    bool rigPoweredOn = true; // Assume the radio is powered-on until we know otherwise.
+    bool rigPoweredOn = false; // Assume the radio is not powered-on until we know otherwise.
 
 private:
 };

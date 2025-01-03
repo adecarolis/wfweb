@@ -358,6 +358,7 @@ void rigCreator::loadRigFile(QString file)
             ui->bands->model()->setData(ui->bands->model()->index(c,6),settings->value("MemoryGroup", -1).toString());
             ui->bands->model()->setData(ui->bands->model()->index(c,7),settings->value("Name", "").toString());
             ui->bands->model()->setData(ui->bands->model()->index(c,8),settings->value("Bytes", 5).toString());
+            ui->bands->model()->setData(ui->bands->model()->index(c,9),QString::number(settings->value("Power", 100.0f).toFloat(),'f',2));
 
             // Create a widget that will contain a checkbox
             QWidget *checkBoxWidget = new QWidget();
@@ -373,7 +374,7 @@ void rigCreator::loadRigFile(QString file)
             } else {
                 checkBox->setChecked(false);
             }
-            ui->bands->setCellWidget(c,9, checkBoxWidget);
+            ui->bands->setCellWidget(c,10, checkBoxWidget);
 
             QPushButton *color = new QPushButton();
             color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(settings->value("Color", "#00000000").toString()));
@@ -384,7 +385,7 @@ void rigCreator::loadRigFile(QString file)
                     color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(col.name(QColor::HexArgb)));
                 }
              });
-            ui->bands->setCellWidget(c,10, color);
+            ui->bands->setCellWidget(c,11, color);
 
         }
         settings->endArray();
@@ -701,15 +702,16 @@ void rigCreator::saveRigFile(QString file)
         settings->setValue("MemoryGroup", (ui->bands->item(n,6) == NULL) ? -1 : ui->bands->item(n,6)->text().toInt() );
         settings->setValue("Name", (ui->bands->item(n,7) == NULL) ? "" : ui->bands->item(n,7)->text());
         settings->setValue("Bytes", (ui->bands->item(n,8) == NULL) ? 0 : ui->bands->item(n,8)->text().toUInt() );
+        settings->setValue("Power", (ui->bands->item(n,9) == NULL) ? 100.0f : ui->bands->item(n,9)->text().toFloat() );
 
         // Need to use findchild as it has a layout.
-        QCheckBox* chk = ui->bands->cellWidget(n,9)->findChild<QCheckBox*>();
+        QCheckBox* chk = ui->bands->cellWidget(n,10)->findChild<QCheckBox*>();
         if (chk != nullptr)
         {
             settings->setValue("Antennas", chk->isChecked());
         }
 
-        QPushButton* color = static_cast<QPushButton*>(ui->bands->cellWidget(n,10));
+        QPushButton* color = static_cast<QPushButton*>(ui->bands->cellWidget(n,11));
         if (color != nullptr)
         {
             settings->setValue("Color", color->palette().button().color().name(QColor::HexArgb));

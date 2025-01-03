@@ -1180,6 +1180,11 @@
         </column>
         <column>
          <property name="text">
+          <string>Pwr (W)</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
           <string>Ant</string>
          </property>
         </column>
