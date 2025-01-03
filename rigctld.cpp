@@ -1510,6 +1510,7 @@ funcs rigCtlClient::getFreqFunc(vfo_t, bool set)
 {
     funcs func = ((rigCaps->commands.contains(funcFreq)) ? funcFreq: funcFreqGet) ;
 
+    currentRx = 0;
     if (set)
         func = ((rigCaps->commands.contains(funcFreq)) ? funcFreq: funcFreqSet) ;
 
@@ -1520,6 +1521,10 @@ funcs rigCtlClient::getFreqFunc(vfo_t, bool set)
     else if (currentVfo == vfoB)
     {
         func = ((rigCaps->commands.contains(funcUnselectedFreq)) ? funcUnselectedFreq: func);
+        if (currentVfo == vfoSub && rigCaps->numReceiver>1)
+        {
+            currentRx=1;
+        }
     }
     //qDebug(logRigCtlD) << "Frequency function is:" << funcString[func];
     return func;
@@ -1528,6 +1533,8 @@ funcs rigCtlClient::getFreqFunc(vfo_t, bool set)
 funcs rigCtlClient::getModeFunc(vfo_t, bool set)
 {
     funcs func = ((rigCaps->commands.contains(funcMode)) ? funcMode: funcModeGet) ;
+
+    currentRx=0;
 
     if (set)
         func = ((rigCaps->commands.contains(funcMode)) ? funcMode: funcModeSet) ;
@@ -1543,6 +1550,10 @@ funcs rigCtlClient::getModeFunc(vfo_t, bool set)
     else if (currentVfo == vfoMain || currentVfo == vfoSub)
     {
         func = ((rigCaps->commands.contains(funcMode)) ? funcMode: func);
+        if (currentVfo == vfoSub && rigCaps->numReceiver>1)
+        {
+            currentRx=1;
+        }
     }
     //qDebug(logRigCtlD) << "Mode function is:" << funcString[func];
     return func;
