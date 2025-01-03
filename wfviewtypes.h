@@ -84,6 +84,7 @@ enum vfo_t {
     vfoB=1,
     vfoMain = 0xD0,
     vfoSub = 0xD1,
+    vfoCurrent = 0xfd,
     vfoMem = 0xfe,
     vfoUnknown = 0xff
 };

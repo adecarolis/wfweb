@@ -65,7 +65,7 @@ static const subCommandStruct levels_str[] =
     {"CWPITCH",funcCwPitch,typeFloat},
     {"RFPOWER",funcRFPower,typeFloat},
     {"MICGAIN",funcMicGain,typeFloat},
-    {"KEYSPD",funcKeySpeed,typeUChar},
+    {"KEYSPD",funcKeySpeed,typeUShort},
     {"NOTCHF",funcNotchFilter,typeUChar},
     {"COMP",funcCompressorLevel,typeFloat},
     {"AGC",funcAGCTime,typeUChar},
@@ -503,8 +503,9 @@ void rigCtlClient::socketReadyRead()
                 else if (commands_list[i].sstr == 0xf0)
                 {
                     chkVfoEecuted = true;
-                    //ret = RIG_OK;
-                    //break;
+                    response.append(QString("CHKVFO %0").arg(uchar(1)));
+                    ret = RIG_OK;
+                    break;
                 }
                 // Special commands are funcNone so will not get called here
                 if (commands_list[i].func != funcNone) {
@@ -744,15 +745,46 @@ vfo_t rigCtlClient::vfoFromName(QString vfo) {
 
     vfo_t v = vfoUnknown;
     if (vfo.toUpper() == "VFOA")
-        v = vfoA;
-    else if (vfo.toUpper() == "MAIN")
-        v = vfoMain;
+    {
+        if (rigCaps->commands.contains(funcVFOASelect))
+            v = vfoA;
+        else if (rigCaps->commands.contains(funcVFOMainSelect))
+            v = vfoMain;
+        else
+            v = vfoCurrent;
+    }
     else if (vfo.toUpper() == "VFOB")
-        v = vfoB;
+    {
+        if (rigCaps->commands.contains(funcVFOBSelect))
+            v = vfoB;
+        else if (rigCaps->commands.contains(funcVFOSubSelect))
+            v = vfoSub;
+        else
+            v = vfoCurrent;
+    }
+    else if (vfo.toUpper() == "MAIN")
+    {
+        if (rigCaps->commands.contains(funcVFOMainSelect))
+            v = vfoMain;
+        else if (rigCaps->commands.contains(funcVFOASelect))
+            v = vfoA;
+        else
+            v = vfoCurrent;
+    }
     else if (vfo.toUpper() == "SUB")
-        v = vfoSub;
+    {
+        if (rigCaps->commands.contains(funcVFOSubSelect))
+            v = vfoSub;
+        else if (rigCaps->commands.contains(funcVFOBSelect))
+            v = vfoB;
+        else
+            v = vfoCurrent;
+    }
     else if (vfo.toUpper() == "MEM")
+    {
         v = vfoMem;
+    }
+
     return v;
 }
 
@@ -772,6 +804,8 @@ QString rigCtlClient::getVfoName(vfo_t vfo)
     case vfoB:
         ret = "VFOB";
         break;
+    case vfoCurrent:
+        ret = "currVFO";
     case vfoMem:
         ret = "MEM";
         break;
@@ -879,6 +913,9 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         case typeShort:
             val.setValue(static_cast<short>(params[0].toInt()));
             break;
+        case typeUShort:
+            val.setValue(static_cast<ushort>(params[0].toInt()));
+            break;
         case typeFloat:
             val.setValue(static_cast<ushort>(float(params[0].toFloat() * 255.0)));  // rigctl sends 0.0-1.0, we expect 0-255
             break;
@@ -930,6 +967,14 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             } else {
                 qInfo(logRigCtlD()) << "Mode not found:" << params[0];
                 return -RIG_EINVAL;
+            }
+            if (params.size() > 1) {
+                // We have a passband as well
+                bool ok;
+                int pb = params[1].toInt(&ok);
+                if (ok && pb>0) {
+                    queue->add(priorityImmediate, queueItem(funcFilterWidth, QVariant::fromValue<ushort>(pb),false,currentRx));
+                }
             }
             break;
         }
@@ -1017,6 +1062,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             break;
         }
         case typeUChar:
+        case typeUShort:
         case typeShort:
         {
             int i = item.value.toInt();
@@ -1124,10 +1170,11 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         case typeMode:
         { // Mode
             modeInfo m = item.value.value<modeInfo>();
+            cacheItem f = queue->getCache(funcFilterWidth,currentRx);
             if (prefixes.length() > 0)
                 response.append(QString("%0%1").arg(prefixes[0],getMode(m)));
             if (prefixes.length() > 1)
-                response.append(QString("%0%1").arg(prefixes[1],QString::number(m.pass)));
+                response.append(QString("%0%1").arg(prefixes[1],QString::number(f.value.value<ushort>())));
             break;
         }
         case typeString:
@@ -1187,6 +1234,12 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                     QVariant val;
                     switch (sub[i].type)
                     {
+                    case typeUShort:
+                        val.setValue(static_cast<ushort>(params[1].toInt()));  // rigctl sends 0.0-1.0, we expect 0-255
+                        break;
+                   case typeShort:
+                        val.setValue(static_cast<short>(params[1].toInt()));  // rigctl sends 0.0-1.0, we expect 0-255
+                        break;
                     case typeUChar:
                     {
                         uchar v = static_cast<uchar>(params[1].toInt());
@@ -1249,6 +1302,10 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                             resp.append(QString::number(val));
                             break;
                         }
+                        case typeUShort:
+                        case typeShort:
+                            resp.append(QString::number(item.value.toInt()));
+                            break;
                         case typeFloat:
                             resp.append(QString::number(item.value.toFloat() / 255.0,typeFloat,6));
                             break;
