@@ -1021,6 +1021,9 @@ void settingswidget::updateServerConfig(prefServerItem si)
     case s_enabled:
         quietlyUpdateCheckbox(ui->serverEnableCheckbox, serverConfig->enabled);
         break;
+    case s_disableui:
+        quietlyUpdateCheckbox(ui->serverDisableUIChk, serverConfig->disableUI);
+        break;
     case s_lan:
         // Not used here
         break;
@@ -2939,6 +2942,12 @@ void settingswidget::on_serverEnableCheckbox_clicked(bool checked)
 {
     serverConfig->enabled = checked;
     emit changedServerPref(s_enabled);
+}
+
+void settingswidget::on_serverDisableUIChk_clicked(bool checked)
+{
+    serverConfig->disableUI = checked;
+    emit changedServerPref(s_disableui);
 }
 
 void settingswidget::on_serverControlPortText_textChanged(QString text)

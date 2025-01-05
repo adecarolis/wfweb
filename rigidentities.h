@@ -244,8 +244,7 @@ struct bsrRequest {
 
 struct rigCapabilities {
     quint8 model;
-    quint8 civ;
-    quint8 modelID = 0;
+    quint8 modelID = 0; //CIV address
     QString filename;
     int rigctlModel;
     QString modelName;

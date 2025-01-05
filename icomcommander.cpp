@@ -915,7 +915,8 @@ void icomCommander::parseCommand()
         value.setValue(bcdHexToUChar(payloadIn.at(0),payloadIn.at(1)));
         break;
     // These are 2 byte commands that return a single byte (0-99) from position 2
-    case funcAGCTime:
+    case funcAGC:
+    case funcAGCTimeConstant:
     case funcBreakIn:   // This is 0,1 or 2
     case funcPreamp:
     case funcManualNotchWidth:
@@ -1140,6 +1141,12 @@ void icomCommander::parseCommand()
         value.setValue(ritHz);
         break;
     }
+    case funcRitTXStatus:
+        value.setValue(static_cast<bool>(payloadIn.at(0)));
+        break;
+    case funcTXFreqMon:
+        value.setValue(static_cast<bool>(payloadIn.at(0)));
+        break;
     // 0x27
     case funcScopeWaveData:
     {
@@ -1377,11 +1384,13 @@ void icomCommander::determineRigCaps()
     // If rig doesn't have FD comms, tell the commhandler early.
     emit setHalfDuplex(!rigCaps.hasFDcomms);
 
-    // Temporary QList to hold the function string lookup // I would still like to find a better way of doing this!
+    // Temporary QHash to hold the function string lookup // I would still like to find a better way of doing this!
     QHash<QString, funcs> funcsLookup;
     for (int i=0;i<NUMFUNCS;i++)
     {
-        funcsLookup.insert(funcString[i].toUpper(), funcs(i));
+        if (!funcString[i].startsWith("+")) {
+            funcsLookup.insert(funcString[i].toUpper(), funcs(i));
+        }
     }
 
     int numCommands = settings->beginReadArray("Commands");
@@ -1392,6 +1401,7 @@ void icomCommander::determineRigCaps()
         for (int c = 0; c < numCommands; c++)
         {
             settings->setArrayIndex(c);
+
             if (funcsLookup.contains(settings->value("Type", "****").toString().toUpper()))
             {
                 funcs func = funcsLookup.find(settings->value("Type", "").toString().toUpper()).value();
@@ -2023,13 +2033,19 @@ freqt icomCommander::parseFrequency(QByteArray data, quint8 lastPosition)
     freqs.MHzDouble = 0;
     freqs.Hz = 0;
 
+    if (data.length() <= lastPosition)
+    {
+        // Something bad has happened!
+        qWarning(logRig()) << "parseFrequency() given last position:" << lastPosition << "but data is only" << data.length() << "bytes";
+        return freqs;
+    }
     // Does Frequency contain 100 MHz/1 GHz data?
-    if(data.length() > lastPosition+3)
+    if(data.length() > lastPosition+2)
     {
         freqs.Hz += (data[lastPosition+2] & 0x0f) * 1E9; //  1 GHz
         freqs.Hz += ((data[lastPosition+2] & 0xf0) >> 4) * 1E9 * 10; // 10 GHz
     }
-    if(data.length() >= lastPosition+1)
+    if(data.length() > lastPosition+1)
     {
         freqs.Hz += (data[lastPosition+1] & 0x0f) * 1E6 *         100; //  100 MHz
         freqs.Hz += ((data[lastPosition+1] & 0xf0) >> 4) * 1E6 * 1000; // 1000 MHz

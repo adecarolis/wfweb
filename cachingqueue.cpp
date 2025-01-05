@@ -388,6 +388,25 @@ void cachingQueue::updateCache(bool reply, queueItem item)
 void cachingQueue::updateCache(bool reply, funcs func, QVariant value, uchar receiver)
 {
     queueItem q(func,value,false,receiver);
+    // We need to make sure that all "main" frequencies/modes are updated.
+    if (reply && (func == funcFreqTR))
+    {
+        if (rigCaps->commands.contains(funcFreq))
+            q.command = funcFreq;
+        else if (rigCaps->commands.contains(funcSelectedFreq))
+            q.command = funcSelectedFreq;
+        else
+            q.command = funcFreqGet;
+    }
+    else if (reply && (func == funcModeTR))
+    {
+        if (rigCaps->commands.contains(funcMode))
+            q.command = funcMode;
+        else if (rigCaps->commands.contains(funcSelectedMode))
+            q.command = funcSelectedMode;
+        else
+            q.command = funcModeGet;
+    }
     updateCache(reply,q);
 }
 

@@ -16,7 +16,7 @@ rigCreator::rigCreator(QWidget *parent) :
     this->setWindowFlags(flags);
 
     qInfo() << "Creating instance of rigCreator()";
-    commandsList = new tableCombobox(createModel(NUMFUNCS, commandsModel, funcString),true,ui->commands);
+    commandsList = new tableCombobox(createModel(NUMFUNCS, commandsModel, funcString),false,ui->commands);
     ui->commands->setItemDelegateForColumn(0, commandsList);
 
     priorityModel = new QStandardItemModel();
@@ -34,8 +34,10 @@ rigCreator::rigCreator(QWidget *parent) :
     priorityList = new tableCombobox(priorityModel,true,ui->periodicCommands);
     ui->periodicCommands->setItemDelegateForColumn(0, priorityList);
     ui->periodicCommands->setItemDelegateForColumn(1, commandsList);
+
+    ui->commands->setColumnWidth(0,200);
+
     /*
-    ui->commands->setColumnWidth(0,120);
     ui->commands->setColumnWidth(1,100);
     ui->commands->setColumnWidth(2,50);
     ui->commands->setColumnWidth(3,50);
@@ -810,7 +812,24 @@ QStandardItemModel* rigCreator::createModel(int num,QStandardItemModel* model, Q
 
     for (int i=0; i < num;i++)
     {
-        if (!strings[i].startsWith('-')) {
+        if (strings[i].startsWith('+'))
+        {
+#if (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
+            QStandardItem *itemName = new QStandardItem(strings[i].sliced(1));
+#else
+            QStandardItem *itemName = new QStandardItem(strings[i].mid(1));
+#endif
+            QStandardItem *itemId = new QStandardItem(i);
+            itemName->setFlags(itemName->flags() & ~Qt::ItemIsSelectable);
+            itemId->setFlags(itemId->flags() & ~Qt::ItemIsSelectable);
+            //itemName->setData((int)itemName->flags(), Qt::UserRole - 1);
+            QList<QStandardItem*> row;
+            row << itemName << itemId;
+
+            model->appendRow(row);
+
+        }
+        else if (!strings[i].startsWith('-')) {
             QStandardItem *itemName = new QStandardItem(strings[i]);
             QStandardItem *itemId = new QStandardItem(i);
 

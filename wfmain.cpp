@@ -1033,8 +1033,6 @@ void wfmain::setServerToPrefs()
 
         emit initServer();
 
-        //connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
-
         ui->statusBar->showMessage(QString("Server enabled"), 1000);
 
     }
@@ -1074,7 +1072,8 @@ void wfmain::configureVFOs()
         receiver->setTuningFloorZeros(prefs.niceTS);
         receiver->resizePlasmaBuffer(prefs.underlayBufferSize);
         receiver->setUnit((FctlUnit)prefs.frequencyUnits);
-        receiver->colorPreset(this->colorPrefs);
+        colorPrefsType p = colorPreset[prefs.currentColorPresetNumber];
+        receiver->colorPreset(&p);
         receiver->setIdentity(i==0?"Main Band":"Sub Band");
         ui->vfoLayout->addWidget(receiver);
 
@@ -1965,6 +1964,7 @@ void wfmain::loadSettings()
 
     settings->beginGroup("Server");
     serverConfig.enabled = settings->value("ServerEnabled", false).toBool();
+    serverConfig.disableUI = settings->value("DisableUI", false).toBool();
     // These defPrefs are actually for the client, but they are the same.
     serverConfig.controlPort = settings->value("ServerControlPort", udpDefPrefs.controlLANPort).toInt();
     serverConfig.civPort = settings->value("ServerCivPort", udpDefPrefs.serialLANPort).toInt();
@@ -2019,7 +2019,7 @@ void wfmain::loadSettings()
     rigTemp->pttType = prefs.pttType; // Use the global PTT type.
 
     rigTemp->baudRate = prefs.serialPortBaud;
-    rigTemp->civAddr = prefs.radioCIVAddr;
+    rigTemp->civAddr = 0;
     rigTemp->serialPort = prefs.serialPortRadio;
     QString guid = settings->value("GUID", "").toString();
     if (guid.isEmpty()) {
@@ -2930,6 +2930,8 @@ void wfmain::extChangedServerPref(prefServerItem i)
     case s_enabled:
         setServerToPrefs();
         break;
+    case s_disableui:
+        break;
     case s_lan:
         break;
     case s_controlPort:
@@ -3134,6 +3136,7 @@ void wfmain::saveSettings()
     settings->beginGroup("Server");
 
     settings->setValue("ServerEnabled", serverConfig.enabled);
+    settings->setValue("DisableUI", serverConfig.disableUI);
     settings->setValue("ServerControlPort", serverConfig.controlPort);
     settings->setValue("ServerCivPort", serverConfig.civPort);
     settings->setValue("ServerAudioPort", serverConfig.audioPort);
@@ -5677,7 +5680,8 @@ void wfmain::receiveValue(cacheItem val){
     case funcPreamp:
         receivePreamp(val.value.value<uchar>(),val.receiver);
         break;
-    case funcAGCTime:
+    case funcAGC:
+    case funcAGCTimeConstant:
         break;
     case funcNoiseBlanker:
         if (val.receiver == currentReceiver) {
@@ -5826,6 +5830,8 @@ void wfmain::receiveValue(cacheItem val){
             cw->handleDashRatio(val.value.value<uchar>());
         }
         break;
+    case funcTXFreqMon:
+        break;
     // 0x1b register
     case funcToneFreq:
         rpt->handleTone(val.value.value<toneInfo>().tone);
@@ -5841,7 +5847,7 @@ void wfmain::receiveValue(cacheItem val){
     }
     case funcCSQLCode:
         break;
-    // 0x1c register
+    // 0x1c register        
     case funcRitStatus:
         receiveRITStatus(val.value.value<bool>());
         break;
@@ -5854,6 +5860,9 @@ void wfmain::receiveValue(cacheItem val){
     // 0x21 RIT:
     case funcRITFreq:
         receiveRITValue(val.value.value<short>());
+        break;
+    case funcRitTXStatus:
+        // Not sure what this is used for?
         break;
     // 0x27
     case funcScopeWaveData:
@@ -6143,7 +6152,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         // Enable all controls
         enableControls(true);
 
-        showStatusBarText(QString("Found radio at address 0x%1 of name %2 and model ID %3.").arg(rigCaps->civ,2,16).arg(rigCaps->modelName).arg(rigCaps->modelID));
+        showStatusBarText(QString("Found radio of name %0 and model ID %1.").arg(rigCaps->modelName).arg(rigCaps->modelID,2,16,QChar('0')));
 
         qDebug(logSystem()) << "Rig name: " << rigCaps->modelName;
         qDebug(logSystem()) << "Has LAN capabilities: " << rigCaps->hasLan;
@@ -6158,7 +6167,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         if (serverConfig.enabled) {
             serverConfig.rigs.first()->modelName = rigCaps->modelName;
             serverConfig.rigs.first()->rigName = rigCaps->modelName;
-            serverConfig.rigs.first()->civAddr = rigCaps->civ;
+            serverConfig.rigs.first()->civAddr = rigCaps->modelID;
             serverConfig.rigs.first()->baudRate = rigCaps->baudRate;
         }
         setWindowTitle(rigCaps->modelName);

@@ -188,6 +188,7 @@ private slots:
     void on_satOpsBtn_clicked();
 
     void on_serverEnableCheckbox_clicked(bool checked);
+    void on_serverDisableUIChk_clicked(bool checked);
     void on_serverRXAudioInputCombo_currentIndexChanged(int index);
     void on_serverTXAudioOutputCombo_currentIndexChanged(int index);
     void on_serverControlPortText_textChanged(QString text);
