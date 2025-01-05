@@ -12,6 +12,7 @@
 #else
 #include <fcntl.h>
 #include <signal.h>
+#include <unistd.h>
 #endif
 
 #include <iostream>

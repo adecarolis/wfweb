@@ -175,7 +175,6 @@ SOURCES += main.cpp\
     udpserver.cpp \
     pttyhandler.cpp \
     resampler/resample.c \
-    rigctld.cpp \
     tcpserver.cpp \
     keyboard.cpp \
     audiodevices.cpp
@@ -203,7 +202,6 @@ HEADERS  += servermain.h \
     resampler/arch.h \
     resampler/resample_sse.h \
     repeaterattributes.h \
-    rigctld.h \
     ulaw.h \
     tcpserver.h \
     audiotaper.h \
