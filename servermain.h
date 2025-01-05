@@ -33,13 +33,6 @@
 #include <deque>
 #include <memory>
 
-#include <portaudio.h>
-#ifdef Q_OS_WIN
-#include "RtAudio.h"
-#else
-#include "rtaudio/RtAudio.h"
-#endif
-
 namespace Ui {
 class wfmain;
 }
