@@ -11,7 +11,7 @@
 
 
 enum valueType { typeNone=0, typeFloat, typeFloatDiv, typeFloatDiv5, typeUChar, typeUShort, typeChar, typeShort, typeBinary ,
-                 typeFreq, typeMode, typeLevel, typeVFO, typeString, typedB, typeSplitVFO,typeVFOInfo, typeSWR, typePTT};
+                 typeFreq, typeMode, typeLevel, typeVFO, typeString, typedB, typeSplitVFO,typeVFOInfo, typeSWR};
 
 enum connectionStatus_t { connDisconnected, connConnecting, connConnected };
 

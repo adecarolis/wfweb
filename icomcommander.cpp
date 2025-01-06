@@ -693,7 +693,8 @@ void icomCommander::parseCommand()
 #endif
 
     funcs func = funcNone;
-    uchar receiver = 0;
+    uchar receiver = 0; // Used for Dual/RX
+    uchar vfo=0; // Used for second VFO
 
     if (payloadIn.endsWith((char)0xfd))
     {
@@ -737,7 +738,6 @@ void icomCommander::parseCommand()
     freqt test;
     QVector<memParserFormat> memParser;
     QVariant value;
-    uchar vfo=0; // Used for second VFO
     switch (func)
     {
     case funcVFODualWatch:
@@ -752,55 +752,44 @@ void icomCommander::parseCommand()
         payloadIn.remove(0,1);
     case funcSelectedFreq:
     case funcUnselectedFreq:
-        if (func == funcUnselectedFreq)
-            vfo=1;
     case funcFreqGet:
     case funcFreqTR:
     case funcTXFreq:
     {
+        if (func == funcUnselectedFreq)
+            vfo = 1;
+
         value.setValue(parseFreqData(payloadIn,vfo));
         //qInfo(logRig()) << funcString[func] << "len:" << payloadIn.size() << "receiver=" << receiver << "vfo=" << vfo <<
         //    "value:" << value.value<freqt>().Hz << "data:" << payloadIn.toHex(' ');
 
         break;
     }
+    case funcMode:
+        receiver = payloadIn.at(0);
+        payloadIn.remove(0,1);
     case funcModeGet:
     case funcModeTR:
-    {
-        if (static_cast<quint8>(payloadIn.at(0)) == 0xff) {
-            qWarning(logRig()) << "Invalid mode received, 0xff";
-            return;
-        }
-        modeInfo m;
-        if(payloadIn.size() > 1)
-        {
-            m.filter = payloadIn.at(1);
-        } else {
-            m.filter = 0;
-        }
-        // This command doesn't include data setting.
-        m = parseMode(bcdHexToUChar(payloadIn.at(0)), 0xff, m.filter,receiver,vfo);
-        //qInfo() << "Received basic mode (no data) rx:" << receiver << "vfo:" << vfo << m.name << "data:" << m.data << "filter:" << m.filter;
-        value.setValue(m);
-        break;
-    }
-    case funcMode:
-        receiver=payloadIn.at(0);
     case funcSelectedMode:
     case funcUnselectedMode:
     {
-        if (func == funcUnselectedMode || func == funcSelectedMode) {
-            vfo=payloadIn.at(0);
-        }
+        if (func == funcUnselectedMode)
+            vfo = 1;
 
-        // If in an invalid mode, the radio may respond with 0xff
-        if (uchar(payloadIn.at(1)) != 0xff) {
-            // New format payload with mode+datamode+filter
-            modeInfo m = parseMode(bcdHexToUChar(payloadIn.at(1)), uchar(payloadIn.at(2)),uchar(payloadIn.at(3)),receiver,vfo);
-            m.VFO = selVFO_t(receiver);
-            value.setValue(m);
-            //qInfo() << "Received full mode rx:" << receiver << "vfo:" << vfo << "name:"<<  m.name << "data:" << m.data << "filter:" << m.filter << payloadIn;
+        modeInfo mi;
+        // This should handle the different formats that we could receive.
+        if (payloadIn.size())
+            mi.reg = bcdHexToUChar(payloadIn.at(0));
+        if (payloadIn.size()==2)
+            mi.filter = payloadIn.at(1);
+        if (payloadIn.size()==3) {
+            mi.data = payloadIn.at(1);
+            mi.filter = payloadIn.at(2);
         }
+        mi = parseMode(mi.reg, mi.data,mi.filter,receiver,vfo);
+        mi.VFO = selVFO_t(receiver);
+        value.setValue(mi);
+        qInfo() << "Received mode rx:" << receiver << "vfo:" << vfo << "name:"<<  mi.name << "data:" << mi.data << "filter:" << mi.filter << payloadIn.toHex(' ');
         break;
     }
 

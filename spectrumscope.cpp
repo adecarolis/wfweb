@@ -118,6 +118,10 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
         } else {
             fr->setMinimumSize(180,20);
             fr->setMaximumSize(180,20);
+            if (rxcmd == 0xff && receiver == 1)
+            {
+                fr->setEnabled(false);
+            }
             displayLayout->addWidget(fr);
         }
         connect(fr, &freqCtrl::newFrequency, this,
@@ -1817,16 +1821,8 @@ void spectrumScope::selected(bool en)
     isActive = en;
     if (en) {
         this->setStyleSheet("QGroupBox { border:1px solid red;}");
-        if (!rigCaps->hasCommand29) {
-            // the active receiver and no command 29.
-            rxcmd = 0x0;
-        }
     } else {
         this->setStyleSheet(defaultStyleSheet);
-        if (!rigCaps->hasCommand29) {
-            // Not the active receiver and no command 29.
-            rxcmd = 0xff;
-        }
     }
 
 }
@@ -2015,7 +2011,7 @@ void spectrumScope::setIFShift(uchar val)
 
 void spectrumScope::setFrequency(freqt f, uchar vfo)
 {
-    //qInfo() << "Setting Frequency vfo=" << vfo << "Freq:" << f.Hz;
+    qInfo() << "receiver:" << receiver << "Setting Frequency vfo=" << vfo << "Freq:" << f.Hz;
 
     if (vfo < numVFO)
     {
@@ -2127,6 +2123,7 @@ void spectrumScope::newFrequency(qint64 freq,uchar vfo)
         emit sendTrack(f.Hz-this->freq.Hz);
 
         sendCommand(priorityImmediate,getFreqFunc(vfo,true),false,false,QVariant::fromValue<freqt>(f));
+        qInfo() << "Setting new frequency for rx:" << receiver << "vfo:" << vfo << "freq:" << f.Hz << "using:" << funcString[getFreqFunc(vfo,true)];
     }
 }
 
@@ -2243,7 +2240,7 @@ QImage spectrumScope::getWaterfallImage()
 
 void spectrumScope::sendCommand(queuePriority prio, funcs func, bool recur, bool unique, QVariant val)
 {
-    if (rxcmd != 0xff) {
+    if (rxcmd != 0xff || isActive) {
         if (val.isValid())
         {
             if (unique) {
@@ -2275,20 +2272,22 @@ funcs spectrumScope::getFreqFunc(uchar vfo, bool set)
     if (set)
         func = ((rigCaps->commands.contains(funcFreq)) ? funcFreq: funcFreqSet) ;
 
-    if (rigCaps->hasCommand29 || (isActive && receiver == 0)) {
-        if (vfo == 0)
+    if (rxcmd==0xff && isActive) {
+        if (!satMode && !memMode  && receiver==0)
         {
-            func = ((rigCaps->commands.contains(funcSelectedFreq)) ? funcSelectedFreq: func);
+            // vfo = 0 is ALWAYS the selectedVFO.
+            if (vfo == 0)
+                func = ((rigCaps->commands.contains(funcSelectedFreq)) ? funcSelectedFreq: func);
+            else
+                func = ((rigCaps->commands.contains(funcUnselectedFreq)) ? funcUnselectedFreq: func);
         }
-        else if (vfo == 1 && !satMode && !memMode)
+        else if (receiver && vfo)
         {
-            func = ((rigCaps->commands.contains(funcUnselectedFreq)) ? funcUnselectedFreq: func);
-        } else {
             // This is the unselected frequency on sub rx
             func = funcNone;
         }
     }
-    qDebug(logRigCtlD) << "Frequency function is:" << funcString[func];
+    qInfo(logRigCtlD) << "Frequency function is:" << funcString[func] << "rxcmd:" << rxcmd << "isActive" << isActive;
     return func;
 }
 
@@ -2299,15 +2298,16 @@ funcs spectrumScope::getModeFunc(uchar vfo, bool set)
     if (set)
         func = ((rigCaps->commands.contains(funcMode)) ? funcMode: funcModeSet) ;
 
-    if (rigCaps->hasCommand29 || (isActive && receiver == 0)) {
-        if (vfo == 0){
-            func = ((rigCaps->commands.contains(funcSelectedMode)) ? funcSelectedMode: func);
-        }
-        else if (vfo == 1 && !satMode && !memMode)
+    if (rxcmd==0xff && isActive) {
+        if (!satMode && !memMode && receiver == 0)
         {
-            func = ((rigCaps->commands.contains(funcUnselectedMode)) ? funcUnselectedMode: func);
-        } else {
-            // This is the unselected mode on sub rx
+            if (vfo == 0)
+                func = ((rigCaps->commands.contains(funcSelectedMode)) ? funcSelectedMode: func);
+            else
+                func = ((rigCaps->commands.contains(funcUnselectedMode)) ? funcUnselectedMode: func);
+        }
+        else if (receiver && vfo)
+        {
             func = funcNone;
         }
     }
