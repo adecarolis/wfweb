@@ -789,7 +789,7 @@ void icomCommander::parseCommand()
         mi = parseMode(mi.reg, mi.data,mi.filter,receiver,vfo);
         mi.VFO = selVFO_t(receiver);
         value.setValue(mi);
-        qInfo() << "Received mode rx:" << receiver << "vfo:" << vfo << "name:"<<  mi.name << "data:" << mi.data << "filter:" << mi.filter << payloadIn.toHex(' ');
+        //qInfo() << "Received mode rx:" << receiver << "vfo:" << vfo << "name:"<<  mi.name << "data:" << mi.data << "filter:" << mi.filter << payloadIn.toHex(' ');
         break;
     }
 

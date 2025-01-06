@@ -2011,7 +2011,7 @@ void spectrumScope::setIFShift(uchar val)
 
 void spectrumScope::setFrequency(freqt f, uchar vfo)
 {
-    qInfo() << "receiver:" << receiver << "Setting Frequency vfo=" << vfo << "Freq:" << f.Hz;
+    //qInfo() << "receiver:" << receiver << "Setting Frequency vfo=" << vfo << "Freq:" << f.Hz;
 
     if (vfo < numVFO)
     {
@@ -2287,7 +2287,7 @@ funcs spectrumScope::getFreqFunc(uchar vfo, bool set)
             func = funcNone;
         }
     }
-    qInfo(logRigCtlD) << "Frequency function is:" << funcString[func] << "rxcmd:" << rxcmd << "isActive" << isActive;
+    //qInfo(logRigCtlD) << "Frequency function is:" << funcString[func] << "rxcmd:" << rxcmd << "isActive" << isActive;
     return func;
 }
 
@@ -2311,7 +2311,7 @@ funcs spectrumScope::getModeFunc(uchar vfo, bool set)
             func = funcNone;
         }
     }
-    qDebug(logRigCtlD) << "Mode function is:" << funcString[func];
+    //qInfo(logRigCtlD) << "Mode function is:" << funcString[func];
     return func;
 }
 

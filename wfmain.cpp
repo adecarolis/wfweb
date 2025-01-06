@@ -830,12 +830,23 @@ void wfmain::receivePortError(errorType err)
 void wfmain::receiveStatusUpdate(networkStatus status)
 {
 
-    // If we have received very high network latency, increase queue interval, don't set it to higher than 500ms though.
-    if (status.networkLatency > queue->interval())
+    if (queue->interval()==-1)
     {
-        qInfo(logRig()) << QString("Network latency %0 exceeds configured queue interval %1, increasing").arg(status.networkLatency,queue->interval());
-        queue->interval(qMin(quint32(status.networkLatency+25),quint32(500)));
+        return;
     }
+
+    // If we have received very high network latency, increase queue interval, don't set it to higher than 500ms though.
+    if (queue->interval() == delayedCmdIntervalLAN_ms && status.networkLatency > delayedCmdIntervalLAN_ms)
+    {
+        qInfo(logRig()) << QString("Network latency %0 exceeds configured queue interval %1, increasing").arg(status.networkLatency).arg(delayedCmdIntervalLAN_ms);
+        queue->interval(qMin(quint32(status.networkLatency),quint32(500)));
+    }
+    else if (queue->interval() != delayedCmdIntervalLAN_ms && status.networkLatency < delayedCmdIntervalLAN_ms)
+    {
+        // Maybe it was a temporary issue, restore to default
+        queue->interval(delayedCmdIntervalLAN_ms);
+    }
+
     //this->rigStatus->setText(QString("%0/%1 %2").arg(mainElapsed).arg(subElapsed).arg(status.message));
     this->rigStatus->setText(status.message);
     selRad->audioOutputLevel(status.rxAudioLevel);
@@ -3728,6 +3739,7 @@ void wfmain:: getInitialRigState()
 
     queue->del(funcTransceiverId); // This command is no longer required
 
+
     if (rigCaps->commands.contains(funcSatelliteMode))
         queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue(bool(0)),false,0)); // Make sure we are in not in satellite mode.
 
@@ -3746,8 +3758,11 @@ void wfmain:: getInitialRigState()
 
     if(rigCaps->hasSpectrum)
     {
+        // Send commands to start scope immediately, followed by a repeat a few seconds later.
         queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
         queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
+        queue->add(priorityMediumHigh,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
+        queue->add(priorityMediumHigh,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
 
         // Find the scope ref limits
         auto mr = rigCaps->commands.find(funcScopeRef);
@@ -3755,7 +3770,7 @@ void wfmain:: getInitialRigState()
         {
             for (uchar f = 0; f<receivers.size();f++) {
                 receivers[f]->setRefLimits(mr.value().minVal,mr.value().maxVal);
-                queue->add(priorityImmediate,funcScopeRef,false,f);
+                queue->add(priorityMediumHigh,funcScopeRef,false,f);
             }
         }
     }
@@ -5291,6 +5306,8 @@ void wfmain::changePollTiming(int timing_ms, bool setUI)
     qInfo(logSystem()) << "User changed radio polling interval to " << timing_ms << "ms.";
     showStatusBarText("User changed radio polling interval to " + QString("%1").arg(timing_ms) + "ms.");
     prefs.polling_ms = timing_ms;
+    delayedCmdIntervalLAN_ms =  timing_ms;
+    delayedCmdIntervalSerial_ms = timing_ms;
     (void)setUI;
 }
 
