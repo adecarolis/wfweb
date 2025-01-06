@@ -495,6 +495,7 @@ private slots:
     void connectionTimeout();
     void receiveRigCaps(rigCapabilities* caps);
     void radioInUse(quint8 radio, bool admin, quint8 busy, QString user, QString ip);
+    void updatedQueueInterval(quint64 interval);
 
     // Moved to slots to allow them to be delayed.
     void getInitialRigState();
@@ -507,6 +508,7 @@ private slots:
     void on_compEnableChk_clicked(bool checked);
     void on_voxEnableChk_clicked(bool checked);
     void on_digiselEnableChk_clicked(bool checked);
+
 
 private:
     Ui::wfmain *ui; // Main UI

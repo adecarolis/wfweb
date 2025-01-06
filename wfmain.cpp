@@ -98,11 +98,13 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     finputbtns = new frequencyinputwidget();
     setupui = new settingswidget();
+    connect(setupui, SIGNAL(havePortError(errorType)), this, SLOT(receivePortError(errorType)));
 
 
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
     qRegisterMetaType<rigCapabilities>();
     qRegisterMetaType<duplexMode_t>();
+
     qRegisterMetaType<rptAccessTxRx_t>();
     qRegisterMetaType<rptrAccessData>();
     qRegisterMetaType<toneInfo>();
@@ -152,6 +154,8 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     connect(queue,SIGNAL(sendValue(cacheItem)),this,SLOT(receiveValue(cacheItem)));
     connect(queue,SIGNAL(sendMessage(QString)),this,SLOT(showStatusBarText(QString)));
+    connect(queue,SIGNAL(intervalUpdate(quint64)),this,SLOT(updatedQueueInterval(quint64)));
+
     connect(queue, SIGNAL(finished()), queue, SLOT(deleteLater()));
 
     // Disable all controls until connected.
@@ -281,6 +285,18 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     changeFullScreenMode(prefs.useFullScreen);
     useSystemTheme(prefs.useSystemTheme);
+
+    // Don't update prefs until system theme is loaded.
+    // This is so we can popup any dialog boxes in the correct theme.
+    setupui->updateIfPrefs((int)if_all);
+    setupui->updateColPrefs((int)col_all);
+    setupui->updateRaPrefs((int)ra_all);
+    setupui->updateRsPrefs((int)rs_all); // Most of these come from the rig anyway
+    setupui->updateCtPrefs((int)ct_all);
+    setupui->updateClusterPrefs((int)cl_all);
+    setupui->updateLanPrefs((int)l_all);
+    setupui->updateUdpPrefs((int)u_all);
+    setupui->updateServerConfigs((int)s_all);
 
     finputbtns->setAutomaticSidebandSwitching(prefs.automaticSidebandSwitching);
 
@@ -801,7 +817,7 @@ void wfmain::receivePortError(errorType err)
 {
     if (err.alert) {
         connectionHandler(false); // Force disconnect
-        QMessageBox::critical(this, err.device, err.message, QMessageBox::Ok);
+        QMessageBox::critical(this, err.device, QString("%0: %1").arg(err.device,err.message), QMessageBox::Ok);
     }
     else
     {
@@ -1712,7 +1728,6 @@ void wfmain::setDefPrefs()
 void wfmain::loadSettings()
 {
     qInfo(logSystem()) << "Loading settings from " << settings->fileName();
-    setupui->acceptServerConfig(&serverConfig);
 
     QString currentVersionString = QString(WFVIEW_VERSION);
     float currentVersionFloat = currentVersionString.toFloat();
@@ -1964,6 +1979,8 @@ void wfmain::loadSettings()
     settings->endGroup();
 
     settings->beginGroup("Server");
+    setupui->acceptServerConfig(&serverConfig);
+
     serverConfig.enabled = settings->value("ServerEnabled", false).toBool();
     serverConfig.disableUI = settings->value("DisableUI", false).toBool();
     // These defPrefs are actually for the client, but they are the same.
@@ -1971,11 +1988,10 @@ void wfmain::loadSettings()
     serverConfig.civPort = settings->value("ServerCivPort", udpDefPrefs.serialLANPort).toInt();
     serverConfig.audioPort = settings->value("ServerAudioPort", udpDefPrefs.audioLANPort).toInt();
 
-
-    setupui->updateServerConfigs((int)(s_enabled |
+/*    setupui->updateServerConfigs((int)(s_enabled |
                                  s_controlPort |
                                  s_civPort |
-                                 s_audioPort));
+                                 s_audioPort)); */
 
     serverConfig.users.clear();
 
@@ -2031,14 +2047,13 @@ void wfmain::loadSettings()
     memcpy(rigTemp->guid, QUuid::fromString(guid).toRfc4122().constData(), GUIDLEN);
 #endif
 
-    rigTemp->rxAudioSetup.name = settings->value("ServerAudioInput", "Default Input Device").toString();
-    rigTemp->txAudioSetup.name = settings->value("ServerAudioOutput", "Default Output Device").toString();
+    rigTemp->rxAudioSetup.name = settings->value("ServerAudioInput", "").toString();
+    rigTemp->txAudioSetup.name = settings->value("ServerAudioOutput", "").toString();
 
     serverConfig.rigs.append(rigTemp);
 
     // At this point, the users list has exactly one empty user.
-    setupui->updateServerConfig(s_users);
-
+    //setupui->updateServerConfig(s_users);
 
     settings->endGroup();
 
@@ -2255,16 +2270,7 @@ void wfmain::loadSettings()
 
     setupui->acceptPreferencesPtr(&prefs);
     setupui->acceptColorPresetPtr(colorPreset);
-    setupui->updateIfPrefs((int)if_all);
-    setupui->updateColPrefs((int)col_all);
-    setupui->updateRaPrefs((int)ra_all);
-    setupui->updateRsPrefs((int)rs_all); // Most of these come from the rig anyway
-    setupui->updateCtPrefs((int)ct_all);
-    setupui->updateClusterPrefs((int)cl_all);
-    setupui->updateLanPrefs((int)l_all);
-
     setupui->acceptUdpPreferencesPtr(&udpPrefs);
-    setupui->updateUdpPrefs((int)u_all);
 
     prefs.settingsChanged = false;
 }
@@ -3028,8 +3034,10 @@ void wfmain::saveSettings()
     settings->setValue("CIVisRadioModel", prefs.CIVisRadioModel);
     settings->setValue("PTTType", prefs.pttType);
     settings->setValue("polling_ms", prefs.polling_ms); // 0 = automatic
-    settings->setValue("SerialPortRadio", prefs.serialPortRadio);
-    settings->setValue("SerialPortBaud", prefs.serialPortBaud);
+    if (!prefs.serialPortRadio.isEmpty())
+        settings->setValue("SerialPortRadio", prefs.serialPortRadio);
+    if (prefs.serialPortBaud != 0)
+        settings->setValue("SerialPortBaud", prefs.serialPortBaud);
     settings->setValue("VirtualSerialPort", prefs.virtualSerialPort);
     settings->setValue("localAFgain", prefs.localAFgain);
     settings->setValue("AudioSystem", prefs.audioSystem);
@@ -3062,8 +3070,10 @@ void wfmain::saveSettings()
     settings->setValue("AudioRXCodec", prefs.rxSetup.codec);
     settings->setValue("AudioTXSampleRate", prefs.txSetup.sampleRate);
     settings->setValue("AudioTXCodec", prefs.txSetup.codec);
-    settings->setValue("AudioOutput", prefs.rxSetup.name);
-    settings->setValue("AudioInput", prefs.txSetup.name);
+    if (!prefs.rxSetup.name.isEmpty())
+        settings->setValue("AudioOutput", prefs.rxSetup.name);
+    if (!prefs.txSetup.name.isEmpty())
+        settings->setValue("AudioInput", prefs.txSetup.name);
     settings->setValue("ResampleQuality", prefs.rxSetup.resampleQuality);
     settings->setValue("ClientName", udpPrefs.clientName);
     settings->setValue("WaterfallFormat", prefs.waterfallFormat);
@@ -3141,8 +3151,10 @@ void wfmain::saveSettings()
     settings->setValue("ServerControlPort", serverConfig.controlPort);
     settings->setValue("ServerCivPort", serverConfig.civPort);
     settings->setValue("ServerAudioPort", serverConfig.audioPort);
-    settings->setValue("ServerAudioOutput", serverConfig.rigs.first()->txAudioSetup.name);
-    settings->setValue("ServerAudioInput", serverConfig.rigs.first()->rxAudioSetup.name);
+    if (!serverConfig.rigs.first()->txAudioSetup.name.isEmpty())
+        settings->setValue("ServerAudioOutput", serverConfig.rigs.first()->txAudioSetup.name);
+    if (!serverConfig.rigs.first()->rxAudioSetup.name.isEmpty())
+        settings->setValue("ServerAudioInput", serverConfig.rigs.first()->rxAudioSetup.name);
 
     /* Remove old format users*/
     int numUsers = settings->value("ServerNumUsers", 0).toInt();
@@ -6086,23 +6098,25 @@ void wfmain::dataModeChanged(modeInfo m)
     // As the data mode may have changed, we need to make sure that we invalidate the input selection.
     // Also request the current input from the rig.
     //qInfo(logSystem()) << "*** DATA MODE HAS CHANGED ***";
-    currentModSrc[m.data] = rigInput();
+    if (m.data != 0xff) {
+        currentModSrc[m.data] = rigInput();
 
-    // Request the current inputSource.
-    switch(m.data)
-    {
-    case 0:
-        queue->add(priorityImmediate,funcDATAOffMod,false,false);
-        break;
-    case 1:
-        queue->add(priorityImmediate,funcDATA1Mod,false,false);
-        break;
-    case 2:
-        queue->add(priorityImmediate,funcDATA2Mod,false,false);
-        break;
-    case 3:
-        queue->add(priorityImmediate,funcDATA3Mod,false,false);
-        break;
+        // Request the current inputSource.
+        switch(m.data)
+        {
+        case 0:
+            queue->add(priorityImmediate,funcDATAOffMod,false,false);
+            break;
+        case 1:
+            queue->add(priorityImmediate,funcDATA1Mod,false,false);
+            break;
+        case 2:
+            queue->add(priorityImmediate,funcDATA2Mod,false,false);
+            break;
+        case 3:
+            queue->add(priorityImmediate,funcDATA3Mod,false,false);
+            break;
+        }
     }
 
 }
@@ -6468,6 +6482,13 @@ void wfmain::enableControls(bool en)
     ui->antennaGroup->setEnabled(en);
 }
 
+void wfmain::updatedQueueInterval(quint64 interval)
+{
+    if (interval == -1)
+        enableControls(false);
+    else
+        enableControls(true);
+}
 
 /* USB Hotplug support added at the end of the file for convenience */
 #ifdef USB_HOTPLUG

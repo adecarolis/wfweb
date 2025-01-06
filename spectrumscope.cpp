@@ -1625,7 +1625,7 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
         return;
     }
 
-    if (m.reg != this->mode.reg || m.filter != this->mode.filter || m.data != this->mode.data)
+    if (m.reg != this->mode.reg || m.filter != this->mode.filter || (m.data != this->mode.data && m.data != 0xff))
     {
 
         qDebug(logSystem()) << __func__ << QString("Received new mode for %0: %1 (%2) filter:%3 data:%4")
@@ -1652,7 +1652,7 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
             filterCombo->blockSignals(false);
         }
 
-        if (this->mode.data != m.data)
+        if (this->mode.data != m.data && m.data != 0xff)
         {
             emit dataChanged(m); // Signal wfmain that the data mode has been changed.
             dataCombo->blockSignals(true);

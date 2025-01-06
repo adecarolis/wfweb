@@ -75,6 +75,7 @@ signals:
     void sendMessage(QString msg);
     void cacheUpdated(cacheItem item);
     void rigCapsUpdated(rigCapabilities* caps);
+    void intervalUpdated(qint64 val);
 
 public slots:
     // Can be called directly or via emit.

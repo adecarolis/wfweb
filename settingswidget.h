@@ -100,6 +100,7 @@ signals:
     void connectButtonPressed();
     void saveSettingsButtonPressed();
     void revertSettingsButtonPressed();
+    void havePortError(errorType err);
 
 private slots:
     void on_settingsList_currentRowChanged(int currentRow);

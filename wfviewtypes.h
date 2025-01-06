@@ -140,7 +140,7 @@ struct rptrAccessData {
 };
 
 struct modeInfo {
-    modeInfo ():mk(modeUnknown), reg(99), filter(1),VFO(activeVFO), data(0), name(""), bwMin(0), bwMax(0), pass(0) {};
+    modeInfo ():mk(modeUnknown), reg(99), filter(1),VFO(activeVFO), data(0xff), name(""), bwMin(0), bwMax(0), pass(0) {};
     modeInfo(rigMode_t mk, quint8 reg, QString name, int bwMin, int bwMax): mk(mk), reg(reg), filter(1), VFO(activeVFO), data(false), name(name),bwMin(bwMin), bwMax(bwMax), pass(0) {};
     rigMode_t mk;
     quint8 reg;

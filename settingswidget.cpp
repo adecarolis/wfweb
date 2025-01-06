@@ -785,10 +785,11 @@ void settingswidget::updateRaPref(prefRaItem pra)
 #endif
 
         ui->serialDeviceListCombo->setCurrentIndex(ui->serialDeviceListCombo->findText(prefs->serialPortRadio));
-        if (ui->serialDeviceListCombo->currentIndex() == -1)
-        {
-            ui->serialDeviceListCombo->setCurrentIndex(0);
-        }
+        // If the serial port doesn't exist, leave the combo blank.
+        //if (ui->serialDeviceListCombo->currentIndex() == -1)
+        //{
+        //    ui->serialDeviceListCombo->setCurrentIndex(0);
+        //}
         ui->serialDeviceListCombo->blockSignals(false);
         break;
     }
@@ -1037,12 +1038,27 @@ void settingswidget::updateServerConfig(prefServerItem si)
         quietlyUpdateLineEdit(ui->serverAudioPortText, QString::number(serverConfig->audioPort));
         break;
     case s_audioOutput:
-        if (serverConfig->enabled)
-            ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name));
+        if (serverConfig->enabled) {
+            ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server",
+                        serverConfig->rigs.first()->txAudioSetup.name,serverConfig->rigs.first()->txAudioSetup.name.isEmpty()?false:true));
+            if (ui->serverTXAudioOutputCombo->currentIndex() == -1)
+            {
+                emit havePortError(errorType(true, serverConfig->rigs.first()->rxAudioSetup.name,
+                        tr("\nServer audio output device does not exist, please check.\nTransmit audio will NOT work until this is corrected")));
+            }
+
+        }
         break;
     case s_audioInput:
-        if (serverConfig->enabled)
-            ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig->rigs.first()->rxAudioSetup.name));
+        if (serverConfig->enabled) {
+            ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server",
+                        serverConfig->rigs.first()->rxAudioSetup.name,serverConfig->rigs.first()->rxAudioSetup.name.isEmpty()?false:true));
+            if (ui->serverTXAudioOutputCombo->currentIndex() == -1)
+            {
+                emit havePortError(errorType(true, serverConfig->rigs.first()->rxAudioSetup.name,
+                        tr("\nServer audio input device does not exist, please check.\nReceive audio will NOT work until this is corrected")));
+            }
+        }
         break;
     case s_resampleQuality:
         // Not used here
@@ -1158,7 +1174,7 @@ void settingswidget::setAudioDevicesUI()
     ui->serverRXAudioInputCombo->clear();
     ui->serverRXAudioInputCombo->addItems(audioDev->getInputs());
     ui->serverRXAudioInputCombo->setCurrentIndex(-1);
-    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn() + 30));
+    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %0px;}").arg(audioDev->getNumCharsIn() + 30));
     ui->serverRXAudioInputCombo->blockSignals(false);
 
     qInfo() << "Looking for outputs";
@@ -1173,7 +1189,7 @@ void settingswidget::setAudioDevicesUI()
     ui->serverTXAudioOutputCombo->clear();
     ui->serverTXAudioOutputCombo->addItems(audioDev->getOutputs());
     ui->serverTXAudioOutputCombo->setCurrentIndex(-1);
-    ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsOut() + 30));
+    ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %0px;}").arg(audioDev->getNumCharsOut() + 30));
     ui->serverTXAudioOutputCombo->blockSignals(false);
 
 
@@ -1185,8 +1201,8 @@ void settingswidget::setAudioDevicesUI()
         serverConfig->rigs.first()->rxAudioSetup.type = prefs->audioSystem;
         serverConfig->rigs.first()->txAudioSetup.type = prefs->audioSystem;
 
-        ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig->rigs.first()->rxAudioSetup.name));
-        ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name));
+        //ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig->rigs.first()->rxAudioSetup.name,true));
+        //ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name,true));
     }
 
     qDebug(logSystem()) << "Audio devices done.";
@@ -3053,6 +3069,12 @@ void settingswidget::connectionStatus(bool conn)
     ui->serverRXAudioInputCombo->setEnabled(!conn);
     ui->serverTXAudioOutputCombo->setEnabled(!conn);
     ui->audioSystemServerCombo->setEnabled(!conn);
+    ui->serverControlPortText->setEnabled(!conn);
+    ui->serverAudioPortText->setEnabled(!conn);
+    ui->serverCivPortText->setEnabled(!conn);
+    ui->serverUsersTable->setEnabled(!conn);
+    ui->serverDisconnectLabel->setVisible(conn);
+    ui->radioDisconnectLabel->setVisible(conn);
 
     if(conn) {
         ui->connectBtn->setText("Disconnect from radio");

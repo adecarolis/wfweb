@@ -1124,6 +1124,7 @@ void icomCommander::parseCommand()
     case funcUSBModLevel:
     case funcLANModLevel:
     case funcSPDIFModLevel:
+    case funcNBWidth:
         value.setValue(bcdHexToUChar(payloadIn.at(0),payloadIn.at(1)));
         break;
     // Singla byte returned as uchar (0-99)
@@ -1143,6 +1144,8 @@ void icomCommander::parseCommand()
         break;
     }
     case funcDashRatio:
+    case funcNBDepth:
+    case funcVOXDelay:
         value.setValue(bcdHexToUChar(payloadIn.at(0)));
         break;
     // Fixed Freq Scope Edges
@@ -1314,6 +1317,9 @@ void icomCommander::parseCommand()
         // [2] 0x01, 0x02, 0x03: Edge 1,2,3
         receiver=payloadIn.at(0);
         value.setValue(bcdHexToUChar(payloadIn.at(1)));
+        break;
+    case funcBandEdgeFreq:
+        // M0VSE add this
         break;
     case funcScopeHold:
         receiver=payloadIn.at(0);

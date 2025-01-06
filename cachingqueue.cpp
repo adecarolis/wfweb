@@ -133,6 +133,7 @@ void cachingQueue::interval(qint64 val)
         mutex.unlock();
         waiting.wakeAll();
     }
+    emit intervalUpdated(val);
     qInfo() << "Changing queue interval to" << val << "ms";
 }
 
@@ -182,24 +183,28 @@ void cachingQueue::add(queuePriority prio ,funcs func, bool recurring, uchar rec
 
 void cachingQueue::add(queuePriority prio ,queueItem item)
 {
-    item.command=checkCommandAvailable(item.command,item.param.isValid());
-    if (item.command != funcNone)
+    // If the queue isn't running, no point adding to it!
+    if (this->queueInterval != -1)
     {
-        QMutexLocker locker(&mutex);
-        if (!item.recurring || isRecurring(item.command,item.receiver) != prio)
+        item.command=checkCommandAvailable(item.command,item.param.isValid());
+        if (item.command != funcNone)
         {
-            if (item.recurring && prio == queuePriority::priorityImmediate) {
-                qWarning() << "Warning, cannot add recurring command with immediate priority!" << funcString[item.command];
-            } else {
-                if (item.recurring) {
-                    // also insert an immediate command to get the current value "now" (removes the need to get rigstate)                    
-                    queueItem it=item;
-                    it.recurring=false;
-                    it.param.clear();
-                    //qDebug() << "adding" << funcString[item.command] << "recurring" << it.recurring << "priority" << prio << "receiver" << it.receiver;
-                    queue.insert(queue.cend(),priorityImmediate, it);
+            QMutexLocker locker(&mutex);
+            if (!item.recurring || isRecurring(item.command,item.receiver) != prio)
+            {
+                if (item.recurring && prio == queuePriority::priorityImmediate) {
+                    qWarning() << "Warning, cannot add recurring command with immediate priority!" << funcString[item.command];
+                } else {
+                    if (item.recurring) {
+                        // also insert an immediate command to get the current value "now" (removes the need to get rigstate)
+                        queueItem it=item;
+                        it.recurring=false;
+                        it.param.clear();
+                        //qDebug() << "adding" << funcString[item.command] << "recurring" << it.recurring << "priority" << prio << "receiver" << it.receiver;
+                        queue.insert(queue.cend(),priorityImmediate, it);
+                    }
+                    queue.insert(prio, item);
                 }
-                queue.insert(prio, item);
             }
         }
     }
@@ -216,26 +221,30 @@ void cachingQueue::addUnique(queuePriority prio ,funcs func, bool recurring, uch
 
 void cachingQueue::addUnique(queuePriority prio ,queueItem item)
 {
-    item.command=checkCommandAvailable(item.command,item.param.isValid());
-    if (item.command != funcNone)
+    // If the queue isn't running, no point adding to it!
+    if (this->queueInterval != -1)
     {
-        QMutexLocker locker(&mutex);
-        if (item.recurring && prio == queuePriority::priorityImmediate) {
-            qWarning() << "Warning, cannot add unique recurring command with immediate priority!" << funcString[item.command];
-        } else {
-            int count=queue.remove(prio,item);
-            if (count>0)
-                qDebug() << "cachingQueue()::addUnique deleted" << count << "entries from queue for" << funcString[item.command] << "on receiver" << item.receiver;
+        item.command=checkCommandAvailable(item.command,item.param.isValid());
+        if (item.command != funcNone)
+        {
+            QMutexLocker locker(&mutex);
+            if (item.recurring && prio == queuePriority::priorityImmediate) {
+                qWarning() << "Warning, cannot add unique recurring command with immediate priority!" << funcString[item.command];
+            } else {
+                int count=queue.remove(prio,item);
+                if (count>0)
+                    qDebug() << "cachingQueue()::addUnique deleted" << count << "entries from queue for" << funcString[item.command] << "on receiver" << item.receiver;
 
-            if (item.recurring) {
-                // also insert an immediate command to get the current value "now" (removes the need to get initial rigstate)
-                queueItem it = item;
-                it.recurring=false;
-                it.param.clear();
-                queue.insert(queue.cend(),priorityImmediate, it);
-                qDebug() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "receiver" << item.receiver;
+                if (item.recurring) {
+                    // also insert an immediate command to get the current value "now" (removes the need to get initial rigstate)
+                    queueItem it = item;
+                    it.recurring=false;
+                    it.param.clear();
+                    queue.insert(queue.cend(),priorityImmediate, it);
+                    qDebug() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "receiver" << item.receiver;
+                }
+                queue.insert(prio, item);
             }
-            queue.insert(prio, item);
         }
     }
 }
