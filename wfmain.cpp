@@ -1083,7 +1083,7 @@ void wfmain::configureVFOs()
     }
 
     if (receivers.size()) {
-        foreach (spectrumScope* receiver, receivers)
+        foreach (receiverWidget* receiver, receivers)
         {
             ui->vfoLayout->removeWidget(receiver);
             delete receiver;
@@ -1093,7 +1093,7 @@ void wfmain::configureVFOs()
 
     for(uchar i=0;i<rigCaps->numReceiver;i++)
     {
-        spectrumScope* receiver = new spectrumScope(rigCaps->hasSpectrum,i,rigCaps->numVFO,this);
+        receiverWidget* receiver = new receiverWidget(rigCaps->hasSpectrum,i,rigCaps->numVFO,this);
         receiver->setSeparators(prefs.groupSeparator,prefs.decimalSeparator);
         receiver->setUnderlayMode(prefs.underlayMode);
         receiver->wfAntiAliased(prefs.wfAntiAlias);
@@ -1127,7 +1127,7 @@ void wfmain::configureVFOs()
 
         connect(receiver, SIGNAL(dataChanged(modeInfo)), this, SLOT(dataModeChanged(modeInfo)));
 
-        connect(receiver, &spectrumScope::bandChanged, receiver, [=](const uchar& rx, const bandType& b) {
+        connect(receiver, &receiverWidget::bandChanged, receiver, [=](const uchar& rx, const bandType& b) {
             if (rx == currentReceiver && rigCaps->commands.contains(funcAntenna)) {
                 ui->antennaSelCombo->setEnabled(b.ants);
                 if (b.ants) {

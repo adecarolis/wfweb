@@ -3203,271 +3203,271 @@ Do you want to change it? (0=transparent, 255=opaque)</source>
     </message>
 </context>
 <context>
-    <name>spectrumScope</name>
+    <name>receiverWidget</name>
     <message>
-        <location filename="../spectrumscope.cpp" line="52"/>
+        <location filename="../receiverwidget.cpp" line="52"/>
         <source>Detach</source>
         <translation>切り離す</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="54"/>
+        <location filename="../receiverwidget.cpp" line="54"/>
         <source>Detach/re-attach scope from main window</source>
         <translation>メインウィンドウからスコープを切り離す/再接続する</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="58"/>
+        <location filename="../receiverwidget.cpp" line="58"/>
         <source>Spectrum Mode</source>
         <translation>スペクトルモード</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="61"/>
+        <location filename="../receiverwidget.cpp" line="61"/>
         <source>Spectrum Span</source>
         <translation>スペクトルスパン</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="65"/>
+        <location filename="../receiverwidget.cpp" line="65"/>
         <source>Spectrum Edge</source>
         <translation>スペクトルエッジ</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="66"/>
+        <location filename="../receiverwidget.cpp" line="66"/>
         <source>Custom Edge</source>
         <translation>カスタムエッジ</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="67"/>
+        <location filename="../receiverwidget.cpp" line="67"/>
         <source>Define a custom (fixed) scope edge</source>
         <translation>カスタム(固定)スコープエッジを定義する</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="68"/>
+        <location filename="../receiverwidget.cpp" line="68"/>
         <source>To Fixed</source>
         <translation>固定する</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="69"/>
+        <location filename="../receiverwidget.cpp" line="69"/>
         <source>&amp;lt;html&amp;gt;&amp;lt;head/&amp;gt;&amp;lt;body&amp;gt;&amp;lt;p&amp;gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;&amp;lt;br/&amp;gt;&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;The currently-selected edge slot will be overridden.&amp;lt;/p&amp;gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;</source>
         <translation>&amp;lt;html&amp;gt;&amp;lt;head/&amp;gt;&amp;lt;body&amp;gt;&amp;lt;p&amp;gt;ボタンを押すと、範囲を維持しながらセンター モードのスペクトルが固定モードに変換されます。これにより、スペクトルを移動させることなく、現在表示されているのと同じ範囲で調整できます。.&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;&amp;lt;br/&amp;gt;&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;現在選択されているエッジ スロットは上書きされます。.&amp;lt;/p&amp;gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="81"/>
-        <location filename="../spectrumscope.cpp" line="83"/>
+        <location filename="../receiverwidget.cpp" line="81"/>
+        <location filename="../receiverwidget.cpp" line="83"/>
         <source>Configure Scope</source>
         <translation>スコープの構成</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="82"/>
+        <location filename="../receiverwidget.cpp" line="82"/>
         <source>Change various settings of the current Scope</source>
         <translation>スコープの各種設定を変更します</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="133"/>
+        <location filename="../receiverwidget.cpp" line="133"/>
         <source>Center Mode</source>
         <translation>センターモード</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="134"/>
+        <location filename="../receiverwidget.cpp" line="134"/>
         <source>Fixed Mode</source>
         <translation>固定モード</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="135"/>
+        <location filename="../receiverwidget.cpp" line="135"/>
         <source>Scroll-C</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="136"/>
+        <location filename="../receiverwidget.cpp" line="136"/>
         <source>Scroll-F</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="139"/>
+        <location filename="../receiverwidget.cpp" line="139"/>
         <source>Fixed Edge 1</source>
         <translation>固定エッジ1</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="139"/>
+        <location filename="../receiverwidget.cpp" line="139"/>
         <source>Fixed Edge 2</source>
         <translation>固定エッジ2</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="139"/>
+        <location filename="../receiverwidget.cpp" line="139"/>
         <source>Fixed Edge 3</source>
         <translation>固定エッジ3</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="139"/>
+        <location filename="../receiverwidget.cpp" line="139"/>
         <source>Fixed Edge 4</source>
         <translation>固定エッジ4</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="168"/>
+        <location filename="../receiverwidget.cpp" line="168"/>
         <source>SCOPE OUT OF RANGE</source>
         <translation>スコープ：範囲外</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="179"/>
+        <location filename="../receiverwidget.cpp" line="179"/>
         <source> OVF </source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="244"/>
+        <location filename="../receiverwidget.cpp" line="244"/>
         <source>Scope display reference</source>
         <translation>スコープ：表示リファレンス</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="245"/>
+        <location filename="../receiverwidget.cpp" line="245"/>
         <source>Selects the display reference for the Scope display</source>
         <translation>スコープ表示の表示基準を選択します</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="246"/>
+        <location filename="../receiverwidget.cpp" line="246"/>
         <source>Select display reference of scope</source>
         <translation>スコープの表示参照を選択</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="247"/>
+        <location filename="../receiverwidget.cpp" line="247"/>
         <source>Ref</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="251"/>
+        <location filename="../receiverwidget.cpp" line="251"/>
         <source>Length</source>
         <translation>文字数</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="256"/>
+        <location filename="../receiverwidget.cpp" line="256"/>
         <source>Scope display ceiling</source>
         <translation>スコープ展示天井</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="257"/>
+        <location filename="../receiverwidget.cpp" line="257"/>
         <source>Selects the display ceiling for the Scope display</source>
         <translation>スコープ表示の表示上限を選択します</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="258"/>
+        <location filename="../receiverwidget.cpp" line="258"/>
         <source>Select display ceiling of scope</source>
         <translation>スコープの表示上限を選択</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="259"/>
+        <location filename="../receiverwidget.cpp" line="259"/>
         <source>Ceiling</source>
         <translatorcomment>シーリング</translatorcomment>
         <translation></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="264"/>
+        <location filename="../receiverwidget.cpp" line="264"/>
         <source>Scope display floor</source>
         <translation>スコープ展示フロア</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="265"/>
+        <location filename="../receiverwidget.cpp" line="265"/>
         <source>Selects the display floor for the Scope display</source>
         <translation>スコープ表示の表示フロアを選択します</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="266"/>
+        <location filename="../receiverwidget.cpp" line="266"/>
         <source>Select display floor of scope</source>
         <translation>スコープの表示フロアを選択します</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="267"/>
+        <location filename="../receiverwidget.cpp" line="267"/>
         <source>Floor</source>
         <translatorcomment>床</translatorcomment>
         <translation></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="270"/>
+        <location filename="../receiverwidget.cpp" line="270"/>
         <source>Speed Fast</source>
         <translatorcomment>速度が速い</translatorcomment>
         <translation></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="271"/>
+        <location filename="../receiverwidget.cpp" line="271"/>
         <source>Speed Mid</source>
         <translation>速度が中</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="272"/>
+        <location filename="../receiverwidget.cpp" line="272"/>
         <source>Speed Slow</source>
         <translatorcomment>速度が速い</translatorcomment>
         <translation>速度が遅い</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="274"/>
+        <location filename="../receiverwidget.cpp" line="274"/>
         <source>Waterfall display speed</source>
         <translation>ウォーターフォールの表示速度</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="275"/>
+        <location filename="../receiverwidget.cpp" line="275"/>
         <source>Selects the speed for the waterfall display</source>
         <translation>ウォーターフォール表示の速度を選択します</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="276"/>
+        <location filename="../receiverwidget.cpp" line="276"/>
         <source>Waterfall Speed</source>
         <translation>ウォーターフォールの速さ</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="277"/>
+        <location filename="../receiverwidget.cpp" line="277"/>
         <source>Speed</source>
         <translation>速度</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="280"/>
+        <location filename="../receiverwidget.cpp" line="280"/>
         <source>Waterfall display color theme</source>
         <translation>ウォーターフォールの表示色のテーマ</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="281"/>
+        <location filename="../receiverwidget.cpp" line="281"/>
         <source>Selects the color theme for the waterfall display</source>
         <translation>ウォーターフォール表示のカラーテーマを選択します</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="282"/>
+        <location filename="../receiverwidget.cpp" line="282"/>
         <source>Waterfall color theme</source>
         <translation>ウォーターフォールの色のテーマ</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="296"/>
+        <location filename="../receiverwidget.cpp" line="296"/>
         <source>Theme</source>
         <translation>テーマ</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="300"/>
+        <location filename="../receiverwidget.cpp" line="300"/>
         <source>PBT Inner</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="304"/>
+        <location filename="../receiverwidget.cpp" line="304"/>
         <source>PBT Outer</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="308"/>
+        <location filename="../receiverwidget.cpp" line="308"/>
         <source>IF Shift</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="312"/>
+        <location filename="../receiverwidget.cpp" line="312"/>
         <source>Fill Width</source>
         <translation>塗りつぶし幅</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="1109"/>
+        <location filename="../receiverwidget.cpp" line="1109"/>
         <source>Scope Edges</source>
         <translation>スコープエッジ</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="1110"/>
+        <location filename="../receiverwidget.cpp" line="1110"/>
         <source>Please enter desired scope edges, in MHz,
 with a comma between the low and high range.</source>
         <translation>希望するスコープのエッジをMHz単位で入力してください。
 低音域と高音域の間にカンマを入れます。</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="1139"/>
+        <location filename="../receiverwidget.cpp" line="1139"/>
         <source>Error, could not interpret your input.                          &lt;br/&gt;Please make sure to place a comma between the frequencies.                          &lt;br/&gt;For example: &apos;7.200, 7.300&apos;</source>
         <translation>エラー。入力を解釈できませんでした。                          &lt;br/&gt;周波数の間には必ずカンマを入れてください。                          &lt;br/&gt;例：「7.000、7.200」</translation>
     </message>

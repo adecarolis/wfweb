@@ -53,7 +53,7 @@
 #include "audiodevices.h"
 #include "sidebandchooser.h"
 #include "debugwindow.h"
-#include "spectrumscope.h"
+#include "receiverwidget.h"
 #include "tciserver.h"
 
 #include <qcustomplot.h>
@@ -512,7 +512,7 @@ private slots:
 
 private:
     Ui::wfmain *ui; // Main UI
-    QVector<spectrumScope*>receivers;   // Spectrum Scope items.
+    QVector<receiverWidget*>receivers;   // Spectrum Scope items.
     void closeEvent(QCloseEvent *event);
     QString logFilename;
     bool debugMode;

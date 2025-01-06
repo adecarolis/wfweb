@@ -274,11 +274,11 @@ SOURCES += main.cpp\
     debugwindow.cpp \
     icomcommander.cpp \
     loggingwindow.cpp \
+    receiverwidget.cpp \
     scrolltest.cpp \
     settingswidget.cpp \
     memories.cpp \
     rigcreator.cpp \
-    spectrumscope.cpp \
     tablewidget.cpp \
     tciaudiohandler.cpp \
     tciserver.cpp \
@@ -331,6 +331,7 @@ HEADERS  += wfmain.h \
     memories.h \
     prefs.h \
     printhex.h \
+    receiverwidget.h \
     rigcommander.h \
     freqmemory.h \
     rigcreator.h \
@@ -338,7 +339,6 @@ HEADERS  += wfmain.h \
     scrolltest.h \
     settingswidget.h \
     sidebandchooser.h \
-    spectrumscope.h \
     tablewidget.h \
     tciaudiohandler.h \
     tciserver.h \

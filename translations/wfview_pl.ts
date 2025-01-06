@@ -3177,266 +3177,266 @@ Do you want to change it? (0=transparent, 255=opaque)</source>
     </message>
 </context>
 <context>
-    <name>spectrumScope</name>
+    <name>receiverWidget</name>
     <message>
-        <location filename="../spectrumscope.cpp" line="52"/>
+        <location filename="../receiverwidget.cpp" line="52"/>
         <source>Detach</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="54"/>
+        <location filename="../receiverwidget.cpp" line="54"/>
         <source>Detach/re-attach scope from main window</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="58"/>
+        <location filename="../receiverwidget.cpp" line="58"/>
         <source>Spectrum Mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="61"/>
+        <location filename="../receiverwidget.cpp" line="61"/>
         <source>Spectrum Span</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="65"/>
+        <location filename="../receiverwidget.cpp" line="65"/>
         <source>Spectrum Edge</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="66"/>
+        <location filename="../receiverwidget.cpp" line="66"/>
         <source>Custom Edge</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="67"/>
+        <location filename="../receiverwidget.cpp" line="67"/>
         <source>Define a custom (fixed) scope edge</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="68"/>
+        <location filename="../receiverwidget.cpp" line="68"/>
         <source>To Fixed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="69"/>
+        <location filename="../receiverwidget.cpp" line="69"/>
         <source>&amp;lt;html&amp;gt;&amp;lt;head/&amp;gt;&amp;lt;body&amp;gt;&amp;lt;p&amp;gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;&amp;lt;br/&amp;gt;&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;The currently-selected edge slot will be overridden.&amp;lt;/p&amp;gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="81"/>
-        <location filename="../spectrumscope.cpp" line="83"/>
+        <location filename="../receiverwidget.cpp" line="81"/>
+        <location filename="../receiverwidget.cpp" line="83"/>
         <source>Configure Scope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="82"/>
+        <location filename="../receiverwidget.cpp" line="82"/>
         <source>Change various settings of the current Scope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="133"/>
+        <location filename="../receiverwidget.cpp" line="133"/>
         <source>Center Mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="134"/>
+        <location filename="../receiverwidget.cpp" line="134"/>
         <source>Fixed Mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="135"/>
+        <location filename="../receiverwidget.cpp" line="135"/>
         <source>Scroll-C</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="136"/>
+        <location filename="../receiverwidget.cpp" line="136"/>
         <source>Scroll-F</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="139"/>
+        <location filename="../receiverwidget.cpp" line="139"/>
         <source>Fixed Edge 1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="139"/>
+        <location filename="../receiverwidget.cpp" line="139"/>
         <source>Fixed Edge 2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="139"/>
+        <location filename="../receiverwidget.cpp" line="139"/>
         <source>Fixed Edge 3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="139"/>
+        <location filename="../receiverwidget.cpp" line="139"/>
         <source>Fixed Edge 4</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="168"/>
+        <location filename="../receiverwidget.cpp" line="168"/>
         <source>SCOPE OUT OF RANGE</source>
         <translation type="unfinished">POZA ZAKRESEM</translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="179"/>
+        <location filename="../receiverwidget.cpp" line="179"/>
         <source> OVF </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="244"/>
+        <location filename="../receiverwidget.cpp" line="244"/>
         <source>Scope display reference</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="245"/>
+        <location filename="../receiverwidget.cpp" line="245"/>
         <source>Selects the display reference for the Scope display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="246"/>
+        <location filename="../receiverwidget.cpp" line="246"/>
         <source>Select display reference of scope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="247"/>
+        <location filename="../receiverwidget.cpp" line="247"/>
         <source>Ref</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="251"/>
+        <location filename="../receiverwidget.cpp" line="251"/>
         <source>Length</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="256"/>
+        <location filename="../receiverwidget.cpp" line="256"/>
         <source>Scope display ceiling</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="257"/>
+        <location filename="../receiverwidget.cpp" line="257"/>
         <source>Selects the display ceiling for the Scope display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="258"/>
+        <location filename="../receiverwidget.cpp" line="258"/>
         <source>Select display ceiling of scope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="259"/>
+        <location filename="../receiverwidget.cpp" line="259"/>
         <source>Ceiling</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="264"/>
+        <location filename="../receiverwidget.cpp" line="264"/>
         <source>Scope display floor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="265"/>
+        <location filename="../receiverwidget.cpp" line="265"/>
         <source>Selects the display floor for the Scope display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="266"/>
+        <location filename="../receiverwidget.cpp" line="266"/>
         <source>Select display floor of scope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="267"/>
+        <location filename="../receiverwidget.cpp" line="267"/>
         <source>Floor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="270"/>
+        <location filename="../receiverwidget.cpp" line="270"/>
         <source>Speed Fast</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="271"/>
+        <location filename="../receiverwidget.cpp" line="271"/>
         <source>Speed Mid</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="272"/>
+        <location filename="../receiverwidget.cpp" line="272"/>
         <source>Speed Slow</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="274"/>
+        <location filename="../receiverwidget.cpp" line="274"/>
         <source>Waterfall display speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="275"/>
+        <location filename="../receiverwidget.cpp" line="275"/>
         <source>Selects the speed for the waterfall display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="276"/>
+        <location filename="../receiverwidget.cpp" line="276"/>
         <source>Waterfall Speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="277"/>
+        <location filename="../receiverwidget.cpp" line="277"/>
         <source>Speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="280"/>
+        <location filename="../receiverwidget.cpp" line="280"/>
         <source>Waterfall display color theme</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="281"/>
+        <location filename="../receiverwidget.cpp" line="281"/>
         <source>Selects the color theme for the waterfall display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="282"/>
+        <location filename="../receiverwidget.cpp" line="282"/>
         <source>Waterfall color theme</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="296"/>
+        <location filename="../receiverwidget.cpp" line="296"/>
         <source>Theme</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="300"/>
+        <location filename="../receiverwidget.cpp" line="300"/>
         <source>PBT Inner</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="304"/>
+        <location filename="../receiverwidget.cpp" line="304"/>
         <source>PBT Outer</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="308"/>
+        <location filename="../receiverwidget.cpp" line="308"/>
         <source>IF Shift</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="312"/>
+        <location filename="../receiverwidget.cpp" line="312"/>
         <source>Fill Width</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="1109"/>
+        <location filename="../receiverwidget.cpp" line="1109"/>
         <source>Scope Edges</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="1110"/>
+        <location filename="../receiverwidget.cpp" line="1110"/>
         <source>Please enter desired scope edges, in MHz,
 with a comma between the low and high range.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../spectrumscope.cpp" line="1139"/>
+        <location filename="../receiverwidget.cpp" line="1139"/>
         <source>Error, could not interpret your input.                          &lt;br/&gt;Please make sure to place a comma between the frequencies.                          &lt;br/&gt;For example: &apos;7.200, 7.300&apos;</source>
         <translation type="unfinished"></translation>
     </message>

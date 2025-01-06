@@ -1,5 +1,5 @@
-#ifndef SPECTRUMSCOPE_H
-#define SPECTRUMSCOPE_H
+#ifndef RECEIVERWIDGET_H
+#define RECEIVERWIDGET_H
 
 #include <QWidget>
 #include <QMutex>
@@ -31,12 +31,12 @@ struct bandIndicator {
     QCPItemText* text;
 };
 
-class spectrumScope : public QGroupBox
+class receiverWidget : public QGroupBox
 {
     Q_OBJECT
 public:
-    explicit spectrumScope(bool scope, uchar receiver = 0, uchar vfo = 1, QWidget *parent = nullptr);
-    ~spectrumScope();
+    explicit receiverWidget(bool scope, uchar receiver = 0, uchar vfo = 1, QWidget *parent = nullptr);
+    ~receiverWidget();
 
     bool prepareWf(uint wfLength);
     void prepareScope(uint ampMap, uint spectWidth);
@@ -341,4 +341,4 @@ private:
     bool tracking = false;
 };
 
-#endif // SPECTRUMSCOPE_H
+#endif // RECEIVERWIDGET_H
