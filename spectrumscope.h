@@ -257,10 +257,10 @@ private:
     int currentRef = 0;
     uchar currentSpeed = 0;
     colorPrefsType colors;
-    freqt freq = freqt(0,0.0,selVFO_t::activeVFO);
-    modeInfo mode = modeInfo(modeUnknown,0,"Unk",0,0);
-    modeInfo unselectedMode = modeInfo(modeUnknown,0,"Unk",0,0);
-    freqt unselectedFreq = freqt(0,0.0,selVFO_t::activeVFO);
+    freqt freq;
+    modeInfo mode;
+    modeInfo unselectedMode;
+    freqt unselectedFreq;
     bool lock = false;
     bool scopePrepared=false;
     quint16 spectWidth=689;
