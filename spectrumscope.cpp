@@ -264,7 +264,7 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     redrawSpeed->setFont(QFont(font().family(), 8));
     redrawSpeed->setPositionAlignment(Qt::AlignRight | Qt::AlignTop);
     redrawSpeed->position->setType(QCPItemPosition::ptAxisRectRatio);
-    redrawSpeed->setText("0ms/0ms");
+    //redrawSpeed->setText("0ms/0ms");
     redrawSpeed->position->setCoords(1.0f,0.0f);
 
     spectrum->addGraph(); // primary
@@ -423,7 +423,6 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
         queue->addUnique(priorityImmediate,queueItem(funcScopeRef,QVariant::fromValue(currentRef),false,receiver));
     });
 
-
     connect(configSpeed, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](const int &val) {
         queue->addUnique(priorityImmediate,queueItem(funcScopeSpeed,QVariant::fromValue(configSpeed->itemData(val)),false,receiver));
     });
@@ -434,8 +433,6 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
         colorMap->setGradient(currentTheme);
         emit updateSettings(receiver,currentTheme,wfLength,plotFloor,plotCeiling);
     });
-
-
 
     connect(configPbtInner, &QSlider::valueChanged, this, [=](const int &val) {
         sendCommand(priorityImmediate,funcPBTInner,false,true,QVariant::fromValue<ushort>(val));
@@ -483,17 +480,32 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
 
 
     // Connections
-
     connect(detachButton,SIGNAL(toggled(bool)), this, SLOT(detachScope(bool)));
-    connect(scopeModeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedScopeMode(int)));
-    connect(spanCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedSpan(int)));
+
+    connect(scopeModeCombo, &QComboBox::currentIndexChanged, this, [=](const int &val) {
+        spectrumMode_t s = scopeModeCombo->itemData(val).value<spectrumMode_t>();
+        queue->addUnique(priorityImmediate,queueItem(funcScopeMode,QVariant::fromValue(s),false,receiver));
+        currentScopeMode = s;
+        showHideControls(s);
+    });
+
+    connect(spanCombo, &QComboBox::currentIndexChanged, this, [=](const int &val) {
+        queue->addUnique(priorityImmediate,queueItem(funcScopeSpan,QVariant::fromValue(spanCombo->itemData(val)),false,receiver));
+    });
+
     connect(confButton,SIGNAL(clicked()), this, SLOT(configPressed()),Qt::QueuedConnection);
 
     connect(toFixedButton,SIGNAL(clicked()), this, SLOT(toFixedPressed()));
-    connect(edgeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedEdge(int)));
+
+    connect(edgeCombo, &QComboBox::currentIndexChanged, this, [=](const int &val) {
+        queue->addUnique(priorityImmediate,queueItem(funcScopeEdge,QVariant::fromValue<uchar>(val+1),false,receiver));
+    });
+
     connect(edgeButton,SIGNAL(clicked()), this, SLOT(customSpanPressed()));
 
-    connect(holdButton,SIGNAL(toggled(bool)), this, SLOT(holdPressed(bool)));
+    connect(holdButton, &QPushButton::toggled, this, [=](const bool &val) {
+        sendCommand(priorityImmediate,funcScopeHold,false,false,QVariant::fromValue<bool>(val));
+    });
 
     connect(modeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedMode(int)));
     connect(filterCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedMode(int)));
@@ -1138,7 +1150,7 @@ void spectrumScope::enableScope(bool en)
     this->holdButton->setVisible(en && rigCaps->commands.contains(funcScopeHold));
 }
 
-void spectrumScope::selectScopeMode(spectrumMode_t m)
+void spectrumScope::setScopeMode(spectrumMode_t m)
 {
     if (m != currentScopeMode) {
         currentScopeMode = m;
@@ -1149,26 +1161,11 @@ void spectrumScope::selectScopeMode(spectrumMode_t m)
     }
 }
 
-void spectrumScope::selectSpan(centerSpanData s)
+void spectrumScope::setSpan(centerSpanData s)
 {
     spanCombo->blockSignals(true);
     spanCombo->setCurrentIndex(spanCombo->findText(s.name));
     spanCombo->blockSignals(false);
-}
-
-void spectrumScope::updatedScopeMode(int index)
-{
-    //spectrumMode_t s = static_cast<spectrumMode_t>(scopeModeCombo->itemData(index).toInt());
-    spectrumMode_t s = scopeModeCombo->itemData(index).value<spectrumMode_t>();
-    queue->addUnique(priorityImmediate,queueItem(funcScopeMode,QVariant::fromValue(s),false,receiver));
-
-    currentScopeMode = s;
-    showHideControls(s);
-}
-
-void spectrumScope::updatedSpan(int index)
-{
-    queue->addUnique(priorityImmediate,queueItem(funcScopeSpan,QVariant::fromValue(spanCombo->itemData(index)),false,receiver));
 }
 
 void spectrumScope::updatedMode(int index)
@@ -1187,10 +1184,11 @@ void spectrumScope::updatedMode(int index)
     sendCommand(priorityImmediate,getModeFunc(0,true),false,false,QVariant::fromValue<modeInfo>(mi));
 }
 
-
-void spectrumScope::updatedEdge(int index)
+void spectrumScope::setEdge(uchar index)
 {
-    queue->addUnique(priorityImmediate,queueItem(funcScopeEdge,QVariant::fromValue(index+1),false,receiver));
+    edgeCombo->blockSignals(true);
+    edgeCombo->setCurrentIndex(index-1);
+    edgeCombo->blockSignals(false);
 }
 
 void spectrumScope::toFixedPressed()
@@ -1242,7 +1240,7 @@ void spectrumScope::customSpanPressed()
             if(ok)
             {
                 qDebug(logGui()) << "setting edge to: " << lowFreq << ", " << highFreq << ", edge num: " << edgeCombo->currentIndex() + 1;
-                queue->addUnique(priorityImmediate,queueItem(funcScopeSpeed,QVariant::fromValue(spectrumBounds(lowFreq, highFreq, edgeCombo->currentIndex() + 1)),false,receiver));
+                queue->addUnique(priorityImmediate,queueItem(funcScopeFixedEdgeFreq,QVariant::fromValue(spectrumBounds(lowFreq, highFreq, edgeCombo->currentIndex() + 1)),false,receiver));
                 return;
             }
         }
@@ -1823,11 +1821,6 @@ void spectrumScope::selected(bool en)
         }
     }
 
-}
-
-void spectrumScope::holdPressed(bool en)
-{
-    sendCommand(priorityImmediate,funcScopeHold,false,false,QVariant::fromValue<bool>(en));
 }
 
 void spectrumScope::setHold(bool h)

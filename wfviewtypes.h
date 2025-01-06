@@ -123,6 +123,13 @@ enum pttType_t {
     pttDTR=0x01
 };
 
+struct lpfhpf {
+    lpfhpf ():lpf(0),hpf(0) {};
+    lpfhpf (ushort lpf, ushort hpf):lpf(lpf),hpf(hpf) {};
+    ushort lpf=0;
+    ushort hpf=0;
+};
+
 struct rptrAccessData {
     rptAccessTxRx_t accessMode = ratrNN;
     bool useSecondaryVFO = false;
@@ -220,7 +227,7 @@ struct meterkind {
 };
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 260
+#define NUMFUNCS 346
 
 enum funcs { funcNone,
 /* Commands 00-0f VFO Information*/
@@ -245,8 +252,7 @@ funcMonitorGain,        funcVoxGain,			funcAntiVoxGain,            funcBackLight
 /* Command 15 meters */
 funcSepC,
 funcSMeterSqlStatus,    funcSMeter,             funcAbsoluteMeter,          funcMeterType,          funcCenterMeter,        funcVariousSql,
-funcOverflowStatus,     funcPowerMeter,         funcSWRMeter,               funcALCMeter,          	funcCompMeter,          funcVdMeter,
-funcIdMeter,
+funcPowerMeter,         funcSWRMeter,               funcALCMeter,          	funcCompMeter,          funcVdMeter,            funcIdMeter,
 
 /* Command 16 function en/dis */
 funcSepD,
@@ -263,8 +269,16 @@ funcSendCW,             funcPowerControl,		funcTransceiverId,
 funcSepF,
 funcMemoryContents,		funcBandStackReg,       funcMemoryKeyer,            funcFilterWidth,      funcAGCTimeConstant,
 
-/* Command 1A05 */
+/* Command 1A0500 */
 funcSepG,
+/* Tone controls */
+funcSSBRXHPFLPF,        funcSSBRXBass,          funcSSBRXTreble,            FuncAMRXHPFLPF,         funcAMRXBass,           funcAMRXTreble,
+funcFMRXHPFLPF,         funcFMRXBass,           funcFMRXTreble,             FuncCWRXHPFLPF,         funcRTTYRXHPFLPF,
+funcSSBTXBass,          funcSSBTXTreble,        funcAMTXBass,               funcAMTXTreble,         funcFMTXBass,           funcFMTXTreble,
+funcBeepLevel,          funcBeepLevelLimit,     funcBeepConfirmation,       funcBandEdgeBeep,       funcBeepMain,           funcBeepSub,
+
+funcRFSQLControl,       funcTXDelayHF,          funcTXDelay50m,             funcTimeOutTimer,       funcTimeOutCIV,
+
 funcQuickDualWatch,     funcQuickSplit,
 funcAutoRepeater,		funcTransverter,        funcTransverterOffset,      funcLockFunction,		funcREFAdjust,
 funcREFAdjustFine,		funcACCAModLevel,		funcACCBModLevel,           funcUSBModLevel,		funcLANModLevel,		funcSPDIFModLevel,
@@ -273,17 +287,33 @@ funcDate,               funcUTCOffset,			funcCLOCK2,                 funcCLOCK2U
 funcScanSpeed,          funcScanResume,			funcRecorderMode,           funcRecorderTX,         funcRecorderRX,			funcRecorderSplit,
 funcRecorderPTTAuto,    funcRecorderPreRec,		funcRXAntConnector,         funcAntennaSelectMode,  funcNBDepth,			funcNBWidth,
 funcVOXDelay,           funcVOXVoiceDelay,		funcAPFType,                funcAPFTypeLevel,       funcPSKTone,            funcRTTYMarkTone,
-funcDataModeWithFilter, funcAFMute,				funcToneFreq,               funcTSQLFreq,           funcDTCSCode,           funcCSQLCode,
-funcTXFreqMon,          funcReadUserTXFreqs,    funcVoiceTX,                funcMainSubPrefix,		funcAFCSetting,
-funcSSBRXHPFLPF,        funcSSBRXBass,          funcSSBRXTreble,            FuncAMRXHPFLPF,         funcAMRXBass,           funcAMRXTreble,
-funcFMRXHPFLPF,         funcFMRXBass,           funcFMRXTreble,             FuncCWRXHPFLPF,         funcCWRXTreble,         funcCWRXBass,
-funcSSBTXHLPLPF,        funcSSBTXBass,          funcSSBTXTreble,            FuncAMTXHPFLPF,         funcAMTXBass,           funcAMTXTreble,
-funcFMTXHPFLPF,         funcFMTXBass,           funcFMTXTreble,             funcBeepLevel,          funcBeepLevelLimit,     funcBeepConfirmation,
-funcBandEdgeBeep,       funcBeepMain,           funcBeepSub,                funcRFSQLControl,       funcTXDelayHF,          funcTXDelay50m,
-funcTimeOutTimer,       funcTimeOutCIV,         funcGPSTXMode,              funcSatelliteMemory,    funcGPSPosition,        funcMemoryGroup,
+funcToneFreq,           funcTSQLFreq,           funcDTCSCode,               funcCSQLCode,
+funcTXFreqMon,          funcReadUserTXFreqs,    funcVoiceTXLevel,           funcMainSubPrefix,		funcAFCSetting,
+
+funcGPSTXMode,              funcSatelliteMemory,    funcGPSPosition,        funcMemoryGroup,
+
+funcSepG2,
+/* Command 1A0501 */
+funcMonitorSignalWidth, funcScopeAveraging,     funcSpectrumFillType,        funcSpectrumFillColor,  funcSpectrumLineColor, funcSpectrumPeakColor,
+funcWaterfallSet,       funcWaterfallSpeed,     funcWaterfallHeight,         funcWaterfallPeakLevel, funcMarkerAutoHide,
+
+funcSecpG3,
+/* Command 1A0502 */
+
+funcScopeEdge1a,    funcScopeEdge2a,    funcScopeEdge3a,    funcScopeEdge4a,    funcScopeEdge1b,    funcScopeEdge2b,    funcScopeEdge3b,    funcScopeEdge4b,
+funcScopeEdge1c,    funcScopeEdge2c,    funcScopeEdge3c,    funcScopeEdge4c,    funcScopeEdge1d,    funcScopeEdge2d,    funcScopeEdge3d,    funcScopeEdge4d,
+funcScopeEdge1e,    funcScopeEdge2e,    funcScopeEdge3e,    funcScopeEdge4e,    funcScopeEdge1f,    funcScopeEdge2f,    funcScopeEdge3f,    funcScopeEdge4f,
+funcScopeEdge1g,    funcScopeEdge2g,    funcScopeEdge3g,    funcScopeEdge4g,    funcScopeEdge1h,    funcScopeEdge2h,    funcScopeEdge3h,    funcScopeEdge4h,
+funcScopeEdge1i,    funcScopeEdge2i,    funcScopeEdge3i,    funcScopeEdge4i,    funcScopeEdge1j,    funcScopeEdge2j,    funcScopeEdge3j,    funcScopeEdge4j,
+funcScopeEdge1k,    funcScopeEdge2k,    funcScopeEdge3k,    funcScopeEdge4k,    funcScopeEdge1l,    funcScopeEdge2l,    funcScopeEdge3l,    funcScopeEdge4l,
+funcScopeEdge1m,    funcScopeEdge2m,    funcScopeEdge3m,    funcScopeEdge4m,    funcScopeEdge1n,    funcScopeEdge2n,    funcScopeEdge3n,    funcScopeEdge4n,
+funcScopeEdge1o,    funcScopeEdge2o,    funcScopeEdge3o,    funcScopeEdge4o,    funcScopeEdge1p,    funcScopeEdge2p,    funcScopeEdge3p,    funcScopeEdge4p,
+funcScopeEdge1q,    funcScopeEdge2q,    funcScopeEdge3q,    funcScopeEdge4q,    funcScopeEdge1r,    funcScopeEdge2r,    funcScopeEdge3r,    funcScopeEdge4r,
+funcScopeEdge1s,    funcScopeEdge2s,    funcScopeEdge3s,    funcScopeEdge4s,
 
 /* Command 1A06-1A0A */
 funcSepH,
+funcDataModeWithFilter, funcAFMute,             funcOverflowStatus,
 
 /* Command 1C */
 funcSepI,
@@ -307,8 +337,9 @@ funcScopeWaveData,      funcScopeOnOff,
 funcScopeDataOutput,    funcScopeMainSub,       funcScopeSingleDual,        funcScopeMode,          funcScopeSpan,          funcScopeEdge,
 funcScopeHold,          funcScopeRef,           funcScopeSpeed,             funcScopeVBW,           funcScopeRBW,           funcScopCenterFreq,
 funcScopeDuringTX,      funcScopeCenterType,    funcScopeFixedEdgeFreq,
-/* Command 28-29 */
+/* Command 28 */
 funcSepN,
+funcVoiceTX,
 
 /* OK/Error */
 funcSepO,
@@ -346,8 +377,7 @@ static QString funcString[] { "None",
 /* Command 15 meters */
 "+<CMD15 - Meters>",
 "S Meter Sql Status",   "S Meter",				"Absolute Meter",           "Meter Type",           "Center Meter",         "Various Squelch",
-"Overflow Status",      "Power Meter",          "SWR Meter",                "ALC Meter",            "Comp Meter",           "Vd Meter",
-"Id Meter",
+"Power Meter",          "SWR Meter",            "ALC Meter",                "Comp Meter",           "Vd Meter",             "Id Meter",
 
 "+<CMD16 - En/Dis>",
 /* Command 16 function en/dis */
@@ -366,7 +396,14 @@ static QString funcString[] { "None",
 "Memory Contents",      "Band Stacking Reg",    "Memory Keyer",             "Filter Width",      "AGC Time Constant",
 
 /* Command 1A05 */
-"+<CMD1A05>",
+"+<CMD1A0500>",
+"SSB RX HPFLPF",        "SSB RX Bass",          "SSB RX Treble",            "AM RX HPFLPF",         "AM RX Bass",           "AM RX Treble",
+"FM RX HPFLPF",         "FM RX Bass",           "FM RX Treble",             "CW RX HPFLPF",         "RTTY RX HPFLPF",
+"SSB TX Bass",          "SSB TX Treble",         "AM TX Bass",              "AM TX Treble",         "FM TX Bass",           "FM TX Treble",
+"Beep Level",           "Beep Level Limit",     "Beep Confirmation",        "Band Edge Beep",       "Beep Main Band",       "Beep Sub Band",
+
+"RF SQL Control",       "TX Delay HF",          "TX Delay 50m",             "Timeout Timer",        "Timeout C-IV",
+
 "Quick Dual Watch",     "Quick Split",
 "Auto Repeater Mode",   "Transverter Function", "Transverter Offset",       "Lock Function",        "REF Adjust",
 "REF Adjust Fine",      "ACC1 Mod Level",       "ACC2 Mod Level",           "USB Mod Level",        "LAN Mod Level",        "SPDIF Mod Level",
@@ -375,18 +412,33 @@ static QString funcString[] { "None",
 "Scanning Speed",       "Scanning Resume",      "Recorder Mode",            "Recorder TX",          "Recorder RX",          "Recorder Split",
 "Recorder PTT Auto",    "Recorder Pre Rec",     "RX Ant Connector",         "Antenna Select Mode",  "NB Depth",             "NB Width",
 "VOX Delay",            "VOX Voice Delay",      "APF Type",                 "APF Type Level",       "PSK Tone",             "RTTY Mark Tone",
-"Data Mode Filter",     "AF Mute Status",       "Tone Frequency",           "TSQL Frequency",       "DTCS Code/Polarity",   "CSQL Code",
+"Tone Frequency",       "TSQL Frequency",       "DTCS Code/Polarity",       "CSQL Code",
 "Transmit Freq Mon",    "Read User TX Freqs",
-"Voice TX",             "Main/Sub Prefix",      "AFC Function",
-"SSB RX HPFLPF",        "SSB RX Bass",          "SSB RX Treble",            "AM RX HPFLPF",         "AM RX Bass",           "AM RX Treble",
-"FM RX HPFLPF",         "FM RX Bass",           "FM RX Treble",             "CW RX HPFLPF",         "CW RX Bass",           "CW RX Treble",
-"SSB TX HPFLPF",        "SSB TX Bass",          "SSB TX Treble",            "AM TX HPFLPF",         "AM TX Bass",           "AM TX Treble",
-"FM TX HPFLPF",         "FM TX Bass",           "FM TX Treble",             "Beep Level",           "Beep Level Limit",     "Beep Confirmation",
-"Band Edge Beep",       "Beep Main Band",       "Beep Sub Band",            "RF SQL Control",       "TX Delay HF",          "TX Delay 50m",
-"Timeout Timer",        "Timeout C-IV",         "GPS TX Mode",              "Satellite Memory",     "GPS Position",         "Memory Group",
+"Voice TX Level",       "Main/Sub Prefix",      "AFC Function",
+"GPS TX Mode",          "Satellite Memory",     "GPS Position",             "Memory Group",
+
+/* Command 1A05 */
+"+<CMD1A0501>",                            
+"Monitor Signal Width", "Scope Averaging",      "Spectrum Fill Type",       "Spectrum Fill Color",  "Spectrum Line Color",  "Spectrum Peak Color",
+"Waterfall Set",        "Waterfall Speed",      "Waterfall Height",         "Waterfall Peak Level", "Marker Auto Hide",
+
+/* Command 1A05 */
+"+<CMD1A0502>",
+
+"Scope Edge1 1.6Mhz",   "Scope Edge2 1.6Mhz",   "Scope Edge3 1.6Mhz",   "Scope Edge4 1.6Mhz",   "Scope Edge1 2Mhz",     "Scope Edge2 2Mhz",     "Scope Edge3 2Mhz",     "Scope Edge4 2Mhz",
+"Scope Edge1 6Mhz",     "Scope Edge2 6Mhz",     "Scope Edge3 6Mhz",     "Scope Edge4 6Mhz",     "Scope Edge1 8Mhz",     "Scope Edge2 8Mhz",     "Scope Edge3 8Mhz",     "Scope Edge4 8Mhz",
+"Scope Edge1 11Mhz",    "Scope Edge2 11Mhz",    "Scope Edge3 11Mhz",    "Scope Edge4 11Mhz",    "Scope Edge1 15Mhz",    "Scope Edge2 15Mhz",    "Scope Edge3 15Mhz",    "Scope Edge4 15Mhz",
+"Scope Edge1 20Mhz",    "Scope Edge2 20Mhz",    "Scope Edge3 20Mhz",    "Scope Edge4 20Mhz",    "Scope Edge1 22Mhz",    "Scope Edge2 22Mhz",    "Scope Edge3 22Mhz",    "Scope Edge4 22Mhz",
+"Scope Edge1 26Mhz",    "Scope Edge2 26Mhz",    "Scope Edge3 26Mhz",    "Scope Edge4 26Mhz",    "Scope Edge1 30Mhz",    "Scope Edge2 30Mhz",    "Scope Edge3 30Mhz",    "Scope Edge4 30Mhz",
+"Scope Edge1 45Mhz",    "Scope Edge2 45Mhz",    "Scope Edge3 45Mhz",    "Scope Edge4 45Mhz",    "Scope Edge1 60Mhz",    "Scope Edge2 60Mhz",    "Scope Edge3 60Mhz",    "Scope Edge4 60Mhz",
+"Scope Edge1 74Mhz",    "Scope Edge2 74Mhz",    "Scope Edge3 74Mhz",    "Scope Edge4 74Mhz",    "Scope Edge1 144Mhz",   "Scope Edge2 144Mhz",   "Scope Edge3 144Mhz",   "Scope Edge4 144Mhz",
+"Scope Edge1 430Mhz",   "Scope Edge2 430Mhz",   "Scope Edge3 430Mhz",   "Scope Edge4 430Mhz",   "Scope Edge1 1200Mhz",  "Scope Edge2 1200Mhz",  "Scope Edge3 1200Mhz",  "Scope Edge4 1200Mhz",
+"Scope Edge1 2400Mhz",  "Scope Edge2 2400Mhz",  "Scope Edge3 2400Mhz",  "Scope Edge4 2400Mhz",  "Scope Edge1 5600Mhz",  "Scope Edge2 5600Mhz",  "Scope Edge3 5600Mhz",  "Scope Edge4 5600Mhz",
+"Scope Edge1 10Ghz",    "Scope Edge2 10Ghz",    "Scope Edge3 10Ghz",    "Scope Edge4 10Ghz",
 
 /* Command 1A06-1A0A */
 "+<CMD1A06-1A0A>",
+"Data Mode Filter",     "AF Mute Status",       "Overflow Status",
 
 /* Command 1C */
 "+  <CMD1C>",
@@ -411,8 +463,9 @@ static QString funcString[] { "None",
 "Scope Hold",           "Scope Ref",            "Scope Speed",              "Scope VBW",            "Scope RBW",            "Scope Center Freq",
 "Scope During TX",      "Scope Center Type",    "Scope Fixed Edge Freq",
 
-/* Command 28-29 */
-"+<CMD28-29>",
+/* Command 28 */
+"+<CMD28 Voice TX>",
+"Voice TX",
 
 "+<Response Codes>",
 "Command Error FA",     "Command OK FB",
@@ -677,5 +730,6 @@ Q_DECLARE_METATYPE(meter_t)
 Q_DECLARE_METATYPE(meterkind)
 Q_DECLARE_METATYPE(spectrumBounds)
 Q_DECLARE_METATYPE(rigInfo)
+Q_DECLARE_METATYPE(lpfhpf)
 
 #endif // WFVIEWTYPES_H

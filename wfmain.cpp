@@ -145,6 +145,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<centerSpanData>();
     qRegisterMetaType<bandStackType>();
     qRegisterMetaType<rigInfo>();
+    qRegisterMetaType<lpfhpf>();
 
     this->setObjectName("wfmain");
     queue = cachingQueue::getInstance(this);
@@ -5929,15 +5930,13 @@ void wfmain::receiveValue(cacheItem val){
     }
     case funcScopeMode:
         //qDebug() << "Got new scope mode for receiver" << val.receiver << "mode" << val.value.value<spectrumMode_t>();
-        receivers[val.receiver]->selectScopeMode(val.value.value<spectrumMode_t>());
+        receivers[val.receiver]->setScopeMode(val.value.value<spectrumMode_t>());
         break;
     case funcScopeSpan:
-        receivers[val.receiver]->selectSpan(val.value.value<centerSpanData>());
+        receivers[val.receiver]->setSpan(val.value.value<centerSpanData>());
         break;
     case funcScopeEdge:
-        // read edge mode center in edge mode
-        // [1] 0x16
-        // [2] 0x01, 0x02, 0x03: Edge 1,2,3
+        receivers[val.receiver]->setEdge(val.value.value<uchar>());
         break;
     case funcScopeHold:
         receivers[val.receiver]->setHold(val.value.value<bool>());
@@ -5965,7 +5964,7 @@ void wfmain::receiveValue(cacheItem val){
         // We could indicate the rig being powered-on somehow?
         break;
     default:
-        qWarning(logSystem()) << "Unhandled command received from rigcommander()" << funcString[val.command] << "Contact support!";
+        //qWarning(logSystem()) << "Unhandled command received from rigcommander()" << funcString[val.command] << "Contact support!";
         break;
     }
 }

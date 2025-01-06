@@ -89,6 +89,21 @@ public:
     uchar getNumVFO () { return numVFO;}
 
     void receiveMode (modeInfo m, uchar vfo=0);
+
+    void setEdge(uchar index);
+    void setHold(bool h);
+    void setSpeed(uchar s);
+    void setSpan(centerSpanData s);
+    void setScopeMode(spectrumMode_t m);
+    void setSplit(bool en) { splitButton->setChecked(en); }
+    void setTracking(bool en) { tracking=en; }
+    void setRef(int ref);
+    void setRefLimits(int lower, int upper);
+
+    void setBandIndicators(bool show, QString region, std::vector<bandType>* bands);
+    void setUnit(FctlUnit unit);
+    void setSeparators(QChar group, QChar decimal);
+
     modeInfo currentMode() {return mode;}
     uchar currentFilter() {return filterCombo->currentData().toInt();}
     void clearSpans() { spanCombo->clear();}
@@ -103,29 +118,20 @@ public:
 
     void selected(bool);
     bool isSelected() {return isActive;}
-    void setHold(bool h);
-    void setSpeed(uchar s);
+
     void displaySettings(int NumDigits, qint64 Minf, qint64 Maxf, int MinStep,FctlUnit unit,std::vector<bandType>* bands = Q_NULLPTR);
-    void setBandIndicators(bool show, QString region, std::vector<bandType>* bands);
-    void setUnit(FctlUnit unit);
-    void setRefLimits(int lower, int upper);
-    void setRef(int ref);
     quint8 getDataMode() { return static_cast<quint8>(dataCombo->currentIndex()); }
 
     void changeSpan(qint8 val);
-    void setSeparators(QChar group, QChar decimal);
     void updateBSR(std::vector<bandType>* bands);
     QImage getSpectrumImage();
     QImage getWaterfallImage();
     bandType getCurrentBand();
-    void setSplit(bool en) { splitButton->setChecked(en); }
-    void setTracking(bool en) { tracking=en; }
 
 public slots: // Can be called directly or updated via signal/slot
-    void selectScopeMode(spectrumMode_t m);
-    void selectSpan(centerSpanData s);
     void receiveSpots(uchar receiver, QList<spotData> spots);
     void memoryMode(bool en);
+
 
 signals:    
     void frequencyRange(uchar receiver, double start, double end);
@@ -143,11 +149,7 @@ signals:
 
 private slots:
     void detachScope(bool state);
-    void updatedScopeMode(int index);
-    void updatedSpan(int index);
-    void updatedEdge(int index);
     void updatedMode(int index);
-    void holdPressed(bool en);
     void toFixedPressed();
     void customSpanPressed();
     void configPressed();

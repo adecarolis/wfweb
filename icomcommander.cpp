@@ -903,6 +903,7 @@ void icomCommander::parseCommand()
     case funcMonitorGain:
     case funcVoxGain:
     case funcAntiVoxGain:
+    case funcBackLightLevel:
     // 0x15 Meters
     case funcSMeter:
     case funcCenterMeter:
@@ -912,9 +913,19 @@ void icomCommander::parseCommand()
     case funcCompMeter:
     case funcVdMeter:
     case funcIdMeter:
+	
+	case funcBeepLevel:
+	case funcBeepMain:
+	case funcBeepSub:
+	
+	case funcRFSQLControl:
+	case funcTXDelayHF:
+	case funcTXDelay50m:
+	case funcTimeOutTimer:
+	case funcTimeOutCIV:   
+	
         value.setValue(bcdHexToUChar(payloadIn.at(0),payloadIn.at(1)));
         break;
-    // These are 2 byte commands that return a single byte (0-99) from position 2
     case funcAGC:
     case funcAGCTimeConstant:
     case funcBreakIn:   // This is 0,1 or 2
@@ -922,7 +933,30 @@ void icomCommander::parseCommand()
     case funcManualNotchWidth:
     case funcSSBTXBandwidth:
     case funcDSPIFFilter:
+    // Bass treble (A105)
+    case funcSSBRXBass:
+    case funcSSBRXTreble:
+    case funcAMRXBass:
+    case funcAMRXTreble:
+    case funcFMRXBass:
+    case funcFMRXTreble:
+    case funcSSBTXBass:
+    case funcSSBTXTreble:
+    case funcAMTXBass:
+    case funcAMTXTreble:
+    case funcFMTXBass:
+    case funcFMTXTreble:
+    case funcBandEdgeBeep:
         value.setValue(bcdHexToUChar(payloadIn.at(0)));
+        break;
+
+    // LPF/HPF
+    case funcSSBRXHPFLPF:
+    case FuncAMRXHPFLPF:
+    case funcFMRXHPFLPF:
+    case FuncCWRXHPFLPF:
+    case funcRTTYRXHPFLPF:
+        value.setValue(lpfhpf(ushort(payloadIn.at(0))*100,ushort(payloadIn.at(1))*100));
         break;
     case funcAbsoluteMeter:
     {
@@ -985,6 +1019,8 @@ void icomCommander::parseCommand()
     case funcVariousSql:
     case funcRXAntenna:
     case funcIPPlus:
+    case funcBeepLevelLimit:
+    case funcBeepConfirmation:
         value.setValue(static_cast<bool>(payloadIn.at(0)));
         break;
     case funcToneSquelchType:
@@ -1108,6 +1144,84 @@ void icomCommander::parseCommand()
     }
     case funcDashRatio:
         value.setValue(bcdHexToUChar(payloadIn.at(0)));
+        break;
+    // Fixed Freq Scope Edges
+    case funcScopeEdge1a:
+    case funcScopeEdge2a:
+    case funcScopeEdge3a:
+    case funcScopeEdge4a:
+    case funcScopeEdge1b:
+    case funcScopeEdge2b:
+    case funcScopeEdge3b:
+    case funcScopeEdge4b:
+    case funcScopeEdge1c:
+    case funcScopeEdge2c:
+    case funcScopeEdge3c:
+    case funcScopeEdge4c:
+    case funcScopeEdge1d:
+    case funcScopeEdge2d:
+    case funcScopeEdge3d:
+    case funcScopeEdge4d:
+    case funcScopeEdge1e:
+    case funcScopeEdge2e:
+    case funcScopeEdge3e:
+    case funcScopeEdge4e:
+    case funcScopeEdge1f:
+    case funcScopeEdge2f:
+    case funcScopeEdge3f:
+    case funcScopeEdge4f:
+    case funcScopeEdge1g:
+    case funcScopeEdge2g:
+    case funcScopeEdge3g:
+    case funcScopeEdge4g:
+    case funcScopeEdge1h:
+    case funcScopeEdge2h:
+    case funcScopeEdge3h:
+    case funcScopeEdge4h:
+    case funcScopeEdge1i:
+    case funcScopeEdge2i:
+    case funcScopeEdge3i:
+    case funcScopeEdge4i:
+    case funcScopeEdge1j:
+    case funcScopeEdge2j:
+    case funcScopeEdge3j:
+    case funcScopeEdge4j:
+    case funcScopeEdge1k:
+    case funcScopeEdge2k:
+    case funcScopeEdge3k:
+    case funcScopeEdge4k:
+    case funcScopeEdge1l:
+    case funcScopeEdge2l:
+    case funcScopeEdge3l:
+    case funcScopeEdge4l:
+    case funcScopeEdge1m:
+    case funcScopeEdge2m:
+    case funcScopeEdge3m:
+    case funcScopeEdge4m:
+    case funcScopeEdge1n:
+    case funcScopeEdge2n:
+    case funcScopeEdge3n:
+    case funcScopeEdge4n:
+    case funcScopeEdge1o:
+    case funcScopeEdge2o:
+    case funcScopeEdge3o:
+    case funcScopeEdge4o:
+    case funcScopeEdge1p:
+    case funcScopeEdge2p:
+    case funcScopeEdge3p:
+    case funcScopeEdge4p:
+    case funcScopeEdge1q:
+    case funcScopeEdge2q:
+    case funcScopeEdge3q:
+    case funcScopeEdge4q:
+    case funcScopeEdge1r:
+    case funcScopeEdge2r:
+    case funcScopeEdge3r:
+    case funcScopeEdge4r:
+    case funcScopeEdge1s:
+    case funcScopeEdge2s:
+    case funcScopeEdge3s:
+    case funcScopeEdge4s:
         break;
     // 0x1b register (tones)
     case funcToneFreq:
@@ -3110,16 +3224,22 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             {
                 spectrumBounds s = value.value<spectrumBounds>();
                 uchar range=1;
+                uchar oldRange=0;
                 for (const bandType& band: rigCaps.bands)
                 {
-                   if (band.range != 0.0 && s.start > band.range)
+
+                    if (oldRange != range && band.range != 0.0 && s.start > band.range)
+                    {
                         range++;
+                        oldRange=band.range;
+                    }
                 }
-                payload.append(range);
-                payload.append(s.edge);
+                payload.append(bcdEncodeChar(range));
+                payload.append(bcdEncodeChar(s.edge));
                 payload.append(makeFreqPayload(s.start));
                 payload.append(makeFreqPayload(s.end));
                 qInfo() << "Bounds" << range << s.edge << s.start << s.end << payload.toHex();
+
             }
             else if (!strcmp(value.typeName(),"duplexMode_t"))
             {

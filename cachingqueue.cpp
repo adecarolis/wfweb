@@ -499,8 +499,16 @@ bool cachingQueue::compare(QVariant a, QVariant b)
             if (a.value<meter_t>() != b.value<meter_t>())
                 changed=true;
         } else if (!strcmp(a.typeName(),"vfo_t")) {
-                if (a.value<vfo_t>() != b.value<vfo_t>())
-                    changed=true;
+            if (a.value<vfo_t>() != b.value<vfo_t>())
+                changed=true;
+        } else if (!strcmp(a.typeName(),"lpfhpf")) {
+            if (a.value<lpfhpf>().lpf != b.value<lpfhpf>().lpf || a.value<lpfhpf>().hpf != b.value<lpfhpf>().hpf  )
+                changed=true;
+        } else if (!strcmp(a.typeName(),"spectrumBounds")) {
+            if (a.value<spectrumBounds>().edge != b.value<spectrumBounds>().edge ||
+                    a.value<spectrumBounds>().start != b.value<spectrumBounds>().start ||
+                    a.value<spectrumBounds>().end != b.value<spectrumBounds>().end  )
+                changed=true;
         } else if (!strcmp(a.typeName(),"centerSpanData")) {
             if (a.value<centerSpanData>().cstype != b.value<centerSpanData>().cstype || a.value<centerSpanData>().freq != b.value<centerSpanData>().freq  )
                 changed=true;
