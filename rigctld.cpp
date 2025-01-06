@@ -940,7 +940,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             } else {
                 val.setValue(static_cast<bool>(params[0].toInt()));
             }
-
+            break;
         case typeBinary:
             val.setValue(static_cast<bool>(params[0].toInt()));
             break;

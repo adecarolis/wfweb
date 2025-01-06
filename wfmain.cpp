@@ -5509,7 +5509,6 @@ void wfmain::receiveValue(cacheItem val){
             } */
             ui->scopeMainSubBtn->setEnabled(en);
             ui->scopeDualBtn->setEnabled(en);
-            ui->swapMainSubBtn->setEnabled(en);
         }
 
         break;
