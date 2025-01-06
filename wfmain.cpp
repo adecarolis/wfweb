@@ -5482,7 +5482,8 @@ void wfmain::receiveValue(cacheItem val){
         if (val.receiver==0 || vfo == 0)
             rpt->handleUpdateCurrentMainFrequency(val.value.value<freqt>());
         break;
-    case funcReadTXFreq:
+    case funcTXFreq:
+        // Not sure if we want to do anything with this? M0VSE
         break;
     case funcVFODualWatch:
 

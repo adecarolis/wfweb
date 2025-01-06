@@ -1620,27 +1620,30 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
 {
     // Update mode information if mode/filter/data has changed.
     // Not all rigs send data so this "might" need to be updated independantly?
-    if (vfo > 0) {
+    if (vfo > 0 && m.mk != modeUnknown) {
         unselectedMode=m;
         return;
     }
 
-    if (m.reg != this->mode.reg || m.filter != this->mode.filter || (m.data != this->mode.data && m.data != 0xff))
+    if (m.reg != this->mode.reg || m.filter != this->mode.filter || m.data != this->mode.data)
     {
 
-        qDebug(logSystem()) << __func__ << QString("Received new mode for %0: %1 (%2) filter:%3 data:%4")
+        qInfo(logSystem()) << __func__ << QString("Received new mode for %0: %1 (%2) filter:%3 data:%4")
                                               .arg((receiver?"Sub":"Main")).arg(QString::number(m.mk,16)).arg(m.name).arg(m.filter).arg(m.data) ;
 
-        if (this->mode.mk != m.mk) {
-            for (int i=0;i<modeCombo->count();i++)
-            {
-                modeInfo mi = modeCombo->itemData(i).value<modeInfo>();
-                if (mi.mk == m.mk)
+        if (m.mk != modeUnknown)
+        {
+            if (this->mode.mk != m.mk) {
+                for (int i=0;i<modeCombo->count();i++)
                 {
-                    modeCombo->blockSignals(true);
-                    modeCombo->setCurrentIndex(i);
-                    modeCombo->blockSignals(false);
-                    break;
+                    modeInfo mi = modeCombo->itemData(i).value<modeInfo>();
+                    if (mi.mk == m.mk)
+                    {
+                        modeCombo->blockSignals(true);
+                        modeCombo->setCurrentIndex(i);
+                        modeCombo->blockSignals(false);
+                        break;
+                    }
                 }
             }
         }
@@ -1650,6 +1653,7 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
             filterCombo->blockSignals(true);
             filterCombo->setCurrentIndex(filterCombo->findData(m.filter));
             filterCombo->blockSignals(false);
+            mode.filter=m.filter;
         }
 
         if (this->mode.data != m.data && m.data != 0xff)
@@ -1658,6 +1662,7 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
             dataCombo->blockSignals(true);
             dataCombo->setCurrentIndex(m.data);
             dataCombo->blockSignals(false);
+            mode.data=m.data;
         }
 
         if (m.mk == modeCW || m.mk == modeCW_R || m.mk == modeRTTY || m.mk == modeRTTY_R || m.mk == modePSK || m.mk == modePSK_R)
@@ -1667,7 +1672,7 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
             dataCombo->setEnabled(true);
         }
 
-        if (m.mk != mode.mk || m.filter != mode.filter) {
+        if (m.mk != modeUnknown && (m.mk != mode.mk || m.filter != mode.filter)) {
             // We have changed mode so "may" need to change regular commands
 
             passbandCenterFrequency = 0.0;
@@ -1749,7 +1754,9 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
 
         }
 
-        this->mode = m;
+        if (m.mk != modeUnknown) {
+            this->mode = m;
+        }
     }
 }
 

@@ -756,7 +756,7 @@ void icomCommander::parseCommand()
             vfo=1;
     case funcFreqGet:
     case funcFreqTR:
-    case funcReadTXFreq:
+    case funcTXFreq:
     {
         value.setValue(parseFreqData(payloadIn,vfo));
         //qInfo(logRig()) << funcString[func] << "len:" << payloadIn.size() << "receiver=" << receiver << "vfo=" << vfo <<
@@ -772,34 +772,34 @@ void icomCommander::parseCommand()
             return;
         }
         modeInfo m;
-        m = parseMode(bcdHexToUChar(payloadIn.at(0)), m.filter,receiver,vfo);
-
         if(payloadIn.size() > 1)
         {
             m.filter = payloadIn.at(1);
         } else {
             m.filter = 0;
         }
+        // This command doesn't include data setting.
+        m = parseMode(bcdHexToUChar(payloadIn.at(0)), 0xff, m.filter,receiver,vfo);
+        //qInfo() << "Received basic mode (no data) rx:" << receiver << "vfo:" << vfo << m.name << "data:" << m.data << "filter:" << m.filter;
         value.setValue(m);
         break;
     }
     case funcMode:
         receiver=payloadIn.at(0);
-        payloadIn.remove(0,1);
     case funcSelectedMode:
     case funcUnselectedMode:
     {
-        if (func == funcUnselectedMode) {
-            vfo=1;
+        if (func == funcUnselectedMode || func == funcSelectedMode) {
+            vfo=payloadIn.at(0);
         }
 
         // If in an invalid mode, the radio may respond with 0xff
-        if (uchar(payloadIn.at(0)) != 0xff) {
+        if (uchar(payloadIn.at(1)) != 0xff) {
             // New format payload with mode+datamode+filter
-            modeInfo m = parseMode(bcdHexToUChar(payloadIn.at(0)), bcdHexToUChar(payloadIn.at(2)),receiver,vfo);
-            m.data = bcdHexToUChar(payloadIn.at(1));
+            modeInfo m = parseMode(bcdHexToUChar(payloadIn.at(1)), uchar(payloadIn.at(2)),uchar(payloadIn.at(3)),receiver,vfo);
             m.VFO = selVFO_t(receiver);
             value.setValue(m);
+            //qInfo() << "Received full mode rx:" << receiver << "vfo:" << vfo << "name:"<<  m.name << "data:" << m.data << "filter:" << m.filter << payloadIn;
         }
         break;
     }
@@ -1107,8 +1107,7 @@ void icomCommander::parseCommand()
     {
         modeInfo m;
         // New format payload with mode+datamode+filter
-        m = parseMode(uchar(payloadIn.at(0)), uchar(payloadIn.at(2)),receiver,vfo);
-        m.data = uchar(payloadIn.at(1));
+        m = parseMode(0xff, bcdHexToUChar(payloadIn.at(0)),bcdHexToUChar(payloadIn.at(1)),receiver,vfo);
         m.VFO = selVFO_t(receiver & 0x01);
         value.setValue(m);
         break;
@@ -2220,18 +2219,30 @@ quint64 icomCommander::parseFreqDataToInt(QByteArray data)
 }
 
 
-modeInfo icomCommander::parseMode(quint8 mode, quint8 filter, uchar receiver,uchar vfo)
+modeInfo icomCommander::parseMode(uchar mode, uchar data, uchar filter, uchar receiver,uchar vfo)
 {
     modeInfo mi;
     bool found=false;
-    for (auto& m: rigCaps.modes)
+    if (mode == 0xff)
     {
-        if (m.reg == mode)
+        mi.reg=0xff;
+        mi.mk=modeUnknown;
+        mi.filter=filter;
+        mi.data=data;
+        found = true;
+    }
+    else
+    {
+        for (auto& m: rigCaps.modes)
         {
-            mi = modeInfo(m);
-            mi.filter = filter;
-            found = true;
-            break;
+            if (m.reg == mode)
+            {
+                mi = modeInfo(m);
+                mi.filter = filter;
+                mi.data = data;
+                found = true;
+                break;
+            }
         }
     }
 

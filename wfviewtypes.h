@@ -71,7 +71,7 @@ enum rigMode_t {
     modeNXDN_VN,        //21
     modeNXDN_N,         //22
     modeDCR,            //23
-    modeUnknown         //24
+    modeUnknown=0xff
 };
 
 enum selVFO_t {
@@ -140,7 +140,7 @@ struct rptrAccessData {
 };
 
 struct modeInfo {
-    modeInfo ():mk(modeUnknown), reg(99), filter(1),VFO(activeVFO), data(0xff), name(""), bwMin(0), bwMax(0), pass(0) {};
+    modeInfo ():mk(modeUnknown), reg(0xff), filter(1),VFO(activeVFO), data(0xff), name(""), bwMin(0), bwMax(0), pass(0) {};
     modeInfo(rigMode_t mk, quint8 reg, QString name, int bwMin, int bwMax): mk(mk), reg(reg), filter(1), VFO(activeVFO), data(false), name(name),bwMin(bwMin), bwMax(bwMax), pass(0) {};
     rigMode_t mk;
     quint8 reg;
@@ -288,7 +288,7 @@ funcScanSpeed,          funcScanResume,			funcRecorderMode,           funcRecord
 funcRecorderPTTAuto,    funcRecorderPreRec,		funcRXAntConnector,         funcAntennaSelectMode,  funcNBDepth,			funcNBWidth,
 funcVOXDelay,           funcVOXVoiceDelay,		funcAPFType,                funcAPFTypeLevel,       funcPSKTone,            funcRTTYMarkTone,
 funcToneFreq,           funcTSQLFreq,           funcDTCSCode,               funcCSQLCode,
-funcTXFreqMon,          funcReadUserTXFreqs,    funcVoiceTXLevel,           funcMainSubPrefix,		funcAFCSetting,
+funcTXFreqMon,          funcReadUserTXFreqs,    funcCIVOutput,              funcVoiceTXLevel,           funcMainSubPrefix,		funcAFCSetting,
 
 funcGPSTXMode,              funcSatelliteMemory,    funcGPSPosition,        funcMemoryGroup,
 
@@ -317,7 +317,7 @@ funcDataModeWithFilter, funcAFMute,             funcOverflowStatus,
 
 /* Command 1C */
 funcSepI,
-funcTransceiverStatus,  funcTunerStatus,        funcXFCStatus,              funcReadTXFreq,         funcCIVOutput,
+funcTransceiverStatus,  funcTunerStatus,        funcXFCStatus,              funcTXFreq,
 
 /* Command 1E */
 funcSepJ,
@@ -413,8 +413,7 @@ static QString funcString[] { "None",
 "Recorder PTT Auto",    "Recorder Pre Rec",     "RX Ant Connector",         "Antenna Select Mode",  "NB Depth",             "NB Width",
 "VOX Delay",            "VOX Voice Delay",      "APF Type",                 "APF Type Level",       "PSK Tone",             "RTTY Mark Tone",
 "Tone Frequency",       "TSQL Frequency",       "DTCS Code/Polarity",       "CSQL Code",
-"Transmit Freq Mon",    "Read User TX Freqs",
-"Voice TX Level",       "Main/Sub Prefix",      "AFC Function",
+"Transmit Freq Mon",    "Read User TX Freqs",   "CI-V Output (ANT)",        "Voice TX Level",       "Main/Sub Prefix",      "AFC Function",
 "GPS TX Mode",          "Satellite Memory",     "GPS Position",             "Memory Group",
 
 /* Command 1A05 */
@@ -442,7 +441,7 @@ static QString funcString[] { "None",
 
 /* Command 1C */
 "+  <CMD1C>",
-"Transceiver Status",   "Tuner/ATU Status",     "XFC Status",               "Read TX Freq",         "CI-V Output (ANT)",
+"Transceiver Status",   "Tuner/ATU Status",     "XFC Status",               "TX Freq",
 
 /* Command 1E */
 "+<CMD1E>",
