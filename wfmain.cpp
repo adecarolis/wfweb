@@ -830,6 +830,12 @@ void wfmain::receivePortError(errorType err)
 void wfmain::receiveStatusUpdate(networkStatus status)
 {
 
+    // If we have received very high network latency, increase queue interval, don't set it to higher than 500ms though.
+    if (status.networkLatency > queue->interval())
+    {
+        qInfo(logRig()) << QString("Network latency %0 exceeds configured queue interval %1, increasing").arg(status.networkLatency,queue->interval());
+        queue->interval(qMin(quint32(status.networkLatency+25),quint32(500)));
+    }
     //this->rigStatus->setText(QString("%0/%1 %2").arg(mainElapsed).arg(subElapsed).arg(status.message));
     this->rigStatus->setText(status.message);
     selRad->audioOutputLevel(status.rxAudioLevel);
