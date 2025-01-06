@@ -154,7 +154,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     connect(queue,SIGNAL(sendValue(cacheItem)),this,SLOT(receiveValue(cacheItem)));
     connect(queue,SIGNAL(sendMessage(QString)),this,SLOT(showStatusBarText(QString)));
-    connect(queue,SIGNAL(intervalUpdate(quint64)),this,SLOT(updatedQueueInterval(quint64)));
+    connect(queue,SIGNAL(intervalUpdate(qint64)),this,SLOT(updatedQueueInterval(qint64)));
 
     connect(queue, SIGNAL(finished()), queue, SLOT(deleteLater()));
 
@@ -6489,7 +6489,7 @@ void wfmain::enableControls(bool en)
     ui->antennaGroup->setEnabled(en);
 }
 
-void wfmain::updatedQueueInterval(quint64 interval)
+void wfmain::updatedQueueInterval(qint64 interval)
 {
     if (interval == -1)
         enableControls(false);

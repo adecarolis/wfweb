@@ -495,7 +495,7 @@ private slots:
     void connectionTimeout();
     void receiveRigCaps(rigCapabilities* caps);
     void radioInUse(quint8 radio, bool admin, quint8 busy, QString user, QString ip);
-    void updatedQueueInterval(quint64 interval);
+    void updatedQueueInterval(qint64 interval);
 
     // Moved to slots to allow them to be delayed.
     void getInitialRigState();

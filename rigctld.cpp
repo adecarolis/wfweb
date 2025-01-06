@@ -211,8 +211,8 @@ static const commandStruct commands_list[] =
     { 0x93, "get_dcs_sql",      funcCSQLCode,           typeUChar,    ARG_OUT, "DCS Sql" },
     { 'V',  "set_vfo",          funcSelectVFO,          typeVFO,    ARG_IN  | ARG_NOVFO, "VFO" },
     { 'v',  "get_vfo",          funcSelectVFO,          typeVFO,    ARG_NOVFO | ARG_OUT, "VFO" },
-    { 'T',  "set_ptt",          funcTransceiverStatus,  typeBinary,    ARG_IN, "PTT" },
-    { 't',  "get_ptt",          funcTransceiverStatus,  typeBinary,    ARG_OUT, "PTT" },
+    { 'T',  "set_ptt",          funcTransceiverStatus,  typePTT,    ARG_IN, "VFO", "PTT" },
+    { 't',  "get_ptt",          funcTransceiverStatus,  typePTT,    ARG_OUT, "VFO", "PTT" },
     { 'E',  "set_mem",          funcMemoryContents,     typeMode,    ARG_IN, "Memory#" },
     { 'e',  "get_mem",          funcMemoryContents,     typeMode,    ARG_OUT, "Memory#" },
     { 'H',  "set_channel",      funcMemoryMode,         typeUChar,    ARG_IN  | ARG_NOVFO, "Channel"},
@@ -933,6 +933,14 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         case typeFloatDiv5:
             val.setValue(static_cast<ushort>(float(params[0].toFloat() * 5.1)));
             break;
+        case typePTT:
+            if (params.length()>1){
+                queue->add(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(vfoFromName(params[0])),false,currentRx));
+                val.setValue(static_cast<bool>(params[1].toInt()));
+            } else {
+                val.setValue(static_cast<bool>(params[0].toInt()));
+            }
+
         case typeBinary:
             val.setValue(static_cast<bool>(params[0].toInt()));
             break;
@@ -1073,6 +1081,18 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
 
         ret = RIG_OK;
         switch (cmd.type){
+        case typePTT: {
+            bool b = item.value.toBool();
+            if (prefixes.length() && params.length())
+            {
+                response.append(QString("%0%1").arg(prefixes[0], params[0]));
+            }
+            if (prefixes.length()> 1)
+            {
+                response.append(QString("%0%1").arg(prefixes[0], QString::number(b)));
+            }
+            break;
+        }
         case typeBinary:
         {
             bool b = item.value.toBool();
