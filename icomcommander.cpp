@@ -2807,7 +2807,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                             (p==0x2D) || (p==0x2C) || (p==0x3A) ||
                             (p==0x27) || (p==0x28) || (p==0x29) ||
                             (p==0x3D) || (p==0x2B) || (p==0x22) ||
-                            (p==0x40) || (p==0x20) || p == 0xff)
+                            (p==0x40) || (p==0x20))
                         {
                             // Allowed character, continue
                         } else {
@@ -2815,7 +2815,12 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                             textData[c] = 0x3F; // "?"
                         }
                     }
-                    payload.append(textData);
+                    if (textData.isEmpty())
+                    {
+                        payload.append(uchar(0xff));
+                    } else {
+                        payload.append(textData);
+                    }
                     qDebug(logRig()) << "Sending CW: payload:" << payload.toHex(' ');
                  }
             }

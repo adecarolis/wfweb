@@ -26,7 +26,7 @@ cwSender::cwSender(QWidget *parent) :
     });
 
     connect(this, &cwSender::stopCW, queue, [=]() {
-        queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<QString>(QChar(0xff))));
+        queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<QString>(QString())));
     });
 
     connect(this, &cwSender::setBreakInMode, queue, [=](const quint8 &bmode) {
