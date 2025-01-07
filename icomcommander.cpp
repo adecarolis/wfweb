@@ -2664,6 +2664,12 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                     for(int c=0; c < textData.length(); c++)
                     {
                         p = textData.at(c);
+                        if(text[0] == 0x00ff) {
+                            textData[0] = 0xff;
+                            textData.truncate(1);
+                            qDebug(logRig()) << "Caught CW Stop command.";
+                            break; // done, no need to look further.
+                        }
                         if( ( (p >= 0x30) && (p <= 0x39) ) ||
                             ( (p >= 0x41) && (p <= 0x5A) ) ||
                             ( (p >= 0x61) && (p <= 0x7A) ) ||
@@ -2671,7 +2677,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                             (p==0x2D) || (p==0x2C) || (p==0x3A) ||
                             (p==0x27) || (p==0x28) || (p==0x29) ||
                             (p==0x3D) || (p==0x2B) || (p==0x22) ||
-                            (p==0x40) || (p==0x20) || p == 0xff)
+                            (p==0x40) || (p==0x20) || (p==0xff) )
                         {
                             // Allowed character, continue
                         } else {
