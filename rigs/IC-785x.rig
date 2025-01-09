@@ -1,5 +1,5 @@
 [General]
-Version=2.02
+Version=2.03
 
 [Rig]
 Manufacturer=Icom
@@ -766,7 +766,7 @@ Commands\106\Max=1
 Commands\106\Command29=false
 Commands\106\GetCommand=true
 Commands\106\SetCommand=true
-Commands\107\Type=Read TX Freq
+Commands\107\Type=TX Freq
 Commands\107\String=\\x1c\\x03
 Commands\107\Min=0
 Commands\107\Max=1

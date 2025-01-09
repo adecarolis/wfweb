@@ -1377,7 +1377,6 @@ void icomCommander::parseCommand()
         qWarning(logRig()).noquote() << "Unhandled command received from rig:" << funcString[func] << "value:" << payloadIn.toHex().mid(0,10);
         break;
     }
-
     if(func != funcScopeWaveData
         && func != funcSMeter
         && func != funcAbsoluteMeter

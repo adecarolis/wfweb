@@ -405,6 +405,7 @@ void cachingQueue::updateCache(bool reply, queueItem item)
             rigState.receiver = item.param.value<uchar>();
     } else {
         // If we are requesting a particular VFO, set our state as the rig will not reply
+        rigState.receiver=0;
         if (item.command == funcSelectVFO) {
             rigState.vfo = item.param.value<vfo_t>();
         } else if (item.command == funcVFOASelect) {
@@ -415,6 +416,7 @@ void cachingQueue::updateCache(bool reply, queueItem item)
             rigState.vfo = vfo_t::vfoMain;
         } else if (item.command == funcVFOSubSelect && rigCaps->numReceiver > 1) {
             rigState.vfo = vfo_t::vfoSub;
+            rigState.receiver=1;
         }
     }
 

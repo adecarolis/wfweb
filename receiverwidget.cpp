@@ -1297,7 +1297,7 @@ void receiverWidget::doubleClick(QMouseEvent *me)
             emit sendTrack(freqGo.Hz-this->freq.Hz);
 
             setFrequency(freqGo);
-            queue->addUnique(priorityImmediate,queueItem(t.modeFunc,QVariant::fromValue<freqt>(freqGo),false,t.receiver));
+            queue->addUnique(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(freqGo),false,t.receiver));
         }
     }
     else if (me->button() == Qt::RightButton)
@@ -1885,21 +1885,41 @@ void receiverWidget::receiveSpots(uchar receiver, QList<spotData> spots)
             QCPRange xrange=spectrum->xAxis->range();
             QCPRange yrange=spectrum->yAxis->range();
             double left = s.frequency;
-            double top = yrange.upper-10.0;
+            double top = yrange.upper-2.0;
+
+            spotData* sp = new spotData(s);
+            sp->current = !current;
+            sp->text = new QCPItemText(spectrum);
+            sp->text->setAntialiased(true);
+            sp->text->setColor(colors.clusterSpots);
+            sp->text->setText(sp->dxcall);
+            sp->text->setFont(QFont(font().family(), 10));
+            sp->text->setPositionAlignment(Qt::AlignTop | Qt::AlignLeft);
+            sp->text->position->setType(QCPItemPosition::ptPlotCoords);
+            //QMargins margin;
+            //int width = (sp->text->right - sp->text->left) / 8;
+            //margin.setLeft(width);
+            //margin.setRight(width);
+            //sp->text->setPadding(margin);
+            sp->text->position->setCoords(left, top);
+
+            qDebug(logCluster()) << "ADD:" << sp->dxcall;
 
             bool conflict = true;
+
             while (conflict) {
 #if QCUSTOMPLOT_VERSION < 0x020000
-                QCPAbstractItem* absitem = spectrum->itemAt(QPointF(spectrum->xAxis->coordToPixel(left),spectrum->yAxis->coordToPixel(top)), true);
+                QCPItemText* item = dynamic_cast<QCPItemText*>(spectrum->itemAt(QPointF(spectrum->xAxis->coordToPixel(left),spectrum->yAxis->coordToPixel(top)), true));
 #else
-                QCPAbstractItem* absitem = spectrum->itemAt(QPointF(spectrum->xAxis->coordToPixel(left),spectrum->yAxis->coordToPixel(top)), true);
+                QCPItemText* item = dynamic_cast<QCPItemText*>(spectrum->itemAt(QPointF(spectrum->xAxis->coordToPixel(left),spectrum->yAxis->coordToPixel(top)), true));
 #endif
-                QCPItemText* item = dynamic_cast<QCPItemText*> (absitem);
+                //QCPItemText* item = dynamic_cast<QCPItemText*> (absitem);
                 if (item != nullptr) {
-                    top = top - 10.0;
+                    //qInfo() << "Spot found at top:" << top << "left:" << left << "(" << spectrum->xAxis->coordToPixel(top) <<"," << spectrum->xAxis->coordToPixel(left) << ") spot:" << item->text();
+                    top = top - 5.0;
                     if (top < 10.0)
                     {
-                        top = yrange.upper-10.0;
+                        top = yrange.upper-2.0;
                         left = left + (xrange.size()/20);
                     }
                 }
@@ -1907,25 +1927,10 @@ void receiverWidget::receiveSpots(uchar receiver, QList<spotData> spots)
                     conflict = false;
                 }
             }
-            spotData* sp = new spotData(s);
-
-            //qDebug(logCluster()) << "ADD:" << sp->dxcall;
-            sp->current = !current;
-            sp->text = new QCPItemText(spectrum);
-            sp->text->setAntialiased(true);
-            sp->text->setColor(colors.clusterSpots);
-            sp->text->setText(sp->dxcall);
-            sp->text->setFont(QFont(font().family(), 10));
-            sp->text->setPositionAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
-            sp->text->position->setType(QCPItemPosition::ptPlotCoords);
-            sp->text->setSelectable(true);
-            QMargins margin;
-            int width = (sp->text->right - sp->text->left) / 2;
-            margin.setLeft(width);
-            margin.setRight(width);
-            sp->text->setPadding(margin);
             sp->text->position->setCoords(left, top);
+            sp->text->setSelectable(true);
             sp->text->setVisible(true);
+
             clusterSpots.insert(sp->dxcall, sp);
         }
     }
@@ -2137,7 +2142,7 @@ void receiverWidget::newFrequency(qint64 freq,uchar vfo)
         emit sendTrack(f.Hz-this->freq.Hz);
         vfoCommandType t = queue->getVfoCommand(vfo_t(vfo),receiver,true);
         queue->addUnique(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(f),false,t.receiver));
-        qInfo() << "Setting new frequency for rx:" << receiver << "vfo:" << vfo << "freq:" << f.Hz << "using:" << funcString[t.freqFunc];
+        //qInfo() << "Setting new frequency for rx:" << receiver << "vfo:" << vfo << "freq:" << f.Hz << "using:" << funcString[t.freqFunc];
     }
 }
 

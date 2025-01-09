@@ -652,7 +652,7 @@ struct vfoCommandType {
 struct rigStateType {
     rigStateType(): vfoMode(vfoModeType_t::vfoModeVfo),vfo(vfoUnknown),receiver(0) {};
     vfoModeType_t vfoMode;
-    uchar vfo;
+    vfo_t vfo;
     uchar receiver;
 };
 
