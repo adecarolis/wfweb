@@ -20,7 +20,6 @@ enum underlay_t { underlayNone, underlayPeakHold, underlayPeakBuffer, underlayAv
 enum meter_t {
     meterNone=0,
     meterS,
-    meterSubS,
     meterCenter,
     meterSWR,
     meterPower,
@@ -35,7 +34,8 @@ enum meter_t {
     meterLatency,
     meterdBu,
     meterdBuEMF,
-    meterdBm
+    meterdBm,
+    meterSubS,
 };
 
 
