@@ -139,6 +139,7 @@ void cachingQueue::interval(qint64 val)
 
 funcs cachingQueue::checkCommandAvailable(funcs cmd,bool set)
 {
+    Q_UNUSED(set)
     if (rigCaps != Q_NULLPTR && cmd != funcNone && cmd != funcSelectVFO && !rigCaps->commands.contains(cmd)) {
         // We don't have the requested command!
         return funcNone;
