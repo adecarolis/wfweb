@@ -1725,11 +1725,11 @@ void settingswidget::setComboBoxItemEnabled(QComboBox * comboBox, int index, boo
 {
 
     auto * model = qobject_cast<QStandardItemModel*>(comboBox->model());
-    //assert(model);
+    assert(model);
     if(!model) return;
 
     auto * item = model->item(index);
-    //assert(item);
+    assert(item);
     if(!item) return;
     item->setEnabled(enabled);
 }

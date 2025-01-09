@@ -39,6 +39,7 @@ CONFIG(debug, release|debug) {
     linux:QMAKE_CXXFLAGS += -faligned-new
     linux:QMAKE_LFLAGS += -O2 -s
     win32:DESTDIR = wfview-release
+    DEFINES += NDEBUG
 }
 
 TRANSLATIONS += translations/wfview_en.ts \
