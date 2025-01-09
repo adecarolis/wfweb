@@ -172,11 +172,7 @@ private:
     void computePlasma();
     void showHideControls(spectrumMode_t mode);
     void showBandIndicators(bool en);
-    void sendCommand(queuePriority prio, funcs func, bool recur=false, bool unique=false, QVariant val=QVariant());
-    void delCommand(funcs func);
     void vfoSwap();
-    funcs getFreqFunc(uchar vfo, bool set=false);
-    funcs getModeFunc(uchar vfo, bool set=false);
 
     quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
     quint64 roundFrequency(quint64 frequency, int steps, unsigned int tsHz);

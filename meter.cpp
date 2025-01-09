@@ -49,7 +49,7 @@ meter::meter(QWidget *parent) : QWidget(parent)
 
     combo = new QComboBox(this);
     combo->addItem("None", meterNone);
-    combo->addItem("SWR", meterSWR);
+    combo->addItem("Sub S-Meter", meterSubS);
     combo->addItem("ALC", meterALC);
     combo->addItem("Compression", meterComp);
     combo->addItem("Voltage", meterVoltage);
@@ -141,18 +141,19 @@ void meter::setMeterType(meter_t m_type_req)
     switch (m_type_req)
     {
     case meterS:
+    case meterSubS:
     case meterPower:
     case meterdBm:
     case meterdBu:
     case meterdBuEMF:
-        combo->addItem("S-Meter", meterS);
+        combo->addItem("Main S-Meter", meterS);
         combo->addItem("dBu Meter", meterdBu);
         combo->addItem("dBu EMF", meterdBuEMF);
         combo->addItem("dBm Meter", meterdBm);
         break;
     default:
         combo->addItem("None", meterNone);
-        combo->addItem("SWR", meterSWR);
+        combo->addItem("Sub S-Meter", meterSubS);
         combo->addItem("ALC", meterALC);
         combo->addItem("Compression", meterComp);
         combo->addItem("Voltage", meterVoltage);
@@ -261,6 +262,11 @@ void meter::paintEvent(QPaintEvent *)
     {
         case meterS:
             label = "S";
+            peakRedLevel = 120; // S9+
+            drawScaleS(&painter);
+            break;
+        case meterSubS:
+            label = "Sub";
             peakRedLevel = 120; // S9+
             drawScaleS(&painter);
             break;

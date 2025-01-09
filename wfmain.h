@@ -387,7 +387,7 @@ private slots:
 
     void receiveScopeImage(uchar receiver);
     // Meters:
-    void receiveMeter(meter_t meter, quint8 level, quint8 receiver=0);
+    void receiveMeter(meter_t meter, quint8 level);
 //    void receiveSMeter(quint8 level);
 //    void receivePowerMeter(quint8 level);
 //    void receiveALCMeter(quint8 level);

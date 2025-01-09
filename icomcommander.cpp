@@ -1075,7 +1075,8 @@ void icomCommander::parseCommand()
     {
         quint16 calc;
         quint8 pass = bcdHexToUChar((quint8)payloadIn.at(0));
-        modeInfo m = queue->getCache(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcMode,receiver).value.value<modeInfo>();
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,false);
+        modeInfo m = queue->getCache(t.modeFunc,receiver).value.value<modeInfo>();
 
         if (m.mk == modeAM)
         {
@@ -1095,7 +1096,7 @@ void icomCommander::parseCommand()
     case funcDataModeWithFilter:
     {
         modeInfo m;
-        // New format payload with mode+datamode+filter
+        // Old format payload with datamode+filter
         m = parseMode(0xff, bcdHexToUChar(payloadIn.at(0)),bcdHexToUChar(payloadIn.at(1)),receiver,vfo);
         m.VFO = selVFO_t(receiver & 0x01);
         value.setValue(m);
@@ -2214,7 +2215,7 @@ modeInfo icomCommander::parseMode(uchar mode, uchar data, uchar filter, uchar re
     bool found=false;
     if (mode == 0xff)
     {
-        mi.reg=0xff;
+        mi.reg=mode;
         mi.mk=modeUnknown;
         mi.filter=filter;
         mi.data=data;
@@ -2655,7 +2656,9 @@ void icomCommander::setAfGain(quint8 level)
 uchar icomCommander::makeFilterWidth(ushort pass,uchar receiver)
 {
     quint8 calc;
-    modeInfo mi = queue->getCache(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcMode,receiver).value.value<modeInfo>();
+    vfoCommandType t = queue->getVfoCommand(vfoA,receiver,false);
+    modeInfo mi = queue->getCache(t.modeFunc,receiver).value.value<modeInfo>();
+
     if (mi.mk == modeAM) { // AM 0-49
 
         calc = quint16((pass / 200) - 1);

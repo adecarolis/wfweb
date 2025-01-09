@@ -1044,9 +1044,8 @@ void settingswidget::updateServerConfig(prefServerItem si)
             if (ui->serverTXAudioOutputCombo->currentIndex() == -1)
             {
                 emit havePortError(errorType(true, serverConfig->rigs.first()->rxAudioSetup.name,
-                        tr("\nServer audio output device does not exist, please check.\nTransmit audio will NOT work until this is corrected")));
+                        tr("\nServer audio output device does not exist, please check.\nTransmit audio will NOT work until this is corrected\n**** please disable the server if not required ****")));
             }
-
         }
         break;
     case s_audioInput:
@@ -1056,7 +1055,7 @@ void settingswidget::updateServerConfig(prefServerItem si)
             if (ui->serverTXAudioOutputCombo->currentIndex() == -1)
             {
                 emit havePortError(errorType(true, serverConfig->rigs.first()->rxAudioSetup.name,
-                        tr("\nServer audio input device does not exist, please check.\nReceive audio will NOT work until this is corrected")));
+                        tr("\nServer audio input device does not exist, please check.\nReceive audio will NOT work until this is corrected\n**** please disable the server if not required ****")));
             }
         }
         break;
@@ -1490,7 +1489,6 @@ void settingswidget::on_lanEnableBtn_clicked(bool checked)
     // TOTO? ui->connectBtn->setEnabled(true); // move to other side
     ui->groupNetwork->setEnabled(checked);
     ui->groupSerial->setEnabled(!checked);
-
     prefs->enableLAN = checked;
     emit changedLanPref(l_enableLAN);
 }
@@ -3066,6 +3064,8 @@ void settingswidget::connectionStatus(bool conn)
     ui->pttTypeLabel->setEnabled(!conn);
     ui->pttTypeCombo->setEnabled(!conn);
 
+    ui->serverEnableCheckbox->setEnabled(!conn);
+    ui->serverDisableUIChk->setEnabled(!conn);
     ui->serverRXAudioInputCombo->setEnabled(!conn);
     ui->serverTXAudioOutputCombo->setEnabled(!conn);
     ui->audioSystemServerCombo->setEnabled(!conn);

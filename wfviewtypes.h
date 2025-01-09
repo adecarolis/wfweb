@@ -20,6 +20,7 @@ enum underlay_t { underlayNone, underlayPeakHold, underlayPeakBuffer, underlayAv
 enum meter_t {
     meterNone=0,
     meterS,
+    meterSubS,
     meterCenter,
     meterSWR,
     meterPower,
@@ -117,11 +118,9 @@ enum rptAccessTxRx_t {
     ratrTSQLon
 };
 
-enum pttType_t {
-    pttCIV=0x00,
-    pttRTS=0x01,
-    pttDTR=0x01
-};
+enum pttType_t { pttCIV, pttRTS, pttDTR };
+
+enum vfoModeType_t { vfoModeVfo, vfoModeMem, vfoModeSat };
 
 struct lpfhpf {
     lpfhpf ():lpf(0),hpf(0) {};
@@ -639,6 +638,24 @@ struct periodicType {
     char receiver;
 };
 
+struct vfoCommandType {
+    vfoCommandType (): freqFunc(funcNone), modeFunc(funcNone), vfo(vfoUnknown), receiver(0) {};
+    vfoCommandType(funcs freqFunc, funcs modeFunc, vfo_t vfo, uchar receiver):
+                freqFunc(freqFunc), modeFunc(modeFunc), vfo(vfo), receiver(receiver) {};
+    funcs freqFunc;
+    funcs modeFunc;
+    vfo_t vfo;
+    uchar receiver;
+};
+
+
+struct rigStateType {
+    rigStateType(): vfoMode(vfoModeType_t::vfoModeVfo),vfo(vfoUnknown),receiver(0) {};
+    vfoModeType_t vfoMode;
+    uchar vfo;
+    uchar receiver;
+};
+
 // Some global "helper" functions can go here for now, maybe look at a better location at some point?
 inline QColor colorFromString(const QString& color)
 {
@@ -658,6 +675,7 @@ inline QString getMeterDebug(meter_t m) {
         rtn.append("meterNone");
         break;
     case meterS:
+    case meterSubS:
         rtn.append("meterS");
         break;
     case meterCenter:

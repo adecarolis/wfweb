@@ -15,7 +15,9 @@ bandbuttons::bandbuttons(QWidget *parent) :
     queue = cachingQueue::getInstance();
     connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
     connect(queue,SIGNAL(cacheUpdated(cacheItem)),this,SLOT(receiveCache(cacheItem)));
-
+    if (rigCaps != Q_NULLPTR) {
+        ui->SubBandCheck->setEnabled(rigCaps->numReceiver>1);
+    }
 }
 
 bandbuttons::~bandbuttons()
@@ -50,7 +52,7 @@ void bandbuttons::receiveCache(cacheItem item)
             return;
         }
         if (requestedBand == bandUnknown) {
-            if (ui->SubBandCheck->isChecked() == bool(item.value.value<freqt>().VFO)) {
+            if (ui->SubBandCheck->isChecked() == bool(sub)) {
                     quint64 freq = quint64(item.value.value<freqt>().Hz);
                     for (auto &b: rigCaps->bands)
                     {
@@ -66,7 +68,7 @@ void bandbuttons::receiveCache(cacheItem item)
                 }
             }
         }
-        if (sub == ui->SubBandCheck->isChecked()) {
+        if (bool(sub) == ui->SubBandCheck->isChecked()) {
             currentFrequency = item.value.value<freqt>();
         }
         break;
@@ -80,7 +82,7 @@ void bandbuttons::receiveCache(cacheItem item)
         if(!rigCaps) {
             return;
         }
-        if (sub == ui->SubBandCheck->isChecked()) {
+        if (bool(sub) == ui->SubBandCheck->isChecked()) {
             currentMode = item.value.value<modeInfo>();
         }
             break;
@@ -105,6 +107,8 @@ void bandbuttons::receiveRigCaps(rigCapabilities* rc)
     qDebug(logGui()) << "Accepting new rigcaps into band buttons.";
 
     if (rc != Q_NULLPTR) {
+        ui->SubBandCheck->setEnabled(rigCaps->numReceiver>1);
+
         qDebug(logGui()) << "Bands in this rigcaps: ";
         for(size_t i=0; i < rigCaps->bands.size(); i++)
         {
@@ -115,9 +119,9 @@ void bandbuttons::receiveRigCaps(rigCapabilities* rc)
         {
             qDebug(logGui()) << "bsr[" << i << "]: " << (quint8)rigCaps->bsr[i];
         }
-    } else {
-        requestedBand = bandUnknown;
     }
+    // We have a new rigcaps (or none) so set band to unknown.
+    requestedBand = bandUnknown;
 
     setUIToRig();
 }
@@ -251,13 +255,13 @@ void bandbuttons::bandStackBtnClick(availableBands band)
         {
             if (b.band == band)
             {
-                if(b.bsr == 0)
+                if(b.bsr == 0  || ui->SubBandCheck->isChecked())
                 {
-                    qDebug(logGui()) << "requested to drop to band that does not have a BSR.";
+                    qDebug(logGui()) << "requested to drop to band that does not have a BSR (or sub band), using direct mode.";
                     jumpToBandWithoutBSR(band);
                 } else {
                     queue->add(priorityImmediate,queueItem(funcBandStackReg,
-                        QVariant::fromValue<bandStackType>(bandStackType(b.bsr,ui->bandStkPopdown->currentIndex()+1)),false,ui->SubBandCheck->isChecked()));
+                        QVariant::fromValue<bandStackType>(bandStackType(b.bsr,ui->bandStkPopdown->currentIndex()+1)),false,uchar(0)));
                 }
                 requestedBand = band;
                 break;
@@ -281,7 +285,8 @@ void bandbuttons::jumpToBandWithoutBSR(availableBands band)
                 f.Hz = (b.lowFreq+b.highFreq)/2.0;
                 f.MHzDouble = f.Hz/1000000.0;
                 f.VFO = activeVFO;
-                queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,ui->SubBandCheck->isChecked()));
+                vfoCommandType t = queue->getVfoCommand(ui->SubBandCheck->isChecked()?vfoSub:vfoA,ui->SubBandCheck->isChecked(),true);
+                queue->add(priorityImmediate,queueItem(t.freqFunc, QVariant::fromValue<freqt>(f),false,t.receiver));
                 break;
             }
         }
@@ -428,7 +433,7 @@ void bandbuttons::on_bandSetBtn_clicked()
                         bs.tone.tone = 885;
                         bs.tsql.tone = 885;
                     }
-                    queue->add(priorityImmediate,queueItem(funcBandStackReg, QVariant::fromValue<bandStackType>(bs),false,ui->SubBandCheck->isChecked()));
+                    queue->add(priorityImmediate,queueItem(funcBandStackReg, QVariant::fromValue<bandStackType>(bs),false,uchar(0)));
                     break;
                 }
             }
@@ -436,4 +441,11 @@ void bandbuttons::on_bandSetBtn_clicked()
     } else {
         qWarning(logGui()) << "bandbuttons, Asked to go to a band but do not have rigCaps yet.";
     }
+}
+
+void bandbuttons::on_subBandCheck_clicked(bool checked)
+{
+    requestedBand = bandUnknown;
+    vfoCommandType t = queue->getVfoCommand(vfoA,uchar(checked),false);
+    queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
 }

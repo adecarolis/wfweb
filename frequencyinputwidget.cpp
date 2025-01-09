@@ -203,16 +203,18 @@ void frequencyinputwidget::on_goFreqBtn_clicked()
         m.filter = currentFilter;
         // TODO: usingDataMode
         // TODO: auto sideband preference
+        vfoCommandType t = queue->getVfoCommand(vfoA,0,true);
         if((m.mk != currentMode) && !usingDataMode && automaticSidebandSwitching)
         {
-            queue->add(priorityImmediate,queueItem(funcMode,QVariant::fromValue<modeInfo>(m),false,false));
+            vfoCommandType t = queue->getVfoCommand(vfoA,0,true);
+            queue->add(priorityImmediate,queueItem(t.modeFunc, QVariant::fromValue<modeInfo>(m),false,t.receiver));
             currentMode = m.mk;
         }
 
         f.MHzDouble = (float)f.Hz / 1E6;
         //emit updateUIFrequency(f);
         currentFrequency = f;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,false));
+        queue->add(priorityImmediate,queueItem(t.freqFunc, QVariant::fromValue<freqt>(f),false,t.receiver));
     } else {
         qWarning(logGui()) << "Could not understand frequency" << ui->freqMhzLineEdit->text();
         ui->freqMhzLineEdit->clear();

@@ -108,6 +108,7 @@ private:
     // Functions
     void run();
     funcs checkCommandAvailable(funcs cmd, bool set=false);
+    rigStateType rigState;
 
 protected:
     cachingQueue(QObject* parent = Q_NULLPTR) : QThread(parent) {};
@@ -142,6 +143,8 @@ public:
     void unlockMutex() {mutex.unlock();}
     void setRigCaps(rigCapabilities* caps) { if (rigCaps != caps) { rigCaps = caps; emit rigCapsUpdated(rigCaps);} }
     rigCapabilities* getRigCaps() { return rigCaps; }
+    vfoCommandType getVfoCommand(vfo_t vfo, uchar rx, bool set=false);
+    rigStateType getState() { return rigState ;}
 };
 
 Q_DECLARE_METATYPE(queueItem)

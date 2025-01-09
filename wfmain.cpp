@@ -836,12 +836,12 @@ void wfmain::receiveStatusUpdate(networkStatus status)
     }
 
     // If we have received very high network latency, increase queue interval, don't set it to higher than 500ms though.
-    if (queue->interval() == delayedCmdIntervalLAN_ms && status.networkLatency > delayedCmdIntervalLAN_ms)
+    if (prefs.polling_ms != 0 && queue->interval() == quint32(delayedCmdIntervalLAN_ms) && (status.networkLatency/2) > quint32(delayedCmdIntervalLAN_ms))
     {
-        qInfo(logRig()) << QString("Network latency %0 exceeds configured queue interval %1, increasing").arg(status.networkLatency).arg(delayedCmdIntervalLAN_ms);
-        queue->interval(qMin(quint32(status.networkLatency),quint32(500)));
+        qInfo(logRig()) << QString("1/2 network latency %0 exceeds configured queue interval %1, increasing").arg(status.networkLatency/2).arg(delayedCmdIntervalLAN_ms);
+        queue->interval(qMin(quint32(status.networkLatency/2),quint32(500)));
     }
-    else if (queue->interval() != delayedCmdIntervalLAN_ms && status.networkLatency < delayedCmdIntervalLAN_ms)
+    else if (prefs.polling_ms != 0 && queue->interval() != quint32(delayedCmdIntervalLAN_ms) && (status.networkLatency/2) < quint32(delayedCmdIntervalLAN_ms))
     {
         // Maybe it was a temporary issue, restore to default
         queue->interval(delayedCmdIntervalLAN_ms);
@@ -1341,7 +1341,8 @@ void wfmain::setupKeyShortcuts()
             freqt f;
             f.Hz = roundFrequencyWithStep(receivers.first()->getFrequency().Hz, -1, tsKnobHz);
             f.MHzDouble = f.Hz / (double)1E6;
-            queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+            queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
+                                                    QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
         }
     });
 
@@ -1356,7 +1357,8 @@ void wfmain::setupKeyShortcuts()
         if (receivers.size()) {
             f.Hz = roundFrequencyWithStep(receivers.first()->getFrequency().Hz, 1, tsKnobHz);
             f.MHzDouble = f.Hz / (double)1E6;
-            queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+            queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
+                                                    QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
         }
     });
 
@@ -1646,7 +1648,8 @@ void wfmain::changeFrequency(int value) {
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, value, tsWfScrollHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
     }
 }
 
@@ -3566,7 +3569,8 @@ void wfmain::shortcutMinus()
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
     }
 }
 
@@ -3578,7 +3582,8 @@ void wfmain::shortcutPlus()
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
     }
 }
 
@@ -3590,7 +3595,8 @@ void wfmain::shortcutStepMinus()
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, ui->tuningStepCombo->currentData().toInt());
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
     }
 }
 
@@ -3603,7 +3609,8 @@ void wfmain::shortcutStepPlus()
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, ui->tuningStepCombo->currentData().toInt());
 
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
     }
 }
 
@@ -3614,7 +3621,8 @@ void wfmain::shortcutShiftMinus()
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusShiftHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
     }
 }
 
@@ -3625,7 +3633,8 @@ void wfmain::shortcutShiftPlus()
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusShiftHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
     }
 }
 
@@ -3637,7 +3646,8 @@ void wfmain::shortcutControlMinus()
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusControlHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
     }
 }
 
@@ -3648,7 +3658,8 @@ void wfmain::shortcutControlPlus()
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusControlHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
     }
 }
 
@@ -3659,7 +3670,8 @@ void wfmain::shortcutPageUp()
         freqt f;
         f.Hz = receivers[0]->getFrequency().Hz + tsPageHz;
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
     }
 }
 
@@ -3670,7 +3682,8 @@ void wfmain::shortcutPageDown()
         freqt f;
         f.Hz = receivers[0]->getFrequency().Hz - tsPageHz;
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
     }
 }
 
@@ -4117,16 +4130,8 @@ void wfmain::changeMode(rigMode_t mode, quint8 data, quint8 rx)
                 m.VFO=selVFO_t::activeVFO;
                 m.filter = receivers[rx]->currentFilter();
                 qDebug(logRig()) << "changeMode:" << mode << "data" << data << "rx" << rx;
-                if (rigCaps->commands.contains(funcMode)) {
-                    queue->add(priorityImmediate,queueItem(funcMode,QVariant::fromValue<modeInfo>(m),false,rx));
-                }
-                else if (rigCaps->commands.contains(funcSelectedMode)) {
-                    queue->add(priorityImmediate,queueItem(funcSelectedMode,QVariant::fromValue<modeInfo>(m),false,rx));
-                }
-                else { // Fallback to old style mode commands.
-                    queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(m),false,rx));
-                    queue->add(priorityImmediate,queueItem(funcDataModeWithFilter,QVariant::fromValue<modeInfo>(m),false,rx));
-                }
+                vfoCommandType t = queue->getVfoCommand(vfoA,rx,true);
+                queue->add(priorityImmediate,queueItem(t.modeFunc,QVariant::fromValue<modeInfo>(m),false,t.receiver));
             }
 
             break;
@@ -4189,7 +4194,8 @@ void wfmain::on_freqDial_valueChanged(int value)
     {
         oldFreqDialVal = value;
         receivers[currentReceiver]->setFrequency(f);
-        queue->addUnique(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
     } else {
         ui->freqDial->blockSignals(true);
         ui->freqDial->setValue(oldFreqDialVal);
@@ -4654,20 +4660,17 @@ void wfmain::receiveTuningStep(quint8 step)
     }
 }
 
-void wfmain::receiveMeter(meter_t inMeter, quint8 level,quint8 receiver)
+void wfmain::receiveMeter(meter_t inMeter, quint8 level)
 {
-    // Do nothing with s-meter from non-current receiver
-    if (receiver != currentReceiver && inMeter == meterS) {
-        return;
-    }
+
     switch(inMeter)
     {
     // These first two meters, S and Power,
     // are automatically assigned to the primary meter.
         case meterS:
-            ui->meterSPoWidget->setMeterType(meterS);
-            ui->meterSPoWidget->setLevel(level);
-            ui->meterSPoWidget->repaint();
+                ui->meterSPoWidget->setMeterType(meterS);
+                ui->meterSPoWidget->setLevel(level);
+                ui->meterSPoWidget->repaint();
             break;
         case meterPower:
             ui->meterSPoWidget->setMeterType(meterPower);
@@ -5058,7 +5061,9 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
             if (rigCaps->commands.contains(funcMeterType))
             {
                 if (newMeterType == meterS)
-                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(0),false,currentReceiver));
+                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(0),false,0));
+                if (newMeterType == meterSubS)
+                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(0),false,1));
                 else if (newMeterType == meterdBu)
                     queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(1),false,currentReceiver));
                 else if (newMeterType == meterdBuEMF)
@@ -5529,10 +5534,13 @@ void wfmain::receiveValue(cacheItem val){
         }
 
         break;
-    case funcUnselectedMode:
-        vfo=1;
     case funcModeGet:
     case funcModeTR:
+        // These commands don't include filter, so queue an immediate request for filter
+        queue->addUnique(priorityImmediate,funcDataModeWithFilter,false,val.receiver);
+    case funcUnselectedMode:
+        if (val.command == funcUnselectedMode)
+            vfo=1;
     case funcSelectedMode:
     case funcMode:
         receivers[val.receiver]->receiveMode(val.value.value<modeInfo>(),vfo);
@@ -5668,7 +5676,10 @@ void wfmain::receiveValue(cacheItem val){
     case funcSMeterSqlStatus:
         break;
     case funcSMeter:
-        receiveMeter(meter_t::meterS,val.value.value<uchar>(),val.receiver);
+        if (val.receiver)
+            receiveMeter(meter_t::meterSubS,val.value.value<uchar>());
+        else
+            receiveMeter(meter_t::meterS,val.value.value<uchar>());
         break;
     case funcAbsoluteMeter:
     {
@@ -5692,25 +5703,25 @@ void wfmain::receiveValue(cacheItem val){
         receivers[val.receiver]->overflow(val.value.value<bool>());
         break;
     case funcCenterMeter:
-        receiveMeter(meter_t::meterCenter,val.value.value<uchar>(),val.receiver);
+        receiveMeter(meter_t::meterCenter,val.value.value<uchar>());
         break;
     case funcPowerMeter:
-        receiveMeter(meter_t::meterPower,val.value.value<uchar>(),val.receiver);
+        receiveMeter(meter_t::meterPower,val.value.value<uchar>());
         break;
     case funcSWRMeter:
-        receiveMeter(meter_t::meterSWR,val.value.value<uchar>(),val.receiver);
+        receiveMeter(meter_t::meterSWR,val.value.value<uchar>());
         break;
     case funcALCMeter:
-        receiveMeter(meter_t::meterALC,val.value.value<uchar>(),val.receiver);
+        receiveMeter(meter_t::meterALC,val.value.value<uchar>());
         break;
     case funcCompMeter:
-        receiveMeter(meter_t::meterComp,val.value.value<uchar>(),val.receiver);
+        receiveMeter(meter_t::meterComp,val.value.value<uchar>());
         break;
     case funcVdMeter:
-        receiveMeter(meter_t::meterVoltage,val.value.value<uchar>(),val.receiver);
+        receiveMeter(meter_t::meterVoltage,val.value.value<uchar>());
         break;
     case funcIdMeter:
-        receiveMeter(meter_t::meterCurrent,val.value.value<uchar>(),val.receiver);
+        receiveMeter(meter_t::meterCurrent,val.value.value<uchar>());
         break;
     // 0x16 enable/disable functions:
     case funcPreamp:
@@ -5800,20 +5811,22 @@ void wfmain::receiveValue(cacheItem val){
     case funcBandStackReg:
     {
         bandStackType bsr = val.value.value<bandStackType>();
-        qDebug(logRig()) << __func__ << "BSR received into main: Freq: " << bsr.freq.Hz << ", mode: " << bsr.mode << ", filter: " << bsr.filter << ", data mode: " << bsr.data;
+        qDebug(logRig()) << __func__ << "BSR received into" << val.receiver << "Freq:" << bsr.freq.Hz << ", mode: " << bsr.mode << ", filter: " << bsr.filter << ", data mode: " << bsr.data;
 
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(bsr.freq),false,val.receiver));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,val.receiver,true).freqFunc,
+                                                QVariant::fromValue<freqt>(bsr.freq),false,uchar(val.receiver)));
 
         for (auto &md: rigCaps->modes)
         {
-                if (md.reg == bsr.mode) {
-                    modeInfo m(md);
-                    m.filter=bsr.filter;
-                    m.data=bsr.data;
-                    qDebug(logRig()) << __func__ << "Setting Mode/Data for new mode" << m.name << "data" << m.data << "filter" << m.filter << "reg" << m.reg;
-                    queue->add(priorityImmediate,queueItem(funcMode,QVariant::fromValue<modeInfo>(m),false,val.receiver));
-                    break;
-                }
+            if (md.reg == bsr.mode) {
+                modeInfo m(md);
+                m.filter=bsr.filter;
+                m.data=bsr.data;
+                qDebug(logRig()) << __func__ << "Setting Mode/Data for new mode" << m.name << "data" << m.data << "filter" << m.filter << "reg" << m.reg;
+                queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,val.receiver,true).modeFunc,
+                                                        QVariant::fromValue<modeInfo>(m),false,uchar(val.receiver)));
+                break;
+            }
         }
         break;
     }
@@ -5919,9 +5932,18 @@ void wfmain::receiveValue(cacheItem val){
                 qCritical(logSystem()) << "Thread is NOT the main UI thread, cannot hide/unhide VFO";
             } else {
 
+
+                uchar temprx=currentReceiver;
                 currentReceiver = val.value.value<uchar>();
 
                 for (uchar rx=0;rx<receivers.size();rx++) {
+
+                    // As the IC9700 doesn't have a single/dual command, pretend it does!
+                    if (!receivers[rx]->isVisible() && (rx == currentReceiver || ui->scopeDualBtn->isChecked())) {
+                        receivers[rx]->setVisible(true);
+                    } else if (rx != currentReceiver && !ui->scopeDualBtn->isChecked() && receivers[rx]->isVisible()) {
+                        receivers[rx]->setVisible(false);
+                    }
 
                     if (rx == currentReceiver && !receivers[rx]->isSelected()) {
                         receivers[rx]->selected(true);
@@ -5930,12 +5952,25 @@ void wfmain::receiveValue(cacheItem val){
                         receivers[rx]->selected(false);
                         if (!rigCaps->hasCommand29) receivers[rx]->setEnabled(false);
                     }
+                    if (temprx != currentReceiver) {
+                        vfoCommandType t = queue->getVfoCommand(vfoA,rx,false);
+                        //qInfo() << "Main/Sub button (main), freq:" << funcString[t.freqFunc] << "mode:" << funcString[t.modeFunc] << "rxin:" << rx << "rxout:" << t.receiver;
+                        queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
+                        queue->add(priorityImmediate,t.modeFunc,false,t.receiver);
+                        // If we are on sub, it will use funcModeGet which doesn't include data mode.
+                        //queue->add(priorityImmediate,funcDataModeWithFilter,false,t.receiver);
+                        t = queue->getVfoCommand(vfoB,rx,false);
+                        //qInfo() << "Main/Sub button (sub), freq:" << funcString[t.freqFunc] << "mode:" << funcString[t.modeFunc] << "rxin:" << rx << "rxout:" << t.receiver;
+                        queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
+                        queue->add(priorityImmediate,t.modeFunc,false,t.receiver);
 
-                    if (!receivers[rx]->isVisible() && (rx == currentReceiver || ui->scopeDualBtn->isChecked())) {
-                        receivers[rx]->setVisible(true);
-                    } else if (rx != currentReceiver && !ui->scopeDualBtn->isChecked() && receivers[rx]->isVisible()) {
-                        receivers[rx]->setVisible(false);
+                        // As the current receiver has changed, queue commands to get the current preamp/filter/ant/rx amp
+                        queue->add(priorityImmediate,queueItem(funcPreamp,false,t.receiver));
+                        queue->add(priorityImmediate,queueItem(funcAttenuator,false,t.receiver));
+                        queue->add(priorityImmediate,queueItem(funcAntenna,false,t.receiver));
+                        queue->add(priorityImmediate,queueItem(funcSquelch,false,t.receiver));
                     }
+
                 }
             }
         }
@@ -5952,7 +5987,7 @@ void wfmain::receiveValue(cacheItem val){
                 // This tells us whether we are receiving single or dual scopes
                 ui->scopeDualBtn->setChecked(val.value.value<bool>());
                 for (uchar rx=0;rx<receivers.size();rx++) {
-                    if (!receivers[rx]->isVisible() && (rx == currentReceiver || ui->scopeDualBtn->isChecked())) {
+                    if (!receivers[rx]->isVisible() &&  ui->scopeDualBtn->isChecked()) {
                         receivers[rx]->setVisible(true);
                     } else if (rx != currentReceiver && !ui->scopeDualBtn->isChecked() && receivers[rx]->isVisible()) {
                         receivers[rx]->setVisible(false);
@@ -6022,36 +6057,23 @@ void wfmain::on_showSettingsBtn_clicked()
 
 void wfmain::on_scopeMainSubBtn_clicked()
 {
-    if (currentReceiver<receivers.size()-1){
-        currentReceiver++;
-    } else {
-        currentReceiver = 0;
-    }
-    queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(currentReceiver),false));
+    queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue<uchar>(currentReceiver==0),false,0));
     if (rigCaps->commands.contains(funcVFOBandMS)) {
-        queue->add(priorityImmediate,queueItem(funcVFOBandMS,QVariant::fromValue(currentReceiver),false));
-        // We need to manually get the frequency/mode
-        queue->add(priorityImmediate,queueItem(funcFreqGet,false,currentReceiver));
-        queue->add(priorityImmediate,queueItem(funcModeGet,false,currentReceiver));
+        queue->add(priorityImmediate,queueItem(funcVFOBandMS,QVariant::fromValue<uchar>(currentReceiver==0),false,0));
     }
 
-    // As the current receiver has changed, queue commands to get the current preamp/filter/ant/rx amp
-    queue->add(priorityImmediate,queueItem(funcPreamp,false,currentReceiver));
-    queue->add(priorityImmediate,queueItem(funcAttenuator,false,currentReceiver));
-    queue->add(priorityImmediate,queueItem(funcAntenna,false,currentReceiver));
-    queue->add(priorityImmediate,queueItem(funcSquelch,false,currentReceiver));
-}
+ }
 
 void wfmain::on_scopeDualBtn_toggled(bool en)
 {
-    queue->add(priorityImmediate,queueItem(funcScopeSingleDual,QVariant::fromValue(en),false));
-    queue->add(priorityImmediate,funcScopeMainSub);
+    queue->add(priorityImmediate,queueItem(funcScopeSingleDual,QVariant::fromValue(en),false,0));
+    queue->add(priorityImmediate,funcScopeMainSub,false,0);
 }
 
 void wfmain::on_dualWatchBtn_toggled(bool en)
 {
-    queue->add(priorityImmediate,queueItem(funcVFODualWatch,QVariant::fromValue(en),false));
-    queue->add(priorityImmediate,funcScopeMainSub);
+    queue->add(priorityImmediate,queueItem(funcVFODualWatch,QVariant::fromValue(en),false,0));
+    queue->add(priorityImmediate,funcScopeMainSub,false,0);
 
     if (!en)
     {
@@ -6062,24 +6084,13 @@ void wfmain::on_dualWatchBtn_toggled(bool en)
 void wfmain::on_swapMainSubBtn_clicked()
 {
     queue->add(priorityImmediate,funcVFOSwapMS);
-    if (!rigCaps->hasCommand29) {
-        if (receivers[0]->isSelected()) {
-            queue->add(priorityHighest,funcSelectedFreq);
-            queue->add(priorityHighest,funcSelectedMode);
-            queue->add(priorityHighest,funcUnselectedFreq);
-            queue->add(priorityHighest,funcUnselectedMode);
-        } else {
-            queue->add(priorityHighest,funcFreqGet);
-            queue->add(priorityHighest,funcModeGet);
-        }
-    } else {
-        for (const auto &receiver: receivers)
-        {
-            queue->add(priorityHighest,funcFreq,false,receiver->getReceiver());
-            queue->add(priorityHighest,funcMode,false,receiver->getReceiver());
-        }
+    for (const auto &receiver: receivers)
+    {
+        queue->add(priorityImmediate,queue->getVfoCommand(vfoA,receiver->getReceiver(),true).freqFunc,false,receiver->getReceiver());
+        queue->add(priorityImmediate,queue->getVfoCommand(vfoA,receiver->getReceiver(),true).modeFunc,false,receiver->getReceiver());
+        queue->add(priorityImmediate,queue->getVfoCommand(vfoB,receiver->getReceiver(),true).freqFunc,false,receiver->getReceiver());
+        queue->add(priorityImmediate,queue->getVfoCommand(vfoB,receiver->getReceiver(),true).modeFunc,false,receiver->getReceiver());
     }
-
 }
 
 /*
@@ -6097,22 +6108,12 @@ void wfmain::on_splitBtn_toggled(bool en)
 void wfmain::on_mainEqualsSubBtn_clicked()
 {
     queue->add(priorityImmediate,funcVFOEqualMS);
-    if (!rigCaps->hasCommand29) {
-        if (receivers[0]->isSelected()) {
-            queue->add(priorityHighest,funcSelectedFreq);
-            queue->add(priorityHighest,funcSelectedMode);
-            queue->add(priorityHighest,funcUnselectedFreq);
-            queue->add(priorityHighest,funcUnselectedMode);
-        } else {
-            queue->add(priorityHighest,funcFreqGet);
-            queue->add(priorityHighest,funcModeGet);
-        }
-    } else {
-        for (const auto &receiver: receivers)
-        {
-            queue->add(priorityHighest,funcFreq,false,receiver->getReceiver());
-            queue->add(priorityHighest,funcMode,false,receiver->getReceiver());
-        }
+    for (const auto &receiver: receivers)
+    {
+        queue->add(priorityImmediate,queue->getVfoCommand(vfoA,receiver->getReceiver(),true).modeFunc,false,receiver->getReceiver());
+        queue->add(priorityImmediate,queue->getVfoCommand(vfoA,receiver->getReceiver(),true).freqFunc,false,receiver->getReceiver());
+        queue->add(priorityImmediate,queue->getVfoCommand(vfoB,receiver->getReceiver(),true).modeFunc,false,receiver->getReceiver());
+        queue->add(priorityImmediate,queue->getVfoCommand(vfoB,receiver->getReceiver(),true).freqFunc,false,receiver->getReceiver());
     }
 }
 
