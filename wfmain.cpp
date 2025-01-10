@@ -6242,13 +6242,20 @@ void wfmain::enableControls(bool en)
     ui->scopeSettingsGroup->setEnabled(en);
     ui->preampAttGroup->setEnabled(en);
     ui->antennaGroup->setEnabled(en);
+
+    ui->meterSPoWidget->setEnabled(en);
+    ui->meter2Widget->setEnabled(en);
+    ui->meter3Widget->setEnabled(en);
+
+    ui->showBandsBtn->setEnabled(en);
+    ui->showFreqBtn->setEnabled(en);
 }
 
 void wfmain::updatedQueueInterval(qint64 interval)
 {
     if (interval == -1)
         enableControls(false);
-    else
+    else if (rigCaps != Q_NULLPTR)
         enableControls(true);
 }
 
