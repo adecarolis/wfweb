@@ -1076,7 +1076,7 @@ void icomCommander::parseCommand()
         quint16 calc;
         quint8 pass = bcdHexToUChar((quint8)payloadIn.at(0));
         vfoCommandType t = queue->getVfoCommand(vfoA,receiver,false);
-        modeInfo m = queue->getCache(t.modeFunc,receiver).value.value<modeInfo>();
+        modeInfo m = queue->getCache(t.modeFunc,t.receiver).value.value<modeInfo>();
 
         if (m.mk == modeAM)
         {

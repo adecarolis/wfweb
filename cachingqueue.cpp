@@ -264,7 +264,7 @@ vfoCommandType cachingQueue::getVfoCommand(vfo_t vfo,uchar rx, bool set)
             }
         }
     }
-    //qDebug(logRig()) << "Queue VFO:" << vfo << "rx:" << rx<< "set:" << set << "mode:" << funcString[cmd.modeFunc] << "freq:" << funcString[cmd.freqFunc] << "rigstate: vfoMode:" << rigState.vfoMode << "vfo" << rigState.vfo << "rx" << rigState.receiver;
+    qDebug(logRig()) << "Queue VFO:" << vfo << "rx:" << rx<< "set:" << set << "mode:" << funcString[cmd.modeFunc] << "freq:" << funcString[cmd.freqFunc] << "rigstate: vfoMode:" << rigState.vfoMode << "vfo" << rigState.vfo << "rx" << rigState.receiver;
     return cmd;
 }
 
@@ -405,7 +405,6 @@ void cachingQueue::updateCache(bool reply, queueItem item)
             rigState.receiver = item.param.value<uchar>();
     } else {
         // If we are requesting a particular VFO, set our state as the rig will not reply
-        rigState.receiver=0;
         if (item.command == funcSelectVFO) {
             rigState.vfo = item.param.value<vfo_t>();
         } else if (item.command == funcVFOASelect) {

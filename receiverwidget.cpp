@@ -1197,6 +1197,9 @@ void receiverWidget::updatedMode(int index)
     }
     vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
     queue->addUnique(priorityImmediate,queueItem(t.modeFunc,QVariant::fromValue<modeInfo>(mi),false,t.receiver));
+    if (t.modeFunc == funcModeSet) {
+        queue->addUnique(priorityImmediate,queueItem(funcDataModeWithFilter,QVariant::fromValue(mi),false,t.receiver));
+    }
 }
 
 void receiverWidget::setEdge(uchar index)

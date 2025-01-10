@@ -5276,7 +5276,7 @@ void wfmain::receiveValue(cacheItem val){
     case funcModeGet:
     case funcModeTR:
         // These commands don't include filter, so queue an immediate request for filter
-        queue->addUnique(priorityImmediate,funcDataModeWithFilter,false,val.receiver);
+        queue->addUnique(priorityImmediate,funcDataModeWithFilter,false,0);
     case funcUnselectedMode:
         if (val.command == funcUnselectedMode)
             vfo=1;
@@ -5671,7 +5671,6 @@ void wfmain::receiveValue(cacheItem val){
                 qCritical(logSystem()) << "Thread is NOT the main UI thread, cannot hide/unhide VFO";
             } else {
 
-
                 uchar temprx=currentReceiver;
                 currentReceiver = val.value.value<uchar>();
 
@@ -5709,7 +5708,6 @@ void wfmain::receiveValue(cacheItem val){
                         queue->add(priorityImmediate,queueItem(funcAntenna,false,t.receiver));
                         queue->add(priorityImmediate,queueItem(funcSquelch,false,t.receiver));
                     }
-
                 }
             }
         }
@@ -5812,7 +5810,8 @@ void wfmain::on_scopeDualBtn_toggled(bool en)
 void wfmain::on_dualWatchBtn_toggled(bool en)
 {
     queue->add(priorityImmediate,queueItem(funcVFODualWatch,QVariant::fromValue(en),false,0));
-    //queue->add(priorityImmediate,funcScopeMainSub,false,0);
+    if (!rigCaps->hasCommand29)
+        queue->add(priorityImmediate,funcScopeMainSub,false,0);
 
     if (!en)
     {
