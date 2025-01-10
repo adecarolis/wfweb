@@ -141,7 +141,6 @@ void meter::setMeterType(meter_t m_type_req)
     switch (m_type_req)
     {
     case meterS:
-    case meterSubS:
     case meterPower:
     case meterdBm:
     case meterdBu:
