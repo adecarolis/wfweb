@@ -1423,7 +1423,7 @@ void wfmain::pttToggle(bool status)
         showStatusBarText("PTT is disabled, not sending command. Change under Settings tab.");
         return;
     }
-    queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(status),false));
+    queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(status),false,uchar(0)));
 
     // Start 3 minute timer
     if (status)
@@ -2739,12 +2739,12 @@ void wfmain::extChangedRsPref(prefRsItem i)
             return;
         }
         showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
-        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(true),false));
+        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(true),false,uchar(0)));
         pttTimer->start();
         break;
     case rs_pttOff:
         showStatusBarText("Sending PTT OFF command");
-        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false));
+        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false,uchar(0)));
         pttTimer->stop();
         break;
     case rs_satOps:
@@ -3825,8 +3825,8 @@ void wfmain::changePrimaryMeter(bool transmitOn) {
         newCmd = meter_tToMeterCommand(meterS);
         ui->meterSPoWidget->setMeterType(meterS);
     }
-    queue->del(oldCmd,currentReceiver);
-    queue->add(priorityHighest,queueItem(newCmd,true,currentReceiver));
+    queue->del(oldCmd,0);
+    queue->add(priorityHighest,queueItem(newCmd,true,0));
 }
 
 void wfmain::changeFullScreenMode(bool checked)
@@ -4126,7 +4126,7 @@ void wfmain::handlePttLimit()
 {
     // transmission time exceeded!
     showStatusBarText("Transmit timeout at 3 minutes. Sending PTT OFF command now.");
-    queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false));
+    queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false,uchar(0)));
 }
 
 void wfmain::on_saveSettingsBtn_clicked()
@@ -4227,7 +4227,7 @@ void wfmain::on_transmitBtn_clicked()
 
         // Are we already PTT? Not a big deal, just send again anyway.
         showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
-        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(true),false));
+        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(true),false,uchar(0)));
 
         // send PTT
         // Start 3 minute timer
@@ -4235,7 +4235,7 @@ void wfmain::on_transmitBtn_clicked()
 
     } else {
         // Currently transmitting
-        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false));
+        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false,uchar(0)));
 
         pttTimer->stop();
     }
@@ -4719,6 +4719,7 @@ funcs wfmain::meter_tToMeterCommand(meter_t m)
             c = funcNone;
             break;
         case meterS:
+        case meterSubS:
             c = funcSMeter;
             break;
         case meterCenter:
@@ -4782,7 +4783,7 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
     funcs oldCmd = meter_tToMeterCommand(oldMeterType);
 
     //if (oldCmd != funcSMeter && oldCmd != funcNone)
-    queue->del(oldCmd,currentReceiver);
+    queue->del(oldCmd,(oldMeterType==meterSubS)?uchar(1):uchar(0));
 
     if(newMeterType==meterNone)
     {
@@ -4792,22 +4793,22 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
         uiMeter->setMeterType(newMeterType);
 
         if((newMeterType!=meterRxAudio) && (newMeterType!=meterTxMod) && (newMeterType!=meterAudio))
-            queue->addUnique(priorityHighest,queueItem(newCmd,true,currentReceiver));
+            queue->addUnique(priorityHighest,queueItem(newCmd,true,(newMeterType==meterSubS)?uchar(1):uchar(0)));
 
         if (meterNum == 1)
         {
             if (rigCaps->commands.contains(funcMeterType))
             {
                 if (newMeterType == meterS)
-                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(0),false,0));
+                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(0),false,(newMeterType==meterSubS)?uchar(1):uchar(0)));
                 if (newMeterType == meterSubS)
-                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(0),false,1));
+                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(0),false,(newMeterType==meterSubS)?uchar(1):uchar(0)));
                 else if (newMeterType == meterdBu)
-                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(1),false,currentReceiver));
+                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(1),false,(newMeterType==meterSubS)?uchar(1):uchar(0)));
                 else if (newMeterType == meterdBuEMF)
-                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(2),false,currentReceiver));
+                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(2),false,(newMeterType==meterSubS)?uchar(1):uchar(0)));
                 else if (newMeterType == meterdBm)
-                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(3),false,currentReceiver));
+                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(3),false,(newMeterType==meterSubS)?uchar(1):uchar(0)));
             }
             uiMeter->enableCombo(rigCaps->commands.contains(funcMeterType));
         }
@@ -5414,7 +5415,7 @@ void wfmain::receiveValue(cacheItem val){
     case funcSMeterSqlStatus:
         break;
     case funcSMeter:
-        if (val.receiver)
+        if (val.receiver )
             receiveMeter(meter_t::meterSubS,val.value.value<uchar>());
         else
             receiveMeter(meter_t::meterS,val.value.value<uchar>());
