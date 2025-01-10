@@ -154,7 +154,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     connect(queue,SIGNAL(sendValue(cacheItem)),this,SLOT(receiveValue(cacheItem)));
     connect(queue,SIGNAL(sendMessage(QString)),this,SLOT(showStatusBarText(QString)));
-    connect(queue,SIGNAL(intervalUpdate(qint64)),this,SLOT(updatedQueueInterval(qint64)));
+    connect(queue,SIGNAL(intervalUpdated(qint64)),this,SLOT(updatedQueueInterval(qint64)));
 
     connect(queue, SIGNAL(finished()), queue, SLOT(deleteLater()));
 
@@ -448,6 +448,13 @@ wfmain::~wfmain()
         serverThread->quit();
         serverThread->wait();
     }
+
+    // Delete all shortcuts
+    for (const auto &s: shortcuts)
+    {
+        delete s;
+    }
+    shortcuts.clear();
 
     // Each rig needs deleting before we close.
     for (auto &rig: serverConfig.rigs) {
@@ -1155,220 +1162,223 @@ void wfmain::setSerialDevicesUI()
 
 }
 
+QShortcut* wfmain::setupKeyShortcut(const QKeySequence k)
+{
+    QShortcut* sc=new QShortcut(this);
+    sc->setKey(k);
+    connect(sc, &QShortcut::activated, this,
+            [=]() {
+        this->runShortcut(k);
+    });
+    return sc;
+}
 
 void wfmain::setupKeyShortcuts()
 {
-    keyF1 = new QShortcut(this);
-    keyF1->setKey(Qt::Key_F1);
-    connect(keyF1, SIGNAL(activated()), this, SLOT(shortcutF1()));
-
-    keyF2 = new QShortcut(this);
-    keyF2->setKey(Qt::Key_F2);
-    connect(keyF2, SIGNAL(activated()), this, SLOT(shortcutF2()));
-
-    keyF3 = new QShortcut(this);
-    keyF3->setKey(Qt::Key_F3);
-    connect(keyF3, SIGNAL(activated()), this, SLOT(shortcutF3()));
-
-    keyF4 = new QShortcut(this);
-    keyF4->setKey(Qt::Key_F4);
-    connect(keyF4, SIGNAL(activated()), this, SLOT(shortcutF4()));
-
-    keyF5 = new QShortcut(this);
-    keyF5->setKey(Qt::Key_F5);
-    connect(keyF5, SIGNAL(activated()), this, SLOT(shortcutF5()));
-
-    keyF6 = new QShortcut(this);
-    keyF6->setKey(Qt::Key_F6);
-    connect(keyF6, SIGNAL(activated()), this, SLOT(shortcutF6()));
-
-    keyF7 = new QShortcut(this);
-    keyF7->setKey(Qt::Key_F7);
-    connect(keyF7, SIGNAL(activated()), this, SLOT(shortcutF7()));
-
-    keyF8 = new QShortcut(this);
-    keyF8->setKey(Qt::Key_F8);
-    connect(keyF8, SIGNAL(activated()), this, SLOT(shortcutF8()));
-
-    keyF9 = new QShortcut(this);
-    keyF9->setKey(Qt::Key_F9);
-    connect(keyF9, SIGNAL(activated()), this, SLOT(shortcutF9()));
-
-    keyF10 = new QShortcut(this);
-    keyF10->setKey(Qt::Key_F10);
-    connect(keyF10, SIGNAL(activated()), this, SLOT(shortcutF10()));
-
-    keyF11 = new QShortcut(this);
-    keyF11->setKey(Qt::Key_F11);
-    connect(keyF11, SIGNAL(activated()), this, SLOT(shortcutF11()));
-
-    keyF12 = new QShortcut(this);
-    keyF12->setKey(Qt::Key_F12);
-    connect(keyF12, SIGNAL(activated()), this, SLOT(shortcutF12()));
-
-    keyControlT = new QShortcut(this);
-    keyControlT->setKey(Qt::CTRL | Qt::Key_T);
-    connect(keyControlT, SIGNAL(activated()), this, SLOT(shortcutControlT()));
-
-    keyControlR = new QShortcut(this);
-    keyControlR->setKey(Qt::CTRL | Qt::Key_R);
-    connect(keyControlR, SIGNAL(activated()), this, SLOT(shortcutControlR()));
-
-    keyControlP = new QShortcut(this);
-    keyControlP->setKey(Qt::CTRL | Qt::Key_P);
-    connect(keyControlP, SIGNAL(activated()), this, SLOT(shortcutControlP()));
-
-    keyControlI = new QShortcut(this);
-    keyControlI->setKey(Qt::CTRL | Qt::Key_I);
-    connect(keyControlI, SIGNAL(activated()), this, SLOT(shortcutControlI()));
-
-    keyControlU = new QShortcut(this);
-    keyControlU->setKey(Qt::CTRL | Qt::Key_U);
-    connect(keyControlU, SIGNAL(activated()), this, SLOT(shortcutControlU()));
-
-    keyStar = new QShortcut(this);
-    keyStar->setKey(Qt::Key_Asterisk);
-    connect(keyStar, SIGNAL(activated()), this, SLOT(shortcutStar()));
-
-    keySlash = new QShortcut(this);
-    keySlash->setKey(Qt::Key_Slash);
-    connect(keySlash, SIGNAL(activated()), this, SLOT(shortcutSlash()));
-
-    keyMinus = new QShortcut(this);
-    keyMinus->setKey(Qt::Key_Minus);
-    connect(keyMinus, SIGNAL(activated()), this, SLOT(shortcutMinus()));
-
-    keyPlus = new QShortcut(this);
-    keyPlus->setKey(Qt::Key_Plus);
-    connect(keyPlus, SIGNAL(activated()), this, SLOT(shortcutPlus()));
-
-    keyShiftMinus = new QShortcut(this);
-    keyShiftMinus->setKey(Qt::SHIFT | Qt::Key_Minus);
-    connect(keyShiftMinus, SIGNAL(activated()), this, SLOT(shortcutShiftMinus()));
-
-    keyShiftPlus = new QShortcut(this);
-    keyShiftPlus->setKey(Qt::SHIFT | Qt::Key_Plus);
-    connect(keyShiftPlus, SIGNAL(activated()), this, SLOT(shortcutShiftPlus()));
-
-    keyControlMinus = new QShortcut(this);
-    keyControlMinus->setKey(Qt::CTRL | Qt::Key_Minus);
-    connect(keyControlMinus, SIGNAL(activated()), this, SLOT(shortcutControlMinus()));
-
-    keyControlPlus = new QShortcut(this);
-    keyControlPlus->setKey(Qt::CTRL | Qt::Key_Plus);
-    connect(keyControlPlus, SIGNAL(activated()), this, SLOT(shortcutControlPlus()));
-
-    keyQuit = new QShortcut(this);
-    keyQuit->setKey(Qt::CTRL | Qt::Key_Q);
-    connect(keyQuit, SIGNAL(activated()), this, SLOT(on_exitBtn_clicked()));
-
-    keyPageUp = new QShortcut(this);
-    keyPageUp->setKey(Qt::Key_PageUp);
-    connect(keyPageUp, SIGNAL(activated()), this, SLOT(shortcutPageUp()));
-
-    keyPageDown = new QShortcut(this);
-    keyPageDown->setKey(Qt::Key_PageDown);
-    connect(keyPageDown, SIGNAL(activated()), this, SLOT(shortcutPageDown()));
-
-    keyF = new QShortcut(this);
-    keyF->setKey(Qt::Key_F);
-    connect(keyF, SIGNAL(activated()), this, SLOT(shortcutF()));
-
-    keyM = new QShortcut(this);
-    keyM->setKey(Qt::Key_M);
-    connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
-
-    // Alternate for plus:
-    keyK = new QShortcut(this);
-    keyK->setKey(Qt::Key_K);
-    connect(keyK, &QShortcut::activated, this,
-            [=]() {
-        if (freqLock) return;
-        this->shortcutPlus();
-    });
-
-    // Alternate for minus:
-    keyJ = new QShortcut(this);
-    keyJ->setKey(Qt::Key_J);
-    connect(keyJ, &QShortcut::activated, this,
-            [=]() {
-        if (freqLock) return;
-        this->shortcutMinus();
-    });
-
-    keyShiftK = new QShortcut(this);
-    keyShiftK->setKey(Qt::SHIFT | Qt::Key_K);
-    connect(keyShiftK, &QShortcut::activated, this,
-            [=]() {
-        if (freqLock) return;
-        this->shortcutShiftPlus();
-    });
-
-
-    keyShiftJ = new QShortcut(this);
-    keyShiftJ->setKey(Qt::SHIFT | Qt::Key_J);
-    connect(keyShiftJ, &QShortcut::activated, this,
-            [=]() {
-        if (freqLock) return;
-        this->shortcutShiftMinus();
-    });
-
-    keyControlK = new QShortcut(this);
-    keyControlK->setKey(Qt::CTRL | Qt::Key_K);
-    connect(keyControlK, &QShortcut::activated, this,
-            [=]() {
-        if (freqLock) return;
-        this->shortcutControlPlus();
-    });
-
-
-    keyControlJ = new QShortcut(this);
-    keyControlJ->setKey(Qt::CTRL | Qt::Key_J);
-    connect(keyControlJ, &QShortcut::activated, this,
-            [=]() {
-        if (freqLock) return;
-        this->shortcutControlMinus();
-    });
-    // Move the tuning knob by the tuning step selected:
-    // H = Down
-    keyH = new QShortcut(this);
-    keyH->setKey(Qt::Key_H);
-    connect(keyH, &QShortcut::activated, this,
-            [=]() {
-        if (freqLock) return;
-
-        if (receivers.size()) {
-            freqt f;
-            f.Hz = roundFrequencyWithStep(receivers.first()->getFrequency().Hz, -1, tsKnobHz);
-            f.MHzDouble = f.Hz / (double)1E6;
-            queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
-                                                    QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
-        }
-    });
-
-    // L = Up
-    keyL = new QShortcut(this);
-    keyL->setKey(Qt::Key_L);
-    connect(keyL, &QShortcut::activated, this,
-            [=]() {
-        if (freqLock) return;
-
-        freqt f;
-        if (receivers.size()) {
-            f.Hz = roundFrequencyWithStep(receivers.first()->getFrequency().Hz, 1, tsKnobHz);
-            f.MHzDouble = f.Hz / (double)1E6;
-            queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
-                                                    QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
-        }
-    });
-
-    keyDebug = new QShortcut(this);
+    shortcuts.append(setupKeyShortcut(Qt::Key_F1));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F2));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F3));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F4));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F5));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F6));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F7));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F8));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F9));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F10));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F11));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F12));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_T));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_R));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_P));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_I));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_U));
+    shortcuts.append(setupKeyShortcut(Qt::Key_Asterisk));
+    shortcuts.append(setupKeyShortcut(Qt::Key_Slash));
+    shortcuts.append(setupKeyShortcut(Qt::Key_Backslash));
+    shortcuts.append(setupKeyShortcut(Qt::Key_Minus));
+    shortcuts.append(setupKeyShortcut(Qt::Key_Plus));
+    shortcuts.append(setupKeyShortcut(Qt::SHIFT | Qt::Key_Minus));
+    shortcuts.append(setupKeyShortcut(Qt::SHIFT | Qt::Key_Plus));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_Minus));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_Plus));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_Q));
+    shortcuts.append(setupKeyShortcut(Qt::Key_PageUp));
+    shortcuts.append(setupKeyShortcut(Qt::Key_PageDown));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F));
+    shortcuts.append(setupKeyShortcut(Qt::Key_M));
+    shortcuts.append(setupKeyShortcut(Qt::Key_K));
+    shortcuts.append(setupKeyShortcut(Qt::Key_J));
+    shortcuts.append(setupKeyShortcut(Qt::SHIFT | Qt::Key_K));
+    shortcuts.append(setupKeyShortcut(Qt::SHIFT | Qt::Key_J));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_K));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_J));
+    shortcuts.append(setupKeyShortcut(Qt::Key_H));
+    shortcuts.append(setupKeyShortcut(Qt::Key_L));
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-    keyDebug->setKey(Qt::CTRL | Qt::SHIFT | Qt::Key_D);
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::SHIFT | Qt::Key_D));
 #else
-    keyDebug->setKey(Qt::CTRL | Qt::Key_D);
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_D));
 #endif
-    connect(keyDebug, SIGNAL(activated()), this, SLOT(debugBtn_clicked()));
+
+
+}
+
+void wfmain::runShortcut(const QKeySequence k)
+{
+    if (rigCaps == Q_NULLPTR) {
+        // No rig yet
+        qWarning() << "Cannot run shortcut as not connected to rig";
+        return;
+    }
+    bool freqUpdate=false;
+    freqt f;
+
+    qInfo() << "Running shortcut for key:" << k;
+    if (k == Qt::Key_F1){
+        this->raise();
+    } else if (k == Qt::Key_F2){
+        showAndRaiseWidget(bandbtns);
+    } else if (k==Qt::Key_F3 || k==Qt::Key_Asterisk){
+        showAndRaiseWidget(finputbtns);
+    } else if (k==Qt::Key_F4){
+        showAndRaiseWidget(setupui);
+    } else if (k==Qt::Key_F5){
+        changeMode(modeLSB, false, currentReceiver);
+    } else if (k==Qt::Key_F6){
+        changeMode(modeUSB, false, currentReceiver);
+    } else if (k==Qt::Key_F7){
+        changeMode(modeAM, false, currentReceiver);
+    } else if (k==Qt::Key_F8){
+        changeMode(modeCW, false, currentReceiver);
+    } else if (k==Qt::Key_F9){
+        changeMode(modeUSB, true, currentReceiver);
+    } else if (k==Qt::Key_F10){
+        changeMode(modeFM, false, currentReceiver);
+    } else if (k==Qt::Key_F11){
+        if(onFullscreen)
+        {
+            this->showNormal();
+            onFullscreen = false;
+            prefs.useFullScreen = false;
+        } else {
+            this->showFullScreen();
+            onFullscreen = true;
+            prefs.useFullScreen = true;
+        }
+        setupui->updateIfPref(if_useFullScreen);
+    } else if (k==Qt::Key_F12){
+        showStatusBarText("Sending speech command to radio.");
+        queue->add(priorityImmediate,queueItem(funcSpeech,QVariant::fromValue(uchar(0U))));
+    } else if (k==(Qt::CTRL | Qt::Key_T)){
+        // Transmit
+        qDebug(logSystem()) << "Activated Control-T shortcut";
+        showStatusBarText(QString("Transmitting. Press Control-R to receive."));
+        extChangedRsPrefs(rs_pttOn);
+    } else if (k==(Qt::CTRL | Qt::Key_R)){
+        // Receive
+        extChangedRsPrefs(rs_pttOff);
+    } else if (k==(Qt::CTRL | Qt::Key_P)){
+        // Toggle PTT
+        if(amTransmitting) {
+            extChangedRsPrefs(rs_pttOff);
+        } else {
+            extChangedRsPrefs(rs_pttOn);
+            showStatusBarText(QString("Transmitting. Press Control-P again to receive."));
+        }
+    } else if (k==(Qt::CTRL | Qt::Key_I)){
+        // Enable ATU
+        ui->tuneEnableChk->click();
+    } else if (k==(Qt::CTRL | Qt::Key_U)){
+        // Run ATU tuning cycle
+        ui->tuneNowBtn->click();
+    } else if (k==Qt::Key_Slash){
+        for (size_t i = 0; i < rigCaps->modes.size(); i++) {
+            if (rigCaps->modes[i].mk == receivers[currentReceiver]->currentMode().mk)
+            {
+                if (i + 1 < rigCaps->modes.size()) {
+                    changeMode(rigCaps->modes[i + 1].mk,false,currentReceiver);
+                }
+                else {
+                    changeMode(rigCaps->modes[0].mk,false,currentReceiver);
+                }
+                break;
+            }
+        }
+    } else if (k==Qt::Key_Backslash){
+        bool found = false;
+        availableBands band = bandUnknown;
+        auto b = rigCaps->bands.cend();
+        while (b != rigCaps->bands.cbegin())
+        {
+            b--;
+            if ((b->region == "" || prefs.region == b->region))
+            {
+                if (!found && b->band == bandbtns->currentBand()) {
+                    found = true;
+                } else if (found && b->band != bandbtns->currentBand()) {
+                    qInfo() << "Got new band:" << b->band << "Name:" << b->name << "region" << b->region;
+                    band = b->band;
+                    break;
+                }
+            }
+        }
+        if (band == bandUnknown)
+        {
+            band = rigCaps->bands[rigCaps->bands.size() - 1].band;
+        }
+        bandbtns->setBand(band);
+
+        // To be implemented!
+        //ui->modeSelectCombo->setCurrentIndex( (ui->modeSelectCombo->currentIndex()+1) % ui->modeSelectCombo->count() );
+        //on_modeSelectCombo_activated( ui->modeSelectCombo->currentIndex() );
+    } else if (k==Qt::Key_Minus|| k==Qt::Key_J){
+        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusHz);
+        freqUpdate=true;
+    } else if (k==Qt::Key_Plus || k==Qt::Key_K){
+        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusHz);
+        freqUpdate=true;
+    } else if (k==(Qt::SHIFT | Qt::Key_Minus) || k==(Qt::SHIFT | Qt::Key_J)){
+        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusShiftHz);
+        freqUpdate=true;
+    } else if (k==(Qt::SHIFT | Qt::Key_Plus) || k==(Qt::SHIFT | Qt::Key_K)){
+        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusShiftHz);
+        freqUpdate=true;
+    } else if (k==(Qt::CTRL | Qt::Key_Minus) || k==(Qt::CTRL | Qt::Key_J)){
+        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusControlHz);
+        freqUpdate=true;
+    } else if (k==(Qt::CTRL | Qt::Key_Plus) || k==(Qt::CTRL | Qt::Key_K)){
+        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusControlHz);
+        freqUpdate=true;
+    } else if (k==(Qt::CTRL | Qt::Key_Q)){
+        on_exitBtn_clicked();
+    } else if (k==Qt::Key_PageUp){
+        f.Hz = receivers[0]->getFrequency().Hz + tsPageHz;
+        freqUpdate=true;
+    } else if (k==Qt::Key_PageDown){
+        f.Hz = receivers[0]->getFrequency().Hz - tsPageHz;
+        freqUpdate=true;
+    } else if (k==Qt::Key_F){
+        showStatusBarText("Sending speech command (frequency) to radio.");
+        queue->add(priorityImmediate,queueItem(funcSpeech, QVariant::fromValue<uchar>(1),false,uchar(0)));
+    } else if (k==Qt::Key_M){
+        showStatusBarText("Sending speech command (mode) to radio.");
+        queue->add(priorityImmediate,queueItem(funcSpeech, QVariant::fromValue<uchar>(2),false,uchar(0)));
+    } else if (k==Qt::Key_H){
+        f.Hz = roundFrequencyWithStep(receivers.first()->getFrequency().Hz, -1, tsKnobHz);
+        freqUpdate = true;
+    } else if (k==Qt::Key_L){
+        f.Hz = roundFrequencyWithStep(receivers.first()->getFrequency().Hz, 1, tsKnobHz);
+        freqUpdate = true;
+    } else if (k==(Qt::CTRL | Qt::Key_D)){
+        debugBtn_clicked();
+    }
+
+    if (!freqLock && freqUpdate) {
+        vfoCommandType t = queue->getVfoCommand(vfoA,currentReceiver,true);
+        f.MHzDouble = f.Hz / (double)1E6;
+        queue->add(priorityImmediate,queueItem(t.freqFunc,
+                                                        QVariant::fromValue<freqt>(f),false,uchar(t.receiver)));
+    }
 }
 
 void wfmain::setupUsbControllerDevice()
@@ -1427,21 +1437,21 @@ void wfmain::pttToggle(bool status)
 void wfmain::doShuttle(bool up, quint8 level)
 {
     if (level == 1 && up)
-            shortcutShiftPlus();
+        runShortcut(Qt::SHIFT | Qt::Key_Plus);
     else if (level == 1 && !up)
-            shortcutShiftMinus();
+        runShortcut(Qt::SHIFT | Qt::Key_Minus);
     else if (level > 1 && level < 5 && up)
         for (int i = 1; i < level; i++)
-            shortcutPlus();
+            runShortcut(Qt::Key_Plus);
     else if (level > 1 && level < 5 && !up)
         for (int i = 1; i < level; i++)
-            shortcutMinus();
+            runShortcut(Qt::Key_Minus);
     else if (level > 4 && up)
         for (int i = 4; i < level; i++)
-            shortcutControlPlus();
+            runShortcut(Qt::CTRL | Qt::Key_Plus);
     else if (level > 4 && !up)
         for (int i = 4; i < level; i++)
-            shortcutControlMinus();
+            runShortcut(Qt::CTRL | Qt::Key_Minus);
 }
 
 void wfmain::buttonControl(const COMMAND* cmd)
@@ -1648,8 +1658,9 @@ void wfmain::changeFrequency(int value) {
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, value, tsWfScrollHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
-                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
+        vfoCommandType t = queue->getVfoCommand(vfoA,currentReceiver,true);
+        queue->add(priorityImmediate,queueItem(t.freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(t.receiver)));
     }
 }
 
@@ -3356,138 +3367,6 @@ void wfmain::saveSettings()
     settings->sync(); // Automatic, not needed (supposedly)
 }
 
-
-// Key shortcuts (hotkeys)
-
-void wfmain::shortcutF11()
-{
-    if(onFullscreen)
-    {
-        this->showNormal();
-        onFullscreen = false;
-        prefs.useFullScreen = false;
-    } else {
-        this->showFullScreen();
-        onFullscreen = true;
-        prefs.useFullScreen = true;
-    }
-    setupui->updateIfPref(if_useFullScreen);
-}
-
-void wfmain::shortcutF1()
-{
-
-}
-
-void wfmain::shortcutF2()
-{
-    showAndRaiseWidget(bandbtns);
-}
-
-void wfmain::shortcutF3()
-{
-    showAndRaiseWidget(finputbtns);
-}
-
-void wfmain::shortcutF4()
-{
-
-}
-
-// Mode switch keys:
-void wfmain::shortcutF5()
-{
-    // LSB
-    changeMode(modeLSB, false, currentReceiver);
-}
-
-void wfmain::shortcutF6()
-{
-    // USB
-    changeMode(modeUSB, false, currentReceiver);
-}
-
-void wfmain::shortcutF7()
-{
-    // AM
-    changeMode(modeAM, false, currentReceiver);
-}
-
-void wfmain::shortcutF8()
-{
-    // CW
-    changeMode(modeCW, false, currentReceiver);
-}
-
-void wfmain::shortcutF9()
-{
-    // USB-D
-    changeMode(modeUSB, true, currentReceiver);
-}
-
-void wfmain::shortcutF10()
-{
-    // FM
-    changeMode(modeFM, false, currentReceiver);
-}
-
-void wfmain::shortcutF12()
-{
-    // Speak current frequency and mode from the radio
-    showStatusBarText("Sending speech command to radio.");
-    queue->add(priorityImmediate,queueItem(funcSpeech,QVariant::fromValue(uchar(0U))));
-}
-
-void wfmain::shortcutControlT()
-{
-    // Transmit
-    qDebug(logSystem()) << "Activated Control-T shortcut";
-    showStatusBarText(QString("Transmitting. Press Control-R to receive."));
-    extChangedRsPrefs(rs_pttOn);
-}
-
-void wfmain::shortcutControlR()
-{
-    // Receive
-    extChangedRsPrefs(rs_pttOff);
-}
-
-void wfmain::shortcutControlP()
-{
-    // Toggle PTT
-    if(amTransmitting) {
-        extChangedRsPrefs(rs_pttOff);
-    } else {
-        extChangedRsPrefs(rs_pttOn);
-        showStatusBarText(QString("Transmitting. Press Control-P again to receive."));
-    }
-}
-
-void wfmain::shortcutControlI()
-{
-    // Enable ATU
-    ui->tuneEnableChk->click();
-}
-
-void wfmain::shortcutControlU()
-{
-    // Run ATU tuning cycle
-    ui->tuneNowBtn->click();
-}
-
-void wfmain::shortcutStar()
-{
-    // Jump to frequency tab from Asterisk key on keypad
-    showAndRaiseWidget(finputbtns);
-}
-
-void wfmain::shortcutSlash()
-{
-    // Cycle through available modes
-    //ui->modeSelectCombo->setCurrentIndex( (ui->modeSelectCombo->currentIndex()+1) % ui->modeSelectCombo->count() );
-    //on_modeSelectCombo_activated( ui->modeSelectCombo->currentIndex() );
-}
-
 void wfmain::setTuningSteps()
 {
     // TODO: interact with preferences, tuning step drop down box, and current operating mode
@@ -3560,143 +3439,6 @@ quint64 wfmain::roundFrequencyWithStep(quint64 frequency, int steps, unsigned in
     } else {
         return frequency;
     }
-}
-
-void wfmain::shortcutMinus()
-{
-    if (freqLock) return;
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusHz);
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
-                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
-    }
-}
-
-void wfmain::shortcutPlus()
-{
-    if (freqLock) return;
-
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusHz);
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
-                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
-    }
-}
-
-void wfmain::shortcutStepMinus()
-{
-    if (freqLock) return;
-    if (receivers.size())
-    {
-        freqt f;
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, ui->tuningStepCombo->currentData().toInt());
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
-                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
-    }
-}
-
-void wfmain::shortcutStepPlus()
-{
-    if (freqLock) return;
-
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, ui->tuningStepCombo->currentData().toInt());
-
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
-                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
-    }
-}
-
-void wfmain::shortcutShiftMinus()
-{
-    if(freqLock) return;
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusShiftHz);
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
-                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
-    }
-}
-
-void wfmain::shortcutShiftPlus()
-{
-    if(freqLock) return;
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusShiftHz);
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
-                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
-    }
-}
-
-void wfmain::shortcutControlMinus()
-{
-    if(freqLock) return;
-
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusControlHz);
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
-                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
-    }
-}
-
-void wfmain::shortcutControlPlus()
-{
-    if(freqLock) return;
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusControlHz);
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
-                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
-    }
-}
-
-void wfmain::shortcutPageUp()
-{
-    if(freqLock) return;
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = receivers[0]->getFrequency().Hz + tsPageHz;
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
-                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
-    }
-}
-
-void wfmain::shortcutPageDown()
-{
-    if(freqLock) return;
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = receivers[0]->getFrequency().Hz - tsPageHz;
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
-                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
-    }
-}
-
-void wfmain::shortcutF()
-{
-    showStatusBarText("Sending speech command (frequency) to radio.");
-    emit sayFrequency();
-}
-
-void wfmain::shortcutM()
-{
-    showStatusBarText("Sending speech command (mode) to radio.");
-    emit sayMode();
 }
 
 funcs wfmain::getInputTypeCommand(inputTypes input)
@@ -6085,7 +5827,7 @@ void wfmain::on_swapMainSubBtn_clicked()
 {
     queue->add(priorityImmediate,funcVFOSwapMS);
     for (const auto &receiver: receivers)
-    {
+    {        
         queue->add(priorityImmediate,queue->getVfoCommand(vfoA,receiver->getReceiver(),true).freqFunc,false,receiver->getReceiver());
         queue->add(priorityImmediate,queue->getVfoCommand(vfoA,receiver->getReceiver(),true).modeFunc,false,receiver->getReceiver());
         queue->add(priorityImmediate,queue->getVfoCommand(vfoB,receiver->getReceiver(),true).freqFunc,false,receiver->getReceiver());
