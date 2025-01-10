@@ -1268,7 +1268,7 @@ void wfmain::runShortcut(const QKeySequence k)
         setupui->updateIfPref(if_useFullScreen);
     } else if (k==Qt::Key_F12){
         showStatusBarText("Sending speech command to radio.");
-        queue->add(priorityImmediate,queueItem(funcSpeech,QVariant::fromValue(uchar(0U))));
+        queue->add(priorityImmediate,queueItem(funcSpeech,QVariant::fromValue(uchar(0U)),false,currentReceiver));
     } else if (k==(Qt::CTRL | Qt::Key_T)){
         // Transmit
         qDebug(logSystem()) << "Activated Control-T shortcut";
@@ -1327,10 +1327,6 @@ void wfmain::runShortcut(const QKeySequence k)
             band = rigCaps->bands[rigCaps->bands.size() - 1].band;
         }
         bandbtns->setBand(band);
-
-        // To be implemented!
-        //ui->modeSelectCombo->setCurrentIndex( (ui->modeSelectCombo->currentIndex()+1) % ui->modeSelectCombo->count() );
-        //on_modeSelectCombo_activated( ui->modeSelectCombo->currentIndex() );
     } else if (k==Qt::Key_Minus|| k==Qt::Key_J){
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusHz);
         freqUpdate=true;
@@ -1359,10 +1355,10 @@ void wfmain::runShortcut(const QKeySequence k)
         freqUpdate=true;
     } else if (k==Qt::Key_F){
         showStatusBarText("Sending speech command (frequency) to radio.");
-        queue->add(priorityImmediate,queueItem(funcSpeech, QVariant::fromValue<uchar>(1),false,uchar(0)));
+        queue->add(priorityImmediate,queueItem(funcSpeech, QVariant::fromValue<uchar>(1),false,currentReceiver));
     } else if (k==Qt::Key_M){
         showStatusBarText("Sending speech command (mode) to radio.");
-        queue->add(priorityImmediate,queueItem(funcSpeech, QVariant::fromValue<uchar>(2),false,uchar(0)));
+        queue->add(priorityImmediate,queueItem(funcSpeech, QVariant::fromValue<uchar>(2),false,currentReceiver));
     } else if (k==Qt::Key_H){
         f.Hz = roundFrequencyWithStep(receivers.first()->getFrequency().Hz, -1, tsKnobHz);
         freqUpdate = true;
