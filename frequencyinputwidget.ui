@@ -25,13 +25,6 @@
      </item>
      <item>
       <widget class="QLineEdit" name="freqMhzLineEdit">
-       <property name="font">
-        <font>
-         <family>DejaVu Sans Mono</family>
-         <pointsize>14</pointsize>
-         <bold>true</bold>
-        </font>
-       </property>
       </widget>
      </item>
      <item>

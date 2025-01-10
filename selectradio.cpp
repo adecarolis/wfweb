@@ -7,9 +7,12 @@ selectRadio::selectRadio(QWidget* parent) :
     QDialog(parent),
     ui(new Ui::selectRadio)
 {
+    QFont f = QFontDatabase::systemFont(QFontDatabase::FixedFont).family();
+    f.setBold(true);
+    f.setPointSize(8);
     ui->setupUi(this);
     ui->timeDifference->plotLayout()->insertRow(0);
-    QCPTextElement *title = new QCPTextElement(ui->timeDifference, "UDP time difference", QFont("sans", 8, QFont::Bold));
+    QCPTextElement *title = new QCPTextElement(ui->timeDifference, "UDP time difference", f);
     ui->timeDifference->plotLayout()->addElement(0, 0, title);
     ui->timeDifference->addGraph(0);
     ui->timeDifference->yAxis->setLabel("ms");
@@ -18,7 +21,7 @@ selectRadio::selectRadio(QWidget* parent) :
     ui->timeDifference->xAxis->setTickLabels(false);
 
     ui->waterfall->plotLayout()->insertRow(0);
-    QCPTextElement *wfTitle = new QCPTextElement(ui->waterfall, "Waterfall plot time", QFont("sans", 8, QFont::Bold));
+    QCPTextElement *wfTitle = new QCPTextElement(ui->waterfall, "Waterfall plot time", f);
     ui->waterfall->plotLayout()->addElement(0, 0, wfTitle);
     ui->waterfall->addGraph(0);
     ui->waterfall->yAxis->setLabel("ms");
@@ -27,7 +30,7 @@ selectRadio::selectRadio(QWidget* parent) :
     ui->waterfall->xAxis->setTickLabels(false);
 
     ui->spectrum->plotLayout()->insertRow(0);
-    QCPTextElement *spTitle = new QCPTextElement(ui->spectrum, "Spectrum plot time", QFont("sans", 8, QFont::Bold));
+    QCPTextElement *spTitle = new QCPTextElement(ui->spectrum, "Spectrum plot time", f);
     ui->spectrum->plotLayout()->addElement(0, 0, spTitle);
     ui->spectrum->addGraph(0);
     ui->spectrum->yAxis->setLabel("ms");

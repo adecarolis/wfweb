@@ -17,7 +17,7 @@ loggingWindow::loggingWindow(QString logFilename, QWidget *parent) :
     QDir d = QFileInfo(logFilename).absoluteDir();
     logDirectory = d.absolutePath();
 
-    QFont font("Monospace");
+    QFont font = QFont(QFontDatabase::systemFont(QFontDatabase::FixedFont).family());
     font.setStyleHint(QFont::TypeWriter);
     ui->logTextDisplay->setFont(font);
     ui->userAnnotationText->setFont(font);
