@@ -54,6 +54,7 @@ private slots:
     void on_fBackbtn_clicked();
     void on_goFreqBtn_clicked();
     void on_freqMhzLineEdit_returnPressed();
+    void receiveRigCaps(rigCapabilities* caps);
 
 private:
     Ui::frequencyinputwidget *ui;
@@ -65,6 +66,7 @@ private:
     int currentFilter = 1;
     void checkFreqSel();
     cachingQueue* queue;
+    rigCapabilities* rigCaps=Q_NULLPTR;
 
 };
 
