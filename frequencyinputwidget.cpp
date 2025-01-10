@@ -211,21 +211,18 @@ void frequencyinputwidget::on_goFreqBtn_clicked()
     if(ok)
     {
         vfoCommandType t = queue->getVfoCommand(vfoA,0,true);
-        rigMode_t newMode = sidebandChooser::getMode(f, currentMode);
         modeInfo currentMode = queue->getCache(t.modeFunc,t.receiver).value.value<modeInfo>();
-        for (const auto& mode: rigCaps->modes) {
-            modeInfo m = mode;
-            if (m.mk == newMode && m.mk != currentMode.mk && automaticSidebandSwitching)
-            {
-                if(m.mk != currentMode.mk && currentMode.data == 0 && automaticSidebandSwitching)
+        if (currentMode.data == 0 && automaticSidebandSwitching) {
+            rigMode_t newMode = sidebandChooser::getMode(f, currentMode.mk);
+            for (const auto& mode: rigCaps->modes) {
+                if (mode.mk == newMode && mode.mk != currentMode.mk)
                 {
                     vfoCommandType t = queue->getVfoCommand(vfoA,0,true);
-                    queue->add(priorityImmediate,queueItem(t.modeFunc, QVariant::fromValue<modeInfo>(m),false,t.receiver));
+                    queue->add(priorityImmediate,queueItem(t.modeFunc, QVariant::fromValue<modeInfo>(mode),false,t.receiver));
+                    break;
                 }
-                break;
             }
         }
-
         f.MHzDouble = (float)f.Hz / 1E6;
         currentFrequency = f;
         queue->add(priorityImmediate,queueItem(t.freqFunc, QVariant::fromValue<freqt>(f),false,t.receiver));
