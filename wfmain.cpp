@@ -5268,8 +5268,8 @@ void wfmain::receiveValue(cacheItem val){
                     receivers[1]->setVisible(false);
                 }
             } */
-            ui->scopeMainSubBtn->setEnabled(en);
-            ui->scopeDualBtn->setEnabled(en);
+            //ui->scopeMainSubBtn->setEnabled(en);
+            //ui->scopeDualBtn->setEnabled(en);
         }
 
         break;
@@ -5812,11 +5812,11 @@ void wfmain::on_scopeDualBtn_toggled(bool en)
 void wfmain::on_dualWatchBtn_toggled(bool en)
 {
     queue->add(priorityImmediate,queueItem(funcVFODualWatch,QVariant::fromValue(en),false,0));
-    queue->add(priorityImmediate,funcScopeMainSub,false,0);
+    //queue->add(priorityImmediate,funcScopeMainSub,false,0);
 
     if (!en)
     {
-        ui->scopeDualBtn->setChecked(false);
+        //ui->scopeDualBtn->setChecked(false);
     }
 }
 
