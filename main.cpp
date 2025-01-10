@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
     QString currentArg;
 
 
-    const QString helpText = QString("\nUsage: -l --logfile filename.log, -s --settings filename.ini, -b --background (not Windows), -d --debug, -v --version\n"); // TODO...
+    const QString helpText = QString("\nUsage: -l --logfile filename.log, -s --settings filename.ini, -c --clearconfig CONFIRM, -b --background (not Windows), -d --debug, -v --version\n"); // TODO...
 #ifdef BUILD_WFSERVER
     const QString version = QString("wfserver version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
         .arg(QString(WFVIEW_VERSION))
@@ -178,6 +178,45 @@ int main(int argc, char *argv[])
                 settingsFile = argv[c + 1];
                 c += 1;
             }
+        }
+        else if ((currentArg == "-c") || (currentArg == "--clearconfig"))
+        {
+            if (argc > c)
+            {
+                QString confirm = argv[c + 1];
+                c += 1;
+                if (confirm == "CONFIRM") {
+                    QSettings* settings;
+                    // Clear config
+                    if (settingsFile.isEmpty()) {
+                        settings = new QSettings();
+                    }
+                    else
+                    {
+                        QString file = settingsFile;
+                        QFile info(settingsFile);
+                        QString path="";
+                        if (!QFileInfo(info).isAbsolute())
+                        {
+                            path = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+                            if (path.isEmpty())
+                            {
+                                path = QDir::homePath();
+                            }
+                            path = path + "/";
+                            file = info.fileName();
+                        }
+                        settings = new QSettings(path + file, QSettings::Format::IniFormat);
+                    }
+                    settings->clear();
+                    delete settings;
+                    std::cout << QString("All wfview settings cleared.\n").toStdString();
+                    exit(0);
+                }
+            }
+            std::cout << QString("Error: Clear config not confirmed (please add the word CONFIRM), aborting\n").toStdString();
+            std::cout << helpText.toStdString();
+            exit(-1);
         }
 #ifdef BUILD_WFSERVER
         else if ((currentArg == "-b") || (currentArg == "--background"))

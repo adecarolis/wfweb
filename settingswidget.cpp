@@ -69,6 +69,7 @@ void settingswidget::populateComboBoxes()
 
     ui->meter2selectionCombo->blockSignals(true);
     ui->meter2selectionCombo->addItem("None", meterNone);
+    ui->meter2selectionCombo->addItem("Sub S-Meter", meterSubS);
     ui->meter2selectionCombo->addItem("SWR", meterSWR);
     ui->meter2selectionCombo->addItem("ALC", meterALC);
     ui->meter2selectionCombo->addItem("Compression", meterComp);
@@ -83,6 +84,7 @@ void settingswidget::populateComboBoxes()
 
     ui->meter3selectionCombo->blockSignals(true);
     ui->meter3selectionCombo->addItem("None", meterNone);
+    ui->meter3selectionCombo->addItem("Sub S-Meter", meterSubS);
     ui->meter3selectionCombo->addItem("SWR", meterSWR);
     ui->meter3selectionCombo->addItem("ALC", meterALC);
     ui->meter3selectionCombo->addItem("Compression", meterComp);
