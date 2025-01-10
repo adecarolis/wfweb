@@ -50,6 +50,7 @@ meter::meter(QWidget *parent) : QWidget(parent)
     combo = new QComboBox(this);
     combo->addItem("None", meterNone);
     combo->addItem("Sub S-Meter", meterSubS);
+    combo->addItem("SWR", meterSWR);
     combo->addItem("ALC", meterALC);
     combo->addItem("Compression", meterComp);
     combo->addItem("Voltage", meterVoltage);
@@ -153,6 +154,7 @@ void meter::setMeterType(meter_t m_type_req)
     default:
         combo->addItem("None", meterNone);
         combo->addItem("Sub S-Meter", meterSubS);
+        combo->addItem("SWR", meterSWR);
         combo->addItem("ALC", meterALC);
         combo->addItem("Compression", meterComp);
         combo->addItem("Voltage", meterVoltage);
