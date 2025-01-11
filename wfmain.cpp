@@ -4032,6 +4032,13 @@ void wfmain::on_monitorLabel_linkActivated(const QString&)
 
 void wfmain::on_tuneNowBtn_clicked()
 {
+
+    if (!prefs.enablePTT)
+    {
+        showStatusBarText("PTT is disabled, not sending command. Change under Settings tab.");
+        return;
+    }
+
     queue->addUnique(priorityImmediate,queueItem(funcTunerStatus,QVariant::fromValue<uchar>(2U)));
     showStatusBarText("Starting ATU tuning cycle...");
     ATUCheckTimer.setSingleShot(true);
