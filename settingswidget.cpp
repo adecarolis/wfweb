@@ -157,6 +157,13 @@ void settingswidget::populateComboBoxes()
     ui->groupSeparatorsCombo->setCurrentIndex(0);
     ui->groupSeparatorsCombo->blockSignals(false);
 
+    ui->manufacturerCombo->blockSignals(true);
+    ui->manufacturerCombo->addItem("Icom",manufIcom);
+    ui->manufacturerCombo->addItem("Kenwood",manufKenwood);
+    ui->manufacturerCombo->addItem("FlexRadio",manufFlexRadio);
+    ui->manufacturerCombo->setCurrentIndex(0);
+    ui->manufacturerCombo->blockSignals(false);
+
 }
 
 // Updating Preferences:
@@ -854,6 +861,9 @@ void settingswidget::updateRaPref(prefRaItem pra)
         ui->audioSystemServerCombo->blockSignals(false);
         ui->audioSystemCombo->blockSignals(false);
         break;
+    case ra_manufacturer:
+        quietlyUpdateCombobox(ui->manufacturerCombo,prefs->manufacturer);
+        break;
     default:
         qWarning(logGui()) << "Cannot update ra pref" << (int)pra;
     }
@@ -1425,7 +1435,7 @@ void settingswidget::quietlyUpdateModCombo(QComboBox *cb, QVariant val)
     cb->blockSignals(true);
     for (int i=0;i<cb->count();i++)
     {
-        if (cb->itemData(i).value<rigInput>().type == val.value<rigInput>().type)
+        if (cb->itemData(i).value<rigInput>().type == val.value<rigInput>().type || cb->itemData(i) == val)
         {
             cb->setCurrentIndex(i);
             break;
@@ -1678,6 +1688,13 @@ void settingswidget::on_audioSystemCombo_currentIndexChanged(int value)
     audioDev->setAudioType(prefs->audioSystem);
     audioDev->enumerate();
     emit changedRaPref(ra_audioSystem);
+}
+
+void settingswidget::on_manufacturerCombo_currentIndexChanged(int value)
+{
+    Q_UNUSED(value)
+    prefs->manufacturer = ui->manufacturerCombo->currentData().value<manufacturersType_t>();
+    emit changedRaPref(ra_manufacturer);
 }
 
 void settingswidget::on_audioSystemServerCombo_currentIndexChanged(int value)

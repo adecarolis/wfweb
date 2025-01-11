@@ -41,7 +41,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>2</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -59,6 +59,9 @@
               <string>Radio Connection</string>
              </property>
              <layout class="QVBoxLayout" name="verticalLayout_5">
+              <item>
+               <widget class="QComboBox" name="manufacturerCombo"/>
+              </item>
               <item>
                <widget class="QRadioButton" name="serialEnableBtn">
                 <property name="text">
@@ -1388,8 +1391,8 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>911</width>
-                 <height>360</height>
+                 <width>573</width>
+                 <height>286</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">

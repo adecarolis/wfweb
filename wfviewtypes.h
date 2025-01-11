@@ -122,6 +122,8 @@ enum pttType_t { pttCIV, pttRTS, pttDTR };
 
 enum vfoModeType_t { vfoModeVfo, vfoModeMem, vfoModeSat };
 
+enum manufacturersType_t {manufIcom=0, manufKenwood, manufFlexRadio};
+
 struct lpfhpf {
     lpfhpf ():lpf(0),hpf(0) {};
     lpfhpf (ushort lpf, ushort hpf):lpf(lpf),hpf(hpf) {};

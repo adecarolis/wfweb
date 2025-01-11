@@ -100,7 +100,8 @@ enum prefRaItem {
     ra_virtualSerialPort = 1 << 7,
     ra_localAFgain = 1 << 8,
     ra_audioSystem = 1 << 9,
-    ra_all = 1 << 10
+    ra_manufacturer = 1 << 10,
+    ra_all = 1 << 11
 };
 
 enum prefCtItem {
@@ -206,6 +207,7 @@ struct preferences {
     bool showBands;
 
     // Radio:
+    manufacturersType_t manufacturer;
     quint8 radioCIVAddr;
     bool CIVisRadioModel;
     pttType_t pttType;

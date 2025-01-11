@@ -138,6 +138,7 @@ private slots:
     void on_serialEnableBtn_clicked(bool checked);
     void on_pttTypeCombo_currentIndexChanged(int index);
 
+    void on_manufacturerCombo_currentIndexChanged(int value);
     void on_rigCIVManualAddrChk_clicked(bool checked);
     void on_rigCIVaddrHexLine_editingFinished();
     void on_useCIVasRigIDChk_clicked(bool checked);

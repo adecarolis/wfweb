@@ -642,6 +642,7 @@ private:
 
     void displayReceiver(uchar rx, bool active, bool swtch);
 
+    void setManufacturer(manufacturersType_t man);
 
     int oldFreqDialVal;
 
