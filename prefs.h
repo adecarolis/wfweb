@@ -79,12 +79,13 @@ enum prefRsItem {
     rs_data3Mod = 1 << 3,
     rs_setClock = 1 << 4,
     rs_clockUseUtc = 1 << 5,
-    rs_pttOn = 1 << 6,
-    rs_pttOff = 1 << 7,
-    rs_satOps = 1 << 8,
-    rs_adjRef = 1 << 9,
-    rs_debug = 1 << 10,
-    rs_all = 1 << 11
+    rs_setRadioTime = 1 << 6,
+    rs_pttOn = 1 << 7,
+    rs_pttOff = 1 << 8,
+    rs_satOps = 1 << 9,
+    rs_adjRef = 1 << 10,
+    rs_debug = 1 << 11,
+    rs_all = 1 << 12
 };
 
 enum prefRaItem {
@@ -251,6 +252,8 @@ struct preferences {
     // Temporary settings
     rigInput inputSource[4];
     bool useUTC = false;
+
+    bool setRadioTime = false;
 
     audioSetup rxSetup;
     audioSetup txSetup;

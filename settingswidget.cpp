@@ -17,9 +17,11 @@ settingswidget::settingswidget(QWidget *parent) :
 #ifdef QT_DEBUG
     ui->debugBtn->setVisible(true);
     ui->satOpsBtn->setVisible(true);
+    ui->adjRefBtn->setVisible(false);
 #else
     ui->debugBtn->setVisible(false);
     ui->satOpsBtn->setVisible(false);
+    ui->adjRefBtn->setVisible(false);
 #endif
 
 }
@@ -880,6 +882,9 @@ void settingswidget::updateRsPref(prefRsItem prs)
         break;
     case rs_clockUseUtc:
         quietlyUpdateCheckbox(ui->useUTCChk,prefs->useUTC);
+        break;
+    case rs_setRadioTime:
+        quietlyUpdateCheckbox(ui->setRadioTimeChk,prefs->setRadioTime);
         break;
         // Not used
     case rs_setClock:
@@ -2893,6 +2898,12 @@ void settingswidget::on_useUTCChk_clicked(bool checked)
 {
     prefs->useUTC=checked;
 }
+
+void settingswidget::on_setRadioTimeChk_clicked(bool checked)
+{
+    prefs->setRadioTime=checked;
+}
+
 
 void settingswidget::on_setClockBtn_clicked()
 {

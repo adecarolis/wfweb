@@ -183,6 +183,7 @@ private slots:
 
     void on_useUTCChk_clicked(bool checked);
     void on_setClockBtn_clicked();
+    void on_setRadioTimeChk_clicked(bool checked);
     void on_pttOnBtn_clicked();
     void on_pttOffBtn_clicked();
     void on_adjRefBtn_clicked();

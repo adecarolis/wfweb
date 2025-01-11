@@ -1707,6 +1707,9 @@ void wfmain::setDefPrefs()
     defPrefs.region = "1";
     defPrefs.showBands = true;
 
+    defPrefs.useUTC = false;
+    defPrefs.setRadioTime = false;
+
     defPrefs.tcpPort = 0;
     defPrefs.tciPort = 50001;
     defPrefs.clusterUdpEnable = false;
@@ -1816,6 +1819,9 @@ void wfmain::loadSettings()
     prefs.meter3Type = static_cast<meter_t>(settings->value("Meter3Type", defPrefs.meter3Type).toInt());
     prefs.compMeterReverse = settings->value("compMeterReverse", defPrefs.compMeterReverse).toBool();
     prefs.clickDragTuningEnable = settings->value("ClickDragTuning", false).toBool();
+
+    prefs.useUTC = settings->value("UseUTC", defPrefs.useUTC).toBool();
+    prefs.setRadioTime = settings->value("SetRadioTime", defPrefs.setRadioTime).toBool();
 
     prefs.rigCreatorEnable = settings->value("RigCreator",false).toBool();
     prefs.region = settings->value("Region",defPrefs.region).toString();
@@ -2754,6 +2760,7 @@ void wfmain::extChangedRsPref(prefRsItem i)
         cal->show();
         break;
     case rs_clockUseUtc:
+    case rs_setRadioTime:
         break;
     default:
         qWarning(logSystem()) << "Cannot update wfmain rs pref" << (int)i;
@@ -3047,6 +3054,10 @@ void wfmain::saveSettings()
     settings->setValue("Meter3Type", (int)prefs.meter3Type);
     settings->setValue("compMeterReverse", prefs.compMeterReverse);
     settings->setValue("ClickDragTuning", prefs.clickDragTuningEnable);
+
+    settings->setValue("UseUTC",prefs.useUTC);
+    settings->setValue("SetRadioTime",prefs.setRadioTime);
+
     settings->setValue("RigCreator",prefs.rigCreatorEnable);
     settings->setValue("FrequencyUnits",prefs.frequencyUnits);
     settings->setValue("Region",prefs.region);
@@ -3546,7 +3557,9 @@ void wfmain:: getInitialRigState()
         receiver->setBandIndicators(prefs.showBands, prefs.region, &rigCaps->bands);
     }
 
-
+    if (prefs.setRadioTime) {
+        setRadioTimeDatePrep();
+    }
 }
 
 void wfmain::showStatusBarText(QString text)
@@ -4294,8 +4307,8 @@ void wfmain::setRadioTimeDateSend()
     showStatusBarText(QString("Setting time, date, and UTC offset for radio now."));
 
     queue->add(priorityImmediate,queueItem(funcUTCOffset,QVariant::fromValue<timekind>(utcsetting)));
-    queue->add(priorityImmediate,queueItem(funcTime,QVariant::fromValue<timekind>(timesetpoint)));
-    queue->add(priorityImmediate,queueItem(funcDate,QVariant::fromValue<datekind>(datesetpoint)));
+    queue->add(priorityHighest,queueItem(funcTime,QVariant::fromValue<timekind>(timesetpoint)));
+    queue->add(priorityHighest,queueItem(funcDate,QVariant::fromValue<datekind>(datesetpoint)));
 
     waitingToSetTimeDate = false;
 }

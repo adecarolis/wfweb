@@ -1139,6 +1139,11 @@ void icomCommander::parseCommand()
     case funcVOXDelay:
         value.setValue(bcdHexToUChar(payloadIn.at(0)));
         break;
+    // Time & date functions
+    case funcUTCOffset:
+    case funcDate:
+    case funcTime:
+        break;
     // Fixed Freq Scope Edges
     case funcScopeEdge1a:
     case funcScopeEdge2a:
@@ -1734,9 +1739,9 @@ void icomCommander::determineRigCaps()
         r.civ = rigCaps.modelID;
         r.baudrate = qToBigEndian(rigCaps.baudRate);
 #ifdef Q_OS_WINDOWS
-        strncpy_s(r.name,rigCaps.modelName.toLocal8Bit(),sizeof(r.name));
+        strncpy_s(r.name,rigCaps.modelName.toLocal8Bit(),sizeof(r.name)-1);
 #else
-        strncpy(r.name,rigCaps.modelName.toLocal8Bit(),sizeof(r.name));
+        strncpy(r.name,rigCaps.modelName.toLocal8Bit(),sizeof(r.name)-1);
 #endif
         radios.append(r);
         emit requestRadioSelection(radios);
