@@ -4270,10 +4270,10 @@ void wfmain::setRadioTimeDatePrep()
         if(prefs.useUTC)
         {
             now = QDateTime::currentDateTimeUtc();
-            now.setTime(QTime::currentTime());
+            //now.setTime(QTime::currentTime());
         } else {
             now = QDateTime::currentDateTime();
-            now.setTime(QTime::currentTime());
+            //now.setTime(QTime::currentTime());
         }
 
         int second = now.time().second();
