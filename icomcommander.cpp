@@ -1745,6 +1745,11 @@ void icomCommander::determineRigCaps()
             foundRig = true;
         }
         emit haveRigID(rigCaps);
+
+        // Also signal that a radio is connected to the radio status window
+        if (!usingNativeLAN) {
+            emit setRadioUsage(rigCaps.model, true, true, QString("<Local>"), QString("127.0.0.1"));
+        }
     }
 }
 

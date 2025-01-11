@@ -114,9 +114,12 @@ void rigCreator::on_defaultRigs_clicked(bool clicked)
 
 
      QString appdata = QCoreApplication::applicationDirPath();
-
+#ifndef Q_OS_WINDOWS
 #ifdef Q_OS_LINUX
      appdata += "/../share/wfview/rigs";
+#else
+     appdata +="/rigs";
+#endif
      QString file = QFileDialog::getOpenFileName(this,tr("Select Rig Filename"),appdata,"Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
 #else
      appdata +="/rigs";
@@ -142,7 +145,7 @@ void rigCreator::on_loadFile_clicked(bool clicked)
         dir.mkdir("rigs");
     }
 
-#ifdef Q_OS_LINUX
+#ifndef O_OS_WINDOWS
     QString file = QFileDialog::getOpenFileName(this,tr("Select Rig Filename"),appdata+"/rigs","Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
 #else
     QString file = QFileDialog::getOpenFileName(this,tr("Select Rig Filename"),appdata+"/rigs","Rig Files (*.rig)");
@@ -576,7 +579,7 @@ void rigCreator::on_saveFile_clicked(bool clicked)
     }
 
     QFileInfo fileInfo(currentFile);
-#ifdef Q_OS_LINUX
+#ifndef O_OS_WINDOWS
     QString file = QFileDialog::getSaveFileName(this,tr("Select Rig Filename"),appdata+"/rigs/"+fileInfo.fileName(),"Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
 #else
     QString file = QFileDialog::getSaveFileName(this,tr("Select Rig Filename"),appdata+"/rigs/"+fileInfo.fileName(),"Rig Files (*.rig)");
