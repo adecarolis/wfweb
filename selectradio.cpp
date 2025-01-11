@@ -89,7 +89,7 @@ void selectRadio::setInUse(quint8 radio, bool admin, quint8 busy, QString user, 
 }
 
 void selectRadio::on_table_cellClicked(int row, int col) {
-    qInfo() << "Clicked on " << row << "," << col;
+    //qInfo() << "Clicked on " << row << "," << col;
 #if (QT_VERSION < QT_VERSION_CHECK(5,11,0))
     if (ui->table->item(row, col)->backgroundColor() != Qt::darkGreen) {
 #else

@@ -39,6 +39,8 @@ icomCommander::~icomCommander()
 {
     qInfo(logRig()) << "closing instance of icomCommander()";
 
+    emit requestRadioSelection(QList<radio_cap_packet>()); // Remove radio list.
+
     queue->setRigCaps(Q_NULLPTR); // Remove access to rigCaps
 
     qDebug(logRig()) << "Closing rig comms";
@@ -1719,11 +1721,27 @@ void icomCommander::determineRigCaps()
 #endif
     }
 
+    // Copy received guid so we can recognise this radio.
+    memcpy(rigCaps.guid, this->guid, GUIDLEN);
+
     haveRigCaps = true;
     queue->setRigCaps(&rigCaps);
 
-    // Copy received guid so we can recognise this radio.
-    memcpy(rigCaps.guid, this->guid, GUIDLEN);
+    // Also signal that a radio is connected to the radio status window
+    if (!usingNativeLAN) {
+        QList<radio_cap_packet>radios;
+        radio_cap_packet r;
+        r.civ = rigCaps.modelID;
+        r.baudrate = qToBigEndian(rigCaps.baudRate);
+#ifdef Q_OS_WINDOWS
+        strncpy_s(r.name,rigCaps.modelName.toLocal8Bit(),sizeof(r.name));
+#else
+        strncpy(r.name,rigCaps.modelName.toLocal8Bit(),sizeof(r.name));
+#endif
+        radios.append(r);
+        emit requestRadioSelection(radios);
+        emit setRadioUsage(0, true, true, QString("<Local>"), QString("127.0.0.1"));
+    }
 
     if(lookingForRig)
     {
@@ -1745,11 +1763,6 @@ void icomCommander::determineRigCaps()
             foundRig = true;
         }
         emit haveRigID(rigCaps);
-
-        // Also signal that a radio is connected to the radio status window
-        if (!usingNativeLAN) {
-            emit setRadioUsage(rigCaps.model, true, true, QString("<Local>"), QString("127.0.0.1"));
-        }
     }
 }
 
