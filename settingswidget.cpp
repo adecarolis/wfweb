@@ -160,7 +160,7 @@ void settingswidget::populateComboBoxes()
     ui->manufacturerCombo->blockSignals(true);
     ui->manufacturerCombo->addItem("Icom",manufIcom);
     ui->manufacturerCombo->addItem("Kenwood",manufKenwood);
-    ui->manufacturerCombo->addItem("FlexRadio",manufFlexRadio);
+    //ui->manufacturerCombo->addItem("FlexRadio",manufFlexRadio);
     ui->manufacturerCombo->setCurrentIndex(0);
     ui->manufacturerCombo->blockSignals(false);
 
@@ -1724,6 +1724,15 @@ void settingswidget::on_manufacturerCombo_currentIndexChanged(int value)
 {
     Q_UNUSED(value)
     prefs->manufacturer = ui->manufacturerCombo->currentData().value<manufacturersType_t>();
+
+    if (prefs->manufacturer == manufKenwood)
+    {
+        ui->lanEnableBtn->setEnabled(false);
+        ui->groupNetwork->setEnabled(false);
+        ui->groupSerial->setEnabled(true);
+        ui->serialEnableBtn->setChecked(true);
+        prefs->enableLAN = false;
+    }
     emit changedRaPref(ra_manufacturer);
 }
 

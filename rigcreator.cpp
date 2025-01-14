@@ -51,7 +51,7 @@ rigCreator::rigCreator(QWidget *parent) :
 
     ui->manufacturer->addItem("Icom",manufIcom);
     ui->manufacturer->addItem("Kenwood",manufKenwood);
-    ui->manufacturer->addItem("FlexRadio",manufFlexRadio);
+    //ui->manufacturer->addItem("FlexRadio",manufFlexRadio);
     ui->manufacturer->setCurrentIndex(0);
 }
 
