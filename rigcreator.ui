@@ -122,7 +122,7 @@
          <number>0</number>
         </property>
         <property name="columnCount">
-         <number>6</number>
+         <number>7</number>
         </property>
         <attribute name="horizontalHeaderCascadingSectionResizes">
          <bool>false</bool>
@@ -173,12 +173,17 @@
         </column>
         <column>
          <property name="text">
+          <string>Bytes</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
           <string>29</string>
          </property>
         </column>
         <column>
          <property name="text">
-          <string>G/S</string>
+          <string>Get/Set</string>
          </property>
         </column>
        </widget>
@@ -698,23 +703,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="manufacturer">
-         <item>
-          <property name="text">
-           <string>Icom</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Yaesu</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Kenwood</string>
-          </property>
-         </item>
-        </widget>
+        <widget class="QComboBox" name="manufacturer"/>
        </item>
        <item>
         <widget class="QLabel" name="label">

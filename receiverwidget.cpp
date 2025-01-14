@@ -16,6 +16,9 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     queue = cachingQueue::getInstance();
     rigCaps = queue->getRigCaps();
 
+    if (!rigCaps->hasSpectrum)
+        hasScope=false;
+
     //spectrum = new QCustomPlot();
     mainLayout = new QHBoxLayout(this);
     layout = new QVBoxLayout();
@@ -266,7 +269,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     redrawSpeed->setFont(QFont(font().family(), 8));
     redrawSpeed->setPositionAlignment(Qt::AlignRight | Qt::AlignTop);
     redrawSpeed->position->setType(QCPItemPosition::ptAxisRectRatio);
-    //redrawSpeed->setText("0ms/0ms");
+    redrawSpeed->setText("");
     redrawSpeed->position->setCoords(1.0f,0.0f);
 
     spectrum->addGraph(); // primary
@@ -495,8 +498,8 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
         spectrumMode_t s = scopeModeCombo->itemData(val).value<spectrumMode_t>();
         vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
         queue->addUnique(priorityImmediate,queueItem(funcScopeMode,QVariant::fromValue(s),false,t.receiver));
-        currentScopeMode = s;
         showHideControls(s);
+        currentScopeMode = s;
     });
 
 
@@ -1110,11 +1113,15 @@ void receiverWidget::computePlasma()
 
 void receiverWidget::showHideControls(spectrumMode_t mode)
 {
-    if (!hasScope && spectrum->isVisible()) {
+    if(currentScopeMode == mode)
+    {
+        return;
+    }
+
+    if (!rigCaps->hasSpectrum) {
         spectrum->hide();
         waterfall->hide();
         splitter->hide();
-        detachButton->hide();
         scopeModeCombo->hide();
         edgeCombo->hide();
         edgeButton->hide();
@@ -1122,32 +1129,38 @@ void receiverWidget::showHideControls(spectrumMode_t mode)
         toFixedButton->hide();
         spanCombo->hide();
         clearPeaksButton->hide();
-        confButton->hide();
-    } else if (hasScope && (mode==spectModeCenter || mode==spectModeScrollC) && !spanCombo->isVisible()) {
-        spectrum->show();
-        waterfall->show();
-        splitter->show();
-        detachButton->show();
-        scopeModeCombo->show();
-        edgeCombo->hide();
-        edgeButton->hide();
-        toFixedButton->show();
-        spanCombo->show();
-        clearPeaksButton->show();
-        confButton->show();
-    } else if (hasScope && (mode==spectModeFixed || mode == spectModeScrollC || mode == spectModeScrollF) && spanCombo->isVisible()) {
-        spectrum->show();
-        waterfall->show();
-        splitter->show();
-        detachButton->show();
-        scopeModeCombo->show();
-        edgeCombo->show();
-        edgeButton->show();
-        toFixedButton->hide();
-        spanCombo->hide();
-        clearPeaksButton->show();
-        confButton->show();
     }
+    else
+    {
+        spectrum->show();
+        waterfall->show();
+        splitter->show();
+        scopeModeCombo->show();
+        clearPeaksButton->show();
+
+        switch (mode)
+        {
+        case spectModeCenter:
+        case spectModeScrollC:
+            edgeCombo->hide();
+            edgeButton->hide();
+            toFixedButton->show();
+            spanCombo->show();
+            break;
+
+        case spectModeFixed:
+        case spectModeScrollF:
+            toFixedButton->hide();
+            spanCombo->hide();
+            edgeCombo->show();
+            edgeButton->show();
+            break;
+        case spectModeUnknown:
+            break;
+        }
+    }
+    confButton->show();
+    detachButton->show();
 }
 
 void receiverWidget::enableScope(bool en)
@@ -1167,11 +1180,11 @@ void receiverWidget::enableScope(bool en)
 void receiverWidget::setScopeMode(spectrumMode_t m)
 {
     if (m != currentScopeMode) {
-        currentScopeMode = m;
         scopeModeCombo->blockSignals(true);
         scopeModeCombo->setCurrentIndex(scopeModeCombo->findData(m));
         scopeModeCombo->blockSignals(false);
         showHideControls(m);
+        currentScopeMode = m;
     }
 }
 
@@ -1653,7 +1666,7 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
         return;
     }
 
-    if (m.filter && this->mode.filter != m.filter)
+    if (m.filter != 0xff && this->mode.filter != m.filter)
     {
         filterCombo->blockSignals(true);
         filterCombo->setCurrentIndex(filterCombo->findData(m.filter));
@@ -1661,7 +1674,7 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
         mode.filter=m.filter;
     }
 
-    if (this->mode.data != m.data && m.data != 0xff)
+    if (m.data != 0xff && this->mode.data != m.data && m.data)
     {
         emit dataChanged(m); // Signal wfmain that the data mode has been changed.
         dataCombo->blockSignals(true);
@@ -1695,34 +1708,60 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
             dataCombo->setEnabled(true);
         }
 
-        if (m.mk != mode.mk || m.filter != mode.filter) {
+        if (m.mk != mode.mk) {
             // We have changed mode so "may" need to change regular commands
 
             passbandCenterFrequency = 0.0;
 
             vfoCommandType t = queue->getVfoCommand(vfoA,receiver,false);
 
-            // If new mode doesn't allow bandwidth control, disable filterwidth and pbt.
-            if (m.bwMin > 0 && m.bwMax > 0) {
-                // Set config specific options)
-                configFilterWidth->blockSignals(true);
-                configFilterWidth->setMinimum(m.bwMin);
-                configFilterWidth->setMaximum(m.bwMax);
-                configFilterWidth->blockSignals(false);
-                configFilterWidth->setEnabled(true);
-                configPbtInner->setEnabled(true);
-                configPbtOuter->setEnabled(true);
-                queue->addUnique(priorityHigh,funcPBTInner,true,t.receiver);
-                queue->addUnique(priorityHigh,funcPBTOuter,true,t.receiver);
-                queue->addUnique(priorityHigh,funcFilterWidth,true,t.receiver);
+            // Make sure the filterWidth range is within limits.
 
+            // If new mode doesn't allow bandwidth control, disable filterwidth and pbt.
+            configFilterWidth->blockSignals(true);
+            configFilterWidth->setRange(m.bwMin,m.bwMax);
+            configFilterWidth->setValue(m.bwMax);
+            configFilterWidth->blockSignals(false);
+
+            if (m.bwMin > 0 || m.bwMax > 0) {
+                // Set config specific options)
+                if (rigCaps->manufacturer == manufKenwood)
+                {
+                    if (m.mk == modeCW || m.mk == modeCW_R || m.mk == modePSK || m.mk == modePSK_R) {
+                        queue->addUnique(priorityHigh,funcFilterWidth,true,t.receiver);
+                        queue->del(funcPBTInner,t.receiver);
+                        queue->del(funcPBTOuter,t.receiver);
+                        configPbtInner->setEnabled(false);
+                        configPbtOuter->setEnabled(false);
+                        configIfShift->setEnabled(false);
+                        configFilterWidth->setEnabled(true);
+                    }
+                    else if (m.mk == modeUSB || m.mk == modeLSB || m.mk == modeAM || m.mk == modeFM) {
+                        queue->addUnique(priorityHigh,funcPBTInner,true,t.receiver);
+                        queue->addUnique(priorityHigh,funcPBTOuter,true,t.receiver);
+                        queue->del(funcFilterWidth,t.receiver);
+                        configPbtInner->setEnabled(true);
+                        configPbtOuter->setEnabled(true);
+                        configIfShift->setEnabled(true);
+                        configFilterWidth->setEnabled(false);
+                    }
+                } else
+                {
+                    queue->addUnique(priorityHigh,funcPBTInner,true,t.receiver);
+                    queue->addUnique(priorityHigh,funcPBTOuter,true,t.receiver);
+                    queue->addUnique(priorityHigh,funcFilterWidth,true,t.receiver);
+                    configPbtInner->setEnabled(true);
+                    configPbtOuter->setEnabled(true);
+                    configFilterWidth->setEnabled(true);
+                }
             } else{
                 queue->del(funcPBTInner,t.receiver);
                 queue->del(funcPBTOuter,t.receiver);
                 queue->del(funcFilterWidth,t.receiver);
-                configFilterWidth->setEnabled(false);
                 configPbtInner->setEnabled(false);
                 configPbtOuter->setEnabled(false);
+                configIfShift->setEnabled(false);
+                configFilterWidth->setEnabled(false);
                 passbandWidth = double(m.pass/1000000.0);
             }
 
@@ -1749,7 +1788,6 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
                 queue->del(funcKeySpeed,t.receiver);
                 queue->del(funcBreakIn,t.receiver);
             }
-
 
 #if defined __GNUC__
 #pragma GCC diagnostic push
@@ -1972,49 +2010,66 @@ void receiverWidget::wfTheme(int num)
 }
 
 void receiverWidget::setPBTInner (uchar val) {
-    qint16 shift = (qint16)(val - 128);
-    double tempVar = ceil((shift / 127.0) * passbandWidth * 20000.0) / 20000.0;
-    // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
-    double pitch = 0.0;
-    if ((this->mode.mk == modeCW || this->mode.mk == modeCW_R) && this->passbandWidth > 0.0006)
+
+    if (rigCaps->manufacturer == manufKenwood)
     {
-        pitch = (600.0 - cwPitch) / 1000000.0;
-    }
+        configPbtInner->blockSignals(true);
+        configPbtInner->setValue(val);
+        configPbtInner->blockSignals(false);
+    } else
+    {
+        qint16 shift = (qint16)(val - 128);
+        double tempVar = ceil((shift / 127.0) * passbandWidth * 20000.0) / 20000.0;
+        // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
+        double pitch = 0.0;
+        if ((this->mode.mk == modeCW || this->mode.mk == modeCW_R) && this->passbandWidth > 0.0006)
+        {
+            pitch = (600.0 - cwPitch) / 1000000.0;
+        }
 
-    double newPBT = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
+        double newPBT = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
 
-    if (newPBT != this->PBTInner) {
-        this->PBTInner = newPBT;
-        double pbFreq = ((double)(this->PBTInner) / this->passbandWidth) * 127.0;
-        qint16 newFreq = pbFreq + 128;
-        if (newFreq >= 0 && newFreq <= 255) {
-            configPbtInner->blockSignals(true);
-            configPbtInner->setValue(newFreq);
-            configPbtInner->blockSignals(false);
+        if (newPBT != this->PBTInner) {
+            this->PBTInner = newPBT;
+            double pbFreq = ((double)(this->PBTInner) / this->passbandWidth) * 127.0;
+            qint16 newFreq = pbFreq + 128;
+            if (newFreq >= 0 && newFreq <= 255) {
+                configPbtInner->blockSignals(true);
+                configPbtInner->setValue(newFreq);
+                configPbtInner->blockSignals(false);
+            }
         }
     }
 }
 
 void receiverWidget::setPBTOuter (uchar val) {
-    qint16 shift = (qint16)(val - 128);
-    double tempVar = ceil((shift / 127.0) * this->passbandWidth * 20000.0) / 20000.0;
-    // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
-    double pitch = 0.0;
-    if ((this->mode.mk == modeCW || this->mode.mk == modeCW_R) && this->passbandWidth > 0.0006)
+    if (rigCaps->manufacturer == manufKenwood)
     {
-        pitch = (600.0 - cwPitch) / 1000000.0;
-    }
+        configPbtOuter->blockSignals(true);
+        configPbtOuter->setValue(val);
+        configPbtOuter->blockSignals(false);
+    } else
+    {
+        qint16 shift = (qint16)(val - 128);
+        double tempVar = ceil((shift / 127.0) * this->passbandWidth * 20000.0) / 20000.0;
+        // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
+        double pitch = 0.0;
+        if ((this->mode.mk == modeCW || this->mode.mk == modeCW_R) && this->passbandWidth > 0.0006)
+        {
+            pitch = (600.0 - cwPitch) / 1000000.0;
+        }
 
-    double newPBT = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
+        double newPBT = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
 
-    if (newPBT != this->PBTOuter) {
-        this->PBTOuter = newPBT;
-        double pbFreq = ((double)(this->PBTOuter) / this->passbandWidth) * 127.0;
-        qint16 newFreq = pbFreq + 128;
-        if (newFreq >= 0 && newFreq <= 255) {
-            configPbtOuter->blockSignals(true);
-            configPbtOuter->setValue(newFreq);
-            configPbtOuter->blockSignals(false);
+        if (newPBT != this->PBTOuter) {
+            this->PBTOuter = newPBT;
+            double pbFreq = ((double)(this->PBTOuter) / this->passbandWidth) * 127.0;
+            qint16 newFreq = pbFreq + 128;
+            if (newFreq >= 0 && newFreq <= 255) {
+                configPbtOuter->blockSignals(true);
+                configPbtOuter->setValue(newFreq);
+                configPbtOuter->blockSignals(false);
+            }
         }
     }
 }

@@ -215,7 +215,7 @@ void icomCommander::commonSetup()
     // Add the below commands so we can get a response until we have received rigCaps
     rigCaps.commands.clear();
     rigCaps.commandsReverse.clear();
-    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),QByteArrayLiteral("\x19\x00"),0,0,false,true,false));
+    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),QByteArrayLiteral("\x19\x00"),0,0,false,true,false,1));
     rigCaps.commandsReverse.insert(QByteArrayLiteral("\x19\x00"),funcTransceiverId);
 
     connect(queue,SIGNAL(haveCommand(funcs,QVariant,uchar)),this,SLOT(receiveCommand(funcs,QVariant,uchar)));
@@ -253,28 +253,6 @@ void icomCommander::setPTTType(pttType_t ptt)
             comm->setPTTType(ptt);
         }
     }
-}
-
-void icomCommander::findRigs()
-{
-    // This function sends data to 0x00 ("broadcast") to look for any connected rig.
-    lookingForRig = true;
-    foundRig = false;
-
-    QByteArray data;
-    QByteArray data2;
-    //data.setRawData("\xFE\xFE\xa2", 3);
-    data.setRawData("\xFE\xFE\x00", 3);
-    data.append((char)compCivAddr); // wfview's address, 0xE1
-    data2.setRawData("\x19\x00", 2); // get rig ID
-    data.append(data2);
-    data.append(payloadSuffix);
-
-    emit dataForComm(data);
-    // HACK for testing radios that do not respond to rig ID queries:
-    //this->model = model736;
-    //this->determineRigCaps();
-    return;
 }
 
 void icomCommander::prepDataAndSend(QByteArray data)
@@ -1470,6 +1448,8 @@ void icomCommander::determineRigCaps()
 
     rigCaps.modelName = settings->value("Model", "").toString();
     rigCaps.rigctlModel = settings->value("RigCtlDModel", 0).toInt();
+    rigCaps.manufacturer = manufIcom;
+
     qInfo(logRig()) << QString("Loading Rig: %0 from %1").arg(rigCaps.modelName,rigCaps.filename);
 
     rigCaps.numReceiver = settings->value("NumberOfReceivers",1).toUInt();
@@ -1525,7 +1505,9 @@ void icomCommander::determineRigCaps()
                                                        settings->value("Min", 0).toInt(NULL), settings->value("Max", 0).toInt(NULL),
                                                        settings->value("Command29",false).toBool(),
                                                        settings->value("GetCommand",true).toBool(),
-                                                       settings->value("SetCommand",true).toBool()));
+                                                       settings->value("SetCommand",true).toBool(),
+                                                       settings->value("Bytes",true).toInt())
+                                        );
 
                             rigCaps.commandsReverse.insert(QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),func);
             } else {
@@ -2623,19 +2605,6 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
     return true;
 }
 
-void icomCommander::getRigID()
-{
-    QByteArray payload;
-    if (getCommand(funcTransceiverId,payload).cmd != funcNone)
-    {
-        prepDataAndSend(payload);
-    } else {
-        // If we haven't got this command yet, need to use the default one!
-        QByteArray payload = "\x19\x00";
-        prepDataAndSend(payload);
-    }
-}
-
 void icomCommander::setRigID(quint8 rigID)
 {
     // This function overrides radio model detection.
@@ -2817,9 +2786,9 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             }
             else if (!strcmp(value.typeName(),"QString"))
             {
-                 QString text = value.value<QString>();
-                 if (func == funcSendCW)
-                 {
+                QString text = value.value<QString>();
+                if (func == funcSendCW)
+                {
                     QByteArray textData = text.toLocal8Bit();
                     quint8 p=0;
                     for(int c=0; c < textData.length(); c++)
@@ -2847,7 +2816,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         payload.append(textData);
                     }
                     qDebug(logRig()) << "Sending CW: payload:" << payload.toHex(' ');
-                 }
+                }
             }
             else if (!strcmp(value.typeName(),"uchar"))
             {

@@ -26,100 +26,11 @@ servermain::servermain(const QString settingsFile)
     qRegisterMetaType<codecType>();
     qRegisterMetaType<errorType>();
 
+    this->setObjectName("wfserver");
     queue = cachingQueue::getInstance(this);
+    // wfserver doesn't use the queue, it will send commands direct to the rig interface
+    queue->interval(-1);
     // We need to open rig files
-
-
-#ifndef Q_OS_LINUX
-    QString systemRigLocation = QCoreApplication::applicationDirPath();
-#else
-    QString systemRigLocation = PREFIX;
-#endif
-
-#ifdef Q_OS_LINUX
-    systemRigLocation += "/share/wfview/rigs";
-#else
-    systemRigLocation +="/rigs";
-#endif
-
-    QDir systemRigDir(systemRigLocation);
-
-    if (!systemRigDir.exists()) {
-        qWarning() << "********* Rig directory does not exist ********";
-    } else {
-        QStringList rigs = systemRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
-        for (QString &rig: rigs) {
-            QSettings* rigSettings = new QSettings(systemRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
-
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-            rigSettings->setIniCodec("UTF-8");
-#endif
-
-            if (!rigSettings->childGroups().contains("Rig"))
-            {
-                qWarning() << rig << "Does not seem to be a rig description file";
-                delete rigSettings;
-                continue;
-            }
-
-            float ver = rigSettings->value("Version","0.0").toString().toFloat();
-
-            rigSettings->beginGroup("Rig");
-            uchar civ = rigSettings->value("CIVAddress",0).toInt();
-            QString model = rigSettings->value("Model","").toString();
-            QString path = systemRigDir.absoluteFilePath(rig);
-
-            qDebug() << QString("Found Rig %0 with CI-V address of 0x%1 and version %2").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2);
-            // Any user modified rig files will override system provided ones.
-            this->rigList.insert(civ,rigInfo(civ,model,path,ver));
-            rigSettings->endGroup();
-            delete rigSettings;
-        }
-    }
-
-    QString userRigLocation = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)+"/rigs";
-    QDir userRigDir(userRigLocation);
-    if (userRigDir.exists()){
-        QStringList rigs = userRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
-        for (QString& rig: rigs) {
-            QSettings* rigSettings = new QSettings(userRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
-
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-            rigSettings->setIniCodec("UTF-8");
-#endif
-
-            if (!rigSettings->childGroups().contains("Rig"))
-            {
-                qWarning() << rig << "Does not seem to be a rig description file";
-                delete rigSettings;
-                continue;
-            }
-
-            float ver = rigSettings->value("Version","0.0").toString().toFloat();
-
-            rigSettings->beginGroup("Rig");
-
-            uchar civ = rigSettings->value("CIVAddress",0).toInt();
-            QString model = rigSettings->value("Model","").toString();
-            QString path = userRigDir.absoluteFilePath(rig);
-
-            auto it = this->rigList.find(civ);
-
-            if (it != this->rigList.end())
-            {
-                if (ver >= it.value().version) {
-                    qInfo() << QString("Found User Rig %0 with CI-V address of 0x%1 and newer or same version than system one (%2>=%3)").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2).arg(it.value().version,0,'f',2);
-                    this->rigList.insert(civ,rigInfo(civ,model,path,ver));
-                }
-            } else {
-                qInfo() << QString("Found New User Rig %0 with CI-V address of 0x%1 and version %2").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2);
-                this->rigList.insert(civ,rigInfo(civ,model,path,ver));
-            }
-            // Any user modified rig files will override system provided ones.
-            rigSettings->endGroup();
-            delete rigSettings;
-        }
-    }
 
     // Make sure we know about any changes to rigCaps
     connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
@@ -129,6 +40,8 @@ servermain::servermain(const QString settingsFile)
     getSettingsFilePath(settingsFile);
 
     loadSettings(); // Look for saved preferences
+
+    setManufacturer(prefs.manufacturer);
 
     audioDev = new audioDevices(prefs.audioSystem, QFontMetrics(QFont()));
     connect(audioDev, SIGNAL(updated()), this, SLOT(updateAudioDevices()));
@@ -203,7 +116,19 @@ void servermain::makeRig()
         if (radio->rigThread == Q_NULLPTR)
         {
             qInfo(logSystem()) << "Creating new rigThread()";
-            radio->rig = new icomCommander(radio->guid);
+            // We can't currently mix different manufacturers
+            switch (prefs.manufacturer){
+            case manufIcom:
+                radio->rig = new icomCommander(radio->guid);
+                break;
+            case manufKenwood:
+                radio->rig = new kenwoodCommander(radio->guid);
+                break;
+            default:
+                qCritical() << "Unknown Manufacturer, aborting...";
+                break;
+            }
+
             radio->rigThread = new QThread(this);
             radio->rigThread->setObjectName("rigCommander()");
 
@@ -315,8 +240,9 @@ void servermain::connectToRig(RIGCONFIG* rig)
     if (!rig->rigAvailable) {
         qDebug(logSystem()) << "Searching for rig on" << rig->serialPort;
         QMetaObject::invokeMethod(rig->rig, [=]() {
-            rig->rig->findRigs();
+            rig->rig->receiveCommand(funcTransceiverId,QVariant(),0);
         }, Qt::QueuedConnection);
+
     }
     else {
         rig->connectTimer->stop();
@@ -461,6 +387,7 @@ void servermain::setServerToPrefs()
 
 void servermain::setDefPrefs()
 {
+    defPrefs.manufacturer = manufIcom;
     defPrefs.radioCIVAddr = 0x00; // previously was 0x94 for 7300.
     defPrefs.CIVisRadioModel = false;
     defPrefs.pttType = pttCIV;
@@ -486,6 +413,7 @@ void servermain::loadSettings()
 {
     qInfo(logSystem()) << "Loading settings from " << settings->fileName();
     prefs.audioSystem = static_cast<audioType>(settings->value("AudioSystem", defPrefs.audioSystem).toInt());
+    prefs.manufacturer = static_cast<manufacturersType_t>(settings->value("Manufacturer",defPrefs.manufacturer).toInt());
 
     int numRadios = settings->beginReadArray("Radios");
     if (numRadios == 0) {
@@ -494,6 +422,8 @@ void servermain::loadSettings()
         // We assume that QSettings is empty as there are no radios configured, create new:
         qInfo(logSystem()) << "Creating new settings file " << settings->fileName();
         settings->setValue("AudioSystem", defPrefs.audioSystem);
+        settings->setValue("Manufacturer", defPrefs.manufacturer);
+
         numRadios = 1;
         settings->beginWriteArray("Radios");
         for (int i = 0; i < numRadios; i++)
@@ -752,4 +682,109 @@ void servermain::receiveStateInfo(rigstate* state)
     qInfo("Received rig state for wfmain");
     Q_UNUSED(state);
     //rigState = state;
+}
+
+void servermain::setManufacturer(manufacturersType_t man)
+{
+
+    this->rigList.clear();
+    qInfo() << "Searching for radios with Manufacturer =" << man;
+
+#ifndef Q_OS_LINUX
+    QString systemRigLocation = QCoreApplication::applicationDirPath();
+#else
+    QString systemRigLocation = PREFIX;
+#endif
+
+#ifdef Q_OS_LINUX
+    systemRigLocation += "/share/wfview/rigs";
+#else
+    systemRigLocation +="/rigs";
+#endif
+
+    QDir systemRigDir(systemRigLocation);
+
+    if (!systemRigDir.exists()) {
+        qWarning() << "********* Rig directory does not exist ********";
+    } else {
+        QStringList rigs = systemRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
+        for (QString &rig: rigs) {
+            QSettings* rigSettings = new QSettings(systemRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+            rigSettings->setIniCodec("UTF-8");
+#endif
+
+            if (!rigSettings->childGroups().contains("Rig"))
+            {
+                qWarning() << rig << "Does not seem to be a rig description file";
+                delete rigSettings;
+                continue;
+            }
+
+            float ver = rigSettings->value("Version","0.0").toString().toFloat();
+
+            rigSettings->beginGroup("Rig");
+            manufacturersType_t manuf = rigSettings->value("Manufacturer",manufIcom).value<manufacturersType_t>();
+            if (manuf == man) {
+                uchar civ = rigSettings->value("CIVAddress",0).toInt();
+                QString model = rigSettings->value("Model","").toString();
+                QString path = systemRigDir.absoluteFilePath(rig);
+
+                qDebug() << QString("Found Rig %0 with CI-V address of 0x%1 and version %2").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2);
+                // Any user modified rig files will override system provided ones.
+                this->rigList.insert(civ,rigInfo(civ,model,path,ver));
+            }
+            rigSettings->endGroup();
+            delete rigSettings;
+        }
+    }
+
+    QString userRigLocation = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)+"/rigs";
+    QDir userRigDir(userRigLocation);
+    if (userRigDir.exists()){
+        QStringList rigs = userRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
+        for (QString& rig: rigs) {
+            QSettings* rigSettings = new QSettings(userRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+            rigSettings->setIniCodec("UTF-8");
+#endif
+
+            if (!rigSettings->childGroups().contains("Rig"))
+            {
+                qWarning() << rig << "Does not seem to be a rig description file";
+                delete rigSettings;
+                continue;
+            }
+
+            float ver = rigSettings->value("Version","0.0").toString().toFloat();
+
+            rigSettings->beginGroup("Rig");
+
+            manufacturersType_t manuf = rigSettings->value("Manufacturer",manufIcom).value<manufacturersType_t>();
+            if (manuf == man) {
+                uchar civ = rigSettings->value("CIVAddress",0).toInt();
+                QString model = rigSettings->value("Model","").toString();
+                QString path = userRigDir.absoluteFilePath(rig);
+
+                auto it = this->rigList.find(civ);
+
+                if (it != this->rigList.end())
+                {
+                    if (ver >= it.value().version) {
+                        qInfo() << QString("Found User Rig %0 with CI-V address of 0x%1 and newer or same version than system one (%2>=%3)").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2).arg(it.value().version,0,'f',2);
+                        this->rigList.insert(civ,rigInfo(civ,model,path,ver));
+                    }
+                } else {
+                    qInfo() << QString("Found New User Rig %0 with CI-V address of 0x%1 version %2").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2);
+                    this->rigList.insert(civ,rigInfo(civ,model,path,ver));
+                }
+                // Any user modified rig files will override system provided ones.
+            }
+            rigSettings->endGroup();
+            delete rigSettings;
+        }
+    }
+
 }

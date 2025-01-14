@@ -143,10 +143,13 @@ void cwSender::handleBreakInMode(quint8 b)
 
 void cwSender::handleCurrentModeUpdate(rigMode_t mode)
 {
-    this->currentMode = mode;
-    if( this->currentMode!=modeCW && this->currentMode!=modeCW_R )
+    if (mode != modeUnknown)
     {
-        ui->statusbar->showMessage("Note: Mode needs to be set to CW or CW-R to send CW.", 3000);
+        this->currentMode = mode;
+        if( this->currentMode!=modeCW && this->currentMode!=modeCW_R )
+        {
+            ui->statusbar->showMessage("Note: Mode needs to be set to CW or CW-R to send CW.", 3000);
+        }
     }
 }
 

@@ -157,6 +157,7 @@ INCLUDEPATH += resampler
 
 SOURCES += main.cpp\
     cachingqueue.cpp \
+    kenwoodcommander.cpp \
     servermain.cpp \
     commhandler.cpp \
     rigcommander.cpp \
@@ -182,6 +183,7 @@ SOURCES += main.cpp\
 HEADERS  += servermain.h \
     cachingqueue.h \
     commhandler.h \
+    kenwoodcommander.h \
     rigcommander.h \
     icomcommander.h \
     freqmemory.h \

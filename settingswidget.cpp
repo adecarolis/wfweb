@@ -780,14 +780,13 @@ void settingswidget::updateRaPref(prefRaItem pra)
     {
         ui->serialDeviceListCombo->blockSignals(true);
         ui->serialDeviceListCombo->clear();
-        ui->serialDeviceListCombo->addItem("Auto", 0);
-        int i = 0;
+        ui->serialDeviceListCombo->addItem("Auto", "");
         for(const auto &serialPortInfo: QSerialPortInfo::availablePorts())
         {
 #if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
-            ui->serialDeviceListCombo->addItem(QString("/dev/") + serialPortInfo.portName(), i++);
+            ui->serialDeviceListCombo->addItem(QString("%0 (%1)").arg(serialPortInfo.portName(),serialPortInfo.serialNumber()), QString("/dev/%0").arg(serialPortInfo.portName());
 #else
-            ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
+            ui->serialDeviceListCombo->addItem(QString("%0 (%1)").arg(serialPortInfo.portName(),serialPortInfo.serialNumber()),serialPortInfo.portName());
 #endif
         }
 
@@ -795,12 +794,7 @@ void settingswidget::updateRaPref(prefRaItem pra)
         ui->serialDeviceListCombo->addItem("Manual...", 256);
 #endif
 
-        ui->serialDeviceListCombo->setCurrentIndex(ui->serialDeviceListCombo->findText(prefs->serialPortRadio));
-        // If the serial port doesn't exist, leave the combo blank.
-        //if (ui->serialDeviceListCombo->currentIndex() == -1)
-        //{
-        //    ui->serialDeviceListCombo->setCurrentIndex(0);
-        //}
+        ui->serialDeviceListCombo->setCurrentIndex(ui->serialDeviceListCombo->findData(prefs->serialPortRadio));
         ui->serialDeviceListCombo->blockSignals(false);
         break;
     }
@@ -816,21 +810,24 @@ void settingswidget::updateRaPref(prefRaItem pra)
         int i = 0;
 
 #ifdef Q_OS_WIN
+        ui->ptyDeviceLabel->setText("Select one of a virtual serial port pair");
         ui->vspCombo->addItem(QString("None"), i++);
 
         foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
         {
-            ui->vspCombo->addItem(serialPortInfo.portName());
+            ui->vspCombo->addItem(serialPortInfo.portName(),serialPortInfo.portName());
         }
 #else
         // Provide reasonable names for the symbolic link to the pty device
 #ifdef Q_OS_MAC
+        ui->ptyDeviceLabel->setText("pty devices located in:" + QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0]);
         QString vspName = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/rig-pty";
 #else
+        ui->ptyDeviceLabel->setText("pty devices located in:" + QDir::homePath());
         QString vspName = QDir::homePath() + "/rig-pty";
 #endif
         for (i = 1; i < 8; i++) {
-            ui->vspCombo->addItem(vspName + QString::number(i));
+            ui->vspCombo->addItem("rig-pty" + QString::number(i),vspName + QString::number(i));
 
             if (QFile::exists(vspName + QString::number(i))) {
                 auto* model = qobject_cast<QStandardItemModel*>(ui->vspCombo->model());
@@ -838,11 +835,10 @@ void settingswidget::updateRaPref(prefRaItem pra)
                 item->setEnabled(false);
             }
         }
-        ui->vspCombo->addItem(vspName + QString::number(i));
-        ui->vspCombo->addItem(QString("None"), i++);
+        ui->vspCombo->addItem(QString("None"), "None");
         ui->vspCombo->setEditable(true);
 #endif
-        ui->vspCombo->setCurrentIndex(ui->vspCombo->findText(prefs->virtualSerialPort));
+        ui->vspCombo->setCurrentIndex(ui->vspCombo->findData(prefs->virtualSerialPort));
         if (ui->vspCombo->currentIndex() == -1)
         {
             ui->vspCombo->setCurrentIndex(0);
@@ -1250,29 +1246,33 @@ void settingswidget::updateAllPrefs()
     updatingUIFromPrefs = false;
 }
 
-void settingswidget::hideModSource(uchar num)
+void settingswidget::enableModSource(uchar num, bool en)
 {
     QComboBox* combo;
+    QLabel* text;
     switch (num)
     {
     case 0:
         combo = ui->modInputCombo;
+        text = ui->modInputDataOffComboText;
         break;
     case 1:
         combo = ui->modInputData1Combo;
+        text = ui->modInputData1ComboText;
         break;
     case 2:
         combo = ui->modInputData2Combo;
-        ui->modInputData2ComboText->setVisible(false);
+        text = ui->modInputData2ComboText;
         break;
     case 3:
         combo = ui->modInputData3Combo;
-        ui->modInputData3ComboText->setVisible(false);
+        text = ui->modInputData3ComboText;
         break;
     default:
         return;
     }
-    combo->setVisible(false);
+    combo->setVisible(en);
+    text->setVisible(en);
 }
 
 void settingswidget::updateModSourceList(uchar num, QVector<rigInput> data)
@@ -1289,11 +1289,9 @@ void settingswidget::updateModSourceList(uchar num, QVector<rigInput> data)
         break;
     case 2:
         combo = ui->modInputData2Combo;
-        ui->modInputData2ComboText->setVisible(true);
         break;
     case 3:
         combo = ui->modInputData3Combo;
-        ui->modInputData3ComboText->setVisible(true);
         break;
     default:
         return;
@@ -1311,8 +1309,40 @@ void settingswidget::updateModSourceList(uchar num, QVector<rigInput> data)
         combo->addItem("None", QVariant::fromValue(rigInput()));
     }
 
-    combo->setVisible(true);
     combo->blockSignals(false);
+}
+
+void settingswidget::enableModSourceItem(uchar num, rigInput ip, bool en)
+{
+    QComboBox* combo;
+    switch (num)
+    {
+    case 0:
+        combo = ui->modInputCombo;
+        break;
+    case 1:
+        combo = ui->modInputData1Combo;
+        break;
+    case 2:
+        combo = ui->modInputData2Combo;
+        break;
+    case 3:
+        combo = ui->modInputData3Combo;
+        break;
+    default:
+        return;
+    }
+
+    for (int i=0;i<combo->count();i++)
+    {
+        if (combo->itemData(i).value<rigInput>().reg == ip.reg)
+        {
+            QStandardItemModel *model = qobject_cast<QStandardItemModel *>(combo->model());
+            QStandardItem *item = model->item(i);
+            item->setFlags(en ? item->flags() | Qt::ItemIsEnabled : item->flags() & ~ Qt::ItemIsEnabled);
+            break;
+        }
+    }
 }
 
 void settingswidget::populateServerUsers()
@@ -1655,7 +1685,7 @@ void settingswidget::on_serialDeviceListCombo_textActivated(const QString &arg1)
         return;
     }
 
-    prefs->serialPortRadio = arg1;
+    prefs->serialPortRadio = ui->serialDeviceListCombo->currentData().toString();
     qInfo(logGui()) << "Setting preferences to use manually-assigned serial port: " << arg1;
     ui->serialEnableBtn->setChecked(true);
     emit changedRaPref(ra_serialPortRadio);
@@ -1677,7 +1707,7 @@ void settingswidget::on_baudRateCombo_activated(int index)
 void settingswidget::on_vspCombo_activated(int index)
 {
     Q_UNUSED(index);
-    prefs->virtualSerialPort = ui->vspCombo->currentText();
+    prefs->virtualSerialPort = ui->vspCombo->currentData().toString();
     emit changedRaPref(ra_virtualSerialPort);
 }
 

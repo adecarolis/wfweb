@@ -72,9 +72,9 @@ struct rigInput {
     rigInput() : type(inputUnknown),reg(0), name(""), level(0) {}
     //rigInput(rigInput const &r): type(r.type), reg(r.reg), name(r.name), level(r.level) {};
     rigInput(inputTypes type) : type(type),reg(0) ,name(""),level(0) {}
-    rigInput(inputTypes type, uchar reg, QString name) : type(type), reg(reg), name(name), level(0){}
+    rigInput(inputTypes type, char reg, QString name) : type(type), reg(reg), name(name), level(0){}
     inputTypes type;
-    uchar reg;
+    char reg;
     QString name;
     uchar level;
 };
@@ -245,6 +245,7 @@ struct bsrRequest {
 struct rigCapabilities {
     quint8 model;
     quint8 modelID = 0; //CIV address
+    manufacturersType_t manufacturer=manufIcom;
     QString filename;
     int rigctlModel;
     QString modelName;

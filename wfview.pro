@@ -280,6 +280,7 @@ SOURCES += main.cpp\
     cwsidetone.cpp \
     debugwindow.cpp \
     icomcommander.cpp \
+    kenwoodcommander.cpp \
     loggingwindow.cpp \
     receiverwidget.cpp \
     scrolltest.cpp \
@@ -334,6 +335,7 @@ HEADERS  += wfmain.h \
     cwsidetone.h \
     debugwindow.h \
     icomcommander.h \
+    kenwoodcommander.h \
     loggingwindow.h \
     memories.h \
     prefs.h \

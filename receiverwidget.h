@@ -327,7 +327,7 @@ private:
     uchar selectedVFO=0;
     bool hasScope=true;
     QString currentRegion="1";
-    spectrumMode_t currentScopeMode=spectrumMode_t::spectModeCenter;
+    spectrumMode_t currentScopeMode=spectrumMode_t::spectModeUnknown;
     bool bandIndicatorsVisible=false;
     rigCapabilities* rigCaps=Q_NULLPTR;
     bandType currentBand;

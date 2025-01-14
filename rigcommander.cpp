@@ -65,11 +65,6 @@ void rigCommander::process()
     qWarning(logRig()) << "process() not implemented by rig type";
 }
 
-void rigCommander::getRigID()
-{
-    qWarning(logRig()) << "getRigID() not implemented by rig type";
-}
-
 void rigCommander::setRigID(quint8 rigID)
 {
     Q_UNUSED(rigID)
@@ -90,12 +85,6 @@ void rigCommander::setPTTType(pttType_t ptt)
 
     qWarning(logRig()) << "setPTTType() not implemented by rig type";
 }
-
-void rigCommander::findRigs()
-{
-    qWarning(logRig()) << "findRigs() not implemented by rig type";
-}
-
 
 void rigCommander::powerOn()
 {

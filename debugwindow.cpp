@@ -157,7 +157,7 @@ QString debugWindow::getValue(QVariant val)
         else if (!strcmp(val.typeName(),"rigInput"))
         {
             rigInput i = val.value<rigInput>();
-            value = QString("Input:%0 R:%1 (%2)").arg(i.name).arg(i.reg).arg(i.type);
+            value = QString("Input:%0 reg:%1 num:%2").arg(i.name).arg(uchar(i.reg)).arg(i.type);
         }
         else if (!strcmp(val.typeName(),"duplexMode_t"))
         {

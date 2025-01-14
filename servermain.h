@@ -17,6 +17,7 @@
 #include "commhandler.h"
 #include "rigcommander.h"
 #include "icomcommander.h"
+#include "kenwoodcommander.h"
 #include "rigstate.h"
 #include "freqmemory.h"
 #include "rigidentities.h"
@@ -200,6 +201,7 @@ private:
     void setServerToPrefs();
     void setInitialTiming();
     void getSettingsFilePath(QString settingsFile);
+    void setManufacturer(manufacturersType_t man);
 
     QStringList modes;
     int currentModeIndex;
@@ -232,6 +234,7 @@ private:
     bool usingLAN = false;
 
     struct preferences {
+        manufacturersType_t manufacturer;
         unsigned char radioCIVAddr;
         bool CIVisRadioModel;
         bool pttType;

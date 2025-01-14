@@ -7,6 +7,9 @@
 #include <QMouseEvent>
 #include <QItemDelegate>
 #include <QComboBox>
+#include <QSortFilterProxyModel>
+#include <QCompleter>
+#include <QValidator>
 #include <QCheckBox>
 #include <QRegularExpression>
 #include <QLineEdit>
@@ -55,13 +58,34 @@ public:
     void updateEditorGeometry(QWidget *combo, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
 
     mutable QComboBox *combo;
-    mutable QComboBox *modelCombo = Q_NULLPTR;
 
 private slots:
     void setData(int val);
 
 private:
     QAbstractItemModel* modelData;
+};
+
+
+class comboValidator : public QValidator
+{
+    Q_OBJECT
+public:
+    explicit comboValidator(QComboBox* combo, QObject *parent = nullptr)
+        : QValidator(parent), combo(combo){};
+
+    virtual QValidator::State validate ( QString & input, int & pos ) const override
+    {
+        Q_UNUSED(pos)
+
+        if (combo->findText(input, Qt::MatchContains) > -1)
+            return Acceptable;
+
+        //input=combo->currentText();
+        return Invalid;
+    }
+private:
+    QComboBox* combo;
 };
 
 

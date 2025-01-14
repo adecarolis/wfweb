@@ -27,6 +27,7 @@
 #include "commhandler.h"
 #include "rigcommander.h"
 #include "icomcommander.h"
+#include "kenwoodcommander.h"
 #include "freqmemory.h"
 #include "rigidentities.h"
 #include "repeaterattributes.h"
@@ -265,8 +266,6 @@ signals:
     void setDate(datekind d);
     void setUTCOffset(timekind t);
 
-    void getRigID(); // this is the model of the rig
-    void getRigCIV(); // get the rig's CIV addr
     void spectOutputEnable();
     void spectOutputDisable();
     void scopeDisplayEnable();
@@ -467,14 +466,7 @@ private slots:
     void getInitialRigState();
     void initPeriodicCommands();
 
-    // Assorted checkboxes
-    void on_nbEnableChk_clicked(bool checked);
-    void on_nrEnableChk_clicked(bool checked);
-    void on_ipPlusEnableChk_clicked(bool checked);
-    void on_compEnableChk_clicked(bool checked);
-    void on_voxEnableChk_clicked(bool checked);
-    void on_digiselEnableChk_clicked(bool checked);
-
+    void setupLambdaSlots();
 
 private:
     Ui::wfmain *ui; // Main UI

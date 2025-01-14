@@ -141,8 +141,8 @@ struct rptrAccessData {
 };
 
 struct modeInfo {
-    modeInfo ():mk(modeUnknown), reg(0xff), filter(1),VFO(activeVFO), data(0xff), name(""), bwMin(0), bwMax(0), pass(0) {};
-    modeInfo(rigMode_t mk, quint8 reg, QString name, int bwMin, int bwMax): mk(mk), reg(reg), filter(1), VFO(activeVFO), data(false), name(name),bwMin(bwMin), bwMax(bwMax), pass(0) {};
+    modeInfo ():mk(modeUnknown), reg(0xff), filter(0xff),VFO(activeVFO), data(0xff), name(""), bwMin(0), bwMax(0), pass(0) {};
+    modeInfo(rigMode_t mk, quint8 reg, QString name, int bwMin, int bwMax): mk(mk), reg(reg), filter(0xff), VFO(activeVFO), data(0xff), name(name),bwMin(bwMin), bwMax(bwMax), pass(0) {};
     rigMode_t mk;
     quint8 reg;
     quint8 filter; // Default filter is always 1
@@ -228,7 +228,7 @@ struct meterkind {
 };
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 346
+#define NUMFUNCS 356
 
 enum funcs { funcNone,
 /* Commands 00-0f VFO Information*/
@@ -345,6 +345,11 @@ funcVoiceTX,
 /* OK/Error */
 funcSepO,
 funcFA,                 funcFB,
+
+/* Some Kenwood Specific Commands */
+funcSepP,
+funcAutoInformation,    funcIFFilter,           funcDataMode,               funcRXFreqAndMode,      funcTXFreqAndMode,      funcTFSetStatus,
+funcMemorySelect,       funcSetTransmit,        funcSetReceive,
 
 /* Special Commands (internal use only) */
 funcSelectVFO,          funcSeparator,          funcLCDWaterfall,           funcLCDSpectrum,        funcLCDNothing,         funcPageUp,
@@ -470,6 +475,10 @@ static QString funcString[] { "None",
 "+<Response Codes>",
 "Command Error FA",     "Command OK FB",
 
+"+<Kenwood Only>",
+"Auto Information",     "IF Filter Only",       "Data Mode Only",           "RX Freq And Mode",     "TX Freq And Mode",      "TF-Set Status",
+"Memory Num Select",    "Set Transmit Mode",    "Set Receive Mode",
+
 /* Special Commands */
 "-Select VFO",          "-Seperator",
 "-LCD Waterfall",       "-LCD Spectrum",        "-LCD Nothing",             "-Page Up",             "-Page Down",           "-VFO Frequency",
@@ -486,7 +495,7 @@ struct spanType {
 
 struct funcType {
     funcType() {cmd=funcNone;}
-    funcType(funcs cmd, QString name, QByteArray data, int minVal, int maxVal, bool cmd29, bool getCmd, bool setCmd) : cmd(cmd), name(name), data(data), minVal(minVal), maxVal(maxVal), cmd29(cmd29), getCmd(getCmd), setCmd(setCmd) {}
+    funcType(funcs cmd, QString name, QByteArray data, int minVal, int maxVal, bool cmd29, bool getCmd, bool setCmd, uchar bytes) : cmd(cmd), name(name), data(data), minVal(minVal), maxVal(maxVal), cmd29(cmd29), getCmd(getCmd), setCmd(setCmd), bytes(bytes) {}
     funcs cmd;
     QString name;
     QByteArray data;
@@ -495,6 +504,7 @@ struct funcType {
     bool cmd29;
     bool getCmd;
     bool setCmd;
+    uchar bytes;
 };
 
 //struct commandtype {

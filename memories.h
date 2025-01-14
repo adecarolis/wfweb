@@ -65,6 +65,9 @@ private:
     int visibleColumns=1;
     bool slowLoad=false;
     bool extendedView = false;
+    funcs writeCommand = funcMemoryContents;
+    funcs selectCommand = funcMemoryMode;
+
 
     bool checkASCII(QString str);
 

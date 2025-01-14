@@ -340,7 +340,7 @@ void repeaterSetup::handleUpdateCurrentMainMode(modeInfo m)
     // (generally FM)
     // NB: We don't accept values during transmit as they
     // may represent the inactive VFO
-    if(!amTransmitting)
+    if(!amTransmitting && m.mk != modeUnknown)
     {
         this->currentModeMain = m;
         this->modeTransmitVFO = m;

@@ -34,8 +34,6 @@ public slots:
 
 
     // Rig ID and CIV:
-    void getRigID() override;
-    void findRigs() override;
     void setRigID(quint8 rigID) override;
     void setCIVAddr(quint8 civAddr) override;
 
@@ -122,9 +120,6 @@ private:
     //double spectrumStartFreq;
     //double spectrumEndFreq;
 
-    struct rigCapabilities rigCaps;
-
-    bool haveRigCaps=false;
     quint8 model = 0; // Was model_kind but that makes no sense when users can create their own rigs!
     quint8 spectSeqMax;
     quint16 spectAmpMax;
@@ -158,8 +153,6 @@ private:
 
     QString serialPortError;
     quint8 localVolume=0;
-
-    QHash<quint8,rigInfo> rigList;
 
     quint64 pow10[12] = {
         1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000, 100000000000
