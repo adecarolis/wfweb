@@ -859,6 +859,14 @@ void settingswidget::updateRaPref(prefRaItem pra)
         break;
     case ra_manufacturer:
         quietlyUpdateCombobox(ui->manufacturerCombo,prefs->manufacturer);
+        if (prefs->manufacturer == manufKenwood)
+        {
+            ui->lanEnableBtn->setEnabled(false);
+            ui->groupNetwork->setEnabled(false);
+            ui->groupSerial->setEnabled(true);
+            ui->serialEnableBtn->setChecked(true);
+            prefs->enableLAN = false;
+        }
         break;
     default:
         qWarning(logGui()) << "Cannot update ra pref" << (int)pra;
@@ -1732,6 +1740,8 @@ void settingswidget::on_manufacturerCombo_currentIndexChanged(int value)
         ui->groupSerial->setEnabled(true);
         ui->serialEnableBtn->setChecked(true);
         prefs->enableLAN = false;
+    } else {
+        ui->lanEnableBtn->setEnabled(true);
     }
     emit changedRaPref(ra_manufacturer);
 }
