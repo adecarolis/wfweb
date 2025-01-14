@@ -177,11 +177,34 @@ void kenwoodCommander::setAfGain(quint8 level)
 void kenwoodCommander::powerOn()
 {
     qDebug(logRig()) << "Power ON command in kenwoodCommander to be sent to rig: ";
+    QByteArray d;
+    quint8 cmd = 1;
+
+    if (getCommand(funcPowerControl,d,cmd,0).cmd == funcNone)
+    {
+        d.append("PS");
+    }
+
+    d.append(QString("%0;").arg(cmd).toLatin1());
+    QMutexLocker locker(&serialMutex);
+    serialPort->write(d);
+    lastSentCommand = d;
 }
 
 void kenwoodCommander::powerOff()
 {
     qDebug(logRig()) << "Power OFF command in kenwoodCommander to be sent to rig: ";
+    QByteArray d;
+    quint8 cmd = 0;
+    if (getCommand(funcPowerControl,d,cmd,0).cmd == funcNone)
+    {
+        d.append("PS");
+    }
+
+    d.append(QString("%0;").arg(cmd).toLatin1());
+    QMutexLocker locker(&serialMutex);
+    serialPort->write(d);
+    lastSentCommand = d;
 }
 
 
@@ -196,6 +219,7 @@ void kenwoodCommander::handleNewData(const QByteArray& data)
 funcType kenwoodCommander::getCommand(funcs func, QByteArray &payload, int value, uchar receiver)
 {
     funcType cmd;
+
     // Value is set to INT_MIN by default as this should be outside any "real" values
     auto it = this->rigCaps.commands.find(func);
     if (it != this->rigCaps.commands.end())
@@ -368,6 +392,7 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcNoiseBlanker:
         case funcNoiseReduction:
         case funcAGC:
+        case funcPowerControl:
             value.setValue<uchar>(d.at(0) - NUMTOASCII);
             break;
         case funcAGCTimeConstant:
@@ -425,7 +450,7 @@ void kenwoodCommander::parseData(QByteArray data)
             // Do we need to do anything with this?
             break;
         case funcFA:
-            qInfo(logRig()) << "Error received from rig. Last command:" << lastSentCommand;
+            qInfo(logRig()) << "Error received from rig. Last command:" << lastSentCommand << "data:" << d;
             break;
         default:
             qWarning(logRig()).noquote() << "Unhandled command received from rig:" << funcString[func] << "value:" << d.mid(0,10);

@@ -54,7 +54,7 @@ signals:
 private:
     void commonSetup();
     void determineRigCaps();
-    funcType getCommand(funcs func, QByteArray &payload, int value, uchar receiver);
+    funcType getCommand(funcs func, QByteArray &payload, int value, uchar receiver=0);
     bool parseMemory(QByteArray data, QVector<memParserFormat>* memParser, memoryType* mem);
 
     // Serial port
