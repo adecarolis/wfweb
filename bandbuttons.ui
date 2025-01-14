@@ -712,7 +712,7 @@
        </spacer>
       </item>
       <item>
-       <widget class="QCheckBox" name="SubBandCheck">
+       <widget class="QCheckBox" name="subBandCheck">
         <property name="text">
          <string>Work on Sub Band</string>
         </property>

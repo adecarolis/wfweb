@@ -354,7 +354,7 @@ QStringList audioDevices::getOutputs()
     return list;
 }
 
-int audioDevices::findInput(QString type, QString name) 
+int audioDevices::findInput(QString type, QString name, bool ignoreDefault)
 {
     if (type != "Server" && system == tciAudio)
     {
@@ -374,17 +374,19 @@ int audioDevices::findInput(QString type, QString name)
             s << type << " Audio input device " << name << " found! ";
             ret = f;
         }
-        if (inputs[f]->isDefault == true)
-        {
-            def = f;
-        }
-        if (inputs[f]->name.contains("USB",Qt::CaseInsensitive)) {
-            // This is a USB device...
-            usb = f;
+        if (!ignoreDefault) {
+            if (inputs[f]->isDefault == true)
+            {
+                def = f;
+            }
+            if (inputs[f]->name.contains("USB",Qt::CaseInsensitive)) {
+                // This is a USB device...
+                usb = f;
+            }
         }
     }
  
-    if (ret == -1)
+    if (ret == -1 && !ignoreDefault)
     {
         s << type << " Audio input device " << name << " Not found: ";
 
@@ -405,13 +407,16 @@ int audioDevices::findInput(QString type, QString name)
         else {
             s << " and no default device found, aborting!";
         }
+    } else if (ret == -1 && ignoreDefault)
+    {
+        s << "configured audio input device not found:" << name;
     }
 
     qInfo(logAudio()) << msg;
     return ret;
 }
 
-int audioDevices::findOutput(QString type, QString name) 
+int audioDevices::findOutput(QString type, QString name, bool ignoreDefault)
 {
     if (type != "Server" && system == tciAudio)
     {
@@ -431,18 +436,20 @@ int audioDevices::findOutput(QString type, QString name)
             ret = f;
             s << type << " Audio output device " << name << " found! ";
         }
-        if (outputs[f]->isDefault == true)
-        {
-            def = f;
-        }
-        if (outputs[f]->name.contains("USB",Qt::CaseInsensitive)) {
-            // This is a USB device...
-            usb = f;
+        if (!ignoreDefault) {
+            if (outputs[f]->isDefault == true)
+            {
+                def = f;
+            }
+            if (outputs[f]->name.contains("USB",Qt::CaseInsensitive)) {
+                // This is a USB device...
+                usb = f;
+            }
         }
 
     }
 
-    if (ret == -1)
+    if (ret == -1 && !ignoreDefault)
     {
         s << type << " Audio output device " << name << " Not found: ";
 
@@ -463,7 +470,11 @@ int audioDevices::findOutput(QString type, QString name)
         else {
             s << " and no default device found, aborting!";
         }
+    } else if (ret == -1 && ignoreDefault)
+    {
+        s << "configured audio output device not found:" << name;
     }
+
     qInfo(logAudio()) << msg;
     return ret;
 }

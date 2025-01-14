@@ -53,7 +53,7 @@
 #include "audiodevices.h"
 #include "sidebandchooser.h"
 #include "debugwindow.h"
-#include "spectrumscope.h"
+#include "receiverwidget.h"
 #include "tciserver.h"
 
 #include <qcustomplot.h>
@@ -335,42 +335,8 @@ private slots:
     void receiveScopeSettings(uchar receiver, int theme, quint16 len, int floor, int ceiling);
     void receiveValue(cacheItem val);
     void setAudioDevicesUI();
-    void shortcutF1();
-    void shortcutF2();
-    void shortcutF3();
-    void shortcutF4();
-    void shortcutF5();
 
-    void shortcutF6();
-    void shortcutF7();
-    void shortcutF8();
-    void shortcutF9();
-    void shortcutF10();
-    void shortcutF11();
-    void shortcutF12();
-
-    void shortcutControlT();
-    void shortcutControlR();
-    void shortcutControlP();
-    void shortcutControlI();
-    void shortcutControlU();
-
-    void shortcutStar();
-    void shortcutSlash();
-    void shortcutMinus();
-    void shortcutPlus();
-    void shortcutStepMinus();
-    void shortcutStepPlus();
-    void shortcutShiftMinus();
-    void shortcutShiftPlus();
-    void shortcutControlMinus();
-    void shortcutControlPlus();
-
-    void shortcutPageUp();
-    void shortcutPageDown();
-
-    void shortcutF();
-    void shortcutM();
+    void runShortcut(const QKeySequence k);
 
     void handlePttLimit(); // hit at 3 min transmit length
 
@@ -387,7 +353,7 @@ private slots:
 
     void receiveScopeImage(uchar receiver);
     // Meters:
-    void receiveMeter(meter_t meter, quint8 level, quint8 receiver=0);
+    void receiveMeter(meter_t meter, quint8 level);
 //    void receiveSMeter(quint8 level);
 //    void receivePowerMeter(quint8 level);
 //    void receiveALCMeter(quint8 level);
@@ -495,6 +461,7 @@ private slots:
     void connectionTimeout();
     void receiveRigCaps(rigCapabilities* caps);
     void radioInUse(quint8 radio, bool admin, quint8 busy, QString user, QString ip);
+    void updatedQueueInterval(qint64 interval);
 
     // Moved to slots to allow them to be delayed.
     void getInitialRigState();
@@ -508,9 +475,10 @@ private slots:
     void on_voxEnableChk_clicked(bool checked);
     void on_digiselEnableChk_clicked(bool checked);
 
+
 private:
     Ui::wfmain *ui; // Main UI
-    QVector<spectrumScope*>receivers;   // Spectrum Scope items.
+    QVector<receiverWidget*>receivers;   // Spectrum Scope items.
     void closeEvent(QCloseEvent *event);
     QString logFilename;
     bool debugMode;
@@ -545,56 +513,7 @@ private:
     QStringList portList;
     QString serialPortRig;
 
-    QShortcut *keyF1;
-    QShortcut *keyF2;
-    QShortcut *keyF3;
-    QShortcut *keyF4;
-    QShortcut *keyF5;
-
-    QShortcut *keyF6;
-    QShortcut *keyF7;
-    QShortcut *keyF8;
-    QShortcut *keyF9;
-    QShortcut *keyF10;
-    QShortcut *keyF11;
-    QShortcut *keyF12;
-
-    QShortcut *keyControlT;
-    QShortcut *keyControlR;
-    QShortcut *keyControlP;
-    QShortcut *keyControlI;
-    QShortcut *keyControlU;
-
-    QShortcut *keyStar;
-    QShortcut *keySlash;
-    QShortcut *keyMinus;
-    QShortcut *keyPlus;
-
-    QShortcut *keyShiftMinus;
-    QShortcut *keyShiftPlus;
-    QShortcut *keyControlMinus;
-    QShortcut *keyControlPlus;
-    QShortcut *keyQuit;
-
-    QShortcut *keyPageUp;
-    QShortcut *keyPageDown;
-
-    QShortcut *keyF;
-    QShortcut *keyM;
-
-    QShortcut *keyH;
-    QShortcut *keyK; // alternate +
-    QShortcut *keyJ; // alternate -
-    QShortcut *keyL;
-
-    QShortcut *keyShiftK;
-    QShortcut *keyShiftJ;
-
-    QShortcut *keyControlK;
-    QShortcut *keyControlJ;
-
-    QShortcut *keyDebug;
-
+    QList<QShortcut *> shortcuts;
 
     rigCommander * rig=Q_NULLPTR;
     QThread* rigThread = Q_NULLPTR;
@@ -611,6 +530,8 @@ private:
     void rigConnections();
     void removeRig();
     void findSerialPort();
+
+    QShortcut* setupKeyShortcut(const QKeySequence k);
 
     void setupKeyShortcuts();
     void setupMainUI();

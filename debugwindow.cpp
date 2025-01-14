@@ -176,6 +176,10 @@ QString debugWindow::getValue(QVariant val)
         {
             value = QString("Type:%0").arg(val.value<meter_t>());
         }
+        else if (!strcmp(val.typeName(),"lpfhpf"))
+        {
+            value = QString("LPF:%0 HPF: %1").arg(val.value<lpfhpf>().lpf,val.value<lpfhpf>().hpf);
+        }
         else if (!strcmp(val.typeName(),"centerSpanData"))
         {
             centerSpanData i = val.value<centerSpanData>();

@@ -133,43 +133,16 @@ void cachingQueue::interval(qint64 val)
         mutex.unlock();
         waiting.wakeAll();
     }
+    emit intervalUpdated(val);
     qInfo() << "Changing queue interval to" << val << "ms";
 }
 
 funcs cachingQueue::checkCommandAvailable(funcs cmd,bool set)
 {
-
-    // We need to ignore special commands:
-
-    if (cmd == funcSelectVFO)
-        return cmd;
-
-
-    // If we don't have rigCaps yet, simply return the command.
-    if (rigCaps != Q_NULLPTR && cmd != funcNone && !rigCaps->commands.contains(cmd)) {
-        // We don't have the requested command, so lets see if we can change it to something we do have.
-        // WFVIEW functions should use funcMain/Sub commands by default,
-        if (cmd == funcFreq && rigCaps->commands.contains(funcSelectedFreq))
-            cmd = funcSelectedFreq;
-        else if (cmd == funcMode && rigCaps->commands.contains(funcSelectedMode))
-            cmd = funcSelectedMode;
-        // These are fallback commands for older radios that don't have command 25/26
-        else if(cmd == funcMode)
-        {
-            if (set)
-                cmd = funcModeSet;
-            else
-                cmd = funcModeGet;
-        }
-        else if(cmd == funcFreq)
-        {
-            if (set)
-                cmd = funcFreqSet;
-            else
-                cmd = funcFreqGet;
-        }
-        else
-            cmd = funcNone;
+    Q_UNUSED(set)
+    if (rigCaps != Q_NULLPTR && cmd != funcNone && cmd != funcSelectVFO && !rigCaps->commands.contains(cmd)) {
+        // We don't have the requested command!
+        return funcNone;
     }
     return cmd;
 }
@@ -182,24 +155,28 @@ void cachingQueue::add(queuePriority prio ,funcs func, bool recurring, uchar rec
 
 void cachingQueue::add(queuePriority prio ,queueItem item)
 {
-    item.command=checkCommandAvailable(item.command,item.param.isValid());
-    if (item.command != funcNone)
+    // If the queue isn't running, no point adding to it!
+    if (this->queueInterval != -1)
     {
-        QMutexLocker locker(&mutex);
-        if (!item.recurring || isRecurring(item.command,item.receiver) != prio)
+        item.command=checkCommandAvailable(item.command,item.param.isValid());
+        if ((item.receiver != 0xff || rigState.receiver == item.receiver) && item.command != funcNone)
         {
-            if (item.recurring && prio == queuePriority::priorityImmediate) {
-                qWarning() << "Warning, cannot add recurring command with immediate priority!" << funcString[item.command];
-            } else {
-                if (item.recurring) {
-                    // also insert an immediate command to get the current value "now" (removes the need to get rigstate)                    
-                    queueItem it=item;
-                    it.recurring=false;
-                    it.param.clear();
-                    //qDebug() << "adding" << funcString[item.command] << "recurring" << it.recurring << "priority" << prio << "receiver" << it.receiver;
-                    queue.insert(queue.cend(),priorityImmediate, it);
+            QMutexLocker locker(&mutex);
+            if (!item.recurring || isRecurring(item.command,item.receiver) != prio)
+            {
+                if (item.recurring && prio == queuePriority::priorityImmediate) {
+                    qWarning() << "Warning, cannot add recurring command with immediate priority!" << funcString[item.command];
+                } else {
+                    if (item.recurring) {
+                        // also insert an immediate command to get the current value "now" (removes the need to get rigstate)
+                        queueItem it=item;
+                        it.recurring=false;
+                        it.param.clear();
+                        //qDebug() << "adding" << funcString[item.command] << "recurring" << it.recurring << "priority" << prio << "receiver" << it.receiver;
+                        queue.insert(queue.cend(),priorityImmediate, it);
+                    }
+                    queue.insert(prio, item);
                 }
-                queue.insert(prio, item);
             }
         }
     }
@@ -216,28 +193,79 @@ void cachingQueue::addUnique(queuePriority prio ,funcs func, bool recurring, uch
 
 void cachingQueue::addUnique(queuePriority prio ,queueItem item)
 {
-    item.command=checkCommandAvailable(item.command,item.param.isValid());
-    if (item.command != funcNone)
+    // If the queue isn't running, no point adding to it!
+    if (this->queueInterval != -1)
     {
-        QMutexLocker locker(&mutex);
-        if (item.recurring && prio == queuePriority::priorityImmediate) {
-            qWarning() << "Warning, cannot add unique recurring command with immediate priority!" << funcString[item.command];
-        } else {
-            int count=queue.remove(prio,item);
-            if (count>0)
-                qDebug() << "cachingQueue()::addUnique deleted" << count << "entries from queue for" << funcString[item.command] << "on receiver" << item.receiver;
+        item.command=checkCommandAvailable(item.command,item.param.isValid());
+        if ((item.receiver != 0xff || rigState.receiver == item.receiver) && item.command != funcNone)
+        {
+            QMutexLocker locker(&mutex);
+            if (item.recurring && prio == queuePriority::priorityImmediate) {
+                qWarning() << "Warning, cannot add unique recurring command with immediate priority!" << funcString[item.command];
+            } else {
+                int count=queue.remove(prio,item);
+                if (count>0)
+                    qDebug() << "cachingQueue()::addUnique deleted" << count << "entries from queue for" << funcString[item.command] << "on receiver" << item.receiver;
 
-            if (item.recurring) {
-                // also insert an immediate command to get the current value "now" (removes the need to get initial rigstate)
-                queueItem it = item;
-                it.recurring=false;
-                it.param.clear();
-                queue.insert(queue.cend(),priorityImmediate, it);
-                qDebug() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "receiver" << item.receiver;
+                if (item.recurring) {
+                    // also insert an immediate command to get the current value "now" (removes the need to get initial rigstate)
+                    queueItem it = item;
+                    it.recurring=false;
+                    it.param.clear();
+                    queue.insert(queue.cend(),priorityImmediate, it);
+                    qDebug() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "receiver" << item.receiver;
+                }
+                queue.insert(prio, item);
             }
-            queue.insert(prio, item);
         }
     }
+}
+
+vfoCommandType cachingQueue::getVfoCommand(vfo_t vfo,uchar rx, bool set)
+{
+    vfoCommandType cmd;
+    cmd.receiver = rx;
+    cmd.vfo = vfo;
+    if (rigCaps != Q_NULLPTR) {
+        QMutexLocker locker(&mutex);
+
+        if (set) {
+            cmd.modeFunc = ((rigCaps->commands.contains(funcMode)) ? funcMode: funcModeSet) ;
+            cmd.freqFunc = ((rigCaps->commands.contains(funcFreq)) ? funcFreq: funcFreqSet) ;
+        } else {
+            cmd.modeFunc = ((rigCaps->commands.contains(funcMode)) ? funcMode: funcModeGet) ;
+            cmd.freqFunc = ((rigCaps->commands.contains(funcFreq)) ? funcFreq: funcFreqGet) ;
+        }
+
+        if (!rigCaps->hasCommand29) {
+            // This radio has no direct access to each receiver (main/sub
+            if (rigState.vfoMode == vfoModeType_t::vfoModeVfo && (rigState.receiver == 0 && rx == 0))
+            {
+                // This is acting on main
+                if (vfo == vfoA) {
+                    cmd.modeFunc = ((rigCaps->commands.contains(funcSelectedMode)) ? funcSelectedMode: cmd.modeFunc);
+                    cmd.freqFunc = ((rigCaps->commands.contains(funcSelectedFreq)) ? funcSelectedFreq: cmd.freqFunc);
+                } else if (vfo == vfoB){
+                    cmd.modeFunc = ((rigCaps->commands.contains(funcUnselectedMode)) ? funcUnselectedMode: cmd.modeFunc);
+                    cmd.freqFunc = ((rigCaps->commands.contains(funcUnselectedFreq)) ? funcUnselectedFreq: cmd.freqFunc);
+                }
+            }
+            else if (rx && rigState.receiver)
+            {
+                // Requesting receiver is current
+                cmd.receiver = 0;
+            }
+            else
+            {
+                // Requesting receiver is not current.
+                cmd.modeFunc = funcNone;
+                cmd.freqFunc = funcNone;
+                cmd.receiver = 0xff;
+            }
+        }
+    }
+    //qDebug(logRig()) << "Queue VFO:" << vfo << "rx:" << rx<< "set:" << set << "mode:" << funcString[cmd.modeFunc] << "freq:" << funcString[cmd.freqFunc] << "rigstate: vfoMode:" << rigState.vfoMode << "vfo" << rigState.vfo << "rx" << rigState.receiver;
+    return cmd;
 }
 
 queuePriority cachingQueue::del(funcs func, uchar receiver)
@@ -329,7 +357,7 @@ void cachingQueue::receiveValue(funcs func, QVariant value, uchar receiver)
     if (mutex.tryLock(CACHE_LOCK_TIME)) {
         cacheItem c = cacheItem(func,value,receiver);
         items.enqueue(c);
-        updateCache(true,func,value,receiver);
+        updateCache(true,func,value,receiver);        
         mutex.unlock();
 #ifndef Q_OS_MACOS
         waiting.wakeOne();
@@ -343,6 +371,54 @@ void cachingQueue::receiveValue(funcs func, QVariant value, uchar receiver)
 void cachingQueue::updateCache(bool reply, queueItem item)
 {
     // Mutex MUST be locked by the calling function.
+
+    // We need to make sure that all "main" frequencies/modes are updated.
+    if (reply)
+    {
+        if (item.command == funcFreqTR)
+        {
+            if (rigCaps->commands.contains(funcFreq))
+                item.command = funcFreq;
+            else if (rigCaps->commands.contains(funcSelectedFreq))
+                item.command = funcSelectedFreq;
+            else
+                item.command = funcFreqGet;
+        }
+        else if (item.command == funcModeTR)
+        {
+            if (rigCaps->commands.contains(funcMode))
+                item.command = funcMode;
+            else if (rigCaps->commands.contains(funcSelectedMode))
+                item.command = funcSelectedMode;
+            else
+                item.command = funcModeGet;
+        }
+
+        // Is this a command that might have updated our state?
+        if (item.command == funcSatelliteMode && item.param.value<bool>())
+            rigState.vfoMode=vfoModeType_t::vfoModeSat;
+        if (item.command == funcMemoryMode && item.param.value<bool>())
+            rigState.vfoMode=vfoModeType_t::vfoModeMem;
+        if (item.command == funcVFOMode && item.param.value<bool>())
+            rigState.vfoMode=vfoModeType_t::vfoModeVfo;
+        if (item.command == funcScopeMainSub)
+            rigState.receiver = item.param.value<uchar>();
+    } else {
+        // If we are requesting a particular VFO, set our state as the rig will not reply
+        if (item.command == funcSelectVFO) {
+            rigState.vfo = item.param.value<vfo_t>();
+        } else if (item.command == funcVFOASelect) {
+            rigState.vfo = vfo_t::vfoA;
+        } else if (item.command == funcVFOBSelect && rigCaps->numVFO > 1) {
+            rigState.vfo = vfo_t::vfoB;
+        } else if (item.command == funcVFOMainSelect) {
+            rigState.vfo = vfo_t::vfoMain;
+        } else if (item.command == funcVFOSubSelect && rigCaps->numReceiver > 1) {
+            rigState.vfo = vfo_t::vfoSub;
+            rigState.receiver=1;
+        }
+    }
+
     auto cv = cache.find(item.command);
     while (cv != cache.end() && cv->command == item.command) {
         if (cv->receiver == item.receiver) {
@@ -480,8 +556,16 @@ bool cachingQueue::compare(QVariant a, QVariant b)
             if (a.value<meter_t>() != b.value<meter_t>())
                 changed=true;
         } else if (!strcmp(a.typeName(),"vfo_t")) {
-                if (a.value<vfo_t>() != b.value<vfo_t>())
-                    changed=true;
+            if (a.value<vfo_t>() != b.value<vfo_t>())
+                changed=true;
+        } else if (!strcmp(a.typeName(),"lpfhpf")) {
+            if (a.value<lpfhpf>().lpf != b.value<lpfhpf>().lpf || a.value<lpfhpf>().hpf != b.value<lpfhpf>().hpf  )
+                changed=true;
+        } else if (!strcmp(a.typeName(),"spectrumBounds")) {
+            if (a.value<spectrumBounds>().edge != b.value<spectrumBounds>().edge ||
+                    a.value<spectrumBounds>().start != b.value<spectrumBounds>().start ||
+                    a.value<spectrumBounds>().end != b.value<spectrumBounds>().end  )
+                changed=true;
         } else if (!strcmp(a.typeName(),"centerSpanData")) {
             if (a.value<centerSpanData>().cstype != b.value<centerSpanData>().cstype || a.value<centerSpanData>().freq != b.value<centerSpanData>().freq  )
                 changed=true;

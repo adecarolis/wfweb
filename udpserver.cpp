@@ -18,11 +18,10 @@ void udpServer::init()
     connect(queue,SIGNAL(rigCapsUpdated(rigCapabilities*)),this, SLOT(receiveRigCaps(rigCapabilities*)));
     for (RIGCONFIG* rig : config->rigs)
     {
-        qDebug(logUdpServer()) << "CIV:" << rig->civAddr;
-        qDebug(logUdpServer()) << "Model:" << rig->modelName;
-        qDebug(logUdpServer()) << "Name:" << rig->rigName;
-        qDebug(logUdpServer()) << "CIV:" << rig->civAddr;
-        qDebug(logUdpServer()).noquote() << QString("GUID: {%1%2%3%4-%5%6-%7%8-%9%10-%11%12%13%14%15%16}")
+        qInfo(logUdpServer()) << "CIV:" << rig->civAddr;
+        qInfo(logUdpServer()) << "Model:" << rig->modelName;
+        qInfo(logUdpServer()) << "Name:" << rig->rigName;
+        qInfo(logUdpServer()).noquote() << QString("GUID: {%1%2%3%4-%5%6-%7%8-%9%10-%11%12%13%14%15%16}")
             .arg(rig->guid[0], 2, 16, QLatin1Char('0'))
             .arg(rig->guid[1], 2, 16, QLatin1Char('0'))
             .arg(rig->guid[2], 2, 16, QLatin1Char('0'))
@@ -167,9 +166,10 @@ void udpServer::receiveRigCaps(rigCapabilities* caps)
     for (RIGCONFIG* rig: config->rigs) {
         if (!memcmp(rig->guid, caps->guid, GUIDLEN) || config->rigs.size()==1) {
             // Matching rig, fill-in missing details
+            qInfo(logUdpServer()) << "Received new rigCaps for:" << caps->modelName << "CIV:" << QString::number(caps->modelID,16);
             rig->rigAvailable = true;
             rig->modelName = caps->modelName;
-            rig->civAddr = caps->civ;
+            rig->civAddr = caps->modelID;
             if (rig->rigName == "<NONE>") {
                 rig->rigName = caps->modelName;
             }
@@ -480,7 +480,10 @@ void udpServer::controlReceived()
                     {
                         // This is the first client, so stop running the queue.
                         radio->queueInterval = queue->interval();
-                        queue->interval(-1);
+                        if (config->disableUI)
+                        {
+                            queue->interval(-1);
+                        }
                         radio->rxAudioThread = new QThread(this);
                         radio->rxAudioThread->setObjectName("rxAudio()");
 
@@ -1289,7 +1292,7 @@ void udpServer::sendCapabilities(CLIENT* c)
     s.retransmitCount = 0;
 
     for (RIGCONFIG* rig : config->rigs) {
-        qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Capabilities :" << c->txSeq << "for" << rig->modelName;
+        qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Capabilities :" << c->txSeq << "for" << rig->modelName << "c-iv" << QString::number(rig->civAddr,16);
         radio_cap_packet r;
         memset(r.packet, 0x0, sizeof(r)); // We can't be sure it is initialized with 0x00!
         

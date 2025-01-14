@@ -100,6 +100,7 @@ signals:
     void connectButtonPressed();
     void saveSettingsButtonPressed();
     void revertSettingsButtonPressed();
+    void havePortError(errorType err);
 
 private slots:
     void on_settingsList_currentRowChanged(int currentRow);
@@ -182,12 +183,14 @@ private slots:
 
     void on_useUTCChk_clicked(bool checked);
     void on_setClockBtn_clicked();
+    void on_setRadioTimeChk_clicked(bool checked);
     void on_pttOnBtn_clicked();
     void on_pttOffBtn_clicked();
     void on_adjRefBtn_clicked();
     void on_satOpsBtn_clicked();
 
     void on_serverEnableCheckbox_clicked(bool checked);
+    void on_serverDisableUIChk_clicked(bool checked);
     void on_serverRXAudioInputCombo_currentIndexChanged(int index);
     void on_serverTXAudioOutputCombo_currentIndexChanged(int index);
     void on_serverControlPortText_textChanged(QString text);

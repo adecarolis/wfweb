@@ -10,6 +10,14 @@ frequencyinputwidget::frequencyinputwidget(QWidget *parent) :
     ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
     this->setObjectName("freq Input");
     queue = cachingQueue::getInstance();
+    rigCaps = queue->getRigCaps();
+    connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
+
+
+}
+void frequencyinputwidget::receiveRigCaps(rigCapabilities* caps)
+{
+    rigCaps = caps;
 }
 
 frequencyinputwidget::~frequencyinputwidget()
@@ -175,6 +183,11 @@ void frequencyinputwidget::on_fBackbtn_clicked()
 
 void frequencyinputwidget::on_goFreqBtn_clicked()
 {
+    if (rigCaps == Q_NULLPTR)
+    {
+        return;
+    }
+
     freqt f;
     bool ok = false;
     double freqDbl = 0;
@@ -197,22 +210,22 @@ void frequencyinputwidget::on_goFreqBtn_clicked()
     }
     if(ok)
     {
-        modeInfo m;
-        m.mk = sidebandChooser::getMode(f, currentMode);
-        m.reg = (quint8) m.mk;
-        m.filter = currentFilter;
-        // TODO: usingDataMode
-        // TODO: auto sideband preference
-        if((m.mk != currentMode) && !usingDataMode && automaticSidebandSwitching)
-        {
-            queue->add(priorityImmediate,queueItem(funcMode,QVariant::fromValue<modeInfo>(m),false,false));
-            currentMode = m.mk;
+        vfoCommandType t = queue->getVfoCommand(vfoA,0,true);
+        modeInfo currentMode = queue->getCache(t.modeFunc,t.receiver).value.value<modeInfo>();
+        if (currentMode.data == 0 && automaticSidebandSwitching) {
+            rigMode_t newMode = sidebandChooser::getMode(f, currentMode.mk);
+            for (const auto& mode: rigCaps->modes) {
+                if (mode.mk == newMode && mode.mk != currentMode.mk)
+                {
+                    vfoCommandType t = queue->getVfoCommand(vfoA,0,true);
+                    queue->add(priorityImmediate,queueItem(t.modeFunc, QVariant::fromValue<modeInfo>(mode),false,t.receiver));
+                    break;
+                }
+            }
         }
-
         f.MHzDouble = (float)f.Hz / 1E6;
-        //emit updateUIFrequency(f);
         currentFrequency = f;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,false));
+        queue->add(priorityImmediate,queueItem(t.freqFunc, QVariant::fromValue<freqt>(f),false,t.receiver));
     } else {
         qWarning(logGui()) << "Could not understand frequency" << ui->freqMhzLineEdit->text();
         ui->freqMhzLineEdit->clear();

@@ -649,11 +649,11 @@ void repeaterSetup::on_splitPlusButton_clicked()
         return;
     }
     if(ui->splitEnableChk->isChecked() || ui->quickSplitChk->isChecked()) {
-        if (rigCaps->commands.contains(funcFreq) && rigCaps->numReceiver > 1)
-            queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,1));
-        else if (rigCaps->commands.contains(funcUnselectedFreq))
-            queue->add(priorityImmediate,queueItem(funcUnselectedFreq,QVariant::fromValue<freqt>(f),false));
-        queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(modeTransmitVFO)));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand((rigCaps->numVFO>1)?vfoB:vfoSub,uchar(rigCaps->numReceiver>1),true).freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(uchar(rigCaps->numReceiver>1))));
+
+        //Not sure how to do this or if it is needed? M0VSE
+        //queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(modeTransmitVFO)));
     } else {
         qWarning(logRptr()) << "Not setting transmit frequency until split mode is enabled.";
     }
@@ -684,11 +684,10 @@ void repeaterSetup::on_splitMinusBtn_clicked()
     }
 
     if(ui->splitEnableChk->isChecked() || ui->quickSplitChk->isChecked()) {
-        if (rigCaps->commands.contains(funcFreq) && rigCaps->numReceiver > 1)
-            queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,1));
-        else if (rigCaps->commands.contains(funcUnselectedFreq))
-            queue->add(priorityImmediate,queueItem(funcUnselectedFreq,QVariant::fromValue<freqt>(f),false));
-        queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(modeTransmitVFO),false));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand((rigCaps->numVFO>1)?vfoB:vfoSub,uchar(rigCaps->numReceiver>1),true).freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(uchar(rigCaps->numReceiver>1))));
+        // Not sure how to do this M0VSE?
+        //queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(modeTransmitVFO),false));
     } else {
         qWarning(logRptr()) << "Not setting transmit frequency until split mode is enabled.";
         return;
@@ -708,11 +707,10 @@ void repeaterSetup::on_splitTxFreqSetBtn_clicked()
         f.Hz = fHz;
         f.VFO = inactiveVFO;
         f.MHzDouble = f.Hz/1E6;
-        if (rigCaps->commands.contains(funcFreq) && rigCaps->numReceiver > 1)
-            queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,1));
-        else if (rigCaps->commands.contains(funcUnselectedFreq))
-            queue->add(priorityImmediate,queueItem(funcUnselectedFreq,QVariant::fromValue<freqt>(f),false));
-        queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(modeTransmitVFO),false,0));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand((rigCaps->numVFO>1)?vfoB:vfoSub,uchar(rigCaps->numReceiver>1),true).freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(uchar(rigCaps->numReceiver>1))));
+
+        //queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(modeTransmitVFO),false,0));
     }
 }
 

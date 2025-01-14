@@ -83,6 +83,8 @@ private slots:
     void on_bandGenbtn_clicked();
     void on_bandSetBtn_clicked();
 
+    void on_subBandCheck_clicked(bool checked);
+
 private:
     Ui::bandbuttons *ui;
     void bandStackBtnClick(availableBands band);

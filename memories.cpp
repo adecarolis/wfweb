@@ -1458,8 +1458,9 @@ void memories::receiveMemory(memoryType mem)
                 queue->add(priorityImmediate,queueItem(funcMemoryGroup,QVariant::fromValue<uint>(quint16(ui->group->currentData().toUInt()))));
                 queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | mem.channel))));
                 // We also should request the current frequency/mode etc so that the UI is updated.
-                queue->add(priorityImmediate,funcFreqGet,false,0);
-                queue->add(priorityImmediate,funcModeGet,false,0);
+                vfoCommandType t = queue->getVfoCommand(vfoA,0,false);
+                queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
+                queue->add(priorityImmediate,t.modeFunc,false,t.receiver);
             });
 
         }

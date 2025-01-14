@@ -17,9 +17,11 @@ settingswidget::settingswidget(QWidget *parent) :
 #ifdef QT_DEBUG
     ui->debugBtn->setVisible(true);
     ui->satOpsBtn->setVisible(true);
+    ui->adjRefBtn->setVisible(false);
 #else
     ui->debugBtn->setVisible(false);
     ui->satOpsBtn->setVisible(false);
+    ui->adjRefBtn->setVisible(false);
 #endif
 
 }
@@ -69,6 +71,7 @@ void settingswidget::populateComboBoxes()
 
     ui->meter2selectionCombo->blockSignals(true);
     ui->meter2selectionCombo->addItem("None", meterNone);
+    ui->meter2selectionCombo->addItem("Sub S-Meter", meterSubS);
     ui->meter2selectionCombo->addItem("SWR", meterSWR);
     ui->meter2selectionCombo->addItem("ALC", meterALC);
     ui->meter2selectionCombo->addItem("Compression", meterComp);
@@ -83,6 +86,7 @@ void settingswidget::populateComboBoxes()
 
     ui->meter3selectionCombo->blockSignals(true);
     ui->meter3selectionCombo->addItem("None", meterNone);
+    ui->meter3selectionCombo->addItem("Sub S-Meter", meterSubS);
     ui->meter3selectionCombo->addItem("SWR", meterSWR);
     ui->meter3selectionCombo->addItem("ALC", meterALC);
     ui->meter3selectionCombo->addItem("Compression", meterComp);
@@ -785,10 +789,11 @@ void settingswidget::updateRaPref(prefRaItem pra)
 #endif
 
         ui->serialDeviceListCombo->setCurrentIndex(ui->serialDeviceListCombo->findText(prefs->serialPortRadio));
-        if (ui->serialDeviceListCombo->currentIndex() == -1)
-        {
-            ui->serialDeviceListCombo->setCurrentIndex(0);
-        }
+        // If the serial port doesn't exist, leave the combo blank.
+        //if (ui->serialDeviceListCombo->currentIndex() == -1)
+        //{
+        //    ui->serialDeviceListCombo->setCurrentIndex(0);
+        //}
         ui->serialDeviceListCombo->blockSignals(false);
         break;
     }
@@ -877,6 +882,9 @@ void settingswidget::updateRsPref(prefRsItem prs)
         break;
     case rs_clockUseUtc:
         quietlyUpdateCheckbox(ui->useUTCChk,prefs->useUTC);
+        break;
+    case rs_setRadioTime:
+        quietlyUpdateCheckbox(ui->setRadioTimeChk,prefs->setRadioTime);
         break;
         // Not used
     case rs_setClock:
@@ -1021,6 +1029,9 @@ void settingswidget::updateServerConfig(prefServerItem si)
     case s_enabled:
         quietlyUpdateCheckbox(ui->serverEnableCheckbox, serverConfig->enabled);
         break;
+    case s_disableui:
+        quietlyUpdateCheckbox(ui->serverDisableUIChk, serverConfig->disableUI);
+        break;
     case s_lan:
         // Not used here
         break;
@@ -1034,12 +1045,26 @@ void settingswidget::updateServerConfig(prefServerItem si)
         quietlyUpdateLineEdit(ui->serverAudioPortText, QString::number(serverConfig->audioPort));
         break;
     case s_audioOutput:
-        if (serverConfig->enabled)
-            ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name));
+        if (serverConfig->enabled) {
+            ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server",
+                        serverConfig->rigs.first()->txAudioSetup.name,serverConfig->rigs.first()->txAudioSetup.name.isEmpty()?false:true));
+            if (ui->serverTXAudioOutputCombo->currentIndex() == -1)
+            {
+                emit havePortError(errorType(true, serverConfig->rigs.first()->rxAudioSetup.name,
+                        tr("\nServer audio output device does not exist, please check.\nTransmit audio will NOT work until this is corrected\n**** please disable the server if not required ****")));
+            }
+        }
         break;
     case s_audioInput:
-        if (serverConfig->enabled)
-            ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig->rigs.first()->rxAudioSetup.name));
+        if (serverConfig->enabled) {
+            ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server",
+                        serverConfig->rigs.first()->rxAudioSetup.name,serverConfig->rigs.first()->rxAudioSetup.name.isEmpty()?false:true));
+            if (ui->serverTXAudioOutputCombo->currentIndex() == -1)
+            {
+                emit havePortError(errorType(true, serverConfig->rigs.first()->rxAudioSetup.name,
+                        tr("\nServer audio input device does not exist, please check.\nReceive audio will NOT work until this is corrected\n**** please disable the server if not required ****")));
+            }
+        }
         break;
     case s_resampleQuality:
         // Not used here
@@ -1155,7 +1180,7 @@ void settingswidget::setAudioDevicesUI()
     ui->serverRXAudioInputCombo->clear();
     ui->serverRXAudioInputCombo->addItems(audioDev->getInputs());
     ui->serverRXAudioInputCombo->setCurrentIndex(-1);
-    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn() + 30));
+    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %0px;}").arg(audioDev->getNumCharsIn() + 30));
     ui->serverRXAudioInputCombo->blockSignals(false);
 
     qInfo() << "Looking for outputs";
@@ -1170,7 +1195,7 @@ void settingswidget::setAudioDevicesUI()
     ui->serverTXAudioOutputCombo->clear();
     ui->serverTXAudioOutputCombo->addItems(audioDev->getOutputs());
     ui->serverTXAudioOutputCombo->setCurrentIndex(-1);
-    ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsOut() + 30));
+    ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %0px;}").arg(audioDev->getNumCharsOut() + 30));
     ui->serverTXAudioOutputCombo->blockSignals(false);
 
 
@@ -1182,8 +1207,8 @@ void settingswidget::setAudioDevicesUI()
         serverConfig->rigs.first()->rxAudioSetup.type = prefs->audioSystem;
         serverConfig->rigs.first()->txAudioSetup.type = prefs->audioSystem;
 
-        ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig->rigs.first()->rxAudioSetup.name));
-        ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name));
+        //ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig->rigs.first()->rxAudioSetup.name,true));
+        //ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig->rigs.first()->txAudioSetup.name,true));
     }
 
     qDebug(logSystem()) << "Audio devices done.";
@@ -1471,7 +1496,6 @@ void settingswidget::on_lanEnableBtn_clicked(bool checked)
     // TOTO? ui->connectBtn->setEnabled(true); // move to other side
     ui->groupNetwork->setEnabled(checked);
     ui->groupSerial->setEnabled(!checked);
-
     prefs->enableLAN = checked;
     emit changedLanPref(l_enableLAN);
 }
@@ -1706,6 +1730,7 @@ void settingswidget::enableAllComboBoxItems(QComboBox *combobox) {
 
 void settingswidget::setComboBoxItemEnabled(QComboBox * comboBox, int index, bool enabled)
 {
+
     auto * model = qobject_cast<QStandardItemModel*>(comboBox->model());
     assert(model);
     if(!model) return;
@@ -2874,6 +2899,12 @@ void settingswidget::on_useUTCChk_clicked(bool checked)
     prefs->useUTC=checked;
 }
 
+void settingswidget::on_setRadioTimeChk_clicked(bool checked)
+{
+    prefs->setRadioTime=checked;
+}
+
+
 void settingswidget::on_setClockBtn_clicked()
 {
     emit changedRsPref(rs_setClock);
@@ -2939,6 +2970,12 @@ void settingswidget::on_serverEnableCheckbox_clicked(bool checked)
 {
     serverConfig->enabled = checked;
     emit changedServerPref(s_enabled);
+}
+
+void settingswidget::on_serverDisableUIChk_clicked(bool checked)
+{
+    serverConfig->disableUI = checked;
+    emit changedServerPref(s_disableui);
 }
 
 void settingswidget::on_serverControlPortText_textChanged(QString text)
@@ -3041,9 +3078,17 @@ void settingswidget::connectionStatus(bool conn)
     ui->pttTypeLabel->setEnabled(!conn);
     ui->pttTypeCombo->setEnabled(!conn);
 
+    ui->serverEnableCheckbox->setEnabled(!conn);
+    ui->serverDisableUIChk->setEnabled(!conn);
     ui->serverRXAudioInputCombo->setEnabled(!conn);
     ui->serverTXAudioOutputCombo->setEnabled(!conn);
     ui->audioSystemServerCombo->setEnabled(!conn);
+    ui->serverControlPortText->setEnabled(!conn);
+    ui->serverAudioPortText->setEnabled(!conn);
+    ui->serverCivPortText->setEnabled(!conn);
+    ui->serverUsersTable->setEnabled(!conn);
+    ui->serverDisconnectLabel->setVisible(conn);
+    ui->radioDisconnectLabel->setVisible(conn);
 
     if(conn) {
         ui->connectBtn->setText("Disconnect from radio");

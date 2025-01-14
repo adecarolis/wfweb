@@ -135,7 +135,7 @@ void udpHandler::receiveDataFromUserToRig(QByteArray data)
 void udpHandler::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16 latency,quint16 current, bool under, bool over) {
     status.rxAudioLevel = amplitudePeak;
     status.rxLatency = latency;
-    status.rxCurrentLatency = current;
+    status.rxCurrentLatency =   qint32(current);
     status.rxUnderrun = under;
     status.rxOverrun = over;
     audioLevelsRxPeak[(audioLevelsRxPosition)%audioLevelBufferSize] = amplitudePeak;
@@ -158,7 +158,7 @@ void udpHandler::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16
 void udpHandler::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,quint16 latency, quint16 current, bool under, bool over) {
     status.txAudioLevel = amplitudePeak;
     status.txLatency = latency;
-    status.txCurrentLatency = current;
+    status.txCurrentLatency = qint32(current);
     status.txUnderrun = under;
     status.txOverrun = over;
     audioLevelsTxPeak[(audioLevelsTxPosition)%audioLevelBufferSize] = amplitudePeak;
@@ -250,7 +250,7 @@ void udpHandler::dataReceived()
                     }
 
                     QString tempLatency;
-                    if (status.rxCurrentLatency <= status.rxLatency && !status.rxUnderrun && !status.rxOverrun)
+                    if (status.rxCurrentLatency <= qint32(status.rxLatency) && !status.rxUnderrun && !status.rxOverrun)
                     {
                         tempLatency = QString("%1 ms").arg(status.rxCurrentLatency,3);
                     }

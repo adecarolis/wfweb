@@ -39,6 +39,8 @@ icomCommander::~icomCommander()
 {
     qInfo(logRig()) << "closing instance of icomCommander()";
 
+    emit requestRadioSelection(QList<radio_cap_packet>()); // Remove radio list.
+
     queue->setRigCaps(Q_NULLPTR); // Remove access to rigCaps
 
     qDebug(logRig()) << "Closing rig comms";
@@ -693,7 +695,8 @@ void icomCommander::parseCommand()
 #endif
 
     funcs func = funcNone;
-    uchar receiver = 0;
+    uchar receiver = 0; // Used for Dual/RX
+    uchar vfo=0; // Used for second VFO
 
     if (payloadIn.endsWith((char)0xfd))
     {
@@ -737,7 +740,6 @@ void icomCommander::parseCommand()
     freqt test;
     QVector<memParserFormat> memParser;
     QVariant value;
-    uchar vfo=0; // Used for second VFO
     switch (func)
     {
     case funcVFODualWatch:
@@ -752,55 +754,44 @@ void icomCommander::parseCommand()
         payloadIn.remove(0,1);
     case funcSelectedFreq:
     case funcUnselectedFreq:
-        if (func == funcUnselectedFreq)
-            vfo=1;
     case funcFreqGet:
     case funcFreqTR:
-    case funcReadTXFreq:
+    case funcTXFreq:
     {
+        if (func == funcUnselectedFreq)
+            vfo = 1;
+
         value.setValue(parseFreqData(payloadIn,vfo));
         //qInfo(logRig()) << funcString[func] << "len:" << payloadIn.size() << "receiver=" << receiver << "vfo=" << vfo <<
         //    "value:" << value.value<freqt>().Hz << "data:" << payloadIn.toHex(' ');
 
         break;
     }
+    case funcMode:
+        receiver = payloadIn.at(0);
+        payloadIn.remove(0,1);
     case funcModeGet:
     case funcModeTR:
-    {
-        if (static_cast<quint8>(payloadIn.at(0)) == 0xff) {
-            qWarning(logRig()) << "Invalid mode received, 0xff";
-            return;
-        }
-        modeInfo m;
-        m = parseMode(bcdHexToUChar(payloadIn.at(0)), m.filter,receiver,vfo);
-
-        if(payloadIn.size() > 1)
-        {
-            m.filter = payloadIn.at(1);
-        } else {
-            m.filter = 0;
-        }
-        value.setValue(m);
-        break;
-    }
-    case funcMode:
-        receiver=payloadIn.at(0);
-        payloadIn.remove(0,1);
     case funcSelectedMode:
     case funcUnselectedMode:
     {
-        if (func == funcUnselectedMode) {
-            vfo=1;
-        }
+        if (func == funcUnselectedMode)
+            vfo = 1;
 
-        // If in an invalid mode, the radio may respond with 0xff
-        if (uchar(payloadIn.at(0)) != 0xff) {
-            // New format payload with mode+datamode+filter
-            modeInfo m = parseMode(bcdHexToUChar(payloadIn.at(0)), bcdHexToUChar(payloadIn.at(2)),receiver,vfo);
-            m.data = bcdHexToUChar(payloadIn.at(1));
-            m.VFO = selVFO_t(receiver);
-            value.setValue(m);
+        modeInfo mi;
+        // This should handle the different formats that we could receive.
+        if (payloadIn.size())
+            mi.reg = bcdHexToUChar(payloadIn.at(0));
+        if (payloadIn.size()==2)
+            mi.filter = payloadIn.at(1);
+        if (payloadIn.size()==3) {
+            mi.data = payloadIn.at(1);
+            mi.filter = payloadIn.at(2);
         }
+        mi = parseMode(mi.reg, mi.data,mi.filter,receiver,vfo);
+        mi.VFO = selVFO_t(receiver);
+        value.setValue(mi);
+        //qInfo() << "Received mode rx:" << receiver << "vfo:" << vfo << "name:"<<  mi.name << "data:" << mi.data << "filter:" << mi.filter << payloadIn.toHex(' ');
         break;
     }
 
@@ -903,6 +894,7 @@ void icomCommander::parseCommand()
     case funcMonitorGain:
     case funcVoxGain:
     case funcAntiVoxGain:
+    case funcBackLightLevel:
     // 0x15 Meters
     case funcSMeter:
     case funcCenterMeter:
@@ -912,16 +904,50 @@ void icomCommander::parseCommand()
     case funcCompMeter:
     case funcVdMeter:
     case funcIdMeter:
+	
+	case funcBeepLevel:
+	case funcBeepMain:
+	case funcBeepSub:
+	
+	case funcRFSQLControl:
+	case funcTXDelayHF:
+	case funcTXDelay50m:
+	case funcTimeOutTimer:
+	case funcTimeOutCIV:   
+	
         value.setValue(bcdHexToUChar(payloadIn.at(0),payloadIn.at(1)));
         break;
-    // These are 2 byte commands that return a single byte (0-99) from position 2
-    case funcAGCTime:
+    case funcAGC:
+    case funcAGCTimeConstant:
     case funcBreakIn:   // This is 0,1 or 2
     case funcPreamp:
     case funcManualNotchWidth:
     case funcSSBTXBandwidth:
     case funcDSPIFFilter:
+    // Bass treble (A105)
+    case funcSSBRXBass:
+    case funcSSBRXTreble:
+    case funcAMRXBass:
+    case funcAMRXTreble:
+    case funcFMRXBass:
+    case funcFMRXTreble:
+    case funcSSBTXBass:
+    case funcSSBTXTreble:
+    case funcAMTXBass:
+    case funcAMTXTreble:
+    case funcFMTXBass:
+    case funcFMTXTreble:
+    case funcBandEdgeBeep:
         value.setValue(bcdHexToUChar(payloadIn.at(0)));
+        break;
+
+    // LPF/HPF
+    case funcSSBRXHPFLPF:
+    case FuncAMRXHPFLPF:
+    case funcFMRXHPFLPF:
+    case FuncCWRXHPFLPF:
+    case funcRTTYRXHPFLPF:
+        value.setValue(lpfhpf(ushort(payloadIn.at(0))*100,ushort(payloadIn.at(1))*100));
         break;
     case funcAbsoluteMeter:
     {
@@ -984,6 +1010,8 @@ void icomCommander::parseCommand()
     case funcVariousSql:
     case funcRXAntenna:
     case funcIPPlus:
+    case funcBeepLevelLimit:
+    case funcBeepConfirmation:
         value.setValue(static_cast<bool>(payloadIn.at(0)));
         break;
     case funcToneSquelchType:
@@ -1049,7 +1077,8 @@ void icomCommander::parseCommand()
     {
         quint16 calc;
         quint8 pass = bcdHexToUChar((quint8)payloadIn.at(0));
-        modeInfo m = queue->getCache(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcMode,receiver).value.value<modeInfo>();
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,false);
+        modeInfo m = queue->getCache(t.modeFunc,t.receiver).value.value<modeInfo>();
 
         if (m.mk == modeAM)
         {
@@ -1069,9 +1098,8 @@ void icomCommander::parseCommand()
     case funcDataModeWithFilter:
     {
         modeInfo m;
-        // New format payload with mode+datamode+filter
-        m = parseMode(uchar(payloadIn.at(0)), uchar(payloadIn.at(2)),receiver,vfo);
-        m.data = uchar(payloadIn.at(1));
+        // Old format payload with datamode+filter
+        m = parseMode(0xff, bcdHexToUChar(payloadIn.at(0)),bcdHexToUChar(payloadIn.at(1)),receiver,vfo);
         m.VFO = selVFO_t(receiver & 0x01);
         value.setValue(m);
         break;
@@ -1087,6 +1115,7 @@ void icomCommander::parseCommand()
     case funcUSBModLevel:
     case funcLANModLevel:
     case funcSPDIFModLevel:
+    case funcNBWidth:
         value.setValue(bcdHexToUChar(payloadIn.at(0),payloadIn.at(1)));
         break;
     // Singla byte returned as uchar (0-99)
@@ -1106,7 +1135,92 @@ void icomCommander::parseCommand()
         break;
     }
     case funcDashRatio:
+    case funcNBDepth:
+    case funcVOXDelay:
         value.setValue(bcdHexToUChar(payloadIn.at(0)));
+        break;
+    // Time & date functions
+    case funcUTCOffset:
+    case funcDate:
+    case funcTime:
+        break;
+    // Fixed Freq Scope Edges
+    case funcScopeEdge1a:
+    case funcScopeEdge2a:
+    case funcScopeEdge3a:
+    case funcScopeEdge4a:
+    case funcScopeEdge1b:
+    case funcScopeEdge2b:
+    case funcScopeEdge3b:
+    case funcScopeEdge4b:
+    case funcScopeEdge1c:
+    case funcScopeEdge2c:
+    case funcScopeEdge3c:
+    case funcScopeEdge4c:
+    case funcScopeEdge1d:
+    case funcScopeEdge2d:
+    case funcScopeEdge3d:
+    case funcScopeEdge4d:
+    case funcScopeEdge1e:
+    case funcScopeEdge2e:
+    case funcScopeEdge3e:
+    case funcScopeEdge4e:
+    case funcScopeEdge1f:
+    case funcScopeEdge2f:
+    case funcScopeEdge3f:
+    case funcScopeEdge4f:
+    case funcScopeEdge1g:
+    case funcScopeEdge2g:
+    case funcScopeEdge3g:
+    case funcScopeEdge4g:
+    case funcScopeEdge1h:
+    case funcScopeEdge2h:
+    case funcScopeEdge3h:
+    case funcScopeEdge4h:
+    case funcScopeEdge1i:
+    case funcScopeEdge2i:
+    case funcScopeEdge3i:
+    case funcScopeEdge4i:
+    case funcScopeEdge1j:
+    case funcScopeEdge2j:
+    case funcScopeEdge3j:
+    case funcScopeEdge4j:
+    case funcScopeEdge1k:
+    case funcScopeEdge2k:
+    case funcScopeEdge3k:
+    case funcScopeEdge4k:
+    case funcScopeEdge1l:
+    case funcScopeEdge2l:
+    case funcScopeEdge3l:
+    case funcScopeEdge4l:
+    case funcScopeEdge1m:
+    case funcScopeEdge2m:
+    case funcScopeEdge3m:
+    case funcScopeEdge4m:
+    case funcScopeEdge1n:
+    case funcScopeEdge2n:
+    case funcScopeEdge3n:
+    case funcScopeEdge4n:
+    case funcScopeEdge1o:
+    case funcScopeEdge2o:
+    case funcScopeEdge3o:
+    case funcScopeEdge4o:
+    case funcScopeEdge1p:
+    case funcScopeEdge2p:
+    case funcScopeEdge3p:
+    case funcScopeEdge4p:
+    case funcScopeEdge1q:
+    case funcScopeEdge2q:
+    case funcScopeEdge3q:
+    case funcScopeEdge4q:
+    case funcScopeEdge1r:
+    case funcScopeEdge2r:
+    case funcScopeEdge3r:
+    case funcScopeEdge4r:
+    case funcScopeEdge1s:
+    case funcScopeEdge2s:
+    case funcScopeEdge3s:
+    case funcScopeEdge4s:
         break;
     // 0x1b register (tones)
     case funcToneFreq:
@@ -1140,6 +1254,12 @@ void icomCommander::parseCommand()
         value.setValue(ritHz);
         break;
     }
+    case funcRitTXStatus:
+        value.setValue(static_cast<bool>(payloadIn.at(0)));
+        break;
+    case funcTXFreqMon:
+        value.setValue(static_cast<bool>(payloadIn.at(0)));
+        break;
     // 0x27
     case funcScopeWaveData:
     {
@@ -1193,6 +1313,9 @@ void icomCommander::parseCommand()
         // [2] 0x01, 0x02, 0x03: Edge 1,2,3
         receiver=payloadIn.at(0);
         value.setValue(bcdHexToUChar(payloadIn.at(1)));
+        break;
+    case funcBandEdgeFreq:
+        // M0VSE add this
         break;
     case funcScopeHold:
         receiver=payloadIn.at(0);
@@ -1261,7 +1384,6 @@ void icomCommander::parseCommand()
         qWarning(logRig()).noquote() << "Unhandled command received from rig:" << funcString[func] << "value:" << payloadIn.toHex().mid(0,10);
         break;
     }
-
     if(func != funcScopeWaveData
         && func != funcSMeter
         && func != funcAbsoluteMeter
@@ -1377,11 +1499,13 @@ void icomCommander::determineRigCaps()
     // If rig doesn't have FD comms, tell the commhandler early.
     emit setHalfDuplex(!rigCaps.hasFDcomms);
 
-    // Temporary QList to hold the function string lookup // I would still like to find a better way of doing this!
+    // Temporary QHash to hold the function string lookup // I would still like to find a better way of doing this!
     QHash<QString, funcs> funcsLookup;
     for (int i=0;i<NUMFUNCS;i++)
     {
-        funcsLookup.insert(funcString[i].toUpper(), funcs(i));
+        if (!funcString[i].startsWith("+")) {
+            funcsLookup.insert(funcString[i].toUpper(), funcs(i));
+        }
     }
 
     int numCommands = settings->beginReadArray("Commands");
@@ -1392,6 +1516,7 @@ void icomCommander::determineRigCaps()
         for (int c = 0; c < numCommands; c++)
         {
             settings->setArrayIndex(c);
+
             if (funcsLookup.contains(settings->value("Type", "****").toString().toUpper()))
             {
                 funcs func = funcsLookup.find(settings->value("Type", "").toString().toUpper()).value();
@@ -1601,11 +1726,27 @@ void icomCommander::determineRigCaps()
 #endif
     }
 
+    // Copy received guid so we can recognise this radio.
+    memcpy(rigCaps.guid, this->guid, GUIDLEN);
+
     haveRigCaps = true;
     queue->setRigCaps(&rigCaps);
 
-    // Copy received guid so we can recognise this radio.
-    memcpy(rigCaps.guid, this->guid, GUIDLEN);
+    // Also signal that a radio is connected to the radio status window
+    if (!usingNativeLAN) {
+        QList<radio_cap_packet>radios;
+        radio_cap_packet r;
+        r.civ = rigCaps.modelID;
+        r.baudrate = qToBigEndian(rigCaps.baudRate);
+#ifdef Q_OS_WINDOWS
+        strncpy_s(r.name,rigCaps.modelName.toLocal8Bit(),sizeof(r.name)-1);
+#else
+        strncpy(r.name,rigCaps.modelName.toLocal8Bit(),sizeof(r.name)-1);
+#endif
+        radios.append(r);
+        emit requestRadioSelection(radios);
+        emit setRadioUsage(0, true, true, QString("<Local>"), QString("127.0.0.1"));
+    }
 
     if(lookingForRig)
     {
@@ -2023,13 +2164,19 @@ freqt icomCommander::parseFrequency(QByteArray data, quint8 lastPosition)
     freqs.MHzDouble = 0;
     freqs.Hz = 0;
 
+    if (data.length() <= lastPosition)
+    {
+        // Something bad has happened!
+        qWarning(logRig()) << "parseFrequency() given last position:" << lastPosition << "but data is only" << data.length() << "bytes";
+        return freqs;
+    }
     // Does Frequency contain 100 MHz/1 GHz data?
-    if(data.length() > lastPosition+3)
+    if(data.length() > lastPosition+2)
     {
         freqs.Hz += (data[lastPosition+2] & 0x0f) * 1E9; //  1 GHz
         freqs.Hz += ((data[lastPosition+2] & 0xf0) >> 4) * 1E9 * 10; // 10 GHz
     }
-    if(data.length() >= lastPosition+1)
+    if(data.length() > lastPosition+1)
     {
         freqs.Hz += (data[lastPosition+1] & 0x0f) * 1E6 *         100; //  100 MHz
         freqs.Hz += ((data[lastPosition+1] & 0xf0) >> 4) * 1E6 * 1000; // 1000 MHz
@@ -2084,18 +2231,30 @@ quint64 icomCommander::parseFreqDataToInt(QByteArray data)
 }
 
 
-modeInfo icomCommander::parseMode(quint8 mode, quint8 filter, uchar receiver,uchar vfo)
+modeInfo icomCommander::parseMode(uchar mode, uchar data, uchar filter, uchar receiver,uchar vfo)
 {
     modeInfo mi;
     bool found=false;
-    for (auto& m: rigCaps.modes)
+    if (mode == 0xff)
     {
-        if (m.reg == mode)
+        mi.reg=mode;
+        mi.mk=modeUnknown;
+        mi.filter=filter;
+        mi.data=data;
+        found = true;
+    }
+    else
+    {
+        for (auto& m: rigCaps.modes)
         {
-            mi = modeInfo(m);
-            mi.filter = filter;
-            found = true;
-            break;
+            if (m.reg == mode)
+            {
+                mi = modeInfo(m);
+                mi.filter = filter;
+                mi.data = data;
+                found = true;
+                break;
+            }
         }
     }
 
@@ -2519,7 +2678,9 @@ void icomCommander::setAfGain(quint8 level)
 uchar icomCommander::makeFilterWidth(ushort pass,uchar receiver)
 {
     quint8 calc;
-    modeInfo mi = queue->getCache(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcMode,receiver).value.value<modeInfo>();
+    vfoCommandType t = queue->getVfoCommand(vfoA,receiver,false);
+    modeInfo mi = queue->getCache(t.modeFunc,receiver).value.value<modeInfo>();
+
     if (mi.mk == modeAM) { // AM 0-49
 
         calc = quint16((pass / 200) - 1);
@@ -2671,7 +2832,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                             (p==0x2D) || (p==0x2C) || (p==0x3A) ||
                             (p==0x27) || (p==0x28) || (p==0x29) ||
                             (p==0x3D) || (p==0x2B) || (p==0x22) ||
-                            (p==0x40) || (p==0x20) || p == 0xff)
+                            (p==0x40) || (p==0x20))
                         {
                             // Allowed character, continue
                         } else {
@@ -2679,7 +2840,12 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                             textData[c] = 0x3F; // "?"
                         }
                     }
-                    payload.append(textData);
+                    if (textData.isEmpty())
+                    {
+                        payload.append(uchar(0xff));
+                    } else {
+                        payload.append(textData);
+                    }
                     qDebug(logRig()) << "Sending CW: payload:" << payload.toHex(' ');
                  }
             }
@@ -3094,16 +3260,22 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             {
                 spectrumBounds s = value.value<spectrumBounds>();
                 uchar range=1;
+                uchar oldRange=0;
                 for (const bandType& band: rigCaps.bands)
                 {
-                   if (band.range != 0.0 && s.start > band.range)
+
+                    if (oldRange != range && band.range != 0.0 && s.start > band.range)
+                    {
                         range++;
+                        oldRange=band.range;
+                    }
                 }
-                payload.append(range);
-                payload.append(s.edge);
+                payload.append(bcdEncodeChar(range));
+                payload.append(bcdEncodeChar(s.edge));
                 payload.append(makeFreqPayload(s.start));
                 payload.append(makeFreqPayload(s.end));
                 qInfo() << "Bounds" << range << s.edge << s.start << s.end << payload.toHex();
+
             }
             else if (!strcmp(value.typeName(),"duplexMode_t"))
             {

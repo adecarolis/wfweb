@@ -10,7 +10,7 @@ cwSender::cwSender(QWidget *parent) :
     ui->setupUi(this);
     this->setWindowTitle("CW Sender");
     ui->textToSendEdit->setFocus();
-    QFont f = QFont("Monospace");
+    QFont f =  QFont(QFontDatabase::systemFont(QFontDatabase::FixedFont).family());
     f.setStyleHint(QFont::TypeWriter);
     ui->textToSendEdit->setFont(f);
     ui->transcriptText->setFont(f);
@@ -26,7 +26,7 @@ cwSender::cwSender(QWidget *parent) :
     });
 
     connect(this, &cwSender::stopCW, queue, [=]() {
-        queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<QString>(QChar(0xff))));
+        queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<QString>(QString())));
     });
 
     connect(this, &cwSender::setBreakInMode, queue, [=](const quint8 &bmode) {

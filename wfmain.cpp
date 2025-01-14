@@ -98,11 +98,13 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     finputbtns = new frequencyinputwidget();
     setupui = new settingswidget();
+    connect(setupui, SIGNAL(havePortError(errorType)), this, SLOT(receivePortError(errorType)));
 
 
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
     qRegisterMetaType<rigCapabilities>();
     qRegisterMetaType<duplexMode_t>();
+
     qRegisterMetaType<rptAccessTxRx_t>();
     qRegisterMetaType<rptrAccessData>();
     qRegisterMetaType<toneInfo>();
@@ -145,12 +147,15 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<centerSpanData>();
     qRegisterMetaType<bandStackType>();
     qRegisterMetaType<rigInfo>();
+    qRegisterMetaType<lpfhpf>();
 
     this->setObjectName("wfmain");
     queue = cachingQueue::getInstance(this);
 
     connect(queue,SIGNAL(sendValue(cacheItem)),this,SLOT(receiveValue(cacheItem)));
     connect(queue,SIGNAL(sendMessage(QString)),this,SLOT(showStatusBarText(QString)));
+    connect(queue,SIGNAL(intervalUpdated(qint64)),this,SLOT(updatedQueueInterval(qint64)));
+
     connect(queue, SIGNAL(finished()), queue, SLOT(deleteLater()));
 
     // Disable all controls until connected.
@@ -280,6 +285,18 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     changeFullScreenMode(prefs.useFullScreen);
     useSystemTheme(prefs.useSystemTheme);
+
+    // Don't update prefs until system theme is loaded.
+    // This is so we can popup any dialog boxes in the correct theme.
+    setupui->updateIfPrefs((int)if_all);
+    setupui->updateColPrefs((int)col_all);
+    setupui->updateRaPrefs((int)ra_all);
+    setupui->updateRsPrefs((int)rs_all); // Most of these come from the rig anyway
+    setupui->updateCtPrefs((int)ct_all);
+    setupui->updateClusterPrefs((int)cl_all);
+    setupui->updateLanPrefs((int)l_all);
+    setupui->updateUdpPrefs((int)u_all);
+    setupui->updateServerConfigs((int)s_all);
 
     finputbtns->setAutomaticSidebandSwitching(prefs.automaticSidebandSwitching);
 
@@ -431,6 +448,13 @@ wfmain::~wfmain()
         serverThread->quit();
         serverThread->wait();
     }
+
+    // Delete all shortcuts
+    for (const auto &s: shortcuts)
+    {
+        delete s;
+    }
+    shortcuts.clear();
 
     // Each rig needs deleting before we close.
     for (auto &rig: serverConfig.rigs) {
@@ -800,7 +824,7 @@ void wfmain::receivePortError(errorType err)
 {
     if (err.alert) {
         connectionHandler(false); // Force disconnect
-        QMessageBox::critical(this, err.device, err.message, QMessageBox::Ok);
+        QMessageBox::critical(this, err.device, QString("%0: %1").arg(err.device,err.message), QMessageBox::Ok);
     }
     else
     {
@@ -812,6 +836,23 @@ void wfmain::receivePortError(errorType err)
 
 void wfmain::receiveStatusUpdate(networkStatus status)
 {
+
+    if (queue->interval()==-1)
+    {
+        return;
+    }
+
+    // If we have received very high network latency, increase queue interval, don't set it to higher than 500ms though.
+    if (prefs.polling_ms != 0 && queue->interval() == quint32(delayedCmdIntervalLAN_ms) && (status.networkLatency/2) > quint32(delayedCmdIntervalLAN_ms))
+    {
+        qInfo(logRig()) << QString("1/2 network latency %0 exceeds configured queue interval %1, increasing").arg(status.networkLatency/2).arg(delayedCmdIntervalLAN_ms);
+        queue->interval(qMin(quint32(status.networkLatency/2),quint32(500)));
+    }
+    else if (prefs.polling_ms != 0 && queue->interval() != quint32(delayedCmdIntervalLAN_ms) && (status.networkLatency/2) < quint32(delayedCmdIntervalLAN_ms))
+    {
+        // Maybe it was a temporary issue, restore to default
+        queue->interval(delayedCmdIntervalLAN_ms);
+    }
 
     //this->rigStatus->setText(QString("%0/%1 %2").arg(mainElapsed).arg(subElapsed).arg(status.message));
     this->rigStatus->setText(status.message);
@@ -1033,8 +1074,6 @@ void wfmain::setServerToPrefs()
 
         emit initServer();
 
-        //connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
-
         ui->statusBar->showMessage(QString("Server enabled"), 1000);
 
     }
@@ -1051,7 +1090,7 @@ void wfmain::configureVFOs()
     }
 
     if (receivers.size()) {
-        foreach (spectrumScope* receiver, receivers)
+        foreach (receiverWidget* receiver, receivers)
         {
             ui->vfoLayout->removeWidget(receiver);
             delete receiver;
@@ -1061,7 +1100,7 @@ void wfmain::configureVFOs()
 
     for(uchar i=0;i<rigCaps->numReceiver;i++)
     {
-        spectrumScope* receiver = new spectrumScope(rigCaps->hasSpectrum,i,rigCaps->numVFO,this);
+        receiverWidget* receiver = new receiverWidget(rigCaps->hasSpectrum,i,rigCaps->numVFO,this);
         receiver->setSeparators(prefs.groupSeparator,prefs.decimalSeparator);
         receiver->setUnderlayMode(prefs.underlayMode);
         receiver->wfAntiAliased(prefs.wfAntiAlias);
@@ -1074,7 +1113,8 @@ void wfmain::configureVFOs()
         receiver->setTuningFloorZeros(prefs.niceTS);
         receiver->resizePlasmaBuffer(prefs.underlayBufferSize);
         receiver->setUnit((FctlUnit)prefs.frequencyUnits);
-        receiver->colorPreset(this->colorPrefs);
+        colorPrefsType p = colorPreset[prefs.currentColorPresetNumber];
+        receiver->colorPreset(&p);
         receiver->setIdentity(i==0?"Main Band":"Sub Band");
         ui->vfoLayout->addWidget(receiver);
 
@@ -1094,7 +1134,7 @@ void wfmain::configureVFOs()
 
         connect(receiver, SIGNAL(dataChanged(modeInfo)), this, SLOT(dataModeChanged(modeInfo)));
 
-        connect(receiver, &spectrumScope::bandChanged, receiver, [=](const uchar& rx, const bandType& b) {
+        connect(receiver, &receiverWidget::bandChanged, receiver, [=](const uchar& rx, const bandType& b) {
             if (rx == currentReceiver && rigCaps->commands.contains(funcAntenna)) {
                 ui->antennaSelCombo->setEnabled(b.ants);
                 if (b.ants) {
@@ -1122,218 +1162,219 @@ void wfmain::setSerialDevicesUI()
 
 }
 
+QShortcut* wfmain::setupKeyShortcut(const QKeySequence k)
+{
+    QShortcut* sc=new QShortcut(this);
+    sc->setKey(k);
+    connect(sc, &QShortcut::activated, this,
+            [=]() {
+        this->runShortcut(k);
+    });
+    return sc;
+}
 
 void wfmain::setupKeyShortcuts()
 {
-    keyF1 = new QShortcut(this);
-    keyF1->setKey(Qt::Key_F1);
-    connect(keyF1, SIGNAL(activated()), this, SLOT(shortcutF1()));
-
-    keyF2 = new QShortcut(this);
-    keyF2->setKey(Qt::Key_F2);
-    connect(keyF2, SIGNAL(activated()), this, SLOT(shortcutF2()));
-
-    keyF3 = new QShortcut(this);
-    keyF3->setKey(Qt::Key_F3);
-    connect(keyF3, SIGNAL(activated()), this, SLOT(shortcutF3()));
-
-    keyF4 = new QShortcut(this);
-    keyF4->setKey(Qt::Key_F4);
-    connect(keyF4, SIGNAL(activated()), this, SLOT(shortcutF4()));
-
-    keyF5 = new QShortcut(this);
-    keyF5->setKey(Qt::Key_F5);
-    connect(keyF5, SIGNAL(activated()), this, SLOT(shortcutF5()));
-
-    keyF6 = new QShortcut(this);
-    keyF6->setKey(Qt::Key_F6);
-    connect(keyF6, SIGNAL(activated()), this, SLOT(shortcutF6()));
-
-    keyF7 = new QShortcut(this);
-    keyF7->setKey(Qt::Key_F7);
-    connect(keyF7, SIGNAL(activated()), this, SLOT(shortcutF7()));
-
-    keyF8 = new QShortcut(this);
-    keyF8->setKey(Qt::Key_F8);
-    connect(keyF8, SIGNAL(activated()), this, SLOT(shortcutF8()));
-
-    keyF9 = new QShortcut(this);
-    keyF9->setKey(Qt::Key_F9);
-    connect(keyF9, SIGNAL(activated()), this, SLOT(shortcutF9()));
-
-    keyF10 = new QShortcut(this);
-    keyF10->setKey(Qt::Key_F10);
-    connect(keyF10, SIGNAL(activated()), this, SLOT(shortcutF10()));
-
-    keyF11 = new QShortcut(this);
-    keyF11->setKey(Qt::Key_F11);
-    connect(keyF11, SIGNAL(activated()), this, SLOT(shortcutF11()));
-
-    keyF12 = new QShortcut(this);
-    keyF12->setKey(Qt::Key_F12);
-    connect(keyF12, SIGNAL(activated()), this, SLOT(shortcutF12()));
-
-    keyControlT = new QShortcut(this);
-    keyControlT->setKey(Qt::CTRL | Qt::Key_T);
-    connect(keyControlT, SIGNAL(activated()), this, SLOT(shortcutControlT()));
-
-    keyControlR = new QShortcut(this);
-    keyControlR->setKey(Qt::CTRL | Qt::Key_R);
-    connect(keyControlR, SIGNAL(activated()), this, SLOT(shortcutControlR()));
-
-    keyControlP = new QShortcut(this);
-    keyControlP->setKey(Qt::CTRL | Qt::Key_P);
-    connect(keyControlP, SIGNAL(activated()), this, SLOT(shortcutControlP()));
-
-    keyControlI = new QShortcut(this);
-    keyControlI->setKey(Qt::CTRL | Qt::Key_I);
-    connect(keyControlI, SIGNAL(activated()), this, SLOT(shortcutControlI()));
-
-    keyControlU = new QShortcut(this);
-    keyControlU->setKey(Qt::CTRL | Qt::Key_U);
-    connect(keyControlU, SIGNAL(activated()), this, SLOT(shortcutControlU()));
-
-    keyStar = new QShortcut(this);
-    keyStar->setKey(Qt::Key_Asterisk);
-    connect(keyStar, SIGNAL(activated()), this, SLOT(shortcutStar()));
-
-    keySlash = new QShortcut(this);
-    keySlash->setKey(Qt::Key_Slash);
-    connect(keySlash, SIGNAL(activated()), this, SLOT(shortcutSlash()));
-
-    keyMinus = new QShortcut(this);
-    keyMinus->setKey(Qt::Key_Minus);
-    connect(keyMinus, SIGNAL(activated()), this, SLOT(shortcutMinus()));
-
-    keyPlus = new QShortcut(this);
-    keyPlus->setKey(Qt::Key_Plus);
-    connect(keyPlus, SIGNAL(activated()), this, SLOT(shortcutPlus()));
-
-    keyShiftMinus = new QShortcut(this);
-    keyShiftMinus->setKey(Qt::SHIFT | Qt::Key_Minus);
-    connect(keyShiftMinus, SIGNAL(activated()), this, SLOT(shortcutShiftMinus()));
-
-    keyShiftPlus = new QShortcut(this);
-    keyShiftPlus->setKey(Qt::SHIFT | Qt::Key_Plus);
-    connect(keyShiftPlus, SIGNAL(activated()), this, SLOT(shortcutShiftPlus()));
-
-    keyControlMinus = new QShortcut(this);
-    keyControlMinus->setKey(Qt::CTRL | Qt::Key_Minus);
-    connect(keyControlMinus, SIGNAL(activated()), this, SLOT(shortcutControlMinus()));
-
-    keyControlPlus = new QShortcut(this);
-    keyControlPlus->setKey(Qt::CTRL | Qt::Key_Plus);
-    connect(keyControlPlus, SIGNAL(activated()), this, SLOT(shortcutControlPlus()));
-
-    keyQuit = new QShortcut(this);
-    keyQuit->setKey(Qt::CTRL | Qt::Key_Q);
-    connect(keyQuit, SIGNAL(activated()), this, SLOT(on_exitBtn_clicked()));
-
-    keyPageUp = new QShortcut(this);
-    keyPageUp->setKey(Qt::Key_PageUp);
-    connect(keyPageUp, SIGNAL(activated()), this, SLOT(shortcutPageUp()));
-
-    keyPageDown = new QShortcut(this);
-    keyPageDown->setKey(Qt::Key_PageDown);
-    connect(keyPageDown, SIGNAL(activated()), this, SLOT(shortcutPageDown()));
-
-    keyF = new QShortcut(this);
-    keyF->setKey(Qt::Key_F);
-    connect(keyF, SIGNAL(activated()), this, SLOT(shortcutF()));
-
-    keyM = new QShortcut(this);
-    keyM->setKey(Qt::Key_M);
-    connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
-
-    // Alternate for plus:
-    keyK = new QShortcut(this);
-    keyK->setKey(Qt::Key_K);
-    connect(keyK, &QShortcut::activated, this,
-            [=]() {
-        if (freqLock) return;
-        this->shortcutPlus();
-    });
-
-    // Alternate for minus:
-    keyJ = new QShortcut(this);
-    keyJ->setKey(Qt::Key_J);
-    connect(keyJ, &QShortcut::activated, this,
-            [=]() {
-        if (freqLock) return;
-        this->shortcutMinus();
-    });
-
-    keyShiftK = new QShortcut(this);
-    keyShiftK->setKey(Qt::SHIFT | Qt::Key_K);
-    connect(keyShiftK, &QShortcut::activated, this,
-            [=]() {
-        if (freqLock) return;
-        this->shortcutShiftPlus();
-    });
-
-
-    keyShiftJ = new QShortcut(this);
-    keyShiftJ->setKey(Qt::SHIFT | Qt::Key_J);
-    connect(keyShiftJ, &QShortcut::activated, this,
-            [=]() {
-        if (freqLock) return;
-        this->shortcutShiftMinus();
-    });
-
-    keyControlK = new QShortcut(this);
-    keyControlK->setKey(Qt::CTRL | Qt::Key_K);
-    connect(keyControlK, &QShortcut::activated, this,
-            [=]() {
-        if (freqLock) return;
-        this->shortcutControlPlus();
-    });
-
-
-    keyControlJ = new QShortcut(this);
-    keyControlJ->setKey(Qt::CTRL | Qt::Key_J);
-    connect(keyControlJ, &QShortcut::activated, this,
-            [=]() {
-        if (freqLock) return;
-        this->shortcutControlMinus();
-    });
-    // Move the tuning knob by the tuning step selected:
-    // H = Down
-    keyH = new QShortcut(this);
-    keyH->setKey(Qt::Key_H);
-    connect(keyH, &QShortcut::activated, this,
-            [=]() {
-        if (freqLock) return;
-
-        if (receivers.size()) {
-            freqt f;
-            f.Hz = roundFrequencyWithStep(receivers.first()->getFrequency().Hz, -1, tsKnobHz);
-            f.MHzDouble = f.Hz / (double)1E6;
-            queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
-        }
-    });
-
-    // L = Up
-    keyL = new QShortcut(this);
-    keyL->setKey(Qt::Key_L);
-    connect(keyL, &QShortcut::activated, this,
-            [=]() {
-        if (freqLock) return;
-
-        freqt f;
-        if (receivers.size()) {
-            f.Hz = roundFrequencyWithStep(receivers.first()->getFrequency().Hz, 1, tsKnobHz);
-            f.MHzDouble = f.Hz / (double)1E6;
-            queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
-        }
-    });
-
-    keyDebug = new QShortcut(this);
+    shortcuts.append(setupKeyShortcut(Qt::Key_F1));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F2));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F3));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F4));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F5));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F6));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F7));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F8));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F9));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F10));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F11));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F12));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_T));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_R));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_P));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_I));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_U));
+    shortcuts.append(setupKeyShortcut(Qt::Key_Asterisk));
+    shortcuts.append(setupKeyShortcut(Qt::Key_Slash));
+    shortcuts.append(setupKeyShortcut(Qt::Key_Backslash));
+    shortcuts.append(setupKeyShortcut(Qt::Key_Minus));
+    shortcuts.append(setupKeyShortcut(Qt::Key_Plus));
+    shortcuts.append(setupKeyShortcut(Qt::SHIFT | Qt::Key_Minus));
+    shortcuts.append(setupKeyShortcut(Qt::SHIFT | Qt::Key_Plus));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_Minus));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_Plus));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_Q));
+    shortcuts.append(setupKeyShortcut(Qt::Key_PageUp));
+    shortcuts.append(setupKeyShortcut(Qt::Key_PageDown));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F));
+    shortcuts.append(setupKeyShortcut(Qt::Key_M));
+    shortcuts.append(setupKeyShortcut(Qt::Key_K));
+    shortcuts.append(setupKeyShortcut(Qt::Key_J));
+    shortcuts.append(setupKeyShortcut(Qt::SHIFT | Qt::Key_K));
+    shortcuts.append(setupKeyShortcut(Qt::SHIFT | Qt::Key_J));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_K));
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_J));
+    shortcuts.append(setupKeyShortcut(Qt::Key_H));
+    shortcuts.append(setupKeyShortcut(Qt::Key_L));
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-    keyDebug->setKey(Qt::CTRL | Qt::SHIFT | Qt::Key_D);
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::SHIFT | Qt::Key_D));
 #else
-    keyDebug->setKey(Qt::CTRL | Qt::Key_D);
+    shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_D));
 #endif
-    connect(keyDebug, SIGNAL(activated()), this, SLOT(debugBtn_clicked()));
+
+
+}
+
+void wfmain::runShortcut(const QKeySequence k)
+{
+    if (rigCaps == Q_NULLPTR) {
+        // No rig yet
+        qWarning() << "Cannot run shortcut as not connected to rig";
+        return;
+    }
+    bool freqUpdate=false;
+    freqt f;
+
+    qInfo() << "Running shortcut for key:" << k;
+    if (k == Qt::Key_F1){
+        this->raise();
+    } else if (k == Qt::Key_F2){
+        showAndRaiseWidget(bandbtns);
+    } else if (k==Qt::Key_F3 || k==Qt::Key_Asterisk){
+        showAndRaiseWidget(finputbtns);
+    } else if (k==Qt::Key_F4){
+        showAndRaiseWidget(setupui);
+    } else if (k==Qt::Key_F5){
+        changeMode(modeLSB, false, currentReceiver);
+    } else if (k==Qt::Key_F6){
+        changeMode(modeUSB, false, currentReceiver);
+    } else if (k==Qt::Key_F7){
+        changeMode(modeAM, false, currentReceiver);
+    } else if (k==Qt::Key_F8){
+        changeMode(modeCW, false, currentReceiver);
+    } else if (k==Qt::Key_F9){
+        changeMode(modeUSB, true, currentReceiver);
+    } else if (k==Qt::Key_F10){
+        changeMode(modeFM, false, currentReceiver);
+    } else if (k==Qt::Key_F11){
+        if(onFullscreen)
+        {
+            this->showNormal();
+            onFullscreen = false;
+            prefs.useFullScreen = false;
+        } else {
+            this->showFullScreen();
+            onFullscreen = true;
+            prefs.useFullScreen = true;
+        }
+        setupui->updateIfPref(if_useFullScreen);
+    } else if (k==Qt::Key_F12){
+        showStatusBarText("Sending speech command to radio.");
+        queue->add(priorityImmediate,queueItem(funcSpeech,QVariant::fromValue(uchar(0U)),false,currentReceiver));
+    } else if (k==(Qt::CTRL | Qt::Key_T)){
+        // Transmit
+        qDebug(logSystem()) << "Activated Control-T shortcut";
+        showStatusBarText(QString("Transmitting. Press Control-R to receive."));
+        extChangedRsPrefs(rs_pttOn);
+    } else if (k==(Qt::CTRL | Qt::Key_R)){
+        // Receive
+        extChangedRsPrefs(rs_pttOff);
+    } else if (k==(Qt::CTRL | Qt::Key_P)){
+        // Toggle PTT
+        if(amTransmitting) {
+            extChangedRsPrefs(rs_pttOff);
+        } else {
+            extChangedRsPrefs(rs_pttOn);
+            showStatusBarText(QString("Transmitting. Press Control-P again to receive."));
+        }
+    } else if (k==(Qt::CTRL | Qt::Key_I)){
+        // Enable ATU
+        ui->tuneEnableChk->click();
+    } else if (k==(Qt::CTRL | Qt::Key_U)){
+        // Run ATU tuning cycle
+        ui->tuneNowBtn->click();
+    } else if (k==Qt::Key_Slash){
+        for (size_t i = 0; i < rigCaps->modes.size(); i++) {
+            if (rigCaps->modes[i].mk == receivers[currentReceiver]->currentMode().mk)
+            {
+                if (i + 1 < rigCaps->modes.size()) {
+                    changeMode(rigCaps->modes[i + 1].mk,false,currentReceiver);
+                }
+                else {
+                    changeMode(rigCaps->modes[0].mk,false,currentReceiver);
+                }
+                break;
+            }
+        }
+    } else if (k==Qt::Key_Backslash){
+        bool found = false;
+        availableBands band = bandUnknown;
+        auto b = rigCaps->bands.cend();
+        while (b != rigCaps->bands.cbegin())
+        {
+            b--;
+            if ((b->region == "" || prefs.region == b->region))
+            {
+                if (!found && b->band == bandbtns->currentBand()) {
+                    found = true;
+                } else if (found && b->band != bandbtns->currentBand()) {
+                    qInfo() << "Got new band:" << b->band << "Name:" << b->name << "region" << b->region;
+                    band = b->band;
+                    break;
+                }
+            }
+        }
+        if (band == bandUnknown)
+        {
+            band = rigCaps->bands[rigCaps->bands.size() - 1].band;
+        }
+        bandbtns->setBand(band);
+    } else if (k==Qt::Key_Minus|| k==Qt::Key_J){
+        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusHz);
+        freqUpdate=true;
+    } else if (k==Qt::Key_Plus || k==Qt::Key_K){
+        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusHz);
+        freqUpdate=true;
+    } else if (k==(Qt::SHIFT | Qt::Key_Minus) || k==(Qt::SHIFT | Qt::Key_J)){
+        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusShiftHz);
+        freqUpdate=true;
+    } else if (k==(Qt::SHIFT | Qt::Key_Plus) || k==(Qt::SHIFT | Qt::Key_K)){
+        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusShiftHz);
+        freqUpdate=true;
+    } else if (k==(Qt::CTRL | Qt::Key_Minus) || k==(Qt::CTRL | Qt::Key_J)){
+        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusControlHz);
+        freqUpdate=true;
+    } else if (k==(Qt::CTRL | Qt::Key_Plus) || k==(Qt::CTRL | Qt::Key_K)){
+        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusControlHz);
+        freqUpdate=true;
+    } else if (k==(Qt::CTRL | Qt::Key_Q)){
+        on_exitBtn_clicked();
+    } else if (k==Qt::Key_PageUp){
+        f.Hz = receivers[0]->getFrequency().Hz + tsPageHz;
+        freqUpdate=true;
+    } else if (k==Qt::Key_PageDown){
+        f.Hz = receivers[0]->getFrequency().Hz - tsPageHz;
+        freqUpdate=true;
+    } else if (k==Qt::Key_F){
+        showStatusBarText("Sending speech command (frequency) to radio.");
+        queue->add(priorityImmediate,queueItem(funcSpeech, QVariant::fromValue<uchar>(1),false,currentReceiver));
+    } else if (k==Qt::Key_M){
+        showStatusBarText("Sending speech command (mode) to radio.");
+        queue->add(priorityImmediate,queueItem(funcSpeech, QVariant::fromValue<uchar>(2),false,currentReceiver));
+    } else if (k==Qt::Key_H){
+        f.Hz = roundFrequencyWithStep(receivers.first()->getFrequency().Hz, -1, tsKnobHz);
+        freqUpdate = true;
+    } else if (k==Qt::Key_L){
+        f.Hz = roundFrequencyWithStep(receivers.first()->getFrequency().Hz, 1, tsKnobHz);
+        freqUpdate = true;
+    } else if (k==(Qt::CTRL | Qt::Key_D)){
+        debugBtn_clicked();
+    }
+
+    if (!freqLock && freqUpdate) {
+        vfoCommandType t = queue->getVfoCommand(vfoA,currentReceiver,true);
+        f.MHzDouble = f.Hz / (double)1E6;
+        queue->add(priorityImmediate,queueItem(t.freqFunc,
+                                                        QVariant::fromValue<freqt>(f),false,uchar(t.receiver)));
+    }
 }
 
 void wfmain::setupUsbControllerDevice()
@@ -1382,7 +1423,7 @@ void wfmain::pttToggle(bool status)
         showStatusBarText("PTT is disabled, not sending command. Change under Settings tab.");
         return;
     }
-    queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(status),false));
+    queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(status),false,uchar(0)));
 
     // Start 3 minute timer
     if (status)
@@ -1392,21 +1433,21 @@ void wfmain::pttToggle(bool status)
 void wfmain::doShuttle(bool up, quint8 level)
 {
     if (level == 1 && up)
-            shortcutShiftPlus();
+        runShortcut(Qt::SHIFT | Qt::Key_Plus);
     else if (level == 1 && !up)
-            shortcutShiftMinus();
+        runShortcut(Qt::SHIFT | Qt::Key_Minus);
     else if (level > 1 && level < 5 && up)
         for (int i = 1; i < level; i++)
-            shortcutPlus();
+            runShortcut(Qt::Key_Plus);
     else if (level > 1 && level < 5 && !up)
         for (int i = 1; i < level; i++)
-            shortcutMinus();
+            runShortcut(Qt::Key_Minus);
     else if (level > 4 && up)
         for (int i = 4; i < level; i++)
-            shortcutControlPlus();
+            runShortcut(Qt::CTRL | Qt::Key_Plus);
     else if (level > 4 && !up)
         for (int i = 4; i < level; i++)
-            shortcutControlMinus();
+            runShortcut(Qt::CTRL | Qt::Key_Minus);
 }
 
 void wfmain::buttonControl(const COMMAND* cmd)
@@ -1613,7 +1654,9 @@ void wfmain::changeFrequency(int value) {
         freqt f;
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, value, tsWfScrollHz);
         f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+        vfoCommandType t = queue->getVfoCommand(vfoA,currentReceiver,true);
+        queue->add(priorityImmediate,queueItem(t.freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(t.receiver)));
     }
 }
 
@@ -1664,6 +1707,9 @@ void wfmain::setDefPrefs()
     defPrefs.region = "1";
     defPrefs.showBands = true;
 
+    defPrefs.useUTC = false;
+    defPrefs.setRadioTime = false;
+
     defPrefs.tcpPort = 0;
     defPrefs.tciPort = 50001;
     defPrefs.clusterUdpEnable = false;
@@ -1712,7 +1758,6 @@ void wfmain::setDefPrefs()
 void wfmain::loadSettings()
 {
     qInfo(logSystem()) << "Loading settings from " << settings->fileName();
-    setupui->acceptServerConfig(&serverConfig);
 
     QString currentVersionString = QString(WFVIEW_VERSION);
     float currentVersionFloat = currentVersionString.toFloat();
@@ -1774,6 +1819,9 @@ void wfmain::loadSettings()
     prefs.meter3Type = static_cast<meter_t>(settings->value("Meter3Type", defPrefs.meter3Type).toInt());
     prefs.compMeterReverse = settings->value("compMeterReverse", defPrefs.compMeterReverse).toBool();
     prefs.clickDragTuningEnable = settings->value("ClickDragTuning", false).toBool();
+
+    prefs.useUTC = settings->value("UseUTC", defPrefs.useUTC).toBool();
+    prefs.setRadioTime = settings->value("SetRadioTime", defPrefs.setRadioTime).toBool();
 
     prefs.rigCreatorEnable = settings->value("RigCreator",false).toBool();
     prefs.region = settings->value("Region",defPrefs.region).toString();
@@ -1964,17 +2012,19 @@ void wfmain::loadSettings()
     settings->endGroup();
 
     settings->beginGroup("Server");
+    setupui->acceptServerConfig(&serverConfig);
+
     serverConfig.enabled = settings->value("ServerEnabled", false).toBool();
+    serverConfig.disableUI = settings->value("DisableUI", false).toBool();
     // These defPrefs are actually for the client, but they are the same.
     serverConfig.controlPort = settings->value("ServerControlPort", udpDefPrefs.controlLANPort).toInt();
     serverConfig.civPort = settings->value("ServerCivPort", udpDefPrefs.serialLANPort).toInt();
     serverConfig.audioPort = settings->value("ServerAudioPort", udpDefPrefs.audioLANPort).toInt();
 
-
-    setupui->updateServerConfigs((int)(s_enabled |
+/*    setupui->updateServerConfigs((int)(s_enabled |
                                  s_controlPort |
                                  s_civPort |
-                                 s_audioPort));
+                                 s_audioPort)); */
 
     serverConfig.users.clear();
 
@@ -2019,7 +2069,7 @@ void wfmain::loadSettings()
     rigTemp->pttType = prefs.pttType; // Use the global PTT type.
 
     rigTemp->baudRate = prefs.serialPortBaud;
-    rigTemp->civAddr = prefs.radioCIVAddr;
+    rigTemp->civAddr = 0;
     rigTemp->serialPort = prefs.serialPortRadio;
     QString guid = settings->value("GUID", "").toString();
     if (guid.isEmpty()) {
@@ -2030,14 +2080,13 @@ void wfmain::loadSettings()
     memcpy(rigTemp->guid, QUuid::fromString(guid).toRfc4122().constData(), GUIDLEN);
 #endif
 
-    rigTemp->rxAudioSetup.name = settings->value("ServerAudioInput", "Default Input Device").toString();
-    rigTemp->txAudioSetup.name = settings->value("ServerAudioOutput", "Default Output Device").toString();
+    rigTemp->rxAudioSetup.name = settings->value("ServerAudioInput", "").toString();
+    rigTemp->txAudioSetup.name = settings->value("ServerAudioOutput", "").toString();
 
     serverConfig.rigs.append(rigTemp);
 
     // At this point, the users list has exactly one empty user.
-    setupui->updateServerConfig(s_users);
-
+    //setupui->updateServerConfig(s_users);
 
     settings->endGroup();
 
@@ -2254,16 +2303,7 @@ void wfmain::loadSettings()
 
     setupui->acceptPreferencesPtr(&prefs);
     setupui->acceptColorPresetPtr(colorPreset);
-    setupui->updateIfPrefs((int)if_all);
-    setupui->updateColPrefs((int)col_all);
-    setupui->updateRaPrefs((int)ra_all);
-    setupui->updateRsPrefs((int)rs_all); // Most of these come from the rig anyway
-    setupui->updateCtPrefs((int)ct_all);
-    setupui->updateClusterPrefs((int)cl_all);
-    setupui->updateLanPrefs((int)l_all);
-
     setupui->acceptUdpPreferencesPtr(&udpPrefs);
-    setupui->updateUdpPrefs((int)u_all);
 
     prefs.settingsChanged = false;
 }
@@ -2705,12 +2745,12 @@ void wfmain::extChangedRsPref(prefRsItem i)
             return;
         }
         showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
-        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(true),false));
+        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(true),false,uchar(0)));
         pttTimer->start();
         break;
     case rs_pttOff:
         showStatusBarText("Sending PTT OFF command");
-        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false));
+        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false,uchar(0)));
         pttTimer->stop();
         break;
     case rs_satOps:
@@ -2720,6 +2760,7 @@ void wfmain::extChangedRsPref(prefRsItem i)
         cal->show();
         break;
     case rs_clockUseUtc:
+    case rs_setRadioTime:
         break;
     default:
         qWarning(logSystem()) << "Cannot update wfmain rs pref" << (int)i;
@@ -2930,6 +2971,8 @@ void wfmain::extChangedServerPref(prefServerItem i)
     case s_enabled:
         setServerToPrefs();
         break;
+    case s_disableui:
+        break;
     case s_lan:
         break;
     case s_controlPort:
@@ -3011,6 +3054,10 @@ void wfmain::saveSettings()
     settings->setValue("Meter3Type", (int)prefs.meter3Type);
     settings->setValue("compMeterReverse", prefs.compMeterReverse);
     settings->setValue("ClickDragTuning", prefs.clickDragTuningEnable);
+
+    settings->setValue("UseUTC",prefs.useUTC);
+    settings->setValue("SetRadioTime",prefs.setRadioTime);
+
     settings->setValue("RigCreator",prefs.rigCreatorEnable);
     settings->setValue("FrequencyUnits",prefs.frequencyUnits);
     settings->setValue("Region",prefs.region);
@@ -3025,8 +3072,10 @@ void wfmain::saveSettings()
     settings->setValue("CIVisRadioModel", prefs.CIVisRadioModel);
     settings->setValue("PTTType", prefs.pttType);
     settings->setValue("polling_ms", prefs.polling_ms); // 0 = automatic
-    settings->setValue("SerialPortRadio", prefs.serialPortRadio);
-    settings->setValue("SerialPortBaud", prefs.serialPortBaud);
+    if (!prefs.serialPortRadio.isEmpty())
+        settings->setValue("SerialPortRadio", prefs.serialPortRadio);
+    if (prefs.serialPortBaud != 0)
+        settings->setValue("SerialPortBaud", prefs.serialPortBaud);
     settings->setValue("VirtualSerialPort", prefs.virtualSerialPort);
     settings->setValue("localAFgain", prefs.localAFgain);
     settings->setValue("AudioSystem", prefs.audioSystem);
@@ -3059,8 +3108,10 @@ void wfmain::saveSettings()
     settings->setValue("AudioRXCodec", prefs.rxSetup.codec);
     settings->setValue("AudioTXSampleRate", prefs.txSetup.sampleRate);
     settings->setValue("AudioTXCodec", prefs.txSetup.codec);
-    settings->setValue("AudioOutput", prefs.rxSetup.name);
-    settings->setValue("AudioInput", prefs.txSetup.name);
+    if (!prefs.rxSetup.name.isEmpty())
+        settings->setValue("AudioOutput", prefs.rxSetup.name);
+    if (!prefs.txSetup.name.isEmpty())
+        settings->setValue("AudioInput", prefs.txSetup.name);
     settings->setValue("ResampleQuality", prefs.rxSetup.resampleQuality);
     settings->setValue("ClientName", udpPrefs.clientName);
     settings->setValue("WaterfallFormat", prefs.waterfallFormat);
@@ -3134,11 +3185,14 @@ void wfmain::saveSettings()
     settings->beginGroup("Server");
 
     settings->setValue("ServerEnabled", serverConfig.enabled);
+    settings->setValue("DisableUI", serverConfig.disableUI);
     settings->setValue("ServerControlPort", serverConfig.controlPort);
     settings->setValue("ServerCivPort", serverConfig.civPort);
     settings->setValue("ServerAudioPort", serverConfig.audioPort);
-    settings->setValue("ServerAudioOutput", serverConfig.rigs.first()->txAudioSetup.name);
-    settings->setValue("ServerAudioInput", serverConfig.rigs.first()->rxAudioSetup.name);
+    if (!serverConfig.rigs.first()->txAudioSetup.name.isEmpty())
+        settings->setValue("ServerAudioOutput", serverConfig.rigs.first()->txAudioSetup.name);
+    if (!serverConfig.rigs.first()->rxAudioSetup.name.isEmpty())
+        settings->setValue("ServerAudioInput", serverConfig.rigs.first()->rxAudioSetup.name);
 
     /* Remove old format users*/
     int numUsers = settings->value("ServerNumUsers", 0).toInt();
@@ -3320,138 +3374,6 @@ void wfmain::saveSettings()
     settings->sync(); // Automatic, not needed (supposedly)
 }
 
-
-// Key shortcuts (hotkeys)
-
-void wfmain::shortcutF11()
-{
-    if(onFullscreen)
-    {
-        this->showNormal();
-        onFullscreen = false;
-        prefs.useFullScreen = false;
-    } else {
-        this->showFullScreen();
-        onFullscreen = true;
-        prefs.useFullScreen = true;
-    }
-    setupui->updateIfPref(if_useFullScreen);
-}
-
-void wfmain::shortcutF1()
-{
-
-}
-
-void wfmain::shortcutF2()
-{
-    showAndRaiseWidget(bandbtns);
-}
-
-void wfmain::shortcutF3()
-{
-    showAndRaiseWidget(finputbtns);
-}
-
-void wfmain::shortcutF4()
-{
-
-}
-
-// Mode switch keys:
-void wfmain::shortcutF5()
-{
-    // LSB
-    changeMode(modeLSB, false, currentReceiver);
-}
-
-void wfmain::shortcutF6()
-{
-    // USB
-    changeMode(modeUSB, false, currentReceiver);
-}
-
-void wfmain::shortcutF7()
-{
-    // AM
-    changeMode(modeAM, false, currentReceiver);
-}
-
-void wfmain::shortcutF8()
-{
-    // CW
-    changeMode(modeCW, false, currentReceiver);
-}
-
-void wfmain::shortcutF9()
-{
-    // USB-D
-    changeMode(modeUSB, true, currentReceiver);
-}
-
-void wfmain::shortcutF10()
-{
-    // FM
-    changeMode(modeFM, false, currentReceiver);
-}
-
-void wfmain::shortcutF12()
-{
-    // Speak current frequency and mode from the radio
-    showStatusBarText("Sending speech command to radio.");
-    queue->add(priorityImmediate,queueItem(funcSpeech,QVariant::fromValue(uchar(0U))));
-}
-
-void wfmain::shortcutControlT()
-{
-    // Transmit
-    qDebug(logSystem()) << "Activated Control-T shortcut";
-    showStatusBarText(QString("Transmitting. Press Control-R to receive."));
-    extChangedRsPrefs(rs_pttOn);
-}
-
-void wfmain::shortcutControlR()
-{
-    // Receive
-    extChangedRsPrefs(rs_pttOff);
-}
-
-void wfmain::shortcutControlP()
-{
-    // Toggle PTT
-    if(amTransmitting) {
-        extChangedRsPrefs(rs_pttOff);
-    } else {
-        extChangedRsPrefs(rs_pttOn);
-        showStatusBarText(QString("Transmitting. Press Control-P again to receive."));
-    }
-}
-
-void wfmain::shortcutControlI()
-{
-    // Enable ATU
-    ui->tuneEnableChk->click();
-}
-
-void wfmain::shortcutControlU()
-{
-    // Run ATU tuning cycle
-    ui->tuneNowBtn->click();
-}
-
-void wfmain::shortcutStar()
-{
-    // Jump to frequency tab from Asterisk key on keypad
-    showAndRaiseWidget(finputbtns);
-}
-
-void wfmain::shortcutSlash()
-{
-    // Cycle through available modes
-    //ui->modeSelectCombo->setCurrentIndex( (ui->modeSelectCombo->currentIndex()+1) % ui->modeSelectCombo->count() );
-    //on_modeSelectCombo_activated( ui->modeSelectCombo->currentIndex() );
-}
-
 void wfmain::setTuningSteps()
 {
     // TODO: interact with preferences, tuning step drop down box, and current operating mode
@@ -3526,133 +3448,6 @@ quint64 wfmain::roundFrequencyWithStep(quint64 frequency, int steps, unsigned in
     }
 }
 
-void wfmain::shortcutMinus()
-{
-    if (freqLock) return;
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusHz);
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
-    }
-}
-
-void wfmain::shortcutPlus()
-{
-    if (freqLock) return;
-
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusHz);
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
-    }
-}
-
-void wfmain::shortcutStepMinus()
-{
-    if (freqLock) return;
-    if (receivers.size())
-    {
-        freqt f;
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, ui->tuningStepCombo->currentData().toInt());
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
-    }
-}
-
-void wfmain::shortcutStepPlus()
-{
-    if (freqLock) return;
-
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, ui->tuningStepCombo->currentData().toInt());
-
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
-    }
-}
-
-void wfmain::shortcutShiftMinus()
-{
-    if(freqLock) return;
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusShiftHz);
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
-    }
-}
-
-void wfmain::shortcutShiftPlus()
-{
-    if(freqLock) return;
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusShiftHz);
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
-    }
-}
-
-void wfmain::shortcutControlMinus()
-{
-    if(freqLock) return;
-
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusControlHz);
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
-    }
-}
-
-void wfmain::shortcutControlPlus()
-{
-    if(freqLock) return;
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusControlHz);
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
-    }
-}
-
-void wfmain::shortcutPageUp()
-{
-    if(freqLock) return;
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = receivers[0]->getFrequency().Hz + tsPageHz;
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
-    }
-}
-
-void wfmain::shortcutPageDown()
-{
-    if(freqLock) return;
-    if (receivers.size()) {
-        freqt f;
-        f.Hz = receivers[0]->getFrequency().Hz - tsPageHz;
-        f.MHzDouble = f.Hz / (double)1E6;
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
-    }
-}
-
-void wfmain::shortcutF()
-{
-    showStatusBarText("Sending speech command (frequency) to radio.");
-    emit sayFrequency();
-}
-
-void wfmain::shortcutM()
-{
-    showStatusBarText("Sending speech command (mode) to radio.");
-    emit sayMode();
-}
-
 funcs wfmain::getInputTypeCommand(inputTypes input)
 {
     funcs func;
@@ -3706,6 +3501,7 @@ void wfmain:: getInitialRigState()
 
     queue->del(funcTransceiverId); // This command is no longer required
 
+
     if (rigCaps->commands.contains(funcSatelliteMode))
         queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue(bool(0)),false,0)); // Make sure we are in not in satellite mode.
 
@@ -3724,8 +3520,11 @@ void wfmain:: getInitialRigState()
 
     if(rigCaps->hasSpectrum)
     {
+        // Send commands to start scope immediately, followed by a repeat a few seconds later.
         queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
         queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
+        queue->add(priorityMediumHigh,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
+        queue->add(priorityMediumHigh,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
 
         // Find the scope ref limits
         auto mr = rigCaps->commands.find(funcScopeRef);
@@ -3733,7 +3532,7 @@ void wfmain:: getInitialRigState()
         {
             for (uchar f = 0; f<receivers.size();f++) {
                 receivers[f]->setRefLimits(mr.value().minVal,mr.value().maxVal);
-                queue->add(priorityImmediate,funcScopeRef,false,f);
+                queue->add(priorityMediumHigh,funcScopeRef,false,f);
             }
         }
     }
@@ -3758,7 +3557,9 @@ void wfmain:: getInitialRigState()
         receiver->setBandIndicators(prefs.showBands, prefs.region, &rigCaps->bands);
     }
 
-
+    if (prefs.setRadioTime) {
+        setRadioTimeDatePrep();
+    }
 }
 
 void wfmain::showStatusBarText(QString text)
@@ -4037,8 +3838,8 @@ void wfmain::changePrimaryMeter(bool transmitOn) {
         newCmd = meter_tToMeterCommand(meterS);
         ui->meterSPoWidget->setMeterType(meterS);
     }
-    queue->del(oldCmd,currentReceiver);
-    queue->add(priorityHighest,queueItem(newCmd,true,currentReceiver));
+    queue->del(oldCmd,0);
+    queue->add(priorityHighest,queueItem(newCmd,true,0));
 }
 
 void wfmain::changeFullScreenMode(bool checked)
@@ -4080,16 +3881,8 @@ void wfmain::changeMode(rigMode_t mode, quint8 data, quint8 rx)
                 m.VFO=selVFO_t::activeVFO;
                 m.filter = receivers[rx]->currentFilter();
                 qDebug(logRig()) << "changeMode:" << mode << "data" << data << "rx" << rx;
-                if (rigCaps->commands.contains(funcMode)) {
-                    queue->add(priorityImmediate,queueItem(funcMode,QVariant::fromValue<modeInfo>(m),false,rx));
-                }
-                else if (rigCaps->commands.contains(funcSelectedMode)) {
-                    queue->add(priorityImmediate,queueItem(funcSelectedMode,QVariant::fromValue<modeInfo>(m),false,rx));
-                }
-                else { // Fallback to old style mode commands.
-                    queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(m),false,rx));
-                    queue->add(priorityImmediate,queueItem(funcDataModeWithFilter,QVariant::fromValue<modeInfo>(m),false,rx));
-                }
+                vfoCommandType t = queue->getVfoCommand(vfoA,rx,true);
+                queue->add(priorityImmediate,queueItem(t.modeFunc,QVariant::fromValue<modeInfo>(m),false,t.receiver));
             }
 
             break;
@@ -4152,7 +3945,8 @@ void wfmain::on_freqDial_valueChanged(int value)
     {
         oldFreqDialVal = value;
         receivers[currentReceiver]->setFrequency(f);
-        queue->addUnique(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(f),false,currentReceiver));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
+                                                QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
     } else {
         ui->freqDial->blockSignals(true);
         ui->freqDial->setValue(oldFreqDialVal);
@@ -4238,6 +4032,13 @@ void wfmain::on_monitorLabel_linkActivated(const QString&)
 
 void wfmain::on_tuneNowBtn_clicked()
 {
+
+    if (!prefs.enablePTT)
+    {
+        showStatusBarText("PTT is disabled, not sending command. Change under Settings tab.");
+        return;
+    }
+
     queue->addUnique(priorityImmediate,queueItem(funcTunerStatus,QVariant::fromValue<uchar>(2U)));
     showStatusBarText("Starting ATU tuning cycle...");
     ATUCheckTimer.setSingleShot(true);
@@ -4345,7 +4146,7 @@ void wfmain::handlePttLimit()
 {
     // transmission time exceeded!
     showStatusBarText("Transmit timeout at 3 minutes. Sending PTT OFF command now.");
-    queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false));
+    queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false,uchar(0)));
 }
 
 void wfmain::on_saveSettingsBtn_clicked()
@@ -4446,7 +4247,7 @@ void wfmain::on_transmitBtn_clicked()
 
         // Are we already PTT? Not a big deal, just send again anyway.
         showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
-        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(true),false));
+        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(true),false,uchar(0)));
 
         // send PTT
         // Start 3 minute timer
@@ -4454,7 +4255,7 @@ void wfmain::on_transmitBtn_clicked()
 
     } else {
         // Currently transmitting
-        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false));
+        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false,uchar(0)));
 
         pttTimer->stop();
     }
@@ -4469,10 +4270,10 @@ void wfmain::setRadioTimeDatePrep()
         if(prefs.useUTC)
         {
             now = QDateTime::currentDateTimeUtc();
-            now.setTime(QTime::currentTime());
+            //now.setTime(QTime::currentTime());
         } else {
             now = QDateTime::currentDateTime();
-            now.setTime(QTime::currentTime());
+            //now.setTime(QTime::currentTime());
         }
 
         int second = now.time().second();
@@ -4513,8 +4314,8 @@ void wfmain::setRadioTimeDateSend()
     showStatusBarText(QString("Setting time, date, and UTC offset for radio now."));
 
     queue->add(priorityImmediate,queueItem(funcUTCOffset,QVariant::fromValue<timekind>(utcsetting)));
-    queue->add(priorityImmediate,queueItem(funcTime,QVariant::fromValue<timekind>(timesetpoint)));
-    queue->add(priorityImmediate,queueItem(funcDate,QVariant::fromValue<datekind>(datesetpoint)));
+    queue->add(priorityHighest,queueItem(funcTime,QVariant::fromValue<timekind>(timesetpoint)));
+    queue->add(priorityHighest,queueItem(funcDate,QVariant::fromValue<datekind>(datesetpoint)));
 
     waitingToSetTimeDate = false;
 }
@@ -4617,20 +4418,17 @@ void wfmain::receiveTuningStep(quint8 step)
     }
 }
 
-void wfmain::receiveMeter(meter_t inMeter, quint8 level,quint8 receiver)
+void wfmain::receiveMeter(meter_t inMeter, quint8 level)
 {
-    // Do nothing with s-meter from non-current receiver
-    if (receiver != currentReceiver && inMeter == meterS) {
-        return;
-    }
+
     switch(inMeter)
     {
     // These first two meters, S and Power,
     // are automatically assigned to the primary meter.
         case meterS:
-            ui->meterSPoWidget->setMeterType(meterS);
-            ui->meterSPoWidget->setLevel(level);
-            ui->meterSPoWidget->repaint();
+                ui->meterSPoWidget->setMeterType(meterS);
+                ui->meterSPoWidget->setLevel(level);
+                ui->meterSPoWidget->repaint();
             break;
         case meterPower:
             ui->meterSPoWidget->setMeterType(meterPower);
@@ -4941,6 +4739,7 @@ funcs wfmain::meter_tToMeterCommand(meter_t m)
             c = funcNone;
             break;
         case meterS:
+        case meterSubS:
             c = funcSMeter;
             break;
         case meterCenter:
@@ -5004,7 +4803,7 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
     funcs oldCmd = meter_tToMeterCommand(oldMeterType);
 
     //if (oldCmd != funcSMeter && oldCmd != funcNone)
-    queue->del(oldCmd,currentReceiver);
+    queue->del(oldCmd,(oldMeterType==meterSubS)?uchar(1):uchar(0));
 
     if(newMeterType==meterNone)
     {
@@ -5014,20 +4813,22 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
         uiMeter->setMeterType(newMeterType);
 
         if((newMeterType!=meterRxAudio) && (newMeterType!=meterTxMod) && (newMeterType!=meterAudio))
-            queue->addUnique(priorityHighest,queueItem(newCmd,true,currentReceiver));
+            queue->addUnique(priorityHighest,queueItem(newCmd,true,(newMeterType==meterSubS)?uchar(1):uchar(0)));
 
         if (meterNum == 1)
         {
             if (rigCaps->commands.contains(funcMeterType))
             {
                 if (newMeterType == meterS)
-                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(0),false,currentReceiver));
+                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(0),false,(newMeterType==meterSubS)?uchar(1):uchar(0)));
+                if (newMeterType == meterSubS)
+                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(0),false,(newMeterType==meterSubS)?uchar(1):uchar(0)));
                 else if (newMeterType == meterdBu)
-                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(1),false,currentReceiver));
+                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(1),false,(newMeterType==meterSubS)?uchar(1):uchar(0)));
                 else if (newMeterType == meterdBuEMF)
-                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(2),false,currentReceiver));
+                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(2),false,(newMeterType==meterSubS)?uchar(1):uchar(0)));
                 else if (newMeterType == meterdBm)
-                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(3),false,currentReceiver));
+                    queue->add(priorityImmediate,queueItem(funcMeterType,QVariant::fromValue<uchar>(3),false,(newMeterType==meterSubS)?uchar(1):uchar(0)));
             }
             uiMeter->enableCombo(rigCaps->commands.contains(funcMeterType));
         }
@@ -5269,6 +5070,8 @@ void wfmain::changePollTiming(int timing_ms, bool setUI)
     qInfo(logSystem()) << "User changed radio polling interval to " << timing_ms << "ms.";
     showStatusBarText("User changed radio polling interval to " + QString("%1").arg(timing_ms) + "ms.");
     prefs.polling_ms = timing_ms;
+    delayedCmdIntervalLAN_ms =  timing_ms;
+    delayedCmdIntervalSerial_ms = timing_ms;
     (void)setUI;
 }
 
@@ -5460,7 +5263,8 @@ void wfmain::receiveValue(cacheItem val){
         if (val.receiver==0 || vfo == 0)
             rpt->handleUpdateCurrentMainFrequency(val.value.value<freqt>());
         break;
-    case funcReadTXFreq:
+    case funcTXFreq:
+        // Not sure if we want to do anything with this? M0VSE
         break;
     case funcVFODualWatch:
 
@@ -5484,16 +5288,18 @@ void wfmain::receiveValue(cacheItem val){
                     receivers[1]->setVisible(false);
                 }
             } */
-            ui->scopeMainSubBtn->setEnabled(en);
-            ui->scopeDualBtn->setEnabled(en);
-            ui->swapMainSubBtn->setEnabled(en);
+            //ui->scopeMainSubBtn->setEnabled(en);
+            //ui->scopeDualBtn->setEnabled(en);
         }
 
         break;
-    case funcUnselectedMode:
-        vfo=1;
     case funcModeGet:
     case funcModeTR:
+        // These commands don't include filter, so queue an immediate request for filter
+        queue->addUnique(priorityImmediate,funcDataModeWithFilter,false,0);
+    case funcUnselectedMode:
+        if (val.command == funcUnselectedMode)
+            vfo=1;
     case funcSelectedMode:
     case funcMode:
         receivers[val.receiver]->receiveMode(val.value.value<modeInfo>(),vfo);
@@ -5629,7 +5435,10 @@ void wfmain::receiveValue(cacheItem val){
     case funcSMeterSqlStatus:
         break;
     case funcSMeter:
-        receiveMeter(meter_t::meterS,val.value.value<uchar>(),val.receiver);
+        if (val.receiver )
+            receiveMeter(meter_t::meterSubS,val.value.value<uchar>());
+        else
+            receiveMeter(meter_t::meterS,val.value.value<uchar>());
         break;
     case funcAbsoluteMeter:
     {
@@ -5653,31 +5462,32 @@ void wfmain::receiveValue(cacheItem val){
         receivers[val.receiver]->overflow(val.value.value<bool>());
         break;
     case funcCenterMeter:
-        receiveMeter(meter_t::meterCenter,val.value.value<uchar>(),val.receiver);
+        receiveMeter(meter_t::meterCenter,val.value.value<uchar>());
         break;
     case funcPowerMeter:
-        receiveMeter(meter_t::meterPower,val.value.value<uchar>(),val.receiver);
+        receiveMeter(meter_t::meterPower,val.value.value<uchar>());
         break;
     case funcSWRMeter:
-        receiveMeter(meter_t::meterSWR,val.value.value<uchar>(),val.receiver);
+        receiveMeter(meter_t::meterSWR,val.value.value<uchar>());
         break;
     case funcALCMeter:
-        receiveMeter(meter_t::meterALC,val.value.value<uchar>(),val.receiver);
+        receiveMeter(meter_t::meterALC,val.value.value<uchar>());
         break;
     case funcCompMeter:
-        receiveMeter(meter_t::meterComp,val.value.value<uchar>(),val.receiver);
+        receiveMeter(meter_t::meterComp,val.value.value<uchar>());
         break;
     case funcVdMeter:
-        receiveMeter(meter_t::meterVoltage,val.value.value<uchar>(),val.receiver);
+        receiveMeter(meter_t::meterVoltage,val.value.value<uchar>());
         break;
     case funcIdMeter:
-        receiveMeter(meter_t::meterCurrent,val.value.value<uchar>(),val.receiver);
+        receiveMeter(meter_t::meterCurrent,val.value.value<uchar>());
         break;
     // 0x16 enable/disable functions:
     case funcPreamp:
         receivePreamp(val.value.value<uchar>(),val.receiver);
         break;
-    case funcAGCTime:
+    case funcAGC:
+    case funcAGCTimeConstant:
         break;
     case funcNoiseBlanker:
         if (val.receiver == currentReceiver) {
@@ -5760,20 +5570,22 @@ void wfmain::receiveValue(cacheItem val){
     case funcBandStackReg:
     {
         bandStackType bsr = val.value.value<bandStackType>();
-        qDebug(logRig()) << __func__ << "BSR received into main: Freq: " << bsr.freq.Hz << ", mode: " << bsr.mode << ", filter: " << bsr.filter << ", data mode: " << bsr.data;
+        qDebug(logRig()) << __func__ << "BSR received into" << val.receiver << "Freq:" << bsr.freq.Hz << ", mode: " << bsr.mode << ", filter: " << bsr.filter << ", data mode: " << bsr.data;
 
-        queue->add(priorityImmediate,queueItem(funcFreq,QVariant::fromValue<freqt>(bsr.freq),false,val.receiver));
+        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,val.receiver,true).freqFunc,
+                                                QVariant::fromValue<freqt>(bsr.freq),false,uchar(val.receiver)));
 
         for (auto &md: rigCaps->modes)
         {
-                if (md.reg == bsr.mode) {
-                    modeInfo m(md);
-                    m.filter=bsr.filter;
-                    m.data=bsr.data;
-                    qDebug(logRig()) << __func__ << "Setting Mode/Data for new mode" << m.name << "data" << m.data << "filter" << m.filter << "reg" << m.reg;
-                    queue->add(priorityImmediate,queueItem(funcMode,QVariant::fromValue<modeInfo>(m),false,val.receiver));
-                    break;
-                }
+            if (md.reg == bsr.mode) {
+                modeInfo m(md);
+                m.filter=bsr.filter;
+                m.data=bsr.data;
+                qDebug(logRig()) << __func__ << "Setting Mode/Data for new mode" << m.name << "data" << m.data << "filter" << m.filter << "reg" << m.reg;
+                queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,val.receiver,true).modeFunc,
+                                                        QVariant::fromValue<modeInfo>(m),false,uchar(val.receiver)));
+                break;
+            }
         }
         break;
     }
@@ -5826,6 +5638,8 @@ void wfmain::receiveValue(cacheItem val){
             cw->handleDashRatio(val.value.value<uchar>());
         }
         break;
+    case funcTXFreqMon:
+        break;
     // 0x1b register
     case funcToneFreq:
         rpt->handleTone(val.value.value<toneInfo>().tone);
@@ -5841,7 +5655,7 @@ void wfmain::receiveValue(cacheItem val){
     }
     case funcCSQLCode:
         break;
-    // 0x1c register
+    // 0x1c register        
     case funcRitStatus:
         receiveRITStatus(val.value.value<bool>());
         break;
@@ -5854,6 +5668,9 @@ void wfmain::receiveValue(cacheItem val){
     // 0x21 RIT:
     case funcRITFreq:
         receiveRITValue(val.value.value<short>());
+        break;
+    case funcRitTXStatus:
+        // Not sure what this is used for?
         break;
     // 0x27
     case funcScopeWaveData:
@@ -5874,9 +5691,17 @@ void wfmain::receiveValue(cacheItem val){
                 qCritical(logSystem()) << "Thread is NOT the main UI thread, cannot hide/unhide VFO";
             } else {
 
+                uchar temprx=currentReceiver;
                 currentReceiver = val.value.value<uchar>();
 
                 for (uchar rx=0;rx<receivers.size();rx++) {
+
+                    // As the IC9700 doesn't have a single/dual command, pretend it does!
+                    if (!receivers[rx]->isVisible() && (rx == currentReceiver || ui->scopeDualBtn->isChecked())) {
+                        receivers[rx]->setVisible(true);
+                    } else if (rx != currentReceiver && !ui->scopeDualBtn->isChecked() && receivers[rx]->isVisible()) {
+                        receivers[rx]->setVisible(false);
+                    }
 
                     if (rx == currentReceiver && !receivers[rx]->isSelected()) {
                         receivers[rx]->selected(true);
@@ -5885,11 +5710,23 @@ void wfmain::receiveValue(cacheItem val){
                         receivers[rx]->selected(false);
                         if (!rigCaps->hasCommand29) receivers[rx]->setEnabled(false);
                     }
+                    if (temprx != currentReceiver) {
+                        vfoCommandType t = queue->getVfoCommand(vfoA,rx,false);
+                        //qInfo() << "Main/Sub button (main), freq:" << funcString[t.freqFunc] << "mode:" << funcString[t.modeFunc] << "rxin:" << rx << "rxout:" << t.receiver;
+                        queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
+                        queue->add(priorityImmediate,t.modeFunc,false,t.receiver);
+                        // If we are on sub, it will use funcModeGet which doesn't include data mode.
+                        //queue->add(priorityImmediate,funcDataModeWithFilter,false,t.receiver);
+                        t = queue->getVfoCommand(vfoB,rx,false);
+                        //qInfo() << "Main/Sub button (sub), freq:" << funcString[t.freqFunc] << "mode:" << funcString[t.modeFunc] << "rxin:" << rx << "rxout:" << t.receiver;
+                        queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
+                        queue->add(priorityImmediate,t.modeFunc,false,t.receiver);
 
-                    if (!receivers[rx]->isVisible() && (rx == currentReceiver || ui->scopeDualBtn->isChecked())) {
-                        receivers[rx]->setVisible(true);
-                    } else if (rx != currentReceiver && !ui->scopeDualBtn->isChecked() && receivers[rx]->isVisible()) {
-                        receivers[rx]->setVisible(false);
+                        // As the current receiver has changed, queue commands to get the current preamp/filter/ant/rx amp
+                        queue->add(priorityImmediate,queueItem(funcPreamp,false,t.receiver));
+                        queue->add(priorityImmediate,queueItem(funcAttenuator,false,t.receiver));
+                        queue->add(priorityImmediate,queueItem(funcAntenna,false,t.receiver));
+                        queue->add(priorityImmediate,queueItem(funcSquelch,false,t.receiver));
                     }
                 }
             }
@@ -5907,7 +5744,7 @@ void wfmain::receiveValue(cacheItem val){
                 // This tells us whether we are receiving single or dual scopes
                 ui->scopeDualBtn->setChecked(val.value.value<bool>());
                 for (uchar rx=0;rx<receivers.size();rx++) {
-                    if (!receivers[rx]->isVisible() && (rx == currentReceiver || ui->scopeDualBtn->isChecked())) {
+                    if (!receivers[rx]->isVisible() &&  ui->scopeDualBtn->isChecked()) {
                         receivers[rx]->setVisible(true);
                     } else if (rx != currentReceiver && !ui->scopeDualBtn->isChecked() && receivers[rx]->isVisible()) {
                         receivers[rx]->setVisible(false);
@@ -5920,15 +5757,13 @@ void wfmain::receiveValue(cacheItem val){
     }
     case funcScopeMode:
         //qDebug() << "Got new scope mode for receiver" << val.receiver << "mode" << val.value.value<spectrumMode_t>();
-        receivers[val.receiver]->selectScopeMode(val.value.value<spectrumMode_t>());
+        receivers[val.receiver]->setScopeMode(val.value.value<spectrumMode_t>());
         break;
     case funcScopeSpan:
-        receivers[val.receiver]->selectSpan(val.value.value<centerSpanData>());
+        receivers[val.receiver]->setSpan(val.value.value<centerSpanData>());
         break;
     case funcScopeEdge:
-        // read edge mode center in edge mode
-        // [1] 0x16
-        // [2] 0x01, 0x02, 0x03: Edge 1,2,3
+        receivers[val.receiver]->setEdge(val.value.value<uchar>());
         break;
     case funcScopeHold:
         receivers[val.receiver]->setHold(val.value.value<bool>());
@@ -5956,7 +5791,7 @@ void wfmain::receiveValue(cacheItem val){
         // We could indicate the rig being powered-on somehow?
         break;
     default:
-        qWarning(logSystem()) << "Unhandled command received from rigcommander()" << funcString[val.command] << "Contact support!";
+        //qWarning(logSystem()) << "Unhandled command received from rigcommander()" << funcString[val.command] << "Contact support!";
         break;
     }
 }
@@ -5979,64 +5814,41 @@ void wfmain::on_showSettingsBtn_clicked()
 
 void wfmain::on_scopeMainSubBtn_clicked()
 {
-    if (currentReceiver<receivers.size()-1){
-        currentReceiver++;
-    } else {
-        currentReceiver = 0;
-    }
-    queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(currentReceiver),false));
+    queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue<uchar>(currentReceiver==0),false,0));
     if (rigCaps->commands.contains(funcVFOBandMS)) {
-        queue->add(priorityImmediate,queueItem(funcVFOBandMS,QVariant::fromValue(currentReceiver),false));
-        // We need to manually get the frequency/mode
-        queue->add(priorityImmediate,queueItem(funcFreqGet,false,currentReceiver));
-        queue->add(priorityImmediate,queueItem(funcModeGet,false,currentReceiver));
+        queue->add(priorityImmediate,queueItem(funcVFOBandMS,QVariant::fromValue<uchar>(currentReceiver==0),false,0));
     }
 
-    // As the current receiver has changed, queue commands to get the current preamp/filter/ant/rx amp
-    queue->add(priorityImmediate,queueItem(funcPreamp,false,currentReceiver));
-    queue->add(priorityImmediate,queueItem(funcAttenuator,false,currentReceiver));
-    queue->add(priorityImmediate,queueItem(funcAntenna,false,currentReceiver));
-    queue->add(priorityImmediate,queueItem(funcSquelch,false,currentReceiver));
-}
+ }
 
 void wfmain::on_scopeDualBtn_toggled(bool en)
 {
-    queue->add(priorityImmediate,queueItem(funcScopeSingleDual,QVariant::fromValue(en),false));
-    queue->add(priorityImmediate,funcScopeMainSub);
+    queue->add(priorityImmediate,queueItem(funcScopeSingleDual,QVariant::fromValue(en),false,0));
+    queue->add(priorityImmediate,funcScopeMainSub,false,0);
 }
 
 void wfmain::on_dualWatchBtn_toggled(bool en)
 {
-    queue->add(priorityImmediate,queueItem(funcVFODualWatch,QVariant::fromValue(en),false));
-    queue->add(priorityImmediate,funcScopeMainSub);
+    queue->add(priorityImmediate,queueItem(funcVFODualWatch,QVariant::fromValue(en),false,0));
+    if (!rigCaps->hasCommand29)
+        queue->add(priorityImmediate,funcScopeMainSub,false,0);
 
     if (!en)
     {
-        ui->scopeDualBtn->setChecked(false);
+        //ui->scopeDualBtn->setChecked(false);
     }
 }
 
 void wfmain::on_swapMainSubBtn_clicked()
 {
     queue->add(priorityImmediate,funcVFOSwapMS);
-    if (!rigCaps->hasCommand29) {
-        if (receivers[0]->isSelected()) {
-            queue->add(priorityHighest,funcSelectedFreq);
-            queue->add(priorityHighest,funcSelectedMode);
-            queue->add(priorityHighest,funcUnselectedFreq);
-            queue->add(priorityHighest,funcUnselectedMode);
-        } else {
-            queue->add(priorityHighest,funcFreqGet);
-            queue->add(priorityHighest,funcModeGet);
-        }
-    } else {
-        for (const auto &receiver: receivers)
-        {
-            queue->add(priorityHighest,funcFreq,false,receiver->getReceiver());
-            queue->add(priorityHighest,funcMode,false,receiver->getReceiver());
-        }
+    for (const auto &receiver: receivers)
+    {        
+        queue->add(priorityImmediate,queue->getVfoCommand(vfoA,receiver->getReceiver(),true).freqFunc,false,receiver->getReceiver());
+        queue->add(priorityImmediate,queue->getVfoCommand(vfoA,receiver->getReceiver(),true).modeFunc,false,receiver->getReceiver());
+        queue->add(priorityImmediate,queue->getVfoCommand(vfoB,receiver->getReceiver(),true).freqFunc,false,receiver->getReceiver());
+        queue->add(priorityImmediate,queue->getVfoCommand(vfoB,receiver->getReceiver(),true).modeFunc,false,receiver->getReceiver());
     }
-
 }
 
 /*
@@ -6054,22 +5866,12 @@ void wfmain::on_splitBtn_toggled(bool en)
 void wfmain::on_mainEqualsSubBtn_clicked()
 {
     queue->add(priorityImmediate,funcVFOEqualMS);
-    if (!rigCaps->hasCommand29) {
-        if (receivers[0]->isSelected()) {
-            queue->add(priorityHighest,funcSelectedFreq);
-            queue->add(priorityHighest,funcSelectedMode);
-            queue->add(priorityHighest,funcUnselectedFreq);
-            queue->add(priorityHighest,funcUnselectedMode);
-        } else {
-            queue->add(priorityHighest,funcFreqGet);
-            queue->add(priorityHighest,funcModeGet);
-        }
-    } else {
-        for (const auto &receiver: receivers)
-        {
-            queue->add(priorityHighest,funcFreq,false,receiver->getReceiver());
-            queue->add(priorityHighest,funcMode,false,receiver->getReceiver());
-        }
+    for (const auto &receiver: receivers)
+    {
+        queue->add(priorityImmediate,queue->getVfoCommand(vfoA,receiver->getReceiver(),true).modeFunc,false,receiver->getReceiver());
+        queue->add(priorityImmediate,queue->getVfoCommand(vfoA,receiver->getReceiver(),true).freqFunc,false,receiver->getReceiver());
+        queue->add(priorityImmediate,queue->getVfoCommand(vfoB,receiver->getReceiver(),true).modeFunc,false,receiver->getReceiver());
+        queue->add(priorityImmediate,queue->getVfoCommand(vfoB,receiver->getReceiver(),true).freqFunc,false,receiver->getReceiver());
     }
 }
 
@@ -6078,23 +5880,25 @@ void wfmain::dataModeChanged(modeInfo m)
     // As the data mode may have changed, we need to make sure that we invalidate the input selection.
     // Also request the current input from the rig.
     //qInfo(logSystem()) << "*** DATA MODE HAS CHANGED ***";
-    currentModSrc[m.data] = rigInput();
+    if (m.data != 0xff) {
+        currentModSrc[m.data] = rigInput();
 
-    // Request the current inputSource.
-    switch(m.data)
-    {
-    case 0:
-        queue->add(priorityImmediate,funcDATAOffMod,false,false);
-        break;
-    case 1:
-        queue->add(priorityImmediate,funcDATA1Mod,false,false);
-        break;
-    case 2:
-        queue->add(priorityImmediate,funcDATA2Mod,false,false);
-        break;
-    case 3:
-        queue->add(priorityImmediate,funcDATA3Mod,false,false);
-        break;
+        // Request the current inputSource.
+        switch(m.data)
+        {
+        case 0:
+            queue->add(priorityImmediate,funcDATAOffMod,false,false);
+            break;
+        case 1:
+            queue->add(priorityImmediate,funcDATA1Mod,false,false);
+            break;
+        case 2:
+            queue->add(priorityImmediate,funcDATA2Mod,false,false);
+            break;
+        case 3:
+            queue->add(priorityImmediate,funcDATA3Mod,false,false);
+            break;
+        }
     }
 
 }
@@ -6143,7 +5947,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         // Enable all controls
         enableControls(true);
 
-        showStatusBarText(QString("Found radio at address 0x%1 of name %2 and model ID %3.").arg(rigCaps->civ,2,16).arg(rigCaps->modelName).arg(rigCaps->modelID));
+        showStatusBarText(QString("Found radio of name %0 and model ID %1.").arg(rigCaps->modelName).arg(rigCaps->modelID,2,16,QChar('0')));
 
         qDebug(logSystem()) << "Rig name: " << rigCaps->modelName;
         qDebug(logSystem()) << "Has LAN capabilities: " << rigCaps->hasLan;
@@ -6158,7 +5962,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         if (serverConfig.enabled) {
             serverConfig.rigs.first()->modelName = rigCaps->modelName;
             serverConfig.rigs.first()->rigName = rigCaps->modelName;
-            serverConfig.rigs.first()->civAddr = rigCaps->civ;
+            serverConfig.rigs.first()->civAddr = rigCaps->modelID;
             serverConfig.rigs.first()->baudRate = rigCaps->baudRate;
         }
         setWindowTitle(rigCaps->modelName);
@@ -6458,8 +6262,22 @@ void wfmain::enableControls(bool en)
     ui->scopeSettingsGroup->setEnabled(en);
     ui->preampAttGroup->setEnabled(en);
     ui->antennaGroup->setEnabled(en);
+
+    ui->meterSPoWidget->setEnabled(en);
+    ui->meter2Widget->setEnabled(en);
+    ui->meter3Widget->setEnabled(en);
+
+    ui->showBandsBtn->setEnabled(en);
+    ui->showFreqBtn->setEnabled(en);
 }
 
+void wfmain::updatedQueueInterval(qint64 interval)
+{
+    if (interval == -1)
+        enableControls(false);
+    else if (rigCaps != Q_NULLPTR)
+        enableControls(true);
+}
 
 /* USB Hotplug support added at the end of the file for convenience */
 #ifdef USB_HOTPLUG

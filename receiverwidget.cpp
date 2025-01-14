@@ -1,8 +1,8 @@
-#include "spectrumscope.h"
+#include "receiverwidget.h"
 #include "logcategories.h"
 #include "rigidentities.h"
 
-spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *parent)
+receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *parent)
     : QGroupBox{parent}, receiver(receiver), numVFO(vfo)
 {
     // Not sure if this should actually be used?
@@ -15,14 +15,6 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     this->defaultStyleSheet = this->styleSheet();
     queue = cachingQueue::getInstance();
     rigCaps = queue->getRigCaps();
-
-    if (rigCaps->hasCommand29) {
-        rxcmd = receiver;
-    }
-    else
-    {
-        rxcmd = 0xff;
-    }
 
     //spectrum = new QCustomPlot();
     mainLayout = new QHBoxLayout(this);
@@ -41,11 +33,13 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     vfoSelectButton->setCheckable(true);
     vfoSelectButton->setFocusPolicy(Qt::NoFocus);
     connect(vfoSelectButton, &QPushButton::clicked, this, [=](bool en) {
-        sendCommand(priorityImmediate,funcSelectVFO,false,false,QVariant::fromValue<bool>(en));
-        sendCommand(priorityHighest,getFreqFunc(0),false,false);
-        sendCommand(priorityHighest,getModeFunc(0),false,false);
-        sendCommand(priorityHighest,getFreqFunc(1),false,false);
-        sendCommand(priorityHighest,getModeFunc(1),false,false);
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,false);
+        queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<bool>(en),false,t.receiver));
+        queue->add(priorityHighest,t.freqFunc,false,t.receiver);
+        queue->add(priorityHighest,t.modeFunc,false,t.receiver);
+        t = queue->getVfoCommand(vfoB,receiver,false);
+        queue->add(priorityHighest,t.freqFunc,false,t.receiver);
+        queue->add(priorityHighest,t.modeFunc,false,t.receiver);
         if (en)
             vfoSelectButton->setText(tr("VFO B"));
         else
@@ -58,17 +52,19 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     vfoSwapButton->setFocusPolicy(Qt::NoFocus);
     connect(vfoSwapButton, &QPushButton::clicked, this, [=]() {
         vfoSwap();
-        sendCommand(priorityHighest,getFreqFunc(0),false,false);
-        sendCommand(priorityHighest,getModeFunc(0),false,false);
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,false);
+        queue->add(priorityHighest,t.modeFunc,false,t.receiver);
+        queue->add(priorityHighest,t.freqFunc,false,t.receiver);
     });
 
     vfoEqualsButton=new QPushButton(tr("A=B"),this);
     vfoEqualsButton->setHidden(true);
     vfoEqualsButton->setFocusPolicy(Qt::NoFocus);
     connect(vfoEqualsButton, &QPushButton::clicked, this, [=]() {
-        sendCommand(priorityImmediate,funcVFOEqualAB,false,false);
-        sendCommand(priorityHighest,getFreqFunc(1),false,false);
-        sendCommand(priorityHighest,getModeFunc(1),false,false);
+        vfoCommandType t = queue->getVfoCommand(vfoB,receiver,false);
+        queue->add(priorityImmediate,funcVFOEqualAB,false,0);
+        queue->add(priorityHighest,t.modeFunc,false,t.receiver);
+        queue->add(priorityHighest,t.freqFunc,false,t.receiver);
     });
 
     splitButton=new QPushButton(tr("SPLIT"),this);
@@ -76,8 +72,9 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     splitButton->setFocusPolicy(Qt::NoFocus);
     splitButton->setCheckable(true);
     connect(splitButton, &QPushButton::clicked, this, [=](bool en) {
-        sendCommand(priorityImmediate,funcSplitStatus,false,false,QVariant::fromValue<uchar>(en));
+        queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<uchar>(en),false,0));
     });
+
 
     for (uchar i=0;i<numVFO;i++)
     {
@@ -118,10 +115,15 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
         } else {
             fr->setMinimumSize(180,20);
             fr->setMaximumSize(180,20);
+            if (!rigCaps->hasCommand29 && receiver == 1)
+            {
+                fr->setEnabled(false);
+            }
             displayLayout->addWidget(fr);
         }
-        connect(fr, &freqCtrl::newFrequency, this,
-                [=](const qint64 &freq) { this->newFrequency(freq,i);});
+        connect(fr, &freqCtrl::newFrequency, this, [=](const qint64 &freq) {
+            this->newFrequency(freq,i);
+        });
 
         freqDisplay.append(fr);
     }
@@ -264,7 +266,7 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
     redrawSpeed->setFont(QFont(font().family(), 8));
     redrawSpeed->setPositionAlignment(Qt::AlignRight | Qt::AlignTop);
     redrawSpeed->position->setType(QCPItemPosition::ptAxisRectRatio);
-    redrawSpeed->setText("0ms/0ms");
+    //redrawSpeed->setText("0ms/0ms");
     redrawSpeed->position->setCoords(1.0f,0.0f);
 
     spectrum->addGraph(); // primary
@@ -420,12 +422,13 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
 
     connect(configRef, &QSlider::valueChanged, this, [=](const int &val) {
         currentRef = (val/5) * 5; // rounded to "nearest 5"
-        queue->addUnique(priorityImmediate,queueItem(funcScopeRef,QVariant::fromValue(currentRef),false,receiver));
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+        queue->addUnique(priorityImmediate,queueItem(funcScopeRef,QVariant::fromValue(currentRef),false,t.receiver));
     });
 
-
     connect(configSpeed, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](const int &val) {
-        queue->addUnique(priorityImmediate,queueItem(funcScopeSpeed,QVariant::fromValue(configSpeed->itemData(val)),false,receiver));
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+        queue->addUnique(priorityImmediate,queueItem(funcScopeSpeed,QVariant::fromValue(configSpeed->itemData(val)),false,t.receiver));
     });
 
     connect(configTheme, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](const int &val) {
@@ -435,17 +438,18 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
         emit updateSettings(receiver,currentTheme,wfLength,plotFloor,plotCeiling);
     });
 
-
-
     connect(configPbtInner, &QSlider::valueChanged, this, [=](const int &val) {
-        sendCommand(priorityImmediate,funcPBTInner,false,true,QVariant::fromValue<ushort>(val));
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+        queue->addUnique(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(val),false,t.receiver));
     });
     connect(configPbtOuter, &QSlider::valueChanged, this, [=](const int &val) {
-        sendCommand(priorityImmediate,funcPBTOuter,false,true,QVariant::fromValue<ushort>(val));
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+        queue->addUnique(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(val),false,t.receiver));
     });
     connect(configIfShift, &QSlider::valueChanged, this, [=](const int &val) {
         if (rigCaps != Q_NULLPTR && rigCaps->commands.contains(funcIFShift)) {
-            sendCommand(priorityImmediate,funcIFShift,false,true,QVariant::fromValue<ushort>(val));
+            vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+            queue->addUnique(priorityImmediate,queueItem(funcIFShift,QVariant::fromValue<ushort>(val),false,t.receiver));
         } else {
             static int previousIFShift=128; // Default value
             unsigned char inner = configPbtInner->value();
@@ -465,8 +469,9 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
         Q_UNUSED(val)
         double pbFreq = (pbtDefault / passbandWidth) * 127.0;
         qint16 newFreq = pbFreq + 128;
-        sendCommand(priorityImmediate,funcPBTInner,false,true,QVariant::fromValue<ushort>(newFreq));
-        sendCommand(priorityImmediate,funcPBTOuter,false,true,QVariant::fromValue<ushort>(newFreq));
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+        queue->addUnique(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newFreq),false,t.receiver));
+        queue->addUnique(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newFreq),false,t.receiver));
         configIfShift->blockSignals(true);
         configIfShift->setValue(128);
         configIfShift->blockSignals(false);
@@ -474,7 +479,8 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
 
 
     connect(configFilterWidth, &QSlider::valueChanged, this, [=](const int &val) {
-        sendCommand(priorityImmediate,funcFilterWidth,false,true,QVariant::fromValue<ushort>(val));
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+        queue->addUnique(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(val),false,t.receiver));
     });
 
     configGroup->setVisible(false);
@@ -483,17 +489,37 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
 
 
     // Connections
-
     connect(detachButton,SIGNAL(toggled(bool)), this, SLOT(detachScope(bool)));
-    connect(scopeModeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedScopeMode(int)));
-    connect(spanCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedSpan(int)));
+
+    connect(scopeModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](int val){
+        spectrumMode_t s = scopeModeCombo->itemData(val).value<spectrumMode_t>();
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+        queue->addUnique(priorityImmediate,queueItem(funcScopeMode,QVariant::fromValue(s),false,t.receiver));
+        currentScopeMode = s;
+        showHideControls(s);
+    });
+
+
+    connect(spanCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](int val){
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+        queue->addUnique(priorityImmediate,queueItem(funcScopeSpan,QVariant::fromValue(spanCombo->itemData(val)),false,t.receiver));
+    });
+
     connect(confButton,SIGNAL(clicked()), this, SLOT(configPressed()),Qt::QueuedConnection);
 
     connect(toFixedButton,SIGNAL(clicked()), this, SLOT(toFixedPressed()));
-    connect(edgeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedEdge(int)));
+
+    connect(edgeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](int val){
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+        queue->addUnique(priorityImmediate,queueItem(funcScopeEdge,QVariant::fromValue<uchar>(val+1),false,t.receiver));
+    });
+
     connect(edgeButton,SIGNAL(clicked()), this, SLOT(customSpanPressed()));
 
-    connect(holdButton,SIGNAL(toggled(bool)), this, SLOT(holdPressed(bool)));
+    connect(holdButton, &QPushButton::toggled, this, [=](const bool &val) {
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+        queue->add(priorityImmediate,queueItem(funcScopeHold,QVariant::fromValue<bool>(val),false,t.receiver));
+    });
 
     connect(modeCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedMode(int)));
     connect(filterCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(updatedMode(int)));
@@ -514,7 +540,7 @@ spectrumScope::spectrumScope(bool scope, uchar receiver, uchar vfo, QWidget *par
 }
 
 
-spectrumScope::~spectrumScope(){
+receiverWidget::~receiverWidget(){
 
     QMutableVectorIterator<bandIndicator> it(bandIndicators);
     while (it.hasNext())
@@ -540,7 +566,7 @@ spectrumScope::~spectrumScope(){
     }
 }
 
-void spectrumScope::setSeparators(QChar gsep, QChar dsep)
+void receiverWidget::setSeparators(QChar gsep, QChar dsep)
 {
     for (const auto &disp : freqDisplay)
     {
@@ -549,13 +575,13 @@ void spectrumScope::setSeparators(QChar gsep, QChar dsep)
     }
 }
 
-void spectrumScope::prepareScope(uint maxAmp, uint spectWidth)
+void receiverWidget::prepareScope(uint maxAmp, uint spectWidth)
 {
     this->spectWidth = spectWidth;
     this->maxAmp = maxAmp;
 }
 
-void spectrumScope::changeWfLength(uint wf)
+void receiverWidget::changeWfLength(uint wf)
 {
     if(!scopePrepared)
         return;
@@ -582,7 +608,7 @@ void spectrumScope::changeWfLength(uint wf)
     //waterfall->replot();
 }
 
-bool spectrumScope::prepareWf(uint wf)
+bool receiverWidget::prepareWf(uint wf)
 {
     QMutexLocker locker(&mutex);
     bool ret=true;
@@ -638,7 +664,7 @@ bool spectrumScope::prepareWf(uint wf)
     return ret;
 }
 
-void spectrumScope::setRange(int floor, int ceiling)
+void receiverWidget::setRange(int floor, int ceiling)
 {
     plotFloor = floor;
     plotCeiling = ceiling;
@@ -665,7 +691,7 @@ void spectrumScope::setRange(int floor, int ceiling)
     }
 }
 
-void spectrumScope::colorPreset(colorPrefsType *cp)
+void receiverWidget::colorPreset(colorPrefsType *cp)
 {
     if (cp == Q_NULLPTR)
     {
@@ -747,7 +773,7 @@ void spectrumScope::colorPreset(colorPrefsType *cp)
 
 }
 
-bool spectrumScope::updateScope(scopeData data)
+bool receiverWidget::updateScope(scopeData data)
 {
     if (!scopePrepared )
     {
@@ -1018,21 +1044,21 @@ bool spectrumScope::updateScope(scopeData data)
 
 // Plasma functions
 
-void spectrumScope::resizePlasmaBuffer(int size) {
+void receiverWidget::resizePlasmaBuffer(int size) {
     // QMutexLocker locker(&plasmaMutex);
     qDebug() << "Resizing plasma buffer via parameter, from oldsize " << spectrumPlasmaSizeCurrent << " to new size: " << size;
     spectrumPlasmaSizeCurrent = size;
     return;
 }
 
-void spectrumScope::clearPeaks()
+void receiverWidget::clearPeaks()
 {
     // Clear the spectrum peaks as well as the plasma buffer
     spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
     //clearPlasma();
 }
 
-void spectrumScope::clearPlasma()
+void receiverWidget::clearPlasma()
 {
     // Clear the buffer of spectrum used for peak and average computation.
     // This is only needed one time, when the VFO is created with spectrum size info.
@@ -1045,7 +1071,7 @@ void spectrumScope::clearPlasma()
     }
 }
 
-void spectrumScope::computePlasma()
+void receiverWidget::computePlasma()
 {
     QMutexLocker locker(&plasmaMutex);
     // Spec PlasmaLine is a single line of spectrum, ~~600 pixels or however many the radio provides.
@@ -1082,7 +1108,7 @@ void spectrumScope::computePlasma()
     }
 }
 
-void spectrumScope::showHideControls(spectrumMode_t mode)
+void receiverWidget::showHideControls(spectrumMode_t mode)
 {
     if (!hasScope && spectrum->isVisible()) {
         spectrum->hide();
@@ -1124,7 +1150,7 @@ void spectrumScope::showHideControls(spectrumMode_t mode)
     }
 }
 
-void spectrumScope::enableScope(bool en)
+void receiverWidget::enableScope(bool en)
 {
     this->splitter->setVisible(en);
     // Hide these controls if disabled
@@ -1138,7 +1164,7 @@ void spectrumScope::enableScope(bool en)
     this->holdButton->setVisible(en && rigCaps->commands.contains(funcScopeHold));
 }
 
-void spectrumScope::selectScopeMode(spectrumMode_t m)
+void receiverWidget::setScopeMode(spectrumMode_t m)
 {
     if (m != currentScopeMode) {
         currentScopeMode = m;
@@ -1149,29 +1175,14 @@ void spectrumScope::selectScopeMode(spectrumMode_t m)
     }
 }
 
-void spectrumScope::selectSpan(centerSpanData s)
+void receiverWidget::setSpan(centerSpanData s)
 {
     spanCombo->blockSignals(true);
     spanCombo->setCurrentIndex(spanCombo->findText(s.name));
     spanCombo->blockSignals(false);
 }
 
-void spectrumScope::updatedScopeMode(int index)
-{
-    //spectrumMode_t s = static_cast<spectrumMode_t>(scopeModeCombo->itemData(index).toInt());
-    spectrumMode_t s = scopeModeCombo->itemData(index).value<spectrumMode_t>();
-    queue->addUnique(priorityImmediate,queueItem(funcScopeMode,QVariant::fromValue(s),false,receiver));
-
-    currentScopeMode = s;
-    showHideControls(s);
-}
-
-void spectrumScope::updatedSpan(int index)
-{
-    queue->addUnique(priorityImmediate,queueItem(funcScopeSpan,QVariant::fromValue(spanCombo->itemData(index)),false,receiver));
-}
-
-void spectrumScope::updatedMode(int index)
+void receiverWidget::updatedMode(int index)
 {
     Q_UNUSED(index) // We don't know where it came from!
     modeInfo mi = modeCombo->currentData().value<modeInfo>();
@@ -1184,16 +1195,21 @@ void spectrumScope::updatedMode(int index)
         mi.data = dataCombo->currentIndex();
         dataCombo->setEnabled(true);
     }
-    sendCommand(priorityImmediate,getModeFunc(0,true),false,false,QVariant::fromValue<modeInfo>(mi));
+    vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+    queue->addUnique(priorityImmediate,queueItem(t.modeFunc,QVariant::fromValue<modeInfo>(mi),false,t.receiver));
+    if (t.modeFunc == funcModeSet) {
+        queue->addUnique(priorityImmediate,queueItem(funcDataModeWithFilter,QVariant::fromValue(mi),false,t.receiver));
+    }
 }
 
-
-void spectrumScope::updatedEdge(int index)
+void receiverWidget::setEdge(uchar index)
 {
-    queue->addUnique(priorityImmediate,queueItem(funcScopeEdge,QVariant::fromValue(index+1),false,receiver));
+    edgeCombo->blockSignals(true);
+    edgeCombo->setCurrentIndex(index-1);
+    edgeCombo->blockSignals(false);
 }
 
-void spectrumScope::toFixedPressed()
+void receiverWidget::toFixedPressed()
 {
     int currentEdge = edgeCombo->currentIndex();
     bool dialogOk = false;
@@ -1218,7 +1234,7 @@ void spectrumScope::toFixedPressed()
     }
 }
 
-void spectrumScope::customSpanPressed()
+void receiverWidget::customSpanPressed()
 {
     double lowFreq = lowerFreq;
     double highFreq = upperFreq;
@@ -1242,7 +1258,7 @@ void spectrumScope::customSpanPressed()
             if(ok)
             {
                 qDebug(logGui()) << "setting edge to: " << lowFreq << ", " << highFreq << ", edge num: " << edgeCombo->currentIndex() + 1;
-                queue->addUnique(priorityImmediate,queueItem(funcScopeSpeed,QVariant::fromValue(spectrumBounds(lowFreq, highFreq, edgeCombo->currentIndex() + 1)),false,receiver));
+                queue->addUnique(priorityImmediate,queueItem(funcScopeFixedEdgeFreq,QVariant::fromValue(spectrumBounds(lowFreq, highFreq, edgeCombo->currentIndex() + 1)),false,receiver));
                 return;
             }
         }
@@ -1266,8 +1282,9 @@ errMsg:
 }
 
 
-void spectrumScope::doubleClick(QMouseEvent *me)
+void receiverWidget::doubleClick(QMouseEvent *me)
 {
+    vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
     if (me->button() == Qt::LeftButton)
     {
         double x;
@@ -1283,15 +1300,16 @@ void spectrumScope::doubleClick(QMouseEvent *me)
             emit sendTrack(freqGo.Hz-this->freq.Hz);
 
             setFrequency(freqGo);
-            sendCommand(priorityImmediate,getFreqFunc(0,true),false,false,QVariant::fromValue<freqt>(freqGo));
+            queue->addUnique(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(freqGo),false,t.receiver));
         }
     }
     else if (me->button() == Qt::RightButton)
     {
-        QCPAbstractItem* item = spectrum->itemAt(me->pos(), true);            double pbFreq = (pbtDefault / passbandWidth) * 127.0;
+        QCPAbstractItem* item = spectrum->itemAt(me->pos(), true);
+        double pbFreq = (pbtDefault / passbandWidth) * 127.0;
         qint16 newFreq = pbFreq + 128;
-        sendCommand(priorityImmediate,funcPBTInner,false,false,QVariant::fromValue<ushort>(newFreq));
-        sendCommand(priorityImmediate,funcPBTOuter,false,false,QVariant::fromValue<ushort>(newFreq));
+        queue->addUnique(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newFreq),false,t.receiver));
+        queue->addUnique(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newFreq),false,t.receiver));
         QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
         if (rectItem != nullptr)
         {
@@ -1300,8 +1318,10 @@ void spectrumScope::doubleClick(QMouseEvent *me)
     }
 }
 
-void spectrumScope::scopeClick(QMouseEvent* me)
+void receiverWidget::scopeClick(QMouseEvent* me)
 {
+    vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+
     QCPAbstractItem* item = spectrum->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
     QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
@@ -1334,7 +1354,7 @@ void spectrumScope::scopeClick(QMouseEvent* me)
                 emit sendTrack(freqGo.Hz-this->freq.Hz);
 
                 setFrequency(freqGo);
-                sendCommand(priorityImmediate,getFreqFunc(0,true),false,false,QVariant::fromValue<freqt>(freqGo));
+                queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(freqGo),false,t.receiver));
 
             }
         }
@@ -1401,7 +1421,7 @@ void spectrumScope::scopeClick(QMouseEvent* me)
     }
 }
 
-void spectrumScope::scopeMouseRelease(QMouseEvent* me)
+void receiverWidget::scopeMouseRelease(QMouseEvent* me)
 {
 
     QCPAbstractItem* item = spectrum->itemAt(me->pos(), true);
@@ -1418,7 +1438,7 @@ void spectrumScope::scopeMouseRelease(QMouseEvent* me)
     }
 }
 
-void spectrumScope::scopeMouseMove(QMouseEvent* me)
+void receiverWidget::scopeMouseMove(QMouseEvent* me)
 {
     QCPAbstractItem* item = spectrum->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
@@ -1472,7 +1492,8 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
             }
 
             if (mode.bwMax != 0 && mode.bwMin != 0) {
-                sendCommand(priorityImmediate,funcFilterWidth,false,false,QVariant::fromValue<ushort>(pb * 1000000));
+                vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+                queue->addUnique(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(pb * 1000000),false,t.receiver));
             }
             //qInfo() << "New passband" << uint(pb * 1000000);
 
@@ -1497,9 +1518,9 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
             {
                 qDebug() << QString("Moving passband by %1 Hz (Inner %2) (Outer %3) Mode:%4").arg((qint16)(movedFrequency * 1000000))
                                 .arg(newInFreq).arg(newOutFreq).arg(mode.mk);
-
-                sendCommand(priorityImmediate,funcPBTInner,false,false,QVariant::fromValue<ushort>(newInFreq));
-                sendCommand(priorityImmediate,funcPBTOuter,false,false,QVariant::fromValue<ushort>(newInFreq));
+                vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+                queue->addUnique(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newInFreq),false,t.receiver));
+                queue->addUnique(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newInFreq),false,t.receiver));
             }
             lastFreq = movedFrequency;
         }
@@ -1510,7 +1531,8 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
             double pbFreq = ((double)(PBTInner + movedFrequency) / passbandWidth) * 127.0;
             qint16 newFreq = pbFreq + 128;
             if (newFreq >= 0 && newFreq <= 255 && mode.bwMax != 0) {
-                sendCommand(priorityImmediate,funcPBTInner,false,false,QVariant::fromValue<ushort>(newFreq));
+                vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+                queue->addUnique(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(newFreq),false,t.receiver));
             }
             lastFreq = movedFrequency;
         }
@@ -1521,7 +1543,8 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
             double pbFreq = ((double)(PBTOuter + movedFrequency) / passbandWidth) * 127.0;
             qint16 newFreq = pbFreq + 128;
             if (newFreq >= 0 && newFreq <= 255 && mode.bwMax != 0) {
-                sendCommand(priorityImmediate,funcPBTOuter,false,false,QVariant::fromValue<ushort>(newFreq));
+                vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+                queue->addUnique(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(newFreq),false,t.receiver));
             }
             lastFreq = movedFrequency;
         }
@@ -1539,7 +1562,8 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
             emit sendTrack(freqGo.Hz-this->freq.Hz);
 
             setFrequency(freqGo);
-            sendCommand(priorityImmediate,getFreqFunc(0,true),false,false,QVariant::fromValue<freqt>(freqGo));
+            vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+            queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(freqGo),false,t.receiver));
         }
     }
     else {
@@ -1548,14 +1572,16 @@ void spectrumScope::scopeMouseMove(QMouseEvent* me)
 
 }
 
-void spectrumScope::waterfallClick(QMouseEvent *me)
+void receiverWidget::waterfallClick(QMouseEvent *me)
 {
         double x = spectrum->xAxis->pixelToCoord(me->pos().x());
         emit showStatusBarText(QString("Selected %1 MHz").arg(x));
 }
 
-void spectrumScope::scroll(QWheelEvent *we)
+void receiverWidget::scroll(QWheelEvent *we)
 {
+    vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+
     // angleDelta is supposed to be eights of a degree of mouse wheel rotation
     int deltaY = we->angleDelta().y();
     int deltaX = we->angleDelta().x();
@@ -1613,25 +1639,40 @@ void spectrumScope::scroll(QWheelEvent *we)
     emit sendTrack(f.Hz-this->freq.Hz);
 
     setFrequency(f);
-    sendCommand(priorityImmediate,getFreqFunc(0,true),false,false,QVariant::fromValue<freqt>(f));
+    queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(f),false,receiver));
     //qInfo() << "Moving to freq:" << f.Hz << "step" << stepsHz;
     scrollWheelOffsetAccumulated = 0;
 }
 
-void spectrumScope::receiveMode(modeInfo m, uchar vfo)
+void receiverWidget::receiveMode(modeInfo m, uchar vfo)
 {
     // Update mode information if mode/filter/data has changed.
     // Not all rigs send data so this "might" need to be updated independantly?
-    if (vfo > 0) {
+    if (vfo > 0 && m.mk != modeUnknown) {
         unselectedMode=m;
         return;
     }
 
-    if (m.reg != this->mode.reg || m.filter != this->mode.filter || m.data != this->mode.data)
+    if (m.filter && this->mode.filter != m.filter)
     {
+        filterCombo->blockSignals(true);
+        filterCombo->setCurrentIndex(filterCombo->findData(m.filter));
+        filterCombo->blockSignals(false);
+        mode.filter=m.filter;
+    }
 
-        qDebug(logSystem()) << __func__ << QString("Received new mode for %0: %1 (%2) filter:%3 data:%4")
-                                              .arg((receiver?"Sub":"Main")).arg(QString::number(m.mk,16)).arg(m.name).arg(m.filter).arg(m.data) ;
+    if (this->mode.data != m.data && m.data != 0xff)
+    {
+        emit dataChanged(m); // Signal wfmain that the data mode has been changed.
+        dataCombo->blockSignals(true);
+        dataCombo->setCurrentIndex(m.data);
+        dataCombo->blockSignals(false);
+        mode.data=m.data;
+    }
+
+    if (m.mk != modeUnknown && m.mk != mode.mk) {
+        qInfo(logSystem()) << __func__ << QString("Received new mode for %0: %1 (%2) filter:%3 data:%4")
+        .arg((receiver?"Sub":"Main")).arg(QString::number(m.mk,16)).arg(m.name).arg(m.filter).arg(m.data) ;
 
         if (this->mode.mk != m.mk) {
             for (int i=0;i<modeCombo->count();i++)
@@ -1647,21 +1688,6 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
             }
         }
 
-        if (m.filter && this->mode.filter != m.filter)
-        {
-            filterCombo->blockSignals(true);
-            filterCombo->setCurrentIndex(filterCombo->findData(m.filter));
-            filterCombo->blockSignals(false);
-        }
-
-        if (this->mode.data != m.data)
-        {
-            emit dataChanged(m); // Signal wfmain that the data mode has been changed.
-            dataCombo->blockSignals(true);
-            dataCombo->setCurrentIndex(m.data);
-            dataCombo->blockSignals(false);
-        }
-
         if (m.mk == modeCW || m.mk == modeCW_R || m.mk == modeRTTY || m.mk == modeRTTY_R || m.mk == modePSK || m.mk == modePSK_R)
         {
             dataCombo->setEnabled(false);
@@ -1674,6 +1700,7 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
 
             passbandCenterFrequency = 0.0;
 
+            vfoCommandType t = queue->getVfoCommand(vfoA,receiver,false);
 
             // If new mode doesn't allow bandwidth control, disable filterwidth and pbt.
             if (m.bwMin > 0 && m.bwMax > 0) {
@@ -1685,14 +1712,14 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
                 configFilterWidth->setEnabled(true);
                 configPbtInner->setEnabled(true);
                 configPbtOuter->setEnabled(true);
-                sendCommand(priorityHigh,funcPBTInner,true,true);
-                sendCommand(priorityHigh,funcPBTOuter,true,true);
-                sendCommand(priorityHigh,funcFilterWidth,true,true);
+                queue->addUnique(priorityHigh,funcPBTInner,true,t.receiver);
+                queue->addUnique(priorityHigh,funcPBTOuter,true,t.receiver);
+                queue->addUnique(priorityHigh,funcFilterWidth,true,t.receiver);
 
             } else{
-                delCommand(funcPBTInner);
-                delCommand(funcPBTOuter);
-                delCommand(funcFilterWidth);
+                queue->del(funcPBTInner,t.receiver);
+                queue->del(funcPBTOuter,t.receiver);
+                queue->del(funcFilterWidth,t.receiver);
                 configFilterWidth->setEnabled(false);
                 configPbtInner->setEnabled(false);
                 configPbtOuter->setEnabled(false);
@@ -1701,24 +1728,26 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
 
             if (m.mk == modeDD || m.mk == modeDV)
             {
-                delCommand(funcUnselectedMode);
-                delCommand(funcUnselectedFreq);
-            } else if (!satMode && !memMode) {
-                sendCommand(priorityHigh,funcUnselectedFreq,true,true);
-                sendCommand(priorityHigh,funcUnselectedMode,true,true);
+                t = queue->getVfoCommand(vfoB,receiver,false);
+                queue->del(t.freqFunc,t.receiver);
+                queue->del(t.modeFunc,t.receiver);
+            } else if (queue->getState().vfoMode == vfoModeVfo) {
+                t = queue->getVfoCommand(vfoB,receiver,false);
+                queue->addUnique(priorityHigh,t.freqFunc,true,t.receiver);
+                queue->addUnique(priorityHigh,t.modeFunc,true,t.receiver);
             }
 
             if (m.mk == modeCW || m.mk == modeCW_R)
             {
-                sendCommand(priorityMediumHigh,funcCwPitch,true,true);
-                sendCommand(priorityMediumHigh,funcDashRatio,true,true);
-                sendCommand(priorityMediumHigh,funcKeySpeed,true,true);
-                sendCommand(priorityMediumHigh,funcBreakIn,true,true);
+                queue->addUnique(priorityMediumHigh,funcCwPitch,true,t.receiver);
+                queue->addUnique(priorityMediumHigh,funcDashRatio,true,t.receiver);
+                queue->addUnique(priorityMediumHigh,funcKeySpeed,true,t.receiver);
+                queue->addUnique(priorityMediumHigh,funcBreakIn,true,t.receiver);
             } else {
-                delCommand(funcCwPitch);
-                delCommand(funcDashRatio);
-                delCommand(funcKeySpeed);
-                delCommand(funcBreakIn);
+                queue->del(funcCwPitch,t.receiver);
+                queue->del(funcDashRatio,t.receiver);
+                queue->del(funcKeySpeed,t.receiver);
+                queue->del(funcBreakIn,t.receiver);
             }
 
 
@@ -1748,19 +1777,17 @@ void spectrumScope::receiveMode(modeInfo m, uchar vfo)
 #if defined __GNUC__
 #pragma GCC diagnostic pop
 #endif
-
         }
-
         this->mode = m;
     }
 }
 
-quint64 spectrumScope::roundFrequency(quint64 frequency, unsigned int tsHz)
+quint64 receiverWidget::roundFrequency(quint64 frequency, unsigned int tsHz)
 {
     return roundFrequency(frequency, 0, tsHz);
 }
 
-quint64 spectrumScope::roundFrequency(quint64 frequency, int steps, unsigned int tsHz)
+quint64 receiverWidget::roundFrequency(quint64 frequency, int steps, unsigned int tsHz)
 {
     if(steps > 0)
     {
@@ -1780,7 +1807,7 @@ quint64 spectrumScope::roundFrequency(quint64 frequency, int steps, unsigned int
 }
 
 
-void spectrumScope::receiveCwPitch(quint16 pitch)
+void receiverWidget::receiveCwPitch(quint16 pitch)
 {
     if (mode.mk == modeCW || mode.mk == modeCW_R) {        
         if (pitch != this->cwPitch)
@@ -1792,7 +1819,7 @@ void spectrumScope::receiveCwPitch(quint16 pitch)
     }
 }
 
-void spectrumScope::receivePassband(quint16 pass)
+void receiverWidget::receivePassband(quint16 pass)
 {
     double pb = (double)(pass / 1000000.0);
     if (passbandWidth != pb) {
@@ -1806,45 +1833,32 @@ void spectrumScope::receivePassband(quint16 pass)
     }
 }
 
-void spectrumScope::selected(bool en)
+void receiverWidget::selected(bool en)
 {
     isActive = en;
     if (en) {
         this->setStyleSheet("QGroupBox { border:1px solid red;}");
-        if (!rigCaps->hasCommand29) {
-            // the active receiver and no command 29.
-            rxcmd = 0x0;
-        }
     } else {
         this->setStyleSheet(defaultStyleSheet);
-        if (!rigCaps->hasCommand29) {
-            // Not the active receiver and no command 29.
-            rxcmd = 0xff;
-        }
     }
 
 }
 
-void spectrumScope::holdPressed(bool en)
-{
-    sendCommand(priorityImmediate,funcScopeHold,false,false,QVariant::fromValue<bool>(en));
-}
-
-void spectrumScope::setHold(bool h)
+void receiverWidget::setHold(bool h)
 {
     this->holdButton->blockSignals(true);
     this->holdButton->setChecked(h);
     this->holdButton->blockSignals(false);
 }
 
-void spectrumScope::setSpeed(uchar s)
+void receiverWidget::setSpeed(uchar s)
 {
     this->currentSpeed = s;
     configSpeed->setCurrentIndex(configSpeed->findData(currentSpeed));
 }
 
 
-void spectrumScope::receiveSpots(uchar receiver, QList<spotData> spots)
+void receiverWidget::receiveSpots(uchar receiver, QList<spotData> spots)
 {
     if (receiver != this->receiver) {
         return;
@@ -1874,21 +1888,41 @@ void spectrumScope::receiveSpots(uchar receiver, QList<spotData> spots)
             QCPRange xrange=spectrum->xAxis->range();
             QCPRange yrange=spectrum->yAxis->range();
             double left = s.frequency;
-            double top = yrange.upper-10.0;
+            double top = yrange.upper-2.0;
+
+            spotData* sp = new spotData(s);
+            sp->current = !current;
+            sp->text = new QCPItemText(spectrum);
+            sp->text->setAntialiased(true);
+            sp->text->setColor(colors.clusterSpots);
+            sp->text->setText(sp->dxcall);
+            sp->text->setFont(QFont(font().family(), 10));
+            sp->text->setPositionAlignment(Qt::AlignTop | Qt::AlignLeft);
+            sp->text->position->setType(QCPItemPosition::ptPlotCoords);
+            //QMargins margin;
+            //int width = (sp->text->right - sp->text->left) / 8;
+            //margin.setLeft(width);
+            //margin.setRight(width);
+            //sp->text->setPadding(margin);
+            sp->text->position->setCoords(left, top);
+
+            qDebug(logCluster()) << "ADD:" << sp->dxcall;
 
             bool conflict = true;
+
             while (conflict) {
 #if QCUSTOMPLOT_VERSION < 0x020000
-                QCPAbstractItem* absitem = spectrum->itemAt(QPointF(spectrum->xAxis->coordToPixel(left),spectrum->yAxis->coordToPixel(top)), true);
+                QCPItemText* item = dynamic_cast<QCPItemText*>(spectrum->itemAt(QPointF(spectrum->xAxis->coordToPixel(left),spectrum->yAxis->coordToPixel(top)), true));
 #else
-                QCPAbstractItem* absitem = spectrum->itemAt(QPointF(spectrum->xAxis->coordToPixel(left),spectrum->yAxis->coordToPixel(top)), true);
+                QCPItemText* item = dynamic_cast<QCPItemText*>(spectrum->itemAt(QPointF(spectrum->xAxis->coordToPixel(left),spectrum->yAxis->coordToPixel(top)), true));
 #endif
-                QCPItemText* item = dynamic_cast<QCPItemText*> (absitem);
+                //QCPItemText* item = dynamic_cast<QCPItemText*> (absitem);
                 if (item != nullptr) {
-                    top = top - 10.0;
+                    //qInfo() << "Spot found at top:" << top << "left:" << left << "(" << spectrum->xAxis->coordToPixel(top) <<"," << spectrum->xAxis->coordToPixel(left) << ") spot:" << item->text();
+                    top = top - 5.0;
                     if (top < 10.0)
                     {
-                        top = yrange.upper-10.0;
+                        top = yrange.upper-2.0;
                         left = left + (xrange.size()/20);
                     }
                 }
@@ -1896,25 +1930,10 @@ void spectrumScope::receiveSpots(uchar receiver, QList<spotData> spots)
                     conflict = false;
                 }
             }
-            spotData* sp = new spotData(s);
-
-            //qDebug(logCluster()) << "ADD:" << sp->dxcall;
-            sp->current = !current;
-            sp->text = new QCPItemText(spectrum);
-            sp->text->setAntialiased(true);
-            sp->text->setColor(colors.clusterSpots);
-            sp->text->setText(sp->dxcall);
-            sp->text->setFont(QFont(font().family(), 10));
-            sp->text->setPositionAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
-            sp->text->position->setType(QCPItemPosition::ptPlotCoords);
-            sp->text->setSelectable(true);
-            QMargins margin;
-            int width = (sp->text->right - sp->text->left) / 2;
-            margin.setLeft(width);
-            margin.setRight(width);
-            sp->text->setPadding(margin);
             sp->text->position->setCoords(left, top);
+            sp->text->setSelectable(true);
             sp->text->setVisible(true);
+
             clusterSpots.insert(sp->dxcall, sp);
         }
     }
@@ -1933,7 +1952,7 @@ void spectrumScope::receiveSpots(uchar receiver, QList<spotData> spots)
     //qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
 }
 
-void spectrumScope::configPressed()
+void receiverWidget::configPressed()
 {
     this->configGroup->setVisible(!this->configGroup->isVisible());
     //QTimer::singleShot(200, this, [this]() {
@@ -1945,14 +1964,14 @@ void spectrumScope::configPressed()
 }
 
 
-void spectrumScope::wfTheme(int num)
+void receiverWidget::wfTheme(int num)
 {
     currentTheme = QCPColorGradient::GradientPreset(num);
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(num));
     configTheme->setCurrentIndex(configTheme->findData(currentTheme));
 }
 
-void spectrumScope::setPBTInner (uchar val) {
+void receiverWidget::setPBTInner (uchar val) {
     qint16 shift = (qint16)(val - 128);
     double tempVar = ceil((shift / 127.0) * passbandWidth * 20000.0) / 20000.0;
     // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
@@ -1976,7 +1995,7 @@ void spectrumScope::setPBTInner (uchar val) {
     }
 }
 
-void spectrumScope::setPBTOuter (uchar val) {
+void receiverWidget::setPBTOuter (uchar val) {
     qint16 shift = (qint16)(val - 128);
     double tempVar = ceil((shift / 127.0) * this->passbandWidth * 20000.0) / 20000.0;
     // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
@@ -2000,7 +2019,7 @@ void spectrumScope::setPBTOuter (uchar val) {
     }
 }
 
-void spectrumScope::setIFShift(uchar val)
+void receiverWidget::setIFShift(uchar val)
 {
     configIfShift->setEnabled(true);
     if (val != this->ifShift)
@@ -2012,9 +2031,9 @@ void spectrumScope::setIFShift(uchar val)
     }
 }
 
-void spectrumScope::setFrequency(freqt f, uchar vfo)
+void receiverWidget::setFrequency(freqt f, uchar vfo)
 {
-    //qInfo() << "Setting Frequency vfo=" << vfo << "Freq:" << f.Hz;
+    //qInfo() << "receiver:" << receiver << "Setting Frequency vfo=" << vfo << "Freq:" << f.Hz;
 
     if (vfo < numVFO)
     {
@@ -2044,7 +2063,7 @@ void spectrumScope::setFrequency(freqt f, uchar vfo)
     }
 }
 
-void spectrumScope::showBandIndicators(bool en)
+void receiverWidget::showBandIndicators(bool en)
 {
     for (auto &bi: bandIndicators)
     {
@@ -2059,7 +2078,7 @@ void spectrumScope::showBandIndicators(bool en)
 
 
 
-void spectrumScope::setBandIndicators(bool show, QString region, std::vector<bandType>* bands)
+void receiverWidget::setBandIndicators(bool show, QString region, std::vector<bandType>* bands)
 {
     this->currentRegion = region;
 
@@ -2103,20 +2122,20 @@ void spectrumScope::setBandIndicators(bool show, QString region, std::vector<ban
     bandIndicatorsVisible=false;
 }
 
-void spectrumScope::displaySettings(int numDigits, qint64 minf, qint64 maxf, int minStep,FctlUnit unit, std::vector<bandType>* bands)
+void receiverWidget::displaySettings(int numDigits, qint64 minf, qint64 maxf, int minStep,FctlUnit unit, std::vector<bandType>* bands)
 {
     for (uchar i=0;i<numVFO;i++)
         freqDisplay[i]->setup(numDigits, minf, maxf, minStep, unit, bands);
 }
 
-void spectrumScope::setUnit(FctlUnit unit)
+void receiverWidget::setUnit(FctlUnit unit)
 {
     for (uchar i=0;i<numVFO;i++)
         freqDisplay[i]->setUnit(unit);
 }
 
 
-void spectrumScope::newFrequency(qint64 freq,uchar vfo)
+void receiverWidget::newFrequency(qint64 freq,uchar vfo)
 {
     freqt f;
     f.Hz = freq;
@@ -2124,22 +2143,23 @@ void spectrumScope::newFrequency(qint64 freq,uchar vfo)
     if (f.Hz > 0)
     {
         emit sendTrack(f.Hz-this->freq.Hz);
-
-        sendCommand(priorityImmediate,getFreqFunc(vfo,true),false,false,QVariant::fromValue<freqt>(f));
+        vfoCommandType t = queue->getVfoCommand(vfo_t(vfo),receiver,true);
+        queue->addUnique(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(f),false,t.receiver));
+        //qInfo() << "Setting new frequency for rx:" << receiver << "vfo:" << vfo << "freq:" << f.Hz << "using:" << funcString[t.freqFunc];
     }
 }
 
-void spectrumScope::setRef(int ref)
+void receiverWidget::setRef(int ref)
 {
     configRef->setValue(ref);
 }
 
-void spectrumScope::setRefLimits(int lower, int upper)
+void receiverWidget::setRefLimits(int lower, int upper)
 {
     configRef->setRange(lower,upper);
 }
 
-void spectrumScope::detachScope(bool state)
+void receiverWidget::detachScope(bool state)
 {
     if (state)
     {
@@ -2177,7 +2197,7 @@ void spectrumScope::detachScope(bool state)
     this->show();
 }
 
-void spectrumScope::changeSpan(qint8 val)
+void receiverWidget::changeSpan(qint8 val)
 {
     if ((val > 0 && spanCombo->currentIndex() < spanCombo->count()-val) ||
         (val < char(0) && spanCombo->currentIndex() > 0))
@@ -2193,7 +2213,7 @@ void spectrumScope::changeSpan(qint8 val)
     }
 }
 
-void spectrumScope::updateBSR(std::vector<bandType>* bands)
+void receiverWidget::updateBSR(std::vector<bandType>* bands)
 {
     // Send a new BSR value for the current frequency.
     // Not currently used.
@@ -2212,127 +2232,57 @@ void spectrumScope::updateBSR(std::vector<bandType>* bands)
                 bs.sql=0;
                 bs.tone.tone=770;
                 bs.tsql.tone=770;
-                sendCommand(priorityImmediate,funcBandStackReg,false,false,QVariant::fromValue<bandStackType>(bs));
+                vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+                queue->addUnique(priorityImmediate,queueItem(funcBandStackReg,QVariant::fromValue<bandStackType>(bs),false,t.receiver));
             }
             break;
         }
     }
 }
 
-void spectrumScope::memoryMode(bool en)
+void receiverWidget::memoryMode(bool en)
 {
     this->memMode=en;
     qInfo(logRig) << "Receiver" << receiver << "Memory mode:" << en;
-    if (en) {        
-        delCommand(funcUnselectedMode);
-        delCommand(funcUnselectedFreq);
+    if (en) {
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,false);
+        queue->del(t.freqFunc,t.receiver);
+        queue->del(t.modeFunc,t.receiver);
     }
 }
 
-QImage spectrumScope::getSpectrumImage()
+QImage receiverWidget::getSpectrumImage()
 {
     QMutexLocker locker(&mutex);
     return spectrum->toPixmap().toImage();
 }
-QImage spectrumScope::getWaterfallImage()
+QImage receiverWidget::getWaterfallImage()
 {
     QMutexLocker locker(&mutex);
     return waterfall->toPixmap().toImage();
 }
 
-void spectrumScope::sendCommand(queuePriority prio, funcs func, bool recur, bool unique, QVariant val)
-{
-    if (rxcmd != 0xff) {
-        if (val.isValid())
-        {
-            if (unique) {
-                queue->addUnique(prio,queueItem(func,val,recur,rxcmd));
-            } else {
-                queue->add(prio,queueItem(func,val,recur,rxcmd));
-            }
-        } else {
-            // Get commands are always unique.
-            queue->addUnique(prio,func);
-        }
-    } else {
-        qDebug(logRig) << "RX" << receiver << "Cannot send command as we are not active";
-    }
-}
-
-void spectrumScope::delCommand(funcs func)
-{
-    if (rxcmd != 0xff) {
-        queue->del(func,rxcmd);
-    }
-}
-
-
-funcs spectrumScope::getFreqFunc(uchar vfo, bool set)
-{
-    funcs func = ((rigCaps->commands.contains(funcFreq)) ? funcFreq: funcFreqGet) ;
-
-    if (set)
-        func = ((rigCaps->commands.contains(funcFreq)) ? funcFreq: funcFreqSet) ;
-
-    if (rigCaps->hasCommand29 || (isActive && receiver == 0)) {
-        if (vfo == 0)
-        {
-            func = ((rigCaps->commands.contains(funcSelectedFreq)) ? funcSelectedFreq: func);
-        }
-        else if (vfo == 1 && !satMode && !memMode)
-        {
-            func = ((rigCaps->commands.contains(funcUnselectedFreq)) ? funcUnselectedFreq: func);
-        } else {
-            // This is the unselected frequency on sub rx
-            func = funcNone;
-        }
-    }
-    qDebug(logRigCtlD) << "Frequency function is:" << funcString[func];
-    return func;
-}
-
-funcs spectrumScope::getModeFunc(uchar vfo, bool set)
-{
-    funcs func = ((rigCaps->commands.contains(funcMode)) ? funcMode: funcModeGet) ;
-
-    if (set)
-        func = ((rigCaps->commands.contains(funcMode)) ? funcMode: funcModeSet) ;
-
-    if (rigCaps->hasCommand29 || (isActive && receiver == 0)) {
-        if (vfo == 0){
-            func = ((rigCaps->commands.contains(funcSelectedMode)) ? funcSelectedMode: func);
-        }
-        else if (vfo == 1 && !satMode && !memMode)
-        {
-            func = ((rigCaps->commands.contains(funcUnselectedMode)) ? funcUnselectedMode: func);
-        } else {
-            // This is the unselected mode on sub rx
-            func = funcNone;
-        }
-    }
-    qDebug(logRigCtlD) << "Mode function is:" << funcString[func];
-    return func;
-}
-
-void spectrumScope::vfoSwap()
+void receiverWidget::vfoSwap()
 {
     if (!tracking) {
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
         if (rigCaps->commands.contains(funcVFOSwapAB))
         {
-            sendCommand(priorityImmediate,funcVFOSwapAB,false,false);
+            queue->add(priorityImmediate,funcVFOSwapAB,false,t.receiver);
         }
         else
         {
             // Manufacture a VFO Swap (should be fun!)
-            sendCommand(priorityImmediate,getFreqFunc(0,true),false,true,QVariant::fromValue(unselectedFreq));
-            sendCommand(priorityImmediate,getFreqFunc(1,true),false,true,QVariant::fromValue(freq));
-            sendCommand(priorityImmediate,getModeFunc(0,true),false,true,QVariant::fromValue(unselectedMode));
-            sendCommand(priorityImmediate,getModeFunc(1,true),false,true,QVariant::fromValue(mode));
+            queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(unselectedFreq),false,t.receiver));
+            queue->add(priorityImmediate,queueItem(t.modeFunc,QVariant::fromValue<modeInfo>(unselectedMode),false,t.receiver));
+            t = queue->getVfoCommand(vfoB,receiver,true);
+            queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(freq),false,t.receiver));
+            queue->add(priorityImmediate,queueItem(t.modeFunc,QVariant::fromValue<modeInfo>(mode),false,t.receiver));
         }
     }
 }
 
-void spectrumScope::receiveTrack(int f)
+void receiverWidget::receiveTrack(int f)
 {
     return; // Disabled for now.
     qInfo(logRig) << "Got tracking for rx" << receiver<< "amount" << f << "Hz";
@@ -2342,7 +2292,8 @@ void spectrumScope::receiveTrack(int f)
         freqGo.Hz=this->freq.Hz+f;
         freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
         freqGo.VFO = activeVFO;
-        sendCommand(priorityImmediate,getFreqFunc(0,true),false,false,QVariant::fromValue(freqGo));
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+        queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(freqGo),false,t.receiver));
         freq=freqGo;
     }
 }

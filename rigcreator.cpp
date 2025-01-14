@@ -16,7 +16,7 @@ rigCreator::rigCreator(QWidget *parent) :
     this->setWindowFlags(flags);
 
     qInfo() << "Creating instance of rigCreator()";
-    commandsList = new tableCombobox(createModel(NUMFUNCS, commandsModel, funcString),true,ui->commands);
+    commandsList = new tableCombobox(createModel(NUMFUNCS, commandsModel, funcString),false,ui->commands);
     ui->commands->setItemDelegateForColumn(0, commandsList);
 
     priorityModel = new QStandardItemModel();
@@ -34,8 +34,10 @@ rigCreator::rigCreator(QWidget *parent) :
     priorityList = new tableCombobox(priorityModel,true,ui->periodicCommands);
     ui->periodicCommands->setItemDelegateForColumn(0, priorityList);
     ui->periodicCommands->setItemDelegateForColumn(1, commandsList);
+
+    ui->commands->setColumnWidth(0,200);
+
     /*
-    ui->commands->setColumnWidth(0,120);
     ui->commands->setColumnWidth(1,100);
     ui->commands->setColumnWidth(2,50);
     ui->commands->setColumnWidth(3,50);
@@ -112,9 +114,12 @@ void rigCreator::on_defaultRigs_clicked(bool clicked)
 
 
      QString appdata = QCoreApplication::applicationDirPath();
-
+#ifndef Q_OS_WIN
 #ifdef Q_OS_LINUX
      appdata += "/../share/wfview/rigs";
+#else
+     appdata +="/rigs";
+#endif
      QString file = QFileDialog::getOpenFileName(this,tr("Select Rig Filename"),appdata,"Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
 #else
      appdata +="/rigs";
@@ -140,7 +145,7 @@ void rigCreator::on_loadFile_clicked(bool clicked)
         dir.mkdir("rigs");
     }
 
-#ifdef Q_OS_LINUX
+#ifndef Q_OS_WIN
     QString file = QFileDialog::getOpenFileName(this,tr("Select Rig Filename"),appdata+"/rigs","Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
 #else
     QString file = QFileDialog::getOpenFileName(this,tr("Select Rig Filename"),appdata+"/rigs","Rig Files (*.rig)");
@@ -574,7 +579,7 @@ void rigCreator::on_saveFile_clicked(bool clicked)
     }
 
     QFileInfo fileInfo(currentFile);
-#ifdef Q_OS_LINUX
+#ifndef Q_OS_WIN
     QString file = QFileDialog::getSaveFileName(this,tr("Select Rig Filename"),appdata+"/rigs/"+fileInfo.fileName(),"Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
 #else
     QString file = QFileDialog::getSaveFileName(this,tr("Select Rig Filename"),appdata+"/rigs/"+fileInfo.fileName(),"Rig Files (*.rig)");
@@ -810,7 +815,24 @@ QStandardItemModel* rigCreator::createModel(int num,QStandardItemModel* model, Q
 
     for (int i=0; i < num;i++)
     {
-        if (!strings[i].startsWith('-')) {
+        if (strings[i].startsWith('+'))
+        {
+#if (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
+            QStandardItem *itemName = new QStandardItem(strings[i].sliced(1));
+#else
+            QStandardItem *itemName = new QStandardItem(strings[i].mid(1));
+#endif
+            QStandardItem *itemId = new QStandardItem(i);
+            itemName->setFlags(itemName->flags() & ~Qt::ItemIsSelectable);
+            itemId->setFlags(itemId->flags() & ~Qt::ItemIsSelectable);
+            //itemName->setData((int)itemName->flags(), Qt::UserRole - 1);
+            QList<QStandardItem*> row;
+            row << itemName << itemId;
+
+            model->appendRow(row);
+
+        }
+        else if (!strings[i].startsWith('-')) {
             QStandardItem *itemName = new QStandardItem(strings[i]);
             QStandardItem *itemId = new QStandardItem(i);
 

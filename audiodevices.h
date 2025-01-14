@@ -75,8 +75,8 @@ public:
     QStringList getInputs();
     QStringList getOutputs();
 
-    int findInput(QString type, QString name);
-    int findOutput(QString type, QString name);
+    int findInput(QString type, QString name, bool ignoreDefault=false);
+    int findOutput(QString type, QString name, bool ignoreDefault=false);
 
 #if (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
     QMediaDevices mediaDevices;

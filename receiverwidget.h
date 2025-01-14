@@ -1,5 +1,5 @@
-#ifndef SPECTRUMSCOPE_H
-#define SPECTRUMSCOPE_H
+#ifndef RECEIVERWIDGET_H
+#define RECEIVERWIDGET_H
 
 #include <QWidget>
 #include <QMutex>
@@ -31,12 +31,12 @@ struct bandIndicator {
     QCPItemText* text;
 };
 
-class spectrumScope : public QGroupBox
+class receiverWidget : public QGroupBox
 {
     Q_OBJECT
 public:
-    explicit spectrumScope(bool scope, uchar receiver = 0, uchar vfo = 1, QWidget *parent = nullptr);
-    ~spectrumScope();
+    explicit receiverWidget(bool scope, uchar receiver = 0, uchar vfo = 1, QWidget *parent = nullptr);
+    ~receiverWidget();
 
     bool prepareWf(uint wfLength);
     void prepareScope(uint ampMap, uint spectWidth);
@@ -89,6 +89,21 @@ public:
     uchar getNumVFO () { return numVFO;}
 
     void receiveMode (modeInfo m, uchar vfo=0);
+
+    void setEdge(uchar index);
+    void setHold(bool h);
+    void setSpeed(uchar s);
+    void setSpan(centerSpanData s);
+    void setScopeMode(spectrumMode_t m);
+    void setSplit(bool en) { splitButton->setChecked(en); }
+    void setTracking(bool en) { tracking=en; }
+    void setRef(int ref);
+    void setRefLimits(int lower, int upper);
+
+    void setBandIndicators(bool show, QString region, std::vector<bandType>* bands);
+    void setUnit(FctlUnit unit);
+    void setSeparators(QChar group, QChar decimal);
+
     modeInfo currentMode() {return mode;}
     uchar currentFilter() {return filterCombo->currentData().toInt();}
     void clearSpans() { spanCombo->clear();}
@@ -103,29 +118,20 @@ public:
 
     void selected(bool);
     bool isSelected() {return isActive;}
-    void setHold(bool h);
-    void setSpeed(uchar s);
+
     void displaySettings(int NumDigits, qint64 Minf, qint64 Maxf, int MinStep,FctlUnit unit,std::vector<bandType>* bands = Q_NULLPTR);
-    void setBandIndicators(bool show, QString region, std::vector<bandType>* bands);
-    void setUnit(FctlUnit unit);
-    void setRefLimits(int lower, int upper);
-    void setRef(int ref);
     quint8 getDataMode() { return static_cast<quint8>(dataCombo->currentIndex()); }
 
     void changeSpan(qint8 val);
-    void setSeparators(QChar group, QChar decimal);
     void updateBSR(std::vector<bandType>* bands);
     QImage getSpectrumImage();
     QImage getWaterfallImage();
     bandType getCurrentBand();
-    void setSplit(bool en) { splitButton->setChecked(en); }
-    void setTracking(bool en) { tracking=en; }
 
 public slots: // Can be called directly or updated via signal/slot
-    void selectScopeMode(spectrumMode_t m);
-    void selectSpan(centerSpanData s);
     void receiveSpots(uchar receiver, QList<spotData> spots);
     void memoryMode(bool en);
+
 
 signals:    
     void frequencyRange(uchar receiver, double start, double end);
@@ -143,11 +149,7 @@ signals:
 
 private slots:
     void detachScope(bool state);
-    void updatedScopeMode(int index);
-    void updatedSpan(int index);
-    void updatedEdge(int index);
     void updatedMode(int index);
-    void holdPressed(bool en);
     void toFixedPressed();
     void customSpanPressed();
     void configPressed();
@@ -170,11 +172,7 @@ private:
     void computePlasma();
     void showHideControls(spectrumMode_t mode);
     void showBandIndicators(bool en);
-    void sendCommand(queuePriority prio, funcs func, bool recur=false, bool unique=false, QVariant val=QVariant());
-    void delCommand(funcs func);
     void vfoSwap();
-    funcs getFreqFunc(uchar vfo, bool set=false);
-    funcs getModeFunc(uchar vfo, bool set=false);
 
     quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
     quint64 roundFrequency(quint64 frequency, int steps, unsigned int tsHz);
@@ -255,10 +253,10 @@ private:
     int currentRef = 0;
     uchar currentSpeed = 0;
     colorPrefsType colors;
-    freqt freq = freqt(0,0.0,selVFO_t::activeVFO);
-    modeInfo mode = modeInfo(modeUnknown,0,"Unk",0,0);
-    modeInfo unselectedMode = modeInfo(modeUnknown,0,"Unk",0,0);
-    freqt unselectedFreq = freqt(0,0.0,selVFO_t::activeVFO);
+    freqt freq;
+    modeInfo mode;
+    modeInfo unselectedMode;
+    freqt unselectedFreq;
     bool lock = false;
     bool scopePrepared=false;
     quint16 spectWidth=689;
@@ -339,4 +337,4 @@ private:
     bool tracking = false;
 };
 
-#endif // SPECTRUMSCOPE_H
+#endif // RECEIVERWIDGET_H

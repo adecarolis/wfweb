@@ -75,6 +75,7 @@ signals:
     void sendMessage(QString msg);
     void cacheUpdated(cacheItem item);
     void rigCapsUpdated(rigCapabilities* caps);
+    void intervalUpdated(qint64 val);
 
 public slots:
     // Can be called directly or via emit.
@@ -107,6 +108,7 @@ private:
     // Functions
     void run();
     funcs checkCommandAvailable(funcs cmd, bool set=false);
+    rigStateType rigState;
 
 protected:
     cachingQueue(QObject* parent = Q_NULLPTR) : QThread(parent) {};
@@ -141,6 +143,8 @@ public:
     void unlockMutex() {mutex.unlock();}
     void setRigCaps(rigCapabilities* caps) { if (rigCaps != caps) { rigCaps = caps; emit rigCapsUpdated(rigCaps);} }
     rigCapabilities* getRigCaps() { return rigCaps; }
+    vfoCommandType getVfoCommand(vfo_t vfo, uchar rx, bool set=false);
+    rigStateType getState() { QMutexLocker locker(&mutex); return rigState ;}
 };
 
 Q_DECLARE_METATYPE(queueItem)
