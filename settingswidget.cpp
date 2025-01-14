@@ -784,7 +784,7 @@ void settingswidget::updateRaPref(prefRaItem pra)
         for(const auto &serialPortInfo: QSerialPortInfo::availablePorts())
         {
 #if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
-            ui->serialDeviceListCombo->addItem(QString("%0 (%1)").arg(serialPortInfo.portName(),serialPortInfo.serialNumber()), QString("/dev/%0").arg(serialPortInfo.portName());
+            ui->serialDeviceListCombo->addItem(QString("%0 (%1)").arg(serialPortInfo.portName(),serialPortInfo.serialNumber()), QString("/dev/%0").arg(serialPortInfo.portName()));
 #else
             ui->serialDeviceListCombo->addItem(QString("%0 (%1)").arg(serialPortInfo.portName(),serialPortInfo.serialNumber()),serialPortInfo.portName());
 #endif
