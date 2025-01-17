@@ -16,10 +16,6 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     queue = cachingQueue::getInstance();
     rigCaps = queue->getRigCaps();
 
-    if (!rigCaps->hasSpectrum)
-        hasScope=false;
-
-    //spectrum = new QCustomPlot();
     mainLayout = new QHBoxLayout(this);
     layout = new QVBoxLayout();
     mainLayout->addLayout(layout);
@@ -312,6 +308,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     configGroup = new QGroupBox();
     rhsLayout->addWidget(configGroup);
     configLayout = new QFormLayout();
+    configLayout->setHorizontalSpacing(0);
     configGroup->setLayout(configLayout);
     mainLayout->addLayout(rhsLayout);
     rhsBottomSpacer = new QSpacerItem(0,0,QSizePolicy::Fixed,QSizePolicy::Expanding);
@@ -335,7 +332,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     configLayout->addRow(tr("Length"),configLength);
 
     configTop = new QSlider(Qt::Orientation::Horizontal);
-    configTop->setRange(1,160);
+    configTop->setRange(0,rigCaps->spectAmpMax+10);
     configTop->setValue(plotCeiling);
     configTop->setAccessibleName(tr("Scope display ceiling"));
     configTop->setAccessibleDescription(tr("Selects the display ceiling for the Scope display"));
@@ -343,7 +340,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     configLayout->addRow(tr("Ceiling"),configTop);
 
     configBottom = new QSlider(Qt::Orientation::Horizontal);
-    configBottom->setRange(0,160);
+    configBottom->setRange(0,rigCaps->spectAmpMax+10);
     configBottom->setValue(plotFloor);
     configBottom->setAccessibleName(tr("Scope display floor"));
     configBottom->setAccessibleDescription(tr("Selects the display floor for the Scope display"));
@@ -404,6 +401,9 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     configFilterWidth = new QSlider(Qt::Orientation::Horizontal);
     configFilterWidth->setRange(0,10000);
     configLayout->addRow(tr("Fill Width"),configFilterWidth);
+
+    configScopeEnabled = new QCheckBox(tr("Scope Enabled"));
+    configLayout->addRow(configScopeEnabled);
 
     connect(configLength, &QSlider::valueChanged, this, [=](const int &val) {
         //prepareWf(val);
@@ -486,10 +486,17 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
         queue->addUnique(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(val),false,t.receiver));
     });
 
+#if (QT_VERSION < QT_VERSION_CHECK(6,7,0))
+    connect(configScopeEnabled, &QCheckBox::stateChanged, this, [=](const int &val) {
+#else
+    connect(configScopeEnabled, &QCheckBox::checkStateChanged, this, [=](const Qt::CheckState &val) {
+#endif
+        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+        queue->addUnique(priorityHighest,queueItem(funcScopeOnOff,QVariant::fromValue<bool>(val),false,t.receiver));
+        qInfo() << "Queueing command to set scope to:" << bool(val);
+    });
+
     configGroup->setVisible(false);
-
-
-
 
     // Connections
     connect(detachButton,SIGNAL(toggled(bool)), this, SLOT(detachScope(bool)));
@@ -1118,6 +1125,7 @@ void receiverWidget::showHideControls(spectrumMode_t mode)
         return;
     }
 
+
     if (!rigCaps->hasSpectrum) {
         spectrum->hide();
         waterfall->hide();
@@ -1161,9 +1169,16 @@ void receiverWidget::showHideControls(spectrumMode_t mode)
     }
     confButton->show();
     detachButton->show();
+
+    configSpeed->setVisible(rigCaps->hasSpectrum);
+    configBottom->setVisible(rigCaps->hasSpectrum);
+    configLength->setVisible(rigCaps->hasSpectrum);
+    configRef->setVisible(rigCaps->hasSpectrum);
+    configScopeEnabled->setVisible(rigCaps->hasSpectrum);
+    configTheme->setVisible(rigCaps->hasSpectrum);
 }
 
-void receiverWidget::enableScope(bool en)
+void receiverWidget::displayScope(bool en)
 {
     this->splitter->setVisible(en);
     // Hide these controls if disabled

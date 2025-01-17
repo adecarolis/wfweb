@@ -299,12 +299,14 @@ struct rigCapabilities {
     QHash<funcs,funcType> commands;
     QHash<QByteArray,funcs> commandsReverse;
 
-    std::vector <quint8> attenuators;
+    std::vector <genericType> attenuators;
     std::vector <genericType> preamps;
     std::vector <genericType> antennas;
     std::vector <filterType> filters;
     std::vector <centerSpanData> scopeCenterSpans;
     std::vector <bandType> bands;
+    std::vector <toneInfo> ctcss;
+    std::vector <toneInfo> dtcs;
     //std::vector <spanType> spans;
     std::vector <stepType> steps;
     quint8 bsr[24] = {0};

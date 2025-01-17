@@ -1467,9 +1467,9 @@ int rigCtlClient::dumpState(QStringList &response, bool extended)
     if(rigCaps->commands.contains(funcAttenuator)) {
         for (auto att : rigCaps->attenuators)
         {
-            if (att == 0)
+            if (att.num == 0)
                 continue;
-            attens.append(QString(" %1").arg(att));
+            attens.append(QString(" %1").arg(att.num));
         }
         if (attens.endsWith(" "))
             attens.chop(1);

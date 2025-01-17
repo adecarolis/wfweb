@@ -22,6 +22,10 @@ public slots:
     void process() override;
     void commSetup(rigTypedef rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf) override;
     void commSetup(rigTypedef rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp) override;
+
+    void lanConnected();
+    void lanDisconnected();
+
     void closeComm() override;
     void setPTTType(pttType_t) override;
 
@@ -44,7 +48,7 @@ public slots:
 
     // Serial:
     void serialPortError(QSerialPort::SerialPortError err);
-    void receiveSerialData();
+    void receiveDataFromRig();
 
     void parseData(QByteArray dataInput);
 
@@ -57,9 +61,8 @@ private:
     funcType getCommand(funcs func, QByteArray &payload, int value, uchar receiver=0);
     bool parseMemory(QByteArray data, QVector<memParserFormat>* memParser, memoryType* mem);
 
-    // Serial port
     mutable QMutex serialMutex;
-    QSerialPort *serialPort=Q_NULLPTR;
+    QIODevice *port=Q_NULLPTR;
     bool portConnected=false;
     bool isTransmitting = false;
     QByteArray lastSentCommand;
@@ -67,8 +70,33 @@ private:
     pttyHandler* ptty = Q_NULLPTR;
     tcpServer* tcp = Q_NULLPTR;
 
+
+    QHash<quint8,rigInfo> rigList;
+    quint8 rigCivAddr;
+    QString vsp;
+    quint16 tcpPort;
+    quint8 wf;
+
+    QString rigSerialPort;
+    quint32 rigBaudRate;
+
+    udpPreferences prefs;
+    audioSetup rxSetup;
+    audioSetup txSetup;
+    scopeData currentScope;
+    bool loginRequired = false;
+
+    bool network = false;
+
+    QByteArray partial;
+
+    connectionType_t connType = connectionUSB;
+
+    bool aiModeEnabled=false;
+    ushort scopeSplit=0;
+
     const ushort ctcssTones[42]{670,693,719,744,770,797,825,854,885,915,958,974,1000,1035,1072,1109,1148,1188,1230,1273,1318,1365,1413,1462,
-                          1514,1567,1622,1679,1738,1799,1862,1928,2035,2065,2107,2181,2267,2291,2336,2418,2503,2541};
+                                1514,1567,1622,1679,1738,1799,1862,1928,2035,2065,2107,2181,2267,2291,2336,2418,2503,2541};
 };
 
 #endif // KENWOODCOMMANDER_H

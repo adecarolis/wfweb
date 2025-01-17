@@ -66,7 +66,8 @@ public:
 
     void setScrollSpeedXY(int clicksX, int clicksY) { this->scrollXperClick = clicksX; this->scrollYperClick = clicksY;}
 
-    void enableScope(bool en);
+    void displayScope(bool en);
+    void enableScope(bool en) { this->configScopeEnabled->setChecked(en); };
 
     void receiveCwPitch(quint16 p);
     quint16 getCwPitch() { return cwPitch;}
@@ -237,6 +238,7 @@ private:
     QSlider* configIfShift;
     QPushButton* configResetIf;
     QSlider* configFilterWidth;
+    QCheckBox* configScopeEnabled;
 
 
     // These parameters relate to scroll wheel response:

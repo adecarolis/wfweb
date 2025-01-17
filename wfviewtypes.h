@@ -17,6 +17,8 @@ enum connectionStatus_t { connDisconnected, connConnecting, connConnected };
 
 enum underlay_t { underlayNone, underlayPeakHold, underlayPeakBuffer, underlayAverageBuffer };
 
+enum connectionType_t { connectionUSB, connectionLAN, connectionWiFi, connectionWAN };
+
 enum meter_t {
     meterNone=0,
     meterS,
@@ -179,16 +181,19 @@ struct scopeData {
 };
 
 struct toneInfo {
-    toneInfo ():tone(0), tinv(false),rinv(false),useSecondaryVFO(false) {};
-    toneInfo (toneInfo const &t): tone(t.tone), tinv(t.tinv), rinv(t.rinv), useSecondaryVFO(t.useSecondaryVFO) {};
-    toneInfo (quint16 tone):tone(tone), tinv(false),rinv(false),useSecondaryVFO(false) {};
-    toneInfo (quint16 tone, bool tinv, bool rinv, bool useSecondaryVFO):tone(tone), tinv(tinv),rinv(rinv),useSecondaryVFO(useSecondaryVFO) {};
-    quint16 tone;
+    toneInfo ():tone(0), name(""), tinv(false),rinv(false),useSecondaryVFO(false) {};
+    toneInfo (toneInfo const &t): tone(t.tone), name(t.name), tinv(t.tinv), rinv(t.rinv), useSecondaryVFO(t.useSecondaryVFO) {};
+    toneInfo (short tone): tone(tone), name(""), tinv(false),rinv(false),useSecondaryVFO(false) {};
+    toneInfo (short tone, QString name): tone(tone), name(name), tinv(false),rinv(false),useSecondaryVFO(false) {};
+    toneInfo (short tone, QString name, bool tinv, bool rinv, bool useSecondaryVFO):tone(tone), name(name), tinv(tinv),rinv(rinv),useSecondaryVFO(useSecondaryVFO) {};
+    ushort tone;
+    QString name;
     bool tinv;
     bool rinv;
     bool useSecondaryVFO;
     toneInfo &operator=(const toneInfo &i) {
         this->tone=i.tone;
+        this->name=i.name;
         this->tinv=i.tinv;
         this->rinv=i.rinv;
         this->useSecondaryVFO=i.useSecondaryVFO;
@@ -228,7 +233,7 @@ struct meterkind {
 };
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 356
+#define NUMFUNCS 368
 
 enum funcs { funcNone,
 /* Commands 00-0f VFO Information*/
@@ -349,7 +354,10 @@ funcFA,                 funcFB,
 /* Some Kenwood Specific Commands */
 funcSepP,
 funcAutoInformation,    funcIFFilter,           funcDataMode,               funcRXFreqAndMode,      funcTXFreqAndMode,      funcTFSetStatus,
-funcMemorySelect,       funcSetTransmit,        funcSetReceive,
+funcMemorySelect,       funcSetTransmit,        funcSetReceive,             funcRITDown,            funcRITUp,              funcScopeInfo,
+funcScopeRange,         funcCWDecode,           funcScopeClear,             funcUSBScope,
+// LAN Specific commands
+funcConnectionRequest,  funcLogin,              funcVOIP,                   funcVOIPLevel,          funcVOIPBuffer,
 
 /* Special Commands (internal use only) */
 funcSelectVFO,          funcSeparator,          funcLCDWaterfall,           funcLCDSpectrum,        funcLCDNothing,         funcPageUp,
@@ -477,7 +485,10 @@ static QString funcString[] { "None",
 
 "+<Kenwood Only>",
 "Auto Information",     "IF Filter Only",       "Data Mode Only",           "RX Freq And Mode",     "TX Freq And Mode",      "TF-Set Status",
-"Memory Num Select",    "Set Transmit Mode",    "Set Receive Mode",
+"Memory Num Select",    "Set Transmit Mode",    "Set Receive Mode",         "RIT Frequency Down",   "RIT Frequency Up",     "Scope Information",
+"Scope Range",          "CW Decode",            "Scope Clear",              "USB Scope Data",
+// LAN Specific commands
+"Connection Request",  "Network Login",         "VOIP Function",            "VOIP Level",           "VOIP Buffer",
 
 /* Special Commands */
 "-Select VFO",          "-Seperator",

@@ -212,7 +212,8 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
                     queueItem it = item;
                     it.recurring=false;
                     it.param.clear();
-                    queue.insert(queue.cend(),priorityImmediate, it);
+                    if (it.command != funcTransceiverId)
+                        queue.insert(queue.cend(),priorityImmediate, it);
                     qDebug() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "receiver" << item.receiver;
                 }
                 queue.insert(prio, item);
@@ -576,7 +577,7 @@ bool cachingQueue::compare(QVariant a, QVariant b)
                 changed=true;
         } else if (!strcmp(a.typeName(),"scopeData") || !strcmp(a.typeName(),"memoryType")
                    || !strcmp(a.typeName(),"bandStackType")  || !strcmp(a.typeName(),"timekind") || !strcmp(a.typeName(),"datekind")
-                   || !strcmp(a.typeName(),"meterkind")) {
+                   || !strcmp(a.typeName(),"meterkind") || !strcmp(a.typeName(),"udpPreferences")) {
             changed=true; // Always different
         } else {
             // Maybe Try simple comparison?

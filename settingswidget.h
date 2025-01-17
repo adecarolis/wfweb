@@ -284,6 +284,8 @@ private slots:
     void on_decimalSeparatorsCombo_currentIndexChanged(int index);
     void on_groupSeparatorsCombo_currentIndexChanged(int index);
 
+    void on_networkConnectionTypeCombo_currentIndexChanged(int index);
+
     void on_colorSetBtnButtonOff_clicked();
 
     void on_colorEditButtonOff_editingFinished();

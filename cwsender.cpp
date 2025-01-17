@@ -131,6 +131,18 @@ void cwSender::handlePitch(quint16 cwPitch) {
     }
 }
 
+void cwSender::receive(QString text)
+{
+    ui->receiveText->moveCursor(QTextCursor::End);
+    ui->receiveText->insertPlainText(text);
+
+}
+
+void cwSender::receiveEnabled(bool en)
+{
+    ui->receiveText->setVisible(en);
+}
+
 void cwSender::handleBreakInMode(quint8 b)
 {
     if(b < 3)

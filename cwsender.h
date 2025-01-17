@@ -34,6 +34,8 @@ public:
     bool getSendImmediate();
     bool getSidetoneEnable();
     int getSidetoneLevel();
+    void receive(QString text);
+    void receiveEnabled(bool);
 
 signals:
     void sendCW(QString cwMessage);

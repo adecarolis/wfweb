@@ -443,7 +443,16 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->attenuators->insertRow(ui->attenuators->rowCount());
-            ui->attenuators->model()->setData(ui->attenuators->model()->index(c,0),QString::number(settings->value("dB", 0).toUInt()).rightJustified(2,'0'));
+
+            if (settings->value("Num", -1).toString().toInt() == -1) {
+                // Use old format
+                ui->attenuators->model()->setData(ui->attenuators->model()->index(c,0),QString::number(settings->value("dB", 0).toUInt()).rightJustified(2,'0'));
+                ui->attenuators->model()->setData(ui->attenuators->model()->index(c,1),QString("-%0 dB").arg(settings->value("dB", 0).toUInt()));
+            } else {
+                ui->attenuators->model()->setData(ui->attenuators->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
+                ui->attenuators->model()->setData(ui->attenuators->model()->index(c,1),settings->value("Name", "").toString());
+            }
+
         }
         settings->endArray();
     }
@@ -523,13 +532,83 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->filters->insertRow(ui->filters->rowCount());
-            ui->filters->model()->setData(ui->filters->model()->index(c,0),settings->value("Num", 0).toString());
+            ui->filters->model()->setData(ui->filters->model()->index(c,0),settings->value("Num", 0).toInt(),Qt::DisplayRole);
             ui->filters->model()->setData(ui->filters->model()->index(c,1),QString::number(settings->value("Modes", 0xffffffff).toUInt()));
             ui->filters->model()->setData(ui->filters->model()->index(c,2),settings->value("Name", "").toString());
         }
         settings->endArray();
     }
     ui->filters->setSortingEnabled(true);
+
+    ui->ctcss->clearContents();
+    ui->ctcss->model()->removeRows(0,ui->ctcss->rowCount());
+    ui->ctcss->setSortingEnabled(false);
+
+    int numCtcss = settings->beginReadArray("CTCSS");
+    if (numCtcss == 0) {
+        settings->endArray();
+        // Populate with default values for the manufacturer
+        if (ui->manufacturer->currentData().value<manufacturersType_t>() == manufKenwood)
+        {
+            for (int c = 0; c < 42; c++)
+            {
+                ui->ctcss->insertRow(ui->ctcss->rowCount());
+                ui->ctcss->model()->setData(ui->ctcss->model()->index(c,0),QString::number(c).rightJustified(4,'0'));
+                ui->ctcss->model()->setData(ui->ctcss->model()->index(c,1),QString::number(kenwoodTones[c],'f',1));
+            }
+        }
+        else  if (ui->manufacturer->currentData().value<manufacturersType_t>() == manufIcom)
+        {
+            for (int c = 0; c < 48; c++)
+            {
+                ui->ctcss->insertRow(ui->ctcss->rowCount());
+                ui->ctcss->model()->setData(ui->ctcss->model()->index(c,0),QString::number(icomTones[c]*10).rightJustified(4,'0'));
+                ui->ctcss->model()->setData(ui->ctcss->model()->index(c,1),QString::number(icomTones[c],'f',1));
+            }
+        }
+    }
+    else {
+        for (int c = 0; c < numCtcss; c++)
+        {
+            settings->setArrayIndex(c);
+            ui->ctcss->insertRow(ui->ctcss->rowCount());
+            ui->ctcss->model()->setData(ui->ctcss->model()->index(c,0),QString::number(settings->value("Reg", 0).toInt()).rightJustified(4,'0'));
+            ui->ctcss->model()->setData(ui->ctcss->model()->index(c,1),QString::number(settings->value("Tone", 0.0).toFloat(),'f',1));
+        }
+        settings->endArray();
+    }
+    ui->ctcss->setSortingEnabled(true);
+
+    ui->dtcs->clearContents();
+    ui->dtcs->model()->removeRows(0,ui->dtcs->rowCount());
+    ui->dtcs->setSortingEnabled(false);
+    ui->dtcs->sortByColumn(0,Qt::AscendingOrder);
+
+    int numDtcs = settings->beginReadArray("DTCS");
+    if (numDtcs == 0) {
+        settings->endArray();
+        // Populate with default values for the manufacturer
+        if (ui->manufacturer->currentData().value<manufacturersType_t>() == manufIcom)
+        {
+            for (int c = 0; c < 104; c++)
+            {
+                ui->dtcs->insertRow(ui->dtcs->rowCount());
+                ui->dtcs->model()->setData(ui->dtcs->model()->index(c,0),QString::number(icomDtcs[c]).rightJustified(3,'0'));
+            }
+        }
+    }
+    else {
+        for (int c = 0; c < numDtcs; c++)
+        {
+            settings->setArrayIndex(c);
+            ui->dtcs->insertRow(ui->dtcs->rowCount());
+            ui->dtcs->model()->setData(ui->dtcs->model()->index(c,0),QString::number(settings->value("Reg", 0).toInt()).rightJustified(3,'0'));
+        }
+        settings->endArray();
+    }
+    ui->dtcs->setSortingEnabled(true);
+    ui->dtcs->sortByColumn(0,Qt::AscendingOrder);
+
 
     settings->endGroup();
     delete settings;
@@ -759,7 +838,8 @@ void rigCreator::saveRigFile(QString file)
     for (int n = 0; n<ui->attenuators->rowCount();n++)
     {
         settings->setArrayIndex(n);
-        settings->setValue("dB",(ui->attenuators->item(n,0) == NULL) ? 0 :  ui->attenuators->item(n,0)->text().toUInt());
+        settings->setValue("Num",(ui->attenuators->item(n,0) == NULL) ? 0 :  ui->attenuators->item(n,0)->text().toUInt());
+        settings->setValue("Name",(ui->attenuators->item(n,1) == NULL) ? "" :  ui->attenuators->item(n,1)->text());
     }
     settings->endArray();
 
@@ -807,6 +887,25 @@ void rigCreator::saveRigFile(QString file)
         settings->setValue("Num",(ui->filters->item(n,0) == NULL) ? 0 :  ui->filters->item(n,0)->text().toUInt());
         settings->setValue("Modes",(ui->filters->item(n,1) == NULL) ? 0xffffffff : ui->filters->item(n,1)->text().toUInt());
         settings->setValue("Name",(ui->filters->item(n,2) == NULL) ? "" :  ui->filters->item(n,2)->text());
+    }
+    settings->endArray();
+
+    ui->ctcss->sortByColumn(0,Qt::AscendingOrder);
+    settings->beginWriteArray("CTCSS");
+    for (int n = 0; n<ui->ctcss->rowCount();n++)
+    {
+        settings->setArrayIndex(n);
+        settings->setValue("Reg",(ui->ctcss->item(n,0) == NULL) ? 0 :  ui->ctcss->item(n,0)->text().toUInt());
+        settings->setValue("Tone",(ui->ctcss->item(n,1) == NULL) ? 0.0 :  ui->ctcss->item(n,1)->text().toFloat());
+    }
+    settings->endArray();
+
+    ui->dtcs->sortByColumn(0,Qt::AscendingOrder);
+    settings->beginWriteArray("DTCS");
+    for (int n = 0; n<ui->dtcs->rowCount();n++)
+    {
+        settings->setArrayIndex(n);
+        settings->setValue("Reg",(ui->dtcs->item(n,0) == NULL) ? 0 :  ui->dtcs->item(n,0)->text().toUInt());
     }
     settings->endArray();
 

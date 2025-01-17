@@ -41,7 +41,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>2</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -387,6 +387,16 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                    <string>50001</string>
                   </property>
                  </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_21">
+                  <property name="text">
+                   <string>Connection Type</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="networkConnectionTypeCombo"/>
                 </item>
                 <item>
                  <spacer name="horizontalSpacer_6">
@@ -1391,8 +1401,8 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>911</width>
-                 <height>367</height>
+                 <width>573</width>
+                 <height>286</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">

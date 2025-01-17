@@ -687,7 +687,7 @@ void wfmain::receiveCommReady()
         // qInfo(logSystem()) << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
         ui->statusBar->showMessage(QString("Searching CI-V bus for connected radios."), 1000);
 
-        queue->addUnique(priorityLow,funcTransceiverId,true);
+        queue->addUnique(priorityHigh,funcTransceiverId,true);
     } else {
         // don't bother, they told us the CIV they want, stick with it.
         // We still query the rigID to find the model, but at least we know the CIV.
@@ -700,7 +700,7 @@ void wfmain::receiveCommReady()
             emit setRigID(prefs.radioCIVAddr);
         } else {
             emit setCIVAddr(prefs.radioCIVAddr);
-            queue->addUnique(priorityLow,funcTransceiverId,true);
+            queue->addUnique(priorityHigh,funcTransceiverId,true);
 
         }
     }
@@ -1111,21 +1111,46 @@ void wfmain::setupKeyShortcuts()
 
 void wfmain::runShortcut(const QKeySequence k)
 {
-    if (rigCaps == Q_NULLPTR) {
-        // No rig yet
-        qWarning() << "Cannot run shortcut as not connected to rig";
-        return;
-    }
-    bool freqUpdate=false;
-    freqt f;
-
     qInfo() << "Running shortcut for key:" << k;
 
     if (k == Qt::Key_F1)
     {
         this->raise();
     }
-    else if (k == Qt::Key_F2)
+    else if (k==Qt::Key_F11)
+    {
+        if(onFullscreen)
+        {
+            this->showNormal();
+            onFullscreen = false;
+            prefs.useFullScreen = false;
+        } else {
+            this->showFullScreen();
+            onFullscreen = true;
+            prefs.useFullScreen = true;
+        }
+        setupui->updateIfPref(if_useFullScreen);
+    }
+    else if (k==(Qt::CTRL | Qt::Key_Q))
+    {
+        on_exitBtn_clicked();
+    }
+    else if (k==(Qt::CTRL | Qt::Key_D) || k==(Qt::CTRL | Qt::SHIFT | Qt::Key_D))
+    {
+        debugBtn_clicked();
+    }
+    else if (rigCaps == Q_NULLPTR)
+    {
+        // No rig yet
+        qWarning() << "Cannot run shortcut as not connected to rig";
+        return;
+    }
+
+    // All of the below commands require a connected rig
+    bool freqUpdate=false;
+    freqt f;
+
+    if (k == Qt::Key_F2)
     {
         showAndRaiseWidget(bandbtns);
     }
@@ -1160,20 +1185,6 @@ void wfmain::runShortcut(const QKeySequence k)
     else if (k==Qt::Key_F10)
     {
         changeMode(modeFM, false, currentReceiver);
-    }
-    else if (k==Qt::Key_F11)
-    {
-        if(onFullscreen)
-        {
-            this->showNormal();
-            onFullscreen = false;
-            prefs.useFullScreen = false;
-        } else {
-            this->showFullScreen();
-            onFullscreen = true;
-            prefs.useFullScreen = true;
-        }
-        setupui->updateIfPref(if_useFullScreen);
     }
     else if (k==Qt::Key_F12)
     {
@@ -1285,10 +1296,6 @@ void wfmain::runShortcut(const QKeySequence k)
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusControlHz);
         freqUpdate=true;
     }
-    else if (k==(Qt::CTRL | Qt::Key_Q))
-    {
-        on_exitBtn_clicked();
-    }
     else if (k==Qt::Key_PageUp)
     {
         f.Hz = receivers[0]->getFrequency().Hz + tsPageHz;
@@ -1319,10 +1326,7 @@ void wfmain::runShortcut(const QKeySequence k)
         f.Hz = roundFrequencyWithStep(receivers.first()->getFrequency().Hz, 1, tsKnobHz);
         freqUpdate = true;
     }
-    else if (k==(Qt::CTRL | Qt::Key_D) || k==(Qt::CTRL | Qt::SHIFT | Qt::Key_D))
-    {
-        debugBtn_clicked();
-    }
+
 
     if (!freqLock && freqUpdate)
     {
@@ -1663,7 +1667,6 @@ void wfmain::setDefPrefs()
     defPrefs.region = "1";
     defPrefs.showBands = true;
     defPrefs.manufacturer = manufIcom;
-
     defPrefs.useUTC = false;
     defPrefs.setRadioTime = false;
 
@@ -1710,6 +1713,7 @@ void wfmain::setDefPrefs()
     udpDefPrefs.username = QString("");
     udpDefPrefs.password = QString("");
     udpDefPrefs.clientName = QHostInfo::localHostName();
+    udpDefPrefs.connectionType = connectionLAN;
 }
 
 void wfmain::loadSettings()
@@ -1963,6 +1967,7 @@ void wfmain::loadSettings()
         prefs.txSetup.tci = tci;
     }
 
+    udpPrefs.connectionType = settings->value("ConnectionType", udpDefPrefs.connectionType).value<connectionType_t>();
     udpPrefs.clientName = settings->value("ClientName", udpDefPrefs.clientName).toString();
 
     udpPrefs.halfDuplex = settings->value("HalfDuplex", udpDefPrefs.halfDuplex).toBool();
@@ -3183,6 +3188,7 @@ void wfmain::saveSettings()
     settings->setValue("ClientName", udpPrefs.clientName);
     settings->setValue("WaterfallFormat", prefs.waterfallFormat);
     settings->setValue("HalfDuplex", udpPrefs.halfDuplex);
+    settings->setValue("ConnectionType", udpPrefs.connectionType);
 
     settings->endGroup();
 
@@ -3572,19 +3578,17 @@ void wfmain:: getInitialRigState()
 
     queue->del(funcTransceiverId); // This command is no longer required
 
-    if (rigCaps->commands.contains(funcAutoInformation))
-            queue->add(priorityImmediate,queueItem(funcAutoInformation,QVariant::fromValue(uchar(2)),false,0));
+    if (rigCaps->commands.contains(funcAutoInformation) && (!rigCaps->hasSpectrum || prefs.enableLAN))
+        queue->add(priorityImmediate,queueItem(funcAutoInformation,QVariant::fromValue(uchar(2)),false,0));
 
     if (rigCaps->commands.contains(funcSatelliteMode))
-            queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue(bool(0)),false,0)); // Make sure we are in not in satellite mode.
+        queue->add(priorityImmediate,funcSatelliteMode,false,0); // are we in satellite mode?.
 
     if (rigCaps->commands.contains(funcVFOModeSelect))
         queue->add(priorityImmediate,funcVFOModeSelect); // Make sure we are in VFO mode.
 
     if (rigCaps->commands.contains(funcScopeMainSub))
-        queue->add(priorityImmediate,funcScopeMainSub); // get scope
-
-    //queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(uchar(0)),false,0)); // Set main scope
+        queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(uchar(0)),false,0)); // Set main scope
 
     //if (rigCaps->commands.contains(funcVFOBandMS))
     //    queue->add(priorityImmediate,queueItem(funcVFOBandMS,QVariant::fromValue(uchar(0)),false,0));
@@ -3593,11 +3597,9 @@ void wfmain:: getInitialRigState()
 
     if(rigCaps->hasSpectrum)
     {
-        // Send commands to start scope immediately, followed by a repeat a few seconds later.
-        queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
-        queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
-        queue->add(priorityMediumHigh,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
-        queue->add(priorityMediumHigh,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
+        // Send commands to start scope immediately
+        //queue->add(priorityHigh,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
+        queue->add(priorityHigh,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
 
         // Find the scope ref limits
         auto mr = rigCaps->commands.find(funcScopeRef);
@@ -3624,15 +3626,27 @@ void wfmain:: getInitialRigState()
 
     for (const auto& receiver: receivers)
     {
-        receiver->enableScope(this->rigCaps->commands.contains(funcScopeMode));
+        if(rigCaps->hasSpectrum)
+        {
+            receiver->displayScope(true);
+            receiver->enableScope(true);
+        }
         //qInfo(logSystem()) << "Display Settings start:" << start << "end:" << end;
         receiver->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits, &rigCaps->bands);
         receiver->setBandIndicators(prefs.showBands, prefs.region, &rigCaps->bands);
     }
 
+    if (rigCaps->commands.contains(funcRITFreq))
+    {
+        funcType func = rigCaps->commands.find(funcRITFreq).value();
+        ui->ritTuneDial->setRange(func.minVal,func.maxVal);
+    }
+
     if (rigCaps->commands.contains(funcTime) && prefs.setRadioTime) {
         setRadioTimeDatePrep();
     }
+
+    cw->receiveEnabled(rigCaps->commands.contains(funcCWDecode));
 }
 
 void wfmain::showStatusBarText(QString text)
@@ -5762,7 +5776,9 @@ void wfmain::receiveValue(cacheItem val){
         break;
     // 0x21 RIT:
     case funcRITFreq:
-        receiveRITValue(val.value.value<short>());
+        ui->ritTuneDial->blockSignals(true);
+        ui->ritTuneDial->setValue(val.value.value<short>());
+        ui->ritTuneDial->blockSignals(false);
         break;
     case funcRitTXStatus:
         // Not sure what this is used for?
@@ -5885,6 +5901,8 @@ void wfmain::receiveValue(cacheItem val){
     case funcPowerControl:
         // We could indicate the rig being powered-on somehow?
         break;
+    case funcCWDecode:
+        cw->receive(val.value.value<QString>());
     default:
         //qWarning(logSystem()) << "Unhandled command received from rigcommander()" << funcString[val.command] << "Contact support!";
         break;
@@ -6225,7 +6243,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
             ui->attSelCombo->setDisabled(false);
             for (auto &att: rigCaps->attenuators)
             {
-                ui->attSelCombo->addItem(((att == 0) ? QString("0 dB") : QString("-%1 dB").arg(att)),att);
+                ui->attSelCombo->addItem(att.name,att.num);
             }
         } else {
             ui->attSelCombo->setDisabled(true);

@@ -164,6 +164,12 @@ void settingswidget::populateComboBoxes()
     ui->manufacturerCombo->setCurrentIndex(0);
     ui->manufacturerCombo->blockSignals(false);
 
+
+    ui->networkConnectionTypeCombo->blockSignals(true);
+    ui->networkConnectionTypeCombo->addItem("LAN",connectionLAN);
+    ui->networkConnectionTypeCombo->addItem("WiFi",connectionWiFi);
+    ui->networkConnectionTypeCombo->addItem("WAN",connectionWAN);
+    ui->networkConnectionTypeCombo->blockSignals(false);
 }
 
 // Updating Preferences:
@@ -860,13 +866,9 @@ void settingswidget::updateRaPref(prefRaItem pra)
     case ra_manufacturer:
         quietlyUpdateCombobox(ui->manufacturerCombo,prefs->manufacturer);
         if (prefs->manufacturer == manufKenwood)
-        {
-            ui->lanEnableBtn->setEnabled(false);
-            ui->groupNetwork->setEnabled(false);
-            ui->groupSerial->setEnabled(true);
-            ui->serialEnableBtn->setChecked(true);
-            prefs->enableLAN = false;
-        }
+            udpPrefs->controlLANPort = 60000;
+        ui->controlPortTxt->setText(QString::number(udpPrefs->controlLANPort));
+
         break;
     default:
         qWarning(logGui()) << "Cannot update ra pref" << (int)pra;
@@ -1171,6 +1173,9 @@ void settingswidget::updateUdpPref(prefUDPItem upi)
         break;
     case u_audioOutput:
         ui->audioOutputCombo->setCurrentIndex(audioDev->findOutput("Client", prefs->rxSetup.name));
+        break;
+    case u_connectionType:
+        quietlyUpdateCombobox(ui->networkConnectionTypeCombo,QVariant::fromValue(udpPrefs->connectionType));
         break;
     default:
         qWarning(logGui()) << "Did not find matching UI element for UDP pref item " << (int)upi;
@@ -1714,9 +1719,14 @@ void settingswidget::on_baudRateCombo_activated(int index)
 
 void settingswidget::on_vspCombo_activated(int index)
 {
-    Q_UNUSED(index);
-    prefs->virtualSerialPort = ui->vspCombo->currentData().toString();
+    prefs->virtualSerialPort = ui->vspCombo->itemData(index).toString();
     emit changedRaPref(ra_virtualSerialPort);
+}
+
+void settingswidget::on_networkConnectionTypeCombo_currentIndexChanged(int index)
+{
+    udpPrefs->connectionType = ui->networkConnectionTypeCombo->itemData(index).value<connectionType_t>();
+    emit changedUdpPref(u_connectionType);
 }
 
 void settingswidget::on_audioSystemCombo_currentIndexChanged(int value)
@@ -1732,17 +1742,13 @@ void settingswidget::on_manufacturerCombo_currentIndexChanged(int value)
 {
     Q_UNUSED(value)
     prefs->manufacturer = ui->manufacturerCombo->currentData().value<manufacturersType_t>();
-
     if (prefs->manufacturer == manufKenwood)
-    {
-        ui->lanEnableBtn->setEnabled(false);
-        ui->groupNetwork->setEnabled(false);
-        ui->groupSerial->setEnabled(true);
-        ui->serialEnableBtn->setChecked(true);
-        prefs->enableLAN = false;
-    } else {
-        ui->lanEnableBtn->setEnabled(true);
-    }
+        udpPrefs->controlLANPort = 60000;
+    else
+        udpPrefs->controlLANPort = 50001;
+
+    ui->controlPortTxt->setText(QString::number(udpPrefs->controlLANPort));
+
     emit changedRaPref(ra_manufacturer);
 }
 
@@ -3132,6 +3138,7 @@ void settingswidget::connectionStatus(bool conn)
     ui->audioTXCodecCombo->setEnabled(!conn);
     ui->audioSystemCombo->setEnabled(!conn);
     ui->audioSampleRateCombo->setEnabled(!conn);
+    ui->networkConnectionTypeCombo->setEnabled(!conn);
 
     ui->txLatencySlider->setEnabled(!conn);
     ui->usernameTxt->setEnabled(!conn);

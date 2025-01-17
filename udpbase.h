@@ -23,8 +23,10 @@
 #include <QDebug>
 
 #include "packettypes.h"
+#include "wfviewtypes.h"
 
 struct udpPreferences {
+    connectionType_t connectionType;
 	QString ipAddress;
 	quint16 controlLANPort;
 	quint16 serialLANPort;

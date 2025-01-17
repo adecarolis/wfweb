@@ -15,6 +15,8 @@ memories::memories(bool isAdmin, bool slowLoad, QWidget *parent) :
     ui->table->editing(false);
     statusBar = new QStatusBar(this);
     ui->verticalLayout->addWidget(statusBar);
+    ui->csvImport->setEnabled(false);
+
     progress = new QProgressBar(this);
     statusBar->addWidget(progress,1);
     this->setObjectName("memories");
@@ -31,6 +33,7 @@ memories::memories(bool isAdmin, bool slowLoad, QWidget *parent) :
     if (!isAdmin)
     {
         ui->disableEditing->setEnabled(false);
+
     }
     if (rigCaps == Q_NULLPTR)
     {
@@ -142,7 +145,7 @@ columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B
     }
 
     for (const auto &atten: rigCaps->attenuators) {
-        attenuators.append(QString("%0").arg(atten));
+        attenuators.append(atten.name);
     }
     if (attenuators.isEmpty()) attenuators.append("None");
 
@@ -1659,11 +1662,10 @@ void memories::receiveMemory(memoryType mem)
             if (mem.sat) {
                 queue->add(priorityImmediate,queueItem(funcSatelliteMemory,QVariant::fromValue<ushort>(mem.channel & 0xffff)));
             } else {
-                queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(mem.channel & 0xffff)));
+                queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>((mem.group<<16) | (mem.channel & 0xffff))));
             }
             retries++;
         }
-
     }
     else if (row != -1)
     {
@@ -1684,8 +1686,9 @@ int  memories::updateCombo(QStringList& combo, int row, columns column, quint8 d
     }
     else if (!ui->table->isColumnHidden(column))
     {
-        qInfo() << "Column" << ui->table->horizontalHeaderItem(column)->text() << "Invalid data received:" << data;
-        ret=0;
+        qInfo() << "Column" << ui->table->horizontalHeaderItem(column)->text() << "Invalid data received:" << data << "setting to default";
+        ui->table->model()->setData(ui->table->model()->index(row,column),combo[0]);
+        ret=1;
     } else {
         ret=0;
     }
@@ -1995,12 +1998,12 @@ void memories::on_disableEditing_toggled(bool dis)
 {
     if (dis) {
         ui->table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-        ui->table->editing(false);
     }
     else {
-        ui->table->editing(true);
         ui->table->setEditTriggers(QAbstractItemView::DoubleClicked);
     }
+    ui->csvImport->setEnabled(!dis);
+    ui->table->editing(!dis);
 }
 
 void memories::on_scanButton_toggled(bool scan)

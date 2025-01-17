@@ -476,16 +476,15 @@ toneInfo icomCommander::decodeTone(QByteArray eTone)
     if (eTone.length() < 3) {
         return t;
     }
+    t.tone += (eTone.at(2) & 0x0f);
+    t.tone += ((eTone.at(2) & 0xf0) >> 4) *   10;
+    t.tone += (eTone.at(1) & 0x0f) *  100;
+    t.tone += ((eTone.at(1) & 0xf0) >> 4) * 1000;
 
     if((eTone.at(0) & 0x01) == 0x01)
         t.tinv = true;
     if((eTone.at(0) & 0x10) == 0x10)
         t.rinv = true;
-
-    t.tone += (eTone.at(2) & 0x0f);
-    t.tone += ((eTone.at(2) & 0xf0) >> 4) *   10;
-    t.tone += (eTone.at(1) & 0x0f) *  100;
-    t.tone += ((eTone.at(1) & 0xf0) >> 4) * 1000;
 
     return t;
 }
@@ -1630,8 +1629,11 @@ void icomCommander::determineRigCaps()
         for (int c = 0; c < numAttenuators; c++)
         {
             settings->setArrayIndex(c);
-            qDebug(logRig()) << "** GOT ATTENUATOR" << settings->value("dB", 0).toString().toUInt();
-            rigCaps.attenuators.push_back((quint8)settings->value("dB", 0).toString().toUInt());
+            if (settings->value("Num", -1).toString().toInt() == -1) {
+                rigCaps.attenuators.push_back(genericType(settings->value("dB", 0).toString().toUInt(),QString("%0 dB").arg(settings->value("dB", 0).toString().toUInt())));
+            } else {
+                rigCaps.attenuators.push_back(genericType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", 0).toString()));
+            }
         }
         settings->endArray();
     }

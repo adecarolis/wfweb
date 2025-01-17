@@ -40,38 +40,97 @@ void kenwoodCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAdd
     // constructor for serial connected rigs
     // As the serial connection is quite simple, no need to use a dedicated class.
     this->rigList = rigList;
+    this->rigCivAddr = rigCivAddr;
+    this->rigSerialPort = rigSerialPort;
+    this->rigBaudRate = rigBaudRate;
+    this->vsp = vsp;
+    this->tcpPort = tcpPort;
+    this->wf = wf;
 
-    Q_UNUSED(rigCivAddr)
-    Q_UNUSED(wf)
-
-    if (serialPort != Q_NULLPTR) {
-        if (serialPort->isOpen())
-            serialPort->close();
-        delete serialPort;
-        serialPort = Q_NULLPTR;
+    if (port != Q_NULLPTR) {
+        if (port->isOpen())
+            port->close();
+        delete port;
+        port = Q_NULLPTR;
     }
 
-    serialPort = new QSerialPort();
-    connect(serialPort, &QSerialPort::readyRead, this, &kenwoodCommander::receiveSerialData);
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-    connect(serialPort, SIGNAL(error(QSerialPort::SerialPortError)), this, SLOT(serialPortError(QSerialPort::SerialPortError)));
-#else
-    connect(serialPort, &QSerialPort::errorOccurred, this, &kenwoodCommander::serialPortError);
-#endif
+    port = new QSerialPort();
 
-    serialPort->setPortName(rigSerialPort);
-    serialPort->setBaudRate(rigBaudRate);
-    serialPort->setStopBits(QSerialPort::OneStop);
-    serialPort->setFlowControl(QSerialPort::HardwareControl);
-    serialPort->setParity(QSerialPort::NoParity);
+    qobject_cast<QSerialPort*>(port)->setPortName(rigSerialPort);
+    qobject_cast<QSerialPort*>(port)->setBaudRate(rigBaudRate);
+    qobject_cast<QSerialPort*>(port)->setStopBits(QSerialPort::OneStop);
+    qobject_cast<QSerialPort*>(port)->setFlowControl(QSerialPort::HardwareControl);
+    qobject_cast<QSerialPort*>(port)->setParity(QSerialPort::NoParity);
 
-    if(serialPort->open(QIODevice::ReadWrite))
+    network = false;
+    // Run setup common to all rig type
+    commonSetup();
+}
+
+void kenwoodCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
+{
+    // constructor for network (LAN) connected rigs
+    this->rigList = rigList;
+    this->rigCivAddr = rigCivAddr;
+    this->prefs = prefs;
+    this->rxSetup = rxSetup;
+    this->txSetup = txSetup;
+    this->vsp = vsp;
+    this->tcpPort = tcpPort;
+    this->connType = prefs.connectionType;
+
+    port = new QTcpSocket(this);
+
+    connect(qobject_cast<QTcpSocket*>(port), &QTcpSocket::connected, this, &kenwoodCommander::lanConnected);
+    connect(qobject_cast<QTcpSocket*>(port), &QTcpSocket::disconnected, this, &kenwoodCommander::lanDisconnected);
+    qobject_cast<QTcpSocket*>(port)->connectToHost(prefs.ipAddress,prefs.controlLANPort);
+
+    loginRequired = true;
+    // Run setup common to all rig types
+    commonSetup();
+}
+
+void kenwoodCommander::lanConnected()
+{
+    qInfo() << QString("Connected to: %0:1").arg(prefs.ipAddress,prefs.controlLANPort);
+    qInfo() << "Sending initial login";
+    port->write("##CN;\n");
+}
+
+void kenwoodCommander::lanDisconnected()
+{
+    qInfo() << QString("Disconnected from: %0:1").arg(prefs.ipAddress,prefs.controlLANPort);
+    portConnected=false;
+}
+
+
+void kenwoodCommander::closeComm()
+{
+    qInfo(logRig()) << "Closing rig comms";
+    if (port != Q_NULLPTR && portConnected)
     {
-        qInfo(logSerial()) << "Opened port: " << rigSerialPort << "with baud rate" << rigBaudRate;
+        if (port->isOpen())
+            port->close();
+        delete port;
+        port = Q_NULLPTR;
+    }
+    portConnected=false;
+}
+
+void kenwoodCommander::commonSetup()
+{
+    // common elements between the two constructors go here:
+    connect(port, &QIODevice::readyRead, this, &kenwoodCommander::receiveDataFromRig);
+
+    if(port->open(QIODevice::ReadWrite))
+    {
         portConnected = true;
-    } else {
-        qInfo(logSerial()) << "Could not open serial port " << rigSerialPort << " , please check Radio Access under Settings.";
-        emit havePortError(errorType(true, rigSerialPort, "Could not open Serial or USB port.\nPlease check Radio Access under Settings."));
+    } else
+    {
+        if (network)
+            emit havePortError(errorType(true, prefs.ipAddress, "Could not open port.\nPlease check Radio Access under Settings."));
+        else
+            emit havePortError(errorType(true, rigSerialPort, "Could not open port.\nPlease check Radio Access under Settings."));
         portConnected=false;
     }
 
@@ -80,7 +139,7 @@ void kenwoodCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAdd
         qInfo(logRig()) << "Attempting to connect to vsp/pty:" << vsp;
         ptty = new pttyHandler(vsp,this);
         // data from the ptty to the rig:
-        connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), serialPort, SLOT(sendData(QByteArray)));
+        connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), port, SLOT(sendData(QByteArray)));
         // data from the rig to the ptty:
         connect(this, SIGNAL(haveDataFromRig(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
     }
@@ -89,52 +148,25 @@ void kenwoodCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAdd
         tcp = new tcpServer(this);
         tcp->startServer(tcpPort);
         // data from the tcp port to the rig:
-        connect(tcp, SIGNAL(receiveData(QByteArray)), serialPort, SLOT(sendData(QByteArray)));
+        connect(tcp, SIGNAL(receiveData(QByteArray)), port, SLOT(sendData(QByteArray)));
         connect(this, SIGNAL(haveDataFromRig(QByteArray)), tcp, SLOT(sendData(QByteArray)));
     }
 
-    // Run setup common to all rig types
-    commonSetup();
-}
+    // Is this a network connection?
 
-void kenwoodCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
-{
-    // constructor for network (LAN) connected rigs
-    this->rigList = rigList;
 
-    Q_UNUSED(rigCivAddr)
-    Q_UNUSED(prefs)
-    Q_UNUSED(rxSetup)
-    Q_UNUSED(txSetup)
-    Q_UNUSED(vsp)
-    Q_UNUSED(tcpPort)
 
-    // Run setup common to all rig types
-    commonSetup();
-}
-
-void kenwoodCommander::closeComm()
-{
-    qInfo(logRig()) << "Closing rig comms";
-    if (serialPort != Q_NULLPTR && portConnected)
-    {
-        if (serialPort->isOpen())
-            serialPort->close();
-        delete serialPort;
-        serialPort = Q_NULLPTR;
-    }
-    portConnected=false;
-}
-
-void kenwoodCommander::commonSetup()
-{
-    // common elements between the two constructors go here:
-
-    // Minimum commands we need to find rig model
+    // Minimum commands we need to find rig model and login
     rigCaps.commands.clear();
     rigCaps.commandsReverse.clear();
-    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),"ID",0,0,false,true,false,3));
+    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),"ID",0,999,false,true,false,3));
     rigCaps.commandsReverse.insert(QByteArrayLiteral("ID"),funcTransceiverId);
+
+    rigCaps.commands.insert(funcConnectionRequest,funcType(funcConnectionRequest, QString("Connection Request"),"##CN",0,1,false,true,true,1));
+    rigCaps.commandsReverse.insert(QByteArrayLiteral("##CN"),funcConnectionRequest);
+
+    rigCaps.commands.insert(funcLogin,funcType(funcLogin, QString("Network Login"),"##ID",0,0,false,false,true,0));
+    rigCaps.commandsReverse.insert(QByteArrayLiteral("##ID"),funcLogin);
 
     connect(queue,SIGNAL(haveCommand(funcs,QVariant,uchar)),this,SLOT(receiveCommand(funcs,QVariant,uchar)));
 
@@ -187,7 +219,7 @@ void kenwoodCommander::powerOn()
 
     d.append(QString("%0;").arg(cmd).toLatin1());
     QMutexLocker locker(&serialMutex);
-    serialPort->write(d);
+    port->write(d);
     lastSentCommand = d;
 }
 
@@ -203,7 +235,7 @@ void kenwoodCommander::powerOff()
 
     d.append(QString("%0;").arg(cmd).toLatin1());
     QMutexLocker locker(&serialMutex);
-    serialPort->write(d);
+    port->write(d);
     lastSentCommand = d;
 }
 
@@ -247,9 +279,9 @@ funcType kenwoodCommander::getCommand(funcs func, QByteArray &payload, int value
     return cmd;
 }
 
-void kenwoodCommander::receiveSerialData()
+void kenwoodCommander::receiveDataFromRig()
 {
-    const QByteArray in = serialPort->readAll();
+    const QByteArray in = port->readAll();
     parseData(in);
     emit haveDataFromRig(in);
 }
@@ -258,9 +290,23 @@ void kenwoodCommander::receiveSerialData()
 void kenwoodCommander::parseData(QByteArray data)
 {
     funcs func = funcNone;
+    funcType type;
+
+    // Handle partially received command (missing terminating ;), queue it for next run.
+    if (!data.endsWith(";"))
+    {
+        partial.append(data);
+        return;
+    }
+
+    if (!partial.isEmpty()) {
+        data.prepend(partial);
+        partial.clear();
+    }
+
     QList<QByteArray> commands = data.split(';');
 
-    for (auto &d: commands) {
+    for (auto &d: commands) {        
         if (d.isEmpty())
             continue;
         uchar receiver = 0; // Used for Dual/RX
@@ -277,13 +323,16 @@ void kenwoodCommander::parseData(QByteArray data)
             }
         }
 
-        d.remove(0,count);
         if (!rigCaps.commands.contains(func)) {
             // Don't warn if we haven't received rigCaps yet
             if (haveRigCaps)
                 qInfo(logRig()) << "Unsupported command received from rig" << d << "Check rig file";
             return;
+        } else {
+            type = this->rigCaps.commands.find(func).value();
         }
+
+        d.remove(0,count);
 
         QVector<memParserFormat> memParser;
         QVariant value;
@@ -349,12 +398,24 @@ void kenwoodCommander::parseData(QByteArray data)
             break;
         }
         case funcTransceiverStatus:
+        {
             // This is a response to the IF command which contains a wealth of information
             // We could use this for various things if we want.
             // It doesn't work when in data mode though!
+            bool ok=false;
+            short rit = d.mid(16,5).toShort(&ok);
+            if (ok) {
+                value.setValue(rit);
+                queue->receiveValue(funcRITFreq,QVariant::fromValue(rit),receiver);
+            }
+
+            queue->receiveValue(funcRitStatus,QVariant::fromValue(bool(d.at(21) - NUMTOASCII)),receiver);
+
+            // This is PTT status
             value.setValue(bool(d.at(26) - NUMTOASCII));
             isTransmitting = value.toBool();
             break;
+        }
         case funcSetTransmit:
             func = funcTransceiverStatus;
             value.setValue(bool(true));
@@ -367,15 +428,12 @@ void kenwoodCommander::parseData(QByteArray data)
             break;
         case funcPBTInner:
         case funcPBTOuter:
-            value.setValue<uchar>(d.toUShort() * 19);
+            value.setValue<uchar>(d.toUShort() * (255/(type.maxVal-type.minVal)));
             break;
         case funcFilterWidth:
             value.setValue<ushort>(d.toUShort());
             break;
         case funcMeterType:
-            break;
-        case funcAttenuator:
-            value.setValue<uchar>(d.at(1) - NUMTOASCII);
             break;
         case funcRITFreq:
             break;
@@ -383,17 +441,12 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcRitStatus:
         case funcCompressor:
         case funcVox:
+        case funcRepeaterTone:
+        case funcRepeaterTSQL:
+        case funcScopeOnOff:
+        case funcScopeHold:
+        case funcOverflowStatus:
             value.setValue<bool>(d.at(0) - NUMTOASCII);
-            break;
-        case funcCompressorLevel:
-            value.setValue<uchar>(d.mid(3,3).toUShort());
-            break;
-        case funcPreamp:
-        case funcNoiseBlanker:
-        case funcNoiseReduction:
-        case funcAGC:
-        case funcPowerControl:
-            value.setValue<uchar>(d.at(0) - NUMTOASCII);
             break;
         case funcAGCTimeConstant:
         case funcMemorySelect:
@@ -403,17 +456,35 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcSquelch:
         case funcMonitorGain:
         case funcKeySpeed:
+        case funcScopeRef:
+        case funcAttenuator:
+        case funcPreamp:
+        case funcNoiseBlanker:
+        case funcNoiseReduction:
+        case funcAGC:
+        case funcPowerControl:
             value.setValue<uchar>(d.toUShort());
+            break;
+        case funcCompressorLevel:
+            value.setValue<uchar>(d.mid(3,3).toUShort());
+            break;
+        case funcScopeSpan:
+            for (auto &s: rigCaps.scopeCenterSpans)
+            {
+                if (s.cstype == (d.at(0) - NUMTOASCII) )
+                {
+                    value.setValue(s);
+                }
+            }
             break;
         case funcSMeter:
             if (isTransmitting)
                 func = funcPowerMeter;
-
         case funcSWRMeter:
         case funcALCMeter:
         case funcCompMeter:
-            // TS-590 uses 0-30 for meters (others may be different?), Icom uses 0-255.
-            value.setValue<uchar>(d.toUShort()*8);
+            // TS-590 uses 0-30 for meters (TS-890 uses 70), Icom uses 0-255.
+            value.setValue<uchar>(d.toUShort() * (255/(type.maxVal-type.minVal)));
             break;
         case funcMemoryContents:
         // Contains the contents of the rig memory
@@ -422,6 +493,15 @@ void kenwoodCommander::parseData(QByteArray data)
             memoryType mem;
             if (parseMemory(d,&rigCaps.memParser,&mem)) {
                 value.setValue(mem);
+            }
+            break;
+        }
+        case funcToneFreq:
+        case funcTSQLFreq:
+        {
+            for (const auto &t: rigCaps.ctcss)
+            if (d.toUShort() == t.tone) {
+                value.setValue(t);
             }
             break;
         }
@@ -448,7 +528,96 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcVFOBSelect:
         case funcMemoryMode:
             // Do we need to do anything with this?
+
             break;
+        case funcConnectionRequest:
+            qInfo() << "Received connection request command";
+            // Send login
+            // First set a queue interval before adding command.
+            //queue->interval(25);
+            queue->add(priorityImmediate,queueItem(funcLogin,QVariant::fromValue(prefs),false,0));
+            break;
+        case funcLogin:
+            loginRequired=false;
+            if (d.at(0) - NUMTOASCII == 0) {
+                emit havePortError(errorType(true, prefs.ipAddress, "Invalid Username/Password"));
+            }
+            qInfo() << "Received login reply with command:" <<funcString[func] << "original" << data;
+            break;
+        case funcScopeRange:
+        {
+            currentScope.valid=false;
+            currentScope.oor = 0;   // No easy way to get OOR unless we calculate it.
+            currentScope.receiver = 0;
+            currentScope.startFreq = double(d.mid(0,8).toULongLong())/1000000.0;
+            currentScope.endFreq = double(d.mid(8,8).toULongLong())/1000000.0;
+            //qInfo() << "Range:" << d << "is" << currentScope.startFreq << "/" << currentScope.endFreq;
+            break;
+        }
+        case funcScopeMode:
+            value.setValue<spectrumMode_t>(spectrumMode_t(d.at(0) - NUMTOASCII));
+            currentScope.mode = spectrumMode_t(d.at(0) - NUMTOASCII);
+            break;
+        case funcScopeWaveData:
+        {
+            currentScope.data.clear();
+            for (int i=0;i<d.length();i=i+2)
+            {
+                bool ok;
+                currentScope.data.append(uchar(rigCaps.spectAmpMax-(d.mid(i,2).toShort(&ok,16))));
+            }
+            currentScope.valid=true;
+            value.setValue(currentScope);
+            break;
+        }
+        case funcUSBScope:
+        case funcScopeInfo:
+        {
+            short s = d.mid(0,2).toShort();
+            if (s == 0)
+            {
+                scopeSplit=0;
+                currentScope.data.clear();
+                if (func == funcScopeInfo)
+                {
+                    currentScope.valid=false;
+                    currentScope.receiver = 0;
+                    currentScope.mode=spectrumMode_t(d.at(2) - NUMTOASCII);
+                    currentScope.oor = bool(d.at(25) - NUMTOASCII);
+                    if (currentScope.mode == spectrumMode_t::spectModeCenter) {
+                        quint32 span = double(d.mid(3,11).toULongLong());
+                        quint32 center = double(d.mid(14,11).toULongLong());
+                        currentScope.startFreq = double(center - (span/2))/1000000.0;
+                        currentScope.endFreq = double(center + (span/2))/1000000.0;
+                    } else {
+                        currentScope.startFreq = double(d.mid(3,11).toULongLong())/1000000.0;
+                        currentScope.endFreq = double(d.mid(14,11).toULongLong())/1000000.0;
+                    }
+                    return;
+                }
+            }
+
+            for (int i=2;i<d.length();i=i+2)
+            {
+                bool ok;
+                currentScope.data.append(uchar(rigCaps.spectAmpMax-(d.mid(i,2).toShort(&ok,16))));
+            }
+
+            scopeSplit++;
+
+            if (scopeSplit == rigCaps.spectSeqMax) {
+                currentScope.valid=true;
+                value.setValue(currentScope);
+                func = funcScopeWaveData;
+            }
+            break;
+        }
+        case funcScopeClear:
+            currentScope.data.clear();
+            currentScope.valid=false;
+            break;
+        case funcCWDecode:
+            value.setValue<QString>(d);
         case funcFA:
             qInfo(logRig()) << "Error received from rig. Last command:" << lastSentCommand << "data:" << d;
             break;
@@ -458,6 +627,7 @@ void kenwoodCommander::parseData(QByteArray data)
         }
 
         if(func != funcScopeWaveData
+            && func != funcScopeInfo
             && func != funcSMeter
             && func != funcAbsoluteMeter
             && func != funcCenterMeter
@@ -842,6 +1012,7 @@ void kenwoodCommander::determineRigCaps()
         settings->endArray();
     }
 
+
     int numAttenuators = settings->beginReadArray("Attenuators");
     if (numAttenuators == 0) {
         settings->endArray();
@@ -850,8 +1021,11 @@ void kenwoodCommander::determineRigCaps()
         for (int c = 0; c < numAttenuators; c++)
         {
             settings->setArrayIndex(c);
-            qDebug(logRig()) << "** GOT ATTENUATOR" << settings->value("dB", 0).toString().toUInt();
-            rigCaps.attenuators.push_back((quint8)settings->value("dB", 0).toString().toUInt());
+            if (settings->value("Num", -1).toString().toInt() == -1) {
+                rigCaps.attenuators.push_back(genericType(settings->value("dB", 0).toString().toUInt(),QString("%0 dB").arg(settings->value("dB", 0).toString().toUInt())));
+            } else {
+                rigCaps.attenuators.push_back(genericType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", 0).toString()));
+            }
         }
         settings->endArray();
     }
@@ -865,6 +1039,32 @@ void kenwoodCommander::determineRigCaps()
         {
             settings->setArrayIndex(c);
             rigCaps.filters.push_back(filterType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", "").toString(), settings->value("Modes", 0).toUInt()));
+        }
+        settings->endArray();
+    }
+
+    int numCTCSS = settings->beginReadArray("CTCSS");
+    if (numCTCSS == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numCTCSS; c++)
+        {
+            settings->setArrayIndex(c);
+            rigCaps.ctcss.push_back(toneInfo(settings->value("Reg", 0).toUInt(), QString::number(settings->value("Tone", 0.0).toFloat(),'f',1)));
+        }
+        settings->endArray();
+    }
+
+    int numDTCS = settings->beginReadArray("DTCS");
+    if (numDTCS == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numDTCS; c++)
+        {
+            settings->setArrayIndex(c);
+            rigCaps.ctcss.push_back(toneInfo(settings->value("Reg", 0).toInt(), QString::number(settings->value("Reg", 0).toInt()).rightJustified(4,'0')));
         }
         settings->endArray();
     }
@@ -960,7 +1160,7 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
     QByteArray payload;
     int val=INT_MIN;
 
-    if (func == funcSWRMeter || func == funcCompMeter || func == funcALCMeter)
+    if (func == funcSWRMeter || func == funcCompMeter || func == funcALCMeter || (loginRequired && func != funcLogin))
     {
         // Cannot query for these meters, but they will be sent automatically on TX
         return;
@@ -972,6 +1172,32 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
         func = (v == vfoA)?funcVFOASelect:(v == vfoB)?funcVFOBSelect:funcNone;
         value.clear();
         val = INT_MIN;
+    }
+
+    if (value.isValid() && func == funcRITFreq)
+    {
+        // There is no command to directly set the RIT, only up or down commands.
+        short rit = value.value<short>();
+        static short old = rit;
+        short diff = 0;
+        diff = rit - old;
+
+        if (rit < old)
+        {
+            func = funcRITDown;
+        }
+        else if (rit > old)
+        {
+            func = funcRITUp;
+        }
+
+        //qInfo() << "Updating RIT with" << diff << "old" << old << "new" << rit;
+        value.setValue<short>(abs(diff));
+        if (diff == 0)
+        {
+            return;
+        }
+        old = rit;
     }
 
     // The transceiverStatus command cannot be used to set PTT, this is handled by TX/RX commands.
@@ -990,16 +1216,43 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
         }
     }
 
+    //qInfo() << "requested command:" << funcString[func];
+
     funcType cmd = getCommand(func,payload,val,receiver);
+
 
     if (cmd.cmd != funcNone) {
         if (value.isValid())
         {
+
             // This is a SET command
             if (!cmd.setCmd) {
                 qDebug(logRig()) << "Removing unsupported set command from queue" << funcString[func] << "VFO" << receiver;
                 queue->del(func,receiver);
                 return;
+            }
+
+            if (cmd.cmd == funcScopeOnOff && value.toBool() == true)
+            {
+                if (connType == connectionUSB)
+                    if (aiModeEnabled) // Scope is VERY slow, 1fps.
+                        value.setValue(uchar(4));
+                    else
+                        value.setValue(uchar(5));
+                else if (connType == connectionWAN)
+                    value.setValue(uchar(3));
+                else if (connType == connectionWiFi)
+                    value.setValue(uchar(2));
+                qInfo() << "Setting scope type to:" << value.toInt() << "for connection type:" << connType;
+            } else if (cmd.cmd == funcAutoInformation)
+            {
+                aiModeEnabled = value.toBool();
+            }
+
+            if (!strcmp(value.typeName(),"centerSpanData"))
+            {
+                centerSpanData d = value.value<centerSpanData>();
+                payload.append(QString::number(d.cstype).rightJustified(cmd.bytes, QChar('0')).toLatin1());
             }
             else if (!strcmp(value.typeName(),"QString"))
             {
@@ -1062,6 +1315,18 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
                     payload.append(QString::number(value.value<ushort>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
                 }
             }
+            else if(!strcmp(value.typeName(),"udpPreferences"))
+            {
+                udpPreferences p = value.value<udpPreferences>();
+                payload.append(QString("%0%1%2%3%4").arg("1")
+                    .arg(QString::number(p.username.length()).rightJustified(2, QChar('0')))
+                    .arg(QString::number(p.password.length()).rightJustified(2, QChar('0')))
+                    .arg(p.username).arg(p.password).toLatin1());
+            }
+            else if(!strcmp(value.typeName(),"toneInfo"))
+            {
+                payload.append(QString::number(value.value<toneInfo>().tone).rightJustified(cmd.bytes, QChar('0')).toLatin1());
+            }
             else if(!strcmp(value.typeName(),"modeInfo"))
             {
                 if (cmd.cmd == funcSelectedMode)
@@ -1085,13 +1350,13 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             else if(!strcmp(value.typeName(),"bandStackType"))
             {
                 bandStackType b = value.value<bandStackType>();
-                payload.append(QString::number(b.regCode).toLatin1());
+                payload.append(QString::number(b.regCode).leftJustified(cmd.bytes,'0').toLatin1());
 
             }
             else if(!strcmp(value.typeName(),"antennaInfo"))
             {
                 antennaInfo a = value.value<antennaInfo>();
-                payload.append(QString("%0%1%2").arg(a.antenna).arg(uchar(a.rx)).arg(9).toLatin1());
+                payload.append(QString("%0%1").arg(uchar(a.antenna)).arg(uchar(a.rx)).leftJustified(cmd.bytes,'9').toLatin1());
             }
             else if(!strcmp(value.typeName(),"rigInput"))
             {
@@ -1283,14 +1548,22 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
                 queue->add(priorityImmediate,funcDataMode,false,0);
             }
         }
+
         // Send the command
-        payload.append(";");
+        if (network)
+        {
+            payload.prepend(";");
+            payload.append(";\n");
+        } else {
+            payload.append(";");
+        }
+
         if (portConnected)
         {
             QMutexLocker locker(&serialMutex);
-            if (serialPort->write(payload) != payload.size())
+            if (port->write(payload) != payload.size())
             {
-                qInfo(logSerial()) << "Error writing to serial port";
+                qInfo(logSerial()) << "Error writing to port";
             }
             lastSentCommand = payload;
         }

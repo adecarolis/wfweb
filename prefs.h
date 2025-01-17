@@ -157,7 +157,8 @@ enum prefUDPItem {
     u_txLatency = 1 << 13,
     u_audioInput = 1 << 14,
     u_audioOutput = 1 << 15,
-    u_all = 1 << 16
+    u_connectionType = 1 << 16,
+    u_all = 1 << 17
 };
 
 
