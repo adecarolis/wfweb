@@ -337,6 +337,7 @@ private:
     bool satMode = false;
     bool memMode = false;
     bool tracking = false;
+
 };
 
 #endif // RECEIVERWIDGET_H

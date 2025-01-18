@@ -16,7 +16,7 @@ rigCreator::rigCreator(QWidget *parent) :
     this->setWindowFlags(flags);
 
     qInfo() << "Creating instance of rigCreator()";
-    commandsList = new tableCombobox(createModel(NUMFUNCS, commandsModel, funcString),false,ui->commands);
+    commandsList = new tableCombobox(createModel(funcLastFunc, commandsModel, funcString),false,ui->commands);
 
     ui->commands->setItemDelegateForColumn(0, commandsList);
 

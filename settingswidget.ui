@@ -41,7 +41,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>0</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -1008,6 +1008,16 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
             <widget class="QComboBox" name="groupSeparatorsCombo"/>
            </item>
            <item>
+            <widget class="QCheckBox" name="forceVfoModeChk">
+             <property name="text">
+              <string>Force VFO Mode (if disabled, we will not know current mode)</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
             <spacer name="horizontalSpacer_9">
              <property name="orientation">
               <enum>Qt::Orientation::Horizontal</enum>
@@ -1212,6 +1222,12 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            </item>
            <item>
             <widget class="QSpinBox" name="pollTimeMsSpin">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="toolTip">
               <string>Sets the polling interval, in ms. Automatic polling is recommended. Serial port and USB port radios should not poll quicker than about 75ms.</string>
              </property>
@@ -1401,8 +1417,8 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>573</width>
-                 <height>286</height>
+                 <width>911</width>
+                 <height>360</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">

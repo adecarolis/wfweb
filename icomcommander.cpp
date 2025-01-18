@@ -1208,6 +1208,7 @@ void icomCommander::parseCommand()
         break;
     // 0x1c register (bool)
     case funcRitStatus:
+    case funcXitStatus:
     case funcTransceiverStatus:
         value.setValue(static_cast<bool>(payloadIn.at(0)));
         break;
@@ -1216,7 +1217,8 @@ void icomCommander::parseCommand()
         value.setValue(bcdHexToUChar(payloadIn.at(0)));
         break;
     // 0x21 RIT:
-    case funcRITFreq:
+    case funcRitFreq:
+    case funcXitFreq:
     {
         /* M0VSE DOES THIS NEEED FIXING? */
         short ritHz = 0;
@@ -1232,6 +1234,7 @@ void icomCommander::parseCommand()
         break;
     }
     case funcRitTXStatus:
+    case funcXitTXStatus:
         value.setValue(static_cast<bool>(payloadIn.at(0)));
         break;
     case funcTXFreqMon:
@@ -1480,7 +1483,7 @@ void icomCommander::determineRigCaps()
 
     // Temporary QHash to hold the function string lookup // I would still like to find a better way of doing this!
     QHash<QString, funcs> funcsLookup;
-    for (int i=0;i<NUMFUNCS;i++)
+    for (int i=0;i<funcLastFunc;i++)
     {
         if (!funcString[i].startsWith("+")) {
             funcsLookup.insert(funcString[i].toUpper(), funcs(i));
@@ -1549,6 +1552,32 @@ void icomCommander::determineRigCaps()
             settings->setArrayIndex(c);
             rigCaps.modes.push_back(modeInfo(rigMode_t(settings->value("Num", 0).toUInt()),
                 settings->value("Reg", 0).toString().toUInt(), settings->value("Name", "").toString(), settings->value("Min", 0).toInt(), settings->value("Max", 0).toInt()));
+        }
+        settings->endArray();
+    }
+
+    int numCTCSS = settings->beginReadArray("CTCSS");
+    if (numCTCSS == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numCTCSS; c++)
+        {
+            settings->setArrayIndex(c);
+            rigCaps.ctcss.push_back(toneInfo(settings->value("Reg", 0).toUInt(), QString::number(settings->value("Tone", 0.0).toFloat(),'f',1)));
+        }
+        settings->endArray();
+    }
+
+    int numDTCS = settings->beginReadArray("DTCS");
+    if (numDTCS == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numDTCS; c++)
+        {
+            settings->setArrayIndex(c);
+            rigCaps.dtcs.push_back(toneInfo(settings->value("Reg", 0).toInt(), QString::number(settings->value("Reg", 0).toInt()).rightJustified(4,'0')));
         }
         settings->endArray();
     }
@@ -2712,12 +2741,6 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
         }
     }
 
-    if (func == funcSendCW)
-    {
-        val = value.value<QString>().length();
-        qDebug(logRig()) << "Send CW received";
-    }
-
     if (func == funcAfGain && value.isValid() && udp != Q_NULLPTR) {
         // Ignore the AF Gain command, just queue it for processing
         emit haveSetVolume(static_cast<uchar>(value.toInt()));
@@ -2846,7 +2869,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                     payload.append(bcdEncodeInt(value.value<ushort>()));
                 }
             }
-            else if (!strcmp(value.typeName(),"short") && func == funcRITFreq)
+            else if (!strcmp(value.typeName(),"short") && (func == funcRitFreq || func == funcXitFreq))
             {
                 // Currently only used for RIT (I think)
                 bool isNegative = false;

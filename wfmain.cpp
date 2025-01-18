@@ -1669,6 +1669,7 @@ void wfmain::setDefPrefs()
     defPrefs.manufacturer = manufIcom;
     defPrefs.useUTC = false;
     defPrefs.setRadioTime = false;
+    defPrefs.forceVfoMode = true;
 
     defPrefs.tcpPort = 0;
     defPrefs.tciPort = 50001;
@@ -1756,7 +1757,7 @@ void wfmain::loadSettings()
     prefs.scopeScrollY = settings->value("scopeScrollY", defPrefs.scopeScrollY).toInt();
     prefs.decimalSeparator = settings->value("DecimalSeparator", defPrefs.decimalSeparator).toChar();
     prefs.groupSeparator = settings->value("GroupSeparator", defPrefs.groupSeparator).toChar();
-
+    prefs.forceVfoMode =  settings->value("ForceVfoMode", defPrefs.groupSeparator).toBool();
 
     prefs.drawPeaks = settings->value("DrawPeaks", defPrefs.drawPeaks).toBool();
     prefs.underlayBufferSize = settings->value("underlayBufferSize", defPrefs.underlayBufferSize).toInt();
@@ -3135,6 +3136,8 @@ void wfmain::saveSettings()
     settings->setValue("ShowBands",prefs.showBands);
     settings->setValue("GroupSeparator",prefs.groupSeparator);
     settings->setValue("DecimalSeparator",prefs.decimalSeparator);
+    settings->setValue("ForceVfoMode",prefs.forceVfoMode);
+
     settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -3581,19 +3584,20 @@ void wfmain:: getInitialRigState()
     if (rigCaps->commands.contains(funcAutoInformation) && (!rigCaps->hasSpectrum || prefs.enableLAN))
         queue->add(priorityImmediate,queueItem(funcAutoInformation,QVariant::fromValue(uchar(2)),false,0));
 
-    if (rigCaps->commands.contains(funcSatelliteMode))
-        queue->add(priorityImmediate,funcSatelliteMode,false,0); // are we in satellite mode?.
+    if (prefs.forceVfoMode) {
+        if (rigCaps->commands.contains(funcSatelliteMode))
+            queue->add(priorityImmediate,funcSatelliteMode,false,0); // are we in satellite mode?.
 
-    if (rigCaps->commands.contains(funcVFOModeSelect))
-        queue->add(priorityImmediate,funcVFOModeSelect); // Make sure we are in VFO mode.
+        if (rigCaps->commands.contains(funcVFOModeSelect))
+            queue->add(priorityImmediate,funcVFOModeSelect); // Make sure we are in VFO mode.
 
-    if (rigCaps->commands.contains(funcScopeMainSub))
-        queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(uchar(0)),false,0)); // Set main scope
+        if (rigCaps->commands.contains(funcScopeMainSub))
+            queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(uchar(0)),false,0)); // Set main scope
 
+        queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue(uchar(0)),false,0)); // Set primary VFO
+    }
     //if (rigCaps->commands.contains(funcVFOBandMS))
     //    queue->add(priorityImmediate,queueItem(funcVFOBandMS,QVariant::fromValue(uchar(0)),false,0));
-
-    queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue(uchar(0)),false,0)); // Set primary VFO
 
     if(rigCaps->hasSpectrum)
     {
@@ -3636,9 +3640,9 @@ void wfmain:: getInitialRigState()
         receiver->setBandIndicators(prefs.showBands, prefs.region, &rigCaps->bands);
     }
 
-    if (rigCaps->commands.contains(funcRITFreq))
+    if (rigCaps->commands.contains(funcRitFreq))
     {
-        funcType func = rigCaps->commands.find(funcRITFreq).value();
+        funcType func = rigCaps->commands.find(funcRitFreq).value();
         ui->ritTuneDial->setRange(func.minVal,func.maxVal);
     }
 
@@ -4781,7 +4785,7 @@ void wfmain::powerRigOff()
 
 void wfmain::on_ritTuneDial_valueChanged(int value)
 {
-    queue->add(priorityImmediate,queueItem(funcRITFreq,QVariant::fromValue(short(value))));
+    queue->add(priorityImmediate,queueItem(funcRitFreq,QVariant::fromValue(short(value))));
 }
 
 void wfmain::on_ritEnableChk_clicked(bool checked)
@@ -5775,7 +5779,7 @@ void wfmain::receiveValue(cacheItem val){
         receiveATUStatus(val.value.value<uchar>());
         break;
     // 0x21 RIT:
-    case funcRITFreq:
+    case funcRitFreq:
         ui->ritTuneDial->blockSignals(true);
         ui->ritTuneDial->setValue(val.value.value<short>());
         ui->ritTuneDial->blockSignals(false);

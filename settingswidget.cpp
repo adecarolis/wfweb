@@ -530,6 +530,8 @@ void settingswidget::updateIfPref(prefIfItem pif)
     case if_separators:
         quietlyUpdateCombobox(ui->groupSeparatorsCombo,QVariant(prefs->groupSeparator));
         quietlyUpdateCombobox(ui->decimalSeparatorsCombo,QVariant(prefs->decimalSeparator));
+    case if_forceVfoMode:
+        quietlyUpdateCheckbox(ui->forceVfoModeChk,prefs->forceVfoMode);
         break;
     default:
         qWarning(logGui()) << "Did not understand if pref update item " << (int)pif;
@@ -2250,6 +2252,12 @@ void settingswidget::on_groupSeparatorsCombo_currentIndexChanged(int index)
 {
     prefs->groupSeparator = ui->groupSeparatorsCombo->itemData(index).toChar();
     emit changedIfPref(if_separators);
+}
+
+void settingswidget::on_forceVfoModeChk_clicked(bool checked)
+{
+    prefs->forceVfoMode = checked;
+    emit changedIfPref(if_forceVfoMode);
 }
 
 /* End of radio specific settings */

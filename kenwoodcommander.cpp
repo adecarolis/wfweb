@@ -406,7 +406,7 @@ void kenwoodCommander::parseData(QByteArray data)
             short rit = d.mid(16,5).toShort(&ok);
             if (ok) {
                 value.setValue(rit);
-                queue->receiveValue(funcRITFreq,QVariant::fromValue(rit),receiver);
+                queue->receiveValue(funcRitFreq,QVariant::fromValue(rit),receiver);
             }
 
             queue->receiveValue(funcRitStatus,QVariant::fromValue(bool(d.at(21) - NUMTOASCII)),receiver);
@@ -428,14 +428,21 @@ void kenwoodCommander::parseData(QByteArray data)
             break;
         case funcPBTInner:
         case funcPBTOuter:
-            value.setValue<uchar>(d.toUShort() * (255/(type.maxVal-type.minVal)));
             break;
-        case funcFilterWidth:
-            value.setValue<ushort>(d.toUShort());
+        case funcFilterWidth: {
+            short width=0;
+            if (d.toUShort()>9)
+                width = (d.toUShort()-5)*100;
+            else
+                width = d.toShort() * 50;
+            value.setValue<ushort>(width);
+            qInfo() << "God filter width" << width << "original" << d.toUShort();
             break;
+        }
         case funcMeterType:
             break;
-        case funcRITFreq:
+        case funcXitFreq:
+        case funcRitFreq:
             break;
         case funcMonitor:
         case funcRitStatus:
@@ -549,8 +556,27 @@ void kenwoodCommander::parseData(QByteArray data)
             currentScope.valid=false;
             currentScope.oor = 0;   // No easy way to get OOR unless we calculate it.
             currentScope.receiver = 0;
-            currentScope.startFreq = double(d.mid(0,8).toULongLong())/1000000.0;
-            currentScope.endFreq = double(d.mid(8,8).toULongLong())/1000000.0;
+            if (queue->getCache(funcScopeMode,receiver).value.value<spectrumMode_t>() == spectrumMode_t::spectModeCenter)
+            {
+
+                // We are in center mode so the scope range doesn't tell us anything!
+
+                double span = 0.0;
+                for (const auto &s: rigCaps.scopeCenterSpans)
+                {
+                    if (s.cstype == queue->getCache(funcScopeSpan,receiver).value.value<centerSpanData>().cstype)
+                    {
+                        span = double(s.freq) / 1000000.0 ;
+                    }
+                }
+                vfo_t vfo = queue->getCache(funcSelectVFO,receiver).value.value<vfo_t>();
+                double freq = queue->getCache(vfo==vfoA?funcSelectedFreq:funcUnselectedFreq,receiver).value.value<freqt>().MHzDouble;
+                currentScope.startFreq=double(freq - (span/2));
+                currentScope.endFreq=double(freq + (span/2));
+            } else {
+                currentScope.startFreq = double(d.mid(0,8).toULongLong())/1000000.0;
+                currentScope.endFreq = double(d.mid(8,8).toULongLong())/1000000.0;
+            }
             //qInfo() << "Range:" << d << "is" << currentScope.startFreq << "/" << currentScope.endFreq;
             break;
         }
@@ -734,16 +760,16 @@ bool kenwoodCommander::parseMemory(QByteArray d,QVector<memParserFormat>* memPar
             mem->dsqlB = data.left(parse.len).toInt();
             break;
         case 'n':
-            mem->tone = ctcssTones[data.left(parse.len).toInt()];
+            mem->tone = data.left(parse.len).toInt();
             break;
         case 'N':
-            mem->toneB = ctcssTones[data.left(parse.len).toInt()];
+            mem->toneB = data.left(parse.len).toInt();
             break;
         case 'o':
-            mem->tsql = ctcssTones[data.left(parse.len).toInt()];
+            mem->tsql = data.left(parse.len).toInt();
             break;
         case 'O':
-            mem->tsqlB = ctcssTones[data.left(parse.len).toInt()];
+            mem->tsqlB = data.left(parse.len).toInt();
             break;
         case 'p':
             mem->dtcsp = data.left(parse.len).toInt();
@@ -871,7 +897,7 @@ void kenwoodCommander::determineRigCaps()
 
     // Temporary QHash to hold the function string lookup // I would still like to find a better way of doing this!
     QHash<QString, funcs> funcsLookup;
-    for (int i=0;i<NUMFUNCS;i++)
+    for (int i=0;i<funcLastFunc;i++)
     {
         if (!funcString[i].startsWith("+")) {
             funcsLookup.insert(funcString[i].toUpper(), funcs(i));
@@ -1056,6 +1082,7 @@ void kenwoodCommander::determineRigCaps()
         settings->endArray();
     }
 
+    // Not even sure if there are any Kenwood radios with DTCS?
     int numDTCS = settings->beginReadArray("DTCS");
     if (numDTCS == 0) {
         settings->endArray();
@@ -1064,7 +1091,7 @@ void kenwoodCommander::determineRigCaps()
         for (int c = 0; c < numDTCS; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.ctcss.push_back(toneInfo(settings->value("Reg", 0).toInt(), QString::number(settings->value("Reg", 0).toInt()).rightJustified(4,'0')));
+            rigCaps.dtcs.push_back(toneInfo(settings->value("Reg", 0).toInt(), QString::number(settings->value("Reg", 0).toInt()).rightJustified(4,'0')));
         }
         settings->endArray();
     }
@@ -1174,7 +1201,7 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
         val = INT_MIN;
     }
 
-    if (value.isValid() && func == funcRITFreq)
+    if (value.isValid() && (func == funcRitFreq || func == funcXitFreq))
     {
         // There is no command to directly set the RIT, only up or down commands.
         short rit = value.value<short>();
@@ -1308,12 +1335,7 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             }
             else if(!strcmp(value.typeName(),"ushort") )
             {
-                if (func == funcPBTInner || func == funcPBTOuter) {
-                    ushort v=ushort(value.value<ushort>()/19);
-                    payload.append(QString::number(v).rightJustified(cmd.bytes, QChar('0')).toLatin1());
-                } else {
-                    payload.append(QString::number(value.value<ushort>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
-                }
+                payload.append(QString::number(value.value<ushort>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
             }
             else if(!strcmp(value.typeName(),"udpPreferences"))
             {
@@ -1326,6 +1348,11 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             else if(!strcmp(value.typeName(),"toneInfo"))
             {
                 payload.append(QString::number(value.value<toneInfo>().tone).rightJustified(cmd.bytes, QChar('0')).toLatin1());
+            }
+            else if(!strcmp(value.typeName(),"spectrumMode_t"))
+            {
+                if (value.value<spectrumMode_t>() != spectrumMode_t::spectModeScrollF)
+                    payload.append(QString::number(value.value<spectrumMode_t>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
             }
             else if(!strcmp(value.typeName(),"modeInfo"))
             {
@@ -1446,41 +1473,17 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
                         break;
                     case 'n':
                     {
-                        for (int i=0;i<42;i++)
-                        {
-                            if (ctcssTones[i]==mem.tone) {
-                                payload.append(QString::number(i).rightJustified(parse.len, QChar('0')).toLatin1());
-                                break;
-                            }
-                        }
+                        payload.append(QString::number(mem.tone).rightJustified(parse.len, QChar('0')).toLatin1());
                         break;
                     }
                     case 'N':
-                        for (int i=0;i<42;i++)
-                        {
-                            if (ctcssTones[i]==mem.toneB) {
-                                payload.append(QString::number(i).rightJustified(parse.len, QChar('0')).toLatin1());
-                                break;
-                            }
-                        }
+                        payload.append(QString::number(mem.toneB).rightJustified(parse.len, QChar('0')).toLatin1());
                         break;
                     case 'o':
-                        for (int i=0;i<42;i++)
-                        {
-                            if (ctcssTones[i]==mem.tsql) {
-                                payload.append(QString::number(i).rightJustified(parse.len, QChar('0')).toLatin1());
-                                break;
-                            }
-                        }
+                        payload.append(QString::number(mem.tsql).rightJustified(parse.len, QChar('0')).toLatin1());
                         break;
                     case 'O':
-                        for (int i=0;i<42;i++)
-                        {
-                            if (ctcssTones[i]==mem.tsqlB) {
-                                payload.append(QString::number(i).rightJustified(parse.len, QChar('0')).toLatin1());
-                                break;
-                            }
-                        }
+                        payload.append(QString::number(mem.tsqlB).rightJustified(parse.len, QChar('0')).toLatin1());
                         break;
                     case 'q':
                         payload.append(QString::number(mem.dtcs).rightJustified(parse.len, QChar('0')).toLatin1());

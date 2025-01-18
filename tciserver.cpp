@@ -30,7 +30,7 @@ static const tciCommandStruct tci_commands[] =
     { "rit_enable",         funcRitStatus,  typeUChar,  typeNone,   typeNone},
     { "xit_enable",         funcNone,       typeUChar,  typeNone,   typeNone},
     { "split_enable",       funcSplitStatus,typeUChar,  typeBinary, typeNone},
-    { "rit_offset",         funcRITFreq,    typeUChar,  typeNone,   typeNone},
+    { "rit_offset",         funcRitFreq,    typeUChar,  typeNone,   typeNone},
     { "xit_offset",         funcNone,       typeUChar,  typeNone,   typeNone},
     { "rx_channel_enable",  funcNone,       typeUChar,  typeNone,   typeNone},
     { "rx_filter_band",     funcNone,       typeUChar,  typeNone,   typeNone},

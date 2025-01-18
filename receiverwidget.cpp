@@ -2028,9 +2028,26 @@ void receiverWidget::setPBTInner (uchar val) {
 
     if (rigCaps->manufacturer == manufKenwood)
     {
-        configPbtInner->blockSignals(true);
-        configPbtInner->setValue(val);
-        configPbtInner->blockSignals(false);
+        ushort width=0;
+        if (this->mode.mk == modeLSB || this->mode.mk == modeUSB)
+        {
+            if (val < 25)
+                width = (val+6) * 100;
+            else if (val == 25)
+                width = 3400;
+            else if (val == 26)
+                width = 4000;
+            else if (val == 27)
+                width = 5000;
+        }
+        if (double(width)/1000000.0 != this->PBTInner)
+        {
+            this->PBTInner = double(width)/1000000.0;
+            configPbtInner->blockSignals(true);
+            configPbtInner->setValue(val);
+            configPbtInner->blockSignals(false);
+        }
+
     } else
     {
         qint16 shift = (qint16)(val - 128);
@@ -2060,9 +2077,22 @@ void receiverWidget::setPBTInner (uchar val) {
 void receiverWidget::setPBTOuter (uchar val) {
     if (rigCaps->manufacturer == manufKenwood)
     {
-        configPbtOuter->blockSignals(true);
-        configPbtOuter->setValue(val);
-        configPbtOuter->blockSignals(false);
+        ushort width=0;
+        if (this->mode.mk == modeLSB || this->mode.mk == modeUSB)
+        {
+            if (val == 1)
+                width = 50;
+            else if (val > 1 && val < 22)
+                width = (val-1) * 100;
+        }
+        if (double(width)/1000000.0 != this->PBTOuter)
+        {
+            this->PBTOuter = double(width)/1000000.0;
+            configPbtOuter->blockSignals(true);
+            configPbtOuter->setValue(val);
+            configPbtOuter->blockSignals(false);
+        }
+
     } else
     {
         qint16 shift = (qint16)(val - 128);

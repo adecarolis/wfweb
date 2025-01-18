@@ -10,16 +10,23 @@ cwSender::cwSender(QWidget *parent) :
     ui->setupUi(this);
     this->setWindowTitle("CW Sender");
     ui->textToSendEdit->setFocus();
+
     QFont f =  QFont(QFontDatabase::systemFont(QFontDatabase::FixedFont).family());
     f.setStyleHint(QFont::TypeWriter);
     ui->textToSendEdit->setFont(f);
+    ui->receiveText->setFont(f);
     ui->transcriptText->setFont(f);
     ui->textToSendEdit->setFocus();
     ui->statusbar->setToolTipDuration(3000);
+
     this->setToolTipDuration(3000);
     connect(ui->textToSendEdit->lineEdit(), &QLineEdit::textEdited, this, &cwSender::textChanged);
     this->setObjectName("CW Sender");
+
     queue = cachingQueue::getInstance();
+    // We must have rigCaps
+    rigCaps = queue->getRigCaps();
+    maxChars = rigCaps->commands.find(funcSendCW).value().bytes;
 
     connect(this, &cwSender::sendCW, queue, [=](const QString &cwMessage) {
         queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<QString>(cwMessage)));
@@ -167,28 +174,43 @@ void cwSender::handleCurrentModeUpdate(rigMode_t mode)
 
 void cwSender::textChanged(QString text)
 {
+
+    if (text.length() > maxChars)
+    {
+        ui->textToSendEdit->setStyleSheet("color:red;");
+    }
+    else if (text.length()>maxChars/1.2)
+    {
+        ui->textToSendEdit->setStyleSheet("color:yellow;");
+    }
+    else
+    {
+        ui->textToSendEdit->setStyleSheet("");
+    }
+
     if (ui->sendImmediateChk->isChecked() && text.size() && text.back() == ' ')
     {
         if( (this->currentMode != modeCW) && (this->currentMode != modeCW_R) )
         {
             ui->statusbar->showMessage("Note: Mode needs to be set to CW or CW-R to send CW.", 3000);
         } else {
-            int toSend = text.mid(0, 30).size();
+            int toSend = text.mid(0, maxChars).size();
             if (toSend > 0) {
                 ui->textToSendEdit->clearEditText();
                 ui->transcriptText->moveCursor(QTextCursor::End);
                 ui->transcriptText->insertPlainText(text.mid(0, 30).toUpper());
                 ui->transcriptText->moveCursor(QTextCursor::End);
-                emit sendCW(text.mid(0, 30));
+                emit sendCW(text.mid(0, maxChars));
             }
         }
     }
+
 }
 
 void cwSender::on_sendBtn_clicked()
 {
     if( (ui->textToSendEdit->currentText().length() > 0) &&
-        (ui->textToSendEdit->currentText().length() <= 30) )
+        (ui->textToSendEdit->currentText().length() <= maxChars) )
     {
         if( (this->currentMode != modeCW) && (this->currentMode != modeCW_R) )
         {
@@ -241,6 +263,14 @@ void cwSender::on_breakinCombo_activated(int brkmode)
 void cwSender::on_wpmSpin_valueChanged(int wpm)
 {
     queue->addUnique(priorityImmediate,queueItem(funcKeySpeed,QVariant::fromValue<ushort>(wpm)));
+#if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
+    QMetaObject::invokeMethod(tone, [=]() {
+        tone->setSpeed(wpm);
+    }, Qt::QueuedConnection);
+#else
+    emit setKeySpeed((quint8)wpm);
+#endif
+
 }
 
 void cwSender::on_dashSpin_valueChanged(double ratio)
@@ -547,3 +577,4 @@ void cwSender::setMacroText(QStringList macros)
     setMacroButtonText(macroText[9], ui->macro9btn);
     setMacroButtonText(macroText[10], ui->macro10btn);
 }
+

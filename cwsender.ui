@@ -97,6 +97,12 @@
             </item>
             <item>
              <widget class="QSlider" name="sidetoneLevelSlider">
+              <property name="minimumSize">
+               <size>
+                <width>100</width>
+                <height>0</height>
+               </size>
+              </property>
               <property name="maximum">
                <number>100</number>
               </property>
@@ -467,6 +473,18 @@
          </item>
          <item>
           <widget class="QSpinBox" name="sequenceSpin">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>100</width>
+             <height>16777215</height>
+            </size>
+           </property>
            <property name="toolTip">
             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Sequence number, for contests. &lt;/p&gt;&lt;p&gt;Substitute &amp;quot;%1&amp;quot; in your macro text to use it. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>

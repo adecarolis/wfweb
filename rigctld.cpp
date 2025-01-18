@@ -219,10 +219,10 @@ static const commandStruct commands_list[] =
     { 'h',  "get_channel",      funcMemoryMode,         typeUChar,    ARG_IN  | ARG_NOVFO, "Channel", "Read Only" },
     { 'B',  "set_bank",         funcMemoryGroup,        typeUChar,    ARG_IN, "Bank" },
     { '_',  "get_info",         funcNone,               typeUChar,    ARG_OUT | ARG_NOVFO, "Info" },
-    { 'J',  "set_rit",          funcRITFreq,            typeShort,    ARG_IN, "RIT" },
-    { 'j',  "get_rit",          funcRITFreq,            typeShort,    ARG_OUT, "RIT" },
-    { 'Z',  "set_xit",          funcNone,               typeShort,    ARG_IN, "XIT" },
-    { 'z',  "get_xit",          funcNone,               typeShort,    ARG_OUT, "XIT" },
+    { 'J',  "set_rit",          funcRitFreq,            typeShort,    ARG_IN, "RIT" },
+    { 'j',  "get_rit",          funcRitFreq,            typeShort,    ARG_OUT, "RIT" },
+    { 'Z',  "set_xit",          funcXitFreq,            typeShort,    ARG_IN, "XIT" },
+    { 'z',  "get_xit",          funcXitFreq,            typeShort,    ARG_OUT, "XIT" },
     { 'Y',  "set_ant",          funcAntenna,            typeUChar,    ARG_IN, "Antenna", "Option" },
     { 'y',  "get_ant",          funcAntenna,            typeUChar,    ARG_IN1 | ARG_OUT2 | ARG_NOVFO, "AntCurr", "Option", "AntTx", "AntRx" },
     { 0x87, "set_powerstat",    funcPowerControl,       typeBinary,    ARG_IN  | ARG_NOVFO, "Power Status" },
@@ -247,7 +247,7 @@ static const commandStruct commands_list[] =
     { '1',  "dump_caps",        funcNone,               typeUChar,    ARG_NOVFO },
     { '3',  "dump_conf",        funcNone,               typeUChar,    ARG_NOVFO },
     { 0x8f, "dump_state",       funcNone,               typeUChar,    ARG_OUT | ARG_NOVFO },
-    { 0xf0, "chk_vfo",          funcSelectVFO,          typeUChar,    ARG_NOVFO, "ChkVFO" },   /* rigctld only--check for VFO mode */
+    { 0xf0, "chk_vfo",          funcNone,               typeUChar,    ARG_NOVFO, "ChkVFO" },   /* rigctld only--check for VFO mode */
     { 0xf2, "set_vfo_opt",      funcNone,               typeUChar,    ARG_NOVFO | ARG_IN, "Status" }, /* turn vfo option on/off */
     { 0xf3, "get_vfo_info",     funcSelectVFO,          typeVFOInfo,    ARG_IN1 | ARG_NOVFO | ARG_OUT5, "VFO", "Freq", "Mode", "Width", "Split", "SatMode" }, /* get several vfo parameters at once */
     { 0xf5, "get_rig_info",     funcNone,               typeUChar,    ARG_NOVFO | ARG_OUT, "RigInfo" }, /* get several vfo parameters at once */
@@ -371,10 +371,12 @@ void rigCtlClient::socketReadyRead()
     QString sep = "\n";
 
     int ret = -RIG_EINVAL;
-
+    bool found = false;
     bool setCommand = false;
     bool longCommand = false;
     bool extended = false;
+    bool sendStatus = true;
+
     QStringList response;
 
     for (QString &commands : commandList)
@@ -430,14 +432,16 @@ void rigCtlClient::socketReadyRead()
 
         QStringList command = commands.split(" ");
         command.removeAll({}); // Remove any empty strings (double-whitespace issue)
+        found=false;
+        sendStatus = true;
         for (int i=0; commands_list[i].sstr != 0x00; i++)
         {
             if ((longCommand && !strncmp(command[0].toLocal8Bit(), commands_list[i].str,MAXNAMESIZE)) ||
                    (!longCommand && !commands.isNull() && commands[0].toLatin1() == commands_list[i].sstr))
             {
                 command.removeFirst(); // Remove the actual command so it only contains params
-
-                if (extended){
+                found = true;
+                if (extended && commands_list[i].sstr != 0xf0){
                     // First we need to repeat the original command back:
                     QString repeat=QString("%1:").arg(commands_list[i].str);
                     for( const auto &c: command)
@@ -503,8 +507,10 @@ void rigCtlClient::socketReadyRead()
                 else if (commands_list[i].sstr == 0xf0)
                 {
                     chkVfoEecuted = true;
-                    response.append(QString("CHKVFO %0").arg(uchar(1)));
+                    response.append(QString("ChkVFO: %0").arg(uchar(0)));
                     ret = RIG_OK;
+                    // chk_vfo doesn't output RPRT
+                    sendStatus=false;
                     break;
                 }
                 // Special commands are funcNone so will not get called here
@@ -520,7 +526,7 @@ void rigCtlClient::socketReadyRead()
             break;  // Cannot be a compound command so just output result.
         }
 
-        if (!longCommand && !commands.isEmpty()){
+        if (!longCommand && !commands.isEmpty() ){
             commands.remove(0,1);
             goto restart; // Need to restart loop without going to next command incase of compound command
         }
@@ -534,15 +540,12 @@ void rigCtlClient::socketReadyRead()
     for (int i = 0;i<response.size();i++)
     {
         if (!response[i].isEmpty()) {
-            sendData(QString("%0%1").arg(response[i],(i<response.size()-1)?sep:""));
+            sendData(QString("%0%1").arg(response[i],sep));
         }
     }
 
-    if (ret < 0 || setCommand || extended)
-        sendData(QString("%0RPRT %1\n").arg(response.isEmpty()?"":sep).arg(QString::number(ret)));
-    else if (sep == '\n')
-        sendData("\n");
-
+    if (found && sendStatus && (ret < 0 || setCommand || extended))
+        sendData(QString("RPRT %1\n").arg(QString::number(ret)));
 }
 
 void rigCtlClient::socketDisconnected()
@@ -744,15 +747,20 @@ quint8 rigCtlClient::antFromName(QString name) {
 
 vfo_t rigCtlClient::vfoFromName(QString vfo) {
 
+    rigStateType state = queue->getState();
     vfo_t v = vfoUnknown;
-    if (vfo.toUpper() == "VFOA")
+    if (vfo.toUpper() == "CURRVFO")
+    {
+        v=state.vfo;
+    }
+    else if (vfo.toUpper() == "VFOA")
     {
         if (rigCaps->commands.contains(funcVFOASelect))
             v = vfoA;
         else if (rigCaps->commands.contains(funcVFOMainSelect))
             v = vfoMain;
         else
-            v = vfoCurrent;
+            v = state.vfo;
     }
     else if (vfo.toUpper() == "VFOB")
     {
@@ -761,7 +769,7 @@ vfo_t rigCtlClient::vfoFromName(QString vfo) {
         else if (rigCaps->commands.contains(funcVFOSubSelect))
             v = vfoSub;
         else
-            v = vfoCurrent;
+            v = state.vfo;
     }
     else if (vfo.toUpper() == "MAIN")
     {
@@ -770,7 +778,7 @@ vfo_t rigCtlClient::vfoFromName(QString vfo) {
         else if (rigCaps->commands.contains(funcVFOASelect))
             v = vfoA;
         else
-            v = vfoCurrent;
+            v = state.vfo;
     }
     else if (vfo.toUpper() == "SUB")
     {
@@ -779,11 +787,14 @@ vfo_t rigCtlClient::vfoFromName(QString vfo) {
         else if (rigCaps->commands.contains(funcVFOBSelect))
             v = vfoB;
         else
-            v = vfoCurrent;
+            v = state.vfo;
     }
     else if (vfo.toUpper() == "MEM")
     {
-        v = vfoMem;
+        if (rigCaps->commands.contains(funcMemoryMode))
+            v = vfoMem;
+        else
+            v = state.vfo;
     }
 
     //qInfo() << "vfoFromName" << vfo << "returns" << v;
@@ -900,6 +911,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
     funcs func = cmd.func;
     rigStateType state=queue->getState();
 
+
     if (rigCaps == Q_NULLPTR)
         return ret;
 
@@ -938,8 +950,6 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             } else {
                 val.setValue(static_cast<bool>(params[0].toInt()));
             }
-            break;
-            val.setValue(static_cast<bool>(params[0].toInt()));
             break;
         case typeFreq:
         {            
@@ -1062,6 +1072,11 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         // Build QStringList of Prefixes. This is a bit messy, but not sure how else do to it?
         QStringList prefixes=buildPrefixes(cmd,extended);
 
+        if (!prefixes.length())
+        {
+            qWarning(logRigCtlD()) << "No prefixes found for cmd" << cmd.str << "using func" << funcString[func] << "aborting";
+        }
+
         if (cmd.sstr=='i' ||  cmd.sstr=='x') {
             if (splitVfo == vfoSub && rigCaps->numReceiver > 1) {
                 state.receiver=1;
@@ -1079,19 +1094,17 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         if (rigCaps->commands.contains(func))
             item = queue->getCache(func,state.receiver);
 
+        if (prefixes.length() && params.length())
+        {
+            response.append(QString("%0%1").arg(prefixes[0], params[0]));
+        }
+
         ret = RIG_OK;
         switch (cmd.type){
         case typeBinary:
         {
             bool b = item.value.toBool();
-            if (prefixes.length() && params.length())
-            {
-                response.append(QString("%0%1").arg(prefixes[0], params[0]));
-            }
-            if (prefixes.length()> 1)
-            {
-                response.append(QString("%0%1").arg(prefixes[0], QString::number(b)));
-            }
+            response.append(QString("%0%1").arg(prefixes[prefixes.length()-1], QString::number(b)));
             break;
         }
         case typeUChar:
@@ -1103,57 +1116,37 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             if (cmd.func == funcLockFunction)
                 i = modeLock;
 
-            if (prefixes.length())
-            {
-                response.append(QString("%0%1").arg(prefixes[0], QString::number(i)));
-            }
+            response.append(QString("%0%1").arg(prefixes[prefixes.length()-1], QString::number(i)));
             break;
         }
         case typeFloat:
         {
             float f = item.value.toFloat() / 255.0;
-            if (prefixes.length())
-            {
-                response.append(QString("%0%1").arg(prefixes[0],QString::number(f,typeFloat,6)));
-            }
+            response.append(QString("%0%1").arg(prefixes[prefixes.length()-1],QString::number(f,typeFloat,6)));
             break;
         }
         case typeFloatDiv:
         {
             float f = item.value.toFloat() * 10;
-            if (prefixes.length())
-            {
-                response.append(QString("%0%1").arg(prefixes[0],QString::number(f,typeFloat,6)));
-            }
+            response.append(QString("%0%1").arg(prefixes[prefixes.length()-1],QString::number(f,typeFloat,6)));
             break;
         }
         case typeFloatDiv5:
         {
             float f = item.value.toFloat() / 5.1;
-            if (prefixes.length())
-            {
-                response.append(QString("%0%1").arg(prefixes[0],QString::number(f,typeFloat,6)));
-            }
+            response.append(QString("%0%1").arg(prefixes[prefixes.length()-1],QString::number(f,typeFloat,6)));
             break;
         }
         case typeFreq:
         { // Frequency
             freqt f = item.value.value<freqt>();
-
-            //qInfo(logRigCtlD()) << "Got Freq" << funcString[func] << f.Hz << "on VFO" << f.VFO;
-            if (prefixes.length())
-            {
-                response.append(QString("%0%1").arg(prefixes[0],QString::number(f.Hz)));
-            }
+            response.append(QString("%0%1").arg(prefixes[prefixes.length()-1],QString::number(f.Hz)));
             break;
         }
         case typeVFO:
         { // VFO
             //uchar v = item.value.value<uchar>();
-            if (prefixes.length())
-            {
-                response.append(QString("%0%1").arg(prefixes[0],getVfoName(state.vfo)));
-            }
+            response.append(QString("%0%1").arg(prefixes[prefixes.length()-1],getVfoName(state.vfo)));
             break;
         }
         case typeSplitVFO:
@@ -1202,7 +1195,6 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         {
             // Stop sending CW if a blank command is received.
             queue->add(priorityImmediate, queueItem(func, QString(QChar(0xff)),false,0));
-            ret = RIG_OK;
             break;
         }
         default:

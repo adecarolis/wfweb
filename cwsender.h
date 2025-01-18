@@ -119,6 +119,8 @@ private:
     bool sidetoneWasEnabled=false;
     QList<QMetaObject::Connection> connections;
     cachingQueue* queue;
+    rigCapabilities* rigCaps = Q_NULLPTR;
+    int maxChars = 0;
 };
 
 #endif // CWSENDER_H

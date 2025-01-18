@@ -232,9 +232,7 @@ struct meterkind {
     meter_t type;
 };
 
-// funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 368
-
+// funcs and funcString MUST be updated at the same time, missing commas concatenate strings!
 enum funcs { funcNone,
 /* Commands 00-0f VFO Information*/
 funcSep,
@@ -258,7 +256,7 @@ funcMonitorGain,        funcVoxGain,			funcAntiVoxGain,            funcBackLight
 /* Command 15 meters */
 funcSepC,
 funcSMeterSqlStatus,    funcSMeter,             funcAbsoluteMeter,          funcMeterType,          funcCenterMeter,        funcVariousSql,
-funcPowerMeter,         funcSWRMeter,               funcALCMeter,          	funcCompMeter,          funcVdMeter,            funcIdMeter,
+funcPowerMeter,         funcSWRMeter,           funcALCMeter,               funcCompMeter,          funcVdMeter,            funcIdMeter,
 
 /* Command 16 function en/dis */
 funcSepD,
@@ -331,7 +329,7 @@ funcAvailableTXFreq,    funcTXBandEdgeFreq,     funcNumUserTXBandEdgeFreq,  func
 
 /* Command 21 */
 funcSepK,
-funcRITFreq,			funcRitStatus,              funcRitTXStatus,
+funcRitFreq,			funcRitStatus,          funcRitTXStatus,        funcXitFreq,            funcXitStatus,              funcXitTXStatus,
 
 /* Command 25/26 */
 funcSepL,
@@ -362,13 +360,14 @@ funcConnectionRequest,  funcLogin,              funcVOIP,                   func
 /* Special Commands (internal use only) */
 funcSelectVFO,          funcSeparator,          funcLCDWaterfall,           funcLCDSpectrum,        funcLCDNothing,         funcPageUp,
 funcPageDown,           funcVFOFrequency,       funcVFOMode,                funcRigctlFunction,     funcRigctlLevel,        funcRigctlParam,
-funcRXAudio,            funcTXAudio
-
+funcRXAudio,            funcTXAudio,
+// This MUST be the last defined func.
+funcLastFunc
 };
 
 
-// Any changes to these strings WILL break rig definitions, add new ones to end. **Missing commas concatenate strings!**
-static QString funcString[] { "None",
+// Any changes to these strings WILL break rig definitions, add new ones to end. **Missing commas concatenate strings.
+static QString funcString[funcLastFunc] { "None",
 /* Commands 00-0f VFO Information*/
 "+<CMD00-0f VFO>",
 "Freq (TRX)",           "Mode (TRX)",           "Band Edge Freq",           "Freq Get",             "Mode Get",             "Freq Set",
@@ -463,7 +462,7 @@ static QString funcString[] { "None",
 
 /* Command 21 */
 "+<CMD21>",
-"RIT Frequency",       "RIT Status",               "RIT TX Status",
+"RIT Frequency",       "RIT Status",               "RIT TX Status",         "XIT Frequency",       "XIT Status",               "XIT TX Status",
 
 /* Command 25/26 */
 "+<CMD25/26 Freq>",
