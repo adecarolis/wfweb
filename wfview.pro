@@ -283,6 +283,7 @@ SOURCES += main.cpp\
     kenwoodcommander.cpp \
     loggingwindow.cpp \
     receiverwidget.cpp \
+    rtpaudio.cpp \
     scrolltest.cpp \
     settingswidget.cpp \
     memories.cpp \
@@ -345,6 +346,7 @@ HEADERS  += wfmain.h \
     freqmemory.h \
     rigcreator.h \
     rigidentities.h \
+    rtpaudio.h \
     scrolltest.h \
     settingswidget.h \
     sidebandchooser.h \
@@ -385,6 +387,7 @@ HEADERS  += wfmain.h \
     aboutbox.h \
     wfviewtypes.h \
     audiodevices.h
+
 
 FORMS    += wfmain.ui \
     bandbuttons.ui \

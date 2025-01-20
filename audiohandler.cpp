@@ -36,7 +36,9 @@ audioHandler::~audioHandler()
 		audioOutput = Q_NULLPTR;
 	}
 
-}bool audioHandler::init(audioSetup setup) 
+}
+
+bool audioHandler::init(audioSetup setup)
 {
 	if (isInitialized) {
 		return false;
@@ -71,7 +73,7 @@ audioHandler::~audioHandler()
 	radioFormat = toQAudioFormat(setup.codec, setup.sampleRate);
 	codec = LPCM;
 	if (setup.codec == 0x01 || setup.codec == 0x20)
-		codec = PCMU;
+        codec = PCMU;
 	else if (setup.codec == 0x40 || setup.codec == 0x40)
 		codec = OPUS;
 

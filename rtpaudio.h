@@ -1,6 +1,5 @@
-#ifndef UDPAUDIO_H
-#define UDPAUDIO_H
-
+#ifndef RTPAUDIO_H
+#define RTPAUDIO_H
 
 #include <QObject>
 #include <QUdpSocket>
@@ -12,37 +11,22 @@
 #include <QByteArray>
 #include <QVector>
 #include <QMap>
-#include <QUuid>
-
-// Allow easy endian-ness conversions
-#include <QtEndian>
-
-// Needed for audio
-#include <QBuffer>
-#include <QThread>
-
-#include <QDebug>
-
-#include "packettypes.h"
-
-#include "udpbase.h"
+#include <QtLogging>
+#include <QFile>
+#include <QStandardPaths>
 
 #include "audiohandler.h"
 #include "pahandler.h"
 #include "rthandler.h"
 #include "tciaudiohandler.h"
+#include "packettypes.h"
 
-
-// Class for all audio communications.
-class udpAudio : public udpBase
+class rtpAudio : public QObject
 {
-	Q_OBJECT
-
+    Q_OBJECT
 public:
-	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 lport, audioSetup rxSetup, audioSetup txSetup);
-	~udpAudio();
-
-	int audioLatency = 0;
+    explicit rtpAudio(QString ip, quint16 port, audioSetup rxSetup, audioSetup txSetup, QObject *parent = nullptr);
+    ~rtpAudio();
 
 signals:
     void haveAudioData(audioPacket data);
@@ -55,37 +39,42 @@ signals:
     void haveRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
     void haveTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
 
-
-public slots:
-	void changeLatency(quint16 value);
-	void setVolume(quint8 value);
+private slots:
+    void init();
+    void dataReceived();
+    void changeLatency(quint16 value);
+    void setVolume(quint8 value);
     void getRxLevels(quint16 amplitude, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
     void getTxLevels(quint16 amplitude, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
-	void receiveAudioData(audioPacket audio);
-
+    void receiveAudioData(audioPacket audio);
 
 private:
 
-	void sendTxAudio();
-	void dataReceived();
-	void watchdog();
-	void startAudio();
-	audioSetup rxSetup;
-	audioSetup txSetup;
+    QUdpSocket* udp = Q_NULLPTR;
 
-	uint16_t sendAudioSeq = 0;
+    audioSetup rxSetup;
+    audioSetup txSetup;
 
-	audioHandler* rxaudio = Q_NULLPTR;
-	QThread* rxAudioThread = Q_NULLPTR;
+    audioHandler* rxaudio = Q_NULLPTR;
+    QThread* rxAudioThread = Q_NULLPTR;
 
-	audioHandler* txaudio = Q_NULLPTR;
-	QThread* txAudioThread = Q_NULLPTR;
+    audioHandler* txaudio = Q_NULLPTR;
+    QThread* txAudioThread = Q_NULLPTR;
 
-	QTimer* txAudioTimer = Q_NULLPTR;
-	bool enableTx = true;
+    QTimer* txAudioTimer = Q_NULLPTR;
+    bool enableTx = true;
 
-	QMutex audioMutex;
+    QMutex audioMutex;
 
+    QHostAddress ip;
+    quint16 port = 0;
+    QElapsedTimer timer;
+    int packetCount=0;
+    QFile debugFile;
+    quint64 size=0;
+    quint16 seq=0;
+
+signals:
 };
 
-#endif
+#endif // RTPAUDIO_H

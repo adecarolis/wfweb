@@ -2,7 +2,10 @@
 #define KENWOODCOMMANDER_H
 
 #include "rigcommander.h"
+#include "rtpaudio.h"
 #include <QSerialPort>
+
+#define audioLevelBufferSize (4)
 
 // This file figures out what to send to the comm and also
 // parses returns into useful things.
@@ -52,8 +55,18 @@ public slots:
 
     void parseData(QByteArray dataInput);
 
+    void getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,quint16 latency, quint16 current, bool under, bool over);
+    void getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16 latency,quint16 current, bool under, bool over);
+
+
 signals:
     // All signals are defined in rigcommander.h as they should be common for all rig types.
+    void initRtpAudio();
+    void haveSetVolume(quint8 level);
+    void haveNetworkError(errorType);
+    void haveChangeLatency(quint16 value);
+    void haveNetworkStatus(networkStatus);
+    void haveNetworkAudioLevels(networkAudioLevels);
 
 private:
     void commonSetup();
@@ -69,7 +82,8 @@ private:
 
     pttyHandler* ptty = Q_NULLPTR;
     tcpServer* tcp = Q_NULLPTR;
-
+    rtpAudio* rtp = Q_NULLPTR;
+    QThread* rtpThread = Q_NULLPTR;
 
     QHash<quint8,rigInfo> rigList;
     quint8 rigCivAddr;
@@ -85,6 +99,7 @@ private:
     audioSetup txSetup;
     scopeData currentScope;
     bool loginRequired = false;
+    bool audioStarted = false;
 
     bool network = false;
 
@@ -95,6 +110,19 @@ private:
     bool aiModeEnabled=false;
     ushort scopeSplit=0;
 
+    networkStatus status;
+
+    quint8 audioLevelsTxPeak[audioLevelBufferSize];
+    quint8 audioLevelsRxPeak[audioLevelBufferSize];
+
+    quint8 audioLevelsTxRMS[audioLevelBufferSize];
+    quint8 audioLevelsRxRMS[audioLevelBufferSize];
+
+    quint8 audioLevelsTxPosition = 0;
+    quint8 audioLevelsRxPosition = 0;
+
+    quint8 findMean(quint8 *d);
+    quint8 findMax(quint8 *d);
 };
 
 #endif // KENWOODCOMMANDER_H

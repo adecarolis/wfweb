@@ -421,6 +421,20 @@ void cachingQueue::updateCache(bool reply, queueItem item)
             // If we are sending an actual value, update the cache with it
             // Value will be replaced if invalid on next get()
 
+            // Special case for datamode
+            if (item.param.isValid() && !strcmp(item.param.typeName(),"modeInfo")) {
+                modeInfo a = item.param.value<modeInfo>();
+                modeInfo b = cv.value().value.value<modeInfo>();
+                if (a.mk == modeUnknown)
+                    a.mk = b.mk;
+                if (a.data == 0xff)
+                    a.data = b.data;
+                if (a.filter == 0xff)
+                    a.filter = b.filter;
+                item.param.clear();
+                item.param = QVariant::fromValue<modeInfo>(a);
+            }
+
             if (compare(item.param,cv.value().value))
             {
                 cv->value.clear();

@@ -868,7 +868,22 @@ void settingswidget::updateRaPref(prefRaItem pra)
     case ra_manufacturer:
         quietlyUpdateCombobox(ui->manufacturerCombo,prefs->manufacturer);
         if (prefs->manufacturer == manufKenwood)
+        {
             udpPrefs->controlLANPort = 60000;
+            udpPrefs->audioLANPort = 60001;
+            // We also need to disable all items that are unsupported by this manufacturer
+            ui->audioSampleRateCombo->setCurrentIndex(2);
+            ui->audioRXCodecCombo->setCurrentIndex(ui->audioRXCodecCombo->findData(4));
+            ui->audioTXCodecCombo->setCurrentIndex(ui->audioTXCodecCombo->findData(4));
+
+            ui->audioSampleRateCombo->setEnabled(false);
+            //ui->audioRXCodecCombo->setEnabled(false);
+            //ui->audioTXCodecCombo->setEnabled(false);
+        }   else {
+            ui->audioSampleRateCombo->setEnabled(true);
+            ui->audioRXCodecCombo->setEnabled(true);
+            ui->audioTXCodecCombo->setEnabled(true);
+        }
         ui->controlPortTxt->setText(QString::number(udpPrefs->controlLANPort));
 
         break;
@@ -1728,6 +1743,12 @@ void settingswidget::on_vspCombo_activated(int index)
 void settingswidget::on_networkConnectionTypeCombo_currentIndexChanged(int index)
 {
     udpPrefs->connectionType = ui->networkConnectionTypeCombo->itemData(index).value<connectionType_t>();
+    if (udpPrefs->connectionType == connectionWAN) {
+        ui->audioSampleRateCombo->setCurrentIndex(3);
+    } else {
+        ui->audioSampleRateCombo->setCurrentIndex(2);
+    }
+
     emit changedUdpPref(u_connectionType);
 }
 
@@ -1745,10 +1766,22 @@ void settingswidget::on_manufacturerCombo_currentIndexChanged(int value)
     Q_UNUSED(value)
     prefs->manufacturer = ui->manufacturerCombo->currentData().value<manufacturersType_t>();
     if (prefs->manufacturer == manufKenwood)
+    {
         udpPrefs->controlLANPort = 60000;
-    else
+        udpPrefs->audioLANPort = 60001;
+        // We also need to disable all items that are unsupported by this manufacturer
+        ui->audioSampleRateCombo->setCurrentIndex(2);
+        ui->audioRXCodecCombo->setCurrentIndex(ui->audioRXCodecCombo->findData(4));
+        ui->audioTXCodecCombo->setCurrentIndex(ui->audioTXCodecCombo->findData(4));
+        ui->audioSampleRateCombo->setEnabled(false);
+        ui->audioRXCodecCombo->setEnabled(false);
+        ui->audioTXCodecCombo->setEnabled(false);
+    }   else {
         udpPrefs->controlLANPort = 50001;
-
+        ui->audioSampleRateCombo->setEnabled(true);
+        ui->audioRXCodecCombo->setEnabled(true);
+        ui->audioTXCodecCombo->setEnabled(true);
+    }
     ui->controlPortTxt->setText(QString::number(udpPrefs->controlLANPort));
 
     emit changedRaPref(ra_manufacturer);
@@ -3145,7 +3178,7 @@ void settingswidget::connectionStatus(bool conn)
     ui->audioRXCodecCombo->setEnabled(!conn);
     ui->audioTXCodecCombo->setEnabled(!conn);
     ui->audioSystemCombo->setEnabled(!conn);
-    ui->audioSampleRateCombo->setEnabled(!conn);
+    ui->audioSampleRateCombo->setEnabled(prefs->manufacturer==manufKenwood?false:!conn);
     ui->networkConnectionTypeCombo->setEnabled(!conn);
 
     ui->txLatencySlider->setEnabled(!conn);

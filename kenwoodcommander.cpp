@@ -27,10 +27,21 @@ kenwoodCommander::~kenwoodCommander()
 {
     qInfo(logRig()) << "closing instance of kenwoodCommander()";
 
+    if (rtpThread != Q_NULLPTR) {
+        qDebug(logUdp()) << "Stopping RTP thread";
+        rtpThread->quit();
+        rtpThread->wait();
+    }
+
     emit requestRadioSelection(QList<radio_cap_packet>()); // Remove radio list.
 
     queue->setRigCaps(Q_NULLPTR); // Remove access to rigCaps
 
+    if (port != Q_NULLPTR) {
+        port->close();
+        delete port;
+        port = Q_NULLPTR;
+    }
     qDebug(logRig()) << "Closing rig comms";
 }
 
@@ -78,12 +89,29 @@ void kenwoodCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAdd
     this->vsp = vsp;
     this->tcpPort = tcpPort;
     this->connType = prefs.connectionType;
+    this->prefs = prefs;
 
     port = new QTcpSocket(this);
 
     connect(qobject_cast<QTcpSocket*>(port), &QTcpSocket::connected, this, &kenwoodCommander::lanConnected);
     connect(qobject_cast<QTcpSocket*>(port), &QTcpSocket::disconnected, this, &kenwoodCommander::lanDisconnected);
     qobject_cast<QTcpSocket*>(port)->connectToHost(prefs.ipAddress,prefs.controlLANPort);
+
+    rtp = new rtpAudio(prefs.ipAddress,quint16(prefs.audioLANPort),this->rxSetup, this->txSetup);
+    rtpThread = new QThread(this);
+    rtpThread->setObjectName("RTP()");
+    rtp->moveToThread(rtpThread);
+    connect(this, SIGNAL(initRtpAudio()), rtp, SLOT(init()));
+    connect(rtpThread, SIGNAL(finished()), rtp, SLOT(deleteLater()));
+
+
+    connect(this, SIGNAL(haveChangeLatency(quint16)), rtp, SLOT(changeLatency(quint16)));
+    connect(this, SIGNAL(haveSetVolume(quint8)), rtp, SLOT(setVolume(quint8)));
+    // Audio from UDP
+    connect(rtp, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+    QObject::connect(rtp, SIGNAL(haveRxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, quint16, bool, bool)));
+    QObject::connect(rtp, SIGNAL(haveTxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, quint16, bool, bool)));
+
 
     loginRequired = true;
     // Run setup common to all rig types
@@ -389,7 +417,7 @@ void kenwoodCommander::parseData(QByteArray data)
         {
             for (auto &r: rigCaps.inputs)
             {
-                if (r.reg == (d.at(0) - NUMTOASCII))
+                if (r.reg == d.toInt())
                 {
                     value.setValue(r);
                     break;
@@ -455,9 +483,14 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcOverflowStatus:
             value.setValue<bool>(d.at(0) - NUMTOASCII);
             break;
+        case funcAfGain:
+            if (rtp == Q_NULLPTR)
+            {
+                value.setValue<uchar>(d.toUShort());
+            }
+            break;
         case funcAGCTimeConstant:
         case funcMemorySelect:
-        case funcAfGain:
         case funcRfGain:
         case funcRFPower:
         case funcSquelch:
@@ -540,15 +573,13 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcConnectionRequest:
             qInfo() << "Received connection request command";
             // Send login
-            // First set a queue interval before adding command.
-            //queue->interval(25);
             queue->add(priorityImmediate,queueItem(funcLogin,QVariant::fromValue(prefs),false,0));
             break;
         case funcLogin:
-            loginRequired=false;
             if (d.at(0) - NUMTOASCII == 0) {
                 emit havePortError(errorType(true, prefs.ipAddress, "Invalid Username/Password"));
             }
+            loginRequired=false;
             qInfo() << "Received login reply with command:" <<funcString[func] << "original" << data;
             break;
         case funcScopeRange:
@@ -644,6 +675,11 @@ void kenwoodCommander::parseData(QByteArray data)
             break;
         case funcCWDecode:
             value.setValue<QString>(d);
+        case funcVOIP:
+            if (d.toInt() && !rtpThread->isRunning()) {
+                rtpThread->start(QThread::TimeCriticalPriority);
+                emit initRtpAudio();
+            }
         case funcFA:
             qInfo(logRig()) << "Error received from rig. Last command:" << lastSentCommand << "data:" << d;
             break;
@@ -1201,6 +1237,12 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
         val = INT_MIN;
     }
 
+    if (func == funcAfGain && value.isValid() && rtp != Q_NULLPTR) {
+        // Ignore the AF Gain command, just queue it for processing
+        emit haveSetVolume(static_cast<uchar>(value.toInt()));
+        queue->receiveValue(func,value,false);
+        return;
+    }
     if (value.isValid() && (func == funcRitFreq || func == funcXitFreq))
     {
         // There is no command to directly set the RIT, only up or down commands.
@@ -1232,15 +1274,14 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
     {
         if (value.value<bool>())
         {
-            // Are we in data mode?
-            value.setValue<uchar>(queue->getCache(funcDataMode).value.value<modeInfo>().data);
             func = funcSetTransmit;
         }
         else
         {
-            value.clear();
             func = funcSetReceive;
         }
+
+        value.clear();
     }
 
     //qInfo() << "requested command:" << funcString[func];
@@ -1323,6 +1364,10 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             else if(!strcmp(value.typeName(),"bool") || !strcmp(value.typeName(),"uchar"))
             {
                 // This is a simple number
+                if (func == funcVOIP) {
+                    qInfo(logRig()) << "Sending VOIP command:" << value.value<uchar>();
+                    // We have logged-in so start audio
+                }
                 payload.append(QString::number(value.value<uchar>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
             }
             else if(!strcmp(value.typeName(),"uint"))
@@ -1340,6 +1385,7 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             else if(!strcmp(value.typeName(),"udpPreferences"))
             {
                 udpPreferences p = value.value<udpPreferences>();
+                qInfo(logRig()) << "Sending login for user:" << p.username;
                 payload.append(QString("%0%1%2%3%4").arg("1")
                     .arg(QString::number(p.username.length()).rightJustified(2, QChar('0')))
                     .arg(QString::number(p.password.length()).rightJustified(2, QChar('0')))
@@ -1387,7 +1433,7 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             }
             else if(!strcmp(value.typeName(),"rigInput"))
             {
-                payload.append(QString::number(value.value<rigInput>().reg).toLatin1());
+                payload.append(QString::number(value.value<rigInput>().reg).rightJustified(cmd.bytes,'0').toLatin1());
             }
             else if (!strcmp(value.typeName(),"memoryType")) {
 
@@ -1584,3 +1630,70 @@ void kenwoodCommander::serialPortError(QSerialPort::SerialPortError err)
     }
 }
 
+
+void kenwoodCommander::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16 latency,quint16 current, bool under, bool over) {
+    status.rxAudioLevel = amplitudePeak;
+    status.rxLatency = latency;
+    status.rxCurrentLatency =   qint32(current);
+    status.rxUnderrun = under;
+    status.rxOverrun = over;
+    audioLevelsRxPeak[(audioLevelsRxPosition)%audioLevelBufferSize] = amplitudePeak;
+    audioLevelsRxRMS[(audioLevelsRxPosition)%audioLevelBufferSize] = amplitudeRMS;
+
+    if((audioLevelsRxPosition)%4 == 0)
+    {
+        // calculate mean and emit signal
+        quint8 meanPeak = findMax(audioLevelsRxPeak);
+        quint8 meanRMS = findMean(audioLevelsRxRMS);
+        networkAudioLevels l;
+        l.haveRxLevels = true;
+        l.rxAudioPeak = meanPeak;
+        l.rxAudioRMS = meanRMS;
+        emit haveNetworkAudioLevels(l);
+    }
+    audioLevelsRxPosition++;
+}
+
+void kenwoodCommander::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,quint16 latency, quint16 current, bool under, bool over) {
+    status.txAudioLevel = amplitudePeak;
+    status.txLatency = latency;
+    status.txCurrentLatency = qint32(current);
+    status.txUnderrun = under;
+    status.txOverrun = over;
+    audioLevelsTxPeak[(audioLevelsTxPosition)%audioLevelBufferSize] = amplitudePeak;
+    audioLevelsTxRMS[(audioLevelsTxPosition)%audioLevelBufferSize] = amplitudeRMS;
+
+    if((audioLevelsTxPosition)%4 == 0)
+    {
+        // calculate mean and emit signal
+        quint8 meanPeak = findMax(audioLevelsTxPeak);
+        quint8 meanRMS = findMean(audioLevelsTxRMS);
+        networkAudioLevels l;
+        l.haveTxLevels = true;
+        l.txAudioPeak = meanPeak;
+        l.txAudioRMS = meanRMS;
+        emit haveNetworkAudioLevels(l);
+    }
+    audioLevelsTxPosition++;
+}
+
+quint8 kenwoodCommander::findMean(quint8 *data)
+{
+    unsigned int sum=0;
+    for(int p=0; p < audioLevelBufferSize; p++)
+    {
+        sum += data[p];
+    }
+    return sum / audioLevelBufferSize;
+}
+
+quint8 kenwoodCommander::findMax(quint8 *data)
+{
+    unsigned int max=0;
+    for(int p=0; p < audioLevelBufferSize; p++)
+    {
+        if(data[p] > max)
+            max = data[p];
+    }
+    return max;
+}

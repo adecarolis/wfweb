@@ -21,7 +21,6 @@ rigCreator::rigCreator(QWidget *parent) :
     ui->commands->setItemDelegateForColumn(0, commandsList);
 
     priorityModel = new QStandardItemModel();
-
     for (const auto &key: priorityMap.keys())
     {
         QStandardItem *itemName = new QStandardItem(key);

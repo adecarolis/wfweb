@@ -3028,6 +3028,8 @@ void wfmain::extChangedUdpPref(prefUDPItem i)
         break;
     case u_audioOutput:
         break;
+    case u_connectionType:
+        break;
     default:
         qWarning(logGui()) << "Did not find matching pref element in wfmain for UDP pref item " << (int)i;
         break;
@@ -3651,8 +3653,13 @@ void wfmain:: getInitialRigState()
     }
 
     cw->receiveEnabled(rigCaps->commands.contains(funcCWDecode));
-}
 
+    if (rigCaps->commands.contains(funcVOIP))
+    {
+        queue->add(priorityHigh,queueItem(funcVOIP,QVariant::fromValue<uchar>(prefs.rxSetup.sampleRate==8000?2:1),false,0));
+
+    }
+}
 void wfmain::showStatusBarText(QString text)
 {
     ui->statusBar->showMessage(text, 5000);
@@ -4100,14 +4107,12 @@ void wfmain::on_afGainSlider_valueChanged(int value)
 {
     if(usingLAN)
     {
+        // Remember current setting.
         prefs.rxSetup.localAFgain = (quint8)(value);
         prefs.localAFgain = (quint8)(value);
-        emit setAfGain(value);
-        // Fake the queue into thinking it has received a value for AfGain.
-        queue->receiveValue(funcAfGain,quint8(value),currentReceiver);
-    } else {
-        queue->addUnique(priorityImmediate,queueItem(funcAfGain,QVariant::fromValue<ushort>(value),currentReceiver));
     }
+
+    queue->addUnique(priorityImmediate,queueItem(funcAfGain,QVariant::fromValue<ushort>(value),currentReceiver));
 }
 
 void wfmain::on_monitorSlider_valueChanged(int value)
