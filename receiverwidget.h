@@ -58,11 +58,11 @@ public:
     double getPassbandWidth() { configFilterWidth->setValue(passbandWidth*1E6); return passbandWidth;}
 
     void setIdentity(QString name) {this->setTitle(name);}
-    bool getReceiver() { return receiver;}
+    uchar getReceiver() { return receiver;}
 
     void setTuningFloorZeros(bool tf) {this->tuningFloorZeros = tf;}
     void setClickDragTuning(bool cg) { this->clickDragTuning = cg;}
-    void setSatMode(bool sm) { this->satMode = sm;}
+    void setSatMode(bool sm) { this->satMode = sm; satelliteButton->blockSignals(true); satelliteButton->setChecked(sm); satelliteButton->blockSignals(false); }
 
     void setScrollSpeedXY(int clicksX, int clicksY) { this->scrollXperClick = clicksX; this->scrollYperClick = clicksY;}
 
@@ -96,7 +96,7 @@ public:
     void setSpeed(uchar s);
     void setSpan(centerSpanData s);
     void setScopeMode(spectrumMode_t m);
-    void setSplit(bool en) { splitButton->setChecked(en); }
+    void setSplit(bool en) { splitButton->blockSignals(true);splitButton->setChecked(en); splitButton->blockSignals(false);}
     void setTracking(bool en) { tracking=en; }
     void setRef(int ref);
     void setRefLimits(int lower, int upper);
@@ -193,6 +193,9 @@ private:
     QSpacerItem* displayCSpacer;
     QPushButton* vfoSwapButton;
     QPushButton* vfoEqualsButton;
+    QPushButton* vfoMemoryButton;
+    QPushButton* satelliteButton;
+    QSpacerItem* displayMSpacer;
     QPushButton* splitButton;
     QSpacerItem* displayRSpacer;
     QGroupBox* group;

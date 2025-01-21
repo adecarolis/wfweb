@@ -241,7 +241,7 @@ vfoCommandType cachingQueue::getVfoCommand(vfo_t vfo,uchar rx, bool set)
                     cmd.freqFunc = ((rigCaps->commands.contains(funcUnselectedFreq)) ? funcUnselectedFreq: cmd.freqFunc);
                 }
             }
-            else if (rx && rigState.receiver)
+            else if (rx == rigState.receiver)
             {
                 // Requesting receiver is current
                 cmd.receiver = 0;
@@ -366,25 +366,6 @@ void cachingQueue::updateCache(bool reply, queueItem item)
     // We need to make sure that all "main" frequencies/modes are updated.
     if (reply)
     {
-        if (item.command == funcFreqTR)
-        {
-            if (rigCaps->commands.contains(funcFreq))
-                item.command = funcFreq;
-            else if (rigCaps->commands.contains(funcSelectedFreq))
-                item.command = funcSelectedFreq;
-            else
-                item.command = funcFreqGet;
-        }
-        else if (item.command == funcModeTR)
-        {
-            if (rigCaps->commands.contains(funcMode))
-                item.command = funcMode;
-            else if (rigCaps->commands.contains(funcSelectedMode))
-                item.command = funcSelectedMode;
-            else
-                item.command = funcModeGet;
-        }
-
         // Is this a command that might have updated our state?
         if (item.command == funcSatelliteMode && item.param.value<bool>())
             rigState.vfoMode=vfoModeType_t::vfoModeSat;
@@ -392,7 +373,7 @@ void cachingQueue::updateCache(bool reply, queueItem item)
             rigState.vfoMode=vfoModeType_t::vfoModeMem;
         if (item.command == funcVFOMode && item.param.value<bool>())
             rigState.vfoMode=vfoModeType_t::vfoModeVfo;
-        if (item.command == funcScopeMainSub)
+        if (item.command == funcVFOBandMS)
             rigState.receiver = item.param.value<uchar>();
     } else {
         // If we are requesting a particular VFO, set our state as the rig will not reply
@@ -404,6 +385,7 @@ void cachingQueue::updateCache(bool reply, queueItem item)
             rigState.vfo = vfo_t::vfoB;
         } else if (item.command == funcVFOMainSelect) {
             rigState.vfo = vfo_t::vfoMain;
+            rigState.receiver=0;
         } else if (item.command == funcVFOSubSelect && rigCaps->numReceiver > 1) {
             rigState.vfo = vfo_t::vfoSub;
             rigState.receiver=1;
@@ -420,20 +402,6 @@ void cachingQueue::updateCache(bool reply, queueItem item)
             }
             // If we are sending an actual value, update the cache with it
             // Value will be replaced if invalid on next get()
-
-            // Special case for datamode
-            if (item.param.isValid() && !strcmp(item.param.typeName(),"modeInfo")) {
-                modeInfo a = item.param.value<modeInfo>();
-                modeInfo b = cv.value().value.value<modeInfo>();
-                if (a.mk == modeUnknown)
-                    a.mk = b.mk;
-                if (a.data == 0xff)
-                    a.data = b.data;
-                if (a.filter == 0xff)
-                    a.filter = b.filter;
-                item.param.clear();
-                item.param = QVariant::fromValue<modeInfo>(a);
-            }
 
             if (compare(item.param,cv.value().value))
             {

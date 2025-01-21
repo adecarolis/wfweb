@@ -66,6 +66,25 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
         queue->add(priorityHighest,t.freqFunc,false,t.receiver);
     });
 
+    vfoMemoryButton=new QPushButton(tr("V/M"),this);
+    vfoMemoryButton->setHidden(true);
+    vfoMemoryButton->setCheckable(true);
+    vfoMemoryButton->setFocusPolicy(Qt::NoFocus);
+    connect(vfoMemoryButton, &QPushButton::clicked, this, [=](bool en) {
+        if (en)
+            queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(vfoA),false,0));
+        else
+            queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<uchar>(vfoMem),false,0));
+    });
+
+    satelliteButton=new QPushButton(tr("SAT"),this);
+    satelliteButton->setHidden(true);
+    satelliteButton->setCheckable(true);
+    satelliteButton->setFocusPolicy(Qt::NoFocus);
+    connect(satelliteButton, &QPushButton::clicked, this, [=](bool en) {
+        queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue<bool>(en),false,0));
+    });
+
     splitButton=new QPushButton(tr("SPLIT"),this);
     splitButton->setHidden(true);
     splitButton->setFocusPolicy(Qt::NoFocus);
@@ -103,6 +122,16 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
                         vfoEqualsButton->setHidden(false);
                         displayLayout->addWidget(vfoEqualsButton);
                     }
+                    if(rigCaps->commands.contains(funcMemoryMode)) {
+                        vfoMemoryButton->setHidden(false);
+                        displayLayout->addWidget(vfoMemoryButton);
+                    }
+                    if(rigCaps->commands.contains(funcSatelliteMode)) {
+                        satelliteButton->setHidden(false);
+                        displayLayout->addWidget(satelliteButton);
+                    }
+                    displayMSpacer = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
+                    displayLayout->addSpacerItem(displayMSpacer);
                     if (rigCaps->commands.contains(funcSplitStatus)) {
                         splitButton->setHidden(false);
                         displayLayout->addWidget(splitButton);
@@ -116,7 +145,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
             fr->setMaximumSize(180,20);
             if (!rigCaps->hasCommand29 && receiver == 1)
             {
-                fr->setEnabled(false);
+                fr->setVisible(false);
             }
             displayLayout->addWidget(fr);
         }
@@ -777,6 +806,8 @@ void receiverWidget::colorPreset(colorPrefsType *cp)
     holdButton->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border:1px solid;}")
                                   .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
     splitButton->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border:1px solid;}")
+                                   .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
+    satelliteButton->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border:1px solid;}")
                                    .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
     vfoSelectButton->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border:1px solid;}")
                                    .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
@@ -1676,8 +1707,10 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
 {
     // Update mode information if mode/filter/data has changed.
     // Not all rigs send data so this "might" need to be updated independantly?
-    if (vfo > 0 && m.mk != modeUnknown) {
-        unselectedMode=m;
+
+    if (vfo > 0) {
+        if (m.mk != modeUnknown)
+            unselectedMode=m;
         return;
     }
 
@@ -1689,7 +1722,7 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
         mode.filter=m.filter;
     }
 
-    if (m.data != 0xff && this->mode.data != m.data && m.data)
+    if (m.data != 0xff && this->mode.data != m.data)
     {
         emit dataChanged(m); // Signal wfmain that the data mode has been changed.
         dataCombo->blockSignals(true);
@@ -1698,7 +1731,7 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
         mode.data=m.data;
     }
 
-    if (m.mk != modeUnknown && m.mk != mode.mk) {
+    if (m.mk != modeUnknown && mode.mk != m.mk) {
         qInfo(logSystem()) << __func__ << QString("Received new mode for %0: %1 (%2) filter:%3 data:%4")
         .arg((receiver?"Sub":"Main")).arg(QString::number(m.mk,16)).arg(m.name).arg(m.filter).arg(m.data) ;
 
@@ -1889,10 +1922,18 @@ void receiverWidget::receivePassband(quint16 pass)
 void receiverWidget::selected(bool en)
 {
     isActive = en;
-    if (en) {
+    if (en)
+    {
         this->setStyleSheet("QGroupBox { border:1px solid red;}");
-    } else {
+    }
+    else
+    {
         this->setStyleSheet(defaultStyleSheet);
+    }
+
+    if (!rigCaps->hasCommand29)
+    {
+        this->setEnabled(en);
     }
 
 }

@@ -10,20 +10,7 @@ rtpAudio::rtpAudio(QString ip, quint16 port, audioSetup rxSetup, audioSetup txSe
     if (txSetup.sampleRate == 0) {
         enableTx = false;
     } else {
-        QHostInfo remote = QHostInfo::fromName(ip);
-        for(const auto &addr: remote.addresses())
-        {
-            if (addr.protocol() == QAbstractSocket::IPv4Protocol) {
-                this->ip = addr;
-                qInfo(logUdp()) << "Got IP Address :" << ip << ": " << this->ip.toString();
-                break;
-            }
-        }
-        if (this->ip.isNull())
-        {
-            qInfo(logUdp()) << "Error obtaining IP Address for :" << ip << ": " << remote.errorString();
-            return;
-        }
+        this->ip = QHostAddress(ip);
     }
 }
 
@@ -139,10 +126,10 @@ void rtpAudio::init()
     }
 
     emit setupRxAudio(rxSetup);
-    //timer.start();
+    timer.start();
 
-    //debugFile.setFileName(QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0]+"/audiodata.bin");
-    //debugFile.open(QFile::OpenModeFlag::WriteOnly);
+    debugFile.setFileName(QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0]+"/audiodata.bin");
+    debugFile.open(QFile::OpenModeFlag::WriteOnly);
 
 }
 
@@ -170,7 +157,7 @@ void rtpAudio::dataReceived()
             packetCount=0;
             size=0;
         }
-        //debugFile.write(tempAudio.data);
+        debugFile.write(tempAudio.data);
     }
 }
 

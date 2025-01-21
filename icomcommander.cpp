@@ -714,6 +714,14 @@ void icomCommander::parseCommand()
         return;
     }
 
+    // If this is a non-command29 radio, and command is not selected/unselected, then get the current receiver from cache.
+    // non-command29 radios only provide selected/unselected on the main band.
+    if (!rigCaps.hasCommand29 && func != funcSelectedFreq && func != funcSelectedMode && func != funcUnselectedFreq && func != funcUnselectedMode )
+    {
+        receiver = queue->getState().receiver;
+    }
+
+
     freqt test;
     QVector<memParserFormat> memParser;
     QVariant value;
@@ -735,12 +743,23 @@ void icomCommander::parseCommand()
     case funcFreqTR:
     case funcTXFreq:
     {
-        if (func == funcUnselectedFreq)
+        if (func == funcFreqTR || func == funcFreqGet)
+        {
+            if (rigCaps.commands.contains(funcFreq))
+                func = funcFreq;
+            else if (rigCaps.commands.contains(funcSelectedFreq))
+                func = funcSelectedFreq;
+            else
+                func = funcFreqGet;
+        }
+        else if (func == funcUnselectedFreq)
+        {
             vfo = 1;
+        }
 
         value.setValue(parseFreqData(payloadIn,vfo));
-        //qInfo(logRig()) << funcString[func] << "len:" << payloadIn.size() << "receiver=" << receiver << "vfo=" << vfo <<
-        //    "value:" << value.value<freqt>().Hz << "data:" << payloadIn.toHex(' ');
+        qDebug(logRig()) << funcString[func] << "len:" << payloadIn.size() << "receiver=" << receiver << "vfo=" << vfo <<
+            "value:" << value.value<freqt>().Hz << "data:" << payloadIn.toHex(' ');
 
         break;
     }
@@ -751,24 +770,54 @@ void icomCommander::parseCommand()
     case funcModeTR:
     case funcSelectedMode:
     case funcUnselectedMode:
+    case funcDataModeWithFilter:
     {
-        if (func == funcUnselectedMode)
+        funcs origFunc = func;
+        // First we need to work out what command we want to actually use
+        if (func == funcModeTR || func == funcModeGet || func == funcDataModeWithFilter)
+        {
+            if (rigCaps.commands.contains(funcMode))
+                func = funcMode;
+            else if (rigCaps.commands.contains(funcSelectedMode))
+                func = funcSelectedMode;
+            else
+                func = funcModeGet;
+        } else if (func == funcUnselectedMode)
+        {
             vfo = 1;
+        }
 
         modeInfo mi;
-        // This should handle the different formats that we could receive.
-        if (payloadIn.size())
-            mi.reg = bcdHexToUChar(payloadIn.at(0));
-        if (payloadIn.size()==2)
-            mi.filter = payloadIn.at(1);
-        if (payloadIn.size()==3) {
-            mi.data = payloadIn.at(1);
-            mi.filter = payloadIn.at(2);
+
+        // then get the current cached value
+        cacheItem ci = queue->getCache(func,receiver);
+        if (ci.value.isValid()) {
+            mi = queue->getCache(func,receiver).value.value<modeInfo>();
         }
+
+        // then parse the data
+        if (origFunc == funcDataModeWithFilter)
+        {
+            // Old format payload with datamode+filter
+            mi.filter = bcdHexToUChar(payloadIn.at(1));
+            mi.data = bcdHexToUChar(payloadIn.at(0));
+        }
+        else
+        {
+            if (payloadIn.size())
+                mi.reg = bcdHexToUChar(payloadIn.at(0));
+            if (payloadIn.size()==2)
+                mi.filter = payloadIn.at(1);
+            if (payloadIn.size()==3) {
+                mi.data = payloadIn.at(1);
+                mi.filter = payloadIn.at(2);
+            }
+        }
+
         mi = parseMode(mi.reg, mi.data,mi.filter,receiver,vfo);
         mi.VFO = selVFO_t(receiver);
         value.setValue(mi);
-        //qInfo() << "Received mode rx:" << receiver << "vfo:" << vfo << "name:"<<  mi.name << "data:" << mi.data << "filter:" << mi.filter << payloadIn.toHex(' ');
+        qInfo() << funcString[func] << "rx:" << receiver << "vfo:" << vfo << "name:"<<  mi.name << "data:" << mi.data << "filter:" << mi.filter << payloadIn.toHex(' ');
         break;
     }
 
@@ -1070,15 +1119,6 @@ void icomCommander::parseCommand()
         }
         value.setValue(calc);
         //qInfo() << "Got filter width" << calc << "VFO" << receiver;
-        break;
-    }
-    case funcDataModeWithFilter:
-    {
-        modeInfo m;
-        // Old format payload with datamode+filter
-        m = parseMode(0xff, bcdHexToUChar(payloadIn.at(0)),bcdHexToUChar(payloadIn.at(1)),receiver,vfo);
-        m.VFO = selVFO_t(receiver & 0x01);
-        value.setValue(m);
         break;
     }
     case funcAFMute:
@@ -2250,6 +2290,7 @@ modeInfo icomCommander::parseMode(uchar mode, uchar data, uchar filter, uchar re
     bool found=false;
     if (mode == 0xff)
     {
+        // Get cached mode
         mi.reg=mode;
         mi.mk=modeUnknown;
         mi.filter=filter;
@@ -2262,7 +2303,7 @@ modeInfo icomCommander::parseMode(uchar mode, uchar data, uchar filter, uchar re
         {
             if (m.reg == mode)
             {
-                mi = modeInfo(m);
+                mi = m;
                 mi.filter = filter;
                 mi.data = data;
                 found = true;

@@ -3587,16 +3587,16 @@ void wfmain:: getInitialRigState()
         queue->add(priorityImmediate,queueItem(funcAutoInformation,QVariant::fromValue(uchar(2)),false,0));
 
     if (prefs.forceVfoMode) {
-        if (rigCaps->commands.contains(funcSatelliteMode))
-            queue->add(priorityImmediate,funcSatelliteMode,false,0); // are we in satellite mode?.
+        queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(vfoA)));
+        //if (rigCaps->commands.contains(funcSatelliteMode))
+        //    queue->add(priorityImmediate,funcSatelliteMode,false,0); // are we in satellite mode?.
 
-        if (rigCaps->commands.contains(funcVFOModeSelect))
-            queue->add(priorityImmediate,funcVFOModeSelect); // Make sure we are in VFO mode.
+        //if (rigCaps->commands.contains(funcVFOModeSelect))
+        //    queue->add(priorityImmediate,funcVFOModeSelect); // Make sure we are in VFO mode.
 
-        if (rigCaps->commands.contains(funcScopeMainSub))
-            queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(uchar(0)),false,0)); // Set main scope
+        //if (rigCaps->commands.contains(funcScopeMainSub))
+        //    queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(uchar(0)),false,0)); // Set main scope
 
-        queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue(uchar(0)),false,0)); // Set primary VFO
     }
     //if (rigCaps->commands.contains(funcVFOBandMS))
     //    queue->add(priorityImmediate,queueItem(funcVFOBandMS,QVariant::fromValue(uchar(0)),false,0));
@@ -5337,6 +5337,8 @@ void wfmain::receiveValue(cacheItem val){
      * work on this receiver only.
      *
      */
+
+    /*
     if (!rigCaps->hasCommand29 && val.receiver != currentReceiver)
     {
         switch (val.command) {
@@ -5348,6 +5350,7 @@ void wfmain::receiveValue(cacheItem val){
             break;
         }
     }
+    */
 
     switch (val.command)
     {
@@ -5398,30 +5401,65 @@ void wfmain::receiveValue(cacheItem val){
     case funcModeGet:
     case funcModeTR:
         // These commands don't include filter, so queue an immediate request for filter
-        queue->addUnique(priorityImmediate,funcDataModeWithFilter,false,0);
+        queue->addUnique(priorityImmediate,funcDataModeWithFilter,false,0);        
+    case funcDataModeWithFilter:
     case funcUnselectedMode:
         if (val.command == funcUnselectedMode)
             vfo=1;
     case funcDataMode:
-    case funcIFFilter:
     case funcSelectedMode:
     case funcMode:
-        receivers[val.receiver]->receiveMode(val.value.value<modeInfo>(),vfo);
+    {
+        modeInfo m = val.value.value<modeInfo>();
+        receivers[val.receiver]->receiveMode(m,vfo);
         // We are ONLY interested in VFOA
         if (val.receiver == currentReceiver && vfo == 0) {
-            finputbtns->updateCurrentMode(val.value.value<modeInfo>().mk);
-            finputbtns->updateFilterSelection(val.value.value<modeInfo>().filter);
-            rpt->handleUpdateCurrentMainMode(val.value.value<modeInfo>());
+            finputbtns->updateCurrentMode(m.mk);
+            finputbtns->updateFilterSelection(m.filter);
+            rpt->handleUpdateCurrentMainMode(m);
             if (cw != Q_NULLPTR) {
-                cw->handleCurrentModeUpdate(val.value.value<modeInfo>().mk);
+                cw->handleCurrentModeUpdate(m.mk);
             }
         }
+        qDebug() << funcString[val.command] << "receiver:" << val.receiver << "vfo:" << vfo << "mk:" << m.mk << "name:" << m.name << "data:" << m.data << "filter:" << m.filter;
+
         break;
+    }
 #if defined __GNUC__
 #pragma GCC diagnostic pop
 #endif
     case funcVFOBandMS:
+    {
+        // This indicates whether main or sub is currently "active"
+        // Swap recievers if necessary.
+        uchar rx = val.value.value<uchar>();
+        if (rx < receivers.size() && !receivers[rx]->isSelected())
+        {
+            // VFO has swapped, make sure scope follows if we only have a single scope.
+            if (!rigCaps->hasCommand29)
+                queue->add(priorityImmediate,queueItem(funcScopeMainSub,val.value,false,0));
+
+            for (const auto &r: receivers)
+            {
+                if (r->getReceiver() == rx)
+                {
+                    if (!r->isVisible()) {
+                        r->show();
+                    }
+                    r->selected(true);
+                    currentReceiver = rx;
+                }
+                else
+                {
+                    r->selected(false);
+                    if (!ui->scopeDualBtn->isChecked()) {
+                        r->hide();
+                    }
+                }
+            }
+        }
         break;
+    }
     case funcSatelliteMode:
         // If satellite mode is enabled, disable mode/freq query commands.
         for (auto r: receivers){
@@ -5662,6 +5700,7 @@ void wfmain::receiveValue(cacheItem val){
     case funcSSBTXBandwidth:
         break;
     case funcMainSubTracking:
+
         //ui->mainSubTrackingBtn->setChecked(val.value.value<bool>());
         //for (const auto& receiver:receivers)
         //{
@@ -5709,12 +5748,6 @@ void wfmain::receiveValue(cacheItem val){
     }
     case funcFilterWidth:
         receivers[val.receiver]->receivePassband(val.value.value<ushort>());
-        break;
-    case funcDataModeWithFilter:
-        receivers[val.receiver]->receiveMode(val.value.value<modeInfo>());
-
-        // Set the inputSource to invalid to ensure it gets updated
-        prefs.inputSource[receivers[0]->getDataMode()] = rigInput();
         break;
 
     case funcAFMute:
@@ -5936,7 +5969,6 @@ void wfmain::on_showSettingsBtn_clicked()
 
 void wfmain::on_scopeMainSubBtn_clicked()
 {
-    queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue<uchar>(currentReceiver==0),false,0));
     if (rigCaps->commands.contains(funcVFOBandMS)) {
         queue->add(priorityImmediate,queueItem(funcVFOBandMS,QVariant::fromValue<uchar>(currentReceiver==0),false,0));
     }

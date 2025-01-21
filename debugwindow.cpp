@@ -66,7 +66,27 @@ void debugWindow::getCache()
     }
     if (ui->cacheView->rowCount() > c)
         ui->cacheView->model()->removeRows(c,ui->cacheView->rowCount());
+
     queue->unlockMutex();
+
+    rigStateType state = queue->getState();
+    QString vfoMode;
+
+    switch (state.vfoMode)
+    {
+    case vfoModeVfo:
+        vfoMode = "VFO";
+        break;
+    case vfoModeMem:
+        vfoMode = "MEM";
+        break;
+    case vfoModeSat:
+        vfoMode = "SAT";
+        break;
+    }
+    ui->vfo->setText(QString::number(state.vfo));
+    ui->vfomode->setText(vfoMode);
+    ui->receiver->setText(QString::number(state.receiver));
 }
 
 void debugWindow::getQueue()

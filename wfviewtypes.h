@@ -154,6 +154,18 @@ struct modeInfo {
     int bwMin;
     int bwMax;
     int pass;
+    modeInfo &operator=(const modeInfo &i) {
+        this->mk=i.mk;
+        this->reg=i.reg;
+        this->filter=i.filter;
+        this->VFO=i.VFO;
+        this->data=i.data;
+        this->name=i.name;
+        this->bwMin=i.bwMin;
+        this->bwMax=i.bwMax;
+        this->pass=i.pass;
+        return *this;
+    }
 };
 
 struct rigInfo {
