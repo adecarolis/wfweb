@@ -143,6 +143,8 @@ struct rptrAccessData {
 };
 
 struct modeInfo {
+
+    modeInfo(const modeInfo&) {};
     modeInfo ():mk(modeUnknown), reg(0xff), filter(0xff),VFO(activeVFO), data(0xff), name(""), bwMin(0), bwMax(0), pass(0) {};
     modeInfo(rigMode_t mk, quint8 reg, QString name, int bwMin, int bwMax): mk(mk), reg(reg), filter(0xff), VFO(activeVFO), data(0xff), name(name),bwMin(bwMin), bwMax(bwMax), pass(0) {};
     rigMode_t mk;
@@ -169,12 +171,20 @@ struct modeInfo {
 };
 
 struct rigInfo {
+    rigInfo (const rigInfo&) {};
     rigInfo (): civ(0), model(""), path(""),version(0.0) {};
     rigInfo (uchar civ, QString model, QString path, float version): civ(civ), model(model), path(path), version(version) {};
     uchar civ;
     QString model;
     QString path;
     float version;
+    rigInfo &operator=(const rigInfo &r) {
+        this->civ=r.civ;
+        this->model=r.model;
+        this->path=r.path;
+        this->version=r.version;
+        return *this;
+    }
 };
 
 struct antennaInfo {
@@ -194,7 +204,7 @@ struct scopeData {
 
 struct toneInfo {
     toneInfo ():tone(0), name(""), tinv(false),rinv(false),useSecondaryVFO(false) {};
-    toneInfo (toneInfo const &t): tone(t.tone), name(t.name), tinv(t.tinv), rinv(t.rinv), useSecondaryVFO(t.useSecondaryVFO) {};
+    toneInfo (const toneInfo&) {};
     toneInfo (short tone): tone(tone), name(""), tinv(false),rinv(false),useSecondaryVFO(false) {};
     toneInfo (short tone, QString name): tone(tone), name(name), tinv(false),rinv(false),useSecondaryVFO(false) {};
     toneInfo (short tone, QString name, bool tinv, bool rinv, bool useSecondaryVFO):tone(tone), name(name), tinv(tinv),rinv(rinv),useSecondaryVFO(useSecondaryVFO) {};
@@ -220,11 +230,18 @@ enum breakIn_t {
 };
 
 struct freqt {
+    freqt (const freqt&) {};
     freqt ():Hz(0), MHzDouble(0.0), VFO(activeVFO) {};
     freqt(quint64 Hz, double MHzDouble, selVFO_t VFO): Hz(Hz), MHzDouble(MHzDouble), VFO(VFO) {};
     quint64 Hz;
     double MHzDouble;
     selVFO_t VFO;
+    freqt &operator=(const freqt &f){
+        this->Hz=f.Hz;
+        this->MHzDouble=f.MHzDouble;
+        this->VFO=f.VFO;
+        return *this;
+    }
 };
 
 struct datekind {

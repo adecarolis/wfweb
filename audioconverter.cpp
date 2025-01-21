@@ -136,14 +136,7 @@ bool audioConverter::convert(audioPacket audio)
         }
         else if (inCodec == PCMA)
         {
-            QByteArray outPacket((int)audio.data.length() * 2, (char)0xff);
-            qint16* out = (qint16*)outPacket.data();
-            for (int f = 0; f < audio.data.length(); f++)
-            {
-                *out++ = alaw_decode((quint8)audio.data[f]);
-            }
-            audio.data.clear();
-            audio.data = outPacket; // Replace incoming data with converted.
+            qWarning() << "alaw not supported";
         }
 
         Eigen::VectorXf samplesF;
