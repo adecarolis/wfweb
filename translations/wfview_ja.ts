@@ -123,7 +123,7 @@ You will see this dialog box the next time you open wfview.</source>
     </message>
     <message>
         <location filename="../firsttimesetup.ui" line="247"/>
-        <location filename="../firsttimesetup.cpp" line="103"/>
+        <location filename="../firsttimesetup.cpp" line="104"/>
         <source>Next</source>
         <translation>次</translation>
     </message>
@@ -175,9 +175,9 @@ You will see this dialog box the next time you open wfview.</source>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:&apos;Noto Sans&apos;; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Detailed text here&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation></translation>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:&apos;Ubuntu&apos;; font-size:10pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:&apos;Noto Sans&apos;; font-size:9pt;&quot;&gt;Detailed text here&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../aboutbox.ui" line="69"/>
@@ -372,7 +372,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../bandbuttons.ui" line="554"/>
         <source>WFM</source>
-        <translation></translation>
+        <translation>ワイドFM</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="557"/>
@@ -382,7 +382,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../bandbuttons.ui" line="579"/>
         <source>Air</source>
-        <translation></translation>
+        <translation>航空無線</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="582"/>
@@ -392,7 +392,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../bandbuttons.ui" line="604"/>
         <source>Gen</source>
-        <translation></translation>
+        <translation>ジェネカバ</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="607"/>
@@ -402,7 +402,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../bandbuttons.ui" line="625"/>
         <source>Segment</source>
-        <translation></translation>
+        <translation>区分</translation>
     </message>
     <message>
         <location filename="../bandbuttons.ui" line="631"/>
@@ -445,7 +445,17 @@ p, li { white-space: pre-wrap; }
         <translation></translation>
     </message>
     <message>
-        <location filename="../bandbuttons.ui" line="707"/>
+        <location filename="../bandbuttons.ui" line="694"/>
+        <source>Use this button to set the current bandstack register frequency/mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bandbuttons.ui" line="697"/>
+        <source>Set to current freq/mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bandbuttons.ui" line="717"/>
         <source>Work on Sub Band</source>
         <translation>サブバンド</translation>
     </message>
@@ -674,92 +684,122 @@ p, li { white-space: pre-wrap; }
         <translation>CWの送信記録</translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="210"/>
+        <location filename="../cwsender.ui" line="211"/>
         <source>Stop sending CW</source>
         <translation>送信を停止します。</translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="216"/>
+        <location filename="../cwsender.ui" line="217"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="223"/>
+        <location filename="../cwsender.ui" line="224"/>
         <source>Local Sidetone Level</source>
         <translation>サイドトーンの音量</translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="240"/>
+        <location filename="../cwsender.ui" line="231"/>
+        <source>Local sidetone generator volume</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../cwsender.ui" line="244"/>
+        <source>Enable local sidetone generator</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../cwsender.ui" line="247"/>
         <source>Enable</source>
         <translation>有効</translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="274"/>
+        <location filename="../cwsender.ui" line="282"/>
         <source>Send</source>
         <translation>送信</translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="277"/>
+        <location filename="../cwsender.ui" line="285"/>
         <source>Return</source>
         <translation>戻る</translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="293"/>
+        <location filename="../cwsender.ui" line="301"/>
         <source>Type here to send text as CW</source>
         <translation>送信する文字は、ここに入力します</translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="327"/>
+        <location filename="../cwsender.ui" line="335"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the desired break-in mode:&lt;/p&gt;&lt;p&gt;1. None: You must manually key and unkey the radio.&lt;/p&gt;&lt;p&gt;2. Semi: Transmit is automatic and switches to receive at the end of the text.&lt;/p&gt;&lt;p&gt;3. Full: Same as semi, but with breaks between characters when possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;ブレークインモードを設定します。&lt;/p&gt;&lt;p&gt;1. Off：無線のキーを手動で入力およびキー解除する必要があります。&lt;/p&gt;&lt;p&gt;2. Semi：送信は自動的に行われ、送信文が終わると受信に切り替わります。&lt;/p&gt;&lt;p&gt;3. Full:Semi：と同じですが、可能な場合は文字間に休憩を入れます。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="331"/>
+        <location filename="../cwsender.ui" line="339"/>
         <source>Off</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="336"/>
+        <location filename="../cwsender.ui" line="344"/>
         <source>Semi</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="341"/>
+        <location filename="../cwsender.ui" line="349"/>
         <source>Full</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="349"/>
+        <location filename="../cwsender.ui" line="360"/>
         <source>PITCH  (Hz):</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="359"/>
+        <location filename="../cwsender.ui" line="370"/>
         <source>WPM:</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="391"/>
+        <location filename="../cwsender.ui" line="383"/>
+        <source>Sets the pitch</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../cwsender.ui" line="408"/>
         <source>Break In</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="420"/>
+        <location filename="../cwsender.ui" line="421"/>
+        <source>Sets the dash ratio</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../cwsender.ui" line="446"/>
         <source>Dash Ratio</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="433"/>
+        <location filename="../cwsender.ui" line="459"/>
         <source>Set the Words Per Minute</source>
-        <translation></translation>
+        <translation>分当たりの単語数を設定</translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="449"/>
+        <location filename="../cwsender.ui" line="475"/>
+        <source>Replace numbers with short letters, for example 9 becomes N</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../cwsender.ui" line="478"/>
         <source>Cut Num</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../cwsender.ui" line="456"/>
+        <location filename="../cwsender.ui" line="485"/>
+        <source>Send immediately: Don&apos;t wait for enter, send characters as they are typed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../cwsender.ui" line="488"/>
         <source>Send Immed</source>
         <translation>即時送信</translation>
     </message>
@@ -791,79 +831,80 @@ p, li { white-space: pre-wrap; }
         <location filename="../debugwindow.ui" line="72"/>
         <location filename="../debugwindow.ui" line="112"/>
         <source>Function</source>
-        <translation></translation>
+        <translation>機能</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="77"/>
-        <location filename="../debugwindow.ui" line="127"/>
+        <location filename="../debugwindow.ui" line="132"/>
         <source>Value</source>
-        <translation></translation>
+        <translation>値</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="82"/>
-        <source>Sub</source>
-        <translation></translation>
+        <location filename="../debugwindow.ui" line="127"/>
+        <source>RX</source>
+        <translation type="unfinished">受信</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="87"/>
         <source>Request</source>
-        <translation></translation>
+        <translation>要望</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="92"/>
         <source>Reply</source>
-        <translation></translation>
+        <translation>返答</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="117"/>
         <source>Priority</source>
-        <translation></translation>
+        <translation>優先度</translation>
     </message>
     <message>
         <location filename="../debugwindow.ui" line="122"/>
         <source>Get/Set</source>
-        <translation></translation>
+        <translation>取得/設定</translation>
     </message>
     <message>
-        <location filename="../debugwindow.ui" line="132"/>
+        <location filename="../debugwindow.ui" line="137"/>
         <source>Recurring</source>
-        <translation></translation>
+        <translation>繰り返し</translation>
     </message>
     <message>
-        <location filename="../debugwindow.ui" line="144"/>
-        <location filename="../debugwindow.ui" line="181"/>
+        <location filename="../debugwindow.ui" line="149"/>
+        <location filename="../debugwindow.ui" line="186"/>
         <source>Pause refresh</source>
         <translation>リフレッシュの一時停止</translation>
     </message>
     <message>
-        <location filename="../debugwindow.ui" line="164"/>
-        <location filename="../debugwindow.ui" line="201"/>
+        <location filename="../debugwindow.ui" line="169"/>
+        <location filename="../debugwindow.ui" line="206"/>
         <source>Refresh Interval (ms)</source>
         <translation>リフレッシュ間隔 (ms)</translation>
     </message>
     <message>
-        <location filename="../debugwindow.ui" line="171"/>
-        <location filename="../debugwindow.ui" line="214"/>
+        <location filename="../debugwindow.ui" line="176"/>
+        <location filename="../debugwindow.ui" line="219"/>
         <source>99999</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../debugwindow.ui" line="174"/>
+        <location filename="../debugwindow.ui" line="179"/>
         <source>500</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../debugwindow.ui" line="217"/>
+        <location filename="../debugwindow.ui" line="222"/>
         <source>1000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../debugwindow.ui" line="240"/>
+        <location filename="../debugwindow.ui" line="245"/>
         <source>Scroll test:</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../debugwindow.ui" line="269"/>
+        <location filename="../debugwindow.ui" line="274"/>
         <source>TextLabel</source>
         <translation></translation>
     </message>
@@ -881,139 +922,139 @@ p, li { white-space: pre-wrap; }
         <translation>周波数：</translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="41"/>
+        <location filename="../frequencyinputwidget.ui" line="33"/>
         <source>Go</source>
-        <translation>移動</translation>
+        <translation>QSY</translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="44"/>
+        <location filename="../frequencyinputwidget.ui" line="36"/>
         <source>Return</source>
         <translation>変更</translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="56"/>
+        <location filename="../frequencyinputwidget.ui" line="48"/>
         <source>Entry</source>
-        <translation>パッド</translation>
+        <translation>入力</translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="74"/>
-        <location filename="../frequencyinputwidget.ui" line="77"/>
+        <location filename="../frequencyinputwidget.ui" line="66"/>
+        <location filename="../frequencyinputwidget.ui" line="69"/>
         <source>5</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="96"/>
+        <location filename="../frequencyinputwidget.ui" line="88"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;To recall a preset memory:&lt;/p&gt;&lt;p&gt;1. Type in the preset number (0 through 99)&lt;/p&gt;&lt;p&gt;2. Press RCL (or use hotkey &amp;quot;R&amp;quot;)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;プリセットメモリーを呼び出すには：&lt;/p&gt;&lt;p&gt;1. プリセット番号を入力します(0ー99)&lt;/p&gt;&lt;p&gt;2. RCL を押す(かCTRL+ &amp;quot;R&amp;quot;)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="99"/>
+        <location filename="../frequencyinputwidget.ui" line="91"/>
         <source>&amp;RCL</source>
-        <translation></translation>
+        <translation>&amp;呼び出す</translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="102"/>
+        <location filename="../frequencyinputwidget.ui" line="94"/>
         <source>R</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="121"/>
-        <location filename="../frequencyinputwidget.ui" line="124"/>
+        <location filename="../frequencyinputwidget.ui" line="113"/>
+        <location filename="../frequencyinputwidget.ui" line="116"/>
         <source>6</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="143"/>
-        <location filename="../frequencyinputwidget.ui" line="146"/>
+        <location filename="../frequencyinputwidget.ui" line="135"/>
+        <location filename="../frequencyinputwidget.ui" line="138"/>
         <source>3</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="168"/>
+        <location filename="../frequencyinputwidget.ui" line="160"/>
         <source>&amp;CE</source>
         <translation>クリア</translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="171"/>
+        <location filename="../frequencyinputwidget.ui" line="163"/>
         <source>C</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="190"/>
-        <location filename="../frequencyinputwidget.ui" line="193"/>
+        <location filename="../frequencyinputwidget.ui" line="182"/>
+        <location filename="../frequencyinputwidget.ui" line="185"/>
         <source>4</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="212"/>
+        <location filename="../frequencyinputwidget.ui" line="204"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;To store a preset:&lt;/p&gt;&lt;p&gt;1. Set the desired frequency and mode per normal methods&lt;/p&gt;&lt;p&gt;2. Type the index to to store to (0 through 99)&lt;/p&gt;&lt;p&gt;3. Press STO (or use hotkey &amp;quot;S&amp;quot;)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;プリセットを保存するには:&lt;/p&gt;&lt;p&gt;1. 通常の方法に従って、希望の周波数とモードを設定します&lt;/p&gt;&lt;p&gt;2. 保存先の番号を入力します(0-99)&lt;/p&gt;&lt;p&gt;3. STO を押す(かCTRL+ &amp;quot;S&amp;quot;)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="215"/>
+        <location filename="../frequencyinputwidget.ui" line="207"/>
         <source>&amp;STO</source>
-        <translation></translation>
+        <translation>&amp;保存</translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="218"/>
+        <location filename="../frequencyinputwidget.ui" line="210"/>
         <source>S</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="237"/>
-        <location filename="../frequencyinputwidget.ui" line="240"/>
+        <location filename="../frequencyinputwidget.ui" line="229"/>
+        <location filename="../frequencyinputwidget.ui" line="232"/>
         <source>9</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="259"/>
+        <location filename="../frequencyinputwidget.ui" line="251"/>
         <source>Back</source>
         <translation>戻る</translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="262"/>
+        <location filename="../frequencyinputwidget.ui" line="254"/>
         <source>Backspace</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="281"/>
-        <location filename="../frequencyinputwidget.ui" line="284"/>
+        <location filename="../frequencyinputwidget.ui" line="273"/>
+        <location filename="../frequencyinputwidget.ui" line="276"/>
         <source>Enter</source>
         <translation>実行</translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="303"/>
-        <location filename="../frequencyinputwidget.ui" line="306"/>
+        <location filename="../frequencyinputwidget.ui" line="295"/>
+        <location filename="../frequencyinputwidget.ui" line="298"/>
         <source>0</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="325"/>
-        <location filename="../frequencyinputwidget.ui" line="328"/>
+        <location filename="../frequencyinputwidget.ui" line="317"/>
+        <location filename="../frequencyinputwidget.ui" line="320"/>
         <source>.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="347"/>
-        <location filename="../frequencyinputwidget.ui" line="350"/>
+        <location filename="../frequencyinputwidget.ui" line="339"/>
+        <location filename="../frequencyinputwidget.ui" line="342"/>
         <source>1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="369"/>
-        <location filename="../frequencyinputwidget.ui" line="372"/>
+        <location filename="../frequencyinputwidget.ui" line="361"/>
+        <location filename="../frequencyinputwidget.ui" line="364"/>
         <source>2</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="391"/>
-        <location filename="../frequencyinputwidget.ui" line="394"/>
+        <location filename="../frequencyinputwidget.ui" line="383"/>
+        <location filename="../frequencyinputwidget.ui" line="386"/>
         <source>7</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../frequencyinputwidget.ui" line="413"/>
-        <location filename="../frequencyinputwidget.ui" line="416"/>
+        <location filename="../frequencyinputwidget.ui" line="405"/>
+        <location filename="../frequencyinputwidget.ui" line="408"/>
         <source>8</source>
         <translation></translation>
     </message>
@@ -1026,92 +1067,107 @@ p, li { white-space: pre-wrap; }
         <translation>プログラムログ管理画面</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="53"/>
+        <location filename="../loggingwindow.ui" line="56"/>
         <source>Annotation:</source>
         <translation> 注釈文：</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="66"/>
+        <location filename="../loggingwindow.ui" line="69"/>
         <source>You may enter your own log notes here.</source>
         <translation>ここに独自のログ用メモを入力できます。</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="85"/>
+        <location filename="../loggingwindow.ui" line="88"/>
         <source>Adds user-text to the log.</source>
         <translation>注釈文をログに追加します。</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="88"/>
+        <location filename="../loggingwindow.ui" line="91"/>
         <source>Annotate</source>
         <translation>注釈を付ける</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="105"/>
+        <location filename="../loggingwindow.ui" line="108"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enable or disable debug logging. Use the &amp;quot;-d&amp;quot; or &amp;quot;--debug&amp;quot; flag to open wfview with debug logging enabled on startup. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;デバッグログを有効または無効にする。使用方法 &amp;quot;-d&amp;quot; or &amp;quot;--debug&amp;quot; 起動時にデバッグログを有効にして wfview を開くためのフラグ&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="108"/>
+        <location filename="../loggingwindow.ui" line="111"/>
         <source>Debug</source>
         <translation>デバッグ</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="115"/>
+        <location filename="../loggingwindow.ui" line="118"/>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This enables the logging of nearly all CI-V traffic. &lt;span style=&quot; font-weight:600;&quot;&gt;Use with caution&lt;/span&gt;. It is a lot of data. Meter levels and scope data are not shown. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../loggingwindow.ui" line="121"/>
+        <source>CommDebug</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../loggingwindow.ui" line="128"/>
+        <source>RigCtl Debug</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../loggingwindow.ui" line="135"/>
         <source>Scroll to bottom</source>
         <translation>押すと下へスクロールします。</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="118"/>
+        <location filename="../loggingwindow.ui" line="138"/>
         <source>Scroll Down</source>
         <translation>下へスクロール</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="125"/>
+        <location filename="../loggingwindow.ui" line="145"/>
         <source>Clears the display. Does not clear the log file.</source>
         <translation>表示をクリアします。ログファイルはクリアされません。</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="128"/>
+        <location filename="../loggingwindow.ui" line="148"/>
         <source>Clear</source>
         <translation>クリア</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="135"/>
+        <location filename="../loggingwindow.ui" line="155"/>
         <source>Makes a best-effort to ask the host system to open the log file directory.</source>
         <translation>ホストシステムにログファイルディレクトリを開くよう最善の努力を尽くします。</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="138"/>
+        <location filename="../loggingwindow.ui" line="158"/>
         <source>Open Log Directory</source>
         <translation>ログのディレクトリー</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="145"/>
+        <location filename="../loggingwindow.ui" line="165"/>
         <source>Makes a best-effort to ask the host system to open the logfile.</source>
         <translation>ホストシステムにログファイルを開くよう最善の努力を尽くします。</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="148"/>
+        <location filename="../loggingwindow.ui" line="168"/>
         <source>Open Log</source>
         <translation>ログを開く</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="155"/>
+        <location filename="../loggingwindow.ui" line="175"/>
         <source>Copy the path of the log file to your clipboard.</source>
-        <translation>ログファイルのパスコピー</translation>
+        <translation>ログファイルのパスをコピーする</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="158"/>
+        <location filename="../loggingwindow.ui" line="178"/>
         <source>Copy Path</source>
         <translation>パスのコピー</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="165"/>
+        <location filename="../loggingwindow.ui" line="185"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Sends text to termbin.com. Some personal information (such as your username) is in the log file, so do not click this button unless you are ok sharing your log file. This is a quick way to receive a URL, pointing to your log file text, that you can send to other people. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;termbin.com にテキストを送信します。※一部の個人情報(ユーザー名等)はログファイル内にあるため、ログファイルを共有しても問題ない場合を除き、このボタンをクリックしないでください。これの機能は、ログファイルのテキストを指す URLを簡単に受け取り、他の人に送信できます。 &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../loggingwindow.ui" line="168"/>
+        <location filename="../loggingwindow.ui" line="188"/>
         <source>Send to termbin.com</source>
         <translation>termbin.com に送信</translation>
     </message>
@@ -1129,35 +1185,47 @@ p, li { white-space: pre-wrap; }
         <translation>編集の無効</translation>
     </message>
     <message>
-        <location filename="../memories.ui" line="106"/>
-        <source>Loading Memories (this may take a while!)</source>
-        <translation>メモリーの読込（表示に時間が掛る時がある）</translation>
+        <location filename="../memories.ui" line="66"/>
+        <source>Start Scan</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../memories.ui" line="126"/>
+        <location filename="../memories.ui" line="123"/>
+        <source>Select Memory Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Loading Memories (this may take a while!)</source>
+        <translation type="vanished">メモリーの読込（表示に時間が掛る時がある）</translation>
+    </message>
+    <message>
+        <location filename="../memories.ui" line="86"/>
         <source>.csv Import</source>
         <translation>読込(CSV)</translation>
     </message>
     <message>
-        <location filename="../memories.ui" line="133"/>
+        <location filename="../memories.ui" line="93"/>
+        <source>All fields</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../memories.ui" line="103"/>
         <source>.csv Export</source>
         <translation>書込み(CSV)</translation>
     </message>
     <message>
-        <location filename="../memories.ui" line="153"/>
         <source>Memory Mode</source>
-        <translation>メモリーモード</translation>
+        <translation type="vanished">メモリーモード</translation>
     </message>
     <message>
-        <location filename="../memories.ui" line="160"/>
         <source>VFO Mode</source>
-        <translation>VFOモード</translation>
+        <translation type="vanished">VFOモード</translation>
     </message>
 </context>
 <context>
     <name>meter</name>
     <message>
-        <location filename="../meter.cpp" line="280"/>
+        <location filename="../meter.cpp" line="314"/>
         <source>Double-click to set meter</source>
         <translation>ダブルクリックしてメーターを設定します</translation>
     </message>
@@ -1165,9 +1233,305 @@ p, li { white-space: pre-wrap; }
 <context>
     <name>pttyHandler</name>
     <message>
-        <location filename="../pttyhandler.cpp" line="204"/>
+        <location filename="../pttyhandler.cpp" line="205"/>
         <source>Read failed: %1</source>
-        <translation>読込不可：</translation>
+        <translation>読込不可： %1</translation>
+    </message>
+</context>
+<context>
+    <name>receiverWidget</name>
+    <message>
+        <location filename="../receiverwidget.cpp" line="31"/>
+        <location filename="../receiverwidget.cpp" line="46"/>
+        <source>VFO A</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="44"/>
+        <source>VFO B</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="50"/>
+        <source>A&lt;&gt;B</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="60"/>
+        <source>A=B</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="70"/>
+        <source>SPLIT</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="133"/>
+        <source>Detach</source>
+        <translation>切り離す</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="135"/>
+        <source>Detach/re-attach scope from main window</source>
+        <translation>メインウィンドウからスコープを切り離す/再接続する</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="139"/>
+        <source>Spectrum Mode</source>
+        <translation>スペクトルモード</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="142"/>
+        <source>Spectrum Span</source>
+        <translation>スペクトルスパン</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="146"/>
+        <source>Spectrum Edge</source>
+        <translation>スペクトルエッジ</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="147"/>
+        <source>Custom Edge</source>
+        <translation>カスタムエッジ</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="148"/>
+        <source>Define a custom (fixed) scope edge</source>
+        <translation>カスタム(固定)スコープエッジを定義する</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="149"/>
+        <source>To Fixed</source>
+        <translation>固定する</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="150"/>
+        <source>&amp;lt;html&amp;gt;&amp;lt;head/&amp;gt;&amp;lt;body&amp;gt;&amp;lt;p&amp;gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;&amp;lt;br/&amp;gt;&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;The currently-selected edge slot will be overridden.&amp;lt;/p&amp;gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;</source>
+        <translation>&amp;lt;html&amp;gt;&amp;lt;head/&amp;gt;&amp;lt;body&amp;gt;&amp;lt;p&amp;gt;ボタンを押すと、範囲を維持しながらセンター モードのスペクトルが固定モードに変換されます。これにより、スペクトルを移動させることなく、現在表示されているのと同じ範囲で調整できます。.&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;&amp;lt;br/&amp;gt;&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;現在選択されているエッジ スロットは上書きされます。.&amp;lt;/p&amp;gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="162"/>
+        <location filename="../receiverwidget.cpp" line="164"/>
+        <source>Configure Scope</source>
+        <translation>スコープの構成</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="163"/>
+        <source>Change various settings of the current Scope</source>
+        <translation>スコープの各種設定を変更します</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="214"/>
+        <source>Center Mode</source>
+        <translation>センターモード</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="215"/>
+        <source>Fixed Mode</source>
+        <translation>固定モード</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="216"/>
+        <source>Scroll-C</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="217"/>
+        <source>Scroll-F</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="220"/>
+        <source>Fixed Edge 1</source>
+        <translation>固定エッジ1</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="220"/>
+        <source>Fixed Edge 2</source>
+        <translation>固定エッジ2</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="220"/>
+        <source>Fixed Edge 3</source>
+        <translation>固定エッジ3</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="220"/>
+        <source>Fixed Edge 4</source>
+        <translation>固定エッジ4</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="249"/>
+        <source>SCOPE OUT OF RANGE</source>
+        <translation>スコープ：範囲外</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="260"/>
+        <source> OVF </source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="325"/>
+        <source>Scope display reference</source>
+        <translation>スコープ：表示リファレンス</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="326"/>
+        <source>Selects the display reference for the Scope display</source>
+        <translation>スコープ表示の表示基準を選択します</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="327"/>
+        <source>Select display reference of scope</source>
+        <translation>スコープの表示参照を選択</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="328"/>
+        <source>Ref</source>
+        <translation>基準レベル</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="332"/>
+        <source>Length</source>
+        <translation>長さ</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="337"/>
+        <source>Scope display ceiling</source>
+        <translation>スコープ展示天井</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="338"/>
+        <source>Selects the display ceiling for the Scope display</source>
+        <translation>スコープ表示の表示上限を選択します</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="339"/>
+        <source>Select display ceiling of scope</source>
+        <translation>スコープの表示上限を選択</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="340"/>
+        <source>Ceiling</source>
+        <translatorcomment>シーリング</translatorcomment>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="345"/>
+        <source>Scope display floor</source>
+        <translation>スコープ展示フロア</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="346"/>
+        <source>Selects the display floor for the Scope display</source>
+        <translation>スコープ表示の表示フロアを選択します</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="347"/>
+        <source>Select display floor of scope</source>
+        <translation>スコープの表示フロアを選択します</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="348"/>
+        <source>Floor</source>
+        <translatorcomment>床</translatorcomment>
+        <translation>床</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="351"/>
+        <source>Speed Fast</source>
+        <translatorcomment>速度が速い</translatorcomment>
+        <translation>速度が速い</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="352"/>
+        <source>Speed Mid</source>
+        <translation>速度が中</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="353"/>
+        <source>Speed Slow</source>
+        <translatorcomment>速度が速い</translatorcomment>
+        <translation>速度が遅い</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="355"/>
+        <source>Waterfall display speed</source>
+        <translation>ウォーターフォールの表示速度</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="356"/>
+        <source>Selects the speed for the waterfall display</source>
+        <translation>ウォーターフォール表示の速度を選択します</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="357"/>
+        <source>Waterfall Speed</source>
+        <translation>ウォーターフォールの速さ</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="358"/>
+        <source>Speed</source>
+        <translation>速度</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="361"/>
+        <source>Waterfall display color theme</source>
+        <translation>ウォーターフォールの表示色のテーマ</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="362"/>
+        <source>Selects the color theme for the waterfall display</source>
+        <translation>ウォーターフォール表示のカラーテーマを選択します</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="363"/>
+        <source>Waterfall color theme</source>
+        <translation>ウォーターフォールの色のテーマ</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="377"/>
+        <source>Theme</source>
+        <translation>テーマ</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="381"/>
+        <source>PBT Inner</source>
+        <translation>PBT 内部</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="385"/>
+        <source>PBT Outer</source>
+        <translation>PBT アウター</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="399"/>
+        <source>IF Shift</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="403"/>
+        <source>Fill Width</source>
+        <translation>フィルタ幅</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="1244"/>
+        <source>Scope Edges</source>
+        <translation>スコープエッジ</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="1245"/>
+        <source>Please enter desired scope edges, in MHz,
+with a comma between the low and high range.</source>
+        <translation>希望するスコープのエッジをMHz単位で入力してください。
+低音域と高音域の間にカンマを入れます。</translation>
+    </message>
+    <message>
+        <location filename="../receiverwidget.cpp" line="1273"/>
+        <source>Error, could not interpret your input.                          &lt;br/&gt;Please make sure to place a comma between the frequencies.                          &lt;br/&gt;For example: &apos;7.200, 7.300&apos;</source>
+        <translation>エラー。入力を解釈できませんでした。                          &lt;br/&gt;周波数の間には必ずカンマを入れてください。                          &lt;br/&gt;例：「7.000、7.200」</translation>
     </message>
 </context>
 <context>
@@ -1316,7 +1680,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../repeatersetup.ui" line="313"/>
         <source>Swap VFO A with VFO B. Some radios do not support this.</source>
-        <translation>VFO Aと VFO Bを交換します。一部の無線機ではこれをサポートしていません。</translation>
+        <translation>VFO AとBを交換します。一部の無線機ではこれをサポートしていません。</translation>
     </message>
     <message>
         <location filename="../repeatersetup.ui" line="316"/>
@@ -1578,12 +1942,12 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../rigcreator.ui" line="32"/>
         <source>Memories</source>
-        <translation></translation>
+        <translation>メモリー表示</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="40"/>
         <source>Grp</source>
-        <translation></translation>
+        <translation>グループ</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="54"/>
@@ -1620,12 +1984,6 @@ p, li { white-space: pre-wrap; }
         <translation>メインメモリのフォーマット</translation>
     </message>
     <message>
-        <location filename="../rigcreator.ui" line="308"/>
-        <location filename="../rigcreator.ui" line="332"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format %&amp;lt;start&amp;gt;.&amp;lt;len&amp;gt;&amp;lt;specifier&amp;gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;specifier from list below:&lt;/p&gt;&lt;p&gt;a = Group&lt;/p&gt;&lt;p&gt;b = Num&lt;/p&gt;&lt;p&gt;c = Scan&lt;/p&gt;&lt;p&gt;d = Scan/Split&lt;/p&gt;&lt;p&gt;e = VFO A		E = VFO B&lt;/p&gt;&lt;p&gt;f = Frequency A 	F = Frequency B&lt;/p&gt;&lt;p&gt;g = Mode A		G = Mode B&lt;/p&gt;&lt;p&gt;h = Filter 		H = Filter B&lt;/p&gt;&lt;p&gt;i = Data 		I = Data B&lt;/p&gt;&lt;p&gt;j = Duplex/Tonemode A	J = Duplex B/Tonemode B&lt;/p&gt;&lt;p&gt;k = Data/Tonemode A	K = Data B/Tonemode B&lt;/p&gt;&lt;p&gt;l = Tonemode A	L = Tonemode B&lt;/p&gt;&lt;p&gt;m = DSQL A 		M = DSQL B&lt;/p&gt;&lt;p&gt;n = Tone type A	N = Tone type B&lt;/p&gt;&lt;p&gt;o = TSQL A		O = TSQL B&lt;/p&gt;&lt;p&gt;p = DTCS Polarity A 	P = DTCS Polarity B&lt;/p&gt;&lt;p&gt;q = DTCS A		Q = DTCS B&lt;/p&gt;&lt;p&gt;r = DV Squelch A 	R = DV Squelch B&lt;/p&gt;&lt;p&gt;s = Duplex Offset A 	S = Duplex Offset B&lt;/p&gt;&lt;p&gt;t = DV UR A		T = DV UR B&lt;/p&gt;&lt;p&gt;u = DV R1 A		U = DV R1 B&lt;/p&gt;&lt;p&gt;v = DV R2 A 		V = DV R2 B&lt;/p&gt;&lt;p&gt;z = Memory Name&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation></translation>
-    </message>
-    <message>
         <location filename="../rigcreator.ui" line="319"/>
         <source>Satellite Memory Format</source>
         <translation>サテライトメモリフォーマット</translation>
@@ -1633,7 +1991,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../rigcreator.ui" line="600"/>
         <source>Features</source>
-        <translation>機能が有るもの</translation>
+        <translation>使える機能</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="606"/>
@@ -1658,7 +2016,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../rigcreator.ui" line="634"/>
         <source>Has Transmit</source>
-        <translation>送信</translation>
+        <translation>送&#x3000;信</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="641"/>
@@ -1708,7 +2066,7 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../rigcreator.ui" line="722"/>
         <source>Model</source>
-        <translation>モデル</translation>
+        <translation>無線機名</translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="732"/>
@@ -1727,6 +2085,16 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <location filename="../rigcreator.ui" line="1183"/>
+        <source>Pwr (W)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="1188"/>
+        <source>Ant</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="1193"/>
         <source>Colour</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1775,6 +2143,12 @@ p, li { white-space: pre-wrap; }
         <location filename="../rigcreator.ui" line="410"/>
         <source>Spans</source>
         <translation>幅</translation>
+    </message>
+    <message>
+        <location filename="../rigcreator.ui" line="308"/>
+        <location filename="../rigcreator.ui" line="332"/>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format %&amp;lt;start&amp;gt;.&amp;lt;len&amp;gt;&amp;lt;specifier&amp;gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;specifier from list below:&lt;/p&gt;&lt;p&gt;a = Group&lt;/p&gt;&lt;p&gt;b = Num&lt;/p&gt;&lt;p&gt;c = Scan&lt;/p&gt;&lt;p&gt;d = Scan/Split&lt;/p&gt;&lt;p&gt;D = Duplex Setting (use j for most rigs)&lt;/p&gt;&lt;p&gt;e = VFO A E = VFO B&lt;/p&gt;&lt;p&gt;f = Frequency A F = Frequency B&lt;/p&gt;&lt;p&gt;g = Mode A G = Mode B&lt;/p&gt;&lt;p&gt;h = Filter H = Filter B&lt;/p&gt;&lt;p&gt;i = Data I = Data B&lt;/p&gt;&lt;p&gt;j = Duplex/Tonemode A J = Duplex B/Tonemode B&lt;/p&gt;&lt;p&gt;k = Data/Tonemode A K = Data B/Tonemode B&lt;/p&gt;&lt;p&gt;l = Tonemode A L = Tonemode B&lt;/p&gt;&lt;p&gt;m = DSQL A M = DSQL B&lt;/p&gt;&lt;p&gt;n = Tone type A N = Tone type B&lt;/p&gt;&lt;p&gt;o = TSQL A O = TSQL B&lt;/p&gt;&lt;p&gt;p = DTCS Polarity A P = DTCS Polarity B&lt;/p&gt;&lt;p&gt;q = DTCS A Q = DTCS B&lt;/p&gt;&lt;p&gt;r = DV Squelch A R = DV Squelch B&lt;/p&gt;&lt;p&gt;s = Duplex Offset A S = Duplex Offset B&lt;/p&gt;&lt;p&gt;t = DV UR A T = DV UR B&lt;/p&gt;&lt;p&gt;u = DV R1 A U = DV R1 B&lt;/p&gt;&lt;p&gt;v = DV R2 A V = DV R2 B&lt;/p&gt;&lt;p&gt;w = Tuning Step (+custom)&lt;/p&gt;&lt;p&gt;x = Preamp + Attenuator&lt;/p&gt;&lt;p&gt;y = Antenna&lt;/p&gt;&lt;p&gt;+ = IP Plus&lt;/p&gt;&lt;p&gt;z = Memory Name&lt;/p&gt;&lt;p&gt;Z = Mode specific columns&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../rigcreator.ui" line="463"/>
@@ -1844,32 +2218,32 @@ p, li { white-space: pre-wrap; }
         <translation></translation>
     </message>
     <message>
-        <location filename="../rigcreator.cpp" line="108"/>
-        <location filename="../rigcreator.cpp" line="111"/>
-        <location filename="../rigcreator.cpp" line="134"/>
-        <location filename="../rigcreator.cpp" line="136"/>
-        <location filename="../rigcreator.cpp" line="550"/>
-        <location filename="../rigcreator.cpp" line="552"/>
+        <location filename="../rigcreator.cpp" line="123"/>
+        <location filename="../rigcreator.cpp" line="126"/>
+        <location filename="../rigcreator.cpp" line="149"/>
+        <location filename="../rigcreator.cpp" line="151"/>
+        <location filename="../rigcreator.cpp" line="583"/>
+        <location filename="../rigcreator.cpp" line="585"/>
         <source>Select Rig Filename</source>
         <translation>無線機用ファイル名を選択</translation>
     </message>
     <message>
-        <location filename="../rigcreator.cpp" line="162"/>
+        <location filename="../rigcreator.cpp" line="177"/>
         <source>Not a rig definition</source>
         <translation>無線機の定義ではありません</translation>
     </message>
     <message>
-        <location filename="../rigcreator.cpp" line="163"/>
+        <location filename="../rigcreator.cpp" line="178"/>
         <source>File %0 does not appear to be a valid Rig definition file</source>
         <translation>ファイル %0 は有効な無線機定義ファイルではないようです</translation>
     </message>
     <message>
-        <location filename="../rigcreator.cpp" line="821"/>
+        <location filename="../rigcreator.cpp" line="880"/>
         <source>rig creator</source>
         <translation>無線機クリエーター</translation>
     </message>
     <message>
-        <location filename="../rigcreator.cpp" line="821"/>
+        <location filename="../rigcreator.cpp" line="880"/>
         <source>Changes will be lost!</source>
         <translation>変更は失われます!</translation>
     </message>
@@ -1882,83 +2256,83 @@ p, li { white-space: pre-wrap; }
         <translation>サテライト通信の設定画面</translation>
     </message>
     <message>
-        <location filename="../satellitesetup.ui" line="102"/>
+        <location filename="../satellitesetup.ui" line="101"/>
         <source>Satellite Setup:</source>
         <translation>サテライトの設定：</translation>
     </message>
     <message>
-        <location filename="../satellitesetup.ui" line="142"/>
+        <location filename="../satellitesetup.ui" line="141"/>
         <source>Type:</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../satellitesetup.ui" line="149"/>
+        <location filename="../satellitesetup.ui" line="148"/>
         <source>Linear Inverting</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../satellitesetup.ui" line="156"/>
+        <location filename="../satellitesetup.ui" line="155"/>
         <source>Linear Non-Inverting</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../satellitesetup.ui" line="163"/>
+        <location filename="../satellitesetup.ui" line="162"/>
         <source>FM</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../satellitesetup.ui" line="190"/>
+        <location filename="../satellitesetup.ui" line="189"/>
         <source>Uplink:</source>
         <translation>アップリンク</translation>
     </message>
     <message>
-        <location filename="../satellitesetup.ui" line="213"/>
+        <location filename="../satellitesetup.ui" line="212"/>
         <source>Downlink:</source>
         <translation>ダウンリンク</translation>
     </message>
     <message>
-        <location filename="../satellitesetup.ui" line="259"/>
+        <location filename="../satellitesetup.ui" line="258"/>
         <source>Uplink from:</source>
         <translation>アップリンク From:</translation>
     </message>
     <message>
-        <location filename="../satellitesetup.ui" line="282"/>
-        <location filename="../satellitesetup.ui" line="357"/>
+        <location filename="../satellitesetup.ui" line="281"/>
+        <location filename="../satellitesetup.ui" line="356"/>
         <source>To:</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../satellitesetup.ui" line="334"/>
+        <location filename="../satellitesetup.ui" line="333"/>
         <source>Downlink from:</source>
         <translation>ダウンリンク From</translation>
     </message>
     <message>
-        <location filename="../satellitesetup.ui" line="409"/>
+        <location filename="../satellitesetup.ui" line="408"/>
         <source>Telemetry: </source>
         <translation>テレメトリー：</translation>
     </message>
     <message>
-        <location filename="../satellitesetup.ui" line="452"/>
+        <location filename="../satellitesetup.ui" line="451"/>
         <source>Additional Spectrum Margin (KHz)</source>
         <translation>追加スペクトルマージン(KHz)</translation>
     </message>
     <message>
-        <location filename="../satellitesetup.ui" line="469"/>
+        <location filename="../satellitesetup.ui" line="468"/>
         <source>(added to both sides)</source>
         <translation>両側に追加</translation>
     </message>
     <message>
-        <location filename="../satellitesetup.ui" line="496"/>
+        <location filename="../satellitesetup.ui" line="495"/>
         <source>Set VFOs</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../satellitesetup.ui" line="503"/>
+        <location filename="../satellitesetup.ui" line="502"/>
         <source>Set Spectrum</source>
         <translation>衛星の設定</translation>
     </message>
     <message>
-        <location filename="../satellitesetup.ui" line="510"/>
+        <location filename="../satellitesetup.ui" line="509"/>
         <source>Add Markers</source>
         <translation></translation>
     </message>
@@ -1976,37 +2350,37 @@ p, li { white-space: pre-wrap; }
         <translation>中止</translation>
     </message>
     <message>
-        <location filename="../selectradio.ui" line="56"/>
+        <location filename="../selectradio.ui" line="58"/>
         <source>Rig Name</source>
         <translation>無線機名</translation>
     </message>
     <message>
-        <location filename="../selectradio.ui" line="61"/>
+        <location filename="../selectradio.ui" line="63"/>
         <source>CI-V</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../selectradio.ui" line="66"/>
+        <location filename="../selectradio.ui" line="68"/>
         <source>Baud Rate</source>
         <translation>ボーレート</translation>
     </message>
     <message>
-        <location filename="../selectradio.ui" line="71"/>
+        <location filename="../selectradio.ui" line="73"/>
         <source>Current User</source>
         <translation>ユーザID</translation>
     </message>
     <message>
-        <location filename="../selectradio.ui" line="76"/>
+        <location filename="../selectradio.ui" line="78"/>
         <source>User IP Address</source>
         <translation>IPアドレス</translation>
     </message>
     <message>
-        <location filename="../selectradio.ui" line="99"/>
+        <location filename="../selectradio.ui" line="129"/>
         <source>AF</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../selectradio.ui" line="132"/>
+        <location filename="../selectradio.ui" line="162"/>
         <source>MOD</source>
         <translation></translation>
     </message>
@@ -2101,7 +2475,7 @@ p, li { white-space: pre-wrap; }
 Please use the &quot;Radio Server&quot; page to select server audio.
 ONLY use Manual CI-V when Transceive mode is not supported</source>
         <translation>このページのオーディオコントロールはネットワーク接続の無線機のみに適用されます
-サーバオーディオを選択するには、「ラジオサーバ」ページを使用してください。
+サーバオーディオを選択するには、「リモートサーバの設定」ページを使用してください。
 トランシーブモードがサポートされていない場合は、手動CI-Vのみを使用してください</translation>
     </message>
     <message>
@@ -2120,307 +2494,304 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
         <translation>ボーレート</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="261"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This feature is for older radios that respond best to an RTS serial port signal than a PTT command.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;For radios lacking PTT commands, this is automatic and transparent, but for radios which have a PTT command, you can check this box to override and force the PTT to be done using RTS. Do not check this box unless you really need this and have an appropriate adapter with RTS connected to the PTT line of the transceiver. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;この機能は、PTTコマンドよりも RTSシリアルポート信号に最もよく応答する古い無線機向けです&lt;/p&gt;&lt;p&gt;&lt;br/&gt;PTTコマンドがない無線の場合、これは自動的かつ透過的ですが、PTTコマンドがある無線機の場合は、このボックスをオンにする事で無効にし、RTSを使用してPTTを強制的に実行できます。本当に必要で、RTSを備えた適切なアダプタがトランシーバのPTTラインに接続されている場合を除き、このボックスをチェックしないでください。 &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;この機能は、PTTコマンドよりも RTSシリアルポート信号に最もよく応答する古い無線機向けです&lt;/p&gt;&lt;p&gt;&lt;br/&gt;PTTコマンドがない無線の場合、これは自動的かつ透過的ですが、PTTコマンドがある無線機の場合は、このボックスをオンにする事で無効にし、RTSを使用してPTTを強制的に実行できます。本当に必要で、RTSを備えた適切なアダプタがトランシーバのPTTラインに接続されている場合を除き、このボックスをチェックしないでください。 &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="264"/>
         <source>Send RTS for PTT</source>
-        <translation>RTSでPTT操作</translation>
+        <translation type="vanished">RTSでPTT操作</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="300"/>
+        <location filename="../settingswidget.ui" line="316"/>
         <source>Network Connected Radios</source>
         <translation>ネットワークに接続された無線機</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="332"/>
+        <location filename="../settingswidget.ui" line="348"/>
         <source>Hostname</source>
         <translation>ホスト名</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="355"/>
-        <location filename="../settingswidget.ui" line="2489"/>
+        <location filename="../settingswidget.ui" line="371"/>
+        <location filename="../settingswidget.ui" line="2602"/>
         <source>Control Port</source>
         <translation>コントロールポート(UDP)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="368"/>
-        <location filename="../settingswidget.ui" line="2517"/>
+        <location filename="../settingswidget.ui" line="384"/>
+        <location filename="../settingswidget.ui" line="2630"/>
         <source>50001</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="401"/>
-        <location filename="../settingswidget.ui" line="2782"/>
-        <location filename="../settingswidget.ui" line="3244"/>
+        <location filename="../settingswidget.ui" line="417"/>
+        <location filename="../settingswidget.ui" line="2895"/>
+        <location filename="../settingswidget.ui" line="3371"/>
         <source>Username</source>
         <translation>ユーザID</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="424"/>
-        <location filename="../settingswidget.ui" line="2787"/>
-        <location filename="../settingswidget.ui" line="3254"/>
+        <location filename="../settingswidget.ui" line="440"/>
+        <location filename="../settingswidget.ui" line="2900"/>
+        <location filename="../settingswidget.ui" line="3381"/>
         <source>Password</source>
         <translation>パスワード</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="467"/>
+        <location filename="../settingswidget.ui" line="483"/>
         <source>RX Latency (ms)</source>
         <translation>受信遅延時間(ms)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="493"/>
-        <location filename="../settingswidget.ui" line="520"/>
+        <location filename="../settingswidget.ui" line="509"/>
+        <location filename="../settingswidget.ui" line="536"/>
         <source>0</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="500"/>
+        <location filename="../settingswidget.ui" line="516"/>
         <source>TX Latency (ms)</source>
         <translation>送信遅延時間(ms)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="527"/>
+        <location filename="../settingswidget.ui" line="543"/>
         <source>RX Codec</source>
         <translation>受信用コーデック</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="534"/>
+        <location filename="../settingswidget.ui" line="550"/>
         <source>Receive Audio Codec Selector</source>
         <translation>受信オーディオコーデックセレクター</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="541"/>
+        <location filename="../settingswidget.ui" line="557"/>
         <source>TX Codec</source>
         <translation>送信用コーデック</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="548"/>
+        <location filename="../settingswidget.ui" line="564"/>
         <source>Transmit Audio Codec Selector</source>
         <translation>送信オーディオコーデックセレクター</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="572"/>
+        <location filename="../settingswidget.ui" line="588"/>
         <source>Sample Rate</source>
         <translation>サンプルレート</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="579"/>
+        <location filename="../settingswidget.ui" line="595"/>
         <source>Audio Sample Rate Selector</source>
         <translation>オーディオサンプルレートセレクター</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="583"/>
+        <location filename="../settingswidget.ui" line="599"/>
         <source>48000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="588"/>
+        <location filename="../settingswidget.ui" line="604"/>
         <source>24000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="593"/>
+        <location filename="../settingswidget.ui" line="609"/>
         <source>16000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="598"/>
+        <location filename="../settingswidget.ui" line="614"/>
         <source>8000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="606"/>
+        <location filename="../settingswidget.ui" line="622"/>
         <source>Duplex</source>
         <translation>デュプレックス</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="614"/>
+        <location filename="../settingswidget.ui" line="630"/>
         <source>Full Duplex</source>
         <translation>全二重</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="619"/>
+        <location filename="../settingswidget.ui" line="635"/>
         <source>Half Duplex</source>
         <translation>半二重</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="627"/>
-        <location filename="../settingswidget.ui" line="2678"/>
+        <location filename="../settingswidget.ui" line="643"/>
+        <location filename="../settingswidget.ui" line="2804"/>
         <source>Audio System</source>
         <translation>オーディオシステム</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="635"/>
-        <location filename="../settingswidget.ui" line="2686"/>
+        <location filename="../settingswidget.ui" line="651"/>
+        <location filename="../settingswidget.ui" line="2812"/>
         <source>Qt Audio</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="640"/>
-        <location filename="../settingswidget.ui" line="2691"/>
+        <location filename="../settingswidget.ui" line="656"/>
+        <location filename="../settingswidget.ui" line="2817"/>
         <source>PortAudio</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="645"/>
-        <location filename="../settingswidget.ui" line="2696"/>
+        <location filename="../settingswidget.ui" line="661"/>
+        <location filename="../settingswidget.ui" line="2822"/>
         <source>RT Audio</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="650"/>
+        <location filename="../settingswidget.ui" line="666"/>
         <source>TCI Audio</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="675"/>
+        <location filename="../settingswidget.ui" line="691"/>
         <source>Audio Output </source>
         <translation>受信音出力</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="688"/>
+        <location filename="../settingswidget.ui" line="704"/>
         <source>Audio Output Selector</source>
         <translation>受信音の出力セレクター</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="695"/>
+        <location filename="../settingswidget.ui" line="711"/>
         <source>Audio Input</source>
         <translation>マイク入力</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="708"/>
+        <location filename="../settingswidget.ui" line="724"/>
         <source>Audio Input Selector</source>
         <translation>送信音の入力セレクター</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="740"/>
         <source>Connect To Radio</source>
-        <translation>無線機と接続する</translation>
+        <translation type="vanished">無線機と接続する</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="781"/>
+        <location filename="../settingswidget.ui" line="783"/>
         <source>When tuning, set lower digits to zero</source>
         <translation>チューニングするときは、下位桁をゼロに設定してください</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="791"/>
-        <location filename="../settingswidget.ui" line="797"/>
+        <location filename="../settingswidget.ui" line="793"/>
+        <location filename="../settingswidget.ui" line="799"/>
         <source>When using SSB, automatically switch to the standard sideband for a given band.</source>
         <translation>SSBを使用する場合、バンド帯毎に標準側波帯に自動的に切り替わります。</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="794"/>
+        <location filename="../settingswidget.ui" line="796"/>
         <source>Auto SSB Switching</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="800"/>
+        <location filename="../settingswidget.ui" line="802"/>
         <source>Auto SSB</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="807"/>
+        <location filename="../settingswidget.ui" line="809"/>
         <source>Enable PTT Controls</source>
         <translation>PTT制御の有効</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="814"/>
+        <location filename="../settingswidget.ui" line="816"/>
         <source>Rig creator allows changing of all rig features and adding new rig profiles</source>
         <translation>無線機クリエーター機能により、すべての無線機機能の変更と新しい無線機プロファイルの追加が可能になります。</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="817"/>
+        <location filename="../settingswidget.ui" line="819"/>
         <source>Enable Rig Creator Feature (use with care)</source>
         <translation>無線機クリエーター機能を有効にする (使用には注意してください)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="864"/>
+        <location filename="../settingswidget.ui" line="872"/>
         <source>Enables interpolation between pixels. Note that this will increase CPU usage.</source>
         <translation>ピクセル間の補間を有効にします。これにより、CPU使用率が増加することに注意してください。</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="867"/>
+        <location filename="../settingswidget.ui" line="875"/>
         <source>Interpolate Waterfall</source>
         <translatorcomment>ウォーターフォールを補間する</translatorcomment>
         <translation>Waterfallを補間する</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="877"/>
+        <location filename="../settingswidget.ui" line="885"/>
         <source>Anti-Alias Waterfall</source>
         <translatorcomment>アンチエイリアスウォーターフォール</translatorcomment>
         <translation>アンチエイリアスWaterfall</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="884"/>
+        <location filename="../settingswidget.ui" line="892"/>
         <source>Allow tuning via click and drag (experimental)</source>
         <translation>クリックとドラッグによるチューニングを許可する (実験的)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="891"/>
+        <location filename="../settingswidget.ui" line="899"/>
         <source>Use System Theme</source>
         <translation>システムテーマを使用する</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="898"/>
+        <location filename="../settingswidget.ui" line="906"/>
         <source>Show full screen (F11)</source>
         <translation>全画面表示(F11)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1021"/>
+        <location filename="../settingswidget.ui" line="1029"/>
         <source>Underlay Mode</source>
         <translation>アンダーレイモード</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1028"/>
+        <location filename="../settingswidget.ui" line="1036"/>
         <source>No underlay graphics</source>
         <translation>アンダーレイグラフィックスなし</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="937"/>
-        <location filename="../settingswidget.ui" line="1031"/>
+        <location filename="../settingswidget.ui" line="945"/>
+        <location filename="../settingswidget.ui" line="1039"/>
         <source>None</source>
         <translation>なし</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1041"/>
+        <location filename="../settingswidget.ui" line="1049"/>
         <source>Indefinite peak hold</source>
         <translation>無限ピークホールド</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1044"/>
+        <location filename="../settingswidget.ui" line="1052"/>
         <source>Peak Hold</source>
         <translation>ピーク保持</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1051"/>
+        <location filename="../settingswidget.ui" line="1059"/>
         <source>Peak value within the buffer</source>
         <translation>バッファ内のピーク値</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1054"/>
+        <location filename="../settingswidget.ui" line="1062"/>
         <source>Peak</source>
         <translation>ピーク</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1061"/>
+        <location filename="../settingswidget.ui" line="1069"/>
         <source>Average value within the buffer</source>
         <translation>バッファ内の平均値</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1064"/>
+        <location filename="../settingswidget.ui" line="1072"/>
         <source>Average</source>
         <translation>平均</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1071"/>
+        <location filename="../settingswidget.ui" line="1079"/>
         <source>Underlay Buffer Size:</source>
         <translation>アンダーレイ バッファ サイズ：</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1084"/>
+        <location filename="../settingswidget.ui" line="1092"/>
         <source>Size of buffer for spectrum data. Shorter values are more responsive.</source>
         <translation>スペクトルデータのバッファーのサイズ。値が短いほど応答性が高くなります。</translation>
     </message>
@@ -2429,1047 +2800,856 @@ ONLY use Manual CI-V when Transceive mode is not supported</source>
         <translation type="vanished">周波数単位</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="942"/>
+        <location filename="../settingswidget.ui" line="950"/>
         <source>Hz</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="947"/>
-        <source>KHz</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../settingswidget.ui" line="952"/>
+        <location filename="../settingswidget.ui" line="960"/>
         <source>MHz</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="957"/>
+        <location filename="../settingswidget.ui" line="965"/>
         <source>GHz</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1143"/>
+        <location filename="../settingswidget.ui" line="1151"/>
         <source>Additional Meter Selection:</source>
         <translation>追加するのメーターの選択：</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1156"/>
+        <location filename="../settingswidget.ui" line="1164"/>
         <source>Broadcast-style reduction meter</source>
         <translation>放送式リダクションメーター</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1159"/>
+        <location filename="../settingswidget.ui" line="1167"/>
         <source>Reverse Comp Meter</source>
         <translation>リバースコンプメーター</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1166"/>
+        <location filename="../settingswidget.ui" line="1174"/>
         <source>wfview will automatically calculate command polling. Recommended.</source>
         <translation>wfview がコマンドポーリングを自動的に計算します。推奨。</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1169"/>
+        <location filename="../settingswidget.ui" line="1177"/>
         <source>AutoPolling</source>
         <translation>自動ポーリング</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1182"/>
+        <location filename="../settingswidget.ui" line="1190"/>
         <source>Manual (user-defined) command polling</source>
         <translation>手動（ユーザー定義）コマンドポーリング</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1185"/>
+        <location filename="../settingswidget.ui" line="1193"/>
         <source>Manual Polling Interval:</source>
         <translation>手動ポーリング間隔：</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1195"/>
+        <location filename="../settingswidget.ui" line="1203"/>
         <source>Sets the polling interval, in ms. Automatic polling is recommended. Serial port and USB port radios should not poll quicker than about 75ms.</source>
         <translation>ポーリング間隔をミリ秒単位で設定します。自動ポーリングをお勧めします。シリアル ポートとUSB ポートの無線は、約 75ミリ秒より速くポーリングしないでください。</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1208"/>
+        <location filename="../settingswidget.ui" line="1219"/>
         <source>ms</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1238"/>
+        <location filename="../settingswidget.ui" line="1249"/>
         <source>Color scheme</source>
         <translation>カラースキーム</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1245"/>
+        <location filename="../settingswidget.ui" line="1256"/>
         <source>Preset:</source>
         <translation>プリセット：</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1267"/>
+        <location filename="../settingswidget.ui" line="1278"/>
         <source>Select a color preset here.</source>
         <translation>ここで色のプリセットを選択します。</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="853"/>
-        <location filename="../settingswidget.ui" line="1271"/>
+        <location filename="../settingswidget.ui" line="861"/>
+        <location filename="../settingswidget.ui" line="1282"/>
         <source>1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="837"/>
+        <location filename="../settingswidget.ui" line="842"/>
         <source>Region:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="922"/>
+        <location filename="../settingswidget.ui" line="930"/>
         <source>Frequency Display:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="929"/>
+        <location filename="../settingswidget.ui" line="937"/>
         <source>Units</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="965"/>
+        <location filename="../settingswidget.ui" line="973"/>
         <source>Separators:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="972"/>
+        <location filename="../settingswidget.ui" line="980"/>
         <source>Decimal</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="982"/>
+        <location filename="../settingswidget.ui" line="990"/>
         <source>Groups</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1103"/>
+        <location filename="../settingswidget.ui" line="1111"/>
         <source>Show Bands</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1276"/>
+        <location filename="../settingswidget.ui" line="1287"/>
         <source>2</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1281"/>
+        <location filename="../settingswidget.ui" line="1292"/>
         <source>3</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1286"/>
+        <location filename="../settingswidget.ui" line="1297"/>
         <source>4</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1291"/>
+        <location filename="../settingswidget.ui" line="1302"/>
         <source>5</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1299"/>
+        <location filename="../settingswidget.ui" line="1310"/>
         <source>Revert the selected color preset to the default.</source>
         <translation>選択したカラープリセットをデフォルトに戻します。</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1302"/>
+        <location filename="../settingswidget.ui" line="1313"/>
         <source>Revert</source>
         <translation>元に戻す</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1309"/>
+        <location filename="../settingswidget.ui" line="1320"/>
         <source>Rename the selected color preset. Max length is 10 characters.</source>
         <translation>選択したカラープリセットの名前を変更します。10文字以内です。</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1312"/>
-        <location filename="../settingswidget.cpp" line="2311"/>
+        <location filename="../settingswidget.ui" line="1323"/>
+        <location filename="../settingswidget.cpp" line="2393"/>
         <source>Rename Preset</source>
         <translation>プリセット名の変更</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1352"/>
+        <location filename="../settingswidget.ui" line="1363"/>
         <source>User-defined Color Editor</source>
         <translation>ユーザー定義のカラーエディター</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1418"/>
-        <location filename="../settingswidget.ui" line="1444"/>
-        <location filename="../settingswidget.ui" line="1474"/>
-        <location filename="../settingswidget.ui" line="1487"/>
-        <location filename="../settingswidget.ui" line="1510"/>
-        <location filename="../settingswidget.ui" line="1523"/>
-        <location filename="../settingswidget.ui" line="1550"/>
-        <location filename="../settingswidget.ui" line="1566"/>
-        <location filename="../settingswidget.ui" line="1623"/>
-        <location filename="../settingswidget.ui" line="1646"/>
-        <location filename="../settingswidget.ui" line="1659"/>
+        <location filename="../settingswidget.ui" line="1460"/>
+        <location filename="../settingswidget.ui" line="1493"/>
+        <location filename="../settingswidget.ui" line="1537"/>
+        <location filename="../settingswidget.ui" line="1617"/>
         <location filename="../settingswidget.ui" line="1702"/>
-        <location filename="../settingswidget.ui" line="1715"/>
-        <location filename="../settingswidget.ui" line="1728"/>
-        <location filename="../settingswidget.ui" line="1741"/>
-        <location filename="../settingswidget.ui" line="1754"/>
-        <location filename="../settingswidget.ui" line="1777"/>
-        <location filename="../settingswidget.ui" line="1817"/>
+        <location filename="../settingswidget.ui" line="1732"/>
+        <location filename="../settingswidget.ui" line="1752"/>
+        <location filename="../settingswidget.ui" line="1775"/>
+        <location filename="../settingswidget.ui" line="1805"/>
+        <location filename="../settingswidget.ui" line="1842"/>
+        <location filename="../settingswidget.ui" line="1862"/>
+        <location filename="../settingswidget.ui" line="1882"/>
         <location filename="../settingswidget.ui" line="1901"/>
-        <location filename="../settingswidget.ui" line="1931"/>
-        <location filename="../settingswidget.ui" line="1965"/>
-        <location filename="../settingswidget.ui" line="2002"/>
-        <location filename="../settingswidget.ui" line="2104"/>
-        <location filename="../settingswidget.ui" line="2140"/>
-        <location filename="../settingswidget.ui" line="2173"/>
-        <location filename="../settingswidget.ui" line="2196"/>
+        <location filename="../settingswidget.ui" line="1914"/>
+        <location filename="../settingswidget.ui" line="1934"/>
+        <location filename="../settingswidget.ui" line="2015"/>
+        <location filename="../settingswidget.ui" line="2028"/>
+        <location filename="../settingswidget.ui" line="2041"/>
+        <location filename="../settingswidget.ui" line="2071"/>
+        <location filename="../settingswidget.ui" line="2114"/>
+        <location filename="../settingswidget.ui" line="2127"/>
+        <location filename="../settingswidget.ui" line="2170"/>
+        <location filename="../settingswidget.ui" line="2183"/>
+        <location filename="../settingswidget.ui" line="2210"/>
+        <location filename="../settingswidget.ui" line="2230"/>
+        <location filename="../settingswidget.ui" line="2276"/>
+        <location filename="../settingswidget.ui" line="2289"/>
+        <location filename="../settingswidget.ui" line="2302"/>
         <source>#AARRGGBB</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1451"/>
+        <location filename="../settingswidget.ui" line="1662"/>
         <source>Spectrum Line</source>
         <translation>スペクトルライン</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1530"/>
+        <location filename="../settingswidget.ui" line="2002"/>
         <source>Axis</source>
         <translation>軸</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1537"/>
+        <location filename="../settingswidget.ui" line="1638"/>
         <source>Grid</source>
         <translation>グリッド</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1563"/>
+        <location filename="../settingswidget.ui" line="2111"/>
         <source>Color text format is #AARRGGBB, where AA is the &quot;alpha&quot; channel, and value &quot;00&quot; is totally transparent, and &quot;ff&quot; is totally opaque.</source>
         <translation>カラーテキストの形式は #AARRGGBB です。AA は「アルファ」チャネルで、値「00」は完全に透明、「ff」は完全に不透明です。</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1573"/>
+        <location filename="../settingswidget.ui" line="1829"/>
         <source>Meter Peak Level</source>
         <translation>メーターのピークレベル</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1580"/>
+        <location filename="../settingswidget.ui" line="1500"/>
         <source>Underlay Line</source>
         <translation>アンダーライン</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1682"/>
+        <location filename="../settingswidget.ui" line="1921"/>
         <source>Text</source>
         <translation>文字</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1689"/>
+        <location filename="../settingswidget.ui" line="2197"/>
         <source>Spectrum Fill Top</source>
         <translation>スペクトラムフィルトップ</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1804"/>
+        <location filename="../settingswidget.ui" line="1965"/>
         <source>Plot Background</source>
         <translation>プロットの背景</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1834"/>
+        <location filename="../settingswidget.ui" line="1941"/>
         <source>Spectrum Gradient</source>
         <translation>スペクトル勾配</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1841"/>
+        <location filename="../settingswidget.ui" line="1631"/>
         <source>Underlay Fill</source>
         <translation>アンダーレイの塗りつぶし</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1888"/>
+        <location filename="../settingswidget.ui" line="1948"/>
         <source>Meter Average</source>
         <translation>メーター平均値</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1908"/>
+        <location filename="../settingswidget.ui" line="1849"/>
         <source>Passband</source>
         <translation>通過帯域</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1938"/>
+        <location filename="../settingswidget.ui" line="1447"/>
         <source>Waterfall Grid</source>
         <translation>ウォーターフォールグリッド</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1945"/>
+        <location filename="../settingswidget.ui" line="1624"/>
         <source>Waterfall Back</source>
         <translation>ウォーターフォール裏</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1952"/>
+        <location filename="../settingswidget.ui" line="1869"/>
         <source>Tuning Line</source>
         <translation>チューニングライン</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1982"/>
+        <location filename="../settingswidget.ui" line="1655"/>
         <source>Waterfall Axis</source>
         <translation>ウォーターフォール軸</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="1989"/>
+        <location filename="../settingswidget.ui" line="1709"/>
         <source>Waterfall Text</source>
         <translation>ウォーターフォール文字</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2009"/>
+        <location filename="../settingswidget.ui" line="1739"/>
         <source>Meter Level</source>
         <translation>メーターレベル</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2036"/>
+        <location filename="../settingswidget.ui" line="2217"/>
         <source>Meter Text</source>
         <translation>メーター文字</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2043"/>
+        <location filename="../settingswidget.ui" line="2147"/>
         <source>Spectrum Fill Bot</source>
         <translation>スペクトルフィルボット</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2060"/>
+        <location filename="../settingswidget.ui" line="1564"/>
         <source>Spectrum Fill</source>
         <translation>スペクトルフィル</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2077"/>
+        <location filename="../settingswidget.ui" line="1782"/>
         <source>PBT Indicator</source>
         <translation>PBTインジケーター</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2084"/>
+        <location filename="../settingswidget.ui" line="2190"/>
         <source>Meter Scale</source>
         <translation>メータースケール</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2091"/>
+        <location filename="../settingswidget.ui" line="1689"/>
         <source>Meter High Scale</source>
         <translation>メーターハイスケール</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2121"/>
+        <location filename="../settingswidget.ui" line="261"/>
+        <source>PTT Type</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="269"/>
+        <source>CI-V</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="274"/>
+        <source>RTS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="279"/>
+        <source>DTR</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="751"/>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;You &lt;span style=&quot; font-weight:700;&quot;&gt;MUST&lt;/span&gt; disconnect from the radio before making any changes in the above form.&lt;br/&gt;&lt;br/&gt;Please use the &lt;span style=&quot; font-style:italic;&quot;&gt;Connect/Disconnect &lt;/span&gt;button below&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="839"/>
+        <location filename="../settingswidget.ui" line="855"/>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;ITU Region. Used to display band limits. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Region 1&lt;/span&gt; comprises Europe, Africa, the Commonwealth of Independent States, Mongolia, and the Middle East west of the Persian Gulf, including Iraq.&lt;/p&gt;&lt;p&gt;The western boundary is defined by Line B.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Region 2&lt;/span&gt; covers the Americas including Greenland, and some of the eastern Pacific Islands.&lt;/p&gt;&lt;p&gt;The eastern boundary is defined by Line B.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Region 3&lt;/span&gt; contains most of non-FSU Asia east of and including Iran, and most of Oceania.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Line B&lt;/span&gt; is a line running from the North Pole along meridian 10° West of Greenwich to its intersection with parallel 72° North; thence by great circle arc to the intersection of meridian 50° West and parallel 40° North; thence by great circle arc to the intersection of meridian 20° West and parallel 10° South; thence along meridian 20° West to the South Pole.&lt;/p&gt;&lt;p&gt;(Text is from the English wikipedia)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="955"/>
+        <source>kHz</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="1430"/>
         <source>Cluster Spots</source>
         <translation>クラスタースポット</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2157"/>
+        <location filename="../settingswidget.ui" line="1517"/>
         <source>Underlay Gradient</source>
         <translation>アンダーレイのグラデーション</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2180"/>
+        <location filename="../settingswidget.ui" line="1524"/>
         <source>Underlay Fill Top</source>
         <translation>アンダーレイフィルトップ</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2203"/>
+        <location filename="../settingswidget.ui" line="1822"/>
+        <source>Button On</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="2058"/>
+        <source>Button Off</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="2088"/>
         <source>Underlay Fill Bot</source>
         <translation>アンダーレイフィルボット</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2238"/>
+        <location filename="../settingswidget.ui" line="2337"/>
         <source>Data Off Modulation Input:</source>
         <translation>データオフ変調入力：</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2245"/>
+        <location filename="../settingswidget.ui" line="2344"/>
         <source>Modulation Input</source>
         <translation>変調入力</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2248"/>
+        <location filename="../settingswidget.ui" line="2347"/>
         <source>Transmit modulation source</source>
         <translation>送信変調ソース</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2258"/>
+        <location filename="../settingswidget.ui" line="2357"/>
         <source>(Data Mod Inputs) DATA1:</source>
         <translation>(データ変調入力)DATA1：</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2265"/>
+        <location filename="../settingswidget.ui" line="2364"/>
         <source>Data Modulation Input</source>
         <translation>データ変調入力</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2268"/>
+        <location filename="../settingswidget.ui" line="2367"/>
         <source>Transmit Data-mode modulation input source</source>
         <translation>データ送信モード変調入力ソース入力</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2278"/>
+        <location filename="../settingswidget.ui" line="2377"/>
         <source>DATA2:</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2288"/>
+        <location filename="../settingswidget.ui" line="2387"/>
         <source>DATA3:</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2315"/>
+        <location filename="../settingswidget.ui" line="2414"/>
         <source>Press here to set the clock of the radio. The command will be sent to the radio when the seconds go to zero. </source>
         <translation>ここを押して無線機の時計を設定します。秒がゼロになると、コマンドが無線機に送信されます。</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2318"/>
+        <location filename="../settingswidget.ui" line="2417"/>
         <source>Set Clock</source>
         <translation>時間設定</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2325"/>
+        <location filename="../settingswidget.ui" line="2424"/>
         <source>Check this box to set the radio&apos;s clock to UTC. Otherwise, the clock will be set to the local timezone of this computer. </source>
         <translation>無線機の時計をUTCに設定するには、このボックスをチェックします。それ以外の場合、時計はこのコンピュータのローカル タイムゾーンに設定されます。</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2328"/>
+        <location filename="../settingswidget.ui" line="2427"/>
         <source>Use UTC</source>
         <translation>UTCを使用</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2335"/>
+        <location filename="../settingswidget.ui" line="2434"/>
+        <source>Set radio time on connect (takes up to a minute)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="2454"/>
         <source>Satellite Ops</source>
         <translation>衛星運用</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2342"/>
+        <location filename="../settingswidget.ui" line="2461"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click here to adjust the frequency reference on the IC-9700.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;ここをクリックして、IC-9700の基準周波数を調整します。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2345"/>
+        <location filename="../settingswidget.ui" line="2464"/>
         <source>Adjust Reference</source>
         <translation>基準値の調整</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2372"/>
+        <location filename="../settingswidget.ui" line="2478"/>
         <source>Manual PTT Toggle</source>
         <translation>PTT操作</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2379"/>
+        <location filename="../settingswidget.ui" line="2485"/>
         <source>PTT On</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2382"/>
+        <location filename="../settingswidget.ui" line="2488"/>
         <source>Ctrl+S</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2389"/>
+        <location filename="../settingswidget.ui" line="2495"/>
         <source>PTT Off</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2445"/>
+        <location filename="../settingswidget.ui" line="2551"/>
         <source>Enable</source>
         <translation>有効</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2469"/>
+        <location filename="../settingswidget.ui" line="2571"/>
+        <source>Disable local user controls when in use (restart required)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="2582"/>
         <source>Server Setup</source>
         <translation>サーバの設定</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2514"/>
-        <location filename="../settingswidget.ui" line="2564"/>
-        <location filename="../settingswidget.ui" line="2605"/>
+        <location filename="../settingswidget.ui" line="2627"/>
+        <location filename="../settingswidget.ui" line="2677"/>
+        <location filename="../settingswidget.ui" line="2718"/>
         <source>99999</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2545"/>
+        <location filename="../settingswidget.ui" line="2658"/>
         <source>Civ Port</source>
         <translation>シリアルポート(UDP)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2567"/>
+        <location filename="../settingswidget.ui" line="2680"/>
         <source>50002</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2586"/>
+        <location filename="../settingswidget.ui" line="2699"/>
         <source>Audio Port</source>
         <translation>オーディオポート(UDP)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2608"/>
+        <location filename="../settingswidget.ui" line="2721"/>
         <source>50003</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2632"/>
+        <location filename="../settingswidget.ui" line="2745"/>
         <source>RX Audio Input</source>
         <translation>受信用オーディオ(SP)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2655"/>
+        <location filename="../settingswidget.ui" line="2768"/>
         <source>TX Audio Output</source>
         <translation>送信用オーディオ(MIC)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2721"/>
+        <location filename="../settingswidget.ui" line="2834"/>
         <source>Users</source>
         <translation>ユーザ一覧</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2792"/>
+        <location filename="../settingswidget.ui" line="2905"/>
         <source>Admin</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2838"/>
+        <location filename="../settingswidget.ui" line="2920"/>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Please disconnect from radio to make changes to the server settings&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.ui" line="2965"/>
         <source>Enable RigCtld</source>
         <translation>RigCtld</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2861"/>
+        <location filename="../settingswidget.ui" line="2988"/>
         <source>Port</source>
         <translation>ポート</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2901"/>
+        <location filename="../settingswidget.ui" line="3028"/>
         <source>Virtual Serial Port</source>
         <translation>仮想シリアルポート</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2920"/>
+        <location filename="../settingswidget.ui" line="3047"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use this to define a virtual serial port. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;On Windows, the virtual serial port can be used to connect to a serial port loopback device, through which other programs can connect to the radio. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;On Linux and macOS, the port defined here is a pseudo-terminal device, which may be connected to directly by any program designed for a serial connection. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;これを使用して仮想シリアル ポートを定義します&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Windows では、仮想シリアル ポートを使用してシリアルポートループバックデバイスに接続でき、これを通じて他のプログラムが無線機に接続できます。&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Linux および macOS では、ここで定義されたポートは擬似端末デバイスであり、シリアル接続用に設計された任意のプログラムによって直接接続できます。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2923"/>
+        <location filename="../settingswidget.ui" line="3050"/>
         <source>Virtual Serial Port Selector</source>
         <translation>仮想シリアルポートの選択</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2947"/>
+        <location filename="../settingswidget.ui" line="3074"/>
         <source>TCP Server Port</source>
         <translation>TCPサーバーポート</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2967"/>
+        <location filename="../settingswidget.ui" line="3094"/>
         <source>Enter port for TCP server, 0 = disabled (restart required if changed)</source>
         <translation>TCPサーバーのポート番号を入力します。0 = 無効 (変更した場合は再起動が必要)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="2991"/>
+        <location filename="../settingswidget.ui" line="3118"/>
         <source>TCI Server Port</source>
         <translation>TCIサーバーポート</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3008"/>
+        <location filename="../settingswidget.ui" line="3135"/>
         <source>Enter port for TCI server 0 = disabled (restart required if changed)</source>
         <translation>TCIサーバーのポート番号を入力します。0 = 無効 (変更した場合は再起動が必要)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3032"/>
+        <location filename="../settingswidget.ui" line="3159"/>
         <source>Waterfall Format</source>
         <translation>ウォーターフォール形式</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3040"/>
+        <location filename="../settingswidget.ui" line="3167"/>
         <source>Default</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3045"/>
+        <location filename="../settingswidget.ui" line="3172"/>
         <source>Single (network)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3050"/>
+        <location filename="../settingswidget.ui" line="3177"/>
         <source>Multi (serial)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3058"/>
+        <location filename="../settingswidget.ui" line="3185"/>
         <source>Only change this if you are absolutely sure you need it (connecting to N1MM+ or similar)</source>
         <translation>必ず必要な場合(N1MM+などに接続する場合)にのみ変更してください。</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3082"/>
+        <location filename="../settingswidget.ui" line="3209"/>
         <source>Enable USB Controllers</source>
         <translation>USB無線機コントローラ</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3092"/>
+        <location filename="../settingswidget.ui" line="3219"/>
         <source>Setup USB Controller</source>
         <translation>USB無線機コントローラの設定</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3112"/>
+        <location filename="../settingswidget.ui" line="3239"/>
         <source>Reset Buttons</source>
         <translation>リセット</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3119"/>
+        <location filename="../settingswidget.ui" line="3246"/>
         <source>Only reset buttons/commands if you have issues. </source>
         <translation>問題がある場合のみ、リセットしてください。</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3163"/>
+        <location filename="../settingswidget.ui" line="3290"/>
         <source>This page contains configuration for DX Cluster, either UDP style broadcast (from N1MM+/DXlog) or TCP connection to your favourite cluster</source>
         <translation>このページには、DXクラスターの構成(UDPスタイルのブロードキャスト(N1MM+/DXlogから)またはお気に入りのクラスターへのTCP接続) が含まれています。</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3172"/>
+        <location filename="../settingswidget.ui" line="3299"/>
         <source>TCP Cluster Connection</source>
         <translation>TCPクラスター接続</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3183"/>
+        <location filename="../settingswidget.ui" line="3310"/>
         <source>Server Name</source>
         <translation>サーバーの名前</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3208"/>
+        <location filename="../settingswidget.ui" line="3335"/>
         <source>Add/Update</source>
         <translation>追加/更新</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3221"/>
+        <location filename="../settingswidget.ui" line="3348"/>
         <source>Del</source>
         <translation>削除</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3230"/>
+        <location filename="../settingswidget.ui" line="3357"/>
         <source>Server Port</source>
         <translation>サーバーのポート</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3237"/>
-        <location filename="../settingswidget.ui" line="3339"/>
+        <location filename="../settingswidget.ui" line="3364"/>
+        <location filename="../settingswidget.ui" line="3466"/>
         <source>00000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3268"/>
+        <location filename="../settingswidget.ui" line="3395"/>
         <source>Spot Timeout (minutes)</source>
         <translation>スポットタイムアウト (分)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3275"/>
+        <location filename="../settingswidget.ui" line="3402"/>
         <source>0000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3287"/>
+        <location filename="../settingswidget.ui" line="3414"/>
         <source>Connect</source>
         <translation>接続</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3294"/>
+        <location filename="../settingswidget.ui" line="3421"/>
         <source>Disconnect</source>
         <translation>切断</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3321"/>
+        <location filename="../settingswidget.ui" line="3448"/>
         <source>UDP Broadcast Connection</source>
         <translation>UDPブロードキャスト接続</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3332"/>
+        <location filename="../settingswidget.ui" line="3459"/>
         <source>UDP Port</source>
         <translation>UDPポート</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3363"/>
+        <location filename="../settingswidget.ui" line="3490"/>
         <source>Show Skimmer Spots</source>
         <translation>スキマースポットを表示</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3394"/>
+        <location filename="../settingswidget.ui" line="3521"/>
         <source>This page contains experimental features. Use at your own risk.</source>
         <translation>このページには実験的な機能が含まれています。※自己責任</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3405"/>
+        <location filename="../settingswidget.ui" line="3532"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This button runs debug functions, and is provided as a convenience for programmers. The functions executed are under:&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; color:#ffff55;&quot;&gt;void&lt;/span&gt;&lt;span style=&quot; color:#55ff55;&quot;&gt;wfmain&lt;/span&gt;&lt;span style=&quot; color:#aaaaaa;&quot;&gt;::&lt;/span&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;on_debugBtn_clicked&lt;/span&gt;&lt;span style=&quot; color:#aaaaaa;&quot;&gt;()&lt;/span&gt;&lt;/p&gt;&lt;p&gt;in wfmain.cpp.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;このボタンはデバッグ機能を実行し、プログラマの便宜のために提供されています。実行される関数は次のとおりです。：&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; color:#ffff55;&quot;&gt;void&lt;/span&gt;&lt;span style=&quot; color:#55ff55;&quot;&gt;wfmain&lt;/span&gt;&lt;span style=&quot; color:#aaaaaa;&quot;&gt;::&lt;/span&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;on_debugBtn_clicked&lt;/span&gt;&lt;span style=&quot; color:#aaaaaa;&quot;&gt;()&lt;/span&gt;&lt;/p&gt;&lt;p&gt;in wfmain.cpp.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3408"/>
+        <location filename="../settingswidget.ui" line="3535"/>
         <source>Debug</source>
         <translation>デバッグ</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3411"/>
+        <location filename="../settingswidget.ui" line="3538"/>
         <source>Ctrl+Alt+D</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3482"/>
+        <location filename="../settingswidget.ui" line="3609"/>
         <source>Save Settings</source>
         <translation>設定を保存</translation>
     </message>
     <message>
-        <location filename="../settingswidget.ui" line="3489"/>
+        <location filename="../settingswidget.ui" line="3616"/>
         <source>Revert to Default</source>
         <translation>初期化する</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="44"/>
+        <location filename="../settingswidget.ui" line="3636"/>
+        <source>Connect to Radio</source>
+        <translation type="unfinished">無線機と接続する</translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.cpp" line="46"/>
         <source>Radio Access</source>
         <translation>無線機との接続方法</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="45"/>
+        <location filename="../settingswidget.cpp" line="47"/>
         <source>User Interface</source>
         <translation>ユーザーインターフェース</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="46"/>
+        <location filename="../settingswidget.cpp" line="48"/>
         <source>Radio Settings</source>
         <translation>無線機の設定</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="47"/>
+        <location filename="../settingswidget.cpp" line="49"/>
         <source>Radio Server</source>
         <translation>リモートサーバの設定</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="48"/>
+        <location filename="../settingswidget.cpp" line="50"/>
         <source>External Control</source>
         <translation>外部制御</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="49"/>
+        <location filename="../settingswidget.cpp" line="51"/>
         <source>DX Cluster</source>
         <translation>DXクラスタの設定</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="50"/>
+        <location filename="../settingswidget.cpp" line="52"/>
         <source>Experimental</source>
         <translation>実験内容</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1284"/>
+        <location filename="../settingswidget.cpp" line="1054"/>
+        <source>
+Server audio output device does not exist, please check.
+Transmit audio will NOT work until this is corrected
+**** please disable the server if not required ****</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.cpp" line="1065"/>
+        <source>
+Server audio input device does not exist, please check.
+Receive audio will NOT work until this is corrected
+**** please disable the server if not required ****</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingswidget.cpp" line="1353"/>
         <source>Admin User</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1284"/>
+        <location filename="../settingswidget.cpp" line="1353"/>
         <source>Normal User</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1284"/>
+        <location filename="../settingswidget.cpp" line="1353"/>
         <source>Normal with no TX</source>
         <comment>Monitor only</comment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1292"/>
+        <location filename="../settingswidget.cpp" line="1361"/>
         <source>Delete</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1547"/>
+        <location filename="../settingswidget.cpp" line="1623"/>
         <source>Manual port assignment</source>
         <translation>手動ポート割り当て</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1548"/>
+        <location filename="../settingswidget.cpp" line="1624"/>
         <source>Enter serial port assignment:</source>
         <translation>シリアル ポートの割り当てを入力します。</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="1550"/>
+        <location filename="../settingswidget.cpp" line="1626"/>
         <source>/dev/device</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="2149"/>
+        <location filename="../settingswidget.cpp" line="2229"/>
         <source>Specify Opacity</source>
         <translation>不透明度の指定</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="2150"/>
+        <location filename="../settingswidget.cpp" line="2230"/>
         <source>You specified an opacity value of 0. 
 Do you want to change it? (0=transparent, 255=opaque)</source>
         <translation>不透明度値 0 を指定しました。 
 変更しますか? (0=透明、255=不透明)</translation>
     </message>
     <message>
-        <location filename="../settingswidget.cpp" line="2312"/>
+        <location filename="../settingswidget.cpp" line="2394"/>
         <source>Preset Name (10 characters max):</source>
         <translation>プリセット名 (10文字以内):</translation>
-    </message>
-</context>
-<context>
-    <name>receiverWidget</name>
-    <message>
-        <location filename="../receiverwidget.cpp" line="52"/>
-        <source>Detach</source>
-        <translation>切り離す</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="54"/>
-        <source>Detach/re-attach scope from main window</source>
-        <translation>メインウィンドウからスコープを切り離す/再接続する</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="58"/>
-        <source>Spectrum Mode</source>
-        <translation>スペクトルモード</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="61"/>
-        <source>Spectrum Span</source>
-        <translation>スペクトルスパン</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="65"/>
-        <source>Spectrum Edge</source>
-        <translation>スペクトルエッジ</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="66"/>
-        <source>Custom Edge</source>
-        <translation>カスタムエッジ</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="67"/>
-        <source>Define a custom (fixed) scope edge</source>
-        <translation>カスタム(固定)スコープエッジを定義する</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="68"/>
-        <source>To Fixed</source>
-        <translation>固定する</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="69"/>
-        <source>&amp;lt;html&amp;gt;&amp;lt;head/&amp;gt;&amp;lt;body&amp;gt;&amp;lt;p&amp;gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;&amp;lt;br/&amp;gt;&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;The currently-selected edge slot will be overridden.&amp;lt;/p&amp;gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;</source>
-        <translation>&amp;lt;html&amp;gt;&amp;lt;head/&amp;gt;&amp;lt;body&amp;gt;&amp;lt;p&amp;gt;ボタンを押すと、範囲を維持しながらセンター モードのスペクトルが固定モードに変換されます。これにより、スペクトルを移動させることなく、現在表示されているのと同じ範囲で調整できます。.&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;&amp;lt;br/&amp;gt;&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;現在選択されているエッジ スロットは上書きされます。.&amp;lt;/p&amp;gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="81"/>
-        <location filename="../receiverwidget.cpp" line="83"/>
-        <source>Configure Scope</source>
-        <translation>スコープの構成</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="82"/>
-        <source>Change various settings of the current Scope</source>
-        <translation>スコープの各種設定を変更します</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="133"/>
-        <source>Center Mode</source>
-        <translation>センターモード</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="134"/>
-        <source>Fixed Mode</source>
-        <translation>固定モード</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="135"/>
-        <source>Scroll-C</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="136"/>
-        <source>Scroll-F</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="139"/>
-        <source>Fixed Edge 1</source>
-        <translation>固定エッジ1</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="139"/>
-        <source>Fixed Edge 2</source>
-        <translation>固定エッジ2</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="139"/>
-        <source>Fixed Edge 3</source>
-        <translation>固定エッジ3</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="139"/>
-        <source>Fixed Edge 4</source>
-        <translation>固定エッジ4</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="168"/>
-        <source>SCOPE OUT OF RANGE</source>
-        <translation>スコープ：範囲外</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="179"/>
-        <source> OVF </source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="244"/>
-        <source>Scope display reference</source>
-        <translation>スコープ：表示リファレンス</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="245"/>
-        <source>Selects the display reference for the Scope display</source>
-        <translation>スコープ表示の表示基準を選択します</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="246"/>
-        <source>Select display reference of scope</source>
-        <translation>スコープの表示参照を選択</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="247"/>
-        <source>Ref</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="251"/>
-        <source>Length</source>
-        <translation>文字数</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="256"/>
-        <source>Scope display ceiling</source>
-        <translation>スコープ展示天井</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="257"/>
-        <source>Selects the display ceiling for the Scope display</source>
-        <translation>スコープ表示の表示上限を選択します</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="258"/>
-        <source>Select display ceiling of scope</source>
-        <translation>スコープの表示上限を選択</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="259"/>
-        <source>Ceiling</source>
-        <translatorcomment>シーリング</translatorcomment>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="264"/>
-        <source>Scope display floor</source>
-        <translation>スコープ展示フロア</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="265"/>
-        <source>Selects the display floor for the Scope display</source>
-        <translation>スコープ表示の表示フロアを選択します</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="266"/>
-        <source>Select display floor of scope</source>
-        <translation>スコープの表示フロアを選択します</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="267"/>
-        <source>Floor</source>
-        <translatorcomment>床</translatorcomment>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="270"/>
-        <source>Speed Fast</source>
-        <translatorcomment>速度が速い</translatorcomment>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="271"/>
-        <source>Speed Mid</source>
-        <translation>速度が中</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="272"/>
-        <source>Speed Slow</source>
-        <translatorcomment>速度が速い</translatorcomment>
-        <translation>速度が遅い</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="274"/>
-        <source>Waterfall display speed</source>
-        <translation>ウォーターフォールの表示速度</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="275"/>
-        <source>Selects the speed for the waterfall display</source>
-        <translation>ウォーターフォール表示の速度を選択します</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="276"/>
-        <source>Waterfall Speed</source>
-        <translation>ウォーターフォールの速さ</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="277"/>
-        <source>Speed</source>
-        <translation>速度</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="280"/>
-        <source>Waterfall display color theme</source>
-        <translation>ウォーターフォールの表示色のテーマ</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="281"/>
-        <source>Selects the color theme for the waterfall display</source>
-        <translation>ウォーターフォール表示のカラーテーマを選択します</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="282"/>
-        <source>Waterfall color theme</source>
-        <translation>ウォーターフォールの色のテーマ</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="296"/>
-        <source>Theme</source>
-        <translation>テーマ</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="300"/>
-        <source>PBT Inner</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="304"/>
-        <source>PBT Outer</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="308"/>
-        <source>IF Shift</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="312"/>
-        <source>Fill Width</source>
-        <translation>塗りつぶし幅</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="1109"/>
-        <source>Scope Edges</source>
-        <translation>スコープエッジ</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="1110"/>
-        <source>Please enter desired scope edges, in MHz,
-with a comma between the low and high range.</source>
-        <translation>希望するスコープのエッジをMHz単位で入力してください。
-低音域と高音域の間にカンマを入れます。</translation>
-    </message>
-    <message>
-        <location filename="../receiverwidget.cpp" line="1139"/>
-        <source>Error, could not interpret your input.                          &lt;br/&gt;Please make sure to place a comma between the frequencies.                          &lt;br/&gt;For example: &apos;7.200, 7.300&apos;</source>
-        <translation>エラー。入力を解釈できませんでした。                          &lt;br/&gt;周波数の間には必ずカンマを入れてください。                          &lt;br/&gt;例：「7.000、7.200」</translation>
     </message>
 </context>
 <context>
@@ -3480,453 +3660,482 @@ with a comma between the low and high range.</source>
         <translation>操作画面</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="194"/>
+        <location filename="../wfmain.ui" line="197"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Turns the radio on&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;電源ON&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="197"/>
+        <location filename="../wfmain.ui" line="200"/>
         <source>Power On</source>
         <translation>電源ON</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="204"/>
+        <location filename="../wfmain.ui" line="210"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Turns the radio off&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;電源OFF&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="207"/>
+        <location filename="../wfmain.ui" line="213"/>
         <source>Power Off</source>
         <translation>電源OFF</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="241"/>
+        <location filename="../wfmain.ui" line="247"/>
         <source>Tuning Dial</source>
         <translation>VFO</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="266"/>
+        <location filename="../wfmain.ui" line="272"/>
         <source>Tuning Step Selection possibly. Or not...</source>
         <translation>周波数ステップの選択</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="269"/>
+        <location filename="../wfmain.ui" line="275"/>
         <source>Tuning Step Selection</source>
         <translation>周波数ステップ</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="279"/>
+        <location filename="../wfmain.ui" line="285"/>
         <source>Frequency Lock</source>
         <translation>周波数ロック</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="282"/>
+        <location filename="../wfmain.ui" line="288"/>
         <source>F Lock</source>
         <translation>周波数ロック</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="297"/>
+        <location filename="../wfmain.ui" line="303"/>
         <source>R I T Dial</source>
         <translation>RITダイヤル</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="325"/>
+        <location filename="../wfmain.ui" line="331"/>
         <source>R I T Enable</source>
         <translation>RIT&#x3000;ON</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="328"/>
+        <location filename="../wfmain.ui" line="334"/>
         <source>RIT</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="394"/>
+        <location filename="../wfmain.ui" line="400"/>
         <source>RX RF Gain</source>
         <translation>RFゲイン</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="397"/>
+        <location filename="../wfmain.ui" line="403"/>
         <source>RF Gain</source>
         <translation>RFゲイン</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="400"/>
+        <location filename="../wfmain.ui" line="406"/>
         <source>Receiver RF Gain</source>
         <translation>受信RFゲイン</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="425"/>
+        <location filename="../wfmain.ui" line="431"/>
         <source>RF</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="457"/>
+        <location filename="../wfmain.ui" line="463"/>
         <source>RX AF Gain</source>
         <translation>受信音量</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="460"/>
+        <location filename="../wfmain.ui" line="466"/>
         <source>AF Gain</source>
         <translation>受信音量</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="463"/>
+        <location filename="../wfmain.ui" line="469"/>
         <source>Receive Audio Level. Sets rig volume on USB rigs, and sets PC volume on LAN rigs.</source>
         <translation>受信音レベル。USB接続では無線機のボリュームを設定し、LAN接続はPCのボリュームを設定します。</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="482"/>
+        <location filename="../wfmain.ui" line="488"/>
         <source>AF</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="514"/>
+        <location filename="../wfmain.ui" line="520"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Squelch&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;スケルチ&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="517"/>
+        <location filename="../wfmain.ui" line="523"/>
         <source>Squelch</source>
         <translation>スケルチ</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="520"/>
+        <location filename="../wfmain.ui" line="526"/>
         <source>Squelch control. Top is fully-muted, bottom is wide open.</source>
         <translation>スケルチ制御。上部は完全に消音され、下部は全開になります。</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="539"/>
+        <location filename="../wfmain.ui" line="545"/>
         <source>SQ</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="571"/>
+        <location filename="../wfmain.ui" line="577"/>
         <source>Mic Gain</source>
         <translation>マイクゲイン</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="574"/>
+        <location filename="../wfmain.ui" line="580"/>
         <source>Transmit Audio Gain</source>
         <translation>送信オーディオゲイン</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="577"/>
+        <location filename="../wfmain.ui" line="583"/>
         <source>Sets the gain for the transmit audio source, for example mic gain or accessory port gain</source>
         <translation>マイクゲインやアクセサリポートのゲインなど、送信オーディオソースのゲインを設定します。</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="596"/>
+        <location filename="../wfmain.ui" line="602"/>
         <source>Mic</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="628"/>
-        <location filename="../wfmain.ui" line="631"/>
+        <location filename="../wfmain.ui" line="634"/>
+        <location filename="../wfmain.ui" line="637"/>
         <source>Transmit Power</source>
         <translation>送信出力</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="634"/>
+        <location filename="../wfmain.ui" line="640"/>
         <source>Transmit power level</source>
         <translation>出力計</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="653"/>
+        <location filename="../wfmain.ui" line="659"/>
         <source>TX</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="682"/>
+        <location filename="../wfmain.ui" line="688"/>
         <source>Set the rado monitor level</source>
         <translation>送信音質モニターレベル</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="704"/>
+        <location filename="../wfmain.ui" line="710"/>
         <source>&lt;a href=&apos;#&apos;&gt;Mon&lt;/a&gt;</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="750"/>
+        <location filename="../wfmain.ui" line="756"/>
         <source>Noise Blanker</source>
-        <translation type="unfinished"></translation>
+        <translation>ノイズブランカ</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="753"/>
+        <location filename="../wfmain.ui" line="759"/>
         <source>NB</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="760"/>
+        <location filename="../wfmain.ui" line="766"/>
         <source>Noise Reduction</source>
-        <translation type="unfinished"></translation>
+        <translation>ノイズリダクション</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="763"/>
+        <location filename="../wfmain.ui" line="769"/>
         <source>NR</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="770"/>
+        <location filename="../wfmain.ui" line="776"/>
         <source>IP+ Funcion</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="773"/>
+        <location filename="../wfmain.ui" line="779"/>
         <source>IP+</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="787"/>
+        <location filename="../wfmain.ui" line="793"/>
         <source>Digi-Sel</source>
-        <translation type="unfinished"></translation>
+        <translation>デジセルプリセレクター</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="790"/>
+        <location filename="../wfmain.ui" line="796"/>
         <source>DS</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="797"/>
+        <location filename="../wfmain.ui" line="803"/>
         <source>Compressor</source>
-        <translation type="unfinished"></translation>
+        <translation>コンプレッサー</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="800"/>
+        <location filename="../wfmain.ui" line="806"/>
         <source>CMP</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="807"/>
+        <location filename="../wfmain.ui" line="813"/>
         <source>Vox Enable</source>
-        <translation type="unfinished"></translation>
+        <translation>VOXを使う</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="810"/>
+        <location filename="../wfmain.ui" line="816"/>
         <source>VOX</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="838"/>
+        <location filename="../wfmain.ui" line="847"/>
         <source>Transmit and Receive button</source>
         <translation>送受信ボタン</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="841"/>
+        <location filename="../wfmain.ui" line="850"/>
         <source>Transmit</source>
         <translation>送&#x3000;信</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="848"/>
+        <location filename="../wfmain.ui" line="857"/>
         <source>Enable the Automatic Antenna Tuner</source>
         <translation>アンテナチューナーを有効にする</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="851"/>
-        <location filename="../wfmain.ui" line="857"/>
+        <location filename="../wfmain.ui" line="860"/>
+        <location filename="../wfmain.ui" line="866"/>
         <source>Enable ATU</source>
-        <translation>アンテナチューナーON</translation>
+        <translation>アンテナチューナー</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="854"/>
+        <location filename="../wfmain.ui" line="863"/>
         <source>Enable or disable the automatic antenna tuner</source>
         <translation>アンテナチューナーを有効または無効にします。</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="864"/>
+        <location filename="../wfmain.ui" line="876"/>
         <source>Start the automatic antenna tuner cycle</source>
         <translation>自動アンテナチューンを開始します。</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="867"/>
+        <location filename="../wfmain.ui" line="879"/>
         <source>Tune</source>
         <translation>TUNER</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="874"/>
+        <location filename="../wfmain.ui" line="889"/>
         <source>Press to bring up the CW Sender</source>
         <translation>押すとCW運用用画面が表示されます。</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="877"/>
+        <location filename="../wfmain.ui" line="892"/>
         <source>CW</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="884"/>
+        <location filename="../wfmain.ui" line="902"/>
         <source>Show the repeater tone and offset window</source>
         <translation>レピーターのトーンとオフセットの設定画面を表示する</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="887"/>
+        <location filename="../wfmain.ui" line="905"/>
         <source>Rpt/Split</source>
         <translation>レピータ／スプリット</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="894"/>
+        <location filename="../wfmain.ui" line="915"/>
         <source>Memories</source>
         <translation>メモリーモード</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="917"/>
+        <location filename="../wfmain.ui" line="941"/>
         <source>Scope Settings</source>
         <translation>スコープの設定</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="949"/>
+        <location filename="../wfmain.ui" line="1016"/>
         <source>Main/Sub</source>
         <translation>MAIN/SUB</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="962"/>
+        <location filename="../wfmain.ui" line="972"/>
         <source>Dual Watch</source>
         <translation>デュアルワッチ</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="987"/>
+        <location filename="../wfmain.ui" line="997"/>
         <source>Dual Scope</source>
         <translation>デュアルスコープ</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1002"/>
+        <location filename="../wfmain.ui" line="1029"/>
+        <source>Split</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../wfmain.ui" line="1042"/>
+        <source>Main&lt;&gt;Sub</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../wfmain.ui" line="1052"/>
+        <source>Main=Sub</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../wfmain.ui" line="1066"/>
         <source>Preamp/Att</source>
         <translation>プリアンプ／アッテネータ</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1022"/>
+        <location filename="../wfmain.ui" line="1089"/>
         <source>Preamp:</source>
         <translation>プリアンプ：</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1029"/>
+        <location filename="../wfmain.ui" line="1096"/>
         <source>Preamp selector</source>
         <translation>プリアンプの選択</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1049"/>
+        <location filename="../wfmain.ui" line="1116"/>
         <source>Attenuator:</source>
         <translation>アッテネータ：</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1056"/>
+        <location filename="../wfmain.ui" line="1123"/>
         <source>Attenuator selector</source>
         <translation>アッテネータの選択</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1071"/>
+        <location filename="../wfmain.ui" line="1138"/>
         <source>Antenna</source>
         <translation>アンテナ</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1077"/>
+        <location filename="../wfmain.ui" line="1159"/>
         <source>Antenna port selector</source>
         <translation>アンテナの選択</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1090"/>
+        <location filename="../wfmain.ui" line="1172"/>
         <source>RX</source>
         <translation>受信</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1144"/>
+        <location filename="../wfmain.ui" line="1229"/>
         <source>About</source>
         <translation>プログラムの説明</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1151"/>
+        <location filename="../wfmain.ui" line="1239"/>
         <source>Settings</source>
         <translation>設&#x3000;定</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1158"/>
+        <location filename="../wfmain.ui" line="1249"/>
         <source>Save Settings</source>
         <translation>設定の保存</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1165"/>
+        <location filename="../wfmain.ui" line="1259"/>
         <source>Radio Status</source>
         <translation>無線機の状態</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1172"/>
+        <location filename="../wfmain.ui" line="1269"/>
         <source>Log</source>
         <translation>ログ表示</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1179"/>
+        <location filename="../wfmain.ui" line="1279"/>
         <source>Bands</source>
         <translation>バンド選択</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1186"/>
+        <location filename="../wfmain.ui" line="1289"/>
         <source>Frequency</source>
         <translation>周波数設定</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1193"/>
+        <location filename="../wfmain.ui" line="1299"/>
         <source>Rig Creator</source>
         <translation>無線機クリエーター</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1213"/>
+        <location filename="../wfmain.ui" line="1322"/>
         <source>Connect to Radio</source>
         <translation>無線機と接続する</translation>
     </message>
     <message>
-        <location filename="../wfmain.ui" line="1238"/>
+        <location filename="../wfmain.ui" line="1350"/>
         <source> Exit Program</source>
         <translation>プログラムの終了</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="2606"/>
+        <location filename="../wfmain.cpp" line="2819"/>
         <source>wfview</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="2607"/>
+        <location filename="../wfmain.cpp" line="2820"/>
         <source>Are you sure you wish to reset the USB controllers?</source>
         <translation>USBコントローラをリセットしてもよろしいですか?</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4096"/>
-        <location filename="../wfmain.cpp" line="4658"/>
+        <location filename="../wfmain.cpp" line="4106"/>
+        <location filename="../wfmain.cpp" line="4637"/>
+        <location filename="../wfmain.cpp" line="5147"/>
         <source>Don&apos;t ask me again</source>
         <translation>今後確認は不要</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4097"/>
+        <location filename="../wfmain.cpp" line="4107"/>
         <source>Don&apos;t ask me to confirm exit again</source>
         <translation>今後終了確認は不要</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4099"/>
+        <location filename="../wfmain.cpp" line="4109"/>
         <source>Are you sure you wish to exit?
 </source>
         <translation>終了してもよろしいですか?
 </translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4185"/>
+        <location filename="../wfmain.cpp" line="4200"/>
         <source>Revert settings</source>
         <translation>設定を元に戻す</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4186"/>
+        <location filename="../wfmain.cpp" line="4201"/>
         <source>Are you sure you wish to reset all wfview settings?
 If so, wfview will exit and you will need to start the program again.</source>
         <translation>すべてのwfview設定をリセットしてもよろしいですか?
 その場合、wfviewは終了し、プログラムを再度開始する必要があります。</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4660"/>
+        <location filename="../wfmain.cpp" line="4639"/>
         <source>Power</source>
         <translation>電源</translation>
     </message>
     <message>
-        <location filename="../wfmain.cpp" line="4661"/>
+        <location filename="../wfmain.cpp" line="4640"/>
         <source>Power down the radio?
 </source>
         <translation>無線機の電源を切りますか？
 </translation>
+    </message>
+    <message>
+        <location filename="../wfmain.cpp" line="5148"/>
+        <source>Don&apos;t ask me to confirm memories again</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../wfmain.cpp" line="5150"/>
+        <source>Memories are considered an experimental feature,
+Please make sure you have a full backup of your radio before making changes.
+Are you sure you want to continue?
+</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 </TS>
