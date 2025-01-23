@@ -11,15 +11,16 @@
 #include <QByteArray>
 #include <QVector>
 #include <QMap>
-#include <QtLogging>
 #include <QFile>
 #include <QStandardPaths>
+#include <QDebug>
 
 #include "audiohandler.h"
 #include "pahandler.h"
 #include "rthandler.h"
 #include "tciaudiohandler.h"
 #include "packettypes.h"
+
 
 class rtpAudio : public QObject
 {
