@@ -1,6 +1,5 @@
 #ifndef KENWOODCOMMANDER_H
 #define KENWOODCOMMANDER_H
-
 #include "rigcommander.h"
 #include "rtpaudio.h"
 #include <QSerialPort>
@@ -124,5 +123,8 @@ private:
     quint8 findMean(quint8 *d);
     quint8 findMax(quint8 *d);
 };
+
+
+
 
 #endif // KENWOODCOMMANDER_H

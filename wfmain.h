@@ -744,7 +744,6 @@ private:
     bool isRadioAdmin = true;
 };
 
-Q_DECLARE_METATYPE(udpPreferences)
 Q_DECLARE_METATYPE(audioPacket)
 Q_DECLARE_METATYPE(audioSetup)
 Q_DECLARE_METATYPE(SERVERCONFIG)

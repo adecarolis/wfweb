@@ -103,9 +103,10 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
 
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
+    qRegisterMetaType<manufacturersType_t>();
+    qRegisterMetaType<connectionType_t>();
     qRegisterMetaType<rigCapabilities>();
     qRegisterMetaType<duplexMode_t>();
-
     qRegisterMetaType<rptAccessTxRx_t>();
     qRegisterMetaType<rptrAccessData>();
     qRegisterMetaType<toneInfo>();
@@ -6300,7 +6301,7 @@ void wfmain::setupLambdaSlots()
 
 // As checkState is deprecated, use checkStateChanged if available
 #if (QT_VERSION < QT_VERSION_CHECK(6,7,0))
-#define CHKFUNC &QCheckBox::checkState, this, [=](int checked)
+#define CHKFUNC &QCheckBox::stateChanged, this, [=](int checked)
 #else
 #define CHKFUNC &QCheckBox::checkStateChanged, this, [=](Qt::CheckState checked)
 #endif

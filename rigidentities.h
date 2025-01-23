@@ -10,6 +10,7 @@
 
 #include "freqmemory.h"
 #include "packettypes.h"
+#include "udpbase.h"
 
 // Credit for parts of CIV list:
 // http://www.docksideradio.com/Icom%20Radio%20Hex%20Addresses.htm
@@ -327,6 +328,9 @@ struct rigCapabilities {
     QVector<periodicType> periodic;
 };
 
+Q_DECLARE_METATYPE(manufacturersType_t)
+Q_DECLARE_METATYPE(connectionType_t)
+Q_DECLARE_METATYPE(udpPreferences)
 Q_DECLARE_METATYPE(rigCapabilities)
 Q_DECLARE_METATYPE(modeInfo)
 Q_DECLARE_METATYPE(rigInput)

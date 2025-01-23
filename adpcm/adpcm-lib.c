@@ -975,10 +975,7 @@ int adpcm_decode_block (int16_t *outbuf, const uint8_t *inbuf, size_t inbufsize,
                 CLIP(index[ch], 0, 88);
                 CLIP(pcmdata[ch], -32768, 32767);
                 outbuf [(i * 2 + 1) * channels] = pcmdata[ch];
-                if(((i * 2 + 1) * channels) > inbufsize) {
-                    perror("Danger, overreaching again!\n");
-                    abort();
-                }
+
                 inbuf++;
             }
 
