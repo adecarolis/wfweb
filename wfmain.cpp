@@ -3599,8 +3599,8 @@ void wfmain:: getInitialRigState()
 
     if(rigCaps->hasSpectrum)
     {
-        // Send commands to start scope immediately
-        //queue->add(priorityHigh,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
+        // Send commands to start scope immediately        
+        queue->add(priorityHigh,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
         queue->add(priorityHigh,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
 
         // Find the scope ref limits
@@ -3647,7 +3647,7 @@ void wfmain:: getInitialRigState()
 
     if (rigCaps->commands.contains(funcVOIP))
     {
-        queue->add(priorityMedium,queueItem(funcVOIP,QVariant::fromValue<uchar>(prefs.rxSetup.sampleRate==8000?2:1),false,0));
+        queue->add(priorityHigh,queueItem(funcVOIP,QVariant::fromValue<uchar>(prefs.rxSetup.codec==0x80?2:1),false,0));
     }
 }
 void wfmain::showStatusBarText(QString text)

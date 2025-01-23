@@ -74,7 +74,7 @@ bool audioHandler::init(audioSetup setup)
 	codec = LPCM;
 	if (setup.codec == 0x01 || setup.codec == 0x20)
         codec = PCMU;
-    else if (setup.codec == 0x40)
+    else if (setup.codec == 0x40 || setup.codec == 0x41)
         codec = OPUS;
     else if (setup.codec == 0x80)
         codec = ADPCM;
@@ -320,7 +320,7 @@ void audioHandler::convertedOutput(audioPacket packet) {
             }
             lastReceived = QTime::currentTime();
         }
-        /*if ((packet.seq > lastSentSeq + 1) && (setup.codec == 0x40 || setup.codec == 0x80)) {
+        /*if ((packet.seq > lastSentSeq + 1) && (setup.codec == 0x40 || setup.codec == 0x41)) {
             qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempting FEC on packet" << packet.seq << "as last is" << lastSentSeq;
             lastSentSeq = packet.seq;
             incomingAudio(packet); // Call myself again to run the packet a second time (FEC)

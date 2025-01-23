@@ -676,6 +676,7 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcCWDecode:
             value.setValue<QString>(d);
         case funcVOIP:
+            qInfo(logRig()) << "Recieved VOIP response:" << d.toInt();
             if (d.toInt() && !rtpThread->isRunning()) {
                 rtpThread->start(QThread::TimeCriticalPriority);
                 emit initRtpAudio();
@@ -1223,16 +1224,19 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
     QByteArray payload;
     int val=INT_MIN;
 
-    if (func == funcSWRMeter || func == funcCompMeter || func == funcALCMeter || (loginRequired && func != funcLogin))
+    if (func == funcSWRMeter || func == funcCompMeter || func == funcALCMeter)
     {
         // Cannot query for these meters, but they will be sent automatically on TX
         return;
     }
+    if (loginRequired && func != funcLogin)
+    {
+        qInfo() << "Command received before login, requeing";
+        queue->add(priorityHigh,queueItem(func,value,false,receiver));
+    }
 
     if (func == funcSelectVFO) {
-        // Special command
-        vfo_t v = value.value<vfo_t>();
-        func = (v == vfoA)?funcVFOASelect:(v == vfoB)?funcVFOBSelect:funcNone;
+        // Special funcVFOASelect:(v == vfoB)?funcVFOBSelect:funcNone;
         value.clear();
         val = INT_MIN;
     }

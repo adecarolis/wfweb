@@ -192,8 +192,8 @@ void cachingQueue::add(queuePriority prio ,queueItem item, bool unique)
                             qDebug() << "cachingQueue::add() deleted" << count << "entries from queue for" << funcString[item.command] << "on receiver" << item.receiver;
                     }
 
-                    // Don't immediately request funcTransceiverId
-                    if (item.recurring && item.command != funcTransceiverId && item.command != funcVOIP) {
+                    // Don't immediately request funcTransceiverId, wait for the queue to run
+                    if (item.recurring && item.command != funcTransceiverId) {
                         // also insert an immediate command to get the current value "now" (removes the need to get rigstate)
                         queueItem it=item;
                         it.recurring=false;

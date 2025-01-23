@@ -94,8 +94,7 @@ protected:
     quint32 lastAudioSequence;
     codecType       inCodec;
     codecType       outCodec;
-    qint16 adpcmPredictor = 0;
-    int adpcmIndex = 0;
+    void * adpcmContext = Q_NULLPTR;
 };
 
 
@@ -127,8 +126,8 @@ static inline QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
 
     format.setSampleRate(sampleRate);
 
-	if (codec == 0x01 || codec == 0x20) {
-		/* Set sample to be what is expected by the encoder and the output of the decoder */
+    if (codec == 0x01 || codec == 0x20) {
+        /* Set sample to be what is expected by the encoder and the output of the decoder */
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         format.setSampleSize(16);
         format.setSampleType(QAudioFormat::SignedInt);
@@ -146,13 +145,13 @@ static inline QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
         format.setSampleFormat(QAudioFormat::UInt8);
 #endif
     }
-	if (codec == 0x08 || codec == 0x10 || codec == 0x20 || codec == 0x80) {
-		format.setChannelCount(2);
+    if (codec == 0x08 || codec == 0x10 || codec == 0x20 || codec == 0x80) {
+        format.setChannelCount(2);
     } else {
         format.setChannelCount(1);
     }
 
-	if (codec == 0x04 || codec == 0x10) {
+    if (codec == 0x04 || codec == 0x10) {
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         format.setSampleSize(16);
         format.setSampleType(QAudioFormat::SignedInt);
@@ -161,7 +160,7 @@ static inline QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
 #endif
 	}
 
-    if (codec == 0x40 || codec == 0x80) {
+    if (codec == 0x40 || codec == 0x41) {
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         format.setSampleSize(32);
         format.setSampleType(QAudioFormat::Float);
@@ -170,6 +169,18 @@ static inline QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
         format.setSampleFormat(QAudioFormat::Float);
 #endif
 	}
+
+    if (codec == 0x80) {
+        /* Set sample to be what is expected by the encoder and the output of the decoder */
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+        format.setSampleSize(16);
+        format.setSampleType(QAudioFormat::SignedInt);
+        format.setCodec("audio/ADPCM");
+#else
+        format.setSampleFormat(QAudioFormat::Int16);
+#endif
+        format.setChannelCount(1);
+    }
 
 	return format;
 }

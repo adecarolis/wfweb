@@ -127,10 +127,6 @@ void rtpAudio::init()
 
     emit setupRxAudio(rxSetup);
     timer.start();
-
-    debugFile.setFileName(QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0]+"/audiodata.bin");
-    debugFile.open(QFile::OpenModeFlag::WriteOnly);
-
 }
 
 void rtpAudio::dataReceived()
@@ -157,7 +153,6 @@ void rtpAudio::dataReceived()
             packetCount=0;
             size=0;
         }
-        debugFile.write(tempAudio.data);
     }
 }
 

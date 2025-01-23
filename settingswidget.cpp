@@ -109,7 +109,8 @@ void settingswidget::populateComboBoxes()
     ui->audioRXCodecCombo->addItem("uLaw 2ch 8bit", 32);
     ui->audioRXCodecCombo->addItem("PCM 2ch 8bit", 8);
     ui->audioRXCodecCombo->addItem("Opus 1ch", 64);
-    ui->audioRXCodecCombo->addItem("Opus 2ch", 128);
+    ui->audioRXCodecCombo->addItem("Opus 2ch", 65);
+    ui->audioRXCodecCombo->addItem("ADPCM 1ch", 128);
     ui->audioRXCodecCombo->blockSignals(false);
 
     ui->audioTXCodecCombo->blockSignals(true);
@@ -117,6 +118,7 @@ void settingswidget::populateComboBoxes()
     ui->audioTXCodecCombo->addItem("LPCM 1ch 8bit", 2);
     ui->audioTXCodecCombo->addItem("uLaw 1ch 8bit", 1);
     ui->audioTXCodecCombo->addItem("Opus 1ch", 64);
+    ui->audioTXCodecCombo->addItem("ADPCM 1ch", 128);
     ui->audioTXCodecCombo->blockSignals(false);
 
     ui->controlPortTxt->setValidator(new QIntValidator(this));
@@ -1743,11 +1745,11 @@ void settingswidget::on_vspCombo_activated(int index)
 void settingswidget::on_networkConnectionTypeCombo_currentIndexChanged(int index)
 {
     udpPrefs->connectionType = ui->networkConnectionTypeCombo->itemData(index).value<connectionType_t>();
-    if (udpPrefs->connectionType == connectionWAN) {
+    /*if (udpPrefs->connectionType == connectionWAN) {
         ui->audioSampleRateCombo->setCurrentIndex(3);
     } else {
         ui->audioSampleRateCombo->setCurrentIndex(2);
-    }
+    }*/
 
     emit changedUdpPref(u_connectionType);
 }

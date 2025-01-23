@@ -432,6 +432,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     configLayout->addRow(tr("Fill Width"),configFilterWidth);
 
     configScopeEnabled = new QCheckBox(tr("Scope Enabled"));
+    configScopeEnabled->setChecked(true);
     configLayout->addRow(configScopeEnabled);
 
     connect(configLength, &QSlider::valueChanged, this, [=](const int &val) {
