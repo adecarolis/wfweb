@@ -532,6 +532,7 @@ void settingswidget::updateIfPref(prefIfItem pif)
     case if_separators:
         quietlyUpdateCombobox(ui->groupSeparatorsCombo,QVariant(prefs->groupSeparator));
         quietlyUpdateCombobox(ui->decimalSeparatorsCombo,QVariant(prefs->decimalSeparator));
+        break;
     case if_forceVfoMode:
         quietlyUpdateCheckbox(ui->forceVfoModeChk,prefs->forceVfoMode);
         break;

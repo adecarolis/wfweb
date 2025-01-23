@@ -517,6 +517,10 @@ void kenwoodCommander::parseData(QByteArray data)
                 }
             }
             break;
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
         case funcSMeter:
             if (isTransmitting)
                 func = funcPowerMeter;
@@ -526,6 +530,9 @@ void kenwoodCommander::parseData(QByteArray data)
             // TS-590 uses 0-30 for meters (TS-890 uses 70), Icom uses 0-255.
             value.setValue<uchar>(d.toUShort() * (255/(type.maxVal-type.minVal)));
             break;
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
         case funcMemoryContents:
         // Contains the contents of the rig memory
         {
@@ -675,12 +682,14 @@ void kenwoodCommander::parseData(QByteArray data)
             break;
         case funcCWDecode:
             value.setValue<QString>(d);
+            break;
         case funcVOIP:
             qInfo(logRig()) << "Recieved VOIP response:" << d.toInt();
             if (d.toInt() && !rtpThread->isRunning()) {
                 rtpThread->start(QThread::TimeCriticalPriority);
                 emit initRtpAudio();
             }
+            break;
         case funcFA:
             qInfo(logRig()) << "Error received from rig. Last command:" << lastSentCommand << "data:" << d;
             break;
