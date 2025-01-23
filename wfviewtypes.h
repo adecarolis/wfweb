@@ -154,18 +154,6 @@ struct modeInfo {
     int bwMin;
     int bwMax;
     int pass;
-    modeInfo &operator=(const modeInfo &i) {
-        this->mk=i.mk;
-        this->reg=i.reg;
-        this->filter=i.filter;
-        this->VFO=i.VFO;
-        this->data=i.data;
-        this->name=i.name;
-        this->bwMin=i.bwMin;
-        this->bwMax=i.bwMax;
-        this->pass=i.pass;
-        return *this;
-    }
 };
 
 struct rigInfo {
@@ -194,7 +182,6 @@ struct scopeData {
 
 struct toneInfo {
     toneInfo ():tone(0), name(""), tinv(false),rinv(false),useSecondaryVFO(false) {};
-    toneInfo (toneInfo const &t): tone(t.tone), name(t.name), tinv(t.tinv), rinv(t.rinv), useSecondaryVFO(t.useSecondaryVFO) {};
     toneInfo (short tone): tone(tone), name(""), tinv(false),rinv(false),useSecondaryVFO(false) {};
     toneInfo (short tone, QString name): tone(tone), name(name), tinv(false),rinv(false),useSecondaryVFO(false) {};
     toneInfo (short tone, QString name, bool tinv, bool rinv, bool useSecondaryVFO):tone(tone), name(name), tinv(tinv),rinv(rinv),useSecondaryVFO(useSecondaryVFO) {};
@@ -203,14 +190,7 @@ struct toneInfo {
     bool tinv;
     bool rinv;
     bool useSecondaryVFO;
-    toneInfo &operator=(const toneInfo &i) {
-        this->tone=i.tone;
-        this->name=i.name;
-        this->tinv=i.tinv;
-        this->rinv=i.rinv;
-        this->useSecondaryVFO=i.useSecondaryVFO;
-        return *this;
-    }
+
 };
 
 enum breakIn_t {
@@ -225,6 +205,7 @@ struct freqt {
     quint64 Hz;
     double MHzDouble;
     selVFO_t VFO;
+
 };
 
 struct datekind {
