@@ -193,7 +193,7 @@ void cachingQueue::add(queuePriority prio ,queueItem item, bool unique)
                     }
 
                     // Don't immediately request funcTransceiverId
-                    if (item.recurring && item.command != funcTransceiverId) {
+                    if (item.recurring && item.command != funcTransceiverId && item.command != funcVOIP) {
                         // also insert an immediate command to get the current value "now" (removes the need to get rigstate)
                         queueItem it=item;
                         it.recurring=false;

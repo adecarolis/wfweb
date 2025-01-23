@@ -2,6 +2,10 @@
 #include "logcategories.h"
 #include "ulaw.h"
 
+extern "C" {
+#include "adpcm.h"
+}
+
 audioConverter::audioConverter(QObject* parent) : QObject(parent) 
 {
 }
@@ -134,13 +138,25 @@ bool audioConverter::convert(audioPacket audio)
             audio.data = outPacket; // Replace incoming data with converted.
             // Make sure that sample size/type is set correctly
         }
-        else if (inCodec == PCMA)
-        {
-            QByteArray outPacket((int)audio.data.length() * 2, (char)0xff);
+        else if (inCodec == ADPCM)
+        {            
+            QByteArray outPacket((int)(audio.data.length()-4) * 4, (char)0x0);
             qint16* out = (qint16*)outPacket.data();
-            for (int f = 0; f < audio.data.length(); f++)
+            qint16 predictor = quint16((audio.data[1] << 8) | audio.data[0]);
+            int index = int(audio.data[2]);
+
+            if (predictor != adpcmPredictor) {
+                adpcmPredictor=predictor;
+            }
+
+            if (index != adpcmIndex) {
+                adpcmIndex=index;
+            }
+
+            for (int f = 4; f < audio.data.length(); f++)
             {
-                *out++ = alaw_decode((quint8)audio.data[f]);
+                *out++ = adpcm_decode((quint8)audio.data[f] & 0x0f,&adpcmPredictor,&adpcmIndex);
+                *out++ = adpcm_decode((quint8)audio.data[f] >> 4,&adpcmPredictor,&adpcmIndex);
             }
             audio.data.clear();
             audio.data = outPacket; // Replace incoming data with converted.

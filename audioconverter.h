@@ -94,6 +94,8 @@ protected:
     quint32 lastAudioSequence;
     codecType       inCodec;
     codecType       outCodec;
+    qint16 adpcmPredictor = 0;
+    int adpcmIndex = 0;
 };
 
 

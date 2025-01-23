@@ -1211,13 +1211,17 @@ void receiverWidget::showHideControls(spectrumMode_t mode)
 
 void receiverWidget::displayScope(bool en)
 {
-    this->splitter->setVisible(en);
+    this->splitter->setVisible(en || rigCaps->hasCommand29);
     // Hide these controls if disabled
     if (!en) {
         this->edgeCombo->setVisible(en);
         this->edgeButton->setVisible(en);
         this->toFixedButton->setVisible(en);
         this->spanCombo->setVisible(en);
+
+        QTimer::singleShot(0, [this]{
+            this->resize(this->minimumSizeHint());
+        });
     }
     this->clearPeaksButton->setVisible(en);
     this->holdButton->setVisible(en && rigCaps->commands.contains(funcScopeHold));
@@ -1922,6 +1926,14 @@ void receiverWidget::receivePassband(quint16 pass)
 void receiverWidget::selected(bool en)
 {
     isActive = en;
+
+    // Hide scope if we are not selected and don't have command 29.
+    this->displayScope(en || rigCaps->hasCommand29);
+    this->setEnabled(en || rigCaps->hasCommand29);
+
+    // If this scope is not visible set to visible if selected.
+    this->setVisible(en || this->isVisible());
+
     if (en)
     {
         this->setStyleSheet("QGroupBox { border:1px solid red;}");
@@ -1930,12 +1942,6 @@ void receiverWidget::selected(bool en)
     {
         this->setStyleSheet(defaultStyleSheet);
     }
-
-    if (!rigCaps->hasCommand29)
-    {
-        this->setEnabled(en);
-    }
-
 }
 
 void receiverWidget::setHold(bool h)
@@ -2436,5 +2442,20 @@ void receiverWidget::receiveTrack(int f)
         vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
         queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(freqGo),false,t.receiver));
         freq=freqGo;
+    }
+}
+
+// This function will request an update of all freq/mode info from the rig
+void receiverWidget::updateInfo()
+{
+    // If we are not the active receiver, delete selected/unselected commands
+    vfoCommandType t = queue->getVfoCommand(vfoA,receiver,false);
+    queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
+    queue->add(priorityImmediate,t.modeFunc,false,t.receiver);
+
+    if ((rigCaps->hasCommand29 || !receiver) && numVFO > 1) {
+        t = queue->getVfoCommand(vfoB,receiver,false);
+        queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
+        queue->add(priorityImmediate,t.modeFunc,false,t.receiver);
     }
 }

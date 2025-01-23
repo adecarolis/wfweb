@@ -1005,12 +1005,8 @@ void wfmain::configureVFOs()
         ui->vfoLayout->addWidget(receiver);
 
         // Hide any secondary receivers until we need them!
-        if (i>0){
-            receiver->setVisible(false);
-        } else {
-            receiver->setVisible(true);
-            receiver->selected(true);
-        }
+        receiver->selected(i==0?true:false);
+        receiver->setVisible(i==0?true:false);
 
         connect(receiver, SIGNAL(frequencyRange(uchar, double, double)), cluster, SLOT(freqRange(uchar, double, double)));
 
@@ -3632,11 +3628,6 @@ void wfmain:: getInitialRigState()
 
     for (const auto& receiver: receivers)
     {
-        if(rigCaps->hasSpectrum)
-        {
-            receiver->displayScope(true);
-            receiver->enableScope(true);
-        }
         //qInfo(logSystem()) << "Display Settings start:" << start << "end:" << end;
         receiver->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits, &rigCaps->bands);
         receiver->setBandIndicators(prefs.showBands, prefs.region, &rigCaps->bands);
@@ -3656,8 +3647,7 @@ void wfmain:: getInitialRigState()
 
     if (rigCaps->commands.contains(funcVOIP))
     {
-        queue->add(priorityHigh,queueItem(funcVOIP,QVariant::fromValue<uchar>(prefs.rxSetup.sampleRate==8000?2:1),false,0));
-
+        queue->add(priorityMedium,queueItem(funcVOIP,QVariant::fromValue<uchar>(prefs.rxSetup.sampleRate==8000?2:1),false,0));
     }
 }
 void wfmain::showStatusBarText(QString text)
@@ -5295,26 +5285,6 @@ void wfmain::on_rigCreatorBtn_clicked()
     create->setAttribute(Qt::WA_DeleteOnClose);
     create->show();
 }
-
-void wfmain::displayReceiver(uchar rx, bool active, bool swtch)
-{
-    if (rigCaps != Q_NULLPTR && rx < rigCaps->numReceiver)
-    {
-        for (uchar i=0;i<rigCaps->numReceiver;i++)
-        {
-            if (i == rx && !receivers[i]->isVisible())
-                receivers[rx]->setVisible(true);
-            else if (i != rx && swtch && receivers[i]->isVisible())
-                receivers[rx]->setVisible(false);
-
-            if (i == rx && active && !receivers[i]->isSelected())
-                receivers[rx]->selected(true);
-            else if (i != rx && active)
-                receivers[rx]->selected(false);
-        }
-    }
-}
-
 void wfmain::receiveValue(cacheItem val){
 
     uchar vfo=0;
@@ -5336,6 +5306,7 @@ void wfmain::receiveValue(cacheItem val){
      * In this situation, set the receiver to currentReceiver so most commands received
      * work on this receiver only.
      *
+     * This functionality has now been moved to the xxxxCommander class.
      */
 
     /*
@@ -5368,40 +5339,10 @@ void wfmain::receiveValue(cacheItem val){
         if (val.receiver==0 || vfo == 0)
             rpt->handleUpdateCurrentMainFrequency(val.value.value<freqt>());
         break;
-    case funcTXFreq:
-        // Not sure if we want to do anything with this? M0VSE
-        break;
-    case funcVFODualWatch:
-
-        if (receivers.size()>1)
-        {
-            bool en = val.value.value<bool>();
-            ui->dualWatchBtn->setChecked(en);
-            if (QThread::currentThread() != QCoreApplication::instance()->thread())
-            {
-                qCritical(logSystem()) << "Thread is NOT the main UI thread, cannot hide/unhide VFO";
-            }
-            /*
-            else {
-                // This tells us whether we are receiving single or dual scopes
-                if (en && !receivers[1]->isVisible())
-                {
-                    receivers[1]->setVisible(true);
-                }
-                else if (!en && receivers[1]->isVisible())
-                {
-                    receivers[1]->setVisible(false);
-                }
-            } */
-            //ui->scopeMainSubBtn->setEnabled(en);
-            //ui->scopeDualBtn->setEnabled(en);
-        }
-
-        break;
     case funcModeGet:
     case funcModeTR:
         // These commands don't include filter, so queue an immediate request for filter
-        queue->addUnique(priorityImmediate,funcDataModeWithFilter,false,0);        
+        queue->addUnique(priorityImmediate,funcDataModeWithFilter,false,0);
     case funcDataModeWithFilter:
     case funcUnselectedMode:
         if (val.command == funcUnselectedMode)
@@ -5425,38 +5366,39 @@ void wfmain::receiveValue(cacheItem val){
 
         break;
     }
+    case funcTXFreq:
+        // Not sure if we want to do anything with this? M0VSE
+        break;
+    case funcVFODualWatch:        
+        if (receivers.size()>1) // How can it not be?
+        {
+            ui->dualWatchBtn->blockSignals(true);
+            ui->dualWatchBtn->setChecked(val.value.value<bool>());
+            ui->dualWatchBtn->blockSignals(false);
+        }
+        break;
 #if defined __GNUC__
 #pragma GCC diagnostic pop
 #endif
     case funcVFOBandMS:
     {
         // This indicates whether main or sub is currently "active"
-        // Swap recievers if necessary.
-        uchar rx = val.value.value<uchar>();
-        if (rx < receivers.size() && !receivers[rx]->isSelected())
+        // Swap recievers if necessary.                
+        uchar r = val.value.value<uchar>();
+        if (currentReceiver != r)
         {
             // VFO has swapped, make sure scope follows if we only have a single scope.
-            if (!rigCaps->hasCommand29)
+            // Th radio doesn't do this, but I don't see why we would want it without a scope?
+            if (!rigCaps->hasCommand29 && rigCaps->commands.contains(funcScopeMainSub))
                 queue->add(priorityImmediate,queueItem(funcScopeMainSub,val.value,false,0));
 
-            for (const auto &r: receivers)
+            for (const auto& rx: receivers)
             {
-                if (r->getReceiver() == rx)
-                {
-                    if (!r->isVisible()) {
-                        r->show();
-                    }
-                    r->selected(true);
-                    currentReceiver = rx;
-                }
-                else
-                {
-                    r->selected(false);
-                    if (!ui->scopeDualBtn->isChecked()) {
-                        r->hide();
-                    }
-                }
+                rx->selected(rx->getReceiver() == r);
+                rx->setVisible(rx->isSelected() || ui->scopeDualBtn->isChecked());
+                rx->updateInfo();
             }
+            currentReceiver = r;
         }
         break;
     }
@@ -5837,53 +5779,7 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcScopeMainSub:
     {
-        if (receivers.size()>1)
-        {
-            if (QThread::currentThread() != QCoreApplication::instance()->thread())
-            {
-                qCritical(logSystem()) << "Thread is NOT the main UI thread, cannot hide/unhide VFO";
-            } else {
-
-                uchar temprx=currentReceiver;
-                currentReceiver = val.value.value<uchar>();
-
-                for (uchar rx=0;rx<receivers.size();rx++) {
-
-                    // As the IC9700 doesn't have a single/dual command, pretend it does!
-                    if (!receivers[rx]->isVisible() && (rx == currentReceiver || ui->scopeDualBtn->isChecked())) {
-                        receivers[rx]->setVisible(true);
-                    } else if (rx != currentReceiver && !ui->scopeDualBtn->isChecked() && receivers[rx]->isVisible()) {
-                        receivers[rx]->setVisible(false);
-                    }
-
-                    if (rx == currentReceiver && !receivers[rx]->isSelected()) {
-                        receivers[rx]->selected(true);
-                        if (!rigCaps->hasCommand29) receivers[rx]->setEnabled(true);
-                    } else if (rx != currentReceiver && receivers[rx]->isSelected()) {
-                        receivers[rx]->selected(false);
-                        if (!rigCaps->hasCommand29) receivers[rx]->setEnabled(false);
-                    }
-                    if (temprx != currentReceiver) {
-                        vfoCommandType t = queue->getVfoCommand(vfoA,rx,false);
-                        //qInfo() << "Main/Sub button (main), freq:" << funcString[t.freqFunc] << "mode:" << funcString[t.modeFunc] << "rxin:" << rx << "rxout:" << t.receiver;
-                        queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
-                        queue->add(priorityImmediate,t.modeFunc,false,t.receiver);
-                        // If we are on sub, it will use funcModeGet which doesn't include data mode.
-                        //queue->add(priorityImmediate,funcDataModeWithFilter,false,t.receiver);
-                        t = queue->getVfoCommand(vfoB,rx,false);
-                        //qInfo() << "Main/Sub button (sub), freq:" << funcString[t.freqFunc] << "mode:" << funcString[t.modeFunc] << "rxin:" << rx << "rxout:" << t.receiver;
-                        queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
-                        queue->add(priorityImmediate,t.modeFunc,false,t.receiver);
-
-                        // As the current receiver has changed, queue commands to get the current preamp/filter/ant/rx amp
-                        queue->add(priorityImmediate,queueItem(funcPreamp,false,t.receiver));
-                        queue->add(priorityImmediate,queueItem(funcAttenuator,false,t.receiver));
-                        queue->add(priorityImmediate,queueItem(funcAntenna,false,t.receiver));
-                        queue->add(priorityImmediate,queueItem(funcSquelch,false,t.receiver));
-                    }
-                }
-            }
-        }
+        // Has the primary scope changed?
         break;
     }
     case funcScopeSingleDual:
@@ -5895,15 +5791,14 @@ void wfmain::receiveValue(cacheItem val){
                 qCritical(logSystem()) << "Thread is NOT the main UI thread, cannot hide/unhide VFO";
             } else {
                 // This tells us whether we are receiving single or dual scopes
+                ui->scopeDualBtn->blockSignals(true);
                 ui->scopeDualBtn->setChecked(val.value.value<bool>());
-                for (uchar rx=0;rx<receivers.size();rx++) {
-                    if (!receivers[rx]->isVisible() &&  ui->scopeDualBtn->isChecked()) {
-                        receivers[rx]->setVisible(true);
-                    } else if (rx != currentReceiver && !ui->scopeDualBtn->isChecked() && receivers[rx]->isVisible()) {
-                        receivers[rx]->setVisible(false);
+                ui->scopeDualBtn->blockSignals(false);
+                for (const auto& rx: receivers) {
+                    if (!rx->isSelected()) {
+                        rx->setVisible(val.value.value<bool>());
                     }
                 }
-
             }
         }
         break;
@@ -5977,8 +5872,19 @@ void wfmain::on_scopeMainSubBtn_clicked()
 
 void wfmain::on_scopeDualBtn_toggled(bool en)
 {
-    queue->add(priorityImmediate,queueItem(funcScopeSingleDual,QVariant::fromValue(en),false,0));
-    queue->add(priorityImmediate,funcScopeMainSub,false,0);
+    if (rigCaps->commands.contains(funcScopeSingleDual))
+    {
+        queue->add(priorityImmediate,queueItem(funcScopeSingleDual,QVariant::fromValue(en),false,0));
+        queue->add(priorityImmediate,funcScopeMainSub,false,0);
+    } else {
+        // As the IC9700 doesn't have a single/dual command, pretend it does!
+        for (const auto& rx: receivers) {
+            if (rx->getReceiver() != currentReceiver) {
+                rx->selected(false);
+                rx->setVisible(en);
+            }
+        }
+    }
 }
 
 void wfmain::on_dualWatchBtn_toggled(bool en)
@@ -5987,10 +5893,6 @@ void wfmain::on_dualWatchBtn_toggled(bool en)
     if (!rigCaps->hasCommand29)
         queue->add(priorityImmediate,funcScopeMainSub,false,0);
 
-    if (!en)
-    {
-        //ui->scopeDualBtn->setChecked(false);
-    }
 }
 
 void wfmain::on_swapMainSubBtn_clicked()

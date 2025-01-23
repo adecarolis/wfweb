@@ -271,6 +271,7 @@ win32:INCLUDEPATH += ../qcustomplot
 INCLUDEPATH += resampler
 
 SOURCES += main.cpp\
+    adpcm.c \
     bandbuttons.cpp \
     cachingqueue.cpp \
     cwsender.cpp \
@@ -325,6 +326,7 @@ SOURCES += main.cpp\
     audiodevices.cpp
 
 HEADERS  += wfmain.h \
+    adpcm.h \
     bandbuttons.h \
     cachingqueue.h \
     colorprefs.h \

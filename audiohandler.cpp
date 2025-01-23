@@ -74,11 +74,12 @@ bool audioHandler::init(audioSetup setup)
 	codec = LPCM;
 	if (setup.codec == 0x01 || setup.codec == 0x20)
         codec = PCMU;
-	else if (setup.codec == 0x40 || setup.codec == 0x40)
-		codec = OPUS;
+    else if (setup.codec == 0x40)
+        codec = OPUS;
+    else if (setup.codec == 0x80)
+        codec = ADPCM;
 
-
-	nativeFormat = setup.port.preferredFormat();
+    nativeFormat = setup.port.preferredFormat();
     if (nativeFormat.channelCount() < 1){
         // Something is seriously wrong with this device!
         qCritical(logAudio()).noquote() << "Cannot initialize audio" << (setup.isinput ? "input" : "output") << " device " << setup.name << ", no channels found";

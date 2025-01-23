@@ -46,28 +46,28 @@ public:
     void wfInterpolate(bool en) { colorMap->setInterpolate(en); }
     void wfAntiAliased(bool en) { colorMap->setAntialiased(en); }
     void wfTheme(int num);
-    void setUnderlayMode(underlay_t un) { underlayMode = un; clearPeaks();}
-    void overflow(bool en) {ovfIndicator->setVisible(en);}
-    void resizePlasmaBuffer(int size);
-    void colorPreset(colorPrefsType *p);
+    void setUnderlayMode(underlay_t un) { underlayMode = un; clearPeaks(); }
+    void overflow(bool en) {ovfIndicator->setVisible(en); }
+    void resizePlasmaBuffer(int size );
+    void colorPreset(colorPrefsType *p );
 
-    void setCenterFreq (double hz) { passbandCenterFrequency = hz;}
-    double getCenterFreq () { return passbandCenterFrequency;}
+    void setCenterFreq (double hz) { passbandCenterFrequency = hz; }
+    double getCenterFreq () { return passbandCenterFrequency; }
 
     void setPassbandWidth(double hz) { passbandWidth = hz;}
-    double getPassbandWidth() { configFilterWidth->setValue(passbandWidth*1E6); return passbandWidth;}
+    double getPassbandWidth() { configFilterWidth->setValue(passbandWidth*1E6); return passbandWidth; }
 
-    void setIdentity(QString name) {this->setTitle(name);}
-    uchar getReceiver() { return receiver;}
+    void setIdentity(QString name) {this->setTitle(name); }
+    uchar getReceiver() { return receiver; }
 
-    void setTuningFloorZeros(bool tf) {this->tuningFloorZeros = tf;}
-    void setClickDragTuning(bool cg) { this->clickDragTuning = cg;}
+    void setTuningFloorZeros(bool tf) {this->tuningFloorZeros = tf; }
+    void setClickDragTuning(bool cg) { this->clickDragTuning = cg; }
+
     void setSatMode(bool sm) { this->satMode = sm; satelliteButton->blockSignals(true); satelliteButton->setChecked(sm); satelliteButton->blockSignals(false); }
 
     void setScrollSpeedXY(int clicksX, int clicksY) { this->scrollXperClick = clicksX; this->scrollYperClick = clicksY;}
 
     void displayScope(bool en);
-    void enableScope(bool en) { this->configScopeEnabled->setChecked(en); };
 
     void receiveCwPitch(quint16 p);
     quint16 getCwPitch() { return cwPitch;}
@@ -86,7 +86,7 @@ public:
 
     freqt getFrequency () { return freq;}
     void setFrequency (freqt f,uchar vfo=0);
-
+    void updateInfo();
     uchar getNumVFO () { return numVFO;}
 
     void receiveMode (modeInfo m, uchar vfo=0);
@@ -119,6 +119,7 @@ public:
 
     void selected(bool);
     bool isSelected() {return isActive;}
+    void showScope(bool en) { this->splitter->setVisible(en); }
 
     void displaySettings(int NumDigits, qint64 Minf, qint64 Maxf, int MinStep,FctlUnit unit,std::vector<bandType>* bands = Q_NULLPTR);
     quint8 getDataMode() { return static_cast<quint8>(dataCombo->currentIndex()); }
