@@ -215,7 +215,7 @@ void icomCommander::commonSetup()
     // Add the below commands so we can get a response until we have received rigCaps
     rigCaps.commands.clear();
     rigCaps.commandsReverse.clear();
-    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),QByteArrayLiteral("\x19\x00"),0,0,false,true,false,1));
+    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),QByteArrayLiteral("\x19\x00"),0,0,false,true,false,1,false));
     rigCaps.commandsReverse.insert(QByteArrayLiteral("\x19\x00"),funcTransceiverId);
 
     connect(queue,SIGNAL(haveCommand(funcs,QVariant,uchar)),this,SLOT(receiveCommand(funcs,QVariant,uchar)));
@@ -1548,7 +1548,8 @@ void icomCommander::determineRigCaps()
                                                        settings->value("Command29",false).toBool(),
                                                        settings->value("GetCommand",true).toBool(),
                                                        settings->value("SetCommand",true).toBool(),
-                                                       settings->value("Bytes",true).toInt())
+                                                       settings->value("Bytes",0).toInt(),
+                                                       settings->value("Admin",false).toBool())
                                         );
 
                             rigCaps.commandsReverse.insert(QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),func);
@@ -2835,7 +2836,14 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 qDebug(logRig()) << "Removing unsupported set command from queue" << funcString[func] << "VFO" << receiver;
                 queue->del(func,receiver);
                 return;
-            } if (func == funcFreqSet) {
+            }
+
+            if (!isRadioAdmin && cmd.admin) {
+                qWarning(logRig()) << "Admin permission required for set command" << funcString[func] << "access denied";
+                return;
+            }
+
+            if (func == funcFreqSet) {
                 queue->addUnique(priorityImmediate,funcFreqGet,false,receiver);
             } else if (func == funcModeSet) {
                 queue->addUnique(priorityImmediate,funcModeGet,false,receiver);

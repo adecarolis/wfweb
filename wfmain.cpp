@@ -1712,6 +1712,7 @@ void wfmain::setDefPrefs()
     udpDefPrefs.password = QString("");
     udpDefPrefs.clientName = QHostInfo::localHostName();
     udpDefPrefs.connectionType = connectionLAN;
+    udpDefPrefs.adminLogin = false;
 }
 
 void wfmain::loadSettings()
@@ -1923,6 +1924,7 @@ void wfmain::loadSettings()
 
     udpPrefs.ipAddress = settings->value("IPAddress", udpDefPrefs.ipAddress).toString();
     udpPrefs.controlLANPort = settings->value("ControlLANPort", udpDefPrefs.controlLANPort).toInt();
+    udpPrefs.adminLogin = settings->value("AdminLogin",udpDefPrefs.adminLogin).toBool();
     udpPrefs.username = settings->value("Username", udpDefPrefs.username).toString();
     udpPrefs.password = settings->value("Password", udpDefPrefs.password).toString();
     prefs.rxSetup.isinput = defPrefs.rxSetup.isinput;
@@ -1981,11 +1983,6 @@ void wfmain::loadSettings()
     serverConfig.controlPort = settings->value("ServerControlPort", udpDefPrefs.controlLANPort).toInt();
     serverConfig.civPort = settings->value("ServerCivPort", udpDefPrefs.serialLANPort).toInt();
     serverConfig.audioPort = settings->value("ServerAudioPort", udpDefPrefs.audioLANPort).toInt();
-
-/*    setupui->updateServerConfigs((int)(s_enabled |
-                                 s_controlPort |
-                                 s_civPort |
-                                 s_audioPort)); */
 
     serverConfig.users.clear();
 
@@ -2789,20 +2786,20 @@ void wfmain::extChangedRsPref(prefRsItem i)
     switch(i)
     {
     case rs_dataOffMod:
-        queue->add(priorityImmediate,queueItem(funcDATAOffMod,QVariant::fromValue<rigInput>(prefs.inputSource[0]),false,false));
-        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[0].type),true));
+        queue->add(priorityImmediate,queueItem(funcDATAOffMod,QVariant::fromValue<rigInput>(prefs.inputSource[0]),false,currentReceiver));
+        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[0].type).cmd,true,currentReceiver));
         break;
     case rs_data1Mod:
-        queue->add(priorityImmediate,queueItem(funcDATA1Mod,QVariant::fromValue<rigInput>(prefs.inputSource[1]),false,false));
-        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[1].type),true));
+        queue->add(priorityImmediate,queueItem(funcDATA1Mod,QVariant::fromValue<rigInput>(prefs.inputSource[1]),false,currentReceiver));
+        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[1].type).cmd,true,currentReceiver));
         break;
     case rs_data2Mod:
-        queue->add(priorityImmediate,queueItem(funcDATA2Mod,QVariant::fromValue<rigInput>(prefs.inputSource[2]),false,false));
-        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[2].type),true));
+        queue->add(priorityImmediate,queueItem(funcDATA2Mod,QVariant::fromValue<rigInput>(prefs.inputSource[2]),false,currentReceiver));
+        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[2].type).cmd,true,currentReceiver));
         break;
     case rs_data3Mod:
-        queue->add(priorityImmediate,queueItem(funcDATA3Mod,QVariant::fromValue<rigInput>(prefs.inputSource[3]),false,false));
-        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[3].type),true));
+        queue->add(priorityImmediate,queueItem(funcDATA3Mod,QVariant::fromValue<rigInput>(prefs.inputSource[3]),false,currentReceiver));
+        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[3].type).cmd,true,currentReceiver));
         break;
     case rs_setClock:
         setRadioTimeDatePrep();
@@ -3027,6 +3024,8 @@ void wfmain::extChangedUdpPref(prefUDPItem i)
         break;
     case u_connectionType:
         break;
+    case u_adminLogin:
+        break;
     default:
         qWarning(logGui()) << "Did not find matching pref element in wfmain for UDP pref item " << (int)i;
         break;
@@ -3174,6 +3173,7 @@ void wfmain::saveSettings()
     settings->setValue("ControlLANPort", udpPrefs.controlLANPort);
     settings->setValue("SerialLANPort", udpPrefs.serialLANPort);
     settings->setValue("AudioLANPort", udpPrefs.audioLANPort);
+    settings->setValue("AdminLogin",udpPrefs.adminLogin);
     settings->setValue("Username", udpPrefs.username);
     settings->setValue("Password", udpPrefs.password);
     settings->setValue("AudioRXLatency", prefs.rxSetup.latency);
@@ -3527,7 +3527,7 @@ quint64 wfmain::roundFrequencyWithStep(quint64 frequency, int steps, unsigned in
     }
 }
 
-funcs wfmain::getInputTypeCommand(inputTypes input)
+funcType wfmain::getInputTypeCommand(inputTypes input)
 {
     funcs func;
     switch(input)
@@ -3539,21 +3539,17 @@ funcs wfmain::getInputTypeCommand(inputTypes input)
     case inputMic:
         func = funcMicGain;
         break;
-
     case inputACCAACCB:
     case inputACCA:
     case inputACCUSB:
         func = funcACCAModLevel;
         break;
-
     case inputACCB:
         func = funcACCBModLevel;
         break;
-
     case inputUSB:
         func = funcUSBModLevel;
         break;
-
     case inputLAN:
         func = funcLANModLevel;
         break;
@@ -3565,7 +3561,14 @@ funcs wfmain::getInputTypeCommand(inputTypes input)
         break;
     }
     //qInfo(logSystem()) << "Input type command for" << input << "is" << funcString[func];
-    return func;
+    funcType type;
+    auto f = rigCaps->commands.find(func);
+    if (f != rigCaps->commands.end())
+    {
+        type = f.value();
+    }
+
+    return type;
 }
 
 
@@ -4463,11 +4466,11 @@ void wfmain::receiveModInput(rigInput input, quint8 data)
     if (currentModSrc[data].type != input.type && receivers.size())
     {
         qInfo() << QString("Data: %0 Input: %1 current: %2").arg(data).arg(input.name).arg(prefs.inputSource[data].name);
-        queue->del(getInputTypeCommand(prefs.inputSource[data].type),false);
+        queue->del(getInputTypeCommand(prefs.inputSource[data].type).cmd,currentReceiver);
         prefs.inputSource[data] = input;
         if (receivers[0]->getDataMode() == data)
         {
-            queue->addUnique(priorityHigh,getInputTypeCommand(input.type),true,false);
+            queue->addUnique(priorityHigh,getInputTypeCommand(input.type).cmd,true,currentReceiver);
             changeModLabel(input,false);
         }
         switch (data) {
@@ -4581,7 +4584,11 @@ void wfmain::changeModLabel(rigInput input)
 void wfmain::changeModLabel(rigInput input, bool updateLevel)
 {
 
-    queue->add(priorityMedium,getInputTypeCommand(input.type),true);
+    funcType f = getInputTypeCommand(input.type);
+
+    queue->add(priorityMedium,f.cmd,true,currentReceiver);
+
+    ui->micGainSlider->setRange(f.minVal,f.maxVal);
 
     ui->modSliderLbl->setText(input.name);
 
@@ -4595,13 +4602,13 @@ void wfmain::processChangingCurrentModLevel(quint8 level)
 {
     // slider moved, so find the current mod and issue the level set command.
 
-    funcs f = funcNone;
+    funcType f;
     if (receivers.size()) {
         quint8 d = receivers[currentReceiver]->getDataMode();
         f = getInputTypeCommand(prefs.inputSource[d].type);
 
-        qDebug(logSystem()) << "Updating mod level for" << funcString[f] << "setting to" << level;
-        queue->addUnique(priorityImmediate,queueItem(f,QVariant::fromValue<ushort>(level),false));
+        qDebug(logSystem()) << "Updating mod level for" << funcString[f.cmd] << "setting to" << level;
+        queue->addUnique(priorityImmediate,queueItem(f.cmd,QVariant::fromValue<ushort>(level),false,currentReceiver));
     }
 }
 
@@ -5363,7 +5370,7 @@ void wfmain::receiveValue(cacheItem val){
                 cw->handleCurrentModeUpdate(m.mk);
             }
         }
-        qDebug() << funcString[val.command] << "receiver:" << val.receiver << "vfo:" << vfo << "mk:" << m.mk << "name:" << m.name << "data:" << m.data << "filter:" << m.filter;
+        //qDebug() << funcString[val.command] << "receiver:" << val.receiver << "vfo:" << vfo << "mk:" << m.mk << "name:" << m.name << "data:" << m.data << "filter:" << m.filter;
 
         break;
     }

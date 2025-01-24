@@ -159,7 +159,8 @@ enum prefUDPItem {
     u_audioInput = 1 << 14,
     u_audioOutput = 1 << 15,
     u_connectionType = 1 << 16,
-    u_all = 1 << 17
+    u_adminLogin = 1 << 17,
+    u_all = 1 << 18
 };
 
 

@@ -144,6 +144,7 @@ protected:
     struct rigCapabilities rigCaps;
     bool haveRigCaps=false;
     QHash<quint8,rigInfo> rigList;
+    bool isRadioAdmin = true;
 
 private:
     // rigCommander should have no private vars as it is only ever subclassed.

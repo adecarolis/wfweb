@@ -89,7 +89,6 @@ void kenwoodCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAdd
     this->vsp = vsp;
     this->tcpPort = tcpPort;
     this->connType = prefs.connectionType;
-    this->prefs = prefs;
 
     port = new QTcpSocket(this);
 
@@ -97,37 +96,20 @@ void kenwoodCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAdd
     connect(qobject_cast<QTcpSocket*>(port), &QTcpSocket::disconnected, this, &kenwoodCommander::lanDisconnected);
     qobject_cast<QTcpSocket*>(port)->connectToHost(prefs.ipAddress,prefs.controlLANPort);
 
-    rtp = new rtpAudio(prefs.ipAddress,quint16(prefs.audioLANPort),this->rxSetup, this->txSetup);
-    rtpThread = new QThread(this);
-    rtpThread->setObjectName("RTP()");
-    rtp->moveToThread(rtpThread);
-    connect(this, SIGNAL(initRtpAudio()), rtp, SLOT(init()));
-    connect(rtpThread, SIGNAL(finished()), rtp, SLOT(deleteLater()));
-
-
-    connect(this, SIGNAL(haveChangeLatency(quint16)), rtp, SLOT(changeLatency(quint16)));
-    connect(this, SIGNAL(haveSetVolume(quint8)), rtp, SLOT(setVolume(quint8)));
-    // Audio from UDP
-    connect(rtp, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
-    QObject::connect(rtp, SIGNAL(haveRxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, quint16, bool, bool)));
-    QObject::connect(rtp, SIGNAL(haveTxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, quint16, bool, bool)));
-
-
-    loginRequired = true;
-    // Run setup common to all rig types
+    // Run setup common to all rig types    
     commonSetup();
 }
 
 void kenwoodCommander::lanConnected()
 {
-    qInfo() << QString("Connected to: %0:1").arg(prefs.ipAddress,prefs.controlLANPort);
-    qInfo() << "Sending initial login";
+    qInfo() << QString("Connected to: %0:%1").arg(prefs.ipAddress).arg(prefs.controlLANPort);
+    qInfo() << "Sending initial connection request";
     port->write("##CN;\n");
 }
 
 void kenwoodCommander::lanDisconnected()
 {
-    qInfo() << QString("Disconnected from: %0:1").arg(prefs.ipAddress,prefs.controlLANPort);
+    qInfo() << QString("Disconnected from: %0:%1").arg(prefs.ipAddress,prefs.controlLANPort);
     portConnected=false;
 }
 
@@ -187,14 +169,20 @@ void kenwoodCommander::commonSetup()
     // Minimum commands we need to find rig model and login
     rigCaps.commands.clear();
     rigCaps.commandsReverse.clear();
-    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),"ID",0,999,false,true,false,3));
-    rigCaps.commandsReverse.insert(QByteArrayLiteral("ID"),funcTransceiverId);
+    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),"ID",0,999,false,true,false,3,false));
+    rigCaps.commandsReverse.insert(QByteArray("ID"),funcTransceiverId);
 
-    rigCaps.commands.insert(funcConnectionRequest,funcType(funcConnectionRequest, QString("Connection Request"),"##CN",0,1,false,true,true,1));
-    rigCaps.commandsReverse.insert(QByteArrayLiteral("##CN"),funcConnectionRequest);
+    rigCaps.commands.insert(funcConnectionRequest,funcType(funcConnectionRequest, QString("Connection Request"),"##CN",0,1,false,true,true,1,false));
+    rigCaps.commandsReverse.insert(QByteArray("##CN"),funcConnectionRequest);
 
-    rigCaps.commands.insert(funcLogin,funcType(funcLogin, QString("Network Login"),"##ID",0,0,false,false,true,0));
-    rigCaps.commandsReverse.insert(QByteArrayLiteral("##ID"),funcLogin);
+    rigCaps.commands.insert(funcLogin,funcType(funcLogin, QString("Network Login"),"##ID",0,0,false,false,true,0,false));
+    rigCaps.commandsReverse.insert(QByteArray("##ID"),funcLogin);
+
+    rigCaps.commands.insert(funcLoginEnableDisable,funcType(funcLoginEnableDisable, QString("Enable/Disable Login"),"##UE",0,1,false,false,true,1,false));
+    rigCaps.commandsReverse.insert(QByteArray("##UE"),funcLoginEnableDisable);
+
+    rigCaps.commands.insert(funcTXInhibit,funcType(funcTXInhibit, QString("Transmit Inhibit"),"##TI",0,1,false,false,true,1,false));
+    rigCaps.commandsReverse.insert(QByteArray("##TI"),funcTXInhibit);
 
     connect(queue,SIGNAL(haveCommand(funcs,QVariant,uchar)),this,SLOT(receiveCommand(funcs,QVariant,uchar)));
 
@@ -503,6 +491,7 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcNoiseReduction:
         case funcAGC:
         case funcPowerControl:
+        case funcLANModLevel:
             value.setValue<uchar>(d.toUShort());
             break;
         case funcCompressorLevel:
@@ -583,11 +572,23 @@ void kenwoodCommander::parseData(QByteArray data)
             queue->add(priorityImmediate,queueItem(funcLogin,QVariant::fromValue(prefs),false,0));
             break;
         case funcLogin:
+        {
             if (d.at(0) - NUMTOASCII == 0) {
                 emit havePortError(errorType(true, prefs.ipAddress, "Invalid Username/Password"));
             }
-            loginRequired=false;
-            qInfo() << "Received login reply with command:" <<funcString[func] << "original" << data;
+            loginRequired = false;
+            qInfo(logRig()) << "Received login reply with command:" <<funcString[func] << "data" << d << (d.toInt()?"Successful":"Failure");
+            break;
+        }
+        case funcTXInhibit:
+            qInfo(logRig()) << "Received" << funcString[func] << "with value" << d << (d.toInt()?"TX Authorized":"TX Inhibited");
+            if (d.toInt()==0)
+            {
+                this->txSetup.sampleRate=0; // Disable TX audio.
+            }
+            break;
+        case funcLoginEnableDisable:
+            qInfo(logRig()) << "Received" << funcString[func] << "with value" << d << (d.toInt()?"Enabled":"Disabled");
             break;
         case funcScopeRange:
         {
@@ -685,7 +686,19 @@ void kenwoodCommander::parseData(QByteArray data)
             break;
         case funcVOIP:
             qInfo(logRig()) << "Recieved VOIP response:" << d.toInt();
-            if (d.toInt() && !rtpThread->isRunning()) {
+            if (d.toInt() && rtpThread == Q_NULLPTR) {
+                rtp = new rtpAudio(prefs.ipAddress,quint16(prefs.audioLANPort),this->rxSetup, this->txSetup);
+                rtpThread = new QThread(this);
+                rtpThread->setObjectName("RTP()");
+                rtp->moveToThread(rtpThread);
+                connect(this, SIGNAL(initRtpAudio()), rtp, SLOT(init()));
+                connect(rtpThread, SIGNAL(finished()), rtp, SLOT(deleteLater()));
+                connect(this, SIGNAL(haveChangeLatency(quint16)), rtp, SLOT(changeLatency(quint16)));
+                connect(this, SIGNAL(haveSetVolume(quint8)), rtp, SLOT(setVolume(quint8)));
+                // Audio from UDP
+                connect(rtp, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+                QObject::connect(rtp, SIGNAL(haveRxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, quint16, bool, bool)));
+                QObject::connect(rtp, SIGNAL(haveTxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, quint16, bool, bool)));
                 rtpThread->start(QThread::TimeCriticalPriority);
                 emit initRtpAudio();
             }
@@ -968,7 +981,9 @@ void kenwoodCommander::determineRigCaps()
                                                        settings->value("Command29",false).toBool(),
                                                        settings->value("GetCommand",true).toBool(),
                                                        settings->value("SetCommand",true).toBool(),
-                                                       settings->value("Bytes",true).toInt()));
+                                                       settings->value("Bytes",0).toInt(),
+                                                       settings->value("Admin",false).toBool()
+                                                       ));
 
                 rigCaps.commandsReverse.insert(settings->value("String", "").toByteArray(),func);
             } else {
@@ -1208,19 +1223,22 @@ void kenwoodCommander::determineRigCaps()
     queue->setRigCaps(&rigCaps);
 
     // Also signal that a radio is connected to the radio status window
-    if (!usingNativeLAN) {
-        QList<radio_cap_packet>radios;
-        radio_cap_packet r;
-        r.civ = rigCaps.modelID;
-        r.baudrate = qToBigEndian(rigCaps.baudRate);
+    QList<radio_cap_packet>radios;
+    radio_cap_packet r;
+    r.civ = rigCaps.modelID;
+    r.baudrate = qToBigEndian(rigCaps.baudRate);
 #ifdef Q_OS_WINDOWS
-        strncpy_s(r.name,rigCaps.modelName.toLocal8Bit(),sizeof(r.name)-1);
+    strncpy_s(r.name,rigCaps.modelName.toLocal8Bit(),sizeof(r.name)-1);
 #else
-        strncpy(r.name,rigCaps.modelName.toLocal8Bit(),sizeof(r.name)-1);
+    strncpy(r.name,rigCaps.modelName.toLocal8Bit(),sizeof(r.name)-1);
 #endif
-        radios.append(r);
-        emit requestRadioSelection(radios);
+    radios.append(r);
+    emit requestRadioSelection(radios);
+
+    if (!usingNativeLAN) {
         emit setRadioUsage(0, true, true, QString("<Local>"), QString("127.0.0.1"));
+    } else {
+        emit setRadioUsage(0,false,true,prefs.username,prefs.ipAddress);
     }
 
     qDebug(logRig()) << "---Rig FOUND" << rigCaps.modelName;
@@ -1238,10 +1256,11 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
         // Cannot query for these meters, but they will be sent automatically on TX
         return;
     }
-    if (loginRequired && func != funcLogin)
+    if (loginRequired && func != funcLogin && func != funcConnectionRequest)
     {
         qInfo() << "Command received before login, requeing";
         queue->add(priorityHigh,queueItem(func,value,false,receiver));
+        return;
     }
 
     if (func == funcSelectVFO) {
@@ -1307,6 +1326,11 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
         {
 
             // This is a SET command
+            if (!prefs.adminLogin && cmd.admin) {
+                qWarning(logRig()) << "Admin permission required for set command" << funcString[func] << "access denied";
+                return;
+            }
+
             if (!cmd.setCmd) {
                 qDebug(logRig()) << "Removing unsupported set command from queue" << funcString[func] << "VFO" << receiver;
                 queue->del(func,receiver);
@@ -1399,7 +1423,7 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             {
                 udpPreferences p = value.value<udpPreferences>();
                 qInfo(logRig()) << "Sending login for user:" << p.username;
-                payload.append(QString("%0%1%2%3%4").arg("1")
+                payload.append(QString("%0%1%2%3%4").arg(p.adminLogin?0:1)
                     .arg(QString::number(p.username.length()).rightJustified(2, QChar('0')))
                     .arg(QString::number(p.password.length()).rightJustified(2, QChar('0')))
                     .arg(p.username).arg(p.password).toLatin1());

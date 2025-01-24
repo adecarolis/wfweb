@@ -171,6 +171,7 @@ private slots:
     void on_audioDuplexCombo_currentIndexChanged(int index);
     void on_audioOutputCombo_currentIndexChanged(int index);
     void on_audioInputCombo_currentIndexChanged(int index);
+    void on_adminLoginChk_clicked(bool checked);
 
     void on_rxLatencySlider_valueChanged(int value);
     void on_txLatencySlider_valueChanged(int value);

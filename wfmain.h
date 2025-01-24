@@ -711,7 +711,7 @@ private:
     colorPrefsType* colorPrefs=Q_NULLPTR;
 
     QString currentRegion = "1";
-    funcs getInputTypeCommand(inputTypes input);
+    funcType getInputTypeCommand(inputTypes input);
 
 #if defined (USB_CONTROLLER)
     usbController *usbControllerDev = Q_NULLPTR;

@@ -474,6 +474,13 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                  </widget>
                 </item>
                 <item>
+                 <widget class="QCheckBox" name="adminLoginChk">
+                  <property name="text">
+                   <string>Admin Login</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
                  <spacer name="horizontalSpacer_7">
                   <property name="orientation">
                    <enum>Qt::Orientation::Horizontal</enum>

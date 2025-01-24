@@ -348,7 +348,9 @@ funcAutoInformation,    funcIFFilter,           funcDataMode,               func
 funcMemorySelect,       funcSetTransmit,        funcSetReceive,             funcRITDown,            funcRITUp,              funcScopeInfo,
 funcScopeRange,         funcCWDecode,           funcScopeClear,             funcUSBScope,
 // LAN Specific commands
-funcConnectionRequest,  funcLogin,              funcVOIP,                   funcVOIPLevel,          funcVOIPBuffer,
+funcConnectionRequest,  funcLogin,              funcVOIP,                   funcVOIPLevel,          funcVOIPBuffer,         funcTXInhibit,
+funcLoginEnableDisable,
+
 
 /* Special Commands (internal use only) */
 funcSelectVFO,          funcSeparator,          funcLCDWaterfall,           funcLCDSpectrum,        funcLCDNothing,         funcPageUp,
@@ -480,7 +482,8 @@ static QString funcString[funcLastFunc] { "None",
 "Memory Num Select",    "Set Transmit Mode",    "Set Receive Mode",         "RIT Frequency Down",   "RIT Frequency Up",     "Scope Information",
 "Scope Range",          "CW Decode",            "Scope Clear",              "USB Scope Data",
 // LAN Specific commands
-"Connection Request",  "Network Login",         "VOIP Function",            "VOIP Level",           "VOIP Buffer",
+"Connection Request",  "Network Login",         "VOIP Function",            "VOIP Level",           "VOIP Buffer",          "TX Inhibit",
+"Enable/Disable Login",
 
 /* Special Commands */
 "-Select VFO",          "-Seperator",
@@ -497,8 +500,9 @@ struct spanType {
 };
 
 struct funcType {
-    funcType() {cmd=funcNone;}
-    funcType(funcs cmd, QString name, QByteArray data, int minVal, int maxVal, bool cmd29, bool getCmd, bool setCmd, uchar bytes) : cmd(cmd), name(name), data(data), minVal(minVal), maxVal(maxVal), cmd29(cmd29), getCmd(getCmd), setCmd(setCmd), bytes(bytes) {}
+    funcType() {cmd=funcNone, name="None", data=QByteArray(), minVal=0, maxVal=0, cmd29=false, getCmd=false, setCmd=false, bytes=0, admin=false; }
+    funcType(funcs cmd, QString name, QByteArray data, int minVal, int maxVal, bool cmd29, bool getCmd, bool setCmd, uchar bytes, bool admin) :
+        cmd(cmd), name(name), data(data), minVal(minVal), maxVal(maxVal), cmd29(cmd29), getCmd(getCmd), setCmd(setCmd), bytes(bytes), admin(admin) {}
     funcs cmd;
     QString name;
     QByteArray data;
@@ -508,6 +512,7 @@ struct funcType {
     bool getCmd;
     bool setCmd;
     uchar bytes;
+    bool admin;
 };
 
 //struct commandtype {

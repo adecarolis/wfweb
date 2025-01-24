@@ -882,10 +882,12 @@ void settingswidget::updateRaPref(prefRaItem pra)
             ui->audioSampleRateCombo->setEnabled(false);
             //ui->audioRXCodecCombo->setEnabled(false);
             //ui->audioTXCodecCombo->setEnabled(false);
+            ui->adminLoginChk->setVisible(true);
         }   else {
             ui->audioSampleRateCombo->setEnabled(true);
             ui->audioRXCodecCombo->setEnabled(true);
             ui->audioTXCodecCombo->setEnabled(true);
+            ui->adminLoginChk->setVisible(false);
         }
         ui->controlPortTxt->setText(QString::number(udpPrefs->controlLANPort));
 
@@ -1196,6 +1198,9 @@ void settingswidget::updateUdpPref(prefUDPItem upi)
         break;
     case u_connectionType:
         quietlyUpdateCombobox(ui->networkConnectionTypeCombo,QVariant::fromValue(udpPrefs->connectionType));
+        break;
+    case u_adminLogin:
+        quietlyUpdateCheckbox(ui->adminLoginChk,udpPrefs->adminLogin);
         break;
     default:
         qWarning(logGui()) << "Did not find matching UI element for UDP pref item " << (int)upi;
@@ -1779,11 +1784,13 @@ void settingswidget::on_manufacturerCombo_currentIndexChanged(int value)
         ui->audioSampleRateCombo->setEnabled(false);
         ui->audioRXCodecCombo->setEnabled(false);
         ui->audioTXCodecCombo->setEnabled(false);
+        ui->adminLoginChk->setVisible(true);
     }   else {
         udpPrefs->controlLANPort = 50001;
         ui->audioSampleRateCombo->setEnabled(true);
         ui->audioRXCodecCombo->setEnabled(true);
         ui->audioTXCodecCombo->setEnabled(true);
+        ui->adminLoginChk->setVisible(false);
     }
     ui->controlPortTxt->setText(QString::number(udpPrefs->controlLANPort));
 
@@ -2144,6 +2151,12 @@ void settingswidget::on_clusterTcpDisconnectBtn_clicked()
 
 
 /* Beginning of UDP connection settings */
+void settingswidget::on_adminLoginChk_clicked(bool checked)
+{
+    udpPrefs->adminLogin = checked;
+    emit changedUdpPref(u_adminLogin);
+}
+
 void settingswidget::on_ipAddressTxt_textChanged(const QString &arg1)
 {
     udpPrefs->ipAddress = arg1;
