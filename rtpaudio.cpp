@@ -126,7 +126,6 @@ void rtpAudio::init()
     }
 
     emit setupRxAudio(rxSetup);
-    timer.start();
 }
 
 void rtpAudio::dataReceived()
@@ -147,12 +146,6 @@ void rtpAudio::dataReceived()
         emit haveAudioData(tempAudio);
         packetCount++;
         size = size + tempAudio.data.size();
-        if (timer.hasExpired(60000)) {
-            qInfo() << "Received" << packetCount << "audio packets in 60 seconds, of size" << d.size() << "audio size:" << tempAudio.data.size() << "rx size" << size;
-            timer.restart();
-            packetCount=0;
-            size=0;
-        }
     }
 }
 

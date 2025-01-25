@@ -217,11 +217,6 @@ void kenwoodCommander::setCIVAddr(quint8 civAddr)
     Q_UNUSED(civAddr)
 }
 
-void kenwoodCommander::setAfGain(quint8 level)
-{
-    Q_UNUSED(level)
-}
-
 void kenwoodCommander::powerOn()
 {
     qDebug(logRig()) << "Power ON command in kenwoodCommander to be sent to rig: ";
@@ -236,7 +231,7 @@ void kenwoodCommander::powerOn()
     d.append(QString("%0;").arg(cmd).toLatin1());
     QMutexLocker locker(&serialMutex);
     port->write(d);
-    lastSentCommand = d;
+    lastCommand.data = d;
 }
 
 void kenwoodCommander::powerOff()
@@ -252,7 +247,7 @@ void kenwoodCommander::powerOff()
     d.append(QString("%0;").arg(cmd).toLatin1());
     QMutexLocker locker(&serialMutex);
     port->write(d);
-    lastSentCommand = d;
+    lastCommand.data = d;
 }
 
 
@@ -452,7 +447,7 @@ void kenwoodCommander::parseData(QByteArray data)
             else
                 width = d.toShort() * 50;
             value.setValue<ushort>(width);
-            qInfo() << "God filter width" << width << "original" << d.toUShort();
+            //qInfo() << "Got filter width" << width << "original" << d.toUShort();
             break;
         }
         case funcMeterType:
@@ -475,6 +470,10 @@ void kenwoodCommander::parseData(QByteArray data)
             if (rtp == Q_NULLPTR)
             {
                 value.setValue<uchar>(d.toUShort());
+            }
+            else
+            {
+                continue;
             }
             break;
         case funcAGCTimeConstant:
@@ -684,6 +683,11 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcCWDecode:
             value.setValue<QString>(d);
             break;
+        case funcRXEqualizer:
+        case funcTXEqualizer:
+            qInfo(logRig()) << "Received" << funcString[func] << "values";
+            // M0VSE deal with these in some way when we add a rig EQ panel?
+            break;
         case funcVOIP:
             qInfo(logRig()) << "Recieved VOIP response:" << d.toInt();
             if (d.toInt() && rtpThread == Q_NULLPTR) {
@@ -704,7 +708,8 @@ void kenwoodCommander::parseData(QByteArray data)
             }
             break;
         case funcFA:
-            qInfo(logRig()) << "Error received from rig. Last command:" << lastSentCommand << "data:" << d;
+            qInfo(logRig()) << "Rig error, last command sent:" << funcString[lastCommand.func] << "(min:" << lastCommand.minValue << "max:" <<
+                lastCommand.maxValue << "bytes:" << lastCommand.bytes <<  ") data:" << lastCommand.data;
             break;
         default:
             qWarning(logRig()).noquote() << "Unhandled command received from rig:" << funcString[func] << "value:" << d.mid(0,10);
@@ -1460,8 +1465,7 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             else if(!strcmp(value.typeName(),"bandStackType"))
             {
                 bandStackType b = value.value<bandStackType>();
-                payload.append(QString::number(b.regCode).leftJustified(cmd.bytes,'0').toLatin1());
-
+                payload.append(QString::number(b.band).rightJustified(cmd.bytes,'0').toLatin1());
             }
             else if(!strcmp(value.typeName(),"antennaInfo"))
             {
@@ -1651,7 +1655,11 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             {
                 qInfo(logSerial()) << "Error writing to port";
             }
-            lastSentCommand = payload;
+            lastCommand.func = func;
+            lastCommand.data = payload;
+            lastCommand.minValue = cmd.minVal;
+            lastCommand.maxValue = cmd.maxVal;
+            lastCommand.bytes = cmd.bytes;
         }
     }
 }

@@ -203,7 +203,6 @@ signals:
 
     // Level set:
     void setRfGain(quint8 level);
-    void setAfGain(quint8 level);
     void setSql(quint8 level);
     void setIFShift(quint8 level);
     void setPBTInner(quint8 level);

@@ -319,7 +319,6 @@ signals:
 
     //Level set
     void setRfGain(quint8 level);
-    void setAfGain(quint8 level);
     void setSql(quint8 level);
     void setMicGain(quint8);
     void setCompLevel(quint8);

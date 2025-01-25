@@ -114,6 +114,7 @@ void icomCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAddr, 
     // Keep in hex in the UI as is done with other CIV apps.
 
     this->rigList = rigList;
+    this->prefs = prefs;
     civAddr = rigCivAddr; // address of the radio
     usingNativeLAN = true;
 
@@ -172,9 +173,6 @@ void icomCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAddr, 
         // data from the rig to the tcp port:
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), tcp, SLOT(sendData(QByteArray)));
     }
-
-    emit haveAfGain(rxSetup.localAFgain);
-    localVolume = rxSetup.localAFgain;
 
     commonSetup();
 
@@ -266,7 +264,6 @@ void icomCommander::prepDataAndSend(QByteArray data)
         qDebug(logRigTraffic()) << "Final payload in rig commander to be sent to rig: ";
         printHexNow(data, logRigTraffic());
     }
-    lastCommandToRig = data;
     emit dataForComm(data);
 }
 
@@ -887,8 +884,11 @@ void icomCommander::parseCommand()
     case funcAfGain:        
         if (udp == Q_NULLPTR) {
             value.setValue(bcdHexToUChar(payloadIn.at(0),payloadIn.at(1)));
-        } else {
-            value.setValue(localVolume);
+        }
+        else
+        {
+            // Network connected, so ignore!
+            return;
         }
         break;
     // The following group are 2 bytes converted to uchar (0-255) but require special processing
@@ -1387,17 +1387,14 @@ void icomCommander::parseCommand()
         break;
     case funcFA:
     {
-        if (!lastCommandToRig.isEmpty()) {
+        if (!lastCommand.data.isEmpty()) {
             if (!warnedAboutFA) {
                 qInfo(logRig()) << "Occasional error response (FA) from rig can safely be ignored";
                  warnedAboutFA=true;
             }
-            qWarning(logRig()) << "Error (FA) received from rig, last command sent:";
-
-            QStringList messages = getHexArray(lastCommandToRig);
-            for (const auto &msg: messages)
-                qWarning(logRig()) << msg;
-            }
+            qWarning(logRig()) << "Rig (FA) error, last command sent:" << funcString[lastCommand.func] << "(min:" << lastCommand.minValue << "max:" <<
+                lastCommand.maxValue << "bytes:" << lastCommand.bytes <<  ") data:" << lastCommand.data.toHex(' ');
+        }
         break;
     }
     default:
@@ -2700,23 +2697,6 @@ void icomCommander::setRigID(quint8 rigID)
 }
 
 
-void icomCommander::setAfGain(quint8 level)
-{
-    if (udp == Q_NULLPTR)
-    {
-        QByteArray payload;
-        if (getCommand(funcAfGain,payload,level).cmd != funcNone)
-        {
-            payload.append(bcdEncodeInt(quint16(level)));
-            prepDataAndSend(payload);
-        }
-    }
-    else {
-        emit haveSetVolume(level);
-        localVolume = level;
-    }
-}
-
 uchar icomCommander::makeFilterWidth(ushort pass,uchar receiver)
 {
     quint8 calc;
@@ -3419,6 +3399,11 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             //}
         }
         prepDataAndSend(payload);
+        lastCommand.func = func;
+        lastCommand.data = payload;
+        lastCommand.minValue = cmd.minVal;
+        lastCommand.maxValue = cmd.maxVal;
+        lastCommand.bytes = cmd.bytes;
     }
     else
     {

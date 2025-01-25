@@ -43,7 +43,6 @@ public slots:
 
     // Housekeeping:
     void receiveCommand(funcs func, QVariant value, uchar receiver) override;
-    void setAfGain(quint8 level) override;
 
 signals:
     // All signals are defined in rigcommander.h as they should be common for all rig types.
@@ -141,8 +140,6 @@ private:
 
     QString rigSerialPort;
     quint32 rigBaudRate;
-
-    QByteArray lastCommandToRig;
 
     QString ip;
     int cport;

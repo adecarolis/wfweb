@@ -46,7 +46,6 @@ public slots:
 
     // Housekeeping:
     void receiveCommand(funcs func, QVariant value, uchar receiver) override;
-    void setAfGain(quint8 level) override;
 
     // Serial:
     void serialPortError(QSerialPort::SerialPortError err);
@@ -93,9 +92,6 @@ private:
     QString rigSerialPort;
     quint32 rigBaudRate;
 
-    udpPreferences prefs;
-    audioSetup rxSetup;
-    audioSetup txSetup;
     scopeData currentScope;
     bool loginRequired = false;
     bool audioStarted = false;

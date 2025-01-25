@@ -557,8 +557,6 @@ void wfmain::makeRig()
         connect(this->rpt, &repeaterSetup::getRptDuplexOffset, this->rig,
                 [=]() {  queue->add(priorityImmediate,funcReadFreqOffset,false,false);});
 
-        connect(this, SIGNAL(setAfGain(quint8)), rig, SLOT(setAfGain(quint8)));
-
         // Create link for server so it can have easy access to rig.
         if (serverConfig.rigs.first() != Q_NULLPTR) {
             serverConfig.rigs.first()->rig = rig;

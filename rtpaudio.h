@@ -69,7 +69,6 @@ private:
 
     QHostAddress ip;
     quint16 port = 0;
-    QElapsedTimer timer;
     int packetCount=0;
     QFile debugFile;
     quint64 size=0;

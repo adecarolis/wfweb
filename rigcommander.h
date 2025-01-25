@@ -78,7 +78,6 @@ public slots:
 
     // Housekeeping:
     virtual void receiveCommand(funcs func, QVariant value, uchar receiver);
-    virtual void setAfGain(quint8 level);
 
 signals:
     // Right now, all signals are defined here as they should be rig agnostic.
@@ -121,8 +120,6 @@ signals:
     void haveRptOffsetFrequency(freqt f);
     void haveMemory(memoryType mem);
 
-    // Levels:
-    void haveAfGain(quint8 level);
     // Housekeeping:
     void requestRadioSelection(QList<radio_cap_packet> radios);
     void setRadioUsage(quint8 radio, bool admin, quint8 busy, QString user, QString ip);
@@ -134,6 +131,10 @@ signals:
 protected:
     // These are common between all sub-classes, so define here
     cachingQueue* queue;
+    udpPreferences prefs;
+    audioSetup rxSetup;
+    audioSetup txSetup;
+
     void printHex(const QByteArray &pdata);
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
 
@@ -145,6 +146,7 @@ protected:
     bool haveRigCaps=false;
     QHash<quint8,rigInfo> rigList;
     bool isRadioAdmin = true;
+    commandErrorType lastCommand;
 
 private:
     // rigCommander should have no private vars as it is only ever subclassed.

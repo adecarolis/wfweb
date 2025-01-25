@@ -112,13 +112,6 @@ void rigCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
     qWarning(logRig()) << "receiveCommand() not implemented by rig type";
 }
 
-void rigCommander::setAfGain(quint8 level)
-{
-    Q_UNUSED(level)
-
-    qWarning(logRig()) << "setAfGain() not implemented by rig type";
-}
-
 /*
  * The following slots/functions are only implemented
  * in the parent rigCommander()

@@ -346,7 +346,7 @@ funcFA,                 funcFB,
 funcSepP,
 funcAutoInformation,    funcIFFilter,           funcDataMode,               funcRXFreqAndMode,      funcTXFreqAndMode,      funcTFSetStatus,
 funcMemorySelect,       funcSetTransmit,        funcSetReceive,             funcRITDown,            funcRITUp,              funcScopeInfo,
-funcScopeRange,         funcCWDecode,           funcScopeClear,             funcUSBScope,
+funcScopeRange,         funcCWDecode,           funcScopeClear,             funcUSBScope,           funcTXEqualizer,        funcRXEqualizer,
 // LAN Specific commands
 funcConnectionRequest,  funcLogin,              funcVOIP,                   funcVOIPLevel,          funcVOIPBuffer,         funcTXInhibit,
 funcLoginEnableDisable,
@@ -480,7 +480,7 @@ static QString funcString[funcLastFunc] { "None",
 "+<Kenwood Only>",
 "Auto Information",     "IF Filter Only",       "Data Mode Only",           "RX Freq And Mode",     "TX Freq And Mode",      "TF-Set Status",
 "Memory Num Select",    "Set Transmit Mode",    "Set Receive Mode",         "RIT Frequency Down",   "RIT Frequency Up",     "Scope Information",
-"Scope Range",          "CW Decode",            "Scope Clear",              "USB Scope Data",
+"Scope Range",          "CW Decode",            "Scope Clear",              "USB Scope Data",       "TX Equalizer",         "RX Equalizer",
 // LAN Specific commands
 "Connection Request",  "Network Login",         "VOIP Function",            "VOIP Level",           "VOIP Buffer",          "TX Inhibit",
 "Enable/Disable Login",
@@ -628,6 +628,18 @@ struct memParserFormat{
     char spec;
     int pos;
     int len;
+};
+
+struct commandErrorType{
+    commandErrorType() : func(funcNone), data(QByteArray()), minValue(0), maxValue(0), bytes(0) {};
+    commandErrorType(funcs func, QByteArray data, int minValue, int maxValue, char bytes) :
+        func(func), data(data), minValue(minValue), maxValue(maxValue), bytes(bytes)  {};
+
+    funcs func;
+    QByteArray data;
+    int minValue;
+    int maxValue;
+    uchar bytes;
 };
 
 enum audioType {qtAudio,portAudio,rtAudio,tciAudio};
