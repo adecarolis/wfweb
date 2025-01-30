@@ -434,7 +434,6 @@ void memories::on_table_cellChanged(int row, int col)
     currentMemory.frequencyB.Hz = (ui->table->item(row,columnFrequencyB) == NULL) ? 0 : quint64(ui->table->item(row,columnFrequencyB)->text().toDouble()*1000000.0);
 
 
-
     if (!ui->table->isColumnHidden(columnData) && ui->table->item(row,columnData) != NULL) {
         currentMemory.datamode = dataModes.indexOf(ui->table->item(row,columnData)->text().toUpper());
     }
@@ -505,11 +504,11 @@ void memories::on_table_cellChanged(int row, int col)
         currentMemory.dsqlB = dsql.indexOf(ui->table->item(row,columnDSQLB)->text().toUpper());
     }
 
-    currentMemory.tone = (ui->table->item(row,columnTone) == NULL) ? 670 : int(ui->table->item(row,columnTone)->text().toFloat()*10.0);
-    currentMemory.toneB = (ui->table->item(row,columnToneB) == NULL) ? 670 : int(ui->table->item(row,columnToneB)->text().toFloat()*10.0);
+    currentMemory.tone = (ui->table->item(row,columnTone) == NULL) ? "67.0" : ui->table->item(row,columnTone)->text();
+    currentMemory.toneB = (ui->table->item(row,columnToneB) == NULL) ? "67.0" : ui->table->item(row,columnToneB)->text();
 
-    currentMemory.tsql = (ui->table->item(row,columnTSQL) == NULL) ? 670 : int(ui->table->item(row,columnTSQL)->text().toFloat()*10.0);
-    currentMemory.tsqlB = (ui->table->item(row,columnTSQLB) == NULL) ? 670 : int(ui->table->item(row,columnTSQLB)->text().toFloat()*10.0);
+    currentMemory.tsql = (ui->table->item(row,columnTSQL) == NULL) ? "67.0" : ui->table->item(row,columnTSQL)->text();
+    currentMemory.tsqlB = (ui->table->item(row,columnTSQLB) == NULL) ? "67.0" : ui->table->item(row,columnTSQLB)->text();
 
     currentMemory.dtcs = (ui->table->item(row,columnDTCS) == NULL) ? 23 : int(ui->table->item(row,columnDTCS)->text().toUInt());
     currentMemory.dtcsB = (ui->table->item(row,columnDTCSB) == NULL) ? 23 : int(ui->table->item(row,columnDTCSB)->text().toUInt());
@@ -646,17 +645,21 @@ void memories::on_table_cellChanged(int row, int col)
         ui->table->blockSignals(false);
 
 
-    // Only write the memory if ALL values are non-null
+    // Only write the memory if ALL required values are non-null
     bool write=true;
     for (int f=1; f<ui->table->columnCount();f++)
     {
         if (!ui->table->isColumnHidden(f) && ui->table->item(row,f) == NULL) {
             write=false;
-            qInfo() << "Invalid entry, row:" << row << "col:" << f;
+            //ui->table->model()->setData(ui->table->model()->index(row,f),QString(""));
+            //ui->table->item(row,f)->setBackground(Qt::red);
+        } else {
+            //ui->table->item(row,f)->setBackground(Qt::NoBrush);
         }
+
     }
     // Quick sanity check as we MUST have at least one valid frequency
-    if (currentMemory.frequency.Hz == 0)
+    if (currentMemory.frequency.Hz == 0 || (currentMemory.split && currentMemory.frequencyB.Hz == 0))
         write=false;
 
     if (write) {
@@ -1509,6 +1512,7 @@ void memories::receiveMemory(memoryType mem)
 
         validData += updateCombo(split,row,columnSplit,mem.split);
 
+
         validData += updateCombo(skip,row,columnSkip,mem.skip);
 
         validData += updateCombo(scan,row,columnScan,mem.scan);
@@ -1528,8 +1532,8 @@ void memories::receiveMemory(memoryType mem)
         validData += updateCombo(dsql,row,columnDSQL,mem.dsql);
         validData += updateCombo(dsql,row,columnDSQLB,mem.dsqlB);
 
-        validData += updateCombo(tones,row,columnTSQL,QString::number((float)mem.tsql/10,'f',1));
-        validData += updateCombo(tones,row,columnTSQLB,QString::number((float)mem.tsqlB/10,'f',1));
+        validData += updateCombo(tones,row,columnTSQL,mem.tsql);
+        validData += updateCombo(tones,row,columnTSQLB,mem.tsqlB);
         
         validData += updateCombo(dvsql,row,columnDVSquelch,QString::number(mem.dvsql).rightJustified(2,'0'));
         validData += updateCombo(dvsql,row,columnDVSquelchB,QString::number(mem.dvsqlB).rightJustified(2,'0'));
@@ -1553,8 +1557,8 @@ void memories::receiveMemory(memoryType mem)
         validData += updateCombo(duplexModes,row,columnDuplex,mem.duplex);
         validData += updateCombo(duplexModes,row,columnDuplexB,mem.duplexB);
 
-        validData += updateCombo(tones,row,columnTone,QString::number((float)mem.tone/10,'f',1));
-        validData += updateCombo(tones,row,columnToneB,QString::number((float)mem.toneB/10,'f',1));
+        validData += updateCombo(tones,row,columnTone,mem.tone);
+        validData += updateCombo(tones,row,columnToneB,mem.toneB);
 
         validData += updateCombo(tuningSteps,row,columnTuningStep,mem.tuningStep);
 

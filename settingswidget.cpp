@@ -880,13 +880,9 @@ void settingswidget::updateRaPref(prefRaItem pra)
             ui->audioTXCodecCombo->setCurrentIndex(ui->audioTXCodecCombo->findData(4));
 
             ui->audioSampleRateCombo->setEnabled(false);
-            //ui->audioRXCodecCombo->setEnabled(false);
-            //ui->audioTXCodecCombo->setEnabled(false);
             ui->adminLoginChk->setVisible(true);
         }   else {
             ui->audioSampleRateCombo->setEnabled(true);
-            ui->audioRXCodecCombo->setEnabled(true);
-            ui->audioTXCodecCombo->setEnabled(true);
             ui->adminLoginChk->setVisible(false);
         }
         ui->controlPortTxt->setText(QString::number(udpPrefs->controlLANPort));
@@ -1782,14 +1778,10 @@ void settingswidget::on_manufacturerCombo_currentIndexChanged(int value)
         ui->audioRXCodecCombo->setCurrentIndex(ui->audioRXCodecCombo->findData(4));
         ui->audioTXCodecCombo->setCurrentIndex(ui->audioTXCodecCombo->findData(4));
         ui->audioSampleRateCombo->setEnabled(false);
-        ui->audioRXCodecCombo->setEnabled(false);
-        ui->audioTXCodecCombo->setEnabled(false);
         ui->adminLoginChk->setVisible(true);
     }   else {
         udpPrefs->controlLANPort = 50001;
         ui->audioSampleRateCombo->setEnabled(true);
-        ui->audioRXCodecCombo->setEnabled(true);
-        ui->audioTXCodecCombo->setEnabled(true);
         ui->adminLoginChk->setVisible(false);
     }
     ui->controlPortTxt->setText(QString::number(udpPrefs->controlLANPort));

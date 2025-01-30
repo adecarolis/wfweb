@@ -347,6 +347,7 @@ funcSepP,
 funcAutoInformation,    funcIFFilter,           funcDataMode,               funcRXFreqAndMode,      funcTXFreqAndMode,      funcTFSetStatus,
 funcMemorySelect,       funcSetTransmit,        funcSetReceive,             funcRITDown,            funcRITUp,              funcScopeInfo,
 funcScopeRange,         funcCWDecode,           funcScopeClear,             funcUSBScope,           funcTXEqualizer,        funcRXEqualizer,
+funcFilterControlSSB,   funcFilterControlData,
 // LAN Specific commands
 funcConnectionRequest,  funcLogin,              funcVOIP,                   funcVOIPLevel,          funcVOIPBuffer,         funcTXInhibit,
 funcLoginEnableDisable,
@@ -481,6 +482,7 @@ static QString funcString[funcLastFunc] { "None",
 "Auto Information",     "IF Filter Only",       "Data Mode Only",           "RX Freq And Mode",     "TX Freq And Mode",      "TF-Set Status",
 "Memory Num Select",    "Set Transmit Mode",    "Set Receive Mode",         "RIT Frequency Down",   "RIT Frequency Up",     "Scope Information",
 "Scope Range",          "CW Decode",            "Scope Clear",              "USB Scope Data",       "TX Equalizer",         "RX Equalizer",
+"Filter Control SSB",   "Filter Control Data",
 // LAN Specific commands
 "Connection Request",  "Network Login",         "VOIP Function",            "VOIP Level",           "VOIP Buffer",          "TX Inhibit",
 "Enable/Disable Login",
@@ -570,10 +572,10 @@ struct memoryType {
     quint8 duplexB=0;
     quint8 tonemode=0;
     quint8 tonemodeB=0;
-    quint16 tone=670;
-    quint16 toneB=670;
-    quint16 tsql=670;
-    quint16 tsqlB=670;
+    QString tone="67.0";
+    QString toneB="67.0";
+    QString tsql="67.0";
+    QString tsqlB="67.0";
     quint8 dsql=0;
     quint8 dsqlB=0;
     quint16 dtcs=23;

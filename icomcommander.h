@@ -125,7 +125,6 @@ private:
     quint16 spectLenMax;
     spectrumMode_t oldScopeMode;
 
-    bool usingNativeLAN; // indicates using OEM LAN connection (705,7610,9700,7850)
     bool lookingForRig;
     bool foundRig;
 

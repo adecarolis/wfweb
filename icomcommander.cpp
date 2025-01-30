@@ -2529,17 +2529,25 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
         case 'M':
             mem->dsqlB = (quint8(data[0] >> 4 & 0x0f));
             break;
-        case 'n':            
-            mem->tone = bcdHexToUInt(data[1],data[2]); // First byte is not used
+        case 'n':
+            for (const auto &tn: rigCaps.ctcss)
+                if (tn.tone ==  bcdHexToUInt(data[1],data[2]))
+                    mem->tone = tn.name;
             break;
         case 'N':
-            mem->toneB = bcdHexToUInt(data[1],data[2]); // First byte is not used
+            for (const auto &tn: rigCaps.ctcss)
+                if (tn.tone ==  bcdHexToUInt(data[1],data[2]))
+                    mem->toneB = tn.name;
             break;
         case 'o':
-            mem->tsql = bcdHexToUInt(data[1],data[2]); // First byte is not used
+            for (const auto &tn: rigCaps.ctcss)
+                if (tn.tone ==  bcdHexToUInt(data[1],data[2]))
+                    mem->tsql = tn.name;
             break;
         case 'O':
-            mem->tsqlB = bcdHexToUInt(data[1],data[2]); // First byte is not used
+            for (const auto &tn: rigCaps.ctcss)
+                if (tn.tone ==  bcdHexToUInt(data[1],data[2]))
+                    mem->tsqlB = tn.name;
             break;
         case 'p':
             mem->dtcsp = (quint8(data[0] >> 3 & 0x02) | quint8(data[0] & 0x01));
@@ -2621,7 +2629,9 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
                     {
                     case modeFM:
                         mem->tonemode=data[0] & 0x0f;
-                        mem->tsql = bcdHexToUInt(data[2],data[3]); // First byte is not used
+                        for (const auto &tn: rigCaps.ctcss)
+                            if (tn.tone ==  bcdHexToUInt(data[2],data[3]))
+                                mem->tsql = tn.name;
                         mem->dtcsp = quint8(data[4] & 0x0f);
                         mem->dtcs = bcdHexToUInt(data[5],data[6]);
                         break;
@@ -3072,19 +3082,28 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         break;
                     case 'n':
                         payload.append(nul);
-                        payload.append(bcdEncodeInt(mem.tone));
+                        for (const auto &tn: rigCaps.ctcss)
+                            if (tn.name == mem.tone)
+                                payload.append(bcdEncodeInt(tn.tone));
+                        break;
                         break;
                     case 'N':
                         payload.append(nul);
-                        payload.append(bcdEncodeInt(mem.toneB));
+                        for (const auto &tn: rigCaps.ctcss)
+                            if (tn.name == mem.toneB)
+                                payload.append(bcdEncodeInt(tn.tone));
                         break;
                     case 'o':
                         payload.append(nul);
-                        payload.append(bcdEncodeInt(mem.tsql));
+                        for (const auto &tn: rigCaps.ctcss)
+                            if (tn.name == mem.tsql)
+                                payload.append(bcdEncodeInt(tn.tone));
                         break;
                     case 'O':
                         payload.append(nul);
-                        payload.append(bcdEncodeInt(mem.tsqlB));
+                        for (const auto &tn: rigCaps.ctcss)
+                            if (tn.name == mem.tsqlB)
+                                payload.append(bcdEncodeInt(tn.tone));
                         break;
                     case 'p':
                         payload.append((mem.dtcsp << 3 & 0x10) |  (mem.dtcsp & 0x01));
@@ -3163,7 +3182,9 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                                     if (mem.tonemode) {
                                         payload.append(bcdEncodeChar(mem.tonemode));
                                         payload.append(nul);
-                                        payload.append(bcdEncodeInt(mem.tsql));
+                                        for (const auto &tn: rigCaps.ctcss)
+                                            if (tn.name == mem.tsql)
+                                                payload.append(bcdEncodeInt(tn.tone));
                                         payload.append(bcdEncodeChar(mem.dtcsp));
                                         payload.append(bcdEncodeInt(mem.dtcs));
                                     }

@@ -1407,7 +1407,7 @@ void wfmain::doShuttle(bool up, quint8 level)
 
 void wfmain::buttonControl(const COMMAND* cmd)
 {
-    qDebug(logUsbControl()) << QString("executing command: %0 (%1) suffix:%2 value:%3" ).arg(cmd->text).arg(cmd->command).arg(cmd->suffix).arg(cmd->value);
+    qDebug(logUsbControl()) << QString("executing command: %0 (%1) suffix:%2 value:%3" ).arg(cmd->text).arg(funcString[cmd->command]).arg(cmd->suffix).arg(cmd->value);
     quint8 rx=0;
     if (rigCaps == Q_NULLPTR) {
         return;
@@ -1532,7 +1532,8 @@ void wfmain::buttonControl(const COMMAND* cmd)
         }
         f.MHzDouble = f.Hz / double(1E6);
         f.VFO=(selVFO_t)cmd->suffix;
-        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<freqt>(f),false,rx));
+        vfoCommandType t = queue->getVfoCommand(cmd->suffix?vfoB:vfoA,currentReceiver,true);
+        queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(f),false,t.receiver));
         break;
     }
 
@@ -3651,6 +3652,9 @@ void wfmain:: getInitialRigState()
     {
         queue->add(priorityHigh,queueItem(funcVOIP,QVariant::fromValue<uchar>(prefs.rxSetup.codec==0x80?2:1),false,0));
     }
+    // Put Kenwood into Shift&Width mode for filter control.
+    queue->add(priorityHigh,queueItem(funcFilterControlSSB,QVariant::fromValue<bool>(true),false,0));
+    queue->add(priorityHigh,queueItem(funcFilterControlData,QVariant::fromValue<bool>(true),false,0));
 }
 void wfmain::showStatusBarText(QString text)
 {

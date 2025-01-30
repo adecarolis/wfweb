@@ -347,7 +347,6 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     configGroup->setStyleSheet(QString("QGroupBox{border:1px solid gray;} *{padding: 0px 0px 0px 0px; margin: 0px 0px 0px 0px; font-size: %0px;}").arg(font.pointSize()-1));
     configGroup->setMaximumWidth(240);
     configRef = new QSlider(Qt::Orientation::Horizontal);
-    configRef->setRange(-200,200);
     configRef->setTickInterval(50);
     configRef->setSingleStep(20);
     configRef->setValue(0);
@@ -406,6 +405,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     configLayout->addRow(tr("Theme"),configTheme);
 
     configPbtInner = new QSlider(Qt::Orientation::Horizontal);
+
     configPbtInner->setRange(0,255);
     configLayout->addRow(tr("PBT Inner"),configPbtInner);
 
@@ -453,11 +453,17 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
         emit updateSettings(receiver,currentTheme,wfLength,plotFloor,plotCeiling);
     });
 
-    connect(configRef, &QSlider::valueChanged, this, [=](const int &val) {
-        currentRef = (val/5) * 5; // rounded to "nearest 5"
-        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
-        queue->addUnique(priorityImmediate,queueItem(funcScopeRef,QVariant::fromValue(currentRef),false,t.receiver));
-    });
+    if (rigCaps->commands.contains(funcScopeRef))
+    {
+        auto v = rigCaps->commands.find(funcScopeRef);
+        configRef->setRange(v.value().minVal,v.value().maxVal);
+        connect(configRef, &QSlider::valueChanged, this, [=](const int &val) {
+            currentRef = (val/5) * 5; // rounded to "nearest 5"
+            vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+            queue->addUnique(priorityImmediate,queueItem(funcScopeRef,QVariant::fromValue(currentRef),false,t.receiver));
+        });
+    }
+
 
     connect(configSpeed, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](const int &val) {
         vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
@@ -471,14 +477,26 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
         emit updateSettings(receiver,currentTheme,wfLength,plotFloor,plotCeiling);
     });
 
-    connect(configPbtInner, &QSlider::valueChanged, this, [=](const int &val) {
-        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
-        queue->addUnique(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(val),false,t.receiver));
-    });
-    connect(configPbtOuter, &QSlider::valueChanged, this, [=](const int &val) {
-        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
-        queue->addUnique(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(val),false,t.receiver));
-    });
+    if (rigCaps->commands.contains(funcPBTInner))
+    {
+        auto v = rigCaps->commands.find(funcPBTInner);
+        configPbtInner->setRange(v.value().minVal,v.value().maxVal);
+        connect(configPbtInner, &QSlider::valueChanged, this, [=](const int &val) {
+            vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+            queue->addUnique(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(val),false,t.receiver));
+        });
+    }
+
+    if (rigCaps->commands.contains(funcPBTOuter))
+    {
+        auto v = rigCaps->commands.find(funcPBTOuter);
+        configPbtOuter->setRange(v.value().minVal,v.value().maxVal);
+        connect(configPbtOuter, &QSlider::valueChanged, this, [=](const int &val) {
+            vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+            queue->addUnique(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(val),false,t.receiver));
+        });
+    }
+
     connect(configIfShift, &QSlider::valueChanged, this, [=](const int &val) {
         if (rigCaps != Q_NULLPTR && rigCaps->commands.contains(funcIFShift)) {
             vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
@@ -510,11 +528,13 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
         configIfShift->blockSignals(false);
     });
 
-
-    connect(configFilterWidth, &QSlider::valueChanged, this, [=](const int &val) {
-        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
-        queue->addUnique(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(val),false,t.receiver));
-    });
+    if (rigCaps->commands.contains(funcFilterWidth))
+    {
+        connect(configFilterWidth, &QSlider::valueChanged, this, [=](const int &val) {
+            vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+            queue->addUnique(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(val),false,t.receiver));
+        });
+    }
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,7,0))
     connect(configScopeEnabled, &QCheckBox::stateChanged, this, [=](const int &val) {
@@ -913,8 +933,13 @@ bool receiverWidget::updateScope(scopeData data)
         case modeLSB:
         case modeRTTY_R:
         case modePSK_R:
-            pbStart = freq.MHzDouble - passbandCenterFrequency - (passbandWidth / 2);
-            pbEnd = freq.MHzDouble - passbandCenterFrequency + (passbandWidth / 2);
+            if (rigCaps->manufacturer == manufKenwood) {
+                pbStart = freq.MHzDouble-passbandWidth;
+                pbEnd = freq.MHzDouble;
+            } else {
+                pbStart = freq.MHzDouble - passbandCenterFrequency - (passbandWidth / 2);
+                pbEnd = freq.MHzDouble - passbandCenterFrequency + (passbandWidth / 2);
+            }
             break;
         case modeCW:
             if (passbandWidth < 0.0006) {
@@ -937,8 +962,13 @@ bool receiverWidget::updateScope(scopeData data)
             }
             break;            
         default:
-            pbStart = freq.MHzDouble + passbandCenterFrequency - (passbandWidth / 2);
-            pbEnd = freq.MHzDouble + passbandCenterFrequency + (passbandWidth / 2);
+            if (rigCaps->manufacturer == manufKenwood) {
+                pbStart = freq.MHzDouble;
+                pbEnd = freq.MHzDouble+passbandWidth;
+            } else {
+                pbStart = freq.MHzDouble + passbandCenterFrequency - (passbandWidth / 2);
+                pbEnd = freq.MHzDouble + passbandCenterFrequency + (passbandWidth / 2);
+            }
             break;
         }
 
@@ -1787,7 +1817,7 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
                         configPbtInner->setEnabled(false);
                         configPbtOuter->setEnabled(false);
                         configIfShift->setEnabled(false);
-                        configFilterWidth->setEnabled(true);
+                        //configFilterWidth->setEnabled(true);
                     }
                     else if (m.mk == modeUSB || m.mk == modeLSB || m.mk == modeAM || m.mk == modeFM) {
                         queue->addUnique(priorityHigh,funcPBTInner,true,t.receiver);
@@ -1796,7 +1826,7 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
                         configPbtInner->setEnabled(true);
                         configPbtOuter->setEnabled(true);
                         configIfShift->setEnabled(true);
-                        configFilterWidth->setEnabled(false);
+                        //configFilterWidth->setEnabled(false);
                     }
                 } else
                 {
@@ -1857,7 +1887,10 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
             case modeUSB:
             case modePSK:
             case modePSK_R:
-                passbandCenterFrequency = 0.0015;
+                if (rigCaps->manufacturer == manufIcom)
+                    passbandCenterFrequency = 0.0015;
+                else
+                    passbandCenterFrequency = 0.0;
             case modeAM:
             case modeCW:
             case modeCW_R:

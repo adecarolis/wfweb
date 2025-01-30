@@ -28,7 +28,8 @@ kenwoodCommander::~kenwoodCommander()
     qInfo(logRig()) << "closing instance of kenwoodCommander()";
 
     if (rtpThread != Q_NULLPTR) {
-        qDebug(logUdp()) << "Stopping RTP thread";
+        receiveCommand(funcVOIP,QVariant::fromValue<uchar>(0),0);
+        qInfo(logUdp()) << "Stopping RTP thread";
         rtpThread->quit();
         rtpThread->wait();
     }
@@ -57,6 +58,8 @@ void kenwoodCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAdd
     this->vsp = vsp;
     this->tcpPort = tcpPort;
     this->wf = wf;
+
+    usingNativeLAN = false;
 
     if (port != Q_NULLPTR) {
         if (port->isOpen())
@@ -89,6 +92,8 @@ void kenwoodCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAdd
     this->vsp = vsp;
     this->tcpPort = tcpPort;
     this->connType = prefs.connectionType;
+
+    usingNativeLAN = true;
 
     port = new QTcpSocket(this);
 
@@ -441,11 +446,53 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcPBTOuter:
             break;
         case funcFilterWidth: {
+            // We need to work out which mode first:
             short width=0;
-            if (d.toUShort()>9)
-                width = (d.toUShort()-5)*100;
-            else
-                width = d.toShort() * 50;
+            uchar v = d.toShort();
+            auto m = queue->getCache(funcSelectedMode,receiver).value.value<modeInfo>();
+            if (m.mk == modeLSB || m.mk == modeUSB)
+            {
+                if (v == 0)
+                    width = 50;
+                else if (v == 1)
+                    width = 80;
+                else if (v >1 && v <10)
+                    width = v * 50;
+                else
+                    width = (v-5)*100;
+            }
+            else if (m.mk == modeCW || m.mk == modeCW_R)
+            {
+                if (v == 0)
+                    width = 50;
+                else if (v == 1)
+                    width = 80;
+                else if (v > 1 && v < 10)
+                    width = v * 50;
+                else if (v > 9 && v < 15)
+                    width = (v-5)*100;
+                else
+                    width = (v-13)*500;
+            }
+            else if (m.mk == modeRTTY || m.mk == modeRTTY_R)
+            {
+                if (v < 6)
+                    width = (v+5)*50;
+                else
+                    width = (v-4)*500;
+            }
+            else if (m.mk == modePSK || m.mk == modePSK_R)
+            {
+                if (v == 0)
+                    width = 50;
+                else if (v == 1)
+                    width = 80;
+                else if (v >1 && v <11)
+                    width = v * 50;
+                else
+                    width = (v-11)*200;
+            }
+
             value.setValue<ushort>(width);
             //qInfo() << "Got filter width" << width << "original" << d.toUShort();
             break;
@@ -467,7 +514,7 @@ void kenwoodCommander::parseData(QByteArray data)
             value.setValue<bool>(d.at(0) - NUMTOASCII);
             break;
         case funcAfGain:
-            if (rtp == Q_NULLPTR)
+            if (!usingNativeLAN)
             {
                 value.setValue<uchar>(d.toUShort());
             }
@@ -685,7 +732,7 @@ void kenwoodCommander::parseData(QByteArray data)
             break;
         case funcRXEqualizer:
         case funcTXEqualizer:
-            qInfo(logRig()) << "Received" << funcString[func] << "values";
+            qInfo(logRig()) << "Received" << funcString[func] << "values" << d;
             // M0VSE deal with these in some way when we add a rig EQ panel?
             break;
         case funcVOIP:
@@ -706,6 +753,10 @@ void kenwoodCommander::parseData(QByteArray data)
                 rtpThread->start(QThread::TimeCriticalPriority);
                 emit initRtpAudio();
             }
+            break;
+        case funcFilterControlSSB:
+        case funcFilterControlData:
+            qInfo(logRig()) << "Received" << funcString[func] << "value" << d;
             break;
         case funcFA:
             qInfo(logRig()) << "Rig error, last command sent:" << funcString[lastCommand.func] << "(min:" << lastCommand.minValue << "max:" <<
@@ -824,16 +875,24 @@ bool kenwoodCommander::parseMemory(QByteArray d,QVector<memParserFormat>* memPar
             mem->dsqlB = data.left(parse.len).toInt();
             break;
         case 'n':
-            mem->tone = data.left(parse.len).toInt();
+            for (const auto &tn: rigCaps.ctcss)
+                if (tn.tone == data.left(parse.len).toInt())
+                    mem->tone = tn.name;
             break;
         case 'N':
-            mem->toneB = data.left(parse.len).toInt();
+            for (const auto &tn: rigCaps.ctcss)
+                if (tn.tone == data.left(parse.len).toInt())
+                    mem->toneB = tn.name;
             break;
         case 'o':
-            mem->tsql = data.left(parse.len).toInt();
+            for (const auto &tn: rigCaps.ctcss)
+                if (tn.tone == data.left(parse.len).toInt())
+                    mem->tsql = tn.name;
             break;
         case 'O':
-            mem->tsqlB = data.left(parse.len).toInt();
+            for (const auto &tn: rigCaps.ctcss)
+                if (tn.tone == data.left(parse.len).toInt())
+                    mem->tsqlB = tn.name;
             break;
         case 'p':
             mem->dtcsp = data.left(parse.len).toInt();
@@ -1243,7 +1302,7 @@ void kenwoodCommander::determineRigCaps()
     if (!usingNativeLAN) {
         emit setRadioUsage(0, true, true, QString("<Local>"), QString("127.0.0.1"));
     } else {
-        emit setRadioUsage(0,false,true,prefs.username,prefs.ipAddress);
+        emit setRadioUsage(0,prefs.adminLogin,true,prefs.username,prefs.ipAddress);
     }
 
     qDebug(logRig()) << "---Rig FOUND" << rigCaps.modelName;
@@ -1274,7 +1333,7 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
         val = INT_MIN;
     }
 
-    if (func == funcAfGain && value.isValid() && rtp != Q_NULLPTR) {
+    if (func == funcAfGain && value.isValid() && usingNativeLAN) {
         // Ignore the AF Gain command, just queue it for processing
         emit haveSetVolume(static_cast<uchar>(value.toInt()));
         queue->receiveValue(func,value,false);
@@ -1422,7 +1481,62 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             }
             else if(!strcmp(value.typeName(),"ushort") )
             {
-                payload.append(QString::number(value.value<ushort>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
+                if (func == funcFilterWidth)
+                {
+                    // We need to work out which mode first:
+                    ushort width=value.value<ushort>();
+                    char val = 0;
+                    auto m = queue->getCache(funcSelectedMode,receiver).value.value<modeInfo>();
+                    if (m.mk == modeLSB || m.mk == modeUSB)
+                    {
+                        if (width < 60)
+                            val = 0;
+                        else if (width < 100)
+                            val = 1;
+                        else if (width >= 100  && width < 600)
+                            val = width / 50;
+                        else
+                            val = (width / 100) + 5;
+                    }
+                    else if (m.mk == modeCW || m.mk == modeCW_R)
+                    {
+                        if (width < 60)
+                            val = 0;
+                        else if (width < 100)
+                            val = 1;
+                        else if (width >= 100 && width < 600)
+                            val = width / 50;
+                        else if (width >= 600 && width < 1500)
+                            val = (width / 100) + 5;
+                        else
+                            val = (width / 500) + 13;
+
+                    }
+                    else if (m.mk == modeRTTY || m.mk == modeRTTY_R)
+                    {
+                        if (width < 1000)
+                            val = (width / 50) - 5;
+                        else
+                            val = (width / 500) + 4;
+                    }
+                    else if (m.mk == modePSK || m.mk == modePSK_R)
+                    {
+                        if (width < 60)
+                            val = 0;
+                        else if (width < 100)
+                            val = 1;
+                        else if (width >= 100 && width < 600)
+                            val = width / 50;
+                        else
+                            val = (width / 200) + 11;
+                    }
+                    //qInfo() << "Got filter width" << width << "original" << d.toUShort();
+                    payload.append(QString::number(val).rightJustified(cmd.bytes, QChar('0')).toLatin1());
+                }
+                else
+                {
+                    payload.append(QString::number(value.value<ushort>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
+                }
             }
             else if(!strcmp(value.typeName(),"udpPreferences"))
             {
@@ -1503,92 +1617,101 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
                     switch (parse.spec)
                     {
                     case 'a':
-                        payload.append(QString::number(mem.group).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.group).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'b':
-                        payload.append(QString::number(mem.channel).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.channel).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'c':
-                        payload.append(QString::number(mem.scan).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.scan).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'C':
-                        payload.append(QString::number(mem.scan).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.scan).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'd':
-                        payload.append(QString::number(mem.split).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.split).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'e':
-                        payload.append(QString::number(mem.vfo).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.vfo).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'E':
-                        payload.append(QString::number(mem.vfoB).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.vfoB).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'f':
-                        payload.append(QString::number(mem.frequency.Hz).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.frequency.Hz).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'F':
-                        payload.append(QString::number(mem.frequencyB.Hz).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.frequencyB.Hz).rightJustified(parse.len, QChar('0'),true).toLatin1());
+                        break;
                     case 'g':
-                        payload.append(QString::number(mem.mode).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.mode).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'G':
-                        payload.append(QString::number(mem.modeB).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.modeB).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'h':
-                        payload.append(QString::number(mem.filter).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.filter).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'H':
-                        payload.append(QString::number(mem.filterB).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.filterB).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'i': // single datamode
-                        payload.append(QString::number(mem.datamode).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.datamode).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'I':
-                        payload.append(QString::number(mem.datamode).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.datamode).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'l': // tonemode
-                        payload.append(QString::number(mem.tonemode).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.tonemode).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'L':
-                        payload.append(QString::number(mem.tonemodeB).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.tonemodeB).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'm':
-                        payload.append(QString::number(mem.dsql).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.dsql).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'M':
-                        payload.append(QString::number(mem.dsqlB).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.dsqlB).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'n':
                     {
-                        payload.append(QString::number(mem.tone).rightJustified(parse.len, QChar('0')).toLatin1());
+                        for (const auto &tn: rigCaps.ctcss)
+                            if (tn.name == mem.tone)
+                                payload.append(QString::number(tn.tone).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     }
                     case 'N':
-                        payload.append(QString::number(mem.toneB).rightJustified(parse.len, QChar('0')).toLatin1());
+                        for (const auto &tn: rigCaps.ctcss)
+                            if (tn.name == mem.toneB)
+                                payload.append(QString::number(tn.tone).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'o':
-                        payload.append(QString::number(mem.tsql).rightJustified(parse.len, QChar('0')).toLatin1());
+                        for (const auto &tn: rigCaps.ctcss)
+                            if (tn.name == mem.tsql)
+                                payload.append(QString::number(tn.tone).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'O':
-                        payload.append(QString::number(mem.tsqlB).rightJustified(parse.len, QChar('0')).toLatin1());
+                        for (const auto &tn: rigCaps.ctcss)
+                            if (tn.name == mem.tsqlB)
+                                payload.append(QString::number(tn.tone).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'q':
-                        payload.append(QString::number(mem.dtcs).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.dtcs).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'Q':
-                        payload.append(QString::number(mem.dtcsB).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.dtcsB).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'r':
-                        payload.append(QString::number(mem.dvsql).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.dvsql).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'R':
-                        payload.append(QString::number(mem.dvsqlB).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.dvsqlB).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 's':
-                        payload.append(QString::number(mem.duplexOffset.Hz).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.duplexOffset.Hz).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'S':
-                        payload.append(QString::number(mem.duplexOffsetB.Hz).rightJustified(parse.len, QChar('0')).toLatin1());
+                        payload.append(QString::number(mem.duplexOffsetB.Hz).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 't':
                         payload.append(QByteArray(mem.UR).leftJustified(parse.len,' ',true));
