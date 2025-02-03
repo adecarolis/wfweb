@@ -114,7 +114,7 @@ void rigCreator::bandRowAdded(int row)
             color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(col.name(QColor::HexArgb)));
         }
     });
-    ui->bands->setCellWidget(row,11, color);
+    ui->bands->setCellWidget(row,12, color);
 }
 
 rigCreator::~rigCreator()
@@ -146,6 +146,7 @@ void rigCreator::on_defaultRigs_clicked(bool clicked)
         loadRigFile(file);
     }
 }
+
 
 void rigCreator::on_loadFile_clicked(bool clicked)
 {
@@ -417,6 +418,8 @@ void rigCreator::loadRigFile(QString file)
             }
             ui->bands->setCellWidget(c,10, checkBoxWidget);
 
+            ui->bands->model()->setData(ui->bands->model()->index(c,11),settings->value("Offset", 0LL).toString(),Qt::DisplayRole);
+
             QPushButton *color = new QPushButton();
             color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(settings->value("Color", "#00000000").toString()));
             connect(color, &QPushButton::clicked, this, [=]() {
@@ -426,7 +429,7 @@ void rigCreator::loadRigFile(QString file)
                     color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(col.name(QColor::HexArgb)));
                 }
              });
-            ui->bands->setCellWidget(c,11, color);
+            ui->bands->setCellWidget(c,12, color);
 
         }
         settings->endArray();
@@ -843,7 +846,9 @@ void rigCreator::saveRigFile(QString file)
             settings->setValue("Antennas", chk->isChecked());
         }
 
-        QPushButton* color = static_cast<QPushButton*>(ui->bands->cellWidget(n,11));
+        settings->setValue("Offset", (ui->bands->item(n,11) == NULL) ? 0LL : ui->bands->item(n,11)->text().toLongLong() );
+
+        QPushButton* color = static_cast<QPushButton*>(ui->bands->cellWidget(n,12));
         if (color != nullptr)
         {
             settings->setValue("Color", color->palette().button().color().name(QColor::HexArgb));

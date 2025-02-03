@@ -755,8 +755,8 @@ void icomCommander::parseCommand()
         }
 
         value.setValue(parseFreqData(payloadIn,vfo));
-        qDebug(logRig()) << funcString[func] << "len:" << payloadIn.size() << "receiver=" << receiver << "vfo=" << vfo <<
-            "value:" << value.value<freqt>().Hz << "data:" << payloadIn.toHex(' ');
+        //qDebug(logRig()) << funcString[func] << "len:" << payloadIn.size() << "receiver=" << receiver << "vfo=" << vfo <<
+        //    "value:" << value.value<freqt>().Hz << "data:" << payloadIn.toHex(' ');
 
         break;
     }
@@ -814,7 +814,7 @@ void icomCommander::parseCommand()
         mi = parseMode(mi.reg, mi.data,mi.filter,receiver,vfo);
         mi.VFO = selVFO_t(receiver);
         value.setValue(mi);
-        qInfo() << funcString[func] << "rx:" << receiver << "vfo:" << vfo << "name:"<<  mi.name << "data:" << mi.data << "filter:" << mi.filter << payloadIn.toHex(' ');
+        //qInfo() << funcString[func] << "rx:" << receiver << "vfo:" << vfo << "name:"<<  mi.name << "data:" << mi.data << "filter:" << mi.filter << payloadIn.toHex(' ');
         break;
     }
 
@@ -1738,7 +1738,8 @@ void icomCommander::determineRigCaps()
             QColor color(settings->value("Color", "#00000000").toString()); // Default color should be none!
             QString name(settings->value("Name", "None").toString());
             float power = settings->value("Power", 0.0f).toFloat();
-            rigCaps.bands.push_back(bandType(region,band,bsr,start,end,range,memGroup,bytes,ants,power,color,name));
+            quint64 offset = settings->value("Offset", 0).toLongLong();
+            rigCaps.bands.push_back(bandType(region,band,bsr,start,end,range,memGroup,bytes,ants,power,color,name,offset));
             rigCaps.bsr[band] = bsr;
             qDebug(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << QString::number(bsr,16);
         }

@@ -251,6 +251,7 @@ private slots:
     void on_colorEditMeterPeakScale_editingFinished();
 
     void serverAddUserLine(int row,const QString& user="", const QString& pass="", const int& type=0);
+    void serverDeleteUserLine(int row);
 
     void on_meter3selectionCombo_currentIndexChanged(int index);
 

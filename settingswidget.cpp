@@ -11,6 +11,7 @@ settingswidget::settingswidget(QWidget *parent) :
     ui->setupUi(this);
 
     connect(ui->serverUsersTable,SIGNAL(rowAdded(int)),this, SLOT(serverAddUserLine(int)));
+    connect(ui->serverUsersTable,SIGNAL(rowDeleted(int)),this,SLOT(serverDeleteUserLine(int)));
     createSettingsListItems();
     populateComboBoxes();
 
@@ -1397,6 +1398,16 @@ void settingswidget::populateServerUsers()
     }
 }
 
+void settingswidget::serverDeleteUserLine(int row)
+{
+    qInfo() << "User row deleted" << row;
+    if (serverConfig->users.size() > row)
+    {
+        serverConfig->users.removeAt(row);
+        emit changedServerPref(s_users);
+    }
+}
+
 void settingswidget::serverAddUserLine(int row, const QString &user, const QString &pass, const int &type)
 {
     Q_UNUSED(row)
@@ -1437,6 +1448,11 @@ void settingswidget::serverAddUserLine(int row, const QString &user, const QStri
     button->setProperty("col", (int)3);
     connect(button, SIGNAL(clicked()), this, SLOT(onServerUserFieldChanged()));
     ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 3, button);
+
+    if (ui->serverUsersTable->rowCount() > serverConfig->users.count())
+    {
+        serverConfig->users.append(SERVERUSER());
+    }
 
     ui->serverUsersTable->blockSignals(false);
 }
@@ -3171,6 +3187,7 @@ void settingswidget::onServerUserFieldChanged()
             QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(row, 2);
             serverConfig->users[row].userType = comboBox->currentIndex();
         }
+        emit changedServerPref(s_users);
     }
 }
 /* End of UDP Server settings */

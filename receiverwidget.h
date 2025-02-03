@@ -341,7 +341,7 @@ private:
     bool satMode = false;
     bool memMode = false;
     bool tracking = false;
-
+    qint64 freqOffset = 0;
 };
 
 #endif // RECEIVERWIDGET_H

@@ -1408,7 +1408,7 @@ void wfmain::doShuttle(bool up, quint8 level)
 void wfmain::buttonControl(const COMMAND* cmd)
 {
     qDebug(logUsbControl()) << QString("executing command: %0 (%1) suffix:%2 value:%3" ).arg(cmd->text).arg(funcString[cmd->command]).arg(cmd->suffix).arg(cmd->value);
-    quint8 rx=0;
+    quint8 vfo=0;
     if (rigCaps == Q_NULLPTR) {
         return;
     }
@@ -1468,36 +1468,50 @@ void wfmain::buttonControl(const COMMAND* cmd)
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
     case funcUnselectedMode:
-        rx=1;
+        vfo=1;
     case funcMode:
     case funcModeSet:
         qInfo(logRig()) << "Setting mode" << cmd->value << "or" << cmd->mode;
-        if (cmd->value == 1) {
-            for (size_t i = 0; i < rigCaps->modes.size(); i++) {
-                if (rigCaps->modes[i].mk == receivers[rx]->currentMode().mk)
+        if (cmd->suffix < receivers.size())
+        {
+            if (cmd->value == 1)
+            {
+                for (size_t i = 0; i < rigCaps->modes.size(); i++)
                 {
-                    if (i + 1 < rigCaps->modes.size()) {
-                        changeMode(rigCaps->modes[i + 1].mk,false,rx);
-                    }
-                    else {
-                        changeMode(rigCaps->modes[0].mk,false,rx);
+                    if (rigCaps->modes[i].mk == receivers[cmd->suffix]->currentMode().mk)
+                    {
+                        if (i + 1 < rigCaps->modes.size())
+                        {
+                            changeMode(rigCaps->modes[i + 1].mk,false,cmd->suffix);
+                        }
+                        else
+                        {
+                            changeMode(rigCaps->modes[0].mk,false,cmd->suffix);
+                        }
                     }
                 }
             }
-        } else if (cmd->value == -1) {
-            for (size_t i = 0; i < rigCaps->modes.size(); i++) {
-                if (rigCaps->modes[i].mk == receivers[rx]->currentMode().mk)
+            else if (cmd->value == -1)
+            {
+                for (size_t i = 0; i < rigCaps->modes.size(); i++)
                 {
-                    if (i>0) {
-                        changeMode(rigCaps->modes[i - 1].mk,false,rx);
-                    }
-                    else {
-                        changeMode(rigCaps->modes[rigCaps->modes.size()-1].mk,false,rx);
+                    if (rigCaps->modes[i].mk == receivers[cmd->suffix]->currentMode().mk)
+                    {
+                        if (i>0)
+                        {
+                            changeMode(rigCaps->modes[i - 1].mk,false,cmd->suffix);
+                        }
+                        else
+                        {
+                            changeMode(rigCaps->modes[rigCaps->modes.size()-1].mk,false,cmd->suffix);
+                        }
                     }
                 }
             }
-        } else {
-            changeMode(cmd->mode,false,rx);
+            else
+            {
+                changeMode(cmd->mode,false,cmd->suffix);
+            }
         }
         break;
     case funcTuningStep:
@@ -1515,24 +1529,25 @@ void wfmain::buttonControl(const COMMAND* cmd)
         }
         break;
     case funcScopeSpan:
-        if (receivers.size()>rx) {
-            receivers[rx]->changeSpan(cmd->value);
+        if (cmd->suffix < receivers.size()) {
+            receivers[cmd->suffix]->changeSpan(cmd->value);
         }
         break;
     case funcUnselectedFreq:
-        rx=1;
+        vfo=1;
     case funcFreq:
     case funcSelectedFreq:
     {
         freqt f;
-        if (receivers.size()>rx) {
-            f.Hz = roundFrequencyWithStep(receivers[rx]->getFrequency().Hz, cmd->value, tsWfScrollHz);
+        if (cmd->suffix < receivers.size()) {
+            f.Hz = roundFrequencyWithStep(receivers[cmd->suffix]->getFrequency().Hz, cmd->value, tsWfScrollHz);
         } else {
             f.Hz = 0;
         }
         f.MHzDouble = f.Hz / double(1E6);
         f.VFO=(selVFO_t)cmd->suffix;
-        vfoCommandType t = queue->getVfoCommand(cmd->suffix?vfoB:vfoA,currentReceiver,true);
+        vfoCommandType t = queue->getVfoCommand(vfo?vfoB:vfoA,cmd->suffix,true);
+        //qInfo() << "sending command" << funcString[t.freqFunc] << "freq:" << f.Hz << "rx:" << t.receiver << "vfo:" << t.vfo;
         queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(f),false,t.receiver));
         break;
     }
@@ -1563,7 +1578,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
     case funcVoxGain:
     case funcAntiVoxGain:
         qInfo(logUsbControl()) << "Command" << cmd->command << "Value" << cmd->value;
-        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<ushort>(cmd->value),false,rx));
+        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<ushort>(cmd->value),false,cmd->suffix));
         break;
 
     case funcTransceiverStatus:
@@ -1579,9 +1594,9 @@ void wfmain::buttonControl(const COMMAND* cmd)
     default:
         qInfo(logUsbControl()) << "Command" << cmd->command << "Value" << cmd->value << "Suffix" << cmd->suffix;
         if (cmd->suffix == 0xff) {
-            queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->value),false,rx));
+            queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->value),false,cmd->suffix));
         } else {
-            queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->suffix),false,rx));
+            queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->suffix),false,0));
         }
         break;
     }
@@ -3059,6 +3074,7 @@ void wfmain::extChangedServerPref(prefServerItem i)
     case s_baudRate:
         break;
     case s_users:
+        //qInfo() << "Server users updated :" << serverConfig.users.count() << "total users";
         break;
     case s_rigs:
         break;

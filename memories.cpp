@@ -209,7 +209,7 @@ columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B
     if (modes.isEmpty()) modes.append("None");
 
     connect(ui->table,SIGNAL(rowAdded(int)),this,SLOT(rowAdded(int)));
-    connect(ui->table,SIGNAL(rowDeleted(quint32)),this,SLOT(rowDeleted(quint32)));
+    connect(ui->table,SIGNAL(rowValDeleted(quint32)),this,SLOT(rowDeleted(quint32)));
     connect(&timeoutTimer, SIGNAL(timeout()), this, SLOT(timeout()));
 
     ui->table->sortByColumn(columnRecall,Qt::AscendingOrder);

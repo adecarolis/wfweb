@@ -26,7 +26,8 @@ public:
 
 signals:
     void rowAdded(int row);
-    void rowDeleted(quint32 num);
+    void rowDeleted(int num);
+    void rowValDeleted(quint32 num);
 
 protected:
     void mouseReleaseEvent(QMouseEvent *event);

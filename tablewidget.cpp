@@ -52,7 +52,8 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
         }
         else if( selectedAction == del )
         {
-            emit rowDeleted((this->item(this->currentRow(),1) == NULL) ? 0 : this->item(this->currentRow(),1)->text().toUInt());
+            emit rowDeleted(this->currentRow());
+            emit rowValDeleted((this->item(this->currentRow(),1) == NULL) ? 0 : this->item(this->currentRow(),1)->text().toUInt());
             this->removeRow(this->currentRow());
         }
     }

@@ -78,7 +78,7 @@ static const subCommandStruct levels_str[] =
     {"SLOPE_HIGH",funcNone,typeFloat},
     {"BKIN_DLYMS",funcBreakInDelay,typeFloat},
     {"RAWSTR",funcNone,typeFloat},
-    {"SWR",funcSMeter,typeSWR},
+    {"SWR",funcSWRMeter,typeSWR},
     {"ALC",funcALCMeter,typeFloat},
     {"STRENGTH",funcSMeter,typeFloat},
     {"RFPOWER_METER",funcPowerMeter,typeFloat},
@@ -1341,6 +1341,7 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                             ret = -RIG_EINVAL;
                         }
                     }
+                    qDebug(logRigCtlD()) << "Got " << funcString[sub[i].func] <<  "of:" << item.value.toInt() << "sent as" << resp;
                     response.append(resp);
                 }
                 else

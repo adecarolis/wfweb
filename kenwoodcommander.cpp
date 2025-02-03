@@ -291,6 +291,7 @@ funcType kenwoodCommander::getCommand(funcs func, QByteArray &payload, int value
         // Don't try this command again as the rig doesn't support it!
         qDebug(logRig()) << "Removing unsupported command from queue" << funcString[func] << "VFO" << receiver;
         this->queue->del(func,receiver);
+
     }
     return cmd;
 }
@@ -370,11 +371,22 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcUnselectedMode:
         case funcSelectedMode:
         {
+            modeInfo mi = queue->getCache(func,receiver).value.value<modeInfo>();
             for (auto& m: rigCaps.modes)
             {
                 if (m.reg == uchar(d.at(0) - NUMTOASCII))
                 {
-                    value.setValue(m);
+                    if (mi.reg != m.reg)
+                    {
+                        // Mode has changed.
+                        mi.reg=m.reg;
+                        mi.VFO=m.VFO;
+                        mi.bwMax=m.bwMax;
+                        mi.mk=m.mk;
+                        mi.name=m.name;
+                        mi.pass=m.pass;
+                    }
+                    value.setValue(mi);
                     break;
                 }
             }
@@ -382,16 +394,18 @@ void kenwoodCommander::parseData(QByteArray data)
         }
         case funcDataMode:
         {
-            modeInfo m;
-            m.data = uchar(d.at(0) - NUMTOASCII);
-            value.setValue(m);
+            func = funcSelectedMode;
+            modeInfo mi = queue->getCache(func,receiver).value.value<modeInfo>();
+            mi.data = uchar(d.at(0) - NUMTOASCII);
+            value.setValue(mi);
             break;
         }
         case funcIFFilter:
         {
-            modeInfo m;
-            m.filter = uchar(d.at(0) - NUMTOASCII);
-            value.setValue(m);
+            func = funcSelectedMode;
+            modeInfo mi = queue->getCache(func,receiver).value.value<modeInfo>();
+            mi.filter = uchar(d.at(0) - NUMTOASCII);
+            value.setValue(mi);
             break;
         }
         case funcAntenna:
@@ -511,6 +525,8 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcScopeOnOff:
         case funcScopeHold:
         case funcOverflowStatus:
+        case funcSMeterSqlStatus:
+        case funcSplitStatus:
             value.setValue<bool>(d.at(0) - NUMTOASCII);
             break;
         case funcAfGain:
@@ -1241,7 +1257,8 @@ void kenwoodCommander::determineRigCaps()
             QColor color(settings->value("Color", "#00000000").toString()); // Default color should be none!
             QString name(settings->value("Name", "None").toString());
             float power = settings->value("Power", 0.0f).toFloat();
-            rigCaps.bands.push_back(bandType(region,band,bsr,start,end,range,memGroup,bytes,ants,power,color,name));
+            qint64 offset = settings->value("Offset", 0).toLongLong();
+            rigCaps.bands.push_back(bandType(region,band,bsr,start,end,range,memGroup,bytes,ants,power,color,name,offset));
             rigCaps.bsr[band] = bsr;
             qDebug(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << QString::number(bsr,16);
         }
@@ -1328,7 +1345,8 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
     }
 
     if (func == funcSelectVFO) {
-        // Special funcVFOASelect:(v == vfoB)?funcVFOBSelect:funcNone;
+        vfo_t v = value.value<vfo_t>();
+        func = (v == vfoA)?funcVFOASelect:(v == vfoB)?funcVFOBSelect:(v == vfoMain)?funcNone:(v == vfoSub)?funcNone:funcNone;
         value.clear();
         val = INT_MIN;
     }
