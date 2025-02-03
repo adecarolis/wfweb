@@ -3305,21 +3305,28 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             {
                 spectrumBounds s = value.value<spectrumBounds>();
                 uchar range=1;
-                uchar oldRange=0;
-                for (const bandType& band: rigCaps.bands)
+                double lastRange=-1.0;
+                auto band = rigCaps.bands.cend();
+                while (band != rigCaps.bands.cbegin())
                 {
-
-                    if (oldRange != range && band.range != 0.0 && s.start > band.range)
+                    band--;
+                    //qInfo() << "Band" << band->name << "range" << band->range << "start" << s.start;
+                    if (band->range > s.start)
+                    {
+                        break;
+                    }
+                    else if (lastRange != band->range && band->range != 0.0 && band->range <= s.start)
                     {
                         range++;
-                        oldRange=band.range;
+                        //qInfo() << "range=" <<range;
+                        lastRange=band->range;
                     }
                 }
                 payload.append(bcdEncodeChar(range));
                 payload.append(bcdEncodeChar(s.edge));
                 payload.append(makeFreqPayload(s.start));
                 payload.append(makeFreqPayload(s.end));
-                qInfo() << "Bounds" << range << s.edge << s.start << s.end << payload.toHex();
+                //qInfo() << "Fixed Edge Bounds" << range << s.edge << s.start << s.end << payload.toHex();
 
             }
             else if (!strcmp(value.typeName(),"duplexMode_t"))
