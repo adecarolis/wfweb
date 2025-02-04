@@ -1343,7 +1343,6 @@ void receiverWidget::customSpanPressed()
     maxSpan = maxSpan * 2;
     minSpan = minSpan * 2;
 
-    qInfo() << "Got maximum span" << maxSpan;
     QDialog* dialog = new QDialog(this);
     dialog->setWindowTitle(tr("Scope Edges"));
     QVBoxLayout* layout = new QVBoxLayout(dialog);
