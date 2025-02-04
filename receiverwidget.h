@@ -342,6 +342,8 @@ private:
     bool memMode = false;
     bool tracking = false;
     qint64 freqOffset = 0;
+    double minFreqMhz = 0.0;
+    double maxFreqMhz = 0.0;
 };
 
 #endif // RECEIVERWIDGET_H

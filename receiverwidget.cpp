@@ -1330,6 +1330,92 @@ void receiverWidget::toFixedPressed()
 
 void receiverWidget::customSpanPressed()
 {
+
+    float maxSpan = 0.0;
+    float minSpan = 1.0;
+    for (const auto &span: rigCaps->scopeCenterSpans)
+    {
+        if (double(span.freq / 1000000.0) > maxSpan)
+            maxSpan = double(span.freq / 1000000.0);
+        if (double(span.freq / 1000000.0) < minSpan)
+            minSpan = double(span.freq / 1000000.0);
+    }
+    maxSpan = maxSpan * 2;
+    minSpan = minSpan * 2;
+
+    qInfo() << "Got maximum span" << maxSpan;
+    QDialog* dialog = new QDialog(this);
+    dialog->setWindowTitle(tr("Scope Edges"));
+    QVBoxLayout* layout = new QVBoxLayout(dialog);
+    layout->setSizeConstraint(QLayout::SetFixedSize);
+    QHBoxLayout* header = new QHBoxLayout();
+
+    layout->addLayout(header);
+    QLabel* lowLabel = new QLabel();
+    lowLabel->setText(tr("Low Freq"));
+    lowLabel->setAlignment(Qt::AlignCenter);
+    header->addWidget(lowLabel);
+    QLabel* highLabel = new QLabel();
+    highLabel->setText(tr("High Freq"));
+    highLabel->setAlignment(Qt::AlignCenter);
+    header->addWidget(highLabel);
+
+    QHBoxLayout* spins = new QHBoxLayout();
+    layout->addLayout(spins);
+    QDoubleSpinBox* low = new QDoubleSpinBox();
+    low->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Expanding);
+    low->setValue(lowerFreq);
+    low->setDecimals(3);
+    low->setSingleStep(minSpan);
+    low->setRange(minFreqMhz,maxFreqMhz);
+    spins->addWidget(low);
+
+    low->setMinimumHeight(low->minimumSizeHint().height()*2);
+    QDoubleSpinBox* high = new QDoubleSpinBox();
+    high->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Expanding);
+    high->setValue(upperFreq);
+    high->setDecimals(3);
+    high->setSingleStep(minSpan);
+    high->setMinimumHeight(high->minimumSizeHint().height()*2);
+    high->setRange(minFreqMhz,maxFreqMhz);
+    spins->addWidget(high);
+
+    QHBoxLayout* buttons = new QHBoxLayout();
+    layout->addLayout(buttons);
+    QPushButton *ok = new QPushButton("OK");
+    QPushButton *cancel = new QPushButton("Cancel");
+    buttons->addWidget(ok);
+    buttons->addWidget(cancel);
+
+    connect(ok, &QPushButton::clicked, this, [=]() {
+        // Here we need to attempt to update the fixed edge
+        if (high->value() - low->value() > maxSpan)
+        {
+            high->setValue(low->value()+maxSpan);
+        }
+        else if (high->value() < low->value() || high->value() - low->value() < minSpan)
+        {
+            high->setValue(low->value()+minSpan);
+        }
+        else
+        {
+            qDebug(logGui()) << "setting edge to: " << low->value() << ", " << high->value() << ", edge num: " << edgeCombo->currentIndex() + 1;
+            queue->addUnique(priorityImmediate,queueItem(funcScopeFixedEdgeFreq,QVariant::fromValue(spectrumBounds(low->value(), high->value(), edgeCombo->currentIndex() + 1)),false,receiver));
+            dialog->close();
+        }
+    });
+
+    connect(cancel, &QPushButton::clicked, this, [=]() {
+        dialog->close();
+    });
+
+    dialog->exec();
+
+
+
+
+    /*
+
     double lowFreq = lowerFreq;
     double highFreq = upperFreq;
     QString freqstring = QString("%1, %2").arg(lowFreq).arg(highFreq);
@@ -1372,7 +1458,7 @@ errMsg:
         return;
     }
 
-
+    */
 }
 
 
@@ -2305,6 +2391,9 @@ void receiverWidget::setBandIndicators(bool show, QString region, std::vector<ba
 
 void receiverWidget::displaySettings(int numDigits, qint64 minf, qint64 maxf, int minStep,FctlUnit unit, std::vector<bandType>* bands)
 {
+    this->minFreqMhz = minf / 1000000.0;
+    this->maxFreqMhz = maxf / 1000000.0;
+
     for (uchar i=0;i<numVFO;i++)
         freqDisplay[i]->setup(numDigits, minf, maxf, minStep, unit, bands);
 }
