@@ -1367,6 +1367,7 @@ void receiverWidget::customSpanPressed()
     low->setDecimals(3);
     low->setSingleStep(minSpan);
     low->setRange(minFreqMhz,maxFreqMhz);
+    low->setAlignment(Qt::AlignCenter);
     spins->addWidget(low);
 
     low->setMinimumHeight(low->minimumSizeHint().height()*2);
@@ -1377,6 +1378,7 @@ void receiverWidget::customSpanPressed()
     high->setSingleStep(minSpan);
     high->setMinimumHeight(high->minimumSizeHint().height()*2);
     high->setRange(minFreqMhz,maxFreqMhz);
+    high->setAlignment(Qt::AlignCenter);
     spins->addWidget(high);
 
     QHBoxLayout* buttons = new QHBoxLayout();
