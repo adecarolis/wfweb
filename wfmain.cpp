@@ -4639,6 +4639,10 @@ void wfmain::processChangingCurrentModLevel(quint8 level)
 void wfmain::on_tuneLockChk_clicked(bool checked)
 {
     freqLock = checked;
+    for (const auto &rx: receivers)
+    {
+        rx->setFreqLock(checked);
+    }
 }
 
 void wfmain::on_rptSetupBtn_clicked()

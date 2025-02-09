@@ -1425,7 +1425,7 @@ void receiverWidget::doubleClick(QMouseEvent *me)
     {
         double x;
         freqt freqGo;
-        if (!lock)
+        if (!freqLock)
         {
             //y = plot->yAxis->pixelToCoord(me->pos().y());
             x = spectrum->xAxis->pixelToCoord(me->pos().x());
@@ -1480,7 +1480,7 @@ void receiverWidget::scopeClick(QMouseEvent* me)
         if (textItem != nullptr)
         {
             QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
-            if (spot != clusterSpots.end() && spot.key() == textItem->text())
+            if (spot != clusterSpots.end() && spot.key() == textItem->text() && !freqLock)
             {
                 qInfo(logGui()) << "Clicked on spot:" << textItem->text();
                 freqt freqGo;
@@ -1685,11 +1685,11 @@ void receiverWidget::scopeMouseMove(QMouseEvent* me)
             lastFreq = movedFrequency;
         }
     }
-    else  if (passbandAction == passbandStatic && me->buttons() == Qt::LeftButton && textItem == nullptr && clickDragTuning)
+    else  if (passbandAction == passbandStatic && me->buttons() == Qt::LeftButton && textItem == nullptr && clickDragTuning )
     {
         double delta = spectrum->xAxis->pixelToCoord(cursor) - mousePressFreq;
         qDebug(logGui()) << "Mouse moving delta: " << delta;
-        if( (( delta < -0.0001 ) || (delta > 0.0001)) && ((delta < 0.501) && (delta > -0.501)) )
+        if( (( delta < -0.0001 ) || (delta > 0.0001)) && ((delta < 0.501) && (delta > -0.501)) && !freqLock)
         {
             freqt freqGo;
             freqGo.Hz = (freq.MHzDouble + delta) * 1E6;
@@ -1768,15 +1768,17 @@ void receiverWidget::scroll(QWheelEvent *we)
         stepsHz *= 10;
     }
 
+    if (!freqLock) {
     freqt f;
     f.Hz = roundFrequency(freq.Hz, clicks, stepsHz);
     f.MHzDouble = f.Hz / (double)1E6;
 
-    emit sendTrack(f.Hz-this->freq.Hz);
+        emit sendTrack(f.Hz-this->freq.Hz);
 
-    setFrequency(f);
-    queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(f),false,receiver));
-    //qInfo() << "Moving to freq:" << f.Hz << "step" << stepsHz;
+        setFrequency(f);
+        queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(f),false,receiver));
+        //qInfo() << "Moving to freq:" << f.Hz << "step" << stepsHz;
+    }
     scrollWheelOffsetAccumulated = 0;
 }
 
@@ -2366,7 +2368,7 @@ void receiverWidget::newFrequency(qint64 freq,uchar vfo)
     freqt f;
     f.Hz = freq;
     f.MHzDouble = f.Hz / (double)1E6;
-    if (f.Hz > 0)
+    if (f.Hz > 0 && !freqLock)
     {
         emit sendTrack(f.Hz-this->freq.Hz);
         vfoCommandType t = queue->getVfoCommand(vfo_t(vfo),receiver,true);

@@ -100,6 +100,7 @@ public:
     void setTracking(bool en) { tracking=en; }
     void setRef(int ref);
     void setRefLimits(int lower, int upper);
+    void setFreqLock( bool en) { freqLock = en; }
 
     void setBandIndicators(bool show, QString region, std::vector<bandType>* bands);
     void setUnit(FctlUnit unit);
@@ -344,6 +345,7 @@ private:
     qint64 freqOffset = 0;
     double minFreqMhz = 0.0;
     double maxFreqMhz = 0.0;
+    bool freqLock = false;
 };
 
 #endif // RECEIVERWIDGET_H
