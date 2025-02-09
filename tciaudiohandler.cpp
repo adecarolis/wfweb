@@ -47,7 +47,7 @@ bool tciAudioHandler::init(audioSetup setup)
 	codecType codec = LPCM;
 	if (setup.codec == 0x01 || setup.codec == 0x20)
 		codec = PCMU;
-	else if (setup.codec == 0x40 || setup.codec == 0x40)
+    else if (setup.codec == 0x40 || setup.codec == 0x41)
         codec = OPUS;
 
     if (setup.isinput)

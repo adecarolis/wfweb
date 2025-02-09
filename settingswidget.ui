@@ -41,7 +41,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>2</number>
+        <number>3</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -59,6 +59,9 @@
               <string>Radio Connection</string>
              </property>
              <layout class="QVBoxLayout" name="verticalLayout_5">
+              <item>
+               <widget class="QComboBox" name="manufacturerCombo"/>
+              </item>
               <item>
                <widget class="QRadioButton" name="serialEnableBtn">
                 <property name="text">
@@ -386,6 +389,16 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                  </widget>
                 </item>
                 <item>
+                 <widget class="QLabel" name="label_21">
+                  <property name="text">
+                   <string>Connection Type</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="networkConnectionTypeCombo"/>
+                </item>
+                <item>
                  <spacer name="horizontalSpacer_6">
                   <property name="orientation">
                    <enum>Qt::Orientation::Horizontal</enum>
@@ -457,6 +470,13 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                   </property>
                   <property name="echoMode">
                    <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="adminLoginChk">
+                  <property name="text">
+                   <string>Admin Login</string>
                   </property>
                  </widget>
                 </item>
@@ -995,6 +1015,16 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
             <widget class="QComboBox" name="groupSeparatorsCombo"/>
            </item>
            <item>
+            <widget class="QCheckBox" name="forceVfoModeChk">
+             <property name="text">
+              <string>Force VFO Mode (if disabled, we will not know current mode)</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
             <spacer name="horizontalSpacer_9">
              <property name="orientation">
               <enum>Qt::Orientation::Horizontal</enum>
@@ -1199,6 +1229,12 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            </item>
            <item>
             <widget class="QSpinBox" name="pollTimeMsSpin">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="toolTip">
               <string>Sets the polling interval, in ms. Automatic polling is recommended. Serial port and USB port radios should not poll quicker than about 75ms.</string>
              </property>
@@ -1389,7 +1425,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                  <x>0</x>
                  <y>0</y>
                  <width>911</width>
-                 <height>360</height>
+                 <height>367</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">
@@ -2332,7 +2368,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_30">
            <item>
-            <widget class="QLabel" name="label_27">
+            <widget class="QLabel" name="modInputDataOffComboText">
              <property name="text">
               <string>Data Off Modulation Input:</string>
              </property>
@@ -2352,7 +2388,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
             </widget>
            </item>
            <item>
-            <widget class="QLabel" name="label_29">
+            <widget class="QLabel" name="modInputData1ComboText">
              <property name="text">
               <string>(Data Mod Inputs) DATA1:</string>
              </property>
@@ -2882,7 +2918,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                       <bool>false</bool>
                      </attribute>
                      <attribute name="verticalHeaderVisible">
-                      <bool>false</bool>
+                      <bool>true</bool>
                      </attribute>
                      <attribute name="verticalHeaderShowSortIndicator" stdset="0">
                       <bool>false</bool>
@@ -3048,6 +3084,13 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
              </property>
              <property name="accessibleName">
               <string>Virtual Serial Port Selector</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="ptyDeviceLabel">
+             <property name="text">
+              <string/>
              </property>
             </widget>
            </item>
@@ -3656,15 +3699,15 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
  </widget>
  <customwidgets>
   <customwidget>
+   <class>tableWidget</class>
+   <extends>QTableWidget</extends>
+   <header location="global">tablewidget.h</header>
+  </customwidget>
+  <customwidget>
    <class>QLedLabel</class>
    <extends>QWidget</extends>
    <header location="global">qledlabel.h</header>
    <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>tableWidget</class>
-   <extends>QTableWidget</extends>
-   <header location="global">tablewidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

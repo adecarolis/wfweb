@@ -14,10 +14,10 @@ repeaterSetup::repeaterSetup(QWidget *parent) :
     ui->autoTrackLiveBtn->setEnabled(false); // until we set split enabled.
     ui->warningFMLabel->setVisible(false);
     // populate the CTCSS combo box:
-    populateTones();
+    // populateTones();
 
     // populate the DCS combo box:
-    populateDTCS();
+    // populateDTCS();
 }
 
 repeaterSetup::~repeaterSetup()
@@ -29,6 +29,7 @@ repeaterSetup::~repeaterSetup()
 
 void repeaterSetup::populateTones()
 {
+
     ui->rptToneCombo->addItem("67.0", quint16(670));
     ui->rptToneCombo->addItem("69.3", quint16(693));
     ui->rptToneCombo->addItem("71.9", quint16(719));
@@ -340,7 +341,7 @@ void repeaterSetup::handleUpdateCurrentMainMode(modeInfo m)
     // (generally FM)
     // NB: We don't accept values during transmit as they
     // may represent the inactive VFO
-    if(!amTransmitting)
+    if(!amTransmitting && m.mk != modeUnknown)
     {
         this->currentModeMain = m;
         this->modeTransmitVFO = m;
@@ -922,6 +923,20 @@ void repeaterSetup::receiveRigCaps(rigCapabilities* rig)
         ui->setToneSubVFOBtn->setEnabled(mainSub);
         ui->setRptrSubVFOBtn->setEnabled(mainSub);
         ui->quickSplitChk->setVisible(rig->commands.contains(funcQuickSplit));
+
+        // Populate tones:
+        ui->rptToneCombo->clear();
+        for (const auto& t: rigCaps->ctcss)
+        {
+            ui->rptToneCombo->addItem(t.name, t.tone);
+        }
+
+        ui->rptDTCSCombo->clear();
+        for (const auto& t: rigCaps->dtcs)
+        {
+            ui->rptDTCSCombo->addItem(t.name, t.tone);
+        }
+
     }
 }
 

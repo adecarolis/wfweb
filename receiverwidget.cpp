@@ -16,7 +16,6 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     queue = cachingQueue::getInstance();
     rigCaps = queue->getRigCaps();
 
-    //spectrum = new QCustomPlot();
     mainLayout = new QHBoxLayout(this);
     layout = new QVBoxLayout();
     mainLayout->addLayout(layout);
@@ -67,6 +66,25 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
         queue->add(priorityHighest,t.freqFunc,false,t.receiver);
     });
 
+    vfoMemoryButton=new QPushButton(tr("V/M"),this);
+    vfoMemoryButton->setHidden(true);
+    vfoMemoryButton->setCheckable(true);
+    vfoMemoryButton->setFocusPolicy(Qt::NoFocus);
+    connect(vfoMemoryButton, &QPushButton::clicked, this, [=](bool en) {
+        if (en)
+            queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(vfoA),false,0));
+        else
+            queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<uchar>(vfoMem),false,0));
+    });
+
+    satelliteButton=new QPushButton(tr("SAT"),this);
+    satelliteButton->setHidden(true);
+    satelliteButton->setCheckable(true);
+    satelliteButton->setFocusPolicy(Qt::NoFocus);
+    connect(satelliteButton, &QPushButton::clicked, this, [=](bool en) {
+        queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue<bool>(en),false,0));
+    });
+
     splitButton=new QPushButton(tr("SPLIT"),this);
     splitButton->setHidden(true);
     splitButton->setFocusPolicy(Qt::NoFocus);
@@ -104,6 +122,16 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
                         vfoEqualsButton->setHidden(false);
                         displayLayout->addWidget(vfoEqualsButton);
                     }
+                    if(rigCaps->commands.contains(funcMemoryMode)) {
+                        vfoMemoryButton->setHidden(false);
+                        displayLayout->addWidget(vfoMemoryButton);
+                    }
+                    if(rigCaps->commands.contains(funcSatelliteMode)) {
+                        satelliteButton->setHidden(false);
+                        displayLayout->addWidget(satelliteButton);
+                    }
+                    displayMSpacer = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
+                    displayLayout->addSpacerItem(displayMSpacer);
                     if (rigCaps->commands.contains(funcSplitStatus)) {
                         splitButton->setHidden(false);
                         displayLayout->addWidget(splitButton);
@@ -117,7 +145,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
             fr->setMaximumSize(180,20);
             if (!rigCaps->hasCommand29 && receiver == 1)
             {
-                fr->setEnabled(false);
+                fr->setVisible(false);
             }
             displayLayout->addWidget(fr);
         }
@@ -266,7 +294,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     redrawSpeed->setFont(QFont(font().family(), 8));
     redrawSpeed->setPositionAlignment(Qt::AlignRight | Qt::AlignTop);
     redrawSpeed->position->setType(QCPItemPosition::ptAxisRectRatio);
-    //redrawSpeed->setText("0ms/0ms");
+    redrawSpeed->setText("");
     redrawSpeed->position->setCoords(1.0f,0.0f);
 
     spectrum->addGraph(); // primary
@@ -309,6 +337,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     configGroup = new QGroupBox();
     rhsLayout->addWidget(configGroup);
     configLayout = new QFormLayout();
+    configLayout->setHorizontalSpacing(0);
     configGroup->setLayout(configLayout);
     mainLayout->addLayout(rhsLayout);
     rhsBottomSpacer = new QSpacerItem(0,0,QSizePolicy::Fixed,QSizePolicy::Expanding);
@@ -318,7 +347,6 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     configGroup->setStyleSheet(QString("QGroupBox{border:1px solid gray;} *{padding: 0px 0px 0px 0px; margin: 0px 0px 0px 0px; font-size: %0px;}").arg(font.pointSize()-1));
     configGroup->setMaximumWidth(240);
     configRef = new QSlider(Qt::Orientation::Horizontal);
-    configRef->setRange(-200,200);
     configRef->setTickInterval(50);
     configRef->setSingleStep(20);
     configRef->setValue(0);
@@ -332,7 +360,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     configLayout->addRow(tr("Length"),configLength);
 
     configTop = new QSlider(Qt::Orientation::Horizontal);
-    configTop->setRange(1,160);
+    configTop->setRange(0,rigCaps->spectAmpMax+10);
     configTop->setValue(plotCeiling);
     configTop->setAccessibleName(tr("Scope display ceiling"));
     configTop->setAccessibleDescription(tr("Selects the display ceiling for the Scope display"));
@@ -340,7 +368,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     configLayout->addRow(tr("Ceiling"),configTop);
 
     configBottom = new QSlider(Qt::Orientation::Horizontal);
-    configBottom->setRange(0,160);
+    configBottom->setRange(0,rigCaps->spectAmpMax+10);
     configBottom->setValue(plotFloor);
     configBottom->setAccessibleName(tr("Scope display floor"));
     configBottom->setAccessibleDescription(tr("Selects the display floor for the Scope display"));
@@ -377,6 +405,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     configLayout->addRow(tr("Theme"),configTheme);
 
     configPbtInner = new QSlider(Qt::Orientation::Horizontal);
+
     configPbtInner->setRange(0,255);
     configLayout->addRow(tr("PBT Inner"),configPbtInner);
 
@@ -402,6 +431,10 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     configFilterWidth->setRange(0,10000);
     configLayout->addRow(tr("Fill Width"),configFilterWidth);
 
+    configScopeEnabled = new QCheckBox(tr("Scope Enabled"));
+    configScopeEnabled->setChecked(true);
+    configLayout->addRow(configScopeEnabled);
+
     connect(configLength, &QSlider::valueChanged, this, [=](const int &val) {
         //prepareWf(val);
         changeWfLength(val);
@@ -420,11 +453,17 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
         emit updateSettings(receiver,currentTheme,wfLength,plotFloor,plotCeiling);
     });
 
-    connect(configRef, &QSlider::valueChanged, this, [=](const int &val) {
-        currentRef = (val/5) * 5; // rounded to "nearest 5"
-        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
-        queue->addUnique(priorityImmediate,queueItem(funcScopeRef,QVariant::fromValue(currentRef),false,t.receiver));
-    });
+    if (rigCaps->commands.contains(funcScopeRef))
+    {
+        auto v = rigCaps->commands.find(funcScopeRef);
+        configRef->setRange(v.value().minVal,v.value().maxVal);
+        connect(configRef, &QSlider::valueChanged, this, [=](const int &val) {
+            currentRef = (val/5) * 5; // rounded to "nearest 5"
+            vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+            queue->addUnique(priorityImmediate,queueItem(funcScopeRef,QVariant::fromValue(currentRef),false,t.receiver));
+        });
+    }
+
 
     connect(configSpeed, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](const int &val) {
         vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
@@ -438,14 +477,26 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
         emit updateSettings(receiver,currentTheme,wfLength,plotFloor,plotCeiling);
     });
 
-    connect(configPbtInner, &QSlider::valueChanged, this, [=](const int &val) {
-        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
-        queue->addUnique(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(val),false,t.receiver));
-    });
-    connect(configPbtOuter, &QSlider::valueChanged, this, [=](const int &val) {
-        vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
-        queue->addUnique(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(val),false,t.receiver));
-    });
+    if (rigCaps->commands.contains(funcPBTInner))
+    {
+        auto v = rigCaps->commands.find(funcPBTInner);
+        configPbtInner->setRange(v.value().minVal,v.value().maxVal);
+        connect(configPbtInner, &QSlider::valueChanged, this, [=](const int &val) {
+            vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+            queue->addUnique(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<ushort>(val),false,t.receiver));
+        });
+    }
+
+    if (rigCaps->commands.contains(funcPBTOuter))
+    {
+        auto v = rigCaps->commands.find(funcPBTOuter);
+        configPbtOuter->setRange(v.value().minVal,v.value().maxVal);
+        connect(configPbtOuter, &QSlider::valueChanged, this, [=](const int &val) {
+            vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+            queue->addUnique(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<ushort>(val),false,t.receiver));
+        });
+    }
+
     connect(configIfShift, &QSlider::valueChanged, this, [=](const int &val) {
         if (rigCaps != Q_NULLPTR && rigCaps->commands.contains(funcIFShift)) {
             vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
@@ -477,16 +528,25 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
         configIfShift->blockSignals(false);
     });
 
+    if (rigCaps->commands.contains(funcFilterWidth))
+    {
+        connect(configFilterWidth, &QSlider::valueChanged, this, [=](const int &val) {
+            vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
+            queue->addUnique(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(val),false,t.receiver));
+        });
+    }
 
-    connect(configFilterWidth, &QSlider::valueChanged, this, [=](const int &val) {
+#if (QT_VERSION < QT_VERSION_CHECK(6,7,0))
+    connect(configScopeEnabled, &QCheckBox::stateChanged, this, [=](const int &val) {
+#else
+    connect(configScopeEnabled, &QCheckBox::checkStateChanged, this, [=](const Qt::CheckState &val) {
+#endif
         vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
-        queue->addUnique(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(val),false,t.receiver));
+        queue->addUnique(priorityHighest,queueItem(funcScopeOnOff,QVariant::fromValue<bool>(val),false,t.receiver));
+        qInfo() << "Queueing command to set scope to:" << bool(val);
     });
 
     configGroup->setVisible(false);
-
-
-
 
     // Connections
     connect(detachButton,SIGNAL(toggled(bool)), this, SLOT(detachScope(bool)));
@@ -495,8 +555,8 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
         spectrumMode_t s = scopeModeCombo->itemData(val).value<spectrumMode_t>();
         vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
         queue->addUnique(priorityImmediate,queueItem(funcScopeMode,QVariant::fromValue(s),false,t.receiver));
-        currentScopeMode = s;
         showHideControls(s);
+        currentScopeMode = s;
     });
 
 
@@ -768,6 +828,8 @@ void receiverWidget::colorPreset(colorPrefsType *cp)
                                   .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
     splitButton->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border:1px solid;}")
                                    .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
+    satelliteButton->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border:1px solid;}")
+                                   .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
     vfoSelectButton->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border:1px solid;}")
                                    .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
 
@@ -871,8 +933,13 @@ bool receiverWidget::updateScope(scopeData data)
         case modeLSB:
         case modeRTTY_R:
         case modePSK_R:
-            pbStart = freq.MHzDouble - passbandCenterFrequency - (passbandWidth / 2);
-            pbEnd = freq.MHzDouble - passbandCenterFrequency + (passbandWidth / 2);
+            if (rigCaps->manufacturer == manufKenwood) {
+                pbStart = freq.MHzDouble-passbandWidth;
+                pbEnd = freq.MHzDouble;
+            } else {
+                pbStart = freq.MHzDouble - passbandCenterFrequency - (passbandWidth / 2);
+                pbEnd = freq.MHzDouble - passbandCenterFrequency + (passbandWidth / 2);
+            }
             break;
         case modeCW:
             if (passbandWidth < 0.0006) {
@@ -895,8 +962,13 @@ bool receiverWidget::updateScope(scopeData data)
             }
             break;            
         default:
-            pbStart = freq.MHzDouble + passbandCenterFrequency - (passbandWidth / 2);
-            pbEnd = freq.MHzDouble + passbandCenterFrequency + (passbandWidth / 2);
+            if (rigCaps->manufacturer == manufKenwood) {
+                pbStart = freq.MHzDouble;
+                pbEnd = freq.MHzDouble+passbandWidth;
+            } else {
+                pbStart = freq.MHzDouble + passbandCenterFrequency - (passbandWidth / 2);
+                pbEnd = freq.MHzDouble + passbandCenterFrequency + (passbandWidth / 2);
+            }
             break;
         }
 
@@ -1110,11 +1182,16 @@ void receiverWidget::computePlasma()
 
 void receiverWidget::showHideControls(spectrumMode_t mode)
 {
-    if (!hasScope && spectrum->isVisible()) {
+    if(currentScopeMode == mode)
+    {
+        return;
+    }
+
+
+    if (!rigCaps->hasSpectrum) {
         spectrum->hide();
         waterfall->hide();
         splitter->hide();
-        detachButton->hide();
         scopeModeCombo->hide();
         edgeCombo->hide();
         edgeButton->hide();
@@ -1122,43 +1199,60 @@ void receiverWidget::showHideControls(spectrumMode_t mode)
         toFixedButton->hide();
         spanCombo->hide();
         clearPeaksButton->hide();
-        confButton->hide();
-    } else if (hasScope && (mode==spectModeCenter || mode==spectModeScrollC) && !spanCombo->isVisible()) {
-        spectrum->show();
-        waterfall->show();
-        splitter->show();
-        detachButton->show();
-        scopeModeCombo->show();
-        edgeCombo->hide();
-        edgeButton->hide();
-        toFixedButton->show();
-        spanCombo->show();
-        clearPeaksButton->show();
-        confButton->show();
-    } else if (hasScope && (mode==spectModeFixed || mode == spectModeScrollC || mode == spectModeScrollF) && spanCombo->isVisible()) {
-        spectrum->show();
-        waterfall->show();
-        splitter->show();
-        detachButton->show();
-        scopeModeCombo->show();
-        edgeCombo->show();
-        edgeButton->show();
-        toFixedButton->hide();
-        spanCombo->hide();
-        clearPeaksButton->show();
-        confButton->show();
     }
+    else
+    {
+        spectrum->show();
+        waterfall->show();
+        splitter->show();
+        scopeModeCombo->show();
+        clearPeaksButton->show();
+
+        switch (mode)
+        {
+        case spectModeCenter:
+        case spectModeScrollC:
+            edgeCombo->hide();
+            edgeButton->hide();
+            toFixedButton->show();
+            spanCombo->show();
+            break;
+
+        case spectModeFixed:
+        case spectModeScrollF:
+            toFixedButton->hide();
+            spanCombo->hide();
+            edgeCombo->show();
+            edgeButton->show();
+            break;
+        case spectModeUnknown:
+            break;
+        }
+    }
+    confButton->show();
+    detachButton->show();
+
+    configSpeed->setVisible(rigCaps->hasSpectrum);
+    configBottom->setVisible(rigCaps->hasSpectrum);
+    configLength->setVisible(rigCaps->hasSpectrum);
+    configRef->setVisible(rigCaps->hasSpectrum);
+    configScopeEnabled->setVisible(rigCaps->hasSpectrum);
+    configTheme->setVisible(rigCaps->hasSpectrum);
 }
 
-void receiverWidget::enableScope(bool en)
+void receiverWidget::displayScope(bool en)
 {
-    this->splitter->setVisible(en);
+    this->splitter->setVisible(en || rigCaps->hasCommand29);
     // Hide these controls if disabled
     if (!en) {
         this->edgeCombo->setVisible(en);
         this->edgeButton->setVisible(en);
         this->toFixedButton->setVisible(en);
         this->spanCombo->setVisible(en);
+
+        QTimer::singleShot(0, [this]{
+            this->resize(this->minimumSizeHint());
+        });
     }
     this->clearPeaksButton->setVisible(en);
     this->holdButton->setVisible(en && rigCaps->commands.contains(funcScopeHold));
@@ -1167,11 +1261,11 @@ void receiverWidget::enableScope(bool en)
 void receiverWidget::setScopeMode(spectrumMode_t m)
 {
     if (m != currentScopeMode) {
-        currentScopeMode = m;
         scopeModeCombo->blockSignals(true);
         scopeModeCombo->setCurrentIndex(scopeModeCombo->findData(m));
         scopeModeCombo->blockSignals(false);
         showHideControls(m);
+        currentScopeMode = m;
     }
 }
 
@@ -1236,48 +1330,90 @@ void receiverWidget::toFixedPressed()
 
 void receiverWidget::customSpanPressed()
 {
-    double lowFreq = lowerFreq;
-    double highFreq = upperFreq;
-    QString freqstring = QString("%1, %2").arg(lowFreq).arg(highFreq);
-    bool ok;
 
-    QString userFreq = QInputDialog::getText(this, tr("Scope Edges"),
-                          tr("Please enter desired scope edges, in MHz,\nwith a comma between the low and high range."),
-    QLineEdit::Normal, freqstring, &ok);
-    if(!ok)
-        return;
-
-    QString clean = userFreq.trimmed().replace(" ", "");
-    QStringList freqs = clean.split(",");
-    if(freqs.length() == 2)
+    float maxSpan = 0.0;
+    float minSpan = 1.0;
+    for (const auto &span: rigCaps->scopeCenterSpans)
     {
-        lowFreq = QString(freqs.at(0)).toDouble(&ok);
-        if(ok)
+        if (double(span.freq / 1000000.0) > maxSpan)
+            maxSpan = double(span.freq / 1000000.0);
+        if (double(span.freq / 1000000.0) < minSpan)
+            minSpan = double(span.freq / 1000000.0);
+    }
+    maxSpan = maxSpan * 2;
+    minSpan = minSpan * 2;
+
+    QDialog* dialog = new QDialog(this);
+    dialog->setToolTip(tr("Please enter the lower and upper frequencies (in MHz) for the currently selected Scope Fixed edge"));
+    dialog->setWindowTitle(tr("Scope Edges"));
+    QVBoxLayout* layout = new QVBoxLayout(dialog);
+    layout->setSizeConstraint(QLayout::SetFixedSize);
+    QHBoxLayout* header = new QHBoxLayout();
+
+    layout->addLayout(header);
+    QLabel* lowLabel = new QLabel();
+    lowLabel->setText(tr("Start Freq (MHz)"));
+    lowLabel->setAlignment(Qt::AlignCenter);
+    header->addWidget(lowLabel);
+    QLabel* highLabel = new QLabel();
+    highLabel->setText(tr("End Freq (MHz)"));
+    highLabel->setAlignment(Qt::AlignCenter);
+    header->addWidget(highLabel);
+
+    QHBoxLayout* spins = new QHBoxLayout();
+    layout->addLayout(spins);
+    QDoubleSpinBox* low = new QDoubleSpinBox();
+    low->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Expanding);
+    low->setValue(lowerFreq);
+    low->setDecimals(3);
+    low->setSingleStep(minSpan);
+    low->setRange(minFreqMhz,maxFreqMhz);
+    low->setAlignment(Qt::AlignCenter);
+    low->setToolTip(tr("Fixed edge start frequency"));
+    spins->addWidget(low);
+
+    low->setMinimumHeight(low->minimumSizeHint().height()*2);
+    QDoubleSpinBox* high = new QDoubleSpinBox();
+    high->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Expanding);
+    high->setValue(upperFreq);
+    high->setDecimals(3);
+    high->setSingleStep(minSpan);
+    high->setMinimumHeight(high->minimumSizeHint().height()*2);
+    high->setRange(minFreqMhz,maxFreqMhz);
+    high->setAlignment(Qt::AlignCenter);
+    high->setToolTip(tr("Fixed edge end frequency"));
+    spins->addWidget(high);
+
+    QHBoxLayout* buttons = new QHBoxLayout();
+    layout->addLayout(buttons);
+    QPushButton *ok = new QPushButton("OK");
+    QPushButton *cancel = new QPushButton("Cancel");
+    buttons->addWidget(ok);
+    buttons->addWidget(cancel);
+
+    connect(ok, &QPushButton::clicked, this, [=]() {
+        // Here we need to attempt to update the fixed edge
+        if (high->value() - low->value() > maxSpan)
         {
-            highFreq = QString(freqs.at(1)).toDouble(&ok);
-            if(ok)
-            {
-                qDebug(logGui()) << "setting edge to: " << lowFreq << ", " << highFreq << ", edge num: " << edgeCombo->currentIndex() + 1;
-                queue->addUnique(priorityImmediate,queueItem(funcScopeFixedEdgeFreq,QVariant::fromValue(spectrumBounds(lowFreq, highFreq, edgeCombo->currentIndex() + 1)),false,receiver));
-                return;
-            }
+            high->setValue(low->value()+maxSpan);
         }
-        goto errMsg;
-    } else {
-        goto errMsg;
-    }
+        else if (high->value() < low->value() || high->value() - low->value() < minSpan)
+        {
+            high->setValue(low->value()+minSpan);
+        }
+        else
+        {
+            qDebug(logGui()) << "setting edge to: " << low->value() << ", " << high->value() << ", edge num: " << edgeCombo->currentIndex() + 1;
+            queue->addUnique(priorityImmediate,queueItem(funcScopeFixedEdgeFreq,QVariant::fromValue(spectrumBounds(low->value(), high->value(), edgeCombo->currentIndex() + 1)),false,receiver));
+            dialog->close();
+        }
+    });
 
-errMsg:
-    {
-        QMessageBox URLmsgBox;
-        URLmsgBox.setText(tr("Error, could not interpret your input.\
-                          <br/>Please make sure to place a comma between the frequencies.\
-                          <br/>For example: '7.200, 7.300'"));
-        URLmsgBox.exec();
+    connect(cancel, &QPushButton::clicked, this, [=]() {
+        dialog->close();
+    });
 
-        return;
-    }
-
+    dialog->exec();
 
 }
 
@@ -1289,7 +1425,7 @@ void receiverWidget::doubleClick(QMouseEvent *me)
     {
         double x;
         freqt freqGo;
-        if (!lock)
+        if (!freqLock)
         {
             //y = plot->yAxis->pixelToCoord(me->pos().y());
             x = spectrum->xAxis->pixelToCoord(me->pos().x());
@@ -1344,7 +1480,7 @@ void receiverWidget::scopeClick(QMouseEvent* me)
         if (textItem != nullptr)
         {
             QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
-            if (spot != clusterSpots.end() && spot.key() == textItem->text())
+            if (spot != clusterSpots.end() && spot.key() == textItem->text() && !freqLock)
             {
                 qInfo(logGui()) << "Clicked on spot:" << textItem->text();
                 freqt freqGo;
@@ -1549,11 +1685,11 @@ void receiverWidget::scopeMouseMove(QMouseEvent* me)
             lastFreq = movedFrequency;
         }
     }
-    else  if (passbandAction == passbandStatic && me->buttons() == Qt::LeftButton && textItem == nullptr && clickDragTuning)
+    else  if (passbandAction == passbandStatic && me->buttons() == Qt::LeftButton && textItem == nullptr && clickDragTuning )
     {
         double delta = spectrum->xAxis->pixelToCoord(cursor) - mousePressFreq;
         qDebug(logGui()) << "Mouse moving delta: " << delta;
-        if( (( delta < -0.0001 ) || (delta > 0.0001)) && ((delta < 0.501) && (delta > -0.501)) )
+        if( (( delta < -0.0001 ) || (delta > 0.0001)) && ((delta < 0.501) && (delta > -0.501)) && !freqLock)
         {
             freqt freqGo;
             freqGo.Hz = (freq.MHzDouble + delta) * 1E6;
@@ -1632,15 +1768,17 @@ void receiverWidget::scroll(QWheelEvent *we)
         stepsHz *= 10;
     }
 
+    if (!freqLock) {
     freqt f;
     f.Hz = roundFrequency(freq.Hz, clicks, stepsHz);
     f.MHzDouble = f.Hz / (double)1E6;
 
-    emit sendTrack(f.Hz-this->freq.Hz);
+        emit sendTrack(f.Hz-this->freq.Hz);
 
-    setFrequency(f);
-    queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(f),false,receiver));
-    //qInfo() << "Moving to freq:" << f.Hz << "step" << stepsHz;
+        setFrequency(f);
+        queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(f),false,receiver));
+        //qInfo() << "Moving to freq:" << f.Hz << "step" << stepsHz;
+    }
     scrollWheelOffsetAccumulated = 0;
 }
 
@@ -1648,12 +1786,14 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
 {
     // Update mode information if mode/filter/data has changed.
     // Not all rigs send data so this "might" need to be updated independantly?
-    if (vfo > 0 && m.mk != modeUnknown) {
-        unselectedMode=m;
+
+    if (vfo > 0) {
+        if (m.mk != modeUnknown)
+            unselectedMode=m;
         return;
     }
 
-    if (m.filter && this->mode.filter != m.filter)
+    if (m.filter != 0xff && this->mode.filter != m.filter)
     {
         filterCombo->blockSignals(true);
         filterCombo->setCurrentIndex(filterCombo->findData(m.filter));
@@ -1661,7 +1801,7 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
         mode.filter=m.filter;
     }
 
-    if (this->mode.data != m.data && m.data != 0xff)
+    if (m.data != 0xff && this->mode.data != m.data)
     {
         emit dataChanged(m); // Signal wfmain that the data mode has been changed.
         dataCombo->blockSignals(true);
@@ -1670,7 +1810,7 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
         mode.data=m.data;
     }
 
-    if (m.mk != modeUnknown && m.mk != mode.mk) {
+    if (m.mk != modeUnknown && mode.mk != m.mk) {
         qInfo(logSystem()) << __func__ << QString("Received new mode for %0: %1 (%2) filter:%3 data:%4")
         .arg((receiver?"Sub":"Main")).arg(QString::number(m.mk,16)).arg(m.name).arg(m.filter).arg(m.data) ;
 
@@ -1695,34 +1835,60 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
             dataCombo->setEnabled(true);
         }
 
-        if (m.mk != mode.mk || m.filter != mode.filter) {
+        if (m.mk != mode.mk) {
             // We have changed mode so "may" need to change regular commands
 
             passbandCenterFrequency = 0.0;
 
             vfoCommandType t = queue->getVfoCommand(vfoA,receiver,false);
 
-            // If new mode doesn't allow bandwidth control, disable filterwidth and pbt.
-            if (m.bwMin > 0 && m.bwMax > 0) {
-                // Set config specific options)
-                configFilterWidth->blockSignals(true);
-                configFilterWidth->setMinimum(m.bwMin);
-                configFilterWidth->setMaximum(m.bwMax);
-                configFilterWidth->blockSignals(false);
-                configFilterWidth->setEnabled(true);
-                configPbtInner->setEnabled(true);
-                configPbtOuter->setEnabled(true);
-                queue->addUnique(priorityHigh,funcPBTInner,true,t.receiver);
-                queue->addUnique(priorityHigh,funcPBTOuter,true,t.receiver);
-                queue->addUnique(priorityHigh,funcFilterWidth,true,t.receiver);
+            // Make sure the filterWidth range is within limits.
 
+            // If new mode doesn't allow bandwidth control, disable filterwidth and pbt.
+            configFilterWidth->blockSignals(true);
+            configFilterWidth->setRange(m.bwMin,m.bwMax);
+            configFilterWidth->setValue(m.bwMax);
+            configFilterWidth->blockSignals(false);
+
+            if (m.bwMin > 0 || m.bwMax > 0) {
+                // Set config specific options)
+                if (rigCaps->manufacturer == manufKenwood)
+                {
+                    if (m.mk == modeCW || m.mk == modeCW_R || m.mk == modePSK || m.mk == modePSK_R) {
+                        queue->addUnique(priorityHigh,funcFilterWidth,true,t.receiver);
+                        queue->del(funcPBTInner,t.receiver);
+                        queue->del(funcPBTOuter,t.receiver);
+                        configPbtInner->setEnabled(false);
+                        configPbtOuter->setEnabled(false);
+                        configIfShift->setEnabled(false);
+                        //configFilterWidth->setEnabled(true);
+                    }
+                    else if (m.mk == modeUSB || m.mk == modeLSB || m.mk == modeAM || m.mk == modeFM) {
+                        queue->addUnique(priorityHigh,funcPBTInner,true,t.receiver);
+                        queue->addUnique(priorityHigh,funcPBTOuter,true,t.receiver);
+                        queue->del(funcFilterWidth,t.receiver);
+                        configPbtInner->setEnabled(true);
+                        configPbtOuter->setEnabled(true);
+                        configIfShift->setEnabled(true);
+                        //configFilterWidth->setEnabled(false);
+                    }
+                } else
+                {
+                    queue->addUnique(priorityHigh,funcPBTInner,true,t.receiver);
+                    queue->addUnique(priorityHigh,funcPBTOuter,true,t.receiver);
+                    queue->addUnique(priorityHigh,funcFilterWidth,true,t.receiver);
+                    configPbtInner->setEnabled(true);
+                    configPbtOuter->setEnabled(true);
+                    configFilterWidth->setEnabled(true);
+                }
             } else{
                 queue->del(funcPBTInner,t.receiver);
                 queue->del(funcPBTOuter,t.receiver);
                 queue->del(funcFilterWidth,t.receiver);
-                configFilterWidth->setEnabled(false);
                 configPbtInner->setEnabled(false);
                 configPbtOuter->setEnabled(false);
+                configIfShift->setEnabled(false);
+                configFilterWidth->setEnabled(false);
                 passbandWidth = double(m.pass/1000000.0);
             }
 
@@ -1750,7 +1916,6 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
                 queue->del(funcBreakIn,t.receiver);
             }
 
-
 #if defined __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
@@ -1766,7 +1931,10 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
             case modeUSB:
             case modePSK:
             case modePSK_R:
-                passbandCenterFrequency = 0.0015;
+                if (rigCaps->manufacturer == manufIcom)
+                    passbandCenterFrequency = 0.0015;
+                else
+                    passbandCenterFrequency = 0.0;
             case modeAM:
             case modeCW:
             case modeCW_R:
@@ -1836,12 +2004,22 @@ void receiverWidget::receivePassband(quint16 pass)
 void receiverWidget::selected(bool en)
 {
     isActive = en;
-    if (en) {
+
+    // Hide scope if we are not selected and don't have command 29.
+    this->displayScope(en || rigCaps->hasCommand29);
+    this->setEnabled(en || rigCaps->hasCommand29);
+
+    // If this scope is not visible set to visible if selected.
+    this->setVisible(en || this->isVisible());
+
+    if (en)
+    {
         this->setStyleSheet("QGroupBox { border:1px solid red;}");
-    } else {
+    }
+    else
+    {
         this->setStyleSheet(defaultStyleSheet);
     }
-
 }
 
 void receiverWidget::setHold(bool h)
@@ -1972,49 +2150,96 @@ void receiverWidget::wfTheme(int num)
 }
 
 void receiverWidget::setPBTInner (uchar val) {
-    qint16 shift = (qint16)(val - 128);
-    double tempVar = ceil((shift / 127.0) * passbandWidth * 20000.0) / 20000.0;
-    // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
-    double pitch = 0.0;
-    if ((this->mode.mk == modeCW || this->mode.mk == modeCW_R) && this->passbandWidth > 0.0006)
+
+    if (rigCaps->manufacturer == manufKenwood)
     {
-        pitch = (600.0 - cwPitch) / 1000000.0;
-    }
-
-    double newPBT = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
-
-    if (newPBT != this->PBTInner) {
-        this->PBTInner = newPBT;
-        double pbFreq = ((double)(this->PBTInner) / this->passbandWidth) * 127.0;
-        qint16 newFreq = pbFreq + 128;
-        if (newFreq >= 0 && newFreq <= 255) {
+        ushort width=0;
+        if (this->mode.mk == modeLSB || this->mode.mk == modeUSB)
+        {
+            if (val < 25)
+                width = (val+6) * 100;
+            else if (val == 25)
+                width = 3400;
+            else if (val == 26)
+                width = 4000;
+            else if (val == 27)
+                width = 5000;
+        }
+        if (double(width)/1000000.0 != this->PBTInner)
+        {
+            this->PBTInner = double(width)/1000000.0;
             configPbtInner->blockSignals(true);
-            configPbtInner->setValue(newFreq);
+            configPbtInner->setValue(val);
             configPbtInner->blockSignals(false);
+        }
+
+    } else
+    {
+        qint16 shift = (qint16)(val - 128);
+        double tempVar = ceil((shift / 127.0) * passbandWidth * 20000.0) / 20000.0;
+        // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
+        double pitch = 0.0;
+        if ((this->mode.mk == modeCW || this->mode.mk == modeCW_R) && this->passbandWidth > 0.0006)
+        {
+            pitch = (600.0 - cwPitch) / 1000000.0;
+        }
+
+        double newPBT = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
+
+        if (newPBT != this->PBTInner) {
+            this->PBTInner = newPBT;
+            double pbFreq = ((double)(this->PBTInner) / this->passbandWidth) * 127.0;
+            qint16 newFreq = pbFreq + 128;
+            if (newFreq >= 0 && newFreq <= 255) {
+                configPbtInner->blockSignals(true);
+                configPbtInner->setValue(newFreq);
+                configPbtInner->blockSignals(false);
+            }
         }
     }
 }
 
 void receiverWidget::setPBTOuter (uchar val) {
-    qint16 shift = (qint16)(val - 128);
-    double tempVar = ceil((shift / 127.0) * this->passbandWidth * 20000.0) / 20000.0;
-    // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
-    double pitch = 0.0;
-    if ((this->mode.mk == modeCW || this->mode.mk == modeCW_R) && this->passbandWidth > 0.0006)
+    if (rigCaps->manufacturer == manufKenwood)
     {
-        pitch = (600.0 - cwPitch) / 1000000.0;
-    }
-
-    double newPBT = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
-
-    if (newPBT != this->PBTOuter) {
-        this->PBTOuter = newPBT;
-        double pbFreq = ((double)(this->PBTOuter) / this->passbandWidth) * 127.0;
-        qint16 newFreq = pbFreq + 128;
-        if (newFreq >= 0 && newFreq <= 255) {
+        ushort width=0;
+        if (this->mode.mk == modeLSB || this->mode.mk == modeUSB)
+        {
+            if (val == 1)
+                width = 50;
+            else if (val > 1 && val < 22)
+                width = (val-1) * 100;
+        }
+        if (double(width)/1000000.0 != this->PBTOuter)
+        {
+            this->PBTOuter = double(width)/1000000.0;
             configPbtOuter->blockSignals(true);
-            configPbtOuter->setValue(newFreq);
+            configPbtOuter->setValue(val);
             configPbtOuter->blockSignals(false);
+        }
+
+    } else
+    {
+        qint16 shift = (qint16)(val - 128);
+        double tempVar = ceil((shift / 127.0) * this->passbandWidth * 20000.0) / 20000.0;
+        // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
+        double pitch = 0.0;
+        if ((this->mode.mk == modeCW || this->mode.mk == modeCW_R) && this->passbandWidth > 0.0006)
+        {
+            pitch = (600.0 - cwPitch) / 1000000.0;
+        }
+
+        double newPBT = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
+
+        if (newPBT != this->PBTOuter) {
+            this->PBTOuter = newPBT;
+            double pbFreq = ((double)(this->PBTOuter) / this->passbandWidth) * 127.0;
+            qint16 newFreq = pbFreq + 128;
+            if (newFreq >= 0 && newFreq <= 255) {
+                configPbtOuter->blockSignals(true);
+                configPbtOuter->setValue(newFreq);
+                configPbtOuter->blockSignals(false);
+            }
         }
     }
 }
@@ -2124,6 +2349,9 @@ void receiverWidget::setBandIndicators(bool show, QString region, std::vector<ba
 
 void receiverWidget::displaySettings(int numDigits, qint64 minf, qint64 maxf, int minStep,FctlUnit unit, std::vector<bandType>* bands)
 {
+    this->minFreqMhz = minf / 1000000.0;
+    this->maxFreqMhz = maxf / 1000000.0;
+
     for (uchar i=0;i<numVFO;i++)
         freqDisplay[i]->setup(numDigits, minf, maxf, minStep, unit, bands);
 }
@@ -2140,7 +2368,7 @@ void receiverWidget::newFrequency(qint64 freq,uchar vfo)
     freqt f;
     f.Hz = freq;
     f.MHzDouble = f.Hz / (double)1E6;
-    if (f.Hz > 0)
+    if (f.Hz > 0 && !freqLock)
     {
         emit sendTrack(f.Hz-this->freq.Hz);
         vfoCommandType t = queue->getVfoCommand(vfo_t(vfo),receiver,true);
@@ -2295,5 +2523,20 @@ void receiverWidget::receiveTrack(int f)
         vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
         queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(freqGo),false,t.receiver));
         freq=freqGo;
+    }
+}
+
+// This function will request an update of all freq/mode info from the rig
+void receiverWidget::updateInfo()
+{
+    // If we are not the active receiver, delete selected/unselected commands
+    vfoCommandType t = queue->getVfoCommand(vfoA,receiver,false);
+    queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
+    queue->add(priorityImmediate,t.modeFunc,false,t.receiver);
+
+    if ((rigCaps->hasCommand29 || !receiver) && numVFO > 1) {
+        t = queue->getVfoCommand(vfoB,receiver,false);
+        queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
+        queue->add(priorityImmediate,t.modeFunc,false,t.receiver);
     }
 }

@@ -11,6 +11,7 @@ settingswidget::settingswidget(QWidget *parent) :
     ui->setupUi(this);
 
     connect(ui->serverUsersTable,SIGNAL(rowAdded(int)),this, SLOT(serverAddUserLine(int)));
+    connect(ui->serverUsersTable,SIGNAL(rowDeleted(int)),this,SLOT(serverDeleteUserLine(int)));
     createSettingsListItems();
     populateComboBoxes();
 
@@ -109,7 +110,8 @@ void settingswidget::populateComboBoxes()
     ui->audioRXCodecCombo->addItem("uLaw 2ch 8bit", 32);
     ui->audioRXCodecCombo->addItem("PCM 2ch 8bit", 8);
     ui->audioRXCodecCombo->addItem("Opus 1ch", 64);
-    ui->audioRXCodecCombo->addItem("Opus 2ch", 128);
+    ui->audioRXCodecCombo->addItem("Opus 2ch", 65);
+    ui->audioRXCodecCombo->addItem("ADPCM 1ch", 128);
     ui->audioRXCodecCombo->blockSignals(false);
 
     ui->audioTXCodecCombo->blockSignals(true);
@@ -117,6 +119,7 @@ void settingswidget::populateComboBoxes()
     ui->audioTXCodecCombo->addItem("LPCM 1ch 8bit", 2);
     ui->audioTXCodecCombo->addItem("uLaw 1ch 8bit", 1);
     ui->audioTXCodecCombo->addItem("Opus 1ch", 64);
+    ui->audioTXCodecCombo->addItem("ADPCM 1ch", 128);
     ui->audioTXCodecCombo->blockSignals(false);
 
     ui->controlPortTxt->setValidator(new QIntValidator(this));
@@ -157,6 +160,19 @@ void settingswidget::populateComboBoxes()
     ui->groupSeparatorsCombo->setCurrentIndex(0);
     ui->groupSeparatorsCombo->blockSignals(false);
 
+    ui->manufacturerCombo->blockSignals(true);
+    ui->manufacturerCombo->addItem("Icom",manufIcom);
+    ui->manufacturerCombo->addItem("Kenwood",manufKenwood);
+    //ui->manufacturerCombo->addItem("FlexRadio",manufFlexRadio);
+    ui->manufacturerCombo->setCurrentIndex(0);
+    ui->manufacturerCombo->blockSignals(false);
+
+
+    ui->networkConnectionTypeCombo->blockSignals(true);
+    ui->networkConnectionTypeCombo->addItem("LAN",connectionLAN);
+    ui->networkConnectionTypeCombo->addItem("WiFi",connectionWiFi);
+    ui->networkConnectionTypeCombo->addItem("WAN",connectionWAN);
+    ui->networkConnectionTypeCombo->blockSignals(false);
 }
 
 // Updating Preferences:
@@ -518,6 +534,9 @@ void settingswidget::updateIfPref(prefIfItem pif)
         quietlyUpdateCombobox(ui->groupSeparatorsCombo,QVariant(prefs->groupSeparator));
         quietlyUpdateCombobox(ui->decimalSeparatorsCombo,QVariant(prefs->decimalSeparator));
         break;
+    case if_forceVfoMode:
+        quietlyUpdateCheckbox(ui->forceVfoModeChk,prefs->forceVfoMode);
+        break;
     default:
         qWarning(logGui()) << "Did not understand if pref update item " << (int)pif;
         break;
@@ -773,14 +792,13 @@ void settingswidget::updateRaPref(prefRaItem pra)
     {
         ui->serialDeviceListCombo->blockSignals(true);
         ui->serialDeviceListCombo->clear();
-        ui->serialDeviceListCombo->addItem("Auto", 0);
-        int i = 0;
+        ui->serialDeviceListCombo->addItem("Auto", "");
         for(const auto &serialPortInfo: QSerialPortInfo::availablePorts())
         {
 #if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
-            ui->serialDeviceListCombo->addItem(QString("/dev/") + serialPortInfo.portName(), i++);
+            ui->serialDeviceListCombo->addItem(QString("%0 (%1)").arg(serialPortInfo.portName(),serialPortInfo.serialNumber()), QString("/dev/%0").arg(serialPortInfo.portName()));
 #else
-            ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
+            ui->serialDeviceListCombo->addItem(QString("%0 (%1)").arg(serialPortInfo.portName(),serialPortInfo.serialNumber()),serialPortInfo.portName());
 #endif
         }
 
@@ -788,12 +806,7 @@ void settingswidget::updateRaPref(prefRaItem pra)
         ui->serialDeviceListCombo->addItem("Manual...", 256);
 #endif
 
-        ui->serialDeviceListCombo->setCurrentIndex(ui->serialDeviceListCombo->findText(prefs->serialPortRadio));
-        // If the serial port doesn't exist, leave the combo blank.
-        //if (ui->serialDeviceListCombo->currentIndex() == -1)
-        //{
-        //    ui->serialDeviceListCombo->setCurrentIndex(0);
-        //}
+        ui->serialDeviceListCombo->setCurrentIndex(ui->serialDeviceListCombo->findData(prefs->serialPortRadio));
         ui->serialDeviceListCombo->blockSignals(false);
         break;
     }
@@ -809,21 +822,24 @@ void settingswidget::updateRaPref(prefRaItem pra)
         int i = 0;
 
 #ifdef Q_OS_WIN
+        ui->ptyDeviceLabel->setText("Select one of a virtual serial port pair");
         ui->vspCombo->addItem(QString("None"), i++);
 
         foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
         {
-            ui->vspCombo->addItem(serialPortInfo.portName());
+            ui->vspCombo->addItem(serialPortInfo.portName(),serialPortInfo.portName());
         }
 #else
         // Provide reasonable names for the symbolic link to the pty device
 #ifdef Q_OS_MAC
+        ui->ptyDeviceLabel->setText("pty devices located in:" + QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0]);
         QString vspName = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/rig-pty";
 #else
+        ui->ptyDeviceLabel->setText("pty devices located in:" + QDir::homePath());
         QString vspName = QDir::homePath() + "/rig-pty";
 #endif
         for (i = 1; i < 8; i++) {
-            ui->vspCombo->addItem(vspName + QString::number(i));
+            ui->vspCombo->addItem("rig-pty" + QString::number(i),vspName + QString::number(i));
 
             if (QFile::exists(vspName + QString::number(i))) {
                 auto* model = qobject_cast<QStandardItemModel*>(ui->vspCombo->model());
@@ -831,11 +847,10 @@ void settingswidget::updateRaPref(prefRaItem pra)
                 item->setEnabled(false);
             }
         }
-        ui->vspCombo->addItem(vspName + QString::number(i));
-        ui->vspCombo->addItem(QString("None"), i++);
+        ui->vspCombo->addItem(QString("None"), "None");
         ui->vspCombo->setEditable(true);
 #endif
-        ui->vspCombo->setCurrentIndex(ui->vspCombo->findText(prefs->virtualSerialPort));
+        ui->vspCombo->setCurrentIndex(ui->vspCombo->findData(prefs->virtualSerialPort));
         if (ui->vspCombo->currentIndex() == -1)
         {
             ui->vspCombo->setCurrentIndex(0);
@@ -853,6 +868,26 @@ void settingswidget::updateRaPref(prefRaItem pra)
         ui->audioSystemServerCombo->setCurrentIndex(prefs->audioSystem);
         ui->audioSystemServerCombo->blockSignals(false);
         ui->audioSystemCombo->blockSignals(false);
+        break;
+    case ra_manufacturer:
+        quietlyUpdateCombobox(ui->manufacturerCombo,prefs->manufacturer);
+        if (prefs->manufacturer == manufKenwood)
+        {
+            udpPrefs->controlLANPort = 60000;
+            udpPrefs->audioLANPort = 60001;
+            // We also need to disable all items that are unsupported by this manufacturer
+            ui->audioSampleRateCombo->setCurrentIndex(2);
+            ui->audioRXCodecCombo->setCurrentIndex(ui->audioRXCodecCombo->findData(4));
+            ui->audioTXCodecCombo->setCurrentIndex(ui->audioTXCodecCombo->findData(4));
+
+            ui->audioSampleRateCombo->setEnabled(false);
+            ui->adminLoginChk->setVisible(true);
+        }   else {
+            ui->audioSampleRateCombo->setEnabled(true);
+            ui->adminLoginChk->setVisible(false);
+        }
+        ui->controlPortTxt->setText(QString::number(udpPrefs->controlLANPort));
+
         break;
     default:
         qWarning(logGui()) << "Cannot update ra pref" << (int)pra;
@@ -1158,6 +1193,12 @@ void settingswidget::updateUdpPref(prefUDPItem upi)
     case u_audioOutput:
         ui->audioOutputCombo->setCurrentIndex(audioDev->findOutput("Client", prefs->rxSetup.name));
         break;
+    case u_connectionType:
+        quietlyUpdateCombobox(ui->networkConnectionTypeCombo,QVariant::fromValue(udpPrefs->connectionType));
+        break;
+    case u_adminLogin:
+        quietlyUpdateCheckbox(ui->adminLoginChk,udpPrefs->adminLogin);
+        break;
     default:
         qWarning(logGui()) << "Did not find matching UI element for UDP pref item " << (int)upi;
         break;
@@ -1240,29 +1281,33 @@ void settingswidget::updateAllPrefs()
     updatingUIFromPrefs = false;
 }
 
-void settingswidget::hideModSource(uchar num)
+void settingswidget::enableModSource(uchar num, bool en)
 {
     QComboBox* combo;
+    QLabel* text;
     switch (num)
     {
     case 0:
         combo = ui->modInputCombo;
+        text = ui->modInputDataOffComboText;
         break;
     case 1:
         combo = ui->modInputData1Combo;
+        text = ui->modInputData1ComboText;
         break;
     case 2:
         combo = ui->modInputData2Combo;
-        ui->modInputData2ComboText->setVisible(false);
+        text = ui->modInputData2ComboText;
         break;
     case 3:
         combo = ui->modInputData3Combo;
-        ui->modInputData3ComboText->setVisible(false);
+        text = ui->modInputData3ComboText;
         break;
     default:
         return;
     }
-    combo->setVisible(false);
+    combo->setVisible(en);
+    text->setVisible(en);
 }
 
 void settingswidget::updateModSourceList(uchar num, QVector<rigInput> data)
@@ -1279,11 +1324,9 @@ void settingswidget::updateModSourceList(uchar num, QVector<rigInput> data)
         break;
     case 2:
         combo = ui->modInputData2Combo;
-        ui->modInputData2ComboText->setVisible(true);
         break;
     case 3:
         combo = ui->modInputData3Combo;
-        ui->modInputData3ComboText->setVisible(true);
         break;
     default:
         return;
@@ -1301,8 +1344,40 @@ void settingswidget::updateModSourceList(uchar num, QVector<rigInput> data)
         combo->addItem("None", QVariant::fromValue(rigInput()));
     }
 
-    combo->setVisible(true);
     combo->blockSignals(false);
+}
+
+void settingswidget::enableModSourceItem(uchar num, rigInput ip, bool en)
+{
+    QComboBox* combo;
+    switch (num)
+    {
+    case 0:
+        combo = ui->modInputCombo;
+        break;
+    case 1:
+        combo = ui->modInputData1Combo;
+        break;
+    case 2:
+        combo = ui->modInputData2Combo;
+        break;
+    case 3:
+        combo = ui->modInputData3Combo;
+        break;
+    default:
+        return;
+    }
+
+    for (int i=0;i<combo->count();i++)
+    {
+        if (combo->itemData(i).value<rigInput>().reg == ip.reg)
+        {
+            QStandardItemModel *model = qobject_cast<QStandardItemModel *>(combo->model());
+            QStandardItem *item = model->item(i);
+            item->setFlags(en ? item->flags() | Qt::ItemIsEnabled : item->flags() & ~ Qt::ItemIsEnabled);
+            break;
+        }
+    }
 }
 
 void settingswidget::populateServerUsers()
@@ -1320,6 +1395,16 @@ void settingswidget::populateServerUsers()
         if((user->username == "") && !blank)
             blank = true;
         user++;
+    }
+}
+
+void settingswidget::serverDeleteUserLine(int row)
+{
+    qInfo() << "User row deleted" << row;
+    if (serverConfig->users.size() > row)
+    {
+        serverConfig->users.removeAt(row);
+        emit changedServerPref(s_users);
     }
 }
 
@@ -1363,6 +1448,11 @@ void settingswidget::serverAddUserLine(int row, const QString &user, const QStri
     button->setProperty("col", (int)3);
     connect(button, SIGNAL(clicked()), this, SLOT(onServerUserFieldChanged()));
     ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 3, button);
+
+    if (ui->serverUsersTable->rowCount() > serverConfig->users.count())
+    {
+        serverConfig->users.append(SERVERUSER());
+    }
 
     ui->serverUsersTable->blockSignals(false);
 }
@@ -1425,7 +1515,7 @@ void settingswidget::quietlyUpdateModCombo(QComboBox *cb, QVariant val)
     cb->blockSignals(true);
     for (int i=0;i<cb->count();i++)
     {
-        if (cb->itemData(i).value<rigInput>().type == val.value<rigInput>().type)
+        if (cb->itemData(i).value<rigInput>().type == val.value<rigInput>().type || cb->itemData(i) == val)
         {
             cb->setCurrentIndex(i);
             break;
@@ -1645,7 +1735,7 @@ void settingswidget::on_serialDeviceListCombo_textActivated(const QString &arg1)
         return;
     }
 
-    prefs->serialPortRadio = arg1;
+    prefs->serialPortRadio = ui->serialDeviceListCombo->currentData().toString();
     qInfo(logGui()) << "Setting preferences to use manually-assigned serial port: " << arg1;
     ui->serialEnableBtn->setChecked(true);
     emit changedRaPref(ra_serialPortRadio);
@@ -1666,9 +1756,20 @@ void settingswidget::on_baudRateCombo_activated(int index)
 
 void settingswidget::on_vspCombo_activated(int index)
 {
-    Q_UNUSED(index);
-    prefs->virtualSerialPort = ui->vspCombo->currentText();
+    prefs->virtualSerialPort = ui->vspCombo->itemData(index).toString();
     emit changedRaPref(ra_virtualSerialPort);
+}
+
+void settingswidget::on_networkConnectionTypeCombo_currentIndexChanged(int index)
+{
+    udpPrefs->connectionType = ui->networkConnectionTypeCombo->itemData(index).value<connectionType_t>();
+    /*if (udpPrefs->connectionType == connectionWAN) {
+        ui->audioSampleRateCombo->setCurrentIndex(3);
+    } else {
+        ui->audioSampleRateCombo->setCurrentIndex(2);
+    }*/
+
+    emit changedUdpPref(u_connectionType);
 }
 
 void settingswidget::on_audioSystemCombo_currentIndexChanged(int value)
@@ -1678,6 +1779,30 @@ void settingswidget::on_audioSystemCombo_currentIndexChanged(int value)
     audioDev->setAudioType(prefs->audioSystem);
     audioDev->enumerate();
     emit changedRaPref(ra_audioSystem);
+}
+
+void settingswidget::on_manufacturerCombo_currentIndexChanged(int value)
+{
+    Q_UNUSED(value)
+    prefs->manufacturer = ui->manufacturerCombo->currentData().value<manufacturersType_t>();
+    if (prefs->manufacturer == manufKenwood)
+    {
+        udpPrefs->controlLANPort = 60000;
+        udpPrefs->audioLANPort = 60001;
+        // We also need to disable all items that are unsupported by this manufacturer
+        ui->audioSampleRateCombo->setCurrentIndex(2);
+        ui->audioRXCodecCombo->setCurrentIndex(ui->audioRXCodecCombo->findData(4));
+        ui->audioTXCodecCombo->setCurrentIndex(ui->audioTXCodecCombo->findData(4));
+        ui->audioSampleRateCombo->setEnabled(false);
+        ui->adminLoginChk->setVisible(true);
+    }   else {
+        udpPrefs->controlLANPort = 50001;
+        ui->audioSampleRateCombo->setEnabled(true);
+        ui->adminLoginChk->setVisible(false);
+    }
+    ui->controlPortTxt->setText(QString::number(udpPrefs->controlLANPort));
+
+    emit changedRaPref(ra_manufacturer);
 }
 
 void settingswidget::on_audioSystemServerCombo_currentIndexChanged(int value)
@@ -2034,6 +2159,12 @@ void settingswidget::on_clusterTcpDisconnectBtn_clicked()
 
 
 /* Beginning of UDP connection settings */
+void settingswidget::on_adminLoginChk_clicked(bool checked)
+{
+    udpPrefs->adminLogin = checked;
+    emit changedUdpPref(u_adminLogin);
+}
+
 void settingswidget::on_ipAddressTxt_textChanged(const QString &arg1)
 {
     udpPrefs->ipAddress = arg1;
@@ -2178,6 +2309,12 @@ void settingswidget::on_groupSeparatorsCombo_currentIndexChanged(int index)
 {
     prefs->groupSeparator = ui->groupSeparatorsCombo->itemData(index).toChar();
     emit changedIfPref(if_separators);
+}
+
+void settingswidget::on_forceVfoModeChk_clicked(bool checked)
+{
+    prefs->forceVfoMode = checked;
+    emit changedIfPref(if_forceVfoMode);
 }
 
 /* End of radio specific settings */
@@ -3050,6 +3187,7 @@ void settingswidget::onServerUserFieldChanged()
             QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(row, 2);
             serverConfig->users[row].userType = comboBox->currentIndex();
         }
+        emit changedServerPref(s_users);
     }
 }
 /* End of UDP Server settings */
@@ -3065,7 +3203,8 @@ void settingswidget::connectionStatus(bool conn)
     ui->audioRXCodecCombo->setEnabled(!conn);
     ui->audioTXCodecCombo->setEnabled(!conn);
     ui->audioSystemCombo->setEnabled(!conn);
-    ui->audioSampleRateCombo->setEnabled(!conn);
+    ui->audioSampleRateCombo->setEnabled(prefs->manufacturer==manufKenwood?false:!conn);
+    ui->networkConnectionTypeCombo->setEnabled(!conn);
 
     ui->txLatencySlider->setEnabled(!conn);
     ui->usernameTxt->setEnabled(!conn);

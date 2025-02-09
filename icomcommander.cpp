@@ -114,6 +114,7 @@ void icomCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAddr, 
     // Keep in hex in the UI as is done with other CIV apps.
 
     this->rigList = rigList;
+    this->prefs = prefs;
     civAddr = rigCivAddr; // address of the radio
     usingNativeLAN = true;
 
@@ -173,9 +174,6 @@ void icomCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAddr, 
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), tcp, SLOT(sendData(QByteArray)));
     }
 
-    emit haveAfGain(rxSetup.localAFgain);
-    localVolume = rxSetup.localAFgain;
-
     commonSetup();
 
 }
@@ -215,7 +213,7 @@ void icomCommander::commonSetup()
     // Add the below commands so we can get a response until we have received rigCaps
     rigCaps.commands.clear();
     rigCaps.commandsReverse.clear();
-    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),QByteArrayLiteral("\x19\x00"),0,0,false,true,false));
+    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),QByteArrayLiteral("\x19\x00"),0,0,false,true,false,1,false));
     rigCaps.commandsReverse.insert(QByteArrayLiteral("\x19\x00"),funcTransceiverId);
 
     connect(queue,SIGNAL(haveCommand(funcs,QVariant,uchar)),this,SLOT(receiveCommand(funcs,QVariant,uchar)));
@@ -255,28 +253,6 @@ void icomCommander::setPTTType(pttType_t ptt)
     }
 }
 
-void icomCommander::findRigs()
-{
-    // This function sends data to 0x00 ("broadcast") to look for any connected rig.
-    lookingForRig = true;
-    foundRig = false;
-
-    QByteArray data;
-    QByteArray data2;
-    //data.setRawData("\xFE\xFE\xa2", 3);
-    data.setRawData("\xFE\xFE\x00", 3);
-    data.append((char)compCivAddr); // wfview's address, 0xE1
-    data2.setRawData("\x19\x00", 2); // get rig ID
-    data.append(data2);
-    data.append(payloadSuffix);
-
-    emit dataForComm(data);
-    // HACK for testing radios that do not respond to rig ID queries:
-    //this->model = model736;
-    //this->determineRigCaps();
-    return;
-}
-
 void icomCommander::prepDataAndSend(QByteArray data)
 {    
     data.prepend(payloadPrefix);
@@ -288,7 +264,6 @@ void icomCommander::prepDataAndSend(QByteArray data)
         qDebug(logRigTraffic()) << "Final payload in rig commander to be sent to rig: ";
         printHexNow(data, logRigTraffic());
     }
-    lastCommandToRig = data;
     emit dataForComm(data);
 }
 
@@ -498,16 +473,15 @@ toneInfo icomCommander::decodeTone(QByteArray eTone)
     if (eTone.length() < 3) {
         return t;
     }
+    t.tone += (eTone.at(2) & 0x0f);
+    t.tone += ((eTone.at(2) & 0xf0) >> 4) *   10;
+    t.tone += (eTone.at(1) & 0x0f) *  100;
+    t.tone += ((eTone.at(1) & 0xf0) >> 4) * 1000;
 
     if((eTone.at(0) & 0x01) == 0x01)
         t.tinv = true;
     if((eTone.at(0) & 0x10) == 0x10)
         t.rinv = true;
-
-    t.tone += (eTone.at(2) & 0x0f);
-    t.tone += ((eTone.at(2) & 0xf0) >> 4) *   10;
-    t.tone += (eTone.at(1) & 0x0f) *  100;
-    t.tone += ((eTone.at(1) & 0xf0) >> 4) * 1000;
 
     return t;
 }
@@ -737,6 +711,14 @@ void icomCommander::parseCommand()
         return;
     }
 
+    // If this is a non-command29 radio, and command is not selected/unselected, then get the current receiver from cache.
+    // non-command29 radios only provide selected/unselected on the main band.
+    if (!rigCaps.hasCommand29 && func != funcSelectedFreq && func != funcSelectedMode && func != funcUnselectedFreq && func != funcUnselectedMode )
+    {
+        receiver = queue->getState().receiver;
+    }
+
+
     freqt test;
     QVector<memParserFormat> memParser;
     QVariant value;
@@ -758,11 +740,22 @@ void icomCommander::parseCommand()
     case funcFreqTR:
     case funcTXFreq:
     {
-        if (func == funcUnselectedFreq)
+        if (func == funcFreqTR || func == funcFreqGet)
+        {
+            if (rigCaps.commands.contains(funcFreq))
+                func = funcFreq;
+            else if (rigCaps.commands.contains(funcSelectedFreq))
+                func = funcSelectedFreq;
+            else
+                func = funcFreqGet;
+        }
+        else if (func == funcUnselectedFreq)
+        {
             vfo = 1;
+        }
 
         value.setValue(parseFreqData(payloadIn,vfo));
-        //qInfo(logRig()) << funcString[func] << "len:" << payloadIn.size() << "receiver=" << receiver << "vfo=" << vfo <<
+        //qDebug(logRig()) << funcString[func] << "len:" << payloadIn.size() << "receiver=" << receiver << "vfo=" << vfo <<
         //    "value:" << value.value<freqt>().Hz << "data:" << payloadIn.toHex(' ');
 
         break;
@@ -774,24 +767,54 @@ void icomCommander::parseCommand()
     case funcModeTR:
     case funcSelectedMode:
     case funcUnselectedMode:
+    case funcDataModeWithFilter:
     {
-        if (func == funcUnselectedMode)
+        funcs origFunc = func;
+        // First we need to work out what command we want to actually use
+        if (func == funcModeTR || func == funcModeGet || func == funcDataModeWithFilter)
+        {
+            if (rigCaps.commands.contains(funcMode))
+                func = funcMode;
+            else if (rigCaps.commands.contains(funcSelectedMode))
+                func = funcSelectedMode;
+            else
+                func = funcModeGet;
+        } else if (func == funcUnselectedMode)
+        {
             vfo = 1;
+        }
 
         modeInfo mi;
-        // This should handle the different formats that we could receive.
-        if (payloadIn.size())
-            mi.reg = bcdHexToUChar(payloadIn.at(0));
-        if (payloadIn.size()==2)
-            mi.filter = payloadIn.at(1);
-        if (payloadIn.size()==3) {
-            mi.data = payloadIn.at(1);
-            mi.filter = payloadIn.at(2);
+
+        // then get the current cached value
+        cacheItem ci = queue->getCache(func,receiver);
+        if (ci.value.isValid()) {
+            mi = queue->getCache(func,receiver).value.value<modeInfo>();
         }
+
+        // then parse the data
+        if (origFunc == funcDataModeWithFilter)
+        {
+            // Old format payload with datamode+filter
+            mi.filter = bcdHexToUChar(payloadIn.at(1));
+            mi.data = bcdHexToUChar(payloadIn.at(0));
+        }
+        else
+        {
+            if (payloadIn.size())
+                mi.reg = bcdHexToUChar(payloadIn.at(0));
+            if (payloadIn.size()==2)
+                mi.filter = payloadIn.at(1);
+            if (payloadIn.size()==3) {
+                mi.data = payloadIn.at(1);
+                mi.filter = payloadIn.at(2);
+            }
+        }
+
         mi = parseMode(mi.reg, mi.data,mi.filter,receiver,vfo);
         mi.VFO = selVFO_t(receiver);
         value.setValue(mi);
-        //qInfo() << "Received mode rx:" << receiver << "vfo:" << vfo << "name:"<<  mi.name << "data:" << mi.data << "filter:" << mi.filter << payloadIn.toHex(' ');
+        //qInfo() << funcString[func] << "rx:" << receiver << "vfo:" << vfo << "name:"<<  mi.name << "data:" << mi.data << "filter:" << mi.filter << payloadIn.toHex(' ');
         break;
     }
 
@@ -861,8 +884,11 @@ void icomCommander::parseCommand()
     case funcAfGain:        
         if (udp == Q_NULLPTR) {
             value.setValue(bcdHexToUChar(payloadIn.at(0),payloadIn.at(1)));
-        } else {
-            value.setValue(localVolume);
+        }
+        else
+        {
+            // Network connected, so ignore!
+            return;
         }
         break;
     // The following group are 2 bytes converted to uchar (0-255) but require special processing
@@ -1095,15 +1121,6 @@ void icomCommander::parseCommand()
         //qInfo() << "Got filter width" << calc << "VFO" << receiver;
         break;
     }
-    case funcDataModeWithFilter:
-    {
-        modeInfo m;
-        // Old format payload with datamode+filter
-        m = parseMode(0xff, bcdHexToUChar(payloadIn.at(0)),bcdHexToUChar(payloadIn.at(1)),receiver,vfo);
-        m.VFO = selVFO_t(receiver & 0x01);
-        value.setValue(m);
-        break;
-    }
     case funcAFMute:
         // TODO add AF Mute
         break;
@@ -1231,6 +1248,7 @@ void icomCommander::parseCommand()
         break;
     // 0x1c register (bool)
     case funcRitStatus:
+    case funcXitStatus:
     case funcTransceiverStatus:
         value.setValue(static_cast<bool>(payloadIn.at(0)));
         break;
@@ -1239,7 +1257,8 @@ void icomCommander::parseCommand()
         value.setValue(bcdHexToUChar(payloadIn.at(0)));
         break;
     // 0x21 RIT:
-    case funcRITFreq:
+    case funcRitFreq:
+    case funcXitFreq:
     {
         /* M0VSE DOES THIS NEEED FIXING? */
         short ritHz = 0;
@@ -1255,6 +1274,7 @@ void icomCommander::parseCommand()
         break;
     }
     case funcRitTXStatus:
+    case funcXitTXStatus:
         value.setValue(static_cast<bool>(payloadIn.at(0)));
         break;
     case funcTXFreqMon:
@@ -1367,17 +1387,14 @@ void icomCommander::parseCommand()
         break;
     case funcFA:
     {
-        if (!lastCommandToRig.isEmpty()) {
+        if (!lastCommand.data.isEmpty()) {
             if (!warnedAboutFA) {
                 qInfo(logRig()) << "Occasional error response (FA) from rig can safely be ignored";
                  warnedAboutFA=true;
             }
-            qWarning(logRig()) << "Error (FA) received from rig, last command sent:";
-
-            QStringList messages = getHexArray(lastCommandToRig);
-            for (const auto &msg: messages)
-                qWarning(logRig()) << msg;
-            }
+            qWarning(logRig()) << "Rig (FA) error, last command sent:" << funcString[lastCommand.func] << "(min:" << lastCommand.minValue << "max:" <<
+                lastCommand.maxValue << "bytes:" << lastCommand.bytes <<  ") data:" << lastCommand.data.toHex(' ');
+        }
         break;
     }
     default:
@@ -1470,6 +1487,8 @@ void icomCommander::determineRigCaps()
 
     rigCaps.modelName = settings->value("Model", "").toString();
     rigCaps.rigctlModel = settings->value("RigCtlDModel", 0).toInt();
+    rigCaps.manufacturer = manufIcom;
+
     qInfo(logRig()) << QString("Loading Rig: %0 from %1").arg(rigCaps.modelName,rigCaps.filename);
 
     rigCaps.numReceiver = settings->value("NumberOfReceivers",1).toUInt();
@@ -1501,7 +1520,7 @@ void icomCommander::determineRigCaps()
 
     // Temporary QHash to hold the function string lookup // I would still like to find a better way of doing this!
     QHash<QString, funcs> funcsLookup;
-    for (int i=0;i<NUMFUNCS;i++)
+    for (int i=0;i<funcLastFunc;i++)
     {
         if (!funcString[i].startsWith("+")) {
             funcsLookup.insert(funcString[i].toUpper(), funcs(i));
@@ -1525,7 +1544,10 @@ void icomCommander::determineRigCaps()
                                                        settings->value("Min", 0).toInt(NULL), settings->value("Max", 0).toInt(NULL),
                                                        settings->value("Command29",false).toBool(),
                                                        settings->value("GetCommand",true).toBool(),
-                                                       settings->value("SetCommand",true).toBool()));
+                                                       settings->value("SetCommand",true).toBool(),
+                                                       settings->value("Bytes",0).toInt(),
+                                                       settings->value("Admin",false).toBool())
+                                        );
 
                             rigCaps.commandsReverse.insert(QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),func);
             } else {
@@ -1568,6 +1590,32 @@ void icomCommander::determineRigCaps()
             settings->setArrayIndex(c);
             rigCaps.modes.push_back(modeInfo(rigMode_t(settings->value("Num", 0).toUInt()),
                 settings->value("Reg", 0).toString().toUInt(), settings->value("Name", "").toString(), settings->value("Min", 0).toInt(), settings->value("Max", 0).toInt()));
+        }
+        settings->endArray();
+    }
+
+    int numCTCSS = settings->beginReadArray("CTCSS");
+    if (numCTCSS == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numCTCSS; c++)
+        {
+            settings->setArrayIndex(c);
+            rigCaps.ctcss.push_back(toneInfo(settings->value("Reg", 0).toUInt(), QString::number(settings->value("Tone", 0.0).toFloat(),'f',1)));
+        }
+        settings->endArray();
+    }
+
+    int numDTCS = settings->beginReadArray("DTCS");
+    if (numDTCS == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numDTCS; c++)
+        {
+            settings->setArrayIndex(c);
+            rigCaps.dtcs.push_back(toneInfo(settings->value("Reg", 0).toInt(), QString::number(settings->value("Reg", 0).toInt()).rightJustified(4,'0')));
         }
         settings->endArray();
     }
@@ -1648,8 +1696,11 @@ void icomCommander::determineRigCaps()
         for (int c = 0; c < numAttenuators; c++)
         {
             settings->setArrayIndex(c);
-            qDebug(logRig()) << "** GOT ATTENUATOR" << settings->value("dB", 0).toString().toUInt();
-            rigCaps.attenuators.push_back((quint8)settings->value("dB", 0).toString().toUInt());
+            if (settings->value("Num", -1).toString().toInt() == -1) {
+                rigCaps.attenuators.push_back(genericType(settings->value("dB", 0).toString().toUInt(),QString("%0 dB").arg(settings->value("dB", 0).toString().toUInt())));
+            } else {
+                rigCaps.attenuators.push_back(genericType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", 0).toString()));
+            }
         }
         settings->endArray();
     }
@@ -1687,7 +1738,8 @@ void icomCommander::determineRigCaps()
             QColor color(settings->value("Color", "#00000000").toString()); // Default color should be none!
             QString name(settings->value("Name", "None").toString());
             float power = settings->value("Power", 0.0f).toFloat();
-            rigCaps.bands.push_back(bandType(region,band,bsr,start,end,range,memGroup,bytes,ants,power,color,name));
+            quint64 offset = settings->value("Offset", 0).toLongLong();
+            rigCaps.bands.push_back(bandType(region,band,bsr,start,end,range,memGroup,bytes,ants,power,color,name,offset));
             rigCaps.bsr[band] = bsr;
             qDebug(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << QString::number(bsr,16);
         }
@@ -2237,6 +2289,7 @@ modeInfo icomCommander::parseMode(uchar mode, uchar data, uchar filter, uchar re
     bool found=false;
     if (mode == 0xff)
     {
+        // Get cached mode
         mi.reg=mode;
         mi.mk=modeUnknown;
         mi.filter=filter;
@@ -2249,7 +2302,7 @@ modeInfo icomCommander::parseMode(uchar mode, uchar data, uchar filter, uchar re
         {
             if (m.reg == mode)
             {
-                mi = modeInfo(m);
+                mi = m;
                 mi.filter = filter;
                 mi.data = data;
                 found = true;
@@ -2477,17 +2530,25 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
         case 'M':
             mem->dsqlB = (quint8(data[0] >> 4 & 0x0f));
             break;
-        case 'n':            
-            mem->tone = bcdHexToUInt(data[1],data[2]); // First byte is not used
+        case 'n':
+            for (const auto &tn: rigCaps.ctcss)
+                if (tn.tone ==  bcdHexToUInt(data[1],data[2]))
+                    mem->tone = tn.name;
             break;
         case 'N':
-            mem->toneB = bcdHexToUInt(data[1],data[2]); // First byte is not used
+            for (const auto &tn: rigCaps.ctcss)
+                if (tn.tone ==  bcdHexToUInt(data[1],data[2]))
+                    mem->toneB = tn.name;
             break;
         case 'o':
-            mem->tsql = bcdHexToUInt(data[1],data[2]); // First byte is not used
+            for (const auto &tn: rigCaps.ctcss)
+                if (tn.tone ==  bcdHexToUInt(data[1],data[2]))
+                    mem->tsql = tn.name;
             break;
         case 'O':
-            mem->tsqlB = bcdHexToUInt(data[1],data[2]); // First byte is not used
+            for (const auto &tn: rigCaps.ctcss)
+                if (tn.tone ==  bcdHexToUInt(data[1],data[2]))
+                    mem->tsqlB = tn.name;
             break;
         case 'p':
             mem->dtcsp = (quint8(data[0] >> 3 & 0x02) | quint8(data[0] & 0x01));
@@ -2569,7 +2630,9 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
                     {
                     case modeFM:
                         mem->tonemode=data[0] & 0x0f;
-                        mem->tsql = bcdHexToUInt(data[2],data[3]); // First byte is not used
+                        for (const auto &tn: rigCaps.ctcss)
+                            if (tn.tone ==  bcdHexToUInt(data[2],data[3]))
+                                mem->tsql = tn.name;
                         mem->dtcsp = quint8(data[4] & 0x0f);
                         mem->dtcs = bcdHexToUInt(data[5],data[6]);
                         break;
@@ -2623,19 +2686,6 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
     return true;
 }
 
-void icomCommander::getRigID()
-{
-    QByteArray payload;
-    if (getCommand(funcTransceiverId,payload).cmd != funcNone)
-    {
-        prepDataAndSend(payload);
-    } else {
-        // If we haven't got this command yet, need to use the default one!
-        QByteArray payload = "\x19\x00";
-        prepDataAndSend(payload);
-    }
-}
-
 void icomCommander::setRigID(quint8 rigID)
 {
     // This function overrides radio model detection.
@@ -2657,23 +2707,6 @@ void icomCommander::setRigID(quint8 rigID)
     determineRigCaps();
 }
 
-
-void icomCommander::setAfGain(quint8 level)
-{
-    if (udp == Q_NULLPTR)
-    {
-        QByteArray payload;
-        if (getCommand(funcAfGain,payload,level).cmd != funcNone)
-        {
-            payload.append(bcdEncodeInt(quint16(level)));
-            prepDataAndSend(payload);
-        }
-    }
-    else {
-        emit haveSetVolume(level);
-        localVolume = level;
-    }
-}
 
 uchar icomCommander::makeFilterWidth(ushort pass,uchar receiver)
 {
@@ -2741,12 +2774,6 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
         }
     }
 
-    if (func == funcSendCW)
-    {
-        val = value.value<QString>().length();
-        qDebug(logRig()) << "Send CW received";
-    }
-
     if (func == funcAfGain && value.isValid() && udp != Q_NULLPTR) {
         // Ignore the AF Gain command, just queue it for processing
         emit haveSetVolume(static_cast<uchar>(value.toInt()));
@@ -2800,7 +2827,14 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 qDebug(logRig()) << "Removing unsupported set command from queue" << funcString[func] << "VFO" << receiver;
                 queue->del(func,receiver);
                 return;
-            } if (func == funcFreqSet) {
+            }
+
+            if (!isRadioAdmin && cmd.admin) {
+                qWarning(logRig()) << "Admin permission required for set command" << funcString[func] << "access denied";
+                return;
+            }
+
+            if (func == funcFreqSet) {
                 queue->addUnique(priorityImmediate,funcFreqGet,false,receiver);
             } else if (func == funcModeSet) {
                 queue->addUnique(priorityImmediate,funcModeGet,false,receiver);
@@ -2817,9 +2851,9 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             }
             else if (!strcmp(value.typeName(),"QString"))
             {
-                 QString text = value.value<QString>();
-                 if (func == funcSendCW)
-                 {
+                QString text = value.value<QString>();
+                if (func == funcSendCW)
+                {
                     QByteArray textData = text.toLocal8Bit();
                     quint8 p=0;
                     for(int c=0; c < textData.length(); c++)
@@ -2847,7 +2881,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         payload.append(textData);
                     }
                     qDebug(logRig()) << "Sending CW: payload:" << payload.toHex(' ');
-                 }
+                }
             }
             else if (!strcmp(value.typeName(),"uchar"))
             {
@@ -2875,7 +2909,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                     payload.append(bcdEncodeInt(value.value<ushort>()));
                 }
             }
-            else if (!strcmp(value.typeName(),"short") && func == funcRITFreq)
+            else if (!strcmp(value.typeName(),"short") && (func == funcRitFreq || func == funcXitFreq))
             {
                 // Currently only used for RIT (I think)
                 bool isNegative = false;
@@ -3049,19 +3083,28 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         break;
                     case 'n':
                         payload.append(nul);
-                        payload.append(bcdEncodeInt(mem.tone));
+                        for (const auto &tn: rigCaps.ctcss)
+                            if (tn.name == mem.tone)
+                                payload.append(bcdEncodeInt(tn.tone));
+                        break;
                         break;
                     case 'N':
                         payload.append(nul);
-                        payload.append(bcdEncodeInt(mem.toneB));
+                        for (const auto &tn: rigCaps.ctcss)
+                            if (tn.name == mem.toneB)
+                                payload.append(bcdEncodeInt(tn.tone));
                         break;
                     case 'o':
                         payload.append(nul);
-                        payload.append(bcdEncodeInt(mem.tsql));
+                        for (const auto &tn: rigCaps.ctcss)
+                            if (tn.name == mem.tsql)
+                                payload.append(bcdEncodeInt(tn.tone));
                         break;
                     case 'O':
                         payload.append(nul);
-                        payload.append(bcdEncodeInt(mem.tsqlB));
+                        for (const auto &tn: rigCaps.ctcss)
+                            if (tn.name == mem.tsqlB)
+                                payload.append(bcdEncodeInt(tn.tone));
                         break;
                     case 'p':
                         payload.append((mem.dtcsp << 3 & 0x10) |  (mem.dtcsp & 0x01));
@@ -3140,7 +3183,9 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                                     if (mem.tonemode) {
                                         payload.append(bcdEncodeChar(mem.tonemode));
                                         payload.append(nul);
-                                        payload.append(bcdEncodeInt(mem.tsql));
+                                        for (const auto &tn: rigCaps.ctcss)
+                                            if (tn.name == mem.tsql)
+                                                payload.append(bcdEncodeInt(tn.tone));
                                         payload.append(bcdEncodeChar(mem.dtcsp));
                                         payload.append(bcdEncodeInt(mem.dtcs));
                                     }
@@ -3260,21 +3305,28 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             {
                 spectrumBounds s = value.value<spectrumBounds>();
                 uchar range=1;
-                uchar oldRange=0;
-                for (const bandType& band: rigCaps.bands)
+                double lastRange=-1.0;
+                auto band = rigCaps.bands.cend();
+                while (band != rigCaps.bands.cbegin())
                 {
-
-                    if (oldRange != range && band.range != 0.0 && s.start > band.range)
+                    band--;
+                    //qInfo() << "Band" << band->name << "range" << band->range << "start" << s.start;
+                    if (band->range > s.start)
+                    {
+                        break;
+                    }
+                    else if (lastRange != band->range && band->range != 0.0 && band->range <= s.start)
                     {
                         range++;
-                        oldRange=band.range;
+                        //qInfo() << "range=" <<range;
+                        lastRange=band->range;
                     }
                 }
                 payload.append(bcdEncodeChar(range));
                 payload.append(bcdEncodeChar(s.edge));
                 payload.append(makeFreqPayload(s.start));
                 payload.append(makeFreqPayload(s.end));
-                qInfo() << "Bounds" << range << s.edge << s.start << s.end << payload.toHex();
+                //qInfo() << "Fixed Edge Bounds" << range << s.edge << s.start << s.end << payload.toHex();
 
             }
             else if (!strcmp(value.typeName(),"duplexMode_t"))
@@ -3376,6 +3428,11 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             //}
         }
         prepDataAndSend(payload);
+        lastCommand.func = func;
+        lastCommand.data = payload;
+        lastCommand.minValue = cmd.minVal;
+        lastCommand.maxValue = cmd.maxVal;
+        lastCommand.bytes = cmd.bytes;
     }
     else
     {

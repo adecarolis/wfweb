@@ -34,8 +34,6 @@ public slots:
 
 
     // Rig ID and CIV:
-    void getRigID() override;
-    void findRigs() override;
     void setRigID(quint8 rigID) override;
     void setCIVAddr(quint8 civAddr) override;
 
@@ -45,7 +43,6 @@ public slots:
 
     // Housekeeping:
     void receiveCommand(funcs func, QVariant value, uchar receiver) override;
-    void setAfGain(quint8 level) override;
 
 signals:
     // All signals are defined in rigcommander.h as they should be common for all rig types.
@@ -122,16 +119,12 @@ private:
     //double spectrumStartFreq;
     //double spectrumEndFreq;
 
-    struct rigCapabilities rigCaps;
-
-    bool haveRigCaps=false;
     quint8 model = 0; // Was model_kind but that makes no sense when users can create their own rigs!
     quint8 spectSeqMax;
     quint16 spectAmpMax;
     quint16 spectLenMax;
     spectrumMode_t oldScopeMode;
 
-    bool usingNativeLAN; // indicates using OEM LAN connection (705,7610,9700,7850)
     bool lookingForRig;
     bool foundRig;
 
@@ -147,8 +140,6 @@ private:
     QString rigSerialPort;
     quint32 rigBaudRate;
 
-    QByteArray lastCommandToRig;
-
     QString ip;
     int cport;
     int sport;
@@ -158,8 +149,6 @@ private:
 
     QString serialPortError;
     quint8 localVolume=0;
-
-    QHash<quint8,rigInfo> rigList;
 
     quint64 pow10[12] = {
         1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000, 100000000000

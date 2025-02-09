@@ -46,27 +46,28 @@ public:
     void wfInterpolate(bool en) { colorMap->setInterpolate(en); }
     void wfAntiAliased(bool en) { colorMap->setAntialiased(en); }
     void wfTheme(int num);
-    void setUnderlayMode(underlay_t un) { underlayMode = un; clearPeaks();}
-    void overflow(bool en) {ovfIndicator->setVisible(en);}
-    void resizePlasmaBuffer(int size);
-    void colorPreset(colorPrefsType *p);
+    void setUnderlayMode(underlay_t un) { underlayMode = un; clearPeaks(); }
+    void overflow(bool en) {ovfIndicator->setVisible(en); }
+    void resizePlasmaBuffer(int size );
+    void colorPreset(colorPrefsType *p );
 
-    void setCenterFreq (double hz) { passbandCenterFrequency = hz;}
-    double getCenterFreq () { return passbandCenterFrequency;}
+    void setCenterFreq (double hz) { passbandCenterFrequency = hz; }
+    double getCenterFreq () { return passbandCenterFrequency; }
 
     void setPassbandWidth(double hz) { passbandWidth = hz;}
-    double getPassbandWidth() { configFilterWidth->setValue(passbandWidth*1E6); return passbandWidth;}
+    double getPassbandWidth() { configFilterWidth->setValue(passbandWidth*1E6); return passbandWidth; }
 
-    void setIdentity(QString name) {this->setTitle(name);}
-    bool getReceiver() { return receiver;}
+    void setIdentity(QString name) {this->setTitle(name); }
+    uchar getReceiver() { return receiver; }
 
-    void setTuningFloorZeros(bool tf) {this->tuningFloorZeros = tf;}
-    void setClickDragTuning(bool cg) { this->clickDragTuning = cg;}
-    void setSatMode(bool sm) { this->satMode = sm;}
+    void setTuningFloorZeros(bool tf) {this->tuningFloorZeros = tf; }
+    void setClickDragTuning(bool cg) { this->clickDragTuning = cg; }
+
+    void setSatMode(bool sm) { this->satMode = sm; satelliteButton->blockSignals(true); satelliteButton->setChecked(sm); satelliteButton->blockSignals(false); }
 
     void setScrollSpeedXY(int clicksX, int clicksY) { this->scrollXperClick = clicksX; this->scrollYperClick = clicksY;}
 
-    void enableScope(bool en);
+    void displayScope(bool en);
 
     void receiveCwPitch(quint16 p);
     quint16 getCwPitch() { return cwPitch;}
@@ -85,7 +86,7 @@ public:
 
     freqt getFrequency () { return freq;}
     void setFrequency (freqt f,uchar vfo=0);
-
+    void updateInfo();
     uchar getNumVFO () { return numVFO;}
 
     void receiveMode (modeInfo m, uchar vfo=0);
@@ -95,10 +96,11 @@ public:
     void setSpeed(uchar s);
     void setSpan(centerSpanData s);
     void setScopeMode(spectrumMode_t m);
-    void setSplit(bool en) { splitButton->setChecked(en); }
+    void setSplit(bool en) { splitButton->blockSignals(true);splitButton->setChecked(en); splitButton->blockSignals(false);}
     void setTracking(bool en) { tracking=en; }
     void setRef(int ref);
     void setRefLimits(int lower, int upper);
+    void setFreqLock( bool en) { freqLock = en; }
 
     void setBandIndicators(bool show, QString region, std::vector<bandType>* bands);
     void setUnit(FctlUnit unit);
@@ -118,6 +120,7 @@ public:
 
     void selected(bool);
     bool isSelected() {return isActive;}
+    void showScope(bool en) { this->splitter->setVisible(en); }
 
     void displaySettings(int NumDigits, qint64 Minf, qint64 Maxf, int MinStep,FctlUnit unit,std::vector<bandType>* bands = Q_NULLPTR);
     quint8 getDataMode() { return static_cast<quint8>(dataCombo->currentIndex()); }
@@ -192,6 +195,9 @@ private:
     QSpacerItem* displayCSpacer;
     QPushButton* vfoSwapButton;
     QPushButton* vfoEqualsButton;
+    QPushButton* vfoMemoryButton;
+    QPushButton* satelliteButton;
+    QSpacerItem* displayMSpacer;
     QPushButton* splitButton;
     QSpacerItem* displayRSpacer;
     QGroupBox* group;
@@ -237,6 +243,7 @@ private:
     QSlider* configIfShift;
     QPushButton* configResetIf;
     QSlider* configFilterWidth;
+    QCheckBox* configScopeEnabled;
 
 
     // These parameters relate to scroll wheel response:
@@ -257,7 +264,6 @@ private:
     modeInfo mode;
     modeInfo unselectedMode;
     freqt unselectedFreq;
-    bool lock = false;
     bool scopePrepared=false;
     quint16 spectWidth=689;
     quint16 maxAmp=200;
@@ -327,7 +333,7 @@ private:
     uchar selectedVFO=0;
     bool hasScope=true;
     QString currentRegion="1";
-    spectrumMode_t currentScopeMode=spectrumMode_t::spectModeCenter;
+    spectrumMode_t currentScopeMode=spectrumMode_t::spectModeUnknown;
     bool bandIndicatorsVisible=false;
     rigCapabilities* rigCaps=Q_NULLPTR;
     bandType currentBand;
@@ -335,6 +341,10 @@ private:
     bool satMode = false;
     bool memMode = false;
     bool tracking = false;
+    qint64 freqOffset = 0;
+    double minFreqMhz = 0.0;
+    double maxFreqMhz = 0.0;
+    bool freqLock = false;
 };
 
 #endif // RECEIVERWIDGET_H

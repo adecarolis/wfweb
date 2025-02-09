@@ -67,7 +67,8 @@ public slots:
 
 
     void updateModSourceList(uchar num, QVector<rigInput> data);
-    void hideModSource(uchar num);
+    void enableModSource(uchar num, bool en=false);
+    void enableModSourceItem(uchar num, rigInput ip, bool en=false);
     void setAudioDevicesUI();
 
     void connectionStatus(bool conn);
@@ -138,6 +139,7 @@ private slots:
     void on_serialEnableBtn_clicked(bool checked);
     void on_pttTypeCombo_currentIndexChanged(int index);
 
+    void on_manufacturerCombo_currentIndexChanged(int value);
     void on_rigCIVManualAddrChk_clicked(bool checked);
     void on_rigCIVaddrHexLine_editingFinished();
     void on_useCIVasRigIDChk_clicked(bool checked);
@@ -169,6 +171,7 @@ private slots:
     void on_audioDuplexCombo_currentIndexChanged(int index);
     void on_audioOutputCombo_currentIndexChanged(int index);
     void on_audioInputCombo_currentIndexChanged(int index);
+    void on_adminLoginChk_clicked(bool checked);
 
     void on_rxLatencySlider_valueChanged(int value);
     void on_txLatencySlider_valueChanged(int value);
@@ -248,6 +251,7 @@ private slots:
     void on_colorEditMeterPeakScale_editingFinished();
 
     void serverAddUserLine(int row,const QString& user="", const QString& pass="", const int& type=0);
+    void serverDeleteUserLine(int row);
 
     void on_meter3selectionCombo_currentIndexChanged(int index);
 
@@ -281,6 +285,10 @@ private slots:
 
     void on_decimalSeparatorsCombo_currentIndexChanged(int index);
     void on_groupSeparatorsCombo_currentIndexChanged(int index);
+
+    void on_forceVfoModeChk_clicked(bool checked);
+
+    void on_networkConnectionTypeCombo_currentIndexChanged(int index);
 
     void on_colorSetBtnButtonOff_clicked();
 

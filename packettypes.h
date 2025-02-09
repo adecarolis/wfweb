@@ -2,8 +2,6 @@
 #define PACKETTYPES_H
 #include <QObject>
 
-#pragma pack(push, 1)
-
 // Various settings used by both client and server
 #define PURGE_SECONDS 10
 #define TOKEN_RENEWAL 60000
@@ -39,6 +37,8 @@
 #define AUDIO_SIZE            0x18
 #define DATA_SIZE               0x15
 
+#pragma pack(push)
+#pragma pack(1)
 
 // 0x10 length control packet (connect/disconnect/idle.)
 typedef union control_packet {
@@ -436,8 +436,37 @@ typedef union streamdeck_lcd_header {
     char packet[16];
 } *streamdeck_lcd_header_t;
 
+typedef union rtp_header
+{
+    struct {
+#if G_BYTE_ORDER == G_LITTLE_ENDIAN
+        quint8         csrc:4;
+        quint8         extension:1;
+        quint8         padding:1;
+        quint8         version:2;
+        quint8         payloadType:7;
+        quint8         marker:1;
+#elif G_BYTE_ORDER == G_BIG_ENDIAN
+        quint8         version:2;
+        quint8         padding:1;
+        quint8         extension:1;
+        quint8         csrc:4;
+        quint8         marker:1;
+        quint8         payloadType:7;
+#else
+#error "G_BYTE_ORDER is not defined"
+#endif
+        quint16 seq;
+        quint32 timestamp;
+        quint32 ssrc;
+    };
+    uchar packet[12];
+} *rtp_header_t; //12 bytes
+
+
 
 #pragma pack(pop)
 
 
 #endif // PACKETTYPES_H
+

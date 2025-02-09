@@ -36,7 +36,9 @@ audioHandler::~audioHandler()
 		audioOutput = Q_NULLPTR;
 	}
 
-}bool audioHandler::init(audioSetup setup) 
+}
+
+bool audioHandler::init(audioSetup setup)
 {
 	if (isInitialized) {
 		return false;
@@ -71,12 +73,13 @@ audioHandler::~audioHandler()
 	radioFormat = toQAudioFormat(setup.codec, setup.sampleRate);
 	codec = LPCM;
 	if (setup.codec == 0x01 || setup.codec == 0x20)
-		codec = PCMU;
-	else if (setup.codec == 0x40 || setup.codec == 0x40)
-		codec = OPUS;
+        codec = PCMU;
+    else if (setup.codec == 0x40 || setup.codec == 0x41)
+        codec = OPUS;
+    else if (setup.codec == 0x80)
+        codec = ADPCM;
 
-
-	nativeFormat = setup.port.preferredFormat();
+    nativeFormat = setup.port.preferredFormat();
     if (nativeFormat.channelCount() < 1){
         // Something is seriously wrong with this device!
         qCritical(logAudio()).noquote() << "Cannot initialize audio" << (setup.isinput ? "input" : "output") << " device " << setup.name << ", no channels found";
@@ -317,7 +320,7 @@ void audioHandler::convertedOutput(audioPacket packet) {
             }
             lastReceived = QTime::currentTime();
         }
-        /*if ((packet.seq > lastSentSeq + 1) && (setup.codec == 0x40 || setup.codec == 0x80)) {
+        /*if ((packet.seq > lastSentSeq + 1) && (setup.codec == 0x40 || setup.codec == 0x41)) {
             qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempting FEC on packet" << packet.seq << "as last is" << lastSentSeq;
             lastSentSeq = packet.seq;
             incomingAudio(packet); // Call myself again to run the packet a second time (FEC)

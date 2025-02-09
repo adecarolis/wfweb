@@ -249,7 +249,7 @@ void udpAudio::startAudio() {
     connect(rxaudio, SIGNAL(haveLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, quint16, bool, bool)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
-
+    connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
     sendControl(false, 0x03, 0x00); // First connect packet
 

@@ -38,12 +38,14 @@ void frequencyinputwidget::setAutomaticSidebandSwitching(bool autossb)
 
 void frequencyinputwidget::updateCurrentMode(rigMode_t mode)
 {
-    currentMode = mode;
+    if (mode != modeUnknown)
+        currentMode = mode;
 }
 
 void frequencyinputwidget::updateFilterSelection(int filter)
 {
-    currentFilter = filter;
+    if (filter != 0xff)
+        currentFilter = filter;
 }
 
 void frequencyinputwidget::on_f1btn_clicked()

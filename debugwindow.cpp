@@ -66,7 +66,27 @@ void debugWindow::getCache()
     }
     if (ui->cacheView->rowCount() > c)
         ui->cacheView->model()->removeRows(c,ui->cacheView->rowCount());
+
     queue->unlockMutex();
+
+    rigStateType state = queue->getState();
+    QString vfoMode;
+
+    switch (state.vfoMode)
+    {
+    case vfoModeVfo:
+        vfoMode = "VFO";
+        break;
+    case vfoModeMem:
+        vfoMode = "MEM";
+        break;
+    case vfoModeSat:
+        vfoMode = "SAT";
+        break;
+    }
+    ui->vfo->setText(QString::number(state.vfo));
+    ui->vfomode->setText(vfoMode);
+    ui->receiver->setText(QString::number(state.receiver));
 }
 
 void debugWindow::getQueue()
@@ -157,7 +177,7 @@ QString debugWindow::getValue(QVariant val)
         else if (!strcmp(val.typeName(),"rigInput"))
         {
             rigInput i = val.value<rigInput>();
-            value = QString("Input:%0 R:%1 (%2)").arg(i.name).arg(i.reg).arg(i.type);
+            value = QString("Input:%0 reg:%1 num:%2").arg(i.name).arg(uchar(i.reg)).arg(i.type);
         }
         else if (!strcmp(val.typeName(),"duplexMode_t"))
         {

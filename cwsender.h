@@ -34,6 +34,8 @@ public:
     bool getSendImmediate();
     bool getSidetoneEnable();
     int getSidetoneLevel();
+    void receive(QString text);
+    void receiveEnabled(bool);
 
 signals:
     void sendCW(QString cwMessage);
@@ -117,6 +119,8 @@ private:
     bool sidetoneWasEnabled=false;
     QList<QMetaObject::Connection> connections;
     cachingQueue* queue;
+    rigCapabilities* rigCaps = Q_NULLPTR;
+    int maxChars = 0;
 };
 
 #endif // CWSENDER_H

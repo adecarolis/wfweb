@@ -94,10 +94,16 @@ void cachingQueue::run()
                 emit haveCommand(item.command,item.param,item.receiver);
                 it=queue.erase(it);
                 //queue.remove(prio,it.value()); // Will remove ALL matching commands which breaks some things (memory bulk write)
+
+                // If this is a recurring command, add it back into the queue.
                 if (item.recurring && prio != priorityImmediate) {
                     queue.insert(prio,item);
                 }
-                updateCache(false,item.command,item.param,item.receiver);
+
+                // Immediate will be updated by the add command, any other commands should update the cache
+                if (prio != priorityImmediate) {
+                    updateCache(false,item.command,item.param,item.receiver);
+                }
             }
 #ifdef Q_OS_MACOS
             while (!items.isEmpty()) {
@@ -150,10 +156,21 @@ funcs cachingQueue::checkCommandAvailable(funcs cmd,bool set)
 void cachingQueue::add(queuePriority prio ,funcs func, bool recurring, uchar receiver)
 {
     queueItem q(func,recurring,receiver);
-    add(prio,q);
+    add(prio,q,false);
 }
 
-void cachingQueue::add(queuePriority prio ,queueItem item)
+void cachingQueue::addUnique(queuePriority prio ,funcs func, bool recurring, uchar receiver)
+{
+    queueItem q(func,recurring, receiver);
+    add(prio,q,true);
+}
+
+void cachingQueue::addUnique(queuePriority prio, queueItem item)
+{
+    add(prio,item,true);
+}
+
+void cachingQueue::add(queuePriority prio ,queueItem item, bool unique)
 {
     // If the queue isn't running, no point adding to it!
     if (this->queueInterval != -1)
@@ -162,60 +179,34 @@ void cachingQueue::add(queuePriority prio ,queueItem item)
         if ((item.receiver != 0xff || rigState.receiver == item.receiver) && item.command != funcNone)
         {
             QMutexLocker locker(&mutex);
+
+            // Do not add a duplicate recurring command of the same priority
             if (!item.recurring || isRecurring(item.command,item.receiver) != prio)
             {
                 if (item.recurring && prio == queuePriority::priorityImmediate) {
-                    qWarning() << "Warning, cannot add recurring command with immediate priority!" << funcString[item.command];
+                    qWarning() << "cachingQueue::add() Warning, cannot add recurring command with immediate priority!" << funcString[item.command];
                 } else {
-                    if (item.recurring) {
+                    if (unique) {
+                        int count=queue.remove(prio,item);
+                        if (count>0)
+                            qDebug() << "cachingQueue::add() deleted" << count << "entries from queue for" << funcString[item.command] << "on receiver" << item.receiver;
+                    }
+
+                    // Don't immediately request funcTransceiverId, wait for the queue to run
+                    if (item.recurring && item.command != funcTransceiverId) {
                         // also insert an immediate command to get the current value "now" (removes the need to get rigstate)
                         queueItem it=item;
                         it.recurring=false;
                         it.param.clear();
-                        //qDebug() << "adding" << funcString[item.command] << "recurring" << it.recurring << "priority" << prio << "receiver" << it.receiver;
                         queue.insert(queue.cend(),priorityImmediate, it);
                     }
                     queue.insert(prio, item);
                 }
             }
-        }
-    }
-}
-
-
-void cachingQueue::addUnique(queuePriority prio ,funcs func, bool recurring, uchar receiver)
-{
-    queueItem q(func,recurring, receiver);
-    addUnique(prio,q);
-}
-
-
-
-void cachingQueue::addUnique(queuePriority prio ,queueItem item)
-{
-    // If the queue isn't running, no point adding to it!
-    if (this->queueInterval != -1)
-    {
-        item.command=checkCommandAvailable(item.command,item.param.isValid());
-        if ((item.receiver != 0xff || rigState.receiver == item.receiver) && item.command != funcNone)
-        {
-            QMutexLocker locker(&mutex);
-            if (item.recurring && prio == queuePriority::priorityImmediate) {
-                qWarning() << "Warning, cannot add unique recurring command with immediate priority!" << funcString[item.command];
-            } else {
-                int count=queue.remove(prio,item);
-                if (count>0)
-                    qDebug() << "cachingQueue()::addUnique deleted" << count << "entries from queue for" << funcString[item.command] << "on receiver" << item.receiver;
-
-                if (item.recurring) {
-                    // also insert an immediate command to get the current value "now" (removes the need to get initial rigstate)
-                    queueItem it = item;
-                    it.recurring=false;
-                    it.param.clear();
-                    queue.insert(queue.cend(),priorityImmediate, it);
-                    qDebug() << "adding unique" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio << "receiver" << item.receiver;
-                }
-                queue.insert(prio, item);
+            //Immediately update the cache (even if we aren't sending a value)
+            if (!item.recurring && prio == priorityImmediate)
+            {
+                updateCache(false,item.command,item.param,item.receiver);
             }
         }
     }
@@ -250,7 +241,7 @@ vfoCommandType cachingQueue::getVfoCommand(vfo_t vfo,uchar rx, bool set)
                     cmd.freqFunc = ((rigCaps->commands.contains(funcUnselectedFreq)) ? funcUnselectedFreq: cmd.freqFunc);
                 }
             }
-            else if (rx && rigState.receiver)
+            else if (rx == rigState.receiver)
             {
                 // Requesting receiver is current
                 cmd.receiver = 0;
@@ -375,25 +366,6 @@ void cachingQueue::updateCache(bool reply, queueItem item)
     // We need to make sure that all "main" frequencies/modes are updated.
     if (reply)
     {
-        if (item.command == funcFreqTR)
-        {
-            if (rigCaps->commands.contains(funcFreq))
-                item.command = funcFreq;
-            else if (rigCaps->commands.contains(funcSelectedFreq))
-                item.command = funcSelectedFreq;
-            else
-                item.command = funcFreqGet;
-        }
-        else if (item.command == funcModeTR)
-        {
-            if (rigCaps->commands.contains(funcMode))
-                item.command = funcMode;
-            else if (rigCaps->commands.contains(funcSelectedMode))
-                item.command = funcSelectedMode;
-            else
-                item.command = funcModeGet;
-        }
-
         // Is this a command that might have updated our state?
         if (item.command == funcSatelliteMode && item.param.value<bool>())
             rigState.vfoMode=vfoModeType_t::vfoModeSat;
@@ -401,7 +373,7 @@ void cachingQueue::updateCache(bool reply, queueItem item)
             rigState.vfoMode=vfoModeType_t::vfoModeMem;
         if (item.command == funcVFOMode && item.param.value<bool>())
             rigState.vfoMode=vfoModeType_t::vfoModeVfo;
-        if (item.command == funcScopeMainSub)
+        if (item.command == funcVFOBandMS)
             rigState.receiver = item.param.value<uchar>();
     } else {
         // If we are requesting a particular VFO, set our state as the rig will not reply
@@ -413,6 +385,7 @@ void cachingQueue::updateCache(bool reply, queueItem item)
             rigState.vfo = vfo_t::vfoB;
         } else if (item.command == funcVFOMainSelect) {
             rigState.vfo = vfo_t::vfoMain;
+            rigState.receiver=0;
         } else if (item.command == funcVFOSubSelect && rigCaps->numReceiver > 1) {
             rigState.vfo = vfo_t::vfoSub;
             rigState.receiver=1;
@@ -446,6 +419,7 @@ void cachingQueue::updateCache(bool reply, queueItem item)
     cacheItem c;
     c.command = item.command;
     c.receiver = item.receiver;
+
     if (reply) {
         c.reply = QDateTime::currentDateTime();
     } else {
@@ -453,9 +427,11 @@ void cachingQueue::updateCache(bool reply, queueItem item)
     }
     // If we are sending an actual value, update the cache with it
     // Value will be replaced if invalid on next get()
-    if (item.param.isValid()) {
-        c.value = item.param;
+    if (item.param.isValid())
+    {
+        c.value.setValue(item.param);
     }
+
     cache.insert(item.command,c);
 
 }
@@ -483,9 +459,9 @@ cacheItem cachingQueue::getCache(funcs func, uchar receiver)
     }
     // If the cache is more than 5-20 seconds old, re-request it as it may be stale (maybe make this a config option?)
     // Using priorityhighest WILL slow down the S-Meter when a command intensive client is connected to rigctl
-    if (func != funcNone && func != funcPowerControl && (!ret.value.isValid() || ret.reply.addSecs(QRandomGenerator::global()->bounded(5,20)) <= QDateTime::currentDateTime())) {
+    if (func != funcNone && func != funcPowerControl && func != funcSelectVFO && (!ret.value.isValid() || ret.command == funcSWRMeter || ret.reply.addSecs(QRandomGenerator::global()->bounded(5,20)) <= QDateTime::currentDateTime())) {
         //qInfo() << "No (or expired) cache found for" << funcString[func] << "requesting";
-        add(priorityHighest,func,false,receiver);
+        add(priorityImmediate,func,false,receiver);
     }
     return ret;
 }
@@ -576,7 +552,7 @@ bool cachingQueue::compare(QVariant a, QVariant b)
                 changed=true;
         } else if (!strcmp(a.typeName(),"scopeData") || !strcmp(a.typeName(),"memoryType")
                    || !strcmp(a.typeName(),"bandStackType")  || !strcmp(a.typeName(),"timekind") || !strcmp(a.typeName(),"datekind")
-                   || !strcmp(a.typeName(),"meterkind")) {
+                   || !strcmp(a.typeName(),"meterkind") || !strcmp(a.typeName(),"udpPreferences")) {
             changed=true; // Always different
         } else {
             // Maybe Try simple comparison?

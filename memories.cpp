@@ -15,14 +15,25 @@ memories::memories(bool isAdmin, bool slowLoad, QWidget *parent) :
     ui->table->editing(false);
     statusBar = new QStatusBar(this);
     ui->verticalLayout->addWidget(statusBar);
+    ui->csvImport->setEnabled(false);
+
     progress = new QProgressBar(this);
     statusBar->addWidget(progress,1);
     this->setObjectName("memories");
     queue = cachingQueue::getInstance();
     rigCaps = queue->getRigCaps();
+
+    if (rigCaps != Q_NULLPTR && rigCaps->manufacturer == manufKenwood) {
+        if (rigCaps->commands.contains(funcMemoryWrite))
+            writeCommand = funcMemoryWrite;
+        if (rigCaps->commands.contains(funcMemorySelect))
+            selectCommand = funcMemorySelect;
+    }
+
     if (!isAdmin)
     {
         ui->disableEditing->setEnabled(false);
+
     }
     if (rigCaps == Q_NULLPTR)
     {
@@ -71,29 +82,46 @@ columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B
     if (rigCaps->commands.contains(funcDATA3Mod))
         dataModes.append("DATA3");
 
-    filters << "FIL1" << "FIL2" << "FIL3";
-
     duplexModes << "OFF" << "DUP-" << "DUP+" << "RPS";
 
-    if (rigCaps->hasTransmit)
-        toneModes << "OFF" << "TONE" << "TSQL";
-    else
-        toneModes << "OFF" << "TSQL";
+    if (rigCaps != Q_NULLPTR && rigCaps->manufacturer == manufKenwood) {
+        if (rigCaps->commands.contains(funcMemoryWrite))
+            writeCommand = funcMemoryWrite;
+        if (rigCaps->commands.contains(funcMemorySelect))
+            selectCommand = funcMemorySelect;
+
+        toneModes << "OFF" << "TONE" << "CTCSS";
+        filters << "FILTER A" << "FILTER B";
+
+    } else {
+        if (rigCaps->hasTransmit)
+            toneModes << "OFF" << "TONE" << "TSQL";
+        else
+            toneModes << "OFF" << "TSQL";
+        filters << "FIL1" << "FIL2" << "FIL3";
+    }
+
 
     if (rigCaps->commands.contains(funcRepeaterDTCS))
-        toneModes.append("DTCS");
+    {
+        toneModes.append("DTCS"); // 03
+        toneModes.append("");
+        toneModes.append("");
+        toneModes.append("DTCS(T)");
+        toneModes.append("TONE(T)/DTCS(R)");
+        toneModes.append("DTCS(T)/TSQL(R)");
+        toneModes.append("TONE(T)/TSQL(R)");
+    }
 
+    for (const auto&t : rigCaps->ctcss)
+    {
+        tones.append(t.name);
+    }
 
-    tones << "67.0" << "69.3" << "71.9" << "74.4" << "77.0" << "79.7" << "82.5" << "85.4" << "88.5" << "91.5" << "94.8" << "97.4" << "100.0" << "103.5" << "107.2" << "110.9" << "114.8" <<
-        "118.8" << "123.0" << "127.3" << "131.8" << "136.5" << "141.3" << "146.2" << "151.4" << "156.7" << "159.8" << "162.2" << "165.5" << "167.9" << "171.3" << "173.8" << "177.3" << "179.9" <<
-        "183.5" << "186.2" << "189.9" << "192.8" << "196.6" << "199.5" << "203.5" << "206.5" <<"210.7" << "218.1" << "225.7" << "229.1" << "233.6" << "241.8" << "250.3" << "254.1";
-
-    dtcs << "023" << "025" << "026" << "031" << "032" << "036" << "043" << "047" << "051" << "053" << "054" << "065" << "071" << "072" << "073" << "074" << "114" << "115" << "116" << "122" <<
-        "125" << "131" << "132" << "134" << "143" << "145" << "152" << "155" << "156" << "162" << "165" << "172" << "174" << "205" << "212" << "223" << "225" << "226" << "243" << "244" <<
-        "245" << "246" << "251" << "252" << "255" << "261" << "263" << "265" << "266" << "271" << "274" << "306" << "311" << "315" << "325" << "331" << "332" << "343" << "346" << "351" <<
-        "356" << "364" << "365" << "371" << "411" << "412" << "413" << "423" << "431" << "432" << "445" << "446" << "452" << "454" << "455" << "462" << "464" << "465" << "466" << "503" <<
-        "506" << "516" << "523" << "526" << "532" << "546" << "565" <<"606" << "612" << "624" << "627" << "631" << "632" << "654" << "662" << "664" << "703" << "712" << "723" << "731" <<
-        "732" << "734" << "743" << "754";
+    for (const auto&t : rigCaps->dtcs)
+    {
+        dtcs.append(t.name);
+    }
 
     dsql << "OFF" << "DSQL" << "CSQL";
     p25Sql << "OFF" << "NAC";
@@ -123,7 +151,7 @@ columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B
     }
 
     for (const auto &atten: rigCaps->attenuators) {
-        attenuators.append(QString("%0").arg(atten));
+        attenuators.append(atten.name);
     }
     if (attenuators.isEmpty()) attenuators.append("None");
 
@@ -181,12 +209,10 @@ columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B
     if (modes.isEmpty()) modes.append("None");
 
     connect(ui->table,SIGNAL(rowAdded(int)),this,SLOT(rowAdded(int)));
-    connect(ui->table,SIGNAL(rowDeleted(quint32)),this,SLOT(rowDeleted(quint32)));
+    connect(ui->table,SIGNAL(rowValDeleted(quint32)),this,SLOT(rowDeleted(quint32)));
     connect(&timeoutTimer, SIGNAL(timeout()), this, SLOT(timeout()));
 
     ui->table->sortByColumn(columnRecall,Qt::AscendingOrder);
-
-
 }
 
 void memories::enableCell(int row, int col, bool en) {
@@ -273,7 +299,7 @@ void memories::rowAdded(int row)
                 on_modeButton_clicked(true);
             }
             queue->add(priorityImmediate,queueItem(funcMemoryGroup,QVariant::fromValue<uint>(quint16(ui->group->currentData().toUInt()))));
-            queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>((quint32((ui->group->currentData().toUInt() << 16) | num)))));
+            queue->add(priorityImmediate,queueItem(selectCommand,QVariant::fromValue<uint>((quint32((ui->group->currentData().toUInt() << 16) | num)))));
     });
     ui->table->model()->setData(ui->table->model()->index(row,columnNum),QString::number(num).rightJustified(3,'0'));
     // Set default values (where possible) for all other values:
@@ -353,7 +379,7 @@ void memories::rowDeleted(quint32 mem)
         currentMemory.group=ui->group->currentData().toInt();
         currentMemory.channel = mem;
         currentMemory.del = true;
-        queue->add(priorityImmediate,queueItem((currentMemory.sat?funcSatelliteMemory:funcMemoryContents),QVariant::fromValue<memoryType>(currentMemory)));
+        queue->add(priorityImmediate,queueItem((currentMemory.sat?funcSatelliteMemory:writeCommand),QVariant::fromValue<memoryType>(currentMemory)));
     }
 }
 /* A cell has been updated, verify the data and send to the radio */
@@ -408,7 +434,6 @@ void memories::on_table_cellChanged(int row, int col)
     currentMemory.frequencyB.Hz = (ui->table->item(row,columnFrequencyB) == NULL) ? 0 : quint64(ui->table->item(row,columnFrequencyB)->text().toDouble()*1000000.0);
 
 
-
     if (!ui->table->isColumnHidden(columnData) && ui->table->item(row,columnData) != NULL) {
         currentMemory.datamode = dataModes.indexOf(ui->table->item(row,columnData)->text().toUpper());
     }
@@ -418,11 +443,17 @@ void memories::on_table_cellChanged(int row, int col)
     }
 
     if (!ui->table->isColumnHidden(columnFilter) && ui->table->item(row,columnFilter) != NULL) {
-        currentMemory.filter = filters.indexOf(ui->table->item(row,columnFilter)->text().toUpper())+1;
+        if (rigCaps->manufacturer==manufKenwood)
+            currentMemory.filter = filters.indexOf(ui->table->item(row,columnFilter)->text().toUpper());
+        else
+            currentMemory.filter = filters.indexOf(ui->table->item(row,columnFilter)->text().toUpper())+1;
     }
 
     if (!ui->table->isColumnHidden(columnFilterB) && ui->table->item(row,columnFilterB) != NULL) {
-        currentMemory.filterB = filters.indexOf(ui->table->item(row,columnFilterB)->text().toUpper())+1;
+        if (rigCaps->manufacturer==manufKenwood)
+            currentMemory.filterB = filters.indexOf(ui->table->item(row,columnFilterB)->text().toUpper());
+        else
+            currentMemory.filterB = filters.indexOf(ui->table->item(row,columnFilterB)->text().toUpper())+1;
     }
 
     if (!ui->table->isColumnHidden(columnDuplex) && ui->table->item(row,columnDuplex) != NULL) {
@@ -473,11 +504,11 @@ void memories::on_table_cellChanged(int row, int col)
         currentMemory.dsqlB = dsql.indexOf(ui->table->item(row,columnDSQLB)->text().toUpper());
     }
 
-    currentMemory.tone = (ui->table->item(row,columnTone) == NULL) ? 670 : int(ui->table->item(row,columnTone)->text().toFloat()*10.0);
-    currentMemory.toneB = (ui->table->item(row,columnToneB) == NULL) ? 670 : int(ui->table->item(row,columnToneB)->text().toFloat()*10.0);
+    currentMemory.tone = (ui->table->item(row,columnTone) == NULL) ? "67.0" : ui->table->item(row,columnTone)->text();
+    currentMemory.toneB = (ui->table->item(row,columnToneB) == NULL) ? "67.0" : ui->table->item(row,columnToneB)->text();
 
-    currentMemory.tsql = (ui->table->item(row,columnTSQL) == NULL) ? 670 : int(ui->table->item(row,columnTSQL)->text().toFloat()*10.0);
-    currentMemory.tsqlB = (ui->table->item(row,columnTSQLB) == NULL) ? 670 : int(ui->table->item(row,columnTSQLB)->text().toFloat()*10.0);
+    currentMemory.tsql = (ui->table->item(row,columnTSQL) == NULL) ? "67.0" : ui->table->item(row,columnTSQL)->text();
+    currentMemory.tsqlB = (ui->table->item(row,columnTSQLB) == NULL) ? "67.0" : ui->table->item(row,columnTSQLB)->text();
 
     currentMemory.dtcs = (ui->table->item(row,columnDTCS) == NULL) ? 23 : int(ui->table->item(row,columnDTCS)->text().toUInt());
     currentMemory.dtcsB = (ui->table->item(row,columnDTCSB) == NULL) ? 23 : int(ui->table->item(row,columnDTCSB)->text().toUInt());
@@ -614,18 +645,26 @@ void memories::on_table_cellChanged(int row, int col)
         ui->table->blockSignals(false);
 
 
-    // Only write the memory if ALL values are non-null
+    // Only write the memory if ALL required values are non-null
     bool write=true;
     for (int f=1; f<ui->table->columnCount();f++)
     {
         if (!ui->table->isColumnHidden(f) && ui->table->item(row,f) == NULL) {
             write=false;
-            qInfo() << "Invalid entry, row:" << row << "col:" << f;
+            //ui->table->model()->setData(ui->table->model()->index(row,f),QString(""));
+            //ui->table->item(row,f)->setBackground(Qt::red);
+        } else {
+            //ui->table->item(row,f)->setBackground(Qt::NoBrush);
         }
+
     }
+    // Quick sanity check as we MUST have at least one valid frequency
+    if (currentMemory.frequency.Hz == 0 || (currentMemory.split && currentMemory.frequencyB.Hz == 0))
+        write=false;
+
     if (write) {
         //Sent command to write memory followed by slightly lower priority command to read.
-        queue->add(priorityHighest,queueItem((currentMemory.sat?funcSatelliteMemory:funcMemoryContents),QVariant::fromValue<memoryType>(currentMemory)));
+        queue->add(priorityHighest,queueItem((currentMemory.sat?funcSatelliteMemory:writeCommand),QVariant::fromValue<memoryType>(currentMemory)));
         queue->add(priorityHigh,queueItem(funcMemoryContents,QVariant::fromValue<uint>((currentMemory.group<<16) | (currentMemory.channel & 0xffff))));
         qDebug() << "Sending memory, group:" << currentMemory.group << "channel" << currentMemory.channel;
         // Set number to not be editable once written. Not sure why but this crashes?
@@ -1401,7 +1440,7 @@ void memories::on_modeButton_clicked(bool on)
 
 void memories::receiveMemory(memoryType mem)
 {
-    //ui->loadingMemories->setText(QString("Loading Memory %0/%1 (this may take a while!)").arg(lastMemoryRequested&0xffff,3,10,QLatin1Char('0')).arg(rigCaps->memories,3,10,QLatin1Char('0')));
+    qDebug() << QString("Loading Memory %0/%1 (this may take a while!)").arg(lastMemoryRequested&0xffff,3,10,QLatin1Char('0')).arg(rigCaps->memories,3,10,QLatin1Char('0'));
     progress->setValue(lastMemoryRequested & 0xffff);
     // First, do we need to request the next memory?
     if ((lastMemoryRequested & 0xffff) < groupMemories)
@@ -1456,7 +1495,7 @@ void memories::receiveMemory(memoryType mem)
                     on_modeButton_clicked(true);
                 }
                 queue->add(priorityImmediate,queueItem(funcMemoryGroup,QVariant::fromValue<uint>(quint16(ui->group->currentData().toUInt()))));
-                queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | mem.channel))));
+                queue->add(priorityImmediate,queueItem(selectCommand,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | mem.channel))));
                 // We also should request the current frequency/mode etc so that the UI is updated.
                 vfoCommandType t = queue->getVfoCommand(vfoA,0,false);
                 queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
@@ -1472,6 +1511,7 @@ void memories::receiveMemory(memoryType mem)
         validData++;
 
         validData += updateCombo(split,row,columnSplit,mem.split);
+
 
         validData += updateCombo(skip,row,columnSkip,mem.skip);
 
@@ -1492,8 +1532,8 @@ void memories::receiveMemory(memoryType mem)
         validData += updateCombo(dsql,row,columnDSQL,mem.dsql);
         validData += updateCombo(dsql,row,columnDSQLB,mem.dsqlB);
 
-        validData += updateCombo(tones,row,columnTSQL,QString::number((float)mem.tsql/10,'f',1));
-        validData += updateCombo(tones,row,columnTSQLB,QString::number((float)mem.tsqlB/10,'f',1));
+        validData += updateCombo(tones,row,columnTSQL,mem.tsql);
+        validData += updateCombo(tones,row,columnTSQLB,mem.tsqlB);
         
         validData += updateCombo(dvsql,row,columnDVSquelch,QString::number(mem.dvsql).rightJustified(2,'0'));
         validData += updateCombo(dvsql,row,columnDVSquelchB,QString::number(mem.dvsqlB).rightJustified(2,'0'));
@@ -1507,14 +1547,18 @@ void memories::receiveMemory(memoryType mem)
         validData += updateCombo(dataModes,row,columnData,mem.datamode);
         validData += updateCombo(dataModes,row,columnDataB,mem.datamodeB);
 
-        validData += updateCombo(filters,row,columnFilter,mem.filter-1);
-        validData += updateCombo(filters,row,columnFilterB,mem.filterB-1);
-
+        if (rigCaps->manufacturer == manufKenwood) {
+            validData += updateCombo(filters,row,columnFilter,mem.filter);
+            validData += updateCombo(filters,row,columnFilterB,mem.filterB);
+        } else {
+            validData += updateCombo(filters,row,columnFilter,mem.filter-1);
+            validData += updateCombo(filters,row,columnFilterB,mem.filterB-1);
+        }
         validData += updateCombo(duplexModes,row,columnDuplex,mem.duplex);
         validData += updateCombo(duplexModes,row,columnDuplexB,mem.duplexB);
 
-        validData += updateCombo(tones,row,columnTone,QString::number((float)mem.tone/10,'f',1));
-        validData += updateCombo(tones,row,columnToneB,QString::number((float)mem.toneB/10,'f',1));
+        validData += updateCombo(tones,row,columnTone,mem.tone);
+        validData += updateCombo(tones,row,columnToneB,mem.toneB);
 
         validData += updateCombo(tuningSteps,row,columnTuningStep,mem.tuningStep);
 
@@ -1628,11 +1672,10 @@ void memories::receiveMemory(memoryType mem)
             if (mem.sat) {
                 queue->add(priorityImmediate,queueItem(funcSatelliteMemory,QVariant::fromValue<ushort>(mem.channel & 0xffff)));
             } else {
-                queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(mem.channel & 0xffff)));
+                queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>((mem.group<<16) | (mem.channel & 0xffff))));
             }
             retries++;
         }
-
     }
     else if (row != -1)
     {
@@ -1653,8 +1696,9 @@ int  memories::updateCombo(QStringList& combo, int row, columns column, quint8 d
     }
     else if (!ui->table->isColumnHidden(column))
     {
-        qInfo() << "Column" << ui->table->horizontalHeaderItem(column)->text() << "Invalid data received:" << data;
-        ret=0;
+        qInfo() << "Column" << ui->table->horizontalHeaderItem(column)->text() << "Invalid data received:" << data << "setting to default";
+        ui->table->model()->setData(ui->table->model()->index(row,column),combo[0]);
+        ret=1;
     } else {
         ret=0;
     }
@@ -1718,7 +1762,6 @@ QStandardItemModel* memories::createModel(QStandardItemModel* model, QStringList
     {
         QStandardItem *itemName = new QStandardItem(strings[i]);
         QStandardItem *itemId = new QStandardItem(i);
-
         QList<QStandardItem*> row;
         row << itemName << itemId;
 
@@ -1784,7 +1827,7 @@ void memories::on_csvImport_clicked()
                     }
 
                     queue->add(priorityImmediate,queueItem(funcMemoryGroup,QVariant::fromValue<uint>(quint16(ui->group->currentData().toUInt()))));
-                    queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | row[0].toInt()))));
+                    queue->add(priorityImmediate,queueItem(selectCommand,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | row[0].toInt()))));
                 });
             }
             // rownum is now the row we need to work on.
@@ -1964,12 +2007,12 @@ void memories::on_disableEditing_toggled(bool dis)
 {
     if (dis) {
         ui->table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-        ui->table->editing(false);
     }
     else {
-        ui->table->editing(true);
         ui->table->setEditTriggers(QAbstractItemView::DoubleClicked);
     }
+    ui->csvImport->setEnabled(!dis);
+    ui->table->editing(!dis);
 }
 
 void memories::on_scanButton_toggled(bool scan)

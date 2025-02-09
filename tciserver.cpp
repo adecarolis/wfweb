@@ -30,7 +30,7 @@ static const tciCommandStruct tci_commands[] =
     { "rit_enable",         funcRitStatus,  typeUChar,  typeNone,   typeNone},
     { "xit_enable",         funcNone,       typeUChar,  typeNone,   typeNone},
     { "split_enable",       funcSplitStatus,typeUChar,  typeBinary, typeNone},
-    { "rit_offset",         funcRITFreq,    typeUChar,  typeNone,   typeNone},
+    { "rit_offset",         funcRitFreq,    typeUChar,  typeNone,   typeNone},
     { "xit_offset",         funcNone,       typeUChar,  typeNone,   typeNone},
     { "rx_channel_enable",  funcNone,       typeUChar,  typeNone,   typeNone},
     { "rx_filter_band",     funcNone,       typeUChar,  typeNone,   typeNone},
@@ -158,6 +158,8 @@ void tciServer::onNewConnection()
 {
     
     QWebSocket *pSocket = server->nextPendingConnection();
+    vfoCommandType t = queue->getVfoCommand(vfoA,false,false);
+
     if (rigCaps == Q_NULLPTR)
     {
         qWarning(logTCIServer()) << "No current rig connection, denying connection request.";
@@ -204,12 +206,11 @@ void tciServer::onNewConnection()
     mods.chop(1);
     mods+=";\n";
     pSocket->sendTextMessage(mods);
-    // pSocket->sendTextMessage(QString("modulations_list:AM,LSB,USB,CW,NFM,WSPR,FT8,FT4,JT65,JT9,RTTY,BPSK,DIGL,DIGU,WFM,DRM;\n"));
     pSocket->sendTextMessage(QString("iq_samplerate:48000;\n"));
     pSocket->sendTextMessage(QString("audio_samplerate:48000;\n"));
     pSocket->sendTextMessage(QString("mute:false;\n"));
-    pSocket->sendTextMessage(QString("vfo:0,0,%0;").arg(queue->getCache(funcFreq,0).value.value<freqt>().Hz));
-    pSocket->sendTextMessage(QString("modulation:0,%0;").arg(tciMode(queue->getCache(funcMode,0).value.value<modeInfo>())));
+    pSocket->sendTextMessage(QString("vfo:0,0,%0;").arg(queue->getCache(t.freqFunc,t.receiver).value.value<freqt>().Hz));
+    pSocket->sendTextMessage(QString("modulation:0,%0;").arg(tciMode(queue->getCache(t.modeFunc,t.receiver).value.value<modeInfo>())));
     pSocket->sendTextMessage(QString("start;\n"));
     pSocket->sendTextMessage(QString("ready;\n"));
 }
@@ -233,7 +234,14 @@ void tciServer::processIncomingTextMessage(QString message)
     QStringList arg = message.section(':',1,1).split(',');
     arg[arg.length()-1].chop(1);
     QString reply = message;
-    uchar sub = arg[0].toUInt();
+    uchar rx = 0;
+    if (arg.size()>0)
+        rx = arg[0].toUInt();
+
+    uchar vfo = 0;
+    if (arg.size()>1)
+        vfo = arg[1].toUInt();
+
     bool set = false;
 
     for (int i=0; tci_commands[i].str != 0x00; i++)
@@ -258,6 +266,8 @@ void tciServer::processIncomingTextMessage(QString message)
             }
 
             qDebug() << "Found command:" << tc.str;
+            vfoCommandType t = queue->getVfoCommand(vfo_t(vfo),rx,set);
+            funcs func = tc.func;
 
             if (cmd == "rx_mute" )
             {
@@ -269,29 +279,43 @@ void tciServer::processIncomingTextMessage(QString message)
             {
                 QVariant val;
                 if (arg.count() == 1 && tc.arg1 == typeUChar)
+                {
                     val = QVariant::fromValue(uchar(arg[0].toInt(NULL)));
+                }
+
                 if (arg.count() == 1 && tc.arg1 == typeUShort)
+                {
                     val = QVariant::fromValue(ushort(arg[0].toInt(NULL)*2.55));
+                }
+
                 if (arg.count() == 2 && tc.arg2 == typeUChar)
+                {
                     val = QVariant::fromValue(uchar(arg[1].toInt(NULL)));
+                }
+
                 if (arg.count() == 2 && tc.arg2 == typeUShort)
+                {
                     val = QVariant::fromValue(ushort(arg[1].toInt(NULL)*2.55));
+                }
                 else if (arg.count() == 3 && tc.arg3 == typeFreq)
                 {
-                    freqt f;
-                    f.Hz = arg[2].toUInt();
-                    f.MHzDouble = f.Hz / (double)1E6;
-                    val=QVariant::fromValue(f);
+                    val=QVariant::fromValue<freqt>(freqt(arg[2].toUInt(),arg[2].toUInt() / (double)1E6,selVFO_t::activeVFO));
+                    func = t.freqFunc;
                 }
                 else if (tc.arg2 == typeMode)
-                    val = QVariant::fromValue(rigMode(arg[1]));
+                {
+                    val = QVariant::fromValue<modeInfo>(rigMode(arg[1]));
+                    func = t.modeFunc;
+                }
                 else if (tc.arg2 == typeBinary)
+                {
                     val = QVariant::fromValue(arg[1]=="true"?true:false);
+                }
 
-                if (tc.func != funcNone && val.isValid()) {
-                    queue->add(priorityImmediate,queueItem(tc.func,val,false,sub));
-                    if (tc.func != funcMode)
-                        continue;
+                if (func != funcNone && val.isValid()) {
+                    queue->add(priorityImmediate,queueItem(func,val,false,rx));
+                    //if (func != funcMode)
+                    //continue;
                 }
             }
 
@@ -299,53 +323,65 @@ void tciServer::processIncomingTextMessage(QString message)
             {
                 qInfo() << "Starting audio";
                 it.value().rxaudio=true;
-                reply = QString("audio_start:%0;").arg(sub);
+                reply = QString("audio_start:%0;").arg(rx);
             }
             else if (cmd == "audio_stop" )
             {
                 it.value().rxaudio=false;
                 qInfo() << "Stopping audio";
-                reply = QString("audio_stop:%0;").arg(sub);
+                reply = QString("audio_stop:%0;").arg(rx);
             }
 
             if (tc.func != funcNone)
             {
                 reply = QString("%0").arg(cmd);
+                QVariant v = queue->getCache(func,t.receiver).value;
+                if (!v.isValid())
+                {
+                    qWarning() << "Requested cache item contains no data" << funcString[func] << "on rx" << t.receiver;
+                    continue;
+                } else {
+                    if (tc.arg3 == typeFreq)
+                        func = t.freqFunc;
+                    if (tc.arg3 == typeMode)
+                        func = t.modeFunc;
+                }
 
                 if (tc.arg1 == typeUChar && numArgs > 1)
+                {
                     // Multi arg replies always contain receiver number
-                    reply += QString(":%0").arg(sub);
+                    reply += QString(":%0").arg(t.receiver);
+                }
 
                 if (numArgs == 1 && tc.arg1 == typeUChar)
-
-                    reply += QString(":%0").arg(queue->getCache(tc.func,sub).value.value<uchar>());
-
+                {
+                    reply += QString(":%0").arg(v.value<uchar>());
+                }
                 else if (numArgs ==1 && tc.arg1 == typeUShort)
-
-                    reply += QString(":%0").arg(round(queue->getCache(tc.func,sub).value.value<ushort>()/2.55));
-
+                {
+                    reply += QString(":%0").arg(round(v.value<ushort>()/2.55));
+                }
                 else if (numArgs == 2 && tc.arg2 == typeUChar)
+                {
 
-                    reply += QString(",%0").arg(queue->getCache(tc.func,sub).value.value<uchar>());
-
+                    reply += QString(",%0").arg(v.value<uchar>());
+                }
                 else if (numArgs == 2 && tc.arg2 == typeUShort)
-
-                    reply += QString(",%0").arg(round(queue->getCache(tc.func,sub).value.value<ushort>()/2.55));
-
-                else if (numArgs == 3 &&  tc.arg3 == typeFreq &&
-                         (!set || queue->getCache(tc.func,sub).value.value<freqt>().Hz == arg[2].toULongLong()))
-
-                    reply += QString(",%0,%1").arg(arg[1].toInt(NULL)).arg(quint64(queue->getCache(tc.func,sub).value.value<freqt>().Hz));
-
-                else if (tc.arg2 == typeMode && (!set ||
-                         tciMode(queue->getCache(tc.func,sub).value.value<modeInfo>()) == arg[1].toLower()))
-
-                    reply += QString(",%0").arg(tciMode(queue->getCache(tc.func,sub).value.value<modeInfo>()));
-
+                {
+                    reply += QString(",%0").arg(round(v.value<ushort>()/2.55));
+                }
+                else if (numArgs == 3 &&  tc.arg3 == typeFreq)
+                {
+                    reply += QString(",%0,%1").arg(arg[1].toInt(NULL)).arg(v.value<freqt>().Hz);
+                }
+                else if (tc.arg2 == typeMode)
+                {
+                    reply += QString(",%0").arg(tciMode(v.value<modeInfo>()));
+                }
                 else if (tc.arg2 == typeBinary)
-
-                    reply += QString(",%0").arg(queue->getCache(tc.func,sub).value.value<bool>()?"true":"false");
-
+                {
+                    reply += QString(",%0").arg(v.value<bool>()?"true":"false");
+                }
                 else
                 {
                     // Nothing to say!
@@ -365,69 +401,6 @@ void tciServer::processIncomingTextMessage(QString message)
             }
         }
     }
-
-    /*
-    if (cmd.toLower() == "modulation")
-    {
-        reply = QString("%0:%1,%2;").arg(cmd).arg(sub)
-                    .arg(queue->getCache(sub?funcSubFreq:funcMainMode,sub).value.value<modeInfo>().name);
-    } else if (cmd == "rx_enable" || cmd == "tx_enable") {
-        reply = QString("%0:%1,%2;").arg(cmd).arg(sub).arg("true");
-    }
-    else if (cmd == "audio_start" ) {
-        it.value().rxaudio=true;
-    }
-    else if (cmd == "audio_stop" ) {
-        it.value().rxaudio=false;
-    }
-    else if (cmd == "rx_mute" ) {
-    }
-    else if (cmd == "drive" ) {
-        reply = QString("%0:%1,%2;").arg(cmd).arg(0).arg(50);
-    }
-    else if (cmd == "audio_samplerate" ) {
-    }
-    else if (cmd == "trx" ) {
-        if (arg.size() == 1) {
-            it.value().rxaudio=false;
-            reply = QString("trx:%0,%1;").arg(
-                QString::number(sub),queue->getCache(funcTransceiverStatus).value.value<bool>()?"true":"false");
-        }
-        else if (arg.size() > 1) {
-            bool on = arg[1]=="true"?true:false;
-            queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue(on),false,sub));
-        }
-    }
-    else if (cmd == "vfo")
-    {
-        if (arg.size() == 2) {
-            reply = QString("%0:%1,%2,%3;").arg(cmd,arg[0],arg[1])
-                        .arg(queue->getCache(sub?funcSubFreq:funcMainFreq,sub).value.value<freqt>().Hz);
-        }
-        else if (arg.size() == 3) {
-            qInfo() << "Freq" << arg[2];
-            freqt f;
-            f.Hz = arg[2].toUInt();
-            f.MHzDouble = f.Hz / (double)1E6;
-            queue->add(priorityImmediate,queueItem(sub?funcSubFreq:funcMainFreq,QVariant::fromValue(f),false,sub));
-        }
-    }
-    else if (cmd == "modulation")
-    {
-        if (arg.size() == 1) {
-            reply = QString("modulation:%0,%1;").arg(
-                        QString::number(sub),queue->getCache(sub?funcSubMode:funcMainMode,sub).value.value<modeInfo>().name.toLower());
-        }
-        else if (arg.size() == 2) {
-            qInfo() << "Mode (TODO)" << arg[1];
-            reply = QString("modulation:%0,%1;").arg(
-                        QString::number(sub),queue->getCache(sub?funcSubMode:funcMainMode,sub).value.value<modeInfo>().name.toLower());
-        }
-    }
-    //reply = QString("vfo:0,%0,%1;").arg(QString::number(item.sub)).arg(item.value.value<freqt>().Hz);
-
-    */
-
 }
 
 void tciServer::processIncomingBinaryMessage(QByteArray message)
@@ -555,25 +528,35 @@ void tciServer::receiveCache(cacheItem item)
                         else if (numArgs == 1 && tc.arg1 == typeUShort)
                             reply = QString("%0:%1").arg(tc.str).arg(round(item.value.value<ushort>()/2.55));
 
-
-                        if (numArgs == 2 && tc.arg2 == typeUChar) {
+                        if (numArgs == 2 && tc.arg2 == typeUChar)
+                        {
                             reply += QString(",%0").arg(item.value.value<uchar>());
-                        } else if (numArgs == 2 && tc.arg2 == typeUShort) {
+                        }
+                        else if (numArgs == 2 && tc.arg2 == typeUShort)
+                        {
                             reply += QString(",%0").arg(round(item.value.value<ushort>()/2.55));
-                        } else if (numArgs == 3 && tc.arg3 == typedB) {
+                        }
+                        else if (numArgs == 3 && tc.arg3 == typedB)
+                        {
                             int val = item.value.value<uchar>();
                             val = (val/2.42) - 120; // Approximate s-meter.
                             reply += QString(",%0,%1").arg(vfo).arg(val);
-                        } else if (numArgs == 3 && tc.arg3 == typeFreq) {
+                        }
+                        else if (numArgs == 3 && tc.arg3 == typeFreq)
+                        {
                             reply += QString(",%0,%1").arg(vfo).arg(quint64(item.value.value<freqt>().Hz));
-                        } else if (tc.arg2 == typeMode) {
+                        }
+                        else if (tc.arg2 == typeMode)
+                        {
                             reply += QString(",%0").arg(tciMode(item.value.value<modeInfo>()));
-                        } else if (tc.arg2 == typeBinary) {
+                        }
+                        else if (tc.arg2 == typeBinary)
+                        {
                             reply += QString(",%0").arg(item.value.value<bool>()?"true":"false");
                         }
                         reply += ";";
                         it.key()->sendTextMessage(reply);
-                        //qInfo() << "Sending TCI:" << reply;
+                        //qInfo() << "Sending Cache TCI:" << reply;
                     }
                 }
             }
@@ -587,9 +570,9 @@ void tciServer::receiveCache(cacheItem item)
 QString tciServer::tciMode(modeInfo m)
 {
     QString ret="";
-    if (m.mk == modeUSB && m.data > 0)
+    if (m.mk == modeUSB && m.data && m.data != 0xff)
         ret="digu";
-    else if (m.mk == modeLSB && m.data > 0)
+    else if (m.mk == modeLSB && m.data != 0xff)
         ret="digl";
     else if (m.mk == modeFM)
         ret="nfm";
@@ -610,7 +593,8 @@ modeInfo tciServer::rigMode(QString mode)
             m.data = true;
             m.filter = 1;
             break;
-        } else if (mode.toLower() =="digu" && mi.mk == modeUSB)
+        }
+        else if (mode.toLower() == "digu" && mi.mk == modeUSB)
         {
             m = modeInfo(mi);
             m.data = true;
@@ -626,5 +610,6 @@ modeInfo tciServer::rigMode(QString mode)
         }
     }
     m.filter = 1;
+    qInfo(logTCIServer()) << "Got Mode:" << m.name << "data:" << m.data;
     return m;
 }

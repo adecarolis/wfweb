@@ -45,13 +45,13 @@ public:
 	int audioLatency = 0;
 
 signals:
-	void haveAudioData(audioPacket data);
+    void haveAudioData(audioPacket data);
 
-	void setupTxAudio(audioSetup setup);
-	void setupRxAudio(audioSetup setup);
+    void setupTxAudio(audioSetup setup);
+    void setupRxAudio(audioSetup setup);
 
-	void haveChangeLatency(quint16 value);
-	void haveSetVolume(quint8 value);
+    void haveChangeLatency(quint16 value);
+    void haveSetVolume(quint8 value);
     void haveRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
     void haveTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
 

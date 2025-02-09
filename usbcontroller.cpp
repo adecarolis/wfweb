@@ -877,7 +877,7 @@ void usbController::runTimer()
                     if (kb != knobList->end()) {
                         // sendCommand mustn't be deleted so we ensure it stays in-scope by declaring it private (we will only ever send one command).
                         sendCommand = *kb->command;
-                        if (sendCommand.command != funcFreq) {
+                        if (sendCommand.command != funcFreq && sendCommand.command != funcSelectedFreq && sendCommand.command != funcUnselectedFreq) {
                             auto cv = rigCaps->commands.find(funcs(sendCommand.command));
                             if (cv != rigCaps->commands.end()) {
                                 int tempVal = dev->knobValues[i].value;
@@ -1917,8 +1917,10 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "None", commandAny, funcNone, (quint8)0x0));
     commands.append(COMMAND(num++, "PTT On", commandButton, funcTransceiverStatus,  (quint8)0x1));
     commands.append(COMMAND(num++, "PTT Off", commandButton, funcTransceiverStatus, (quint8)0x0));
-    commands.append(COMMAND(num++, "VFOA", commandKnob, funcFreq, (quint8)0x0));
-    commands.append(COMMAND(num++, "VFOB", commandKnob, funcFreq, (quint8)0x1));
+    commands.append(COMMAND(num++, "VFOA Freq", commandKnob, funcSelectedFreq, (quint8)0x0));
+    commands.append(COMMAND(num++, "VFOB Freq", commandKnob, funcUnselectedFreq, (quint8)0x0));
+    commands.append(COMMAND(num++, "Main Freq", commandKnob, funcFreq, (quint8)0x0));
+    commands.append(COMMAND(num++, "Sub Freq", commandKnob, funcFreq, (quint8)0x1));
     commands.append(COMMAND(num++, "Freq Down", commandButton, funcFreq,(int)-1));
     commands.append(COMMAND(num++, "Freq Up", commandButton, funcFreq, (int)1));
     commands.append(COMMAND(num++, "PTT Toggle", commandButton, funcTransceiverStatus,  (int)-1));
@@ -2421,7 +2423,7 @@ void usbController::receiveCacheItem(cacheItem item)
 
         auto kb = std::find_if(knobList->begin(), knobList->end(), [dev, item](const KNOB& k)
                                { return (k.command && dev->connected && k.path == dev->path && k.command->command == int(item.command));});
-        if (kb != knobList->end() && kb->num < dev->knobValues.size()) {
+        if (kb != knobList->end() && kb->num < dev->knobValues.size() && item.command != funcFreq && item.command != funcSelectedFreq && item.command != funcUnselectedFreq) {
             qDebug(logUsbControl()) << "Received value:" << item.value.toInt() << "for knob" << kb->num << "on page" << kb->page;
             kb->value = item.value.toInt();
 
@@ -2433,11 +2435,11 @@ void usbController::receiveCacheItem(cacheItem item)
         }
 
         auto bt = std::find_if(buttonList->begin(), buttonList->end(), [dev, item](const BUTTON& b)
-                               { return (b.onCommand && dev->connected && b.path == dev->path && b.onCommand->command == int(item.command) &&  b.led <= dev->type.leds);});
+                               { return (b.onCommand && dev->connected && b.path == dev->path && b.onCommand->command == int(item.command) );});
         if (bt != buttonList->end())
         {
             if (bt->led != 0  && bt->page == dev->currentPage) {
-                //qInfo(logUsbControl()) << "Received value:" << level << "for led" << bt->led;
+                //qInfo(logUsbControl()) << "Received value:" << item.value.toInt() << "for led" << bt->led;
                 QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,bt->led,QString("%1").arg(item.value.toInt())); });
             }
 

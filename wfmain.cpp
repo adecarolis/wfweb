@@ -98,13 +98,15 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     finputbtns = new frequencyinputwidget();
     setupui = new settingswidget();
+
     connect(setupui, SIGNAL(havePortError(errorType)), this, SLOT(receivePortError(errorType)));
 
 
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
+    qRegisterMetaType<manufacturersType_t>();
+    qRegisterMetaType<connectionType_t>();
     qRegisterMetaType<rigCapabilities>();
     qRegisterMetaType<duplexMode_t>();
-
     qRegisterMetaType<rptAccessTxRx_t>();
     qRegisterMetaType<rptrAccessData>();
     qRegisterMetaType<toneInfo>();
@@ -163,97 +165,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     // We need to populate the list of rigs as early as possible so do it now
 
-#ifndef Q_OS_LINUX
-    QString systemRigLocation = QCoreApplication::applicationDirPath();
-#else
-    QString systemRigLocation = PREFIX;
-#endif
-
-#ifdef Q_OS_LINUX
-    systemRigLocation += "/share/wfview/rigs";
-#else
-    systemRigLocation +="/rigs";
-#endif
-
-    QDir systemRigDir(systemRigLocation);
-
-    if (!systemRigDir.exists()) {
-        qWarning() << "********* Rig directory does not exist ********";
-    } else {
-        QStringList rigs = systemRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
-        for (QString &rig: rigs) {
-            QSettings* rigSettings = new QSettings(systemRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
-
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-            rigSettings->setIniCodec("UTF-8");
-#endif
-
-            if (!rigSettings->childGroups().contains("Rig"))
-            {
-                qWarning() << rig << "Does not seem to be a rig description file";
-                delete rigSettings;
-                continue;
-            }
-
-            float ver = rigSettings->value("Version","0.0").toString().toFloat();
-
-            rigSettings->beginGroup("Rig");
-            uchar civ = rigSettings->value("CIVAddress",0).toInt();
-            QString model = rigSettings->value("Model","").toString();
-            QString path = systemRigDir.absoluteFilePath(rig);
-
-            qDebug() << QString("Found Rig %0 with CI-V address of 0x%1 and version %2").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2);
-            // Any user modified rig files will override system provided ones.
-            this->rigList.insert(civ,rigInfo(civ,model,path,ver));
-            rigSettings->endGroup();
-            delete rigSettings;
-        }
-    }
-
-    QString userRigLocation = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)+"/rigs";
-    QDir userRigDir(userRigLocation);
-    if (userRigDir.exists()){
-        QStringList rigs = userRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
-        for (QString& rig: rigs) {
-            QSettings* rigSettings = new QSettings(userRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
-
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-            rigSettings->setIniCodec("UTF-8");
-#endif
-
-            if (!rigSettings->childGroups().contains("Rig"))
-            {
-                qWarning() << rig << "Does not seem to be a rig description file";
-                delete rigSettings;
-                continue;
-            }
-
-            float ver = rigSettings->value("Version","0.0").toString().toFloat();
-
-            rigSettings->beginGroup("Rig");
-
-            uchar civ = rigSettings->value("CIVAddress",0).toInt();
-            QString model = rigSettings->value("Model","").toString();
-            QString path = userRigDir.absoluteFilePath(rig);
-
-            auto it = this->rigList.find(civ);
-
-            if (it != this->rigList.end())
-            {
-                if (ver >= it.value().version) {
-                    qInfo() << QString("Found User Rig %0 with CI-V address of 0x%1 and newer or same version than system one (%2>=%3)").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2).arg(it.value().version,0,'f',2);
-                    this->rigList.insert(civ,rigInfo(civ,model,path,ver));
-                }
-            } else {
-                qInfo() << QString("Found New User Rig %0 with CI-V address of 0x%1 version %2").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2);
-                this->rigList.insert(civ,rigInfo(civ,model,path,ver));
-            }
-            // Any user modified rig files will override system provided ones.
-            rigSettings->endGroup();
-            delete rigSettings;
-        }
-    }
-
     // Setup the connectiontimer as we may need it soon!
     ConnectionTimer.setSingleShot(true);
     connect(&ConnectionTimer,SIGNAL(timeout()), this,SLOT(connectionTimeout()));
@@ -277,6 +188,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     loadSettings(); // Look for saved preferences
 
+    setManufacturer(prefs.manufacturer);
     setServerToPrefs();
 
     //setAudioDevicesUI(); // no need to call this as it will be called by the updated() signal
@@ -301,7 +213,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     finputbtns->setAutomaticSidebandSwitching(prefs.automaticSidebandSwitching);
 
 
-    qDebug(logSystem()) << "Running setInititalTiming()";
+    qDebug(logSystem()) << "Running setInitialTiming()";
     setInitialTiming();
 
     fts = new FirstTimeSetup();
@@ -377,42 +289,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     amTransmitting = false;
 
-    connect(ui->txPowerSlider, &QSlider::sliderMoved,
-        [&](int value) {
-          QToolTip::showText(QCursor::pos(), QString("%1").arg(value*100/255), nullptr);
-        });
-
-    connect(ui->meterSPoWidget, &meter::configureMeterSignal, this,
-            [=](const meter_t &meterTypeRequested) {
-        // Change the preferences and update settings widget to reflect new meter selection:
-        prefs.meter1Type = meterTypeRequested;
-        setupui->updateIfPref(if_meter1Type);
-        // Change the meter locally:
-        qInfo() << "New meter type" << meterTypeRequested;
-        changeMeterType(meterTypeRequested, 1);
-    });
-
-    connect(ui->meter2Widget, &meter::configureMeterSignal, this,
-            [=](const meter_t &meterTypeRequested) {
-        // Change the preferences and update settings widget to reflect new meter selection:
-        prefs.meter2Type = meterTypeRequested;
-        setupui->updateIfPref(if_meter2Type);
-        // Change the meter locally:
-        changeMeterType(meterTypeRequested, 2);
-        // Block duplicate meter selection in the other meter:
-        ui->meter3Widget->blockMeterType(meterTypeRequested);
-    });
-
-    connect(ui->meter3Widget, &meter::configureMeterSignal, this,
-            [=](const meter_t &meterTypeRequested) {
-        // Change the preferences and update settings widget to reflect new meter selection:
-        prefs.meter3Type = meterTypeRequested;
-        setupui->updateIfPref(if_meter3Type);
-        // Change the meter locally:
-        changeMeterType(meterTypeRequested, 3);
-        // Block duplicate meter selection in the other meter:
-        ui->meter2Widget->blockMeterType(meterTypeRequested);
-    });
+    setupLambdaSlots();
 
 #if defined(USB_CONTROLLER)
     #if defined(USB_HOTPLUG) && defined(Q_OS_LINUX)
@@ -570,7 +447,18 @@ void wfmain::makeRig()
 {
     if (rigThread == Q_NULLPTR)
     {
-        rig = new icomCommander();
+        switch (prefs.manufacturer){
+        case manufIcom:
+            rig = new icomCommander();
+            break;
+        case manufKenwood:
+            rig = new kenwoodCommander();
+            break;
+        default:
+            qCritical() << "Unknown Manufacturer, aborting...";
+            break;
+        }
+
         rigThread = new QThread(this);
         rigThread->setObjectName("rigCommander()");
 
@@ -598,7 +486,6 @@ void wfmain::makeRig()
 
         connect(this, SIGNAL(sendCloseComm()), rig, SLOT(closeComm()));
         connect(this, SIGNAL(sendChangeLatency(quint16)), rig, SLOT(changeLatency(quint16)));
-        connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
         connect(this, SIGNAL(setRigID(quint8)), rig, SLOT(setRigID(quint8)));
 
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
@@ -669,8 +556,6 @@ void wfmain::makeRig()
 
         connect(this->rpt, &repeaterSetup::getRptDuplexOffset, this->rig,
                 [=]() {  queue->add(priorityImmediate,funcReadFreqOffset,false,false);});
-
-        connect(this, SIGNAL(setAfGain(quint8)), rig, SLOT(setAfGain(quint8)));
 
         // Create link for server so it can have easy access to rig.
         if (serverConfig.rigs.first() != Q_NULLPTR) {
@@ -801,7 +686,7 @@ void wfmain::receiveCommReady()
         // qInfo(logSystem()) << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
         ui->statusBar->showMessage(QString("Searching CI-V bus for connected radios."), 1000);
 
-        queue->addUnique(priorityHighest,funcTransceiverId,true);
+        queue->addUnique(priorityHigh,funcTransceiverId,true);
     } else {
         // don't bother, they told us the CIV they want, stick with it.
         // We still query the rigID to find the model, but at least we know the CIV.
@@ -814,7 +699,7 @@ void wfmain::receiveCommReady()
             emit setRigID(prefs.radioCIVAddr);
         } else {
             emit setCIVAddr(prefs.radioCIVAddr);
-            queue->addUnique(priorityHighest,funcTransceiverId,true);
+            queue->addUnique(priorityHigh,funcTransceiverId,true);
 
         }
     }
@@ -1119,12 +1004,8 @@ void wfmain::configureVFOs()
         ui->vfoLayout->addWidget(receiver);
 
         // Hide any secondary receivers until we need them!
-        if (i>0){
-            receiver->setVisible(false);
-        } else {
-            receiver->setVisible(true);
-            receiver->selected(true);
-        }
+        receiver->selected(i==0?true:false);
+        receiver->setVisible(i==0?true:false);
 
         connect(receiver, SIGNAL(frequencyRange(uchar, double, double)), cluster, SLOT(freqRange(uchar, double, double)));
 
@@ -1154,6 +1035,7 @@ void wfmain::configureVFOs()
         //{
         //    connect(receivers[0], SIGNAL(sendTrack(int)),receivers[1], SLOT(receiveTrack(int)));
         //}
+
     }
 }
 
@@ -1214,9 +1096,8 @@ void wfmain::setupKeyShortcuts()
     shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_J));
     shortcuts.append(setupKeyShortcut(Qt::Key_H));
     shortcuts.append(setupKeyShortcut(Qt::Key_L));
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::SHIFT | Qt::Key_D));
-#else
+#if (QT_VERSION > QT_VERSION_CHECK(6,0,0))
     shortcuts.append(setupKeyShortcut(Qt::CTRL | Qt::Key_D));
 #endif
 
@@ -1225,36 +1106,14 @@ void wfmain::setupKeyShortcuts()
 
 void wfmain::runShortcut(const QKeySequence k)
 {
-    if (rigCaps == Q_NULLPTR) {
-        // No rig yet
-        qWarning() << "Cannot run shortcut as not connected to rig";
-        return;
-    }
-    bool freqUpdate=false;
-    freqt f;
-
     qInfo() << "Running shortcut for key:" << k;
-    if (k == Qt::Key_F1){
+
+    if (k == Qt::Key_F1)
+    {
         this->raise();
-    } else if (k == Qt::Key_F2){
-        showAndRaiseWidget(bandbtns);
-    } else if (k==Qt::Key_F3 || k==Qt::Key_Asterisk){
-        showAndRaiseWidget(finputbtns);
-    } else if (k==Qt::Key_F4){
-        showAndRaiseWidget(setupui);
-    } else if (k==Qt::Key_F5){
-        changeMode(modeLSB, false, currentReceiver);
-    } else if (k==Qt::Key_F6){
-        changeMode(modeUSB, false, currentReceiver);
-    } else if (k==Qt::Key_F7){
-        changeMode(modeAM, false, currentReceiver);
-    } else if (k==Qt::Key_F8){
-        changeMode(modeCW, false, currentReceiver);
-    } else if (k==Qt::Key_F9){
-        changeMode(modeUSB, true, currentReceiver);
-    } else if (k==Qt::Key_F10){
-        changeMode(modeFM, false, currentReceiver);
-    } else if (k==Qt::Key_F11){
+    }
+    else if (k==Qt::Key_F11)
+    {
         if(onFullscreen)
         {
             this->showNormal();
@@ -1266,18 +1125,81 @@ void wfmain::runShortcut(const QKeySequence k)
             prefs.useFullScreen = true;
         }
         setupui->updateIfPref(if_useFullScreen);
-    } else if (k==Qt::Key_F12){
+    }
+    else if (k==(Qt::CTRL | Qt::Key_Q))
+    {
+        on_exitBtn_clicked();
+    }
+    else if (k==(Qt::CTRL | Qt::Key_D) || k==(Qt::CTRL | Qt::SHIFT | Qt::Key_D))
+    {
+        debugBtn_clicked();
+    }
+    else if (rigCaps == Q_NULLPTR)
+    {
+        // No rig yet
+        qWarning() << "Cannot run shortcut as not connected to rig";
+        return;
+    }
+
+    // All of the below commands require a connected rig
+    bool freqUpdate=false;
+    freqt f;
+
+    if (k == Qt::Key_F2)
+    {
+        showAndRaiseWidget(bandbtns);
+    }
+    else if (k==Qt::Key_F3 || k==Qt::Key_Asterisk)
+    {
+        showAndRaiseWidget(finputbtns);
+    }
+    else if (k==Qt::Key_F4)
+    {
+        showAndRaiseWidget(setupui);
+    }
+    else if (k==Qt::Key_F5)
+    {
+        changeMode(modeLSB, false, currentReceiver);
+    }
+    else if (k==Qt::Key_F6)
+    {
+        changeMode(modeUSB, false, currentReceiver);
+    }
+    else if (k==Qt::Key_F7)
+    {
+        changeMode(modeAM, false, currentReceiver);
+    }
+    else if (k==Qt::Key_F8)
+    {
+        changeMode(modeCW, false, currentReceiver);
+    }
+    else if (k==Qt::Key_F9)
+    {
+        changeMode(modeUSB, true, currentReceiver);
+    }
+    else if (k==Qt::Key_F10)
+    {
+        changeMode(modeFM, false, currentReceiver);
+    }
+    else if (k==Qt::Key_F12)
+    {
         showStatusBarText("Sending speech command to radio.");
         queue->add(priorityImmediate,queueItem(funcSpeech,QVariant::fromValue(uchar(0U)),false,currentReceiver));
-    } else if (k==(Qt::CTRL | Qt::Key_T)){
+    }
+    else if (k==(Qt::CTRL | Qt::Key_T))
+    {
         // Transmit
         qDebug(logSystem()) << "Activated Control-T shortcut";
         showStatusBarText(QString("Transmitting. Press Control-R to receive."));
         extChangedRsPrefs(rs_pttOn);
-    } else if (k==(Qt::CTRL | Qt::Key_R)){
+    }
+    else if (k==(Qt::CTRL | Qt::Key_R))
+    {
         // Receive
         extChangedRsPrefs(rs_pttOff);
-    } else if (k==(Qt::CTRL | Qt::Key_P)){
+    }
+    else if (k==(Qt::CTRL | Qt::Key_P))
+    {
         // Toggle PTT
         if(amTransmitting) {
             extChangedRsPrefs(rs_pttOff);
@@ -1285,13 +1207,19 @@ void wfmain::runShortcut(const QKeySequence k)
             extChangedRsPrefs(rs_pttOn);
             showStatusBarText(QString("Transmitting. Press Control-P again to receive."));
         }
-    } else if (k==(Qt::CTRL | Qt::Key_I)){
+    }
+    else if (k==(Qt::CTRL | Qt::Key_I))
+    {
         // Enable ATU
         ui->tuneEnableChk->click();
-    } else if (k==(Qt::CTRL | Qt::Key_U)){
+    }
+    else if (k==(Qt::CTRL | Qt::Key_U))
+    {
         // Run ATU tuning cycle
         ui->tuneNowBtn->click();
-    } else if (k==Qt::Key_Slash){
+    }
+    else if (k==Qt::Key_Slash)
+    {
         for (size_t i = 0; i < rigCaps->modes.size(); i++) {
             if (rigCaps->modes[i].mk == receivers[currentReceiver]->currentMode().mk)
             {
@@ -1304,7 +1232,9 @@ void wfmain::runShortcut(const QKeySequence k)
                 break;
             }
         }
-    } else if (k==Qt::Key_Backslash){
+    }
+    else if (k==Qt::Key_Backslash)
+    {
         bool found = false;
         availableBands band = bandUnknown;
         auto b = rigCaps->bands.cend();
@@ -1313,9 +1243,12 @@ void wfmain::runShortcut(const QKeySequence k)
             b--;
             if ((b->region == "" || prefs.region == b->region))
             {
-                if (!found && b->band == bandbtns->currentBand()) {
+                if (!found && b->band == bandbtns->currentBand())
+                {
                     found = true;
-                } else if (found && b->band != bandbtns->currentBand()) {
+                }
+                else if (found && b->band != bandbtns->currentBand())
+                {
                     qInfo() << "Got new band:" << b->band << "Name:" << b->name << "region" << b->region;
                     band = b->band;
                     break;
@@ -1327,49 +1260,71 @@ void wfmain::runShortcut(const QKeySequence k)
             band = rigCaps->bands[rigCaps->bands.size() - 1].band;
         }
         bandbtns->setBand(band);
-    } else if (k==Qt::Key_Minus|| k==Qt::Key_J){
+    }
+    else if (k==Qt::Key_Minus|| k==Qt::Key_J)
+    {
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusHz);
         freqUpdate=true;
-    } else if (k==Qt::Key_Plus || k==Qt::Key_K){
+    }
+    else if (k==Qt::Key_Plus || k==Qt::Key_K)
+    {
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusHz);
         freqUpdate=true;
-    } else if (k==(Qt::SHIFT | Qt::Key_Minus) || k==(Qt::SHIFT | Qt::Key_J)){
+    }
+    else if (k==(Qt::SHIFT | Qt::Key_Minus) || k==(Qt::SHIFT | Qt::Key_J))
+    {
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusShiftHz);
         freqUpdate=true;
-    } else if (k==(Qt::SHIFT | Qt::Key_Plus) || k==(Qt::SHIFT | Qt::Key_K)){
+    }
+    else if (k==(Qt::SHIFT | Qt::Key_Plus) || k==(Qt::SHIFT | Qt::Key_K))
+    {
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusShiftHz);
         freqUpdate=true;
-    } else if (k==(Qt::CTRL | Qt::Key_Minus) || k==(Qt::CTRL | Qt::Key_J)){
+    }
+    else if (k==(Qt::CTRL | Qt::Key_Minus) || k==(Qt::CTRL | Qt::Key_J))
+    {
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, -1, tsPlusControlHz);
         freqUpdate=true;
-    } else if (k==(Qt::CTRL | Qt::Key_Plus) || k==(Qt::CTRL | Qt::Key_K)){
+    }
+    else if (k==(Qt::CTRL | Qt::Key_Plus) || k==(Qt::CTRL | Qt::Key_K))
+    {
         f.Hz = roundFrequencyWithStep(receivers[0]->getFrequency().Hz, 1, tsPlusControlHz);
         freqUpdate=true;
-    } else if (k==(Qt::CTRL | Qt::Key_Q)){
-        on_exitBtn_clicked();
-    } else if (k==Qt::Key_PageUp){
+    }
+    else if (k==Qt::Key_PageUp)
+    {
         f.Hz = receivers[0]->getFrequency().Hz + tsPageHz;
         freqUpdate=true;
-    } else if (k==Qt::Key_PageDown){
+    }
+    else if (k==Qt::Key_PageDown)
+    {
         f.Hz = receivers[0]->getFrequency().Hz - tsPageHz;
         freqUpdate=true;
-    } else if (k==Qt::Key_F){
+    }
+    else if (k==Qt::Key_F)
+    {
         showStatusBarText("Sending speech command (frequency) to radio.");
         queue->add(priorityImmediate,queueItem(funcSpeech, QVariant::fromValue<uchar>(1),false,currentReceiver));
-    } else if (k==Qt::Key_M){
+    }
+    else if (k==Qt::Key_M)
+    {
         showStatusBarText("Sending speech command (mode) to radio.");
         queue->add(priorityImmediate,queueItem(funcSpeech, QVariant::fromValue<uchar>(2),false,currentReceiver));
-    } else if (k==Qt::Key_H){
+    }
+    else if (k==Qt::Key_H)
+    {
         f.Hz = roundFrequencyWithStep(receivers.first()->getFrequency().Hz, -1, tsKnobHz);
         freqUpdate = true;
-    } else if (k==Qt::Key_L){
+    }
+    else if (k==Qt::Key_L)
+    {
         f.Hz = roundFrequencyWithStep(receivers.first()->getFrequency().Hz, 1, tsKnobHz);
         freqUpdate = true;
-    } else if (k==(Qt::CTRL | Qt::Key_D)){
-        debugBtn_clicked();
     }
 
-    if (!freqLock && freqUpdate) {
+
+    if (!freqLock && freqUpdate)
+    {
         vfoCommandType t = queue->getVfoCommand(vfoA,currentReceiver,true);
         f.MHzDouble = f.Hz / (double)1E6;
         queue->add(priorityImmediate,queueItem(t.freqFunc,
@@ -1452,8 +1407,8 @@ void wfmain::doShuttle(bool up, quint8 level)
 
 void wfmain::buttonControl(const COMMAND* cmd)
 {
-    qDebug(logUsbControl()) << QString("executing command: %0 (%1) suffix:%2 value:%3" ).arg(cmd->text).arg(cmd->command).arg(cmd->suffix).arg(cmd->value);
-    quint8 rx=0;
+    qDebug(logUsbControl()) << QString("executing command: %0 (%1) suffix:%2 value:%3" ).arg(cmd->text).arg(funcString[cmd->command]).arg(cmd->suffix).arg(cmd->value);
+    quint8 vfo=0;
     if (rigCaps == Q_NULLPTR) {
         return;
     }
@@ -1513,36 +1468,50 @@ void wfmain::buttonControl(const COMMAND* cmd)
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
     case funcUnselectedMode:
-        rx=1;
+        vfo=1;
     case funcMode:
     case funcModeSet:
         qInfo(logRig()) << "Setting mode" << cmd->value << "or" << cmd->mode;
-        if (cmd->value == 1) {
-            for (size_t i = 0; i < rigCaps->modes.size(); i++) {
-                if (rigCaps->modes[i].mk == receivers[rx]->currentMode().mk)
+        if (cmd->suffix < receivers.size())
+        {
+            if (cmd->value == 1)
+            {
+                for (size_t i = 0; i < rigCaps->modes.size(); i++)
                 {
-                    if (i + 1 < rigCaps->modes.size()) {
-                        changeMode(rigCaps->modes[i + 1].mk,false,rx);
-                    }
-                    else {
-                        changeMode(rigCaps->modes[0].mk,false,rx);
+                    if (rigCaps->modes[i].mk == receivers[cmd->suffix]->currentMode().mk)
+                    {
+                        if (i + 1 < rigCaps->modes.size())
+                        {
+                            changeMode(rigCaps->modes[i + 1].mk,false,cmd->suffix);
+                        }
+                        else
+                        {
+                            changeMode(rigCaps->modes[0].mk,false,cmd->suffix);
+                        }
                     }
                 }
             }
-        } else if (cmd->value == -1) {
-            for (size_t i = 0; i < rigCaps->modes.size(); i++) {
-                if (rigCaps->modes[i].mk == receivers[rx]->currentMode().mk)
+            else if (cmd->value == -1)
+            {
+                for (size_t i = 0; i < rigCaps->modes.size(); i++)
                 {
-                    if (i>0) {
-                        changeMode(rigCaps->modes[i - 1].mk,false,rx);
-                    }
-                    else {
-                        changeMode(rigCaps->modes[rigCaps->modes.size()-1].mk,false,rx);
+                    if (rigCaps->modes[i].mk == receivers[cmd->suffix]->currentMode().mk)
+                    {
+                        if (i>0)
+                        {
+                            changeMode(rigCaps->modes[i - 1].mk,false,cmd->suffix);
+                        }
+                        else
+                        {
+                            changeMode(rigCaps->modes[rigCaps->modes.size()-1].mk,false,cmd->suffix);
+                        }
                     }
                 }
             }
-        } else {
-            changeMode(cmd->mode,false,rx);
+            else
+            {
+                changeMode(cmd->mode,false,cmd->suffix);
+            }
         }
         break;
     case funcTuningStep:
@@ -1560,24 +1529,29 @@ void wfmain::buttonControl(const COMMAND* cmd)
         }
         break;
     case funcScopeSpan:
-        if (receivers.size()>rx) {
-            receivers[rx]->changeSpan(cmd->value);
+        if (cmd->suffix < receivers.size()) {
+            receivers[cmd->suffix]->changeSpan(cmd->value);
         }
         break;
     case funcUnselectedFreq:
-        rx=1;
+        vfo=1;
     case funcFreq:
     case funcSelectedFreq:
     {
-        freqt f;
-        if (receivers.size()>rx) {
-            f.Hz = roundFrequencyWithStep(receivers[rx]->getFrequency().Hz, cmd->value, tsWfScrollHz);
-        } else {
-            f.Hz = 0;
+        if (!freqLock)
+        {
+            freqt f;
+            if (cmd->suffix < receivers.size()) {
+                f.Hz = roundFrequencyWithStep(receivers[cmd->suffix]->getFrequency().Hz, cmd->value, tsWfScrollHz);
+            } else {
+                f.Hz = 0;
+            }
+            f.MHzDouble = f.Hz / double(1E6);
+            f.VFO=(selVFO_t)cmd->suffix;
+            vfoCommandType t = queue->getVfoCommand(vfo?vfoB:vfoA,cmd->suffix,true);
+            //qInfo() << "sending command" << funcString[t.freqFunc] << "freq:" << f.Hz << "rx:" << t.receiver << "vfo:" << t.vfo;
+            queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(f),false,t.receiver));
         }
-        f.MHzDouble = f.Hz / double(1E6);
-        f.VFO=(selVFO_t)cmd->suffix;
-        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<freqt>(f),false,rx));
         break;
     }
 
@@ -1607,7 +1581,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
     case funcVoxGain:
     case funcAntiVoxGain:
         qInfo(logUsbControl()) << "Command" << cmd->command << "Value" << cmd->value;
-        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<ushort>(cmd->value),false,rx));
+        queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<ushort>(cmd->value),false,cmd->suffix));
         break;
 
     case funcTransceiverStatus:
@@ -1623,9 +1597,9 @@ void wfmain::buttonControl(const COMMAND* cmd)
     default:
         qInfo(logUsbControl()) << "Command" << cmd->command << "Value" << cmd->value << "Suffix" << cmd->suffix;
         if (cmd->suffix == 0xff) {
-            queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->value),false,rx));
+            queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->value),false,cmd->suffix));
         } else {
-            queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->suffix),false,rx));
+            queue->add(priorityImmediate,queueItem((funcs)cmd->command,QVariant::fromValue<uchar>(cmd->suffix),false,0));
         }
         break;
     }
@@ -1706,9 +1680,10 @@ void wfmain::setDefPrefs()
     defPrefs.compMeterReverse = false;
     defPrefs.region = "1";
     defPrefs.showBands = true;
-
+    defPrefs.manufacturer = manufIcom;
     defPrefs.useUTC = false;
     defPrefs.setRadioTime = false;
+    defPrefs.forceVfoMode = true;
 
     defPrefs.tcpPort = 0;
     defPrefs.tciPort = 50001;
@@ -1753,6 +1728,8 @@ void wfmain::setDefPrefs()
     udpDefPrefs.username = QString("");
     udpDefPrefs.password = QString("");
     udpDefPrefs.clientName = QHostInfo::localHostName();
+    udpDefPrefs.connectionType = connectionLAN;
+    udpDefPrefs.adminLogin = false;
 }
 
 void wfmain::loadSettings()
@@ -1795,7 +1772,7 @@ void wfmain::loadSettings()
     prefs.scopeScrollY = settings->value("scopeScrollY", defPrefs.scopeScrollY).toInt();
     prefs.decimalSeparator = settings->value("DecimalSeparator", defPrefs.decimalSeparator).toChar();
     prefs.groupSeparator = settings->value("GroupSeparator", defPrefs.groupSeparator).toChar();
-
+    prefs.forceVfoMode =  settings->value("ForceVfoMode", defPrefs.groupSeparator).toBool();
 
     prefs.drawPeaks = settings->value("DrawPeaks", defPrefs.drawPeaks).toBool();
     prefs.underlayBufferSize = settings->value("underlayBufferSize", defPrefs.underlayBufferSize).toInt();
@@ -1896,6 +1873,7 @@ void wfmain::loadSettings()
 
     // Radio and Comms: C-IV addr, port to use
     settings->beginGroup("Radio");
+    prefs.manufacturer = (manufacturersType_t)settings->value("Manufacturer", defPrefs.manufacturer).value<manufacturersType_t>();
     prefs.radioCIVAddr = (quint8)settings->value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
     prefs.CIVisRadioModel = (bool)settings->value("CIVisRadioModel", defPrefs.CIVisRadioModel).toBool();
     prefs.pttType = (pttType_t)settings->value("PTTType", defPrefs.pttType).toInt();
@@ -1963,6 +1941,7 @@ void wfmain::loadSettings()
 
     udpPrefs.ipAddress = settings->value("IPAddress", udpDefPrefs.ipAddress).toString();
     udpPrefs.controlLANPort = settings->value("ControlLANPort", udpDefPrefs.controlLANPort).toInt();
+    udpPrefs.adminLogin = settings->value("AdminLogin",udpDefPrefs.adminLogin).toBool();
     udpPrefs.username = settings->value("Username", udpDefPrefs.username).toString();
     udpPrefs.password = settings->value("Password", udpDefPrefs.password).toString();
     prefs.rxSetup.isinput = defPrefs.rxSetup.isinput;
@@ -2005,6 +1984,7 @@ void wfmain::loadSettings()
         prefs.txSetup.tci = tci;
     }
 
+    udpPrefs.connectionType = settings->value("ConnectionType", udpDefPrefs.connectionType).value<connectionType_t>();
     udpPrefs.clientName = settings->value("ClientName", udpDefPrefs.clientName).toString();
 
     udpPrefs.halfDuplex = settings->value("HalfDuplex", udpDefPrefs.halfDuplex).toBool();
@@ -2020,11 +2000,6 @@ void wfmain::loadSettings()
     serverConfig.controlPort = settings->value("ServerControlPort", udpDefPrefs.controlLANPort).toInt();
     serverConfig.civPort = settings->value("ServerCivPort", udpDefPrefs.serialLANPort).toInt();
     serverConfig.audioPort = settings->value("ServerAudioPort", udpDefPrefs.audioLANPort).toInt();
-
-/*    setupui->updateServerConfigs((int)(s_enabled |
-                                 s_controlPort |
-                                 s_civPort |
-                                 s_audioPort)); */
 
     serverConfig.users.clear();
 
@@ -2708,9 +2683,117 @@ void wfmain::extChangedRaPref(prefRaItem i)
     case ra_audioSystem:
         // Not handled here
         break;
+    case ra_manufacturer:
+        setManufacturer(prefs.manufacturer);
+        break;
     default:
         qWarning(logSystem()) << "Cannot update wfmain ra pref" << (int)i;
     }
+}
+
+void wfmain::setManufacturer(manufacturersType_t man)
+{
+
+    this->rigList.clear();
+    qInfo() << "Searching for radios with Manufacturer =" << man;
+
+#ifndef Q_OS_LINUX
+    QString systemRigLocation = QCoreApplication::applicationDirPath();
+#else
+    QString systemRigLocation = PREFIX;
+#endif
+
+#ifdef Q_OS_LINUX
+    systemRigLocation += "/share/wfview/rigs";
+#else
+    systemRigLocation +="/rigs";
+#endif
+
+    QDir systemRigDir(systemRigLocation);
+
+    if (!systemRigDir.exists()) {
+        qWarning() << "********* Rig directory does not exist ********";
+    } else {
+        QStringList rigs = systemRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
+        for (QString &rig: rigs) {
+            QSettings* rigSettings = new QSettings(systemRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+            rigSettings->setIniCodec("UTF-8");
+#endif
+
+            if (!rigSettings->childGroups().contains("Rig"))
+            {
+                qWarning() << rig << "Does not seem to be a rig description file";
+                delete rigSettings;
+                continue;
+            }
+
+            float ver = rigSettings->value("Version","0.0").toString().toFloat();
+
+            rigSettings->beginGroup("Rig");
+            manufacturersType_t manuf = rigSettings->value("Manufacturer",manufIcom).value<manufacturersType_t>();
+            if (manuf == man) {
+                uchar civ = rigSettings->value("CIVAddress",0).toInt();
+                QString model = rigSettings->value("Model","").toString();
+                QString path = systemRigDir.absoluteFilePath(rig);
+
+                qDebug() << QString("Found Rig %0 with CI-V address of 0x%1 and version %2").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2);
+                // Any user modified rig files will override system provided ones.
+                this->rigList.insert(civ,rigInfo(civ,model,path,ver));
+            }
+            rigSettings->endGroup();
+            delete rigSettings;
+        }
+    }
+
+    QString userRigLocation = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)+"/rigs";
+    QDir userRigDir(userRigLocation);
+    if (userRigDir.exists()){
+        QStringList rigs = userRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
+        for (QString& rig: rigs) {
+            QSettings* rigSettings = new QSettings(userRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+            rigSettings->setIniCodec("UTF-8");
+#endif
+
+            if (!rigSettings->childGroups().contains("Rig"))
+            {
+                qWarning() << rig << "Does not seem to be a rig description file";
+                delete rigSettings;
+                continue;
+            }
+
+            float ver = rigSettings->value("Version","0.0").toString().toFloat();
+
+            rigSettings->beginGroup("Rig");
+
+            manufacturersType_t manuf = rigSettings->value("Manufacturer",manufIcom).value<manufacturersType_t>();
+            if (manuf == man) {
+                uchar civ = rigSettings->value("CIVAddress",0).toInt();
+                QString model = rigSettings->value("Model","").toString();
+                QString path = userRigDir.absoluteFilePath(rig);
+
+                auto it = this->rigList.find(civ);
+
+                if (it != this->rigList.end())
+                {
+                    if (ver >= it.value().version) {
+                        qInfo() << QString("Found User Rig %0 with CI-V address of 0x%1 and newer or same version than system one (%2>=%3)").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2).arg(it.value().version,0,'f',2);
+                        this->rigList.insert(civ,rigInfo(civ,model,path,ver));
+                    }
+                } else {
+                    qInfo() << QString("Found New User Rig %0 with CI-V address of 0x%1 version %2").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2);
+                    this->rigList.insert(civ,rigInfo(civ,model,path,ver));
+                }
+                // Any user modified rig files will override system provided ones.
+            }
+            rigSettings->endGroup();
+            delete rigSettings;
+        }
+    }
+
 }
 
 void wfmain::extChangedRsPref(prefRsItem i)
@@ -2720,20 +2803,20 @@ void wfmain::extChangedRsPref(prefRsItem i)
     switch(i)
     {
     case rs_dataOffMod:
-        queue->add(priorityImmediate,queueItem(funcDATAOffMod,QVariant::fromValue<rigInput>(prefs.inputSource[0]),false,false));
-        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[0].type),true));
+        queue->add(priorityImmediate,queueItem(funcDATAOffMod,QVariant::fromValue<rigInput>(prefs.inputSource[0]),false,currentReceiver));
+        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[0].type).cmd,true,currentReceiver));
         break;
     case rs_data1Mod:
-        queue->add(priorityImmediate,queueItem(funcDATA1Mod,QVariant::fromValue<rigInput>(prefs.inputSource[1]),false,false));
-        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[1].type),true));
+        queue->add(priorityImmediate,queueItem(funcDATA1Mod,QVariant::fromValue<rigInput>(prefs.inputSource[1]),false,currentReceiver));
+        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[1].type).cmd,true,currentReceiver));
         break;
     case rs_data2Mod:
-        queue->add(priorityImmediate,queueItem(funcDATA2Mod,QVariant::fromValue<rigInput>(prefs.inputSource[2]),false,false));
-        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[2].type),true));
+        queue->add(priorityImmediate,queueItem(funcDATA2Mod,QVariant::fromValue<rigInput>(prefs.inputSource[2]),false,currentReceiver));
+        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[2].type).cmd,true,currentReceiver));
         break;
     case rs_data3Mod:
-        queue->add(priorityImmediate,queueItem(funcDATA3Mod,QVariant::fromValue<rigInput>(prefs.inputSource[3]),false,false));
-        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[3].type),true));
+        queue->add(priorityImmediate,queueItem(funcDATA3Mod,QVariant::fromValue<rigInput>(prefs.inputSource[3]),false,currentReceiver));
+        queue->addUnique(priorityHigh,queueItem(getInputTypeCommand(prefs.inputSource[3].type).cmd,true,currentReceiver));
         break;
     case rs_setClock:
         setRadioTimeDatePrep();
@@ -2956,6 +3039,10 @@ void wfmain::extChangedUdpPref(prefUDPItem i)
         break;
     case u_audioOutput:
         break;
+    case u_connectionType:
+        break;
+    case u_adminLogin:
+        break;
     default:
         qWarning(logGui()) << "Did not find matching pref element in wfmain for UDP pref item " << (int)i;
         break;
@@ -2990,6 +3077,7 @@ void wfmain::extChangedServerPref(prefServerItem i)
     case s_baudRate:
         break;
     case s_users:
+        //qInfo() << "Server users updated :" << serverConfig.users.count() << "total users";
         break;
     case s_rigs:
         break;
@@ -3064,10 +3152,13 @@ void wfmain::saveSettings()
     settings->setValue("ShowBands",prefs.showBands);
     settings->setValue("GroupSeparator",prefs.groupSeparator);
     settings->setValue("DecimalSeparator",prefs.decimalSeparator);
+    settings->setValue("ForceVfoMode",prefs.forceVfoMode);
+
     settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
     settings->beginGroup("Radio");
+    settings->setValue("Manufacturer", prefs.manufacturer);
     settings->setValue("RigCIVuInt", prefs.radioCIVAddr);
     settings->setValue("CIVisRadioModel", prefs.CIVisRadioModel);
     settings->setValue("PTTType", prefs.pttType);
@@ -3100,6 +3191,7 @@ void wfmain::saveSettings()
     settings->setValue("ControlLANPort", udpPrefs.controlLANPort);
     settings->setValue("SerialLANPort", udpPrefs.serialLANPort);
     settings->setValue("AudioLANPort", udpPrefs.audioLANPort);
+    settings->setValue("AdminLogin",udpPrefs.adminLogin);
     settings->setValue("Username", udpPrefs.username);
     settings->setValue("Password", udpPrefs.password);
     settings->setValue("AudioRXLatency", prefs.rxSetup.latency);
@@ -3116,6 +3208,7 @@ void wfmain::saveSettings()
     settings->setValue("ClientName", udpPrefs.clientName);
     settings->setValue("WaterfallFormat", prefs.waterfallFormat);
     settings->setValue("HalfDuplex", udpPrefs.halfDuplex);
+    settings->setValue("ConnectionType", udpPrefs.connectionType);
 
     settings->endGroup();
 
@@ -3432,6 +3525,10 @@ quint64 wfmain::roundFrequencyWithStep(quint64 frequency, int steps, unsigned in
 {
     quint64 rounded = 0;
 
+    // Avoid divide by zero (should never happen but an invalid step in the rig file could cause a crash.)
+    if (tsHz < 1)
+        tsHz=1;
+
     if(steps > 0)
     {
         frequency = frequency + (quint64)(steps*tsHz);
@@ -3448,7 +3545,7 @@ quint64 wfmain::roundFrequencyWithStep(quint64 frequency, int steps, unsigned in
     }
 }
 
-funcs wfmain::getInputTypeCommand(inputTypes input)
+funcType wfmain::getInputTypeCommand(inputTypes input)
 {
     funcs func;
     switch(input)
@@ -3460,21 +3557,17 @@ funcs wfmain::getInputTypeCommand(inputTypes input)
     case inputMic:
         func = funcMicGain;
         break;
-
     case inputACCAACCB:
     case inputACCA:
     case inputACCUSB:
         func = funcACCAModLevel;
         break;
-
     case inputACCB:
         func = funcACCBModLevel;
         break;
-
     case inputUSB:
         func = funcUSBModLevel;
         break;
-
     case inputLAN:
         func = funcLANModLevel;
         break;
@@ -3486,7 +3579,14 @@ funcs wfmain::getInputTypeCommand(inputTypes input)
         break;
     }
     //qInfo(logSystem()) << "Input type command for" << input << "is" << funcString[func];
-    return func;
+    funcType type;
+    auto f = rigCaps->commands.find(func);
+    if (f != rigCaps->commands.end())
+    {
+        type = f.value();
+    }
+
+    return type;
 }
 
 
@@ -3501,30 +3601,29 @@ void wfmain:: getInitialRigState()
 
     queue->del(funcTransceiverId); // This command is no longer required
 
+    if (rigCaps->commands.contains(funcAutoInformation) && (!rigCaps->hasSpectrum || prefs.enableLAN))
+        queue->add(priorityImmediate,queueItem(funcAutoInformation,QVariant::fromValue(uchar(2)),false,0));
 
-    if (rigCaps->commands.contains(funcSatelliteMode))
-        queue->add(priorityImmediate,queueItem(funcSatelliteMode,QVariant::fromValue(bool(0)),false,0)); // Make sure we are in not in satellite mode.
+    if (prefs.forceVfoMode) {
+        queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(vfoA)));
+        //if (rigCaps->commands.contains(funcSatelliteMode))
+        //    queue->add(priorityImmediate,funcSatelliteMode,false,0); // are we in satellite mode?.
 
-    if (rigCaps->commands.contains(funcVFOModeSelect))
-        queue->add(priorityImmediate,funcVFOModeSelect); // Make sure we are in VFO mode.
+        //if (rigCaps->commands.contains(funcVFOModeSelect))
+        //    queue->add(priorityImmediate,funcVFOModeSelect); // Make sure we are in VFO mode.
 
-    if (rigCaps->commands.contains(funcScopeMainSub))
-        queue->add(priorityImmediate,funcScopeMainSub); // get scope
+        //if (rigCaps->commands.contains(funcScopeMainSub))
+        //    queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(uchar(0)),false,0)); // Set main scope
 
-    //queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue(uchar(0)),false,0)); // Set main scope
-
+    }
     //if (rigCaps->commands.contains(funcVFOBandMS))
     //    queue->add(priorityImmediate,queueItem(funcVFOBandMS,QVariant::fromValue(uchar(0)),false,0));
 
-    queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue(uchar(0)),false,0)); // Set primary VFO
-
     if(rigCaps->hasSpectrum)
     {
-        // Send commands to start scope immediately, followed by a repeat a few seconds later.
-        queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
-        queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
-        queue->add(priorityMediumHigh,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
-        queue->add(priorityMediumHigh,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
+        // Send commands to start scope immediately        
+        queue->add(priorityHigh,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
+        queue->add(priorityHigh,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
 
         // Find the scope ref limits
         auto mr = rigCaps->commands.find(funcScopeRef);
@@ -3551,17 +3650,34 @@ void wfmain:: getInitialRigState()
 
     for (const auto& receiver: receivers)
     {
-        receiver->enableScope(this->rigCaps->commands.contains(funcScopeMode));
         //qInfo(logSystem()) << "Display Settings start:" << start << "end:" << end;
         receiver->displaySettings(0, start, end, 1,(FctlUnit)prefs.frequencyUnits, &rigCaps->bands);
         receiver->setBandIndicators(prefs.showBands, prefs.region, &rigCaps->bands);
     }
 
-    if (prefs.setRadioTime) {
+    if (rigCaps->commands.contains(funcRitFreq))
+    {
+        funcType func = rigCaps->commands.find(funcRitFreq).value();
+        ui->ritTuneDial->setRange(func.minVal,func.maxVal);
+    }
+
+    if (rigCaps->commands.contains(funcTime) && prefs.setRadioTime) {
         setRadioTimeDatePrep();
     }
-}
 
+    if (cw != Q_NULLPTR)
+    {
+        cw->receiveEnabled(rigCaps->commands.contains(funcCWDecode));
+    }
+
+    if (rigCaps->commands.contains(funcVOIP))
+    {
+        queue->add(priorityHigh,queueItem(funcVOIP,QVariant::fromValue<uchar>(prefs.rxSetup.codec==0x80?2:1),false,0));
+    }
+    // Put Kenwood into Shift&Width mode for filter control.
+    queue->add(priorityHigh,queueItem(funcFilterControlSSB,QVariant::fromValue<bool>(true),false,0));
+    queue->add(priorityHigh,queueItem(funcFilterControlData,QVariant::fromValue<bool>(true),false,0));
+}
 void wfmain::showStatusBarText(QString text)
 {
     ui->statusBar->showMessage(text, 5000);
@@ -3839,7 +3955,9 @@ void wfmain::changePrimaryMeter(bool transmitOn) {
         ui->meterSPoWidget->setMeterType(meterS);
     }
     queue->del(oldCmd,0);
-    queue->add(priorityHighest,queueItem(newCmd,true,0));
+    if (rigCaps->commands.contains(newCmd)) {
+        queue->add(priorityHighest,queueItem(newCmd,true,0));
+    }
 }
 
 void wfmain::changeFullScreenMode(bool checked)
@@ -3997,24 +4115,22 @@ void wfmain::saveMemoryPreset(int presetNumber)
         mem.setPreset(presetNumber, frequency, mode);
     }
 }
-
+\
 void wfmain::on_rfGainSlider_valueChanged(int value)
 {
-    queue->addUnique(priorityImmediate,queueItem(funcRfGain,QVariant::fromValue<ushort>(value),false,false));
+    queue->addUnique(priorityImmediate,queueItem(funcRfGain,QVariant::fromValue<ushort>(value),false,currentReceiver));
 }
 
 void wfmain::on_afGainSlider_valueChanged(int value)
 {
     if(usingLAN)
     {
+        // Remember current setting.
         prefs.rxSetup.localAFgain = (quint8)(value);
         prefs.localAFgain = (quint8)(value);
-        emit setAfGain(value);
-        // Fake the queue into thinking it has received a value for AfGain.
-        queue->receiveValue(funcAfGain,quint8(value),currentReceiver);
-    } else {
-        queue->addUnique(priorityImmediate,queueItem(funcAfGain,QVariant::fromValue<ushort>(value),false));
     }
+
+    queue->addUnique(priorityImmediate,queueItem(funcAfGain,QVariant::fromValue<ushort>(value),currentReceiver));
 }
 
 void wfmain::on_monitorSlider_valueChanged(int value)
@@ -4374,11 +4490,11 @@ void wfmain::receiveModInput(rigInput input, quint8 data)
     if (currentModSrc[data].type != input.type && receivers.size())
     {
         qInfo() << QString("Data: %0 Input: %1 current: %2").arg(data).arg(input.name).arg(prefs.inputSource[data].name);
-        queue->del(getInputTypeCommand(prefs.inputSource[data].type),false);
+        queue->del(getInputTypeCommand(prefs.inputSource[data].type).cmd,currentReceiver);
         prefs.inputSource[data] = input;
         if (receivers[0]->getDataMode() == data)
         {
-            queue->addUnique(priorityHigh,getInputTypeCommand(input.type),true,false);
+            queue->addUnique(priorityHigh,getInputTypeCommand(input.type).cmd,true,currentReceiver);
             changeModLabel(input,false);
         }
         switch (data) {
@@ -4492,7 +4608,11 @@ void wfmain::changeModLabel(rigInput input)
 void wfmain::changeModLabel(rigInput input, bool updateLevel)
 {
 
-    queue->add(priorityMedium,getInputTypeCommand(input.type),true);
+    funcType f = getInputTypeCommand(input.type);
+
+    queue->add(priorityMedium,f.cmd,true,currentReceiver);
+
+    ui->micGainSlider->setRange(f.minVal,f.maxVal);
 
     ui->modSliderLbl->setText(input.name);
 
@@ -4506,19 +4626,23 @@ void wfmain::processChangingCurrentModLevel(quint8 level)
 {
     // slider moved, so find the current mod and issue the level set command.
 
-    funcs f = funcNone;
+    funcType f;
     if (receivers.size()) {
         quint8 d = receivers[currentReceiver]->getDataMode();
         f = getInputTypeCommand(prefs.inputSource[d].type);
 
-        qDebug(logSystem()) << "Updating mod level for" << funcString[f] << "setting to" << level;
-        queue->addUnique(priorityImmediate,queueItem(f,QVariant::fromValue<ushort>(level),false));
+        qDebug(logSystem()) << "Updating mod level for" << funcString[f.cmd] << "setting to" << level;
+        queue->addUnique(priorityImmediate,queueItem(f.cmd,QVariant::fromValue<ushort>(level),false,currentReceiver));
     }
 }
 
 void wfmain::on_tuneLockChk_clicked(bool checked)
 {
     freqLock = checked;
+    for (const auto &rx: receivers)
+    {
+        rx->setFreqLock(checked);
+    }
 }
 
 void wfmain::on_rptSetupBtn_clicked()
@@ -4692,7 +4816,7 @@ void wfmain::powerRigOff()
 
 void wfmain::on_ritTuneDial_valueChanged(int value)
 {
-    queue->add(priorityImmediate,queueItem(funcRITFreq,QVariant::fromValue(short(value))));
+    queue->add(priorityImmediate,queueItem(funcRitFreq,QVariant::fromValue(short(value))));
 }
 
 void wfmain::on_ritEnableChk_clicked(bool checked)
@@ -4813,7 +4937,11 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
         uiMeter->setMeterType(newMeterType);
 
         if((newMeterType!=meterRxAudio) && (newMeterType!=meterTxMod) && (newMeterType!=meterAudio))
-            queue->addUnique(priorityHighest,queueItem(newCmd,true,(newMeterType==meterSubS)?uchar(1):uchar(0)));
+        {
+            if (rigCaps->commands.contains(newCmd)) {
+                queue->addUnique(priorityHighest,queueItem(newCmd,true,(newMeterType==meterSubS)?uchar(1):uchar(0)));
+            }
+        }
 
         if (meterNum == 1)
         {
@@ -5193,26 +5321,6 @@ void wfmain::on_rigCreatorBtn_clicked()
     create->setAttribute(Qt::WA_DeleteOnClose);
     create->show();
 }
-
-void wfmain::displayReceiver(uchar rx, bool active, bool swtch)
-{
-    if (rigCaps != Q_NULLPTR && rx < rigCaps->numReceiver)
-    {
-        for (uchar i=0;i<rigCaps->numReceiver;i++)
-        {
-            if (i == rx && !receivers[i]->isVisible())
-                receivers[rx]->setVisible(true);
-            else if (i != rx && swtch && receivers[i]->isVisible())
-                receivers[rx]->setVisible(false);
-
-            if (i == rx && active && !receivers[i]->isSelected())
-                receivers[rx]->selected(true);
-            else if (i != rx && active)
-                receivers[rx]->selected(false);
-        }
-    }
-}
-
 void wfmain::receiveValue(cacheItem val){
 
     uchar vfo=0;
@@ -5234,7 +5342,10 @@ void wfmain::receiveValue(cacheItem val){
      * In this situation, set the receiver to currentReceiver so most commands received
      * work on this receiver only.
      *
+     * This functionality has now been moved to the xxxxCommander class.
      */
+
+    /*
     if (!rigCaps->hasCommand29 && val.receiver != currentReceiver)
     {
         switch (val.command) {
@@ -5246,6 +5357,7 @@ void wfmain::receiveValue(cacheItem val){
             break;
         }
     }
+    */
 
     switch (val.command)
     {
@@ -5263,61 +5375,69 @@ void wfmain::receiveValue(cacheItem val){
         if (val.receiver==0 || vfo == 0)
             rpt->handleUpdateCurrentMainFrequency(val.value.value<freqt>());
         break;
-    case funcTXFreq:
-        // Not sure if we want to do anything with this? M0VSE
-        break;
-    case funcVFODualWatch:
-
-        if (receivers.size()>1)
-        {
-            bool en = val.value.value<bool>();
-            ui->dualWatchBtn->setChecked(en);
-            if (QThread::currentThread() != QCoreApplication::instance()->thread())
-            {
-                qCritical(logSystem()) << "Thread is NOT the main UI thread, cannot hide/unhide VFO";
-            }
-            /*
-            else {
-                // This tells us whether we are receiving single or dual scopes
-                if (en && !receivers[1]->isVisible())
-                {
-                    receivers[1]->setVisible(true);
-                }
-                else if (!en && receivers[1]->isVisible())
-                {
-                    receivers[1]->setVisible(false);
-                }
-            } */
-            //ui->scopeMainSubBtn->setEnabled(en);
-            //ui->scopeDualBtn->setEnabled(en);
-        }
-
-        break;
     case funcModeGet:
     case funcModeTR:
         // These commands don't include filter, so queue an immediate request for filter
         queue->addUnique(priorityImmediate,funcDataModeWithFilter,false,0);
+    case funcDataModeWithFilter:
     case funcUnselectedMode:
         if (val.command == funcUnselectedMode)
             vfo=1;
+    case funcDataMode:
     case funcSelectedMode:
     case funcMode:
-        receivers[val.receiver]->receiveMode(val.value.value<modeInfo>(),vfo);
+    {
+        modeInfo m = val.value.value<modeInfo>();
+        receivers[val.receiver]->receiveMode(m,vfo);
         // We are ONLY interested in VFOA
         if (val.receiver == currentReceiver && vfo == 0) {
-            finputbtns->updateCurrentMode(val.value.value<modeInfo>().mk);
-            finputbtns->updateFilterSelection(val.value.value<modeInfo>().filter);
-            rpt->handleUpdateCurrentMainMode(val.value.value<modeInfo>());
+            finputbtns->updateCurrentMode(m.mk);
+            finputbtns->updateFilterSelection(m.filter);
+            rpt->handleUpdateCurrentMainMode(m);
             if (cw != Q_NULLPTR) {
-                cw->handleCurrentModeUpdate(val.value.value<modeInfo>().mk);
+                cw->handleCurrentModeUpdate(m.mk);
             }
+        }
+        //qDebug() << funcString[val.command] << "receiver:" << val.receiver << "vfo:" << vfo << "mk:" << m.mk << "name:" << m.name << "data:" << m.data << "filter:" << m.filter;
+
+        break;
+    }
+    case funcTXFreq:
+        // Not sure if we want to do anything with this? M0VSE
+        break;
+    case funcVFODualWatch:        
+        if (receivers.size()>1) // How can it not be?
+        {
+            ui->dualWatchBtn->blockSignals(true);
+            ui->dualWatchBtn->setChecked(val.value.value<bool>());
+            ui->dualWatchBtn->blockSignals(false);
         }
         break;
 #if defined __GNUC__
 #pragma GCC diagnostic pop
 #endif
     case funcVFOBandMS:
+    {
+        // This indicates whether main or sub is currently "active"
+        // Swap recievers if necessary.                
+        uchar r = val.value.value<uchar>();
+        if (currentReceiver != r)
+        {
+            // VFO has swapped, make sure scope follows if we only have a single scope.
+            // Th radio doesn't do this, but I don't see why we would want it without a scope?
+            if (!rigCaps->hasCommand29 && rigCaps->commands.contains(funcScopeMainSub))
+                queue->add(priorityImmediate,queueItem(funcScopeMainSub,val.value,false,0));
+
+            for (const auto& rx: receivers)
+            {
+                rx->selected(rx->getReceiver() == r);
+                rx->setVisible(rx->isSelected() || ui->scopeDualBtn->isChecked());
+                rx->updateInfo();
+            }
+            currentReceiver = r;
+        }
         break;
+    }
     case funcSatelliteMode:
         // If satellite mode is enabled, disable mode/freq query commands.
         for (auto r: receivers){
@@ -5358,7 +5478,7 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcAntenna:
         if (val.receiver == currentReceiver) {
-            ui->antennaSelCombo->setCurrentIndex(val.value.value<antennaInfo>().antenna);
+            ui->antennaSelCombo->setCurrentIndex(ui->antennaSelCombo->findData(val.value.value<antennaInfo>().antenna));
             ui->rxAntennaCheck->setChecked(val.value.value<antennaInfo>().rx);
         }
         break;
@@ -5403,13 +5523,15 @@ void wfmain::receiveValue(cacheItem val){
     case funcNotchFilter:
         break;
     case funcAfGain:
-        changeSliderQuietly(ui->afGainSlider, val.value.value<uchar>());
+        if (val.receiver == currentReceiver)
+            changeSliderQuietly(ui->afGainSlider, val.value.value<uchar>());
         break;
     case funcMonitorGain:
         changeSliderQuietly(ui->monitorSlider, val.value.value<uchar>());
         break;
     case funcRfGain:
-        changeSliderQuietly(ui->rfGainSlider, val.value.value<uchar>());
+        if (val.receiver == currentReceiver)
+            changeSliderQuietly(ui->rfGainSlider, val.value.value<uchar>());
         break;
     case funcSquelch:
         if (val.receiver == currentReceiver) {
@@ -5491,14 +5613,26 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcNoiseBlanker:
         if (val.receiver == currentReceiver) {
-            ui->nbEnableChk->setChecked(val.value.value<bool>());
+            ui->nbEnableChk->blockSignals(true);
+            if (ui->nbEnableChk->isTristate())
+                ui->nbEnableChk->setCheckState(Qt::CheckState(val.value.value<uchar>()));
+            else
+                ui->nbEnableChk->setChecked(val.value.value<bool>());
+
+            ui->nbEnableChk->blockSignals(false);
         }
         break;
     case funcAudioPeakFilter:
         break;
     case funcNoiseReduction:
         if (val.receiver == currentReceiver) {
-            ui->nrEnableChk->setChecked(val.value.value<bool>());
+            ui->nrEnableChk->blockSignals(true);
+            if (ui->nrEnableChk->isTristate())
+                ui->nrEnableChk->setCheckState(Qt::CheckState(val.value.value<uchar>()));
+            else
+                ui->nrEnableChk->setChecked(val.value.value<bool>());
+
+            ui->nrEnableChk->blockSignals(false);
         }
         break;
     case funcAutoNotch:
@@ -5544,6 +5678,7 @@ void wfmain::receiveValue(cacheItem val){
     case funcSSBTXBandwidth:
         break;
     case funcMainSubTracking:
+
         //ui->mainSubTrackingBtn->setChecked(val.value.value<bool>());
         //for (const auto& receiver:receivers)
         //{
@@ -5591,12 +5726,6 @@ void wfmain::receiveValue(cacheItem val){
     }
     case funcFilterWidth:
         receivers[val.receiver]->receivePassband(val.value.value<ushort>());
-        break;
-    case funcDataModeWithFilter:
-        receivers[val.receiver]->receiveMode(val.value.value<modeInfo>());
-
-        // Set the inputSource to invalid to ensure it gets updated
-        prefs.inputSource[receivers[0]->getDataMode()] = rigInput();
         break;
 
     case funcAFMute:
@@ -5666,8 +5795,10 @@ void wfmain::receiveValue(cacheItem val){
         receiveATUStatus(val.value.value<uchar>());
         break;
     // 0x21 RIT:
-    case funcRITFreq:
-        receiveRITValue(val.value.value<short>());
+    case funcRitFreq:
+        ui->ritTuneDial->blockSignals(true);
+        ui->ritTuneDial->setValue(val.value.value<short>());
+        ui->ritTuneDial->blockSignals(false);
         break;
     case funcRitTXStatus:
         // Not sure what this is used for?
@@ -5684,53 +5815,7 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcScopeMainSub:
     {
-        if (receivers.size()>1)
-        {
-            if (QThread::currentThread() != QCoreApplication::instance()->thread())
-            {
-                qCritical(logSystem()) << "Thread is NOT the main UI thread, cannot hide/unhide VFO";
-            } else {
-
-                uchar temprx=currentReceiver;
-                currentReceiver = val.value.value<uchar>();
-
-                for (uchar rx=0;rx<receivers.size();rx++) {
-
-                    // As the IC9700 doesn't have a single/dual command, pretend it does!
-                    if (!receivers[rx]->isVisible() && (rx == currentReceiver || ui->scopeDualBtn->isChecked())) {
-                        receivers[rx]->setVisible(true);
-                    } else if (rx != currentReceiver && !ui->scopeDualBtn->isChecked() && receivers[rx]->isVisible()) {
-                        receivers[rx]->setVisible(false);
-                    }
-
-                    if (rx == currentReceiver && !receivers[rx]->isSelected()) {
-                        receivers[rx]->selected(true);
-                        if (!rigCaps->hasCommand29) receivers[rx]->setEnabled(true);
-                    } else if (rx != currentReceiver && receivers[rx]->isSelected()) {
-                        receivers[rx]->selected(false);
-                        if (!rigCaps->hasCommand29) receivers[rx]->setEnabled(false);
-                    }
-                    if (temprx != currentReceiver) {
-                        vfoCommandType t = queue->getVfoCommand(vfoA,rx,false);
-                        //qInfo() << "Main/Sub button (main), freq:" << funcString[t.freqFunc] << "mode:" << funcString[t.modeFunc] << "rxin:" << rx << "rxout:" << t.receiver;
-                        queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
-                        queue->add(priorityImmediate,t.modeFunc,false,t.receiver);
-                        // If we are on sub, it will use funcModeGet which doesn't include data mode.
-                        //queue->add(priorityImmediate,funcDataModeWithFilter,false,t.receiver);
-                        t = queue->getVfoCommand(vfoB,rx,false);
-                        //qInfo() << "Main/Sub button (sub), freq:" << funcString[t.freqFunc] << "mode:" << funcString[t.modeFunc] << "rxin:" << rx << "rxout:" << t.receiver;
-                        queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
-                        queue->add(priorityImmediate,t.modeFunc,false,t.receiver);
-
-                        // As the current receiver has changed, queue commands to get the current preamp/filter/ant/rx amp
-                        queue->add(priorityImmediate,queueItem(funcPreamp,false,t.receiver));
-                        queue->add(priorityImmediate,queueItem(funcAttenuator,false,t.receiver));
-                        queue->add(priorityImmediate,queueItem(funcAntenna,false,t.receiver));
-                        queue->add(priorityImmediate,queueItem(funcSquelch,false,t.receiver));
-                    }
-                }
-            }
-        }
+        // Has the primary scope changed?
         break;
     }
     case funcScopeSingleDual:
@@ -5742,15 +5827,14 @@ void wfmain::receiveValue(cacheItem val){
                 qCritical(logSystem()) << "Thread is NOT the main UI thread, cannot hide/unhide VFO";
             } else {
                 // This tells us whether we are receiving single or dual scopes
+                ui->scopeDualBtn->blockSignals(true);
                 ui->scopeDualBtn->setChecked(val.value.value<bool>());
-                for (uchar rx=0;rx<receivers.size();rx++) {
-                    if (!receivers[rx]->isVisible() &&  ui->scopeDualBtn->isChecked()) {
-                        receivers[rx]->setVisible(true);
-                    } else if (rx != currentReceiver && !ui->scopeDualBtn->isChecked() && receivers[rx]->isVisible()) {
-                        receivers[rx]->setVisible(false);
+                ui->scopeDualBtn->blockSignals(false);
+                for (const auto& rx: receivers) {
+                    if (!rx->isSelected()) {
+                        rx->setVisible(val.value.value<bool>());
                     }
                 }
-
             }
         }
         break;
@@ -5790,6 +5874,8 @@ void wfmain::receiveValue(cacheItem val){
     case funcPowerControl:
         // We could indicate the rig being powered-on somehow?
         break;
+    case funcCWDecode:
+        cw->receive(val.value.value<QString>());
     default:
         //qWarning(logSystem()) << "Unhandled command received from rigcommander()" << funcString[val.command] << "Contact support!";
         break;
@@ -5814,7 +5900,6 @@ void wfmain::on_showSettingsBtn_clicked()
 
 void wfmain::on_scopeMainSubBtn_clicked()
 {
-    queue->add(priorityImmediate,queueItem(funcScopeMainSub,QVariant::fromValue<uchar>(currentReceiver==0),false,0));
     if (rigCaps->commands.contains(funcVFOBandMS)) {
         queue->add(priorityImmediate,queueItem(funcVFOBandMS,QVariant::fromValue<uchar>(currentReceiver==0),false,0));
     }
@@ -5823,8 +5908,19 @@ void wfmain::on_scopeMainSubBtn_clicked()
 
 void wfmain::on_scopeDualBtn_toggled(bool en)
 {
-    queue->add(priorityImmediate,queueItem(funcScopeSingleDual,QVariant::fromValue(en),false,0));
-    queue->add(priorityImmediate,funcScopeMainSub,false,0);
+    if (rigCaps->commands.contains(funcScopeSingleDual))
+    {
+        queue->add(priorityImmediate,queueItem(funcScopeSingleDual,QVariant::fromValue(en),false,0));
+        queue->add(priorityImmediate,funcScopeMainSub,false,0);
+    } else {
+        // As the IC9700 doesn't have a single/dual command, pretend it does!
+        for (const auto& rx: receivers) {
+            if (rx->getReceiver() != currentReceiver) {
+                rx->selected(false);
+                rx->setVisible(en);
+            }
+        }
+    }
 }
 
 void wfmain::on_dualWatchBtn_toggled(bool en)
@@ -5833,10 +5929,6 @@ void wfmain::on_dualWatchBtn_toggled(bool en)
     if (!rigCaps->hasCommand29)
         queue->add(priorityImmediate,funcScopeMainSub,false,0);
 
-    if (!en)
-    {
-        //ui->scopeDualBtn->setChecked(false);
-    }
 }
 
 void wfmain::on_swapMainSubBtn_clicked()
@@ -6007,8 +6099,36 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         ui->preampAttGroup->setVisible(rigCaps->commands.contains(funcPreamp));
         //ui->dualWatchBtn->setVisible(rigCaps->hasCommand29);
 
+        ui->nbEnableChk->setTristate(false);
+        ui->nrEnableChk->setTristate(false);
+        ui->nbEnableChk->setChecked(false);
+        ui->nrEnableChk->setChecked(false);
+
+        if (rigCaps->commands.contains(funcNoiseBlanker)) {
+            qInfo () << "nb max val" << rigCaps->commands.find(funcNoiseBlanker)->maxVal;
+            if (rigCaps->commands.find(funcNoiseBlanker)->maxVal > 1)
+                ui->nbEnableChk->setTristate(true);
+        }
         ui->nbEnableChk->setEnabled(rigCaps->commands.contains(funcNoiseBlanker));
+
+        if (rigCaps->commands.contains(funcNoiseReduction)) {
+            qInfo () << "nr max val" << rigCaps->commands.find(funcNoiseReduction)->maxVal;
+            if (rigCaps->commands.find(funcNoiseReduction)->maxVal > 1)
+                ui->nrEnableChk->setTristate(true);
+        }
+
+        if (rigCaps->commands.contains(funcRFPower)) {
+            auto f = rigCaps->commands.find(funcRFPower);
+            ui->txPowerSlider->setRange(f->minVal,f->maxVal);
+        }
+
+        if (rigCaps->commands.contains(funcMonitorGain)) {
+            auto f = rigCaps->commands.find(funcMonitorGain);
+            ui->monitorSlider->setRange(f->minVal,f->maxVal);
+        }
+
         ui->nrEnableChk->setEnabled(rigCaps->commands.contains(funcNoiseReduction));
+
         ui->ipPlusEnableChk->setEnabled(rigCaps->commands.contains(funcIPPlus));
         ui->compEnableChk->setEnabled(rigCaps->commands.contains(funcCompressor));
         ui->voxEnableChk->setEnabled(rigCaps->commands.contains(funcVox));
@@ -6044,8 +6164,6 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
                 {
                     receiver->addData("Data On", 2);
                 }
-            } else {
-                setupui->hideModSource(1);
             }
 
             if (rigCaps->commands.contains(funcDATA2Mod))
@@ -6053,16 +6171,25 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
                 setupui->updateModSourceList(2, rigCaps->inputs);
                 receiver->addData("Data 1", 2);
                 receiver->addData("Data 2", 2);
-            } else {
-                setupui->hideModSource(2);
             }
 
             if (rigCaps->commands.contains(funcDATA3Mod))
             {
                 setupui->updateModSourceList(3, rigCaps->inputs);
                 receiver->addData("Data 3", 3);
-            } else {
-                setupui->hideModSource(3);
+            }
+            setupui->enableModSource(0,rigCaps->commands.contains(funcDATAOffMod));
+            setupui->enableModSource(1,rigCaps->commands.contains(funcDATA1Mod));
+            setupui->enableModSource(2,rigCaps->commands.contains(funcDATA2Mod));
+            setupui->enableModSource(3,rigCaps->commands.contains(funcDATA3Mod));
+
+            // Disable unsupported mod sources
+            for (const auto &r: rigCaps->inputs)
+            {
+                setupui->enableModSourceItem(0,r,rigCaps->commands.contains(funcDATAOffMod));
+                setupui->enableModSourceItem(1,r,(rigCaps->commands.contains(funcDATA1Mod) && r.reg > -1) ? true : false);
+                setupui->enableModSourceItem(2,r,(rigCaps->commands.contains(funcDATA2Mod) && r.reg > -1) ? true : false);
+                setupui->enableModSourceItem(3,r,(rigCaps->commands.contains(funcDATA3Mod) && r.reg > -1) ? true : false);
             }
 
             receiver->clearSpans();
@@ -6089,14 +6216,13 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
 
         setupui->updateModSourceList(0, rigCaps->inputs);
 
-
         ui->attSelCombo->clear();
         if(rigCaps->commands.contains(funcAttenuator))
         {
             ui->attSelCombo->setDisabled(false);
             for (auto &att: rigCaps->attenuators)
             {
-                ui->attSelCombo->addItem(((att == 0) ? QString("0 dB") : QString("-%1 dB").arg(att)),att);
+                ui->attSelCombo->addItem(att.name,att.num);
             }
         } else {
             ui->attSelCombo->setDisabled(true);
@@ -6203,35 +6329,86 @@ void wfmain::receiveScopeImage(uchar receiver)
 }
 
 // Assorted checkboxes
-void wfmain::on_nbEnableChk_clicked(bool checked)
+
+// lambda slots, these cuts-down on number of dedicated slot functions
+void wfmain::setupLambdaSlots()
 {
-    queue->addUnique(priorityImmediate,queueItem(funcNoiseBlanker,QVariant::fromValue<bool>(checked),false,currentReceiver));
+
+// As checkState is deprecated, use checkStateChanged if available
+#if (QT_VERSION < QT_VERSION_CHECK(6,7,0))
+#define CHKFUNC &QCheckBox::stateChanged, this, [=](int checked)
+#else
+#define CHKFUNC &QCheckBox::checkStateChanged, this, [=](Qt::CheckState checked)
+#endif
+
+    connect(ui->nrEnableChk, CHKFUNC {
+        queue->addUnique(priorityImmediate,queueItem(funcNoiseReduction,
+                QVariant::fromValue<uchar>(ui->nrEnableChk->isTristate()?checked:bool(checked)),false,currentReceiver));
+    });
+
+    connect(ui->nbEnableChk, CHKFUNC {
+        queue->addUnique(priorityImmediate,queueItem(funcNoiseBlanker,
+                QVariant::fromValue<uchar>(ui->nbEnableChk->isTristate()?checked:bool(checked)),false,currentReceiver));
+    });
+
+    connect(ui->ipPlusEnableChk, CHKFUNC {
+        queue->addUnique(priorityImmediate,queueItem(funcIPPlus,QVariant::fromValue<bool>(checked),false,currentReceiver));
+    });
+
+    connect(ui->compEnableChk, CHKFUNC {
+        queue->addUnique(priorityImmediate,queueItem(funcCompressor,QVariant::fromValue<bool>(checked),false,currentReceiver));
+    });
+
+    connect(ui->voxEnableChk, CHKFUNC {
+        queue->addUnique(priorityImmediate,queueItem(funcVox,QVariant::fromValue<bool>(checked),false,currentReceiver));
+    });
+
+    connect(ui->digiselEnableChk, CHKFUNC {
+        queue->addUnique(priorityImmediate,queueItem(funcDigiSel,QVariant::fromValue<bool>(checked),false,currentReceiver));
+    });
+
+    // Slider tooltip
+    connect(ui->txPowerSlider, &QSlider::sliderMoved,
+        [&](int value) {
+          QToolTip::showText(QCursor::pos(), QString("%1").arg(value*100/255), nullptr);
+        });
+
+    // Meter widgets
+    connect(ui->meterSPoWidget, &meter::configureMeterSignal, this,
+            [=](const meter_t &meterTypeRequested) {
+        // Change the preferences and update settings widget to reflect new meter selection:
+        prefs.meter1Type = meterTypeRequested;
+        setupui->updateIfPref(if_meter1Type);
+        // Change the meter locally:
+        qInfo() << "New meter type" << meterTypeRequested;
+        changeMeterType(meterTypeRequested, 1);
+    });
+
+    connect(ui->meter2Widget, &meter::configureMeterSignal, this,
+            [=](const meter_t &meterTypeRequested) {
+        // Change the preferences and update settings widget to reflect new meter selection:
+        prefs.meter2Type = meterTypeRequested;
+        setupui->updateIfPref(if_meter2Type);
+        // Change the meter locally:
+        changeMeterType(meterTypeRequested, 2);
+        // Block duplicate meter selection in the other meter:
+        ui->meter3Widget->blockMeterType(meterTypeRequested);
+    });
+
+    connect(ui->meter3Widget, &meter::configureMeterSignal, this,
+            [=](const meter_t &meterTypeRequested) {
+        // Change the preferences and update settings widget to reflect new meter selection:
+        prefs.meter3Type = meterTypeRequested;
+        setupui->updateIfPref(if_meter3Type);
+        // Change the meter locally:
+        changeMeterType(meterTypeRequested, 3);
+        // Block duplicate meter selection in the other meter:
+        ui->meter2Widget->blockMeterType(meterTypeRequested);
+    });
+
+
 }
 
-void wfmain::on_nrEnableChk_clicked(bool checked)
-{
-    queue->addUnique(priorityImmediate,queueItem(funcNoiseReduction,QVariant::fromValue<bool>(checked),false,currentReceiver));
-}
-
-void wfmain::on_ipPlusEnableChk_clicked(bool checked)
-{
-    queue->addUnique(priorityImmediate,queueItem(funcIPPlus,QVariant::fromValue<bool>(checked),false,currentReceiver));
-}
-
-void wfmain::on_compEnableChk_clicked(bool checked)
-{
-    queue->addUnique(priorityImmediate,queueItem(funcCompressor,QVariant::fromValue<bool>(checked),false,currentReceiver));
-}
-
-void wfmain::on_voxEnableChk_clicked(bool checked)
-{
-    queue->addUnique(priorityImmediate,queueItem(funcVox,QVariant::fromValue<bool>(checked),false,currentReceiver));
-}
-
-void wfmain::on_digiselEnableChk_clicked(bool checked)
-{
-    queue->addUnique(priorityImmediate,queueItem(funcDigiSel,QVariant::fromValue<bool>(checked),false,currentReceiver));
-}
 
 void wfmain::enableControls(bool en)
 {

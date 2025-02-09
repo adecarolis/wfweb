@@ -120,10 +120,12 @@ public:
 
     static cachingQueue *getInstance(QObject* parent = Q_NULLPTR);
     void message(QString msg);
+
     void add(queuePriority prio ,funcs func, bool recurring=false, uchar receiver=0);
-    void add(queuePriority prio,queueItem item);
+    void add(queuePriority prio,queueItem item, bool unique=false);
     void addUnique(queuePriority prio ,funcs func, bool recurring=false, uchar receiver=0);
-    void addUnique(queuePriority prio,queueItem item);
+    void addUnique(queuePriority prio, queueItem item);
+
     queuePriority del(funcs func, uchar receiver=0);
     void clear();
     void interval(qint64 val);

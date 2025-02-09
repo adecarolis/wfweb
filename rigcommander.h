@@ -69,8 +69,6 @@ public slots:
 
 
     // Rig ID and CIV:
-    virtual void getRigID();
-    virtual void findRigs();
     virtual void setRigID(quint8 rigID);
     virtual void setCIVAddr(quint8 civAddr);
 
@@ -80,7 +78,6 @@ public slots:
 
     // Housekeeping:
     virtual void receiveCommand(funcs func, QVariant value, uchar receiver);
-    virtual void setAfGain(quint8 level);
 
 signals:
     // Right now, all signals are defined here as they should be rig agnostic.
@@ -92,6 +89,7 @@ signals:
 
     void haveNetworkAudioLevels(const networkAudioLevels l);
     void dataForComm(const QByteArray &outData);
+    void haveDataFromRig(const QByteArray &outData);
 
     void setHalfDuplex(bool en);
 
@@ -122,8 +120,6 @@ signals:
     void haveRptOffsetFrequency(freqt f);
     void haveMemory(memoryType mem);
 
-    // Levels:
-    void haveAfGain(quint8 level);
     // Housekeeping:
     void requestRadioSelection(QList<radio_cap_packet> radios);
     void setRadioUsage(quint8 radio, bool admin, quint8 busy, QString user, QString ip);
@@ -133,7 +129,11 @@ signals:
     void haveReceivedValue(funcs func, QVariant value);
 
 protected:
+    // These are common between all sub-classes, so define here
     cachingQueue* queue;
+    udpPreferences prefs;
+    audioSetup rxSetup;
+    audioSetup txSetup;
 
     void printHex(const QByteArray &pdata);
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
@@ -142,7 +142,14 @@ protected:
     bool usingNativeLAN;
     bool rigPoweredOn = false; // Assume the radio is not powered-on until we know otherwise.
 
+    struct rigCapabilities rigCaps;
+    bool haveRigCaps=false;
+    QHash<quint8,rigInfo> rigList;
+    bool isRadioAdmin = true;
+    commandErrorType lastCommand;
+
 private:
+    // rigCommander should have no private vars as it is only ever subclassed.
 };
 
 #endif // RIGCOMMANDER_H

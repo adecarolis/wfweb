@@ -16,11 +16,11 @@ rigCreator::rigCreator(QWidget *parent) :
     this->setWindowFlags(flags);
 
     qInfo() << "Creating instance of rigCreator()";
-    commandsList = new tableCombobox(createModel(NUMFUNCS, commandsModel, funcString),false,ui->commands);
+    commandsList = new tableCombobox(createModel(funcLastFunc, commandsModel, funcString),false,ui->commands);
+
     ui->commands->setItemDelegateForColumn(0, commandsList);
 
     priorityModel = new QStandardItemModel();
-
     for (const auto &key: priorityMap.keys())
     {
         QStandardItem *itemName = new QStandardItem(key);
@@ -48,6 +48,10 @@ rigCreator::rigCreator(QWidget *parent) :
 
     ui->bands->sortByColumn(1,Qt::AscendingOrder);
 
+    ui->manufacturer->addItem("Icom",manufIcom);
+    ui->manufacturer->addItem("Kenwood",manufKenwood);
+    //ui->manufacturer->addItem("FlexRadio",manufFlexRadio);
+    ui->manufacturer->setCurrentIndex(0);
 }
 
 void rigCreator::commandRowAdded(int row)
@@ -60,7 +64,7 @@ void rigCreator::commandRowAdded(int row)
     layoutCheckBox->addWidget(checkBox);            // Set the checkbox in the layer
     layoutCheckBox->setAlignment(Qt::AlignCenter);  // Center the checkbox
     layoutCheckBox->setContentsMargins(0,0,0,0);    // Set the zero padding
-    ui->commands->setCellWidget(row,4, checkBoxWidget);
+    ui->commands->setCellWidget(row,5, checkBoxWidget);
 
     QWidget *getSetWidget = new QWidget();
     QCheckBox *get = new QCheckBox();      // We declare and initialize the checkbox
@@ -74,7 +78,18 @@ void rigCreator::commandRowAdded(int row)
     layoutGetSet->addWidget(set);            // Set the checkbox in the layer
     layoutGetSet->setAlignment(Qt::AlignCenter);  // Center the checkbox
     layoutGetSet->setContentsMargins(0,0,0,0);    // Set the zero padding
-    ui->commands->setCellWidget(row,5, getSetWidget);
+    ui->commands->setCellWidget(row,6, getSetWidget);
+
+    QWidget *adminWidget = new QWidget();
+    QCheckBox *admin = new QCheckBox();      // We declare and initialize the checkbox
+    admin->setObjectName("admin");
+    QHBoxLayout *layoutAdmin = new QHBoxLayout(adminWidget); // create a layer with reference to the widget
+    layoutAdmin->addWidget(admin);            // Set the checkbox in the layer
+    layoutAdmin->setAlignment(Qt::AlignCenter);  // Center the checkbox
+    layoutAdmin->setContentsMargins(0,0,0,0);    // Set the zero padding
+    ui->commands->setCellWidget(row,7, adminWidget);
+
+
 }
 
 void rigCreator::bandRowAdded(int row)
@@ -99,7 +114,7 @@ void rigCreator::bandRowAdded(int row)
             color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(col.name(QColor::HexArgb)));
         }
     });
-    ui->bands->setCellWidget(row,11, color);
+    ui->bands->setCellWidget(row,12, color);
 }
 
 rigCreator::~rigCreator()
@@ -131,6 +146,7 @@ void rigCreator::on_defaultRigs_clicked(bool clicked)
         loadRigFile(file);
     }
 }
+
 
 void rigCreator::on_loadFile_clicked(bool clicked)
 {
@@ -183,10 +199,13 @@ void rigCreator::loadRigFile(QString file)
     }
 
     settings->beginGroup("Rig");
-    int manuf=ui->manufacturer->findText(settings->value("Manufacturer","Icom").toString());
+    int manuf=ui->manufacturer->findData(settings->value("Manufacturer",manufIcom).value<manufacturersType_t>());
     ui->manufacturer->setCurrentIndex(manuf);
     ui->model->setText(settings->value("Model","").toString());
-    ui->civAddress->setText(QString("%1").arg(settings->value("CIVAddress",0).toInt(),2,16));
+    if (ui->manufacturer->currentData() == manufKenwood)
+        ui->civAddress->setText(QString("%1").arg(settings->value("CIVAddress",0).toInt(),2));
+    else
+        ui->civAddress->setText(QString("%1").arg(settings->value("CIVAddress",0).toInt(),2,16));
     ui->rigctldModel->setText(settings->value("RigCtlDModel","").toString());
     ui->numReceiver->setText(settings->value("NumberOfReceivers","1").toString());
     ui->numVFO->setText(settings->value("NumberOfVFOs","1").toString());
@@ -212,6 +231,7 @@ void rigCreator::loadRigFile(QString file)
     ui->commands->clearContents();
     ui->commands->model()->removeRows(0,ui->commands->rowCount());
     ui->commands->setSortingEnabled(false);
+
     int numCommands = settings->beginReadArray("Commands");
     if (numCommands == 0) {
         settings->endArray();
@@ -236,11 +256,13 @@ void rigCreator::loadRigFile(QString file)
             } else {
                 checkBox->setChecked(false);
             }
+
             ui->commands->model()->setData(ui->commands->model()->index(c,0),settings->value("Type", "").toString());
             ui->commands->model()->setData(ui->commands->model()->index(c,1),settings->value("String", "").toString());
             ui->commands->model()->setData(ui->commands->model()->index(c,2),QString::number(settings->value("Min", 0).toInt()));
             ui->commands->model()->setData(ui->commands->model()->index(c,3),QString::number(settings->value("Max", 0).toInt()));
-            ui->commands->setCellWidget(c,4, checkBoxWidget);
+            ui->commands->model()->setData(ui->commands->model()->index(c,4),QString::number(settings->value("Bytes", 0).toInt()));
+            ui->commands->setCellWidget(c,5, checkBoxWidget);
 
             QWidget *getSetWidget = new QWidget();
             QCheckBox *get = new QCheckBox();      // We declare and initialize the checkbox
@@ -262,7 +284,22 @@ void rigCreator::loadRigFile(QString file)
             layoutGetSet->addWidget(set);            // Set the checkbox in the layer
             layoutGetSet->setAlignment(Qt::AlignCenter);  // Center the checkbox
             layoutGetSet->setContentsMargins(0,0,0,0);    // Set the zero padding
-            ui->commands->setCellWidget(c,5, getSetWidget);
+            ui->commands->setCellWidget(c,6, getSetWidget);
+
+            QWidget *adminWidget = new QWidget();
+            QCheckBox *admin = new QCheckBox();      // We declare and initialize the checkbox
+            checkBox->setObjectName("admin");
+            QHBoxLayout *layoutAdmin = new QHBoxLayout(adminWidget); // create a layer with reference to the widget
+            layoutAdmin->addWidget(admin);            // Set the checkbox in the layer
+            layoutAdmin->setAlignment(Qt::AlignCenter);  // Center the checkbox
+            layoutAdmin->setContentsMargins(0,0,0,0);    // Set the zero padding
+            if (settings->value("Admin",false).toBool()) {
+                admin->setChecked(true);
+            } else {
+                admin->setChecked(false);
+            }
+            ui->commands->setCellWidget(c,7, adminWidget);
+
         }
         settings->endArray();
     }
@@ -334,7 +371,7 @@ void rigCreator::loadRigFile(QString file)
             settings->setArrayIndex(c);
             ui->inputs->insertRow(ui->inputs->rowCount());
             ui->inputs->model()->setData(ui->inputs->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
-            ui->inputs->model()->setData(ui->inputs->model()->index(c,1),QString::number(settings->value("Reg", 0).toUInt()).rightJustified(2,'0'));
+            ui->inputs->model()->setData(ui->inputs->model()->index(c,1),QString::number(settings->value("Reg", 0).toInt()).rightJustified(2,'0'));
             ui->inputs->model()->setData(ui->inputs->model()->index(c,2),settings->value("Name", "").toString());
         }
         settings->endArray();
@@ -381,6 +418,8 @@ void rigCreator::loadRigFile(QString file)
             }
             ui->bands->setCellWidget(c,10, checkBoxWidget);
 
+            ui->bands->model()->setData(ui->bands->model()->index(c,11),settings->value("Offset", 0LL).toString(),Qt::DisplayRole);
+
             QPushButton *color = new QPushButton();
             color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(settings->value("Color", "#00000000").toString()));
             connect(color, &QPushButton::clicked, this, [=]() {
@@ -390,7 +429,7 @@ void rigCreator::loadRigFile(QString file)
                     color->setStyleSheet(QString("QPushButton { background-color : %0; }").arg(col.name(QColor::HexArgb)));
                 }
              });
-            ui->bands->setCellWidget(c,11, color);
+            ui->bands->setCellWidget(c,12, color);
 
         }
         settings->endArray();
@@ -433,7 +472,16 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->attenuators->insertRow(ui->attenuators->rowCount());
-            ui->attenuators->model()->setData(ui->attenuators->model()->index(c,0),QString::number(settings->value("dB", 0).toUInt()).rightJustified(2,'0'));
+
+            if (settings->value("Num", -1).toString().toInt() == -1) {
+                // Use old format
+                ui->attenuators->model()->setData(ui->attenuators->model()->index(c,0),QString::number(settings->value("dB", 0).toUInt()).rightJustified(2,'0'));
+                ui->attenuators->model()->setData(ui->attenuators->model()->index(c,1),QString("-%0 dB").arg(settings->value("dB", 0).toUInt()));
+            } else {
+                ui->attenuators->model()->setData(ui->attenuators->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
+                ui->attenuators->model()->setData(ui->attenuators->model()->index(c,1),settings->value("Name", "").toString());
+            }
+
         }
         settings->endArray();
     }
@@ -513,13 +561,83 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->filters->insertRow(ui->filters->rowCount());
-            ui->filters->model()->setData(ui->filters->model()->index(c,0),settings->value("Num", 0).toString());
+            ui->filters->model()->setData(ui->filters->model()->index(c,0),settings->value("Num", 0).toInt(),Qt::DisplayRole);
             ui->filters->model()->setData(ui->filters->model()->index(c,1),QString::number(settings->value("Modes", 0xffffffff).toUInt()));
             ui->filters->model()->setData(ui->filters->model()->index(c,2),settings->value("Name", "").toString());
         }
         settings->endArray();
     }
     ui->filters->setSortingEnabled(true);
+
+    ui->ctcss->clearContents();
+    ui->ctcss->model()->removeRows(0,ui->ctcss->rowCount());
+    ui->ctcss->setSortingEnabled(false);
+
+    int numCtcss = settings->beginReadArray("CTCSS");
+    if (numCtcss == 0) {
+        settings->endArray();
+        // Populate with default values for the manufacturer
+        if (ui->manufacturer->currentData().value<manufacturersType_t>() == manufKenwood)
+        {
+            for (int c = 0; c < 42; c++)
+            {
+                ui->ctcss->insertRow(ui->ctcss->rowCount());
+                ui->ctcss->model()->setData(ui->ctcss->model()->index(c,0),QString::number(c).rightJustified(4,'0'));
+                ui->ctcss->model()->setData(ui->ctcss->model()->index(c,1),QString::number(kenwoodTones[c],'f',1));
+            }
+        }
+        else  if (ui->manufacturer->currentData().value<manufacturersType_t>() == manufIcom)
+        {
+            for (int c = 0; c < 48; c++)
+            {
+                ui->ctcss->insertRow(ui->ctcss->rowCount());
+                ui->ctcss->model()->setData(ui->ctcss->model()->index(c,0),QString::number(icomTones[c]*10).rightJustified(4,'0'));
+                ui->ctcss->model()->setData(ui->ctcss->model()->index(c,1),QString::number(icomTones[c],'f',1));
+            }
+        }
+    }
+    else {
+        for (int c = 0; c < numCtcss; c++)
+        {
+            settings->setArrayIndex(c);
+            ui->ctcss->insertRow(ui->ctcss->rowCount());
+            ui->ctcss->model()->setData(ui->ctcss->model()->index(c,0),QString::number(settings->value("Reg", 0).toInt()).rightJustified(4,'0'));
+            ui->ctcss->model()->setData(ui->ctcss->model()->index(c,1),QString::number(settings->value("Tone", 0.0).toFloat(),'f',1));
+        }
+        settings->endArray();
+    }
+    ui->ctcss->setSortingEnabled(true);
+
+    ui->dtcs->clearContents();
+    ui->dtcs->model()->removeRows(0,ui->dtcs->rowCount());
+    ui->dtcs->setSortingEnabled(false);
+    ui->dtcs->sortByColumn(0,Qt::AscendingOrder);
+
+    int numDtcs = settings->beginReadArray("DTCS");
+    if (numDtcs == 0) {
+        settings->endArray();
+        // Populate with default values for the manufacturer
+        if (ui->manufacturer->currentData().value<manufacturersType_t>() == manufIcom)
+        {
+            for (int c = 0; c < 104; c++)
+            {
+                ui->dtcs->insertRow(ui->dtcs->rowCount());
+                ui->dtcs->model()->setData(ui->dtcs->model()->index(c,0),QString::number(icomDtcs[c]).rightJustified(3,'0'));
+            }
+        }
+    }
+    else {
+        for (int c = 0; c < numDtcs; c++)
+        {
+            settings->setArrayIndex(c);
+            ui->dtcs->insertRow(ui->dtcs->rowCount());
+            ui->dtcs->model()->setData(ui->dtcs->model()->index(c,0),QString::number(settings->value("Reg", 0).toInt()).rightJustified(3,'0'));
+        }
+        settings->endArray();
+    }
+    ui->dtcs->setSortingEnabled(true);
+    ui->dtcs->sortByColumn(0,Qt::AscendingOrder);
+
 
     settings->endGroup();
     delete settings;
@@ -601,9 +719,13 @@ void rigCreator::saveRigFile(QString file)
     settings->sync();
     settings->beginGroup("Rig");
 
-    settings->setValue("Manufacturer",ui->manufacturer->currentText());
+    settings->setValue("Manufacturer",ui->manufacturer->currentData());
     settings->setValue("Model",ui->model->text());
-    settings->setValue("CIVAddress",ui->civAddress->text().toInt(nullptr,16));
+    if (ui->manufacturer->currentData() == manufKenwood)
+        settings->setValue("CIVAddress",ui->civAddress->text().toInt(nullptr));
+    else
+        settings->setValue("CIVAddress",ui->civAddress->text().toInt(nullptr,16));
+
     settings->setValue("RigCtlDModel",ui->rigctldModel->text().toInt());
     settings->setValue("NumberOfReceivers",ui->numReceiver->text().toInt());
     settings->setValue("NumberOfVFOs",ui->numVFO->text().toInt());
@@ -637,14 +759,15 @@ void rigCreator::saveRigFile(QString file)
         settings->setValue("String", (ui->commands->item(n,1) == NULL) ? "" : ui->commands->item(n,1)->text());
         settings->setValue("Min", (ui->commands->item(n,2) == NULL) ? 0 : ui->commands->item(n,2)->text().toInt());
         settings->setValue("Max", (ui->commands->item(n,3) == NULL) ? 0 : ui->commands->item(n,3)->text().toInt());
+        settings->setValue("Bytes", (ui->commands->item(n,4) == NULL) ? 0 : ui->commands->item(n,4)->text().toInt());
 
-        QCheckBox* chk = ui->commands->cellWidget(n,4)->findChild<QCheckBox*>();
+        QCheckBox* chk = ui->commands->cellWidget(n,5)->findChild<QCheckBox*>();
         if (chk != nullptr)
         {
             settings->setValue("Command29", chk->isChecked());
         }
 
-        QList<QCheckBox*> getSet =ui->commands->cellWidget(n,5)->findChildren<QCheckBox*>(QString(), Qt::FindChildrenRecursively);
+        QList<QCheckBox*> getSet =ui->commands->cellWidget(n,6)->findChildren<QCheckBox*>(QString(), Qt::FindChildrenRecursively);
         qDebug() << "size = "<<getSet.size();
         for (const auto &c: getSet)
         {
@@ -653,6 +776,13 @@ void rigCreator::saveRigFile(QString file)
             else if (c->objectName() == "set")
                 settings->setValue("SetCommand", c->isChecked());
         }
+
+        QCheckBox* admin = ui->commands->cellWidget(n,7)->findChild<QCheckBox*>();
+        if (chk != nullptr)
+        {
+            settings->setValue("Admin", admin->isChecked());
+        }
+
     }
     settings->endArray();
 
@@ -687,7 +817,7 @@ void rigCreator::saveRigFile(QString file)
     {
         settings->setArrayIndex(n);
         settings->setValue("Num", (ui->inputs->item(n,0) == NULL) ? 0 : ui->inputs->item(n,0)->text().toUInt());
-        settings->setValue("Reg", (ui->inputs->item(n,1) == NULL) ? 0 : ui->inputs->item(n,1)->text().toUInt());
+        settings->setValue("Reg", (ui->inputs->item(n,1) == NULL) ? 0 : ui->inputs->item(n,1)->text().toInt());
         settings->setValue("Name", (ui->inputs->item(n,2) == NULL) ? "" : ui->inputs->item(n,2)->text());
     }
     settings->endArray();
@@ -716,7 +846,9 @@ void rigCreator::saveRigFile(QString file)
             settings->setValue("Antennas", chk->isChecked());
         }
 
-        QPushButton* color = static_cast<QPushButton*>(ui->bands->cellWidget(n,11));
+        settings->setValue("Offset", (ui->bands->item(n,11) == NULL) ? 0LL : ui->bands->item(n,11)->text().toLongLong() );
+
+        QPushButton* color = static_cast<QPushButton*>(ui->bands->cellWidget(n,12));
         if (color != nullptr)
         {
             settings->setValue("Color", color->palette().button().color().name(QColor::HexArgb));
@@ -744,7 +876,8 @@ void rigCreator::saveRigFile(QString file)
     for (int n = 0; n<ui->attenuators->rowCount();n++)
     {
         settings->setArrayIndex(n);
-        settings->setValue("dB",(ui->attenuators->item(n,0) == NULL) ? 0 :  ui->attenuators->item(n,0)->text().toUInt());
+        settings->setValue("Num",(ui->attenuators->item(n,0) == NULL) ? 0 :  ui->attenuators->item(n,0)->text().toUInt());
+        settings->setValue("Name",(ui->attenuators->item(n,1) == NULL) ? "" :  ui->attenuators->item(n,1)->text());
     }
     settings->endArray();
 
@@ -792,6 +925,25 @@ void rigCreator::saveRigFile(QString file)
         settings->setValue("Num",(ui->filters->item(n,0) == NULL) ? 0 :  ui->filters->item(n,0)->text().toUInt());
         settings->setValue("Modes",(ui->filters->item(n,1) == NULL) ? 0xffffffff : ui->filters->item(n,1)->text().toUInt());
         settings->setValue("Name",(ui->filters->item(n,2) == NULL) ? "" :  ui->filters->item(n,2)->text());
+    }
+    settings->endArray();
+
+    ui->ctcss->sortByColumn(0,Qt::AscendingOrder);
+    settings->beginWriteArray("CTCSS");
+    for (int n = 0; n<ui->ctcss->rowCount();n++)
+    {
+        settings->setArrayIndex(n);
+        settings->setValue("Reg",(ui->ctcss->item(n,0) == NULL) ? 0 :  ui->ctcss->item(n,0)->text().toUInt());
+        settings->setValue("Tone",(ui->ctcss->item(n,1) == NULL) ? 0.0 :  ui->ctcss->item(n,1)->text().toFloat());
+    }
+    settings->endArray();
+
+    ui->dtcs->sortByColumn(0,Qt::AscendingOrder);
+    settings->beginWriteArray("DTCS");
+    for (int n = 0; n<ui->dtcs->rowCount();n++)
+    {
+        settings->setArrayIndex(n);
+        settings->setValue("Reg",(ui->dtcs->item(n,0) == NULL) ? 0 :  ui->dtcs->item(n,0)->text().toUInt());
     }
     settings->endArray();
 
@@ -866,7 +1018,7 @@ QStandardItemModel* rigCreator::createModel(QStandardItemModel* model, QStringLi
 
 void rigCreator::on_hasCommand29_toggled(bool checked)
 {
-    ui->commands->setColumnHidden(4,!checked);
+    ui->commands->setColumnHidden(5,!checked);
 }
 
 

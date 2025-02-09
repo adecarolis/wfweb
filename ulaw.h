@@ -62,5 +62,4 @@ static const qint16 ulaw_decode[256] = {
 };
 
 
-
 #endif

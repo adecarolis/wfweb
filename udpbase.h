@@ -23,8 +23,10 @@
 #include <QDebug>
 
 #include "packettypes.h"
+#include "wfviewtypes.h"
 
 struct udpPreferences {
+    connectionType_t connectionType;
 	QString ipAddress;
 	quint16 controlLANPort;
 	quint16 serialLANPort;
@@ -34,6 +36,7 @@ struct udpPreferences {
 	QString clientName;
 	quint8 waterfallFormat;
 	bool halfDuplex;
+    bool adminLogin;
 };
 
 struct networkAudioLevels {
@@ -79,8 +82,8 @@ public:
 
 	void reconnect();
 
-	void dataReceived(QByteArray r);
-	void sendPing();
+    void dataReceived(QByteArray r);
+    void sendPing();
 	void sendRetransmitRange(quint16 first, quint16 second, quint16 third, quint16 fourth);
 
 	void sendControl(bool tracked, quint8 id, quint16 seq);

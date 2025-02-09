@@ -35,7 +35,8 @@ enum prefIfItem {
     if_region = 1 << 22,
     if_showBands = 1 << 23,
     if_separators = 1 << 24,
-    if_all = 1 << 25
+    if_forceVfoMode = 1 << 25,
+    if_all = 1 << 26
 };
 
 enum prefColItem {
@@ -100,7 +101,8 @@ enum prefRaItem {
     ra_virtualSerialPort = 1 << 7,
     ra_localAFgain = 1 << 8,
     ra_audioSystem = 1 << 9,
-    ra_all = 1 << 10
+    ra_manufacturer = 1 << 10,
+    ra_all = 1 << 11
 };
 
 enum prefCtItem {
@@ -156,7 +158,9 @@ enum prefUDPItem {
     u_txLatency = 1 << 13,
     u_audioInput = 1 << 14,
     u_audioOutput = 1 << 15,
-    u_all = 1 << 16
+    u_connectionType = 1 << 16,
+    u_adminLogin = 1 << 17,
+    u_all = 1 << 18
 };
 
 
@@ -206,6 +210,7 @@ struct preferences {
     bool showBands;
 
     // Radio:
+    manufacturersType_t manufacturer;
     quint8 radioCIVAddr;
     bool CIVisRadioModel;
     pttType_t pttType;
@@ -260,6 +265,7 @@ struct preferences {
 
     QChar decimalSeparator;
     QChar groupSeparator;
+    bool forceVfoMode;
 
 };
 

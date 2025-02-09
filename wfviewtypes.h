@@ -17,6 +17,8 @@ enum connectionStatus_t { connDisconnected, connConnecting, connConnected };
 
 enum underlay_t { underlayNone, underlayPeakHold, underlayPeakBuffer, underlayAverageBuffer };
 
+enum connectionType_t { connectionUSB, connectionLAN, connectionWiFi, connectionWAN };
+
 enum meter_t {
     meterNone=0,
     meterS,
@@ -122,6 +124,8 @@ enum pttType_t { pttCIV, pttRTS, pttDTR };
 
 enum vfoModeType_t { vfoModeVfo, vfoModeMem, vfoModeSat };
 
+enum manufacturersType_t {manufIcom=0, manufKenwood, manufFlexRadio};
+
 struct lpfhpf {
     lpfhpf ():lpf(0),hpf(0) {};
     lpfhpf (ushort lpf, ushort hpf):lpf(lpf),hpf(hpf) {};
@@ -139,8 +143,8 @@ struct rptrAccessData {
 };
 
 struct modeInfo {
-    modeInfo ():mk(modeUnknown), reg(0xff), filter(1),VFO(activeVFO), data(0xff), name(""), bwMin(0), bwMax(0), pass(0) {};
-    modeInfo(rigMode_t mk, quint8 reg, QString name, int bwMin, int bwMax): mk(mk), reg(reg), filter(1), VFO(activeVFO), data(false), name(name),bwMin(bwMin), bwMax(bwMax), pass(0) {};
+    modeInfo ():mk(modeUnknown), reg(0xff), filter(0xff),VFO(activeVFO), data(0xff), name(""), bwMin(0), bwMax(0), pass(0) {};
+    modeInfo(rigMode_t mk, quint8 reg, QString name, int bwMin, int bwMax): mk(mk), reg(reg), filter(0xff), VFO(activeVFO), data(0xff), name(name),bwMin(bwMin), bwMax(bwMax), pass(0) {};
     rigMode_t mk;
     quint8 reg;
     quint8 filter; // Default filter is always 1
@@ -177,21 +181,16 @@ struct scopeData {
 };
 
 struct toneInfo {
-    toneInfo ():tone(0), tinv(false),rinv(false),useSecondaryVFO(false) {};
-    toneInfo (toneInfo const &t): tone(t.tone), tinv(t.tinv), rinv(t.rinv), useSecondaryVFO(t.useSecondaryVFO) {};
-    toneInfo (quint16 tone):tone(tone), tinv(false),rinv(false),useSecondaryVFO(false) {};
-    toneInfo (quint16 tone, bool tinv, bool rinv, bool useSecondaryVFO):tone(tone), tinv(tinv),rinv(rinv),useSecondaryVFO(useSecondaryVFO) {};
-    quint16 tone;
+    toneInfo ():tone(0), name(""), tinv(false),rinv(false),useSecondaryVFO(false) {};
+    toneInfo (short tone): tone(tone), name(""), tinv(false),rinv(false),useSecondaryVFO(false) {};
+    toneInfo (short tone, QString name): tone(tone), name(name), tinv(false),rinv(false),useSecondaryVFO(false) {};
+    toneInfo (short tone, QString name, bool tinv, bool rinv, bool useSecondaryVFO):tone(tone), name(name), tinv(tinv),rinv(rinv),useSecondaryVFO(useSecondaryVFO) {};
+    ushort tone;
+    QString name;
     bool tinv;
     bool rinv;
     bool useSecondaryVFO;
-    toneInfo &operator=(const toneInfo &i) {
-        this->tone=i.tone;
-        this->tinv=i.tinv;
-        this->rinv=i.rinv;
-        this->useSecondaryVFO=i.useSecondaryVFO;
-        return *this;
-    }
+
 };
 
 enum breakIn_t {
@@ -206,6 +205,7 @@ struct freqt {
     quint64 Hz;
     double MHzDouble;
     selVFO_t VFO;
+
 };
 
 struct datekind {
@@ -225,9 +225,7 @@ struct meterkind {
     meter_t type;
 };
 
-// funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 346
-
+// funcs and funcString MUST be updated at the same time, missing commas concatenate strings!
 enum funcs { funcNone,
 /* Commands 00-0f VFO Information*/
 funcSep,
@@ -251,7 +249,7 @@ funcMonitorGain,        funcVoxGain,			funcAntiVoxGain,            funcBackLight
 /* Command 15 meters */
 funcSepC,
 funcSMeterSqlStatus,    funcSMeter,             funcAbsoluteMeter,          funcMeterType,          funcCenterMeter,        funcVariousSql,
-funcPowerMeter,         funcSWRMeter,               funcALCMeter,          	funcCompMeter,          funcVdMeter,            funcIdMeter,
+funcPowerMeter,         funcSWRMeter,           funcALCMeter,               funcCompMeter,          funcVdMeter,            funcIdMeter,
 
 /* Command 16 function en/dis */
 funcSepD,
@@ -324,7 +322,7 @@ funcAvailableTXFreq,    funcTXBandEdgeFreq,     funcNumUserTXBandEdgeFreq,  func
 
 /* Command 21 */
 funcSepK,
-funcRITFreq,			funcRitStatus,              funcRitTXStatus,
+funcRitFreq,			funcRitStatus,          funcRitTXStatus,        funcXitFreq,            funcXitStatus,              funcXitTXStatus,
 
 /* Command 25/26 */
 funcSepL,
@@ -344,16 +342,28 @@ funcVoiceTX,
 funcSepO,
 funcFA,                 funcFB,
 
+/* Some Kenwood Specific Commands */
+funcSepP,
+funcAutoInformation,    funcIFFilter,           funcDataMode,               funcRXFreqAndMode,      funcTXFreqAndMode,      funcTFSetStatus,
+funcMemorySelect,       funcSetTransmit,        funcSetReceive,             funcRITDown,            funcRITUp,              funcScopeInfo,
+funcScopeRange,         funcCWDecode,           funcScopeClear,             funcUSBScope,           funcTXEqualizer,        funcRXEqualizer,
+funcFilterControlSSB,   funcFilterControlData,
+// LAN Specific commands
+funcConnectionRequest,  funcLogin,              funcVOIP,                   funcVOIPLevel,          funcVOIPBuffer,         funcTXInhibit,
+funcLoginEnableDisable,
+
+
 /* Special Commands (internal use only) */
 funcSelectVFO,          funcSeparator,          funcLCDWaterfall,           funcLCDSpectrum,        funcLCDNothing,         funcPageUp,
 funcPageDown,           funcVFOFrequency,       funcVFOMode,                funcRigctlFunction,     funcRigctlLevel,        funcRigctlParam,
-funcRXAudio,            funcTXAudio
-
+funcRXAudio,            funcTXAudio,
+// This MUST be the last defined func.
+funcLastFunc
 };
 
 
-// Any changes to these strings WILL break rig definitions, add new ones to end. **Missing commas concatenate strings!**
-static QString funcString[] { "None",
+// Any changes to these strings WILL break rig definitions, add new ones to end. **Missing commas concatenate strings.
+static QString funcString[funcLastFunc] { "None",
 /* Commands 00-0f VFO Information*/
 "+<CMD00-0f VFO>",
 "Freq (TRX)",           "Mode (TRX)",           "Band Edge Freq",           "Freq Get",             "Mode Get",             "Freq Set",
@@ -448,7 +458,7 @@ static QString funcString[] { "None",
 
 /* Command 21 */
 "+<CMD21>",
-"RIT Frequency",       "RIT Status",               "RIT TX Status",
+"RIT Frequency",       "RIT Status",               "RIT TX Status",         "XIT Frequency",       "XIT Status",               "XIT TX Status",
 
 /* Command 25/26 */
 "+<CMD25/26 Freq>",
@@ -468,6 +478,15 @@ static QString funcString[] { "None",
 "+<Response Codes>",
 "Command Error FA",     "Command OK FB",
 
+"+<Kenwood Only>",
+"Auto Information",     "IF Filter Only",       "Data Mode Only",           "RX Freq And Mode",     "TX Freq And Mode",      "TF-Set Status",
+"Memory Num Select",    "Set Transmit Mode",    "Set Receive Mode",         "RIT Frequency Down",   "RIT Frequency Up",     "Scope Information",
+"Scope Range",          "CW Decode",            "Scope Clear",              "USB Scope Data",       "TX Equalizer",         "RX Equalizer",
+"Filter Control SSB",   "Filter Control Data",
+// LAN Specific commands
+"Connection Request",  "Network Login",         "VOIP Function",            "VOIP Level",           "VOIP Buffer",          "TX Inhibit",
+"Enable/Disable Login",
+
 /* Special Commands */
 "-Select VFO",          "-Seperator",
 "-LCD Waterfall",       "-LCD Spectrum",        "-LCD Nothing",             "-Page Up",             "-Page Down",           "-VFO Frequency",
@@ -483,8 +502,9 @@ struct spanType {
 };
 
 struct funcType {
-    funcType() {cmd=funcNone;}
-    funcType(funcs cmd, QString name, QByteArray data, int minVal, int maxVal, bool cmd29, bool getCmd, bool setCmd) : cmd(cmd), name(name), data(data), minVal(minVal), maxVal(maxVal), cmd29(cmd29), getCmd(getCmd), setCmd(setCmd) {}
+    funcType() {cmd=funcNone, name="None", data=QByteArray(), minVal=0, maxVal=0, cmd29=false, getCmd=false, setCmd=false, bytes=0, admin=false; }
+    funcType(funcs cmd, QString name, QByteArray data, int minVal, int maxVal, bool cmd29, bool getCmd, bool setCmd, uchar bytes, bool admin) :
+        cmd(cmd), name(name), data(data), minVal(minVal), maxVal(maxVal), cmd29(cmd29), getCmd(getCmd), setCmd(setCmd), bytes(bytes), admin(admin) {}
     funcs cmd;
     QString name;
     QByteArray data;
@@ -493,6 +513,8 @@ struct funcType {
     bool cmd29;
     bool getCmd;
     bool setCmd;
+    uchar bytes;
+    bool admin;
 };
 
 //struct commandtype {
@@ -550,10 +572,10 @@ struct memoryType {
     quint8 duplexB=0;
     quint8 tonemode=0;
     quint8 tonemodeB=0;
-    quint16 tone=670;
-    quint16 toneB=670;
-    quint16 tsql=670;
-    quint16 tsqlB=670;
+    QString tone="67.0";
+    QString toneB="67.0";
+    QString tsql="67.0";
+    QString tsqlB="67.0";
     quint8 dsql=0;
     quint8 dsqlB=0;
     quint16 dtcs=23;
@@ -610,8 +632,20 @@ struct memParserFormat{
     int len;
 };
 
+struct commandErrorType{
+    commandErrorType() : func(funcNone), data(QByteArray()), minValue(0), maxValue(0), bytes(0) {};
+    commandErrorType(funcs func, QByteArray data, int minValue, int maxValue, char bytes) :
+        func(func), data(data), minValue(minValue), maxValue(maxValue), bytes(bytes)  {};
+
+    funcs func;
+    QByteArray data;
+    int minValue;
+    int maxValue;
+    uchar bytes;
+};
+
 enum audioType {qtAudio,portAudio,rtAudio,tciAudio};
-enum codecType { LPCM, PCMU, OPUS };
+enum codecType { LPCM, PCMU, OPUS, ADPCM };
 
 enum passbandActions {passbandStatic, pbtInnerMove, pbtOuterMove, pbtMoving, passbandResizing};
 

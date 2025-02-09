@@ -45,6 +45,7 @@ aboutbox::aboutbox(QWidget *parent) :
     QString qcpcredit = QString("<br/><br/>The waterfall and spectrum plot graphics use QCustomPlot, from  <a href=\"https://www.qcustomplot.com/\">Emanuel Eichhammer</a>");
     QString qtcredit = QString("<br/><br/>This copy of wfview was built against Qt version %1").arg(QT_VERSION_STR);
     QString hamlibcredit = QString("<br/><br/>wfview contains our own implementation of the Hamlib rigctl protocol which uses portions of code from <a href=\"https://hamlib.github.io/\">Hamlib</a><br/>Copyright (C) 2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012 The Hamlib Group");
+    QString adpcmcredit = QString("<br/><br/>wfview contains the adpcm-xq audio encoder/decoder - Copyright (c) David Bryant All rights reserved.");
 
     // Acknowledgement:
     QString wfviewcommunityack = QString("<br/><br/>The developers of wfview wish to thank the many contributions from the wfview community at-large, including ideas, bug reports, and fixes.");
@@ -122,7 +123,7 @@ QString freqCtlCredit = QString("/*"
 
     aboutText.append(portaudiocredit);
 
-    aboutText.append(kappanhangack + qcpcredit + qtcredit + hamlibcredit);
+    aboutText.append(kappanhangack + qcpcredit + qtcredit + hamlibcredit + adpcmcredit);
     aboutText.append("<br/><br/>");
     aboutText.append("<pre>" + sxcreditcopyright + freqCtlCredit + "</pre>");
     aboutText.append("<br/><br/>");

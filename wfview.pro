@@ -21,7 +21,7 @@ contains(DEFINES,USB_CONTROLLER){
 TARGET = wfview
 TEMPLATE = app
 
-DEFINES += WFVIEW_VERSION=\\\"2.03\\\"
+DEFINES += WFVIEW_VERSION=\\\"2.04\\\"
 
 DEFINES += BUILD_WFVIEW
 
@@ -271,6 +271,8 @@ win32:INCLUDEPATH += ../qcustomplot
 INCLUDEPATH += resampler
 
 SOURCES += main.cpp\
+    adpcm/adpcm-dns.c \
+    adpcm/adpcm-lib.c \
     bandbuttons.cpp \
     cachingqueue.cpp \
     cwsender.cpp \
@@ -280,8 +282,10 @@ SOURCES += main.cpp\
     cwsidetone.cpp \
     debugwindow.cpp \
     icomcommander.cpp \
+    kenwoodcommander.cpp \
     loggingwindow.cpp \
     receiverwidget.cpp \
+    rtpaudio.cpp \
     scrolltest.cpp \
     settingswidget.cpp \
     memories.cpp \
@@ -323,6 +327,7 @@ SOURCES += main.cpp\
     audiodevices.cpp
 
 HEADERS  += wfmain.h \
+    adpcm/adpcm-lib.h \
     bandbuttons.h \
     cachingqueue.h \
     colorprefs.h \
@@ -334,6 +339,7 @@ HEADERS  += wfmain.h \
     cwsidetone.h \
     debugwindow.h \
     icomcommander.h \
+    kenwoodcommander.h \
     loggingwindow.h \
     memories.h \
     prefs.h \
@@ -343,6 +349,7 @@ HEADERS  += wfmain.h \
     freqmemory.h \
     rigcreator.h \
     rigidentities.h \
+    rtpaudio.h \
     scrolltest.h \
     settingswidget.h \
     sidebandchooser.h \
@@ -383,6 +390,7 @@ HEADERS  += wfmain.h \
     aboutbox.h \
     wfviewtypes.h \
     audiodevices.h
+
 
 FORMS    += wfmain.ui \
     bandbuttons.ui \

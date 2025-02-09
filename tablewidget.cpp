@@ -52,7 +52,8 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
         }
         else if( selectedAction == del )
         {
-            emit rowDeleted((this->item(this->currentRow(),1) == NULL) ? 0 : this->item(this->currentRow(),1)->text().toUInt());
+            emit rowDeleted(this->currentRow());
+            emit rowValDeleted((this->item(this->currentRow(),1) == NULL) ? 0 : this->item(this->currentRow(),1)->text().toUInt());
             this->removeRow(this->currentRow());
         }
     }
@@ -88,9 +89,35 @@ QWidget* tableCombobox::createEditor(QWidget *parent, const   QStyleOptionViewIt
     Q_UNUSED(index)
     Q_UNUSED(option)
     combo = new QComboBox(parent);
+
     QObject::connect(combo,SIGNAL(currentIndexChanged(int)),this,SLOT(setData(int)));
     combo->blockSignals(true);
     combo->setModel(modelData);
+
+    combo->setFocusPolicy(Qt::StrongFocus);
+    combo->setEditable(true);
+    combo->setInsertPolicy(QComboBox::NoInsert);
+
+    QSortFilterProxyModel* filter = new QSortFilterProxyModel(combo);
+    filter->setFilterCaseSensitivity(Qt::CaseInsensitive);
+    filter->setSourceModel(combo->model());
+
+    QCompleter* completer = new QCompleter(filter,combo);
+    completer->setCompletionMode(QCompleter::UnfilteredPopupCompletion);
+    combo->setCompleter(completer);
+    QObject::connect(combo->lineEdit(),SIGNAL(textEdited(QString)),filter,SLOT(setFilterFixedString(QString)));
+
+    comboValidator* valid = new comboValidator(combo);
+    combo->lineEdit()->setValidator(valid);
+
+    connect(combo->lineEdit(), &QLineEdit::returnPressed, combo->lineEdit(), [=]() {
+        if (combo->findText(combo->lineEdit()->text(), Qt::MatchExactly) < 0)
+        {
+            combo->lineEdit()->setText(combo->itemText(0)); // Set to first entry in combobox.
+        }
+    });
+
+
     combo->blockSignals(false);
     return combo;
 }
@@ -120,7 +147,6 @@ void tableCombobox::setData(int val)
 
     if (combo != Q_NULLPTR) {
         emit commitData(combo);
-
     }
 }
 

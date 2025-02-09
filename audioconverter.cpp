@@ -1,6 +1,7 @@
 #include "audioconverter.h"
 #include "logcategories.h"
 #include "ulaw.h"
+#include "adpcm/adpcm-lib.h"
 
 audioConverter::audioConverter(QObject* parent) : QObject(parent) 
 {
@@ -51,6 +52,11 @@ bool audioConverter::init(QAudioFormat inFormat, codecType inCodec, QAudioFormat
         qInfo(logAudioConverter()) << "Creating opus encoder: " << opus_strerror(opus_err);
 	}
 
+    if (outCodec == ADPCM)
+    {
+        adpcmContext = adpcm_create_context(outFormat.channelCount(),outFormat.sampleRate(),1,1);
+    }
+
 	if (inFormat.sampleRate() != outFormat.sampleRate()) 
 	{
 		int resampleError = 0;
@@ -86,11 +92,15 @@ audioConverter::~audioConverter()
 		opus_decoder_destroy(opusDecoder);
 	}
 
-	if (resampler != Q_NULLPTR) {
-		speex_resampler_destroy(resampler);
-		qDebug(logAudioConverter()) << "Resampler closed";
+    if (adpcmContext != Q_NULLPTR) {
+        qDebug(logAudioConverter()) << "adpcm context closed";
+        adpcm_free_context(adpcmContext);
     }
 
+    if (resampler != Q_NULLPTR) {
+		speex_resampler_destroy(resampler);
+        qDebug(logAudioConverter()) << "Resampler closed";
+    }
 }
 
 bool audioConverter::convert(audioPacket audio)
@@ -133,6 +143,18 @@ bool audioConverter::convert(audioPacket audio)
             audio.data.clear();
             audio.data = outPacket; // Replace incoming data with converted.
             // Make sure that sample size/type is set correctly
+        }
+        else if (inCodec == ADPCM)
+        {
+            QByteArray outPacket((int)((audio.data.length()-4) * 4), (char)0xff);
+            qint16* out = (qint16*)outPacket.data();
+            quint8* in = (quint8*)audio.data.data();
+            int samples = adpcm_decode_block(out,in,audio.data.size(),1);
+            if (samples != outPacket.size()/2) {
+                qInfo() << "Sample size mismatch, audio packet in:" << audio.data.length() << "out:" << outPacket.length() << "samples:" <<samples;
+            }
+            audio.data.clear();
+            audio.data = outPacket; // Replace incoming data with converted.
         }
 
         Eigen::VectorXf samplesF;
@@ -324,10 +346,23 @@ bool audioConverter::convert(audioPacket audio)
                 }
 
                 /*
-                    As we currently don't have a float based uLaw encoder, this must be done
+                    As we currently don't have a float based uLaw or adpcm encoder, this must be done
                     after all other conversion has taken place.
                 */
-                if (outCodec == PCMU)
+                if (outCodec == ADPCM)
+                {
+                    QByteArray outPacket((int)(audio.data.length() / 4) + 4, (char)0xff);
+                    qint16* in = (qint16*)audio.data.data();
+                    quint8* out = (quint8*)outPacket.data();
+                    size_t outSize = 0;
+                    //int adpcm_encode_block (void *p, uint8_t *outbuf, size_t *outbufsize, const int16_t *inbuf, int inbufcount)
+                    int samples = adpcm_encode_block(adpcmContext,out,&outSize,in,audio.data.size()/2);
+                    qInfo(logAudio()) << "Converted" << samples << "samples, buffer size:" << outSize;
+                    audio.data.clear();
+                    audio.data = outPacket; // Copy output packet back to input buffer.
+
+                }
+                else if (outCodec == PCMU)
                 {
                     QByteArray outPacket((int)audio.data.length() / 2, (char)0xff);
                     qint16* in = (qint16*)audio.data.data();
