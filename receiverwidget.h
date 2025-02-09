@@ -264,7 +264,6 @@ private:
     modeInfo mode;
     modeInfo unselectedMode;
     freqt unselectedFreq;
-    bool lock = false;
     bool scopePrepared=false;
     quint16 spectWidth=689;
     quint16 maxAmp=200;
