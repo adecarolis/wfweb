@@ -309,23 +309,14 @@ void audioHandler::convertedOutput(audioPacket packet) {
 
         currentLatency = packet.time.msecsTo(QTime::currentTime()) + (nativeFormat.durationForBytes(audioOutput->bufferSize() - audioOutput->bytesFree()) / 1000);
         if (audioDevice != Q_NULLPTR) {
-            if (audioDevice->write(packet.data) < packet.data.size()) {
-                    qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Buffer full!";
-                    isOverrun=true;
-            } else {
-                isOverrun = false;
-            }
-            if (lastReceived.msecsTo(QTime::currentTime()) > 100) {
-                qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize;
+            int bytes = packet.data.size();
+            while (bytes > 0) {
+                int written = audioDevice->write(packet.data);
+                bytes = bytes - written;
+                packet.data.remove(0,written);
             }
             lastReceived = QTime::currentTime();
         }
-        /*if ((packet.seq > lastSentSeq + 1) && (setup.codec == 0x40 || setup.codec == 0x41)) {
-            qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempting FEC on packet" << packet.seq << "as last is" << lastSentSeq;
-            lastSentSeq = packet.seq;
-            incomingAudio(packet); // Call myself again to run the packet a second time (FEC)
-        }
-        */
         lastSentSeq = packet.seq;
         amplitude = packet.amplitudePeak;
         emit haveLevels(getAmplitude(), static_cast<quint16>(packet.amplitudeRMS * 255.0), setup.latency, currentLatency, isUnderrun, isOverrun);
