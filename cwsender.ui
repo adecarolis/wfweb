@@ -22,6 +22,9 @@
      <layout class="QVBoxLayout" name="verticalLayout_7">
       <item>
        <widget class="QPlainTextEdit" name="receiveText">
+        <property name="focusPolicy">
+         <enum>Qt::FocusPolicy::NoFocus</enum>
+        </property>
         <property name="undoRedoEnabled">
          <bool>false</bool>
         </property>
@@ -103,6 +106,9 @@
                 <height>0</height>
                </size>
               </property>
+              <property name="toolTip">
+               <string>Local sidetone generator volume</string>
+              </property>
               <property name="maximum">
                <number>100</number>
               </property>
@@ -113,6 +119,9 @@
             </item>
             <item>
              <widget class="QCheckBox" name="sidetoneEnableChk">
+              <property name="toolTip">
+               <string>Enable local sidetone generator</string>
+              </property>
               <property name="text">
                <string>Enable</string>
               </property>
@@ -248,6 +257,9 @@
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
+            <property name="toolTip">
+             <string>Sets the pitch</string>
+            </property>
             <property name="minimum">
              <number>300</number>
             </property>
@@ -279,6 +291,9 @@
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
+            </property>
+            <property name="toolTip">
+             <string>Sets the dash ratio</string>
             </property>
             <property name="decimals">
              <number>1</number>
@@ -328,6 +343,9 @@
           </item>
           <item row="1" column="4">
            <widget class="QCheckBox" name="cutNumbersChk">
+            <property name="toolTip">
+             <string>Replace numbers with short letters, for example 9 becomes N</string>
+            </property>
             <property name="text">
              <string>Cut Num</string>
             </property>
@@ -335,6 +353,9 @@
           </item>
           <item row="3" column="4">
            <widget class="QCheckBox" name="sendImmediateChk">
+            <property name="toolTip">
+             <string>Send immediately: Don't wait for enter, send characters as they are typed</string>
+            </property>
             <property name="text">
              <string>Send Immed</string>
             </property>
