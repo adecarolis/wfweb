@@ -539,6 +539,7 @@ void kenwoodCommander::parseData(QByteArray data)
                 continue;
             }
             break;
+        // These are numbers, as they might contain other info, only extract type.bytes len of data.
         case funcAGCTimeConstant:
         case funcMemorySelect:
         case funcRfGain:
@@ -554,10 +555,11 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcAGC:
         case funcPowerControl:
         case funcLANModLevel:
-            value.setValue<uchar>(d.toUShort());
+            value.setValue<uchar>(d.mid(0,type.bytes).toUShort());
             break;
         case funcCompressorLevel:
-            value.setValue<uchar>(d.mid(3,3).toUShort());
+            // We only want the second value.
+            value.setValue<uchar>(d.mid(type.bytes,type.bytes).toUShort());
             break;
         case funcScopeSpan:
             for (auto &s: rigCaps.scopeCenterSpans)

@@ -1538,17 +1538,20 @@ void wfmain::buttonControl(const COMMAND* cmd)
     case funcFreq:
     case funcSelectedFreq:
     {
-        freqt f;
-        if (cmd->suffix < receivers.size()) {
-            f.Hz = roundFrequencyWithStep(receivers[cmd->suffix]->getFrequency().Hz, cmd->value, tsWfScrollHz);
-        } else {
-            f.Hz = 0;
+        if (!freqLock)
+        {
+            freqt f;
+            if (cmd->suffix < receivers.size()) {
+                f.Hz = roundFrequencyWithStep(receivers[cmd->suffix]->getFrequency().Hz, cmd->value, tsWfScrollHz);
+            } else {
+                f.Hz = 0;
+            }
+            f.MHzDouble = f.Hz / double(1E6);
+            f.VFO=(selVFO_t)cmd->suffix;
+            vfoCommandType t = queue->getVfoCommand(vfo?vfoB:vfoA,cmd->suffix,true);
+            //qInfo() << "sending command" << funcString[t.freqFunc] << "freq:" << f.Hz << "rx:" << t.receiver << "vfo:" << t.vfo;
+            queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(f),false,t.receiver));
         }
-        f.MHzDouble = f.Hz / double(1E6);
-        f.VFO=(selVFO_t)cmd->suffix;
-        vfoCommandType t = queue->getVfoCommand(vfo?vfoB:vfoA,cmd->suffix,true);
-        //qInfo() << "sending command" << funcString[t.freqFunc] << "freq:" << f.Hz << "rx:" << t.receiver << "vfo:" << t.vfo;
-        queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(f),false,t.receiver));
         break;
     }
 
