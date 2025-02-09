@@ -1344,6 +1344,7 @@ void receiverWidget::customSpanPressed()
     minSpan = minSpan * 2;
 
     QDialog* dialog = new QDialog(this);
+    dialog->setToolTip(tr("Please enter the lower and upper frequencies (in MHz) for the currently selected Scope Fixed edge"));
     dialog->setWindowTitle(tr("Scope Edges"));
     QVBoxLayout* layout = new QVBoxLayout(dialog);
     layout->setSizeConstraint(QLayout::SetFixedSize);
@@ -1351,11 +1352,11 @@ void receiverWidget::customSpanPressed()
 
     layout->addLayout(header);
     QLabel* lowLabel = new QLabel();
-    lowLabel->setText(tr("Low Freq"));
+    lowLabel->setText(tr("Start Freq (MHz)"));
     lowLabel->setAlignment(Qt::AlignCenter);
     header->addWidget(lowLabel);
     QLabel* highLabel = new QLabel();
-    highLabel->setText(tr("High Freq"));
+    highLabel->setText(tr("End Freq (MHz)"));
     highLabel->setAlignment(Qt::AlignCenter);
     header->addWidget(highLabel);
 
@@ -1368,6 +1369,7 @@ void receiverWidget::customSpanPressed()
     low->setSingleStep(minSpan);
     low->setRange(minFreqMhz,maxFreqMhz);
     low->setAlignment(Qt::AlignCenter);
+    low->setToolTip(tr("Fixed edge start frequency"));
     spins->addWidget(low);
 
     low->setMinimumHeight(low->minimumSizeHint().height()*2);
@@ -1379,6 +1381,7 @@ void receiverWidget::customSpanPressed()
     high->setMinimumHeight(high->minimumSizeHint().height()*2);
     high->setRange(minFreqMhz,maxFreqMhz);
     high->setAlignment(Qt::AlignCenter);
+    high->setToolTip(tr("Fixed edge end frequency"));
     spins->addWidget(high);
 
     QHBoxLayout* buttons = new QHBoxLayout();
@@ -1412,54 +1415,6 @@ void receiverWidget::customSpanPressed()
 
     dialog->exec();
 
-
-
-
-    /*
-
-    double lowFreq = lowerFreq;
-    double highFreq = upperFreq;
-    QString freqstring = QString("%1, %2").arg(lowFreq).arg(highFreq);
-    bool ok;
-
-    QString userFreq = QInputDialog::getText(this, tr("Scope Edges"),
-                          tr("Please enter desired scope edges, in MHz,\nwith a comma between the low and high range."),
-    QLineEdit::Normal, freqstring, &ok);
-    if(!ok)
-        return;
-
-    QString clean = userFreq.trimmed().replace(" ", "");
-    QStringList freqs = clean.split(",");
-    if(freqs.length() == 2)
-    {
-        lowFreq = QString(freqs.at(0)).toDouble(&ok);
-        if(ok)
-        {
-            highFreq = QString(freqs.at(1)).toDouble(&ok);
-            if(ok)
-            {
-                qDebug(logGui()) << "setting edge to: " << lowFreq << ", " << highFreq << ", edge num: " << edgeCombo->currentIndex() + 1;
-                queue->addUnique(priorityImmediate,queueItem(funcScopeFixedEdgeFreq,QVariant::fromValue(spectrumBounds(lowFreq, highFreq, edgeCombo->currentIndex() + 1)),false,receiver));
-                return;
-            }
-        }
-        goto errMsg;
-    } else {
-        goto errMsg;
-    }
-
-errMsg:
-    {
-        QMessageBox URLmsgBox;
-        URLmsgBox.setText(tr("Error, could not interpret your input.\
-                          <br/>Please make sure to place a comma between the frequencies.\
-                          <br/>For example: '7.200, 7.300'"));
-        URLmsgBox.exec();
-
-        return;
-    }
-
-    */
 }
 
 

@@ -3662,7 +3662,10 @@ void wfmain:: getInitialRigState()
         setRadioTimeDatePrep();
     }
 
-    cw->receiveEnabled(rigCaps->commands.contains(funcCWDecode));
+    if (cw != Q_NULLPTR)
+    {
+        cw->receiveEnabled(rigCaps->commands.contains(funcCWDecode));
+    }
 
     if (rigCaps->commands.contains(funcVOIP))
     {
