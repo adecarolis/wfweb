@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>918</width>
+    <width>835</width>
     <height>451</height>
    </rect>
   </property>
@@ -164,7 +164,7 @@
     <item row="0" column="0" colspan="12">
      <widget class="QPlainTextEdit" name="transcriptText">
       <property name="focusPolicy">
-       <enum>Qt::NoFocus</enum>
+       <enum>Qt::FocusPolicy::NoFocus</enum>
       </property>
       <property name="toolTip">
        <string>CW Transmission Transcript</string>
@@ -203,7 +203,6 @@
           </property>
           <property name="font">
            <font>
-            <weight>75</weight>
             <bold>true</bold>
            </font>
           </property>
@@ -227,22 +226,16 @@
         </item>
         <item>
          <widget class="QSlider" name="sidetoneLevelSlider">
-          <property name="toolTip">
-           <string>Local sidetone generator volume</string>
-          </property>
           <property name="maximum">
            <number>100</number>
           </property>
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QCheckBox" name="sidetoneEnableChk">
-          <property name="toolTip">
-           <string>Enable local sidetone generator</string>
-          </property>
           <property name="text">
            <string>Enable</string>
           </property>
@@ -274,7 +267,6 @@
           </property>
           <property name="font">
            <font>
-            <weight>75</weight>
             <bold>true</bold>
            </font>
           </property>
@@ -301,7 +293,7 @@
            <string>Type here to send text as CW</string>
           </property>
           <property name="inputMethodHints">
-           <set>Qt::ImhNone</set>
+           <set>Qt::InputMethodHint::ImhUppercaseOnly</set>
           </property>
           <property name="editable">
            <bool>true</bool>
@@ -310,7 +302,7 @@
            <string notr="true"/>
           </property>
           <property name="insertPolicy">
-           <enum>QComboBox::NoInsert</enum>
+           <enum>QComboBox::InsertPolicy::InsertAtTop</enum>
           </property>
          </widget>
         </item>
@@ -321,7 +313,7 @@
     <item row="1" column="3" colspan="2">
      <layout class="QGridLayout" name="gridLayout_3">
       <property name="sizeConstraint">
-       <enum>QLayout::SetDefaultConstraint</enum>
+       <enum>QLayout::SizeConstraint::SetMinimumSize</enum>
       </property>
       <item row="3" column="0">
        <widget class="QComboBox" name="breakinCombo">
@@ -353,21 +345,21 @@
       </item>
       <item row="1" column="2">
        <widget class="QLabel" name="label_4">
-        <property name="toolTipDuration">
-         <number>0</number>
-        </property>
         <property name="text">
          <string>PITCH  (Hz):</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
         </property>
        </widget>
       </item>
       <item row="1" column="1">
        <widget class="QLabel" name="label">
-        <property name="toolTipDuration">
-         <number>0</number>
-        </property>
         <property name="text">
          <string>WPM:</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
         </property>
        </widget>
       </item>
@@ -378,9 +370,6 @@
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
-        </property>
-        <property name="toolTip">
-         <string>Sets the pitch</string>
         </property>
         <property name="minimum">
          <number>300</number>
@@ -398,14 +387,11 @@
       </item>
       <item row="1" column="0">
        <widget class="QLabel" name="label_2">
-        <property name="toolTip">
-         <string/>
-        </property>
-        <property name="toolTipDuration">
-         <number>0</number>
-        </property>
         <property name="text">
          <string>Break In</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
         </property>
        </widget>
       </item>
@@ -416,9 +402,6 @@
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
-        </property>
-        <property name="toolTip">
-         <string>Sets the dash ratio</string>
         </property>
         <property name="decimals">
          <number>1</number>
@@ -439,9 +422,6 @@
       </item>
       <item row="1" column="3">
        <widget class="QLabel" name="label_5">
-        <property name="toolTipDuration">
-         <number>0</number>
-        </property>
         <property name="text">
          <string>Dash Ratio</string>
         </property>
@@ -471,9 +451,6 @@
       </item>
       <item row="1" column="4">
        <widget class="QCheckBox" name="cutNumbersChk">
-        <property name="toolTip">
-         <string>Replace numbers with short letters, for example 9 becomes N</string>
-        </property>
         <property name="text">
          <string>Cut Num</string>
         </property>
@@ -481,9 +458,6 @@
       </item>
       <item row="3" column="4">
        <widget class="QCheckBox" name="sendImmediateChk">
-        <property name="toolTip">
-         <string>Send immediately: Don't wait for enter, send characters as they are typed</string>
-        </property>
         <property name="text">
          <string>Send Immed</string>
         </property>
