@@ -73,9 +73,9 @@ struct rigInput {
     rigInput() : type(inputUnknown),reg(0), name(""), level(0) {}
     //rigInput(rigInput const &r): type(r.type), reg(r.reg), name(r.name), level(r.level) {};
     rigInput(inputTypes type) : type(type),reg(0) ,name(""),level(0) {}
-    rigInput(inputTypes type, char reg, QString name) : type(type), reg(reg), name(name), level(0){}
+    rigInput(inputTypes type, qint8 reg, QString name) : type(type), reg(reg), name(name), level(0){}
     inputTypes type;
-    char reg;
+    qint8 reg;
     QString name;
     uchar level;
 };
@@ -146,7 +146,7 @@ struct centerSpanData {
 struct bandType {
     bandType() {band=bandUnknown;}
     bandType(bandType const &b): region(b.region), band(b.band), bsr(b.bsr), lowFreq(b.lowFreq), highFreq(b.highFreq), range(b.range), memGroup(b.memGroup), bytes(b.bytes), ants(b.ants), power(b.power), color(b.color), name(b.name), offset(b.offset){};
-    bandType(QString region, availableBands band, uchar bsr, quint64 lowFreq, quint64 highFreq, double range, int memGroup, char bytes, bool ants, float power, QColor color, QString name, int offset) :
+    bandType(QString region, availableBands band, uchar bsr, quint64 lowFreq, quint64 highFreq, double range, int memGroup, qint8 bytes, bool ants, float power, QColor color, QString name, int offset) :
         region(region), band(band), bsr(bsr), lowFreq(lowFreq), highFreq(highFreq), range(range), memGroup(memGroup), bytes(bytes), ants(ants), power(power), color(color), name(name), offset(offset) {}
 
     QString region;
@@ -157,7 +157,7 @@ struct bandType {
     rigMode_t defaultMode;
     double range;
     int memGroup;
-    char bytes;
+    qint8 bytes;
     bool ants;
     float power;
     QColor color;
@@ -283,7 +283,6 @@ struct rigCapabilities {
     bool hasAttenuator;
     bool hasPreamp;
     bool hasAntennaSel;
-    bool hasDataModes;
     bool hasIFShift;
     bool hasTBPF;
 

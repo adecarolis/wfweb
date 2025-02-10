@@ -78,7 +78,7 @@ typedef union ping_packet {
         quint16 seq;        // 0x06
         quint32 sentid;     // 0x08
         quint32 rcvdid;     // 0x0c
-        char  reply;        // 0x10
+        quint8  reply;        // 0x10
         union { // This contains differences between the send/receive packet
             struct { // Ping packet
                 quint32 time;      // 0x11 (uptime of device)

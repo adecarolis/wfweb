@@ -684,7 +684,8 @@ quint64 rigCtlClient::getRadioModes(QString md)
         for (int i = 0; mode_str[i].str[0] != '\0'; i++)
         {
             QString mstr = QString(mode_str[i].str);
-            if (rigCaps->hasDataModes) {
+            if (rigCaps->inputs.size())
+            {
                 if (mstr.contains(mode.name))
                 {
                     // qDebug(logRigCtlD()) << "Found data mode:" << mode.name << mode_str[i].mode;

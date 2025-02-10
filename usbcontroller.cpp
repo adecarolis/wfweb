@@ -877,7 +877,7 @@ void usbController::runTimer()
                     if (kb != knobList->end()) {
                         // sendCommand mustn't be deleted so we ensure it stays in-scope by declaring it private (we will only ever send one command).
                         sendCommand = *kb->command;
-                        if (sendCommand.command != funcFreq && sendCommand.command != funcSelectedFreq && sendCommand.command != funcUnselectedFreq) {
+                        if (sendCommand.command != funcFreq && sendCommand.command != funcSelectedFreq && sendCommand.command != funcUnselectedFreq && sendCommand.command != funcFreqSet) {
                             auto cv = rigCaps->commands.find(funcs(sendCommand.command));
                             if (cv != rigCaps->commands.end()) {
                                 int tempVal = dev->knobValues[i].value;
@@ -903,13 +903,11 @@ void usbController::runTimer()
                         else
                         {
                             sendCommand.value = dev->knobValues[i].value/dev->sensitivity;
+                            dev->knobValues[i].value = 0;
                         }
                         
                         emit button(&sendCommand);
 
-                        if (sendCommand.command == funcFreq) {
-                            dev->knobValues[i].value = 0;
-                        }
                         dev->knobValues[i].previous=dev->knobValues[i].value;
                     }
                 }

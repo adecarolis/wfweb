@@ -4063,7 +4063,7 @@ void wfmain::on_freqDial_valueChanged(int value)
     {
         oldFreqDialVal = value;
         receivers[currentReceiver]->setFrequency(f);
-        queue->add(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
+        queue->addUnique(priorityImmediate,queueItem(queue->getVfoCommand(vfoA,currentReceiver,true).freqFunc,
                                                 QVariant::fromValue<freqt>(f),false,uchar(currentReceiver)));
     } else {
         ui->freqDial->blockSignals(true);

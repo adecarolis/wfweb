@@ -73,10 +73,13 @@ bool paHandler::init(audioSetup setup)
 	codecType codec = LPCM;
 	if (setup.codec == 0x01 || setup.codec == 0x20)
 		codec = PCMU;
-	else if (setup.codec == 0x40 || setup.codec == 0x40)
-		codec = OPUS;
+    else if (setup.codec == 0x40 || setup.codec == 0x41)
+        codec = OPUS;
+    else if (setup.codec == 0x80)
+        codec = ADPCM;
 
-	memset(&aParams, 0, sizeof(PaStreamParameters));
+
+    memset(&aParams, 0, sizeof(PaStreamParameters));
 
 	aParams.device = setup.portInt;
 	info = Pa_GetDeviceInfo(aParams.device);
@@ -290,12 +293,14 @@ int paHandler::writeData(const void* inputBuffer, void* outputBuffer,
 }
 
 
-void paHandler::convertedOutput(audioPacket packet) {
+void paHandler::convertedOutput(audioPacket packet)
+{
 
 	if (packet.data.size() > 0) {
 
-		if (Pa_IsStreamActive(audio) == 1) {
-			PaError err = Pa_WriteStream(audio, (char*)packet.data.data(), packet.data.size() / nativeFormat.bytesPerFrame());
+        if (Pa_IsStreamActive(audio) == 1 &&  packet.time.msecsTo(QTime::currentTime()) < setup.latency)
+        {
+            PaError err = Pa_WriteStream(audio, (char*)packet.data.data(), packet.data.size() / nativeFormat.bytesPerFrame());
 
 			if (err != paNoError) {
 				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Error writing audio!";
