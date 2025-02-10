@@ -1229,17 +1229,30 @@ void receiverWidget::showHideControls(spectrumMode_t mode)
             break;
         }
     }
-    confButton->show();
     detachButton->show();
 
-    configSpeed->setVisible(rigCaps->hasSpectrum);
-    configBottom->setVisible(rigCaps->hasSpectrum);
-    configLength->setVisible(rigCaps->hasSpectrum);
-    configRef->setVisible(rigCaps->hasSpectrum);
-    configScopeEnabled->setVisible(rigCaps->hasSpectrum);
-    configTheme->setVisible(rigCaps->hasSpectrum);
+    if (rigCaps->hasSpectrum || rigCaps->commands.contains(funcIFShift) || rigCaps->commands.contains(funcPBTInner))
+    {
+        confButton->show();
+    }
+    else {
+        confButton->hide();
+    }
+
+    configSpeed->setEnabled(rigCaps->hasSpectrum);
+    configBottom->setEnabled(rigCaps->hasSpectrum);
+    configLength->setEnabled(rigCaps->hasSpectrum);
+    configRef->setEnabled(rigCaps->hasSpectrum);
+    configScopeEnabled->setEnabled(rigCaps->hasSpectrum);
+    configTheme->setEnabled(rigCaps->hasSpectrum);
+    configPbtInner->setEnabled(rigCaps->commands.contains(funcPBTInner));
+    configPbtOuter->setEnabled(rigCaps->commands.contains(funcPBTOuter));
+    configIfShift->setEnabled(rigCaps->commands.contains(funcIFShift) || rigCaps->commands.contains(funcPBTInner));
+
     filterCombo->setVisible(rigCaps->filters.size());
+    dataCombo->setVisible(rigCaps->inputs.size());
 }
+
 
 void receiverWidget::displayScope(bool en)
 {
@@ -1255,7 +1268,7 @@ void receiverWidget::displayScope(bool en)
             this->resize(this->minimumSizeHint());
         });
     }
-    this->clearPeaksButton->setVisible(en);
+    this->clearPeaksButton->setVisible(en && rigCaps->hasSpectrum);
     this->holdButton->setVisible(en && rigCaps->commands.contains(funcScopeHold));
 }
 
@@ -1868,9 +1881,9 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
                         queue->addUnique(priorityHigh,funcPBTInner,true,t.receiver);
                         queue->addUnique(priorityHigh,funcPBTOuter,true,t.receiver);
                         queue->del(funcFilterWidth,t.receiver);
-                        configPbtInner->setEnabled(true);
-                        configPbtOuter->setEnabled(true);
-                        configIfShift->setEnabled(true);
+                        configPbtInner->setEnabled(true && rigCaps->commands.contains(funcPBTInner));
+                        configPbtOuter->setEnabled(true && rigCaps->commands.contains(funcPBTOuter));
+                        configIfShift->setEnabled(true && (rigCaps->commands.contains(funcIFShift) || rigCaps->commands.contains(funcPBTInner)));
                         //configFilterWidth->setEnabled(false);
                     }
                 } else

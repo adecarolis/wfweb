@@ -283,7 +283,6 @@ struct rigCapabilities {
     bool hasAttenuator;
     bool hasPreamp;
     bool hasAntennaSel;
-    bool hasDataModes;
     bool hasIFShift;
     bool hasTBPF;
 
