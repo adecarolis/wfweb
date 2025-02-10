@@ -149,7 +149,7 @@ bool audioConverter::convert(audioPacket audio)
             QByteArray outPacket((int)((audio.data.length()-4) * 4), (char)0xff);
             qint16* out = (qint16*)outPacket.data();
             quint8* in = (quint8*)audio.data.data();
-            int samples = adpcm_decode_block(out,in,audio.data.size(),1);
+            size_t samples = adpcm_decode_block(out,in,audio.data.size(),1);
             if (samples != outPacket.size()/2) {
                 qInfo() << "Sample size mismatch, audio packet in:" << audio.data.length() << "out:" << outPacket.length() << "samples:" <<samples;
             }
