@@ -355,9 +355,7 @@ bool audioConverter::convert(audioPacket audio)
                     qint16* in = (qint16*)audio.data.data();
                     quint8* out = (quint8*)outPacket.data();
                     size_t outSize = 0;
-                    //int adpcm_encode_block (void *p, uint8_t *outbuf, size_t *outbufsize, const int16_t *inbuf, int inbufcount)
-                    int samples = adpcm_encode_block(adpcmContext,out,&outSize,in,audio.data.size()/2);
-                    qInfo(logAudio()) << "Converted" << samples << "samples, buffer size:" << outSize;
+                    adpcm_encode_block(adpcmContext,out,&outSize,in,audio.data.size()/2);
                     audio.data.clear();
                     audio.data = outPacket; // Copy output packet back to input buffer.
 
