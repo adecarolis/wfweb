@@ -2692,7 +2692,7 @@ void icomCommander::setRigID(quint8 rigID)
     // It can be used for radios without Rig ID commands,
     // or to force a specific radio model
 
-    qInfo(logRig()).noquote() << QString("Setting rig ID to: 0x%d").arg(rigID,1,16);
+    qInfo(logRig()).noquote() << QString("Setting rig ID to: 0x%0").arg(rigID,1,16);
 
     lookingForRig = true;
     foundRig = false;

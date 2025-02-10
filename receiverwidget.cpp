@@ -1238,6 +1238,7 @@ void receiverWidget::showHideControls(spectrumMode_t mode)
     configRef->setVisible(rigCaps->hasSpectrum);
     configScopeEnabled->setVisible(rigCaps->hasSpectrum);
     configTheme->setVisible(rigCaps->hasSpectrum);
+    filterCombo->setVisible(rigCaps->filters.size());
 }
 
 void receiverWidget::displayScope(bool en)
