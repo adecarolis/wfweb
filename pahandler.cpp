@@ -73,10 +73,13 @@ bool paHandler::init(audioSetup setup)
 	codecType codec = LPCM;
 	if (setup.codec == 0x01 || setup.codec == 0x20)
 		codec = PCMU;
-	else if (setup.codec == 0x40 || setup.codec == 0x40)
-		codec = OPUS;
+    else if (setup.codec == 0x40 || setup.codec == 0x41)
+        codec = OPUS;
+    else if (setup.codec == 0x80)
+        codec = ADPCM;
 
-	memset(&aParams, 0, sizeof(PaStreamParameters));
+
+    memset(&aParams, 0, sizeof(PaStreamParameters));
 
 	aParams.device = setup.portInt;
 	info = Pa_GetDeviceInfo(aParams.device);

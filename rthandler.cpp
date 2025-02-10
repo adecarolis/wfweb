@@ -87,10 +87,13 @@ bool rtHandler::init(audioSetup setup)
 	codecType codec = LPCM;
 	if (setup.codec == 0x01 || setup.codec == 0x20)
 		codec = PCMU;
-	else if (setup.codec == 0x40 || setup.codec == 0x40)
-		codec = OPUS;
+    else if (setup.codec == 0x40 || setup.codec == 0x41)
+        codec = OPUS;
+    else if (setup.codec == 0x80)
+        codec = ADPCM;
 
-	options.numberOfBuffers = int(setup.latency/setup.blockSize);
+
+    options.numberOfBuffers = int(setup.latency/setup.blockSize);
 
 	if (setup.portInt > 0) {
 		aParams.deviceId = setup.portInt;
@@ -306,7 +309,7 @@ int rtHandler::readData(void* outputBuffer, void* inputBuffer,
 	Q_UNUSED(streamTime);
 	int nBytes = nFrames * nativeFormat.bytesPerFrame();
 	//lastSentSeq = packet.seq;
-	if (arrayBuffer.length() >= nBytes) {
+    if (arrayBuffer.length() >= nBytes) {
 		if (audioMutex.tryLock(0)) {
 			std::memcpy(outputBuffer, arrayBuffer.constData(), nBytes);
 			arrayBuffer.remove(0, nBytes);
