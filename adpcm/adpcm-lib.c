@@ -914,9 +914,9 @@ int adpcm_encode_block (void *p, uint8_t *outbuf, size_t *outbufsize, const int1
  * Returns number of converted composite samples (total samples divided by number of channels)
  */
 
-size_t adpcm_decode_block (int16_t *outbuf, const uint8_t *inbuf, size_t inbufsize, int channels)
+int adpcm_decode_block (int16_t *outbuf, const uint8_t *inbuf, size_t inbufsize, int channels)
 {
-    size_t ch, samples = 0, chunks;
+    int ch, samples = 0, chunks;
     int32_t pcmdata[2];
     int8_t index[2];
 
@@ -935,7 +935,7 @@ size_t adpcm_decode_block (int16_t *outbuf, const uint8_t *inbuf, size_t inbufsi
         inbuf += 4;
     }
 
-    chunks = inbufsize / (channels * 4);
+    chunks = (int)inbufsize / (channels * 4);
     samples += chunks * 8;
 
     while (chunks--) {
@@ -1003,9 +1003,9 @@ size_t adpcm_decode_block (int16_t *outbuf, const uint8_t *inbuf, size_t inbufsi
  * Returns number of converted composite samples (total samples divided by number of channels)
  */ 
 
-size_t adpcm_decode_block_ex (int16_t *outbuf, const uint8_t *inbuf, size_t inbufsize, int channels, int bps)
+int adpcm_decode_block_ex (int16_t *outbuf, const uint8_t *inbuf, size_t inbufsize, int channels, int bps)
 {
-    size_t samples = 1, ch;
+    int samples = 1, ch;
     int32_t pcmdata[2];
     int8_t index[2];
 
@@ -1029,7 +1029,7 @@ size_t adpcm_decode_block_ex (int16_t *outbuf, const uint8_t *inbuf, size_t inbu
     if (!inbufsize || (inbufsize % (channels * 4)))             // extra clean
         return samples;
 
-    samples += inbufsize / channels * 8 / bps;
+    samples += (int)inbufsize / channels * 8 / bps;
 
     switch (bps) {
         case 2:
