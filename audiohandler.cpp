@@ -316,7 +316,7 @@ void audioHandler::convertedOutput(audioPacket packet) {
                 int written = packet.data.size();
                 if (packet.time.msecsTo(QTime::currentTime()) < setup.latency)
                 {
-                    // Discard if latency is massively too high.
+                    // Discard if latency is too high.
                     written = audioDevice->write(packet.data);
                 }
                 bytes = bytes - written;

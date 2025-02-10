@@ -293,12 +293,14 @@ int paHandler::writeData(const void* inputBuffer, void* outputBuffer,
 }
 
 
-void paHandler::convertedOutput(audioPacket packet) {
+void paHandler::convertedOutput(audioPacket packet)
+{
 
 	if (packet.data.size() > 0) {
 
-		if (Pa_IsStreamActive(audio) == 1) {
-			PaError err = Pa_WriteStream(audio, (char*)packet.data.data(), packet.data.size() / nativeFormat.bytesPerFrame());
+        if (Pa_IsStreamActive(audio) == 1 &&  packet.time.msecsTo(QTime::currentTime()) < setup.latency)
+        {
+            PaError err = Pa_WriteStream(audio, (char*)packet.data.data(), packet.data.size() / nativeFormat.bytesPerFrame());
 
 			if (err != paNoError) {
 				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Error writing audio!";
