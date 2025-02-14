@@ -3601,8 +3601,14 @@ void wfmain:: getInitialRigState()
 
     queue->del(funcTransceiverId); // This command is no longer required
 
-    if (rigCaps->commands.contains(funcAutoInformation) && (!rigCaps->hasSpectrum || prefs.enableLAN))
+    if (rigCaps->commands.contains(funcAutoInformation) && (!rigCaps->hasSpectrum || prefs.enableLAN)) {
         queue->add(priorityImmediate,queueItem(funcAutoInformation,QVariant::fromValue(uchar(2)),false,0));
+        // Enable metering data in the AutoInformation stream:
+        queue->add(priorityImmediate,queueItem(funcALCMeter,QVariant::fromValue(uchar(1)),false,0));
+        queue->add(priorityImmediate,queueItem(funcCompMeter,QVariant::fromValue(uchar(1)),false,0));
+        queue->add(priorityImmediate,queueItem(funcIdMeter,QVariant::fromValue(uchar(1)),false,0));
+        queue->add(priorityImmediate,queueItem(funcSWRMeter,QVariant::fromValue(uchar(1)),false,0));
+    }
 
     if (prefs.forceVfoMode) {
         queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(vfoA)));
@@ -3677,6 +3683,7 @@ void wfmain:: getInitialRigState()
     // Put Kenwood into Shift&Width mode for filter control.
     queue->add(priorityHigh,queueItem(funcFilterControlSSB,QVariant::fromValue<bool>(true),false,0));
     queue->add(priorityHigh,queueItem(funcFilterControlData,QVariant::fromValue<bool>(true),false,0));
+
 }
 void wfmain::showStatusBarText(QString text)
 {

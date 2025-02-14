@@ -602,6 +602,7 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcCompMeter:
             // TS-590 uses 0-30 for meters (TS-890 uses 70), Icom uses 0-255.
             value.setValue<uchar>(d.toUShort() * (255/(type.maxVal-type.minVal)));
+            qDebug(logRig()) << "Meter value received: value: " << value << "raw: " << d.toUShort() << "Meter type: " << func;
             break;
 #if defined __GNUC__
 #pragma GCC diagnostic pop
@@ -1357,11 +1358,6 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
     QByteArray payload;
     int val=INT_MIN;
 
-    if (func == funcSWRMeter || func == funcCompMeter || func == funcALCMeter)
-    {
-        // Cannot query for these meters, but they will be sent automatically on TX
-        return;
-    }
     if (loginRequired && func != funcLogin && func != funcConnectionRequest)
     {
         qInfo() << "Command received before login, requeing";
@@ -1529,6 +1525,9 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
                     default:
                         break;
                     }
+                } else if ( (func==funcALCMeter) || (func==funcSWRMeter) || (func==funcCompMeter) ) {
+                    // The cmd.bytes is set to four for receiving these values, but when sending values, exactly one byte is required.
+                    payload.append(QString::number(value.value<uchar>()).rightJustified(1, QChar('0')).toLatin1());
                 } else {
                     payload.append(QString::number(value.value<uchar>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
                 }
