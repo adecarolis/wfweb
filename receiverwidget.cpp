@@ -460,7 +460,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
         connect(configRef, &QSlider::valueChanged, this, [=](const int &val) {
             currentRef = (val/5) * 5; // rounded to "nearest 5"
             vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
-            queue->addUnique(priorityImmediate,queueItem(funcScopeRef,QVariant::fromValue(currentRef),false,t.receiver));
+            queue->addUnique(priorityImmediate,queueItem(funcScopeRef,QVariant::fromValue((uchar)currentRef),false,t.receiver));
         });
     }
 

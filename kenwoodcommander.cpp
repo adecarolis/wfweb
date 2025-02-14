@@ -322,11 +322,12 @@ void kenwoodCommander::parseData(QByteArray data)
     }
 
     QList<QByteArray> commands = data.split(';');
-
+    QByteArray cmdFull;
     for (auto &d: commands) {        
         if (d.isEmpty())
             continue;
         uchar receiver = 0; // Used for Dual/RX
+        cmdFull = d; // save the complete cmd for debug later.
 
         int count = 0;
         for (int i=d.length();i>0;i--)
@@ -799,8 +800,11 @@ void kenwoodCommander::parseData(QByteArray data)
         {
             // We do not log spectrum and meter data,
             // as they tend to clog up any useful logging.
-            qDebug(logRigTraffic()) << QString("Received from radio: %0").arg(funcString[func]);
-            printHexNow(d, logRigTraffic());
+            qDebug(logRigTraffic()) << QString("Received from radio: cmd: %0, data: %1").arg(funcString[func]).arg(d.toStdString().c_str());
+            //printHexNow(d, logRigTraffic());
+#ifdef QT_DEBUG
+            qDebug(logRigTraffic()) << QString("Full command string: [%0]").arg(cmdFull.toStdString().c_str());
+#endif
         }
 
         if (value.isValid() && queue != Q_NULLPTR) {
@@ -1794,6 +1798,9 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
         if (portConnected)
         {
             QMutexLocker locker(&serialMutex);
+#ifdef QT_DEBUG
+            qDebug(logRigTraffic()).noquote() << "Send to rig: " << payload.toStdString().c_str();
+#endif
             if (port->write(payload) != payload.size())
             {
                 qInfo(logSerial()) << "Error writing to port";
