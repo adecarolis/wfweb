@@ -1444,8 +1444,6 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
                 return;
             }
 
-
-
             if (cmd.cmd == funcScopeOnOff && value.toBool() == true)
             {
                 if (connType == connectionUSB)
@@ -1461,13 +1459,6 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             } else if (cmd.cmd == funcAutoInformation)
             {
                 aiModeEnabled = value.toBool();
-            }
-
-            if(cmd.cmd == funcTunerStatus) {
-                qDebug(logRigTraffic()) << "funcTunerStatus: value.type: " <<
-                                           value.typeName() << ", value as int: "
-                                        << value.value<int>();
-
             }
 
             if (!strcmp(value.typeName(),"centerSpanData"))
