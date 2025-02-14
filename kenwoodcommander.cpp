@@ -541,6 +541,25 @@ void kenwoodCommander::parseData(QByteArray data)
             }
             break;
         // These are numbers, as they might contain other info, only extract type.bytes len of data.
+        case funcTunerStatus:
+        {
+            uchar s = d.mid(0, type.bytes).toUShort();
+            switch(s)  {
+            case 0:
+                // 000: not enabled
+                value.setValue<uchar>(0);
+                break;
+            case 10:
+                // 010: tuned and enabled
+                value.setValue<uchar>(1);
+                break;
+            case 11:
+                // 011: tuning, we think
+                value.setValue<uchar>(2);
+                break;
+            }
+            break;
+        }
         case funcAGCTimeConstant:
         case funcMemorySelect:
         case funcRfGain:
@@ -1425,6 +1444,8 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
                 return;
             }
 
+
+
             if (cmd.cmd == funcScopeOnOff && value.toBool() == true)
             {
                 if (connType == connectionUSB)
@@ -1440,6 +1461,13 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             } else if (cmd.cmd == funcAutoInformation)
             {
                 aiModeEnabled = value.toBool();
+            }
+
+            if(cmd.cmd == funcTunerStatus) {
+                qDebug(logRigTraffic()) << "funcTunerStatus: value.type: " <<
+                                           value.typeName() << ", value as int: "
+                                        << value.value<int>();
+
             }
 
             if (!strcmp(value.typeName(),"centerSpanData"))
@@ -1493,7 +1521,26 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
                     qInfo(logRig()) << "Sending VOIP command:" << value.value<uchar>();
                     // We have logged-in so start audio
                 }
-                payload.append(QString::number(value.value<uchar>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
+                if(func==funcTunerStatus) {
+                    switch(value.value<uchar>()) {
+                    case 0:
+                        // Turn it off
+                        payload.append(QString::number(100).rightJustified(3, QChar('0')).toLatin1());
+                        break;
+                    case 1:
+                        // Turn it on
+                        payload.append(QString::number(110).rightJustified(3, QChar('0')).toLatin1());
+                        break;
+                    case 2:
+                        // Run the tuning cycle
+                        payload.append(QString::number(111).rightJustified(3, QChar('0')).toLatin1());
+                        break;
+                    default:
+                        break;
+                    }
+                } else {
+                    payload.append(QString::number(value.value<uchar>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
+                }
             }
             else if(!strcmp(value.typeName(),"uint"))
             {
