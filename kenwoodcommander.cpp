@@ -600,6 +600,8 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcSWRMeter:
         case funcALCMeter:
         case funcCompMeter:
+        case funcVdMeter:
+        case funcIdMeter:
             // TS-590 uses 0-30 for meters (TS-890 uses 70), Icom uses 0-255.
             value.setValue<uchar>(d.toUShort() * (255/(type.maxVal-type.minVal)));
             //qDebug(logRig()) << "Meter value received: value: " << value << "raw: " << d.toUShort() << "Meter type: " << func;
@@ -1525,7 +1527,8 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
                     default:
                         break;
                     }
-                } else if ( (func==funcALCMeter) || (func==funcSWRMeter) || (func==funcCompMeter) ) {
+                } else if ( (func==funcALCMeter) || (func==funcSWRMeter) ||
+                            (func==funcCompMeter) || (func==funcIdMeter) || (func==funcVdMeter) ) {
                     // The cmd.bytes is set to four for receiving these values, but when sending values, exactly one byte is required.
                     payload.append(QString::number(value.value<uchar>()).rightJustified(1, QChar('0')).toLatin1());
                 } else {
