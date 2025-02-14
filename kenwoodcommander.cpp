@@ -602,7 +602,7 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcCompMeter:
             // TS-590 uses 0-30 for meters (TS-890 uses 70), Icom uses 0-255.
             value.setValue<uchar>(d.toUShort() * (255/(type.maxVal-type.minVal)));
-            qDebug(logRig()) << "Meter value received: value: " << value << "raw: " << d.toUShort() << "Meter type: " << func;
+            //qDebug(logRig()) << "Meter value received: value: " << value << "raw: " << d.toUShort() << "Meter type: " << func;
             break;
 #if defined __GNUC__
 #pragma GCC diagnostic pop
