@@ -236,14 +236,6 @@ struct genericType {
     QString name;
 };
 
-struct meterCal {
-    meterCal():rig(0),actual(0.0) {}
-    meterCal(meterCal const &m) : rig(m.rig), actual(m.actual) {}
-    meterCal(int rig, double actual) : rig(rig), actual(actual) {}
-    int rig;
-    double actual;
-};
-
 //model_kind determineRadioModel(quint8 rigID);
 
 struct bsrRequest {
