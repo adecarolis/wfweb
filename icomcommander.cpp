@@ -1461,6 +1461,11 @@ void icomCommander::determineRigCaps()
     rigCaps.memParser.clear();
     rigCaps.satParser.clear();
     rigCaps.periodic.clear();
+    for (int i = meterNone; i < meterUnknown; i++)
+    {
+        rigCaps.meters[i].clear();
+    }
+
     // modelID should already be set!
     while (!rigList.contains(rigCaps.modelID))
     {
@@ -1746,9 +1751,35 @@ void icomCommander::determineRigCaps()
         settings->endArray();
     }
 
+    int numMeters = settings->beginReadArray("Meters");
+    if (numMeters == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numMeters; c++)
+        {
+            settings->setArrayIndex(c);
+            QString meterName = settings->value("Meter", "None").toString();
+            for (int i = meterNone; i < meterUnknown; i++)
+            {
+                if (meterName == meterString[i])
+                {
+                    rigCaps.meters[i].insert(settings->value("RigVal", 0).toInt(),settings->value("ActualVal", 0.0).toDouble());
+                    qInfo(logRig()) << "Got meter" << meterString[i] << settings->value("RigVal", 0).toInt() << "=" << settings->value("ActualVal", 0.0).toDouble();
+                    break;
+                }
+            }
+        }
+        settings->endArray();
+    }
+
     settings->endGroup();
+
     delete settings;
 
+    for (auto it = rigCaps.meters[meterS].keyValueBegin(); it != rigCaps.meters[meterS].keyValueEnd(); ++it) {
+        qInfo(logRig()) << "S-meter" << it->first << "=" << it->second;
+    }
 
     // Setup memory formats.
     static QRegularExpression memFmtEx("%(?<flags>[-+#0])?(?<pos>\\d+|\\*)?(?:\\.(?<width>\\d+|\\*))?(?<spec>[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+])");

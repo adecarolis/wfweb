@@ -19,6 +19,7 @@ enum underlay_t { underlayNone, underlayPeakHold, underlayPeakBuffer, underlayAv
 
 enum connectionType_t { connectionUSB, connectionLAN, connectionWiFi, connectionWAN };
 
+// meterString MUST be updated if any of these are changed, but this might break rigCaps.
 enum meter_t {
     meterNone=0,
     meterS,
@@ -38,8 +39,10 @@ enum meter_t {
     meterdBuEMF,
     meterdBm,
     meterSubS,
+    meterUnknown
 };
 
+static QString meterString[19] {"None","S-Meter","Center","SWR","Power","ALC","Comp","Voltage","Current","RX dB","TX Mod", "RX Audio", "Audio", "Latency", "dBu", "dBu EMF", "dBm", "Sub S", ""};
 
 enum spectrumMode_t {
     spectModeCenter=0x00,
