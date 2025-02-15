@@ -27,9 +27,9 @@ public slots:
     void paintEvent(QPaintEvent *);
 
     void updateDrawing(int num);
-    void setLevels(int current, int peak, int average);
-    void setLevels(int current, int peak); // calculate avg
-    void setLevel(int current);
+    void setLevels(double current, double peak, double average);
+    void setLevels(double current, double peak); // calculate avg
+    void setLevel(double current);
     void setLevel(float current);
     void setCompReverse(bool reverse);
     void clearMeterOnPTTtoggle();
@@ -59,9 +59,9 @@ private:
     bool haveUpdatedData = false;
     int fontSize = 10;
     int length=30;
-    int current=0;
-    int peak = 0;
-    int average = 0;
+    double current=0.0;
+    double peak = 0.0;
+    double average = 0.0;
     float flCurrent=0.0;
     float flPeak=0.0;
     float flAverage=0.0;

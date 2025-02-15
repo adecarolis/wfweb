@@ -135,6 +135,8 @@ protected:
     audioSetup rxSetup;
     audioSetup txSetup;
 
+    double getMeterCal(meter_t meter,int value);
+
     void printHex(const QByteArray &pdata);
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
 
