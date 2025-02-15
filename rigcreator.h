@@ -75,8 +75,10 @@ private:
     void closeEvent(QCloseEvent *event);
     QMenu* context;
     tableCombobox* commandsList;
+    tableCombobox* metersList;
     tableCombobox* priorityList;
     QStandardItemModel* commandsModel;
+    QStandardItemModel* metersModel;
     QStandardItemModel* command36Model;
     QStandardItemModel* priorityModel;
     QStandardItemModel* createModel(int num, QStandardItemModel* model, QString strings[]);

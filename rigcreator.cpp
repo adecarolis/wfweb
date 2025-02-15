@@ -17,8 +17,10 @@ rigCreator::rigCreator(QWidget *parent) :
 
     qInfo() << "Creating instance of rigCreator()";
     commandsList = new tableCombobox(createModel(funcLastFunc, commandsModel, funcString),false,ui->commands);
-
     ui->commands->setItemDelegateForColumn(0, commandsList);
+
+    metersList = new tableCombobox(createModel(meterUnknown, metersModel, meterString),false,ui->meters);
+    ui->meters->setItemDelegateForColumn(0, metersList);
 
     priorityModel = new QStandardItemModel();
     for (const auto &key: priorityMap.keys())
@@ -638,6 +640,27 @@ void rigCreator::loadRigFile(QString file)
     ui->dtcs->setSortingEnabled(true);
     ui->dtcs->sortByColumn(0,Qt::AscendingOrder);
 
+    ui->meters->clearContents();
+    ui->meters->model()->removeRows(0,ui->meters->rowCount());
+    ui->meters->setSortingEnabled(false);
+
+    int numMeters = settings->beginReadArray("Meters");
+    if (numMeters == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numMeters; c++)
+        {
+            settings->setArrayIndex(c);
+            ui->meters->insertRow(ui->meters->rowCount());
+            ui->meters->model()->setData(ui->meters->model()->index(c,0),settings->value("Meter", "None").toString());
+            ui->meters->model()->setData(ui->meters->model()->index(c,1),QString::number(settings->value("RigVal", 0).toInt()));
+            ui->meters->model()->setData(ui->meters->model()->index(c,2),QString::number(settings->value("ActualVal", 0).toDouble()));
+        }
+        settings->endArray();
+    }
+    ui->meters->setSortingEnabled(true);
+
 
     settings->endGroup();
     delete settings;
@@ -653,6 +676,9 @@ void rigCreator::loadRigFile(QString file)
     connect(ui->preamps,SIGNAL(cellChanged(int,int)),SLOT(changed()));
     connect(ui->spans,SIGNAL(cellChanged(int,int)),SLOT(changed()));
     connect(ui->periodicCommands,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->ctcss,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->dtcs,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->meters,SIGNAL(cellChanged(int,int)),SLOT(changed()));
 
     connect(ui->hasCommand29,SIGNAL(stateChanged(int)),SLOT(changed()));
     connect(ui->hasEthernet,SIGNAL(stateChanged(int)),SLOT(changed()));
@@ -944,6 +970,17 @@ void rigCreator::saveRigFile(QString file)
     {
         settings->setArrayIndex(n);
         settings->setValue("Reg",(ui->dtcs->item(n,0) == NULL) ? 0 :  ui->dtcs->item(n,0)->text().toUInt());
+    }
+    settings->endArray();
+
+    ui->meters->sortByColumn(0,Qt::AscendingOrder);
+    settings->beginWriteArray("Meters");
+    for (int n = 0; n<ui->meters->rowCount();n++)
+    {
+        settings->setArrayIndex(n);
+        settings->setValue("Meter",(ui->meters->item(n,0) == NULL) ? "None" :  ui->meters->item(n,0)->text());
+        settings->setValue("RigVal",(ui->meters->item(n,1) == NULL) ? 0 : ui->meters->item(n,1)->text().toInt());
+        settings->setValue("ActualVal",(ui->meters->item(n,2) == NULL) ? 0 :  ui->meters->item(n,2)->text().toDouble());
     }
     settings->endArray();
 
