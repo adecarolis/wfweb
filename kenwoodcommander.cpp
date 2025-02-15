@@ -28,7 +28,9 @@ kenwoodCommander::~kenwoodCommander()
     qInfo(logRig()) << "closing instance of kenwoodCommander()";
 
     if (rtpThread != Q_NULLPTR) {
-        receiveCommand(funcVOIP,QVariant::fromValue<uchar>(0),0);
+        //if (port->isOpen()) {
+        //    receiveCommand(funcVOIP,QVariant::fromValue<uchar>(0),0);
+        //}
         qInfo(logUdp()) << "Stopping RTP thread";
         rtpThread->quit();
         rtpThread->wait();

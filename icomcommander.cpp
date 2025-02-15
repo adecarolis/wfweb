@@ -1760,6 +1760,7 @@ void icomCommander::determineRigCaps()
         {
             settings->setArrayIndex(c);
             QString meterName = settings->value("Meter", "None").toString();
+            if (meterName != "None" && meterName != "")
             for (int i = meterNone; i < meterUnknown; i++)
             {
                 if (meterName == meterString[i])
