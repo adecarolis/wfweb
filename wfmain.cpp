@@ -3382,8 +3382,7 @@ void wfmain::saveSettings()
     settings->beginWriteArray("Controllers");
     int nc=0;
 
-    auto it = usbDevices.begin();
-    while (it != usbDevices.end())
+    for (auto it = usbDevices.begin(); it != usbDevices.end(); it++)
     {
         auto dev = &it.value();
         settings->setArrayIndex(nc);
@@ -3400,7 +3399,6 @@ void wfmain::saveSettings()
         settings->setValue("Color", dev->color.name(QColor::HexArgb));
         settings->setValue("LCD", dev->lcd);
 
-        ++it;
         ++nc;
     }
     settings->endArray();
@@ -6330,20 +6328,20 @@ void wfmain::receiveScopeImage(uchar receiver)
     #if defined (USB_CONTROLLER)
             // Send to USB Controllers if requested
         if (receiver == 0) {
-            auto i = usbDevices.begin();
-            while (i != usbDevices.end())
+            for (auto it = usbDevices.begin(); it != usbDevices.end(); it++)
             {
-                if (i.value().connected && i.value().type.model == usbDeviceType::StreamDeckPlus && i.value().lcd == funcLCDWaterfall )
+                auto dev = &it.value();
+
+                if (dev->connected && dev->type.model == usbDeviceType::StreamDeckPlus && dev->lcd == funcLCDWaterfall )
                 {
                     lcdImage = receivers[receiver]->getWaterfallImage();
-                    emit sendControllerRequest(&i.value(), usbFeatureType::featureLCD, 0, "", &lcdImage);
+                    emit sendControllerRequest(dev, usbFeatureType::featureLCD, 0, "", &lcdImage);
                 }
-                else if (i.value().connected && i.value().type.model == usbDeviceType::StreamDeckPlus && i.value().lcd == funcLCDSpectrum)
+                else if (dev->connected && dev->type.model == usbDeviceType::StreamDeckPlus && dev->lcd == funcLCDSpectrum)
                 {
                     lcdImage = receivers[receiver]->getSpectrumImage();
-                    emit sendControllerRequest(&i.value(), usbFeatureType::featureLCD, 0, "", &lcdImage);
+                    emit sendControllerRequest(dev, usbFeatureType::featureLCD, 0, "", &lcdImage);
                 }
-                ++i;
             }
         }
     #endif

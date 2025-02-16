@@ -43,11 +43,10 @@ usbController::usbController()
 usbController::~usbController()
 {
     qInfo(logUsbControl) << "Ending usbController()";
-    auto devIt = devices->begin();
-    while (devIt != devices->end())
+    for (auto it = devices->begin(); it != devices->end(); it++)
     {
-        auto dev = &devIt.value();
-        if (dev->handle) {
+        auto dev = &it.value();
+        if (dev->connected && dev->handle) {
             sendRequest(dev,usbFeatureType::featureOverlay,60,"Goodbye from wfview");
 
             if (dev->type.model == RC28) {
@@ -60,7 +59,6 @@ usbController::~usbController()
             dev->uiCreated = false;
             devicesConnected--;
         }
-        ++devIt;
     }
     
     hid_exit();
@@ -131,176 +129,18 @@ void usbController::run()
         QTimer::singleShot(2000, this, SLOT(run()));
         return;
     }
-    QMutexLocker locker(mutex);
 
 #ifdef USB_HOTPLUG
    qDebug(logUsbControl()) << "Re-enumerating USB devices due to program startup or hotplug event";
 #endif
 
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-    if (gamepad == Q_NULLPTR) {
-        auto gamepads = QGamepadManager::instance()->connectedGamepads();
-        if (!gamepads.isEmpty()) {
-            qInfo(logUsbControl()) << "Found" << gamepads.size() << "Gamepad controllers";
-            // If we got here, we have detected a gamepad of some description!
-            gamepad = new QGamepad(*gamepads.begin(), this);
-            qInfo(logUsbControl()) << "Gamepad 0 is " << gamepad->name();
-            
-            USBDEVICE newDev;
-            if (gamepad->name() == "Microsoft X-Box 360 pad 0")
-            {
-                newDev.type.model = xBoxGamepad;
-            }
-            else {
-                newDev.type.model = unknownGamepad;
-            }
-            
-            newDev.product = gamepad->name();
-            newDev.path = gamepad->name();
-            
-            connect(gamepad, &QGamepad::buttonDownChanged, this, [this](bool pressed) {
-                qInfo(logUsbControl()) << "Button Down" << pressed;
-                this->buttonState("DOWN", pressed);
-            });
-            connect(gamepad, &QGamepad::buttonUpChanged, this, [this](bool pressed) {
-                qInfo(logUsbControl()) << "Button Up" << pressed;
-                this->buttonState("UP", pressed);
-            });
-            connect(gamepad, &QGamepad::buttonLeftChanged, this, [this](bool pressed) {
-                qInfo(logUsbControl()) << "Button Left" << pressed;
-                this->buttonState("LEFT", pressed);
-            });
-            connect(gamepad, &QGamepad::buttonRightChanged, this, [this](bool pressed) {
-                qInfo(logUsbControl()) << "Button Right" << pressed;
-                this->buttonState("RIGHT", pressed);
-            });
-            connect(gamepad, &QGamepad::buttonCenterChanged, this, [this](bool pressed) {
-                qInfo(logUsbControl()) << "Button Center" << pressed;
-                this->buttonState("CENTER", pressed);
-            });
-            connect(gamepad, &QGamepad::axisLeftXChanged, this, [this](double value) {
-                qInfo(logUsbControl()) << "Left X" << value;
-                this->buttonState("LEFTX", value);
-            });
-            connect(gamepad, &QGamepad::axisLeftYChanged, this, [this](double value) {
-                qInfo(logUsbControl()) << "Left Y" << value;
-                this->buttonState("LEFTY", value);
-            });
-            connect(gamepad, &QGamepad::axisRightXChanged, this, [this](double value) {
-                qInfo(logUsbControl()) << "Right X" << value;
-                this->buttonState("RIGHTX", value);
-            });
-            connect(gamepad, &QGamepad::axisRightYChanged, this, [this](double value) {
-                qInfo(logUsbControl()) << "Right Y" << value;
-                this->buttonState("RIGHTY", value);
-            });
-            connect(gamepad, &QGamepad::buttonAChanged, this, [this](bool pressed) {
-                qInfo(logUsbControl()) << "Button A" << pressed;
-                this->buttonState("A", pressed);
-            });
-            connect(gamepad, &QGamepad::buttonBChanged, this, [this](bool pressed) {
-                qInfo(logUsbControl()) << "Button B" << pressed;
-                this->buttonState("B", pressed);
-            });
-            connect(gamepad, &QGamepad::buttonXChanged, this, [this](bool pressed) {
-                qInfo(logUsbControl()) << "Button X" << pressed;
-                this->buttonState("X", pressed);
-            });
-            connect(gamepad, &QGamepad::buttonYChanged, this, [this](bool pressed) {
-                qInfo(logUsbControl()) << "Button Y" << pressed;
-                this->buttonState("Y", pressed);
-            });
-            connect(gamepad, &QGamepad::buttonL1Changed, this, [this](bool pressed) {
-                qInfo(logUsbControl()) << "Button L1" << pressed;
-                this->buttonState("L1", pressed);
-            });
-            connect(gamepad, &QGamepad::buttonR1Changed, this, [this](bool pressed) {
-                qInfo(logUsbControl()) << "Button R1" << pressed;
-                this->buttonState("R1", pressed);
-            });
-            connect(gamepad, &QGamepad::buttonL2Changed, this, [this](double value) {
-                qInfo(logUsbControl()) << "Button L2: " << value;
-                this->buttonState("L2", value);
-            });
-            connect(gamepad, &QGamepad::buttonR2Changed, this, [this](double value) {
-                qInfo(logUsbControl()) << "Button R2: " << value;
-                this->buttonState("R2", value);
-            });
-            connect(gamepad, &QGamepad::buttonSelectChanged, this, [this](bool pressed) {
-                qInfo(logUsbControl()) << "Button Select" << pressed;
-                this->buttonState("SELECT", pressed);
-            });
-            connect(gamepad, &QGamepad::buttonStartChanged, this, [this](bool pressed) {
-                qInfo(logUsbControl()) << "Button Start" << pressed;
-                this->buttonState("START", pressed);
-            });
-            connect(gamepad, &QGamepad::buttonGuideChanged, this, [this](bool pressed) {
-                qInfo(logUsbControl()) << "Button Guide" << pressed;
-            });
+    checkForGamePad();
 
-            newDev.connected=true;
-            devices->insert(newDev.path,newDev);
+    checkForControllers();
 
-            emit newDevice(&newDev); // Let the UI know we have a new controller
-        }
-    }
-    else if (!gamepad->isConnected()) {
-        delete gamepad;
-        gamepad = Q_NULLPTR;
-    }
-#endif
-
-    struct hid_device_info* devs;
-    devs = hid_enumerate(0x0, 0x0);
-    // Step through all currently connected devices and add any newly discovered ones to usbDevices.
-    while (devs) {
-        auto i = std::find_if(knownDevices.begin(), knownDevices.end(), [devs](const USBTYPE& d)
-        { return ((devs->vendor_id == d.manufacturerId) && (devs->product_id == d.productId)
-                        && (d.usage == 0x00 || devs->usage == d.usage)
-                        && (d.usagePage == 0x00 || devs->usage_page == d.usagePage));});
-
-        if (i != knownDevices.end())
-        {
-            auto it = devices->find(QString::fromLocal8Bit(devs->path));
-            if (it == devices->end())
-            {
-                USBDEVICE newDev(*i);
-                newDev.manufacturer = QString::fromWCharArray(devs->manufacturer_string);
-                newDev.product = QString::fromWCharArray(devs->product_string);
-                if (newDev.product.isEmpty())
-                {
-                  newDev.product = "<Not Detected>";
-                }
-                newDev.serial = QString::fromWCharArray(devs->serial_number);
-                newDev.path = QString::fromLocal8Bit(devs->path);
-                newDev.deviceId = QString("0x%1").arg(newDev.type.productId, 4, 16, QChar('0'));
-                newDev.detected = true;
-                qDebug(logUsbControl()) << "New device detected" << newDev.product;
-                devices->insert(newDev.path,newDev);
-            } else if (!it->detected){
-                // This is a known device
-                auto dev = &it.value();
-                dev->type = *i;
-                dev->manufacturer = QString::fromWCharArray(devs->manufacturer_string);
-                dev->product = QString::fromWCharArray(devs->product_string);
-                if (dev->product.isEmpty())
-                {
-                  dev->product = "<Not Detected>";
-                }
-                dev->serial = QString::fromWCharArray(devs->serial_number);
-                dev->deviceId = QString("0x%1").arg(dev->type.productId, 4, 16, QChar('0'));
-                dev->detected = true;
-                qDebug(logUsbControl()) << "Known device detected" << dev->product;
-            }
-        }
-        devs = devs->next;
-    }
-    
-    hid_free_enumeration(devs);
-    
-    for (auto devIt = devices->begin(); devIt != devices->end(); devIt++)
+    for (auto it = devices->begin(); it != devices->end();)
     {
-        auto dev = &devIt.value();
+        auto dev = &it.value();
 
         // If device is not detected, ignore it.
         if (dev->detected)
@@ -308,158 +148,24 @@ void usbController::run()
             if (!dev->disabled && !dev->connected)
             {
                         
-                qInfo(logUsbControl()) << QString("Attempting to connect to USB Controller: %0").arg(dev->product);
-                dev->handle = hid_open_path(dev->path.toLocal8Bit());
-
-                if (dev->handle)
-                {
-                    qInfo(logUsbControl()) << QString("Connected to USB device: %0 from %1 S/N %2").arg(dev->product,dev->manufacturer,dev->serial);
-                    hid_set_nonblocking(dev->handle, 1);
-                    devicesConnected++;
-                    dev->connected=true;
-
-                    if (dev->type.model == RC28)
-                    {
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,1,"0"); });
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,2,"0"); });
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,3,"0"); });
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,4,"1"); });
-                    }
-                    else if (dev->type.model == QuickKeys)
-                    {
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureEventsA); });
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureEventsB); });
-                    }
-                    else if (dev->type.model == XKeysXK3)
-                    {
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,1,"2"); });
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,2,"0"); });
-                        QTimer::singleShot(500, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,1,"0"); });
-                    }
-                    else if (dev->type.model == MiraBoxN3 || dev->type.model == MiraBox293 || dev->type.model == MiraBox293S)
-                    {
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureWakeScreen); });
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureBrightness,0x03,""); });
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureClearScreen,0xff,""); });
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureClearScreen,0xff,""); });
-                    }
-
-                    QTimer::singleShot(1000, this, [=]() { sendRequest(dev,usbFeatureType::featureSerial); });
-                    QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureFirmware); });
-                    QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureOverlay,5,"Hello from wfview"); });
-                }
-                else
+                if (!initDevice(dev))
                 {
                     // This should only get displayed once if we fail to connect to a device
                     qInfo(logUsbControl()) << QString("Error connecting to  %0: %1")
                                               .arg(dev->product,QString::fromWCharArray(hid_error(dev->handle)));
+                    continue;
                 }
             }
-
-            if (!dev->uiCreated) // Create ui for all detected devices (even disabled)
+            else
             {
-                for (int i=0;i<dev->type.knobs;i++)
-                {
-                    dev->knobValues.append(KNOBVALUE());
-                }
-
-
-                // Find our defaults/knobs/buttons for this controller:
-                // First see if we have any stored and add them to the list if not.
-
-                if (dev->type.buttons > 0)
-                {
-                    auto bti = std::find_if(buttonList->begin(), buttonList->end(), [dev](const BUTTON& b)
-                    { return (b.path == dev->path); });
-                    if (bti == buttonList->end())
-                    {
-                        // List doesn't contain any buttons for this device so add default buttons to the end of buttonList
-                        qInfo(logUsbControl()) << "No stored buttons found, loading defaults";
-                        for (auto but=defaultButtons.begin();but!=defaultButtons.end();but++)
-                        {
-                            if (but->dev == dev->type.model)
-                            {
-                                but->path = dev->path;
-                                buttonList->append(BUTTON(*but));
-                            }
-                        }
-                    } else {
-                        qInfo(logUsbControl()) << "Found stored buttons for this device, loading.";
-                    }
-
-                    // We need to set the parent device for all buttons belonging to this device!
-                    for (auto but = buttonList->begin(); but != buttonList->end(); but++)
-                    {
-                        if (but->path == dev->path)
-                        {
-                            auto bon = std::find_if(commands.begin(), commands.end(), [but](const COMMAND& c) { return (c.text == but->on); });
-                            if (bon != commands.end()) {
-                                but->onCommand = &(*bon);
-                            } else {
-                                qWarning(logUsbControl()) << "On Command" << but->on << "not found, setting to none";
-                                but->onCommand = &commands[0];
-                            }
-                            auto boff = std::find_if(commands.begin(), commands.end(), [but](const COMMAND& c) { return (c.text == but->off); });
-                            if (boff != commands.end()) {
-                                but->offCommand = &(*boff);
-                            } else {
-                                qWarning(logUsbControl()) << "Off Command" << but->off << "not found, setting to none";
-                                but->offCommand = &commands[0];
-                            }
-                            but->parent = dev;
-                        }
-                    }
-                }
-
-                if (dev->type.knobs > 0)
-                {
-                    auto kbi = std::find_if(knobList->begin(), knobList->end(), [dev](const KNOB& k)
-                    { return (k.path == dev->path); });
-                    if (kbi == knobList->end())
-                    {
-                        qInfo(logUsbControl()) << "No stored knobs found, loading defaults";
-                        for (auto kb = defaultKnobs.begin();kb != defaultKnobs.end(); kb++)
-                        {
-                            if (kb->dev == dev->type.model) {
-                                kb->path = dev->path;
-                                knobList->append(KNOB(*kb));
-                            }
-                        }
-                    } else {
-                        qInfo(logUsbControl()) << "Found stored knobs for this device, loading.";
-                    }
-
-                    for (auto kb = knobList->begin(); kb != knobList->end(); kb++)
-                    {
-                        if (kb->path == dev->path)
-                        {
-                            auto k = std::find_if(commands.begin(), commands.end(), [kb](const COMMAND& c) { return (c.text == kb->cmd); });
-                            if (k != commands.end()) {
-                                kb->command = &(*k);
-                            } else {
-                                qWarning(logUsbControl()) << "Knob Command" << kb->cmd << "not found, setting to none";
-                                kb->command = &commands[0];
-                            }
-                            kb->parent = dev;
-                            if (kb->page == 1)
-                                dev->knobValues[kb->num].name = kb->cmd;
-                        }
-                    }
-                }
-                // Let the UI know we have a new controller, but unlock the mutex first!
-                mutex->unlock();
-                emit newDevice(dev);
-                mutex->lock();
-
-            } else {
-                mutex->unlock();
                 emit setConnected(dev);
-                mutex->lock();
-            }
+            }            
+
         }
+        ++it;
     }
     
-    if (devicesConnected>0 && dataTimer == Q_NULLPTR) {
+    if (devicesConnected > 0 && dataTimer == Q_NULLPTR) {
         dataTimer = new QTimer(this);
         connect(dataTimer, &QTimer::timeout, this, &usbController::runTimer);
         dataTimer->start(25);
@@ -479,14 +185,13 @@ void usbController::run()
 
 void usbController::runTimer()
 {
-    QMutexLocker locker(mutex);
 
-    for (auto devIt = devices->begin(); devIt != devices->end(); devIt++)
+    for (auto it = devices->begin(); it != devices->end(); it++)
     {
-        auto dev = &devIt.value();
+        auto dev = &it.value();
 
         if (dev->disabled || !dev->detected || !dev->connected || !dev->handle) {
-            // This device isn't currently connected.
+            // This device isn't currently connected or due for removal.
             continue;
         }
 
@@ -495,67 +200,57 @@ void usbController::runTimer()
         while (res > 0) {
             quint32 tempButtons = 0;
             QByteArray data(HIDDATALENGTH, 0x0);
+
+            if (!mutex->tryLock(0))
+            {
+                // If mutex can't immediately be locked, try next time (no need to tell user)
+                continue;
+            }
+
             res = hid_read(dev->handle, (quint8*)data.data(), HIDDATALENGTH);
             if (res < 0)
             {
                 qInfo(logUsbControl()) << "USB Device disconnected" << dev->product;
                 hid_close(dev->handle);
                 dev->handle = NULL;
-                dev->detected = false;
                 dev->connected = false;
                 dev->detected = false;
-                dev->remove = true;
-                dev->uiCreated = false;
                 devicesConnected--;
+                qDebug(logUsbControl()) << "Deleting device" << dev->product << "connected:" << devicesConnected;
+                mutex->unlock();
                 if (devicesConnected == 0) {
                     dataTimer->stop();
                     delete dataTimer;
                     dataTimer = Q_NULLPTR;
                 }
                 emit removeDevice(dev);
-                QTimer::singleShot(250, this, SLOT(run())); // Cleanup
                 break;
             }
 
-            if (res == 5 && (dev->type.model == shuttleXpress || dev->type.model == shuttlePro2))
+            switch(dev->type.model)
             {
-                tempButtons = ((quint8)data[4] << 8) | ((quint8)data[3] & 0xff);
-                quint8 tempJogpos = (quint8)data[1];
-                quint8 tempShutpos = (quint8)data[0];
-
-                /* Button matrix:
-                    1000000000000000 = button15
-                    0100000000000000 = button14
-                    0010000000000000 = button13
-                    0001000000000000 = button12
-                    0000100000000000 = button11
-                    0000010000000000 = button10
-                    0000001000000000 = button9
-                    0000000100000000 = button8 - xpress0
-                    0000000010000000 = button7 - xpress1
-                    0000000001000000 = button6 - xpress2
-                    0000000000100000 = button5 - xpress3
-                    0000000000010000 = button4 - xpress4
-                    0000000000001000 = button3
-                    0000000000000100 = button2
-                    0000000000000010 = button1
-                    0000000000000001 = button0
-                */
-
-                if (tempJogpos == dev->jogpos + 1 || (tempJogpos == 0 && dev->jogpos == 0xff))
+            case shuttleXpress:
+            case shuttlePro2:
+            {
+                if (res == 5)
                 {
-                    dev->knobValues[0].value++;
-                }
-                else if (tempJogpos != dev->jogpos) {
-                    dev->knobValues[0].value--;
-                }
+                    tempButtons = ((quint8)data[4] << 8) | ((quint8)data[3] & 0xff);
+                    quint8 tempJogpos = (quint8)data[1];
+                    quint8 tempShutpos = (quint8)data[0];
+                    if (tempJogpos == dev->jogpos + 1 || (tempJogpos == 0 && dev->jogpos == 0xff))
+                    {
+                        dev->knobValues[0].value++;
+                    }
+                    else if (tempJogpos != dev->jogpos) {
+                        dev->knobValues[0].value--;
+                    }
 
-                dev->jogpos = tempJogpos;
-                dev->shutpos = tempShutpos;
+                    dev->jogpos = tempJogpos;
+                    dev->shutpos = tempShutpos;
+                }
+                break;
             }
-            else if ((res > 31) && dev->type.model == RC28)
-            {
-                // This is a response from the Icom RC28
+            case RC28:
                 if ((quint8)data[0] == 0x02) {
                     qInfo(logUsbControl()) << QString("Received RC-28 Firmware Version: %0").arg(QString(data.mid(1,data.indexOf(" ")-1)));
                 }
@@ -576,86 +271,69 @@ void usbController::runTimer()
                         }
                     }
                 }
-            }
-            else if (res > 15 && dev->type.model == eCoderPlus && (quint8)data[0] == 0xff) {
-                tempButtons = ((quint8)data[3] << 16) | ((quint8)data[2] << 8) | ((quint8)data[1] & 0xff);
-                quint32 tempKnobs = ((quint8)data[16] << 24) | ((quint8)data[15] << 16) | ((quint8)data[14] << 8) | ((quint8)data[13]  & 0xff);
-                
-                for (quint8 i = 0; i < dev->knobValues.size(); i++)
+                break;
+            case eCoderPlus:
+                if ((quint8)data[0] == 0xff)
                 {
-                    if (dev->knobs != tempKnobs) {
-                        // One of the knobs has moved
-                        for (quint8 i = 0; i < 4; i++) {
-                            if ((tempKnobs >> (i * 8) & 0xff) != (dev->knobs >> (i * 8) & 0xff)) {
-                                dev->knobValues[i].value = dev->knobValues[i].value + (qint8)((dev->knobs >> (i * 8)) & 0xff);
+                    tempButtons = ((quint8)data[3] << 16) | ((quint8)data[2] << 8) | ((quint8)data[1] & 0xff);
+                    quint32 tempKnobs = ((quint8)data[16] << 24) | ((quint8)data[15] << 16) | ((quint8)data[14] << 8) | ((quint8)data[13]  & 0xff);
+
+                    for (quint8 i = 0; i < dev->knobValues.size(); i++)
+                    {
+                        if (dev->knobs != tempKnobs) {
+                            // One of the knobs has moved
+                            for (quint8 i = 0; i < 4; i++) {
+                                if ((tempKnobs >> (i * 8) & 0xff) != (dev->knobs >> (i * 8) & 0xff)) {
+                                    dev->knobValues[i].value = dev->knobValues[i].value + (qint8)((dev->knobs >> (i * 8)) & 0xff);
+                                }
                             }
+                            dev->knobs = tempKnobs;
                         }
-                        dev->knobs = tempKnobs;
                     }
                 }
-            }
-            else if (res > 5 && dev->type.model == QuickKeys && (quint8)data[0] == 0x02) {
-
-                if ((quint8)data[1] == 0xf0) {
-                    
-                    //qInfo(logUsbControl()) << "Received:" << data;
-                    tempButtons = (data[3] << 8) | (data[2] & 0xff);
-
-                    if (data[7] & 0x01) {
-                        dev->knobValues[0].value++;
-                    }
-                    else if (data[7] & 0x02) {
-                        dev->knobValues[0].value--;
-                    }
-                    
-                }
-                else if ((quint8)data[1] == 0xf2 && (quint8)data[2] == 0x01)
+                break;
+            case QuickKeys:
+                if ((quint8)data[0] == 0x02)
                 {
-                    // Battery level
-                    quint8 battery = (quint8)data[3];
-                    qDebug(logUsbControl()) << QString("Battery level %1 %").arg(battery);
+                    if ((quint8)data[1] == 0xf0) {
+
+                        //qInfo(logUsbControl()) << "Received:" << data;
+                        tempButtons = (data[3] << 8) | (data[2] & 0xff);
+
+                        if (data[7] & 0x01) {
+                            dev->knobValues[0].value++;
+                        }
+                        else if (data[7] & 0x02) {
+                            dev->knobValues[0].value--;
+                        }
+
+                    }
+                    else if ((quint8)data[1] == 0xf2 && (quint8)data[2] == 0x01)
+                    {
+                        // Battery level
+                        quint8 battery = (quint8)data[3];
+                        qDebug(logUsbControl()) << QString("Battery level %1 %").arg(battery);
+                    }
                 }
-            }
-            else if (dev->type.model == XKeysXK3) {
-                // Do something!
-                if ((quint8)data[1] == 214U) {
-                    qInfo(logUsbControl()) << QString("Keymapstart: %0, Layer2offset: %1, Outsize: %2, ReportSize: %3, MaxCol: %4 MaxRow: %5")
-                                                  .arg(QString::number((quint8)data[3]))
-                                                  .arg(QString::number((quint8)data[4]))
-                                                  .arg(QString::number((quint8)data[5]))
-                                                  .arg(QString::number((quint8)data[6]))
-                                                  .arg(QString::number((quint8)data[7]))
-                                                  .arg(QString::number((quint8)data[8]));
-                }
-                else if (data[2]) // This is a keypress
+                break;
+            case XKeysXK3:
+                if (data[2]) // This is a keypress
                 {
                     tempButtons = ((quint8)data[2] >> 1 & 0x01) | ((quint8)data[2] & 0x01)<<1 | ((quint8)data[2] >> 4 & 0x01) << 2;
-                    qInfo(logUsbControl()) << QString("ID: %0 Type:%1 SW1:%2 SW2:%3 SW3:%4 LCK:%5 STAMP:%6 REBOOTS:%7")
-                                                  .arg(quint8(data[0]))
-                                                  .arg(quint8(data[1]))
-                                                  .arg(tempButtons & 0x01)
-                                                  .arg(tempButtons >> 1 & 0x01)
-                                                  .arg(tempButtons >> 2 & 0x01)
-                                                  .arg(quint8(data[6]))
-                                                  .arg(quint32(data[31] | data[32] << 8 | data[33] << 16 | data[34] << 24))
-                                                  .arg(quint8(data[35]))
-                        ;
                 }
-            }
-            else if (dev->type.model == MiraBox293 || dev->type.model == MiraBox293S)
-            {
-                // This is a keypress
-                // The 293S only presents a button-up event, so fake a button down/up
+                break;
+            case MiraBox293:
+            case MiraBox293S:
                 if (data[9]) {
                     qInfo(logUsbControl()) << QString("Key:%0 (%1) State:Was on").arg(quint8(data[9]),8,2,QChar('0')).arg(quint8(data[9]));
                     tempButtons = quint32(1) << data[9];
-                } else if (!res && dev->buttons)
+                }
+                else if (!res && dev->buttons)
                 {
                     res=1;
                 }
-
-            }
-            else if(dev->type.model == MiraBoxN3) {
+                break;
+            case MiraBoxN3:
                 if (data[9]) {
                     // This is a keypress
                     qInfo(logUsbControl()) << QString("Key:%0 (%1) State:%2").arg(quint8(data[9]),8,2,QChar('0')).arg(quint8(data[9])).arg(quint8(data[10]));
@@ -698,82 +376,79 @@ void usbController::runTimer()
                             dev->knobValues[2].value--;
                         }
                     }
-
                 }
-            }
-            // Is it any model of StreamDeck?
-            else if (res>=dev->type.buttons && dev->type.model != usbNone)
-            {
-                // Main buttons
-                if (dev->type.model == usbDeviceType::StreamDeckOriginal)
-                {
-
-                    for (int i = dev->type.buttons-1;i>=0;i--) {
-                        quint8 val = ((i - (i % dev->type.cols)) + (dev->type.cols-1)) - (i % dev->type.cols);
-                        tempButtons |= ((quint8)data[val+1] & 0x01) << (i);
-                    }
-
-                    qInfo(logUsbControl()) << "RX:" << data.toHex(' ');
+                break;
+            case StreamDeckOriginal:
+                for (int i = dev->type.buttons-1;i>=0;i--) {
+                    quint8 val = ((i - (i % dev->type.cols)) + (dev->type.cols-1)) - (i % dev->type.cols);
+                    tempButtons |= ((quint8)data[val+1] & 0x01) << (i);
                 }
-                else
+                break;
+            case StreamDeckPlus:
+                if ((quint8)data[1] == 0x03 && (quint8)data[2] == 0x05)
                 {
-                    if ((quint8)data[1] == 0x00)
+                    // Knob action!
+                    switch ((quint8)data[4])
                     {
-                        for (int i = dev->type.buttons - dev->type.knobs;i>0;i--) {
-                            tempButtons |= ((quint8)data[i+3] & 0x01) << (i-1);
-                        }
-                    }
-
-                    // Knobs and secondary buttons
-                    if (dev->type.model == StreamDeckPlus) {
-                        if ((quint8)data[1] == 0x03 && (quint8)data[2] == 0x05)
+                    case 0x00:
+                        // Knob button
+                        for (int i=dev->type.buttons;i>7;i--)
                         {
-                            // Knob action!
-                            switch ((quint8)data[4])
-                            {
-                            case 0x00:
-                                // Knob button
-                                for (int i=dev->type.buttons;i>7;i--)
-                                {
-                                    tempButtons |= ((quint8)data[i-4] & 0x01) << (i-1);
-                                }
-                                break;
-                            case 0x01:
-                                // Knob moved
-                                for (int i=0;i<dev->type.knobs;i++)
-                                {
-                                    dev->knobValues[i].value += (qint8)data[i+5];
-                                }
-                                break;
-                            }
+                            tempButtons |= ((quint8)data[i-4] & 0x01) << (i-1);
                         }
-                        else if ((quint8)data[1] == 0x02 && (quint8)data[2] == 0x0E)
+                        break;
+                    case 0x01:
+                        // Knob moved
+                        for (int i=0;i<dev->type.knobs;i++)
                         {
-                            // LCD touch event
-                            int x = ((quint8)data[7] << 8) | ((quint8)data[6] & 0xff);
-                            int y = ((quint8)data[9] << 8) | ((quint8)data[8] & 0xff);
-                            int x2=0;
-                            int y2=0;
-                            QString tt="";
-                            switch ((quint8)data[4])
-                            {
-                            case 0x01:
-                                tt="Short";
-                                break;
-                            case 0x02:
-                                tt="Long";
-                                break;
-                            case 0x03:
-                                tt="Swipe";
-                                x2 = ((quint8)data[11] << 8) | ((quint8)data[10] & 0xff);
-                                y2 = ((quint8)data[13] << 8) | ((quint8)data[12] & 0xff);
-                                break;
-                            }
-                            qInfo(logUsbControl()) << QString("%0 touch: %1,%2 to %3,%4").arg(tt).arg(x).arg(y).arg(x2).arg(y2);
+                            dev->knobValues[i].value += (qint8)data[i+5];
                         }
+                        break;
                     }
                 }
+                else if ((quint8)data[1] == 0x02 && (quint8)data[2] == 0x0E)
+                {
+                    // LCD touch event
+                    int x = ((quint8)data[7] << 8) | ((quint8)data[6] & 0xff);
+                    int y = ((quint8)data[9] << 8) | ((quint8)data[8] & 0xff);
+                    int x2=0;
+                    int y2=0;
+                    QString tt="";
+                    switch ((quint8)data[4])
+                    {
+                    case 0x01:
+                        tt="Short";
+                        break;
+                    case 0x02:
+                        tt="Long";
+                        break;
+                    case 0x03:
+                        tt="Swipe";
+                        x2 = ((quint8)data[11] << 8) | ((quint8)data[10] & 0xff);
+                        y2 = ((quint8)data[13] << 8) | ((quint8)data[12] & 0xff);
+                        break;
+                    }
+                    qInfo(logUsbControl()) << QString("%0 touch: %1,%2 to %3,%4").arg(tt).arg(x).arg(y).arg(x2).arg(y2);
+                }
+            case StreamDeckXL:
+            case StreamDeckOriginalMK2:
+            case StreamDeckOriginalV2:
+            case StreamDeckMini:
+            case StreamDeckMiniV2:
+            case StreamDeckPedal:
+            case StreamDeckXLV2:
+                if (res >= dev->type.buttons && (quint8)data[1] == 0x00)
+                {
+                    for (int i = dev->type.buttons - dev->type.knobs;i>0;i--) {
+                        tempButtons |= ((quint8)data[i+3] & 0x01) << (i-1);
+                    }
+                }
+                break;
+            default:
+                // This is either usbNone or a Gamepad.
+                break;
             }
+
 
             // Step through all buttons and emit ones that have been pressed.
             // Only do it if actual data has been received.
@@ -897,6 +572,7 @@ void usbController::runTimer()
                                 dev->lastusbController = QTime::currentTime();
                                 dev->knobValues[i].value = 0;
                                 dev->knobValues[i].name = kb->command->text;
+                                mutex->unlock();
                                 return;
                             }
                         }
@@ -914,6 +590,7 @@ void usbController::runTimer()
                 
                 dev->lastusbController = QTime::currentTime();
             }
+            mutex->unlock();
 
         }
     }
@@ -923,9 +600,11 @@ void usbController::receivePTTStatus(bool on) {
     static QColor lastColour = currentColour;
     static bool ptt;
 
-    for (auto devIt = devices->begin(); devIt != devices->end(); devIt++)
+
+    for (auto it = devices->begin(); it != devices->end(); it++)
     {
-        auto dev = &devIt.value();
+        auto dev = &it.value();
+
         if (dev->lcd != funcLCDSpectrum && dev->lcd != funcLCDWaterfall) {
             if (on && !ptt) {
                 lastColour = currentColour;
@@ -945,11 +624,9 @@ void usbController::receivePTTStatus(bool on) {
 
 void usbController::sendToLCD(QImage* img)
 {
-
-    for (auto devIt = devices->begin(); devIt != devices->end(); devIt++)
+    for (auto it = devices->begin(); it != devices->end(); it++)
     {
-        auto dev = &devIt.value();
-        sendRequest(dev,usbFeatureType::featureLCD,0,"",img);
+        sendRequest(&it.value(),usbFeatureType::featureLCD,0,"",img);
     }
 }
 
@@ -2415,9 +2092,9 @@ void usbController::receiveCacheItem(cacheItem item)
     // Update knob if relevant, step through all devices
     QMutexLocker locker(mutex);
 
-    for (auto devIt = devices->begin(); devIt != devices->end(); devIt++)
+    for (auto it = devices->begin(); it != devices->end(); it++)
     {
-        auto dev = &devIt.value();
+        auto dev = &it.value();
 
         auto kb = std::find_if(knobList->begin(), knobList->end(), [dev, item](const KNOB& k)
                                { return (k.command && dev->connected && k.path == dev->path && k.command->command == int(item.command));});
@@ -2464,3 +2141,347 @@ void usbController::receiveCacheItem(cacheItem item)
 }
 
 #endif
+
+
+
+void usbController::checkForGamePad()
+{
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+
+    if (!mutex->tryLock(50))
+    {
+        qDebug(logUsbControl()) << "Unable to lock mutex in checkForGamePad(), try again later";
+        return;
+    }
+
+    if (gamepad == Q_NULLPTR) {
+        auto gamepads = QGamepadManager::instance()->connectedGamepads();
+        if (!gamepads.isEmpty()) {
+            qInfo(logUsbControl()) << "Found" << gamepads.size() << "Gamepad controllers";
+            // If we got here, we have detected a gamepad of some description!
+            gamepad = new QGamepad(*gamepads.begin(), this);
+            qInfo(logUsbControl()) << "Gamepad 0 is " << gamepad->name();
+
+            USBDEVICE newDev;
+            if (gamepad->name() == "Microsoft X-Box 360 pad 0")
+            {
+                newDev.type.model = xBoxGamepad;
+            }
+            else {
+                newDev.type.model = unknownGamepad;
+            }
+
+            newDev.product = gamepad->name();
+            newDev.path = gamepad->name();
+
+            connect(gamepad, &QGamepad::buttonDownChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button Down" << pressed;
+                this->buttonState("DOWN", pressed);
+            });
+            connect(gamepad, &QGamepad::buttonUpChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button Up" << pressed;
+                this->buttonState("UP", pressed);
+            });
+            connect(gamepad, &QGamepad::buttonLeftChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button Left" << pressed;
+                this->buttonState("LEFT", pressed);
+            });
+            connect(gamepad, &QGamepad::buttonRightChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button Right" << pressed;
+                this->buttonState("RIGHT", pressed);
+            });
+            connect(gamepad, &QGamepad::buttonCenterChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button Center" << pressed;
+                this->buttonState("CENTER", pressed);
+            });
+            connect(gamepad, &QGamepad::axisLeftXChanged, this, [this](double value) {
+                qInfo(logUsbControl()) << "Left X" << value;
+                this->buttonState("LEFTX", value);
+            });
+            connect(gamepad, &QGamepad::axisLeftYChanged, this, [this](double value) {
+                qInfo(logUsbControl()) << "Left Y" << value;
+                this->buttonState("LEFTY", value);
+            });
+            connect(gamepad, &QGamepad::axisRightXChanged, this, [this](double value) {
+                qInfo(logUsbControl()) << "Right X" << value;
+                this->buttonState("RIGHTX", value);
+            });
+            connect(gamepad, &QGamepad::axisRightYChanged, this, [this](double value) {
+                qInfo(logUsbControl()) << "Right Y" << value;
+                this->buttonState("RIGHTY", value);
+            });
+            connect(gamepad, &QGamepad::buttonAChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button A" << pressed;
+                this->buttonState("A", pressed);
+            });
+            connect(gamepad, &QGamepad::buttonBChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button B" << pressed;
+                this->buttonState("B", pressed);
+            });
+            connect(gamepad, &QGamepad::buttonXChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button X" << pressed;
+                this->buttonState("X", pressed);
+            });
+            connect(gamepad, &QGamepad::buttonYChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button Y" << pressed;
+                this->buttonState("Y", pressed);
+            });
+            connect(gamepad, &QGamepad::buttonL1Changed, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button L1" << pressed;
+                this->buttonState("L1", pressed);
+            });
+            connect(gamepad, &QGamepad::buttonR1Changed, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button R1" << pressed;
+                this->buttonState("R1", pressed);
+            });
+            connect(gamepad, &QGamepad::buttonL2Changed, this, [this](double value) {
+                qInfo(logUsbControl()) << "Button L2: " << value;
+                this->buttonState("L2", value);
+            });
+            connect(gamepad, &QGamepad::buttonR2Changed, this, [this](double value) {
+                qInfo(logUsbControl()) << "Button R2: " << value;
+                this->buttonState("R2", value);
+            });
+            connect(gamepad, &QGamepad::buttonSelectChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button Select" << pressed;
+                this->buttonState("SELECT", pressed);
+            });
+            connect(gamepad, &QGamepad::buttonStartChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button Start" << pressed;
+                this->buttonState("START", pressed);
+            });
+            connect(gamepad, &QGamepad::buttonGuideChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button Guide" << pressed;
+            });
+
+            newDev.connected=true;
+            devices->insert(newDev.path,newDev);
+
+            emit newDevice(&newDev); // Let the UI know we have a new controller
+        }
+    }
+    else if (!gamepad->isConnected()) {
+        delete gamepad;
+        gamepad = Q_NULLPTR;
+    }
+
+    mutex->unlock();
+#endif
+}
+
+void usbController::checkForControllers()
+{
+    if (!mutex->tryLock(100))
+    {
+        qDebug(logUsbControl()) << "Unable to lock mutex in checkForControllers() after 100ms, try again later";
+        return;
+    }
+
+    struct hid_device_info* devs;
+    devs = hid_enumerate(0x0, 0x0);
+    // Step through all currently connected devices and add any newly discovered ones to usbDevices.
+    while (devs) {
+        auto i = std::find_if(knownDevices.begin(), knownDevices.end(), [devs](const USBTYPE& d)
+                              { return ((devs->vendor_id == d.manufacturerId) && (devs->product_id == d.productId)
+                                        && (d.usage == 0x00 || devs->usage == d.usage)
+                                        && (d.usagePage == 0x00 || devs->usage_page == d.usagePage));});
+
+        if (i != knownDevices.end())
+        {
+            auto it = devices->find(QString::fromLocal8Bit(devs->path));
+            if (it == devices->end())
+            {
+                USBDEVICE newDev(*i);
+                newDev.manufacturer = QString::fromWCharArray(devs->manufacturer_string);
+                newDev.product = QString::fromWCharArray(devs->product_string);
+                if (newDev.product.isEmpty())
+                {
+                    newDev.product = "<Not Detected>";
+                }
+                newDev.serial = QString::fromWCharArray(devs->serial_number);
+                newDev.path = QString::fromLocal8Bit(devs->path);
+                newDev.deviceId = QString("0x%1").arg(newDev.type.productId, 4, 16, QChar('0'));
+                newDev.detected = true;
+                qDebug(logUsbControl()) << "New device detected" << newDev.product;
+                devices->insert(newDev.path,newDev);
+            }
+            else if (!it->detected)
+            {
+                // This is a known device
+                auto dev = &it.value();
+                dev->type = *i;
+                dev->manufacturer = QString::fromWCharArray(devs->manufacturer_string);
+                dev->product = QString::fromWCharArray(devs->product_string);
+                if (dev->product.isEmpty())
+                {
+                    dev->product = "<Not Detected>";
+                }
+                dev->serial = QString::fromWCharArray(devs->serial_number);
+                dev->deviceId = QString("0x%1").arg(dev->type.productId, 4, 16, QChar('0'));
+                dev->detected = true;
+                qDebug(logUsbControl()) << "Known device detected" << dev->product;
+            }
+        }
+        devs = devs->next;
+    }
+    hid_free_enumeration(devs);
+
+    mutex->unlock();
+}
+
+bool usbController::initDevice(USBDEVICE *dev)
+{
+    bool ret = false;
+
+    if (dev == Q_NULLPTR || dev->connected)
+    {
+        return ret;
+    }
+
+    if (!mutex->tryLock(10))
+    {
+        qDebug(logUsbControl()) << "Unable to lock mutex in initDevice(), try again later";
+        return ret;
+    }
+
+    dev->handle = hid_open_path(dev->path.toLocal8Bit());
+
+    if (dev->handle) {
+        hid_set_nonblocking(dev->handle, 1);
+        devicesConnected++;
+        qInfo(logUsbControl()) << QString("Connected to USB device: %0 from %1 S/N %2 (connected: %3)").arg(dev->product,dev->manufacturer,dev->serial).arg(devicesConnected);
+        dev->connected=true;
+
+        if (dev->type.model == RC28)
+        {
+            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,1,"0"); });
+            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,2,"0"); });
+            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,3,"0"); });
+            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,4,"1"); });
+        }
+        else if (dev->type.model == QuickKeys)
+        {
+            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureEventsA); });
+            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureEventsB); });
+        }
+        else if (dev->type.model == XKeysXK3)
+        {
+            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,1,"2"); });
+            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,2,"0"); });
+            QTimer::singleShot(500, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,1,"0"); });
+        }
+        else if (dev->type.model == MiraBoxN3 || dev->type.model == MiraBox293 || dev->type.model == MiraBox293S)
+        {
+            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureWakeScreen); });
+            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureBrightness,0x03,""); });
+            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureClearScreen,0xff,""); });
+            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureClearScreen,0xff,""); });
+        }
+
+        QTimer::singleShot(1000, this, [=]() { sendRequest(dev,usbFeatureType::featureSerial); });
+        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureFirmware); });
+        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureOverlay,5,"Hello from wfview"); });
+
+        for (int i=0;i<dev->type.knobs;i++)
+        {
+            dev->knobValues.append(KNOBVALUE());
+        }
+
+
+        // Find our defaults/knobs/buttons for this controller:
+        // First see if we have any stored and add them to the list if not.
+
+        if (dev->type.buttons > 0)
+        {
+            auto bti = std::find_if(buttonList->begin(), buttonList->end(), [dev](const BUTTON& b)
+                                    { return (b.path == dev->path); });
+            if (bti == buttonList->end())
+            {
+                // List doesn't contain any buttons for this device so add default buttons to the end of buttonList
+                qInfo(logUsbControl()) << "No stored buttons found, loading defaults";
+                for (auto but=defaultButtons.begin();but!=defaultButtons.end();but++)
+                {
+                    if (but->dev == dev->type.model)
+                    {
+                        but->path = dev->path;
+                        buttonList->append(BUTTON(*but));
+                    }
+                }
+            } else {
+                qInfo(logUsbControl()) << "Found stored buttons for this device, loading.";
+            }
+
+            // We need to set the parent device for all buttons belonging to this device!
+            for (auto but = buttonList->begin(); but != buttonList->end(); but++)
+            {
+                if (but->path == dev->path)
+                {
+                    auto bon = std::find_if(commands.begin(), commands.end(), [but](const COMMAND& c) { return (c.text == but->on); });
+                    if (bon != commands.end()) {
+                        but->onCommand = &(*bon);
+                    } else {
+                        qWarning(logUsbControl()) << "On Command" << but->on << "not found, setting to none";
+                        but->onCommand = &commands[0];
+                    }
+                    auto boff = std::find_if(commands.begin(), commands.end(), [but](const COMMAND& c) { return (c.text == but->off); });
+                    if (boff != commands.end()) {
+                        but->offCommand = &(*boff);
+                    } else {
+                        qWarning(logUsbControl()) << "Off Command" << but->off << "not found, setting to none";
+                        but->offCommand = &commands[0];
+                    }
+                    but->parent = dev;
+                }
+            }
+        }
+
+        if (dev->type.knobs > 0)
+        {
+            auto kbi = std::find_if(knobList->begin(), knobList->end(), [dev](const KNOB& k)
+                                    { return (k.path == dev->path); });
+            if (kbi == knobList->end())
+            {
+                qInfo(logUsbControl()) << "No stored knobs found, loading defaults";
+                for (auto kb = defaultKnobs.begin();kb != defaultKnobs.end(); kb++)
+                {
+                    if (kb->dev == dev->type.model) {
+                        kb->path = dev->path;
+                        knobList->append(KNOB(*kb));
+                    }
+                }
+            } else {
+                qInfo(logUsbControl()) << "Found stored knobs for this device, loading.";
+            }
+
+            for (auto kb = knobList->begin(); kb != knobList->end(); kb++)
+            {
+                if (kb->path == dev->path)
+                {
+                    auto k = std::find_if(commands.begin(), commands.end(), [kb](const COMMAND& c) { return (c.text == kb->cmd); });
+                    if (k != commands.end()) {
+                        kb->command = &(*k);
+                    } else {
+                        qWarning(logUsbControl()) << "Knob Command" << kb->cmd << "not found, setting to none";
+                        kb->command = &commands[0];
+                    }
+                    kb->parent = dev;
+                    if (kb->page == 1)
+                        dev->knobValues[kb->num].name = kb->cmd;
+                }
+            }
+        }
+        mutex->unlock();
+        // Let the UI know we have a new controller, but unlock the mutex first!
+        ret = true;
+
+        emit newDevice(dev);
+
+    }
+    else
+    {
+        mutex->unlock();
+    }
+
+    return ret;
+}

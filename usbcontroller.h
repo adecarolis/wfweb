@@ -70,21 +70,21 @@ using namespace std;
 #define MAX_STR 255
 
 struct USBTYPE {
-    USBTYPE() {}
+    USBTYPE(): model(usbNone), manufacturerId(0), productId(0), usage(0), usagePage(0), buttons(0), cols(0), knobs(0), leds(0), maxPayload(0), iconSize(0) {}
     USBTYPE(usbDeviceType model,quint32 manufacturerId, quint32 productId , quint32 usage, quint32 usagePage, int buttons, int cols, int knobs, int leds,  int maxPayload, int iconSize) :
         model(model), manufacturerId(manufacturerId), productId(productId), usage(usage), usagePage(usagePage), buttons(buttons), cols(cols), knobs(knobs), leds(leds), maxPayload(maxPayload), iconSize(iconSize) {}
 
-    usbDeviceType model = usbNone;
-    quint32 manufacturerId=0;
-    quint32 productId=0;
-    quint32 usage=0;
-    quint32 usagePage=0;
-    int buttons=0; // How many buttons
-    int cols=0; // How many columns of buttons
-    int knobs=0;    // How many knobs
-    int leds=0;     // how many leds
-    int maxPayload=0;   // Max allowed payload
-    int iconSize=0;
+    usbDeviceType model;
+    quint32 manufacturerId;
+    quint32 productId;
+    quint32 usage;
+    quint32 usagePage;
+    int buttons; // How many buttons
+    int cols; // How many columns of buttons
+    int knobs;    // How many knobs
+    int leds;     // how many leds
+    int maxPayload;   // Max allowed payload
+    int iconSize;
 };
 
 
@@ -97,48 +97,54 @@ struct KNOBVALUE {
 };
 
 struct USBDEVICE {
-    USBDEVICE() {}
-    USBDEVICE(USBTYPE type) : type(type) {}
+    USBDEVICE() : detected(false), remove(false), connected(false), uiCreated(false), disabled(false), speed(2), timeout(30), brightness(2),orientation(0),
+        color(Qt::darkGray), lcd(funcNone), sensitivity(1),jogpos(0),shutpos(0),shutMult(0),jogCounter(0),buttons(0),knobs(0),lastusbController(QTime::currentTime()),
+        lastData(QByteArray(8,0x0)), lastDialPos(0), pages(1),currentPage(0), ledStatus(0x07) {}
+
+    USBDEVICE(USBTYPE type) : type(type), detected(false), remove(false), connected(false), uiCreated(false), disabled(false), speed(2), timeout(30), brightness(2),orientation(0),
+        color(Qt::darkGray), lcd(funcNone), sensitivity(1),jogpos(0),shutpos(0),shutMult(0),jogCounter(0),buttons(0),knobs(0),lastusbController(QTime::currentTime()),
+        lastData(QByteArray(8,0x0)), lastDialPos(0), pages(1),currentPage(0), ledStatus(0x07) {}
+
     USBTYPE type;
-    bool detected = false;
-    bool remove = false;
-    bool connected = false;
-    bool uiCreated = false;
-    bool disabled = false;
-    quint8 speed=2;
-    quint8 timeout=30;
-    quint8 brightness=2;
-    quint8 orientation=0;
-    QColor color=Qt::darkGray;
-    funcs lcd=funcNone;
+    bool detected;
+    bool remove;
+    bool connected;
+    bool uiCreated;
+    bool disabled;
+    quint8 speed;
+    quint8 timeout;
+    quint8 brightness;
+    quint8 orientation;
+    QColor color;
+    funcs lcd;
 #if defined(USB_CONTROLLER)
     hid_device* handle = NULL;
 #endif
-    QString product = "";
-    QString manufacturer = "";
-    QString serial = "<none>";
-    QString deviceId = "";
-    QString path = "";
-    int sensitivity = 1;
-    quint8 jogpos=0;
-    quint8 shutpos=0;
-    quint8 shutMult = 0;
-    int jogCounter = 0;
-    quint32 buttons = 0;
-    quint32 knobs = 0;
+    QString product ;
+    QString manufacturer;
+    QString serial;
+    QString deviceId;
+    QString path;
+    int sensitivity;
+    quint8 jogpos;
+    quint8 shutpos;
+    quint8 shutMult;
+    int jogCounter;
+    quint32 buttons;
+    quint32 knobs;
     QList<KNOBVALUE> knobValues;
 
-    QTime lastusbController = QTime::currentTime();
-    QByteArray lastData = QByteArray(8,0x0);
-    quint8 lastDialPos=0;
+    QTime lastusbController;
+    QByteArray lastData;
+    quint8 lastDialPos;
     QUuid uuid;
     QLabel *message;
-    int pages=1;
-    int currentPage=0;
+    int pages;
+    int currentPage;
     QGraphicsScene* scene = Q_NULLPTR;
     QSpinBox* pageSpin = Q_NULLPTR;
     QImage image;
-    quint8 ledStatus=0x07;
+    quint8 ledStatus;
 };
 
 enum cmdValueType {cmdValueInc, cmdValueDec, cmdValueAbs };
@@ -260,9 +266,19 @@ signals:
     void changePage(USBDEVICE* dev, int page);
 
 private:
+
+    void checkForGamePad();
+    void checkForControllers();
+
+    bool initDevice(USBDEVICE* dev);
+
     void loadButtons();
     void loadKnobs();
     void loadCommands();
+
+    // Process controllers:
+
+    void processShuttle(QByteArray data);
 
 
     int hidStatus = 1;

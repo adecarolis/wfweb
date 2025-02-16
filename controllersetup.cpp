@@ -480,25 +480,35 @@ void controllerSetup::removeDevice(USBDEVICE* dev)
     }
 
 
-    qDebug(logUsbControl()) << "Removing tab content" << dev->product;
-
-    if (tab.value()->bgImage != Q_NULLPTR) {
-        tab.value()->scene->removeItem(tab.value()->bgImage);
-        delete tab.value()->bgImage;
-    }
-    delete tab.value()->scene;
-
-    // Find the tab within the tabWidget
     for (int i = 0; i < ui->tabWidget->count(); i++) {
         auto widget = ui->tabWidget->widget(i);
         if (widget->objectName() == dev->path) {
+            ui->tabWidget->widget(i)->deleteLater();
             ui->tabWidget->removeTab(i);
             break;
         }
     }
 
-    delete tab.value();
-    tabs.remove(dev->path);
+    for (auto it = tabs.begin(); it != tabs.end();)
+    {
+        if (it.key() == dev->path)
+        {
+            qDebug(logUsbControl()) << "Removing tab content" << dev->product;
+
+            if (it.value()->bgImage != Q_NULLPTR) {
+                it.value()->scene->removeItem(it.value()->bgImage);
+                delete it.value()->bgImage;
+            }
+            delete tab.value()->scene;
+            delete it.value();
+            it.value() = Q_NULLPTR;
+            tabs.erase(it++);
+        }
+        else
+        {
+            ++it;
+        }
+    }
 
     // Hide the tabWidget if no tabs exist
     if (ui->tabWidget->count() == 0)
@@ -516,16 +526,17 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     for (int i=0; i<ui->tabWidget->count();i++) {
         if (ui->tabWidget->widget(i)->objectName() == dev->path)
         {
-            qInfo(logUsbControl()) <<"Tab for " << dev->product << "("<< dev->path << ") Already exists!";
-            return;
+            qInfo(logUsbControl()) <<"Tab for " << dev->product << "("<< dev->path << ") Already exists, removing.";
+            ui->tabWidget->removeTab(i);
+            break;
         }
     }
 
     auto tab = tabs.find(dev->path);
     if (tab != tabs.end())
     {
-        qInfo(logUsbControl()) <<"Tab content for " << dev->product << "("<< dev->path << ") Already exists!";
-        return;
+        qInfo(logUsbControl()) <<"Tab content for " << dev->product << "("<< dev->path << ") Already exists, removing";
+        tabs.remove(dev->path);
     }
 
 
@@ -975,7 +986,6 @@ void controllerSetup::setConnected(USBDEVICE* dev)
 {
     QMutexLocker locker(mutex);
 
-
     auto tab = tabs.find(dev->path);
     if (tab != tabs.end())
     {
@@ -994,14 +1004,14 @@ void controllerSetup::on_backupButton_clicked()
 {
     QString file = QFileDialog::getSaveFileName(this,"Select Backup Filename",".","Backup Files (*.ini)");
     if (!file.isEmpty()) {
-        auto devIt = devices->find(ui->tabWidget->currentWidget()->objectName());
-        if (devIt==devices->end())
+        auto it = devices->find(ui->tabWidget->currentWidget()->objectName());
+        if (it==devices->end())
         {
             qWarning(logUsbControl) << "on_restoreButton_clicked() Cannot find existing controller, aborting!";
         }
         else
         {
-            emit backup(&devIt.value(), file);
+            emit backup(&it.value(), file);
         }
     }
 }
@@ -1014,13 +1024,13 @@ void controllerSetup::on_restoreButton_clicked()
     if (!file.isEmpty()) {
         QString path = ui->tabWidget->currentWidget()->objectName();
 
-        auto devIt = devices->find(path);
-        if (devIt==devices->end())
+        auto it = devices->find(path);
+        if (it==devices->end())
         {
             qWarning(logUsbControl) << "on_restoreButton_clicked() Cannot find existing controller, aborting!";
             return;
         }
-        auto dev = &devIt.value();
+        auto dev = &it.value();
 
         QSettings* settings = new QSettings(file, QSettings::Format::IniFormat);
         QString version = settings->value("Version", "").toString();
