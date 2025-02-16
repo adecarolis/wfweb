@@ -382,9 +382,9 @@ void meter::paintEvent(QPaintEvent *)
                 (meterType == meterRxAudio))
     {
         // Log scale but still 0-255:
-        int logCurrent = (int)((1-audiopot[255-current])*255);
-        int logAverage = (int)((1-audiopot[255-average])*255);
-        int logPeak = (int)((1-audiopot[255-peak])*255);
+        int logCurrent = (int)((1-audiopot[255-(int)current])*255);
+        int logAverage = (int)((1-audiopot[255-(int)average])*255);
+        int logPeak = (int)((1-audiopot[255-(int)peak])*255);
 
         // Current value:
         // X, Y, Width, Height
@@ -513,14 +513,14 @@ void meter::setLevel(float current)
     this->update();
 }
 
-void meter::setLevel(int current)
+void meter::setLevel(double current)
 {
     this->current = current;
 
     avgLevels[(avgPosition++)%averageBalisticLength] = current;
     peakLevels[(peakPosition++)%peakBalisticLength] = current;
 
-    int sum=0;
+    double sum=0.0;
 
     for(unsigned int i=0; i < (unsigned int)std::min(avgPosition, (int)avgLevels.size()); i++)
     {
@@ -540,13 +540,13 @@ void meter::setLevel(int current)
     this->update();
 }
 
-void meter::setLevels(int current, int peak)
+void meter::setLevels(double current, double peak)
 {
     this->current = current;
     this->peak = peak;
 
     avgLevels[(avgPosition++)%averageBalisticLength] = current;
-    int sum=0;
+    double sum=0;
     for(unsigned int i=0; i < (unsigned int)std::min(avgPosition, (int)avgLevels.size()); i++)
     {
         sum += avgLevels.at(i);
@@ -557,7 +557,7 @@ void meter::setLevels(int current, int peak)
     this->update(); // place repaint event on the event queue
 }
 
-void meter::setLevels(int current, int peak, int average)
+void meter::setLevels(double current, double peak, double average)
 {
     this->current = current;
     this->peak = peak;

@@ -3601,8 +3601,15 @@ void wfmain:: getInitialRigState()
 
     queue->del(funcTransceiverId); // This command is no longer required
 
-    if (rigCaps->commands.contains(funcAutoInformation) && (!rigCaps->hasSpectrum || prefs.enableLAN))
+    if (rigCaps->commands.contains(funcAutoInformation) && (!rigCaps->hasSpectrum || prefs.enableLAN)) {
         queue->add(priorityImmediate,queueItem(funcAutoInformation,QVariant::fromValue(uchar(2)),false,0));
+        // Enable metering data in the AutoInformation stream:
+        queue->add(priorityImmediate,queueItem(funcALCMeter,QVariant::fromValue(uchar(1)),false,0));
+        queue->add(priorityImmediate,queueItem(funcCompMeter,QVariant::fromValue(uchar(1)),false,0));
+        queue->add(priorityImmediate,queueItem(funcIdMeter,QVariant::fromValue(uchar(1)),false,0));
+        queue->add(priorityImmediate,queueItem(funcVdMeter,QVariant::fromValue(uchar(1)),false,0));
+        queue->add(priorityImmediate,queueItem(funcSWRMeter,QVariant::fromValue(uchar(1)),false,0));
+    }
 
     if (prefs.forceVfoMode) {
         queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(vfoA)));
@@ -3677,6 +3684,7 @@ void wfmain:: getInitialRigState()
     // Put Kenwood into Shift&Width mode for filter control.
     queue->add(priorityHigh,queueItem(funcFilterControlSSB,QVariant::fromValue<bool>(true),false,0));
     queue->add(priorityHigh,queueItem(funcFilterControlData,QVariant::fromValue<bool>(true),false,0));
+
 }
 void wfmain::showStatusBarText(QString text)
 {
@@ -4534,7 +4542,7 @@ void wfmain::receiveTuningStep(quint8 step)
     }
 }
 
-void wfmain::receiveMeter(meter_t inMeter, quint8 level)
+void wfmain::receiveMeter(meter_t inMeter, double level)
 {
 
     switch(inMeter)
@@ -4935,6 +4943,18 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
     } else if (rigCaps != Q_NULLPTR){
         uiMeter->show();
         uiMeter->setMeterType(newMeterType);
+
+        double lowVal = 0.0;
+        double highVal = 255.0;
+        double lineVal = rigCaps->meterLines[newMeterType];
+        for (auto it = rigCaps->meters[newMeterType].keyValueBegin(); it != rigCaps->meters[newMeterType].keyValueEnd(); ++it) {
+            if (it->second < lowVal)
+                lowVal = it->second;
+            if (it->second > highVal || highVal == 255.0)
+                highVal = it->second;
+        }
+
+        qInfo() << "New meter" << meterString[newMeterType] << "values, low:" << lowVal << "high:" << highVal << "line:" << lineVal;
 
         if((newMeterType!=meterRxAudio) && (newMeterType!=meterTxMod) && (newMeterType!=meterAudio))
         {
@@ -5557,10 +5577,12 @@ void wfmain::receiveValue(cacheItem val){
     case funcSMeterSqlStatus:
         break;
     case funcSMeter:
-        if (val.receiver )
-            receiveMeter(meter_t::meterSubS,val.value.value<uchar>());
-        else
-            receiveMeter(meter_t::meterS,val.value.value<uchar>());
+        if (val.receiver ) {
+            receiveMeter(meter_t::meterSubS,val.value.value<double>());
+        }
+        else {
+            receiveMeter(meter_t::meterS,val.value.value<double>());
+        }
         break;
     case funcAbsoluteMeter:
     {
@@ -5584,25 +5606,25 @@ void wfmain::receiveValue(cacheItem val){
         receivers[val.receiver]->overflow(val.value.value<bool>());
         break;
     case funcCenterMeter:
-        receiveMeter(meter_t::meterCenter,val.value.value<uchar>());
+        receiveMeter(meter_t::meterCenter,val.value.value<double>());
         break;
     case funcPowerMeter:
-        receiveMeter(meter_t::meterPower,val.value.value<uchar>());
+        receiveMeter(meter_t::meterPower,val.value.value<double>());
         break;
     case funcSWRMeter:
-        receiveMeter(meter_t::meterSWR,val.value.value<uchar>());
+        receiveMeter(meter_t::meterSWR,val.value.value<double>());
         break;
     case funcALCMeter:
-        receiveMeter(meter_t::meterALC,val.value.value<uchar>());
+        receiveMeter(meter_t::meterALC,val.value.value<double>());
         break;
     case funcCompMeter:
-        receiveMeter(meter_t::meterComp,val.value.value<uchar>());
+        receiveMeter(meter_t::meterComp,val.value.value<double>());
         break;
     case funcVdMeter:
-        receiveMeter(meter_t::meterVoltage,val.value.value<uchar>());
+        receiveMeter(meter_t::meterVoltage,val.value.value<double>());
         break;
     case funcIdMeter:
-        receiveMeter(meter_t::meterCurrent,val.value.value<uchar>());
+        receiveMeter(meter_t::meterCurrent,val.value.value<double>());
         break;
     // 0x16 enable/disable functions:
     case funcPreamp:
@@ -6455,6 +6477,7 @@ void wfmain::updatedQueueInterval(qint64 interval)
     else if (rigCaps != Q_NULLPTR)
         enableControls(true);
 }
+
 
 /* USB Hotplug support added at the end of the file for convenience */
 #ifdef USB_HOTPLUG

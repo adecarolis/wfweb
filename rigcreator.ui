@@ -553,7 +553,10 @@
         <item>
          <widget class="tableWidget" name="meters">
           <attribute name="horizontalHeaderDefaultSectionSize">
-           <number>80</number>
+           <number>55</number>
+          </attribute>
+          <attribute name="horizontalHeaderStretchLastSection">
+           <bool>true</bool>
           </attribute>
           <column>
            <property name="text">
@@ -562,12 +565,17 @@
           </column>
           <column>
            <property name="text">
-            <string>Rig val</string>
+            <string>Val</string>
            </property>
           </column>
           <column>
            <property name="text">
             <string>Actual</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Line</string>
            </property>
           </column>
          </widget>

@@ -67,6 +67,7 @@ private slots:
     void saveRigFile(QString filename);
     void commandRowAdded(int row);
     void bandRowAdded(int row);
+    void meterRowAdded(int row);
     void changed();
 
 

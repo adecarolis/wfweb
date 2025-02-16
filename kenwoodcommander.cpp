@@ -28,7 +28,9 @@ kenwoodCommander::~kenwoodCommander()
     qInfo(logRig()) << "closing instance of kenwoodCommander()";
 
     if (rtpThread != Q_NULLPTR) {
-        receiveCommand(funcVOIP,QVariant::fromValue<uchar>(0),0);
+        //if (port->isOpen()) {
+        //    receiveCommand(funcVOIP,QVariant::fromValue<uchar>(0),0);
+        //}
         qInfo(logUdp()) << "Stopping RTP thread";
         rtpThread->quit();
         rtpThread->wait();
@@ -322,11 +324,12 @@ void kenwoodCommander::parseData(QByteArray data)
     }
 
     QList<QByteArray> commands = data.split(';');
-
+    QByteArray cmdFull;
     for (auto &d: commands) {        
         if (d.isEmpty())
             continue;
         uchar receiver = 0; // Used for Dual/RX
+        cmdFull = d; // save the complete cmd for debug later.
 
         int count = 0;
         for (int i=d.length();i>0;i--)
@@ -540,6 +543,25 @@ void kenwoodCommander::parseData(QByteArray data)
             }
             break;
         // These are numbers, as they might contain other info, only extract type.bytes len of data.
+        case funcTunerStatus:
+        {
+            uchar s = d.mid(0, type.bytes).toUShort();
+            switch(s)  {
+            case 0:
+                // 000: not enabled
+                value.setValue<uchar>(0);
+                break;
+            case 10:
+                // 010: tuned and enabled
+                value.setValue<uchar>(1);
+                break;
+            case 11:
+                // 011: tuning, we think
+                value.setValue<uchar>(2);
+                break;
+            }
+            break;
+        }
         case funcAGCTimeConstant:
         case funcMemorySelect:
         case funcRfGain:
@@ -576,13 +598,34 @@ void kenwoodCommander::parseData(QByteArray data)
 #endif
         case funcSMeter:
             if (isTransmitting)
+            {
                 func = funcPowerMeter;
-        case funcSWRMeter:
-        case funcALCMeter:
-        case funcCompMeter:
-            // TS-590 uses 0-30 for meters (TS-890 uses 70), Icom uses 0-255.
-            value.setValue<uchar>(d.toUShort() * (255/(type.maxVal-type.minVal)));
+                value.setValue(getMeterCal(meterPower,d.toUShort()));
+            }
+            else
+            {
+                value.setValue(getMeterCal(meterS,d.toUShort()));
+            }
             break;
+        case funcSWRMeter:
+            value.setValue(getMeterCal(meterSWR,d.toUShort()));
+            break;
+        case funcALCMeter:
+            value.setValue(getMeterCal(meterALC,d.toUShort()));
+            break;
+        case funcCompMeter:
+            value.setValue(getMeterCal(meterComp,d.toUShort()));
+            break;
+        case funcVdMeter:
+            value.setValue(getMeterCal(meterVoltage,d.toUShort()));
+            break;
+        case funcIdMeter:
+            value.setValue(getMeterCal(meterCurrent,d.toUShort()));
+            break;
+            // TS-590 uses 0-30 for meters (TS-890 uses 70), Icom uses 0-255.
+            //value.setValue<uchar>(d.toUShort() * (255/(type.maxVal-type.minVal)));
+            //qDebug(logRig()) << "Meter value received: value: " << value << "raw: " << d.toUShort() << "Meter type: " << func;
+            //break;
 #if defined __GNUC__
 #pragma GCC diagnostic pop
 #endif
@@ -799,8 +842,11 @@ void kenwoodCommander::parseData(QByteArray data)
         {
             // We do not log spectrum and meter data,
             // as they tend to clog up any useful logging.
-            qDebug(logRigTraffic()) << QString("Received from radio: %0").arg(funcString[func]);
-            printHexNow(d, logRigTraffic());
+            qDebug(logRigTraffic()) << QString("Received from radio: cmd: %0, data: %1").arg(funcString[func]).arg(d.toStdString().c_str());
+            //printHexNow(d, logRigTraffic());
+#ifdef QT_DEBUG
+            qDebug(logRigTraffic()) << QString("Full command string: [%0]").arg(cmdFull.toStdString().c_str());
+#endif
         }
 
         if (value.isValid() && queue != Q_NULLPTR) {
@@ -980,6 +1026,12 @@ void kenwoodCommander::determineRigCaps()
     rigCaps.memParser.clear();
     rigCaps.satParser.clear();
     rigCaps.periodic.clear();
+    for (int i = meterNone; i < meterUnknown; i++)
+    {
+        rigCaps.meters[i].clear();
+        rigCaps.meterLines[i] = 0.0;
+    }
+
     // modelID should already be set!
     while (!rigList.contains(rigCaps.modelID))
     {
@@ -1267,6 +1319,32 @@ void kenwoodCommander::determineRigCaps()
         settings->endArray();
     }
 
+    int numMeters = settings->beginReadArray("Meters");
+    if (numMeters == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numMeters; c++)
+        {
+            settings->setArrayIndex(c);
+            QString meterName = settings->value("Meter", "None").toString();
+            if (meterName != "None" && meterName != "")
+                for (int i = meterNone; i < meterUnknown; i++)
+                {
+                    if (meterName == meterString[i] && i != meterNone)
+                    {
+                        if (settings->value("RedLine", false).toBool())
+                        {
+                            rigCaps.meterLines[i] = settings->value("ActualVal", 0.0).toDouble();
+                        }
+                        rigCaps.meters[i].insert(settings->value("RigVal", 0).toInt(),settings->value("ActualVal", 0.0).toDouble());
+                        break;
+                    }
+                }
+        }
+        settings->endArray();
+    }
+
     settings->endGroup();
     delete settings;
 
@@ -1334,11 +1412,6 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
     QByteArray payload;
     int val=INT_MIN;
 
-    if (func == funcSWRMeter || func == funcCompMeter || func == funcALCMeter)
-    {
-        // Cannot query for these meters, but they will be sent automatically on TX
-        return;
-    }
     if (loginRequired && func != funcLogin && func != funcConnectionRequest)
     {
         qInfo() << "Command received before login, requeing";
@@ -1489,7 +1562,30 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
                     qInfo(logRig()) << "Sending VOIP command:" << value.value<uchar>();
                     // We have logged-in so start audio
                 }
-                payload.append(QString::number(value.value<uchar>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
+                if(func==funcTunerStatus) {
+                    switch(value.value<uchar>()) {
+                    case 0:
+                        // Turn it off
+                        payload.append(QString::number(100).rightJustified(3, QChar('0')).toLatin1());
+                        break;
+                    case 1:
+                        // Turn it on
+                        payload.append(QString::number(110).rightJustified(3, QChar('0')).toLatin1());
+                        break;
+                    case 2:
+                        // Run the tuning cycle
+                        payload.append(QString::number(111).rightJustified(3, QChar('0')).toLatin1());
+                        break;
+                    default:
+                        break;
+                    }
+                } else if ( (func==funcALCMeter) || (func==funcSWRMeter) ||
+                            (func==funcCompMeter) || (func==funcIdMeter) || (func==funcVdMeter) ) {
+                    // The cmd.bytes is set to four for receiving these values, but when sending values, exactly one byte is required.
+                    payload.append(QString::number(value.value<uchar>()).rightJustified(1, QChar('0')).toLatin1());
+                } else {
+                    payload.append(QString::number(value.value<uchar>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
+                }
             }
             else if(!strcmp(value.typeName(),"uint"))
             {
@@ -1794,6 +1890,9 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
         if (portConnected)
         {
             QMutexLocker locker(&serialMutex);
+#ifdef QT_DEBUG
+            qDebug(logRigTraffic()).noquote() << "Send to rig: " << payload.toStdString().c_str();
+#endif
             if (port->write(payload) != payload.size())
             {
                 qInfo(logSerial()) << "Error writing to port";

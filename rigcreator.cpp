@@ -39,6 +39,8 @@ rigCreator::rigCreator(QWidget *parent) :
 
     ui->commands->setColumnWidth(0,200);
 
+    //ui->meters->setColumnWidth(0,85);
+
     /*
     ui->commands->setColumnWidth(1,100);
     ui->commands->setColumnWidth(2,50);
@@ -47,6 +49,7 @@ rigCreator::rigCreator(QWidget *parent) :
     */
     connect(ui->commands,SIGNAL(rowAdded(int)),this,SLOT(commandRowAdded(int)));
     connect(ui->bands,SIGNAL(rowAdded(int)),this,SLOT(bandRowAdded(int)));
+    connect(ui->meters,SIGNAL(rowAdded(int)),this,SLOT(meterRowAdded(int)));
 
     ui->bands->sortByColumn(1,Qt::AscendingOrder);
 
@@ -117,6 +120,18 @@ void rigCreator::bandRowAdded(int row)
         }
     });
     ui->bands->setCellWidget(row,12, color);
+}
+
+void rigCreator::meterRowAdded(int row)
+{
+    QWidget *checkBoxWidget = new QWidget();
+    QCheckBox *checkBox = new QCheckBox();      // We declare and initialize the checkbox
+    checkBox->setObjectName("line");
+    QHBoxLayout *layoutCheckBox = new QHBoxLayout(checkBoxWidget); // create a layer with reference to the widget
+    layoutCheckBox->addWidget(checkBox);            // Set the checkbox in the layer
+    layoutCheckBox->setAlignment(Qt::AlignCenter);  // Center the checkbox
+    layoutCheckBox->setContentsMargins(0,0,0,0);    // Set the zero padding
+    ui->meters->setCellWidget(row,3, checkBoxWidget);
 }
 
 rigCreator::~rigCreator()
@@ -656,6 +671,22 @@ void rigCreator::loadRigFile(QString file)
             ui->meters->model()->setData(ui->meters->model()->index(c,0),settings->value("Meter", "None").toString());
             ui->meters->model()->setData(ui->meters->model()->index(c,1),QString::number(settings->value("RigVal", 0).toInt()));
             ui->meters->model()->setData(ui->meters->model()->index(c,2),QString::number(settings->value("ActualVal", 0).toDouble()));
+
+            // Create a widget that will contain a checkbox
+            QWidget *checkBoxWidget = new QWidget();
+            QCheckBox *checkBox = new QCheckBox();      // We declare and initialize the checkbox
+            checkBox->setObjectName("line");
+            QHBoxLayout *layoutCheckBox = new QHBoxLayout(checkBoxWidget); // create a layer with reference to the widget
+            layoutCheckBox->addWidget(checkBox);            // Set the checkbox in the layer
+            layoutCheckBox->setAlignment(Qt::AlignCenter);  // Center the checkbox
+            layoutCheckBox->setContentsMargins(0,0,0,0);    // Set the zero padding
+
+            if (settings->value("RedLine",false).toBool()) {
+                checkBox->setChecked(true);
+            } else {
+                checkBox->setChecked(false);
+            }
+            ui->meters->setCellWidget(c,3, checkBoxWidget);
         }
         settings->endArray();
     }
@@ -981,6 +1012,13 @@ void rigCreator::saveRigFile(QString file)
         settings->setValue("Meter",(ui->meters->item(n,0) == NULL) ? "None" :  ui->meters->item(n,0)->text());
         settings->setValue("RigVal",(ui->meters->item(n,1) == NULL) ? 0 : ui->meters->item(n,1)->text().toInt());
         settings->setValue("ActualVal",(ui->meters->item(n,2) == NULL) ? 0 :  ui->meters->item(n,2)->text().toDouble());
+
+        // Need to use findchild as it has a layout.
+        QCheckBox* chk = ui->meters->cellWidget(n,3)->findChild<QCheckBox*>();
+        if (chk != nullptr)
+        {
+            settings->setValue("RedLine", chk->isChecked());
+        }
     }
     settings->endArray();
 
