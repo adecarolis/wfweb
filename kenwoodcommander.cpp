@@ -1555,7 +1555,7 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             {
                 payload.append(QString::number(value.value<freqt>().Hz).rightJustified(cmd.bytes, QChar('0')).toLatin1());
             }
-            else if(!strcmp(value.typeName(),"bool") || !strcmp(value.typeName(),"uchar"))
+            else if(!strcmp(value.typeName(),"bool") || !strcmp(value.typeName(),"uchar") || !strcmp(value.typeName(),"int"))
             {
                 // This is a simple number
                 if (func == funcVOIP) {
