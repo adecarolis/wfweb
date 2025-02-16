@@ -67,6 +67,7 @@ private slots:
     void saveRigFile(QString filename);
     void commandRowAdded(int row);
     void bandRowAdded(int row);
+    void meterRowAdded(int row);
     void changed();
 
 
@@ -75,8 +76,10 @@ private:
     void closeEvent(QCloseEvent *event);
     QMenu* context;
     tableCombobox* commandsList;
+    tableCombobox* metersList;
     tableCombobox* priorityList;
     QStandardItemModel* commandsModel;
+    QStandardItemModel* metersModel;
     QStandardItemModel* command36Model;
     QStandardItemModel* priorityModel;
     QStandardItemModel* createModel(int num, QStandardItemModel* model, QString strings[]);

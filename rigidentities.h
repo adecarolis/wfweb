@@ -236,8 +236,6 @@ struct genericType {
     QString name;
 };
 
-
-
 //model_kind determineRadioModel(quint8 rigID);
 
 struct bsrRequest {
@@ -327,6 +325,8 @@ struct rigCapabilities {
     QString satFormat;
     QVector<memParserFormat> satParser;
     QVector<periodicType> periodic;
+    QMap<int,double> meters[meterUnknown];
+    double meterLines[meterUnknown];
 };
 
 Q_DECLARE_METATYPE(manufacturersType_t)

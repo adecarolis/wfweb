@@ -183,6 +183,42 @@ quint8* rigCommander::getGUID() {
     return guid;
 }
 
+
+double rigCommander::getMeterCal(meter_t meter,int value)
+{
+    double ret = static_cast<double>(value);
+
+    if (rigCaps.meters[meter].size()) {
+        auto it = rigCaps.meters[meter].lowerBound(value);
+        if (value <= it.key())
+        {
+            if (it == rigCaps.meters[meter].begin())
+            {
+                // Value matches the cal exactly
+                ret = it.value();
+            }
+            else if (it == rigCaps.meters[meter].end())
+            {
+                // Val is larger than the max cal value
+                ret = (--it).value();
+            }
+            else
+            {
+                int key = it.key();
+                double val = it.value();
+                double prevVal = (--it).value();
+                int prevKey = it.key();
+                double interp = ((key - value) * (val - prevVal)) / (key - prevKey);
+                ret = val - interp;
+            }
+        }
+    }
+
+    qDebug() << meterString[meter] << "val:" << value << "=" << ret;
+
+    return ret;
+}
+
 void rigCommander::printHex(const QByteArray &pdata)
 {
     printHex(pdata, false, true);

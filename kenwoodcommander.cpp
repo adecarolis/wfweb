@@ -28,7 +28,9 @@ kenwoodCommander::~kenwoodCommander()
     qInfo(logRig()) << "closing instance of kenwoodCommander()";
 
     if (rtpThread != Q_NULLPTR) {
-        receiveCommand(funcVOIP,QVariant::fromValue<uchar>(0),0);
+        //if (port->isOpen()) {
+        //    receiveCommand(funcVOIP,QVariant::fromValue<uchar>(0),0);
+        //}
         qInfo(logUdp()) << "Stopping RTP thread";
         rtpThread->quit();
         rtpThread->wait();
@@ -596,16 +598,34 @@ void kenwoodCommander::parseData(QByteArray data)
 #endif
         case funcSMeter:
             if (isTransmitting)
+            {
                 func = funcPowerMeter;
-        case funcSWRMeter:
-        case funcALCMeter:
-        case funcCompMeter:
-        case funcVdMeter:
-        case funcIdMeter:
-            // TS-590 uses 0-30 for meters (TS-890 uses 70), Icom uses 0-255.
-            value.setValue<uchar>(d.toUShort() * (255/(type.maxVal-type.minVal)));
-            //qDebug(logRig()) << "Meter value received: value: " << value << "raw: " << d.toUShort() << "Meter type: " << func;
+                value.setValue(getMeterCal(meterPower,d.toUShort()));
+            }
+            else
+            {
+                value.setValue(getMeterCal(meterS,d.toUShort()));
+            }
             break;
+        case funcSWRMeter:
+            value.setValue(getMeterCal(meterSWR,d.toUShort()));
+            break;
+        case funcALCMeter:
+            value.setValue(getMeterCal(meterALC,d.toUShort()));
+            break;
+        case funcCompMeter:
+            value.setValue(getMeterCal(meterComp,d.toUShort()));
+            break;
+        case funcVdMeter:
+            value.setValue(getMeterCal(meterVoltage,d.toUShort()));
+            break;
+        case funcIdMeter:
+            value.setValue(getMeterCal(meterCurrent,d.toUShort()));
+            break;
+            // TS-590 uses 0-30 for meters (TS-890 uses 70), Icom uses 0-255.
+            //value.setValue<uchar>(d.toUShort() * (255/(type.maxVal-type.minVal)));
+            //qDebug(logRig()) << "Meter value received: value: " << value << "raw: " << d.toUShort() << "Meter type: " << func;
+            //break;
 #if defined __GNUC__
 #pragma GCC diagnostic pop
 #endif
@@ -1006,6 +1026,12 @@ void kenwoodCommander::determineRigCaps()
     rigCaps.memParser.clear();
     rigCaps.satParser.clear();
     rigCaps.periodic.clear();
+    for (int i = meterNone; i < meterUnknown; i++)
+    {
+        rigCaps.meters[i].clear();
+        rigCaps.meterLines[i] = 0.0;
+    }
+
     // modelID should already be set!
     while (!rigList.contains(rigCaps.modelID))
     {
@@ -1289,6 +1315,32 @@ void kenwoodCommander::determineRigCaps()
             rigCaps.bands.push_back(bandType(region,band,bsr,start,end,range,memGroup,bytes,ants,power,color,name,offset));
             rigCaps.bsr[band] = bsr;
             qDebug(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << QString::number(bsr,16);
+        }
+        settings->endArray();
+    }
+
+    int numMeters = settings->beginReadArray("Meters");
+    if (numMeters == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numMeters; c++)
+        {
+            settings->setArrayIndex(c);
+            QString meterName = settings->value("Meter", "None").toString();
+            if (meterName != "None" && meterName != "")
+                for (int i = meterNone; i < meterUnknown; i++)
+                {
+                    if (meterName == meterString[i] && i != meterNone)
+                    {
+                        if (settings->value("RedLine", false).toBool())
+                        {
+                            rigCaps.meterLines[i] = settings->value("ActualVal", 0.0).toDouble();
+                        }
+                        rigCaps.meters[i].insert(settings->value("RigVal", 0).toInt(),settings->value("ActualVal", 0.0).toDouble());
+                        break;
+                    }
+                }
         }
         settings->endArray();
     }

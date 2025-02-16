@@ -17,8 +17,10 @@ rigCreator::rigCreator(QWidget *parent) :
 
     qInfo() << "Creating instance of rigCreator()";
     commandsList = new tableCombobox(createModel(funcLastFunc, commandsModel, funcString),false,ui->commands);
-
     ui->commands->setItemDelegateForColumn(0, commandsList);
+
+    metersList = new tableCombobox(createModel(meterUnknown, metersModel, meterString),false,ui->meters);
+    ui->meters->setItemDelegateForColumn(0, metersList);
 
     priorityModel = new QStandardItemModel();
     for (const auto &key: priorityMap.keys())
@@ -37,6 +39,8 @@ rigCreator::rigCreator(QWidget *parent) :
 
     ui->commands->setColumnWidth(0,200);
 
+    //ui->meters->setColumnWidth(0,85);
+
     /*
     ui->commands->setColumnWidth(1,100);
     ui->commands->setColumnWidth(2,50);
@@ -45,6 +49,7 @@ rigCreator::rigCreator(QWidget *parent) :
     */
     connect(ui->commands,SIGNAL(rowAdded(int)),this,SLOT(commandRowAdded(int)));
     connect(ui->bands,SIGNAL(rowAdded(int)),this,SLOT(bandRowAdded(int)));
+    connect(ui->meters,SIGNAL(rowAdded(int)),this,SLOT(meterRowAdded(int)));
 
     ui->bands->sortByColumn(1,Qt::AscendingOrder);
 
@@ -115,6 +120,18 @@ void rigCreator::bandRowAdded(int row)
         }
     });
     ui->bands->setCellWidget(row,12, color);
+}
+
+void rigCreator::meterRowAdded(int row)
+{
+    QWidget *checkBoxWidget = new QWidget();
+    QCheckBox *checkBox = new QCheckBox();      // We declare and initialize the checkbox
+    checkBox->setObjectName("line");
+    QHBoxLayout *layoutCheckBox = new QHBoxLayout(checkBoxWidget); // create a layer with reference to the widget
+    layoutCheckBox->addWidget(checkBox);            // Set the checkbox in the layer
+    layoutCheckBox->setAlignment(Qt::AlignCenter);  // Center the checkbox
+    layoutCheckBox->setContentsMargins(0,0,0,0);    // Set the zero padding
+    ui->meters->setCellWidget(row,3, checkBoxWidget);
 }
 
 rigCreator::~rigCreator()
@@ -638,6 +655,43 @@ void rigCreator::loadRigFile(QString file)
     ui->dtcs->setSortingEnabled(true);
     ui->dtcs->sortByColumn(0,Qt::AscendingOrder);
 
+    ui->meters->clearContents();
+    ui->meters->model()->removeRows(0,ui->meters->rowCount());
+    ui->meters->setSortingEnabled(false);
+
+    int numMeters = settings->beginReadArray("Meters");
+    if (numMeters == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numMeters; c++)
+        {
+            settings->setArrayIndex(c);
+            ui->meters->insertRow(ui->meters->rowCount());
+            ui->meters->model()->setData(ui->meters->model()->index(c,0),settings->value("Meter", "None").toString());
+            ui->meters->model()->setData(ui->meters->model()->index(c,1),QString::number(settings->value("RigVal", 0).toInt()));
+            ui->meters->model()->setData(ui->meters->model()->index(c,2),QString::number(settings->value("ActualVal", 0).toDouble()));
+
+            // Create a widget that will contain a checkbox
+            QWidget *checkBoxWidget = new QWidget();
+            QCheckBox *checkBox = new QCheckBox();      // We declare and initialize the checkbox
+            checkBox->setObjectName("line");
+            QHBoxLayout *layoutCheckBox = new QHBoxLayout(checkBoxWidget); // create a layer with reference to the widget
+            layoutCheckBox->addWidget(checkBox);            // Set the checkbox in the layer
+            layoutCheckBox->setAlignment(Qt::AlignCenter);  // Center the checkbox
+            layoutCheckBox->setContentsMargins(0,0,0,0);    // Set the zero padding
+
+            if (settings->value("RedLine",false).toBool()) {
+                checkBox->setChecked(true);
+            } else {
+                checkBox->setChecked(false);
+            }
+            ui->meters->setCellWidget(c,3, checkBoxWidget);
+        }
+        settings->endArray();
+    }
+    ui->meters->setSortingEnabled(true);
+
 
     settings->endGroup();
     delete settings;
@@ -653,6 +707,9 @@ void rigCreator::loadRigFile(QString file)
     connect(ui->preamps,SIGNAL(cellChanged(int,int)),SLOT(changed()));
     connect(ui->spans,SIGNAL(cellChanged(int,int)),SLOT(changed()));
     connect(ui->periodicCommands,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->ctcss,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->dtcs,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->meters,SIGNAL(cellChanged(int,int)),SLOT(changed()));
 
     connect(ui->hasCommand29,SIGNAL(stateChanged(int)),SLOT(changed()));
     connect(ui->hasEthernet,SIGNAL(stateChanged(int)),SLOT(changed()));
@@ -944,6 +1001,24 @@ void rigCreator::saveRigFile(QString file)
     {
         settings->setArrayIndex(n);
         settings->setValue("Reg",(ui->dtcs->item(n,0) == NULL) ? 0 :  ui->dtcs->item(n,0)->text().toUInt());
+    }
+    settings->endArray();
+
+    ui->meters->sortByColumn(0,Qt::AscendingOrder);
+    settings->beginWriteArray("Meters");
+    for (int n = 0; n<ui->meters->rowCount();n++)
+    {
+        settings->setArrayIndex(n);
+        settings->setValue("Meter",(ui->meters->item(n,0) == NULL) ? "None" :  ui->meters->item(n,0)->text());
+        settings->setValue("RigVal",(ui->meters->item(n,1) == NULL) ? 0 : ui->meters->item(n,1)->text().toInt());
+        settings->setValue("ActualVal",(ui->meters->item(n,2) == NULL) ? 0 :  ui->meters->item(n,2)->text().toDouble());
+
+        // Need to use findchild as it has a layout.
+        QCheckBox* chk = ui->meters->cellWidget(n,3)->findChild<QCheckBox*>();
+        if (chk != nullptr)
+        {
+            settings->setValue("RedLine", chk->isChecked());
+        }
     }
     settings->endArray();
 

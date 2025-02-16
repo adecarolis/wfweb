@@ -902,6 +902,32 @@ void icomCommander::parseCommand()
         value.setValue<ushort>(round((((600.0 / 255.0) * level) + 300) / 5.0) * 5.0);
         break;
     }
+    // 0x15 Meters
+    case funcSMeter:
+        value.setValue(getMeterCal(meterS,bcdHexToUChar(payloadIn.at(0),payloadIn.at(1))));
+        break;
+    case funcCenterMeter:
+        value.setValue(getMeterCal(meterCenter,bcdHexToUChar(payloadIn.at(0),payloadIn.at(1))));
+        break;
+    case funcPowerMeter:
+        value.setValue(getMeterCal(meterPower,bcdHexToUChar(payloadIn.at(0),payloadIn.at(1))));
+        break;
+    case funcSWRMeter:
+        value.setValue(getMeterCal(meterSWR,bcdHexToUChar(payloadIn.at(0),payloadIn.at(1))));
+        break;
+    case funcALCMeter:
+        value.setValue(getMeterCal(meterALC,bcdHexToUChar(payloadIn.at(0),payloadIn.at(1))));
+        break;
+    case funcCompMeter:
+        value.setValue(getMeterCal(meterComp,bcdHexToUChar(payloadIn.at(0),payloadIn.at(1))));
+        break;
+    case funcVdMeter:
+        value.setValue(getMeterCal(meterVoltage,bcdHexToUChar(payloadIn.at(0),payloadIn.at(1))));
+        break;
+    case funcIdMeter:
+        value.setValue(getMeterCal(meterCurrent,bcdHexToUChar(payloadIn.at(0),payloadIn.at(1))));
+        break;
+
     case funcRfGain:
     case funcSquelch:
     case funcAPFLevel:
@@ -921,16 +947,7 @@ void icomCommander::parseCommand()
     case funcVoxGain:
     case funcAntiVoxGain:
     case funcBackLightLevel:
-    // 0x15 Meters
-    case funcSMeter:
-    case funcCenterMeter:
-    case funcPowerMeter:
-    case funcSWRMeter:
-    case funcALCMeter:
-    case funcCompMeter:
-    case funcVdMeter:
-    case funcIdMeter:
-	
+
 	case funcBeepLevel:
 	case funcBeepMain:
 	case funcBeepSub:
@@ -1461,6 +1478,12 @@ void icomCommander::determineRigCaps()
     rigCaps.memParser.clear();
     rigCaps.satParser.clear();
     rigCaps.periodic.clear();
+    for (int i = meterNone; i < meterUnknown; i++)
+    {
+        rigCaps.meters[i].clear();
+        rigCaps.meterLines[i] = 0.0;
+    }
+
     // modelID should already be set!
     while (!rigList.contains(rigCaps.modelID))
     {
@@ -1746,9 +1769,35 @@ void icomCommander::determineRigCaps()
         settings->endArray();
     }
 
-    settings->endGroup();
-    delete settings;
+    int numMeters = settings->beginReadArray("Meters");
+    if (numMeters == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numMeters; c++)
+        {
+            settings->setArrayIndex(c);
+            QString meterName = settings->value("Meter", "None").toString();
+            if (meterName != "None" && meterName != "")
+            for (int i = meterNone; i < meterUnknown; i++)
+            {
+                if (meterName == meterString[i] && i != meterNone)
+                {
+                    if (settings->value("RedLine", false).toBool())
+                    {
+                        rigCaps.meterLines[i] = settings->value("ActualVal", 0.0).toDouble();
+                    }
+                    rigCaps.meters[i].insert(settings->value("RigVal", 0).toInt(),settings->value("ActualVal", 0.0).toDouble());
+                    break;
+                }
+            }
+        }
+        settings->endArray();
+    }
 
+    settings->endGroup();
+
+    delete settings;
 
     // Setup memory formats.
     static QRegularExpression memFmtEx("%(?<flags>[-+#0])?(?<pos>\\d+|\\*)?(?:\\.(?<width>\\d+|\\*))?(?<spec>[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+])");
