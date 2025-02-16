@@ -816,19 +816,28 @@ void wfmain::setupMainUI()
     freqLock = false;
 
     connect(
-        ui->txPowerSlider, &QSlider::valueChanged, this,
-        [=](const int &newValue) { statusFromSliderPercent("Tx Power", newValue);}
-        );
+                ui->txPowerSlider, &QSlider::valueChanged, this,
+                [=](const int &newValue) {
+        if(rigCaps->commands.contains(funcRFPower)) {
+            auto f = rigCaps->commands.find(funcRFPower);
+            statusFromSliderPercent("Tx Power", 255*newValue/f->maxVal);
+        }
+    });
 
     connect(
                 ui->rfGainSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) { statusFromSliderPercent("RF Gain", newValue);}
-    );
+                [=](const int &newValue) {
+        if(rigCaps->commands.contains(funcRfGain)) {
+            auto f = rigCaps->commands.find(funcRfGain);
+            statusFromSliderPercent("RF Gain", 255*newValue/f->maxVal);
+        }
+    });
 
     connect(
                 ui->afGainSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) { statusFromSliderPercent("AF Gain", newValue);}
-    );
+                [=](const int &newValue) {
+        statusFromSliderPercent("AF Gain", newValue);
+    });
 
     connect(
                 ui->micGainSlider, &QSlider::valueChanged, this,
@@ -837,8 +846,12 @@ void wfmain::setupMainUI()
 
     connect(
                 ui->sqlSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) { statusFromSliderPercent("Squelch", newValue);}
-    );
+                [=](const int &newValue) {
+        if(rigCaps->commands.contains(funcSquelch)) {
+            auto f = rigCaps->commands.find(funcSquelch);
+            statusFromSliderPercent("Squelch", 255*newValue/f->maxVal);
+        }
+    });
 
 }
 
