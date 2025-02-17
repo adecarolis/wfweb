@@ -4930,10 +4930,14 @@ funcs wfmain::meter_tToMeterCommand(meter_t m)
     return c;
 }
 
-void wfmain::getMeterExtremities(const meter_t m, double &lowVal, double &highVal, double &redLineVal) {
+void wfmain::getMeterExtremities(meter_t m, double &lowVal, double &highVal, double &redLineVal) {
     lowVal = UINT16_MAX;
     highVal = (-1)*UINT16_MAX;
     redLineVal = 200;
+    if (m==meterSubS)
+    {
+        m = meterS;
+    }
 
     if(m==meterNone)
     {
