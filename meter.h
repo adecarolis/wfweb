@@ -32,6 +32,7 @@ public slots:
     void setLevels(double current, double peak); // calculate avg
     void setLevel(double current);
     void setCompReverse(bool reverse);
+    void setUseGradients(bool useGrads);
     void clearMeterOnPTTtoggle();
     void clearMeter();
     void setMeterType(meter_t type);
@@ -87,6 +88,7 @@ private:
 
     int peakRedLevel=0;
     bool drawLabels = true;
+    bool useGradients = true;
     int mXstart = 0; // Starting point for S=0.
     int mYstart = 14; // height, down from top, where the drawing starts
     int barHeight = 10; // Height of meter "bar" indicators
