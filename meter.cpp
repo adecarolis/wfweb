@@ -318,12 +318,22 @@ void meter::paintEvent(QPaintEvent *)
 void meter::regenerateScale(QPainter *screenPainterHints) {
     // draw a scale and save to scaleCache
 
+
+    if(this->size() != scaleCache->size()) {
+        qDebug() << "Meter Widget does not match cache image size.";
+        qDebug() << "Meter Scale cache image size: " << scaleCache->size();
+        qDebug() << "Meter Widget size: " << this->size();
+        delete scaleCache;
+        scaleCache = new QImage(this->size(), QImage::Format_ARGB32);
+        scaleCache->fill(Qt::transparent);
+    }
+
     QPainter painter(scaleCache);
     painter.setRenderHints(screenPainterHints->renderHints()); // Copy render hints
-    painter.setRenderHint(QPainter::Antialiasing);
+    //painter.setRenderHint(QPainter::Antialiasing); // fuzz city
     //painter.setRenderHint(QPainter::HighQualityAntialiasing); // depreciated
     //painter.setRenderHint(QPainter::TextAntialiasing);
-    painter.setRenderHint(QPainter::SmoothPixmapTransform);
+    //painter.setRenderHint(QPainter::SmoothPixmapTransform);
 
     painter.setCompositionMode(QPainter::CompositionMode_Source); // Important for correct alpha blending
 
