@@ -318,13 +318,15 @@ void meter::paintEvent(QPaintEvent *)
 void meter::regenerateScale(QPainter *screenPainterHints) {
     // draw a scale and save to scaleCache
 
+    QSize sizeHint = screenPainterHints->window().size();
 
-    if(this->size() != scaleCache->size()) {
-        qDebug() << "Meter Widget does not match cache image size.";
+    if(sizeHint != scaleCache->size()) {
+        qDebug() << "Meter Widget painter window does not match cache image size.";
         qDebug() << "Meter Scale cache image size: " << scaleCache->size();
         qDebug() << "Meter Widget size: " << this->size();
+        qDebug() << "Meter painter window: " << sizeHint;
         delete scaleCache;
-        scaleCache = new QImage(this->size(), QImage::Format_ARGB32);
+        scaleCache = new QImage(sizeHint, QImage::Format_ARGB32);
         scaleCache->fill(Qt::transparent);
     }
 
