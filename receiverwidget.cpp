@@ -791,8 +791,9 @@ void receiverWidget::colorPreset(colorPrefsType *cp)
     if(cp->useSpectrumFillGradient) {
         spectrumGradient.setStart(QPointF(0,1));
         spectrumGradient.setFinalStop(QPointF(0,0));
-        spectrumGradient.setCoordinateMode(QLinearGradient::ObjectMode);
-        spectrumGradient.setColorAt(0, cp->spectrumFillBot);
+        spectrumGradient.setCoordinateMode(QLinearGradient::StretchToDeviceMode);
+        //spectrumGradient.setColorAt(0, cp->spectrumFillBot);
+        spectrumGradient.setColorAt(0.1, cp->spectrumFillBot);
         spectrumGradient.setColorAt(1, cp->spectrumFillTop);
         spectrum->graph(0)->setBrush(QBrush(spectrumGradient));
     } else {
@@ -803,8 +804,9 @@ void receiverWidget::colorPreset(colorPrefsType *cp)
     if(cp->useUnderlayFillGradient) {
         underlayGradient.setStart(QPointF(0,1));
         underlayGradient.setFinalStop(QPointF(0,0));
-        underlayGradient.setCoordinateMode(QLinearGradient::ObjectMode);
-        underlayGradient.setColorAt(0, cp->underlayFillBot);
+        underlayGradient.setCoordinateMode(QLinearGradient::StretchToDeviceMode);
+        //underlayGradient.setColorAt(0, cp->underlayFillBot);
+        underlayGradient.setColorAt(0.1, cp->underlayFillBot);
         underlayGradient.setColorAt(1, cp->underlayFillTop);
         spectrum->graph(1)->setBrush(QBrush(underlayGradient));
     } else {

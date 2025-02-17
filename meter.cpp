@@ -76,6 +76,10 @@ void meter::setCompReverse(bool reverse) {
     recentlyChangedParameters = true; // force scale redraw
 }
 
+void meter::setUseGradients(bool useGrads) {
+    this->useGradients = useGrads;
+}
+
 void meter::setColors(QColor current, QColor peakScale, QColor peakLevel,
                       QColor average, QColor lowLine,
                       QColor lowText)
@@ -318,13 +322,15 @@ void meter::paintEvent(QPaintEvent *)
 void meter::regenerateScale(QPainter *screenPainterHints) {
     // draw a scale and save to scaleCache
 
+    QSize sizeHint = screenPainterHints->window().size();
 
-    if(this->size() != scaleCache->size()) {
-        qDebug() << "Meter Widget does not match cache image size.";
+    if(sizeHint != scaleCache->size()) {
+        qDebug() << "Meter Widget painter window does not match cache image size.";
         qDebug() << "Meter Scale cache image size: " << scaleCache->size();
         qDebug() << "Meter Widget size: " << this->size();
+        qDebug() << "Meter painter window: " << sizeHint;
         delete scaleCache;
-        scaleCache = new QImage(this->size(), QImage::Format_ARGB32);
+        scaleCache = new QImage(sizeHint, QImage::Format_ARGB32);
         scaleCache->fill(Qt::transparent);
     }
 
@@ -506,8 +512,20 @@ void meter::drawValue_Linear(QPainter *qp, bool reverse) {
 
     // And then, we can just plot them, since we already scaled
     // the scales, right?
-
-
+    if(useGradients) {
+        QLinearGradient grad(QPointF(0, 0), QPointF(255, 0));
+        if(reverse) {
+            grad.setColorAt(1, currentColor.darker().darker());
+            grad.setColorAt(0, currentColor.lighter());
+        } else {
+            grad.setColorAt(0, currentColor.darker().darker());
+            grad.setColorAt(1, currentColor.lighter());
+        }
+        qp->setBrush(grad);
+    } else {
+        qp->setBrush(currentColor);
+    }
+    qp->setPen(currentColor);
     if(reverse) {
         qp->drawRect(255+mXstart,mYstart,-currentRect,barHeight);
     } else {
@@ -548,6 +566,17 @@ void meter::drawValue_Center(QPainter *qp) {
 
     // Current value:
     // starting at the center (mXstart+128) and offset by (current-128)
+    if(useGradients) {
+        QLinearGradient grad(QPointF(0, 0), QPointF(255, 0));
+        grad.setColorAt(0, currentColor.darker().darker());
+        grad.setColorAt(0.5, currentColor.lighter());
+        grad.setColorAt(1, currentColor.darker().darker());
+        qp->setBrush(grad);
+    } else {
+        qp->setBrush(currentColor);
+    }
+
+    qp->setPen(currentColor);
     qp->drawRect(mXstart+128,mYstart,currentRect-128,barHeight);
 
     // Average:
@@ -573,6 +602,17 @@ void meter::drawValue_Log(QPainter *qp) {
 
     // Current value:
     // X, Y, Width, Height
+    if(useGradients) {
+        QLinearGradient grad(QPointF(0, 0), QPointF(255, 0));
+        grad.setColorAt(0, currentColor.darker().darker());
+        grad.setColorAt(1, currentColor.lighter());
+
+        qp->setBrush(grad);
+    } else {
+        qp->setBrush(currentColor);
+    }
+    qp->setPen(currentColor);
+
     qp->drawRect(mXstart,mYstart,currentRect,barHeight);
 
     // Average:
