@@ -79,12 +79,12 @@ static const subCommandStruct levels_str[] =
     {"BKIN_DLYMS",funcBreakInDelay,typeFloat},
     {"RAWSTR",funcNone,typeFloat},
     {"SWR",funcSWRMeter,typeSWR},
-    {"ALC",funcALCMeter,typeFloat},
-    {"STRENGTH",funcSMeter,typeFloat},
-    {"RFPOWER_METER",funcPowerMeter,typeFloat},
-    {"COMPMETER",funcCompMeter,typeFloat},
-    {"VD_METER",funcVdMeter,typeFloat},
-    {"ID_METER",funcIdMeter,typeFloat},
+    {"ALC",funcALCMeter,typeDouble},
+    {"STRENGTH",funcSMeter,typeDouble},
+    {"RFPOWER_METER",funcPowerMeter,typeDouble},
+    {"COMPMETER",funcCompMeter,typeDouble},
+    {"VD_METER",funcVdMeter,typeDouble},
+    {"ID_METER",funcIdMeter,typeDouble},
     {"NOTCHF_RAW",funcNone,typeFloat},
     {"MONITOR_GAIN",funcMonitorGain,typeFloat},
     {"NQ",funcNone,typeFloat},
@@ -352,8 +352,6 @@ rigCtlClient::rigCtlClient(int socketId, rigCtlD* parent) : QObject(parent)
         vfoList |= 1<<25;
     if (rigCaps->commands.contains(funcMemoryMode))
         vfoList |= 1<<28;
-
-    swrCal = ICOM_SWR_CAL;
 }
 
 void rigCtlClient::socketReadyRead()
@@ -834,38 +832,6 @@ QString rigCtlClient::getVfoName(vfo_t vfo)
     return ret;
 }
 
-int rigCtlClient::getCalibratedValue(quint8 meter,cal_table_t cal) {
-    
-    int interp;
-
-    int i = 0;
-    for (i = 0; i < cal.size; i++) {
-        if (meter < cal.table[i].raw)
-        {
-            break;
-        }
-    }
-
-    if (i == 0)
-    {
-        return cal.table[0].val;
-    } 
-    else if (i >= cal.size)
-    {
-        return cal.table[i - 1].val;
-    } 
-    else if (cal.table[i].raw == cal.table[i - 1].raw)
-    {
-        return cal.table[i].val;
-    }
-
-    interp = ((cal.table[i].raw - meter)
-        * (cal.table[i].val - cal.table[i - 1].val))
-        / (cal.table[i].raw - cal.table[i - 1].raw);
-
-    return cal.table[i].val - interp;
-}
-
 unsigned long rigCtlClient::doCrc(quint8* p, size_t n)
 {
     unsigned long crc = 0xfffffffful;
@@ -1292,57 +1258,44 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                     if (rigCaps->commands.contains(sub[i].func))
                         item = queue->getCache(sub[i].func,state.receiver);
                     int val = 0;
-                    // Special situation for S-Meter
-                    if (params[0] == "STRENGTH") {
-                        if (rigCaps->model == model7610)
-                            val = getCalibratedValue(item.value.toUInt(), IC7610_STR_CAL);
-                        else if (rigCaps->model == model7850)
-                            val = getCalibratedValue(item.value.toUInt(), IC7850_STR_CAL);
-                        else
-                            val = getCalibratedValue(item.value.toUInt(), IC7300_STR_CAL);
-                        resp.append(QString("%1").arg(val));
-                    }
-                    else
+
+                    switch (sub[i].type)
                     {
-                        switch (sub[i].type)
-                        {
-                        case typeBinary:
-                            resp.append(QString("%1").arg(item.value.toBool()));
-                            break;
-                        case typeUChar:
-                        {
-                            int val = item.value.toInt();
-                            if (params[0] == "FBKIN")
-                                val = (val >> 1) & 0x01;
-                            if (params[0] == "AGC")
-                                val = (val >> 1);
-                            resp.append(QString::number(val));
-                            break;
-                        }
-                        case typeSWR:{
-                            float f=rawToFloat(item.value.toInt(),&swrCal);
-                            resp.append(QString::number(f,'f',6));
-                            break;
-                        }
-                        case typeUShort:
-                        case typeShort:
-                            resp.append(QString::number(item.value.toInt()));
-                            break;
-                        case typeFloat:
-                            resp.append(QString::number(item.value.toFloat() / 255.0,'f',6));
-                            break;
-                        case typeFloatDiv:
-                            resp.append(QString::number(item.value.toFloat() * 10.0,'f',6));
-                            break;
-                        case typeFloatDiv5:
-                            resp.append(QString::number(item.value.toFloat()/5.1,'f',6));
-                            break;
-                        default:
-                            qInfo(logRigCtlD()) << "Unhandled:" << item.value.toUInt() << "OUT" << val;
-                            ret = -RIG_EINVAL;
-                        }
+                    case typeBinary:
+                        resp.append(QString("%1").arg(item.value.toBool()));
+                        break;
+                    case typeUChar:
+                    {
+                        int val = item.value.toInt();
+                        if (params[0] == "FBKIN")
+                            val = (val >> 1) & 0x01;
+                        if (params[0] == "AGC")
+                            val = (val >> 1);
+                        resp.append(QString::number(val));
+                        break;
                     }
-                    qDebug(logRigCtlD()) << "Got " << funcString[sub[i].func] <<  "of:" << item.value.toInt() << "sent as" << resp;
+                    case typeDouble:{
+                        resp.append(QString::number(item.value.toDouble(),'f',6));
+                        break;
+                    }
+                    case typeUShort:
+                    case typeShort:
+                        resp.append(QString::number(item.value.toInt()));
+                        break;
+                    case typeFloat:
+                        resp.append(QString::number(item.value.toFloat() / 255.0,'f',6));
+                        break;
+                    case typeFloatDiv:
+                        resp.append(QString::number(item.value.toFloat() * 10.0,'f',6));
+                        break;
+                    case typeFloatDiv5:
+                        resp.append(QString::number(item.value.toFloat()/5.1,'f',6));
+                        break;
+                    default:
+                        qInfo(logRigCtlD()) << "Unhandled:" << item.value.toUInt() << "OUT" << val;
+                        ret = -RIG_EINVAL;
+                    }
+                    qDebug(logRigCtlD()) << "Sending " << funcString[sub[i].func] <<  "data:" << resp;
                     response.append(resp);
                 }
                 else
@@ -1661,50 +1614,3 @@ int rigCtlClient::mW2power(QStringList& response, bool extended, const commandSt
 
     return ret;
 }
-
-float rigCtlClient::rawToFloat(int raw, const cal_table_float_t *cal)
-{
-
-    int i;
-    float val;
-
-    if (cal->size == 0)
-    {
-        return raw;
-    }
-
-    for (i = 0; i<cal->size; i++)
-    {
-        if (raw < cal->table[i].raw)
-        {
-            break;
-        }
-    }
-
-    if (raw == cal->table[i - 1].raw)
-    {
-        return cal->table[i - 1].val;
-    }
-
-    if (i == 0)
-    {
-        return cal->table[0].val;
-    }
-
-    if (i >= cal->size)
-    {
-        return cal->table[i - 1].val;
-    }
-
-    if (cal->table[i].raw == cal->table[i - 1].raw)
-    {
-        return cal->table[i].val;
-    }
-
-    val = ((cal->table[i].raw - raw)
-                     * (float)(cal->table[i].val - cal->table[i - 1].val))
-                    / (float)(cal->table[i].raw - cal->table[i - 1].raw);
-
-    return float(cal->table[i].val - val);
-}
-
