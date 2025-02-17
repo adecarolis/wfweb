@@ -6,6 +6,7 @@
 #include <QComboBox>
 #include <QWidget>
 #include <QPainter>
+#include <QImage>
 #include <vector>
 #include <algorithm>
 #include <numeric>
@@ -54,6 +55,8 @@ private:
     void handleDoubleClick();
     bool freezeDrawing = false;
     QComboBox *combo = NULL;
+    QImage *scaleCache = NULL;
+    bool scaleReady = false;
     meter_t meterType;
     meter_t lastDrawMeterType;
     bool recentlyChangedParameters = false;
@@ -107,6 +110,8 @@ private:
 
 
     // These functions draw the meter scale:
+    void regenerateScale(QPainter *screenPainterHints);
+    void recallScale(QPainter *qp);
     void drawScaleS(QPainter *qp);
     void drawScaleCenter(QPainter *qp);
     void drawScalePo(QPainter *qp);

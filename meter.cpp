@@ -46,6 +46,8 @@ meter::meter(QWidget *parent) : QWidget(parent)
     avgLevels.resize(averageBalisticLength, 0);
     peakLevels.resize(peakBalisticLength, 0);
 
+    scaleCache = new QImage(QSize(255+mXstart, widgetWindowHeight), QImage::Format_ARGB32);
+    scaleCache->fill(Qt::transparent);
 
     combo = new QComboBox(this);
     combo->addItem("None", meterNone);
@@ -274,146 +276,160 @@ void meter::paintEvent(QPaintEvent *)
     painter.setWindow(QRect(0, 0, 255+mXstart+15, widgetWindowHeight));
     barHeight = widgetWindowHeight / 2;
 
-    // We generate and draw the scale if:
-    // 1. The meter type changed
+    // We regenerate the scale graphics if:
+    // 1. The meter type changed, or,
     // 2. The meter extremities changed
-    // NOPE: 3. paintEvent was called and we didn't have updated data,
-    //    meaning that there was a window resize or some other
-    //    event where we should be (re)painting.
 
-    // For now, this does not work. When this function is called, the graphic gets cleared!
-    // The scale must be drawn each time,
-    // however, it seems like we could at least store the image of the scale
-    // and just reproduce it. TODO.
-
-//    if( (lastDrawMeterType != meterType)
-//            || (recentlyChangedParameters)) {
-//        regenerateScale();
-//    }
-
-
-    if( true ) {
-        switch(meterType)
-        {
-        case meterS:
-            label = "S";
-            drawScaleS(&painter);
-            break;
-        case meterSubS:
-            label = "Sub";
-            drawScaleS(&painter);
-            break;
-        case meterPower:
-            label = "PWR";
-            drawScalePo(&painter);
-            break;
-        case meterALC:
-            label = "ALC";
-            drawScaleALC(&painter);
-            break;
-        case meterSWR:
-            label = "SWR";
-            drawScaleSWR(&painter);
-            break;
-        case meterCenter:
-            label = "CTR";
-            drawScaleCenter(&painter);
-            break;
-        case meterVoltage:
-            label = "Vd";
-            drawScaleVd(&painter);
-            break;
-        case meterCurrent:
-            label = "Id";
-            drawScaleId(&painter);
-            break;
-        case meterComp:
-            label = "CMP(dB)";
-            if(reverseCompMeter) {
-                drawScaleCompInverted(&painter);
-            } else {
-                drawScaleComp(&painter);
-            }
-            break;
-        case meterNone:
-            label = tr("Double-click to set meter");
-            drawLabel(&painter);
-            return;
-            break;
-        case meterAudio:
-            label = "dBfs";
-            peakRedLevel = 241;
-            drawScale_dBFs(&painter);
-            break;
-        case meterRxAudio:
-            label = "Rx(dBfs)";
-            peakRedLevel = 241;
-            drawScale_dBFs(&painter);
-            break;
-        case meterTxMod:
-            label = "Tx(dBfs)";
-            peakRedLevel = 241;
-            drawScale_dBFs(&painter);
-            break;
-        case meterdBu:
-            label = "dBu";
-            peakRedLevel = 255;
-            drawScaledB(&painter,0,80,20);
-            break;
-        case meterdBuEMF:
-            label = "dBu(EMF)";
-            peakRedLevel = 255;
-            drawScaledB(&painter,0,85,20);
-            break;
-        case meterdBm:
-            label = "dBm";
-            peakRedLevel = 255;
-            drawScaledB(&painter,-100,-20,20);
-            break;
-        default:
-            label = "DN";
-            peakRedLevel = 241;
-            drawScaleRaw(&painter);
-            break;
-        }
-        if(drawLabels)
-        {
-            // We are tracking the drawLabels parameter,
-            // because we may some day want to squeeze this widget
-            // into a place where the label cannot fit.
-            drawLabel(&painter);
-        }
-        recentlyChangedParameters = false;
-        lastDrawMeterType = meterType;
+    if( (lastDrawMeterType != meterType)
+            || (recentlyChangedParameters)) {
+        regenerateScale(&painter);
     }
 
-    // Current: the most-current value.
-    // Draws a bar from start to value.
+    if(scaleReady) {
+        recallScale(&painter);
+    }
 
+    // Guard against drawing empty or garbage data:
     if(haveReceivedSomeData) {
-    painter.setPen(currentColor);
-    painter.setBrush(currentColor);
+        painter.setPen(currentColor);
+        painter.setBrush(currentColor);
 
-    if(meterType == meterCenter)
-    {
-        drawValue_Center(&painter);
-    } else if ( (meterType == meterAudio) ||
-                (meterType == meterTxMod) ||
-                (meterType == meterRxAudio))
-    {
-        drawValue_Log(&painter);
-    } else {
-        if(meterType==meterComp)
-            drawValue_Linear(&painter, this->reverseCompMeter);
-        else
-            drawValue_Linear(&painter, false);
-        if(meterType==meterdBu || meterType==meterdBuEMF || meterType==meterdBm) {
-            drawValueText(&painter,current);
+        if(meterType == meterCenter)
+        {
+            drawValue_Center(&painter);
+        } else if ( (meterType == meterAudio) ||
+                    (meterType == meterTxMod) ||
+                    (meterType == meterRxAudio))
+        {
+            drawValue_Log(&painter);
+        } else {
+            if(meterType==meterComp)
+                drawValue_Linear(&painter, this->reverseCompMeter);
+            else
+                drawValue_Linear(&painter, false);
+            if(meterType==meterdBu || meterType==meterdBuEMF || meterType==meterdBm) {
+                drawValueText(&painter,current);
+            }
         }
+        haveUpdatedData = false;
+    }
+}
+
+void meter::regenerateScale(QPainter *screenPainterHints) {
+    // draw a scale and save to scaleCache
+
+    QPainter painter(scaleCache);
+    painter.setRenderHints(screenPainterHints->renderHints()); // Copy render hints
+    painter.setRenderHint(QPainter::Antialiasing);
+    //painter.setRenderHint(QPainter::HighQualityAntialiasing); // depreciated
+    //painter.setRenderHint(QPainter::TextAntialiasing);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform);
+
+    painter.setCompositionMode(QPainter::CompositionMode_Source); // Important for correct alpha blending
+
+    painter.setFont(QFont(this->fontInfo().family(), fontSize));
+    painter.fillRect(rect(), Qt::transparent); // Clear the image before redrawing
+
+    switch(meterType)
+    {
+    case meterS:
+        label = "S";
+        drawScaleS(&painter);
+        break;
+    case meterSubS:
+        label = "Sub";
+        drawScaleS(&painter);
+        break;
+    case meterPower:
+        label = "PWR";
+        drawScalePo(&painter);
+        break;
+    case meterALC:
+        label = "ALC";
+        drawScaleALC(&painter);
+        break;
+    case meterSWR:
+        label = "SWR";
+        drawScaleSWR(&painter);
+        break;
+    case meterCenter:
+        label = "CTR";
+        drawScaleCenter(&painter);
+        break;
+    case meterVoltage:
+        label = "Vd";
+        drawScaleVd(&painter);
+        break;
+    case meterCurrent:
+        label = "Id";
+        drawScaleId(&painter);
+        break;
+    case meterComp:
+        label = "CMP(dB)";
+        if(reverseCompMeter) {
+            drawScaleCompInverted(&painter);
+        } else {
+            drawScaleComp(&painter);
+        }
+        break;
+    case meterNone:
+        label = tr("Double-click to set meter");
+        drawLabel(&painter);
+        return;
+        break;
+    case meterAudio:
+        label = "dBfs";
+        peakRedLevel = 241;
+        drawScale_dBFs(&painter);
+        break;
+    case meterRxAudio:
+        label = "Rx(dBfs)";
+        peakRedLevel = 241;
+        drawScale_dBFs(&painter);
+        break;
+    case meterTxMod:
+        label = "Tx(dBfs)";
+        peakRedLevel = 241;
+        drawScale_dBFs(&painter);
+        break;
+    case meterdBu:
+        label = "dBu";
+        peakRedLevel = 255;
+        drawScaledB(&painter,0,80,20);
+        break;
+    case meterdBuEMF:
+        label = "dBu(EMF)";
+        peakRedLevel = 255;
+        drawScaledB(&painter,0,85,20);
+        break;
+    case meterdBm:
+        label = "dBm";
+        peakRedLevel = 255;
+        drawScaledB(&painter,-100,-20,20);
+        break;
+    default:
+        label = "DN";
+        peakRedLevel = 241;
+        drawScaleRaw(&painter);
+        break;
+    }
+    if(drawLabels)
+    {
+        // We are tracking the drawLabels parameter,
+        // because we may some day want to squeeze this widget
+        // into a place where the label cannot fit.
+        drawLabel(&painter);
     }
 
-    haveUpdatedData = false;
-    }
+    painter.end();
+    recentlyChangedParameters = false;
+    lastDrawMeterType = meterType;
+    scaleReady = true;
+}
+
+void meter::recallScale(QPainter *painter) {
+    // read the scaleCache onto the canvas
+    painter->drawImage(0, 0, *scaleCache);
 }
 
 void meter::drawLabel(QPainter *qp)
@@ -429,10 +445,6 @@ void meter::scaleLinearNumbersForDrawing() {
     currentRect = getPixelScaleFromValue(current);
     averageRect = getPixelScaleFromValue(average);
     peakRect =    getPixelScaleFromValue(peak);
-
-//    currentRect = (current-scaleMin) * (255/(scaleMax-ScaleMin));
-//    averageRect = (average-scaleMin) * (255/(scaleMax-ScaleMin));
-//    peakRect =       (peak-scaleMin) * (255/(scaleMax-ScaleMin));
 }
 
 double meter::getValueFromPixelScale(int p) {
