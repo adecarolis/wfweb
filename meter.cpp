@@ -46,7 +46,7 @@ meter::meter(QWidget *parent) : QWidget(parent)
     avgLevels.resize(averageBalisticLength, 0);
     peakLevels.resize(peakBalisticLength, 0);
 
-    scaleCache = new QImage(QSize(255+mXstart, widgetWindowHeight), QImage::Format_ARGB32);
+    scaleCache = new QImage(QSize(255+mXstart+15, widgetWindowHeight), QImage::Format_ARGB32);
     scaleCache->fill(Qt::transparent);
 
     combo = new QComboBox(this);
