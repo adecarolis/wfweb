@@ -6,6 +6,7 @@
 #include <QComboBox>
 #include <QWidget>
 #include <QPainter>
+#include <QImage>
 #include <vector>
 #include <algorithm>
 #include <numeric>
@@ -30,7 +31,6 @@ public slots:
     void setLevels(double current, double peak, double average);
     void setLevels(double current, double peak); // calculate avg
     void setLevel(double current);
-    void setLevel(float current);
     void setCompReverse(bool reverse);
     void clearMeterOnPTTtoggle();
     void clearMeter();
@@ -44,6 +44,7 @@ public slots:
     void blockMeterType(meter_t type);
 
     void enableCombo(bool en) { combo->setEnabled(en); }
+    void setMeterExtremities(double min, double max, double redline);
 
 private slots:
     void acceptComboItem(int item);
@@ -54,17 +55,26 @@ private:
     void handleDoubleClick();
     bool freezeDrawing = false;
     QComboBox *combo = NULL;
+    QImage *scaleCache = NULL;
+    bool scaleReady = false;
     meter_t meterType;
+    meter_t lastDrawMeterType;
+    bool recentlyChangedParameters = false;
     QString meterShortString;
+    double scaleMin = 0;
+    double scaleMax = 255;
+    double scaleRedline = 128;
+    bool haveExtremities = false;
     bool haveUpdatedData = false;
+    bool haveReceivedSomeData = false;
     int fontSize = 10;
     int length=30;
     double current=0.0;
     double peak = 0.0;
     double average = 0.0;
-    float flCurrent=0.0;
-    float flPeak=0.0;
-    float flAverage=0.0;
+    int currentRect = 0;
+    int averageRect = 0;
+    int peakRect = 0;
 
     bool reverseCompMeter = true;
 
@@ -72,8 +82,8 @@ private:
     int peakBalisticLength = 30;
     int avgPosition=0;
     int peakPosition=0;
-    std::vector<quint8> avgLevels;
-    std::vector<quint8> peakLevels;
+    std::vector<double_t> avgLevels;
+    std::vector<double_t> peakLevels;
 
     int peakRedLevel=0;
     bool drawLabels = true;
@@ -85,6 +95,23 @@ private:
 
     int widgetWindowHeight = mYstart + barHeight + 0; // height of drawing canvis.
 
+    // These functions scale the data to fit the meter:
+    void prepareValue_dBuEMFdBm();
+    void scaleLinearNumbersForDrawing(); // input = current, average, peak, output = currentRect, averageRect, peakRect
+    void scaleLogNumbersForDrawing(); // for audio
+    double getValueFromPixelScale(int p); // pixel (0-255) scale to values
+    int getPixelScaleFromValue(double v); // scale value to pixel (0-255)
+
+    // These functions draw the rectangular bars
+    // for the level(s) to be represented:
+    void drawValue_Linear(QPainter *qp, bool reverse); // anything you wish 0-255
+    void drawValue_Log(QPainter *qp);
+    void drawValue_Center(QPainter *qp);
+
+
+    // These functions draw the meter scale:
+    void regenerateScale(QPainter *screenPainterHints);
+    void recallScale(QPainter *qp);
     void drawScaleS(QPainter *qp);
     void drawScaleCenter(QPainter *qp);
     void drawScalePo(QPainter *qp);
@@ -100,7 +127,7 @@ private:
     void drawScaledB(QPainter *qp, int start=-100, int end=-20,int interval=20);
 
     void drawLabel(QPainter *qp);
-    void drawValue(QPainter *qp,float value);
+    void drawValueText(QPainter *qp,float value);
     void muteSingleComboItem(QComboBox *comboBox, int index);
     void enableAllComboBoxItems(QComboBox *combobox, bool en=true);
     void setComboBoxItemEnabled(QComboBox * comboBox, int index, bool enabled);
