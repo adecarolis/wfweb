@@ -3959,26 +3959,37 @@ void wfmain::changePrimaryMeter(bool transmitOn) {
     // Change the Primary UI Meter and alter the queue
 
     // This function is only called from one place:
-    // When we receive a new PTT status.
-    // It is not called by UI changes, since we receive
-    // PTT status regularly and quite frequently.
+    // When we receive a *new* PTT status.
 
     funcs newCmd;
     funcs oldCmd;
+    double lowVal = 0.0;
+    double highVal = 255.0;
+    double lineVal = 200;
 
     if(transmitOn) {
         oldCmd = meter_tToMeterCommand(meterS);
         newCmd = meter_tToMeterCommand(meterPower);
         ui->meterSPoWidget->setMeterType(meterPower);
+        ui->meterSPoWidget->setMeterShortString( meterString[(int)meterPower] );
+        getMeterExtremities(meterPower, lowVal, highVal, lineVal);
+        ui->meterSPoWidget->setMeterExtremities(lowVal, highVal, lineVal);
+
     } else {
         oldCmd = meter_tToMeterCommand(meterPower);
         newCmd = meter_tToMeterCommand(meterS);
         ui->meterSPoWidget->setMeterType(meterS);
+        ui->meterSPoWidget->setMeterShortString( meterString[(int)meterS] );
+        getMeterExtremities(meterS, lowVal, highVal, lineVal);
+        ui->meterSPoWidget->setMeterExtremities(lowVal, highVal, lineVal);
     }
     queue->del(oldCmd,0);
     if (rigCaps->commands.contains(newCmd)) {
         queue->add(priorityHighest,queueItem(newCmd,true,0));
     }
+    ui->meterSPoWidget->clearMeterOnPTTtoggle();
+    ui->meter2Widget->clearMeterOnPTTtoggle();
+    ui->meter3Widget->clearMeterOnPTTtoggle();
 }
 
 void wfmain::changeFullScreenMode(bool checked)
@@ -4921,6 +4932,31 @@ funcs wfmain::meter_tToMeterCommand(meter_t m)
     return c;
 }
 
+void wfmain::getMeterExtremities(const meter_t m, double &lowVal, double &highVal, double &redLineVal) {
+    lowVal = UINT16_MAX;
+    highVal = (-1)*UINT16_MAX;
+    redLineVal = 200;
+
+    if(m==meterNone)
+    {
+        return;
+    } else if (rigCaps != Q_NULLPTR){
+        redLineVal = rigCaps->meterLines[m];
+        for (auto it = rigCaps->meters[m].keyValueBegin(); it != rigCaps->meters[m].keyValueEnd(); ++it) {
+            if (it->second < lowVal)
+                lowVal = it->second;
+            if (it->second > highVal || highVal == 255.0)
+                highVal = it->second;
+        }
+        qDebug(logSystem()) << "Meter extremities:" << meterString[m] << "values, low:" << lowVal << ", high:" << highVal << ", red line:" << redLineVal;
+        return;
+    } else {
+        // Hopefully we come back here after connection and do this correctly.
+        qWarning(logSystem()) << "Cannot setup meter correctly without rigCaps.";
+        return;
+    }
+}
+
 void wfmain::changeMeterType(meter_t m, int meterNum)
 {
     qDebug() << "Changing meter type.";
@@ -4950,24 +4986,21 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
     //if (oldCmd != funcSMeter && oldCmd != funcNone)
     queue->del(oldCmd,(oldMeterType==meterSubS)?uchar(1):uchar(0));
 
+    double lowVal = 0.0;
+    double highVal = 255.0;
+    double lineVal = 200;
+
+    getMeterExtremities(newMeterType, lowVal, highVal, lineVal);
+
     if(newMeterType==meterNone)
     {
         uiMeter->setMeterType(newMeterType);
+        uiMeter->setMeterShortString("None");
     } else if (rigCaps != Q_NULLPTR){
         uiMeter->show();
         uiMeter->setMeterType(newMeterType);
-
-        double lowVal = 0.0;
-        double highVal = 255.0;
-        double lineVal = rigCaps->meterLines[newMeterType];
-        for (auto it = rigCaps->meters[newMeterType].keyValueBegin(); it != rigCaps->meters[newMeterType].keyValueEnd(); ++it) {
-            if (it->second < lowVal)
-                lowVal = it->second;
-            if (it->second > highVal || highVal == 255.0)
-                highVal = it->second;
-        }
-
-        qInfo() << "New meter" << meterString[newMeterType] << "values, low:" << lowVal << "high:" << highVal << "line:" << lineVal;
+        uiMeter->setMeterExtremities(lowVal, highVal, lineVal);
+        uiMeter->setMeterShortString( meterString[(int)newMeterType] );
 
         if((newMeterType!=meterRxAudio) && (newMeterType!=meterTxMod) && (newMeterType!=meterAudio))
         {
@@ -5601,7 +5634,7 @@ void wfmain::receiveValue(cacheItem val){
     {
         meterkind m = val.value.value<meterkind>();
         ui->meterSPoWidget->setMeterType(m.type);
-        ui->meterSPoWidget->setLevel(m.value);
+        ui->meterSPoWidget->setLevel((double)m.value);
         ui->meterSPoWidget->repaint();
         break;
     }

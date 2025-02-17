@@ -628,7 +628,8 @@ private:
     void connectionHandler(bool connect);
 
     funcs meter_tToMeterCommand(meter_t m);
-
+    void getMeterExtremities(const meter_t m, double &lowVal,
+                             double &highVal, double&redLineVal);
     void updateUsbButtons();
 
     void setManufacturer(manufacturersType_t man);

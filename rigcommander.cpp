@@ -214,7 +214,7 @@ double rigCommander::getMeterCal(meter_t meter,int value)
         }
     }
 
-    qDebug() << meterString[meter] << "val:" << value << "=" << ret;
+    // qDebug() << meterString[meter] << "val:" << value << "=" << ret;
 
     return ret;
 }
