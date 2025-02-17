@@ -509,7 +509,8 @@ void meter::drawValue_Linear(QPainter *qp, bool reverse) {
     // And then, we can just plot them, since we already scaled
     // the scales, right?
 
-
+    qp->setPen(currentColor);
+    qp->setBrush(currentColor);
     if(reverse) {
         qp->drawRect(255+mXstart,mYstart,-currentRect,barHeight);
     } else {
@@ -550,6 +551,8 @@ void meter::drawValue_Center(QPainter *qp) {
 
     // Current value:
     // starting at the center (mXstart+128) and offset by (current-128)
+    qp->setPen(currentColor);
+    qp->setBrush(currentColor);
     qp->drawRect(mXstart+128,mYstart,currentRect-128,barHeight);
 
     // Average:
@@ -575,6 +578,8 @@ void meter::drawValue_Log(QPainter *qp) {
 
     // Current value:
     // X, Y, Width, Height
+    qp->setPen(currentColor);
+    qp->setBrush(currentColor);
     qp->drawRect(mXstart,mYstart,currentRect,barHeight);
 
     // Average:
