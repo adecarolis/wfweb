@@ -1274,10 +1274,9 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                         resp.append(QString::number(val));
                         break;
                     }
-                    case typeDouble:{
+                    case typeDouble:
                         resp.append(QString::number(item.value.toDouble(),'f',6));
                         break;
-                    }
                     case typeUShort:
                     case typeShort:
                         resp.append(QString::number(item.value.toInt()));

@@ -57,7 +57,9 @@ void dxClusterClient::enableTcp(bool enable)
     tcpEnable = enable;
     if (enable)
     {
-        tcpRegex = QRegularExpression("^DX de ([a-z-|A-Z|0-9|#|/]+):\\s+([0-9|.]+)\\s+([a-z|A-Z|0-9|/]+)+\\s+(.*)\\s+(\\d{4}Z)");
+        //tcpRegex = QRegularExpression("^DX de ([a-z-|A-Z|0-9|#|/]+):\\s+([0-9|.]+)\\s+([a-z|A-Z|0-9|/]+)+\\s+(.*)\\s+(\\d{4}Z)");
+        tcpRegex = QRegularExpression("^DX de ([A-Z|0-9|\\/\\-#]{3,}): +(\\d*.\\d{1,2}) +([A-Z|0-9|\\/]{3,}) +(.{1,})? +(\\d{4})Z");
+        tcpRegex.setPatternOptions(QRegularExpression::CaseInsensitiveOption | QRegularExpression::MultilineOption);
 
         if (tcpSocket == Q_NULLPTR)
         {
@@ -197,6 +199,8 @@ void dxClusterClient::tcpDataReceived()
                 data->dxcall = match.captured(3);
                 data->comment = match.captured(4).trimmed();
                 data->timestamp = QDateTime::currentDateTimeUtc();
+
+                qInfo() << "Got spot:" << data->dxcall;
 
 #ifdef USESQL
                 database db = database();
