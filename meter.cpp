@@ -331,9 +331,9 @@ void meter::regenerateScale(QPainter *screenPainterHints) {
         qDebug() << "Meter painter window: " << sizeHint;
         delete scaleCache;
         scaleCache = new QImage(sizeHint, QImage::Format_ARGB32);
-        scaleCache->fill(Qt::transparent);
     }
 
+    scaleCache->fill(Qt::transparent);
     QPainter painter(scaleCache);
     painter.setRenderHints(screenPainterHints->renderHints()); // Copy render hints
     //painter.setRenderHint(QPainter::Antialiasing); // fuzz city
