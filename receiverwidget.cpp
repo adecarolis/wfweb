@@ -435,6 +435,11 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     configScopeEnabled->setChecked(true);
     configLayout->addRow(configScopeEnabled);
 
+    frequencyNotificationLockoutTimer = new QTimer();
+    connect(frequencyNotificationLockoutTimer, SIGNAL(timeout()), this, SLOT(freqNoteLockTimerSlot()));
+    frequencyNotificationLockoutTimer->setInterval(200);
+    frequencyNotificationLockoutTimer->setSingleShot(true);
+
     connect(configLength, &QSlider::valueChanged, this, [=](const int &val) {
         //prepareWf(val);
         changeWfLength(val);
@@ -1739,8 +1744,12 @@ void receiverWidget::scroll(QWheelEvent *we)
     int deltaX = we->angleDelta().x();
     int delta = (deltaX==0)?deltaY:deltaX;
 
-    qreal offset = qreal(delta) / qreal((deltaX==0)?scrollYperClick:scrollXperClick);
+    //qreal offset = qreal(delta) / qreal((deltaX==0)?scrollYperClick:scrollXperClick);
     //qreal offset = qreal(delta) / 120;
+
+    qreal       numDegrees = delta / 8;
+    qreal       offset = numDegrees / 15;
+
 
     qreal stepsToScroll = QApplication::wheelScrollLines() * offset;
 
@@ -1752,21 +1761,21 @@ void receiverWidget::scroll(QWheelEvent *we)
     } else {
         // Changed direction, zap the old accumulation:
         scrollWheelOffsetAccumulated = stepsToScroll;
-        //qInfo() << "Scroll changed direction";
+        qInfo() << "Scroll changed direction";
     }
 
     int clicks = int(scrollWheelOffsetAccumulated);
 
     if (!clicks) {
-//        qInfo() << "Rejecting minor scroll motion, too small. Wheel Clicks: " << clicks << ", angleDelta: " << delta;
-//        qInfo() << "Accumulator value: " << offsetAccumulated;
-//        qInfo() << "stepsToScroll: " << stepsToScroll;
-//        qInfo() << "Storing scroll motion for later use.";
+        qInfo() << "Rejecting minor scroll motion, too small. Wheel Clicks: " << clicks << ", angleDelta: " << delta;
+        qInfo() << "Accumulator value: " << scrollWheelOffsetAccumulated;
+        qInfo() << "stepsToScroll: " << stepsToScroll;
+        qInfo() << "Storing scroll motion for later use.";
         return;
     } else {
-//        qInfo() << "Accepted scroll motion. Wheel Clicks: " << clicks << ", angleDelta: " << delta;
-//        qInfo() << "Accumulator value: " << offsetAccumulated;
-//        qInfo() << "stepsToScroll: " << stepsToScroll;
+        qInfo() << "Accepted scroll motion. Wheel Clicks: " << clicks << ", angleDelta: " << delta;
+        qInfo() << "Accumulator value: " << scrollWheelOffsetAccumulated;
+        qInfo() << "stepsToScroll: " << stepsToScroll;
     }
 
     // If we made it this far, it's time to scroll and to ultimately
@@ -1789,11 +1798,12 @@ void receiverWidget::scroll(QWheelEvent *we)
     f.Hz = roundFrequency(freq.Hz, clicks, stepsHz);
     f.MHzDouble = f.Hz / (double)1E6;
 
-        emit sendTrack(f.Hz-this->freq.Hz);
+        emit sendTrack(f.Hz-this->freq.Hz); // Where does this go?
 
-        setFrequency(f);
+        setFrequencyLocally(f);
         queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(f),false,receiver));
-        //qInfo() << "Moving to freq:" << f.Hz << "step" << stepsHz;
+        tempLockAcceptFreqData();
+        qInfo() << "Moving to freq:" << f.Hz << "step" << stepsHz;
     }
     scrollWheelOffsetAccumulated = 0;
 }
@@ -2157,6 +2167,14 @@ void receiverWidget::configPressed()
     //});
 }
 
+void receiverWidget::freqNoteLockTimerSlot() {
+    this->allowAcceptFreqData = true;
+}
+
+void receiverWidget::tempLockAcceptFreqData() {
+    this->allowAcceptFreqData = false;
+    frequencyNotificationLockoutTimer->start();
+}
 
 void receiverWidget::wfTheme(int num)
 {
@@ -2272,9 +2290,46 @@ void receiverWidget::setIFShift(uchar val)
     }
 }
 
+void receiverWidget::setFrequencyLocally(freqt f, uchar vfo) {
+    // This function is a duplicate of the regular setFrequency
+    // function, but without the locking mechanism.
+    // It is separate because we may wish to do additional things
+    // differently for locally-generated frequency changes.
+
+    if (vfo < numVFO)
+    {
+        freqDisplay[vfo]->blockSignals(true);
+        freqDisplay[vfo]->setFrequency(f.Hz);
+        freqDisplay[vfo]->blockSignals(false);
+    }
+
+    if (vfo==0) {
+        this->freq = f;
+        for (const auto &b: rigCaps->bands)
+        {
+            // Highest frequency band is always first!
+            if (f.Hz >= b.lowFreq && f.Hz <= b.highFreq)
+            {
+                // This frequency is contained within this band!
+                if (currentBand.band != b.band) {
+                    currentBand = b;
+                    emit bandChanged(this->receiver,b);
+                }
+                break;
+            }
+        }
+    } else if (vfo==1)
+    {
+        this->unselectedFreq=f;
+    }
+}
+
+
 void receiverWidget::setFrequency(freqt f, uchar vfo)
 {
     //qInfo() << "receiver:" << receiver << "Setting Frequency vfo=" << vfo << "Freq:" << f.Hz;
+    if(!allowAcceptFreqData)
+        return;
 
     if (vfo < numVFO)
     {
@@ -2389,6 +2444,8 @@ void receiverWidget::newFrequency(qint64 freq,uchar vfo)
         emit sendTrack(f.Hz-this->freq.Hz);
         vfoCommandType t = queue->getVfoCommand(vfo_t(vfo),receiver,true);
         queue->addUnique(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(f),false,t.receiver));
+        setFrequencyLocally(f, vfo);
+        tempLockAcceptFreqData();
         //qInfo() << "Setting new frequency for rx:" << receiver << "vfo:" << vfo << "freq:" << f.Hz << "using:" << funcString[t.freqFunc];
     }
 }
