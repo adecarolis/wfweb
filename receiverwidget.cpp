@@ -1767,15 +1767,15 @@ void receiverWidget::scroll(QWheelEvent *we)
     int clicks = int(scrollWheelOffsetAccumulated);
 
     if (!clicks) {
-        qInfo() << "Rejecting minor scroll motion, too small. Wheel Clicks: " << clicks << ", angleDelta: " << delta;
-        qInfo() << "Accumulator value: " << scrollWheelOffsetAccumulated;
-        qInfo() << "stepsToScroll: " << stepsToScroll;
-        qInfo() << "Storing scroll motion for later use.";
+//        qInfo() << "Rejecting minor scroll motion, too small. Wheel Clicks: " << clicks << ", angleDelta: " << delta;
+//        qInfo() << "Accumulator value: " << scrollWheelOffsetAccumulated;
+//        qInfo() << "stepsToScroll: " << stepsToScroll;
+//        qInfo() << "Storing scroll motion for later use.";
         return;
     } else {
-        qInfo() << "Accepted scroll motion. Wheel Clicks: " << clicks << ", angleDelta: " << delta;
-        qInfo() << "Accumulator value: " << scrollWheelOffsetAccumulated;
-        qInfo() << "stepsToScroll: " << stepsToScroll;
+//        qInfo() << "Accepted scroll motion. Wheel Clicks: " << clicks << ", angleDelta: " << delta;
+//        qInfo() << "Accumulator value: " << scrollWheelOffsetAccumulated;
+//        qInfo() << "stepsToScroll: " << stepsToScroll;
     }
 
     // If we made it this far, it's time to scroll and to ultimately
@@ -1803,7 +1803,7 @@ void receiverWidget::scroll(QWheelEvent *we)
         setFrequencyLocally(f);
         queue->add(priorityImmediate,queueItem(t.freqFunc,QVariant::fromValue<freqt>(f),false,receiver));
         tempLockAcceptFreqData();
-        qInfo() << "Moving to freq:" << f.Hz << "step" << stepsHz;
+        //qInfo() << "Moving to freq:" << f.Hz << "step" << stepsHz;
     }
     scrollWheelOffsetAccumulated = 0;
 }
