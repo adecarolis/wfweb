@@ -572,7 +572,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
 
     connect(spanCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](int val){
         vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
-        queue->addUnique(priorityImmediate,queueItem(funcScopeSpan,QVariant::fromValue(spanCombo->itemData(val)),false,t.receiver));
+        queue->addUnique(priorityImmediate,queueItem(funcScopeSpan,spanCombo->itemData(val),false,t.receiver));
     });
 
     connect(confButton,SIGNAL(clicked()), this, SLOT(configPressed()),Qt::QueuedConnection);
@@ -581,7 +581,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
 
     connect(edgeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](int val){
         vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
-        queue->addUnique(priorityImmediate,queueItem(funcScopeEdge,QVariant::fromValue(edgeCombo->itemData(val)),false,t.receiver));
+        queue->addUnique(priorityImmediate,queueItem(funcScopeEdge,edgeCombo->itemData(val),false,t.receiver));
     });
 
     connect(edgeButton,SIGNAL(clicked()), this, SLOT(customSpanPressed()));
@@ -1325,7 +1325,7 @@ void receiverWidget::updatedMode(int index)
 void receiverWidget::setEdge(uchar index)
 {
     edgeCombo->blockSignals(true);
-    edgeCombo->setCurrentIndex(index-1);
+    edgeCombo->setCurrentIndex(edgeCombo->findData(index));
     edgeCombo->blockSignals(false);
 }
 
@@ -1346,7 +1346,7 @@ void receiverWidget::toFixedPressed()
         if(numOk)
         {
             edgeCombo->blockSignals(true);
-            edgeCombo->setCurrentIndex(edge-1);
+            edgeCombo->setCurrentIndex(edgeCombo->findData(edge));
             edgeCombo->blockSignals(false);
             queue->addUnique(priorityImmediate,queueItem(funcScopeSpeed,QVariant::fromValue(spectrumBounds(lowerFreq, upperFreq, edge)),false,receiver));
             queue->addUnique(priorityImmediate,queueItem(funcScopeSpeed,QVariant::fromValue<uchar>(spectrumMode_t::spectModeFixed),false,receiver));
@@ -1429,8 +1429,8 @@ void receiverWidget::customSpanPressed()
         }
         else
         {
-            qDebug(logGui()) << "setting edge to: " << low->value() << ", " << high->value() << ", edge num: " << edgeCombo->currentIndex() + 1;
-            queue->addUnique(priorityImmediate,queueItem(funcScopeFixedEdgeFreq,QVariant::fromValue(spectrumBounds(low->value(), high->value(), edgeCombo->currentIndex() + 1)),false,receiver));
+            qDebug(logGui()) << "setting edge to: " << low->value() << ", " << high->value() << ", edge num: " << edgeCombo->currentData().toUInt();
+            queue->addUnique(priorityImmediate,queueItem(funcScopeFixedEdgeFreq,QVariant::fromValue(spectrumBounds(low->value(), high->value(), edgeCombo->currentData().toUInt())),false,receiver));
             dialog->close();
         }
     });
