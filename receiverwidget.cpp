@@ -245,8 +245,13 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     scopeModeCombo->addItem(tr("Scroll-F"), (spectrumMode_t)spectModeScrollF);
     scopeModeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
 
-    edgeCombo->insertItems(0, QStringList({tr("Fixed Edge 1"),tr("Fixed Edge 2"),tr("Fixed Edge 3"),tr("Fixed Edge 4")}));
+    //edgeCombo->insertItems(0, QStringList({tr("Fixed Edge 1"),tr("Fixed Edge 2"),tr("Fixed Edge 3"),tr("Fixed Edge 4")}));
     //edgeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContentsOnFirstShow);
+
+    for (uchar i=rigCaps->manufacturer==manufKenwood?0:1; i<4; i++)
+    {
+        edgeCombo->addItem(QString("Fixed Edge %0").arg(i),i);
+    }
 
     // Spectrum Plot setup
     passbandIndicator = new QCPItemRect(spectrum);
@@ -576,7 +581,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
 
     connect(edgeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](int val){
         vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
-        queue->addUnique(priorityImmediate,queueItem(funcScopeEdge,QVariant::fromValue<uchar>(val+1),false,t.receiver));
+        queue->addUnique(priorityImmediate,queueItem(funcScopeEdge,QVariant::fromValue(edgeCombo->itemData(val)),false,t.receiver));
     });
 
     connect(edgeButton,SIGNAL(clicked()), this, SLOT(customSpanPressed()));
