@@ -178,6 +178,7 @@ struct scopeData {
     QByteArray data;
     uchar receiver;
     spectrumMode_t mode;
+    uchar fixedEdge=0;
     bool oor;
     double startFreq;
     double endFreq;
@@ -349,7 +350,7 @@ funcFA,                 funcFB,
 funcSepP,
 funcAutoInformation,    funcIFFilter,           funcDataMode,               funcRXFreqAndMode,      funcTXFreqAndMode,      funcTFSetStatus,
 funcMemorySelect,       funcSetTransmit,        funcSetReceive,             funcRITDown,            funcRITUp,              funcScopeInfo,
-funcScopeRange,         funcCWDecode,           funcScopeClear,             funcUSBScope,           funcTXEqualizer,        funcRXEqualizer,
+funcCWDecode,           funcScopeClear,         funcUSBScope,           funcTXEqualizer,        funcRXEqualizer,
 funcFilterControlSSB,   funcFilterControlData,
 // LAN Specific commands
 funcConnectionRequest,  funcLogin,              funcVOIP,                   funcVOIPLevel,          funcVOIPBuffer,         funcTXInhibit,
@@ -484,7 +485,7 @@ static QString funcString[funcLastFunc] { "None",
 "+<Kenwood Only>",
 "Auto Information",     "IF Filter Only",       "Data Mode Only",           "RX Freq And Mode",     "TX Freq And Mode",      "TF-Set Status",
 "Memory Num Select",    "Set Transmit Mode",    "Set Receive Mode",         "RIT Frequency Down",   "RIT Frequency Up",     "Scope Information",
-"Scope Range",          "CW Decode",            "Scope Clear",              "USB Scope Data",       "TX Equalizer",         "RX Equalizer",
+"CW Decode",            "Scope Clear",          "USB Scope Data",       "TX Equalizer",         "RX Equalizer",
 "Filter Control SSB",   "Filter Control Data",
 // LAN Specific commands
 "Connection Request",  "Network Login",         "VOIP Function",            "VOIP Level",           "VOIP Buffer",          "TX Inhibit",

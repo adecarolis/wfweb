@@ -573,6 +573,7 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcMonitorGain:
         case funcKeySpeed:
         case funcScopeRef:
+        case funcScopeEdge:
         case funcAttenuator:
         case funcPreamp:
         case funcNoiseBlanker:
@@ -700,9 +701,10 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcLoginEnableDisable:
             qInfo(logRig()) << "Received" << funcString[func] << "with value" << d << (d.toInt()?"Enabled":"Disabled");
             break;
-        case funcScopeRange:
+        case funcScopeFixedEdgeFreq:
         {
             currentScope.valid=false;
+            currentScope.fixedEdge = d.at(0) - NUMTOASCII;
             currentScope.oor = 0;   // No easy way to get OOR unless we calculate it.
             currentScope.receiver = 0;
             if (queue->getCache(funcScopeMode,receiver).value.value<spectrumMode_t>() == spectrumMode_t::spectModeCenter)
@@ -723,8 +725,8 @@ void kenwoodCommander::parseData(QByteArray data)
                 currentScope.startFreq=double(freq - (span/2));
                 currentScope.endFreq=double(freq + (span/2));
             } else {
-                currentScope.startFreq = double(d.mid(0,8).toULongLong())/1000000.0;
-                currentScope.endFreq = double(d.mid(8,8).toULongLong())/1000000.0;
+                currentScope.startFreq = double(d.mid(1,8).toULongLong())/1000000.0;
+                currentScope.endFreq = double(d.mid(9,8).toULongLong())/1000000.0;
             }
             //qInfo() << "Range:" << d << "is" << currentScope.startFreq << "/" << currentScope.endFreq;
             break;
@@ -1708,6 +1710,13 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             else if(!strcmp(value.typeName(),"rigInput"))
             {
                 payload.append(QString::number(value.value<rigInput>().reg).rightJustified(cmd.bytes,'0').toLatin1());
+            }
+            else if (!strcmp(value.typeName(),"spectrumBounds"))
+            {
+                spectrumBounds s = value.value<spectrumBounds>();
+                payload.append(QString("%0%1%2").arg(s.edge).arg(quint64(s.start*1000000.0),8,10,QChar('0')).arg(quint64(s.end*1000000.0),8,10,QChar('0')).toLatin1());
+                qInfo() << "Fixed Edge Bounds edge:" << s.edge << "start:" << s.start << "end:" << s.end << payload;
+
             }
             else if (!strcmp(value.typeName(),"memoryType")) {
 
