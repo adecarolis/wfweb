@@ -12,6 +12,7 @@
 #include <QSlider>
 #include <QSpacerItem>
 #include <QElapsedTimer>
+#include <QTimer>
 #include <qcustomplot.h>
 #include "freqctrl.h"
 #include "cluster.h"
@@ -85,6 +86,7 @@ public:
     void setStepSize (quint64 hz) { stepSize = hz;}
 
     freqt getFrequency () { return freq;}
+    void setFrequencyLocally (freqt f,uchar vfo=0);
     void setFrequency (freqt f,uchar vfo=0);
     void updateInfo();
     uchar getNumVFO () { return numVFO;}
@@ -156,6 +158,7 @@ private slots:
     void toFixedPressed();
     void customSpanPressed();
     void configPressed();
+    void freqNoteLockTimerSlot();
 
 
     // Mouse interaction with scope/waterfall
@@ -249,7 +252,10 @@ private:
     // These parameters relate to scroll wheel response:
     int scrollYperClick = 24;
     int scrollXperClick = 24;
-    float scrollWheelOffsetAccumulated=0;
+    qreal scrollWheelOffsetAccumulated=0;
+    QTimer *frequencyNotificationLockoutTimer = NULL;
+    bool allowAcceptFreqData = true;
+    void tempLockAcceptFreqData();
 
     QCheckBox* rxCheckBox;
 

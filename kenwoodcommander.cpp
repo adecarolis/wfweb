@@ -542,6 +542,9 @@ void kenwoodCommander::parseData(QByteArray data)
                 continue;
             }
             break;
+        case funcBreakIn:
+            value.setValue<uchar>(d.toUShort());
+            break;
         // These are numbers, as they might contain other info, only extract type.bytes len of data.
         case funcTunerStatus:
         {
@@ -1548,7 +1551,7 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
                         payload.append(" ");
                         payload.append(textData.leftJustified(cmd.bytes, QChar(' ').toLatin1()));
                     }
-                    qDebug(logRig()) << "Sending CW: payload:" << payload.toHex(' ');
+                    qDebug(logRig()) << "Sending CW: payload:" << payload.toStdString().c_str();
                 }
             }
             else if(!strcmp(value.typeName(),"freqt"))
