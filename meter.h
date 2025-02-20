@@ -126,10 +126,9 @@ private:
     void drawScaleCompInverted(QPainter *qp);
     void drawScale_dBFs(QPainter *qp);
     void drawScaleRaw(QPainter *qp);
-    void drawScaledB(QPainter *qp, int start=-100, int end=-20,int interval=20);
+    void drawScaledB(QPainter *qp);
 
     void drawLabel(QPainter *qp);
-    void drawValueText(QPainter *qp,float value);
     void muteSingleComboItem(QComboBox *comboBox, int index);
     void enableAllComboBoxItems(QComboBox *combobox, bool en=true);
     void setComboBoxItemEnabled(QComboBox * comboBox, int index, bool enabled);

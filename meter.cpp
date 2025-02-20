@@ -311,9 +311,6 @@ void meter::paintEvent(QPaintEvent *)
                 drawValue_Linear(&painter, this->reverseCompMeter);
             else
                 drawValue_Linear(&painter, false);
-            if(meterType==meterdBu || meterType==meterdBuEMF || meterType==meterdBm) {
-                drawValueText(&painter,current);
-            }
         }
         haveUpdatedData = false;
     }
@@ -410,18 +407,18 @@ void meter::regenerateScale(QPainter *screenPainterHints) {
         break;
     case meterdBu:
         label = "dBu";
-        peakRedLevel = 255;
-        drawScaledB(&painter,0,80,20);
+        peakRedLevel = 241;
+        drawScaledB(&painter);
         break;
     case meterdBuEMF:
         label = "dBu(EMF)";
-        peakRedLevel = 255;
-        drawScaledB(&painter,0,85,20);
+        peakRedLevel = 241;
+        drawScaledB(&painter);
         break;
     case meterdBm:
         label = "dBm";
-        peakRedLevel = 255;
-        drawScaledB(&painter,-100,-20,20);
+        peakRedLevel = 241;
+        drawScaledB(&painter);
         break;
     default:
         label = "DN";
@@ -479,37 +476,29 @@ void meter::scaleLogNumbersForDrawing() {
     peakRect = (int)((1-audiopot[255-(int)peak])*255);
 }
 
-void meter::drawValueText(QPainter *qp, float value)
-{
-    // Draw a number on the meter
-    qp->setPen(lowTextColor);
-    uchar prec=1;
-    if (value >= 100.0 || value <= -100.0)
-        prec=0;
-    qp->drawText(0,scaleTextYstart+20, QString("%0").arg(value,0,'f',prec,'0'));
-}
-
 void meter::drawValue_Linear(QPainter *qp, bool reverse) {
     // Draw a rectangle.
 
     // The parameters current, peak, and average need to be scaled
     // to 0-255.
 
-    if (meterType==meterdBu || meterType==meterdBuEMF || meterType==meterdBm) {
-        // just copy over, already scaled.
-        currentRect = current;
-        averageRect = average;
-        peakRect = peak;
-    } else {
-        // Data input:  scaleMin ---- scaleMax
-        // Data output:     0    ----    255
-        scaleLinearNumbersForDrawing();
-    }
+    // Data input:  scaleMin ---- scaleMax
+    // Data output:     0    ----    255
+    scaleLinearNumbersForDrawing();
 
     if(currentRect < 0) {
         return;
     }
 
+    if (this->meterType == meterdBuEMF || this->meterType == meterdBm || this->meterType == meterdBu)
+    {
+        qp->setPen(lowTextColor);
+        uchar prec=1;
+        if (current >= 100.0 || current <= -100.0)
+            prec=0;
+        qp->drawText(0,scaleTextYstart+20, QString("%0").arg(current,0,'f',prec,'0'));
+
+    }
     // And then, we can just plot them, since we already scaled
     // the scales, right?
     if(useGradients) {
@@ -636,25 +625,6 @@ void meter::setLevel(double current)
 {
     // "current" means "now", ie, the value at this moment.
 
-    // the "absolute" signal meters need a little prep:
-    float myValue=current;
-    if (meterType==meterdBu || meterType==meterdBuEMF || meterType==meterdBm) {
-
-        if (meterType == meterdBm) {
-            if (current<-100.0)
-                myValue=0.0;
-            else if (current < 0.0)
-                myValue=current+100.0;
-        } else if (current < 0.0)
-        {
-            myValue = 0.0;
-        }
-
-        myValue=(float(256.0/80.0))*myValue;
-        current = myValue;
-    }
-
-
     this->current = current;
 
     avgLevels[(avgPosition++)%averageBalisticLength] = current;
@@ -749,35 +719,52 @@ void meter::drawScaleRaw(QPainter *qp)
     qp->drawLine(255/2+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
 }
 
-void meter::drawScaledB(QPainter *qp, int start, int end,int step) {
+void meter::drawScaledB(QPainter *qp)
+{
+    int redLevelRect = getPixelScaleFromValue(scaleRedline);
+
     qp->setPen(lowTextColor);
 
-    //qp->setFont(QFont("Arial", fontSize));
-    int y=start;
-    int range=(float(256.0/(end-start))*step);
-
-    //double step = static_cast<double>(end - start) / (count - 1);
-
-    for(int i=mXstart; i<mXstart+256; i+=range)
-    {
-        if (meterType != meterdBuEMF || (meterType == meterdBuEMF && y != 0))
-            qp->drawText(i,scaleTextYstart, QString("%1").arg(y) );
-        y=y+step;
+    int scaleSpan = scaleMax - scaleMin;
+    scaleSpan = (scaleSpan*10) / 10;
+    int stepDelta = 0;
+    if(scaleSpan < 100) {
+        stepDelta = 10;
+    } else {
+        stepDelta = 20;
     }
 
-    for(int i=mXstart; i<mXstart+256; i+=(range/2))
-    {
-        qp->drawLine(i,scaleTextYstart, i, scaleTextYstart+5);
-    }
+    int db = 0;
+    int dbPrior = 0; // causes the zero to be skipped
+    double val = 0;
 
+    QString formattedString;
+    for(int p=mXstart; p < mXstart+255; p++) {
+        val = getValueFromPixelScale(p-mXstart);
+        db = ((int)val / stepDelta) * stepDelta; // round to nearest step
+
+        if(db != dbPrior) {
+            if(db > scaleRedline) {
+                qp->setPen(highTextColor);
+            } else {
+                qp->setPen(lowTextColor);
+            }
+            formattedString = QString::number(db);
+            qp->drawText(p,scaleTextYstart, formattedString );
+            qp->drawLine(p,scaleTextYstart, p, scaleTextYstart+5);
+            dbPrior = db;
+
+        }
+    }
 
     // Now the lines:
     qp->setPen(lowLineColor);
 
     // Line: X1, Y1 -->to--> X2, Y2
-    qp->drawLine(mXstart,scaleLineYstart,peakRedLevel+mXstart,scaleLineYstart);
+    qp->drawLine(mXstart,scaleLineYstart,redLevelRect+mXstart,scaleLineYstart);
     qp->setPen(highLineColor);
-    qp->drawLine(peakRedLevel+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
+    qp->drawLine(redLevelRect+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
+
 }
 
 void meter::drawScale_dBFs(QPainter *qp)
@@ -830,8 +817,8 @@ void meter::drawScaleVd(QPainter *qp)
         stepDelta = 2;
     }
 
-    int volt = 0;
-    int voltPrior = 0; // causes the zero to be skipped
+    int volt = int(scaleMin);
+    int voltPrior = int(scaleMin); // causes the zero to be skipped
     double val = 0;
 
     QString formattedString;

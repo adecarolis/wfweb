@@ -4994,8 +4994,30 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
     double highVal = 2.0;
     double lineVal = 1.0;
 
-    if (rigCaps->meters[newMeterType].size())
-        getMeterExtremities(newMeterType, lowVal, highVal, lineVal);
+
+    switch (newMeterType)
+    {
+    case meterdBu:
+        lowVal = 0.0;
+        highVal = 80.0;
+        lineVal = 80.0;
+        break;
+    case meterdBuEMF:
+        lowVal = 0.0;
+        highVal = 85.0;
+        lineVal = 85.0;
+        break;
+    case meterdBm:
+        lowVal = -100.0;
+        highVal = -20.0;
+        lineVal = -20.0;
+        break;
+    default:
+        if (rigCaps->meters[newMeterType].size())
+            getMeterExtremities(newMeterType, lowVal, highVal, lineVal);
+        break;
+    }
+
 
     if(newMeterType==meterNone)
     {
@@ -5638,9 +5660,11 @@ void wfmain::receiveValue(cacheItem val){
     case funcAbsoluteMeter:
     {
         meterkind m = val.value.value<meterkind>();
-        ui->meterSPoWidget->setMeterType(m.type);
-        ui->meterSPoWidget->setLevel((double)m.value);
-        ui->meterSPoWidget->repaint();
+        if (ui->meterSPoWidget->getMeterType() != m.type) {
+
+            changeMeterType(m.type,1);
+        }
+        ui->meterSPoWidget->setLevel(m.value);
         break;
     }
     case funcMeterType:

@@ -225,7 +225,7 @@ struct timekind {
 };
 
 struct meterkind {
-    float value;
+    double value;
     meter_t type;
 };
 

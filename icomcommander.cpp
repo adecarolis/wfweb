@@ -995,7 +995,7 @@ void icomCommander::parseCommand()
     case funcAbsoluteMeter:
     {
         meterkind m;
-        m.value = float(bcdHexToUInt(payloadIn.at(0),payloadIn.at(1)))/10.0;
+        m.value = double(bcdHexToUInt(payloadIn.at(0),payloadIn.at(1)))/10.0;
         if (bool(payloadIn.at(2)) == true) {
             m.value=-m.value;
         }
