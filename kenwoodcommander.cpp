@@ -701,14 +701,21 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcLoginEnableDisable:
             qInfo(logRig()) << "Received" << funcString[func] << "with value" << d << (d.toInt()?"Enabled":"Disabled");
             break;
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
         case funcScopeFixedEdgeFreq:
-        case funcScopeRange:
-
-        {
             currentScope.fixedEdge = d.at(0) - NUMTOASCII;
+        case funcScopeRange:
+        {
             int start=0;
+
             if (func == funcScopeFixedEdgeFreq)
                 start=1;
+            else
+                currentScope.fixedEdge = 0;
+
             currentScope.valid=false;
             currentScope.oor = 0;   // No easy way to get OOR unless we calculate it.
             currentScope.receiver = 0;
@@ -736,6 +743,9 @@ void kenwoodCommander::parseData(QByteArray data)
             //qInfo() << "Range:" << d << "is" << currentScope.startFreq << "/" << currentScope.endFreq;
             break;
         }
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
         case funcScopeMode:
             value.setValue<spectrumMode_t>(spectrumMode_t(d.at(0) - NUMTOASCII));
             currentScope.mode = spectrumMode_t(d.at(0) - NUMTOASCII);

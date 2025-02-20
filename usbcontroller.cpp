@@ -384,6 +384,10 @@ void usbController::runTimer()
                     tempButtons |= ((quint8)data[val+1] & 0x01) << (i);
                 }
                 break;
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
             case StreamDeckPlus:
                 if ((quint8)data[1] == 0x03 && (quint8)data[2] == 0x05)
                 {
@@ -444,6 +448,9 @@ void usbController::runTimer()
                     }
                 }
                 break;
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
             default:
                 // This is either usbNone or a Gamepad.
                 break;
