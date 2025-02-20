@@ -702,9 +702,14 @@ void kenwoodCommander::parseData(QByteArray data)
             qInfo(logRig()) << "Received" << funcString[func] << "with value" << d << (d.toInt()?"Enabled":"Disabled");
             break;
         case funcScopeFixedEdgeFreq:
+        case funcScopeRange:
+
         {
-            currentScope.valid=false;
             currentScope.fixedEdge = d.at(0) - NUMTOASCII;
+            int start=0;
+            if (func == funcScopeFixedEdgeFreq)
+                start=1;
+            currentScope.valid=false;
             currentScope.oor = 0;   // No easy way to get OOR unless we calculate it.
             currentScope.receiver = 0;
             if (queue->getCache(funcScopeMode,receiver).value.value<spectrumMode_t>() == spectrumMode_t::spectModeCenter)
@@ -725,8 +730,8 @@ void kenwoodCommander::parseData(QByteArray data)
                 currentScope.startFreq=double(freq - (span/2));
                 currentScope.endFreq=double(freq + (span/2));
             } else {
-                currentScope.startFreq = double(d.mid(1,8).toULongLong())/1000000.0;
-                currentScope.endFreq = double(d.mid(9,8).toULongLong())/1000000.0;
+                currentScope.startFreq = double(d.mid(start,8).toULongLong())/1000000.0;
+                currentScope.endFreq = double(d.mid(start+8,8).toULongLong())/1000000.0;
             }
             //qInfo() << "Range:" << d << "is" << currentScope.startFreq << "/" << currentScope.endFreq;
             break;
