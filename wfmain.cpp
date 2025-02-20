@@ -3970,7 +3970,8 @@ void wfmain::changePrimaryMeter(bool transmitOn) {
         newCmd = meter_tToMeterCommand(meterPower);
         ui->meterSPoWidget->setMeterType(meterPower);
         ui->meterSPoWidget->setMeterShortString( meterString[(int)meterPower] );
-        getMeterExtremities(meterPower, lowVal, highVal, lineVal);
+        if (rigCaps->meters[meterPower].size())
+            getMeterExtremities(meterPower, lowVal, highVal, lineVal);
         ui->meterSPoWidget->setMeterExtremities(lowVal, highVal, lineVal);
 
     } else {
@@ -3978,7 +3979,8 @@ void wfmain::changePrimaryMeter(bool transmitOn) {
         newCmd = meter_tToMeterCommand(meterS);
         ui->meterSPoWidget->setMeterType(meterS);
         ui->meterSPoWidget->setMeterShortString( meterString[(int)meterS] );
-        getMeterExtremities(meterS, lowVal, highVal, lineVal);
+        if (rigCaps->meters[meterS].size())
+            getMeterExtremities(meterS, lowVal, highVal, lineVal);
         ui->meterSPoWidget->setMeterExtremities(lowVal, highVal, lineVal);
     }
     queue->del(oldCmd,0);
@@ -4933,7 +4935,7 @@ funcs wfmain::meter_tToMeterCommand(meter_t m)
 void wfmain::getMeterExtremities(meter_t m, double &lowVal, double &highVal, double &redLineVal) {
     lowVal = UINT16_MAX;
     highVal = (-1)*UINT16_MAX;
-    redLineVal = 200;
+    redLineVal = 200.0;
     if (m==meterSubS)
     {
         m = meterS;
@@ -4989,10 +4991,11 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
     queue->del(oldCmd,(oldMeterType==meterSubS)?uchar(1):uchar(0));
 
     double lowVal = 0.0;
-    double highVal = 255.0;
-    double lineVal = 200;
+    double highVal = 2.0;
+    double lineVal = 1.0;
 
-    getMeterExtremities(newMeterType, lowVal, highVal, lineVal);
+    if (rigCaps->meters[newMeterType].size())
+        getMeterExtremities(newMeterType, lowVal, highVal, lineVal);
 
     if(newMeterType==meterNone)
     {
