@@ -928,9 +928,9 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
 
             if (params.length() > 1) {
                 state.vfo = vfoFromName(params[0]);
-                f.Hz = static_cast<quint64>(params[1].toFloat());
+                f.Hz = static_cast<quint64>(params[1].toULongLong());
             } else {
-                f.Hz = static_cast<quint64>(params[0].toFloat());
+                f.Hz = static_cast<quint64>(params[0].toULongLong());
             }
             func = queue->getVfoCommand(state.vfo,state.receiver,true).freqFunc;
             f.VFO = activeVFO;
