@@ -1766,7 +1766,7 @@ void receiverWidget::scroll(QWheelEvent *we)
     } else {
         // Changed direction, zap the old accumulation:
         scrollWheelOffsetAccumulated = stepsToScroll;
-        qInfo() << "Scroll changed direction";
+        //qInfo() << "Scroll changed direction";
     }
 
     int clicks = int(scrollWheelOffsetAccumulated);
