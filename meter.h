@@ -7,9 +7,11 @@
 #include <QWidget>
 #include <QPainter>
 #include <QImage>
+#include <QFontMetrics>
 #include <vector>
 #include <algorithm>
 #include <numeric>
+#include <math.h>
 #include <cmath>
 
 #include "rigcommander.h" // for meter types
@@ -88,6 +90,7 @@ private:
 
     int peakRedLevel=0;
     bool drawLabels = true;
+    int labelWidth = 0;
     bool useGradients = true;
     int mXstart = 0; // Starting point for S=0.
     int mYstart = 14; // height, down from top, where the drawing starts
@@ -103,6 +106,7 @@ private:
     void scaleLogNumbersForDrawing(); // for audio
     double getValueFromPixelScale(int p); // pixel (0-255) scale to values
     int getPixelScaleFromValue(double v); // scale value to pixel (0-255)
+    int nearestStep(double val, int stepSize); // round to nearest step
 
     // These functions draw the rectangular bars
     // for the level(s) to be represented:
@@ -126,7 +130,8 @@ private:
     void drawScaleCompInverted(QPainter *qp);
     void drawScale_dBFs(QPainter *qp);
     void drawScaleRaw(QPainter *qp);
-    void drawScaledB(QPainter *qp);
+    void drawScaledBPositive(QPainter *qp);
+    void drawScaledBNegative(QPainter *qp);
 
     void drawLabel(QPainter *qp);
     void muteSingleComboItem(QComboBox *comboBox, int index);

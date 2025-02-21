@@ -329,6 +329,12 @@ void meter::regenerateScale(QPainter *screenPainterHints) {
         delete scaleCache;
         scaleCache = new QImage(sizeHint, QImage::Format_ARGB32);
     }
+#ifdef QT_DEBUG
+    QString fontName = screenPainterHints->font().family();
+    int fontSize = screenPainterHints->font().pointSize();
+    qDebug() << "screenPainterHints: Font: " << fontName << ", size: " << fontSize;
+#endif
+
 
     scaleCache->fill(Qt::transparent);
     QPainter painter(scaleCache);
@@ -343,42 +349,59 @@ void meter::regenerateScale(QPainter *screenPainterHints) {
     painter.setFont(QFont(this->fontInfo().family(), fontSize));
     painter.fillRect(rect(), Qt::transparent); // Clear the image before redrawing
 
+#ifdef QT_DEBUG
+    QString fontNameP = painter.font().family();
+    int fontSizeP = painter.font().pointSize();
+    qDebug() << "cache painter: Font: " << fontNameP << ", size: " << fontSizeP;
+#endif
+
+    QFontMetrics fm = painter.fontMetrics();
+
     switch(meterType)
     {
     case meterS:
         label = "S";
+        labelWidth = fm.boundingRect(label).width();
         drawScaleS(&painter);
         break;
     case meterSubS:
         label = "Sub";
+        labelWidth = fm.boundingRect(label).width();
         drawScaleS(&painter);
         break;
     case meterPower:
         label = "PWR";
+        labelWidth = fm.boundingRect(label).width();
         drawScalePo(&painter);
         break;
     case meterALC:
         label = "ALC";
+        labelWidth = fm.boundingRect(label).width();
         drawScaleALC(&painter);
         break;
     case meterSWR:
         label = "SWR";
+        labelWidth = fm.boundingRect(label).width();
         drawScaleSWR(&painter);
         break;
     case meterCenter:
         label = "CTR";
+        labelWidth = fm.boundingRect(label).width();
         drawScaleCenter(&painter);
         break;
     case meterVoltage:
         label = "Vd";
+        labelWidth = fm.boundingRect(label).width();
         drawScaleVd(&painter);
         break;
     case meterCurrent:
         label = "Id";
+        labelWidth = fm.boundingRect(label).width();
         drawScaleId(&painter);
         break;
     case meterComp:
         label = "CMP(dB)";
+        labelWidth = fm.boundingRect(label).width();
         if(reverseCompMeter) {
             drawScaleCompInverted(&painter);
         } else {
@@ -387,41 +410,49 @@ void meter::regenerateScale(QPainter *screenPainterHints) {
         break;
     case meterNone:
         label = tr("Double-click to set meter");
+        labelWidth = fm.boundingRect(label).width();
         drawLabel(&painter);
         return;
         break;
     case meterAudio:
         label = "dBfs";
         peakRedLevel = 241;
+        labelWidth = fm.boundingRect(label).width();
         drawScale_dBFs(&painter);
         break;
     case meterRxAudio:
         label = "Rx(dBfs)";
         peakRedLevel = 241;
+        labelWidth = fm.boundingRect(label).width();
         drawScale_dBFs(&painter);
         break;
     case meterTxMod:
         label = "Tx(dBfs)";
+        labelWidth = fm.boundingRect(label).width();
         peakRedLevel = 241;
         drawScale_dBFs(&painter);
         break;
     case meterdBu:
         label = "dBu";
+        labelWidth = fm.boundingRect(label).width();
         peakRedLevel = 241;
-        drawScaledB(&painter);
+        drawScaledBPositive(&painter);
         break;
     case meterdBuEMF:
         label = "dBu(EMF)";
+        labelWidth = fm.boundingRect(label).width();
         peakRedLevel = 241;
-        drawScaledB(&painter);
+        drawScaledBPositive(&painter);
         break;
     case meterdBm:
         label = "dBm";
+        labelWidth = fm.boundingRect(label).width();
         peakRedLevel = 241;
-        drawScaledB(&painter);
+        drawScaledBNegative(&painter);
         break;
     default:
         label = "DN";
+        labelWidth = fm.boundingRect(label).width();
         peakRedLevel = 241;
         drawScaleRaw(&painter);
         break;
@@ -431,6 +462,7 @@ void meter::regenerateScale(QPainter *screenPainterHints) {
         // We are tracking the drawLabels parameter,
         // because we may some day want to squeeze this widget
         // into a place where the label cannot fit.
+
         drawLabel(&painter);
     }
 
@@ -468,6 +500,29 @@ double meter::getValueFromPixelScale(int p) {
 int meter::getPixelScaleFromValue(double v) {
     // give a value within the scale and receive a pixel scale value (0-255)
     return (v-scaleMin) * (255/(scaleMax-scaleMin));
+}
+
+int meter::nearestStep(double d, int stepSize) {
+    // This function was only tested with negative numbers,
+    // and produces the rounding edge at the correct spot for
+    // our dBm (R8600) scale.
+    bool flipped = false;
+    if(d < 0) {
+        d *= -1;
+        flipped = true;
+    }
+
+    int n = round(d/stepSize);
+    // 99 becomes 9.9 becomes 10
+    // 95 becomes 9.5 becomes 10
+    // 94 becomes 9.4 becomes  9
+
+    if(flipped)
+        n*=-stepSize;
+    else
+        n *= stepSize;
+
+    return n;
 }
 
 void meter::scaleLogNumbersForDrawing() {
@@ -719,9 +774,79 @@ void meter::drawScaleRaw(QPainter *qp)
     qp->drawLine(255/2+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
 }
 
-void meter::drawScaledB(QPainter *qp)
+void meter::drawScaledBPositive(QPainter *qp)
 {
+    // dB scale which is mostly (or all) positive numbers
+    // used for dBu EMF and dBu
+
+
+
     int redLevelRect = getPixelScaleFromValue(scaleRedline);
+
+    qp->setPen(lowTextColor);
+
+    int scaleSpan = scaleMax - scaleMin;
+    scaleSpan = (scaleSpan/10) * 10;
+    int stepDelta = 0;
+    if(scaleSpan < 100) {
+        stepDelta = 10;
+    } else {
+        stepDelta = 20;
+    }
+
+    QFontMetrics fm = qp->fontMetrics();
+    QRect textRect = fm.boundingRect(QString::number(scaleMax));
+    int textMaxLength = textRect.width();
+    int scaleCacheWidth = scaleCache->size().width();
+
+    int db = 0;
+    int dbPrior = -10;
+    double val = 0;
+
+    QString formattedString;
+    for(int p=mXstart; p < mXstart+255; p++) {
+        val = getValueFromPixelScale(p-mXstart);
+        db = ((int)round(val)/stepDelta) * stepDelta;
+        //db = ((int)(round(val/10.0))*10 / stepDelta) * stepDelta; // round to nearest step
+
+        if(db != dbPrior) {
+            if(db > scaleRedline) {
+                qp->setPen(highTextColor);
+            } else {
+                qp->setPen(lowTextColor);
+            }
+            formattedString = QString::number(db);
+//            qDebug() << "p: " << p << "val: " << val
+//                     << "dB: " << db << "dBprior: " << dbPrior;
+            if( (p + textMaxLength < scaleCacheWidth)
+                && (p > labelWidth ) ){
+                qp->drawText(p,scaleTextYstart, formattedString );
+            }
+            qp->drawLine(p,scaleTextYstart, p, scaleTextYstart+5);
+            dbPrior = db;
+        }
+    }
+
+    // Now the lines:
+    qp->setPen(lowLineColor);
+
+    // Line: X1, Y1 -->to--> X2, Y2
+    qp->drawLine(mXstart,scaleLineYstart,redLevelRect+mXstart,scaleLineYstart);
+    qp->setPen(highLineColor);
+    qp->drawLine(redLevelRect+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
+
+}
+
+void meter::drawScaledBNegative(QPainter *qp)
+{
+    // dB scale which is mostly (or all) negative numbers
+    // used for dBm
+
+    int redLevelRect = getPixelScaleFromValue(scaleRedline);
+    QFontMetrics fm = qp->fontMetrics();
+    QRect textRect = fm.boundingRect(QString::number(-100));
+    int textMaxLength = textRect.width();
+    int scaleCacheWidth = scaleCache->size().width();
 
     qp->setPen(lowTextColor);
 
@@ -735,25 +860,29 @@ void meter::drawScaledB(QPainter *qp)
     }
 
     int db = 0;
-    int dbPrior = 0; // causes the zero to be skipped
+    int dbPrior = -10;
     double val = 0;
 
     QString formattedString;
     for(int p=mXstart; p < mXstart+255; p++) {
         val = getValueFromPixelScale(p-mXstart);
-        db = ((int)val / stepDelta) * stepDelta; // round to nearest step
+        db = nearestStep(val, stepDelta);
 
-        if(db != dbPrior) {
+        if( (db != dbPrior) && ((int)round(val)%10==0)) {
             if(db > scaleRedline) {
                 qp->setPen(highTextColor);
             } else {
                 qp->setPen(lowTextColor);
             }
             formattedString = QString::number(db);
-            qp->drawText(p,scaleTextYstart, formattedString );
+    //            qDebug() << "p: " << p << "val: " << val
+    //                     << "dB: " << db << "dBprior: " << dbPrior;
+            if ( (p + textMaxLength < scaleCacheWidth)
+            && (p > labelWidth) ){
+                qp->drawText(p,scaleTextYstart, formattedString );
+            }
             qp->drawLine(p,scaleTextYstart, p, scaleTextYstart+5);
             dbPrior = db;
-
         }
     }
 
