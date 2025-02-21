@@ -474,7 +474,9 @@ void meter::regenerateScale(QPainter *screenPainterHints) {
 
 void meter::recallScale(QPainter *painter) {
     // read the scaleCache onto the canvas
-    painter->drawImage(0, 0, *scaleCache);
+    //painter->drawImage(0, 0, *scaleCache);
+    // This should prevent image scaling, which makest the text less clear:
+    painter->drawImage(QPoint(0,0), *scaleCache, scaleCache->rect());
 }
 
 void meter::drawLabel(QPainter *qp)
