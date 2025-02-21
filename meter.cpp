@@ -352,7 +352,8 @@ void meter::regenerateScale(QPainter *screenPainterHints) {
 #ifdef QT_DEBUG
     QString fontNameP = painter.font().family();
     int fontSizeP = painter.font().pointSize();
-    qDebug() << "cache painter: Font: " << fontNameP << ", size: " << fontSizeP;
+    qDebug() << "cache painter: Font: " << fontNameP << ", size: " << fontSizeP
+             << "infoFamily: " << painter.fontInfo().family();
 #endif
 
     QFontMetrics fm = painter.fontMetrics();
