@@ -544,6 +544,8 @@ void meter::drawValue_Linear(QPainter *qp, bool reverse) {
     // Data output:     0    ----    255
     scaleLinearNumbersForDrawing();
 
+    this->setAccessibleName(QString("Meter: %1 percent").arg( (int)(100*(double)(currentRect/255.0))));
+
     if(currentRect < 0) {
         return;
     }
