@@ -223,6 +223,9 @@ You will see this dialog box the next time you open wfview.</string>
        <property name="toolTip">
         <string>Press to skip the setup.</string>
        </property>
+       <property name="accessibleName">
+        <string>Skip Setup</string>
+       </property>
        <property name="text">
         <string>Skip</string>
        </property>
@@ -233,6 +236,9 @@ You will see this dialog box the next time you open wfview.</string>
        <property name="toolTip">
         <string>Press to go back to the prior step. </string>
        </property>
+       <property name="accessibleName">
+        <string>Back to Prior Setup Step</string>
+       </property>
        <property name="text">
         <string>Back</string>
        </property>
@@ -242,6 +248,9 @@ You will see this dialog box the next time you open wfview.</string>
       <widget class="QPushButton" name="nextBtn">
        <property name="toolTip">
         <string>Press for the next step.</string>
+       </property>
+       <property name="accessibleName">
+        <string>Next Setup Step</string>
        </property>
        <property name="text">
         <string>Next</string>

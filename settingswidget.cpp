@@ -204,9 +204,8 @@ void settingswidget::runShortcut(const QKeySequence k) {
     qDebug() << "Settings widget, running shortcut for key:" << k;
 
     if(k==(Qt::SHIFT | Qt::Key::Key_F1)) {
-        qDebug() << "Detected F1 in settings widget";
         ui->settingsStack->setCurrentIndex(0);
-    } else if (k==(Qt::SHIFT | Qt::Key::Key_F1)) {
+    } else if (k==(Qt::SHIFT | Qt::Key::Key_F2)) {
         ui->settingsStack->setCurrentIndex(1);
     } else if (k==(Qt::SHIFT | Qt::Key::Key_F3)) {
         ui->settingsStack->setCurrentIndex(2);

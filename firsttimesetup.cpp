@@ -42,6 +42,7 @@ void FirstTimeSetup::on_nextBtn_clicked()
     case setupInitial:
         // go to step 2:
         ui->nextBtn->setText(tr("Finish"));
+        ui->nextBtn->setAccessibleName(tr("Finish Welcome Screen and proceed to Settings"));
         ui->step1GroupBox->setHidden(true);
         ui->step2GroupBox->setHidden(false);
         ui->neededDetailsLabel2->setHidden(false);
@@ -102,6 +103,7 @@ void FirstTimeSetup::on_backBtn_clicked()
 {
     setupState = setupInitial;
     ui->nextBtn->setText(tr("Next"));
+    ui->nextBtn->setAccessibleName(tr("Next Step"));
     ui->step1GroupBox->setHidden(false);
     ui->step2GroupBox->setHidden(true);
     ui->backBtn->setHidden(true);

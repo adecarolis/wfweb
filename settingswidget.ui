@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1100</width>
-    <height>606</height>
+    <width>1193</width>
+    <height>625</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -36,12 +36,18 @@
          <height>16777215</height>
         </size>
        </property>
+       <property name="accessibleName">
+        <string>Setting Category</string>
+       </property>
+       <property name="accessibleDescription">
+        <string>Select the settings category you wish to edit. Selection may also be performed with keyboard shortcuts: Shift F1 is Radio Access, Shift F2 is User Interface, Shift F3 is Radio Settings, Shift F4 is Radio Server, Shift F5 is External Control, Shift F6 is DX Cluster,  Shift F7 is Experimental </string>
+       </property>
       </widget>
      </item>
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>3</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -60,10 +66,17 @@
              </property>
              <layout class="QVBoxLayout" name="verticalLayout_5">
               <item>
-               <widget class="QComboBox" name="manufacturerCombo"/>
+               <widget class="QComboBox" name="manufacturerCombo">
+                <property name="accessibleName">
+                 <string>Radio Brand Select</string>
+                </property>
+               </widget>
               </item>
               <item>
                <widget class="QRadioButton" name="serialEnableBtn">
+                <property name="accessibleName">
+                 <string>Serial Port (USB)</string>
+                </property>
                 <property name="text">
                  <string>Serial (USB)</string>
                 </property>
@@ -71,6 +84,9 @@
               </item>
               <item>
                <widget class="QRadioButton" name="lanEnableBtn">
+                <property name="accessibleName">
+                 <string>Network</string>
+                </property>
                 <property name="text">
                  <string>Network</string>
                 </property>
@@ -102,6 +118,9 @@
                 <property name="toolTip">
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If you are using an older (year 2010) radio, you may need to enable this option to manually specify the CI-V address. This option is also useful for radios that do not have CI-V Transceive enabled and thus will not answer our broadcast query for connected rigs on the CI-V bus.&lt;/p&gt;&lt;p&gt;If you have a modern radio with CI-V Transceive enabled, you should not need to check this box. &lt;/p&gt;&lt;p&gt;You will need to Save Settings and re-launch wfview for this to take effect. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
+                <property name="accessibleName">
+                 <string>Manual CI-V address Checkbox</string>
+                </property>
                 <property name="text">
                  <string>Manual Radio CI-V Address:</string>
                 </property>
@@ -111,6 +130,9 @@
                <widget class="QCheckBox" name="useCIVasRigIDChk">
                 <property name="toolTip">
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Only check for older radios!&lt;/p&gt;&lt;p&gt;This checkbox forces wfview to trust that the CI-V address is also the model number of the radio. This is only useful for older radios that do not reply to our Rig ID requests (0x19 0x00). Do not check this box unless you have an older radio. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="accessibleName">
+                 <string>Use CI-V address as Model ID checkbox</string>
                 </property>
                 <property name="text">
                  <string>Use CI-V address as Model ID too</string>
@@ -148,6 +170,9 @@
 &lt;/p&gt;&lt;p&gt;This setting is typically needed for older radios and for radios that do not have CI-V Transceive enabled. &lt;/p&gt;
 &lt;p&gt;After changing, press Save Settings and re-launch wfview.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
+                <property name="accessibleName">
+                 <string>Manual CI-V Textbox</string>
+                </property>
                 <property name="text">
                  <string>auto</string>
                 </property>
@@ -179,9 +204,6 @@
                    <string>Audio controls on this page are ONLY for network radios
 Please use the &quot;Radio Server&quot; page to select server audio.
 ONLY use Manual CI-V when Transceive mode is not supported</string>
-                  </property>
-                  <property name="alignment">
-                   <set>Qt::AlignmentFlag::AlignCenter</set>
                   </property>
                  </widget>
                 </item>
@@ -239,6 +261,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                   <height>16777215</height>
                  </size>
                 </property>
+                <property name="accessibleName">
+                 <string>Serial (USB) Port Selection Combo</string>
+                </property>
                </widget>
               </item>
               <item>
@@ -256,6 +281,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                   <height>16777215</height>
                  </size>
                 </property>
+                <property name="accessibleName">
+                 <string>Serial Baud Rate Combo</string>
+                </property>
                </widget>
               </item>
               <item>
@@ -267,6 +295,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
               </item>
               <item>
                <widget class="QComboBox" name="pttTypeCombo">
+                <property name="accessibleName">
+                 <string>PTT Type Combo</string>
+                </property>
                 <item>
                  <property name="text">
                   <string>CI-V</string>
@@ -287,7 +318,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
               <item>
                <spacer name="horizontalSpacer_4">
                 <property name="orientation">
-                 <enum>Qt::Orientation::Horizontal</enum>
+                 <enum>Qt::Vertical</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -366,6 +397,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                     <height>16777215</height>
                    </size>
                   </property>
+                  <property name="accessibleName">
+                   <string>Hostname Textbox</string>
+                  </property>
                  </widget>
                 </item>
                 <item>
@@ -383,6 +417,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                     <height>16777215</height>
                    </size>
                   </property>
+                  <property name="accessibleName">
+                   <string>Control Port Textbox</string>
+                  </property>
                   <property name="text">
                    <string>50001</string>
                   </property>
@@ -396,12 +433,16 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="networkConnectionTypeCombo"/>
+                 <widget class="QComboBox" name="networkConnectionTypeCombo">
+                  <property name="accessibleName">
+                   <string>Connection Type Combo</string>
+                  </property>
+                 </widget>
                 </item>
                 <item>
                  <spacer name="horizontalSpacer_6">
                   <property name="orientation">
-                   <enum>Qt::Orientation::Horizontal</enum>
+                   <enum>Qt::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -445,6 +486,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                     <height>16777215</height>
                    </size>
                   </property>
+                  <property name="accessibleName">
+                   <string>Username Textbox</string>
+                  </property>
                  </widget>
                 </item>
                 <item>
@@ -468,13 +512,22 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                     <height>16777215</height>
                    </size>
                   </property>
+                  <property name="accessibleName">
+                   <string>Password Textbox</string>
+                  </property>
                   <property name="echoMode">
-                   <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>
+                   <enum>QLineEdit::Normal</enum>
                   </property>
                  </widget>
                 </item>
                 <item>
                  <widget class="QCheckBox" name="adminLoginChk">
+                  <property name="accessibleName">
+                   <string>Admin Login Checkbox</string>
+                  </property>
+                  <property name="accessibleDescription">
+                   <string>Check this box if you are using the admin login (Kenwood radios only)</string>
+                  </property>
                   <property name="text">
                    <string>Admin Login</string>
                   </property>
@@ -483,7 +536,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <item>
                  <spacer name="horizontalSpacer_7">
                   <property name="orientation">
-                   <enum>Qt::Orientation::Horizontal</enum>
+                   <enum>Qt::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -512,6 +565,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                     <height>0</height>
                    </size>
                   </property>
+                  <property name="accessibleName">
+                   <string>RX Latency Buffer Size</string>
+                  </property>
                   <property name="minimum">
                    <number>30</number>
                   </property>
@@ -519,7 +575,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                    <number>500</number>
                   </property>
                   <property name="orientation">
-                   <enum>Qt::Orientation::Horizontal</enum>
+                   <enum>Qt::Horizontal</enum>
                   </property>
                  </widget>
                 </item>
@@ -539,6 +595,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 </item>
                 <item>
                  <widget class="QSlider" name="txLatencySlider">
+                  <property name="accessibleName">
+                   <string>TX Latency Buffer Size</string>
+                  </property>
                   <property name="minimum">
                    <number>30</number>
                   </property>
@@ -546,7 +605,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                    <number>500</number>
                   </property>
                   <property name="orientation">
-                   <enum>Qt::Orientation::Horizontal</enum>
+                   <enum>Qt::Horizontal</enum>
                   </property>
                  </widget>
                 </item>
@@ -588,7 +647,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <item>
                  <spacer name="horizontalSpacer_13">
                   <property name="orientation">
-                   <enum>Qt::Orientation::Horizontal</enum>
+                   <enum>Qt::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -645,6 +704,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 </item>
                 <item>
                  <widget class="QComboBox" name="audioDuplexCombo">
+                  <property name="accessibleName">
+                   <string>Full or Half Duplex Combo</string>
+                  </property>
                   <item>
                    <property name="text">
                     <string>Full Duplex</string>
@@ -666,6 +728,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 </item>
                 <item>
                  <widget class="QComboBox" name="audioSystemCombo">
+                  <property name="accessibleName">
+                   <string>Audio System Selection Combo</string>
+                  </property>
                   <item>
                    <property name="text">
                     <string>Qt Audio</string>
@@ -691,7 +756,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <item>
                  <spacer name="horizontalSpacer_31">
                   <property name="orientation">
-                   <enum>Qt::Orientation::Horizontal</enum>
+                   <enum>Qt::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -748,7 +813,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <item>
                  <spacer name="horizontalSpacer_37">
                   <property name="orientation">
-                   <enum>Qt::Orientation::Horizontal</enum>
+                   <enum>Qt::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -770,9 +835,6 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <property name="text">
             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;You &lt;span style=&quot; font-weight:700;&quot;&gt;MUST&lt;/span&gt; disconnect from the radio before making any changes in the above form.&lt;br/&gt;&lt;br/&gt;Please use the &lt;span style=&quot; font-style:italic;&quot;&gt;Connect/Disconnect &lt;/span&gt;button below&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
-           <property name="alignment">
-            <set>Qt::AlignmentFlag::AlignCenter</set>
-           </property>
           </widget>
          </item>
          <item>
@@ -781,7 +843,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
          <item>
           <spacer name="verticalSpacer">
            <property name="orientation">
-            <enum>Qt::Orientation::Vertical</enum>
+            <enum>Qt::Vertical</enum>
            </property>
            <property name="sizeHint" stdset="0">
             <size>
@@ -843,7 +905,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_10">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -930,7 +992,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_12">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1027,7 +1089,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_9">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1130,9 +1192,6 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
              <property name="value">
               <number>64</number>
              </property>
-             <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
-             </property>
             </widget>
            </item>
            <item>
@@ -1145,7 +1204,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_27">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1162,10 +1221,10 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_30">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeType">
-              <enum>QSizePolicy::Policy::Fixed</enum>
+              <enum>QSizePolicy::Fixed</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1259,7 +1318,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_11">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1290,9 +1349,6 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
             <widget class="QLabel" name="colorPresetLabel">
              <property name="text">
               <string>Preset:</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
              </property>
             </widget>
            </item>
@@ -1363,7 +1419,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_29">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1414,7 +1470,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
             <item row="0" column="0">
              <widget class="QScrollArea" name="colorEditorScrollArea">
               <property name="sizeAdjustPolicy">
-               <enum>QAbstractScrollArea::SizeAdjustPolicy::AdjustIgnored</enum>
+               <enum>QAbstractScrollArea::AdjustIgnored</enum>
               </property>
               <property name="widgetResizable">
                <bool>true</bool>
@@ -1424,15 +1480,15 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>911</width>
-                 <height>367</height>
+                 <width>772</width>
+                 <height>320</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">
                 <item row="4" column="3">
                  <spacer name="horizontalSpacer_14">
                   <property name="orientation">
-                   <enum>Qt::Orientation::Horizontal</enum>
+                   <enum>Qt::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -2167,7 +2223,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                   <item row="0" column="4">
                    <spacer name="horizontalSpacer_34">
                     <property name="orientation">
-                     <enum>Qt::Orientation::Horizontal</enum>
+                     <enum>Qt::Vertical</enum>
                     </property>
                     <property name="sizeHint" stdset="0">
                      <size>
@@ -2290,7 +2346,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                   <item row="0" column="8">
                    <spacer name="horizontalSpacer_35">
                     <property name="orientation">
-                     <enum>Qt::Orientation::Horizontal</enum>
+                     <enum>Qt::Vertical</enum>
                     </property>
                     <property name="sizeHint" stdset="0">
                      <size>
@@ -2344,7 +2400,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <item row="5" column="0">
                  <spacer name="verticalSpacer_5">
                   <property name="orientation">
-                   <enum>Qt::Orientation::Vertical</enum>
+                   <enum>Qt::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -2383,7 +2439,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
               <string>Transmit modulation source</string>
              </property>
              <property name="sizeAdjustPolicy">
-              <enum>QComboBox::SizeAdjustPolicy::AdjustToContents</enum>
+              <enum>QComboBox::AdjustToContents</enum>
              </property>
             </widget>
            </item>
@@ -2403,7 +2459,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
               <string>Transmit Data-mode modulation input source</string>
              </property>
              <property name="sizeAdjustPolicy">
-              <enum>QComboBox::SizeAdjustPolicy::AdjustToContents</enum>
+              <enum>QComboBox::AdjustToContents</enum>
              </property>
             </widget>
            </item>
@@ -2430,7 +2486,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_15">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -2474,7 +2530,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_17">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -2535,7 +2591,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_22">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -2550,7 +2606,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
          <item>
           <spacer name="verticalSpacer_3">
            <property name="orientation">
-            <enum>Qt::Orientation::Vertical</enum>
+            <enum>Qt::Vertical</enum>
            </property>
            <property name="sizeHint" stdset="0">
             <size>
@@ -2565,7 +2621,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
        <widget class="QWidget" name="radioServer">
         <layout class="QVBoxLayout" name="verticalLayout_27">
          <property name="sizeConstraint">
-          <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
+          <enum>QLayout::SetDefaultConstraint</enum>
          </property>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_35">
@@ -2591,7 +2647,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_24">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -2761,7 +2817,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <item>
                  <spacer name="horizontalSpacer_25">
                   <property name="orientation">
-                   <enum>Qt::Orientation::Horizontal</enum>
+                   <enum>Qt::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -2824,7 +2880,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <item>
                  <spacer name="horizontalSpacer_5">
                   <property name="orientation">
-                   <enum>Qt::Orientation::Horizontal</enum>
+                   <enum>Qt::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -2891,7 +2947,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                       </size>
                      </property>
                      <property name="frameShape">
-                      <enum>QFrame::Shape::StyledPanel</enum>
+                      <enum>QFrame::NoFrame</enum>
                      </property>
                      <property name="lineWidth">
                       <number>1</number>
@@ -2900,7 +2956,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                       <number>0</number>
                      </property>
                      <property name="editTriggers">
-                      <set>QAbstractItemView::EditTrigger::DoubleClicked</set>
+                      <set>QAbstractItemView::NoEditTriggers</set>
                      </property>
                      <property name="columnCount">
                       <number>3</number>
@@ -2918,7 +2974,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                       <bool>false</bool>
                      </attribute>
                      <attribute name="verticalHeaderVisible">
-                      <bool>true</bool>
+                      <bool>false</bool>
                      </attribute>
                      <attribute name="verticalHeaderShowSortIndicator" stdset="0">
                       <bool>false</bool>
@@ -2955,9 +3011,6 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                   <property name="text">
                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Please disconnect from radio to make changes to the server settings&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                   </property>
-                  <property name="alignment">
-                   <set>Qt::AlignmentFlag::AlignCenter</set>
-                  </property>
                  </widget>
                 </item>
                </layout>
@@ -2965,7 +3018,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
               <item>
                <spacer name="verticalSpacer_7">
                 <property name="orientation">
-                 <enum>Qt::Orientation::Vertical</enum>
+                 <enum>Qt::Vertical</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -2994,8 +3047,11 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            </property>
            <item>
             <widget class="QCheckBox" name="enableRigctldChk">
+             <property name="accessibleName">
+              <string>Enable RIGCTLD checkbox</string>
+             </property>
              <property name="layoutDirection">
-              <enum>Qt::LayoutDirection::LeftToRight</enum>
+              <enum>Qt::LeftToRight</enum>
              </property>
              <property name="text">
               <string>Enable RigCtld</string>
@@ -3005,10 +3061,10 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_18">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeType">
-              <enum>QSizePolicy::Policy::Fixed</enum>
+              <enum>QSizePolicy::Fixed</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -3039,12 +3095,15 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                <height>16777215</height>
               </size>
              </property>
+             <property name="accessibleName">
+              <string>RIGCTLD server port</string>
+             </property>
             </widget>
            </item>
            <item>
             <spacer name="horizontalSpacer_20">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -3097,7 +3156,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_19">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -3141,7 +3200,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_26">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -3182,7 +3241,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_2">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -3232,7 +3291,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_28">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -3248,6 +3307,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
           <layout class="QHBoxLayout" name="horizontalLayout_46">
            <item>
             <widget class="QCheckBox" name="enableUsbChk">
+             <property name="accessibleName">
+              <string>Enable USB Controllers Checkbox</string>
+             </property>
              <property name="text">
               <string>Enable USB Controllers</string>
              </property>
@@ -3258,6 +3320,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
              <property name="toolTip">
               <string/>
              </property>
+             <property name="accessibleName">
+              <string>Setup USB Controller button</string>
+             </property>
              <property name="text">
               <string>Setup USB Controller</string>
              </property>
@@ -3266,7 +3331,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_8">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -3278,6 +3343,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            </item>
            <item>
             <widget class="QPushButton" name="usbControllersReset">
+             <property name="accessibleName">
+              <string>Reset USB Controllers Button</string>
+             </property>
              <property name="text">
               <string>Reset Buttons</string>
              </property>
@@ -3293,7 +3361,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_38">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -3308,7 +3376,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
          <item>
           <spacer name="verticalSpacer_4">
            <property name="orientation">
-            <enum>Qt::Orientation::Vertical</enum>
+            <enum>Qt::Vertical</enum>
            </property>
            <property name="sizeHint" stdset="0">
             <size>
@@ -3428,7 +3496,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
               <item row="4" column="1">
                <widget class="QLineEdit" name="clusterPasswordLineEdit">
                 <property name="echoMode">
-                 <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>
+                 <enum>QLineEdit::Normal</enum>
                 </property>
                </widget>
               </item>
@@ -3468,7 +3536,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <item>
                  <spacer name="horizontalSpacer">
                   <property name="orientation">
-                   <enum>Qt::Orientation::Horizontal</enum>
+                   <enum>Qt::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -3517,11 +3585,8 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
          </item>
          <item>
           <widget class="QPlainTextEdit" name="clusterOutputTextEdit">
-           <property name="frameShadow">
-            <enum>QFrame::Shadow::Raised</enum>
-           </property>
            <property name="sizeAdjustPolicy">
-            <enum>QAbstractScrollArea::SizeAdjustPolicy::AdjustIgnored</enum>
+            <enum>QAbstractScrollArea::AdjustIgnored</enum>
            </property>
           </widget>
          </item>
@@ -3537,7 +3602,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_36">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -3585,7 +3650,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_21">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -3602,7 +3667,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <spacer name="horizontalSpacer_361">
              <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -3617,7 +3682,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
          <item>
           <spacer name="verticalSpacer_6">
            <property name="orientation">
-            <enum>Qt::Orientation::Vertical</enum>
+            <enum>Qt::Vertical</enum>
            </property>
            <property name="sizeHint" stdset="0">
             <size>
@@ -3648,6 +3713,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
      </property>
      <item>
       <widget class="QPushButton" name="saveSettingsBtn">
+       <property name="accessibleName">
+        <string>Save Settings</string>
+       </property>
        <property name="text">
         <string>Save Settings</string>
        </property>
@@ -3655,6 +3723,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
      </item>
      <item>
       <widget class="QPushButton" name="revertSettingsBtn">
+       <property name="accessibleName">
+        <string>Revert to Default</string>
+       </property>
        <property name="text">
         <string>Revert to Default</string>
        </property>
@@ -3663,7 +3734,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
      <item>
       <spacer name="horizontalSpacer_32">
        <property name="orientation">
-        <enum>Qt::Orientation::Horizontal</enum>
+        <enum>Qt::Vertical</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
@@ -3675,6 +3746,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
      </item>
      <item>
       <widget class="QPushButton" name="connectBtn">
+       <property name="accessibleName">
+        <string>Connect to Radio</string>
+       </property>
        <property name="text">
         <string>Connect to Radio</string>
        </property>
@@ -3683,7 +3757,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
      <item>
       <spacer name="horizontalSpacer_3">
        <property name="orientation">
-        <enum>Qt::Orientation::Horizontal</enum>
+        <enum>Qt::Vertical</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>

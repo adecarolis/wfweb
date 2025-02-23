@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>946</width>
+    <width>1052</width>
     <height>361</height>
    </rect>
   </property>
@@ -27,10 +27,7 @@
        </sizepolicy>
       </property>
       <property name="frameShape">
-       <enum>QFrame::Shape::StyledPanel</enum>
-      </property>
-      <property name="frameShadow">
-       <enum>QFrame::Shadow::Raised</enum>
+       <enum>QFrame::NoFrame</enum>
       </property>
       <layout class="QVBoxLayout" name="scopeVFOLayout">
        <property name="spacing">
@@ -79,10 +76,7 @@
        </sizepolicy>
       </property>
       <property name="frameShape">
-       <enum>QFrame::Shape::Box</enum>
-      </property>
-      <property name="frameShadow">
-       <enum>QFrame::Shadow::Plain</enum>
+       <enum>QFrame::NoFrame</enum>
       </property>
       <property name="lineWidth">
        <number>1</number>
@@ -191,10 +185,13 @@
              <item>
               <widget class="QPushButton" name="rigPowerOnBtn">
                <property name="focusPolicy">
-                <enum>Qt::FocusPolicy::NoFocus</enum>
+                <enum>Qt::NoFocus</enum>
                </property>
                <property name="toolTip">
                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Turns the radio on&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="accessibleName">
+                <string>Power on rig button</string>
                </property>
                <property name="text">
                 <string>Power On</string>
@@ -204,10 +201,13 @@
              <item>
               <widget class="QPushButton" name="rigPowerOffBtn">
                <property name="focusPolicy">
-                <enum>Qt::FocusPolicy::NoFocus</enum>
+                <enum>Qt::NoFocus</enum>
                </property>
                <property name="toolTip">
                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Turns the radio off&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="accessibleName">
+                <string>Power off rig button</string>
                </property>
                <property name="text">
                 <string>Power Off</string>
@@ -275,7 +275,7 @@
               <string>Tuning Step Selection</string>
              </property>
              <property name="sizeAdjustPolicy">
-              <enum>QComboBox::SizeAdjustPolicy::AdjustToContents</enum>
+              <enum>QComboBox::AdjustToContents</enum>
              </property>
             </widget>
            </item>
@@ -343,9 +343,6 @@
           <layout class="QVBoxLayout" name="controlsLayout">
            <item>
             <spacer name="verticalSpacer">
-             <property name="orientation">
-              <enum>Qt::Orientation::Vertical</enum>
-             </property>
              <property name="sizeHint" stdset="0">
               <size>
                <width>20</width>
@@ -360,7 +357,7 @@
               <number>6</number>
              </property>
              <property name="sizeConstraint">
-              <enum>QLayout::SizeConstraint::SetMinimumSize</enum>
+              <enum>QLayout::SetDefaultConstraint</enum>
              </property>
              <property name="topMargin">
               <number>0</number>
@@ -371,7 +368,7 @@
                 <number>6</number>
                </property>
                <property name="sizeConstraint">
-                <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
+                <enum>QLayout::SetDefaultConstraint</enum>
                </property>
                <property name="rightMargin">
                 <number>0</number>
@@ -407,9 +404,6 @@
                  </property>
                  <property name="maximum">
                   <number>255</number>
-                 </property>
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Vertical</enum>
                  </property>
                 </widget>
                </item>
@@ -471,9 +465,6 @@
                  <property name="maximum">
                   <number>255</number>
                  </property>
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Vertical</enum>
-                 </property>
                 </widget>
                </item>
                <item>
@@ -527,9 +518,6 @@
                  </property>
                  <property name="maximum">
                   <number>255</number>
-                 </property>
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Vertical</enum>
                  </property>
                 </widget>
                </item>
@@ -585,9 +573,6 @@
                  <property name="maximum">
                   <number>255</number>
                  </property>
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Vertical</enum>
-                 </property>
                 </widget>
                </item>
                <item>
@@ -642,9 +627,6 @@
                  <property name="maximum">
                   <number>255</number>
                  </property>
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Vertical</enum>
-                 </property>
                 </widget>
                </item>
                <item>
@@ -690,9 +672,6 @@
                  <property name="maximum">
                   <number>255</number>
                  </property>
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Vertical</enum>
-                 </property>
                 </widget>
                </item>
                <item>
@@ -710,13 +689,13 @@
                   <string>&lt;a href='#'&gt;Mon&lt;/a&gt;</string>
                  </property>
                  <property name="textFormat">
-                  <enum>Qt::TextFormat::AutoText</enum>
+                  <enum>Qt::PlainText</enum>
                  </property>
                  <property name="openExternalLinks">
                   <bool>false</bool>
                  </property>
                  <property name="textInteractionFlags">
-                  <set>Qt::TextInteractionFlag::LinksAccessibleByMouse</set>
+                  <set>Qt::NoTextInteraction</set>
                  </property>
                 </widget>
                </item>
@@ -755,6 +734,9 @@
                   <property name="toolTip">
                    <string>Noise Blanker</string>
                   </property>
+                  <property name="accessibleName">
+                   <string>Noise Blanker Checkbox (Tri-state on Kenwood)</string>
+                  </property>
                   <property name="text">
                    <string>NB</string>
                   </property>
@@ -765,6 +747,9 @@
                   <property name="toolTip">
                    <string>Noise Reduction</string>
                   </property>
+                  <property name="accessibleName">
+                   <string>Noise Reduction Checkbox (tri-state on Kenwood)</string>
+                  </property>
                   <property name="text">
                    <string>NR</string>
                   </property>
@@ -774,6 +759,9 @@
                  <widget class="QCheckBox" name="ipPlusEnableChk">
                   <property name="toolTip">
                    <string>IP+ Funcion</string>
+                  </property>
+                  <property name="accessibleName">
+                   <string>IP Plus checkbox</string>
                   </property>
                   <property name="text">
                    <string>IP+</string>
@@ -792,6 +780,9 @@
                   <property name="toolTip">
                    <string>Digi-Sel</string>
                   </property>
+                  <property name="accessibleName">
+                   <string>Digi-Sel Checkbox</string>
+                  </property>
                   <property name="text">
                    <string>DS</string>
                   </property>
@@ -802,6 +793,9 @@
                   <property name="toolTip">
                    <string>Compressor</string>
                   </property>
+                  <property name="accessibleName">
+                   <string>Speech Compressor Checkbox</string>
+                  </property>
                   <property name="text">
                    <string>CMP</string>
                   </property>
@@ -811,6 +805,9 @@
                  <widget class="QCheckBox" name="voxEnableChk">
                   <property name="toolTip">
                    <string>Vox Enable</string>
+                  </property>
+                  <property name="accessibleName">
+                   <string>VOX Checkbox</string>
                   </property>
                   <property name="text">
                    <string>VOX</string>
@@ -841,10 +838,13 @@
               </size>
              </property>
              <property name="focusPolicy">
-              <enum>Qt::FocusPolicy::NoFocus</enum>
+              <enum>Qt::NoFocus</enum>
              </property>
              <property name="toolTip">
               <string>Transmit and Receive button</string>
+             </property>
+             <property name="accessibleName">
+              <string>Transmit and Receive Button</string>
              </property>
              <property name="text">
               <string>Transmit</string>
@@ -870,10 +870,13 @@
            <item>
             <widget class="QPushButton" name="tuneNowBtn">
              <property name="focusPolicy">
-              <enum>Qt::FocusPolicy::NoFocus</enum>
+              <enum>Qt::NoFocus</enum>
              </property>
              <property name="toolTip">
               <string>Start the automatic antenna tuner cycle</string>
+             </property>
+             <property name="accessibleName">
+              <string>Run the ATU</string>
              </property>
              <property name="text">
               <string>Tune</string>
@@ -883,7 +886,7 @@
            <item>
             <widget class="QPushButton" name="cwButton">
              <property name="focusPolicy">
-              <enum>Qt::FocusPolicy::NoFocus</enum>
+              <enum>Qt::NoFocus</enum>
              </property>
              <property name="toolTip">
               <string>Press to bring up the CW Sender</string>
@@ -896,7 +899,7 @@
            <item>
             <widget class="QPushButton" name="rptSetupBtn">
              <property name="focusPolicy">
-              <enum>Qt::FocusPolicy::NoFocus</enum>
+              <enum>Qt::NoFocus</enum>
              </property>
              <property name="toolTip">
               <string>Show the repeater tone and offset window</string>
@@ -909,7 +912,7 @@
            <item>
             <widget class="QPushButton" name="memoriesBtn">
              <property name="focusPolicy">
-              <enum>Qt::FocusPolicy::NoFocus</enum>
+              <enum>Qt::NoFocus</enum>
              </property>
              <property name="text">
               <string>Memories</string>
@@ -966,7 +969,7 @@
                   <item row="2" column="1">
                    <widget class="QPushButton" name="dualWatchBtn">
                     <property name="focusPolicy">
-                     <enum>Qt::FocusPolicy::NoFocus</enum>
+                     <enum>Qt::NoFocus</enum>
                     </property>
                     <property name="text">
                      <string>Dual Watch</string>
@@ -991,7 +994,7 @@
                      </size>
                     </property>
                     <property name="focusPolicy">
-                     <enum>Qt::FocusPolicy::NoFocus</enum>
+                     <enum>Qt::NoFocus</enum>
                     </property>
                     <property name="text">
                      <string>Dual Scope</string>
@@ -1010,7 +1013,7 @@
                      </size>
                     </property>
                     <property name="focusPolicy">
-                     <enum>Qt::FocusPolicy::NoFocus</enum>
+                     <enum>Qt::NoFocus</enum>
                     </property>
                     <property name="text">
                      <string>Main/Sub</string>
@@ -1023,7 +1026,7 @@
                   <item row="2" column="2">
                    <widget class="QPushButton" name="splitBtn">
                     <property name="focusPolicy">
-                     <enum>Qt::FocusPolicy::NoFocus</enum>
+                     <enum>Qt::NoFocus</enum>
                     </property>
                     <property name="text">
                      <string>Split</string>
@@ -1036,7 +1039,7 @@
                   <item row="6" column="1">
                    <widget class="QPushButton" name="swapMainSubBtn">
                     <property name="focusPolicy">
-                     <enum>Qt::FocusPolicy::NoFocus</enum>
+                     <enum>Qt::NoFocus</enum>
                     </property>
                     <property name="text">
                      <string>Main&lt;&gt;Sub</string>
@@ -1046,7 +1049,7 @@
                   <item row="6" column="2">
                    <widget class="QPushButton" name="mainEqualsSubBtn">
                     <property name="focusPolicy">
-                     <enum>Qt::FocusPolicy::NoFocus</enum>
+                     <enum>Qt::NoFocus</enum>
                     </property>
                     <property name="text">
                      <string>Main=Sub</string>
@@ -1096,7 +1099,7 @@
                    <string>Preamp selector</string>
                   </property>
                   <property name="sizeAdjustPolicy">
-                   <enum>QComboBox::SizeAdjustPolicy::AdjustToContents</enum>
+                   <enum>QComboBox::AdjustToContents</enum>
                   </property>
                  </widget>
                 </item>
@@ -1123,7 +1126,7 @@
                    <string>Attenuator selector</string>
                   </property>
                   <property name="sizeAdjustPolicy">
-                   <enum>QComboBox::SizeAdjustPolicy::AdjustToContents</enum>
+                   <enum>QComboBox::AdjustToContents</enum>
                   </property>
                  </widget>
                 </item>
@@ -1159,7 +1162,7 @@
                  <string>Antenna port selector</string>
                 </property>
                 <property name="sizeAdjustPolicy">
-                 <enum>QComboBox::SizeAdjustPolicy::AdjustToContents</enum>
+                 <enum>QComboBox::AdjustToContents</enum>
                 </property>
                </widget>
               </item>
@@ -1180,9 +1183,6 @@
          </item>
          <item>
           <spacer name="horizontalSpacer_3">
-           <property name="orientation">
-            <enum>Qt::Orientation::Horizontal</enum>
-           </property>
            <property name="sizeHint" stdset="0">
             <size>
              <width>40</width>
@@ -1206,7 +1206,7 @@
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout_16">
        <property name="sizeConstraint">
-        <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
+        <enum>QLayout::SetDefaultConstraint</enum>
        </property>
        <property name="leftMargin">
         <number>1</number>
@@ -1223,7 +1223,7 @@
        <item>
         <widget class="QPushButton" name="aboutBtn">
          <property name="focusPolicy">
-          <enum>Qt::FocusPolicy::NoFocus</enum>
+          <enum>Qt::NoFocus</enum>
          </property>
          <property name="text">
           <string>About</string>
@@ -1233,7 +1233,7 @@
        <item>
         <widget class="QPushButton" name="showSettingsBtn">
          <property name="focusPolicy">
-          <enum>Qt::FocusPolicy::NoFocus</enum>
+          <enum>Qt::NoFocus</enum>
          </property>
          <property name="text">
           <string>Settings</string>
@@ -1243,7 +1243,10 @@
        <item>
         <widget class="QPushButton" name="saveSettingsBtn">
          <property name="focusPolicy">
-          <enum>Qt::FocusPolicy::NoFocus</enum>
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="accessibleName">
+          <string>Save Settings Button</string>
          </property>
          <property name="text">
           <string>Save Settings</string>
@@ -1253,7 +1256,10 @@
        <item>
         <widget class="QPushButton" name="radioStatusBtn">
          <property name="focusPolicy">
-          <enum>Qt::FocusPolicy::NoFocus</enum>
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="accessibleName">
+          <string>Radio Status Button</string>
          </property>
          <property name="text">
           <string>Radio Status</string>
@@ -1263,7 +1269,7 @@
        <item>
         <widget class="QPushButton" name="showLogBtn">
          <property name="focusPolicy">
-          <enum>Qt::FocusPolicy::NoFocus</enum>
+          <enum>Qt::NoFocus</enum>
          </property>
          <property name="text">
           <string>Log</string>
@@ -1273,7 +1279,7 @@
        <item>
         <widget class="QPushButton" name="showBandsBtn">
          <property name="focusPolicy">
-          <enum>Qt::FocusPolicy::NoFocus</enum>
+          <enum>Qt::NoFocus</enum>
          </property>
          <property name="text">
           <string>Bands</string>
@@ -1283,7 +1289,7 @@
        <item>
         <widget class="QPushButton" name="showFreqBtn">
          <property name="focusPolicy">
-          <enum>Qt::FocusPolicy::NoFocus</enum>
+          <enum>Qt::NoFocus</enum>
          </property>
          <property name="text">
           <string>Frequency</string>
@@ -1293,7 +1299,7 @@
        <item>
         <widget class="QPushButton" name="rigCreatorBtn">
          <property name="focusPolicy">
-          <enum>Qt::FocusPolicy::NoFocus</enum>
+          <enum>Qt::NoFocus</enum>
          </property>
          <property name="text">
           <string>Rig Creator</string>
@@ -1302,9 +1308,6 @@
        </item>
        <item>
         <spacer name="horizontalSpacer_32">
-         <property name="orientation">
-          <enum>Qt::Orientation::Horizontal</enum>
-         </property>
          <property name="sizeHint" stdset="0">
           <size>
            <width>40</width>
@@ -1316,7 +1319,7 @@
        <item>
         <widget class="QPushButton" name="connectBtn">
          <property name="focusPolicy">
-          <enum>Qt::FocusPolicy::NoFocus</enum>
+          <enum>Qt::NoFocus</enum>
          </property>
          <property name="text">
           <string>Connect to Radio</string>
@@ -1325,9 +1328,6 @@
        </item>
        <item>
         <spacer name="horizontalSpacer_9">
-         <property name="orientation">
-          <enum>Qt::Orientation::Horizontal</enum>
-         </property>
          <property name="sizeHint" stdset="0">
           <size>
            <width>40</width>
@@ -1340,11 +1340,15 @@
         <widget class="QPushButton" name="exitBtn">
          <property name="font">
           <font>
+           <weight>50</weight>
            <bold>false</bold>
           </font>
          </property>
          <property name="focusPolicy">
-          <enum>Qt::FocusPolicy::NoFocus</enum>
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="accessibleName">
+          <string>Exit Program Button</string>
          </property>
          <property name="text">
           <string> Exit Program</string>
