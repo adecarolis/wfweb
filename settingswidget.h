@@ -12,6 +12,7 @@
 #include <QRadioButton>
 #include <QLineEdit>
 #include <QStringList>
+#include <QShortcut>
 
 #include "logcategories.h"
 #include "prefs.h"
@@ -104,6 +105,7 @@ signals:
     void havePortError(errorType err);
 
 private slots:
+    void runShortcut(const QKeySequence k);
     void on_settingsList_currentRowChanged(int currentRow);
     void onServerUserFieldChanged();
     void on_lanEnableBtn_clicked(bool checked);
@@ -307,6 +309,10 @@ private:
     void updateAllPrefs();
     void updateUnderlayMode();
     void setUItoClustersList();
+    QList<QShortcut *> shortcuts;
+    QShortcut* setupKeyShortcut(const QKeySequence k);
+    void setupKeyShortcuts();
+
 
     // Utility:
     void quietlyUpdateSlider(QSlider* sl, int val);

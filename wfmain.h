@@ -522,7 +522,7 @@ private:
     void removeRig();
     void findSerialPort();
 
-    QShortcut* setupKeyShortcut(const QKeySequence k);
+    QShortcut* setupKeyShortcut(const QKeySequence k, bool appWide=false);
 
     void setupKeyShortcuts();
     void setupMainUI();

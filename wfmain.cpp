@@ -1057,10 +1057,13 @@ void wfmain::setSerialDevicesUI()
 
 }
 
-QShortcut* wfmain::setupKeyShortcut(const QKeySequence k)
+QShortcut* wfmain::setupKeyShortcut(const QKeySequence k, bool appWide)
 {
     QShortcut* sc=new QShortcut(this);
     sc->setKey(k);
+    if(appWide)
+        sc->setContext(Qt::ApplicationShortcut);
+
     connect(sc, &QShortcut::activated, this,
             [=]() {
         this->runShortcut(k);
@@ -1070,10 +1073,10 @@ QShortcut* wfmain::setupKeyShortcut(const QKeySequence k)
 
 void wfmain::setupKeyShortcuts()
 {
-    shortcuts.append(setupKeyShortcut(Qt::Key_F1));
-    shortcuts.append(setupKeyShortcut(Qt::Key_F2));
-    shortcuts.append(setupKeyShortcut(Qt::Key_F3));
-    shortcuts.append(setupKeyShortcut(Qt::Key_F4));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F1, true));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F2, true));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F3, true));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F4, true));
     shortcuts.append(setupKeyShortcut(Qt::Key_F5));
     shortcuts.append(setupKeyShortcut(Qt::Key_F6));
     shortcuts.append(setupKeyShortcut(Qt::Key_F7));

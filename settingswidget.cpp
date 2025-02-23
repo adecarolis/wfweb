@@ -24,7 +24,7 @@ settingswidget::settingswidget(QWidget *parent) :
     ui->satOpsBtn->setVisible(false);
     ui->adjRefBtn->setVisible(false);
 #endif
-
+    setupKeyShortcuts();
 }
 
 settingswidget::~settingswidget()
@@ -173,6 +173,56 @@ void settingswidget::populateComboBoxes()
     ui->networkConnectionTypeCombo->addItem("WiFi",connectionWiFi);
     ui->networkConnectionTypeCombo->addItem("WAN",connectionWAN);
     ui->networkConnectionTypeCombo->blockSignals(false);
+}
+
+QShortcut* settingswidget::setupKeyShortcut(const QKeySequence k)
+{
+    QShortcut* sc=new QShortcut(this);
+    sc->setKey(k);
+    sc->setContext(Qt::WindowShortcut); // for this widget, all assignments are window-only
+    connect(sc, &QShortcut::activated, this,
+            [=]() {
+        this->runShortcut(k);
+    });
+    return sc;
+}
+
+void settingswidget::setupKeyShortcuts()
+{
+    // Pages within the Settings widget
+    shortcuts.append(setupKeyShortcut(Qt::Key_F1 | Qt::SHIFT));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F2 | Qt::SHIFT));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F3 | Qt::SHIFT));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F4 | Qt::SHIFT));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F5 | Qt::SHIFT));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F6 | Qt::SHIFT));
+    shortcuts.append(setupKeyShortcut(Qt::Key_F7 | Qt::SHIFT));
+    //shortcuts.append(setupKeyShortcut(Qt::Key_F8 | Qt::SHIFT));
+}
+
+void settingswidget::runShortcut(const QKeySequence k) {
+    qDebug() << "Settings widget, running shortcut for key:" << k;
+
+    if(k==(Qt::SHIFT | Qt::Key::Key_F1)) {
+        qDebug() << "Detected F1 in settings widget";
+        ui->settingsStack->setCurrentIndex(0);
+    } else if (k==(Qt::SHIFT | Qt::Key::Key_F1)) {
+        ui->settingsStack->setCurrentIndex(1);
+    } else if (k==(Qt::SHIFT | Qt::Key::Key_F3)) {
+        ui->settingsStack->setCurrentIndex(2);
+    } else if (k==(Qt::SHIFT | Qt::Key::Key_F4)) {
+        ui->settingsStack->setCurrentIndex(3);
+    } else if (k==(Qt::SHIFT | Qt::Key::Key_F5)) {
+        ui->settingsStack->setCurrentIndex(4);
+    } else if (k==(Qt::SHIFT | Qt::Key::Key_F6)) {
+        ui->settingsStack->setCurrentIndex(5);
+    } else if (k==(Qt::SHIFT | Qt::Key::Key_F7)) {
+        ui->settingsStack->setCurrentIndex(6);
+    } else if (k==(Qt::SHIFT | Qt::Key::Key_F8)) {
+        // ui->settingsStack->setCurrentIndex(7);
+    } else {
+        // no action
+    }
 }
 
 // Updating Preferences:
