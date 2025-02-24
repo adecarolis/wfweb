@@ -247,10 +247,13 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
 
     //edgeCombo->insertItems(0, QStringList({tr("Fixed Edge 1"),tr("Fixed Edge 2"),tr("Fixed Edge 3"),tr("Fixed Edge 4")}));
     //edgeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContentsOnFirstShow);
-
-    for (uchar i=1; i<4; i++)
+    auto it = rigCaps->commands.find(funcScopeEdge);
+    if (it != rigCaps->commands.end())
     {
-        edgeCombo->addItem(QString("Fixed Edge %0").arg(i),i);
+        for (uchar i=it->minVal; i<=it->maxVal; i++)
+        {
+            edgeCombo->addItem(QString("Fixed Edge %0").arg(i),QVariant::fromValue<uchar>(i));
+        }
     }
 
     // Spectrum Plot setup
