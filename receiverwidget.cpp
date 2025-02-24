@@ -250,7 +250,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     auto it = rigCaps->commands.find(funcScopeEdge);
     if (it != rigCaps->commands.end())
     {
-        for (uchar i=it->minVal; i<=it->maxVal; i++)
+        for (int i=it->minVal; i<=it->maxVal; i++)
         {
             edgeCombo->addItem(QString("Fixed Edge %0").arg(i),QVariant::fromValue<uchar>(i));
         }
