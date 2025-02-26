@@ -47,7 +47,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>0</number>
+        <number>7</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -204,6 +204,9 @@
                    <string>Audio controls on this page are ONLY for network radios
 Please use the &quot;Radio Server&quot; page to select server audio.
 ONLY use Manual CI-V when Transceive mode is not supported</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignmentFlag::AlignCenter</set>
                   </property>
                  </widget>
                 </item>
@@ -516,7 +519,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                    <string>Password Textbox</string>
                   </property>
                   <property name="echoMode">
-                   <enum>QLineEdit::EchoMode::Normal</enum>
+                   <enum>QLineEdit::EchoMode::Password</enum>
                   </property>
                  </widget>
                 </item>
@@ -834,6 +837,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
           <widget class="QLabel" name="radioDisconnectLabel">
            <property name="text">
             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;You &lt;span style=&quot; font-weight:700;&quot;&gt;MUST&lt;/span&gt; disconnect from the radio before making any changes in the above form.&lt;br/&gt;&lt;br/&gt;Please use the &lt;span style=&quot; font-style:italic;&quot;&gt;Connect/Disconnect &lt;/span&gt;button below&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignmentFlag::AlignCenter</set>
            </property>
           </widget>
          </item>
@@ -1481,7 +1487,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                  <x>0</x>
                  <y>0</y>
                  <width>987</width>
-                 <height>286</height>
+                 <height>304</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">
@@ -2223,12 +2229,12 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                   <item row="0" column="4">
                    <spacer name="horizontalSpacer_34">
                     <property name="orientation">
-                     <enum>Qt::Orientation::Vertical</enum>
+                     <enum>Qt::Orientation::Horizontal</enum>
                     </property>
                     <property name="sizeHint" stdset="0">
                      <size>
-                      <width>40</width>
-                      <height>20</height>
+                      <width>20</width>
+                      <height>40</height>
                      </size>
                     </property>
                    </spacer>
@@ -2346,12 +2352,12 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                   <item row="0" column="8">
                    <spacer name="horizontalSpacer_35">
                     <property name="orientation">
-                     <enum>Qt::Orientation::Vertical</enum>
+                     <enum>Qt::Orientation::Horizontal</enum>
                     </property>
                     <property name="sizeHint" stdset="0">
                      <size>
-                      <width>40</width>
-                      <height>20</height>
+                      <width>20</width>
+                      <height>40</height>
                      </size>
                     </property>
                    </spacer>
@@ -3010,6 +3016,9 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                  <widget class="QLabel" name="serverDisconnectLabel">
                   <property name="text">
                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Please disconnect from radio to make changes to the server settings&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignmentFlag::AlignCenter</set>
                   </property>
                  </widget>
                 </item>
