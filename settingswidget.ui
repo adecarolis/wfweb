@@ -47,7 +47,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>2</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -204,6 +204,9 @@
                    <string>Audio controls on this page are ONLY for network radios
 Please use the &quot;Radio Server&quot; page to select server audio.
 ONLY use Manual CI-V when Transceive mode is not supported</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignCenter</set>
                   </property>
                  </widget>
                 </item>
@@ -1483,8 +1486,8 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>991</width>
-                 <height>324</height>
+                 <width>977</width>
+                 <height>314</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">
