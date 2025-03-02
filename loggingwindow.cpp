@@ -7,7 +7,7 @@ loggingWindow::loggingWindow(QString logFilename, QWidget *parent) :
     logFilename(logFilename)
 {
     ui->setupUi(this);
-    this->setWindowTitle("Log");
+    this->setWindowTitle(tr("Log"));
     ui->logTextDisplay->setReadOnly(true);
     ui->userAnnotationText->setFocus();
     ui->annotateBtn->setDefault(true);
@@ -58,6 +58,11 @@ void loggingWindow::setInitialDebugState(bool debugModeEnabled)
     ui->debugBtn->blockSignals(false);
 }
 
+void loggingWindow::ingestSettings(preferences prefs) {
+    this->prefs = prefs;
+    havePrefs = true;
+}
+
 void loggingWindow::acceptLogText(QPair<QtMsgType,QString> text)
 {
     QMutexLocker lock(&textMutex);
@@ -86,16 +91,21 @@ void loggingWindow::acceptLogText(QPair<QtMsgType,QString> text)
     }
 }
 
-void loggingWindow::sendToTermbin()
+void loggingWindow::sendLogToHost()
 {
-    qInfo(logLogger()) << "Sending data to termbin.com. Standby.";
-    socket->connectToHost("termbin.com", 9999);
+    if(prefs.pastebinHost.isEmpty() || prefs.pastebinPort == 0 || prefs.pastebinPort > 65535) {
+        qInfo(logLogger()) << tr("Pastbin host and/or port is not configured correctly. Check settings.");
+        return;
+    }
+
+    qInfo(logLogger()).noquote().nospace() << tr("Sending data to ") << prefs.pastebinHost << ":" << prefs.pastebinPort << tr(", Standby.");
+    socket->connectToHost(prefs.pastebinHost, prefs.pastebinPort);
     ui->sendToPasteBtn->setDisabled(true);
 }
 
 void loggingWindow::handleDataFromLoggingHost()
 {
-    qInfo(logLogger()) << "Receiving data from logging host.";
+    qInfo(logLogger()) << tr("Receiving data from logging host.");
     QString URL;
     QByteArray data = socket->readAll();
     if(data.length() < 256)
@@ -104,30 +114,30 @@ void loggingWindow::handleDataFromLoggingHost()
         if(!URL.isEmpty())
         {
             clipboard->setText(URL);
-            qInfo(logLogger()) << "Sent log to URL: " << URL;
-            qInfo(logLogger()) << "This address already copied to the clipboard. Please paste this URL in to your support questions.";
-            URLmsgBox.setText("Your log has been posted, and the URL has been copied to the clipboard.");
+            qInfo(logLogger()) << tr("Sent log to URL: ") << URL;
+            qInfo(logLogger()) << tr("This address already copied to the clipboard. Please paste this URL in to your support questions.");
+            URLmsgBox.setText(tr("Your log has been posted, and the URL has been copied to the clipboard."));
             URLmsgBox.setInformativeText("<b>" + URL + "</b>");
             URLmsgBox.exec();
-            // For whatever reason, showing the message box hides https://termbin.com/ypxbthis window.
+            // For whatever reason, showing the message box hides this window.
             this->show();
             this->raise();
             this->activateWindow();
         }
     } else {
-        qDebug(logLogger()) << "Error, return from logging host too large. Received " << data.length() << " bytes.";
+        qDebug(logLogger()) << tr("Error, return from logging host too large. Received ") << data.length() << tr(" bytes.");
     }
 }
 
 void loggingWindow::disconnectedFromHost()
 {
-    qInfo(logLogger()) << "Disconnected from logging host";
+    qInfo(logLogger()) << tr("Disconnected from logging host");
     ui->sendToPasteBtn->setDisabled(false);
 }
 
 void loggingWindow::connectedToHost()
 {
-    qInfo(logLogger()) << "Connected to logging host";
+    qInfo(logLogger()) << tr("Connected to logging host");
     QMutexLocker lock(&textMutex);
     QTextStream outText(socket);
     outText << ui->logTextDisplay->toPlainText();
@@ -145,7 +155,7 @@ void loggingWindow::handleLoggingHostError(QAbstractSocket::SocketError error)
         break;
 
     default:
-        qWarning(logLogger()) << "Error connecting to logging host. Check internet connection. Error code: " << error;
+        qWarning(logLogger()) << tr("Error connecting to logging host. Check internet connection. Error code: ") << error;
         ui->sendToPasteBtn->setDisabled(false);
         break;
     }
@@ -198,7 +208,7 @@ void loggingWindow::on_openLogFileBtn_clicked()
 
 void loggingWindow::on_sendToPasteBtn_clicked()
 {
-    sendToTermbin();
+    sendLogToHost();
 }
 
 void loggingWindow::on_annotateBtn_clicked()

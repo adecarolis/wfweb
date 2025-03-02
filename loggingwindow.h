@@ -15,6 +15,7 @@
 #include <QDir>
 
 #include "logcategories.h"
+#include "prefs.h"
 
 namespace Ui {
 class loggingWindow;
@@ -31,6 +32,7 @@ public:
 
 public slots:
     void setInitialDebugState(bool debugModeEnabled);
+    void ingestSettings(preferences prefs);
 
 private slots:
     void connectedToHost();
@@ -75,7 +77,9 @@ private:
     QScrollBar *horizLogScroll;
     QMutex textMutex;
     QTcpSocket *socket;
-    void sendToTermbin();
+    void sendLogToHost();
+    preferences prefs;
+    bool havePrefs = false;
 };
 
 #endif // LOGGINGWINDOW_H
