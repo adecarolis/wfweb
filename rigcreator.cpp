@@ -692,6 +692,25 @@ void rigCreator::loadRigFile(QString file)
     }
     ui->meters->setSortingEnabled(true);
 
+    ui->roofing->clearContents();
+    ui->roofing->model()->removeRows(0,ui->roofing->rowCount());
+    ui->roofing->setSortingEnabled(false);
+
+    int numRoofing = settings->beginReadArray("Roofing");
+    if (numRoofing == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numRoofing; c++)
+        {
+            settings->setArrayIndex(c);
+            ui->roofing->insertRow(ui->roofing->rowCount());
+            ui->roofing->model()->setData(ui->roofing->model()->index(c,0),settings->value("Num", "None").toInt());
+            ui->roofing->model()->setData(ui->roofing->model()->index(c,1),settings->value("Name", "None").toString());
+        }
+        settings->endArray();
+    }
+    ui->roofing->setSortingEnabled(true);
 
     settings->endGroup();
     delete settings;
@@ -710,6 +729,7 @@ void rigCreator::loadRigFile(QString file)
     connect(ui->ctcss,SIGNAL(cellChanged(int,int)),SLOT(changed()));
     connect(ui->dtcs,SIGNAL(cellChanged(int,int)),SLOT(changed()));
     connect(ui->meters,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->roofing,SIGNAL(cellChanged(int,int)),SLOT(changed()));
 
     connect(ui->hasCommand29,SIGNAL(stateChanged(int)),SLOT(changed()));
     connect(ui->hasEthernet,SIGNAL(stateChanged(int)),SLOT(changed()));
@@ -1021,6 +1041,17 @@ void rigCreator::saveRigFile(QString file)
         }
     }
     settings->endArray();
+
+    ui->roofing->sortByColumn(0,Qt::AscendingOrder);
+    settings->beginWriteArray("Roofing");
+    for (int n = 0; n<ui->roofing->rowCount();n++)
+    {
+        settings->setArrayIndex(n);
+        settings->setValue("Num",(ui->roofing->item(n,0) == NULL) ? 0 :  ui->roofing->item(n,0)->text().toInt());
+        settings->setValue("Name",(ui->roofing->item(n,1) == NULL) ? "" :  ui->roofing->item(n,1)->text());
+    }
+    settings->endArray();
+
 
     settings->endGroup();
     settings->sync();

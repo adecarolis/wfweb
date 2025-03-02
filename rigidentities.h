@@ -307,6 +307,7 @@ struct rigCapabilities {
     std::vector <bandType> bands;
     std::vector <toneInfo> ctcss;
     std::vector <toneInfo> dtcs;
+    std::vector <genericType> roofing;
     //std::vector <spanType> spans;
     std::vector <stepType> steps;
     quint8 bsr[24] = {0};

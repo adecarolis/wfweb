@@ -261,7 +261,7 @@ funcPreamp,             funcAGC,                funcNoiseBlanker,           func
 funcAutoNotch,          funcRepeaterTone,       funcRepeaterTSQL,           funcRepeaterDTCS,       funcRepeaterCSQL,       funcCompressor,
 funcMonitor,            funcVox,                funcBreakIn,                funcManualNotch,        funcDigiSel,            funcTwinPeakFilter,
 funcDialLock,           funcRXAntenna,          funcDSPIFFilter,            funcManualNotchWidth,   funcSSBTXBandwidth,     funcMainSubTracking,
-funcSatelliteMode,      funcDSQLSetting,        funcToneSquelchType,        funcIPPlus,
+funcSatelliteMode,      funcDSQLSetting,        funcToneSquelchType,        funcIPPlus,             funcRoofingFilter,      funcFilterShape,
 
 /* Commands 17-19 CW/power/id */
 funcSepE,
@@ -398,7 +398,7 @@ static QString funcString[funcLastFunc] { "None",
 "Auto Notch",           "Repeater Tone",        "Repeater TSQL",            "Repeater DTCS",        "Repeater CSQL",        "Compressor Status",
 "Monitor Status",       "Vox Status",           "Break-In Status",          "Manual Notch",         "DIGI-Sel Status",      "Twin Peak Filter",
 "Dial Lock Status",     "RX Antenna",           "DSP IF Filter",            "Manual Notch Width",   "SSB TX Bandwidth",     "Main/Sub Tracking",
-"Satellite Mode",       "DSQL Setting",         "Tone Squelch Type",        "IP Plus Status",
+"Satellite Mode",       "DSQL Setting",         "Tone Squelch Type",        "IP Plus Status",       "Roofing Filter",       "Filter Shape",
 
 /* Commands 17-19 CW/power/id */
 "+<CMD17-19>",

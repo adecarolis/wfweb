@@ -5724,6 +5724,20 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcAudioPeakFilter:
         break;
+    case funcFilterShape:
+        if (val.value.value<uchar>() / 10 == 0 || receivers[val.receiver]->currentFilter() == val.value.value<uchar>() / 10)
+        {
+            receivers[val.receiver]->setFilterShape(val.value.value<uchar>() % 10);
+        }
+        qInfo(logRig()) << "Filter:" <<val.value.value<uchar>() / 10 << "Shape:" << val.value.value<uchar>() % 10;
+        break;
+    case funcRoofingFilter:
+        if (val.value.value<uchar>() / 10 == 0 || receivers[val.receiver]->currentFilter() == val.value.value<uchar>() / 10)
+        {
+            receivers[val.receiver]->setRoofing(val.value.value<uchar>() % 10);
+        }
+        qInfo(logRig()) << "Filter:" <<val.value.value<uchar>() / 10 << "Roofing:" << val.value.value<uchar>() % 10;
+        break;
     case funcNoiseReduction:
         if (val.receiver == currentReceiver) {
             ui->nrEnableChk->blockSignals(true);
@@ -6251,6 +6265,12 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
             for (auto& f: rigCaps->filters)
             {
                 receiver->addFilter(f.name,f.num);
+            }
+
+            receiver->clearRoofing();
+            for (auto& f: rigCaps->roofing)
+            {
+                receiver->addRoofing(f.name,f.num);
             }
 
             receiver->clearData();

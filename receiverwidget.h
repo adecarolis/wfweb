@@ -103,6 +103,8 @@ public:
     void setRef(int ref);
     void setRefLimits(int lower, int upper);
     void setFreqLock( bool en) { freqLock = en; }
+    void setRoofing(uchar val);
+    void setFilterShape(uchar val);
 
     void setBandIndicators(bool show, QString region, std::vector<bandType>* bands);
     void setUnit(FctlUnit unit);
@@ -114,11 +116,13 @@ public:
     void clearMode() { modeCombo->clear();}
     void clearData() { dataCombo->clear();}
     void clearFilter() { filterCombo->clear();}
+    void clearRoofing() { roofingCombo->clear();}
 
     void addSpan(QString text, QVariant data) {spanCombo->blockSignals(true); spanCombo->addItem(text,data); spanCombo->blockSignals(false);}
     void addMode(QString text, QVariant data) {modeCombo->blockSignals(true); modeCombo->addItem(text,data); modeCombo->blockSignals(false);}
     void addData(QString text, QVariant data) {dataCombo->blockSignals(true); dataCombo->addItem(text,data); dataCombo->blockSignals(false);}
     void addFilter(QString text, QVariant data) {filterCombo->blockSignals(true); filterCombo->addItem(text,data); filterCombo->blockSignals(false);}
+    void addRoofing(QString text, QVariant data) {roofingCombo->blockSignals(true); roofingCombo->addItem(text,data); roofingCombo->blockSignals(false);}
 
     void selected(bool);
     bool isSelected() {return isActive;}
@@ -224,6 +228,8 @@ private:
     QComboBox* modeCombo;
     QComboBox* dataCombo;
     QComboBox* filterCombo;
+    QComboBox* filterShapeCombo;
+    QComboBox* roofingCombo;
     QComboBox* antennaCombo;
     QPushButton* holdButton;
     QSlider* dummySlider;

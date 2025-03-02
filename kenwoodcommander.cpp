@@ -581,6 +581,8 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcAGC:
         case funcPowerControl:
         case funcLANModLevel:
+        case funcFilterShape:
+        case funcRoofingFilter:
             value.setValue<uchar>(d.mid(0,type.bytes).toUShort());
             break;
         case funcCompressorLevel:
@@ -1046,6 +1048,8 @@ void kenwoodCommander::determineRigCaps()
     rigCaps.memParser.clear();
     rigCaps.satParser.clear();
     rigCaps.periodic.clear();
+    rigCaps.roofing.clear();
+
     for (int i = meterNone; i < meterUnknown; i++)
     {
         rigCaps.meters[i].clear();
@@ -1361,6 +1365,19 @@ void kenwoodCommander::determineRigCaps()
                         break;
                     }
                 }
+        }
+        settings->endArray();
+    }
+
+    int numRoofing = settings->beginReadArray("Roofing");
+    if (numRoofing == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numRoofing; c++)
+        {
+            settings->setArrayIndex(c);
+            rigCaps.roofing.push_back(genericType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", 0).toString()));
         }
         settings->endArray();
     }
