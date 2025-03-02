@@ -966,7 +966,8 @@ void icomCommander::parseCommand()
     case funcPreamp:
     case funcManualNotchWidth:
     case funcSSBTXBandwidth:
-    case funcDSPIFFilter:
+    case funcRoofingFilter:
+    case funcFilterShape:
     // Bass treble (A105)
     case funcSSBRXBass:
     case funcSSBRXTreble:
@@ -2949,9 +2950,16 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             }
             else if (!strcmp(value.typeName(),"uchar"))
             {
-                payload.append(bcdEncodeChar(value.value<uchar>()));
-                qDebug(logRig()) << "**** setting uchar value" << funcString[func] << "val" << value.value<uchar>();
-            }
+                if (func == funcRoofingFilter || func == funcFilterShape)
+                {
+                    // Remove the filter number as Icom doesn't support setting anything other than the current filter.
+                    payload.append(bcdEncodeChar(value.value<uchar>() % 10));
+                }
+                else
+                {
+                    payload.append(bcdEncodeChar(value.value<uchar>()));
+                }
+           }
             else if (!strcmp(value.typeName(),"ushort"))
             {
                  if (func == funcFilterWidth) {

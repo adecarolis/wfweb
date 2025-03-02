@@ -165,15 +165,12 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     //scopeModeLabel = new QLabel("Spectrum Mode:");
     scopeModeCombo = new QComboBox();
     scopeModeCombo->setAccessibleDescription(tr("Spectrum Mode"));
-    scopeModeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     //spanLabel = new QLabel("Span:");
     spanCombo = new QComboBox();
     spanCombo->setAccessibleDescription(tr("Spectrum Span"));
-    spanCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     //edgeLabel = new QLabel("Edge:");
     edgeCombo = new QComboBox();
     edgeCombo->setAccessibleDescription(tr("Spectrum Edge"));
-    edgeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     edgeButton = new QPushButton(tr("Custom Edge"));
     edgeButton->setToolTip(tr("Define a custom (fixed) scope edge"));
     toFixedButton = new QPushButton(tr("To Fixed"));
@@ -195,22 +192,18 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     confButton->setFocusPolicy(Qt::NoFocus);
 
     modeCombo = new QComboBox();
-    modeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     modeCombo->setToolTip(tr("Select current radio mode"));
     modeCombo->setAccessibleDescription(tr("Change the current radio mode for this receiver"));
 
     dataCombo = new QComboBox();
-    dataCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     dataCombo->setToolTip(tr("Select data mode (if supported)"));
     dataCombo->setAccessibleDescription(tr("Change the current data mode (if supported)"));
 
     filterCombo = new QComboBox();
-    filterCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     filterCombo->setToolTip(tr("Select current filter"));
     dataCombo->setAccessibleDescription(tr("Change the current filter"));
 
     filterShapeCombo = new QComboBox();
-    filterShapeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     filterShapeCombo->setToolTip(tr("Select current filter shape"));
     filterShapeCombo->setAccessibleDescription(tr("Change the current filter shape"));
     if (!rigCaps->commands.contains(funcFilterShape))
@@ -232,7 +225,6 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
         }
     }
     roofingCombo = new QComboBox();
-    roofingCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     roofingCombo->setToolTip(tr("Select roofing filter"));
     roofingCombo->setAccessibleDescription(tr("Change the current selected roofing filter"));
     if (!rigCaps->commands.contains(funcRoofingFilter))
@@ -643,19 +635,15 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
 
     connect(filterShapeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](int val){
         vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
-        uchar f = uchar(filterShapeCombo->itemData(val).toInt());
-        if (rigCaps->manufacturer == manufKenwood)
-            f +=uchar(filterCombo->currentData().toInt() * 10);
-        queue->addUnique(priorityImmediate,queueItem(funcFilterShape,f,false,t.receiver));
+        uchar f = uchar(filterShapeCombo->itemData(val).toInt() + (filterCombo->currentData().toInt() * 10));
+        queue->addUnique(priorityImmediate,queueItem(funcFilterShape,QVariant::fromValue<uchar>(f),false,t.receiver));
     });
 
 
     connect(roofingCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](int val){
         vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
-        uchar f = uchar(roofingCombo->itemData(val).toInt());
-        if (rigCaps->manufacturer == manufKenwood)
-            f +=uchar(filterCombo->currentData().toInt() * 10);
-        queue->addUnique(priorityImmediate,queueItem(funcRoofingFilter,f,false,t.receiver));
+        uchar f = uchar(roofingCombo->itemData(val).toInt() + (filterCombo->currentData().toInt() * 10));
+        queue->addUnique(priorityImmediate,queueItem(funcRoofingFilter,QVariant::fromValue<uchar>(f),false,t.receiver));
     });
 
 
@@ -1387,9 +1375,13 @@ void receiverWidget::updatedMode(int index)
         queue->addUnique(priorityImmediate,queueItem(funcDataModeWithFilter,QVariant::fromValue(mi),false,t.receiver));
     }
     // Request current filtershape/roofing
-    queue->addUnique(priorityHighest,queueItem(funcFilterShape,QVariant::fromValue<uchar>(mi.filter),false,t.receiver));
-    queue->addUnique(priorityHighest,queueItem(funcRoofingFilter,QVariant::fromValue<uchar>(mi.filter),false,t.receiver));
-
+    if (rigCaps->manufacturer == manufKenwood) {
+        queue->addUnique(priorityHighest,queueItem(funcFilterShape,QVariant::fromValue<uchar>(mi.filter),false,t.receiver));
+        queue->addUnique(priorityHighest,queueItem(funcRoofingFilter,QVariant::fromValue<uchar>(mi.filter),false,t.receiver));
+    } else {
+        queue->addUnique(priorityHighest,funcFilterShape,false,t.receiver);
+        queue->addUnique(priorityHighest,funcRoofingFilter,false,t.receiver);
+    }
 }
 
 void receiverWidget::setEdge(uchar index)

@@ -5730,14 +5730,12 @@ void wfmain::receiveValue(cacheItem val){
         {
             receivers[val.receiver]->setFilterShape(val.value.value<uchar>() % 10);
         }
-        qInfo(logRig()) << "Filter:" <<val.value.value<uchar>() / 10 << "Shape:" << val.value.value<uchar>() % 10;
         break;
     case funcRoofingFilter:
         if (val.value.value<uchar>() / 10 == 0 || receivers[val.receiver]->currentFilter() == val.value.value<uchar>() / 10)
         {
             receivers[val.receiver]->setRoofing(val.value.value<uchar>() % 10);
         }
-        qInfo(logRig()) << "Filter:" <<val.value.value<uchar>() / 10 << "Roofing:" << val.value.value<uchar>() % 10;
         break;
     case funcNoiseReduction:
         if (val.receiver == currentReceiver) {
@@ -5785,8 +5783,6 @@ void wfmain::receiveValue(cacheItem val){
         break;
     case funcRXAntenna:
         ui->rxAntennaCheck->setChecked(val.value.value<bool>());
-        break;
-    case funcDSPIFFilter:
         break;
     case funcManualNotchWidth:
         break;
