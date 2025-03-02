@@ -187,6 +187,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     setDefaultColorPresets();
 
     loadSettings(); // Look for saved preferences
+    logWindow->ingestSettings(prefs);
 
     setManufacturer(prefs.manufacturer);
     setServerToPrefs();

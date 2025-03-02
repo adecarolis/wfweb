@@ -173,6 +173,8 @@ struct preferences {
     QString gitShort;
     bool hasRunSetup = false;
     bool settingsChanged = false;
+    QString pastebinHost = QString("termbin.com");
+    int pastebinPort = 9999;
 
     // Interface:
     bool useFullScreen;
