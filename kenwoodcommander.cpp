@@ -347,7 +347,7 @@ void kenwoodCommander::parseData(QByteArray data)
             // Don't warn if we haven't received rigCaps yet
             if (haveRigCaps)
                 qInfo(logRig()) << "Unsupported command received from rig" << d << "Check rig file";
-            return;
+            continue;
         } else {
             type = this->rigCaps.commands.find(func).value();
         }
@@ -429,8 +429,8 @@ void kenwoodCommander::parseData(QByteArray data)
                 }
             }
             break;
-        }
-        case funcTransceiverStatus:
+        }            
+       case funcTransceiverStatus:
         {
             // This is a response to the IF command which contains a wealth of information
             // We could use this for various things if we want.
@@ -1934,9 +1934,9 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
         if (portConnected)
         {
             QMutexLocker locker(&serialMutex);
-#ifdef QT_DEBUG
-            qDebug(logRigTraffic()).noquote() << "Send to rig: " << payload.toStdString().c_str();
-#endif
+
+            qDebug(logRigTraffic()).noquote() << "Send to rig: " << funcString[cmd.cmd] << payload.toStdString().c_str();
+
             if (port->write(payload) != payload.size())
             {
                 qInfo(logSerial()) << "Error writing to port";

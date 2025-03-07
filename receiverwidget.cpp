@@ -1375,10 +1375,8 @@ void receiverWidget::updatedMode(int index)
         queue->addUnique(priorityImmediate,queueItem(funcDataModeWithFilter,QVariant::fromValue(mi),false,t.receiver));
     }
     // Request current filtershape/roofing
-    if (rigCaps->manufacturer == manufKenwood) {
-        queue->addUnique(priorityHighest,queueItem(funcFilterShape,QVariant::fromValue<uchar>(mi.filter),false,t.receiver));
-        queue->addUnique(priorityHighest,queueItem(funcRoofingFilter,QVariant::fromValue<uchar>(mi.filter),false,t.receiver));
-    } else {
+    if (rigCaps->manufacturer == manufIcom)
+    {
         queue->addUnique(priorityHighest,funcFilterShape,false,t.receiver);
         queue->addUnique(priorityHighest,funcRoofingFilter,false,t.receiver);
     }

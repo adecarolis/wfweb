@@ -5726,13 +5726,13 @@ void wfmain::receiveValue(cacheItem val){
     case funcAudioPeakFilter:
         break;
     case funcFilterShape:
-        if (val.value.value<uchar>() / 10 == 0 || receivers[val.receiver]->currentFilter() == val.value.value<uchar>() / 10)
+        if (rigCaps->manufacturer == manufIcom || receivers[val.receiver]->currentFilter() == val.value.value<uchar>() / 10)
         {
             receivers[val.receiver]->setFilterShape(val.value.value<uchar>() % 10);
         }
         break;
     case funcRoofingFilter:
-        if (val.value.value<uchar>() / 10 == 0 || receivers[val.receiver]->currentFilter() == val.value.value<uchar>() / 10)
+        if (rigCaps->manufacturer == manufIcom || receivers[val.receiver]->currentFilter() == val.value.value<uchar>() / 10)
         {
             receivers[val.receiver]->setRoofing(val.value.value<uchar>() % 10);
         }
