@@ -7,6 +7,10 @@
 
 tableWidget::tableWidget(QWidget *parent): QTableWidget(parent)
 {
+    menuActions.append(new QAction("Add Item"));
+    menuActions.append(new QAction("Insert Item"));
+    menuActions.append(new QAction("Clone Item"));
+    menuActions.append(new QAction("Delete Item"));
 }
 
 void tableWidget::mouseReleaseEvent(QMouseEvent *event)
@@ -14,30 +18,27 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
     if(event->button() == Qt::RightButton && editingEnabled)
     {
         QMenu menu;
-        QAction *add= menu.addAction("Add Item");
-        QAction *insert= menu.addAction("Insert Item");
-        QAction *clone= menu.addAction("Clone Item");
-        QAction *del = menu.addAction("Delete Item");
+
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-        QAction *selectedAction = menu.exec(event->globalPos());
+        QAction *selectedAction = menu.exec(menuActions,event->globalPos());
 #else
-        QAction *selectedAction = menu.exec(event->globalPosition().toPoint());
+        QAction *selectedAction = menu.exec(menuActions,event->globalPosition().toPoint());
 #endif
 
 
-        if(selectedAction == add)
+        if(selectedAction == menuActions[0])
         {
             int row=this->rowCount();
             this->insertRow(this->rowCount());
             emit rowAdded(row);
         }
-        else if(selectedAction == insert)
+        else if(selectedAction == menuActions[1])
         {
             int row=this->currentRow();
             this->insertRow(this->currentRow());
             emit rowAdded(row);
         }
-        else if( selectedAction == clone )
+        else if( selectedAction == menuActions[2] )
         {
             this->setSortingEnabled(false);
             int row=this->currentRow(); // This will be the new row with the old one as row+1
@@ -50,11 +51,14 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
             emit rowAdded(row);
             this->setSortingEnabled(true);
         }
-        else if( selectedAction == del )
+        else if( selectedAction == menuActions[3] )
         {
             emit rowDeleted(this->currentRow());
             emit rowValDeleted((this->item(this->currentRow(),1) == NULL) ? 0 : this->item(this->currentRow(),1)->text().toUInt());
             this->removeRow(this->currentRow());
+        } else
+        {
+            emit menuAction(selectedAction,this->currentRow());
         }
     }
 }

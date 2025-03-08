@@ -23,15 +23,18 @@ class tableWidget : public QTableWidget
 public:
     explicit tableWidget(QWidget* parent = 0);
     void editing(bool val) { editingEnabled = val; };
+    void addAction(QAction* action) { menuActions.append(action); }
 
 signals:
     void rowAdded(int row);
     void rowDeleted(int num);
     void rowValDeleted(quint32 num);
+    void menuAction(QAction* action, quint32 num);
 
 protected:
     void mouseReleaseEvent(QMouseEvent *event);
     bool editingEnabled = true;
+    QList<QAction*> menuActions;
 };
 
 

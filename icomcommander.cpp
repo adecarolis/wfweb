@@ -3029,7 +3029,6 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 uchar ffchar = 0xff;
                 QVector<memParserFormat> parser;
                 memoryType mem = value.value<memoryType>();
-
                 if (mem.sat)
                 {
                     parser = rigCaps.satParser;
@@ -3076,7 +3075,13 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         }
                         break;
                     case 'd': // combined split and scan
-                        payload.append(quint8((mem.split << 4 & 0xf0) | (mem.scan & 0x0f)));
+                        if (mem.del) {
+                            payload.append(ffchar);
+                            finished=true;
+                            break;
+                        } else {
+                            payload.append(quint8((mem.split << 4 & 0xf0) | (mem.scan & 0x0f)));
+                        }
                         break;
                     case 'D': // Duplex only
                         payload.append(mem.duplex);
@@ -3089,7 +3094,9 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         break;
                     case 'f':
                         if (mem.del) {
+                            qDebug() << "Pre deleting f" << payload.toHex(' ');
                             payload.append(ffchar);
+                            qDebug() << "Deleting f" << payload.toHex(' ');
                             finished=true;
                             break;
                         } else {

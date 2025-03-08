@@ -50,9 +50,9 @@ private slots:
 
 
     void receiveMemory(memoryType mem);
-    void rowAdded(int row);
+    void rowAdded(int row, memoryType mem=memoryType());
     void rowDeleted(quint32 mem);
-
+    void menuAction(QAction* action, quint32 mem);
     void timeout();
 
 private:
@@ -295,8 +295,11 @@ private:
         totalColumns        
     };
 
-    int updateCombo(QStringList& combo, int row, columns column, quint8 data);
-    int updateCombo(QStringList& combo, int row, columns column, QString data);
+    int updateRow(int row, memoryType mem, bool store=true);
+
+    int updateEntry(QStringList& combo, int row, columns column, quint8 data);
+    int updateEntry(QStringList& combo, int row, columns column, QString data);
+    int updateEntry(int row, columns column, QString data);
 
     struct stepType {
         stepType(){};
@@ -323,7 +326,11 @@ private:
 
     void enableCell(int col, int row, bool en);
     void configColumns(int row, modeInfo mode);
+    void configColumnsB(int row, modeInfo mode);
     bool disableCommands = false;
+
+    QAction *addCurrent = new QAction("Add Current");
+    QAction *useCurrent = new QAction("Use Current");
 };
 
 #endif // MEMORIES_H
