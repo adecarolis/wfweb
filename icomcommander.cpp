@@ -473,10 +473,19 @@ toneInfo icomCommander::decodeTone(QByteArray eTone)
     if (eTone.length() < 3) {
         return t;
     }
-    t.tone += (eTone.at(2) & 0x0f);
-    t.tone += ((eTone.at(2) & 0xf0) >> 4) *   10;
-    t.tone += (eTone.at(1) & 0x0f) *  100;
-    t.tone += ((eTone.at(1) & 0xf0) >> 4) * 1000;
+
+    ushort tone = (eTone.at(2) & 0x0f);
+    tone += ((eTone.at(2) & 0xf0) >> 4) *   10;
+    tone += (eTone.at(1) & 0x0f) *  100;
+    tone += ((eTone.at(1) & 0xf0) >> 4) * 1000;
+
+    for (const auto &ti: rigCaps.ctcss)
+    {
+        if (ti.tone == tone) {
+            t = ti;
+            break;
+        }
+    }
 
     if((eTone.at(0) & 0x01) == 0x01)
         t.tinv = true;

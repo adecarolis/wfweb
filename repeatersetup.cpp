@@ -440,7 +440,14 @@ void repeaterSetup::on_rptToneCombo_activated(int tindex)
     quint16 tone=0;
     tone = (quint16)ui->rptToneCombo->itemData(tindex).toUInt();
     toneInfo rt;
-    rt.tone = tone;
+    for (const auto &ti: rigCaps->ctcss)
+    {
+        if (ti.tone == tone) {
+            rt = ti;
+            break;
+        }
+    }
+
     bool updateSub = ui->setSplitRptrToneChk->isEnabled() && ui->setSplitRptrToneChk->isChecked();
     if(ui->toneTone->isChecked())
     {

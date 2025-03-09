@@ -238,33 +238,21 @@ void memories::menuAction(QAction* action, quint32 row)
     mem.mode = queue->getCache(ta.modeFunc,ta.receiver).value.value<modeInfo>().reg;
     mem.datamode = queue->getCache(ta.modeFunc,ta.receiver).value.value<modeInfo>().data;
     mem.filter = queue->getCache(ta.modeFunc,ta.receiver).value.value<modeInfo>().filter;
-    mem.tonemode = queue->getCache(funcToneSquelchType,ta.receiver).value.value<uchar>();
-
-    ushort tf = queue->getCache(funcToneFreq,ta.receiver).value.value<ushort>();
-    ushort ts = queue->getCache(funcTSQLFreq,ta.receiver).value.value<ushort>();
-    ushort tfb = queue->getCache(funcToneFreq,tb.receiver).value.value<ushort>();
-    ushort tsb = queue->getCache(funcTSQLFreq,tb.receiver).value.value<ushort>();
-    for (const auto &tn: rigCaps->ctcss)
-    {
-        if (tn.tone == tf)
-            mem.tone = tn.name;
-        if (tn.tone == ts)
-            mem.tsql = tn.name;
-        if (tn.tone == tfb)
-            mem.toneB = tn.name;
-        if (tn.tone == tsb)
-            mem.tsqlB = tn.name;
-    }
-
+    mem.tonemode = queue->getCache(funcRepeaterTone,ta.receiver).value.value<uchar>();
+    mem.tone = queue->getCache(funcToneFreq,ta.receiver).value.value<toneInfo>().name;
+    mem.tsql = queue->getCache(funcTSQLFreq,ta.receiver).value.value<toneInfo>().name;
     mem.dtcs = queue->getCache(funcDTCSCode,ta.receiver).value.value<ushort>();
     mem.dvsql = queue->getCache(funcCSQLCode,ta.receiver).value.value<ushort>();
-
 
     mem.frequencyB = queue->getCache(tb.freqFunc,tb.receiver).value.value<freqt>();
     mem.modeB = queue->getCache(tb.modeFunc,tb.receiver).value.value<modeInfo>().reg;
     mem.datamodeB = queue->getCache(tb.modeFunc,tb.receiver).value.value<modeInfo>().data;
     mem.filterB = queue->getCache(tb.modeFunc,tb.receiver).value.value<modeInfo>().filter;
-    mem.tonemodeB = queue->getCache(funcToneSquelchType,tb.receiver).value.value<uchar>();
+    mem.tonemodeB = queue->getCache(funcRepeaterTone,tb.receiver).value.value<uchar>();
+    mem.toneB = queue->getCache(funcToneFreq,tb.receiver).value.value<toneInfo>().name;
+    mem.tsqlB = queue->getCache(funcTSQLFreq,tb.receiver).value.value<toneInfo>().name;
+    mem.dtcsB = queue->getCache(funcDTCSCode,tb.receiver).value.value<ushort>();
+    mem.dvsqlB = queue->getCache(funcCSQLCode,tb.receiver).value.value<ushort>();
 
     memset(mem.UR, 0x0, sizeof(mem.UR));
     memset(mem.URB, 0x0, sizeof(mem.URB));
