@@ -70,6 +70,7 @@ private slots:
     void on_rptDupMinusBtn_clicked();
     void on_rptAutoBtn_clicked();
     void on_rptToneCombo_activated(int index);
+    void on_rptTSQLCombo_activated(int index);
     void on_rptDTCSCombo_activated(int index);
     void on_toneNone_clicked();
     void on_toneTone_clicked();
@@ -99,8 +100,6 @@ private slots:
 private:
     Ui::repeaterSetup *ui;
     freqt currentMainFrequency;
-    void populateTones();
-    void populateDTCS();
     quint64 getFreqHzFromKHzString(QString khz);
     quint64 getFreqHzFromMHzString(QString MHz);
     void setRptAccessMode(rptrAccessData rd);

@@ -489,6 +489,20 @@
           </layout>
          </item>
          <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_5">
+           <item>
+            <widget class="QLabel" name="label_5">
+             <property name="text">
+              <string>TSQL</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="rptTSQLCombo"/>
+           </item>
+          </layout>
+         </item>
+         <item>
           <layout class="QHBoxLayout" name="horizontalLayout_3">
            <item>
             <widget class="QLabel" name="label_2">
@@ -541,7 +555,7 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="rptDuplexBtns"/>
   <buttongroup name="rptToneBtns"/>
+  <buttongroup name="rptDuplexBtns"/>
  </buttongroups>
 </ui>

@@ -1997,6 +1997,21 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
                 passbandWidth = double(m.pass/1000000.0);
             }
 
+            if (m.mk == modeFM)
+            {
+                queue->addUnique(priorityMediumHigh,funcToneFreq,true,t.receiver);
+                queue->addUnique(priorityMediumHigh,funcTSQLFreq,true,t.receiver);
+                queue->addUnique(priorityMediumHigh,funcRepeaterTone,true,t.receiver);
+                queue->addUnique(priorityMediumHigh,funcRepeaterTSQL,true,t.receiver);
+            }
+            else
+            {
+                queue->del(funcToneFreq,t.receiver);
+                queue->del(funcTSQLFreq,t.receiver);
+                queue->del(funcRepeaterTone,t.receiver);
+                queue->del(funcRepeaterTSQL,t.receiver);
+            }
+
             if (m.mk == modeDD || m.mk == modeDV)
             {
                 t = queue->getVfoCommand(vfoB,receiver,false);
