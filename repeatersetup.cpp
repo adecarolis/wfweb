@@ -104,19 +104,16 @@ void repeaterSetup::handleRptAccessMode(rptAccessTxRx_t tmode)
 
 void repeaterSetup::handleTone(quint16 tone)
 {
-    qDebug(logRptr()) << "Handling incoming tone request of tone = " << tone;
     ui->rptToneCombo->setCurrentIndex(ui->rptToneCombo->findData(tone));
 }
 
 void repeaterSetup::handleTSQL(quint16 tsql)
 {
-    qDebug(logRptr()) << "Handling incoming TSQL request of tone = " << tsql;
     ui->rptTSQLCombo->setCurrentIndex(ui->rptTSQLCombo->findData(tsql));
 }
 
 void repeaterSetup::handleDTCS(quint16 dcode, bool tinv, bool rinv)
 {
-    qDebug(logRptr()) << "Handling incoming DTCS request of dcode = " << dcode;
     ui->rptDTCSCombo->setCurrentIndex(ui->rptDTCSCombo->findData(dcode));
     ui->rptDTCSInvertTx->setChecked(tinv);
     ui->rptDTCSInvertRx->setChecked(rinv);

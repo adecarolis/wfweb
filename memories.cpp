@@ -344,8 +344,8 @@ int memories::updateRow(int row, memoryType mem, bool store)
     validData += updateEntry(dvsql,row,columnDVSquelch,QString::number(mem.dvsql).rightJustified(2,'0'));
     validData += updateEntry(dvsql,row,columnDVSquelchB,QString::number(mem.dvsqlB).rightJustified(2,'0'));
 
-    validData += updateEntry(dtcs,row,columnDTCS,QString::number(mem.dtcs).rightJustified(3,'0'));
-    validData += updateEntry(dtcs,row,columnDTCSB,QString::number(mem.dtcsB).rightJustified(3,'0'));
+    validData += updateEntry(dtcs,row,columnDTCS,mem.dtcs);
+    validData += updateEntry(dtcs,row,columnDTCSB,mem.dtcsB);
 
     validData += updateEntry(dtcsp,row,columnDTCSPolarity,mem.dtcsp);
     validData += updateEntry(dtcsp,row,columnDTCSPolarityB,mem.dtcspB);
