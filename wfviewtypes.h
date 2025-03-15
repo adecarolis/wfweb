@@ -185,7 +185,7 @@ struct scopeData {
 };
 
 struct toneInfo {
-    toneInfo ():tone(0), name(""), tinv(false),rinv(false),useSecondaryVFO(false) {};
+    toneInfo ():tone(670), name("67.0"), tinv(false),rinv(false),useSecondaryVFO(false) {}; // Default
     toneInfo (short tone): tone(tone), name(""), tinv(false),rinv(false),useSecondaryVFO(false) {};
     toneInfo (short tone, QString name): tone(tone), name(name), tinv(false),rinv(false),useSecondaryVFO(false) {};
     toneInfo (short tone, QString name, bool tinv, bool rinv, bool useSecondaryVFO):tone(tone), name(name), tinv(tinv),rinv(rinv),useSecondaryVFO(useSecondaryVFO) {};
