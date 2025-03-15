@@ -1079,7 +1079,7 @@ void icomCommander::parseCommand()
     // 0x19 it automatically added.
     case funcTransceiverId:
         value.setValue(static_cast<uchar>(payloadIn.at(0)));
-        if (!rigCaps.modelID || quint8(payloadIn.at(0)) != rigCaps.modelID)
+        if (!rigCaps.modelID)
         {
             if (rigList.contains(uchar(payloadIn.at(0))))
             {
