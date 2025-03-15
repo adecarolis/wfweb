@@ -156,12 +156,15 @@ macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
 INCLUDEPATH += resampler
 
 SOURCES += main.cpp\
+    adpcm/adpcm-dns.c \
+    adpcm/adpcm-lib.c \
     cachingqueue.cpp \
     kenwoodcommander.cpp \
     servermain.cpp \
     commhandler.cpp \
     rigcommander.cpp \
     icomcommander.cpp \
+    rtpaudio.cpp \
     freqmemory.cpp \
     rigidentities.cpp \
     udpbase.cpp \
@@ -181,6 +184,7 @@ SOURCES += main.cpp\
     audiodevices.cpp
 
 HEADERS  += servermain.h \
+    adpcm/adpcm-lib.h \
     cachingqueue.h \
     commhandler.h \
     kenwoodcommander.h \
@@ -188,6 +192,7 @@ HEADERS  += servermain.h \
     icomcommander.h \
     freqmemory.h \
     rigidentities.h \
+    rtpaudio.h \
     udpbase.h \
     udphandler.h \
     udpcivdata.h \
