@@ -926,18 +926,17 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
                 state.receiver = uchar((rigCaps->numVFO == 1 && rigCaps->numReceiver>1));
             }
 
-            if (params.length() > 1) {
+            if (params.length() > 1) {                
                 state.vfo = vfoFromName(params[0]);
-                f.Hz = static_cast<quint64>(params[1].toULongLong());
+                f.Hz = static_cast<quint64>(params[1].toDouble());
             } else {
-                f.Hz = static_cast<quint64>(params[0].toULongLong());
+                f.Hz = static_cast<quint64>(params[0].toDouble());
             }
+
             func = queue->getVfoCommand(state.vfo,state.receiver,true).freqFunc;
             f.VFO = activeVFO;
-            f.MHzDouble = f.Hz/1000000.0;
+            f.MHzDouble = static_cast<double>(f.Hz/1000000.0);
             val.setValue(f);
-            //qInfo() << "Sending freq command" << funcString[func] << "for freq" << f.Hz;
-
             break;
         }
         case typeSplitVFO:
