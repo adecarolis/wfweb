@@ -91,7 +91,7 @@ for qt5 only:
 
 ~~~
 sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel libqt5-qtmultimedia-devel lv2-devel libopus-devel eigen3-devel libQt5Xml-devel portaud
-io-devel rtaudio-devel libqt5-qtgamepad-devel libQt5Gamepad5 libqt5-qtwebsockets-devel libqt5-qtgamepad-devel portaudio-devel rtaudio-devel libhidapi-devel
+io-devel rtaudio-devel libqt5-qtgamepad-devel libQt5Gamepad5 libqt5-qtwebsockets-devel libqt5-qtgamepad-devel portaudio-devel rtaudio-devel libhidapi-devel libopus-devel eigen3-devel portaudio-devel
 
 mkdir -p ~/src/build
 cd ~/src
@@ -105,12 +105,12 @@ sudo make install
 
 for qt6 only:
 ~~~
-sudo zypper in qt6-base-common-devel qt6-gui-devel qt6-serialport-devel qt6-multimedia-devel qt6-printsupport-devel qt6-websockets-devel qt6-widgets-devel rtaudio-devel libhidapi-devel qt6-xml-devel
+sudo zypper in qt6-base-common-devel qt6-gui-devel qt6-serialport-devel qt6-multimedia-devel qt6-printsupport-devel qt6-websockets-devel qt6-widgets-devel rtaudio-devel libhidapi-devel qt6-xml-devel libopus-devel eigen3-devel portaudio-devel
 ~~~
 
 as there is no qt6 version so far for qcustomplot yes for suse:
 
-download qnd rpm -ivh customplot-qt5 qcustomplot-qt5-devel qcustomplot-qt6 qcustomplot-qt6-devel rpm's from fedora41
+download and rpm -ivh customplot-qt5 qcustomplot-qt5-devel qcustomplot-qt6 qcustomplot-qt6-devel rpm's from fedora41
 (or better, add repo and install from there)
 
 Now:
