@@ -33,7 +33,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     vfoSelectButton->setFocusPolicy(Qt::NoFocus);
     connect(vfoSelectButton, &QPushButton::clicked, this, [=](bool en) {
         vfoCommandType t = queue->getVfoCommand(vfoA,receiver,false);
-        queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<bool>(en),false,t.receiver));
+        queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(vfo_t(en)),false,t.receiver));
         queue->add(priorityHighest,t.freqFunc,false,t.receiver);
         queue->add(priorityHighest,t.modeFunc,false,t.receiver);
         t = queue->getVfoCommand(vfoB,receiver,false);
