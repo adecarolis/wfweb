@@ -1437,9 +1437,8 @@ void udpServer::sendConnectionInfo(CLIENT* c, quint8 guid[GUIDLEN])
  
             // This is the current streaming client (should we support multiple clients?)
             if (c->isStreaming) {
-
                 // If not an admin user, send an empty client name.
-                if(c->user.userType > 0)
+                if(!c->user.userType)
                     memcpy(p.computer, c->clientName.constData(), c->clientName.length());
                 else
                     memset(p.computer,0x0,c->clientName.length());
