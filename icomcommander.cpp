@@ -1410,6 +1410,9 @@ void icomCommander::parseCommand()
     // If we use it for get commands, need to parse the \x29\x<VFO> first.
     case funcMainSubPrefix:
         break;
+    case funcPowerControl:
+        qWarning(logRig()) << "Received power control command from radio" << payloadIn;
+        break;
     case funcFB:
         break;
     case funcFA:

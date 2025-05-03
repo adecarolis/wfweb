@@ -1273,6 +1273,7 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                         resp.append(QString::number(val));
                         break;
                     }
+                    case typeSWR:
                     case typeDouble:
                         resp.append(QString::number(item.value.toDouble(),'f',6));
                         break;
@@ -1290,7 +1291,7 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                         resp.append(QString::number(item.value.toFloat()/5.1,'f',6));
                         break;
                     default:
-                        qInfo(logRigCtlD()) << "Unhandled:" << item.value.toUInt() << "OUT" << val;
+                        qInfo(logRigCtlD()) << funcString[sub[i].func] << "Unhandled (" << item.value.typeName() << ")" << item.value.toUInt() << "OUT" << val;
                         ret = -RIG_EINVAL;
                     }
                     qDebug(logRigCtlD()) << "Sending " << funcString[sub[i].func] <<  "data:" << resp;
