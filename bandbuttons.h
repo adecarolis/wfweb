@@ -26,6 +26,9 @@ public:
 
     void setRegion(QString reg) { region=reg; }
 
+    QByteArray getGeometry() { return saveGeometry();};
+    void setGeometry(QByteArray g) { restoreGeometry(g);};
+
     availableBands currentBand() {return requestedBand;};
 
     // flow:

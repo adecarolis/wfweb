@@ -21,6 +21,9 @@ public:
     explicit frequencyinputwidget(QWidget *parent = nullptr);
     ~frequencyinputwidget();
 
+    QByteArray getGeometry() { return saveGeometry();};
+    void setGeometry(QByteArray g) { restoreGeometry(g);};
+
 signals:
     //void issueCmdF(cmds cmd, freqt f);
     //void issueCmdM(cmds cmd, modeInfo m);

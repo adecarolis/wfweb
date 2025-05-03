@@ -1804,6 +1804,13 @@ void wfmain::loadSettings()
     restoreGeometry(settings->value("windowGeometry").toByteArray());
     restoreState(settings->value("windowState").toByteArray());
     setWindowState(Qt::WindowActive); // Works around QT bug to returns window+keyboard focus.
+
+    if (bandbtns != Q_NULLPTR)
+        bandbtns->setGeometry(settings->value("BandWindowGeometry").toByteArray());
+
+    if (finputbtns != Q_NULLPTR)
+        finputbtns->setGeometry(settings->value("FreqWindowGeometry").toByteArray());
+
     prefs.confirmExit = settings->value("ConfirmExit", defPrefs.confirmExit).toBool();
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
     prefs.confirmSettingsChanged = settings->value("ConfirmSettingsChanged", defPrefs.confirmSettingsChanged).toBool();
@@ -3147,6 +3154,12 @@ void wfmain::saveSettings()
     settings->setValue("StylesheetPath", prefs.stylesheetPath);
     //settings->setValue("splitter", ui->splitter->saveState());
     settings->setValue("windowGeometry", saveGeometry());
+
+    if (bandbtns != Q_NULLPTR)
+        settings->setValue("BandWindowGeometry", bandbtns->getGeometry());
+    if (finputbtns != Q_NULLPTR)
+        settings->setValue("FreqWindowGeometry", finputbtns->getGeometry());
+
     settings->setValue("windowState", saveState());
     settings->setValue("MainWFLength", prefs.mainWflength);
     settings->setValue("SubWFLength", prefs.subWflength);
