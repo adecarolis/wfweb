@@ -2579,7 +2579,10 @@ void receiverWidget::detachScope(bool state)
         this->parentWidget()->resize(1,1);
         this->setParent(NULL);
 
-        this-> setWindowFlags(Qt::Window | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint);
+        //this->setWindowFlags(Qt::Window | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint);
+        //this->setWindowTitle(this->title());
+        this->setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowTitleHint );
+
         this->move(screen()->geometry().center() - frameGeometry().center());
     } else {
         detachButton->setText("Detach");
