@@ -1106,7 +1106,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         case typeFreq:
         { // Frequency
             freqt f = item.value.value<freqt>();
-            response.append(QString("%0%1").arg(prefixes[prefixes.length()-1],QString::number(f.Hz)));
+            response.append(QString("%0%1.000000").arg(prefixes[prefixes.length()-1],QString::number(f.Hz)));
             break;
         }
         case typeVFO:
