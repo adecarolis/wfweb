@@ -5326,6 +5326,7 @@ void wfmain::connectionHandler(bool connect)
 
     if (connect) {
         openRig();
+        emit sendPowerOn();
     } else {
         ui->connectBtn->setText("Connect to Radio");
         enableRigCtl(false);
