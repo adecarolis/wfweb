@@ -435,6 +435,9 @@ void wfmain::openRig()
         usingLAN = false;
         emit sendCommSetup(rigList, prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort, prefs.tcpPort,prefs.waterfallFormat);
         ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
+
+        // After 100ms send powerOn command
+        QTimer::singleShot(100, rig, SLOT(powerOn()));
     }
 
 }
@@ -5326,7 +5329,6 @@ void wfmain::connectionHandler(bool connect)
 
     if (connect) {
         openRig();
-        emit sendPowerOn();
     } else {
         ui->connectBtn->setText("Connect to Radio");
         enableRigCtl(false);
