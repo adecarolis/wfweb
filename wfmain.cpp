@@ -436,9 +436,10 @@ void wfmain::openRig()
         emit sendCommSetup(rigList, prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort, prefs.tcpPort,prefs.waterfallFormat);
         ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
 
-        // After 100ms send powerOn command
-        QTimer::singleShot(100, rig, SLOT(powerOn()));
     }
+
+    // After 2s send powerOn command
+    QTimer::singleShot(2000, rig, SLOT(powerOn()));
 
 }
 
