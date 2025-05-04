@@ -438,8 +438,6 @@ void wfmain::openRig()
 
     }
 
-    // After 2s send powerOn command
-    QTimer::singleShot(2000, rig, SLOT(powerOn()));
 
 }
 
@@ -708,6 +706,9 @@ void wfmain::receiveCommReady()
 
         }
     }
+    // After 2s send powerOn command
+    QTimer::singleShot(2000, rig, SLOT(powerOn()));
+    //emit sendPowerOn();
 }
 
 void wfmain::receivePortError(errorType err)
