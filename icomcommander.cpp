@@ -3502,7 +3502,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             }
             else
             {
-                qInfo(logRig()) << "Got unknown value type" << QString(value.typeName());
+                qInfo(logRig()) << funcString[func] << "Got unknown value type" << QString(value.typeName());
                 return;
             }              
         } else {

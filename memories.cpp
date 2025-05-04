@@ -541,17 +541,18 @@ void memories::recallMem(quint32 num)
 {
     qInfo() << "Recalling" << num;
     if (rigCaps->commands.contains(funcMemoryGroup)) {
-        queue->add(priorityImmediate,queueItem(funcMemoryGroup,QVariant::fromValue<uint>(quint16(ui->group->currentData().toUInt()))));
+        queue->add(priorityImmediate,queueItem(funcMemoryGroup,QVariant::fromValue<uchar>(quint16(ui->group->currentData().toUInt()))));
     } else {
         for (auto &band: rigCaps->bands)
         {
             if (band.region == "" || band.region == region) {
-                if (band.memGroup == ui->group->currentData().toUInt())
+                if (ui->group->isVisible() && band.memGroup == ui->group->currentData().toUInt())
                 {
                     bandStackType bs;
                     bs.band = band.bsr;
                     bs.regCode = 1;
                     queue->add(priorityImmediate,queueItem(funcBandStackReg, QVariant::fromValue<bandStackType>(bs),false,uchar(0)));
+                    break;
                 }
             }
         }
