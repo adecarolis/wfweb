@@ -5380,6 +5380,7 @@ void wfmain::on_memoriesBtn_clicked()
             for(const auto& r: receivers) {
                 connect(memWindow,SIGNAL(memoryMode(bool)),r,SLOT(memoryMode(bool)));
             }
+            memWindow->setRegion(prefs.region);
             memWindow->populate(); // Call populate to get the initial memories
         }
 

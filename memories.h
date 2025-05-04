@@ -35,6 +35,7 @@ public:
     explicit memories(bool isAdmin, bool slowLoad=false,QWidget *parent = nullptr);
     ~memories();
     void populate();
+    void setRegion(QString reg) { region=reg; }
 signals:
     void memoryMode(bool en);
 
@@ -68,6 +69,7 @@ private:
     funcs writeCommand = funcMemoryContents;
     funcs selectCommand = funcMemoryMode;
 
+    QString region;
 
     bool checkASCII(QString str);
 
@@ -300,6 +302,8 @@ private:
     int updateEntry(QStringList& combo, int row, columns column, quint8 data);
     int updateEntry(QStringList& combo, int row, columns column, QString data);
     int updateEntry(int row, columns column, QString data);
+
+    void recallMem(quint32 num);
 
     struct stepType {
         stepType(){};

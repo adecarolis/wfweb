@@ -2024,7 +2024,7 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
                 t = queue->getVfoCommand(vfoB,receiver,false);
                 queue->del(t.freqFunc,t.receiver);
                 queue->del(t.modeFunc,t.receiver);
-            } else if (queue->getState().vfoMode == vfoModeVfo) {
+            } else if (queue->getState().vfoMode == vfoModeVfo && !memMode) {
                 t = queue->getVfoCommand(vfoB,receiver,false);
                 queue->addUnique(priorityHigh,t.freqFunc,true,t.receiver);
                 queue->addUnique(priorityHigh,t.modeFunc,true,t.receiver);
@@ -2654,6 +2654,7 @@ void receiverWidget::memoryMode(bool en)
         queue->del(t.freqFunc,t.receiver);
         queue->del(t.modeFunc,t.receiver);
     }
+    vfoMemoryButton->setChecked(en);
 }
 
 QImage receiverWidget::getSpectrumImage()
