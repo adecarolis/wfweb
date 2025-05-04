@@ -149,6 +149,10 @@ QString debugWindow::getValue(QVariant val)
         {
             value = QString("int: %0").arg(val.value<int>());
         }
+        else if (!strcmp(val.typeName(),"double"))
+        {
+            value = QString("double: %0").arg(val.value<double>());
+        }
         else if (!strcmp(val.typeName(),"modeInfo"))
         {
             modeInfo mi = val.value<modeInfo>();
