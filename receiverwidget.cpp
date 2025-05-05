@@ -33,7 +33,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     vfoSelectButton->setFocusPolicy(Qt::NoFocus);
     connect(vfoSelectButton, &QPushButton::clicked, this, [=](bool en) {
         vfoCommandType t = queue->getVfoCommand(vfoA,receiver,false);
-        queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<bool>(en),false,t.receiver));
+        queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(vfo_t(en)),false,t.receiver));
         queue->add(priorityHighest,t.freqFunc,false,t.receiver);
         queue->add(priorityHighest,t.modeFunc,false,t.receiver);
         t = queue->getVfoCommand(vfoB,receiver,false);
@@ -71,10 +71,15 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     vfoMemoryButton->setCheckable(true);
     vfoMemoryButton->setFocusPolicy(Qt::NoFocus);
     connect(vfoMemoryButton, &QPushButton::clicked, this, [=](bool en) {
+        vfo_t v = vfoA;
+
         if (en)
-            queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(vfoA),false,0));
-        else
-            queue->add(priorityImmediate,queueItem(funcSplitStatus,QVariant::fromValue<uchar>(vfoMem),false,0));
+            v = vfoMem;
+
+        vfoCommandType t = queue->getVfoCommand(v,receiver,false);
+        queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(v),false,t.receiver));
+        queue->add(priorityHighest,t.freqFunc,false,t.receiver);
+        queue->add(priorityHighest,t.modeFunc,false,t.receiver);
     });
 
     satelliteButton=new QPushButton(tr("SAT"),this);
@@ -897,6 +902,8 @@ void receiverWidget::colorPreset(colorPrefsType *cp)
     satelliteButton->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border:1px solid;}")
                                    .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
     vfoSelectButton->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border:1px solid;}")
+                                   .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
+    vfoMemoryButton->setStyleSheet(QString("QPushButton {background-color: %0;} QPushButton:checked {background-color: %1;border:1px solid;}")
                                    .arg(cp->buttonOff.name(QColor::HexArgb),cp->buttonOn.name(QColor::HexArgb)));
 
 }
@@ -2017,7 +2024,7 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
                 t = queue->getVfoCommand(vfoB,receiver,false);
                 queue->del(t.freqFunc,t.receiver);
                 queue->del(t.modeFunc,t.receiver);
-            } else if (queue->getState().vfoMode == vfoModeVfo) {
+            } else if (queue->getState().vfoMode == vfoModeVfo && !memMode) {
                 t = queue->getVfoCommand(vfoB,receiver,false);
                 queue->addUnique(priorityHigh,t.freqFunc,true,t.receiver);
                 queue->addUnique(priorityHigh,t.modeFunc,true,t.receiver);
@@ -2572,7 +2579,10 @@ void receiverWidget::detachScope(bool state)
         this->parentWidget()->resize(1,1);
         this->setParent(NULL);
 
-        this-> setWindowFlags(Qt::Window | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint);
+        //this->setWindowFlags(Qt::Window | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint);
+        //this->setWindowTitle(this->title());
+        this->setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowTitleHint );
+
         this->move(screen()->geometry().center() - frameGeometry().center());
     } else {
         detachButton->setText("Detach");
@@ -2644,6 +2654,7 @@ void receiverWidget::memoryMode(bool en)
         queue->del(t.freqFunc,t.receiver);
         queue->del(t.modeFunc,t.receiver);
     }
+    vfoMemoryButton->setChecked(en);
 }
 
 QImage receiverWidget::getSpectrumImage()

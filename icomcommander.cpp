@@ -1410,6 +1410,9 @@ void icomCommander::parseCommand()
     // If we use it for get commands, need to parse the \x29\x<VFO> first.
     case funcMainSubPrefix:
         break;
+    case funcPowerControl:
+        qWarning(logRig()) << "Received power control command from radio" << payloadIn;
+        break;
     case funcFB:
         break;
     case funcFA:
@@ -2874,7 +2877,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
     if (func == funcSelectVFO) {
         // Special command
         vfo_t v = value.value<vfo_t>();
-        func = (v == vfoA)?funcVFOASelect:(v == vfoB)?funcVFOBSelect:(v == vfoMain)?funcVFOMainSelect:(v == vfoSub)?funcVFOSubSelect:funcNone;
+        func = (v == vfoA)?funcVFOASelect:(v == vfoB)?funcVFOBSelect:(v == vfoMain)?funcVFOMainSelect:(v == vfoSub)?funcVFOSubSelect:(v == vfoMem)?funcMemoryMode:funcNone;
         value.clear();
         val = INT_MIN;
     }
@@ -3499,7 +3502,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             }
             else
             {
-                qInfo(logRig()) << "Got unknown value type" << QString(value.typeName());
+                qInfo(logRig()) << funcString[func] << "Got unknown value type" << QString(value.typeName());
                 return;
             }              
         } else {

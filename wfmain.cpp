@@ -435,7 +435,9 @@ void wfmain::openRig()
         usingLAN = false;
         emit sendCommSetup(rigList, prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort, prefs.tcpPort,prefs.waterfallFormat);
         ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
+
     }
+
 
 }
 
@@ -704,6 +706,9 @@ void wfmain::receiveCommReady()
 
         }
     }
+    // After 2s send powerOn command
+    QTimer::singleShot(2000, rig, SLOT(powerOn()));
+    //emit sendPowerOn();
 }
 
 void wfmain::receivePortError(errorType err)
@@ -1804,6 +1809,13 @@ void wfmain::loadSettings()
     restoreGeometry(settings->value("windowGeometry").toByteArray());
     restoreState(settings->value("windowState").toByteArray());
     setWindowState(Qt::WindowActive); // Works around QT bug to returns window+keyboard focus.
+
+    if (bandbtns != Q_NULLPTR)
+        bandbtns->setGeometry(settings->value("BandWindowGeometry").toByteArray());
+
+    if (finputbtns != Q_NULLPTR)
+        finputbtns->setGeometry(settings->value("FreqWindowGeometry").toByteArray());
+
     prefs.confirmExit = settings->value("ConfirmExit", defPrefs.confirmExit).toBool();
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
     prefs.confirmSettingsChanged = settings->value("ConfirmSettingsChanged", defPrefs.confirmSettingsChanged).toBool();
@@ -3147,6 +3159,12 @@ void wfmain::saveSettings()
     settings->setValue("StylesheetPath", prefs.stylesheetPath);
     //settings->setValue("splitter", ui->splitter->saveState());
     settings->setValue("windowGeometry", saveGeometry());
+
+    if (bandbtns != Q_NULLPTR)
+        settings->setValue("BandWindowGeometry", bandbtns->getGeometry());
+    if (finputbtns != Q_NULLPTR)
+        settings->setValue("FreqWindowGeometry", finputbtns->getGeometry());
+
     settings->setValue("windowState", saveState());
     settings->setValue("MainWFLength", prefs.mainWflength);
     settings->setValue("SubWFLength", prefs.subWflength);
@@ -5362,6 +5380,7 @@ void wfmain::on_memoriesBtn_clicked()
             for(const auto& r: receivers) {
                 connect(memWindow,SIGNAL(memoryMode(bool)),r,SLOT(memoryMode(bool)));
             }
+            memWindow->setRegion(prefs.region);
             memWindow->populate(); // Call populate to get the initial memories
         }
 

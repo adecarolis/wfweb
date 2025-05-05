@@ -527,14 +527,9 @@ void memories::rowAdded(int row, memoryType mem)
 
     QPushButton* recall = new QPushButton("Recall");
     ui->table->setCellWidget(row,columnRecall,recall);
-    connect(recall, &QPushButton::clicked, this,
-            [=]() { qInfo() << "Recalling" << num;
-            if (ui->modeButton->isVisible() && !ui->modeButton->isChecked())
-            {
-                on_modeButton_clicked(true);
-            }
-            queue->add(priorityImmediate,queueItem(funcMemoryGroup,QVariant::fromValue<uint>(quint16(ui->group->currentData().toUInt()))));
-            queue->add(priorityImmediate,queueItem(selectCommand,QVariant::fromValue<uint>((quint32((ui->group->currentData().toUInt() << 16) | num)))));
+
+    connect(recall, &QPushButton::clicked, this, [=]() {
+        recallMem(num);
     });
 
     updateEntry(row,columnNum,QString::number(num).rightJustified(3,'0'));
@@ -542,6 +537,36 @@ void memories::rowAdded(int row, memoryType mem)
     updateRow(row,mem);
 }
 
+void memories::recallMem(quint32 num)
+{
+    qInfo() << "Recalling" << num;
+    if (rigCaps->commands.contains(funcMemoryGroup)) {
+        queue->add(priorityImmediate,queueItem(funcMemoryGroup,QVariant::fromValue<uchar>(quint16(ui->group->currentData().toUInt()))));
+    } else {
+        for (auto &band: rigCaps->bands)
+        {
+            if (band.region == "" || band.region == region) {
+                if (ui->group->isVisible() && band.memGroup == ui->group->currentData().toUInt())
+                {
+                    bandStackType bs;
+                    bs.band = band.bsr;
+                    bs.regCode = 1;
+                    queue->add(priorityImmediate,queueItem(funcBandStackReg, QVariant::fromValue<bandStackType>(bs),false,uchar(0)));
+                    break;
+                }
+            }
+        }
+    }
+    queue->add(priorityImmediate,queueItem(selectCommand,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | num))));
+    // We also should request the current frequency/mode etc so that the UI is updated.
+    vfoCommandType t = queue->getVfoCommand(vfoA,0,false);
+    queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
+    queue->add(priorityImmediate,t.modeFunc,false,t.receiver);
+    if (ui->modeButton->isVisible() && !ui->modeButton->isChecked())
+    {
+        on_modeButton_clicked(true);
+    }
+}
 void memories::rowDeleted(quint32 mem)
 {
     if (mem >= rigCaps->memStart && mem <= rigCaps->memories) {
@@ -1668,18 +1693,8 @@ void memories::receiveMemory(memoryType mem)
             row=ui->table->rowCount()-1;
             QPushButton* recall = new QPushButton("Recall");
             ui->table->setCellWidget(row,columnRecall,recall);
-            connect(recall, &QPushButton::clicked, this, [=]() {
-                qInfo() << "Recalling" << mem.channel;
-                if (ui->modeButton->isVisible() && !ui->modeButton->isChecked())
-                {
-                    on_modeButton_clicked(true);
-                }
-                queue->add(priorityImmediate,queueItem(funcMemoryGroup,QVariant::fromValue<uint>(quint16(ui->group->currentData().toUInt()))));
-                queue->add(priorityImmediate,queueItem(selectCommand,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | mem.channel))));
-                // We also should request the current frequency/mode etc so that the UI is updated.
-                vfoCommandType t = queue->getVfoCommand(vfoA,0,false);
-                queue->add(priorityImmediate,t.freqFunc,false,t.receiver);
-                queue->add(priorityImmediate,t.modeFunc,false,t.receiver);
+            connect(recall, &QPushButton::clicked, this, [=]() {                
+                recallMem(mem.channel);
             });
 
         }
@@ -1859,17 +1874,12 @@ void memories::on_csvImport_clicked()
                 // We need to add a new row
                 rownum = ui->table->rowCount();
                 ui->table->insertRow(rownum);
+
+
                 QPushButton* recall = new QPushButton("Recall");
                 ui->table->setCellWidget(rownum,columnRecall,recall);
-                connect(recall, &QPushButton::clicked, this,  [=]() {
-                    qInfo() << "Recalling" << row[0].toInt();
-                    if (ui->modeButton->isVisible() && !ui->modeButton->isChecked())
-                    {
-                        on_modeButton_clicked(true);
-                    }
-
-                    queue->add(priorityImmediate,queueItem(funcMemoryGroup,QVariant::fromValue<uint>(quint16(ui->group->currentData().toUInt()))));
-                    queue->add(priorityImmediate,queueItem(selectCommand,QVariant::fromValue<uint>(quint32((ui->group->currentData().toUInt() << 16) | row[0].toInt()))));
+                connect(recall, &QPushButton::clicked, this, [=]() {
+                    recallMem(row[0].toInt());
                 });
             }
             // rownum is now the row we need to work on.

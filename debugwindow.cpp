@@ -149,6 +149,10 @@ QString debugWindow::getValue(QVariant val)
         {
             value = QString("int: %0").arg(val.value<int>());
         }
+        else if (!strcmp(val.typeName(),"double"))
+        {
+            value = QString("double: %0").arg(val.value<double>());
+        }
         else if (!strcmp(val.typeName(),"modeInfo"))
         {
             modeInfo mi = val.value<modeInfo>();
@@ -209,6 +213,35 @@ QString debugWindow::getValue(QVariant val)
         {
             toneInfo t = val.value<toneInfo>();
             value = QString("Tone:%0 Val:%1").arg(t.name).arg(t.tone);
+        }
+        else if (!strcmp(val.typeName(),"vfo_t"))
+        {
+            vfo_t v = val.value<vfo_t>();
+
+            value = "vfo_t: ";
+            switch (v) {
+            case vfoA:
+                value += "VFOA";
+                break;
+            case vfoB:
+                value += "VFOB";
+                break;
+            case vfoMain:
+                value += "Main";
+                break;
+            case vfoSub:
+                value += "Sub";
+                break;
+            case vfoCurrent:
+                value += "Current";
+                break;
+            case vfoMem:
+                value += "Memory";
+                break;
+            default:
+                value += "Unknown";
+                break;
+            }
         }
         else if (!strcmp(val.typeName(),"QString"))
         {
