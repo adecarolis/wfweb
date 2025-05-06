@@ -461,7 +461,7 @@ typedef union rtp_header
         uint32_t ssrc;
     };
     uint8_t packet[12];
-} *rtp_header_t; __attribute__ ((aligned (1)));
+} *rtp_header_t;
 
 
 
