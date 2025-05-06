@@ -1688,27 +1688,27 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Page Down", commandButton, funcPageDown, (quint8)0x0));
     commands.append(COMMAND(num++, "Page Up", commandButton, funcPageUp, (quint8)0x0));
 
-    commands.append(COMMAND(num++, "AF Gain", commandKnob, funcAfGain, (quint8)0xff));
-    commands.append(COMMAND(num++, "RF Gain", commandKnob, funcRfGain,  (quint8)0xff));
-    commands.append(COMMAND(num++, "TX Power", commandKnob, funcRFPower, (quint8)0xff));
-    commands.append(COMMAND(num++, "Mic Gain", commandKnob, funcMicGain, (quint8)0xff));
-    commands.append(COMMAND(num++, "USB Gain", commandKnob, funcUSBModLevel, (quint8)0xff));
-    commands.append(COMMAND(num++, "LAN Gain", commandKnob, funcLANModLevel, (quint8)0xff));
-    commands.append(COMMAND(num++, "ACC Gain", commandKnob, funcACCAModLevel, (quint8)0xff));
-    commands.append(COMMAND(num++, "Squelch", commandKnob, funcSquelch, (quint8)0xff));
-    commands.append(COMMAND(num++, "Monitor", commandKnob, funcMonitorGain, (quint8)0xff));
-    commands.append(COMMAND(num++, "Compressor", commandKnob, funcCompressorLevel, (quint8)0xff));
-    commands.append(COMMAND(num++, "Vox Level", commandKnob, funcVoxGain, (quint8)0xff));
-    commands.append(COMMAND(num++, "Anti-Vox", commandKnob, funcAntiVoxGain, (quint8)0xff));
-    commands.append(COMMAND(num++, "NB Level", commandKnob, funcNBLevel, (quint8)0xff));
-    commands.append(COMMAND(num++, "NR Level", commandKnob, funcNRLevel, (quint8)0xff));
+    commands.append(COMMAND(num++, "AF Gain", commandKnob, funcAfGain, (quint8)0x0));
+    commands.append(COMMAND(num++, "RF Gain", commandKnob, funcRfGain,  (quint8)0x0));
+    commands.append(COMMAND(num++, "TX Power", commandKnob, funcRFPower, (quint8)0x0));
+    commands.append(COMMAND(num++, "Mic Gain", commandKnob, funcMicGain, (quint8)0x0));
+    commands.append(COMMAND(num++, "USB Gain", commandKnob, funcUSBModLevel, (quint8)0x0));
+    commands.append(COMMAND(num++, "LAN Gain", commandKnob, funcLANModLevel, (quint8)0x0));
+    commands.append(COMMAND(num++, "ACC Gain", commandKnob, funcACCAModLevel, (quint8)0x0));
+    commands.append(COMMAND(num++, "Squelch", commandKnob, funcSquelch, (quint8)0x0));
+    commands.append(COMMAND(num++, "Monitor", commandKnob, funcMonitorGain, (quint8)0x0));
+    commands.append(COMMAND(num++, "Compressor", commandKnob, funcCompressorLevel, (quint8)0x0));
+    commands.append(COMMAND(num++, "Vox Level", commandKnob, funcVoxGain, (quint8)0x0));
+    commands.append(COMMAND(num++, "Anti-Vox", commandKnob, funcAntiVoxGain, (quint8)0x0));
+    commands.append(COMMAND(num++, "NB Level", commandKnob, funcNBLevel, (quint8)0x0));
+    commands.append(COMMAND(num++, "NR Level", commandKnob, funcNRLevel, (quint8)0x0));
     commands.append(COMMAND(num++, "Span/Step", commandKnob, funcSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "IF Shift", commandKnob, funcIFShift, (quint8)0xff));
-    commands.append(COMMAND(num++, "In PBT", commandKnob, funcPBTInner, (quint8)0xff));
-    commands.append(COMMAND(num++, "Out PBT", commandKnob, funcPBTOuter, (quint8)0xff));
+    commands.append(COMMAND(num++, "IF Shift", commandKnob, funcIFShift, (quint8)0x0));
+    commands.append(COMMAND(num++, "In PBT", commandKnob, funcPBTInner, (quint8)0x0));
+    commands.append(COMMAND(num++, "Out PBT", commandKnob, funcPBTOuter, (quint8)0x0));
     commands.append(COMMAND(num++, "Span/Step", commandKnob, funcSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "CW Pitch", commandKnob, funcCwPitch, (quint8)0xff));
-    commands.append(COMMAND(num++, "CW Speed", commandKnob, funcKeySpeed, (quint8)0xff));
+    commands.append(COMMAND(num++, "CW Pitch", commandKnob, funcCwPitch, (quint8)0x0));
+    commands.append(COMMAND(num++, "CW Speed", commandKnob, funcKeySpeed, (quint8)0x0));
 }
 
 
