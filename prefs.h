@@ -36,7 +36,8 @@ enum prefIfItem {
     if_showBands = 1 << 23,
     if_separators = 1 << 24,
     if_forceVfoMode = 1 << 25,
-    if_all = 1 << 26
+    if_autoPowerOn = 1 << 26,
+    if_all = 1 << 27
 };
 
 enum prefColItem {
@@ -268,7 +269,7 @@ struct preferences {
     QChar decimalSeparator;
     QChar groupSeparator;
     bool forceVfoMode;
-
+    bool autoPowerOn;
 };
 
 #endif // PREFS_H

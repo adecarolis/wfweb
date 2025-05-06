@@ -706,9 +706,12 @@ void wfmain::receiveCommReady()
 
         }
     }
-    // After 2s send powerOn command
-    QTimer::singleShot(2000, rig, SLOT(powerOn()));
-    //emit sendPowerOn();
+    if (prefs.autoPowerOn)
+    {
+        // After 2s send powerOn command
+        QTimer::singleShot(2000, rig, SLOT(powerOn()));
+
+    }
 }
 
 void wfmain::receivePortError(errorType err)
@@ -1706,6 +1709,7 @@ void wfmain::setDefPrefs()
     defPrefs.useUTC = false;
     defPrefs.setRadioTime = false;
     defPrefs.forceVfoMode = true;
+    defPrefs.autoPowerOn=true;
 
     defPrefs.tcpPort = 0;
     defPrefs.tciPort = 50001;
@@ -1795,6 +1799,7 @@ void wfmain::loadSettings()
     prefs.decimalSeparator = settings->value("DecimalSeparator", defPrefs.decimalSeparator).toChar();
     prefs.groupSeparator = settings->value("GroupSeparator", defPrefs.groupSeparator).toChar();
     prefs.forceVfoMode =  settings->value("ForceVfoMode", defPrefs.groupSeparator).toBool();
+    prefs.autoPowerOn =  settings->value("AutoPowerOn", defPrefs.autoPowerOn).toBool();
 
     prefs.drawPeaks = settings->value("DrawPeaks", defPrefs.drawPeaks).toBool();
     prefs.underlayBufferSize = settings->value("underlayBufferSize", defPrefs.underlayBufferSize).toInt();
@@ -3188,6 +3193,7 @@ void wfmain::saveSettings()
     settings->setValue("GroupSeparator",prefs.groupSeparator);
     settings->setValue("DecimalSeparator",prefs.decimalSeparator);
     settings->setValue("ForceVfoMode",prefs.forceVfoMode);
+    settings->setValue("AutoPowerOn",prefs.autoPowerOn);
 
     settings->endGroup();
 

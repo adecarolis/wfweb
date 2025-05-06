@@ -1082,7 +1082,17 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <widget class="QCheckBox" name="forceVfoModeChk">
              <property name="text">
-              <string>Force VFO Mode (if disabled, we will not know current mode)</string>
+               <string>Force VFO Mode</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="autoPowerOnChk">
+             <property name="text">
+              <string>Auto Power-on radio</string>
              </property>
              <property name="checked">
               <bool>true</bool>
