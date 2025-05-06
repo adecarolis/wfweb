@@ -134,12 +134,13 @@ void rtpAudio::dataReceived()
     quint16 port;
     QByteArray d(udp->pendingDatagramSize(),0x0);
     udp->readDatagram(d.data(), d.size(), &sender, &port);
-    rtp_header_t in = (rtp_header_t)d.mid(0,12).constData();
-    //qInfo(logUdp()) << "RX: version:" << in->version << "type:" << in->payloadType << "len" << d.size();
-    if (in->payloadType == 96) {
+    rtp_header in;
+    memcpy(in.packet,d.mid(0,12).constData(),sizeof(rtp_header));
+    qInfo(logUdp()) << "RX: version:" << in.version << "type:" << in.payloadType << "len" << d.size() << "seq" << qFromBigEndian(in.seq) << "header" << sizeof(rtp_header) << "hex" << d.mid(0,12).toHex(' ');
+    if (in.payloadType == 96) {
         // We have audio data
         audioPacket tempAudio;
-        tempAudio.seq = in->seq;
+        tempAudio.seq = qFromBigEndian(in.seq);
         tempAudio.time = QTime::currentTime().addMSecs(0);
         tempAudio.sent = 0;
         tempAudio.data = d.mid(12);

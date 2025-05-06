@@ -440,12 +440,12 @@ typedef union rtp_header
 {
     struct {
 #if G_BYTE_ORDER == G_LITTLE_ENDIAN
-        quint8         csrc:4;
-        quint8         extension:1;
-        quint8         padding:1;
-        quint8         version:2;
-        quint8         payloadType:7;
-        quint8         marker:1;
+        uint8_t         csrc:4;
+        uint8_t         extension:1;
+        uint8_t         padding:1;
+        uint8_t         version:2;
+        uint8_t         payloadType:7;
+        uint8_t         marker:1;
 #elif G_BYTE_ORDER == G_BIG_ENDIAN
         quint8         version:2;
         quint8         padding:1;
@@ -456,12 +456,12 @@ typedef union rtp_header
 #else
 #error "G_BYTE_ORDER is not defined"
 #endif
-        quint16 seq;
-        quint32 timestamp;
-        quint32 ssrc;
+        uint16_t seq;
+        uint32_t timestamp;
+        uint32_t ssrc;
     };
-    uchar packet[12];
-} *rtp_header_t; //12 bytes
+    uint8_t packet[12];
+} *rtp_header_t; __attribute__ ((aligned (1)));
 
 
 
