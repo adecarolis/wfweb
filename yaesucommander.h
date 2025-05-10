@@ -1,8 +1,16 @@
-#ifndef KENWOODCOMMANDER_H
-#define KENWOODCOMMANDER_H
+#ifndef YAESUCOMMANDER_H
+#define YAESUCOMMANDER_H
 #include "rigcommander.h"
 #include "rtpaudio.h"
 #include <QSerialPort>
+
+
+//------------------------------------------------------------------------------
+// include FTDI libraries
+//
+#include "ftd2xx.h"
+#include "LibFT4222.h"
+
 
 #define audioLevelBufferSize (4)
 
@@ -11,14 +19,14 @@
 
 #define NUMTOASCII  48
 
-class kenwoodCommander : public rigCommander
+class yaesuCommander : public rigCommander
 {
     Q_OBJECT
 
 public:
-    explicit kenwoodCommander(rigCommander* parent=nullptr);
-    explicit kenwoodCommander(quint8 guid[GUIDLEN], rigCommander* parent = nullptr);
-    ~kenwoodCommander();
+    explicit yaesuCommander(rigCommander* parent=nullptr);
+    explicit yaesuCommander(quint8 guid[GUIDLEN], rigCommander* parent = nullptr);
+    ~yaesuCommander();
 
 public slots:
     void process() override;
@@ -84,7 +92,7 @@ private:
     QThread* rtpThread = Q_NULLPTR;
 
     QHash<quint16,rigInfo> rigList;
-    quint8 rigCivAddr;
+    quint16 rigCivAddr;
     QString vsp;
     quint16 tcpPort;
     quint8 wf;
@@ -123,4 +131,4 @@ private:
 
 
 
-#endif // KENWOODCOMMANDER_H
+#endif // YAESUCOMMANDER_H

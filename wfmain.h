@@ -28,6 +28,7 @@
 #include "rigcommander.h"
 #include "icomcommander.h"
 #include "kenwoodcommander.h"
+#include "yaesucommander.h"
 #include "freqmemory.h"
 #include "rigidentities.h"
 #include "repeaterattributes.h"
@@ -113,8 +114,8 @@ public:
 signals:
     void usbHotplug();
     // Basic to rig:
-    void setCIVAddr(quint8 newRigCIVAddr);
-    void setRigID(quint8 rigID);
+    void setCIVAddr(quint16 newRigCIVAddr);
+    void setRigID(quint16 rigID);
     void setPTTType(pttType_t enabled);
 
     
@@ -279,8 +280,8 @@ signals:
     void sayFrequency();
     void sayMode();
     void sayAll();
-    void sendCommSetup(rigTypedef rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp, quint16 tcp, quint8 wf);
-    void sendCommSetup(rigTypedef rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
+    void sendCommSetup(rigTypedef rigList, quint16 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp, quint16 tcp, quint8 wf);
+    void sendCommSetup(rigTypedef rigList, quint16 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     void sendCloseComm();
     void sendChangeLatency(quint16 latency);
     void initServer();
@@ -636,7 +637,7 @@ private:
 
     int oldFreqDialVal;
 
-    QHash<quint8,rigInfo> rigList;
+    QHash<quint16,rigInfo> rigList;
     rigCapabilities* rigCaps = Q_NULLPTR;
 
     rigInput currentModSrc[4];

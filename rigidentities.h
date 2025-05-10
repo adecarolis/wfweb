@@ -248,8 +248,8 @@ struct bsrRequest {
 };
 
 struct rigCapabilities {
-    quint8 model;
-    quint8 modelID = 0; //CIV address
+    quint16 model;
+    quint16 modelID = 0; //CIV address
     manufacturersType_t manufacturer=manufIcom;
     QString filename;
     int rigctlModel;
@@ -312,6 +312,7 @@ struct rigCapabilities {
     std::vector <toneInfo> ctcss;
     std::vector <toneInfo> dtcs;
     std::vector <genericType> roofing;
+    std::vector <genericType> scopeModes;
     //std::vector <spanType> spans;
     std::vector <stepType> steps;
     quint8 bsr[24] = {0};

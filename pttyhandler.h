@@ -73,7 +73,7 @@ private:
     void printHex(const QByteArray& pdata, bool printVert, bool printHoriz);
     bool disableTransceive = false;
     QSocketNotifier *ptReader = Q_NULLPTR;
-    quint8 civId=0;
+    quint16 civId=0;
     rigCapabilities* rigCaps = Q_NULLPTR;
     cachingQueue* queue = Q_NULLPTR;
 };

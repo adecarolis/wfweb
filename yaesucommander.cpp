@@ -1,4 +1,4 @@
-#include "kenwoodcommander.h"
+#include "yaesucommander.h"
 #include <QDebug>
 
 #include "rigidentities.h"
@@ -9,23 +9,23 @@
 
 // This file parses data from the radio and also forms commands to the radio.
 
-kenwoodCommander::kenwoodCommander(rigCommander* parent) : rigCommander(parent)
+yaesuCommander::yaesuCommander(rigCommander* parent) : rigCommander(parent)
 {
 
-    qInfo(logRig()) << "creating instance of kenwoodCommander()";
+    qInfo(logRig()) << "creating instance of yaesuCommander()";
 
 }
 
-kenwoodCommander::kenwoodCommander(quint8 guid[GUIDLEN], rigCommander* parent) : rigCommander(parent)
+yaesuCommander::yaesuCommander(quint8 guid[GUIDLEN], rigCommander* parent) : rigCommander(parent)
 {
-    qInfo(logRig()) << "creating instance of kenwoodCommander() with GUID";
+    qInfo(logRig()) << "creating instance of yaesuCommander() with GUID";
     memcpy(this->guid, guid, GUIDLEN);
     // Add some commands that is a minimum for rig detection
 }
 
-kenwoodCommander::~kenwoodCommander()
+yaesuCommander::~yaesuCommander()
 {
-    qInfo(logRig()) << "closing instance of kenwoodCommander()";
+    qInfo(logRig()) << "closing instance of yaesuCommander()";
 
     if (rtpThread != Q_NULLPTR) {
         //if (port->isOpen()) {
@@ -49,7 +49,7 @@ kenwoodCommander::~kenwoodCommander()
 }
 
 
-void kenwoodCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
+void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
 {
     // constructor for serial connected rigs
     // As the serial connection is quite simple, no need to use a dedicated class.
@@ -79,11 +79,46 @@ void kenwoodCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivA
     qobject_cast<QSerialPort*>(port)->setParity(QSerialPort::NoParity);
 
     network = false;
+
+
+
+    FT_STATUS ftStatus = 0;
+
+    DWORD numOfDevices = 0;
+    ftStatus = FT_CreateDeviceInfoList(&numOfDevices);
+
+    qInfo(logRig()) << "Searching for FTDI devices. ftstatus:" << ftStatus << "num devices:" << numOfDevices;
+
+    for(DWORD iDev=0; iDev<numOfDevices; ++iDev)
+    {
+        FT_DEVICE_LIST_INFO_NODE devInfo;
+        memset(&devInfo, 0, sizeof(devInfo));
+
+        ftStatus = FT_GetDeviceInfoDetail(iDev, &devInfo.Flags, &devInfo.Type, &devInfo.ID, &devInfo.LocId,
+                                          devInfo.SerialNumber,
+                                          devInfo.Description,
+                                          &devInfo.ftHandle);
+
+        if (FT_OK == ftStatus)
+        {
+            qInfo(logRig()) << "Dev:" << iDev;
+            qInfo(logRig()) << "Flags=" << devInfo.Flags;
+            qInfo(logRig()) << "Type=" << devInfo.Type;
+            qInfo(logRig()) << "ID=" << devInfo.ID;
+            qInfo(logRig()) << "LocId=" << devInfo.LocId;
+            qInfo(logRig()) << "SerialNumber=" << devInfo.SerialNumber;
+            qInfo(logRig()) << "Description=" << devInfo.Description;
+            qInfo(logRig()) << "ftHandle=" << devInfo.ftHandle;
+
+            const std::string desc = devInfo.Description;
+        }
+    }
+
     // Run setup common to all rig type
     commonSetup();
 }
 
-void kenwoodCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
+void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
 {
     // constructor for network (LAN) connected rigs
     this->rigList = rigList;
@@ -99,29 +134,29 @@ void kenwoodCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivA
 
     port = new QTcpSocket(this);
 
-    connect(qobject_cast<QTcpSocket*>(port), &QTcpSocket::connected, this, &kenwoodCommander::lanConnected);
-    connect(qobject_cast<QTcpSocket*>(port), &QTcpSocket::disconnected, this, &kenwoodCommander::lanDisconnected);
+    connect(qobject_cast<QTcpSocket*>(port), &QTcpSocket::connected, this, &yaesuCommander::lanConnected);
+    connect(qobject_cast<QTcpSocket*>(port), &QTcpSocket::disconnected, this, &yaesuCommander::lanDisconnected);
     qobject_cast<QTcpSocket*>(port)->connectToHost(prefs.ipAddress,prefs.controlLANPort);
 
     // Run setup common to all rig types    
     commonSetup();
 }
 
-void kenwoodCommander::lanConnected()
+void yaesuCommander::lanConnected()
 {
     qInfo() << QString("Connected to: %0:%1").arg(prefs.ipAddress).arg(prefs.controlLANPort);
     qInfo() << "Sending initial connection request";
     port->write("##CN;\n");
 }
 
-void kenwoodCommander::lanDisconnected()
+void yaesuCommander::lanDisconnected()
 {
     qInfo() << QString("Disconnected from: %0:%1").arg(prefs.ipAddress,prefs.controlLANPort);
     portConnected=false;
 }
 
 
-void kenwoodCommander::closeComm()
+void yaesuCommander::closeComm()
 {
     qInfo(logRig()) << "Closing rig comms";
     if (port != Q_NULLPTR && portConnected)
@@ -134,10 +169,10 @@ void kenwoodCommander::closeComm()
     portConnected=false;
 }
 
-void kenwoodCommander::commonSetup()
+void yaesuCommander::commonSetup()
 {
     // common elements between the two constructors go here:
-    connect(port, &QIODevice::readyRead, this, &kenwoodCommander::receiveDataFromRig);
+    connect(port, &QIODevice::readyRead, this, &yaesuCommander::receiveDataFromRig);
 
     if(port->open(QIODevice::ReadWrite))
     {
@@ -198,35 +233,35 @@ void kenwoodCommander::commonSetup()
 
 
 
-void kenwoodCommander::process()
+void yaesuCommander::process()
 {
     // new thread enters here. Do nothing but do check for errors.
 }
 
 
-void kenwoodCommander::receiveBaudRate(quint32 baudrate)
+void yaesuCommander::receiveBaudRate(quint32 baudrate)
 {
     Q_UNUSED(baudrate)
 }
 
-void kenwoodCommander::setPTTType(pttType_t ptt)
+void yaesuCommander::setPTTType(pttType_t ptt)
 {
     Q_UNUSED(ptt)
 }
 
-void kenwoodCommander::setRigID(quint16 rigID)
+void yaesuCommander::setRigID(quint16 rigID)
 {
     Q_UNUSED(rigID)
 }
 
-void kenwoodCommander::setCIVAddr(quint16 civAddr)
+void yaesuCommander::setCIVAddr(quint16 civAddr)
 {
     Q_UNUSED(civAddr)
 }
 
-void kenwoodCommander::powerOn()
+void yaesuCommander::powerOn()
 {
-    qDebug(logRig()) << "Power ON command in kenwoodCommander to be sent to rig: ";
+    qDebug(logRig()) << "Power ON command in yaesuCommander to be sent to rig: ";
     QByteArray d;
     quint8 cmd = 1;
 
@@ -241,9 +276,9 @@ void kenwoodCommander::powerOn()
     lastCommand.data = d;
 }
 
-void kenwoodCommander::powerOff()
+void yaesuCommander::powerOff()
 {
-    qDebug(logRig()) << "Power OFF command in kenwoodCommander to be sent to rig: ";
+    qDebug(logRig()) << "Power OFF command in yaesuCommander to be sent to rig: ";
     QByteArray d;
     quint8 cmd = 0;
     if (getCommand(funcPowerControl,d,cmd,0).cmd == funcNone)
@@ -260,13 +295,13 @@ void kenwoodCommander::powerOff()
 
 
 
-void kenwoodCommander::handleNewData(const QByteArray& data)
+void yaesuCommander::handleNewData(const QByteArray& data)
 {
     emit haveDataForServer(data);
 }
 
 
-funcType kenwoodCommander::getCommand(funcs func, QByteArray &payload, int value, uchar receiver)
+funcType yaesuCommander::getCommand(funcs func, QByteArray &payload, int value, uchar receiver)
 {
     funcType cmd;
 
@@ -298,7 +333,7 @@ funcType kenwoodCommander::getCommand(funcs func, QByteArray &payload, int value
     return cmd;
 }
 
-void kenwoodCommander::receiveDataFromRig()
+void yaesuCommander::receiveDataFromRig()
 {
     const QByteArray in = port->readAll();
     parseData(in);
@@ -306,7 +341,7 @@ void kenwoodCommander::receiveDataFromRig()
 }
 
 
-void kenwoodCommander::parseData(QByteArray data)
+void yaesuCommander::parseData(QByteArray data)
 {
     funcs func = funcNone;
     funcType type;
@@ -877,7 +912,7 @@ void kenwoodCommander::parseData(QByteArray data)
     }
 }
 
-bool kenwoodCommander::parseMemory(QByteArray d,QVector<memParserFormat>* memParser, memoryType* mem)
+bool yaesuCommander::parseMemory(QByteArray d,QVector<memParserFormat>* memParser, memoryType* mem)
 {
     // Parse the memory entry into a memoryType, set some defaults so we don't get an unitialized warning.
     mem->frequency.Hz=0;
@@ -1031,7 +1066,7 @@ bool kenwoodCommander::parseMemory(QByteArray d,QVector<memParserFormat>* memPar
     return true;
 }
 
-void kenwoodCommander::determineRigCaps()
+void yaesuCommander::determineRigCaps()
 {
     // First clear all of the current settings
     rigCaps.preamps.clear();
@@ -1081,7 +1116,7 @@ void kenwoodCommander::determineRigCaps()
     settings->beginGroup("Rig");
     // Populate rigcaps
 
-    rigCaps.manufacturer = manufKenwood;
+    rigCaps.manufacturer = manufYaesu;
     rigCaps.modelName = settings->value("Model", "").toString();
     rigCaps.rigctlModel = settings->value("RigCtlDModel", 0).toInt();
     qInfo(logRig()) << QString("Loading Rig: %0 from %1").arg(rigCaps.modelName,rigCaps.filename);
@@ -1397,6 +1432,7 @@ void kenwoodCommander::determineRigCaps()
         settings->endArray();
     }
 
+
     settings->endGroup();
     delete settings;
 
@@ -1459,7 +1495,7 @@ void kenwoodCommander::determineRigCaps()
     emit haveRigID(rigCaps);
 }
 
-void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
+void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
 {
     QByteArray payload;
     int val=INT_MIN;
@@ -1965,7 +2001,7 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
     }
 }
 
-void kenwoodCommander::serialPortError(QSerialPort::SerialPortError err)
+void yaesuCommander::serialPortError(QSerialPort::SerialPortError err)
 {
     switch (err) {
     case QSerialPort::NoError:
@@ -1977,7 +2013,7 @@ void kenwoodCommander::serialPortError(QSerialPort::SerialPortError err)
 }
 
 
-void kenwoodCommander::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16 latency,quint16 current, bool under, bool over) {
+void yaesuCommander::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16 latency,quint16 current, bool under, bool over) {
     status.rxAudioLevel = amplitudePeak;
     status.rxLatency = latency;
     status.rxCurrentLatency =   qint32(current);
@@ -2000,7 +2036,7 @@ void kenwoodCommander::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,q
     audioLevelsRxPosition++;
 }
 
-void kenwoodCommander::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,quint16 latency, quint16 current, bool under, bool over) {
+void yaesuCommander::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,quint16 latency, quint16 current, bool under, bool over) {
     status.txAudioLevel = amplitudePeak;
     status.txLatency = latency;
     status.txCurrentLatency = qint32(current);
@@ -2023,7 +2059,7 @@ void kenwoodCommander::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,
     audioLevelsTxPosition++;
 }
 
-quint8 kenwoodCommander::findMean(quint8 *data)
+quint8 yaesuCommander::findMean(quint8 *data)
 {
     unsigned int sum=0;
     for(int p=0; p < audioLevelBufferSize; p++)
@@ -2033,7 +2069,7 @@ quint8 kenwoodCommander::findMean(quint8 *data)
     return sum / audioLevelBufferSize;
 }
 
-quint8 kenwoodCommander::findMax(quint8 *data)
+quint8 yaesuCommander::findMax(quint8 *data)
 {
     unsigned int max=0;
     for(int p=0; p < audioLevelBufferSize; p++)

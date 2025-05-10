@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1930</width>
+    <width>2106</width>
     <height>1042</height>
    </rect>
   </property>
@@ -1416,6 +1416,12 @@
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
+       <property name="minimumSize">
+        <size>
+         <width>200</width>
+         <height>0</height>
+        </size>
+       </property>
        <property name="title">
         <string>Inputs</string>
        </property>
@@ -1482,6 +1488,41 @@
       </widget>
      </item>
      <item>
+      <widget class="QGroupBox" name="groupBox_19">
+       <property name="minimumSize">
+        <size>
+         <width>160</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="title">
+        <string>Scope Modes</string>
+       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_12">
+        <item>
+         <widget class="tableWidget" name="scopeModes">
+          <attribute name="horizontalHeaderDefaultSectionSize">
+           <number>50</number>
+          </attribute>
+          <attribute name="horizontalHeaderStretchLastSection">
+           <bool>true</bool>
+          </attribute>
+          <column>
+           <property name="text">
+            <string>Num</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Name</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
       <widget class="QGroupBox" name="groupBox_6">
        <property name="sizePolicy">
         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
@@ -1491,8 +1532,14 @@
        </property>
        <property name="minimumSize">
         <size>
-         <width>550</width>
+         <width>400</width>
          <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>16777215</height>
         </size>
        </property>
        <property name="title">
@@ -1513,6 +1560,12 @@
             <height>0</height>
            </size>
           </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>16777215</height>
+           </size>
+          </property>
           <property name="alternatingRowColors">
            <bool>true</bool>
           </property>
@@ -1529,7 +1582,7 @@
            <number>0</number>
           </attribute>
           <attribute name="horizontalHeaderDefaultSectionSize">
-           <number>85</number>
+           <number>60</number>
           </attribute>
           <attribute name="horizontalHeaderStretchLastSection">
            <bool>true</bool>

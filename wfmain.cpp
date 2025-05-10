@@ -457,6 +457,9 @@ void wfmain::makeRig()
         case manufKenwood:
             rig = new kenwoodCommander();
             break;
+        case manufYaesu:
+            rig = new yaesuCommander();
+            break;
         default:
             qCritical() << "Unknown Manufacturer, aborting...";
             break;
@@ -481,15 +484,15 @@ void wfmain::makeRig()
         connect(rig, SIGNAL(setRadioUsage(quint8, bool, quint8, QString, QString)), this, SLOT(radioInUse(quint8, bool, quint8, QString, QString)));
         connect(selRad, SIGNAL(selectedRadio(quint8)), rig, SLOT(setCurrentRadio(quint8)));
         // Rig comm setup:
-        connect(this, SIGNAL(sendCommSetup(rigTypedef,quint8, udpPreferences, audioSetup, audioSetup, QString, quint16)), rig, SLOT(commSetup(rigTypedef,quint8, udpPreferences, audioSetup, audioSetup, QString, quint16)));
-        connect(this, SIGNAL(sendCommSetup(rigTypedef,quint8, QString, quint32,QString, quint16,quint8)), rig, SLOT(commSetup(rigTypedef,quint8, QString, quint32,QString, quint16,quint8)));
+        connect(this, SIGNAL(sendCommSetup(rigTypedef,quint16, udpPreferences, audioSetup, audioSetup, QString, quint16)), rig, SLOT(commSetup(rigTypedef,quint16, udpPreferences, audioSetup, audioSetup, QString, quint16)));
+        connect(this, SIGNAL(sendCommSetup(rigTypedef,quint16, QString, quint32,QString, quint16,quint8)), rig, SLOT(commSetup(rigTypedef,quint16, QString, quint32,QString, quint16,quint8)));
         connect(this, SIGNAL(setPTTType(pttType_t)), rig, SLOT(setPTTType(pttType_t)));
 
         connect(rig, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
 
         connect(this, SIGNAL(sendCloseComm()), rig, SLOT(closeComm()));
         connect(this, SIGNAL(sendChangeLatency(quint16)), rig, SLOT(changeLatency(quint16)));
-        connect(this, SIGNAL(setRigID(quint8)), rig, SLOT(setRigID(quint8)));
+        connect(this, SIGNAL(setRigID(quint16)), rig, SLOT(setRigID(quint16)));
 
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
@@ -500,7 +503,7 @@ void wfmain::makeRig()
             connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
         }
 
-        connect(this, SIGNAL(setCIVAddr(quint8)), rig, SLOT(setCIVAddr(quint8)));
+        connect(this, SIGNAL(setCIVAddr(quint16)), rig, SLOT(setCIVAddr(quint16)));
         connect(this, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
         connect(this, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
         connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
@@ -1908,7 +1911,7 @@ void wfmain::loadSettings()
     // Radio and Comms: C-IV addr, port to use
     settings->beginGroup("Radio");
     prefs.manufacturer = (manufacturersType_t)settings->value("Manufacturer", defPrefs.manufacturer).value<manufacturersType_t>();
-    prefs.radioCIVAddr = (quint8)settings->value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
+    prefs.radioCIVAddr = (quint16)settings->value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
     prefs.CIVisRadioModel = (bool)settings->value("CIVisRadioModel", defPrefs.CIVisRadioModel).toBool();
     prefs.pttType = (pttType_t)settings->value("PTTType", defPrefs.pttType).toInt();
     prefs.serialPortRadio = settings->value("SerialPortRadio", defPrefs.serialPortRadio).toString();
@@ -2679,7 +2682,7 @@ void wfmain::extChangedRaPref(prefRaItem i)
         if(prefs.radioCIVAddr == 0) {
             showStatusBarText("Setting radio CI-V address to: 'auto'. Make sure CI-V Transceive is enabled on the radio.");
         } else {
-            showStatusBarText(QString("Setting radio CI-V address to: 0x%1. Press Save Settings to retain.").arg(prefs.radioCIVAddr, 2, 16));
+            showStatusBarText(QString("Setting radio CI-V address to: 0x%1. Press Save Settings to retain.").arg(prefs.radioCIVAddr, 4, 16));
         }
         break;
     case ra_CIVisRadioModel:
@@ -2772,7 +2775,7 @@ void wfmain::setManufacturer(manufacturersType_t man)
                 QString model = rigSettings->value("Model","").toString();
                 QString path = systemRigDir.absoluteFilePath(rig);
 
-                qDebug() << QString("Found Rig %0 with CI-V address of 0x%1 and version %2").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2);
+                qDebug() << QString("Found Rig %0 with CI-V address of 0x%1 and version %2").arg(model).arg(civ,4,16,QChar('0')).arg(ver,0,'f',2);
                 // Any user modified rig files will override system provided ones.
                 this->rigList.insert(civ,rigInfo(civ,model,path,ver));
             }
@@ -2814,11 +2817,11 @@ void wfmain::setManufacturer(manufacturersType_t man)
                 if (it != this->rigList.end())
                 {
                     if (ver >= it.value().version) {
-                        qInfo() << QString("Found User Rig %0 with CI-V address of 0x%1 and newer or same version than system one (%2>=%3)").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2).arg(it.value().version,0,'f',2);
+                        qInfo() << QString("Found User Rig %0 with CI-V address of 0x%1 and newer or same version than system one (%2>=%3)").arg(model).arg(civ,4,16,QChar('0')).arg(ver,0,'f',2).arg(it.value().version,0,'f',2);
                         this->rigList.insert(civ,rigInfo(civ,model,path,ver));
                     }
                 } else {
-                    qInfo() << QString("Found New User Rig %0 with CI-V address of 0x%1 version %2").arg(model).arg(civ,2,16,QChar('0')).arg(ver,0,'f',2);
+                    qInfo() << QString("Found New User Rig %0 with CI-V address of 0x%1 version %2").arg(model).arg(civ,4,16,QChar('0')).arg(ver,0,'f',2);
                     this->rigList.insert(civ,rigInfo(civ,model,path,ver));
                 }
                 // Any user modified rig files will override system provided ones.

@@ -280,14 +280,10 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
 
     this->layout->setContentsMargins(5,5,5,5);
 
-    scopeModeCombo->addItem(tr("Center Mode"), (spectrumMode_t)spectModeCenter);
-    scopeModeCombo->addItem(tr("Fixed Mode"), (spectrumMode_t)spectModeFixed);
-    scopeModeCombo->addItem(tr("Scroll-C"), (spectrumMode_t)spectModeScrollC);
-    scopeModeCombo->addItem(tr("Scroll-F"), (spectrumMode_t)spectModeScrollF);
-    scopeModeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    for(const auto &sm: rigCaps->scopeModes) {
+        scopeModeCombo->addItem(sm.name, sm.num);
+    }
 
-    //edgeCombo->insertItems(0, QStringList({tr("Fixed Edge 1"),tr("Fixed Edge 2"),tr("Fixed Edge 3"),tr("Fixed Edge 4")}));
-    //edgeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContentsOnFirstShow);
     auto it = rigCaps->commands.find(funcScopeEdge);
     if (it != rigCaps->commands.end())
     {

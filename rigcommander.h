@@ -26,7 +26,7 @@
 
 //#define DEBUG_PARSE // Enable to output Info messages every 10s with command parse timing.
 
-typedef QHash<quint8, rigInfo> rigTypedef;
+typedef QHash<quint16, rigInfo> rigTypedef;
 
 class rigCommander : public QObject
 {
@@ -57,8 +57,8 @@ public slots:
 
     void dataFromServer(QByteArray data);
     virtual void process();
-    virtual void commSetup(rigTypedef rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf);
-    virtual void commSetup(rigTypedef rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
+    virtual void commSetup(rigTypedef rigList, quint16 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf);
+    virtual void commSetup(rigTypedef rigList, quint16 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     virtual void closeComm();
 
     virtual void setPTTType(pttType_t ptt);
@@ -69,8 +69,8 @@ public slots:
 
 
     // Rig ID and CIV:
-    virtual void setRigID(quint8 rigID);
-    virtual void setCIVAddr(quint8 civAddr);
+    virtual void setRigID(quint16 rigID);
+    virtual void setCIVAddr(quint16 civAddr);
 
     // UDP:
     virtual void handleNewData(const QByteArray& data);
@@ -146,7 +146,7 @@ protected:
 
     struct rigCapabilities rigCaps;
     bool haveRigCaps=false;
-    QHash<quint8,rigInfo> rigList;
+    QHash<quint16,rigInfo> rigList;
     bool isRadioAdmin = true;
     commandErrorType lastCommand;
 

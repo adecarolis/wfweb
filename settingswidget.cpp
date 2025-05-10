@@ -163,6 +163,7 @@ void settingswidget::populateComboBoxes()
     ui->manufacturerCombo->blockSignals(true);
     ui->manufacturerCombo->addItem("Icom",manufIcom);
     ui->manufacturerCombo->addItem("Kenwood",manufKenwood);
+    ui->manufacturerCombo->addItem("Yaesu",manufYaesu);
     //ui->manufacturerCombo->addItem("FlexRadio",manufFlexRadio);
     ui->manufacturerCombo->setCurrentIndex(0);
     ui->manufacturerCombo->blockSignals(false);
@@ -807,7 +808,7 @@ void settingswidget::updateRaPref(prefRaItem pra)
             ui->rigCIVaddrHexLine->setEnabled(false);
         } else {
             ui->rigCIVaddrHexLine->setEnabled(true);
-            ui->rigCIVaddrHexLine->setText(QString("%1").arg(prefs->radioCIVAddr, 2, 16));
+            ui->rigCIVaddrHexLine->setText(QString("%1").arg(prefs->radioCIVAddr, 4, 16));
         }
         break;
     case ra_serialEnabled:
@@ -1664,7 +1665,7 @@ void settingswidget::on_rigCIVManualAddrChk_clicked(bool checked)
     if(checked)
     {
         ui->rigCIVaddrHexLine->setEnabled(true);
-        ui->rigCIVaddrHexLine->setText(QString("%1").arg(prefs->radioCIVAddr, 2, 16));
+        ui->rigCIVaddrHexLine->setText(QString("%1").arg(prefs->radioCIVAddr, 4, 16));
     } else {
         ui->rigCIVaddrHexLine->setText("auto");
         ui->rigCIVaddrHexLine->setEnabled(false);

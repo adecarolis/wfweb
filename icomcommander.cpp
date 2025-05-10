@@ -25,7 +25,6 @@ icomCommander::icomCommander(rigCommander* parent) : rigCommander(parent)
 {
 
     qInfo(logRig()) << "creating instance of icomCommander()";
-
 }
 
 icomCommander::icomCommander(quint8 guid[GUIDLEN], rigCommander* parent) : rigCommander(parent)
@@ -59,7 +58,7 @@ icomCommander::~icomCommander()
 }
 
 
-void icomCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
+void icomCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
 {
     // construct
 
@@ -107,7 +106,7 @@ void icomCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAddr, 
     commonSetup();
 }
 
-void icomCommander::commSetup(QHash<quint8,rigInfo> rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
+void icomCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -495,14 +494,14 @@ toneInfo icomCommander::decodeTone(QByteArray eTone)
     return t;
 }
 
-void icomCommander::setCIVAddr(quint8 civAddr)
+void icomCommander::setCIVAddr(quint16 civAddr)
 {
     // Note: This sets the radio's CIV address
     // the computer's CIV address is defined in the header file.
 
     this->civAddr = civAddr;
     payloadPrefix = QByteArray("\xFE\xFE");
-    payloadPrefix.append(civAddr);
+    payloadPrefix.append((char)civAddr);
     payloadPrefix.append((char)compCivAddr);
 }
 
@@ -1078,17 +1077,17 @@ void icomCommander::parseCommand()
     // 0x17 is CW send and 0x18 is power control (no reply)
     // 0x19 it automatically added.
     case funcTransceiverId:
-        value.setValue(static_cast<uchar>(payloadIn.at(0)));
         if (!rigCaps.modelID)
         {
-            if (rigList.contains(uchar(payloadIn.at(0))))
+            rigCaps.modelID = static_cast<quint16>(payloadIn.at(0)) & 0xff;
+            if (rigList.contains(rigCaps.modelID))
             {
-                this->model = rigList.find(uchar(payloadIn.at(0))).key();
+                this->model = rigList.find(rigCaps.modelID).key();
             }
-            rigCaps.modelID = payloadIn.at(0);
-            qInfo(logRig()) << QString("Have new rig ID: 0x%0").arg(rigCaps.modelID,1,16);
+            qInfo(logRig()) << QString("Have new rig ID: 0x%0").arg(rigCaps.modelID,2,16);
             determineRigCaps();
         }
+        value.setValue(rigCaps.modelID);
         break;
     // 0x1a
     case funcBandStackReg:
@@ -1492,6 +1491,7 @@ void icomCommander::determineRigCaps()
     rigCaps.satParser.clear();
     rigCaps.periodic.clear();
     rigCaps.roofing.clear();
+    rigCaps.scopeModes.clear();
 
     for (int i = meterNone; i < meterUnknown; i++)
     {
@@ -1823,6 +1823,20 @@ void icomCommander::determineRigCaps()
         settings->endArray();
     }
 
+
+    int numScopeModes = settings->beginReadArray("ScopeModes");
+    if (numScopeModes == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numScopeModes; c++)
+        {
+            settings->setArrayIndex(c);
+            rigCaps.scopeModes.push_back(genericType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", 0).toString()));
+        }
+        settings->endArray();
+    }
+
     settings->endGroup();
 
     delete settings;
@@ -1885,7 +1899,7 @@ void icomCommander::determineRigCaps()
         qDebug(logRig()) << "---Rig FOUND from broadcast query:";
         this->civAddr = incomingCIVAddr; // Override and use immediately.
         payloadPrefix = QByteArray("\xFE\xFE");
-        payloadPrefix.append(civAddr);
+        payloadPrefix.append((char)civAddr);
         payloadPrefix.append((char)compCivAddr);
         // if there is a compile-time error, remove the following line, the "hex" part is the issue:
         qInfo(logRig()) << "Using incomingCIVAddr: (int): " << this->civAddr << " hex: " << QString("0x%1").arg(this->civAddr,0,16);
@@ -2763,7 +2777,7 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
     return true;
 }
 
-void icomCommander::setRigID(quint8 rigID)
+void icomCommander::setRigID(quint16 rigID)
 {
     // This function overrides radio model detection.
     // It can be used for radios without Rig ID commands,

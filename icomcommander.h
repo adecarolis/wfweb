@@ -23,8 +23,8 @@ public:
 
 public slots:
     void process() override;
-    void commSetup(rigTypedef rigList, quint8 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf) override;
-    void commSetup(rigTypedef rigList, quint8 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp) override;
+    void commSetup(rigTypedef rigList, quint16 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf) override;
+    void commSetup(rigTypedef rigList, quint16 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp) override;
     void closeComm() override;
     void setPTTType(pttType_t) override;
 
@@ -34,8 +34,8 @@ public slots:
 
 
     // Rig ID and CIV:
-    void setRigID(quint8 rigID) override;
-    void setCIVAddr(quint8 civAddr) override;
+    void setRigID(quint16 rigID) override;
+    void setCIVAddr(quint16 civAddr) override;
 
     // UDP:
     void handleNewData(const QByteArray& data) override;
@@ -119,7 +119,7 @@ private:
     //double spectrumStartFreq;
     //double spectrumEndFreq;
 
-    quint8 model = 0; // Was model_kind but that makes no sense when users can create their own rigs!
+    quint16 model = 0; // Was model_kind but that makes no sense when users can create their own rigs!
     quint8 spectSeqMax;
     quint16 spectAmpMax;
     quint16 spectLenMax;
@@ -130,8 +130,8 @@ private:
 
     bool warnedAboutFA=false;
     double frequencyMhz;
-    quint8 civAddr;
-    quint8 incomingCIVAddr; // place to store the incoming CIV.
+    quint16 civAddr;
+    quint16 incomingCIVAddr; // place to store the incoming CIV.
     bool pttAllowed;
 
     scopeData mainScopeData;

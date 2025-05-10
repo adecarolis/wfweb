@@ -23,17 +23,17 @@ rigCreator::rigCreator(QWidget *parent) :
     ui->meters->setItemDelegateForColumn(0, metersList);
 
     priorityModel = new QStandardItemModel();
-    for (const auto &key: priorityMap.keys())
+    for (auto key = priorityMap.begin(); key != priorityMap.end(); ++key)
     {
-        QStandardItem *itemName = new QStandardItem(key);
-        QStandardItem *itemId = new QStandardItem(priorityMap.value(key));
+        QStandardItem *itemName = new QStandardItem(key.key());
+        QStandardItem *itemId = new QStandardItem(key.value());
 
         QList<QStandardItem*> row;
         row << itemName << itemId;
         priorityModel->appendRow(row);
     }
-
     priorityList = new tableCombobox(priorityModel,true,ui->periodicCommands);
+
     ui->periodicCommands->setItemDelegateForColumn(0, priorityList);
     ui->periodicCommands->setItemDelegateForColumn(1, commandsList);
 
@@ -55,6 +55,7 @@ rigCreator::rigCreator(QWidget *parent) :
 
     ui->manufacturer->addItem("Icom",manufIcom);
     ui->manufacturer->addItem("Kenwood",manufKenwood);
+    ui->manufacturer->addItem("Yaesu",manufYaesu);
     //ui->manufacturer->addItem("FlexRadio",manufFlexRadio);
     ui->manufacturer->setCurrentIndex(0);
 }
@@ -219,10 +220,11 @@ void rigCreator::loadRigFile(QString file)
     int manuf=ui->manufacturer->findData(settings->value("Manufacturer",manufIcom).value<manufacturersType_t>());
     ui->manufacturer->setCurrentIndex(manuf);
     ui->model->setText(settings->value("Model","").toString());
-    if (ui->manufacturer->currentData() == manufKenwood)
-        ui->civAddress->setText(QString("%1").arg(settings->value("CIVAddress",0).toInt(),2));
+    if (ui->manufacturer->currentData() == manufIcom)
+        ui->civAddress->setText(QString("%1").arg(settings->value("CIVAddress",0).toInt(),4,16));
     else
-        ui->civAddress->setText(QString("%1").arg(settings->value("CIVAddress",0).toInt(),2,16));
+        ui->civAddress->setText(QString("%1").arg(settings->value("CIVAddress",0).toInt(),4));
+
     ui->rigctldModel->setText(settings->value("RigCtlDModel","").toString());
     ui->numReceiver->setText(settings->value("NumberOfReceivers","1").toString());
     ui->numVFO->setText(settings->value("NumberOfVFOs","1").toString());
@@ -331,12 +333,12 @@ void rigCreator::loadRigFile(QString file)
         settings->endArray();
 
         int c=0;
-        for (const auto &p: defaultPeriodic)
+        for (auto p = defaultPeriodic.begin(); p != defaultPeriodic.end(); ++p)
         {
             ui->periodicCommands->insertRow(ui->periodicCommands->rowCount());
-            ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,0),p.priority);
-            ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,1),funcString[p.func]);
-            ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,2),QString::number(p.receiver));
+            ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,0),p->priority);
+            ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,1),funcString[p->func]);
+            ui->periodicCommands->model()->setData(ui->periodicCommands->model()->index(c,2),QString::number(p->receiver));
             c++;
         }
     }
@@ -712,6 +714,26 @@ void rigCreator::loadRigFile(QString file)
     }
     ui->roofing->setSortingEnabled(true);
 
+    ui->scopeModes->clearContents();
+    ui->scopeModes->model()->removeRows(0,ui->scopeModes->rowCount());
+    ui->scopeModes->setSortingEnabled(false);
+
+    int numScopeModes = settings->beginReadArray("ScopeModes");
+    if (numScopeModes == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numScopeModes; c++)
+        {
+            settings->setArrayIndex(c);
+            ui->scopeModes->insertRow(ui->scopeModes->rowCount());
+            ui->scopeModes->model()->setData(ui->scopeModes->model()->index(c,0),settings->value("Num", 0).toInt());
+            ui->scopeModes->model()->setData(ui->scopeModes->model()->index(c,1),settings->value("Name", "None").toString());
+        }
+        settings->endArray();
+    }
+    ui->scopeModes->setSortingEnabled(true);
+
     settings->endGroup();
     delete settings;
 
@@ -730,6 +752,7 @@ void rigCreator::loadRigFile(QString file)
     connect(ui->dtcs,SIGNAL(cellChanged(int,int)),SLOT(changed()));
     connect(ui->meters,SIGNAL(cellChanged(int,int)),SLOT(changed()));
     connect(ui->roofing,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->scopeModes,SIGNAL(cellChanged(int,int)),SLOT(changed()));
 
     connect(ui->hasCommand29,SIGNAL(stateChanged(int)),SLOT(changed()));
     connect(ui->hasEthernet,SIGNAL(stateChanged(int)),SLOT(changed()));
@@ -798,10 +821,10 @@ void rigCreator::saveRigFile(QString file)
 
     settings->setValue("Manufacturer",ui->manufacturer->currentData());
     settings->setValue("Model",ui->model->text());
-    if (ui->manufacturer->currentData() == manufKenwood)
-        settings->setValue("CIVAddress",ui->civAddress->text().toInt(nullptr));
-    else
+    if (ui->manufacturer->currentData() == manufIcom)
         settings->setValue("CIVAddress",ui->civAddress->text().toInt(nullptr,16));
+    else
+        settings->setValue("CIVAddress",ui->civAddress->text().toInt(nullptr));
 
     settings->setValue("RigCtlDModel",ui->rigctldModel->text().toInt());
     settings->setValue("NumberOfReceivers",ui->numReceiver->text().toInt());
@@ -1049,6 +1072,16 @@ void rigCreator::saveRigFile(QString file)
         settings->setArrayIndex(n);
         settings->setValue("Num",(ui->roofing->item(n,0) == NULL) ? 0 :  ui->roofing->item(n,0)->text().toInt());
         settings->setValue("Name",(ui->roofing->item(n,1) == NULL) ? "" :  ui->roofing->item(n,1)->text());
+    }
+    settings->endArray();
+
+    ui->scopeModes->sortByColumn(0,Qt::AscendingOrder);
+    settings->beginWriteArray("ScopeModes");
+    for (int n = 0; n<ui->scopeModes->rowCount();n++)
+    {
+        settings->setArrayIndex(n);
+        settings->setValue("Num",(ui->scopeModes->item(n,0) == NULL) ? 0 :  ui->scopeModes->item(n,0)->text().toInt());
+        settings->setValue("Name",(ui->scopeModes->item(n,1) == NULL) ? "" :  ui->scopeModes->item(n,1)->text());
     }
     settings->endArray();
 

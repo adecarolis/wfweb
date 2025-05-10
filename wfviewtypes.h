@@ -127,7 +127,7 @@ enum pttType_t { pttCIV, pttRTS, pttDTR };
 
 enum vfoModeType_t { vfoModeVfo, vfoModeMem, vfoModeSat };
 
-enum manufacturersType_t {manufIcom=0, manufKenwood, manufFlexRadio};
+enum manufacturersType_t {manufIcom=0, manufKenwood, manufFlexRadio, manufYaesu};
 
 struct lpfhpf {
     lpfhpf ():lpf(0),hpf(0) {};
@@ -161,8 +161,8 @@ struct modeInfo {
 
 struct rigInfo {
     rigInfo (): civ(0), model(""), path(""),version(0.0) {};
-    rigInfo (uchar civ, QString model, QString path, float version): civ(civ), model(model), path(path), version(version) {};
-    uchar civ;
+    rigInfo (quint16 civ, QString model, QString path, float version): civ(civ), model(model), path(path), version(version) {};
+    quint16 civ;
     QString model;
     QString path;
     float version;
