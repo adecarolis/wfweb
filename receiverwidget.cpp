@@ -326,17 +326,6 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     oorIndicator->setText(tr("SCOPE OUT OF RANGE"));
     oorIndicator->position->setCoords(0.5f,0.5f);
 
-    ovfIndicator = new QCPItemText(spectrum);
-    ovfIndicator->setVisible(false);
-    ovfIndicator->setAntialiased(true);
-    ovfIndicator->setPen(QPen(Qt::red));
-    ovfIndicator->setColor(Qt::red);
-    ovfIndicator->setFont(QFont(font().family(), 10));
-    ovfIndicator->setPositionAlignment(Qt::AlignLeft | Qt::AlignTop);
-    ovfIndicator->position->setType(QCPItemPosition::ptAxisRectRatio); // Positioned relative to the current plot rect
-    ovfIndicator->setText(tr(" OVF "));
-    ovfIndicator->position->setCoords(0.01f,0.0f);
-
     redrawSpeed = new QCPItemText(spectrum);
     redrawSpeed->setVisible(true);
     redrawSpeed->setColor(Qt::gray);
@@ -666,6 +655,19 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
 
     showHideControls(spectrumMode_t::spectModeCenter);
     lastData.start();
+
+
+    ovfIndicator = new QCPItemText(spectrum);
+    ovfIndicator->setVisible(false);
+    ovfIndicator->setAntialiased(true);
+    ovfIndicator->setPen(QPen(Qt::red));
+    ovfIndicator->setColor(Qt::red);
+    ovfIndicator->setFont(QFont(this->fontInfo().family(), 10));
+    ovfIndicator->setPositionAlignment(Qt::AlignLeft | Qt::AlignTop);
+    ovfIndicator->position->setType(QCPItemPosition::ptAxisRectRatio); // Positioned relative to the current plot rect
+    ovfIndicator->setText(tr(" OVF "));
+    ovfIndicator->position->setCoords(0.01f,0.1f);
+
 }
 
 
