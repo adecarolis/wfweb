@@ -311,17 +311,6 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     freqIndicatorLine->setAntialiased(true);
     freqIndicatorLine->setPen(QPen(Qt::blue));
 
-    oorIndicator = new QCPItemText(spectrum);
-    oorIndicator->setVisible(false);
-    oorIndicator->setAntialiased(true);
-    oorIndicator->setPen(QPen(Qt::red));
-    oorIndicator->setBrush(QBrush(Qt::red));
-    oorIndicator->setFont(QFont(font().family(), 14));
-    oorIndicator->setPositionAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
-    oorIndicator->position->setType(QCPItemPosition::ptAxisRectRatio); // Positioned relative to the current plot rect
-    oorIndicator->setText(tr("SCOPE OUT OF RANGE"));
-    oorIndicator->position->setCoords(0.5f,0.5f);
-
     redrawSpeed = new QCPItemText(spectrum);
     redrawSpeed->setVisible(true);
     redrawSpeed->setColor(Qt::gray);
@@ -652,6 +641,19 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     showHideControls(spectrumMode_t::spectModeCenter);
     lastData.start();
 
+
+    // Always on top!
+
+    oorIndicator = new QCPItemText(spectrum);
+    oorIndicator->setVisible(false);
+    oorIndicator->setAntialiased(true);
+    oorIndicator->setPen(QPen(Qt::red));
+    oorIndicator->setBrush(QBrush(Qt::red));
+    oorIndicator->setFont(QFont(this->fontInfo().family(), 14));
+    oorIndicator->setPositionAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
+    oorIndicator->position->setType(QCPItemPosition::ptAxisRectRatio); // Positioned relative to the current plot rect
+    oorIndicator->setText(tr("SCOPE OUT OF RANGE"));
+    oorIndicator->position->setCoords(0.5f,0.5f);
 
     ovfIndicator = new QCPItemText(spectrum);
     ovfIndicator->setVisible(false);
