@@ -270,7 +270,7 @@ signals:
     void spectOutputDisable();
     void scopeDisplayEnable();
     void scopeDisplayDisable();
-    void setScopeMode(spectrumMode_t spectMode);
+    void setScopeMode(uchar spectMode);
     void setScopeSpan(char span);
     void setScopeEdge(char edge);
     void setScopeFixedEdge(double startFreq, double endFreq, quint8 edgeNumber);

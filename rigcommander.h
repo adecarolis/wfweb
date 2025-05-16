@@ -105,7 +105,7 @@ signals:
     void haveSpectrumData(QByteArray spectrum, double startFreq, double endFreq); // pass along data to UI
     void haveSpectrumBounds();
     void haveScopeSpan(freqt span, bool isSub);
-    void havespectrumMode_t(spectrumMode_t spectmode);
+    void havespectrumMode(uchar spectmode);
     void haveScopeEdge(char edge);
 
     // Rig ID:

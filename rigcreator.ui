@@ -719,7 +719,7 @@
          <number>0</number>
         </property>
         <property name="columnCount">
-         <number>8</number>
+         <number>9</number>
         </property>
         <attribute name="horizontalHeaderCascadingSectionResizes">
          <bool>false</bool>
@@ -771,6 +771,11 @@
         <column>
          <property name="text">
           <string>Bytes</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>PadR</string>
          </property>
         </column>
         <column>

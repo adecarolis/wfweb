@@ -114,7 +114,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<inputTypes>();
     qRegisterMetaType<meter_t>();
     qRegisterMetaType<meterkind>();
-    qRegisterMetaType<spectrumMode_t>();
     qRegisterMetaType<freqt>();
     qRegisterMetaType<vfo_t>();
     qRegisterMetaType<modeInfo>();
@@ -829,41 +828,33 @@ void wfmain::setupMainUI()
 
     connect(
                 ui->txPowerSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) {
-        if(rigCaps->commands.contains(funcRFPower)) {
-            auto f = rigCaps->commands.find(funcRFPower);
-            statusFromSliderPercent("Tx Power", 255*newValue/f->maxVal);
-        }
-    });
+                [=](const int &newValue) { statusFromSliderPercent("Tx Power", 255*newValue/ui->txPowerSlider->maximum());}
+    );
 
     connect(
                 ui->rfGainSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) {
-        if(rigCaps->commands.contains(funcRfGain)) {
-            auto f = rigCaps->commands.find(funcRfGain);
-            statusFromSliderPercent("RF Gain", 255*newValue/f->maxVal);
-        }
-    });
+                [=](const int &newValue) { statusFromSliderPercent("RF Gain", 255*newValue/ui->rfGainSlider->maximum());}
+    );
 
     connect(
                 ui->afGainSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) {
-        statusFromSliderPercent("AF Gain", newValue);
-    });
+                [=](const int &newValue) { statusFromSliderPercent("AF Gain", 255*newValue/ui->afGainSlider->maximum());}
+    );
 
     connect(
                 ui->micGainSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) { statusFromSliderPercent("TX Audio Gain", newValue);}
+                [=](const int &newValue) { statusFromSliderPercent("TX Audio Gain", 255*newValue/ui->micGainSlider->maximum());}
     );
 
     connect(
                 ui->sqlSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) {
-        if(rigCaps->commands.contains(funcSquelch)) {
-            auto f = rigCaps->commands.find(funcSquelch);
-            statusFromSliderPercent("Squelch", 255*newValue/f->maxVal);
-        }
-    });
+                [=](const int &newValue) { statusFromSliderPercent("Squelch", 255*newValue/ui->sqlSlider->maximum());}
+    );
+
+    connect(
+                ui->monitorSlider, &QSlider::valueChanged, this,
+                [=](const int &newValue) { statusFromSliderPercent("Monitor", 255*newValue/ui->monitorSlider->maximum());}
+    );
 
 }
 
@@ -1011,6 +1002,7 @@ void wfmain::configureVFOs()
     for(uchar i=0;i<rigCaps->numReceiver;i++)
     {
         receiverWidget* receiver = new receiverWidget(rigCaps->hasSpectrum,i,rigCaps->numVFO,this);
+        receiver->prepareScope(rigCaps->spectAmpMax, rigCaps->spectLenMax);
         receiver->setSeparators(prefs.groupSeparator,prefs.decimalSeparator);
         receiver->setUnderlayMode(prefs.underlayMode);
         receiver->wfAntiAliased(prefs.wfAntiAlias);
@@ -2771,7 +2763,7 @@ void wfmain::setManufacturer(manufacturersType_t man)
             rigSettings->beginGroup("Rig");
             manufacturersType_t manuf = rigSettings->value("Manufacturer",manufIcom).value<manufacturersType_t>();
             if (manuf == man) {
-                uchar civ = rigSettings->value("CIVAddress",0).toInt();
+                quint16 civ = rigSettings->value("CIVAddress",0).toInt();
                 QString model = rigSettings->value("Model","").toString();
                 QString path = systemRigDir.absoluteFilePath(rig);
 
@@ -2808,7 +2800,7 @@ void wfmain::setManufacturer(manufacturersType_t man)
 
             manufacturersType_t manuf = rigSettings->value("Manufacturer",manufIcom).value<manufacturersType_t>();
             if (manuf == man) {
-                uchar civ = rigSettings->value("CIVAddress",0).toInt();
+                quint16 civ = rigSettings->value("CIVAddress",0).toInt();
                 QString model = rigSettings->value("Model","").toString();
                 QString path = userRigDir.absoluteFilePath(rig);
 
@@ -5979,8 +5971,8 @@ void wfmain::receiveValue(cacheItem val){
         break;
     }
     case funcScopeMode:
-        //qDebug() << "Got new scope mode for receiver" << val.receiver << "mode" << val.value.value<spectrumMode_t>();
-        receivers[val.receiver]->setScopeMode(val.value.value<spectrumMode_t>());
+        //qDebug() << "Got new scope mode for receiver" << val.receiver << "mode" << val.value.value<uchar>();
+        receivers[val.receiver]->setScopeMode(val.value.value<uchar>());
         break;
     case funcScopeSpan:
         receivers[val.receiver]->setSpan(val.value.value<centerSpanData>());
@@ -6264,6 +6256,11 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         if (rigCaps->commands.contains(funcMonitorGain)) {
             auto f = rigCaps->commands.find(funcMonitorGain);
             ui->monitorSlider->setRange(f->minVal,f->maxVal);
+        }
+
+        if (rigCaps->commands.contains(funcSquelch)) {
+            auto f = rigCaps->commands.find(funcSquelch);
+            ui->sqlSlider->setRange(f->minVal,f->maxVal);
         }
 
         ui->nrEnableChk->setEnabled(rigCaps->commands.contains(funcNoiseReduction));

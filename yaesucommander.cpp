@@ -27,15 +27,6 @@ yaesuCommander::~yaesuCommander()
 {
     qInfo(logRig()) << "closing instance of yaesuCommander()";
 
-    if (rtpThread != Q_NULLPTR) {
-        //if (port->isOpen()) {
-        //    receiveCommand(funcVOIP,QVariant::fromValue<uchar>(0),0);
-        //}
-        qInfo(logUdp()) << "Stopping RTP thread";
-        rtpThread->quit();
-        rtpThread->wait();
-    }
-
     emit requestRadioSelection(QList<radio_cap_packet>()); // Remove radio list.
 
     queue->setRigCaps(Q_NULLPTR); // Remove access to rigCaps
@@ -46,8 +37,15 @@ yaesuCommander::~yaesuCommander()
         port = Q_NULLPTR;
     }
     qDebug(logRig()) << "Closing rig comms";
-}
 
+    if (ft4222 != Q_NULLPTR)
+    {
+        ft4222->stop();
+        ft4222->exit();
+        ft4222->wait();
+        ft4222 = Q_NULLPTR;
+    }
+}
 
 void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
 {
@@ -80,42 +78,22 @@ void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAdd
 
     network = false;
 
+    ft4222 = new ft4222Handler();
+    connect(ft4222, &ft4222Handler::dataReady, this, &yaesuCommander::ft4222Data);
+    connect(ft4222, &ft4222Handler::finished, ft4222, &QObject::deleteLater);
 
-
-    FT_STATUS ftStatus = 0;
-
-    DWORD numOfDevices = 0;
-    ftStatus = FT_CreateDeviceInfoList(&numOfDevices);
-
-    qInfo(logRig()) << "Searching for FTDI devices. ftstatus:" << ftStatus << "num devices:" << numOfDevices;
-
-    for(DWORD iDev=0; iDev<numOfDevices; ++iDev)
-    {
-        FT_DEVICE_LIST_INFO_NODE devInfo;
-        memset(&devInfo, 0, sizeof(devInfo));
-
-        ftStatus = FT_GetDeviceInfoDetail(iDev, &devInfo.Flags, &devInfo.Type, &devInfo.ID, &devInfo.LocId,
-                                          devInfo.SerialNumber,
-                                          devInfo.Description,
-                                          &devInfo.ftHandle);
-
-        if (FT_OK == ftStatus)
-        {
-            qInfo(logRig()) << "Dev:" << iDev;
-            qInfo(logRig()) << "Flags=" << devInfo.Flags;
-            qInfo(logRig()) << "Type=" << devInfo.Type;
-            qInfo(logRig()) << "ID=" << devInfo.ID;
-            qInfo(logRig()) << "LocId=" << devInfo.LocId;
-            qInfo(logRig()) << "SerialNumber=" << devInfo.SerialNumber;
-            qInfo(logRig()) << "Description=" << devInfo.Description;
-            qInfo(logRig()) << "ftHandle=" << devInfo.ftHandle;
-
-            const std::string desc = devInfo.Description;
-        }
-    }
+    ft4222->start();
 
     // Run setup common to all rig type
     commonSetup();
+}
+
+void yaesuCommander::ft4222Data(scopeData data, freqt a, freqt b)
+{
+    queue->receiveValue(funcScopeWaveData,QVariant::fromValue<scopeData>(data),0);
+    queue->receiveValue(funcSelectedFreq,QVariant::fromValue<freqt>(a),0);
+    queue->receiveValue(funcUnselectedFreq,QVariant::fromValue<freqt>(b),0);
+
 }
 
 void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
@@ -146,7 +124,6 @@ void yaesuCommander::lanConnected()
 {
     qInfo() << QString("Connected to: %0:%1").arg(prefs.ipAddress).arg(prefs.controlLANPort);
     qInfo() << "Sending initial connection request";
-    port->write("##CN;\n");
 }
 
 void yaesuCommander::lanDisconnected()
@@ -211,20 +188,8 @@ void yaesuCommander::commonSetup()
     // Minimum commands we need to find rig model and login
     rigCaps.commands.clear();
     rigCaps.commandsReverse.clear();
-    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),"ID",0,999,false,true,false,3,false));
+    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),"ID",0,9999,false,false,true,false,4,false));
     rigCaps.commandsReverse.insert(QByteArray("ID"),funcTransceiverId);
-
-    rigCaps.commands.insert(funcConnectionRequest,funcType(funcConnectionRequest, QString("Connection Request"),"##CN",0,1,false,true,true,1,false));
-    rigCaps.commandsReverse.insert(QByteArray("##CN"),funcConnectionRequest);
-
-    rigCaps.commands.insert(funcLogin,funcType(funcLogin, QString("Network Login"),"##ID",0,0,false,false,true,0,false));
-    rigCaps.commandsReverse.insert(QByteArray("##ID"),funcLogin);
-
-    rigCaps.commands.insert(funcLoginEnableDisable,funcType(funcLoginEnableDisable, QString("Enable/Disable Login"),"##UE",0,1,false,false,true,1,false));
-    rigCaps.commandsReverse.insert(QByteArray("##UE"),funcLoginEnableDisable);
-
-    rigCaps.commands.insert(funcTXInhibit,funcType(funcTXInhibit, QString("Transmit Inhibit"),"##TI",0,1,false,false,true,1,false));
-    rigCaps.commandsReverse.insert(QByteArray("##TI"),funcTXInhibit);
 
     connect(queue,SIGNAL(haveCommand(funcs,QVariant,uchar)),this,SLOT(receiveCommand(funcs,QVariant,uchar)));
 
@@ -389,6 +354,19 @@ void yaesuCommander::parseData(QByteArray data)
 
         d.remove(0,count);
 
+        if (type.padr) {
+            // Value has right padding, so remove all trailing zeros.
+            for (int i=type.bytes;i>0;i++)
+            {
+                if (d.last(1) == '0')
+                {
+                    d.removeLast();
+                } else {
+                    break;
+                }
+            }
+        }
+
         QVector<memParserFormat> memParser;
         QVariant value;
         switch (func)
@@ -412,11 +390,12 @@ void yaesuCommander::parseData(QByteArray data)
             modeInfo mi = queue->getCache(func,receiver).value.value<modeInfo>();
             for (auto& m: rigCaps.modes)
             {
-                if (m.reg == uchar(d.at(0) - NUMTOASCII))
+                if (m.reg == uchar(d.toShort(nullptr,16)))
                 {
                     if (mi.reg != m.reg)
                     {
                         // Mode has changed.
+                        qInfo(logRig()) << funcString[func] << "New mode" << d.toShort(nullptr,16) << m.name;
                         mi.reg=m.reg;
                         mi.VFO=m.VFO;
                         mi.bwMax=m.bwMax;
@@ -452,6 +431,15 @@ void yaesuCommander::parseData(QByteArray data)
             a.rx = uchar(d.at(1) - NUMTOASCII);
             value.setValue(a);
             break;
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
+        case funcSSBModSource:
+        case funcAMModSource:
+        case funcFMModSource:
+        case funcDataModSource:
+            func = funcDATAOffMod;
         case funcDATAOffMod:
         case funcDATA1Mod:
         {
@@ -464,36 +452,10 @@ void yaesuCommander::parseData(QByteArray data)
                 }
             }
             break;
-        }            
-       case funcTransceiverStatus:
-        {
-            // This is a response to the IF command which contains a wealth of information
-            // We could use this for various things if we want.
-            // It doesn't work when in data mode though!
-            bool ok=false;
-            short rit = d.mid(16,5).toShort(&ok);
-            if (ok) {
-                value.setValue(rit);
-                queue->receiveValue(funcRitFreq,QVariant::fromValue(rit),receiver);
-            }
-
-            queue->receiveValue(funcRitStatus,QVariant::fromValue(bool(d.at(21) - NUMTOASCII)),receiver);
-
-            // This is PTT status
-            value.setValue(bool(d.at(26) - NUMTOASCII));
-            isTransmitting = value.toBool();
-            break;
         }
-        case funcSetTransmit:
-            func = funcTransceiverStatus;
-            value.setValue(bool(true));
-            isTransmitting = true;
-            break;
-        case funcSetReceive:
-            func = funcTransceiverStatus;
-            value.setValue(bool(false));
-            isTransmitting = false;
-            break;
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
         case funcPBTInner:
         case funcPBTOuter:
             break;
@@ -551,11 +513,8 @@ void yaesuCommander::parseData(QByteArray data)
         }
         case funcMeterType:
             break;
-        case funcXitFreq:
-        case funcRitFreq:
-            break;
-        case funcMonitor:
         case funcRitStatus:
+        case funcMonitor:
         case funcCompressor:
         case funcVox:
         case funcRepeaterTone:
@@ -565,7 +524,8 @@ void yaesuCommander::parseData(QByteArray data)
         case funcOverflowStatus:
         case funcSMeterSqlStatus:
         case funcSplitStatus:
-            value.setValue<bool>(d.at(0) - NUMTOASCII);
+        case funcTransceiverStatus:
+            value.setValue<bool>(d.mid(0,1).toUShort());
             break;
         case funcAfGain:
             if (!usingNativeLAN)
@@ -585,25 +545,40 @@ void yaesuCommander::parseData(QByteArray data)
         {
             uchar s = d.mid(0, type.bytes).toUShort();
             switch(s)  {
-            case 0:
+            case 000:
                 // 000: not enabled
                 value.setValue<uchar>(0);
                 break;
-            case 10:
+            case 010:
                 // 010: tuned and enabled
                 value.setValue<uchar>(1);
                 break;
-            case 11:
+            case 013:
                 // 011: tuning, we think
                 value.setValue<uchar>(2);
                 break;
             }
             break;
         }
+        case funcSSBUSBModGain:
+        case funcAMUSBModGain:
+        case funcFMUSBModGain:
+        case funcDataUSBModGain:
+            func = funcUSBModLevel;
+            value.setValue<uchar>(d.mid(0,type.bytes).toUShort());
+            break;
+        case funcSSBRearModGain:
+        case funcAMRearModGain:
+        case funcFMRearModGain:
+        case funcDataRearModGain:
+            func = funcACCAModLevel;
+            value.setValue<uchar>(d.mid(0,type.bytes).toUShort());
+            break;
         case funcAGCTimeConstant:
         case funcMemorySelect:
         case funcRfGain:
         case funcRFPower:
+        case funcMicGain:
         case funcSquelch:
         case funcMonitorGain:
         case funcKeySpeed:
@@ -615,10 +590,14 @@ void yaesuCommander::parseData(QByteArray data)
         case funcNoiseReduction:
         case funcAGC:
         case funcPowerControl:
-        case funcLANModLevel:
         case funcFilterShape:
         case funcRoofingFilter:
+        case funcScopeSpeed:
             value.setValue<uchar>(d.mid(0,type.bytes).toUShort());
+            break;
+        case funcXitFreq:
+        case funcRitFreq:
+            value.setValue<short>(d.toShort());
             break;
         case funcCompressorLevel:
             // We only want the second value.
@@ -627,7 +606,7 @@ void yaesuCommander::parseData(QByteArray data)
         case funcScopeSpan:
             for (auto &s: rigCaps.scopeCenterSpans)
             {
-                if (s.cstype == (d.at(0) - NUMTOASCII) )
+                if (s.cstype == uchar(d.mid(0,type.bytes).toUShort()) )
                 {
                     value.setValue(s);
                 }
@@ -680,6 +659,10 @@ void yaesuCommander::parseData(QByteArray data)
             }
             break;
         }
+        case funcDate:
+        case funcTime:
+            qInfo(logRig()) << "Received" << funcString[func] << d;
+            break;
         case funcToneFreq:
         case funcTSQLFreq:
         {
@@ -691,8 +674,9 @@ void yaesuCommander::parseData(QByteArray data)
         }
         case funcTransceiverId:
         {
-            quint8 model = uchar(d.toUShort());
+            quint16 model = d.toUShort();
             value.setValue(model);
+            qInfo(logRig()) << "Response to rig id query" << d << "decoded as" << model;
             if (!this->rigCaps.modelID || model != this->rigCaps.modelID)
             {
                 if (this->rigList.contains(model))
@@ -704,177 +688,14 @@ void yaesuCommander::parseData(QByteArray data)
             }
             break;
         }
-        // These contain freq/mode/data information, might be useful?
-        case funcRXFreqAndMode:
-        case funcTXFreqAndMode:
-            break;
         case funcVFOASelect:
         case funcVFOBSelect:
         case funcMemoryMode:
             // Do we need to do anything with this?
-
             break;
-        case funcConnectionRequest:
-            qInfo() << "Received connection request command";
-            // Send login
-            queue->add(priorityImmediate,queueItem(funcLogin,QVariant::fromValue(prefs),false,0));
-            break;
-        case funcLogin:
-        {
-            if (d.at(0) - NUMTOASCII == 0) {
-                emit havePortError(errorType(true, prefs.ipAddress, "Invalid Username/Password"));
-            }
-            loginRequired = false;
-            qInfo(logRig()) << "Received login reply with command:" <<funcString[func] << "data" << d << (d.toInt()?"Successful":"Failure");
-            break;
-        }
-        case funcTXInhibit:
-            qInfo(logRig()) << "Received" << funcString[func] << "with value" << d << (d.toInt()?"TX Authorized":"TX Inhibited");
-            if (d.toInt()==0)
-            {
-                this->txSetup.sampleRate=0; // Disable TX audio.
-            }
-            break;
-        case funcLoginEnableDisable:
-            qInfo(logRig()) << "Received" << funcString[func] << "with value" << d << (d.toInt()?"Enabled":"Disabled");
-            break;
-#if defined __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#endif
-        case funcScopeFixedEdgeFreq:
-            currentScope.fixedEdge = d.at(0) - NUMTOASCII;
-        case funcScopeRange:
-        {
-            int start=0;
-
-            if (func == funcScopeFixedEdgeFreq)
-                start=1;
-            else
-                currentScope.fixedEdge = 0;
-
-            currentScope.valid=false;
-            currentScope.oor = 0;   // No easy way to get OOR unless we calculate it.
-            currentScope.receiver = 0;
-            if (queue->getCache(funcScopeMode,receiver).value.value<spectrumMode_t>() == spectrumMode_t::spectModeCenter)
-            {
-
-                // We are in center mode so the scope range doesn't tell us anything!
-
-                double span = 0.0;
-                for (const auto &s: rigCaps.scopeCenterSpans)
-                {
-                    if (s.cstype == queue->getCache(funcScopeSpan,receiver).value.value<centerSpanData>().cstype)
-                    {
-                        span = double(s.freq) / 1000000.0 ;
-                    }
-                }
-                vfo_t vfo = queue->getCache(funcSelectVFO,receiver).value.value<vfo_t>();
-                double freq = queue->getCache(vfo==vfoA?funcSelectedFreq:funcUnselectedFreq,receiver).value.value<freqt>().MHzDouble;
-                currentScope.startFreq=double(freq - (span/2));
-                currentScope.endFreq=double(freq + (span/2));
-            } else {
-                currentScope.startFreq = double(d.mid(start,8).toULongLong())/1000000.0;
-                currentScope.endFreq = double(d.mid(start+8,8).toULongLong())/1000000.0;
-            }
-            //qInfo() << "Range:" << d << "is" << currentScope.startFreq << "/" << currentScope.endFreq;
-            break;
-        }
-#if defined __GNUC__
-#pragma GCC diagnostic pop
-#endif
         case funcScopeMode:
-            value.setValue<spectrumMode_t>(spectrumMode_t(d.at(0) - NUMTOASCII));
-            currentScope.mode = spectrumMode_t(d.at(0) - NUMTOASCII);
-            break;
-        case funcScopeWaveData:
-        {
-            currentScope.data.clear();
-            for (int i=0;i<d.length();i=i+2)
-            {
-                bool ok;
-                currentScope.data.append(uchar(rigCaps.spectAmpMax-(d.mid(i,2).toShort(&ok,16))));
-            }
-            currentScope.valid=true;
-            value.setValue(currentScope);
-            break;
-        }
-        case funcUSBScope:
-        case funcScopeInfo:
-        {
-            short s = d.mid(0,2).toShort();
-            if (s == 0)
-            {
-                scopeSplit=0;
-                currentScope.data.clear();
-                if (func == funcScopeInfo)
-                {
-                    currentScope.valid=false;
-                    currentScope.receiver = 0;
-                    currentScope.mode=spectrumMode_t(d.at(2) - NUMTOASCII);
-                    currentScope.oor = bool(d.at(25) - NUMTOASCII);
-                    if (currentScope.mode == spectrumMode_t::spectModeCenter) {
-                        quint32 span = double(d.mid(3,11).toULongLong());
-                        quint32 center = double(d.mid(14,11).toULongLong());
-                        currentScope.startFreq = double(center - (span/2))/1000000.0;
-                        currentScope.endFreq = double(center + (span/2))/1000000.0;
-                    } else {
-                        currentScope.startFreq = double(d.mid(3,11).toULongLong())/1000000.0;
-                        currentScope.endFreq = double(d.mid(14,11).toULongLong())/1000000.0;
-                    }
-                    return;
-                }
-            }
-
-            for (int i=2;i<d.length();i=i+2)
-            {
-                bool ok;
-                currentScope.data.append(uchar(rigCaps.spectAmpMax-(d.mid(i,2).toShort(&ok,16))));
-            }
-
-            scopeSplit++;
-
-            if (scopeSplit == rigCaps.spectSeqMax) {
-                currentScope.valid=true;
-                value.setValue(currentScope);
-                func = funcScopeWaveData;
-            }
-            break;
-        }
-        case funcScopeClear:
-            currentScope.data.clear();
-            currentScope.valid=false;
-            break;
-        case funcCWDecode:
-            value.setValue<QString>(d);
-            break;
-        case funcRXEqualizer:
-        case funcTXEqualizer:
-            qInfo(logRig()) << "Received" << funcString[func] << "values" << d;
-            // M0VSE deal with these in some way when we add a rig EQ panel?
-            break;
-        case funcVOIP:
-            qInfo(logRig()) << "Recieved VOIP response:" << d.toInt();
-            if (d.toInt() && rtpThread == Q_NULLPTR) {
-                rtp = new rtpAudio(prefs.ipAddress,quint16(prefs.audioLANPort),this->rxSetup, this->txSetup);
-                rtpThread = new QThread(this);
-                rtpThread->setObjectName("RTP()");
-                rtp->moveToThread(rtpThread);
-                connect(this, SIGNAL(initRtpAudio()), rtp, SLOT(init()));
-                connect(rtpThread, SIGNAL(finished()), rtp, SLOT(deleteLater()));
-                connect(this, SIGNAL(haveChangeLatency(quint16)), rtp, SLOT(changeLatency(quint16)));
-                connect(this, SIGNAL(haveSetVolume(quint8)), rtp, SLOT(setVolume(quint8)));
-                // Audio from UDP
-                connect(rtp, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
-                QObject::connect(rtp, SIGNAL(haveRxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, quint16, bool, bool)));
-                QObject::connect(rtp, SIGNAL(haveTxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, quint16, bool, bool)));
-                rtpThread->start(QThread::TimeCriticalPriority);
-                emit initRtpAudio();
-            }
-            break;
-        case funcFilterControlSSB:
-        case funcFilterControlData:
-            qInfo(logRig()) << "Received" << funcString[func] << "value" << d;
+            // The range is 0-A, so use hex to convert.
+            value.setValue(uchar(d.mid(0,type.bytes).toUShort(nullptr,16)));
             break;
         case funcFA:
             qInfo(logRig()) << "Rig error, last command sent:" << funcString[lastCommand.func] << "(min:" << lastCommand.minValue << "max:" <<
@@ -1172,6 +993,7 @@ void yaesuCommander::determineRigCaps()
                 rigCaps.commands.insert(func, funcType(func, funcString[int(func)],
                                                        settings->value("String", "").toByteArray(),
                                                        settings->value("Min", 0).toInt(NULL), settings->value("Max", 0).toInt(NULL),
+                                                       settings->value("PadRight",false).toBool(),
                                                        settings->value("Command29",false).toBool(),
                                                        settings->value("GetCommand",true).toBool(),
                                                        settings->value("SetCommand",true).toBool(),
@@ -1233,7 +1055,7 @@ void yaesuCommander::determineRigCaps()
         for (int c = 0; c < numSpans; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.scopeCenterSpans.push_back(centerSpanData(centerSpansType(settings->value("Num", 0).toUInt()),
+            rigCaps.scopeCenterSpans.push_back(centerSpanData(uchar(settings->value("Num", 0).toUInt()),
                                                               settings->value("Name", "").toString(), settings->value("Freq", 0).toUInt()));
         }
         settings->endArray();
@@ -1500,13 +1322,6 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
     QByteArray payload;
     int val=INT_MIN;
 
-    if (loginRequired && func != funcLogin && func != funcConnectionRequest)
-    {
-        qInfo() << "Command received before login, requeing";
-        queue->add(priorityHigh,queueItem(func,value,false,receiver));
-        return;
-    }
-
     if (func == funcSelectVFO) {
         vfo_t v = value.value<vfo_t>();
         func = (v == vfoA)?funcVFOASelect:(v == vfoB)?funcVFOBSelect:(v == vfoMain)?funcNone:(v == vfoSub)?funcNone:funcNone;
@@ -1520,46 +1335,44 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
         queue->receiveValue(func,value,false);
         return;
     }
-    if (value.isValid() && (func == funcRitFreq || func == funcXitFreq))
-    {
-        // There is no command to directly set the RIT, only up or down commands.
-        short rit = value.value<short>();
-        static short old = rit;
-        short diff = 0;
-        diff = rit - old;
 
-        if (rit < old)
-        {
-            func = funcRITDown;
-        }
-        else if (rit > old)
-        {
-            func = funcRITUp;
-        }
-
-        //qInfo() << "Updating RIT with" << diff << "old" << old << "new" << rit;
-        value.setValue<short>(abs(diff));
-        if (diff == 0)
-        {
-            return;
-        }
-        old = rit;
-    }
-
-    // The transceiverStatus command cannot be used to set PTT, this is handled by TX/RX commands.
-    if (value.isValid() && func==funcTransceiverStatus)
-    {
-        if (value.value<bool>())
-        {
-            func = funcSetTransmit;
-        }
+    // Certain commands are mode specific so we should modify the command here:
+    if (func == funcDATAOffMod) {
+        modeInfo mi = queue->getCache(funcSelectedMode,0).value.value<modeInfo>();
+        if (mi.mk == modeLSB || mi.mk == modeUSB)
+            func = funcSSBModSource;
+        else if (mi.mk == modeAM)
+            func = funcAMModSource;
+        else if (mi.mk == modeFM)
+            func = funcFMModSource;
         else
-        {
-            func = funcSetReceive;
-        }
-
-        value.clear();
+            func = funcDataModSource;
     }
+
+    if (func == funcUSBModLevel) {
+        modeInfo mi = queue->getCache(funcSelectedMode,0).value.value<modeInfo>();
+        if (mi.mk == modeLSB || mi.mk == modeUSB)
+            func = funcSSBUSBModGain;
+        else if (mi.mk == modeAM)
+            func = funcAMUSBModGain;
+        else if (mi.mk == modeFM)
+            func = funcFMUSBModGain;
+        else
+            func = funcDataUSBModGain;
+    }
+
+    if (func == funcACCAModLevel) {
+        modeInfo mi = queue->getCache(funcSelectedMode,0).value.value<modeInfo>();
+        if (mi.mk == modeLSB || mi.mk == modeUSB)
+            func = funcSSBRearModGain;
+        else if (mi.mk == modeAM)
+            func = funcAMRearModGain;
+        else if (mi.mk == modeFM)
+            func = funcFMRearModGain;
+        else
+            func = funcDataRearModGain;
+    }
+
 
     //qInfo() << "requested command:" << funcString[func];
 
@@ -1602,7 +1415,10 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             if (!strcmp(value.typeName(),"centerSpanData"))
             {
                 centerSpanData d = value.value<centerSpanData>();
-                payload.append(QString::number(d.cstype).rightJustified(cmd.bytes, QChar('0')).toLatin1());
+                if (cmd.padr)
+                    payload.append(QString::number(d.cstype).leftJustified(cmd.bytes, QChar('0')).toLatin1());
+                else
+                    payload.append(QString::number(d.cstype).rightJustified(cmd.bytes, QChar('0')).toLatin1());
             }
             else if (!strcmp(value.typeName(),"QString"))
             {
@@ -1646,10 +1462,6 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             else if(!strcmp(value.typeName(),"bool") || !strcmp(value.typeName(),"uchar") || !strcmp(value.typeName(),"int"))
             {
                 // This is a simple number
-                if (func == funcVOIP) {
-                    qInfo(logRig()) << "Sending VOIP command:" << value.value<uchar>();
-                    // We have logged-in so start audio
-                }
                 if(func==funcTunerStatus) {
                     switch(value.value<uchar>()) {
                     case 0:
@@ -1670,18 +1482,39 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 } else if ( (func==funcALCMeter) || (func==funcSWRMeter) ||
                             (func==funcCompMeter) || (func==funcIdMeter) || (func==funcVdMeter) ) {
                     // The cmd.bytes is set to four for receiving these values, but when sending values, exactly one byte is required.
-                    payload.append(QString::number(value.value<uchar>()).rightJustified(1, QChar('0')).toLatin1());
+                    if (cmd.padr)
+                        payload.append(QString::number(value.value<uchar>()).leftJustified(1, QChar('0')).toLatin1());
+                    else
+                        payload.append(QString::number(value.value<uchar>()).rightJustified(1, QChar('0')).toLatin1());
                 } else {
-                    payload.append(QString::number(value.value<uchar>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
+                    if (cmd.padr)
+                        payload.append(QString::number(value.value<uchar>(),16).leftJustified(cmd.bytes, QChar('0')).toLatin1());
+                    else
+                        payload.append(QString::number(value.value<uchar>(),16).rightJustified(cmd.bytes, QChar('0')).toLatin1());
                 }
             }
             else if(!strcmp(value.typeName(),"uint"))
             {
                 if (func == funcMemoryContents) {
-                    payload.append(QString::number(quint16(value.value<uint>() & 0xffff)).rightJustified(cmd.bytes, QChar('0')).toLatin1());
+                    if (cmd.padr)
+                        payload.append(QString::number(quint16(value.value<uint>() & 0xffff)).leftJustified(cmd.bytes, QChar('0')).toLatin1());
+                    else
+                        payload.append(QString::number(quint16(value.value<uint>() & 0xffff)).rightJustified(cmd.bytes, QChar('0')).toLatin1());
                 } else {
-                    payload.append(QString::number(value.value<uint>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
+                    if (cmd.padr)
+                        payload.append(QString::number(value.value<uint>()).leftJustified(cmd.bytes, QChar('0')).toLatin1());
+                    else
+                        payload.append(QString::number(value.value<uint>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
                 }
+            }
+            else if(!strcmp(value.typeName(),"short") )
+            {
+                short val=value.value<short>();
+                if (val < 0)
+                    payload.append("-");
+                else
+                    payload.append("+");
+                payload.append(QString::number(abs(val)).rightJustified(cmd.bytes, QChar('0')).toLatin1());
             }
             else if(!strcmp(value.typeName(),"ushort") )
             {
@@ -1739,7 +1572,10 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 }
                 else
                 {
-                    payload.append(QString::number(value.value<ushort>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
+                    if (cmd.padr)
+                        payload.append(QString::number(value.value<ushort>()).leftJustified(cmd.bytes, QChar('0')).toLatin1());
+                    else
+                        payload.append(QString::number(value.value<ushort>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
                 }
             }
             else if(!strcmp(value.typeName(),"udpPreferences"))
@@ -1755,17 +1591,12 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             {
                 payload.append(QString::number(value.value<toneInfo>().tone).rightJustified(cmd.bytes, QChar('0')).toLatin1());
             }
-            else if(!strcmp(value.typeName(),"spectrumMode_t"))
-            {
-                if (value.value<spectrumMode_t>() != spectrumMode_t::spectModeScrollF)
-                    payload.append(QString::number(value.value<spectrumMode_t>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
-            }
             else if(!strcmp(value.typeName(),"modeInfo"))
             {
                 if (cmd.cmd == funcSelectedMode)
                 {
                     modeInfo m = value.value<modeInfo>();
-                    payload.append(QString("%0").arg(m.reg).toLatin1());
+                    payload.append(QString("%0").arg(m.reg,1,16).toLatin1());
                     if (m.data != 0xff && m.mk != modeCW &&  value.value<modeInfo>().mk != modeCW_R)
                         queue->add(priorityImmediate,queueItem(funcDataMode,value,false,receiver));
                     if (m.filter != 0xff)
@@ -1801,7 +1632,21 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 qInfo() << "Fixed Edge Bounds edge:" << s.edge << "start:" << s.start << "end:" << s.end << payload;
 
             }
-            else if (!strcmp(value.typeName(),"memoryType")) {
+            else if (!strcmp(value.typeName(),"datekind"))
+            {
+                datekind d = value.value<datekind>();
+                qInfo(logRig()) << QString("Sending new date: (MM-DD-YYYY) %0-%1-%2").arg(d.month).arg(d.day).arg(d.year);
+                // YYYYMMDD
+                payload.append(QString("%0%1%2").arg(d.year,4,10,'0').arg(d.month,2,10,'0').arg(d.day,2,10,'0').toLatin1());
+            }
+            else if (!strcmp(value.typeName(),"timekind"))
+            {
+                timekind t = value.value<timekind>();
+                qInfo(logRig()) << QString("Sending new time: (HH:MM) %0:%1").arg(t.hours).arg(t.minutes);
+                payload.append(QString("%0%1%2").arg(t.hours,2,10,'0').arg(t.minutes,2,10,'0').arg("00").toLatin1());
+            }
+            else if (!strcmp(value.typeName(),"memoryType"))
+            {
 
                 // We need to iterate through memParser to build the correct format
                 bool finished=false;

@@ -1,5 +1,5 @@
 [General]
-Version=2.04
+Version=2.10
 
 [Rig]
 Manufacturer=0
@@ -1596,3 +1596,8 @@ Meters\13\ActualVal=16
 Meters\13\RedLine=false
 Meters\size=13
 Roofing\size=0
+ScopeModes\1\Num=0
+ScopeModes\1\Name=Center Mode
+ScopeModes\2\Num=1
+ScopeModes\2\Name=Fixed Mode
+ScopeModes\size=2

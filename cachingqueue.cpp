@@ -528,9 +528,6 @@ bool cachingQueue::compare(QVariant a, QVariant b)
         } else if (!strcmp(a.typeName(),"toneInfo")) {
             if (a.value<toneInfo>().tone != b.value<toneInfo>().tone)
                 changed=true;
-        } else if (!strcmp(a.typeName(),"spectrumMode_t")) {
-            if (a.value<spectrumMode_t>() != b.value<spectrumMode_t>())
-                changed=true;
         } else if (!strcmp(a.typeName(),"meter_t")) {
             if (a.value<meter_t>() != b.value<meter_t>())
                 changed=true;

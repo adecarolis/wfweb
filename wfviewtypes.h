@@ -43,7 +43,7 @@ enum meter_t {
 };
 
 static QString meterString[19] {"None","S-Meter","Center","SWR","Power","ALC","Comp","Voltage","Current","RX dB","TX Mod", "RX Audio", "Audio", "Latency", "dBu", "dBu EMF", "dBm", "Sub S", ""};
-
+/*
 enum spectrumMode_t {
     spectModeCenter=0x00,
     spectModeFixed=0x01,
@@ -51,6 +51,7 @@ enum spectrumMode_t {
     spectModeScrollF=0x03,
     spectModeUnknown=0xff
 };
+*/
 
 enum rigMode_t {
     modeLSB=0,          //0
@@ -127,7 +128,7 @@ enum pttType_t { pttCIV, pttRTS, pttDTR };
 
 enum vfoModeType_t { vfoModeVfo, vfoModeMem, vfoModeSat };
 
-enum manufacturersType_t {manufIcom=0, manufKenwood, manufFlexRadio, manufYaesu};
+enum manufacturersType_t {manufIcom=0, manufKenwood, manufYaesu, manufFlexRadio};
 
 struct lpfhpf {
     lpfhpf ():lpf(0),hpf(0) {};
@@ -177,7 +178,7 @@ struct scopeData {
     bool valid=false;
     QByteArray data;
     uchar receiver;
-    spectrumMode_t mode;
+    uchar mode;
     uchar fixedEdge=0;
     bool oor;
     double startFreq;
@@ -356,7 +357,11 @@ funcFilterControlSSB,   funcFilterControlData,
 funcConnectionRequest,  funcLogin,              funcVOIP,                   funcVOIPLevel,          funcVOIPBuffer,         funcTXInhibit,
 funcLoginEnableDisable,
 
-
+/* Some Yaesu Specific Commands */
+ funcSSBModSource,      funcSSBUSBModGain,      funcSSBRearModGain,
+ funcAMModSource,       funcAMUSBModGain,       funcAMRearModGain,
+ funcFMModSource,       funcFMUSBModGain,       funcFMRearModGain,
+ funcDataModSource,     funcDataUSBModGain,     funcDataRearModGain,
 /* Special Commands (internal use only) */
 funcSelectVFO,          funcSeparator,          funcLCDWaterfall,           funcLCDSpectrum,        funcLCDNothing,         funcPageUp,
 funcPageDown,           funcVFOFrequency,       funcVFOMode,                funcRigctlFunction,     funcRigctlLevel,        funcRigctlParam,
@@ -491,6 +496,12 @@ static QString funcString[funcLastFunc] { "None",
 "Connection Request",  "Network Login",         "VOIP Function",            "VOIP Level",           "VOIP Buffer",          "TX Inhibit",
 "Enable/Disable Login",
 
+/* Some Yaesu Specific Commands */
+"SSB Mod Source",      "SSB USB Mod Gain",      "SSB Rear Mod Gain",
+"AM Mod Source",       "AM USB Mod Gain",       "AM Rear Mod Gain",
+"FM Mod Source",       "FM USB Mod Gain",       "FM Rear Mod Gain",
+"Data Mod Source",     "Data USB Mod Gain",     "Data Rear Mod Gain",
+
 /* Special Commands */
 "-Select VFO",          "-Seperator",
 "-LCD Waterfall",       "-LCD Spectrum",        "-LCD Nothing",             "-Page Up",             "-Page Down",           "-VFO Frequency",
@@ -506,14 +517,15 @@ struct spanType {
 };
 
 struct funcType {
-    funcType() {cmd=funcNone, name="None", data=QByteArray(), minVal=0, maxVal=0, cmd29=false, getCmd=false, setCmd=false, bytes=0, admin=false; }
-    funcType(funcs cmd, QString name, QByteArray data, int minVal, int maxVal, bool cmd29, bool getCmd, bool setCmd, uchar bytes, bool admin) :
-        cmd(cmd), name(name), data(data), minVal(minVal), maxVal(maxVal), cmd29(cmd29), getCmd(getCmd), setCmd(setCmd), bytes(bytes), admin(admin) {}
+    funcType() {cmd=funcNone, name="None", data=QByteArray(), minVal=0, maxVal=0, padr=false,cmd29=false, getCmd=false, setCmd=false, bytes=0, admin=false; }
+    funcType(funcs cmd, QString name, QByteArray data, int minVal, int maxVal, bool padr, bool cmd29, bool getCmd, bool setCmd, uchar bytes, bool admin) :
+        cmd(cmd), name(name), data(data), minVal(minVal), maxVal(maxVal), padr(padr), cmd29(cmd29), getCmd(getCmd), setCmd(setCmd), bytes(bytes), admin(admin) {}
     funcs cmd;
     QString name;
     QByteArray data;
     int minVal;
     int maxVal;
+    bool padr;
     bool cmd29;
     bool getCmd;
     bool setCmd;
@@ -766,7 +778,6 @@ inline QString getMeterDebug(meter_t m) {
 }
 
 Q_DECLARE_METATYPE(freqt)
-Q_DECLARE_METATYPE(spectrumMode_t)
 Q_DECLARE_METATYPE(rigMode_t)
 Q_DECLARE_METATYPE(vfo_t)
 Q_DECLARE_METATYPE(duplexMode_t)

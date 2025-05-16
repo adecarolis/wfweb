@@ -187,10 +187,6 @@ QString debugWindow::getValue(QVariant val)
         {
             value = QString("Mode:%0").arg(val.value<duplexMode_t>());
         }
-        else if (!strcmp(val.typeName(),"spectrumMode_t"))
-        {
-            value = QString("Mode:%0").arg(val.value<spectrumMode_t>());
-        }
         else if (!strcmp(val.typeName(),"meterkind"))
         {
             meterkind i = val.value<meterkind>();

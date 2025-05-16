@@ -212,11 +212,11 @@ void icomCommander::commonSetup()
     // Add the below commands so we can get a response until we have received rigCaps
     rigCaps.commands.clear();
     rigCaps.commandsReverse.clear();
-    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),QByteArrayLiteral("\x19\x00"),0,0,false,true,false,1,false));
+    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),QByteArrayLiteral("\x19\x00"),0,0,false,false,true,false,1,false));
     rigCaps.commandsReverse.insert(QByteArrayLiteral("\x19\x00"),funcTransceiverId);
 
     connect(queue,SIGNAL(haveCommand(funcs,QVariant,uchar)),this,SLOT(receiveCommand(funcs,QVariant,uchar)));
-    oldScopeMode = spectModeUnknown;
+    oldScopeMode = 0xff;
 
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
 
@@ -1337,7 +1337,7 @@ void icomCommander::parseCommand()
         // [2] 0x00
         // [3] 0x00 (center), 0x01 (fixed), 0x02, 0x03
         receiver = payloadIn.at(0);
-        value.setValue(static_cast<spectrumMode_t>(uchar(payloadIn.at(1))));
+        value.setValue(static_cast<uchar>(payloadIn.at(1)));
         break;
     case funcScopeSpan:
     {
@@ -1580,6 +1580,7 @@ void icomCommander::determineRigCaps()
                             rigCaps.commands.insert(func, funcType(func, funcString[int(func)],
                                 QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),
                                                        settings->value("Min", 0).toInt(NULL), settings->value("Max", 0).toInt(NULL),
+                                                       settings->value("PadRight",false).toBool(),
                                                        settings->value("Command29",false).toBool(),
                                                        settings->value("GetCommand",true).toBool(),
                                                        settings->value("SetCommand",true).toBool(),
@@ -1666,7 +1667,7 @@ void icomCommander::determineRigCaps()
         for (int c = 0; c < numSpans; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.scopeCenterSpans.push_back(centerSpanData(centerSpansType(settings->value("Num", 0).toUInt()),
+            rigCaps.scopeCenterSpans.push_back(centerSpanData(uchar(settings->value("Num", 0).toUInt()),
                 settings->value("Name", "").toString(), settings->value("Freq", 0).toUInt()));
         }
         settings->endArray();
@@ -1991,26 +1992,7 @@ bool icomCommander::parseSpectrum(scopeData& d, uchar receiver)
     if (sequence == 1)
     {
         // This should work on Qt5, but I need to test, use the switch below instead for now.
-        //d.mode = static_cast<spectrumMode_t>(payloadIn.at(2)); // 0=center, 1=fixed
-
-        switch (payloadIn.at(2))
-        {
-        case 0:
-            d.mode = spectrumMode_t::spectModeCenter;
-            break;
-        case 1:
-            d.mode = spectrumMode_t::spectModeFixed;
-            break;
-        case 2:
-            d.mode = spectrumMode_t::spectModeScrollC;
-            break;
-        case 3:
-            d.mode = spectrumMode_t::spectModeScrollF;
-            break;
-        default:
-            d.mode = spectrumMode_t::spectModeUnknown;
-            break;
-        }
+        d.mode = static_cast<uchar>(payloadIn.at(2));
 
         if(d.mode != oldScopeMode)
         {
@@ -2038,7 +2020,7 @@ bool icomCommander::parseSpectrum(scopeData& d, uchar receiver)
         fEnd = parseFreqData(payloadIn.mid(3+freqLen,freqLen),receiver);
         d.endFreq = fEnd.MHzDouble;
 
-        if(d.mode == spectModeCenter)
+        if(d.mode == 0)
         {
             // "center" mode, start is actual center, end is bandwidth.
             d.startFreq -= d.endFreq;
@@ -3437,10 +3419,6 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             else if (!strcmp(value.typeName(),"duplexMode_t"))
             {
                 payload.append(static_cast<uchar>(value.value<duplexMode_t>()));
-            }
-            else if (!strcmp(value.typeName(),"spectrumMode_t"))
-            {
-                payload.append(static_cast<uchar>(value.value<spectrumMode_t>()));
             }
             else if (!strcmp(value.typeName(),"centerSpanData"))
             {

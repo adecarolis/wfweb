@@ -580,7 +580,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     connect(detachButton,SIGNAL(toggled(bool)), this, SLOT(detachScope(bool)));
 
     connect(scopeModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](int val){
-        spectrumMode_t s = scopeModeCombo->itemData(val).value<spectrumMode_t>();
+        uchar s = scopeModeCombo->itemData(val).value<uchar>();
         vfoCommandType t = queue->getVfoCommand(vfoA,receiver,true);
         queue->addUnique(priorityImmediate,queueItem(funcScopeMode,QVariant::fromValue(s),false,t.receiver));
         showHideControls(s);
@@ -638,7 +638,7 @@ receiverWidget::receiverWidget(bool scope, uchar receiver, uchar vfo, QWidget *p
     connect(waterfall, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(scroll(QWheelEvent*)));
     connect(spectrum, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(scroll(QWheelEvent*)));
 
-    showHideControls(spectrumMode_t::spectModeCenter);
+    showHideControls(0);
     lastData.start();
 
 
@@ -1253,7 +1253,7 @@ void receiverWidget::computePlasma()
     }
 }
 
-void receiverWidget::showHideControls(spectrumMode_t mode)
+void receiverWidget::showHideControls(uchar mode)
 {
     if(currentScopeMode == mode)
     {
@@ -1281,25 +1281,52 @@ void receiverWidget::showHideControls(spectrumMode_t mode)
         scopeModeCombo->show();
         clearPeaksButton->show();
 
-        switch (mode)
-        {
-        case spectModeCenter:
-        case spectModeScrollC:
-            edgeCombo->hide();
-            edgeButton->hide();
-            toFixedButton->show();
-            spanCombo->show();
-            break;
+        if (rigCaps->manufacturer == manufYaesu) {
+            switch (mode)
+            {
+            case 0:
+            case 3:
+            case 4:
+                edgeCombo->hide();
+                edgeButton->hide();
+                toFixedButton->show();
+                spanCombo->show();
+                break;
+            case 1:
+            case 2:
+            case 6:
+            case 7:
+            case 9:
+            case 10:
+                toFixedButton->hide();
+                spanCombo->hide();
+                edgeCombo->show();
+                edgeButton->show();
+                break;
+            default:
+                break;
+            }
+        } else {
+            switch (mode)
+            {
+            case 0: // Center
+            case 2: // Scroll-C
+                edgeCombo->hide();
+                edgeButton->hide();
+                toFixedButton->show();
+                spanCombo->show();
+                break;
 
-        case spectModeFixed:
-        case spectModeScrollF:
-            toFixedButton->hide();
-            spanCombo->hide();
-            edgeCombo->show();
-            edgeButton->show();
-            break;
-        case spectModeUnknown:
-            break;
+            case 1: // Fixed
+            case 3: // Scroll-F
+                toFixedButton->hide();
+                spanCombo->hide();
+                edgeCombo->show();
+                edgeButton->show();
+                break;
+            default:
+                break;
+            }
         }
     }
     detachButton->show();
@@ -1345,7 +1372,7 @@ void receiverWidget::displayScope(bool en)
     this->holdButton->setVisible(en && rigCaps->commands.contains(funcScopeHold));
 }
 
-void receiverWidget::setScopeMode(spectrumMode_t m)
+void receiverWidget::setScopeMode(uchar m)
 {
     if (m != currentScopeMode) {
         scopeModeCombo->blockSignals(true);
@@ -1430,7 +1457,7 @@ void receiverWidget::toFixedPressed()
             edgeCombo->setCurrentIndex(edgeCombo->findData(edge));
             edgeCombo->blockSignals(false);
             queue->addUnique(priorityImmediate,queueItem(funcScopeSpeed,QVariant::fromValue(spectrumBounds(lowerFreq, upperFreq, edge)),false,receiver));
-            queue->addUnique(priorityImmediate,queueItem(funcScopeSpeed,QVariant::fromValue<uchar>(spectrumMode_t::spectModeFixed),false,receiver));
+            queue->addUnique(priorityImmediate,queueItem(funcScopeSpeed,QVariant::fromValue<uchar>(1),false,receiver));
         }
     }
 }

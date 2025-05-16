@@ -436,6 +436,22 @@ typedef union streamdeck_lcd_header {
     char packet[16];
 } *streamdeck_lcd_header_t;
 
+typedef union ft710_spi_data {
+    struct {
+        quint8 wf1[850];
+        quint8 wf2[850];
+        quint8 audio1fft[200];
+        quint8 audio1scope[400];
+        quint8 audio2fft[200];
+        quint8 audio2scope[400];
+        quint8 data[150];
+        quint8 unused[1042];
+        quint8 sync[4];
+    };
+    quint8 packet[4096];
+
+} *ft710_spi_data_t;
+
 typedef union rtp_header
 {
     struct {

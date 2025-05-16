@@ -1,5 +1,5 @@
 [General]
-Version=2.04
+Version=2.10
 
 [Rig]
 Manufacturer=0
@@ -1270,7 +1270,7 @@ Periodic\12\VFO=-1
 Periodic\13\Priority=Medium Low
 Periodic\13\Command=Noise Reduction
 Periodic\13\VFO=-1
-Periodic\14\Priority=High
+Periodic\14\Priority=Highest
 Periodic\14\Command=Overflow Status
 Periodic\14\VFO=0
 Periodic\15\Priority=Medium Low
@@ -2176,3 +2176,12 @@ Meters\51\ActualVal=16
 Meters\51\RedLine=false
 Meters\size=51
 Roofing\size=0
+ScopeModes\1\Num=0
+ScopeModes\1\Name=Center Mode
+ScopeModes\2\Num=1
+ScopeModes\2\Name=Fixed Mode
+ScopeModes\3\Num=2
+ScopeModes\3\Name=Scroll-C
+ScopeModes\4\Num=3
+ScopeModes\4\Name=Scroll-F
+ScopeModes\size=4

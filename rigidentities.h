@@ -114,6 +114,7 @@ enum availableBands {
                 bandUnknown // 24
 };
 
+/*
 enum centerSpansType {
     cs2p5k = 0,
     cs5k = 1,
@@ -129,13 +130,14 @@ enum centerSpansType {
     cs10M = 11,
     cs25M = 12,
 };
+*/
 
 struct centerSpanData {
     centerSpanData() {}
     centerSpanData(centerSpanData const &c): cstype(c.cstype), name(c.name), freq(c.freq)  {}
-    centerSpanData(centerSpansType cstype, QString name, unsigned int freq) :
+    centerSpanData(uchar cstype, QString name, unsigned int freq) :
         cstype(cstype), name(name), freq(freq){}
-    centerSpansType cstype;
+    uchar cstype;
     QString name;
     unsigned int freq;
 

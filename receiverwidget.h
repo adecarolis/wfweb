@@ -97,7 +97,7 @@ public:
     void setHold(bool h);
     void setSpeed(uchar s);
     void setSpan(centerSpanData s);
-    void setScopeMode(spectrumMode_t m);
+    void setScopeMode(uchar m);
     void setSplit(bool en) { splitButton->blockSignals(true);splitButton->setChecked(en); splitButton->blockSignals(false);}
     void setTracking(bool en) { tracking=en; }
     void setRef(int ref);
@@ -144,7 +144,7 @@ public slots: // Can be called directly or updated via signal/slot
 
 signals:    
     void frequencyRange(uchar receiver, double start, double end);
-    void updateScopeMode(spectrumMode_t index);
+    void updateScopeMode(uchar index);
     void updateSpan(centerSpanData s);
     void showStatusBarText(QString text);
     void updateSettings(uchar receiver, int value, quint16 len, int floor, int ceiling);
@@ -180,7 +180,7 @@ private slots:
 private:
     void clearPlasma();
     void computePlasma();
-    void showHideControls(spectrumMode_t mode);
+    void showHideControls(uchar mode);
     void showBandIndicators(bool en);
     void vfoSwap();
 
@@ -277,7 +277,7 @@ private:
     modeInfo unselectedMode;
     freqt unselectedFreq;
     bool scopePrepared=false;
-    quint16 spectWidth=689;
+    quint16 spectWidth=689; // Default was 689
     quint16 maxAmp=200;
     quint16 wfLength;
     quint16 wfLengthMax;
@@ -345,7 +345,7 @@ private:
     uchar selectedVFO=0;
     bool hasScope=true;
     QString currentRegion="1";
-    spectrumMode_t currentScopeMode=spectrumMode_t::spectModeUnknown;
+    uchar currentScopeMode=0xff;
     bool bandIndicatorsVisible=false;
     rigCapabilities* rigCaps=Q_NULLPTR;
     bandType currentBand;

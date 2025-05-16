@@ -1,5 +1,5 @@
 [General]
-Version=2.04
+Version=2.10
 
 [Rig]
 Manufacturer=1
@@ -1624,3 +1624,10 @@ Roofing\5\Name=6 kHz
 Roofing\6\Num=5
 Roofing\6\Name=15 kHz
 Roofing\size=6
+ScopeModes\1\Num=0
+ScopeModes\1\Name=Center Mode
+ScopeModes\2\Num=1
+ScopeModes\2\Name=Fixed Mode
+ScopeModes\3\Num=2
+ScopeModes\3\Name=Auto Scroll
+ScopeModes\size=3

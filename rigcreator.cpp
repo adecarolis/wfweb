@@ -63,6 +63,15 @@ rigCreator::rigCreator(QWidget *parent) :
 void rigCreator::commandRowAdded(int row)
 {
     // Create a widget that will contain a checkbox
+    QWidget *padrWidget = new QWidget();
+    QCheckBox *padrCheckBox = new QCheckBox();      // We declare and initialize the checkbox
+    padrCheckBox->setObjectName("padr");
+    QHBoxLayout *layoutPadrCheckBox = new QHBoxLayout(padrWidget); // create a layer with reference to the widget
+    layoutPadrCheckBox->addWidget(padrCheckBox);            // Set the checkbox in the layer
+    layoutPadrCheckBox->setAlignment(Qt::AlignCenter);  // Center the checkbox
+    layoutPadrCheckBox->setContentsMargins(0,0,0,0);    // Set the zero padding
+    ui->commands->setCellWidget(row,5, padrWidget);
+
     QWidget *checkBoxWidget = new QWidget();
     QCheckBox *checkBox = new QCheckBox();      // We declare and initialize the checkbox
     checkBox->setObjectName("check");
@@ -70,7 +79,7 @@ void rigCreator::commandRowAdded(int row)
     layoutCheckBox->addWidget(checkBox);            // Set the checkbox in the layer
     layoutCheckBox->setAlignment(Qt::AlignCenter);  // Center the checkbox
     layoutCheckBox->setContentsMargins(0,0,0,0);    // Set the zero padding
-    ui->commands->setCellWidget(row,5, checkBoxWidget);
+    ui->commands->setCellWidget(row,6, checkBoxWidget);
 
     QWidget *getSetWidget = new QWidget();
     QCheckBox *get = new QCheckBox();      // We declare and initialize the checkbox
@@ -84,7 +93,7 @@ void rigCreator::commandRowAdded(int row)
     layoutGetSet->addWidget(set);            // Set the checkbox in the layer
     layoutGetSet->setAlignment(Qt::AlignCenter);  // Center the checkbox
     layoutGetSet->setContentsMargins(0,0,0,0);    // Set the zero padding
-    ui->commands->setCellWidget(row,6, getSetWidget);
+    ui->commands->setCellWidget(row,7, getSetWidget);
 
     QWidget *adminWidget = new QWidget();
     QCheckBox *admin = new QCheckBox();      // We declare and initialize the checkbox
@@ -93,7 +102,7 @@ void rigCreator::commandRowAdded(int row)
     layoutAdmin->addWidget(admin);            // Set the checkbox in the layer
     layoutAdmin->setAlignment(Qt::AlignCenter);  // Center the checkbox
     layoutAdmin->setContentsMargins(0,0,0,0);    // Set the zero padding
-    ui->commands->setCellWidget(row,7, adminWidget);
+    ui->commands->setCellWidget(row,8, adminWidget);
 
 
 }
@@ -262,6 +271,27 @@ void rigCreator::loadRigFile(QString file)
             ui->commands->insertRow(ui->commands->rowCount());
 
             // Create a widget that will contain a checkbox
+            ui->commands->model()->setData(ui->commands->model()->index(c,0),settings->value("Type", "").toString());
+            ui->commands->model()->setData(ui->commands->model()->index(c,1),settings->value("String", "").toString());
+            ui->commands->model()->setData(ui->commands->model()->index(c,2),QString::number(settings->value("Min", 0).toInt()));
+            ui->commands->model()->setData(ui->commands->model()->index(c,3),QString::number(settings->value("Max", 0).toInt()));
+            ui->commands->model()->setData(ui->commands->model()->index(c,4),QString::number(settings->value("Bytes", 0).toInt()));
+
+            QWidget *padrWidget = new QWidget();
+            QCheckBox *padrCheckBox = new QCheckBox();      // We declare and initialize the checkbox
+            padrCheckBox->setObjectName("padr");
+            QHBoxLayout *layoutPadrCheckBox = new QHBoxLayout(padrWidget); // create a layer with reference to the widget
+            layoutPadrCheckBox->addWidget(padrCheckBox);            // Set the checkbox in the layer
+            layoutPadrCheckBox->setAlignment(Qt::AlignCenter);  // Center the checkbox
+            layoutPadrCheckBox->setContentsMargins(0,0,0,0);    // Set the zero padding
+            if (settings->value("PadRight",false).toBool()) {
+                padrCheckBox->setChecked(true);
+            } else {
+                padrCheckBox->setChecked(false);
+            }
+
+            ui->commands->setCellWidget(c,5, padrWidget);
+
             QWidget *checkBoxWidget = new QWidget();
             QCheckBox *checkBox = new QCheckBox();      // We declare and initialize the checkbox
             checkBox->setObjectName("check");
@@ -269,19 +299,13 @@ void rigCreator::loadRigFile(QString file)
             layoutCheckBox->addWidget(checkBox);            // Set the checkbox in the layer
             layoutCheckBox->setAlignment(Qt::AlignCenter);  // Center the checkbox
             layoutCheckBox->setContentsMargins(0,0,0,0);    // Set the zero padding
-
             if (settings->value("Command29",false).toBool()) {
                 checkBox->setChecked(true);
             } else {
                 checkBox->setChecked(false);
             }
+            ui->commands->setCellWidget(c,6, checkBoxWidget);
 
-            ui->commands->model()->setData(ui->commands->model()->index(c,0),settings->value("Type", "").toString());
-            ui->commands->model()->setData(ui->commands->model()->index(c,1),settings->value("String", "").toString());
-            ui->commands->model()->setData(ui->commands->model()->index(c,2),QString::number(settings->value("Min", 0).toInt()));
-            ui->commands->model()->setData(ui->commands->model()->index(c,3),QString::number(settings->value("Max", 0).toInt()));
-            ui->commands->model()->setData(ui->commands->model()->index(c,4),QString::number(settings->value("Bytes", 0).toInt()));
-            ui->commands->setCellWidget(c,5, checkBoxWidget);
 
             QWidget *getSetWidget = new QWidget();
             QCheckBox *get = new QCheckBox();      // We declare and initialize the checkbox
@@ -303,7 +327,7 @@ void rigCreator::loadRigFile(QString file)
             layoutGetSet->addWidget(set);            // Set the checkbox in the layer
             layoutGetSet->setAlignment(Qt::AlignCenter);  // Center the checkbox
             layoutGetSet->setContentsMargins(0,0,0,0);    // Set the zero padding
-            ui->commands->setCellWidget(c,6, getSetWidget);
+            ui->commands->setCellWidget(c,7, getSetWidget);
 
             QWidget *adminWidget = new QWidget();
             QCheckBox *admin = new QCheckBox();      // We declare and initialize the checkbox
@@ -317,7 +341,7 @@ void rigCreator::loadRigFile(QString file)
             } else {
                 admin->setChecked(false);
             }
-            ui->commands->setCellWidget(c,7, adminWidget);
+            ui->commands->setCellWidget(c,8, adminWidget);
 
         }
         settings->endArray();
@@ -605,6 +629,15 @@ void rigCreator::loadRigFile(QString file)
                 ui->ctcss->model()->setData(ui->ctcss->model()->index(c,1),QString::number(kenwoodTones[c],'f',1));
             }
         }
+        else if (ui->manufacturer->currentData().value<manufacturersType_t>() == manufYaesu)
+        {
+            for (int c = 0; c < 50; c++)
+            {
+                ui->ctcss->insertRow(ui->ctcss->rowCount());
+                ui->ctcss->model()->setData(ui->ctcss->model()->index(c,0),QString::number(c).rightJustified(4,'0'));
+                ui->ctcss->model()->setData(ui->ctcss->model()->index(c,1),QString::number(yaesuTones[c],'f',1));
+            }
+        }
         else  if (ui->manufacturer->currentData().value<manufacturersType_t>() == manufIcom)
         {
             for (int c = 0; c < 48; c++)
@@ -861,13 +894,19 @@ void rigCreator::saveRigFile(QString file)
         settings->setValue("Max", (ui->commands->item(n,3) == NULL) ? 0 : ui->commands->item(n,3)->text().toInt());
         settings->setValue("Bytes", (ui->commands->item(n,4) == NULL) ? 0 : ui->commands->item(n,4)->text().toInt());
 
-        QCheckBox* chk = ui->commands->cellWidget(n,5)->findChild<QCheckBox*>();
+        QCheckBox* padr = ui->commands->cellWidget(n,5)->findChild<QCheckBox*>();
+        if (padr != nullptr)
+        {
+            settings->setValue("PadRight", padr->isChecked());
+        }
+
+        QCheckBox* chk = ui->commands->cellWidget(n,6)->findChild<QCheckBox*>();
         if (chk != nullptr)
         {
             settings->setValue("Command29", chk->isChecked());
         }
 
-        QList<QCheckBox*> getSet =ui->commands->cellWidget(n,6)->findChildren<QCheckBox*>(QString(), Qt::FindChildrenRecursively);
+        QList<QCheckBox*> getSet =ui->commands->cellWidget(n,7)->findChildren<QCheckBox*>(QString(), Qt::FindChildrenRecursively);
         qDebug() << "size = "<<getSet.size();
         for (const auto &c: getSet)
         {
@@ -877,7 +916,7 @@ void rigCreator::saveRigFile(QString file)
                 settings->setValue("SetCommand", c->isChecked());
         }
 
-        QCheckBox* admin = ui->commands->cellWidget(n,7)->findChild<QCheckBox*>();
+        QCheckBox* admin = ui->commands->cellWidget(n,8)->findChild<QCheckBox*>();
         if (chk != nullptr)
         {
             settings->setValue("Admin", admin->isChecked());

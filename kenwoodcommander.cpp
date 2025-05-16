@@ -176,19 +176,19 @@ void kenwoodCommander::commonSetup()
     // Minimum commands we need to find rig model and login
     rigCaps.commands.clear();
     rigCaps.commandsReverse.clear();
-    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),"ID",0,999,false,true,false,3,false));
+    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),"ID",0,999,false,false,true,false,3,false));
     rigCaps.commandsReverse.insert(QByteArray("ID"),funcTransceiverId);
 
-    rigCaps.commands.insert(funcConnectionRequest,funcType(funcConnectionRequest, QString("Connection Request"),"##CN",0,1,false,true,true,1,false));
+    rigCaps.commands.insert(funcConnectionRequest,funcType(funcConnectionRequest, QString("Connection Request"),"##CN",0,1,false,false,true,true,1,false));
     rigCaps.commandsReverse.insert(QByteArray("##CN"),funcConnectionRequest);
 
-    rigCaps.commands.insert(funcLogin,funcType(funcLogin, QString("Network Login"),"##ID",0,0,false,false,true,0,false));
+    rigCaps.commands.insert(funcLogin,funcType(funcLogin, QString("Network Login"),"##ID",0,0,false,false,false,true,0,false));
     rigCaps.commandsReverse.insert(QByteArray("##ID"),funcLogin);
 
-    rigCaps.commands.insert(funcLoginEnableDisable,funcType(funcLoginEnableDisable, QString("Enable/Disable Login"),"##UE",0,1,false,false,true,1,false));
+    rigCaps.commands.insert(funcLoginEnableDisable,funcType(funcLoginEnableDisable, QString("Enable/Disable Login"),"##UE",0,1,false,false,false,true,1,false));
     rigCaps.commandsReverse.insert(QByteArray("##UE"),funcLoginEnableDisable);
 
-    rigCaps.commands.insert(funcTXInhibit,funcType(funcTXInhibit, QString("Transmit Inhibit"),"##TI",0,1,false,false,true,1,false));
+    rigCaps.commands.insert(funcTXInhibit,funcType(funcTXInhibit, QString("Transmit Inhibit"),"##TI",0,1,false,false,false,true,1,false));
     rigCaps.commandsReverse.insert(QByteArray("##TI"),funcTXInhibit);
 
     connect(queue,SIGNAL(haveCommand(funcs,QVariant,uchar)),this,SLOT(receiveCommand(funcs,QVariant,uchar)));
@@ -721,7 +721,7 @@ void kenwoodCommander::parseData(QByteArray data)
             currentScope.valid=false;
             currentScope.oor = 0;   // No easy way to get OOR unless we calculate it.
             currentScope.receiver = 0;
-            if (queue->getCache(funcScopeMode,receiver).value.value<spectrumMode_t>() == spectrumMode_t::spectModeCenter)
+            if (queue->getCache(funcScopeMode,receiver).value.value<uchar>() == 0x0)
             {
 
                 // We are in center mode so the scope range doesn't tell us anything!
@@ -749,8 +749,8 @@ void kenwoodCommander::parseData(QByteArray data)
 #pragma GCC diagnostic pop
 #endif
         case funcScopeMode:
-            value.setValue<spectrumMode_t>(spectrumMode_t(d.at(0) - NUMTOASCII));
-            currentScope.mode = spectrumMode_t(d.at(0) - NUMTOASCII);
+            value.setValue<uchar>(d.at(0) - NUMTOASCII);
+            currentScope.mode = uchar(d.at(0) - NUMTOASCII);
             break;
         case funcScopeWaveData:
         {
@@ -776,9 +776,9 @@ void kenwoodCommander::parseData(QByteArray data)
                 {
                     currentScope.valid=false;
                     currentScope.receiver = 0;
-                    currentScope.mode=spectrumMode_t(d.at(2) - NUMTOASCII);
+                    currentScope.mode=uchar(d.at(2) - NUMTOASCII);
                     currentScope.oor = bool(d.at(25) - NUMTOASCII);
-                    if (currentScope.mode == spectrumMode_t::spectModeCenter) {
+                    if (currentScope.mode == 0) {
                         quint32 span = double(d.mid(3,11).toULongLong());
                         quint32 center = double(d.mid(14,11).toULongLong());
                         currentScope.startFreq = double(center - (span/2))/1000000.0;
@@ -1137,6 +1137,7 @@ void kenwoodCommander::determineRigCaps()
                 rigCaps.commands.insert(func, funcType(func, funcString[int(func)],
                                                        settings->value("String", "").toByteArray(),
                                                        settings->value("Min", 0).toInt(NULL), settings->value("Max", 0).toInt(NULL),
+                                                       settings->value("PadRight",false).toBool(),
                                                        settings->value("Command29",false).toBool(),
                                                        settings->value("GetCommand",true).toBool(),
                                                        settings->value("SetCommand",true).toBool(),
@@ -1198,7 +1199,7 @@ void kenwoodCommander::determineRigCaps()
         for (int c = 0; c < numSpans; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.scopeCenterSpans.push_back(centerSpanData(centerSpansType(settings->value("Num", 0).toUInt()),
+            rigCaps.scopeCenterSpans.push_back(centerSpanData(uchar(settings->value("Num", 0).toUInt()),
                                                               settings->value("Name", "").toString(), settings->value("Freq", 0).toUInt()));
         }
         settings->endArray();
@@ -1718,11 +1719,6 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             else if(!strcmp(value.typeName(),"toneInfo"))
             {
                 payload.append(QString::number(value.value<toneInfo>().tone).rightJustified(cmd.bytes, QChar('0')).toLatin1());
-            }
-            else if(!strcmp(value.typeName(),"spectrumMode_t"))
-            {
-                if (value.value<spectrumMode_t>() != spectrumMode_t::spectModeScrollF)
-                    payload.append(QString::number(value.value<spectrumMode_t>()).rightJustified(cmd.bytes, QChar('0')).toLatin1());
             }
             else if(!strcmp(value.typeName(),"modeInfo"))
             {

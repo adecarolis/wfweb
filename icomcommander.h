@@ -96,7 +96,7 @@ private:
     void prepDataAndSend(QByteArray data);
     void debugMe();
 
-    centerSpanData createScopeCenter(centerSpansType s, QString name);
+    centerSpanData createScopeCenter(uchar s, QString name);
 
     commHandler* comm = Q_NULLPTR;
     pttyHandler* ptty = Q_NULLPTR;
@@ -123,7 +123,7 @@ private:
     quint8 spectSeqMax;
     quint16 spectAmpMax;
     quint16 spectLenMax;
-    spectrumMode_t oldScopeMode;
+    uchar oldScopeMode;
 
     bool lookingForRig;
     bool foundRig;
