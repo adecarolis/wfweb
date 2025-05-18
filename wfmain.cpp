@@ -6295,6 +6295,8 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
                 // Report scope redraw time to Select Radio window (only scope 0)
                 connect(receiver,SIGNAL(spectrumTime(double)),selRad,SLOT(spectrumTime(double)));
                 connect(receiver,SIGNAL(waterfallTime(double)),selRad,SLOT(waterfallTime(double)));
+                connect(receiver,SIGNAL(spectrumTime(double)),rig,SLOT(spectrumTime(double)));
+                connect(receiver,SIGNAL(waterfallTime(double)),rig,SLOT(waterfallTime(double)));
             }
             // Setup various combo box up for each VFO:
             receiver->clearMode();

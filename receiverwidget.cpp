@@ -2002,7 +2002,7 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
                         configIfShift->setEnabled(false);
                         //configFilterWidth->setEnabled(true);
                     }
-                    else if (m.mk == modeUSB || m.mk == modeLSB || m.mk == modeAM || m.mk == modeFM) {
+                    else if (m.mk == modeAM || m.mk == modeFM) {
                         queue->addUnique(priorityHigh,funcPBTInner,true,t.receiver);
                         queue->addUnique(priorityHigh,funcPBTOuter,true,t.receiver);
                         queue->del(funcFilterWidth,t.receiver);
@@ -2010,6 +2010,13 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
                         configPbtOuter->setEnabled(true && rigCaps->commands.contains(funcPBTOuter));
                         configIfShift->setEnabled(true && (rigCaps->commands.contains(funcIFShift) || rigCaps->commands.contains(funcPBTInner)));
                         //configFilterWidth->setEnabled(false);
+                    } else {
+                        queue->addUnique(priorityHigh,funcPBTInner,true,t.receiver);
+                        queue->addUnique(priorityHigh,funcPBTOuter,true,t.receiver);
+                        queue->addUnique(priorityHigh,funcFilterWidth,true,t.receiver);
+                        configPbtInner->setEnabled(true);
+                        configPbtOuter->setEnabled(true);
+                        configFilterWidth->setEnabled(true);
                     }
                 } else
                 {

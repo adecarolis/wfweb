@@ -54,6 +54,8 @@ public slots:
     void radioUsage(quint8 radio, bool admin, quint8 busy, QString name, QString ip);
     void setCurrentRadio(quint8 radio);
     void getDebug();
+    void spectrumTime(double tm) {specTime = tm; };
+    void waterfallTime(double tm) { wfTime = tm; };
 
     void dataFromServer(QByteArray data);
     virtual void process();
@@ -78,6 +80,7 @@ public slots:
 
     // Housekeeping:
     virtual void receiveCommand(funcs func, QVariant value, uchar receiver);
+
 
 signals:
     // Right now, all signals are defined here as they should be rig agnostic.
@@ -149,6 +152,8 @@ protected:
     QHash<quint16,rigInfo> rigList;
     bool isRadioAdmin = true;
     commandErrorType lastCommand;
+    double specTime=10; // Reasonable defaults until we have proper values
+    double wfTime=10;
 
 private:
     // rigCommander should have no private vars as it is only ever subclassed.

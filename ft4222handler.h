@@ -15,6 +15,7 @@ class ft4222Handler : public QThread
     Q_OBJECT
 public:
     void stop() { running = false; }
+    void setPoll(qint64 tm) { poll = tm; };
 
 private:
     void run() override;
@@ -27,6 +28,7 @@ private:
     std::vector< FT_DEVICE_LIST_INFO_NODE > devList;
 #endif
     bool running = true;
+    qint64 poll=20;
 
 signals:
     void dataReady(ft710_spi_data d);

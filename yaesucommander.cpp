@@ -32,7 +32,10 @@ yaesuCommander::~yaesuCommander()
     queue->setRigCaps(Q_NULLPTR); // Remove access to rigCaps
 
     if (port != Q_NULLPTR) {
-        port->close();
+        if (port->isOpen())
+        {
+            port->close();
+        }
         delete port;
         port = Q_NULLPTR;
     }
@@ -43,7 +46,6 @@ yaesuCommander::~yaesuCommander()
         ft4222->stop();
         ft4222->exit();
         ft4222->wait();
-        ft4222 = Q_NULLPTR;
     }
 }
 
@@ -148,7 +150,7 @@ void yaesuCommander::ft4222Data(ft710_spi_data d)
     queue->receiveValue(funcScopeWaveData,QVariant::fromValue<scopeData>(scope),0);
     queue->receiveValue(funcSelectedFreq,QVariant::fromValue<freqt>(fa),0);
     queue->receiveValue(funcUnselectedFreq,QVariant::fromValue<freqt>(fb),0);
-
+    ft4222->setPoll(quint64(specTime+wfTime+10));
 }
 
 void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
@@ -292,8 +294,10 @@ void yaesuCommander::powerOn()
 
     d.append(QString("%0;").arg(cmd).toLatin1());
     QMutexLocker locker(&serialMutex);
-    port->write(d);
-    lastCommand.data = d;
+    if (portConnected) {
+        port->write(d);
+        lastCommand.data = d;
+    }
 }
 
 void yaesuCommander::powerOff()
@@ -308,8 +312,10 @@ void yaesuCommander::powerOff()
 
     d.append(QString("%0;").arg(cmd).toLatin1());
     QMutexLocker locker(&serialMutex);
-    port->write(d);
-    lastCommand.data = d;
+    if (portConnected) {
+        port->write(d);
+        lastCommand.data = d;
+    }
 }
 
 
@@ -355,9 +361,11 @@ funcType yaesuCommander::getCommand(funcs func, QByteArray &payload, int value, 
 
 void yaesuCommander::receiveDataFromRig()
 {
-    const QByteArray in = port->readAll();
-    parseData(in);
-    emit haveDataFromRig(in);
+    if (portConnected) {
+        const QByteArray in = port->readAll();
+        parseData(in);
+        emit haveDataFromRig(in);
+    }
 }
 
 

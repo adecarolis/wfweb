@@ -7,6 +7,11 @@ void ft4222Handler::run()
     if (!setup())
     {
         qInfo(logRig()) << "Failed to initialize FT4222 device";
+        // Not sure why I get an exception if the thread quits before being asked?
+        while (this->running)
+        {
+            this->msleep(500);
+        }
         return;
     }
 
@@ -22,6 +27,7 @@ void ft4222Handler::run()
     QElapsedTimer timer;
     timer.start();
 
+    quint64 currentPoll=20;
     while (this->running)
     {
         status = FT4222_SPIMaster_SingleRead(device,buf.packet, sizeof(buf.packet), &size, false);
@@ -36,7 +42,7 @@ void ft4222Handler::run()
             }
         }
 
-        if (timer.hasExpired(30))
+        if (timer.hasExpired(currentPoll))
         {
 
             for (unsigned int i=0; i< sizeof(buf.wf1);i++) {
@@ -45,6 +51,10 @@ void ft4222Handler::run()
 
             emit dataReady(buf);
             timer.start();
+            if (poll > currentPoll+10 || poll < currentPoll-10) {
+                qDebug(logRig()) << "FT4222 Scope polling changed to" << poll << "from" << currentPoll << "ms";
+                currentPoll = poll;
+            }
         }
     }
 
