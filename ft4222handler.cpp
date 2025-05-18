@@ -39,7 +39,7 @@ void ft4222Handler::run()
         if (timer.hasExpired(30))
         {
 
-            for (int i=0; i< sizeof(buf.wf1);i++) {
+            for (unsigned int i=0; i< sizeof(buf.wf1);i++) {
                 buf.wf1[i] = ~buf.wf1[i];
             }
 

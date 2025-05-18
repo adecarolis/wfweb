@@ -264,13 +264,13 @@ void memories::menuAction(QAction* action, quint32 row)
     if (action == useCurrent)
     {
         qInfo() << "Use Current" << row;
-        memcpy(mem.name,"<UPDATED>",sizeof mem.name);
+        memcpy(mem.name,"<UPDATED>",10);
         updateRow(row,mem);
     }
     else if (action == addCurrent)
     {
         qInfo() << "Add Current" << row;
-        memcpy(mem.name,"<NEW>",sizeof mem.name);
+        memcpy(mem.name,"<NEW>",6);
         row=ui->table->rowCount();
         ui->table->insertRow(ui->table->rowCount());
         rowAdded(row,mem);
@@ -546,7 +546,7 @@ void memories::recallMem(quint32 num)
         for (auto &band: rigCaps->bands)
         {
             if (band.region == "" || band.region == region) {
-                if (ui->group->isVisible() && band.memGroup == ui->group->currentData().toUInt())
+                if (ui->group->isVisible() && band.memGroup == ui->group->currentData().toInt())
                 {
                     bandStackType bs;
                     bs.band = band.bsr;
