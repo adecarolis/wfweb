@@ -41,7 +41,10 @@ kenwoodCommander::~kenwoodCommander()
     queue->setRigCaps(Q_NULLPTR); // Remove access to rigCaps
 
     if (port != Q_NULLPTR) {
-        port->close();
+        if (port->isOpen())
+        {
+            port->close();
+        }
         delete port;
         port = Q_NULLPTR;
     }
@@ -237,8 +240,10 @@ void kenwoodCommander::powerOn()
 
     d.append(QString("%0;").arg(cmd).toLatin1());
     QMutexLocker locker(&serialMutex);
-    port->write(d);
-    lastCommand.data = d;
+    if (portConnected) {
+        port->write(d);
+        lastCommand.data = d;
+    }
 }
 
 void kenwoodCommander::powerOff()
@@ -253,8 +258,10 @@ void kenwoodCommander::powerOff()
 
     d.append(QString("%0;").arg(cmd).toLatin1());
     QMutexLocker locker(&serialMutex);
-    port->write(d);
-    lastCommand.data = d;
+    if (portConnected) {
+        port->write(d);
+        lastCommand.data = d;
+    }
 }
 
 
@@ -300,9 +307,11 @@ funcType kenwoodCommander::getCommand(funcs func, QByteArray &payload, int value
 
 void kenwoodCommander::receiveDataFromRig()
 {
-    const QByteArray in = port->readAll();
-    parseData(in);
-    emit haveDataFromRig(in);
+    if (portConnected) {
+        const QByteArray in = port->readAll();
+        parseData(in);
+        emit haveDataFromRig(in);
+    }
 }
 
 
@@ -568,6 +577,7 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcAGCTimeConstant:
         case funcMemorySelect:
         case funcRfGain:
+        case funcMicGain:
         case funcRFPower:
         case funcSquelch:
         case funcMonitorGain:
