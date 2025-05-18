@@ -413,9 +413,9 @@ void yaesuCommander::parseData(QByteArray data)
             // Value has right padding, so remove all trailing zeros.
             for (int i=type.bytes;i>0;i++)
             {
-                if (d.size()>1 && d.last(1) == '0')
+                if (d.size()>1 && d.back() == '0')
                 {
-                    d.removeLast();
+                    d.remove(d.size()-1,1);
                 } else {
                     break;
                 }
