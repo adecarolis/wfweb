@@ -6,7 +6,7 @@
 #include "wfviewtypes.h"
 
 #include "ftd2xx.h"
-#include "LibFT4222.h"
+#include "libft4222.h"
 
 class ft4222Handler : public QThread
 {

@@ -6,13 +6,6 @@
 #include <ft4222handler.h>
 
 
-//------------------------------------------------------------------------------
-// include FTDI libraries
-//
-#include "ftd2xx.h"
-#include "LibFT4222.h"
-
-
 #define audioLevelBufferSize (4)
 
 // This file figures out what to send to the comm and also
