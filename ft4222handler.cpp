@@ -4,16 +4,9 @@
 
 void ft4222Handler::run()
 {
-    findDevices();
-    if (!devList.empty())
+    if (!setup())
     {
-        if (!setup(0))
-        {
-            qInfo(logRig()) << "Failed to initialize FT4222 device";
-            return;
-        }
-    } else {
-        qInfo(logRig()) << "No FT4222 devices found";
+        qInfo(logRig()) << "Failed to initialize FT4222 device";
         return;
     }
 
@@ -57,48 +50,6 @@ void ft4222Handler::run()
     FT_Close(device);
 }
 
-void ft4222Handler::findDevices()
-{
-    /*
-            qInfo(logRig()) << "Dev:" << iDev;
-            qInfo(logRig()) << "Flags=" << devInfo.Flags;
-            qInfo(logRig()) << "Type=" << devInfo.Type;
-            qInfo(logRig()) << "ID=" << devInfo.ID;
-            qInfo(logRig()) << "LocId=" << devInfo.LocId;
-            qInfo(logRig()) << "SerialNumber=" << devInfo.SerialNumber;
-            qInfo(logRig()) << "Description=" << devInfo.Description;
-            qInfo(logRig()) << "ftHandle=" << devInfo.ftHandle;
-    */
-
-    FT_STATUS ftStatus = 0;
-
-    DWORD numOfDevices = 0;
-    ftStatus = FT_CreateDeviceInfoList(&numOfDevices);
-
-    if (FT_OK == ftStatus)
-    {
-        for(DWORD iDev=0; iDev<numOfDevices; ++iDev)
-        {
-            FT_DEVICE_LIST_INFO_NODE devInfo;
-            memset(&devInfo, 0, sizeof(devInfo));
-
-            ftStatus = FT_GetDeviceInfoDetail(iDev, &devInfo.Flags, &devInfo.Type, &devInfo.ID, &devInfo.LocId,
-                                              devInfo.SerialNumber,
-                                              devInfo.Description,
-                                              &devInfo.ftHandle);
-
-            if (FT_OK == ftStatus)
-            {
-                const std::string desc = devInfo.Description;
-                qInfo(logRig()) << "Found FT4222 device:" << devList.size() << desc;
-                devList.push_back(devInfo);
-            }
-        }
-    }
-
-    return;
-}
-
 void ft4222Handler::sync()
 {
     if (device != NULL)
@@ -137,7 +88,7 @@ void ft4222Handler::sync()
     setup(0);
 }
 
-bool ft4222Handler::setup(uchar num)
+bool ft4222Handler::setup()
 {
     FT_STATUS ftStatus;
     FT_STATUS ft4222_status;
@@ -150,7 +101,6 @@ bool ft4222Handler::setup(uchar num)
     }
 
     ftStatus = FT_OpenEx((void*) "FT4222 A", FT_OPEN_BY_DESCRIPTION, &device);
-    //ftStatus = FT_Open(num, &device);
     if (FT_OK != ftStatus)
     {
         qInfo(logRig()) << "Could not open FT422 device";

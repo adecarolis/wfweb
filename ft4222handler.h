@@ -18,9 +18,8 @@ private:
     void run() override;
 
     void read();
-    void findDevices();
     void sync();
-    bool setup(uchar num);
+    bool setup();
     FT_HANDLE device = NULL;
     std::vector< FT_DEVICE_LIST_INFO_NODE > devList;
     bool running = true;
