@@ -270,7 +270,7 @@ contains(DEFINES,USB_CONTROLLER){
     win32:INCLUDEPATH += ../hidapi/hidapi
 }
 
-!win32:LIBS += -L./ -lopus
+!win32:LIBS += -L./ -lopus -lftd2xx -lft4222
 win32:LIBS += -lopus -lole32 -luser32
 
 #macx:SOURCES += ../qcustomplot/qcustomplot.cpp 
