@@ -85,7 +85,7 @@ void ft4222Handler::sync()
         }
     }
     qInfo(logRig()) << "FT4222 failed to resync";
-    setup(0);
+    setup();
 }
 
 bool ft4222Handler::setup()
