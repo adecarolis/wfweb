@@ -285,7 +285,7 @@ contains(DEFINES,USB_CONTROLLER){
 win32:LIBS += -lopus -lole32 -luser32
 
 contains(DEFINES,FTDI_SUPPORT){
-  !win32:LIBS += -lftd2xx -llibft4222
+  !win32:LIBS += -lft4222
 }
 
 #macx:SOURCES += ../qcustomplot/qcustomplot.cpp 
