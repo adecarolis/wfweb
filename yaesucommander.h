@@ -122,7 +122,6 @@ private:
     quint8 findMean(quint8 *d);
     quint8 findMax(quint8 *d);
 
-    std::vector< FT_DEVICE_LIST_INFO_NODE > FT4222DevList;
     genericType scopeMode;
     centerSpanData scopeSpan;
     ft4222Handler* ft4222 = Q_NULLPTR;
