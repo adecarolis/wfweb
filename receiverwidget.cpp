@@ -2087,8 +2087,11 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
             case modePSK_R:
                 if (rigCaps->manufacturer == manufIcom)
                     passbandCenterFrequency = 0.0015;
-                else
+                else if (rigCaps->manufacturer == manufKenwood)
                     passbandCenterFrequency = 0.0;
+                else if (rigCaps->manufacturer == manufYaesu)
+                    passbandCenterFrequency = 0.002;
+
             case modeAM:
             case modeCW:
             case modeCW_R:

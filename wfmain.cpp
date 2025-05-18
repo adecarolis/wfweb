@@ -147,6 +147,8 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<spectrumBounds>();
     qRegisterMetaType<centerSpanData>();
     qRegisterMetaType<bandStackType>();
+    qRegisterMetaType<widthsType>();
+    qRegisterMetaType<ft710_spi_data>();
     qRegisterMetaType<rigInfo>();
     qRegisterMetaType<lpfhpf>();
 
@@ -828,32 +830,50 @@ void wfmain::setupMainUI()
 
     connect(
                 ui->txPowerSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) { statusFromSliderPercent("Tx Power", 255*newValue/ui->txPowerSlider->maximum());}
+                [=](const int &newValue) {
+                    if (ui->txPowerSlider->maximum())
+                        statusFromSliderPercent("Tx Power", 255*newValue/ui->txPowerSlider->maximum());
+                }
     );
 
     connect(
                 ui->rfGainSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) { statusFromSliderPercent("RF Gain", 255*newValue/ui->rfGainSlider->maximum());}
+                [=](const int &newValue) {
+                    if (ui->rfGainSlider->maximum())
+                        statusFromSliderPercent("RF Gain", 255*newValue/ui->rfGainSlider->maximum());
+                }
     );
 
     connect(
                 ui->afGainSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) { statusFromSliderPercent("AF Gain", 255*newValue/ui->afGainSlider->maximum());}
+                [=](const int &newValue) {
+                    if (ui->afGainSlider->maximum())
+                        statusFromSliderPercent("AF Gain", 255*newValue/ui->afGainSlider->maximum());
+                }
     );
 
     connect(
                 ui->micGainSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) { statusFromSliderPercent("TX Audio Gain", 255*newValue/ui->micGainSlider->maximum());}
+                [=](const int &newValue) {
+                    if (ui->micGainSlider->maximum())
+                        statusFromSliderPercent("TX Audio Gain", 255*newValue/ui->micGainSlider->maximum());
+                }
     );
 
     connect(
                 ui->sqlSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) { statusFromSliderPercent("Squelch", 255*newValue/ui->sqlSlider->maximum());}
+                [=](const int &newValue) {
+                    if (ui->sqlSlider->maximum())
+                        statusFromSliderPercent("Squelch", 255*newValue/ui->sqlSlider->maximum());
+                }
     );
 
     connect(
                 ui->monitorSlider, &QSlider::valueChanged, this,
-                [=](const int &newValue) { statusFromSliderPercent("Monitor", 255*newValue/ui->monitorSlider->maximum());}
+                [=](const int &newValue) {
+                    if (ui->monitorSlider->maximum())
+                        statusFromSliderPercent("Monitor", 255*newValue/ui->monitorSlider->maximum());
+                }
     );
 
 }

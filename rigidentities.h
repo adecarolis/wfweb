@@ -242,6 +242,15 @@ struct genericType {
     QString name;
 };
 
+struct widthsType {
+    widthsType():bands(0),num(0),hz(0) {}
+    widthsType(widthsType const &w):bands(w.bands),num(w.num),hz(w.hz) {}
+    widthsType(ushort bands, uchar num, ushort hz) : bands(bands),num(num),hz(hz) {}
+    ushort bands;
+    uchar num;
+    ushort hz;
+};
+
 //model_kind determineRadioModel(quint8 rigID);
 
 struct bsrRequest {
@@ -315,8 +324,8 @@ struct rigCapabilities {
     std::vector <toneInfo> dtcs;
     std::vector <genericType> roofing;
     std::vector <genericType> scopeModes;
-    //std::vector <spanType> spans;
     std::vector <stepType> steps;
+    std::vector <widthsType> widths;
     quint8 bsr[24] = {0};
 
     std::vector <modeInfo> modes;
@@ -348,6 +357,10 @@ Q_DECLARE_METATYPE(inputTypes)
 Q_DECLARE_METATYPE(genericType)
 Q_DECLARE_METATYPE(bandType)
 Q_DECLARE_METATYPE(bandStackType)
+Q_DECLARE_METATYPE(widthsType)
 Q_DECLARE_METATYPE(centerSpanData)
+Q_DECLARE_METATYPE(ft710_spi_data)
+
+
 
 #endif // RIGIDENTITIES_H

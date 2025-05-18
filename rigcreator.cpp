@@ -144,6 +144,7 @@ void rigCreator::meterRowAdded(int row)
     ui->meters->setCellWidget(row,3, checkBoxWidget);
 }
 
+
 rigCreator::~rigCreator()
 {
     qInfo() << "Deleting instance of rigCreator()";
@@ -767,6 +768,28 @@ void rigCreator::loadRigFile(QString file)
     }
     ui->scopeModes->setSortingEnabled(true);
 
+    ui->widths->clearContents();
+    ui->widths->model()->removeRows(0,ui->widths->rowCount());
+    ui->widths->setSortingEnabled(false);
+
+    int numWidths = settings->beginReadArray("Widths");
+    if (numWidths == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numWidths; c++)
+        {
+            settings->setArrayIndex(c);
+            ui->widths->insertRow(ui->widths->rowCount());
+
+            ui->widths->model()->setData(ui->widths->model()->index(c,0),settings->value("Bands", "0").toString().rightJustified(4,'0'));
+            ui->widths->model()->setData(ui->widths->model()->index(c,1),settings->value("Num", "0").toString().rightJustified(2,'0'));
+            ui->widths->model()->setData(ui->widths->model()->index(c,2),settings->value("Hz", 0).toUInt());
+        }
+        settings->endArray();
+    }
+    ui->widths->setSortingEnabled(true);
+
     settings->endGroup();
     delete settings;
 
@@ -786,6 +809,7 @@ void rigCreator::loadRigFile(QString file)
     connect(ui->meters,SIGNAL(cellChanged(int,int)),SLOT(changed()));
     connect(ui->roofing,SIGNAL(cellChanged(int,int)),SLOT(changed()));
     connect(ui->scopeModes,SIGNAL(cellChanged(int,int)),SLOT(changed()));
+    connect(ui->widths,SIGNAL(cellChanged(int,int)),SLOT(changed()));
 
     connect(ui->hasCommand29,SIGNAL(stateChanged(int)),SLOT(changed()));
     connect(ui->hasEthernet,SIGNAL(stateChanged(int)),SLOT(changed()));
@@ -1122,6 +1146,18 @@ void rigCreator::saveRigFile(QString file)
         settings->setValue("Num",(ui->scopeModes->item(n,0) == NULL) ? 0 :  ui->scopeModes->item(n,0)->text().toInt());
         settings->setValue("Name",(ui->scopeModes->item(n,1) == NULL) ? "" :  ui->scopeModes->item(n,1)->text());
     }
+    settings->endArray();
+
+    ui->widths->sortByColumn(0,Qt::AscendingOrder);
+    settings->beginWriteArray("Widths");
+    for (int n = 0; n<ui->widths->rowCount();n++)
+    {
+        settings->setArrayIndex(n);
+        settings->setValue("Bands",(ui->widths->item(n,0) == NULL) ? 0 :  ui->widths->item(n,0)->text());
+        settings->setValue("Num",(ui->widths->item(n,1) == NULL) ? 0 :  ui->widths->item(n,1)->text().toInt());
+        settings->setValue("Hz",(ui->widths->item(n,2) == NULL) ? 0 :  ui->widths->item(n,2)->text().toInt());
+    }
+
     settings->endArray();
 
 

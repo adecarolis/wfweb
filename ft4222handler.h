@@ -26,7 +26,7 @@ private:
     bool running = true;
 
 signals:
-    void dataReady(scopeData data, freqt a, freqt b);
+    void dataReady(ft710_spi_data d);
 };
 
 #endif // FT4222HANDLER_H

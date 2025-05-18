@@ -30,45 +30,25 @@ void ft4222Handler::run()
     while (this->running)
     {
         status = FT4222_SPIMaster_SingleRead(device,buf.packet, sizeof(buf.packet), &size, false);
+
+        if (FT_OK == status)
+        {
+            QByteArray sum = QByteArray((char*)buf.sync,sizeof(buf.sync));
+            if (sum != QByteArrayLiteral("\xff\x01\xee\x01"))
+            {
+                sync();
+                continue;
+            }
+        }
+
         if (timer.hasExpired(30))
         {
 
             for (int i=0; i< sizeof(buf.wf1);i++) {
                 buf.wf1[i] = ~buf.wf1[i];
             }
-            QByteArray data = QByteArray((char*)buf.data,sizeof(buf.data));
-            QByteArray sum = QByteArray((char*)buf.sync,sizeof(buf.sync));
 
-            if (sum != QByteArrayLiteral("\xff\x01\xee\x01"))
-            {
-                sync();
-                continue;
-            }
-
-            freqt fa,fb;
-            quint16 model = data.mid(17,5).toHex().toUShort();
-            fa.Hz = data.mid(64,5).toHex().toLongLong();
-            fa.MHzDouble=fa.Hz/1000000.0;
-            fb.Hz = data.mid(89,5).toHex().toLongLong();
-            fb.MHzDouble=fb.Hz/1000000.0;
-            quint8 byte32 = quint8(data.mid(32,1).toHex().toUShort());
-            quint8 byte33 = quint8(data.mid(33,1).toHex().toUShort());
-
-            quint8 mode = (byte32 >> 4);// & 0x0f;
-            quint8 span = byte32 & 0x0f;
-            quint8 speed = (byte33 >> 4);// & 0x0f;
-
-            scopeData scope;
-            scope.data = QByteArray((char*)buf.wf1,sizeof(buf.wf1));
-            scope.valid=true;
-            scope.receiver=0;
-            scope.startFreq=fa.MHzDouble-0.002;
-            scope.endFreq=fa.MHzDouble+0.002;
-            scope.mode = mode;
-            scope.oor = false;
-            scope.fixedEdge = 1;
-
-            emit dataReady(scope, fa, fb);
+            emit dataReady(buf);
             timer.start();
         }
     }
@@ -169,7 +149,8 @@ bool ft4222Handler::setup(uchar num)
         device = NULL;
     }
 
-    ftStatus = FT_Open(num, &device);
+    ftStatus = FT_OpenEx((void*) "FT4222 A", FT_OPEN_BY_DESCRIPTION, &device);
+    //ftStatus = FT_Open(num, &device);
     if (FT_OK != ftStatus)
     {
         qInfo(logRig()) << "Could not open FT422 device";
@@ -193,34 +174,38 @@ bool ft4222Handler::setup(uchar num)
         goto failed;
     }
 
+    /*
     ftStatus = FT_SetUSBParameters(device, 4*1024, 0);
     if (FT_OK != ftStatus)
     {
         qInfo(logRig()) << "FT_SetUSBParameters failed!";
         goto failed;
     }
+    */
 
     qInfo(logRig()) << "Init FT4222 as SPI master";
-    ft4222_status = FT4222_SPIMaster_Init(device, SPI_IO_SINGLE, CLK_DIV_64, CLK_IDLE_HIGH, CLK_TRAILING, 0x01);
+    ft4222_status = FT4222_SPIMaster_Init(device, SPI_IO_SINGLE, CLK_DIV_64, CLK_IDLE_HIGH, CLK_LEADING, 0x01);
     if (FT4222_OK != ft4222_status)
     {
         qInfo(logRig()) << "Init FT4222 as SPI master device failed!";
         goto failed;
     }
 
-    ft4222_status = FT4222_SetClock(device,SYS_CLK_48);
+    ft4222_status = FT4222_SetClock(device,SYS_CLK_24);
     if (FT4222_OK != ft4222_status)
     {
         qInfo(logRig()) << "FT4222_SetClock() Failed to set clock to SYS_CLK_48";
         goto failed;
     }
 
-    //ft4222_status = FT4222_SPI_SetDrivingStrength(device,DS_8MA, DS_8MA, DS_8MA);
-    //if (FT4222_OK != ft4222_status)
-    //{
-    //    qInfo(logRig()) << "FT4222_SPI_SetDrivingStrength failed!";
-    //    goto failed;
-    //}
+    /*
+    ft4222_status = FT4222_SPI_SetDrivingStrength(device,DS_8MA, DS_8MA, DS_8MA);
+    if (FT4222_OK != ft4222_status)
+    {
+        qInfo(logRig()) << "FT4222_SPI_SetDrivingStrength failed!";
+        goto failed;
+    }
+    */
 
     qInfo(logRig()) << "Init FT4222 as SPI master completed successfully!";
 

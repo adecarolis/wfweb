@@ -88,11 +88,66 @@ void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAdd
     commonSetup();
 }
 
-void yaesuCommander::ft4222Data(scopeData data, freqt a, freqt b)
+void yaesuCommander::ft4222Data(ft710_spi_data d)
 {
-    queue->receiveValue(funcScopeWaveData,QVariant::fromValue<scopeData>(data),0);
-    queue->receiveValue(funcSelectedFreq,QVariant::fromValue<freqt>(a),0);
-    queue->receiveValue(funcUnselectedFreq,QVariant::fromValue<freqt>(b),0);
+    // d contains a valid icom data packet.
+
+    if (!haveRigCaps)
+    {
+        return;
+    }
+
+    QByteArray data = QByteArray((char*)d.data,sizeof(d.data));
+    freqt fa,fb;
+    //quint16 model = data.mid(17,5).toHex().toUShort();
+    fa.Hz = data.mid(64,5).toHex().toLongLong();
+    fa.MHzDouble=fa.Hz/1000000.0;
+    fb.Hz = data.mid(89,5).toHex().toLongLong();
+    fb.MHzDouble=fb.Hz/1000000.0;
+    quint8 byte17 = quint8(data.mid(17,1).toHex().toUShort());
+    quint8 byte32 = quint8(data.mid(32,1).toHex().toUShort());
+    quint8 byte33 = quint8(data.mid(33,1).toHex().toUShort());
+
+    quint8 mode = byte17 & 0x0f;// & 0x0f;
+    quint8 span = byte32 & 0x0f;
+    quint8 speed = (byte33 >> 4);// & 0x0f;
+
+    centerSpanData cs = queue->getCache(funcScopeSpan,0).value.value<centerSpanData>();
+    if (cs.cstype != span)
+    {
+        // Span has changed!
+        for (auto &s: rigCaps.scopeCenterSpans)
+        {
+            if (s.cstype == span)
+            {
+                cs=s;
+                qInfo() << "New center span" << cs.cstype << "freq" << cs.freq << "name" << cs.name;
+                queue->receiveValue(funcScopeSpan,QVariant::fromValue<centerSpanData>(cs),0);
+                break;
+            }
+        }
+    }
+
+    uchar md = queue->getCache(funcScopeMode,0).value.value<uchar>();
+    if (md != mode)
+    {
+        qInfo() << "received scope mode:" << mode << "current mode" << md;
+        //qInfo() << "Data" << data.toHex(' ');
+        queue->receiveValue(funcScopeMode,QVariant::fromValue<uchar>(mode),0);
+    }
+    scopeData scope;
+    scope.data = QByteArray((char*)d.wf1,sizeof(d.wf1));
+    scope.valid=true;
+    scope.receiver=0;
+    scope.startFreq=fa.MHzDouble-(cs.freq/1000000.0);
+    scope.endFreq=fa.MHzDouble+(cs.freq/1000000.0);
+    scope.mode = mode;
+    scope.oor = false;
+    scope.fixedEdge = 1;
+
+    queue->receiveValue(funcScopeWaveData,QVariant::fromValue<scopeData>(scope),0);
+    queue->receiveValue(funcSelectedFreq,QVariant::fromValue<freqt>(fa),0);
+    queue->receiveValue(funcUnselectedFreq,QVariant::fromValue<freqt>(fb),0);
 
 }
 
@@ -358,7 +413,7 @@ void yaesuCommander::parseData(QByteArray data)
             // Value has right padding, so remove all trailing zeros.
             for (int i=type.bytes;i>0;i++)
             {
-                if (d.last(1) == '0')
+                if (d.size()>1 && d.last(1) == '0')
                 {
                     d.removeLast();
                 } else {
@@ -461,54 +516,19 @@ void yaesuCommander::parseData(QByteArray data)
             break;
         case funcFilterWidth: {
             // We need to work out which mode first:
-            short width=0;
-            uchar v = d.toShort();
+            uchar v = uchar(d.toShort());
             auto m = queue->getCache(funcSelectedMode,receiver).value.value<modeInfo>();
-            if (m.mk == modeLSB || m.mk == modeUSB)
+            for (const auto& w: rigCaps.widths)
             {
-                if (v == 0)
-                    width = 50;
-                else if (v == 1)
-                    width = 80;
-                else if (v >1 && v <10)
-                    width = v * 50;
-                else
-                    width = (v-5)*100;
+                if ((w.bands >> m.reg) & 0x01)
+                {
+                    if (v == w.num)
+                    {
+                        value.setValue<short>(w.hz);
+                        break;
+                    }
+                }
             }
-            else if (m.mk == modeCW || m.mk == modeCW_R)
-            {
-                if (v == 0)
-                    width = 50;
-                else if (v == 1)
-                    width = 80;
-                else if (v > 1 && v < 10)
-                    width = v * 50;
-                else if (v > 9 && v < 15)
-                    width = (v-5)*100;
-                else
-                    width = (v-13)*500;
-            }
-            else if (m.mk == modeRTTY || m.mk == modeRTTY_R)
-            {
-                if (v < 6)
-                    width = (v+5)*50;
-                else
-                    width = (v-4)*500;
-            }
-            else if (m.mk == modePSK || m.mk == modePSK_R)
-            {
-                if (v == 0)
-                    width = 50;
-                else if (v == 1)
-                    width = 80;
-                else if (v >1 && v <11)
-                    width = v * 50;
-                else
-                    width = (v-11)*200;
-            }
-
-            value.setValue<ushort>(width);
-            //qInfo() << "Got filter width" << width << "original" << d.toUShort();
             break;
         }
         case funcMeterType:
@@ -593,6 +613,7 @@ void yaesuCommander::parseData(QByteArray data)
         case funcFilterShape:
         case funcRoofingFilter:
         case funcScopeSpeed:
+        case funcCwPitch:
             value.setValue<uchar>(d.mid(0,type.bytes).toUShort());
             break;
         case funcXitFreq:
@@ -612,20 +633,11 @@ void yaesuCommander::parseData(QByteArray data)
                 }
             }
             break;
-#if defined __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#endif
         case funcSMeter:
-            if (isTransmitting)
-            {
-                func = funcPowerMeter;
-                value.setValue(getMeterCal(meterPower,d.toUShort()));
-            }
-            else
-            {
-                value.setValue(getMeterCal(meterS,d.toUShort()));
-            }
+            value.setValue(getMeterCal(meterS,d.toUShort()));
+            break;
+        case funcPowerMeter:
+            value.setValue(getMeterCal(meterPower,d.toUShort()));
             break;
         case funcSWRMeter:
             value.setValue(getMeterCal(meterSWR,d.toUShort()));
@@ -642,13 +654,6 @@ void yaesuCommander::parseData(QByteArray data)
         case funcIdMeter:
             value.setValue(getMeterCal(meterCurrent,d.toUShort()));
             break;
-            // TS-590 uses 0-30 for meters (TS-890 uses 70), Icom uses 0-255.
-            //value.setValue<uchar>(d.toUShort() * (255/(type.maxVal-type.minVal)));
-            //qDebug(logRig()) << "Meter value received: value: " << value << "raw: " << d.toUShort() << "Meter type: " << func;
-            //break;
-#if defined __GNUC__
-#pragma GCC diagnostic pop
-#endif
         case funcMemoryContents:
         // Contains the contents of the rig memory
         {
@@ -687,6 +692,7 @@ void yaesuCommander::parseData(QByteArray data)
                 determineRigCaps();
             }
             break;
+
         }
         case funcVFOASelect:
         case funcVFOBSelect:
@@ -906,6 +912,7 @@ void yaesuCommander::determineRigCaps()
     rigCaps.periodic.clear();
     rigCaps.roofing.clear();
     rigCaps.scopeModes.clear();
+    rigCaps.widths.clear();
 
     for (int i = meterNone; i < meterUnknown; i++)
     {
@@ -1255,6 +1262,21 @@ void yaesuCommander::determineRigCaps()
     }
 
 
+    int numWidths = settings->beginReadArray("Widths");
+    if (numWidths == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numWidths; c++)
+        {
+            settings->setArrayIndex(c);
+            rigCaps.widths.push_back(widthsType(settings->value("Bands", 0).toString().toUShort(nullptr,16),
+                    uchar(settings->value("Num", 0).toString().toUShort()),
+                    settings->value("Hz", 0).toString().toUShort()));
+        }
+        settings->endArray();
+    }
+
     settings->endGroup();
     delete settings;
 
@@ -1522,53 +1544,17 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 {
                     // We need to work out which mode first:
                     ushort width=value.value<ushort>();
-                    char val = 0;
                     auto m = queue->getCache(funcSelectedMode,receiver).value.value<modeInfo>();
-                    if (m.mk == modeLSB || m.mk == modeUSB)
+                    for (const auto& w: rigCaps.widths)
                     {
-                        if (width < 60)
-                            val = 0;
-                        else if (width < 100)
-                            val = 1;
-                        else if (width >= 100  && width < 600)
-                            val = width / 50;
-                        else
-                            val = (width / 100) + 5;
+                        if ((w.bands >> m.reg) & 0x01 )
+                        {
+                            if (w.hz >= width) {
+                                payload.append(QString::number(w.num).rightJustified(cmd.bytes, QChar('0')).toLatin1());
+                                break;
+                            }
+                        }
                     }
-                    else if (m.mk == modeCW || m.mk == modeCW_R)
-                    {
-                        if (width < 60)
-                            val = 0;
-                        else if (width < 100)
-                            val = 1;
-                        else if (width >= 100 && width < 600)
-                            val = width / 50;
-                        else if (width >= 600 && width < 1500)
-                            val = (width / 100) + 5;
-                        else
-                            val = (width / 500) + 13;
-
-                    }
-                    else if (m.mk == modeRTTY || m.mk == modeRTTY_R)
-                    {
-                        if (width < 1000)
-                            val = (width / 50) - 5;
-                        else
-                            val = (width / 500) + 4;
-                    }
-                    else if (m.mk == modePSK || m.mk == modePSK_R)
-                    {
-                        if (width < 60)
-                            val = 0;
-                        else if (width < 100)
-                            val = 1;
-                        else if (width >= 100 && width < 600)
-                            val = width / 50;
-                        else
-                            val = (width / 200) + 11;
-                    }
-                    //qInfo() << "Got filter width" << width << "original" << d.toUShort();
-                    payload.append(QString::number(val).rightJustified(cmd.bytes, QChar('0')).toLatin1());
                 }
                 else
                 {

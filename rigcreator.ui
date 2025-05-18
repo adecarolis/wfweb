@@ -600,10 +600,19 @@
             <height>0</height>
            </size>
           </property>
+          <attribute name="horizontalHeaderMinimumSectionSize">
+           <number>0</number>
+          </attribute>
           <attribute name="horizontalHeaderDefaultSectionSize">
            <number>55</number>
           </attribute>
           <attribute name="horizontalHeaderStretchLastSection">
+           <bool>true</bool>
+          </attribute>
+          <attribute name="verticalHeaderVisible">
+           <bool>false</bool>
+          </attribute>
+          <attribute name="verticalHeaderHighlightSections">
            <bool>true</bool>
           </attribute>
           <column>
@@ -1412,7 +1421,10 @@
     </widget>
    </item>
    <item row="1" column="1">
-    <layout class="QHBoxLayout" name="horizontalLayout_7">
+    <layout class="QHBoxLayout" name="_2">
+     <property name="sizeConstraint">
+      <enum>QLayout::SizeConstraint::SetMinimumSize</enum>
+     </property>
      <item>
       <widget class="QGroupBox" name="groupBox_3">
        <property name="sizePolicy">
@@ -1423,8 +1435,14 @@
        </property>
        <property name="minimumSize">
         <size>
-         <width>200</width>
+         <width>100</width>
          <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>210</width>
+         <height>16777215</height>
         </size>
        </property>
        <property name="title">
@@ -1458,7 +1476,7 @@
            <number>0</number>
           </attribute>
           <attribute name="horizontalHeaderDefaultSectionSize">
-           <number>60</number>
+           <number>35</number>
           </attribute>
           <attribute name="horizontalHeaderStretchLastSection">
            <bool>true</bool>
@@ -1494,10 +1512,22 @@
      </item>
      <item>
       <widget class="QGroupBox" name="groupBox_19">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="minimumSize">
         <size>
-         <width>160</width>
+         <width>140</width>
          <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>170</width>
+         <height>16777215</height>
         </size>
        </property>
        <property name="title">
@@ -1506,11 +1536,41 @@
        <layout class="QHBoxLayout" name="horizontalLayout_12">
         <item>
          <widget class="tableWidget" name="scopeModes">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <attribute name="horizontalHeaderMinimumSectionSize">
+           <number>0</number>
+          </attribute>
           <attribute name="horizontalHeaderDefaultSectionSize">
-           <number>50</number>
+           <number>35</number>
           </attribute>
           <attribute name="horizontalHeaderStretchLastSection">
            <bool>true</bool>
+          </attribute>
+          <attribute name="verticalHeaderVisible">
+           <bool>false</bool>
+          </attribute>
+          <attribute name="verticalHeaderMinimumSectionSize">
+           <number>18</number>
+          </attribute>
+          <attribute name="verticalHeaderDefaultSectionSize">
+           <number>26</number>
           </attribute>
           <column>
            <property name="text">
@@ -1528,6 +1588,64 @@
       </widget>
      </item>
      <item>
+      <widget class="QGroupBox" name="groupBox_20">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>220</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="title">
+        <string>Widths</string>
+       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_13">
+        <item>
+         <widget class="tableWidget" name="widths">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <attribute name="horizontalHeaderMinimumSectionSize">
+           <number>0</number>
+          </attribute>
+          <attribute name="horizontalHeaderDefaultSectionSize">
+           <number>58</number>
+          </attribute>
+          <attribute name="horizontalHeaderStretchLastSection">
+           <bool>true</bool>
+          </attribute>
+          <attribute name="verticalHeaderVisible">
+           <bool>false</bool>
+          </attribute>
+          <column>
+           <property name="text">
+            <string>Modes</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Num</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Hz</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
       <widget class="QGroupBox" name="groupBox_6">
        <property name="sizePolicy">
         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
@@ -1537,7 +1655,7 @@
        </property>
        <property name="minimumSize">
         <size>
-         <width>400</width>
+         <width>340</width>
          <height>0</height>
         </size>
        </property>

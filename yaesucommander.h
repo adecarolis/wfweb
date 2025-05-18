@@ -65,7 +65,7 @@ public slots:
     void getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,quint16 latency, quint16 current, bool under, bool over);
     void getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16 latency,quint16 current, bool under, bool over);
 
-    void ft4222Data(scopeData data, freqt a, freqt b);
+    void ft4222Data(ft710_spi_data d);
 
 signals:
     // All signals are defined in rigcommander.h as they should be common for all rig types.
