@@ -10,6 +10,8 @@ void ft4222Handler::run()
         return;
     }
 
+#ifdef FTDI_SUPPORT
+
     // If we got here, we are connected to a valid FT4222, so start processing
 
 
@@ -48,10 +50,12 @@ void ft4222Handler::run()
 
     FT4222_UnInitialize(device);
     FT_Close(device);
+#endif
 }
 
 void ft4222Handler::sync()
 {
+#ifdef FTDI_SUPPORT
     if (device != NULL)
     {
         uchar buf[16];
@@ -86,10 +90,12 @@ void ft4222Handler::sync()
     }
     qInfo(logRig()) << "FT4222 failed to resync";
     setup();
+#endif
 }
 
 bool ft4222Handler::setup()
 {
+#ifdef FTDI_SUPPORT
     FT_STATUS ftStatus;
     FT_STATUS ft4222_status;
 
@@ -167,4 +173,8 @@ failed:
     FT_Close(device);
     device = NULL;
     return false;
+#else
+    return false;
+#endif
+
 }
