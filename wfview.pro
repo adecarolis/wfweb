@@ -318,6 +318,7 @@ SOURCES += main.cpp\
     debugwindow.cpp \
     ft4222handler.cpp \
     icomcommander.cpp \
+    icomserver.cpp \
     kenwoodcommander.cpp \
     loggingwindow.cpp \
     receiverwidget.cpp \
@@ -332,6 +333,7 @@ SOURCES += main.cpp\
     wfmain.cpp \
     commhandler.cpp \
     rigcommander.cpp \
+    rigserver.cpp \
     freqmemory.cpp \
     rigidentities.cpp \
     udpbase.cpp \
@@ -345,7 +347,6 @@ SOURCES += main.cpp\
     audioconverter.cpp \
     calibrationwindow.cpp \
     satellitesetup.cpp \
-    udpserver.cpp \
     meter.cpp \
     qledlabel.cpp \
     pttyhandler.cpp \
@@ -377,6 +378,7 @@ HEADERS  += wfmain.h \
     debugwindow.h \
     ft4222handler.h \
     icomcommander.h \
+    icomserver.h \
     kenwoodcommander.h \
     loggingwindow.h \
     memories.h \
@@ -387,6 +389,7 @@ HEADERS  += wfmain.h \
     freqmemory.h \
     rigcreator.h \
     rigidentities.h \
+    rigserver.h \
     rtpaudio.h \
     scrolltest.h \
     settingswidget.h \
@@ -405,7 +408,6 @@ HEADERS  += wfmain.h \
     audioconverter.h \
     calibrationwindow.h \
     satellitesetup.h \
-    udpserver.h \
     packettypes.h \
     meter.h \
     qledlabel.h \

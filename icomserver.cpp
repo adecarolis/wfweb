@@ -1,27 +1,29 @@
-#include "udpserver.h"
+// Copyright 2017-2025 Elliott H. Liggett W6EL and Phil E. Taylor M0VSE
+
+#include "icomserver.h"
 #include "logcategories.h"
 
 #define STALE_CONNECTION 15
 #define LOCK_PERIOD 10 // time to attempt to lock Mutex in ms
 #define AUDIO_SEND_PERIOD 20 //
-udpServer::udpServer(SERVERCONFIG* config, QObject* parent) :
-    QObject(parent),
+
+icomServer::icomServer(SERVERCONFIG* config, rigServer* parent) :
+    rigServer(config,parent),
     config(config)
 {
-    qInfo(logUdpServer()) << "Starting udp server";
-    queue=cachingQueue::getInstance();
+    qInfo(logRigServer()) << "Creating instance of Icom server";
 }
 
-void udpServer::init()
+void icomServer::init()
 {
 
     connect(queue,SIGNAL(rigCapsUpdated(rigCapabilities*)),this, SLOT(receiveRigCaps(rigCapabilities*)));
-    for (RIGCONFIG* rig : config->rigs)
+    foreach (const auto& rig, config->rigs)
     {
-        qInfo(logUdpServer()) << "CIV:" << rig->civAddr;
-        qInfo(logUdpServer()) << "Model:" << rig->modelName;
-        qInfo(logUdpServer()) << "Name:" << rig->rigName;
-        qInfo(logUdpServer()).noquote() << QString("GUID: {%1%2%3%4-%5%6-%7%8-%9%10-%11%12%13%14%15%16}")
+        qInfo(logRigServer()) << "CIV:" << rig->civAddr;
+        qInfo(logRigServer()) << "Model:" << rig->modelName;
+        qInfo(logRigServer()) << "Name:" << rig->rigName;
+        qInfo(logRigServer()).noquote() << QString("GUID: {%1%2%3%4-%5%6-%7%8-%9%10-%11%12%13%14%15%16}")
             .arg(rig->guid[0], 2, 16, QLatin1Char('0'))
             .arg(rig->guid[1], 2, 16, QLatin1Char('0'))
             .arg(rig->guid[2], 2, 16, QLatin1Char('0'))
@@ -45,7 +47,7 @@ void udpServer::init()
     // Convoluted way to find the external IP address, there must be a better way????
     QString localhostname = QHostInfo::localHostName();
     QList<QHostAddress> hostList = QHostInfo::fromName(localhostname).addresses();
-    for(const auto &address: hostList)
+    foreach (const auto &address, hostList)
     {
         if (address.protocol() == QAbstractSocket::IPv4Protocol && address.isLoopback() == false)
         {
@@ -54,7 +56,7 @@ void udpServer::init()
     }
 
     QString macTemp;
-    for(const auto &netInterface: QNetworkInterface::allInterfaces())
+    foreach (const auto &netInterface, QNetworkInterface::allInterfaces())
     {
         // Return only the first non-loopback MAC Address
         if (!(netInterface.flags() & QNetworkInterface::IsLoopBack)) {
@@ -67,7 +69,7 @@ void udpServer::init()
 
     uint32_t addr = localIP.toIPv4Address();
 
-    qInfo(logUdpServer()) << "My IP Address:" << QHostAddress(addr).toString();
+    qInfo(logRigServer()) << "My IP Address:" << QHostAddress(addr).toString();
 
 
     controlId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (config->controlPort & 0xffff);
@@ -84,8 +86,8 @@ void udpServer::init()
     }
     else
     {
-        qInfo(logUdpServer()) << "Server Bound Control to: " << config->controlPort;
-        QUdpSocket::connect(udpControl, &QUdpSocket::readyRead, this, &udpServer::controlReceived);
+        qInfo(logRigServer()) << "Server Bound Control to: " << config->controlPort;
+        QUdpSocket::connect(udpControl, &QUdpSocket::readyRead, this, &icomServer::controlReceived);
     }
 
     udpCiv = new QUdpSocket(this);
@@ -98,8 +100,8 @@ void udpServer::init()
     }
     else
     {
-        qInfo(logUdpServer()) << "Server Bound CI-V to: " << config->civPort;
-        QUdpSocket::connect(udpCiv, &QUdpSocket::readyRead, this, &udpServer::civReceived);
+        qInfo(logRigServer()) << "Server Bound CI-V to: " << config->civPort;
+        QUdpSocket::connect(udpCiv, &QUdpSocket::readyRead, this, &icomServer::civReceived);
     }
 
     udpAudio = new QUdpSocket(this);
@@ -112,18 +114,18 @@ void udpServer::init()
     }
     else
     {
-        qInfo(logUdpServer()) << "Server Bound Audio to: " << config->audioPort;
-        QUdpSocket::connect(udpAudio, &QUdpSocket::readyRead, this, &udpServer::audioReceived);
+        qInfo(logRigServer()) << "Server Bound Audio to: " << config->audioPort;
+        QUdpSocket::connect(udpAudio, &QUdpSocket::readyRead, this, &icomServer::audioReceived);
     }
 
     wdTimer = new QTimer(this);
-    connect(wdTimer, &QTimer::timeout, this, &udpServer::watchdog);
+    connect(wdTimer, &QTimer::timeout, this, &icomServer::watchdog);
     wdTimer->start(500);
 }
 
-udpServer::~udpServer()
+icomServer::~icomServer()
 {
-    qInfo(logUdpServer()) << "Closing udpServer";
+    qInfo(logRigServer()) << "Closing icomServer";
 
     foreach(CLIENT * client, controlClients)
     {
@@ -158,15 +160,15 @@ udpServer::~udpServer()
 }
 
 
-void udpServer::receiveRigCaps(rigCapabilities* caps)
+void icomServer::receiveRigCaps(rigCapabilities* caps)
 {
     if (caps == Q_NULLPTR)
         return;
 
-    for (RIGCONFIG* rig: config->rigs) {
+    foreach (RIGCONFIG* rig, config->rigs) {
         if (!memcmp(rig->guid, caps->guid, GUIDLEN) || config->rigs.size()==1) {
             // Matching rig, fill-in missing details
-            qInfo(logUdpServer()) << "Received new rigCaps for:" << caps->modelName << "CIV:" << QString::number(caps->modelID,16);
+            qInfo(logRigServer()) << "Received new rigCaps for:" << caps->modelName << "CIV:" << QString::number(caps->modelID,16);
             rig->rigAvailable = true;
             rig->modelName = caps->modelName;
             rig->civAddr = caps->modelID;
@@ -178,7 +180,7 @@ void udpServer::receiveRigCaps(rigCapabilities* caps)
 }
 
 
-void udpServer::controlReceived()
+void icomServer::controlReceived()
 {
     // Received data on control port.
     while (udpControl->hasPendingDatagrams()) {
@@ -216,18 +218,18 @@ void udpServer::controlReceived()
             current->pingSeq = (quint8)rand() << 8 | (quint8)rand();
 
             current->pingTimer = new QTimer(this);
-            connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, &controlClients, current, (quint16)0x00, false));
+            connect(current->pingTimer, &QTimer::timeout, this, std::bind(&icomServer::sendPing, this, &controlClients, current, (quint16)0x00, false));
             current->pingTimer->start(100);
 
             current->idleTimer = new QTimer(this);
-            connect(current->idleTimer, &QTimer::timeout, this, std::bind(&udpServer::sendControl, this, current, (quint8)0x00, (quint16)0x00));
+            connect(current->idleTimer, &QTimer::timeout, this, std::bind(&icomServer::sendControl, this, current, (quint8)0x00, (quint16)0x00));
             current->idleTimer->start(100);
 
             current->retransmitTimer = new QTimer(this);
-            connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
+            connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&icomServer::sendRetransmitRequest, this, current));
             current->retransmitTimer->start(RETRANSMIT_PERIOD);
 
-            qInfo(logUdpServer()) << current->ipAddress.toString() << ": New Control connection created";
+            qInfo(logRigServer()) << current->ipAddress.toString() << ": New Control connection created";
 
 
             if (connMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
@@ -243,7 +245,7 @@ void udpServer::controlReceived()
                 connMutex.unlock();
             }
             else {
-                qInfo(logUdpServer()) << "Unable to lock connMutex()";
+                qInfo(logRigServer()) << "Unable to lock connMutex()";
             }
         }
 
@@ -257,7 +259,7 @@ void udpServer::controlReceived()
             control_packet_t in = (control_packet_t)r.constData();
             if (in->type == 0x05)
             {
-                qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received 'disconnect' request";
+                qInfo(logRigServer()) << current->ipAddress.toString() << ": Received 'disconnect' request";
                 sendControl(current, 0x00, in->seq);
 
                 if (current->audioClient != Q_NULLPTR) {
@@ -309,22 +311,22 @@ void udpServer::controlReceived()
             memcpy(current->guid, in->guid, GUIDLEN);
             if (in->requesttype == 0x02 && in->requestreply == 0x01) {
                 // Request for new token
-                qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received create token request";
+                qInfo(logRigServer()) << current->ipAddress.toString() << ": Received create token request";
                 sendCapabilities(current);
-                for (RIGCONFIG* radio : config->rigs) {
+                foreach (RIGCONFIG* radio, config->rigs) {
                     sendConnectionInfo(current, radio->guid);
                 }
             }
             else if (in->requesttype == 0x01 && in->requestreply == 0x01) {
                 // Token disconnect
-                qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received token disconnect request";
+                qInfo(logRigServer()) << current->ipAddress.toString() << ": Received token disconnect request";
                 sendTokenResponse(current, in->requesttype);
             }
             else if (in->requesttype == 0x04 && in->requestreply == 0x01) {
                 // Disconnect audio/civ
                 sendTokenResponse(current, in->requesttype);
                 current->isStreaming = false;
-                for (RIGCONFIG* radio : config->rigs) {
+                foreach (RIGCONFIG* radio, config->rigs) {
                     if (!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size() == 1)
                     {
                         sendConnectionInfo(current, radio->guid);
@@ -332,7 +334,7 @@ void udpServer::controlReceived()
                 }
             }
             else {
-                qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received token request";
+                qInfo(logRigServer()) << current->ipAddress.toString() << ": Received token request";
                 sendTokenResponse(current, in->requesttype);
             }
             break;
@@ -340,7 +342,7 @@ void udpServer::controlReceived()
         case (LOGIN_SIZE):
         {
             login_packet_t in = (login_packet_t)r.constData();
-            qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received 'login'";
+            qInfo(logRigServer()) << current->ipAddress.toString() << ": Received 'login'";
             foreach(SERVERUSER user, config->users)
             {
                 QByteArray usercomp;
@@ -363,10 +365,10 @@ void udpServer::controlReceived()
             current->tokenTx = (quint8)rand() | (quint8)rand() << 8 | (quint8)rand() << 16 | (quint8)rand() << 24;
 
             if (current->isAuthenticated) {
-                qInfo(logUdpServer()) << current->ipAddress.toString() << ": User " << current->user.username << " login OK";
+                qInfo(logRigServer()) << current->ipAddress.toString() << ": User " << current->user.username << " login OK";
             }
             else {
-                qInfo(logUdpServer()) << current->ipAddress.toString() << ": Incorrect username/password";
+                qInfo(logRigServer()) << current->ipAddress.toString() << ": Incorrect username/password";
             }
             sendLoginResponse(current, current->isAuthenticated);
             break;
@@ -378,7 +380,7 @@ void udpServer::controlReceived()
             //    admin = true;
 
             conninfo_packet_t in = (conninfo_packet_t)r.constData();
-            qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received request for radio connection";
+            qInfo(logRigServer()) << current->ipAddress.toString() << ": Received request for radio connection";
             // Request to start audio and civ!
             current->isStreaming = true;
             current->rxSeq = in->seq;
@@ -393,7 +395,7 @@ void udpServer::controlReceived()
             sendStatus(current);
             current->authInnerSeq = 0x00;
             sendConnectionInfo(current,in->guid);
-            qInfo(logUdpServer()) << current->ipAddress.toString() << ": rxCodec:" << current->rxCodec << " txCodec:" << current->txCodec <<
+            qInfo(logRigServer()) << current->ipAddress.toString() << ": rxCodec:" << current->rxCodec << " txCodec:" << current->txCodec <<
                 " rxSampleRate" << current->rxSampleRate <<
                 " txSampleRate" << current->txSampleRate <<
                 " txBufferLen" << current->txBufferLen;
@@ -401,7 +403,7 @@ void udpServer::controlReceived()
 
             audioSetup setup;
             setup.resampleQuality = config->resampleQuality;
-            for (RIGCONFIG* radio : config->rigs) {
+            foreach (RIGCONFIG* radio, config->rigs) {
                 if ((!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size()==1) && radio->txaudio == Q_NULLPTR && !config->lan)
                 {
                     radio->txAudioSetup.codec = current->txCodec;
@@ -524,7 +526,7 @@ void udpServer::controlReceived()
 }
 
 
-void udpServer::civReceived()
+void icomServer::civReceived()
 {
     while (udpCiv->hasPendingDatagrams()) {
         QNetworkDatagram datagram = udpCiv->receiveDatagram();
@@ -583,25 +585,25 @@ void udpServer::civReceived()
             current->pingSeq = (quint8)rand() << 8 | (quint8)rand();
 
             current->pingTimer = new QTimer(this);
-            connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, &civClients, current, (quint16)0x00, false));
+            connect(current->pingTimer, &QTimer::timeout, this, std::bind(&icomServer::sendPing, this, &civClients, current, (quint16)0x00, false));
             current->pingTimer->start(100);
 
             current->idleTimer = new QTimer(this);
-            connect(current->idleTimer, &QTimer::timeout, this, std::bind(&udpServer::sendControl, this, current, 0x00, (quint16)0x00));
+            connect(current->idleTimer, &QTimer::timeout, this, std::bind(&icomServer::sendControl, this, current, 0x00, (quint16)0x00));
             //current->idleTimer->start(100); // Start idleTimer after receiving iamready.
 
             current->retransmitTimer = new QTimer(this);
-            connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
+            connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&icomServer::sendRetransmitRequest, this, current));
             current->retransmitTimer->start(RETRANSMIT_PERIOD);
 
-            qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): New connection created";
+            qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): New connection created";
             if (connMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
             {
                 civClients.append(current);
                 connMutex.unlock();
             }
             else {
-                qInfo(logUdpServer()) << "Unable to lock connMutex()";
+                qInfo(logRigServer()) << "Unable to lock connMutex()";
             }
 
 
@@ -655,26 +657,26 @@ void udpServer::civReceived()
                     {
                         // Strip all '0xFE' command preambles first:
                         int lastFE = r.lastIndexOf((char)0xfe);
-                        //qInfo(logUdpServer()) << "Got:" << r.mid(lastFE);
+                        //qInfo(logRigServer()) << "Got:" << r.mid(lastFE);
                         if (current->civId == 0 && r.length() > lastFE + 2 && (quint8)r[lastFE+2] != 0xE1 && (quint8)r[lastFE + 2] > (quint8)0xdf && (quint8)r[lastFE + 2] < (quint8)0xef) {
                             // This is (should be) the remotes CIV id.
                             current->civId = (quint8)r[lastFE + 2];
-                            qInfo(logUdpServer()) << current->ipAddress.toString() << ": Detected remote CI-V:" << QString("0x%1").arg(current->civId,0,16);
+                            qInfo(logRigServer()) << current->ipAddress.toString() << ": Detected remote CI-V:" << QString("0x%1").arg(current->civId,0,16);
                         }
                         else if (current->civId != 0 && r.length() > lastFE + 2 && (quint8)r[lastFE+2] != 0xE1 && (quint8)r[lastFE + 2] != current->civId)
                         {
                             current->civId = (quint8)r[lastFE + 2];
-                            qDebug(logUdpServer()) << current->ipAddress.toString() << ": Detected different remote CI-V:" << QString("0x%1").arg(current->civId,0,16);
-                            qInfo(logUdpServer()) << current->ipAddress.toString() << ": Detected different remote CI-V:" << QString("0x%1").arg(current->civId,0,16);
+                            qDebug(logRigServer()) << current->ipAddress.toString() << ": Detected different remote CI-V:" << QString("0x%1").arg(current->civId,0,16);
+                            qInfo(logRigServer()) << current->ipAddress.toString() << ": Detected different remote CI-V:" << QString("0x%1").arg(current->civId,0,16);
                         } else if (r.length() > lastFE+2 && (quint8)r[lastFE+2] != 0xE1) {
-                            qDebug(logUdpServer()) << current->ipAddress.toString() << ": Detected invalid remote CI-V:" << QString("0x%1").arg((quint8)r[lastFE+2],0,16);
+                            qDebug(logRigServer()) << current->ipAddress.toString() << ": Detected invalid remote CI-V:" << QString("0x%1").arg((quint8)r[lastFE+2],0,16);
 			            }
 
-                        for (RIGCONFIG* radio : config->rigs) {
+                        foreach (RIGCONFIG* radio, config->rigs) {
                             if (!memcmp(radio->guid, current->guid, sizeof(radio->guid)) || config->rigs.size()==1)
                             {
                                 // Only send to the rig that it belongs to!
-                                //qDebug(logUdpServer()) << "Sending data" << r.mid(0x15);
+                                //qDebug(logRigServer()) << "Sending data" << r.mid(0x15);
 #if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
                                 QMetaObject::invokeMethod(radio->rig, [=]() {
                                     radio->rig->dataFromServer(r.mid(0x15));;
@@ -689,7 +691,7 @@ void udpServer::civReceived()
 
                     }
                     else {
-                        qInfo(logUdpServer()) << current->ipAddress.toString() << ": Datalen mismatch " << quint16(in->datalen + 0x15) << ":" << (quint16)in->len;
+                        qInfo(logRigServer()) << current->ipAddress.toString() << ": Datalen mismatch " << quint16(in->datalen + 0x15) << ":" << (quint16)in->len;
 
                     }
                 }
@@ -698,13 +700,13 @@ void udpServer::civReceived()
         }
         }
         if (current != Q_NULLPTR) {
-            udpServer::commonReceived(&civClients, current, r);
+            icomServer::commonReceived(&civClients, current, r);
         }
 
     }
 }
 
-void udpServer::audioReceived()
+void icomServer::audioReceived()
 {
     while (udpAudio->hasPendingDatagrams()) {
         QNetworkDatagram datagram = udpAudio->receiveDatagram();
@@ -760,21 +762,21 @@ void udpServer::audioReceived()
             current->pingSeq = (quint8)rand() << 8 | (quint8)rand();
 
             current->pingTimer = new QTimer(this);
-            connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, &audioClients, current, (quint16)0x00, false));
+            connect(current->pingTimer, &QTimer::timeout, this, std::bind(&icomServer::sendPing, this, &audioClients, current, (quint16)0x00, false));
             current->pingTimer->start(PING_PERIOD);
 
             current->retransmitTimer = new QTimer(this);
-            connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
+            connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&icomServer::sendRetransmitRequest, this, current));
             current->retransmitTimer->start(RETRANSMIT_PERIOD);
             current->seqPrefix = 0;
-            qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): New connection created";
+            qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): New connection created";
             if (connMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
             {
                 audioClients.append(current);
                 connMutex.unlock();
             }
             else {
-                qInfo(logUdpServer()) << "Unable to lock connMutex()";
+                qInfo(logRigServer()) << "Unable to lock connMutex()";
             }
 
         }
@@ -840,12 +842,12 @@ void udpServer::audioReceived()
                     tempAudio.time = lastReceived;
                     tempAudio.sent = 0;
                     tempAudio.data = r.mid(0x18);
-                    //qInfo(logUdpServer()) << "sending tx audio " << in->seq;
+                    //qInfo(logRigServer()) << "sending tx audio " << in->seq;
                     emit haveAudioData(tempAudio);
                 }
                 else if (lastReceived >= QTime::currentTime().addMSecs(current->controlClient->txBufferLen))
                 {
-                    qInfo(logUdpServer()) << "Audio timestamp is older than" << current->controlClient->txBufferLen << "ms, dropped";
+                    qInfo(logRigServer()) << "Audio timestamp is older than" << current->controlClient->txBufferLen << "ms, dropped";
                 }
             }
             break;
@@ -853,13 +855,13 @@ void udpServer::audioReceived()
 
         }
         if (current != Q_NULLPTR) {
-            udpServer::commonReceived(&audioClients, current, r);
+            icomServer::commonReceived(&audioClients, current, r);
         }
     }
 }
 
 
-void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
+void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
 {
     Q_UNUSED(l); // We might need it later!
     if (current == Q_NULLPTR || r.isNull()) {
@@ -869,7 +871,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
     if (r.length() < 0x10)
     {
         // Invalid packet
-        qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Invalid packet received, len: " << r.length();
+        qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Invalid packet received, len: " << r.length();
         return;
     }
 
@@ -879,13 +881,13 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
     {
         control_packet_t in = (control_packet_t)r.constData();
         if (in->type == 0x03) {
-            qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'Are you there'";
+            qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'Are you there'";
             current->remoteId = in->sentid;
             sendControl(current, 0x04, in->seq);
         } // This is This is "Are you ready" in response to "I am here".
         else if (in->type == 0x06)
         {
-            qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'Are you ready'";
+            qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'Are you ready'";
             current->remoteId = in->sentid;
             sendControl(current, 0x06, in->seq);
             if (current->idleTimer != Q_NULLPTR && !current->idleTimer->isActive()) {
@@ -899,7 +901,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
             if (match != current->txSeqBuf.end() && match->retransmitCount < 5) {
                 // Found matching entry?
                 // Don't constantly retransmit the same packet, give-up eventually
-                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Sending (single packet) retransmit of " << QString("0x%1").arg(match->seqNum, 0, 16);
+                qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Sending (single packet) retransmit of " << QString("0x%1").arg(match->seqNum, 0, 16);
                 match->retransmitCount++;
                 if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                 {
@@ -907,13 +909,13 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                     udpMutex.unlock();
                 }
                 else {
-                    qInfo(logUdpServer()) << "Unable to lock udpMutex()";
+                    qInfo(logRigServer()) << "Unable to lock udpMutex()";
                 }
 
             }
             else {
                 // Just send an idle!
-                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type <<
+                qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type <<
                     "): Requested (single) packet " << QString("0x%1").arg(in->seq, 0, 16) << 
                     "not found, have " << QString("0x%1").arg(current->txSeqBuf.firstKey(), 0, 16) <<
                     "to" << QString("0x%1").arg(current->txSeqBuf.lastKey(), 0, 16);
@@ -938,7 +940,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
             quint16 seq = (quint8)r[i] | (quint8)r[i + 1] << 8;
             auto match = current->txSeqBuf.find(seq);
             if (match == current->txSeqBuf.end()) {
-                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type <<
+                qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type <<
                     "): Requested (multiple) packet " << QString("0x%1").arg(seq,0,16) << 
                     "not found, have " << QString("0x%1").arg(current->txSeqBuf.firstKey(), 0, 16) <<
                     "to" << QString("0x%1").arg(current->txSeqBuf.lastKey(), 0, 16);
@@ -950,7 +952,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
             {
                 // Found matching entry?
                 // Send "untracked" as it has already been sent once.
-                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Sending (multiple packet) retransmit of " << QString("0x%1").arg(match->seqNum,0,16);
+                qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Sending (multiple packet) retransmit of " << QString("0x%1").arg(match->seqNum,0,16);
                 match->retransmitCount++;
                 if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                 {
@@ -958,7 +960,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                     udpMutex.unlock();
                 }
                 else {
-                    qInfo(logUdpServer()) << "Unable to lock udpMutex()";
+                    qInfo(logRigServer()) << "Unable to lock udpMutex()";
                 }
             }
         }
@@ -966,7 +968,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
     else if (in->type == 0x00 && in->seq != 0x00)
     {
         //if (current->type == "CIV") {
-        //    qInfo(logUdpServer()) << "Got:" << in->seq;
+        //    qInfo(logRigServer()) << "Got:" << in->seq;
         //}
         if (current->rxSeqBuf.isEmpty())
         {
@@ -976,7 +978,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                 current->rxMutex.unlock();
             }
             else {
-                qInfo(logUdpServer()) << "Unable to lock rxMutex()";
+                qInfo(logRigServer()) << "Unable to lock rxMutex()";
             }
 
         }
@@ -985,7 +987,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
             
             if (in->seq < current->rxSeqBuf.firstKey() || in->seq - current->rxSeqBuf.lastKey() > MAX_MISSING)
             {
-                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "Large seq number gap detected, previous highest: " <<
+                qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "Large seq number gap detected, previous highest: " <<
                     QString("0x%1").arg(current->rxSeqBuf.lastKey(), 0, 16) << " current: " << QString("0x%1").arg(in->seq, 0, 16);
                 // Looks like it has rolled over so clear buffer and start again.
                 if (current->rxMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
@@ -994,7 +996,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                     current->rxMutex.unlock();
                 }
                 else {
-                    qInfo(logUdpServer()) << "Unable to lock rxMutex()";
+                    qInfo(logRigServer()) << "Unable to lock rxMutex()";
                 }
 
                 if (current->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
@@ -1003,7 +1005,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                     current->missMutex.unlock();
                 }
                 else {
-                    qInfo(logUdpServer()) << "Unable to lock missMutex()";
+                    qInfo(logRigServer()) << "Unable to lock missMutex()";
                 }
 
                 return;
@@ -1016,7 +1018,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                     // Add incoming packet to the received buffer and if it is in the missing buffer, remove it.
                     //int missCounter = 0;
                     if (in->seq > current->rxSeqBuf.lastKey() + 1) {
-                        qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "1 or more missing packets detected, previous: " <<
+                        qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "1 or more missing packets detected, previous: " <<
                             QString("0x%1").arg(current->rxSeqBuf.lastKey(), 0, 16) << " current: " << QString("0x%1").arg(in->seq, 0, 16);
                         // We are likely missing packets then!
                         if (current->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
@@ -1039,7 +1041,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                             current->missMutex.unlock();
                         }
                         else {
-                            qInfo(logUdpServer()) << "Unable to lock missMutex()";
+                            qInfo(logRigServer()) << "Unable to lock missMutex()";
                         }
                     }
                     else {
@@ -1053,7 +1055,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                     current->rxMutex.unlock();
                 }
                 else {
-                    qInfo(logUdpServer()) << "Unable to lock rxMutex()";
+                    qInfo(logRigServer()) << "Unable to lock rxMutex()";
                 }
 
             } else{
@@ -1063,13 +1065,13 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                     auto s = current->rxMissing.find(in->seq);
                     if (s != current->rxMissing.end())
                     {
-                        qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Missing SEQ has been received! " << QString("0x%1").arg(in->seq,0,16);
+                        qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Missing SEQ has been received! " << QString("0x%1").arg(in->seq,0,16);
                         s = current->rxMissing.erase(s);
                     }
                     current->missMutex.unlock();
                 }
                 else {
-                    qInfo(logUdpServer()) << "Unable to lock missMutex()";
+                    qInfo(logRigServer()) << "Unable to lock missMutex()";
                 }
             }
         }
@@ -1078,10 +1080,10 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
 
 
 
-void udpServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
+void icomServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
 {
 
-    //qInfo(logUdpServer()) << c->ipAddress.toString() << ": Sending control packet: " << type;
+    //qInfo(logRigServer()) << c->ipAddress.toString() << ": Sending control packet: " << type;
 
     control_packet p;
     memset(p.packet, 0x0, CONTROL_SIZE); // We can't be sure it is initialized with 0x00!
@@ -1114,7 +1116,7 @@ void udpServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
             c->txMutex.unlock();
         }
         else {
-            qInfo(logUdpServer()) << "Unable to lock txMutex()";
+            qInfo(logRigServer()) << "Unable to lock txMutex()";
         }
 
         if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
@@ -1123,7 +1125,7 @@ void udpServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
             udpMutex.unlock();
         }
         else {
-            qInfo(logUdpServer()) << "Unable to lock udpMutex()";
+            qInfo(logRigServer()) << "Unable to lock udpMutex()";
         }
 
     }
@@ -1135,7 +1137,7 @@ void udpServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
             udpMutex.unlock();
         }
         else {
-            qInfo(logUdpServer()) << "Unable to lock udpMutex()";
+            qInfo(logRigServer()) << "Unable to lock udpMutex()";
         }
 
     }
@@ -1145,7 +1147,7 @@ void udpServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
 
 
 
-void udpServer::sendPing(QList<CLIENT*>* l, CLIENT* c, quint16 seq, bool reply)
+void icomServer::sendPing(QList<CLIENT*>* l, CLIENT* c, quint16 seq, bool reply)
 {
     Q_UNUSED(l);
     /*
@@ -1153,14 +1155,14 @@ void udpServer::sendPing(QList<CLIENT*>* l, CLIENT* c, quint16 seq, bool reply)
 
     if (c->lastHeard.secsTo(now) > STALE_CONNECTION)
     {
-        qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Deleting stale connection ";
+        qInfo(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Deleting stale connection ";
         deleteConnection(l, c);
         return;
     }
 
     */
 
-    //qInfo(logUdpServer()) << c->ipAddress.toString() << ": Sending Ping";
+    //qInfo(logRigServer()) << c->ipAddress.toString() << ": Sending Ping";
 
     quint32 pingTime = 0;
     if (reply) {
@@ -1192,15 +1194,15 @@ void udpServer::sendPing(QList<CLIENT*>* l, CLIENT* c, quint16 seq, bool reply)
         udpMutex.unlock();
     }
     else {
-        qInfo(logUdpServer()) << "Unable to lock udpMutex()";
+        qInfo(logRigServer()) << "Unable to lock udpMutex()";
     }
 
     return;
 }
 
-void udpServer::sendLoginResponse(CLIENT* c, bool allowed)
+void icomServer::sendLoginResponse(CLIENT* c, bool allowed)
 {
-    qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Login response: " << c->txSeq;
+    qInfo(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Login response: " << c->txSeq;
 
     login_response_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -1254,7 +1256,7 @@ void udpServer::sendLoginResponse(CLIENT* c, bool allowed)
         c->txMutex.unlock();
     }
     else {
-        qInfo(logUdpServer()) << "Unable to lock txMutex()";
+        qInfo(logRigServer()) << "Unable to lock txMutex()";
     }
 
     if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
@@ -1263,7 +1265,7 @@ void udpServer::sendLoginResponse(CLIENT* c, bool allowed)
         udpMutex.unlock();
     }
     else {
-        qInfo(logUdpServer()) << "Unable to lock udpMutex()";
+        qInfo(logRigServer()) << "Unable to lock udpMutex()";
     }
 
     if (c->idleTimer != Q_NULLPTR)
@@ -1272,7 +1274,7 @@ void udpServer::sendLoginResponse(CLIENT* c, bool allowed)
     return;
 }
 
-void udpServer::sendCapabilities(CLIENT* c)
+void icomServer::sendCapabilities(CLIENT* c)
 {
     capabilities_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -1291,8 +1293,8 @@ void udpServer::sendCapabilities(CLIENT* c)
     s.timeSent = QTime::currentTime();
     s.retransmitCount = 0;
 
-    for (RIGCONFIG* rig : config->rigs) {
-        qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Capabilities :" << c->txSeq << "for" << rig->modelName << "c-iv" << QString::number(rig->civAddr,16);
+    foreach (RIGCONFIG* rig, config->rigs) {
+        qInfo(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Capabilities :" << c->txSeq << "for" << rig->modelName << "c-iv" << QString::number(rig->civAddr,16);
         radio_cap_packet r;
         memset(r.packet, 0x0, sizeof(r)); // We can't be sure it is initialized with 0x00!
         
@@ -1344,10 +1346,10 @@ void udpServer::sendCapabilities(CLIENT* c)
         if (rig->txaudio == Q_NULLPTR) {
             r.txsample = 0x8b01; // all tx sample frequencies supported
             r.enablea = 0x01; // 0x01 enables TX 24K mode?
-            qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Client will have TX audio";
+            qInfo(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Client will have TX audio";
         }
         else {
-            qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Disable tx audio for client";
+            qInfo(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Disable tx audio for client";
             r.txsample = 0;
         }
 
@@ -1378,7 +1380,7 @@ void udpServer::sendCapabilities(CLIENT* c)
         c->txMutex.unlock();
     }
     else {
-        qInfo(logUdpServer()) << "Unable to lock txMutex()";
+        qInfo(logRigServer()) << "Unable to lock txMutex()";
     }
 
     if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
@@ -1387,7 +1389,7 @@ void udpServer::sendCapabilities(CLIENT* c)
         udpMutex.unlock();
     }
     else {
-        qInfo(logUdpServer()) << "Unable to lock udpMutex()";
+        qInfo(logRigServer()) << "Unable to lock udpMutex()";
     }
 
 
@@ -1399,12 +1401,12 @@ void udpServer::sendCapabilities(CLIENT* c)
 
 // When client has requested civ/audio connection, this will contain their details
 // Also used to display currently connected used information.
-void udpServer::sendConnectionInfo(CLIENT* c, quint8 guid[GUIDLEN])
+void icomServer::sendConnectionInfo(CLIENT* c, quint8 guid[GUIDLEN])
 {
-    for (RIGCONFIG* radio : config->rigs) {
+    foreach (RIGCONFIG* radio, config->rigs) {
         if (!memcmp(guid, radio->guid, GUIDLEN) || config->rigs.size()==1)
         {
-            qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending ConnectionInfo :" << c->txSeq;
+            qInfo(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending ConnectionInfo :" << c->txSeq;
             conninfo_packet p;
             memset(p.packet, 0x0, sizeof(p));
             p.len = sizeof(p);
@@ -1468,7 +1470,7 @@ void udpServer::sendConnectionInfo(CLIENT* c, quint8 guid[GUIDLEN])
                 c->txMutex.unlock();
             }
             else {
-                qInfo(logUdpServer()) << "Unable to lock txMutex()";
+                qInfo(logRigServer()) << "Unable to lock txMutex()";
             }
 
 
@@ -1478,7 +1480,7 @@ void udpServer::sendConnectionInfo(CLIENT* c, quint8 guid[GUIDLEN])
                 udpMutex.unlock();
             }
             else {
-                qInfo(logUdpServer()) << "Unable to lock udpMutex()";
+                qInfo(logRigServer()) << "Unable to lock udpMutex()";
             }
 
         }
@@ -1489,9 +1491,9 @@ void udpServer::sendConnectionInfo(CLIENT* c, quint8 guid[GUIDLEN])
     return;
 }
 
-void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
+void icomServer::sendTokenResponse(CLIENT* c, quint8 type)
 {
-    qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Token response for type: " << type;
+    qInfo(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Token response for type: " << type;
 
     token_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -1529,7 +1531,7 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
         c->txMutex.unlock();
     }
     else {
-        qInfo(logUdpServer()) << "Unable to lock txMutex()";
+        qInfo(logRigServer()) << "Unable to lock txMutex()";
     }
 
 
@@ -1539,7 +1541,7 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
         udpMutex.unlock();
     }
     else {
-        qInfo(logUdpServer()) << "Unable to lock udpMutex()";
+        qInfo(logRigServer()) << "Unable to lock udpMutex()";
     }
 
 
@@ -1549,7 +1551,7 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
     return;
 }
 
-void udpServer::watchdog()
+void icomServer::watchdog()
 {
     QDateTime now = QDateTime::currentDateTime();
 
@@ -1559,12 +1561,12 @@ void udpServer::watchdog()
         {
             if (client->lastHeard.secsTo(now) > STALE_CONNECTION)
             {
-                qInfo(logUdpServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
+                qInfo(logRigServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
                 deleteConnection(&audioClients, client);
             }
         }
         else {
-            qInfo(logUdpServer()) << "Current client is NULL!";
+            qInfo(logRigServer()) << "Current client is NULL!";
         }
     }
 
@@ -1574,12 +1576,12 @@ void udpServer::watchdog()
         {
             if (client->lastHeard.secsTo(now) > STALE_CONNECTION)
             {
-                qInfo(logUdpServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
+                qInfo(logRigServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
                 deleteConnection(&civClients, client);
             }
         }
         else {
-            qInfo(logUdpServer()) << "Current client is NULL!";
+            qInfo(logRigServer()) << "Current client is NULL!";
         }
     }
 
@@ -1589,12 +1591,12 @@ void udpServer::watchdog()
         {
             if (client->lastHeard.secsTo(now) > STALE_CONNECTION)
             {
-                qInfo(logUdpServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
+                qInfo(logRigServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
                 deleteConnection(&controlClients, client);
             }
         }
         else {
-            qInfo(logUdpServer()) << "Current client is NULL!";
+            qInfo(logRigServer()) << "Current client is NULL!";
         }
     }
     if (!config->lan) {
@@ -1603,10 +1605,10 @@ void udpServer::watchdog()
     }
 }
 
-void udpServer::sendStatus(CLIENT* c)
+void icomServer::sendStatus(CLIENT* c)
 {
 
-    qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Status";
+    qInfo(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Status";
 
     status_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -1649,7 +1651,7 @@ void udpServer::sendStatus(CLIENT* c)
         c->txMutex.unlock();
     }
     else {
-        qInfo(logUdpServer()) << "Unable to lock txMutex()";
+        qInfo(logRigServer()) << "Unable to lock txMutex()";
     }
 
 
@@ -1659,23 +1661,23 @@ void udpServer::sendStatus(CLIENT* c)
         udpMutex.unlock();
     }
     else {
-        qInfo(logUdpServer()) << "Unable to lock udpMutex()";
+        qInfo(logRigServer()) << "Unable to lock udpMutex()";
     }
 
 }
 
 
-void udpServer::dataForServer(QByteArray d)
+void icomServer::dataForServer(QByteArray d)
 {
     rigCommander* sender = qobject_cast<rigCommander*>(QObject::sender());
 
-    //qInfo(logUdpServer()) << "Received data for server clients";
+    //qInfo(logRigServer()) << "Received data for server clients";
     if (sender == Q_NULLPTR)
     {
         return;
     }
 
-    for (CLIENT* client : civClients)
+    foreach (CLIENT* client, civClients)
     {
         if (client == Q_NULLPTR || !client->connected)
         {
@@ -1688,7 +1690,7 @@ void udpServer::dataForServer(QByteArray d)
         }
 
         int lastFE = d.lastIndexOf((quint8)0xfe);
-        //qInfo(logUdpServer()) << "Server got CIV data from" << config->rigs.first()->rigName << "length" << d.length() << d.toHex();
+        //qInfo(logRigServer()) << "Server got CIV data from" << config->rigs.first()->rigName << "length" << d.length() << d.toHex();
         if (client->connected && d.length() > lastFE + 2 &&
                 ((quint8)d[lastFE + 1] == client->civId || (quint8)d[lastFE + 2] == client->civId ||
                 (quint8)d[lastFE + 1] == 0x00 || (quint8)d[lastFE + 2] == 0x00 || (quint8)d[lastFE + 1] == 0xE1 || (quint8)d[lastFE + 2] == 0xE1))
@@ -1726,7 +1728,7 @@ void udpServer::dataForServer(QByteArray d)
                 client->txMutex.unlock();
             }
             else {
-                qInfo(logUdpServer()) << "Unable to lock txMutex()";
+                qInfo(logRigServer()) << "Unable to lock txMutex()";
             }
 
 
@@ -1736,11 +1738,11 @@ void udpServer::dataForServer(QByteArray d)
                 udpMutex.unlock();
             }
             else {
-                qInfo(logUdpServer()) << "Unable to lock udpMutex()";
+                qInfo(logRigServer()) << "Unable to lock udpMutex()";
             }
         }
         else {
-            qInfo(logUdpServer()) << "Got data for different ID" << 
+            qInfo(logRigServer()) << "Got data for different ID" <<
                 QString("0x%1").arg((quint8)d[lastFE + 1],0,16) << ":" << QString("0x%1").arg((quint8)d[lastFE + 2],0,16);
         }
     }
@@ -1748,7 +1750,7 @@ void udpServer::dataForServer(QByteArray d)
 }
 
 
-void udpServer::receiveAudioData(const audioPacket& d)
+void icomServer::receiveAudioData(const audioPacket& d)
 {
     rigCommander* sender = qobject_cast<rigCommander*>(QObject::sender());
     quint8 guid[GUIDLEN];
@@ -1759,7 +1761,7 @@ void udpServer::receiveAudioData(const audioPacket& d)
     else {
         memcpy(guid, d.guid, GUIDLEN);
     }
-    //qInfo(logUdpServer()) << "Server got:" << d.data.length();
+    //qInfo(logRigServer()) << "Server got:" << d.data.length();
     foreach(CLIENT * client, audioClients)
     {
         int len = 0;
@@ -1800,7 +1802,7 @@ void udpServer::receiveAudioData(const audioPacket& d)
                     client->txMutex.unlock();
                 }
                 else {
-                    qInfo(logUdpServer()) << "Unable to lock txMutex()";
+                    qInfo(logRigServer()) << "Unable to lock txMutex()";
                 }
 
 
@@ -1810,7 +1812,7 @@ void udpServer::receiveAudioData(const audioPacket& d)
                     udpMutex.unlock();
                 }
                 else {
-                    qInfo(logUdpServer()) << "Unable to lock udpMutex()";
+                    qInfo(logRigServer()) << "Unable to lock udpMutex()";
                 }
 
             }
@@ -1825,7 +1827,7 @@ void udpServer::receiveAudioData(const audioPacket& d)
 /// This will run every 100ms so out-of-sequence packets will not trigger a retransmit request.
 /// </summary>
 /// <param name="c"></param>
-void udpServer::sendRetransmitRequest(CLIENT* c)
+void icomServer::sendRetransmitRequest(CLIENT* c)
 {
     // Find all gaps in received packets and then send requests for them.
  // This will run every 100ms so out-of-sequence packets will not trigger a retransmit request.
@@ -1897,7 +1899,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
                     udpMutex.unlock();
                 }
                 else {
-                    qInfo(logUdpServer()) << "Unable to lock udpMutex()";
+                    qInfo(logRigServer()) << "Unable to lock udpMutex()";
                 }
 
             }
@@ -1914,7 +1916,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
                     udpMutex.unlock();
                 }
                 else {
-                    qInfo(logUdpServer()) << "Unable to lock udpMutex()";
+                    qInfo(logRigServer()) << "Unable to lock udpMutex()";
                 }
 
             }
@@ -1922,7 +1924,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
         c->missMutex.unlock();
     }
     else {
-        qInfo(logUdpServer()) << "Unable to lock missMutex()";
+        qInfo(logRigServer()) << "Unable to lock missMutex()";
     }
 }
 
@@ -1933,13 +1935,13 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
 /// </summary>
 /// <param name="l"></param>
 /// <param name="c"></param>
-void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
+void icomServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
 {
 
     quint8 guid[GUIDLEN];
     memcpy(guid, c->guid, GUIDLEN);
 
-    qInfo(logUdpServer()) << "Deleting" << c->type << "connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
+    qInfo(logRigServer()) << "Deleting" << c->type << "connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
     if (c->idleTimer != Q_NULLPTR) {
         c->idleTimer->stop();
         delete c->idleTimer;
@@ -1960,7 +1962,7 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
         c->rxMutex.unlock();
     }
     else {
-        qInfo(logUdpServer()) << "Unable to lock rxMutex()";
+        qInfo(logRigServer()) << "Unable to lock rxMutex()";
     }
 
 
@@ -1970,7 +1972,7 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
         c->txMutex.unlock();
     }
     else {
-        qInfo(logUdpServer()) << "Unable to lock txMutex()";
+        qInfo(logRigServer()) << "Unable to lock txMutex()";
     }
 
 
@@ -1980,7 +1982,7 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
         c->missMutex.unlock();
     }
     else {
-        qInfo(logUdpServer()) << "Unable to lock missMutex()";
+        qInfo(logRigServer()) << "Unable to lock missMutex()";
     }
 
 
@@ -1990,7 +1992,7 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
         while (it != l->end()) {
             CLIENT* client = *it;
             if (client != Q_NULLPTR && client == c) {
-                qInfo(logUdpServer()) << "Found" << client->type << "connection to: " << client->ipAddress.toString() << ":" << QString::number(client->port);
+                qInfo(logRigServer()) << "Found" << client->type << "connection to: " << client->ipAddress.toString() << ":" << QString::number(client->port);
                 it = l->erase(it);
             }
             else {
@@ -1999,11 +2001,11 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
         }
         delete c; // Is this needed or will the erase have done it?
         c = Q_NULLPTR;
-        qInfo(logUdpServer()) << "Current Number of clients connected: " << l->length();
+        qInfo(logRigServer()) << "Current Number of clients connected: " << l->length();
         connMutex.unlock();
     }
     else {
-        qInfo(logUdpServer()) << "Unable to lock connMutex()";
+        qInfo(logRigServer()) << "Unable to lock connMutex()";
     }
 
     if (l->length() == 0) {

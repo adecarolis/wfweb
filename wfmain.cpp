@@ -1,4 +1,5 @@
 #include "wfmain.h"
+#include "icomserver.h"
 #include "ui_wfmain.h"
 
 #include "rigidentities.h"
@@ -498,10 +499,10 @@ void wfmain::makeRig()
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
         if (serverConfig.enabled) {
-            qInfo(logUdpServer()) << "**** Connecting rig instance to server";
-            connect(rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
-            connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
-            connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
+            qInfo(logRigServer()) << "**** Connecting rig instance to server";
+            connect(rig, SIGNAL(haveAudioData(audioPacket)), server, SLOT(receiveAudioData(audioPacket)));
+            connect(rig, SIGNAL(haveDataForServer(QByteArray)), server, SLOT(dataForServer(QByteArray)));
+            connect(server, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
         }
 
         connect(this, SIGNAL(setCIVAddr(quint16)), rig, SLOT(setCIVAddr(quint16)));
@@ -968,28 +969,29 @@ void wfmain::setServerToPrefs()
         serverThread->quit();
         serverThread->wait();
         serverThread = Q_NULLPTR;
-        udp = Q_NULLPTR;
+        server = Q_NULLPTR;
         ui->statusBar->showMessage(QString("Server disabled"), 1000);
     }
 
     if (serverConfig.enabled) {
         serverConfig.lan = prefs.enableLAN;
 
-        udp = new udpServer(&serverConfig);
+
+        server = new icomServer(&serverConfig);
 
         serverThread = new QThread(this);
 
-        udp->moveToThread(serverThread);
+        server->moveToThread(serverThread);
 
         if (serverConfig.lan) {
-            connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
+            connect(server, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
         } else {
             qInfo(logAudio()) << "Audio Input device " << serverConfig.rigs.first()->rxAudioSetup.name;
             qInfo(logAudio()) << "Audio Output device " << serverConfig.rigs.first()->txAudioSetup.name;
         }
 
-        connect(this, SIGNAL(initServer()), udp, SLOT(init()));
-        connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
+        connect(this, SIGNAL(initServer()), server, SLOT(init()));
+        connect(serverThread, SIGNAL(finished()), server, SLOT(deleteLater()));
 
         serverThread->start();
 

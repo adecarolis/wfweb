@@ -44,7 +44,8 @@
 #include "bandbuttons.h"
 #include "frequencyinputwidget.h"
 #include "settingswidget.h"
-#include "udpserver.h"
+#include "rigserver.h"
+#include "icomserver.h"
 #include "qledlabel.h"
 #include "rigctld.h"
 #include "aboutbox.h"
@@ -666,7 +667,7 @@ private:
     settingswidget* setupui;
 
 
-    udpServer* udp = Q_NULLPTR;
+    rigServer* server = Q_NULLPTR;
     QThread* serverThread = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
     tciServer* tci = Q_NULLPTR;

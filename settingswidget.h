@@ -20,7 +20,7 @@
 #include "udpbase.h" // for udp preferences
 #include "cluster.h" // for clusterSettings
 #include "rigidentities.h" // for rigInputs
-#include "udpserver.h" // for SERVERCONFIG
+#include "rigserver.h" // for SERVERCONFIG
 #include "qledlabel.h" // For color swatches
 #include "audiodevices.h"
 

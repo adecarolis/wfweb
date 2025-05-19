@@ -28,7 +28,7 @@ private:
     std::vector< FT_DEVICE_LIST_INFO_NODE > devList;
 #endif
     bool running = true;
-    qint64 poll=20;
+    quint64 poll=20;
 
 signals:
     void dataReady(ft710_spi_data d);
