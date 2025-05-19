@@ -31,6 +31,7 @@ struct udpPreferences {
 	quint16 controlLANPort;
 	quint16 serialLANPort;
 	quint16 audioLANPort;
+    quint16 scopeLANPort;
 	QString username;
 	QString password;
 	QString clientName;

@@ -98,7 +98,8 @@ public slots:
     virtual void init();
     virtual void dataForServer(QByteArray);
     virtual void receiveAudioData(const audioPacket &data);
-    virtual void receiveRigCaps(rigCapabilities* caps);
+
+    void receiveRigCaps(rigCapabilities* caps);
 
 signals:
 	void haveDataFromServer(QByteArray);
@@ -111,6 +112,7 @@ signals:
 protected:
 	SERVERCONFIG *config;
     cachingQueue *queue;
+    networkStatus status;
 
 private:
     // rigServer should have no private vars as it is only ever subclassed.

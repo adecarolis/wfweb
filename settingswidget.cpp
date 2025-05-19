@@ -915,32 +915,12 @@ void settingswidget::updateRaPref(prefRaItem pra)
         // Not handled here.
         break;
     case ra_audioSystem:
-        ui->audioSystemCombo->blockSignals(true);
-        ui->audioSystemServerCombo->blockSignals(true);
-        ui->audioSystemCombo->setCurrentIndex(prefs->audioSystem);
-        ui->audioSystemServerCombo->setCurrentIndex(prefs->audioSystem);
-        ui->audioSystemServerCombo->blockSignals(false);
-        ui->audioSystemCombo->blockSignals(false);
+        quietlyUpdateCombobox(ui->audioSystemCombo,prefs->audioSystem);
+        quietlyUpdateCombobox(ui->audioSystemServerCombo,prefs->audioSystem);
         break;
     case ra_manufacturer:
-        quietlyUpdateCombobox(ui->manufacturerCombo,prefs->manufacturer);
-        if (prefs->manufacturer == manufKenwood)
-        {
-            udpPrefs->controlLANPort = 60000;
-            udpPrefs->audioLANPort = 60001;
-            // We also need to disable all items that are unsupported by this manufacturer
-            ui->audioSampleRateCombo->setCurrentIndex(2);
-            ui->audioRXCodecCombo->setCurrentIndex(ui->audioRXCodecCombo->findData(4));
-            ui->audioTXCodecCombo->setCurrentIndex(ui->audioTXCodecCombo->findData(4));
-
-            ui->audioSampleRateCombo->setEnabled(false);
-            ui->adminLoginChk->setVisible(true);
-        }   else {
-            ui->audioSampleRateCombo->setEnabled(true);
-            ui->adminLoginChk->setVisible(false);
-        }
-        ui->controlPortTxt->setText(QString::number(udpPrefs->controlLANPort));
-
+        // Don't update quietly, to force the update to trigger.
+        ui->manufacturerCombo->setCurrentIndex(ui->manufacturerCombo->findData(prefs->manufacturer));
         break;
     default:
         qWarning(logGui()) << "Cannot update ra pref" << (int)pra;
@@ -1837,25 +1817,78 @@ void settingswidget::on_audioSystemCombo_currentIndexChanged(int value)
 void settingswidget::on_manufacturerCombo_currentIndexChanged(int value)
 {
     Q_UNUSED(value)
-    prefs->manufacturer = ui->manufacturerCombo->currentData().value<manufacturersType_t>();
-    if (prefs->manufacturer == manufKenwood)
+    bool changed = false;
+    // If we have been called directly (not via the combobox signal), then update things differently.
+    if (prefs->manufacturer != ui->manufacturerCombo->currentData().value<manufacturersType_t>())
     {
-        udpPrefs->controlLANPort = 60000;
-        udpPrefs->audioLANPort = 60001;
+        prefs->manufacturer = ui->manufacturerCombo->currentData().value<manufacturersType_t>();
+        changed = true;
+    }
+
+    if (prefs->manufacturer == manufIcom)
+    {
+        if (changed)
+        {
+            udpPrefs->controlLANPort = 50001;
+            udpPrefs->serialLANPort = 50002;
+            udpPrefs->audioLANPort = 50003;
+        }
+        ui->audioSampleRateCombo->setEnabled(true);
+        ui->adminLoginChk->setVisible(false);
+        ui->serverCivPortText->setVisible(true);
+        ui->serverScopePortText->setVisible(false);
+        ui->serverCATPortLabel->setVisible(true);
+        ui->serverScopePortLabel->setVisible(false);
+
+    }
+    else if (prefs->manufacturer == manufKenwood)
+    {
+        if (changed)
+        {
+            udpPrefs->controlLANPort = 60000;
+            udpPrefs->audioLANPort = 60001;
+        }
+
         // We also need to disable all items that are unsupported by this manufacturer
         ui->audioSampleRateCombo->setCurrentIndex(2);
         ui->audioRXCodecCombo->setCurrentIndex(ui->audioRXCodecCombo->findData(4));
         ui->audioTXCodecCombo->setCurrentIndex(ui->audioTXCodecCombo->findData(4));
+
         ui->audioSampleRateCombo->setEnabled(false);
         ui->adminLoginChk->setVisible(true);
-    }   else {
-        udpPrefs->controlLANPort = 50001;
-        ui->audioSampleRateCombo->setEnabled(true);
+        ui->serverCivPortText->setVisible(false);
+        ui->serverScopePortText->setVisible(false);
+        ui->serverCATPortLabel->setVisible(false);
+        ui->serverScopePortLabel->setVisible(false);
+    }
+    else   if (prefs->manufacturer == manufYaesu)
+    {
+        if (changed)
+        {
+            udpPrefs->controlLANPort = 50000;
+            udpPrefs->serialLANPort = 50001;
+            udpPrefs->audioLANPort = 50002;
+            udpPrefs->scopeLANPort = 50003;
+        }
         ui->adminLoginChk->setVisible(false);
+        ui->serverCivPortText->setVisible(true);
+        ui->serverScopePortText->setVisible(true);
+        ui->serverCATPortLabel->setVisible(true);
+        ui->serverScopePortLabel->setVisible(true);
     }
     ui->controlPortTxt->setText(QString::number(udpPrefs->controlLANPort));
 
     emit changedRaPref(ra_manufacturer);
+
+    if (serverConfig->enabled && changed)
+    {
+        // Re-cycle server as manufacturer may have changed!
+        serverConfig->enabled = false;
+        emit changedServerPref(s_enabled);
+        serverConfig->enabled = true;
+        emit changedServerPref(s_enabled);
+    }
+
 }
 
 void settingswidget::on_audioSystemServerCombo_currentIndexChanged(int value)

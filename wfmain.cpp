@@ -976,8 +976,21 @@ void wfmain::setServerToPrefs()
     if (serverConfig.enabled) {
         serverConfig.lan = prefs.enableLAN;
 
+        switch (prefs.manufacturer)
+        {
+            case manufIcom:
+                server = new icomServer(&serverConfig);
+                break;
+            case manufKenwood:
+                server = new kenwoodServer(&serverConfig);
+                break;
+            case manufYaesu:
+                server = new yaesuServer(&serverConfig);
+                break;
+        default:
+            return;
 
-        server = new icomServer(&serverConfig);
+        }
 
         serverThread = new QThread(this);
 

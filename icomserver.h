@@ -50,17 +50,6 @@ public slots:
 	void init();
 	void dataForServer(QByteArray);
 	void receiveAudioData(const audioPacket &data);
-    void receiveRigCaps(rigCapabilities* caps);
-
-signals:
-	void haveDataFromServer(QByteArray);
-	void haveAudioData(audioPacket data);
-	void haveNetworkStatus(networkStatus);
-
-	void setupTxAudio(audioSetup);
-	void setupRxAudio(audioSetup);
-
-
 
 private:
 
@@ -146,8 +135,6 @@ private:
 	void watchdog();
 	void deleteConnection(QList<CLIENT*> *l, CLIENT* c);
 
-	SERVERCONFIG *config;
-
 	QUdpSocket* udpControl = Q_NULLPTR;
 	QUdpSocket* udpCiv = Q_NULLPTR;
 	QUdpSocket* udpAudio = Q_NULLPTR;
@@ -162,8 +149,8 @@ private:
 	QMutex connMutex;
 	QMutex audioMutex;
 
-	QList <CLIENT*> controlClients = QList<CLIENT*>();
-	QList <CLIENT*> civClients = QList<CLIENT*>();
+    QList <CLIENT*> controlClients = QList<CLIENT*>();
+    QList <CLIENT*> civClients = QList<CLIENT*>();
 	QList <CLIENT*> audioClients = QList<CLIENT*>();
 
     //QTime timeStarted;
@@ -180,7 +167,6 @@ private:
 	QHostAddress hasTxAudio;
 	QTimer* wdTimer;
 
-	networkStatus status;
 };
 
 

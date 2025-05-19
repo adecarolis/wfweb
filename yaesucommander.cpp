@@ -1831,7 +1831,7 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             if (port->write(payload) != payload.size())
             {
                 qInfo(logSerial()) << "Error writing to port";
-            }
+            }            
             lastCommand.func = func;
             lastCommand.data = payload;
             lastCommand.minValue = cmd.minVal;

@@ -8,8 +8,7 @@
 #define AUDIO_SEND_PERIOD 20 //
 
 icomServer::icomServer(SERVERCONFIG* config, rigServer* parent) :
-    rigServer(config,parent),
-    config(config)
+    rigServer(config,parent)
 {
     qInfo(logRigServer()) << "Creating instance of Icom server";
 }
@@ -18,30 +17,7 @@ void icomServer::init()
 {
 
     connect(queue,SIGNAL(rigCapsUpdated(rigCapabilities*)),this, SLOT(receiveRigCaps(rigCapabilities*)));
-    foreach (const auto& rig, config->rigs)
-    {
-        qInfo(logRigServer()) << "CIV:" << rig->civAddr;
-        qInfo(logRigServer()) << "Model:" << rig->modelName;
-        qInfo(logRigServer()) << "Name:" << rig->rigName;
-        qInfo(logRigServer()).noquote() << QString("GUID: {%1%2%3%4-%5%6-%7%8-%9%10-%11%12%13%14%15%16}")
-            .arg(rig->guid[0], 2, 16, QLatin1Char('0'))
-            .arg(rig->guid[1], 2, 16, QLatin1Char('0'))
-            .arg(rig->guid[2], 2, 16, QLatin1Char('0'))
-            .arg(rig->guid[3], 2, 16, QLatin1Char('0'))
-            .arg(rig->guid[4], 2, 16, QLatin1Char('0'))
-            .arg(rig->guid[5], 2, 16, QLatin1Char('0'))
-            .arg(rig->guid[6], 2, 16, QLatin1Char('0'))
-            .arg(rig->guid[7], 2, 16, QLatin1Char('0'))
-            .arg(rig->guid[8], 2, 16, QLatin1Char('0'))
-            .arg(rig->guid[9], 2, 16, QLatin1Char('0'))
-            .arg(rig->guid[10], 2, 16, QLatin1Char('0'))
-            .arg(rig->guid[11], 2, 16, QLatin1Char('0'))
-            .arg(rig->guid[12], 2, 16, QLatin1Char('0'))
-            .arg(rig->guid[13], 2, 16, QLatin1Char('0'))
-            .arg(rig->guid[14], 2, 16, QLatin1Char('0'))
-            .arg(rig->guid[15], 2, 16, QLatin1Char('0'))
-            ;
-    }
+
     srand(time(NULL)); // Generate random 
     //timeStarted.start();
     // Convoluted way to find the external IP address, there must be a better way????
@@ -158,27 +134,6 @@ icomServer::~icomServer()
     status.message = QString("");
     emit haveNetworkStatus(status);
 }
-
-
-void icomServer::receiveRigCaps(rigCapabilities* caps)
-{
-    if (caps == Q_NULLPTR)
-        return;
-
-    foreach (RIGCONFIG* rig, config->rigs) {
-        if (!memcmp(rig->guid, caps->guid, GUIDLEN) || config->rigs.size()==1) {
-            // Matching rig, fill-in missing details
-            qInfo(logRigServer()) << "Received new rigCaps for:" << caps->modelName << "CIV:" << QString::number(caps->modelID,16);
-            rig->rigAvailable = true;
-            rig->modelName = caps->modelName;
-            rig->civAddr = caps->modelID;
-            if (rig->rigName == "<NONE>") {
-                rig->rigName = caps->modelName;
-            }
-        }
-    }
-}
-
 
 void icomServer::controlReceived()
 {
@@ -349,7 +304,7 @@ void icomServer::controlReceived()
                 passcode(user.username, usercomp);
                 QByteArray passcomp;
                 passcode(user.password, passcomp);
-                if (!user.username.trimmed().isEmpty() && !user.password.trimmed().isEmpty() && !strcmp(in->username, usercomp.constData()) && 
+                if (!user.username.trimmed().isEmpty() && !user.password.trimmed().isEmpty() && !strcmp(in->username, usercomp.constData()) &&
                     (!strcmp(in->password, user.password.toUtf8()) || !strcmp(in->password, passcomp.constData())))
                 {
                     current->isAuthenticated = true;

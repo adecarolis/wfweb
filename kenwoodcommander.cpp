@@ -159,7 +159,7 @@ void kenwoodCommander::commonSetup()
         qInfo(logRig()) << "Attempting to connect to vsp/pty:" << vsp;
         ptty = new pttyHandler(vsp,this);
         // data from the ptty to the rig:
-        connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), port, SLOT(sendData(QByteArray)));
+        connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), port, SLOT(sendData(QByteArray)));        
         // data from the rig to the ptty:
         connect(this, SIGNAL(haveDataFromRig(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
     }
@@ -171,6 +171,10 @@ void kenwoodCommander::commonSetup()
         connect(tcp, SIGNAL(receiveData(QByteArray)), port, SLOT(sendData(QByteArray)));
         connect(this, SIGNAL(haveDataFromRig(QByteArray)), tcp, SLOT(sendData(QByteArray)));
     }
+
+    // This contains data FROM the server hopefully!
+    connect(this, SIGNAL(dataForComm(QByteArray)), this, SLOT(handleNewData(QByteArray)));
+
 
     // Is this a network connection?
 
@@ -269,7 +273,12 @@ void kenwoodCommander::powerOff()
 
 void kenwoodCommander::handleNewData(const QByteArray& data)
 {
-    emit haveDataForServer(data);
+    QMutexLocker locker(&serialMutex);
+
+    if (port->write(data) != data.size())
+    {
+        qInfo(logSerial()) << "Error writing to port";
+    }
 }
 
 
@@ -311,6 +320,7 @@ void kenwoodCommander::receiveDataFromRig()
         const QByteArray in = port->readAll();
         parseData(in);
         emit haveDataFromRig(in);
+        emit haveDataForServer(in);
     }
 }
 
@@ -334,7 +344,7 @@ void kenwoodCommander::parseData(QByteArray data)
 
     QList<QByteArray> commands = data.split(';');
     QByteArray cmdFull;
-    for (auto &d: commands) {        
+    for (auto &d: commands) {
         if (d.isEmpty())
             continue;
         uchar receiver = 0; // Used for Dual/RX
@@ -1962,6 +1972,7 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             {
                 qInfo(logSerial()) << "Error writing to port";
             }
+
             lastCommand.func = func;
             lastCommand.data = payload;
             lastCommand.minValue = cmd.minVal;

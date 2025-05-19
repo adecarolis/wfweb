@@ -46,6 +46,8 @@
 #include "settingswidget.h"
 #include "rigserver.h"
 #include "icomserver.h"
+#include "kenwoodserver.h"
+#include "yaesuserver.h"
 #include "qledlabel.h"
 #include "rigctld.h"
 #include "aboutbox.h"

@@ -321,6 +321,7 @@ SOURCES += main.cpp\
     icomcommander.cpp \
     icomserver.cpp \
     kenwoodcommander.cpp \
+    kenwoodserver.cpp \
     loggingwindow.cpp \
     receiverwidget.cpp \
     rtpaudio.cpp \
@@ -363,7 +364,8 @@ SOURCES += main.cpp\
     database.cpp \
     aboutbox.cpp \
     audiodevices.cpp \
-    yaesucommander.cpp
+    yaesucommander.cpp \
+    yaesuserver.cpp
 
 HEADERS  += wfmain.h \
     adpcm/adpcm-lib.h \
@@ -381,6 +383,7 @@ HEADERS  += wfmain.h \
     icomcommander.h \
     icomserver.h \
     kenwoodcommander.h \
+    kenwoodserver.h \
     loggingwindow.h \
     memories.h \
     prefs.h \
@@ -431,7 +434,8 @@ HEADERS  += wfmain.h \
     aboutbox.h \
     wfviewtypes.h \
     audiodevices.h \
-    yaesucommander.h
+    yaesucommander.h \
+    yaesuserver.h
 
 
 FORMS    += wfmain.ui \
