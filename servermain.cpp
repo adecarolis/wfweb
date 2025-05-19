@@ -124,6 +124,9 @@ void servermain::makeRig()
             case manufKenwood:
                 radio->rig = new kenwoodCommander(radio->guid);
                 break;
+            case manufYaesu:
+                radio->rig = new yaesuCommander(radio->guid);
+                break;
             default:
                 qCritical() << "Unknown Manufacturer, aborting...";
                 break;
@@ -346,19 +349,19 @@ void servermain::setServerToPrefs()
         serverThread->quit();
         serverThread->wait();
         serverThread = Q_NULLPTR;
-        udp = Q_NULLPTR;
+        server = Q_NULLPTR;
     }
 
-    udp = new udpServer(&serverConfig);
+    server = new icomServer(&serverConfig);
 
     serverThread = new QThread(this);
-    serverThread->setObjectName("udpServer()");
+    serverThread->setObjectName("icomServer()");
 
-    udp->moveToThread(serverThread);
+    server->moveToThread(serverThread);
 
 
-    connect(this, SIGNAL(initServer()), udp, SLOT(init()));
-    connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
+    connect(this, SIGNAL(initServer()), server, SLOT(init()));
+    connect(serverThread, SIGNAL(finished()), server, SLOT(deleteLater()));
 
     // Step through all radios and connect them to the server, 
     // server will then use GUID to determine which actual radio it belongs to.
@@ -369,15 +372,15 @@ void servermain::setServerToPrefs()
         {
 
             if (radio->rig != Q_NULLPTR) {
-                connect(radio->rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
-                connect(radio->rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
-                //connect(udp, SIGNAL(haveDataFromServer(QByteArray)), radio->rig, SLOT(dataFromServer(QByteArray)));
-                //connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
+                connect(radio->rig, SIGNAL(haveAudioData(audioPacket)), server, SLOT(receiveAudioData(audioPacket)));
+                connect(radio->rig, SIGNAL(haveDataForServer(QByteArray)), server, SLOT(dataForServer(QByteArray)));
+                //connect(server, SIGNAL(haveDataFromServer(QByteArray)), radio->rig, SLOT(dataFromServer(QByteArray)));
+                //connect(this, SIGNAL(sendRigCaps(rigCapabilities)), server, SLOT(receiveRigCaps(rigCapabilities)));
             }
         }
     }
 
-    connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
+    connect(server, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
 
     serverThread->start();
 

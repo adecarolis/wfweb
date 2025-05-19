@@ -17,6 +17,8 @@ DEFINES += WFVIEW_VERSION=\\\"2.11\\\"
 
 DEFINES += BUILD_WFSERVER
 
+# FTDI support requires the library from https://ftdichip.com/software-examples/ft4222h-software-examples/
+DEFINES += FTDI_SUPPORT
 
 CONFIG(debug, release|debug) {
   # For Debug builds only:
@@ -25,12 +27,22 @@ CONFIG(debug, release|debug) {
     contains(QMAKE_TARGET.arch, x86_64) {
       LIBS += -L../opus/win32/VS2015/x64/DebugDLL/
       LIBS += -L../portaudio/msvc/X64/Debug/ -lportaudio_x64
+      contains(DEFINES,FTDI_SUPPORT){
+        LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\amd64 -lftd2xx
+        LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64 -lLibFT4222-64
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64\LibFT4222-64.dll wfserver-debug $$escape_expand(\\n\\t))
+      }
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfserver-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\x64\DebugDLL\opus-0.dll wfserver-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfserver-debug\rigs\*.* $$escape_expand(\\n\\t))
     } else {
       LIBS += -L../opus/win32/VS2015/win32/DebugDLL/
       LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86
+      contains(DEFINES,FTDI_SUPPORT){
+        LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\i386 -lftd2xx
+        LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\i386 -lLibFT4222
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\i386\LibFT4222.dll wfserver-debug $$escape_expand(\\n\\t))
+      }
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll wfserver-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\DebugDLL\opus-0.dll wfserver-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfserver-debug\rigs\*.* $$escape_expand(\\n\\t))
@@ -49,12 +61,22 @@ CONFIG(debug, release|debug) {
     contains(QMAKE_TARGET.arch, x86_64) {
       LIBS += -L../opus/win32/VS2015/x64/ReleaseDLL/
       LIBS += -L../portaudio/msvc/X64/Release/ -lportaudio_x64
+      contains(DEFINES,FTDI_SUPPORT){
+        LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\amd64 -lftd2xx
+        LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64 -lLibFT4222-64
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64\LibFT4222-64.dll wfserver-release $$escape_expand(\\n\\t))
+      }
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfserver-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\x64\ReleaseDLL\opus-0.dll wfserver-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfserver-release\rigs\*.* $$escape_expand(\\n\\t))
     } else {
       LIBS += -L../opus/win32/VS2015/win32/ReleaseDLL/
       LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
+      contains(DEFINES,FTDI_SUPPORT){
+        LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\i386 -lftd2xx
+        LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\i386 -lLibFT4222
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\i386\LibFT4222.dll wfserver-release $$escape_expand(\\n\\t))
+      }
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Release\portaudio_x86.dll wfserver-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\ReleaseDLL\opus-0.dll wfserver-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfserver-release\rigs\*.* $$escape_expand(\\n\\t))
@@ -159,11 +181,13 @@ SOURCES += main.cpp\
     adpcm/adpcm-dns.c \
     adpcm/adpcm-lib.c \
     cachingqueue.cpp \
+    ft4222handler.cpp \
     kenwoodcommander.cpp \
     servermain.cpp \
     commhandler.cpp \
     rigcommander.cpp \
     icomcommander.cpp \
+    icomserver.cpp \
     rtpaudio.cpp \
     freqmemory.cpp \
     rigidentities.cpp \
@@ -176,20 +200,23 @@ SOURCES += main.cpp\
     rthandler.cpp \
     audiohandler.cpp \
     audioconverter.cpp \
-    udpserver.cpp \
+    rigserver.cpp \
     pttyhandler.cpp \
     resampler/resample.c \
     tcpserver.cpp \
     keyboard.cpp \
-    audiodevices.cpp
+    audiodevices.cpp \
+    yaesucommander.cpp
 
 HEADERS  += servermain.h \
     adpcm/adpcm-lib.h \
     cachingqueue.h \
     commhandler.h \
+    ft4222handler.h \
     kenwoodcommander.h \
     rigcommander.h \
     icomcommander.h \
+    icomserver.h \
     freqmemory.h \
     rigidentities.h \
     rtpaudio.h \
@@ -202,7 +229,7 @@ HEADERS  += servermain.h \
     rthandler.h \
     audiohandler.h \
     audioconverter.h \
-    udpserver.h \
+    rigserver.h \
     packettypes.h \
     pttyhandler.h \
     resampler/speex_resampler.h \
@@ -214,4 +241,5 @@ HEADERS  += servermain.h \
     audiotaper.h \
     keyboard.h \
     wfviewtypes.h \
-    audiodevices.h
+    audiodevices.h \
+    yaesucommander.h

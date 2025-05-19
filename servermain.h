@@ -18,6 +18,7 @@
 #include "rigcommander.h"
 #include "icomcommander.h"
 #include "kenwoodcommander.h"
+#include "yaesucommander.h"
 #include "rigstate.h"
 #include "freqmemory.h"
 #include "rigidentities.h"
@@ -25,7 +26,8 @@
 #include "audiodevices.h"
 #include "cachingqueue.h"
 
-#include "udpserver.h"
+#include "rigserver.h"
+#include "icomserver.h"
 #include "rigctld.h"
 #include "signal.h"
 
@@ -146,7 +148,7 @@ signals:
     void spectOutputDisable();
     void scopeDisplayEnable();
     void scopeDisplayDisable();
-    void setScopeMode(spectrumMode_t spectMode);
+    void setScopeMode(uchar spectMode);
     void setScopeSpan(char span);
     void setScopeEdge(char edge);
     void setScopeFixedEdge(double startFreq, double endFreq, unsigned char edgeNumber);
@@ -274,7 +276,7 @@ private:
     unsigned char lanGain=0;
 
 
-    udpServer* udp = Q_NULLPTR;
+    rigServer* server = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
     QThread* serverThread = Q_NULLPTR;
 
@@ -284,7 +286,7 @@ private:
 
     SERVERCONFIG serverConfig;
 
-    QHash<unsigned char,rigInfo> rigList;
+    QHash<quint16,rigInfo> rigList;
     cachingQueue* queue;
 };
 
