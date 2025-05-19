@@ -53,6 +53,8 @@ private:
 		quint16 civPort;
 		quint16 audioPort;
 		quint16 txBufferLen;
+        quint8 guid[GUIDLEN];
+
 	};
 };
 

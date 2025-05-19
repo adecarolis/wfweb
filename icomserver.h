@@ -111,7 +111,7 @@ private:
 		CLIENT* controlClient = Q_NULLPTR;
 		CLIENT* civClient = Q_NULLPTR;
 		CLIENT* audioClient = Q_NULLPTR;
-		quint8 guid[GUIDLEN];
+        quint8 guid[GUIDLEN];
 
         qint64 startTime;
         QTime clientTime;
