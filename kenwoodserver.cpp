@@ -118,7 +118,7 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
     if (it == clients.end())
     {
         qWarning(logRigServer()) << "Client not found, this shouldn't happen!";
-        socket->close();
+        disconnected(socket);
         return;
     }
 
@@ -141,7 +141,7 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
                 }
                 else
                 {
-                    socket->close();
+                    disconnected(socket);
                     return;
                 }
             } else if (!c->authenticated) {
@@ -177,7 +177,7 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
                             {
                                 qInfo(logRigServer()) << "User type did not match stored type";
                                 c->authenticated = false;
-                                socket->close();
+                                disconnected(socket);
                                 return;
                             }
                             qInfo(logRigServer()) << "User" << username << "logged-in successfully";
@@ -189,13 +189,13 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
                     {
                         qInfo(logRigServer()) << "User" << username << "invalid password";
                         socket->write("##ID0");
-                        socket->close();
+                        disconnected(socket);
                         return;
                     } else {
                         continue;
                     }
                 } else {
-                    socket->close();
+                    disconnected(socket);
                     return;
                 }
             }
