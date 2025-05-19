@@ -36,7 +36,8 @@ CONFIG(debug, release|debug) {
     win32:DESTDIR = wfview-debug
 } else {
     # For Release builds only:
-    linux:QMAKE_CXXFLAGS += -s
+    # The next line doesn't seem to be used?
+    #linux:QMAKE_CXXFLAGS += -s
     linux:QMAKE_CXXFLAGS += -fvisibility=hidden
     linux:QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
     linux:QMAKE_CXXFLAGS += -faligned-new
