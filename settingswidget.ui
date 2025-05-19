@@ -47,7 +47,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>0</number>
+        <number>3</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -1082,7 +1082,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
            <item>
             <widget class="QCheckBox" name="forceVfoModeChk">
              <property name="text">
-               <string>Force VFO Mode</string>
+              <string>Force VFO Mode</string>
              </property>
              <property name="checked">
               <bool>true</bool>
@@ -1496,8 +1496,8 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>977</width>
-                 <height>314</height>
+                 <width>991</width>
+                 <height>294</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">
@@ -2769,7 +2769,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                    </size>
                   </property>
                   <property name="text">
-                   <string>Civ Port</string>
+                   <string>CAT Port</string>
                   </property>
                  </widget>
                 </item>
@@ -2833,6 +2833,35 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                   </property>
                   <property name="text">
                    <string>50003</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_22">
+                  <property name="text">
+                   <string>Scope Port</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="serverScopePortText">
+                  <property name="minimumSize">
+                   <size>
+                    <width>130</width>
+                    <height>25</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>130</width>
+                    <height>25</height>
+                   </size>
+                  </property>
+                  <property name="inputMask">
+                   <string>99999</string>
+                  </property>
+                  <property name="text">
+                   <string>50004</string>
                   </property>
                  </widget>
                 </item>
