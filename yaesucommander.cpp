@@ -1631,7 +1631,7 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 datekind d = value.value<datekind>();
                 qInfo(logRig()) << QString("Sending new date: (MM-DD-YYYY) %0-%1-%2").arg(d.month).arg(d.day).arg(d.year);
                 // YYYYMMDD
-                payload.append(QString("%0%1%2").arg(d.year,4,10,'0').arg(d.month,2,10,QChar('0')).arg(d.day,2,10,QChar('0')).toLatin1());
+                payload.append(QString("%0%1%2").arg(d.year,4,10,QChar('0')).arg(d.month,2,10,QChar('0')).arg(d.day,2,10,QChar('0')).toLatin1());
             }
             else if (!strcmp(value.typeName(),"timekind"))
             {
