@@ -1629,15 +1629,15 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             else if (!strcmp(value.typeName(),"datekind"))
             {
                 datekind d = value.value<datekind>();
-                qInfo(logRig()) << QString("Sending new date: (MM-DD-YYYY) %0-%1-%2").arg(int(d.month)).arg(int(d.day)).arg(int(d.year));
+                qInfo(logRig()) << QString("Sending new date: (MM-DD-YYYY) %0-%1-%2").arg(d.month).arg(d.day).arg(d.year);
                 // YYYYMMDD
-                payload.append(QString("%0%1%2").arg(int(d.year),4,10,'0').arg(int(d.month),2,10,'0').arg(int(d.day),2,10,'0').toLatin1());
+                payload.append(QString("%0%1%2").arg(d.year,4,10,'0').arg(d.month,2,10,QChar('0')).arg(d.day,2,10,QChar('0')).toLatin1());
             }
             else if (!strcmp(value.typeName(),"timekind"))
             {
                 timekind t = value.value<timekind>();
-                qInfo(logRig()) << QString("Sending new time: (HH:MM) %0:%1").arg(int(t.hours)).arg(int(t.minutes));
-                payload.append(QString("%0%1%2").arg(int(t.hours),2,10,'0').arg(int(t.minutes),2,10,'0').arg("00").toLatin1());
+                qInfo(logRig()) << QString("Sending new time: (HH:MM) %0:%1").arg(t.hours).arg(t.minutes);
+                payload.append(QString("%0%1%2").arg(t.hours,2,10,QChar('0')).arg(t.minutes,2,10,QChar('0')).arg("00").toLatin1());
 
             }
             else if (!strcmp(value.typeName(),"memoryType"))
