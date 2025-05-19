@@ -1496,7 +1496,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>991</width>
+                 <width>627</width>
                  <height>294</height>
                 </rect>
                </property>
@@ -2699,7 +2699,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_40">
                 <item>
-                 <widget class="QLabel" name="label_38">
+                 <widget class="QLabel" name="serverControlPortLabel">
                   <property name="minimumSize">
                    <size>
                     <width>0</width>
@@ -2749,7 +2749,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QLabel" name="label_37">
+                 <widget class="QLabel" name="serverCATPortLabel">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                     <horstretch>0</horstretch>
@@ -2796,7 +2796,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QLabel" name="label_36">
+                 <widget class="QLabel" name="serverAudioPortLabel">
                   <property name="minimumSize">
                    <size>
                     <width>0</width>
@@ -2837,7 +2837,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QLabel" name="label_22">
+                 <widget class="QLabel" name="serverScopePortLabel">
                   <property name="text">
                    <string>Scope Port</string>
                   </property>
