@@ -53,6 +53,8 @@ aboutbox::aboutbox(QWidget *parent) :
     QString wfviewcommunityack = QString("<br/><br/>The developers of wfview wish to thank the many contributions from the wfview community at-large, including ideas, bug reports, and fixes.");
     QString kappanhangack = QString("<br/><br/>Special thanks to Norbert Varga, and the <a href=\"https://github.com/nonoo/kappanhang\">nonoo/kappanhang team</a> for their initial work on the OEM protocol.");
 
+    QString kb3mmwCredit = QString("<br/><br/>Many thanks to KB3MMW who assisted with the reverse enginering of the Yaesu LAN protocol. Portions of his code have been integrated within wfview which he has released under LGPL/GPL <a href=\"https://forum.wfview.org/t/off-topic-yaesu-ft710-and-others/3275/46\">Forum post</a>");
+
     QString sxcreditcopyright = QString("Speex copyright notice: \
 Copyright (C) 2003 Jean-Marc Valin\n\
 Redistribution and use in source and binary forms, with or without\n\
@@ -115,19 +117,39 @@ QString freqCtlCredit = QString("/*"
     "* POSSIBILITY OF SUCH DAMAGE.\n"
     "*/\n");
 
+    QString ftdiCredit = QString("\n/**\n"
+    "* FT4222 support library (for FT-710 SPI support)\n"
+    "*\n"
+    "* Copyright (c) 2001-2015 Future Technology Devices International Limited\n"
+    "*\n"
+    "* THIS SOFTWARE IS PROVIDED BY FUTURE TECHNOLOGY DEVICES INTERNATIONAL LIMITED \"AS IS\"\n"
+    "* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES\n"
+    "* OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL\n"
+    "* FUTURE TECHNOLOGY DEVICES INTERNATIONAL LIMITED BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\n"
+    "* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT\n"
+    "* OF SUBSTITUTE GOODS OR SERVICES LOSS OF USE, DATA, OR PROFITS OR BUSINESS INTERRUPTION)\n"
+    "* HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR\n"
+    "* TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,\n"
+    "* EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n"
+    "*\n"
+    "* FTDI DRIVERS MAY BE USED ONLY IN CONJUNCTION WITH PRODUCTS BASED ON FTDI PARTS.\n"
+    "*\n"
+    "* FTDI DRIVERS MAY BE DISTRIBUTED IN ANY FORM AS LONG AS LICENSE INFORMATION IS NOT MODIFIED.\n"
+    "*/\n\n");
+
     // String it all together:
 
     QString aboutText = head + copyright + "\n" + "\n" + scm + "\n" + doctest + dedication + wfviewcommunityack;
     aboutText.append(website + "\n" + donate + "\n"+ docs + support +"\n");
-    aboutText.append("\n" + ssCredit + "\n" + rsCredit + "\n");
+    aboutText.append("\n" + ssCredit + "\n" + rsCredit +"\n");
 
     aboutText.append(rtaudiocredit);
 
     aboutText.append(portaudiocredit);
 
-    aboutText.append(kappanhangack + qcpcredit + qtcredit + hamlibcredit + adpcmcredit);
+    aboutText.append(kappanhangack + kb3mmwCredit + qcpcredit + qtcredit + hamlibcredit + adpcmcredit );
     aboutText.append("<br/><br/>");
-    aboutText.append("<pre>" + sxcreditcopyright + freqCtlCredit + "</pre>");
+    aboutText.append("<pre>" + sxcreditcopyright + freqCtlCredit + ftdiCredit + "</pre>");
     aboutText.append("<br/><br/>");
 
     aboutText.append(end);

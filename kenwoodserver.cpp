@@ -125,6 +125,8 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
     CLIENT *c = it.value();
     c->buffer.append(socket->readAll());
 
+    c->lastHeard = QDateTime::currentDateTime();
+
     if (c->buffer.endsWith(";") || c->buffer.endsWith((";\n")))
     {
         QList<QByteArray> commands = c->buffer.split(';');

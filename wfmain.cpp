@@ -6205,7 +6205,10 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         // Enable all controls
         enableControls(true);
 
-        showStatusBarText(QString("Found radio of name %0 and model ID %1.").arg(rigCaps->modelName).arg(rigCaps->modelID,2,16,QChar('0')));
+        if (prefs.manufacturer == manufIcom)
+            showStatusBarText(QString("Found radio of name %0 and model ID %1.").arg(rigCaps->modelName).arg(rigCaps->modelID,2,16,QChar('0')));
+        else
+            showStatusBarText(QString("Found radio of name %0 and model ID %1.").arg(rigCaps->modelName).arg(rigCaps->modelID));
 
         qDebug(logSystem()) << "Rig name: " << rigCaps->modelName;
         qDebug(logSystem()) << "Has LAN capabilities: " << rigCaps->hasLan;
