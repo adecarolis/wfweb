@@ -30,6 +30,17 @@ kenwoodServer::~kenwoodServer()
 {
     // We should probably step through all connected clients (just in case)
 
+    qInfo(logRigServer()) << "Stopping audio streaming";
+    foreach (RIGCONFIG* radio, config->rigs)
+    {
+        if (radio->rtpThread != Q_NULLPTR) {
+            radio->rtpThread->quit();
+            radio->rtpThread->wait();
+            radio->rtp = Q_NULLPTR;
+            radio->rtpThread = Q_NULLPTR;
+        }
+    }
+
     /*
     for (auto it = clients.begin(); it != clients.end(); it++)
     {
@@ -85,6 +96,7 @@ void kenwoodServer::receiveAudioData(const audioPacket& d)
         memcpy(guid, d.guid, GUIDLEN);
     }
 
+
     return;
 }
 
@@ -109,6 +121,15 @@ void kenwoodServer::disconnected(QTcpSocket* socket)
     if (socket->isOpen())
         socket->close();
     clients.remove(socket);
+    foreach (RIGCONFIG* radio, config->rigs)
+    {
+        if (radio->rtpThread != Q_NULLPTR) {
+            radio->rtpThread->quit();
+            radio->rtpThread->wait();
+            radio->rtp = Q_NULLPTR;
+            radio->rtpThread = Q_NULLPTR;
+        }
+    }
 }
 
 void kenwoodServer::readyRead(QTcpSocket* socket)
@@ -208,17 +229,76 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
             if (d.startsWith("##VP")) {
                 //User is requesting voip (audio) control
                 uchar vp = uchar(d.mid(4,1).toUShort());
-                if (!c->isStreaming && vp==1)
+                foreach (RIGCONFIG* radio, config->rigs)
                 {
-                    qInfo(logRigServer()) << "Starting high quality audio streaming";
-                }
-                else if (!c->isStreaming && vp==2)
-                {
-                    qInfo(logRigServer()) << "Starting low quality audio streaming";
-                }
-                else
-                {
-                    qInfo(logRigServer()) << "Stopping audio streaming";
+                    if ((!memcmp(radio->guid, c->guid, GUIDLEN) || config->rigs.size()==1) && radio->rtp == Q_NULLPTR && !config->lan)
+                    {
+                        if (!c->isStreaming && vp)
+                        {
+                            if (vp==1) {
+                                qInfo(logRigServer()) << "Starting high quality audio streaming";
+                                radio->txAudioSetup.codec = 4; //c->txCodec;
+                                radio->txAudioSetup.sampleRate= 16000; //c->txSampleRate;
+                                radio->rxAudioSetup.codec = 4; //c->rxCodec;
+                                radio->rxAudioSetup.sampleRate = 16000; //c->rxSampleRate;
+                            } else if (vp==2){
+                                qInfo(logRigServer()) << "Starting low quality audio streaming";
+                                radio->txAudioSetup.codec = 128; //c->txCodec;
+                                radio->txAudioSetup.sampleRate= 16000; //c->txSampleRate;
+                                radio->rxAudioSetup.codec = 128; //c->rxCodec;
+                                radio->rxAudioSetup.sampleRate = 16000; //c->rxSampleRate;
+                            } else if (vp==3){
+                                qInfo(logRigServer()) << "Starting Opus audio streaming";
+                                radio->txAudioSetup.codec = 64; //c->txCodec;
+                                radio->txAudioSetup.sampleRate= 16000; //c->txSampleRate;
+                                radio->rxAudioSetup.codec = 64; //c->rxCodec;
+                                radio->rxAudioSetup.sampleRate = 16000; //c->rxSampleRate;
+                            }
+                            // This is the first client, so stop running the queue.
+                            radio->queueInterval = queue->interval();
+                            if (config->disableUI)
+                            {
+                                queue->interval(-1);
+                            }
+
+                            radio->txAudioSetup.isinput = false;
+                            radio->txAudioSetup.latency = 150; //c->txBufferLen;
+
+                            radio->rxAudioSetup.latency = 150; //c->txBufferLen;
+                            radio->rxAudioSetup.isinput = true;
+                            memcpy(radio->rxAudioSetup.guid, radio->guid, GUIDLEN);
+
+                            outAudio.isinput = false;
+                            radio->rtp = new rtpAudio(c->ipAddress.toString(),config->audioPort,radio->rxAudioSetup, radio->txAudioSetup);
+                            radio->rtpThread = new QThread(this);
+                            radio->rtpThread->setObjectName("RTP()");
+                            radio->rtp->moveToThread(radio->rtpThread);
+                            connect(this, SIGNAL(initRtpAudio()), radio->rtp, SLOT(init()));
+                            connect(radio->rtpThread, SIGNAL(finished()), radio->rtp, SLOT(deleteLater()));
+                            //connect(this, SIGNAL(haveChangeLatency(quint16)), radio->rtp, SLOT(changeLatency(quint16)));
+                            //connect(this, SIGNAL(haveSetVolume(quint8)), radio->rtp, SLOT(setVolume(quint8)));
+                            // Audio from UDP
+                            //connect(radio->rtp, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+                            //QObject::connect(radio->rtp, SIGNAL(haveOutLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getOutLevels(quint16, quint16, quint16, quint16, bool, bool)));
+                            //QObject::connect(radio->rtp, SIGNAL(haveInLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getInLevels(quint16, quint16, quint16, quint16, bool, bool)));
+                            radio->rtpThread->start(QThread::TimeCriticalPriority);
+                            emit initRtpAudio();
+                            c->isStreaming = true;
+                        }
+                        else
+                        {
+                            qInfo(logRigServer()) << "Stopping audio streaming";
+                            if (radio->rtpThread != Q_NULLPTR) {
+                                radio->rtpThread->quit();
+                                radio->rtpThread->wait();
+                                radio->rtp = Q_NULLPTR;
+                                radio->rtpThread = Q_NULLPTR;
+                            }
+                            c->isStreaming=false;
+                        }
+                        socket->write(QString("##VP%0;").arg(uchar(vp)).toLatin1());
+
+                    }
                 }
             } else {
                 // I think all other commands need to be forwarded to the radio?

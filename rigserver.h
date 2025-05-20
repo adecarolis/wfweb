@@ -8,6 +8,7 @@
 #include "packettypes.h"
 #include "rigidentities.h"
 #include "rigcommander.h"
+#include "rtpaudio.h"
 
 struct SERVERUSER {
 	QString username;
@@ -25,7 +26,7 @@ struct RIGCONFIG {
 	bool hasEthernet=false;
     pttType_t pttType=pttCIV;
 	audioSetup rxAudioSetup;
-	audioSetup txAudioSetup;
+	audioSetup txAudioSetup;    
 	QString modelName;
 	QString rigName;
 #pragma pack(push, 1)
@@ -49,7 +50,9 @@ struct RIGCONFIG {
 	QThread* txAudioThread = Q_NULLPTR;
 	QTimer* rxAudioTimer = Q_NULLPTR;
 	QTimer* connectTimer = Q_NULLPTR;
-	quint8 waterfallFormat;
+    rtpAudio* rtp = Q_NULLPTR;
+    QThread* rtpThread = Q_NULLPTR;
+    quint8 waterfallFormat;
      quint64 queueInterval=1000;
 };
 

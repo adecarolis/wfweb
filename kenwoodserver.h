@@ -48,6 +48,9 @@ private slots:
     void disconnected(QTcpSocket* socket);
     void readyRead(QTcpSocket* socket);
 
+signals:
+    void initRtpAudio();
+
 private:
 
     void newConnection();
@@ -70,13 +73,17 @@ private:
 		quint16 audioPort;
 		quint16 txBufferLen;
         quint8 guid[GUIDLEN];
-
 	};
 
 
     QTcpServer* server = Q_NULLPTR;
     QMap <QTcpSocket*, CLIENT*> clients;
 
+    rtpAudio* rtp = Q_NULLPTR;
+    QThread* rtpThread = Q_NULLPTR;
+
+    audioSetup outAudio;
+    audioSetup inAudio;
 };
 
 

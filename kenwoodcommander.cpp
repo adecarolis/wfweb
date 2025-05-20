@@ -857,8 +857,8 @@ void kenwoodCommander::parseData(QByteArray data)
                 connect(this, SIGNAL(haveSetVolume(quint8)), rtp, SLOT(setVolume(quint8)));
                 // Audio from UDP
                 connect(rtp, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
-                QObject::connect(rtp, SIGNAL(haveRxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, quint16, bool, bool)));
-                QObject::connect(rtp, SIGNAL(haveTxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, quint16, bool, bool)));
+                QObject::connect(rtp, SIGNAL(haveOutLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, quint16, bool, bool)));
+                QObject::connect(rtp, SIGNAL(haveInLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, quint16, bool, bool)));
                 rtpThread->start(QThread::TimeCriticalPriority);
                 emit initRtpAudio();
             }

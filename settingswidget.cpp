@@ -1843,11 +1843,9 @@ void settingswidget::on_manufacturerCombo_currentIndexChanged(int value)
     }
     else if (prefs->manufacturer == manufKenwood)
     {
-        if (changed)
-        {
-            udpPrefs->controlLANPort = 60000;
-            udpPrefs->audioLANPort = 60001;
-        }
+        // These are fixed.
+        udpPrefs->controlLANPort = 60000;
+        udpPrefs->audioLANPort = 60001;
 
         // We also need to disable all items that are unsupported by this manufacturer
         ui->audioSampleRateCombo->setCurrentIndex(2);

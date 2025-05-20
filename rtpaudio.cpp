@@ -2,15 +2,19 @@
 #include "logcategories.h"
 
 // Audio stream
-rtpAudio::rtpAudio(QString ip, quint16 port, audioSetup rxSetup, audioSetup txSetup, QObject* parent)
-    : QObject{parent}, rxSetup(rxSetup), txSetup(txSetup), port(port)
+rtpAudio::rtpAudio(QString ip, quint16 port, audioSetup outSetup, audioSetup inSetup, QObject* parent)
+    : QObject{parent}, outSetup(outSetup), inSetup(inSetup), port(port)
 {
     qInfo(logUdp()) << "Starting rtpAudio";
 
-    if (txSetup.sampleRate == 0) {
-        enableTx = false;
+    if (inSetup.sampleRate == 0) {
+        enableIn = false;
     } else {
         this->ip = QHostAddress(ip);
+    }
+
+    if (outSetup.sampleRate == 0) {
+        enableOut = false;
     }
 }
 
@@ -23,16 +27,16 @@ rtpAudio::~rtpAudio()
         delete udp;
         udp = Q_NULLPTR;
     }
-    if (rxAudioThread != Q_NULLPTR) {
-        qDebug(logUdp()) << "Stopping rxaudio thread";
-        rxAudioThread->quit();
-        rxAudioThread->wait();
+    if (outAudioThread != Q_NULLPTR) {
+        qDebug(logUdp()) << "Stopping outaudio thread";
+        outAudioThread->quit();
+        outAudioThread->wait();
     }
 
-    if (txAudioThread != Q_NULLPTR) {
-        qDebug(logUdp()) << "Stopping txaudio thread";
-        txAudioThread->quit();
-        txAudioThread->wait();
+    if (inAudioThread != Q_NULLPTR) {
+        qDebug(logUdp()) << "Stopping inaudio thread";
+        inAudioThread->quit();
+        inAudioThread->wait();
     }
     debugFile.close();
 }
@@ -53,56 +57,59 @@ void rtpAudio::init()
         qInfo(logUdp()) << "RTP Stream bound to local port:" << udp->localPort() << " remote port:" << port;
     }
 
-
-    if (rxSetup.type == qtAudio) {
-        rxaudio = new audioHandler();
-    }
-    else if (rxSetup.type == portAudio) {
-        rxaudio = new paHandler();
-    }
-    else if (rxSetup.type == rtAudio) {
-        rxaudio = new rtHandler();
-    }
-#ifndef BUILD_WFSERVER
-    else if (rxSetup.type == tciAudio) {
-        rxaudio = new tciAudioHandler();
-    }
-#endif
-    else
+    if (enableOut)
     {
-        qCritical(logAudio()) << "Unsupported Receive Audio Handler selected!";
-    }
-
-    rxAudioThread = new QThread(this);
-    rxAudioThread->setObjectName("rxAudio()");
-
-    rxaudio->moveToThread(rxAudioThread);
-
-    rxAudioThread->start(QThread::TimeCriticalPriority);
-
-    connect(this, SIGNAL(setupRxAudio(audioSetup)), rxaudio, SLOT(init(audioSetup)));
-
-    // signal/slot not currently used.
-    connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
-    connect(this, SIGNAL(haveChangeLatency(quint16)), rxaudio, SLOT(changeLatency(quint16)));
-    connect(this, SIGNAL(haveSetVolume(quint8)), rxaudio, SLOT(setVolume(quint8)));
-    connect(rxaudio, SIGNAL(haveLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, quint16, bool, bool)));
-    connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
-
-
-    if (enableTx) {
-        if (txSetup.type == qtAudio) {
-            txaudio = new audioHandler();
+        if (outSetup.type == qtAudio) {
+            outaudio = new audioHandler();
         }
-        else if (txSetup.type == portAudio) {
-            txaudio = new paHandler();
+        else if (outSetup.type == portAudio) {
+            outaudio = new paHandler();
         }
-        else if (txSetup.type == rtAudio) {
-            txaudio = new rtHandler();
+        else if (outSetup.type == rtAudio) {
+            outaudio = new rtHandler();
         }
 #ifndef BUILD_WFSERVER
-        else if (txSetup.type == tciAudio) {
-            txaudio = new tciAudioHandler();
+        else if (outSetup.type == tciAudio) {
+            outaudio = new tciAudioHandler();
+        }
+#endif
+        else
+        {
+            qCritical(logAudio()) << "Unsupported Receive Audio Handler selected!";
+        }
+
+        outAudioThread = new QThread(this);
+        outAudioThread->setObjectName("outAudio()");
+
+        outaudio->moveToThread(outAudioThread);
+
+        connect(this, SIGNAL(setupOutAudio(audioSetup)), outaudio, SLOT(init(audioSetup)));
+
+        // signal/slot not currently used.
+        connect(this, SIGNAL(haveAudioData(audioPacket)), outaudio, SLOT(incomingAudio(audioPacket)));
+        connect(this, SIGNAL(haveChangeLatency(quint16)), outaudio, SLOT(changeLatency(quint16)));
+        connect(this, SIGNAL(haveSetVolume(quint8)), outaudio, SLOT(setVolume(quint8)));
+        connect(outaudio, SIGNAL(haveLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getOutLevels(quint16, quint16, quint16, quint16, bool, bool)));
+        connect(outAudioThread, SIGNAL(finished()), outaudio, SLOT(deleteLater()));
+
+        outAudioThread->start(QThread::TimeCriticalPriority);
+
+        emit setupOutAudio(outSetup);
+    }
+
+    if (enableIn) {
+        if (inSetup.type == qtAudio) {
+            inaudio = new audioHandler();
+        }
+        else if (inSetup.type == portAudio) {
+            inaudio = new paHandler();
+        }
+        else if (inSetup.type == rtAudio) {
+            inaudio = new rtHandler();
+        }
+#ifndef BUILD_WFSERVER
+        else if (inSetup.type == tciAudio) {
+            inaudio = new tciAudioHandler();
         }
 #endif
         else
@@ -110,22 +117,21 @@ void rtpAudio::init()
             qCritical(logAudio()) << "Unsupported Transmit Audio Handler selected!";
         }
 
-        txAudioThread = new QThread(this);
-        rxAudioThread->setObjectName("txAudio()");
+        inAudioThread = new QThread(this);
+        inAudioThread->setObjectName("inAudio()");
 
-        txaudio->moveToThread(txAudioThread);
+        inaudio->moveToThread(inAudioThread);
 
-        txAudioThread->start(QThread::TimeCriticalPriority);
+        connect(this, SIGNAL(setupInAudio(audioSetup)), inaudio, SLOT(init(audioSetup)));
+        connect(inaudio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+        connect(inaudio, SIGNAL(haveLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getInLevels(quint16, quint16, quint16, quint16, bool, bool)));
 
-        connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
-        connect(txaudio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
-        connect(txaudio, SIGNAL(haveLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, quint16, bool, bool)));
+        connect(inAudioThread, SIGNAL(finished()), inaudio, SLOT(deleteLater()));
 
-        connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
-        emit setupTxAudio(txSetup);
+        inAudioThread->start(QThread::TimeCriticalPriority);
+
+        emit setupInAudio(inSetup);
     }
-
-    emit setupRxAudio(rxSetup);
 }
 
 void rtpAudio::dataReceived()
@@ -136,7 +142,7 @@ void rtpAudio::dataReceived()
     udp->readDatagram(d.data(), d.size(), &sender, &port);
     rtp_header in;
     memcpy(in.packet,d.mid(0,12).constData(),sizeof(rtp_header));
-    //qInfo(logUdp()) << "RX: version:" << in.version << "type:" << in.payloadType << "len" << d.size() << "seq" << qFromBigEndian(in.seq) << "header" << sizeof(rtp_header) << "hex" << d.mid(0,12).toHex(' ');
+    //qInfo(logUdp()) << "Audio out: version:" << in.version << "type:" << in.payloadType << "len" << d.size() << "seq" << qFromBigEndian(in.seq) << "header" << sizeof(rtp_header) << "hex" << d.mid(0,12).toHex(' ');
     if (in.payloadType == 96) {
         // We have audio data
         audioPacket tempAudio;
@@ -160,20 +166,20 @@ void rtpAudio::setVolume(quint8 value)
     emit haveSetVolume(value);
 }
 
-void rtpAudio::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over)
+void rtpAudio::getOutLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over)
 {
-    emit haveRxLevels(amplitudePeak, amplitudeRMS, latency, current, under, over);
+    emit haveOutLevels(amplitudePeak, amplitudeRMS, latency, current, under, over);
 }
 
-void rtpAudio::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over)
+void rtpAudio::getInLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over)
 {
-    emit haveTxLevels(amplitudePeak, amplitudeRMS, latency, current, under, over);
+    emit haveInLevels(amplitudePeak, amplitudeRMS, latency, current, under, over);
 }
 
 void rtpAudio::receiveAudioData(audioPacket audio)
 {
     // I really can't see how this could be possible but a quick sanity check!
-    if (txaudio == Q_NULLPTR) {
+    if (inaudio == Q_NULLPTR) {
         return;
     }
     if (audio.data.length() > 0) {
@@ -192,11 +198,11 @@ void rtpAudio::receiveAudioData(audioPacket audio)
             p.seq = qToBigEndian(seq++);
             p.timestamp = 0;
             p.ssrc = quint32(0x00) << 24 | quint32(0x30) << 16 | quint32(0x39) << 8 | (quint32(0x38) & 0xff);
-            QByteArray tx = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
-            tx.append(partial);
+            QByteArray in = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
+            in.append(partial);
             len = len + partial.length();
-            //qInfo(logUdp()) << "TX: " << tx.length() << "to" << ip.toString() << "port" << port << "ver" << p.version << "type" << p.payloadType << "seq" << p.seq << "ssrc" << QString::number(p.ssrc,16);
-            udp->writeDatagram(tx, ip, port);
+            //qInfo(logUdp()) << "Audio In: " << in.length() << "to" << ip.toString() << "port" << port << "ver" << p.version << "type" << p.payloadType << "seq" << p.seq << "ssrc" << QString::number(p.ssrc,16);
+            udp->writeDatagram(in, ip, port);
         }
     }
 }
