@@ -106,8 +106,8 @@ void kenwoodServer::disconnected(QTcpSocket* socket)
 {
     // Client has disconnected!
     qInfo(logRigServer()) << "Client disconnected!" << socket->peerAddress() << ":" << socket->peerPort();
-    socket->close();
-    delete socket;
+    if (socket->isOpen())
+        socket->close();
     clients.remove(socket);
 }
 
@@ -168,10 +168,12 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
                                 c->tx = true;
                             } else if (user.userType == 1 && type == 1)
                             {
+                                c->admin=false;
                                 c->tx=true;
                             }
                             else if (user.userType == 2 && type == 1)
                             {
+                                c->admin=false;
                                 c->tx=false;
                             } else
                             {
