@@ -222,7 +222,7 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
                 // I think all other commands need to be forwarded to the radio?
                 // We have removed the semicolon, so add it back.
                 d.append(QString(";").toLatin1());
-                qInfo(logRigServer()) << "Sending:" << d;
+                //qInfo(logRigServer()) << "Sending:" << d;
                 emit haveDataFromServer(d);
             }
         }
