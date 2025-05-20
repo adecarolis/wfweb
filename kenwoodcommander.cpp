@@ -234,38 +234,42 @@ void kenwoodCommander::setCIVAddr(quint16 civAddr)
 
 void kenwoodCommander::powerOn()
 {
-    qDebug(logRig()) << "Power ON command in kenwoodCommander to be sent to rig: ";
-    QByteArray d;
-    quint8 cmd = 1;
+    if (!loginRequired) {
+        qDebug(logRig()) << "Power ON command in kenwoodCommander to be sent to rig: ";
+        QByteArray d;
+        quint8 cmd = 1;
 
-    if (getCommand(funcPowerControl,d,cmd,0).cmd == funcNone)
-    {
-        d.append("PS");
-    }
+        if (getCommand(funcPowerControl,d,cmd,0).cmd == funcNone)
+        {
+            d.append("PS");
+        }
 
-    d.append(QString("%0;").arg(cmd).toLatin1());
-    QMutexLocker locker(&serialMutex);
-    if (portConnected) {
-        port->write(d);
-        lastCommand.data = d;
+        d.append(QString("%0;").arg(cmd).toLatin1());
+        QMutexLocker locker(&serialMutex);
+        if (portConnected) {
+            port->write(d);
+            lastCommand.data = d;
+        }
     }
 }
 
 void kenwoodCommander::powerOff()
 {
-    qDebug(logRig()) << "Power OFF command in kenwoodCommander to be sent to rig: ";
-    QByteArray d;
-    quint8 cmd = 0;
-    if (getCommand(funcPowerControl,d,cmd,0).cmd == funcNone)
-    {
-        d.append("PS");
-    }
+    if (!loginRequired) {
+        qDebug(logRig()) << "Power OFF command in kenwoodCommander to be sent to rig: ";
+        QByteArray d;
+        quint8 cmd = 0;
+        if (getCommand(funcPowerControl,d,cmd,0).cmd == funcNone)
+        {
+            d.append("PS");
+        }
 
-    d.append(QString("%0;").arg(cmd).toLatin1());
-    QMutexLocker locker(&serialMutex);
-    if (portConnected) {
-        port->write(d);
-        lastCommand.data = d;
+        d.append(QString("%0;").arg(cmd).toLatin1());
+        QMutexLocker locker(&serialMutex);
+        if (portConnected) {
+            port->write(d);
+            lastCommand.data = d;
+        }
     }
 }
 
@@ -348,7 +352,7 @@ void kenwoodCommander::parseData(QByteArray data)
     for (auto &d: commands) {
         if (d.isEmpty())
             continue;
-        qInfo(logRig()) << "from rig:" << d;
+        //qInfo(logRig()) << "from rig:" << d;
         uchar receiver = 0; // Used for Dual/RX
         cmdFull = d; // save the complete cmd for debug later.
 

@@ -135,7 +135,7 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
             if (!c->connected)
             {
                 if (d == ("##CN")) {
-                    socket->write(QString("##CN1;\n").toLatin1());
+                    socket->write(QString("##CN1;").toLatin1());
                     c->connected = true;
                     continue;
                 }
@@ -183,14 +183,14 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
                                 return;
                             }
                             qInfo(logRigServer()) << "User" << username << "logged-in successfully";
-                            socket->write(QString("##ID1;##UE1;##TI%0;\n").arg(uchar(c->tx)).toLatin1());
+                            socket->write(QString("##ID1;##UE1;##TI%0;").arg(uchar(c->tx)).toLatin1());
                             break;
                         }
                     }
                     if (c->authenticated != true)
                     {
                         qInfo(logRigServer()) << "User" << username << "invalid password";
-                        socket->write(QString("##ID0\n").toLatin1());
+                        socket->write(QString("##ID0").toLatin1());
                         disconnected(socket);
                         return;
                     } else {
@@ -221,7 +221,7 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
             } else {
                 // I think all other commands need to be forwarded to the radio?
                 // We have removed the semicolon, so add it back.
-                d.append(QString(";\n").toLatin1());
+                d.append(QString(";").toLatin1());
                 qInfo(logRigServer()) << "Sending:" << d;
                 emit haveDataFromServer(d);
             }
