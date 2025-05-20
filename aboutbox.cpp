@@ -53,7 +53,7 @@ aboutbox::aboutbox(QWidget *parent) :
     QString wfviewcommunityack = QString("<br/><br/>The developers of wfview wish to thank the many contributions from the wfview community at-large, including ideas, bug reports, and fixes.");
     QString kappanhangack = QString("<br/><br/>Special thanks to Norbert Varga, and the <a href=\"https://github.com/nonoo/kappanhang\">nonoo/kappanhang team</a> for their initial work on the OEM protocol.");
 
-    QString kb3mmwCredit = QString("<br/><br/>Many thanks to KB3MMW who assisted with the reverse enginering of the Yaesu LAN protocol. Portions of his code have been integrated within wfview which he has released under LGPL/GPL <a href=\"https://forum.wfview.org/t/off-topic-yaesu-ft710-and-others/3275/46\">Forum post</a>");
+    QString kb3mmwCredit = QString("<br/><br/>Many thanks to KB3MMW who assisted with the reverse enginering of the Yaesu LAN protocol. Portions of his code which he has released under LGPL/GPL have been integrated within wfview <a href=\"https://forum.wfview.org/t/off-topic-yaesu-ft710-and-others/3275/46\">Forum post</a>");
 
     QString sxcreditcopyright = QString("Speex copyright notice: \
 Copyright (C) 2003 Jean-Marc Valin\n\
