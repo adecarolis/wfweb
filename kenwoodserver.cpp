@@ -129,7 +129,7 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
     {
         QList<QByteArray> commands = c->buffer.split(';');
         for (auto &d: commands) {
-            if (d.isEmpty())
+            if (d.isEmpty() || d == QString("\n").toLatin1())
                 continue;
             // We have at least one full command, so process it
             if (!c->connected)
