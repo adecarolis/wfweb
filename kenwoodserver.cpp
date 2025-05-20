@@ -125,7 +125,7 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
     CLIENT *c = it.value();
     c->buffer.append(socket->readAll());
 
-    if (c->buffer.endsWith(";"))
+    if (c->buffer.endsWith(";") || c->buffer.endsWith((";\n")))
     {
         QList<QByteArray> commands = c->buffer.split(';');
         for (auto &d: commands) {
@@ -135,7 +135,7 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
             if (!c->connected)
             {
                 if (d == ("##CN")) {
-                    socket->write("##CN1;");
+                    socket->write(QString("##CN1;\n").toLatin1());
                     c->connected = true;
                     continue;
                 }
@@ -183,20 +183,21 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
                                 return;
                             }
                             qInfo(logRigServer()) << "User" << username << "logged-in successfully";
-                            socket->write(QString("##ID1;##UE1;##TI%0;").arg(uchar(c->tx)).toLatin1());
+                            socket->write(QString("##ID1;##UE1;##TI%0;\n").arg(uchar(c->tx)).toLatin1());
                             break;
                         }
                     }
                     if (c->authenticated != true)
                     {
                         qInfo(logRigServer()) << "User" << username << "invalid password";
-                        socket->write("##ID0");
+                        socket->write(QString("##ID0\n").toLatin1());
                         disconnected(socket);
                         return;
                     } else {
                         continue;
                     }
                 } else {
+                    qInfo(logRigServer()) << "Invalid command received" << d;
                     disconnected(socket);
                     return;
                 }
@@ -220,7 +221,7 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
             } else {
                 // I think all other commands need to be forwarded to the radio?
                 // We have removed the semicolon, so add it back.
-                d.append(";");
+                d.append(QString(";\n").toLatin1());
                 qInfo(logRigServer()) << "Sending:" << d;
                 emit haveDataFromServer(d);
             }

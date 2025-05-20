@@ -114,6 +114,7 @@ void kenwoodCommander::lanConnected()
 {
     qInfo() << QString("Connected to: %0:%1").arg(prefs.ipAddress).arg(prefs.controlLANPort);
     qInfo() << "Sending initial connection request";
+    loginRequired=true;
     port->write("##CN;\n");
 }
 
@@ -347,6 +348,7 @@ void kenwoodCommander::parseData(QByteArray data)
     for (auto &d: commands) {
         if (d.isEmpty())
             continue;
+        qInfo(logRig()) << "from rig:" << d;
         uchar receiver = 0; // Used for Dual/RX
         cmdFull = d; // save the complete cmd for debug later.
 
@@ -1735,6 +1737,7 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
                     .arg(QString::number(p.username.length()).rightJustified(2, QChar('0')))
                     .arg(QString::number(p.password.length()).rightJustified(2, QChar('0')))
                     .arg(p.username).arg(p.password).toLatin1());
+                qInfo(logRig()) << "Sending login for user:" << p.username << "raw" << payload;
             }
             else if(!strcmp(value.typeName(),"toneInfo"))
             {
