@@ -269,7 +269,7 @@ void kenwoodServer::readyRead(QTcpSocket* socket)
                             memcpy(radio->rxAudioSetup.guid, radio->guid, GUIDLEN);
 
                             outAudio.isinput = false;
-                            radio->rtp = new rtpAudio(c->ipAddress.toString(),config->audioPort,radio->rxAudioSetup, radio->txAudioSetup);
+                            radio->rtp = new rtpAudio(c->ipAddress.toString(),config->audioPort,radio->txAudioSetup, radio->rxAudioSetup);
                             radio->rtpThread = new QThread(this);
                             radio->rtpThread->setObjectName("RTP()");
                             radio->rtp->moveToThread(radio->rtpThread);
