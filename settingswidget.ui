@@ -47,7 +47,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>3</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -390,13 +390,13 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                  <widget class="QLineEdit" name="ipAddressTxt">
                   <property name="minimumSize">
                    <size>
-                    <width>256</width>
+                    <width>150</width>
                     <height>0</height>
                    </size>
                   </property>
                   <property name="maximumSize">
                    <size>
-                    <width>256</width>
+                    <width>150</width>
                     <height>16777215</height>
                    </size>
                   </property>
@@ -406,7 +406,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QLabel" name="label_7">
+                 <widget class="QLabel" name="controlPortLabel">
                   <property name="text">
                    <string>Control Port</string>
                   </property>
@@ -416,7 +416,7 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                  <widget class="QLineEdit" name="controlPortTxt">
                   <property name="maximumSize">
                    <size>
-                    <width>75</width>
+                    <width>60</width>
                     <height>16777215</height>
                    </size>
                   </property>
@@ -425,6 +425,63 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                   </property>
                   <property name="text">
                    <string>50001</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="catPortLabel">
+                  <property name="text">
+                   <string>CAT</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="catPortTxt">
+                  <property name="minimumSize">
+                   <size>
+                    <width>0</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>60</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="audioPortLabel">
+                  <property name="text">
+                   <string>Audio</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="audioPortTxt">
+                  <property name="maximumSize">
+                   <size>
+                    <width>60</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="scopePortLabel">
+                  <property name="text">
+                   <string>Scope</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="scopePortTxt">
+                  <property name="maximumSize">
+                   <size>
+                    <width>60</width>
+                    <height>16777215</height>
+                   </size>
                   </property>
                  </widget>
                 </item>
@@ -479,13 +536,13 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                  <widget class="QLineEdit" name="usernameTxt">
                   <property name="minimumSize">
                    <size>
-                    <width>256</width>
+                    <width>150</width>
                     <height>0</height>
                    </size>
                   </property>
                   <property name="maximumSize">
                    <size>
-                    <width>256</width>
+                    <width>150</width>
                     <height>16777215</height>
                    </size>
                   </property>
@@ -505,13 +562,13 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                  <widget class="QLineEdit" name="passwordTxt">
                   <property name="minimumSize">
                    <size>
-                    <width>180</width>
+                    <width>150</width>
                     <height>0</height>
                    </size>
                   </property>
                   <property name="maximumSize">
                    <size>
-                    <width>180</width>
+                    <width>150</width>
                     <height>16777215</height>
                    </size>
                   </property>
