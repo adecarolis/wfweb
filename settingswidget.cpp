@@ -3382,6 +3382,7 @@ void settingswidget::connectionStatus(bool conn)
     ui->serverControlPortText->setEnabled(!conn);
     ui->serverAudioPortText->setEnabled(!conn);
     ui->serverCivPortText->setEnabled(!conn);
+    ui->serverScopePortText->setEnabled(!conn);
     ui->serverUsersTable->setEnabled(!conn);
     ui->serverDisconnectLabel->setVisible(conn);
     ui->radioDisconnectLabel->setVisible(conn);
