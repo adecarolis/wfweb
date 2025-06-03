@@ -1861,13 +1861,13 @@ void settingswidget::on_manufacturerCombo_currentIndexChanged(int value)
     }
     else   if (prefs->manufacturer == manufYaesu)
     {
-        if (changed)
-        {
+        //if (changed)
+        //{
             udpPrefs->controlLANPort = 50000;
             udpPrefs->serialLANPort = 50001;
             udpPrefs->audioLANPort = 50002;
             udpPrefs->scopeLANPort = 50003;
-        }
+        //}
         ui->adminLoginChk->setVisible(false);
         ui->serverCivPortText->setVisible(true);
         ui->serverScopePortText->setVisible(true);

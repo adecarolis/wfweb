@@ -421,7 +421,6 @@ void wfmain::openRig()
 
     if (prefs.enableLAN)
     {
-        usingLAN = true;
         // "We need to setup the tx/rx audio:
         udpPrefs.waterfallFormat = prefs.waterfallFormat;
         // 60 second connection timeout.
@@ -434,7 +433,6 @@ void wfmain::openRig()
         } else {
             serialPortRig = prefs.serialPortRadio;
         }
-        usingLAN = false;
         emit sendCommSetup(rigList, prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort, prefs.tcpPort,prefs.waterfallFormat);
         ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
 
@@ -681,9 +679,8 @@ void wfmain::findSerialPort()
 void wfmain::receiveCommReady()
 {
     //qInfo(logSystem()) << "Received CommReady!! ";
-    if(!usingLAN)
+    if(!prefs.enableLAN)
     {
-        // usingLAN gets set when we emit the sendCommSetup signal.
         // If we're not using the LAN, then we're on serial, and
         // we already know the baud rate and can calculate the timing parameters.
         calculateTimingParameters();
@@ -4213,7 +4210,7 @@ void wfmain::on_rfGainSlider_valueChanged(int value)
 
 void wfmain::on_afGainSlider_valueChanged(int value)
 {
-    if(usingLAN)
+    if(prefs.enableLAN)
     {
         // Remember current setting.
         prefs.rxSetup.localAFgain = (quint8)(value);
@@ -6448,7 +6445,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         // Now we know that we are connected, enable rigctld
         enableRigCtl(prefs.enableRigCtlD);
 
-        if(usingLAN)
+        if(prefs.enableLAN)
         {
             ui->afGainSlider->setValue(prefs.localAFgain);
             queue->receiveValue(funcAfGain,quint8(prefs.localAFgain),currentReceiver);

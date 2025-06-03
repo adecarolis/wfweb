@@ -31,7 +31,7 @@ private:
     quint64 poll=20;
 
 signals:
-    void dataReady(ft710_spi_data d);
+    void dataReady(QByteArray d);
 };
 
 #endif // FT4222HANDLER_H

@@ -39,6 +39,7 @@ yaesuCommander::~yaesuCommander()
         delete port;
         port = Q_NULLPTR;
     }
+
     qDebug(logRig()) << "Closing rig comms";
 
     if (ft4222 != Q_NULLPTR)
@@ -47,6 +48,28 @@ yaesuCommander::~yaesuCommander()
         ft4222->exit();
         ft4222->wait();
     }
+
+    if (controlThread != Q_NULLPTR)
+    {
+        controlThread->quit();
+        controlThread->wait();
+    }
+    if (catThread != Q_NULLPTR)
+    {
+        catThread->quit();
+        catThread->wait();
+    }
+    if (audioThread != Q_NULLPTR)
+    {
+        audioThread->quit();
+        audioThread->wait();
+    }
+    if (scopeThread != Q_NULLPTR)
+    {
+        scopeThread->quit();
+        scopeThread->wait();
+    }
+
 }
 
 void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
@@ -81,25 +104,48 @@ void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAdd
     network = false;
 
     ft4222 = new ft4222Handler();
-    connect(ft4222, &ft4222Handler::dataReady, this, &yaesuCommander::ft4222Data);
+    connect(ft4222, &ft4222Handler::dataReady, this, &yaesuCommander::haveScopeData);
     connect(ft4222, &ft4222Handler::finished, ft4222, &QObject::deleteLater);
 
     ft4222->start();
+
+    connect(port, &QIODevice::readyRead, this, &yaesuCommander::receiveDataFromRig);
+
+
+    if(port->open(QIODevice::ReadWrite))
+    {
+        portConnected = true;
+    } else
+    {
+        if (network)
+            emit havePortError(errorType(true, prefs.ipAddress, "Could not open port.\nPlease check Radio Access under Settings."));
+        else
+            emit havePortError(errorType(true, rigSerialPort, "Could not open port.\nPlease check Radio Access under Settings."));
+        portConnected=false;
+    }
+
+    connect(this, SIGNAL(sendDataToRig(QByteArray)),this,SLOT(dataForRig(QByteArray)));
 
     // Run setup common to all rig type
     commonSetup();
 }
 
-void yaesuCommander::ft4222Data(ft710_spi_data d)
+void yaesuCommander::haveScopeData(QByteArray in)
 {
-    // d contains a valid icom data packet.
+    // in contains a valid icom data packet.
 
     if (!haveRigCaps)
     {
         return;
     }
 
-    QByteArray data = QByteArray((char*)d.data,sizeof(d.data));
+    ft710_spi_data_t d = (ft710_spi_data_t)in.data();
+
+    for (unsigned int i=0; i< sizeof(d->wf1);i++) {
+        d->wf1[i] = ~d->wf1[i];
+    }
+
+    QByteArray data = QByteArray((char*)d->data,sizeof(d->data));
     freqt fa,fb;
     //quint16 model = data.mid(17,5).toHex().toUShort();
     fa.Hz = data.mid(64,5).toHex().toLongLong();
@@ -138,7 +184,7 @@ void yaesuCommander::ft4222Data(ft710_spi_data d)
         queue->receiveValue(funcScopeMode,QVariant::fromValue<uchar>(mode),0);
     }
     scopeData scope;
-    scope.data = QByteArray((char*)d.wf1,sizeof(d.wf1));
+    scope.data = QByteArray((char*)d->wf1,sizeof(d->wf1));
     scope.valid=true;
     scope.receiver=0;
     scope.startFreq=fa.MHzDouble-(cs.freq/1000000.0);
@@ -150,7 +196,10 @@ void yaesuCommander::ft4222Data(ft710_spi_data d)
     queue->receiveValue(funcScopeWaveData,QVariant::fromValue<scopeData>(scope),0);
     queue->receiveValue(funcSelectedFreq,QVariant::fromValue<freqt>(fa),0);
     queue->receiveValue(funcUnselectedFreq,QVariant::fromValue<freqt>(fb),0);
-    ft4222->setPoll(quint64(specTime+wfTime+10));
+    if (!usingLAN())
+    {
+        ft4222->setPoll(quint64(specTime+wfTime+10));
+    }
 }
 
 void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
@@ -167,14 +216,106 @@ void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAdd
 
     usingNativeLAN = true;
 
-    port = new QTcpSocket(this);
+    QHostAddress remoteIP;
+    QHostAddress localIP;
 
-    connect(qobject_cast<QTcpSocket*>(port), &QTcpSocket::connected, this, &yaesuCommander::lanConnected);
-    connect(qobject_cast<QTcpSocket*>(port), &QTcpSocket::disconnected, this, &yaesuCommander::lanDisconnected);
-    qobject_cast<QTcpSocket*>(port)->connectToHost(prefs.ipAddress,prefs.controlLANPort);
+    // First find the correct local and remote IP addresses
+    if (!remoteIP.setAddress(prefs.ipAddress))
+    {
+        QHostInfo remote = QHostInfo::fromName(prefs.ipAddress);
+        foreach(const auto &addr, remote.addresses())
+        {
+            if (addr.protocol() == QAbstractSocket::IPv4Protocol) {
+                remoteIP = addr;
+                qInfo(logUdp()) << "Got IP Address :" << prefs.ipAddress << ": " << addr.toString();
+                break;
+            }
+        }
+        if (remoteIP.isNull())
+        {
+            qInfo(logUdp()) << "Error obtaining IP Address for :" << prefs.ipAddress << ": " << remote.errorString();
+            return;
+        }
+    }
 
-    // Run setup common to all rig types    
+    // Convoluted way to find the external IP address, there must be a better way????
+    QString localhostname = QHostInfo::localHostName();
+    QList<QHostAddress> hostList = QHostInfo::fromName(localhostname).addresses();
+    foreach (const auto &address, hostList)
+    {
+        if (address.protocol() == QAbstractSocket::IPv4Protocol && address.isLoopback() == false)
+        {
+            localIP = QHostAddress(address.toString());
+        }
+    }
+
+
+    // Each UDP port is in it's own thread and Control will start Cat, then Cat starts Audio.
+    // Scope will be started by commander once we know if it's needed or not.
+
+    control = new yaesuUdpControl(prefs,localIP,remoteIP);
+    controlThread = new QThread(this);
+    controlThread->setObjectName("udpControl()");
+    control->moveToThread(controlThread);
+    controlThread->start(QThread::NormalPriority);
+    connect(controlThread, &QThread::finished, control, &yaesuUdpControl::deleteLater);
+    connect(this, &yaesuCommander::initUdpControl, control, &yaesuUdpControl::init);
+
+    cat = new yaesuUdpCat(localIP,remoteIP,prefs.serialLANPort);
+    catThread = new QThread(this);
+    catThread->setObjectName("udpCAT()");
+    cat->moveToThread(catThread);
+    catThread->start(QThread::NormalPriority);
+    connect(catThread, &QThread::finished, cat, &yaesuUdpCat::deleteLater);
+    connect(control, &yaesuUdpControl::initCat, cat, &yaesuUdpCat::init);
+
+    connect(cat, SIGNAL(haveCatDataFromRig(QByteArray)), this, SLOT(receiveCatDataFromRig(QByteArray)));
+    connect(this, SIGNAL(sendDataToRig(QByteArray)),cat,SLOT(sendCatDataToRig(QByteArray)));
+
+    audio = new yaesuUdpAudio(localIP,remoteIP,prefs.audioLANPort,rxSetup,txSetup);
+    audioThread = new QThread(this);
+    audioThread->setObjectName("udpAudio()");
+    audio->moveToThread(audioThread);
+    audioThread->start(QThread::TimeCriticalPriority);
+    connect(audioThread, &QThread::finished, cat, &yaesuUdpAudio::deleteLater);
+    connect(cat, &yaesuUdpCat::initAudio, audio, &yaesuUdpAudio::init);
+
+    scope = new yaesuUdpScope(localIP,remoteIP,prefs.scopeLANPort);
+    scopeThread = new QThread(this);
+    scopeThread->setObjectName("udpScope()");
+    scope->moveToThread(scopeThread);
+    scopeThread->start(QThread::NormalPriority);
+    connect(scopeThread, &QThread::finished, cat, &yaesuUdpScope::deleteLater);
+    connect(this, &yaesuCommander::initScope, scope, &yaesuUdpScope::init);
+    connect(scope, &yaesuUdpScope::haveScopeData, this, &yaesuCommander::haveScopeData);
+
+    // This will tell all children what the current session is. Must be set as soon as it's known.
+    connect(control, &yaesuUdpControl::haveSession, cat, &yaesuUdpCat::setSession);
+    connect(control, &yaesuUdpControl::haveSession, audio, &yaesuUdpAudio::setSession);
+    connect(control, &yaesuUdpControl::haveSession, scope, &yaesuUdpScope::setSession);
+
+    emit initUdpControl();
+
+    //connect(udp, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+
+    //connect(this, SIGNAL(haveChangeLatency(quint16)), udp, SLOT(changeLatency(quint16)));
+    //connect(this, SIGNAL(haveSetVolume(quint8)), udp, SLOT(setVolume(quint8)));
+    //connect(udp, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
+    // Connect for errors/alerts
+    //connect(udp, SIGNAL(haveNetworkError(errorType)), this, SLOT(handlePortError(errorType)));
+    //connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(handleStatusUpdate(networkStatus)));
+    //connect(udp, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(handleNetworkAudioLevels(networkAudioLevels)));
+    // Other assorted UDP connections
+    //connect(udp, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
+    //connect(udp, SIGNAL(setRadioUsage(quint8, bool, quint8, QString, QString)), this, SLOT(radioUsage(quint8, bool, quint8, QString, QString)));
+    //connect(this, SIGNAL(selectedRadio(quint8)), udp, SLOT(setCurrentRadio(quint8)));
+    //connect(this, SIGNAL(startScope()), udp, SLOT(startScope()));
+
+
+    // Run setup common to all rig types
+
     commonSetup();
+
 }
 
 void yaesuCommander::lanConnected()
@@ -206,19 +347,6 @@ void yaesuCommander::closeComm()
 void yaesuCommander::commonSetup()
 {
     // common elements between the two constructors go here:
-    connect(port, &QIODevice::readyRead, this, &yaesuCommander::receiveDataFromRig);
-
-    if(port->open(QIODevice::ReadWrite))
-    {
-        portConnected = true;
-    } else
-    {
-        if (network)
-            emit havePortError(errorType(true, prefs.ipAddress, "Could not open port.\nPlease check Radio Access under Settings."));
-        else
-            emit havePortError(errorType(true, rigSerialPort, "Could not open port.\nPlease check Radio Access under Settings."));
-        portConnected=false;
-    }
 
 
     if (vsp.toLower() != "none") {
@@ -253,7 +381,16 @@ void yaesuCommander::commonSetup()
     emit commReady();
 }
 
-
+void yaesuCommander::dataForRig(QByteArray d)
+{
+    if (portConnected) {
+        QMutexLocker locker(&serialMutex);
+        if (port->write(d) != d.size())
+        {
+            qInfo(logSerial()) << "Error writing to port";
+        }
+    }
+}
 
 void yaesuCommander::process()
 {
@@ -293,11 +430,8 @@ void yaesuCommander::powerOn()
     }
 
     d.append(QString("%0;").arg(cmd).toLatin1());
-    QMutexLocker locker(&serialMutex);
-    if (portConnected) {
-        port->write(d);
-        lastCommand.data = d;
-    }
+    emit sendDataToRig(d);
+    lastCommand.data = d;
 }
 
 void yaesuCommander::powerOff()
@@ -311,11 +445,8 @@ void yaesuCommander::powerOff()
     }
 
     d.append(QString("%0;").arg(cmd).toLatin1());
-    QMutexLocker locker(&serialMutex);
-    if (portConnected) {
-        port->write(d);
-        lastCommand.data = d;
-    }
+    emit sendDataToRig(d);
+    lastCommand.data = d;
 }
 
 
@@ -366,6 +497,24 @@ void yaesuCommander::receiveDataFromRig()
         parseData(in);
         emit haveDataFromRig(in);
     }
+}
+
+void yaesuCommander::receiveCatDataFromRig(QByteArray in)
+{
+    parseData(in);
+    emit haveDataFromRig(in);
+}
+
+void yaesuCommander::receiveScopeDataFromRig(QByteArray in)
+{
+    //parseData(in);
+    //emit haveDataFromRig(in);
+}
+
+void yaesuCommander::receiveAudioDataFromRig(QByteArray in)
+{
+    //parseData(in);
+    //emit haveDataFromRig(in);
 }
 
 
@@ -1345,6 +1494,11 @@ void yaesuCommander::determineRigCaps()
     qDebug(logRig()) << "---Rig FOUND" << rigCaps.modelName;
     emit discoveredRigID(rigCaps);
     emit haveRigID(rigCaps);
+    if (rigCaps.hasSpectrum)
+    {
+        emit initScope();
+    }
+
 }
 
 void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
@@ -1814,30 +1968,17 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
         }
 
         // Send the command
-        if (network)
-        {
-            payload.prepend(";");
-            payload.append(";\n");
-        } else {
-            payload.append(";");
-        }
+        payload.append(";");
 
-        if (portConnected)
-        {
-            QMutexLocker locker(&serialMutex);
+        qDebug(logRigTraffic()).noquote() << "Send to rig: " << funcString[cmd.cmd] << payload.toStdString().c_str();
 
-            qDebug(logRigTraffic()).noquote() << "Send to rig: " << funcString[cmd.cmd] << payload.toStdString().c_str();
+        emit sendDataToRig(payload);
 
-            if (port->write(payload) != payload.size())
-            {
-                qInfo(logSerial()) << "Error writing to port";
-            }            
-            lastCommand.func = func;
-            lastCommand.data = payload;
-            lastCommand.minValue = cmd.minVal;
-            lastCommand.maxValue = cmd.maxVal;
-            lastCommand.bytes = cmd.bytes;
-        }
+        lastCommand.func = func;
+        lastCommand.data = payload;
+        lastCommand.minValue = cmd.minVal;
+        lastCommand.maxValue = cmd.maxVal;
+        lastCommand.bytes = cmd.bytes;
     }
 }
 

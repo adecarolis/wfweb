@@ -37,8 +37,8 @@ class udpHandler: public udpBase
 	Q_OBJECT
 
 public:
-	udpHandler(udpPreferences prefs, audioSetup rxAudio, audioSetup txAudio);
-	~udpHandler();
+    udpHandler(udpPreferences prefs, audioSetup rxAudio, audioSetup txAudio);
+    ~udpHandler();
 
 	bool streamOpened = false;
 
@@ -62,8 +62,8 @@ public slots:
 signals:
 	void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
 	void haveAudioData(audioPacket data); // emit this when we have data, connect to rigcommander
-	void haveNetworkError(errorType);
-	void haveChangeLatency(quint16 value);
+    void haveNetworkError(errorType);
+    void haveChangeLatency(quint16 value);
 	void haveSetVolume(quint8 value);
 	void haveNetworkStatus(networkStatus);
     void haveNetworkAudioLevels(networkAudioLevels);

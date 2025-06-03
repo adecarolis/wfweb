@@ -365,7 +365,12 @@ SOURCES += main.cpp\
     aboutbox.cpp \
     audiodevices.cpp \
     yaesucommander.cpp \
-    yaesuserver.cpp
+    yaesuserver.cpp \
+    yaesuudpaudio.cpp \
+    yaesuudpbase.cpp \
+    yaesuudpcat.cpp \
+    yaesuudpcontrol.cpp \
+    yaesuudpscope.cpp
 
 HEADERS  += wfmain.h \
     adpcm/adpcm-lib.h \
@@ -435,7 +440,12 @@ HEADERS  += wfmain.h \
     wfviewtypes.h \
     audiodevices.h \
     yaesucommander.h \
-    yaesuserver.h
+    yaesuserver.h \
+    yaesuudpaudio.h \
+    yaesuudpbase.h \
+    yaesuudpcat.h \
+    yaesuudpcontrol.h \
+    yaesuudpscope.h
 
 
 FORMS    += wfmain.ui \

@@ -37,6 +37,9 @@
 #define AUDIO_SIZE            0x18
 #define DATA_SIZE               0x15
 
+// Yaesu specific defines
+#define YAESU_MAX_FRAME_SIZE 16640
+
 #pragma pack(push)
 #pragma pack(1)
 
@@ -456,12 +459,12 @@ typedef union rtp_header
 {
     struct {
 #if G_BYTE_ORDER == G_LITTLE_ENDIAN
-        uint8_t         csrc:4;
-        uint8_t         extension:1;
-        uint8_t         padding:1;
-        uint8_t         version:2;
-        uint8_t         payloadType:7;
-        uint8_t         marker:1;
+        quint8         csrc:4;
+        quint8         extension:1;
+        quint8         padding:1;
+        quint8         version:2;
+        quint8         payloadType:7;
+        quint8         marker:1;
 #elif G_BYTE_ORDER == G_BIG_ENDIAN
         quint8         version:2;
         quint8         padding:1;
@@ -472,14 +475,215 @@ typedef union rtp_header
 #else
 #error "G_BYTE_ORDER is not defined"
 #endif
-        uint16_t seq;
-        uint32_t timestamp;
-        uint32_t ssrc;
+        quint16 seq;
+        quint32 timestamp;
+        quint32 ssrc;
     };
-    uint8_t packet[12];
+    quint8 packet[12];
 } *rtp_header_t;
 
 
+
+// Yaesu packets
+
+enum yaesuDeviceId : quint16 {
+    ScuLan = 0,
+    UsbCat = 1,
+    UsbAudio = 2,
+    AnalogAudio = 3,
+    LoopbackAudio = 4,
+    SerialCat = 5,
+    Scope = 6
+};
+
+enum yaesuMessageId : quint16 {
+    C2R_Login = 0x101,
+    C2R_Logout = 0x102,
+    C2R_Open = 0x103,
+    C2R_Connect = 0x104,
+    C2R_Data = 0x105,
+    C2R_Close = 0x106,
+    C2R_HealthCheck = 0x107,
+    C2R_CatRate = 0x108,
+    R2C_LoginReply = 0x181,
+    R2C_LogoutReply = 0x182,
+    R2C_OpenReply = 0x183,
+    R2C_ConnectReply = 0x184,
+    R2C_Data = 0x185,
+    R2C_CloseReply = 0x186,
+    R2C_HealthReply = 0x187
+};
+
+
+
+struct yaesuFrameHeader {
+    yaesuDeviceId device;
+    yaesuMessageId msgtype;
+    quint16 len;
+};
+
+#pragma warning( push )
+#pragma warning( disable : 4200 )
+struct yaesuGenericFrame {
+    yaesuFrameHeader hdr;
+    quint8 data[];
+};
+#pragma warning( pop )
+
+struct yaesuSessionFrame {
+    yaesuFrameHeader hdr;
+    quint32 session;
+};
+
+struct yaesuCatDataPacket {
+    quint16 packet_id;
+    quint16 reserved;
+    quint8 data[0x4000];
+};
+
+struct yaesuR2C_CatDataFrame {
+    yaesuFrameHeader hdr;
+    yaesuCatDataPacket data;
+};
+
+struct yaesuC2R_CatDataFrame {
+    yaesuFrameHeader hdr;
+    quint32 session;
+    yaesuCatDataPacket data;
+};
+
+struct yaesuR2C_ScopeDataFrame {
+    yaesuFrameHeader hdr;
+    quint8 data[0x1000];
+};
+
+struct yaesuR2C_LoginReplyFrame {
+    yaesuFrameHeader hdr;
+    quint32 session;
+    quint32 reserved;
+    quint16 vala;
+    quint16 valb;
+    quint16 valc;
+};
+
+enum yaesuAudioFormat : quint8 {
+    UnknownAudio = 0,
+    ShortLE = 1,
+    ShortBE = 2,
+    MuLaw = 3
+};
+
+
+struct yaesuAudioData {
+    quint16 seqNum;
+    yaesuAudioFormat format;
+    quint8 channels;
+    quint32 sampleRate;
+    quint8 resendMode;
+    quint8 reserved[7];
+    quint16 playbackLatency;
+    quint16 recordLatency;
+    quint8 playbackVol;
+    quint8 recordVol;
+    quint16 pcmDataLen;
+    quint8 pcmData[0x500];
+};
+
+struct yaesuC2R_AudioData {
+    yaesuFrameHeader hdr;
+    quint32 session;
+    yaesuAudioData data;
+};
+
+struct yaesuR2C_AudioData {
+    yaesuFrameHeader hdr;
+    yaesuAudioData data;
+};
+
+struct yaesuC2R_LoginFrame {
+    yaesuFrameHeader hdr;
+    quint8 reserved_1;
+    quint8 reserved_0;
+    char username[33];
+    char pw[33];
+};
+
+struct yaesuC2R_LogoutFrame {
+    yaesuFrameHeader hdr;
+    quint8 reserved_1;
+    quint32 session;
+    quint32 sleep;
+};
+
+struct yaesuC2R_DeviceOpenFrame {
+    yaesuFrameHeader hdr;
+    quint32 session;
+    quint16 netPort;
+};
+
+typedef yaesuSessionFrame yaesuC2R_HeartbeatFrame;
+typedef yaesuSessionFrame yaesuC2R_DeviceConnectFrame;
+
+struct yaesuC2R_CatRateFrame {
+    yaesuFrameHeader hdr;
+    quint32 session;
+    quint32 baud;
+};
+
+struct yaesuC2R_CatOpenFrame {
+    yaesuFrameHeader hdr;
+    quint32 session;
+    quint16 netPort;
+    quint32 baud;
+};
+
+struct yaesuResultFrame {
+    yaesuFrameHeader hdr;
+    quint32 result;
+};
+
+typedef yaesuResultFrame yaesuR2C_DeviceOpenFrame;
+typedef yaesuResultFrame yaesuR2C_DeviceConnectFrame;
+
+
+struct yaesuR2C_HeartbeatFrame {
+    yaesuFrameHeader hdr;
+    quint8 result;
+};
+
+struct yaesuControlDataFrame {
+    yaesuFrameHeader hdr;
+    quint32 session;
+    quint16 type;
+    quint16 opt;
+};
+
+struct yaesuControlCommandFrame {
+    yaesuFrameHeader hdr;
+    quint32 session;
+    quint32 reserved;
+    char text[256];
+};
+
+struct yaesuControlCommandFrameB {
+    yaesuFrameHeader hdr;
+    quint32 session;
+    quint32 reserved;
+    quint16 vala;
+    quint16 valb;
+    quint16 valc;
+    quint16 vald;
+    char text[256];
+};
+
+struct yaesuEncodedFrame {
+    uint16_t type;
+    uint16_t length;
+    uint16_t encodingType;
+    uint8_t firstKey;
+    uint8_t secondKey;
+    uint8_t encodedData[YAESU_MAX_FRAME_SIZE];
+};
 
 #pragma pack(pop)
 

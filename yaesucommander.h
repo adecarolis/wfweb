@@ -5,6 +5,10 @@
 #include <QSerialPort>
 #include <ft4222handler.h>
 
+#include "yaesuudpcontrol.h"
+#include "yaesuudpcat.h"
+#include "yaesuudpaudio.h"
+#include "yaesuudpscope.h"
 
 #define audioLevelBufferSize (4)
 
@@ -46,6 +50,11 @@ public slots:
     void handleNewData(const QByteArray& data) override;
     void receiveBaudRate(quint32 baudrate) override;
 
+    void receiveCatDataFromRig(QByteArray in);
+    void receiveScopeDataFromRig(QByteArray in);
+    void receiveAudioDataFromRig(QByteArray in);
+
+
     // Housekeeping:
     void receiveCommand(funcs func, QVariant value, uchar receiver) override;
 
@@ -53,21 +62,25 @@ public slots:
     void serialPortError(QSerialPort::SerialPortError err);
     void receiveDataFromRig();
 
+
     void parseData(QByteArray dataInput);
 
     void getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,quint16 latency, quint16 current, bool under, bool over);
     void getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16 latency,quint16 current, bool under, bool over);
 
-    void ft4222Data(ft710_spi_data d);
+    void haveScopeData(QByteArray d);
+    void dataForRig(QByteArray data);
 
 signals:
     // All signals are defined in rigcommander.h as they should be common for all rig types.
-    void initRtpAudio();
+    void initUdpControl();
     void haveSetVolume(quint8 level);
     void haveNetworkError(errorType);
     void haveChangeLatency(quint16 value);
     void haveNetworkStatus(networkStatus);
     void haveNetworkAudioLevels(networkAudioLevels);
+    void sendDataToRig(QByteArray data);
+    void initScope();
 
 private:
     void commonSetup();
@@ -83,8 +96,15 @@ private:
 
     pttyHandler* ptty = Q_NULLPTR;
     tcpServer* tcp = Q_NULLPTR;
-    rtpAudio* rtp = Q_NULLPTR;
-    QThread* rtpThread = Q_NULLPTR;
+
+    yaesuUdpControl* control = Q_NULLPTR;
+    QThread* controlThread = Q_NULLPTR;
+    yaesuUdpCat* cat = Q_NULLPTR;
+    QThread* catThread = Q_NULLPTR;
+    yaesuUdpAudio* audio = Q_NULLPTR;
+    QThread* audioThread = Q_NULLPTR;
+    yaesuUdpScope* scope = Q_NULLPTR;
+    QThread* scopeThread = Q_NULLPTR;
 
     QHash<quint16,rigInfo> rigList;
     quint16 rigCivAddr;

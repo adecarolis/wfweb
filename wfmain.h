@@ -558,10 +558,6 @@ private:
     bool onFullscreen;
     bool freqTextSelected;
 
-    double oldLowerFreq;
-    double oldUpperFreq;
-    //freqt freq;
-    //freqt freqb;
     float tsKnobMHz;
 
     quint8 setModeVal=0;
@@ -572,8 +568,6 @@ private:
     int delayedCmdIntervalLAN_ms = 100;
     int delayedCmdIntervalSerial_ms = 100;
     int delayedCmdStartupInterval_ms = 100;
-    bool runPeriodicCommands;
-    bool usingLAN = false;
 
     cachingQueue* queue;
     // Radio time sync:

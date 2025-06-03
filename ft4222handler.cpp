@@ -20,7 +20,7 @@ void ft4222Handler::run()
     // If we got here, we are connected to a valid FT4222, so start processing
 
 
-    ft710_spi_data buf;
+    QByteArray buf(4096,0x0);
     FT_STATUS status;
     uint16 size;
 
@@ -30,12 +30,11 @@ void ft4222Handler::run()
     quint64 currentPoll=20;
     while (this->running)
     {
-        status = FT4222_SPIMaster_SingleRead(device,buf.packet, sizeof(buf.packet), &size, false);
+        status = FT4222_SPIMaster_SingleRead(device,(uchar *)buf.data(), buf.size(), &size, false);
 
         if (FT_OK == status)
         {
-            QByteArray sum = QByteArray((char*)buf.sync,sizeof(buf.sync));
-            if (sum != QByteArrayLiteral("\xff\x01\xee\x01"))
+            if (buf.last(4) != QByteArrayLiteral("\xff\x01\xee\x01"))
             {
                 sync();
                 continue;
@@ -44,10 +43,6 @@ void ft4222Handler::run()
 
         if (timer.hasExpired(currentPoll))
         {
-
-            for (unsigned int i=0; i< sizeof(buf.wf1);i++) {
-                buf.wf1[i] = ~buf.wf1[i];
-            }
 
             emit dataReady(buf);
             timer.start();
