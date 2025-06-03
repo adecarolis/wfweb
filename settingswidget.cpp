@@ -1841,6 +1841,13 @@ void settingswidget::on_manufacturerCombo_currentIndexChanged(int value)
         ui->serverCATPortLabel->setVisible(true);
         ui->serverScopePortLabel->setVisible(false);
 
+        ui->catPortLabel->setVisible(false);
+        ui->catPortTxt->setVisible(false);
+        ui->audioPortLabel->setVisible(false);
+        ui->audioPortTxt->setVisible(false);
+        ui->scopePortLabel->setVisible(false);
+        ui->scopePortTxt->setVisible(false);
+
     }
     else if (prefs->manufacturer == manufKenwood)
     {
@@ -1859,23 +1866,43 @@ void settingswidget::on_manufacturerCombo_currentIndexChanged(int value)
         ui->serverScopePortText->setVisible(false);
         ui->serverCATPortLabel->setVisible(false);
         ui->serverScopePortLabel->setVisible(false);
+        ui->catPortLabel->setVisible(false);
+        ui->catPortTxt->setVisible(false);
+        ui->audioPortLabel->setVisible(false);
+        ui->audioPortTxt->setVisible(false);
+        ui->scopePortLabel->setVisible(false);
+        ui->scopePortTxt->setVisible(false);
+
     }
     else   if (prefs->manufacturer == manufYaesu)
     {
-        //if (changed)
-        //{
+        if (changed)
+        {
             udpPrefs->controlLANPort = 50000;
             udpPrefs->serialLANPort = 50001;
             udpPrefs->audioLANPort = 50002;
             udpPrefs->scopeLANPort = 50003;
-        //}
+
+        }
+
+        ui->catPortLabel->setVisible(true);
+        ui->catPortTxt->setVisible(true);
+        ui->audioPortLabel->setVisible(true);
+        ui->audioPortTxt->setVisible(true);
+        ui->scopePortLabel->setVisible(true);
+        ui->scopePortTxt->setVisible(true);
+
         ui->adminLoginChk->setVisible(false);
         ui->serverCivPortText->setVisible(true);
         ui->serverScopePortText->setVisible(true);
         ui->serverCATPortLabel->setVisible(true);
         ui->serverScopePortLabel->setVisible(true);
     }
+
     ui->controlPortTxt->setText(QString::number(udpPrefs->controlLANPort));
+    ui->catPortTxt->setText(QString::number(udpPrefs->catLANPort));
+    ui->audioPortTxt->setText(QString::number(udpPrefs->audioANPort));
+    ui->scopePortTxt->setText(QString::number(udpPrefs->scopeLANPort));
 
     emit changedRaPref(ra_manufacturer);
 
