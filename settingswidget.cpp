@@ -1189,10 +1189,13 @@ void settingswidget::updateUdpPref(prefUDPItem upi)
         quietlyUpdateLineEdit(ui->controlPortTxt,QString::number(udpPrefs->controlLANPort));
         break;
     case u_serialLANPort:
-        // Not used in the UI.
+        quietlyUpdateLineEdit(ui->catPortTxt,QString::number(udpPrefs->serialLANPort));
         break;
     case u_audioLANPort:
-        // Not used in the UI.
+        quietlyUpdateLineEdit(ui->audioPortTxt,QString::number(udpPrefs->audioLANPort));
+        break;
+    case u_scopeLANPort:
+        quietlyUpdateLineEdit(ui->scopePortTxt,QString::number(udpPrefs->scopeLANPort));
         break;
     case u_username:
         quietlyUpdateLineEdit(ui->usernameTxt,udpPrefs->username);
@@ -2300,6 +2303,39 @@ void settingswidget::on_controlPortTxt_textChanged(const QString &arg1)
     }
 }
 
+void settingswidget::on_catPortTxt_textChanged(const QString &arg1)
+{
+    bool ok = false;
+    int port = arg1.toUInt(&ok);
+    if(ok)
+    {
+        udpPrefs->serialLANPort = port;
+        emit changedUdpPref(u_serialLANPort);
+    }
+}
+
+void settingswidget::on_audioPortTxt_textChanged(const QString &arg1)
+{
+    bool ok = false;
+    int port = arg1.toUInt(&ok);
+    if(ok)
+    {
+        udpPrefs->audioLANPort = port;
+        emit changedUdpPref(u_audioLANPort);
+    }
+}
+
+void settingswidget::on_scopePortTxt_textChanged(const QString &arg1)
+{
+    bool ok = false;
+    int port = arg1.toUInt(&ok);
+    if(ok)
+    {
+        udpPrefs->scopeLANPort = port;
+        emit changedUdpPref(u_scopeLANPort);
+    }
+}
+
 void settingswidget::on_passwordTxt_textChanged(const QString &arg1)
 {
     udpPrefs->password = arg1;
@@ -3328,6 +3364,9 @@ void settingswidget::connectionStatus(bool conn)
     ui->usernameTxt->setEnabled(!conn);
     ui->passwordTxt->setEnabled(!conn);
     ui->controlPortTxt->setEnabled(!conn);
+    ui->catPortTxt->setEnabled(!conn);
+    ui->audioPortTxt->setEnabled(!conn);
+    ui->scopePortTxt->setEnabled(!conn);
     ui->ipAddressTxt->setEnabled(!conn);
 
     ui->serialDeviceListCombo->setEnabled(!conn);

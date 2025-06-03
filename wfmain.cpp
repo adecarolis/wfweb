@@ -1778,6 +1778,7 @@ void wfmain::setDefPrefs()
     udpDefPrefs.controlLANPort = 50001;
     udpDefPrefs.serialLANPort = 50002;
     udpDefPrefs.audioLANPort = 50003;
+    udpDefPrefs.scopeLANPort = 50004;
     udpDefPrefs.username = QString("");
     udpDefPrefs.password = QString("");
     udpDefPrefs.clientName = QHostInfo::localHostName();
@@ -2002,6 +2003,9 @@ void wfmain::loadSettings()
 
     udpPrefs.ipAddress = settings->value("IPAddress", udpDefPrefs.ipAddress).toString();
     udpPrefs.controlLANPort = settings->value("ControlLANPort", udpDefPrefs.controlLANPort).toInt();
+    udpPrefs.serialLANPort = settings->value("SerialLANPort", udpDefPrefs.serialLANPort).toInt();
+    udpPrefs.audioLANPort = settings->value("AudioLANPort", udpDefPrefs.audioLANPort).toInt();
+    udpPrefs.scopeLANPort = settings->value("ScopeLANPort", udpDefPrefs.scopeLANPort).toInt();
     udpPrefs.adminLogin = settings->value("AdminLogin",udpDefPrefs.adminLogin).toBool();
     udpPrefs.username = settings->value("Username", udpDefPrefs.username).toString();
     udpPrefs.password = settings->value("Password", udpDefPrefs.password).toString();
@@ -3075,6 +3079,9 @@ void wfmain::extChangedUdpPref(prefUDPItem i)
     case u_audioLANPort:
         // Not used in the UI.
         break;
+    case u_scopeLANPort:
+        // Not used in the UI.
+        break;
     case u_username:
         break;
     case u_password:
@@ -3259,6 +3266,7 @@ void wfmain::saveSettings()
     settings->setValue("ControlLANPort", udpPrefs.controlLANPort);
     settings->setValue("SerialLANPort", udpPrefs.serialLANPort);
     settings->setValue("AudioLANPort", udpPrefs.audioLANPort);
+    settings->setValue("ScopeLANPort", udpPrefs.scopeLANPort);
     settings->setValue("AdminLogin",udpPrefs.adminLogin);
     settings->setValue("Username", udpPrefs.username);
     settings->setValue("Password", udpPrefs.password);

@@ -169,6 +169,9 @@ private slots:
     void on_ipAddressTxt_textChanged(const QString &arg1);
     void on_usernameTxt_textChanged(const QString &arg1);
     void on_controlPortTxt_textChanged(const QString &arg1);
+    void on_catPortTxt_textChanged(const QString &arg1);
+    void on_audioPortTxt_textChanged(const QString &arg1);
+    void on_scopePortTxt_textChanged(const QString &arg1);
     void on_passwordTxt_textChanged(const QString &arg1);
     void on_audioDuplexCombo_currentIndexChanged(int index);
     void on_audioOutputCombo_currentIndexChanged(int index);
