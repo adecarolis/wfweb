@@ -1900,8 +1900,8 @@ void settingswidget::on_manufacturerCombo_currentIndexChanged(int value)
     }
 
     ui->controlPortTxt->setText(QString::number(udpPrefs->controlLANPort));
-    ui->catPortTxt->setText(QString::number(udpPrefs->catLANPort));
-    ui->audioPortTxt->setText(QString::number(udpPrefs->audioANPort));
+    ui->catPortTxt->setText(QString::number(udpPrefs->serialLANPort));
+    ui->audioPortTxt->setText(QString::number(udpPrefs->audioLANPort));
     ui->scopePortTxt->setText(QString::number(udpPrefs->scopeLANPort));
 
     emit changedRaPref(ra_manufacturer);

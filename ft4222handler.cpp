@@ -34,7 +34,7 @@ void ft4222Handler::run()
 
         if (FT_OK == status)
         {
-            if (buf.last(4) != QByteArrayLiteral("\xff\x01\xee\x01"))
+            if (!buf.endsWith(QByteArrayLiteral("\xff\x01\xee\x01")))
             {
                 sync();
                 continue;
