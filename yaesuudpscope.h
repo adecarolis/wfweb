@@ -13,7 +13,6 @@
 #include <QVector>
 #include <QMap>
 #include <QUuid>
-#include <QtMinMax>
 
 // Allow easy endian-ness conversions
 #include <QtEndian>

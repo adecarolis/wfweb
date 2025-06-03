@@ -4,6 +4,7 @@
 
 #define setchk(a,b) quietlyUpdateCheckbox(a,b)
 
+
 settingswidget::settingswidget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::settingswidget)
