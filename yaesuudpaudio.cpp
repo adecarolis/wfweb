@@ -88,8 +88,8 @@ void yaesuUdpAudio::init()
 
     connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
     //connect(this, SIGNAL(haveChangeLatency(quint16)), rxaudio, SLOT(changeLatency(quint16)));
-    //connect(this, SIGNAL(haveSetVolume(quint8)), rxaudio, SLOT(setVolume(quint8)));
-    //connect(rxaudio, SIGNAL(haveLevels(quint16,quint16,quint16,quint16,bool,bool)), this, SLOT(getRxLevels(quint16,quint16,quint16,quint16,bool,bool)));
+    connect(this, SIGNAL(haveSetVolume(quint8)), rxaudio, SLOT(setVolume(quint8)));
+    connect(rxaudio, SIGNAL(haveLevels(quint16,quint16,quint16,quint16,bool,bool)), this, SLOT(getRxLevels(quint16,quint16,quint16,quint16,bool,bool)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
     emit setupRxAudio(rxSetup);
@@ -209,4 +209,79 @@ void yaesuUdpAudio::sendConnect()
     b1.hdr.len=sizeof(b1)-sizeof(b1.hdr);
     b1.result = session;
     outgoing((quint8*)&b1,sizeof(b1));
+}
+
+void yaesuUdpAudio::setVolume(quint8 vol)
+{
+    emit haveSetVolume(vol);
+}
+
+void yaesuUdpAudio::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over)
+{
+    status.rxAudioLevel = amplitudePeak;
+    status.rxLatency = latency;
+    status.rxCurrentLatency =   qint32(current);
+    status.rxUnderrun = under;
+    status.rxOverrun = over;
+    audioLevelsRxPeak[(audioLevelsRxPosition)%audioLevelBufferSize] = amplitudePeak;
+    audioLevelsRxRMS[(audioLevelsRxPosition)%audioLevelBufferSize] = amplitudeRMS;
+
+    if((audioLevelsRxPosition)%4 == 0)
+    {
+        // calculate mean and emit signal
+        quint8 meanPeak = findMax(audioLevelsRxPeak);
+        quint8 meanRMS = findMean(audioLevelsRxRMS);
+        networkAudioLevels l;
+        l.haveRxLevels = true;
+        l.rxAudioPeak = meanPeak;
+        l.rxAudioRMS = meanRMS;
+        emit haveNetworkAudioLevels(l);
+    }
+    audioLevelsRxPosition++;
+}
+
+void yaesuUdpAudio::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over)
+{
+    status.txAudioLevel = amplitudePeak;
+    status.txLatency = latency;
+    status.txCurrentLatency = qint32(current);
+    status.txUnderrun = under;
+    status.txOverrun = over;
+    audioLevelsTxPeak[(audioLevelsTxPosition)%audioLevelBufferSize] = amplitudePeak;
+    audioLevelsTxRMS[(audioLevelsTxPosition)%audioLevelBufferSize] = amplitudeRMS;
+
+    if((audioLevelsTxPosition)%4 == 0)
+    {
+        // calculate mean and emit signal
+        quint8 meanPeak = findMax(audioLevelsTxPeak);
+        quint8 meanRMS = findMean(audioLevelsTxRMS);
+        networkAudioLevels l;
+        l.haveTxLevels = true;
+        l.txAudioPeak = meanPeak;
+        l.txAudioRMS = meanRMS;
+        emit haveNetworkAudioLevels(l);
+    }
+    audioLevelsTxPosition++;
+}
+
+
+quint8 yaesuUdpAudio::findMean(quint8 *data)
+{
+    unsigned int sum=0;
+    for(int p=0; p < audioLevelBufferSize; p++)
+    {
+        sum += data[p];
+    }
+    return sum / audioLevelBufferSize;
+}
+
+quint8 yaesuUdpAudio::findMax(quint8 *data)
+{
+    unsigned int max=0;
+    for(int p=0; p < audioLevelBufferSize; p++)
+    {
+        if(data[p] > max)
+            max = data[p];
+    }
+    return max;
 }

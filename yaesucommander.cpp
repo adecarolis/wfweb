@@ -260,6 +260,8 @@ void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAdd
     controlThread->start(QThread::NormalPriority);
     connect(controlThread, &QThread::finished, control, &yaesuUdpControl::deleteLater);
     connect(this, &yaesuCommander::initUdpControl, control, &yaesuUdpControl::init);
+    connect(control, SIGNAL(haveNetworkError(errorType)), this, SLOT(handlePortError(errorType)));
+    connect(control, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(handleStatusUpdate(networkStatus)));
 
     cat = new yaesuUdpCat(localIP,remoteIP,prefs.serialLANPort);
     catThread = new QThread(this);
@@ -268,7 +270,6 @@ void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAdd
     catThread->start(QThread::NormalPriority);
     connect(catThread, &QThread::finished, cat, &yaesuUdpCat::deleteLater);
     connect(control, &yaesuUdpControl::initCat, cat, &yaesuUdpCat::init);
-
     connect(cat, SIGNAL(haveCatDataFromRig(QByteArray)), this, SLOT(receiveCatDataFromRig(QByteArray)));
     connect(this, SIGNAL(sendDataToRig(QByteArray)),cat,SLOT(sendCatDataToRig(QByteArray)));
 
@@ -279,6 +280,8 @@ void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAdd
     audioThread->start(QThread::TimeCriticalPriority);
     connect(audioThread, &QThread::finished, cat, &yaesuUdpAudio::deleteLater);
     connect(cat, &yaesuUdpCat::initAudio, audio, &yaesuUdpAudio::init);
+    connect(this, SIGNAL(haveSetVolume(quint8)), audio, SLOT(setVolume(quint8)));
+    connect(audio, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(handleNetworkAudioLevels(networkAudioLevels)));
 
     scope = new yaesuUdpScope(localIP,remoteIP,prefs.scopeLANPort);
     scopeThread = new QThread(this);
@@ -290,27 +293,22 @@ void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAdd
     connect(scope, &yaesuUdpScope::haveScopeData, this, &yaesuCommander::haveScopeData);
 
     // This will tell all children what the current session is. Must be set as soon as it's known.
+    // I am not currently aware of any other "global" settings between each port.
     connect(control, &yaesuUdpControl::haveSession, cat, &yaesuUdpCat::setSession);
     connect(control, &yaesuUdpControl::haveSession, audio, &yaesuUdpAudio::setSession);
     connect(control, &yaesuUdpControl::haveSession, scope, &yaesuUdpScope::setSession);
 
+    // This will try to connect to the radio and then start Cat (which will start audio) scope is started if rigcaps supports scope.
     emit initUdpControl();
 
-    //connect(udp, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
 
+    // None of these make any sense for a single radio server.
     //connect(this, SIGNAL(haveChangeLatency(quint16)), udp, SLOT(changeLatency(quint16)));
-    //connect(this, SIGNAL(haveSetVolume(quint8)), udp, SLOT(setVolume(quint8)));
     //connect(udp, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
-    // Connect for errors/alerts
-    //connect(udp, SIGNAL(haveNetworkError(errorType)), this, SLOT(handlePortError(errorType)));
-    //connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(handleStatusUpdate(networkStatus)));
-    //connect(udp, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(handleNetworkAudioLevels(networkAudioLevels)));
     // Other assorted UDP connections
     //connect(udp, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
     //connect(udp, SIGNAL(setRadioUsage(quint8, bool, quint8, QString, QString)), this, SLOT(radioUsage(quint8, bool, quint8, QString, QString)));
     //connect(this, SIGNAL(selectedRadio(quint8)), udp, SLOT(setCurrentRadio(quint8)));
-    //connect(this, SIGNAL(startScope()), udp, SLOT(startScope()));
-
 
     // Run setup common to all rig types
 
@@ -1513,13 +1511,6 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
         val = INT_MIN;
     }
 
-    if (func == funcAfGain && value.isValid() && usingNativeLAN) {
-        // Ignore the AF Gain command, just queue it for processing
-        emit haveSetVolume(static_cast<uchar>(value.toInt()));
-        queue->receiveValue(func,value,false);
-        return;
-    }
-
     // Certain commands are mode specific so we should modify the command here:
     if (func == funcDATAOffMod) {
         modeInfo mi = queue->getCache(funcSelectedMode,0).value.value<modeInfo>();
@@ -1562,6 +1553,16 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
 
     funcType cmd = getCommand(func,payload,val,receiver);
 
+    if (func == funcAfGain && value.isValid() && usingNativeLAN) {
+        // Ignore the AF Gain command, just queue it for processing
+        double val = value.toInt();
+        if (cmd.cmd != funcNone) {
+            val = (255.0/cmd.maxVal) * value.toInt();
+        }
+        emit haveSetVolume(static_cast<uchar>(val));
+        queue->receiveValue(func,value,false);
+        return;
+    }
 
     if (cmd.cmd != funcNone) {
         if (value.isValid())
@@ -1991,72 +1992,4 @@ void yaesuCommander::serialPortError(QSerialPort::SerialPortError err)
         qDebug(logSerial()) << "Serial port error";
         break;
     }
-}
-
-
-void yaesuCommander::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16 latency,quint16 current, bool under, bool over) {
-    status.rxAudioLevel = amplitudePeak;
-    status.rxLatency = latency;
-    status.rxCurrentLatency =   qint32(current);
-    status.rxUnderrun = under;
-    status.rxOverrun = over;
-    audioLevelsRxPeak[(audioLevelsRxPosition)%audioLevelBufferSize] = amplitudePeak;
-    audioLevelsRxRMS[(audioLevelsRxPosition)%audioLevelBufferSize] = amplitudeRMS;
-
-    if((audioLevelsRxPosition)%4 == 0)
-    {
-        // calculate mean and emit signal
-        quint8 meanPeak = findMax(audioLevelsRxPeak);
-        quint8 meanRMS = findMean(audioLevelsRxRMS);
-        networkAudioLevels l;
-        l.haveRxLevels = true;
-        l.rxAudioPeak = meanPeak;
-        l.rxAudioRMS = meanRMS;
-        emit haveNetworkAudioLevels(l);
-    }
-    audioLevelsRxPosition++;
-}
-
-void yaesuCommander::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,quint16 latency, quint16 current, bool under, bool over) {
-    status.txAudioLevel = amplitudePeak;
-    status.txLatency = latency;
-    status.txCurrentLatency = qint32(current);
-    status.txUnderrun = under;
-    status.txOverrun = over;
-    audioLevelsTxPeak[(audioLevelsTxPosition)%audioLevelBufferSize] = amplitudePeak;
-    audioLevelsTxRMS[(audioLevelsTxPosition)%audioLevelBufferSize] = amplitudeRMS;
-
-    if((audioLevelsTxPosition)%4 == 0)
-    {
-        // calculate mean and emit signal
-        quint8 meanPeak = findMax(audioLevelsTxPeak);
-        quint8 meanRMS = findMean(audioLevelsTxRMS);
-        networkAudioLevels l;
-        l.haveTxLevels = true;
-        l.txAudioPeak = meanPeak;
-        l.txAudioRMS = meanRMS;
-        emit haveNetworkAudioLevels(l);
-    }
-    audioLevelsTxPosition++;
-}
-
-quint8 yaesuCommander::findMean(quint8 *data)
-{
-    unsigned int sum=0;
-    for(int p=0; p < audioLevelBufferSize; p++)
-    {
-        sum += data[p];
-    }
-    return sum / audioLevelBufferSize;
-}
-
-quint8 yaesuCommander::findMax(quint8 *data)
-{
-    unsigned int max=0;
-    for(int p=0; p < audioLevelBufferSize; p++)
-    {
-        if(data[p] > max)
-            max = data[p];
-    }
-    return max;
 }

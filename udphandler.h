@@ -67,7 +67,7 @@ signals:
 	void haveSetVolume(quint8 value);
 	void haveNetworkStatus(networkStatus);
     void haveNetworkAudioLevels(networkAudioLevels);
-	void haveBaudRate(quint32 baudrate);
+    void haveBaudRate(quint32 baudrate);
 	void requestRadioSelection(QList<radio_cap_packet> radios);
     void setRadioUsage(quint8, bool admin, quint8 busy, QString name, QString mac);
 
@@ -121,8 +121,8 @@ private:
 	quint8 civId = 0;
 	quint16 rxSampleRates = 0;
 	quint16 txSampleRates = 0;
-	networkStatus status;
-	bool splitWf = false;
+    networkStatus status;
+    bool splitWf = false;
 
     quint8 audioLevelsTxPeak[audioLevelBufferSize];
     quint8 audioLevelsRxPeak[audioLevelBufferSize];

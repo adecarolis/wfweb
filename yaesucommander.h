@@ -64,10 +64,6 @@ public slots:
 
 
     void parseData(QByteArray dataInput);
-
-    void getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,quint16 latency, quint16 current, bool under, bool over);
-    void getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16 latency,quint16 current, bool under, bool over);
-
     void haveScopeData(QByteArray d);
     void dataForRig(QByteArray data);
 
@@ -127,20 +123,6 @@ private:
 
     bool aiModeEnabled=false;
     ushort scopeSplit=0;
-
-    networkStatus status;
-
-    quint8 audioLevelsTxPeak[audioLevelBufferSize];
-    quint8 audioLevelsRxPeak[audioLevelBufferSize];
-
-    quint8 audioLevelsTxRMS[audioLevelBufferSize];
-    quint8 audioLevelsRxRMS[audioLevelBufferSize];
-
-    quint8 audioLevelsTxPosition = 0;
-    quint8 audioLevelsRxPosition = 0;
-
-    quint8 findMean(quint8 *d);
-    quint8 findMax(quint8 *d);
 
     genericType scopeMode;
     centerSpanData scopeSpan;

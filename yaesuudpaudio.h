@@ -33,6 +33,7 @@
 #include "udpaudio.h"
 #include "yaesuudpbase.h"
 
+#define audioLevelBufferSize (4)
 
 class yaesuUdpAudio: public yaesuUdpBase
 {
@@ -49,6 +50,9 @@ public slots:
 
 private slots:
     void sendHeartbeat();
+    void setVolume(quint8 vol);
+    void getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
+    void getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
 
 signals:
     void haveAudioData(audioPacket data);
@@ -59,8 +63,7 @@ signals:
 
     void haveChangeLatency(quint16 value);
     void haveSetVolume(quint8 value);
-    void haveRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
-    void haveTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
+    void haveNetworkAudioLevels(networkAudioLevels);
 
 private:
 
@@ -82,6 +85,18 @@ private:
 
     audioHandler* txaudio = Q_NULLPTR;
     QThread* txAudioThread = Q_NULLPTR;
+
+    quint8 audioLevelsTxPeak[audioLevelBufferSize];
+    quint8 audioLevelsRxPeak[audioLevelBufferSize];
+
+    quint8 audioLevelsTxRMS[audioLevelBufferSize];
+    quint8 audioLevelsRxRMS[audioLevelBufferSize];
+
+    quint8 audioLevelsTxPosition = 0;
+    quint8 audioLevelsRxPosition = 0;
+    quint8 findMean(quint8 *d);
+    quint8 findMax(quint8 *d);
+    networkStatus status;
 
 
 };
