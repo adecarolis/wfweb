@@ -75,6 +75,7 @@ void yaesuUdpAudio::init()
     else
     {
         qCritical(logAudio()) << "Unsupported Receive Audio Handler selected!";
+        return;
     }
 
     rxAudioThread = new QThread(this);
@@ -93,6 +94,43 @@ void yaesuUdpAudio::init()
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
     emit setupRxAudio(rxSetup);
+
+    if (txSetup.type == qtAudio) {
+        txaudio = new audioHandler();
+    }
+    else if (txSetup.type == portAudio) {
+        txaudio = new paHandler();
+    }
+    else if (txSetup.type == rtAudio) {
+        txaudio = new rtHandler();
+    }
+#ifndef BUILD_WFSERVER
+    else if (txSetup.type == tciAudio) {
+        txaudio = new tciAudioHandler();
+    }
+#endif
+    else
+    {
+        qCritical(logAudio()) << "Unsupported Transmit Audio Handler selected!";
+        return;
+    }
+
+    txAudioThread = new QThread(this);
+    rxAudioThread->setObjectName("txAudio()");
+
+    txaudio->moveToThread(txAudioThread);
+
+    txAudioThread->start(QThread::TimeCriticalPriority);
+
+    connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
+    connect(txaudio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+    connect(txaudio, SIGNAL(haveLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, quint16, bool, bool)));
+
+    connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
+    emit setupTxAudio(txSetup);
+
+
+
 
     qInfo(logUdp()) << "Sending connect packet";
     yaesuUdpBase::init();
@@ -284,4 +322,39 @@ quint8 yaesuUdpAudio::findMax(quint8 *data)
             max = data[p];
     }
     return max;
+}
+
+
+void yaesuUdpAudio::receiveAudioData(audioPacket audio) {
+    // I really can't see how this could be possible but a quick sanity check!
+    if (txaudio == Q_NULLPTR) {
+        return;
+    }
+    if (audio.data.length() > 0) {
+        int len = 0;
+
+        while (len < audio.data.length()) {
+            QByteArray partial = audio.data.mid(len, this->audioSize);
+            yaesuC2R_AudioData d2;
+            memset(&d2,0,sizeof(d2));
+            d2.hdr.device=UsbAudio;
+            d2.hdr.msgtype=C2R_Data;
+            d2.session = session;
+            d2.data.channels = this->audioChannels;
+            d2.data.format=this->audioCodec; // MuLaw; //ShortLE;
+            d2.data.seqNum = txPacketId++;
+            d2.data.playbackLatency=this->rxSetup.latency*10;
+            d2.data.recordLatency=this->txSetup.latency*10;
+            d2.data.playbackVol=100;
+            d2.data.recordVol=100;
+            d2.data.sampleRate=this->rxSetup.sampleRate;
+            d2.data.resendMode = 0x01;
+            d2.data.pcmDataLen = partial.size();
+            d2.hdr.len=sizeof(d2) - sizeof(d2.hdr) - sizeof(d2.data.pcmData) + d2.data.pcmDataLen;
+            memcpy(d2.data.pcmData,partial.constData(),partial.size());
+            len = len + partial.length();
+            outgoing((quint8*)&d2,sizeof(d2) - sizeof(d2.data.pcmData) + d2.data.pcmDataLen);
+            outgoing((quint8*)&d2,sizeof(d2) - sizeof(d2.data.pcmData) + d2.data.pcmDataLen);
+        }
+    }
 }

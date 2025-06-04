@@ -61,7 +61,7 @@ public slots:
 	void setVolume(quint8 value);
     void getRxLevels(quint16 amplitude, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
     void getTxLevels(quint16 amplitude, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
-	void receiveAudioData(audioPacket audio);
+    void receiveAudioData(audioPacket audio);
 
 
 private:

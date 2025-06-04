@@ -231,6 +231,7 @@ void icomUdpAudio::startAudio() {
     else
     {
         qCritical(logAudio()) << "Unsupported Receive Audio Handler selected!";
+        return;
     }
 
     rxAudioThread = new QThread(this);
@@ -275,6 +276,7 @@ void icomUdpAudio::startAudio() {
         else
         {
             qCritical(logAudio()) << "Unsupported Transmit Audio Handler selected!";
+            return;
         }
 
         txAudioThread = new QThread(this);
