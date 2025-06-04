@@ -139,10 +139,17 @@ void yaesuCommander::haveScopeData(QByteArray in)
         return;
     }
 
-    ft710_spi_data_t d = (ft710_spi_data_t)in.data();
+    yaesu_scope_data_t d = (yaesu_scope_data_t)in.data();
 
     for (unsigned int i=0; i< sizeof(d->wf1);i++) {
         d->wf1[i] = ~d->wf1[i];
+    }
+
+    if (rigCaps.numReceiver > 1)
+    {
+        for (unsigned int i=0; i< sizeof(d->wf2);i++) {
+            d->wf2[i] = ~d->wf2[i];
+        }
     }
 
     QByteArray data = QByteArray((char*)d->data,sizeof(d->data));

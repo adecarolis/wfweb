@@ -439,7 +439,7 @@ typedef union streamdeck_lcd_header {
     char packet[16];
 } *streamdeck_lcd_header_t;
 
-typedef union ft710_spi_data {
+typedef union yaesu_scope_data {
     struct {
         quint8 wf1[850];
         quint8 wf2[850];
@@ -453,7 +453,7 @@ typedef union ft710_spi_data {
     };
     quint8 packet[4096];
 
-} *ft710_spi_data_t;
+} *yaesu_scope_data_t;
 
 typedef union rtp_header
 {

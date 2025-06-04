@@ -149,7 +149,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<centerSpanData>();
     qRegisterMetaType<bandStackType>();
     qRegisterMetaType<widthsType>();
-    qRegisterMetaType<ft710_spi_data>();
+    qRegisterMetaType<yaesu_scope_data>();
     qRegisterMetaType<rigInfo>();
     qRegisterMetaType<lpfhpf>();
 

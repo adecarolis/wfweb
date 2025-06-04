@@ -271,7 +271,6 @@ void icomUdpHandler::dataReceived()
                     // We are only really interested in audio timeDifference.
                     status.timeDifference = audio->getTimeDifference();
                     emit haveNetworkStatus(status);
-
                 }
                 break;
             }

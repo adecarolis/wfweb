@@ -359,7 +359,7 @@ Q_DECLARE_METATYPE(bandType)
 Q_DECLARE_METATYPE(bandStackType)
 Q_DECLARE_METATYPE(widthsType)
 Q_DECLARE_METATYPE(centerSpanData)
-Q_DECLARE_METATYPE(ft710_spi_data)
+Q_DECLARE_METATYPE(yaesu_scope_data)
 
 
 
