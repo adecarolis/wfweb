@@ -429,7 +429,7 @@ void audioHandler::stateChanged(QAudio::State state)
 	}
         break;
 	}
-    qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "state:" << state;
+    //qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "state:" << state;
 }
 
 void audioHandler::clearUnderrun()
