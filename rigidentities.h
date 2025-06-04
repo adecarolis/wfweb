@@ -10,7 +10,7 @@
 
 #include "freqmemory.h"
 #include "packettypes.h"
-#include "udpbase.h"
+#include "icomudpbase.h"
 
 // Credit for parts of CIV list:
 // http://www.docksideradio.com/Icom%20Radio%20Hex%20Addresses.htm

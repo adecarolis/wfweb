@@ -1,10 +1,10 @@
 // Copyright 2020-2024 Phil Taylor M0VSE
 // This code is heavily based on "Kappanhang" by HA2NON, ES1AKOS and W6EL!
 
-#include "udphandler.h"
+#include "icomudphandler.h"
 #include "logcategories.h"
 
-udpHandler::udpHandler(udpPreferences prefs, audioSetup rx, audioSetup tx) :
+icomUdpHandler::icomUdpHandler(udpPreferences prefs, audioSetup rx, audioSetup tx) :
     controlPort(prefs.controlLANPort),
     civPort(0),
     audioPort(0),
@@ -26,7 +26,7 @@ udpHandler::udpHandler(udpPreferences prefs, audioSetup rx, audioSetup tx) :
     {
         splitWf = false;
     }
-    qInfo(logUdp()) << "Starting udpHandler user:" << username << " rx latency:" << rxSetup.latency  << " tx latency:" << txSetup.latency << " rx sample rate: " << rxSetup.sampleRate <<
+    qInfo(logUdp()) << "Starting icomUdpHandler user:" << username << " rx latency:" << rxSetup.latency  << " tx latency:" << txSetup.latency << " rx sample rate: " << rxSetup.sampleRate <<
         " rx codec: " << rxSetup.codec << " tx sample rate: " << txSetup.sampleRate << " tx codec: " << txSetup.codec;
 
     // Try to set the IP address, if it is a hostname then perform a DNS lookup.
@@ -61,12 +61,12 @@ udpHandler::udpHandler(udpPreferences prefs, audioSetup rx, audioSetup tx) :
 
 }
 
-void udpHandler::init()
+void icomUdpHandler::init()
 {
-    udpBase::init(0); // Perform UDP socket initialization.
+    icomUdpBase::init(0); // Perform UDP socket initialization.
 
     // Connect socket to my dataReceived function.
-    QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpHandler::dataReceived);
+    QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &icomUdpHandler::dataReceived);
 
     /*
         Connect various timers
@@ -76,16 +76,16 @@ void udpHandler::init()
     pingTimer = new QTimer(this);
     idleTimer = new QTimer(this);
 
-    connect(tokenTimer, &QTimer::timeout, this, std::bind(&udpHandler::sendToken, this, 0x05));
-    connect(areYouThereTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, false, 0x03, 0));
-    connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
-    connect(idleTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, true, 0, 0));
+    connect(tokenTimer, &QTimer::timeout, this, std::bind(&icomUdpHandler::sendToken, this, 0x05));
+    connect(areYouThereTimer, &QTimer::timeout, this, std::bind(&icomUdpBase::sendControl, this, false, 0x03, 0));
+    connect(pingTimer, &QTimer::timeout, this, &icomUdpBase::sendPing);
+    connect(idleTimer, &QTimer::timeout, this, std::bind(&icomUdpBase::sendControl, this, true, 0, 0));
 
     // Start sending are you there packets - will be stopped once "I am here" received
     areYouThereTimer->start(AREYOUTHERE_PERIOD);
 }
 
-udpHandler::~udpHandler()
+icomUdpHandler::~icomUdpHandler()
 {
     if (streamOpened) {
         if (audio != Q_NULLPTR) {
@@ -104,27 +104,27 @@ udpHandler::~udpHandler()
 }
 
 
-void udpHandler::changeLatency(quint16 value)
+void icomUdpHandler::changeLatency(quint16 value)
 {
     emit haveChangeLatency(value);
 }
 
-void udpHandler::setVolume(quint8 value)
+void icomUdpHandler::setVolume(quint8 value)
 {
     emit haveSetVolume(value);
 }
 
-void udpHandler::receiveFromCivStream(QByteArray data)
+void icomUdpHandler::receiveFromCivStream(QByteArray data)
 {
     emit haveDataFromPort(data);
 }
 
-void udpHandler::receiveAudioData(const audioPacket &data)
+void icomUdpHandler::receiveAudioData(const audioPacket &data)
 {
     emit haveAudioData(data);
 }
 
-void udpHandler::receiveDataFromUserToRig(QByteArray data)
+void icomUdpHandler::receiveDataFromUserToRig(QByteArray data)
 {
     if (civ != Q_NULLPTR)
     {
@@ -132,7 +132,7 @@ void udpHandler::receiveDataFromUserToRig(QByteArray data)
     }
 }
 
-void udpHandler::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16 latency,quint16 current, bool under, bool over) {
+void icomUdpHandler::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16 latency,quint16 current, bool under, bool over) {
     status.rxAudioLevel = amplitudePeak;
     status.rxLatency = latency;
     status.rxCurrentLatency =   qint32(current);
@@ -155,7 +155,7 @@ void udpHandler::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16
     audioLevelsRxPosition++;
 }
 
-void udpHandler::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,quint16 latency, quint16 current, bool under, bool over) {
+void icomUdpHandler::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,quint16 latency, quint16 current, bool under, bool over) {
     status.txAudioLevel = amplitudePeak;
     status.txLatency = latency;
     status.txCurrentLatency = qint32(current);
@@ -178,7 +178,7 @@ void udpHandler::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,quint1
     audioLevelsTxPosition++;
 }
 
-quint8 udpHandler::findMean(quint8 *data)
+quint8 icomUdpHandler::findMean(quint8 *data)
 {
     unsigned int sum=0;
     for(int p=0; p < audioLevelBufferSize; p++)
@@ -188,7 +188,7 @@ quint8 udpHandler::findMean(quint8 *data)
     return sum / audioLevelBufferSize;
 }
 
-quint8 udpHandler::findMax(quint8 *data)
+quint8 icomUdpHandler::findMax(quint8 *data)
 {
     unsigned int max=0;
     for(int p=0; p < audioLevelBufferSize; p++)
@@ -199,7 +199,7 @@ quint8 udpHandler::findMax(quint8 *data)
     return max;
 }
 
-void udpHandler::dataReceived()
+void icomUdpHandler::dataReceived()
 {
     while (udp->hasPendingDatagrams()) {
         lastReceived = QTime::currentTime();
@@ -342,7 +342,7 @@ void udpHandler::dataReceived()
                         audioPort = qFromBigEndian(in->audioport);
                         if (!streamOpened) {
 
-                            civ = new udpCivData(localIP, radioIP, civPort, splitWf, civLocalPort);
+                            civ = new icomUdpCivData(localIP, radioIP, civPort, splitWf, civLocalPort);
                             QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
 
                             // TX is not supported
@@ -353,7 +353,7 @@ void udpHandler::dataReceived()
                             streamOpened = true;
                         }
                         if (audio == Q_NULLPTR) {
-                            audio = new udpAudio(localIP, radioIP, audioPort, audioLocalPort, rxSetup, txSetup);
+                            audio = new icomUdpAudio(localIP, radioIP, audioPort, audioLocalPort, rxSetup, txSetup);
 
                             QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
                             QObject::connect(this, SIGNAL(haveChangeLatency(quint16)), audio, SLOT(changeLatency(quint16)));
@@ -518,7 +518,7 @@ void udpHandler::dataReceived()
             }
     
         }
-        udpBase::dataReceived(r); // Call parent function to process the rest.
+        icomUdpBase::dataReceived(r); // Call parent function to process the rest.
         r.clear();
         datagram.clear();
     }
@@ -526,7 +526,7 @@ void udpHandler::dataReceived()
 }
 
 
-void udpHandler::setCurrentRadio(quint8 radio) {
+void icomUdpHandler::setCurrentRadio(quint8 radio) {
 
     // If we are currently connected to a different radio, disconnect first
     if (audio != Q_NULLPTR) {
@@ -579,7 +579,7 @@ void udpHandler::setCurrentRadio(quint8 radio) {
 }
 
 
-void udpHandler::sendRequestStream()
+void icomUdpHandler::sendRequestStream()
 {
 
     QByteArray usernameEncoded;
@@ -622,7 +622,7 @@ void udpHandler::sendRequestStream()
     return;
 }
 
-void udpHandler::sendAreYouThere()
+void icomUdpHandler::sendAreYouThere()
 {
     if (areYouThereCounter == 20)
     {
@@ -632,10 +632,10 @@ void udpHandler::sendAreYouThere()
     qInfo(logUdp()) << this->metaObject()->className() << ": Sending Are You There...";
 
     areYouThereCounter++;
-    udpBase::sendControl(false,0x03,0x00);
+    icomUdpBase::sendControl(false,0x03,0x00);
 }
 
-void udpHandler::sendLogin() // Only used on control stream.
+void icomUdpHandler::sendLogin() // Only used on control stream.
 {
 
     qInfo(logUdp()) << this->metaObject()->className() << ": Sending login packet";
@@ -666,7 +666,7 @@ void udpHandler::sendLogin() // Only used on control stream.
     return;
 }
 
-void udpHandler::sendToken(uint8_t magic)
+void icomUdpHandler::sendToken(uint8_t magic)
 {
     qDebug(logUdp()) << this->metaObject()->className() << "Sending Token request: " << magic;
 

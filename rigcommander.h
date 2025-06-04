@@ -10,7 +10,7 @@
 #include "wfviewtypes.h"
 #include "commhandler.h"
 #include "pttyhandler.h"
-#include "udphandler.h"
+#include "icomudphandler.h"
 #include "rigidentities.h"
 #include "repeaterattributes.h"
 #include "freqmemory.h"

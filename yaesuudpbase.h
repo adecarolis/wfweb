@@ -25,7 +25,7 @@
 #include "audioconverter.h"
 #include "packettypes.h"
 #include "wfviewtypes.h"
-#include "udpbase.h"
+#include "icomudpbase.h"
 
 class yaesuUdpBase : public QObject
 {

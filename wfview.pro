@@ -320,6 +320,10 @@ SOURCES += main.cpp\
     ft4222handler.cpp \
     icomcommander.cpp \
     icomserver.cpp \
+    icomudpaudio.cpp \
+    icomudpbase.cpp \
+    icomudpcivdata.cpp \
+    icomudphandler.cpp \
     kenwoodcommander.cpp \
     kenwoodserver.cpp \
     loggingwindow.cpp \
@@ -338,10 +342,6 @@ SOURCES += main.cpp\
     rigserver.cpp \
     freqmemory.cpp \
     rigidentities.cpp \
-    udpbase.cpp \
-    udphandler.cpp \
-    udpcivdata.cpp \
-    udpaudio.cpp \
     logcategories.cpp \
     pahandler.cpp \
     rthandler.cpp \
@@ -387,6 +387,10 @@ HEADERS  += wfmain.h \
     ft4222handler.h \
     icomcommander.h \
     icomserver.h \
+    icomudpaudio.h \
+    icomudpbase.h \
+    icomudpcivdata.h \
+    icomudphandler.h \
     kenwoodcommander.h \
     kenwoodserver.h \
     loggingwindow.h \
@@ -406,10 +410,6 @@ HEADERS  += wfmain.h \
     tablewidget.h \
     tciaudiohandler.h \
     tciserver.h \
-    udpbase.h \
-    udphandler.h \
-    udpcivdata.h \
-    udpaudio.h \
     logcategories.h \
     pahandler.h \
     rthandler.h \

@@ -22,7 +22,7 @@
 #include "rigserver.h"
 #include "packettypes.h"
 #include "rigidentities.h"
-#include "udphandler.h"
+#include "icomudphandler.h"
 #include "audiohandler.h"
 #include "rigcommander.h"
 
@@ -137,7 +137,7 @@ private:
 
 	QUdpSocket* udpControl = Q_NULLPTR;
 	QUdpSocket* udpCiv = Q_NULLPTR;
-	QUdpSocket* udpAudio = Q_NULLPTR;
+	QUdpSocket* icomUdpAudio = Q_NULLPTR;
 	QHostAddress localIP;
 	quint8 macAddress[6];
 	

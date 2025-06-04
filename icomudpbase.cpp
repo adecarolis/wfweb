@@ -1,7 +1,7 @@
-#include "udpbase.h"
+#include "icomudpbase.h"
 #include "logcategories.h"
 
-void udpBase::init(quint16 lport)
+void icomUdpBase::init(quint16 lport)
 {
     //timeStarted.start();
     udp = new QUdpSocket(this);
@@ -18,12 +18,12 @@ void udpBase::init(quint16 lport)
         myId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (localPort & 0xffff);
 
         retransmitTimer = new QTimer(this);
-        connect(retransmitTimer, &QTimer::timeout, this, &udpBase::sendRetransmitRequest);
+        connect(retransmitTimer, &QTimer::timeout, this, &icomUdpBase::sendRetransmitRequest);
         retransmitTimer->start(RETRANSMIT_PERIOD);
     }
 }
 
-udpBase::~udpBase()
+icomUdpBase::~icomUdpBase()
 {
     qInfo(logUdp()) << "Closing UDP stream :" << radioIP.toString() << ":" << port;
     if (udp != Q_NULLPTR) {
@@ -35,7 +35,7 @@ udpBase::~udpBase()
 
 // Base class!
 
-void udpBase::dataReceived(QByteArray r)
+void icomUdpBase::dataReceived(QByteArray r)
 {
     if (r.length() < 0x10)
     {
@@ -265,7 +265,7 @@ void udpBase::dataReceived(QByteArray r)
 }
 
 
-void udpBase::sendRetransmitRequest()
+void icomUdpBase::sendRetransmitRequest()
 {
     // Find all gaps in received packets and then send requests for them.
     // This will run every 100ms so out-of-sequence packets will not trigger a retransmit request.
@@ -349,7 +349,7 @@ void udpBase::sendRetransmitRequest()
 
 
 // Used to send idle and other "control" style messages
-void udpBase::sendControl(bool tracked = true, quint8 type = 0, quint16 seq = 0)
+void icomUdpBase::sendControl(bool tracked = true, quint8 type = 0, quint16 seq = 0)
 {
     control_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -371,7 +371,7 @@ void udpBase::sendControl(bool tracked = true, quint8 type = 0, quint16 seq = 0)
 }
 
 // Send periodic ping packets
-void udpBase::sendPing()
+void icomUdpBase::sendPing()
 {
     ping_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -390,7 +390,7 @@ void udpBase::sendPing()
 }
 
 
-void udpBase::sendTrackedPacket(QByteArray d)
+void icomUdpBase::sendTrackedPacket(QByteArray d)
 {
     // As the radio can request retransmission of these packets, store them in a buffer
     d[6] = sendSeq & 0xff;
@@ -444,7 +444,7 @@ void udpBase::sendTrackedPacket(QByteArray d)
 /// <summary>
 /// Once a packet has reached PURGE_SECONDS old (currently 10) then it is not likely to be any use.
 /// </summary>
-void udpBase::purgeOldEntries()
+void icomUdpBase::purgeOldEntries()
 {
     // Erase old entries from the tx packet buffer
     if (txBufferMutex.tryLock(100))
@@ -504,12 +504,12 @@ void udpBase::purgeOldEntries()
     }
 }
 
-void udpBase::printHex(const QByteArray& pdata)
+void icomUdpBase::printHex(const QByteArray& pdata)
 {
     printHex(pdata, false, true);
 }
 
-void udpBase::printHex(const QByteArray& pdata, bool printVert, bool printHoriz)
+void icomUdpBase::printHex(const QByteArray& pdata, bool printVert, bool printHoriz)
 {
     qDebug(logUdp()) << "---- Begin hex dump -----:";
     QString sdata("DATA:  ");

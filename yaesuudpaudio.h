@@ -27,9 +27,9 @@
 #include "yaesuudpbase.h"
 
 #include "audiohandler.h"
-#include "udpbase.h"
-#include "udpcivdata.h"
-#include "udpaudio.h"
+#include "icomudpbase.h"
+#include "icomudpcivdata.h"
+#include "icomudpaudio.h"
 #include "yaesuudpbase.h"
 
 #define audioLevelBufferSize (4)

@@ -1,10 +1,10 @@
-#include "udpaudio.h"
+#include "icomudpaudio.h"
 #include "logcategories.h"
 
 // Audio stream
-udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 lport, audioSetup rxSetup, audioSetup txSetup)
+icomUdpAudio::icomUdpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 lport, audioSetup rxSetup, audioSetup txSetup)
 {
-    qInfo(logUdp()) << "Starting udpAudio";
+    qInfo(logUdp()) << "Starting icomUdpAudio";
     this->localIP = local;
     this->port = audioPort;
     this->radioIP = ip;
@@ -17,20 +17,20 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     init(lport); // Perform connection
 
-    QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpAudio::dataReceived);
+    QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &icomUdpAudio::dataReceived);
  
     startAudio();
 
     watchdogTimer = new QTimer(this);
-    connect(watchdogTimer, &QTimer::timeout, this, &udpAudio::watchdog);
+    connect(watchdogTimer, &QTimer::timeout, this, &icomUdpAudio::watchdog);
     watchdogTimer->start(WATCHDOG_PERIOD);
 
     areYouThereTimer = new QTimer(this);
-    connect(areYouThereTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, false, 0x03, 0));
+    connect(areYouThereTimer, &QTimer::timeout, this, std::bind(&icomUdpBase::sendControl, this, false, 0x03, 0));
     areYouThereTimer->start(AREYOUTHERE_PERIOD);
 }
 
-udpAudio::~udpAudio()
+icomUdpAudio::~icomUdpAudio()
 {
     if (rxAudioThread != Q_NULLPTR) {
         qDebug(logUdp()) << "Stopping rxaudio thread";
@@ -43,10 +43,10 @@ udpAudio::~udpAudio()
         txAudioThread->quit();
         txAudioThread->wait();
     }
-    qDebug(logUdp()) << "udpHandler successfully closed";
+    qDebug(logUdp()) << "icomUdpHandler successfully closed";
 }
 
-void udpAudio::watchdog()
+void icomUdpAudio::watchdog()
 {
     static bool alerted = false;
     if (lastReceived.msecsTo(QTime::currentTime()) > 30000)
@@ -81,7 +81,7 @@ void udpAudio::watchdog()
 }
 
 
-void udpAudio::sendTxAudio()
+void icomUdpAudio::sendTxAudio()
 {
     if (txaudio == Q_NULLPTR) {
         return;
@@ -89,7 +89,7 @@ void udpAudio::sendTxAudio()
 
 }
 
-void udpAudio::receiveAudioData(audioPacket audio) {
+void icomUdpAudio::receiveAudioData(audioPacket audio) {
     // I really can't see how this could be possible but a quick sanity check!
     if (txaudio == Q_NULLPTR) {
         return;
@@ -122,26 +122,26 @@ void udpAudio::receiveAudioData(audioPacket audio) {
     }
 }
 
-void udpAudio::changeLatency(quint16 value)
+void icomUdpAudio::changeLatency(quint16 value)
 {
     emit haveChangeLatency(value);
 }
 
-void udpAudio::setVolume(quint8 value)
+void icomUdpAudio::setVolume(quint8 value)
 {
     emit haveSetVolume(value);
 }
 
-void udpAudio::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over) {
+void icomUdpAudio::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over) {
 
     emit haveRxLevels(amplitudePeak, amplitudeRMS, latency, current, under, over);
 }
 
-void udpAudio::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over) {
+void icomUdpAudio::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over) {
     emit haveTxLevels(amplitudePeak, amplitudeRMS, latency, current, under, over);
 }
 
-void udpAudio::dataReceived()
+void icomUdpAudio::dataReceived()
 {
 
     while (udp->hasPendingDatagrams()) {
@@ -151,7 +151,7 @@ void udpAudio::dataReceived()
 
         switch (r.length())
         {
-        case (16): // Response to control packet handled in udpBase
+        case (16): // Response to control packet handled in icomUdpBase
         {
             //control_packet_t in = (control_packet_t)r.constData();
             break;
@@ -206,13 +206,13 @@ void udpAudio::dataReceived()
         }
         }
 
-        udpBase::dataReceived(r); // Call parent function to process the rest.
+        icomUdpBase::dataReceived(r); // Call parent function to process the rest.
         r.clear();
         datagram.clear();
     }
 }
 
-void udpAudio::startAudio() {
+void icomUdpAudio::startAudio() {
 
     if (rxSetup.type == qtAudio) {
         rxaudio = new audioHandler();
@@ -254,7 +254,7 @@ void udpAudio::startAudio() {
     sendControl(false, 0x03, 0x00); // First connect packet
 
     pingTimer = new QTimer(this);
-    connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
+    connect(pingTimer, &QTimer::timeout, this, &icomUdpBase::sendPing);
     pingTimer->start(PING_PERIOD); // send ping packets every 100ms
 
     if (enableTx) {

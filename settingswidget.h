@@ -17,7 +17,7 @@
 #include "logcategories.h"
 #include "prefs.h"
 #include "colorprefs.h"
-#include "udpbase.h" // for udp preferences
+#include "icomudpbase.h" // for udp preferences
 #include "cluster.h" // for clusterSettings
 #include "rigidentities.h" // for rigInputs
 #include "rigserver.h" // for SERVERCONFIG

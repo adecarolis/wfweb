@@ -1,6 +1,6 @@
 // Class for all (pseudo) serial communications
-#ifndef UDPCIVDATA_H
-#define UDPCIVDATA_H
+#ifndef ICOMUDPCIVDATA_H
+#define ICOMUDPCIVDATA_H
 
 #include <QObject>
 #include <QUdpSocket>
@@ -25,15 +25,15 @@
 
 #include "packettypes.h"
 
-#include "udpbase.h"
+#include "icomudpbase.h"
 
-class udpCivData : public udpBase
+class icomUdpCivData : public icomUdpBase
 {
 	Q_OBJECT
 
 public:
-	udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort, bool splitWf, quint16 lport);
-	~udpCivData();
+	icomUdpCivData(QHostAddress local, QHostAddress ip, quint16 civPort, bool splitWf, quint16 lport);
+	~icomUdpCivData();
 	QMutex serialmutex;
 
 signals:

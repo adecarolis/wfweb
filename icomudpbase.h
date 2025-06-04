@@ -1,5 +1,5 @@
-#ifndef UDPBASE_H
-#define UDPBASE_H
+#ifndef ICOMUDPBASE_H
+#define ICOMUDPBASE_H
 
 #include <QObject>
 #include <QUdpSocket>
@@ -72,12 +72,12 @@ struct networkStatus {
 
 
 // Parent class that contains all common items.
-class udpBase : public QObject
+class icomUdpBase : public QObject
 {
 
 
 public:
-	~udpBase();
+    ~icomUdpBase();
 
 	void init(quint16 local);
 

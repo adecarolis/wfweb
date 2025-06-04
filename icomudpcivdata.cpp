@@ -1,18 +1,18 @@
-#include "udpcivdata.h"
+#include "icomudpcivdata.h"
 #include "logcategories.h"
 
 // Class that manages all Civ Data to/from the rig
-udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort, bool splitWf, quint16 localPort = 0)
+icomUdpCivData::icomUdpCivData(QHostAddress local, QHostAddress ip, quint16 civPort, bool splitWf, quint16 localPort = 0)
 {
-    qInfo(logUdp()) << "Starting udpCivData";
+    qInfo(logUdp()) << "Starting icomUdpCivData";
     localIP = local;
     port = civPort;
     radioIP = ip;
     splitWaterfall = splitWf;
 
-    udpBase::init(localPort); // Perform connection
+    icomUdpBase::init(localPort); // Perform connection
 
-    QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpCivData::dataReceived);
+    QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &icomUdpCivData::dataReceived);
 
     sendControl(false, 0x03, 0x00); // First connect packet
 
@@ -25,11 +25,11 @@ udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort, boo
     startCivDataTimer = new QTimer(this);
     watchdogTimer = new QTimer(this);
 
-    connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
-    connect(watchdogTimer, &QTimer::timeout, this, &udpCivData::watchdog);
-    connect(idleTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, true, 0, 0));
-    connect(startCivDataTimer, &QTimer::timeout, this, std::bind(&udpCivData::sendOpenClose, this, false));
-    connect(areYouThereTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, false, 0x03, 0));
+    connect(pingTimer, &QTimer::timeout, this, &icomUdpBase::sendPing);
+    connect(watchdogTimer, &QTimer::timeout, this, &icomUdpCivData::watchdog);
+    connect(idleTimer, &QTimer::timeout, this, std::bind(&icomUdpBase::sendControl, this, true, 0, 0));
+    connect(startCivDataTimer, &QTimer::timeout, this, std::bind(&icomUdpCivData::sendOpenClose, this, false));
+    connect(areYouThereTimer, &QTimer::timeout, this, std::bind(&icomUdpBase::sendControl, this, false, 0x03, 0));
     watchdogTimer->start(WATCHDOG_PERIOD);
     // Start sending are you there packets - will be stopped once "I am here" received
     // send ping packets every 100 ms (maybe change to less frequent?)
@@ -39,12 +39,12 @@ udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort, boo
     areYouThereTimer->start(AREYOUTHERE_PERIOD);
 }
 
-udpCivData::~udpCivData()
+icomUdpCivData::~icomUdpCivData()
 {
     sendOpenClose(true);
 }
 
-void udpCivData::watchdog()
+void icomUdpCivData::watchdog()
 {
     static bool alerted = false;
     if (lastReceived.msecsTo(QTime::currentTime()) > 2000)
@@ -64,7 +64,7 @@ void udpCivData::watchdog()
     }
 }
 
-void udpCivData::send(QByteArray d)
+void icomUdpCivData::send(QByteArray d)
 {
     //qInfo(logUdp()) << "Sending: (" << d.length() << ") " << d;
     data_packet p;
@@ -84,7 +84,7 @@ void udpCivData::send(QByteArray d)
 }
 
 
-void udpCivData::sendOpenClose(bool close)
+void icomUdpCivData::sendOpenClose(bool close)
 {
     uint8_t magic = 0x04;
 
@@ -110,7 +110,7 @@ void udpCivData::sendOpenClose(bool close)
 
 
 
-void udpCivData::dataReceived()
+void icomUdpCivData::dataReceived()
 {
     while (udp->hasPendingDatagrams())
     {
@@ -239,7 +239,7 @@ void udpCivData::dataReceived()
             break;
         }
         }
-        udpBase::dataReceived(r); // Call parent function to process the rest.
+        icomUdpBase::dataReceived(r); // Call parent function to process the rest.
 
         r.clear();
         datagram.clear();

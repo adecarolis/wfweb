@@ -80,9 +80,9 @@ void icomServer::init()
         QUdpSocket::connect(udpCiv, &QUdpSocket::readyRead, this, &icomServer::civReceived);
     }
 
-    udpAudio = new QUdpSocket(this);
+    icomUdpAudio = new QUdpSocket(this);
 
-    if (!udpAudio->bind(config->audioPort))
+    if (!icomUdpAudio->bind(config->audioPort))
     {
         // We couldn't bind to the selected port.
         qCritical(logUdp()) << "**** Unable to bind to UDP Audio port" << config->audioPort << "Cannot continue! ****";
@@ -91,7 +91,7 @@ void icomServer::init()
     else
     {
         qInfo(logRigServer()) << "Server Bound Audio to: " << config->audioPort;
-        QUdpSocket::connect(udpAudio, &QUdpSocket::readyRead, this, &icomServer::audioReceived);
+        QUdpSocket::connect(icomUdpAudio, &QUdpSocket::readyRead, this, &icomServer::audioReceived);
     }
 
     wdTimer = new QTimer(this);
@@ -127,9 +127,9 @@ icomServer::~icomServer()
         udpCiv->close();
         delete udpCiv;
     }
-    if (udpAudio != Q_NULLPTR) {
-        udpAudio->close();
-        delete udpAudio;
+    if (icomUdpAudio != Q_NULLPTR) {
+        icomUdpAudio->close();
+        delete icomUdpAudio;
     }
     status.message = QString("");
     emit haveNetworkStatus(status);
@@ -663,8 +663,8 @@ void icomServer::civReceived()
 
 void icomServer::audioReceived()
 {
-    while (udpAudio->hasPendingDatagrams()) {
-        QNetworkDatagram datagram = udpAudio->receiveDatagram();
+    while (icomUdpAudio->hasPendingDatagrams()) {
+        QNetworkDatagram datagram = icomUdpAudio->receiveDatagram();
         QByteArray r = datagram.data();
         CLIENT* current = Q_NULLPTR;
 
@@ -713,7 +713,7 @@ void icomServer::audioReceived()
             current->port = datagram.senderPort();
             current->myId = audioId;
             current->remoteId = qFromLittleEndian<quint32>(r.mid(8, 4));
-            current->socket = udpAudio;
+            current->socket = icomUdpAudio;
             current->pingSeq = (quint8)rand() << 8 | (quint8)rand();
 
             current->pingTimer = new QTimer(this);

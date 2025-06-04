@@ -1,5 +1,5 @@
-#ifndef UDPAUDIO_H
-#define UDPAUDIO_H
+#ifndef ICOMUDPAUDIO_H
+#define ICOMUDPAUDIO_H
 
 
 #include <QObject>
@@ -25,7 +25,7 @@
 
 #include "packettypes.h"
 
-#include "udpbase.h"
+#include "icomudpbase.h"
 
 #include "audiohandler.h"
 #include "pahandler.h"
@@ -34,13 +34,13 @@
 
 
 // Class for all audio communications.
-class udpAudio : public udpBase
+class icomUdpAudio : public icomUdpBase
 {
 	Q_OBJECT
 
 public:
-	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 lport, audioSetup rxSetup, audioSetup txSetup);
-	~udpAudio();
+	icomUdpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 lport, audioSetup rxSetup, audioSetup txSetup);
+	~icomUdpAudio();
 
 	int audioLatency = 0;
 

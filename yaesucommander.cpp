@@ -132,7 +132,7 @@ void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAdd
 
 void yaesuCommander::haveScopeData(QByteArray in)
 {
-    // in contains a valid icom data packet.
+    // in contains a valid yaesu data packet.
 
     if (!haveRigCaps)
     {

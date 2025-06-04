@@ -1,5 +1,5 @@
-#ifndef UDPHANDLER_H
-#define UDPHANDLER_H
+#ifndef ICOMUDPHANDLER_H
+#define ICOMUDPHANDLER_H
 
 
 #include <QObject>
@@ -25,25 +25,25 @@
 
 #include "packettypes.h"
 #include "audiohandler.h"
-#include "udpbase.h"
-#include "udpcivdata.h"
-#include "udpaudio.h"
+#include "icomudpbase.h"
+#include "icomudpcivdata.h"
+#include "icomudpaudio.h"
 
 #define audioLevelBufferSize (4)
 
 // Class to handle the connection/disconnection of the radio.
-class udpHandler: public udpBase
+class icomUdpHandler: public icomUdpBase
 {
 	Q_OBJECT
 
 public:
-    udpHandler(udpPreferences prefs, audioSetup rxAudio, audioSetup txAudio);
-    ~udpHandler();
+    icomUdpHandler(udpPreferences prefs, audioSetup rxAudio, audioSetup txAudio);
+    ~icomUdpHandler();
 
 	bool streamOpened = false;
 
-	udpCivData* civ = Q_NULLPTR;
-	udpAudio* audio = Q_NULLPTR;
+	icomUdpCivData* civ = Q_NULLPTR;
+	icomUdpAudio* audio = Q_NULLPTR;
 
 	quint8 numRadios;
 	QList<radio_cap_packet> radios;

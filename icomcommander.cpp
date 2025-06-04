@@ -121,10 +121,10 @@ void icomCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr
         closeComm();
     }
 
-    udp = new udpHandler(prefs,rxSetup,txSetup);
+    udp = new icomUdpHandler(prefs,rxSetup,txSetup);
 
     udpHandlerThread = new QThread(this);
-    udpHandlerThread->setObjectName("udpHandler()");
+    udpHandlerThread->setObjectName("icomUdpHandler()");
 
     udp->moveToThread(udpHandlerThread);
 

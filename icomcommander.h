@@ -101,7 +101,7 @@ private:
     commHandler* comm = Q_NULLPTR;
     pttyHandler* ptty = Q_NULLPTR;
     tcpServer* tcp = Q_NULLPTR;
-    udpHandler* udp=Q_NULLPTR;
+    icomUdpHandler* udp=Q_NULLPTR;
     QThread* udpHandlerThread = Q_NULLPTR;
 
     void determineRigCaps();
