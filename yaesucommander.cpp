@@ -187,8 +187,8 @@ void yaesuCommander::haveScopeData(QByteArray in)
     scope.data = QByteArray((char*)d->wf1,sizeof(d->wf1));
     scope.valid=true;
     scope.receiver=0;
-    scope.startFreq=fa.MHzDouble-(cs.freq/1000000.0);
-    scope.endFreq=fa.MHzDouble+(cs.freq/1000000.0);
+    scope.startFreq=fa.MHzDouble-((cs.freq/2)/1000000.0);
+    scope.endFreq=fa.MHzDouble+((cs.freq/2)/1000000.0);
     scope.mode = mode;
     scope.oor = false;
     scope.fixedEdge = 1;
