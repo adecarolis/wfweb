@@ -110,7 +110,7 @@ void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAdd
     ft4222->start();
 
     connect(port, &QIODevice::readyRead, this, &yaesuCommander::receiveDataFromRig);
-
+    connect(this, &yaesuCommander::setScopePoll, ft4222, &ft4222Handler::setPoll);
 
     if(port->open(QIODevice::ReadWrite))
     {
@@ -196,10 +196,8 @@ void yaesuCommander::haveScopeData(QByteArray in)
     queue->receiveValue(funcScopeWaveData,QVariant::fromValue<scopeData>(scope),0);
     queue->receiveValue(funcSelectedFreq,QVariant::fromValue<freqt>(fa),0);
     queue->receiveValue(funcUnselectedFreq,QVariant::fromValue<freqt>(fb),0);
-    if (!usingLAN())
-    {
-        ft4222->setPoll(quint64(specTime+wfTime+10));
-    }
+    emit setScopePoll(quint64(specTime+wfTime+10));
+
 }
 
 void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
@@ -291,6 +289,7 @@ void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAdd
     connect(scopeThread, &QThread::finished, cat, &yaesuUdpScope::deleteLater);
     connect(this, &yaesuCommander::initScope, scope, &yaesuUdpScope::init);
     connect(scope, &yaesuUdpScope::haveScopeData, this, &yaesuCommander::haveScopeData);
+    connect(this, &yaesuCommander::setScopePoll, scope, &yaesuUdpScope::setPoll);
 
     // This will tell all children what the current session is. Must be set as soon as it's known.
     // I am not currently aware of any other "global" settings between each port.

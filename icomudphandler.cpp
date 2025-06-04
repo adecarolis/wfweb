@@ -268,7 +268,7 @@ void icomUdpHandler::dataReceived()
                         txString = "(no tx)";
                     }
                     status.message = QString("<pre>%1 rx latency: %2 / rtt: %3 ms / loss: %4/%5</pre>").arg(txString).arg(tempLatency).arg(status.networkLatency, 3).arg(status.packetsLost, 3).arg(status.packetsSent, 3);
-                    // We are only really interested in audio timDifference.
+                    // We are only really interested in audio timeDifference.
                     status.timeDifference = audio->getTimeDifference();
                     emit haveNetworkStatus(status);
 

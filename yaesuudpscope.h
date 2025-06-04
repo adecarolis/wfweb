@@ -42,6 +42,7 @@ public:
 
 public slots:
     void incomingUdp(void* buf, size_t bufLen);
+    void setPoll(qint64 tm) { poll = tm; };
 
 private slots:
     void sendHeartbeat();
@@ -57,6 +58,9 @@ private:
     yaesuState state = yaesuStart;
     quint16 catPacketId = 0;
     quint16 rxCatPacketId = 0;
+    quint64 poll = 20;
+    quint64 currentPoll = 20;
+    QElapsedTimer* pollTimer = Q_NULLPTR;
 
 };
 

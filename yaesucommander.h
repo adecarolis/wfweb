@@ -77,6 +77,7 @@ signals:
     void haveNetworkAudioLevels(networkAudioLevels);
     void sendDataToRig(QByteArray data);
     void initScope();
+    void setScopePoll(quint64 poll);
 
 private:
     void commonSetup();

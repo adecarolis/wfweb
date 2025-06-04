@@ -29,7 +29,15 @@ void yaesuUdpScope::incomingUdp(void* buf, size_t bufLen)
         if (bufLen == sizeof(yaesuR2C_ScopeDataFrame))
         {
             yaesuR2C_ScopeDataFrame* r = (yaesuR2C_ScopeDataFrame*)buf;
-            emit haveScopeData(QByteArray((char *)r->data,sizeof(r->data)));
+            if (pollTimer != Q_NULLPTR && pollTimer->hasExpired(currentPoll))
+            {
+                emit haveScopeData(QByteArray((char *)r->data,sizeof(r->data)));
+                pollTimer->start();
+                if (poll > currentPoll+10 || poll < currentPoll-10) {
+                    qDebug(logRig()) << "yaesuUdpScope() polling changed to" << poll << "from" << currentPoll << "ms";
+                    currentPoll = poll;
+                }
+            }
         }
         break;
     default:
@@ -58,5 +66,12 @@ void yaesuUdpScope::sendConnect()
     d1.hdr.len=sizeof(d1)-sizeof(d1.hdr);
     d1.result = session;
     outgoing((quint8*)&d1,sizeof(d1));
+
+    if (pollTimer == Q_NULLPTR)
+    {
+        pollTimer = new QElapsedTimer();
+    }
+    pollTimer->start();
+
 }
 

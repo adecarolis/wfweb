@@ -15,6 +15,8 @@ class ft4222Handler : public QThread
     Q_OBJECT
 public:
     void stop() { running = false; }
+
+public slots:
     void setPoll(qint64 tm) { poll = tm; };
 
 private:
