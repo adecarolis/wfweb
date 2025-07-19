@@ -132,8 +132,31 @@ void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAdd
 
 void yaesuCommander::haveScopeData(QByteArray in)
 {
-    // in contains a valid yaesu data packet.
+    /*  in contains a valid yaesu data packet.
+        This packet contans a lot more than "just" scope data, it is an ongoing job to find each value.
+        I have assumed that dual RX radios (FTDX101 etc. will provide wf2?
+        So far, we have discovered the following for the data packet (d->data):
 
+        Byte Pos    Length     Description
+        17          1          Scope Mode
+        22          2          Changes on TX from 00 08 to 80 28
+        27          1          Preamp first 2 bits/atten second 2 bits (0=Off, 1=AMP1, 2=AMP2) (0=OFF, 1=6 dB, 2=12dB 3=18dB)
+        32          1          Scope Span (00=1 kHz, 09=1 MHz)
+        33          1          Scope Speed
+        37          1          Changes on TX from 00 to 38 when in CW mode?
+        52          1          Changes on scope mode change? (00=center, 01=cursor, 02=fixed)
+        60          1          Operating mode VFOA
+        64          5          VFOA Frequency
+        69          12         VFOA Stored name?
+        85          1          Operating Mode VFOB
+        89          5          VFOB Frequency
+        94          12         VFOB Stored name?
+        110         1          S-meter
+        132         4          VFOA Freq in Hex (BE) (00 D8 24 08 = 14.165 MHz)
+        136         4          VFOA Freq in Hex (BE)
+        140         4          VFOA Freq in Hex (BE)
+        144         4          Fixed scope start freq in Hex!
+    */
     if (!haveRigCaps)
     {
         return;
@@ -153,6 +176,7 @@ void yaesuCommander::haveScopeData(QByteArray in)
     }
 
     QByteArray data = QByteArray((char*)d->data,sizeof(d->data));
+    queue->putYaesuData(data);
     freqt fa,fb;
     //quint16 model = data.mid(17,5).toHex().toUShort();
     fa.Hz = data.mid(64,5).toHex().toLongLong();

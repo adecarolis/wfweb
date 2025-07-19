@@ -19,15 +19,31 @@ debugWindow::debugWindow(QWidget *parent) :
     //QTimer::singleShot(300, this, &debugWindow::getQueue);
     cacheTimer.setInterval(ui->cacheInterval->text().toInt());
     queueTimer.setInterval(ui->queueInterval->text().toInt());
+    yaesuTimer.setInterval(ui->queueInterval->text().toInt());
     connect(&cacheTimer,SIGNAL(timeout()),this,SLOT(getCache()));
     connect(&queueTimer,SIGNAL(timeout()),this,SLOT(getQueue()));
+    connect(&yaesuTimer,SIGNAL(timeout()),this,SLOT(getYaesu()));
     cacheTimer.start();
     queueTimer.start();
+    yaesuTimer.start();
 
-    connect(ui->scrolltester, &scrolltest::haveRawClicksXY,
-            [=](const int x, const int y) {
-            ui->scrollTestLabel->setText(QString("X: %1, Y: %2").arg(x).arg(y));
-    });
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 75; j++)
+        {
+            if (i % 2 == 0) {
+                QLabel* lbl = new QLabel(QString("%0").arg(j+(bool(i)*75),3,10,QChar('0')),this);
+                ui->yaesuLayout->addWidget(lbl,i,j,Qt::AlignVCenter);
+
+            } else {
+                QLabel* lbl = new QLabel(QString("   "),this);
+                lbl->setStyleSheet("QLabel { background-color : grey; color : black; }");
+                yaesu.append(lbl);
+                ui->yaesuLayout->addWidget(lbl,i,j,Qt::AlignVCenter);
+            }
+        }
+    }
+    yaesu.at(10)->setText("BB");
 }
 
 debugWindow::~debugWindow()
@@ -84,9 +100,6 @@ void debugWindow::getCache()
         vfoMode = "SAT";
         break;
     }
-    ui->vfo->setText(QString::number(state.vfo));
-    ui->vfomode->setText(vfoMode);
-    ui->receiver->setText(QString::number(state.receiver));
 }
 
 void debugWindow::getQueue()
@@ -120,6 +133,24 @@ void debugWindow::getQueue()
     queue->unlockMutex();
 }
 
+void debugWindow::getYaesu()
+{
+    QByteArray data = queue->getYaesuData();
+    for (int i=0;i < data.size() && i < yaesu.size(); i++)
+    {
+        yaesu.at(i)->setText(data.mid(i,1).toHex());
+        if (yaesuData.size() <= i || data.at(i) != yaesuData.at(i))
+        {
+            yaesu.at(i)->setStyleSheet("QLabel { background-color : grey; color : red; }");
+        }
+        else
+        {
+            yaesu.at(i)->setStyleSheet("QLabel { background-color : grey; color : black; }");
+        }
+    }
+    yaesuData = data;
+
+}
 
 QString debugWindow::getValue(QVariant val)
 {
@@ -263,10 +294,13 @@ void debugWindow::on_cachePause_clicked(bool checked)
 
 void debugWindow::on_queuePause_clicked(bool checked)
 {
-    if (checked)
+    if (checked) {
         queueTimer.stop();
-    else
+        yaesuTimer.stop();
+    } else {
         queueTimer.start();
+        yaesuTimer.start();
+    }
 }
 
 
@@ -278,4 +312,5 @@ void debugWindow::on_cacheInterval_textChanged(QString text)
 void debugWindow::on_queueInterval_textChanged(QString text)
 {
     queueTimer.setInterval(text.toInt());
+    yaesuTimer.setInterval(text.toInt());
 }

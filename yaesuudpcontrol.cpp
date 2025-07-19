@@ -14,8 +14,11 @@ yaesuUdpControl::yaesuUdpControl(udpPreferences prefs, QHostAddress local, QHost
 
 yaesuUdpControl::~yaesuUdpControl()
 {
-    heartbeat->stop();
-    delete heartbeat;
+    if (heartbeat != Q_NULLPTR)
+    {
+        heartbeat->stop();
+        delete heartbeat;
+    }
     sendDisconnect();
 
     qDebug(logUdp()) << "Yaesu udpControl successfully closed";

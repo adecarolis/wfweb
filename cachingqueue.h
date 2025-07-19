@@ -109,6 +109,7 @@ private:
     void run();
     funcs checkCommandAvailable(funcs cmd, bool set=false);
     rigStateType rigState;
+    QByteArray yaesuData;
 
 protected:
     cachingQueue(QObject* parent = Q_NULLPTR) : QThread(parent) {};
@@ -120,6 +121,8 @@ public:
 
     static cachingQueue *getInstance(QObject* parent = Q_NULLPTR);
     void message(QString msg);
+    void putYaesuData(QByteArray data) { yaesuData = data;}
+    QByteArray getYaesuData() { return yaesuData; }
 
     void add(queuePriority prio ,funcs func, bool recurring=false, uchar receiver=0);
     void add(queuePriority prio,queueItem item, bool unique=false);

@@ -7,6 +7,7 @@
 #include <QMultiMap>
 #include <QQueue>
 #include <QTimer>
+#include <QLabel>
 
 #include "cachingqueue.h"
 #include "wfviewtypes.h"
@@ -23,6 +24,7 @@ class debugWindow : public QDialog
 private slots:
     void getCache();
     void getQueue();
+    void getYaesu();
     void on_cachePause_clicked(bool checked);
     void on_queuePause_clicked(bool checked);
     void on_cacheInterval_textChanged(QString text);
@@ -40,6 +42,9 @@ private:
     QString getValue(QVariant val);
     QTimer cacheTimer;
     QTimer queueTimer;
+    QTimer yaesuTimer;
+    QList<QLabel*> yaesu;
+    QByteArray yaesuData;
 };
 
 #endif // DEBUGWINDOW_H

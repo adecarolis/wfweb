@@ -315,6 +315,35 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     #endif
 #endif
 
+    // Add right-click menu
+    this->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect (this, &QMainWindow::customContextMenuRequested,this,&::wfmain::popupScreenMenu);
+    screenMenu = new QMenu(this);
+
+    QLabel *header = new QLabel("Enable Display");
+    header->setStyleSheet("QLabel {border-bottom: 1px solid; padding:5px;}");
+    QWidgetAction* headerAction = new QWidgetAction(screenMenu);
+    headerAction->setDefaultWidget(header);
+    screenMenu->addAction(headerAction);
+
+    for (int i=1;i<5;i++)
+    {
+        QCheckBox *chk = new QCheckBox(QString("Action %0").arg(i),screenMenu);
+        chk->setChecked(true);
+        chk->setStyleSheet("QCheckBox {padding:5px;}");
+        QWidgetAction *chkAction = new QWidgetAction(screenMenu);
+        chkAction->setDefaultWidget(chk);
+        screenMenu->addAction(chkAction);
+        //QAction* act = new QAction(QString("Action %0").arg(i),this);
+        //act->setCheckable(true);
+        //screenMenu->addAction(act);
+    }
+
+}
+
+void wfmain::popupScreenMenu(QPoint pos)
+{
+    screenMenu->popup(this->mapToGlobal(pos));
 }
 
 wfmain::~wfmain()

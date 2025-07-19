@@ -471,7 +471,10 @@ private slots:
 
     void setupLambdaSlots();
 
+    void popupScreenMenu(QPoint pos);
+
 private:
+    QMenu* screenMenu = Q_NULLPTR;
     Ui::wfmain *ui; // Main UI
     QVector<receiverWidget*>receivers;   // Spectrum Scope items.
     void closeEvent(QCloseEvent *event);
