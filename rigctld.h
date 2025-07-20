@@ -199,7 +199,7 @@ private:
     QString getVfoName(vfo_t vfo);
     funcs getFreqFunc(vfo_t, bool set=false);
     funcs getModeFunc(vfo_t, bool set=false);
-    int getCommand(QStringList& respone, bool extended, const commandStruct cmd, QStringList params );
+    int getCommand(QStringList& respone, bool extended, const commandStruct cmd, QStringList params , QString fullcmd );
     int power2mW(QStringList& respone, bool extended, const commandStruct cmd, QStringList params );
     int mW2power(QStringList& respone, bool extended, const commandStruct cmd, QStringList params );
     int getSubCommand(QStringList& response, bool extended, const commandStruct cmd, const subCommandStruct sub[], QStringList params);

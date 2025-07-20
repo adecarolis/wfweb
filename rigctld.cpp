@@ -437,7 +437,14 @@ void rigCtlClient::socketReadyRead()
             if ((longCommand && !strncmp(command[0].toLocal8Bit(), commands_list[i].str,MAXNAMESIZE)) ||
                    (!longCommand && !commands.isNull() && commands[0].toLatin1() == commands_list[i].sstr))
             {
-                command.removeFirst(); // Remove the actual command so it only contains params
+                if ((commands_list[i].flags & ARG_IN_LINE ) == ARG_IN_LINE && !longCommand)
+                {
+                    command[0].remove(0,1);
+                }
+                else
+                {
+                    command.removeFirst(); // Remove the actual command so it only contains params
+                }
                 found = true;
                 if (extended && commands_list[i].sstr != 0xf0){
                     // First we need to repeat the original command back:
@@ -513,7 +520,7 @@ void rigCtlClient::socketReadyRead()
                 }
                 // Special commands are funcNone so will not get called here
                 if (commands_list[i].func != funcNone) {
-                    ret = getCommand(response, extended, commands_list[i],command);
+                    ret = getCommand(response, extended, commands_list[i],command, commands);
                 }
                 break;
             }
@@ -871,7 +878,7 @@ void rigCtlClient::genCrc(unsigned long crcTable[])
     }
 }
 
-int rigCtlClient::getCommand(QStringList& response, bool extended, const commandStruct cmd, QStringList params )
+int rigCtlClient::getCommand(QStringList& response, bool extended, const commandStruct cmd, QStringList params , QString fullcmd )
 {
     // This is a main command
     int ret = -RIG_EINVAL;
@@ -1016,12 +1023,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         case typeString:
         {
             // Only used for CW?
-            QString sendCmd;
-            for (QString &cmd : params) {
-                sendCmd =sendCmd+cmd+" ";
-            }
-            sendCmd.chop(1);
-            val.setValue(sendCmd);
+            val.setValue(fullcmd.remove(0,1));
             break;
         }
         default:
@@ -1160,7 +1162,15 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         case typeString:
         {
             // Stop sending CW if a blank command is received.
-            queue->add(priorityImmediate, queueItem(func, QString(QChar(0xff)),false,0));
+            // If 2nd letter of fullcmd is space , send space.
+            if ( fullcmd.mid(1,1) == ' ' )
+            {
+                queue->add(priorityImmediate, queueItem(func, QString(" "),false,0));
+            }
+            else
+            {
+                queue->add(priorityImmediate, queueItem(func, QString(),false,0));
+            }
             break;
         }
         default:
