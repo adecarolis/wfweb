@@ -1623,8 +1623,10 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
                     }
                     if (textData.isEmpty())
                     {
+                        emit stopsidetone();
                         payload.append(QString("0").leftJustified(cmd.bytes, QChar(' ')).toLatin1());
                     } else {
+                        emit sidetone(QString(textData));
                         payload.append(" ");
                         payload.append(textData.leftJustified(cmd.bytes, QChar(' ').toLatin1()));
                         qDebug(logRig()) << "CW output::" << textData ;

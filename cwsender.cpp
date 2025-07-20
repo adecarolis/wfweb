@@ -3,7 +3,7 @@
 
 #include "logcategories.h"
 
-cwSender::cwSender(QWidget *parent) :
+cwSender::cwSender(QWidget *parent , rigCommander *rigPointer) :
     QMainWindow(parent),
     ui(new Ui::cwSender)
 {
@@ -55,6 +55,13 @@ cwSender::cwSender(QWidget *parent) :
         queue->add(priorityImmediate,funcCwPitch);
         queue->add(priorityImmediate,funcDashRatio);
     });
+
+    if ( getSidetoneEnable() )
+    {
+        on_sidetoneEnableChk_clicked( true );
+    }
+
+    rig = rigPointer ;
 
 }
 
@@ -346,14 +353,11 @@ void cwSender::on_sidetoneEnableChk_clicked(bool clicked)
         toneThread->start();
 
         connect(this,SIGNAL(initTone()),tone,SLOT(init()));
-        connect(this,SIGNAL(sidetone(QString)),tone,SLOT(send(QString)));
+        connect(rig,SIGNAL(sidetone(QString)),tone,SLOT(send(QString)));
+        connect(rig,SIGNAL(stopsidetone()),tone,SLOT(stopSending()));
 
         connect(toneThread, &QThread::finished, tone,
             [=]() { tone->deleteLater(); });
-
-        connect(this, &cwSender::sendCW, tone, [=](const QString& text) {
-               emit sidetone(text);
-        });
 
         connect(this, &cwSender::setKeySpeed, tone,
                 [=](const quint8& wpm) { tone->setSpeed(wpm); });
@@ -366,10 +370,6 @@ void cwSender::on_sidetoneEnableChk_clicked(bool clicked)
 
         connect(this, &cwSender::setLevel, tone,
                 [=](const quint8& level) { tone->setLevel(level); });
-
-        connect(this, &cwSender::stopCW, tone,
-                [=]() { tone->stopSending(); });
-
 
         emit initTone();
 

@@ -65,6 +65,8 @@ signals:
     void haveChangeLatency(quint16 value);
     void haveNetworkStatus(networkStatus);
     void haveNetworkAudioLevels(networkAudioLevels);
+    void sidetone(QString text);
+    void stopsidetone();
 
 private:
     void commonSetup();

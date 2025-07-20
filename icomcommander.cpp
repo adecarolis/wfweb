@@ -2950,8 +2950,10 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                     }
                     if (textData.isEmpty())
                     {
+                        emit stopsidetone();
                         payload.append(uchar(0xff));
                     } else {
+                        emit sidetone(QString(textData));
                         payload.append(textData);
                         qDebug(logRig()) << "CW output::" << textData ;
                     }

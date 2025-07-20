@@ -6276,7 +6276,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
 
         if (rigCaps->commands.contains(funcSendCW)) {
             // We have a send CW function, so enable the window.
-            cw = new cwSender(this);
+            cw = new cwSender(this,rig);
             cw->setCutNumbers(prefs.cwCutNumbers);
             cw->setSendImmediate(prefs.cwSendImmediate);
             cw->setSidetoneEnable(prefs.cwSidetoneEnabled);
