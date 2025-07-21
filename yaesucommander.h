@@ -78,6 +78,8 @@ signals:
     void sendDataToRig(QByteArray data);
     void initScope();
     void setScopePoll(quint64 poll);
+    void sidetone(QString text);
+    void stopsidetone();
 
 private:
     void commonSetup();

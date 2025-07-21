@@ -1642,6 +1642,7 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 {
                     QByteArray textData = text.toLocal8Bit();
                     quint8 p=0;
+                    qDebug(logRig()) << "CW input:" << textData ;
                     for(int c=0; c < textData.length(); c++)
                     {
                         p = textData.at(c);
@@ -1662,10 +1663,13 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                     }
                     if (textData.isEmpty())
                     {
+                        emit stopsidetone();
                         payload.append(QString("0").leftJustified(cmd.bytes, QChar(' ')).toLatin1());
                     } else {
+                        emit sidetone(QString(textData));
                         payload.append(" ");
                         payload.append(textData.leftJustified(cmd.bytes, QChar(' ').toLatin1()));
+                        qDebug(logRig()) << "CW output::" << textData ;
                     }
                     qDebug(logRig()) << "Sending CW: payload:" << payload.toStdString().c_str();
                 }

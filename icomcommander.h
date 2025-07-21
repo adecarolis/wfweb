@@ -46,6 +46,8 @@ public slots:
 
 signals:
     // All signals are defined in rigcommander.h as they should be common for all rig types.
+    void sidetone(QString text);
+    void stopsidetone();
 
 private:
     void commonSetup();

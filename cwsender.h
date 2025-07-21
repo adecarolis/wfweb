@@ -12,6 +12,7 @@
 #include "cwsidetone.h"
 #include "wfviewtypes.h"
 #include "cachingqueue.h"
+#include "rigcommander.h"
 
 namespace Ui {
 class cwSender;
@@ -22,7 +23,7 @@ class cwSender : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit cwSender(QWidget *parent = 0);
+    explicit cwSender(QWidget *parent = 0 , rigCommander *rig = 0);
     ~cwSender();
     QStringList getMacroText();
     void setMacroText(QStringList macros);
@@ -46,7 +47,6 @@ signals:
     void setLevel(int level);
     void setBreakInMode(quint8 b);
     void getCWSettings();
-    void sidetone(QString text);
     void pitchChanged(int val);
     void dashChanged(int val);
     void wpmChanged(int val);
@@ -121,6 +121,7 @@ private:
     cachingQueue* queue;
     rigCapabilities* rigCaps = Q_NULLPTR;
     int maxChars = 0;
+    rigCommander * rig=Q_NULLPTR;
 };
 
 #endif // CWSENDER_H

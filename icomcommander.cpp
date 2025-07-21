@@ -2835,7 +2835,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
 {
     //qInfo() << "Got command:" << funcString[func];
     int val=INT_MIN;
-    if (value.isValid() && value.canConvert<int>()) {
+    if (value.isValid() && value.canConvert<int>() && func != funcSendCW) {
         // Used to validate payload, otherwise ignore.
         val = value.value<int>();
         //qInfo(logRig()) << "Got value" << QString(value.typeName());
@@ -2929,6 +2929,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 {
                     QByteArray textData = text.toLocal8Bit();
                     quint8 p=0;
+                    qDebug(logRig()) << "CW input:" << textData ;
                     for(int c=0; c < textData.length(); c++)
                     {
                         p = textData.at(c);
@@ -2949,9 +2950,12 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                     }
                     if (textData.isEmpty())
                     {
+                        emit stopsidetone();
                         payload.append(uchar(0xff));
                     } else {
+                        emit sidetone(QString(textData));
                         payload.append(textData);
+                        qDebug(logRig()) << "CW output::" << textData ;
                     }
                     qDebug(logRig()) << "Sending CW: payload:" << payload.toHex(' ');
                 }
