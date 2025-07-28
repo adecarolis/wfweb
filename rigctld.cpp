@@ -449,7 +449,7 @@ void rigCtlClient::socketReadyRead()
                 if (extended && commands_list[i].sstr != 0xf0){
                     // First we need to repeat the original command back:
                     QString repeat=QString("%1:").arg(commands_list[i].str);
-                    for( const auto &c: command)
+                    for( const auto &c: std::as_const(command))
                     {
                         repeat+=QString(" %0").arg(c);
                     }
@@ -1062,7 +1062,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         if (rigCaps->commands.contains(func))
             item = queue->getCache(func,state.receiver);
 
-        if (prefixes.length() && params.length())
+        if (cmd.type != typeVFOInfo && prefixes.length() && params.length())
         {
             response.append(QString("%0%1").arg(prefixes[0], params[0]));
         }
