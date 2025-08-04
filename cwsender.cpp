@@ -205,7 +205,7 @@ void cwSender::textChanged(QString text)
             if (toSend > 0) {
                 ui->textToSendEdit->clearEditText();
                 ui->transcriptText->moveCursor(QTextCursor::End);
-                ui->transcriptText->insertPlainText(text.mid(0, 30).toUpper());
+                ui->transcriptText->insertPlainText(text.mid(0, maxChars).toUpper());
                 ui->transcriptText->moveCursor(QTextCursor::End);
                 emit sendCW(text.mid(0, maxChars));
             }
@@ -438,8 +438,8 @@ void cwSender::runMacroButton(int buttonNumber)
 
         ui->statusbar->showMessage(QString("Sending CW macro %1").arg(buttonNumber));
 
-        for (int i = 0; i < outText.size(); i = i + 30) {
-            emit sendCW(outText.mid(i,30));
+        for (int i = 0; i < outText.size(); i = i + maxChars) {
+            emit sendCW(outText.mid(i, maxChars));
         }
 
         ui->textToSendEdit->setFocus();
