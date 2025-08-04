@@ -404,6 +404,9 @@ void yaesuCommander::commonSetup()
     rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),"ID",0,9999,false,false,true,false,4,false));
     rigCaps.commandsReverse.insert(QByteArray("ID"),funcTransceiverId);
 
+    rigCaps.commands.insert(funcPowerControl,funcType(funcPowerControl, QString("Power Control"),"PS",0,1,false,false,false,true,1,false));
+    rigCaps.commandsReverse.insert(QByteArray("PS"),funcPowerControl);
+
     connect(queue,SIGNAL(haveCommand(funcs,QVariant,uchar)),this,SLOT(receiveCommand(funcs,QVariant,uchar)));
 
     emit commReady();
