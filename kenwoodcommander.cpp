@@ -199,6 +199,9 @@ void kenwoodCommander::commonSetup()
     rigCaps.commands.insert(funcTXInhibit,funcType(funcTXInhibit, QString("Transmit Inhibit"),"##TI",0,1,false,false,false,true,1,false));
     rigCaps.commandsReverse.insert(QByteArray("##TI"),funcTXInhibit);
 
+    rigCaps.commands.insert(funcPowerControl,funcType(funcPowerControl, QString("Power Control"),"PS",0,1,false,false,false,true,1,false));
+    rigCaps.commandsReverse.insert(QByteArray("PS"),funcPowerControl);
+
     connect(queue,SIGNAL(haveCommand(funcs,QVariant,uchar)),this,SLOT(receiveCommand(funcs,QVariant,uchar)));
 
     emit commReady();

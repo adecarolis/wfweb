@@ -215,6 +215,9 @@ void icomCommander::commonSetup()
     rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),QByteArrayLiteral("\x19\x00"),0,0,false,false,true,false,1,false));
     rigCaps.commandsReverse.insert(QByteArrayLiteral("\x19\x00"),funcTransceiverId);
 
+    rigCaps.commands.insert(funcPowerControl,funcType(funcPowerControl, QString("Power Control"),QByteArrayLiteral("\x18"),0,0,false,false,true,false,1,false));
+    rigCaps.commandsReverse.insert(QByteArrayLiteral("\x18"),funcPowerControl);
+
     connect(queue,SIGNAL(haveCommand(funcs,QVariant,uchar)),this,SLOT(receiveCommand(funcs,QVariant,uchar)));
     oldScopeMode = 0xff;
 
