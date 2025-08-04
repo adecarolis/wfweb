@@ -727,7 +727,7 @@
            <item>
             <widget class="QGroupBox" name="OtherControlsGrp">
              <property name="title">
-              <string/>
+              <string>Other Controls</string>
              </property>
              <layout class="QVBoxLayout" name="verticalLayout_3">
               <property name="spacing">

@@ -326,14 +326,32 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     headerAction->setDefaultWidget(header);
     screenMenu->addAction(headerAction);
 
+    QList<QWidget *> items = this->findChildren<QWidget *>();
+
+    for (const auto &g : items)
+    {
+        if (g->objectName() !="" && g->isVisible())
+        {
+            QCheckBox *chk = new QCheckBox(g->objectName(),screenMenu);
+            chk->setChecked(true);
+            chk->setStyleSheet("QCheckBox {padding:5px;}");
+
+#if (QT_VERSION >= QT_VERSION_CHECK(6,7,0))
+            QObject::connect(chk, &QCheckBox::checkStateChanged, this, [g](Qt::CheckState state){
+#else
+            QObject::connect(chk, &QCheckBox::stateChanged, this, [g](int state){
+#endif
+                g->setVisible(state);
+            });
+
+            QWidgetAction *chkAction = new QWidgetAction(screenMenu);
+            chkAction->setDefaultWidget(chk);
+            screenMenu->addAction(chkAction);
+        }
+    }
+
     for (int i=1;i<5;i++)
     {
-        QCheckBox *chk = new QCheckBox(QString("Action %0").arg(i),screenMenu);
-        chk->setChecked(true);
-        chk->setStyleSheet("QCheckBox {padding:5px;}");
-        QWidgetAction *chkAction = new QWidgetAction(screenMenu);
-        chkAction->setDefaultWidget(chk);
-        screenMenu->addAction(chkAction);
         //QAction* act = new QAction(QString("Action %0").arg(i),this);
         //act->setCheckable(true);
         //screenMenu->addAction(act);
