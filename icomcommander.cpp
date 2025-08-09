@@ -595,7 +595,7 @@ void icomCommander::parseData(QByteArray dataInput)
             //return;
         }
 
-        incomingCIVAddr = data[03]; // track the CIV of the sender.
+        incomingCIVAddr = data[03] & 0xff; // track the CIV of the sender.
 
         switch(data[02])
         {
@@ -1901,7 +1901,7 @@ void icomCommander::determineRigCaps()
         foundRig = true;
 
         qDebug(logRig()) << "---Rig FOUND from broadcast query:";
-        this->civAddr = incomingCIVAddr; // Override and use immediately.
+        this->civAddr = incomingCIVAddr & 0xff; // Override and use immediately.
         payloadPrefix = QByteArray("\xFE\xFE");
         payloadPrefix.append((char)civAddr);
         payloadPrefix.append((char)compCivAddr);
@@ -2768,17 +2768,17 @@ void icomCommander::setRigID(quint16 rigID)
     // It can be used for radios without Rig ID commands,
     // or to force a specific radio model
 
-    qInfo(logRig()).noquote() << QString("Setting rig ID to: 0x%0").arg(rigID,1,16);
+    qInfo(logRig()).noquote() << QString("Setting rig ID to: 0x%0").arg(rigID & 0xff,1,16);
 
     lookingForRig = true;
     foundRig = false;
 
     // needed because this is a fake message and thus the value is uninitialized
     // this->civAddr comes from how icomCommander is setup and should be accurate.
-    this->incomingCIVAddr = this->civAddr;
+    this->incomingCIVAddr = this->civAddr & 0xff;
 
-    if (rigList.contains(rigID)) this->model = rigID;
-    rigCaps.modelID = rigID;
+    if (rigList.contains(rigID)) this->model = rigID & 0xff;
+    rigCaps.modelID = rigID & 0xff;
     rigCaps.model = this->model;
     determineRigCaps();
 }

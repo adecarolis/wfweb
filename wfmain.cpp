@@ -742,11 +742,11 @@ void wfmain::receiveCommReady()
     } else {
         // don't bother, they told us the CIV they want, stick with it.
         // We still query the rigID to find the model, but at least we know the CIV.
-        qInfo(logSystem()) << "Skipping automatic CIV, using user-supplied value of " << prefs.radioCIVAddr;
+        qInfo(logSystem()) << QString("Skipping automatic CIV, using user-supplied value of 0x%1").arg(prefs.radioCIVAddr,2,16) ;
         showStatusBarText(QString("Using user-supplied radio CI-V address of 0x%1").arg(prefs.radioCIVAddr, 2, 16));
         if(prefs.CIVisRadioModel)
         {
-            qInfo(logSystem()) << "Skipping Rig ID query, using user-supplied model from CI-V address: " << prefs.radioCIVAddr;
+            qInfo(logSystem()) << QString("Skipping Rig ID query, using user-supplied model from CI-V address: 0x%1").arg(prefs.radioCIVAddr,2,16) ;
             emit setCIVAddr(prefs.radioCIVAddr);
             emit setRigID(prefs.radioCIVAddr);
         } else {
@@ -2757,7 +2757,7 @@ void wfmain::extChangedRaPref(prefRaItem i)
         if(prefs.radioCIVAddr == 0) {
             showStatusBarText("Setting radio CI-V address to: 'auto'. Make sure CI-V Transceive is enabled on the radio.");
         } else {
-            showStatusBarText(QString("Setting radio CI-V address to: 0x%1. Press Save Settings to retain.").arg(prefs.radioCIVAddr, 4, 16));
+            showStatusBarText(QString("Setting radio CI-V address to: 0x%1. Press Save Settings to retain.").arg(prefs.radioCIVAddr, 2, 16));
         }
         break;
     case ra_CIVisRadioModel:
