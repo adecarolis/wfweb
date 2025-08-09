@@ -362,6 +362,7 @@ funcLoginEnableDisable,
  funcAMModSource,       funcAMUSBModGain,       funcAMRearModGain,
  funcFMModSource,       funcFMUSBModGain,       funcFMRearModGain,
  funcDataModSource,     funcDataUSBModGain,     funcDataRearModGain,
+ funcVFOAInformation,
 /* Special Commands (internal use only) */
 funcSelectVFO,          funcSeparator,          funcLCDWaterfall,           funcLCDSpectrum,        funcLCDNothing,         funcPageUp,
 funcPageDown,           funcVFOFrequency,       funcVFOMode,                funcRigctlFunction,     funcRigctlLevel,        funcRigctlParam,
@@ -501,6 +502,7 @@ static QString funcString[funcLastFunc] { "None",
 "AM Mod Source",       "AM USB Mod Gain",       "AM Rear Mod Gain",
 "FM Mod Source",       "FM USB Mod Gain",       "FM Rear Mod Gain",
 "Data Mod Source",     "Data USB Mod Gain",     "Data Rear Mod Gain",
+"Information VFO-A",
 
 /* Special Commands */
 "-Select VFO",          "-Seperator",

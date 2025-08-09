@@ -308,8 +308,9 @@ void audioHandler::convertedOutput(audioPacket packet) {
 
     // Discard if underTimer is running.
     if (packet.data.size() > 0) {
-
-        currentLatency = packet.time.msecsTo(QTime::currentTime())  + (nativeFormat.durationForBytes(audioOutput->bufferSize() - audioOutput->bytesFree()) / 1000);
+        if (!audioOutput->isNull()) {
+            currentLatency = packet.time.msecsTo(QTime::currentTime())  + (nativeFormat.durationForBytes(audioOutput->bufferSize() - audioOutput->bytesFree()) / 1000);
+        }
         if (audioDevice != Q_NULLPTR) {
             int bytes = packet.data.size();
             while (bytes > 0) {

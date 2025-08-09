@@ -720,6 +720,7 @@ void yaesuCommander::parseData(QByteArray data)
             break;
         }
         case funcMeterType:
+            // We don't use this but it saves getting a log message.
             break;
         case funcRitStatus:
         case funcMonitor:
@@ -803,6 +804,21 @@ void yaesuCommander::parseData(QByteArray data)
         case funcScopeSpeed:
         case funcCwPitch:
             value.setValue<uchar>(d.mid(0,type.bytes).toUShort());
+            break;
+        case funcVFOAInformation:
+            /*  This packet is received every time the frequency changes.
+                It contains some useful information:
+                P1: 000=VFO, 001-099 = MEMORY CHANNEL 5XX 5MHz
+                P2: VFO-A Frequency (9 bytes)
+                P3: Clarifier direction (0000-9999) + Plus Shift - Minus Shift
+                P4: 0 RX CLAR OFF 1 RX CLAR ON
+                P5: 0 TX CLAR OFF 1 TX CLAR ON
+                P6: Mode
+                P7: VFO/Memory
+                P8: 0=CTCSS OFF, 1=ENC/DEC, 2= ENC ONLY
+                P9: 00 Fixed
+                P10: 0=Simplex, 1= Plus Shift, 2=Minus Shift.
+            */
             break;
         case funcXitFreq:
         case funcRitFreq:
@@ -1592,6 +1608,7 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
         if (cmd.cmd != funcNone) {
             val = (255.0/cmd.maxVal) * value.toInt();
         }
+        qDebug(logRig()) << "Setting volume level (0-255):" << static_cast<uchar>(val);
         emit haveSetVolume(static_cast<uchar>(val));
         queue->receiveValue(func,value,false);
         return;
@@ -1625,9 +1642,6 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 else if (connType == connectionWiFi)
                     value.setValue(uchar(2));
                 qInfo() << "Setting scope type to:" << value.toInt() << "for connection type:" << connType;
-            } else if (cmd.cmd == funcAutoInformation)
-            {
-                aiModeEnabled = value.toBool();
             }
 
             if (!strcmp(value.typeName(),"centerSpanData"))
