@@ -23,9 +23,9 @@ audioHandler::~audioHandler()
 		converterThread->wait();
 	}
 
-	if (isInitialized) {
-		stop();
-	}
+    //if (isInitialized) {
+    //	stop();
+    //}
 
 	if (audioInput != Q_NULLPTR) {
 		delete audioInput;
@@ -306,29 +306,26 @@ void audioHandler::incomingAudio(audioPacket packet)
 
 void audioHandler::convertedOutput(audioPacket packet) {
 
-    // Discard if underTimer is running.
-    if (packet.data.size() > 0) {
-        if (!audioOutput->isNull()) {
-            currentLatency = packet.time.msecsTo(QTime::currentTime())  + (nativeFormat.durationForBytes(audioOutput->bufferSize() - audioOutput->bytesFree()) / 1000);
-        }
-        if (audioDevice != Q_NULLPTR) {
-            int bytes = packet.data.size();
-            while (bytes > 0) {
-                int written = packet.data.size();
-                if (packet.time.msecsTo(QTime::currentTime()) < setup.latency)
-                {
-                    // Discard if latency is too high.
-                    written = audioDevice->write(packet.data);
-                }
-                bytes = bytes - written;
-                packet.data.remove(0,written);
-            }
-            lastReceived = QTime::currentTime();
-        }
-        lastSentSeq = packet.seq;
-        amplitude = packet.amplitudePeak;
-        emit haveLevels(getAmplitude(), static_cast<quint16>(packet.amplitudeRMS * 255.0), setup.latency, currentLatency, isUnderrun, isOverrun);
+    if (audioOutput == Q_NULLPTR || audioDevice == Q_NULLPTR || packet.data.size()==0) {
+        return;
     }
+
+    currentLatency = packet.time.msecsTo(QTime::currentTime())  + (nativeFormat.durationForBytes(audioOutput->bufferSize() - audioOutput->bytesFree()) / 1000);
+    int bytes = packet.data.size();
+    while (bytes > 0) {
+        int written = packet.data.size();
+        if (packet.time.msecsTo(QTime::currentTime()) < setup.latency)
+        {
+            // Discard if latency is too high.
+            written = audioDevice->write(packet.data);
+        }
+        bytes = bytes - written;
+        packet.data.remove(0,written);
+    }
+    lastReceived = QTime::currentTime();
+    lastSentSeq = packet.seq;
+    amplitude = packet.amplitudePeak;
+    emit haveLevels(getAmplitude(), static_cast<quint16>(packet.amplitudeRMS * 255.0), setup.latency, currentLatency, isUnderrun, isOverrun);
 }
 
 void audioHandler::getNextAudioChunk()
