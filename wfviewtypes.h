@@ -362,7 +362,7 @@ funcLoginEnableDisable,
  funcAMModSource,       funcAMUSBModGain,       funcAMRearModGain,
  funcFMModSource,       funcFMUSBModGain,       funcFMRearModGain,
  funcDataModSource,     funcDataUSBModGain,     funcDataRearModGain,
- funcVFOAInformation,
+ funcVFOAInformation,   funcMemoryTag,
 /* Special Commands (internal use only) */
 funcSelectVFO,          funcSeparator,          funcLCDWaterfall,           funcLCDSpectrum,        funcLCDNothing,         funcPageUp,
 funcPageDown,           funcVFOFrequency,       funcVFOMode,                funcRigctlFunction,     funcRigctlLevel,        funcRigctlParam,
@@ -502,7 +502,7 @@ static QString funcString[funcLastFunc] { "None",
 "AM Mod Source",       "AM USB Mod Gain",       "AM Rear Mod Gain",
 "FM Mod Source",       "FM USB Mod Gain",       "FM Rear Mod Gain",
 "Data Mod Source",     "Data USB Mod Gain",     "Data Rear Mod Gain",
-"Information VFO-A",
+"Information VFO-A",   "Memory Tag",
 
 /* Special Commands */
 "-Select VFO",          "-Seperator",
@@ -569,6 +569,11 @@ struct errorType {
     QString message;
 };
 
+struct memoryTagType {
+    quint16 num;
+    bool en;
+    QString name;
+};
 
 struct memoryType {
     quint16 group=0;
@@ -580,6 +585,9 @@ struct memoryType {
     quint8 vfoB=0;
     freqt frequency;
     freqt frequencyB;
+    qint16 clarifier=0;
+    bool clarRX=false;
+    bool clarTX=false;
     quint8 mode=0;
     quint8 modeB=0;
     quint8 filter=0;
@@ -789,6 +797,7 @@ Q_DECLARE_METATYPE(rptrAccessData)
 Q_DECLARE_METATYPE(usbFeatureType)
 Q_DECLARE_METATYPE(funcs)
 Q_DECLARE_METATYPE(memoryType)
+Q_DECLARE_METATYPE(memoryTagType)
 Q_DECLARE_METATYPE(antennaInfo)
 Q_DECLARE_METATYPE(scopeData)
 Q_DECLARE_METATYPE(timekind)

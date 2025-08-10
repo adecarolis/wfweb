@@ -51,6 +51,7 @@ private slots:
 
 
     void receiveMemory(memoryType mem);
+    void receiveMemoryName(memoryTagType tag);
     void rowAdded(int row, memoryType mem=memoryType());
     void rowDeleted(quint32 mem);
     void menuAction(QAction* action, quint32 mem);
@@ -75,6 +76,7 @@ private:
 
     QStandardItemModel* createModel(QStandardItemModel* model, QStringList strings);
 
+    QStringList clar;
     QStringList split;
     QStringList scan;
     QStringList skip;
@@ -119,6 +121,8 @@ private:
         columnR1B,
         columnR2B,
     */
+    QStandardItemModel* clarRXModel = Q_NULLPTR;
+    QStandardItemModel* clarTXModel = Q_NULLPTR;
     QStandardItemModel* splitModel = Q_NULLPTR;
     QStandardItemModel* skipModel = Q_NULLPTR;
     QStandardItemModel* scanModel = Q_NULLPTR;
@@ -161,12 +165,15 @@ private:
     QStandardItemModel* dvsqlModelB = Q_NULLPTR;
 
     tableEditor* numEditor = Q_NULLPTR;
+    tableCombobox* clarRXList = Q_NULLPTR;
+    tableCombobox* clarTXList = Q_NULLPTR;
     tableCombobox* splitList = Q_NULLPTR;
     tableCombobox* scanList = Q_NULLPTR;
     tableCombobox* skipList = Q_NULLPTR;
     tableCombobox* vfoList = Q_NULLPTR;
     tableEditor* nameEditor = Q_NULLPTR;
     tableEditor* freqEditor = Q_NULLPTR;
+    tableEditor* clarEditor = Q_NULLPTR;
     tableCombobox* filterList = Q_NULLPTR;
     tableCombobox* dataList = Q_NULLPTR;
     tableCombobox* duplexList = Q_NULLPTR;
@@ -241,6 +248,9 @@ private:
         columnScan,
         columnVFO,
         columnFrequency,
+        columnClarOffset,
+        columnRXClar,
+        columnTXClar,
         columnMode,
         columnFilter,
         columnData,

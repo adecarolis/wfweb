@@ -871,6 +871,15 @@ void yaesuCommander::parseData(QByteArray data)
             }
             break;
         }
+        case funcMemoryTag:
+        {
+            memoryTagType tag;
+            tag.num = (quint16)d.mid(0,type.bytes).toUShort();
+            tag.en = (bool)d.mid(type.bytes,1).toShort();
+            tag.name = QString(d.mid(type.bytes+1));
+            value.setValue(tag);
+            break;
+        }
         case funcDate:
         case funcTime:
             qInfo(logRig()) << "Received" << funcString[func] << d;
@@ -983,6 +992,8 @@ bool yaesuCommander::parseMemory(QByteArray d,QVector<memParserFormat>* memParse
             break;
         case 'c':
             mem->scan = data.left(parse.len).toInt();
+            // Content always seems to be invalid?
+            if (mem->scan == 0) mem->scan=1;
             break;
         case 'd':
             mem->split = data.left(parse.len).toInt();
@@ -1000,7 +1011,7 @@ bool yaesuCommander::parseMemory(QByteArray d,QVector<memParserFormat>* memParse
             mem->frequencyB.Hz =data.left(parse.len).toLongLong();
             break;
         case 'g':
-            mem->mode=data.left(parse.len).toInt();
+            mem->mode=data.left(parse.len).toInt(nullptr,16);
             break;
         case 'G':
             mem->modeB=data.left(parse.len).toInt();
@@ -1087,6 +1098,15 @@ bool yaesuCommander::parseMemory(QByteArray d,QVector<memParserFormat>* memParse
             break;
         case 'V':
             memcpy(mem->R2B,data.data(),qMin(int(sizeof mem->R2B),data.size()));
+        // Clarifier.
+        case 'W':
+            mem->clarifier = data.left(parse.len).toShort();
+            break;
+        case 'X':
+            mem->clarRX = (bool)data.left(parse.len).toShort();
+            break;
+        case 'Y':
+            mem->clarTX = (bool)data.left(parse.len).toShort();
             break;
         case 'z':
             memcpy(mem->name,data.data(),qMin(int(sizeof mem->name),data.size()));
@@ -1734,7 +1754,7 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             }
             else if(!strcmp(value.typeName(),"uint"))
             {
-                if (func == funcMemoryContents) {
+                if (func == funcMemoryContents || func == funcMemoryTag || func == funcMemorySelect) {
                     if (cmd.padr)
                         payload.append(QString::number(quint16(value.value<uint>() & 0xffff)).leftJustified(cmd.bytes, QChar('0')).toLatin1());
                     else
@@ -1849,10 +1869,15 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                 payload.append(QString("%0%1%2").arg(t.hours,2,10,QChar('0')).arg(t.minutes,2,10,QChar('0')).arg("00").toLatin1());
 
             }
+            else if (!strcmp(value.typeName(),"memoryTagType")) {
+                memoryTagType tag = value.value<memoryTagType>();
+                payload.append(QString("%0%1%2").arg(tag.num,3,10,QChar('0')).arg(tag.en,1,10,QChar('0')).arg(tag.name).toLatin1());
+            }
             else if (!strcmp(value.typeName(),"memoryType"))
             {
 
                 // We need to iterate through memParser to build the correct format
+
                 bool finished=false;
                 QVector<memParserFormat> parser;
                 memoryType mem = value.value<memoryType>();
@@ -1883,6 +1908,7 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         payload.append(QString::number(mem.channel).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'c':
+                        qInfo(logRig()) << "Scan is:" << mem.scan;
                         payload.append(QString::number(mem.scan).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'C':
@@ -1904,10 +1930,10 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         payload.append(QString::number(mem.frequencyB.Hz).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'g':
-                        payload.append(QString::number(mem.mode).rightJustified(parse.len, QChar('0'),true).toLatin1());
+                        payload.append(QString::number(mem.mode,16).rightJustified(parse.len, QChar('0'),true).toUpper().toLatin1());
                         break;
                     case 'G':
-                        payload.append(QString::number(mem.modeB).rightJustified(parse.len, QChar('0'),true).toLatin1());
+                        payload.append(QString::number(mem.modeB,16).rightJustified(parse.len, QChar('0'),true).toLatin1());
                         break;
                     case 'h':
                         payload.append(QString::number(mem.filter).rightJustified(parse.len, QChar('0'),true).toLatin1());
@@ -1991,6 +2017,17 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                     case 'V':
                         payload.append(QByteArray(mem.R2B).leftJustified(parse.len,' ',true));
                         break;
+                    // Clarifier.
+                    case 'W':
+                        payload.append(QString("%1%2").arg(mem.clarifier < 0 ? '-' : '+').arg(abs(mem.clarifier),4,10,QChar('0')).toLatin1());
+                        qInfo(logRig()) << "Clarifier" << mem.clarifier;
+                        break;
+                    case 'X':
+                        payload.append(QString::number(mem.clarRX).rightJustified(parse.len, QChar('0'),true).toLatin1());
+                        break;
+                    case 'Y':
+                        payload.append(QString::number(mem.clarTX).rightJustified(parse.len, QChar('0'),true).toLatin1());
+                        break;
                     case 'z':
                         payload.append(QByteArray(mem.name).leftJustified(parse.len,' ',true));
                         break;
@@ -2000,7 +2037,7 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                     if (finished)
                         break;
                 }
-                qDebug(logRig()) << "Writing memory location:" << payload.toHex(' ');
+                qDebug(logRig()) << "Writing memory location:" << payload;
             }
             //qInfo() << "Sending set:" << funcString[cmd.cmd] << "Payload:" << payload;
 

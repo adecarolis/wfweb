@@ -22,8 +22,13 @@ memories::memories(bool isAdmin, bool slowLoad, QWidget *parent) :
     this->setObjectName("memories");
     queue = cachingQueue::getInstance();
     rigCaps = queue->getRigCaps();
+    if (rigCaps == Q_NULLPTR)
+    {
+        qInfo() << "We have no rigCaps, so cannot continue";
+        return;
+    }
 
-    if (rigCaps != Q_NULLPTR && rigCaps->manufacturer == manufKenwood) {
+    if (rigCaps->manufacturer == manufKenwood || rigCaps->manufacturer == manufYaesu) {
         if (rigCaps->commands.contains(funcMemoryWrite))
             writeCommand = funcMemoryWrite;
         if (rigCaps->commands.contains(funcMemorySelect))
@@ -34,11 +39,6 @@ memories::memories(bool isAdmin, bool slowLoad, QWidget *parent) :
     {
         ui->disableEditing->setEnabled(false);
 
-    }
-    if (rigCaps == Q_NULLPTR)
-    {
-        qInfo() << "We have no rigCaps, so cannot continue";
-        return;
     }
 
 
@@ -54,7 +54,7 @@ memories::memories(bool isAdmin, bool slowLoad, QWidget *parent) :
 
     /*
 
-columnRecall=0, columnNum,columnSplit,columnSkip,columnScan,columnFrequency,columnMode,columnFilter,columnData,columnDuplex,
+columnRecall=0, columnNum,columnSplit,columnSkip,columnScan,columnFrequency,columnClarOffset, columnRXClar, columnTXClar columcolumnMode,columnFilter,columnData,columnDuplex,
 columnToneMode,columnTuningStep, columnCustomTuningStep, columnAttenuator, columnPreamplifier, columnAntenna, columnIPPlus,
 columnDSQL,columnTone,columnTSQL,columnDTCS,columnDTCSPolarity,columnDVSquelch,columnOffset,columnUR,columnR1,columnR2,
 columnP25Sql,columnP25Nac,columnDPmrSql,columnDPmrComid,columnDPmrCc,columnDPmrSCRM,columnDPmrKey,columnNxdnSql,
@@ -63,7 +63,7 @@ columnModeB,columnFilterB,columnDataB,columnDuplexB,columnToneModeB,columnDSQLB,
 columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B,totalColumns,
      */
 
-    headers << "" << "Num" << "Name" << "Split" << "Skip" << "Scan" << "VFO" << "Freq" << "Mode" << "Filter" << "Data" <<"Duplex" << "Tn Mode" <<
+    headers << "" << "Num" << "Name" << "Split" << "Skip" << "Scan" << "VFO" << "Freq" << "Clarifier" << "Clar RX" << "Clar TX" << "Mode" << "Filter" << "Data" <<"Duplex" << "Tn Mode" <<
         "Step" << "Prog Step" << "Atten" << "Preamp" << "Ant" << "IP Plus" << "DSQL" << "Tone" << "TSQL" << "DTCS" << "DTCS Pol" << "DV Sql" <<
         "Offset" << "UR" << "R1" << "R2" << "P25 SQL" << "P25 NAC" << "dPMR SQL" << "dPMR COM ID" << "dPMR CC" << "dPMR SCRM" << "dPMR Key" <<
         "NXDN SQL" << "NXDN RAN" << "NXDN Enc" << "NXDN Key" << "DCR SQL" << "DCR UC" << "DCR Enc"  << "DCR Key" <<
@@ -71,12 +71,15 @@ columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B
         "Tone B" << "TSQL B" << "DTCS B" << "DTCSP B" <<
         "DV Sql B" << "Offset B" << "UR B" << "R1 B" << "R2 B";
 
+    clar << "OFF" << "ON";
+
     skip << "OFF" << "SKIP" << "PSKIP";
-    scan << "OFF" << "*1" << "*2" << "*3";
 
     split << "OFF" << "ON";
 
     dataModes << "OFF" << "DATA1";
+
+
     if (rigCaps->commands.contains(funcDATA2Mod))
         dataModes.append("DATA2");
     if (rigCaps->commands.contains(funcDATA3Mod))
@@ -84,23 +87,25 @@ columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B
 
     duplexModes << "OFF" << "DUP-" << "DUP+" << "RPS";
 
-    if (rigCaps != Q_NULLPTR && rigCaps->manufacturer == manufKenwood) {
+    if (rigCaps->manufacturer == manufKenwood || rigCaps->manufacturer == manufYaesu) {
+        scan << "VFO" << "MEM" << "TUNE" << "QMB" << "NONE" << "PMS";
         if (rigCaps->commands.contains(funcMemoryWrite))
             writeCommand = funcMemoryWrite;
         if (rigCaps->commands.contains(funcMemorySelect))
             selectCommand = funcMemorySelect;
-
-        toneModes << "OFF" << "TONE" << "CTCSS";
+        if (rigCaps->manufacturer == manufYaesu)
+            toneModes << "OFF" << "ENC/DEC" << "ENC";
+        else
+            toneModes << "OFF" << "TONE" << "CTCSS";
         filters << "FILTER A" << "FILTER B";
-
     } else {
+        scan << "OFF" << "*1" << "*2" << "*3";
         if (rigCaps->hasTransmit)
             toneModes << "OFF" << "TONE" << "TSQL";
         else
             toneModes << "OFF" << "TSQL";
         filters << "FIL1" << "FIL2" << "FIL3";
     }
-
 
     if (rigCaps->commands.contains(funcRepeaterDTCS))
     {
@@ -331,6 +336,15 @@ int memories::updateRow(int row, memoryType mem, bool store)
 
     validData++;
 
+    if (mem.clarifier > -10000 && mem.clarifier < 10000) {
+        ui->table->model()->setData(ui->table->model()->index(row,columnClarOffset),QString("%1%2").arg(mem.clarifier < 0 ? '-' : '+').arg(abs(mem.clarifier),4,10,QChar('0')));
+        validData++;
+    }
+
+    validData += updateEntry(clar,row,columnRXClar,mem.clarRX);
+    validData += updateEntry(clar,row,columnTXClar,mem.clarTX);
+
+
     // Make sure these are populated before mode so they can be enabled/disabled.
     validData += updateEntry(toneModes,row,columnToneMode,mem.tonemode);
     validData += updateEntry(toneModes,row,columnToneModeB,mem.tonemodeB);
@@ -428,11 +442,13 @@ int memories::updateRow(int row, memoryType mem, bool store)
         qInfo() << "Invalid data in r2b";
 
 
-    if (checkASCII(mem.name)) {
-        ui->table->model()->setData(ui->table->model()->index(row,columnName),QString(mem.name));
-        validData++;
-    } else {
-        qInfo() << "Invalid data in name";
+    if (!rigCaps->commands.contains(funcMemoryTag)) {
+        if (checkASCII(mem.name)) {
+            ui->table->model()->setData(ui->table->model()->index(row,columnName),QString(mem.name));
+            validData++;
+        } else {
+            qInfo() << "Invalid data in name";
+        }
     }
 
     // These are optional so don't update validdata
@@ -634,6 +650,29 @@ void memories::on_table_cellChanged(int row, int col)
     currentMemory.frequency.Hz = (ui->table->item(row,columnFrequency) == NULL) ? 0 : quint64(ui->table->item(row,columnFrequency)->text().toDouble()*1000000.0);
     currentMemory.frequencyB.Hz = (ui->table->item(row,columnFrequencyB) == NULL) ? 0 : quint64(ui->table->item(row,columnFrequencyB)->text().toDouble()*1000000.0);
 
+    if (!ui->table->isColumnHidden(columnClarOffset) && ui->table->item(row,columnClarOffset) != NULL) {
+        currentMemory.clarifier = (ui->table->item(row,columnClarOffset) == NULL) ? 0 : ui->table->item(row,columnClarOffset)->text().toShort();
+        qInfo() << "Clarifier offset:" << ui->table->item(row,columnClarOffset)->text() << "now:" << currentMemory.clarifier;
+
+    }
+
+    if (!ui->table->isColumnHidden(columnRXClar) && ui->table->item(row,columnRXClar) != NULL) {
+        currentMemory.clarRX = clar.indexOf(ui->table->item(row,columnRXClar)->text().toUpper());
+    }
+
+    if (!ui->table->isColumnHidden(columnTXClar) && ui->table->item(row,columnTXClar) != NULL) {
+        currentMemory.clarTX = clar.indexOf(ui->table->item(row,columnTXClar)->text().toUpper());
+    }
+
+    if (currentMemory.clarifier != 0)
+    {
+        //ClarRX or ClarTX MUST be enabled
+        if (!currentMemory.clarRX && !currentMemory.clarTX)
+        {
+            currentMemory.clarRX=true;
+            currentMemory.clarTX=true;
+        }
+    }
 
     if (!ui->table->isColumnHidden(columnData) && ui->table->item(row,columnData) != NULL) {
         currentMemory.datamode = dataModes.indexOf(ui->table->item(row,columnData)->text().toUpper());
@@ -870,6 +909,15 @@ void memories::on_table_cellChanged(int row, int col)
     if (write) {
         //Sent command to write memory followed by slightly lower priority command to read.
         queue->add(priorityHighest,queueItem((currentMemory.sat?funcSatelliteMemory:writeCommand),QVariant::fromValue<memoryType>(currentMemory)));
+        if (rigCaps->commands.contains(funcMemoryTag))
+        {
+            memoryTagType tag;
+            tag.num=currentMemory.channel;
+            tag.name = QString(currentMemory.name);
+            tag.en=1;
+            queue->add(priorityHighest,queueItem(funcMemoryTag,QVariant::fromValue<memoryTagType>(tag)));
+            queue->add(priorityHigh,queueItem(funcMemoryTag,QVariant::fromValue<uint>(currentMemory.channel)));
+        }
         queue->add(priorityHigh,queueItem(funcMemoryContents,QVariant::fromValue<uint>((currentMemory.group<<16) | (currentMemory.channel & 0xffff))));
         qDebug() << "Sending memory, group:" << currentMemory.group << "channel" << currentMemory.channel;
         // Set number to not be editable once written. Not sure why but this crashes?
@@ -1343,6 +1391,34 @@ void memories::on_group_currentIndexChanged(int index)
             ui->table->showColumn(columnR2B);
             visibleColumns++;
             break;
+        case 'W':
+            if (clarEditor != Q_NULLPTR)
+            {
+                delete clarEditor;
+            }
+            clarEditor = new tableEditor("x00000",ui->table);
+            ui->table->setItemDelegateForColumn(columnClarOffset, clarEditor);
+            ui->table->showColumn(columnClarOffset);
+            visibleColumns++;
+            break;
+        case 'X':
+            if (clarRXList == Q_NULLPTR)
+            {
+                clarRXList = new tableCombobox(createModel(clarRXModel, clar),false,ui->table);
+            }
+            ui->table->setItemDelegateForColumn(columnRXClar, clarRXList);
+            ui->table->showColumn(columnRXClar);
+            visibleColumns++;
+            break;
+        case 'Y':
+            if (clarTXList == Q_NULLPTR)
+            {
+                clarTXList = new tableCombobox(createModel(clarTXModel, clar),false,ui->table);
+            }
+            ui->table->setItemDelegateForColumn(columnTXClar, clarTXList);
+            ui->table->showColumn(columnTXClar);
+            visibleColumns++;
+            break;
         case 'w':
             if (tuningStepsList != Q_NULLPTR)
                 delete tuningStepsList;
@@ -1559,6 +1635,17 @@ void memories::on_group_currentIndexChanged(int index)
             break;
         }
     }
+    // Yaesu description is separate!
+    if (rigCaps->commands.contains(funcMemoryTag) && ui->table->isColumnHidden(columnName))
+    {
+        if (nameEditor != Q_NULLPTR)
+            delete nameEditor;
+        nameEditor = new tableEditor(QString("%0;_").arg("",12,'x'),ui->table);
+        ui->table->setItemDelegateForColumn(columnName, nameEditor);
+
+        ui->table->showColumn(columnName);
+        visibleColumns++;
+    }
 
     if (visibleColumns > 15 || extendedView) {
         ui->table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
@@ -1588,14 +1675,33 @@ void memories::on_group_currentIndexChanged(int index)
             // Is the current group attached to a particular band?
             for (auto &band: rigCaps->bands)
             {
-                if (band.memGroup==ui->group->currentData().toInt())
-                {
-                     queue->add(priorityImmediate,queueItem(funcBandStackReg,QVariant::fromValue<uchar>(band.band)));
+                if (band.region == "" || band.region == region) {
+                    if (ui->group->isVisible() && band.memGroup == ui->group->currentData().toInt())
+                    {
+                        bandStackType bs;
+                        bs.band = band.bsr;
+                        bs.regCode = 1;
+                        queue->add(priorityImmediate,queueItem(funcBandStackReg, QVariant::fromValue<bandStackType>(bs),false,uchar(0)));
+                        break;
+                    }
                 }
             }
             queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(lastMemoryRequested)));
         }
     }
+    if (rigCaps->commands.contains(funcMemoryTag))
+    {
+        // Yaesu specific as tag (name) is stored seperately.
+        if (slowLoad) {
+            QTimer::singleShot(MEMORY_SLOWLOAD, this, [this]{
+                queue->add(priorityImmediate,queueItem(funcMemoryTag,QVariant::fromValue<uint>(lastMemoryRequested)));
+            });
+        } else {
+            queue->add(priorityImmediate,queueItem(funcMemoryTag,QVariant::fromValue<uint>(lastMemoryRequested)));
+        }
+
+    }
+
 }
 
 void memories::on_modeButton_clicked(bool on)
@@ -1642,6 +1748,26 @@ void memories::on_modeButton_clicked(bool on)
     ui->modeButton->setChecked(checked);
 }
 
+void memories::receiveMemoryName(memoryTagType tag)
+{
+    // We should already have the memory contents, so just fill in the name.
+    qInfo(logRig()) << "Got memory tag:" << tag.name;
+
+    // Now process the incoming memory name
+    for (int n = 0; n<ui->table->rowCount();n++)
+    {
+        if (ui->table->item(n,columnNum) != NULL && ui->table->item(n,columnNum)->text().toInt() == tag.num)
+        {
+            if (checkASCII(tag.name)) {
+                ui->table->blockSignals(true);
+                ui->table->model()->setData(ui->table->model()->index(n,columnName),tag.name);
+                ui->table->blockSignals(false);
+            }
+            break;
+        }
+    }
+
+}
 
 void memories::receiveMemory(memoryType mem)
 {
@@ -1651,10 +1777,17 @@ void memories::receiveMemory(memoryType mem)
     if ((lastMemoryRequested & 0xffff) < groupMemories)
     {
         lastMemoryRequested++;
-        if (mem.sat)
+        if (mem.sat) {
             queue->add(priorityImmediate,queueItem(funcSatelliteMemory,QVariant::fromValue<ushort>(lastMemoryRequested & 0xffff)));
-        else
+        } else {
             queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(lastMemoryRequested)));
+
+            if (rigCaps->commands.contains(funcMemoryTag))
+            {
+                    queue->add(priorityImmediate,queueItem(funcMemoryTag,QVariant::fromValue<uint>(lastMemoryRequested)));
+            }
+
+        }
         timeoutTimer.start(MEMORY_TIMEOUT);
     }
     else if (mem.channel == groupMemories)
@@ -1787,27 +1920,39 @@ bool memories::checkASCII(QString str)
 }
 
 void memories::timeout()
-{    
-    if (timeoutCount < 10 )
+{
+    if (rigCaps->manufacturer == manufYaesu)
     {
-        qInfo(logRig()) << "Timeout receiving memory:" << (lastMemoryRequested & 0xffff) << "in group" << (lastMemoryRequested >> 16 & 0xffff);
-        if (ui->group->currentData().toInt() == MEMORY_SATGROUP) {
-            queue->add(priorityImmediate,queueItem(funcSatelliteMemory,QVariant::fromValue<ushort>(lastMemoryRequested & 0xffff)));
-        } else {
-            queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(lastMemoryRequested)));
-        }
-        timeoutTimer.start(MEMORY_TIMEOUT);
-        timeoutCount++;
-    } else {
-        timeoutCount=0;
-        //ui->loadingMemories->setVisible(false);
         timeoutTimer.stop();
         ui->group->setEnabled(true);
         if (!ui->disableEditing->isChecked())
         {
             ui->table->setEditTriggers(QAbstractItemView::DoubleClicked);
         }
-        QMessageBox::information(this,"Timeout", "Timeout receiving memories, check rig connection", QMessageBox::Ok);
+        lastMemoryRequested--;
+        // We have reached the last memory and Yaesu usefully doesn't respond to non-existant ones!
+    } else {
+        if (timeoutCount < 10 )
+        {
+            qInfo(logRig()) << "Timeout receiving memory:" << (lastMemoryRequested & 0xffff) << "in group" << (lastMemoryRequested >> 16 & 0xffff);
+            if (ui->group->currentData().toInt() == MEMORY_SATGROUP) {
+                queue->add(priorityImmediate,queueItem(funcSatelliteMemory,QVariant::fromValue<ushort>(lastMemoryRequested & 0xffff)));
+            } else {
+                queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(lastMemoryRequested)));
+            }
+            timeoutTimer.start(MEMORY_TIMEOUT);
+            timeoutCount++;
+        } else {
+            timeoutCount=0;
+            //ui->loadingMemories->setVisible(false);
+            timeoutTimer.stop();
+            ui->group->setEnabled(true);
+            if (!ui->disableEditing->isChecked())
+            {
+                ui->table->setEditTriggers(QAbstractItemView::DoubleClicked);
+            }
+            QMessageBox::information(this,"Timeout", "Timeout receiving memories, check rig connection", QMessageBox::Ok);
+        }
     }
 }
 

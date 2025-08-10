@@ -307,6 +307,7 @@ signals:
 
     // Signals to forward incoming data onto other areas
     void haveMemory(memoryType mem);
+    void haveMemoryName(memoryTagType tag);
     void connectionStatus(bool conn);
 
 private slots:

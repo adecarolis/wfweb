@@ -242,6 +242,7 @@ struct genericType {
     QString name;
 };
 
+
 struct widthsType {
     widthsType():bands(0),num(0),hz(0) {}
     widthsType(widthsType const &w):bands(w.bands),num(w.num),hz(w.hz) {}

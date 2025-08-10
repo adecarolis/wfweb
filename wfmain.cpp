@@ -141,6 +141,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<funcs>();
     qRegisterMetaType<rigTypedef>();
     qRegisterMetaType<memoryType>();
+    qRegisterMetaType<memoryTagType>();
     qRegisterMetaType<antennaInfo>();
     qRegisterMetaType<scopeData>();
     qRegisterMetaType<queueItem>();
@@ -5465,6 +5466,7 @@ void wfmain::on_memoriesBtn_clicked()
             // Add slowload option for background loading.
             memWindow = new memories(isRadioAdmin, false);
             this->memWindow->connect(this, SIGNAL(haveMemory(memoryType)), memWindow, SLOT(receiveMemory(memoryType)));
+            this->memWindow->connect(this, SIGNAL(haveMemoryName(memoryTagType)), memWindow, SLOT(receiveMemoryName(memoryTagType)));
             for(const auto& r: receivers) {
                 connect(memWindow,SIGNAL(memoryMode(bool)),r,SLOT(memoryMode(bool)));
             }
@@ -5656,6 +5658,9 @@ void wfmain::receiveValue(cacheItem val){
     case funcSatelliteMemory:
     case funcMemoryContents:
         emit haveMemory(val.value.value<memoryType>());
+        break;
+    case funcMemoryTag:
+        emit haveMemoryName(val.value.value<memoryTagType>());
         break;
     case funcMemoryClear:
     case funcMemoryKeyer:
