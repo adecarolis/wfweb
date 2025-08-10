@@ -35,6 +35,10 @@ void yaesuUdpAudio::init()
 
     switch (this->rxSetup.codec)
     {
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
     case 4:
         audioSize = 320;
         audioChannels = 1;
@@ -48,6 +52,9 @@ void yaesuUdpAudio::init()
             audioSize = 320;
         audioCodec = MuLaw;
         break;
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
     default:
         qInfo(logUdp()) << "Unsupported audio codec";
         emit haveNetworkError(errorType(true, remoteAddr.toString(), "Unsupported audio codec"));
@@ -55,7 +62,6 @@ void yaesuUdpAudio::init()
         return;
         break;
     }
-
 
     // Connect audio ready to receive it:
     if (rxSetup.type == qtAudio) {

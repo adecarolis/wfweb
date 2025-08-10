@@ -55,7 +55,7 @@ void yaesuUdpCat::sendCatDataToRig(QByteArray d)
 {
     // We probably need to store these in an array, to handle retransmissions (once we work out how they are done)
     yaesuC2R_CatDataFrame h;
-    if (d.size() <= sizeof(h.data.data))
+    if (d.size() <= qsizetype(sizeof(h.data.data)))
     {
         memset(&h,0,sizeof(h));
 

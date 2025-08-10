@@ -20,6 +20,7 @@ yaesuServer::~yaesuServer()
 
 void yaesuServer::dataForServer(QByteArray d)
 {
+    Q_UNUSED(d)
     rigCommander* sender = qobject_cast<rigCommander*>(QObject::sender());
 
     //qInfo(logRigServer()) << "Received data for server clients";

@@ -522,14 +522,6 @@ struct yaesuFrameHeader {
     quint16 len;
 };
 
-#pragma warning( push )
-#pragma warning( disable : 4200 )
-struct yaesuGenericFrame {
-    yaesuFrameHeader hdr;
-    quint8 data[];
-};
-#pragma warning( pop )
-
 struct yaesuSessionFrame {
     yaesuFrameHeader hdr;
     quint32 session;

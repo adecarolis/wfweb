@@ -928,7 +928,7 @@ bool kenwoodCommander::parseMemory(QByteArray d,QVector<memParserFormat>* memPar
     d.insert(0,"**");
     for (auto &parse: *memParser) {
         // non-existant memory is short so send what we have so far.
-        if (d.size() < (parse.pos+1+parse.len) && parse.spec != 'Z') {
+        if (d.size() < (parse.pos+1+parse.len) && parse.spec != 'Z' && parse.spec != 'z') {
             return true;
         }
         QByteArray data = d.mid(parse.pos+1,parse.len);
@@ -961,9 +961,11 @@ bool kenwoodCommander::parseMemory(QByteArray d,QVector<memParserFormat>* memPar
             break;
         case 'g':
             mem->mode=data.left(parse.len).toInt();
+            if (mem->mode == 0) mem->mode = 1;
             break;
         case 'G':
             mem->modeB=data.left(parse.len).toInt();
+            if (mem->modeB == 0) mem->modeB = mem->mode;
             break;
         case 'h':
             mem->filter=data.left(parse.len).toInt();

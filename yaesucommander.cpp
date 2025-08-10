@@ -185,11 +185,12 @@ void yaesuCommander::haveScopeData(QByteArray in)
     fb.MHzDouble=fb.Hz/1000000.0;
     quint8 byte17 = quint8(data.mid(17,1).toHex().toUShort());
     quint8 byte32 = quint8(data.mid(32,1).toHex().toUShort());
-    quint8 byte33 = quint8(data.mid(33,1).toHex().toUShort());
 
-    quint8 mode = byte17 & 0x0f;// & 0x0f;
+    quint8 mode = byte17 & 0x0f;
     quint8 span = byte32 & 0x0f;
-    quint8 speed = (byte33 >> 4);// & 0x0f;
+    // We should use speed at some point!
+    //quint8 byte33 = quint8(data.mid(33,1).toHex().toUShort());
+    //quint8 speed = (byte33 >> 4);
 
     centerSpanData cs = queue->getCache(funcScopeSpan,0).value.value<centerSpanData>();
     if (cs.cstype != span)
@@ -538,12 +539,14 @@ void yaesuCommander::receiveCatDataFromRig(QByteArray in)
 
 void yaesuCommander::receiveScopeDataFromRig(QByteArray in)
 {
+    Q_UNUSED(in)
     //parseData(in);
     //emit haveDataFromRig(in);
 }
 
 void yaesuCommander::receiveAudioDataFromRig(QByteArray in)
 {
+    Q_UNUSED(in)
     //parseData(in);
     //emit haveDataFromRig(in);
 }
