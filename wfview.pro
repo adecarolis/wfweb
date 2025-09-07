@@ -13,7 +13,7 @@ QT       += core gui serialport network multimedia xml
 DEFINES += USB_CONTROLLER
 
 # FTDI support requires the library from https://ftdichip.com/software-examples/ft4222h-software-examples/
-# DEFINES += FTDI_SUPPORT
+DEFINES += FTDI_SUPPORT
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport websockets
 

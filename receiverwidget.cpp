@@ -1950,8 +1950,8 @@ void receiverWidget::receiveMode(modeInfo m, uchar vfo)
     }
 
     if (m.mk != modeUnknown && mode.mk != m.mk) {
-        qInfo(logSystem()) << __func__ << QString("Received new mode for %0: %1 (%2) filter:%3 data:%4")
-        .arg((receiver?"Sub":"Main")).arg(QString::number(m.mk,16)).arg(m.name).arg(m.filter).arg(m.data) ;
+        qInfo(logSystem()) << __func__ << QString("Received new mode for %0 (%1): %2 (%3) filter:%4 data:%5")
+        .arg((receiver?"Sub":"Main")).arg(QString::number(m.mk)).arg(m.reg).arg(m.name).arg(m.filter).arg(m.data) ;
 
         if (this->mode.mk != m.mk) {
             for (int i=0;i<modeCombo->count();i++)

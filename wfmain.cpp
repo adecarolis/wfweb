@@ -142,6 +142,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<rigTypedef>();
     qRegisterMetaType<memoryType>();
     qRegisterMetaType<memoryTagType>();
+    qRegisterMetaType<memorySplitType>();
     qRegisterMetaType<antennaInfo>();
     qRegisterMetaType<scopeData>();
     qRegisterMetaType<queueItem>();
@@ -3282,6 +3283,7 @@ void wfmain::saveSettings()
     // Radio and Comms: C-IV addr, port to use
     settings->beginGroup("Radio");
     settings->setValue("Manufacturer", prefs.manufacturer);
+
     settings->setValue("RigCIVuInt", prefs.radioCIVAddr);
     settings->setValue("CIVisRadioModel", prefs.CIVisRadioModel);
     settings->setValue("PTTType", prefs.pttType);
@@ -4273,12 +4275,12 @@ void wfmain::on_afGainSlider_valueChanged(int value)
         prefs.localAFgain = (quint8)(value);
     }
 
-    queue->addUnique(priorityImmediate,queueItem(funcAfGain,QVariant::fromValue<ushort>(value),currentReceiver));
+    queue->addUnique(priorityImmediate,queueItem(funcAfGain,QVariant::fromValue<ushort>(value),false,currentReceiver));
 }
 
 void wfmain::on_monitorSlider_valueChanged(int value)
 {
-    queue->addUnique(priorityImmediate,queueItem(funcMonitorGain,QVariant::fromValue<ushort>(value),false));
+    queue->addUnique(priorityImmediate,queueItem(funcMonitorGain,QVariant::fromValue<ushort>(value),false,currentReceiver));
 }
 
 void wfmain::on_monitorLabel_linkActivated(const QString&)
@@ -5467,6 +5469,7 @@ void wfmain::on_memoriesBtn_clicked()
             memWindow = new memories(isRadioAdmin, false);
             this->memWindow->connect(this, SIGNAL(haveMemory(memoryType)), memWindow, SLOT(receiveMemory(memoryType)));
             this->memWindow->connect(this, SIGNAL(haveMemoryName(memoryTagType)), memWindow, SLOT(receiveMemoryName(memoryTagType)));
+            this->memWindow->connect(this, SIGNAL(haveMemorySplit(memorySplitType)), memWindow, SLOT(receiveMemorySplit(memorySplitType)));
             for(const auto& r: receivers) {
                 connect(memWindow,SIGNAL(memoryMode(bool)),r,SLOT(memoryMode(bool)));
             }
@@ -5660,7 +5663,11 @@ void wfmain::receiveValue(cacheItem val){
         emit haveMemory(val.value.value<memoryType>());
         break;
     case funcMemoryTag:
+    case funcMemoryTagB:
         emit haveMemoryName(val.value.value<memoryTagType>());
+        break;
+    case funcSplitMemory:
+        emit haveMemorySplit(val.value.value<memorySplitType>());
         break;
     case funcMemoryClear:
     case funcMemoryKeyer:
@@ -6313,7 +6320,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         ui->rfGainSlider->setEnabled(rigCaps->commands.contains(funcRfGain));
 
         // Only show settingsgroup if rig has sub
-        ui->scopeSettingsGroup->setVisible(rigCaps->commands.contains(funcVFODualWatch));
+        ui->scopeSettingsGroup->setVisible(rigCaps->commands.contains(funcVFODualWatch)||rigCaps->commands.contains(funcVFOBandMS));
 
         ui->scopeDualBtn->setVisible(rigCaps->commands.contains(funcVFODualWatch));
         ui->mainEqualsSubBtn->setVisible(rigCaps->commands.contains(funcVFOEqualMS));
@@ -6377,7 +6384,7 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
             receiver->clearMode();
             for (auto &m: rigCaps->modes)
             {
-                receiver->addMode(m.name+" Mode",QVariant::fromValue(m));
+                receiver->addMode(m.name,QVariant::fromValue(m));
             }
 
             receiver->clearFilter();

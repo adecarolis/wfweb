@@ -1097,13 +1097,13 @@ void icomCommander::parseCommand()
     {
         bandStackType bsr;
         bsr.band = bcdHexToUChar(payloadIn.at(0));
-        bsr.regCode = bcdHexToUChar(payloadIn.at(1));
+        bsr.reg = bcdHexToUChar(payloadIn.at(1));
         for (const auto &b: rigCaps.bands)
         {
             if (b.bsr == bsr.band)
             {
                 bsr.freq = parseFreqData(payloadIn.mid(2,b.bytes),receiver);
-                // The Band Stacking command returns the regCode in the position that VFO is expected.
+                // The Band Stacking command returns the reg in the position that VFO is expected.
                 // As BSR is always on the active VFO, just set that.
                 bsr.freq.VFO = selVFO_t::activeVFO;
                 bsr.mode = bcdHexToUChar(payloadIn.at(b.bytes+2));
@@ -1115,7 +1115,7 @@ void icomCommander::parseCommand()
                     bsr.tsql = decodeTone(payloadIn.mid(b.bytes+8,3));
                 }
                 qDebug(logRig()) << QString("BSR received, band:%0 code:%1 freq:%2 data:%3 mode:%4 filter:%5")
-                                        .arg(bsr.band).arg(bsr.regCode).arg(bsr.freq.Hz).arg(bsr.data).arg(bsr.mode).arg(bsr.filter);
+                                        .arg(bsr.band).arg(bsr.reg).arg(bsr.freq.Hz).arg(bsr.data).arg(bsr.mode).arg(bsr.filter);
                 value.setValue(bsr);
                 break;
             }
@@ -3443,7 +3443,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
 
                 bandStackType bsr = value.value<bandStackType>();
                 payload.append(bcdEncodeChar(bsr.band));        //byte 0
-                payload.append(bcdEncodeChar(bsr.regCode));     //byte 1
+                payload.append(bcdEncodeChar(bsr.reg));     //byte 1
                 if (bsr.freq.Hz != 0) {
                     // We are setting the bsr so send freq/mode data.
                     // First find which band we are working on.
@@ -3464,7 +3464,7 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
 
                     }
                 }
-                qInfo(logRig()) << "Sending BSR, Band Code:" << bsr.band << "Register Code:" << bsr.regCode << "(Sent:" << payload.toHex(' ') << ")";
+                qInfo(logRig()) << "Sending BSR, Band Code:" << bsr.band << "Register Code:" << bsr.reg << "(Sent:" << payload.toHex(' ') << ")";
             }
             else if (!strcmp(value.typeName(),"datekind"))
             {

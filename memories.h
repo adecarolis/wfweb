@@ -52,12 +52,14 @@ private slots:
 
     void receiveMemory(memoryType mem);
     void receiveMemoryName(memoryTagType tag);
+    void receiveMemorySplit(memorySplitType s);
     void rowAdded(int row, memoryType mem=memoryType());
     void rowDeleted(quint32 mem);
     void menuAction(QAction* action, quint32 mem);
     void timeout();
 
 private:
+    bool startup=true;
     cachingQueue* queue;
     quint32 groupMemories=0;
     quint32 lastMemoryRequested=0;
@@ -339,7 +341,7 @@ private:
     };
 
     void enableCell(int col, int row, bool en);
-    void configColumns(int row, modeInfo mode);
+    void configColumns(int row, modeInfo mode, quint8 split=0);
     void configColumnsB(int row, modeInfo mode);
     bool disableCommands = false;
 

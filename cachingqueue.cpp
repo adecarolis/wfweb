@@ -452,15 +452,17 @@ cacheItem cachingQueue::getCache(funcs func, uchar receiver)
         auto it = cache.find(func);
         while (it != cache.end() && it->command == func)
         {
-            if (it->receiver == receiver)
+            if (it->receiver == receiver) {
                 ret = cacheItem(*it);
+                break;
+            }
             ++it;
         }
     }
     // If the cache is more than 5-20 seconds old, re-request it as it may be stale (maybe make this a config option?)
     // Using priorityhighest WILL slow down the S-Meter when a command intensive client is connected to rigctl
     if (func != funcNone && func != funcPowerControl && func != funcSelectVFO && (!ret.value.isValid() || ret.command == funcSWRMeter || ret.reply.addSecs(QRandomGenerator::global()->bounded(5,20)) <= QDateTime::currentDateTime())) {
-        //qInfo() << "No (or expired) cache found for" << funcString[func] << "requesting";
+        qInfo() << "No (or expired) cache found for" << funcString[func] << "requesting" << ret.reply;
         add(priorityImmediate,func,false,receiver);
     }
     return ret;
@@ -483,7 +485,9 @@ QMultiMap <queuePriority,queueItem>* cachingQueue::getQueueItems()
 bool cachingQueue::compare(QVariant a, QVariant b)
 {
     bool changed = false;
+
     if (a.isValid() && b.isValid()) {
+
         // Compare the details
         if (!strcmp(a.typeName(),"bool")){
             if (a.value<bool>() != b.value<bool>())
@@ -543,14 +547,15 @@ bool cachingQueue::compare(QVariant a, QVariant b)
                     a.value<spectrumBounds>().end != b.value<spectrumBounds>().end  )
                 changed=true;
         } else if (!strcmp(a.typeName(),"centerSpanData")) {
-            if (a.value<centerSpanData>().cstype != b.value<centerSpanData>().cstype || a.value<centerSpanData>().freq != b.value<centerSpanData>().freq  )
+            if (a.value<centerSpanData>().reg != b.value<centerSpanData>().reg || a.value<centerSpanData>().freq != b.value<centerSpanData>().freq  )
                 changed=true;
         } else if (!strcmp(a.typeName(),"rptrAccessData")) {
             if (a.value<rptrAccessData>().accessMode != b.value<rptrAccessData>().accessMode ||
                             a.value<rptrAccessData>().turnOffTSQL != b.value<rptrAccessData>().turnOffTSQL ||
                             a.value<rptrAccessData>().turnOffTone != b.value<rptrAccessData>().turnOffTone)
                 changed=true;
-        } else if (!strcmp(a.typeName(),"scopeData") || !strcmp(a.typeName(),"memoryType") || !strcmp(a.typeName(), "memoryTagType")
+        } else if (!strcmp(a.typeName(),"scopeData") || !strcmp(a.typeName(),"memoryType")
+                   || !strcmp(a.typeName(), "memoryTagType") || !strcmp(a.typeName(), "memorySplitType")
                    || !strcmp(a.typeName(),"bandStackType")  || !strcmp(a.typeName(),"timekind") || !strcmp(a.typeName(),"datekind")
                    || !strcmp(a.typeName(),"meterkind") || !strcmp(a.typeName(),"udpPreferences")) {
             changed=true; // Always different

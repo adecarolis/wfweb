@@ -134,15 +134,15 @@ enum centerSpansType {
 
 struct centerSpanData {
     centerSpanData() {}
-    centerSpanData(centerSpanData const &c): cstype(c.cstype), name(c.name), freq(c.freq)  {}
-    centerSpanData(uchar cstype, QString name, unsigned int freq) :
-        cstype(cstype), name(name), freq(freq){}
-    uchar cstype;
+    centerSpanData(centerSpanData const &c): reg(c.reg), name(c.name), freq(c.freq)  {}
+    centerSpanData(uchar reg, QString name, unsigned int freq) :
+        reg(reg), name(name), freq(freq){}
+    uchar reg;
     QString name;
     unsigned int freq;
 
     centerSpanData &operator=(const centerSpanData &i) {
-        this->cstype=i.cstype;
+        this->reg=i.reg;
         this->name=i.name;
         this->freq=i.freq;
         return *this;
@@ -191,14 +191,14 @@ struct bandType {
 
 // Used for setting/retrieving BSR information
 struct bandStackType {
-    bandStackType(): band(0),regCode(0),freq(freqt()),data(0),mode(0),filter(0) {}
-    bandStackType(bandStackType const &b): band(b.band),regCode(b.regCode),freq(b.freq),data(b.data),
+    bandStackType(): band(0),reg(0),freq(freqt()),data(0),mode(0),filter(0) {}
+    bandStackType(bandStackType const &b): band(b.band),reg(b.reg),freq(b.freq),data(b.data),
         mode(b.mode),filter(b.filter), sql(b.sql), tone(b.tone), tsql(b.tsql) {}
-    bandStackType(uchar band, uchar regCode): band(band),regCode(regCode), freq(), data(0), mode(0), filter(0) {}
-    bandStackType(uchar band, uchar regCode, freqt freq, uchar data, uchar mode, uchar filter):
-        band(band), regCode(regCode), freq(freq), data(data), mode(mode), filter(filter) {};
+    bandStackType(uchar band, uchar reg): band(band),reg(reg), freq(), data(0), mode(0), filter(0) {}
+    bandStackType(uchar band, uchar reg, freqt freq, uchar data, uchar mode, uchar filter):
+        band(band), reg(reg), freq(freq), data(data), mode(mode), filter(filter) {};
     uchar band;
-    uchar regCode;
+    uchar reg;
     freqt freq;
     uchar data;
     uchar mode;
@@ -208,7 +208,7 @@ struct bandStackType {
     toneInfo tsql;
     bandStackType &operator=(const bandStackType &i) {
         this->band=i.band;
-        this->regCode=i.regCode;
+        this->reg=i.reg;
         this->freq=i.freq;
         this->data=i.data;
         this->mode=i.mode;

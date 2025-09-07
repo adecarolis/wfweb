@@ -621,7 +621,7 @@ void kenwoodCommander::parseData(QByteArray data)
         case funcScopeSpan:
             for (auto &s: rigCaps.scopeCenterSpans)
             {
-                if (s.cstype == (d.at(0) - NUMTOASCII) )
+                if (s.reg == (d.at(0) - NUMTOASCII) )
                 {
                     value.setValue(s);
                 }
@@ -758,7 +758,7 @@ void kenwoodCommander::parseData(QByteArray data)
                 double span = 0.0;
                 for (const auto &s: rigCaps.scopeCenterSpans)
                 {
-                    if (s.cstype == queue->getCache(funcScopeSpan,receiver).value.value<centerSpanData>().cstype)
+                    if (s.reg == queue->getCache(funcScopeSpan,receiver).value.value<centerSpanData>().reg)
                     {
                         span = double(s.freq) / 1000000.0 ;
                     }
@@ -1598,7 +1598,7 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
             if (!strcmp(value.typeName(),"centerSpanData"))
             {
                 centerSpanData d = value.value<centerSpanData>();
-                payload.append(QString::number(d.cstype).rightJustified(cmd.bytes, QChar('0')).toLatin1());
+                payload.append(QString::number(d.reg).rightJustified(cmd.bytes, QChar('0')).toLatin1());
             }
             else if (!strcmp(value.typeName(),"QString"))
             {

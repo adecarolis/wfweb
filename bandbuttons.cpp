@@ -426,7 +426,7 @@ void bandbuttons::on_bandSetBtn_clicked()
                     bs.data = currentMode.data;
                     bs.freq = currentFrequency;
                     bs.filter = currentMode.filter;
-                    bs.regCode = ui->bandStkPopdown->currentIndex()+1;
+                    bs.reg = ui->bandStkPopdown->currentIndex()+1;
                     bs.mode = currentMode.reg;
                     // If we haven't received a tone yet, use default.
                     if (bs.tone.tone == 0) {

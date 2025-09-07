@@ -1664,13 +1664,12 @@ void settingswidget::on_rigCIVaddrHexLine_editingFinished()
 
     quint8 propCIVAddr = (quint8) ui->rigCIVaddrHexLine->text().toUInt(&okconvert, 16);
 
-    if(okconvert && (propCIVAddr < 0xe0) && (propCIVAddr != 0))
+    if(!okconvert || propCIVAddr >= 0xe0 || propCIVAddr == 0)
     {
-        prefs->radioCIVAddr = propCIVAddr;
-        emit changedRaPref(ra_radioCIVAddr);
-    } else {
         ui->rigCIVaddrHexLine->setText("0");
     }
+    prefs->radioCIVAddr = propCIVAddr;
+    emit changedRaPref(ra_radioCIVAddr);
 }
 
 void settingswidget::on_useCIVasRigIDChk_clicked(bool checked)

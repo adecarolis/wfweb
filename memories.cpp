@@ -75,8 +75,6 @@ columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B
 
     skip << "OFF" << "SKIP" << "PSKIP";
 
-    split << "OFF" << "ON";
-
     dataModes << "OFF" << "DATA1";
 
 
@@ -98,6 +96,7 @@ columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B
         else
             toneModes << "OFF" << "TONE" << "CTCSS";
         filters << "FILTER A" << "FILTER B";
+        split << "SIMP" << "PLUS" << "MINUS";
     } else {
         scan << "OFF" << "*1" << "*2" << "*3";
         if (rigCaps->hasTransmit)
@@ -105,6 +104,7 @@ columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B
         else
             toneModes << "OFF" << "TSQL";
         filters << "FIL1" << "FIL2" << "FIL3";
+        split << "OFF" << "ON";
     }
 
     if (rigCaps->commands.contains(funcRepeaterDTCS))
@@ -329,11 +329,12 @@ int memories::updateRow(int row, memoryType mem, bool store)
     ui->table->model()->setData(ui->table->model()->index(row,columnFrequency),QString::number(double(mem.frequency.Hz/1000000.0),'f',5));
     validData++;
 
-    if (mem.frequencyB.Hz > 0)
-        ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),QString::number(double(mem.frequencyB.Hz/1000000.0),'f',5));
-    else
-        ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),QString::number(double(mem.frequency.Hz/1000000.0),'f',5));
-
+    if (!rigCaps->commands.contains(funcSplitMemory)) {
+        if (mem.frequencyB.Hz > 0)
+            ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),QString::number(double(mem.frequencyB.Hz/1000000.0),'f',5));
+        else
+            ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),QString::number(double(mem.frequency.Hz/1000000.0),'f',5));
+    }
     validData++;
 
     if (mem.clarifier > -10000 && mem.clarifier < 10000) {
@@ -442,13 +443,21 @@ int memories::updateRow(int row, memoryType mem, bool store)
         qInfo() << "Invalid data in r2b";
 
 
-    if (!rigCaps->commands.contains(funcMemoryTag)) {
+    if (!rigCaps->commands.contains(funcMemoryTag) && !rigCaps->commands.contains(funcMemoryTagB)) {
         if (checkASCII(mem.name)) {
             ui->table->model()->setData(ui->table->model()->index(row,columnName),QString(mem.name));
             validData++;
         } else {
             qInfo() << "Invalid data in name";
         }
+    }
+
+    if (!rigCaps->commands.contains(funcSplitMemory))
+    {
+        if (mem.frequencyB.Hz > 0)
+            ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),QString::number(double(mem.frequencyB.Hz/1000000.0),'f',5));
+        else
+            ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),QString::number(double(mem.frequency.Hz/1000000.0),'f',5));
     }
 
     // These are optional so don't update validdata
@@ -475,7 +484,7 @@ int memories::updateRow(int row, memoryType mem, bool store)
         {
             validData += updateEntry(modes,row,columnMode,i);
             // This mode is the one we are interested in!
-            configColumns(row, rigCaps->modes[i]);
+            configColumns(row, rigCaps->modes[i],mem.split);
         }
         if (mem.modeB == rigCaps->modes[i].reg)
         {
@@ -566,7 +575,7 @@ void memories::recallMem(quint32 num)
                 {
                     bandStackType bs;
                     bs.band = band.bsr;
-                    bs.regCode = 1;
+                    bs.reg = 1;
                     queue->add(priorityImmediate,queueItem(funcBandStackReg, QVariant::fromValue<bandStackType>(bs),false,uchar(0)));
                     break;
                 }
@@ -851,7 +860,7 @@ void memories::on_table_cellChanged(int row, int col)
         for (auto &m: rigCaps->modes){
             if (!ui->table->isColumnHidden(columnMode) && ui->table->item(row,columnMode) != NULL && ui->table->item(row,columnMode)->text()==m.name) {
                 // This mode is the one we are interested in!
-                configColumns(row,m);
+                configColumns(row,m,currentMemory.split);
                 break;
             }
             if (!ui->table->isColumnHidden(columnModeB) && ui->table->item(row,columnModeB) != NULL && ui->table->item(row,columnModeB)->text()==m.name) {
@@ -895,6 +904,7 @@ void memories::on_table_cellChanged(int row, int col)
     {
         if (!ui->table->isColumnHidden(f) && ui->table->item(row,f) == NULL) {
             write=false;
+            qInfo() << "Column << f << is nulL, cannot write.";
             //ui->table->model()->setData(ui->table->model()->index(row,f),QString(""));
             //ui->table->item(row,f)->setBackground(Qt::red);
         } else {
@@ -903,20 +913,35 @@ void memories::on_table_cellChanged(int row, int col)
 
     }
     // Quick sanity check as we MUST have at least one valid frequency
-    if (currentMemory.frequency.Hz == 0 || (currentMemory.split && currentMemory.frequencyB.Hz == 0))
+    if (currentMemory.frequency.Hz == 0 || (rigCaps->manufacturer == manufIcom && currentMemory.split && currentMemory.frequencyB.Hz == 0))
+    {
         write=false;
+        qInfo() << "Frequency is zero";
+    }
 
     if (write) {
         //Sent command to write memory followed by slightly lower priority command to read.
-        queue->add(priorityHighest,queueItem((currentMemory.sat?funcSatelliteMemory:writeCommand),QVariant::fromValue<memoryType>(currentMemory)));
-        if (rigCaps->commands.contains(funcMemoryTag))
+        queue->add(priorityImmediate,queueItem((currentMemory.sat?funcSatelliteMemory:writeCommand),QVariant::fromValue<memoryType>(currentMemory)));
+        if (rigCaps->commands.contains(funcMemoryTag) || rigCaps->commands.contains(funcMemoryTagB))
         {
             memoryTagType tag;
             tag.num=currentMemory.channel;
             tag.name = QString(currentMemory.name);
             tag.en=1;
-            queue->add(priorityHighest,queueItem(funcMemoryTag,QVariant::fromValue<memoryTagType>(tag)));
-            queue->add(priorityHigh,queueItem(funcMemoryTag,QVariant::fromValue<uint>(currentMemory.channel)));
+            queue->add(priorityHighest,queueItem(rigCaps->commands.contains(funcMemoryTagB)?funcMemoryTagB:funcMemoryTag,QVariant::fromValue<memoryTagType>(tag)));
+            queue->add(priorityHigh,queueItem(rigCaps->commands.contains(funcMemoryTagB)?funcMemoryTagB:funcMemoryTag,QVariant::fromValue<uint>(currentMemory.channel)));
+        }
+        if (rigCaps->commands.contains(funcSplitMemory))
+        {
+            // Yaesu memory split command.
+            memorySplitType s;
+            s.num=currentMemory.channel;
+            s.en = (currentMemory.frequency.Hz != currentMemory.frequencyB.Hz && currentMemory.frequencyB.Hz != 0)?true:false;
+            s.freq = currentMemory.frequencyB.Hz;
+            qInfo() << "Adding split command for:" <<s.num<<" en:" << s.en << " freq:" << s.freq;
+            queue->add(priorityHighest,queueItem(funcSplitMemory,QVariant::fromValue<memorySplitType>(s)));
+            queue->add(priorityHigh,queueItem(funcSplitMemory,QVariant::fromValue<uint>(currentMemory.channel)));
+
         }
         queue->add(priorityHigh,queueItem(funcMemoryContents,QVariant::fromValue<uint>((currentMemory.group<<16) | (currentMemory.channel & 0xffff))));
         qDebug() << "Sending memory, group:" << currentMemory.group << "channel" << currentMemory.channel;
@@ -1636,7 +1661,7 @@ void memories::on_group_currentIndexChanged(int index)
         }
     }
     // Yaesu description is separate!
-    if (rigCaps->commands.contains(funcMemoryTag) && ui->table->isColumnHidden(columnName))
+    if ((rigCaps->commands.contains(funcMemoryTag) || rigCaps->commands.contains(funcMemoryTagB)) && ui->table->isColumnHidden(columnName))
     {
         if (nameEditor != Q_NULLPTR)
             delete nameEditor;
@@ -1644,6 +1669,17 @@ void memories::on_group_currentIndexChanged(int index)
         ui->table->setItemDelegateForColumn(columnName, nameEditor);
 
         ui->table->showColumn(columnName);
+        visibleColumns++;
+    }
+
+    if (rigCaps->commands.contains(funcSplitMemory) && ui->table->isColumnHidden(columnFrequencyB))
+    {
+        if (freqEditorB != Q_NULLPTR)
+            delete freqEditorB;
+        freqEditorB = new tableEditor("00000.00000",ui->table);
+        ui->table->setItemDelegateForColumn(columnFrequencyB, freqEditorB);
+
+        ui->table->showColumn(columnFrequencyB);
         visibleColumns++;
     }
 
@@ -1680,7 +1716,7 @@ void memories::on_group_currentIndexChanged(int index)
                     {
                         bandStackType bs;
                         bs.band = band.bsr;
-                        bs.regCode = 1;
+                        bs.reg = 1;
                         queue->add(priorityImmediate,queueItem(funcBandStackReg, QVariant::fromValue<bandStackType>(bs),false,uchar(0)));
                         break;
                     }
@@ -1689,18 +1725,30 @@ void memories::on_group_currentIndexChanged(int index)
             queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(lastMemoryRequested)));
         }
     }
-    if (rigCaps->commands.contains(funcMemoryTag))
+    if (rigCaps->commands.contains(funcMemoryTag) || rigCaps->commands.contains(funcMemoryTagB))
     {
         // Yaesu specific as tag (name) is stored seperately.
         if (slowLoad) {
             QTimer::singleShot(MEMORY_SLOWLOAD, this, [this]{
-                queue->add(priorityImmediate,queueItem(funcMemoryTag,QVariant::fromValue<uint>(lastMemoryRequested)));
+                queue->add(priorityImmediate,queueItem(rigCaps->commands.contains(funcMemoryTagB)?funcMemoryTagB:funcMemoryTag,QVariant::fromValue<uint>(lastMemoryRequested)));
             });
         } else {
-            queue->add(priorityImmediate,queueItem(funcMemoryTag,QVariant::fromValue<uint>(lastMemoryRequested)));
+            queue->add(priorityImmediate,queueItem(rigCaps->commands.contains(funcMemoryTagB)?funcMemoryTagB:funcMemoryTag,QVariant::fromValue<uint>(lastMemoryRequested)));
         }
-
     }
+
+    if (rigCaps->commands.contains(funcSplitMemory))
+    {
+        // Yaesu specific as tag (name) is stored seperately.
+        if (slowLoad) {
+            QTimer::singleShot(MEMORY_SLOWLOAD, this, [this]{
+                queue->add(priorityImmediate,queueItem(funcSplitMemory,QVariant::fromValue<uint>(lastMemoryRequested)));
+            });
+        } else {
+            queue->add(priorityImmediate,queueItem(funcSplitMemory,QVariant::fromValue<uint>(lastMemoryRequested)));
+        }
+    }
+
 
 }
 
@@ -1748,10 +1796,30 @@ void memories::on_modeButton_clicked(bool on)
     ui->modeButton->setChecked(checked);
 }
 
+void memories::receiveMemorySplit(memorySplitType s)
+{
+    // Now process the incoming memory name
+    qDebug(logRig()) << "Memories: received memory split id:" << s.num << " en:" << s.en << " freq:" << s.freq;
+
+    for (int n = 0; n<ui->table->rowCount();n++)
+    {
+        if (ui->table->item(n,columnNum) != NULL && ui->table->item(n,columnNum)->text().toInt() == s.num)
+        {
+
+            ui->table->blockSignals(true);
+            if (s.freq > 0)
+                ui->table->model()->setData(ui->table->model()->index(n,columnFrequencyB),QString::number(double(s.freq/1000000.0),'f',5));
+            ui->table->blockSignals(false);
+            break;
+        }
+    }
+
+}
+
 void memories::receiveMemoryName(memoryTagType tag)
 {
     // We should already have the memory contents, so just fill in the name.
-    qInfo(logRig()) << "Got memory tag:" << tag.name;
+    qDebug(logRig()) << "Memories: received memory tag id:" << tag.num << " en:" << tag.en << " name:" << tag.name;
 
     // Now process the incoming memory name
     for (int n = 0; n<ui->table->rowCount();n++)
@@ -1774,7 +1842,7 @@ void memories::receiveMemory(memoryType mem)
     qDebug() << QString("Loading Memory %0/%1 (this may take a while!)").arg(lastMemoryRequested&0xffff,3,10,QLatin1Char('0')).arg(rigCaps->memories,3,10,QLatin1Char('0'));
     progress->setValue(lastMemoryRequested & 0xffff);
     // First, do we need to request the next memory?
-    if ((lastMemoryRequested & 0xffff) < groupMemories)
+    if ((lastMemoryRequested & 0xffff) < groupMemories && startup)
     {
         lastMemoryRequested++;
         if (mem.sat) {
@@ -1784,7 +1852,15 @@ void memories::receiveMemory(memoryType mem)
 
             if (rigCaps->commands.contains(funcMemoryTag))
             {
-                    queue->add(priorityImmediate,queueItem(funcMemoryTag,QVariant::fromValue<uint>(lastMemoryRequested)));
+                queue->add(priorityImmediate,queueItem(funcMemoryTag,QVariant::fromValue<uint>(lastMemoryRequested)));
+            }
+            if (rigCaps->commands.contains(funcMemoryTagB))
+            {
+                queue->add(priorityImmediate,queueItem(funcMemoryTagB,QVariant::fromValue<uint>(lastMemoryRequested)));
+            }
+            if (rigCaps->commands.contains(funcSplitMemory))
+            {
+                queue->add(priorityImmediate,queueItem(funcSplitMemory,QVariant::fromValue<uint>(lastMemoryRequested)));
             }
 
         }
@@ -1799,6 +1875,7 @@ void memories::receiveMemory(memoryType mem)
         {
             ui->table->setEditTriggers(QAbstractItemView::DoubleClicked);
         }
+        startup=false;
     }
 
     timeoutCount=0; // We have received a memory, so set the timeout to zero.
@@ -1929,10 +2006,10 @@ void memories::timeout()
         {
             ui->table->setEditTriggers(QAbstractItemView::DoubleClicked);
         }
-        lastMemoryRequested--;
         // We have reached the last memory and Yaesu usefully doesn't respond to non-existant ones!
+        startup=false;
     } else {
-        if (timeoutCount < 10 )
+        if (timeoutCount < 3 )
         {
             qInfo(logRig()) << "Timeout receiving memory:" << (lastMemoryRequested & 0xffff) << "in group" << (lastMemoryRequested >> 16 & 0xffff);
             if (ui->group->currentData().toInt() == MEMORY_SATGROUP) {
@@ -2228,7 +2305,7 @@ void memories::on_scanButton_toggled(bool scan)
     queue->add(priorityImmediate,queueItem(funcScanning,QVariant::fromValue<uchar>(uchar(scan))));
 }
 
-void memories::configColumns(int row, modeInfo mode) {
+void memories::configColumns(int row, modeInfo mode, quint8 split) {
 
     enableCell(row,columnTone,false);
     enableCell(row,columnToneMode,false);
@@ -2299,6 +2376,11 @@ void memories::configColumns(int row, modeInfo mode) {
         break;
     default:
         break;
+    }
+
+    if (rigCaps->manufacturer==manufYaesu)
+    {
+        enableCell(row,columnFrequencyB,bool(split>0));
     }
 }
 

@@ -53,7 +53,7 @@ signals:
     //void issueCmdF(cmds cmd, freqt f); // go to frequency
     //void issueCmd(cmds, char); // to get BSR of a specific band
 
-    // void getBandStackReg(char band, char regCode); // no, use the queue.
+    // void getBandStackReg(char band, char reg); // no, use the queue.
     // void gotoFreqMode(); // TODO, arguments will contain BSR data
 
 public slots:

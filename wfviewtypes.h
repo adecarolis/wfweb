@@ -78,6 +78,12 @@ enum rigMode_t {
     modeNXDN_VN,        //21
     modeNXDN_N,         //22
     modeDCR,            //23
+    // Yaesu specific modes
+    modeAMN,            //24
+    modeDATAFM,         //25
+    modeDATAFMN,        //26
+    modeC4FMDN,         //27
+    modeC4FMVW,         //28
     modeUnknown=0xff
 };
 
@@ -205,12 +211,11 @@ enum breakIn_t {
 };
 
 struct freqt {
-    freqt ():Hz(0), MHzDouble(0.0), VFO(activeVFO) {};
-    freqt(quint64 Hz, double MHzDouble, selVFO_t VFO): Hz(Hz), MHzDouble(MHzDouble), VFO(VFO) {};
+    freqt ():Hz(0), MHzDouble(0.0), VFO(activeVFO){};
+    freqt(quint64 Hz, double MHzDouble, selVFO_t VFO): Hz(Hz), MHzDouble(MHzDouble), VFO(VFO){};
     quint64 Hz;
     double MHzDouble;
     selVFO_t VFO;
-
 };
 
 struct datekind {
@@ -362,7 +367,8 @@ funcLoginEnableDisable,
  funcAMModSource,       funcAMUSBModGain,       funcAMRearModGain,
  funcFMModSource,       funcFMUSBModGain,       funcFMRearModGain,
  funcDataModSource,     funcDataUSBModGain,     funcDataRearModGain,
- funcVFOAInformation,   funcMemoryTag,
+ funcVFOAInformation,   funcMemoryTag,          funcMemoryTagB,
+ funcFreqSub,           funcSplitMemory,
 /* Special Commands (internal use only) */
 funcSelectVFO,          funcSeparator,          funcLCDWaterfall,           funcLCDSpectrum,        funcLCDNothing,         funcPageUp,
 funcPageDown,           funcVFOFrequency,       funcVFOMode,                funcRigctlFunction,     funcRigctlLevel,        funcRigctlParam,
@@ -502,7 +508,8 @@ static QString funcString[funcLastFunc] { "None",
 "AM Mod Source",       "AM USB Mod Gain",       "AM Rear Mod Gain",
 "FM Mod Source",       "FM USB Mod Gain",       "FM Rear Mod Gain",
 "Data Mod Source",     "Data USB Mod Gain",     "Data Rear Mod Gain",
-"Information VFO-A",   "Memory Tag",
+"Information VFO-A",   "Memory Tag",            "Memory Tag (no en)",
+"RX Freq (sub)",       "Split Memory",
 
 /* Special Commands */
 "-Select VFO",          "-Seperator",
@@ -573,6 +580,12 @@ struct memoryTagType {
     quint16 num;
     bool en;
     QString name;
+};
+
+struct memorySplitType {
+    quint16 num;
+    bool en;
+    quint64 freq;
 };
 
 struct memoryType {
@@ -798,6 +811,7 @@ Q_DECLARE_METATYPE(usbFeatureType)
 Q_DECLARE_METATYPE(funcs)
 Q_DECLARE_METATYPE(memoryType)
 Q_DECLARE_METATYPE(memoryTagType)
+Q_DECLARE_METATYPE(memorySplitType)
 Q_DECLARE_METATYPE(antennaInfo)
 Q_DECLARE_METATYPE(scopeData)
 Q_DECLARE_METATYPE(timekind)

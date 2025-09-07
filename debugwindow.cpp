@@ -234,7 +234,7 @@ QString debugWindow::getValue(QVariant val)
         else if (!strcmp(val.typeName(),"centerSpanData"))
         {
             centerSpanData i = val.value<centerSpanData>();
-            value = QString("Type:%0 Freq:%1 Name:%2").arg(i.cstype).arg(i.freq).arg(i.name);
+            value = QString("Type:%0 Freq:%1 Name:%2").arg(i.reg).arg(i.freq).arg(i.name);
         }
         else if (!strcmp(val.typeName(),"toneInfo"))
         {

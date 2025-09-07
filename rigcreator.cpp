@@ -494,7 +494,7 @@ void rigCreator::loadRigFile(QString file)
             settings->setArrayIndex(c);
             ui->modes->insertRow(ui->modes->rowCount());
             ui->modes->model()->setData(ui->modes->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
-            ui->modes->model()->setData(ui->modes->model()->index(c,1),QString::number(settings->value("Reg", 0).toUInt()).rightJustified(2,'0'));
+            ui->modes->model()->setData(ui->modes->model()->index(c,1),settings->value("Reg", "").toString().rightJustified(2,'0'));
             ui->modes->model()->setData(ui->modes->model()->index(c,2),settings->value("Min", 0).toString().toInt(),Qt::DisplayRole);
             ui->modes->model()->setData(ui->modes->model()->index(c,3),settings->value("Max", 0).toString().toInt(),Qt::DisplayRole);
             ui->modes->model()->setData(ui->modes->model()->index(c,4),settings->value("Name", "").toString());
@@ -761,7 +761,7 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->scopeModes->insertRow(ui->scopeModes->rowCount());
-            ui->scopeModes->model()->setData(ui->scopeModes->model()->index(c,0),settings->value("Num", 0).toInt());
+            ui->scopeModes->model()->setData(ui->scopeModes->model()->index(c,0),settings->value("Num", "").toString());
             ui->scopeModes->model()->setData(ui->scopeModes->model()->index(c,1),settings->value("Name", "None").toString());
         }
         settings->endArray();
@@ -1020,13 +1020,13 @@ void rigCreator::saveRigFile(QString file)
     settings->endArray();
 
     //settings->remove("Modes");
-    ui->modes->sortByColumn(0,Qt::AscendingOrder);
+    ui->modes->sortByColumn(1,Qt::AscendingOrder);
     settings->beginWriteArray("Modes");
     for (int n = 0; n<ui->modes->rowCount();n++)
     {
         settings->setArrayIndex(n);
         settings->setValue("Num", (ui->modes->item(n,0) == NULL) ? 0 : ui->modes->item(n,0)->text().toUInt());
-        settings->setValue("Reg", (ui->modes->item(n,1) == NULL) ? 0 : ui->modes->item(n,1)->text().toInt());
+        settings->setValue("Reg", (ui->modes->item(n,1) == NULL) ? 0 : ui->modes->item(n,1)->text().rightJustified(2,'0'));
         settings->setValue("Min",(ui->modes->item(n,2) == NULL) ? 0 : ui->modes->item(n,2)->text().toInt());
         settings->setValue("Max",(ui->modes->item(n,3) == NULL) ? 0 : ui->modes->item(n,3)->text().toInt());
         settings->setValue("Name",(ui->modes->item(n,4) == NULL) ? "" : ui->modes->item(n,4)->text());
@@ -1143,7 +1143,7 @@ void rigCreator::saveRigFile(QString file)
     for (int n = 0; n<ui->scopeModes->rowCount();n++)
     {
         settings->setArrayIndex(n);
-        settings->setValue("Num",(ui->scopeModes->item(n,0) == NULL) ? 0 :  ui->scopeModes->item(n,0)->text().toInt());
+        settings->setValue("Num",(ui->scopeModes->item(n,0) == NULL) ? 0 :  ui->scopeModes->item(n,0)->text().rightJustified(2,'0'));
         settings->setValue("Name",(ui->scopeModes->item(n,1) == NULL) ? "" :  ui->scopeModes->item(n,1)->text());
     }
     settings->endArray();

@@ -140,7 +140,7 @@ signals:
     void getDataMode();
     void getModInput(bool dataOn);
     void setModInput(inputTypes input, bool dataOn);
-    void getBandStackReg(char band, char regCode);
+    void getBandStackReg(char band, char reg);
     void getDebug();
     void getRitEnabled();
     void getRitValue();
@@ -308,6 +308,7 @@ signals:
     // Signals to forward incoming data onto other areas
     void haveMemory(memoryType mem);
     void haveMemoryName(memoryTagType tag);
+    void haveMemorySplit(memorySplitType s);
     void connectionStatus(bool conn);
 
 private slots:
