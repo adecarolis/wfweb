@@ -2131,7 +2131,7 @@ void memories::on_csvImport_clicked()
                     // special cases:
                     case columnFrequency:
                     case columnFrequencyB:
-                        data= QString::number(data.toDouble(),'f',3);
+                        data= QString::number(data.toDouble(),'f',6);
                         break;
                     case columnDTCS:
                     case columnDTCSB:
