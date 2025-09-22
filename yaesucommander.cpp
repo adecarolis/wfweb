@@ -280,9 +280,17 @@ void yaesuCommander::haveScopeData(QByteArray in)
     scope.fixedEdge = 1;
 
     queue->receiveValue(funcScopeWaveData,QVariant::fromValue<scopeData>(scope),0);
-    queue->receiveValue(funcFreq,QVariant::fromValue<freqt>(fa),0);
-    queue->receiveValue(funcFreq,QVariant::fromValue<freqt>(fb),1);
+
+    if (rigCaps.commands.contains(funcFreq)) {
+        queue->receiveValue(funcFreq,QVariant::fromValue<freqt>(fa),0);
+        queue->receiveValue(funcFreq,QVariant::fromValue<freqt>(fb),1);
+    } else {
+        queue->receiveValue(funcSelectedFreq,QVariant::fromValue<freqt>(fa),0);
+        queue->receiveValue(funcUnselectedFreq,QVariant::fromValue<freqt>(fb),0);
+    }
+
     emit setScopePoll(quint64(specTime+wfTime+10));
+
 
 }
 
@@ -687,6 +695,8 @@ void yaesuCommander::parseData(QByteArray data)
         case funcFreqSub:
             receiver = 1;
             func=funcFreq;
+        case funcSelectedFreq:
+        case funcUnselectedFreq:
         case funcFreq:
         {
             freqt f;
@@ -703,6 +713,8 @@ void yaesuCommander::parseData(QByteArray data)
 #pragma GCC diagnostic pop
 #endif
         case funcMode:
+        case funcSelectedMode:
+        case funcUnselectedMode:
         {
             modeInfo mi = queue->getCache(func,receiver).value.value<modeInfo>();
             if (mi.reg != uchar(d.back()))

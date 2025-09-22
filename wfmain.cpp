@@ -5543,7 +5543,7 @@ void wfmain::receiveValue(cacheItem val){
     }
     else if (val.receiver >= receivers.size())
     {
-        qWarning(logSystem()) << "Data received for Radio/VFO that doesn't exist!" << val.receiver;
+        qWarning(logSystem()) << "Data received for Radio/VFO that doesn't exist!" << val.receiver << "(" << funcString[val.command] << ")";
         return;
     }
 
