@@ -7,6 +7,7 @@
 #include <QNetworkDatagram>
 #include <QHostInfo>
 #include <QTimer>
+#include <QElapsedTimer>
 #include <QMutex>
 #include <QDateTime>
 #include <QByteArray>

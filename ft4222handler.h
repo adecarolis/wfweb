@@ -2,6 +2,7 @@
 #define FT4222HANDLER_H
 
 #include <QThread>
+#include <QElapsedTimer>
 #include "packettypes.h"
 #include "wfviewtypes.h"
 
