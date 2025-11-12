@@ -58,9 +58,6 @@ signals:
     void haveAudioData(audioPacket data);
     void setupTxAudio(audioSetup setup);
     void setupRxAudio(audioSetup setup);
-
-    void haveNetworkError(errorType);
-
     void haveChangeLatency(quint16 value);
     void haveSetVolume(quint8 value);
     void haveNetworkAudioLevels(networkAudioLevels);

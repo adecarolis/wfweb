@@ -51,7 +51,6 @@ protected:
 signals:
     void initCat();
     void haveSession(quint32 s);
-    void haveNetworkError(errorType);
 
 private:
 

@@ -71,7 +71,6 @@ signals:
     // All signals are defined in rigcommander.h as they should be common for all rig types.
     void initUdpControl();
     void haveSetVolume(quint8 level);
-    void haveNetworkError(errorType);
     void haveChangeLatency(quint16 value);
     void haveNetworkStatus(networkStatus);
     void haveNetworkAudioLevels(networkAudioLevels);

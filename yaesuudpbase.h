@@ -35,6 +35,8 @@ public:
     ~yaesuUdpBase();
 
 signals:
+    void haveNetworkError(errorType);
+    void haveNetworkStatus(networkStatus);
 
 public slots:
     virtual void init();
