@@ -54,9 +54,12 @@ bool audioHandlerRtInput::openDevice() noexcept
 #else
     if (!rtaudio.getDeviceCount()) return false;
     // Optional: centralised warning handler
+
+#if RTAUDIO_VERSION_MAJOR >= 6
     rtaudio.setErrorCallback([](RtAudioErrorType t, const std::string& m){
         qWarning() << "RtAudio error" << int(t) << ":" << QString::fromStdString(m);
     });
+#endif
 
     RtAudio::StreamParameters inParams; inParams.deviceId=setupData.portInt; inParams.nChannels=nativeFormat.channelCount(); inParams.firstChannel=0;
     RtAudio::StreamOptions opts; opts.streamName = "audioHandlerRtInput";

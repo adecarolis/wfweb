@@ -28,8 +28,11 @@ bool audioHandlerQtInput::openDevice() noexcept
 
     connect(audioInput, SIGNAL(destroyed()), audioDevice, SLOT(deleteLater()), Qt::UniqueConnection);
     connect(audioDevice, SIGNAL(readyRead()), this, SLOT(onReadyRead()), Qt::UniqueConnection);
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+    qInfo(logAudio()) << "Connected to Qt audio input device" << deviceInfo.deviceName();
+#else
     qInfo(logAudio()) << "Connected to Qt audio input device" << deviceInfo.description();
-
+#endif
     return true;
 }
 

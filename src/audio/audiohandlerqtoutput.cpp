@@ -30,7 +30,11 @@ bool audioHandlerQtOutput::openDevice() noexcept
     if (!audioDevice) return false;
 
     connect(audioOutput, SIGNAL(destroyed()), audioDevice, SLOT(deleteLater()), Qt::UniqueConnection);
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+    qInfo(logAudio()) << "Connected to Qt audio output device" << deviceInfo.deviceName();
+#else
     qInfo(logAudio()) << "Connected to Qt audio output device" << deviceInfo.description();
+#endif
     return true;
 }
 
