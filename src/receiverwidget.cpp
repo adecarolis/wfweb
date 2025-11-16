@@ -909,7 +909,7 @@ void receiverWidget::colorPreset(colorPrefsType *cp)
 }
 
 bool receiverWidget::updateScope(scopeData data)
-{
+{    
     if (!scopePrepared )
     {
         return false;
@@ -924,9 +924,16 @@ bool receiverWidget::updateScope(scopeData data)
         showBandIndicators(true);
     }
 
+    if (!scopeReceived)
+    {
+        queue->del(funcScopeOnOff); // Delete on/off command now we have received valid data.
+        scopeReceived=true;
+    }
+
     //qint64 spectime = 0;
 
     bool updateRange = false;
+
 
     if (data.startFreq != lowerFreq || data.endFreq != upperFreq)
     {

@@ -105,6 +105,7 @@ public:
     void setFreqLock( bool en) { freqLock = en; }
     void setRoofing(uchar val);
     void setFilterShape(uchar val);
+    void setScopeEnabled(bool en) { this->configScopeEnabled->setEnabled(en);};
 
     void setBandIndicators(bool show, QString region, std::vector<bandType>* bands);
     void setUnit(FctlUnit unit);
@@ -127,6 +128,7 @@ public:
     void selected(bool);
     bool isSelected() {return isActive;}
     void showScope(bool en) { this->splitter->setVisible(en); }
+    bool isScopeEnabled() { return this->configScopeEnabled->isEnabled();};
 
     void displaySettings(int NumDigits, qint64 Minf, qint64 Maxf, int MinStep,FctlUnit unit,std::vector<bandType>* bands = Q_NULLPTR);
     quint8 getDataMode() { return static_cast<quint8>(dataCombo->currentIndex()); }
@@ -357,6 +359,7 @@ private:
     double minFreqMhz = 0.0;
     double maxFreqMhz = 0.0;
     bool freqLock = false;
+    bool scopeReceived = false;
 };
 
 #endif // RECEIVERWIDGET_H

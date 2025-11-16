@@ -3752,8 +3752,10 @@ void wfmain:: getInitialRigState()
 
     if(rigCaps->hasSpectrum)
     {
-        // Send commands to start scope immediately        
-        queue->add(priorityHigh,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
+        // Send commands to start scope immediately
+        if (receivers.size()>0 && receivers[0]->isScopeEnabled()) {
+            queue->add(priorityHigh,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),true));
+        }
         queue->add(priorityHigh,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
 
         // Find the scope ref limits
