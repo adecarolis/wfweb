@@ -953,9 +953,10 @@ bool receiverWidget::updateScope(scopeData data)
         return false;
     }
 
+    // This can be used to run anything that only needs to be run once after valid scope data is received.
     if (!scopeReceived)
     {
-        queue->del(funcScopeOnOff); // Delete on/off command now we have received valid data.
+        queue->del(funcScopeOnOff); // Delete recurring on/off command
         scopeReceived=true;
     }
 
