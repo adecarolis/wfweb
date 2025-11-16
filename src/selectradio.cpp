@@ -54,7 +54,7 @@ void selectRadio::populate(QList<radio_cap_packet> radios)
     for (int row = 0; row < radios.count(); row++) {
         ui->table->insertRow(ui->table->rowCount());
         ui->table->setItem(row, 0, new QTableWidgetItem(QString(radios[row].name)));
-        ui->table->setItem(row, 1, new QTableWidgetItem(QString("%1").arg((quint16)radios[row].civ, 4, 16, QLatin1Char('0')).toUpper()));
+        ui->table->setItem(row, 1, new QTableWidgetItem(QString("0x%1").arg((uchar)radios[row].civ, 2, 16, QLatin1Char('0')).toUpper()));
         ui->table->setItem(row, 2, new QTableWidgetItem(QString::number(qFromBigEndian(radios[row].baudrate))));
     }
     if (radios.count() > 1) {
