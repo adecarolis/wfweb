@@ -120,7 +120,7 @@ void kenwoodCommander::lanConnected()
 
 void kenwoodCommander::lanDisconnected()
 {
-    qInfo() << QString("Disconnected from: %0:%1").arg(prefs.ipAddress,prefs.controlLANPort);
+    qInfo() << QString("Disconnected from: %0:%1").arg(prefs.ipAddress).arg(prefs.controlLANPort);
     portConnected=false;
 }
 

@@ -229,7 +229,7 @@ void tciServer::processIncomingTextMessage(QString message)
 
     it.value().connected = true;
 
-    //qInfo() << "TCI Text Message received:" << message;
+    qInfo() << "TCI Text Message received:" << message;
     QString cmd = message.section(':',0,0);
     QStringList arg = message.section(':',1,1).split(',');
     arg[arg.length()-1].chop(1);

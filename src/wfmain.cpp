@@ -3755,8 +3755,8 @@ void wfmain:: getInitialRigState()
         // Send commands to start scope immediately
         if (receivers.size()>0 && receivers[0]->isScopeEnabled()) {
             queue->add(priorityHigh,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),true));
+            queue->add(priorityHigh,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
         }
-        queue->add(priorityHigh,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
 
         // Find the scope ref limits
         auto mr = rigCaps->commands.find(funcScopeRef);

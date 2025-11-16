@@ -23,6 +23,8 @@ static struct
     { RIG_MODE_AMS, modeUnknown, "AMS" },
     { RIG_MODE_PKTLSB, modeLSB, "PKTLSB", 1U},
     { RIG_MODE_PKTUSB, modeUSB, "PKTUSB" , 1U},
+    { RIG_MODE_PKTLSB, modeLSB, "LSB-D", 1U},
+    { RIG_MODE_PKTLSB, modeUSB, "USB-D", 1U},
     { RIG_MODE_PKTFM,  modeFM, "PKTFM", true},
     { RIG_MODE_PKTFMN, modeUnknown, "PKTFMN", 1U},
     { RIG_MODE_ECSSUSB, modeUnknown, "ECSSUSB" },
