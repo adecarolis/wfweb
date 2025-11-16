@@ -266,7 +266,7 @@ queuePriority cachingQueue::del(funcs func, uchar receiver)
     if (func != funcNone)
     {
         QMutexLocker locker(&mutex);
-        auto it = std::find_if(queue.begin(), queue.end(), [func,receiver](const queueItem& c) {  return (c.command == func && c.receiver == receiver && c.recurring); });
+        auto it = std::find_if(queue.begin(), queue.end(), [func,receiver](const queueItem& c) {  return (c.command == func && c.receiver == receiver && c.recurring == true); });
         //auto it(queue.begin());
         if (it != queue.end()) {
             prio = it.key();
