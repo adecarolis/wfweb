@@ -212,8 +212,8 @@ QAudioFormat audioHandlerRtInput::getNativeFormat()
 {
 
     QAudioFormat native;
-    RtAudio::DeviceInfo info;
 #if RTAUDIO_VERSION_MAJOR < 6
+    RtAudio::DeviceInfo info;
     try {
         info = rtaudio.getDeviceInfo(setupData.portInt);
     }
