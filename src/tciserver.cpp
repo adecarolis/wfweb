@@ -90,7 +90,7 @@ static const tciCommandStruct tci_commands[] =
     { "audio_stream_samples", funcNone,     typeUChar,  typeBinary,   typeNone},
     { "digl_offset",        funcNone,       typeUChar,  typeBinary,   typeNone},
     { "digu_offset",        funcNone,       typeUChar,  typeBinary,   typeNone},
-    { "rx_smeter",          funcSMeter,     typeUChar,  typeUChar,    typedB},
+    { "rx_smeter",          funcSMeter,     typeUChar,  typeUChar,    typeDouble},
     { 0x0,                   funcNone,       typeNone,   typeNone,     typeNone },
 };
 
@@ -229,7 +229,7 @@ void tciServer::processIncomingTextMessage(QString message)
 
     it.value().connected = true;
 
-    qInfo() << "TCI Text Message received:" << message;
+    //qInfo() << "TCI Text Message received:" << message;
     QString cmd = message.section(':',0,0);
     QStringList arg = message.section(':',1,1).split(',');
     arg[arg.length()-1].chop(1);
@@ -341,10 +341,12 @@ void tciServer::processIncomingTextMessage(QString message)
                     qWarning() << "Requested cache item contains no data" << funcString[func] << "on rx" << t.receiver;
                     continue;
                 } else {
-                    if (tc.arg3 == typeFreq)
-                        func = t.freqFunc;
-                    if (tc.arg3 == typeMode)
-                        func = t.modeFunc;
+                    if (tc.arg3 == typeFreq) {
+                        v = queue->getCache(t.freqFunc,t.receiver).value;
+                    }
+                    if (tc.arg3 == typeMode) {
+                        v = queue->getCache(t.modeFunc,t.receiver).value;
+                    }
                 }
 
                 if (tc.arg1 == typeUChar && numArgs > 1)
@@ -374,6 +376,11 @@ void tciServer::processIncomingTextMessage(QString message)
                 {
                     reply += QString(",%0,%1").arg(arg[1].toInt(NULL)).arg(v.value<freqt>().Hz);
                 }
+                else if (numArgs == 3 && tc.arg3 == typeDouble)
+                {
+                    reply += QString(",%0,%1").arg(vfo).arg(v.value<double>()-dBmConversion,0,'f',0);
+                }
+
                 else if (tc.arg2 == typeMode)
                 {
                     reply += QString(",%0").arg(tciMode(v.value<modeInfo>()));
@@ -396,7 +403,7 @@ void tciServer::processIncomingTextMessage(QString message)
             }
 
             if (pClient) {
-                qInfo() << "Reply:" << reply;
+                //qInfo() << "Reply:" << reply;
                 pClient->sendTextMessage(reply);
             }
         }
@@ -536,15 +543,21 @@ void tciServer::receiveCache(cacheItem item)
                         {
                             reply += QString(",%0").arg(round(item.value.value<ushort>()/2.55));
                         }
-                        else if (numArgs == 3 && tc.arg3 == typedB)
+                        else if (numArgs == 3 && tc.arg3 == typeDouble)
                         {
-                            int val = item.value.value<uchar>();
-                            val = (val/2.42) - 120; // Approximate s-meter.
-                            reply += QString(",%0,%1").arg(vfo).arg(val);
+                            reply += QString(",%0,%1").arg(vfo).arg(item.value.value<double>()-dBmConversion,0,'f',0);
                         }
                         else if (numArgs == 3 && tc.arg3 == typeFreq)
                         {
                             reply += QString(",%0,%1").arg(vfo).arg(quint64(item.value.value<freqt>().Hz));
+                            // Slight hack to correctly convert the relative dB to dBm
+                            if (item.value.value<freqt>().Hz > 30000000)
+                            {
+                                dBmConversion = 93;
+                            } else
+                            {
+                                dBmConversion = 73;
+                            }
                         }
                         else if (tc.arg2 == typeMode)
                         {
@@ -584,6 +597,7 @@ QString tciServer::tciMode(modeInfo m)
 modeInfo tciServer::rigMode(QString mode)
 {
     modeInfo m;
+    m.mk=modeUnknown;
     qInfo() << "Searching for mode" << mode;
     for (modeInfo &mi: rigCaps->modes)
     {

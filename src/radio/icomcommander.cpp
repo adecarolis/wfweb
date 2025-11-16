@@ -1883,7 +1883,7 @@ void icomCommander::determineRigCaps()
     if (!usingNativeLAN) {
         QList<radio_cap_packet>radios;
         radio_cap_packet r;
-        r.civ = rigCaps.modelID;
+        r.civ = char(rigCaps.modelID & 0xff);
         r.baudrate = qToBigEndian(rigCaps.baudRate);
 #ifdef Q_OS_WINDOWS
         strncpy_s(r.name,rigCaps.modelName.toLocal8Bit(),sizeof(r.name)-1);

@@ -174,7 +174,7 @@ public slots:
 protected:
     int sessionId;
     QTcpSocket* socket = Q_NULLPTR;
-    QString commandBuffer;
+    QByteArray commandBuffer;
 
 private:
     cachingQueue* queue;
@@ -195,7 +195,7 @@ private:
     quint64 getRadioModes(QString mode = "");
     QString getAntName(quint8 ant);
     quint8 antFromName(QString name);
-    vfo_t vfoFromName(QString vfo);
+    rigStateType vfoFromName(QString vfo);
     QString getVfoName(vfo_t vfo);
     funcs getFreqFunc(vfo_t, bool set=false);
     funcs getModeFunc(vfo_t, bool set=false);

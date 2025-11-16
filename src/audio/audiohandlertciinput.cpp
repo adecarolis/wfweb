@@ -1,4 +1,5 @@
 #include "audiohandlertciinput.h"
+#include "tciserver.h"
 
 bool audioHandlerTciInput::openDevice() noexcept
 {
@@ -9,6 +10,14 @@ bool audioHandlerTciInput::openDevice() noexcept
 
     connect(this, &audioHandlerBase::sendToConverter, converter, &audioConverter::convert);
     connect(converter, SIGNAL(converted(audioPacket)), this, SLOT(onConverted(audioPacket)));
+    if (setupData.tci != Q_NULLPTR) {
+        connect((tciServer*)setupData.tci, SIGNAL(sendTCIAudio(QByteArray)), this, SLOT(receiveTCIAudio(QByteArray)));
+        //connect(this,SIGNAL(setupTxPacket(int)), (tciServer*)setup.tci, SLOT(setupTxPacket(int)));
+        //emit setupTxPacket((nativeFormat.bytesForDuration(setup.blockSize * 1000)*2)/sizeof(float));
+    } else {
+        qCritical(logAudio()) << "***** TCI NOT FOUND *****";
+    }
+    inRB = std::make_unique<ByteRing>(nativeFormat.bytesForDuration(setupData.latency*2000));
 
     return true;
 }
@@ -17,8 +26,25 @@ void audioHandlerTciInput::closeDevice() noexcept
 {
 }
 
+void audioHandlerTciInput::receiveTCIAudio(const QByteArray packet) {
+
+    if (packet.size()==0) return;
+    inRB->push(static_cast<const char*>(packet), packet.size());
+    QMetaObject::invokeMethod(this, [this]{ onReadyRead(); }, Qt::QueuedConnection);
+}
+
+
 void audioHandlerTciInput::onReadyRead()
 {
+
+    if (!inRB) return;
+    QByteArray chunk;
+    chunk.resize(static_cast<int>(inRB->size()));
+    const size_t got = inRB->pop(chunk.data(), static_cast<size_t>(chunk.size()));
+    if (!got) return;
+    chunk.resize(static_cast<int>(got));
+
+    tempBuf.data += chunk;
 
     const int bytesPerBlock = nativeFormat.bytesForDuration(setupData.blockSize * 1000);
     while (tempBuf.data.size() >= bytesPerBlock) {
@@ -26,7 +52,7 @@ void audioHandlerTciInput::onReadyRead()
         pkt.time   = QTime::currentTime();
         pkt.sent   = 0;
         pkt.volume = volume;
-        memcpy(&pkt.guid, setupData.guid, GUIDLEN);
+        std::memcpy(&pkt.guid, setupData.guid, GUIDLEN);
         pkt.data   = tempBuf.data.left(bytesPerBlock);
         tempBuf.data.remove(0, bytesPerBlock);
         emit sendToConverter(pkt);
@@ -54,10 +80,22 @@ void audioHandlerTciInput::onConverted(audioPacket audio)
 QAudioFormat audioHandlerTciInput::getNativeFormat()
 {
 
-    return QAudioFormat();
+    QAudioFormat native;
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+    native.setByteOrder(QAudioFormat::LittleEndian);
+    native.setCodec("audio/pcm");
+    native.setSampleType(QAudioFormat::Float);
+    native.setSampleSize(32);
+#else
+    native.setSampleFormat(QAudioFormat::Float);
+#endif
+
+    native.setSampleRate(48000);
+    native.setChannelCount(2);
+    return native;
 }
 
 bool audioHandlerTciInput::isFormatSupported(QAudioFormat f)
 {
-    return false;
+    return true;
 }

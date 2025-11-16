@@ -2,6 +2,7 @@
 #define AUDIOHANDLERTCIINPUT_H
 
 #include "audiohandlerbase.h"
+#include "bytering.h"
 
 #include <memory>
 
@@ -21,12 +22,14 @@ protected:
     virtual bool isFormatSupported(QAudioFormat f) override;
 
 private slots:
+    void receiveTCIAudio(const QByteArray data);
     void onReadyRead();
     void onConverted(audioPacket pkt);
 
 private:
     unsigned bytesPerSample{2};
     unsigned bytesPerFrame{2};
+    std::unique_ptr<ByteRing> inRB;
 
 };
 

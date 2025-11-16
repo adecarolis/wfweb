@@ -342,30 +342,42 @@ rigCtlClient::rigCtlClient(int socketId, rigCtlD* parent) : QObject(parent)
     qInfo(logRigCtlD()) << " session connected: " << sessionId;
 
     // Find what VFOs we have:
-    if (rigCaps->numVFO > 0 && rigCaps->commands.contains(funcVFOASelect))
-        vfoList |= 1<<0;
-    if (rigCaps->numVFO > 1 && rigCaps->commands.contains(funcVFOBSelect))
-        vfoList |= 1<<1;
-    if (rigCaps->numReceiver > 0 && rigCaps->commands.contains(funcVFOMainSelect))
-        vfoList |= 1<<26;
-    if (rigCaps->numReceiver > 1 && rigCaps->commands.contains(funcVFOSubSelect))
-        vfoList |= 1<<25;
-    if (rigCaps->commands.contains(funcMemoryMode))
-        vfoList |= 1<<28;
+    if (rigCaps != Q_NULLPTR)
+    {
+        if (rigCaps->numVFO > 0 && rigCaps->commands.contains(funcVFOASelect))
+            vfoList |= 1<<0;
+        if (rigCaps->numVFO > 1 && rigCaps->commands.contains(funcVFOBSelect))
+            vfoList |= 1<<1;
+        if (rigCaps->numReceiver > 0 && rigCaps->commands.contains(funcVFOMainSelect))
+            vfoList |= 1<<26;
+        if (rigCaps->numReceiver > 1 && rigCaps->commands.contains(funcVFOSubSelect))
+            vfoList |= 1<<25;
+        if (rigCaps->commands.contains(funcMemoryMode))
+            vfoList |= 1<<28;
+    }
 }
 
 void rigCtlClient::socketReadyRead()
 {
 
     if (this->rigCaps == Q_NULLPTR) {
-        qWarning(logRigCtlD) << "Rig has gone away, closing connection";
+        qWarning(logRigCtlD()) << "Rig has gone away, closing connection";
         closeSocket();
         return;
     }
 
-    QByteArray data = socket->readAll();
-    commandBuffer.append(data);
-    QStringList commandList(commandBuffer.split('\n'));
+
+    commandBuffer.append(socket->readAll());
+
+    int lastNewline = commandBuffer.lastIndexOf('\n');
+    if (lastNewline < 0)
+        return; // no full line yet
+
+    QByteArray toProcess = commandBuffer.left(lastNewline + 1);
+    commandBuffer.remove(0, lastNewline + 1);
+
+    QStringList commandList = QString::fromLatin1(toProcess).split('\n');
+
     QString sep = "\n";
 
     int ret = -RIG_EINVAL;
@@ -383,7 +395,7 @@ void rigCtlClient::socketReadyRead()
 
         if (commands.endsWith('\r'))
         {
-            commands.chop(1); // Remove \n character
+            commands.chop(1); // Remove last character
         }
 
         if (commands.isEmpty())
@@ -541,7 +553,7 @@ void rigCtlClient::socketReadyRead()
     }
 
     // We have finished parsing all commands and have a response to send (hopefully)
-    commandBuffer.clear();
+    //commandBuffer.clear();
     for (int i = 0;i<response.size();i++)
     {
         if (!response[i].isEmpty()) {
@@ -751,60 +763,45 @@ quint8 rigCtlClient::antFromName(QString name) {
     return ret;
 }
 
-vfo_t rigCtlClient::vfoFromName(QString vfo) {
+rigStateType rigCtlClient::vfoFromName(QString vfo) {
 
     rigStateType state = queue->getState();
-    vfo_t v = vfoUnknown;
-    if (vfo.toUpper() == "CURRVFO")
-    {
-        v=state.vfo;
-    }
-    else if (vfo.toUpper() == "VFOA")
+    if (vfo.toUpper() == "VFOA")
     {
         if (rigCaps->commands.contains(funcVFOASelect))
-            v = vfoA;
+            state.vfo = vfoA;
         else if (rigCaps->commands.contains(funcVFOMainSelect))
-            v = vfoMain;
-        else
-            v = state.vfo;
+            state.receiver = 0;
     }
     else if (vfo.toUpper() == "VFOB")
     {
         if (rigCaps->commands.contains(funcVFOBSelect))
-            v = vfoB;
+            state.vfo = vfoB;
         else if (rigCaps->commands.contains(funcVFOSubSelect))
-            v = vfoSub;
-        else
-            v = state.vfo;
+            state.receiver = 1;
     }
     else if (vfo.toUpper() == "MAIN")
     {
         if (rigCaps->commands.contains(funcVFOMainSelect))
-            v = vfoMain;
+            state.receiver = 0;
         else if (rigCaps->commands.contains(funcVFOASelect))
-            v = vfoA;
-        else
-            v = state.vfo;
+            state.vfo = vfoA;
     }
     else if (vfo.toUpper() == "SUB")
     {
         if (rigCaps->commands.contains(funcVFOSubSelect))
-            v = vfoSub;
+            state.receiver = 1;
         else if (rigCaps->commands.contains(funcVFOBSelect))
-            v = vfoB;
-        else
-            v = state.vfo;
+            state.vfo = vfoB;
     }
     else if (vfo.toUpper() == "MEM")
     {
         if (rigCaps->commands.contains(funcMemoryMode))
-            v = vfoMem;
-        else
-            v = state.vfo;
+            state.vfo = vfoMem;
     }
 
     //qInfo() << "vfoFromName" << vfo << "returns" << v;
-    return v;
+    return state;
 }
 
 QString rigCtlClient::getVfoName(vfo_t vfo)
@@ -919,7 +916,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             break;
         case typeBinary:
             if (params.length()>1){
-                queue->add(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(vfoFromName(params[0])),false,state.receiver));
+                queue->add(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(vfoFromName(params[0]).vfo),false,state.receiver));
                 val.setValue(static_cast<bool>(params[1].toInt()));
             } else {
                 val.setValue(static_cast<bool>(params[0].toInt()));
@@ -933,8 +930,9 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
                 state.receiver = uchar((rigCaps->numVFO == 1 && rigCaps->numReceiver>1));
             }
 
-            if (params.length() > 1) {                
-                state.vfo = vfoFromName(params[0]);
+            if (params.length() > 1) {
+                state = vfoFromName(params[0]);
+
                 f.Hz = static_cast<quint64>(params[1].toDouble());
             } else {
                 f.Hz = static_cast<quint64>(params[0].toDouble());
@@ -951,7 +949,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             val.setValue(static_cast<bool>(params[0].toInt()));
             if (params.size() > 1) {// Just in case we have invalid info
                 //qInfo() << "Split VFO" << params[0] << "VFO" << params[1];
-                splitVfo = vfoFromName(params[1]);
+                splitVfo = vfoFromName(params[1]).vfo;
             }
             break;
 
@@ -968,7 +966,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
 
             if (params.size() == 3)
             {
-                state.vfo=vfoFromName(params[0]);
+                state=vfoFromName(params[0]);
                 mode=params[1];
                 width=params[2];
             }
@@ -1016,7 +1014,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             }
             else
             {
-                state.vfo = vfoFromName(params[0]);
+                state = vfoFromName(params[0]);
                 val.setValue(state.vfo);
             }
             break;
@@ -1031,7 +1029,8 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             return -RIG_EINVAL;
         }
 
-        queue->add(priorityImmediate, queueItem(func, val,false,state.receiver));
+        if (rigCaps->commands.contains(func))
+            queue->add(priorityImmediate, queueItem(func, val,false,state.receiver));
 
     } else {
         // Simple get command
@@ -1141,11 +1140,11 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             if (prefixes.length()>2)
                 response.append(QString("%0%1").arg(prefixes[2],getMode(queue->getCache(modeFunc,state.receiver).value.value<modeInfo>())));
             if (prefixes.length()>3)
-                response.append(QString("%0%1").arg(prefixes[3],QString::number(queue->getCache(funcFilterWidth,state.receiver).value.value<ushort>())));
+                    response.append(QString("%0%1").arg(prefixes[3],QString::number(queue->getCache(rigCaps->commands.contains(funcFilterWidth)?funcFilterWidth:funcNone,state.receiver).value.value<ushort>())));
             if (prefixes.length()>4) /* Split is only ever on the first rx */
-                response.append(QString("%0%1").arg(prefixes[4],QString::number(queue->getCache(funcSplitStatus,0).value.value<duplexMode_t>())));
+                response.append(QString("%0%1").arg(prefixes[4],QString::number(queue->getCache(rigCaps->commands.contains(funcSplitStatus)?funcSplitStatus:funcNone,0).value.value<duplexMode_t>())));
             if (prefixes.length()>5)
-                response.append(QString("%0%1").arg(prefixes[5],QString::number(queue->getCache(funcSatelliteMode,state.receiver).value.value<bool>())));
+                response.append(QString("%0%1").arg(prefixes[5],QString::number(queue->getCache(rigCaps->commands.contains(funcSatelliteMode)?funcSatelliteMode:funcNone,state.receiver).value.value<bool>())));
             break;
         }
 
@@ -1275,7 +1274,7 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                         break;
                     case typeUChar:
                     {
-                        int val = item.value.toInt();
+                        val = item.value.toInt();
                         if (params[0] == "FBKIN")
                             val = (val >> 1) & 0x01;
                         if (params[0] == "AGC")
@@ -1421,7 +1420,7 @@ int rigCtlClient::dumpState(QStringList &response, bool extended)
 
     QString attens = "";
     if(rigCaps->commands.contains(funcAttenuator)) {
-        for (auto att : rigCaps->attenuators)
+        for (const auto &att : rigCaps->attenuators)
         {
             if (att.num == 0)
                 continue;

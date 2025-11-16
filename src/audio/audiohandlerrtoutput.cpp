@@ -113,7 +113,11 @@ void audioHandlerRtOutput::closeDevice() noexcept
 
 
 void audioHandlerRtOutput::incomingAudio(audioPacket packet)
-{ if (packet.data.isEmpty()) return; packet.volume = volume; emit sendToConverter(packet); }
+{
+    if (packet.data.isEmpty()) return;
+    packet.volume = volume;
+    emit sendToConverter(packet);
+}
 
 
 void audioHandlerRtOutput::onConverted(audioPacket pkt)

@@ -104,6 +104,7 @@ private:
     rigCapabilities* rigCaps = Q_NULLPTR;
     QString tciMode(modeInfo m);
     modeInfo rigMode(QString);
+    int dBmConversion = 73;
 };
 
 #endif // TCISERVER_H

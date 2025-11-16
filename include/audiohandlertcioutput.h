@@ -22,13 +22,16 @@ protected:
     virtual QAudioFormat getNativeFormat() override;
     virtual bool isFormatSupported(QAudioFormat f) override;
 
+signals:
+    void sendTCIAudio(const audioPacket data);
+
 private slots:
     void onConverted(audioPacket pkt);
 
 private:
     unsigned bytesPerSample{2};
     unsigned bytesPerFrame{2};
-
+    QByteArray arrayBuffer;
 };
 
 #endif // AUDIOHANDLERTCIOUTPUT_H
