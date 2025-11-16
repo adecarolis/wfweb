@@ -924,12 +924,6 @@ bool receiverWidget::updateScope(scopeData data)
         showBandIndicators(true);
     }
 
-    if (!scopeReceived)
-    {
-        queue->del(funcScopeOnOff); // Delete on/off command now we have received valid data.
-        scopeReceived=true;
-    }
-
     //qint64 spectime = 0;
 
     bool updateRange = false;
@@ -957,6 +951,12 @@ bool receiverWidget::updateScope(scopeData data)
     {
         qWarning(logSystem()) << "Spectrum length error, expected" << spectWidth << "got" << specLen << "(one can be ignored for USB connection)";
         return false;
+    }
+
+    if (!scopeReceived)
+    {
+        queue->del(funcScopeOnOff); // Delete on/off command now we have received valid data.
+        scopeReceived=true;
     }
 
     QVector <double> x(spectWidth), y(spectWidth), y2(spectWidth);
