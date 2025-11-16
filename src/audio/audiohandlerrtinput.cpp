@@ -25,10 +25,13 @@ bool audioHandlerRtInput::openDevice() noexcept
 {
 
     qDebug(logAudio()) << "Creating input RT Audio device:" << setupData.name;
-#ifdef RT_EXCEPTION
+#if RTAUDIO_VERSION_MAJOR < 6
     try {
         if (!rtaudio.getDeviceCount()) return false;
-        RtAudio::StreamParameters inParams; inParams.deviceId=setupData.portInt; inParams.nChannels=nativeFormat.channelCount(); inParams.firstChannel=0;
+        RtAudio::StreamParameters inParams;
+        inParams.deviceId=setupData.portInt;
+        inParams.nChannels=nativeFormat.channelCount();
+        inParams.firstChannel=0;
         RtAudio::StreamOptions opts; opts.streamName = "audioHandlerRtInput";
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         fmt = (nativeFormat.sampleSize()==16) ? RTAUDIO_SINT16 : RTAUDIO_FLOAT32;
@@ -39,11 +42,12 @@ bool audioHandlerRtInput::openDevice() noexcept
         bytesPerFrame = bytesPerSample * nativeFormat.channelCount();
         const unsigned sr = nativeFormat.sampleRate();
         unsigned frames = qMax(64u, static_cast<unsigned>((setupData.latency * sr)/1000));
-        inRB = std::make_unique<ByteRingRt>(nativeFormat.bytesForDuration(setupData.latency*2000));
+        inRB = std::make_unique<ByteRing>(nativeFormat.bytesForDuration(setupData.latency*2000));
 
 
         rtaudio.openStream(nullptr, &inParams, fmt, sr, &frames, &audioHandlerRtInput::rtCallback, this, &opts);
-        rtaudio.startStream();
+        if (rtaudio.isStreamOpen()) rtaudio.startStream();
+        if (!rtaudio.isStreamRunning()) { reportError("RtAudio output stream failed to start"); return false; }
 
 
         emit setupConverter(nativeFormat, codecType::LPCM, radioFormat, codec, 7, setupData.resampleQuality);
@@ -55,11 +59,9 @@ bool audioHandlerRtInput::openDevice() noexcept
     if (!rtaudio.getDeviceCount()) return false;
     // Optional: centralised warning handler
 
-#if RTAUDIO_VERSION_MAJOR >= 6
     rtaudio.setErrorCallback([](RtAudioErrorType t, const std::string& m){
         qWarning() << "RtAudio error" << int(t) << ":" << QString::fromStdString(m);
     });
-#endif
 
     RtAudio::StreamParameters inParams; inParams.deviceId=setupData.portInt; inParams.nChannels=nativeFormat.channelCount(); inParams.firstChannel=0;
     RtAudio::StreamOptions opts; opts.streamName = "audioHandlerRtInput";
@@ -92,7 +94,7 @@ bool audioHandlerRtInput::openDevice() noexcept
 
 void audioHandlerRtInput::closeDevice() noexcept
 {
-#ifdef RT_EXCEPTION
+#if RTAUDIO_VERSION_MAJOR < 6
     try {
         if (rtaudio.isStreamOpen())
         {
@@ -159,9 +161,10 @@ void audioHandlerRtInput::onConverted(audioPacket audio)
 bool audioHandlerRtInput::isFormatSupported(QAudioFormat f)
 {
     bool ret=true;
-#ifdef RT_EXCEPTION
+#if RTAUDIO_VERSION_MAJOR < 6
+    RtAudio::DeviceInfo info;
     try {
-        RtAudio::DeviceInfo info = rtaudio.getDeviceInfo(setupData.portInt);
+        info = rtaudio.getDeviceInfo(setupData.portInt);
     }
     catch (RtAudioError e) {
         qInfo(logAudio()) << "Device exception:" << setupData.portInt << ":" << QString::fromStdString(e.getMessage());
@@ -196,7 +199,7 @@ bool audioHandlerRtInput::isFormatSupported(QAudioFormat f)
     {
     ret = false;
     }
-#ifdef RT_EXCEPTION
+#if RTAUDIO_VERSION_MAJOR < 6
     }
 #endif
 
@@ -209,13 +212,14 @@ QAudioFormat audioHandlerRtInput::getNativeFormat()
 {
 
     QAudioFormat native;
-#ifdef RT_EXCEPTION
+    RtAudio::DeviceInfo info;
+#if RTAUDIO_VERSION_MAJOR < 6
     try {
-        RtAudio::DeviceInfo info = rtaudio.getDeviceInfo(setupData.portInt);
+        info = rtaudio.getDeviceInfo(setupData.portInt);
     }
     catch (RtAudioError e) {
         qInfo(logAudio()) << "Device exception:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
-        return false;
+        return native;
     }
     if (info.probed)
     {
@@ -282,7 +286,7 @@ QAudioFormat audioHandlerRtInput::getNativeFormat()
             return QAudioFormat();
         }
 
-#ifdef RT_EXCEPTION
+#if RTAUDIO_VERSION_MAJOR < 6
     }
 #endif
 

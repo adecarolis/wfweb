@@ -67,7 +67,7 @@ win32:DEFINES += __WINDOWS_WASAPI__
 linux:DEFINES += __LINUX_PULSE__
 macx:DEFINES += __MACOSX_CORE__
 !linux:SOURCES += ../rtaudio/RTAudio.cpp
-!linux:HEADERS += ../rtaudio/RTAUdio.h
+!linux:HEADERS += ../rtaudio/RTAudio.h
 !linux:INCLUDEPATH += ../rtaudio
 
 linux:LIBS += -lpulse -lpulse-simple -lrtaudio -lpthread -ludev

@@ -22,10 +22,13 @@ bool audioHandlerRtOutput::openDevice() noexcept
 {
     qDebug(logAudio()) << "Creating output RT Audio device:" << setupData.name;
 
-#ifdef RT_EXCEPTION
+#if RTAUDIO_VERSION_MAJOR < 6
     try {
         if (!rtaudio.getDeviceCount()) return false;
-        RtAudio::StreamParameters outParams; outParams.deviceId=setupData.portInt; outParams.nChannels=nativeFormat.channelCount(); outParams.firstChannel=0;
+        RtAudio::StreamParameters outParams;
+        outParams.deviceId=setupData.portInt;
+        outParams.nChannels=nativeFormat.channelCount();
+        outParams.firstChannel=0;
         RtAudio::StreamOptions opts; opts.streamName = "audioHandlerRtOutput";
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         fmt = (nativeFormat.sampleSize() == 16) ? RTAUDIO_SINT16 : RTAUDIO_FLOAT32;
@@ -36,12 +39,12 @@ bool audioHandlerRtOutput::openDevice() noexcept
         bytesPerFrame = bytesPerSample * nativeFormat.channelCount();
         const unsigned sr = nativeFormat.sampleRate();
         unsigned frames = qMax(64u, static_cast<unsigned>((setupData.latency * sr)/1000));
-        outRB = std::make_unique<ByteRingRt>(nativeFormat.bytesForDuration(setupData.latency*2000));
+        outRB = std::make_unique<ByteRing>(nativeFormat.bytesForDuration(setupData.latency*2000));
 
 
         rtaudio.openStream(&outParams, nullptr, fmt, sr, &frames, &audioHandlerRtOutput::rtCallback, this, &opts);
-        rtaudio.startStream();
-
+        if (rtaudio.isStreamOpen()) rtaudio.startStream();
+        if (!rtaudio.isStreamRunning()) { reportError("RtAudio output stream failed to start"); return false; }
 
         emit setupConverter(radioFormat, codec, nativeFormat, codecType::LPCM, 7, setupData.resampleQuality);
         connect(this, &audioHandlerBase::sendToConverter, converter, &audioConverter::convert);
@@ -51,11 +54,10 @@ bool audioHandlerRtOutput::openDevice() noexcept
 #else
     if (!rtaudio.getDeviceCount()) return false;
 
-#if RTAUDIO_VERSION_MAJOR >= 6
     rtaudio.setErrorCallback([](RtAudioErrorType t, const std::string& m){
         qWarning() << "RtAudio error" << int(t) << ":" << QString::fromStdString(m);
     });
-#endif
+
     RtAudio::StreamParameters outParams; outParams.deviceId=setupData.portInt; outParams.nChannels=nativeFormat.channelCount(); outParams.firstChannel=0;
     RtAudio::StreamOptions opts; opts.streamName = "audioHandlerRtOutput";
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
@@ -126,12 +128,13 @@ void audioHandlerRtOutput::onConverted(audioPacket pkt)
 bool audioHandlerRtOutput::isFormatSupported(QAudioFormat f)
 {
     bool ret=true;
-#ifdef RT_EXCEPTION
+#if RTAUDIO_VERSION_MAJOR < 6
+    RtAudio::DeviceInfo info;
     try {
-        RtAudio::DeviceInfo info = rtaudio.getDeviceInfo(setupData.portInt);
+        info = rtaudio.getDeviceInfo(setupData.portInt);
     }
     catch (RtAudioError e) {
-        qInfo(logAudio()) << "Device exception:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
+        qInfo(logAudio()) << "Device exception:" << setupData.portInt << ":" << QString::fromStdString(e.getMessage());
         return false;
     }
     if (info.probed)
@@ -163,7 +166,7 @@ bool audioHandlerRtOutput::isFormatSupported(QAudioFormat f)
         {
             ret = false;
         }
-#ifdef RT_EXCEPTION
+#if RTAUDIO_VERSION_MAJOR < 6
     }
 #endif
     return ret;
@@ -174,13 +177,14 @@ QAudioFormat audioHandlerRtOutput::getNativeFormat()
     {
 
         QAudioFormat native;
-#ifdef RT_EXCEPTION
+#if RTAUDIO_VERSION_MAJOR < 6
+        RtAudio::DeviceInfo info;
         try {
-            RtAudio::DeviceInfo info = rtaudio.getDeviceInfo(setupData.portInt);
+            info = rtaudio.getDeviceInfo(setupData.portInt);
         }
         catch (RtAudioError e) {
-            qInfo(logAudio()) << "Device exception:" << setupData.portInt << ":" << QString::fromStdString(e.getMessage());
-            return false;
+            qCritical(logAudio()) << "Device exception:" << setupData.portInt << ":" << QString::fromStdString(e.getMessage());
+            return native;
         }
         if (info.probed)
         {
@@ -247,7 +251,7 @@ QAudioFormat audioHandlerRtOutput::getNativeFormat()
             return QAudioFormat();
         }
 
-#ifdef RT_EXCEPTION
+#if RTAUDIO_VERSION_MAJOR < 6
         }
 #endif
 
