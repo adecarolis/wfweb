@@ -95,6 +95,8 @@ private slots:
     void setupTxPacket(int packetLen);
 
 private:
+    int getValueRange(funcs func,char min=0, char max=0, uchar rx=0);
+
     QWebSocketServer *server;
     QMap<QWebSocket *, connStatus> clients;
     cachingQueue *queue;

@@ -175,11 +175,11 @@ void tciServer::onNewConnection()
 
     qInfo() << "TCI client connected:" << pSocket;
     clients.insert(pSocket,connStatus());
-    pSocket->sendTextMessage(QString("protocol:WFVIEW,1.5;\n"));
-    pSocket->sendTextMessage(QString("device:%0;\n").arg(rigCaps->modelName));
-    pSocket->sendTextMessage(QString("receive_only:%0;\n").arg(rigCaps->hasTransmit?"false":"true"));
-    pSocket->sendTextMessage(QString("trx_count:1;\n"));
-    pSocket->sendTextMessage(QString("channel_count:1;\n"));
+    pSocket->sendTextMessage(QString("protocol:WFVIEW,1.9;"));
+    pSocket->sendTextMessage(QString("device:%0;").arg(rigCaps->modelName));
+    pSocket->sendTextMessage(QString("receive_only:%0;").arg(rigCaps->hasTransmit?"false":"true"));
+    pSocket->sendTextMessage(QString("trx_count:%0;").arg(rigCaps->numReceiver));
+    pSocket->sendTextMessage(QString("channels_count:%0;").arg(rigCaps->numVFO));
     quint64 start=UINT64_MAX;
     quint64 end=0;
     for (auto &band: rigCaps->bands)
@@ -189,8 +189,8 @@ void tciServer::onNewConnection()
         if (end < band.highFreq)
             end = band.highFreq;
     }
-    pSocket->sendTextMessage(QString("vfo_limits:%0,%1;\n").arg(start).arg(end));
-    pSocket->sendTextMessage(QString("if_limits:-48000,48000;\n"));
+    pSocket->sendTextMessage(QString("vfo_limits:%0,%1;").arg(start).arg(end));
+    pSocket->sendTextMessage(QString("if_limits:-19531,19531;"));
     QString mods = "modulations_list:";
     for (modeInfo &mi: rigCaps->modes)
     {
@@ -204,15 +204,31 @@ void tciServer::onNewConnection()
         }
     }
     mods.chop(1);
-    mods+=";\n";
+    mods+=";";
     pSocket->sendTextMessage(mods);
-    pSocket->sendTextMessage(QString("iq_samplerate:48000;\n"));
-    pSocket->sendTextMessage(QString("audio_samplerate:48000;\n"));
-    pSocket->sendTextMessage(QString("mute:false;\n"));
-    pSocket->sendTextMessage(QString("vfo:0,0,%0;").arg(queue->getCache(t.freqFunc,t.receiver).value.value<freqt>().Hz));
-    pSocket->sendTextMessage(QString("modulation:0,%0;").arg(tciMode(queue->getCache(t.modeFunc,t.receiver).value.value<modeInfo>())));
-    pSocket->sendTextMessage(QString("start;\n"));
-    pSocket->sendTextMessage(QString("ready;\n"));
+    pSocket->sendTextMessage(QString("vfo:0,0,%0").arg(queue->getCache(t.freqFunc,t.receiver).value.value<freqt>().Hz));
+    pSocket->sendTextMessage(QString("modulation:0,%0").arg(tciMode(queue->getCache(t.modeFunc,t.receiver).value.value<modeInfo>())));
+    pSocket->sendTextMessage(QString("iq_samplerate:48000;"));
+    pSocket->sendTextMessage(QString("audio_samplerate:48000;"));
+    pSocket->sendTextMessage(QString("receive_only:%0;").arg(rigCaps->hasTransmit?"true":"false"));
+    pSocket->sendTextMessage(QString("volume:%0;").arg(getValueRange(funcAfGain,-60,0,t.receiver)));
+    pSocket->sendTextMessage(QString("mute:%0;").arg(queue->getCache(funcAFMute,t.receiver).value.value<bool>()?"true":"false"));
+    pSocket->sendTextMessage(QString("mon_volume:%0;").arg(getValueRange(funcMonitorGain,-60,0,t.receiver)));
+    pSocket->sendTextMessage(QString("mon_mute:%0;").arg(queue->getCache(funcMonitor,t.receiver).value.value<bool>()?"false":"frue"));
+    pSocket->sendTextMessage(QString("start;"));
+    pSocket->sendTextMessage(QString("ready;"));
+}
+
+int tciServer::getValueRange(funcs func, char min, char max,uchar rx)
+{
+    int val=min;
+    if (rigCaps->commands.contains(func))
+    {
+        auto cmd = rigCaps->commands.find(func);
+        float r = min + (float(queue->getCache(func,rx).value.toInt() - cmd->minVal) * (max - min)) / (float)(cmd->maxVal - cmd->minVal);
+        val =  static_cast<int>(r + (r < 0 ? -0.5f : 0.5f));   // round to nearest
+    }
+    return val;
 }
 
 void tciServer::processIncomingTextMessage(QString message)
@@ -229,19 +245,20 @@ void tciServer::processIncomingTextMessage(QString message)
 
     it.value().connected = true;
 
-    qInfo() << "TCI Text Message received:" << message;
+    qDebug() << "TCI Text Message received:" << message;
     QString cmd = message.section(':',0,0);
     QStringList arg = message.section(':',1,1).split(',');
     arg[arg.length()-1].chop(1);
     QString reply = message;
+
     uchar rx = 0;
-    if (arg.size()>0)
+    if (arg.size()>0) {
         rx = arg[0].toUInt();
-
+    }
     uchar vfo = 0;
-    if (arg.size()>1)
+    if (arg.size()>1) {
         vfo = arg[1].toUInt();
-
+    }
     bool set = false;
 
     for (int i=0; tci_commands[i].str != 0x00; i++)
@@ -266,6 +283,12 @@ void tciServer::processIncomingTextMessage(QString message)
             }
 
             qDebug() << "Found command:" << tc.str;
+            if (vfo && rigCaps->numVFO <= vfo && rigCaps->numReceiver > 1)
+            {
+                // invalid VFO
+                rx = vfo;
+                vfo = 0;
+            }
             vfoCommandType t = queue->getVfoCommand(vfo_t(vfo),rx,set);
             funcs func = tc.func;
 
@@ -323,13 +346,13 @@ void tciServer::processIncomingTextMessage(QString message)
             {
                 qInfo() << "Starting audio";
                 it.value().rxaudio=true;
-                reply = QString("audio_start:%0;").arg(rx);
+                reply = QString("audio_start:%0").arg(rx);
             }
             else if (cmd == "audio_stop" )
             {
                 it.value().rxaudio=false;
                 qInfo() << "Stopping audio";
-                reply = QString("audio_stop:%0;").arg(rx);
+                reply = QString("audio_stop:%0").arg(rx);
             }
 
             if (tc.func != funcNone)
@@ -352,7 +375,7 @@ void tciServer::processIncomingTextMessage(QString message)
                 if (tc.arg1 == typeUChar && numArgs > 1)
                 {
                     // Multi arg replies always contain receiver number
-                    reply += QString(":%0").arg(t.receiver);
+                    reply += QString(":%0").arg(arg[0]);
                 }
 
                 if (numArgs == 1 && tc.arg1 == typeUChar)
@@ -403,7 +426,7 @@ void tciServer::processIncomingTextMessage(QString message)
             }
 
             if (pClient) {
-                //qInfo() << "Reply:" << reply;
+                qDebug() << "Reply:" << reply;
                 pClient->sendTextMessage(reply);
             }
         }
@@ -549,6 +572,13 @@ void tciServer::receiveCache(cacheItem item)
                         }
                         else if (numArgs == 3 && tc.arg3 == typeFreq)
                         {
+
+
+                            if (rigCaps->numReceiver > 1 && item.receiver > 0)
+                            {
+                                vfo = 1;
+                            }
+
                             reply += QString(",%0,%1").arg(vfo).arg(quint64(item.value.value<freqt>().Hz));
                             // Slight hack to correctly convert the relative dB to dBm
                             if (item.value.value<freqt>().Hz > 30000000)
