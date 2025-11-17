@@ -210,12 +210,11 @@ void tciServer::onNewConnection()
     pSocket->sendTextMessage(QString("modulation:0,%0").arg(tciMode(queue->getCache(t.modeFunc,t.receiver).value.value<modeInfo>())));
     pSocket->sendTextMessage(QString("iq_samplerate:48000;"));
     pSocket->sendTextMessage(QString("audio_samplerate:48000;"));
-    pSocket->sendTextMessage(QString("receive_only:%0;").arg(rigCaps->hasTransmit?"true":"false"));
     pSocket->sendTextMessage(QString("volume:%0;").arg(getValueRange(funcAfGain,-60,0,t.receiver)));
     pSocket->sendTextMessage(QString("mute:%0;").arg(queue->getCache(funcAFMute,t.receiver).value.value<bool>()?"true":"false"));
     pSocket->sendTextMessage(QString("mon_volume:%0;").arg(getValueRange(funcMonitorGain,-60,0,t.receiver)));
-    pSocket->sendTextMessage(QString("mon_mute:%0;").arg(queue->getCache(funcMonitor,t.receiver).value.value<bool>()?"false":"frue"));
-    pSocket->sendTextMessage(QString("start;"));
+    pSocket->sendTextMessage(QString("mon_enable:%0;").arg(queue->getCache(funcMonitor,t.receiver).value.value<bool>()?"false":"frue"));
+
     pSocket->sendTextMessage(QString("ready;"));
 }
 
@@ -285,7 +284,7 @@ void tciServer::processIncomingTextMessage(QString message)
             qDebug() << "Found command:" << tc.str;
             if (vfo && rigCaps->numVFO <= vfo && rigCaps->numReceiver > 1)
             {
-                // invalid VFO
+                // invalid VFO swap to receiver instead.
                 rx = vfo;
                 vfo = 0;
             }
@@ -635,7 +634,6 @@ modeInfo tciServer::rigMode(QString mode)
         {
             m = modeInfo(mi);
             m.data = true;
-            m.filter = 1;
             break;
         }
         else if (mode.toLower() == "digu" && mi.mk == modeUSB)
@@ -643,13 +641,10 @@ modeInfo tciServer::rigMode(QString mode)
             m = modeInfo(mi);
             m.data = true;
             break;
-        } else if (mode.toLower() == "nfm" && mi.mk == modeFM)
+        } else if ((mode.toLower() == "nfm" && mi.mk == modeFM) || (mode.toLower() == mi.name.toLower()))
         {
             m = modeInfo(mi);
-            break;
-        } else if (mode.toLower() == mi.name.toLower())
-        {
-            m = modeInfo(mi);
+            m.data = false;
             break;
         }
     }
