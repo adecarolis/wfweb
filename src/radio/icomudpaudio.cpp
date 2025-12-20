@@ -1,6 +1,10 @@
 #include "icomudpaudio.h"
 #include "logcategories.h"
 
+static inline quint32 makeExtendedSeq(quint32 prefix, quint16 seq16) {
+    return (prefix << 16) | quint32(seq16);
+}
+
 // Audio stream
 icomUdpAudio::icomUdpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 lport, audioSetup rxSetup, audioSetup txSetup)
 {
@@ -157,50 +161,49 @@ void icomUdpAudio::dataReceived()
             break;
         }
         default:
-        {
-            /* Audio packets start as follows:
-                    PCM 16bit and PCM8/uLAW stereo: 0x44,0x02 for first packet and 0x6c,0x05 for second.
-                    uLAW 8bit/PCM 8bit 0xd8,0x03 for all packets
-                    PCM 16bit stereo 0x6c,0x05 first & second 0x70,0x04 third
+            {
+                /* Audio packets start as follows:
+                        PCM 16bit and PCM8/uLAW stereo: 0x44,0x02 for first packet and 0x6c,0x05 for second.
+                        uLAW 8bit/PCM 8bit 0xd8,0x03 for all packets
+                        PCM 16bit stereo 0x6c,0x05 first & second 0x70,0x04 third
 
 
-            */
+                */
             control_packet_t in = (control_packet_t)r.constData();
-            static int latencyCounter = 0;
 
             if (in->type != 0x01 && in->len >= 0x20) {
-                if (in->seq == 0)
-                {
-                    // Seq number has rolled over.
+
+                if (in->seq == 0) {
                     seqPrefix++;
                 }
 
-                if (timeDifference < rxSetup.latency)
-                {
-                    if (rxAudioThread == Q_NULLPTR)
-                    {
-                        startAudio();
+                if (rxAudioThread == Q_NULLPTR)
+                    startAudio();
+
+                const int excess = pingLatenessMs - (pingBaselineMs + rxSetup.latency);
+
+                if (excess > 0) {
+                    qDebug(logUdp()) << "Audio latency high:"
+                                     << "lateness" << pingLatenessMs
+                                     << "baseline" << pingBaselineMs
+                                     << "excess" << excess;
+
+                    if (++latencyCounter > 5) {
+                        qInfo(logUdp()) << "Latency sustained -> flushing audio";
+                        latencyCounter = 0;
+                        //flushAudio();   // clear queue / reset decoder
+                        break;
                     }
-
-                    audioPacket tempAudio;
-                    tempAudio.seq = (quint32)seqPrefix << 16 | in->seq;
-                    tempAudio.time = QTime::currentTime().addMSecs(timeDifference);;
-                    tempAudio.sent = 0;
-                    tempAudio.data = r.mid(0x18);
-                    emit haveAudioData(tempAudio);
+                } else {
+                    latencyCounter = 0;
                 }
-
-                if (abs(timeDifference) > rxSetup.latency) {
-                    qDebug(logUdp()) << "Audio timestamp is" << rxSetup.latency << "ms, away";
-                    latencyCounter++;
-                }
-
-                if (latencyCounter > 5)
-                {
-                    radioTime = QTime(); // Invalidate radioTime to force it to be reset.
-                    latencyCounter=0;
-                }
-                lastReceived=QTime::currentTime();
+                audioPacket tempAudio;
+                tempAudio.seq  = quint32(seqPrefix << 16) | quint32(in->seq) ;
+                tempAudio.time = QTime::currentTime();
+                tempAudio.sent = 0;
+                tempAudio.data = r.mid(0x18);
+                emit haveAudioData(tempAudio);
+                lastReceived = QTime::currentTime();
             }
             break;
         }
