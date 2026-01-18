@@ -28,6 +28,8 @@
 
 #include "rigserver.h"
 #include "icomserver.h"
+#include "kenwoodserver.h"
+#include "yaesuserver.h"
 #include "rigctld.h"
 #include "signal.h"
 

@@ -352,10 +352,27 @@ void servermain::setServerToPrefs()
         server = Q_NULLPTR;
     }
 
-    server = new icomServer(&serverConfig);
-
     serverThread = new QThread(this);
-    serverThread->setObjectName("icomServer()");
+
+    switch (prefs.manufacturer)
+    {
+    case manufIcom:
+        server = new icomServer(&serverConfig);
+        serverThread->setObjectName("icomServer()");
+        break;
+    case manufKenwood:
+        server = new kenwoodServer(&serverConfig);
+        serverThread->setObjectName("kenwoodServer()");
+        break;
+    case manufYaesu:
+        server = new yaesuServer(&serverConfig);
+        serverThread->setObjectName("yaesuServer()");
+        break;
+    default:
+        return;
+
+    }
+
 
     server->moveToThread(serverThread);
 

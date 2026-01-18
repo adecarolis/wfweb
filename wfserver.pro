@@ -170,76 +170,117 @@ INSTALLS += target
 linux:LIBS += -L./ -lopus
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus 
 
-!linux:INCLUDEPATH += ../opus/include
+contains(DEFINES,FTDI_SUPPORT){
+  win32:INCLUDEPATH += ../LibFT4222-v1.4.7\imports\LibFT4222\inc
+  win32:INCLUDEPATH += ../LibFT4222-v1.4.7\imports\ftd2xx
+}
 
+!linux:INCLUDEPATH += ../opus/include
 !linux:INCLUDEPATH += ../eigen
 !linux:INCLUDEPATH += ../r8brain-free-src
 
-INCLUDEPATH += resampler
+INCLUDEPATH += include
+INCLUDEPATH += src/audio
+INCLUDEPATH += src/audio/resampler
 
-SOURCES += main.cpp\
-    adpcm/adpcm-dns.c \
-    adpcm/adpcm-lib.c \
-    cachingqueue.cpp \
-    ft4222handler.cpp \
-    kenwoodcommander.cpp \
-    servermain.cpp \
-    commhandler.cpp \
-    rigcommander.cpp \
-    icomcommander.cpp \
-    icomserver.cpp \
-    rtpaudio.cpp \
-    freqmemory.cpp \
-    rigidentities.cpp \
-    udpbase.cpp \
-    udphandler.cpp \
-    udpcivdata.cpp \
-    udpaudio.cpp \
-    logcategories.cpp \
-    pahandler.cpp \
-    rthandler.cpp \
-    audiohandler.cpp \
-    audioconverter.cpp \
-    rigserver.cpp \
-    pttyhandler.cpp \
-    resampler/resample.c \
-    tcpserver.cpp \
-    keyboard.cpp \
-    audiodevices.cpp \
-    yaesucommander.cpp
+SOURCES += \
+    src/audio/adpcm/adpcm-dns.c \
+    src/audio/adpcm/adpcm-lib.c \
+    src/audio/audioconverter.cpp \
+    src/audio/audiodevices.cpp \
+    src/audio/audiohandlerbase.cpp \
+    src/audio/audiohandlerpainput.cpp \
+    src/audio/audiohandlerpaoutput.cpp \
+    src/audio/audiohandlerqtinput.cpp \
+    src/audio/audiohandlerqtoutput.cpp \
+    src/audio/audiohandlerrtinput.cpp \
+    src/audio/audiohandlerrtoutput.cpp \
+    src/audio/audiohandlertciinput.cpp \
+    src/audio/audiohandlertcioutput.cpp \
+    src/audio/resampler/resample.c \
+    src/radio/icomcommander.cpp \
+    src/radio/icomserver.cpp \
+    src/radio/icomudpaudio.cpp \
+    src/radio/icomudpbase.cpp \
+    src/radio/icomudpcivdata.cpp \
+    src/radio/icomudphandler.cpp \
+    src/radio/kenwoodcommander.cpp \
+    src/radio/kenwoodserver.cpp \
+    src/radio/yaesucommander.cpp \
+    src/radio/yaesuserver.cpp \
+    src/radio/yaesuudpaudio.cpp \
+    src/radio/yaesuudpbase.cpp \
+    src/radio/yaesuudpcat.cpp \
+    src/radio/yaesuudpcontrol.cpp \
+    src/radio/yaesuudpscope.cpp \
+    src/cachingqueue.cpp \
+    src/main.cpp\
+    src/servermain.cpp \
+    src/commhandler.cpp \
+    src/rigcommander.cpp \
+    src/rigidentities.cpp \
+    src/logcategories.cpp \
+    src/pttyhandler.cpp \
+    src/tcpserver.cpp \
+    src/keyboard.cpp \
+    src/rigserver.cpp \
+    src/ft4222handler.cpp \
+    src/rtpaudio.cpp
 
-HEADERS  += servermain.h \
-    adpcm/adpcm-lib.h \
-    cachingqueue.h \
-    commhandler.h \
-    ft4222handler.h \
-    kenwoodcommander.h \
-    rigcommander.h \
-    icomcommander.h \
-    icomserver.h \
-    freqmemory.h \
-    rigidentities.h \
-    rtpaudio.h \
-    udpbase.h \
-    udphandler.h \
-    udpcivdata.h \
-    udpaudio.h \
-    logcategories.h \
-    pahandler.h \
-    rthandler.h \
-    audiohandler.h \
-    audioconverter.h \
-    rigserver.h \
-    packettypes.h \
-    pttyhandler.h \
-    resampler/speex_resampler.h \
-    resampler/arch.h \
-    resampler/resample_sse.h \
-    repeaterattributes.h \
-    ulaw.h \
-    tcpserver.h \
-    audiotaper.h \
-    keyboard.h \
-    wfviewtypes.h \
-    audiodevices.h \
-    yaesucommander.h
+
+HEADERS  += \
+    include/servermain.h \
+    src/audio/adpcm/adpcm-lib.h \
+    src/audio/resampler/resample_neon.h \
+    src/audio/resampler/speex_resampler.h \
+    src/audio/resampler/arch.h \
+    src/audio/resampler/resample_sse.h \
+    include/audioconverter.h \
+    include/audiodevices.h \
+    include/audiohandler.h \
+    include/audiohandlerbase.h \
+    include/audiohandlerpainput.h \
+    include/audiohandlerpaoutput.h \
+    include/audiohandlerqtinput.h \
+    include/audiohandlerqtoutput.h \
+    include/audiohandlerrtinput.h \
+    include/audiohandlerrtoutput.h \
+    include/audiohandlertciinput.h \
+    include/audiohandlertcioutput.h \
+    include/cachingqueue.h \
+    include/commhandler.h \
+    include/ft4222handler.h \
+    include/kenwoodcommander.h \
+    include/rigcommander.h \
+    include/icomcommander.h \
+    include/icomserver.h \
+    include/freqmemory.h \
+    include/rigidentities.h \
+    include/rtpaudio.h \
+    include/logcategories.h \
+    include/audiohandler.h \
+    include/audioconverter.h \
+    include/rigserver.h \
+    include/packettypes.h \
+    include/repeaterattributes.h \
+    include/tcpserver.h \
+    include/audiotaper.h \
+    include/keyboard.h \
+    include/wfviewtypes.h \
+    include/audiodevices.h \
+    include/pttyhandler.h \
+    include/icomcommander.h \
+    include/icomserver.h \
+    include/icomudpaudio.h \
+    include/icomudpbase.h \
+    include/icomudpcivdata.h \
+    include/icomudphandler.h \
+    include/kenwoodcommander.h \
+    include/kenwoodserver.h \
+    include/yaesucommander.h \
+    include/yaesuserver.h \
+    include/yaesuudpaudio.h \
+    include/yaesuudpbase.h \
+    include/yaesuudpcat.h \
+    include/yaesuudpcontrol.h \
+    include/yaesuudpscope.h
