@@ -76,7 +76,8 @@ cwSidetone::~cwSidetone()
 {
     qInfo(logCW()) << "cwSidetone() finished";
     this->stop();
-    output->stop();
+    if (output)
+        output->stop();
 }
 
 void cwSidetone::init()
@@ -106,6 +107,11 @@ void cwSidetone::init()
         output.reset(new QAudioSink(device,format));
 #endif
 
+        if (!output)
+        {
+            qCritical(logCW) << "CW Sidetone: Cannot open default audio device";
+            return;
+        }
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         qInfo(logCW()) << QString("Sidetone Output: %0 (volume: %1 rate: %2 size: %3 type: %4)")
                           .arg(device.deviceName()).arg(volume).arg(format.sampleRate()).arg(format.sampleSize()).arg(format.sampleType());
@@ -140,13 +146,15 @@ void cwSidetone::send(QString text)
         generateMorse(currentChar);
     }
 
-    if (output->state() == QAudio::StoppedState)
-    {
-        output->start(this);
-    }
-    else if (output->state() == QAudio::IdleState) {
-        output->suspend();
-        output->resume();
+    if (output) {
+        if (output->state() == QAudio::StoppedState)
+        {
+            output->start(this);
+        }
+        else if (output->state() == QAudio::IdleState) {
+            output->suspend();
+            output->resume();
+        }
     }
     return;
 }
