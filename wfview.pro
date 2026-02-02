@@ -12,9 +12,6 @@ QT       += core gui serialport network multimedia xml
 #Uncomment The following line to enable USB controllers (Shuttle/RC-28 etc.)
 DEFINES += USB_CONTROLLER
 
-# FTDI support requires the library from https://ftdichip.com/software-examples/ft4222h-software-examples/
-# DEFINES += FTDI_SUPPORT
-
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport websockets
 
 contains(DEFINES,USB_CONTROLLER){
@@ -24,7 +21,7 @@ contains(DEFINES,USB_CONTROLLER){
 TARGET = wfview
 TEMPLATE = app
 
-DEFINES += WFVIEW_VERSION=\\\"2.20\\\"
+DEFINES += WFVIEW_VERSION=\\\"2.21\\\"
 
 DEFINES += BUILD_WFVIEW
 
@@ -190,11 +187,7 @@ CONFIG(debug, release|debug) {
     contains(QMAKE_TARGET.arch, x86_64) {
       LIBS += -L../opus/win32/VS2015/x64/DebugDLL/
       LIBS += -L../qcustomplot/x64 -lqcustomplotd2
-      contains(DEFINES,FTDI_SUPPORT){
-        LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\amd64 -lftd2xx
-        LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64 -lLibFT4222-64
-        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64\LibFT4222-64.dll wfview-debug $$escape_expand(\\n\\t))
-      }
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.8\imports\LibFT4222\dll\amd64\LibFT4222-64.dll wfview-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\x64\qcustomplotd2.dll wfview-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfview-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\hidapi\windows\X64\Debug\hidapi.dll wfview-debug $$escape_expand(\\n\\t))
@@ -208,11 +201,7 @@ CONFIG(debug, release|debug) {
       LIBS += -L../opus/win32/VS2015/win32/DebugDLL/
       LIBS += -L../qcustomplot/win32 -lqcustomplotd2
       LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86
-      contains(DEFINES,FTDI_SUPPORT){
-        LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\i386 -lftd2xx
-        LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\i386 -lLibFT4222
-        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\i386\LibFT4222.dll wfview-debug $$escape_expand(\\n\\t))
-      }
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.8\imports\LibFT4222\dll\i386\LibFT4222.dll wfview-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\win32\qcustomplotd2.dll wfview-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll wfview-debug $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\hidapi\windows\Debug\hidapi.dll wfview-debug $$escape_expand(\\n\\t))
@@ -241,11 +230,7 @@ CONFIG(debug, release|debug) {
       LIBS += -L../opus/win32/VS2015/x64/ReleaseDLL/
       LIBS += -L../qcustomplot/x64 -lqcustomplot2
       LIBS += -L../portaudio/msvc/X64/Release/ -lportaudio_x64
-      contains(DEFINES,FTDI_SUPPORT){
-        LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\amd64 -lftd2xx
-        LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64 -lLibFT4222-64
-        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64\LibFT4222-64.dll wfview-release $$escape_expand(\\n\\t))
-      }
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.8\imports\LibFT4222\dll\amd64\LibFT4222-64.dll wfview-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\x64\qcustomplot2.dll wfview-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfview-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\hidapi\windows\X64\Release\hidapi.dll wfview-release $$escape_expand(\\n\\t))
@@ -258,11 +243,7 @@ CONFIG(debug, release|debug) {
       LIBS += -L../opus/win32/VS2015/win32/ReleaseDLL/
       LIBS += -L../qcustomplot/win32 -lqcustomplot2
       LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
-      contains(DEFINES,FTDI_SUPPORT){
-        LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\i386 -lftd2xx
-        LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\i386 -lLibFT4222
-        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\i386\LibFT4222.dll wfview-release $$escape_expand(\\n\\t))
-      }
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.8\imports\LibFT4222\dll\i386\LibFT4222.dll wfview-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\win32\qcustomplot2.dll wfview-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Release\portaudio_x86.dll wfview-release $$escape_expand(\\n\\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\hidapi\windows\Release\hidapi.dll wfview-release $$escape_expand(\\n\\t))
@@ -285,9 +266,9 @@ contains(DEFINES,USB_CONTROLLER){
 
 win32:LIBS += -lopus -lole32 -luser32
 
-contains(DEFINES,FTDI_SUPPORT){
-  !win32:LIBS += -lft4222
-}
+#contains(DEFINES,FTDI_SUPPORT){
+#  !win32:LIBS += -lft4222
+#}
 
 #macx:SOURCES += ../qcustomplot/qcustomplot.cpp 
 #macx:HEADERS += ../qcustomplot/qcustomplot.h
@@ -295,10 +276,10 @@ contains(DEFINES,FTDI_SUPPORT){
 win32:INCLUDEPATH += ../qcustomplot
 win32:INCLUDEPATH += ../hidapi/hidapi
 
-contains(DEFINES,FTDI_SUPPORT){
-  win32:INCLUDEPATH += ../LibFT4222-v1.4.7\imports\LibFT4222\inc
-  win32:INCLUDEPATH += ../LibFT4222-v1.4.7\imports\ftd2xx
-}
+#contains(DEFINES,FTDI_SUPPORT){
+#  win32:INCLUDEPATH += ../LibFT4222-v1.4.7\imports\LibFT4222\inc
+#  win32:INCLUDEPATH += ../LibFT4222-v1.4.7\imports\ftd2xx
+#}
 
 !linux:INCLUDEPATH += ../opus/include
 !linux:INCLUDEPATH += ../eigen
