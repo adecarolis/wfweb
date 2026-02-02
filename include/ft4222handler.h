@@ -69,6 +69,13 @@ enum FT_OPEN_BY {
     FT_OPEN_BY_LOCATION = 4
 };
 
+// Define calling convention for Windows (stdcall for LibFT4222 v1.4.6+)
+#ifdef Q_OS_WIN
+#define FTAPI __stdcall
+#else
+#define FTAPI
+#endif
+
 class ft4222Handler : public QThread
 {
     Q_OBJECT
@@ -90,15 +97,15 @@ private:
     bool loadFTDILibraries();
     void unloadFTDILibraries();
 
-    // Function pointer types
-    typedef FT_STATUS (*FT_OpenExFunc)(void*, unsigned long, FT_HANDLE*);
-    typedef FT_STATUS (*FT_CloseFunc)(FT_HANDLE);
-    typedef FT_STATUS (*FT_SetTimeoutsFunc)(FT_HANDLE, unsigned long, unsigned long);
-    typedef FT_STATUS (*FT_SetLatencyTimerFunc)(FT_HANDLE, unsigned char);
-    typedef FT4222_STATUS (*FT4222_UnInitializeFunc)(FT_HANDLE);
-    typedef FT4222_STATUS (*FT4222_SPIMaster_InitFunc)(FT_HANDLE, FT4222_SPIMode, FT4222_SPIClock, FT4222_SPICPOL, FT4222_SPICPHA, unsigned char);
-    typedef FT4222_STATUS (*FT4222_SPIMaster_SingleReadFunc)(FT_HANDLE, unsigned char*, unsigned short, unsigned short*, bool);
-    typedef FT4222_STATUS (*FT4222_SetClockFunc)(FT_HANDLE, FT4222_ClockRate);
+    // Function pointer types with proper calling convention
+    typedef FT_STATUS (FTAPI *FT_OpenExFunc)(void*, unsigned long, FT_HANDLE*);
+    typedef FT_STATUS (FTAPI *FT_CloseFunc)(FT_HANDLE);
+    typedef FT_STATUS (FTAPI *FT_SetTimeoutsFunc)(FT_HANDLE, unsigned long, unsigned long);
+    typedef FT_STATUS (FTAPI *FT_SetLatencyTimerFunc)(FT_HANDLE, unsigned char);
+    typedef FT4222_STATUS (FTAPI *FT4222_UnInitializeFunc)(FT_HANDLE);
+    typedef FT4222_STATUS (FTAPI *FT4222_SPIMaster_InitFunc)(FT_HANDLE, FT4222_SPIMode, FT4222_SPIClock, FT4222_SPICPOL, FT4222_SPICPHA, unsigned char);
+    typedef FT4222_STATUS (FTAPI *FT4222_SPIMaster_SingleReadFunc)(FT_HANDLE, unsigned char*, unsigned short, unsigned short*, bool);
+    typedef FT4222_STATUS (FTAPI *FT4222_SetClockFunc)(FT_HANDLE, FT4222_ClockRate);
 
     // Function pointers
     FT_OpenExFunc FT_OpenEx = nullptr;
