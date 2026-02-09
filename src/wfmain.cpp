@@ -3704,10 +3704,14 @@ funcType wfmain::getInputTypeCommand(inputTypes input)
     }
     //qInfo(logSystem()) << "Input type command for" << input << "is" << funcString[func];
     funcType type;
-    auto f = rigCaps->commands.find(func);
-    if (f != rigCaps->commands.end())
-    {
-        type = f.value();
+    if(rigCaps) {
+        auto f = rigCaps->commands.find(func);
+        if (f != rigCaps->commands.end())
+        {
+            type = f.value();
+        }
+    } else {
+        qWarning(logSystem()) << "Not connected to radio, rigCaps invalid.";
     }
 
     return type;
