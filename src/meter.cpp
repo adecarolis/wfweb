@@ -72,6 +72,10 @@ meter::meter(QWidget *parent) : QWidget(parent)
 }
 
 void meter::setCompReverse(bool reverse) {
+    if (reverse && meterType != meterComp) {
+        this->reverseCompMeter = false;
+        return;
+    }
     this->reverseCompMeter = reverse;
     recentlyChangedParameters = true; // force scale redraw
 }
@@ -175,6 +179,9 @@ void meter::setMeterType(meter_t m_type_req)
     combo->blockSignals(false);
 
     meterType = m_type_req;
+    if (meterType != meterComp) {
+        reverseCompMeter = false;
+    }
     this->meterShortString = getMeterDebug(meterType);
     recentlyChangedParameters = true;
     // clear average and peak vectors:

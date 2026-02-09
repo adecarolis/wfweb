@@ -2629,8 +2629,10 @@ void wfmain::extChangedIfPref(prefIfItem i)
         // already uses the preference variable as state.
         break;
     case if_compMeterReverse:
-        ui->meter2Widget->setCompReverse(prefs.compMeterReverse);
-        ui->meter3Widget->setCompReverse(prefs.compMeterReverse);
+        if (ui->meter2Widget->getMeterType() == meterComp)
+            ui->meter2Widget->setCompReverse(prefs.compMeterReverse);
+        if (ui->meter3Widget->getMeterType() == meterComp)
+            ui->meter3Widget->setCompReverse(prefs.compMeterReverse);
         break;
     case if_rigCreatorEnable:
         ui->rigCreatorBtn->setEnabled(prefs.rigCreatorEnable);
@@ -4011,8 +4013,10 @@ void wfmain::initPeriodicCommands()
     changeMeterType(prefs.meter3Type, 3);
     ui->meter2Widget->blockMeterType(prefs.meter3Type);
     ui->meter3Widget->blockMeterType(prefs.meter2Type);
-    ui->meter2Widget->setCompReverse(prefs.compMeterReverse);
-    ui->meter3Widget->setCompReverse(prefs.compMeterReverse);
+    if (prefs.meter2Type == meterComp)
+        ui->meter2Widget->setCompReverse(prefs.compMeterReverse);
+    if (prefs.meter3Type == meterComp)
+        ui->meter3Widget->setCompReverse(prefs.compMeterReverse);
 
 /*
     meter* marray[3];
@@ -6656,6 +6660,8 @@ void wfmain::setupLambdaSlots()
         setupui->updateIfPref(if_meter2Type);
         // Change the meter locally:
         changeMeterType(meterTypeRequested, 2);
+        if (meterTypeRequested == meterComp)
+            ui->meter2Widget->setCompReverse(prefs.compMeterReverse);
         // Block duplicate meter selection in the other meter:
         ui->meter3Widget->blockMeterType(meterTypeRequested);
     });
@@ -6667,6 +6673,8 @@ void wfmain::setupLambdaSlots()
         setupui->updateIfPref(if_meter3Type);
         // Change the meter locally:
         changeMeterType(meterTypeRequested, 3);
+        if (meterTypeRequested == meterComp)
+            ui->meter3Widget->setCompReverse(prefs.compMeterReverse);
         // Block duplicate meter selection in the other meter:
         ui->meter2Widget->blockMeterType(meterTypeRequested);
     });

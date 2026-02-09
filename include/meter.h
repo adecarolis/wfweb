@@ -79,7 +79,7 @@ private:
     int averageRect = 0;
     int peakRect = 0;
 
-    bool reverseCompMeter = true;
+    bool reverseCompMeter = false;
 
     int averageBalisticLength = 30;
     int peakBalisticLength = 30;
