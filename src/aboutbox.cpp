@@ -21,7 +21,7 @@ aboutbox::aboutbox(QWidget *parent) :
 
     QString dedication = QString("<br/><br/><b>This version of wfview is dedicated to the natural pursuit of freedom by people everywhere.</b> "
                                  "<br/><br/>Special thanks to Tony Collen, N0RUA/AE0KW (SK), for his work on open890, which was the inspiration for our support of the Kenwood TS-890. "
-                                 "<br/><br/>Special thanks to our translators:<br/>Siwij Cat TA1YEP (Turkish)<br/>OK2HAM (Czech)<br/>JG3HLX (Japanese)<br/>Dawid SQ6EMM (Polish)<br/>Jim PA8E (Dutch)");
+                                 "<br/><br/>Special thanks to our translators:<br/>Siwij Cat TA1YEP (Turkish)<br/>OK2HAM (Czech)<br/>JG3HLX (Japanese)<br/>Dawid SQ6EMM (Polish)<br/>Jim PA8E (Dutch)<br/>David Acacio EA3IPX (Spanish)");
 
 #if defined(Q_OS_LINUX)
     QString ssCredit = QString("<br/><br/>Stylesheet <a href=\"https://github.com/ColinDuquesnoy/QDarkStyleSheet/tree/master/qdarkstyle\"  style=\"color: cyan;\">qdarkstyle</a> used under MIT license, stored in /usr/share/wfview/stylesheets/.");

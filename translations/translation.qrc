@@ -11,5 +11,6 @@
         <file>wfview_nl_NL.qm</file>
         <file>wfview_pl.qm</file>
         <file>wfview_zh_CN.qm</file>
+        <file>wfview_es_ES.ts</file>
     </qresource>
 </RCC>
