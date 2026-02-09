@@ -343,8 +343,8 @@ struct rigCapabilities {
     QString satFormat;
     QVector<memParserFormat> satParser;
     QVector<periodicType> periodic;
-    QMap<int,double> meters[meterUnknown];
-    double meterLines[meterUnknown];
+    QMap<int,double> meters[meterUnknown+1];
+    double meterLines[meterUnknown+1];
 };
 
 Q_DECLARE_METATYPE(manufacturersType_t)

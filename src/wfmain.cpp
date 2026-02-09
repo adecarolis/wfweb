@@ -4085,6 +4085,11 @@ void wfmain::changePrimaryMeter(bool transmitOn) {
     double highVal = 255.0;
     double lineVal = 200;
 
+    if (rigCaps == Q_NULLPTR) {
+        qWarning(logSystem()) << "Cannot swap meter type without rigCaps.";
+        return;
+    }
+
     if(transmitOn) {
         oldCmd = meter_tToMeterCommand(meterS);
         newCmd = meter_tToMeterCommand(meterPower);
@@ -5114,6 +5119,10 @@ void wfmain::changeMeterType(meter_t m, int meterNum)
     double highVal = 2.0;
     double lineVal = 1.0;
 
+    if (rigCaps == Q_NULLPTR && newMeterType != meterNone) {
+        qWarning(logSystem()) << "Cannot change meter type without rigCaps.";
+        return;
+    }
 
     switch (newMeterType)
     {

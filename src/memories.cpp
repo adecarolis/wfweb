@@ -959,6 +959,7 @@ void memories::on_group_currentIndexChanged(int index)
 {
     Q_UNUSED(index)
 
+    startup=true;
     timeoutTimer.start(MEMORY_TIMEOUT);
 
     visibleColumns=1;
