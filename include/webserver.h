@@ -12,8 +12,20 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QTimer>
+#include <QSet>
+#include <QThread>
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+#include <QAudioDeviceInfo>
+#include <QAudioInput>
+#else
+#include <QMediaDevices>
+#include <QAudioDevice>
+#include <QAudioSource>
+#endif
 
 #include "cachingqueue.h"
+#include "audioconverter.h"
 
 class webServer : public QObject
 {
@@ -25,10 +37,17 @@ public:
 
 signals:
     void closed();
+    void setupConverter(QAudioFormat inFormat, codecType inCodec,
+                        QAudioFormat outFormat, codecType outCodec,
+                        quint8 opusComplexity, quint8 resampleQuality);
+    void sendToConverter(audioPacket audio);
 
 public slots:
     void init(quint16 httpPort, quint16 wsPort);
     void receiveRigCaps(rigCapabilities* caps);
+    void receiveRxAudio(audioPacket audio);
+    void setupAudio(quint8 codec, quint32 sampleRate);
+    void setupUsbAudio(quint32 sampleRate);
 
 private slots:
     // HTTP
@@ -47,6 +66,12 @@ private slots:
     // Periodic status push
     void sendPeriodicStatus();
 
+    // Audio converter output
+    void onRxConverted(audioPacket audio);
+
+    // USB audio capture
+    void readUsbAudio();
+
 private:
     void serveStaticFile(QTcpSocket *socket, const QString &path);
     void sendHttpResponse(QTcpSocket *socket, int statusCode, const QString &statusText,
@@ -54,11 +79,13 @@ private:
     void sendJsonToAll(const QJsonObject &obj);
     void sendJsonTo(QWebSocket *client, const QJsonObject &obj);
     void sendBinaryToAll(const QByteArray &data);
+    void sendBinaryToAudioClients(const QByteArray &data);
     void handleCommand(QWebSocket *client, const QJsonObject &cmd);
     void sendCurrentState(QWebSocket *client);
     QString modeToString(modeInfo m);
     modeInfo stringToMode(const QString &mode);
     QJsonObject buildStatusJson();
+    codecType codecByteToType(quint8 codec);
 
     QTcpServer *httpServer = nullptr;
     QWebSocketServer *wsServer = nullptr;
@@ -67,6 +94,23 @@ private:
     rigCapabilities *rigCaps = nullptr;
     QTimer *statusTimer = nullptr;
     QMimeDatabase mimeDb;
+
+    // Audio streaming (LAN: converter-based, USB: direct capture)
+    audioConverter *rxConverter = nullptr;
+    QThread *rxConverterThread = nullptr;
+    quint8 rigCodec = 0;
+    quint32 rigSampleRate = 0;
+    bool audioConfigured = false;
+    quint16 audioSeq = 0;
+    QSet<QWebSocket *> audioClients;
+
+    // USB direct audio capture
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+    QAudioInput *usbAudioInput = nullptr;
+#else
+    QAudioSource *usbAudioInput = nullptr;
+#endif
+    QIODevice *usbAudioDevice = nullptr;
 };
 
 #endif // WEBSERVER_H

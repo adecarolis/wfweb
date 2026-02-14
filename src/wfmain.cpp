@@ -480,6 +480,11 @@ void wfmain::openRig()
         // 60 second connection timeout.
         ConnectionTimer.start(60000);
         emit sendCommSetup(rigList, prefs.radioCIVAddr, udpPrefs, prefs.rxSetup, prefs.txSetup, prefs.virtualSerialPort, prefs.tcpPort);
+
+        if (web != Q_NULLPTR) {
+            QMetaObject::invokeMethod(web, "setupAudio", Qt::QueuedConnection,
+                Q_ARG(quint8, prefs.rxSetup.codec), Q_ARG(quint32, prefs.rxSetup.sampleRate));
+        }
     } else {
         if( (prefs.serialPortRadio.toLower() == QString("auto")))
         {
@@ -490,6 +495,10 @@ void wfmain::openRig()
         emit sendCommSetup(rigList, prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort, prefs.tcpPort,prefs.waterfallFormat);
         ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
 
+        if (web != Q_NULLPTR) {
+            QMetaObject::invokeMethod(web, "setupUsbAudio", Qt::QueuedConnection,
+                Q_ARG(quint32, prefs.rxSetup.sampleRate));
+        }
     }
 
 
@@ -555,6 +564,10 @@ void wfmain::makeRig()
             connect(rig, SIGNAL(haveAudioData(audioPacket)), server, SLOT(receiveAudioData(audioPacket)));
             connect(rig, SIGNAL(haveDataForServer(QByteArray)), server, SLOT(dataForServer(QByteArray)));
             connect(server, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
+        }
+
+        if (web != Q_NULLPTR) {
+            connect(rig, SIGNAL(haveAudioData(audioPacket)), web, SLOT(receiveRxAudio(audioPacket)));
         }
 
         connect(this, SIGNAL(setCIVAddr(quint16)), rig, SLOT(setCIVAddr(quint16)));

@@ -11,12 +11,22 @@ webServer::~webServer()
     if (statusTimer) {
         statusTimer->stop();
     }
+    if (usbAudioInput) {
+        usbAudioInput->stop();
+        delete usbAudioInput;
+        usbAudioInput = nullptr;
+    }
+    if (rxConverterThread) {
+        rxConverterThread->quit();
+        rxConverterThread->wait();
+    }
     if (wsServer) {
         wsServer->close();
     }
     if (httpServer) {
         httpServer->close();
     }
+    audioClients.clear();
     qDeleteAll(wsClients);
     wsClients.clear();
 }
@@ -72,6 +82,10 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
             modes.append(mi.name);
         }
         obj["modes"] = modes;
+        obj["audioAvailable"] = audioConfigured;
+        if (audioConfigured) {
+            obj["audioSampleRate"] = (int)rigSampleRate;
+        }
         sendJsonToAll(obj);
     }
 }
@@ -204,6 +218,7 @@ void webServer::onWsDisconnected()
     QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
     if (pClient) {
         qInfo() << "Web client disconnected:" << pClient->peerAddress().toString();
+        audioClients.remove(pClient);
         wsClients.removeAll(pClient);
         pClient->deleteLater();
     }
@@ -303,6 +318,33 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         bool on = cmd["value"].toBool();
         queue->add(priorityImmediate, queueItem(funcSplitStatus, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
     }
+    else if (type == "enableAudio") {
+        bool enable = cmd["value"].toBool();
+        if (enable) {
+            if (audioConfigured) {
+                audioClients.insert(client);
+                qInfo() << "Web: Audio enabled for client" << client->peerAddress().toString();
+                QJsonObject resp;
+                resp["type"] = "audioStatus";
+                resp["enabled"] = true;
+                resp["sampleRate"] = (int)rigSampleRate;
+                sendJsonTo(client, resp);
+            } else {
+                QJsonObject resp;
+                resp["type"] = "audioStatus";
+                resp["enabled"] = false;
+                resp["reason"] = "Audio not available (USB rig or not configured)";
+                sendJsonTo(client, resp);
+            }
+        } else {
+            audioClients.remove(client);
+            qInfo() << "Web: Audio disabled for client" << client->peerAddress().toString();
+            QJsonObject resp;
+            resp["type"] = "audioStatus";
+            resp["enabled"] = false;
+            sendJsonTo(client, resp);
+        }
+    }
     else if (type == "getStatus") {
         sendCurrentState(client);
     }
@@ -334,6 +376,10 @@ void webServer::sendCurrentState(QWebSocket *client)
             modes.append(mi.name);
         }
         info["modes"] = modes;
+        info["audioAvailable"] = audioConfigured;
+        if (audioConfigured) {
+            info["audioSampleRate"] = (int)rigSampleRate;
+        }
     } else {
         info["connected"] = false;
     }
@@ -553,6 +599,13 @@ void webServer::sendBinaryToAll(const QByteArray &data)
     }
 }
 
+void webServer::sendBinaryToAudioClients(const QByteArray &data)
+{
+    for (QWebSocket *client : audioClients) {
+        client->sendBinaryMessage(data);
+    }
+}
+
 QString webServer::modeToString(modeInfo m)
 {
     if (m.name.isEmpty()) {
@@ -590,4 +643,249 @@ modeInfo webServer::stringToMode(const QString &mode)
         }
     }
     return m;
+}
+
+// --- Audio Streaming ---
+
+codecType webServer::codecByteToType(quint8 codec)
+{
+    switch (codec) {
+    case 0x01:
+    case 0x20:
+        return PCMU;
+    case 0x40:
+    case 0x41:
+        return OPUS;
+    case 0x80:
+        return ADPCM;
+    case 0x02:
+    case 0x04:
+    case 0x08:
+    case 0x10:
+    default:
+        return LPCM;
+    }
+}
+
+void webServer::setupAudio(quint8 codec, quint32 sampleRate)
+{
+    if (audioConfigured) {
+        qInfo() << "Web: Audio already configured, skipping";
+        return;
+    }
+    if (codec == 0 || sampleRate == 0) {
+        qInfo() << "Web: Audio not available (codec=0 or sampleRate=0)";
+        return;
+    }
+
+    rigCodec = codec;
+    rigSampleRate = sampleRate;
+
+    // Create audio converter in its own thread
+    rxConverter = new audioConverter();
+    rxConverterThread = new QThread(this);
+    rxConverterThread->setObjectName("webAudioConv()");
+    rxConverter->moveToThread(rxConverterThread);
+
+    connect(this, &webServer::setupConverter, rxConverter, &audioConverter::init);
+    connect(this, &webServer::sendToConverter, rxConverter, &audioConverter::convert);
+    connect(rxConverter, &audioConverter::converted, this, &webServer::onRxConverted);
+    connect(rxConverterThread, &QThread::finished, rxConverter, &QObject::deleteLater);
+
+    rxConverterThread->start();
+
+    // Input format: what the rig sends
+    QAudioFormat inFormat = toQAudioFormat(codec, sampleRate);
+    codecType inCodec = codecByteToType(codec);
+
+    // Output format: 16-bit signed LE mono at the rig's sample rate
+    // (browser handles any resampling needed)
+    QAudioFormat outFormat;
+    outFormat.setSampleRate(sampleRate);
+    outFormat.setChannelCount(1);
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+    outFormat.setSampleSize(16);
+    outFormat.setSampleType(QAudioFormat::SignedInt);
+    outFormat.setByteOrder(QAudioFormat::LittleEndian);
+    outFormat.setCodec("audio/pcm");
+#else
+    outFormat.setSampleFormat(QAudioFormat::Int16);
+#endif
+
+    emit setupConverter(inFormat, inCodec, outFormat, LPCM, 5, 4);
+
+    audioConfigured = true;
+    qInfo() << "Web: Audio configured, codec=" << Qt::hex << codec
+            << "sampleRate=" << Qt::dec << sampleRate;
+
+    // Notify already-connected web clients that audio is now available
+    if (!wsClients.isEmpty()) {
+        QJsonObject notify;
+        notify["type"] = "audioAvailable";
+        notify["available"] = true;
+        notify["sampleRate"] = (int)sampleRate;
+        sendJsonToAll(notify);
+    }
+}
+
+void webServer::receiveRxAudio(audioPacket audio)
+{
+    if (audioClients.isEmpty() || !audioConfigured) return;
+    emit sendToConverter(audio);
+}
+
+void webServer::onRxConverted(audioPacket audio)
+{
+    if (audioClients.isEmpty()) return;
+
+    // Binary format: [0x02][0x00][seq_u16LE][rateDiv_u16LE][PCM_Int16LE...]
+    // rateDiv = sampleRate / 1000 (e.g. 48 for 48kHz)
+    quint16 rateDiv = static_cast<quint16>(rigSampleRate / 1000);
+    QByteArray msg;
+    int headerSize = 6;
+    msg.resize(headerSize + audio.data.size());
+    msg[0] = 0x02;  // msgType: RX audio
+    msg[1] = 0x00;  // reserved
+
+    quint16 seq = audioSeq++;
+    memcpy(msg.data() + 2, &seq, 2);
+    memcpy(msg.data() + 4, &rateDiv, 2);
+    memcpy(msg.data() + headerSize, audio.data.constData(), audio.data.size());
+
+    sendBinaryToAudioClients(msg);
+}
+
+void webServer::setupUsbAudio(quint32 sampleRate)
+{
+    if (audioConfigured) {
+        qInfo() << "Web: Audio already configured, skipping";
+        return;
+    }
+
+    // Find the rig's USB audio capture device
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+    QAudioDeviceInfo usbDevice;
+    bool found = false;
+    for (const QAudioDeviceInfo &dev : QAudioDeviceInfo::availableDevices(QAudio::AudioInput)) {
+        if (dev.deviceName().contains("USB", Qt::CaseInsensitive)) {
+            usbDevice = dev;
+            found = true;
+            qInfo() << "Web: Found USB audio device:" << dev.deviceName();
+            break;
+        }
+    }
+    if (!found) {
+        qInfo() << "Web: No USB audio device found for direct capture";
+        return;
+    }
+
+    QAudioFormat format;
+    format.setSampleRate(sampleRate);
+    format.setChannelCount(1);
+    format.setSampleSize(16);
+    format.setSampleType(QAudioFormat::SignedInt);
+    format.setByteOrder(QAudioFormat::LittleEndian);
+    format.setCodec("audio/pcm");
+
+    if (!usbDevice.isFormatSupported(format)) {
+        // Try stereo (some USB codecs only support stereo)
+        format.setChannelCount(2);
+        if (!usbDevice.isFormatSupported(format)) {
+            format = usbDevice.nearestFormat(format);
+            qInfo() << "Web: Using nearest format:" << format.sampleRate()
+                     << "ch=" << format.channelCount()
+                     << "size=" << format.sampleSize();
+        }
+    }
+
+    usbAudioInput = new QAudioInput(usbDevice, format, this);
+#else
+    QAudioDevice usbDevice;
+    bool found = false;
+    for (const QAudioDevice &dev : QMediaDevices::audioInputs()) {
+        if (dev.description().contains("USB", Qt::CaseInsensitive)) {
+            usbDevice = dev;
+            found = true;
+            qInfo() << "Web: Found USB audio device:" << dev.description();
+            break;
+        }
+    }
+    if (!found) {
+        qInfo() << "Web: No USB audio device found for direct capture";
+        return;
+    }
+
+    QAudioFormat format;
+    format.setSampleRate(sampleRate);
+    format.setChannelCount(1);
+    format.setSampleFormat(QAudioFormat::Int16);
+
+    usbAudioInput = new QAudioSource(usbDevice, format, this);
+#endif
+
+    rigSampleRate = format.sampleRate();
+
+    usbAudioDevice = usbAudioInput->start();
+    if (!usbAudioDevice) {
+        qWarning() << "Web: Failed to start USB audio capture";
+        delete usbAudioInput;
+        usbAudioInput = nullptr;
+        return;
+    }
+
+    connect(usbAudioDevice, &QIODevice::readyRead, this, &webServer::readUsbAudio);
+
+    audioConfigured = true;
+    qInfo() << "Web: USB audio capture configured, sampleRate=" << rigSampleRate
+            << "channels=" << format.channelCount();
+
+    // Notify connected clients
+    if (!wsClients.isEmpty()) {
+        QJsonObject notify;
+        notify["type"] = "audioAvailable";
+        notify["available"] = true;
+        notify["sampleRate"] = (int)rigSampleRate;
+        sendJsonToAll(notify);
+    }
+}
+
+void webServer::readUsbAudio()
+{
+    if (!usbAudioDevice || audioClients.isEmpty()) return;
+
+    QByteArray data = usbAudioDevice->readAll();
+    if (data.isEmpty()) return;
+
+    // If stereo, mix down to mono (average L+R)
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+    int channels = usbAudioInput ? usbAudioInput->format().channelCount() : 1;
+#else
+    int channels = usbAudioInput ? usbAudioInput->format().channelCount() : 1;
+#endif
+    if (channels == 2) {
+        int numSamples = data.size() / (2 * channels); // 16-bit stereo
+        QByteArray mono;
+        mono.resize(numSamples * 2);
+        const qint16 *src = reinterpret_cast<const qint16 *>(data.constData());
+        qint16 *dst = reinterpret_cast<qint16 *>(mono.data());
+        for (int i = 0; i < numSamples; i++) {
+            dst[i] = static_cast<qint16>((static_cast<qint32>(src[i*2]) + src[i*2+1]) / 2);
+        }
+        data = mono;
+    }
+
+    // Build binary message: [0x02][0x00][seq_u16LE][rateDiv_u16LE][PCM_Int16LE...]
+    quint16 rateDiv = static_cast<quint16>(rigSampleRate / 1000);
+    QByteArray msg;
+    int headerSize = 6;
+    msg.resize(headerSize + data.size());
+    msg[0] = 0x02;
+    msg[1] = 0x00;
+
+    quint16 seq = audioSeq++;
+    memcpy(msg.data() + 2, &seq, 2);
+    memcpy(msg.data() + 4, &rateDiv, 2);
+    memcpy(msg.data() + headerSize, data.constData(), data.size());
+
+    sendBinaryToAudioClients(msg);
 }

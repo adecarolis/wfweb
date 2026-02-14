@@ -211,9 +211,12 @@ header h1 { font-size: 1.2em; font-weight: 600; }
 .meter-fill.tx { background: var(--orange); }
 .meter-fill.swr-warn { background: var(--red); }
 
-/* PTT */
-.ptt-section {
-    text-align: center;
+/* PTT & Audio */
+.ptt-audio-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
     margin-bottom: 12px;
 }
 #pttBtn {
@@ -235,6 +238,47 @@ header h1 { font-size: 1.2em; font-weight: 600; }
 #pttBtn.active {
     background: var(--red);
     color: #fff;
+}
+#audioBtn {
+    width: 100px;
+    height: 50px;
+    border: 2px solid var(--blue);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--blue);
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    user-select: none;
+    -webkit-user-select: none;
+}
+#audioBtn.active {
+    background: var(--blue);
+    color: #fff;
+}
+#audioBtn.unavailable {
+    border-color: var(--text-dim);
+    color: var(--text-dim);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+.audio-level {
+    width: 8px;
+    height: 50px;
+    background: var(--bg);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+.audio-level-fill {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background: var(--green);
+    border-radius: 4px;
+    transition: height 0.05s linear;
 }
 
 /* Sliders */
@@ -405,9 +449,13 @@ header h1 { font-size: 1.2em; font-weight: 600; }
         </div>
     </div>
 
-    <!-- PTT -->
-    <div class="ptt-section">
+    <!-- PTT & Audio -->
+    <div class="ptt-audio-section">
         <button id="pttBtn">PTT</button>
+        <button id="audioBtn" class="unavailable" onclick="toggleAudio()">Audio</button>
+        <div class="audio-level">
+            <div class="audio-level-fill" id="audioLevelFill" style="height: 0%"></div>
+        </div>
     </div>
 
     <!-- Sliders -->
@@ -449,6 +497,13 @@ let isTransmitting = false;
 let reconnectTimer = null;
 const defaultModes = ['LSB', 'USB', 'AM', 'CW', 'RTTY', 'FM', 'CW-R', 'RTTY-R'];
 
+// Audio state
+let audioCtx = null;
+let audioWorkletNode = null;
+let audioEnabled = false;
+let audioAvailable = false;
+let audioSampleRate = 48000;
+
 // Spectrum/waterfall state
 let hasSpectrum = false;
 let spectAmpMax = 160;
@@ -485,6 +540,9 @@ function connect() {
         document.getElementById('connStatus').classList.remove('connected');
         document.getElementById('rigModel').textContent = 'Not connected';
         document.getElementById('statusText').textContent = 'Disconnected. Reconnecting...';
+        if (audioEnabled) stopAudio();
+        audioAvailable = false;
+        document.getElementById('audioBtn').classList.add('unavailable');
         scheduleReconnect();
     };
 
@@ -533,6 +591,14 @@ function handleMessage(msg) {
                     spectAmpMax = msg.spectAmpMax || 160;
                     showScopeSection();
                 }
+                if (msg.audioAvailable) {
+                    audioAvailable = true;
+                    audioSampleRate = msg.audioSampleRate || 48000;
+                    document.getElementById('audioBtn').classList.remove('unavailable');
+                } else {
+                    audioAvailable = false;
+                    document.getElementById('audioBtn').classList.add('unavailable');
+                }
             }
             break;
         case 'rigConnected':
@@ -542,6 +608,35 @@ function handleMessage(msg) {
                 hasSpectrum = true;
                 spectAmpMax = msg.spectAmpMax || 160;
                 showScopeSection();
+            }
+            if (msg.audioAvailable) {
+                audioAvailable = true;
+                audioSampleRate = msg.audioSampleRate || 48000;
+                document.getElementById('audioBtn').classList.remove('unavailable');
+            }
+            break;
+        case 'audioAvailable':
+            if (msg.available) {
+                audioAvailable = true;
+                audioSampleRate = msg.sampleRate || 48000;
+                document.getElementById('audioBtn').classList.remove('unavailable');
+            } else {
+                audioAvailable = false;
+                document.getElementById('audioBtn').classList.add('unavailable');
+                if (audioEnabled) stopAudio();
+            }
+            break;
+        case 'audioStatus':
+            if (msg.enabled) {
+                audioEnabled = true;
+                audioSampleRate = msg.sampleRate || audioSampleRate;
+                document.getElementById('audioBtn').classList.add('active');
+            } else {
+                audioEnabled = false;
+                document.getElementById('audioBtn').classList.remove('active');
+                if (msg.reason) {
+                    document.getElementById('statusText').textContent = msg.reason;
+                }
             }
             break;
         case 'status':
@@ -771,6 +866,198 @@ function setSquelch(val) {
     throttledSend('squelch', 'setSquelch', val);
 }
 
+// --- Audio Streaming ---
+// Ring buffer shared between AudioWorklet and ScriptProcessor fallback
+let audioRingBuf = null;
+let audioRingWrite = 0;
+let audioRingRead = 0;
+let audioRingBuffered = 0;
+let audioRingStarted = false;
+let audioPrebufferSamples = 0;
+let audioScriptNode = null; // ScriptProcessorNode fallback
+let audioUseWorklet = false;
+
+function toggleAudio() {
+    if (!audioAvailable) return;
+    if (audioEnabled) {
+        stopAudio();
+        return;
+    }
+    startAudio();
+}
+
+function startAudio() {
+    if (audioCtx) {
+        stopAudio();
+    }
+
+    // AudioContext must be created from a user gesture (iOS requirement)
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: audioSampleRate });
+
+    // Init ring buffer (3 sec capacity)
+    var bufSize = audioCtx.sampleRate * 3;
+    audioRingBuf = new Float32Array(bufSize);
+    audioRingWrite = 0;
+    audioRingRead = 0;
+    audioRingBuffered = 0;
+    audioRingStarted = false;
+    audioPrebufferSamples = Math.floor(audioCtx.sampleRate * 0.1);
+
+    // Try AudioWorklet first (requires secure context: HTTPS or localhost)
+    if (audioCtx.audioWorklet && window.isSecureContext) {
+        startWithWorklet();
+    } else {
+        startWithScriptProcessor();
+    }
+}
+
+function startWithWorklet() {
+    var processorCode = [
+        'class WfviewAudioProcessor extends AudioWorkletProcessor {',
+        '  constructor() {',
+        '    super();',
+        '    this.buffer = new Float32Array(sampleRate * 3);',
+        '    this.writePos = 0;',
+        '    this.readPos = 0;',
+        '    this.buffered = 0;',
+        '    this.started = false;',
+        '    this.prebufferSamples = Math.floor(sampleRate * 0.1);',
+        '    this.port.onmessage = (e) => {',
+        '      var samples = e.data;',
+        '      var len = samples.length;',
+        '      var bufLen = this.buffer.length;',
+        '      for (var i = 0; i < len; i++) {',
+        '        this.buffer[this.writePos] = samples[i];',
+        '        this.writePos = (this.writePos + 1) % bufLen;',
+        '      }',
+        '      this.buffered += len;',
+        '      if (this.buffered > bufLen) this.buffered = bufLen;',
+        '    };',
+        '  }',
+        '  process(inputs, outputs) {',
+        '    var output = outputs[0][0];',
+        '    if (!output) return true;',
+        '    if (!this.started && this.buffered < this.prebufferSamples) {',
+        '      output.fill(0);',
+        '      return true;',
+        '    }',
+        '    this.started = true;',
+        '    var bufLen = this.buffer.length;',
+        '    for (var i = 0; i < output.length; i++) {',
+        '      if (this.buffered > 0) {',
+        '        output[i] = this.buffer[this.readPos];',
+        '        this.readPos = (this.readPos + 1) % bufLen;',
+        '        this.buffered--;',
+        '      } else {',
+        '        output[i] = 0;',
+        '      }',
+        '    }',
+        '    return true;',
+        '  }',
+        '}',
+        'registerProcessor("wfview-audio-processor", WfviewAudioProcessor);'
+    ].join('\n');
+
+    var blob = new Blob([processorCode], { type: 'application/javascript' });
+    var url = URL.createObjectURL(blob);
+
+    audioCtx.audioWorklet.addModule(url).then(function() {
+        URL.revokeObjectURL(url);
+        audioWorkletNode = new AudioWorkletNode(audioCtx, 'wfview-audio-processor');
+        audioWorkletNode.connect(audioCtx.destination);
+        audioUseWorklet = true;
+        send({ cmd: 'enableAudio', value: true });
+    }).catch(function(err) {
+        console.warn('AudioWorklet failed, falling back to ScriptProcessor:', err);
+        URL.revokeObjectURL(url);
+        startWithScriptProcessor();
+    });
+}
+
+function startWithScriptProcessor() {
+    // ScriptProcessorNode fallback for non-secure contexts (HTTP remote access)
+    var bufferSize = 4096;
+    audioScriptNode = audioCtx.createScriptProcessor(bufferSize, 0, 1);
+    audioScriptNode.onaudioprocess = function(e) {
+        var output = e.outputBuffer.getChannelData(0);
+        if (!audioRingStarted && audioRingBuffered < audioPrebufferSamples) {
+            for (var i = 0; i < output.length; i++) output[i] = 0;
+            return;
+        }
+        audioRingStarted = true;
+        var bufLen = audioRingBuf.length;
+        for (var i = 0; i < output.length; i++) {
+            if (audioRingBuffered > 0) {
+                output[i] = audioRingBuf[audioRingRead];
+                audioRingRead = (audioRingRead + 1) % bufLen;
+                audioRingBuffered--;
+            } else {
+                output[i] = 0;
+            }
+        }
+    };
+    audioScriptNode.connect(audioCtx.destination);
+    audioUseWorklet = false;
+    send({ cmd: 'enableAudio', value: true });
+}
+
+function stopAudio() {
+    send({ cmd: 'enableAudio', value: false });
+    audioEnabled = false;
+    document.getElementById('audioBtn').classList.remove('active');
+    document.getElementById('audioLevelFill').style.height = '0%';
+    if (audioWorkletNode) {
+        audioWorkletNode.disconnect();
+        audioWorkletNode = null;
+    }
+    if (audioScriptNode) {
+        audioScriptNode.disconnect();
+        audioScriptNode = null;
+    }
+    audioUseWorklet = false;
+    audioRingBuf = null;
+    if (audioCtx) {
+        audioCtx.close();
+        audioCtx = null;
+    }
+}
+
+function handleAudioData(buffer) {
+    if (!audioEnabled) return;
+    if (buffer.byteLength < 8) return;
+
+    // Binary format: [0x02][0x00][seq_u16LE][rateDiv_u16LE][PCM_Int16LE...]
+    var pcmData = new Int16Array(buffer, 6);
+    var floatData = new Float32Array(pcmData.length);
+
+    var peak = 0;
+    for (var i = 0; i < pcmData.length; i++) {
+        var s = pcmData[i] / 32768.0;
+        floatData[i] = s;
+        var abs = s < 0 ? -s : s;
+        if (abs > peak) peak = abs;
+    }
+
+    if (audioUseWorklet && audioWorkletNode) {
+        // AudioWorklet path: post to worklet thread
+        audioWorkletNode.port.postMessage(floatData);
+    } else if (audioRingBuf) {
+        // ScriptProcessor path: write to shared ring buffer
+        var len = floatData.length;
+        var bufLen = audioRingBuf.length;
+        for (var i = 0; i < len; i++) {
+            audioRingBuf[audioRingWrite] = floatData[i];
+            audioRingWrite = (audioRingWrite + 1) % bufLen;
+        }
+        audioRingBuffered += len;
+        if (audioRingBuffered > bufLen) audioRingBuffered = bufLen;
+    }
+
+    // Update level indicator
+    var pct = Math.min(100, Math.round(peak * 100));
+    document.getElementById('audioLevelFill').style.height = pct + '%';
+}
+
 // --- PTT (push-to-talk: hold to transmit) ---
 (function() {
     const pttBtn = document.getElementById('pttBtn');
@@ -877,10 +1164,16 @@ function initWaterfallBuffer(dataLen) {
 }
 
 function handleBinaryMessage(buffer) {
-    if (buffer.byteLength < 13) return;
+    if (buffer.byteLength < 2) return;
     var view = new DataView(buffer);
     var msgType = view.getUint8(0);
-    if (msgType !== 0x01) return;
+
+    if (msgType === 0x02) {
+        handleAudioData(buffer);
+        return;
+    }
+
+    if (msgType !== 0x01 || buffer.byteLength < 13) return;
 
     spectStartFreq = view.getFloat32(4, true);
     spectEndFreq = view.getFloat32(8, true);
