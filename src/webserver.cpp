@@ -63,6 +63,9 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
         obj["type"] = "rigConnected";
         obj["model"] = rigCaps->modelName;
         obj["hasTransmit"] = rigCaps->hasTransmit;
+        obj["hasSpectrum"] = rigCaps->hasSpectrum;
+        obj["spectLenMax"] = rigCaps->spectLenMax;
+        obj["spectAmpMax"] = rigCaps->spectAmpMax;
 
         QJsonArray modes;
         for (const modeInfo &mi : rigCaps->modes) {
@@ -322,6 +325,9 @@ void webServer::sendCurrentState(QWebSocket *client)
         info["connected"] = true;
         info["model"] = rigCaps->modelName;
         info["hasTransmit"] = rigCaps->hasTransmit;
+        info["hasSpectrum"] = rigCaps->hasSpectrum;
+        info["spectLenMax"] = rigCaps->spectLenMax;
+        info["spectAmpMax"] = rigCaps->spectAmpMax;
 
         QJsonArray modes;
         for (const modeInfo &mi : rigCaps->modes) {
@@ -470,6 +476,29 @@ void webServer::receiveCache(cacheItem item)
     case funcSquelch:
         update["squelch"] = item.value.toInt();
         break;
+    case funcScopeWaveData:
+    {
+        // Send spectrum data as binary message for efficiency
+        scopeData sd = item.value.value<scopeData>();
+        if (!sd.valid || sd.data.isEmpty()) return;
+
+        // Binary format: [msgType(1)] [reserved(1)] [padding(2)] [startFreq float32(4)] [endFreq float32(4)] [data(N)]
+        QByteArray msg;
+        msg.resize(12 + sd.data.size());
+        msg[0] = 0x01;  // msgType: spectrum data
+        msg[1] = 0;     // reserved
+        msg[2] = 0;     // padding
+        msg[3] = 0;     // padding
+
+        float startF = static_cast<float>(sd.startFreq);
+        float endF = static_cast<float>(sd.endFreq);
+        memcpy(msg.data() + 4, &startF, 4);
+        memcpy(msg.data() + 8, &endF, 4);
+        memcpy(msg.data() + 12, sd.data.constData(), sd.data.size());
+
+        sendBinaryToAll(msg);
+        return; // Don't send as JSON
+    }
     default:
         return; // Don't send updates for unhandled funcs
     }
@@ -515,6 +544,13 @@ void webServer::sendJsonTo(QWebSocket *client, const QJsonObject &obj)
 {
     QByteArray data = QJsonDocument(obj).toJson(QJsonDocument::Compact);
     client->sendTextMessage(QString::fromUtf8(data));
+}
+
+void webServer::sendBinaryToAll(const QByteArray &data)
+{
+    for (QWebSocket *client : wsClients) {
+        client->sendBinaryMessage(data);
+    }
 }
 
 QString webServer::modeToString(modeInfo m)

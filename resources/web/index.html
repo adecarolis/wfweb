@@ -284,6 +284,30 @@ header h1 { font-size: 1.2em; font-weight: 600; }
     color: var(--text-dim);
 }
 
+/* Scope (Spectrum + Waterfall) */
+.scope-section {
+    background: var(--bg2);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    display: none;
+}
+.scope-section.visible { display: block; }
+#spectrumCanvas, #waterfallCanvas {
+    display: block;
+    width: 100%;
+    cursor: crosshair;
+}
+#spectrumCanvas {
+    height: 150px;
+    background: #0a0a1a;
+}
+#waterfallCanvas {
+    height: 200px;
+    background: #000;
+    image-rendering: pixelated;
+}
+
 /* Status bar */
 .status-bar {
     font-size: 0.75em;
@@ -302,6 +326,12 @@ header h1 { font-size: 1.2em; font-weight: 600; }
         </div>
         <span id="connStatus">Disconnected</span>
     </header>
+
+    <!-- Scope (Spectrum + Waterfall) -->
+    <div class="scope-section" id="scopeSection">
+        <canvas id="spectrumCanvas" width="800" height="150"></canvas>
+        <canvas id="waterfallCanvas" width="800" height="200"></canvas>
+    </div>
 
     <!-- Frequency -->
     <div class="freq-section">
@@ -419,6 +449,19 @@ let isTransmitting = false;
 let reconnectTimer = null;
 const defaultModes = ['LSB', 'USB', 'AM', 'CW', 'RTTY', 'FM', 'CW-R', 'RTTY-R'];
 
+// Spectrum/waterfall state
+let hasSpectrum = false;
+let spectAmpMax = 160;
+let spectStartFreq = 0;
+let spectEndFreq = 0;
+let spectData = null;
+let spectDataLen = 0;
+let wfImageData = null;
+let wfOffCanvas = null;
+let wfOffCtx = null;
+let spectRenderPending = false;
+let colorTable = null;
+
 // --- WebSocket ---
 function connect() {
     const wsPort = parseInt(location.port || '80') + 1;
@@ -427,6 +470,7 @@ function connect() {
     document.getElementById('statusText').textContent = 'Connecting to ' + wsUrl + '...';
 
     ws = new WebSocket(wsUrl);
+    ws.binaryType = 'arraybuffer';
 
     ws.onopen = function() {
         document.getElementById('connStatus').textContent = 'Connected';
@@ -449,6 +493,10 @@ function connect() {
     };
 
     ws.onmessage = function(event) {
+        if (event.data instanceof ArrayBuffer) {
+            handleBinaryMessage(event.data);
+            return;
+        }
         try {
             const msg = JSON.parse(event.data);
             handleMessage(msg);
@@ -480,11 +528,21 @@ function handleMessage(msg) {
             if (msg.connected) {
                 document.getElementById('rigModel').textContent = msg.model;
                 if (msg.modes) populateModes(msg.modes);
+                if (msg.hasSpectrum) {
+                    hasSpectrum = true;
+                    spectAmpMax = msg.spectAmpMax || 160;
+                    showScopeSection();
+                }
             }
             break;
         case 'rigConnected':
             document.getElementById('rigModel').textContent = msg.model;
             if (msg.modes) populateModes(msg.modes);
+            if (msg.hasSpectrum) {
+                hasSpectrum = true;
+                spectAmpMax = msg.spectAmpMax || 160;
+                showScopeSection();
+            }
             break;
         case 'status':
             if (msg.frequency !== undefined) updateFrequency(msg.frequency);
@@ -762,10 +820,263 @@ document.getElementById('freqDisplay').addEventListener('wheel', function(e) {
     else tuneDown();
 }, { passive: false });
 
+// --- Spectrum / Waterfall ---
+
+function buildColorTable() {
+    colorTable = new Array(256);
+    for (var i = 0; i < 256; i++) {
+        var v = i / 255;
+        var r, g, b;
+        if (v < 0.25) {
+            r = 0; g = Math.round(255 * (v / 0.25)); b = 255;
+        } else if (v < 0.5) {
+            r = 0; g = 255; b = Math.round(255 * (1 - (v - 0.25) / 0.25));
+        } else if (v < 0.75) {
+            r = Math.round(255 * ((v - 0.5) / 0.25)); g = 255; b = 0;
+        } else {
+            r = 255; g = Math.round(255 * (1 - (v - 0.75) / 0.25)); b = 0;
+        }
+        colorTable[i] = [r, g, b];
+    }
+}
+
+function showScopeSection() {
+    var section = document.getElementById('scopeSection');
+    if (section.classList.contains('visible')) return;
+    section.classList.add('visible');
+    requestAnimationFrame(resizeCanvases);
+}
+
+function resizeCanvases() {
+    var spectCanvas = document.getElementById('spectrumCanvas');
+    var wfCanvas = document.getElementById('waterfallCanvas');
+    var rect = spectCanvas.getBoundingClientRect();
+    if (rect.width > 0) {
+        spectCanvas.width = Math.round(rect.width);
+        spectCanvas.height = Math.round(rect.height);
+    }
+    var wfRect = wfCanvas.getBoundingClientRect();
+    if (wfRect.width > 0) {
+        wfCanvas.width = Math.round(wfRect.width);
+        wfCanvas.height = Math.round(wfRect.height);
+    }
+    if (spectDataLen > 0) initWaterfallBuffer(spectDataLen);
+}
+
+function initWaterfallBuffer(dataLen) {
+    var wfCanvas = document.getElementById('waterfallCanvas');
+    var h = wfCanvas.height || 200;
+    wfOffCanvas = document.createElement('canvas');
+    wfOffCanvas.width = dataLen;
+    wfOffCanvas.height = h;
+    wfOffCtx = wfOffCanvas.getContext('2d');
+    wfImageData = wfOffCtx.createImageData(dataLen, h);
+    // Fill opaque black
+    var d = wfImageData.data;
+    for (var i = 3; i < d.length; i += 4) d[i] = 255;
+}
+
+function handleBinaryMessage(buffer) {
+    if (buffer.byteLength < 13) return;
+    var view = new DataView(buffer);
+    var msgType = view.getUint8(0);
+    if (msgType !== 0x01) return;
+
+    spectStartFreq = view.getFloat32(4, true);
+    spectEndFreq = view.getFloat32(8, true);
+    spectData = new Uint8Array(buffer, 12);
+
+    if (spectData.length !== spectDataLen) {
+        spectDataLen = spectData.length;
+        initWaterfallBuffer(spectDataLen);
+    }
+
+    if (!document.getElementById('scopeSection').classList.contains('visible')) {
+        showScopeSection();
+    }
+
+    updateWaterfallRow();
+
+    if (!spectRenderPending) {
+        spectRenderPending = true;
+        requestAnimationFrame(renderScope);
+    }
+}
+
+function updateWaterfallRow() {
+    if (!wfImageData || !spectData) return;
+    var w = wfImageData.width;
+    var d = wfImageData.data;
+    var rowBytes = w * 4;
+    // Shift all rows down by 1
+    d.copyWithin(rowBytes, 0, d.length - rowBytes);
+    // Write new row at top
+    for (var i = 0; i < w; i++) {
+        var amp = i < spectData.length ? spectData[i] : 0;
+        var ci = Math.min(255, Math.round((amp / spectAmpMax) * 255));
+        var c = colorTable[ci];
+        var idx = i * 4;
+        d[idx] = c[0];
+        d[idx + 1] = c[1];
+        d[idx + 2] = c[2];
+        d[idx + 3] = 255;
+    }
+}
+
+function renderScope() {
+    spectRenderPending = false;
+    if (!spectData || spectData.length === 0) return;
+    drawSpectrum();
+    drawWaterfall();
+}
+
+function drawSpectrum() {
+    var canvas = document.getElementById('spectrumCanvas');
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width;
+    var h = canvas.height;
+    var len = spectData.length;
+    var labelH = 20;
+    var plotH = h - labelH;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fillRect(0, 0, w, h);
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for (var gi = 1; gi < 4; gi++) {
+        var gy = (plotH / 4) * gi;
+        ctx.beginPath();
+        ctx.moveTo(0, gy);
+        ctx.lineTo(w, gy);
+        ctx.stroke();
+    }
+
+    // Spectrum fill
+    ctx.beginPath();
+    ctx.moveTo(0, plotH);
+    for (var i = 0; i < len; i++) {
+        var x = (i / (len - 1)) * w;
+        var amp = spectData[i] / spectAmpMax;
+        var y = plotH - amp * plotH;
+        ctx.lineTo(x, y);
+    }
+    ctx.lineTo(w, plotH);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(78, 204, 163, 0.15)';
+    ctx.fill();
+
+    // Spectrum line
+    ctx.beginPath();
+    for (var j = 0; j < len; j++) {
+        var lx = (j / (len - 1)) * w;
+        var la = spectData[j] / spectAmpMax;
+        var ly = plotH - la * plotH;
+        if (j === 0) ctx.moveTo(lx, ly);
+        else ctx.lineTo(lx, ly);
+    }
+    ctx.strokeStyle = '#4ecca3';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Frequency indicator line
+    if (currentFreq > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
+        var freqMHz = currentFreq / 1e6;
+        if (freqMHz >= spectStartFreq && freqMHz <= spectEndFreq) {
+            var fxPos = ((freqMHz - spectStartFreq) / (spectEndFreq - spectStartFreq)) * w;
+            ctx.strokeStyle = 'rgba(233, 69, 96, 0.8)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(fxPos, 0);
+            ctx.lineTo(fxPos, plotH);
+            ctx.stroke();
+        }
+    }
+
+    // Frequency labels
+    if (spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
+        ctx.fillStyle = '#888';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        var numLabels = 5;
+        for (var li = 0; li <= numLabels; li++) {
+            var frac = li / numLabels;
+            var freq = spectStartFreq + (spectEndFreq - spectStartFreq) * frac;
+            var lxPos = frac * w;
+            var label;
+            if (freq >= 1000) label = freq.toFixed(1);
+            else if (freq >= 100) label = freq.toFixed(2);
+            else label = freq.toFixed(3);
+            ctx.fillText(label, lxPos, plotH + 4);
+        }
+    }
+}
+
+function drawWaterfall() {
+    if (!wfImageData || !wfOffCtx) return;
+    var canvas = document.getElementById('waterfallCanvas');
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width;
+    var h = canvas.height;
+
+    wfOffCtx.putImageData(wfImageData, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(wfOffCanvas, 0, 0, w, h);
+
+    // Frequency indicator
+    if (currentFreq > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
+        var freqMHz = currentFreq / 1e6;
+        if (freqMHz >= spectStartFreq && freqMHz <= spectEndFreq) {
+            var xPos = ((freqMHz - spectStartFreq) / (spectEndFreq - spectStartFreq)) * w;
+            ctx.strokeStyle = 'rgba(233, 69, 96, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(xPos, 0);
+            ctx.lineTo(xPos, h);
+            ctx.stroke();
+        }
+    }
+}
+
+function scopeClick(e) {
+    if (spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return;
+    var rect = e.target.getBoundingClientRect();
+    var x = e.clientX - rect.left;
+    var frac = x / rect.width;
+    var freqMHz = spectStartFreq + (spectEndFreq - spectStartFreq) * frac;
+    var freqHz = Math.round(freqMHz * 1e6);
+    if (freqHz > 0) {
+        send({ cmd: 'setFrequency', value: freqHz });
+    }
+}
+
+// Mouse wheel tuning on scope
+function scopeWheel(e) {
+    e.preventDefault();
+    if (e.deltaY < 0) tuneUp();
+    else tuneDown();
+}
+
 // --- Init ---
 // If no modes from rig yet, show defaults
+buildColorTable();
 populateModes(defaultModes);
 initSliderTracking();
+
+// Scope event listeners
+document.getElementById('spectrumCanvas').addEventListener('click', scopeClick);
+document.getElementById('waterfallCanvas').addEventListener('click', scopeClick);
+document.getElementById('spectrumCanvas').addEventListener('wheel', scopeWheel, { passive: false });
+document.getElementById('waterfallCanvas').addEventListener('wheel', scopeWheel, { passive: false });
+window.addEventListener('resize', function() {
+    if (document.getElementById('scopeSection').classList.contains('visible')) {
+        resizeCanvases();
+    }
+});
+
 connect();
 </script>
 </body>

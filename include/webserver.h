@@ -53,6 +53,7 @@ private:
                          const QByteArray &contentType, const QByteArray &body);
     void sendJsonToAll(const QJsonObject &obj);
     void sendJsonTo(QWebSocket *client, const QJsonObject &obj);
+    void sendBinaryToAll(const QByteArray &data);
     void handleCommand(QWebSocket *client, const QJsonObject &cmd);
     void sendCurrentState(QWebSocket *client);
     QString modeToString(modeInfo m);
