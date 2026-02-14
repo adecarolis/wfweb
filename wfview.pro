@@ -132,6 +132,7 @@ win32:DEFINES += UNAME=\\\"$$system(echo %USERNAME%)\\\"
 
 RESOURCES += qdarkstyle/style.qrc \
     resources/resources.qrc \
+    resources/web.qrc \
     translations/translation.qrc
 
 
@@ -361,6 +362,7 @@ SOURCES += \
     src/tciserver.cpp \
     src/tcpserver.cpp \
     src/usbcontroller.cpp \
+    src/webserver.cpp \
     src/wfmain.cpp
 
 HEADERS  += \
@@ -437,6 +439,7 @@ HEADERS  += \
     include/tciserver.h \
     include/tcpserver.h \
     include/usbcontroller.h \
+    include/webserver.h \
     include/wfmain.h \
     include/wfviewtypes.h \
     include/yaesucommander.h \

@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>wfview Web</title>
+<style>
+:root {
+    --bg: #1a1a2e;
+    --bg2: #16213e;
+    --bg3: #0f3460;
+    --accent: #e94560;
+    --text: #eee;
+    --text-dim: #888;
+    --green: #4ecca3;
+    --orange: #f0a500;
+    --red: #e94560;
+    --blue: #4da8da;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+}
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 16px;
+}
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--bg3);
+    margin-bottom: 16px;
+}
+header h1 { font-size: 1.2em; font-weight: 600; }
+#connStatus {
+    font-size: 0.85em;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: var(--red);
+}
+#connStatus.connected { background: var(--green); color: #111; }
+#rigModel { font-size: 0.85em; color: var(--text-dim); }
+
+/* Frequency Display */
+.freq-section {
+    background: var(--bg2);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    text-align: center;
+}
+#freqDisplay {
+    font-family: 'Courier New', monospace;
+    font-size: 3em;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: var(--green);
+    cursor: pointer;
+    user-select: none;
+    padding: 8px;
+}
+#freqDisplay .mhz { color: var(--green); }
+#freqDisplay .khz { color: var(--blue); }
+#freqDisplay .hz { color: var(--text-dim); }
+#freqDisplay .sep { color: var(--text-dim); font-size: 0.7em; }
+
+.freq-input-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 8px;
+}
+#freqInput {
+    font-family: 'Courier New', monospace;
+    font-size: 1.2em;
+    width: 200px;
+    padding: 6px 10px;
+    border: 1px solid var(--bg3);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text);
+    text-align: center;
+}
+.freq-input-row button {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 4px;
+    background: var(--bg3);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.9em;
+}
+.freq-input-row button:hover { background: var(--blue); }
+
+/* Tuning step buttons */
+.step-row {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+.step-row button {
+    padding: 4px 8px;
+    border: 1px solid var(--bg3);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.8em;
+}
+.step-row button.active { border-color: var(--blue); color: var(--blue); }
+.step-row button:hover { border-color: var(--blue); }
+
+.tune-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 8px;
+}
+.tune-btn {
+    width: 48px;
+    height: 36px;
+    border: 1px solid var(--bg3);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 1.1em;
+}
+.tune-btn:hover { background: var(--bg3); }
+
+/* Mode & VFO */
+.controls-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.control-group {
+    flex: 1;
+    background: var(--bg2);
+    border-radius: 8px;
+    padding: 12px;
+}
+.control-group h3 {
+    font-size: 0.75em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+.mode-buttons, .vfo-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.mode-btn, .vfo-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--bg3);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 500;
+}
+.mode-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+.mode-btn:hover { border-color: var(--blue); }
+.vfo-btn { min-width: 60px; text-align: center; }
+.vfo-btn:hover { border-color: var(--blue); }
+.vfo-btn.active { background: var(--blue); border-color: var(--blue); }
+
+/* Meters */
+.meter-section {
+    background: var(--bg2);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+.meter {
+    margin-bottom: 8px;
+}
+.meter:last-child { margin-bottom: 0; }
+.meter-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+}
+.meter-bar {
+    height: 8px;
+    background: var(--bg);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.meter-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.15s ease;
+    background: var(--green);
+}
+.meter-fill.tx { background: var(--orange); }
+.meter-fill.swr-warn { background: var(--red); }
+
+/* PTT */
+.ptt-section {
+    text-align: center;
+    margin-bottom: 12px;
+}
+#pttBtn {
+    width: 120px;
+    height: 50px;
+    border: 2px solid var(--red);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--red);
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+#pttBtn.active {
+    background: var(--red);
+    color: #fff;
+}
+
+/* Sliders */
+.sliders-section {
+    background: var(--bg2);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+.slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.slider-row:last-child { margin-bottom: 0; }
+.slider-label {
+    font-size: 0.75em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    width: 70px;
+    text-align: right;
+}
+.slider-row input[type="range"] {
+    flex: 1;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--bg);
+    border-radius: 3px;
+    outline: none;
+}
+.slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--blue);
+    cursor: pointer;
+}
+.slider-val {
+    font-family: 'Courier New', monospace;
+    font-size: 0.8em;
+    width: 35px;
+    text-align: right;
+    color: var(--text-dim);
+}
+
+/* Status bar */
+.status-bar {
+    font-size: 0.75em;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 8px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div>
+            <h1>wfview Web</h1>
+            <span id="rigModel">Not connected</span>
+        </div>
+        <span id="connStatus">Disconnected</span>
+    </header>
+
+    <!-- Frequency -->
+    <div class="freq-section">
+        <div id="freqDisplay">---,---,---</div>
+        <div class="freq-input-row">
+            <input type="text" id="freqInput" placeholder="Freq (MHz)" />
+            <button onclick="setFreqFromInput()">Set</button>
+        </div>
+        <div class="step-row" id="stepButtons">
+            <button data-step="10" onclick="selectStep(10)">10 Hz</button>
+            <button data-step="100" onclick="selectStep(100)">100 Hz</button>
+            <button data-step="1000" onclick="selectStep(1000)" class="active">1 kHz</button>
+            <button data-step="5000" onclick="selectStep(5000)">5 kHz</button>
+            <button data-step="10000" onclick="selectStep(10000)">10 kHz</button>
+            <button data-step="100000" onclick="selectStep(100000)">100 kHz</button>
+            <button data-step="1000000" onclick="selectStep(1000000)">1 MHz</button>
+        </div>
+        <div class="tune-row">
+            <button class="tune-btn" onclick="tuneDown()" title="Tune down">&#9664;</button>
+            <button class="tune-btn" onclick="tuneUp()" title="Tune up">&#9654;</button>
+        </div>
+    </div>
+
+    <!-- Mode & VFO -->
+    <div class="controls-row">
+        <div class="control-group">
+            <h3>Mode</h3>
+            <div class="mode-buttons" id="modeButtons">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+        <div class="control-group" style="flex: 0 0 auto; min-width: 140px;">
+            <h3>VFO</h3>
+            <div class="vfo-buttons">
+                <button class="vfo-btn active" id="vfoA" onclick="selectVFO('A')">A</button>
+                <button class="vfo-btn" id="vfoB" onclick="selectVFO('B')">B</button>
+                <button class="vfo-btn" onclick="swapVFO()">A/B</button>
+                <button class="vfo-btn" onclick="equalizeVFO()">A=B</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meters -->
+    <div class="meter-section">
+        <div class="meter" id="sMeterContainer">
+            <div class="meter-label">
+                <span>S-Meter</span>
+                <span id="sMeterVal">S0</span>
+            </div>
+            <div class="meter-bar">
+                <div class="meter-fill" id="sMeterFill" style="width: 0%"></div>
+            </div>
+        </div>
+        <div class="meter" id="powerMeterContainer" style="display:none">
+            <div class="meter-label">
+                <span>Power</span>
+                <span id="powerMeterVal">0 W</span>
+            </div>
+            <div class="meter-bar">
+                <div class="meter-fill tx" id="powerMeterFill" style="width: 0%"></div>
+            </div>
+        </div>
+        <div class="meter" id="swrMeterContainer" style="display:none">
+            <div class="meter-label">
+                <span>SWR</span>
+                <span id="swrMeterVal">1.0</span>
+            </div>
+            <div class="meter-bar">
+                <div class="meter-fill tx" id="swrMeterFill" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PTT -->
+    <div class="ptt-section">
+        <button id="pttBtn">PTT</button>
+    </div>
+
+    <!-- Sliders -->
+    <div class="sliders-section">
+        <div class="slider-row">
+            <span class="slider-label">AF Gain</span>
+            <input type="range" id="afGainSlider" min="0" max="255" value="128" oninput="setAfGain(this.value)">
+            <span class="slider-val" id="afGainVal">128</span>
+        </div>
+        <div class="slider-row">
+            <span class="slider-label">RF Gain</span>
+            <input type="range" id="rfGainSlider" min="0" max="255" value="128" oninput="setRfGain(this.value)">
+            <span class="slider-val" id="rfGainVal">128</span>
+        </div>
+        <div class="slider-row">
+            <span class="slider-label">RF Power</span>
+            <input type="range" id="rfPowerSlider" min="0" max="255" value="128" oninput="setRfPower(this.value)">
+            <span class="slider-val" id="rfPowerVal">128</span>
+        </div>
+        <div class="slider-row">
+            <span class="slider-label">Squelch</span>
+            <input type="range" id="squelchSlider" min="0" max="255" value="0" oninput="setSquelch(this.value)">
+            <span class="slider-val" id="squelchVal">0</span>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <span id="statusText">Connecting...</span>
+    </div>
+</div>
+
+<script>
+// --- State ---
+let ws = null;
+let currentFreq = 0;
+let currentMode = '';
+let tuneStep = 1000;
+let isTransmitting = false;
+let reconnectTimer = null;
+const defaultModes = ['LSB', 'USB', 'AM', 'CW', 'RTTY', 'FM', 'CW-R', 'RTTY-R'];
+
+// --- WebSocket ---
+function connect() {
+    const wsPort = parseInt(location.port || '80') + 1;
+    const wsUrl = 'ws://' + location.hostname + ':' + wsPort;
+
+    document.getElementById('statusText').textContent = 'Connecting to ' + wsUrl + '...';
+
+    ws = new WebSocket(wsUrl);
+
+    ws.onopen = function() {
+        document.getElementById('connStatus').textContent = 'Connected';
+        document.getElementById('connStatus').classList.add('connected');
+        document.getElementById('statusText').textContent = 'Connected';
+        if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+        send({ cmd: 'getStatus' });
+    };
+
+    ws.onclose = function() {
+        document.getElementById('connStatus').textContent = 'Disconnected';
+        document.getElementById('connStatus').classList.remove('connected');
+        document.getElementById('rigModel').textContent = 'Not connected';
+        document.getElementById('statusText').textContent = 'Disconnected. Reconnecting...';
+        scheduleReconnect();
+    };
+
+    ws.onerror = function() {
+        document.getElementById('statusText').textContent = 'Connection error';
+    };
+
+    ws.onmessage = function(event) {
+        try {
+            const msg = JSON.parse(event.data);
+            handleMessage(msg);
+        } catch(e) {
+            console.error('Parse error:', e);
+        }
+    };
+}
+
+function scheduleReconnect() {
+    if (!reconnectTimer) {
+        reconnectTimer = setTimeout(function() {
+            reconnectTimer = null;
+            connect();
+        }, 3000);
+    }
+}
+
+function send(obj) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(obj));
+    }
+}
+
+// --- Message Handling ---
+function handleMessage(msg) {
+    switch (msg.type) {
+        case 'rigInfo':
+            if (msg.connected) {
+                document.getElementById('rigModel').textContent = msg.model;
+                if (msg.modes) populateModes(msg.modes);
+            }
+            break;
+        case 'rigConnected':
+            document.getElementById('rigModel').textContent = msg.model;
+            if (msg.modes) populateModes(msg.modes);
+            break;
+        case 'status':
+            if (msg.frequency !== undefined) updateFrequency(msg.frequency);
+            if (msg.mode !== undefined) updateMode(msg.mode);
+            if (msg.sMeter !== undefined) updateSMeter(msg.sMeter);
+            if (msg.transmitting !== undefined) updateTxStatus(msg.transmitting);
+            if (msg.afGain !== undefined) updateSlider('afGain', msg.afGain);
+            if (msg.rfGain !== undefined) updateSlider('rfGain', msg.rfGain);
+            if (msg.rfPower !== undefined) updateSlider('rfPower', msg.rfPower);
+            if (msg.squelch !== undefined) updateSlider('squelch', msg.squelch);
+            break;
+        case 'update':
+            if (msg.frequency !== undefined) updateFrequency(msg.frequency);
+            if (msg.mode !== undefined) updateMode(msg.mode);
+            if (msg.sMeter !== undefined) updateSMeter(msg.sMeter);
+            if (msg.powerMeter !== undefined) updatePowerMeter(msg.powerMeter);
+            if (msg.swrMeter !== undefined) updateSwrMeter(msg.swrMeter);
+            if (msg.transmitting !== undefined) updateTxStatus(msg.transmitting);
+            if (msg.afGain !== undefined) updateSlider('afGain', msg.afGain);
+            if (msg.rfGain !== undefined) updateSlider('rfGain', msg.rfGain);
+            if (msg.rfPower !== undefined) updateSlider('rfPower', msg.rfPower);
+            if (msg.squelch !== undefined) updateSlider('squelch', msg.squelch);
+            break;
+        case 'meters':
+            if (msg.sMeter !== undefined) updateSMeter(msg.sMeter);
+            if (msg.powerMeter !== undefined) updatePowerMeter(msg.powerMeter);
+            if (msg.swrMeter !== undefined) updateSwrMeter(msg.swrMeter);
+            break;
+        case 'error':
+            document.getElementById('statusText').textContent = 'Error: ' + msg.message;
+            break;
+    }
+}
+
+// --- UI Updates ---
+function updateFrequency(hz) {
+    currentFreq = hz;
+    const mhz = Math.floor(hz / 1000000);
+    const khz = Math.floor((hz % 1000000) / 1000);
+    const hzPart = hz % 1000;
+
+    const display = document.getElementById('freqDisplay');
+    display.innerHTML =
+        '<span class="mhz">' + String(mhz).padStart(3, ' ') + '</span>' +
+        '<span class="sep">.</span>' +
+        '<span class="khz">' + String(khz).padStart(3, '0') + '</span>' +
+        '<span class="sep">.</span>' +
+        '<span class="hz">' + String(hzPart).padStart(3, '0') + '</span>';
+}
+
+function updateMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+}
+
+function updateSMeter(val) {
+    // val is calibrated: 0 = S9, each S-unit = 6 units apart
+    // Range: -54 = S0, -48 = S1, ..., 0 = S9, positive = S9+N dB
+    let pct = 0;
+    let label = 'S0';
+
+    if (val <= 0) {
+        // S0 (-54) to S9 (0): map to 0-75% of bar
+        let sUnit = Math.max(0, (val + 54) / 6); // 0=S0, 9=S9
+        sUnit = Math.min(9, sUnit);
+        pct = (sUnit / 9) * 75;
+        let sInt = Math.floor(sUnit);
+        if (sInt >= 9) label = 'S9';
+        else label = 'S' + sInt;
+    } else {
+        // S9+ region: 0-64 dB over S9, map to 75-100% of bar
+        pct = 75 + Math.min(25, (val / 64) * 25);
+        label = 'S9+' + Math.round(val);
+    }
+
+    document.getElementById('sMeterFill').style.width = pct + '%';
+    document.getElementById('sMeterVal').textContent = label;
+}
+
+function updatePowerMeter(val) {
+    const container = document.getElementById('powerMeterContainer');
+    container.style.display = isTransmitting ? 'block' : 'none';
+
+    // Assume val in watts, max ~100W for IC-7300
+    let pct = Math.min(100, (val / 100) * 100);
+    document.getElementById('powerMeterFill').style.width = pct + '%';
+    document.getElementById('powerMeterVal').textContent = Math.round(val) + ' W';
+}
+
+function updateSwrMeter(val) {
+    const container = document.getElementById('swrMeterContainer');
+    container.style.display = isTransmitting ? 'block' : 'none';
+
+    // SWR range: 1.0 to 6.0 (from IC-7300 calibration)
+    let pct = Math.min(100, ((val - 1.0) / 5.0) * 100);
+    const fill = document.getElementById('swrMeterFill');
+    fill.style.width = Math.max(0, pct) + '%';
+    fill.classList.toggle('swr-warn', val > 2.0);
+    document.getElementById('swrMeterVal').textContent = val.toFixed(1);
+}
+
+function updateTxStatus(tx) {
+    isTransmitting = tx;
+    const pttBtn = document.getElementById('pttBtn');
+    pttBtn.classList.toggle('active', tx);
+
+    document.getElementById('sMeterContainer').style.display = tx ? 'none' : 'block';
+    document.getElementById('powerMeterContainer').style.display = tx ? 'block' : 'none';
+    document.getElementById('swrMeterContainer').style.display = tx ? 'block' : 'none';
+}
+
+// Track slider interaction state: dragging + debounce after release
+let sliderSetTimes = {};
+let sliderDragging = {};
+const SLIDER_DEBOUNCE_MS = 1500;
+
+function initSliderTracking() {
+    ['afGain', 'rfGain', 'rfPower', 'squelch'].forEach(function(name) {
+        var slider = document.getElementById(name + 'Slider');
+        if (!slider) return;
+        slider.addEventListener('mousedown', function() { sliderDragging[name] = true; });
+        slider.addEventListener('touchstart', function() { sliderDragging[name] = true; });
+        slider.addEventListener('mouseup', function() { sliderDragging[name] = false; });
+        slider.addEventListener('touchend', function() { sliderDragging[name] = false; });
+        slider.addEventListener('mouseleave', function() { sliderDragging[name] = false; });
+        slider.addEventListener('touchcancel', function() { sliderDragging[name] = false; });
+    });
+}
+
+function updateSlider(name, val) {
+    var slider = document.getElementById(name + 'Slider');
+    var valSpan = document.getElementById(name + 'Val');
+    // Ignore incoming updates while user is dragging or within debounce window
+    if (sliderDragging[name]) return;
+    var lastSet = sliderSetTimes[name] || 0;
+    if ((Date.now() - lastSet) < SLIDER_DEBOUNCE_MS) return;
+    if (slider) slider.value = val;
+    if (valSpan) valSpan.textContent = val;
+}
+
+function populateModes(modes) {
+    const container = document.getElementById('modeButtons');
+    container.innerHTML = '';
+    modes.forEach(function(mode) {
+        const btn = document.createElement('button');
+        btn.className = 'mode-btn' + (mode === currentMode ? ' active' : '');
+        btn.dataset.mode = mode;
+        btn.textContent = mode;
+        btn.onclick = function() { setMode(mode); };
+        container.appendChild(btn);
+    });
+}
+
+// --- Commands ---
+function setFreqFromInput() {
+    const input = document.getElementById('freqInput');
+    const mhz = parseFloat(input.value);
+    if (!isNaN(mhz) && mhz > 0) {
+        const hz = Math.round(mhz * 1000000);
+        send({ cmd: 'setFrequency', value: hz });
+        input.value = '';
+    }
+}
+
+function setMode(mode) {
+    send({ cmd: 'setMode', value: mode });
+}
+
+function selectVFO(vfo) {
+    send({ cmd: 'selectVFO', value: vfo });
+    document.getElementById('vfoA').classList.toggle('active', vfo === 'A');
+    document.getElementById('vfoB').classList.toggle('active', vfo === 'B');
+}
+
+function swapVFO() { send({ cmd: 'swapVFO' }); }
+function equalizeVFO() { send({ cmd: 'equalizeVFO' }); }
+
+function selectStep(step) {
+    tuneStep = step;
+    document.querySelectorAll('.step-row button').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.dataset.step) === step);
+    });
+}
+
+function tuneUp() {
+    if (currentFreq > 0) {
+        send({ cmd: 'setFrequency', value: currentFreq + tuneStep });
+    }
+}
+
+function tuneDown() {
+    if (currentFreq > tuneStep) {
+        send({ cmd: 'setFrequency', value: currentFreq - tuneStep });
+    }
+}
+
+// Slider commands with throttling
+let sliderTimers = {};
+function throttledSend(name, cmd, val) {
+    if (sliderTimers[name]) clearTimeout(sliderTimers[name]);
+    sliderTimers[name] = setTimeout(function() {
+        send({ cmd: cmd, value: parseInt(val) });
+    }, 50);
+}
+
+function setAfGain(val) {
+    sliderSetTimes['afGain'] = Date.now();
+    document.getElementById('afGainVal').textContent = val;
+    throttledSend('afGain', 'setAfGain', val);
+}
+function setRfGain(val) {
+    sliderSetTimes['rfGain'] = Date.now();
+    document.getElementById('rfGainVal').textContent = val;
+    throttledSend('rfGain', 'setRfGain', val);
+}
+function setRfPower(val) {
+    sliderSetTimes['rfPower'] = Date.now();
+    document.getElementById('rfPowerVal').textContent = val;
+    throttledSend('rfPower', 'setRfPower', val);
+}
+function setSquelch(val) {
+    sliderSetTimes['squelch'] = Date.now();
+    document.getElementById('squelchVal').textContent = val;
+    throttledSend('squelch', 'setSquelch', val);
+}
+
+// --- PTT (push-to-talk: hold to transmit) ---
+(function() {
+    const pttBtn = document.getElementById('pttBtn');
+
+    function pttOn(e) {
+        e.preventDefault();
+        send({ cmd: 'setPTT', value: true });
+    }
+    function pttOff(e) {
+        e.preventDefault();
+        send({ cmd: 'setPTT', value: false });
+    }
+
+    pttBtn.addEventListener('mousedown', pttOn);
+    pttBtn.addEventListener('mouseup', pttOff);
+    pttBtn.addEventListener('mouseleave', pttOff);
+    pttBtn.addEventListener('touchstart', pttOn);
+    pttBtn.addEventListener('touchend', pttOff);
+    pttBtn.addEventListener('touchcancel', pttOff);
+})();
+
+// --- Keyboard shortcuts ---
+document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT') return;
+
+    if (e.key === 'ArrowUp' || e.key === '+') {
+        e.preventDefault();
+        tuneUp();
+    } else if (e.key === 'ArrowDown' || e.key === '-') {
+        e.preventDefault();
+        tuneDown();
+    }
+});
+
+// Frequency input: Enter to set
+document.getElementById('freqInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        setFreqFromInput();
+    }
+});
+
+// Mouse wheel tuning on frequency display
+document.getElementById('freqDisplay').addEventListener('wheel', function(e) {
+    e.preventDefault();
+    if (e.deltaY < 0) tuneUp();
+    else tuneDown();
+}, { passive: false });
+
+// --- Init ---
+// If no modes from rig yet, show defaults
+populateModes(defaultModes);
+initSliderTracking();
+connect();
+</script>
+</body>
+</html>

@@ -400,6 +400,11 @@ wfmain::~wfmain()
         tciThread->wait();
     }
 
+    if (webThread != Q_NULLPTR) {
+        webThread->quit();
+        webThread->wait();
+    }
+
     if (rigCtl != Q_NULLPTR) {
         delete rigCtl;
     }
@@ -1789,6 +1794,7 @@ void wfmain::setDefPrefs()
 
     defPrefs.tcpPort = 0;
     defPrefs.tciPort = 50001;
+    defPrefs.webPort = 8080;
     defPrefs.clusterUdpEnable = false;
     defPrefs.clusterTcpEnable = false;
     defPrefs.waterfallFormat = 0;
@@ -2096,6 +2102,19 @@ void wfmain::loadSettings()
     {
         prefs.rxSetup.tci = tci;
         prefs.txSetup.tci = tci;
+    }
+
+    prefs.webPort = settings->value("WebServerPort", defPrefs.webPort).toInt();
+    if (prefs.webPort > 0 && web == Q_NULLPTR) {
+        web = new webServer();
+        webThread = new QThread(this);
+        webThread->setObjectName("WebServer()");
+        web->moveToThread(webThread);
+        connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), web, SLOT(receiveRigCaps(rigCapabilities*)));
+        connect(this, SIGNAL(webServerInit(quint16,quint16)), web, SLOT(init(quint16,quint16)));
+        connect(webThread, SIGNAL(finished()), web, SLOT(deleteLater()));
+        webThread->start();
+        emit webServerInit(prefs.webPort, prefs.webPort + 1);
     }
 
     udpPrefs.connectionType = settings->value("ConnectionType", udpDefPrefs.connectionType).value<connectionType_t>();
@@ -3314,6 +3333,7 @@ void wfmain::saveSettings()
     settings->setValue("RigCtlPort", prefs.rigCtlPort);
     settings->setValue("TCPServerPort", prefs.tcpPort);
     settings->setValue("TCIServerPort", prefs.tciPort);
+    settings->setValue("WebServerPort", prefs.webPort);
     settings->setValue("IPAddress", udpPrefs.ipAddress);
     settings->setValue("ControlLANPort", udpPrefs.controlLANPort);
     settings->setValue("SerialLANPort", udpPrefs.serialLANPort);

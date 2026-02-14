@@ -237,6 +237,7 @@ struct preferences {
     quint16 rigCtlPort;
     quint16 tcpPort;
     quint16 tciPort=50001;
+    quint16 webPort=8080;
     quint8 waterfallFormat;
 
     // Cluster:

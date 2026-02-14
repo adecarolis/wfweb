@@ -60,6 +60,7 @@
 #include "debugwindow.h"
 #include "receiverwidget.h"
 #include "tciserver.h"
+#include "webserver.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -304,6 +305,7 @@ signals:
     void setFrequencyRange(double low, double high);
     void sendControllerRequest(USBDEVICE* dev, usbFeatureType request, int val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
     void tciInit(quint16 port);
+    void webServerInit(quint16 httpPort, quint16 wsPort);
 
     // Signals to forward incoming data onto other areas
     void haveMemory(memoryType mem);
@@ -673,6 +675,8 @@ private:
     rigCtlD* rigCtl = Q_NULLPTR;
     tciServer* tci = Q_NULLPTR;
     QThread* tciThread = Q_NULLPTR;
+    webServer* web = Q_NULLPTR;
+    QThread* webThread = Q_NULLPTR;
 
     void bandStackBtnClick();
     bool waitingForBandStackRtn;

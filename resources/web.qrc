@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/web">
+        <file alias="index.html">web/index.html</file>
+    </qresource>
+</RCC>
