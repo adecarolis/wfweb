@@ -198,6 +198,26 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
             }
             obj["spans"] = spans;
         }
+        if (!rigCaps->preamps.empty()) {
+            QJsonArray preamps;
+            for (const genericType &p : rigCaps->preamps) {
+                QJsonObject po;
+                po["num"] = p.num;
+                po["name"] = p.name;
+                preamps.append(po);
+            }
+            obj["preamps"] = preamps;
+        }
+        if (!rigCaps->filters.empty()) {
+            QJsonArray filters;
+            for (const filterType &f : rigCaps->filters) {
+                QJsonObject fo;
+                fo["num"] = f.num;
+                fo["name"] = f.name;
+                filters.append(fo);
+            }
+            obj["filters"] = filters;
+        }
         sendJsonToAll(obj);
     }
 }
@@ -483,16 +503,16 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         queue->addUnique(priorityImmediate, queueItem(funcAttenuator, QVariant::fromValue<ushort>(val), false, 0));
     }
     else if (type == "setPreamp") {
-        ushort val = static_cast<ushort>(qBound(0, cmd["value"].toInt(), 255));
-        queue->addUnique(priorityImmediate, queueItem(funcPreamp, QVariant::fromValue<ushort>(val), false, 0));
+        uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 255));
+        queue->addUnique(priorityImmediate, queueItem(funcPreamp, QVariant::fromValue<uchar>(val), false, 0));
     }
     else if (type == "setNoiseBlanker") {
         bool on = cmd["value"].toBool();
-        queue->add(priorityImmediate, queueItem(funcNoiseBlanker, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
+        queue->addUnique(priorityImmediate, queueItem(funcNoiseBlanker, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
     }
     else if (type == "setNoiseReduction") {
         bool on = cmd["value"].toBool();
-        queue->add(priorityImmediate, queueItem(funcNoiseReduction, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
+        queue->addUnique(priorityImmediate, queueItem(funcNoiseReduction, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
     }
     else if (type == "setAGC") {
         uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 255));
@@ -507,8 +527,29 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         queue->add(priorityImmediate, queueItem(funcMonitor, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
     }
     else if (type == "setTuner") {
+        // value: 0=off, 1=on, 2=start tuning
+        uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 2));
+        queue->addUnique(priorityImmediate, queueItem(funcTunerStatus, QVariant::fromValue<uchar>(val), false, 0));
+    }
+    else if (type == "setAutoNotch") {
         bool on = cmd["value"].toBool();
-        queue->add(priorityImmediate, queueItem(funcTunerStatus, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
+        queue->addUnique(priorityImmediate, queueItem(funcAutoNotch, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
+    }
+    else if (type == "setFilterWidth") {
+        ushort val = static_cast<ushort>(qBound(0, cmd["value"].toInt(), 10000));
+        queue->addUnique(priorityImmediate, queueItem(funcFilterWidth, QVariant::fromValue<ushort>(val), false, 0));
+    }
+    else if (type == "setFilter") {
+        int filterNum = cmd["value"].toInt();
+        if (filterNum >= 1 && filterNum <= 3) {
+            vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
+            cacheItem modeCache = queue->getCache(t.modeFunc, 0);
+            if (modeCache.value.isValid()) {
+                modeInfo m = modeCache.value.value<modeInfo>();
+                m.filter = filterNum;
+                queue->add(priorityImmediate, queueItem(t.modeFunc, QVariant::fromValue<modeInfo>(m), false, 0));
+            }
+        }
     }
     else if (type == "setSplit") {
         bool on = cmd["value"].toBool();
@@ -633,6 +674,26 @@ void webServer::sendCurrentState(QWebSocket *client)
             }
             info["spans"] = spans;
         }
+        if (!rigCaps->preamps.empty()) {
+            QJsonArray preamps;
+            for (const genericType &p : rigCaps->preamps) {
+                QJsonObject obj;
+                obj["num"] = p.num;
+                obj["name"] = p.name;
+                preamps.append(obj);
+            }
+            info["preamps"] = preamps;
+        }
+        if (!rigCaps->filters.empty()) {
+            QJsonArray filters;
+            for (const filterType &f : rigCaps->filters) {
+                QJsonObject obj;
+                obj["num"] = f.num;
+                obj["name"] = f.name;
+                filters.append(obj);
+            }
+            info["filters"] = filters;
+        }
     } else {
         info["connected"] = false;
     }
@@ -720,6 +781,30 @@ QJsonObject webServer::buildStatusJson()
         status["split"] = split.value.toBool();
     }
 
+    // Tuner (0=off, 1=on, 2=tuning)
+    cacheItem tuner = queue->getCache(funcTunerStatus, 0);
+    if (tuner.value.isValid()) status["tuner"] = tuner.value.toInt();
+
+    // Preamp
+    cacheItem preamp = queue->getCache(funcPreamp, 0);
+    if (preamp.value.isValid()) status["preamp"] = preamp.value.toInt();
+
+    // Auto Notch
+    cacheItem anf = queue->getCache(funcAutoNotch, 0);
+    if (anf.value.isValid()) status["autoNotch"] = anf.value.toBool();
+
+    // Noise Blanker
+    cacheItem nb = queue->getCache(funcNoiseBlanker, 0);
+    if (nb.value.isValid()) status["nb"] = nb.value.toBool();
+
+    // Noise Reduction
+    cacheItem nr = queue->getCache(funcNoiseReduction, 0);
+    if (nr.value.isValid()) status["nr"] = nr.value.toBool();
+
+    // IF Filter Width
+    cacheItem fw = queue->getCache(funcFilterWidth, 0);
+    if (fw.value.isValid()) status["filterWidth"] = fw.value.toInt();
+
     return status;
 }
 
@@ -806,6 +891,24 @@ void webServer::receiveCache(cacheItem item)
     }
     case funcSplitStatus:
         update["split"] = item.value.toBool();
+        break;
+    case funcTunerStatus:
+        update["tuner"] = item.value.toInt();  // 0=off, 1=on, 2=tuning
+        break;
+    case funcPreamp:
+        update["preamp"] = item.value.toInt();
+        break;
+    case funcAutoNotch:
+        update["autoNotch"] = item.value.toBool();
+        break;
+    case funcNoiseBlanker:
+        update["nb"] = item.value.toBool();
+        break;
+    case funcNoiseReduction:
+        update["nr"] = item.value.toBool();
+        break;
+    case funcFilterWidth:
+        update["filterWidth"] = item.value.toInt();
         break;
     case funcScopeSpan:
     {

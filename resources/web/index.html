@@ -518,6 +518,37 @@ header h1 { font-size: 1.2em; font-weight: 600; }
         </div>
     </div>
 
+    <!-- Radio Controls (NB, NR, ANF, Tuner, Preamp, Filters) -->
+    <div class="controls-row">
+        <div class="control-group">
+            <h3>DSP / Tuner</h3>
+            <div class="vfo-buttons">
+                <button class="vfo-btn" id="nbBtn" onclick="toggleNB()">NB</button>
+                <button class="vfo-btn" id="nrBtn" onclick="toggleNR()">NR</button>
+                <button class="vfo-btn" id="anfBtn" onclick="toggleANF()">ANF</button>
+                <button class="vfo-btn" id="tunerBtn">Tuner</button>
+            </div>
+        </div>
+        <div class="control-group" id="preampGroup" style="flex: 0 0 auto; min-width: 140px; display: none;">
+            <h3>Preamp</h3>
+            <div class="vfo-buttons" id="preampButtons"></div>
+        </div>
+    </div>
+
+    <div class="controls-row" id="filterRow" style="display: none;">
+        <div class="control-group" style="flex: 0 0 auto;">
+            <h3>Filter</h3>
+            <div class="vfo-buttons" id="filterButtons"></div>
+        </div>
+        <div class="control-group" style="flex: 1;">
+            <h3>IF Width</h3>
+            <div class="slider-row">
+                <input type="range" id="filterWidthSlider" min="0" max="10000" value="0" oninput="setFilterWidth(this.value)">
+                <span class="slider-val" id="filterWidthVal" style="width:50px">0</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Sliders -->
     <div class="sliders-section">
         <div class="slider-row">
@@ -572,6 +603,14 @@ let micStream = null;
 let micAudioCtx = null;
 let micWorkletNode = null;
 let micSeq = 0;
+
+// Radio controls state
+let nbOn = false;
+let nrOn = false;
+let anfOn = false;
+let tunerState = 0; // 0=off, 1=on, 2=tuning
+let currentPreamp = 0;
+let currentFilter = 1;
 
 // Span state
 let availableSpans = [];
@@ -684,6 +723,8 @@ function handleMessage(msg) {
                 }
                 updateTxAudioAvailable(msg.txAudioAvailable || false);
                 if (msg.spans) populateSpans(msg.spans);
+                if (msg.preamps) populatePreamps(msg.preamps);
+                if (msg.filters) populateFilters(msg.filters);
             }
             break;
         case 'rigConnected':
@@ -701,6 +742,8 @@ function handleMessage(msg) {
             }
             updateTxAudioAvailable(msg.txAudioAvailable || false);
             if (msg.spans) populateSpans(msg.spans);
+            if (msg.preamps) populatePreamps(msg.preamps);
+            if (msg.filters) populateFilters(msg.filters);
             break;
         case 'audioAvailable':
             if (msg.available) {
@@ -732,6 +775,7 @@ function handleMessage(msg) {
         case 'status':
             if (msg.frequency !== undefined) updateFrequency(msg.frequency);
             if (msg.mode !== undefined) updateMode(msg.mode);
+            if (msg.filter !== undefined) updateFilterBtn(msg.filter);
             if (msg.sMeter !== undefined) updateSMeter(msg.sMeter);
             if (msg.transmitting !== undefined) updateTxStatus(msg.transmitting);
             if (msg.afGain !== undefined) updateSlider('afGain', msg.afGain);
@@ -739,10 +783,17 @@ function handleMessage(msg) {
             if (msg.rfPower !== undefined) updateSlider('rfPower', msg.rfPower);
             if (msg.squelch !== undefined) updateSlider('squelch', msg.squelch);
             if (msg.split !== undefined) updateSplit(msg.split);
+            if (msg.nb !== undefined) updateToggle('nbBtn', msg.nb);
+            if (msg.nr !== undefined) updateToggle('nrBtn', msg.nr);
+            if (msg.autoNotch !== undefined) updateToggle('anfBtn', msg.autoNotch);
+            if (msg.tuner !== undefined) updateTunerState(msg.tuner);
+            if (msg.preamp !== undefined) updatePreampBtn(msg.preamp);
+            if (msg.filterWidth !== undefined) updateSlider('filterWidth', msg.filterWidth);
             break;
         case 'update':
             if (msg.frequency !== undefined) updateFrequency(msg.frequency);
             if (msg.mode !== undefined) updateMode(msg.mode);
+            if (msg.filter !== undefined) updateFilterBtn(msg.filter);
             if (msg.sMeter !== undefined) updateSMeter(msg.sMeter);
             if (msg.powerMeter !== undefined) updatePowerMeter(msg.powerMeter);
             if (msg.swrMeter !== undefined) updateSwrMeter(msg.swrMeter);
@@ -753,6 +804,12 @@ function handleMessage(msg) {
             if (msg.squelch !== undefined) updateSlider('squelch', msg.squelch);
             if (msg.split !== undefined) updateSplit(msg.split);
             if (msg.spanIndex !== undefined) updateSpanIndex(msg.spanIndex);
+            if (msg.nb !== undefined) updateToggle('nbBtn', msg.nb);
+            if (msg.nr !== undefined) updateToggle('nrBtn', msg.nr);
+            if (msg.autoNotch !== undefined) updateToggle('anfBtn', msg.autoNotch);
+            if (msg.tuner !== undefined) updateTunerState(msg.tuner);
+            if (msg.preamp !== undefined) updatePreampBtn(msg.preamp);
+            if (msg.filterWidth !== undefined) updateSlider('filterWidth', msg.filterWidth);
             break;
         case 'meters':
             if (msg.sMeter !== undefined) updateSMeter(msg.sMeter);
@@ -855,7 +912,7 @@ let sliderDragging = {};
 const SLIDER_DEBOUNCE_MS = 1500;
 
 function initSliderTracking() {
-    ['afGain', 'rfGain', 'rfPower', 'squelch'].forEach(function(name) {
+    ['afGain', 'rfGain', 'rfPower', 'squelch', 'filterWidth'].forEach(function(name) {
         var slider = document.getElementById(name + 'Slider');
         if (!slider) return;
         slider.addEventListener('mousedown', function() { sliderDragging[name] = true; });
@@ -963,6 +1020,141 @@ function setSquelch(val) {
     sliderSetTimes['squelch'] = Date.now();
     document.getElementById('squelchVal').textContent = val;
     throttledSend('squelch', 'setSquelch', val);
+}
+
+// --- Radio Controls (NB, NR, ANF, Tuner, Preamp, Filter) ---
+function updateToggle(id, state) {
+    var btn = document.getElementById(id);
+    if (!btn) return;
+    btn.classList.toggle('active', !!state);
+    if (id === 'nbBtn') nbOn = !!state;
+    else if (id === 'nrBtn') nrOn = !!state;
+    else if (id === 'anfBtn') anfOn = !!state;
+}
+
+function updateTunerState(val) {
+    tunerState = val;
+    var btn = document.getElementById('tunerBtn');
+    if (!btn) return;
+    btn.classList.toggle('active', val > 0);
+    btn.textContent = val === 2 ? 'Tuning' : 'Tuner';
+}
+
+function toggleNB() { send({ cmd: 'setNoiseBlanker', value: !nbOn }); }
+function toggleNR() { send({ cmd: 'setNoiseReduction', value: !nrOn }); }
+function toggleANF() { send({ cmd: 'setAutoNotch', value: !anfOn }); }
+
+// Tuner: click = toggle on/off, long-press = start tuning (value 2)
+(function() {
+    var tunerBtn = document.getElementById('tunerBtn');
+    var longPressTimer = null;
+    var longPressed = false;
+
+    function tunerDown(e) {
+        e.preventDefault();
+        longPressed = false;
+        longPressTimer = setTimeout(function() {
+            longPressed = true;
+            send({ cmd: 'setTuner', value: 2 });
+        }, 500);
+    }
+    function tunerUp(e) {
+        e.preventDefault();
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+        if (!longPressed) {
+            send({ cmd: 'setTuner', value: tunerState > 0 ? 0 : 1 });
+        }
+    }
+    function tunerCancel() {
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    }
+
+    tunerBtn.addEventListener('mousedown', tunerDown);
+    tunerBtn.addEventListener('mouseup', tunerUp);
+    tunerBtn.addEventListener('mouseleave', tunerCancel);
+    tunerBtn.addEventListener('touchstart', tunerDown);
+    tunerBtn.addEventListener('touchend', tunerUp);
+    tunerBtn.addEventListener('touchcancel', tunerCancel);
+})();
+
+function populatePreamps(preamps) {
+    var container = document.getElementById('preampButtons');
+    container.innerHTML = '';
+    if (!preamps || preamps.length === 0) {
+        document.getElementById('preampGroup').style.display = 'none';
+        return;
+    }
+    // Add OFF button
+    var offBtn = document.createElement('button');
+    offBtn.className = 'vfo-btn' + (currentPreamp === 0 ? ' active' : '');
+    offBtn.textContent = 'Off';
+    offBtn.dataset.preamp = '0';
+    offBtn.onclick = function() { setPreamp(0); };
+    container.appendChild(offBtn);
+    // Add preamp level buttons
+    for (var i = 0; i < preamps.length; i++) {
+        var btn = document.createElement('button');
+        btn.className = 'vfo-btn' + (currentPreamp === preamps[i].num ? ' active' : '');
+        btn.textContent = preamps[i].name;
+        btn.dataset.preamp = String(preamps[i].num);
+        btn.onclick = (function(num) { return function() { setPreamp(num); }; })(preamps[i].num);
+        container.appendChild(btn);
+    }
+    document.getElementById('preampGroup').style.display = '';
+}
+
+function setPreamp(num) {
+    send({ cmd: 'setPreamp', value: num });
+}
+
+function updatePreampBtn(num) {
+    currentPreamp = num;
+    document.querySelectorAll('#preampButtons .vfo-btn').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.dataset.preamp) === num);
+    });
+}
+
+function populateFilters(filters) {
+    var container = document.getElementById('filterButtons');
+    container.innerHTML = '';
+    if (!filters || filters.length === 0) {
+        // Default FIL1/2/3
+        for (var i = 1; i <= 3; i++) {
+            var btn = document.createElement('button');
+            btn.className = 'vfo-btn' + (currentFilter === i ? ' active' : '');
+            btn.textContent = 'FIL' + i;
+            btn.dataset.filter = String(i);
+            btn.onclick = (function(n) { return function() { setFilter(n); }; })(i);
+            container.appendChild(btn);
+        }
+    } else {
+        for (var j = 0; j < filters.length; j++) {
+            var fbtn = document.createElement('button');
+            fbtn.className = 'vfo-btn' + (currentFilter === filters[j].num ? ' active' : '');
+            fbtn.textContent = filters[j].name;
+            fbtn.dataset.filter = String(filters[j].num);
+            fbtn.onclick = (function(num) { return function() { setFilter(num); }; })(filters[j].num);
+            container.appendChild(fbtn);
+        }
+    }
+    document.getElementById('filterRow').style.display = 'flex';
+}
+
+function setFilter(num) {
+    send({ cmd: 'setFilter', value: num });
+}
+
+function updateFilterBtn(num) {
+    currentFilter = num;
+    document.querySelectorAll('#filterButtons .vfo-btn').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.dataset.filter) === num);
+    });
+}
+
+function setFilterWidth(val) {
+    sliderSetTimes['filterWidth'] = Date.now();
+    document.getElementById('filterWidthVal').textContent = val;
+    throttledSend('filterWidth', 'setFilterWidth', val);
 }
 
 // --- Audio Streaming ---
