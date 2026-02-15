@@ -376,6 +376,35 @@ header h1 { font-size: 1.2em; font-weight: 600; }
     background: #000;
     image-rendering: pixelated;
 }
+.span-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--bg2);
+}
+.span-label {
+    font-size: 0.75em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+}
+.span-buttons {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+}
+.span-btn {
+    padding: 3px 8px;
+    border: 1px solid var(--bg3);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.75em;
+}
+.span-btn.active { border-color: var(--blue); color: var(--blue); }
+.span-btn:hover { border-color: var(--blue); }
 
 /* Status bar */
 .status-bar {
@@ -400,6 +429,10 @@ header h1 { font-size: 1.2em; font-weight: 600; }
     <div class="scope-section" id="scopeSection">
         <canvas id="spectrumCanvas" width="800" height="150"></canvas>
         <canvas id="waterfallCanvas" width="800" height="200"></canvas>
+        <div class="span-row" id="spanRow" style="display:none">
+            <span class="span-label">Span</span>
+            <div class="span-buttons" id="spanButtons"></div>
+        </div>
     </div>
 
     <!-- Frequency -->
@@ -540,6 +573,10 @@ let micAudioCtx = null;
 let micWorkletNode = null;
 let micSeq = 0;
 
+// Span state
+let availableSpans = [];
+let currentSpanIndex = -1;
+
 // Spectrum/waterfall state
 let hasSpectrum = false;
 let spectAmpMax = 160;
@@ -646,6 +683,7 @@ function handleMessage(msg) {
                     document.getElementById('audioBtn').classList.add('unavailable');
                 }
                 updateTxAudioAvailable(msg.txAudioAvailable || false);
+                if (msg.spans) populateSpans(msg.spans);
             }
             break;
         case 'rigConnected':
@@ -662,6 +700,7 @@ function handleMessage(msg) {
                 document.getElementById('audioBtn').classList.remove('unavailable');
             }
             updateTxAudioAvailable(msg.txAudioAvailable || false);
+            if (msg.spans) populateSpans(msg.spans);
             break;
         case 'audioAvailable':
             if (msg.available) {
@@ -713,6 +752,7 @@ function handleMessage(msg) {
             if (msg.rfPower !== undefined) updateSlider('rfPower', msg.rfPower);
             if (msg.squelch !== undefined) updateSlider('squelch', msg.squelch);
             if (msg.split !== undefined) updateSplit(msg.split);
+            if (msg.spanIndex !== undefined) updateSpanIndex(msg.spanIndex);
             break;
         case 'meters':
             if (msg.sMeter !== undefined) updateSMeter(msg.sMeter);
@@ -1330,6 +1370,34 @@ function buildColorTable() {
         }
         colorTable[i] = [r, g, b];
     }
+}
+
+function populateSpans(spans) {
+    availableSpans = spans;
+    var container = document.getElementById('spanButtons');
+    container.innerHTML = '';
+    if (!spans || spans.length === 0) return;
+    for (var i = 0; i < spans.length; i++) {
+        var btn = document.createElement('button');
+        btn.className = 'span-btn' + (i === currentSpanIndex ? ' active' : '');
+        btn.textContent = spans[i].name;
+        btn.dataset.index = i;
+        btn.onclick = (function(idx) { return function() { setSpan(idx); }; })(i);
+        container.appendChild(btn);
+    }
+    document.getElementById('spanRow').style.display = 'flex';
+}
+
+function setSpan(idx) {
+    send({ cmd: 'setSpan', value: idx });
+    updateSpanIndex(idx);
+}
+
+function updateSpanIndex(idx) {
+    currentSpanIndex = idx;
+    document.querySelectorAll('.span-btn').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.dataset.index) === idx);
+    });
 }
 
 function showScopeSection() {

@@ -187,6 +187,17 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
             obj["audioSampleRate"] = (int)rigSampleRate;
         }
         obj["txAudioAvailable"] = txAudioConfigured;
+        if (!rigCaps->scopeCenterSpans.empty()) {
+            QJsonArray spans;
+            for (const centerSpanData &s : rigCaps->scopeCenterSpans) {
+                QJsonObject span;
+                span["reg"] = s.reg;
+                span["name"] = s.name;
+                span["freq"] = (int)s.freq;
+                spans.append(span);
+            }
+            obj["spans"] = spans;
+        }
         sendJsonToAll(obj);
     }
 }
@@ -503,6 +514,13 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         bool on = cmd["value"].toBool();
         queue->add(priorityImmediate, queueItem(funcSplitStatus, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
     }
+    else if (type == "setSpan") {
+        int idx = cmd["value"].toInt();
+        if (rigCaps && idx >= 0 && idx < (int)rigCaps->scopeCenterSpans.size()) {
+            centerSpanData span = rigCaps->scopeCenterSpans.at(idx);
+            queue->addUnique(priorityImmediate, queueItem(funcScopeSpan, QVariant::fromValue<centerSpanData>(span), false, 0));
+        }
+    }
     else if (type == "enableAudio") {
         bool enable = cmd["value"].toBool();
         if (enable) {
@@ -604,6 +622,17 @@ void webServer::sendCurrentState(QWebSocket *client)
             info["audioSampleRate"] = (int)rigSampleRate;
         }
         info["txAudioAvailable"] = txAudioConfigured;
+        if (!rigCaps->scopeCenterSpans.empty()) {
+            QJsonArray spans;
+            for (const centerSpanData &s : rigCaps->scopeCenterSpans) {
+                QJsonObject span;
+                span["reg"] = s.reg;
+                span["name"] = s.name;
+                span["freq"] = (int)s.freq;
+                spans.append(span);
+            }
+            info["spans"] = spans;
+        }
     } else {
         info["connected"] = false;
     }
@@ -778,6 +807,20 @@ void webServer::receiveCache(cacheItem item)
     case funcSplitStatus:
         update["split"] = item.value.toBool();
         break;
+    case funcScopeSpan:
+    {
+        centerSpanData span = item.value.value<centerSpanData>();
+        if (rigCaps) {
+            for (int i = 0; i < (int)rigCaps->scopeCenterSpans.size(); i++) {
+                if (rigCaps->scopeCenterSpans.at(i).reg == span.reg) {
+                    update["spanIndex"] = i;
+                    update["spanName"] = span.name;
+                    break;
+                }
+            }
+        }
+        break;
+    }
     default:
         return; // Don't send updates for unhandled funcs
     }
