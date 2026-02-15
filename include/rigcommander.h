@@ -46,6 +46,7 @@ public slots:
 
     // These slots are handled by the parent class:
     void receiveAudioData(const audioPacket& data);
+    void receiveWebTxAudio(const audioPacket& data);
     void handlePortError(errorType err);
     void handleStatusUpdate(const networkStatus status);
     void handleNetworkAudioLevels(networkAudioLevels);
@@ -100,6 +101,7 @@ signals:
     void haveChangeLatency(quint16 value);
     void haveDataForServer(QByteArray outData);
     void haveAudioData(audioPacket data);
+    void sendWebTxAudio(audioPacket data);
     void initUdpHandler();
     void haveSetVolume(quint8 level);
     void haveBaudRate(quint32 baudrate);

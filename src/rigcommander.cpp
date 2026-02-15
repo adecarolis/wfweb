@@ -144,6 +144,10 @@ void rigCommander::receiveAudioData(const audioPacket& data)
     emit haveAudioData(data);
 }
 
+void rigCommander::receiveWebTxAudio(const audioPacket& data)
+{
+    emit sendWebTxAudio(data);
+}
 
 void rigCommander::changeLatency(const quint16 value)
 {

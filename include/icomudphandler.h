@@ -52,6 +52,7 @@ public slots:
 	void receiveDataFromUserToRig(QByteArray); // This slot will send data on to 
 	void receiveFromCivStream(QByteArray);
 	void receiveAudioData(const audioPacket &data);
+	void receiveExternalTxAudio(const audioPacket &data);
 	void changeLatency(quint16 value);
 	void setVolume(quint8 value);
 	void init();

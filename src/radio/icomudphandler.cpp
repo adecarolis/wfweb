@@ -124,6 +124,13 @@ void icomUdpHandler::receiveAudioData(const audioPacket &data)
     emit haveAudioData(data);
 }
 
+void icomUdpHandler::receiveExternalTxAudio(const audioPacket &data)
+{
+    if (audio != Q_NULLPTR) {
+        audio->receiveAudioData(data);
+    }
+}
+
 void icomUdpHandler::receiveDataFromUserToRig(QByteArray data)
 {
     if (civ != Q_NULLPTR)

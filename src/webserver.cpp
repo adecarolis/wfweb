@@ -1,6 +1,11 @@
 #include "webserver.h"
 #include "logcategories.h"
 
+#include <QStandardPaths>
+#include <QDir>
+#include <QProcess>
+#include <QSslConfiguration>
+
 webServer::webServer(QObject *parent) :
     QObject(parent)
 {
@@ -11,10 +16,20 @@ webServer::~webServer()
     if (statusTimer) {
         statusTimer->stop();
     }
+    if (usbAudioOutput) {
+        usbAudioOutput->stop();
+        delete usbAudioOutput;
+        usbAudioOutput = nullptr;
+        usbAudioOutputDevice = nullptr;
+    }
     if (usbAudioInput) {
         usbAudioInput->stop();
         delete usbAudioInput;
         usbAudioInput = nullptr;
+    }
+    if (txConverterThread) {
+        txConverterThread->quit();
+        txConverterThread->wait();
     }
     if (rxConverterThread) {
         rxConverterThread->quit();
@@ -31,6 +46,64 @@ webServer::~webServer()
     wsClients.clear();
 }
 
+bool webServer::setupSsl()
+{
+    if (!QSslSocket::supportsSsl()) {
+        qInfo() << "Web: SSL not supported on this system, using plain HTTP";
+        return false;
+    }
+
+    QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(dataDir);
+    QString certPath = dataDir + "/wfview-web.crt";
+    QString keyPath = dataDir + "/wfview-web.key";
+
+    // Generate self-signed cert if not present
+    if (!QFile::exists(certPath) || !QFile::exists(keyPath)) {
+        qInfo() << "Web: Generating self-signed SSL certificate...";
+        QProcess proc;
+        proc.start("openssl", QStringList()
+            << "req" << "-x509" << "-newkey" << "rsa:2048"
+            << "-keyout" << keyPath << "-out" << certPath
+            << "-days" << "3650" << "-nodes"
+            << "-subj" << "/CN=wfview");
+        if (!proc.waitForFinished(10000) || proc.exitCode() != 0) {
+            qWarning() << "Web: Failed to generate SSL certificate:" << proc.readAllStandardError();
+            return false;
+        }
+        qInfo() << "Web: SSL certificate generated at" << certPath;
+    }
+
+    // Load certificate
+    QFile certFile(certPath);
+    if (!certFile.open(QIODevice::ReadOnly)) {
+        qWarning() << "Web: Cannot read SSL certificate";
+        return false;
+    }
+    sslCert = QSslCertificate(&certFile, QSsl::Pem);
+    certFile.close();
+    if (sslCert.isNull()) {
+        qWarning() << "Web: Invalid SSL certificate";
+        return false;
+    }
+
+    // Load private key
+    QFile keyFile(keyPath);
+    if (!keyFile.open(QIODevice::ReadOnly)) {
+        qWarning() << "Web: Cannot read SSL private key";
+        return false;
+    }
+    sslKey = QSslKey(&keyFile, QSsl::Rsa, QSsl::Pem);
+    keyFile.close();
+    if (sslKey.isNull()) {
+        qWarning() << "Web: Invalid SSL private key";
+        return false;
+    }
+
+    qInfo() << "Web: SSL certificate loaded successfully";
+    return true;
+}
+
 void webServer::init(quint16 httpPort, quint16 wsPort)
 {
     this->setObjectName("Web Server");
@@ -40,22 +113,43 @@ void webServer::init(quint16 httpPort, quint16 wsPort)
     connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
     connect(queue, SIGNAL(cacheUpdated(cacheItem)), this, SLOT(receiveCache(cacheItem)));
 
-    // HTTP server for static files
-    httpServer = new QTcpServer(this);
-    if (httpServer->listen(QHostAddress::Any, httpPort)) {
-        qInfo() << "Web HTTP server listening on port" << httpPort;
-        connect(httpServer, &QTcpServer::newConnection, this, &webServer::onHttpConnection);
-    } else {
-        qWarning() << "Web HTTP server failed to listen on port" << httpPort;
-    }
+    sslEnabled = setupSsl();
 
-    // WebSocket server for rig control
-    wsServer = new QWebSocketServer(QStringLiteral("wfview Web"), QWebSocketServer::NonSecureMode, this);
-    if (wsServer->listen(QHostAddress::Any, wsPort)) {
-        qInfo() << "Web WebSocket server listening on port" << wsPort;
+    if (sslEnabled) {
+        // HTTPS + WSS on a single port
+        SslTcpServer *sslServer = new SslTcpServer(this);
+        sslServer->cert = sslCert;
+        sslServer->key = sslKey;
+        httpServer = sslServer;
+
+        if (httpServer->listen(QHostAddress::Any, httpPort)) {
+            qInfo() << "Web HTTPS server listening on port" << httpPort;
+            connect(httpServer, &QTcpServer::newConnection, this, &webServer::onHttpConnection);
+        } else {
+            qWarning() << "Web HTTPS server failed to listen on port" << httpPort;
+        }
+
+        // WebSocket server in NonSecureMode (SSL handled by SslTcpServer)
+        // Does NOT listen on its own port — connections handed off via handleConnection
+        wsServer = new QWebSocketServer(QStringLiteral("wfview Web"), QWebSocketServer::NonSecureMode, this);
         connect(wsServer, &QWebSocketServer::newConnection, this, &webServer::onWsNewConnection);
     } else {
-        qWarning() << "Web WebSocket server failed to listen on port" << wsPort;
+        // Plain HTTP + WS on separate ports (fallback)
+        httpServer = new QTcpServer(this);
+        if (httpServer->listen(QHostAddress::Any, httpPort)) {
+            qInfo() << "Web HTTP server listening on port" << httpPort;
+            connect(httpServer, &QTcpServer::newConnection, this, &webServer::onHttpConnection);
+        } else {
+            qWarning() << "Web HTTP server failed to listen on port" << httpPort;
+        }
+
+        wsServer = new QWebSocketServer(QStringLiteral("wfview Web"), QWebSocketServer::NonSecureMode, this);
+        if (wsServer->listen(QHostAddress::Any, wsPort)) {
+            qInfo() << "Web WebSocket server listening on port" << wsPort;
+            connect(wsServer, &QWebSocketServer::newConnection, this, &webServer::onWsNewConnection);
+        } else {
+            qWarning() << "Web WebSocket server failed to listen on port" << wsPort;
+        }
     }
 
     // Periodic status updates (meters, etc.) every 200ms
@@ -86,6 +180,7 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
         if (audioConfigured) {
             obj["audioSampleRate"] = (int)rigSampleRate;
         }
+        obj["txAudioAvailable"] = txAudioConfigured;
         sendJsonToAll(obj);
     }
 }
@@ -103,6 +198,17 @@ void webServer::onHttpReadyRead()
 {
     QTcpSocket *socket = qobject_cast<QTcpSocket *>(sender());
     if (!socket) return;
+
+    // In SSL single-port mode, detect WebSocket upgrade requests
+    if (sslEnabled) {
+        QByteArray peek = socket->peek(4096);
+        if (peek.contains("Upgrade: websocket") || peek.contains("Upgrade: WebSocket")) {
+            disconnect(socket, &QTcpSocket::readyRead, this, &webServer::onHttpReadyRead);
+            disconnect(socket, &QTcpSocket::disconnected, this, &webServer::onHttpDisconnected);
+            wsServer->handleConnection(socket);
+            return;
+        }
+    }
 
     QByteArray request = socket->readAll();
     QString requestStr = QString::fromUtf8(request);
@@ -188,6 +294,7 @@ void webServer::onWsNewConnection()
     QWebSocket *pSocket = wsServer->nextPendingConnection();
 
     connect(pSocket, &QWebSocket::textMessageReceived, this, &webServer::onWsTextMessage);
+    connect(pSocket, &QWebSocket::binaryMessageReceived, this, &webServer::onWsBinaryMessage);
     connect(pSocket, &QWebSocket::disconnected, this, &webServer::onWsDisconnected);
 
     wsClients.append(pSocket);
@@ -222,6 +329,53 @@ void webServer::onWsDisconnected()
         wsClients.removeAll(pClient);
         pClient->deleteLater();
     }
+}
+
+void webServer::onWsBinaryMessage(QByteArray message)
+{
+    if (message.size() < 6) return;
+
+    quint8 msgType = static_cast<quint8>(message[0]);
+
+    if (msgType != 0x03) return; // Only handle TX audio (0x03)
+
+    if (!txAudioConfigured) return;
+
+    // Extract PCM data after 6-byte header: [0x03][0x00][seq_u16LE][reserved_u16LE][PCM...]
+    QByteArray pcmData = message.mid(6);
+    if (pcmData.isEmpty()) return;
+
+    if (usbAudioOutputDevice) {
+        // USB path: write directly to USB audio output device
+        if (usbOutputChannels == 2) {
+            int numSamples = pcmData.size() / 2; // 16-bit mono samples
+            QByteArray stereo;
+            stereo.resize(numSamples * 4); // 16-bit stereo
+            const qint16 *src = reinterpret_cast<const qint16 *>(pcmData.constData());
+            qint16 *dst = reinterpret_cast<qint16 *>(stereo.data());
+            for (int i = 0; i < numSamples; i++) {
+                dst[i * 2] = src[i];
+                dst[i * 2 + 1] = src[i];
+            }
+            usbAudioOutputDevice->write(stereo);
+        } else {
+            usbAudioOutputDevice->write(pcmData);
+        }
+    } else if (txConverter) {
+        // LAN path: encode PCM → rig codec, then emit for transmission
+        audioPacket pkt;
+        pkt.data = pcmData;
+        pkt.time = QTime::currentTime();
+        pkt.sent = 0;
+        pkt.volume = 1.0;
+        emit sendToTxConverter(pkt);
+    }
+}
+
+void webServer::onTxConverted(audioPacket audio)
+{
+    if (audio.data.isEmpty()) return;
+    emit haveTxAudioData(audio);
 }
 
 void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
@@ -380,6 +534,7 @@ void webServer::sendCurrentState(QWebSocket *client)
         if (audioConfigured) {
             info["audioSampleRate"] = (int)rigSampleRate;
         }
+        info["txAudioAvailable"] = txAudioConfigured;
     } else {
         info["connected"] = false;
     }
@@ -714,6 +869,23 @@ void webServer::setupAudio(quint8 codec, quint32 sampleRate)
 
     emit setupConverter(inFormat, inCodec, outFormat, LPCM, 5, 4);
 
+    // TX converter: PCM Int16 (from browser) → rig codec (for transmission)
+    txConverter = new audioConverter();
+    txConverterThread = new QThread(this);
+    txConverterThread->setObjectName("webTxConv()");
+    txConverter->moveToThread(txConverterThread);
+
+    connect(this, &webServer::setupTxConverter, txConverter, &audioConverter::init);
+    connect(this, &webServer::sendToTxConverter, txConverter, &audioConverter::convert);
+    connect(txConverter, &audioConverter::converted, this, &webServer::onTxConverted);
+    connect(txConverterThread, &QThread::finished, txConverter, &QObject::deleteLater);
+
+    txConverterThread->start();
+
+    // TX: input is PCM Int16 mono (from browser), output is rig codec format
+    emit setupTxConverter(outFormat, LPCM, inFormat, inCodec, 5, 4);
+
+    txAudioConfigured = true;
     audioConfigured = true;
     qInfo() << "Web: Audio configured, codec=" << Qt::hex << codec
             << "sampleRate=" << Qt::dec << sampleRate;
@@ -724,6 +896,7 @@ void webServer::setupAudio(quint8 codec, quint32 sampleRate)
         notify["type"] = "audioAvailable";
         notify["available"] = true;
         notify["sampleRate"] = (int)sampleRate;
+        notify["txAudioAvailable"] = true;
         sendJsonToAll(notify);
     }
 }
@@ -839,12 +1012,91 @@ void webServer::setupUsbAudio(quint32 sampleRate)
     qInfo() << "Web: USB audio capture configured, sampleRate=" << rigSampleRate
             << "channels=" << format.channelCount();
 
+    // Also configure USB audio output (playback) for TX audio
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+    QAudioDeviceInfo usbOutDevice;
+    bool outFound = false;
+    for (const QAudioDeviceInfo &dev : QAudioDeviceInfo::availableDevices(QAudio::AudioOutput)) {
+        if (dev.deviceName().contains("USB", Qt::CaseInsensitive)) {
+            usbOutDevice = dev;
+            outFound = true;
+            qInfo() << "Web: Found USB audio output device:" << dev.deviceName();
+            break;
+        }
+    }
+    if (outFound) {
+        QAudioFormat outFormat;
+        outFormat.setSampleRate(sampleRate);
+        outFormat.setChannelCount(1);
+        outFormat.setSampleSize(16);
+        outFormat.setSampleType(QAudioFormat::SignedInt);
+        outFormat.setByteOrder(QAudioFormat::LittleEndian);
+        outFormat.setCodec("audio/pcm");
+
+        usbOutputChannels = 1;
+        if (!usbOutDevice.isFormatSupported(outFormat)) {
+            outFormat.setChannelCount(2);
+            usbOutputChannels = 2;
+            if (!usbOutDevice.isFormatSupported(outFormat)) {
+                outFormat = usbOutDevice.nearestFormat(outFormat);
+                usbOutputChannels = outFormat.channelCount();
+                qInfo() << "Web: TX using nearest format:" << outFormat.sampleRate()
+                         << "ch=" << outFormat.channelCount()
+                         << "size=" << outFormat.sampleSize();
+            }
+        }
+
+        usbAudioOutput = new QAudioOutput(usbOutDevice, outFormat, this);
+        usbAudioOutputDevice = usbAudioOutput->start();
+        if (usbAudioOutputDevice) {
+            txAudioConfigured = true;
+            qInfo() << "Web: USB audio output configured for TX, channels=" << usbOutputChannels;
+        } else {
+            qWarning() << "Web: Failed to start USB audio output";
+            delete usbAudioOutput;
+            usbAudioOutput = nullptr;
+        }
+    }
+#else
+    QAudioDevice usbOutDevice;
+    bool outFound = false;
+    for (const QAudioDevice &dev : QMediaDevices::audioOutputs()) {
+        if (dev.description().contains("USB", Qt::CaseInsensitive)) {
+            usbOutDevice = dev;
+            outFound = true;
+            qInfo() << "Web: Found USB audio output device:" << dev.description();
+            break;
+        }
+    }
+    if (outFound) {
+        QAudioFormat outFormat;
+        outFormat.setSampleRate(sampleRate);
+        outFormat.setChannelCount(1);
+        outFormat.setSampleFormat(QAudioFormat::Int16);
+
+        usbOutputChannels = 1;
+        // Qt6 QAudioSink handles format negotiation internally
+
+        usbAudioOutput = new QAudioSink(usbOutDevice, outFormat, this);
+        usbAudioOutputDevice = usbAudioOutput->start();
+        if (usbAudioOutputDevice) {
+            txAudioConfigured = true;
+            qInfo() << "Web: USB audio output configured for TX";
+        } else {
+            qWarning() << "Web: Failed to start USB audio output";
+            delete usbAudioOutput;
+            usbAudioOutput = nullptr;
+        }
+    }
+#endif
+
     // Notify connected clients
     if (!wsClients.isEmpty()) {
         QJsonObject notify;
         notify["type"] = "audioAvailable";
         notify["available"] = true;
         notify["sampleRate"] = (int)rigSampleRate;
+        notify["txAudioAvailable"] = txAudioConfigured;
         sendJsonToAll(notify);
     }
 }

@@ -264,6 +264,31 @@ header h1 { font-size: 1.2em; font-weight: 600; }
     cursor: not-allowed;
     opacity: 0.5;
 }
+#micBtn {
+    width: 100px;
+    height: 50px;
+    border: 2px solid var(--orange);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--orange);
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    user-select: none;
+    -webkit-user-select: none;
+}
+#micBtn.active {
+    background: var(--orange);
+    color: #fff;
+}
+#micBtn.unavailable {
+    border-color: var(--text-dim);
+    color: var(--text-dim);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
 .audio-level {
     width: 8px;
     height: 50px;
@@ -453,6 +478,7 @@ header h1 { font-size: 1.2em; font-weight: 600; }
     <div class="ptt-audio-section">
         <button id="pttBtn">PTT</button>
         <button id="audioBtn" class="unavailable" onclick="toggleAudio()">Audio</button>
+        <button id="micBtn" class="unavailable" onclick="toggleMic()" title="Requires HTTPS for remote access">Mic</button>
         <div class="audio-level">
             <div class="audio-level-fill" id="audioLevelFill" style="height: 0%"></div>
         </div>
@@ -504,6 +530,14 @@ let audioEnabled = false;
 let audioAvailable = false;
 let audioSampleRate = 48000;
 
+// TX audio (mic) state
+let micEnabled = false;
+let txAudioAvailable = false;
+let micStream = null;
+let micAudioCtx = null;
+let micWorkletNode = null;
+let micSeq = 0;
+
 // Spectrum/waterfall state
 let hasSpectrum = false;
 let spectAmpMax = 160;
@@ -519,8 +553,15 @@ let colorTable = null;
 
 // --- WebSocket ---
 function connect() {
-    const wsPort = parseInt(location.port || '80') + 1;
-    const wsUrl = 'ws://' + location.hostname + ':' + wsPort;
+    var wsUrl;
+    if (location.protocol === 'https:') {
+        // SSL mode: WebSocket on same port as HTTPS
+        wsUrl = 'wss://' + location.hostname + ':' + (location.port || '443');
+    } else {
+        // Plain mode: WebSocket on next port
+        var wsPort = parseInt(location.port || '80') + 1;
+        wsUrl = 'ws://' + location.hostname + ':' + wsPort;
+    }
 
     document.getElementById('statusText').textContent = 'Connecting to ' + wsUrl + '...';
 
@@ -540,9 +581,12 @@ function connect() {
         document.getElementById('connStatus').classList.remove('connected');
         document.getElementById('rigModel').textContent = 'Not connected';
         document.getElementById('statusText').textContent = 'Disconnected. Reconnecting...';
+        if (micEnabled) stopMic();
         if (audioEnabled) stopAudio();
         audioAvailable = false;
+        txAudioAvailable = false;
         document.getElementById('audioBtn').classList.add('unavailable');
+        document.getElementById('micBtn').classList.add('unavailable');
         scheduleReconnect();
     };
 
@@ -599,6 +643,7 @@ function handleMessage(msg) {
                     audioAvailable = false;
                     document.getElementById('audioBtn').classList.add('unavailable');
                 }
+                updateTxAudioAvailable(msg.txAudioAvailable || false);
             }
             break;
         case 'rigConnected':
@@ -614,6 +659,7 @@ function handleMessage(msg) {
                 audioSampleRate = msg.audioSampleRate || 48000;
                 document.getElementById('audioBtn').classList.remove('unavailable');
             }
+            updateTxAudioAvailable(msg.txAudioAvailable || false);
             break;
         case 'audioAvailable':
             if (msg.available) {
@@ -624,6 +670,9 @@ function handleMessage(msg) {
                 audioAvailable = false;
                 document.getElementById('audioBtn').classList.add('unavailable');
                 if (audioEnabled) stopAudio();
+            }
+            if (msg.txAudioAvailable !== undefined) {
+                updateTxAudioAvailable(msg.txAudioAvailable);
             }
             break;
         case 'audioStatus':
@@ -922,6 +971,7 @@ function startWithWorklet() {
         '    this.buffered = 0;',
         '    this.started = false;',
         '    this.prebufferSamples = Math.floor(sampleRate * 0.1);',
+        '    this.maxBuffered = Math.floor(sampleRate * 0.5);',
         '    this.port.onmessage = (e) => {',
         '      var samples = e.data;',
         '      var len = samples.length;',
@@ -932,6 +982,12 @@ function startWithWorklet() {
         '      }',
         '      this.buffered += len;',
         '      if (this.buffered > bufLen) this.buffered = bufLen;',
+        '      if (this.started && this.buffered > this.maxBuffered) {',
+        '        var target = Math.floor(sampleRate * 0.15);',
+        '        var skip = this.buffered - target;',
+        '        this.readPos = (this.readPos + skip) % bufLen;',
+        '        this.buffered -= skip;',
+        '      }',
         '    };',
         '  }',
         '  process(inputs, outputs) {',
@@ -1022,6 +1078,117 @@ function stopAudio() {
     }
 }
 
+// --- TX Audio (Microphone) ---
+function updateTxAudioAvailable(available) {
+    txAudioAvailable = available;
+    var micBtn = document.getElementById('micBtn');
+    if (available && window.isSecureContext) {
+        micBtn.classList.remove('unavailable');
+        micBtn.title = 'Enable microphone for TX audio';
+    } else {
+        micBtn.classList.add('unavailable');
+        if (!window.isSecureContext) {
+            micBtn.title = 'Requires HTTPS (use https:// URL)';
+        } else {
+            micBtn.title = 'TX audio not available (rig not connected)';
+        }
+        if (micEnabled) stopMic();
+    }
+}
+
+function toggleMic() {
+    if (!txAudioAvailable || !window.isSecureContext) return;
+    if (micEnabled) {
+        stopMic();
+        return;
+    }
+    startMic();
+}
+
+function startMic() {
+    if (micEnabled) return;
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } })
+    .then(function(stream) {
+        micStream = stream;
+        micAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
+
+        var source = micAudioCtx.createMediaStreamSource(stream);
+
+        var captureCode = [
+            'class WfviewCaptureProcessor extends AudioWorkletProcessor {',
+            '  constructor() { super(); }',
+            '  process(inputs) {',
+            '    var input = inputs[0];',
+            '    if (!input || !input[0] || input[0].length === 0) return true;',
+            '    var samples = input[0];',
+            '    var int16 = new Int16Array(samples.length);',
+            '    for (var i = 0; i < samples.length; i++) {',
+            '      var s = Math.max(-1, Math.min(1, samples[i]));',
+            '      int16[i] = s < 0 ? s * 32768 : s * 32767;',
+            '    }',
+            '    this.port.postMessage(int16.buffer, [int16.buffer]);',
+            '    return true;',
+            '  }',
+            '}',
+            'registerProcessor("wfview-capture-processor", WfviewCaptureProcessor);'
+        ].join('\n');
+
+        var blob = new Blob([captureCode], { type: 'application/javascript' });
+        var url = URL.createObjectURL(blob);
+
+        micAudioCtx.audioWorklet.addModule(url).then(function() {
+            URL.revokeObjectURL(url);
+            micWorkletNode = new AudioWorkletNode(micAudioCtx, 'wfview-capture-processor');
+            source.connect(micWorkletNode);
+            micWorkletNode.connect(micAudioCtx.destination);
+
+            micWorkletNode.port.onmessage = function(e) {
+                if (!micEnabled || !ws || ws.readyState !== WebSocket.OPEN) return;
+                var pcmBuffer = e.data;
+                var headerSize = 6;
+                var frame = new ArrayBuffer(headerSize + pcmBuffer.byteLength);
+                var view = new DataView(frame);
+                view.setUint8(0, 0x03);
+                view.setUint8(1, 0x00);
+                view.setUint16(2, micSeq++ & 0xFFFF, true);
+                view.setUint16(4, 0, true);
+                new Uint8Array(frame, headerSize).set(new Uint8Array(pcmBuffer));
+                ws.send(frame);
+            };
+
+            micEnabled = true;
+            document.getElementById('micBtn').classList.add('active');
+            document.getElementById('statusText').textContent = 'Microphone active';
+        }).catch(function(err) {
+            console.error('Mic AudioWorklet failed:', err);
+            stopMic();
+            document.getElementById('statusText').textContent = 'Mic setup failed: ' + err.message;
+        });
+    })
+    .catch(function(err) {
+        console.error('getUserMedia failed:', err);
+        document.getElementById('statusText').textContent = 'Mic access denied: ' + err.message;
+    });
+}
+
+function stopMic() {
+    micEnabled = false;
+    document.getElementById('micBtn').classList.remove('active');
+    if (micWorkletNode) {
+        micWorkletNode.disconnect();
+        micWorkletNode = null;
+    }
+    if (micStream) {
+        micStream.getTracks().forEach(function(t) { t.stop(); });
+        micStream = null;
+    }
+    if (micAudioCtx) {
+        micAudioCtx.close();
+        micAudioCtx = null;
+    }
+    micSeq = 0;
+}
+
 function handleAudioData(buffer) {
     if (!audioEnabled) return;
     if (buffer.byteLength < 8) return;
@@ -1051,6 +1218,14 @@ function handleAudioData(buffer) {
         }
         audioRingBuffered += len;
         if (audioRingBuffered > bufLen) audioRingBuffered = bufLen;
+        // Overflow protection: if buffer exceeds 500ms, skip to 150ms
+        var maxBuf = Math.floor(audioSampleRate * 0.5);
+        if (audioRingStarted && audioRingBuffered > maxBuf) {
+            var target = Math.floor(audioSampleRate * 0.15);
+            var skip = audioRingBuffered - target;
+            audioRingRead = (audioRingRead + skip) % bufLen;
+            audioRingBuffered -= skip;
+        }
     }
 
     // Update level indicator

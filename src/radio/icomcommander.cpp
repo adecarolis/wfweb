@@ -140,6 +140,8 @@ void icomCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr
     connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
     // Audio from UDP
     connect(udp, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+    // Web TX audio to UDP
+    connect(this, SIGNAL(sendWebTxAudio(audioPacket)), udp, SLOT(receiveExternalTxAudio(audioPacket)));
 
     connect(this, SIGNAL(haveChangeLatency(quint16)), udp, SLOT(changeLatency(quint16)));
     connect(this, SIGNAL(haveSetVolume(quint8)), udp, SLOT(setVolume(quint8)));

@@ -568,6 +568,7 @@ void wfmain::makeRig()
 
         if (web != Q_NULLPTR) {
             connect(rig, SIGNAL(haveAudioData(audioPacket)), web, SLOT(receiveRxAudio(audioPacket)));
+            connect(web, SIGNAL(haveTxAudioData(audioPacket)), rig, SLOT(receiveWebTxAudio(audioPacket)));
         }
 
         connect(this, SIGNAL(setCIVAddr(quint16)), rig, SLOT(setCIVAddr(quint16)));
