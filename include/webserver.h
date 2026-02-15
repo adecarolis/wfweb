@@ -163,6 +163,11 @@ private:
     QIODevice *usbAudioOutputDevice = nullptr;
     bool txAudioConfigured = false;
     int usbOutputChannels = 1;
+
+    // DATA MOD OFF auto-switch to USB when web mic is active
+    rigInput savedDataOffMod;
+    bool dataOffModSaved = false;
+    QWebSocket *micActiveClient = nullptr;
 };
 
 #endif // WEBSERVER_H

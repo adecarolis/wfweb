@@ -1157,6 +1157,7 @@ function startMic() {
             };
 
             micEnabled = true;
+            send({ cmd: 'enableMic', value: true });
             document.getElementById('micBtn').classList.add('active');
             document.getElementById('statusText').textContent = 'Microphone active';
         }).catch(function(err) {
@@ -1172,6 +1173,7 @@ function startMic() {
 }
 
 function stopMic() {
+    send({ cmd: 'enableMic', value: false });
     micEnabled = false;
     document.getElementById('micBtn').classList.remove('active');
     if (micWorkletNode) {

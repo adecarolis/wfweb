@@ -13,6 +13,12 @@ webServer::webServer(QObject *parent) :
 
 webServer::~webServer()
 {
+    // Restore DATA MOD OFF setting if mic was active
+    if (dataOffModSaved && queue) {
+        queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(savedDataOffMod), false, 0));
+        dataOffModSaved = false;
+        micActiveClient = nullptr;
+    }
     if (statusTimer) {
         statusTimer->stop();
     }
@@ -325,6 +331,13 @@ void webServer::onWsDisconnected()
     QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
     if (pClient) {
         qInfo() << "Web client disconnected:" << pClient->peerAddress().toString();
+        // Restore DATA MOD OFF if this client had mic active
+        if (pClient == micActiveClient && dataOffModSaved && queue) {
+            queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(savedDataOffMod), false, 0));
+            dataOffModSaved = false;
+            micActiveClient = nullptr;
+            qInfo() << "Web: Restored DATA MOD OFF setting (client disconnected)";
+        }
         audioClients.remove(pClient);
         wsClients.removeAll(pClient);
         pClient->deleteLater();
@@ -497,6 +510,44 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             resp["type"] = "audioStatus";
             resp["enabled"] = false;
             sendJsonTo(client, resp);
+        }
+    }
+    else if (type == "enableMic") {
+        bool enable = cmd["value"].toBool();
+        if (enable) {
+            // Save current DATA MOD OFF setting and switch to USB
+            cacheItem cache = queue->getCache(funcDATAOffMod, 0);
+            if (cache.value.isValid()) {
+                savedDataOffMod = cache.value.value<rigInput>();
+                dataOffModSaved = true;
+            }
+            // Find USB input from rig capabilities
+            if (rigCaps) {
+                rigInput usbInput;
+                bool found = false;
+                for (const rigInput &inp : rigCaps->inputs) {
+                    if (inp.type == inputUSB) {
+                        usbInput = inp;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
+                    queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(usbInput), false, 0));
+                    qInfo() << "Web: Set DATA MOD OFF to USB for web mic";
+                } else {
+                    qInfo() << "Web: No USB input found in rig capabilities";
+                }
+            }
+            micActiveClient = client;
+        } else {
+            // Restore previous DATA MOD OFF setting
+            if (dataOffModSaved && queue) {
+                queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(savedDataOffMod), false, 0));
+                qInfo() << "Web: Restored DATA MOD OFF setting";
+            }
+            dataOffModSaved = false;
+            micActiveClient = nullptr;
         }
     }
     else if (type == "getStatus") {
