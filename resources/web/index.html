@@ -983,6 +983,12 @@ function startWithWorklet() {
         '    this.prebufferSamples = Math.floor(sampleRate * 0.1);',
         '    this.maxBuffered = Math.floor(sampleRate * 0.5);',
         '    this.port.onmessage = (e) => {',
+        '      if (e.data === "flush") {',
+        '        this.buffered = 0;',
+        '        this.readPos = this.writePos;',
+        '        this.started = false;',
+        '        return;',
+        '      }',
         '      var samples = e.data;',
         '      var len = samples.length;',
         '      var bufLen = this.buffer.length;',
@@ -1202,7 +1208,7 @@ function stopMic() {
 }
 
 function handleAudioData(buffer) {
-    if (!audioEnabled) return;
+    if (!audioEnabled || isTransmitting) return;
     if (buffer.byteLength < 8) return;
 
     // Binary format: [0x02][0x00][seq_u16LE][rateDiv_u16LE][PCM_Int16LE...]
@@ -1245,12 +1251,24 @@ function handleAudioData(buffer) {
     document.getElementById('audioLevelFill').style.height = pct + '%';
 }
 
+function flushAudio() {
+    if (audioUseWorklet && audioWorkletNode) {
+        audioWorkletNode.port.postMessage('flush');
+    } else if (audioRingBuf) {
+        audioRingBuffered = 0;
+        audioRingRead = audioRingWrite;
+        audioRingStarted = false;
+    }
+    document.getElementById('audioLevelFill').style.height = '0%';
+}
+
 // --- PTT (push-to-talk: hold to transmit) ---
 (function() {
     const pttBtn = document.getElementById('pttBtn');
 
     function pttOn(e) {
         e.preventDefault();
+        flushAudio();
         send({ cmd: 'setPTT', value: true });
     }
     function pttOff(e) {
