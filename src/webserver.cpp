@@ -391,6 +391,21 @@ void webServer::onTxConverted(audioPacket audio)
     emit haveTxAudioData(audio);
 }
 
+void webServer::requestVfoUpdate()
+{
+    // After a VFO change, request fresh freq/mode from the radio.
+    // Use a short delay to let the queue process the VFO command first,
+    // then the normal receiveCache flow pushes the update to web clients.
+    QTimer::singleShot(200, this, [this]() {
+        if (!queue) return;
+        vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
+        if (t.freqFunc != funcNone)
+            queue->add(priorityImmediate, t.freqFunc, false, 0);
+        if (t.modeFunc != funcNone)
+            queue->add(priorityImmediate, t.modeFunc, false, 0);
+    });
+}
+
 void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
 {
     QString type = cmd["cmd"].toString();
@@ -422,12 +437,15 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         QString vfoName = cmd["value"].toString();
         vfo_t v = (vfoName == "B") ? vfoB : vfoA;
         queue->addUnique(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(v), false));
+        requestVfoUpdate();
     }
     else if (type == "swapVFO") {
         queue->add(priorityImmediate, funcVFOSwapAB, false, false);
+        requestVfoUpdate();
     }
     else if (type == "equalizeVFO") {
         queue->add(priorityImmediate, funcVFOEqualAB, false, false);
+        requestVfoUpdate();
     }
     else if (type == "setPTT") {
         bool on = cmd["value"].toBool();
@@ -667,6 +685,12 @@ QJsonObject webServer::buildStatusJson()
         status["squelch"] = squelch.value.toInt();
     }
 
+    // Split
+    cacheItem split = queue->getCache(funcSplitStatus, 0);
+    if (split.value.isValid()) {
+        status["split"] = split.value.toBool();
+    }
+
     return status;
 }
 
@@ -751,6 +775,9 @@ void webServer::receiveCache(cacheItem item)
         sendBinaryToAll(msg);
         return; // Don't send as JSON
     }
+    case funcSplitStatus:
+        update["split"] = item.value.toBool();
+        break;
     default:
         return; // Don't send updates for unhandled funcs
     }

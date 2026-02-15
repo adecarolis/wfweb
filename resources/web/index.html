@@ -439,6 +439,7 @@ header h1 { font-size: 1.2em; font-weight: 600; }
                 <button class="vfo-btn" id="vfoB" onclick="selectVFO('B')">B</button>
                 <button class="vfo-btn" onclick="swapVFO()">A/B</button>
                 <button class="vfo-btn" onclick="equalizeVFO()">A=B</button>
+                <button class="vfo-btn" id="splitBtn" onclick="toggleSplit()">Split</button>
             </div>
         </div>
     </div>
@@ -520,6 +521,7 @@ let currentFreq = 0;
 let currentMode = '';
 let tuneStep = 1000;
 let isTransmitting = false;
+let isSplit = false;
 let reconnectTimer = null;
 const defaultModes = ['LSB', 'USB', 'AM', 'CW', 'RTTY', 'FM', 'CW-R', 'RTTY-R'];
 
@@ -697,6 +699,7 @@ function handleMessage(msg) {
             if (msg.rfGain !== undefined) updateSlider('rfGain', msg.rfGain);
             if (msg.rfPower !== undefined) updateSlider('rfPower', msg.rfPower);
             if (msg.squelch !== undefined) updateSlider('squelch', msg.squelch);
+            if (msg.split !== undefined) updateSplit(msg.split);
             break;
         case 'update':
             if (msg.frequency !== undefined) updateFrequency(msg.frequency);
@@ -709,6 +712,7 @@ function handleMessage(msg) {
             if (msg.rfGain !== undefined) updateSlider('rfGain', msg.rfGain);
             if (msg.rfPower !== undefined) updateSlider('rfPower', msg.rfPower);
             if (msg.squelch !== undefined) updateSlider('squelch', msg.squelch);
+            if (msg.split !== undefined) updateSplit(msg.split);
             break;
         case 'meters':
             if (msg.sMeter !== undefined) updateSMeter(msg.sMeter);
@@ -800,6 +804,11 @@ function updateTxStatus(tx) {
     document.getElementById('swrMeterContainer').style.display = tx ? 'block' : 'none';
 }
 
+function updateSplit(on) {
+    isSplit = on;
+    document.getElementById('splitBtn').classList.toggle('active', on);
+}
+
 // Track slider interaction state: dragging + debounce after release
 let sliderSetTimes = {};
 let sliderDragging = {};
@@ -865,6 +874,7 @@ function selectVFO(vfo) {
 
 function swapVFO() { send({ cmd: 'swapVFO' }); }
 function equalizeVFO() { send({ cmd: 'equalizeVFO' }); }
+function toggleSplit() { send({ cmd: 'setSplit', value: !isSplit }); }
 
 function selectStep(step) {
     tuneStep = step;

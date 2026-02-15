@@ -113,6 +113,7 @@ private:
     void sendBinaryToAll(const QByteArray &data);
     void sendBinaryToAudioClients(const QByteArray &data);
     void handleCommand(QWebSocket *client, const QJsonObject &cmd);
+    void requestVfoUpdate();
     void sendCurrentState(QWebSocket *client);
     QString modeToString(modeInfo m);
     modeInfo stringToMode(const QString &mode);
