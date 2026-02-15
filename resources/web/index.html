@@ -1084,14 +1084,6 @@ function populatePreamps(preamps) {
         document.getElementById('preampGroup').style.display = 'none';
         return;
     }
-    // Add OFF button
-    var offBtn = document.createElement('button');
-    offBtn.className = 'vfo-btn' + (currentPreamp === 0 ? ' active' : '');
-    offBtn.textContent = 'Off';
-    offBtn.dataset.preamp = '0';
-    offBtn.onclick = function() { setPreamp(0); };
-    container.appendChild(offBtn);
-    // Add preamp level buttons
     for (var i = 0; i < preamps.length; i++) {
         var btn = document.createElement('button');
         btn.className = 'vfo-btn' + (currentPreamp === preamps[i].num ? ' active' : '');
