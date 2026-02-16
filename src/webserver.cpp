@@ -712,11 +712,26 @@ QJsonObject webServer::buildStatusJson()
 
     vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
 
-    // Frequency
+    // Frequency - keep current VFO frequency for backwards compat
     cacheItem freqCache = queue->getCache(t.freqFunc, 0);
     if (freqCache.value.isValid()) {
         freqt f = freqCache.value.value<freqt>();
         status["frequency"] = (qint64)f.Hz;
+    }
+
+    // VFO A and VFO B frequencies (send both)
+    vfoCommandType tA = queue->getVfoCommand(vfoA, 0, false);
+    cacheItem freqCacheA = queue->getCache(tA.freqFunc, 0);
+    if (freqCacheA.value.isValid()) {
+        freqt fA = freqCacheA.value.value<freqt>();
+        status["vfoAFrequency"] = (qint64)fA.Hz;
+    }
+
+    vfoCommandType tB = queue->getVfoCommand(vfoB, 0, false);
+    cacheItem freqCacheB = queue->getCache(tB.freqFunc, 0);
+    if (freqCacheB.value.isValid()) {
+        freqt fB = freqCacheB.value.value<freqt>();
+        status["vfoBFrequency"] = (qint64)fB.Hz;
     }
 
     // Mode
