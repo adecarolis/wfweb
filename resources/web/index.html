@@ -242,6 +242,18 @@ html, body {
     flex: 1; align-content: center;
 }
 
+/* AUDIO/MIC overlay */
+#audioMicOverlay.visible {
+    flex-direction: column;
+    padding: 4px 12px;
+}
+#audioMicOverlay .overlay-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px; padding: 4px 0;
+    flex: 1; align-content: center;
+}
+
 /* SPAN overlay */
 #spanOverlay.visible {
     flex-direction: column;
@@ -404,6 +416,30 @@ html, body {
     color: #fff;
 }
 
+/* ============ SPECTRUM WARNINGS ============ */
+.spectrum-warning {
+    position: absolute;
+    top: 4px;
+    left: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    color: #c80;
+    cursor: pointer;
+    z-index: 50;
+    padding: 2px 6px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+    user-select: none;
+}
+.spectrum-warning:hover {
+    color: #fa0;
+    background: rgba(0, 0, 0, 0.7);
+}
+#micOffWarning {
+    top: 22px; /* Position below audio warning if both shown */
+}
+
 /* ============ RESPONSIVE ============ */
 @media (orientation: portrait) {
     #radio {
@@ -549,6 +585,16 @@ html, body {
                 <button class="key-btn ov-btn back-btn" onclick="freqKey('BACK')">&#x21A9;</button>
             </div>
         </div>
+
+        <!-- Audio/Mic enable menu -->
+        <div id="audioMicOverlay" class="overlay">
+            <div class="overlay-title">AUDIO / TX</div>
+            <div class="overlay-grid" id="audioMicGrid"></div>
+        </div>
+
+        <!-- Warning overlays on spectrum -->
+        <div id="audioOffWarning" class="spectrum-warning" onclick="showAudioMicMenu()" style="display: none;">AUDIO OFF</div>
+        <div id="micOffWarning" class="spectrum-warning" onclick="showAudioMicMenu()" style="display: none;">MIC OFF</div>
     </div>
 
     <!-- Row 5: Bottom bar -->
@@ -645,6 +691,7 @@ function connect() {
         if (audioEnabled) stopAudio();
         audioAvailable = false;
         txAudioAvailable = false;
+        updateWarningVisibility();
         scheduleReconnect();
     };
     ws.onerror = function() {};
@@ -678,6 +725,7 @@ function handleMessage(msg) {
                 if (msg.spans) populateSpans(msg.spans);
                 if (msg.preamps) populatePreamps(msg.preamps);
                 if (msg.filters) populateFilters(msg.filters);
+                updateWarningVisibility();
             }
             break;
         case 'rigConnected':
@@ -688,16 +736,20 @@ function handleMessage(msg) {
             if (msg.spans) populateSpans(msg.spans);
             if (msg.preamps) populatePreamps(msg.preamps);
             if (msg.filters) populateFilters(msg.filters);
+            updateWarningVisibility();
             break;
         case 'audioAvailable':
             if (msg.available) { audioAvailable = true; audioSampleRate = msg.sampleRate || 48000; }
             else { audioAvailable = false; if (audioEnabled) stopAudio(); }
             if (msg.txAudioAvailable !== undefined) updateTxAudioAvailable(msg.txAudioAvailable);
+            updateWarningVisibility();
             break;
         case 'audioStatus':
             if (msg.enabled) { audioEnabled = true; audioSampleRate = msg.sampleRate || audioSampleRate; }
             else { audioEnabled = false; }
             renderBottomBar();
+            updateWarningVisibility();
+            if (currentPanel === 'audiomiс') renderAudioMicOverlay();
             break;
         case 'status':
             if (msg.frequency !== undefined) updateFrequency(msg.frequency);
@@ -1149,6 +1201,7 @@ function setPanel(name) {
     if (name === 'mode') renderModeOverlay();
     else if (name === 'band') renderBandOverlay();
     else if (name === 'func') renderFuncOverlay();
+    else if (name === 'audiomiс') renderAudioMicOverlay();
     else if (name === 'gain') document.getElementById('gainOverlay').classList.add('visible');
     else if (name === 'scope') {}
     else if (name === 'span') renderSpanOverlay();
@@ -1186,11 +1239,12 @@ function getBottomButtons() {
                 { label: 'BAND', action: function() { setPanel('band'); } },
                 { label: 'FUNC', action: function() { setPanel('func'); } },
                 { label: 'GAIN', action: function() { setPanel('gain'); } },
-                { label: 'SCOPE', action: function() { setPanel('scope'); } }
+                { label: 'PTT', txActive: isTransmitting, cls: 'ptt-btn', action: function() { handlePTTPress(); } }
             ];
         case 'mode':
         case 'band':
         case 'func':
+        case 'audiomiс':
         case 'span':
         case 'freqinp':
             return [
@@ -1360,6 +1414,44 @@ function makeFuncBtn(label, state, active, onclick) {
     return btn;
 }
 
+function renderAudioMicOverlay() {
+    var grid = document.getElementById('audioMicGrid');
+    grid.innerHTML = '';
+
+    // RX Audio button
+    if (audioAvailable) {
+        grid.appendChild(makeFuncBtn('RX AUDIO', audioEnabled ? 'ON' : 'OFF', audioEnabled, function() {
+            if (audioEnabled) stopAudio(); else startAudio();
+        }));
+    }
+
+    // TX Audio (Mic) button
+    if (txAudioAvailable && window.isSecureContext) {
+        grid.appendChild(makeFuncBtn('TX AUDIO', micEnabled ? 'ON' : 'OFF', micEnabled, function() {
+            if (micEnabled) stopMic(); else startMic();
+        }));
+    }
+
+    // Fill remaining slots + back
+    var total = grid.children.length;
+    var cols = 5;
+    var targetSlots = Math.ceil(total / cols) * cols;
+    while (grid.children.length < targetSlots - 1) {
+        var empty = document.createElement('button');
+        empty.className = 'ov-btn';
+        empty.style.visibility = 'hidden';
+        grid.appendChild(empty);
+    }
+
+    var back = document.createElement('button');
+    back.className = 'ov-btn back-btn';
+    back.innerHTML = '&#x21A9;';
+    back.onclick = function() { setPanel('default'); };
+    grid.appendChild(back);
+
+    document.getElementById('audioMicOverlay').classList.add('visible');
+}
+
 function cyclePreamp() {
     if (availablePreamps.length === 0) return;
     var idx = -1;
@@ -1421,6 +1513,37 @@ function handleTunerPress() {
     send({ cmd: 'setTuner', value: tunerState > 0 ? 0 : 1 });
 }
 
+// Audio/Mic menu functions
+function showAudioMicMenu() {
+    setPanel('audiomiс');
+}
+
+function updateWarningVisibility() {
+    var audioWarning = document.getElementById('audioOffWarning');
+    var micWarning = document.getElementById('micOffWarning');
+
+    // Show audio warning if audio is available but not enabled
+    audioWarning.style.display = (audioAvailable && !audioEnabled) ? 'block' : 'none';
+
+    // Show mic warning if TX audio is available but mic is not enabled
+    micWarning.style.display = (txAudioAvailable && window.isSecureContext && !micEnabled) ? 'block' : 'none';
+}
+
+function handlePTTPress() {
+    // Check if audio is off or mic is off (when TX audio is available)
+    var audioNeeded = audioAvailable && !audioEnabled;
+    var micNeeded = txAudioAvailable && window.isSecureContext && !micEnabled;
+
+    if (audioNeeded || micNeeded) {
+        // Don't transmit, show the menu instead
+        showAudioMicMenu();
+        return false;
+    }
+
+    // All checks passed, allow PTT
+    return true;
+}
+
 // Long-press TUNE in top bar for tuning
 (function() {
     var tuneBtn = document.getElementById('tuneLabel');
@@ -1434,15 +1557,20 @@ function handleTunerPress() {
     tuneBtn.style.cursor = 'pointer';
 })();
 
-// PTT in scope panel (hold to transmit)
+// PTT button (hold to transmit)
 (function() {
     var bar = document.getElementById('bottomBar');
     function isPTT(e) { return e.target.classList.contains('ptt-btn'); }
-    function pttOn(e) { e.preventDefault(); flushAudio(); send({ cmd: 'setPTT', value: true }); }
+    function pttOn(e) {
+        e.preventDefault();
+        if (!handlePTTPress()) return; // Check audio/mic, show menu if needed
+        flushAudio();
+        send({ cmd: 'setPTT', value: true });
+    }
     function pttOff(e) { e.preventDefault(); send({ cmd: 'setPTT', value: false }); }
     bar.addEventListener('mousedown', function(e) { if (isPTT(e)) pttOn(e); });
     bar.addEventListener('mouseup', function(e) { if (isPTT(e)) pttOff(e); });
-    bar.addEventListener('mouseleave', function() { if (isTransmitting && currentPanel === 'scope') send({ cmd: 'setPTT', value: false }); });
+    bar.addEventListener('mouseleave', function() { if (isTransmitting) send({ cmd: 'setPTT', value: false }); });
     bar.addEventListener('touchstart', function(e) { if (isPTT(e)) pttOn(e); });
     bar.addEventListener('touchend', function(e) { if (isPTT(e)) pttOff(e); });
     bar.addEventListener('touchcancel', function() { if (isTransmitting) send({ cmd: 'setPTT', value: false }); });
@@ -1563,10 +1691,15 @@ function stopAudio() {
     audioUseWorklet = false; audioRingBuf = null;
     if (audioCtx) { audioCtx.close(); audioCtx = null; }
     renderBottomBar();
+    updateWarningVisibility();
+    if (currentPanel === 'audiomiс') renderAudioMicOverlay();
 }
 
 // TX Audio / Mic (preserved)
-function updateTxAudioAvailable(available) { txAudioAvailable = available; }
+function updateTxAudioAvailable(available) {
+    txAudioAvailable = available;
+    updateWarningVisibility();
+}
 
 function toggleMic() {
     if (!txAudioAvailable || !window.isSecureContext) return;
@@ -1613,6 +1746,8 @@ function startMic() {
             micEnabled = true;
             send({ cmd: 'enableMic', value: true });
             renderBottomBar();
+            updateWarningVisibility();
+            if (currentPanel === 'audiomiс') renderAudioMicOverlay();
         }).catch(function(err) { console.error('Mic AudioWorklet failed:', err); stopMic(); });
     }).catch(function(err) { console.error('getUserMedia failed:', err); });
 }
@@ -1623,6 +1758,8 @@ function stopMic() {
     if (micStream) { micStream.getTracks().forEach(function(t) { t.stop(); }); micStream = null; }
     if (micAudioCtx) { micAudioCtx.close(); micAudioCtx = null; }
     micSeq = 0; renderBottomBar();
+    updateWarningVisibility();
+    if (currentPanel === 'audiomiс') renderAudioMicOverlay();
 }
 
 function handleAudioData(buffer) {
