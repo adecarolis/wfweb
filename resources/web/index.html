@@ -50,11 +50,22 @@ html, body {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.7; }
 }
+@keyframes tuneBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
 #tuneLabel {
     font-size: 11px; font-weight: bold;
     color: #888;
+    display: none;
 }
-#tuneLabel.active { color: #c00; }
+#tuneLabel.active {
+    display: inline-block;
+    color: #c00;
+}
+#tuneLabel.tuning {
+    animation: tuneBlink 0.5s infinite;
+}
 #modeBtn {
     padding: 3px 14px; border-radius: 5px;
     border: 2px solid #0aa;
@@ -930,6 +941,7 @@ function updateTunerState(val) {
     tunerState = val;
     var lbl = document.getElementById('tuneLabel');
     lbl.classList.toggle('active', val > 0);
+    lbl.classList.toggle('tuning', val === 2);
     if (currentPanel === 'func') renderFuncOverlay();
 }
 
