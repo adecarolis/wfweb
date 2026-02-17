@@ -934,10 +934,7 @@ function updateToggle(name, state) {
     else if (name === 'nr') nrOn = !!state;
     else if (name === 'anf') anfOn = !!state;
     updateDspIndicators();
-    if (currentPanel === 'func') {
-        // Defer re-render to avoid interference with click events
-        setTimeout(function() { if (currentPanel === 'func') renderFuncOverlay(); }, 10);
-    }
+    if (currentPanel === 'func') renderFuncOverlay();
 }
 
 function updateTunerState(val) {
@@ -945,18 +942,12 @@ function updateTunerState(val) {
     var lbl = document.getElementById('tuneLabel');
     lbl.classList.toggle('active', val > 0);
     lbl.classList.toggle('tuning', val === 2);
-    if (currentPanel === 'func') {
-        // Defer re-render to avoid interference with click events
-        setTimeout(function() { if (currentPanel === 'func') renderFuncOverlay(); }, 10);
-    }
+    if (currentPanel === 'func') renderFuncOverlay();
 }
 
 function updatePreampBtn(num) {
     currentPreamp = num;
-    if (currentPanel === 'func') {
-        // Defer re-render to avoid interference with click events
-        setTimeout(function() { if (currentPanel === 'func') renderFuncOverlay(); }, 10);
-    }
+    if (currentPanel === 'func') renderFuncOverlay();
 }
 
 function updateDspIndicators() {
