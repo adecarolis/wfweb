@@ -510,18 +510,10 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     else if (type == "setNoiseBlanker") {
         bool on = cmd["value"].toBool();
         queue->addUnique(priorityImmediate, queueItem(funcNoiseBlanker, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
-        // Query status to trigger cache update
-        QTimer::singleShot(200, this, [this]() {
-            if (queue) queue->add(priorityImmediate, funcNoiseBlanker, false, 0);
-        });
     }
     else if (type == "setNoiseReduction") {
         bool on = cmd["value"].toBool();
         queue->addUnique(priorityImmediate, queueItem(funcNoiseReduction, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
-        // Query status to trigger cache update
-        QTimer::singleShot(200, this, [this]() {
-            if (queue) queue->add(priorityImmediate, funcNoiseReduction, false, 0);
-        });
     }
     else if (type == "setAGC") {
         uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 255));
@@ -547,10 +539,6 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     else if (type == "setAutoNotch") {
         bool on = cmd["value"].toBool();
         queue->addUnique(priorityImmediate, queueItem(funcAutoNotch, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
-        // Query status to trigger cache update
-        QTimer::singleShot(200, this, [this]() {
-            if (queue) queue->add(priorityImmediate, funcAutoNotch, false, 0);
-        });
     }
     else if (type == "setFilterWidth") {
         ushort val = static_cast<ushort>(qBound(0, cmd["value"].toInt(), 10000));
