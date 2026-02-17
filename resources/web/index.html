@@ -1764,8 +1764,24 @@ function swapVFO() {
 }
 function equalizeVFO() { send({ cmd: 'equalizeVFO' }); }
 function toggleSplit() { send({ cmd: 'setSplit', value: !isSplit }); }
-function tuneUp() { if (currentFreq > 0) send({ cmd: 'setFrequency', value: currentFreq + tuneStep }); }
-function tuneDown() { if (currentFreq > tuneStep) send({ cmd: 'setFrequency', value: currentFreq - tuneStep }); }
+function tuneUp() {
+    if (currentFreq > 0) {
+        var newFreq = currentFreq + tuneStep;
+        // Round down to nearest kHz (reset Hz to 000)
+        newFreq = Math.floor(newFreq / 1000) * 1000;
+        send({ cmd: 'setFrequency', value: newFreq });
+    }
+}
+function tuneDown() {
+    if (currentFreq > tuneStep) {
+        var newFreq = currentFreq - tuneStep;
+        // Round down to nearest kHz (reset Hz to 000)
+        newFreq = Math.floor(newFreq / 1000) * 1000;
+        send({ cmd: 'setFrequency', value: newFreq });
+    }
+}
+function tuneUpHz() { if (currentFreq > 0) send({ cmd: 'setFrequency', value: currentFreq + 1 }); }
+function tuneDownHz() { if (currentFreq > 1) send({ cmd: 'setFrequency', value: currentFreq - 1 }); }
 function setSpan(idx) { send({ cmd: 'setSpan', value: idx }); updateSpanIndex(idx); }
 
 // ============================================================
@@ -2149,6 +2165,8 @@ function scopeClick(e) {
     var rect = e.target.getBoundingClientRect();
     var frac = (e.clientX - rect.left) / rect.width;
     var freqHz = Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6);
+    // Round to nearest kHz (ending in 000 Hz)
+    freqHz = Math.round(freqHz / 1000) * 1000;
     if (freqHz > 0) send({ cmd: 'setFrequency', value: freqHz });
 }
 
@@ -2176,6 +2194,8 @@ document.addEventListener('keydown', function(e) {
     if (e.target.tagName === 'INPUT') return;
     if (e.key === 'ArrowUp' || e.key === '+') { e.preventDefault(); tuneUp(); }
     else if (e.key === 'ArrowDown' || e.key === '-') { e.preventDefault(); tuneDown(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); tuneUpHz(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); tuneDownHz(); }
     else if (e.key === 'Escape') { hideAllOverlays(); setPanel('default'); }
     else if (e.key === ' ' && !e.repeat) {
         e.preventDefault();
@@ -2199,6 +2219,78 @@ document.getElementById('freqDisplay').addEventListener('wheel', function(e) {
     e.preventDefault();
     if (e.deltaY < 0) tuneUp(); else tuneDown();
 }, { passive: false });
+
+// Continuous touch tuning on waterfall/spectrum (vertical = kHz, horizontal = Hz)
+(function() {
+    var touchStartX = 0, touchStartY = 0;
+    var lastTouchX = 0, lastTouchY = 0;
+    var lastTuneTime = 0;
+    var tuneThrottle = 50; // ms between tune commands
+    var movementThreshold = 5; // minimum movement in pixels to trigger tuning
+    var isTouching = false;
+
+    function touchStart(e) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        lastTouchX = touchStartX;
+        lastTouchY = touchStartY;
+        isTouching = true;
+    }
+
+    function touchMove(e) {
+        if (!isTouching) return;
+
+        var currentX = e.touches[0].clientX;
+        var currentY = e.touches[0].clientY;
+        var deltaX = currentX - lastTouchX;
+        var deltaY = lastTouchY - currentY;
+
+        var absDeltaX = Math.abs(deltaX);
+        var absDeltaY = Math.abs(deltaY);
+
+        // Determine if movement is primarily horizontal or vertical
+        if (absDeltaX >= movementThreshold || absDeltaY >= movementThreshold) {
+            var now = Date.now();
+            if (now - lastTuneTime >= tuneThrottle) {
+                e.preventDefault();
+
+                // Use whichever axis has more movement
+                if (absDeltaX > absDeltaY) {
+                    // Horizontal swipe - Hz tuning
+                    if (deltaX > 0) {
+                        tuneUpHz();
+                    } else {
+                        tuneDownHz();
+                    }
+                    lastTouchX = currentX;
+                } else {
+                    // Vertical swipe - kHz tuning
+                    if (deltaY > 0) {
+                        tuneUp();
+                    } else {
+                        tuneDown();
+                    }
+                    lastTouchY = currentY;
+                }
+                lastTuneTime = now;
+            }
+        }
+    }
+
+    function touchEnd() {
+        isTouching = false;
+    }
+
+    var spectCanvas = document.getElementById('spectrumCanvas');
+    var wfCanvas = document.getElementById('waterfallCanvas');
+
+    [spectCanvas, wfCanvas].forEach(function(canvas) {
+        canvas.addEventListener('touchstart', touchStart, { passive: true });
+        canvas.addEventListener('touchmove', touchMove, { passive: false });
+        canvas.addEventListener('touchend', touchEnd, { passive: true });
+        canvas.addEventListener('touchcancel', touchEnd, { passive: true });
+    });
+})();
 
 document.getElementById('freqDisplay').addEventListener('click', function() {
     setPanel('freqinp');
