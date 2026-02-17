@@ -934,7 +934,10 @@ function updateToggle(name, state) {
     else if (name === 'nr') nrOn = !!state;
     else if (name === 'anf') anfOn = !!state;
     updateDspIndicators();
-    if (currentPanel === 'func') renderFuncOverlay();
+    if (currentPanel === 'func') {
+        // Defer re-render to avoid interference with click events
+        setTimeout(function() { if (currentPanel === 'func') renderFuncOverlay(); }, 10);
+    }
 }
 
 function updateTunerState(val) {
@@ -942,12 +945,18 @@ function updateTunerState(val) {
     var lbl = document.getElementById('tuneLabel');
     lbl.classList.toggle('active', val > 0);
     lbl.classList.toggle('tuning', val === 2);
-    if (currentPanel === 'func') renderFuncOverlay();
+    if (currentPanel === 'func') {
+        // Defer re-render to avoid interference with click events
+        setTimeout(function() { if (currentPanel === 'func') renderFuncOverlay(); }, 10);
+    }
 }
 
 function updatePreampBtn(num) {
     currentPreamp = num;
-    if (currentPanel === 'func') renderFuncOverlay();
+    if (currentPanel === 'func') {
+        // Defer re-render to avoid interference with click events
+        setTimeout(function() { if (currentPanel === 'func') renderFuncOverlay(); }, 10);
+    }
 }
 
 function updateDspIndicators() {
@@ -1462,13 +1471,19 @@ function renderFuncOverlay() {
     grid.appendChild(makeFuncBtn(tunerLabel, tunerStateStr, tunerState > 0, handleTunerPress));
 
     // ANF
-    grid.appendChild(makeFuncBtn('NOTCH', anfOn ? 'ON' : 'OFF', anfOn, function() { send({ cmd: 'setAutoNotch', value: !anfOn }); }));
+    grid.appendChild(makeFuncBtn('NOTCH', anfOn ? 'ON' : 'OFF', anfOn, function() {
+        send({ cmd: 'setAutoNotch', value: !anfOn });
+    }));
 
     // NB
-    grid.appendChild(makeFuncBtn('NB', nbOn ? 'ON' : 'OFF', nbOn, function() { send({ cmd: 'setNoiseBlanker', value: !nbOn }); }));
+    grid.appendChild(makeFuncBtn('NB', nbOn ? 'ON' : 'OFF', nbOn, function() {
+        send({ cmd: 'setNoiseBlanker', value: !nbOn });
+    }));
 
     // NR
-    grid.appendChild(makeFuncBtn('NR', nrOn ? 'ON' : 'OFF', nrOn, function() { send({ cmd: 'setNoiseReduction', value: !nrOn }); }));
+    grid.appendChild(makeFuncBtn('NR', nrOn ? 'ON' : 'OFF', nrOn, function() {
+        send({ cmd: 'setNoiseReduction', value: !nrOn });
+    }));
 
     // Second row: Filter buttons
     var filters = availableFilters.length > 0 ? availableFilters : [
