@@ -1,0 +1,1833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>wfview Web</title>
+<style>
+:root {
+    --bg: #1a1a2e;
+    --bg2: #16213e;
+    --bg3: #0f3460;
+    --accent: #e94560;
+    --text: #eee;
+    --text-dim: #888;
+    --green: #4ecca3;
+    --orange: #f0a500;
+    --red: #e94560;
+    --blue: #4da8da;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+}
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 16px;
+}
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--bg3);
+    margin-bottom: 16px;
+}
+header h1 { font-size: 1.2em; font-weight: 600; }
+#connStatus {
+    font-size: 0.85em;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: var(--red);
+}
+#connStatus.connected { background: var(--green); color: #111; }
+#rigModel { font-size: 0.85em; color: var(--text-dim); }
+
+/* Frequency Display */
+.freq-section {
+    background: var(--bg2);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    text-align: center;
+}
+#freqDisplay {
+    font-family: 'Courier New', monospace;
+    font-size: 3em;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: var(--green);
+    cursor: pointer;
+    user-select: none;
+    padding: 8px;
+}
+#freqDisplay .mhz { color: var(--green); }
+#freqDisplay .khz { color: var(--blue); }
+#freqDisplay .hz { color: var(--text-dim); }
+#freqDisplay .sep { color: var(--text-dim); font-size: 0.7em; }
+
+.freq-input-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 8px;
+}
+#freqInput {
+    font-family: 'Courier New', monospace;
+    font-size: 1.2em;
+    width: 200px;
+    padding: 6px 10px;
+    border: 1px solid var(--bg3);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text);
+    text-align: center;
+}
+.freq-input-row button {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 4px;
+    background: var(--bg3);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.9em;
+}
+.freq-input-row button:hover { background: var(--blue); }
+
+/* Tuning step buttons */
+.step-row {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+.step-row button {
+    padding: 4px 8px;
+    border: 1px solid var(--bg3);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.8em;
+}
+.step-row button.active { border-color: var(--blue); color: var(--blue); }
+.step-row button:hover { border-color: var(--blue); }
+
+.tune-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 8px;
+}
+.tune-btn {
+    width: 48px;
+    height: 36px;
+    border: 1px solid var(--bg3);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 1.1em;
+}
+.tune-btn:hover { background: var(--bg3); }
+
+/* Mode & VFO */
+.controls-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.control-group {
+    flex: 1;
+    background: var(--bg2);
+    border-radius: 8px;
+    padding: 12px;
+}
+.control-group h3 {
+    font-size: 0.75em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+.mode-buttons, .vfo-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.mode-btn, .vfo-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--bg3);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 500;
+}
+.mode-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+.mode-btn:hover { border-color: var(--blue); }
+.vfo-btn { min-width: 60px; text-align: center; }
+.vfo-btn:hover { border-color: var(--blue); }
+.vfo-btn.active { background: var(--blue); border-color: var(--blue); }
+
+/* Meters */
+.meter-section {
+    background: var(--bg2);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+.meter {
+    margin-bottom: 8px;
+}
+.meter:last-child { margin-bottom: 0; }
+.meter-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+}
+.meter-bar {
+    height: 8px;
+    background: var(--bg);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.meter-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.15s ease;
+    background: var(--green);
+}
+.meter-fill.tx { background: var(--orange); }
+.meter-fill.swr-warn { background: var(--red); }
+
+/* PTT & Audio */
+.ptt-audio-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+#pttBtn {
+    width: 120px;
+    height: 50px;
+    border: 2px solid var(--red);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--red);
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+#pttBtn.active {
+    background: var(--red);
+    color: #fff;
+}
+#audioBtn {
+    width: 100px;
+    height: 50px;
+    border: 2px solid var(--blue);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--blue);
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    user-select: none;
+    -webkit-user-select: none;
+}
+#audioBtn.active {
+    background: var(--blue);
+    color: #fff;
+}
+#audioBtn.unavailable {
+    border-color: var(--text-dim);
+    color: var(--text-dim);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+#micBtn {
+    width: 100px;
+    height: 50px;
+    border: 2px solid var(--orange);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--orange);
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    user-select: none;
+    -webkit-user-select: none;
+}
+#micBtn.active {
+    background: var(--orange);
+    color: #fff;
+}
+#micBtn.unavailable {
+    border-color: var(--text-dim);
+    color: var(--text-dim);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+.audio-level {
+    width: 8px;
+    height: 50px;
+    background: var(--bg);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+.audio-level-fill {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background: var(--green);
+    border-radius: 4px;
+    transition: height 0.05s linear;
+}
+
+/* Sliders */
+.sliders-section {
+    background: var(--bg2);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+.slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.slider-row:last-child { margin-bottom: 0; }
+.slider-label {
+    font-size: 0.75em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    width: 70px;
+    text-align: right;
+}
+.slider-row input[type="range"] {
+    flex: 1;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--bg);
+    border-radius: 3px;
+    outline: none;
+}
+.slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--blue);
+    cursor: pointer;
+}
+.slider-val {
+    font-family: 'Courier New', monospace;
+    font-size: 0.8em;
+    width: 35px;
+    text-align: right;
+    color: var(--text-dim);
+}
+
+/* Scope (Spectrum + Waterfall) */
+.scope-section {
+    background: var(--bg2);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    display: none;
+}
+.scope-section.visible { display: block; }
+#spectrumCanvas, #waterfallCanvas {
+    display: block;
+    width: 100%;
+    cursor: crosshair;
+}
+#spectrumCanvas {
+    height: 150px;
+    background: #0a0a1a;
+}
+#waterfallCanvas {
+    height: 200px;
+    background: #000;
+    image-rendering: pixelated;
+}
+.span-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--bg2);
+}
+.span-label {
+    font-size: 0.75em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+}
+.span-buttons {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+}
+.span-btn {
+    padding: 3px 8px;
+    border: 1px solid var(--bg3);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.75em;
+}
+.span-btn.active { border-color: var(--blue); color: var(--blue); }
+.span-btn:hover { border-color: var(--blue); }
+
+/* Status bar */
+.status-bar {
+    font-size: 0.75em;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 8px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div>
+            <h1>wfview Web</h1>
+            <span id="rigModel">Not connected</span>
+        </div>
+        <span id="connStatus">Disconnected</span>
+    </header>
+
+    <!-- Scope (Spectrum + Waterfall) -->
+    <div class="scope-section" id="scopeSection">
+        <canvas id="spectrumCanvas" width="800" height="150"></canvas>
+        <canvas id="waterfallCanvas" width="800" height="200"></canvas>
+        <div class="span-row" id="spanRow" style="display:none">
+            <span class="span-label">Span</span>
+            <div class="span-buttons" id="spanButtons"></div>
+        </div>
+    </div>
+
+    <!-- Frequency -->
+    <div class="freq-section">
+        <div id="freqDisplay">---,---,---</div>
+        <div class="freq-input-row">
+            <input type="text" id="freqInput" placeholder="Freq (MHz)" />
+            <button onclick="setFreqFromInput()">Set</button>
+        </div>
+        <div class="step-row" id="stepButtons">
+            <button data-step="10" onclick="selectStep(10)">10 Hz</button>
+            <button data-step="100" onclick="selectStep(100)">100 Hz</button>
+            <button data-step="1000" onclick="selectStep(1000)" class="active">1 kHz</button>
+            <button data-step="5000" onclick="selectStep(5000)">5 kHz</button>
+            <button data-step="10000" onclick="selectStep(10000)">10 kHz</button>
+            <button data-step="100000" onclick="selectStep(100000)">100 kHz</button>
+            <button data-step="1000000" onclick="selectStep(1000000)">1 MHz</button>
+        </div>
+        <div class="tune-row">
+            <button class="tune-btn" onclick="tuneDown()" title="Tune down">&#9664;</button>
+            <button class="tune-btn" onclick="tuneUp()" title="Tune up">&#9654;</button>
+        </div>
+    </div>
+
+    <!-- Mode & VFO -->
+    <div class="controls-row">
+        <div class="control-group">
+            <h3>Mode</h3>
+            <div class="mode-buttons" id="modeButtons">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+        <div class="control-group" style="flex: 0 0 auto; min-width: 140px;">
+            <h3>VFO</h3>
+            <div class="vfo-buttons">
+                <button class="vfo-btn active" id="vfoA" onclick="selectVFO('A')">A</button>
+                <button class="vfo-btn" id="vfoB" onclick="selectVFO('B')">B</button>
+                <button class="vfo-btn" onclick="swapVFO()">A/B</button>
+                <button class="vfo-btn" onclick="equalizeVFO()">A=B</button>
+                <button class="vfo-btn" id="splitBtn" onclick="toggleSplit()">Split</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meters -->
+    <div class="meter-section">
+        <div class="meter" id="sMeterContainer">
+            <div class="meter-label">
+                <span>S-Meter</span>
+                <span id="sMeterVal">S0</span>
+            </div>
+            <div class="meter-bar">
+                <div class="meter-fill" id="sMeterFill" style="width: 0%"></div>
+            </div>
+        </div>
+        <div class="meter" id="powerMeterContainer" style="display:none">
+            <div class="meter-label">
+                <span>Power</span>
+                <span id="powerMeterVal">0 W</span>
+            </div>
+            <div class="meter-bar">
+                <div class="meter-fill tx" id="powerMeterFill" style="width: 0%"></div>
+            </div>
+        </div>
+        <div class="meter" id="swrMeterContainer" style="display:none">
+            <div class="meter-label">
+                <span>SWR</span>
+                <span id="swrMeterVal">1.0</span>
+            </div>
+            <div class="meter-bar">
+                <div class="meter-fill tx" id="swrMeterFill" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PTT & Audio -->
+    <div class="ptt-audio-section">
+        <button id="pttBtn">PTT</button>
+        <button id="audioBtn" class="unavailable" onclick="toggleAudio()">Audio</button>
+        <button id="micBtn" class="unavailable" onclick="toggleMic()" title="Requires HTTPS for remote access">Mic</button>
+        <div class="audio-level">
+            <div class="audio-level-fill" id="audioLevelFill" style="height: 0%"></div>
+        </div>
+    </div>
+
+    <!-- Radio Controls (NB, NR, ANF, Tuner, Preamp, Filters) -->
+    <div class="controls-row">
+        <div class="control-group">
+            <h3>DSP / Tuner</h3>
+            <div class="vfo-buttons">
+                <button class="vfo-btn" id="nbBtn" onclick="toggleNB()">NB</button>
+                <button class="vfo-btn" id="nrBtn" onclick="toggleNR()">NR</button>
+                <button class="vfo-btn" id="anfBtn" onclick="toggleANF()">ANF</button>
+                <button class="vfo-btn" id="tunerBtn">Tuner</button>
+            </div>
+        </div>
+        <div class="control-group" id="preampGroup" style="flex: 0 0 auto; min-width: 140px; display: none;">
+            <h3>Preamp</h3>
+            <div class="vfo-buttons" id="preampButtons"></div>
+        </div>
+    </div>
+
+    <div class="controls-row" id="filterRow" style="display: none;">
+        <div class="control-group" style="flex: 0 0 auto;">
+            <h3>Filter</h3>
+            <div class="vfo-buttons" id="filterButtons"></div>
+        </div>
+        <div class="control-group" style="flex: 1;">
+            <h3>IF Width</h3>
+            <div class="slider-row">
+                <input type="range" id="filterWidthSlider" min="0" max="10000" value="0" oninput="setFilterWidth(this.value)">
+                <span class="slider-val" id="filterWidthVal" style="width:50px">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sliders -->
+    <div class="sliders-section">
+        <div class="slider-row">
+            <span class="slider-label">AF Gain</span>
+            <input type="range" id="afGainSlider" min="0" max="255" value="128" oninput="setAfGain(this.value)">
+            <span class="slider-val" id="afGainVal">128</span>
+        </div>
+        <div class="slider-row">
+            <span class="slider-label">RF Gain</span>
+            <input type="range" id="rfGainSlider" min="0" max="255" value="128" oninput="setRfGain(this.value)">
+            <span class="slider-val" id="rfGainVal">128</span>
+        </div>
+        <div class="slider-row">
+            <span class="slider-label">RF Power</span>
+            <input type="range" id="rfPowerSlider" min="0" max="255" value="128" oninput="setRfPower(this.value)">
+            <span class="slider-val" id="rfPowerVal">128</span>
+        </div>
+        <div class="slider-row">
+            <span class="slider-label">Squelch</span>
+            <input type="range" id="squelchSlider" min="0" max="255" value="0" oninput="setSquelch(this.value)">
+            <span class="slider-val" id="squelchVal">0</span>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <span id="statusText">Connecting...</span>
+    </div>
+</div>
+
+<script>
+// --- State ---
+let ws = null;
+let currentFreq = 0;
+let currentMode = '';
+let tuneStep = 1000;
+let isTransmitting = false;
+let isSplit = false;
+let reconnectTimer = null;
+const defaultModes = ['LSB', 'USB', 'AM', 'CW', 'RTTY', 'FM', 'CW-R', 'RTTY-R'];
+
+// Audio state
+let audioCtx = null;
+let audioWorkletNode = null;
+let audioEnabled = false;
+let audioAvailable = false;
+let audioSampleRate = 48000;
+
+// TX audio (mic) state
+let micEnabled = false;
+let txAudioAvailable = false;
+let micStream = null;
+let micAudioCtx = null;
+let micWorkletNode = null;
+let micSeq = 0;
+
+// Radio controls state
+let nbOn = false;
+let nrOn = false;
+let anfOn = false;
+let tunerState = 0; // 0=off, 1=on, 2=tuning
+let currentPreamp = 0;
+let currentFilter = 1;
+
+// Span state
+let availableSpans = [];
+let currentSpanIndex = -1;
+
+// Spectrum/waterfall state
+let hasSpectrum = false;
+let spectAmpMax = 160;
+let spectStartFreq = 0;
+let spectEndFreq = 0;
+let spectData = null;
+let spectDataLen = 0;
+let wfImageData = null;
+let wfOffCanvas = null;
+let wfOffCtx = null;
+let spectRenderPending = false;
+let colorTable = null;
+
+// --- WebSocket ---
+function connect() {
+    var wsUrl;
+    if (location.protocol === 'https:') {
+        // SSL mode: WebSocket on same port as HTTPS
+        wsUrl = 'wss://' + location.hostname + ':' + (location.port || '443');
+    } else {
+        // Plain mode: WebSocket on next port
+        var wsPort = parseInt(location.port || '80') + 1;
+        wsUrl = 'ws://' + location.hostname + ':' + wsPort;
+    }
+
+    document.getElementById('statusText').textContent = 'Connecting to ' + wsUrl + '...';
+
+    ws = new WebSocket(wsUrl);
+    ws.binaryType = 'arraybuffer';
+
+    ws.onopen = function() {
+        document.getElementById('connStatus').textContent = 'Connected';
+        document.getElementById('connStatus').classList.add('connected');
+        document.getElementById('statusText').textContent = 'Connected';
+        if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+        send({ cmd: 'getStatus' });
+    };
+
+    ws.onclose = function() {
+        document.getElementById('connStatus').textContent = 'Disconnected';
+        document.getElementById('connStatus').classList.remove('connected');
+        document.getElementById('rigModel').textContent = 'Not connected';
+        document.getElementById('statusText').textContent = 'Disconnected. Reconnecting...';
+        if (micEnabled) stopMic();
+        if (audioEnabled) stopAudio();
+        audioAvailable = false;
+        txAudioAvailable = false;
+        document.getElementById('audioBtn').classList.add('unavailable');
+        document.getElementById('micBtn').classList.add('unavailable');
+        scheduleReconnect();
+    };
+
+    ws.onerror = function() {
+        document.getElementById('statusText').textContent = 'Connection error';
+    };
+
+    ws.onmessage = function(event) {
+        if (event.data instanceof ArrayBuffer) {
+            handleBinaryMessage(event.data);
+            return;
+        }
+        try {
+            const msg = JSON.parse(event.data);
+            handleMessage(msg);
+        } catch(e) {
+            console.error('Parse error:', e);
+        }
+    };
+}
+
+function scheduleReconnect() {
+    if (!reconnectTimer) {
+        reconnectTimer = setTimeout(function() {
+            reconnectTimer = null;
+            connect();
+        }, 3000);
+    }
+}
+
+function send(obj) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(obj));
+    }
+}
+
+// --- Message Handling ---
+function handleMessage(msg) {
+    switch (msg.type) {
+        case 'rigInfo':
+            if (msg.connected) {
+                document.getElementById('rigModel').textContent = msg.model;
+                if (msg.modes) populateModes(msg.modes);
+                if (msg.hasSpectrum) {
+                    hasSpectrum = true;
+                    spectAmpMax = msg.spectAmpMax || 160;
+                    showScopeSection();
+                }
+                if (msg.audioAvailable) {
+                    audioAvailable = true;
+                    audioSampleRate = msg.audioSampleRate || 48000;
+                    document.getElementById('audioBtn').classList.remove('unavailable');
+                } else {
+                    audioAvailable = false;
+                    document.getElementById('audioBtn').classList.add('unavailable');
+                }
+                updateTxAudioAvailable(msg.txAudioAvailable || false);
+                if (msg.spans) populateSpans(msg.spans);
+                if (msg.preamps) populatePreamps(msg.preamps);
+                if (msg.filters) populateFilters(msg.filters);
+            }
+            break;
+        case 'rigConnected':
+            document.getElementById('rigModel').textContent = msg.model;
+            if (msg.modes) populateModes(msg.modes);
+            if (msg.hasSpectrum) {
+                hasSpectrum = true;
+                spectAmpMax = msg.spectAmpMax || 160;
+                showScopeSection();
+            }
+            if (msg.audioAvailable) {
+                audioAvailable = true;
+                audioSampleRate = msg.audioSampleRate || 48000;
+                document.getElementById('audioBtn').classList.remove('unavailable');
+            }
+            updateTxAudioAvailable(msg.txAudioAvailable || false);
+            if (msg.spans) populateSpans(msg.spans);
+            if (msg.preamps) populatePreamps(msg.preamps);
+            if (msg.filters) populateFilters(msg.filters);
+            break;
+        case 'audioAvailable':
+            if (msg.available) {
+                audioAvailable = true;
+                audioSampleRate = msg.sampleRate || 48000;
+                document.getElementById('audioBtn').classList.remove('unavailable');
+            } else {
+                audioAvailable = false;
+                document.getElementById('audioBtn').classList.add('unavailable');
+                if (audioEnabled) stopAudio();
+            }
+            if (msg.txAudioAvailable !== undefined) {
+                updateTxAudioAvailable(msg.txAudioAvailable);
+            }
+            break;
+        case 'audioStatus':
+            if (msg.enabled) {
+                audioEnabled = true;
+                audioSampleRate = msg.sampleRate || audioSampleRate;
+                document.getElementById('audioBtn').classList.add('active');
+            } else {
+                audioEnabled = false;
+                document.getElementById('audioBtn').classList.remove('active');
+                if (msg.reason) {
+                    document.getElementById('statusText').textContent = msg.reason;
+                }
+            }
+            break;
+        case 'status':
+            if (msg.frequency !== undefined) updateFrequency(msg.frequency);
+            if (msg.mode !== undefined) updateMode(msg.mode);
+            if (msg.filter !== undefined) updateFilterBtn(msg.filter);
+            if (msg.sMeter !== undefined) updateSMeter(msg.sMeter);
+            if (msg.transmitting !== undefined) updateTxStatus(msg.transmitting);
+            if (msg.afGain !== undefined) updateSlider('afGain', msg.afGain);
+            if (msg.rfGain !== undefined) updateSlider('rfGain', msg.rfGain);
+            if (msg.rfPower !== undefined) updateSlider('rfPower', msg.rfPower);
+            if (msg.squelch !== undefined) updateSlider('squelch', msg.squelch);
+            if (msg.split !== undefined) updateSplit(msg.split);
+            if (msg.nb !== undefined) updateToggle('nbBtn', msg.nb);
+            if (msg.nr !== undefined) updateToggle('nrBtn', msg.nr);
+            if (msg.autoNotch !== undefined) updateToggle('anfBtn', msg.autoNotch);
+            if (msg.tuner !== undefined) updateTunerState(msg.tuner);
+            if (msg.preamp !== undefined) updatePreampBtn(msg.preamp);
+            if (msg.filterWidth !== undefined) updateSlider('filterWidth', msg.filterWidth);
+            break;
+        case 'update':
+            if (msg.frequency !== undefined) updateFrequency(msg.frequency);
+            if (msg.mode !== undefined) updateMode(msg.mode);
+            if (msg.filter !== undefined) updateFilterBtn(msg.filter);
+            if (msg.sMeter !== undefined) updateSMeter(msg.sMeter);
+            if (msg.powerMeter !== undefined) updatePowerMeter(msg.powerMeter);
+            if (msg.swrMeter !== undefined) updateSwrMeter(msg.swrMeter);
+            if (msg.transmitting !== undefined) updateTxStatus(msg.transmitting);
+            if (msg.afGain !== undefined) updateSlider('afGain', msg.afGain);
+            if (msg.rfGain !== undefined) updateSlider('rfGain', msg.rfGain);
+            if (msg.rfPower !== undefined) updateSlider('rfPower', msg.rfPower);
+            if (msg.squelch !== undefined) updateSlider('squelch', msg.squelch);
+            if (msg.split !== undefined) updateSplit(msg.split);
+            if (msg.spanIndex !== undefined) updateSpanIndex(msg.spanIndex);
+            if (msg.nb !== undefined) updateToggle('nbBtn', msg.nb);
+            if (msg.nr !== undefined) updateToggle('nrBtn', msg.nr);
+            if (msg.autoNotch !== undefined) updateToggle('anfBtn', msg.autoNotch);
+            if (msg.tuner !== undefined) updateTunerState(msg.tuner);
+            if (msg.preamp !== undefined) updatePreampBtn(msg.preamp);
+            if (msg.filterWidth !== undefined) updateSlider('filterWidth', msg.filterWidth);
+            break;
+        case 'meters':
+            if (msg.sMeter !== undefined) updateSMeter(msg.sMeter);
+            if (msg.powerMeter !== undefined) updatePowerMeter(msg.powerMeter);
+            if (msg.swrMeter !== undefined) updateSwrMeter(msg.swrMeter);
+            break;
+        case 'error':
+            document.getElementById('statusText').textContent = 'Error: ' + msg.message;
+            break;
+    }
+}
+
+// --- UI Updates ---
+function updateFrequency(hz) {
+    currentFreq = hz;
+    const mhz = Math.floor(hz / 1000000);
+    const khz = Math.floor((hz % 1000000) / 1000);
+    const hzPart = hz % 1000;
+
+    const display = document.getElementById('freqDisplay');
+    display.innerHTML =
+        '<span class="mhz">' + String(mhz).padStart(3, ' ') + '</span>' +
+        '<span class="sep">.</span>' +
+        '<span class="khz">' + String(khz).padStart(3, '0') + '</span>' +
+        '<span class="sep">.</span>' +
+        '<span class="hz">' + String(hzPart).padStart(3, '0') + '</span>';
+}
+
+function updateMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+}
+
+function updateSMeter(val) {
+    // val is calibrated: 0 = S9, each S-unit = 6 units apart
+    // Range: -54 = S0, -48 = S1, ..., 0 = S9, positive = S9+N dB
+    let pct = 0;
+    let label = 'S0';
+
+    if (val <= 0) {
+        // S0 (-54) to S9 (0): map to 0-75% of bar
+        let sUnit = Math.max(0, (val + 54) / 6); // 0=S0, 9=S9
+        sUnit = Math.min(9, sUnit);
+        pct = (sUnit / 9) * 75;
+        let sInt = Math.floor(sUnit);
+        if (sInt >= 9) label = 'S9';
+        else label = 'S' + sInt;
+    } else {
+        // S9+ region: 0-64 dB over S9, map to 75-100% of bar
+        pct = 75 + Math.min(25, (val / 64) * 25);
+        label = 'S9+' + Math.round(val);
+    }
+
+    document.getElementById('sMeterFill').style.width = pct + '%';
+    document.getElementById('sMeterVal').textContent = label;
+}
+
+function updatePowerMeter(val) {
+    const container = document.getElementById('powerMeterContainer');
+    container.style.display = isTransmitting ? 'block' : 'none';
+
+    // Assume val in watts, max ~100W for IC-7300
+    let pct = Math.min(100, (val / 100) * 100);
+    document.getElementById('powerMeterFill').style.width = pct + '%';
+    document.getElementById('powerMeterVal').textContent = Math.round(val) + ' W';
+}
+
+function updateSwrMeter(val) {
+    const container = document.getElementById('swrMeterContainer');
+    container.style.display = isTransmitting ? 'block' : 'none';
+
+    // SWR range: 1.0 to 6.0 (from IC-7300 calibration)
+    let pct = Math.min(100, ((val - 1.0) / 5.0) * 100);
+    const fill = document.getElementById('swrMeterFill');
+    fill.style.width = Math.max(0, pct) + '%';
+    fill.classList.toggle('swr-warn', val > 2.0);
+    document.getElementById('swrMeterVal').textContent = val.toFixed(1);
+}
+
+function updateTxStatus(tx) {
+    isTransmitting = tx;
+    const pttBtn = document.getElementById('pttBtn');
+    pttBtn.classList.toggle('active', tx);
+
+    document.getElementById('sMeterContainer').style.display = tx ? 'none' : 'block';
+    document.getElementById('powerMeterContainer').style.display = tx ? 'block' : 'none';
+    document.getElementById('swrMeterContainer').style.display = tx ? 'block' : 'none';
+}
+
+function updateSplit(on) {
+    isSplit = on;
+    document.getElementById('splitBtn').classList.toggle('active', on);
+}
+
+// Track slider interaction state: dragging + debounce after release
+let sliderSetTimes = {};
+let sliderDragging = {};
+const SLIDER_DEBOUNCE_MS = 1500;
+
+function initSliderTracking() {
+    ['afGain', 'rfGain', 'rfPower', 'squelch', 'filterWidth'].forEach(function(name) {
+        var slider = document.getElementById(name + 'Slider');
+        if (!slider) return;
+        slider.addEventListener('mousedown', function() { sliderDragging[name] = true; });
+        slider.addEventListener('touchstart', function() { sliderDragging[name] = true; });
+        slider.addEventListener('mouseup', function() { sliderDragging[name] = false; });
+        slider.addEventListener('touchend', function() { sliderDragging[name] = false; });
+        slider.addEventListener('mouseleave', function() { sliderDragging[name] = false; });
+        slider.addEventListener('touchcancel', function() { sliderDragging[name] = false; });
+    });
+}
+
+function updateSlider(name, val) {
+    var slider = document.getElementById(name + 'Slider');
+    var valSpan = document.getElementById(name + 'Val');
+    // Ignore incoming updates while user is dragging or within debounce window
+    if (sliderDragging[name]) return;
+    var lastSet = sliderSetTimes[name] || 0;
+    if ((Date.now() - lastSet) < SLIDER_DEBOUNCE_MS) return;
+    if (slider) slider.value = val;
+    if (valSpan) valSpan.textContent = val;
+}
+
+function populateModes(modes) {
+    const container = document.getElementById('modeButtons');
+    container.innerHTML = '';
+    modes.forEach(function(mode) {
+        const btn = document.createElement('button');
+        btn.className = 'mode-btn' + (mode === currentMode ? ' active' : '');
+        btn.dataset.mode = mode;
+        btn.textContent = mode;
+        btn.onclick = function() { setMode(mode); };
+        container.appendChild(btn);
+    });
+}
+
+// --- Commands ---
+function setFreqFromInput() {
+    const input = document.getElementById('freqInput');
+    const mhz = parseFloat(input.value);
+    if (!isNaN(mhz) && mhz > 0) {
+        const hz = Math.round(mhz * 1000000);
+        send({ cmd: 'setFrequency', value: hz });
+        input.value = '';
+    }
+}
+
+function setMode(mode) {
+    send({ cmd: 'setMode', value: mode });
+}
+
+function selectVFO(vfo) {
+    send({ cmd: 'selectVFO', value: vfo });
+    document.getElementById('vfoA').classList.toggle('active', vfo === 'A');
+    document.getElementById('vfoB').classList.toggle('active', vfo === 'B');
+}
+
+function swapVFO() { send({ cmd: 'swapVFO' }); }
+function equalizeVFO() { send({ cmd: 'equalizeVFO' }); }
+function toggleSplit() { send({ cmd: 'setSplit', value: !isSplit }); }
+
+function selectStep(step) {
+    tuneStep = step;
+    document.querySelectorAll('.step-row button').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.dataset.step) === step);
+    });
+}
+
+function tuneUp() {
+    if (currentFreq > 0) {
+        send({ cmd: 'setFrequency', value: currentFreq + tuneStep });
+    }
+}
+
+function tuneDown() {
+    if (currentFreq > tuneStep) {
+        send({ cmd: 'setFrequency', value: currentFreq - tuneStep });
+    }
+}
+
+// Slider commands with throttling
+let sliderTimers = {};
+function throttledSend(name, cmd, val) {
+    if (sliderTimers[name]) clearTimeout(sliderTimers[name]);
+    sliderTimers[name] = setTimeout(function() {
+        send({ cmd: cmd, value: parseInt(val) });
+    }, 50);
+}
+
+function setAfGain(val) {
+    sliderSetTimes['afGain'] = Date.now();
+    document.getElementById('afGainVal').textContent = val;
+    throttledSend('afGain', 'setAfGain', val);
+}
+function setRfGain(val) {
+    sliderSetTimes['rfGain'] = Date.now();
+    document.getElementById('rfGainVal').textContent = val;
+    throttledSend('rfGain', 'setRfGain', val);
+}
+function setRfPower(val) {
+    sliderSetTimes['rfPower'] = Date.now();
+    document.getElementById('rfPowerVal').textContent = val;
+    throttledSend('rfPower', 'setRfPower', val);
+}
+function setSquelch(val) {
+    sliderSetTimes['squelch'] = Date.now();
+    document.getElementById('squelchVal').textContent = val;
+    throttledSend('squelch', 'setSquelch', val);
+}
+
+// --- Radio Controls (NB, NR, ANF, Tuner, Preamp, Filter) ---
+function updateToggle(id, state) {
+    var btn = document.getElementById(id);
+    if (!btn) return;
+    btn.classList.toggle('active', !!state);
+    if (id === 'nbBtn') nbOn = !!state;
+    else if (id === 'nrBtn') nrOn = !!state;
+    else if (id === 'anfBtn') anfOn = !!state;
+}
+
+function updateTunerState(val) {
+    tunerState = val;
+    var btn = document.getElementById('tunerBtn');
+    if (!btn) return;
+    btn.classList.toggle('active', val > 0);
+    btn.textContent = val === 2 ? 'Tuning' : 'Tuner';
+}
+
+function toggleNB() { send({ cmd: 'setNoiseBlanker', value: !nbOn }); }
+function toggleNR() { send({ cmd: 'setNoiseReduction', value: !nrOn }); }
+function toggleANF() { send({ cmd: 'setAutoNotch', value: !anfOn }); }
+
+// Tuner: click = toggle on/off, long-press = start tuning (value 2)
+(function() {
+    var tunerBtn = document.getElementById('tunerBtn');
+    var longPressTimer = null;
+    var longPressed = false;
+
+    function tunerDown(e) {
+        e.preventDefault();
+        longPressed = false;
+        longPressTimer = setTimeout(function() {
+            longPressed = true;
+            send({ cmd: 'setTuner', value: 2 });
+        }, 500);
+    }
+    function tunerUp(e) {
+        e.preventDefault();
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+        if (!longPressed) {
+            send({ cmd: 'setTuner', value: tunerState > 0 ? 0 : 1 });
+        }
+    }
+    function tunerCancel() {
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    }
+
+    tunerBtn.addEventListener('mousedown', tunerDown);
+    tunerBtn.addEventListener('mouseup', tunerUp);
+    tunerBtn.addEventListener('mouseleave', tunerCancel);
+    tunerBtn.addEventListener('touchstart', tunerDown);
+    tunerBtn.addEventListener('touchend', tunerUp);
+    tunerBtn.addEventListener('touchcancel', tunerCancel);
+})();
+
+function populatePreamps(preamps) {
+    var container = document.getElementById('preampButtons');
+    container.innerHTML = '';
+    if (!preamps || preamps.length === 0) {
+        document.getElementById('preampGroup').style.display = 'none';
+        return;
+    }
+    for (var i = 0; i < preamps.length; i++) {
+        var btn = document.createElement('button');
+        btn.className = 'vfo-btn' + (currentPreamp === preamps[i].num ? ' active' : '');
+        btn.textContent = preamps[i].name;
+        btn.dataset.preamp = String(preamps[i].num);
+        btn.onclick = (function(num) { return function() { setPreamp(num); }; })(preamps[i].num);
+        container.appendChild(btn);
+    }
+    document.getElementById('preampGroup').style.display = '';
+}
+
+function setPreamp(num) {
+    send({ cmd: 'setPreamp', value: num });
+}
+
+function updatePreampBtn(num) {
+    currentPreamp = num;
+    document.querySelectorAll('#preampButtons .vfo-btn').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.dataset.preamp) === num);
+    });
+}
+
+function populateFilters(filters) {
+    var container = document.getElementById('filterButtons');
+    container.innerHTML = '';
+    if (!filters || filters.length === 0) {
+        // Default FIL1/2/3
+        for (var i = 1; i <= 3; i++) {
+            var btn = document.createElement('button');
+            btn.className = 'vfo-btn' + (currentFilter === i ? ' active' : '');
+            btn.textContent = 'FIL' + i;
+            btn.dataset.filter = String(i);
+            btn.onclick = (function(n) { return function() { setFilter(n); }; })(i);
+            container.appendChild(btn);
+        }
+    } else {
+        for (var j = 0; j < filters.length; j++) {
+            var fbtn = document.createElement('button');
+            fbtn.className = 'vfo-btn' + (currentFilter === filters[j].num ? ' active' : '');
+            fbtn.textContent = filters[j].name;
+            fbtn.dataset.filter = String(filters[j].num);
+            fbtn.onclick = (function(num) { return function() { setFilter(num); }; })(filters[j].num);
+            container.appendChild(fbtn);
+        }
+    }
+    document.getElementById('filterRow').style.display = 'flex';
+}
+
+function setFilter(num) {
+    send({ cmd: 'setFilter', value: num });
+}
+
+function updateFilterBtn(num) {
+    currentFilter = num;
+    document.querySelectorAll('#filterButtons .vfo-btn').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.dataset.filter) === num);
+    });
+}
+
+function setFilterWidth(val) {
+    sliderSetTimes['filterWidth'] = Date.now();
+    document.getElementById('filterWidthVal').textContent = val;
+    throttledSend('filterWidth', 'setFilterWidth', val);
+}
+
+// --- Audio Streaming ---
+// Ring buffer shared between AudioWorklet and ScriptProcessor fallback
+let audioRingBuf = null;
+let audioRingWrite = 0;
+let audioRingRead = 0;
+let audioRingBuffered = 0;
+let audioRingStarted = false;
+let audioPrebufferSamples = 0;
+let audioScriptNode = null; // ScriptProcessorNode fallback
+let audioUseWorklet = false;
+
+function toggleAudio() {
+    if (!audioAvailable) return;
+    if (audioEnabled) {
+        stopAudio();
+        return;
+    }
+    startAudio();
+}
+
+function startAudio() {
+    if (audioCtx) {
+        stopAudio();
+    }
+
+    // AudioContext must be created from a user gesture (iOS requirement)
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: audioSampleRate });
+
+    // Init ring buffer (3 sec capacity)
+    var bufSize = audioCtx.sampleRate * 3;
+    audioRingBuf = new Float32Array(bufSize);
+    audioRingWrite = 0;
+    audioRingRead = 0;
+    audioRingBuffered = 0;
+    audioRingStarted = false;
+    audioPrebufferSamples = Math.floor(audioCtx.sampleRate * 0.1);
+
+    // Try AudioWorklet first (requires secure context: HTTPS or localhost)
+    if (audioCtx.audioWorklet && window.isSecureContext) {
+        startWithWorklet();
+    } else {
+        startWithScriptProcessor();
+    }
+}
+
+function startWithWorklet() {
+    var processorCode = [
+        'class WfviewAudioProcessor extends AudioWorkletProcessor {',
+        '  constructor() {',
+        '    super();',
+        '    this.buffer = new Float32Array(sampleRate * 3);',
+        '    this.writePos = 0;',
+        '    this.readPos = 0;',
+        '    this.buffered = 0;',
+        '    this.started = false;',
+        '    this.prebufferSamples = Math.floor(sampleRate * 0.1);',
+        '    this.maxBuffered = Math.floor(sampleRate * 0.5);',
+        '    this.port.onmessage = (e) => {',
+        '      if (e.data === "flush") {',
+        '        this.buffered = 0;',
+        '        this.readPos = this.writePos;',
+        '        this.started = false;',
+        '        return;',
+        '      }',
+        '      var samples = e.data;',
+        '      var len = samples.length;',
+        '      var bufLen = this.buffer.length;',
+        '      for (var i = 0; i < len; i++) {',
+        '        this.buffer[this.writePos] = samples[i];',
+        '        this.writePos = (this.writePos + 1) % bufLen;',
+        '      }',
+        '      this.buffered += len;',
+        '      if (this.buffered > bufLen) this.buffered = bufLen;',
+        '      if (this.started && this.buffered > this.maxBuffered) {',
+        '        var target = Math.floor(sampleRate * 0.15);',
+        '        var skip = this.buffered - target;',
+        '        this.readPos = (this.readPos + skip) % bufLen;',
+        '        this.buffered -= skip;',
+        '      }',
+        '    };',
+        '  }',
+        '  process(inputs, outputs) {',
+        '    var output = outputs[0][0];',
+        '    if (!output) return true;',
+        '    if (!this.started && this.buffered < this.prebufferSamples) {',
+        '      output.fill(0);',
+        '      return true;',
+        '    }',
+        '    this.started = true;',
+        '    var bufLen = this.buffer.length;',
+        '    for (var i = 0; i < output.length; i++) {',
+        '      if (this.buffered > 0) {',
+        '        output[i] = this.buffer[this.readPos];',
+        '        this.readPos = (this.readPos + 1) % bufLen;',
+        '        this.buffered--;',
+        '      } else {',
+        '        output[i] = 0;',
+        '      }',
+        '    }',
+        '    return true;',
+        '  }',
+        '}',
+        'registerProcessor("wfview-audio-processor", WfviewAudioProcessor);'
+    ].join('\n');
+
+    var blob = new Blob([processorCode], { type: 'application/javascript' });
+    var url = URL.createObjectURL(blob);
+
+    audioCtx.audioWorklet.addModule(url).then(function() {
+        URL.revokeObjectURL(url);
+        audioWorkletNode = new AudioWorkletNode(audioCtx, 'wfview-audio-processor');
+        audioWorkletNode.connect(audioCtx.destination);
+        audioUseWorklet = true;
+        send({ cmd: 'enableAudio', value: true });
+    }).catch(function(err) {
+        console.warn('AudioWorklet failed, falling back to ScriptProcessor:', err);
+        URL.revokeObjectURL(url);
+        startWithScriptProcessor();
+    });
+}
+
+function startWithScriptProcessor() {
+    // ScriptProcessorNode fallback for non-secure contexts (HTTP remote access)
+    var bufferSize = 4096;
+    audioScriptNode = audioCtx.createScriptProcessor(bufferSize, 0, 1);
+    audioScriptNode.onaudioprocess = function(e) {
+        var output = e.outputBuffer.getChannelData(0);
+        if (!audioRingStarted && audioRingBuffered < audioPrebufferSamples) {
+            for (var i = 0; i < output.length; i++) output[i] = 0;
+            return;
+        }
+        audioRingStarted = true;
+        var bufLen = audioRingBuf.length;
+        for (var i = 0; i < output.length; i++) {
+            if (audioRingBuffered > 0) {
+                output[i] = audioRingBuf[audioRingRead];
+                audioRingRead = (audioRingRead + 1) % bufLen;
+                audioRingBuffered--;
+            } else {
+                output[i] = 0;
+            }
+        }
+    };
+    audioScriptNode.connect(audioCtx.destination);
+    audioUseWorklet = false;
+    send({ cmd: 'enableAudio', value: true });
+}
+
+function stopAudio() {
+    send({ cmd: 'enableAudio', value: false });
+    audioEnabled = false;
+    document.getElementById('audioBtn').classList.remove('active');
+    document.getElementById('audioLevelFill').style.height = '0%';
+    if (audioWorkletNode) {
+        audioWorkletNode.disconnect();
+        audioWorkletNode = null;
+    }
+    if (audioScriptNode) {
+        audioScriptNode.disconnect();
+        audioScriptNode = null;
+    }
+    audioUseWorklet = false;
+    audioRingBuf = null;
+    if (audioCtx) {
+        audioCtx.close();
+        audioCtx = null;
+    }
+}
+
+// --- TX Audio (Microphone) ---
+function updateTxAudioAvailable(available) {
+    txAudioAvailable = available;
+    var micBtn = document.getElementById('micBtn');
+    if (available && window.isSecureContext) {
+        micBtn.classList.remove('unavailable');
+        micBtn.title = 'Enable microphone for TX audio';
+    } else {
+        micBtn.classList.add('unavailable');
+        if (!window.isSecureContext) {
+            micBtn.title = 'Requires HTTPS (use https:// URL)';
+        } else {
+            micBtn.title = 'TX audio not available (rig not connected)';
+        }
+        if (micEnabled) stopMic();
+    }
+}
+
+function toggleMic() {
+    if (!txAudioAvailable || !window.isSecureContext) return;
+    if (micEnabled) {
+        stopMic();
+        return;
+    }
+    startMic();
+}
+
+function startMic() {
+    if (micEnabled) return;
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } })
+    .then(function(stream) {
+        micStream = stream;
+        micAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
+
+        var source = micAudioCtx.createMediaStreamSource(stream);
+
+        var captureCode = [
+            'class WfviewCaptureProcessor extends AudioWorkletProcessor {',
+            '  constructor() { super(); }',
+            '  process(inputs) {',
+            '    var input = inputs[0];',
+            '    if (!input || !input[0] || input[0].length === 0) return true;',
+            '    var samples = input[0];',
+            '    var int16 = new Int16Array(samples.length);',
+            '    for (var i = 0; i < samples.length; i++) {',
+            '      var s = Math.max(-1, Math.min(1, samples[i]));',
+            '      int16[i] = s < 0 ? s * 32768 : s * 32767;',
+            '    }',
+            '    this.port.postMessage(int16.buffer, [int16.buffer]);',
+            '    return true;',
+            '  }',
+            '}',
+            'registerProcessor("wfview-capture-processor", WfviewCaptureProcessor);'
+        ].join('\n');
+
+        var blob = new Blob([captureCode], { type: 'application/javascript' });
+        var url = URL.createObjectURL(blob);
+
+        micAudioCtx.audioWorklet.addModule(url).then(function() {
+            URL.revokeObjectURL(url);
+            micWorkletNode = new AudioWorkletNode(micAudioCtx, 'wfview-capture-processor');
+            source.connect(micWorkletNode);
+            micWorkletNode.connect(micAudioCtx.destination);
+
+            micWorkletNode.port.onmessage = function(e) {
+                if (!micEnabled || !ws || ws.readyState !== WebSocket.OPEN) return;
+                var pcmBuffer = e.data;
+                var headerSize = 6;
+                var frame = new ArrayBuffer(headerSize + pcmBuffer.byteLength);
+                var view = new DataView(frame);
+                view.setUint8(0, 0x03);
+                view.setUint8(1, 0x00);
+                view.setUint16(2, micSeq++ & 0xFFFF, true);
+                view.setUint16(4, 0, true);
+                new Uint8Array(frame, headerSize).set(new Uint8Array(pcmBuffer));
+                ws.send(frame);
+            };
+
+            micEnabled = true;
+            send({ cmd: 'enableMic', value: true });
+            document.getElementById('micBtn').classList.add('active');
+            document.getElementById('statusText').textContent = 'Microphone active';
+        }).catch(function(err) {
+            console.error('Mic AudioWorklet failed:', err);
+            stopMic();
+            document.getElementById('statusText').textContent = 'Mic setup failed: ' + err.message;
+        });
+    })
+    .catch(function(err) {
+        console.error('getUserMedia failed:', err);
+        document.getElementById('statusText').textContent = 'Mic access denied: ' + err.message;
+    });
+}
+
+function stopMic() {
+    send({ cmd: 'enableMic', value: false });
+    micEnabled = false;
+    document.getElementById('micBtn').classList.remove('active');
+    if (micWorkletNode) {
+        micWorkletNode.disconnect();
+        micWorkletNode = null;
+    }
+    if (micStream) {
+        micStream.getTracks().forEach(function(t) { t.stop(); });
+        micStream = null;
+    }
+    if (micAudioCtx) {
+        micAudioCtx.close();
+        micAudioCtx = null;
+    }
+    micSeq = 0;
+}
+
+function handleAudioData(buffer) {
+    if (!audioEnabled || isTransmitting) return;
+    if (buffer.byteLength < 8) return;
+
+    // Binary format: [0x02][0x00][seq_u16LE][rateDiv_u16LE][PCM_Int16LE...]
+    var pcmData = new Int16Array(buffer, 6);
+    var floatData = new Float32Array(pcmData.length);
+
+    var peak = 0;
+    for (var i = 0; i < pcmData.length; i++) {
+        var s = pcmData[i] / 32768.0;
+        floatData[i] = s;
+        var abs = s < 0 ? -s : s;
+        if (abs > peak) peak = abs;
+    }
+
+    if (audioUseWorklet && audioWorkletNode) {
+        // AudioWorklet path: post to worklet thread
+        audioWorkletNode.port.postMessage(floatData);
+    } else if (audioRingBuf) {
+        // ScriptProcessor path: write to shared ring buffer
+        var len = floatData.length;
+        var bufLen = audioRingBuf.length;
+        for (var i = 0; i < len; i++) {
+            audioRingBuf[audioRingWrite] = floatData[i];
+            audioRingWrite = (audioRingWrite + 1) % bufLen;
+        }
+        audioRingBuffered += len;
+        if (audioRingBuffered > bufLen) audioRingBuffered = bufLen;
+        // Overflow protection: if buffer exceeds 500ms, skip to 150ms
+        var maxBuf = Math.floor(audioSampleRate * 0.5);
+        if (audioRingStarted && audioRingBuffered > maxBuf) {
+            var target = Math.floor(audioSampleRate * 0.15);
+            var skip = audioRingBuffered - target;
+            audioRingRead = (audioRingRead + skip) % bufLen;
+            audioRingBuffered -= skip;
+        }
+    }
+
+    // Update level indicator
+    var pct = Math.min(100, Math.round(peak * 100));
+    document.getElementById('audioLevelFill').style.height = pct + '%';
+}
+
+function flushAudio() {
+    if (audioUseWorklet && audioWorkletNode) {
+        audioWorkletNode.port.postMessage('flush');
+    } else if (audioRingBuf) {
+        audioRingBuffered = 0;
+        audioRingRead = audioRingWrite;
+        audioRingStarted = false;
+    }
+    document.getElementById('audioLevelFill').style.height = '0%';
+}
+
+// --- PTT (push-to-talk: hold to transmit) ---
+(function() {
+    const pttBtn = document.getElementById('pttBtn');
+
+    function pttOn(e) {
+        e.preventDefault();
+        flushAudio();
+        send({ cmd: 'setPTT', value: true });
+    }
+    function pttOff(e) {
+        e.preventDefault();
+        send({ cmd: 'setPTT', value: false });
+    }
+
+    pttBtn.addEventListener('mousedown', pttOn);
+    pttBtn.addEventListener('mouseup', pttOff);
+    pttBtn.addEventListener('mouseleave', pttOff);
+    pttBtn.addEventListener('touchstart', pttOn);
+    pttBtn.addEventListener('touchend', pttOff);
+    pttBtn.addEventListener('touchcancel', pttOff);
+})();
+
+// --- Keyboard shortcuts ---
+document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT') return;
+
+    if (e.key === 'ArrowUp' || e.key === '+') {
+        e.preventDefault();
+        tuneUp();
+    } else if (e.key === 'ArrowDown' || e.key === '-') {
+        e.preventDefault();
+        tuneDown();
+    }
+});
+
+// Frequency input: Enter to set
+document.getElementById('freqInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        setFreqFromInput();
+    }
+});
+
+// Mouse wheel tuning on frequency display
+document.getElementById('freqDisplay').addEventListener('wheel', function(e) {
+    e.preventDefault();
+    if (e.deltaY < 0) tuneUp();
+    else tuneDown();
+}, { passive: false });
+
+// --- Spectrum / Waterfall ---
+
+function buildColorTable() {
+    colorTable = new Array(256);
+    for (var i = 0; i < 256; i++) {
+        var v = i / 255;
+        var r, g, b;
+        if (v < 0.25) {
+            r = 0; g = Math.round(255 * (v / 0.25)); b = 255;
+        } else if (v < 0.5) {
+            r = 0; g = 255; b = Math.round(255 * (1 - (v - 0.25) / 0.25));
+        } else if (v < 0.75) {
+            r = Math.round(255 * ((v - 0.5) / 0.25)); g = 255; b = 0;
+        } else {
+            r = 255; g = Math.round(255 * (1 - (v - 0.75) / 0.25)); b = 0;
+        }
+        colorTable[i] = [r, g, b];
+    }
+}
+
+function populateSpans(spans) {
+    availableSpans = spans;
+    var container = document.getElementById('spanButtons');
+    container.innerHTML = '';
+    if (!spans || spans.length === 0) return;
+    for (var i = 0; i < spans.length; i++) {
+        var btn = document.createElement('button');
+        btn.className = 'span-btn' + (i === currentSpanIndex ? ' active' : '');
+        btn.textContent = spans[i].name;
+        btn.dataset.index = i;
+        btn.onclick = (function(idx) { return function() { setSpan(idx); }; })(i);
+        container.appendChild(btn);
+    }
+    document.getElementById('spanRow').style.display = 'flex';
+}
+
+function setSpan(idx) {
+    send({ cmd: 'setSpan', value: idx });
+    updateSpanIndex(idx);
+}
+
+function updateSpanIndex(idx) {
+    currentSpanIndex = idx;
+    document.querySelectorAll('.span-btn').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.dataset.index) === idx);
+    });
+}
+
+function showScopeSection() {
+    var section = document.getElementById('scopeSection');
+    if (section.classList.contains('visible')) return;
+    section.classList.add('visible');
+    requestAnimationFrame(resizeCanvases);
+}
+
+function resizeCanvases() {
+    var spectCanvas = document.getElementById('spectrumCanvas');
+    var wfCanvas = document.getElementById('waterfallCanvas');
+    var rect = spectCanvas.getBoundingClientRect();
+    if (rect.width > 0) {
+        spectCanvas.width = Math.round(rect.width);
+        spectCanvas.height = Math.round(rect.height);
+    }
+    var wfRect = wfCanvas.getBoundingClientRect();
+    if (wfRect.width > 0) {
+        wfCanvas.width = Math.round(wfRect.width);
+        wfCanvas.height = Math.round(wfRect.height);
+    }
+    if (spectDataLen > 0) initWaterfallBuffer(spectDataLen);
+}
+
+function initWaterfallBuffer(dataLen) {
+    var wfCanvas = document.getElementById('waterfallCanvas');
+    var h = wfCanvas.height || 200;
+    wfOffCanvas = document.createElement('canvas');
+    wfOffCanvas.width = dataLen;
+    wfOffCanvas.height = h;
+    wfOffCtx = wfOffCanvas.getContext('2d');
+    wfImageData = wfOffCtx.createImageData(dataLen, h);
+    // Fill opaque black
+    var d = wfImageData.data;
+    for (var i = 3; i < d.length; i += 4) d[i] = 255;
+}
+
+function handleBinaryMessage(buffer) {
+    if (buffer.byteLength < 2) return;
+    var view = new DataView(buffer);
+    var msgType = view.getUint8(0);
+
+    if (msgType === 0x02) {
+        handleAudioData(buffer);
+        return;
+    }
+
+    if (msgType !== 0x01 || buffer.byteLength < 13) return;
+
+    spectStartFreq = view.getFloat32(4, true);
+    spectEndFreq = view.getFloat32(8, true);
+    spectData = new Uint8Array(buffer, 12);
+
+    if (spectData.length !== spectDataLen) {
+        spectDataLen = spectData.length;
+        initWaterfallBuffer(spectDataLen);
+    }
+
+    if (!document.getElementById('scopeSection').classList.contains('visible')) {
+        showScopeSection();
+    }
+
+    updateWaterfallRow();
+
+    if (!spectRenderPending) {
+        spectRenderPending = true;
+        requestAnimationFrame(renderScope);
+    }
+}
+
+function updateWaterfallRow() {
+    if (!wfImageData || !spectData) return;
+    var w = wfImageData.width;
+    var d = wfImageData.data;
+    var rowBytes = w * 4;
+    // Shift all rows down by 1
+    d.copyWithin(rowBytes, 0, d.length - rowBytes);
+    // Write new row at top
+    for (var i = 0; i < w; i++) {
+        var amp = i < spectData.length ? spectData[i] : 0;
+        var ci = Math.min(255, Math.round((amp / spectAmpMax) * 255));
+        var c = colorTable[ci];
+        var idx = i * 4;
+        d[idx] = c[0];
+        d[idx + 1] = c[1];
+        d[idx + 2] = c[2];
+        d[idx + 3] = 255;
+    }
+}
+
+function renderScope() {
+    spectRenderPending = false;
+    if (!spectData || spectData.length === 0) return;
+    drawSpectrum();
+    drawWaterfall();
+}
+
+function drawSpectrum() {
+    var canvas = document.getElementById('spectrumCanvas');
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width;
+    var h = canvas.height;
+    var len = spectData.length;
+    var labelH = 20;
+    var plotH = h - labelH;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fillRect(0, 0, w, h);
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for (var gi = 1; gi < 4; gi++) {
+        var gy = (plotH / 4) * gi;
+        ctx.beginPath();
+        ctx.moveTo(0, gy);
+        ctx.lineTo(w, gy);
+        ctx.stroke();
+    }
+
+    // Spectrum fill
+    ctx.beginPath();
+    ctx.moveTo(0, plotH);
+    for (var i = 0; i < len; i++) {
+        var x = (i / (len - 1)) * w;
+        var amp = spectData[i] / spectAmpMax;
+        var y = plotH - amp * plotH;
+        ctx.lineTo(x, y);
+    }
+    ctx.lineTo(w, plotH);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(78, 204, 163, 0.15)';
+    ctx.fill();
+
+    // Spectrum line
+    ctx.beginPath();
+    for (var j = 0; j < len; j++) {
+        var lx = (j / (len - 1)) * w;
+        var la = spectData[j] / spectAmpMax;
+        var ly = plotH - la * plotH;
+        if (j === 0) ctx.moveTo(lx, ly);
+        else ctx.lineTo(lx, ly);
+    }
+    ctx.strokeStyle = '#4ecca3';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Frequency indicator line
+    if (currentFreq > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
+        var freqMHz = currentFreq / 1e6;
+        if (freqMHz >= spectStartFreq && freqMHz <= spectEndFreq) {
+            var fxPos = ((freqMHz - spectStartFreq) / (spectEndFreq - spectStartFreq)) * w;
+            ctx.strokeStyle = 'rgba(233, 69, 96, 0.8)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(fxPos, 0);
+            ctx.lineTo(fxPos, plotH);
+            ctx.stroke();
+        }
+    }
+
+    // Frequency labels
+    if (spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
+        ctx.fillStyle = '#888';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        var numLabels = 5;
+        for (var li = 0; li <= numLabels; li++) {
+            var frac = li / numLabels;
+            var freq = spectStartFreq + (spectEndFreq - spectStartFreq) * frac;
+            var lxPos = frac * w;
+            var label;
+            if (freq >= 1000) label = freq.toFixed(1);
+            else if (freq >= 100) label = freq.toFixed(2);
+            else label = freq.toFixed(3);
+            ctx.fillText(label, lxPos, plotH + 4);
+        }
+    }
+}
+
+function drawWaterfall() {
+    if (!wfImageData || !wfOffCtx) return;
+    var canvas = document.getElementById('waterfallCanvas');
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width;
+    var h = canvas.height;
+
+    wfOffCtx.putImageData(wfImageData, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(wfOffCanvas, 0, 0, w, h);
+
+    // Frequency indicator
+    if (currentFreq > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
+        var freqMHz = currentFreq / 1e6;
+        if (freqMHz >= spectStartFreq && freqMHz <= spectEndFreq) {
+            var xPos = ((freqMHz - spectStartFreq) / (spectEndFreq - spectStartFreq)) * w;
+            ctx.strokeStyle = 'rgba(233, 69, 96, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(xPos, 0);
+            ctx.lineTo(xPos, h);
+            ctx.stroke();
+        }
+    }
+}
+
+function scopeClick(e) {
+    if (spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return;
+    var rect = e.target.getBoundingClientRect();
+    var x = e.clientX - rect.left;
+    var frac = x / rect.width;
+    var freqMHz = spectStartFreq + (spectEndFreq - spectStartFreq) * frac;
+    var freqHz = Math.round(freqMHz * 1e6);
+    if (freqHz > 0) {
+        send({ cmd: 'setFrequency', value: freqHz });
+    }
+}
+
+// Mouse wheel tuning on scope
+function scopeWheel(e) {
+    e.preventDefault();
+    if (e.deltaY < 0) tuneUp();
+    else tuneDown();
+}
+
+// --- Init ---
+// If no modes from rig yet, show defaults
+buildColorTable();
+populateModes(defaultModes);
+initSliderTracking();
+
+// Scope event listeners
+document.getElementById('spectrumCanvas').addEventListener('click', scopeClick);
+document.getElementById('waterfallCanvas').addEventListener('click', scopeClick);
+document.getElementById('spectrumCanvas').addEventListener('wheel', scopeWheel, { passive: false });
+document.getElementById('waterfallCanvas').addEventListener('wheel', scopeWheel, { passive: false });
+window.addEventListener('resize', function() {
+    if (document.getElementById('scopeSection').classList.contains('visible')) {
+        resizeCanvases();
+    }
+});
+
+connect();
+</script>
+</body>
+</html>

@@ -83,6 +83,14 @@ html, body {
     background: #888; border-radius: 1px;
 }
 #filterText { color: #888; font-size: 11px; font-weight: bold; }
+#dspIndicators { display: flex; gap: 4px; margin-left: 6px; }
+.dsp-tag {
+    font-size: 9px; font-weight: bold;
+    padding: 1px 4px;
+    background: #4488cc;
+    color: #fff;
+    border-radius: 2px;
+}
 .flex-space { flex: 1; }
 #clock { color: #888; font-family: 'Courier New', monospace; font-size: 11px; }
 #stepLabel { color: #666; font-size: 10px; }
@@ -501,6 +509,7 @@ html, body {
         <button id="modeBtn" onclick="setPanel('mode')">---</button>
         <span id="pbBars"><i></i><i></i></span>
         <span id="filterText">FIL1</span>
+        <span id="dspIndicators"></span>
         <span class="flex-space"></span>
         <span id="clock">--:--</span>
         <span id="connDot" title="Disconnected"></span>
