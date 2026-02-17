@@ -14,3 +14,10 @@ qcustomplot2.dll
 Makefile
 Makefile.Debug
 Makefile.Release
+*.o
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+wfview
+wfserver
+IC7300-screenshots/

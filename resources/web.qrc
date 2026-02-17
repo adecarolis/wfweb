@@ -2,5 +2,6 @@
     <qresource prefix="/web">
         <file alias="index.html">web/index.html</file>
         <file alias="debug.html">web/debug.html</file>
+        <file alias="digits-sprite.png">web/digits-sprite.png</file>
     </qresource>
 </RCC>

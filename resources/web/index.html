@@ -138,21 +138,33 @@ html, body {
 #splitFreq.hidden { display: none; }
 
 #freqDisplay {
-    font-family: 'Courier New', 'Lucida Console', monospace;
-    font-size: 44px; font-weight: bold;
-    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
     cursor: pointer;
     white-space: nowrap;
-    letter-spacing: 0px;
     line-height: 1;
-    font-variant-numeric: tabular-nums;
+    height: 50px;
 }
-.fdot {
-    font-size: 0.55em;
-    vertical-align: 0.15em;
-    margin: 0 0px;
-    color: #ccc;
+.freq-digit {
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    background-image: url('digits-sprite.png');
+    background-repeat: no-repeat;
+    background-size: 512px 50px; /* 2x scale: 256px -> 512px */
 }
+.freq-digit.digit-0 { background-position: 0px 0; }
+.freq-digit.digit-1 { background-position: -50px 0; }
+.freq-digit.digit-2 { background-position: -102px 0; }
+.freq-digit.digit-3 { background-position: -150px 0; }
+.freq-digit.digit-4 { background-position: -200px 0; }
+.freq-digit.digit-5 { background-position: -250px 0; }
+.freq-digit.digit-6 { background-position: -300px 0; }
+.freq-digit.digit-7 { background-position: -350px 0; }
+.freq-digit.digit-8 { background-position: -400px 0; }
+.freq-digit.digit-9 { background-position: -450px 0; }
+.freq-digit.digit-dot { background-position: -500px 0; width: 12px; }
 
 /* ============ ROW 3: SCOPE INFO BAR ============ */
 #scopeInfoBar {
@@ -478,25 +490,61 @@ html, body {
 }
 
 /* ============ RESPONSIVE ============ */
+@media (max-height: 450px) {
+    #radio { grid-template-rows: 28px 64px 16px 1fr 40px; }
+    #freqDisplay { height: 32px; }
+    #freqDisplay .freq-digit { width: 32px; height: 32px; background-size: 332px 32px; }
+    #freqDisplay .freq-digit.digit-0 { background-position: 0px 0; }
+    #freqDisplay .freq-digit.digit-1 { background-position: -32px 0; }
+    #freqDisplay .freq-digit.digit-2 { background-position: -66px 0; }
+    #freqDisplay .freq-digit.digit-3 { background-position: -97px 0; }
+    #freqDisplay .freq-digit.digit-4 { background-position: -130px 0; }
+    #freqDisplay .freq-digit.digit-5 { background-position: -162px 0; }
+    #freqDisplay .freq-digit.digit-6 { background-position: -195px 0; }
+    #freqDisplay .freq-digit.digit-7 { background-position: -227px 0; }
+    #freqDisplay .freq-digit.digit-8 { background-position: -260px 0; }
+    #freqDisplay .freq-digit.digit-9 { background-position: -292px 0; }
+    #freqDisplay .freq-digit.digit-dot { width: 7px; background-position: -325px 0; }
+    #meterCanvas { height: 50px; }
+    #bottomBar { padding: 2px 4px; }
+    .softBtn { height: 34px; font-size: 11px; }
+}
+@media (max-width: 480px) and (orientation: landscape) {
+    #freqDisplay { height: 32px; }
+    #freqDisplay .freq-digit { width: 32px; height: 32px; background-size: 332px 32px; }
+    #freqDisplay .freq-digit.digit-0 { background-position: 0px 0; }
+    #freqDisplay .freq-digit.digit-1 { background-position: -32px 0; }
+    #freqDisplay .freq-digit.digit-2 { background-position: -66px 0; }
+    #freqDisplay .freq-digit.digit-3 { background-position: -97px 0; }
+    #freqDisplay .freq-digit.digit-4 { background-position: -130px 0; }
+    #freqDisplay .freq-digit.digit-5 { background-position: -162px 0; }
+    #freqDisplay .freq-digit.digit-6 { background-position: -195px 0; }
+    #freqDisplay .freq-digit.digit-7 { background-position: -227px 0; }
+    #freqDisplay .freq-digit.digit-8 { background-position: -260px 0; }
+    #freqDisplay .freq-digit.digit-9 { background-position: -292px 0; }
+    #freqDisplay .freq-digit.digit-dot { width: 7px; background-position: -325px 0; }
+    #meterSection { flex: 0 0 35%; }
+}
 @media (orientation: portrait) {
     #radio {
         max-width: 100%;
         grid-template-rows: 32px 72px 18px 1fr 46px;
     }
-    #freqDisplay { font-size: 34px; }
+    #freqDisplay { height: 17px; }
+    #freqDisplay .freq-digit { width: 17px; height: 17px; background-size: 179px 17px; }
+    #freqDisplay .freq-digit.digit-0 { background-position: 0px 0; }
+    #freqDisplay .freq-digit.digit-1 { background-position: -17px 0; }
+    #freqDisplay .freq-digit.digit-2 { background-position: -36px 0; }
+    #freqDisplay .freq-digit.digit-3 { background-position: -52px 0; }
+    #freqDisplay .freq-digit.digit-4 { background-position: -70px 0; }
+    #freqDisplay .freq-digit.digit-5 { background-position: -87px 0; }
+    #freqDisplay .freq-digit.digit-6 { background-position: -105px 0; }
+    #freqDisplay .freq-digit.digit-7 { background-position: -122px 0; }
+    #freqDisplay .freq-digit.digit-8 { background-position: -140px 0; }
+    #freqDisplay .freq-digit.digit-9 { background-position: -157px 0; }
+    #freqDisplay .freq-digit.digit-dot { width: 4px; background-position: -175px 0; }
     #meterSection { flex: 0 0 40%; }
     #meterCanvas { height: 54px; }
-}
-@media (max-height: 450px) {
-    #radio { grid-template-rows: 28px 64px 16px 1fr 40px; }
-    #freqDisplay { font-size: 34px; }
-    #meterCanvas { height: 50px; }
-    #bottomBar { padding: 2px 4px; }
-    .softBtn { height: 34px; font-size: 11px; }
-}
-@media (max-width: 480px) {
-    #freqDisplay { font-size: 28px; }
-    #meterSection { flex: 0 0 35%; }
 }
 </style>
 </head>
@@ -527,7 +575,7 @@ html, body {
                 <span id="splitBadge" class="hidden">SPLIT</span>
                 <span id="splitFreq" class="hidden"></span>
             </div>
-            <div id="freqDisplay" tabindex="0">---<span class="fdot">.</span>---<span class="fdot">.</span>---</div>
+            <div id="freqDisplay" tabindex="0"></div>
         </div>
     </div>
 
@@ -884,17 +932,24 @@ function updateFrequency(hz) {
         vfoBFreq = hz;
     }
 
-    // Update main frequency display
+    // Update main frequency display with sprite-based digits
     var mhz = Math.floor(hz / 1000000);
     var khz = Math.floor((hz % 1000000) / 1000);
     var hzPart = hz % 1000;
+
+    var freqStr = String(mhz) + '.' +
+                  String(khz).padStart(3, '0') + '.' +
+                  String(hzPart).padStart(3, '0');
+
     var d = document.getElementById('freqDisplay');
-    d.innerHTML =
-        String(mhz).padStart(3, '\u2007') +
-        '<span class="fdot">.</span>' +
-        String(khz).padStart(3, '0') +
-        '<span class="fdot">.</span>' +
-        String(hzPart).padStart(3, '0');
+    d.innerHTML = '';
+
+    for (var i = 0; i < freqStr.length; i++) {
+        var char = freqStr[i];
+        var span = document.createElement('span');
+        span.className = 'freq-digit digit-' + (char === '.' ? 'dot' : char);
+        d.appendChild(span);
+    }
 
     // Update other VFO frequency display
     updateOtherVfoDisplay();
@@ -922,6 +977,7 @@ function updateMode(mode) {
 function updateFilterBtn(num) {
     currentFilter = num;
     document.getElementById('filterText').textContent = 'FIL' + num;
+    if (currentPanel === 'func') renderFuncOverlay();
 }
 
 function updateTxStatus(tx) {
