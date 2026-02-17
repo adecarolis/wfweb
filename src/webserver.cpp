@@ -5,6 +5,7 @@
 #include <QDir>
 #include <QProcess>
 #include <QSslConfiguration>
+#include <QTimer>
 
 webServer::webServer(QObject *parent) :
     QObject(parent)
