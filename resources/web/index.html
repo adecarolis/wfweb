@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>wfview</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -14,10 +14,16 @@ html, body {
     user-select: none; -webkit-user-select: none;
 }
 
+:root {
+    --viewport-height: 100vh;
+}
+
 #radio {
     display: grid;
     grid-template-rows: 34px 80px 20px 1fr 48px;
-    width: 100%; height: 100vh;
+    width: 100%;
+    height: var(--viewport-height);
+    height: 100dvh; /* Dynamic viewport height for modern browsers */
     max-width: calc(100vh * 16 / 9);
     margin: 0 auto;
     overflow: hidden;
@@ -427,6 +433,7 @@ html, body {
 #bottomBar {
     display: flex;
     padding: 4px 6px;
+    padding-bottom: calc(4px + env(safe-area-inset-bottom));
     gap: 4px;
     background: #111;
     border-top: 1px solid #282828;
@@ -2297,10 +2304,20 @@ document.getElementById('freqDisplay').addEventListener('click', function() {
 });
 
 // ============================================================
+// MOBILE VIEWPORT FIX
+// ============================================================
+function setMobileViewportHeight() {
+    // Set actual viewport height for mobile browsers
+    var vh = window.innerHeight;
+    document.documentElement.style.setProperty('--viewport-height', vh + 'px');
+}
+
+// ============================================================
 // INIT
 // ============================================================
 console.log('=== WFVIEW WEB UI v2.1.0 (2026-02-16) - Dual VFO Support ===');
 
+setMobileViewportHeight();
 buildColorTable();
 initSliderTracking();
 renderBottomBar();
@@ -2316,7 +2333,10 @@ document.getElementById('spectrumCanvas').addEventListener('click', scopeClick);
 document.getElementById('waterfallCanvas').addEventListener('click', scopeClick);
 document.getElementById('spectrumCanvas').addEventListener('wheel', scopeWheel, { passive: false });
 document.getElementById('waterfallCanvas').addEventListener('wheel', scopeWheel, { passive: false });
-window.addEventListener('resize', resizeCanvases);
+window.addEventListener('resize', function() {
+    setMobileViewportHeight();
+    resizeCanvases();
+});
 requestAnimationFrame(resizeCanvases);
 
 connect();
