@@ -795,6 +795,7 @@ function handleMessage(msg) {
             if (msg.rfPower !== undefined) updateSlider('rfPower', msg.rfPower);
             if (msg.squelch !== undefined) updateSlider('squelch', msg.squelch);
             if (msg.split !== undefined) updateSplit(msg.split);
+            if (msg.spanIndex !== undefined) updateSpanIndex(msg.spanIndex);
             if (msg.nb !== undefined) updateToggle('nb', msg.nb);
             if (msg.nr !== undefined) updateToggle('nr', msg.nr);
             if (msg.autoNotch !== undefined) updateToggle('anf', msg.autoNotch);
@@ -2133,8 +2134,6 @@ updateClock();
 setInterval(updateClock, 10000);
 
 // Initialize scope info bar
-var spanElem = document.getElementById('spanIndicator');
-if (spanElem) spanElem.textContent = 'SPAN';
 var otherVfoElem = document.getElementById('otherVfoFreq');
 if (otherVfoElem) updateOtherVfoDisplay();
 

@@ -820,6 +820,18 @@ QJsonObject webServer::buildStatusJson()
     cacheItem fw = queue->getCache(funcFilterWidth, 0);
     if (fw.value.isValid()) status["filterWidth"] = fw.value.toInt();
 
+    // Spectrum span
+    cacheItem spanCache = queue->getCache(funcScopeSpan, 0);
+    if (spanCache.value.isValid() && rigCaps) {
+        centerSpanData span = spanCache.value.value<centerSpanData>();
+        for (int i = 0; i < (int)rigCaps->scopeCenterSpans.size(); i++) {
+            if (rigCaps->scopeCenterSpans.at(i).reg == span.reg) {
+                status["spanIndex"] = i;
+                break;
+            }
+        }
+    }
+
     return status;
 }
 
