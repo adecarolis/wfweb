@@ -351,6 +351,183 @@ html, body {
     font-size: 18px;
 }
 
+/* CW Bar - RTTY decoder style (green terminal theme) */
+.cw-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #000;
+    border-top: 2px solid #0a0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+}
+.cw-bar.hidden { display: none; }
+
+.cw-bar-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 10px;
+    background: #000;
+    border-bottom: 1px solid #0a0;
+    font-size: 14px;
+}
+.cw-label {
+    color: #0f0;
+    font-weight: bold;
+    font-size: 16px;
+    padding-right: 8px;
+    font-family: monospace;
+}
+.cw-speed-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.cw-speed-btn {
+    width: 28px;
+    height: 28px;
+    background: #001a00;
+    border: 1px solid #0a0;
+    color: #0f0;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    font-weight: bold;
+}
+.cw-speed-btn:active {
+    background: #0a0;
+    color: #000;
+}
+#cwSpeedInput {
+    width: 40px;
+    height: 28px;
+    background: #000;
+    border: 1px solid #0a0;
+    color: #0f0;
+    text-align: center;
+    font-size: 14px;
+    font-family: monospace;
+    font-weight: bold;
+    padding: 0 4px;
+}
+#cwSpeedInput:focus {
+    outline: none;
+    border-color: #0f0;
+    box-shadow: 0 0 4px #0a0;
+}
+.cw-wpm-label {
+    color: #0a0;
+    font-size: 12px;
+    padding-right: 8px;
+    font-family: monospace;
+}
+.cw-mode-btns {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+}
+.cw-mode-btn {
+    padding: 4px 10px;
+    background: #001a00;
+    border: 1px solid #0a0;
+    color: #0a0;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: monospace;
+}
+.cw-mode-btn.active {
+    background: #0a0;
+    border-color: #0f0;
+    color: #000;
+}
+.cw-stop-btn {
+    padding: 4px 12px;
+    background: #1a0000;
+    border: 1px solid #a00;
+    color: #f44;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 8px;
+    font-family: monospace;
+}
+.cw-stop-btn:active {
+    background: #c00;
+    color: #fff;
+}
+.cw-close-btn {
+    padding: 4px 10px;
+    background: #001a00;
+    border: 1px solid #0a0;
+    color: #0a0;
+    font-size: 14px;
+    cursor: pointer;
+    margin-left: 8px;
+    font-weight: bold;
+}
+.cw-close-btn:active {
+    background: #0a0;
+    color: #000;
+}
+.cw-display {
+    background: #000;
+    color: #0f0;
+    font-family: 'Courier New', 'Consolas', monospace;
+    font-size: 15px;
+    font-weight: bold;
+    padding: 8px 10px;
+    overflow-x: auto;
+    white-space: pre;
+    border-bottom: 1px solid #0a0;
+    min-height: 30px;
+    letter-spacing: 1px;
+}
+.cw-char {
+    display: inline-block;
+}
+.cw-char.sent {
+    color: #052;
+}
+.cw-char.pending {
+    color: #0f0;
+}
+.cw-char.sending {
+    color: #0f0;
+    text-shadow: 0 0 4px #0f0;
+}
+.cw-cursor {
+    color: #0f0;
+    animation: blink 1s step-end infinite;
+}
+@keyframes blink {
+    50% { opacity: 0; }
+}
+.cw-input-field {
+    width: 100%;
+    background: #000;
+    border: none;
+    color: #0f0;
+    font-family: 'Courier New', 'Consolas', monospace;
+    font-size: 15px;
+    font-weight: bold;
+    padding: 8px 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.cw-input-field:focus {
+    outline: none;
+    background: #001a00;
+}
+.cw-input-field::placeholder {
+    color: #052;
+    text-transform: none;
+}
+
 /* GAIN overlay */
 #gainOverlay.visible {
     flex-direction: column;
@@ -469,6 +646,16 @@ html, body {
 .softBtn.ptt-btn.tx-active {
     background: #800;
     border-color: #f00;
+    color: #fff;
+}
+.softBtn.key-btn {
+    background: #1a1a1a;
+    border-color: #660;
+    color: #aa4;
+}
+.softBtn.key-btn.tx-active {
+    background: #880;
+    border-color: #ff0;
     color: #fff;
 }
 
@@ -622,6 +809,28 @@ html, body {
         <div id="spanOverlay" class="overlay">
             <div class="overlay-title">SPAN</div>
             <div class="overlay-grid" id="spanGrid"></div>
+        </div>
+
+        <!-- CW Bar (minimal bottom interface) -->
+        <div id="cwBar" class="cw-bar hidden">
+            <div class="cw-bar-header">
+                <span class="cw-label">CW</span>
+                <div class="cw-speed-ctrl">
+                    <button class="cw-speed-btn" id="cwSpeedDown">−</button>
+                    <input type="number" id="cwSpeedInput" min="10" max="35" value="20">
+                    <span class="cw-wpm-label">WPM</span>
+                    <button class="cw-speed-btn" id="cwSpeedUp">+</button>
+                </div>
+                <div class="cw-mode-btns">
+                    <button class="cw-mode-btn active" data-mode="chars">CHR</button>
+                    <button class="cw-mode-btn" data-mode="words">WRD</button>
+                    <button class="cw-mode-btn" data-mode="lines">LN</button>
+                </div>
+                <button id="cwStopBtn" class="cw-stop-btn">STOP</button>
+                <button id="cwCloseBtn" class="cw-close-btn">✕</button>
+            </div>
+            <div class="cw-display" id="cwDisplay"><span class="cw-cursor">█</span></div>
+            <input type="text" id="cwInput" class="cw-input-field" placeholder="TYPE CW MESSAGE..." autocomplete="off">
         </div>
 
         <!-- Gain overlay -->
@@ -979,6 +1188,7 @@ function updateMode(mode) {
     currentMode = mode;
     document.getElementById('modeBtn').textContent = mode;
     if (currentPanel === 'mode') renderModeOverlay();
+    renderBottomBar(); // Update PTT/KEY button
 }
 
 function updateFilterBtn(num) {
@@ -1374,6 +1584,7 @@ function setPanel(name) {
     else if (name === 'scope') {}
     else if (name === 'span') renderSpanOverlay();
     else if (name === 'freqinp') renderFreqInput();
+    else if (name === 'cw') renderCWOverlay();
     renderBottomBar();
 }
 
@@ -1402,12 +1613,13 @@ function renderBottomBar() {
 function getBottomButtons() {
     switch (currentPanel) {
         case 'default':
+            var isCW = (currentMode === 'CW' || currentMode === 'CW-R');
             return [
                 { label: 'MODE', action: function() { setPanel('mode'); } },
                 { label: 'BAND', action: function() { setPanel('band'); } },
                 { label: 'FUNC', action: function() { setPanel('func'); } },
                 { label: 'GAIN', action: function() { setPanel('gain'); } },
-                { label: 'PTT', txActive: isTransmitting, cls: 'ptt-btn', action: function() { handlePTTPress(); } }
+                { label: isCW ? 'KEY' : 'PTT', txActive: isTransmitting, cls: isCW ? 'key-btn' : 'ptt-btn', action: isCW ? function() { setPanel('cw'); } : function() { handlePTTPress(); } }
             ];
         case 'mode':
         case 'band':
@@ -1415,6 +1627,7 @@ function getBottomButtons() {
         case 'audiomiс':
         case 'span':
         case 'freqinp':
+        case 'cw':
             return [
                 { label: '\u23CE', action: function() { setPanel('default'); } }
             ];
@@ -1426,22 +1639,6 @@ function getBottomButtons() {
                 { label: 'SPLIT', active: isSplit, action: function() { toggleSplit(); } },
                 { label: '\u23CE', action: function() { hideAllOverlays(); setPanel('default'); } }
             ];
-        case 'scope': {
-            var b = [];
-            if (availableSpans.length > 0) {
-                var sl = 'SPAN';
-                if (currentSpanIndex >= 0 && currentSpanIndex < availableSpans.length)
-                    sl = availableSpans[currentSpanIndex].name;
-                b.push({ label: sl, action: function() { setPanel('span'); } });
-            }
-            b.push({ label: 'AUDIO', active: audioEnabled, action: function() { toggleAudio(); renderBottomBar(); } });
-            if (txAudioAvailable && window.isSecureContext) {
-                b.push({ label: 'MIC', active: micEnabled, action: function() { toggleMic(); renderBottomBar(); } });
-            }
-            b.push({ label: 'PTT', txActive: isTransmitting, cls: 'ptt-btn', action: null });
-            b.push({ label: '\u23CE', action: function() { setPanel('default'); } });
-            return b;
-        }
         default:
             return [{ label: '\u23CE', action: function() { setPanel('default'); } }];
     }
@@ -1643,7 +1840,7 @@ function renderSpanOverlay() {
         var btn = document.createElement('button');
         btn.className = 'ov-btn' + (i === currentSpanIndex ? ' active' : '');
         btn.textContent = availableSpans[i].name;
-        btn.onclick = (function(idx) { return function() { setSpan(idx); setPanel('scope'); }; })(i);
+        btn.onclick = (function(idx) { return function() { setSpan(idx); setPanel('default'); }; })(i);
         grid.appendChild(btn);
     }
     var back = document.createElement('button');
@@ -1704,6 +1901,10 @@ function updateWarningVisibility() {
 }
 
 function handlePTTPress() {
+    // Skip audio/mic checks for CW mode (uses radio's internal keyer)
+    var isCW = (currentMode === 'CW' || currentMode === 'CW-R');
+    if (isCW) return true;
+
     // Check if audio is off or mic is off (when TX audio is available)
     var audioNeeded = audioAvailable && !audioEnabled;
     var micNeeded = txAudioAvailable && window.isSecureContext && !micEnabled;
@@ -1804,11 +2005,18 @@ function toggleAudio() {
     startAudio();
 }
 
+var audioGainNode = null; // Global gain node for muting RX audio during CW
+
 function startAudio() {
     if (audioCtx) stopAudio();
     audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: audioSampleRate });
     var bufSize = audioCtx.sampleRate * 3;
     audioRingBuf = new Float32Array(bufSize);
+
+    // Create gain node for muting during CW
+    audioGainNode = audioCtx.createGain();
+    audioGainNode.gain.value = 1.0;
+    audioGainNode.connect(audioCtx.destination);
     audioRingWrite = 0; audioRingRead = 0; audioRingBuffered = 0;
     audioRingStarted = false;
     audioPrebufferSamples = Math.floor(audioCtx.sampleRate * 0.1);
@@ -1855,7 +2063,7 @@ function startWithWorklet() {
     audioCtx.audioWorklet.addModule(url).then(function() {
         URL.revokeObjectURL(url);
         audioWorkletNode = new AudioWorkletNode(audioCtx, 'wfview-audio-processor');
-        audioWorkletNode.connect(audioCtx.destination);
+        audioWorkletNode.connect(audioGainNode); // Connect through gain node for muting
         audioUseWorklet = true;
         send({ cmd: 'enableAudio', value: true });
     }).catch(function(err) {
@@ -1876,7 +2084,7 @@ function startWithScriptProcessor() {
             else output[i] = 0;
         }
     };
-    audioScriptNode.connect(audioCtx.destination);
+    audioScriptNode.connect(audioGainNode); // Connect through gain node for muting
     audioUseWorklet = false;
     send({ cmd: 'enableAudio', value: true });
 }
@@ -1886,6 +2094,7 @@ function stopAudio() {
     audioEnabled = false;
     if (audioWorkletNode) { audioWorkletNode.disconnect(); audioWorkletNode = null; }
     if (audioScriptNode) { audioScriptNode.disconnect(); audioScriptNode = null; }
+    if (audioGainNode) { audioGainNode.disconnect(); audioGainNode = null; }
     audioUseWorklet = false; audioRingBuf = null;
     if (audioCtx) { audioCtx.close(); audioCtx = null; }
     renderBottomBar();
@@ -2313,6 +2522,564 @@ function setMobileViewportHeight() {
 }
 
 // ============================================================
+// CW FUNCTIONS
+// ============================================================
+var cwSpeed = 20;
+var cwMode = 'chars'; // chars, words, lines
+var cwPendingText = '';
+var cwSentText = '';
+var cwCharacters = []; // Array of {char, status: 'pending'|'sending'|'sent', startTime}
+var cwCharIndex = 0; // Current character being sent
+var cwNextCharTime = 0; // Cumulative timing for next character
+var cwUpdateTimers = []; // Track pending setTimeout IDs for cleanup
+
+// CW sidetone generator (browser-based) - uses pre-rendered buffers to avoid RX audio interference
+var cwAudioContext = null;
+var cwToneFreq = 600; // 600 Hz sidetone
+var cwSidetoneEndTime = 0; // Track when sidetone will finish
+var cwCurrentSource = null; // Track currently playing source
+var cwActiveSources = []; // Track ALL active audio sources for proper cleanup
+var cwRenderQueue = []; // Queue for pending sidetone renders
+var cwIsRendering = false; // Track if a render is in progress
+var cwUnmuteTimer = null; // Timer for unmuting after transmission
+
+function initCWSidetone() {
+    if (!cwAudioContext) {
+        try {
+            cwAudioContext = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+        } catch (e) {
+            console.warn('Web Audio API not available for CW sidetone');
+        }
+    }
+}
+
+function muteRxAudio() {
+    if (audioGainNode) {
+        audioGainNode.gain.setValueAtTime(0, audioGainNode.context.currentTime);
+    }
+}
+
+function unmuteRxAudio() {
+    if (audioGainNode) {
+        audioGainNode.gain.setValueAtTime(1, audioGainNode.context.currentTime);
+    }
+}
+
+function scheduleRxUnmute(delayMs) {
+    // Clear any existing unmute timer
+    if (cwUnmuteTimer) {
+        clearTimeout(cwUnmuteTimer);
+    }
+    // Schedule unmute after transmission completes
+    cwUnmuteTimer = setTimeout(function() {
+        unmuteRxAudio();
+        cwUnmuteTimer = null;
+    }, delayMs);
+}
+
+function playCWSidetone(text, startIndex) {
+    if (!cwAudioContext || !text) return;
+
+    // Mute RX audio when starting CW transmission
+    var wasEmpty = (cwRenderQueue.length === 0 && !cwIsRendering);
+    if (wasEmpty) {
+        muteRxAudio();
+    }
+
+    // Add to queue with character index tracking
+    cwRenderQueue.push({text: text, startIndex: startIndex});
+    processCWSidetoneQueue();
+}
+
+function processCWSidetoneQueue() {
+    if (cwIsRendering || cwRenderQueue.length === 0) return;
+
+    cwIsRendering = true;
+    var queueItem = cwRenderQueue.shift();
+    var text = queueItem.text;
+    var startIndex = queueItem.startIndex;
+
+    // Morse code timing (PARIS standard)
+    var dotDuration = 1200 / cwSpeed; // ms per dot
+    var dashDuration = dotDuration * 3;
+    var symbolGap = dotDuration;
+    var charGap = dotDuration * 3;
+    var wordGap = dotDuration * 7;
+
+    // Morse code table
+    var morse = {
+        'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
+        'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
+        'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
+        'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
+        'Y': '-.--', 'Z': '--..', '0': '-----', '1': '.----', '2': '..---',
+        '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...',
+        '8': '---..', '9': '----.', '.': '.-.-.-', ',': '--..--', '?': '..--..',
+        '/': '-..-.', '=': '-...-', '+': '.-.-.', ' ': ' '
+    };
+
+    text = text.toUpperCase();
+
+    // Calculate total duration
+    var totalDuration = 0;
+    for (var i = 0; i < text.length; i++) {
+        var char = text[i];
+        var pattern = morse[char];
+        if (char === ' ') {
+            totalDuration += wordGap;
+        } else if (pattern) {
+            for (var j = 0; j < pattern.length; j++) {
+                var symbol = pattern[j];
+                totalDuration += (symbol === '.') ? dotDuration : dashDuration;
+                totalDuration += symbolGap;
+            }
+            totalDuration += charGap - symbolGap;
+        }
+    }
+
+    if (totalDuration === 0) {
+        cwIsRendering = false;
+        processCWSidetoneQueue(); // Process next in queue
+        return;
+    }
+
+    // Pre-render audio buffer using OfflineAudioContext (isolated from RX audio)
+    var sampleRate = cwAudioContext.sampleRate;
+    var bufferLength = Math.ceil((totalDuration / 1000) * sampleRate);
+    var offlineCtx = new OfflineAudioContext(1, bufferLength, sampleRate);
+
+    var time = 0;
+    for (var i = 0; i < text.length; i++) {
+        var char = text[i];
+        var pattern = morse[char];
+
+        if (char === ' ') {
+            time += wordGap / 1000;
+        } else if (pattern) {
+            for (var j = 0; j < pattern.length; j++) {
+                var symbol = pattern[j];
+                var duration = (symbol === '.') ? dotDuration : dashDuration;
+
+                var osc = offlineCtx.createOscillator();
+                var gain = offlineCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = cwToneFreq;
+                osc.connect(gain);
+                gain.connect(offlineCtx.destination);
+
+                // Envelope to avoid clicks
+                gain.gain.setValueAtTime(0, time);
+                gain.gain.linearRampToValueAtTime(0.15, time + 0.005);
+                gain.gain.setValueAtTime(0.15, time + duration / 1000 - 0.005);
+                gain.gain.linearRampToValueAtTime(0, time + duration / 1000);
+
+                osc.start(time);
+                osc.stop(time + duration / 1000);
+
+                time += (duration + symbolGap) / 1000;
+            }
+            time += (charGap - symbolGap) / 1000;
+        }
+    }
+
+    // Render and play the buffer
+    offlineCtx.startRendering().then(function(renderedBuffer) {
+        // Schedule playback after previous sidetone finishes
+        var startTime = Math.max(cwAudioContext.currentTime, cwSidetoneEndTime);
+
+        var source = cwAudioContext.createBufferSource();
+        source.buffer = renderedBuffer;
+        source.connect(cwAudioContext.destination);
+
+        // Track this source for cleanup
+        cwActiveSources.push(source);
+
+        // Remove from tracking when it ends naturally
+        source.onended = function() {
+            var idx = cwActiveSources.indexOf(source);
+            if (idx !== -1) {
+                cwActiveSources.splice(idx, 1);
+            }
+        };
+
+        source.start(startTime);
+
+        cwCurrentSource = source;
+        cwSidetoneEndTime = startTime + renderedBuffer.duration;
+
+        // Schedule character status updates
+        var playbackStartMs = (startTime - cwAudioContext.currentTime) * 1000;
+        scheduleCharacterUpdates(text, startIndex, playbackStartMs);
+
+        // Mark rendering complete and process next in queue
+        cwIsRendering = false;
+
+        // If queue is now empty, schedule unmute after this buffer finishes
+        if (cwRenderQueue.length === 0) {
+            var playbackDelayMs = (cwSidetoneEndTime - cwAudioContext.currentTime) * 1000;
+            scheduleRxUnmute(Math.max(0, playbackDelayMs + 100)); // +100ms buffer
+        }
+
+        processCWSidetoneQueue();
+    }).catch(function(err) {
+        console.warn('CW sidetone rendering failed:', err);
+        cwIsRendering = false;
+
+        // If queue is empty, unmute immediately on error
+        if (cwRenderQueue.length === 0) {
+            unmuteRxAudio();
+        }
+
+        processCWSidetoneQueue();
+    });
+}
+
+function scheduleCharacterUpdates(text, startIndex, startDelayMs) {
+    // Update specific characters starting at startIndex
+    // Schedule their status updates relative to when this buffer starts playing
+
+    var morse = {
+        'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
+        'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
+        'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
+        'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
+        'Y': '-.--', 'Z': '--..', '0': '-----', '1': '.----', '2': '..---',
+        '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...',
+        '8': '---..', '9': '----.', '.': '.-.-.-', ',': '--..--', '?': '..--..',
+        '/': '-..-.', '=': '-...-', '+': '.-.-.', ' ': ' '
+    };
+
+    var dotDuration = 1200 / cwSpeed;
+    var dashDuration = dotDuration * 3;
+    var symbolGap = dotDuration;
+    var charGap = dotDuration * 3;
+    var wordGap = dotDuration * 7;
+
+    if (startIndex >= cwCharacters.length) return; // Invalid index
+
+    // Get the first character's start time for relative calculation
+    var firstCharStartTime = cwCharacters[startIndex].startTime;
+
+    // Schedule updates for each character in this transmission
+    for (var i = 0; i < text.length && (startIndex + i) < cwCharacters.length; i++) {
+        var charObj = cwCharacters[startIndex + i];
+
+        (function(charObj) {
+            var char = charObj.char;
+
+            // Calculate when this character starts relative to buffer start
+            var charRelativeStart = charObj.startTime - firstCharStartTime;
+            var actualStartTime = startDelayMs + charRelativeStart;
+
+            // Mark as "sending" when transmission starts
+            var timer1 = setTimeout(function() {
+                if (charObj.status === 'pending') {
+                    charObj.status = 'sending';
+                    updateCWTranscript();
+                }
+            }, Math.max(0, actualStartTime));
+            cwUpdateTimers.push(timer1);
+
+            // Calculate character duration
+            var pattern = morse[char];
+            var charDuration = 0;
+
+            if (char === ' ') {
+                charDuration = wordGap;
+            } else if (pattern) {
+                for (var j = 0; j < pattern.length; j++) {
+                    var symbol = pattern[j];
+                    charDuration += (symbol === '.') ? dotDuration : dashDuration;
+                    charDuration += symbolGap;
+                }
+                charDuration += charGap - symbolGap;
+            }
+
+            // Mark as "sent" when transmission completes
+            var timer2 = setTimeout(function() {
+                if (charObj.status === 'sending') {
+                    charObj.status = 'sent';
+                    updateCWTranscript();
+                }
+            }, Math.max(0, actualStartTime + charDuration));
+            cwUpdateTimers.push(timer2);
+        })(charObj);
+    }
+}
+
+function clearCWTimers() {
+    // Clear all pending character update timers
+    for (var i = 0; i < cwUpdateTimers.length; i++) {
+        clearTimeout(cwUpdateTimers[i]);
+    }
+    cwUpdateTimers = [];
+}
+
+function stopAllCWSidetone() {
+    // Stop all active audio buffer sources
+    for (var i = 0; i < cwActiveSources.length; i++) {
+        try {
+            cwActiveSources[i].stop();
+        } catch(e) {
+            // Source may have already stopped naturally
+        }
+    }
+    cwActiveSources = [];
+    cwCurrentSource = null;
+    cwSidetoneEndTime = 0;
+}
+
+function renderCWOverlay() {
+    document.getElementById('cwBar').classList.remove('hidden');
+    document.getElementById('cwSpeedInput').value = cwSpeed;
+    document.querySelectorAll('.cw-mode-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.mode === cwMode);
+    });
+    updateCWTranscript();
+    // Initialize sidetone on first use
+    initCWSidetone();
+    // Send current speed to backend
+    send({ cmd: 'setCWSpeed', wpm: cwSpeed });
+    setTimeout(function() {
+        document.getElementById('cwInput').focus();
+    }, 100);
+}
+
+function updateCWTranscript() {
+    var display = document.getElementById('cwDisplay');
+
+    // Rebuild display from character array
+    var html = '';
+    for (var i = 0; i < cwCharacters.length; i++) {
+        var ch = cwCharacters[i];
+        var cls = 'cw-char ' + ch.status;
+        html += '<span class="' + cls + '">' + ch.char + '</span>';
+    }
+    html += '<span class="cw-cursor">█</span>';
+
+    display.innerHTML = html;
+
+    // Auto-scroll to show latest
+    display.scrollLeft = display.scrollWidth;
+}
+
+function sendCWText(text) {
+    if (!text) return;
+
+    text = text.toUpperCase(); // Force uppercase for morse code
+
+    // Calculate timing for each character
+    var morse = {
+        'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
+        'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
+        'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
+        'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
+        'Y': '-.--', 'Z': '--..', '0': '-----', '1': '.----', '2': '..---',
+        '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...',
+        '8': '---..', '9': '----.', '.': '.-.-.-', ',': '--..--', '?': '..--..',
+        '/': '-..-.', '=': '-...-', '+': '.-.-.', ' ': ' '
+    };
+
+    var dotDuration = 1200 / cwSpeed;
+    var dashDuration = dotDuration * 3;
+    var symbolGap = dotDuration;
+    var charGap = dotDuration * 3;
+    var wordGap = dotDuration * 7;
+
+    // Use cumulative timing to prevent overlaps
+    var currentTime = cwNextCharTime;
+    var startIndex = cwCharacters.length; // Track where these characters start
+
+    // Add characters with timing
+    for (var i = 0; i < text.length; i++) {
+        var char = text[i];
+        var pattern = morse[char];
+
+        cwCharacters.push({
+            char: char,
+            status: 'pending',
+            startTime: currentTime,
+            groupIndex: startIndex // Track which transmission this belongs to
+        });
+
+        if (char === ' ') {
+            currentTime += wordGap;
+        } else if (pattern) {
+            for (var j = 0; j < pattern.length; j++) {
+                var symbol = pattern[j];
+                currentTime += (symbol === '.') ? dotDuration : dashDuration;
+                currentTime += symbolGap;
+            }
+            currentTime += charGap - symbolGap;
+        }
+    }
+
+    // Update next character time for cumulative tracking
+    cwNextCharTime = currentTime;
+
+    send({ cmd: 'sendCW', text: text });
+    playCWSidetone(text, startIndex); // Pass the starting index
+    updateCWTranscript();
+}
+
+function initCWHandlers() {
+    // Speed buttons
+    var speedInput = document.getElementById('cwSpeedInput');
+    document.getElementById('cwSpeedDown').addEventListener('click', function() {
+        cwSpeed = Math.max(10, cwSpeed - 1);
+        speedInput.value = cwSpeed;
+        send({ cmd: 'setCWSpeed', wpm: cwSpeed });
+    });
+    document.getElementById('cwSpeedUp').addEventListener('click', function() {
+        cwSpeed = Math.min(35, cwSpeed + 1);
+        speedInput.value = cwSpeed;
+        send({ cmd: 'setCWSpeed', wpm: cwSpeed });
+    });
+    speedInput.addEventListener('change', function() {
+        cwSpeed = Math.max(10, Math.min(35, parseInt(speedInput.value) || 20));
+        speedInput.value = cwSpeed;
+        send({ cmd: 'setCWSpeed', wpm: cwSpeed });
+    });
+
+    // Mode buttons
+    document.querySelectorAll('.cw-mode-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            cwMode = this.dataset.mode;
+            document.querySelectorAll('.cw-mode-btn').forEach(function(b) {
+                b.classList.remove('active');
+            });
+            this.classList.add('active');
+        });
+    });
+
+    // Stop button
+    document.getElementById('cwStopBtn').addEventListener('click', function() {
+        send({ cmd: 'stopCW' });
+        cwPendingText = '';
+        // Clear queue and unmute RX audio
+        cwRenderQueue = [];
+        cwIsRendering = false;
+        cwCharacters = [];
+        cwCharIndex = 0;
+        cwNextCharTime = 0;
+        clearCWTimers(); // Clear all pending character update timers
+        stopAllCWSidetone(); // Stop all active audio sources
+        if (cwUnmuteTimer) {
+            clearTimeout(cwUnmuteTimer);
+            cwUnmuteTimer = null;
+        }
+        unmuteRxAudio();
+        updateCWTranscript();
+    });
+
+    // Close button
+    document.getElementById('cwCloseBtn').addEventListener('click', function() {
+        document.getElementById('cwBar').classList.add('hidden');
+        document.getElementById('cwInput').value = '';
+        cwSentText = '';
+        cwPendingText = '';
+        cwCharacters = [];
+        cwCharIndex = 0;
+        cwNextCharTime = 0;
+        // Clear sidetone queue
+        cwRenderQueue = [];
+        cwIsRendering = false;
+        clearCWTimers(); // Clear all pending character update timers
+        stopAllCWSidetone(); // Stop all active audio sources
+        // Clear unmute timer and unmute RX audio immediately
+        if (cwUnmuteTimer) {
+            clearTimeout(cwUnmuteTimer);
+            cwUnmuteTimer = null;
+        }
+        unmuteRxAudio();
+        send({ cmd: 'stopCW' });
+        renderBottomBar();
+    });
+
+    // Input handling
+    var cwInput = document.getElementById('cwInput');
+    var lastValue = '';
+
+    cwInput.addEventListener('input', function(e) {
+        var currentValue = cwInput.value;
+
+        if (currentValue.length > lastValue.length) {
+            // Text was added
+            var newChar = currentValue[currentValue.length - 1];
+
+            if (cwMode === 'chars') {
+                // Send immediately on each character and clear input
+                sendCWText(newChar);
+                cwPendingText = '';
+                cwInput.value = '';
+                lastValue = '';
+                updateCWTranscript();
+                return; // Skip normal processing
+            } else if (cwMode === 'words') {
+                // Check if space or newline was added (both break words)
+                if (newChar === ' ' || newChar === '\n') {
+                    // Find the last word (everything before the delimiter)
+                    var beforeDelimiter = currentValue.substring(0, currentValue.length - 1);
+                    var words = beforeDelimiter.trim().split(/[\s\n]+/);
+                    if (words.length > 0) {
+                        var lastWord = words[words.length - 1];
+                        if (lastWord) {
+                            sendCWText(lastWord + ' '); // Always use space in CW
+                            cwPendingText = '';
+                            cwInput.value = '';
+                            lastValue = '';
+                            updateCWTranscript();
+                            return; // Skip normal processing
+                        }
+                    }
+                } else {
+                    cwPendingText += newChar;
+                }
+            } else if (cwMode === 'lines') {
+                cwPendingText += newChar;
+            }
+        } else {
+            // Text was deleted - update pending text
+            if (cwMode !== 'chars') {
+                var diff = lastValue.length - currentValue.length;
+                cwPendingText = cwPendingText.substring(0, cwPendingText.length - diff);
+            }
+        }
+
+        lastValue = currentValue;
+        updateCWTranscript();
+    });
+
+    // Handle Enter key in WORDS and LINES modes
+    cwInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            var currentText = cwInput.value.trim();
+
+            if (cwMode === 'words') {
+                // In WORD mode, Enter sends the current word
+                if (currentText) {
+                    sendCWText(currentText + ' ');
+                    cwInput.value = '';
+                    cwPendingText = '';
+                    lastValue = '';
+                    updateCWTranscript();
+                }
+            } else if (cwMode === 'lines') {
+                // In LINE mode, Enter sends the entire line
+                if (currentText) {
+                    sendCWText(currentText + ' '); // Append space at end of line
+                    cwInput.value = '';
+                    cwPendingText = '';
+                    lastValue = '';
+                    updateCWTranscript();
+                }
+            }
+        }
+    });
+}
+
+// ============================================================
 // INIT
 // ============================================================
 console.log('=== WFVIEW WEB UI v2.1.0 (2026-02-16) - Dual VFO Support ===');
@@ -2320,6 +3087,7 @@ console.log('=== WFVIEW WEB UI v2.1.0 (2026-02-16) - Dual VFO Support ===');
 setMobileViewportHeight();
 buildColorTable();
 initSliderTracking();
+initCWHandlers();
 renderBottomBar();
 drawMeter();
 updateClock();

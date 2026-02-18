@@ -6366,7 +6366,13 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
             cw = new cwSender(this,rig);
             cw->setCutNumbers(prefs.cwCutNumbers);
             cw->setSendImmediate(prefs.cwSendImmediate);
-            cw->setSidetoneEnable(prefs.cwSidetoneEnabled);
+            // Disable server-side sidetone when web server is active (web interface has its own browser-based sidetone)
+            if (web != Q_NULLPTR && prefs.webPort > 0) {
+                cw->setSidetoneEnable(false);
+                qInfo(logGui()) << "Web server active: Disabling server-side CW sidetone (web interface uses browser-based sidetone)";
+            } else {
+                cw->setSidetoneEnable(prefs.cwSidetoneEnabled);
+            }
             cw->setSidetoneLevel(prefs.cwSidetoneLevel);
             cw->setMacroText(prefs.cwMacroList);
         }

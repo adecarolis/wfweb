@@ -644,6 +644,23 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     else if (type == "getStatus") {
         sendCurrentState(client);
     }
+    else if (type == "sendCW") {
+        QString text = cmd["text"].toString();
+        if (!text.isEmpty()) {
+            queue->add(priorityImmediate, queueItem(funcSendCW, QVariant::fromValue<QString>(text)));
+            qCDebug(logWebServer) << "sendCW:" << text;
+        }
+    }
+    else if (type == "setCWSpeed") {
+        ushort wpm = static_cast<ushort>(qBound(6, cmd["wpm"].toInt(), 48));
+        queue->add(priorityImmediate, queueItem(funcKeySpeed, QVariant::fromValue<ushort>(wpm), false, 0));
+        qCDebug(logWebServer) << "setCWSpeed:" << wpm << "WPM";
+    }
+    else if (type == "stopCW") {
+        // Send empty string to stop CW transmission
+        queue->add(priorityImmediate, queueItem(funcSendCW, QVariant::fromValue<QString>(QString())));
+        qCDebug(logWebServer) << "stopCW";
+    }
     else {
         qWarning() << "Web: Unknown command:" << type;
         QJsonObject err;
