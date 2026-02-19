@@ -374,6 +374,25 @@ html, body {
     border-bottom: 1px solid #0a0;
     font-size: 14px;
 }
+
+/* Mobile portrait: more compact CW bar */
+@media (orientation: portrait) and (max-width: 600px) {
+    .cw-bar-header {
+        gap: 4px;
+        padding: 3px 4px;
+        font-size: 11px;
+        flex-wrap: wrap; /* Allow wrapping to multiple rows */
+    }
+    .cw-label { display: none; } /* Hide "CW" label - obvious from context */
+    .cw-speed-ctrl { gap: 2px; }
+    .cw-speed-btn { width: 22px; height: 22px; font-size: 14px; padding: 0; }
+    #cwSpeedInput { width: 32px; height: 22px; font-size: 11px; padding: 2px; }
+    .cw-wpm-label { display: none; } /* Hide "WPM" - obvious from context */
+    .cw-mode-btn { padding: 2px 6px; font-size: 10px; }
+    .cw-stop-btn, .cw-close-btn { padding: 2px 6px; font-size: 10px; }
+    .cw-display { font-size: 12px; padding: 4px 6px; min-height: 20px; }
+    .cw-input-field { font-size: 12px; padding: 4px 6px; }
+}
 .cw-label {
     color: #0f0;
     font-weight: bold;
@@ -2377,6 +2396,9 @@ function drawWaterfall() {
 }
 
 function scopeClick(e) {
+    // Disable waterfall gestures when CW bar is active
+    if (!document.getElementById('cwBar').classList.contains('hidden')) return;
+
     if (spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return;
     var rect = e.target.getBoundingClientRect();
     var frac = (e.clientX - rect.left) / rect.width;
@@ -2387,6 +2409,9 @@ function scopeClick(e) {
 }
 
 function scopeWheel(e) {
+    // Disable waterfall gestures when CW bar is active
+    if (!document.getElementById('cwBar').classList.contains('hidden')) return;
+
     e.preventDefault();
     if (e.deltaY < 0) tuneUp(); else tuneDown();
 }
@@ -2993,6 +3018,7 @@ function initCWHandlers() {
         }
         unmuteRxAudio();
         send({ cmd: 'stopCW' });
+        setPanel('default'); // Return to default panel
         renderBottomBar();
     });
 
