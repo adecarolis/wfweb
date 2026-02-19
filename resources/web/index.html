@@ -2029,7 +2029,7 @@ var audioGainNode = null; // Global gain node for muting RX audio during CW
 function startAudio() {
     if (audioCtx) stopAudio();
     audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: audioSampleRate });
-    var bufSize = audioCtx.sampleRate * 3;
+    var bufSize = audioCtx.sampleRate * 1.5; // 1.5s buffer for low-latency LAN
     audioRingBuf = new Float32Array(bufSize);
 
     // Create gain node for muting during CW
@@ -2038,7 +2038,7 @@ function startAudio() {
     audioGainNode.connect(audioCtx.destination);
     audioRingWrite = 0; audioRingRead = 0; audioRingBuffered = 0;
     audioRingStarted = false;
-    audioPrebufferSamples = Math.floor(audioCtx.sampleRate * 0.1);
+    audioPrebufferSamples = Math.floor(audioCtx.sampleRate * 0.04); // 40ms pre-buffer
     if (audioCtx.audioWorklet && window.isSecureContext) startWithWorklet();
     else startWithScriptProcessor();
 }
@@ -2048,18 +2048,18 @@ function startWithWorklet() {
         'class WfviewAudioProcessor extends AudioWorkletProcessor {',
         '  constructor() {',
         '    super();',
-        '    this.buffer = new Float32Array(sampleRate * 3);',
+        '    this.buffer = new Float32Array(sampleRate * 1.5);',
         '    this.writePos = 0; this.readPos = 0; this.buffered = 0;',
         '    this.started = false;',
-        '    this.prebufferSamples = Math.floor(sampleRate * 0.1);',
-        '    this.maxBuffered = Math.floor(sampleRate * 0.5);',
+        '    this.prebufferSamples = Math.floor(sampleRate * 0.04);',
+        '    this.maxBuffered = Math.floor(sampleRate * 0.2);',
         '    this.port.onmessage = (e) => {',
         '      if (e.data === "flush") { this.buffered = 0; this.readPos = this.writePos; this.started = false; return; }',
         '      var samples = e.data; var len = samples.length; var bufLen = this.buffer.length;',
         '      for (var i = 0; i < len; i++) { this.buffer[this.writePos] = samples[i]; this.writePos = (this.writePos + 1) % bufLen; }',
         '      this.buffered += len; if (this.buffered > bufLen) this.buffered = bufLen;',
         '      if (this.started && this.buffered > this.maxBuffered) {',
-        '        var target = Math.floor(sampleRate * 0.15); var skip = this.buffered - target;',
+        '        var target = Math.floor(sampleRate * 0.08); var skip = this.buffered - target;',
         '        this.readPos = (this.readPos + skip) % bufLen; this.buffered -= skip;',
         '      }',
         '    };',
@@ -2200,9 +2200,9 @@ function handleAudioData(buffer) {
         var len = floatData.length, bufLen = audioRingBuf.length;
         for (var i = 0; i < len; i++) { audioRingBuf[audioRingWrite] = floatData[i]; audioRingWrite = (audioRingWrite + 1) % bufLen; }
         audioRingBuffered += len; if (audioRingBuffered > bufLen) audioRingBuffered = bufLen;
-        var maxBuf = Math.floor(audioSampleRate * 0.5);
+        var maxBuf = Math.floor(audioSampleRate * 0.2); // 200ms max buffer
         if (audioRingStarted && audioRingBuffered > maxBuf) {
-            var target = Math.floor(audioSampleRate * 0.15), skip = audioRingBuffered - target;
+            var target = Math.floor(audioSampleRate * 0.08), skip = audioRingBuffered - target; // 80ms target
             audioRingRead = (audioRingRead + skip) % bufLen; audioRingBuffered -= skip;
         }
     }
@@ -2396,8 +2396,9 @@ function drawWaterfall() {
 }
 
 function scopeClick(e) {
-    // Disable waterfall gestures when CW bar is active
-    if (!document.getElementById('cwBar').classList.contains('hidden')) return;
+    // Disable waterfall gestures when CW bar is active on mobile portrait
+    var isMobilePortrait = window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
+    if (isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden')) return;
 
     if (spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return;
     var rect = e.target.getBoundingClientRect();
@@ -2409,8 +2410,9 @@ function scopeClick(e) {
 }
 
 function scopeWheel(e) {
-    // Disable waterfall gestures when CW bar is active
-    if (!document.getElementById('cwBar').classList.contains('hidden')) return;
+    // Disable waterfall gestures when CW bar is active on mobile portrait
+    var isMobilePortrait = window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
+    if (isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden')) return;
 
     e.preventDefault();
     if (e.deltaY < 0) tuneUp(); else tuneDown();
@@ -2471,6 +2473,10 @@ document.getElementById('freqDisplay').addEventListener('wheel', function(e) {
     var isTouching = false;
 
     function touchStart(e) {
+        // Disable touch gestures when CW bar is active on mobile portrait
+        var isMobilePortrait = window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
+        if (isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden')) return;
+
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         lastTouchX = touchStartX;
@@ -2480,6 +2486,10 @@ document.getElementById('freqDisplay').addEventListener('wheel', function(e) {
 
     function touchMove(e) {
         if (!isTouching) return;
+
+        // Disable touch gestures when CW bar is active on mobile portrait
+        var isMobilePortrait = window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
+        if (isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden')) return;
 
         var currentX = e.touches[0].clientX;
         var currentY = e.touches[0].clientY;
@@ -2586,6 +2596,7 @@ function muteRxAudio() {
 
 function unmuteRxAudio() {
     if (audioGainNode) {
+        flushAudio(); // Clear any audio that accumulated while muted
         audioGainNode.gain.setValueAtTime(1, audioGainNode.context.currentTime);
     }
 }
@@ -2605,10 +2616,11 @@ function scheduleRxUnmute(delayMs) {
 function playCWSidetone(text, startIndex) {
     if (!cwAudioContext || !text) return;
 
-    // Mute RX audio when starting CW transmission
+    // Mute RX audio and flush buffer when starting CW transmission
     var wasEmpty = (cwRenderQueue.length === 0 && !cwIsRendering);
     if (wasEmpty) {
         muteRxAudio();
+        flushAudio(); // Clear RX audio buffer to prevent contamination
     }
 
     // Add to queue with character index tracking
