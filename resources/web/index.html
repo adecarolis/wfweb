@@ -848,7 +848,7 @@ html, body {
                 <button id="cwStopBtn" class="cw-stop-btn">STOP</button>
                 <button id="cwCloseBtn" class="cw-close-btn">✕</button>
             </div>
-            <div class="cw-display" id="cwDisplay"><span class="cw-cursor">█</span></div>
+            <div class="cw-display" id="cwDisplay"></div>
             <input type="text" id="cwInput" class="cw-input-field" placeholder="TYPE CW MESSAGE..." autocomplete="off">
         </div>
 
@@ -1952,22 +1952,42 @@ function handlePTTPress() {
 })();
 
 // PTT button (hold to transmit)
+// PTT with TX audio drain delay
+var pttReleaseTimer = null;
+
+function releasePTT() {
+    // Cancel any pending release
+    if (pttReleaseTimer) {
+        clearTimeout(pttReleaseTimer);
+    }
+    // Wait 300ms to drain TX audio buffer before releasing PTT
+    pttReleaseTimer = setTimeout(function() {
+        send({ cmd: 'setPTT', value: false });
+        pttReleaseTimer = null;
+    }, 300);
+}
+
 (function() {
     var bar = document.getElementById('bottomBar');
     function isPTT(e) { return e.target.classList.contains('ptt-btn'); }
     function pttOn(e) {
         e.preventDefault();
         if (!handlePTTPress()) return; // Check audio/mic, show menu if needed
+        // Cancel any pending PTT release
+        if (pttReleaseTimer) {
+            clearTimeout(pttReleaseTimer);
+            pttReleaseTimer = null;
+        }
         flushAudio();
         send({ cmd: 'setPTT', value: true });
     }
-    function pttOff(e) { e.preventDefault(); send({ cmd: 'setPTT', value: false }); }
+    function pttOff(e) { e.preventDefault(); releasePTT(); }
     bar.addEventListener('mousedown', function(e) { if (isPTT(e)) pttOn(e); });
     bar.addEventListener('mouseup', function(e) { if (isPTT(e)) pttOff(e); });
-    bar.addEventListener('mouseleave', function() { if (isTransmitting) send({ cmd: 'setPTT', value: false }); });
+    bar.addEventListener('mouseleave', function() { if (isTransmitting) releasePTT(); });
     bar.addEventListener('touchstart', function(e) { if (isPTT(e)) pttOn(e); });
     bar.addEventListener('touchend', function(e) { if (isPTT(e)) pttOff(e); });
-    bar.addEventListener('touchcancel', function() { if (isTransmitting) send({ cmd: 'setPTT', value: false }); });
+    bar.addEventListener('touchcancel', function() { if (isTransmitting) releasePTT(); });
 })();
 
 // ============================================================
@@ -2444,6 +2464,11 @@ document.addEventListener('keydown', function(e) {
         e.preventDefault();
         if (!spacebarPTTActive && handlePTTPress()) {
             spacebarPTTActive = true;
+            // Cancel any pending PTT release
+            if (pttReleaseTimer) {
+                clearTimeout(pttReleaseTimer);
+                pttReleaseTimer = null;
+            }
             flushAudio();
             send({ cmd: 'setPTT', value: true });
         }
@@ -2454,7 +2479,7 @@ document.addEventListener('keyup', function(e) {
     if (e.key === ' ' && spacebarPTTActive) {
         e.preventDefault();
         spacebarPTTActive = false;
-        send({ cmd: 'setPTT', value: false });
+        releasePTT(); // Use delayed release to drain TX audio
     }
 });
 
@@ -2576,6 +2601,8 @@ var cwCurrentSource = null; // Track currently playing source
 var cwActiveSources = []; // Track ALL active audio sources for proper cleanup
 var cwRenderQueue = []; // Queue for pending sidetone renders
 var cwIsRendering = false; // Track if a render is in progress
+var cwCurrentRenderItem = null; // Track currently rendering item
+var cwAbortCurrentRender = false; // Flag to abort current render
 var cwUnmuteTimer = null; // Timer for unmuting after transmission
 
 function initCWSidetone() {
@@ -2632,7 +2659,9 @@ function processCWSidetoneQueue() {
     if (cwIsRendering || cwRenderQueue.length === 0) return;
 
     cwIsRendering = true;
+    cwAbortCurrentRender = false;
     var queueItem = cwRenderQueue.shift();
+    cwCurrentRenderItem = queueItem;
     var text = queueItem.text;
     var startIndex = queueItem.startIndex;
 
@@ -2721,6 +2750,15 @@ function processCWSidetoneQueue() {
 
     // Render and play the buffer
     offlineCtx.startRendering().then(function(renderedBuffer) {
+        // Check if this render was aborted (user pressed delete)
+        if (cwAbortCurrentRender) {
+            console.log('[CW] Aborted rendering for deleted character');
+            cwIsRendering = false;
+            cwCurrentRenderItem = null;
+            processCWSidetoneQueue();
+            return;
+        }
+
         // Schedule playback after previous sidetone finishes
         var startTime = Math.max(cwAudioContext.currentTime, cwSidetoneEndTime);
 
@@ -2892,7 +2930,6 @@ function updateCWTranscript() {
         var cls = 'cw-char ' + ch.status;
         html += '<span class="' + cls + '">' + ch.char + '</span>';
     }
-    html += '<span class="cw-cursor">█</span>';
 
     display.innerHTML = html;
 
@@ -3090,6 +3127,37 @@ function initCWHandlers() {
 
     // Handle Enter key in WORDS and LINES modes
     cwInput.addEventListener('keydown', function(e) {
+        // In character mode, Delete stops transmission and flushes all pending characters
+        if ((e.key === 'Backspace' || e.key === 'Delete') && cwMode === 'chars') {
+            // Check if there are any pending characters
+            var hasPending = cwCharacters.some(function(ch) { return ch.status === 'pending'; });
+
+            if (hasPending) {
+                e.preventDefault();
+
+                // Stop radio transmission immediately
+                send({ cmd: 'stopCW' });
+
+                // Stop all active sidetone audio
+                stopAllCWSidetone();
+
+                // Remove ALL pending characters from display
+                cwCharacters = cwCharacters.filter(function(ch) {
+                    return ch.status !== 'pending';
+                });
+
+                // Clear all queued audio
+                cwRenderQueue = [];
+                cwAbortCurrentRender = true;
+
+                // Unmute RX audio (in case it was muted for CW)
+                unmuteRxAudio();
+
+                console.log('[CW] Transmission stopped, all pending characters flushed');
+                updateCWTranscript();
+            }
+        }
+
         if (e.key === 'Enter') {
             e.preventDefault();
             var currentText = cwInput.value.trim();
