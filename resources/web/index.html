@@ -252,6 +252,104 @@ html, body {
 }
 .overlay.visible { display: flex; }
 
+/* Macro editor overlay - higher z-index to appear above CW bar */
+#cwMacroEditor {
+    z-index: 250;
+    padding: 20px;
+    align-items: flex-start;
+    overflow-y: auto;
+}
+#cwMacroEditor .editor-dialog {
+    background: #000;
+    border: 2px solid #0a0;
+    padding: 16px;
+    max-width: 90%;
+    width: 350px;
+    margin: auto;
+    margin-top: 40px;
+    box-shadow: 0 4px 20px rgba(0,255,0,0.3);
+}
+#cwMacroEditor .editor-title {
+    color: #0f0;
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+#cwMacroEditor .editor-hint {
+    color: #888;
+    font-size: 11px;
+    margin-bottom: 12px;
+}
+#cwMacroEditor textarea {
+    width: 100%;
+    height: 70px;
+    background: #001a00;
+    border: 1px solid #0a0;
+    color: #0f0;
+    font-family: monospace;
+    padding: 8px;
+    font-size: 13px;
+    resize: vertical;
+    box-sizing: border-box;
+    text-transform: uppercase;
+}
+#cwMacroEditor .editor-buttons {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+}
+#cwMacroEditor .editor-buttons button {
+    flex: 1;
+    border: none;
+    padding: 10px 6px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 11px;
+    text-transform: uppercase;
+}
+#cwMacroSave {
+    background: #0a0;
+    color: #000;
+}
+#cwMacroClear {
+    background: #333;
+    color: #888;
+}
+#cwMacroCancel {
+    background: #1a1a1a;
+    color: #0a0;
+    border: 1px solid #0a0 !important;
+}
+
+/* Responsive sizing for macro editor */
+@media (min-width: 600px) {
+    #cwMacroEditor .editor-dialog {
+        max-width: 400px;
+    }
+}
+@media (orientation: portrait) and (max-width: 600px) {
+    #cwMacroEditor {
+        padding: 0;
+        align-items: flex-start;
+    }
+    #cwMacroEditor .editor-dialog {
+        padding: 12px;
+        width: calc(100% - 20px);
+        margin: 10px;
+        margin-top: 20px;
+        max-height: 50vh;
+    }
+    #cwMacroEditor textarea {
+        height: 50px;
+        font-size: 12px;
+    }
+    #cwMacroEditor .editor-buttons button {
+        padding: 8px 4px;
+        font-size: 10px;
+    }
+}
+
 /* Overlay title */
 .overlay-title {
     text-align: center;
@@ -354,7 +452,7 @@ html, body {
 /* CW Bar - RTTY decoder style (green terminal theme) */
 .cw-bar {
     position: fixed;
-    bottom: 0;
+    bottom: 44px; /* Raise above bottom bar */
     left: 0;
     right: 0;
     background: #000;
@@ -362,6 +460,8 @@ html, body {
     z-index: 200;
     display: flex;
     flex-direction: column;
+    max-height: calc(100vh - 44px);
+    overflow-y: auto;
 }
 .cw-bar.hidden { display: none; }
 
@@ -389,9 +489,14 @@ html, body {
     #cwSpeedInput { width: 32px; height: 22px; font-size: 11px; padding: 2px; }
     .cw-wpm-label { display: none; } /* Hide "WPM" - obvious from context */
     .cw-mode-btn { padding: 2px 6px; font-size: 10px; }
-    .cw-stop-btn, .cw-close-btn { padding: 2px 6px; font-size: 10px; }
-    .cw-display { font-size: 12px; padding: 4px 6px; min-height: 20px; }
-    .cw-input-field { font-size: 12px; padding: 4px 6px; }
+    .cw-stop-btn, .cw-close-btn, .cw-edit-btn { padding: 2px 6px; font-size: 10px; }
+    .cw-display { font-size: 11px; padding: 3px 4px; min-height: 18px; }
+    .cw-input-field { font-size: 11px; padding: 3px 4px; }
+    .cw-macro-grid { gap: 3px; padding: 4px 6px; }
+    .cw-macro-btn { padding: 6px 3px; font-size: 9px; min-height: 28px; }
+    .cw-callsign-row { padding: 3px 6px; gap: 4px; }
+    .cw-callsign-label { font-size: 10px; }
+    .cw-callsign-input { font-size: 11px; padding: 3px 4px; max-width: 100px; }
 }
 .cw-label {
     color: #0f0;
@@ -479,6 +584,25 @@ html, body {
     background: #c00;
     color: #fff;
 }
+.cw-edit-btn {
+    padding: 4px 10px;
+    background: #001a00;
+    border: 1px solid #0a0;
+    color: #0a0;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 8px;
+    font-family: monospace;
+}
+.cw-edit-btn:active {
+    background: #0a0;
+    color: #000;
+}
+.cw-edit-btn.editing {
+    background: #0a0;
+    color: #000;
+}
 .cw-close-btn {
     padding: 4px 10px;
     background: #001a00;
@@ -545,6 +669,90 @@ html, body {
 .cw-input-field::placeholder {
     color: #052;
     text-transform: none;
+}
+.cw-callsign-row {
+    display: flex;
+    gap: 8px;
+    padding: 4px 10px;
+    background: #000;
+    border-bottom: 1px solid #0a0;
+    align-items: center;
+}
+.cw-callsign-label {
+    color: #888;
+    font-size: 11px;
+    font-weight: bold;
+    min-width: 35px;
+}
+.cw-callsign-input {
+    flex: 1;
+    max-width: 120px;
+    background: #001a00;
+    border: 1px solid #0a0;
+    color: #0f0;
+    font-family: 'Courier New', 'Consolas', monospace;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 4px 6px;
+    text-transform: uppercase;
+}
+.cw-callsign-input:focus {
+    outline: none;
+    background: #002a00;
+    border-color: #0f0;
+}
+.cw-macro-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    padding: 6px 10px;
+    background: #0a0a0a;
+}
+.cw-macro-btn {
+    background: #1a1a1a;
+    border: 1px solid #0a0;
+    color: #0a0;
+    padding: 8px 4px;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    text-align: center;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+}
+.cw-macro-btn:hover {
+    background: #002a00;
+    border-color: #0f0;
+}
+.cw-macro-btn:active {
+    background: #0a0;
+    color: #000;
+}
+.cw-macro-btn.empty {
+    color: #333;
+    font-style: italic;
+}
+.cw-macro-btn.editable {
+    border: 2px solid #ff0;
+    animation: pulse-border 1.5s ease-in-out infinite;
+}
+.cw-macro-btn.edit-set-btn {
+    background: #001a00;
+    border: 1px solid #0a0;
+    color: #0a0;
+    font-size: 10px;
+}
+.cw-macro-btn.edit-set-btn.editing {
+    background: #0a0;
+    color: #000;
+}
+@keyframes pulse-border {
+    0%, 100% { border-color: #ff0; }
+    50% { border-color: #aa0; }
 }
 
 /* GAIN overlay */
@@ -848,8 +1056,35 @@ html, body {
                 <button id="cwStopBtn" class="cw-stop-btn">STOP</button>
                 <button id="cwCloseBtn" class="cw-close-btn">✕</button>
             </div>
+
+            <!-- Macro buttons -->
+            <div class="cw-macro-grid" id="cwMacroGrid1"></div>
+            <div class="cw-macro-grid" id="cwMacroGrid2"></div>
+
+            <!-- Callsign inputs -->
+            <div class="cw-callsign-row">
+                <span class="cw-callsign-label">CALL:</span>
+                <input type="text" id="cwCallInput" class="cw-callsign-input" maxlength="10" placeholder="">
+                <span class="cw-callsign-label">QSO:</span>
+                <input type="text" id="cwQsoInput" class="cw-callsign-input" maxlength="10" placeholder="">
+            </div>
+
             <div class="cw-display" id="cwDisplay"></div>
             <input type="text" id="cwInput" class="cw-input-field" placeholder="TYPE CW MESSAGE..." autocomplete="off">
+        </div>
+
+        <!-- Macro editor popup -->
+        <div id="cwMacroEditor" class="overlay" style="display:none;">
+            <div class="editor-dialog">
+                <div class="editor-title">Edit Macro Button</div>
+                <div class="editor-hint">Use [CALL] and [QSO] as placeholders</div>
+                <textarea id="cwMacroText"></textarea>
+                <div class="editor-buttons">
+                    <button id="cwMacroSave">SAVE</button>
+                    <button id="cwMacroClear">CLEAR</button>
+                    <button id="cwMacroCancel">CANCEL</button>
+                </div>
+            </div>
         </div>
 
         <!-- Gain overlay -->
@@ -1207,6 +1442,13 @@ function updateMode(mode) {
     currentMode = mode;
     document.getElementById('modeBtn').textContent = mode;
     if (currentPanel === 'mode') renderModeOverlay();
+
+    // Hide CW bar if switching to non-CW mode
+    var isCW = (mode === 'CW' || mode === 'CW-R');
+    if (!isCW) {
+        document.getElementById('cwBar').classList.add('hidden');
+    }
+
     renderBottomBar(); // Update PTT/KEY button
 }
 
@@ -1630,23 +1872,23 @@ function renderBottomBar() {
 }
 
 function getBottomButtons() {
+    var isCW = (currentMode === 'CW' || currentMode === 'CW-R');
+
     switch (currentPanel) {
         case 'default':
-            var isCW = (currentMode === 'CW' || currentMode === 'CW-R');
+        case 'mode':
+        case 'band':
+        case 'func':
             return [
                 { label: 'MODE', action: function() { setPanel('mode'); } },
                 { label: 'BAND', action: function() { setPanel('band'); } },
                 { label: 'FUNC', action: function() { setPanel('func'); } },
                 { label: 'GAIN', action: function() { setPanel('gain'); } },
-                { label: isCW ? 'KEY' : 'PTT', txActive: isTransmitting, cls: isCW ? 'key-btn' : 'ptt-btn', action: isCW ? function() { setPanel('cw'); } : function() { handlePTTPress(); } }
+                { label: isCW ? 'KEY' : 'PTT', txActive: isTransmitting, cls: isCW ? 'key-btn' : 'ptt-btn', action: isCW ? toggleCWBar : function() { handlePTTPress(); } }
             ];
-        case 'mode':
-        case 'band':
-        case 'func':
         case 'audiomiс':
         case 'span':
         case 'freqinp':
-        case 'cw':
             return [
                 { label: '\u23CE', action: function() { setPanel('default'); } }
             ];
@@ -2454,7 +2696,13 @@ function updateClock() {
 var spacebarPTTActive = false;
 
 document.addEventListener('keydown', function(e) {
-    if (e.target.tagName === 'INPUT') return;
+    // Don't handle shortcuts when editing macros or in input fields
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    // Don't handle shortcuts when macro editor is open
+    var macroEditor = document.getElementById('cwMacroEditor');
+    if (macroEditor && macroEditor.style.display !== 'none') return;
+
     if (e.key === 'ArrowUp' || e.key === '+') { e.preventDefault(); tuneUp(); }
     else if (e.key === 'ArrowDown' || e.key === '-') { e.preventDefault(); tuneDown(); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); tuneUpHz(); }
@@ -2476,6 +2724,10 @@ document.addEventListener('keydown', function(e) {
 });
 
 document.addEventListener('keyup', function(e) {
+    // Don't handle when macro editor is open
+    var macroEditor = document.getElementById('cwMacroEditor');
+    if (macroEditor && macroEditor.style.display !== 'none') return;
+
     if (e.key === ' ' && spacebarPTTActive) {
         e.preventDefault();
         spacebarPTTActive = false;
@@ -2592,6 +2844,105 @@ var cwCharacters = []; // Array of {char, status: 'pending'|'sending'|'sent', st
 var cwCharIndex = 0; // Current character being sent
 var cwNextCharTime = 0; // Cumulative timing for next character
 var cwUpdateTimers = []; // Track pending setTimeout IDs for cleanup
+
+// CW Macros
+var cwMacros = {}; // Macro templates for buttons
+var cwEditingMacro = null; // Currently editing macro index
+var cwEditMode = false; // Edit mode state
+
+function loadCWMacros() {
+    try {
+        var saved = localStorage.getItem('cwMacros');
+        if (saved) cwMacros = JSON.parse(saved);
+    } catch(e) {}
+}
+
+function saveCWMacros() {
+    try {
+        localStorage.setItem('cwMacros', JSON.stringify(cwMacros));
+    } catch(e) {}
+}
+
+function loadCWCallsign() {
+    try {
+        var saved = localStorage.getItem('cwCallsign');
+        if (saved) {
+            document.getElementById('cwCallInput').value = saved;
+        }
+    } catch(e) {}
+}
+
+function saveCWCallsign() {
+    try {
+        var call = document.getElementById('cwCallInput').value.trim().toUpperCase();
+        localStorage.setItem('cwCallsign', call);
+    } catch(e) {}
+}
+
+function substituteMacro(template) {
+    var call = document.getElementById('cwCallInput').value.trim().toUpperCase();
+    var qso = document.getElementById('cwQsoInput').value.trim().toUpperCase();
+    return template.replace(/\[CALL\]/g, call).replace(/\[QSO\]/g, qso);
+}
+
+function toggleEditMode() {
+    cwEditMode = !cwEditMode;
+    var editBtn = document.getElementById('cwMacro5'); // Button 5 is EDIT/SET
+
+    if (cwEditMode) {
+        editBtn.classList.add('editing');
+    } else {
+        editBtn.classList.remove('editing');
+    }
+
+    // Update all macro button classes (except button 5 which is EDIT/SET)
+    for (var i = 1; i <= 10; i++) {
+        if (i === 5) continue; // Skip EDIT/SET button
+        var btn = document.getElementById('cwMacro' + i);
+        if (!btn) continue;
+
+        if (cwEditMode) {
+            btn.classList.add('editable');
+        } else {
+            btn.classList.remove('editable');
+        }
+    }
+}
+
+function updateMacroButtons() {
+    for (var i = 1; i <= 10; i++) {
+        if (i === 5) continue; // Skip EDIT/SET button
+        var btn = document.getElementById('cwMacro' + i);
+        if (!btn) continue;
+
+        var template = cwMacros[i] || '';
+        if (template) {
+            btn.textContent = substituteMacro(template);
+            btn.classList.remove('empty');
+        } else {
+            btn.textContent = 'M' + i;
+            btn.classList.add('empty');
+        }
+    }
+}
+
+function showMacroEditor(index) {
+    cwEditingMacro = index;
+    document.getElementById('cwMacroText').value = cwMacros[index] || '';
+    document.getElementById('cwMacroEditor').style.display = 'flex';
+    // Hide CW bar while editing to prevent overlap
+    document.getElementById('cwBar').style.opacity = '0';
+    document.getElementById('cwBar').style.pointerEvents = 'none';
+    document.getElementById('cwMacroText').focus();
+}
+
+function hideMacroEditor() {
+    document.getElementById('cwMacroEditor').style.display = 'none';
+    // Restore CW bar
+    document.getElementById('cwBar').style.opacity = '1';
+    document.getElementById('cwBar').style.pointerEvents = 'auto';
+    cwEditingMacro = null;
+}
 
 // CW sidetone generator (browser-based) - uses pre-rendered buffers to avoid RX audio interference
 var cwAudioContext = null;
@@ -2904,6 +3255,22 @@ function stopAllCWSidetone() {
     cwSidetoneEndTime = 0;
 }
 
+function toggleCWBar() {
+    var cwBar = document.getElementById('cwBar');
+    if (cwBar.classList.contains('hidden')) {
+        // Show CW bar
+        cwBar.classList.remove('hidden');
+        document.getElementById('cwSpeedInput').value = cwSpeed;
+        document.querySelectorAll('.cw-mode-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.dataset.mode === cwMode);
+        });
+        updateCWTranscript();
+    } else {
+        // Hide CW bar
+        cwBar.classList.add('hidden');
+    }
+}
+
 function renderCWOverlay() {
     document.getElementById('cwBar').classList.remove('hidden');
     document.getElementById('cwSpeedInput').value = cwSpeed;
@@ -3182,6 +3549,86 @@ function initCWHandlers() {
                 }
             }
         }
+    });
+
+    // Initialize macro buttons
+    loadCWMacros();
+    loadCWCallsign();
+
+    for (var i = 1; i <= 10; i++) {
+        var grid = i <= 5 ? document.getElementById('cwMacroGrid1') : document.getElementById('cwMacroGrid2');
+        var btn = document.createElement('button');
+        btn.id = 'cwMacro' + i;
+
+        // Button 5 (top right) is the EDIT/SET button
+        if (i === 5) {
+            btn.className = 'cw-macro-btn edit-set-btn';
+            btn.textContent = 'EDIT/SET';
+            btn.addEventListener('click', toggleEditMode);
+        } else {
+            btn.className = 'cw-macro-btn empty';
+            btn.textContent = 'M' + i;
+
+            // Click to edit (if in edit mode) or send (if not in edit mode)
+            btn.addEventListener('click', (function(index) {
+                return function() {
+                    if (cwEditMode) {
+                        // Edit mode - open editor
+                        showMacroEditor(index);
+                    } else {
+                        // Normal mode - send macro
+                        var template = cwMacros[index];
+                        if (template) {
+                            var text = substituteMacro(template);
+                            if (text) sendCWText(text + ' ');
+                        }
+                    }
+                };
+            })(i));
+        }
+
+        grid.appendChild(btn);
+    }
+
+    updateMacroButtons();
+
+    // Callsign inputs - update buttons when changed
+    document.getElementById('cwCallInput').addEventListener('input', function() {
+        updateMacroButtons();
+        saveCWCallsign(); // Save CALL to localStorage
+    });
+    document.getElementById('cwQsoInput').addEventListener('input', updateMacroButtons);
+
+    // Macro editor buttons
+    document.getElementById('cwMacroSave').addEventListener('click', function() {
+        var text = document.getElementById('cwMacroText').value.trim();
+        if (text) {
+            cwMacros[cwEditingMacro] = text;
+        } else {
+            delete cwMacros[cwEditingMacro];
+        }
+        saveCWMacros();
+        updateMacroButtons();
+        hideMacroEditor();
+    });
+
+    document.getElementById('cwMacroClear').addEventListener('click', function() {
+        delete cwMacros[cwEditingMacro];
+        saveCWMacros();
+        updateMacroButtons();
+        hideMacroEditor();
+    });
+
+    document.getElementById('cwMacroCancel').addEventListener('click', function() {
+        hideMacroEditor();
+    });
+
+    // Force uppercase in macro editor textarea
+    document.getElementById('cwMacroText').addEventListener('input', function(e) {
+        var start = this.selectionStart;
+        var end = this.selectionEnd;
+        this.value = this.value.toUpperCase();
+        this.setSelectionRange(start, end);
     });
 }
 
