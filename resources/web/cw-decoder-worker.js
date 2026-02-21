@@ -24,7 +24,9 @@ const ABBREVIATION_MAP = {
     "\ue036": "UR"
 };
 
-const MODEL_URL = 'models/model.onnx';
+// Model URL - served from root by wfview web server
+// The model is embedded via Qt resource system at :/web/model.onnx
+const MODEL_URL = '/model.onnx';
 
 let session = null;
 let sessionLoading = false;

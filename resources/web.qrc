@@ -3,5 +3,10 @@
         <file alias="index.html">web/index.html</file>
         <file alias="debug.html">web/debug.html</file>
         <file alias="digits-sprite.png">web/digits-sprite.png</file>
+        <file alias="cw-decoder.js">web/cw-decoder.js</file>
+        <file alias="cw-decoder-worker.js">web/cw-decoder-worker.js</file>
+        <file alias="cw-decoder-stft.js">web/cw-decoder-stft.js</file>
+        <file alias="cw-decoder-utils.js">web/cw-decoder-utils.js</file>
+        <file alias="model.onnx">web/models/model.onnx</file>
     </qresource>
 </RCC>

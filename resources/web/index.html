@@ -3051,8 +3051,6 @@ function toggleCWBar() {
             btn.classList.toggle('active', btn.dataset.mode === cwMode);
         });
         updateCWTranscript();
-        // Initialize sidetone on first use
-        initCWSidetone();
         // Send current speed to backend
         send({ cmd: 'setCWSpeed', wpm: cwSpeed });
         setTimeout(function() {
@@ -3071,8 +3069,6 @@ function renderCWOverlay() {
         btn.classList.toggle('active', btn.dataset.mode === cwMode);
     });
     updateCWTranscript();
-    // Initialize sidetone on first use
-    initCWSidetone();
     // Send current speed to backend
     send({ cmd: 'setCWSpeed', wpm: cwSpeed });
     setTimeout(function() {
