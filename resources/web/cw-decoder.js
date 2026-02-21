@@ -281,11 +281,6 @@
     }
 
     function connectToWfviewAudio() {
-        console.log('[CW Decoder] Connecting to audio pipeline...');
-        console.log('[CW Decoder] audioWorkletNode:', !!window.audioWorkletNode);
-        console.log('[CW Decoder] audioScriptNode:', !!window.audioScriptNode);
-        console.log('[CW Decoder] audioGainNode:', !!window.audioGainNode);
-
         if (window.audioGainNode && window.audioWorkletNode) {
             // Disconnect the worklet from gain node
             window.audioWorkletNode.disconnect();
@@ -294,18 +289,12 @@
             window.audioWorkletNode.connect(gainNode);
             gainNode.connect(analyserNode);
             analyserNode.connect(window.audioGainNode);
-
-            console.log('[CW Decoder] Connected to audio pipeline');
         } else if (window.audioGainNode && window.audioScriptNode) {
             // Fallback for ScriptProcessorNode
             window.audioScriptNode.disconnect();
             window.audioScriptNode.connect(gainNode);
             gainNode.connect(analyserNode);
             analyserNode.connect(window.audioGainNode);
-
-            console.log('[CW Decoder] Connected to audio pipeline (ScriptProcessor)');
-        } else {
-            console.warn('[CW Decoder] Could not find audio nodes to connect to');
         }
     }
 
@@ -407,11 +396,7 @@
     }
 
     function startWaterfall() {
-        console.log('[CW Decoder] startWaterfall called, canvas:', !!waterfallCanvas, 'analyser:', !!analyserNode);
-        if (!waterfallCanvas || !analyserNode) {
-            console.error('[CW Decoder] Missing canvas or analyser');
-            return;
-        }
+        if (!waterfallCanvas || !analyserNode) return;
 
         frequencyData = new Uint8Array(analyserNode.frequencyBinCount);
         renderState.lastTime = performance.now();
@@ -426,12 +411,6 @@
             return;
         }
 
-        // Debug: log first few renders
-        if (!window._cwDebugCount) window._cwDebugCount = 0;
-        if (window._cwDebugCount < 5) {
-            console.log('[CW Decoder] renderWaterfall running');
-            window._cwDebugCount++;
-        }
 
         const now = performance.now();
         const dt = (now - renderState.lastTime) / 1000;
@@ -454,15 +433,6 @@
 
         // Get frequency data from analyser
         analyserNode.getByteFrequencyData(frequencyData);
-
-        // Debug: check if we have any signal
-        if (!window._cwDataDebug) window._cwDataDebug = 0;
-        if (window._cwDataDebug < 10) {
-            let maxVal = 0;
-            for (let i = 0; i < frequencyData.length; i++) maxVal = Math.max(maxVal, frequencyData[i]);
-            console.log('[CW Decoder] Max freq value:', maxVal);
-            window._cwDataDebug++;
-        }
 
         // Scroll existing image left
         ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, -step, 0, canvas.width, canvas.height);
@@ -503,22 +473,50 @@
         rafId = requestAnimationFrame(renderWaterfall);
     }
 
+    // Audio buffer for inference (12 seconds at 3200 Hz = 38400 samples)
+    const inferenceBuffer = new Float32Array(38400);
+    let inferenceWritePos = 0;
+
     function runInference() {
         if (!decoderState.enabled || !decoderWorker || !decoderState.loaded || !analyserNode) return;
 
-        // Get time domain data for inference
+        // Get time domain data from analyser
         const timeData = new Float32Array(analyserNode.fftSize);
         analyserNode.getFloatTimeDomainData(timeData);
 
-        // TODO: Downsample to 3200 Hz and accumulate 12 seconds of audio
-        // For now, skip inference until we implement proper resampling
+        // Resample from audioContext.sampleRate to 3200 Hz
+        // The analyser gives us fftSize samples at the audio context's sample rate
+        const sourceRate = audioContext.sampleRate;
+        const targetRate = 3200;
+        const resampleRatio = targetRate / sourceRate;
 
-        // decoderWorker.postMessage({
-        //     type: 'runInference',
-        //     audioBuffer: resampledBuffer,
-        //     filterFreq: decoderState.filterFreq,
-        //     filterWidth: decoderState.filterWidth
-        // });
+        // Simple downsampling by picking samples at intervals
+        const samplesToAdd = Math.floor(timeData.length * resampleRatio);
+
+        for (let i = 0; i < samplesToAdd; i++) {
+            const sourceIdx = Math.floor(i / resampleRatio);
+            if (sourceIdx < timeData.length) {
+                // Apply gain and store in circular buffer
+                const sample = timeData[sourceIdx] * Math.pow(10, decoderState.gain / 20);
+                inferenceBuffer[inferenceWritePos] = sample;
+                inferenceWritePos = (inferenceWritePos + 1) % inferenceBuffer.length;
+            }
+        }
+
+        // Send the entire 12-second buffer to worker
+        // Copy buffer in correct order (circular to linear)
+        const linearBuffer = new Float32Array(inferenceBuffer.length);
+        for (let i = 0; i < inferenceBuffer.length; i++) {
+            const idx = (inferenceWritePos + i) % inferenceBuffer.length;
+            linearBuffer[i] = inferenceBuffer[idx];
+        }
+
+        decoderWorker.postMessage({
+            type: 'runInference',
+            audioBuffer: linearBuffer,
+            filterFreq: decoderState.filterFreq,
+            filterWidth: decoderState.filterWidth
+        });
     }
 
     function updateFilterBand() {
