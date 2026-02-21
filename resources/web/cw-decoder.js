@@ -243,9 +243,16 @@
             // Buffer size 4096 gives us ~85ms at 48kHz, processed every block
             processorNode = audioContext.createScriptProcessor(4096, 1, 1);
             processorNode.onaudioprocess = function(e) {
-                if (!decoderState.enabled) return;
-
                 const inputData = e.inputBuffer.getChannelData(0);
+                const outputData = e.outputBuffer.getChannelData(0);
+
+                // Copy input to output (pass-through)
+                for (let i = 0; i < inputData.length; i++) {
+                    outputData[i] = inputData[i];
+                }
+
+                // Also capture for decoder if enabled
+                if (!decoderState.enabled) return;
 
                 // Resample from audioContext.sampleRate to 3200 Hz
                 const sourceRate = audioContext.sampleRate;
