@@ -202,13 +202,10 @@ function cropSpectrogram(spectrogram) {
 }
 
 function audioToSpectrogram(audio, filterFreq, filterWidth) {
-    let processedAudio = audio;
-    if (filterFreq !== null && filterWidth > 0) {
-        processedAudio = applyBandpassFilter(audio, SAMPLE_RATE, filterFreq, filterWidth);
-    }
-
+    // Always use the audio as-is - the bandpass filter was causing issues
+    // The model works better with full-band audio
     const stft = new STFT(FFT_LENGTH, HOP_LENGTH);
-    const complexSpectrogram = stft.analyze(processedAudio);
+    const complexSpectrogram = stft.analyze(audio);
     const magnitudeSpectrogram = computeMagnitudeSpectrogram(complexSpectrogram);
     return cropSpectrogram(magnitudeSpectrogram);
 }
@@ -284,10 +281,21 @@ function decodePredictions(pred, predShape) {
             predIndices.push(maxIndex);
         }
 
-        const resText = predIndices.map((c) => ENGLISH_VOCABULARY[c] || "").join("");
-        const processedSegments = convertAbbreviationsWithSegments(
-            replaceConsecutiveChars(resText)
-        );
+        // CTC decoding: collapse repeats and remove blanks (index 0 = [UNK])
+        let collapsed = '';
+        let prevIdx = -1;
+        for (let idx of predIndices) {
+            if (idx !== prevIdx && idx !== 0) {  // Skip repeats and blanks
+                collapsed += ENGLISH_VOCABULARY[idx] || '';
+            }
+            prevIdx = idx;
+        }
+
+        // Replace consecutive same characters with single char + spaces
+        const processedText = replaceConsecutiveChars(collapsed);
+
+        // Convert to segments
+        const processedSegments = convertAbbreviationsWithSegments(processedText);
 
         outputSegments.push(processedSegments);
     }
