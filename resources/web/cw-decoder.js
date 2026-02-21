@@ -19,8 +19,8 @@
     // Web Audio nodes
     let analyserNode = null;
     let gainNode = null;
+    let processorNode = null;
     let audioContext = null;
-    let sourceNode = null;
 
     // Worker
     let decoderWorker = null;
@@ -239,6 +239,30 @@
             gainNode = audioContext.createGain();
             gainNode.gain.value = Math.pow(10, decoderState.gain / 20);
 
+            // Create a ScriptProcessorNode to capture continuous audio for inference
+            // Buffer size 4096 gives us ~85ms at 48kHz, processed every block
+            processorNode = audioContext.createScriptProcessor(4096, 1, 1);
+            processorNode.onaudioprocess = function(e) {
+                if (!decoderState.enabled) return;
+
+                const inputData = e.inputBuffer.getChannelData(0);
+
+                // Resample from audioContext.sampleRate to 3200 Hz
+                const sourceRate = audioContext.sampleRate;
+                const targetRate = 3200;
+                const resampleRatio = targetRate / sourceRate;
+                const samplesToAdd = Math.floor(inputData.length * resampleRatio);
+
+                for (let i = 0; i < samplesToAdd; i++) {
+                    const sourceIdx = Math.floor(i / resampleRatio);
+                    if (sourceIdx < inputData.length) {
+                        const sample = inputData[sourceIdx] * Math.pow(10, decoderState.gain / 20);
+                        inferenceBuffer[inferenceWritePos] = sample;
+                        inferenceWritePos = (inferenceWritePos + 1) % inferenceBuffer.length;
+                    }
+                }
+            };
+
             // Connect to wfview's audio output
             // We need to insert our analyser between the final audio node and the destination
             connectToWfviewAudio();
@@ -285,15 +309,17 @@
             // Disconnect the worklet from gain node
             window.audioWorkletNode.disconnect();
 
-            // Connect worklet -> our gain -> our analyser -> wfview's gain -> destination
+            // Connect worklet -> our gain -> our processor -> our analyser -> wfview's gain -> destination
             window.audioWorkletNode.connect(gainNode);
-            gainNode.connect(analyserNode);
+            gainNode.connect(processorNode);
+            processorNode.connect(analyserNode);
             analyserNode.connect(window.audioGainNode);
         } else if (window.audioGainNode && window.audioScriptNode) {
             // Fallback for ScriptProcessorNode
             window.audioScriptNode.disconnect();
             window.audioScriptNode.connect(gainNode);
-            gainNode.connect(analyserNode);
+            gainNode.connect(processorNode);
+            processorNode.connect(analyserNode);
             analyserNode.connect(window.audioGainNode);
         }
     }
@@ -302,11 +328,13 @@
         // Restore original connection
         if (window.audioGainNode) {
             if (window.audioWorkletNode) {
+                processorNode?.disconnect();
                 gainNode?.disconnect();
                 analyserNode?.disconnect();
                 window.audioWorkletNode.disconnect();
                 window.audioWorkletNode.connect(window.audioGainNode);
             } else if (window.audioScriptNode) {
+                processorNode?.disconnect();
                 gainNode?.disconnect();
                 analyserNode?.disconnect();
                 window.audioScriptNode.disconnect();
@@ -319,6 +347,13 @@
         if (rafId) {
             cancelAnimationFrame(rafId);
             rafId = null;
+        }
+
+        // Disconnect processor first to stop audio processing
+        if (processorNode) {
+            processorNode.disconnect();
+            processorNode.onaudioprocess = null;
+            processorNode = null;
         }
 
         disconnectFromWfviewAudio();
@@ -479,32 +514,8 @@
     let inferenceWritePos = 0;
 
     function runInference() {
-        if (!decoderState.enabled || !decoderWorker || !decoderState.loaded || !analyserNode) return;
+        if (!decoderState.enabled || !decoderWorker || !decoderState.loaded) return;
 
-        // Get time domain data from analyser
-        const timeData = new Float32Array(analyserNode.fftSize);
-        analyserNode.getFloatTimeDomainData(timeData);
-
-        // Resample from audioContext.sampleRate to 3200 Hz
-        // The analyser gives us fftSize samples at the audio context's sample rate
-        const sourceRate = audioContext.sampleRate;
-        const targetRate = 3200;
-        const resampleRatio = targetRate / sourceRate;
-
-        // Simple downsampling by picking samples at intervals
-        const samplesToAdd = Math.floor(timeData.length * resampleRatio);
-
-        for (let i = 0; i < samplesToAdd; i++) {
-            const sourceIdx = Math.floor(i / resampleRatio);
-            if (sourceIdx < timeData.length) {
-                // Apply gain and store in circular buffer
-                const sample = timeData[sourceIdx] * Math.pow(10, decoderState.gain / 20);
-                inferenceBuffer[inferenceWritePos] = sample;
-                inferenceWritePos = (inferenceWritePos + 1) % inferenceBuffer.length;
-            }
-        }
-
-        // Send the entire 12-second buffer to worker
         // Copy buffer in correct order (circular to linear)
         const linearBuffer = new Float32Array(inferenceBuffer.length);
         for (let i = 0; i < inferenceBuffer.length; i++) {
