@@ -2460,6 +2460,10 @@ function handleAudioData(buffer) {
     // Feed audio to CW decoder if enabled
     if (window.CWDecoder && window.CWDecoder.state && window.CWDecoder.state.enabled) {
         window.CWDecoder.addAudioSamples(floatData);
+        // Debug: log occasionally
+        if (Math.random() < 0.001) {
+            console.log('[handleAudioData] Sending', floatData.length, 'samples to decoder');
+        }
     }
 
     if (audioUseWorklet && audioWorkletNode) {

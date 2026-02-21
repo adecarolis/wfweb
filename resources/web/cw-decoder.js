@@ -525,7 +525,17 @@
     }
 
     function renderWaterfall() {
-        if (!decoderState.enabled || !waterfallCanvas) return;
+        if (!decoderState.enabled || !waterfallCanvas) {
+            console.log('[CW Decoder] Waterfall render skipped - enabled:', decoderState.enabled, 'canvas:', !!waterfallCanvas);
+            return;
+        }
+
+        // Debug canvas dimensions once
+        if (!window._cwDecoderCanvasDebugged) {
+            console.log('[CW Decoder] Canvas dimensions:', waterfallCanvas.width, 'x', waterfallCanvas.height);
+            console.log('[CW Decoder] Canvas display size:', waterfallCanvas.clientWidth, 'x', waterfallCanvas.clientHeight);
+            window._cwDecoderCanvasDebugged = true;
+        }
 
         const now = performance.now();
         const dt = (now - renderState.lastTime) / 1000;
@@ -592,12 +602,23 @@
             const magnitude = computeFFT(samples);
             if (magnitude) {
                 // Convert to dB and normalize to 0-255
+                let maxVal = 0;
                 for (let i = 0; i < frequencyData.length && i < magnitude.length; i++) {
                     const db = 20 * Math.log10(magnitude[i] + 1e-10);
                     // Normalize: -70 to -30 dB range
                     const normalized = Math.max(0, Math.min(255, (db + 70) / 40 * 255));
                     frequencyData[i] = Math.floor(normalized);
+                    maxVal = Math.max(maxVal, normalized);
                 }
+                // Debug: log max value occasionally
+                if (Math.random() < 0.01) {
+                    console.log('[CW Decoder] FFT max value:', maxVal, 'sampleBuffer:', sampleBuffer.length);
+                }
+            }
+        } else {
+            // Debug: not enough samples
+            if (Math.random() < 0.01) {
+                console.log('[CW Decoder] Not enough samples for FFT:', sampleBuffer.length, '/', FFT_SIZE);
             }
         }
     }
@@ -727,6 +748,11 @@
     // Audio buffer accumulation (called from wfview's audio pipeline)
     function addAudioSamples(samples) {
         if (!decoderState.enabled) return;
+
+        // Debug: log first few samples received
+        if (sampleBuffer.length === 0) {
+            console.log('[CW Decoder] First audio samples received:', samples.length, 'samples');
+        }
 
         // Add to sample buffer for FFT (keep last FFT_SIZE samples)
         sampleBuffer = sampleBuffer.concat(Array.from(samples));
