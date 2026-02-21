@@ -2457,11 +2457,6 @@ function handleAudioData(buffer) {
     var floatData = new Float32Array(pcmData.length);
     for (var i = 0; i < pcmData.length; i++) floatData[i] = pcmData[i] / 32768.0;
 
-    // Feed audio to CW decoder if enabled
-    if (window.CWDecoder && window.CWDecoder.state && window.CWDecoder.state.enabled) {
-        window.CWDecoder.addAudioSamples(floatData);
-    }
-
     if (audioUseWorklet && audioWorkletNode) {
         audioWorkletNode.port.postMessage(floatData);
     } else if (audioRingBuf) {
