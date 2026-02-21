@@ -260,14 +260,15 @@
                 }, 100);
             });
 
+            // Enable decoder state first, then start waterfall
+            decoderState.enabled = true;
+            decoderState.isDecoding = true;
+
             // Start waterfall
             setupCanvasSizing();
             waterfallCtx.fillStyle = '#000';
             waterfallCtx.fillRect(0, 0, waterfallCanvas.width, waterfallCanvas.height);
             startWaterfall();
-
-            decoderState.enabled = true;
-            decoderState.isDecoding = true;
 
         } catch (error) {
             console.error('[CW Decoder] Failed to start:', error);
