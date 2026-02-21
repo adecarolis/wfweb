@@ -970,6 +970,20 @@ html, body {
 </style>
 </head>
 <body>
+<!-- Startup Overlay -->
+<div id="startupOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;">
+    <div style="text-align: center;">
+        <div style="font-size: 48px; font-weight: bold; color: #0aa; margin-bottom: 20px; text-shadow: 0 0 20px rgba(0, 170, 170, 0.5);">wfview</div>
+        <div style="font-size: 14px; color: #888; margin-bottom: 40px;">IC-7300 Remote Control</div>
+        <button id="startBtn" style="padding: 20px 60px; font-size: 24px; font-weight: bold; color: #000; background: linear-gradient(135deg, #0aa 0%, #088 100%); border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 170, 170, 0.4); transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0, 170, 170, 0.6)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(0, 170, 170, 0.4)';">
+            CLICK TO START
+        </button>
+        <div style="margin-top: 20px; font-size: 12px; color: #666;">Enable RX Audio</div>
+    </div>
+    <div style="position: absolute; bottom: 20px; left: 20px; font-size: 11px; color: #555;">
+        K1FM IC7300 Control v. 2.21
+    </div>
+</div>
 <div id="radio">
     <!-- Row 1: Top bar -->
     <div id="topBar">
@@ -2269,8 +2283,9 @@ function tuneDown() {
         send({ cmd: 'setFrequency', value: newFreq });
     }
 }
-function tuneUpHz() { if (currentFreq > 0) send({ cmd: 'setFrequency', value: currentFreq + 1 }); }
-function tuneDownHz() { if (currentFreq > 1) send({ cmd: 'setFrequency', value: currentFreq - 1 }); }
+const HZ_STEP = 50;  // 50 Hz steps for arrow buttons
+function tuneUpHz() { if (currentFreq > 0) send({ cmd: 'setFrequency', value: currentFreq + HZ_STEP }); }
+function tuneDownHz() { if (currentFreq > 1) send({ cmd: 'setFrequency', value: currentFreq - HZ_STEP }); }
 function setSpan(idx) { send({ cmd: 'setSpan', value: idx }); updateSpanIndex(idx); }
 
 // ============================================================
@@ -2667,8 +2682,11 @@ function scopeClick(e) {
     var rect = e.target.getBoundingClientRect();
     var frac = (e.clientX - rect.left) / rect.width;
     var freqHz = Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6);
-    // Round to nearest kHz (ending in 000 Hz)
-    freqHz = Math.round(freqHz / 1000) * 1000;
+    // Round to nearest kHz (ending in 000 Hz) only for non-CW modes
+    var isCWMode = (currentMode === 'CW' || currentMode === 'CW-R');
+    if (!isCWMode) {
+        freqHz = Math.round(freqHz / 1000) * 1000;
+    }
     if (freqHz > 0) send({ cmd: 'setFrequency', value: freqHz });
 }
 
@@ -2708,7 +2726,14 @@ document.addEventListener('keydown', function(e) {
     else if (e.key === 'ArrowDown' || e.key === '-') { e.preventDefault(); tuneDown(); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); tuneUpHz(); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); tuneDownHz(); }
-    else if (e.key === 'Escape') { hideAllOverlays(); setPanel('default'); }
+    else if (e.key === 'Escape') {
+        e.preventDefault();
+        // Stop CW transmission first
+        send({ cmd: 'stopCW' });
+        // Then hide overlays
+        hideAllOverlays();
+        setPanel('default');
+    }
     else if (e.key === ' ' && !e.repeat) {
         e.preventDefault();
         if (!spacebarPTTActive && handlePTTPress()) {
@@ -3417,6 +3442,16 @@ window.addEventListener('resize', function() {
 requestAnimationFrame(resizeCanvases);
 
 connect();
+
+// Startup overlay click handler
+document.getElementById('startBtn').addEventListener('click', function() {
+    // Hide the overlay
+    document.getElementById('startupOverlay').style.display = 'none';
+    // Start audio automatically
+    if (audioAvailable && !audioEnabled) {
+        startAudio();
+    }
+});
 
 // Initialize CW Decoder
 if (typeof CWDecoder !== 'undefined') {

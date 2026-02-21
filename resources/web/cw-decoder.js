@@ -6,10 +6,11 @@
 
     // Constants from the demo
     const FFT_SIZE = 4096;  // 2^12
-    const MIN_FREQ_HZ = 100;
-    const MAX_FREQ_HZ = 1500;
+    // Display range centered around BEAT_FREQ_HZ (600 Hz) for symmetric display
+    const MIN_FREQ_HZ = 200;   // 400 Hz below beat
+    const MAX_FREQ_HZ = 1000;  // 400 Hz above beat
     const DECODABLE_MIN_FREQ_HZ = 400;
-    const DECODABLE_MAX_FREQ_HZ = 1200;
+    const DECODABLE_MAX_FREQ_HZ = 800;
     const BUFFER_DURATION_S = 12;
     const INFERENCE_INTERVAL_MS = 800;  // Even slower updates for readability
     const SAMPLE_RATE = 3200;
@@ -25,6 +26,13 @@
         filterFreq: null,
         currentSegments: [],
     };
+
+    // Fixed center frequency for the filter band (middle of display)
+    const CENTER_FREQ_HZ = 800; // Center of 100-1500 Hz range
+
+    // CW beat frequency offset - adjust this to match your radio's sidetone
+    // Common values: 600, 700, or 800 Hz
+    const BEAT_FREQ_HZ = 600;
 
     // Audio nodes
     let analyserNode = null;
@@ -464,10 +472,11 @@
         if (!decoderState.enabled || !decoderWorker || !decoderState.loaded) return;
 
         const audioCopy = audioBuffer.slice();
+        // Use beat frequency for filtering - that's where CW signals appear in audio
         decoderWorker.postMessage({
             type: 'runInference',
             audioBuffer: audioCopy,
-            filterFreq: decoderState.filterFreq,
+            filterFreq: BEAT_FREQ_HZ,
             filterWidth: decoderState.filterWidth
         }, [audioCopy.buffer]);
     }
@@ -526,20 +535,16 @@
         }
     }
 
-    // Filter band display
+    // Filter band display - fixed at beat frequency where CW signals appear
     function updateFilterBand() {
         const band = document.getElementById('cwFilterBand');
         if (!band) return;
 
-        if (decoderState.filterFreq === null) {
-            band.classList.remove('active');
-            return;
-        }
-
+        // Filter band is centered on BEAT_FREQ_HZ (where radio puts CW tones)
         const range = MAX_FREQ_HZ - MIN_FREQ_HZ;
         const half = decoderState.filterWidth / 2;
-        const lower = Math.max(MIN_FREQ_HZ, decoderState.filterFreq - half);
-        const upper = Math.min(MAX_FREQ_HZ, decoderState.filterFreq + half);
+        const lower = Math.max(MIN_FREQ_HZ, BEAT_FREQ_HZ - half);
+        const upper = Math.min(MAX_FREQ_HZ, BEAT_FREQ_HZ + half);
 
         const topPercent = ((MAX_FREQ_HZ - upper) / range) * 100;
         const heightPercent = ((upper - lower) / range) * 100;
@@ -549,31 +554,57 @@
         band.classList.add('active');
     }
 
-    // Canvas interactions (like demo)
-    function constrainFrequency(freq) {
-        const half = decoderState.filterWidth / 2;
-        if (freq - half < DECODABLE_MIN_FREQ_HZ) return DECODABLE_MIN_FREQ_HZ + half;
-        if (freq + half > DECODABLE_MAX_FREQ_HZ) return DECODABLE_MAX_FREQ_HZ - half;
-        return freq;
-    }
-
+    // Canvas interactions
     function handleCanvasClick(event) {
-        // Click to set frequency - filter stays on
+        // Click to tune radio - filter band stays centered
         const rect = canvas.getBoundingClientRect();
         const y = event.clientY - rect.top;
         const invY = rect.height - y;
         const freqRange = MAX_FREQ_HZ - MIN_FREQ_HZ;
-        const rawFreq = MIN_FREQ_HZ + (invY / rect.height) * freqRange;
-        decoderState.filterFreq = Math.ceil(constrainFrequency(rawFreq));
-        updateFilterBand();
+
+        // Calculate which audio frequency was clicked
+        const clickedAudioFreq = MIN_FREQ_HZ + (invY / rect.height) * freqRange;
+
+        // Calculate offset from beat frequency to tune the radio
+        // The radio's CW mode shifts signals to BEAT_FREQ_HZ (sidetone)
+        // We want the clicked signal to end up at BEAT_FREQ_HZ in the audio
+        const offsetFromCenter = BEAT_FREQ_HZ - clickedAudioFreq;
+
+        // Get current radio frequency from parent window
+        let currentFreq = 0;
+        if (window.currentFreq) {
+            currentFreq = window.currentFreq;
+        } else if (window.parent && window.parent.currentFreq) {
+            currentFreq = window.parent.currentFreq;
+        }
+
+        if (currentFreq > 0) {
+            const newFreq = currentFreq + offsetFromCenter;
+            // Send frequency change command
+            if (window.send) {
+                window.send({ cmd: 'setFrequency', value: Math.round(newFreq) });
+            } else if (window.parent && window.parent.send) {
+                window.parent.send({ cmd: 'setFrequency', value: Math.round(newFreq) });
+            }
+        }
     }
 
     function handleWheel(e) {
         e.preventDefault();
-        if (decoderState.filterFreq === null) return;
 
-        const step = 20;
-        let newFreq = decoderState.filterFreq;
+        // Get current radio frequency
+        let currentFreq = 0;
+        if (window.currentFreq) {
+            currentFreq = window.currentFreq;
+        } else if (window.parent && window.parent.currentFreq) {
+            currentFreq = window.parent.currentFreq;
+        }
+
+        if (currentFreq <= 0) return;
+
+        // Tune radio up/down by 50 Hz
+        const step = 50;
+        let newFreq = currentFreq;
 
         if (e.deltaY < 0) {
             newFreq += step;
@@ -581,8 +612,11 @@
             newFreq -= step;
         }
 
-        decoderState.filterFreq = Math.round(constrainFrequency(newFreq));
-        updateFilterBand();
+        if (window.send) {
+            window.send({ cmd: 'setFrequency', value: Math.round(newFreq) });
+        } else if (window.parent && window.parent.send) {
+            window.parent.send({ cmd: 'setFrequency', value: Math.round(newFreq) });
+        }
     }
 
     // Expose API
