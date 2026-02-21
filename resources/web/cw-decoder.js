@@ -564,19 +564,16 @@
         const rect = waterfallCanvas.getBoundingClientRect();
         const y = event.clientY - rect.top;
 
-        if (decoderState.filterFreq !== null) {
-            decoderState.filterFreq = null;
-        } else {
-            const canvasHeight = rect.height;
-            const invY = canvasHeight - y;
-            const freqRange = MAX_FREQ - MIN_FREQ;
-            const rawFreq = MIN_FREQ + (invY / canvasHeight) * freqRange;
-            const halfWidth = decoderState.filterWidth / 2;
-            let freq = rawFreq;
-            if (freq - halfWidth < 400) freq = 400 + halfWidth;
-            if (freq + halfWidth > 1200) freq = 1200 - halfWidth;
-            decoderState.filterFreq = Math.round(freq);
-        }
+        // Always set the filter frequency (don't toggle off)
+        const canvasHeight = rect.height;
+        const invY = canvasHeight - y;
+        const freqRange = MAX_FREQ - MIN_FREQ;
+        const rawFreq = MIN_FREQ + (invY / canvasHeight) * freqRange;
+        const halfWidth = decoderState.filterWidth / 2;
+        let freq = rawFreq;
+        if (freq - halfWidth < 400) freq = 400 + halfWidth;
+        if (freq + halfWidth > 1200) freq = 1200 - halfWidth;
+        decoderState.filterFreq = Math.round(freq);
 
         updateFilterBand();
     }

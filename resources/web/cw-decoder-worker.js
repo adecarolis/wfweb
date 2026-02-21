@@ -201,13 +201,128 @@ function cropSpectrogram(spectrogram) {
     return spectrogram.map((frame) => frame.slice(startBin, endBin));
 }
 
+// Simple bandpass filter using frequency domain masking
+function applyBandpassFilterFFT(audio, sampleRate, centerFreq, bandwidth) {
+    if (!centerFreq || bandwidth <= 0) return audio;
+
+    // Perform FFT
+    const fftSize = 2048;
+    const hopSize = 512;
+    const stft = new STFT(fftSize, hopSize);
+
+    // Process in overlapping windows
+    const filtered = new Float32Array(audio.length);
+    const window = new Float32Array(fftSize);
+    for (let i = 0; i < fftSize; i++) {
+        window[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (fftSize - 1)));
+    }
+
+    const halfBandwidth = bandwidth / 2;
+    const lowFreq = centerFreq - halfBandwidth;
+    const highFreq = centerFreq + halfBandwidth;
+
+    for (let start = 0; start + fftSize <= audio.length; start += hopSize) {
+        const frame = audio.slice(start, start + fftSize);
+        const complexFrame = new Float32Array(fftSize * 2);
+
+        // Window and prepare for FFT
+        for (let i = 0; i < fftSize; i++) {
+            complexFrame[i * 2] = frame[i] * window[i];
+        }
+
+        // FFT
+        const fft = new FFT(fftSize);
+        fft.transform(complexFrame);
+
+        // Apply frequency mask
+        const nyquist = sampleRate / 2;
+        for (let i = 0; i < fftSize / 2; i++) {
+            const freq = (i / (fftSize / 2)) * nyquist;
+            let gain = 0;
+
+            if (freq >= lowFreq && freq <= highFreq) {
+                // Passband - gradual roll-off
+                const distFromCenter = Math.abs(freq - centerFreq);
+                const normalizedDist = distFromCenter / halfBandwidth;
+                gain = Math.cos(normalizedDist * Math.PI / 2); // Cosine roll-off
+            }
+
+            // Apply gain to complex values
+            complexFrame[i * 2] *= gain;
+            complexFrame[i * 2 + 1] *= gain;
+
+            // Mirror for negative frequencies
+            if (i > 0) {
+                complexFrame[(fftSize - i) * 2] *= gain;
+                complexFrame[(fftSize - i) * 2 + 1] *= gain;
+            }
+        }
+
+        // Inverse FFT (reuse FFT with conjugate)
+        // Simplified: just accumulate for now
+    }
+
+    // For now, return original audio - the filter needs more work
+    // The key is that the model should focus on the target frequency
+    return audio;
+}
+
 function audioToSpectrogram(audio, filterFreq, filterWidth) {
-    // Always use the audio as-is - the bandpass filter was causing issues
-    // The model works better with full-band audio
+    // Apply bandpass filter if frequency is set
+    let processedAudio = audio;
+    if (filterFreq !== null && filterWidth > 0) {
+        // Simple time-domain filter
+        processedAudio = applyTimeDomainFilter(audio, SAMPLE_RATE, filterFreq, filterWidth);
+    }
+
     const stft = new STFT(FFT_LENGTH, HOP_LENGTH);
-    const complexSpectrogram = stft.analyze(audio);
+    const complexSpectrogram = stft.analyze(processedAudio);
     const magnitudeSpectrogram = computeMagnitudeSpectrogram(complexSpectrogram);
     return cropSpectrogram(magnitudeSpectrogram);
+}
+
+// Simple time-domain bandpass filter
+function applyTimeDomainFilter(audio, sampleRate, centerFreq, bandwidth) {
+    const lowFreq = Math.max(100, centerFreq - bandwidth / 2);
+    const highFreq = Math.min(2000, centerFreq + bandwidth / 2);
+
+    // Simple FIR bandpass using frequency sampling
+    const numTaps = 128;
+    const filterCoeffs = new Float32Array(numTaps);
+
+    // Design filter using windowed sinc
+    const omegaLow = (2 * Math.PI * lowFreq) / sampleRate;
+    const omegaHigh = (2 * Math.PI * highFreq) / sampleRate;
+
+    for (let n = 0; n < numTaps; n++) {
+        const offset = n - numTaps / 2;
+        let h = 0;
+
+        if (offset === 0) {
+            h = (omegaHigh - omegaLow) / Math.PI;
+        } else {
+            h = (Math.sin(omegaHigh * offset) - Math.sin(omegaLow * offset)) / (Math.PI * offset);
+        }
+
+        // Hamming window
+        const window = 0.54 - 0.46 * Math.cos((2 * Math.PI * n) / (numTaps - 1));
+        filterCoeffs[n] = h * window;
+    }
+
+    // Apply filter
+    const filtered = new Float32Array(audio.length);
+    for (let i = 0; i < audio.length; i++) {
+        let sum = 0;
+        for (let j = 0; j < numTaps; j++) {
+            const idx = i - j;
+            if (idx >= 0) {
+                sum += audio[idx] * filterCoeffs[j];
+            }
+        }
+        filtered[i] = sum;
+    }
+
+    return filtered;
 }
 
 // Text decoder
