@@ -205,16 +205,31 @@
     }
 
     function setupCanvasSizing() {
-        if (!waterfallCanvas) return;
+        console.log('[CW Decoder] setupCanvasSizing called');
+        if (!waterfallCanvas) {
+            console.error('[CW Decoder] No waterfall canvas in setupCanvasSizing');
+            return;
+        }
 
         const container = waterfallCanvas.parentElement;
-        if (!container) return;
+        if (!container) {
+            console.error('[CW Decoder] No container for canvas');
+            return;
+        }
 
         const rect = container.getBoundingClientRect();
         const dpr = window.devicePixelRatio || 1;
 
-        waterfallCanvas.width = rect.clientWidth * dpr;
-        waterfallCanvas.height = rect.clientHeight * dpr;
+        console.log('[CW Decoder] Container size:', rect.clientWidth, 'x', rect.clientHeight);
+
+        // Ensure minimum size
+        const width = Math.max(1, rect.clientWidth * dpr);
+        const height = Math.max(1, rect.clientHeight * dpr);
+
+        waterfallCanvas.width = width;
+        waterfallCanvas.height = height;
+
+        console.log('[CW Decoder] Canvas set to:', width, 'x', height);
 
         // Initialize frequency data array
         frequencyData = new Uint8Array(FFT_SIZE / 2);
@@ -511,7 +526,11 @@
 
     // Waterfall rendering
     function startWaterfall() {
-        if (!waterfallCanvas) return;
+        console.log('[CW Decoder] startWaterfall called, canvas:', !!waterfallCanvas, 'enabled:', decoderState.enabled);
+        if (!waterfallCanvas) {
+            console.error('[CW Decoder] No waterfall canvas!');
+            return;
+        }
 
         frequencyData = new Uint8Array(FFT_SIZE / 2);
         renderState.lastTime = performance.now();
@@ -520,8 +539,9 @@
         // Clear canvas
         waterfallCtx.fillStyle = '#000';
         waterfallCtx.fillRect(0, 0, waterfallCanvas.width, waterfallCanvas.height);
+        console.log('[CW Decoder] Canvas cleared, scheduling renderWaterfall');
 
-        renderWaterfall();
+        rafId = requestAnimationFrame(renderWaterfall);
     }
 
     function renderWaterfall() {
@@ -530,10 +550,18 @@
             return;
         }
 
+        // Debug: log every call for first few seconds
+        if (!window._cwDecoderRenderCount) window._cwDecoderRenderCount = 0;
+        window._cwDecoderRenderCount++;
+        if (window._cwDecoderRenderCount <= 10) {
+            console.log('[CW Decoder] renderWaterfall called, count:', window._cwDecoderRenderCount);
+        }
+
         // Debug canvas dimensions once
         if (!window._cwDecoderCanvasDebugged) {
             console.log('[CW Decoder] Canvas dimensions:', waterfallCanvas.width, 'x', waterfallCanvas.height);
             console.log('[CW Decoder] Canvas display size:', waterfallCanvas.clientWidth, 'x', waterfallCanvas.clientHeight);
+            console.log('[CW Decoder] Canvas context:', !!waterfallCtx);
             window._cwDecoderCanvasDebugged = true;
         }
 
