@@ -280,9 +280,10 @@
     }
 
     function connectToWfviewAudio() {
-        // Disconnect existing connection and insert our analyser
-        // wfview chain: audioWorkletNode -> audioGainNode -> destination
-        // New chain: audioWorkletNode -> gainNode -> analyser -> audioGainNode -> destination
+        console.log('[CW Decoder] Connecting to audio pipeline...');
+        console.log('[CW Decoder] audioWorkletNode:', !!window.audioWorkletNode);
+        console.log('[CW Decoder] audioScriptNode:', !!window.audioScriptNode);
+        console.log('[CW Decoder] audioGainNode:', !!window.audioGainNode);
 
         if (window.audioGainNode && window.audioWorkletNode) {
             // Disconnect the worklet from gain node
@@ -405,7 +406,11 @@
     }
 
     function startWaterfall() {
-        if (!waterfallCanvas || !analyserNode) return;
+        console.log('[CW Decoder] startWaterfall called, canvas:', !!waterfallCanvas, 'analyser:', !!analyserNode);
+        if (!waterfallCanvas || !analyserNode) {
+            console.error('[CW Decoder] Missing canvas or analyser');
+            return;
+        }
 
         frequencyData = new Uint8Array(analyserNode.frequencyBinCount);
         renderState.lastTime = performance.now();
@@ -415,7 +420,17 @@
     }
 
     function renderWaterfall() {
-        if (!decoderState.enabled || !waterfallCanvas || !analyserNode) return;
+        if (!decoderState.enabled || !waterfallCanvas || !analyserNode) {
+            console.log('[CW Decoder] Render skipped:', { enabled: decoderState.enabled, hasCanvas: !!waterfallCanvas, hasAnalyser: !!analyserNode });
+            return;
+        }
+
+        // Debug: log first few renders
+        if (!window._cwDebugCount) window._cwDebugCount = 0;
+        if (window._cwDebugCount < 5) {
+            console.log('[CW Decoder] renderWaterfall running');
+            window._cwDebugCount++;
+        }
 
         const now = performance.now();
         const dt = (now - renderState.lastTime) / 1000;
@@ -438,6 +453,15 @@
 
         // Get frequency data from analyser
         analyserNode.getByteFrequencyData(frequencyData);
+
+        // Debug: check if we have any signal
+        if (!window._cwDataDebug) window._cwDataDebug = 0;
+        if (window._cwDataDebug < 10) {
+            let maxVal = 0;
+            for (let i = 0; i < frequencyData.length; i++) maxVal = Math.max(maxVal, frequencyData[i]);
+            console.log('[CW Decoder] Max freq value:', maxVal);
+            window._cwDataDebug++;
+        }
 
         // Scroll existing image left
         ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, -step, 0, canvas.width, canvas.height);
