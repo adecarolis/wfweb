@@ -53,6 +53,28 @@
         // Create UI elements
         createDecoderUI();
 
+        // Watch for CW bar becoming visible and resize canvas
+        const cwBar = document.getElementById('cwBar');
+        if (cwBar) {
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                        const isVisible = !cwBar.classList.contains('hidden');
+                        if (isVisible && waterfallCanvas) {
+                            console.log('[CW Decoder] CW bar visible, resizing canvas');
+                            setupCanvasSizing();
+                            // If enabled, clear and restart waterfall with new size
+                            if (decoderState.enabled && waterfallCtx) {
+                                waterfallCtx.fillStyle = '#000';
+                                waterfallCtx.fillRect(0, 0, waterfallCanvas.width, waterfallCanvas.height);
+                            }
+                        }
+                    }
+                });
+            });
+            observer.observe(cwBar, { attributes: true });
+        }
+
         console.log('[CW Decoder] Initialized');
     }
 
@@ -220,11 +242,15 @@
         const rect = container.getBoundingClientRect();
         const dpr = window.devicePixelRatio || 1;
 
-        console.log('[CW Decoder] Container size:', rect.clientWidth, 'x', rect.clientHeight);
+        // Use rect.width/height instead of clientWidth/clientHeight
+        const containerWidth = rect.width || container.clientWidth || 300;
+        const containerHeight = rect.height || container.clientHeight || 128;
+
+        console.log('[CW Decoder] Container size:', containerWidth, 'x', containerHeight);
 
         // Ensure minimum size
-        const width = Math.max(1, rect.clientWidth * dpr);
-        const height = Math.max(1, rect.clientHeight * dpr);
+        const width = Math.max(1, Math.floor(containerWidth * dpr));
+        const height = Math.max(1, Math.floor(containerHeight * dpr));
 
         waterfallCanvas.width = width;
         waterfallCanvas.height = height;
@@ -410,6 +436,9 @@
                     }
                 }, 100);
             });
+
+            // Size canvas before starting
+            setupCanvasSizing();
 
             // Start waterfall rendering
             startWaterfall();
