@@ -337,6 +337,10 @@
         updateButtonStates();
     }
 
+    // Accumulated decoded text
+    let decodedTextHistory = '';
+    const MAX_TEXT_LENGTH = 100;
+
     function handleWorkerMessage(event) {
         const msg = event.data;
         switch (msg.type) {
@@ -344,8 +348,20 @@
                 decoderState.loaded = true;
                 break;
             case 'inferenceResult':
-                decoderState.currentSegments = msg.segments || [];
-                updateDecoderText();
+                // Convert segments to text
+                const newText = (msg.segments || []).map(s => s.text).join('');
+                console.log('[CW Decoder] Segments received:', newText, msg.segments);
+                // Only add if different from last chunk
+                if (newText && newText !== decodedTextHistory.slice(-newText.length)) {
+                    decodedTextHistory += newText;
+                    // Keep only last MAX_TEXT_LENGTH characters
+                    if (decodedTextHistory.length > MAX_TEXT_LENGTH) {
+                        decodedTextHistory = decodedTextHistory.slice(-MAX_TEXT_LENGTH);
+                    }
+                    // Also store segments for display
+                    decoderState.currentSegments = msg.segments || [];
+                    updateDecoderText();
+                }
                 break;
             case 'error':
                 console.error('[CW Decoder Worker] Error:', msg.error);
