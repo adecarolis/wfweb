@@ -2451,7 +2451,7 @@ function stopMic() {
 }
 
 function handleAudioData(buffer) {
-    if (!audioEnabled || isTransmitting) return;
+    if (!audioEnabled) return;
     if (buffer.byteLength < 8) return;
     var pcmData = new Int16Array(buffer, 6);
     var floatData = new Float32Array(pcmData.length);
@@ -2944,220 +2944,14 @@ function hideMacroEditor() {
     cwEditingMacro = null;
 }
 
-// CW sidetone generator (browser-based) - uses pre-rendered buffers to avoid RX audio interference
-var cwAudioContext = null;
-var cwToneFreq = 600; // 600 Hz sidetone
-var cwSidetoneEndTime = 0; // Track when sidetone will finish
-var cwCurrentSource = null; // Track currently playing source
-var cwActiveSources = []; // Track ALL active audio sources for proper cleanup
-var cwRenderQueue = []; // Queue for pending sidetone renders
-var cwIsRendering = false; // Track if a render is in progress
-var cwCurrentRenderItem = null; // Track currently rendering item
-var cwAbortCurrentRender = false; // Flag to abort current render
-var cwUnmuteTimer = null; // Timer for unmuting after transmission
-
-function initCWSidetone() {
-    if (!cwAudioContext) {
-        try {
-            cwAudioContext = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-        } catch (e) {
-            console.warn('Web Audio API not available for CW sidetone');
-        }
-    }
-}
-
-function muteRxAudio() {
-    if (audioGainNode) {
-        audioGainNode.gain.setValueAtTime(0, audioGainNode.context.currentTime);
-    }
-}
-
-function unmuteRxAudio() {
-    if (audioGainNode) {
-        flushAudio(); // Clear any audio that accumulated while muted
-        audioGainNode.gain.setValueAtTime(1, audioGainNode.context.currentTime);
-    }
-}
-
-function scheduleRxUnmute(delayMs) {
-    // Clear any existing unmute timer
-    if (cwUnmuteTimer) {
-        clearTimeout(cwUnmuteTimer);
-    }
-    // Schedule unmute after transmission completes
-    cwUnmuteTimer = setTimeout(function() {
-        unmuteRxAudio();
-        cwUnmuteTimer = null;
-    }, delayMs);
-}
+// CW transmission state
+var cwAudioContext = null; // Kept for compatibility, not used for sidetone
+var cwNextCharTime = 0; // Cumulative timing for character scheduling
 
 function playCWSidetone(text, startIndex) {
-    if (!cwAudioContext || !text) return;
-
-    // Mute RX audio and flush buffer when starting CW transmission
-    var wasEmpty = (cwRenderQueue.length === 0 && !cwIsRendering);
-    if (wasEmpty) {
-        muteRxAudio();
-        flushAudio(); // Clear RX audio buffer to prevent contamination
-    }
-
-    // Add to queue with character index tracking
-    cwRenderQueue.push({text: text, startIndex: startIndex});
-    processCWSidetoneQueue();
-}
-
-function processCWSidetoneQueue() {
-    if (cwIsRendering || cwRenderQueue.length === 0) return;
-
-    cwIsRendering = true;
-    cwAbortCurrentRender = false;
-    var queueItem = cwRenderQueue.shift();
-    cwCurrentRenderItem = queueItem;
-    var text = queueItem.text;
-    var startIndex = queueItem.startIndex;
-
-    // Morse code timing (PARIS standard)
-    var dotDuration = 1200 / cwSpeed; // ms per dot
-    var dashDuration = dotDuration * 3;
-    var symbolGap = dotDuration;
-    var charGap = dotDuration * 3;
-    var wordGap = dotDuration * 7;
-
-    // Morse code table
-    var morse = {
-        'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
-        'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
-        'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
-        'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
-        'Y': '-.--', 'Z': '--..', '0': '-----', '1': '.----', '2': '..---',
-        '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...',
-        '8': '---..', '9': '----.', '.': '.-.-.-', ',': '--..--', '?': '..--..',
-        '/': '-..-.', '=': '-...-', '+': '.-.-.', ' ': ' '
-    };
-
-    text = text.toUpperCase();
-
-    // Calculate total duration
-    var totalDuration = 0;
-    for (var i = 0; i < text.length; i++) {
-        var char = text[i];
-        var pattern = morse[char];
-        if (char === ' ') {
-            totalDuration += wordGap;
-        } else if (pattern) {
-            for (var j = 0; j < pattern.length; j++) {
-                var symbol = pattern[j];
-                totalDuration += (symbol === '.') ? dotDuration : dashDuration;
-                totalDuration += symbolGap;
-            }
-            totalDuration += charGap - symbolGap;
-        }
-    }
-
-    if (totalDuration === 0) {
-        cwIsRendering = false;
-        processCWSidetoneQueue(); // Process next in queue
-        return;
-    }
-
-    // Pre-render audio buffer using OfflineAudioContext (isolated from RX audio)
-    var sampleRate = cwAudioContext.sampleRate;
-    var bufferLength = Math.ceil((totalDuration / 1000) * sampleRate);
-    var offlineCtx = new OfflineAudioContext(1, bufferLength, sampleRate);
-
-    var time = 0;
-    for (var i = 0; i < text.length; i++) {
-        var char = text[i];
-        var pattern = morse[char];
-
-        if (char === ' ') {
-            time += wordGap / 1000;
-        } else if (pattern) {
-            for (var j = 0; j < pattern.length; j++) {
-                var symbol = pattern[j];
-                var duration = (symbol === '.') ? dotDuration : dashDuration;
-
-                var osc = offlineCtx.createOscillator();
-                var gain = offlineCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.value = cwToneFreq;
-                osc.connect(gain);
-                gain.connect(offlineCtx.destination);
-
-                // Envelope to avoid clicks
-                gain.gain.setValueAtTime(0, time);
-                gain.gain.linearRampToValueAtTime(0.15, time + 0.005);
-                gain.gain.setValueAtTime(0.15, time + duration / 1000 - 0.005);
-                gain.gain.linearRampToValueAtTime(0, time + duration / 1000);
-
-                osc.start(time);
-                osc.stop(time + duration / 1000);
-
-                time += (duration + symbolGap) / 1000;
-            }
-            time += (charGap - symbolGap) / 1000;
-        }
-    }
-
-    // Render and play the buffer
-    offlineCtx.startRendering().then(function(renderedBuffer) {
-        // Check if this render was aborted (user pressed delete)
-        if (cwAbortCurrentRender) {
-            console.log('[CW] Aborted rendering for deleted character');
-            cwIsRendering = false;
-            cwCurrentRenderItem = null;
-            processCWSidetoneQueue();
-            return;
-        }
-
-        // Schedule playback after previous sidetone finishes
-        var startTime = Math.max(cwAudioContext.currentTime, cwSidetoneEndTime);
-
-        var source = cwAudioContext.createBufferSource();
-        source.buffer = renderedBuffer;
-        source.connect(cwAudioContext.destination);
-
-        // Track this source for cleanup
-        cwActiveSources.push(source);
-
-        // Remove from tracking when it ends naturally
-        source.onended = function() {
-            var idx = cwActiveSources.indexOf(source);
-            if (idx !== -1) {
-                cwActiveSources.splice(idx, 1);
-            }
-        };
-
-        source.start(startTime);
-
-        cwCurrentSource = source;
-        cwSidetoneEndTime = startTime + renderedBuffer.duration;
-
-        // Schedule character status updates
-        var playbackStartMs = (startTime - cwAudioContext.currentTime) * 1000;
-        scheduleCharacterUpdates(text, startIndex, playbackStartMs);
-
-        // Mark rendering complete and process next in queue
-        cwIsRendering = false;
-
-        // If queue is now empty, schedule unmute after this buffer finishes
-        if (cwRenderQueue.length === 0) {
-            var playbackDelayMs = (cwSidetoneEndTime - cwAudioContext.currentTime) * 1000;
-            scheduleRxUnmute(Math.max(0, playbackDelayMs + 100)); // +100ms buffer
-        }
-
-        processCWSidetoneQueue();
-    }).catch(function(err) {
-        console.warn('CW sidetone rendering failed:', err);
-        cwIsRendering = false;
-
-        // If queue is empty, unmute immediately on error
-        if (cwRenderQueue.length === 0) {
-            unmuteRxAudio();
-        }
-
-        processCWSidetoneQueue();
-    });
+    // Radio sidetone mode: no local sidetone generation
+    // Just schedule character status updates for the transcript display
+    scheduleCharacterUpdates(text, startIndex, 0);
 }
 
 function scheduleCharacterUpdates(text, startIndex, startDelayMs) {
@@ -3239,20 +3033,6 @@ function clearCWTimers() {
         clearTimeout(cwUpdateTimers[i]);
     }
     cwUpdateTimers = [];
-}
-
-function stopAllCWSidetone() {
-    // Stop all active audio buffer sources
-    for (var i = 0; i < cwActiveSources.length; i++) {
-        try {
-            cwActiveSources[i].stop();
-        } catch(e) {
-            // Source may have already stopped naturally
-        }
-    }
-    cwActiveSources = [];
-    cwCurrentSource = null;
-    cwSidetoneEndTime = 0;
 }
 
 function toggleCWBar() {
@@ -3404,19 +3184,11 @@ function initCWHandlers() {
     document.getElementById('cwStopBtn').addEventListener('click', function() {
         send({ cmd: 'stopCW' });
         cwPendingText = '';
-        // Clear queue and unmute RX audio
-        cwRenderQueue = [];
-        cwIsRendering = false;
+        // Clear character state
         cwCharacters = [];
         cwCharIndex = 0;
         cwNextCharTime = 0;
         clearCWTimers(); // Clear all pending character update timers
-        stopAllCWSidetone(); // Stop all active audio sources
-        if (cwUnmuteTimer) {
-            clearTimeout(cwUnmuteTimer);
-            cwUnmuteTimer = null;
-        }
-        unmuteRxAudio();
         updateCWTranscript();
     });
 
@@ -3429,17 +3201,7 @@ function initCWHandlers() {
         cwCharacters = [];
         cwCharIndex = 0;
         cwNextCharTime = 0;
-        // Clear sidetone queue
-        cwRenderQueue = [];
-        cwIsRendering = false;
         clearCWTimers(); // Clear all pending character update timers
-        stopAllCWSidetone(); // Stop all active audio sources
-        // Clear unmute timer and unmute RX audio immediately
-        if (cwUnmuteTimer) {
-            clearTimeout(cwUnmuteTimer);
-            cwUnmuteTimer = null;
-        }
-        unmuteRxAudio();
         send({ cmd: 'stopCW' });
         setPanel('default'); // Return to default panel
         renderBottomBar();
@@ -3512,20 +3274,10 @@ function initCWHandlers() {
                 // Stop radio transmission immediately
                 send({ cmd: 'stopCW' });
 
-                // Stop all active sidetone audio
-                stopAllCWSidetone();
-
                 // Remove ALL pending characters from display
                 cwCharacters = cwCharacters.filter(function(ch) {
                     return ch.status !== 'pending';
                 });
-
-                // Clear all queued audio
-                cwRenderQueue = [];
-                cwAbortCurrentRender = true;
-
-                // Unmute RX audio (in case it was muted for CW)
-                unmuteRxAudio();
 
                 console.log('[CW] Transmission stopped, all pending characters flushed');
                 updateCWTranscript();
