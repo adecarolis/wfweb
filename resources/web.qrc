@@ -8,5 +8,6 @@
         <file alias="cw-decoder-stft.js">web/cw-decoder-stft.js</file>
         <file alias="cw-decoder-utils.js">web/cw-decoder-utils.js</file>
         <file alias="model.onnx">web/models/model.onnx</file>
+        <file alias="ggmorse-wasm.js">web/ggmorse-wasm.js</file>
     </qresource>
 </RCC>

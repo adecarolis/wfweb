@@ -13,7 +13,7 @@
     const DECODABLE_MAX_FREQ_HZ = 800;
     const BUFFER_DURATION_S = 12;
     const INFERENCE_INTERVAL_MS = 800;  // Even slower updates for readability
-    const SAMPLE_RATE = 3200;
+    const SAMPLE_RATE = 4000;
     const BUFFER_SAMPLES = BUFFER_DURATION_S * SAMPLE_RATE;  // 38400
 
     // Decoder state
@@ -24,8 +24,10 @@
         gain: 0,
         filterWidth: 250,
         filterFreq: null,
-        currentSegments: [],
+        textBuffer: '',       // accumulated decoded text (rolling)
     };
+
+    const TEXT_BUFFER_MAX = 500; // characters to keep in rolling buffer
 
     // Fixed center frequency for the filter band (middle of display)
     const CENTER_FREQ_HZ = 800; // Center of 100-1500 Hz range
@@ -44,6 +46,10 @@
 
     // Audio buffer for inference - sliding window like demo
     const audioBuffer = new Float32Array(BUFFER_SAMPLES);
+
+    // Track new samples accumulated since last inference send
+    let totalSamplesAccumulated = 0;
+    let lastSentTotal = 0;
 
     // Canvas
     let canvas = null;
@@ -144,7 +150,7 @@
                 <canvas id="cwScopeCanvas"></canvas>
                 <div id="cwFilterBand"></div>
             </div>
-            <div id="cwDecoderText"></div>
+            <div id="cwDecoderText"><span id="cwDecoderTextInner"></span></div>
         `;
 
         // Insert decoder section BEFORE the macro grids (transmit section)
@@ -178,7 +184,9 @@
             #cwScopeCanvas { display: block; background: #000; width: 100%; height: 100px; border-radius: 4px; border: 1px solid #0a0; }
             #cwFilterBand { position: absolute; left: 0; right: 0; pointer-events: none; border-top: 1px solid #f00; border-bottom: 1px solid #f00; display: none; }
             #cwFilterBand.active { display: block; }
-            #cwDecoderText { width: 100%; font-size: 20px; background: #000; border-radius: 4px; border: 1px solid #0a0; height: 32px; margin-top: 8px; color: #0f0; overflow: hidden; box-sizing: border-box; font-family: 'Courier New', monospace; line-height: 32px; display: flex; justify-content: space-between; align-items: center; padding: 0 8px; }
+            #cwDecoderText { width: 100%; font-size: 20px; background: #000; border-radius: 4px; border: 1px solid #0a0; height: 32px; margin-top: 8px; color: #0f0; overflow-x: scroll; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none; box-sizing: border-box; font-family: 'Courier New', monospace; line-height: 32px; padding: 0 8px; }
+            #cwDecoderText::-webkit-scrollbar { display: none; }
+            #cwDecoderTextInner { white-space: pre; display: inline; }
         `;
         document.head.appendChild(style);
     }
@@ -277,6 +285,9 @@
                 const resampledLen = resampledChunk.length;
                 audioBuffer.copyWithin(0, resampledLen);
                 audioBuffer.set(resampledChunk, BUFFER_SAMPLES - resampledLen);
+
+                // Track how many new samples have arrived
+                totalSamplesAccumulated += resampledLen;
             };
 
             // Connect nodes
@@ -369,7 +380,9 @@
         decoderState.enabled = false;
         decoderState.loaded = false;
         decoderState.loading = false;
-        decoderState.currentSegments = [];
+        decoderState.textBuffer = '';
+        totalSamplesAccumulated = 0;
+        lastSentTotal = 0;
         updateText();
         updateButtons();
     }
@@ -381,8 +394,19 @@
                 decoderState.loaded = true;
                 break;
             case 'inferenceResult':
-                decoderState.currentSegments = msg.segments || [];
-                updateText();
+                if (msg.segments && msg.segments.length > 0) {
+                    const newText = msg.segments.map(s => s.text).join('');
+                    if (newText.length > 0) {
+                        decoderState.textBuffer += newText;
+                        if (decoderState.textBuffer.length > TEXT_BUFFER_MAX) {
+                            decoderState.textBuffer = decoderState.textBuffer.slice(-TEXT_BUFFER_MAX);
+                        }
+                        updateText();
+                    }
+                }
+                if (msg.speed_wpm > 0 || msg.frequency_hz > 0) {
+                    console.log('[CW Decoder] Detected: ' + msg.frequency_hz.toFixed(0) + ' Hz, ' + msg.speed_wpm.toFixed(1) + ' WPM');
+                }
                 break;
             case 'error':
                 console.error('[CW Decoder Worker] Error:', msg.error);
@@ -471,45 +495,28 @@
     function runInference() {
         if (!decoderState.enabled || !decoderWorker || !decoderState.loaded) return;
 
-        const audioCopy = audioBuffer.slice();
-        // Use beat frequency for filtering - that's where CW signals appear in audio
+        // Send only samples accumulated since last call (ggmorse maintains internal state)
+        const newCount = Math.min(totalSamplesAccumulated - lastSentTotal, BUFFER_SAMPLES);
+        if (newCount <= 0) return;
+
+        const start = BUFFER_SAMPLES - newCount;
+        const newSamples = audioBuffer.slice(start);
+        lastSentTotal = totalSamplesAccumulated;
+
         decoderWorker.postMessage({
             type: 'runInference',
-            audioBuffer: audioCopy,
-            filterFreq: BEAT_FREQ_HZ,
-            filterWidth: decoderState.filterWidth
-        }, [audioCopy.buffer]);
+            audioBuffer: newSamples
+        }, [newSamples.buffer]);
     }
 
-    // Text display - flexbox with proper spacing
+    // Text display - rolling teleprinter style, newest text on the right
     function updateText() {
         const container = document.getElementById('cwDecoderText');
-        if (!container) return;
-
-        const segments = decoderState.currentSegments;
-
-        // Build character divs with flex layout
-        let html = '';
-        let lastWasSpace = false;
-
-        segments.forEach((segment) => {
-            const chars = Array.from(segment.text);
-            chars.forEach((char) => {
-                if (char === ' ') {
-                    // Use flex-grow for spaces, but collapse consecutive ones
-                    if (!lastWasSpace) {
-                        html += '<div style="flex: 1;"></div>';
-                        lastWasSpace = true;
-                    }
-                } else {
-                    const color = segment.isAbbreviation ? '#ff0' : '#0f0';
-                    html += `<div style="color: ${color}; font-weight: ${segment.isAbbreviation ? 'bold' : 'normal'}; flex-shrink: 0;">${char}</div>`;
-                    lastWasSpace = false;
-                }
-            });
-        });
-
-        container.innerHTML = html || '<div></div>';
+        const inner = document.getElementById('cwDecoderTextInner');
+        if (!container || !inner) return;
+        inner.textContent = decoderState.textBuffer;
+        // Scroll to show the rightmost (newest) characters
+        container.scrollLeft = container.scrollWidth;
     }
 
     function updateButtons() {
