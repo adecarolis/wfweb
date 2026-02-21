@@ -180,6 +180,9 @@
             #cwDecoderToggle:hover { background: #0a0 !important; color: #000 !important; }
             #cwDecoderToggle.active { background: #0a0 !important; color: #000 !important; }
             #cwDecoderToggle.loading { background: #1a1a00 !important; border-color: #aa0 !important; color: #aa0 !important; }
+            @media (orientation: portrait) and (max-width: 600px) {
+                #cwDecoderToggle { font-size: 8px !important; padding: 1px 2px !important; margin-left: 2px !important; letter-spacing: 0; }
+            }
             .cw-scope-container { position: relative; width: 100%; height: 100px; }
             #cwScopeCanvas { display: block; background: #000; width: 100%; height: 100px; border-radius: 4px; border: 1px solid #0a0; }
             #cwFilterBand { position: absolute; left: 0; right: 0; pointer-events: none; border-top: 1px solid #f00; border-bottom: 1px solid #f00; display: none; }
@@ -187,6 +190,8 @@
             #cwDecoderText { width: 100%; font-size: 20px; background: #000; border-radius: 4px; border: 1px solid #0a0; height: 32px; margin-top: 8px; color: #0f0; overflow-x: scroll; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none; box-sizing: border-box; font-family: 'Courier New', monospace; line-height: 32px; padding: 0 8px; }
             #cwDecoderText::-webkit-scrollbar { display: none; }
             #cwDecoderTextInner { white-space: pre; display: inline; }
+            .cw-decoded-call { color: #ff0; cursor: pointer; text-decoration: underline; }
+            .cw-decoded-call:hover { color: #000; background: #ff0; }
         `;
         document.head.appendChild(style);
     }
@@ -210,6 +215,17 @@
 
         const resizeObserver = new ResizeObserver(() => setupCanvasSizing());
         if (canvas) resizeObserver.observe(canvas);
+
+        // Callsign click: populate QSO field (event delegation on stable container)
+        document.getElementById('cwDecoderText')?.addEventListener('click', function(e) {
+            const span = e.target.closest('.cw-decoded-call');
+            if (!span) return;
+            const qsoInput = document.getElementById('cwQsoInput');
+            if (qsoInput) {
+                qsoInput.value = span.dataset.call;
+                if (typeof updateMacroButtons === 'function') updateMacroButtons();
+            }
+        });
     }
 
     // Toggle decoder on/off
@@ -509,13 +525,41 @@
         }, [newSamples.buffer]);
     }
 
+    // Ham radio callsign detector
+    // Covers the vast majority of ITU callsign formats:
+    // up to 3 prefix chars (letters/digits), one district digit, 1-4 suffix letters
+    function isCallsign(word) {
+        if (word.length < 4 || word.length > 8) return false;
+        return /^[A-Z0-9]{1,3}[0-9][A-Z]{1,4}$/.test(word);
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
     // Text display - rolling teleprinter style, newest text on the right
+    // Words matching callsign format (and differing from CALL field) become clickable links
     function updateText() {
         const container = document.getElementById('cwDecoderText');
         const inner = document.getElementById('cwDecoderTextInner');
         if (!container || !inner) return;
-        inner.textContent = decoderState.textBuffer;
-        // Scroll to show the rightmost (newest) characters
+
+        const myCall = (document.getElementById('cwCallInput')?.value || '').trim().toUpperCase();
+        const text = decoderState.textBuffer;
+
+        // Split on runs of alphanumeric chars (preserving separators between them)
+        const parts = text.split(/([A-Z0-9]+)/);
+
+        let html = '';
+        for (const part of parts) {
+            if (/^[A-Z0-9]+$/.test(part) && isCallsign(part) && part !== myCall) {
+                html += `<span class="cw-decoded-call" data-call="${part}">${part}</span>`;
+            } else {
+                html += escapeHtml(part);
+            }
+        }
+
+        inner.innerHTML = html;
         container.scrollLeft = container.scrollWidth;
     }
 
