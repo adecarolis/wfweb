@@ -74,21 +74,42 @@
             });
             observer.observe(cwBar, { attributes: true });
         }
-
-        console.log('[CW Decoder] Initialized');
     }
 
-    // Build color lookup table
+    // Build color lookup table - traditional waterfall: black -> blue -> green -> yellow -> red
     function buildColorLUT() {
         const lut = new Array(256);
         for (let v = 0; v < 256; v++) {
-            let t = v / 255;
-            const gamma = 2.2;
-            t = Math.pow(t, gamma);
-            const hue = (220 * (1 - t)) / 360;
-            const sat = 1.0;
-            const light = 0.15 + 0.75 * t;
-            lut[v] = hslToRgb(hue, sat, light);
+            const t = v / 255;
+            let r, g, b;
+
+            if (t < 0.25) {
+                // Black to dark blue
+                const tt = t / 0.25;
+                r = 0;
+                g = 0;
+                b = Math.floor(tt * 64);
+            } else if (t < 0.5) {
+                // Dark blue to cyan
+                const tt = (t - 0.25) / 0.25;
+                r = 0;
+                g = Math.floor(tt * 255);
+                b = 64 + Math.floor(tt * 191);
+            } else if (t < 0.75) {
+                // Cyan to green to yellow
+                const tt = (t - 0.5) / 0.25;
+                r = Math.floor(tt * 255);
+                g = 255;
+                b = 0;
+            } else {
+                // Yellow to red
+                const tt = (t - 0.75) / 0.25;
+                r = 255;
+                g = Math.floor((1 - tt) * 255);
+                b = 0;
+            }
+
+            lut[v] = [r, g, b];
         }
         return lut;
     }
@@ -227,17 +248,10 @@
     }
 
     function setupCanvasSizing() {
-        console.log('[CW Decoder] setupCanvasSizing called');
-        if (!waterfallCanvas) {
-            console.error('[CW Decoder] No waterfall canvas in setupCanvasSizing');
-            return;
-        }
+        if (!waterfallCanvas) return;
 
         const container = waterfallCanvas.parentElement;
-        if (!container) {
-            console.error('[CW Decoder] No container for canvas');
-            return;
-        }
+        if (!container) return;
 
         const rect = container.getBoundingClientRect();
         const dpr = window.devicePixelRatio || 1;
@@ -246,16 +260,12 @@
         const containerWidth = rect.width || container.clientWidth || 300;
         const containerHeight = rect.height || container.clientHeight || 128;
 
-        console.log('[CW Decoder] Container size:', containerWidth, 'x', containerHeight);
-
         // Ensure minimum size
         const width = Math.max(1, Math.floor(containerWidth * dpr));
         const height = Math.max(1, Math.floor(containerHeight * dpr));
 
         waterfallCanvas.width = width;
         waterfallCanvas.height = height;
-
-        console.log('[CW Decoder] Canvas set to:', width, 'x', height);
 
         // Initialize frequency data array
         frequencyData = new Uint8Array(FFT_SIZE / 2);
@@ -440,6 +450,12 @@
             // Size canvas before starting
             setupCanvasSizing();
 
+            // Clear canvas to black before starting
+            if (waterfallCtx && waterfallCanvas) {
+                waterfallCtx.fillStyle = '#000000';
+                waterfallCtx.fillRect(0, 0, waterfallCanvas.width, waterfallCanvas.height);
+            }
+
             // Start waterfall rendering
             startWaterfall();
 
@@ -555,44 +571,21 @@
 
     // Waterfall rendering
     function startWaterfall() {
-        console.log('[CW Decoder] startWaterfall called, canvas:', !!waterfallCanvas, 'enabled:', decoderState.enabled);
-        if (!waterfallCanvas) {
-            console.error('[CW Decoder] No waterfall canvas!');
-            return;
-        }
+        if (!waterfallCanvas) return;
 
         frequencyData = new Uint8Array(FFT_SIZE / 2);
         renderState.lastTime = performance.now();
         renderState.pixelAccumulator = 0;
 
-        // Clear canvas
-        waterfallCtx.fillStyle = '#000';
+        // Clear canvas to black
+        waterfallCtx.fillStyle = '#000000';
         waterfallCtx.fillRect(0, 0, waterfallCanvas.width, waterfallCanvas.height);
-        console.log('[CW Decoder] Canvas cleared, scheduling renderWaterfall');
 
         rafId = requestAnimationFrame(renderWaterfall);
     }
 
     function renderWaterfall() {
-        if (!decoderState.enabled || !waterfallCanvas) {
-            console.log('[CW Decoder] Waterfall render skipped - enabled:', decoderState.enabled, 'canvas:', !!waterfallCanvas);
-            return;
-        }
-
-        // Debug: log every call for first few seconds
-        if (!window._cwDecoderRenderCount) window._cwDecoderRenderCount = 0;
-        window._cwDecoderRenderCount++;
-        if (window._cwDecoderRenderCount <= 10) {
-            console.log('[CW Decoder] renderWaterfall called, count:', window._cwDecoderRenderCount);
-        }
-
-        // Debug canvas dimensions once
-        if (!window._cwDecoderCanvasDebugged) {
-            console.log('[CW Decoder] Canvas dimensions:', waterfallCanvas.width, 'x', waterfallCanvas.height);
-            console.log('[CW Decoder] Canvas display size:', waterfallCanvas.clientWidth, 'x', waterfallCanvas.clientHeight);
-            console.log('[CW Decoder] Canvas context:', !!waterfallCtx);
-            window._cwDecoderCanvasDebugged = true;
-        }
+        if (!decoderState.enabled || !waterfallCanvas) return;
 
         const now = performance.now();
         const dt = (now - renderState.lastTime) / 1000;
@@ -626,11 +619,19 @@
         const column = ctx.createImageData(1, canvas.height);
         const buf = column.data;
 
+        // Map frequency range (100-1500 Hz) to canvas pixels
+        // The FFT bins cover 0 to SAMPLE_RATE/2 Hz
+        const nyquist = SAMPLE_RATE / 2;
+        const minBin = Math.floor((MIN_FREQ / nyquist) * (FFT_SIZE / 2));
+        const maxBin = Math.min(FFT_SIZE / 2, Math.floor((MAX_FREQ / nyquist) * (FFT_SIZE / 2)));
+        const binRange = maxBin - minBin;
+
         for (let y = 0; y < canvas.height; y++) {
-            const invY = canvas.height - 1 - y;
-            const freqRatio = invY / Math.max(1, canvas.height - 1);
-            const binIdx = Math.floor(freqRatio * (FFT_SIZE / 2));
-            const v = frequencyData[Math.min(binIdx, frequencyData.length - 1)] || 0;
+            // Invert Y so low frequencies are at bottom (traditional waterfall)
+            const freqRatio = (canvas.height - 1 - y) / Math.max(1, canvas.height - 1);
+            const binIdx = minBin + Math.floor(freqRatio * binRange);
+            const clampedIdx = Math.min(Math.max(binIdx, 0), FFT_SIZE / 2 - 1);
+            const v = frequencyData[clampedIdx] || 0;
             const [r, g, b] = colorLUT[v];
             const p = y * 4;
             buf[p] = r;
@@ -658,24 +659,31 @@
             const samples = sampleBuffer.slice(-FFT_SIZE);
             const magnitude = computeFFT(samples);
             if (magnitude) {
-                // Convert to dB and normalize to 0-255
-                let maxVal = 0;
-                for (let i = 0; i < frequencyData.length && i < magnitude.length; i++) {
-                    const db = 20 * Math.log10(magnitude[i] + 1e-10);
-                    // Normalize: -70 to -30 dB range
-                    const normalized = Math.max(0, Math.min(255, (db + 70) / 40 * 255));
-                    frequencyData[i] = Math.floor(normalized);
-                    maxVal = Math.max(maxVal, normalized);
+                // Find max magnitude for normalization
+                let maxMag = 0;
+                for (let i = 0; i < magnitude.length; i++) {
+                    maxMag = Math.max(maxMag, magnitude[i]);
                 }
-                // Debug: log max value occasionally
-                if (Math.random() < 0.01) {
-                    console.log('[CW Decoder] FFT max value:', maxVal, 'sampleBuffer:', sampleBuffer.length);
+
+                // Convert to dB and normalize to 0-255
+                // Use dynamic range: noise floor around -80 dB, strong signal around -20 dB
+                const minDb = -80;
+                const maxDb = -20;
+                const dbRange = maxDb - minDb;
+
+                for (let i = 0; i < frequencyData.length && i < magnitude.length; i++) {
+                    // Normalize by max to handle varying input levels
+                    const normalizedMag = magnitude[i] / (maxMag + 1e-10);
+                    const db = 20 * Math.log10(normalizedMag + 1e-10);
+                    // Map -80 dB to 0, -20 dB to 255
+                    const normalized = Math.max(0, Math.min(255, (db - minDb) / dbRange * 255));
+                    frequencyData[i] = Math.floor(normalized);
                 }
             }
         } else {
-            // Debug: not enough samples
-            if (Math.random() < 0.01) {
-                console.log('[CW Decoder] Not enough samples for FFT:', sampleBuffer.length, '/', FFT_SIZE);
+            // Not enough samples - fill with zeros (black)
+            for (let i = 0; i < frequencyData.length; i++) {
+                frequencyData[i] = 0;
             }
         }
     }
@@ -805,11 +813,6 @@
     // Audio buffer accumulation (called from wfview's audio pipeline)
     function addAudioSamples(samples) {
         if (!decoderState.enabled) return;
-
-        // Debug: log first few samples received
-        if (sampleBuffer.length === 0) {
-            console.log('[CW Decoder] First audio samples received:', samples.length, 'samples');
-        }
 
         // Add to sample buffer for FFT (keep last FFT_SIZE samples)
         sampleBuffer = sampleBuffer.concat(Array.from(samples));
