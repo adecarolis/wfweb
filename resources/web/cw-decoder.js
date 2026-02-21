@@ -1,209 +1,202 @@
-// CW Decoder Controller for wfview
-// Uses Web Audio API AnalyserNode for proper spectrum display
+// CW Decoder for wfview - Based on web-deep-cw-decoder
+// This implementation copies the demo as closely as possible
 
 (function() {
     'use strict';
 
+    // Constants from the demo
+    const FFT_SIZE = 4096;  // 2^12
+    const MIN_FREQ_HZ = 100;
+    const MAX_FREQ_HZ = 1500;
+    const DECODABLE_MIN_FREQ_HZ = 400;
+    const DECODABLE_MAX_FREQ_HZ = 1200;
+    const BUFFER_DURATION_S = 12;
+    const INFERENCE_INTERVAL_MS = 800;  // Even slower updates for readability
+    const SAMPLE_RATE = 3200;
+    const BUFFER_SAMPLES = BUFFER_DURATION_S * SAMPLE_RATE;  // 38400
+
     // Decoder state
-    let decoderState = {
+    const decoderState = {
         enabled: false,
         loading: false,
         loaded: false,
-        gain: 0,           // 0 or 20 dB
-        filterWidth: 250,  // 100 or 250 Hz
-        filterFreq: 600,   // Center frequency (null = disabled)
+        gain: 0,
+        filterWidth: 250,
+        filterFreq: null,
         currentSegments: [],
-        isDecoding: false
     };
 
-    // Web Audio nodes
+    // Audio nodes
     let analyserNode = null;
     let gainNode = null;
     let processorNode = null;
     let audioContext = null;
-
-    // Worker
     let decoderWorker = null;
-
-    // Waterfall rendering
-    let waterfallCanvas = null;
-    let waterfallCtx = null;
     let rafId = null;
-    let colorLUT = null;
-    let frequencyData = null;
+
+    // Audio buffer for inference - sliding window like demo
+    const audioBuffer = new Float32Array(BUFFER_SAMPLES);
+
+    // Canvas
+    let canvas = null;
+    let ctx2d = null;
+    let column = null;
     let renderState = { lastTime: performance.now(), pixelAccumulator: 0 };
 
-    // Constants
-    const FFT_SIZE = 4096;  // Higher resolution FFT
-    const MIN_FREQ = 100;   // Hz - bottom of display
-    const MAX_FREQ = 1500;  // Hz - top of display
-    const BUFFER_DURATION_S = 12;
-    const INFERENCE_INTERVAL_MS = 250;
+    // Color LUT
+    let colorLUT = null;
 
-    // Audio buffer for inference (12 seconds at target sample rate)
-    let audioBuffer = [];
-    let lastInferenceTime = 0;
-
-    // Initialize decoder
-    function initDecoder() {
+    // Initialize
+    function init() {
+        console.log('[CW Decoder] Initializing...');
         colorLUT = buildColorLUT();
-        createDecoderUI();
-        watchCWBarVisibility();
+        createUI();
     }
 
-    // Build color lookup table
+    // HSL to RGB conversion (from demo)
+    function hslToRgb(h, s, l) {
+        const hue2rgb = (p, q, t) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1 / 6) return p + (q - p) * 6 * t;
+            if (t < 1 / 2) return q;
+            if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+            return p;
+        };
+
+        let r, g, b;
+        if (s === 0) {
+            r = g = b = l;
+        } else {
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            const p = 2 * l - q;
+            r = hue2rgb(p, q, h + 1 / 3);
+            g = hue2rgb(p, q, h);
+            b = hue2rgb(p, q, h - 1 / 3);
+        }
+        return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    }
+
+    // Build color LUT (from demo)
     function buildColorLUT() {
         const lut = new Array(256);
         for (let v = 0; v < 256; v++) {
-            const t = v / 255;
-            let r, g, b;
-
-            if (t < 0.25) {
-                const tt = t / 0.25;
-                r = 0;
-                g = 0;
-                b = Math.floor(tt * 64);
-            } else if (t < 0.5) {
-                const tt = (t - 0.25) / 0.25;
-                r = 0;
-                g = Math.floor(tt * 255);
-                b = 64 + Math.floor(tt * 191);
-            } else if (t < 0.75) {
-                const tt = (t - 0.5) / 0.25;
-                r = Math.floor(tt * 255);
-                g = 255;
-                b = 0;
-            } else {
-                const tt = (t - 0.75) / 0.25;
-                r = 255;
-                g = Math.floor((1 - tt) * 255);
-                b = 0;
-            }
-            lut[v] = [r, g, b];
+            let t = v / 255;
+            const gamma = 2.2;
+            t = Math.pow(t, gamma);
+            const hue = (220 * (1 - t)) / 360;
+            const sat = 1.0;
+            const light = 0.15 + 0.75 * t;
+            lut[v] = hslToRgb(hue, sat, light);
         }
         return lut;
     }
 
-    // Create decoder UI elements
-    function createDecoderUI() {
+    // Create UI
+    function createUI() {
         const cwBar = document.getElementById('cwBar');
         if (!cwBar) {
-            setTimeout(createDecoderUI, 500);
+            setTimeout(createUI, 500);
             return;
         }
 
-        if (document.getElementById('cwDecoderSection')) return;
+        if (document.getElementById('cwDecoderToggle')) return;
 
-        const macroGrid2 = document.getElementById('cwMacroGrid2');
-        if (!macroGrid2) return;
+        // Add DECODE button to the cw-bar-header (next to CW label)
+        const header = cwBar.querySelector('.cw-bar-header');
+        if (header) {
+            const decodeBtn = document.createElement('button');
+            decodeBtn.id = 'cwDecoderToggle';
+            decodeBtn.className = 'cw-decoder-btn';
+            decodeBtn.textContent = 'DECODE';
+            decodeBtn.style.marginLeft = '10px';
+            decodeBtn.style.padding = '2px 8px';
+            decodeBtn.style.background = '#001a00';
+            decodeBtn.style.border = '1px solid #0a0';
+            decodeBtn.style.color = '#0a0';
+            decodeBtn.style.fontSize = '10px';
+            decodeBtn.style.fontWeight = 'bold';
+            decodeBtn.style.cursor = 'pointer';
+            decodeBtn.style.fontFamily = 'monospace';
 
-        const decoderSection = document.createElement('div');
-        decoderSection.id = 'cwDecoderSection';
-        decoderSection.className = 'cw-decoder-section';
-        decoderSection.innerHTML = `
-            <div class="cw-decoder-controls">
-                <button id="cwDecoderToggle" class="cw-decoder-btn">DECODE: OFF</button>
-                <button id="cwDecoderGain" class="cw-decoder-btn">GAIN: 0dB</button>
-                <button id="cwDecoderFilter" class="cw-decoder-btn">FIL: 250Hz</button>
+            const cwLabel = header.querySelector('.cw-label');
+            if (cwLabel) {
+                cwLabel.parentNode.insertBefore(decodeBtn, cwLabel.nextSibling);
+            } else {
+                header.insertBefore(decodeBtn, header.firstChild);
+            }
+        }
+
+        // Create decoder content section (waterfall + text) - initially hidden
+        const section = document.createElement('div');
+        section.id = 'cwDecoderSection';
+        section.style.display = 'none';  // Hidden when decode is off
+        section.innerHTML = `
+            <div class="cw-scope-container">
+                <canvas id="cwScopeCanvas"></canvas>
+                <div id="cwFilterBand"></div>
             </div>
-            <div class="cw-waterfall-container">
-                <canvas id="cwWaterfallCanvas" class="cw-waterfall-canvas"></canvas>
-                <div id="cwFilterBand" class="cw-filter-band"></div>
-                <div class="cw-waterfall-hint">Click to set freq, scroll to adjust</div>
-            </div>
-            <div id="cwDecoderText" class="cw-decoder-text"></div>
+            <div id="cwDecoderText"></div>
         `;
 
-        macroGrid2.parentNode.insertBefore(decoderSection, macroGrid2.nextSibling);
+        // Insert decoder section BEFORE the macro grids (transmit section)
+        const firstChild = cwBar.firstChild;
+        cwBar.insertBefore(section, firstChild);
 
-        waterfallCanvas = document.getElementById('cwWaterfallCanvas');
-        if (waterfallCanvas) {
-            waterfallCtx = waterfallCanvas.getContext('2d');
+        canvas = document.getElementById('cwScopeCanvas');
+        if (canvas) {
+            ctx2d = canvas.getContext('2d');
             setupCanvasSizing();
         }
 
+        addStyles();
         setupEventListeners();
-        addDecoderStyles();
+
+        console.log('[CW Decoder] UI created');
     }
 
-    function setupCanvasSizing() {
-        if (!waterfallCanvas) return;
-        const container = waterfallCanvas.parentElement;
-        if (!container) return;
-
-        const rect = container.getBoundingClientRect();
-        const dpr = window.devicePixelRatio || 1;
-
-        const width = Math.max(1, Math.floor((rect.width || 300) * dpr));
-        const height = Math.max(1, Math.floor((rect.height || 128) * dpr));
-
-        waterfallCanvas.width = width;
-        waterfallCanvas.height = height;
-
-        frequencyData = new Uint8Array(FFT_SIZE / 2);
-    }
-
-    function setupEventListeners() {
-        document.getElementById('cwDecoderToggle')?.addEventListener('click', toggleDecoder);
-        document.getElementById('cwDecoderGain')?.addEventListener('click', toggleGain);
-        document.getElementById('cwDecoderFilter')?.addEventListener('click', toggleFilterWidth);
-
-        if (waterfallCanvas) {
-            waterfallCanvas.addEventListener('click', handleCanvasClick);
-            waterfallCanvas.addEventListener('wheel', handleCanvasWheel, { passive: false });
-        }
-
-        const resizeObserver = new ResizeObserver(() => setupCanvasSizing());
-        if (waterfallCanvas?.parentElement) {
-            resizeObserver.observe(waterfallCanvas.parentElement);
-        }
-    }
-
-    function watchCWBarVisibility() {
-        const cwBar = document.getElementById('cwBar');
-        if (!cwBar) return;
-
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                    const isVisible = !cwBar.classList.contains('hidden');
-                    if (isVisible && waterfallCanvas) {
-                        setupCanvasSizing();
-                        if (decoderState.enabled && waterfallCtx) {
-                            waterfallCtx.fillStyle = '#000';
-                            waterfallCtx.fillRect(0, 0, waterfallCanvas.width, waterfallCanvas.height);
-                        }
-                    }
-                }
-            });
-        });
-        observer.observe(cwBar, { attributes: true });
-    }
-
-    function addDecoderStyles() {
+    function addStyles() {
         if (document.getElementById('cwDecoderStyles')) return;
 
         const style = document.createElement('style');
         style.id = 'cwDecoderStyles';
         style.textContent = `
-            .cw-decoder-section { margin: 8px 0; border-top: 1px solid #0a0; padding-top: 8px; }
-            .cw-decoder-controls { display: flex; gap: 8px; margin-bottom: 8px; justify-content: center; }
-            .cw-decoder-btn { padding: 4px 12px; background: #001a00; border: 1px solid #0a0; color: #0a0; font-size: 11px; font-weight: bold; cursor: pointer; font-family: monospace; }
-            .cw-decoder-btn:hover { background: #0a0; color: #000; }
-            .cw-decoder-btn.active { background: #0a0; color: #000; }
-            .cw-decoder-btn.loading { background: #1a1a00; border-color: #aa0; color: #aa0; }
-            .cw-waterfall-container { position: relative; width: 100%; height: 128px; background: #000; border: 1px solid #0a0; border-radius: 4px; overflow: hidden; }
-            .cw-waterfall-canvas { display: block; width: 100%; height: 100%; }
-            .cw-filter-band { position: absolute; left: 0; right: 0; pointer-events: none; border-top: 2px solid #f00; border-bottom: 2px solid #f00; display: none; background: rgba(255, 0, 0, 0.1); }
-            .cw-filter-band.active { display: block; }
-            .cw-waterfall-hint { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #0a0; background: rgba(0, 0, 0, 0.8); padding: 2px 8px; border-radius: 2px; pointer-events: none; }
-            .cw-decoder-text { background: #000; border: 1px solid #0a0; border-radius: 4px; padding: 8px; margin-top: 8px; min-height: 32px; height: 32px; font-family: 'Courier New', monospace; font-size: 20px; color: #0f0; white-space: nowrap; display: flex; flex-wrap: nowrap; justify-content: flex-start; align-items: center; overflow: hidden; }
-            .cw-decoder-char { display: inline-block; }
-            .cw-decoder-char.abbrev { color: #ff0; font-weight: bold; }
+            #cwDecoderSection { margin: 8px 0; border-bottom: 1px solid #0a0; padding-bottom: 8px; }
+            #cwDecoderToggle { }
+            #cwDecoderToggle:hover { background: #0a0 !important; color: #000 !important; }
+            #cwDecoderToggle.active { background: #0a0 !important; color: #000 !important; }
+            #cwDecoderToggle.loading { background: #1a1a00 !important; border-color: #aa0 !important; color: #aa0 !important; }
+            .cw-scope-container { position: relative; width: 100%; height: 100px; }
+            #cwScopeCanvas { display: block; background: #000; width: 100%; height: 100px; border-radius: 4px; border: 1px solid #0a0; }
+            #cwFilterBand { position: absolute; left: 0; right: 0; pointer-events: none; border-top: 1px solid #f00; border-bottom: 1px solid #f00; display: none; }
+            #cwFilterBand.active { display: block; }
+            #cwDecoderText { width: 100%; font-size: 20px; background: #000; border-radius: 4px; border: 1px solid #0a0; height: 32px; margin-top: 8px; color: #0f0; overflow: hidden; box-sizing: border-box; font-family: 'Courier New', monospace; line-height: 32px; display: flex; justify-content: space-between; align-items: center; padding: 0 8px; }
         `;
         document.head.appendChild(style);
     }
 
+    function setupCanvasSizing() {
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = (rect.width || canvas.clientWidth || 300) * dpr;
+        canvas.height = (rect.height || canvas.clientHeight || 100) * dpr;
+        renderState.pixelAccumulator = 0;
+    }
+
+    function setupEventListeners() {
+        document.getElementById('cwDecoderToggle')?.addEventListener('click', toggleDecoder);
+
+        if (canvas) {
+            canvas.addEventListener('click', handleCanvasClick);
+            canvas.addEventListener('wheel', handleWheel, { passive: false });
+        }
+
+        const resizeObserver = new ResizeObserver(() => setupCanvasSizing());
+        if (canvas) resizeObserver.observe(canvas);
+    }
+
+    // Toggle decoder on/off
     async function toggleDecoder() {
         if (decoderState.loading) return;
         if (decoderState.enabled) {
@@ -217,112 +210,109 @@
         if (decoderState.enabled) return;
 
         decoderState.loading = true;
-        updateButtonStates();
+        updateButtons();
 
         try {
-            // Get wfview's audio context
+            // Wait for wfview's audio context to be available (poll for up to 5 seconds)
+            let waitCount = 0;
+            while (!window.audioCtx && waitCount < 50) {
+                await new Promise(r => setTimeout(r, 100));
+                waitCount++;
+            }
+
             audioContext = window.audioCtx;
             if (!audioContext) {
-                console.error('[CW Decoder] No audio context available');
+                console.error('[CW Decoder] No audio context available. Make sure audio is enabled.');
                 decoderState.loading = false;
-                updateButtonStates();
+                updateButtons();
                 return;
             }
 
-            // Create audio nodes
+            // Create audio nodes (matching demo)
             analyserNode = audioContext.createAnalyser();
             analyserNode.fftSize = FFT_SIZE;
             analyserNode.smoothingTimeConstant = 0;
-            analyserNode.minDecibels = -90;
+            analyserNode.minDecibels = -70;
             analyserNode.maxDecibels = -30;
 
             gainNode = audioContext.createGain();
             gainNode.gain.value = Math.pow(10, decoderState.gain / 20);
 
-            // Create a ScriptProcessorNode to capture continuous audio for inference
-            // Buffer size 4096 gives us ~85ms at 48kHz, processed every block
-            processorNode = audioContext.createScriptProcessor(4096, 1, 1);
-            processorNode.onaudioprocess = function(e) {
+            // ScriptProcessor for audio capture (like demo's useAudioProcessing)
+            processorNode = audioContext.createScriptProcessor(2048, 1, 1);
+            processorNode.onaudioprocess = (e) => {
                 const inputData = e.inputBuffer.getChannelData(0);
                 const outputData = e.outputBuffer.getChannelData(0);
+                outputData.set(inputData);  // Pass-through
 
-                // Copy input to output (pass-through)
-                for (let i = 0; i < inputData.length; i++) {
-                    outputData[i] = inputData[i];
-                }
-
-                // Also capture for decoder if enabled
                 if (!decoderState.enabled) return;
 
-                // Resample from audioContext.sampleRate to 3200 Hz
-                const sourceRate = audioContext.sampleRate;
-                const targetRate = 3200;
-                const resampleRatio = targetRate / sourceRate;
-                const samplesToAdd = Math.floor(inputData.length * resampleRatio);
+                // Sliding window: copyWithin + set (exactly like demo)
+                const chunkLen = inputData.length;
+                const sourceRate = audioContext.sampleRate;  // 48000
+                const decimationFactor = Math.round(sourceRate / SAMPLE_RATE);  // 15
+                const samplesToProduce = Math.floor(chunkLen / decimationFactor);
 
-                for (let i = 0; i < samplesToAdd; i++) {
-                    const sourceIdx = Math.floor(i / resampleRatio);
-                    if (sourceIdx < inputData.length) {
-                        const sample = inputData[sourceIdx] * Math.pow(10, decoderState.gain / 20);
-                        inferenceBuffer[inferenceWritePos] = sample;
-                        inferenceWritePos = (inferenceWritePos + 1) % inferenceBuffer.length;
+                // Simple decimation (no gain here - gain is applied via gainNode)
+                const resampledChunk = new Float32Array(samplesToProduce);
+
+                for (let i = 0; i < samplesToProduce; i++) {
+                    let sum = 0;
+                    const startIdx = i * decimationFactor;
+                    for (let j = 0; j < decimationFactor; j++) {
+                        sum += inputData[startIdx + j];
                     }
+                    resampledChunk[i] = sum / decimationFactor;
                 }
+
+                // Sliding window (exactly like demo)
+                const resampledLen = resampledChunk.length;
+                audioBuffer.copyWithin(0, resampledLen);
+                audioBuffer.set(resampledChunk, BUFFER_SAMPLES - resampledLen);
             };
 
-            // Connect to wfview's audio output
-            // We need to insert our analyser between the final audio node and the destination
-            connectToWfviewAudio();
+            // Connect nodes
+            connectAudioNodes();
 
-            // Initialize worker for inference
+            // Start worker
             decoderWorker = new Worker('cw-decoder-worker.js');
             decoderWorker.onmessage = handleWorkerMessage;
             decoderWorker.postMessage({ type: 'loadModel' });
 
-            // Wait for model to load
+            // Wait for model
             await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => reject(new Error('Model load timeout')), 30000);
-                const checkLoaded = setInterval(() => {
+                const timeout = setTimeout(() => reject(new Error('Timeout')), 30000);
+                const check = setInterval(() => {
                     if (decoderState.loaded) {
-                        clearInterval(checkLoaded);
+                        clearInterval(check);
                         clearTimeout(timeout);
                         resolve();
                     }
                 }, 100);
             });
 
-            // Enable decoder state first, then start waterfall
             decoderState.enabled = true;
-            decoderState.isDecoding = true;
-
-            // Start waterfall
             setupCanvasSizing();
-            waterfallCtx.fillStyle = '#000';
-            waterfallCtx.fillRect(0, 0, waterfallCanvas.width, waterfallCanvas.height);
-            startWaterfall();
+            startRendering();
+            updateFilterBand();
 
-        } catch (error) {
-            console.error('[CW Decoder] Failed to start:', error);
+        } catch (err) {
+            console.error('[CW Decoder] Failed to start:', err);
             stopDecoder();
         } finally {
             decoderState.loading = false;
-            updateButtonStates();
-            updateFilterBand();
+            updateButtons();
         }
     }
 
-    function connectToWfviewAudio() {
-        if (window.audioGainNode && window.audioWorkletNode) {
-            // Disconnect the worklet from gain node
+    function connectAudioNodes() {
+        if (window.audioWorkletNode && window.audioGainNode) {
             window.audioWorkletNode.disconnect();
-
-            // Connect worklet -> our gain -> our processor -> our analyser -> wfview's gain -> destination
             window.audioWorkletNode.connect(gainNode);
             gainNode.connect(processorNode);
             processorNode.connect(analyserNode);
             analyserNode.connect(window.audioGainNode);
-        } else if (window.audioGainNode && window.audioScriptNode) {
-            // Fallback for ScriptProcessorNode
+        } else if (window.audioScriptNode && window.audioGainNode) {
             window.audioScriptNode.disconnect();
             window.audioScriptNode.connect(gainNode);
             gainNode.connect(processorNode);
@@ -331,8 +321,7 @@
         }
     }
 
-    function disconnectFromWfviewAudio() {
-        // Restore original connection
+    function disconnectAudioNodes() {
         if (window.audioGainNode) {
             if (window.audioWorkletNode) {
                 processorNode?.disconnect();
@@ -356,14 +345,13 @@
             rafId = null;
         }
 
-        // Disconnect processor first to stop audio processing
         if (processorNode) {
             processorNode.disconnect();
             processorNode.onaudioprocess = null;
             processorNode = null;
         }
 
-        disconnectFromWfviewAudio();
+        disconnectAudioNodes();
 
         if (decoderWorker) {
             decoderWorker.terminate();
@@ -371,12 +359,11 @@
         }
 
         decoderState.enabled = false;
-        decoderState.isDecoding = false;
         decoderState.loaded = false;
         decoderState.loading = false;
-
-        clearDecoderText();
-        updateButtonStates();
+        decoderState.currentSegments = [];
+        updateText();
+        updateButtons();
     }
 
     function handleWorkerMessage(event) {
@@ -386,9 +373,8 @@
                 decoderState.loaded = true;
                 break;
             case 'inferenceResult':
-                // Store segments and update display
                 decoderState.currentSegments = msg.segments || [];
-                updateDecoderText();
+                updateText();
                 break;
             case 'error':
                 console.error('[CW Decoder Worker] Error:', msg.error);
@@ -396,107 +382,60 @@
         }
     }
 
-    function toggleGain() {
-        decoderState.gain = decoderState.gain === 0 ? 20 : 0;
-        if (gainNode) {
-            gainNode.gain.value = Math.pow(10, decoderState.gain / 20);
-        }
-        updateButtonStates();
-    }
+    // Spectrogram rendering (exactly like demo)
+    function startRendering() {
+        if (!canvas || !ctx2d || !analyserNode) return;
 
-    function toggleFilterWidth() {
-        decoderState.filterWidth = decoderState.filterWidth === 100 ? 250 : 100;
-        updateButtonStates();
-        updateFilterBand();
-    }
-
-    function updateButtonStates() {
-        const toggleBtn = document.getElementById('cwDecoderToggle');
-        const gainBtn = document.getElementById('cwDecoderGain');
-        const filterBtn = document.getElementById('cwDecoderFilter');
-
-        if (toggleBtn) {
-            if (decoderState.loading) {
-                toggleBtn.textContent = 'LOADING...';
-                toggleBtn.className = 'cw-decoder-btn loading';
-            } else if (decoderState.enabled) {
-                toggleBtn.textContent = 'DECODE: ON';
-                toggleBtn.className = 'cw-decoder-btn active';
-            } else {
-                toggleBtn.textContent = 'DECODE: OFF';
-                toggleBtn.className = 'cw-decoder-btn';
-            }
-        }
-
-        if (gainBtn) {
-            gainBtn.textContent = 'GAIN: ' + decoderState.gain + 'dB';
-            gainBtn.className = 'cw-decoder-btn' + (decoderState.gain === 20 ? ' active' : '');
-        }
-
-        if (filterBtn) {
-            filterBtn.textContent = 'FIL: ' + decoderState.filterWidth + 'Hz';
-        }
-    }
-
-    function startWaterfall() {
-        if (!waterfallCanvas || !analyserNode) return;
-
-        frequencyData = new Uint8Array(analyserNode.frequencyBinCount);
+        const freqBins = analyserNode.frequencyBinCount;
+        const dataArray = new Uint8Array(freqBins);
         renderState.lastTime = performance.now();
         renderState.pixelAccumulator = 0;
 
-        renderWaterfall();
-    }
+        const render = () => {
+            if (!decoderState.enabled || !canvas || !analyserNode) return;
 
-    function renderWaterfall() {
-        if (!decoderState.enabled || !waterfallCanvas || !analyserNode) {
-            console.log('[CW Decoder] Render skipped:', { enabled: decoderState.enabled, hasCanvas: !!waterfallCanvas, hasAnalyser: !!analyserNode });
-            return;
-        }
+            const now = performance.now();
+            const dt = (now - renderState.lastTime) / 1000;
+            renderState.lastTime = now;
 
+            const pxPerSec = canvas.width / BUFFER_DURATION_S;
+            renderState.pixelAccumulator += dt * pxPerSec;
 
-        const now = performance.now();
-        const dt = (now - renderState.lastTime) / 1000;
-        renderState.lastTime = now;
+            let step = Math.floor(renderState.pixelAccumulator);
+            if (step <= 0) {
+                rafId = requestAnimationFrame(render);
+                return;
+            }
+            renderState.pixelAccumulator -= step;
+            if (step > canvas.width) step = canvas.width;
 
-        const canvas = waterfallCanvas;
-        const ctx = waterfallCtx;
+            analyserNode.getByteFrequencyData(dataArray);
 
-        // Calculate scroll step
-        const pxPerSec = canvas.width / BUFFER_DURATION_S;
-        renderState.pixelAccumulator += dt * pxPerSec;
+            // Scroll left (exactly like demo)
+            ctx2d.drawImage(
+                canvas,
+                0, 0, canvas.width, canvas.height,
+                -step, 0, canvas.width, canvas.height
+            );
 
-        let step = Math.floor(renderState.pixelAccumulator);
-        if (step <= 0) {
-            rafId = requestAnimationFrame(renderWaterfall);
-            return;
-        }
-        renderState.pixelAccumulator -= step;
-        if (step > canvas.width) step = canvas.width;
+            if (!column || column.height !== canvas.height) {
+                column = ctx2d.createImageData(1, canvas.height);
+            }
 
-        // Get frequency data from analyser
-        analyserNode.getByteFrequencyData(frequencyData);
-
-        // Scroll existing image left
-        ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, -step, 0, canvas.width, canvas.height);
-
-        // Draw new column(s)
-        const nyquist = audioContext.sampleRate / 2;
-        const minBin = Math.floor((MIN_FREQ / nyquist) * frequencyData.length);
-        const maxBin = Math.min(frequencyData.length, Math.floor((MAX_FREQ / nyquist) * frequencyData.length));
-        const binCount = maxBin - minBin;
-
-        for (let i = 0; i < step; i++) {
-            const column = ctx.createImageData(1, canvas.height);
             const buf = column.data;
+            const nyquist = audioContext.sampleRate / 2;
+            const minBin = Math.floor((MIN_FREQ_HZ / nyquist) * (freqBins - 1));
+            const maxBin = Math.min(
+                freqBins - 1,
+                Math.floor((Math.min(MAX_FREQ_HZ, nyquist) / nyquist) * (freqBins - 1))
+            );
 
             for (let y = 0; y < canvas.height; y++) {
-                // Map canvas Y (inverted) to frequency bin
-                const freqRatio = (canvas.height - 1 - y) / Math.max(1, canvas.height - 1);
-                const binIdx = minBin + Math.floor(freqRatio * binCount);
-                const clampedIdx = Math.min(Math.max(binIdx, 0), frequencyData.length - 1);
-                const value = frequencyData[clampedIdx] || 0;
-                const [r, g, b] = colorLUT[value];
+                const invY = canvas.height - 1 - y;
+                const binRange = maxBin - minBin;
+                const idx = minBin + Math.floor((invY / Math.max(1, canvas.height - 1)) * binRange);
+                const v = dataArray[idx];
+                const [r, g, b] = colorLUT[v];
                 const p = y * 4;
                 buf[p] = r;
                 buf[p + 1] = g;
@@ -504,40 +443,90 @@
                 buf[p + 3] = 255;
             }
 
-            ctx.putImageData(column, canvas.width - step + i, 0);
-        }
+            for (let i = 0; i < step; i++) {
+                ctx2d.putImageData(column, canvas.width - step + i, 0);
+            }
 
-        // Run inference periodically
-        if (now - lastInferenceTime > INFERENCE_INTERVAL_MS) {
-            runInference();
-            lastInferenceTime = now;
-        }
+            // Run inference periodically
+            if (now - (renderState.lastInferenceTime || 0) > INFERENCE_INTERVAL_MS) {
+                runInference();
+                renderState.lastInferenceTime = now;
+            }
 
-        rafId = requestAnimationFrame(renderWaterfall);
+            rafId = requestAnimationFrame(render);
+        };
+
+        renderState.lastInferenceTime = performance.now();
+        rafId = requestAnimationFrame(render);
     }
-
-    // Audio buffer for inference (12 seconds at 3200 Hz = 38400 samples)
-    const inferenceBuffer = new Float32Array(38400);
-    let inferenceWritePos = 0;
 
     function runInference() {
         if (!decoderState.enabled || !decoderWorker || !decoderState.loaded) return;
 
-        // Copy buffer in correct order (circular to linear)
-        const linearBuffer = new Float32Array(inferenceBuffer.length);
-        for (let i = 0; i < inferenceBuffer.length; i++) {
-            const idx = (inferenceWritePos + i) % inferenceBuffer.length;
-            linearBuffer[i] = inferenceBuffer[idx];
-        }
-
+        const audioCopy = audioBuffer.slice();
         decoderWorker.postMessage({
             type: 'runInference',
-            audioBuffer: linearBuffer,
+            audioBuffer: audioCopy,
             filterFreq: decoderState.filterFreq,
             filterWidth: decoderState.filterWidth
-        });
+        }, [audioCopy.buffer]);
     }
 
+    // Text display - flexbox with proper spacing
+    function updateText() {
+        const container = document.getElementById('cwDecoderText');
+        if (!container) return;
+
+        const segments = decoderState.currentSegments;
+
+        // Build character divs with flex layout
+        let html = '';
+        let lastWasSpace = false;
+
+        segments.forEach((segment) => {
+            const chars = Array.from(segment.text);
+            chars.forEach((char) => {
+                if (char === ' ') {
+                    // Use flex-grow for spaces, but collapse consecutive ones
+                    if (!lastWasSpace) {
+                        html += '<div style="flex: 1;"></div>';
+                        lastWasSpace = true;
+                    }
+                } else {
+                    const color = segment.isAbbreviation ? '#ff0' : '#0f0';
+                    html += `<div style="color: ${color}; font-weight: ${segment.isAbbreviation ? 'bold' : 'normal'}; flex-shrink: 0;">${char}</div>`;
+                    lastWasSpace = false;
+                }
+            });
+        });
+
+        container.innerHTML = html || '<div></div>';
+    }
+
+    function updateButtons() {
+        const toggleBtn = document.getElementById('cwDecoderToggle');
+        const section = document.getElementById('cwDecoderSection');
+
+        if (toggleBtn) {
+            if (decoderState.loading) {
+                toggleBtn.textContent = 'LOADING...';
+                toggleBtn.className = 'loading';
+            } else if (decoderState.enabled) {
+                toggleBtn.textContent = 'DECODE';
+                toggleBtn.className = 'active';
+            } else {
+                toggleBtn.textContent = 'DECODE';
+                toggleBtn.className = '';
+            }
+        }
+
+        // Show/hide decoder section based on state
+        if (section) {
+            section.style.display = decoderState.enabled ? 'block' : 'none';
+        }
+    }
+
+    // Filter band display
     function updateFilterBand() {
         const band = document.getElementById('cwFilterBand');
         if (!band) return;
@@ -547,82 +536,65 @@
             return;
         }
 
-        const range = MAX_FREQ - MIN_FREQ;
+        const range = MAX_FREQ_HZ - MIN_FREQ_HZ;
         const half = decoderState.filterWidth / 2;
-        const lower = Math.max(MIN_FREQ, decoderState.filterFreq - half);
-        const upper = Math.min(MAX_FREQ, decoderState.filterFreq + half);
+        const lower = Math.max(MIN_FREQ_HZ, decoderState.filterFreq - half);
+        const upper = Math.min(MAX_FREQ_HZ, decoderState.filterFreq + half);
 
-        const topPercent = ((MAX_FREQ - upper) / range) * 100;
+        const topPercent = ((MAX_FREQ_HZ - upper) / range) * 100;
         const heightPercent = ((upper - lower) / range) * 100;
 
-        band.style.top = topPercent + '%';
-        band.style.height = heightPercent + '%';
+        band.style.top = `${topPercent}%`;
+        band.style.height = `${heightPercent}%`;
         band.classList.add('active');
     }
 
+    // Canvas interactions (like demo)
+    function constrainFrequency(freq) {
+        const half = decoderState.filterWidth / 2;
+        if (freq - half < DECODABLE_MIN_FREQ_HZ) return DECODABLE_MIN_FREQ_HZ + half;
+        if (freq + half > DECODABLE_MAX_FREQ_HZ) return DECODABLE_MAX_FREQ_HZ - half;
+        return freq;
+    }
+
     function handleCanvasClick(event) {
-        const rect = waterfallCanvas.getBoundingClientRect();
+        // Click to set frequency - filter stays on
+        const rect = canvas.getBoundingClientRect();
         const y = event.clientY - rect.top;
-
-        // Always set the filter frequency (don't toggle off)
-        const canvasHeight = rect.height;
-        const invY = canvasHeight - y;
-        const freqRange = MAX_FREQ - MIN_FREQ;
-        const rawFreq = MIN_FREQ + (invY / canvasHeight) * freqRange;
-        const halfWidth = decoderState.filterWidth / 2;
-        let freq = rawFreq;
-        if (freq - halfWidth < 400) freq = 400 + halfWidth;
-        if (freq + halfWidth > 1200) freq = 1200 - halfWidth;
-        decoderState.filterFreq = Math.round(freq);
-
+        const invY = rect.height - y;
+        const freqRange = MAX_FREQ_HZ - MIN_FREQ_HZ;
+        const rawFreq = MIN_FREQ_HZ + (invY / rect.height) * freqRange;
+        decoderState.filterFreq = Math.ceil(constrainFrequency(rawFreq));
         updateFilterBand();
     }
 
-    function handleCanvasWheel(event) {
-        event.preventDefault();
+    function handleWheel(e) {
+        e.preventDefault();
         if (decoderState.filterFreq === null) return;
 
         const step = 20;
-        let newFreq = decoderState.filterFreq + (event.deltaY < 0 ? step : -step);
+        let newFreq = decoderState.filterFreq;
 
-        const halfWidth = decoderState.filterWidth / 2;
-        if (newFreq - halfWidth < 400) newFreq = 400 + halfWidth;
-        if (newFreq + halfWidth > 1200) newFreq = 1200 - halfWidth;
+        if (e.deltaY < 0) {
+            newFreq += step;
+        } else if (e.deltaY > 0) {
+            newFreq -= step;
+        }
 
-        decoderState.filterFreq = Math.round(newFreq);
+        decoderState.filterFreq = Math.round(constrainFrequency(newFreq));
         updateFilterBand();
-    }
-
-    function updateDecoderText() {
-        const display = document.getElementById('cwDecoderText');
-        if (!display) return;
-
-        // Join all segments and trim whitespace
-        const fullText = decoderState.currentSegments.map(s => s.text).join('');
-        const trimmedText = fullText.trim();
-
-        // Limit to last 40 visible characters
-        const visibleChars = trimmedText.replace(/\s/g, '');
-        const displayText = visibleChars.slice(-40);
-
-        display.textContent = displayText;
-    }
-
-    function clearDecoderText() {
-        const display = document.getElementById('cwDecoderText');
-        if (display) display.innerHTML = '';
     }
 
     // Expose API
     window.CWDecoder = {
-        init: initDecoder,
+        init: init,
         get state() { return decoderState; }
     };
 
     // Auto-init
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initDecoder);
+        document.addEventListener('DOMContentLoaded', init);
     } else {
-        initDecoder();
+        init();
     }
 })();
