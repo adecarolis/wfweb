@@ -197,7 +197,7 @@
             .cw-filter-band { position: absolute; left: 0; right: 0; pointer-events: none; border-top: 2px solid #f00; border-bottom: 2px solid #f00; display: none; background: rgba(255, 0, 0, 0.1); }
             .cw-filter-band.active { display: block; }
             .cw-waterfall-hint { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #0a0; background: rgba(0, 0, 0, 0.8); padding: 2px 8px; border-radius: 2px; pointer-events: none; }
-            .cw-decoder-text { background: #000; border: 1px solid #0a0; border-radius: 4px; padding: 8px; margin-top: 8px; min-height: 32px; font-family: 'Courier New', monospace; font-size: 18px; color: #0f0; white-space: pre-wrap; display: flex; flex-wrap: wrap; gap: 0; }
+            .cw-decoder-text { background: #000; border: 1px solid #0a0; border-radius: 4px; padding: 8px; margin-top: 8px; min-height: 32px; height: 32px; font-family: 'Courier New', monospace; font-size: 20px; color: #0f0; white-space: nowrap; display: flex; flex-wrap: nowrap; justify-content: flex-start; align-items: center; overflow: hidden; }
             .cw-decoder-char { display: inline-block; }
             .cw-decoder-char.abbrev { color: #ff0; font-weight: bold; }
         `;
