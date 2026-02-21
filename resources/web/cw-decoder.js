@@ -337,10 +337,6 @@
         updateButtonStates();
     }
 
-    // Accumulated decoded text
-    let decodedTextHistory = '';
-    const MAX_TEXT_LENGTH = 100;
-
     function handleWorkerMessage(event) {
         const msg = event.data;
         switch (msg.type) {
@@ -348,20 +344,9 @@
                 decoderState.loaded = true;
                 break;
             case 'inferenceResult':
-                // Convert segments to text
-                const newText = (msg.segments || []).map(s => s.text).join('');
-                console.log('[CW Decoder] Segments received:', newText, msg.segments);
-                // Only add if different from last chunk
-                if (newText && newText !== decodedTextHistory.slice(-newText.length)) {
-                    decodedTextHistory += newText;
-                    // Keep only last MAX_TEXT_LENGTH characters
-                    if (decodedTextHistory.length > MAX_TEXT_LENGTH) {
-                        decodedTextHistory = decodedTextHistory.slice(-MAX_TEXT_LENGTH);
-                    }
-                    // Also store segments for display
-                    decoderState.currentSegments = msg.segments || [];
-                    updateDecoderText();
-                }
+                // Store segments and update display
+                decoderState.currentSegments = msg.segments || [];
+                updateDecoderText();
                 break;
             case 'error':
                 console.error('[CW Decoder Worker] Error:', msg.error);
@@ -597,15 +582,15 @@
         const display = document.getElementById('cwDecoderText');
         if (!display) return;
 
-        display.innerHTML = '';
-        decoderState.currentSegments.forEach(segment => {
-            Array.from(segment.text).forEach(char => {
-                const span = document.createElement('span');
-                span.className = 'cw-decoder-char' + (segment.isAbbreviation ? ' abbrev' : '');
-                span.textContent = char;
-                display.appendChild(span);
-            });
-        });
+        // Join all segments and trim whitespace
+        const fullText = decoderState.currentSegments.map(s => s.text).join('');
+        const trimmedText = fullText.trim();
+
+        // Limit to last 40 visible characters
+        const visibleChars = trimmedText.replace(/\s/g, '');
+        const displayText = visibleChars.slice(-40);
+
+        display.textContent = displayText;
     }
 
     function clearDecoderText() {
