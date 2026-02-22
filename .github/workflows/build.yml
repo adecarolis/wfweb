@@ -79,7 +79,7 @@ jobs:
            libqt5network5t64, libqt5serialport5, libqt5multimedia5,
            libqt5websockets5, libqt5gamepad5, libqt5printsupport5t64,
            libopus0, libportaudio2, libpulse0, libhidapi-libusb0,
-           libudev1, libqcustomplot2.1
+           libudev1, libqcustomplot2.1, librtaudio6
           Section: hamradio
           Priority: optional
           Homepage: https://github.com/adecarolis/wfweb
@@ -92,6 +92,20 @@ jobs:
 
           # Strip leading whitespace from control file (heredoc indentation)
           sed -i 's/^          //' ${DEB_ROOT}/DEBIAN/control
+
+          # postinst: reload systemd so the unit is recognised immediately
+          cat > ${DEB_ROOT}/DEBIAN/postinst << 'POSTINST'
+#!/bin/sh
+set -e
+if command -v systemctl >/dev/null 2>&1 && systemctl is-system-running --quiet 2>/dev/null; then
+    systemctl daemon-reload || true
+fi
+echo ""
+echo "wfweb installed. To start automatically at boot, run:"
+echo "  systemctl enable --now wfweb@\$USER"
+echo ""
+POSTINST
+          chmod 755 ${DEB_ROOT}/DEBIAN/postinst
 
           dpkg-deb --build --root-owner-group ${DEB_ROOT}
 
