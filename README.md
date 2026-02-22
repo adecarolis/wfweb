@@ -134,6 +134,14 @@ wfweb tracks the upstream wfview `master` branch. The intent is to keep the delt
 
 ---
 
+## Disclaimer
+
+wfweb is provided "as is", without warranty of any kind. See the [LICENSE](LICENSE) for full terms.
+
+This software is intended for use by licensed amateur radio operators in accordance with the regulations of their country. The user is solely responsible for ensuring that their operation complies with all applicable laws and licence conditions, including but not limited to permitted frequencies, power levels, and modes of operation. The authors accept no liability for unlicensed or non-compliant use.
+
+---
+
 ## Credits
 
 Full credit for the radio control engine, audio subsystem, waterfall, and everything else that makes this software work goes to the wfview authors and contributors:
