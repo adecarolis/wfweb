@@ -15,9 +15,11 @@ jobs:
         include:
           - os: ubuntu-24.04
             arch: x86_64
+            deb_arch: amd64
             label: Linux x86_64
           - os: ubuntu-24.04-arm
             arch: arm64
+            deb_arch: arm64
             label: Raspberry Pi / Linux ARM64
 
     name: ${{ matrix.label }}
@@ -38,23 +40,73 @@ jobs:
             portaudio19-dev librtaudio-dev \
             libhidapi-dev libudev-dev libpulse-dev \
             libqcustomplot-dev \
-            openssl
+            openssl dpkg-dev
 
       - name: Build
         run: |
           qmake wfview.pro
           make -j$(nproc)
 
-      - name: Package
+      - name: Get version
+        id: version
+        run: echo "version=$(grep 'WFVIEW_VERSION' wfview.pro | grep -oP '[\d.]+')" >> $GITHUB_OUTPUT
+
+      - name: Package tarball
         run: |
           DESTDIR=dist make install
           tar czf wfweb-${{ matrix.arch }}.tar.gz -C dist .
 
-      - name: Upload artifact
+      - name: Build .deb
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          DEB_ROOT=deb-build/wfweb_${VERSION}_${{ matrix.deb_arch }}
+
+          # Mirror the install tree
+          DESTDIR=${DEB_ROOT} make install
+
+          # Create DEBIAN control directory
+          mkdir -p ${DEB_ROOT}/DEBIAN
+
+          # Runtime dependencies
+          cat > ${DEB_ROOT}/DEBIAN/control << EOF
+          Package: wfweb
+          Version: ${VERSION}
+          Architecture: ${{ matrix.deb_arch }}
+          Maintainer: Alain De Carolis <adecarolis@users.noreply.github.com>
+          Depends: openssl, libqt5core5a, libqt5gui5, libqt5widgets5,
+           libqt5network5, libqt5serialport5, libqt5multimedia5,
+           libqt5websockets5, libqt5gamepad5, libqt5printsupport5,
+           libopus0, libportaudio2, libpulse0, libhidapi-libusb0,
+           libudev1, libqcustomplot2.0
+          Section: hamradio
+          Priority: optional
+          Homepage: https://github.com/adecarolis/wfweb
+          Description: wfview fork with built-in web interface for browser-based ham radio remote control.
+           wfweb adds an HTTPS/WebSocket server to wfview, enabling full radio
+           control and real-time audio streaming from any browser without
+           installing client software. Based on wfview by Elliott H. Liggett W6EL
+           and Phil E. Taylor M0VSE (https://gitlab.com/eliggett/wfview).
+          EOF
+
+          # Strip leading whitespace from control file (heredoc indentation)
+          sed -i 's/^          //' ${DEB_ROOT}/DEBIAN/control
+
+          dpkg-deb --build --root-owner-group ${DEB_ROOT}
+
+          mv deb-build/wfweb_${VERSION}_${{ matrix.deb_arch }}.deb wfweb_${VERSION}_${{ matrix.deb_arch }}.deb
+
+      - name: Upload tarball artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wfweb-${{ matrix.arch }}
+          name: wfweb-${{ matrix.arch }}-tar
           path: wfweb-${{ matrix.arch }}.tar.gz
+          retention-days: 30
+
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wfweb-${{ matrix.arch }}-deb
+          path: wfweb_*_${{ matrix.deb_arch }}.deb
           retention-days: 30
 
   release:
@@ -71,6 +123,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            wfweb-x86_64/wfweb-x86_64.tar.gz
-            wfweb-arm64/wfweb-arm64.tar.gz
+            wfweb-x86_64-tar/wfweb-x86_64.tar.gz
+            wfweb-arm64-tar/wfweb-arm64.tar.gz
+            wfweb-x86_64-deb/*.deb
+            wfweb-arm64-deb/*.deb
           generate_release_notes: true
