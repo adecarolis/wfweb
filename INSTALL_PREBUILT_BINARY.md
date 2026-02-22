@@ -1,119 +1,56 @@
-# How to install wfview without building yourself on selected linux versions
+# How to install wfweb without building yourself
 
+wfweb provides prebuilt packages for the following platforms, available on the [GitHub Releases](https://github.com/adecarolis/wfweb/releases) page:
 
+| Package | Platform |
+|---|---|
+| `wfweb_<version>_amd64.deb` | Ubuntu / Debian x86_64 |
+| `wfweb_<version>_arm64.deb` | Raspberry Pi / Linux ARM64 |
 
-We understand that downloading sources with git, selecting branches and building yourself may a bit daunting.
-In the future we may at some point start distributing packages and/or images like appimage, flatpack. snap.
+If your platform is not listed, see [INSTALL.md](INSTALL.md) for build-from-source instructions.
 
+---
 
-Instructions how to use this w/o building yourself. We are using a precompiled version that has been tested on a few 
-different versions of linux in alphabetical order. Note that all are click-click-next-next-finish installs.
+## Ubuntu / Debian (x86_64)
 
-not supported: 
-
-centos7			-- no qt support
-debian 10 		-- outdated
-devuan 3.1.1.1          -- outdated
-redhat7 		-- no qt support
-
+Download the latest `wfweb_<version>_amd64.deb` from the [releases page](https://github.com/adecarolis/wfweb/releases), then install it:
 
 ~~~
-Debian 11  (Debian 10 is outdated)
-Fedora 33
-Fedora 34
-mint 20.1 (and up?)
-openSUSE 15.2 (outdated/deprecated) 
-openSUSE 15.3/15.4)
-openSUSE Tumbleweed(s)
-SLES 15.x
-Ubuntu 20.04.2 
-mint 20.2     (see notes at the end)
+sudo apt install ./wfweb_<version>_amd64.deb
 ~~~
 
+`apt` will automatically install all required runtime dependencies.
 
-### for all, the following is applicable:
+---
+
+## Raspberry Pi / Linux ARM64
+
+Download the latest `wfweb_<version>_arm64.deb` from the [releases page](https://github.com/adecarolis/wfweb/releases), then install it:
+
 ~~~
-download the tar.gz file here: https://wfview.org/download/test-linux-build/ 
-
-the file below will unpack in ./dist
-
-tar zxvf wfview-linux.tar.gz        (change the filename accordingly)          
-cd dist
-sudo ./install.sh
+sudo apt install ./wfweb_<version>_arm64.deb
 ~~~
-this will install the binary and a few other files to your system.
 
+`apt` will automatically install all required runtime dependencies.
 
-Now for the system specifics; pick your version:
+---
 
-### Debian 11:
+## After installing
+
+Before running wfweb for the first time, create a configuration file for your radio. See the [Quick start](README.md#quick-start-headless-ic-7300-via-usb) section in the README for details.
+
+Then start wfweb:
+
 ~~~
-sudo apt install libqcustomplot2.0 libqt5multimedia5 libqt5serialport5
-sudo ln -s /usr/lib/x86_64-linux-gnu/libqcustomplot.so.2.0.1 /usr/lib/x86_64-linux-gnu/libqcustomplot.so.2
 wfview
 ~~~
 
-### Fedora 33/34:
-~~~
-sudo dnf install qcustomplot-qt5 qt5-qtmultimedia qt5-qtserialport
-sudo ln  -s  /usr/lib64/libqcustomplot-qt5.so.2 /usr/lib64/libqcustomplot.so.2
-wfview
-~~~
+The binary is named `wfview` (inherited from upstream). Open your browser at `https://<hostname>:8080` and accept the self-signed certificate warning on first visit.
 
-### Mint 20.1
-~~~
-sudo apt install libqcustomplot2.0 libqt5multimedia5 libqt5serialport5
-sudo ln  -s  /usr/lib64/libqcustomplot-qt5.so.2 /usr/lib64/libqcustomplot.so.2
-wfview
-
-note: if the above symlink fails, use the following line to fix the library link:
-
-sudo ln -s /lib/x86_64-linux-gnu/libqcustomplot.so.2.0.1 /lib/x86_64-linux-gnu/libqcustomplot.so.2
-~~~
-
-### Mint 20.2
-~~~
-
-SEE THE NOTES AT THE END. You need wfview153 binary here
-
-sudo apt install libqcustomplot2.0 libqt5multimedia5 libqt5serialport5
-sudo ln  -s  /usr/lib64/libqcustomplot-qt5.so.2 /usr/lib64/libqcustomplot.so.2
-wfview
-
-note: if the above symlink fails, use the following line to fix the library link:
-
-sudo ln -s /lib/x86_64-linux-gnu/libqcustomplot.so.2.0.1 /lib/x86_64-linux-gnu/libqcustomplot.so.2
-~~~
-
-
-### openSUSE/Tumbleweed/SLES based on 15.3/15.4:
-~~~
-
-sudo zypper in libqcustomplot2 libQt5SerialPort5
-wfview
-~~~
-
-
-### UBUNTU:
-~~~
-sudo apt install libqcustomplot2.0 libqt5multimedia5 libqt5serialport5
-sudo ln -s /usr/lib/x86_64-linux-gnu/libqcustomplot.so.2.0.1 /usr/lib/x86_64-linux-gnu/libqcustomplot.so.2
-wfview
-
-
-note: if the above symlink fails, use the following line to fix the library link:
-
-sudo ln -s /lib/x86_64-linux-gnu/libqcustomplot.so.2.0.1 /lib/x86_64-linux-gnu/libqcustomplot.so.2
-~~~
-
-
-
-### notes:
-~~~
-
-openSUSE 15.2 is deprecated; old binary has been removed
-
+For serial port access (USB-connected radios), add your user to the `dialout` group:
 
 ~~~
+sudo usermod -aG dialout $USER
+~~~
 
- 
+Log out and back in for this to take effect.

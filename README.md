@@ -36,7 +36,7 @@ Since wfview is on GitLab and wfweb is on GitHub, GitHub's native fork mechanism
 |:---:|:---:|
 | ![SSB mode](ssb.png) | ![CW mode with decoder](cw.png) |
 
-The web interface is served directly by the `wfview` binary over HTTPS (self-signed certificate). No separate web server is needed. Connect your radio, run `wfview`, and open `https://<host>:8080` in any browser. On first visit, accept the browser's certificate warning.
+The web interface is served directly by the `wfview` binary over HTTPS (self-signed certificate). No separate web server is needed. Connect your radio, run `wfview` (the binary retains the upstream name), and open `https://<host>:8080` in any browser. On first visit, accept the browser's certificate warning.
 
 ---
 

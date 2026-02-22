@@ -75,11 +75,11 @@ jobs:
           Version: ${VERSION}
           Architecture: ${{ matrix.deb_arch }}
           Maintainer: Alain De Carolis <adecarolis@users.noreply.github.com>
-          Depends: openssl, libqt5core5a, libqt5gui5, libqt5widgets5,
-           libqt5network5, libqt5serialport5, libqt5multimedia5,
-           libqt5websockets5, libqt5gamepad5, libqt5printsupport5,
+          Depends: openssl, libqt5core5t64, libqt5gui5t64, libqt5widgets5t64,
+           libqt5network5t64, libqt5serialport5, libqt5multimedia5,
+           libqt5websockets5, libqt5gamepad5, libqt5printsupport5t64,
            libopus0, libportaudio2, libpulse0, libhidapi-libusb0,
-           libudev1, libqcustomplot2.0
+           libudev1, libqcustomplot2.1
           Section: hamradio
           Priority: optional
           Homepage: https://github.com/adecarolis/wfweb

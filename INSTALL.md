@@ -96,7 +96,9 @@ Then start wfweb and open your browser at `https://<hostname>:8080` (accept the 
 wfview
 ~~~
 
-### 5. You can now launch wfview, either from the terminal or from your desktop environment. If you encounter issues using the serial port, run the following command: 
+Note: the binary is named `wfview` (inherited from upstream) but it runs as wfweb with the web interface enabled.
+
+### 5. You can now launch wfweb, either from the terminal or from your desktop environment. If you encounter issues using the serial port, run the following command: 
 ~~~
 
 if you are using the wireless 705 or any networked rig like the 7610, 7800, 785x, there is no need to use USB so below is not needed.
@@ -115,7 +117,7 @@ sudo usermod -aG dialout $USER
 ### opensuse/sles/tumbleweed install
 ---
 
-install wfview on suse 15.3 & up, sles 15.x or tumbleweed; this was done on a clean install/updated OS. 
+install wfweb on suse 15.3 & up, sles 15.x or tumbleweed; this was done on a clean install/updated OS. 
 
 
 There are two options, QT5 (out of the box)  and QT6 (almost out of the box)
@@ -194,7 +196,7 @@ When done, create a build area, clone the repo, build and install:
 ```bash
 mkdir -p $HOME/src && cd $HOME/src
 git clone https://github.com/adecarolis/wfweb.git
-cd wfview
+cd wfweb
 mkdir -p build && cd build
 qmake ../wfweb/wfview.pro
 sed -i 's/^LIBS.*/& -lqcustomplot-qt6/' Makefile
@@ -202,7 +204,7 @@ make -j4
 sudo make install
 ```
 
-wfview is now installed in /usr/local/bin and you can start it from launcher or from command line with command `wfview`.
+wfweb is now installed in /usr/local/bin and you can start it from the command line with command `wfview` (the binary retains the upstream name).
 
 # How to configure your RC-28 knob under Linux
 
