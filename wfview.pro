@@ -165,6 +165,10 @@ unix:rigs.files = rigs/*
 unix:rigs.path = $$PREFIX/share/wfview/rigs
 INSTALLS += rigs
 
+unix:systemd.files = systemd/wfweb@.service
+unix:systemd.path = $$PREFIX/lib/systemd/system
+INSTALLS += systemd
+
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
 
 # Do not do this, it will hang on start:

@@ -77,10 +77,6 @@ Manufacturer=0
 RigCIVuInt=148
 SerialPortRadio=auto
 SerialPortBaud=115200
-
-[LAN]
-AudioOutput=hw:CARD=CODEC,DEV=0
-AudioInput=hw:CARD=CODEC,DEV=0
 EOF
 ~~~
 
@@ -89,7 +85,8 @@ Adjust the values for your setup:
 - `RigCIVuInt`: CI-V address in decimal (IC-7300 = 148, i.e. 0x94)
 - `SerialPortRadio`: serial port, or `auto` to detect automatically
 - `SerialPortBaud`: baud rate (115200 for IC-7300)
-- `AudioOutput` / `AudioInput`: ALSA device for RX/TX audio — use `aplay -l` and `arecord -l` to list available devices
+
+> **Audio:** no audio configuration is needed for browser-based operation — audio streams directly between the radio and the browser. If you also want local audio playback on the server machine, add an `[LAN]` section with `AudioOutput` and `AudioInput` set to your ALSA device (use `aplay -l` and `arecord -l` to list devices).
 
 Then start wfweb and open your browser at `https://<hostname>:8080` (accept the self-signed certificate warning on first visit):
 ~~~

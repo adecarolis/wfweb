@@ -56,10 +56,6 @@ Manufacturer=0
 RigCIVuInt=148
 SerialPortRadio=auto
 SerialPortBaud=115200
-
-[LAN]
-AudioOutput=hw:CARD=CODEC,DEV=0
-AudioInput=hw:CARD=CODEC,DEV=0
 ```
 
 Then run:
@@ -79,10 +75,10 @@ Open your browser at `https://<host>:8080`.
 | `RigCIVuInt` | `[Radio]` | CI-V address (decimal). IC-7300=148 (0x94) | `148` |
 | `SerialPortRadio` | `[Radio]` | Serial port, or `auto` | `/dev/ttyUSB0` |
 | `SerialPortBaud` | `[Radio]` | Baud rate | `115200` |
-| `AudioOutput` | `[LAN]` | ALSA device for RX audio (rig→browser) | `hw:CARD=CODEC,DEV=0` |
-| `AudioInput` | `[LAN]` | ALSA device for TX audio (browser→rig) | `hw:CARD=CODEC,DEV=0` |
+| `AudioOutput` | `[LAN]` | **Optional.** Local server audio output device. Omit for browser-only use. | `hw:CARD=CODEC,DEV=0` |
+| `AudioInput` | `[LAN]` | **Optional.** Local server audio input device. Omit for browser-only use. | `hw:CARD=CODEC,DEV=0` |
 
-Use `aplay -l` and `arecord -l` to list available ALSA devices on your system.
+> Audio streams directly between the radio and the browser — no server-side audio configuration is needed for web operation. `AudioOutput`/`AudioInput` only affect playback and capture on the server machine itself. Use `aplay -l` / `arecord -l` to list ALSA devices if needed.
 
 ---
 

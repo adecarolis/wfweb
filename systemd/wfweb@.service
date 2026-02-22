@@ -1,0 +1,14 @@
+[Unit]
+Description=wfweb — browser-based remote control for amateur radio
+After=network.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=5
+User=%i
+Environment=QT_QPA_PLATFORM=offscreen
+ExecStart=/usr/local/bin/wfview
+
+[Install]
+WantedBy=multi-user.target
