@@ -75,11 +75,11 @@ jobs:
           Version: ${VERSION}
           Architecture: ${{ matrix.deb_arch }}
           Maintainer: Alain De Carolis <adecarolis@users.noreply.github.com>
-          Depends: openssl, libqt5core5a, libqt5gui5, libqt5widgets5,
-           libqt5network5, libqt5serialport5, libqt5multimedia5,
-           libqt5websockets5, libqt5gamepad5, libqt5printsupport5,
+          Depends: openssl, libqt5core5t64, libqt5gui5t64, libqt5widgets5t64,
+           libqt5network5t64, libqt5serialport5, libqt5multimedia5,
+           libqt5websockets5, libqt5gamepad5, libqt5printsupport5t64,
            libopus0, libportaudio2, libpulse0, libhidapi-libusb0,
-           libudev1, libqcustomplot2.0
+           libudev1, libqcustomplot2.1, librtaudio6
           Section: hamradio
           Priority: optional
           Homepage: https://github.com/adecarolis/wfweb
@@ -92,6 +92,14 @@ jobs:
 
           # Strip leading whitespace from control file (heredoc indentation)
           sed -i 's/^          //' ${DEB_ROOT}/DEBIAN/control
+
+          # postinst: reload systemd so the unit is recognised immediately
+          printf '#!/bin/sh\nset -e\n' > ${DEB_ROOT}/DEBIAN/postinst
+          printf 'if command -v systemctl >/dev/null 2>&1 && systemctl is-system-running --quiet 2>/dev/null; then\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf '    systemctl daemon-reload || true\nfi\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf 'echo "wfweb installed. To start automatically at boot, run:"\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf 'echo "  systemctl enable --now wfweb@\$USER"\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          chmod 755 ${DEB_ROOT}/DEBIAN/postinst
 
           dpkg-deb --build --root-owner-group ${DEB_ROOT}
 

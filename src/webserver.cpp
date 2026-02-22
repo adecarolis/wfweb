@@ -676,6 +676,7 @@ void webServer::sendCurrentState(QWebSocket *client)
     // Send rig info
     QJsonObject info;
     info["type"] = "rigInfo";
+    info["version"] = QString(WFVIEW_VERSION);
 
     if (rigCaps) {
         info["connected"] = true;
@@ -693,6 +694,8 @@ void webServer::sendCurrentState(QWebSocket *client)
         info["audioAvailable"] = audioConfigured;
         if (audioConfigured) {
             info["audioSampleRate"] = (int)rigSampleRate;
+        } else if (!audioErrorReason.isEmpty()) {
+            info["audioError"] = audioErrorReason;
         }
         info["txAudioAvailable"] = txAudioConfigured;
         if (!rigCaps->scopeCenterSpans.empty()) {
@@ -1218,20 +1221,32 @@ void webServer::setupUsbAudio(quint32 sampleRate)
         return;
     }
 
-    // Find the rig's USB audio capture device
+    // Find the rig's USB audio capture device.
+    // With PulseAudio the IC-7300 shows as "USB Audio CODEC" (matches "USB").
+    // With the ALSA backend (used in offscreen/headless mode) it shows as
+    // "hw:CARD=CODEC,DEV=0" — no "USB" in the name, so we also match "CODEC".
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QAudioDeviceInfo usbDevice;
     bool found = false;
+    qInfo() << "Web: Available audio input devices:";
     for (const QAudioDeviceInfo &dev : QAudioDeviceInfo::availableDevices(QAudio::AudioInput)) {
-        if (dev.deviceName().contains("USB", Qt::CaseInsensitive)) {
+        qInfo() << "Web:  " << dev.deviceName();
+        if (!found && (dev.deviceName().contains("USB", Qt::CaseInsensitive) ||
+                       dev.deviceName().contains("CODEC", Qt::CaseInsensitive))) {
             usbDevice = dev;
             found = true;
-            qInfo() << "Web: Found USB audio device:" << dev.deviceName();
-            break;
+            qInfo() << "Web: Selected rig audio device:" << dev.deviceName();
         }
     }
     if (!found) {
-        qInfo() << "Web: No USB audio device found for direct capture";
+        qWarning() << "Web: No rig audio device found for direct capture";
+        audioErrorReason = "No compatible audio device found.";
+        if (!wsClients.isEmpty()) {
+            QJsonObject err;
+            err["type"] = "audioError";
+            err["reason"] = audioErrorReason;
+            sendJsonToAll(err);
+        }
         return;
     }
 
@@ -1258,16 +1273,25 @@ void webServer::setupUsbAudio(quint32 sampleRate)
 #else
     QAudioDevice usbDevice;
     bool found = false;
+    qInfo() << "Web: Available audio input devices:";
     for (const QAudioDevice &dev : QMediaDevices::audioInputs()) {
-        if (dev.description().contains("USB", Qt::CaseInsensitive)) {
+        qInfo() << "Web:  " << dev.description();
+        if (!found && (dev.description().contains("USB", Qt::CaseInsensitive) ||
+                       dev.description().contains("CODEC", Qt::CaseInsensitive))) {
             usbDevice = dev;
             found = true;
-            qInfo() << "Web: Found USB audio device:" << dev.description();
-            break;
+            qInfo() << "Web: Selected rig audio device:" << dev.description();
         }
     }
     if (!found) {
-        qInfo() << "Web: No USB audio device found for direct capture";
+        qWarning() << "Web: No rig audio device found for direct capture";
+        audioErrorReason = "No compatible audio device found.";
+        if (!wsClients.isEmpty()) {
+            QJsonObject err;
+            err["type"] = "audioError";
+            err["reason"] = audioErrorReason;
+            sendJsonToAll(err);
+        }
         return;
     }
 
@@ -1286,6 +1310,13 @@ void webServer::setupUsbAudio(quint32 sampleRate)
         qWarning() << "Web: Failed to start USB audio capture";
         delete usbAudioInput;
         usbAudioInput = nullptr;
+        audioErrorReason = "Found audio device but failed to open it. It may be in use by another application.";
+        if (!wsClients.isEmpty()) {
+            QJsonObject err;
+            err["type"] = "audioError";
+            err["reason"] = audioErrorReason;
+            sendJsonToAll(err);
+        }
         return;
     }
 
@@ -1300,10 +1331,11 @@ void webServer::setupUsbAudio(quint32 sampleRate)
     QAudioDeviceInfo usbOutDevice;
     bool outFound = false;
     for (const QAudioDeviceInfo &dev : QAudioDeviceInfo::availableDevices(QAudio::AudioOutput)) {
-        if (dev.deviceName().contains("USB", Qt::CaseInsensitive)) {
+        if (dev.deviceName().contains("USB", Qt::CaseInsensitive) ||
+            dev.deviceName().contains("CODEC", Qt::CaseInsensitive)) {
             usbOutDevice = dev;
             outFound = true;
-            qInfo() << "Web: Found USB audio output device:" << dev.deviceName();
+            qInfo() << "Web: Found rig audio output device:" << dev.deviceName();
             break;
         }
     }
@@ -1344,10 +1376,11 @@ void webServer::setupUsbAudio(quint32 sampleRate)
     QAudioDevice usbOutDevice;
     bool outFound = false;
     for (const QAudioDevice &dev : QMediaDevices::audioOutputs()) {
-        if (dev.description().contains("USB", Qt::CaseInsensitive)) {
+        if (dev.description().contains("USB", Qt::CaseInsensitive) ||
+            dev.description().contains("CODEC", Qt::CaseInsensitive)) {
             usbOutDevice = dev;
             outFound = true;
-            qInfo() << "Web: Found USB audio output device:" << dev.description();
+            qInfo() << "Web: Found rig audio output device:" << dev.description();
             break;
         }
     }

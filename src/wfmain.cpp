@@ -1756,7 +1756,7 @@ void wfmain::changeFrequency(int value) {
 
 void wfmain::setDefPrefs()
 {
-    defPrefs.hasRunSetup = false;
+    defPrefs.hasRunSetup = true;
     defPrefs.useFullScreen = false;
     defPrefs.useSystemTheme = false;
     defPrefs.drawPeaks = true;
@@ -1767,7 +1767,7 @@ void wfmain::setDefPrefs()
     defPrefs.wfAntiAlias = false;
     defPrefs.wfInterpolate = true;
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
-    defPrefs.radioCIVAddr = 0x00; // previously was 0x94 for 7300.
+    defPrefs.radioCIVAddr = 0x94; // IC-7300 default (148 decimal)
     defPrefs.CIVisRadioModel = false;
     defPrefs.pttType = pttCIV;
     defPrefs.serialPortRadio = QString("auto");

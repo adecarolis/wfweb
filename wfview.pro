@@ -21,7 +21,7 @@ contains(DEFINES,USB_CONTROLLER){
 TARGET = wfview
 TEMPLATE = app
 
-DEFINES += WFVIEW_VERSION=\\\"0.1.0\\\"
+DEFINES += WFVIEW_VERSION=\\\"0.1.1\\\"
 
 DEFINES += BUILD_WFVIEW
 
@@ -164,6 +164,10 @@ INSTALLS += stylesheets
 unix:rigs.files = rigs/*
 unix:rigs.path = $$PREFIX/share/wfview/rigs
 INSTALLS += rigs
+
+unix:systemd.files = systemd/wfweb@.service
+unix:systemd.path = $$PREFIX/lib/systemd/system
+INSTALLS += systemd
 
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
 
