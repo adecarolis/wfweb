@@ -1,0 +1,76 @@
+name: Build
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: x86_64
+            label: Linux x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+            label: Raspberry Pi / Linux ARM64
+
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            qt5-qmake qtbase5-dev libqt5serialport5-dev \
+            qtmultimedia5-dev libqt5websockets5-dev \
+            libqt5gamepad5-dev libqt5printsupport5 \
+            libopus-dev libeigen3-dev \
+            portaudio19-dev librtaudio-dev \
+            libhidapi-dev libudev-dev libpulse-dev \
+            libqcustomplot-dev \
+            openssl
+
+      - name: Build
+        run: |
+          qmake wfview.pro
+          make -j$(nproc)
+
+      - name: Package
+        run: |
+          DESTDIR=dist make install
+          tar czf wfweb-${{ matrix.arch }}.tar.gz -C dist .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wfweb-${{ matrix.arch }}
+          path: wfweb-${{ matrix.arch }}.tar.gz
+          retention-days: 30
+
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-24.04
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            wfweb-x86_64/wfweb-x86_64.tar.gz
+            wfweb-arm64/wfweb-arm64.tar.gz
+          generate_release_notes: true
