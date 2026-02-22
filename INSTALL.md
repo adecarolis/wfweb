@@ -88,7 +88,7 @@ Adjust the values for your setup:
 - `SerialPortBaud`: baud rate (115200 for IC-7300)
 - `AudioOutput` / `AudioInput`: ALSA device for RX/TX audio — use `aplay -l` and `arecord -l` to list available devices
 
-Then start wfweb and open your browser at `http://<hostname>:8080`:
+Then start wfweb and open your browser at `https://<hostname>:8080` (accept the self-signed certificate warning on first visit):
 ~~~
 wfview
 ~~~

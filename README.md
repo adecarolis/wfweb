@@ -30,7 +30,7 @@ Since wfview is on GitLab and wfweb is on GitHub, GitHub's native fork mechanism
 | Mobile-responsive UI | — | ✓ |
 | Headless / no-display operation | — | ✓ |
 
-The web interface is served directly by the `wfview` binary. No separate web server is needed. Connect your radio, run `wfview`, and open `http://<host>:8080` in any browser.
+The web interface is served directly by the `wfview` binary over HTTPS (self-signed certificate). No separate web server is needed. Connect your radio, run `wfview`, and open `https://<host>:8080` in any browser. On first visit, accept the browser's certificate warning.
 
 ---
 
@@ -62,7 +62,7 @@ Then run:
 wfview
 ```
 
-Open your browser at `http://<host>:8080`.
+Open your browser at `https://<host>:8080`.
 
 ### Key configuration parameters
 
