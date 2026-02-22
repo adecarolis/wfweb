@@ -39,7 +39,7 @@ sudo apt install ./wfweb_<version>_arm64.deb
 
 Before running wfweb for the first time, create a configuration file for your radio. See the [Quick start](README.md#quick-start-headless-ic-7300-via-usb) section in the README for details.
 
-Then start wfweb:
+Then start wfweb manually:
 
 ~~~
 wfview
@@ -47,7 +47,24 @@ wfview
 
 The binary is named `wfview` (inherited from upstream). Open your browser at `https://<hostname>:8080` and accept the self-signed certificate warning on first visit.
 
-For serial port access (USB-connected radios), add your user to the `dialout` group:
+### Autostart with systemd
+
+To start wfweb automatically at boot:
+
+~~~
+systemctl enable --now wfweb@$USER
+~~~
+
+To check status or view logs:
+
+~~~
+systemctl status wfweb@$USER
+journalctl -u wfweb@$USER -f
+~~~
+
+### Serial port access
+
+For USB-connected radios, add your user to the `dialout` group:
 
 ~~~
 sudo usermod -aG dialout $USER
