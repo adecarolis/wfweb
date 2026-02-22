@@ -21,7 +21,10 @@ sudo apt-get install libhidapi-dev libqt5gamepad5-dev
 sudo apt-get install libudev-dev
 sudo apt-get install libqt5websockets5-dev
 sudo apt-get install libpulse-dev
+sudo apt-get install openssl
 ~~~
+
+> **Note on openssl:** wfweb requires `openssl` at **runtime** (not just build time) to generate a self-signed TLS certificate on first launch. This certificate enables HTTPS, which is mandatory for browser microphone access (the Web Audio API's `getUserMedia` only works in a secure context). Without `openssl`, the web interface falls back to plain HTTP and TX audio from the browser will not work.
 Now you need to install qcustomplot. There are two versions that are commonly found in linux distros: 1.3 and 2.0. Either will work fine. If you are not sure which version your linux install comes with, simply run both commands. One will work and the other will fail, and that's fine!
 
 qcustomplot1.3 for older linux versions (Linux Mint 19.x, Ubuntu 18.04): 

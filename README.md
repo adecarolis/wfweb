@@ -103,6 +103,7 @@ Use `aplay -l` and `arecord -l` to list available ALSA devices on your system.
 | Speex resampler | any | BSD 3-Clause | Audio sample rate conversion |
 | Eigen | 3.x | MPL2 | Linear algebra (CW decoder) |
 | ggmorse | any | MIT | Morse code decoding (compiled to WebAssembly for the web frontend) |
+| openssl | any | Apache-2.0 | **Runtime only:** generates the self-signed TLS certificate on first launch, required for HTTPS and browser microphone access |
 
 See [INSTALL.md](INSTALL.md) for full build instructions.
 
