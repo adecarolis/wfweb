@@ -676,6 +676,7 @@ void webServer::sendCurrentState(QWebSocket *client)
     // Send rig info
     QJsonObject info;
     info["type"] = "rigInfo";
+    info["version"] = QString(WFVIEW_VERSION);
 
     if (rigCaps) {
         info["connected"] = true;
@@ -693,6 +694,8 @@ void webServer::sendCurrentState(QWebSocket *client)
         info["audioAvailable"] = audioConfigured;
         if (audioConfigured) {
             info["audioSampleRate"] = (int)rigSampleRate;
+        } else if (!audioErrorReason.isEmpty()) {
+            info["audioError"] = audioErrorReason;
         }
         info["txAudioAvailable"] = txAudioConfigured;
         if (!rigCaps->scopeCenterSpans.empty()) {
@@ -1236,7 +1239,14 @@ void webServer::setupUsbAudio(quint32 sampleRate)
         }
     }
     if (!found) {
-        qInfo() << "Web: No rig audio device found for direct capture";
+        qWarning() << "Web: No rig audio device found for direct capture";
+        audioErrorReason = "No compatible audio device found. Check that your radio is connected via USB.";
+        if (!wsClients.isEmpty()) {
+            QJsonObject err;
+            err["type"] = "audioError";
+            err["reason"] = audioErrorReason;
+            sendJsonToAll(err);
+        }
         return;
     }
 
@@ -1274,7 +1284,14 @@ void webServer::setupUsbAudio(quint32 sampleRate)
         }
     }
     if (!found) {
-        qInfo() << "Web: No rig audio device found for direct capture";
+        qWarning() << "Web: No rig audio device found for direct capture";
+        audioErrorReason = "No compatible audio device found. Check that your radio is connected via USB.";
+        if (!wsClients.isEmpty()) {
+            QJsonObject err;
+            err["type"] = "audioError";
+            err["reason"] = audioErrorReason;
+            sendJsonToAll(err);
+        }
         return;
     }
 
@@ -1293,6 +1310,13 @@ void webServer::setupUsbAudio(quint32 sampleRate)
         qWarning() << "Web: Failed to start USB audio capture";
         delete usbAudioInput;
         usbAudioInput = nullptr;
+        audioErrorReason = "Found audio device but failed to open it. It may be in use by another application.";
+        if (!wsClients.isEmpty()) {
+            QJsonObject err;
+            err["type"] = "audioError";
+            err["reason"] = audioErrorReason;
+            sendJsonToAll(err);
+        }
         return;
     }
 

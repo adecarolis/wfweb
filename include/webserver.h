@@ -140,6 +140,7 @@ private:
     quint8 rigCodec = 0;
     quint32 rigSampleRate = 0;
     bool audioConfigured = false;
+    QString audioErrorReason;
     quint16 audioSeq = 0;
     QSet<QWebSocket *> audioClients;
 

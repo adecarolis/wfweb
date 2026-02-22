@@ -886,6 +886,31 @@ html, body {
     color: #fff;
 }
 
+/* ============ AUDIO ERROR BANNER ============ */
+#audioErrorBanner {
+    display: none;
+    background: #7a3800;
+    color: #ffd080;
+    font-size: 12px;
+    padding: 6px 36px 6px 12px;
+    position: relative;
+    text-align: left;
+    z-index: 100;
+}
+#audioErrorBanner button {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #ffd080;
+    font-size: 16px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+}
+
 /* ============ SPECTRUM WARNINGS ============ */
 .spectrum-warning {
     position: absolute;
@@ -981,9 +1006,10 @@ html, body {
         <div style="margin-top: 20px; font-size: 12px; color: #666;">Enable RX Audio</div>
     </div>
     <div style="position: absolute; bottom: 20px; left: 20px; font-size: 11px; color: #555;">
-        K1FM IC7300 Control v. 2.21
+        <span id="splashVersion">wfweb</span>
     </div>
 </div>
+<div id="audioErrorBanner"><span id="audioErrorText"></span><button onclick="document.getElementById('audioErrorBanner').style.display='none'">&#x2715;</button></div>
 <div id="radio">
     <!-- Row 1: Top bar -->
     <div id="topBar">
@@ -1286,10 +1312,15 @@ function send(obj) {
 function handleMessage(msg) {
     switch (msg.type) {
         case 'rigInfo':
+            if (msg.version) {
+                var el = document.getElementById('splashVersion');
+                if (el) el.textContent = 'wfweb v. ' + msg.version;
+            }
             if (msg.connected) {
                 if (msg.modes) populateModes(msg.modes);
                 if (msg.hasSpectrum) { hasSpectrum = true; spectAmpMax = msg.spectAmpMax || 160; }
                 if (msg.audioAvailable) { audioAvailable = true; audioSampleRate = msg.audioSampleRate || 48000; }
+                if (msg.audioError) showAudioError(msg.audioError);
                 updateTxAudioAvailable(msg.txAudioAvailable || false);
                 if (msg.spans) populateSpans(msg.spans);
                 if (msg.preamps) populatePreamps(msg.preamps);
@@ -1301,6 +1332,7 @@ function handleMessage(msg) {
             if (msg.modes) populateModes(msg.modes);
             if (msg.hasSpectrum) { hasSpectrum = true; spectAmpMax = msg.spectAmpMax || 160; }
             if (msg.audioAvailable) { audioAvailable = true; audioSampleRate = msg.audioSampleRate || 48000; }
+            if (msg.audioError) showAudioError(msg.audioError);
             updateTxAudioAvailable(msg.txAudioAvailable || false);
             if (msg.spans) populateSpans(msg.spans);
             if (msg.preamps) populatePreamps(msg.preamps);
@@ -1312,6 +1344,9 @@ function handleMessage(msg) {
             else { audioAvailable = false; if (audioEnabled) stopAudio(); }
             if (msg.txAudioAvailable !== undefined) updateTxAudioAvailable(msg.txAudioAvailable);
             updateWarningVisibility();
+            break;
+        case 'audioError':
+            showAudioError(msg.reason);
             break;
         case 'audioStatus':
             if (msg.enabled) { audioEnabled = true; audioSampleRate = msg.sampleRate || audioSampleRate; }
@@ -2162,6 +2197,12 @@ function handleTunerPress() {
 // Audio/Mic menu functions
 function showAudioMicMenu() {
     setPanel('audiomiс');
+}
+
+function showAudioError(reason) {
+    var banner = document.getElementById('audioErrorBanner');
+    document.getElementById('audioErrorText').textContent = '\u26a0 Audio: ' + reason;
+    banner.style.display = 'block';
 }
 
 function updateWarningVisibility() {
