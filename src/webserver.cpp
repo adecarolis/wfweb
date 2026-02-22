@@ -1240,7 +1240,7 @@ void webServer::setupUsbAudio(quint32 sampleRate)
     }
     if (!found) {
         qWarning() << "Web: No rig audio device found for direct capture";
-        audioErrorReason = "No compatible audio device found. Check that your radio is connected via USB.";
+        audioErrorReason = "No compatible audio device found.";
         if (!wsClients.isEmpty()) {
             QJsonObject err;
             err["type"] = "audioError";
@@ -1285,7 +1285,7 @@ void webServer::setupUsbAudio(quint32 sampleRate)
     }
     if (!found) {
         qWarning() << "Web: No rig audio device found for direct capture";
-        audioErrorReason = "No compatible audio device found. Check that your radio is connected via USB.";
+        audioErrorReason = "No compatible audio device found.";
         if (!wsClients.isEmpty()) {
             QJsonObject err;
             err["type"] = "audioError";
