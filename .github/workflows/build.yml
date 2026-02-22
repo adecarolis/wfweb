@@ -53,7 +53,7 @@ jobs:
 
       - name: Package tarball
         run: |
-          DESTDIR=dist make install
+          sudo DESTDIR=dist make install
           tar czf wfweb-${{ matrix.arch }}.tar.gz -C dist .
 
       - name: Build .deb
@@ -62,7 +62,7 @@ jobs:
           DEB_ROOT=deb-build/wfweb_${VERSION}_${{ matrix.deb_arch }}
 
           # Mirror the install tree
-          DESTDIR=${DEB_ROOT} make install
+          sudo DESTDIR=${DEB_ROOT} make install
 
           # Create DEBIAN control directory
           mkdir -p ${DEB_ROOT}/DEBIAN
