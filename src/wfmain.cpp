@@ -30,14 +30,14 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     ui(new Ui::wfmain),
     logFilename(logFile)
 {
-    QGuiApplication::setApplicationDisplayName("wfview");
+    QGuiApplication::setApplicationDisplayName("wfweb");
     QGuiApplication::setApplicationName(QString("wfview"));
 
     setWindowIcon(QIcon( QString(":resources/wfview.png")));
     this->debugMode = debugMode;
     debugModeLogging = debugMode;
     ui->setupUi(this);
-    setWindowTitle(QString("wfview"));
+    setWindowTitle(QString("wfweb"));
 
     ui->monitorLabel->setText("<a href=\"#\" style=\"color:white; text-decoration:none;\">Mon</a>");
 

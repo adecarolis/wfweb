@@ -1,4 +1,4 @@
-# How to install wfview
+# How to install wfweb
 
 ### 1. Install prerequisites:
 (Note, some packages may have slightly different version numbers, this should be ok for minor differences.)
@@ -19,6 +19,8 @@ sudo apt-get install portaudio19-dev
 sudo apt-get install librtaudio-dev
 sudo apt-get install libhidapi-dev libqt5gamepad5-dev
 sudo apt-get install libudev-dev
+sudo apt-get install libqt5websockets5-dev
+sudo apt-get install libpulse-dev
 ~~~
 Now you need to install qcustomplot. There are two versions that are commonly found in linux distros: 1.3 and 2.0. Either will work fine. If you are not sure which version your linux install comes with, simply run both commands. One will work and the other will fail, and that's fine!
 
@@ -39,24 +41,59 @@ optional for those that want to work on the code using the QT Creator IDE:
 sudo apt-get install qtcreator qtcreator-doc
 ~~~
 
-### 2. Clone wfview to a local directory on your computer:
-~~~ 
+### 2. Clone wfweb to a local directory on your computer:
+~~~
 cd ~/Documents
-git clone https://gitlab.com/eliggett/wfview.git
+git clone https://github.com/adecarolis/wfweb.git
 ~~~
 
 ### 3. Create a build directory, compile, and install:
-If you want to change the default install path from `/usr/local` to a different prefix (e.g. `/opt`), you must call `qmake ../wfview/wfview.pro PREFIX=/opt`
+If you want to change the default install path from `/usr/local` to a different prefix (e.g. `/opt`), you must call `qmake ../wfweb/wfview.pro PREFIX=/opt`
 
 ~~~
 mkdir build
 cd build
-qmake ../wfview/wfview.pro
+qmake ../wfweb/wfview.pro
 make -j
 sudo make install
 ~~~
 
-### 4. You can now launch wfview, either from the terminal or from your desktop environment. If you encounter issues using the serial port, run the following command: 
+### 4. Create a configuration file for headless operation:
+
+wfweb is designed to run without a display. Before starting it for the first time, create a configuration file so the app can connect to your radio without showing the graphical setup dialog.
+
+~~~
+mkdir -p ~/.config/wfview
+cat > ~/.config/wfview/wfview.conf << 'EOF'
+[Program]
+hasRunSetup=true
+version=2.21
+
+[Radio]
+Manufacturer=0
+RigCIVuInt=148
+SerialPortRadio=auto
+SerialPortBaud=115200
+
+[LAN]
+AudioOutput=hw:CARD=CODEC,DEV=0
+AudioInput=hw:CARD=CODEC,DEV=0
+EOF
+~~~
+
+Adjust the values for your setup:
+- `Manufacturer`: 0=Icom, 1=Kenwood, 2=Yaesu
+- `RigCIVuInt`: CI-V address in decimal (IC-7300 = 148, i.e. 0x94)
+- `SerialPortRadio`: serial port, or `auto` to detect automatically
+- `SerialPortBaud`: baud rate (115200 for IC-7300)
+- `AudioOutput` / `AudioInput`: ALSA device for RX/TX audio — use `aplay -l` and `arecord -l` to list available devices
+
+Then start wfweb and open your browser at `http://<hostname>:8080`:
+~~~
+wfview
+~~~
+
+### 5. You can now launch wfview, either from the terminal or from your desktop environment. If you encounter issues using the serial port, run the following command: 
 ~~~
 
 if you are using the wireless 705 or any networked rig like the 7610, 7800, 785x, there is no need to use USB so below is not needed.
@@ -95,9 +132,9 @@ io-devel rtaudio-devel libqt5-qtgamepad-devel libQt5Gamepad5 libqt5-qtwebsockets
 
 mkdir -p ~/src/build
 cd ~/src
-git clone https://gitlab.com/eliggett/wfview.git
+git clone https://github.com/adecarolis/wfweb.git
 cd build
-qmake-qt5 ../wfview/wfview.pro
+qmake-qt5 ../wfweb/wfview.pro
 make
 sudo make install
 ~~~
@@ -119,9 +156,9 @@ Now:
 
 mkdir -p ~/src/build
 cd ~/src
-git clone https://gitlab.com/eliggett/wfview.git
+git clone https://github.com/adecarolis/wfweb.git
 cd build
-qmake6 ../wfview/wfview.pro
+qmake6 ../wfweb/wfview.pro
 make
 ~~~
 
@@ -153,10 +190,10 @@ When done, create a build area, clone the repo, build and install:
 
 ```bash
 mkdir -p $HOME/src && cd $HOME/src
-git clone https://gitlab.com/eliggett/wfview.git
+git clone https://github.com/adecarolis/wfweb.git
 cd wfview
 mkdir -p build && cd build
-qmake ../wfview.pro
+qmake ../wfweb/wfview.pro
 sed -i 's/^LIBS.*/& -lqcustomplot-qt6/' Makefile
 make -j4
 sudo make install

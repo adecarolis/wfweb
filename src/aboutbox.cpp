@@ -6,15 +6,19 @@ aboutbox::aboutbox(QWidget *parent) :
     ui(new Ui::aboutbox)
 {
     ui->setupUi(this);
-    setWindowTitle("About wfview");
+    setWindowTitle("About wfweb");
     setWindowIcon(QIcon(":resources/wfview.png"));
 
     ui->logoBtn->setIcon(QIcon(":resources/wfview.png"));
     ui->logoBtn->setStyleSheet("Text-align:left");
 
-    ui->topText->setText("wfview version " + QString(WFVIEW_VERSION));
+    ui->topText->setText("wfweb version " + QString(WFVIEW_VERSION) + " (based on wfview)");
 
     QString head = QString("<html><head></head><body>");
+    QString wfwebNote = QString("<b>wfweb</b> is a fork of <a href=\"https://gitlab.com/eliggett/wfview\" style=\"color: cyan;\">wfview</a> that adds a built-in web interface for browser-based remote control and audio streaming. "
+                               "The original wfview project is an outstanding piece of software and all credit for the core radio control engine belongs to its authors. "
+                               "wfweb source is available at <a href=\"https://github.com/adecarolis/wfweb\" style=\"color: cyan;\">GitHub</a>.<br/><br/>"
+                               "<hr/><br/>");
     QString copyright = QString("Copyright 2017-2024 Elliott H. Liggett, W6EL and Phil E. Taylor, M0VSE. All rights reserved.<br/>wfview source code is <a href=\"https://gitlab.com/eliggett/wfview/-/blob/master/LICENSE\">licensed</a> under the GNU GPLv3.");
     QString scm = QString("<br/><br/>Source code and issues managed by Roeland Jansen, PA3MET");
     QString doctest = QString("<br/><br/>Testing and development mentorship from Jim Nijkamp, PA8E.");
@@ -139,7 +143,7 @@ aboutbox::aboutbox(QWidget *parent) :
 
     // String it all together:
 
-    QString aboutText = head + copyright + "\n" + "\n" + scm + "\n" + doctest + dedication + wfviewcommunityack;
+    QString aboutText = head + wfwebNote + copyright + "\n" + "\n" + scm + "\n" + doctest + dedication + wfviewcommunityack;
     aboutText.append(website + "\n" + donate + "\n"+ docs + support +"\n");
     aboutText.append("\n" + ssCredit + "\n" + rsCredit +"\n");
 

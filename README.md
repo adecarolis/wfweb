@@ -1,70 +1,139 @@
-# wfview
+# wfweb
 
+**wfweb** is a fork of [wfview](https://gitlab.com/eliggett/wfview) that adds a built-in web interface for browser-based remote control and real-time audio streaming. It is aimed at users who want to operate their radio from a phone, tablet, or any browser — without installing any client software.
 
-[wfview](https://gitlab.com/eliggett/wfview) is an open-source front-end application for the 
+---
 
-- [Icom IC-705 ](https://www.icomamerica.com/en/products/amateur/hf/705/default.aspx) HF portable SDR Amateur Radio
-- [Icom IC-905 ](https://www.icomamerica.com/lineup/products/IC-905/) Multiband VHF/UHF/SHF portable SDR Amateur Radio
-- [Icom IC-7300](https://www.icomamerica.com/en/products/amateur/hf/7300/default.aspx) HF SDR Amateur Radio
-- [Icom IC-7600](https://www.icomamerica.com/en/products/amateur/hf/7610/default.aspx) HF Hybrid SDR Amateur Radio
-- [Icom IC-7610](https://www.icomamerica.com/en/products/amateur/hf/7610/default.aspx) HF SDR Amateur Radio
-- [Icom IC-7760](https://www.icomamerica.com/en/products/amateur/hf/7850/default.aspx) HF Hybrid SDR Amateur Radio
-- [Icom IC-7850](https://www.icomamerica.com/en/products/amateur/hf/7850/default.aspx) HF Hybrid SDR Amateur Radio
-- [Icom IC-7851](https://www.icomamerica.com/en/products/amateur/hf/7851/default.aspx) HF Hybrid SDR Amateur Radio
-- [Icom IC-9700](https://www.icomamerica.com/en/products/amateur/hf/9700/default.aspx) VHF/UHF SDR Amateur Radio
+## About wfview
 
+wfview is an outstanding open-source front-end for Icom, Kenwood, and Yaesu amateur radio transceivers. Written in C++/Qt by Elliott H. Liggett W6EL, Phil E. Taylor M0VSE, and contributors, it provides a rich desktop GUI with waterfall display, full radio control, audio over LAN, rigctld emulation, and much more. It is one of the most capable and well-engineered radio control applications available for Linux, macOS, and Windows.
 
-website - [WFVIEW](https://wfview.org/) wfview.org
+The wfview project is hosted on GitLab:
+**https://gitlab.com/eliggett/wfview**
 
-wfview supports modern and vintage radios using the CI-V protocol. Core features include a visual display of the waterfall data, simple point-and-click operation, basic type-and-send CW, and remote operation over wifi and Ethernet. For advanced users, wfview can also operate as a radio server, enabling remote access to USB-connected radios like the IC-7300. wfview allows other programs, such as logging and digital mode applications, to share control of the radio. 
+Since wfview is on GitLab and wfweb is on GitHub, GitHub's native fork mechanism cannot be used. This repository is a maintained fork that tracks upstream wfview and adds the web interface layer on top.
 
-wfview is unique in the radio control ecosystem in that it is free and open-source software and can take advantage of modern radio features (such as the waterfall). wfview also does not "eat the serial port", and can allow a second program, such as fldigi, access to the radio via a pseudo-terminal device. 
+---
 
-**For screenshots, documentation, User FAQ, Programmer FAQ, and more, please [see the project's website, wfview.org](https://wfview.org/).**
+## What wfweb adds
 
-Links for Users: 
-- [Getting Started](https://wfview.org/wfview-user-manual/getting-started/)
-- [FAQ](https://wfview.org/wfview-user-manual/faq/)
-- [User Manual](https://wfview.org/wfview-user-manual/)
+| Feature | wfview | wfweb |
+|---|:---:|:---:|
+| Desktop GUI (Qt) | ✓ | ✓ |
+| Full radio control (CI-V, LAN) | ✓ | ✓ |
+| Waterfall display | ✓ | ✓ |
+| Audio over LAN | ✓ | ✓ |
+| Built-in HTTP/WebSocket server | — | ✓ |
+| Browser-based remote control | — | ✓ |
+| Browser RX audio streaming | — | ✓ |
+| Browser TX audio (mic to rig) | — | ✓ |
+| Mobile-responsive UI | — | ✓ |
+| Headless / no-display operation | — | ✓ |
 
-Links for Developers: 
-- [Developer's Corner](https://wfview.org/developers/)
-- [Compiling for Linux](https://gitlab.com/eliggett/wfview/-/blob/master/INSTALL.md)
-- [Compiler Script for Debian-based Linux](https://gitlab.com/eliggett/scripts/-/blob/master/fullbuild-wfview.sh)
-- [Public Automated Builds](https://wfview.org/developers/)
+The web interface is served directly by the `wfview` binary. No separate web server is needed. Connect your radio, run `wfview`, and open `http://<host>:8080` in any browser.
 
+---
 
-wfview is copyright 2017-2024 Elliott H. Liggett (W6EL) and Phil Taylor (M0VSE). All rights reserved. wfview source code is licensed via the GNU GPLv3.
+## Quick start (headless, IC-7300 via USB)
 
-## Special Thanks: 
-- ICOM for their well designed rigs
+Install the package, then create a configuration file:
 
-see ICOM Japan (https://www.icomjapan.com/)
+```ini
+# ~/.config/wfview/wfview.conf
 
-- ICOM for their well written RS-BA1 software
+[Program]
+hasRunSetup=true
+version=2.21
 
-see ICOM JAPAN products page (https://www.icomjapan.com/lineup/options/RS-BA1_Version2/)
+[Radio]
+Manufacturer=0
+RigCIVuInt=148
+SerialPortRadio=auto
+SerialPortBaud=115200
 
-- kappanhang which inspired us to enhance the original wfview project:
+[LAN]
+AudioOutput=hw:CARD=CODEC,DEV=0
+AudioInput=hw:CARD=CODEC,DEV=0
+```
 
-  Akos Marton           ES1AKOS
-  Elliot Liggett W6EL    (passcode algorithm)
-  Norbert Varga HA2NON  nonoo@nonoo.hu
+Then run:
 
-see for their fine s/w here [kappanhang](https://github.com/nonoo/kappanhang)
+```bash
+wfview
+```
 
-- resampling code from the opus project:
-  [Xiph.Org Foundation] (https://xiph.org/)
+Open your browser at `http://<host>:8080`.
 
-see [sources] (https://github.com/xiph/opus/tree/master/silk)
+### Key configuration parameters
 
-- QCP: the marvellous qt custom plot code
-  
-  Emanuel Eichhammer
+| Key | Section | Description | Example |
+|---|---|---|---|
+| `hasRunSetup` | `[Program]` | Skip first-time setup dialog | `true` |
+| `Manufacturer` | `[Radio]` | 0=Icom, 1=Kenwood, 2=Yaesu | `0` |
+| `RigCIVuInt` | `[Radio]` | CI-V address (decimal). IC-7300=148 (0x94) | `148` |
+| `SerialPortRadio` | `[Radio]` | Serial port, or `auto` | `/dev/ttyUSB0` |
+| `SerialPortBaud` | `[Radio]` | Baud rate | `115200` |
+| `AudioOutput` | `[LAN]` | ALSA device for RX audio (rig→browser) | `hw:CARD=CODEC,DEV=0` |
+| `AudioInput` | `[LAN]` | ALSA device for TX audio (browser→rig) | `hw:CARD=CODEC,DEV=0` |
 
-see [QCP] (https://www.qcustomplot.com/)
+Use `aplay -l` and `arecord -l` to list available ALSA devices on your system.
 
+---
 
+## Building from source
 
-If you feel that we forgot anyone, just drop a mail.
+### Dependencies
 
+| Library | Version | License | Purpose |
+|---|---|---|---|
+| Qt5 | ≥ 5.12 | LGPLv3 | Application framework, UI, networking |
+| Qt5 WebSockets | same | LGPLv3 | WebSocket server for web interface |
+| libopus | any | BSD 3-Clause | Audio codec for LAN streaming |
+| libportaudio | any | MIT | Cross-platform audio I/O |
+| libpulse | any | LGPLv2.1 | PulseAudio support (Linux) |
+| librtaudio | any | MIT | Cross-platform audio (non-Linux) |
+| libhidapi | any | BSD/GPLv3 | USB HID for gamepad controllers |
+| QCustomPlot | 2.x | GPLv3 | Waterfall and spectrum plots |
+| Speex resampler | any | BSD 3-Clause | Audio sample rate conversion |
+| Eigen | 3.x | MPL2 | Linear algebra (CW decoder) |
+
+See [INSTALL.md](INSTALL.md) for full build instructions.
+
+---
+
+## License
+
+wfweb is licensed under the **GNU General Public License v3.0**, the same as wfview. As a derivative work, this is required.
+
+See [LICENSE](LICENSE) for the full text.
+
+All third-party components retain their original licenses:
+- Qt5 components are used under the LGPLv3 — wfweb links dynamically and makes no modifications to Qt itself.
+- QCustomPlot is used under GPLv3, compatible with this project.
+- Speex resampler, libopus, libportaudio, librtaudio, Eigen: see their respective notices in `src/audio/resampler/` and the About box in the application.
+
+---
+
+## Upstream relationship
+
+wfweb tracks the upstream wfview `master` branch. The intent is to keep the delta small so that merging upstream improvements remains straightforward. Changes in wfweb are limited to:
+
+- `src/webserver.cpp` / `include/webserver.h` — web server implementation
+- `resources/web/` — web frontend (HTML/CSS/JS)
+- `resources/web.qrc` — Qt resource file for the web frontend
+- Minor changes to `src/wfmain.cpp` for web server initialization
+- This README and branding strings only (binary name and config path unchanged)
+
+---
+
+## Credits
+
+Full credit for the radio control engine, audio subsystem, waterfall, and everything else that makes this software work goes to the wfview authors and contributors:
+
+- Elliott H. Liggett, W6EL
+- Phil E. Taylor, M0VSE
+- Roeland Jansen, PA3MET
+- Jim Nijkamp, PA8E
+- And the entire wfview community
+
+Please consider supporting the original project at **https://wfview.org** and **https://www.patreon.com/wfview**.

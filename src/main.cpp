@@ -95,6 +95,8 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
 
 int main(int argc, char *argv[])
 {
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM"))
+        qputenv("QT_QPA_PLATFORM", "offscreen");
 
 #ifdef BUILD_WFSERVER
     QCoreApplication a(argc, argv);

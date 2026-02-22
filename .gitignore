@@ -21,3 +21,8 @@ qrc_*.cpp
 wfview
 wfserver
 IC7300-screenshots/
+*.log
+*.ipch
+test.log
+Makefile.server
+wfweb
