@@ -94,17 +94,11 @@ jobs:
           sed -i 's/^          //' ${DEB_ROOT}/DEBIAN/control
 
           # postinst: reload systemd so the unit is recognised immediately
-          cat > ${DEB_ROOT}/DEBIAN/postinst << 'POSTINST'
-#!/bin/sh
-set -e
-if command -v systemctl >/dev/null 2>&1 && systemctl is-system-running --quiet 2>/dev/null; then
-    systemctl daemon-reload || true
-fi
-echo ""
-echo "wfweb installed. To start automatically at boot, run:"
-echo "  systemctl enable --now wfweb@\$USER"
-echo ""
-POSTINST
+          printf '#!/bin/sh\nset -e\n' > ${DEB_ROOT}/DEBIAN/postinst
+          printf 'if command -v systemctl >/dev/null 2>&1 && systemctl is-system-running --quiet 2>/dev/null; then\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf '    systemctl daemon-reload || true\nfi\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf 'echo "wfweb installed. To start automatically at boot, run:"\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf 'echo "  systemctl enable --now wfweb@\$USER"\n' >> ${DEB_ROOT}/DEBIAN/postinst
           chmod 755 ${DEB_ROOT}/DEBIAN/postinst
 
           dpkg-deb --build --root-owner-group ${DEB_ROOT}
