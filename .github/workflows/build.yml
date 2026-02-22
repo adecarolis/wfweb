@@ -54,6 +54,7 @@ jobs:
       - name: Package tarball
         run: |
           sudo make install INSTALL_ROOT=$(pwd)/dist
+          sudo chown -R $(id -u):$(id -g) dist
           tar czf wfweb-${{ matrix.arch }}.tar.gz -C dist .
 
       - name: Build .deb
@@ -63,6 +64,7 @@ jobs:
 
           # Mirror the install tree
           sudo make install INSTALL_ROOT=${DEB_ROOT}
+          sudo chown -R $(id -u):$(id -g) $(pwd)/deb-build
 
           # Create DEBIAN control directory
           mkdir -p ${DEB_ROOT}/DEBIAN
