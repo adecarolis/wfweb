@@ -70,7 +70,7 @@ mkdir -p ~/.config/wfview
 cat > ~/.config/wfview/wfview.conf << 'EOF'
 [Program]
 hasRunSetup=true
-version=2.21
+version=0.1.0
 
 [Radio]
 Manufacturer=0

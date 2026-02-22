@@ -49,7 +49,7 @@ Install the package, then create a configuration file:
 
 [Program]
 hasRunSetup=true
-version=2.21
+version=0.1.0
 
 [Radio]
 Manufacturer=0
