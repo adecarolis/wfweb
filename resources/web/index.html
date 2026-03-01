@@ -132,7 +132,7 @@ html, body {
     display: flex; align-items: center; gap: 6px;
     font-size: 12px; margin-bottom: 2px;
 }
-#vfoLabel { color: #aaa; font-weight: bold; }
+#vfoLabel { color: #aaa; font-weight: bold; cursor: pointer; }
 #vfoNum { color: #888; }
 #splitBadge {
     padding: 1px 6px; border-radius: 3px;
@@ -216,6 +216,7 @@ html, body {
     position: relative;
     overflow: hidden;
     background: #000;
+    z-index: 300; /* overlays must paint above fixed cw-bar/digi-bar (z-index 200) */
 }
 #spectrumCanvas, #waterfallCanvas {
     display: block; width: 100%;
@@ -447,6 +448,7 @@ html, body {
     border-color: #555;
     color: #888;
     font-size: 18px;
+    grid-column: -2 / -1; /* always pin to last column of the grid */
 }
 
 /* CW Bar - RTTY decoder style (green terminal theme) */
@@ -1368,6 +1370,16 @@ body.digi-open .digi-bar {
     text-align: right; color: #0aa;
     flex-shrink: 0;
 }
+.gain-back-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 6px;
+}
+.gain-back-row .ov-btn {
+    width: 60px;
+    grid-column: unset; /* override back-btn grid-column */
+}
+
 /* Hidden range inputs over the gain bars */
 .gain-row input[type="range"] {
     position: absolute; top: 0; left: 0;
@@ -1848,6 +1860,9 @@ body.digi-open .digi-bar {
                     <input type="range" id="squelchSlider" min="0" max="255" value="0"></div>
                 <span class="gain-val" id="squelchVal">0</span>
             </div>
+            <div class="gain-back-row">
+                <button class="ov-btn back-btn" onclick="setPanel('default')">&#x21A9;</button>
+            </div>
         </div>
 
         <!-- Freq input overlay -->
@@ -1904,6 +1919,22 @@ var isSplit = false;
 var reconnectTimer = null;
 var defaultModes = ['LSB', 'USB', 'AM', 'CW', 'RTTY', 'FM', 'CW-R'];
 
+// Band frequency memory: remember last-used frequency per band label
+var bandLastFreq = {};
+var BAND_RANGES = {
+    '1.8':  [1800000,  2000000],
+    '3.5':  [3500000,  4000000],
+    '7':    [7000000,  7300000],
+    '10':   [10100000, 10150000],
+    '14':   [14000000, 14350000],
+    '18':   [18068000, 18168000],
+    '21':   [21000000, 21450000],
+    '24':   [24890000, 24990000],
+    '28':   [28000000, 29700000],
+    '50':   [50000000, 54000000],
+    'GENE': [500000,   1800000]
+};
+
 var audioCtx = null;
 var audioWorkletNode = null;
 var audioEnabled = false;
@@ -1956,6 +1987,8 @@ var freqInputBuf = '';
 
 // DIGI (FT8/FT4) state
 var digiBarVisible = false;
+var cwBarSuspended = false;   // true while cw bar is hidden due to an overlay being open
+var digiBarSuspended = false; // true while digi bar is hidden due to an overlay being open
 var digiMode = 'FT8';
 var digiRxEnabled = true;
 var digiRxBuffer = null;
@@ -1964,6 +1997,7 @@ var digiRxPhase = 0;
 var lastDecodeSlotIndex = -1;    // slot in which decode last fired
 var lastResetSlotIndex = -1;     // slot in which buffer last reset
 var digiDecodeInProgress = false; // true while Web Worker is decoding; gates TX until result arrives
+var digiReArmPending = false;     // onDone wants to re-arm but is waiting for decode to finish first
 var digiPeriodTimer = null;
 var digiTxEnabled = false;
 var digiTxCtx = null; // pre-created from user gesture so it's never suspended
@@ -2204,6 +2238,12 @@ function handleMessage(msg) {
 // ============================================================
 function updateFrequency(hz) {
     currentFreq = hz;
+
+    // Update band frequency memory
+    for (var _b in BAND_RANGES) {
+        var _r = BAND_RANGES[_b];
+        if (hz >= _r[0] && hz < _r[1]) { bandLastFreq[_b] = hz; break; }
+    }
 
     // Store frequency for current VFO only
     if (currentVfo === 'A') {
@@ -2646,6 +2686,30 @@ function drawSegBar(ctx, o) {
 function setPanel(name) {
     hideAllOverlays();
     currentPanel = name;
+
+    // Hide CW / DIGI bars while any overlay is open; restore when returning to default
+    if (name === 'default') {
+        if (cwBarSuspended) {
+            document.getElementById('cwBar').classList.remove('hidden');
+            cwBarSuspended = false;
+        }
+        if (digiBarSuspended) {
+            document.getElementById('digiBar').classList.remove('hidden');
+            digiBarSuspended = false;
+        }
+    } else {
+        var _cwBar = document.getElementById('cwBar');
+        if (!_cwBar.classList.contains('hidden')) {
+            _cwBar.classList.add('hidden');
+            cwBarSuspended = true;
+        }
+        var _digiBar = document.getElementById('digiBar');
+        if (!_digiBar.classList.contains('hidden')) {
+            _digiBar.classList.add('hidden');
+            digiBarSuspended = true;
+        }
+    }
+
     // Show relevant overlay
     if (name === 'mode') renderModeOverlay();
     else if (name === 'band') renderBandOverlay();
@@ -2676,6 +2740,7 @@ function renderBottomBar() {
         if (b.txActive) el.classList.add('tx-active');
         if (b.cls) el.classList.add(b.cls);
         el.textContent = b.label;
+        if (b.disabled) el.disabled = true;
         if (b.action) el.onclick = b.action;
         bar.appendChild(el);
     }
@@ -2689,26 +2754,19 @@ function getBottomButtons() {
         case 'mode':
         case 'band':
         case 'func':
+        case 'gain':
             return [
-                { label: 'MODE', action: function() { setPanel('mode'); } },
-                { label: 'BAND', action: function() { setPanel('band'); } },
-                { label: 'FUNC', action: function() { setPanel('func'); } },
-                { label: 'GAIN', action: function() { setPanel('gain'); } },
-                { label: isCW ? 'KEY' : 'PTT', txActive: isTransmitting, cls: isCW ? 'key-btn' : 'ptt-btn', action: isCW ? toggleCWBar : function() { handlePTTPress(); } }
+                { label: 'MODE', active: currentPanel === 'mode', action: function() { setPanel('mode'); } },
+                { label: 'BAND', active: currentPanel === 'band', action: function() { setPanel('band'); } },
+                { label: 'FUNC', active: currentPanel === 'func', action: function() { setPanel('func'); } },
+                { label: 'GAIN', active: currentPanel === 'gain', action: function() { setPanel('gain'); } },
+                { label: isCW ? 'KEY' : 'PTT', txActive: isTransmitting, cls: isCW ? 'key-btn' : 'ptt-btn', disabled: currentPanel !== 'default', action: currentPanel !== 'default' ? null : (isCW ? toggleCWBar : function() { handlePTTPress(); }) }
             ];
         case 'audiomiс':
         case 'span':
         case 'freqinp':
             return [
                 { label: '\u23CE', action: function() { setPanel('default'); } }
-            ];
-        case 'gain':
-            return [
-                { label: 'VFO A', active: currentVfo === 'A', action: function() { selectVFO('A'); } },
-                { label: 'VFO B', active: currentVfo === 'B', action: function() { selectVFO('B'); } },
-                { label: 'A/B', action: function() { swapVFO(); } },
-                { label: 'SPLIT', active: isSplit, action: function() { toggleSplit(); } },
-                { label: '\u23CE', action: function() { hideAllOverlays(); setPanel('default'); } }
             ];
         default:
             return [{ label: '\u23CE', action: function() { setPanel('default'); } }];
@@ -2771,10 +2829,11 @@ function renderBandOverlay() {
         else if (b.action === 'freqinp') {
             btn.onclick = function() { setPanel('freqinp'); };
         } else if (b.freq > 0) {
-            btn.onclick = (function(f) { return function() {
-                send({ cmd: 'setFrequency', value: f });
+            btn.onclick = (function(f, lbl) { return function() {
+                var target = bandLastFreq[lbl] || f;
+                send({ cmd: 'setFrequency', value: target });
                 setPanel('default');
-            }; })(b.freq);
+            }; })(b.freq, b.label);
         }
         grid.appendChild(btn);
     }
@@ -3057,7 +3116,11 @@ function releasePTT() {
 // ============================================================
 // COMMANDS
 // ============================================================
-function setMode(mode) { send({ cmd: 'setMode', value: mode }); }
+function setMode(mode) {
+    send({ cmd: 'setMode', value: mode });
+    // FT8/DIGI panel only valid in USB — close it if the user switches away
+    if (mode !== 'USB' && digiBarVisible) toggleDigiBar();
+}
 function selectVFO(vfo) {
     send({ cmd: 'selectVFO', value: vfo });
     currentVfo = vfo;
@@ -3659,6 +3722,10 @@ document.getElementById('freqDisplay').addEventListener('click', function() {
     setPanel('freqinp');
 });
 
+document.getElementById('vfoLabel').addEventListener('click', function() {
+    setPanel('freqinp');
+});
+
 // ============================================================
 // MOBILE VIEWPORT FIX
 // ============================================================
@@ -4250,6 +4317,8 @@ function toggleDigiBar() {
     if (digiBarVisible) {
         bar.classList.remove('hidden');
         document.body.classList.add('digi-open');
+        // FT8 requires USB — set it automatically on open
+        if (currentMode !== 'USB') setMode('USB');
         digiRxEnabled = true;        // always start with RX on
         updateDigiRxToggle();
         initDigiTxCtx(); // create TX context while we have a user gesture
@@ -4673,6 +4742,21 @@ function onFt8DecodeResult(results, decodedSlotIndex) {
     renderDigiDecodes();
     updateDigiStatus('IDLE', '');
     if (results.length > 0) handleDigiAutoQso(results, decodedSlotIndex);
+
+    // Apply any deferred re-arm now that QSO state has been updated by the decode results.
+    // If handleDigiAutoQso aborted (IDLE) or advanced state and armed already, skip.
+    if (digiReArmPending) {
+        digiReArmPending = false;
+        if (digiTxEnabled && digiTxQueued && !digiTxArmed &&
+            digiQsoState !== 'IDLE' && digiTxAttempts < DIGI_MAX_TX_ATTEMPTS) {
+            console.log('[DIGI TX] deferred re-arm: "' + digiTxQueued + '"');
+            digiTxArmed = true;
+            updateDigiMsgRows();
+        } else {
+            console.log('[DIGI TX] deferred re-arm cancelled (state=' + digiQsoState +
+                        ' armed=' + digiTxArmed + ' enabled=' + digiTxEnabled + ')');
+        }
+    }
 }
 
 // Create a module Web Worker that imports ft8ts.mjs so decode runs off the main thread.
@@ -5115,6 +5199,7 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
             } else if (parts.length >= 2 && parts[1] === digiQsoPartner && parts[0] !== myCall && parts[0] !== 'CQ') {
                 // DX station (parts[1] = FROM) sent to someone who is not us (parts[0] = TO ≠ myCall)
                 console.log('[DIGI QSO] CALLING→IDLE: ' + digiQsoPartner + ' replied to ' + parts[0] + ', not us — disabling TX');
+                digiReArmPending = false;
                 digiTxArmed = false;
                 digiTxActive = false;
                 digiTxQueued = null;
@@ -5245,11 +5330,19 @@ function executeDigiTx(slotPhase) {
                 if (dxEl) dxEl.value = '';
                 updateDigiStatus('QSO DONE', '');
             } else if (digiTxEnabled && digiTxQueued && digiTxAttempts < DIGI_MAX_TX_ATTEMPTS) {
-                // No reply yet — re-arm the same message for the next TX slot
-                console.log('[DIGI TX] re-arming attempt ' + (digiTxAttempts + 1) +
-                            '/' + DIGI_MAX_TX_ATTEMPTS + ': "' + digiTxQueued + '"');
+                // No reply yet — re-arm the same message for the next TX slot.
+                // But if a decode is still running, defer the re-arm: let handleDigiAutoQso
+                // see the results first so it can abort if the partner replied to someone else.
+                if (digiDecodeInProgress) {
+                    console.log('[DIGI TX] decode in progress — deferring re-arm of attempt ' +
+                                (digiTxAttempts + 1) + '/' + DIGI_MAX_TX_ATTEMPTS);
+                    digiReArmPending = true;
+                } else {
+                    console.log('[DIGI TX] re-arming attempt ' + (digiTxAttempts + 1) +
+                                '/' + DIGI_MAX_TX_ATTEMPTS + ': "' + digiTxQueued + '"');
+                    digiTxArmed = true;
+                }
                 updateDigiStatus('WAIT RX', '');
-                digiTxArmed = true;
             } else {
                 if (digiTxAttempts >= DIGI_MAX_TX_ATTEMPTS) {
                     console.warn('[DIGI TX] max attempts reached — giving up');
