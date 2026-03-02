@@ -27,14 +27,18 @@ Since wfview is on GitLab and wfweb is on GitHub, GitHub's native fork mechanism
 | Browser-based remote control | — | ✓ |
 | Browser RX audio streaming | — | ✓ |
 | Browser TX audio (mic to rig) | — | ✓ |
+| CW decoder (ggmorse / Goertzel) | — | ✓ |
+| FT8/FT4 DIGI panel (full QSO) | — | ✓ |
 | Mobile-responsive UI | — | ✓ |
 | Headless / no-display operation | — | ✓ |
 
 ## Screenshots
 
-| SSB | CW with decoder | FT8 |
-|:---:|:---:|:---:|
-| ![SSB mode](ssb.png) | ![CW mode with decoder](cw.png) | ![FT8](ft8.png) |
+![SSB mode](ssb.png)
+
+![CW mode with decoder](cw.png)
+
+![FT8](ft8.png)
 
 The web interface is served directly by the `wfview` binary over HTTPS (self-signed certificate). No separate web server is needed. Connect your radio, run `wfview` (the binary retains the upstream name), and open `https://<host>:8080` in any browser. On first visit, accept the browser's certificate warning.
 
