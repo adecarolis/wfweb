@@ -121,9 +121,99 @@ jobs:
           path: wfweb_*_${{ matrix.deb_arch }}.deb
           retention-days: 30
 
+  build-windows:
+    name: Windows x64
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install Qt5
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '5.15.2'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2019_64'
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Clone RTAudio
+        # The .pro compiles RTAudio from source on non-Linux; clone to the
+        # sibling directory it expects.
+        run: git clone --depth 1 https://github.com/thestk/rtaudio.git ../rtaudio
+
+      - name: Install vcpkg packages
+        shell: pwsh
+        run: |
+          $triplet = "x64-windows"
+          $pkgs = "opus", "portaudio", "hidapi", "openssl", "eigen3", "qcustomplot"
+          foreach ($pkg in $pkgs) {
+            vcpkg install "${pkg}:${triplet}"
+          }
+          # Alias qcustomplot → qcustomplot2 to match the lib name used in wfview.pro
+          $lib = "$env:VCPKG_INSTALLATION_ROOT\installed\$triplet\lib"
+          if (Test-Path "$lib\qcustomplot.lib") {
+            Copy-Item "$lib\qcustomplot.lib" "$lib\qcustomplot2.lib"
+          }
+          $bin = "$env:VCPKG_INSTALLATION_ROOT\installed\$triplet\bin"
+          if (Test-Path "$bin\qcustomplot.dll") {
+            Copy-Item "$bin\qcustomplot.dll" "$bin\qcustomplot2.dll"
+          }
+
+      - name: Build
+        shell: cmd
+        env:
+          VCPKG_DIR: ${{ env.VCPKG_INSTALLATION_ROOT }}\installed\x64-windows
+        run: |
+          qmake wfview.pro CONFIG+=release
+          nmake release
+
+      - name: Get version
+        id: version
+        shell: pwsh
+        run: |
+          $ver = (Select-String -Path wfview.pro -Pattern 'WFVIEW_VERSION=\\\"([\d.]+)\\\"').Matches[0].Groups[1].Value
+          echo "version=$ver" >> $env:GITHUB_OUTPUT
+
+      - name: Package zip
+        shell: pwsh
+        env:
+          VCPKG_DIR: ${{ env.VCPKG_INSTALLATION_ROOT }}\installed\x64-windows
+        run: |
+          $dest = "wfweb-windows-x64"
+          New-Item -ItemType Directory -Force -Path $dest
+
+          # Application binary
+          Copy-Item "wfview-release\wfview.exe" $dest\
+
+          # Qt runtime DLLs
+          windeployqt "$dest\wfview.exe" --release --no-translations
+
+          # vcpkg runtime DLLs
+          Copy-Item "$env:VCPKG_DIR\bin\*.dll" $dest\ -ErrorAction SilentlyContinue
+
+          # Rig definition files
+          Copy-Item -Recurse rigs "$dest\rigs"
+
+          Compress-Archive -Path $dest -DestinationPath wfweb-windows-x64.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wfweb-windows-x64
+          path: wfweb-windows-x64.zip
+          retention-days: 30
+
   release:
     name: Publish release
-    needs: build
+    needs: [build, build-windows]
     runs-on: ubuntu-24.04
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
@@ -141,5 +231,6 @@ jobs:
             wfweb-arm64-tar/wfweb-arm64.tar.gz
             wfweb-x86_64-deb/*.deb
             wfweb-arm64-deb/*.deb
+            wfweb-windows-x64/wfweb-windows-x64.zip
           generate_release_notes: true
           overwrite: true

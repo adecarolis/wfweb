@@ -232,31 +232,42 @@ CONFIG(debug, release|debug) {
     linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libqcustomplotqt6.so/ {print \"-lqcustomplotqt6\"}'")
   }
   win32 {
-    contains(QMAKE_TARGET.arch, x86_64) {
-      LIBS += -L../opus/win32/VS2015/x64/ReleaseDLL/
-      LIBS += -L../qcustomplot/x64 -lqcustomplot2
-      LIBS += -L../portaudio/msvc/X64/Release/ -lportaudio_x64
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.8\imports\LibFT4222\dll\amd64\LibFT4222-64.dll wfview-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\x64\qcustomplot2.dll wfview-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfview-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\hidapi\windows\X64\Release\hidapi.dll wfview-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\x64\ReleaseDLL\opus-0.dll wfview-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfview-release\rigs\*.* $$escape_expand(\\n\\t))
-      contains(DEFINES,USB_CONTROLLER){
-            LIBS += -L../hidapi/windows/x64/release -lhidapi
+    VCPKG_DIR_REL = $$(VCPKG_DIR)
+    !isEmpty(VCPKG_DIR_REL) {
+      # vcpkg build (CI): all deps come from the vcpkg installed tree.
+      # VCPKG_DIR is already set in the block above; lib names use vcpkg conventions.
+      LIBS += -lqcustomplot2
+      contains(DEFINES, USB_CONTROLLER) {
+        LIBS += -lhidapi
       }
     } else {
-      LIBS += -L../opus/win32/VS2015/win32/ReleaseDLL/
-      LIBS += -L../qcustomplot/win32 -lqcustomplot2
-      LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.8\imports\LibFT4222\dll\i386\LibFT4222.dll wfview-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\win32\qcustomplot2.dll wfview-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Release\portaudio_x86.dll wfview-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\hidapi\windows\Release\hidapi.dll wfview-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\ReleaseDLL\opus-0.dll wfview-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfview-release\rigs\*.* $$escape_expand(\\n\\t))
-      contains(DEFINES,USB_CONTROLLER){
-            win32:LIBS += -L../hidapi/windows/release -lhidapi
+      # Sibling-directory layout (upstream wfview Windows dev setup).
+      contains(QMAKE_TARGET.arch, x86_64) {
+        LIBS += -L../opus/win32/VS2015/x64/ReleaseDLL/
+        LIBS += -L../qcustomplot/x64 -lqcustomplot2
+        LIBS += -L../portaudio/msvc/X64/Release/ -lportaudio_x64
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.8\imports\LibFT4222\dll\amd64\LibFT4222-64.dll wfview-release $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\x64\qcustomplot2.dll wfview-release $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfview-release $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\hidapi\windows\X64\Release\hidapi.dll wfview-release $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\x64\ReleaseDLL\opus-0.dll wfview-release $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfview-release\rigs\*.* $$escape_expand(\\n\\t))
+        contains(DEFINES,USB_CONTROLLER){
+          LIBS += -L../hidapi/windows/x64/release -lhidapi
+        }
+      } else {
+        LIBS += -L../opus/win32/VS2015/win32/ReleaseDLL/
+        LIBS += -L../qcustomplot/win32 -lqcustomplot2
+        LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.8\imports\LibFT4222\dll\i386\LibFT4222.dll wfview-release $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\win32\qcustomplot2.dll wfview-release $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Release\portaudio_x86.dll wfview-release $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\hidapi\windows\Release\hidapi.dll wfview-release $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\ReleaseDLL\opus-0.dll wfview-release $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfview-release\rigs\*.* $$escape_expand(\\n\\t))
+        contains(DEFINES,USB_CONTROLLER){
+          LIBS += -L../hidapi/windows/release -lhidapi
+        }
       }
     }
   }
@@ -287,9 +298,28 @@ win32:INCLUDEPATH += ../hidapi/hidapi
 #  win32:INCLUDEPATH += ../LibFT4222-v1.4.7\imports\ftd2xx
 #}
 
-!linux:INCLUDEPATH += ../opus/include
-!linux:INCLUDEPATH += ../eigen
-!linux:INCLUDEPATH += ../r8brain-free-src
+# vcpkg integration for Windows CI builds.
+# Set VCPKG_DIR to <vcpkg_root>/installed/x64-windows before calling qmake.
+# When not set, falls back to the sibling-directory layout used by upstream wfview.
+win32 {
+    VCPKG_DIR = $$(VCPKG_DIR)
+    !isEmpty(VCPKG_DIR) {
+        INCLUDEPATH += $$VCPKG_DIR/include
+        INCLUDEPATH += $$VCPKG_DIR/include/eigen3
+        LIBS += -L$$VCPKG_DIR/lib
+        # portaudio, openssl — not in the sibling-dir layout; added here for vcpkg builds
+        LIBS += -lportaudio -lssl -lcrypto
+    } else {
+        INCLUDEPATH += ../opus/include
+        INCLUDEPATH += ../eigen
+        INCLUDEPATH += ../r8brain-free-src
+    }
+}
+macx {
+    INCLUDEPATH += ../opus/include
+    INCLUDEPATH += ../eigen
+    INCLUDEPATH += ../r8brain-free-src
+}
 
 INCLUDEPATH += include
 INCLUDEPATH += src/audio
@@ -332,7 +362,8 @@ SOURCES += \
     src/main.cpp \
     src/memories.cpp \
     src/meter.cpp \
-    src/pttyhandler.cpp \
+    # src/pttyhandler.cpp — excluded on Windows (POSIX PTY); see !win32 block below
+
     src/qledlabel.cpp \
     src/radio/icomcommander.cpp \
     src/radio/icomserver.cpp \
@@ -368,6 +399,10 @@ SOURCES += \
     src/usbcontroller.cpp \
     src/webserver.cpp \
     src/wfmain.cpp
+
+# PTY is a POSIX facility — exclude the implementation on Windows.
+# The header provides a no-op stub so callers compile unchanged.
+!win32:SOURCES += src/pttyhandler.cpp
 
 HEADERS  += \
     src/audio/adpcm/adpcm-lib.h \
