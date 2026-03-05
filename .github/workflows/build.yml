@@ -160,6 +160,7 @@ jobs:
       - name: Install vcpkg packages
         shell: pwsh
         run: |
+          $env:VCPKG_ROOT = "C:\vcpkg"  # suppress MSVC-bundled vcpkg mismatch warning
           $triplet = "x64-windows"
           $pkgs = "opus", "portaudio", "hidapi", "openssl", "eigen3", "qcustomplot"
           foreach ($pkg in $pkgs) {
@@ -174,6 +175,10 @@ jobs:
           if (Test-Path "$bin\qcustomplot.dll") {
             Copy-Item "$bin\qcustomplot.dll" "$bin\qcustomplot2.dll"
           }
+
+      - name: List vcpkg libs (diagnostic)
+        shell: pwsh
+        run: Get-ChildItem "C:\vcpkg\installed\x64-windows\lib" | Select-Object Name | Sort-Object Name
 
       - name: Build
         shell: cmd
