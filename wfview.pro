@@ -308,7 +308,10 @@ win32 {
         INCLUDEPATH += $$VCPKG_DIR/include/hidapi
         LIBS += -L$$VCPKG_DIR/lib
         LIBS += -lportaudio -llibssl -llibcrypto
-        # vcpkg qcustomplot is built against Qt6; compile from source for Qt5 compatibility
+        # vcpkg qcustomplot is built against Qt6; compile from source for Qt5 compatibility.
+        # Remove QCUSTOMPLOT_USE_LIBRARY (set unconditionally above): compiling from source
+        # means no DLL import — neither USE_LIBRARY nor COMPILE_LIBRARY should be defined.
+        DEFINES -= QCUSTOMPLOT_USE_LIBRARY
         SOURCES += ../qcustomplot/qcustomplot.cpp
         HEADERS += ../qcustomplot/qcustomplot.h
     } else {
