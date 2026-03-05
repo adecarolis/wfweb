@@ -310,7 +310,7 @@ win32 {
         INCLUDEPATH += $$VCPKG_DIR/include/hidapi
         LIBS += -L$$VCPKG_DIR/lib
         # portaudio, openssl — not in the sibling-dir layout; added here for vcpkg builds
-        LIBS += -lportaudio -lssl -lcrypto
+        LIBS += -lportaudio -llibssl -llibcrypto
     } else {
         INCLUDEPATH += ../opus/include
         INCLUDEPATH += ../eigen
