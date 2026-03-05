@@ -2,16 +2,42 @@
 #define PTTYHANDLER_H
 
 #include <QObject>
+#include "rigidentities.h"
+#include "wfviewtypes.h"
+#include "cachingqueue.h"
+
+#ifdef Q_OS_WIN
+
+// PTY (pseudo-terminal) is a POSIX facility not available on Windows.
+// This no-op stub provides the same interface so all callers compile unchanged.
+// Virtual serial port (VSP) functionality is simply unavailable on Windows.
+class pttyHandler : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit pttyHandler(QString, QObject* parent = nullptr) : QObject(parent) {}
+    pttyHandler(QString, quint32) {}
+    ~pttyHandler() {}
+    bool serialError = false;
+
+public slots:
+    void receiveDataFromRigToPtty(const QByteArray&) {}
+
+signals:
+    void haveTextMessage(QString message);
+    void haveDataFromPort(QByteArray data);
+    void havePortError(errorType err);
+    void haveStatusUpdate(const QString text);
+};
+
+#else // Q_OS_WIN — full POSIX implementation
 
 #include <QMutex>
 #include <QDataStream>
 #include <QIODevice>
 #include <QSocketNotifier>
 #include <QtSerialPort/QSerialPort>
-
-#include "rigidentities.h"
-#include "wfviewtypes.h"
-#include "cachingqueue.h"
 
 // This class abstracts the comm port in a useful way and connects to
 // the command creator and command parser.
@@ -77,5 +103,7 @@ private:
     rigCapabilities* rigCaps = Q_NULLPTR;
     cachingQueue* queue = Q_NULLPTR;
 };
+
+#endif // Q_OS_WIN
 
 #endif // PTTYHANDLER_H
