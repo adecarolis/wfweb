@@ -155,6 +155,7 @@ jobs:
           path: C:\vcpkg\installed
           key: vcpkg-x64-windows-opus-portaudio-hidapi-openssl-eigen3-qcustomplot
           restore-keys: vcpkg-x64-windows-
+          save-always: true
 
       - name: Install vcpkg packages
         shell: pwsh
