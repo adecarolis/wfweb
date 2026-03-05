@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [master]
+    branches: [master, windows-build]
     tags: ['v*']
   pull_request:
     branches: [master]
