@@ -149,6 +149,13 @@ jobs:
         # sibling directory it expects.
         run: git clone --depth 1 https://github.com/thestk/rtaudio.git ../rtaudio
 
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-x64-windows-opus-portaudio-hidapi-openssl-eigen3-qcustomplot
+          restore-keys: vcpkg-x64-windows-
+
       - name: Install vcpkg packages
         shell: pwsh
         run: |
