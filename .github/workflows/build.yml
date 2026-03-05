@@ -153,7 +153,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:\vcpkg\installed
-          key: vcpkg-x64-windows-opus-portaudio-hidapi-openssl-eigen3-qcustomplot
+          key: vcpkg-x64-windows-opus-portaudio-hidapi-openssl-eigen3
           restore-keys: vcpkg-x64-windows-
           save-always: true
 
@@ -162,30 +162,20 @@ jobs:
         run: |
           $env:VCPKG_ROOT = "C:\vcpkg"  # suppress MSVC-bundled vcpkg mismatch warning
           $triplet = "x64-windows"
-          $pkgs = "opus", "portaudio", "hidapi", "openssl", "eigen3", "qcustomplot"
+          $pkgs = "opus", "portaudio", "hidapi", "openssl", "eigen3"
           foreach ($pkg in $pkgs) {
             vcpkg install "${pkg}:${triplet}"
           }
-          # Alias qcustomplot → qcustomplot2 to match the lib name used in wfview.pro
-          $lib = "C:\vcpkg\installed\$triplet\lib"
-          if (Test-Path "$lib\qcustomplot.lib") {
-            Copy-Item "$lib\qcustomplot.lib" "$lib\qcustomplot2.lib"
-          }
-          $bin = "C:\vcpkg\installed\$triplet\bin"
-          if (Test-Path "$bin\qcustomplot.dll") {
-            Copy-Item "$bin\qcustomplot.dll" "$bin\qcustomplot2.dll"
-          }
 
-      - name: List vcpkg libs (diagnostic)
-        shell: pwsh
-        run: Get-ChildItem "C:\vcpkg\installed\x64-windows\lib" | Select-Object Name | Sort-Object Name
+      - name: Clone QCustomPlot
+        # vcpkg's qcustomplot is built against Qt6; compile from source for Qt5 compatibility.
+        run: git clone --depth 1 --branch 2.1.1 https://gitlab.com/DerManu/QCustomPlot.git ../qcustomplot
 
       - name: Build
         shell: cmd
-        env:
-          VCPKG_DIR: C:\vcpkg\installed\x64-windows
         run: |
-          qmake wfview.pro CONFIG+=release
+          echo VCPKG_DIR=C:\vcpkg\installed\x64-windows
+          qmake wfview.pro CONFIG+=release "VCPKG_DIR=C:/vcpkg/installed/x64-windows"
           nmake release
 
       - name: Get version

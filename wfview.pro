@@ -234,9 +234,7 @@ CONFIG(debug, release|debug) {
   win32 {
     VCPKG_DIR_REL = $$(VCPKG_DIR)
     !isEmpty(VCPKG_DIR_REL) {
-      # vcpkg build (CI): all deps come from the vcpkg installed tree.
-      # VCPKG_DIR is already set in the block above; lib names use vcpkg conventions.
-      LIBS += -lqcustomplot2
+      # vcpkg build (CI): qcustomplot is compiled from source (see VCPKG_DIR block above).
       contains(DEFINES,USB_CONTROLLER) {
         LIBS += -lhidapi
       }
@@ -299,18 +297,20 @@ win32:INCLUDEPATH += ../hidapi/hidapi
 #}
 
 # vcpkg integration for Windows CI builds.
-# Set VCPKG_DIR to <vcpkg_root>/installed/x64-windows before calling qmake.
-# When not set, falls back to the sibling-directory layout used by upstream wfview.
+# Pass VCPKG_DIR=C:/vcpkg/installed/x64-windows on the qmake command line, or set it
+# as an environment variable. When not set, falls back to the sibling-directory layout.
 win32 {
-    VCPKG_DIR = $$(VCPKG_DIR)
+    isEmpty(VCPKG_DIR): VCPKG_DIR = $$(VCPKG_DIR)
     !isEmpty(VCPKG_DIR) {
         INCLUDEPATH += $$VCPKG_DIR/include
         INCLUDEPATH += $$VCPKG_DIR/include/eigen3
         INCLUDEPATH += $$VCPKG_DIR/include/opus
         INCLUDEPATH += $$VCPKG_DIR/include/hidapi
         LIBS += -L$$VCPKG_DIR/lib
-        # portaudio, openssl — not in the sibling-dir layout; added here for vcpkg builds
         LIBS += -lportaudio -llibssl -llibcrypto
+        # vcpkg qcustomplot is built against Qt6; compile from source for Qt5 compatibility
+        SOURCES += ../qcustomplot/qcustomplot.cpp
+        HEADERS += ../qcustomplot/qcustomplot.h
     } else {
         INCLUDEPATH += ../opus/include
         INCLUDEPATH += ../eigen
