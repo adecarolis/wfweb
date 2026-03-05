@@ -237,7 +237,7 @@ CONFIG(debug, release|debug) {
       # vcpkg build (CI): all deps come from the vcpkg installed tree.
       # VCPKG_DIR is already set in the block above; lib names use vcpkg conventions.
       LIBS += -lqcustomplot2
-      contains(DEFINES, USB_CONTROLLER) {
+      contains(DEFINES,USB_CONTROLLER) {
         LIBS += -lhidapi
       }
     } else {
