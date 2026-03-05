@@ -169,12 +169,14 @@ jobs:
 
       - name: Get QCustomPlot source
         # vcpkg's qcustomplot is built against Qt6; compile from source for Qt5 compatibility.
-        # The official GitLab repo contains only a README; download the release tarball instead.
+        # Tarball layout: qcustomplot-source/{qcustomplot.cpp,qcustomplot.h,...}
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri "https://www.qcustomplot.com/release/2.1.1/QCustomPlot-source.tar.gz" -OutFile "qcp-source.tar.gz"
-          New-Item -ItemType Directory -Force -Path "..\qcustomplot"
-          tar -xzf qcp-source.tar.gz -C ..\qcustomplot --strip-components=1
+          $qcpDir = "$(Split-Path $env:GITHUB_WORKSPACE -Parent)\qcustomplot"
+          New-Item -ItemType Directory -Force -Path $qcpDir
+          Invoke-WebRequest -Uri "https://www.qcustomplot.com/release/2.1.1/QCustomPlot-source.tar.gz" -OutFile "$qcpDir\qcp-source.tar.gz"
+          tar -xzf "$qcpDir\qcp-source.tar.gz" -C $qcpDir --strip-components=1
+          Get-ChildItem $qcpDir | Select-Object Name
 
       - name: Build
         shell: cmd
