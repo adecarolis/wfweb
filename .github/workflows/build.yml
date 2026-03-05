@@ -169,7 +169,7 @@ jobs:
 
       - name: Clone QCustomPlot
         # vcpkg's qcustomplot is built against Qt6; compile from source for Qt5 compatibility.
-        run: git clone --depth 1 --branch 2.1.1 https://gitlab.com/DerManu/QCustomPlot.git ../qcustomplot
+        run: git clone --depth 1 https://gitlab.com/DerManu/QCustomPlot.git ../qcustomplot
 
       - name: Build
         shell: cmd
