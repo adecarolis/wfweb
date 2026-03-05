@@ -362,8 +362,6 @@ SOURCES += \
     src/main.cpp \
     src/memories.cpp \
     src/meter.cpp \
-    # src/pttyhandler.cpp — excluded on Windows (POSIX PTY); see !win32 block below
-
     src/qledlabel.cpp \
     src/radio/icomcommander.cpp \
     src/radio/icomserver.cpp \
