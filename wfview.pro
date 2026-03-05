@@ -306,6 +306,8 @@ win32 {
     !isEmpty(VCPKG_DIR) {
         INCLUDEPATH += $$VCPKG_DIR/include
         INCLUDEPATH += $$VCPKG_DIR/include/eigen3
+        INCLUDEPATH += $$VCPKG_DIR/include/opus
+        INCLUDEPATH += $$VCPKG_DIR/include/hidapi
         LIBS += -L$$VCPKG_DIR/lib
         # portaudio, openssl — not in the sibling-dir layout; added here for vcpkg builds
         LIBS += -lportaudio -lssl -lcrypto
