@@ -232,7 +232,7 @@ CONFIG(debug, release|debug) {
     linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libqcustomplotqt6.so/ {print \"-lqcustomplotqt6\"}'")
   }
   win32 {
-    VCPKG_DIR_REL = $$(VCPKG_DIR)
+    VCPKG_DIR_REL = $$VCPKG_DIR
     !isEmpty(VCPKG_DIR_REL) {
       # vcpkg build (CI): qcustomplot is compiled from source (see VCPKG_DIR block above).
       contains(DEFINES,USB_CONTROLLER) {
