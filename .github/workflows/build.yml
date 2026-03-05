@@ -167,9 +167,14 @@ jobs:
             vcpkg install "${pkg}:${triplet}"
           }
 
-      - name: Clone QCustomPlot
+      - name: Get QCustomPlot source
         # vcpkg's qcustomplot is built against Qt6; compile from source for Qt5 compatibility.
-        run: git clone --depth 1 https://gitlab.com/DerManu/QCustomPlot.git ../qcustomplot
+        # The official GitLab repo contains only a README; download the release tarball instead.
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://www.qcustomplot.com/release/2.1.1/QCustomPlot-source.tar.gz" -OutFile "qcp-source.tar.gz"
+          New-Item -ItemType Directory -Force -Path "..\qcustomplot"
+          tar -xzf qcp-source.tar.gz -C ..\qcustomplot --strip-components=1
 
       - name: Build
         shell: cmd
