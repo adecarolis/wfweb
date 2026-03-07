@@ -4394,6 +4394,16 @@ function initDigiTxCtx() {
     });
 }
 
+function getCurrentDigiBand() {
+    if (!currentFreq) return null;
+    var best = null, bestDist = Infinity;
+    for (var i = 0; i < DIGI_BANDS.length; i++) {
+        var dist = Math.abs(currentFreq - DIGI_BANDS[i].ft8);
+        if (dist < bestDist) { bestDist = dist; best = DIGI_BANDS[i]; }
+    }
+    return (bestDist < 500000) ? best : null;
+}
+
 function toggleDigiBar() {
     digiBarVisible = !digiBarVisible;
     var bar = document.getElementById('digiBar');
@@ -4402,6 +4412,14 @@ function toggleDigiBar() {
         document.body.classList.add('digi-open');
         // FT8 requires USB — set it automatically on open
         if (currentMode !== 'USB') setMode('USB');
+        // Tune to the FT8/FT4 frequency for the current band
+        var band = getCurrentDigiBand();
+        var bandSel = document.getElementById('digiBandSel');
+        if (band) {
+            if (bandSel) bandSel.value = band.label;
+            var targetFreq = digiMode === 'FT4' ? band.ft4 : band.ft8;
+            send({ cmd: 'setFrequency', value: targetFreq });
+        }
         digiRxEnabled = true;        // always start with RX on
         updateDigiRxToggle();
         initDigiTxCtx(); // create TX context while we have a user gesture
@@ -5076,6 +5094,9 @@ function digiRowClick(el) {
     var parts = msg.trim().split(/\s+/);
     var dxEl = document.getElementById('digiDxCall');
     var myCall = getMyCall();
+    // Ignore clicks on our own transmissions (FROM = parts[1])
+    var fromCall = /^CQ$/i.test(parts[0]) ? (parts.length >= 3 ? parts[parts.length - 2] : parts[1]) : parts[1];
+    if (myCall && fromCall && fromCall.toUpperCase() === myCall.toUpperCase()) return;
     // Set TX and RX frequency to match clicked station (unless Hold is enabled)
     if (freq >= 200 && freq <= 3000 && !digiHoldTxFreq) {
         digiTxFreq = freq;
