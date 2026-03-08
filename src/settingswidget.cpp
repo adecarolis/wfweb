@@ -994,6 +994,13 @@ void settingswidget::updateCtPref(prefCtItem pct)
     case ct_USBControllersReset:
     case ct_USBControllersSetup:
         break;
+    case ct_tunerType:
+        break;
+    case ct_k1fmUrl:
+        ui->k1fmUrlTxt->blockSignals(true);
+        ui->k1fmUrlTxt->setText(prefs->k1fmUrl);
+        ui->k1fmUrlTxt->blockSignals(false);
+        break;
     default:
         qWarning(logGui()) << "No UI element matches setting" << (int)pct;
         break;
@@ -2054,6 +2061,12 @@ void settingswidget::on_pttEnableChk_clicked(bool checked)
 {
     prefs->enablePTT = checked;
     emit changedCtPref(ct_enablePTT);
+}
+
+void settingswidget::on_k1fmUrlTxt_editingFinished()
+{
+    prefs->k1fmUrl = ui->k1fmUrlTxt->text();
+    emit changedCtPref(ct_k1fmUrl);
 }
 
 void settingswidget::on_regionTxt_textChanged(QString text)

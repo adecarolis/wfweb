@@ -20,6 +20,11 @@
 #include <QColorDialog>
 #include <QColor>
 #include <QMap>
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QJsonObject>
+#include <QJsonDocument>
 
 #include "logcategories.h"
 #include "wfviewtypes.h"
@@ -407,7 +412,7 @@ private slots:
     void on_monitorLabel_linkActivated(const QString&);
 
     void on_tuneNowBtn_clicked();
-    void on_tuneEnableChk_clicked(bool checked);
+    void on_tunerTypeCombo_currentIndexChanged(int index);
     bool on_exitBtn_clicked();
     void on_saveSettingsBtn_clicked();
     void debugBtn_clicked();
@@ -495,6 +500,10 @@ private:
     int logCheckingOldPosition = 0;
     QTimer ATUCheckTimer;
     QTimer ConnectionTimer;
+
+    void k1fmSetAutoMemory(bool enabled);
+    void k1fmTune();
+    QNetworkAccessManager *k1fmNam = Q_NULLPTR;
 
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image

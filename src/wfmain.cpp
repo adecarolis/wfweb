@@ -210,6 +210,10 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     setupui->updateRaPrefs((int)ra_all);
     setupui->updateRsPrefs((int)rs_all); // Most of these come from the rig anyway
     setupui->updateCtPrefs((int)ct_all);
+
+    ui->tunerTypeCombo->blockSignals(true);
+    ui->tunerTypeCombo->setCurrentIndex((int)prefs.tunerType);
+    ui->tunerTypeCombo->blockSignals(false);
     setupui->updateClusterPrefs((int)cl_all);
     setupui->updateLanPrefs((int)l_all);
     setupui->updateUdpPrefs((int)u_all);
@@ -894,6 +898,14 @@ void wfmain::setupMainUI()
     ui->tuneLockChk->setChecked(false);
     freqLock = false;
 
+    ui->tunerTypeCombo->blockSignals(true);
+    ui->tunerTypeCombo->addItem("Internal", tunerTypeInternal);
+    ui->tunerTypeCombo->addItem("K1FM", tunerTypeK1FM);
+    ui->tunerTypeCombo->addItem("OFF", tunerTypeOff);
+    ui->tunerTypeCombo->blockSignals(false);
+
+    k1fmNam = new QNetworkAccessManager(this);
+
     connect(
                 ui->txPowerSlider, &QSlider::valueChanged, this,
                 [=](const int &newValue) {
@@ -1330,8 +1342,9 @@ void wfmain::runShortcut(const QKeySequence k)
     }
     else if (k==(Qt::CTRL | Qt::Key_I))
     {
-        // Enable ATU
-        ui->tuneEnableChk->click();
+        // Cycle tuner type
+        int next = (ui->tunerTypeCombo->currentIndex() + 1) % ui->tunerTypeCombo->count();
+        ui->tunerTypeCombo->setCurrentIndex(next);
     }
     else if (k==(Qt::CTRL | Qt::Key_U))
     {
@@ -1776,6 +1789,8 @@ void wfmain::setDefPrefs()
     defPrefs.polling_ms = 0; // 0 = Automatic
     defPrefs.enablePTT = true;
     defPrefs.niceTS = true;
+    defPrefs.tunerType = tunerTypeInternal;
+    defPrefs.k1fmUrl = QString("");
     defPrefs.enableRigCtlD = false;
     defPrefs.rigCtlPort = 4533;
     defPrefs.virtualSerialPort = QString("none");
@@ -2045,6 +2060,8 @@ void wfmain::loadSettings()
     prefs.niceTS = settings->value("NiceTS", defPrefs.niceTS).toBool();
 
     prefs.automaticSidebandSwitching = settings->value("automaticSidebandSwitching", defPrefs.automaticSidebandSwitching).toBool();
+    prefs.tunerType = static_cast<tunerType_t>(settings->value("TunerType", defPrefs.tunerType).toInt());
+    prefs.k1fmUrl = settings->value("K1FMUrl", defPrefs.k1fmUrl).toString();
     settings->endGroup();
 
     settings->beginGroup("LAN");
@@ -3064,6 +3081,18 @@ void wfmain::extChangedCtPref(prefCtItem i)
         }
         break;
     }
+    case ct_tunerType:
+    {
+        ui->tunerTypeCombo->blockSignals(true);
+        ui->tunerTypeCombo->setCurrentIndex((int)prefs.tunerType);
+        ui->tunerTypeCombo->blockSignals(false);
+        if (prefs.tunerType == tunerTypeK1FM) {
+            k1fmSetAutoMemory(true);
+        }
+        break;
+    }
+    case ct_k1fmUrl:
+        break;
     default:
         qWarning(logGui()) << "No UI element matches setting" << (int)i;
         break;
@@ -3338,6 +3367,8 @@ void wfmain::saveSettings()
     settings->setValue("EnablePTT", prefs.enablePTT);
     settings->setValue("NiceTS", prefs.niceTS);
     settings->setValue("automaticSidebandSwitching", prefs.automaticSidebandSwitching);
+    settings->setValue("TunerType", (int)prefs.tunerType);
+    settings->setValue("K1FMUrl", prefs.k1fmUrl);
     settings->endGroup();
 
     settings->beginGroup("LAN");
@@ -4343,6 +4374,15 @@ void wfmain::on_monitorLabel_linkActivated(const QString&)
 
 void wfmain::on_tuneNowBtn_clicked()
 {
+    if (prefs.tunerType == tunerTypeK1FM) {
+        k1fmTune();
+        return;
+    }
+
+    if (prefs.tunerType == tunerTypeOff) {
+        showStatusBarText("Tuner is set to OFF.");
+        return;
+    }
 
     if (!prefs.enablePTT)
     {
@@ -4356,12 +4396,79 @@ void wfmain::on_tuneNowBtn_clicked()
     ATUCheckTimer.start(5000);
 }
 
-void wfmain::on_tuneEnableChk_clicked(bool checked)
+void wfmain::on_tunerTypeCombo_currentIndexChanged(int index)
 {
-    queue->addUnique(priorityImmediate,queueItem(funcTunerStatus,QVariant::fromValue<uchar>(checked)));
-    showStatusBarText(QString("Turning %0 ATU").arg(checked?"on":"off"));
-    ATUCheckTimer.setSingleShot(true);
-    ATUCheckTimer.start(5000);
+    tunerType_t newType = static_cast<tunerType_t>(index);
+    tunerType_t oldType = prefs.tunerType;
+    prefs.tunerType = newType;
+
+    if (newType == tunerTypeK1FM) {
+        k1fmSetAutoMemory(true);
+        // Disable internal ATU if switching from Internal
+        if (oldType == tunerTypeInternal)
+            queue->addUnique(priorityImmediate, queueItem(funcTunerStatus, QVariant::fromValue<uchar>(0U)));
+    } else {
+        if (oldType == tunerTypeK1FM)
+            k1fmSetAutoMemory(false);
+        if (newType == tunerTypeOff) {
+            queue->addUnique(priorityImmediate, queueItem(funcTunerStatus, QVariant::fromValue<uchar>(0U)));
+            showStatusBarText("Tuner OFF.");
+        } else {
+            // Internal: enable ATU
+            queue->addUnique(priorityImmediate, queueItem(funcTunerStatus, QVariant::fromValue<uchar>(1U)));
+            showStatusBarText("Internal ATU enabled.");
+        }
+    }
+}
+
+void wfmain::k1fmSetAutoMemory(bool enabled)
+{
+    if (prefs.k1fmUrl.isEmpty()) {
+        showStatusBarText("K1FM URL not configured. Set it in Settings > Controls.");
+        return;
+    }
+    QUrl url(prefs.k1fmUrl + "/api/v1/settings");
+    QNetworkRequest req(url);
+    req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    QJsonObject body;
+    body["automaticMemorySelection"] = enabled;
+    QNetworkReply *reply = k1fmNam->put(req, QJsonDocument(body).toJson(QJsonDocument::Compact));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, enabled]() {
+        if (reply->error() != QNetworkReply::NoError)
+            showStatusBarText(QString("K1FM: failed to set automaticMemorySelection: %1").arg(reply->errorString()));
+        else
+            showStatusBarText(QString("K1FM: automaticMemorySelection set to %1").arg(enabled ? "true" : "false"));
+        reply->deleteLater();
+    });
+}
+
+void wfmain::k1fmTune()
+{
+    if (prefs.k1fmUrl.isEmpty()) {
+        showStatusBarText("K1FM URL not configured. Set it in Settings > Controls.");
+        return;
+    }
+    QUrl url(prefs.k1fmUrl + "/api/v1/tune");
+    QNetworkRequest req(url);
+    req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    QNetworkReply *reply = k1fmNam->post(req, QByteArray());
+    showStatusBarText("K1FM: tuning...");
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        if (reply->error() != QNetworkReply::NoError) {
+            showStatusBarText(QString("K1FM tune failed: %1").arg(reply->errorString()));
+        } else {
+            QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+            QJsonObject obj = doc.object();
+            QString status = obj.value("status").toString();
+            if (status == "OK") {
+                double swr = obj.value("SWR").toDouble();
+                showStatusBarText(QString("K1FM: tuned OK, SWR=%1").arg(swr, 0, 'f', 1));
+            } else {
+                showStatusBarText(QString("K1FM tune: %1").arg(status));
+            }
+        }
+        reply->deleteLater();
+    });
 }
 
 bool wfmain::on_exitBtn_clicked()
@@ -4472,17 +4579,11 @@ void wfmain::receiveATUStatus(quint8 atustatus)
     {
         case 0x00:
             // ATU not active
-            ui->tuneEnableChk->blockSignals(true);
-            ui->tuneEnableChk->setChecked(false);
-            ui->tuneEnableChk->blockSignals(false);
             if(ATUCheckTimer.isActive())
                 showStatusBarText("ATU not enabled.");
             break;
         case 0x01:
             // ATU enabled
-            ui->tuneEnableChk->blockSignals(true);
-            ui->tuneEnableChk->setChecked(true);
-            ui->tuneEnableChk->blockSignals(false);
             if(ATUCheckTimer.isActive())
                 showStatusBarText("ATU enabled.");
             break;
@@ -6564,8 +6665,8 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         ui->rxAntennaCheck->setEnabled(rigCaps->commands.contains(funcRXAntenna));
         ui->rxAntennaCheck->setChecked(false);
 
-        ui->tuneEnableChk->setEnabled(rigCaps->commands.contains(funcTunerStatus));
-        ui->tuneNowBtn->setEnabled(rigCaps->commands.contains(funcTunerStatus));
+        ui->tunerTypeCombo->setEnabled(true);
+        ui->tuneNowBtn->setEnabled(rigCaps->commands.contains(funcTunerStatus) || prefs.tunerType == tunerTypeK1FM);
 
         ui->memoriesBtn->setEnabled(rigCaps->commands.contains(funcMemoryContents));
 
@@ -6746,7 +6847,7 @@ void wfmain::enableControls(bool en)
     ui->memoriesBtn->setEnabled(en);
     ui->rptSetupBtn->setEnabled(en);
     ui->transmitBtn->setEnabled(en);
-    ui->tuneEnableChk->setEnabled(en);
+    ui->tunerTypeCombo->setEnabled(en);
     ui->tuneNowBtn->setEnabled(en);
 
     ui->scopeSettingsGroup->setEnabled(en);

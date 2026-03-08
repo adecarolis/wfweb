@@ -17,6 +17,8 @@ enum connectionStatus_t { connDisconnected, connConnecting, connConnected };
 
 enum underlay_t { underlayNone, underlayPeakHold, underlayPeakBuffer, underlayAverageBuffer };
 
+enum tunerType_t { tunerTypeInternal=0, tunerTypeK1FM=1, tunerTypeOff=2 };
+
 enum connectionType_t { connectionUSB, connectionLAN, connectionWiFi, connectionWAN };
 
 // meterString MUST be updated if any of these are changed, but this might break rigCaps.

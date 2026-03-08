@@ -852,18 +852,12 @@
             </widget>
            </item>
            <item>
-            <widget class="QCheckBox" name="tuneEnableChk">
+            <widget class="QComboBox" name="tunerTypeCombo">
              <property name="toolTip">
-              <string>Enable the Automatic Antenna Tuner</string>
+              <string>Select the antenna tuner: Internal (radio's built-in ATU), K1FM (magnetic loop controller), or OFF</string>
              </property>
              <property name="accessibleName">
-              <string>Enable ATU</string>
-             </property>
-             <property name="accessibleDescription">
-              <string>Enable or disable the automatic antenna tuner</string>
-             </property>
-             <property name="text">
-              <string>Enable ATU</string>
+              <string>Tuner Type</string>
              </property>
             </widget>
            </item>

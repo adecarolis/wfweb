@@ -953,6 +953,26 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
             </widget>
            </item>
            <item>
+            <widget class="QLabel" name="k1fmUrlLabel">
+             <property name="toolTip">
+              <string>URL of the K1FM Loop Controller (e.g. http://192.168.1.100)</string>
+             </property>
+             <property name="text">
+              <string>K1FM URL:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="k1fmUrlTxt">
+             <property name="toolTip">
+              <string>URL of the K1FM Loop Controller (e.g. http://192.168.1.100)</string>
+             </property>
+             <property name="placeholderText">
+              <string>http://192.168.1.100</string>
+             </property>
+            </widget>
+           </item>
+           <item>
             <widget class="QCheckBox" name="rigCreatorChk">
              <property name="toolTip">
               <string>Rig creator allows changing of all rig features and adding new rig profiles</string>

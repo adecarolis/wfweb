@@ -113,7 +113,9 @@ enum prefCtItem {
     ct_enableUSBControllers = 1 << 3,
     ct_USBControllersSetup = 1 << 4,
     ct_USBControllersReset = 1 << 5,
-    ct_all = 1 << 6
+    ct_tunerType = 1 << 6,
+    ct_k1fmUrl = 1 << 7,
+    ct_all = 1 << 8
 };
 
 enum prefLanItem {
@@ -230,6 +232,8 @@ struct preferences {
     bool niceTS;
     bool automaticSidebandSwitching = true;
     bool enableUSBControllers;
+    tunerType_t tunerType = tunerTypeInternal;
+    QString k1fmUrl;
 
     // LAN:
     bool enableLAN;
