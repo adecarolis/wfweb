@@ -125,6 +125,8 @@ private:
     codecType codecByteToType(quint8 codec);
     bool setupSsl();
 
+    QHash<QTcpSocket*, QByteArray> socketBuffers; // accumulate partial TCP reads
+
     QTcpServer *httpServer = nullptr;
     QTcpServer *restServer = nullptr;  // plain HTTP for microcontrollers/scripts (SSL mode only)
     QWebSocketServer *wsServer = nullptr;

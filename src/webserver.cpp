@@ -263,23 +263,37 @@ void webServer::onHttpReadyRead()
         }
     }
 
-    QByteArray request = socket->readAll();
+    // Accumulate — body may arrive in a later TCP segment than the headers
+    socketBuffers[socket] += socket->readAll();
+    const QByteArray &request = socketBuffers[socket];
 
-    // Split headers from body on \r\n\r\n
+    // Wait until we have the complete headers
     int sepIdx = request.indexOf("\r\n\r\n");
-    QByteArray headerSection = (sepIdx >= 0) ? request.left(sepIdx) : request;
-    QByteArray body;
-    if (sepIdx >= 0) {
-        int bodyStart = sepIdx + 4;
-        QByteArray lowerHeaders = headerSection.toLower();
-        int clIdx = lowerHeaders.indexOf("content-length:");
-        if (clIdx >= 0) {
-            int clEnd = lowerHeaders.indexOf("\r\n", clIdx);
-            int contentLength = headerSection.mid(clIdx + 15, clEnd - clIdx - 15).trimmed().toInt();
-            if (contentLength > 0)
-                body = request.mid(bodyStart, contentLength);
-        }
+    if (sepIdx < 0) return;
+
+    qDebug() << "REST headers:" << request.left(sepIdx);
+
+    QByteArray headerSection = request.left(sepIdx);
+    QByteArray lowerHeaders = headerSection.toLower();
+
+    // If there's a Content-Length, wait until the full body has arrived
+    int clIdx = lowerHeaders.indexOf("content-length:");
+    if (clIdx >= 0) {
+        int clEnd = lowerHeaders.indexOf("\r\n", clIdx);
+        int contentLength = headerSection.mid(clIdx + 15, clEnd - clIdx - 15).trimmed().toInt();
+        if (contentLength > 0 && request.length() < sepIdx + 4 + contentLength)
+            return; // body not yet complete — wait for next readyRead
     }
+
+    // Full request received — extract body then release the buffer
+    QByteArray body;
+    if (clIdx >= 0) {
+        int clEnd = lowerHeaders.indexOf("\r\n", clIdx);
+        int contentLength = headerSection.mid(clIdx + 15, clEnd - clIdx - 15).trimmed().toInt();
+        if (contentLength > 0)
+            body = request.mid(sepIdx + 4, contentLength);
+    }
+    socketBuffers.remove(socket);
 
     // Parse first line: METHOD /path HTTP/1.1
     int firstLineEnd = headerSection.indexOf("\r\n");
@@ -323,6 +337,7 @@ void webServer::onHttpDisconnected()
 {
     QTcpSocket *socket = qobject_cast<QTcpSocket *>(sender());
     if (socket) {
+        socketBuffers.remove(socket);
         socket->deleteLater();
     }
 }
