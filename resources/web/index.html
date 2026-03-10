@@ -99,6 +99,19 @@ html, body {
 }
 .flex-space { flex: 1; }
 #clock { color: #888; font-family: 'Courier New', monospace; font-size: 11px; }
+.qso-log-btn {
+    padding: 2px 8px;
+    background: #00161a;
+    border: 1px solid #048;
+    color: #08f;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: monospace;
+    letter-spacing: 0.5px;
+    border-radius: 3px;
+}
+.qso-log-btn:active { background: #048; color: #000; }
 #stepLabel { color: #666; font-size: 10px; }
 #connDot {
     width: 8px; height: 8px; border-radius: 50%;
@@ -491,7 +504,7 @@ html, body {
     #cwSpeedInput { width: 32px; height: 22px; font-size: 11px; padding: 2px; }
     .cw-wpm-label { display: none; } /* Hide "WPM" - obvious from context */
     .cw-mode-btn { padding: 2px 6px; font-size: 10px; }
-    .cw-stop-btn, .cw-close-btn, .cw-edit-btn { padding: 2px 6px; font-size: 10px; }
+    .cw-stop-btn, .cw-close-btn, .cw-edit-btn, .cw-log-btn { padding: 2px 6px; font-size: 10px; }
     .cw-display { font-size: 11px; padding: 3px 4px; min-height: 18px; }
     .cw-input-field { font-size: 11px; padding: 3px 4px; }
     .cw-macro-grid { gap: 3px; padding: 4px 6px; }
@@ -619,6 +632,18 @@ html, body {
     background: #0a0;
     color: #000;
 }
+.cw-log-btn {
+    padding: 4px 10px;
+    background: #00101a;
+    border: 1px solid #048;
+    color: #08f;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 8px;
+    font-family: monospace;
+}
+.cw-log-btn:active { background: #048; color: #fff; }
 .cw-display {
     background: #000;
     color: #0f0;
@@ -1676,6 +1701,7 @@ body.digi-open .digi-bar {
         <span id="filterText">FIL1</span>
         <span id="dspIndicators"></span>
         <span class="flex-space"></span>
+        <button id="qsoLogBtn" class="qso-log-btn" title="Log QSO">LOG</button>
         <span id="clock">--:--</span>
         <span id="connDot" title="Disconnected"></span>
     </div>
@@ -1749,6 +1775,7 @@ body.digi-open .digi-bar {
                     <button class="cw-mode-btn" data-mode="words">WRD</button>
                     <button class="cw-mode-btn" data-mode="lines">LN</button>
                 </div>
+                <button id="cwLogBtn" class="cw-log-btn">LOG QSO</button>
                 <button id="cwStopBtn" class="cw-stop-btn">STOP</button>
                 <button id="cwCloseBtn" class="cw-close-btn">✕</button>
             </div>
@@ -2085,7 +2112,7 @@ var digiTxAttempts = 0;
 var DIGI_MAX_TX_ATTEMPTS = 5; // retry same message up to 5 times (~75s for FT8)
 var digiDecodes = [];
 var digiDirectedDecodes = [];
-var digiQsoLog = [];
+var qsoLog = [];
 var digiLogEditIdx = -1; // index of row currently being edited, -1 = none
 var digiHashBook = null;
 var digiQsoState = 'IDLE';
@@ -3682,7 +3709,8 @@ document.addEventListener('keydown', function(e) {
     var macroEditor = document.getElementById('cwMacroEditor');
     if (macroEditor && macroEditor.style.display !== 'none') return;
 
-    if (e.key === 'ArrowUp' || e.key === '+') { e.preventDefault(); tuneUp(); }
+    if (e.key === 'l' || e.key === 'L') { e.preventDefault(); openLogModal(); }
+    else if (e.key === 'ArrowUp' || e.key === '+') { e.preventDefault(); tuneUp(); }
     else if (e.key === 'ArrowDown' || e.key === '-') { e.preventDefault(); tuneDown(); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); tuneUpHz(); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); tuneDownHz(); }
@@ -4182,6 +4210,10 @@ function initCWHandlers() {
         clearCWTimers(); // Clear all pending character update timers
         updateCWTranscript();
     });
+
+    // Log QSO button
+    var cwLogBtn = document.getElementById('cwLogBtn');
+    if (cwLogBtn) { cwLogBtn.addEventListener('click', logCWQso); }
 
     // Close button
     document.getElementById('cwCloseBtn').addEventListener('click', function() {
@@ -5839,8 +5871,8 @@ function logDigiQso(dxCall, rstSent) {
                  ((rstSent >= 0 ? '+' : '') + Math.round(rstSent)) : '',
         rstRcvd: digiTheirReport || ''
     };
-    digiQsoLog.unshift(entry);
-    try { localStorage.setItem('digiQsoLog', JSON.stringify(digiQsoLog.slice(0, 500))); } catch(e) {}
+    qsoLog.unshift(entry);
+    try { localStorage.setItem('qsoLog', JSON.stringify(qsoLog.slice(0, 500))); } catch(e) {}
     renderDigiLog();
     // Show "LOGGED" confirmation in the directed panel
     var dirPanel = document.getElementById('digiDirectedPanel');
@@ -5854,16 +5886,76 @@ function logDigiQso(dxCall, rstSent) {
     }
 }
 
+function logCWQso() {
+    var callEl = document.getElementById('cwQsoInput');
+    var call = (callEl ? callEl.value : '').trim().toUpperCase();
+    if (!call) {
+        var entered = prompt('DX Callsign:');
+        if (!entered || !entered.trim()) return;
+        call = entered.trim().toUpperCase();
+        if (callEl) callEl.value = call;
+    }
+    var now = new Date();
+    var iso = now.toISOString();
+    var freqHz = (vfoAFreq || currentFreq || 0);
+    var entry = {
+        date: iso.substr(0, 10).replace(/-/g, ''),
+        time: iso.substr(11, 8).replace(/:/g, ''),
+        call: call,
+        freq: freqHz,
+        band: freqToBand(freqHz),
+        mode: 'CW',
+        df: 0,
+        grid: '',
+        rstSent: '599',
+        rstRcvd: '599'
+    };
+    qsoLog.unshift(entry);
+    try { localStorage.setItem('qsoLog', JSON.stringify(qsoLog.slice(0, 500))); } catch(e) {}
+    renderDigiLog();
+    openLogModal();
+}
+
+function logSSBQso() {
+    var now = new Date();
+    var iso = now.toISOString();
+    var freqHz = (vfoAFreq || currentFreq || 0);
+    var mode = currentMode || 'SSB';
+    var entry = {
+        date: iso.substr(0, 10).replace(/-/g, ''),
+        time: iso.substr(11, 8).replace(/:/g, ''),
+        call: '',
+        freq: freqHz,
+        band: freqToBand(freqHz),
+        mode: mode,
+        df: 0,
+        grid: '',
+        rstSent: '59',
+        rstRcvd: '59'
+    };
+    qsoLog.unshift(entry);
+    digiLogEditIdx = 0;
+    renderDigiLog();
+    openLogModal();
+    var el = document.getElementById('dleCall');
+    if (el) setTimeout(function() { el.focus(); }, 50);
+}
+
+function openLogModal() {
+    renderDigiLog();
+    document.getElementById('digiLogModal').classList.add('visible');
+}
+
 function renderDigiLog() {
     var panel = document.getElementById('digiLogRows');
     if (!panel) return;
-    if (!digiQsoLog.length) {
+    if (!qsoLog.length) {
         panel.innerHTML = '<div class="digi-log-empty">No QSOs logged yet.</div>';
         return;
     }
     var html = '';
-    for (var i = 0; i < digiQsoLog.length; i++) {
-        var q = digiQsoLog[i];
+    for (var i = 0; i < qsoLog.length; i++) {
+        var q = qsoLog[i];
         var dateDisp = q.date ? q.date.substr(0,4)+'-'+q.date.substr(4,2)+'-'+q.date.substr(6,2) : '';
         var timeDisp = q.time ? q.time.substr(0,2)+':'+q.time.substr(2,2) : (q.time || '');
         var freqDisp = q.freq ? (q.freq / 1e6).toFixed(3) : '';
@@ -5910,16 +6002,16 @@ function editDigiQso(idx) {
 
 function cancelEditDigiQso() {
     // If we were editing a blank new entry, remove it
-    if (digiLogEditIdx >= 0 && digiQsoLog[digiLogEditIdx] && !digiQsoLog[digiLogEditIdx].call) {
-        digiQsoLog.splice(digiLogEditIdx, 1);
-        try { localStorage.setItem('digiQsoLog', JSON.stringify(digiQsoLog.slice(0, 500))); } catch(e) {}
+    if (digiLogEditIdx >= 0 && qsoLog[digiLogEditIdx] && !qsoLog[digiLogEditIdx].call) {
+        qsoLog.splice(digiLogEditIdx, 1);
+        try { localStorage.setItem('qsoLog', JSON.stringify(qsoLog.slice(0, 500))); } catch(e) {}
     }
     digiLogEditIdx = -1;
     renderDigiLog();
 }
 
 function saveDigiQso(idx) {
-    var q = digiQsoLog[idx];
+    var q = qsoLog[idx];
     if (!q) return;
     var dateVal   = (document.getElementById('dleDate')    || {}).value || '';
     var timeVal   = (document.getElementById('dleTime')    || {}).value || '';
@@ -5941,11 +6033,13 @@ function saveDigiQso(idx) {
     q.rstSent = rstSent;
     q.rstRcvd = rstRcvd;
     digiLogEditIdx = -1;
-    try { localStorage.setItem('digiQsoLog', JSON.stringify(digiQsoLog.slice(0, 500))); } catch(e) {}
+    try { localStorage.setItem('qsoLog', JSON.stringify(qsoLog.slice(0, 500))); } catch(e) {}
     renderDigiLog();
 }
 
 function addDigiQso() {
+    // Save any in-progress edit before opening a new blank row
+    if (digiLogEditIdx >= 0) saveDigiQso(digiLogEditIdx);
     var now = new Date();
     var iso = now.toISOString();
     var freqHz = (vfoAFreq || currentFreq || 0);
@@ -5961,7 +6055,7 @@ function addDigiQso() {
         rstSent: '',
         rstRcvd: ''
     };
-    digiQsoLog.unshift(entry);
+    qsoLog.unshift(entry);
     digiLogEditIdx = 0;
     renderDigiLog();
     var el = document.getElementById('dleCall');
@@ -5971,8 +6065,8 @@ function addDigiQso() {
 function deleteDigiQso(idx) {
     if (digiLogEditIdx === idx) digiLogEditIdx = -1;
     else if (digiLogEditIdx > idx) digiLogEditIdx--;
-    digiQsoLog.splice(idx, 1);
-    try { localStorage.setItem('digiQsoLog', JSON.stringify(digiQsoLog.slice(0, 500))); } catch(e) {}
+    qsoLog.splice(idx, 1);
+    try { localStorage.setItem('qsoLog', JSON.stringify(qsoLog.slice(0, 500))); } catch(e) {}
     renderDigiLog();
 }
 
@@ -5983,8 +6077,8 @@ function downloadAdif() {
         return '<' + tag + ':' + s.length + '>' + s + ' ';
     }
     var lines = ['ADIF Export from wfweb\n<EOH>\n'];
-    for (var i = digiQsoLog.length - 1; i >= 0; i--) {
-        var q = digiQsoLog[i];
+    for (var i = qsoLog.length - 1; i >= 0; i--) {
+        var q = qsoLog[i];
         var freqMHz = q.freq ? (q.freq / 1e6).toFixed(6) : '';
         lines.push(
             adifField('CALL', q.call) +
@@ -6013,11 +6107,11 @@ function downloadAdif() {
 }
 
 function clearDigiLog() {
-    if (!digiQsoLog.length) { alert('Log is already empty.'); return; }
+    if (!qsoLog.length) { alert('Log is already empty.'); return; }
     if (confirm('Download the log as ADIF before clearing?')) { downloadAdif(); }
-    if (confirm('Clear all ' + digiQsoLog.length + ' logged QSO(s)?')) {
-        digiQsoLog = [];
-        try { localStorage.removeItem('digiQsoLog'); } catch(e) {}
+    if (confirm('Clear all ' + qsoLog.length + ' logged QSO(s)?')) {
+        qsoLog = [];
+        try { localStorage.removeItem('qsoLog'); } catch(e) {}
         renderDigiLog();
     }
 }
@@ -6050,12 +6144,21 @@ function initDigiHandlers() {
     // Load persisted settings
     var savedCall = localStorage.getItem('digiMyCall');
     var savedGrid = localStorage.getItem('digiGrid');
-    var savedLog  = localStorage.getItem('digiQsoLog');
+    // Load shared QSO log (migrate from old 'digiQsoLog' key if needed)
+    var savedLog = localStorage.getItem('qsoLog') || localStorage.getItem('digiQsoLog');
     var myCallEl = document.getElementById('digiMyCall');
     var gridEl = document.getElementById('digiGrid');
     if (savedCall && myCallEl) myCallEl.value = savedCall;
     if (savedGrid && gridEl) gridEl.value = savedGrid;
-    if (savedLog) { try { digiQsoLog = JSON.parse(savedLog); renderDigiLog(); } catch(e) {} }
+    if (savedLog) {
+        try {
+            qsoLog = JSON.parse(savedLog);
+            renderDigiLog();
+            // Migrate old key
+            localStorage.setItem('qsoLog', JSON.stringify(qsoLog));
+            try { localStorage.removeItem('digiQsoLog'); } catch(e2) {}
+        } catch(e) {}
+    }
 
     // Persist MY call and grid on change; rebuild msg rows on change
     if (myCallEl) {
@@ -6183,26 +6286,22 @@ function initDigiHandlers() {
         });
     }
 
-    // Log modal open button
+    // Log modal open button (in DIGI panel)
     var logBtn = document.getElementById('digiLogBtn');
-    if (logBtn) {
-        logBtn.addEventListener('click', function() {
-            renderDigiLog();
-            document.getElementById('digiLogModal').classList.add('visible');
-        });
-    }
+    if (logBtn) { logBtn.addEventListener('click', openLogModal); }
 
     // Log modal close button
     var logCloseBtn = document.getElementById('digiLogCloseBtn');
     if (logCloseBtn) {
         logCloseBtn.addEventListener('click', function() {
+            cancelEditDigiQso();
             document.getElementById('digiLogModal').classList.remove('visible');
         });
     }
 
     // Add QSO button
     var addQsoBtn = document.getElementById('digiAddQsoBtn');
-    if (addQsoBtn) { addQsoBtn.addEventListener('click', function() { renderDigiLog(); addDigiQso(); }); }
+    if (addQsoBtn) { addQsoBtn.addEventListener('click', addDigiQso); }
 
     // Download ADIF button
     var adifBtn = document.getElementById('digiAdifBtn');
@@ -6211,6 +6310,16 @@ function initDigiHandlers() {
     // Clear log button
     var clearLogBtn = document.getElementById('digiClearLogBtn');
     if (clearLogBtn) { clearLogBtn.addEventListener('click', clearDigiLog); }
+
+    // Enter key in log edit row → save if callsign is not empty
+    var logRows = document.getElementById('digiLogRows');
+    if (logRows) {
+        logRows.addEventListener('keydown', function(e) {
+            if (e.key !== 'Enter' || digiLogEditIdx < 0) return;
+            var callEl = document.getElementById('dleCall');
+            if (callEl && callEl.value.trim()) saveDigiQso(digiLogEditIdx);
+        });
+    }
 
     // Log QSO button (manual log)
     var logQsoBtn = document.getElementById('digiLogQsoBtn');
@@ -6342,6 +6451,10 @@ buildColorTable();
 initSliderTracking();
 initCWHandlers();
 initDigiHandlers();
+
+// Top bar LOG button → SSB/voice QSO log
+var qsoLogBtn = document.getElementById('qsoLogBtn');
+if (qsoLogBtn) { qsoLogBtn.addEventListener('click', logSSBQso); }
 renderBottomBar();
 drawMeter();
 updateClock();
