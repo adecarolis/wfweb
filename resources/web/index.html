@@ -897,30 +897,45 @@ body.digi-open .digi-bar {
 .digi-wf-marker {
     position: absolute;
     top: 0; bottom: 0;
-    width: 3px;
-    transform: translateX(-50%);
     pointer-events: none;
     z-index: 2;
+    border-left: 2px solid;
+    border-right: 2px solid;
 }
 .digi-wf-tx {
-    background: #00aaff;
-    box-shadow: 0 0 8px #00aaff, 0 0 3px #fff;
+    background: rgba(255,136,0,0.2);
+    border-color: rgba(255,136,0,0.7);
+}
+.digi-wf-tx.armed {
+    background: rgba(255,60,0,0.25);
+    border-color: rgba(255,60,0,0.8);
 }
 .digi-wf-rx {
-    width: 3px;
-    background: #00ff66;
-    box-shadow: 0 0 8px #00ff66, 0 0 3px #fff;
+    background: rgba(0,200,100,0.15);
+    border-color: rgba(0,200,100,0.6);
 }
 .digi-wf-label {
     position: absolute;
-    top: 3px; left: 5px;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
     font-family: 'Courier New', monospace;
     font-size: 11px; font-weight: bold;
     white-space: nowrap;
-    text-shadow: 0 0 4px currentColor;
+    padding: 1px 4px;
+    border-radius: 0 0 3px 3px;
 }
-.digi-wf-tx .digi-wf-label { color: #66ccff; }
-.digi-wf-rx .digi-wf-label { color: #66ffaa; }
+.digi-wf-tx .digi-wf-label {
+    background: rgba(255,136,0,0.85);
+    color: #000;
+}
+.digi-wf-tx.armed .digi-wf-label {
+    background: rgba(255,60,0,0.9);
+    color: #fff;
+}
+.digi-wf-rx .digi-wf-label {
+    background: rgba(0,200,100,0.8);
+    color: #000;
+}
 .digi-label {
     color: #08f;
     font-weight: bold;
@@ -2251,6 +2266,9 @@ var wfLabelCtx = null;
 var wfMinDb = -100;
 var wfMaxDb = -40;
 var wfLabels = [];          // [{freq, from, directed, cq}] — updated each decode slot
+var wfScrollCounter = 0;    // scroll every 4th frame (4x slower)
+var wfSlotLines = [];       // pixel rows where slot boundaries were drawn
+var wfLastSlotIndex = -1;   // tracks slot transitions for boundary lines
 var wfRe = null;            // reusable FFT real buffer (WF_FFT_SIZE)
 var wfIm = null;            // reusable FFT imag buffer (WF_FFT_SIZE)
 var wfMags = null;          // reusable magnitude buffer (WF_DISPLAY_BINS)
@@ -5008,21 +5026,23 @@ function digiCenterOffset() {
 
 function drawDigiWaterfall() {
     // --- Update DOM frequency markers ---
-    // Markers are placed at the CENTER of the signal's tone span (base + digiCenterOffset)
-    // so they visually align with the signal energy seen in the waterfall.
+    // Markers show the full signal bandwidth as a semi-transparent band
     var txEl = document.getElementById('digiWfTxMarker');
     var rxEl = document.getElementById('digiWfRxMarker');
-    var co = digiCenterOffset();
-    var txPct = ((digiTxFreq + co - WF_FREQ_LOW) / (WF_FREQ_HIGH - WF_FREQ_LOW) * 100).toFixed(3) + '%';
-    var rxPct = ((digiRxFreq + co - WF_FREQ_LOW) / (WF_FREQ_HIGH - WF_FREQ_LOW) * 100).toFixed(3) + '%';
+    var bwHz = digiCenterOffset() * 2; // full signal bandwidth in Hz
+    var freqRange = WF_FREQ_HIGH - WF_FREQ_LOW;
+    var bwPct = (bwHz / freqRange * 100).toFixed(3) + '%';
+    var txLeftPct = ((digiTxFreq - WF_FREQ_LOW) / freqRange * 100).toFixed(3) + '%';
+    var rxLeftPct = ((digiRxFreq - WF_FREQ_LOW) / freqRange * 100).toFixed(3) + '%';
     if (txEl) {
-        txEl.style.left = txPct;
-        var txColor = digiTxEnabled ? '#ff8800' : '#00aaff';
-        txEl.style.background = txColor;
-        var txLabel = txEl.querySelector('.digi-wf-label');
-        if (txLabel) txLabel.style.color = txColor;
+        txEl.style.left = txLeftPct;
+        txEl.style.width = bwPct;
+        if (digiTxEnabled) { txEl.classList.add('armed'); } else { txEl.classList.remove('armed'); }
     }
-    if (rxEl) rxEl.style.left = rxPct;
+    if (rxEl) {
+        rxEl.style.left = rxLeftPct;
+        rxEl.style.width = bwPct;
+    }
 
     // --- FFT spectrogram ---
     if (!wfCanvas) wfCanvas = document.getElementById('digiWfCanvas');
@@ -5038,6 +5058,8 @@ function drawDigiWaterfall() {
         wfCanvas.height = h;
         wfCtx = null; // force context re-fetch
         wfBufFull = false; // fresh canvas needs fresh data
+        wfSlotLines = []; // reset slot boundary lines
+        wfLastSlotIndex = -1;
     }
     if (!wfCtx) wfCtx = wfCanvas.getContext('2d');
     if (!wfColorTable) initWfColorTable();
@@ -5047,6 +5069,8 @@ function drawDigiWaterfall() {
         wfCtx.fillStyle = '#000';
         wfCtx.fillRect(0, 0, w, h);
         wfBufFull = false; // discard stale buffer so next RX-on starts fresh
+        wfSlotLines = []; // clear slot boundary lines
+        wfLastSlotIndex = -1;
         if (!wfLabelCanvas) wfLabelCanvas = document.getElementById('digiWfLabelCanvas');
         if (wfLabelCanvas && wfLabelCtx) wfLabelCtx.clearRect(0, 0, w, h);
         return;
@@ -5084,10 +5108,33 @@ function drawDigiWaterfall() {
     else wfMaxDb = wfMaxDb * 0.995 + peakDb * 0.005;
     wfMinDb = wfMaxDb - 60; // 60 dB dynamic range
 
+    // Scroll 4x slower: only advance every 4th frame
+    wfScrollCounter++;
+    if (wfScrollCounter < 4) return;
+    wfScrollCounter = 0;
+
+    // Detect slot boundary by tracking the slot index (reliable across timing jitter)
+    var info = getDigiSlotInfo();
+    var isSlotBoundary = false;
+    if (wfLastSlotIndex < 0) wfLastSlotIndex = info.slotIndex;
+    if (info.slotIndex !== wfLastSlotIndex) {
+        wfLastSlotIndex = info.slotIndex;
+        isSlotBoundary = true;
+    }
+
     // Scroll canvas up by 1 pixel (oldest row goes off the top)
     var imgData = wfCtx.getImageData(0, 0, w, h);
     var data = imgData.data;
     data.copyWithin(0, w * 4); // shift rows 1..h-1 up to rows 0..h-2
+
+    // Age slot boundary lines (they scroll up with the waterfall)
+    for (var si = wfSlotLines.length - 1; si >= 0; si--) {
+        wfSlotLines[si]--;
+        if (wfSlotLines[si] < 0) wfSlotLines.splice(si, 1);
+    }
+    if (isSlotBoundary) {
+        wfSlotLines.push(h - 1);
+    }
 
     // Write new row at the bottom (with linear interpolation between bins)
     // Map canvas X to FFT bins covering WF_FREQ_LOW..WF_FREQ_HIGH only
@@ -5112,6 +5159,20 @@ function drawDigiWaterfall() {
         data[rowStart + x * 4 + 2] = col[2]; // B
         data[rowStart + x * 4 + 3] = 255;    // A
     }
+
+    // Draw slot boundary separators as thin horizontal lines
+    for (var si2 = 0; si2 < wfSlotLines.length; si2++) {
+        var sy = wfSlotLines[si2];
+        if (sy < 0 || sy >= h) continue;
+        var sRowStart = sy * w * 4;
+        for (var sx = 0; sx < w; sx++) {
+            data[sRowStart + sx * 4 + 0] = 80;  // R — dim cyan line
+            data[sRowStart + sx * 4 + 1] = 180; // G
+            data[sRowStart + sx * 4 + 2] = 220; // B
+            data[sRowStart + sx * 4 + 3] = 255; // A
+        }
+    }
+
     wfCtx.putImageData(imgData, 0, 0);
 
     // Draw callsign labels on a separate overlay canvas so they don't scroll with the waterfall
@@ -5124,8 +5185,8 @@ function drawDigiWaterfall() {
         // Clear the overlay every frame — labels simply appear/disappear, never slide
         wfLabelCtx.clearRect(0, 0, w, h);
         var currentSlot = getDigiSlotInfo().slotIndex;
-        // Filter to labels still within 4 periods at draw time (belt-and-suspenders)
-        var visibleLabels = wfLabels.filter(function(l) { return currentSlot - l.slotIndex < 4; });
+        // Filter to labels still within 5 periods at draw time (belt-and-suspenders)
+        var visibleLabels = wfLabels.filter(function(l) { return currentSlot - l.slotIndex < 5; });
         if (visibleLabels.length > 0) {
             var fontSize = 18;
             wfLabelCtx.save();
@@ -5141,9 +5202,8 @@ function drawDigiWaterfall() {
                 var strokeColor = lbl.cq ? '#006020' : '#005060';
                 var lineColor   = lbl.cq ? 'rgba(64,255,128,0.35)' : 'rgba(64,224,255,0.35)';
 
-                // Vertical line through full waterfall height, centered on the label box
-                // The label box spans screen-X from lx to lx+fontSize; center = lx + fontSize/2
-                var lineX = lx + Math.round(fontSize / 2) + 0.5;
+                // Vertical line at the exact frequency position; label centered around it
+                var lineX = lx + 0.5;
                 wfLabelCtx.save();
                 wfLabelCtx.strokeStyle = lineColor;
                 wfLabelCtx.lineWidth = 2;
@@ -5153,13 +5213,13 @@ function drawDigiWaterfall() {
                 wfLabelCtx.stroke();
                 wfLabelCtx.restore();
 
-                // Rotated callsign label — omitted on mobile (narrow canvas)
+                // Rotated callsign label at the top — omitted on mobile (narrow canvas)
                 if (w >= 500) {
                     wfLabelCtx.save();
                     wfLabelCtx.lineWidth = 2;
                     var tw = wfLabelCtx.measureText(lbl.from).width;
-                    // Translate so the label box is centered on lineX (= lx + fontSize/2)
-                    wfLabelCtx.translate(lineX - Math.round(fontSize / 2), h - 4);
+                    // Translate so the label box is centered on lineX, below the TX/RX indicator
+                    wfLabelCtx.translate(lineX - Math.round(fontSize / 2), 22 + tw + 4);
                     wfLabelCtx.rotate(-Math.PI / 2);
                     // Black background
                     wfLabelCtx.fillStyle = 'rgba(0,0,0,0.75)';
@@ -5221,8 +5281,8 @@ function onFt8DecodeResult(results, decodedSlotIndex) {
         }
     }
     if (digiDecodes.length > 300) digiDecodes.splice(0, digiDecodes.length - 300);
-    // Expire labels older than 4 slot periods
-    wfLabels = wfLabels.filter(function(l) { return decodedSlotIndex - l.slotIndex < 4; });
+    // Expire labels older than 5 slot periods
+    wfLabels = wfLabels.filter(function(l) { return decodedSlotIndex - l.slotIndex < 5; });
     for (var j = 0; j < results.length; j++) {
         var parts = results[j].msg.trim().split(/\s+/);
         var isCq = parts[0].toUpperCase() === 'CQ';
@@ -6480,6 +6540,7 @@ function initDigiHandlers() {
                 if (DIGI_BANDS[bi].label === sel) {
                     var freq = digiMode === 'FT4' ? DIGI_BANDS[bi].ft4 : DIGI_BANDS[bi].ft8;
                     send({ cmd: 'setFrequency', value: freq });
+                    wfLabels = [];
                     break;
                 }
             }
