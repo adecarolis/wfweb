@@ -2265,6 +2265,8 @@ var wfLabelCanvas = null;
 var wfLabelCtx = null;
 var wfMinDb = -100;
 var wfMaxDb = -40;
+var wfSlotPeakDb = -200;    // peak dB within current slot (for slow auto-gain)
+var wfSlotCount = 0;        // slots seen since start (faster adaptation initially)
 var wfLabels = [];          // [{freq, from, directed, cq}] — updated each decode slot
 var wfScrollCounter = 0;    // scroll every 4th frame (4x slower)
 var wfSlotLines = [];       // pixel rows where slot boundaries were drawn
@@ -4964,21 +4966,25 @@ function initWfColorTable() {
     wfColorTable = [];
     for (var i = 0; i < 256; i++) {
         var r, g, b;
-        if (i < 64) {
-            // black → deep blue
-            r = 0; g = 0; b = Math.round(i * 4);
-        } else if (i < 128) {
-            // deep blue → cyan
-            var t = i - 64;
-            r = 0; g = Math.round(t * 4); b = 255;
-        } else if (i < 192) {
-            // cyan → yellow
-            var t = i - 128;
-            r = Math.round(t * 4); g = 255; b = Math.max(0, 255 - t * 4);
+        if (i < 85) {
+            // black → dark blue (noise floor)
+            r = 0; g = 0; b = Math.round(i * 3);
+        } else if (i < 150) {
+            // dark blue → bright blue (weak signals stay blue)
+            var t = (i - 85) / 64;
+            r = 0; g = Math.round(t * 60); b = 255;
+        } else if (i < 190) {
+            // bright blue → cyan
+            var t = (i - 150) / 39;
+            r = 0; g = 60 + Math.round(t * 195); b = 255;
+        } else if (i < 225) {
+            // cyan → yellow (medium signals)
+            var t = (i - 190) / 34;
+            r = Math.round(t * 255); g = 255; b = Math.round(255 * (1 - t));
         } else {
-            // yellow → red/white
-            var t = i - 192;
-            r = 255; g = Math.max(0, 255 - t * 4); b = 0;
+            // yellow → red (strong signals)
+            var t = (i - 225) / 30;
+            r = 255; g = Math.round(255 * (1 - t)); b = 0;
         }
         wfColorTable[i] = [r, g, b];
     }
@@ -5103,10 +5109,8 @@ function drawDigiWaterfall() {
         if (db > peakDb) peakDb = db;
     }
 
-    // Slowly adapt the dB ceiling to the signal level
-    if (peakDb > wfMaxDb) wfMaxDb = peakDb;
-    else wfMaxDb = wfMaxDb * 0.995 + peakDb * 0.005;
-    wfMinDb = wfMaxDb - 60; // 60 dB dynamic range
+    // Track peak dB within the current slot (auto-gain updates at slot boundaries only)
+    if (peakDb > wfSlotPeakDb) wfSlotPeakDb = peakDb;
 
     // Scroll 4x slower: only advance every 4th frame
     wfScrollCounter++;
@@ -5134,6 +5138,13 @@ function drawDigiWaterfall() {
     }
     if (isSlotBoundary) {
         wfSlotLines.push(h - 1);
+        // Adapt dB range at slot boundaries only — keeps colors stable within each slot
+        // and changes gradually over minutes.  First few slots adapt faster for initial calibration.
+        var alpha = wfSlotCount < 3 ? 0.5 : 0.15;
+        wfMaxDb = wfMaxDb * (1 - alpha) + wfSlotPeakDb * alpha;
+        wfMinDb = wfMaxDb - 60; // 60 dB dynamic range
+        wfSlotPeakDb = -200;
+        wfSlotCount++;
     }
 
     // Write new row at the bottom (with linear interpolation between bins)
