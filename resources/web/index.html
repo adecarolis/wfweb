@@ -2135,7 +2135,10 @@ var reconnectTimer = null;
 var defaultModes = ['LSB', 'USB', 'AM', 'CW', 'RTTY', 'FM', 'CW-R'];
 
 // Band frequency memory: remember last-used frequency per band label
-var bandLastFreq = {};
+var bandLastFreq = (function() {
+    try { var s = localStorage.getItem('bandLastFreq'); if (s) return JSON.parse(s); } catch(e) {}
+    return {};
+})();
 var BAND_RANGES = {
     '1.8':  [1800000,  2000000],
     '3.5':  [3500000,  4000000],
@@ -2508,7 +2511,11 @@ function updateFrequency(hz) {
     // Update band frequency memory
     for (var _b in BAND_RANGES) {
         var _r = BAND_RANGES[_b];
-        if (hz >= _r[0] && hz < _r[1]) { bandLastFreq[_b] = hz; break; }
+        if (hz >= _r[0] && hz < _r[1]) {
+            bandLastFreq[_b] = hz;
+            try { localStorage.setItem('bandLastFreq', JSON.stringify(bandLastFreq)); } catch(e) {}
+            break;
+        }
     }
 
     // Store frequency for current VFO only
@@ -3970,24 +3977,46 @@ function drawSpectrum() {
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    // Frequency marker (IC-7300 style: white triangle + vertical line)
-    if (currentFreq > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
-        var freqMHz = currentFreq / 1e6;
-        if (freqMHz >= spectStartFreq && freqMHz <= spectEndFreq) {
-            var fxPos = ((freqMHz - spectStartFreq) / (spectEndFreq - spectStartFreq)) * w;
-            // Vertical line
-            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-            ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(fxPos, 0); ctx.lineTo(fxPos, plotH); ctx.stroke();
-            // White triangle at bottom
-            ctx.fillStyle = '#fff';
-            ctx.beginPath();
-            ctx.moveTo(fxPos - 5, plotH);
-            ctx.lineTo(fxPos + 5, plotH);
-            ctx.lineTo(fxPos, plotH - 7);
-            ctx.closePath();
-            ctx.fill();
+    // Passband indicator bar (anchored to spectrum center, independent of currentFreq)
+    if (currentFilterWidth > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
+        var spanHz = (spectEndFreq - spectStartFreq) * 1e6;
+        var bwPx = (currentFilterWidth / spanHz) * w;
+        var cx = w / 2;
+        var pbLeft, pbRight;
+        if (currentMode === 'USB' || currentMode === 'RTTY') {
+            pbLeft = cx; pbRight = cx + bwPx;
+        } else if (currentMode === 'LSB') {
+            pbLeft = cx - bwPx; pbRight = cx;
+        } else {
+            pbLeft = cx - bwPx / 2; pbRight = cx + bwPx / 2;
         }
+        pbLeft = Math.max(0, pbLeft);
+        pbRight = Math.min(w, pbRight);
+        if (pbRight > pbLeft) {
+            ctx.fillStyle = 'rgba(255,255,255,0.08)';
+            ctx.fillRect(pbLeft, 0, pbRight - pbLeft, plotH);
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(pbLeft, 0); ctx.lineTo(pbLeft, plotH); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(pbRight, 0); ctx.lineTo(pbRight, plotH); ctx.stroke();
+        }
+    }
+
+    // Frequency marker (IC-7300 style: white triangle + vertical line, anchored to center)
+    if (spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
+        var fxPos = w / 2;
+        // Vertical line
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(fxPos, 0); ctx.lineTo(fxPos, plotH); ctx.stroke();
+        // White triangle at bottom
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.moveTo(fxPos - 5, plotH);
+        ctx.lineTo(fxPos + 5, plotH);
+        ctx.lineTo(fxPos, plotH - 7);
+        ctx.closePath();
+        ctx.fill();
     }
 
     // Freq labels
@@ -4013,15 +4042,37 @@ function drawWaterfall() {
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(wfOffCanvas, 0, 0, w, h);
 
-    // Frequency indicator
-    if (currentFreq > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
-        var freqMHz = currentFreq / 1e6;
-        if (freqMHz >= spectStartFreq && freqMHz <= spectEndFreq) {
-            var xPos = ((freqMHz - spectStartFreq) / (spectEndFreq - spectStartFreq)) * w;
-            ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-            ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(xPos, 0); ctx.lineTo(xPos, h); ctx.stroke();
+    // Passband indicator bar (anchored to spectrum center)
+    if (currentFilterWidth > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
+        var spanHz = (spectEndFreq - spectStartFreq) * 1e6;
+        var bwPx = (currentFilterWidth / spanHz) * w;
+        var cx = w / 2;
+        var pbL, pbR;
+        if (currentMode === 'USB' || currentMode === 'RTTY') {
+            pbL = cx; pbR = cx + bwPx;
+        } else if (currentMode === 'LSB') {
+            pbL = cx - bwPx; pbR = cx;
+        } else {
+            pbL = cx - bwPx / 2; pbR = cx + bwPx / 2;
         }
+        pbL = Math.max(0, pbL);
+        pbR = Math.min(w, pbR);
+        if (pbR > pbL) {
+            ctx.fillStyle = 'rgba(255,255,255,0.06)';
+            ctx.fillRect(pbL, 0, pbR - pbL, h);
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(pbL, 0); ctx.lineTo(pbL, h); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(pbR, 0); ctx.lineTo(pbR, h); ctx.stroke();
+        }
+    }
+
+    // Frequency indicator (anchored to center)
+    if (spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
+        var xPos = w / 2;
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(xPos, 0); ctx.lineTo(xPos, h); ctx.stroke();
     }
 }
 
