@@ -40,6 +40,7 @@ static void cleanup(int sig)
         qInfo() << "hangup signal";
         break;
 #endif
+    case SIGINT:
     case SIGTERM:
         qInfo() << "terminate signal caught";
         if (w!=Q_NULLPTR) w->deleteLater();

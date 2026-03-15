@@ -1711,6 +1711,16 @@ void webServer::sendPeriodicStatus()
         status["swrMeter"] = swr.value.toDouble();
     }
 
+    cacheItem alc = queue->getCache(funcALCMeter, 0);
+    if (alc.value.isValid()) {
+        status["alcMeter"] = alc.value.toDouble();
+    }
+
+    cacheItem txStatus = queue->getCache(funcTransceiverStatus, 0);
+    if (txStatus.value.isValid()) {
+        status["transmitting"] = txStatus.value.toBool();
+    }
+
     sendJsonToAll(status);
 }
 

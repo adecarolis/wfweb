@@ -2499,6 +2499,7 @@ function handleMessage(msg) {
             if (msg.filterShape !== undefined) updateFilterShapeBtn(msg.filterShape);
             break;
         case 'meters':
+            if (msg.transmitting !== undefined) updateTxStatus(msg.transmitting);
             if (msg.sMeter !== undefined) updateSMeter(msg.sMeter);
             if (msg.powerMeter !== undefined) updatePowerMeter(msg.powerMeter);
             if (msg.swrMeter !== undefined) updateSwrMeter(msg.swrMeter);

@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core serialport network multimedia
+QT       += core serialport network multimedia websockets
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
@@ -13,7 +13,7 @@ TEMPLATE = app
 
 CONFIG += console
 
-DEFINES += WFVIEW_VERSION=\\\"2.11\\\"
+DEFINES += WFVIEW_VERSION=\\\"0.2.4\\\"
 
 DEFINES += BUILD_WFSERVER
 
@@ -162,7 +162,8 @@ win32:DEFINES += UNAME=\\\"build\\\"
 
 
 RESOURCES += qdarkstyle/style.qrc \
-    resources/resources.qrc
+    resources/resources.qrc \
+    resources/web.qrc
 
 unix:target.path = $$PREFIX/bin
 INSTALLS += target
@@ -225,7 +226,8 @@ SOURCES += \
     src/keyboard.cpp \
     src/rigserver.cpp \
     src/ft4222handler.cpp \
-    src/rtpaudio.cpp
+    src/rtpaudio.cpp \
+    src/webserver.cpp
 
 
 HEADERS  += \
@@ -283,4 +285,5 @@ HEADERS  += \
     include/yaesuudpbase.h \
     include/yaesuudpcat.h \
     include/yaesuudpcontrol.h \
-    include/yaesuudpscope.h
+    include/yaesuudpscope.h \
+    include/webserver.h

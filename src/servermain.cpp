@@ -25,11 +25,20 @@ servermain::servermain(const QString settingsFile)
     qRegisterMetaType<networkStatus>();
     qRegisterMetaType<codecType>();
     qRegisterMetaType<errorType>();
+    qRegisterMetaType<cacheItem>();
+    qRegisterMetaType<queueItem>();
+    qRegisterMetaType<funcs>();
+    qRegisterMetaType<modeInfo>();
+    qRegisterMetaType<vfo_t>();
+    qRegisterMetaType<scopeData>();
+    qRegisterMetaType<centerSpanData>();
+    qRegisterMetaType<meter_t>();
+    qRegisterMetaType<spectrumBounds>();
+    qRegisterMetaType<rigTypedef>();
 
     this->setObjectName("wfserver");
     queue = cachingQueue::getInstance(this);
-    // wfserver doesn't use the queue, it will send commands direct to the rig interface
-    queue->interval(-1);
+    queue->interval(100); // 100ms polling interval for serial connections
     // We need to open rig files
 
     // Make sure we know about any changes to rigCaps
@@ -48,6 +57,20 @@ servermain::servermain(const QString settingsFile)
     audioDev->enumerate();
 
     setInitialTiming();
+
+    // Initialize web server before openRig so audio connections can be made
+    if (prefs.webPort > 0) {
+        web = new webServer();
+        webThread = new QThread(this);
+        webThread->setObjectName("WebServer()");
+        web->moveToThread(webThread);
+        connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), web, SLOT(receiveRigCaps(rigCapabilities*)));
+        connect(webThread, SIGNAL(finished()), web, SLOT(deleteLater()));
+        webThread->start();
+        QMetaObject::invokeMethod(web, "init", Qt::QueuedConnection,
+            Q_ARG(quint16, prefs.webPort), Q_ARG(quint16, prefs.webPort + 1));
+        qInfo(logSystem()) << "Web server starting on port" << prefs.webPort;
+    }
 
     openRig();
 
@@ -72,6 +95,10 @@ servermain::~servermain()
     if (serverThread != Q_NULLPTR) {
         serverThread->quit();
         serverThread->wait();
+    }
+    if (webThread != Q_NULLPTR) {
+        webThread->quit();
+        webThread->wait();
     }
 
     if (audioDev != Q_NULLPTR) {
@@ -106,6 +133,12 @@ void servermain::openRig()
                 radio->rig->commSetup(rigList,radio->civAddr, radio->serialPort, radio->baudRate, QString("none"),0 ,radio->waterfallFormat);
             }, Qt::QueuedConnection);
         }
+    }
+
+    // Setup USB audio for web server (serial connections use USB audio)
+    if (web != Q_NULLPTR) {
+        QMetaObject::invokeMethod(web, "setupUsbAudio", Qt::QueuedConnection,
+            Q_ARG(quint32, 48000));
     }
 }
 
@@ -166,6 +199,13 @@ void servermain::makeRig()
             //connect(this, SIGNAL(setPTT(bool)), radio->rig, SLOT(setPTT(bool)));
             //connect(this, SIGNAL(getPTT()), radio->rig, SLOT(getPTT()));
             connect(this, SIGNAL(getDebug()), radio->rig, SLOT(getDebug()));
+
+            // Web server audio connections
+            if (web != Q_NULLPTR) {
+                connect(radio->rig, SIGNAL(haveAudioData(audioPacket)), web, SLOT(receiveRxAudio(audioPacket)));
+                connect(web, SIGNAL(haveTxAudioData(audioPacket)), radio->rig, SLOT(receiveWebTxAudio(audioPacket)));
+            }
+
             if (radio->rigThread->isRunning()) {
                 qInfo(logSystem()) << "Rig thread is running";
             }
@@ -258,14 +298,23 @@ void servermain::receiveRigCaps(rigCapabilities* rigCaps)
     // Entry point for unknown rig being identified at the start of the program.
     //now we know what the rig ID is:
 
+    // Signal may come from rigCommander or cachingQueue
     rigCommander* sender = qobject_cast<rigCommander*>(QObject::sender());
+
+    qInfo(logSystem()) << "receiveRigCaps called, sender:" << QObject::sender() << "rigCommander cast:" << sender << "rigCaps:" << rigCaps;
 
     // Use the GUID to determine which radio the response is from
     for (RIGCONFIG* radio : serverConfig.rigs)
     {
+        bool guidMatch = (sender != Q_NULLPTR && radio->rig != Q_NULLPTR && !memcmp(sender->getGUID(), radio->guid, GUIDLEN));
+        bool fromQueue = (sender == Q_NULLPTR); // Signal came from cachingQueue
 
-        if (sender != Q_NULLPTR && radio->rig != Q_NULLPTR && !radio->rigAvailable && !memcmp(sender->getGUID(), radio->guid, GUIDLEN))
+        qInfo(logSystem()) << "  radio:" << radio->rigName << "guidMatch:" << guidMatch << "fromQueue:" << fromQueue
+                           << "rigAvailable:" << radio->rigAvailable << "rig:" << radio->rig;
+
+        if ((guidMatch || fromQueue) && radio->rig != Q_NULLPTR && !radio->rigAvailable)
         {
+            qInfo(logSystem()) << "  -> MATCHED, setting up polling";
 
             qDebug(logSystem()) << "Rig name: " << rigCaps->modelName;
             qDebug(logSystem()) << "Has LAN capabilities: " << rigCaps->hasLan;
@@ -292,8 +341,86 @@ void servermain::receiveRigCaps(rigCapabilities* rigCaps)
                 .arg(rigCaps->guid[15], 2, 16, QLatin1Char('0'))
                 ;
             radio->rigCaps = rigCaps;
-            // Added so that server receives rig capabilities.
-            //emit sendRigCaps(rigCaps);
+            radio->rigAvailable = true;
+
+            // Calculate queue interval based on baud rate, same as wfview
+            {
+                quint32 baud = prefs.serialPortBaud;
+                if (baud == 0) baud = 9600;
+                unsigned int usPerByte = 9600*1000 / baud;
+                unsigned int msMinTiming = usPerByte * 10 * 2 / 1000;
+                if (msMinTiming < 25) msMinTiming = 25;
+                if (rigCaps->hasFDcomms) {
+                    queue->interval(msMinTiming);
+                } else {
+                    queue->interval(msMinTiming * 4);
+                }
+                qInfo(logSystem()) << "Queue interval set to" << queue->interval() << "ms (baud:" << baud << "hasFDcomms:" << rigCaps->hasFDcomms << ")";
+            }
+
+            // Enable CI-V Auto Information so the rig pushes meter/freq/mode
+            // updates automatically (same as wfview does in setupInitialValues)
+            if (rigCaps->commands.contains(funcAutoInformation)) {
+                queue->add(priorityImmediate, queueItem(funcAutoInformation, QVariant::fromValue(uchar(2)), false, 0));
+                // Enable metering data in the AutoInformation stream
+                if (rigCaps->commands.contains(funcSWRMeter))
+                    queue->add(priorityImmediate, queueItem(funcSWRMeter, QVariant::fromValue(uchar(1)), false, 0));
+                if (rigCaps->commands.contains(funcALCMeter))
+                    queue->add(priorityImmediate, queueItem(funcALCMeter, QVariant::fromValue(uchar(1)), false, 0));
+                if (rigCaps->commands.contains(funcCompMeter))
+                    queue->add(priorityImmediate, queueItem(funcCompMeter, QVariant::fromValue(uchar(1)), false, 0));
+                if (rigCaps->commands.contains(funcIdMeter))
+                    queue->add(priorityImmediate, queueItem(funcIdMeter, QVariant::fromValue(uchar(1)), false, 0));
+                if (rigCaps->commands.contains(funcVdMeter))
+                    queue->add(priorityImmediate, queueItem(funcVdMeter, QVariant::fromValue(uchar(1)), false, 0));
+                qInfo(logSystem()) << "Auto Information enabled for meters";
+            }
+
+            // Setup recurring poll commands for the web server
+            if (web != Q_NULLPTR) {
+                vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
+                queue->addUnique(priorityHigh, t.freqFunc, true, 0);
+                queue->addUnique(priorityHigh, t.modeFunc, true, 0);
+                queue->addUnique(priorityHighest, queueItem(funcSMeter, true, 0));
+                if (rigCaps->commands.contains(funcPowerMeter))
+                    queue->addUnique(priorityHighest, queueItem(funcPowerMeter, true, 0));
+                if (rigCaps->commands.contains(funcSWRMeter))
+                    queue->addUnique(priorityHighest, queueItem(funcSWRMeter, true, 0));
+                if (rigCaps->commands.contains(funcALCMeter))
+                    queue->addUnique(priorityHighest, queueItem(funcALCMeter, true, 0));
+
+                // Gains and settings
+                if (rigCaps->commands.contains(funcAfGain))
+                    queue->addUnique(priorityMedium, funcAfGain, true, 0);
+                if (rigCaps->commands.contains(funcRfGain))
+                    queue->addUnique(priorityMedium, funcRfGain, true, 0);
+                if (rigCaps->commands.contains(funcSquelch))
+                    queue->addUnique(priorityMedium, funcSquelch, true, 0);
+                if (rigCaps->commands.contains(funcRFPower))
+                    queue->addUnique(priorityMedium, funcRFPower, true, 0);
+                if (rigCaps->commands.contains(funcPreamp))
+                    queue->addUnique(priorityMediumLow, funcPreamp, true, 0);
+                if (rigCaps->commands.contains(funcAttenuator))
+                    queue->addUnique(priorityMediumLow, funcAttenuator, true, 0);
+                if (rigCaps->commands.contains(funcNoiseBlanker))
+                    queue->addUnique(priorityMediumLow, funcNoiseBlanker, true, 0);
+                if (rigCaps->commands.contains(funcNoiseReduction))
+                    queue->addUnique(priorityMediumLow, funcNoiseReduction, true, 0);
+                if (rigCaps->commands.contains(funcFilterWidth))
+                    queue->addUnique(priorityMedium, funcFilterWidth, true, 0);
+                if (rigCaps->commands.contains(funcTransceiverStatus))
+                    queue->addUnique(priorityHighest, queueItem(funcTransceiverStatus, true, 0));
+                if (rigCaps->commands.contains(funcSplitStatus))
+                    queue->addUnique(priorityMediumLow, funcSplitStatus, true, 0);
+
+                // Spectrum scope
+                if (rigCaps->hasSpectrum) {
+                    queue->add(priorityHigh, queueItem(funcScopeOnOff, QVariant::fromValue(quint8(1)), true));
+                    queue->add(priorityHigh, queueItem(funcScopeDataOutput, QVariant::fromValue(quint8(1)), false));
+                }
+
+                qInfo(logSystem()) << "Web server polling commands configured for" << rigCaps->modelName;
+            }
         }
     }
     return;
@@ -416,6 +543,7 @@ void servermain::setDefPrefs()
     defPrefs.localAFgain = 255;
     defPrefs.tcpPort = 0;
     defPrefs.audioSystem = qtAudio;
+    defPrefs.webPort = 8080;
     defPrefs.rxAudio.name = QString("default");
     defPrefs.txAudio.name = QString("default");
 
@@ -434,6 +562,7 @@ void servermain::loadSettings()
     qInfo(logSystem()) << "Loading settings from " << settings->fileName();
     prefs.audioSystem = static_cast<audioType>(settings->value("AudioSystem", defPrefs.audioSystem).toInt());
     prefs.manufacturer = static_cast<manufacturersType_t>(settings->value("Manufacturer",defPrefs.manufacturer).toInt());
+    prefs.webPort = settings->value("WebServerPort", defPrefs.webPort).toInt();
 
     int numRadios = settings->beginReadArray("Radios");
     if (numRadios == 0) {
