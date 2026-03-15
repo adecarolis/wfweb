@@ -8,7 +8,7 @@ QT       += core serialport network multimedia websockets
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
-TARGET = wfserver
+TARGET = wfweb
 TEMPLATE = app
 
 CONFIG += console

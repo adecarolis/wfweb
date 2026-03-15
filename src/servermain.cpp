@@ -36,7 +36,7 @@ servermain::servermain(const QString settingsFile)
     qRegisterMetaType<spectrumBounds>();
     qRegisterMetaType<rigTypedef>();
 
-    this->setObjectName("wfserver");
+    this->setObjectName("wfweb");
     queue = cachingQueue::getInstance(this);
     queue->interval(100); // 100ms polling interval for serial connections
     // We need to open rig files

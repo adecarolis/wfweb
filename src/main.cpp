@@ -27,6 +27,7 @@ bool debugMode=false;
 QScopedPointer<QFile>   m_logFile;
 QMutex logMutex;
 servermain* w=Q_NULLPTR;
+keyboard* kb=Q_NULLPTR;
 
 #ifdef Q_OS_WIN
 bool __stdcall cleanup(DWORD sig)
@@ -43,6 +44,7 @@ static void cleanup(int sig)
     case SIGINT:
     case SIGTERM:
         qInfo() << "terminate signal caught";
+        if (kb!=Q_NULLPTR) kb->terminate();
         if (w!=Q_NULLPTR) w->deleteLater();
         QCoreApplication::quit();
         break;
@@ -103,8 +105,8 @@ int main(int argc, char *argv[])
     QCoreApplication a(argc, argv);
     a.setOrganizationName("wfview");
     a.setOrganizationDomain("wfview.org");
-    a.setApplicationName("wfserver");
-    keyboard* kb = new keyboard();
+    a.setApplicationName("wfweb");
+    kb = new keyboard();
     kb->start();
 #else
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
@@ -130,7 +132,7 @@ int main(int argc, char *argv[])
 
     const QString helpText = QString("\nUsage: -l --logfile filename.log, -s --settings filename.ini, -c --clearconfig CONFIRM, -b --background (not Windows), -d --debug, -v --version\n"); // TODO...
 #ifdef BUILD_WFSERVER
-    const QString version = QString("wfserver version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
+    const QString version = QString("wfweb version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
         .arg(QString(WFVIEW_VERSION))
         .arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
         .arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture())
