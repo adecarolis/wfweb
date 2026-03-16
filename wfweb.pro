@@ -168,6 +168,10 @@ RESOURCES += qdarkstyle/style.qrc \
 unix:target.path = $$PREFIX/bin
 INSTALLS += target
 
+unix:systemd.files = systemd/wfweb@.service
+unix:systemd.path = $$PREFIX/lib/systemd/system
+INSTALLS += systemd
+
 linux:LIBS += -L./ -lopus
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus 
 
