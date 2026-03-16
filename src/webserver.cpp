@@ -6,6 +6,17 @@
 #include <QProcess>
 #include <QSslConfiguration>
 #include <QTimer>
+#include <QThread>
+
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <objbase.h>
+#include <openssl/evp.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
+#include <openssl/pem.h>
+#include <openssl/bn.h>
+#endif
 
 webServer::webServer(QObject *parent) :
     QObject(parent)
@@ -28,6 +39,11 @@ webServer::~webServer()
         delete usbAudioOutput;
         usbAudioOutput = nullptr;
         usbAudioOutputDevice = nullptr;
+    }
+    if (usbAudioPollTimer) {
+        usbAudioPollTimer->stop();
+        delete usbAudioPollTimer;
+        usbAudioPollTimer = nullptr;
     }
     if (usbAudioInput) {
         usbAudioInput->stop();
@@ -56,6 +72,73 @@ webServer::~webServer()
     wsClients.clear();
 }
 
+
+#ifdef Q_OS_WIN
+// Generate a self-signed PEM certificate and key using the OpenSSL C API.
+// Returns true on success, writing PEM files to certPath and keyPath.
+static bool generateSelfSignedCert(const QString &certPath, const QString &keyPath)
+{
+    bool ok = false;
+    EVP_PKEY *pkey = nullptr;
+    X509 *x509 = nullptr;
+    BIO *certBio = nullptr;
+    BIO *keyBio = nullptr;
+    RSA *rsa = nullptr;
+    BIGNUM *bn = nullptr;
+
+    // Generate 2048-bit RSA key
+    pkey = EVP_PKEY_new();
+    if (!pkey) goto cleanup;
+
+    rsa = RSA_new();
+    bn = BN_new();
+    if (!rsa || !bn) goto cleanup;
+    if (!BN_set_word(bn, RSA_F4)) goto cleanup;
+    if (!RSA_generate_key_ex(rsa, 2048, bn, nullptr)) goto cleanup;
+    if (!EVP_PKEY_assign_RSA(pkey, rsa)) goto cleanup;
+    rsa = nullptr; // now owned by pkey
+
+    // Create X509 certificate
+    x509 = X509_new();
+    if (!x509) goto cleanup;
+
+    ASN1_INTEGER_set(X509_get_serialNumber(x509), 1);
+    X509_gmtime_adj(X509_get_notBefore(x509), 0);
+    X509_gmtime_adj(X509_get_notAfter(x509), 365L * 10 * 24 * 3600); // 10 years
+    X509_set_pubkey(x509, pkey);
+
+    {
+        X509_NAME *name = X509_get_subject_name(x509);
+        X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC,
+                                   reinterpret_cast<const unsigned char *>("wfview"), -1, -1, 0);
+        X509_set_issuer_name(x509, name); // self-signed
+    }
+
+    if (!X509_sign(x509, pkey, EVP_sha256())) goto cleanup;
+
+    // Write certificate PEM
+    certBio = BIO_new_file(certPath.toLocal8Bit().constData(), "wb");
+    if (!certBio) goto cleanup;
+    if (!PEM_write_bio_X509(certBio, x509)) goto cleanup;
+
+    // Write private key PEM (unencrypted)
+    keyBio = BIO_new_file(keyPath.toLocal8Bit().constData(), "wb");
+    if (!keyBio) goto cleanup;
+    if (!PEM_write_bio_PrivateKey(keyBio, pkey, nullptr, nullptr, 0, nullptr, nullptr)) goto cleanup;
+
+    ok = true;
+
+cleanup:
+    if (certBio) BIO_free(certBio);
+    if (keyBio) BIO_free(keyBio);
+    if (x509) X509_free(x509);
+    if (pkey) EVP_PKEY_free(pkey);
+    if (rsa) RSA_free(rsa);
+    if (bn) BN_free(bn);
+    return ok;
+}
+#endif
+
 bool webServer::setupSsl()
 {
     if (!QSslSocket::supportsSsl()) {
@@ -71,6 +154,13 @@ bool webServer::setupSsl()
     // Generate self-signed cert if not present
     if (!QFile::exists(certPath) || !QFile::exists(keyPath)) {
         qInfo() << "Web: Generating self-signed SSL certificate...";
+#ifdef Q_OS_WIN
+        // Use OpenSSL C API directly (openssl CLI not available on Windows)
+        if (!generateSelfSignedCert(certPath, keyPath)) {
+            qWarning() << "Web: Failed to generate SSL certificate via OpenSSL API";
+            return false;
+        }
+#else
         QProcess proc;
         proc.start("openssl", QStringList()
             << "req" << "-x509" << "-newkey" << "rsa:2048"
@@ -81,6 +171,7 @@ bool webServer::setupSsl()
             qWarning() << "Web: Failed to generate SSL certificate:" << proc.readAllStandardError();
             return false;
         }
+#endif
         qInfo() << "Web: SSL certificate generated at" << certPath;
     }
 
@@ -1919,12 +2010,18 @@ void webServer::onRxConverted(audioPacket audio)
     sendBinaryToAudioClients(msg);
 }
 
+
 void webServer::setupUsbAudio(quint32 sampleRate)
 {
     if (audioConfigured) {
         qInfo() << "Web: Audio already configured, skipping";
         return;
     }
+
+#ifdef Q_OS_WIN
+    // Ensure COM is initialized on this thread (required for Windows audio APIs).
+    CoInitializeEx(NULL, COINIT_MULTITHREADED);
+#endif
 
     // Find the rig's USB audio capture device.
     // With PulseAudio the IC-7300 shows as "USB Audio CODEC" (matches "USB").
@@ -1975,11 +2072,17 @@ void webServer::setupUsbAudio(quint32 sampleRate)
     }
 
     usbAudioInput = new QAudioInput(usbDevice, format, this);
+
+#ifdef Q_OS_WIN
+    // Monitor state changes (Windows audio diagnostics)
+    connect(usbAudioInput, &QAudioInput::stateChanged, this, &webServer::onAudioStateChanged);
+#endif
+
 #else
     QAudioDevice usbDevice;
     bool found = false;
-    qInfo() << "Web: Available audio input devices:";
-    for (const QAudioDevice &dev : QMediaDevices::audioInputs()) {
+    QList<QAudioDevice> inputDevices = QMediaDevices::audioInputs();
+    for (const QAudioDevice &dev : inputDevices) {
         qInfo() << "Web:  " << dev.description();
         if (!found && (dev.description().contains("USB", Qt::CaseInsensitive) ||
                        dev.description().contains("CODEC", Qt::CaseInsensitive))) {
@@ -2006,6 +2109,9 @@ void webServer::setupUsbAudio(quint32 sampleRate)
     format.setSampleFormat(QAudioFormat::Int16);
 
     usbAudioInput = new QAudioSource(usbDevice, format, this);
+#ifdef Q_OS_WIN
+    connect(usbAudioInput, &QAudioSource::stateChanged, this, &webServer::onAudioStateChanged);
+#endif
 #endif
 
     rigSampleRate = format.sampleRate();
@@ -2026,6 +2132,14 @@ void webServer::setupUsbAudio(quint32 sampleRate)
     }
 
     connect(usbAudioDevice, &QIODevice::readyRead, this, &webServer::readUsbAudio);
+
+#ifdef Q_OS_WIN
+    // On Windows, readyRead is not reliably emitted for QAudioInput in pull mode.
+    // Use a poll timer as a fallback to ensure we read audio data regularly.
+    usbAudioPollTimer = new QTimer(this);
+    connect(usbAudioPollTimer, &QTimer::timeout, this, &webServer::readUsbAudio);
+    usbAudioPollTimer->start(20);  // 20ms = 960 samples at 48kHz
+#endif
 
     audioConfigured = true;
     qInfo() << "Web: USB audio capture configured, sampleRate=" << rigSampleRate
@@ -2116,6 +2230,28 @@ void webServer::setupUsbAudio(quint32 sampleRate)
     }
 }
 
+void webServer::onAudioStateChanged(QAudio::State state)
+{
+#ifdef Q_OS_WIN
+    if (state == QAudio::StoppedState && usbAudioInput && usbAudioInput->error() != QAudio::NoError) {
+        qWarning() << "Web: Audio stopped with error, attempting restart...";
+        QTimer::singleShot(1000, this, [this]() {
+            if (usbAudioInput && usbAudioInput->state() == QAudio::StoppedState) {
+                usbAudioDevice = usbAudioInput->start();
+                if (usbAudioDevice) {
+                    connect(usbAudioDevice, &QIODevice::readyRead, this, &webServer::readUsbAudio);
+                    qInfo() << "Web: Audio restart successful";
+                } else {
+                    qWarning() << "Web: Audio restart failed";
+                }
+            }
+        });
+    }
+#else
+    Q_UNUSED(state)
+#endif
+}
+
 void webServer::readUsbAudio()
 {
     if (!usbAudioDevice || audioClients.isEmpty()) return;
@@ -2124,11 +2260,7 @@ void webServer::readUsbAudio()
     if (data.isEmpty()) return;
 
     // If stereo, mix down to mono (average L+R)
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     int channels = usbAudioInput ? usbAudioInput->format().channelCount() : 1;
-#else
-    int channels = usbAudioInput ? usbAudioInput->format().channelCount() : 1;
-#endif
     if (channels == 2) {
         int numSamples = data.size() / (2 * channels); // 16-bit stereo
         QByteArray mono;

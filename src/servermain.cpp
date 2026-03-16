@@ -312,7 +312,11 @@ void servermain::receiveRigCaps(rigCapabilities* rigCaps)
         qInfo(logSystem()) << "  radio:" << radio->rigName << "guidMatch:" << guidMatch << "fromQueue:" << fromQueue
                            << "rigAvailable:" << radio->rigAvailable << "rig:" << radio->rig;
 
+#ifdef Q_OS_WIN
+        if ((guidMatch || fromQueue) && radio->rig != Q_NULLPTR)
+#else
         if ((guidMatch || fromQueue) && radio->rig != Q_NULLPTR && !radio->rigAvailable)
+#endif
         {
             qInfo(logSystem()) << "  -> MATCHED, setting up polling";
 

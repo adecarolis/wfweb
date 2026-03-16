@@ -12,6 +12,7 @@ TARGET = wfweb
 TEMPLATE = app
 
 CONFIG += console
+win32:CONFIG += c++17
 
 DEFINES += WFVIEW_VERSION=\\\"0.2.6\\\"
 
@@ -24,28 +25,30 @@ CONFIG(debug, release|debug) {
   # For Debug builds only:
   linux:QMAKE_CXXFLAGS += -faligned-new
   win32 {
-    contains(QMAKE_TARGET.arch, x86_64) {
-      LIBS += -L../opus/win32/VS2015/x64/DebugDLL/
-      LIBS += -L../portaudio/msvc/X64/Debug/ -lportaudio_x64
-      contains(DEFINES,FTDI_SUPPORT){
-        LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\amd64 -lftd2xx
-        LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64 -lLibFT4222-64
-        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64\LibFT4222-64.dll wfweb-debug $$escape_expand(\\n\\t))
+    isEmpty(VCPKG_DIR) {
+      contains(QMAKE_TARGET.arch, x86_64) {
+        LIBS += -L../opus/win32/VS2015/x64/DebugDLL/
+        LIBS += -L../portaudio/msvc/X64/Debug/ -lportaudio_x64
+        contains(DEFINES,FTDI_SUPPORT){
+          LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\amd64 -lftd2xx
+          LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64 -lLibFT4222-64
+          QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64\LibFT4222-64.dll wfweb-debug $$escape_expand(\\n\\t))
+        }
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfweb-debug $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\x64\DebugDLL\opus-0.dll wfweb-debug $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y rigs\*.* wfweb-debug\rigs\*.* $$escape_expand(\\n\\t))
+      } else {
+        LIBS += -L../opus/win32/VS2015/win32/DebugDLL/
+        LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86
+        contains(DEFINES,FTDI_SUPPORT){
+          LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\i386 -lftd2xx
+          LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\i386 -lLibFT4222
+          QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\i386\LibFT4222.dll wfweb-debug $$escape_expand(\\n\\t))
+        }
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll wfweb-debug $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\DebugDLL\opus-0.dll wfweb-debug $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y rigs\*.* wfweb-debug\rigs\*.* $$escape_expand(\\n\\t))
       }
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfweb-debug $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\x64\DebugDLL\opus-0.dll wfweb-debug $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfweb-debug\rigs\*.* $$escape_expand(\\n\\t))
-    } else {
-      LIBS += -L../opus/win32/VS2015/win32/DebugDLL/
-      LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86
-      contains(DEFINES,FTDI_SUPPORT){
-        LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\i386 -lftd2xx
-        LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\i386 -lLibFT4222
-        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\i386\LibFT4222.dll wfweb-debug $$escape_expand(\\n\\t))
-      }
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll wfweb-debug $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\DebugDLL\opus-0.dll wfweb-debug $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfweb-debug\rigs\*.* $$escape_expand(\\n\\t))
     }
     DESTDIR = wfweb-debug
   }
@@ -58,28 +61,30 @@ CONFIG(debug, release|debug) {
   linux:QMAKE_LFLAGS += -O2 -s
 
   win32 {
-    contains(QMAKE_TARGET.arch, x86_64) {
-      LIBS += -L../opus/win32/VS2015/x64/ReleaseDLL/
-      LIBS += -L../portaudio/msvc/X64/Release/ -lportaudio_x64
-      contains(DEFINES,FTDI_SUPPORT){
-        LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\amd64 -lftd2xx
-        LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64 -lLibFT4222-64
-        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64\LibFT4222-64.dll wfweb-release $$escape_expand(\\n\\t))
+    isEmpty(VCPKG_DIR) {
+      contains(QMAKE_TARGET.arch, x86_64) {
+        LIBS += -L../opus/win32/VS2015/x64/ReleaseDLL/
+        LIBS += -L../portaudio/msvc/X64/Release/ -lportaudio_x64
+        contains(DEFINES,FTDI_SUPPORT){
+          LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\amd64 -lftd2xx
+          LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64 -lLibFT4222-64
+          QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64\LibFT4222-64.dll wfweb-release $$escape_expand(\\n\\t))
+        }
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfweb-release $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\x64\ReleaseDLL\opus-0.dll wfweb-release $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y rigs\*.* wfweb-release\rigs\*.* $$escape_expand(\\n\\t))
+      } else {
+        LIBS += -L../opus/win32/VS2015/win32/ReleaseDLL/
+        LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
+        contains(DEFINES,FTDI_SUPPORT){
+          LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\i386 -lftd2xx
+          LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\i386 -lLibFT4222
+          QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\i386\LibFT4222.dll wfweb-release $$escape_expand(\\n\\t))
+        }
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Release\portaudio_x86.dll wfweb-release $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\ReleaseDLL\opus-0.dll wfweb-release $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y rigs\*.* wfweb-release\rigs\*.* $$escape_expand(\\n\\t))
       }
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfweb-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\x64\ReleaseDLL\opus-0.dll wfweb-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfweb-release\rigs\*.* $$escape_expand(\\n\\t))
-    } else {
-      LIBS += -L../opus/win32/VS2015/win32/ReleaseDLL/
-      LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
-      contains(DEFINES,FTDI_SUPPORT){
-        LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\i386 -lftd2xx
-        LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\i386 -lLibFT4222
-        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\i386\LibFT4222.dll wfweb-release $$escape_expand(\\n\\t))
-      }
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Release\portaudio_x86.dll wfweb-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\ReleaseDLL\opus-0.dll wfweb-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfweb-release\rigs\*.* $$escape_expand(\\n\\t))
     }
     DESTDIR = wfweb-release
   }
@@ -134,7 +139,7 @@ macx:INCLUDEPATH += /usr/local/include /opt/local/include
 macx:LIBS += -L/usr/local/lib -L/opt/local/lib
 
 macx:ICON = ../wfview/resources/wfview.icns
-win32:RC_ICONS = "../wfview/resources/icons/Windows/wfview 512x512.ico"
+win32:RC_ICONS = "resources/icons/Windows/wfview 512x512.ico"
 QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
 QMAKE_TARGET_BUNDLE_PREFIX = org.wfview
 MY_ENTITLEMENTS.name = CODE_SIGN_ENTITLEMENTS
@@ -180,7 +185,21 @@ contains(DEFINES,FTDI_SUPPORT){
   win32:INCLUDEPATH += ../LibFT4222-v1.4.7\imports\ftd2xx
 }
 
-!linux:INCLUDEPATH += ../opus/include
+# vcpkg integration for Windows builds.
+win32 {
+    isEmpty(VCPKG_DIR): VCPKG_DIR = $$(VCPKG_DIR)
+    !isEmpty(VCPKG_DIR) {
+        INCLUDEPATH += $$VCPKG_DIR/include
+        INCLUDEPATH += $$VCPKG_DIR/include/eigen3
+        INCLUDEPATH += $$VCPKG_DIR/include/opus
+        INCLUDEPATH += $$VCPKG_DIR/include/hidapi
+        LIBS += -L$$VCPKG_DIR/lib
+        LIBS += -lportaudio -lopus -lhidapi -llibssl -llibcrypto
+    } else {
+        INCLUDEPATH += ../opus/include
+    }
+}
+!win32:!linux:INCLUDEPATH += ../opus/include
 !linux:INCLUDEPATH += ../eigen
 !linux:INCLUDEPATH += ../r8brain-free-src
 

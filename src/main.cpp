@@ -98,10 +98,19 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
 
 int main(int argc, char *argv[])
 {
+#ifndef Q_OS_WIN
     if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM"))
         qputenv("QT_QPA_PLATFORM", "offscreen");
+#endif
 
 #ifdef BUILD_WFSERVER
+#ifdef Q_OS_WIN
+    // QCoreApplication doesn't load the Windows platform plugin, so COM is
+    // never initialised.  WASAPI audio capture requires COM on every thread
+    // that touches audio objects.  Initialise it here for the main thread
+    // (device enumeration) — the web-server thread does its own init.
+    CoInitializeEx(NULL, COINIT_MULTITHREADED);
+#endif
     QCoreApplication a(argc, argv);
     a.setOrganizationName("wfview");
     a.setOrganizationDomain("wfview.org");
@@ -288,6 +297,11 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
     {
         return;
     }
+#ifdef Q_OS_WIN
+    // Qt 5.15 + OpenSSL 3.x: suppress noise about removed 1.1 symbols
+    if (msg.contains("cannot call unresolved function"))
+        return;
+#endif
     QMutexLocker locker(&logMutex);
     QTextStream out(m_logFile.data());
     QString text;

@@ -103,6 +103,8 @@ private slots:
 
     // USB audio capture
     void readUsbAudio();
+    void onAudioStateChanged(QAudio::State state);
+
 
 private:
     void serveStaticFile(QTcpSocket *socket, const QString &path);
@@ -162,6 +164,7 @@ private:
     QAudioSource *usbAudioInput = nullptr;
 #endif
     QIODevice *usbAudioDevice = nullptr;
+    QTimer *usbAudioPollTimer = nullptr;
 
     // TX audio (USB output to rig)
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))

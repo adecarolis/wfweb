@@ -171,7 +171,7 @@ void audioDevices::enumerate()
                 return;
             }
 
-            qInfo(logAudio()) << "PortAudio version: " << Pa_GetVersionInfo()->versionText;
+            qInfo(logAudio()) << "PortAudio version: " << Pa_GetVersionText();
 
             int numDevices = Pa_GetDeviceCount();
             qInfo(logAudio()) << "Pa_CountDevices returned" << numDevices << "audio device(s) (*=default)";
