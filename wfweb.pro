@@ -4,16 +4,16 @@
 #
 #-------------------------------------------------
 
-QT       += core serialport network multimedia
+QT       += core serialport network multimedia websockets
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
-TARGET = wfserver
+TARGET = wfweb
 TEMPLATE = app
 
 CONFIG += console
 
-DEFINES += WFVIEW_VERSION=\\\"2.11\\\"
+DEFINES += WFVIEW_VERSION=\\\"0.2.5\\\"
 
 DEFINES += BUILD_WFSERVER
 
@@ -30,24 +30,24 @@ CONFIG(debug, release|debug) {
       contains(DEFINES,FTDI_SUPPORT){
         LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\amd64 -lftd2xx
         LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64 -lLibFT4222-64
-        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64\LibFT4222-64.dll wfserver-debug $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64\LibFT4222-64.dll wfweb-debug $$escape_expand(\\n\\t))
       }
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfserver-debug $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\x64\DebugDLL\opus-0.dll wfserver-debug $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfserver-debug\rigs\*.* $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfweb-debug $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\x64\DebugDLL\opus-0.dll wfweb-debug $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfweb-debug\rigs\*.* $$escape_expand(\\n\\t))
     } else {
       LIBS += -L../opus/win32/VS2015/win32/DebugDLL/
       LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86
       contains(DEFINES,FTDI_SUPPORT){
         LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\i386 -lftd2xx
         LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\i386 -lLibFT4222
-        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\i386\LibFT4222.dll wfserver-debug $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\i386\LibFT4222.dll wfweb-debug $$escape_expand(\\n\\t))
       }
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll wfserver-debug $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\DebugDLL\opus-0.dll wfserver-debug $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfserver-debug\rigs\*.* $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll wfweb-debug $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\DebugDLL\opus-0.dll wfweb-debug $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfweb-debug\rigs\*.* $$escape_expand(\\n\\t))
     }
-    DESTDIR = wfserver-debug
+    DESTDIR = wfweb-debug
   }
 } else {
   # For Release builds only:
@@ -64,24 +64,24 @@ CONFIG(debug, release|debug) {
       contains(DEFINES,FTDI_SUPPORT){
         LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\amd64 -lftd2xx
         LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64 -lLibFT4222-64
-        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64\LibFT4222-64.dll wfserver-release $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\amd64\LibFT4222-64.dll wfweb-release $$escape_expand(\\n\\t))
       }
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfserver-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\x64\ReleaseDLL\opus-0.dll wfserver-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfserver-release\rigs\*.* $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfweb-release $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\x64\ReleaseDLL\opus-0.dll wfweb-release $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfweb-release\rigs\*.* $$escape_expand(\\n\\t))
     } else {
       LIBS += -L../opus/win32/VS2015/win32/ReleaseDLL/
       LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
       contains(DEFINES,FTDI_SUPPORT){
         LIBS += -L../LibFT4222-v1.4.7\imports\ftd2xx\dll\i386 -lftd2xx
         LIBS += -L../LibFT4222-v1.4.7\imports\LibFT4222\dll\i386 -lLibFT4222
-        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\i386\LibFT4222.dll wfserver-release $$escape_expand(\\n\\t))
+        QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\LibFT4222-v1.4.7\imports\LibFT4222\dll\i386\LibFT4222.dll wfweb-release $$escape_expand(\\n\\t))
       }
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Release\portaudio_x86.dll wfserver-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\ReleaseDLL\opus-0.dll wfserver-release $$escape_expand(\\n\\t))
-      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfserver-release\rigs\*.* $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Release\portaudio_x86.dll wfweb-release $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\opus\win32\VS2015\win32\ReleaseDLL\opus-0.dll wfweb-release $$escape_expand(\\n\\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c xcopy /s/y ..\wfview\rigs\*.* wfweb-release\rigs\*.* $$escape_expand(\\n\\t))
     }
-    DESTDIR = wfserver-release
+    DESTDIR = wfweb-release
   }
 }
 
@@ -162,10 +162,15 @@ win32:DEFINES += UNAME=\\\"build\\\"
 
 
 RESOURCES += qdarkstyle/style.qrc \
-    resources/resources.qrc
+    resources/resources.qrc \
+    resources/web.qrc
 
 unix:target.path = $$PREFIX/bin
 INSTALLS += target
+
+unix:systemd.files = systemd/wfweb@.service
+unix:systemd.path = $$PREFIX/lib/systemd/system
+INSTALLS += systemd
 
 linux:LIBS += -L./ -lopus
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus 
@@ -225,7 +230,8 @@ SOURCES += \
     src/keyboard.cpp \
     src/rigserver.cpp \
     src/ft4222handler.cpp \
-    src/rtpaudio.cpp
+    src/rtpaudio.cpp \
+    src/webserver.cpp
 
 
 HEADERS  += \
@@ -283,4 +289,5 @@ HEADERS  += \
     include/yaesuudpbase.h \
     include/yaesuudpcat.h \
     include/yaesuudpcontrol.h \
-    include/yaesuudpscope.h
+    include/yaesuudpscope.h \
+    include/webserver.h

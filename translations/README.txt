@@ -16,7 +16,7 @@ Steps to contribute a translation:
 
 6. Open the translation ".ts" file for your language of choice. Important: If your language is not available, you should probably ask the wfview team to generate the blank ".ts" file for you. Alternativly, if you are comfortable with developer tools, you can generate it yourself:
 
-6a: Add the filename to the list in the wfview.pro file where you see "TRANSLATIONS". 
+6a: Add the filename to the list in the wfweb.pro file where you see "TRANSLATIONS". 
 6b: using the `lupdate` command, which can be run from Qt Creator using Tools --> External --> Linguist --> Update Translations (lupdate). 
 
 7. Insert translations for as many strings as you can. Press Control-Enter after each one to "accept" the translation and move to the next string. Try and adhere to the following: 

@@ -40,7 +40,7 @@ Since wfview is on GitLab and wfweb is on GitHub, GitHub's native fork mechanism
 
 ![FT8](ft8.png)
 
-The web interface is served directly by the `wfview` binary over HTTPS (self-signed certificate). No separate web server is needed. Connect your radio, run `wfview` (the binary retains the upstream name), and open `https://<host>:8080` in any browser. On first visit, accept the browser's certificate warning.
+The web interface is served directly by the `wfweb` binary over HTTPS (self-signed certificate). No separate web server is needed. Connect your radio, run `wfweb`, and open `https://<host>:8080` in any browser. On first visit, accept the browser's certificate warning.
 
 ---
 
@@ -49,7 +49,7 @@ The web interface is served directly by the `wfview` binary over HTTPS (self-sig
 The IC-7300 connected via USB is the primary tested configuration. No configuration file is needed — just install and run:
 
 ```bash
-wfview
+wfweb
 ```
 
 Open your browser at `https://<host>:8080`. On first visit, accept the browser's self-signed certificate warning.
@@ -210,7 +210,7 @@ CI-V addresses are listed in decimal (`RigCIVuInt`). If your radio has been conf
 | ggmorse | any | MIT | Morse code decoding (compiled to WebAssembly for the web frontend) |
 | openssl | any | Apache-2.0 | **Runtime only:** generates the self-signed TLS certificate on first launch, required for HTTPS and browser microphone access |
 
-Clone the repository and run `qmake wfview.pro && make -j$(nproc)`.
+Clone the repository and run `qmake wfweb.pro && make -j$(nproc)`.
 
 ---
 
@@ -237,7 +237,8 @@ wfweb tracks the upstream wfview `master` branch. The intent is to keep the delt
 - `resources/web/` — web frontend (HTML/CSS/JS)
 - `resources/web.qrc` — Qt resource file for the web frontend
 - Minor changes to `src/wfmain.cpp` for web server initialization
-- This README and branding strings only (binary name and config path unchanged)
+- `wfweb.pro` — headless build producing the `wfweb` binary
+- This README and branding strings
 
 ---
 

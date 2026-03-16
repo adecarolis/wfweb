@@ -2917,7 +2917,8 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
             } else if (func == funcModeSet) {
                 queue->addUnique(priorityImmediate,funcModeGet,false,receiver);
             } else if (cmd.getCmd && func != funcScopeFixedEdgeFreq && func != funcSpeech &&
-                       func != funcBandStackReg && func != funcMemoryContents && func != funcSatelliteMemory && func != funcSendCW) {
+                       func != funcBandStackReg && func != funcMemoryContents && func != funcSatelliteMemory && func != funcSendCW &&
+                       func != funcTransceiverStatus) {
                 // This was a set command, so queue a get to retrieve the updated value
                 queue->addUnique(priorityImmediate,func,false,receiver);
             }

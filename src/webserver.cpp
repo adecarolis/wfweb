@@ -698,7 +698,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             if (rfPower.value.isValid()) resp["rfPower"] = rfPower.value.toInt();
             cacheItem squelch = queue->getCache(funcSquelch, 0);
             if (squelch.value.isValid()) resp["squelch"] = squelch.value.toInt();
-            cacheItem micGain = queue->getCache(funcMicGain, 0);
+            cacheItem micGain = queue->getCache(funcUSBModLevel, 0);
             if (micGain.value.isValid()) resp["micGain"] = micGain.value.toInt();
             sendRestResponse(socket, 200, resp);
         } else if (method == "PUT") {
@@ -729,7 +729,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             }
             if (obj.contains("micGain")) {
                 ushort val = static_cast<ushort>(qBound(0, obj["micGain"].toInt(), 255));
-                queue->addUnique(priorityImmediate, queueItem(funcMicGain, QVariant::fromValue<ushort>(val), false, 0));
+                queue->addUnique(priorityImmediate, queueItem(funcUSBModLevel, QVariant::fromValue<ushort>(val), false, 0));
             }
             QJsonObject resp; resp["status"] = "accepted";
             sendRestResponse(socket, 202, resp);
@@ -1111,7 +1111,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     }
     else if (type == "setMicGain") {
         ushort val = static_cast<ushort>(qBound(0, cmd["value"].toInt(), 255));
-        queue->addUnique(priorityImmediate, queueItem(funcMicGain, QVariant::fromValue<ushort>(val), false, 0));
+        queue->addUnique(priorityImmediate, queueItem(funcUSBModLevel, QVariant::fromValue<ushort>(val), false, 0));
     }
     else if (type == "setAttenuator") {
         ushort val = static_cast<ushort>(qBound(0, cmd["value"].toInt(), 255));
@@ -1490,7 +1490,7 @@ QJsonObject webServer::buildStatusJson()
     }
 
     // Mic Gain
-    cacheItem micGain = queue->getCache(funcMicGain, 0);
+    cacheItem micGain = queue->getCache(funcUSBModLevel, 0);
     if (micGain.value.isValid()) {
         status["micGain"] = micGain.value.toInt();
     }
@@ -1611,7 +1611,7 @@ void webServer::receiveCache(cacheItem item)
     case funcSquelch:
         update["squelch"] = item.value.toInt();
         break;
-    case funcMicGain:
+    case funcUSBModLevel:
         update["micGain"] = item.value.toInt();
         break;
     case funcScopeWaveData:
@@ -1709,6 +1709,16 @@ void webServer::sendPeriodicStatus()
     cacheItem swr = queue->getCache(funcSWRMeter, 0);
     if (swr.value.isValid()) {
         status["swrMeter"] = swr.value.toDouble();
+    }
+
+    cacheItem alc = queue->getCache(funcALCMeter, 0);
+    if (alc.value.isValid()) {
+        status["alcMeter"] = alc.value.toDouble();
+    }
+
+    cacheItem txStatus = queue->getCache(funcTransceiverStatus, 0);
+    if (txStatus.value.isValid()) {
+        status["transmitting"] = txStatus.value.toBool();
     }
 
     sendJsonToAll(status);

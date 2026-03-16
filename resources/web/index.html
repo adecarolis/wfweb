@@ -834,6 +834,7 @@ body.digi-open .digi-bar {
     border-bottom: 1px solid #024;
     flex-shrink: 0;
 }
+.digi-mobile-break { display: none; }
 .digi-progress-wrap {
     flex: 1;
     height: 8px;
@@ -1229,6 +1230,19 @@ body.digi-open .digi-bar {
     border-radius: 2px;
 }
 .digi-halt-btn:active { background: #800; color: #000; }
+.digi-tune-btn {
+    padding: 2px 8px;
+    background: #181800;
+    border: 1px solid #880;
+    color: #cc4;
+    font-size: 11px;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    cursor: pointer;
+    border-radius: 2px;
+}
+.digi-tune-btn.active { background: #443000; border-color: #fa0; color: #fa0; }
+.digi-tune-btn:active { background: #880; color: #000; }
 .digi-callsign-input {
     background: #000;
     border: 1px solid #048;
@@ -1591,6 +1605,7 @@ body.digi-open .digi-bar {
     background: #1a1a1a;
     border-color: #600;
     color: #a44;
+    touch-action: none;
 }
 .softBtn.ptt-btn.tx-active {
     background: #800;
@@ -1733,6 +1748,11 @@ body.digi-open .digi-bar {
     /* All Decodes panel: keep SNR, hide dt and Hz */
     #digiRxPanel .digi-decode-dt,
     #digiRxPanel .digi-decode-freq { display: none; }
+    /* Status bar: wrap after clock, DX+buttons on row 2 */
+    .digi-status-bar { flex-wrap: wrap; }
+    .digi-mobile-break { flex-basis: 100%; height: 0; }
+    .digi-status-bar .digi-callsign-input { flex: 1 1 40px; width: auto; min-width: 40px; }
+    .digi-enable-tx-btn, .digi-halt-btn, .digi-tune-btn { font-size: 10px; padding: 2px 5px; flex-shrink: 0; }
 }
 </style>
 </head>
@@ -1863,9 +1883,9 @@ body.digi-open .digi-bar {
             <!-- Row 1: toolbar -->
             <div class="digi-header">
                 <span id="digiModeLabel" class="digi-label">FT8</span>
+                <button id="digiCqOnlyBtn" class="digi-toggle-btn">CQ ONLY</button>
                 <select id="digiBandSel" class="digi-band-sel"></select>
                 <div class="flex-space"></div>
-                <button id="digiCqOnlyBtn" class="digi-toggle-btn">CQ ONLY</button>
                 <button id="digiRxToggle" class="digi-rx-toggle active">RX ON</button>
                 <button id="digiSettingsBtn" class="digi-settings-btn" title="Settings">&#9881;</button>
                 <button id="digiCloseBtn" class="digi-close-btn">&#x2715;</button>
@@ -1878,10 +1898,12 @@ body.digi-open .digi-bar {
                     <div id="digiProgressBar" class="digi-progress-fill"></div>
                 </div>
                 <span id="digiClock" class="digi-period-clock">15</span>
+                <span class="digi-mobile-break"></span>
                 <span class="digi-field-label">DX:</span>
                 <input type="text" id="digiDxCall" class="digi-callsign-input" maxlength="10" placeholder="DX" autocomplete="off">
                 <button id="digiEnableTxBtn" class="digi-enable-tx-btn">Enable TX</button>
                 <button id="digiHaltBtn" class="digi-halt-btn">Halt TX</button>
+                <button id="digiTuneBtn" class="digi-tune-btn">Tune</button>
             </div>
 
             <!-- Two-column decode area -->
@@ -2016,7 +2038,7 @@ body.digi-open .digi-bar {
                 <span class="gain-val" id="squelchVal">0</span>
             </div>
             <div class="gain-row">
-                <span class="gain-label">MIC</span>
+                <span class="gain-label">USB MIC</span>
                 <div class="gain-bar-bg"><div class="gain-bar-fill" id="micGainFill" style="width:50%"></div>
                     <input type="range" id="micGainSlider" min="0" max="255" value="128"></div>
                 <span class="gain-val" id="micGainVal">128</span>
@@ -2121,7 +2143,10 @@ var reconnectTimer = null;
 var defaultModes = ['LSB', 'USB', 'AM', 'CW', 'RTTY', 'FM', 'CW-R'];
 
 // Band frequency memory: remember last-used frequency per band label
-var bandLastFreq = {};
+var bandLastFreq = (function() {
+    try { var s = localStorage.getItem('bandLastFreq'); if (s) return JSON.parse(s); } catch(e) {}
+    return {};
+})();
 var BAND_RANGES = {
     '1.8':  [1800000,  2000000],
     '3.5':  [3500000,  4000000],
@@ -2236,6 +2261,10 @@ var digiTxUserInitiated = false; // true when TX was armed by a user gesture (db
 var digiTxWfPos = 0;        // read position into digiTxWfSamples
 var digiTxSeq = 0;
 var digiTxAttempts = 0;
+var digiTuneActive = false;
+var digiSavedModLevel = -1;    // saved USB Mod Level before entering DIGI mode
+var DIGI_MOD_LEVEL = 192;      // USB Mod Level during DIGI mode (~75%)
+var digiTuneNode = null;    // AudioWorkletNode for continuous tune tone
 var DIGI_MAX_TX_ATTEMPTS = 5; // retry same message up to 5 times (~75s for FT8)
 var digiDecodes = [];
 var digiDirectedDecodes = [];
@@ -2265,6 +2294,8 @@ var wfLabelCanvas = null;
 var wfLabelCtx = null;
 var wfMinDb = -100;
 var wfMaxDb = -40;
+var wfSlotPeakDb = -200;    // peak dB within current slot (for slow auto-gain)
+var wfSlotCount = 0;        // slots seen since start (faster adaptation initially)
 var wfLabels = [];          // [{freq, from, directed, cq}] — updated each decode slot
 var wfScrollCounter = 0;    // scroll every 4th frame (4x slower)
 var wfSlotLines = [];       // pixel rows where slot boundaries were drawn
@@ -2468,6 +2499,7 @@ function handleMessage(msg) {
             if (msg.filterShape !== undefined) updateFilterShapeBtn(msg.filterShape);
             break;
         case 'meters':
+            if (msg.transmitting !== undefined) updateTxStatus(msg.transmitting);
             if (msg.sMeter !== undefined) updateSMeter(msg.sMeter);
             if (msg.powerMeter !== undefined) updatePowerMeter(msg.powerMeter);
             if (msg.swrMeter !== undefined) updateSwrMeter(msg.swrMeter);
@@ -2488,7 +2520,11 @@ function updateFrequency(hz) {
     // Update band frequency memory
     for (var _b in BAND_RANGES) {
         var _r = BAND_RANGES[_b];
-        if (hz >= _r[0] && hz < _r[1]) { bandLastFreq[_b] = hz; break; }
+        if (hz >= _r[0] && hz < _r[1]) {
+            bandLastFreq[_b] = hz;
+            try { localStorage.setItem('bandLastFreq', JSON.stringify(bandLastFreq)); } catch(e) {}
+            break;
+        }
     }
 
     // Store frequency for current VFO only
@@ -2655,12 +2691,13 @@ function renderFilterOverlay() {
 }
 
 function updateTxStatus(tx) {
+    var changed = (isTransmitting !== tx);
     isTransmitting = tx;
     var ind = document.getElementById('txIndicator');
     ind.textContent = tx ? 'TX' : 'RX';
     ind.classList.toggle('tx', tx);
     drawMeter();
-    renderBottomBar();
+    if (changed) renderBottomBar();
 }
 
 function updateSplit(on) {
@@ -2849,10 +2886,10 @@ var METER_DARK = '#1c1c1c';     // inactive segment
 var METER_BASELINE = '#999';    // thin white line under segments
 
 var alcVal = 0;
-var digiTxGain = 1.0;          // FT8/FT4 audio gain multiplier (reduced by ALC feedback)
-var ALC_THRESHOLD = 0.05;      // ALC value above which we start reducing gain (scale 0-1-2)
-var ALC_STEP_DOWN = 0.02;      // gain reduction per ALC update when over threshold
-var ALC_STEP_UP = 0.005;       // gain recovery per ALC update when under threshold
+var digiTxGain = 1.0;          // FT8/FT4 audio gain multiplier
+var ALC_TARGET = 0.05;         // target ALC level (5%)
+var ALC_STEP_DOWN = 0.02;      // gain reduction per ALC update when over target
+var ALC_STEP_UP = 0.01;        // gain increase per ALC update when under target
 var ALC_MIN_GAIN = 0.05;       // minimum gain floor
 
 function updateSMeter(val) { meterVal = val; if (!isTransmitting) drawMeter(); }
@@ -2861,12 +2898,11 @@ function updateSwrMeter(val) { swrVal = val; if (isTransmitting) drawMeter(); }
 function updateALCMeter(val) {
     alcVal = val;
     if (isTransmitting) drawMeter();
-    // Auto-adjust FT8/FT4 TX gain based on ALC
-    if (digiTxActive && isTransmitting) {
-        if (alcVal > ALC_THRESHOLD) {
+    // Auto-adjust FT8/FT4 audio gain to keep ALC at ~5%
+    if ((digiTxActive || digiTuneActive) && isTransmitting) {
+        if (alcVal > ALC_TARGET) {
             digiTxGain = Math.max(ALC_MIN_GAIN, digiTxGain - ALC_STEP_DOWN);
-            console.log('[ALC] reducing digiTxGain to ' + digiTxGain.toFixed(3) + ' (ALC=' + alcVal.toFixed(2) + ')');
-        } else if (digiTxGain < 1.0) {
+        } else if (alcVal < ALC_TARGET && digiTxGain < 1.0) {
             digiTxGain = Math.min(1.0, digiTxGain + ALC_STEP_UP);
         }
     }
@@ -3067,11 +3103,10 @@ function drawTxMeters(ctx, cw, ch, barX, barW, segW, segGap, segX, labelW) {
     });
 
     // ALC indicator — visible during DIGI TX
-    if (digiTxActive) {
+    if (digiTxActive || digiTuneActive) {
         var alcPct = Math.round(alcVal * 100);
-        var alcColor = alcVal > ALC_THRESHOLD ? '#ff4444' : '#44cc44';
+        var alcColor = alcVal > ALC_TARGET ? '#ff4444' : '#44cc44';
         var alcText = 'ALC ' + alcPct + '%';
-        if (digiTxGain < 1.0) alcText += ' G' + Math.round(digiTxGain * 100) + '%';
         ctx.fillStyle = alcColor;
         ctx.font = 'bold 9px system-ui, sans-serif';
         ctx.textAlign = 'right';
@@ -3551,27 +3586,36 @@ function releasePTT() {
     }, 300);
 }
 
+// PTT: pointer events (unified touch+mouse) with document-level release.
+// renderBottomBar() destroys the button DOM mid-press; document-level pointerup
+// always fires regardless. touch-action:none on .ptt-btn prevents browser
+// from stealing the touch for scrolling.
 (function() {
     var bar = document.getElementById('bottomBar');
-    function isPTT(e) { return e.target.classList.contains('ptt-btn'); }
+    var pttPointerActive = false;
+    function isPTT(e) { return e.target && e.target.classList && e.target.classList.contains('ptt-btn'); }
     function pttOn(e) {
         e.preventDefault();
-        if (!handlePTTPress()) return; // Check audio/mic, show menu if needed
-        // Cancel any pending PTT release
+        if (!handlePTTPress()) return;
         if (pttReleaseTimer) {
             clearTimeout(pttReleaseTimer);
             pttReleaseTimer = null;
         }
+        pttPointerActive = true;
         flushAudio();
         send({ cmd: 'setPTT', value: true });
     }
-    function pttOff(e) { e.preventDefault(); releasePTT(); }
-    bar.addEventListener('mousedown', function(e) { if (isPTT(e)) pttOn(e); });
-    bar.addEventListener('mouseup', function(e) { if (isPTT(e)) pttOff(e); });
-    bar.addEventListener('mouseleave', function() { if (isTransmitting) releasePTT(); });
-    bar.addEventListener('touchstart', function(e) { if (isPTT(e)) pttOn(e); });
-    bar.addEventListener('touchend', function(e) { if (isPTT(e)) pttOff(e); });
-    bar.addEventListener('touchcancel', function() { if (isTransmitting) releasePTT(); });
+    // Press: detected on bar via delegation
+    bar.addEventListener('pointerdown', function(e) {
+        if (isPTT(e)) pttOn(e);
+    });
+    // Release: on document so it fires even if button DOM was recreated
+    document.addEventListener('pointerup', function() {
+        if (pttPointerActive) { pttPointerActive = false; releasePTT(); }
+    });
+    document.addEventListener('pointercancel', function() {
+        if (pttPointerActive) { pttPointerActive = false; releasePTT(); }
+    });
 })();
 
 // ============================================================
@@ -3952,24 +3996,46 @@ function drawSpectrum() {
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    // Frequency marker (IC-7300 style: white triangle + vertical line)
-    if (currentFreq > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
-        var freqMHz = currentFreq / 1e6;
-        if (freqMHz >= spectStartFreq && freqMHz <= spectEndFreq) {
-            var fxPos = ((freqMHz - spectStartFreq) / (spectEndFreq - spectStartFreq)) * w;
-            // Vertical line
-            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-            ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(fxPos, 0); ctx.lineTo(fxPos, plotH); ctx.stroke();
-            // White triangle at bottom
-            ctx.fillStyle = '#fff';
-            ctx.beginPath();
-            ctx.moveTo(fxPos - 5, plotH);
-            ctx.lineTo(fxPos + 5, plotH);
-            ctx.lineTo(fxPos, plotH - 7);
-            ctx.closePath();
-            ctx.fill();
+    // Passband indicator bar (anchored to spectrum center, independent of currentFreq)
+    if (currentFilterWidth > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
+        var spanHz = (spectEndFreq - spectStartFreq) * 1e6;
+        var bwPx = (currentFilterWidth / spanHz) * w;
+        var cx = w / 2;
+        var pbLeft, pbRight;
+        if (currentMode === 'USB' || currentMode === 'RTTY') {
+            pbLeft = cx; pbRight = cx + bwPx;
+        } else if (currentMode === 'LSB') {
+            pbLeft = cx - bwPx; pbRight = cx;
+        } else {
+            pbLeft = cx - bwPx / 2; pbRight = cx + bwPx / 2;
         }
+        pbLeft = Math.max(0, pbLeft);
+        pbRight = Math.min(w, pbRight);
+        if (pbRight > pbLeft) {
+            ctx.fillStyle = 'rgba(255,255,255,0.08)';
+            ctx.fillRect(pbLeft, 0, pbRight - pbLeft, plotH);
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(pbLeft, 0); ctx.lineTo(pbLeft, plotH); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(pbRight, 0); ctx.lineTo(pbRight, plotH); ctx.stroke();
+        }
+    }
+
+    // Frequency marker (IC-7300 style: white triangle + vertical line, anchored to center)
+    if (spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
+        var fxPos = w / 2;
+        // Vertical line
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(fxPos, 0); ctx.lineTo(fxPos, plotH); ctx.stroke();
+        // White triangle at bottom
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.moveTo(fxPos - 5, plotH);
+        ctx.lineTo(fxPos + 5, plotH);
+        ctx.lineTo(fxPos, plotH - 7);
+        ctx.closePath();
+        ctx.fill();
     }
 
     // Freq labels
@@ -3995,15 +4061,37 @@ function drawWaterfall() {
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(wfOffCanvas, 0, 0, w, h);
 
-    // Frequency indicator
-    if (currentFreq > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
-        var freqMHz = currentFreq / 1e6;
-        if (freqMHz >= spectStartFreq && freqMHz <= spectEndFreq) {
-            var xPos = ((freqMHz - spectStartFreq) / (spectEndFreq - spectStartFreq)) * w;
-            ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-            ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(xPos, 0); ctx.lineTo(xPos, h); ctx.stroke();
+    // Passband indicator bar (anchored to spectrum center)
+    if (currentFilterWidth > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
+        var spanHz = (spectEndFreq - spectStartFreq) * 1e6;
+        var bwPx = (currentFilterWidth / spanHz) * w;
+        var cx = w / 2;
+        var pbL, pbR;
+        if (currentMode === 'USB' || currentMode === 'RTTY') {
+            pbL = cx; pbR = cx + bwPx;
+        } else if (currentMode === 'LSB') {
+            pbL = cx - bwPx; pbR = cx;
+        } else {
+            pbL = cx - bwPx / 2; pbR = cx + bwPx / 2;
         }
+        pbL = Math.max(0, pbL);
+        pbR = Math.min(w, pbR);
+        if (pbR > pbL) {
+            ctx.fillStyle = 'rgba(255,255,255,0.06)';
+            ctx.fillRect(pbL, 0, pbR - pbL, h);
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(pbL, 0); ctx.lineTo(pbL, h); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(pbR, 0); ctx.lineTo(pbR, h); ctx.stroke();
+        }
+    }
+
+    // Frequency indicator (anchored to center)
+    if (spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
+        var xPos = w / 2;
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(xPos, 0); ctx.lineTo(xPos, h); ctx.stroke();
     }
 }
 
@@ -4802,6 +4890,12 @@ function toggleDigiBar() {
         document.body.classList.add('digi-open');
         // FT8 requires USB — set it automatically on open
         if (currentMode !== 'USB') setMode('USB');
+        // Set USB Mod Level to 75% for DIGI; save previous value
+        var slider = document.getElementById('micGainSlider');
+        digiSavedModLevel = slider ? parseInt(slider.value) : -1;
+        throttledSend('micGain', 'setMicGain', DIGI_MOD_LEVEL);
+        updateSlider('micGain', DIGI_MOD_LEVEL);
+        digiTxGain = 1.0; // reset audio gain for new session
         // Tune to the FT8/FT4 frequency for the current band
         var band = getCurrentDigiBand();
         var bandSel = document.getElementById('digiBandSel');
@@ -4820,7 +4914,15 @@ function toggleDigiBar() {
     } else {
         bar.classList.add('hidden');
         document.body.classList.remove('digi-open');
+        stopDigiTune();
         stopDigiPeriodTimer();
+        // Restore USB Mod Level
+        if (digiSavedModLevel >= 0) {
+            throttledSend('micGain', 'setMicGain', digiSavedModLevel);
+            updateSlider('micGain', digiSavedModLevel);
+            digiSavedModLevel = -1;
+        }
+        digiTxGain = 1.0;
         digiRxEnabled = false;
         updateDigiRxToggle();
         if (digiTxCtx) { digiTxCtx.close(); digiTxCtx = null; digiTxPacerReady = false; }
@@ -4964,21 +5066,25 @@ function initWfColorTable() {
     wfColorTable = [];
     for (var i = 0; i < 256; i++) {
         var r, g, b;
-        if (i < 64) {
-            // black → deep blue
-            r = 0; g = 0; b = Math.round(i * 4);
-        } else if (i < 128) {
-            // deep blue → cyan
-            var t = i - 64;
-            r = 0; g = Math.round(t * 4); b = 255;
-        } else if (i < 192) {
-            // cyan → yellow
-            var t = i - 128;
-            r = Math.round(t * 4); g = 255; b = Math.max(0, 255 - t * 4);
+        if (i < 85) {
+            // black → dark blue (noise floor)
+            r = 0; g = 0; b = Math.round(i * 3);
+        } else if (i < 150) {
+            // dark blue → bright blue (weak signals stay blue)
+            var t = (i - 85) / 64;
+            r = 0; g = Math.round(t * 60); b = 255;
+        } else if (i < 190) {
+            // bright blue → cyan
+            var t = (i - 150) / 39;
+            r = 0; g = 60 + Math.round(t * 195); b = 255;
+        } else if (i < 225) {
+            // cyan → yellow (medium signals)
+            var t = (i - 190) / 34;
+            r = Math.round(t * 255); g = 255; b = Math.round(255 * (1 - t));
         } else {
-            // yellow → red/white
-            var t = i - 192;
-            r = 255; g = Math.max(0, 255 - t * 4); b = 0;
+            // yellow → red (strong signals)
+            var t = (i - 225) / 30;
+            r = 255; g = Math.round(255 * (1 - t)); b = 0;
         }
         wfColorTable[i] = [r, g, b];
     }
@@ -5103,10 +5209,8 @@ function drawDigiWaterfall() {
         if (db > peakDb) peakDb = db;
     }
 
-    // Slowly adapt the dB ceiling to the signal level
-    if (peakDb > wfMaxDb) wfMaxDb = peakDb;
-    else wfMaxDb = wfMaxDb * 0.995 + peakDb * 0.005;
-    wfMinDb = wfMaxDb - 60; // 60 dB dynamic range
+    // Track peak dB within the current slot (auto-gain updates at slot boundaries only)
+    if (peakDb > wfSlotPeakDb) wfSlotPeakDb = peakDb;
 
     // Scroll 4x slower: only advance every 4th frame
     wfScrollCounter++;
@@ -5134,6 +5238,13 @@ function drawDigiWaterfall() {
     }
     if (isSlotBoundary) {
         wfSlotLines.push(h - 1);
+        // Adapt dB range at slot boundaries only — keeps colors stable within each slot
+        // and changes gradually over minutes.  First few slots adapt faster for initial calibration.
+        var alpha = wfSlotCount < 3 ? 0.5 : 0.15;
+        wfMaxDb = wfMaxDb * (1 - alpha) + wfSlotPeakDb * alpha;
+        wfMinDb = wfMaxDb - 60; // 60 dB dynamic range
+        wfSlotPeakDb = -200;
+        wfSlotCount++;
     }
 
     // Write new row at the bottom (with linear interpolation between bins)
@@ -6056,6 +6167,132 @@ function executeDigiTx(slotPhase) {
     }
 }
 
+function stopDigiTune() {
+    if (!digiTuneActive) return;
+    digiTuneActive = false;
+    if (digiTuneNode) {
+        digiTuneNode.port.postMessage('stop');
+        digiTuneNode.disconnect();
+        digiTuneNode = null;
+    }
+    send({ cmd: 'setPTT', value: false });
+    if (!micEnabled) send({ cmd: 'enableMic', value: false });
+    var btn = document.getElementById('digiTuneBtn');
+    if (btn) btn.classList.remove('active');
+    updateDigiStatus('', '');
+    console.log('[DIGI] Tune stopped');
+}
+
+function startDigiTune() {
+    var txCtx = digiTxCtx;
+    if (!txCtx || txCtx.state === 'closed') {
+        console.warn('[DIGI] Tune: AudioContext not ready');
+        return;
+    }
+    var df = (digiTxFreq >= 200 && digiTxFreq <= 3000) ? digiTxFreq : 1000;
+    var actualRate = txCtx.sampleRate;
+    digiTuneActive = true;
+    var btn = document.getElementById('digiTuneBtn');
+    if (btn) btn.classList.add('active');
+    updateDigiStatus('TUNE', 'tx');
+
+    send({ cmd: 'enableMic', value: true });
+
+    var seq = digiTxSeq;
+    var chunksSent = 0;
+    var PTT_AFTER_CHUNKS = 9;
+
+    function sendTuneChunk(i16buf) {
+        if (!ws || ws.readyState !== WebSocket.OPEN || !digiTuneActive) return;
+        if (digiTxGain < 1.0) {
+            var samples = new Int16Array(i16buf);
+            for (var g = 0; g < samples.length; g++) samples[g] = (samples[g] * digiTxGain) | 0;
+            i16buf = samples.buffer;
+        }
+        var frame = new ArrayBuffer(6 + i16buf.byteLength);
+        var dv = new DataView(frame);
+        dv.setUint8(0, 0x03); dv.setUint8(1, 0x00);
+        dv.setUint16(2, (seq++) & 0xFFFF, true);
+        dv.setUint16(4, 0, true);
+        new Uint8Array(frame, 6).set(new Uint8Array(i16buf));
+        ws.send(frame);
+        chunksSent++;
+        if (chunksSent === PTT_AFTER_CHUNKS) {
+            send({ cmd: 'setPTT', value: true });
+        }
+    }
+
+    // AudioWorklet that generates a continuous sine tone and emits Int16 chunks
+    var tuneCode = [
+        'class TuneTone extends AudioWorkletProcessor {',
+        '  constructor(options) {',
+        '    super();',
+        '    this.freq = options.processorOptions.freq;',
+        '    this.rate = options.processorOptions.rate;',
+        '    this.phase = 0;',
+        '    this.running = true;',
+        '    this.acc = [];',
+        '    this.port.onmessage = function(e) {',
+        '      if (e.data === "stop") this.running = false;',
+        '    }.bind(this);',
+        '  }',
+        '  process(inputs, outputs) {',
+        '    if (!this.running) return false;',
+        '    var QUANTUM = 128;',
+        '    var BATCH = 512;',
+        '    var out = outputs[0] && outputs[0][0];',
+        '    var dp = 2 * Math.PI * this.freq / this.rate;',
+        '    for (var i = 0; i < QUANTUM; i++) {',
+        '      var s = Math.sin(this.phase) * 0.9;',
+        '      if (out) out[i] = s;',
+        '      this.acc.push(s);',
+        '      this.phase += dp;',
+        '    }',
+        '    if (this.phase > 2 * Math.PI * 1e6) this.phase -= 2 * Math.PI * 1e6;',
+        '    if (this.acc.length >= BATCH) {',
+        '      var i16 = new Int16Array(this.acc.length);',
+        '      for (var k = 0; k < this.acc.length; k++) {',
+        '        i16[k] = (this.acc[k] * 32767) | 0;',
+        '      }',
+        '      this.port.postMessage(i16.buffer, [i16.buffer]);',
+        '      this.acc = [];',
+        '    }',
+        '    return true;',
+        '  }',
+        '}',
+        'registerProcessor("tune-tone", TuneTone);'
+    ].join('\n');
+
+    function startTuneNode() {
+        var node = new AudioWorkletNode(txCtx, 'tune-tone', {
+            outputChannelCount: [1],
+            processorOptions: { freq: df, rate: actualRate }
+        });
+        var sink = txCtx.createAnalyser();
+        node.connect(sink);
+        node.port.onmessage = function(e) {
+            if (!digiTuneActive) {
+                node.disconnect();
+                return;
+            }
+            sendTuneChunk(e.data);
+        };
+        digiTuneNode = node;
+        console.log('[DIGI] Tune started: ' + df + ' Hz');
+    }
+
+    var blob = new Blob([tuneCode], { type: 'application/javascript' });
+    var blobUrl = URL.createObjectURL(blob);
+    txCtx.audioWorklet.addModule(blobUrl).then(function() {
+        URL.revokeObjectURL(blobUrl);
+        startTuneNode();
+    }).catch(function(err) {
+        URL.revokeObjectURL(blobUrl);
+        console.error('[DIGI] Tune worklet failed:', err);
+        stopDigiTune();
+    });
+}
+
 function streamDigiAudio(samples12k, onDone, onFirstChunk) {
     console.log('[DIGI stream] start: samples12k.length=' + samples12k.length +
                 ' audioSampleRate=' + audioSampleRate +
@@ -6099,12 +6336,9 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
                          (ws ? ws.readyState : 'null') + ') chunk#' + (chunksSent + 1));
             return;
         }
-        // Apply ALC-controlled gain reduction
         if (digiTxGain < 1.0) {
             var samples = new Int16Array(i16buf);
-            for (var g = 0; g < samples.length; g++) {
-                samples[g] = (samples[g] * digiTxGain) | 0;
-            }
+            for (var g = 0; g < samples.length; g++) samples[g] = (samples[g] * digiTxGain) | 0;
             i16buf = samples.buffer;
         }
         var frame = new ArrayBuffer(6 + i16buf.byteLength);
@@ -6601,6 +6835,11 @@ function initDigiHandlers() {
                 stopDigiPeriodTimer();
                 resetDigiRxBuffer();
                 startDigiPeriodTimer();
+                var band = getCurrentDigiBand();
+                if (band) {
+                    var targetFreq = digiMode === 'FT4' ? band.ft4 : band.ft8;
+                    send({ cmd: 'setFrequency', value: targetFreq });
+                }
             }
         });
     }
@@ -6788,10 +7027,24 @@ function initDigiHandlers() {
             digiOurReport = '';
             var etb = document.getElementById('digiEnableTxBtn');
             if (etb) etb.classList.remove('active');
+            stopDigiTune();
             send({ cmd: 'setPTT', value: false });
             updateDigiStatus('HALT', '');
             updateDigiMsgRows();
             drawDigiWaterfall();
+        });
+    }
+
+    // Tune button — continuous tone at digiTxFreq
+    var tuneBtn = document.getElementById('digiTuneBtn');
+    if (tuneBtn) {
+        tuneBtn.addEventListener('click', function() {
+            initDigiTxCtx();
+            if (digiTuneActive) {
+                stopDigiTune();
+            } else {
+                startDigiTune();
+            }
         });
     }
 

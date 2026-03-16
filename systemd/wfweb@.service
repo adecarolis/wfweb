@@ -8,7 +8,7 @@ Restart=on-failure
 RestartSec=5
 User=%i
 Environment=QT_QPA_PLATFORM=offscreen
-ExecStart=/usr/local/bin/wfview
+ExecStart=/usr/local/bin/wfweb
 
 [Install]
 WantedBy=multi-user.target

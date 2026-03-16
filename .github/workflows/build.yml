@@ -8,7 +8,7 @@ on:
     branches: [master]
 
 jobs:
-  build:
+  build-linux:
     strategy:
       fail-fast: false
       matrix:
@@ -46,12 +46,12 @@ jobs:
 
       - name: Build
         run: |
-          qmake wfview.pro
+          qmake wfweb.pro
           make -j$(nproc)
 
       - name: Get version
         id: version
-        run: echo "version=$(grep 'WFVIEW_VERSION' wfview.pro | grep -oP '[\d.]+')" >> $GITHUB_OUTPUT
+        run: echo "version=$(grep 'WFVIEW_VERSION' wfweb.pro | grep -oP '[\d.]+')" >> $GITHUB_OUTPUT
 
       - name: Package tarball
         run: |
@@ -121,9 +121,86 @@ jobs:
           path: wfweb_*_${{ matrix.deb_arch }}.deb
           retention-days: 30
 
+  build-windows:
+    name: Windows x86_64
+    runs-on: windows-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install Qt 5.15.2
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '5.15.2'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2019_64'
+          modules: 'qtwebsockets qtmultimedia qtserialport'
+
+      - name: Install vcpkg packages
+        run: vcpkg install eigen3:x64-windows opus:x64-windows portaudio:x64-windows hidapi:x64-windows openssl:x64-windows
+
+      - name: Clone rtaudio
+        run: git clone --depth 1 https://github.com/thestk/rtaudio.git ..\rtaudio
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build
+        shell: cmd
+        run: |
+          qmake wfweb.pro CONFIG+=release "VCPKG_DIR=C:/vcpkg/installed/x64-windows" "DEFINES-=FTDI_SUPPORT"
+          nmake release
+
+      - name: Deploy Qt runtime
+        shell: cmd
+        run: windeployqt --release --no-translations --no-opengl-sw wfweb\wfweb.exe
+
+      - name: Deploy vcpkg DLLs and assets
+        shell: pwsh
+        run: |
+          $vcpkgBin = "C:\vcpkg\installed\x64-windows\bin"
+          $out = "wfweb"
+
+          # vcpkg DLLs
+          foreach ($dll in @("portaudio.dll", "opus.dll", "hidapi.dll",
+                             "libssl-3-x64.dll", "libcrypto-3-x64.dll")) {
+            $src = Join-Path $vcpkgBin $dll
+            if (Test-Path $src) { Copy-Item $src $out -Force }
+          }
+
+          # OpenSSL 1.1 aliases for Qt 5.15
+          if (!(Test-Path "$out\libssl-1_1-x64.dll") -and (Test-Path "$out\libssl-3-x64.dll")) {
+            Copy-Item "$out\libssl-3-x64.dll" "$out\libssl-1_1-x64.dll"
+          }
+          if (!(Test-Path "$out\libcrypto-1_1-x64.dll") -and (Test-Path "$out\libcrypto-3-x64.dll")) {
+            Copy-Item "$out\libcrypto-3-x64.dll" "$out\libcrypto-1_1-x64.dll"
+          }
+
+          # Rig files
+          New-Item -ItemType Directory -Force -Path "$out\rigs" | Out-Null
+          Copy-Item "rigs\*.rig" "$out\rigs\" -Force
+
+      - name: Create ZIP
+        shell: pwsh
+        run: Compress-Archive -Path wfweb -DestinationPath wfweb-windows-x86_64.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wfweb-windows-x86_64
+          path: wfweb-windows-x86_64.zip
+          retention-days: 30
+
   release:
     name: Publish release
-    needs: build
+    needs: [build-linux]
     runs-on: ubuntu-24.04
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
@@ -141,5 +218,6 @@ jobs:
             wfweb-arm64-tar/wfweb-arm64.tar.gz
             wfweb-x86_64-deb/*.deb
             wfweb-arm64-deb/*.deb
+            wfweb-windows-x86_64/wfweb-windows-x86_64.zip
           generate_release_notes: true
           overwrite: true

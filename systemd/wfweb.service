@@ -1,5 +1,5 @@
 [Unit]
-Description=WF Server
+Description=wfweb — browser-based remote control for amateur radio
 After=network.target
 StartLimitIntervalSec=0
 [Service]
@@ -7,6 +7,6 @@ Type=simple
 Restart=always
 RestartSec=1
 User=pi
-ExecStart=/usr/local/bin/wfserver
+ExecStart=/usr/local/bin/wfweb
 [Install]
 WantedBy=multi-user.target

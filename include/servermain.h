@@ -30,6 +30,7 @@
 #include "icomserver.h"
 #include "kenwoodserver.h"
 #include "yaesuserver.h"
+#include "webserver.h"
 #include "rigctld.h"
 #include "signal.h"
 
@@ -251,6 +252,7 @@ private:
         bool haveRigCaps = false;
         quint16 tcpPort;
         audioType audioSystem;
+        quint16 webPort;
     } prefs;
 
     preferences defPrefs;
@@ -281,6 +283,9 @@ private:
     rigServer* server = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
     QThread* serverThread = Q_NULLPTR;
+
+    webServer* web = Q_NULLPTR;
+    QThread* webThread = Q_NULLPTR;
 
     rigstate* rigState = Q_NULLPTR;
 

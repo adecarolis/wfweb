@@ -4,10 +4,8 @@
 .qtc_clangd
 debug
 release
-wfview-debug
-wfserver-debug
-wfview-release
-wfserver-release
+wfweb-debug
+wfweb-release
 ui_*
 portaudio_x86.dll
 qcustomplot2.dll
@@ -18,8 +16,6 @@ Makefile.Release
 moc_*.cpp
 moc_*.h
 qrc_*.cpp
-wfview
-wfserver
 IC7300-screenshots/
 *.log
 *.ipch

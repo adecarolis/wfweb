@@ -6,6 +6,20 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.2.5 (2026-03-16)
+--------------------
+
+Infrastructure:
+- Rename headless binary from wfserver to wfweb; project file renamed
+  from wfserver.pro to wfweb.pro
+- Rename systemd/wfserver.service to systemd/wfweb.service; update
+  ExecStart path and description
+- Update systemd/wfweb@.service ExecStart from wfview to wfweb
+- Update GitHub Actions workflow to build wfweb.pro
+- Remove wfview.pro (GUI build); wfweb.pro is now the sole build target
+- Update README to reflect the new binary name
+
+
 v0.2.4 (2026-03-13)
 --------------------
 
