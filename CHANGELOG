@@ -6,6 +6,15 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.2.6 (2026-03-16)
+--------------------
+
+Fixes:
+- Fix slow S-meter updates in wfweb: the queue had too many meters at
+  priorityHighest (5 items vs 1 in the GUI), starving S-meter polls;
+  move ALC meter to priorityHigh to reduce contention
+
+
 v0.2.5 (2026-03-16)
 --------------------
 
