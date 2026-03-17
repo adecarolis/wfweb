@@ -159,13 +159,13 @@ jobs:
 
       - name: Deploy Qt runtime
         shell: cmd
-        run: windeployqt --release --no-translations --no-opengl-sw wfweb\wfweb.exe
+        run: windeployqt --release --no-translations --no-opengl-sw wfweb-release\wfweb.exe
 
       - name: Deploy vcpkg DLLs and assets
         shell: pwsh
         run: |
           $vcpkgBin = "C:\vcpkg\installed\x64-windows\bin"
-          $out = "wfweb"
+          $out = "wfweb-release"
 
           # vcpkg DLLs
           foreach ($dll in @("portaudio.dll", "opus.dll", "hidapi.dll",
@@ -188,7 +188,7 @@ jobs:
 
       - name: Create ZIP
         shell: pwsh
-        run: Compress-Archive -Path wfweb -DestinationPath wfweb-windows-x86_64.zip
+        run: Compress-Archive -Path wfweb-release -DestinationPath wfweb-windows-x86_64.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
