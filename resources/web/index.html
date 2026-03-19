@@ -2886,11 +2886,14 @@ var METER_DARK = '#1c1c1c';     // inactive segment
 var METER_BASELINE = '#999';    // thin white line under segments
 
 var alcVal = 0;
-var digiTxGain = 1.0;          // FT8/FT4 audio gain multiplier
-var ALC_TARGET = 0.05;         // target ALC level (5%)
-var ALC_STEP_DOWN = 0.02;      // gain reduction per ALC update when over target
-var ALC_STEP_UP = 0.01;        // gain increase per ALC update when under target
-var ALC_MIN_GAIN = 0.05;       // minimum gain floor
+var digiTxGain = 0.25;         // FT8/FT4 audio gain multiplier (conservative start)
+var ALC_TARGET = 0.025;        // target ALC level (2.5%)
+var ALC_DEAD_ZONE = 0.02;      // no adjustment when ALC within target ± this
+var ALC_GAIN_DOWN = 0.06;      // proportional gain for reducing (fast)
+var ALC_GAIN_UP = 0.005;       // proportional gain for increasing (slow)
+var ALC_MIN_GAIN = 0.02;       // minimum gain floor
+var ALC_SMOOTHED = 0;          // EMA-filtered ALC reading
+var ALC_EMA_ALPHA = 0.15;      // EMA smoothing factor (lower = smoother)
 
 function updateSMeter(val) { meterVal = val; if (!isTransmitting) drawMeter(); }
 function updatePowerMeter(val) { powerVal = val; if (isTransmitting) drawMeter(); }
@@ -2898,12 +2901,16 @@ function updateSwrMeter(val) { swrVal = val; if (isTransmitting) drawMeter(); }
 function updateALCMeter(val) {
     alcVal = val;
     if (isTransmitting) drawMeter();
-    // Auto-adjust FT8/FT4 audio gain to keep ALC at ~5%
+    // Smooth proportional ALC control for FT8/FT4 — keeps power stable
     if ((digiTxActive || digiTuneActive) && isTransmitting) {
-        if (alcVal > ALC_TARGET) {
-            digiTxGain = Math.max(ALC_MIN_GAIN, digiTxGain - ALC_STEP_DOWN);
-        } else if (alcVal < ALC_TARGET && digiTxGain < 1.0) {
-            digiTxGain = Math.min(1.0, digiTxGain + ALC_STEP_UP);
+        ALC_SMOOTHED = ALC_SMOOTHED * (1 - ALC_EMA_ALPHA) + alcVal * ALC_EMA_ALPHA;
+        var error = ALC_SMOOTHED - ALC_TARGET;
+        if (error > ALC_DEAD_ZONE) {
+            // Over target: reduce gain proportionally to overshoot
+            digiTxGain = Math.max(ALC_MIN_GAIN, digiTxGain * (1 - ALC_GAIN_DOWN * error));
+        } else if (error < -ALC_DEAD_ZONE && digiTxGain < 0.5) {
+            // Under target: increase gain very slowly (cap at 0.5 — never need more)
+            digiTxGain = Math.min(0.5, digiTxGain * (1 + ALC_GAIN_UP));
         }
     }
 }
@@ -3105,7 +3112,7 @@ function drawTxMeters(ctx, cw, ch, barX, barW, segW, segGap, segX, labelW) {
     // ALC indicator — visible during DIGI TX
     if (digiTxActive || digiTuneActive) {
         var alcPct = Math.round(alcVal * 100);
-        var alcColor = alcVal > ALC_TARGET ? '#ff4444' : '#44cc44';
+        var alcColor = alcVal > 0.05 ? '#ff4444' : '#44cc44';
         var alcText = 'ALC ' + alcPct + '%';
         ctx.fillStyle = alcColor;
         ctx.font = 'bold 9px system-ui, sans-serif';
@@ -4910,7 +4917,7 @@ function toggleDigiBar() {
         digiSavedModLevel = slider ? parseInt(slider.value) : -1;
         throttledSend('micGain', 'setMicGain', DIGI_MOD_LEVEL);
         updateSlider('micGain', DIGI_MOD_LEVEL);
-        digiTxGain = 1.0; // reset audio gain for new session
+        ALC_SMOOTHED = 0; // reset ALC filter for new session
         // Tune to the FT8/FT4 frequency for the current band
         var band = getCurrentDigiBand();
         var bandSel = document.getElementById('digiBandSel');
@@ -4937,7 +4944,7 @@ function toggleDigiBar() {
             updateSlider('micGain', digiSavedModLevel);
             digiSavedModLevel = -1;
         }
-        digiTxGain = 1.0;
+        ALC_SMOOTHED = 0;
         digiRxEnabled = false;
         updateDigiRxToggle();
         if (digiTxCtx) { digiTxCtx.close(); digiTxCtx = null; digiTxPacerReady = false; }
@@ -6225,11 +6232,9 @@ function startDigiTune() {
 
     function sendTuneChunk(i16buf) {
         if (!ws || ws.readyState !== WebSocket.OPEN || !digiTuneActive) return;
-        if (digiTxGain < 1.0) {
-            var samples = new Int16Array(i16buf);
-            for (var g = 0; g < samples.length; g++) samples[g] = (samples[g] * digiTxGain) | 0;
-            i16buf = samples.buffer;
-        }
+        var samples = new Int16Array(i16buf);
+        for (var g = 0; g < samples.length; g++) samples[g] = (samples[g] * digiTxGain) | 0;
+        i16buf = samples.buffer;
         var frame = new ArrayBuffer(6 + i16buf.byteLength);
         var dv = new DataView(frame);
         dv.setUint8(0, 0x03); dv.setUint8(1, 0x00);
@@ -6357,11 +6362,9 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
                          (ws ? ws.readyState : 'null') + ') chunk#' + (chunksSent + 1));
             return;
         }
-        if (digiTxGain < 1.0) {
-            var samples = new Int16Array(i16buf);
-            for (var g = 0; g < samples.length; g++) samples[g] = (samples[g] * digiTxGain) | 0;
-            i16buf = samples.buffer;
-        }
+        var samples = new Int16Array(i16buf);
+        for (var g = 0; g < samples.length; g++) samples[g] = (samples[g] * digiTxGain) | 0;
+        i16buf = samples.buffer;
         var frame = new ArrayBuffer(6 + i16buf.byteLength);
         var dv = new DataView(frame);
         dv.setUint8(0, 0x03); dv.setUint8(1, 0x00);
