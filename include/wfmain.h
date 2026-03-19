@@ -100,7 +100,7 @@ class wfmain : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit wfmain(const QString settingsFile, const QString logFile, bool debugMode, QWidget *parent = 0);
+    explicit wfmain(const QString settingsFile, const QString logFile, bool debugMode, quint16 cmdLineWebPort = 0, QWidget *parent = 0);
     ~wfmain();
     static void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
     void handleLogText(QPair<QtMsgType,QString> logMessage);
@@ -484,6 +484,7 @@ private:
     void closeEvent(QCloseEvent *event);
     QString logFilename;
     bool debugMode;
+    quint16 cmdLineWebPort;
     QString version;
     QSettings *settings=Q_NULLPTR;
     void loadSettings();

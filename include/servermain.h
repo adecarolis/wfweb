@@ -48,7 +48,7 @@ class servermain : public QObject
     Q_OBJECT
 
 public:
-    servermain(const QString logFile);
+    servermain(const QString logFile, quint16 cmdLineWebPort = 0);
     ~servermain();
 
 signals:
@@ -188,6 +188,7 @@ private slots:
 private:
     QSettings *settings=Q_NULLPTR;
     void loadSettings();
+    quint16 cmdLineWebPort = 0;
 
     void openRig();
     void powerRigOff();
@@ -253,6 +254,7 @@ private:
         quint16 tcpPort;
         audioType audioSystem;
         quint16 webPort;
+        bool enableLAN = false;
     } prefs;
 
     preferences defPrefs;

@@ -25,10 +25,11 @@ bool debugModeLogging = false;
 bool insaneDebugLogging = false;
 bool rigctlDebugLogging = false;
 
-wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode, QWidget *parent ) :
+wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode, quint16 cmdLineWebPort, QWidget *parent ) :
     QMainWindow(parent),
     ui(new Ui::wfmain),
-    logFilename(logFile)
+    logFilename(logFile),
+    cmdLineWebPort(cmdLineWebPort)
 {
     QGuiApplication::setApplicationDisplayName("wfweb");
     QGuiApplication::setApplicationName(QString("wfview"));
@@ -2119,6 +2120,10 @@ void wfmain::loadSettings()
     }
 
     prefs.webPort = settings->value("WebServerPort", defPrefs.webPort).toInt();
+    // Command-line port overrides settings file
+    if (cmdLineWebPort > 0) {
+        prefs.webPort = cmdLineWebPort;
+    }
     if (prefs.webPort > 0 && web == Q_NULLPTR) {
         web = new webServer();
         webThread = new QThread(this);

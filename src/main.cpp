@@ -137,9 +137,10 @@ int main(int argc, char *argv[])
 
     QString settingsFile = NULL;
     QString currentArg;
+    quint16 webPort = 0;  // 0 means use settings file value
 
 
-    const QString helpText = QString("\nUsage: -l --logfile filename.log, -s --settings filename.ini, -c --clearconfig CONFIRM, -b --background (not Windows), -d --debug, -v --version\n"); // TODO...
+    const QString helpText = QString("\nUsage: -l --logfile filename.log, -s --settings filename.ini, -c --clearconfig CONFIRM, -b --background (not Windows), -d --debug, -p --port <port>, -v --version\n"); // TODO...
 #ifdef BUILD_WFSERVER
     const QString version = QString("wfweb version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
         .arg(QString(WFVIEW_VERSION))
@@ -238,6 +239,31 @@ int main(int argc, char *argv[])
             initDaemon();
         }
 #endif
+        else if ((currentArg == "-p") || (currentArg == "--port"))
+        {
+            if (argc > c + 1)
+            {
+                bool ok;
+                int port = QString(argv[c + 1]).toInt(&ok);
+                if (ok && port > 0 && port <= 65535)
+                {
+                    webPort = static_cast<quint16>(port);
+                    c += 1;
+                }
+                else
+                {
+                    std::cout << "Error: Invalid port number (must be 1-65535)\n";
+                    std::cout << helpText.toStdString();
+                    return -1;
+                }
+            }
+            else
+            {
+                std::cout << "Error: Port number required\n";
+                std::cout << helpText.toStdString();
+                return -1;
+            }
+        }
         else if ((currentArg == "-?") || (currentArg == "--help"))
         {
             std::cout << helpText.toStdString();
@@ -277,10 +303,10 @@ int main(int argc, char *argv[])
     signal(SIGTERM, cleanup);
     signal(SIGKILL, cleanup);
  #endif
-    w = new servermain(settingsFile);
+    w = new servermain(settingsFile, webPort);
 #else
     a.setWheelScrollLines(1); // one line per wheel click
-    wfmain w(settingsFile, logFilename, debugMode);
+    wfmain w(settingsFile, logFilename, debugMode, webPort);
     w.show();
 
 #endif

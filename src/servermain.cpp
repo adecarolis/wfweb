@@ -8,7 +8,8 @@
 // This code is copyright 2017-2020 Elliott H. Liggett
 // All rights reserved
 
-servermain::servermain(const QString settingsFile)
+servermain::servermain(const QString settingsFile, quint16 cmdLineWebPort)
+    : cmdLineWebPort(cmdLineWebPort)
 {
 
     qRegisterMetaType <udpPreferences>(); // Needs to be registered early.
@@ -59,7 +60,9 @@ servermain::servermain(const QString settingsFile)
     setInitialTiming();
 
     // Initialize web server before openRig so audio connections can be made
-    if (prefs.webPort > 0) {
+    // Command-line port overrides settings file
+    quint16 effectiveWebPort = (cmdLineWebPort > 0) ? cmdLineWebPort : prefs.webPort;
+    if (effectiveWebPort > 0) {
         web = new webServer();
         webThread = new QThread(this);
         webThread->setObjectName("WebServer()");
@@ -68,8 +71,8 @@ servermain::servermain(const QString settingsFile)
         connect(webThread, SIGNAL(finished()), web, SLOT(deleteLater()));
         webThread->start();
         QMetaObject::invokeMethod(web, "init", Qt::QueuedConnection,
-            Q_ARG(quint16, prefs.webPort), Q_ARG(quint16, prefs.webPort + 1));
-        qInfo(logSystem()) << "Web server starting on port" << prefs.webPort;
+            Q_ARG(quint16, effectiveWebPort), Q_ARG(quint16, effectiveWebPort + 1));
+        qInfo(logSystem()) << "Web server starting on port" << effectiveWebPort;
     }
 
     openRig();
@@ -541,6 +544,15 @@ void servermain::setDefPrefs()
     defPrefs.webPort = 8080;
     defPrefs.rxAudio.name = QString("default");
     defPrefs.txAudio.name = QString("default");
+    defPrefs.enableLAN = false;
+
+    // LAN audio defaults
+    rxSetup.codec = 4;       // LPCM 16-bit
+    txSetup.codec = 4;
+    rxSetup.sampleRate = 48000;
+    txSetup.sampleRate = 48000;
+    rxSetup.isinput = false;
+    txSetup.isinput = true;
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -563,21 +575,42 @@ void servermain::loadSettings()
     if (numRadios == 0) {
         settings->endArray();
 
-        // We assume that QSettings is empty as there are no radios configured, create new:
-        qInfo(logSystem()) << "Creating new settings file " << settings->fileName();
+        // No Radios array found. Try reading flat [Radio] section (wfview-style config).
+        unsigned char flatCiv = defPrefs.radioCIVAddr;
+        manufacturersType_t flatManuf = defPrefs.manufacturer;
+        QString flatSerial = defPrefs.serialPortRadio;
+        quint32 flatBaud = defPrefs.serialPortBaud;
+
+        settings->beginGroup("Radio");
+        if (settings->contains("RigCIVuInt")) {
+            flatCiv = (unsigned char)settings->value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
+        }
+        if (settings->contains("Manufacturer")) {
+            flatManuf = static_cast<manufacturersType_t>(settings->value("Manufacturer", defPrefs.manufacturer).toInt());
+            prefs.manufacturer = flatManuf;
+        }
+        if (settings->contains("SerialPortRadio")) {
+            flatSerial = settings->value("SerialPortRadio", defPrefs.serialPortRadio).toString();
+        }
+        if (settings->contains("SerialPortBaud")) {
+            flatBaud = settings->value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
+        }
+        settings->endGroup();
+
+        qInfo(logSystem()) << "Creating radio config from settings file" << settings->fileName();
         settings->setValue("AudioSystem", defPrefs.audioSystem);
-        settings->setValue("Manufacturer", defPrefs.manufacturer);
+        settings->setValue("Manufacturer", prefs.manufacturer);
 
         numRadios = 1;
         settings->beginWriteArray("Radios");
         for (int i = 0; i < numRadios; i++)
         {
             settings->setArrayIndex(i);
-            settings->setValue("RigCIVuInt", defPrefs.radioCIVAddr);
+            settings->setValue("RigCIVuInt", flatCiv);
             settings->setValue("PTTType", defPrefs.pttType);
-            settings->setValue("SerialPortRadio", defPrefs.serialPortRadio);
+            settings->setValue("SerialPortRadio", flatSerial);
             settings->setValue("RigName", "<NONE>");
-            settings->setValue("SerialPortBaud", defPrefs.serialPortBaud);
+            settings->setValue("SerialPortBaud", flatBaud);
             settings->setValue("AudioInput", "default");
             settings->setValue("AudioOutput", "default");
             settings->setValue("WaterfallFormat", 0);
@@ -757,6 +790,28 @@ void servermain::loadSettings()
     }
 
     settings->endGroup();
+
+    // Read [LAN] section for direct LAN/UDP connection to radio
+    settings->beginGroup("LAN");
+    prefs.enableLAN = settings->value("EnableLAN", defPrefs.enableLAN).toBool();
+    if (prefs.enableLAN) {
+        udpPrefs.ipAddress = settings->value("IPAddress", udpDefPrefs.ipAddress).toString();
+        udpPrefs.controlLANPort = settings->value("ControlLANPort", udpDefPrefs.controlLANPort).toInt();
+        udpPrefs.serialLANPort = settings->value("SerialLANPort", udpDefPrefs.serialLANPort).toInt();
+        udpPrefs.audioLANPort = settings->value("AudioLANPort", udpDefPrefs.audioLANPort).toInt();
+        udpPrefs.username = settings->value("Username", udpDefPrefs.username).toString();
+        udpPrefs.password = settings->value("Password", udpDefPrefs.password).toString();
+        rxSetup.sampleRate = settings->value("AudioRXSampleRate", 48000).toInt();
+        txSetup.sampleRate = rxSetup.sampleRate;
+        rxSetup.codec = settings->value("AudioRXCodec", 4).toInt();
+        txSetup.codec = settings->value("AudioTXCodec", 4).toInt();
+        qInfo(logSystem()) << "LAN mode enabled, connecting to" << udpPrefs.ipAddress
+                           << "control:" << udpPrefs.controlLANPort
+                           << "serial:" << udpPrefs.serialLANPort
+                           << "audio:" << udpPrefs.audioLANPort;
+    }
+    settings->endGroup();
+
     settings->sync();
 
 #if defined(RTAUDIO)
