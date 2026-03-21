@@ -61,9 +61,9 @@ servermain::servermain(const QString settingsFile, const cmdLineOverrides& overr
     setInitialTiming();
 
     // Initialize web server before openRig so audio connections can be made
-    // Command-line port overrides settings file
+    // --no-web disables the web server entirely (enables rig server instead)
     quint16 effectiveWebPort = (cliOverrides.webPort > 0) ? cliOverrides.webPort : prefs.webPort;
-    if (effectiveWebPort > 0) {
+    if (effectiveWebPort > 0 && !cliOverrides.noWeb) {
         web = new webServer();
         webThread = new QThread(this);
         webThread->setObjectName("WebServer()");
@@ -161,6 +161,7 @@ void servermain::openRig()
             QMetaObject::invokeMethod(web, "setupUsbAudio", Qt::QueuedConnection,
                 Q_ARG(quint32, 48000));
         }
+
     }
 }
 
@@ -491,8 +492,8 @@ void servermain::setServerToPrefs()
         server = Q_NULLPTR;
     }
 
-    if (cliOverrides.noServer) {
-        qInfo(logSystem()) << "Rig server disabled (--no-server)";
+    if (!cliOverrides.noWeb) {
+        qInfo(logSystem()) << "Rig server disabled (use --no-web to enable)";
         return;
     }
 

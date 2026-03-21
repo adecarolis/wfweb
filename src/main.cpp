@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
         "\nUsage: wfweb [options]\n"
         "  -s --settings <file>    Settings .ini file\n"
         "  -p --port <port>        Web server port\n"
-        "  -S --no-server          Disable rig server\n"
+        "  -S --no-web             Disable web server, enable rig server\n"
         "  --lan <ip>              Connect via LAN to IP (enables LAN mode)\n"
         "  --lan-control <port>    LAN control port (default 50001)\n"
         "  --lan-serial <port>     LAN serial port (default 50002)\n"
@@ -281,9 +281,9 @@ int main(int argc, char *argv[])
                 return -1;
             }
         }
-        else if ((currentArg == "-S") || (currentArg == "--no-server"))
+        else if ((currentArg == "-S") || (currentArg == "--no-web"))
         {
-            overrides.noServer = true;
+            overrides.noWeb = true;
         }
         else if (currentArg == "--lan")
         {

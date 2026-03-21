@@ -82,7 +82,6 @@ public slots:
     void receiveRxAudio(audioPacket audio);
     void setupAudio(quint8 codec, quint32 sampleRate);
     void setupUsbAudio(quint32 sampleRate);
-
 private slots:
     // HTTP
     void onHttpConnection();

@@ -370,7 +370,7 @@ int audioDevices::findInput(QString type, QString name, bool ignoreDefault)
     for (int f = 0; f < inputs.size(); f++)
     {
         //qInfo(logAudio()) << "Found device" << inputs[f].name;
-        if (inputs[f]->name.startsWith(name)) {
+        if (!name.isEmpty() && inputs[f]->name.startsWith(name)) {
             s << type << " Audio input device " << name << " found! ";
             ret = f;
         }
@@ -432,7 +432,7 @@ int audioDevices::findOutput(QString type, QString name, bool ignoreDefault)
     for (int f = 0; f < outputs.size(); f++)
     {
         //qInfo(logAudio()) << "Found device" << outputs[f].name;
-        if (outputs[f]->name.startsWith(name)) {
+        if (!name.isEmpty() && outputs[f]->name.startsWith(name)) {
             ret = f;
             s << type << " Audio output device " << name << " found! ";
         }

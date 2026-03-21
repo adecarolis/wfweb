@@ -2074,8 +2074,11 @@ void webServer::onRxConverted(audioPacket audio)
 
 void webServer::setupUsbAudio(quint32 sampleRate)
 {
+    if (sampleRate > 0) {
+        rigSampleRate = sampleRate;
+    }
+
     if (audioConfigured) {
-        qInfo() << "Web: Audio already configured, skipping";
         return;
     }
 

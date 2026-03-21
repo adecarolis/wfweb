@@ -59,10 +59,10 @@ The Mk2 uses a different CI-V address. One extra flag:
 The Mk2 has a built-in Ethernet port — no USB cable needed:
 
 ```bash
-./wfweb --lan 192.168.1.100 --civ 130 --lan-user admin --lan-pass secret -S
+./wfweb --lan 192.168.1.100 --civ 130 --lan-user admin --lan-pass secret
 ```
 
-Replace the IP, username, and password with your radio's settings. The `-S` flag disables the built-in rig server (not needed when connecting to a radio directly over LAN).
+Replace the IP, username, and password with your radio's settings.
 
 ### IC-7610 (USB)
 
@@ -73,7 +73,7 @@ Replace the IP, username, and password with your radio's settings. The `-S` flag
 ### IC-7610 (Ethernet)
 
 ```bash
-./wfweb --lan 192.168.1.100 --civ 152 --lan-user admin --lan-pass secret -S
+./wfweb --lan 192.168.1.100 --civ 152 --lan-user admin --lan-pass secret
 ```
 
 > For other radios, see the [CI-V address table](#other-radios) and [command-line options](#command-line-options) below.
@@ -109,10 +109,10 @@ wfweb will detect the IC-7300 automatically (CI-V address 0x94, baud 115200, por
 If your radio (or a wfview server) is reachable over the network, you can connect entirely from the command line:
 
 ```bash
-wfweb --lan 192.168.1.100 --lan-user admin --lan-pass secret -S
+wfweb --lan 192.168.1.100 --lan-user admin --lan-pass secret
 ```
 
-This enables LAN/UDP mode, connects to the given IP with default Icom ports (50001–50003), and disables the built-in rig server (`-S`) to avoid port conflicts. All parameters have sensible defaults — only `--lan` is required to enable LAN mode.
+This enables LAN/UDP mode, connects to the given IP with default Icom ports (50001–50003). All parameters have sensible defaults — only `--lan` is required to enable LAN mode.
 
 ### Other radios
 
@@ -121,7 +121,7 @@ For radios other than the IC-7300, you can either pass CLI flags or create a con
 #### CLI example (IC-705 via LAN)
 
 ```bash
-wfweb --lan 192.168.1.100 --civ 164 --lan-user admin -S
+wfweb --lan 192.168.1.100 --civ 164 --lan-user admin
 ```
 
 #### Config file
@@ -168,7 +168,7 @@ Replace `192.168.1.100` with your radio's (or wfview server's) IP address. `User
 Or equivalently, without a config file:
 
 ```bash
-wfweb --lan 192.168.1.100 --civ 130 --lan-user admin -S
+wfweb --lan 192.168.1.100 --civ 130 --lan-user admin
 ```
 
 #### IC-705 (USB)
@@ -270,7 +270,7 @@ All settings-file parameters can be overridden from the command line. Run `wfweb
 |---|---|---|
 | `-s --settings <file>` | Settings .ini file | `~/.config/wfview/wfweb.conf` |
 | `-p --port <port>` | Web server HTTPS port | `8080` |
-| `-S --no-server` | Disable built-in rig server | server enabled |
+| `-S --no-web` | Disable web server, enable rig server | web server enabled |
 | `--lan <ip>` | Connect via LAN/UDP to IP (enables LAN mode) | USB serial |
 | `--lan-control <port>` | LAN control port | `50001` |
 | `--lan-serial <port>` | LAN serial/CI-V port | `50002` |
@@ -314,7 +314,7 @@ For LAN-connected radios (no USB device needed):
 ```bash
 docker run --rm -it \
   -p 8080:8080 -p 8081:8081 \
-  k1fm/wfweb:latest --lan 192.168.1.100 --lan-user admin --lan-pass secret -S
+  k1fm/wfweb:latest --lan 192.168.1.100 --lan-user admin --lan-pass secret
 ```
 
 ### Building locally

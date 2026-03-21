@@ -45,7 +45,7 @@ class wfmain;
 
 struct cmdLineOverrides {
     quint16 webPort = 0;
-    bool noServer = false;
+    bool noWeb = false;
     // [LAN] overrides — setting lanIP enables LAN mode
     QString lanIP;
     int controlPort = 0;
