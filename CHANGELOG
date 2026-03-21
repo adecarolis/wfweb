@@ -6,6 +6,22 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.3.3 (2026-03-21)
+--------------------
+
+Docker & rig server:
+- Docker support: multi-arch builds, comprehensive DOCKER.md documentation
+- Web and rig servers are now mutually exclusive: --no-web disables the web
+  interface and enables the Icom UDP rig server for LAN clients
+- Add --serial-port and --audio-system CLI flags for Docker USB access
+- Add --audio-device CLI flag to override audio device selection
+- Fix default audio device selection: "default" now correctly uses the
+  system default device (PipeWire/PulseAudio) instead of picking an output
+  monitor as input, which caused silent audio in rig server mode
+- Suppress rx latency status messages from headless console output
+- Upgrade Docker runtime base to Ubuntu 25.10
+
+
 v0.3.2 (2026-03-20)
 --------------------
 
