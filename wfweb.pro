@@ -13,6 +13,7 @@ TEMPLATE = app
 
 CONFIG += console
 macx:CONFIG -= app_bundle
+macx:CONFIG += c++17
 win32:CONFIG += c++17
 
 DEFINES += WFVIEW_VERSION=\\\"0.3.4\\\"
