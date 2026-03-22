@@ -16,6 +16,14 @@
 #endif
 
 #include <iostream>
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+#include <QAudioDeviceInfo>
+#else
+#include <QMediaDevices>
+#include <QAudioDevice>
+#endif
+
 #include "wfmain.h"
 
 #include "logcategories.h"
@@ -154,6 +162,7 @@ int main(int argc, char *argv[])
         "  --serial-port <path>    Serial port device (e.g. /dev/ttyUSB0)\n"
         "  --audio-system <id>     Audio system (0=Qt, 1=PortAudio, 2=RtAudio)\n"
         "  --audio-device <name>   Audio device name (e.g. 'USB Audio CODEC')\n"
+        "                          Use '--audio-device list' to show available devices\n"
         "  --manufacturer <id>     Manufacturer ID (0=Icom, 1=Kenwood, 2=Yaesu)\n"
         "  -l --logfile <file>     Log file\n"
         "  -b --background         Run as daemon (not Windows)\n"
@@ -335,7 +344,33 @@ int main(int argc, char *argv[])
         }
         else if (currentArg == "--audio-device")
         {
-            if (argc > c + 1) { overrides.audioDevice = argv[++c]; }
+            if (argc > c + 1) {
+                QString devArg = argv[++c];
+                if (devArg.compare("list", Qt::CaseInsensitive) == 0) {
+                    std::cout << "Available audio input devices:\n";
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+                    for (const auto &dev : QAudioDeviceInfo::availableDevices(QAudio::AudioInput)) {
+                        std::cout << "  " << dev.deviceName().toStdString() << "\n";
+                    }
+#else
+                    for (const QAudioDevice &dev : QMediaDevices::audioInputs()) {
+                        std::cout << "  " << dev.description().toStdString() << "\n";
+                    }
+#endif
+                    std::cout << "\nAvailable audio output devices:\n";
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+                    for (const auto &dev : QAudioDeviceInfo::availableDevices(QAudio::AudioOutput)) {
+                        std::cout << "  " << dev.deviceName().toStdString() << "\n";
+                    }
+#else
+                    for (const QAudioDevice &dev : QMediaDevices::audioOutputs()) {
+                        std::cout << "  " << dev.description().toStdString() << "\n";
+                    }
+#endif
+                    return 0;
+                }
+                overrides.audioDevice = devArg;
+            }
             else { std::cout << "Error: --audio-device requires device name (e.g. 'USB Audio CODEC')\n"; return -1; }
         }
         else if (currentArg == "--manufacturer")
