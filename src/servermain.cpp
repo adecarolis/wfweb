@@ -397,51 +397,43 @@ void servermain::receiveRigCaps(rigCapabilities* rigCaps)
                 qInfo(logSystem()) << "Auto Information enabled for meters";
             }
 
-            // Setup recurring poll commands for the web server
-            if (web != Q_NULLPTR) {
-                vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
-                queue->addUnique(priorityHigh, t.freqFunc, true, 0);
-                queue->addUnique(priorityHigh, t.modeFunc, true, 0);
-                queue->addUnique(priorityHighest, queueItem(funcSMeter, true, 0));
-                if (rigCaps->commands.contains(funcPowerMeter))
-                    queue->addUnique(priorityHighest, queueItem(funcPowerMeter, true, 0));
-                if (rigCaps->commands.contains(funcSWRMeter))
-                    queue->addUnique(priorityHighest, queueItem(funcSWRMeter, true, 0));
-                if (rigCaps->commands.contains(funcALCMeter))
-                    queue->addUnique(priorityHigh, queueItem(funcALCMeter, true, 0));
-
-                // Gains and settings
-                if (rigCaps->commands.contains(funcAfGain))
-                    queue->addUnique(priorityMedium, funcAfGain, true, 0);
-                if (rigCaps->commands.contains(funcRfGain))
-                    queue->addUnique(priorityMedium, funcRfGain, true, 0);
-                if (rigCaps->commands.contains(funcSquelch))
-                    queue->addUnique(priorityMedium, funcSquelch, true, 0);
-                if (rigCaps->commands.contains(funcRFPower))
-                    queue->addUnique(priorityMedium, funcRFPower, true, 0);
-                if (rigCaps->commands.contains(funcPreamp))
-                    queue->addUnique(priorityMediumLow, funcPreamp, true, 0);
-                if (rigCaps->commands.contains(funcAttenuator))
-                    queue->addUnique(priorityMediumLow, funcAttenuator, true, 0);
-                if (rigCaps->commands.contains(funcNoiseBlanker))
-                    queue->addUnique(priorityMediumLow, funcNoiseBlanker, true, 0);
-                if (rigCaps->commands.contains(funcNoiseReduction))
-                    queue->addUnique(priorityMediumLow, funcNoiseReduction, true, 0);
-                if (rigCaps->commands.contains(funcFilterWidth))
-                    queue->addUnique(priorityMedium, funcFilterWidth, true, 0);
-                if (rigCaps->commands.contains(funcTransceiverStatus))
-                    queue->addUnique(priorityHighest, queueItem(funcTransceiverStatus, true, 0));
-                if (rigCaps->commands.contains(funcSplitStatus))
-                    queue->addUnique(priorityMediumLow, funcSplitStatus, true, 0);
-
-                // Spectrum scope
-                if (rigCaps->hasSpectrum) {
-                    queue->addUnique(priorityHigh, queueItem(funcScopeOnOff, QVariant::fromValue(quint8(1)), true));
-                    queue->addUnique(priorityHigh, queueItem(funcScopeDataOutput, QVariant::fromValue(quint8(1)), false));
+            // Load periodic poll commands from the .rig file
+            // (matching wfview's initPeriodicCommands approach).
+            // This avoids overly aggressive polling that can saturate
+            // the CI-V bus and close the radio's on-screen menus.
+            QSet<funcs> periodicFuncs;
+            foreach (auto cap, rigCaps->periodic) {
+                if (cap.receiver == char(-1)) {
+                    for (uchar v = 0; v < rigCaps->numReceiver; v++) {
+                        queue->add(queuePriority(cap.prioVal), cap.func, true, v);
+                    }
+                } else {
+                    queue->add(queuePriority(cap.prioVal), cap.func, true, cap.receiver);
                 }
-
-                qInfo(logSystem()) << "Web server polling commands configured for" << rigCaps->modelName;
+                periodicFuncs.insert(cap.func);
             }
+
+            // Add web-specific meter commands if not already in the periodic set.
+            // These are needed for the web meter display but aren't typically
+            // in .rig files (they're TX-only meters added on demand in wfview).
+            // Use priorityHighest for responsive meter updates — these are
+            // read-only GET queries that don't saturate the CI-V bus.
+            if (!periodicFuncs.contains(funcPowerMeter) && rigCaps->commands.contains(funcPowerMeter))
+                queue->addUnique(priorityHighest, queueItem(funcPowerMeter, true, 0));
+            if (!periodicFuncs.contains(funcSWRMeter) && rigCaps->commands.contains(funcSWRMeter))
+                queue->addUnique(priorityHighest, queueItem(funcSWRMeter, true, 0));
+            if (!periodicFuncs.contains(funcALCMeter) && rigCaps->commands.contains(funcALCMeter))
+                queue->addUnique(priorityHighest, queueItem(funcALCMeter, true, 0));
+
+            // Spectrum scope: one-time enable, NOT recurring.
+            // A recurring SET command would send CI-V writes every ~210ms
+            // which interferes with the radio's menu navigation.
+            if (rigCaps->hasSpectrum) {
+                queue->add(priorityImmediate, queueItem(funcScopeOnOff, QVariant::fromValue(quint8(1)), false));
+                queue->add(priorityImmediate, queueItem(funcScopeDataOutput, QVariant::fromValue(quint8(1)), false));
+            }
+
+            qInfo(logSystem()) << "Periodic polling commands loaded from rig file for" << rigCaps->modelName;
         }
     }
     return;

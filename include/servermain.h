@@ -12,6 +12,7 @@
 #include <QSettings>
 #include <QShortcut>
 #include <QMetaType>
+#include <QSet>
 
 #include "logcategories.h"
 #include "commhandler.h"
