@@ -1671,6 +1671,11 @@ body.digi-open .digi-bar {
 #micOffWarning {
     top: 22px; /* Position below audio warning if both shown */
 }
+#preampAttIndicator {
+    top: 40px;
+    font-size: 14px;
+    color: #888;
+}
 
 /* ============ RESPONSIVE ============ */
 @media (max-height: 450px) {
@@ -2120,6 +2125,7 @@ body.digi-open .digi-bar {
         <!-- Warning overlays on spectrum -->
         <div id="audioOffWarning" class="spectrum-warning" onclick="showAudioMicMenu()" style="display: none;">AUDIO OFF</div>
         <div id="micOffWarning" class="spectrum-warning" onclick="toggleMic()" style="display: none;">MIC OFF</div>
+        <div id="preampAttIndicator" class="spectrum-warning" style="display: none;"></div>
     </div>
 
     <!-- Row 5: Bottom bar -->
@@ -2179,6 +2185,7 @@ var nrOn = false;
 var anfOn = false;
 var tunerState = 0;
 var currentPreamp = 0;
+var currentAttenuator = 0;
 var currentFilter = 1;
 var currentPBTInner = 128;
 var currentPBTOuter = 128;
@@ -2453,6 +2460,7 @@ function handleMessage(msg) {
             if (msg.autoNotch !== undefined) updateToggle('anf', msg.autoNotch);
             if (msg.tuner !== undefined) updateTunerState(msg.tuner);
             if (msg.preamp !== undefined) updatePreampBtn(msg.preamp);
+            if (msg.attenuator !== undefined) updateAttenuatorBtn(msg.attenuator);
             if (msg.filterWidth !== undefined) updateSlider('filterWidth', msg.filterWidth);
             if (msg.pbtInner !== undefined) updateSlider('pbtInner', msg.pbtInner);
             if (msg.pbtOuter !== undefined) updateSlider('pbtOuter', msg.pbtOuter);
@@ -2495,6 +2503,7 @@ function handleMessage(msg) {
             if (msg.autoNotch !== undefined) updateToggle('anf', msg.autoNotch);
             if (msg.tuner !== undefined) updateTunerState(msg.tuner);
             if (msg.preamp !== undefined) updatePreampBtn(msg.preamp);
+            if (msg.attenuator !== undefined) updateAttenuatorBtn(msg.attenuator);
             if (msg.filterWidth !== undefined) updateSlider('filterWidth', msg.filterWidth);
             if (msg.pbtInner !== undefined) updateSlider('pbtInner', msg.pbtInner);
             if (msg.pbtOuter !== undefined) updateSlider('pbtOuter', msg.pbtOuter);
@@ -2726,6 +2735,25 @@ function updateTunerState(val) {
 function updatePreampBtn(num) {
     currentPreamp = num;
     if (currentPanel === 'func') renderFuncOverlay();
+    updatePreampAttIndicator();
+}
+
+function updateAttenuatorBtn(num) {
+    currentAttenuator = num;
+    if (currentPanel === 'func') renderFuncOverlay();
+    updatePreampAttIndicator();
+}
+
+function updatePreampAttIndicator() {
+    var el = document.getElementById('preampAttIndicator');
+    if (!el) return;
+    var state = getPreampAttState();
+    if (state.active) {
+        el.textContent = state.label;
+        el.style.display = '';
+    } else {
+        el.style.display = 'none';
+    }
 }
 
 function updateDspIndicators() {
@@ -3350,15 +3378,9 @@ function renderFuncOverlay() {
     var grid = document.getElementById('funcGrid');
     grid.innerHTML = '';
 
-    // Preamp button
-    var preampLabel = 'P.AMP';
-    var preampState = 'OFF';
-    if (currentPreamp > 0 && availablePreamps.length > 0) {
-        for (var p = 0; p < availablePreamps.length; p++) {
-            if (availablePreamps[p].num === currentPreamp) { preampState = availablePreamps[p].name; break; }
-        }
-    }
-    var preBtn = makeFuncBtn(preampLabel, preampState, currentPreamp > 0, function() { cyclePreamp(); });
+    // Preamp/Attenuator button: cycles OFF → ATT → PRE1 → PRE2
+    var paState = getPreampAttState();
+    var preBtn = makeFuncBtn('P.AMP/ATT', paState.label, paState.active, function() { cyclePreampAtt(); });
     grid.appendChild(preBtn);
 
     // Tuner button
@@ -3459,14 +3481,37 @@ function renderAudioMicOverlay() {
     document.getElementById('audioMicOverlay').classList.add('visible');
 }
 
-function cyclePreamp() {
-    if (availablePreamps.length === 0) return;
-    var idx = -1;
-    for (var i = 0; i < availablePreamps.length; i++) {
-        if (availablePreamps[i].num === currentPreamp) { idx = i; break; }
+function getPreampAttState() {
+    if (currentAttenuator > 0) return { label: 'ATT', active: true };
+    if (currentPreamp > 0) {
+        return { label: 'P.AMP' + currentPreamp, active: true };
     }
-    var next = (idx + 1) % availablePreamps.length;
-    send({ cmd: 'setPreamp', value: availablePreamps[next].num });
+    return { label: 'OFF', active: false };
+}
+
+function cyclePreampAtt() {
+    // Cycle: OFF → ATT → PRE1 → PRE2 → OFF
+    if (currentAttenuator === 0 && currentPreamp === 0) {
+        // OFF → ATT
+        send({ cmd: 'setAttenuator', value: 20 });
+    } else if (currentAttenuator > 0) {
+        // ATT → PRE1 (turn off ATT first)
+        send({ cmd: 'setAttenuator', value: 0 });
+        var pre1 = availablePreamps.length > 1 ? availablePreamps[1].num : 1;
+        send({ cmd: 'setPreamp', value: pre1 });
+    } else if (currentPreamp > 0) {
+        // Find current preamp index
+        var idx = -1;
+        for (var i = 0; i < availablePreamps.length; i++) {
+            if (availablePreamps[i].num === currentPreamp) { idx = i; break; }
+        }
+        // If there's a higher preamp, go to it; otherwise back to OFF
+        if (idx >= 0 && idx + 1 < availablePreamps.length && availablePreamps[idx + 1].num > 0) {
+            send({ cmd: 'setPreamp', value: availablePreamps[idx + 1].num });
+        } else {
+            send({ cmd: 'setPreamp', value: 0 });
+        }
+    }
 }
 
 function renderSpanOverlay() {

@@ -930,8 +930,8 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
                 queue->addUnique(priorityImmediate, queueItem(funcPreamp, QVariant::fromValue<uchar>(val), false, 0));
             }
             if (obj.contains("attenuator")) {
-                ushort val = static_cast<ushort>(qBound(0, obj["attenuator"].toInt(), 255));
-                queue->addUnique(priorityImmediate, queueItem(funcAttenuator, QVariant::fromValue<ushort>(val), false, 0));
+                uchar val = static_cast<uchar>(qBound(0, obj["attenuator"].toInt(), 255));
+                queue->addUnique(priorityImmediate, queueItem(funcAttenuator, QVariant::fromValue<uchar>(val), false, 0));
             }
             if (obj.contains("nb")) {
                 uchar val = obj["nb"].toBool() ? 1 : 0;
@@ -1266,8 +1266,8 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         queue->addUnique(priorityImmediate, queueItem(funcUSBModLevel, QVariant::fromValue<ushort>(val), false, 0));
     }
     else if (type == "setAttenuator") {
-        ushort val = static_cast<ushort>(qBound(0, cmd["value"].toInt(), 255));
-        queue->addUnique(priorityImmediate, queueItem(funcAttenuator, QVariant::fromValue<ushort>(val), false, 0));
+        uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 255));
+        queue->addUnique(priorityImmediate, queueItem(funcAttenuator, QVariant::fromValue<uchar>(val), false, 0));
     }
     else if (type == "setPreamp") {
         uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 255));
@@ -1800,6 +1800,9 @@ void webServer::receiveCache(cacheItem item)
         break;
     case funcPreamp:
         update["preamp"] = item.value.toInt();
+        break;
+    case funcAttenuator:
+        update["attenuator"] = item.value.toInt();
         break;
     case funcAutoNotch:
         update["autoNotch"] = item.value.toBool();
