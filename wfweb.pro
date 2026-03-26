@@ -169,7 +169,6 @@ win32:DEFINES += UNAME=\\\"build\\\"
 
 
 RESOURCES += qdarkstyle/style.qrc \
-    resources/resources.qrc \
     resources/web.qrc
 
 unix:target.path = $$PREFIX/bin
