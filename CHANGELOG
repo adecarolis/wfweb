@@ -6,6 +6,18 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.4.0 (2026-03-26)
+--------------------
+
+Features:
+- Add radio power on/off control via web UI
+- Add combined P.AMP/ATT button and spectrum indicator
+- Detect hardware power-off via consecutive FA errors
+
+Fixes:
+- Fix BW bar not updating when filter is changed
+
+
 v0.3.6 (2026-03-24)
 --------------------
 
