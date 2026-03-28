@@ -1244,6 +1244,10 @@ body.digi-open .digi-bar {
     padding: 2px 3px;
     border-radius: 2px;
 }
+.digi-wspr-select:disabled {
+    opacity: 1;
+    color: #8cf;
+}
 .digi-wspr-input { width: 52px; }
 .digi-wspr-info {
     flex: 1;
@@ -2209,8 +2213,10 @@ body.digi-open .digi-bar {
                     <div class="digi-wspr-grid">
                         <span class="digi-field-label">MSG:</span>
                         <span id="digiWsprMessage" class="digi-wspr-value">MYCALL AA00 30</span>
-                        <span class="digi-field-label">QUEUE:</span>
-                        <span id="digiWsprQueued" class="digi-wspr-value">NO</span>
+                        <span class="digi-field-label">STATE:</span>
+                        <span id="digiWsprQueued" class="digi-wspr-value">OFF</span>
+                        <span class="digi-field-label">PWR:</span>
+                        <span id="digiWsprPowerInfo" class="digi-wspr-value">100 W (100%, 50 dBm)</span>
                         <span class="digi-field-label">NEXT:</span>
                         <span id="digiWsprNextTx" class="digi-wspr-value">--:--:--Z</span>
                         <span class="digi-field-label">NOTE:</span>
@@ -2590,6 +2596,7 @@ var digiQsoPartner = '';
 var digiTheirReport = '';  // report they sent us
 var digiOurReport = '';    // report we sent them (for logging)
 var digiCqOnly = false;
+var currentRfPower = 128;
 var digiTxFreq = 1000;      // audio TX frequency (Hz) within SSB passband
 var digiRxFreq = 1000;      // audio RX frequency (Hz) — decodes here also appear in Directed
 var digiHoldTxFreq = false; // when true, clicking a row does not change TX freq
@@ -3115,7 +3122,11 @@ function initSliderTracking() {
             if (fill) fill.style.width = (val / 255 * 100) + '%';
             if (name === 'afGain') throttledSend('afGain', 'setAfGain', val);
             else if (name === 'rfGain') throttledSend('rfGain', 'setRfGain', val);
-            else if (name === 'rfPower') throttledSend('rfPower', 'setRfPower', val);
+            else if (name === 'rfPower') {
+                currentRfPower = parseInt(val, 10);
+                throttledSend('rfPower', 'setRfPower', val);
+                updateWsprInfo(getDigiSlotInfo());
+            }
             else if (name === 'squelch') throttledSend('squelch', 'setSquelch', val);
             else if (name === 'micGain') throttledSend('micGain', 'setMicGain', val);
         });
@@ -3201,11 +3212,13 @@ function updateSlider(name, val) {
         updatePBTFill('pbtOuterFill', val);
         return;
     }
+    if (name === 'rfPower') currentRfPower = parseInt(val, 10);
     if (valSpan) valSpan.textContent = val;
     // Update fill bars
     var fillId = name + 'Fill';
     var fill = document.getElementById(fillId);
     if (fill) fill.style.width = (val / 255 * 100) + '%';
+    if (name === 'rfPower') updateWsprInfo(getDigiSlotInfo());
 }
 
 var sliderTimers = {};
@@ -5491,8 +5504,70 @@ function sanitizeWsprTxPct(value) {
     return Math.max(0, Math.min(100, value));
 }
 
+function getCurrentRfPowerValue() {
+    var slider = document.getElementById('rfPowerSlider');
+    var val = slider ? parseInt(slider.value, 10) : currentRfPower;
+    if (isNaN(val)) val = currentRfPower;
+    if (isNaN(val)) val = 128;
+    currentRfPower = Math.max(0, Math.min(255, val));
+    return currentRfPower;
+}
+
+function quantizeWsprDbm(dbm) {
+    if (!window.wsprEncodeLib) return digiWsprPower;
+    var levels = window.wsprEncodeLib.getValidPowerLevels();
+    var best = levels[0];
+    var bestDiff = Math.abs(best - dbm);
+    for (var i = 1; i < levels.length; i++) {
+        var diff = Math.abs(levels[i] - dbm);
+        if (diff < bestDiff) {
+            best = levels[i];
+            bestDiff = diff;
+        }
+    }
+    return best;
+}
+
+function getWsprPowerInfo() {
+    var raw = getCurrentRfPowerValue();
+    var percent = Math.max(0, Math.min(100, Math.round(raw / 255 * 100)));
+    var watts = percent <= 0 ? 0 : Math.max(1, percent);
+    var exactDbm = watts > 0 ? (30 + 10 * Math.log10(watts)) : 0;
+    var wsprDbm = watts > 0 ? quantizeWsprDbm(exactDbm) : 0;
+    return { raw: raw, percent: percent, watts: watts, exactDbm: exactDbm, wsprDbm: wsprDbm };
+}
+
+function syncWsprPowerFromRig() {
+    var powerInfo = getWsprPowerInfo();
+    digiWsprPower = powerInfo.wsprDbm;
+
+    var powerSel = document.getElementById('digiWsprPower');
+    if (powerSel) {
+        powerSel.value = String(digiWsprPower);
+        powerSel.disabled = true;
+        powerSel.title = 'Derived from RF POWER';
+    }
+
+    var powerInfoEl = document.getElementById('digiWsprPowerInfo');
+    if (powerInfoEl) {
+        if (powerInfo.watts > 0) powerInfoEl.textContent = powerInfo.watts + ' W (' + powerInfo.percent + '%, ' + powerInfo.wsprDbm + ' dBm)';
+        else powerInfoEl.textContent = '0 W (0%, 0 dBm)';
+    }
+
+    return powerInfo;
+}
+
+function getWsprStateText() {
+    if (digiTxActive) return 'TX';
+    if (digiTxArmed && digiWsprTargetSlotIndex >= 0) return digiWsprManualEnable ? 'BEACON' : 'ARMED';
+    if (digiTxEnabled && sanitizeWsprTxPct(digiWsprTxPct) > 0) return 'AUTO';
+    if (digiTxEnabled) return 'ON';
+    return 'OFF';
+}
+
 function getWsprMessageText() {
     if (!window.wsprEncodeLib) throw new Error('WSPR encoder is not loaded');
+    syncWsprPowerFromRig();
     return window.wsprEncodeLib.buildMessageText(getMyCall(), getMyGrid(), digiWsprPower);
 }
 
@@ -5525,6 +5600,7 @@ function updateWsprInfo(info) {
     var msgEl = document.getElementById('digiWsprMessage');
     var queueEl = document.getElementById('digiWsprQueued');
     var nextEl = document.getElementById('digiWsprNextTx');
+    syncWsprPowerFromRig();
 
     if (msgEl) {
         try { msgEl.textContent = getWsprMessageText(); }
@@ -5532,7 +5608,7 @@ function updateWsprInfo(info) {
     }
 
     if (queueEl) {
-        queueEl.textContent = (digiTxArmed && digiWsprTargetSlotIndex >= 0) ? 'YES' : 'NO';
+        queueEl.textContent = getWsprStateText();
     }
 
     if (nextEl) {
@@ -7691,7 +7767,6 @@ function initDigiHandlers() {
     // Load persisted settings
     var savedCall = localStorage.getItem('digiMyCall');
     var savedGrid = localStorage.getItem('digiGrid');
-    var savedWsprPower = localStorage.getItem('digiWsprPower');
     var savedWsprTxPct = localStorage.getItem('digiWsprTxPct');
     // Load shared QSO log (migrate from old 'digiQsoLog' key if needed)
     var savedLog = localStorage.getItem('qsoLog') || localStorage.getItem('digiQsoLog');
@@ -7699,11 +7774,9 @@ function initDigiHandlers() {
     var gridEl = document.getElementById('digiGrid');
     if (savedCall && myCallEl) myCallEl.value = savedCall;
     if (savedGrid && gridEl) gridEl.value = savedGrid;
-    if (savedWsprPower != null) digiWsprPower = parseInt(savedWsprPower, 10);
     if (savedWsprTxPct != null) digiWsprTxPct = sanitizeWsprTxPct(savedWsprTxPct);
     if (wsprPowerEl && window.wsprEncodeLib) {
-        digiWsprPower = window.wsprEncodeLib.sanitizePower(digiWsprPower);
-        wsprPowerEl.value = String(digiWsprPower);
+        syncWsprPowerFromRig();
     }
     var wsprTxPctEl = document.getElementById('digiWsprTxPct');
     if (wsprTxPctEl) wsprTxPctEl.value = String(digiWsprTxPct);
@@ -7730,15 +7803,6 @@ function initDigiHandlers() {
         gridEl.addEventListener('input', function() {
             this.value = this.value.toUpperCase();
             try { localStorage.setItem('digiGrid', this.value); } catch(e) {}
-            updateDigiMsgRows();
-            updateWsprInfo(getDigiSlotInfo());
-        });
-    }
-    if (wsprPowerEl && window.wsprEncodeLib) {
-        wsprPowerEl.addEventListener('change', function() {
-            digiWsprPower = window.wsprEncodeLib.sanitizePower(this.value);
-            this.value = String(digiWsprPower);
-            try { localStorage.setItem('digiWsprPower', String(digiWsprPower)); } catch(e) {}
             updateDigiMsgRows();
             updateWsprInfo(getDigiSlotInfo());
         });

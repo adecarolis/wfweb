@@ -79,7 +79,7 @@
 
     function getPowerDescription(db) {
         var mw = Math.pow(10, db / 10);
-        var label = mw < 1000 ? (db + ' dB (' + mw.toFixed(0) + ' mW)') : (db + ' dB (' + (mw / 1000).toFixed(0) + ' W)');
+        var label = mw < 1000 ? (db + ' dBm (' + mw.toFixed(0) + ' mW)') : (db + ' dBm (' + (mw / 1000).toFixed(0) + ' W)');
         return label.replace('01 ', '00 ');
     }
 
