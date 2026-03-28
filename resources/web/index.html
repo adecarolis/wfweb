@@ -2546,7 +2546,11 @@ var DIGI_MODE_ORDER = ['FT8', 'FT4', 'WSPR'];
 var WSPR_SAMPLE_RATE = 12000;
 var WSPR_SYMBOL_SAMPLES = 8192;
 var WSPR_TONE_SPACING = WSPR_SAMPLE_RATE / WSPR_SYMBOL_SAMPLES;
-var WSPR_TX_START_OFFSET = 1.0;
+var WSPR_TX_START_OFFSET = 2.0;
+var WSPR_TX_LAUNCH_WINDOW = 0.75;
+var WSPR_DEFAULT_AUDIO_FREQ = 1500;
+var WSPR_AUDIO_WINDOW_LOW = 1400;
+var WSPR_AUDIO_WINDOW_HIGH = 1600;
 var digiMode = 'FT8';
 var digiRxEnabled = true;
 var digiRxBuffer = null;
@@ -2593,6 +2597,7 @@ var digiWsprPower = 30;
 var digiWsprTxPct = 20;
 var digiWsprTargetSlotIndex = -1;
 var digiWsprLastDecisionSlotIndex = -1;
+var digiWsprManualEnable = false;
 // Waterfall FFT
 var WF_FFT_SIZE = 4096;
 var WF_DISPLAY_BINS = 1024; // bins 0-1023 cover 0-3000 Hz at 12kHz/4096
@@ -5499,6 +5504,23 @@ function getWsprNextSlotTime(slotIndex) {
     return formatUtcTime(slotIndex * 120000 + Math.round(WSPR_TX_START_OFFSET * 1000));
 }
 
+function resetWsprSlotDecision() {
+    digiWsprLastDecisionSlotIndex = -1;
+}
+
+function ensureWsprAudioFrequency(force) {
+    if (!isWsprMode()) return;
+
+    var txInWindow = digiTxFreq >= WSPR_AUDIO_WINDOW_LOW && digiTxFreq <= WSPR_AUDIO_WINDOW_HIGH;
+    var rxInWindow = digiRxFreq >= WSPR_AUDIO_WINDOW_LOW && digiRxFreq <= WSPR_AUDIO_WINDOW_HIGH;
+
+    if (force || !txInWindow) digiTxFreq = WSPR_DEFAULT_AUDIO_FREQ;
+    if (force || !rxInWindow) digiRxFreq = WSPR_DEFAULT_AUDIO_FREQ;
+
+    updateDigiTxFreqDisplay();
+    updateDigiRxFreqDisplay();
+}
+
 function updateWsprInfo(info) {
     var msgEl = document.getElementById('digiWsprMessage');
     var queueEl = document.getElementById('digiWsprQueued');
@@ -5525,6 +5547,8 @@ function clearWsprQueue() {
     digiTxArmed = false;
     digiTxAttempts = 0;
     digiWsprTargetSlotIndex = -1;
+    digiWsprManualEnable = false;
+    resetWsprSlotDecision();
     updateDigiStatus('IDLE', '');
     updateWsprInfo(getDigiSlotInfo());
     updateDigiMsgRows();
@@ -5545,10 +5569,12 @@ function armWsprBeaconNext() {
     }
 
     var info = getDigiSlotInfo();
+    digiWsprManualEnable = !digiTxEnabled;
     digiTxEnabled = true;
     digiTxArmed = true;
     digiTxAttempts = 0;
     digiTxSlotParity = -1;
+    resetWsprSlotDecision();
     digiWsprTargetSlotIndex = info.slotPhase < WSPR_TX_START_OFFSET ? info.slotIndex : info.slotIndex + 1;
     initDigiTxCtx();
     var enableBtn = document.getElementById('digiEnableTxBtn');
@@ -5560,8 +5586,6 @@ function armWsprBeaconNext() {
 
 function maybeScheduleWsprTx(info) {
     if (!isWsprMode()) return;
-    if (info.slotIndex === digiWsprLastDecisionSlotIndex) return;
-    digiWsprLastDecisionSlotIndex = info.slotIndex;
 
     if (digiWsprTargetSlotIndex >= info.slotIndex && digiTxQueued) {
         updateWsprInfo(info);
@@ -5590,6 +5614,9 @@ function maybeScheduleWsprTx(info) {
         updateWsprInfo(info);
         return;
     }
+
+    if (info.slotIndex === digiWsprLastDecisionSlotIndex) return;
+    digiWsprLastDecisionSlotIndex = info.slotIndex;
 
     if (Math.random() * 100 < txPct) {
         try {
@@ -5700,6 +5727,8 @@ function toggleDigiBar() {
         initDigiTxCtx(); // create TX context while we have a user gesture
         startDigiPeriodTimer();
         updateDigiModeUi();
+        resetWsprSlotDecision();
+        ensureWsprAudioFrequency(false);
         updateDigiMsgRows();
         updateDigiTxFreqDisplay(); // also draws waterfall
         updateDigiHoldTxBtn();
@@ -5802,8 +5831,15 @@ function startDigiPeriodTimer() {
             maybeScheduleWsprTx(info);
             if (digiWsprTargetSlotIndex >= 0 &&
                 info.slotIndex === digiWsprTargetSlotIndex &&
+                info.slotPhase >= (WSPR_TX_START_OFFSET + WSPR_TX_LAUNCH_WINDOW) &&
+                digiTxArmed && !digiTxActive) {
+                digiWsprTargetSlotIndex = info.slotIndex + 1;
+                updateDigiStatus('ARMED', '');
+            }
+            if (digiWsprTargetSlotIndex >= 0 &&
+                info.slotIndex === digiWsprTargetSlotIndex &&
                 info.slotPhase >= WSPR_TX_START_OFFSET &&
-                info.slotPhase < (WSPR_TX_START_OFFSET + 4.0) &&
+                info.slotPhase < (WSPR_TX_START_OFFSET + WSPR_TX_LAUNCH_WINDOW) &&
                 digiTxArmed && !digiTxActive) {
                 executeDigiTx(info.slotPhase);
             }
@@ -6883,7 +6919,7 @@ function executeDigiTx(slotPhase) {
         // Skip samples from the beginning to maintain end-of-slot sync
         var skipSamples = 0;
         if (slotPhase && slotPhase > 0) {
-            var effectivePhase = isWsprMode() ? Math.max(0, slotPhase - WSPR_TX_START_OFFSET) : slotPhase;
+            var effectivePhase = isWsprMode() ? 0 : slotPhase;
             skipSamples = Math.floor(effectivePhase * sampleRate);
             // Ensure we don't skip more than we have
             if (skipSamples >= samples12k.length) {
@@ -6949,6 +6985,12 @@ function executeDigiTx(slotPhase) {
                 digiTxQueued = null;
                 digiTxAttempts = 0;
                 digiWsprTargetSlotIndex = -1;
+                if (digiWsprManualEnable) {
+                    digiTxEnabled = false;
+                    digiWsprManualEnable = false;
+                    var wsprEnableBtn = document.getElementById('digiEnableTxBtn');
+                    if (wsprEnableBtn) wsprEnableBtn.classList.remove('active');
+                }
                 updateDigiStatus('IDLE', '');
                 updateWsprInfo(getDigiSlotInfo());
                 updateDigiMsgRows();
@@ -7726,11 +7768,13 @@ function initDigiHandlers() {
     var modeLabel = document.getElementById('digiModeLabel');
     if (modeLabel) {
         modeLabel.addEventListener('click', function() {
+            var previousMode = digiMode;
             digiTxArmed = false;
             digiTxQueued = null;
             digiTxAttempts = 0;
             digiTxSlotParity = -1;
             digiWsprTargetSlotIndex = -1;
+            resetWsprSlotDecision();
             if (digiQsoState !== 'IDLE') {
                 digiQsoState = 'IDLE';
                 digiQsoPartner = '';
@@ -7739,6 +7783,7 @@ function initDigiHandlers() {
             }
             var idx = DIGI_MODE_ORDER.indexOf(digiMode);
             digiMode = DIGI_MODE_ORDER[(idx + 1) % DIGI_MODE_ORDER.length];
+            if (digiMode === 'WSPR') ensureWsprAudioFrequency(previousMode !== 'WSPR');
             updateDigiModeUi();
             updateDigiStatus('IDLE', '');
             if (digiBarVisible) {
@@ -7899,6 +7944,7 @@ function initDigiHandlers() {
             this.classList.toggle('active', digiTxEnabled);
             if (digiTxEnabled) {
                 initDigiTxCtx(); // ensure context is ready while we have a user gesture
+                if (isWsprMode()) resetWsprSlotDecision();
                 // Arm any message that was queued while TX was disabled
                 if (digiTxQueued && !digiTxArmed) {
                     console.log('[DIGI] Enable TX: arming pending queued message: "' + digiTxQueued + '"');
@@ -7913,6 +7959,7 @@ function initDigiHandlers() {
                 digiTxQueued = null;
                 digiTxSlotParity = -1;
                 digiWsprTargetSlotIndex = -1;
+                digiWsprManualEnable = false;
             }
             updateWsprInfo(getDigiSlotInfo());
             updateDigiMsgRows();
@@ -7934,6 +7981,7 @@ function initDigiHandlers() {
             digiTxAttempts = 0;
             digiTxSlotParity = -1;
             digiWsprTargetSlotIndex = -1;
+            digiWsprManualEnable = false;
             digiQsoState = 'IDLE';
             digiQsoPartner = '';
             digiTheirReport = '';
