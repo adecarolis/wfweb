@@ -1273,6 +1273,35 @@ body.digi-open .digi-bar {
     gap: 8px;
     padding: 0 12px 10px;
 }
+.digi-wspr-band-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 12px 10px;
+}
+.digi-wspr-band-btn {
+    min-width: 44px;
+    padding: 2px 7px;
+    background: #001020;
+    border: 1px solid #035;
+    color: #58a;
+    font-size: 10px;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    border-radius: 999px;
+    cursor: pointer;
+    text-transform: uppercase;
+}
+.digi-wspr-band-btn.active {
+    background: #01324a;
+    border-color: #08f;
+    color: #cff;
+}
+.digi-wspr-band-btn:hover {
+    background: #01263a;
+    border-color: #0af;
+    color: #dff;
+}
 
 /* 6 QSO message rows — compact, lives inside the msg column */
 .digi-msg-col {
@@ -2215,6 +2244,10 @@ body.digi-open .digi-bar {
                         <span id="digiWsprMessage" class="digi-wspr-value">MYCALL AA00 30</span>
                         <span class="digi-field-label">STATE:</span>
                         <span id="digiWsprQueued" class="digi-wspr-value">OFF</span>
+                        <span class="digi-field-label">HOP:</span>
+                        <span id="digiWsprHopInfo" class="digi-wspr-value">20m</span>
+                        <span class="digi-field-label">TX BAND:</span>
+                        <span id="digiWsprTargetBandInfo" class="digi-wspr-value">20m</span>
                         <span class="digi-field-label">PWR:</span>
                         <span id="digiWsprPowerInfo" class="digi-wspr-value">100 W (100%, 50 dBm)</span>
                         <span class="digi-field-label">NEXT:</span>
@@ -2222,6 +2255,7 @@ body.digi-open .digi-bar {
                         <span class="digi-field-label">NOTE:</span>
                         <span id="digiWsprModeHint" class="digi-wspr-value">TX only. Enable TX + TX% schedules random slots. BEACON NEXT arms one manual beacon.</span>
                     </div>
+                    <div id="digiWsprBandList" class="digi-wspr-band-list"></div>
                     <div class="digi-wspr-actions">
                         <button id="digiWsprBeaconBtn" class="digi-call-cq-btn">BEACON NEXT</button>
                         <button id="digiWsprClearBtn" class="digi-action-btn">Clear Queue</button>
@@ -2605,6 +2639,10 @@ var digiWsprTxPct = 20;
 var digiWsprTargetSlotIndex = -1;
 var digiWsprLastDecisionSlotIndex = -1;
 var digiWsprManualEnable = false;
+var digiWsprHopBands = [];
+var digiWsprHopIndex = 0;
+var digiWsprPendingHopIndex = -1;
+var digiWsprTargetBandLabel = '';
 // Waterfall FFT
 var WF_FFT_SIZE = 4096;
 var WF_DISPLAY_BINS = 1024; // bins 0-1023 cover 0-3000 Hz at 12kHz/4096
@@ -5498,6 +5536,145 @@ function getBandFreqForMode(band, mode) {
     return band.ft8;
 }
 
+function getDigiBandByLabel(label) {
+    if (!label) return null;
+    for (var i = 0; i < DIGI_BANDS.length; i++) {
+        if (DIGI_BANDS[i].label === label) return DIGI_BANDS[i];
+    }
+    return null;
+}
+
+function getDefaultWsprHopBandLabel() {
+    var bandSel = document.getElementById('digiBandSel');
+    if (bandSel && getDigiBandByLabel(bandSel.value)) return bandSel.value;
+    var currentBand = getCurrentDigiBand();
+    if (currentBand) return currentBand.label;
+    return DIGI_BANDS.length ? DIGI_BANDS[0].label : '';
+}
+
+function sanitizeWsprHopBands(labels) {
+    var out = [];
+    for (var i = 0; i < (labels || []).length; i++) {
+        var label = String(labels[i] || '').trim();
+        if (!getDigiBandByLabel(label)) continue;
+        if (out.indexOf(label) < 0) out.push(label);
+    }
+    return out;
+}
+
+function syncDigiBandSelector(label) {
+    var bandSel = document.getElementById('digiBandSel');
+    if (bandSel && getDigiBandByLabel(label)) bandSel.value = label;
+}
+
+function tuneDigiToBand(band, mode) {
+    if (!band) return;
+    var targetFreq = getBandFreqForMode(band, mode || digiMode);
+    syncDigiBandSelector(band.label);
+    if (currentFreq && Math.abs(currentFreq - targetFreq) < 20) return;
+    send({ cmd: 'setFrequency', value: targetFreq });
+    wfLabels = [];
+}
+
+function setWsprHopBands(labels, keepIndex) {
+    var preferredLabel = digiWsprTargetBandLabel;
+    var currentLabels = sanitizeWsprHopBands(digiWsprHopBands);
+    if (!preferredLabel && currentLabels.length) {
+        var currentIndex = digiWsprHopIndex;
+        if (currentIndex < 0 || currentIndex >= currentLabels.length) currentIndex = 0;
+        preferredLabel = currentLabels[currentIndex];
+    }
+    var sanitized = sanitizeWsprHopBands(labels);
+    if (!sanitized.length) {
+        var fallback = getDefaultWsprHopBandLabel();
+        if (fallback) sanitized = [fallback];
+    }
+    digiWsprHopBands = sanitized;
+    if (keepIndex) {
+        var preferredIndex = preferredLabel ? digiWsprHopBands.indexOf(preferredLabel) : -1;
+        if (preferredIndex >= 0) digiWsprHopIndex = preferredIndex;
+        else if (digiWsprHopIndex >= digiWsprHopBands.length) digiWsprHopIndex = 0;
+    } else {
+        digiWsprHopIndex = 0;
+    }
+    try { localStorage.setItem('digiWsprHopBands', JSON.stringify(digiWsprHopBands)); } catch (e) {}
+    renderWsprHopButtons();
+}
+
+function ensureWsprHopSelection() {
+    if (!sanitizeWsprHopBands(digiWsprHopBands).length) setWsprHopBands(digiWsprHopBands, true);
+    return digiWsprHopBands.slice();
+}
+
+function getWsprHopSelection() {
+    var labels = ensureWsprHopSelection();
+    var bands = [];
+    for (var i = 0; i < labels.length; i++) {
+        var band = getDigiBandByLabel(labels[i]);
+        if (band) bands.push(band);
+    }
+    return bands;
+}
+
+function getWsprHopSummary() {
+    var labels = ensureWsprHopSelection();
+    if (!labels.length) return '--';
+    if (labels.length === 1) return labels[0];
+    return labels.join(' -> ');
+}
+
+function renderWsprHopButtons() {
+    var host = document.getElementById('digiWsprBandList');
+    if (!host) return;
+    var activeLabels = ensureWsprHopSelection();
+    host.innerHTML = '';
+    for (var i = 0; i < DIGI_BANDS.length; i++) {
+        var band = DIGI_BANDS[i];
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'digi-wspr-band-btn' + (activeLabels.indexOf(band.label) >= 0 ? ' active' : '');
+        btn.textContent = band.label;
+        btn.dataset.band = band.label;
+        host.appendChild(btn);
+    }
+}
+
+function chooseWsprTargetBand() {
+    var bands = getWsprHopSelection();
+    if (!bands.length) return { band: null, index: -1 };
+    var index = digiWsprHopIndex;
+    if (index < 0 || index >= bands.length) index = 0;
+    return { band: bands[index], index: index };
+}
+
+function prepareWsprTargetBand() {
+    var currentChoice = digiWsprTargetBandLabel ? getDigiBandByLabel(digiWsprTargetBandLabel) : null;
+    if (currentChoice && digiWsprPendingHopIndex >= 0) {
+        tuneDigiToBand(currentChoice, 'WSPR');
+        return currentChoice;
+    }
+    var choice = chooseWsprTargetBand();
+    digiWsprTargetBandLabel = choice.band ? choice.band.label : '';
+    digiWsprPendingHopIndex = choice.index;
+    if (choice.band) tuneDigiToBand(choice.band, 'WSPR');
+    return choice.band;
+}
+
+function clearWsprTargetBand() {
+    digiWsprPendingHopIndex = -1;
+    digiWsprTargetBandLabel = '';
+}
+
+function commitWsprTargetBandProgression() {
+    var bands = getWsprHopSelection();
+    if (bands.length > 1 && digiWsprPendingHopIndex >= 0) {
+        digiWsprHopIndex = (digiWsprPendingHopIndex + 1) % bands.length;
+    } else {
+        digiWsprHopIndex = 0;
+    }
+    digiWsprPendingHopIndex = -1;
+}
+
 function sanitizeWsprTxPct(value) {
     value = parseInt(value, 10);
     if (isNaN(value)) value = 0;
@@ -5599,8 +5776,12 @@ function ensureWsprAudioFrequency(force) {
 function updateWsprInfo(info) {
     var msgEl = document.getElementById('digiWsprMessage');
     var queueEl = document.getElementById('digiWsprQueued');
+    var hopEl = document.getElementById('digiWsprHopInfo');
+    var targetBandEl = document.getElementById('digiWsprTargetBandInfo');
     var nextEl = document.getElementById('digiWsprNextTx');
+    var hintEl = document.getElementById('digiWsprModeHint');
     syncWsprPowerFromRig();
+    ensureWsprHopSelection();
 
     if (msgEl) {
         try { msgEl.textContent = getWsprMessageText(); }
@@ -5611,10 +5792,25 @@ function updateWsprInfo(info) {
         queueEl.textContent = getWsprStateText();
     }
 
+    if (hopEl) {
+        hopEl.textContent = getWsprHopSummary();
+    }
+
+    if (targetBandEl) {
+        var nextBand = chooseWsprTargetBand().band;
+        targetBandEl.textContent = digiWsprTargetBandLabel || (nextBand ? nextBand.label : '--');
+    }
+
     if (nextEl) {
         if (digiWsprTargetSlotIndex >= 0) nextEl.textContent = getWsprNextSlotTime(digiWsprTargetSlotIndex);
         else if (info) nextEl.textContent = getWsprNextSlotTime(info.slotPhase < WSPR_TX_START_OFFSET ? info.slotIndex : info.slotIndex + 1);
         else nextEl.textContent = '--:--:--Z';
+    }
+
+    if (hintEl) {
+        hintEl.textContent = ensureWsprHopSelection().length > 1 ?
+            'TX only. Enabled hop bands are used round-robin on each transmitted beacon.' :
+            'TX only. Enable TX + TX% schedules random slots. BEACON NEXT arms one manual beacon.';
     }
 }
 
@@ -5624,6 +5820,7 @@ function clearWsprQueue() {
     digiTxAttempts = 0;
     digiWsprTargetSlotIndex = -1;
     digiWsprManualEnable = false;
+    clearWsprTargetBand();
     resetWsprSlotDecision();
     updateDigiStatus('IDLE', '');
     updateWsprInfo(getDigiSlotInfo());
@@ -5652,6 +5849,7 @@ function armWsprBeaconNext() {
     digiTxSlotParity = -1;
     resetWsprSlotDecision();
     digiWsprTargetSlotIndex = info.slotPhase < WSPR_TX_START_OFFSET ? info.slotIndex : info.slotIndex + 1;
+    prepareWsprTargetBand();
     initDigiTxCtx();
     var enableBtn = document.getElementById('digiEnableTxBtn');
     if (enableBtn) enableBtn.classList.add('active');
@@ -5664,11 +5862,13 @@ function maybeScheduleWsprTx(info) {
     if (!isWsprMode()) return;
 
     if (digiWsprTargetSlotIndex >= info.slotIndex && digiTxQueued) {
+        prepareWsprTargetBand();
         updateWsprInfo(info);
         return;
     }
 
     if (!digiTxEnabled) {
+        clearWsprTargetBand();
         updateWsprInfo(info);
         return;
     }
@@ -5687,6 +5887,7 @@ function maybeScheduleWsprTx(info) {
 
     var txPct = sanitizeWsprTxPct(digiWsprTxPct);
     if (txPct <= 0) {
+        clearWsprTargetBand();
         updateWsprInfo(info);
         return;
     }
@@ -5702,6 +5903,7 @@ function maybeScheduleWsprTx(info) {
             digiTxQueued = null;
             digiTxArmed = false;
             digiWsprTargetSlotIndex = -1;
+            clearWsprTargetBand();
             updateWsprInfo(info);
             return;
         }
@@ -5709,11 +5911,13 @@ function maybeScheduleWsprTx(info) {
         digiTxAttempts = 0;
         digiTxSlotParity = -1;
         digiWsprTargetSlotIndex = info.slotIndex;
+        prepareWsprTargetBand();
         updateDigiStatus('ARMED', '');
     } else {
         digiTxQueued = null;
         digiTxArmed = false;
         digiWsprTargetSlotIndex = -1;
+        clearWsprTargetBand();
     }
     updateWsprInfo(info);
 }
@@ -5802,6 +6006,11 @@ function toggleDigiBar() {
         updateDigiRxToggle();
         initDigiTxCtx(); // create TX context while we have a user gesture
         startDigiPeriodTimer();
+        ensureWsprHopSelection();
+        if (isWsprMode()) {
+            var openChoice = chooseWsprTargetBand().band;
+            if (openChoice) tuneDigiToBand(openChoice, 'WSPR');
+        }
         updateDigiModeUi();
         resetWsprSlotDecision();
         ensureWsprAudioFrequency(false);
@@ -7061,6 +7270,7 @@ function executeDigiTx(slotPhase) {
                 digiTxQueued = null;
                 digiTxAttempts = 0;
                 digiWsprTargetSlotIndex = -1;
+                clearWsprTargetBand();
                 if (digiWsprManualEnable) {
                     digiTxEnabled = false;
                     digiWsprManualEnable = false;
@@ -7114,6 +7324,7 @@ function executeDigiTx(slotPhase) {
             updateDigiMsgRows();
         }, function() {
             // onFirstChunk: ~100 ms of audio buffered in ALSA — safe to key TX
+            if (isWsprMode()) commitWsprTargetBandProgression();
             console.log('[DIGI TX] PTT ON for: "' + txMsgCapture + '"');
             send({ cmd: 'setPTT', value: true });
         });
@@ -7123,6 +7334,7 @@ function executeDigiTx(slotPhase) {
         digiTxArmed = false;
         digiTxActive = false;
         digiTxWfSamples = null;
+        if (isWsprMode()) clearWsprTargetBand();
     }
 }
 
@@ -7745,8 +7957,15 @@ function initDigiHandlers() {
             for (var bi = 0; bi < DIGI_BANDS.length; bi++) {
                 if (DIGI_BANDS[bi].label === sel) {
                     var freq = getBandFreqForMode(DIGI_BANDS[bi]);
+                    if (isWsprMode()) {
+                        var hopPos = digiWsprHopBands.indexOf(sel);
+                        if (hopPos >= 0) digiWsprHopIndex = hopPos;
+                        else if (digiWsprHopBands.length <= 1) setWsprHopBands([sel], true);
+                        if (!digiTxArmed && !digiTxActive) clearWsprTargetBand();
+                    }
                     send({ cmd: 'setFrequency', value: freq });
                     wfLabels = [];
+                    updateWsprInfo(getDigiSlotInfo());
                     break;
                 }
             }
@@ -7768,6 +7987,7 @@ function initDigiHandlers() {
     var savedCall = localStorage.getItem('digiMyCall');
     var savedGrid = localStorage.getItem('digiGrid');
     var savedWsprTxPct = localStorage.getItem('digiWsprTxPct');
+    var savedWsprHopBands = localStorage.getItem('digiWsprHopBands');
     // Load shared QSO log (migrate from old 'digiQsoLog' key if needed)
     var savedLog = localStorage.getItem('qsoLog') || localStorage.getItem('digiQsoLog');
     var myCallEl = document.getElementById('digiMyCall');
@@ -7775,11 +7995,16 @@ function initDigiHandlers() {
     if (savedCall && myCallEl) myCallEl.value = savedCall;
     if (savedGrid && gridEl) gridEl.value = savedGrid;
     if (savedWsprTxPct != null) digiWsprTxPct = sanitizeWsprTxPct(savedWsprTxPct);
+    if (savedWsprHopBands) {
+        try { digiWsprHopBands = sanitizeWsprHopBands(JSON.parse(savedWsprHopBands)); } catch (e) {}
+    }
+    ensureWsprHopSelection();
     if (wsprPowerEl && window.wsprEncodeLib) {
         syncWsprPowerFromRig();
     }
     var wsprTxPctEl = document.getElementById('digiWsprTxPct');
     if (wsprTxPctEl) wsprTxPctEl.value = String(digiWsprTxPct);
+    renderWsprHopButtons();
     if (savedLog) {
         try {
             qsoLog = JSON.parse(savedLog);
@@ -7819,6 +8044,35 @@ function initDigiHandlers() {
         });
     }
 
+    var wsprBandList = document.getElementById('digiWsprBandList');
+    if (wsprBandList) {
+        wsprBandList.addEventListener('click', function(e) {
+            var btn = e.target && e.target.closest ? e.target.closest('.digi-wspr-band-btn') : null;
+            if (!btn) return;
+            var label = btn.dataset.band;
+            var nextBands = digiWsprHopBands.slice();
+            var idx = nextBands.indexOf(label);
+            if (idx >= 0) {
+                if (nextBands.length === 1) return;
+                nextBands.splice(idx, 1);
+            } else {
+                nextBands.push(label);
+            }
+            setWsprHopBands(nextBands, true);
+            if (!digiTxArmed && !digiTxActive) {
+                clearWsprTargetBand();
+                if (isWsprMode() && digiWsprHopBands.length === 1) {
+                    var onlyBand = getDigiBandByLabel(digiWsprHopBands[0]);
+                    if (onlyBand) tuneDigiToBand(onlyBand, 'WSPR');
+                }
+            } else if (digiWsprTargetBandLabel && digiWsprHopBands.indexOf(digiWsprTargetBandLabel) < 0) {
+                clearWsprTargetBand();
+                if (digiTxQueued) prepareWsprTargetBand();
+            }
+            updateWsprInfo(getDigiSlotInfo());
+        });
+    }
+
     // DX call — rebuild msg rows when changed
     var dxEl = document.getElementById('digiDxCall');
     if (dxEl) {
@@ -7838,6 +8092,8 @@ function initDigiHandlers() {
             digiTxAttempts = 0;
             digiTxSlotParity = -1;
             digiWsprTargetSlotIndex = -1;
+            digiWsprManualEnable = false;
+            clearWsprTargetBand();
             resetWsprSlotDecision();
             if (digiQsoState !== 'IDLE') {
                 digiQsoState = 'IDLE';
@@ -7847,7 +8103,12 @@ function initDigiHandlers() {
             }
             var idx = DIGI_MODE_ORDER.indexOf(digiMode);
             digiMode = DIGI_MODE_ORDER[(idx + 1) % DIGI_MODE_ORDER.length];
-            if (digiMode === 'WSPR') ensureWsprAudioFrequency(previousMode !== 'WSPR');
+            if (digiMode === 'WSPR') {
+                ensureWsprHopSelection();
+                var nextHopBand = chooseWsprTargetBand().band;
+                if (nextHopBand) tuneDigiToBand(nextHopBand, 'WSPR');
+                ensureWsprAudioFrequency(previousMode !== 'WSPR');
+            }
             updateDigiModeUi();
             updateDigiStatus('IDLE', '');
             if (digiBarVisible) {
@@ -8024,6 +8285,7 @@ function initDigiHandlers() {
                 digiTxSlotParity = -1;
                 digiWsprTargetSlotIndex = -1;
                 digiWsprManualEnable = false;
+                clearWsprTargetBand();
             }
             updateWsprInfo(getDigiSlotInfo());
             updateDigiMsgRows();
@@ -8046,6 +8308,7 @@ function initDigiHandlers() {
             digiTxSlotParity = -1;
             digiWsprTargetSlotIndex = -1;
             digiWsprManualEnable = false;
+            clearWsprTargetBand();
             digiQsoState = 'IDLE';
             digiQsoPartner = '';
             digiTheirReport = '';
