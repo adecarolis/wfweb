@@ -6,6 +6,25 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.4.1 (2026-03-28)
+--------------------
+
+Features:
+- Add memory channel browser: scan, write, recall, and clear radio memories
+- MEM button in FUNC panel opens memory browser overlay
+- REST API endpoint for memory recall (POST /api/v1/radio/memories/{ch}/recall)
+
+Fixes:
+- Fix filter resetting to FIL1 on every mode change from web UI
+- Fix split status detection (QVariant type mismatch caused silent failures)
+
+Notes:
+- Memory recall sets VFO frequency and mode only; the radio stays in VFO mode.
+  Full MEM mode is not supported because the Icom CI-V protocol has no
+  read-only query for memory state, and the IC-7300 does not send unsolicited
+  notifications when memory channels change from the front panel.
+
+
 v0.4.0 (2026-03-26)
 --------------------
 
