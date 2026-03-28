@@ -20,26 +20,35 @@
     ];
 
     function sanitizeCallsign(callsign) {
-        if (callsign == null) throw new Error('callsign must contain at least one number');
+        if (callsign == null) throw new Error('callsign is required');
         callsign = String(callsign).trim().toUpperCase();
-        if (callsign.length > 6) callsign = callsign.substring(0, 6);
+        if (!callsign) throw new Error('callsign is required');
 
-        var digits = 0;
         for (var i = 0; i < callsign.length; i++) {
-            if (callsign[i] >= '0' && callsign[i] <= '9') digits++;
+            var ch = callsign[i];
+            if (!((ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch === ' ')) {
+                throw new Error('WSPR type-1 callsign only supports letters and digits');
+            }
         }
 
-        if (digits < 1) throw new Error('callsign must contain at least one number');
-        if (digits > 1) throw new Error('callsign may not contain multiple numbers');
-        if (!(/[A-Z]/).test(callsign[0] || '')) throw new Error('callsign must start with a letter');
-        if (!(/[A-Z]/).test(callsign[callsign.length - 1] || '')) throw new Error('callsign must end with a letter');
-
-        if (callsign.length > 1 && callsign[1] >= '0' && callsign[1] <= '9') callsign = ' ' + callsign;
-        if (!(callsign[2] >= '0' && callsign[2] <= '9')) {
-            throw new Error('the callsign second or third character must be a number');
-        }
-
+        if (callsign.length > 6) callsign = callsign.substring(0, 6);
         while (callsign.length < 6) callsign += ' ';
+
+        if (callsign[1] >= '0' && callsign[1] <= '9' && (callsign[2] < '0' || callsign[2] > '9')) {
+            callsign = ' ' + callsign.substring(0, 5);
+        }
+
+        if (callsign[2] < '0' || callsign[2] > '9') {
+            throw new Error('WSPR type-1 callsign must have a digit in the third position');
+        }
+
+        for (var j = 3; j < 6; j++) {
+            var suffixChar = callsign[j];
+            if (suffixChar !== ' ' && (suffixChar < 'A' || suffixChar > 'Z')) {
+                throw new Error('WSPR type-1 suffix must contain only letters');
+            }
+        }
+
         return callsign;
     }
 
