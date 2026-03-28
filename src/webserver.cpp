@@ -1259,6 +1259,12 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         modeInfo m = stringToMode(modeName);
         if (m.mk != modeUnknown) {
             vfoCommandType t = queue->getVfoCommand(vfoA, 0, true);
+            // Preserve the current filter from cache instead of resetting to FIL1
+            cacheItem modeCache = queue->getCache(t.modeFunc, 0);
+            if (modeCache.value.isValid()) {
+                modeInfo cached = modeCache.value.value<modeInfo>();
+                m.filter = cached.filter;
+            }
             qCDebug(logWebServer) << "setMode:" << modeName << "mk=" << m.mk << "reg=" << m.reg
                                   << "name=" << m.name << "filter=" << m.filter << "func=" << t.modeFunc;
             queue->addUnique(priorityImmediate, queueItem(t.modeFunc, QVariant::fromValue<modeInfo>(m), false, 0));
