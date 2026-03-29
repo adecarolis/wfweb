@@ -5741,19 +5741,21 @@ function getWsprScheduledSlot(info, targetBand) {
 }
 
 function getWsprSlotsPerHour() {
-    return sanitizeWsprTxPct(digiWsprTxPct) * 0.3;
+    return sanitizeWsprTxPct(digiWsprTxPct) * 0.15;
 }
 
 function shouldScheduleDeterministicWsprSlot(slotIndex) {
     var txPct = sanitizeWsprTxPct(digiWsprTxPct);
     if (txPct <= 0) return false;
+    if ((slotIndex & 1) !== 0) return false;
     if (txPct >= 100) return true;
-    var slotInCycle = ((slotIndex % 100) + 100) % 100;
+    var eligibleIndex = Math.floor(slotIndex / 2);
+    var slotInCycle = ((eligibleIndex % 100) + 100) % 100;
     return Math.floor((slotInCycle + 1) * txPct / 100) !== Math.floor(slotInCycle * txPct / 100);
 }
 
 function findNextDeterministicWsprSlot(info, targetBand) {
-    for (var offset = 0; offset < 200; offset++) {
+    for (var offset = 0; offset < 500; offset++) {
         var slotIndex = info.slotIndex + offset;
         if (!shouldScheduleDeterministicWsprSlot(slotIndex)) continue;
         if (offset === 0 && getWsprScheduledSlot(info, targetBand) !== info.slotIndex) continue;
@@ -5763,7 +5765,7 @@ function findNextDeterministicWsprSlot(info, targetBand) {
 }
 
 function findFutureDeterministicWsprSlot(slotIndex) {
-    for (var offset = 0; offset < 200; offset++) {
+    for (var offset = 0; offset < 500; offset++) {
         var candidate = slotIndex + offset;
         if (shouldScheduleDeterministicWsprSlot(candidate)) return candidate;
     }
@@ -5939,8 +5941,8 @@ function updateWsprInfo(info) {
         if (!hasWsprBandSelection()) {
             hintEl.textContent = 'Select at least one WSPR band before arming TX.';
         } else hintEl.textContent = ensureWsprHopSelection().length > 1 ?
-            'TX only. Auto TX now uses a deterministic UTC cadence and hops enabled bands round-robin.' :
-            'TX only. Auto TX now uses a deterministic UTC cadence. BEACON NEXT still arms one manual beacon.';
+            'TX only. Auto TX uses a deterministic UTC cadence, alternates TX/RX cooldown slots, and hops enabled bands round-robin.' :
+            'TX only. Auto TX uses a deterministic UTC cadence with alternating TX/RX cooldown slots. BEACON NEXT still arms one manual beacon.';
     }
 }
 
