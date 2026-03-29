@@ -5752,7 +5752,13 @@ function initCWHandlers() {
 // ============================================================
 
 function getMyCall() { return ((document.getElementById('digiMyCall') || {}).value || '').toUpperCase(); }
-function getMyGrid() { return ((document.getElementById('digiGrid') || {}).value || '').toUpperCase().substr(0, 4); }
+function getMyGridFull() {
+    return (((document.getElementById('digiGrid') || {}).value || '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+        .substr(0, 6));
+}
+function getMyGrid() { return getMyGridFull().substr(0, 4); }
 function isWsprMode() { return digiMode === 'WSPR'; }
 function digiPeriod() { return isWsprMode() ? 120 : (digiMode === 'FT4' ? 7.5 : 15); }
 function getWsprSlotInfoAtMs(ms) {
@@ -6244,7 +6250,7 @@ function beginWsprRxSlot(slotInfo) {
     digiWsprRxAudioFrequencyHz = digiRxFreq || WSPR_DEFAULT_AUDIO_FREQ;
     digiWsprRxReporter = {
         call: getMyCall(),
-        grid: getMyGrid(),
+        grid: getMyGridFull(),
         txPct: sanitizeWsprTxPct(digiWsprTxPct),
         dbm: digiWsprPower,
         version: 'wfweb/' + (serverVersion || 'dev')
