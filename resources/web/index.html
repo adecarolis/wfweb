@@ -5839,6 +5839,7 @@ function getWsprRxStateText() {
     if (!digiRxEnabled) return 'MON OFF';
     if (digiWsprDecodeInProgress) return 'DECODING';
     if (digiTxActive) return 'TX';
+    if (digiWsprRxSlotIndex >= 0 && digiWsprRxSlotEligible && digiWsprTargetFreq && !isWsprRetuneReady()) return 'RETUNE';
     if (digiWsprRxSlotIndex >= 0 && digiWsprRxSlotEligible) return 'CAPTURE';
     if (digiWsprRxSlotIndex >= 0 && willWsprTransmitInSlot(digiWsprRxSlotIndex)) return 'SKIP TX';
     return 'IDLE';
@@ -7284,7 +7285,11 @@ function processDigiAudioChunk(int16Chunk, timing) {
             }
             if (useWsprClock) {
                 syncWsprRxSlotForMs(sampleMs);
-                if (digiWsprRxSlotEligible && digiWsprRxWritePos < WSPR_RX_BUFFER_SAMPLES) {
+                var wsprCaptureReady = digiWsprRxSlotEligible;
+                if (wsprCaptureReady && digiWsprTargetFreq && !isWsprRetuneReady()) {
+                    wsprCaptureReady = false;
+                }
+                if (wsprCaptureReady && digiWsprRxWritePos < WSPR_RX_BUFFER_SAMPLES) {
                     digiWsprRxBuffer[digiWsprRxWritePos++] = sample;
                 }
             }
