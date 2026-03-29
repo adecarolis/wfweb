@@ -6400,9 +6400,11 @@ function flushWsprUploadQueue() {
                 return;
             }
             if (rejected > 0 && accepted === 0 && duplicates === 0) {
-                digiWsprUploadStatusText = summarizeWsprUploadState(resp);
+                digiWsprUploadQueue.shift();
                 persistWsprUploadState();
+                digiWsprUploadStatusText = summarizeWsprUploadState(resp);
                 updateWsprInfo(getDigiSlotInfo());
+                if (digiWsprUploadQueue.length) flushWsprUploadQueue();
                 return;
             }
             digiWsprUploadQueue.shift();
