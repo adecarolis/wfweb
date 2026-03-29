@@ -6111,6 +6111,56 @@ function buildWsprUploadBatch(slotIndex, slotStartMs, dialFrequencyHz, audioFreq
     });
 }
 
+function postWsprDecodeTelemetry(eventType, slotIndex, slotStartMs, extra) {
+    if (!window.fetch) return;
+
+    var payload = {
+        event: String(eventType || 'unknown'),
+        mode: 'WSPR',
+        slotIndex: parseInt(slotIndex, 10),
+        slotStartMs: parseInt(slotStartMs, 10) || 0,
+        state: getWsprRxStateText(),
+        summary: digiWsprLastDecodeSummary,
+        currentFreqHz: currentFreq || 0,
+        targetFreqHz: digiWsprTargetFreq || 0,
+        audioFrequencyHz: digiWsprRxAudioFrequencyHz || digiRxFreq || WSPR_DEFAULT_AUDIO_FREQ,
+        searchHalfWidthHz: WSPR_SEARCH_HALF_WIDTH_HZ,
+        fillRatio: Number(digiWsprLastFillRatio || 0),
+        sampleCount: parseInt(digiWsprLastSampleCount, 10) || 0,
+        pendingDecodes: digiWsprPendingDecodes.length,
+        clientUtcMs: Date.now()
+    };
+
+    var slotBand = getDigiBandForFrequency(payload.currentFreqHz, 'WSPR');
+    if (slotBand) payload.band = slotBand.label;
+    if (digiWsprTargetBandLabel) payload.targetBand = digiWsprTargetBandLabel;
+    if (digiWsprLastDecodeError) payload.error = digiWsprLastDecodeError;
+    if (digiWsprRxReporter) {
+        payload.reporter = {
+            call: digiWsprRxReporter.call || '',
+            grid: digiWsprRxReporter.grid || '',
+            txPct: digiWsprRxReporter.txPct || 0,
+            dbm: digiWsprRxReporter.dbm || 0
+        };
+    }
+    if (digiWsprLastDecodeDebug) payload.debug = JSON.parse(JSON.stringify(digiWsprLastDecodeDebug));
+
+    if (extra && typeof extra === 'object') {
+        for (var key in extra) {
+            if (Object.prototype.hasOwnProperty.call(extra, key)) payload[key] = extra[key];
+        }
+    }
+
+    fetch('/api/v1/wspr/telemetry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        keepalive: true
+    }).catch(function(err) {
+        console.warn('[WFWEB] Failed to post WSPR telemetry:', err);
+    });
+}
+
 function refreshWsprUploadStatus() {
     if (!digiWsprUploadEnabled || !window.fetch) return;
     fetch('/api/v1/wsprnet/status', { method: 'GET' })
@@ -6281,6 +6331,7 @@ function onWsprDecodeResult(payload) {
     if (!payload || payload.slotIndex == null) {
         digiWsprLastDecodeSummary = 'ERR';
         digiWsprLastDecodeError = 'invalid payload';
+        postWsprDecodeTelemetry('decode_error', -1, 0, { error: digiWsprLastDecodeError });
         return;
     }
     digiWsprLastDecodeError = '';
@@ -6296,6 +6347,14 @@ function onWsprDecodeResult(payload) {
     }
     mergeWsprSpots(normalizedSpots);
     digiWsprLastDecodeSummary = payload.summary || (formatWsprSlotLabel(payload.slotIndex) + ' ' + normalizedSpots.length + ' spot' + (normalizedSpots.length === 1 ? '' : 's'));
+    postWsprDecodeTelemetry('decode_result', payload.slotIndex, payload.slotStartMs, {
+        dialFrequencyHz: payload.dialFrequencyHz || 0,
+        audioFrequencyHz: payload.audioFrequencyHz || (digiWsprRxAudioFrequencyHz || WSPR_DEFAULT_AUDIO_FREQ),
+        decodeMs: isFinite(payload.decodeMs) ? payload.decodeMs : 0,
+        resultCount: normalizedSpots.length,
+        summary: digiWsprLastDecodeSummary,
+        error: ''
+    });
     if (digiWsprUploadEnabled) {
         var uploadBatch = buildWsprUploadBatch(payload.slotIndex, payload.slotStartMs,
                                                payload.dialFrequencyHz, payload.audioFrequencyHz,
@@ -6322,6 +6381,10 @@ function initWsprWorker() {
                 digiWsprLastDecodeSummary = 'ERR';
                 digiWsprLastDecodeError = String(data.error || 'worker error');
                 digiWsprLastDecodeDebug = null;
+                postWsprDecodeTelemetry('decode_error', data.slotIndex, data.slotStartMs, {
+                    error: digiWsprLastDecodeError,
+                    summary: digiWsprLastDecodeSummary
+                });
                 try { wsprWorker.terminate(); } catch (err) {}
                 wsprWorker = null;
                 if (digiWsprPendingDecodes.length) {
@@ -6339,6 +6402,10 @@ function initWsprWorker() {
             digiWsprLastDecodeSummary = 'ERR';
             digiWsprLastDecodeError = 'worker exception';
             digiWsprLastDecodeDebug = null;
+            postWsprDecodeTelemetry('decode_error', digiWsprLastCapturedSlotIndex, digiWsprRxSlotStartMs, {
+                error: digiWsprLastDecodeError,
+                summary: digiWsprLastDecodeSummary
+            });
             try { wsprWorker.terminate(); } catch (err) {}
             wsprWorker = null;
             if (digiWsprPendingDecodes.length) {
@@ -6363,8 +6430,19 @@ function triggerWsprDecode(slotIndex, slotStartMs, samples, dialFrequencyHz, aud
         digiWsprDecodeInProgress = false;
         digiWsprLastDecodeSummary = 'NO WORKER';
         digiWsprLastDecodeError = 'worker unavailable';
+        postWsprDecodeTelemetry('decode_error', slotIndex, slotStartMs, {
+            error: digiWsprLastDecodeError,
+            summary: digiWsprLastDecodeSummary,
+            dialFrequencyHz: dialFrequencyHz || 0,
+            audioFrequencyHz: audioFrequencyHz || WSPR_DEFAULT_AUDIO_FREQ
+        });
         return;
     }
+    postWsprDecodeTelemetry('decode_queued', slotIndex, slotStartMs, {
+        dialFrequencyHz: dialFrequencyHz || 0,
+        audioFrequencyHz: audioFrequencyHz || WSPR_DEFAULT_AUDIO_FREQ,
+        summary: digiWsprLastDecodeSummary
+    });
     wsprWorker.postMessage({
         type: 'decode',
         epoch: digiWsprDecodeEpoch,
@@ -6400,10 +6478,20 @@ function finalizeWsprRxSlot(slotIndex) {
 
     if (!digiWsprRxSlotEligible) {
         digiWsprLastRxSummary = 'SKIP TX ' + formatWsprSlotLabel(slotIndex);
+        postWsprDecodeTelemetry('slot_skip_tx', slotIndex, digiWsprRxSlotStartMs, {
+            summary: digiWsprLastRxSummary,
+            dialFrequencyHz: digiWsprRxDialFrequencyHz,
+            audioFrequencyHz: digiWsprRxAudioFrequencyHz
+        });
         return;
     }
     if (fillRatio < WSPR_RX_MIN_FILL_RATIO) {
         digiWsprLastRxSummary = 'PARTIAL ' + formatWsprSlotLabel(slotIndex) + ' ' + Math.round(fillRatio * 100) + '%';
+        postWsprDecodeTelemetry('slot_partial', slotIndex, digiWsprRxSlotStartMs, {
+            summary: digiWsprLastRxSummary,
+            dialFrequencyHz: digiWsprRxDialFrequencyHz,
+            audioFrequencyHz: digiWsprRxAudioFrequencyHz
+        });
         return;
     }
     if (digiWsprDecodeInProgress) {
@@ -6420,6 +6508,11 @@ function finalizeWsprRxSlot(slotIndex) {
             audioFrequencyHz: digiWsprRxAudioFrequencyHz,
             reporter: digiWsprRxReporter,
             samples: digiWsprRxBuffer.slice(0, digiWsprRxWritePos)
+        });
+        postWsprDecodeTelemetry('slot_pending', slotIndex, digiWsprRxSlotStartMs, {
+            summary: digiWsprLastRxSummary,
+            dialFrequencyHz: digiWsprRxDialFrequencyHz,
+            audioFrequencyHz: digiWsprRxAudioFrequencyHz
         });
         return;
     }
@@ -7176,14 +7269,18 @@ function initDigiTxCtx() {
     });
 }
 
-function getCurrentDigiBand() {
-    if (!currentFreq) return null;
+function getDigiBandForFrequency(hz, mode) {
+    if (!hz) return null;
     var best = null, bestDist = Infinity;
     for (var i = 0; i < DIGI_BANDS.length; i++) {
-        var dist = Math.abs(currentFreq - getBandFreqForMode(DIGI_BANDS[i]));
+        var dist = Math.abs(hz - getBandFreqForMode(DIGI_BANDS[i], mode));
         if (dist < bestDist) { bestDist = dist; best = DIGI_BANDS[i]; }
     }
     return (bestDist < 500000) ? best : null;
+}
+
+function getCurrentDigiBand() {
+    return getDigiBandForFrequency(currentFreq, digiMode);
 }
 
 function toggleDigiBar() {

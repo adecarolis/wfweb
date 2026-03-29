@@ -2183,7 +2183,6 @@ void webServer::recordWsprNetEvent(const QJsonObject &event)
     }
     wsprNetUpdatedMs = nowMs;
 }
-
 QJsonObject webServer::buildWsprDecodeTelemetryJson() const
 {
     QJsonObject out;
