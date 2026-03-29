@@ -72,6 +72,15 @@ static float g_fir_taps[WSPR_FIR_TAPS];
 static int g_initialized = 0;
 static char g_hashtab[32768 * 13];
 static char g_loctab[32768 * 5];
+static int g_debug_search_low_hz = 0;
+static int g_debug_search_high_hz = 0;
+static int g_debug_sample_count = 0;
+static int g_debug_decimated_point_count = 0;
+static int g_debug_fft_count = 0;
+static int g_debug_peak_candidate_count = 0;
+static int g_debug_filtered_candidate_count = 0;
+static int g_debug_refined_candidate_count = 0;
+static int g_debug_decode_pass_count = 0;
 int printdata = 0;
 
 static void set_error(const char *msg)
@@ -83,6 +92,19 @@ static void set_error(const char *msg)
 static void clear_error(void)
 {
     g_error[0] = '\0';
+}
+
+static void reset_debug_state(void)
+{
+    g_debug_search_low_hz = 0;
+    g_debug_search_high_hz = 0;
+    g_debug_sample_count = 0;
+    g_debug_decimated_point_count = 0;
+    g_debug_fft_count = 0;
+    g_debug_peak_candidate_count = 0;
+    g_debug_filtered_candidate_count = 0;
+    g_debug_refined_candidate_count = 0;
+    g_debug_decode_pass_count = 0;
 }
 
 static int reverse_bits(int x, int bits)
@@ -621,7 +643,7 @@ int wfweb_wspr_decode(float *samples,
                       int sample_count,
                       double dialfreq_mhz,
                       int audio_frequency_hz,
-                      int wideband)
+                      int search_half_width_hz)
 {
     float *idat = NULL;
     float *qdat = NULL;
@@ -635,6 +657,7 @@ int wfweb_wspr_decode(float *samples,
 
     init_decoder();
     clear_error();
+    reset_debug_state();
     g_result_count = 0;
 
     if (!samples || sample_count <= 0) {
@@ -646,6 +669,13 @@ int wfweb_wspr_decode(float *samples,
         return 0;
     }
     if (audio_frequency_hz <= 0) audio_frequency_hz = 1500;
+    if (search_half_width_hz <= 0) search_half_width_hz = 200;
+    if (search_half_width_hz < 50) search_half_width_hz = 50;
+    if (search_half_width_hz > 400) search_half_width_hz = 400;
+
+    g_debug_search_low_hz = -search_half_width_hz;
+    g_debug_search_high_hz = search_half_width_hz;
+    g_debug_sample_count = sample_count;
 
     idat = (float *)calloc(MAX_POINTS, sizeof(float));
     qdat = (float *)calloc(MAX_POINTS, sizeof(float));
@@ -660,6 +690,7 @@ int wfweb_wspr_decode(float *samples,
     }
 
     const int npoints = preprocess_samples(samples, sample_count, audio_frequency_hz, idat, qdat);
+    g_debug_decimated_point_count = npoints;
     if (npoints < 42000) {
         set_error("preprocess failed");
         goto cleanup;
@@ -668,6 +699,7 @@ int wfweb_wspr_decode(float *samples,
     const float df = 375.0f / 512.0f;
     const float dt = 1.0f / 375.0f;
     const int nffts = 4 * (npoints / 512) - 1;
+    g_debug_fft_count = nffts;
     if (nffts <= 0) {
         set_error("insufficient decimated data");
         goto cleanup;
@@ -692,6 +724,7 @@ int wfweb_wspr_decode(float *samples,
     for (int decode_pass = 0; decode_pass < 2 && g_result_count < MAX_RESULTS; ++decode_pass) {
         if (decode_pass > 0 && !decoded_in_previous_pass) break;
         decoded_in_previous_pass = 0;
+        g_debug_decode_pass_count = decode_pass + 1;
 
         for (int i = 0; i < nffts; ++i) {
             for (int j = 0; j < 512; ++j) {
@@ -748,8 +781,10 @@ int wfweb_wspr_decode(float *samples,
             }
         }
 
-        const float fmin = wideband ? -150.0f : -110.0f;
-        const float fmax = wideband ? 150.0f : 110.0f;
+        g_debug_peak_candidate_count += npk;
+
+        const float fmin = (float)g_debug_search_low_hz;
+        const float fmax = (float)g_debug_search_high_hz;
         int filtered = 0;
         for (int j = 0; j < npk; ++j) {
             if (candidates[j].freq >= fmin && candidates[j].freq <= fmax) {
@@ -757,6 +792,7 @@ int wfweb_wspr_decode(float *samples,
             }
         }
         npk = filtered;
+        g_debug_filtered_candidate_count += npk;
 
         for (int pass = 1; pass <= npk - 1; ++pass) {
             for (int k = 0; k < npk - pass; ++k) {
@@ -858,6 +894,7 @@ int wfweb_wspr_decode(float *samples,
                 refined[nwat++] = candidates[j];
             }
         }
+        g_debug_refined_candidate_count += nwat;
 
         for (int j = 0; j < nwat && g_result_count < MAX_RESULTS; ++j) {
             float f1 = refined[j].freq;
@@ -969,6 +1006,60 @@ EMSCRIPTEN_KEEPALIVE
 int wfweb_wspr_get_result_count(void)
 {
     return g_result_count;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int wfweb_wspr_get_debug_search_low_hz(void)
+{
+    return g_debug_search_low_hz;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int wfweb_wspr_get_debug_search_high_hz(void)
+{
+    return g_debug_search_high_hz;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int wfweb_wspr_get_debug_sample_count(void)
+{
+    return g_debug_sample_count;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int wfweb_wspr_get_debug_decimated_point_count(void)
+{
+    return g_debug_decimated_point_count;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int wfweb_wspr_get_debug_fft_count(void)
+{
+    return g_debug_fft_count;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int wfweb_wspr_get_debug_peak_candidate_count(void)
+{
+    return g_debug_peak_candidate_count;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int wfweb_wspr_get_debug_filtered_candidate_count(void)
+{
+    return g_debug_filtered_candidate_count;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int wfweb_wspr_get_debug_refined_candidate_count(void)
+{
+    return g_debug_refined_candidate_count;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int wfweb_wspr_get_debug_decode_pass_count(void)
+{
+    return g_debug_decode_pass_count;
 }
 
 EMSCRIPTEN_KEEPALIVE

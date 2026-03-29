@@ -1251,33 +1251,58 @@ body.digi-open .digi-bar {
 .digi-wspr-input { width: 52px; }
 .digi-wspr-info {
     flex: 1;
+    display: flex;
     flex-direction: column;
     min-height: 0;
+    overflow: hidden;
     background: #000308;
 }
 .digi-wspr-grid {
     display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 6px 10px;
-    padding: 10px 12px;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    gap: 8px;
+    padding: 8px 10px;
     align-content: start;
+}
+.digi-wspr-stat {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 8px;
+    border: 1px solid #01263a;
+    border-radius: 4px;
+    background: #000814;
+}
+.digi-wspr-stat-wide {
+    grid-column: 1 / -1;
+}
+.digi-wspr-stat-label {
+    color: #08f;
+    font-size: 10px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
 }
 .digi-wspr-value {
     color: #cef;
     font-family: 'Courier New', monospace;
     font-size: 12px;
     word-break: break-word;
+    line-height: 1.25;
 }
 .digi-wspr-actions {
     display: flex;
     gap: 8px;
-    padding: 0 12px 10px;
+    flex-wrap: wrap;
+    padding: 0 10px 8px;
 }
 .digi-wspr-band-list {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    padding: 0 12px 10px;
+    padding: 0 10px 8px;
 }
 .digi-wspr-band-btn {
     min-width: 44px;
@@ -1303,7 +1328,9 @@ body.digi-open .digi-bar {
     color: #dff;
 }
 .digi-wspr-spots {
-    margin: 0 12px 12px;
+    flex: 1;
+    min-height: 0;
+    margin: 0 10px 10px;
 }
 .digi-wspr-spot-row {
     display: grid;
@@ -1374,6 +1401,28 @@ body.digi-open .digi-bar {
     font-size: 11px;
     font-family: 'Courier New', monospace;
     font-weight: bold;
+}
+@media (max-width: 700px) {
+    .digi-wspr-grid {
+        grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+        gap: 6px;
+        padding: 6px 8px;
+    }
+    .digi-wspr-stat {
+        padding: 5px 6px;
+    }
+    .digi-wspr-value {
+        font-size: 11px;
+    }
+    .digi-wspr-actions,
+    .digi-wspr-band-list {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+    .digi-wspr-spots {
+        margin-left: 8px;
+        margin-right: 8px;
+    }
 }
 .digi-action-btn {
     padding: 2px 8px;
@@ -2268,34 +2317,70 @@ body.digi-open .digi-bar {
                 <div id="digiWsprInfo" class="digi-wspr-info">
                     <div class="digi-col-header">WSPR TX / RX</div>
                     <div class="digi-wspr-grid">
-                        <span class="digi-field-label">MSG:</span>
-                        <span id="digiWsprMessage" class="digi-wspr-value">MYCALL AA00 30</span>
-                        <span class="digi-field-label">STATE:</span>
-                        <span id="digiWsprQueued" class="digi-wspr-value">OFF</span>
-                        <span class="digi-field-label">RX STATE:</span>
-                        <span id="digiWsprRxState" class="digi-wspr-value">OFF</span>
-                        <span class="digi-field-label">LAST RX:</span>
-                        <span id="digiWsprLastRx" class="digi-wspr-value">--</span>
-                        <span class="digi-field-label">LAST DECODE:</span>
-                        <span id="digiWsprLastDecode" class="digi-wspr-value">--</span>
-                        <span class="digi-field-label">SPOTS:</span>
-                        <span id="digiWsprSpotCount" class="digi-wspr-value">0</span>
-                        <span class="digi-field-label">UPLOAD:</span>
-                        <span id="digiWsprUploadStatus" class="digi-wspr-value">LOCAL ONLY</span>
-                        <span class="digi-field-label">HOP:</span>
-                        <span id="digiWsprHopInfo" class="digi-wspr-value">20m</span>
-                        <span class="digi-field-label">TX BAND:</span>
-                        <span id="digiWsprTargetBandInfo" class="digi-wspr-value">20m</span>
-                        <span class="digi-field-label">RATE:</span>
-                        <span id="digiWsprRateInfo" class="digi-wspr-value">0/h</span>
-                        <span class="digi-field-label">CYCLE:</span>
-                        <span id="digiWsprCycleInfo" class="digi-wspr-value">--</span>
-                        <span class="digi-field-label">PWR:</span>
-                        <span id="digiWsprPowerInfo" class="digi-wspr-value">100 W (100%, 50 dBm)</span>
-                        <span class="digi-field-label">NEXT:</span>
-                        <span id="digiWsprNextTx" class="digi-wspr-value">--:--:--Z</span>
-                        <span class="digi-field-label">NOTE:</span>
-                        <span id="digiWsprModeHint" class="digi-wspr-value">TX only. Enable TX + TX% schedules random slots. BEACON NEXT arms one manual beacon.</span>
+                        <div class="digi-wspr-stat digi-wspr-stat-wide">
+                            <span class="digi-wspr-stat-label">MSG</span>
+                            <span id="digiWsprMessage" class="digi-wspr-value">MYCALL AA00 30</span>
+                        </div>
+                        <div class="digi-wspr-stat">
+                            <span class="digi-wspr-stat-label">STATE</span>
+                            <span id="digiWsprQueued" class="digi-wspr-value">OFF</span>
+                        </div>
+                        <div class="digi-wspr-stat">
+                            <span class="digi-wspr-stat-label">RX STATE</span>
+                            <span id="digiWsprRxState" class="digi-wspr-value">OFF</span>
+                        </div>
+                        <div class="digi-wspr-stat">
+                            <span class="digi-wspr-stat-label">SPOTS</span>
+                            <span id="digiWsprSpotCount" class="digi-wspr-value">0</span>
+                        </div>
+                        <div class="digi-wspr-stat">
+                            <span class="digi-wspr-stat-label">UPLOAD</span>
+                            <span id="digiWsprUploadStatus" class="digi-wspr-value">LOCAL ONLY</span>
+                        </div>
+                        <div class="digi-wspr-stat">
+                            <span class="digi-wspr-stat-label">HOP</span>
+                            <span id="digiWsprHopInfo" class="digi-wspr-value">20m</span>
+                        </div>
+                        <div class="digi-wspr-stat">
+                            <span class="digi-wspr-stat-label">TX BAND</span>
+                            <span id="digiWsprTargetBandInfo" class="digi-wspr-value">20m</span>
+                        </div>
+                        <div class="digi-wspr-stat">
+                            <span class="digi-wspr-stat-label">RATE</span>
+                            <span id="digiWsprRateInfo" class="digi-wspr-value">0/h</span>
+                        </div>
+                        <div class="digi-wspr-stat">
+                            <span class="digi-wspr-stat-label">CYCLE</span>
+                            <span id="digiWsprCycleInfo" class="digi-wspr-value">--</span>
+                        </div>
+                        <div class="digi-wspr-stat">
+                            <span class="digi-wspr-stat-label">PWR</span>
+                            <span id="digiWsprPowerInfo" class="digi-wspr-value">100 W (100%, 50 dBm)</span>
+                        </div>
+                        <div class="digi-wspr-stat">
+                            <span class="digi-wspr-stat-label">NEXT</span>
+                            <span id="digiWsprNextTx" class="digi-wspr-value">--:--:--Z</span>
+                        </div>
+                        <div class="digi-wspr-stat">
+                            <span class="digi-wspr-stat-label">LAST RX</span>
+                            <span id="digiWsprLastRx" class="digi-wspr-value">--</span>
+                        </div>
+                        <div class="digi-wspr-stat">
+                            <span class="digi-wspr-stat-label">LAST DECODE</span>
+                            <span id="digiWsprLastDecode" class="digi-wspr-value">--</span>
+                        </div>
+                        <div class="digi-wspr-stat">
+                            <span class="digi-wspr-stat-label">SEARCH</span>
+                            <span id="digiWsprSearchInfo" class="digi-wspr-value">1500 Hz ± 200 Hz</span>
+                        </div>
+                        <div class="digi-wspr-stat digi-wspr-stat-wide">
+                            <span class="digi-wspr-stat-label">DEBUG</span>
+                            <span id="digiWsprDebugInfo" class="digi-wspr-value">Waiting for cooldown slot.</span>
+                        </div>
+                        <div class="digi-wspr-stat digi-wspr-stat-wide">
+                            <span class="digi-wspr-stat-label">NOTE</span>
+                            <span id="digiWsprModeHint" class="digi-wspr-value">TX only. Enable TX + TX% schedules random slots. BEACON NEXT arms one manual beacon.</span>
+                        </div>
                     </div>
                     <div id="digiWsprBandList" class="digi-wspr-band-list"></div>
                     <div class="digi-wspr-actions">
@@ -2645,6 +2730,7 @@ var WSPR_RETUNE_RETRY_MS = 1500;
 var WSPR_SAME_BAND_ARM_LEAD = 0.75;
 var WSPR_HOP_ARM_LEAD = 5.0;
 var WSPR_DEFAULT_AUDIO_FREQ = 1500;
+var WSPR_SEARCH_HALF_WIDTH_HZ = 200;
 var WSPR_AUDIO_WINDOW_LOW = 1400;
 var WSPR_AUDIO_WINDOW_HIGH = 1600;
 var digiMode = 'FT8';
@@ -2724,6 +2810,10 @@ var digiWsprUploadStatusText = 'LOCAL ONLY';
 var digiWsprUploadInFlight = false;
 var digiWsprUploadRetryTimer = null;
 var digiWsprHealthWarning = '';
+var digiWsprLastFillRatio = 0;
+var digiWsprLastSampleCount = 0;
+var digiWsprLastDecodeDebug = null;
+var digiWsprLastDecodeError = '';
 const WSPR_SPOTS_STORAGE_KEY = 'digiWsprSpotsV1';
 const WSPR_UPLOAD_QUEUE_KEY = 'digiWsprUploadQueueV1';
 const WSPR_UPLOAD_ENABLED_KEY = 'digiWsprUploadEnabledV1';
@@ -5708,6 +5798,10 @@ function resetWsprRxState(preserveSummaries) {
     digiWsprDecodeInProgress = false;
     digiWsprPendingDecodes = [];
     digiWsprDecodeEpoch++;
+    digiWsprLastFillRatio = 0;
+    digiWsprLastSampleCount = 0;
+    digiWsprLastDecodeDebug = null;
+    digiWsprLastDecodeError = '';
     if (wsprWorker) {
         try { wsprWorker.terminate(); } catch (e) {}
         wsprWorker = null;
@@ -6179,8 +6273,12 @@ function onWsprDecodeResult(payload) {
     digiWsprDecodeInProgress = false;
     if (!payload || payload.slotIndex == null) {
         digiWsprLastDecodeSummary = 'ERR';
+        digiWsprLastDecodeError = 'invalid payload';
         return;
     }
+    digiWsprLastDecodeError = '';
+    digiWsprLastDecodeDebug = payload.debug || null;
+    if (digiWsprLastDecodeDebug && isFinite(payload.decodeMs)) digiWsprLastDecodeDebug.decodeMs = payload.decodeMs;
 
     digiWsprLastDecodedSlotIndex = payload.slotIndex;
     var spots = Array.isArray(payload.spots) ? payload.spots : [];
@@ -6215,6 +6313,8 @@ function initWsprWorker() {
             if (!data.ok) {
                 digiWsprDecodeInProgress = false;
                 digiWsprLastDecodeSummary = 'ERR';
+                digiWsprLastDecodeError = String(data.error || 'worker error');
+                digiWsprLastDecodeDebug = null;
                 try { wsprWorker.terminate(); } catch (err) {}
                 wsprWorker = null;
                 if (digiWsprPendingDecodes.length) {
@@ -6230,6 +6330,8 @@ function initWsprWorker() {
         wsprWorker.onerror = function() {
             digiWsprDecodeInProgress = false;
             digiWsprLastDecodeSummary = 'ERR';
+            digiWsprLastDecodeError = 'worker exception';
+            digiWsprLastDecodeDebug = null;
             try { wsprWorker.terminate(); } catch (err) {}
             wsprWorker = null;
             if (digiWsprPendingDecodes.length) {
@@ -6249,9 +6351,11 @@ function triggerWsprDecode(slotIndex, slotStartMs, samples, dialFrequencyHz, aud
     initWsprWorker();
     digiWsprDecodeInProgress = true;
     digiWsprLastDecodeSummary = 'QUEUED ' + formatWsprSlotLabel(slotIndex);
+    digiWsprLastDecodeError = '';
     if (!wsprWorker) {
         digiWsprDecodeInProgress = false;
         digiWsprLastDecodeSummary = 'NO WORKER';
+        digiWsprLastDecodeError = 'worker unavailable';
         return;
     }
     wsprWorker.postMessage({
@@ -6262,6 +6366,7 @@ function triggerWsprDecode(slotIndex, slotStartMs, samples, dialFrequencyHz, aud
         sampleRate: WSPR_SAMPLE_RATE,
         dialFrequencyHz: dialFrequencyHz || 0,
         audioFrequencyHz: audioFrequencyHz || WSPR_DEFAULT_AUDIO_FREQ,
+        searchHalfWidthHz: WSPR_SEARCH_HALF_WIDTH_HZ,
         reporter: reporter || null,
         samples: samples.buffer
     }, [samples.buffer]);
@@ -6271,6 +6376,20 @@ function finalizeWsprRxSlot(slotIndex) {
     if (slotIndex < 0) return;
     var fillRatio = digiWsprRxWritePos / WSPR_RX_BUFFER_SAMPLES;
     digiWsprLastCapturedSlotIndex = slotIndex;
+    digiWsprLastFillRatio = fillRatio;
+    digiWsprLastSampleCount = digiWsprRxWritePos;
+    digiWsprLastDecodeDebug = {
+        searchCenterHz: digiWsprRxAudioFrequencyHz || WSPR_DEFAULT_AUDIO_FREQ,
+        searchLowOffsetHz: -WSPR_SEARCH_HALF_WIDTH_HZ,
+        searchHighOffsetHz: WSPR_SEARCH_HALF_WIDTH_HZ,
+        sampleCount: digiWsprRxWritePos,
+        peakCandidates: 0,
+        filteredCandidates: 0,
+        refinedCandidates: 0,
+        decodePasses: 0,
+        resultCount: 0,
+        decodeMs: 0
+    };
 
     if (!digiWsprRxSlotEligible) {
         digiWsprLastRxSummary = 'SKIP TX ' + formatWsprSlotLabel(slotIndex);
@@ -6645,6 +6764,52 @@ function getWsprMessageText() {
     return window.wsprEncodeLib.buildMessageText(getMyCall(), getMyGrid(), digiWsprPower);
 }
 
+function getWsprSearchDebug() {
+    var debug = digiWsprLastDecodeDebug || {};
+    var centerHz = isFinite(debug.searchCenterHz) && debug.searchCenterHz > 0 ? debug.searchCenterHz :
+                   (digiWsprRxAudioFrequencyHz || digiRxFreq || WSPR_DEFAULT_AUDIO_FREQ);
+    var lowOffsetHz = isFinite(debug.searchLowOffsetHz) ? debug.searchLowOffsetHz : -WSPR_SEARCH_HALF_WIDTH_HZ;
+    var highOffsetHz = isFinite(debug.searchHighOffsetHz) ? debug.searchHighOffsetHz : WSPR_SEARCH_HALF_WIDTH_HZ;
+    return {
+        centerHz: Math.round(centerHz),
+        lowHz: Math.round(centerHz + lowOffsetHz),
+        highHz: Math.round(centerHz + highOffsetHz),
+        peakCandidates: isFinite(debug.peakCandidates) ? debug.peakCandidates : 0,
+        filteredCandidates: isFinite(debug.filteredCandidates) ? debug.filteredCandidates : 0,
+        refinedCandidates: isFinite(debug.refinedCandidates) ? debug.refinedCandidates : 0,
+        decodePasses: isFinite(debug.decodePasses) ? debug.decodePasses : 0,
+        decodeMs: isFinite(debug.decodeMs) ? debug.decodeMs : 0,
+        sampleCount: isFinite(debug.sampleCount) && debug.sampleCount > 0 ? debug.sampleCount : digiWsprLastSampleCount,
+        resultCount: isFinite(debug.resultCount) ? debug.resultCount : 0,
+        fillRatio: digiWsprLastFillRatio
+    };
+}
+
+function getWsprSearchInfoText() {
+    var search = getWsprSearchDebug();
+    return search.centerHz + ' Hz | ' + search.lowHz + '-' + search.highHz + ' Hz';
+}
+
+function getWsprDebugInfoText() {
+    if (digiWsprLastDecodeError) return 'err ' + digiWsprLastDecodeError;
+    var search = getWsprSearchDebug();
+    var fillPct = Math.round((search.fillRatio || 0) * 100);
+    var parts = [];
+    parts.push('slot ' + fillPct + '%');
+    if (search.sampleCount > 0) parts.push(search.sampleCount + ' samp');
+    if (search.peakCandidates > 0 || search.filteredCandidates > 0 || search.refinedCandidates > 0 || search.resultCount > 0) {
+        parts.push('pk ' + search.peakCandidates);
+        parts.push('win ' + search.filteredCandidates);
+        parts.push('ref ' + search.refinedCandidates);
+        parts.push('out ' + search.resultCount);
+    }
+    if (search.decodePasses > 0) parts.push('pass ' + search.decodePasses);
+    if (search.decodeMs > 0) parts.push(search.decodeMs + ' ms');
+    if (digiWsprPendingDecodes.length) parts.push('q ' + digiWsprPendingDecodes.length);
+    if (parts.length === 1 && fillPct <= 0) return 'Waiting for cooldown slot.';
+    return parts.join(' | ');
+}
+
 function formatUtcTime(ms) {
     return new Date(ms).toISOString().substr(11, 8) + 'Z';
 }
@@ -6689,6 +6854,8 @@ function updateWsprInfo(info) {
     var rxStateEl = document.getElementById('digiWsprRxState');
     var lastRxEl = document.getElementById('digiWsprLastRx');
     var lastDecodeEl = document.getElementById('digiWsprLastDecode');
+    var searchEl = document.getElementById('digiWsprSearchInfo');
+    var debugEl = document.getElementById('digiWsprDebugInfo');
     var spotCountEl = document.getElementById('digiWsprSpotCount');
     var uploadStatusEl = document.getElementById('digiWsprUploadStatus');
     var hopEl = document.getElementById('digiWsprHopInfo');
@@ -6720,6 +6887,14 @@ function updateWsprInfo(info) {
 
     if (lastDecodeEl) {
         lastDecodeEl.textContent = digiWsprLastDecodeSummary;
+    }
+
+    if (searchEl) {
+        searchEl.textContent = getWsprSearchInfoText();
+    }
+
+    if (debugEl) {
+        debugEl.textContent = getWsprDebugInfoText();
     }
 
     if (spotCountEl) {

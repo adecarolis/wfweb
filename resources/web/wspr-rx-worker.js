@@ -13,6 +13,15 @@ function ensureApi() {
                 decode: module.cwrap('wfweb_wspr_decode', 'number', ['number', 'number', 'number', 'number', 'number']),
                 clearHashes: module.cwrap('wfweb_wspr_clear_hashes', null, []),
                 getCount: module.cwrap('wfweb_wspr_get_result_count', 'number', []),
+                getDebugSearchLowHz: module.cwrap('wfweb_wspr_get_debug_search_low_hz', 'number', []),
+                getDebugSearchHighHz: module.cwrap('wfweb_wspr_get_debug_search_high_hz', 'number', []),
+                getDebugSampleCount: module.cwrap('wfweb_wspr_get_debug_sample_count', 'number', []),
+                getDebugDecimatedPointCount: module.cwrap('wfweb_wspr_get_debug_decimated_point_count', 'number', []),
+                getDebugFftCount: module.cwrap('wfweb_wspr_get_debug_fft_count', 'number', []),
+                getDebugPeakCandidateCount: module.cwrap('wfweb_wspr_get_debug_peak_candidate_count', 'number', []),
+                getDebugFilteredCandidateCount: module.cwrap('wfweb_wspr_get_debug_filtered_candidate_count', 'number', []),
+                getDebugRefinedCandidateCount: module.cwrap('wfweb_wspr_get_debug_refined_candidate_count', 'number', []),
+                getDebugDecodePassCount: module.cwrap('wfweb_wspr_get_debug_decode_pass_count', 'number', []),
                 getErrorPtr: module.cwrap('wfweb_wspr_get_error', 'number', []),
                 getFreqMHz: module.cwrap('wfweb_wspr_get_result_freq_mhz', 'number', ['number']),
                 getSnr: module.cwrap('wfweb_wspr_get_result_snr', 'number', ['number']),
@@ -79,17 +88,34 @@ function decodeWindow(apiRef, data, samples) {
 
     const dialFrequencyHz = Number(data.dialFrequencyHz || 0);
     const audioFrequencyHz = Number(data.audioFrequencyHz || 1500);
-    const wideband = data.wideband ? 1 : 0;
+    let searchHalfWidthHz = Number(data.searchHalfWidthHz || 0);
+    if (!Number.isFinite(searchHalfWidthHz) || searchHalfWidthHz <= 0) searchHalfWidthHz = 200;
     const slotStartMs = Number(data.slotStartMs || 0);
     const slotIndex = Number(data.slotIndex || 0);
 
     try {
         apiRef.module.HEAPF32.set(samples, ptr >> 2);
-        const rc = apiRef.decode(ptr, samples.length, dialFrequencyHz / 1000000.0, audioFrequencyHz, wideband);
+        const rc = apiRef.decode(ptr, samples.length, dialFrequencyHz / 1000000.0, audioFrequencyHz, searchHalfWidthHz);
         const errText = ptrToString(apiRef, apiRef.getErrorPtr());
         if (!rc && errText) throw new Error(errText);
 
         const count = apiRef.getCount();
+        const debug = {
+            searchCenterHz: audioFrequencyHz,
+            searchLowOffsetHz: Number(apiRef.getDebugSearchLowHz()),
+            searchHighOffsetHz: Number(apiRef.getDebugSearchHighHz()),
+            searchHalfWidthHz: searchHalfWidthHz,
+            sampleCount: Number(apiRef.getDebugSampleCount()) || samples.length,
+            decimatedPointCount: Number(apiRef.getDebugDecimatedPointCount()),
+            fftCount: Number(apiRef.getDebugFftCount()),
+            peakCandidates: Number(apiRef.getDebugPeakCandidateCount()),
+            filteredCandidates: Number(apiRef.getDebugFilteredCandidateCount()),
+            refinedCandidates: Number(apiRef.getDebugRefinedCandidateCount()),
+            decodePasses: Number(apiRef.getDebugDecodePassCount()),
+            resultCount: count
+        };
+        debug.searchLowHz = debug.searchCenterHz + debug.searchLowOffsetHz;
+        debug.searchHighHz = debug.searchCenterHz + debug.searchHighOffsetHz;
         const date = formatDate6(slotStartMs);
         const time = formatTime4(slotStartMs);
         const spots = [];
@@ -140,6 +166,7 @@ function decodeWindow(apiRef, data, samples) {
             audioFrequencyHz: audioFrequencyHz,
             reporter: data.reporter || null,
             sampleCount: samples.length,
+            debug: debug,
             spots: spots,
             summary: formatUtc(slotStartMs) + ' ' + spots.length + ' spot' + (spots.length === 1 ? '' : 's')
         };
