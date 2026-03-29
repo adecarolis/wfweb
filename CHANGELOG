@@ -6,6 +6,21 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.4.2 (2026-03-29)
+--------------------
+
+Packaging:
+- Add native .deb builds for Debian 12 (Bookworm) and Debian 13 (Trixie),
+  fixing installation on Raspberry Pi OS Trixie (librtaudio7) (#15)
+- .deb filenames now include the target distro: ubuntu2404, debian12, debian13
+- Switch macOS artifact from tarball to zip
+
+Documentation:
+- Add git submodule init instructions to BUILDING.md (#15)
+- Document .deb package variants and which distro each targets in README
+- Add IC-7300 USB Docker quick-start example to README
+
+
 v0.4.1 (2026-03-28)
 --------------------
 
