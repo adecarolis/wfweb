@@ -6431,7 +6431,10 @@ function syncWsprRxSlotForMs(ms) {
         return;
     }
     if (slotInfo.slotIndex !== digiWsprRxSlotIndex) {
-        finalizeWsprRxSlot(digiWsprRxSlotIndex);
+        var completedSlotIndex = digiWsprRxSlotIndex;
+        var completedEligible = digiWsprRxSlotEligible;
+        finalizeWsprRxSlot(completedSlotIndex);
+        advanceWsprStandbyHop(slotInfo, completedSlotIndex, completedEligible);
         beginWsprRxSlot(slotInfo);
     }
 }
@@ -6634,6 +6637,36 @@ function commitWsprTargetBandProgression() {
     }
     digiWsprPendingHopIndex = -1;
     persistWsprHopIndex();
+}
+
+function advanceWsprStandbyHop(nextSlotInfo, completedSlotIndex, completedEligible) {
+    if (!isWsprMode()) return false;
+    if (!completedEligible || completedSlotIndex < 0) return false;
+    if (digiTxActive) return false;
+
+    var bands = getWsprHopSelection();
+    if (bands.length <= 1) return false;
+
+    // Hold the selected TX band through the immediate pre-TX dwell slot, and
+    // do not walk manual one-shot beacons away from the band the user armed.
+    if (digiWsprManualEnable && digiTxArmed && digiWsprTargetSlotIndex >= 0) return false;
+    if (digiWsprTargetSlotIndex >= 0 && nextSlotInfo && ((digiWsprTargetSlotIndex - nextSlotInfo.slotIndex) <= 1)) {
+        return false;
+    }
+
+    var currentIndex = digiWsprHopIndex;
+    if (currentIndex < 0 || currentIndex >= bands.length) currentIndex = 0;
+    digiWsprHopIndex = (currentIndex + 1) % bands.length;
+    persistWsprHopIndex();
+
+    clearWsprTargetBand();
+    var nextChoice = chooseWsprTargetBand();
+    if (!nextChoice.band) return false;
+
+    digiWsprTargetBandLabel = nextChoice.band.label;
+    digiWsprPendingHopIndex = nextChoice.index;
+    requestWsprRetune(nextChoice.band, 'USB');
+    return true;
 }
 
 function getWsprArmLeadBudget(targetBand) {
@@ -6949,7 +6982,7 @@ function updateWsprInfo(info) {
         } else if (digiWsprHealthWarning) {
             hintEl.textContent = digiWsprHealthWarning + '. Keep the tab visible and the browser clock accurate for reliable WSPR RX timestamps.';
         } else hintEl.textContent = ensureWsprHopSelection().length > 1 ?
-            'Browser WSPR RX decodes standby slots off-thread. WSPRnet upload lands through the local wfweb proxy. Auto TX parks RX on the next hop band before each TX so the rig settles ahead of the beacon.' :
+            'Browser WSPR RX decodes standby slots off-thread. WSPRnet upload lands through the local wfweb proxy. Standby RX now walks the selected hop bands until the final pre-TX settle slot.' :
             'Browser WSPR RX decodes cooldown slots off-thread. WSPRnet upload lands through the local wfweb proxy. BEACON NEXT still arms one manual beacon.';
     }
 }
