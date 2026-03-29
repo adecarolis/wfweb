@@ -1332,6 +1332,58 @@ body.digi-open .digi-bar {
     min-height: 0;
     margin: 0 10px 10px;
 }
+.digi-wspr-reports {
+    flex: 0 0 118px;
+    min-height: 96px;
+    margin: 0 10px 10px;
+}
+.digi-wspr-report-row {
+    display: grid;
+    grid-template-columns: 70px 88px 1fr;
+    gap: 8px;
+    align-items: start;
+    padding: 3px 6px;
+    border-bottom: 1px solid #01263a;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: #bfe8ff;
+}
+.digi-wspr-report-row:last-child {
+    border-bottom: none;
+}
+.digi-wspr-report-time {
+    color: #6bc2ff;
+}
+.digi-wspr-report-status {
+    color: #9fe0ff;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.digi-wspr-report-row.ok .digi-wspr-report-status {
+    color: #77f7b2;
+}
+.digi-wspr-report-row.warn .digi-wspr-report-status {
+    color: #ffd166;
+}
+.digi-wspr-report-row.err .digi-wspr-report-status {
+    color: #ff8d8d;
+}
+.digi-wspr-report-text {
+    min-width: 0;
+    line-height: 1.25;
+}
+.digi-wspr-report-summary {
+    color: #dff6ff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.digi-wspr-report-detail {
+    color: #7fb4d0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .digi-wspr-spot-row {
     display: grid;
     grid-template-columns: 72px 1fr auto;
@@ -2388,6 +2440,8 @@ body.digi-open .digi-bar {
                         <button id="digiWsprUploadBtn" class="digi-action-btn">WSPRNET OFF</button>
                         <button id="digiWsprClearBtn" class="digi-action-btn">Clear Queue</button>
                     </div>
+                    <div class="digi-col-header">WSPRnet Reports</div>
+                    <div id="digiWsprReportsPanel" class="digi-rx-panel digi-wspr-reports"></div>
                     <div class="digi-col-header">WSPR Spots</div>
                     <div id="digiWsprSpotsPanel" class="digi-rx-panel digi-wspr-spots"></div>
                 </div>
@@ -2809,6 +2863,8 @@ var digiWsprUploadQueue = [];
 var digiWsprUploadStatusText = 'LOCAL ONLY';
 var digiWsprUploadInFlight = false;
 var digiWsprUploadRetryTimer = null;
+var digiWsprUploadLatestReport = null;
+var digiWsprUploadRecentReports = [];
 var digiWsprHealthWarning = '';
 var digiWsprLastFillRatio = 0;
 var digiWsprLastSampleCount = 0;
@@ -5864,6 +5920,127 @@ function renderWsprSpots() {
     panel.innerHTML = html;
 }
 
+function sanitizeWsprUploadReport(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    var receivedUtcMs = parseInt(raw.receivedUtcMs, 10);
+    if (isNaN(receivedUtcMs)) receivedUtcMs = 0;
+    var retries = parseInt(raw.retries, 10);
+    if (isNaN(retries)) retries = 0;
+    var httpStatus = parseInt(raw.httpStatus, 10);
+    if (isNaN(httpStatus)) httpStatus = 0;
+    var rejected = parseInt(raw.rejected, 10);
+    if (isNaN(rejected)) rejected = 0;
+    var accepted = parseInt(raw.accepted, 10);
+    if (isNaN(accepted)) accepted = 0;
+    var duplicates = parseInt(raw.duplicates, 10);
+    if (isNaN(duplicates)) duplicates = 0;
+    return {
+        receivedUtcMs: receivedUtcMs,
+        status: String(raw.status || '').trim().toLowerCase(),
+        functionName: String(raw.function || '').trim().toLowerCase(),
+        summary: String(raw.summary || '').trim(),
+        detail: String(raw.detail || raw.error || '').trim(),
+        responseKind: String(raw.responseKind || '').trim().toLowerCase(),
+        batchId: String(raw.batchId || '').trim(),
+        retries: retries,
+        httpStatus: httpStatus,
+        rejected: rejected,
+        accepted: accepted,
+        duplicates: duplicates
+    };
+}
+
+function setWsprUploadHistory(status) {
+    var recent = [];
+    if (status && Array.isArray(status.recent)) {
+        for (var i = 0; i < status.recent.length; i++) {
+            var clean = sanitizeWsprUploadReport(status.recent[i]);
+            if (clean) recent.push(clean);
+        }
+    }
+    recent.sort(function(a, b) { return (b.receivedUtcMs || 0) - (a.receivedUtcMs || 0); });
+    if (recent.length > 20) recent = recent.slice(0, 20);
+    digiWsprUploadRecentReports = recent;
+    digiWsprUploadLatestReport = sanitizeWsprUploadReport(status && status.latest ? status.latest : recent[0]);
+    renderWsprUploadReports();
+}
+
+function getWsprUploadReportBadge(entry) {
+    if (!entry) return 'IDLE';
+    switch (entry.status) {
+        case 'local_rejected': return 'LOCAL REJECT';
+        case 'queued': return 'QUEUED';
+        case 'uploading': return 'POSTING';
+        case 'duplicate': return 'DUPLICATE';
+        case 'retry': return 'RETRY ' + entry.retries;
+        case 'accepted':
+            if (entry.functionName === 'wsprstat') return entry.responseKind === 'html_ok' ? 'STATUS OK' : 'STATUS OK';
+            return entry.responseKind === 'html_ok' ? 'REPORT OK' : 'REPORT OK';
+        case 'error':
+            return entry.responseKind === 'html_error' ? 'HTML ERR' : 'REMOTE ERR';
+        default:
+            return entry.status ? entry.status.toUpperCase() : 'IDLE';
+    }
+}
+
+function getWsprUploadReportTone(entry) {
+    if (!entry) return '';
+    if (entry.status === 'accepted') return 'ok';
+    if (entry.status === 'error' || entry.status === 'local_rejected') return 'err';
+    if (entry.status === 'retry' || entry.status === 'duplicate') return 'warn';
+    return '';
+}
+
+function renderWsprUploadReports() {
+    var panel = document.getElementById('digiWsprReportsPanel');
+    if (!panel) return;
+    if (!digiWsprUploadRecentReports.length) {
+        panel.innerHTML = '';
+        return;
+    }
+    var html = '';
+    for (var i = 0; i < digiWsprUploadRecentReports.length; i++) {
+        var entry = digiWsprUploadRecentReports[i];
+        var timeText = entry.receivedUtcMs ? formatUtcTime(entry.receivedUtcMs) : '--:--:--Z';
+        var badge = getWsprUploadReportBadge(entry);
+        var tone = getWsprUploadReportTone(entry);
+        var summary = escapeHtml(entry.summary || '--');
+        var detail = entry.detail ? ('<div class="digi-wspr-report-detail">' + escapeHtml(entry.detail) + '</div>') : '';
+        html += '<div class="digi-wspr-report-row ' + tone + '">' +
+                '<span class="digi-wspr-report-time">' + timeText + '</span>' +
+                '<span class="digi-wspr-report-status">' + escapeHtml(badge) + '</span>' +
+                '<div class="digi-wspr-report-text">' +
+                '<div class="digi-wspr-report-summary">' + summary + '</div>' +
+                detail +
+                '</div>' +
+                '</div>';
+    }
+    panel.innerHTML = html;
+}
+
+function summarizeWsprUploadState(status) {
+    var pending = parseInt(status && status.pending, 10) || 0;
+    var inFlight = !!(status && status.inFlight);
+    var latest = digiWsprUploadLatestReport;
+
+    if (latest && latest.status === 'local_rejected') {
+        return 'LOCAL REJECT ' + Math.max(1, latest.rejected || 0);
+    }
+    if (inFlight) return 'UPLOADING';
+    if (digiWsprUploadQueue.length) return 'QUEUED ' + digiWsprUploadQueue.length;
+    if (pending > 0) return 'SERVER ' + pending;
+    if (latest) {
+        if (latest.status === 'accepted') return latest.functionName === 'wsprstat' ? 'STATUS OK' : 'REPORT OK';
+        if (latest.status === 'duplicate') return 'DUPLICATE';
+        if (latest.status === 'retry') return 'RETRY ' + latest.retries;
+        if (latest.status === 'error') return latest.responseKind === 'html_error' ? 'HTML ERR' : 'REMOTE ERR';
+        if (latest.status === 'queued') return 'READY';
+    }
+    if (status && status.lastError) return 'ERROR';
+    if (status && status.lastResult === 'done') return 'DONE';
+    return 'IDLE';
+}
+
 function sanitizeWsprSpot(raw) {
     if (!raw) return null;
     var slotIndex = parseInt(raw.slotIndex, 10);
@@ -6166,14 +6343,8 @@ function refreshWsprUploadStatus() {
     fetch('/api/v1/wsprnet/status', { method: 'GET' })
         .then(parseApiJsonResponse)
         .then(function(status) {
-            var pending = parseInt(status.pending, 10) || 0;
-            var inFlight = !!status.inFlight;
-            if (status.lastError) digiWsprUploadStatusText = 'ERR ' + status.lastError;
-            else if (inFlight) digiWsprUploadStatusText = 'UPLOADING';
-            else if (digiWsprUploadQueue.length) digiWsprUploadStatusText = 'QUEUED ' + digiWsprUploadQueue.length;
-            else if (pending > 0) digiWsprUploadStatusText = 'SERVER ' + pending;
-            else if (status.lastResult === 'done') digiWsprUploadStatusText = 'DONE';
-            else digiWsprUploadStatusText = 'IDLE';
+            setWsprUploadHistory(status);
+            digiWsprUploadStatusText = summarizeWsprUploadState(status);
             updateWsprInfo(getDigiSlotInfo());
         })
         .catch(function() {
@@ -6213,6 +6384,7 @@ function flushWsprUploadQueue() {
         .then(parseApiJsonResponse)
         .then(function(resp) {
             digiWsprUploadInFlight = false;
+            setWsprUploadHistory(resp);
             var accepted = parseInt(resp.accepted, 10) || 0;
             var duplicates = parseInt(resp.duplicates, 10) || 0;
             var rejected = parseInt(resp.rejected, 10) || 0;
@@ -6228,24 +6400,15 @@ function flushWsprUploadQueue() {
                 return;
             }
             if (rejected > 0 && accepted === 0 && duplicates === 0) {
-                digiWsprUploadStatusText = 'REJECTED ' + rejected;
+                digiWsprUploadStatusText = summarizeWsprUploadState(resp);
                 persistWsprUploadState();
                 updateWsprInfo(getDigiSlotInfo());
                 return;
             }
             digiWsprUploadQueue.shift();
             persistWsprUploadState();
-            if (resp.lastError) {
-                digiWsprUploadStatusText = 'ERR ' + resp.lastError;
-            } else if (rejected > 0) {
-                digiWsprUploadStatusText = 'PARTIAL ' + rejected;
-            } else if (accepted > 0) {
-                digiWsprUploadStatusText = 'QUEUED ' + (parseInt(resp.pending, 10) || 0);
-            } else if (duplicates > 0) {
-                digiWsprUploadStatusText = 'DUPLICATE';
-            } else {
-                digiWsprUploadStatusText = digiWsprUploadQueue.length ? ('QUEUED ' + digiWsprUploadQueue.length) : 'DONE';
-            }
+            if (rejected > 0 && accepted > 0) digiWsprUploadStatusText = 'PARTIAL ' + rejected;
+            else digiWsprUploadStatusText = summarizeWsprUploadState(resp);
             updateWsprInfo(getDigiSlotInfo());
             refreshWsprUploadStatus();
             if (digiWsprUploadQueue.length) flushWsprUploadQueue();
