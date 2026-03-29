@@ -12,11 +12,17 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QTimer>
+#include <QQueue>
+#include <QHash>
 #include <QSet>
 #include <QThread>
+#include <QUrlQuery>
 #include <QSslSocket>
 #include <QSslKey>
 #include <QSslCertificate>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QCryptographicHash>
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 #include <QAudioDeviceInfo>
@@ -35,6 +41,18 @@
 #ifdef Q_OS_MACOS
 class TlsProxyWorker;
 #endif
+
+struct WsprNetUploadItem {
+    QByteArray body;
+    QByteArray key;
+    QString batchId;
+    QString functionName;
+    QString summary;
+    qint64 createdUtcMs = 0;
+    qint64 nextAttemptUtcMs = 0;
+    bool spot = false;
+    int retries = 0;
+};
 
 // SSL-enabled TCP server for HTTPS
 class SslTcpServer : public QTcpServer {
@@ -109,6 +127,7 @@ private slots:
     // USB audio capture
     void readUsbAudio();
     void onAudioStateChanged(QAudio::State state);
+    void onWsprNetReply(QNetworkReply *reply);
 
 
 private:
@@ -119,6 +138,10 @@ private:
                            const QString &path, const QByteArray &body);
     void sendRestResponse(QTcpSocket *socket, int statusCode, const QJsonObject &json);
     QJsonObject buildInfoJson() const;
+    QJsonObject buildWsprNetStatusJson();
+    QJsonObject buildWsprDecodeTelemetryJson() const;
+    void recordWsprDecodeTelemetry(const QJsonObject &payload, const QString &clientAddr);
+    void recordWsprNetEvent(const QJsonObject &event);
     void sendJsonToAll(const QJsonObject &obj);
     void sendJsonTo(QWebSocket *client, const QJsonObject &obj);
     void sendBinaryToAll(const QByteArray &data);
@@ -131,6 +154,9 @@ private:
     QJsonObject buildStatusJson();
     codecType codecByteToType(quint8 codec);
     bool setupSsl();
+    bool enqueueWsprNetItem(const WsprNetUploadItem &item);
+    void pruneWsprNetRecent();
+    void pumpWsprNetQueue();
 
     QHash<QTcpSocket*, QByteArray> socketBuffers; // accumulate partial TCP reads
 
@@ -167,6 +193,20 @@ private:
     QString audioErrorReason;
     quint16 audioSeq = 0;
     QSet<QWebSocket *> audioClients;
+    QNetworkAccessManager *wsprNetManager = nullptr;
+    QTimer *wsprNetTimer = nullptr;
+    QQueue<WsprNetUploadItem> wsprNetQueue;
+    QHash<QNetworkReply*, WsprNetUploadItem> wsprNetReplies;
+    QHash<QByteArray, qint64> wsprNetRecentAccepted;
+    QSet<QByteArray> wsprNetPendingKeys;
+    QString wsprNetLastResult;
+    QString wsprNetLastError;
+    QJsonObject wsprNetLatestEvent;
+    QJsonArray wsprNetRecentEvents;
+    qint64 wsprNetUpdatedMs = 0;
+    QJsonObject wsprDecodeTelemetryLatest;
+    QJsonArray wsprDecodeTelemetryRecent;
+    qint64 wsprDecodeTelemetryUpdatedMs = 0;
 
     // TX audio converter (LAN path: PCM → rig codec)
     audioConverter *txConverter = nullptr;

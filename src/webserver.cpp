@@ -7,6 +7,126 @@
 #include <QSslConfiguration>
 #include <QTimer>
 #include <QThread>
+#include <QDateTime>
+#include <QMap>
+#include <QRegularExpression>
+#include <cmath>
+
+namespace {
+constexpr qint64 kWsprUploadMaxAgeMs = 12LL * 60LL * 60LL * 1000LL;
+constexpr qint64 kWsprUploadFutureSlackMs = 10LL * 60LL * 1000LL;
+constexpr int kWsprDecodeTelemetryHistory = 120;
+constexpr int kWsprNetReportHistory = 80;
+constexpr int kWsprNetRetryBaseMs = 5000;
+constexpr int kWsprNetRetryMaxMs = 60000;
+
+bool isWsprCallLike(const QString &value)
+{
+    static const QRegularExpression re(QStringLiteral("^[A-Z0-9/<>-]{1,20}$"));
+    return re.match(value).hasMatch();
+}
+
+bool isWsprGridLike(const QString &value)
+{
+    static const QRegularExpression re(QStringLiteral("^[A-R]{2}[0-9]{2}([A-X]{2})?$"));
+    return re.match(value).hasMatch();
+}
+
+bool isSixDigitDate(const QString &value)
+{
+    static const QRegularExpression re(QStringLiteral("^[0-9]{6}$"));
+    return re.match(value).hasMatch();
+}
+
+bool isFourDigitTime(const QString &value)
+{
+    static const QRegularExpression re(QStringLiteral("^[0-9]{4}$"));
+    return re.match(value).hasMatch();
+}
+
+bool isValidUploadSlotTime(qint64 slotStartMs)
+{
+    if (slotStartMs <= 0) return false;
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    return slotStartMs >= (nowMs - kWsprUploadMaxAgeMs) &&
+           slotStartMs <= (nowMs + kWsprUploadFutureSlackMs);
+}
+
+int quantizeWsprDbm(int dbm)
+{
+    static const int kLevels[] = {0, 3, 7, 10, 13, 17, 20, 23, 27, 30, 33, 37, 40, 43, 47, 50, 53, 57, 60};
+    int best = kLevels[0];
+    int bestDelta = qAbs(dbm - best);
+    for (int level : kLevels) {
+        const int delta = qAbs(dbm - level);
+        if (delta < bestDelta) {
+            best = level;
+            bestDelta = delta;
+        }
+    }
+    return best;
+}
+
+bool isPlausibleWsprDt(double dt)
+{
+    return std::isfinite(dt) && qAbs(dt) <= 5.0;
+}
+
+bool isPlausibleWsprDrift(int drift)
+{
+    return qAbs(drift) <= 10;
+}
+
+bool isWsprNetAcceptedResponse(const QString &responseText, int httpStatus)
+{
+    if (httpStatus < 200 || httpStatus >= 300) return false;
+
+    const bool mentionsAdded = responseText.contains(QStringLiteral("spot(s) added"), Qt::CaseInsensitive);
+    const bool mentionsProcessing = responseText.contains(QStringLiteral("processing took"), Qt::CaseInsensitive);
+    if (mentionsAdded && mentionsProcessing) return true;
+
+    const bool looksLikeHtml = responseText.contains(QStringLiteral("<html"), Qt::CaseInsensitive) ||
+                               responseText.contains(QStringLiteral("<!doctype"), Qt::CaseInsensitive);
+    const bool looksLikeError = responseText.contains(QStringLiteral("error"), Qt::CaseInsensitive);
+    return !looksLikeHtml && !looksLikeError;
+}
+
+QString summarizeWsprNetResponse(const QString &responseText, int httpStatus, bool transportError, bool accepted)
+{
+    if (transportError) return QString();
+
+    QString flat = responseText;
+    flat.remove(QRegularExpression(QStringLiteral("(?is)<script\\b[^>]*>.*?</script>")));
+    flat.remove(QRegularExpression(QStringLiteral("(?is)<style\\b[^>]*>.*?</style>")));
+    flat.replace(QRegularExpression(QStringLiteral("(?is)<[^>]+>")), QStringLiteral(" "));
+    flat = flat.simplified();
+
+    const bool looksLikeHtml = responseText.contains(QStringLiteral("<html"), Qt::CaseInsensitive) ||
+                               responseText.contains(QStringLiteral("<!doctype"), Qt::CaseInsensitive);
+    if (accepted) {
+        if (flat.isEmpty()) return looksLikeHtml ? QStringLiteral("HTML accepted") : QStringLiteral("accepted");
+        return flat.left(160);
+    }
+
+    if (looksLikeHtml) {
+        if (flat.isEmpty()) return QStringLiteral("HTML response");
+        return QStringLiteral("HTML: %1").arg(flat.left(160));
+    }
+
+    if (flat.isEmpty()) return QStringLiteral("HTTP %1").arg(httpStatus);
+    return flat.left(160);
+}
+
+QString wsprNetResponseKind(const QString &responseText, bool transportError, bool accepted)
+{
+    if (transportError) return QStringLiteral("transport");
+
+    const bool looksLikeHtml = responseText.contains(QStringLiteral("<html"), Qt::CaseInsensitive) ||
+                               responseText.contains(QStringLiteral("<!doctype"), Qt::CaseInsensitive);
+    if (looksLikeHtml) return accepted ? QStringLiteral("html_ok") : QStringLiteral("html_error");
+    return accepted ? QStringLiteral("text_ok") : QStringLiteral("text_error");
+}
+}
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -28,6 +148,13 @@
 webServer::webServer(QObject *parent) :
     QObject(parent)
 {
+    wsprNetManager = new QNetworkAccessManager(this);
+    connect(wsprNetManager, &QNetworkAccessManager::finished, this, &webServer::onWsprNetReply);
+
+    wsprNetTimer = new QTimer(this);
+    wsprNetTimer->setInterval(200);
+    wsprNetTimer->setSingleShot(false);
+    connect(wsprNetTimer, &QTimer::timeout, this, &webServer::pumpWsprNetQueue);
 }
 
 webServer::~webServer()
@@ -589,6 +716,285 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
         return doc.object();
     };
 
+    // --- GET /api/v1/wsprnet/status ---
+    if (p == "/api/v1/wsprnet/status") {
+        if (method != "GET") {
+            QJsonObject e;
+            e["error"] = "Method not allowed";
+            sendRestResponse(socket, 405, e);
+            return;
+        }
+        sendRestResponse(socket, 200, buildWsprNetStatusJson());
+        return;
+    }
+
+    // --- GET/POST /api/v1/wspr/telemetry ---
+    if (p == "/api/v1/wspr/telemetry") {
+        if (method == "GET") {
+            sendRestResponse(socket, 200, buildWsprDecodeTelemetryJson());
+        } else if (method == "POST") {
+            const QJsonObject payload = parseBody();
+            if (payload.isEmpty()) {
+                QJsonObject e;
+                e["error"] = "Empty or invalid JSON body";
+                sendRestResponse(socket, 400, e);
+                return;
+            }
+            recordWsprDecodeTelemetry(payload, socket && socket->peerAddress().isNull()
+                                                ? QString()
+                                                : socket->peerAddress().toString());
+            QJsonObject resp;
+            resp["status"] = "accepted";
+            resp["count"] = wsprDecodeTelemetryRecent.size();
+            resp["updatedUtcMs"] = static_cast<double>(wsprDecodeTelemetryUpdatedMs);
+            sendRestResponse(socket, 202, resp);
+        } else {
+            QJsonObject e;
+            e["error"] = "Method not allowed";
+            sendRestResponse(socket, 405, e);
+        }
+        return;
+    }
+
+    // --- POST /api/v1/wsprnet/upload ---
+    if (p == "/api/v1/wsprnet/upload") {
+        if (method != "POST") {
+            QJsonObject e;
+            e["error"] = "Method not allowed";
+            sendRestResponse(socket, 405, e);
+            return;
+        }
+
+        const QJsonObject obj = parseBody();
+        const QJsonObject reporter = obj.value("reporter").toObject();
+        const QString reporterCall = reporter.value("call").toString().trimmed().toUpper();
+        const QString reporterGrid = reporter.value("grid").toString().trimmed().toUpper();
+        const qint64 rqrgHz = static_cast<qint64>(reporter.value("rqrgHz").toDouble());
+        qint64 tqrgHz = static_cast<qint64>(reporter.value("tqrgHz").toDouble());
+        const int txPct = reporter.value("txPct").toInt();
+        const int dbm = quantizeWsprDbm(reporter.value("dbm").toInt());
+        QString version = reporter.value("version").toString().trimmed();
+        if (version.isEmpty()) version = QStringLiteral("wfweb");
+        if (version.size() > 64) version = version.left(64);
+
+        if (!isWsprCallLike(reporterCall) || !isWsprGridLike(reporterGrid) || rqrgHz <= 0) {
+            QJsonObject e;
+            e["error"] = "Missing reporter call/grid/rqrgHz";
+            sendRestResponse(socket, 400, e);
+            return;
+        }
+        if (tqrgHz <= 0) tqrgHz = rqrgHz;
+
+        int accepted = 0;
+        int duplicates = 0;
+        int rejected = 0;
+        QMap<QString, int> rejectReasons;
+        auto noteReject = [&](const QString &reason) {
+            rejected++;
+            rejectReasons[reason] += 1;
+        };
+        auto buildRejectSummary = [&]() -> QString {
+            if (rejectReasons.isEmpty()) return QString();
+            QStringList parts;
+            for (auto it = rejectReasons.cbegin(); it != rejectReasons.cend(); ++it) {
+                parts.append(QStringLiteral("%1=%2").arg(it.key()).arg(it.value()));
+            }
+            return parts.join(QStringLiteral(","));
+        };
+        const QString batchId = obj.value("batchId").toString().trimmed();
+        const qint64 slotStartMs = static_cast<qint64>(obj.value("slotStartMs").toDouble());
+        if (!isValidUploadSlotTime(slotStartMs)) {
+            wsprNetLastResult = QStringLiteral("rejected");
+            wsprNetLastError = QStringLiteral("stale slot");
+            QJsonObject event;
+            event["status"] = QStringLiteral("local_rejected");
+            event["function"] = QStringLiteral("batch");
+            event["batchId"] = batchId;
+            event["summary"] = QStringLiteral("stale slot");
+            event["detail"] = QStringLiteral("slotStartMs outside upload window");
+            event["rejected"] = 1;
+            recordWsprNetEvent(event);
+            QJsonObject resp = buildWsprNetStatusJson();
+            resp["accepted"] = accepted;
+            resp["duplicates"] = duplicates;
+            resp["rejected"] = 1;
+            resp["status"] = "rejected";
+            sendRestResponse(socket, 202, resp);
+            return;
+        }
+        QDateTime slotUtc = slotStartMs > 0
+            ? QDateTime::fromMSecsSinceEpoch(slotStartMs, Qt::UTC)
+            : QDateTime::currentDateTimeUtc();
+        const QString date = slotUtc.toString("yyMMdd");
+        const QString time = slotUtc.toString("hhmm");
+        const QJsonArray spots = obj.value("spots").toArray();
+
+        auto buildQuerySummary = [](const QUrlQuery &query, bool isSpot) -> QString {
+            if (isSpot) {
+                const QString call = query.queryItemValue(QStringLiteral("tcall")).trimmed().toUpper();
+                const QString grid = query.queryItemValue(QStringLiteral("tgrid")).trimmed().toUpper();
+                const QString freq = query.queryItemValue(QStringLiteral("tqrg")).trimmed();
+                QString summary = call;
+                if (!grid.isEmpty()) summary += QStringLiteral(" ") + grid;
+                if (!freq.isEmpty()) summary += QStringLiteral(" @ ") + freq + QStringLiteral(" MHz");
+                return summary.simplified();
+            }
+
+            const QString call = query.queryItemValue(QStringLiteral("rcall")).trimmed().toUpper();
+            const QString grid = query.queryItemValue(QStringLiteral("rgrid")).trimmed().toUpper();
+            const QString freq = query.queryItemValue(QStringLiteral("rqrg")).trimmed();
+            QString summary = QStringLiteral("status ") + call;
+            if (!grid.isEmpty()) summary += QStringLiteral(" ") + grid;
+            if (!freq.isEmpty()) summary += QStringLiteral(" @ ") + freq + QStringLiteral(" MHz");
+            return summary.simplified();
+        };
+
+        auto queueQuery = [&](const QUrlQuery &query, bool isSpot) {
+            const QByteArray bodyBytes = query.query(QUrl::FullyEncoded).toUtf8();
+            WsprNetUploadItem item;
+            item.body = bodyBytes;
+            const QByteArray dedupeBytes = isSpot
+                ? bodyBytes
+                : bodyBytes + QByteArrayLiteral("|") + batchId.toUtf8();
+            item.key = QCryptographicHash::hash(dedupeBytes, QCryptographicHash::Sha1).toHex();
+            item.batchId = batchId;
+            item.functionName = query.queryItemValue(QStringLiteral("function")).trimmed().toLower();
+            item.summary = buildQuerySummary(query, isSpot);
+            item.createdUtcMs = QDateTime::currentMSecsSinceEpoch();
+            item.spot = isSpot;
+            if (enqueueWsprNetItem(item)) {
+                accepted++;
+                QJsonObject event;
+                event["status"] = QStringLiteral("queued");
+                event["function"] = item.functionName;
+                event["batchId"] = item.batchId;
+                event["summary"] = item.summary;
+                event["spot"] = item.spot;
+                event["retries"] = item.retries;
+                recordWsprNetEvent(event);
+            } else {
+                duplicates++;
+                QJsonObject event;
+                event["status"] = QStringLiteral("duplicate");
+                event["function"] = item.functionName;
+                event["batchId"] = item.batchId;
+                event["summary"] = item.summary;
+                event["spot"] = item.spot;
+                event["detail"] = QStringLiteral("already queued or accepted");
+                recordWsprNetEvent(event);
+            }
+        };
+
+        if (spots.isEmpty()) {
+            QUrlQuery query;
+            query.addQueryItem("function", "wsprstat");
+            query.addQueryItem("rcall", reporterCall);
+            query.addQueryItem("rgrid", reporterGrid);
+            query.addQueryItem("rqrg", QString::number(rqrgHz / 1000000.0, 'f', 6));
+            query.addQueryItem("tpct", QString::number(txPct));
+            query.addQueryItem("tqrg", QString::number(tqrgHz / 1000000.0, 'f', 6));
+            query.addQueryItem("dbm", QString::number(dbm));
+            query.addQueryItem("version", version);
+            query.addQueryItem("mode", "2");
+            queueQuery(query, false);
+        } else {
+            for (const QJsonValue &spotValue : spots) {
+                const QJsonObject spot = spotValue.toObject();
+                const QString call = spot.value("call").toString().trimmed().toUpper();
+                const QString grid = spot.value("grid").toString().trimmed().toUpper();
+                const int spotDbm = quantizeWsprDbm(spot.value("dbm").toInt(dbm));
+                const int drift = spot.value("drift").toInt();
+                const double snr = spot.value("snr").toDouble();
+                const double dtVal = spot.value("dt").toDouble();
+                const qint64 freqHz = static_cast<qint64>(spot.value("freqHz").toDouble());
+
+                if (!isWsprCallLike(call) || freqHz <= 0) {
+                    noteReject(!isWsprCallLike(call) ? QStringLiteral("call") : QStringLiteral("freq"));
+                    continue;
+                }
+                if (qAbs(freqHz - rqrgHz) >= 10000) {
+                    noteReject(QStringLiteral("freq_window"));
+                    continue;
+                }
+                if (!grid.isEmpty() && !isWsprGridLike(grid)) {
+                    noteReject(QStringLiteral("grid"));
+                    continue;
+                }
+                if (!isPlausibleWsprDt(dtVal) || !isPlausibleWsprDrift(drift)) {
+                    noteReject(!isPlausibleWsprDt(dtVal) ? QStringLiteral("dt") : QStringLiteral("drift"));
+                    continue;
+                }
+                if (!isSixDigitDate(date) || !isFourDigitTime(time)) {
+                    noteReject(QStringLiteral("time"));
+                    continue;
+                }
+
+                QUrlQuery query;
+                query.addQueryItem("function", "wspr");
+                query.addQueryItem("date", date);
+                query.addQueryItem("time", time);
+                query.addQueryItem("sig", QString::number(qRound(snr)));
+                query.addQueryItem("dt", QString::number(dtVal, 'f', 1));
+                query.addQueryItem("drift", QString::number(drift));
+                query.addQueryItem("tqrg", QString::number(freqHz / 1000000.0, 'f', 6));
+                query.addQueryItem("tcall", call);
+                query.addQueryItem("tgrid", grid);
+                query.addQueryItem("dbm", QString::number(spotDbm));
+                query.addQueryItem("version", version);
+                query.addQueryItem("rcall", reporterCall);
+                query.addQueryItem("rgrid", reporterGrid);
+                query.addQueryItem("rqrg", QString::number(rqrgHz / 1000000.0, 'f', 6));
+                query.addQueryItem("mode", "2");
+                queueQuery(query, true);
+            }
+        }
+
+        QJsonObject resp = buildWsprNetStatusJson();
+        const QString rejectSummary = buildRejectSummary();
+        if (rejected > 0 && accepted == 0 && duplicates == 0) {
+            wsprNetLastResult = QStringLiteral("rejected");
+            wsprNetLastError = rejectSummary.left(220);
+        } else if (accepted > 0) {
+            wsprNetLastResult = QStringLiteral("queued");
+            wsprNetLastError.clear();
+        } else if (duplicates > 0) {
+            wsprNetLastResult = QStringLiteral("duplicate");
+            wsprNetLastError.clear();
+        }
+        if (!rejectSummary.isEmpty()) {
+            QJsonObject event;
+            event["status"] = QStringLiteral("local_rejected");
+            event["function"] = spots.isEmpty() ? QStringLiteral("wsprstat") : QStringLiteral("wspr");
+            event["batchId"] = batchId;
+            event["summary"] = QStringLiteral("rejected %1").arg(rejected);
+            event["detail"] = rejectSummary;
+            event["accepted"] = accepted;
+            event["duplicates"] = duplicates;
+            event["rejected"] = rejected;
+            recordWsprNetEvent(event);
+            qWarning(logWebServer()) << "WSPR upload batch rejected locally" << batchId
+                                     << "accepted=" << accepted
+                                     << "duplicates=" << duplicates
+                                     << "rejected=" << rejected
+                                     << rejectSummary;
+        }
+        resp = buildWsprNetStatusJson();
+        resp["accepted"] = accepted;
+        resp["duplicates"] = duplicates;
+        resp["rejected"] = rejected;
+        if (!rejectSummary.isEmpty()) {
+            QJsonObject rejectObj;
+            for (auto it = rejectReasons.cbegin(); it != rejectReasons.cend(); ++it) {
+                rejectObj.insert(it.key(), it.value());
+            }
+            resp["rejectReasons"] = rejectObj;
+        }
+        resp["status"] = rejected > 0 && accepted == 0 && duplicates == 0
+            ? QStringLiteral("rejected")
+            : QStringLiteral("accepted");
+        sendRestResponse(socket, 202, resp);
+        return;
+    }
     // --- GET /api/v1/radio ---
     if (p == "/api/v1/radio") {
         if (method != "GET") {
@@ -1669,6 +2075,7 @@ QJsonObject webServer::buildInfoJson() const
 {
     QJsonObject info;
     info["version"] = QString(WFWEB_VERSION);
+    info["utcMs"] = static_cast<qint64>(QDateTime::currentMSecsSinceEpoch());
 
     if (rigCaps) {
         info["connected"] = true;
@@ -1727,6 +2134,278 @@ QJsonObject webServer::buildInfoJson() const
     return info;
 }
 
+QJsonObject webServer::buildWsprNetStatusJson()
+{
+    pruneWsprNetRecent();
+    QJsonObject status;
+    status["pending"] = wsprNetQueue.size();
+    status["inFlight"] = !wsprNetReplies.isEmpty();
+    status["recentAccepted"] = wsprNetRecentAccepted.size();
+    status["lastResult"] = wsprNetLastResult;
+    status["lastError"] = wsprNetLastError;
+    status["updatedUtcMs"] = static_cast<double>(wsprNetUpdatedMs);
+    status["latest"] = wsprNetLatestEvent;
+    status["recent"] = wsprNetRecentEvents;
+    return status;
+}
+
+void webServer::recordWsprNetEvent(const QJsonObject &event)
+{
+    QJsonObject clean = event;
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    clean["receivedUtcMs"] = static_cast<double>(nowMs);
+
+    const QString batchId = clean.value(QStringLiteral("batchId")).toString().trimmed();
+    if (!batchId.isEmpty()) clean.insert(QStringLiteral("batchId"), batchId.left(96));
+
+    const QString functionName = clean.value(QStringLiteral("function")).toString().trimmed().toLower();
+    if (!functionName.isEmpty()) clean.insert(QStringLiteral("function"), functionName.left(16));
+
+    const QString status = clean.value(QStringLiteral("status")).toString().trimmed().toLower();
+    if (!status.isEmpty()) clean.insert(QStringLiteral("status"), status.left(24));
+
+    const QString responseKind = clean.value(QStringLiteral("responseKind")).toString().trimmed().toLower();
+    if (!responseKind.isEmpty()) clean.insert(QStringLiteral("responseKind"), responseKind.left(24));
+
+    const QString summary = clean.value(QStringLiteral("summary")).toString().simplified();
+    if (!summary.isEmpty()) clean.insert(QStringLiteral("summary"), summary.left(180));
+
+    const QString detail = clean.value(QStringLiteral("detail")).toString().simplified();
+    if (!detail.isEmpty()) clean.insert(QStringLiteral("detail"), detail.left(220));
+
+    const QString clientError = clean.value(QStringLiteral("error")).toString().simplified();
+    if (!clientError.isEmpty()) clean.insert(QStringLiteral("error"), clientError.left(220));
+
+    wsprNetLatestEvent = clean;
+    wsprNetRecentEvents.append(clean);
+    while (wsprNetRecentEvents.size() > kWsprNetReportHistory) {
+        wsprNetRecentEvents.removeAt(0);
+    }
+    wsprNetUpdatedMs = nowMs;
+}
+
+QJsonObject webServer::buildWsprDecodeTelemetryJson() const
+{
+    QJsonObject out;
+    out["updatedUtcMs"] = static_cast<double>(wsprDecodeTelemetryUpdatedMs);
+    out["count"] = wsprDecodeTelemetryRecent.size();
+    out["latest"] = wsprDecodeTelemetryLatest;
+    out["recent"] = wsprDecodeTelemetryRecent;
+    return out;
+}
+
+void webServer::recordWsprDecodeTelemetry(const QJsonObject &payload, const QString &clientAddr)
+{
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+
+    auto copyIfPresent = [&](const char *key, QJsonObject &dst) {
+        const QString qkey = QString::fromLatin1(key);
+        if (payload.contains(qkey)) dst.insert(qkey, payload.value(qkey));
+    };
+
+    QJsonObject entry;
+    entry["receivedUtcMs"] = static_cast<double>(nowMs);
+    if (!clientAddr.isEmpty()) entry["client"] = clientAddr;
+
+    copyIfPresent("event", entry);
+    copyIfPresent("slotIndex", entry);
+    copyIfPresent("slotStartMs", entry);
+    copyIfPresent("summary", entry);
+    copyIfPresent("error", entry);
+    copyIfPresent("state", entry);
+    copyIfPresent("mode", entry);
+    copyIfPresent("band", entry);
+    copyIfPresent("targetBand", entry);
+    copyIfPresent("currentFreqHz", entry);
+    copyIfPresent("targetFreqHz", entry);
+    copyIfPresent("dialFrequencyHz", entry);
+    copyIfPresent("audioFrequencyHz", entry);
+    copyIfPresent("searchHalfWidthHz", entry);
+    copyIfPresent("fillRatio", entry);
+    copyIfPresent("sampleCount", entry);
+    copyIfPresent("pendingDecodes", entry);
+    copyIfPresent("decodeMs", entry);
+    copyIfPresent("resultCount", entry);
+    copyIfPresent("clientUtcMs", entry);
+
+    const QJsonObject reporter = payload.value(QStringLiteral("reporter")).toObject();
+    if (!reporter.isEmpty()) {
+        QJsonObject cleanReporter;
+        const QString call = reporter.value(QStringLiteral("call")).toString().trimmed().toUpper();
+        const QString grid = reporter.value(QStringLiteral("grid")).toString().trimmed().toUpper();
+        if (!call.isEmpty()) cleanReporter.insert(QStringLiteral("call"), call.left(20));
+        if (!grid.isEmpty()) cleanReporter.insert(QStringLiteral("grid"), grid.left(6));
+        if (reporter.contains(QStringLiteral("txPct"))) cleanReporter.insert(QStringLiteral("txPct"), reporter.value(QStringLiteral("txPct")));
+        if (reporter.contains(QStringLiteral("dbm"))) cleanReporter.insert(QStringLiteral("dbm"), reporter.value(QStringLiteral("dbm")));
+        if (!cleanReporter.isEmpty()) entry.insert(QStringLiteral("reporter"), cleanReporter);
+    }
+
+    const QJsonObject debug = payload.value(QStringLiteral("debug")).toObject();
+    if (!debug.isEmpty()) {
+        QJsonObject cleanDebug;
+        const char *debugKeys[] = {
+            "searchCenterHz", "searchLowHz", "searchHighHz",
+            "searchLowOffsetHz", "searchHighOffsetHz", "searchHalfWidthHz",
+            "sampleCount", "decimatedPointCount", "fftCount",
+            "peakCandidates", "filteredCandidates", "refinedCandidates",
+            "decodePasses", "decodeMs", "resultCount", "fillRatio"
+        };
+        for (const char *key : debugKeys) {
+            const QString qkey = QString::fromLatin1(key);
+            if (debug.contains(qkey)) cleanDebug.insert(qkey, debug.value(qkey));
+        }
+        if (!cleanDebug.isEmpty()) entry.insert(QStringLiteral("debug"), cleanDebug);
+    }
+
+    wsprDecodeTelemetryLatest = entry;
+    wsprDecodeTelemetryRecent.append(entry);
+    while (wsprDecodeTelemetryRecent.size() > kWsprDecodeTelemetryHistory) {
+        wsprDecodeTelemetryRecent.removeAt(0);
+    }
+    wsprDecodeTelemetryUpdatedMs = nowMs;
+}
+
+void webServer::pruneWsprNetRecent()
+{
+    const qint64 cutoff = QDateTime::currentMSecsSinceEpoch() - (15 * 60 * 1000);
+    auto it = wsprNetRecentAccepted.begin();
+    while (it != wsprNetRecentAccepted.end()) {
+        if (it.value() < cutoff) it = wsprNetRecentAccepted.erase(it);
+        else ++it;
+    }
+}
+
+bool webServer::enqueueWsprNetItem(const WsprNetUploadItem &item)
+{
+    if (item.body.isEmpty() || item.key.isEmpty()) return false;
+    pruneWsprNetRecent();
+    if (wsprNetRecentAccepted.contains(item.key) || wsprNetPendingKeys.contains(item.key)) return false;
+    wsprNetPendingKeys.insert(item.key);
+    wsprNetQueue.enqueue(item);
+    if (wsprNetTimer && !wsprNetTimer->isActive()) wsprNetTimer->start(0);
+    return true;
+}
+
+void webServer::pumpWsprNetQueue()
+{
+    if (!wsprNetManager || !wsprNetReplies.isEmpty()) return;
+    if (wsprNetQueue.isEmpty()) {
+        if (wsprNetTimer) wsprNetTimer->stop();
+        return;
+    }
+
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    const WsprNetUploadItem nextItem = wsprNetQueue.head();
+    if (nextItem.nextAttemptUtcMs > nowMs) {
+        if (wsprNetTimer) {
+            const int waitMs = static_cast<int>(qMin<qint64>(nextItem.nextAttemptUtcMs - nowMs, 60LL * 60LL * 1000LL));
+            wsprNetTimer->start(qMax(1, waitMs));
+        }
+        return;
+    }
+
+    const WsprNetUploadItem item = wsprNetQueue.dequeue();
+    QNetworkRequest request(QUrl(QStringLiteral("http://wsprnet.org/post/")));
+    request.setHeader(QNetworkRequest::ContentTypeHeader, QByteArray("application/x-www-form-urlencoded"));
+    QNetworkReply *reply = wsprNetManager->post(request, item.body);
+    wsprNetReplies.insert(reply, item);
+    wsprNetLastResult = QStringLiteral("uploading");
+    wsprNetLastError.clear();
+    QJsonObject event;
+    event["status"] = QStringLiteral("uploading");
+    event["function"] = item.functionName;
+    event["batchId"] = item.batchId;
+    event["summary"] = item.summary;
+    event["spot"] = item.spot;
+    event["retries"] = item.retries;
+    recordWsprNetEvent(event);
+}
+
+void webServer::onWsprNetReply(QNetworkReply *reply)
+{
+    if (!wsprNetReplies.contains(reply)) {
+        if (reply) reply->deleteLater();
+        return;
+    }
+
+    const WsprNetUploadItem item = wsprNetReplies.take(reply);
+    const QByteArray responseBody = reply->readAll();
+    const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    const bool transportError = reply->error() != QNetworkReply::NoError;
+    const bool retryable = transportError || httpStatus >= 500;
+    const QString responseText = QString::fromUtf8(responseBody).trimmed();
+    const bool accepted = !transportError && isWsprNetAcceptedResponse(responseText, httpStatus);
+    const QString responseKind = wsprNetResponseKind(responseText, transportError, accepted);
+    const QString responseSummary = summarizeWsprNetResponse(responseText, httpStatus, transportError, accepted);
+
+    if (accepted) {
+        wsprNetPendingKeys.remove(item.key);
+        wsprNetRecentAccepted.insert(item.key, QDateTime::currentMSecsSinceEpoch());
+        wsprNetLastResult = QStringLiteral("done");
+        wsprNetLastError.clear();
+        QJsonObject event;
+        event["status"] = QStringLiteral("accepted");
+        event["function"] = item.functionName;
+        event["batchId"] = item.batchId;
+        event["summary"] = item.summary;
+        event["spot"] = item.spot;
+        event["retries"] = item.retries;
+        event["httpStatus"] = httpStatus;
+        event["responseKind"] = responseKind;
+        event["detail"] = responseSummary;
+        recordWsprNetEvent(event);
+    } else if (retryable && item.retries < 3) {
+        WsprNetUploadItem retryItem = item;
+        retryItem.retries++;
+        const qint64 backoffMs = qMin<qint64>(kWsprNetRetryBaseMs << (retryItem.retries - 1), kWsprNetRetryMaxMs);
+        retryItem.nextAttemptUtcMs = QDateTime::currentMSecsSinceEpoch() + backoffMs;
+        wsprNetQueue.prepend(retryItem);
+        wsprNetLastResult = QStringLiteral("retry");
+        wsprNetLastError = transportError ? reply->errorString()
+                                          : QStringLiteral("HTTP %1").arg(httpStatus);
+        QJsonObject event;
+        event["status"] = QStringLiteral("retry");
+        event["function"] = item.functionName;
+        event["batchId"] = item.batchId;
+        event["summary"] = item.summary;
+        event["spot"] = item.spot;
+        event["retries"] = retryItem.retries;
+        event["httpStatus"] = httpStatus;
+        event["responseKind"] = responseKind;
+        event["detail"] = transportError ? reply->errorString() : responseSummary;
+        recordWsprNetEvent(event);
+    } else {
+        wsprNetPendingKeys.remove(item.key);
+        wsprNetLastResult = QStringLiteral("error");
+        wsprNetLastError = transportError
+            ? reply->errorString()
+            : responseSummary;
+        if (wsprNetLastError.isEmpty()) {
+            wsprNetLastError = QStringLiteral("HTTP %1").arg(httpStatus);
+        }
+        QJsonObject event;
+        event["status"] = QStringLiteral("error");
+        event["function"] = item.functionName;
+        event["batchId"] = item.batchId;
+        event["summary"] = item.summary;
+        event["spot"] = item.spot;
+        event["retries"] = item.retries;
+        event["httpStatus"] = httpStatus;
+        event["responseKind"] = responseKind;
+        event["detail"] = wsprNetLastError;
+        if (transportError) event["error"] = reply->errorString();
+        recordWsprNetEvent(event);
+    }
+
+    reply->deleteLater();
+    if (wsprNetQueue.isEmpty() && wsprNetReplies.isEmpty()) {
+        if (wsprNetTimer) wsprNetTimer->stop();
+    } else if (wsprNetTimer && wsprNetReplies.isEmpty()) {
+        if (!wsprNetQueue.isEmpty()) {
+            wsprNetTimer->start(0);
+        }
+    }
+}
 void webServer::sendCurrentState(QWebSocket *client)
 {
     QJsonObject info = buildInfoJson();
@@ -1746,6 +2425,7 @@ QJsonObject webServer::buildStatusJson()
 {
     QJsonObject status;
     status["type"] = "status";
+    status["utcMs"] = static_cast<qint64>(QDateTime::currentMSecsSinceEpoch());
 
     vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
 
