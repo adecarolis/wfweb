@@ -6609,6 +6609,15 @@ function prepareWsprTargetBand() {
     return choice.band;
 }
 
+function parkWsprStandbyBand() {
+    if (!isWsprMode()) return null;
+    if (!hasWsprBandSelection()) {
+        clearWsprTargetBand();
+        return null;
+    }
+    return prepareWsprTargetBand();
+}
+
 function clearWsprTargetBand() {
     digiWsprPendingHopIndex = -1;
     digiWsprTargetBandLabel = '';
@@ -6940,7 +6949,7 @@ function updateWsprInfo(info) {
         } else if (digiWsprHealthWarning) {
             hintEl.textContent = digiWsprHealthWarning + '. Keep the tab visible and the browser clock accurate for reliable WSPR RX timestamps.';
         } else hintEl.textContent = ensureWsprHopSelection().length > 1 ?
-            'Browser WSPR RX decodes cooldown slots off-thread. WSPRnet upload lands through the local wfweb proxy. Auto TX alternates TX/RX cooldown slots and hops enabled bands round-robin.' :
+            'Browser WSPR RX decodes standby slots off-thread. WSPRnet upload lands through the local wfweb proxy. Auto TX parks RX on the next hop band before each TX so the rig settles ahead of the beacon.' :
             'Browser WSPR RX decodes cooldown slots off-thread. WSPRnet upload lands through the local wfweb proxy. BEACON NEXT still arms one manual beacon.';
     }
 }
@@ -8458,15 +8467,20 @@ function executeDigiTx(slotPhase) {
                 digiTxQueued = null;
                 digiTxAttempts = 0;
                 digiWsprTargetSlotIndex = -1;
-                clearWsprTargetBand();
                 if (digiWsprManualEnable) {
                     digiTxEnabled = false;
                     digiWsprManualEnable = false;
                     var wsprEnableBtn = document.getElementById('digiEnableTxBtn');
                     if (wsprEnableBtn) wsprEnableBtn.classList.remove('active');
                 }
+                if (digiTxEnabled && hasWsprBandSelection()) {
+                    parkWsprStandbyBand();
+                    updateDigiStatus('WAIT RX', '');
+                } else {
+                    clearWsprTargetBand();
+                    updateDigiStatus('IDLE', '');
+                }
                 refreshWsprCurrentSlotEligibility();
-                updateDigiStatus('IDLE', '');
                 updateWsprInfo(getDigiSlotInfo());
                 updateDigiMsgRows();
                 return;
