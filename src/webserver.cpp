@@ -9,6 +9,8 @@
 #include <QThread>
 #include <QDateTime>
 #include <QMap>
+#include <QHostInfo>
+#include <QRandomGenerator>
 #include <QRegularExpression>
 #include <cmath>
 
@@ -22,6 +24,79 @@ constexpr int kWsprNetReportHistory = 80;
 constexpr int kWsprNetRetryBaseMs = 5000;
 constexpr int kWsprNetRetryMaxMs = 60000;
 constexpr int kWsprNetTransferTimeoutMs = 30000;
+constexpr qint64 kPskReporterDnsRefreshMs = 6LL * 60LL * 60LL * 1000LL;
+constexpr int kPskReporterLookupRetryMs = 30000;
+constexpr qint64 kPskReporterDedupeMs = 5LL * 60LL * 1000LL;
+constexpr int kPskReporterReportHistory = 80;
+constexpr int kPskReporterMaxBatch = 70;
+constexpr int kPskReporterFlushMinMs = 270000;
+constexpr int kPskReporterFlushJitterMs = 30000;
+constexpr quint16 kPskReporterPort = 4739;
+constexpr quint16 kPskReporterReceiverTemplateId = 0x9992;
+constexpr quint16 kPskReporterSenderTemplateId = 0x9993;
+
+bool isPskReporterCallLike(const QString &value)
+{
+    static const QRegularExpression re(QStringLiteral("^[A-Z0-9/]{3,15}$"));
+    return re.match(value).hasMatch() &&
+           value.contains(QRegularExpression(QStringLiteral("[A-Z]"))) &&
+           value.contains(QRegularExpression(QStringLiteral("[0-9]")));
+}
+
+bool isPskReporterGridLike(const QString &value)
+{
+    static const QRegularExpression re(QStringLiteral("^[A-R]{2}[0-9]{2}([A-X]{2})?$"));
+    return re.match(value).hasMatch();
+}
+
+bool isPlausiblePskReporterSnr(int snr)
+{
+    return snr >= -50 && snr <= 50;
+}
+
+bool isValidPskReporterFlowStart(quint32 flowStartSeconds)
+{
+    if (!flowStartSeconds) return false;
+    const qint64 nowSec = QDateTime::currentSecsSinceEpoch();
+    return static_cast<qint64>(flowStartSeconds) >= (nowSec - 12 * 60 * 60) &&
+           static_cast<qint64>(flowStartSeconds) <= (nowSec + 10 * 60);
+}
+
+QString pskReporterBandKey(quint32 frequencyHz)
+{
+    return QString::number(static_cast<quint32>(frequencyHz / 100000U));
+}
+
+void appendBe16(QByteArray &out, quint16 value)
+{
+    out.append(static_cast<char>((value >> 8) & 0xff));
+    out.append(static_cast<char>(value & 0xff));
+}
+
+void appendBe32(QByteArray &out, quint32 value)
+{
+    out.append(static_cast<char>((value >> 24) & 0xff));
+    out.append(static_cast<char>((value >> 16) & 0xff));
+    out.append(static_cast<char>((value >> 8) & 0xff));
+    out.append(static_cast<char>(value & 0xff));
+}
+
+void appendVarString(QByteArray &out, const QString &value)
+{
+    const QByteArray utf8 = value.toUtf8();
+    if (utf8.size() < 255) {
+        out.append(static_cast<char>(utf8.size()));
+    } else {
+        out.append(static_cast<char>(0xff));
+        appendBe16(out, static_cast<quint16>(qMin(utf8.size(), 65535)));
+    }
+    out.append(utf8.left(65535));
+}
+
+void padTo4(QByteArray &out)
+{
+    while (out.size() % 4) out.append('\0');
+}
 
 bool isWsprCallLike(const QString &value)
 {
@@ -167,6 +242,9 @@ QString wsprNetResponseKind(const QString &responseText, bool transportError, bo
 webServer::webServer(QObject *parent) :
     QObject(parent)
 {
+    webrtcFeedSocket = new QUdpSocket(this);
+    pskReporterSocket = new QUdpSocket(this);
+    pskReporterSessionId = QRandomGenerator::global()->generate();
     wsprNetManager = new QNetworkAccessManager(this);
     connect(wsprNetManager, &QNetworkAccessManager::finished, this, &webServer::onWsprNetReply);
 
@@ -174,6 +252,10 @@ webServer::webServer(QObject *parent) :
     wsprNetTimer->setInterval(200);
     wsprNetTimer->setSingleShot(false);
     connect(wsprNetTimer, &QTimer::timeout, this, &webServer::pumpWsprNetQueue);
+
+    pskReporterTimer = new QTimer(this);
+    pskReporterTimer->setSingleShot(true);
+    connect(pskReporterTimer, &QTimer::timeout, this, &webServer::pumpPskReporterQueue);
 }
 
 webServer::~webServer()
@@ -747,6 +829,18 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
         return;
     }
 
+    // --- GET /api/v1/pskreporter/status ---
+    if (p == "/api/v1/pskreporter/status") {
+        if (method != "GET") {
+            QJsonObject e;
+            e["error"] = "Method not allowed";
+            sendRestResponse(socket, 405, e);
+            return;
+        }
+        sendRestResponse(socket, 200, buildPskReporterStatusJson());
+        return;
+    }
+
     // --- GET/POST /api/v1/wspr/telemetry ---
     if (p == "/api/v1/wspr/telemetry") {
         if (method == "GET") {
@@ -1013,6 +1107,164 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
         resp["status"] = rejected > 0 && accepted == 0 && duplicates == 0
             ? QStringLiteral("rejected")
             : QStringLiteral("accepted");
+        sendRestResponse(socket, 202, resp);
+        return;
+    }
+    // --- POST /api/v1/pskreporter/upload ---
+    if (p == "/api/v1/pskreporter/upload") {
+        if (method != "POST") {
+            QJsonObject e;
+            e["error"] = "Method not allowed";
+            sendRestResponse(socket, 405, e);
+            return;
+        }
+
+        const QJsonObject obj = parseBody();
+        const QJsonObject reporter = obj.value(QStringLiteral("reporter")).toObject();
+        const QString reporterCall = reporter.value(QStringLiteral("call")).toString().trimmed().toUpper();
+        const QString reporterGrid = reporter.value(QStringLiteral("grid")).toString().trimmed().toUpper();
+        QString decoderSoftware = reporter.value(QStringLiteral("software")).toString().trimmed();
+        if (decoderSoftware.isEmpty()) decoderSoftware = QStringLiteral("wfweb");
+        if (decoderSoftware.size() > 64) decoderSoftware = decoderSoftware.left(64);
+
+        if (!isPskReporterCallLike(reporterCall) || !isPskReporterGridLike(reporterGrid)) {
+            QJsonObject e;
+            e["error"] = "Missing reporter call/grid";
+            sendRestResponse(socket, 400, e);
+            return;
+        }
+
+        int accepted = 0;
+        int duplicates = 0;
+        int rejected = 0;
+        QMap<QString, int> rejectReasons;
+        auto noteReject = [&](const QString &reason) {
+            rejected++;
+            rejectReasons[reason] += 1;
+        };
+        auto buildRejectSummary = [&]() -> QString {
+            if (rejectReasons.isEmpty()) return QString();
+            QStringList parts;
+            for (auto it = rejectReasons.cbegin(); it != rejectReasons.cend(); ++it) {
+                parts.append(QStringLiteral("%1=%2").arg(it.key()).arg(it.value()));
+            }
+            return parts.join(QStringLiteral(","));
+        };
+
+        const QString batchId = obj.value(QStringLiteral("batchId")).toString().trimmed();
+        const QJsonArray spots = obj.value(QStringLiteral("spots")).toArray();
+
+        for (const QJsonValue &spotValue : spots) {
+            const QJsonObject spot = spotValue.toObject();
+            const QString senderCall = spot.value(QStringLiteral("call")).toString().trimmed().toUpper();
+            const QString senderGrid = spot.value(QStringLiteral("grid")).toString().trimmed().toUpper();
+            const QString mode = spot.value(QStringLiteral("mode")).toString().trimmed().toUpper();
+            const int snr = qRound(spot.value(QStringLiteral("snr")).toDouble());
+            const quint32 frequencyHz = static_cast<quint32>(spot.value(QStringLiteral("freqHz")).toDouble());
+            const quint32 flowStartSeconds = static_cast<quint32>(spot.value(QStringLiteral("flowStartSeconds")).toDouble());
+
+            if (!isPskReporterCallLike(senderCall)) {
+                noteReject(QStringLiteral("call"));
+                continue;
+            }
+            if (senderGrid.isEmpty() || !isPskReporterGridLike(senderGrid)) {
+                noteReject(QStringLiteral("grid"));
+                continue;
+            }
+            if (frequencyHz == 0) {
+                noteReject(QStringLiteral("freq"));
+                continue;
+            }
+            if (mode != QStringLiteral("FT8") &&
+                mode != QStringLiteral("FT4") &&
+                mode != QStringLiteral("WSPR")) {
+                noteReject(QStringLiteral("mode"));
+                continue;
+            }
+            if (!isPlausiblePskReporterSnr(snr)) {
+                noteReject(QStringLiteral("snr"));
+                continue;
+            }
+            if (!isValidPskReporterFlowStart(flowStartSeconds)) {
+                noteReject(QStringLiteral("time"));
+                continue;
+            }
+
+            PskReporterSpotItem item;
+            item.batchId = batchId;
+            item.reporterCall = reporterCall;
+            item.reporterGrid = reporterGrid;
+            item.decoderSoftware = decoderSoftware;
+            item.senderCall = senderCall;
+            item.senderGrid = senderGrid;
+            item.mode = mode;
+            item.frequencyHz = frequencyHz;
+            item.snr = static_cast<qint8>(snr);
+            item.flowStartSeconds = flowStartSeconds;
+            item.createdUtcMs = QDateTime::currentMSecsSinceEpoch();
+            const QByteArray dedupeBytes = QStringLiteral("%1|%2|%3|%4|%5|%6|%7")
+                .arg(item.reporterCall,
+                     item.reporterGrid,
+                     item.senderCall,
+                     item.mode,
+                     pskReporterBandKey(item.frequencyHz),
+                     QString::number(item.frequencyHz),
+                     item.senderGrid)
+                .toUtf8();
+            item.key = QCryptographicHash::hash(dedupeBytes, QCryptographicHash::Sha1).toHex();
+
+            if (enqueuePskReporterItem(item)) accepted++;
+            else duplicates++;
+        }
+
+        const QString rejectSummary = buildRejectSummary();
+
+        QJsonObject event;
+        if (rejected > 0 && accepted == 0 && duplicates == 0) {
+            pskReporterLastResult = QStringLiteral("rejected");
+            pskReporterLastError = rejectSummary.left(220);
+            event[QStringLiteral("status")] = QStringLiteral("local_rejected");
+            event[QStringLiteral("summary")] = QStringLiteral("rejected %1").arg(rejected);
+            event[QStringLiteral("detail")] = rejectSummary;
+        } else if (accepted > 0 && rejected > 0) {
+            pskReporterLastResult = QStringLiteral("queued");
+            pskReporterLastError.clear();
+            event[QStringLiteral("status")] = QStringLiteral("partial");
+            event[QStringLiteral("summary")] = QStringLiteral("accepted %1").arg(accepted);
+            event[QStringLiteral("detail")] = QStringLiteral("duplicates=%1 rejected=%2").arg(duplicates).arg(rejected);
+        } else if (accepted > 0) {
+            pskReporterLastResult = QStringLiteral("queued");
+            pskReporterLastError.clear();
+            event[QStringLiteral("status")] = QStringLiteral("queued");
+            event[QStringLiteral("summary")] = QStringLiteral("accepted %1").arg(accepted);
+            if (duplicates > 0) event[QStringLiteral("detail")] = QStringLiteral("duplicates=%1").arg(duplicates);
+        } else if (duplicates > 0) {
+            pskReporterLastResult = QStringLiteral("duplicate");
+            pskReporterLastError.clear();
+            event[QStringLiteral("status")] = QStringLiteral("duplicate");
+            event[QStringLiteral("summary")] = QStringLiteral("duplicates %1").arg(duplicates);
+        }
+        if (!event.isEmpty()) {
+            event[QStringLiteral("batchId")] = batchId;
+            event[QStringLiteral("mode")] = spots.isEmpty() ? QStringLiteral("FT8") : spots.first().toObject().value(QStringLiteral("mode")).toString().trimmed().toUpper();
+            recordPskReporterEvent(event);
+        }
+
+        QJsonObject resp = buildPskReporterStatusJson();
+        resp[QStringLiteral("accepted")] = accepted;
+        resp[QStringLiteral("duplicates")] = duplicates;
+        resp[QStringLiteral("rejected")] = rejected;
+        if (!rejectSummary.isEmpty()) {
+            QJsonObject rejectObj;
+            for (auto it = rejectReasons.cbegin(); it != rejectReasons.cend(); ++it) {
+                rejectObj.insert(it.key(), it.value());
+            }
+            resp[QStringLiteral("rejectReasons")] = rejectObj;
+        }
+        resp[QStringLiteral("status")] = rejected > 0 && accepted == 0 && duplicates == 0
+            ? QStringLiteral("rejected")
+            : QStringLiteral("accepted");
+
         sendRestResponse(socket, 202, resp);
         return;
     }
@@ -2170,6 +2422,24 @@ QJsonObject webServer::buildWsprNetStatusJson()
     return status;
 }
 
+QJsonObject webServer::buildPskReporterStatusJson()
+{
+    prunePskReporterRecent();
+    QJsonObject status;
+    status[QStringLiteral("pending")] = pskReporterQueue.size();
+    status[QStringLiteral("inFlight")] = false;
+    status[QStringLiteral("recentSent")] = pskReporterRecentSent.size();
+    status[QStringLiteral("lastResult")] = pskReporterLastResult;
+    status[QStringLiteral("lastError")] = pskReporterLastError;
+    status[QStringLiteral("updatedUtcMs")] = static_cast<double>(pskReporterUpdatedMs);
+    status[QStringLiteral("latest")] = pskReporterLatestEvent;
+    status[QStringLiteral("recent")] = pskReporterRecentEvents;
+    status[QStringLiteral("nextFlushInMs")] = pskReporterTimer && pskReporterTimer->isActive()
+        ? pskReporterTimer->remainingTime()
+        : 0;
+    return status;
+}
+
 void webServer::recordWsprNetEvent(const QJsonObject &event)
 {
     QJsonObject clean = event;
@@ -2203,6 +2473,37 @@ void webServer::recordWsprNetEvent(const QJsonObject &event)
         wsprNetRecentEvents.removeAt(0);
     }
     wsprNetUpdatedMs = nowMs;
+}
+void webServer::recordPskReporterEvent(const QJsonObject &event)
+{
+    QJsonObject clean = event;
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    clean[QStringLiteral("receivedUtcMs")] = static_cast<double>(nowMs);
+
+    const QString batchId = clean.value(QStringLiteral("batchId")).toString().trimmed();
+    if (!batchId.isEmpty()) clean.insert(QStringLiteral("batchId"), batchId.left(96));
+
+    const QString mode = clean.value(QStringLiteral("mode")).toString().trimmed().toUpper();
+    if (!mode.isEmpty()) clean.insert(QStringLiteral("mode"), mode.left(12));
+
+    const QString status = clean.value(QStringLiteral("status")).toString().trimmed().toLower();
+    if (!status.isEmpty()) clean.insert(QStringLiteral("status"), status.left(24));
+
+    const QString summary = clean.value(QStringLiteral("summary")).toString().simplified();
+    if (!summary.isEmpty()) clean.insert(QStringLiteral("summary"), summary.left(180));
+
+    const QString detail = clean.value(QStringLiteral("detail")).toString().simplified();
+    if (!detail.isEmpty()) clean.insert(QStringLiteral("detail"), detail.left(220));
+
+    const QString error = clean.value(QStringLiteral("error")).toString().simplified();
+    if (!error.isEmpty()) clean.insert(QStringLiteral("error"), error.left(220));
+
+    pskReporterLatestEvent = clean;
+    pskReporterRecentEvents.append(clean);
+    while (pskReporterRecentEvents.size() > kPskReporterReportHistory) {
+        pskReporterRecentEvents.removeAt(0);
+    }
+    pskReporterUpdatedMs = nowMs;
 }
 QJsonObject webServer::buildWsprDecodeTelemetryJson() const
 {
@@ -2295,6 +2596,16 @@ void webServer::pruneWsprNetRecent()
     }
 }
 
+void webServer::prunePskReporterRecent()
+{
+    const qint64 cutoff = QDateTime::currentMSecsSinceEpoch() - kPskReporterDedupeMs;
+    auto it = pskReporterRecentSent.begin();
+    while (it != pskReporterRecentSent.end()) {
+        if (it.value() < cutoff) it = pskReporterRecentSent.erase(it);
+        else ++it;
+    }
+}
+
 bool webServer::enqueueWsprNetItem(const WsprNetUploadItem &item)
 {
     if (item.body.isEmpty() || item.key.isEmpty()) return false;
@@ -2304,6 +2615,124 @@ bool webServer::enqueueWsprNetItem(const WsprNetUploadItem &item)
     wsprNetQueue.enqueue(item);
     if (wsprNetTimer && !wsprNetTimer->isActive()) wsprNetTimer->start(0);
     return true;
+}
+
+bool webServer::enqueuePskReporterItem(const PskReporterSpotItem &item)
+{
+    if (item.key.isEmpty() || item.reporterCall.isEmpty() || item.senderCall.isEmpty()) return false;
+    prunePskReporterRecent();
+    if (pskReporterRecentSent.contains(item.key) || pskReporterPendingKeys.contains(item.key)) return false;
+    pskReporterPendingKeys.insert(item.key);
+    pskReporterQueue.enqueue(item);
+    schedulePskReporterFlush(pskReporterQueue.size() >= kPskReporterMaxBatch);
+    return true;
+}
+
+void webServer::schedulePskReporterFlush(bool immediate)
+{
+    if (!pskReporterTimer) return;
+    if (pskReporterQueue.isEmpty()) {
+        pskReporterTimer->stop();
+        return;
+    }
+
+    if (immediate) {
+        pskReporterTimer->start(0);
+        return;
+    }
+
+    if (!pskReporterTimer->isActive()) {
+        const int intervalMs = kPskReporterFlushMinMs +
+            QRandomGenerator::global()->bounded(kPskReporterFlushJitterMs + 1);
+        pskReporterTimer->start(intervalMs);
+    }
+}
+
+QByteArray webServer::buildPskReporterDatagram(const QList<PskReporterSpotItem> &items, bool includeDescriptors) const
+{
+    QByteArray datagram;
+    if (items.isEmpty()) return datagram;
+
+    appendBe16(datagram, 0x000A);
+    appendBe16(datagram, 0);
+    appendBe32(datagram, static_cast<quint32>(QDateTime::currentSecsSinceEpoch()));
+    appendBe32(datagram, pskReporterSequence);
+    appendBe32(datagram, pskReporterSessionId);
+
+    if (includeDescriptors) {
+        QByteArray receiverDesc;
+        appendBe16(receiverDesc, 0x0003);
+        appendBe16(receiverDesc, 0x0024);
+        appendBe16(receiverDesc, kPskReporterReceiverTemplateId);
+        appendBe16(receiverDesc, 0x0003);
+        appendBe16(receiverDesc, 0x8002);
+        appendBe16(receiverDesc, 0xFFFF);
+        appendBe32(receiverDesc, 0x0000768F);
+        appendBe16(receiverDesc, 0x8004);
+        appendBe16(receiverDesc, 0xFFFF);
+        appendBe32(receiverDesc, 0x0000768F);
+        appendBe16(receiverDesc, 0x8008);
+        appendBe16(receiverDesc, 0xFFFF);
+        appendBe32(receiverDesc, 0x0000768F);
+        appendBe16(receiverDesc, 0x0000);
+        datagram.append(receiverDesc);
+
+        QByteArray senderDesc;
+        appendBe16(senderDesc, 0x0002);
+        appendBe16(senderDesc, 0x003C);
+        appendBe16(senderDesc, kPskReporterSenderTemplateId);
+        appendBe16(senderDesc, 0x0007);
+        appendBe16(senderDesc, 0x8001);
+        appendBe16(senderDesc, 0xFFFF);
+        appendBe32(senderDesc, 0x0000768F);
+        appendBe16(senderDesc, 0x8005);
+        appendBe16(senderDesc, 0x0004);
+        appendBe32(senderDesc, 0x0000768F);
+        appendBe16(senderDesc, 0x8006);
+        appendBe16(senderDesc, 0x0001);
+        appendBe32(senderDesc, 0x0000768F);
+        appendBe16(senderDesc, 0x800A);
+        appendBe16(senderDesc, 0xFFFF);
+        appendBe32(senderDesc, 0x0000768F);
+        appendBe16(senderDesc, 0x800B);
+        appendBe16(senderDesc, 0x0001);
+        appendBe32(senderDesc, 0x0000768F);
+        appendBe16(senderDesc, 0x8003);
+        appendBe16(senderDesc, 0xFFFF);
+        appendBe32(senderDesc, 0x0000768F);
+        appendBe16(senderDesc, 0x0096);
+        appendBe16(senderDesc, 0x0004);
+        datagram.append(senderDesc);
+    }
+
+    QByteArray receiverData;
+    appendVarString(receiverData, items.first().reporterCall);
+    appendVarString(receiverData, items.first().reporterGrid);
+    appendVarString(receiverData, items.first().decoderSoftware);
+    padTo4(receiverData);
+    appendBe16(datagram, kPskReporterReceiverTemplateId);
+    appendBe16(datagram, static_cast<quint16>(receiverData.size() + 4));
+    datagram.append(receiverData);
+
+    QByteArray senderData;
+    for (const PskReporterSpotItem &item : items) {
+        appendVarString(senderData, item.senderCall);
+        appendBe32(senderData, item.frequencyHz);
+        senderData.append(static_cast<char>(item.snr));
+        appendVarString(senderData, item.mode);
+        senderData.append(static_cast<char>(0x01));
+        appendVarString(senderData, item.senderGrid);
+        appendBe32(senderData, item.flowStartSeconds);
+    }
+    padTo4(senderData);
+    appendBe16(datagram, kPskReporterSenderTemplateId);
+    appendBe16(datagram, static_cast<quint16>(senderData.size() + 4));
+    datagram.append(senderData);
+
+    const quint16 packetLength = static_cast<quint16>(datagram.size());
+    datagram[2] = static_cast<char>((packetLength >> 8) & 0xff);
+    datagram[3] = static_cast<char>(packetLength & 0xff);
+    return datagram;
 }
 
 void webServer::pumpWsprNetQueue()
@@ -2464,6 +2893,140 @@ void webServer::onWsprNetReply(QNetworkReply *reply)
         }
     }
 }
+void webServer::onPskReporterHostLookup(const QHostInfo &hostInfo)
+{
+    pskReporterLookupInFlight = false;
+
+    if (hostInfo.error() == QHostInfo::NoError && !hostInfo.addresses().isEmpty()) {
+        for (const QHostAddress &candidate : hostInfo.addresses()) {
+            if (candidate.protocol() == QAbstractSocket::IPv4Protocol) {
+                pskReporterResolvedAddress = candidate;
+                break;
+            }
+        }
+        if (pskReporterResolvedAddress.isNull()) pskReporterResolvedAddress = hostInfo.addresses().constFirst();
+        pskReporterResolvedMs = QDateTime::currentMSecsSinceEpoch();
+        if (!pskReporterQueue.isEmpty() && pskReporterTimer && !pskReporterTimer->isActive()) {
+            pskReporterTimer->start(0);
+        }
+        return;
+    }
+
+    pskReporterResolvedAddress = QHostAddress();
+    pskReporterResolvedMs = 0;
+    pskReporterLastResult = QStringLiteral("error");
+    pskReporterLastError = hostInfo.errorString().isEmpty()
+        ? QStringLiteral("DNS lookup failed")
+        : hostInfo.errorString().left(220);
+
+    QJsonObject event;
+    event[QStringLiteral("status")] = QStringLiteral("error");
+    event[QStringLiteral("summary")] = QStringLiteral("DNS lookup failed");
+    event[QStringLiteral("detail")] = pskReporterLastError;
+    recordPskReporterEvent(event);
+
+    if (!pskReporterQueue.isEmpty() && pskReporterTimer) {
+        pskReporterTimer->start(kPskReporterLookupRetryMs);
+    }
+}
+
+void webServer::pumpPskReporterQueue()
+{
+    if (!pskReporterSocket) return;
+    if (pskReporterQueue.isEmpty()) {
+        if (pskReporterTimer) pskReporterTimer->stop();
+        return;
+    }
+
+    prunePskReporterRecent();
+
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    const bool resolverStale = pskReporterResolvedAddress.isNull() ||
+                               ((nowMs - pskReporterResolvedMs) >= kPskReporterDnsRefreshMs);
+    if (resolverStale && !pskReporterLookupInFlight) {
+        pskReporterLookupInFlight = true;
+        QHostInfo::lookupHost(QStringLiteral("report.pskreporter.info"),
+                              this, &webServer::onPskReporterHostLookup);
+    }
+    if (pskReporterResolvedAddress.isNull()) {
+        if (pskReporterTimer) pskReporterTimer->start(1000);
+        return;
+    }
+
+    QList<PskReporterSpotItem> batch;
+    const PskReporterSpotItem first = pskReporterQueue.head();
+    while (!pskReporterQueue.isEmpty() && batch.size() < kPskReporterMaxBatch) {
+        const PskReporterSpotItem next = pskReporterQueue.head();
+        if (next.reporterCall != first.reporterCall ||
+            next.reporterGrid != first.reporterGrid ||
+            next.decoderSoftware != first.decoderSoftware) {
+            break;
+        }
+        batch.append(pskReporterQueue.dequeue());
+    }
+
+    if (batch.isEmpty()) return;
+
+    const bool includeDescriptors = (pskReporterPacketsSent < 3) ||
+                                    (pskReporterLastTemplateMs <= 0) ||
+                                    ((nowMs - pskReporterLastTemplateMs) >= 60LL * 60LL * 1000LL);
+    const QByteArray datagram = buildPskReporterDatagram(batch, includeDescriptors);
+
+    QString errorText;
+    qint64 written = -1;
+    if (datagram.isEmpty()) {
+        errorText = QStringLiteral("empty datagram");
+    } else {
+        written = pskReporterSocket->writeDatagram(datagram, pskReporterResolvedAddress, kPskReporterPort);
+        if (written != datagram.size()) {
+            errorText = pskReporterSocket->errorString();
+            if (errorText.isEmpty()) errorText = QStringLiteral("UDP send failed");
+        }
+    }
+
+    if (written == datagram.size()) {
+        for (const PskReporterSpotItem &item : batch) {
+            pskReporterPendingKeys.remove(item.key);
+            pskReporterRecentSent.insert(item.key, nowMs);
+        }
+        pskReporterSequence += static_cast<quint32>(batch.size());
+        pskReporterPacketsSent++;
+        if (includeDescriptors) pskReporterLastTemplateMs = nowMs;
+        pskReporterLastResult = QStringLiteral("sent");
+        pskReporterLastError.clear();
+
+        QJsonObject event;
+        event[QStringLiteral("status")] = QStringLiteral("sent");
+        event[QStringLiteral("mode")] = batch.first().mode;
+        event[QStringLiteral("summary")] = QStringLiteral("sent %1 spot%2")
+            .arg(batch.size())
+            .arg(batch.size() == 1 ? QString() : QStringLiteral("s"));
+        event[QStringLiteral("detail")] = QStringLiteral("%1 %2").arg(batch.first().senderCall, batch.first().reporterCall);
+        recordPskReporterEvent(event);
+    } else {
+        for (int i = batch.size() - 1; i >= 0; --i) {
+            pskReporterQueue.prepend(batch.at(i));
+        }
+        pskReporterLastResult = QStringLiteral("error");
+        pskReporterLastError = errorText.left(220);
+
+        QJsonObject event;
+        event[QStringLiteral("status")] = QStringLiteral("error");
+        event[QStringLiteral("mode")] = batch.first().mode;
+        event[QStringLiteral("summary")] = QStringLiteral("send failed");
+        event[QStringLiteral("detail")] = pskReporterLastError;
+        recordPskReporterEvent(event);
+    }
+
+    if (pskReporterQueue.isEmpty()) {
+        if (pskReporterTimer) pskReporterTimer->stop();
+    } else if (written == datagram.size()) {
+        schedulePskReporterFlush(false);
+    } else if (pskReporterTimer) {
+        pskReporterTimer->start(60000);
+    }
+}
+
 void webServer::sendCurrentState(QWebSocket *client)
 {
     QJsonObject info = buildInfoJson();

@@ -23,6 +23,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QCryptographicHash>
+#include <QHostAddress>
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 #include <QAudioDeviceInfo>
@@ -53,6 +54,21 @@ struct WsprNetUploadItem {
     qint64 nextAttemptUtcMs = 0;
     bool spot = false;
     int retries = 0;
+};
+
+struct PskReporterSpotItem {
+    QByteArray key;
+    QString batchId;
+    QString reporterCall;
+    QString reporterGrid;
+    QString decoderSoftware;
+    QString senderCall;
+    QString senderGrid;
+    QString mode;
+    quint32 frequencyHz = 0;
+    qint8 snr = 0;
+    quint32 flowStartSeconds = 0;
+    qint64 createdUtcMs = 0;
 };
 
 // SSL-enabled TCP server for HTTPS
@@ -129,6 +145,8 @@ private slots:
     void readUsbAudio();
     void onAudioStateChanged(QAudio::State state);
     void onWsprNetReply(QNetworkReply *reply);
+    void onPskReporterHostLookup(const QHostInfo &hostInfo);
+    void pumpPskReporterQueue();
 
 
 private:
@@ -139,10 +157,13 @@ private:
                            const QString &path, const QByteArray &body);
     void sendRestResponse(QTcpSocket *socket, int statusCode, const QJsonObject &json);
     QJsonObject buildInfoJson() const;
+    QJsonObject buildClusterSettingsJson() const;
     QJsonObject buildWsprNetStatusJson();
+    QJsonObject buildPskReporterStatusJson();
     QJsonObject buildWsprDecodeTelemetryJson() const;
     void recordWsprDecodeTelemetry(const QJsonObject &payload, const QString &clientAddr);
     void recordWsprNetEvent(const QJsonObject &event);
+    void recordPskReporterEvent(const QJsonObject &event);
     void sendJsonToAll(const QJsonObject &obj);
     void sendJsonTo(QWebSocket *client, const QJsonObject &obj);
     void sendBinaryToAll(const QByteArray &data);
@@ -156,8 +177,12 @@ private:
     codecType codecByteToType(quint8 codec);
     bool setupSsl();
     bool enqueueWsprNetItem(const WsprNetUploadItem &item);
+    bool enqueuePskReporterItem(const PskReporterSpotItem &item);
     void pruneWsprNetRecent();
+    void prunePskReporterRecent();
     void pumpWsprNetQueue();
+    void schedulePskReporterFlush(bool immediate = false);
+    QByteArray buildPskReporterDatagram(const QList<PskReporterSpotItem> &items, bool includeDescriptors) const;
 
     QHash<QTcpSocket*, QByteArray> socketBuffers; // accumulate partial TCP reads
 
@@ -205,6 +230,23 @@ private:
     QJsonObject wsprNetLatestEvent;
     QJsonArray wsprNetRecentEvents;
     qint64 wsprNetUpdatedMs = 0;
+    QUdpSocket *pskReporterSocket = nullptr;
+    QTimer *pskReporterTimer = nullptr;
+    QHostAddress pskReporterResolvedAddress;
+    bool pskReporterLookupInFlight = false;
+    qint64 pskReporterResolvedMs = 0;
+    QQueue<PskReporterSpotItem> pskReporterQueue;
+    QHash<QByteArray, qint64> pskReporterRecentSent;
+    QSet<QByteArray> pskReporterPendingKeys;
+    QString pskReporterLastResult;
+    QString pskReporterLastError;
+    QJsonObject pskReporterLatestEvent;
+    QJsonArray pskReporterRecentEvents;
+    qint64 pskReporterUpdatedMs = 0;
+    quint32 pskReporterSequence = 0;
+    quint32 pskReporterSessionId = 0;
+    int pskReporterPacketsSent = 0;
+    qint64 pskReporterLastTemplateMs = 0;
     QJsonObject wsprDecodeTelemetryLatest;
     QJsonArray wsprDecodeTelemetryRecent;
     qint64 wsprDecodeTelemetryUpdatedMs = 0;
