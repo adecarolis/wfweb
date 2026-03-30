@@ -6123,10 +6123,10 @@ function parsePskReporterSpot(message) {
             }
         }
     } else if (parts.length === 3 && isPskReporterCallLike(parts[0]) && isPskReporterCallLike(parts[1])) {
-        senderCall = parts[1];
+        senderCall = parts[0];
     } else if (parts.length === 4 && parts[2] === 'R' &&
                isPskReporterCallLike(parts[0]) && isPskReporterCallLike(parts[1])) {
-        senderCall = parts[1];
+        senderCall = parts[0];
     }
 
     if (!senderCall) return null;
