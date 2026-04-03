@@ -12,7 +12,6 @@
 #include "pttyhandler.h"
 #include "icomudphandler.h"
 #include "rigidentities.h"
-#include "repeaterattributes.h"
 #include "freqmemory.h"
 #include "tcpserver.h"
 #include "cachingqueue.h"

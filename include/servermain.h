@@ -22,7 +22,6 @@
 #include "rigstate.h"
 #include "freqmemory.h"
 #include "rigidentities.h"
-#include "repeaterattributes.h"
 #include "audiodevices.h"
 #include "cachingqueue.h"
 
@@ -31,7 +30,6 @@
 #include "kenwoodserver.h"
 #include "yaesuserver.h"
 #include "webserver.h"
-#include "rigctld.h"
 #include "signal.h"
 
 #include <qserialportinfo.h>
@@ -306,7 +304,6 @@ private:
 
 
     rigServer* server = Q_NULLPTR;
-    rigCtlD* rigCtl = Q_NULLPTR;
     QThread* serverThread = Q_NULLPTR;
 
     webServer* web = Q_NULLPTR;

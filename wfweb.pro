@@ -277,24 +277,17 @@ HEADERS  += \
     include/rigidentities.h \
     include/rtpaudio.h \
     include/logcategories.h \
-    include/audiohandler.h \
-    include/audioconverter.h \
     include/rigserver.h \
     include/packettypes.h \
-    include/repeaterattributes.h \
     include/tcpserver.h \
     include/audiotaper.h \
     include/keyboard.h \
     include/wfwebtypes.h \
-    include/audiodevices.h \
     include/pttyhandler.h \
-    include/icomcommander.h \
-    include/icomserver.h \
     include/icomudpaudio.h \
     include/icomudpbase.h \
     include/icomudpcivdata.h \
     include/icomudphandler.h \
-    include/kenwoodcommander.h \
     include/kenwoodserver.h \
     include/yaesucommander.h \
     include/yaesuserver.h \

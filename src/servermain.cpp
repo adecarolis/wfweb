@@ -226,22 +226,12 @@ void servermain::makeRig()
 
             connect(this, SIGNAL(sendCloseComm()), radio->rig, SLOT(closeComm()));
             connect(this, SIGNAL(sendChangeLatency(quint16)), radio->rig, SLOT(changeLatency(quint16)));
-            //connect(this, SIGNAL(getRigCIV()), radio->rig, SLOT(findRigs()));
-            //connect(this, SIGNAL(setRigID(unsigned char)), radio->rig, SLOT(setRigID(unsigned char)));
             connect(radio->rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
-            //connect(this, SIGNAL(requestRigState()), radio->rig, SLOT(sendState()));
-            //connect(this, SIGNAL(stateUpdated()), radio->rig, SLOT(stateUpdated()));
-            //connect(radio->rig, SIGNAL(stateInfo(rigstate*)), this, SLOT(receiveStateInfo(rigstate*)));
-
-            //Other connections
             connect(this, SIGNAL(setCIVAddr(unsigned char)), radio->rig, SLOT(setCIVAddr(unsigned char)));
             connect(this, SIGNAL(sendPowerOn()), radio->rig, SLOT(powerOn()));
             connect(this, SIGNAL(sendPowerOff()), radio->rig, SLOT(powerOff()));
 
-            //connect(radio->rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
-            //connect(this, SIGNAL(setPTT(bool)), radio->rig, SLOT(setPTT(bool)));
-            //connect(this, SIGNAL(getPTT()), radio->rig, SLOT(getPTT()));
             connect(this, SIGNAL(getDebug()), radio->rig, SLOT(getDebug()));
 
             // Web server audio connections
@@ -496,8 +486,6 @@ void servermain::setServerToPrefs()
             if (radio->rig != Q_NULLPTR) {
                 connect(radio->rig, SIGNAL(haveAudioData(audioPacket)), server, SLOT(receiveAudioData(audioPacket)));
                 connect(radio->rig, SIGNAL(haveDataForServer(QByteArray)), server, SLOT(dataForServer(QByteArray)));
-                //connect(server, SIGNAL(haveDataFromServer(QByteArray)), radio->rig, SLOT(dataFromServer(QByteArray)));
-                //connect(this, SIGNAL(sendRigCaps(rigCapabilities)), server, SLOT(receiveRigCaps(rigCapabilities)));
             }
         }
     }
@@ -911,7 +899,6 @@ void servermain::updateAudioDevices()
 void servermain::receivePTTstatus(bool pttOn)
 {
     // This is the only place where amTransmitting and the transmit button text should be changed:
-    //qInfo(logSystem()) << "PTT status: " << pttOn;
     amTransmitting = pttOn;
 }
 
