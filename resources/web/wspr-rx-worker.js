@@ -89,7 +89,7 @@ function decodeWindow(apiRef, data, samples) {
     const dialFrequencyHz = Number(data.dialFrequencyHz || 0);
     const audioFrequencyHz = Number(data.audioFrequencyHz || 1500);
     let searchHalfWidthHz = Number(data.searchHalfWidthHz || 0);
-    if (!Number.isFinite(searchHalfWidthHz) || searchHalfWidthHz <= 0) searchHalfWidthHz = 200;
+    if (!Number.isFinite(searchHalfWidthHz) || searchHalfWidthHz <= 0) searchHalfWidthHz = 150;
     const slotStartMs = Number(data.slotStartMs || 0);
     const slotIndex = Number(data.slotIndex || 0);
 
@@ -104,7 +104,6 @@ function decodeWindow(apiRef, data, samples) {
             searchCenterHz: audioFrequencyHz,
             searchLowOffsetHz: Number(apiRef.getDebugSearchLowHz()),
             searchHighOffsetHz: Number(apiRef.getDebugSearchHighHz()),
-            searchHalfWidthHz: searchHalfWidthHz,
             sampleCount: Number(apiRef.getDebugSampleCount()) || samples.length,
             decimatedPointCount: Number(apiRef.getDebugDecimatedPointCount()),
             fftCount: Number(apiRef.getDebugFftCount()),
@@ -116,6 +115,8 @@ function decodeWindow(apiRef, data, samples) {
         };
         debug.searchLowHz = debug.searchCenterHz + debug.searchLowOffsetHz;
         debug.searchHighHz = debug.searchCenterHz + debug.searchHighOffsetHz;
+        debug.searchHalfWidthHz = Math.max(Math.abs(debug.searchLowOffsetHz), Math.abs(debug.searchHighOffsetHz));
+        debug.fillRatio = Math.max(0, Math.min(1, samples.length / (12000 * 120)));
         const date = formatDate6(slotStartMs);
         const time = formatTime4(slotStartMs);
         const spots = [];

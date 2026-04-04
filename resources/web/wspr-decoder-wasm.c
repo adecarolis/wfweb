@@ -669,9 +669,9 @@ int wfweb_wspr_decode(float *samples,
         return 0;
     }
     if (audio_frequency_hz <= 0) audio_frequency_hz = 1500;
-    if (search_half_width_hz <= 0) search_half_width_hz = 200;
+    if (search_half_width_hz <= 0) search_half_width_hz = 150;
     if (search_half_width_hz < 50) search_half_width_hz = 50;
-    if (search_half_width_hz > 500) search_half_width_hz = 500;
+    if (search_half_width_hz > 150) search_half_width_hz = 150;
 
     g_debug_search_low_hz = -search_half_width_hz;
     g_debug_search_high_hz = search_half_width_hz;

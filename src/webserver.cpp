@@ -14,11 +14,14 @@
 
 namespace {
 constexpr qint64 kWsprUploadMaxAgeMs = 12LL * 60LL * 60LL * 1000LL;
-constexpr qint64 kWsprUploadFutureSlackMs = 10LL * 60LL * 1000LL;
+constexpr qint64 kWsprUploadFutureSlackMs = 15LL * 1000LL;
+constexpr qint64 kWsprSlotLengthMs = 120000LL;
+constexpr qint64 kWsprSlotAlignmentSlackMs = 5000LL;
 constexpr int kWsprDecodeTelemetryHistory = 120;
 constexpr int kWsprNetReportHistory = 80;
 constexpr int kWsprNetRetryBaseMs = 5000;
 constexpr int kWsprNetRetryMaxMs = 60000;
+constexpr int kWsprNetTransferTimeoutMs = 30000;
 
 bool isWsprCallLike(const QString &value)
 {
@@ -52,6 +55,27 @@ bool isValidUploadSlotTime(qint64 slotStartMs)
            slotStartMs <= (nowMs + kWsprUploadFutureSlackMs);
 }
 
+bool normalizeUploadSlotTime(qint64 slotStartMs, qint64 *normalizedSlotStartMs)
+{
+    if (!isValidUploadSlotTime(slotStartMs)) return false;
+    const qint64 nearestSlot = ((slotStartMs + (kWsprSlotLengthMs / 2)) / kWsprSlotLengthMs) * kWsprSlotLengthMs;
+    if (qAbs(slotStartMs - nearestSlot) > kWsprSlotAlignmentSlackMs) return false;
+    if (normalizedSlotStartMs) *normalizedSlotStartMs = nearestSlot;
+    return true;
+}
+
+qint64 audioPacketUtcMs(const audioPacket &audio)
+{
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    if (!audio.time.isValid()) return nowMs;
+
+    QDateTime packetUtc(QDate::currentDate(), audio.time, Qt::LocalTime);
+    qint64 packetMs = packetUtc.toMSecsSinceEpoch();
+    if (packetMs > nowMs + 60LL * 1000LL) packetMs -= 24LL * 60LL * 60LL * 1000LL;
+    if (packetMs < nowMs - 23LL * 60LL * 60LL * 1000LL) packetMs += 24LL * 60LL * 60LL * 1000LL;
+    return packetMs;
+}
+
 int quantizeWsprDbm(int dbm)
 {
     static const int kLevels[] = {0, 3, 7, 10, 13, 17, 20, 23, 27, 30, 33, 37, 40, 43, 47, 50, 53, 57, 60};
@@ -83,12 +107,7 @@ bool isWsprNetAcceptedResponse(const QString &responseText, int httpStatus)
 
     const bool mentionsAdded = responseText.contains(QStringLiteral("spot(s) added"), Qt::CaseInsensitive);
     const bool mentionsProcessing = responseText.contains(QStringLiteral("processing took"), Qt::CaseInsensitive);
-    if (mentionsAdded && mentionsProcessing) return true;
-
-    const bool looksLikeHtml = responseText.contains(QStringLiteral("<html"), Qt::CaseInsensitive) ||
-                               responseText.contains(QStringLiteral("<!doctype"), Qt::CaseInsensitive);
-    const bool looksLikeError = responseText.contains(QStringLiteral("error"), Qt::CaseInsensitive);
-    return !looksLikeHtml && !looksLikeError;
+    return mentionsAdded || mentionsProcessing;
 }
 
 QString summarizeWsprNetResponse(const QString &responseText, int httpStatus, bool transportError, bool accepted)
@@ -802,16 +821,17 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             return parts.join(QStringLiteral(","));
         };
         const QString batchId = obj.value("batchId").toString().trimmed();
-        const qint64 slotStartMs = static_cast<qint64>(obj.value("slotStartMs").toDouble());
-        if (!isValidUploadSlotTime(slotStartMs)) {
+        const qint64 requestedSlotStartMs = static_cast<qint64>(obj.value("slotStartMs").toDouble());
+        qint64 slotStartMs = 0;
+        if (!normalizeUploadSlotTime(requestedSlotStartMs, &slotStartMs)) {
             wsprNetLastResult = QStringLiteral("rejected");
-            wsprNetLastError = QStringLiteral("stale slot");
+            wsprNetLastError = QStringLiteral("invalid slot");
             QJsonObject event;
             event["status"] = QStringLiteral("local_rejected");
             event["function"] = QStringLiteral("batch");
             event["batchId"] = batchId;
-            event["summary"] = QStringLiteral("stale slot");
-            event["detail"] = QStringLiteral("slotStartMs outside upload window");
+            event["summary"] = QStringLiteral("invalid slot");
+            event["detail"] = QStringLiteral("slotStartMs outside upload window or not aligned");
             event["rejected"] = 1;
             recordWsprNetEvent(event);
             QJsonObject resp = buildWsprNetStatusJson();
@@ -861,6 +881,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             item.functionName = query.queryItemValue(QStringLiteral("function")).trimmed().toLower();
             item.summary = buildQuerySummary(query, isSpot);
             item.createdUtcMs = QDateTime::currentMSecsSinceEpoch();
+            item.slotStartUtcMs = slotStartMs;
             item.spot = isSpot;
             if (enqueueWsprNetItem(item)) {
                 accepted++;
@@ -2288,25 +2309,61 @@ bool webServer::enqueueWsprNetItem(const WsprNetUploadItem &item)
 void webServer::pumpWsprNetQueue()
 {
     if (!wsprNetManager || !wsprNetReplies.isEmpty()) return;
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    for (int i = wsprNetQueue.size() - 1; i >= 0; --i) {
+        const WsprNetUploadItem &candidate = wsprNetQueue.at(i);
+        const qint64 freshnessBaseMs = candidate.slotStartUtcMs > 0 ? candidate.slotStartUtcMs : candidate.createdUtcMs;
+        if (freshnessBaseMs > 0 && (nowMs - freshnessBaseMs) > kWsprUploadMaxAgeMs) {
+            wsprNetPendingKeys.remove(candidate.key);
+            QJsonObject event;
+            event["status"] = QStringLiteral("error");
+            event["function"] = candidate.functionName;
+            event["batchId"] = candidate.batchId;
+            event["summary"] = candidate.summary;
+            event["spot"] = candidate.spot;
+            event["retries"] = candidate.retries;
+            event["detail"] = QStringLiteral("expired before upload");
+            recordWsprNetEvent(event);
+            wsprNetQueue.removeAt(i);
+        }
+    }
     if (wsprNetQueue.isEmpty()) {
         if (wsprNetTimer) wsprNetTimer->stop();
         return;
     }
 
-    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
-    const WsprNetUploadItem nextItem = wsprNetQueue.head();
-    if (nextItem.nextAttemptUtcMs > nowMs) {
+    int readyIndex = -1;
+    qint64 earliestAttemptMs = 0;
+    for (int i = 0; i < wsprNetQueue.size(); ++i) {
+        const WsprNetUploadItem &candidate = wsprNetQueue.at(i);
+        const qint64 readyAtMs = qMax(candidate.nextAttemptUtcMs, candidate.slotStartUtcMs);
+        if (readyAtMs <= nowMs) {
+            readyIndex = i;
+            break;
+        }
+        if (earliestAttemptMs == 0 || readyAtMs < earliestAttemptMs) {
+            earliestAttemptMs = readyAtMs;
+        }
+    }
+    if (readyIndex < 0) {
         if (wsprNetTimer) {
-            const int waitMs = static_cast<int>(qMin<qint64>(nextItem.nextAttemptUtcMs - nowMs, 60LL * 60LL * 1000LL));
+            const qint64 waitTargetMs = earliestAttemptMs > nowMs ? (earliestAttemptMs - nowMs) : 1;
+            const int waitMs = static_cast<int>(qMin<qint64>(waitTargetMs, 60LL * 60LL * 1000LL));
             wsprNetTimer->start(qMax(1, waitMs));
         }
         return;
     }
 
-    const WsprNetUploadItem item = wsprNetQueue.dequeue();
+    const WsprNetUploadItem item = wsprNetQueue.takeAt(readyIndex);
     QNetworkRequest request(QUrl(QStringLiteral("http://wsprnet.org/post/")));
     request.setHeader(QNetworkRequest::ContentTypeHeader, QByteArray("application/x-www-form-urlencoded"));
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 15, 0))
+    request.setTransferTimeout(kWsprNetTransferTimeoutMs);
+#endif
     QNetworkReply *reply = wsprNetManager->post(request, item.body);
+    QTimer::singleShot(kWsprNetTransferTimeoutMs, reply, [reply]() {
+        if (reply && !reply->isFinished()) reply->abort();
+    });
     wsprNetReplies.insert(reply, item);
     wsprNetLastResult = QStringLiteral("uploading");
     wsprNetLastError.clear();
@@ -2353,12 +2410,14 @@ void webServer::onWsprNetReply(QNetworkReply *reply)
         event["responseKind"] = responseKind;
         event["detail"] = responseSummary;
         recordWsprNetEvent(event);
-    } else if (retryable && item.retries < 3) {
+    } else if (retryable && item.retries < 3 &&
+               (((item.slotStartUtcMs > 0 ? item.slotStartUtcMs : item.createdUtcMs) <= 0) ||
+                (QDateTime::currentMSecsSinceEpoch() - (item.slotStartUtcMs > 0 ? item.slotStartUtcMs : item.createdUtcMs)) <= kWsprUploadMaxAgeMs)) {
         WsprNetUploadItem retryItem = item;
         retryItem.retries++;
         const qint64 backoffMs = qMin<qint64>(kWsprNetRetryBaseMs << (retryItem.retries - 1), kWsprNetRetryMaxMs);
         retryItem.nextAttemptUtcMs = QDateTime::currentMSecsSinceEpoch() + backoffMs;
-        wsprNetQueue.prepend(retryItem);
+        wsprNetQueue.enqueue(retryItem);
         wsprNetLastResult = QStringLiteral("retry");
         wsprNetLastError = transportError ? reply->errorString()
                                           : QStringLiteral("HTTP %1").arg(httpStatus);
@@ -3029,18 +3088,27 @@ void webServer::onRxConverted(audioPacket audio)
 {
     if (audioClients.isEmpty()) return;
 
-    // Binary format: [0x02][0x00][seq_u16LE][rateDiv_u16LE][PCM_Int16LE...]
+    // Binary format: [0x02][0x01][seq_u16LE][rateDiv_u16LE][startUtcMs_u64LE][PCM_Int16LE...]
     // rateDiv = sampleRate / 1000 (e.g. 48 for 48kHz)
     quint16 rateDiv = static_cast<quint16>(rigSampleRate / 1000);
+    const int sampleCount = audio.data.size() / 2;
+    const qint64 durationMs = rigSampleRate > 0
+        ? qRound64((static_cast<double>(sampleCount) * 1000.0) / static_cast<double>(rigSampleRate))
+        : 0;
+    const quint64 startUtcMs = static_cast<quint64>(qMax<qint64>(0, audioPacketUtcMs(audio) - durationMs));
     QByteArray msg;
-    int headerSize = 6;
+    int headerSize = 14;
     msg.resize(headerSize + audio.data.size());
     msg[0] = 0x02;  // msgType: RX audio
-    msg[1] = 0x00;  // reserved
+    msg[1] = 0x01;  // header version with absolute start timestamp
 
     quint16 seq = audioSeq++;
     memcpy(msg.data() + 2, &seq, 2);
     memcpy(msg.data() + 4, &rateDiv, 2);
+    const quint32 startLow = static_cast<quint32>(startUtcMs & 0xffffffffULL);
+    const quint32 startHigh = static_cast<quint32>((startUtcMs >> 32) & 0xffffffffULL);
+    memcpy(msg.data() + 6, &startLow, 4);
+    memcpy(msg.data() + 10, &startHigh, 4);
     memcpy(msg.data() + headerSize, audio.data.constData(), audio.data.size());
 
     sendBinaryToAudioClients(msg);
@@ -3177,6 +3245,8 @@ void webServer::setupUsbAudio(quint32 sampleRate)
     usbAudioPollTimer = new QTimer(this);
     connect(usbAudioPollTimer, &QTimer::timeout, this, &webServer::readUsbAudio);
     usbAudioPollTimer->start(20);  // 20ms = 960 samples at 48kHz
+    usbAudioStreamStartUtcMs = QDateTime::currentMSecsSinceEpoch();
+    usbAudioSamplesStreamed = 0;
 
     audioConfigured = true;
     qInfo() << "Web: USB audio capture configured, sampleRate=" << rigSampleRate
@@ -3310,17 +3380,31 @@ void webServer::readUsbAudio()
         data = mono;
     }
 
-    // Build binary message: [0x02][0x00][seq_u16LE][rateDiv_u16LE][PCM_Int16LE...]
+    // Build binary message: [0x02][0x01][seq_u16LE][rateDiv_u16LE][startUtcMs_u64LE][PCM_Int16LE...]
     quint16 rateDiv = static_cast<quint16>(rigSampleRate / 1000);
+    const int sampleCount = data.size() / 2;
+    const qint64 durationMs = rigSampleRate > 0
+        ? qRound64((static_cast<double>(sampleCount) * 1000.0) / static_cast<double>(rigSampleRate))
+        : 0;
+    if (usbAudioStreamStartUtcMs <= 0) usbAudioStreamStartUtcMs = QDateTime::currentMSecsSinceEpoch() - durationMs;
+    const qint64 sampleOffsetMs = rigSampleRate > 0
+        ? qRound64((static_cast<double>(usbAudioSamplesStreamed) * 1000.0) / static_cast<double>(rigSampleRate))
+        : 0;
+    const quint64 startUtcMs = static_cast<quint64>(qMax<qint64>(0, usbAudioStreamStartUtcMs + sampleOffsetMs));
+    usbAudioSamplesStreamed += sampleCount;
     QByteArray msg;
-    int headerSize = 6;
+    int headerSize = 14;
     msg.resize(headerSize + data.size());
     msg[0] = 0x02;
-    msg[1] = 0x00;
+    msg[1] = 0x01;
 
     quint16 seq = audioSeq++;
     memcpy(msg.data() + 2, &seq, 2);
     memcpy(msg.data() + 4, &rateDiv, 2);
+    const quint32 startLow = static_cast<quint32>(startUtcMs & 0xffffffffULL);
+    const quint32 startHigh = static_cast<quint32>((startUtcMs >> 32) & 0xffffffffULL);
+    memcpy(msg.data() + 6, &startLow, 4);
+    memcpy(msg.data() + 10, &startHigh, 4);
     memcpy(msg.data() + headerSize, data.constData(), data.size());
 
     sendBinaryToAudioClients(msg);

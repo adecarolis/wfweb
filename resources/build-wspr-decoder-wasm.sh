@@ -1,14 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 
-EMSDK_DIR="$HOME/emsdk"
-if [ ! -f "$EMSDK_DIR/emsdk_env.sh" ]; then
-    echo "Error: emsdk not found at $EMSDK_DIR"
-    echo "Install with: git clone https://github.com/emscripten-core/emsdk.git ~/emsdk && cd ~/emsdk && ./emsdk install latest && ./emsdk activate latest"
-    exit 1
+if ! command -v emcc >/dev/null 2>&1; then
+    EMSDK_DIR="${EMSDK:-$HOME/emsdk}"
+    if [ ! -f "$EMSDK_DIR/emsdk_env.sh" ]; then
+        echo "Error: emcc not found in PATH and emsdk not found at $EMSDK_DIR"
+        echo "Install with: git clone https://github.com/emscripten-core/emsdk.git ~/emsdk && cd ~/emsdk && ./emsdk install latest && ./emsdk activate latest"
+        exit 1
+    fi
+    # shellcheck disable=SC1090
+    source "$EMSDK_DIR/emsdk_env.sh" >/dev/null
 fi
-
-source "$EMSDK_DIR/emsdk_env.sh" >/dev/null
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 

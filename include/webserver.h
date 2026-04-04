@@ -49,6 +49,7 @@ struct WsprNetUploadItem {
     QString functionName;
     QString summary;
     qint64 createdUtcMs = 0;
+    qint64 slotStartUtcMs = 0;
     qint64 nextAttemptUtcMs = 0;
     bool spot = false;
     int retries = 0;
@@ -220,6 +221,8 @@ private:
 #endif
     QIODevice *usbAudioDevice = nullptr;
     QTimer *usbAudioPollTimer = nullptr;
+    qint64 usbAudioStreamStartUtcMs = 0;
+    qint64 usbAudioSamplesStreamed = 0;
 
     // TX audio (USB output to rig)
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
