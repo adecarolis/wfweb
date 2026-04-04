@@ -2406,6 +2406,7 @@ var freedvModeName = '700D';
 var freedvModes = ['700D', '700E', '1600'];
 var freedvSync = false;
 var freedvSNR = 0.0;
+var freedvFreqOffset = 0.0;
 var freedvTxGain = 0.25;       // FreeDV mic gain multiplier (same ALC logic as FT8)
 
 var micEnabled = false;
@@ -2633,6 +2634,7 @@ function handleMessage(msg) {
                 if (msg.preamps) populatePreamps(msg.preamps);
                 if (msg.filters) populateFilters(msg.filters);
                 if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
+                if (msg.freedvModes) freedvModes = msg.freedvModes;
 
                 updateWarningVisibility();
             } else {
@@ -2652,6 +2654,7 @@ function handleMessage(msg) {
             if (msg.filters) populateFilters(msg.filters);
             if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
             if (msg.hasPowerControl) document.getElementById('powerBtn').style.display = 'flex';
+            if (msg.freedvModes) freedvModes = msg.freedvModes;
             updateWarningVisibility();
             break;
         case 'audioAvailable':
@@ -4209,6 +4212,7 @@ function updateFreeDVStatus(msg) {
     if (msg.freedvMode !== undefined && msg.freedvMode) freedvModeName = msg.freedvMode;
     if (msg.freedvSync !== undefined) freedvSync = msg.freedvSync;
     if (msg.freedvSNR !== undefined) freedvSNR = msg.freedvSNR;
+    if (msg.freedvFreqOffset !== undefined) freedvFreqOffset = msg.freedvFreqOffset;
     // Also handle direct freedvStatus messages (which use short field names)
     if (msg.type === 'freedvStatus') {
         if (msg.mode !== undefined && msg.mode) freedvModeName = msg.mode;
@@ -4230,9 +4234,13 @@ function updateFreeDVStatus(msg) {
     if (freedvEnabled) {
         var syncColor = freedvSync ? '#00ff88' : '#ff4444';
         var snrText = freedvSNR.toFixed(1);
+        var foHtml = '';
+        if (freedvModeName === 'RADE')
+            foHtml = '<span style="width:72px; display:inline-block; text-align:right;">FO ' + freedvFreqOffset.toFixed(1) + '</span>';
         indicator.innerHTML = '<span id="freedvModeLink" style="cursor:pointer; text-decoration:underline; min-width:72px; display:inline-block;">FreeDV ' + freedvModeName + '</span>'
             + '<span style="color:' + syncColor + '; width:52px; display:inline-block; text-align:center;">' + (freedvSync ? 'SYNC' : 'NO SYNC') + '</span>'
             + '<span style="width:62px; display:inline-block; text-align:right;">SNR ' + snrText + '</span>'
+            + foHtml
             + '<span id="freedvMonBtn" style="cursor:pointer; padding:1px 5px; border:1px solid #666; border-radius:3px; font-size:10px;">MON</span>';
         indicator.style.display = 'flex';
         // Mode cycle on click

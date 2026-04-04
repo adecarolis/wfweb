@@ -172,6 +172,31 @@ INSTALLS += systemd
 linux:LIBS += -L./ -lopus -lcodec2
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus -lssl -lcrypto -lcodec2
 
+# RADE V1 (radae_nopy) support.
+# Auto-detects the radae_nopy submodule; override with RADAE_DIR env var or qmake arg.
+# Build radae_nopy first: cd radae_nopy/build && cmake -DCMAKE_BUILD_TYPE=Release .. && make
+isEmpty(RADAE_DIR): RADAE_DIR = $$(RADAE_DIR)
+isEmpty(RADAE_DIR): exists($$PWD/radae_nopy/src/rade_api.h): RADAE_DIR = $$PWD/radae_nopy
+!isEmpty(RADAE_DIR) {
+    isEmpty(RADAE_BUILD): RADAE_BUILD = $$RADAE_DIR/build
+    exists($$RADAE_BUILD/src/librade.so) | exists($$RADAE_BUILD/src/librade.dylib) {
+        DEFINES += RADE_SUPPORT
+        INCLUDEPATH += $$RADAE_DIR/src
+        # Custom Opus headers (LPCNet/FARGAN) from the CMake ExternalProject
+        OPUS_SRC = $$RADAE_BUILD/build_opus-prefix/src/build_opus
+        INCLUDEPATH += $$OPUS_SRC/dnn $$OPUS_SRC/celt $$OPUS_SRC/include $$OPUS_SRC
+        LIBS += -L$$RADAE_BUILD/src -lrade
+        QMAKE_RPATHDIR += $$RADAE_BUILD/src
+        # Custom Opus (with LPCNet/FARGAN) built by radae_nopy - link statically
+        LIBS += $$RADAE_BUILD/build_opus-prefix/src/build_opus/.libs/libopus.a
+        SOURCES += src/radeprocessor.cpp
+        HEADERS += include/radeprocessor.h
+        message("RADE V1 support enabled ($$RADAE_DIR)")
+    } else {
+        message("RADE V1: radae_nopy found but not built (run: cd $$RADAE_DIR/build && cmake .. && make)")
+    }
+}
+
 contains(DEFINES,FTDI_SUPPORT){
   win32:INCLUDEPATH += ../LibFT4222-v1.4.7\imports\LibFT4222\inc
   win32:INCLUDEPATH += ../LibFT4222-v1.4.7\imports\ftd2xx

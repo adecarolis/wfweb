@@ -32,6 +32,9 @@
 #include "cachingqueue.h"
 #include "audioconverter.h"
 #include "freedvprocessor.h"
+#ifdef RADE_SUPPORT
+#include "radeprocessor.h"
+#endif
 
 #ifdef Q_OS_MACOS
 class TlsProxyWorker;
@@ -81,6 +84,11 @@ signals:
     void setupFreeDV(int mode, quint32 radioSampleRate);
     void sendToFreeDVRx(audioPacket audio);
     void sendToFreeDVTx(audioPacket audio);
+#ifdef RADE_SUPPORT
+    void setupRade(quint32 radioSampleRate);
+    void sendToRadeRx(audioPacket audio);
+    void sendToRadeTx(audioPacket audio);
+#endif
 
 public slots:
     void init(quint16 httpPort, quint16 wsPort);
@@ -119,6 +127,13 @@ private slots:
     void onFreeDVTxReady(audioPacket audio);
     void onFreeDVStats(float snr, bool sync);
     void drainFreeDVTxBuffer();
+
+#ifdef RADE_SUPPORT
+    // RADE V1
+    void onRadeRxReady(audioPacket audio);
+    void onRadeTxReady(audioPacket audio);
+    void onRadeStats(float snr, bool sync, float freqOffset);
+#endif
 
 
 private:
@@ -224,6 +239,13 @@ private:
     bool freedvTxActive = false;  // true once ALSA restarted for FreeDV TX
     float freedvTxGain = 0.25f;   // ALC-controlled gain applied to modem output
     bool freedvMonitor = false;   // bypass FreeDV RX to hear raw SSB
+
+#ifdef RADE_SUPPORT
+    // RADE V1 processing
+    RadeProcessor *radeProcessor = nullptr;
+    QThread *radeThread = nullptr;
+    float freedvFreqOffset = 0.0f;  // RADE frequency offset estimate
+#endif
 
     // Memory channel scanning
     QMap<quint32, memoryType> memories;  // key = (group << 16) | channel
