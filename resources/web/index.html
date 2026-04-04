@@ -2320,7 +2320,7 @@ body.digi-open .digi-bar {
             <div class="digi-header">
                 <span id="digiModeLabel" class="digi-label">FT8</span>
                 <button id="digiCqOnlyBtn" class="digi-toggle-btn digi-ft8-only">CQ ONLY</button>
-                <button id="digiPskReporterBtn" class="digi-toggle-btn digi-ft8-only">PSKR OFF</button>
+                <button id="digiPskReporterBtn" class="digi-toggle-btn">PSKR OFF</button>
                 <select id="digiBandSel" class="digi-band-sel"></select>
                 <div class="flex-space"></div>
                 <button id="digiRxToggle" class="digi-rx-toggle active">RX ON</button>
@@ -2335,7 +2335,7 @@ body.digi-open .digi-bar {
                     <div id="digiProgressBar" class="digi-progress-fill"></div>
                 </div>
                 <span id="digiClock" class="digi-period-clock">15</span>
-                <span id="digiPskReporterStatus" class="digi-field-label digi-ft8-only">PSKR OFF</span>
+                <span id="digiPskReporterStatus" class="digi-field-label">PSKR OFF</span>
                 <span class="digi-field-label digi-wspr-inline">PWR:</span>
                 <select id="digiWsprPower" class="digi-wspr-select digi-wspr-inline"></select>
                 <span class="digi-field-label digi-wspr-inline">TX%:</span>
@@ -6153,7 +6153,7 @@ function sanitizePskReporterBatch(batch) {
             var flowStartSeconds = parseInt(raw.flowStartSeconds, 10);
             if (!isPskReporterCallLike(call) || !isPskReporterGridLike(grid) ||
                 !isFinite(freqHz) || freqHz <= 0 ||
-                (mode !== 'FT8' && mode !== 'FT4') ||
+                (mode !== 'FT8' && mode !== 'FT4' && mode !== 'WSPR') ||
                 !isFinite(snr) ||
                 !isFinite(flowStartSeconds) || flowStartSeconds <= 0) {
                 continue;
@@ -6241,7 +6241,7 @@ function updatePskReporterButton() {
     btn.textContent = digiPskReporterEnabled ? 'PSKR ON' : 'PSKR OFF';
     btn.classList.toggle('active', digiPskReporterEnabled);
     var latest = digiPskReporterLatestReport;
-    btn.title = latest && latest.detail ? latest.detail : 'Upload FT8/FT4 decodes to PSK Reporter';
+    btn.title = latest && latest.detail ? latest.detail : 'Upload FT8/FT4/WSPR decodes to PSK Reporter';
 }
 
 function updatePskReporterStatusUi() {
@@ -6375,6 +6375,47 @@ function buildPskReporterBatch(results, decodedSlotIndex) {
             software: 'wfweb/' + (serverVersion || 'dev')
         },
         spots: spots
+    };
+}
+
+function buildWsprPskReporterBatch(slotIndex, slotStartMs, reporter, spots) {
+    if (!digiPskReporterEnabled || !reporter) return null;
+    var reporterCall = String(reporter.call || getMyCall() || '').trim().toUpperCase();
+    var reporterGrid = String(reporter.grid || getMyGridFull() || '').trim().toUpperCase();
+    if (!isPskReporterCallLike(reporterCall) || !isPskReporterGridLike(reporterGrid)) return null;
+
+    var cleanSpots = [];
+    var seen = {};
+    for (var i = 0; i < (spots || []).length; i++) {
+        var clean = sanitizeWsprSpot(spots[i]);
+        if (!clean || !isPskReporterCallLike(clean.call) || !isPskReporterGridLike(clean.grid)) continue;
+        var freqHz = parseInt(clean.freqHz, 10);
+        if (!isFinite(freqHz) || freqHz <= 0) continue;
+        var flowStartSeconds = Math.floor((clean.slotStartMs || slotStartMs || Date.now()) / 1000);
+        if (!isFinite(flowStartSeconds) || flowStartSeconds <= 0) continue;
+        var dedupeKey = [clean.call, clean.grid, 'WSPR', freqHz, flowStartSeconds].join(':');
+        if (seen[dedupeKey]) continue;
+        seen[dedupeKey] = true;
+        cleanSpots.push({
+            call: clean.call,
+            grid: clean.grid,
+            mode: 'WSPR',
+            freqHz: freqHz,
+            snr: Math.round(clean.snr),
+            flowStartSeconds: flowStartSeconds
+        });
+    }
+    if (!cleanSpots.length) return null;
+
+    return {
+        batchId: ['psk', 'WSPR', slotIndex, reporterCall, reporterGrid].join(':'),
+        slotStartMs: parseInt(slotStartMs, 10) || 0,
+        reporter: {
+            call: reporterCall,
+            grid: reporterGrid,
+            software: String(reporter.version || ('wfweb/' + (serverVersion || 'dev'))).substr(0, 64)
+        },
+        spots: cleanSpots
     };
 }
 
@@ -6886,6 +6927,15 @@ function onWsprDecodeResult(payload) {
                                                payload.reporter,
                                                normalizedSpots);
         if (uploadBatch) queueWsprUploadBatch(uploadBatch);
+    }
+    if (digiPskReporterEnabled) {
+        var pskBatch = buildWsprPskReporterBatch(payload.slotIndex, payload.slotStartMs,
+                                                 payload.reporter, normalizedSpots);
+        if (pskBatch) queuePskReporterBatch(pskBatch);
+        else {
+            digiPskReporterStatusText = digiPskReporterEnabled ? 'PSKR READY' : 'PSKR OFF';
+            updatePskReporterStatusUi();
+        }
     }
     updateWsprInfo(getDigiSlotInfo());
     if (digiWsprPendingDecodes.length) {
@@ -10319,7 +10369,7 @@ function initDigiHandlers() {
         flushPskReporterQueue();
     }
     setInterval(function() {
-        if (!digiPskReporterEnabled || isWsprMode()) return;
+        if (!digiPskReporterEnabled) return;
         refreshPskReporterStatus();
     }, 30000);
 
