@@ -3618,11 +3618,13 @@ function renderModeOverlay() {
     ft8Btn.onclick = function() { setPanel('default'); toggleDigiBar(); };
     grid.appendChild(ft8Btn);
     // FreeDV — overlay mode (works on top of LSB/USB/AM/FM)
-    var fdvBtn = document.createElement('button');
-    fdvBtn.className = 'ov-btn' + (freedvEnabled ? ' active' : '');
-    fdvBtn.innerHTML = '<span class="btn-label">FreeDV</span><span class="btn-state">' + (freedvEnabled ? freedvModeName : 'OFF') + '</span>';
-    fdvBtn.onclick = function() { toggleFreeDV(); renderModeOverlay(); };
-    grid.appendChild(fdvBtn);
+    if (freedvModes.length > 0) {
+        var fdvBtn = document.createElement('button');
+        fdvBtn.className = 'ov-btn' + (freedvEnabled ? ' active' : '');
+        fdvBtn.innerHTML = '<span class="btn-label">FreeDV</span><span class="btn-state">' + (freedvEnabled ? freedvModeName : 'OFF') + '</span>';
+        fdvBtn.onclick = function() { toggleFreeDV(); renderModeOverlay(); };
+        grid.appendChild(fdvBtn);
+    }
     // Back button
     var back = document.createElement('button');
     back.className = 'ov-btn back-btn';
@@ -4205,6 +4207,7 @@ function updatePowerState(on) {
 // FreeDV
 // ============================================================
 function toggleFreeDV() {
+    if (freedvModes.length === 0) return;
     if (freedvEnabled) {
         send({ cmd: 'setFreeDV', enabled: false });
     } else {

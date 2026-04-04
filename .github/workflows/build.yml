@@ -39,7 +39,16 @@ jobs:
             libopus-dev libeigen3-dev \
             portaudio19-dev librtaudio-dev \
             libhidapi-dev libudev-dev libpulse-dev \
+            libcodec2-dev \
+            cmake autoconf automake libtool \
             openssl dpkg-dev
+
+      - name: Build RADE
+        run: |
+          cd radae_nopy
+          mkdir -p build && cd build
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+          make -j$(nproc)
 
       - name: Build
         run: |
@@ -58,6 +67,10 @@ jobs:
           sudo make install INSTALL_ROOT=${DEB_ROOT}
           sudo chown -R $(id -u):$(id -g) $(pwd)/deb-build
 
+          # Bundle librade.so (not packaged by distros yet)
+          mkdir -p ${DEB_ROOT}/usr/lib
+          cp radae_nopy/build/src/librade.so* ${DEB_ROOT}/usr/lib/
+
           mkdir -p ${DEB_ROOT}/DEBIAN
 
           cat > ${DEB_ROOT}/DEBIAN/control << EOF
@@ -69,7 +82,7 @@ jobs:
            libqt5network5t64, libqt5serialport5, libqt5multimedia5,
            libqt5websockets5,
            libopus0, libportaudio2, libpulse0, libhidapi-libusb0,
-           libudev1, librtaudio6
+           libudev1, librtaudio6, libcodec2-1.2
           Section: hamradio
           Priority: optional
           Homepage: https://github.com/adecarolis/wfweb
@@ -82,7 +95,7 @@ jobs:
 
           sed -i 's/^          //' ${DEB_ROOT}/DEBIAN/control
 
-          printf '#!/bin/sh\nset -e\n' > ${DEB_ROOT}/DEBIAN/postinst
+          printf '#!/bin/sh\nset -e\nldconfig || true\n' > ${DEB_ROOT}/DEBIAN/postinst
           printf 'if command -v systemctl >/dev/null 2>&1 && systemctl is-system-running --quiet 2>/dev/null; then\n' >> ${DEB_ROOT}/DEBIAN/postinst
           printf '    systemctl daemon-reload || true\nfi\n' >> ${DEB_ROOT}/DEBIAN/postinst
           printf 'echo "wfweb installed. To start automatically at boot, run:"\n' >> ${DEB_ROOT}/DEBIAN/postinst
@@ -136,7 +149,16 @@ jobs:
             libopus-dev libeigen3-dev \
             portaudio19-dev librtaudio-dev \
             libhidapi-dev libudev-dev libpulse-dev \
+            libcodec2-dev \
+            cmake autoconf automake libtool \
             openssl dpkg-dev
+
+      - name: Build RADE
+        run: |
+          cd radae_nopy
+          mkdir -p build && cd build
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+          make -j$(nproc)
 
       - name: Build
         run: |
@@ -154,6 +176,10 @@ jobs:
 
           make install INSTALL_ROOT=${DEB_ROOT}
 
+          # Bundle librade.so
+          mkdir -p ${DEB_ROOT}/usr/lib
+          cp radae_nopy/build/src/librade.so* ${DEB_ROOT}/usr/lib/
+
           mkdir -p ${DEB_ROOT}/DEBIAN
 
           cat > ${DEB_ROOT}/DEBIAN/control << EOF
@@ -165,7 +191,7 @@ jobs:
            libqt5network5, libqt5serialport5, libqt5multimedia5,
            libqt5websockets5,
            libopus0, libportaudio2, libpulse0, libhidapi-libusb0,
-           libudev1, librtaudio6
+           libudev1, librtaudio6, libcodec2-1.0
           Section: hamradio
           Priority: optional
           Homepage: https://github.com/adecarolis/wfweb
@@ -178,7 +204,7 @@ jobs:
 
           sed -i 's/^          //' ${DEB_ROOT}/DEBIAN/control
 
-          printf '#!/bin/sh\nset -e\n' > ${DEB_ROOT}/DEBIAN/postinst
+          printf '#!/bin/sh\nset -e\nldconfig || true\n' > ${DEB_ROOT}/DEBIAN/postinst
           printf 'if command -v systemctl >/dev/null 2>&1 && systemctl is-system-running --quiet 2>/dev/null; then\n' >> ${DEB_ROOT}/DEBIAN/postinst
           printf '    systemctl daemon-reload || true\nfi\n' >> ${DEB_ROOT}/DEBIAN/postinst
           printf 'echo "wfweb installed. To start automatically at boot, run:"\n' >> ${DEB_ROOT}/DEBIAN/postinst
@@ -232,7 +258,16 @@ jobs:
             libopus-dev libeigen3-dev \
             portaudio19-dev librtaudio-dev \
             libhidapi-dev libudev-dev libpulse-dev \
+            libcodec2-dev \
+            cmake autoconf automake libtool \
             openssl dpkg-dev
+
+      - name: Build RADE
+        run: |
+          cd radae_nopy
+          mkdir -p build && cd build
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+          make -j$(nproc)
 
       - name: Build
         run: |
@@ -250,6 +285,10 @@ jobs:
 
           make install INSTALL_ROOT=${DEB_ROOT}
 
+          # Bundle librade.so
+          mkdir -p ${DEB_ROOT}/usr/lib
+          cp radae_nopy/build/src/librade.so* ${DEB_ROOT}/usr/lib/
+
           mkdir -p ${DEB_ROOT}/DEBIAN
 
           cat > ${DEB_ROOT}/DEBIAN/control << EOF
@@ -261,7 +300,7 @@ jobs:
            libqt5network5t64, libqt5serialport5, libqt5multimedia5,
            libqt5websockets5,
            libopus0, libportaudio2, libpulse0, libhidapi-libusb0,
-           libudev1, librtaudio7
+           libudev1, librtaudio7, libcodec2-1.2
           Section: hamradio
           Priority: optional
           Homepage: https://github.com/adecarolis/wfweb
@@ -274,7 +313,7 @@ jobs:
 
           sed -i 's/^          //' ${DEB_ROOT}/DEBIAN/control
 
-          printf '#!/bin/sh\nset -e\n' > ${DEB_ROOT}/DEBIAN/postinst
+          printf '#!/bin/sh\nset -e\nldconfig || true\n' > ${DEB_ROOT}/DEBIAN/postinst
           printf 'if command -v systemctl >/dev/null 2>&1 && systemctl is-system-running --quiet 2>/dev/null; then\n' >> ${DEB_ROOT}/DEBIAN/postinst
           printf '    systemctl daemon-reload || true\nfi\n' >> ${DEB_ROOT}/DEBIAN/postinst
           printf 'echo "wfweb installed. To start automatically at boot, run:"\n' >> ${DEB_ROOT}/DEBIAN/postinst
@@ -304,7 +343,7 @@ jobs:
           submodules: true
 
       - name: Install dependencies
-        run: brew install qt@5 portaudio opus openssl@3
+        run: brew install qt@5 portaudio opus openssl@3 codec2 cmake autoconf automake libtool
 
       - name: Clone sibling dependencies
         run: |
@@ -312,6 +351,13 @@ jobs:
           git clone --depth 1 https://gitlab.com/libeigen/eigen.git ../eigen
           git clone --depth 1 https://github.com/xiph/opus.git ../opus
           mkdir -p ../r8brain-free-src
+
+      - name: Build RADE
+        run: |
+          cd radae_nopy
+          mkdir -p build && cd build
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+          make -j$(sysctl -n hw.ncpu)
 
       - name: Build
         run: |
@@ -323,6 +369,11 @@ jobs:
           mkdir -p wfweb-macos-arm64
           cp wfweb wfweb-macos-arm64/
           cp -r rigs wfweb-macos-arm64/
+          # Bundle librade for distribution
+          if [ -f radae_nopy/build/src/librade.dylib ]; then
+            cp radae_nopy/build/src/librade*.dylib wfweb-macos-arm64/
+            install_name_tool -change @rpath/librade.0.1.dylib @executable_path/librade.0.1.dylib wfweb-macos-arm64/wfweb || true
+          fi
           zip -r wfweb-macos-arm64.zip wfweb-macos-arm64
 
       - name: Upload artifact
