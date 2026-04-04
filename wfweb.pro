@@ -187,6 +187,7 @@ isEmpty(RADAE_DIR): exists($$PWD/radae_nopy/src/rade_api.h): RADAE_DIR = $$PWD/r
         INCLUDEPATH += $$OPUS_SRC/dnn $$OPUS_SRC/celt $$OPUS_SRC/include $$OPUS_SRC
         LIBS += -L$$RADAE_BUILD/src -lrade
         QMAKE_RPATHDIR += $$RADAE_BUILD/src
+        macx:QMAKE_RPATHDIR += @executable_path
         # Custom Opus (with LPCNet/FARGAN) built by radae_nopy - link statically
         LIBS += $$RADAE_BUILD/build_opus-prefix/src/build_opus/.libs/libopus.a
         SOURCES += src/radeprocessor.cpp

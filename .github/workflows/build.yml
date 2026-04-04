@@ -369,13 +369,9 @@ jobs:
           mkdir -p wfweb-macos-arm64
           cp wfweb wfweb-macos-arm64/
           cp -r rigs wfweb-macos-arm64/
-          # Bundle librade for distribution
+          # Bundle librade for distribution (rpath @executable_path set at build time)
           if [ -f radae_nopy/build/src/librade.dylib ]; then
             cp radae_nopy/build/src/librade*.dylib wfweb-macos-arm64/
-            install_name_tool -change @rpath/librade.0.1.dylib @executable_path/librade.0.1.dylib wfweb-macos-arm64/wfweb || true
-            # Re-sign after install_name_tool (invalidates ad-hoc signature)
-            codesign --force --sign - wfweb-macos-arm64/wfweb
-            codesign --force --sign - wfweb-macos-arm64/librade*.dylib
           fi
           zip -r wfweb-macos-arm64.zip wfweb-macos-arm64
 

@@ -16,15 +16,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libqcustomplot-dev \
     libcodec2-dev \
     cmake autoconf automake libtool curl \
-    openssl \
+    openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
 COPY . .
 
-# Build RADE (radae_nopy submodule)
+# Build RADE (radae_nopy submodule) — clean any stale host cache first
 RUN if [ -f radae_nopy/src/rade_api.h ]; then \
-      cd radae_nopy && mkdir -p build && cd build \
+      cd radae_nopy && rm -rf build && mkdir build && cd build \
       && cmake -DCMAKE_BUILD_TYPE=Release .. \
       && make -j$(nproc); \
     fi
