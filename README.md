@@ -127,9 +127,7 @@ Select the FreeDV mode from the web UI, key up, and talk — wfweb handles the r
 | Linux ARM64 / Raspberry Pi | ✓ | ✓ |
 | macOS (Apple Silicon) | ✓ | ✓ |
 | Docker | ✓ | ✓ |
-| Windows | — | — |
-
-> **Windows:** FreeDV and RADE are currently not available on Windows builds. These features require libcodec2 and the RADE inference runtime, which are only supported on Linux and macOS at this time.
+| Windows x86_64 | ✓ | ✓ |
 
 ### Performance
 
