@@ -452,14 +452,16 @@ jobs:
           cmake -S radae_nopy\build\build_opus-prefix\src\build_opus -B radae_nopy\build\opus_msvc_build -DOPUS_DRED=ON -DOPUS_OSCE=ON -DBUILD_SHARED_LIBS=OFF -DOPUS_BUILD_PROGRAMS=OFF -DOPUS_BUILD_TESTING=OFF -A x64
           cmake --build radae_nopy\build\opus_msvc_build --config Release
 
+      - name: Clone codec2
+        run: git clone --depth 1 https://github.com/drowe67/codec2.git codec2
+
       - name: Build codec2 (FreeDV) via MSYS2 MinGW
         shell: C:\msys64\usr\bin\bash.exe -l {0}
         run: |
           pacman -S --noconfirm --needed mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-tools-git
           export PATH="/mingw64/bin:$PATH"
-          cd "$GITHUB_WORKSPACE"
-          git clone --depth 1 https://github.com/drowe67/codec2.git codec2
-          cd codec2
+          CODEC2="$(cygpath "$GITHUB_WORKSPACE")/codec2"
+          cd "$CODEC2"
           mkdir -p build_mingw && cd build_mingw
           /mingw64/bin/cmake -G "MinGW Makefiles" \
             -DCMAKE_BUILD_TYPE=Release \
