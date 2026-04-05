@@ -10,6 +10,7 @@
         <file alias="model.onnx">web/models/model.onnx</file>
         <file alias="ggmorse-wasm.js">web/ggmorse-wasm.js</file>
         <file alias="wspr-encoder.js">web/wspr-encoder.js</file>
+        <file alias="wspr-ui.js">web/wspr-ui.js</file>
         <file alias="wspr-rx-worker.js">web/wspr-rx-worker.js</file>
         <file alias="ft8ts.mjs">ft8ts/dist/ft8ts.mjs</file>
         <file alias="ft8ts.mjs.map">ft8ts/dist/ft8ts.mjs.map</file>
