@@ -1,3 +1,6 @@
 [submodule "resources/ft8ts"]
 	path = resources/ft8ts
 	url = https://github.com/e04/ft8ts.git
+[submodule "radae_nopy"]
+	path = radae_nopy
+	url = https://github.com/peterbmarks/radae_nopy.git

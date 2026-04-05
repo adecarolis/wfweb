@@ -6,6 +6,43 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.5.0 (2026-04-05)
+--------------------
+
+FreeDV digital voice:
+- Add FreeDV codec2 support with 700D, 700E, and 1600 modes
+- Add RADE V1 neural voice codec as a FreeDV mode
+- ALC control for FreeDV TX; mode cycling and TX monitor in web UI
+- FreeDV button moved from FUNC menu to MODE overlay
+- Hide FreeDV button when codec2 is not available
+
+Platform support:
+- FreeDV and RADE support on all platforms: Linux (Docker/native), macOS,
+  and Windows
+- Windows: RADE and FreeDV codec2 added to vcpkg build (build.bat)
+- macOS: static-link RADE to eliminate dylib signing issues; ad-hoc
+  codesign binary and dylibs; re-sign after install_name_tool patching
+- Docker: RADE and FreeDV added to Docker build
+
+Fixes:
+- Fix segfault on Ctrl-C exit during FreeDV TX
+- Fix FreeDV TX silence after browser restart
+- Fix ALSA underruns after client disconnect during RADE/FreeDV TX
+- Scale RADE TX output to match codec2 FreeDV ALC levels
+- Fix RADE UI issues: stats display, logging, shutdown, and default mode
+- Fix codec2 CI build: clone outside MSYS2 shell
+- Fix macOS Gatekeeper block
+
+Packaging:
+- Add third-party license file (THIRD_PARTY_LICENSES) bundled in all
+  packages
+- Add .dockerignore to exclude host build artifacts
+
+Documentation:
+- Document macOS FreeDV and RADE build prerequisites
+- Update README with FreeDV/RADE features, credits, and licenses
+
+
 v0.4.2 (2026-03-29)
 --------------------
 

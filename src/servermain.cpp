@@ -105,6 +105,13 @@ servermain::servermain(const QString settingsFile, const cmdLineOverrides& overr
 
 servermain::~servermain()
 {
+    // Shut down webThread first: it has cross-thread signal connections to rig
+    // objects (haveAudioData, haveTxAudioData) and timers (FreeDV TX drain).
+    // Destroying rig objects while webThread is still running causes a segfault.
+    if (webThread != Q_NULLPTR) {
+        webThread->quit();
+        webThread->wait();
+    }
     for (RIGCONFIG* radio : serverConfig.rigs)
     {
         if (radio->rigThread != Q_NULLPTR)
@@ -118,10 +125,6 @@ servermain::~servermain()
     if (serverThread != Q_NULLPTR) {
         serverThread->quit();
         serverThread->wait();
-    }
-    if (webThread != Q_NULLPTR) {
-        webThread->quit();
-        webThread->wait();
     }
 
     if (audioDev != Q_NULLPTR) {

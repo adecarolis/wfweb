@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 
 :: ---------------------------------------------------------------
 :: build.bat — Build wfweb (wfserver) on Windows
@@ -60,8 +60,88 @@ echo EXIT:0 >> %LOG%
 exit /b 0
 
 :build
+:: --- Build RADE custom Opus (if radae_nopy submodule is present) ---
+set RADAE_DIR=%SRCDIR%\radae_nopy
+set RADAE_BUILD=%RADAE_DIR%\build
+set OPUS_MSVC_LIB=%RADAE_BUILD%\opus_msvc_build\Release\opus.lib
+
+if exist "%RADAE_DIR%\src\rade_api.h" (
+    if not exist "%OPUS_MSVC_LIB%" (
+        echo === RADE: building custom Opus === >> %LOG%
+
+        :: Step 1: MSYS2 cmake to fetch/build Opus source + patch headers for MSVC
+        if not exist "%RADAE_BUILD%\build_opus-prefix\src\build_opus\include\opus.h" (
+            echo --- MSYS2 cmake + header patching --- >> %LOG%
+            C:\msys64\usr\bin\bash.exe -l "%SRCDIR%\build-rade-opus.sh" "%RADAE_DIR%" >> %LOG% 2>&1
+            if errorlevel 1 (
+                echo ERROR: MSYS2 RADE build failed >> %LOG%
+                echo EXIT:1 >> %LOG%
+                exit /b 1
+            )
+        )
+
+        :: Step 2: Build custom Opus with MSVC (static lib)
+        echo --- MSVC Opus build --- >> %LOG%
+        set OPUS_SRC=%RADAE_BUILD%\build_opus-prefix\src\build_opus
+        cmake -S "!OPUS_SRC!" -B "%RADAE_BUILD%\opus_msvc_build" -DOPUS_DRED=ON -DOPUS_OSCE=ON -DBUILD_SHARED_LIBS=OFF -DOPUS_BUILD_PROGRAMS=OFF -DOPUS_BUILD_TESTING=OFF -A x64 >> %LOG% 2>&1
+        if errorlevel 1 (
+            echo ERROR: Opus MSVC cmake configure failed >> %LOG%
+            echo EXIT:1 >> %LOG%
+            exit /b 1
+        )
+        cmake --build "%RADAE_BUILD%\opus_msvc_build" --config Release >> %LOG% 2>&1
+        if errorlevel 1 (
+            echo ERROR: Opus MSVC cmake build failed >> %LOG%
+            echo EXIT:1 >> %LOG%
+            exit /b 1
+        )
+        echo RADE custom Opus built successfully >> %LOG%
+    ) else (
+        echo RADE custom Opus already built, skipping >> %LOG%
+    )
+) else (
+    echo RADE: radae_nopy submodule not found, skipping >> %LOG%
+)
+
+:: --- Build codec2 (FreeDV) from source if not already present ---
+set VCPKG_WIN=%VCPKG:/=\%
+if not exist "%VCPKG_WIN%\lib\codec2.lib" (
+    echo === codec2: building from source === >> %LOG%
+    set CODEC2_SRC=%SRCDIR%\codec2
+
+    if not exist "!CODEC2_SRC!\CMakeLists.txt" (
+        echo --- Cloning codec2 --- >> %LOG%
+        git clone --depth 1 https://github.com/drowe67/codec2.git "!CODEC2_SRC!" >> %LOG% 2>&1
+        if errorlevel 1 (
+            echo ERROR: codec2 clone failed >> %LOG%
+            echo EXIT:1 >> %LOG%
+            exit /b 1
+        )
+    )
+
+    echo --- Building codec2 with MSYS2 MinGW --- >> %LOG%
+    C:\msys64\usr\bin\bash.exe -l "%SRCDIR%\build-codec2.sh" "!CODEC2_SRC!" "%VCPKG_WIN%" >> %LOG% 2>&1
+    if errorlevel 1 (
+        echo ERROR: codec2 build failed >> %LOG%
+        echo EXIT:1 >> %LOG%
+        exit /b 1
+    )
+
+    :: Create MSVC import lib from .def (needs vcvars64 environment)
+    echo --- Creating MSVC import lib --- >> %LOG%
+    lib /def:"!CODEC2_SRC!\libcodec2.def" /out:"%VCPKG_WIN%\lib\codec2.lib" /machine:x64 >> %LOG% 2>&1
+    if errorlevel 1 (
+        echo ERROR: lib.exe import lib creation failed >> %LOG%
+        echo EXIT:1 >> %LOG%
+        exit /b 1
+    )
+    echo codec2 built and installed successfully >> %LOG%
+) else (
+    echo codec2 already installed, skipping >> %LOG%
+)
+
 echo === qmake === >> %LOG%
-"%QTDIR%\bin\qmake.exe" wfweb.pro CONFIG+=release "VCPKG_DIR=%VCPKG%" >> %LOG% 2>&1
+"%QTDIR%\bin\qmake.exe" wfweb.pro CONFIG+=release "VCPKG_DIR=%VCPKG%" "DEFINES-=FTDI_SUPPORT" >> %LOG% 2>&1
 if errorlevel 1 (
     echo ERROR: qmake failed >> %LOG%
     echo EXIT:1 >> %LOG%
@@ -90,8 +170,8 @@ if errorlevel 1 (
 echo === Deploying vcpkg DLLs === >> %LOG%
 set VCPKG_BIN=%VCPKG:/=\%\bin
 
-:: vcpkg DLLs (portaudio, opus, hidapi, OpenSSL)
-for %%F in (portaudio.dll opus.dll hidapi.dll libssl-3-x64.dll libcrypto-3-x64.dll libssl-1_1-x64.dll libcrypto-1_1-x64.dll) do (
+:: vcpkg DLLs (portaudio, hidapi, codec2, OpenSSL; opus is statically linked when RADE is enabled)
+for %%F in (portaudio.dll hidapi.dll libcodec2.dll libssl-3-x64.dll libcrypto-3-x64.dll libssl-1_1-x64.dll libcrypto-1_1-x64.dll) do (
     if exist "%VCPKG_BIN%\%%F" (
         copy /y "%VCPKG_BIN%\%%F" "%OUTDIR%\" >> %LOG% 2>&1
     )

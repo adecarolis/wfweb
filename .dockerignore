@@ -1,0 +1,30 @@
+# Build artifacts (may be wrong arch)
+*.o
+*.a
+*.so
+*.dylib
+moc_*.cpp
+qrc_*.cpp
+Makefile
+.qmake.stash
+wfweb
+wfweb-release/
+wfweb-debug/
+release/
+debug/
+
+# RADE submodule build (rebuilt inside container)
+radae_nopy/build/
+
+# Git and CI
+.git
+.github
+
+# Docker
+docker/
+.dockerignore
+
+# IDE / local
+.vscode/
+.idea/
+*.user

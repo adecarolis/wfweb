@@ -2633,31 +2633,37 @@ body.digi-open .digi-bar {
                 <span class="gain-label">AF</span>
                 <div class="gain-bar-bg"><div class="gain-bar-fill" id="afGainFill" style="width:50%"></div>
                     <input type="range" id="afGainSlider" min="0" max="255" value="128"></div>
-                <span class="gain-val" id="afGainVal">128</span>
+                <span class="gain-val" id="afGainVal">50%</span>
             </div>
             <div class="gain-row">
                 <span class="gain-label">RF</span>
                 <div class="gain-bar-bg"><div class="gain-bar-fill" id="rfGainFill" style="width:50%"></div>
                     <input type="range" id="rfGainSlider" min="0" max="255" value="128"></div>
-                <span class="gain-val" id="rfGainVal">128</span>
+                <span class="gain-val" id="rfGainVal">50%</span>
             </div>
             <div class="gain-row">
                 <span class="gain-label">PWR</span>
                 <div class="gain-bar-bg"><div class="gain-bar-fill" id="rfPowerFill" style="width:50%"></div>
                     <input type="range" id="rfPowerSlider" min="0" max="255" value="128"></div>
-                <span class="gain-val" id="rfPowerVal">128</span>
+                <span class="gain-val" id="rfPowerVal">50%</span>
             </div>
             <div class="gain-row">
                 <span class="gain-label">SQL</span>
                 <div class="gain-bar-bg"><div class="gain-bar-fill" id="squelchFill" style="width:0%"></div>
                     <input type="range" id="squelchSlider" min="0" max="255" value="0"></div>
-                <span class="gain-val" id="squelchVal">0</span>
+                <span class="gain-val" id="squelchVal">0%</span>
             </div>
             <div class="gain-row">
                 <span class="gain-label">USB MIC</span>
                 <div class="gain-bar-bg"><div class="gain-bar-fill" id="micGainFill" style="width:50%"></div>
                     <input type="range" id="micGainSlider" min="0" max="255" value="128"></div>
-                <span class="gain-val" id="micGainVal">128</span>
+                <span class="gain-val" id="micGainVal">50%</span>
+            </div>
+            <div class="gain-row">
+                <span class="gain-label">MON</span>
+                <div class="gain-bar-bg"><div class="gain-bar-fill" id="monitorLevelFill" style="width:50%"></div>
+                    <input type="range" id="monitorLevelSlider" min="0" max="255" value="128"></div>
+                <span class="gain-val" id="monitorLevelVal">50%</span>
             </div>
             <div class="gain-back-row">
                 <button class="ov-btn back-btn" onclick="setPanel('default')">&#x21A9;</button>
@@ -2792,12 +2798,23 @@ var audioSampleRate = 48000;
 var digiAudioClockLastSeq = -1;
 var digiAudioClockNextStartMs = 0;
 
+// FreeDV state
+var freedvEnabled = false;
+var freedvModeName = '700D';
+var freedvModes = ['700D', '700E', '1600'];
+var freedvSync = false;
+var freedvSNR = 0.0;
+var freedvFreqOffset = 0.0;
+var freedvTxGain = 0.25;       // FreeDV mic gain multiplier (same ALC logic as FT8)
+
 var micEnabled = false;
 var txAudioAvailable = false;
 var micStream = null;
 var micAudioCtx = null;
 var micWorkletNode = null;
 var micSeq = 0;
+var monitorEnabled = false;
+var monitorLevel = 128; // 0-255 (radio gain)
 
 var nbOn = false;
 var nrOn = false;
@@ -3121,6 +3138,7 @@ function handleMessage(msg) {
                 if (msg.preamps) populatePreamps(msg.preamps);
                 if (msg.filters) populateFilters(msg.filters);
                 if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
+                if (msg.freedvModes) freedvModes = msg.freedvModes;
 
                 updateWarningVisibility();
             } else {
@@ -3141,6 +3159,7 @@ function handleMessage(msg) {
             if (msg.filters) populateFilters(msg.filters);
             if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
             if (msg.hasPowerControl) document.getElementById('powerBtn').style.display = 'flex';
+            if (msg.freedvModes) freedvModes = msg.freedvModes;
             updateWarningVisibility();
             break;
         case 'audioAvailable':
@@ -3187,6 +3206,8 @@ function handleMessage(msg) {
             if (msg.rfPower !== undefined) updateSlider('rfPower', msg.rfPower);
             if (msg.squelch !== undefined) updateSlider('squelch', msg.squelch);
             if (msg.micGain !== undefined) updateSlider('micGain', msg.micGain);
+            if (msg.monitor !== undefined) { monitorEnabled = msg.monitor; if (currentPanel === 'func') renderFuncOverlay(); }
+            if (msg.monitorGain !== undefined) { monitorLevel = msg.monitorGain; updateSlider('monitorLevel', msg.monitorGain); if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.split !== undefined) updateSplit(msg.split);
             if (msg.spanIndex !== undefined) updateSpanIndex(msg.spanIndex);
             if (msg.nb !== undefined) updateToggle('nb', msg.nb);
@@ -3200,6 +3221,7 @@ function handleMessage(msg) {
             if (msg.pbtOuter !== undefined) updateSlider('pbtOuter', msg.pbtOuter);
             if (msg.filterShape !== undefined) updateFilterShapeBtn(msg.filterShape);
             if (msg.powerState !== undefined) updatePowerState(msg.powerState);
+            if (msg.freedv !== undefined) updateFreeDVStatus(msg);
             break;
         case 'update':
             if (msg.utcMs !== undefined) updateServerClockOffset(msg.utcMs);
@@ -3232,6 +3254,8 @@ function handleMessage(msg) {
             if (msg.rfPower !== undefined) updateSlider('rfPower', msg.rfPower);
             if (msg.squelch !== undefined) updateSlider('squelch', msg.squelch);
             if (msg.micGain !== undefined) updateSlider('micGain', msg.micGain);
+            if (msg.monitor !== undefined) { monitorEnabled = msg.monitor; if (currentPanel === 'func') renderFuncOverlay(); }
+            if (msg.monitorGain !== undefined) { monitorLevel = msg.monitorGain; updateSlider('monitorLevel', msg.monitorGain); if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.split !== undefined) updateSplit(msg.split);
             if (msg.spanIndex !== undefined) updateSpanIndex(msg.spanIndex);
             if (msg.nb !== undefined) updateToggle('nb', msg.nb);
@@ -3245,6 +3269,7 @@ function handleMessage(msg) {
             if (msg.pbtOuter !== undefined) updateSlider('pbtOuter', msg.pbtOuter);
             if (msg.filterShape !== undefined) updateFilterShapeBtn(msg.filterShape);
             if (msg.powerState !== undefined) updatePowerState(msg.powerState);
+            if (msg.freedv !== undefined) updateFreeDVStatus(msg);
             break;
         case 'meters':
             if (msg.transmitting !== undefined) updateTxStatus(msg.transmitting);
@@ -3252,12 +3277,35 @@ function handleMessage(msg) {
             if (msg.powerMeter !== undefined) updatePowerMeter(msg.powerMeter);
             if (msg.swrMeter !== undefined) updateSwrMeter(msg.swrMeter);
             if (msg.alcMeter !== undefined) updateALCMeter(msg.alcMeter);
+            if (msg.freedvSync !== undefined || msg.freedvSNR !== undefined) {
+                // Update stats values directly — avoid full updateFreeDVStatus
+                // which re-renders overlays and interferes with button clicks
+                if (msg.freedvSync !== undefined) freedvSync = msg.freedvSync;
+                if (msg.freedvSNR !== undefined) freedvSNR = msg.freedvSNR;
+                if (msg.freedvFreqOffset !== undefined) freedvFreqOffset = msg.freedvFreqOffset;
+                // Redraw just the spectrum indicator
+                var ind = document.getElementById('freedvIndicator');
+                if (ind && freedvEnabled) {
+                    var sc = freedvSync ? '#00ff88' : '#ff4444';
+                    var syncEl = ind.querySelector('span:nth-child(2)');
+                    var snrEl = ind.querySelector('span:nth-child(3)');
+                    if (syncEl) { syncEl.style.color = sc; syncEl.textContent = freedvSync ? 'SYNC' : 'NO SYNC'; }
+                    if (snrEl) snrEl.textContent = 'SNR ' + freedvSNR.toFixed(1);
+                    if (freedvModeName === 'RADE') {
+                        var foEl = ind.querySelector('span:nth-child(4)');
+                        if (foEl) foEl.textContent = 'FO ' + freedvFreqOffset.toFixed(1);
+                    }
+                }
+            }
             break;
         case 'memoryChannel':
             handleMemoryChannel(msg);
             break;
         case 'memoryScanComplete':
             handleMemoryScanComplete(msg);
+            break;
+        case 'freedvStatus':
+            updateFreeDVStatus(msg);
             break;
         case 'error':
             console.error('Server error:', msg.message);
@@ -3344,9 +3392,14 @@ function updateOtherVfoDisplay() {
     }
 }
 
+function updateModeBtnLabel() {
+    var label = currentMode;
+    if (freedvEnabled) label += ' | ' + freedvModeName;
+    document.getElementById('modeBtn').textContent = label;
+}
 function updateMode(mode) {
     currentMode = mode;
-    document.getElementById('modeBtn').textContent = mode;
+    updateModeBtnLabel();
     if (currentPanel === 'mode') renderModeOverlay();
     updateFilterConfig();
     if (currentPanel === 'filter') renderFilterOverlay();
@@ -3546,7 +3599,7 @@ function initSliderTracking() {
         slider.addEventListener('input', function() {
             var val = slider.value;
             sliderSetTimes[name] = Date.now();
-            document.getElementById(name + 'Val').textContent = val;
+            document.getElementById(name + 'Val').textContent = toPercent(val, 255);
             var fill = document.getElementById(name.replace(/([A-Z])/g, function(m) { return m; }) + 'Fill');
             if (fill) fill.style.width = (val / 255 * 100) + '%';
             if (name === 'afGain') throttledSend('afGain', 'setAfGain', val);
@@ -3560,6 +3613,25 @@ function initSliderTracking() {
             else if (name === 'micGain') throttledSend('micGain', 'setMicGain', val);
         });
     });
+    // Monitor level slider (CI-V, 0-255)
+    (function() {
+        var slider = document.getElementById('monitorLevelSlider');
+        if (!slider) return;
+        slider.addEventListener('mousedown', function() { sliderDragging['monitorLevel'] = true; });
+        slider.addEventListener('touchstart', function() { sliderDragging['monitorLevel'] = true; });
+        slider.addEventListener('mouseup', function() { sliderDragging['monitorLevel'] = false; });
+        slider.addEventListener('touchend', function() { sliderDragging['monitorLevel'] = false; });
+        slider.addEventListener('mouseleave', function() { sliderDragging['monitorLevel'] = false; });
+        slider.addEventListener('touchcancel', function() { sliderDragging['monitorLevel'] = false; });
+        slider.addEventListener('input', function() {
+            var val = parseInt(slider.value);
+            monitorLevel = val;
+            document.getElementById('monitorLevelVal').textContent = toPercent(val, 255);
+            document.getElementById('monitorLevelFill').style.width = (val / 255 * 100) + '%';
+            throttledSend('monitorLevel', 'setMonitorGain', val);
+            if (currentPanel === 'func') renderFuncOverlay();
+        });
+    })();
     // Filter overlay sliders
     ['filterWidth', 'pbtInner', 'pbtOuter'].forEach(function(name) {
         var slider = document.getElementById(name + 'Slider');
@@ -3613,6 +3685,8 @@ function updatePBTFill(id, val) {
     }
 }
 
+function toPercent(val, max) { return Math.round(val / (max || 255) * 100) + '%'; }
+
 function updateSlider(name, val) {
     if (sliderDragging[name]) return;
     if ((Date.now() - (sliderSetTimes[name] || 0)) < SLIDER_DEBOUNCE_MS) return;
@@ -3642,7 +3716,7 @@ function updateSlider(name, val) {
         return;
     }
     if (name === 'rfPower') currentRfPower = parseInt(val, 10);
-    if (valSpan) valSpan.textContent = val;
+    if (valSpan) valSpan.textContent = toPercent(val, parseInt((slider || {}).max) || 255);
     // Update fill bars
     var fillId = name + 'Fill';
     var fill = document.getElementById(fillId);
@@ -3700,16 +3774,25 @@ function updateSwrMeter(val) { swrVal = val; if (isTransmitting) drawMeter(); }
 function updateALCMeter(val) {
     alcVal = val;
     if (isTransmitting) drawMeter();
-    // Smooth proportional ALC control for FT8/FT4 — keeps power stable
-    if ((digiTxActive || digiTuneActive) && isTransmitting) {
+    // Smooth proportional ALC control — keeps power stable
+    var alcActive = (digiTxActive || digiTuneActive || (freedvEnabled && micEnabled)) && isTransmitting;
+    if (alcActive) {
         ALC_SMOOTHED = ALC_SMOOTHED * (1 - ALC_EMA_ALPHA) + alcVal * ALC_EMA_ALPHA;
         var error = ALC_SMOOTHED - ALC_TARGET;
-        if (error > ALC_DEAD_ZONE) {
-            // Over target: reduce gain proportionally to overshoot
-            digiTxGain = Math.max(ALC_MIN_GAIN, digiTxGain * (1 - ALC_GAIN_DOWN * error));
-        } else if (error < -ALC_DEAD_ZONE && digiTxGain < 0.5) {
-            // Under target: increase gain very slowly (cap at 0.5 — never need more)
-            digiTxGain = Math.min(0.5, digiTxGain * (1 + ALC_GAIN_UP));
+        if (digiTxActive || digiTuneActive) {
+            if (error > ALC_DEAD_ZONE)
+                digiTxGain = Math.max(ALC_MIN_GAIN, digiTxGain * (1 - ALC_GAIN_DOWN * error));
+            else if (error < -ALC_DEAD_ZONE && digiTxGain < 0.5)
+                digiTxGain = Math.min(0.5, digiTxGain * (1 + ALC_GAIN_UP));
+        }
+        if (freedvEnabled && micEnabled) {
+            var prevGain = freedvTxGain;
+            if (error > ALC_DEAD_ZONE)
+                freedvTxGain = Math.max(ALC_MIN_GAIN, freedvTxGain * (1 - ALC_GAIN_DOWN * error));
+            else if (error < -ALC_DEAD_ZONE && freedvTxGain < 0.5)
+                freedvTxGain = Math.min(0.5, freedvTxGain * (1 + ALC_GAIN_UP));
+            if (Math.abs(freedvTxGain - prevGain) > 0.001)
+                send({ cmd: 'setFreeDVTxGain', value: freedvTxGain });
         }
     }
 }
@@ -3908,8 +3991,8 @@ function drawTxMeters(ctx, cw, ch, barX, barW, segW, segGap, segX, labelW) {
         segW: segW, segGap: segGap, segX: segX
     });
 
-    // ALC indicator — visible during DIGI TX
-    if (digiTxActive || digiTuneActive) {
+    // ALC indicator — visible during DIGI TX or FreeDV TX
+    if (digiTxActive || digiTuneActive || (freedvEnabled && micEnabled && isTransmitting)) {
         var alcPct = Math.round(alcVal * 100);
         var alcColor = alcVal > 0.05 ? '#ff4444' : '#44cc44';
         var alcText = 'ALC ' + alcPct + '%';
@@ -4092,6 +4175,14 @@ function renderModeOverlay() {
     ft8Btn.textContent = 'FT8';
     ft8Btn.onclick = function() { setPanel('default'); toggleDigiBar(); };
     grid.appendChild(ft8Btn);
+    // FreeDV — overlay mode (works on top of LSB/USB/AM/FM)
+    if (freedvModes.length > 0) {
+        var fdvBtn = document.createElement('button');
+        fdvBtn.className = 'ov-btn' + (freedvEnabled ? ' active' : '');
+        fdvBtn.innerHTML = '<span class="btn-label">FreeDV</span><span class="btn-state">' + (freedvEnabled ? freedvModeName : 'OFF') + '</span>';
+        fdvBtn.onclick = function() { toggleFreeDV(); renderModeOverlay(); };
+        grid.appendChild(fdvBtn);
+    }
     // Back button
     var back = document.createElement('button');
     back.className = 'ov-btn back-btn';
@@ -4191,6 +4282,13 @@ function renderFuncOverlay() {
     // Memory browser
     grid.appendChild(makeFuncBtn('MEM', '', false, function() {
         openMemoryBrowser();
+    }));
+
+    // Monitor (TX sidetone)
+    grid.appendChild(makeFuncBtn('MON', monitorEnabled ? toPercent(monitorLevel, 255) : 'OFF', monitorEnabled, function() {
+        monitorEnabled = !monitorEnabled;
+        send({ cmd: 'setMonitor', value: monitorEnabled });
+        renderFuncOverlay();
     }));
 
     // Fill remaining slots + back
@@ -4670,6 +4768,98 @@ function updatePowerState(on) {
         }
     }
 }
+// ============================================================
+// FreeDV
+// ============================================================
+function toggleFreeDV() {
+    if (freedvModes.length === 0) return;
+    if (freedvEnabled) {
+        send({ cmd: 'setFreeDV', enabled: false });
+    } else {
+        freedvModeName = freedvModes[0];
+        freedvTxGain = 0.25;
+        ALC_SMOOTHED = 0;
+        send({ cmd: 'setFreeDV', enabled: true, mode: freedvModeName });
+        send({ cmd: 'setFreeDVTxGain', value: freedvTxGain });
+    }
+}
+
+function cycleFreeDVMode() {
+    if (!freedvEnabled) return;
+    var idx = freedvModes.indexOf(freedvModeName);
+    freedvModeName = freedvModes[(idx + 1) % freedvModes.length];
+    freedvTxGain = 0.25;
+    ALC_SMOOTHED = 0;
+    send({ cmd: 'setFreeDV', enabled: true, mode: freedvModeName });
+    send({ cmd: 'setFreeDVTxGain', value: freedvTxGain });
+}
+
+function updateFreeDVStatus(msg) {
+    if (msg.enabled !== undefined) freedvEnabled = msg.enabled;
+    if (msg.freedv !== undefined) freedvEnabled = msg.freedv;
+    if (msg.freedvMode !== undefined && msg.freedvMode) freedvModeName = msg.freedvMode;
+    if (msg.freedvSync !== undefined) freedvSync = msg.freedvSync;
+    if (msg.freedvSNR !== undefined) freedvSNR = msg.freedvSNR;
+    if (msg.freedvFreqOffset !== undefined) freedvFreqOffset = msg.freedvFreqOffset;
+    // Also handle direct freedvStatus messages (which use short field names)
+    if (msg.type === 'freedvStatus') {
+        if (msg.mode !== undefined && msg.mode) freedvModeName = msg.mode;
+        if (msg.sync !== undefined) freedvSync = msg.sync;
+        if (msg.snr !== undefined) freedvSNR = msg.snr;
+    }
+
+    // Update the FreeDV indicator on the spectrum area
+    var indicator = document.getElementById('freedvIndicator');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'freedvIndicator';
+        indicator.className = 'spectrum-warning';
+        indicator.style.cssText = 'right:8px; left:auto; top:8px; bottom:auto; font-size:11px; padding:2px 8px; user-select:none; display:flex; align-items:center; gap:6px; white-space:nowrap;';
+        var specArea = document.getElementById('scopeArea');
+        if (specArea) specArea.appendChild(indicator);
+    }
+
+    if (freedvEnabled) {
+        var syncColor = freedvSync ? '#00ff88' : '#ff4444';
+        var snrText = freedvSNR.toFixed(1);
+        var foHtml = '';
+        if (freedvModeName === 'RADE')
+            foHtml = '<span style="width:72px; display:inline-block; text-align:right;">FO ' + freedvFreqOffset.toFixed(1) + '</span>';
+        indicator.innerHTML = '<span id="freedvModeLink" style="cursor:pointer; text-decoration:underline; min-width:72px; display:inline-block;">FreeDV ' + freedvModeName + '</span>'
+            + '<span style="color:' + syncColor + '; width:52px; display:inline-block; text-align:center;">' + (freedvSync ? 'SYNC' : 'NO SYNC') + '</span>'
+            + '<span style="width:62px; display:inline-block; text-align:right;">SNR ' + snrText + '</span>'
+            + foHtml
+            + '<span id="freedvMonBtn" style="cursor:pointer; padding:1px 5px; border:1px solid #666; border-radius:3px; font-size:10px;">MON</span>';
+        indicator.style.display = 'flex';
+        // Mode cycle on click
+        var modeLink = document.getElementById('freedvModeLink');
+        if (modeLink) modeLink.onclick = function(e) { e.stopPropagation(); cycleFreeDVMode(); };
+        // Monitor: bypass FreeDV decoding while pressed
+        var monBtn = document.getElementById('freedvMonBtn');
+        if (monBtn) {
+            monBtn.onmousedown = monBtn.ontouchstart = function(e) {
+                e.preventDefault(); e.stopPropagation();
+                send({ cmd: 'setFreeDVMonitor', value: true });
+                monBtn.style.background = '#0aa'; monBtn.style.color = '#000';
+            };
+            monBtn.onmouseup = monBtn.onmouseleave = monBtn.ontouchend = monBtn.ontouchcancel = function(e) {
+                e.stopPropagation();
+                send({ cmd: 'setFreeDVMonitor', value: false });
+                monBtn.style.background = ''; monBtn.style.color = '';
+            };
+        }
+    } else {
+        indicator.style.display = 'none';
+    }
+
+    // Update mode button and mode overlay to reflect FreeDV state
+    updateModeBtnLabel();
+    if (currentPanel === 'mode') renderModeOverlay();
+
+    // Re-render func overlay if visible
+    if (currentPanel === 'func') renderFuncOverlay();
+}
+
 function tuneUp() {
     if (currentFreq > 0) {
         var newFreq = currentFreq + tuneStep;
@@ -4838,7 +5028,6 @@ function startMic() {
             URL.revokeObjectURL(url);
             micWorkletNode = new AudioWorkletNode(micAudioCtx, 'wfweb-capture-processor');
             source.connect(micWorkletNode);
-            micWorkletNode.connect(micAudioCtx.destination);
             micWorkletNode.port.onmessage = function(e) {
                 // Suppress during DIGI TX (FT8 audio uses same type-0x03 channel)
                 if (!micEnabled || !ws || ws.readyState !== WebSocket.OPEN || digiTxActive) return;

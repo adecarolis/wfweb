@@ -2,7 +2,7 @@
 
 **Control your Icom radio from any browser — phone, tablet, or desktop.**
 
-wfweb turns your transceiver into a web-accessible station. Waterfall, audio, CW decoding, FT8/FT4 — all in the browser, no client software required.
+wfweb turns your transceiver into a web-accessible station. Waterfall, SSB, CW decoding, FT8/FT4, [FreeDV digital voice](https://youtu.be/AWdHcyiOOnY), and RADE — all in the browser, no client software required.
 
 ![FT8 digital mode panel](ft8.png)
 
@@ -89,8 +89,49 @@ Everything wfview does, wfweb does too — plus a built-in web interface:
 | Browser TX audio (mic to rig) | — | ✓ |
 | CW decoder (ggmorse / Goertzel) | — | ✓ |
 | FT8/FT4 DIGI panel (full QSO) | — | ✓ |
+| FreeDV digital voice (700D/700E) | — | ✓ |
+| RADE (Radio Autoencoder) | — | ✓ |
 | Mobile-responsive UI | — | ✓ |
 | Headless / no-display operation | — | ✓ |
+
+---
+
+## FreeDV and RADE digital voice
+
+wfweb is the first web-based transceiver interface with built-in [FreeDV](https://freedv.org/) support. Operate FreeDV digital voice modes directly from your browser — no additional software needed on the client side.
+
+All FreeDV processing happens **server-side**: the server encodes and decodes modem tones in real time, so browser clients send and receive normal speech audio while the radio transmits and receives FreeDV signals over SSB.
+
+### Supported modes
+
+| Mode | Type | Description |
+|------|------|-------------|
+| **700D** | Classic FreeDV | Proven HF digital voice, OFDM modem, works well on noisy channels |
+| **700E** | Classic FreeDV | Improved 700D variant with better performance on fast-fading channels |
+| **RADE** | Radio Autoencoder | Next-generation ML-based codec using neural network inference for high-quality low-bitrate voice over HF |
+
+### How it works
+
+```
+RX:  Radio (modem tones) → FreeDV/RADE decode → speech audio → browser
+TX:  Browser (speech) → FreeDV/RADE encode → modem tones → radio (SSB)
+```
+
+Select the FreeDV mode from the web UI, key up, and talk — wfweb handles the rest.
+
+### Platform support
+
+| Platform | FreeDV 700D/700E | RADE |
+|----------|:---:|:---:|
+| Linux x86_64 | ✓ | ✓ |
+| Linux ARM64 / Raspberry Pi | ✓ | ✓ |
+| macOS (Apple Silicon) | ✓ | ✓ |
+| Docker | ✓ | ✓ |
+| Windows x86_64 | ✓ | ✓ |
+
+### Performance
+
+RADE uses real-time neural network inference. Expect roughly **40% CPU usage** on a mid-range laptop (e.g. Intel i5-10310U @ 1.70 GHz). The classic FreeDV modes (700D/700E) are much lighter and run comfortably on a Raspberry Pi.
 
 ---
 
@@ -287,6 +328,7 @@ Please support the original project at **https://wfview.org** and **https://www.
 
 The FT8/FT4 DIGI panel is powered by [ft8ts](https://github.com/e04/ft8ts) by e04.
 The CW decoder uses [ggmorse](https://github.com/ggerganov/ggmorse) by Georgi Gerganov.
+FreeDV digital voice uses [codec2](https://github.com/drowe67/codec2) by David Rowe VK5DGR and contributors, and [radae_nopy](https://github.com/peterbmarks/radae_nopy) by Peter Marks VK5APM (a standalone C implementation of the RADE Radio Autoencoder).
 
 ---
 
@@ -294,7 +336,7 @@ The CW decoder uses [ggmorse](https://github.com/ggerganov/ggmorse) by Georgi Ge
 
 GNU General Public License v3.0 — see [LICENSE](LICENSE).
 
-All third-party components retain their original licenses (Qt5 under LGPLv3, QCustomPlot and ft8ts under GPLv3, Speex/libopus/libportaudio/librtaudio/Eigen under their respective licenses, ggmorse under MIT).
+All third-party components retain their original licenses — see [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES) for the full text of each.
 
 ---
 

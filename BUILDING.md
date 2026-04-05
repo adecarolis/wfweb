@@ -40,9 +40,11 @@ make -j$(nproc)
 
 ### Optional: browser WSPR RX
 
-WSPR TX builds as-is. Browser WSPR RX requires a generated decoder bundle, which is intentionally not committed to git.
+WSPR TX builds as-is. Browser WSPR RX requires a generated decoder bundle,
+which is intentionally not committed to git.
 
-Generate it before running `qmake` if you want `make install` and package builds to include it:
+Generate it before running `qmake` if you want `make install` and package
+builds to include it:
 
 ```bash
 sudo apt-get install -y emscripten
@@ -51,7 +53,9 @@ qmake wfweb.pro
 make -j$(nproc)
 ```
 
-If you run the uninstalled binary directly from the source tree, `wfweb` also finds the generated decoder at `resources/web-generated/wspr-decoder-wasm.js` automatically.
+If you run the uninstalled binary directly from the source tree, `wfweb` also
+finds the generated decoder at `resources/web-generated/wspr-decoder-wasm.js`
+automatically.
 
 ### Install
 
@@ -77,12 +81,28 @@ See `.github/workflows/build.yml` for the full packaging steps.
 |---|---|---|
 | Visual Studio 2022 Build Tools | 17.x | `C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools` |
 | Qt | 5.15.2 (msvc2019_64) | `C:\Qt\5.15.2\msvc2019_64` |
-| vcpkg packages | opus, portaudio, hidapi, openssl | `C:\vcpkg\installed\x64-windows` |
+| MSYS2 | latest | `C:\msys64` |
+| vcpkg packages | portaudio, eigen3, hidapi, openssl | `C:\vcpkg\installed\x64-windows` |
+
+MSYS2 is required to build two dependencies from source (RADE custom Opus and
+codec2). The build script installs the needed MSYS2 packages automatically.
 
 #### vcpkg packages
 
 ```
-vcpkg install opus:x64-windows portaudio:x64-windows hidapi:x64-windows openssl:x64-windows
+vcpkg install eigen3:x64-windows portaudio:x64-windows hidapi:x64-windows openssl:x64-windows
+```
+
+Note: `opus` is **not** installed via vcpkg. A custom Opus build with DRED/OSCE
+extensions is compiled from the `radae_nopy` submodule and statically linked for
+RADE support.
+
+#### Sibling repositories
+
+Clone `rtaudio` alongside `wfweb/`:
+
+```
+git clone --depth 1 https://github.com/thestk/rtaudio.git ..\rtaudio
 ```
 
 ### Build
@@ -103,12 +123,39 @@ tail -f build.log               # watch progress (in another terminal or after)
 
 All build output goes to `build.log`. The last line is `EXIT:0` (success) or `EXIT:1` (failure).
 
+### What `build.bat` does
+
+`build.bat` is self-contained and automates the full build pipeline:
+
+1. **RADE custom Opus** (if `radae_nopy` submodule is present):
+   - Runs `cmake` + `make` inside MSYS2 to fetch and build the custom Opus
+     source (with LPCNet/FARGAN) via CMake ExternalProject.
+   - Patches Opus and RADE headers for MSVC compatibility (`sed` in MSYS2).
+   - Builds the custom Opus as a static `.lib` using MSVC cmake.
+   - Skipped if `radae_nopy/build/opus_msvc_build/Release/opus.lib` already exists.
+
+2. **codec2 / FreeDV** (if `codec2.lib` not yet in vcpkg prefix):
+   - Clones [drowe67/codec2](https://github.com/drowe67/codec2) into `codec2/`.
+   - Builds `libcodec2.dll` using MSYS2 MinGW (codec2 requires GCC due to C99
+     features not supported by MSVC).
+   - Generates an MSVC import library (`codec2.lib`) from the DLL using
+     `gendef` + `lib.exe`.
+   - Installs the DLL, import lib, and headers into the vcpkg prefix.
+   - Skipped if `codec2.lib` already exists in the vcpkg prefix.
+
+3. **wfweb**: runs `qmake` + `nmake`, deploys Qt runtime via `windeployqt`,
+   copies vcpkg DLLs, rig files, and licenses into `wfweb-release\`.
+
+Both dependency builds are incremental — they only run on the first build or
+after cleaning.
+
 ### Output
 
 The self-contained deployment directory is `wfweb-release\`, containing:
-- `wfweb.exe` — the server binary
+- `wfweb.exe` — the server binary (with RADE statically linked)
 - Qt runtime DLLs and plugins (deployed via `windeployqt`)
-- vcpkg DLLs (portaudio, opus, hidapi, OpenSSL)
+- `libcodec2.dll` — FreeDV codec2 library
+- vcpkg DLLs (portaudio, hidapi, OpenSSL)
 - `rigs\` — rig definition files
 
 ### What "clean" removes
@@ -116,6 +163,19 @@ The self-contained deployment directory is `wfweb-release\`, containing:
 - `Makefile`, `Makefile.Debug`, `Makefile.Release`, `.qmake.stash`
 - `release/`, `debug/` (intermediate object files)
 - `wfweb-release/`, `wfweb-debug/` (output directories)
+
+Note: `build.bat clean` does **not** remove the RADE or codec2 build artifacts.
+To force a full rebuild of those, delete `radae_nopy\build\opus_msvc_build\` and/or
+remove `codec2.lib` from `C:\vcpkg\installed\x64-windows\lib\`.
+
+### Helper scripts
+
+These are called by `build.bat` and are not intended to be run manually:
+
+| Script | Purpose |
+|---|---|
+| `build-rade-opus.sh` | MSYS2: cmake build of RADE custom Opus + header patching |
+| `build-codec2.sh` | MSYS2 MinGW: build codec2 as a DLL, install headers |
 
 ## macOS
 
@@ -127,6 +187,14 @@ Install Qt 5 and the required libraries via Homebrew:
 brew install qt@5 portaudio opus openssl@3
 ```
 
+For optional FreeDV and RADE support:
+
+```bash
+brew install codec2 cmake autoconf automake libtool
+```
+
+`codec2` enables FreeDV modes (700D, 700E, 1600). `cmake`/`autoconf`/`automake`/`libtool` are needed to build the RADE submodule (see below).
+
 The build also requires these source trees cloned as sibling directories next to `wfweb/`:
 
 | Directory | Repository / Source |
@@ -137,6 +205,23 @@ The build also requires these source trees cloned as sibling directories next to
 
 (`../r8brain-free-src` is referenced as an include path but no sources are compiled from it — an empty directory is sufficient.)
 
+### Build RADE (optional)
+
+RADE support requires building the `radae_nopy` submodule. This compiles a
+custom Opus (with LPCNet/FARGAN) and the RADE sources, which are then statically
+linked into the binary.
+
+```bash
+git submodule update --init radae_nopy
+cd radae_nopy
+mkdir -p build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make -j$(sysctl -n hw.ncpu)
+cd ../..
+```
+
+If the submodule is not built, wfweb still compiles — just without the RADE mode.
+
 ### Build
 
 Homebrew's Qt 5 is keg-only, so use its full path for `qmake`:
@@ -146,7 +231,13 @@ Homebrew's Qt 5 is keg-only, so use its full path for `qmake`:
 make -j$(sysctl -n hw.ncpu)
 ```
 
-Optional browser WSPR RX also needs a generated decoder bundle:
+qmake auto-detects both `codec2` (via `pkg-config`) and RADE (via the built
+submodule) and prints which features are enabled.
+
+### Optional: browser WSPR RX
+
+Generate the decoder bundle before running `qmake` if you want browser WSPR RX
+available in an installed/package build:
 
 ```bash
 brew install emscripten
@@ -155,7 +246,9 @@ bash resources/build-wspr-decoder-wasm.sh
 make -j$(sysctl -n hw.ncpu)
 ```
 
-If you run the uninstalled binary directly from the source tree, `wfweb` also finds the generated decoder at `resources/web-generated/wspr-decoder-wasm.js` automatically.
+If you run the uninstalled binary directly from the source tree, `wfweb` also
+finds the generated decoder at `resources/web-generated/wspr-decoder-wasm.js`
+automatically.
 
 This produces the `wfweb` binary in the project root.
 
