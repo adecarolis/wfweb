@@ -235,34 +235,6 @@ function isPskReporterGridLike(value) {
     return /^[A-R]{2}[0-9]{2}([A-X]{2})?$/.test(String(value || '').trim().toUpperCase());
 }
 
-function parsePskReporterSpot(message) {
-    var text = String(message || '').trim().toUpperCase();
-    if (!text || text.indexOf('?') >= 0 || /[<>]/.test(text)) return null;
-    var parts = text.split(/\s+/).filter(Boolean);
-    if (parts.length < 3) return null;
-
-    var locator = parts[parts.length - 1];
-    if (!isPskReporterGridLike(locator)) return null;
-
-    var senderCall = '';
-    if (parts[0] === 'CQ') {
-        for (var i = parts.length - 2; i >= 1; i--) {
-            if (isPskReporterCallLike(parts[i]) && !isPskReporterGridLike(parts[i])) {
-                senderCall = parts[i];
-                break;
-            }
-        }
-    } else if (parts.length === 3 && isPskReporterCallLike(parts[0]) && isPskReporterCallLike(parts[1])) {
-        senderCall = parts[0];
-    } else if (parts.length === 4 && parts[2] === 'R' &&
-               isPskReporterCallLike(parts[0]) && isPskReporterCallLike(parts[1])) {
-        senderCall = parts[0];
-    }
-
-    if (!senderCall) return null;
-    return { call: senderCall, grid: locator };
-}
-
 function sanitizePskReporterBatch(batch) {
     if (!batch || typeof batch !== 'object') return null;
     var reporter = batch.reporter || {};
@@ -283,7 +255,7 @@ function sanitizePskReporterBatch(batch) {
             var flowStartSeconds = parseInt(raw.flowStartSeconds, 10);
             if (!isPskReporterCallLike(call) || !isPskReporterGridLike(grid) ||
                 !isFinite(freqHz) || freqHz <= 0 ||
-                (mode !== 'FT8' && mode !== 'FT4' && mode !== 'WSPR') ||
+                mode !== 'WSPR' ||
                 !isFinite(snr) ||
                 !isFinite(flowStartSeconds) || flowStartSeconds <= 0) {
                 continue;
@@ -371,7 +343,15 @@ function updatePskReporterButton() {
     btn.textContent = digiPskReporterEnabled ? 'PSKR ON' : 'PSKR OFF';
     btn.classList.toggle('active', digiPskReporterEnabled);
     var latest = digiPskReporterLatestReport;
-    btn.title = latest && latest.detail ? latest.detail : 'Upload FT8/FT4/WSPR decodes to PSK Reporter';
+    btn.title = latest && latest.detail ? latest.detail : 'Upload WSPR decodes to PSK Reporter';
+}
+
+function isPskReporterModeActive() {
+    return digiPskReporterEnabled && isWsprMode();
+}
+
+function shouldRunPskReporterTransport() {
+    return digiPskReporterEnabled && (isWsprMode() || digiPskReporterInFlight || digiPskReporterQueue.length > 0);
 }
 
 function updatePskReporterStatusUi() {
@@ -381,8 +361,8 @@ function updatePskReporterStatusUi() {
 }
 
 function refreshPskReporterStatus() {
-    if (!digiPskReporterEnabled || !window.fetch) {
-        digiPskReporterStatusText = 'PSKR OFF';
+    if (!shouldRunPskReporterTransport() || !window.fetch) {
+        digiPskReporterStatusText = digiPskReporterEnabled ? 'PSKR WSPR' : 'PSKR OFF';
         updatePskReporterStatusUi();
         return;
     }
@@ -401,7 +381,7 @@ function refreshPskReporterStatus() {
 }
 
 function flushPskReporterQueue() {
-    if (!digiPskReporterEnabled || !window.fetch) return;
+    if (!shouldRunPskReporterTransport() || !window.fetch) return;
     if (digiPskReporterInFlight || !digiPskReporterQueue.length) return;
     var batch = sanitizePskReporterBatch(digiPskReporterQueue[0]);
     if (!batch || !batch.spots.length) {
@@ -458,54 +438,14 @@ function queuePskReporterBatch(batch) {
 function setPskReporterEnabled(enabled) {
     digiPskReporterEnabled = !!enabled;
     try { localStorage.setItem(PSK_REPORTER_ENABLED_KEY, digiPskReporterEnabled ? '1' : '0'); } catch (e) {}
-    digiPskReporterStatusText = digiPskReporterEnabled ? 'PSKR READY' : 'PSKR OFF';
+    digiPskReporterStatusText = digiPskReporterEnabled
+        ? (isWsprMode() ? 'PSKR READY' : 'PSKR WSPR')
+        : 'PSKR OFF';
     updatePskReporterStatusUi();
-    if (digiPskReporterEnabled) {
+    if (isPskReporterModeActive()) {
         refreshPskReporterStatus();
         flushPskReporterQueue();
     }
-}
-
-function buildPskReporterBatch(results, decodedSlotIndex) {
-    if (!digiPskReporterEnabled) return null;
-    var reporterCall = getMyCall();
-    var reporterGrid = getMyGridFull();
-    if (!isPskReporterCallLike(reporterCall) || !isPskReporterGridLike(reporterGrid)) return null;
-    var dialFrequencyHz = currentFreq || 0;
-    if (!dialFrequencyHz) return null;
-    var slotMs = digiMode === 'FT4' ? 7500 : 15000;
-    var slotStartMs = decodedSlotIndex >= 0 ? decodedSlotIndex * slotMs : Date.now();
-    var seen = {};
-    var spots = [];
-    for (var i = 0; i < results.length; i++) {
-        var parsed = parsePskReporterSpot(results[i].msg);
-        if (!parsed || parsed.call === reporterCall) continue;
-        var audioFreq = Math.round(Number(results[i].freq) || 0);
-        if (!isFinite(audioFreq) || audioFreq < 0) continue;
-        var freqHz = dialFrequencyHz + audioFreq;
-        var dedupeKey = [parsed.call, parsed.grid, digiMode, Math.round(freqHz / 1000)].join(':');
-        if (seen[dedupeKey]) continue;
-        seen[dedupeKey] = true;
-        spots.push({
-            call: parsed.call,
-            grid: parsed.grid,
-            mode: digiMode,
-            freqHz: freqHz,
-            snr: Math.round(results[i].snr),
-            flowStartSeconds: Math.floor(slotStartMs / 1000)
-        });
-    }
-    if (!spots.length) return null;
-    return {
-        batchId: ['psk', digiMode, decodedSlotIndex, dialFrequencyHz].join(':'),
-        slotStartMs: slotStartMs,
-        reporter: {
-            call: reporterCall,
-            grid: reporterGrid,
-            software: 'wfweb/' + (serverVersion || 'dev')
-        },
-        spots: spots
-    };
 }
 
 function buildWsprPskReporterBatch(slotIndex, slotStartMs, reporter, spots) {

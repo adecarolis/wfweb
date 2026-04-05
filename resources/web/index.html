@@ -5953,8 +5953,18 @@ function updateDigiModeUi() {
     var cqBtn = document.getElementById('digiCallCqBtn');
     if (cqBtn) cqBtn.textContent = isWsprMode() ? 'BEACON NEXT' : 'CALL CQ';
 
+    var pskReporterBtn = document.getElementById('digiPskReporterBtn');
+    if (pskReporterBtn) pskReporterBtn.style.display = isWsprMode() ? '' : 'none';
+
+    var pskReporterStatus = document.getElementById('digiPskReporterStatus');
+    if (pskReporterStatus) pskReporterStatus.style.display = isWsprMode() ? '' : 'none';
+
     updateDigiRxToggle();
-    updatePskReporterStatusUi();
+    if (digiPskReporterEnabled &&
+        (isWsprMode() || digiPskReporterQueue.length || digiPskReporterInFlight)) {
+        refreshPskReporterStatus();
+    }
+    else updatePskReporterStatusUi();
     updateDigiMsgRows();
     updateWsprInfo(getDigiSlotInfo());
     renderWsprSpots();
@@ -6604,14 +6614,6 @@ function onFt8DecodeResult(results, decodedSlotIndex) {
     renderDigiDecodes();
     updateDigiStatus('IDLE', '');
     if (results.length > 0) handleDigiAutoQso(results, decodedSlotIndex);
-    if ((digiMode === 'FT8' || digiMode === 'FT4') && digiPskReporterEnabled) {
-        var pskBatch = buildPskReporterBatch(results, decodedSlotIndex);
-        if (pskBatch) queuePskReporterBatch(pskBatch);
-        else {
-            digiPskReporterStatusText = digiPskReporterEnabled ? 'PSKR READY' : 'PSKR OFF';
-            updatePskReporterStatusUi();
-        }
-    }
 
     // Apply any deferred re-arm now that QSO state has been updated by the decode results.
     // If handleDigiAutoQso aborted (IDLE) or advanced state and armed already, skip.
@@ -8411,11 +8413,16 @@ function initDigiHandlers() {
         flushWsprUploadQueue();
     }
     if (digiPskReporterEnabled) {
-        refreshPskReporterStatus();
-        flushPskReporterQueue();
+        if (isWsprMode() || digiPskReporterQueue.length || digiPskReporterInFlight) {
+            refreshPskReporterStatus();
+            flushPskReporterQueue();
+        } else {
+            updatePskReporterStatusUi();
+        }
     }
     setInterval(function() {
         if (!digiPskReporterEnabled) return;
+        if (!isWsprMode() && !digiPskReporterQueue.length && !digiPskReporterInFlight) return;
         refreshPskReporterStatus();
     }, 30000);
 

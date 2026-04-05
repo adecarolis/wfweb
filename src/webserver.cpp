@@ -1184,6 +1184,12 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
 
         const QString batchId = obj.value(QStringLiteral("batchId")).toString().trimmed();
         const QJsonArray spots = obj.value(QStringLiteral("spots")).toArray();
+        if (spots.isEmpty()) {
+            QJsonObject e;
+            e["error"] = "Missing spots";
+            sendRestResponse(socket, 400, e);
+            return;
+        }
 
         for (const QJsonValue &spotValue : spots) {
             const QJsonObject spot = spotValue.toObject();
@@ -1206,9 +1212,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
                 noteReject(QStringLiteral("freq"));
                 continue;
             }
-            if (mode != QStringLiteral("FT8") &&
-                mode != QStringLiteral("FT4") &&
-                mode != QStringLiteral("WSPR")) {
+            if (mode != QStringLiteral("WSPR")) {
                 noteReject(QStringLiteral("mode"));
                 continue;
             }
@@ -1277,7 +1281,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
         }
         if (!event.isEmpty()) {
             event[QStringLiteral("batchId")] = batchId;
-            event[QStringLiteral("mode")] = spots.isEmpty() ? QStringLiteral("FT8") : spots.first().toObject().value(QStringLiteral("mode")).toString().trimmed().toUpper();
+            event[QStringLiteral("mode")] = spots.isEmpty() ? QStringLiteral("WSPR") : spots.first().toObject().value(QStringLiteral("mode")).toString().trimmed().toUpper();
             recordPskReporterEvent(event);
         }
 
