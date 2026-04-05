@@ -2,7 +2,9 @@
 #include "logcategories.h"
 
 #include <QStandardPaths>
+#include <QCoreApplication>
 #include <QDir>
+#include <QFileInfo>
 #include <QProcess>
 #include <QSslConfiguration>
 #include <QTimer>
@@ -219,6 +221,30 @@ QString wsprNetResponseKind(const QString &responseText, bool transportError, bo
                                responseText.contains(QStringLiteral("<!doctype"), Qt::CaseInsensitive);
     if (looksLikeHtml) return accepted ? QStringLiteral("html_ok") : QStringLiteral("html_error");
     return accepted ? QStringLiteral("text_ok") : QStringLiteral("text_error");
+}
+
+QString generatedWebAssetPath(const QString &path)
+{
+    const QString normalized = path.startsWith('/') ? path.mid(1) : path;
+    if (normalized != QStringLiteral("wspr-decoder-wasm.js")) return QString();
+
+    const QString envRoot = qEnvironmentVariable("WFWEB_GENERATED_WEB_DIR");
+    const QString appDir = QCoreApplication::applicationDirPath();
+    QStringList roots;
+    if (!envRoot.isEmpty()) roots.append(envRoot);
+    roots << QDir(appDir).filePath(QStringLiteral("web-generated"))
+          << QDir(appDir).filePath(QStringLiteral("resources/web-generated"))
+          << QDir(appDir).filePath(QStringLiteral("../resources/web-generated"))
+          << QDir(appDir).filePath(QStringLiteral("../Resources/web-generated"))
+          << QDir(appDir).filePath(QStringLiteral("../share/wfview/web-generated"))
+          << QStringLiteral(PREFIX "/share/wfview/web-generated");
+
+    for (const QString &root : roots) {
+        const QString candidate = QDir(root).filePath(normalized);
+        if (QFileInfo::exists(candidate)) return candidate;
+    }
+
+    return QString();
 }
 }
 
@@ -727,6 +753,11 @@ void webServer::serveStaticFile(QTcpSocket *socket, const QString &path)
     // Serve from Qt resource system
     QString resourcePath = ":/web" + path;
     QFile file(resourcePath);
+
+    if (!file.exists()) {
+        const QString generatedPath = generatedWebAssetPath(path);
+        if (!generatedPath.isEmpty()) file.setFileName(generatedPath);
+    }
 
     if (!file.exists() || !file.open(QIODevice::ReadOnly)) {
         sendHttpResponse(socket, 404, "Not Found", "text/plain", "Not Found");

@@ -186,6 +186,28 @@ docker build -f docker/Dockerfile -t wfweb .
 docker run --rm -it --device /dev/ttyUSB0 -p 8080:8080 -p 8081:8081 wfweb
 ```
 
+### Optional: browser WSPR RX decoder
+
+Browser-side WSPR TX works from source as-is. WSPR RX needs a locally generated decoder bundle, which is intentionally not committed to git.
+
+Generate it before running `qmake` if you want `make install` and package builds to include WSPR RX:
+
+```bash
+bash resources/build-wspr-decoder-wasm.sh
+```
+
+That creates `resources/web-generated/wspr-decoder-wasm.js`. When present at qmake time, `make install` also installs it to:
+
+```text
+$PREFIX/share/wfview/web-generated/wspr-decoder-wasm.js
+```
+
+If the generated file is absent, `wfweb` still builds and runs, but browser-side WSPR RX decode will be unavailable until you generate and install the decoder. For uninstalled local runs, you can also point `wfweb` at the generated bundle directly:
+
+```bash
+WFWEB_GENERATED_WEB_DIR="$PWD/resources/web-generated" ./wfweb
+```
+
 ---
 
 ## Configuration file

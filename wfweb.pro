@@ -162,6 +162,12 @@ win32:DEFINES += UNAME=\\\"build\\\"
 
 RESOURCES += resources/web.qrc
 
+exists(resources/web-generated/wspr-decoder-wasm.js) {
+    unix:wsprdecoder.files = resources/web-generated/wspr-decoder-wasm.js
+    unix:wsprdecoder.path = $$PREFIX/share/wfview/web-generated
+    INSTALLS += wsprdecoder
+}
+
 unix:target.path = $$PREFIX/bin
 INSTALLS += target
 

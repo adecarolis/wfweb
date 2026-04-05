@@ -7,6 +7,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential git \
+    emscripten \
     qt5-qmake qtbase5-dev libqt5serialport5-dev \
     qtmultimedia5-dev libqt5websockets5-dev \
     libqt5gamepad5-dev libqt5printsupport5 \
@@ -20,6 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /src
 COPY . .
 
+RUN bash resources/build-wspr-decoder-wasm.sh
 RUN qmake wfweb.pro && make -j$(nproc)
 RUN make install INSTALL_ROOT=/install
 

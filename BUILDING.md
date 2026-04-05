@@ -38,6 +38,21 @@ qmake wfweb.pro
 make -j$(nproc)
 ```
 
+### Optional: browser WSPR RX
+
+WSPR TX builds as-is. Browser WSPR RX requires a generated decoder bundle, which is intentionally not committed to git.
+
+Generate it before running `qmake` if you want `make install` and package builds to include it:
+
+```bash
+sudo apt-get install -y emscripten
+bash resources/build-wspr-decoder-wasm.sh
+qmake wfweb.pro
+make -j$(nproc)
+```
+
+If you run the uninstalled binary directly from the source tree, `wfweb` also finds the generated decoder at `resources/web-generated/wspr-decoder-wasm.js` automatically.
+
 ### Install
 
 ```bash
@@ -130,6 +145,17 @@ Homebrew's Qt 5 is keg-only, so use its full path for `qmake`:
 /opt/homebrew/opt/qt@5/bin/qmake wfweb.pro
 make -j$(sysctl -n hw.ncpu)
 ```
+
+Optional browser WSPR RX also needs a generated decoder bundle:
+
+```bash
+brew install emscripten
+bash resources/build-wspr-decoder-wasm.sh
+/opt/homebrew/opt/qt@5/bin/qmake wfweb.pro
+make -j$(sysctl -n hw.ncpu)
+```
+
+If you run the uninstalled binary directly from the source tree, `wfweb` also finds the generated decoder at `resources/web-generated/wspr-decoder-wasm.js` automatically.
 
 This produces the `wfweb` binary in the project root.
 

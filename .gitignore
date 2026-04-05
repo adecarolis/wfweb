@@ -25,3 +25,4 @@ wfweb
 CLAUDE.md
 *.ini
 .DS_Store
+resources/web-generated/wspr-decoder-wasm.js

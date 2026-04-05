@@ -9,6 +9,31 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  build-wspr-decoder:
+    name: Build WSPR decoder asset
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: Install Emscripten
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y emscripten
+
+      - name: Build decoder bundle
+        run: bash resources/build-wspr-decoder-wasm.sh
+
+      - name: Upload decoder artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: wspr-decoder-wasm
+          path: resources/web-generated/wspr-decoder-wasm.js
+          retention-days: 30
+
   build-linux-ubuntu2404:
     strategy:
       fail-fast: false
@@ -23,6 +48,7 @@ jobs:
 
     name: Ubuntu 24.04 (${{ matrix.deb_arch }})
     runs-on: ${{ matrix.os }}
+    needs: build-wspr-decoder
 
     steps:
       - name: Checkout
@@ -40,6 +66,12 @@ jobs:
             portaudio19-dev librtaudio-dev \
             libhidapi-dev libudev-dev libpulse-dev \
             openssl dpkg-dev
+
+      - name: Download decoder artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: wspr-decoder-wasm
+          path: resources/web-generated
 
       - name: Build
         run: |
@@ -116,6 +148,7 @@ jobs:
     name: Debian 12 Bookworm (${{ matrix.deb_arch }})
     runs-on: ${{ matrix.os }}
     container: debian:bookworm
+    needs: build-wspr-decoder
 
     steps:
       - name: Install git
@@ -137,6 +170,12 @@ jobs:
             portaudio19-dev librtaudio-dev \
             libhidapi-dev libudev-dev libpulse-dev \
             openssl dpkg-dev
+
+      - name: Download decoder artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: wspr-decoder-wasm
+          path: resources/web-generated
 
       - name: Build
         run: |
@@ -212,6 +251,7 @@ jobs:
     name: Debian 13 Trixie (${{ matrix.deb_arch }})
     runs-on: ${{ matrix.os }}
     container: debian:trixie
+    needs: build-wspr-decoder
 
     steps:
       - name: Install git
@@ -233,6 +273,12 @@ jobs:
             portaudio19-dev librtaudio-dev \
             libhidapi-dev libudev-dev libpulse-dev \
             openssl dpkg-dev
+
+      - name: Download decoder artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: wspr-decoder-wasm
+          path: resources/web-generated
 
       - name: Build
         run: |
@@ -296,6 +342,7 @@ jobs:
   build-macos:
     name: macOS (Apple Silicon)
     runs-on: macos-14
+    needs: build-wspr-decoder
 
     steps:
       - name: Checkout
@@ -313,6 +360,12 @@ jobs:
           git clone --depth 1 https://github.com/xiph/opus.git ../opus
           mkdir -p ../r8brain-free-src
 
+      - name: Download decoder artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: wspr-decoder-wasm
+          path: resources/web-generated
+
       - name: Build
         run: |
           /opt/homebrew/opt/qt@5/bin/qmake wfweb.pro
@@ -323,6 +376,8 @@ jobs:
           mkdir -p wfweb-macos-arm64
           cp wfweb wfweb-macos-arm64/
           cp -r rigs wfweb-macos-arm64/
+          mkdir -p wfweb-macos-arm64/web-generated
+          cp resources/web-generated/wspr-decoder-wasm.js wfweb-macos-arm64/web-generated/
           zip -r wfweb-macos-arm64.zip wfweb-macos-arm64
 
       - name: Upload artifact
@@ -336,6 +391,7 @@ jobs:
     name: Windows x86_64
     runs-on: windows-latest
     continue-on-error: true
+    needs: build-wspr-decoder
 
     steps:
       - name: Checkout
@@ -356,6 +412,12 @@ jobs:
 
       - name: Clone rtaudio
         run: git clone --depth 1 https://github.com/thestk/rtaudio.git ..\rtaudio
+
+      - name: Download decoder artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: wspr-decoder-wasm
+          path: resources/web-generated
 
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
@@ -396,6 +458,10 @@ jobs:
           # Rig files
           New-Item -ItemType Directory -Force -Path "$out\rigs" | Out-Null
           Copy-Item "rigs\*.rig" "$out\rigs\" -Force
+
+          # Generated WSPR decoder asset
+          New-Item -ItemType Directory -Force -Path "$out\web-generated" | Out-Null
+          Copy-Item "resources\web-generated\wspr-decoder-wasm.js" "$out\web-generated\" -Force
 
       - name: Create ZIP
         shell: pwsh

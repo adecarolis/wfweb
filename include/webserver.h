@@ -20,10 +20,12 @@
 #include <QSslSocket>
 #include <QSslKey>
 #include <QSslCertificate>
+#include <QUdpSocket>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QCryptographicHash>
 #include <QHostAddress>
+#include <QHostInfo>
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 #include <QAudioDeviceInfo>

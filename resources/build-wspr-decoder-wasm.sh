@@ -5,6 +5,7 @@ if ! command -v emcc >/dev/null 2>&1; then
     EMSDK_DIR="${EMSDK:-$HOME/emsdk}"
     if [ ! -f "$EMSDK_DIR/emsdk_env.sh" ]; then
         echo "Error: emcc not found in PATH and emsdk not found at $EMSDK_DIR"
+        echo "Install with: sudo apt-get install emscripten"
         echo "Install with: git clone https://github.com/emscripten-core/emsdk.git ~/emsdk && cd ~/emsdk && ./emsdk install latest && ./emsdk activate latest"
         exit 1
     fi
@@ -13,6 +14,9 @@ if ! command -v emcc >/dev/null 2>&1; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+OUTPUT_PATH="${1:-$SCRIPT_DIR/web-generated/wspr-decoder-wasm.js}"
+
+mkdir -p "$(dirname "$OUTPUT_PATH")"
 
 echo "Building WSPR decoder WASM module..."
 
@@ -34,7 +38,7 @@ emcc \
     -s ALLOW_MEMORY_GROWTH=1 \
     -s EXPORTED_FUNCTIONS='["_wfweb_wspr_init","_wfweb_wspr_decode","_wfweb_wspr_clear_hashes","_wfweb_wspr_get_result_count","_wfweb_wspr_get_debug_search_low_hz","_wfweb_wspr_get_debug_search_high_hz","_wfweb_wspr_get_debug_sample_count","_wfweb_wspr_get_debug_decimated_point_count","_wfweb_wspr_get_debug_fft_count","_wfweb_wspr_get_debug_peak_candidate_count","_wfweb_wspr_get_debug_filtered_candidate_count","_wfweb_wspr_get_debug_refined_candidate_count","_wfweb_wspr_get_debug_decode_pass_count","_wfweb_wspr_get_error","_wfweb_wspr_get_result_freq_mhz","_wfweb_wspr_get_result_snr","_wfweb_wspr_get_result_dt","_wfweb_wspr_get_result_sync","_wfweb_wspr_get_result_drift","_wfweb_wspr_get_result_dbm","_wfweb_wspr_get_result_message","_wfweb_wspr_get_result_callsign","_wfweb_wspr_get_result_grid","_malloc","_free"]' \
     -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","UTF8ToString","HEAPF32"]' \
-    -o "$SCRIPT_DIR/web/wspr-decoder-wasm.js"
+    -o "$OUTPUT_PATH"
 
-echo "Built: $SCRIPT_DIR/web/wspr-decoder-wasm.js"
-echo "File size: $(du -sh "$SCRIPT_DIR/web/wspr-decoder-wasm.js" | cut -f1)"
+echo "Built: $OUTPUT_PATH"
+echo "File size: $(du -sh "$OUTPUT_PATH" | cut -f1)"

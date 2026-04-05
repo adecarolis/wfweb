@@ -119,6 +119,13 @@ if not exist "%OUTDIR%\rigs" mkdir "%OUTDIR%\rigs"
 copy /y "%SRCDIR%\rigs\*.rig" "%OUTDIR%\rigs\" >> %LOG% 2>&1
 echo Rig files deployed >> %LOG%
 
+:: --- Deploy generated WSPR decoder asset (optional) ---
+if exist "%SRCDIR%\resources\web-generated\wspr-decoder-wasm.js" (
+    echo === Deploying WSPR decoder asset === >> %LOG%
+    if not exist "%OUTDIR%\web-generated" mkdir "%OUTDIR%\web-generated"
+    copy /y "%SRCDIR%\resources\web-generated\wspr-decoder-wasm.js" "%OUTDIR%\web-generated\" >> %LOG% 2>&1
+)
+
 echo BUILD OK: wfweb-release\wfweb.exe >> %LOG%
 echo EXIT:0 >> %LOG%
 exit /b 0
