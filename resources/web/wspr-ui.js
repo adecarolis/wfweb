@@ -1212,13 +1212,22 @@ function getDefaultWsprHopBandLabel() {
 }
 
 function sanitizeWsprHopBands(labels) {
-    var selected = getDefaultWsprHopBandLabel();
-    return selected ? [selected] : [];
+    var out = [];
+    for (var i = 0; i < (labels || []).length; i++) {
+        var label = String(labels[i] || '').trim();
+        if (!getDigiBandByLabel(label)) continue;
+        if (out.indexOf(label) < 0) out.push(label);
+    }
+    return out;
 }
 
 function syncDigiBandSelector(label) {
     var bandSel = document.getElementById('digiBandSel');
     if (bandSel && getDigiBandByLabel(label)) bandSel.value = label;
+}
+
+function persistWsprHopIndex() {
+    try { localStorage.setItem(WSPR_HOP_INDEX_STORAGE_KEY, String(digiWsprHopIndex)); } catch (e) {}
 }
 
 function hasWsprBandSelection() {
@@ -1259,14 +1268,41 @@ function requestWsprRetune(band, mode) {
 }
 
 function setWsprHopBands(labels, keepIndex) {
-    digiWsprHopBands = sanitizeWsprHopBands(labels);
-    digiWsprHopIndex = 0;
+    var preferredLabel = digiWsprTargetBandLabel;
+    var currentLabels = sanitizeWsprHopBands(digiWsprHopBands);
+    if (!preferredLabel && currentLabels.length) {
+        var currentIndex = digiWsprHopIndex;
+        if (currentIndex < 0 || currentIndex >= currentLabels.length) currentIndex = 0;
+        preferredLabel = currentLabels[currentIndex];
+    }
+    var sanitized = sanitizeWsprHopBands(labels);
+    if (!sanitized.length) {
+        var fallback = getDefaultWsprHopBandLabel();
+        if (fallback) sanitized = [fallback];
+    }
+    digiWsprHopBands = sanitized;
+    if (keepIndex) {
+        var preferredIndex = preferredLabel ? digiWsprHopBands.indexOf(preferredLabel) : -1;
+        if (preferredIndex >= 0) digiWsprHopIndex = preferredIndex;
+        else if (digiWsprHopIndex >= digiWsprHopBands.length) digiWsprHopIndex = 0;
+    } else {
+        digiWsprHopIndex = 0;
+    }
+    try { localStorage.setItem(WSPR_HOP_BANDS_STORAGE_KEY, JSON.stringify(digiWsprHopBands)); } catch (e) {}
+    persistWsprHopIndex();
+    renderWsprHopButtons();
 }
 
 function ensureWsprHopSelection() {
     var sanitized = sanitizeWsprHopBands(digiWsprHopBands);
-    digiWsprHopBands = sanitized;
-    digiWsprHopIndex = 0;
+    if (!sanitized.length) {
+        var fallback = getDefaultWsprHopBandLabel();
+        if (fallback) sanitized = [fallback];
+        digiWsprHopBands = sanitized;
+        if (digiWsprHopIndex >= sanitized.length) digiWsprHopIndex = 0;
+        try { localStorage.setItem(WSPR_HOP_BANDS_STORAGE_KEY, JSON.stringify(digiWsprHopBands)); } catch (e) {}
+        persistWsprHopIndex();
+    }
     return digiWsprHopBands.slice();
 }
 
@@ -1280,9 +1316,28 @@ function getWsprHopSelection() {
     return bands;
 }
 
+function renderWsprHopButtons() {
+    var host = document.getElementById('digiWsprBandList');
+    if (!host) return;
+    var activeLabels = ensureWsprHopSelection();
+    host.innerHTML = '';
+    for (var i = 0; i < DIGI_BANDS.length; i++) {
+        var band = DIGI_BANDS[i];
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'digi-wspr-band-btn' + (activeLabels.indexOf(band.label) >= 0 ? ' active' : '');
+        btn.textContent = band.label;
+        btn.dataset.band = band.label;
+        host.appendChild(btn);
+    }
+}
+
 function chooseWsprTargetBand() {
     var bands = getWsprHopSelection();
-    return { band: bands.length ? bands[0] : null, index: bands.length ? 0 : -1 };
+    if (!bands.length) return { band: null, index: -1 };
+    var index = digiWsprHopIndex;
+    if (index < 0 || index >= bands.length) index = 0;
+    return { band: bands[index], index: index };
 }
 
 function prepareWsprTargetBand() {
@@ -1315,12 +1370,43 @@ function clearWsprTargetBand() {
 }
 
 function commitWsprTargetBandProgression() {
-    digiWsprHopIndex = 0;
+    var bands = getWsprHopSelection();
+    if (bands.length > 1 && digiWsprPendingHopIndex >= 0) {
+        digiWsprHopIndex = (digiWsprPendingHopIndex + 1) % bands.length;
+    } else {
+        digiWsprHopIndex = 0;
+    }
     digiWsprPendingHopIndex = -1;
+    persistWsprHopIndex();
 }
 
 function advanceWsprStandbyHop(nextSlotInfo, completedSlotIndex, completedEligible) {
-    return false;
+    if (!isWsprMode()) return false;
+    if (!completedEligible || completedSlotIndex < 0) return false;
+    if (!(digiWsprLastFillRatio >= WSPR_RX_MIN_FILL_RATIO)) return false;
+    if (digiTxActive) return false;
+
+    var bands = getWsprHopSelection();
+    if (bands.length <= 1) return false;
+
+    if (digiWsprManualEnable && digiTxArmed && digiWsprTargetSlotIndex >= 0) return false;
+    if (digiWsprTargetSlotIndex >= 0 && nextSlotInfo && ((digiWsprTargetSlotIndex - nextSlotInfo.slotIndex) <= 1)) {
+        return false;
+    }
+
+    var currentIndex = digiWsprHopIndex;
+    if (currentIndex < 0 || currentIndex >= bands.length) currentIndex = 0;
+    digiWsprHopIndex = (currentIndex + 1) % bands.length;
+    persistWsprHopIndex();
+
+    clearWsprTargetBand();
+    var nextChoice = chooseWsprTargetBand();
+    if (!nextChoice.band) return false;
+
+    digiWsprTargetBandLabel = nextChoice.band.label;
+    digiWsprPendingHopIndex = nextChoice.index;
+    requestWsprRetune(nextChoice.band, 'USB');
+    return true;
 }
 
 function getWsprArmLeadBudget(targetBand) {
@@ -1488,6 +1574,7 @@ function updateWsprInfo(info) {
     updateWsprHealthWarning();
     syncWsprPowerFromRig();
     ensureWsprHopSelection();
+    renderWsprHopButtons();
 
     if (msgEl) {
         try { msgEl.textContent = getWsprMessageText(); }

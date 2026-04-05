@@ -1326,6 +1326,52 @@ body.digi-open .digi-bar {
 .digi-wspr-alert.visible {
     display: block;
 }
+.digi-wspr-band-strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px 8px;
+    border-bottom: 1px solid #024;
+    background: #00050e;
+}
+.digi-wspr-band-strip-label {
+    flex: 0 0 auto;
+    color: #08f;
+    font-size: 10px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+.digi-wspr-band-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+.digi-wspr-band-btn {
+    min-width: 42px;
+    padding: 2px 7px;
+    background: #001020;
+    border: 1px solid #035;
+    color: #58a;
+    font-size: 10px;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    border-radius: 999px;
+    cursor: pointer;
+    text-transform: uppercase;
+}
+.digi-wspr-band-btn.active {
+    background: #01324a;
+    border-color: #08f;
+    color: #cff;
+}
+.digi-wspr-band-btn:hover {
+    background: #01263a;
+    border-color: #0af;
+    color: #dff;
+}
 .digi-wspr-body {
     flex: 1;
     min-height: 0;
@@ -1504,6 +1550,12 @@ body.digi-open .digi-bar {
     }
     .digi-wspr-summary-item {
         padding: 5px 6px;
+    }
+    .digi-wspr-band-strip {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 6px;
+        padding: 6px 8px 8px;
     }
     .digi-wspr-value {
         font-size: 11px;
@@ -2382,7 +2434,6 @@ body.digi-open .digi-bar {
             <div class="digi-header">
                 <span id="digiModeLabel" class="digi-label">FT8</span>
                 <button id="digiCqOnlyBtn" class="digi-toggle-btn digi-ft8-only">CQ ONLY</button>
-                <button id="digiPskReporterBtn" class="digi-toggle-btn">PSKR OFF</button>
                 <select id="digiBandSel" class="digi-band-sel"></select>
                 <div class="flex-space"></div>
                 <button id="digiRxToggle" class="digi-rx-toggle active">RX ON</button>
@@ -2468,6 +2519,10 @@ body.digi-open .digi-bar {
                         </div>
                     </div>
                     <div id="digiWsprAlert" class="digi-wspr-alert"></div>
+                    <div class="digi-wspr-band-strip">
+                        <span class="digi-wspr-band-strip-label">Hop Bands</span>
+                        <div id="digiWsprBandList" class="digi-wspr-band-list"></div>
+                    </div>
                     <div class="digi-wspr-body">
                         <div class="digi-wspr-main">
                             <div class="digi-col-header">Decoded Spots</div>
@@ -2476,6 +2531,7 @@ body.digi-open .digi-bar {
                         <div class="digi-wspr-side">
                             <div class="digi-wspr-actions">
                                 <button id="digiWsprBeaconBtn" class="digi-call-cq-btn">BEACON NEXT</button>
+                                <button id="digiPskReporterBtn" class="digi-action-btn">PSKR OFF</button>
                                 <button id="digiWsprUploadBtn" class="digi-action-btn">WSPRNET OFF</button>
                                 <button id="digiWsprClearBtn" class="digi-action-btn">Clear TX Queue</button>
                             </div>
@@ -2923,6 +2979,8 @@ var digiPskReporterRecentReports = [];
 const WSPR_SPOTS_STORAGE_KEY = 'digiWsprSpotsV1';
 const WSPR_UPLOAD_QUEUE_KEY = 'digiWsprUploadQueueV1';
 const WSPR_UPLOAD_ENABLED_KEY = 'digiWsprUploadEnabledV1';
+const WSPR_HOP_BANDS_STORAGE_KEY = 'digiWsprHopBandsV1';
+const WSPR_HOP_INDEX_STORAGE_KEY = 'digiWsprHopIndexV1';
 const PSK_REPORTER_ENABLED_KEY = 'digiPskReporterEnabledV1';
 const WSPR_UPLOAD_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 // Waterfall FFT
@@ -8039,7 +8097,16 @@ function initDigiHandlers() {
             for (var bi = 0; bi < DIGI_BANDS.length; bi++) {
                 if (DIGI_BANDS[bi].label === sel) {
                     var freq = getBandFreqForMode(DIGI_BANDS[bi]);
-                    if (isWsprMode() && !digiTxArmed && !digiTxActive) clearWsprTargetBand();
+                    if (isWsprMode()) {
+                        var hopPos = digiWsprHopBands.indexOf(sel);
+                        if (hopPos >= 0) {
+                            digiWsprHopIndex = hopPos;
+                            persistWsprHopIndex();
+                        } else if (digiWsprHopBands.length <= 1) {
+                            setWsprHopBands([sel], true);
+                        }
+                        if (!digiTxArmed && !digiTxActive) clearWsprTargetBand();
+                    }
                     send({ cmd: 'setFrequency', value: freq });
                     wfLabels = [];
                     updateWsprInfo(getDigiSlotInfo());
@@ -8053,6 +8120,8 @@ function initDigiHandlers() {
     var savedCall = localStorage.getItem('digiMyCall');
     var savedGrid = localStorage.getItem('digiGrid');
     var savedWsprTxPct = localStorage.getItem('digiWsprTxPct');
+    var savedWsprHopBands = localStorage.getItem(WSPR_HOP_BANDS_STORAGE_KEY);
+    var savedWsprHopIndex = localStorage.getItem(WSPR_HOP_INDEX_STORAGE_KEY);
     // Load shared QSO log (migrate from old 'digiQsoLog' key if needed)
     var savedLog = localStorage.getItem('qsoLog') || localStorage.getItem('digiQsoLog');
     var myCallEl = document.getElementById('digiMyCall');
@@ -8060,11 +8129,19 @@ function initDigiHandlers() {
     if (savedCall && myCallEl) myCallEl.value = savedCall;
     if (savedGrid && gridEl) gridEl.value = savedGrid;
     if (savedWsprTxPct != null) digiWsprTxPct = sanitizeWsprTxPct(savedWsprTxPct);
+    if (savedWsprHopBands) {
+        try { digiWsprHopBands = sanitizeWsprHopBands(JSON.parse(savedWsprHopBands)); } catch (e) {}
+    }
+    if (savedWsprHopIndex != null) {
+        var parsedHopIndex = parseInt(savedWsprHopIndex, 10);
+        if (!isNaN(parsedHopIndex) && parsedHopIndex >= 0) digiWsprHopIndex = parsedHopIndex;
+    }
     ensureWsprHopSelection();
     loadWsprPersistedState();
     syncWsprPowerFromRig();
     var wsprTxPctEl = document.getElementById('digiWsprTxPct');
     if (wsprTxPctEl) wsprTxPctEl.value = String(digiWsprTxPct);
+    renderWsprHopButtons();
     if (savedLog) {
         try {
             qsoLog = JSON.parse(savedLog);
@@ -8101,6 +8178,35 @@ function initDigiHandlers() {
         });
         wsprTxPctEl.addEventListener('input', function() {
             digiWsprTxPct = sanitizeWsprTxPct(this.value);
+        });
+    }
+
+    var wsprBandList = document.getElementById('digiWsprBandList');
+    if (wsprBandList) {
+        wsprBandList.addEventListener('click', function(e) {
+            var btn = e.target && e.target.closest ? e.target.closest('.digi-wspr-band-btn') : null;
+            if (!btn) return;
+            var label = btn.dataset.band;
+            var nextBands = digiWsprHopBands.slice();
+            var idx = nextBands.indexOf(label);
+            if (idx >= 0) {
+                if (nextBands.length === 1) return;
+                nextBands.splice(idx, 1);
+            } else {
+                nextBands.push(label);
+            }
+            setWsprHopBands(nextBands, true);
+            if (!digiTxArmed && !digiTxActive) {
+                clearWsprTargetBand();
+                if (isWsprMode() && digiWsprHopBands.length === 1) {
+                    var onlyBand = getDigiBandByLabel(digiWsprHopBands[0]);
+                    if (onlyBand) requestWsprRetune(onlyBand, 'USB');
+                }
+            } else if (digiWsprTargetBandLabel && digiWsprHopBands.indexOf(digiWsprTargetBandLabel) < 0) {
+                clearWsprTargetBand();
+                if (digiTxQueued) prepareWsprTargetBand();
+            }
+            updateWsprInfo(getDigiSlotInfo());
         });
     }
 
