@@ -1628,6 +1628,7 @@ function updateWsprInfo(info) {
     var lastDecodeEl = document.getElementById('digiWsprLastDecode');
     var spotCountEl = document.getElementById('digiWsprSpotCount');
     var uploadStatusEl = document.getElementById('digiWsprUploadStatus');
+    var pskrStatusEl = document.getElementById('digiWsprPskReporterStatus');
     var targetBandEl = document.getElementById('digiWsprTargetBandInfo');
     var nextEl = document.getElementById('digiWsprNextTx');
     var alertEl = document.getElementById('digiWsprAlert');
@@ -1659,6 +1660,10 @@ function updateWsprInfo(info) {
 
     if (uploadStatusEl) {
         uploadStatusEl.textContent = digiWsprUploadEnabled ? digiWsprUploadStatusText : 'LOCAL ONLY';
+    }
+
+    if (pskrStatusEl) {
+        pskrStatusEl.textContent = digiPskReporterStatusText;
     }
 
     if (targetBandEl) {
