@@ -103,6 +103,22 @@ function renderWsprSpots() {
     panel.innerHTML = html;
 }
 
+function clearWsprSpots() {
+    digiWsprSpots = [];
+    renderWsprSpots();
+    persistWsprSpots();
+    updateWsprInfo(getDigiSlotInfo());
+}
+
+function syncStationSettingsUi() {
+    var wsprCb = document.getElementById('digiSettingsWsprnetEnable');
+    if (wsprCb) wsprCb.checked = !!digiWsprUploadEnabled;
+    var pskrCb = document.getElementById('digiSettingsPskReporterEnable');
+    if (pskrCb) pskrCb.checked = !!digiPskReporterEnabled;
+    var reporterCb = document.getElementById('digiReporterEnable');
+    if (reporterCb) reporterCb.checked = !!reporterEnabled;
+}
+
 function sanitizeWsprUploadReport(raw) {
     if (!raw || typeof raw !== 'object') return null;
     var receivedUtcMs = parseInt(raw.receivedUtcMs, 10);
@@ -344,6 +360,7 @@ function updatePskReporterButton() {
     btn.classList.toggle('active', digiPskReporterEnabled);
     var latest = digiPskReporterLatestReport;
     btn.title = latest && latest.detail ? latest.detail : 'Upload WSPR decodes to PSK Reporter';
+    syncStationSettingsUi();
 }
 
 function isPskReporterModeActive() {
@@ -442,6 +459,7 @@ function setPskReporterEnabled(enabled) {
         ? (isWsprMode() ? 'PSKR READY' : 'PSKR WSPR')
         : 'PSKR OFF';
     updatePskReporterStatusUi();
+    syncStationSettingsUi();
     if (isPskReporterModeActive()) {
         refreshPskReporterStatus();
         flushPskReporterQueue();
@@ -516,7 +534,7 @@ function sanitizeWsprSpot(raw) {
     var dt = Number(raw.dt);
     if (!isFinite(dt)) dt = 0;
     var date = String(raw.date || (slotStartMs ? formatDate6(slotStartMs) : ''));
-    var time = String(raw.time || (slotStartMs ? formatTime4(slotStartMs) : ''));
+    var time = String(raw.time || (slotStartMs ? formatUtcSpotTimestamp(slotStartMs) : ''));
     var text = String(raw.text || raw.message || '').trim();
     if (!text) {
         text = call;
@@ -714,6 +732,7 @@ function updateWsprUploadButton() {
     if (!btn) return;
     btn.textContent = digiWsprUploadEnabled ? 'WSPRNET ON' : 'WSPRNET OFF';
     btn.classList.toggle('active', digiWsprUploadEnabled);
+    syncStationSettingsUi();
 }
 
 function stopWsprUploadStatusTimer() {
@@ -918,6 +937,7 @@ function setWsprUploadEnabled(enabled) {
     updateWsprUploadButton();
     digiWsprUploadStatusText = digiWsprUploadEnabled ? (digiWsprUploadQueue.length ? ('QUEUED ' + digiWsprUploadQueue.length) : 'READY') : 'LOCAL ONLY';
     updateWsprInfo(getDigiSlotInfo());
+    syncStationSettingsUi();
     if (digiWsprUploadEnabled) {
         startWsprUploadStatusTimer();
         refreshWsprUploadStatus();
@@ -1560,6 +1580,11 @@ function getWsprMessageText() {
 
 function formatUtcTime(ms) {
     return new Date(ms).toISOString().substr(11, 8) + 'Z';
+}
+
+function formatUtcSpotTimestamp(ms) {
+    var iso = new Date(ms).toISOString();
+    return iso.substr(0, 10) + ' ' + iso.substr(11, 8) + 'Z';
 }
 
 function formatDate6(ms) {

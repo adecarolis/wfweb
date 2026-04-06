@@ -1461,7 +1461,7 @@ body.digi-open .digi-bar {
 }
 .digi-wspr-spot-row {
     display: grid;
-    grid-template-columns: 72px 1fr auto;
+    grid-template-columns: 144px 1fr auto;
     gap: 8px;
     align-items: baseline;
     padding: 3px 6px;
@@ -2534,7 +2534,7 @@ body.digi-open .digi-bar {
                                 <button id="digiWsprBeaconBtn" class="digi-call-cq-btn">BEACON NEXT</button>
                                 <button id="digiPskReporterBtn" class="digi-action-btn">PSKR OFF</button>
                                 <button id="digiWsprUploadBtn" class="digi-action-btn">WSPRNET OFF</button>
-                                <button id="digiWsprClearBtn" class="digi-action-btn">Clear TX Queue</button>
+                                <button id="digiWsprClearBtn" class="digi-action-btn">Clear Spots</button>
                             </div>
                             <div class="digi-col-header">WSPRnet Reports</div>
                             <div id="digiWsprReportsPanel" class="digi-rx-panel digi-wspr-reports"></div>
@@ -2574,7 +2574,7 @@ body.digi-open .digi-bar {
 
         <!-- DIGI Settings Modal -->
         <div id="digiSettingsModal" class="digi-settings-modal">
-            <div class="digi-settings-modal-title">DIGI Settings</div>
+            <div class="digi-settings-modal-title">Station Settings</div>
             <div class="digi-settings-field">
                 <span class="digi-field-label">MY CALL:</span>
                 <input type="text" id="digiMyCall" class="digi-callsign-input" maxlength="10" placeholder="CALL" autocomplete="off">
@@ -2582,6 +2582,27 @@ body.digi-open .digi-bar {
             <div class="digi-settings-field">
                 <span class="digi-field-label">MY GRID:</span>
                 <input type="text" id="digiGrid" class="digi-callsign-input" maxlength="6" placeholder="AA00" autocomplete="off">
+            </div>
+            <div class="digi-settings-field" style="margin-top:6px">
+                <label style="display:flex;align-items:center;gap:6px;color:#8cf;font-size:12px;cursor:pointer">
+                    <input type="checkbox" id="digiReporterEnable">
+                    <span>FreeDV Reporter</span>
+                </label>
+                <span id="digiReporterStatus" style="font-size:10px;color:#556;margin-left:8px"></span>
+            </div>
+            <div class="digi-settings-field" style="margin-top:6px">
+                <label style="display:flex;align-items:center;gap:6px;color:#8cf;font-size:12px;cursor:pointer">
+                    <input type="checkbox" id="digiSettingsWsprnetEnable">
+                    <span>WSPRnet Upload</span>
+                </label>
+                <span style="font-size:10px;color:#556;margin-left:8px">WSPR RX reports</span>
+            </div>
+            <div class="digi-settings-field" style="margin-top:6px">
+                <label style="display:flex;align-items:center;gap:6px;color:#8cf;font-size:12px;cursor:pointer">
+                    <input type="checkbox" id="digiSettingsPskReporterEnable">
+                    <span>PSK Reporter</span>
+                </label>
+                <span style="font-size:10px;color:#556;margin-left:8px">WSPR RX reports</span>
             </div>
             <button id="digiSettingsCloseBtn" class="digi-settings-close">Close</button>
         </div>
@@ -2807,6 +2828,8 @@ var freedvSync = false;
 var freedvSNR = 0.0;
 var freedvFreqOffset = 0.0;
 var freedvTxGain = 0.25;       // FreeDV mic gain multiplier (same ALC logic as FT8)
+var reporterEnabled = false;
+var reporterState = 'disconnected';
 
 var micEnabled = false;
 var txAudioAvailable = false;
@@ -3223,6 +3246,9 @@ function handleMessage(msg) {
             if (msg.filterShape !== undefined) updateFilterShapeBtn(msg.filterShape);
             if (msg.powerState !== undefined) updatePowerState(msg.powerState);
             if (msg.freedv !== undefined) updateFreeDVStatus(msg);
+            if (msg.reporterEnabled !== undefined || msg.reporterState !== undefined) {
+                updateReporterStatus({ enabled: msg.reporterEnabled, state: msg.reporterState });
+            }
             break;
         case 'update':
             if (msg.utcMs !== undefined) updateServerClockOffset(msg.utcMs);
@@ -3271,6 +3297,9 @@ function handleMessage(msg) {
             if (msg.filterShape !== undefined) updateFilterShapeBtn(msg.filterShape);
             if (msg.powerState !== undefined) updatePowerState(msg.powerState);
             if (msg.freedv !== undefined) updateFreeDVStatus(msg);
+            if (msg.reporterEnabled !== undefined || msg.reporterState !== undefined) {
+                updateReporterStatus({ enabled: msg.reporterEnabled, state: msg.reporterState });
+            }
             break;
         case 'meters':
             if (msg.transmitting !== undefined) updateTxStatus(msg.transmitting);
@@ -3307,6 +3336,9 @@ function handleMessage(msg) {
             break;
         case 'freedvStatus':
             updateFreeDVStatus(msg);
+            break;
+        case 'reporterStatus':
+            updateReporterStatus(msg);
             break;
         case 'error':
             console.error('Server error:', msg.message);
@@ -4823,18 +4855,29 @@ function updateFreeDVStatus(msg) {
     if (freedvEnabled) {
         var syncColor = freedvSync ? '#00ff88' : '#ff4444';
         var snrText = freedvSNR.toFixed(1);
-        var foHtml = '';
-        if (freedvModeName === 'RADE')
-            foHtml = '<span style="width:72px; display:inline-block; text-align:right;">FO ' + freedvFreqOffset.toFixed(1) + '</span>';
+        var foHtml = '<span id="freedvFoEl" style="width:72px; display:inline-block; text-align:right;">'
+            + (freedvModeName === 'RADE' ? ('FO ' + freedvFreqOffset.toFixed(1)) : '') + '</span>';
+        var rptDot = '';
+        if (reporterEnabled) {
+            var rc = reporterState === 'connected' ? '#0c6' : reporterState === 'error' ? '#f44' : '#fa0';
+            rptDot = '<span style="width:6px;height:6px;border-radius:50%;background:' + rc + ';display:inline-block" title="Reporter: ' + (reporterState || 'off') + '"></span>';
+        }
         indicator.innerHTML = '<span id="freedvModeLink" style="cursor:pointer; text-decoration:underline; min-width:72px; display:inline-block;">FreeDV ' + freedvModeName + '</span>'
-            + '<span style="color:' + syncColor + '; width:52px; display:inline-block; text-align:center;">' + (freedvSync ? 'SYNC' : 'NO SYNC') + '</span>'
-            + '<span style="width:62px; display:inline-block; text-align:right;">SNR ' + snrText + '</span>'
+            + '<span id="freedvSyncEl" style="color:' + syncColor + '; width:52px; display:inline-block; text-align:center;">' + (freedvSync ? 'SYNC' : 'NO SYNC') + '</span>'
+            + '<span id="freedvSnrEl" style="width:62px; display:inline-block; text-align:right;">SNR ' + snrText + '</span>'
             + foHtml
+            + '<span id="freedvSettingsBtn" style="cursor:pointer; padding:1px 5px; border:1px solid #666; border-radius:3px; font-size:10px;" title="Station Settings">RPT</span>'
+            + rptDot
             + '<span id="freedvMonBtn" style="cursor:pointer; padding:1px 5px; border:1px solid #666; border-radius:3px; font-size:10px;">MON</span>';
         indicator.style.display = 'flex';
         // Mode cycle on click
         var modeLink = document.getElementById('freedvModeLink');
         if (modeLink) modeLink.onclick = function(e) { e.stopPropagation(); cycleFreeDVMode(); };
+        var settingsBtn = document.getElementById('freedvSettingsBtn');
+        if (settingsBtn) settingsBtn.onclick = function(e) {
+            e.stopPropagation();
+            document.getElementById('digiSettingsModal').classList.add('visible');
+        };
         // Monitor: bypass FreeDV decoding while pressed
         var monBtn = document.getElementById('freedvMonBtn');
         if (monBtn) {
@@ -6153,6 +6196,37 @@ function getMyGridFull() {
         .substr(0, 6));
 }
 function getMyGrid() { return getMyGridFull().substr(0, 4); }
+function sendReporterConfig() {
+    var cb = document.getElementById('digiReporterEnable');
+    if (!cb || !ws || ws.readyState !== 1) return;
+    send({
+        cmd: 'setReporter',
+        enabled: cb.checked,
+        callsign: getMyCall(),
+        grid: getMyGrid()
+    });
+}
+function updateReporterStatus(msg) {
+    if (msg.enabled !== undefined) reporterEnabled = msg.enabled;
+    if (msg.state !== undefined) reporterState = msg.state;
+    var cb = document.getElementById('digiReporterEnable');
+    var st = document.getElementById('digiReporterStatus');
+    if (cb && msg.enabled !== undefined) cb.checked = msg.enabled;
+    if (st) {
+        st.textContent = msg.state || '';
+        st.style.color = msg.state === 'connected' ? '#0c6' : msg.state === 'error' ? '#f44' : '#556';
+    }
+    if (freedvEnabled) updateFreeDVStatus({});
+}
+function initReporter() {
+    var cb = document.getElementById('digiReporterEnable');
+    if (!cb) return;
+    try { cb.checked = localStorage.getItem('digiReporterEnabled') === '1'; } catch(e) {}
+    cb.addEventListener('change', function() {
+        try { localStorage.setItem('digiReporterEnabled', this.checked ? '1' : '0'); } catch(e) {}
+        sendReporterConfig();
+    });
+}
 function digiPeriod() { return isWsprMode() ? 120 : (digiMode === 'FT4' ? 7.5 : 15); }
 function resetDigiQsoState() {
     digiQsoState = 'IDLE';
@@ -8329,6 +8403,7 @@ function initDigiHandlers() {
     ensureWsprHopSelection();
     loadWsprPersistedState();
     syncWsprPowerFromRig();
+    syncStationSettingsUi();
     var wsprTxPctEl = document.getElementById('digiWsprTxPct');
     if (wsprTxPctEl) wsprTxPctEl.value = String(digiWsprTxPct);
     renderWsprHopButtons();
@@ -8349,6 +8424,7 @@ function initDigiHandlers() {
             try { localStorage.setItem('digiMyCall', this.value); } catch(e) {}
             updateDigiMsgRows();
             updateWsprInfo(getDigiSlotInfo());
+            if (reporterEnabled) sendReporterConfig();
         });
     }
     if (gridEl) {
@@ -8357,6 +8433,7 @@ function initDigiHandlers() {
             try { localStorage.setItem('digiGrid', this.value); } catch(e) {}
             updateDigiMsgRows();
             updateWsprInfo(getDigiSlotInfo());
+            if (reporterEnabled) sendReporterConfig();
         });
     }
     if (wsprTxPctEl) {
@@ -8520,6 +8597,24 @@ function initDigiHandlers() {
         });
     }
 
+    initReporter();
+
+    var settingsWsprnetEnable = document.getElementById('digiSettingsWsprnetEnable');
+    if (settingsWsprnetEnable) {
+        settingsWsprnetEnable.checked = digiWsprUploadEnabled;
+        settingsWsprnetEnable.addEventListener('change', function() {
+            setWsprUploadEnabled(!!this.checked);
+        });
+    }
+
+    var settingsPskReporterEnable = document.getElementById('digiSettingsPskReporterEnable');
+    if (settingsPskReporterEnable) {
+        settingsPskReporterEnable.checked = digiPskReporterEnabled;
+        settingsPskReporterEnable.addEventListener('change', function() {
+            setPskReporterEnabled(!!this.checked);
+        });
+    }
+
     // Settings close button
     var settingsCloseBtn = document.getElementById('digiSettingsCloseBtn');
     if (settingsCloseBtn) {
@@ -8667,7 +8762,7 @@ function initDigiHandlers() {
     var wsprClearBtn = document.getElementById('digiWsprClearBtn');
     if (wsprClearBtn) {
         wsprClearBtn.addEventListener('click', function() {
-            clearWsprQueue();
+            clearWsprSpots();
         });
     }
 
