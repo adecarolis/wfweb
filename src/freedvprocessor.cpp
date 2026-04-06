@@ -41,6 +41,11 @@ bool FreeDVProcessor::init(int freedvMode, quint32 radioSampleRate)
     freedv_set_squelch_en(fdv, 1);
     freedv_set_snr_squelch_thresh(fdv, -2.0f);
 
+    // Register text callback for callsign extraction
+    freedv_set_callback_txt(fdv, &FreeDVProcessor::txtRxCallback,
+                            &FreeDVProcessor::txtTxCallback, this);
+    rxTextBuffer_.clear();
+
     qInfo() << "FreeDV: initialized mode" << freedvMode
             << "modemRate=" << modemSampleRate
             << "speechRate=" << speechSampleRate
@@ -244,4 +249,23 @@ void FreeDVProcessor::processTx(audioPacket audio)
         out.volume = audio.volume;
         emit txReady(out);
     }
+}
+
+void FreeDVProcessor::txtRxCallback(void *state, char c)
+{
+    auto *self = static_cast<FreeDVProcessor *>(state);
+    if (c == '\r' || c == '\n' || c == '\0') {
+        QString call = self->rxTextBuffer_.trimmed().toUpper();
+        if (!call.isEmpty())
+            emit self->rxCallsign(call);
+        self->rxTextBuffer_.clear();
+    } else {
+        self->rxTextBuffer_.append(c);
+    }
+}
+
+char FreeDVProcessor::txtTxCallback(void * /*state*/)
+{
+    // No text to transmit — send space (idle)
+    return ' ';
 }

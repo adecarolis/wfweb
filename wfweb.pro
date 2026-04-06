@@ -226,8 +226,8 @@ isEmpty(RADAE_DIR): exists($$PWD/radae_nopy/src/rade_api.h): RADAE_DIR = $$PWD/r
         } else {
             LIBS += $$OPUS_AUTOTOOLS
         }
-        SOURCES += src/radeprocessor.cpp
-        HEADERS += include/radeprocessor.h
+        SOURCES += src/radeprocessor.cpp src/rade_text.c
+        HEADERS += include/radeprocessor.h include/rade_text.h
         message("RADE V1 support enabled ($$RADAE_DIR)")
     } else {
         message("RADE V1: radae_nopy found but not built (run: cd $$RADAE_DIR/build && cmake .. && make)")
@@ -239,8 +239,8 @@ linux|macx {
     system(pkg-config --exists codec2) {
         DEFINES += FREEDV_SUPPORT
         LIBS += -lcodec2
-        SOURCES += src/freedvprocessor.cpp
-        HEADERS += include/freedvprocessor.h
+        SOURCES += src/freedvprocessor.cpp src/freedvreporter.cpp
+        HEADERS += include/freedvprocessor.h include/freedvreporter.h include/spotreporter.h
         message("FreeDV codec2 support enabled")
     } else {
         message("FreeDV codec2 not found — codec2 modes (700D/700E/1600) disabled")
@@ -251,8 +251,8 @@ win32 {
         exists($$VCPKG_DIR/lib/codec2.lib) | exists($$VCPKG_DIR/lib/libcodec2.a) {
             DEFINES += FREEDV_SUPPORT
             LIBS += -lcodec2
-            SOURCES += src/freedvprocessor.cpp
-            HEADERS += include/freedvprocessor.h
+            SOURCES += src/freedvprocessor.cpp src/freedvreporter.cpp
+            HEADERS += include/freedvprocessor.h include/freedvreporter.h include/spotreporter.h
             message("FreeDV codec2 support enabled")
         } else {
             message("FreeDV codec2 not found — codec2 modes (700D/700E/1600) disabled")

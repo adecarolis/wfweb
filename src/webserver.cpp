@@ -2073,6 +2073,50 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     }
     else if (type == "setPTT") {
         bool on = cmd["value"].toBool();
+#ifdef RADE_SUPPORT
+        // On PTT-off with RADE: generate EOO frame and delay the radio unkey
+        // so the callsign-bearing EOO OFDM frame plays out through ALSA/USB
+        // before the radio stops transmitting.
+        if (!on && freedvEnabled && freedvModeName == "RADE" && radeProcessor && usbAudioOutputDevice) {
+            radeProcessor->eooAudioResult.clear();
+            bool ok = QMetaObject::invokeMethod(radeProcessor, "generateEooAudio",
+                                                 Qt::BlockingQueuedConnection);
+            QByteArray eooData = radeProcessor->eooAudioResult;
+            qInfo() << "Web: RADE EOO invoke ok=" << ok << "dataSize=" << eooData.size();
+            if (!eooData.isEmpty()) {
+                // Stereo expansion (same as onRadeTxReady)
+                QByteArray writeData;
+                if (usbOutputChannels == 2) {
+                    int numSamples = eooData.size() / 2;
+                    writeData.resize(numSamples * 4);
+                    const qint16 *src = reinterpret_cast<const qint16 *>(eooData.constData());
+                    qint16 *dst = reinterpret_cast<qint16 *>(writeData.data());
+                    for (int i = 0; i < numSamples; i++) {
+                        dst[i * 2] = src[i];
+                        dst[i * 2 + 1] = src[i];
+                    }
+                } else {
+                    writeData = eooData;
+                }
+                // Apply ALC-controlled gain
+                if (freedvTxGain < 0.99f) {
+                    qint16 *samples = reinterpret_cast<qint16 *>(writeData.data());
+                    int count = writeData.size() / (int)sizeof(qint16);
+                    for (int i = 0; i < count; i++)
+                        samples[i] = qBound((int)-32768, (int)(samples[i] * freedvTxGain), (int)32767);
+                }
+                freedvTxBuffer.append(writeData);
+                qInfo() << "Web: queued RADE EOO frame (" << writeData.size() << "bytes), delaying unkey";
+                // Delay the radio unkey so ALSA has time to play the EOO frame
+                QTimer::singleShot(300, this, [this]() {
+                    queue->add(priorityImmediate, queueItem(funcTransceiverStatus, QVariant::fromValue<bool>(false), false, uchar(0)));
+                    queue->del(funcALCMeter, 0);
+                    qInfo() << "Web: RADE delayed unkey sent";
+                });
+                return;
+            }
+        }
+#endif
         queue->add(priorityImmediate, queueItem(funcTransceiverStatus, QVariant::fromValue<bool>(on), false, uchar(0)));
         // Start/stop ALC meter polling for web clients
         if (on) {
@@ -2443,6 +2487,12 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                     QMetaObject::invokeMethod(freedvProcessor, "cleanup", Qt::QueuedConnection);
 #endif
                 emit setupRade(rigSampleRate);
+                // Send cached callsign to RADE processor for EOO encoding
+                if (!reporterCallsign.isEmpty()) {
+                    QMetaObject::invokeMethod(radeProcessor, "setTxCallsign",
+                                              Qt::QueuedConnection,
+                                              Q_ARG(QString, reporterCallsign));
+                }
                 qInfo() << "Web: RADE enabled";
             } else
 #endif
@@ -2468,6 +2518,11 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
 #elif defined(RADE_SUPPORT)
             { }
 #endif
+#ifdef FREEDV_SUPPORT
+            // Reconnect reporter when entering FreeDV/RADE mode
+            if (freedvEnabled && freedvReporter && reporterEnabled)
+                freedvReporter->connectToService();
+#endif
         } else {
             freedvEnabled = false;
             freedvSync = false;
@@ -2481,9 +2536,17 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
 #endif
 #ifdef RADE_SUPPORT
             freedvFreqOffset = 0.0f;
+            radeRxCallsign.clear();
             if (radeProcessor) {
                 radeProcessor->stopRequested.store(true);  // immediate cross-thread halt
                 QMetaObject::invokeMethod(radeProcessor, "cleanup", Qt::QueuedConnection);
+            }
+#endif
+#ifdef FREEDV_SUPPORT
+            // Disconnect reporter when leaving FreeDV/RADE mode
+            if (freedvReporter && reporterEnabled) {
+                freedvReporter->disconnectFromService();
+                qInfo() << "Web: Reporter disconnected (FreeDV disabled)";
             }
 #endif
             qInfo() << "Web: FreeDV disabled";
@@ -2507,6 +2570,55 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     else if (type == "setFreeDVMonitor") {
         freedvMonitor = cmd["value"].toBool();
     }
+#ifdef FREEDV_SUPPORT
+    else if (type == "setReporter") {
+        reporterCallsign = cmd["callsign"].toString().toUpper().trimmed();
+        reporterGrid = cmd["grid"].toString().toUpper().trimmed();
+        reporterEnabled = cmd["enabled"].toBool();
+
+        if (reporterEnabled) {
+            if (!freedvReporter) {
+                freedvReporter = new FreeDVReporter(this);
+                connect(freedvReporter, &FreeDVReporter::stateChanged,
+                        this, &webServer::onReporterStateChanged);
+            }
+            freedvReporter->setStation(reporterCallsign, reporterGrid);
+
+            // Seed reporter with current frequency from cache
+            if (queue) {
+                vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
+                cacheItem freqCache = queue->getCache(t.freqFunc, 0);
+                if (freqCache.value.isValid()) {
+                    freqt f = freqCache.value.value<freqt>();
+                    if (f.Hz > 0) freedvReporter->updateFrequency(f.Hz);
+                }
+            }
+
+            // Only connect if FreeDV/RADE mode is currently active
+            if (freedvEnabled) {
+                freedvReporter->updateTx(freedvModeName, false);
+                freedvReporter->connectToService();
+            }
+        } else {
+            if (freedvReporter)
+                freedvReporter->disconnectFromService();
+        }
+#ifdef RADE_SUPPORT
+        // Pass callsign to RADE processor for EOO encoding
+        if (radeProcessor && !reporterCallsign.isEmpty()) {
+            QMetaObject::invokeMethod(radeProcessor, "setTxCallsign",
+                                      Qt::QueuedConnection,
+                                      Q_ARG(QString, reporterCallsign));
+        }
+#endif
+
+        QJsonObject notify;
+        notify["type"] = "reporterStatus";
+        notify["enabled"] = reporterEnabled;
+        notify["state"] = freedvReporter ? (reporterEnabled ? "connecting" : "disconnected") : "disconnected";
+        sendJsonToAll(notify);
+    }
+#endif
     else {
         qWarning() << "Web: Unknown command:" << type;
         QJsonObject err;
@@ -3311,6 +3423,16 @@ QJsonObject webServer::buildStatusJson()
 #endif
     }
 
+    // Reporter
+#ifdef FREEDV_SUPPORT
+    status["reporterEnabled"] = reporterEnabled;
+    if (freedvReporter) {
+        static const char *stateNames[] = {"disconnected", "connecting", "connected", "error"};
+        int s = static_cast<int>(freedvReporter->state());
+        status["reporterState"] = QString(stateNames[qBound(0, s, 3)]);
+    }
+#endif
+
     // AF Gain
     cacheItem afGain = queue->getCache(funcAfGain, 0);
     if (afGain.value.isValid()) {
@@ -3425,6 +3547,9 @@ void webServer::receiveCache(cacheItem item)
     {
         freqt f = item.value.value<freqt>();
         update["frequency"] = (qint64)f.Hz;
+#ifdef FREEDV_SUPPORT
+        if (freedvReporter) freedvReporter->updateFrequency(f.Hz);
+#endif
         break;
     }
     case funcMode:
@@ -3450,6 +3575,9 @@ void webServer::receiveCache(cacheItem item)
         break;
     case funcTransceiverStatus:
         update["transmitting"] = item.value.toBool();
+#ifdef FREEDV_SUPPORT
+        if (freedvReporter) freedvReporter->updateTx(freedvModeName, item.value.toBool());
+#endif
         break;
     case funcAfGain:
         update["afGain"] = item.value.toInt();
@@ -3857,6 +3985,7 @@ void webServer::setupAudio(quint8 codec, quint32 sampleRate)
     connect(freedvProcessor, &FreeDVProcessor::rxReady, this, &webServer::onFreeDVRxReady);
     connect(freedvProcessor, &FreeDVProcessor::txReady, this, &webServer::onFreeDVTxReady);
     connect(freedvProcessor, &FreeDVProcessor::statsUpdate, this, &webServer::onFreeDVStats);
+    connect(freedvProcessor, &FreeDVProcessor::rxCallsign, this, &webServer::onFreeDVRxCallsign);
     connect(freedvThread, &QThread::finished, freedvProcessor, &QObject::deleteLater);
 
     freedvThread->start();
@@ -3875,6 +4004,7 @@ void webServer::setupAudio(quint8 codec, quint32 sampleRate)
     connect(radeProcessor, &RadeProcessor::rxReady, this, &webServer::onRadeRxReady);
     connect(radeProcessor, &RadeProcessor::txReady, this, &webServer::onRadeTxReady);
     connect(radeProcessor, &RadeProcessor::statsUpdate, this, &webServer::onRadeStats);
+    connect(radeProcessor, &RadeProcessor::rxCallsign, this, &webServer::onRadeRxCallsign);
     connect(radeThread, &QThread::finished, radeProcessor, &QObject::deleteLater);
 
     radeThread->start();
@@ -4014,6 +4144,18 @@ void webServer::drainFreeDVTxBuffer()
         chunk.append(QByteArray(chunkSize - chunk.size(), 0));
         usbAudioOutputDevice->write(chunk);
         freedvTxBuffer.clear();
+    } else if (radeEooDraining) {
+        // EOO frame fully drained — stop ALSA and clean up TX state
+        radeEooDraining = false;
+        freedvTxActive = false;
+        freedvTxDrainTimer->stop();
+        txAudioActive = false;
+        if (usbAudioOutput) {
+            usbAudioOutput->stop();
+            usbAudioOutputDevice = nullptr;
+        }
+        qInfo() << "Web: RADE EOO drain complete, ALSA stopped";
+        return;
     } else {
         // No data: write silence to keep ALSA fed
         QByteArray silence(chunkSize, 0);
@@ -4034,6 +4176,29 @@ void webServer::onFreeDVStats(float snr, bool sync)
         notify["freedvSNR"] = (double)snr;
         sendJsonToAll(notify);
     }
+}
+void webServer::onFreeDVRxCallsign(const QString &callsign)
+{
+    qInfo() << "FreeDV: decoded callsign:" << callsign;
+    if (freedvReporter && freedvSync)
+        freedvReporter->updateRxSpot(callsign, freedvModeName, (int)freedvSNR);
+}
+
+void webServer::onReporterStateChanged(int state)
+{
+    QString stateStr;
+    switch (static_cast<SpotReporter::State>(state)) {
+    case SpotReporter::Disconnected: stateStr = "disconnected"; break;
+    case SpotReporter::Connecting:   stateStr = "connecting";   break;
+    case SpotReporter::Connected:    stateStr = "connected";    break;
+    case SpotReporter::Error:        stateStr = "error";        break;
+    }
+
+    QJsonObject notify;
+    notify["type"] = "reporterStatus";
+    notify["enabled"] = reporterEnabled;
+    notify["state"] = stateStr;
+    sendJsonToAll(notify);
 }
 #endif // FREEDV_SUPPORT
 
@@ -4129,7 +4294,53 @@ void webServer::onRadeStats(float snr, bool sync, float freqOffset)
         notify["freedvSNR"] = (double)snr;
         notify["freedvFreqOffset"] = (double)freqOffset;
         sendJsonToAll(notify);
+#ifdef FREEDV_SUPPORT
+        // Report RX mode to FreeDV Reporter when RADE acquires sync
+        if (freedvReporter && sync)
+            freedvReporter->updateRxSpot(QString(), freedvModeName, (int)snr);
+#endif
+        // Callsign clearing is handled by a timer started in onRadeRxCallsign.
     }
+}
+
+void webServer::onRadeRxCallsign(const QString &callsign)
+{
+    radeRxCallsign = callsign;
+
+    // Send to browser
+    QJsonObject notify;
+    notify["type"] = "radeCallsign";
+    notify["callsign"] = callsign;
+    sendJsonToAll(notify);
+
+    // Clear the callsign from the UI after 5 seconds
+    if (!radeCallsignClearTimer) {
+        radeCallsignClearTimer = new QTimer(this);
+        radeCallsignClearTimer->setSingleShot(true);
+        connect(radeCallsignClearTimer, &QTimer::timeout, this, [this]() {
+            radeRxCallsign.clear();
+            QJsonObject csNotify;
+            csNotify["type"] = "radeCallsign";
+            csNotify["callsign"] = QString();
+            sendJsonToAll(csNotify);
+        });
+    }
+    radeCallsignClearTimer->start(5000);
+
+#ifdef FREEDV_SUPPORT
+    // Report to FreeDV Reporter with the decoded callsign.
+    // No sync check: the callsign arrives from the EOO frame which is
+    // the last frame — sync is already lost by the time the callback fires.
+    if (freedvReporter) {
+        qInfo() << "Web: reporting RX spot to FreeDV Reporter:" << callsign
+                << "mode=" << freedvModeName << "snr=" << (int)freedvSNR;
+        freedvReporter->updateRxSpot(callsign, freedvModeName, (int)freedvSNR);
+    } else {
+        qInfo() << "Web: no FreeDV Reporter instance, skipping RX spot";
+    }
+#endif
+
+    qInfo() << "Web: RADE decoded callsign:" << callsign;
 }
 #endif
 
@@ -4313,6 +4524,7 @@ void webServer::setupUsbAudio(quint32 sampleRate)
         connect(freedvProcessor, &FreeDVProcessor::rxReady, this, &webServer::onFreeDVRxReady);
         connect(freedvProcessor, &FreeDVProcessor::txReady, this, &webServer::onFreeDVTxReady);
         connect(freedvProcessor, &FreeDVProcessor::statsUpdate, this, &webServer::onFreeDVStats);
+        connect(freedvProcessor, &FreeDVProcessor::rxCallsign, this, &webServer::onFreeDVRxCallsign);
         connect(freedvThread, &QThread::finished, freedvProcessor, &QObject::deleteLater);
 
         freedvThread->start();
@@ -4333,6 +4545,7 @@ void webServer::setupUsbAudio(quint32 sampleRate)
         connect(radeProcessor, &RadeProcessor::rxReady, this, &webServer::onRadeRxReady);
         connect(radeProcessor, &RadeProcessor::txReady, this, &webServer::onRadeTxReady);
         connect(radeProcessor, &RadeProcessor::statsUpdate, this, &webServer::onRadeStats);
+        connect(radeProcessor, &RadeProcessor::rxCallsign, this, &webServer::onRadeRxCallsign);
         connect(radeThread, &QThread::finished, radeProcessor, &QObject::deleteLater);
 
         radeThread->start();

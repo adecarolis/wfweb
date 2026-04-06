@@ -28,11 +28,15 @@ signals:
     void txReady(audioPacket audio);
     void syncChanged(bool inSync);
     void statsUpdate(float snr, bool sync);
+    void rxCallsign(const QString &callsign);
 
 private:
     void destroyResamplers();
+    static void txtRxCallback(void *state, char c);
+    static char txtTxCallback(void *state);
 
     struct freedv *fdv = nullptr;
+    QString rxTextBuffer_;
     bool enabled_ = false;
     int mode_ = 0;
     quint32 radioRate_ = 0;

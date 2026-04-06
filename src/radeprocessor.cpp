@@ -5,6 +5,7 @@
 extern "C" {
 #include <rade_api.h>
 #include <rade_dsp.h>
+#include "rade_text.h"
 #include <lpcnet.h>
 #include <fargan.h>
 #include <arch.h>
@@ -115,9 +116,14 @@ bool RadeProcessor::init(quint32 radioSampleRate)
     farganReady = false;
     farganWarmupFrames = 0;
 
+    // RADE text encoder/decoder for callsign in EOO
+    radeText = rade_text_create();
+    rade_text_set_rx_callback(radeText, &RadeProcessor::radeTextRxCallback, this);
+
     rxAccumulator.clear();
     txAccumulator.clear();
     stopRequested.store(false);
+    txEooPrepared = false;
     enabled_ = true;
 
     qInfo() << "RADE: initialized, modemRate=" << MODEM_RATE
@@ -134,6 +140,10 @@ bool RadeProcessor::init(quint32 radioSampleRate)
 void RadeProcessor::cleanup()
 {
     enabled_ = false;
+    if (radeText) {
+        rade_text_destroy(radeText);
+        radeText = nullptr;
+    }
     if (r) {
         rade_close(r);
         r = nullptr;
@@ -242,6 +252,10 @@ void RadeProcessor::processRx(audioPacket audio)
         int hasEoo = 0;
 
         int nOut = rade_rx(r, featOut.data(), &hasEoo, eooBits.data(), rxIn);
+
+        // Decode callsign from EOO bits
+        if (hasEoo && radeText)
+            rade_text_rx(radeText, eooBits.data(), nEooBits);
 
         // Remove consumed samples
         rxAccumulator.remove(0, nin * sizeof(RADE_COMP));
@@ -426,6 +440,111 @@ void RadeProcessor::processTx(audioPacket audio)
                 out.volume = audio.volume;
                 emit txReady(out);
             }
+
+            // Prepare EOO bits on first modem frame if not already done
+            if (!txEooPrepared) {
+                prepareTxEooBits();
+                txEooPrepared = true;
+            }
         }
+    }
+}
+
+void RadeProcessor::setTxCallsign(const QString &callsign)
+{
+    QMutexLocker lock(&callsignMutex_);
+    txCallsign_ = callsign.toUpper().trimmed();
+    txEooPrepared = false;  // re-encode on next TX
+}
+
+void RadeProcessor::prepareTxEooBits()
+{
+    if (!r || !radeText) return;
+
+    QMutexLocker lock(&callsignMutex_);
+    QByteArray cs = txCallsign_.toLatin1();
+    if (cs.isEmpty()) return;
+
+    QVector<float> eooBits(nEooBits, 0.0f);
+    rade_text_generate_tx_string(radeText, cs.constData(), cs.size(),
+                                 eooBits.data(), nEooBits);
+    rade_tx_set_eoo_bits(r, eooBits.data());
+    qInfo() << "RADE: encoded TX callsign" << txCallsign_ << "into EOO bits";
+}
+
+void RadeProcessor::sendEoo()
+{
+    QByteArray data = generateEooAudio();
+    if (!data.isEmpty()) {
+        audioPacket out;
+        out.data = data;
+        out.time = QTime::currentTime();
+        out.seq = 0;
+        out.sent = 0;
+        out.volume = 1.0;
+        emit txReady(out);
+    }
+}
+
+QByteArray RadeProcessor::generateEooAudio()
+{
+    eooAudioResult.clear();
+    if (!r || !enabled_) {
+        qInfo() << "RADE: generateEooAudio early return, r=" << (r != nullptr) << "enabled=" << enabled_;
+        return QByteArray();
+    }
+
+    // Generate EOO frame (carries the encoded callsign)
+    QVector<RADE_COMP> iqOut(nTxEooOut);
+    int nOut = rade_tx_eoo(r, iqOut.data());
+
+    if (nOut <= 0) {
+        txEooPrepared = false;
+        return QByteArray();
+    }
+
+    static constexpr float RADE_TX_SCALE = 0.33f;
+    QVector<qint16> modemOut(nOut);
+    for (int i = 0; i < nOut; i++) {
+        float v = iqOut[i].real * 32768.0f * RADE_TX_SCALE;
+        modemOut[i] = (qint16)qBound(-32768.0f, v, 32767.0f);
+    }
+
+    // Resample 8kHz -> radio rate
+    QByteArray modemData;
+    if (txUpsampler) {
+        spx_uint32_t inLen = nOut;
+        spx_uint32_t outLen = (spx_uint32_t)(nOut * (double)radioRate_ / MODEM_RATE) + 64;
+        QVector<float> inFloat(nOut);
+        for (int i = 0; i < nOut; i++)
+            inFloat[i] = modemOut[i] / 32768.0f;
+
+        QVector<float> outFloat(outLen);
+        wf_resampler_process_float(txUpsampler, 0, inFloat.data(), &inLen,
+                                   outFloat.data(), &outLen);
+
+        modemData.resize(outLen * sizeof(qint16));
+        qint16 *out = reinterpret_cast<qint16 *>(modemData.data());
+        for (spx_uint32_t i = 0; i < outLen; i++)
+            out[i] = qBound(-32768, (int)(outFloat[i] * 32768.0f), 32767);
+    } else {
+        modemData = QByteArray(reinterpret_cast<const char *>(modemOut.data()),
+                               nOut * sizeof(qint16));
+    }
+
+    qInfo() << "RADE: generated EOO frame (" << nOut << "IQ samples," << modemData.size() << "bytes)";
+    txEooPrepared = false;  // re-encode for next TX session
+    eooAudioResult = modemData;
+    return modemData;
+}
+
+void RadeProcessor::radeTextRxCallback(rade_text_t, const char *txt,
+                                       int length, void *state)
+{
+    RadeProcessor *self = static_cast<RadeProcessor *>(state);
+    QString callsign = QString::fromLatin1(txt, length).trimmed();
+    if (!callsign.isEmpty()) {
+        qInfo() << "RADE: decoded callsign from EOO:" << callsign;
+        emit self->rxCallsign(callsign);
     }
 }

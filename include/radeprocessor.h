@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QByteArray>
+#include <QMutex>
 #include <QVector>
 #include <atomic>
 #include "audioconverter.h"
@@ -10,6 +11,7 @@
 // Forward declarations
 struct rade;
 typedef struct SpeexResamplerState_ SpeexResamplerState;
+typedef void *rade_text_t;
 
 // Opaque type from custom Opus (LPCNet)
 struct LPCNetEncState;
@@ -31,18 +33,26 @@ public slots:
     void processRx(audioPacket audio);
     void processTx(audioPacket audio);
     void setEnabled(bool enabled);
+    void setTxCallsign(const QString &callsign);
+    void sendEoo();
+    Q_INVOKABLE QByteArray generateEooAudio();
     void cleanup();
 
 signals:
     void rxReady(audioPacket audio);
     void txReady(audioPacket audio);
     void statsUpdate(float snr, bool sync, float freqOffset);
+    void rxCallsign(const QString &callsign);
 
 private:
     void destroyResamplers();
     void computeHilbertCoeffs();
+    void prepareTxEooBits();
+    static void radeTextRxCallback(rade_text_t rt, const char *txt,
+                                   int length, void *state);
 
     struct rade *r = nullptr;
+    rade_text_t radeText = nullptr;
     bool enabled_ = false;
     quint32 radioRate_ = 0;
 
@@ -50,6 +60,11 @@ public:
     // Cross-thread stop flag: set from webserver thread to immediately
     // halt processing without waiting for queued cleanup() to execute.
     std::atomic<bool> stopRequested{false};
+
+    // EOO audio result: written by generateEooAudio() on the RADE thread,
+    // read by webserver after BlockingQueuedConnection returns.
+    QByteArray eooAudioResult;
+
 private:
 
     // LPCNet encoder (TX: PCM -> features)
@@ -92,6 +107,11 @@ private:
     int nTxEooOut = 0;          // complex IQ samples per rade_tx_eoo call
     int nEooBits = 0;           // soft-decision bits in EOO
     int ninMax = 0;             // max IQ samples rade_rx can consume
+
+    // TX callsign for EOO encoding
+    QString txCallsign_;
+    QMutex callsignMutex_;
+    bool txEooPrepared = false;
 };
 
 #endif // RADEPROCESSOR_H

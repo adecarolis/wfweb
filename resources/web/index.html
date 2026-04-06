@@ -1366,6 +1366,7 @@ body.digi-open .digi-bar {
     background: #01324a;
     border-color: #08f;
     color: #cff;
+    box-shadow: inset 0 0 0 1px rgba(180, 240, 255, 0.22), 0 0 0 1px rgba(0, 120, 255, 0.18);
 }
 .digi-wspr-band-btn:hover {
     background: #01263a;
@@ -8372,30 +8373,18 @@ function initDigiHandlers() {
 
     var wsprBandList = document.getElementById('digiWsprBandList');
     if (wsprBandList) {
+        wsprBandList.addEventListener('pointerup', function(e) {
+            var btn = e.target && e.target.closest ? e.target.closest('.digi-wspr-band-btn') : null;
+            if (!btn) return;
+            e.preventDefault();
+            toggleWsprHopBandSelection(btn.dataset.band);
+        });
         wsprBandList.addEventListener('click', function(e) {
             var btn = e.target && e.target.closest ? e.target.closest('.digi-wspr-band-btn') : null;
             if (!btn) return;
-            var label = btn.dataset.band;
-            var nextBands = digiWsprHopBands.slice();
-            var idx = nextBands.indexOf(label);
-            if (idx >= 0) {
-                if (nextBands.length === 1) return;
-                nextBands.splice(idx, 1);
-            } else {
-                nextBands.push(label);
-            }
-            setWsprHopBands(nextBands, true);
-            if (!digiTxArmed && !digiTxActive) {
-                clearWsprTargetBand();
-                if (isWsprMode() && digiWsprHopBands.length === 1) {
-                    var onlyBand = getDigiBandByLabel(digiWsprHopBands[0]);
-                    if (onlyBand) requestWsprRetune(onlyBand, 'USB');
-                }
-            } else if (digiWsprTargetBandLabel && digiWsprHopBands.indexOf(digiWsprTargetBandLabel) < 0) {
-                clearWsprTargetBand();
-                if (digiTxQueued) prepareWsprTargetBand();
-            }
-            updateWsprInfo(getDigiSlotInfo());
+            if (e.detail !== 0) return;
+            e.preventDefault();
+            toggleWsprHopBandSelection(btn.dataset.band);
         });
     }
 

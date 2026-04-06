@@ -1298,8 +1298,10 @@ function ensureWsprHopSelection() {
     if (!sanitized.length) {
         var fallback = getDefaultWsprHopBandLabel();
         if (fallback) sanitized = [fallback];
-        digiWsprHopBands = sanitized;
-        if (digiWsprHopIndex >= sanitized.length) digiWsprHopIndex = 0;
+    }
+    digiWsprHopBands = sanitized;
+    if (digiWsprHopIndex >= sanitized.length) digiWsprHopIndex = 0;
+    if (sanitized.length) {
         try { localStorage.setItem(WSPR_HOP_BANDS_STORAGE_KEY, JSON.stringify(digiWsprHopBands)); } catch (e) {}
         persistWsprHopIndex();
     }
@@ -1328,8 +1330,37 @@ function renderWsprHopButtons() {
         btn.className = 'digi-wspr-band-btn' + (activeLabels.indexOf(band.label) >= 0 ? ' active' : '');
         btn.textContent = band.label;
         btn.dataset.band = band.label;
+        btn.setAttribute('aria-pressed', activeLabels.indexOf(band.label) >= 0 ? 'true' : 'false');
         host.appendChild(btn);
     }
+}
+
+function toggleWsprHopBandSelection(label) {
+    var nextBands = digiWsprHopBands.slice();
+    var idx = nextBands.indexOf(label);
+    if (idx >= 0) {
+        if (nextBands.length === 1) return false;
+        nextBands.splice(idx, 1);
+    } else {
+        nextBands.push(label);
+    }
+    setWsprHopBands(nextBands, true);
+    if (digiTxActive) {
+        updateWsprInfo(getDigiSlotInfo());
+        return true;
+    }
+    if (!digiTxArmed && !digiTxActive) {
+        clearWsprTargetBand();
+        if (isWsprMode() && digiWsprHopBands.length === 1) {
+            var onlyBand = getDigiBandByLabel(digiWsprHopBands[0]);
+            if (onlyBand) requestWsprRetune(onlyBand, 'USB');
+        }
+    } else if (digiWsprTargetBandLabel && digiWsprHopBands.indexOf(digiWsprTargetBandLabel) < 0) {
+        clearWsprTargetBand();
+        if (digiTxQueued) prepareWsprTargetBand();
+    }
+    updateWsprInfo(getDigiSlotInfo());
+    return true;
 }
 
 function chooseWsprTargetBand() {
@@ -1370,6 +1401,10 @@ function clearWsprTargetBand() {
 }
 
 function commitWsprTargetBandProgression() {
+    if (digiWsprManualEnable) {
+        digiWsprPendingHopIndex = -1;
+        return;
+    }
     var bands = getWsprHopSelection();
     if (bands.length > 1 && digiWsprPendingHopIndex >= 0) {
         digiWsprHopIndex = (digiWsprPendingHopIndex + 1) % bands.length;
