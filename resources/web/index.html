@@ -3432,8 +3432,16 @@ function updateModeBtnLabel() {
     if (freedvEnabled) label += ' | ' + freedvModeName;
     document.getElementById('modeBtn').textContent = label;
 }
+function isFreeDVSupportedBaseMode(mode) {
+    return mode === 'USB' || mode === 'LSB' || mode === 'AM' || mode === 'FM';
+}
 function updateMode(mode) {
     currentMode = mode;
+    if (mode !== 'USB' && digiBarVisible) toggleDigiBar();
+    if (freedvEnabled && !isFreeDVSupportedBaseMode(mode)) {
+        disableFreeDVOverlay();
+        currentMode = mode;
+    }
     updateModeBtnLabel();
     if (currentPanel === 'mode') renderModeOverlay();
     updateFilterConfig();
@@ -4215,7 +4223,7 @@ function renderModeOverlay() {
         var fdvBtn = document.createElement('button');
         fdvBtn.className = 'ov-btn' + (freedvEnabled ? ' active' : '');
         fdvBtn.innerHTML = '<span class="btn-label">FreeDV</span><span class="btn-state">' + (freedvEnabled ? freedvModeName : 'OFF') + '</span>';
-        fdvBtn.onclick = function() { toggleFreeDV(); renderModeOverlay(); };
+        fdvBtn.onclick = function() { setPanel('default'); toggleFreeDV(); };
         grid.appendChild(fdvBtn);
     }
     // Back button
@@ -4722,10 +4730,22 @@ function releasePTT() {
 // ============================================================
 // COMMANDS
 // ============================================================
-function setMode(mode) {
+function disableFreeDVOverlay() {
+    if (!freedvEnabled) return false;
+    freedvEnabled = false;
+    freedvSync = false;
+    freedvSNR = 0.0;
+    freedvFreqOffset = 0.0;
+    send({ cmd: 'setFreeDV', enabled: false });
+    updateFreeDVStatus({ enabled: false, freedv: false });
+    return true;
+}
+
+function setMode(mode, options) {
+    options = options || {};
+    if (!options.keepDigiOpen && digiBarVisible) toggleDigiBar();
+    if (!options.keepFreeDV && freedvEnabled) disableFreeDVOverlay();
     send({ cmd: 'setMode', value: mode });
-    // FT8/DIGI panel only valid in USB — close it if the user switches away
-    if (mode !== 'USB' && digiBarVisible) toggleDigiBar();
 }
 function updateVfoDisplay() {
     var label = document.getElementById('vfoLabel');
@@ -4809,11 +4829,16 @@ function updatePowerState(on) {
 function toggleFreeDV() {
     if (freedvModes.length === 0) return;
     if (freedvEnabled) {
-        send({ cmd: 'setFreeDV', enabled: false });
+        disableFreeDVOverlay();
     } else {
+        if (digiBarVisible) toggleDigiBar();
+        if (!isFreeDVSupportedBaseMode(currentMode)) {
+            setMode('USB', { keepFreeDV: true });
+        }
         freedvModeName = freedvModes[0];
         freedvTxGain = 0.25;
         ALC_SMOOTHED = 0;
+        updateFreeDVStatus({ enabled: true, freedv: true, freedvMode: freedvModeName });
         send({ cmd: 'setFreeDV', enabled: true, mode: freedvModeName });
         send({ cmd: 'setFreeDVTxGain', value: freedvTxGain });
     }
@@ -6342,10 +6367,11 @@ function toggleDigiBar() {
     digiBarVisible = !digiBarVisible;
     var bar = document.getElementById('digiBar');
     if (digiBarVisible) {
+        if (freedvEnabled) disableFreeDVOverlay();
         bar.classList.remove('hidden');
         document.body.classList.add('digi-open');
         // FT8 requires USB — set it automatically on open
-        if (currentMode !== 'USB') setMode('USB');
+        if (currentMode !== 'USB') setMode('USB', { keepDigiOpen: true });
         // Set USB Mod Level to 75% for DIGI; save previous value
         var slider = document.getElementById('micGainSlider');
         digiSavedModLevel = slider ? parseInt(slider.value) : -1;
@@ -6380,6 +6406,7 @@ function toggleDigiBar() {
     } else {
         bar.classList.add('hidden');
         document.body.classList.remove('digi-open');
+        closeDigiLogModal();
         stopDigiTune();
         resetDigiTxState({ keepQso: false, skipRigStop: false });
         stopDigiPeriodTimer();
@@ -6391,7 +6418,7 @@ function toggleDigiBar() {
         }
         ALC_SMOOTHED = 0;
         digiRxEnabled = false;
-        resetWsprRxState(false);
+        if (isWsprMode()) resetWsprRxState(false);
         updateDigiRxToggle();
         if (digiTxCtx) { digiTxCtx.close(); digiTxCtx = null; digiTxPacerReady = false; }
     }
@@ -8152,6 +8179,12 @@ function openLogModal() {
     document.getElementById('digiLogModal').classList.add('visible');
 }
 
+function closeDigiLogModal() {
+    cancelEditDigiQso();
+    var modal = document.getElementById('digiLogModal');
+    if (modal) modal.classList.remove('visible');
+}
+
 function renderDigiLog() {
     var panel = document.getElementById('digiLogRows');
     if (!panel) return;
@@ -8638,8 +8671,7 @@ function initDigiHandlers() {
     var logCloseBtn = document.getElementById('digiLogCloseBtn');
     if (logCloseBtn) {
         logCloseBtn.addEventListener('click', function() {
-            cancelEditDigiQso();
-            document.getElementById('digiLogModal').classList.remove('visible');
+            closeDigiLogModal();
         });
     }
 
