@@ -534,7 +534,7 @@ function sanitizeWsprSpot(raw) {
     var dt = Number(raw.dt);
     if (!isFinite(dt)) dt = 0;
     var date = String(raw.date || (slotStartMs ? formatDate6(slotStartMs) : ''));
-    var time = String(raw.time || (slotStartMs ? formatUtcSpotTimestamp(slotStartMs) : ''));
+    var time = slotStartMs ? formatUtcSpotTimestamp(slotStartMs) : String(raw.time || '');
     var text = String(raw.text || raw.message || '').trim();
     if (!text) {
         text = call;

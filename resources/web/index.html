@@ -2491,7 +2491,7 @@ body.digi-open .digi-bar {
                             <span id="digiWsprTargetBandInfo" class="digi-wspr-value">20m</span>
                         </div>
                         <div class="digi-wspr-summary-item">
-                            <span class="digi-wspr-stat-label">STATE</span>
+                            <span class="digi-wspr-stat-label">TX STATE</span>
                             <span id="digiWsprQueued" class="digi-wspr-value">OFF</span>
                         </div>
                         <div class="digi-wspr-summary-item">
@@ -2832,6 +2832,7 @@ var freedvFreqOffset = 0.0;
 var freedvTxGain = 0.25;       // FreeDV mic gain multiplier (same ALC logic as FT8)
 var reporterEnabled = false;
 var reporterState = 'disconnected';
+var radeRxCallsign = '';
 
 var micEnabled = false;
 var txAudioAvailable = false;
@@ -3027,13 +3028,20 @@ const WSPR_HOP_INDEX_STORAGE_KEY = 'digiWsprHopIndexV1';
 const PSK_REPORTER_ENABLED_KEY = 'digiPskReporterEnabledV1';
 const WSPR_UPLOAD_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 // Waterfall FFT
-var WF_FFT_SIZE = 4096;
+var WF_FFT_SIZE      = 4096;   // standard modes: 2.93 Hz/bin at 12kHz
+var WF_FFT_SIZE_WSPR = 16384;  // WSPR mode: 0.73 Hz/bin — resolves 1.46 Hz tone spacing
 var WF_DISPLAY_BINS = 1024; // bins 0-1023 cover 0-3000 Hz at 12kHz/4096
 var WF_FREQ_LOW  = 300;   // display range start (Hz)
 var WF_FREQ_HIGH = 2800;  // display range end (Hz)
+function getWfFreqLow()  { return isWsprMode() ? WSPR_AUDIO_WINDOW_LOW  : WF_FREQ_LOW; }
+function getWfFreqHigh() { return isWsprMode() ? WSPR_AUDIO_WINDOW_HIGH : WF_FREQ_HIGH; }
 var wfBuf = new Float32Array(WF_FFT_SIZE);
 var wfBufPos = 0;
 var wfBufFull = false;
+// Larger accumulation buffer used only in WSPR mode for the high-res FFT
+var wfBufWspr = new Float32Array(WF_FFT_SIZE_WSPR);
+var wfBufPosWspr = 0;
+var wfBufFullWspr = false;
 var wfColorTable = null;    // Array[256] of [r,g,b]
 var wfCanvas = null;
 var wfCtx = null;
@@ -3049,6 +3057,8 @@ var wfSlotLines = [];       // pixel rows where slot boundaries were drawn
 var wfLastSlotIndex = -1;   // tracks slot transitions for boundary lines
 var wfRe = null;            // reusable FFT real buffer (WF_FFT_SIZE)
 var wfIm = null;            // reusable FFT imag buffer (WF_FFT_SIZE)
+var wfReW = null;           // reusable FFT real buffer (WF_FFT_SIZE_WSPR)
+var wfImW = null;           // reusable FFT imag buffer (WF_FFT_SIZE_WSPR)
 var wfMags = null;          // reusable magnitude buffer (WF_DISPLAY_BINS)
 var ft8Worker = null;       // Web Worker for async FT8/FT4 decode
 var wsprWorker = null;      // Web Worker for async WSPR RX decode
@@ -3319,13 +3329,15 @@ function handleMessage(msg) {
                 var ind = document.getElementById('freedvIndicator');
                 if (ind && freedvEnabled) {
                     var sc = freedvSync ? '#00ff88' : '#ff4444';
-                    var syncEl = ind.querySelector('span:nth-child(2)');
-                    var snrEl = ind.querySelector('span:nth-child(3)');
+                    var syncEl = document.getElementById('freedvSyncEl');
+                    var snrEl = document.getElementById('freedvSnrEl');
                     if (syncEl) { syncEl.style.color = sc; syncEl.textContent = freedvSync ? 'SYNC' : 'NO SYNC'; }
                     if (snrEl) snrEl.textContent = 'SNR ' + freedvSNR.toFixed(1);
                     if (freedvModeName === 'RADE') {
-                        var foEl = ind.querySelector('span:nth-child(4)');
+                        var foEl = document.getElementById('freedvFoEl');
                         if (foEl) foEl.textContent = 'FO ' + freedvFreqOffset.toFixed(1);
+                        var csEl = document.getElementById('freedvCallsign');
+                        if (csEl) csEl.textContent = radeRxCallsign;
                     }
                 }
             }
@@ -3341,6 +3353,10 @@ function handleMessage(msg) {
             break;
         case 'reporterStatus':
             updateReporterStatus(msg);
+            break;
+        case 'radeCallsign':
+            radeRxCallsign = msg.callsign || '';
+            updateFreeDVStatus({});
             break;
         case 'error':
             console.error('Server error:', msg.message);
@@ -4882,8 +4898,12 @@ function updateFreeDVStatus(msg) {
     if (freedvEnabled) {
         var syncColor = freedvSync ? '#00ff88' : '#ff4444';
         var snrText = freedvSNR.toFixed(1);
-        var foHtml = '<span id="freedvFoEl" style="width:72px; display:inline-block; text-align:right;">'
-            + (freedvModeName === 'RADE' ? ('FO ' + freedvFreqOffset.toFixed(1)) : '') + '</span>';
+        var csHtml = (freedvModeName === 'RADE' && radeRxCallsign)
+            ? '<span id="freedvCallsign" style="color:#0ff; min-width:60px; display:inline-block; text-align:center;">' + radeRxCallsign + '</span>'
+            : '';
+        var foHtml = freedvModeName === 'RADE'
+            ? '<span id="freedvFoEl" style="width:72px; display:inline-block; text-align:right;">FO ' + freedvFreqOffset.toFixed(1) + '</span>'
+            : '<span id="freedvFoEl" style="display:none;"></span>';
         var rptDot = '';
         if (reporterEnabled) {
             var rc = reporterState === 'connected' ? '#0c6' : reporterState === 'error' ? '#f44' : '#fa0';
@@ -4892,6 +4912,7 @@ function updateFreeDVStatus(msg) {
         indicator.innerHTML = '<span id="freedvModeLink" style="cursor:pointer; text-decoration:underline; min-width:72px; display:inline-block;">FreeDV ' + freedvModeName + '</span>'
             + '<span id="freedvSyncEl" style="color:' + syncColor + '; width:52px; display:inline-block; text-align:center;">' + (freedvSync ? 'SYNC' : 'NO SYNC') + '</span>'
             + '<span id="freedvSnrEl" style="width:62px; display:inline-block; text-align:right;">SNR ' + snrText + '</span>'
+            + csHtml
             + foHtml
             + '<span id="freedvSettingsBtn" style="cursor:pointer; padding:1px 5px; border:1px solid #666; border-radius:3px; font-size:10px;" title="Station Settings">RPT</span>'
             + rptDot
@@ -6317,6 +6338,30 @@ function updateDigiModeUi() {
     updateDigiMsgRows();
     updateWsprInfo(getDigiSlotInfo());
     renderWsprSpots();
+    // Update TX/RX frequency input bounds and scale to match the active waterfall window.
+    var txInput = document.getElementById('digiTxFreqDisplay');
+    if (txInput) { txInput.min = getWfFreqLow(); txInput.max = getWfFreqHigh(); }
+    var rxInput = document.getElementById('digiRxFreqDisplay');
+    if (rxInput) { rxInput.min = getWfFreqLow(); rxInput.max = getWfFreqHigh(); }
+    var scaleEl = document.querySelector('.digi-wf-scale');
+    if (scaleEl) {
+        var spans = scaleEl.querySelectorAll('span');
+        var lo = getWfFreqLow();
+        var hi = getWfFreqHigh();
+        var n = spans.length - 1;
+        for (var ti = 0; ti <= n; ti++) {
+            var hz = Math.round(lo + (hi - lo) * ti / n);
+            spans[ti].textContent = hz >= 1000 ? (hz / 1000).toFixed(hz % 1000 === 0 ? 1 : 2).replace(/\.?0+$/, '') + 'k' : String(hz);
+        }
+    }
+    // Clear waterfall history when the display range changes so stale rows do not linger.
+    wfBufFull = false;
+    wfBufFullWspr = false;
+    wfBufPos = 0;
+    wfBufPosWspr = 0;
+    wfSlotLines = [];
+    wfLastSlotIndex = -1;
+    wfScrollCounter = 0;
     drawDigiWaterfall();
 }
 
@@ -6474,11 +6519,14 @@ function processDigiAudioChunk(int16Chunk, timing) {
                     digiWsprRxBuffer[digiWsprRxWritePos++] = sample;
                 }
             }
-            // Feed waterfall circular buffer — yield to TX loopback during transmit
+            // Feed waterfall circular buffers — yield to TX loopback during transmit
             if (!digiTxActive) {
                 wfBuf[wfBufPos] = sample;
                 wfBufPos++;
                 if (wfBufPos >= WF_FFT_SIZE) { wfBufPos = 0; wfBufFull = true; }
+                wfBufWspr[wfBufPosWspr] = sample;
+                wfBufPosWspr++;
+                if (wfBufPosWspr >= WF_FFT_SIZE_WSPR) { wfBufPosWspr = 0; wfBufFullWspr = true; }
             }
         }
     }
@@ -6515,6 +6563,9 @@ function startDigiPeriodTimer() {
                 wfBuf[wfBufPos] = digiTxWfSamples[wi];
                 wfBufPos++;
                 if (wfBufPos >= WF_FFT_SIZE) { wfBufPos = 0; wfBufFull = true; }
+                wfBufWspr[wfBufPosWspr] = digiTxWfSamples[wi];
+                wfBufPosWspr++;
+                if (wfBufPosWspr >= WF_FFT_SIZE_WSPR) { wfBufPosWspr = 0; wfBufFullWspr = true; }
             }
             digiTxWfPos = end;
         }
@@ -6682,10 +6733,11 @@ function drawDigiWaterfall() {
     var txEl = document.getElementById('digiWfTxMarker');
     var rxEl = document.getElementById('digiWfRxMarker');
     var bwHz = digiCenterOffset() * 2; // full signal bandwidth in Hz
-    var freqRange = WF_FREQ_HIGH - WF_FREQ_LOW;
+    var wfLow = getWfFreqLow(), wfHigh = getWfFreqHigh();
+    var freqRange = wfHigh - wfLow;
     var bwPct = (bwHz / freqRange * 100).toFixed(3) + '%';
-    var txLeftPct = ((digiTxFreq - WF_FREQ_LOW) / freqRange * 100).toFixed(3) + '%';
-    var rxLeftPct = ((digiRxFreq - WF_FREQ_LOW) / freqRange * 100).toFixed(3) + '%';
+    var txLeftPct = ((digiTxFreq - wfLow) / freqRange * 100).toFixed(3) + '%';
+    var rxLeftPct = ((digiRxFreq - wfLow) / freqRange * 100).toFixed(3) + '%';
     if (txEl) {
         txEl.style.left = txLeftPct;
         txEl.style.width = bwPct;
@@ -6710,6 +6762,9 @@ function drawDigiWaterfall() {
         wfCanvas.height = h;
         wfCtx = null; // force context re-fetch
         wfBufFull = false; // fresh canvas needs fresh data
+        wfBufFullWspr = false;
+        wfBufPos = 0;
+        wfBufPosWspr = 0;
         wfSlotLines = []; // reset slot boundary lines
         wfLastSlotIndex = -1;
     }
@@ -6720,7 +6775,10 @@ function drawDigiWaterfall() {
     if (!digiRxEnabled) {
         wfCtx.fillStyle = '#000';
         wfCtx.fillRect(0, 0, w, h);
-        wfBufFull = false; // discard stale buffer so next RX-on starts fresh
+        wfBufFull = false;
+        wfBufFullWspr = false;
+        wfBufPos = 0;
+        wfBufPosWspr = 0; // discard stale buffers so next RX-on starts fresh
         wfSlotLines = []; // clear slot boundary lines
         wfLastSlotIndex = -1;
         if (!wfLabelCanvas) wfLabelCanvas = document.getElementById('digiWfLabelCanvas');
@@ -6728,28 +6786,38 @@ function drawDigiWaterfall() {
         return;
     }
 
+    // Select buffer based on mode: WSPR uses a larger FFT for better frequency resolution.
+    var wspr = isWsprMode();
+    var fftSize = wspr ? WF_FFT_SIZE_WSPR : WF_FFT_SIZE;
+    var activeBufFull = wspr ? wfBufFullWspr : wfBufFull;
+    var activeBuf = wspr ? wfBufWspr : wfBuf;
+    var activeBufPos = wspr ? wfBufPosWspr : wfBufPos;
+
     // Need a full buffer before we can FFT
-    if (!wfBufFull) return;
+    if (!activeBufFull) return;
 
     // Lazy-init reusable typed arrays (no GC per frame)
     if (!wfRe) { wfRe = new Float32Array(WF_FFT_SIZE); wfIm = new Float32Array(WF_FFT_SIZE); wfMags = new Float32Array(WF_DISPLAY_BINS); }
-    var re = wfRe, im = wfIm;
+    if (!wfReW) { wfReW = new Float32Array(WF_FFT_SIZE_WSPR); wfImW = new Float32Array(WF_FFT_SIZE_WSPR); }
+    var re = wspr ? wfReW : wfRe;
+    var im = wspr ? wfImW : wfIm;
 
-    // Extract WF_FFT_SIZE samples in time order from circular buffer, apply Hann window
-    for (var i = 0; i < WF_FFT_SIZE; i++) {
-        var idx = (wfBufPos + i) % WF_FFT_SIZE;
-        var wCoef = 0.5 * (1.0 - Math.cos(2 * Math.PI * i / (WF_FFT_SIZE - 1)));
-        re[i] = wfBuf[idx] * wCoef;
+    // Extract fftSize samples in time order from the circular buffer and apply a Hann window.
+    for (var i = 0; i < fftSize; i++) {
+        var idx = (activeBufPos + i) % fftSize;
+        var wCoef = 0.5 * (1.0 - Math.cos(2 * Math.PI * i / (fftSize - 1)));
+        re[i] = activeBuf[idx] * wCoef;
         im[i] = 0;
     }
 
     wfFftInPlace(re, im);
 
-    // Compute dB magnitudes for bins 0..WF_DISPLAY_BINS-1
-    var mags = wfMags;
+    // Compute dB magnitudes for the bins we care about.
+    var numMagBins = wspr ? fftSize / 2 : WF_DISPLAY_BINS;
+    var mags = wspr ? re : wfMags; // reuse the real buffer when WSPR needs more bins
     var peakDb = -200;
-    for (var b = 0; b < WF_DISPLAY_BINS; b++) {
-        var mag = Math.sqrt(re[b] * re[b] + im[b] * im[b]) / WF_FFT_SIZE;
+    for (var b = 0; b < numMagBins; b++) {
+        var mag = Math.sqrt(re[b] * re[b] + im[b] * im[b]) / fftSize;
         var db = (mag > 1e-12) ? (20 * Math.log10(mag)) : -200;
         mags[b] = db;
         if (db > peakDb) peakDb = db;
@@ -6758,9 +6826,10 @@ function drawDigiWaterfall() {
     // Track peak dB within the current slot (auto-gain updates at slot boundaries only)
     if (peakDb > wfSlotPeakDb) wfSlotPeakDb = peakDb;
 
-    // Scroll 4x slower: only advance every 4th frame
+    // Keep the perceived scroll speed similar across normal and WSPR modes.
+    var scrollThresh = wspr ? 1 : 4;
     wfScrollCounter++;
-    if (wfScrollCounter < 4) return;
+    if (wfScrollCounter < scrollThresh) return;
     wfScrollCounter = 0;
 
     // Detect slot boundary by tracking the slot index (reliable across timing jitter)
@@ -6793,17 +6862,16 @@ function drawDigiWaterfall() {
         wfSlotCount++;
     }
 
-    // Write new row at the bottom (with linear interpolation between bins)
-    // Map canvas X to FFT bins covering WF_FREQ_LOW..WF_FREQ_HIGH only
-    var binLow  = WF_FREQ_LOW  * WF_FFT_SIZE / 12000; // first bin to display
-    var binHigh = WF_FREQ_HIGH * WF_FFT_SIZE / 12000; // last bin to display
+    // Write new row at the bottom (with linear interpolation between bins).
+    var binLow  = wfLow  * fftSize / 12000;
+    var binHigh = wfHigh * fftSize / 12000;
     var rowStart = (h - 1) * w * 4;
     var dbRange = wfMaxDb - wfMinDb;
     if (dbRange < 1) dbRange = 1;
     for (var x = 0; x < w; x++) {
         var binExact = binLow + x * (binHigh - binLow) / w;
         var bin0 = Math.floor(binExact);
-        var bin1 = bin0 + 1 < WF_FFT_SIZE / 2 ? bin0 + 1 : bin0;
+        var bin1 = bin0 + 1 < fftSize / 2 ? bin0 + 1 : bin0;
         var frac = binExact - bin0;
         var db = mags[bin0] * (1 - frac) + mags[bin1] * frac;
         var norm = (db - wfMinDb) / dbRange;
@@ -6852,7 +6920,7 @@ function drawDigiWaterfall() {
             wfLabelCtx.lineJoin = 'round';
             for (var li = 0; li < visibleLabels.length; li++) {
                 var lbl = visibleLabels[li];
-                var lx = Math.round((lbl.freq + digiCenterOffset() - WF_FREQ_LOW) / (WF_FREQ_HIGH - WF_FREQ_LOW) * w);
+                var lx = Math.round((lbl.freq + digiCenterOffset() - wfLow) / (wfHigh - wfLow) * w);
                 if (lx < 0 || lx >= w) continue;
                 // CQ: bright green / 73: cyan
                 var fillColor   = lbl.cq ? '#40ff80' : '#40e0ff';
@@ -8570,8 +8638,8 @@ function initDigiHandlers() {
             var rect = wfBar.getBoundingClientRect();
             var clientX = e.touches ? e.touches[0].clientX : e.clientX;
             // Click position = center of signal; subtract offset to get base (tone 0) frequency
-            var freq = WF_FREQ_LOW + Math.round(((clientX - rect.left) / rect.width) * (WF_FREQ_HIGH - WF_FREQ_LOW)) - Math.round(digiCenterOffset());
-            freq = Math.max(200, Math.min(2700, freq));
+            var freq = getWfFreqLow() + Math.round(((clientX - rect.left) / rect.width) * (getWfFreqHigh() - getWfFreqLow())) - Math.round(digiCenterOffset());
+            freq = Math.max(getWfFreqLow(), Math.min(getWfFreqHigh(), freq));
             if (!digiHoldTxFreq) {
                 digiTxFreq = freq;
                 digiRxFreq = freq;
@@ -8589,7 +8657,7 @@ function initDigiHandlers() {
     if (txFreqInput) {
         txFreqInput.addEventListener('change', function() {
             var v = parseInt(this.value);
-            if (!isNaN(v) && v >= WF_FREQ_LOW && v <= WF_FREQ_HIGH) { digiTxFreq = v; drawDigiWaterfall(); }
+            if (!isNaN(v) && v >= getWfFreqLow() && v <= getWfFreqHigh()) { digiTxFreq = v; drawDigiWaterfall(); }
             else this.value = digiTxFreq;
         });
         txFreqInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') this.blur(); });
@@ -8598,7 +8666,7 @@ function initDigiHandlers() {
     if (rxFreqInput) {
         rxFreqInput.addEventListener('change', function() {
             var v = parseInt(this.value);
-            if (!isNaN(v) && v >= WF_FREQ_LOW && v <= WF_FREQ_HIGH) {
+            if (!isNaN(v) && v >= getWfFreqLow() && v <= getWfFreqHigh()) {
                 digiRxFreq = v;
                 if (isWsprMode() && digiWsprRxSlotIndex >= 0) {
                     invalidateWsprRxSlot(digiWsprRxSlotIndex);

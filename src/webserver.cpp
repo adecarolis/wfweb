@@ -272,7 +272,6 @@ QString generatedWebAssetPath(const QString &path)
 webServer::webServer(QObject *parent) :
     QObject(parent)
 {
-    webrtcFeedSocket = new QUdpSocket(this);
     pskReporterSocket = new QUdpSocket(this);
     pskReporterSessionId = QRandomGenerator::global()->generate();
     wsprNetManager = new QNetworkAccessManager(this);
@@ -4144,7 +4143,9 @@ void webServer::drainFreeDVTxBuffer()
         chunk.append(QByteArray(chunkSize - chunk.size(), 0));
         usbAudioOutputDevice->write(chunk);
         freedvTxBuffer.clear();
-    } else if (radeEooDraining) {
+    }
+#ifdef RADE_SUPPORT
+    else if (radeEooDraining) {
         // EOO frame fully drained — stop ALSA and clean up TX state
         radeEooDraining = false;
         freedvTxActive = false;
@@ -4156,7 +4157,9 @@ void webServer::drainFreeDVTxBuffer()
         }
         qInfo() << "Web: RADE EOO drain complete, ALSA stopped";
         return;
-    } else {
+    }
+#endif
+    else {
         // No data: write silence to keep ALSA fed
         QByteArray silence(chunkSize, 0);
         usbAudioOutputDevice->write(silence);
