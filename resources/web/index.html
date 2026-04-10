@@ -7086,8 +7086,12 @@ function startDigiTune() {
             outputChannelCount: [1],
             processorOptions: { freq: df, rate: actualRate }
         });
-        var sink = txCtx.createAnalyser();
-        node.connect(sink);
+        // Sidetone: route through a low-volume gain node to speakers
+        // (same level as regular FT8/FT4 TX monitor)
+        var monGain = txCtx.createGain();
+        monGain.gain.value = 0.025;
+        node.connect(monGain);
+        monGain.connect(txCtx.destination);
         node.port.onmessage = function(e) {
             if (!digiTuneActive) {
                 node.disconnect();
