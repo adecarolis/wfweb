@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
         "  --lan-audio <port>      LAN audio port (default 50003)\n"
         "  --lan-user <user>       LAN username\n"
         "  --lan-pass <pass>       LAN password\n"
-        "  --civ <addr>            CI-V address (decimal, e.g. 148 for IC-7300)\n"
+        "  --civ <addr>            CI-V address, hex or decimal (e.g. 0x94 or 148 for IC-7300)\n"
         "  --serial-port <path>    Serial port device (e.g. /dev/ttyUSB0)\n"
         "  --audio-system <id>     Audio system (0=Qt, 1=PortAudio, 2=RtAudio)\n"
         "  --audio-device <name>   Audio device name (e.g. 'USB Audio CODEC')\n"
@@ -381,7 +381,20 @@ int main(int argc, char *argv[])
         }
         else if (currentArg == "--civ")
         {
-            if (argc > c + 1) { overrides.civAddr = QString(argv[++c]).toInt(); }
+            if (argc > c + 1) {
+                QString civStr = QString(argv[++c]).trimmed();
+                bool ok = false;
+                int civ = 0;
+                if (civStr.startsWith("0x", Qt::CaseInsensitive))
+                    civ = civStr.mid(2).toInt(&ok, 16);
+                else
+                    civ = civStr.toInt(&ok, 10);
+                if (!ok || civ < 0 || civ > 0xFF) {
+                    std::cout << "Error: --civ value must be 0x00-0xFF or 0-255 (e.g. 0x94 or 148)\n";
+                    return -1;
+                }
+                overrides.civAddr = civ;
+            }
             else { std::cout << "Error: --civ requires address\n"; return -1; }
         }
         else if (currentArg == "--serial-port")

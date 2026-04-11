@@ -60,7 +60,7 @@ That's it — any supported Icom (IC-7300, IC-7300 Mk2, IC-7610, IC-705, IC-9700
 If you've changed your radio's CI-V address to something non-standard, pass it explicitly:
 
 ```bash
-./wfweb --civ 148   # decimal, see CI-V address table below
+./wfweb --civ 0x94   # hex (as shown on the radio), or decimal (148)
 ```
 
 ### 2. Native build — LAN radio
@@ -68,7 +68,7 @@ If you've changed your radio's CI-V address to something non-standard, pass it e
 For Icoms with a built-in Ethernet port (IC-7300 Mk2, IC-9700, IC-7610, …) or a LAN accessory, specify the IP, CI-V address, and credentials on the command line:
 
 ```bash
-./wfweb --lan 192.168.1.100 --civ 130 --lan-user admin --lan-pass secret
+./wfweb --lan 192.168.1.100 --civ 0x82 --lan-user admin --lan-pass secret
 ```
 
 Replace the IP and credentials with your radio's settings. `--civ` is required on LAN (there is no serial bus to probe for auto-detect).
@@ -82,7 +82,7 @@ No build, no dependencies. The image `k1fm/wfweb` is multi-arch (`linux/amd64` a
 ```bash
 docker run --rm -it \
   -p 8080:8080 -p 8081:8081 \
-  k1fm/wfweb --lan 192.168.1.100 --civ 130 --lan-user admin --lan-pass secret
+  k1fm/wfweb --lan 192.168.1.100 --civ 0x82 --lan-user admin --lan-pass secret
 ```
 
 **USB radio** (share the serial device and sound subsystem with the container):
@@ -167,7 +167,7 @@ All settings can be passed as CLI flags. Run `wfweb --help` for the full list.
 | `--lan-audio <port>` | LAN audio port | `50003` |
 | `--lan-user <user>` | LAN username | (empty) |
 | `--lan-pass <pass>` | LAN password | (empty) |
-| `--civ <addr>` | CI-V address (decimal) | auto-detect (USB only) |
+| `--civ <addr>` | CI-V address (hex `0x94` or decimal `148`) | auto-detect (USB only) |
 | `--manufacturer <id>` | 0=Icom, 1=Kenwood, 2=Yaesu | `0` (Icom) |
 | `-l --logfile <file>` | Log to file | `/tmp/wfweb-*.log` |
 | `-b --background` | Run as daemon (Linux/macOS) | foreground |
@@ -197,24 +197,6 @@ wfweb writes a file with sensible defaults on first run. After that, open the we
 If all you need is to talk to a rig on a non-default CI-V address or a different manufacturer, you don't need `--settings` at all — use `--civ <addr>` and `--manufacturer <id>` directly.
 
 > **Note:** `--settings` does **not** take `.rig` files. Those are CI-V command dictionaries for specific radio models that wfweb already loads automatically from its install's `rigs/` directory based on the radio it detects on the bus. You should never pass one on the command line.
-
----
-
-## CI-V address table
-
-Default CI-V addresses for supported radios (decimal values for `--civ`):
-
-| Radio | CI-V (hex) | CI-V (decimal) |
-|---|:---:|:---:|
-| IC-7300 | 0x94 | 148 |
-| IC-7300 Mk2 | 0x82 | 130 |
-| IC-705 | 0xA4 | 164 |
-| IC-7610 | 0x98 | 152 |
-| IC-9700 | 0xA2 | 162 |
-| IC-7100 | 0x88 | 136 |
-| IC-7410 | 0x80 | 128 |
-
-On USB, these are auto-detected; you only need `--civ` if the radio was reconfigured to a non-standard address. On LAN, `--civ` is required.
 
 ---
 
