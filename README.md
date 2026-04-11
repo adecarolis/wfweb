@@ -65,13 +65,13 @@ If you've changed your radio's CI-V address to something non-standard, pass it e
 
 ### 2. Native build — LAN radio
 
-For Icoms with a built-in Ethernet port (IC-7300 Mk2, IC-9700, IC-7610, …) or a LAN accessory, specify the IP, CI-V address, and credentials on the command line:
+For Icoms with a built-in Ethernet port (IC-7300 Mk2, IC-9700, IC-7610, …) or a LAN accessory, specify the IP and credentials on the command line:
 
 ```bash
-./wfweb --lan 192.168.1.100 --civ 0x82 --lan-user admin --lan-pass secret
+./wfweb --lan 192.168.1.100 --lan-user admin --lan-pass secret
 ```
 
-Replace the IP and credentials with your radio's settings. `--civ` is required on LAN (there is no serial bus to probe for auto-detect).
+Replace the IP and credentials with your radio's settings. If your radio uses a non-default CI-V address, add `--civ 0x<addr>`.
 
 ### 3. Docker
 
@@ -82,7 +82,7 @@ No build, no dependencies. The image `k1fm/wfweb` is multi-arch (`linux/amd64` a
 ```bash
 docker run --rm -it \
   -p 8080:8080 -p 8081:8081 \
-  k1fm/wfweb --lan 192.168.1.100 --civ 0x82 --lan-user admin --lan-pass secret
+  k1fm/wfweb --lan 192.168.1.100 --lan-user admin --lan-pass secret
 ```
 
 **USB radio** (share the serial device and sound subsystem with the container):

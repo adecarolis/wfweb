@@ -15,7 +15,7 @@ No USB devices needed — just network access:
 docker run --rm -it \
   -p 8080:8080 -p 8081:8081 \
   k1fm/wfweb \
-  --lan 192.168.1.100 --lan-user admin --lan-pass secret --civ 130  # IC-7300 Mk2
+  --lan 192.168.1.100 --lan-user admin --lan-pass secret
 ```
 
 Open `https://localhost:8080` in your browser (accept the self-signed certificate).
@@ -118,12 +118,12 @@ docker run --rm -it \
   k1fm/wfweb \
   --lan 192.168.1.100 \
   --lan-user admin \
-  --lan-pass secret \
-  --civ 130  # IC-7300 Mk2
+  --lan-pass secret
 ```
 
 No `--device` flags are needed for LAN connections. Audio streams over the
-network automatically.
+network automatically. If your radio uses a non-default CI-V address, add
+`--civ <addr>` (hex `0x94` or decimal `148`).
 
 ### LAN port overrides
 
@@ -329,8 +329,6 @@ services:
       - "admin"
       - "--lan-pass"
       - "secret"
-      - "--civ"
-      - "130"  # IC-7300 Mk2
 
 volumes:
   wfview-config:
