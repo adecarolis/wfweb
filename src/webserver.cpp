@@ -1336,6 +1336,58 @@ void webServer::requestVfoUpdate()
     });
 }
 
+bool webServer::isFreeDVCompatibleMode(rigMode_t mk) const
+{
+    // FreeDV/RADE modulates audio that the rig transmits as SSB/AM/FM.
+    // Modes that carry their own digital signalling (CW, RTTY, PSK, FT8-in-data)
+    // are mutually exclusive with FreeDV.
+    switch (mk) {
+    case modeLSB:
+    case modeUSB:
+    case modeAM:
+    case modeFM:
+    case modeLSB_D:
+    case modeUSB_D:
+    case modeAMN:
+    case modeWFM:
+    case modeDATAFM:
+    case modeDATAFMN:
+        return true;
+    default:
+        return false;
+    }
+}
+
+void webServer::disableFreeDV()
+{
+    if (!freedvEnabled) return;
+    freedvEnabled = false;
+    freedvSync = false;
+    freedvSNR = 0.0f;
+    freedvTxBuffer.clear();
+    freedvTxActive = false;
+    if (freedvTxDrainTimer) freedvTxDrainTimer->stop();
+#ifdef FREEDV_SUPPORT
+    if (freedvProcessor)
+        QMetaObject::invokeMethod(freedvProcessor, "cleanup", Qt::QueuedConnection);
+#endif
+#ifdef RADE_SUPPORT
+    freedvFreqOffset = 0.0f;
+    radeRxCallsign.clear();
+    if (radeProcessor) {
+        radeProcessor->stopRequested.store(true);  // immediate cross-thread halt
+        QMetaObject::invokeMethod(radeProcessor, "cleanup", Qt::QueuedConnection);
+    }
+#endif
+#ifdef FREEDV_SUPPORT
+    if (freedvReporter && reporterEnabled) {
+        freedvReporter->disconnectFromService();
+        qInfo() << "Web: Reporter disconnected (FreeDV disabled)";
+    }
+#endif
+    qInfo() << "Web: FreeDV disabled";
+}
+
 void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
 {
     QString type = cmd["cmd"].toString();
@@ -1819,6 +1871,34 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         bool enable = cmd["enabled"].toBool();
         QString modeName = cmd["mode"].toString();
         if (enable && audioConfigured) {
+            // FreeDV/RADE rides on SSB. If the user is parked on a mode that
+            // isn't USB/LSB (e.g. CW/RTTY/FM left over from a previous session),
+            // force to the right sideband for the current frequency — USB on
+            // bands >= 10 MHz, LSB below. This matches HF ham convention.
+            if (queue) {
+                vfoCommandType t = queue->getVfoCommand(vfoA, 0, true);
+                cacheItem modeCache = queue->getCache(t.modeFunc, 0);
+                cacheItem freqCache = queue->getCache(t.freqFunc, 0);
+                if (modeCache.value.isValid()) {
+                    modeInfo cur = modeCache.value.value<modeInfo>();
+                    if (cur.mk != modeUSB && cur.mk != modeLSB) {
+                        quint64 hz = 0;
+                        if (freqCache.value.isValid())
+                            hz = freqCache.value.value<freqt>().Hz;
+                        QString forced = (hz >= 10000000ULL) ? QStringLiteral("USB")
+                                                             : QStringLiteral("LSB");
+                        modeInfo m = stringToMode(forced);
+                        m.filter = cur.filter;
+                        qCInfo(logWebServer) << "FreeDV enable: forcing mode from"
+                                             << modeToString(cur) << "to" << forced
+                                             << "at" << (double)hz/1e6 << "MHz";
+                        queue->addUnique(priorityImmediate,
+                                         queueItem(t.modeFunc,
+                                                   QVariant::fromValue<modeInfo>(m),
+                                                   false, 0));
+                    }
+                }
+            }
 #ifdef RADE_SUPPORT
             if (modeName == "RADE" && radeProcessor) {
                 freedvModeName = modeName;
@@ -1865,32 +1945,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 freedvReporter->connectToService();
 #endif
         } else {
-            freedvEnabled = false;
-            freedvSync = false;
-            freedvSNR = 0.0f;
-            freedvTxBuffer.clear();
-            freedvTxActive = false;
-            if (freedvTxDrainTimer) freedvTxDrainTimer->stop();
-#ifdef FREEDV_SUPPORT
-            if (freedvProcessor)
-                QMetaObject::invokeMethod(freedvProcessor, "cleanup", Qt::QueuedConnection);
-#endif
-#ifdef RADE_SUPPORT
-            freedvFreqOffset = 0.0f;
-            radeRxCallsign.clear();
-            if (radeProcessor) {
-                radeProcessor->stopRequested.store(true);  // immediate cross-thread halt
-                QMetaObject::invokeMethod(radeProcessor, "cleanup", Qt::QueuedConnection);
-            }
-#endif
-#ifdef FREEDV_SUPPORT
-            // Disconnect reporter when leaving FreeDV/RADE mode
-            if (freedvReporter && reporterEnabled) {
-                freedvReporter->disconnectFromService();
-                qInfo() << "Web: Reporter disconnected (FreeDV disabled)";
-            }
-#endif
-            qInfo() << "Web: FreeDV disabled";
+            disableFreeDV();
         }
         QJsonObject notify;
         notify["type"] = "freedvStatus";
@@ -2286,6 +2341,25 @@ void webServer::receiveCache(cacheItem item)
         modeInfo m = item.value.value<modeInfo>();
         update["mode"] = modeToString(m);
         update["filter"] = m.filter;
+        // FreeDV/RADE only makes sense on voice-carrying modes. If the rig
+        // (or the user) switches to CW/RTTY/PSK/etc, tear it down so it
+        // doesn't keep trying to decode/encode through a non-audio modem.
+        if (freedvEnabled && !isFreeDVCompatibleMode(m.mk)) {
+            qCInfo(logWebServer) << "Disabling FreeDV: mode changed to"
+                                 << modeToString(m) << "which is not voice-compatible";
+            disableFreeDV();
+            QJsonObject notify;
+            notify["type"] = "freedvStatus";
+            notify["enabled"] = false;
+            notify["freedvMode"] = freedvModeName;
+            notify["freedvSync"] = false;
+            notify["freedvSNR"] = 0.0;
+#ifdef RADE_SUPPORT
+            if (freedvModeName == "RADE")
+                notify["freedvFreqOffset"] = 0.0;
+#endif
+            sendJsonToAll(notify);
+        }
         break;
     }
     case funcSMeter:

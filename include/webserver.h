@@ -162,6 +162,8 @@ private:
     void sendBinaryToAudioClients(const QByteArray &data);
     void handleCommand(QWebSocket *client, const QJsonObject &cmd);
     void requestVfoUpdate();
+    void disableFreeDV();
+    bool isFreeDVCompatibleMode(rigMode_t mk) const;
     void sendCurrentState(QWebSocket *client);
     QString modeToString(modeInfo m);
     modeInfo stringToMode(const QString &mode);
