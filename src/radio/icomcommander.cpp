@@ -374,6 +374,7 @@ void icomCommander::powerOn()
 
 void icomCommander::powerOff()
 {
+    qDebug(logRig()) << "Power OFF command in icomCommander, usingNativeLAN=" << usingNativeLAN << " hasLan=" << rigCaps.hasLan;
     QByteArray payload;
     quint8 cmd = '\x00';
     if (getCommand(funcPowerControl,payload,cmd).cmd != funcNone)
@@ -628,6 +629,9 @@ void icomCommander::parseData(QByteArray dataInput)
                 // Require several consecutive valid (non-FA) responses
                 // before declaring the radio back on.  A single stray
                 // valid response during shutdown must not flip state.
+                if (!rigPoweredOn) {
+                    qDebug(logRig()) << "Valid response while rigPoweredOn=false, validResponseCount=" << validResponseCount;
+                }
                 if (!rigPoweredOn && validResponseCount >= 3) {
                     qInfo(logRig()) << "Sustained valid responses — radio powered on";
                     queue->receiveValue(funcPowerControl,QVariant::fromValue<bool>(true),0);
@@ -1440,6 +1444,7 @@ void icomCommander::parseCommand()
         }
         consecutiveFAErrors++;
         validResponseCount = 0;
+        qDebug(logRig()) << "FA error, consecutiveFAErrors=" << consecutiveFAErrors << " rigPoweredOn=" << rigPoweredOn;
         if (consecutiveFAErrors >= 5 && rigPoweredOn) {
             qInfo(logRig()) << "Multiple consecutive FA errors — radio likely powered off";
             queue->receiveValue(funcPowerControl, QVariant::fromValue<bool>(false), 0);

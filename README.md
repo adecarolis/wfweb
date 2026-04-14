@@ -172,7 +172,7 @@ All settings can be passed as CLI flags. Run `wfweb --help` for the full list.
 | `-l --logfile <file>` | Log to file | `/tmp/wfweb-*.log` |
 | `-b --background` | Run as daemon (Linux/macOS) | foreground |
 | `-c --clearconfig CONFIRM` | Reset all saved settings and exit | — |
-| `-d --debug` | Enable debug logging | off |
+| `-d --debug [file]` | Enable verbose debug logging (optionally to file) | off |
 
 ### About `--settings`
 
@@ -197,6 +197,18 @@ wfweb writes a file with sensible defaults on first run. After that, open the we
 If all you need is to talk to a rig on a non-default CI-V address or a different manufacturer, you don't need `--settings` at all — use `--civ <addr>` and `--manufacturer <id>` directly.
 
 > **Note:** `--settings` does **not** take `.rig` files. Those are CI-V command dictionaries for specific radio models that wfweb already loads automatically from its install's `rigs/` directory based on the radio it detects on the bus. You should never pass one on the command line.
+
+### Debug logging
+
+When reporting a bug, run wfweb with `--debug` and a log file to capture verbose diagnostics:
+
+```bash
+wfweb --debug /tmp/wfweb-debug.log --lan 192.168.1.100 --lan-user myuser --lan-pass mypass
+```
+
+This produces detailed, timestamped logs covering power on/off state transitions, VFO/split routing decisions, CI-V command traffic, and cache updates. Reproduce the issue, then share the log file with your bug report.
+
+Without the filename argument, `--debug` writes to the default log location (`/tmp/wfweb-*.log`).
 
 ---
 

@@ -257,7 +257,7 @@ vfoCommandType cachingQueue::getVfoCommand(vfo_t vfo,uchar rx, bool set)
             }
         }
     }
-    //qDebug(logRig()) << "Queue VFO:" << vfo << "rx:" << rx<< "set:" << set << "mode:" << funcString[cmd.modeFunc] << "freq:" << funcString[cmd.freqFunc] << "rigstate: vfoMode:" << rigState.vfoMode << "vfo" << rigState.vfo << "rx" << rigState.receiver;
+    qDebug(logRig()) << "Queue VFO:" << vfo << "rx:" << rx<< "set:" << set << "mode:" << funcString[cmd.modeFunc] << "freq:" << funcString[cmd.freqFunc] << "rigstate: vfoMode:" << rigState.vfoMode << "vfo" << rigState.vfo << "rx" << rigState.receiver;
     return cmd;
 }
 
@@ -347,6 +347,7 @@ void cachingQueue::message(QString msg)
 
 void cachingQueue::receiveValue(funcs func, QVariant value, uchar receiver)
 {
+    qDebug(logRig()) << "receiveValue() func=" << funcString[func] << " receiver=" << receiver << " value=" << value;
     if (mutex.tryLock(CACHE_LOCK_TIME)) {
         cacheItem c = cacheItem(func,value,receiver);
         items.enqueue(c);
@@ -369,31 +370,44 @@ void cachingQueue::updateCache(bool reply, queueItem item)
     if (reply)
     {
         // Is this a command that might have updated our state?
-        if (item.command == funcSatelliteMode && item.param.value<bool>())
+        if (item.command == funcSatelliteMode && item.param.value<bool>()) {
+            qDebug(logRig()) << "updateCache: vfoMode -> vfoModeSat (was" << rigState.vfoMode << ")";
             rigState.vfoMode=vfoModeType_t::vfoModeSat;
-        if (item.command == funcMemoryMode && item.param.value<bool>())
+        }
+        if (item.command == funcMemoryMode && item.param.value<bool>()) {
+            qDebug(logRig()) << "updateCache: vfoMode -> vfoModeMem (was" << rigState.vfoMode << ")";
             rigState.vfoMode=vfoModeType_t::vfoModeMem;
-        if (item.command == funcVFOMode && item.param.value<bool>())
+        }
+        if (item.command == funcVFOMode && item.param.value<bool>()) {
+            qDebug(logRig()) << "updateCache: vfoMode -> vfoModeVfo (was" << rigState.vfoMode << ")";
             rigState.vfoMode=vfoModeType_t::vfoModeVfo;
-        if (item.command == funcVFOBandMS)
+        }
+        if (item.command == funcVFOBandMS) {
+            qDebug(logRig()) << "updateCache: receiver ->" << item.param.value<uchar>() << "(was" << rigState.receiver << ")";
             rigState.receiver = item.param.value<uchar>();
+        }
     } else {
         // If we are requesting a particular VFO, set our state as the rig will not reply
         if (item.command == funcSelectVFO) {
+            qDebug(logRig()) << "updateCache: selectVFO ->" << item.param.value<vfo_t>() << "(was vfo=" << rigState.vfo << " vfoMode=" << rigState.vfoMode << ")";
             rigState.vfo = item.param.value<vfo_t>();
             if (item.param.value<vfo_t>() != vfoMem)
                 rigState.vfoMode = vfoModeType_t::vfoModeVfo;
         } else if (item.command == funcVFOASelect) {
+            qDebug(logRig()) << "updateCache: VFO A selected (was vfo=" << rigState.vfo << ")";
             rigState.vfo = vfo_t::vfoA;
             rigState.vfoMode = vfoModeType_t::vfoModeVfo;
         } else if (item.command == funcVFOBSelect && rigCaps->numVFO > 1) {
+            qDebug(logRig()) << "updateCache: VFO B selected (was vfo=" << rigState.vfo << ")";
             rigState.vfo = vfo_t::vfoB;
             rigState.vfoMode = vfoModeType_t::vfoModeVfo;
         } else if (item.command == funcVFOMainSelect) {
+            qDebug(logRig()) << "updateCache: VFO Main selected (was vfo=" << rigState.vfo << " rx=" << rigState.receiver << ")";
             rigState.vfo = vfo_t::vfoMain;
             rigState.receiver=0;
             rigState.vfoMode = vfoModeType_t::vfoModeVfo;
         } else if (item.command == funcVFOSubSelect && rigCaps->numReceiver > 1) {
+            qDebug(logRig()) << "updateCache: VFO Sub selected (was vfo=" << rigState.vfo << " rx=" << rigState.receiver << ")";
             rigState.vfo = vfo_t::vfoSub;
             rigState.receiver=1;
             rigState.vfoMode = vfoModeType_t::vfoModeVfo;

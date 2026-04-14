@@ -49,6 +49,7 @@ servermain::servermain(const QString settingsFile, const cmdLineOverrides& overr
     connect(queue, &cachingQueue::cacheUpdated, this, [this](cacheItem item) {
         if (item.command == funcPowerControl) {
             bool poweredOn = item.value.toBool();
+            qDebug(logSystem()) << "cacheUpdated: funcPowerControl=" << poweredOn << " rigPoweredOn=" << rigPoweredOn;
             if (poweredOn && !rigPoweredOn) {
                 qInfo(logSystem()) << "Rig powered ON detected, restoring periodic polling";
                 rigPoweredOn = true;
@@ -290,7 +291,7 @@ void servermain::receiveCommReady()
         if (sender != Q_NULLPTR && radio->rig != Q_NULLPTR && !memcmp(sender->getGUID(), radio->guid, GUIDLEN))
         {
 
-            qInfo(logSystem()) << "Received CommReady!! ";
+            qInfo(logSystem()) << "Received CommReady!! rigAvailable=" << radio->rigAvailable << " civAddr=" << radio->civAddr;
             if (radio->civAddr == 0)
             {
                 // tell rigCommander to broadcast a request for all rig IDs.
@@ -921,13 +922,16 @@ void servermain::receiveBaudRate(quint32 baud)
 
 void servermain::powerRigOn()
 {
+    qDebug(logSystem()) << "powerRigOn() called, current rigPoweredOn=" << rigPoweredOn;
     emit sendPowerOn();
     // Start heartbeat probe while rig boots; after 5 seconds
     // force-reinitialize even if echo detection hasn't fired yet.
     startPowerProbe();
     QTimer::singleShot(5000, this, [this]() {
+        qDebug(logSystem()) << "powerRigOn() 5s timer fired, rigPoweredOn=" << rigPoweredOn;
         if (!rigPoweredOn) {
             rigPoweredOn = true;
+            qDebug(logSystem()) << "powerRigOn() force-setting rigPoweredOn=true, pushing funcPowerControl=true to queue";
             // Immediately notify frontend that rig is on
             queue->receiveValue(funcPowerControl, QVariant::fromValue<bool>(true), 0);
             initPeriodicPolling();
@@ -937,21 +941,25 @@ void servermain::powerRigOn()
 
 void servermain::powerRigOff()
 {
+    qDebug(logSystem()) << "powerRigOff() called, setting rigPoweredOn=false";
     rigPoweredOn = false;
     queue->clear();
     // Immediately notify frontend that rig is off
     queue->receiveValue(funcPowerControl, QVariant::fromValue<bool>(false), 0);
     emit sendPowerOff();
     // Keep a slow heartbeat so we can detect power-on (hardware button)
+    qDebug(logSystem()) << "powerRigOff() starting power probe heartbeat";
     startPowerProbe();
 }
 
 void servermain::initPeriodicPolling()
 {
+    qDebug(logSystem()) << "initPeriodicPolling() called, rigPoweredOn=" << rigPoweredOn << " usingLAN=" << usingLAN;
     // Restore the normal queue interval
     for (RIGCONFIG* radio : serverConfig.rigs) {
         if (radio->rigAvailable && radio->rigCaps != Q_NULLPTR) {
             rigCapabilities* rigCaps = radio->rigCaps;
+            qDebug(logSystem()) << "initPeriodicPolling() rig=" << rigCaps->modelName << " numReceiver=" << rigCaps->numReceiver << " numVFO=" << rigCaps->numVFO << " hasCommand29=" << rigCaps->hasCommand29;
 
             if (usingLAN) {
                 queue->interval(70);
@@ -1016,6 +1024,7 @@ void servermain::startPowerProbe()
     // icomcommander detects power via echo responses on any command;
     // Yaesu/Kenwood detect via successful/failed responses.
     // Use priorityHighest so it fires every 2nd tick (every ~4 seconds).
+    qDebug(logSystem()) << "startPowerProbe() clearing queue and setting 2000ms interval";
     queue->clear();
     queue->interval(2000);
     queue->add(priorityHighest, funcFreq, true, 0);

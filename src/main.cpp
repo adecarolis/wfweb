@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
         "  --manufacturer <id>     Manufacturer ID (0=Icom, 1=Kenwood, 2=Yaesu)\n"
         "  -l --logfile <file>     Log file\n"
         "  -b --background         Run as daemon (not Windows)\n"
-        "  -d --debug              Enable debug logging\n"
+        "  -d --debug [file]       Enable verbose debug logging (optionally to file)\n"
         "  -c --clearconfig CONFIRM  Clear all settings\n"
         "  -v --version            Show version\n"
         "  -? --help               Show this help\n");
@@ -210,6 +210,12 @@ int main(int argc, char *argv[])
         if ((currentArg == "-d") || (currentArg == "--debug"))
         {
             debugMode = true;
+            // Optional filename argument: --debug [file]
+            if (argc > c + 1 && argv[c + 1][0] != '-')
+            {
+                logFilename = argv[c + 1];
+                c += 1;
+            }
         }
         else if ((currentArg == "-l") || (currentArg == "--logfile"))
         {

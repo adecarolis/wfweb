@@ -55,6 +55,11 @@ jobs:
           qmake wfweb.pro
           make -j$(nproc)
 
+      - name: Run tests
+        run: |
+          sudo apt-get install -y python3-pytest python3-requests
+          python3 -m pytest tests/ -v
+
       - name: Get version
         id: version
         run: echo "version=$(grep 'WFWEB_VERSION' wfweb.pro | grep -oP '[\d.]+')" >> $GITHUB_OUTPUT
@@ -169,6 +174,11 @@ jobs:
           qmake wfweb.pro
           make -j$(nproc)
 
+      - name: Run tests
+        run: |
+          apt-get install -y python3-pytest python3-requests
+          python3 -m pytest tests/ -v
+
       - name: Get version
         id: version
         run: echo "version=$(grep 'WFWEB_VERSION' wfweb.pro | grep -oP '[\d.]+')" >> $GITHUB_OUTPUT
@@ -282,6 +292,11 @@ jobs:
           qmake wfweb.pro
           make -j$(nproc)
 
+      - name: Run tests
+        run: |
+          apt-get install -y python3-pytest python3-requests
+          python3 -m pytest tests/ -v
+
       - name: Get version
         id: version
         run: echo "version=$(grep 'WFWEB_VERSION' wfweb.pro | grep -oP '[\d.]+')" >> $GITHUB_OUTPUT
@@ -375,6 +390,11 @@ jobs:
         run: |
           /opt/homebrew/opt/qt@5/bin/qmake wfweb.pro
           make -j$(sysctl -n hw.ncpu)
+
+      - name: Run tests
+        run: |
+          pip3 install --break-system-packages pytest requests
+          python3 -m pytest tests/ -v
 
       - name: Package zip
         run: |
