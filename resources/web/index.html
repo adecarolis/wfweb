@@ -2361,7 +2361,7 @@ body.digi-open .digi-bar {
 
         <!-- Warning overlays on spectrum -->
         <div id="audioOffWarning" class="spectrum-warning" onclick="showAudioMicMenu()" style="display: none;">AUDIO OFF</div>
-        <div id="micOffWarning" class="spectrum-warning" onclick="toggleMic()" style="display: none;">MIC OFF</div>
+        <div id="micOffWarning" class="spectrum-warning" onclick="cycleMicInput()" style="display: none;">MIC OFF</div>
         <div id="preampAttIndicator" class="spectrum-warning" style="display: none;"></div>
     </div>
 
@@ -2433,6 +2433,8 @@ var micWorkletNode = null;
 var micSeq = 0;
 var monitorEnabled = false;
 var monitorLevel = 128; // 0-255 (radio gain)
+var micSource = ''; // Microphone input source name from radio (e.g., "USB", "Mic", "LAN")
+var availableMicInputs = []; // Available microphone input sources from radio capabilities
 
 var nbOn = false;
 var nrOn = false;
@@ -2675,6 +2677,7 @@ function handleMessage(msg) {
             if (msg.spans) populateSpans(msg.spans);
             if (msg.preamps) populatePreamps(msg.preamps);
             if (msg.filters) populateFilters(msg.filters);
+            if (msg.micInputs) availableMicInputs = msg.micInputs;
             if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
             if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
             if (msg.hasPowerControl) document.getElementById('powerBtn').style.display = 'flex';
@@ -2742,6 +2745,7 @@ function handleMessage(msg) {
             if (msg.freedv !== undefined) updateFreeDVStatus(msg);
             if (msg.reporterEnabled !== undefined) { reporterEnabled = msg.reporterEnabled; var rcb = document.getElementById('digiReporterEnable'); if (rcb) rcb.checked = reporterEnabled; }
             if (msg.reporterState !== undefined) reporterState = msg.reporterState;
+            if (msg.micSource !== undefined) { micSource = msg.micSource; updateWarningVisibility(); }
             break;
         case 'update':
             // Handle VFO-specific frequencies if available
@@ -2789,6 +2793,7 @@ function handleMessage(msg) {
             if (msg.filterShape !== undefined) updateFilterShapeBtn(msg.filterShape);
             if (msg.powerState !== undefined) updatePowerState(msg.powerState);
             if (msg.freedv !== undefined) updateFreeDVStatus(msg);
+            if (msg.micSource !== undefined) { micSource = msg.micSource; updateWarningVisibility(); }
             break;
         case 'meters':
             if (msg.transmitting !== undefined) updateTxStatus(msg.transmitting);
@@ -4099,9 +4104,14 @@ function updateWarningVisibility() {
     // Show audio warning if audio is available but not enabled
     audioWarning.style.display = (audioAvailable && !audioEnabled) ? 'block' : 'none';
 
-    // Show mic indicator permanently when TX audio is available; reflect current state
+    // Show mic indicator permanently when TX audio is available; always reflect current source
     if (txAudioAvailable && window.isSecureContext) {
-        micWarning.textContent = micEnabled ? 'MIC ON' : 'MIC OFF';
+        // Display current microphone source from radio if available
+        if (micSource) {
+            micWarning.textContent = 'MIC: ' + micSource;
+        } else {
+            micWarning.textContent = 'MIC OFF';
+        }
         micWarning.style.display = 'block';
     } else {
         micWarning.style.display = 'none';
@@ -4582,6 +4592,11 @@ function stopMic() {
     micSeq = 0; renderBottomBar();
     updateWarningVisibility();
     if (currentPanel === 'audiomiс') renderAudioMicOverlay();
+}
+
+function cycleMicInput() {
+    // Cycle to next available microphone input source
+    send({ cmd: 'cycleMicInput' });
 }
 
 function handleAudioData(buffer) {
