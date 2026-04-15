@@ -313,6 +313,7 @@ html, body {
     display: block; width: 100%;
     position: absolute; left: 0;
     cursor: crosshair;
+    touch-action: none;
 }
 #spectrumCanvas {
     top: 0; height: 35%;
@@ -2462,6 +2463,14 @@ var wfOffCanvas = null;
 var wfOffCtx = null;
 var spectRenderPending = false;
 var colorTable = null;
+var scopeFreezeDuringDrag = false;
+var scopeDragActive = false;
+var scopeDragMoved = false;
+var scopeDragPointerId = null;
+var scopeDragCanvas = null;
+var scopeDragStartX = 0;
+var scopeDragLastTuneTime = 0;
+var scopeDragPreviewFrac = -1;
 
 // UI state
 var currentPanel = 'default';
@@ -4574,6 +4583,7 @@ function handleBinaryMessage(buffer) {
     var msgType = view.getUint8(0);
     if (msgType === 0x02) { handleAudioData(buffer); return; }
     if (msgType !== 0x01 || buffer.byteLength < 13) return;
+    if (scopeFreezeDuringDrag) return;
 
     prevSpectStartFreq = spectStartFreq;
     prevSpectEndFreq = spectEndFreq;
@@ -4721,6 +4731,21 @@ function drawSpectrum() {
         ctx.fill();
     }
 
+    // Drag preview marker (when click-drag tuning is active)
+    if (scopeDragActive && scopeDragPreviewFrac >= 0) {
+        var dragX = Math.max(0, Math.min(w, scopeDragPreviewFrac * w));
+        ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(dragX, 0); ctx.lineTo(dragX, plotH); ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(dragX - 4, 0);
+        ctx.lineTo(dragX + 4, 0);
+        ctx.lineTo(dragX, 6);
+        ctx.closePath();
+        ctx.fill();
+    }
+
     // Freq labels
     if (spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
         ctx.fillStyle = '#555';
@@ -4776,32 +4801,122 @@ function drawWaterfall() {
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(xPos, 0); ctx.lineTo(xPos, h); ctx.stroke();
     }
+
+    // Drag preview marker (when click-drag tuning is active)
+    if (scopeDragActive && scopeDragPreviewFrac >= 0) {
+        var dragX = Math.max(0, Math.min(w, scopeDragPreviewFrac * w));
+        ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(dragX, 0); ctx.lineTo(dragX, h); ctx.stroke();
+    }
+}
+
+function scopeGesturesBlocked() {
+    var isMobilePortrait = window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
+    return isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden');
+}
+
+function scopeFreqFromClientX(target, clientX) {
+    if (!target || spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return 0;
+    var rect = target.getBoundingClientRect();
+    if (rect.width <= 0) return 0;
+    var frac = (clientX - rect.left) / rect.width;
+    frac = Math.max(0, Math.min(1, frac));
+    return Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6);
 }
 
 function scopeClick(e) {
-    // Disable waterfall gestures when CW bar is active on mobile portrait
-    var isMobilePortrait = window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
-    if (isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden')) return;
-
-    if (spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return;
-    var rect = e.target.getBoundingClientRect();
-    var frac = (e.clientX - rect.left) / rect.width;
-    var freqHz = Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6);
-    // Round to nearest kHz (ending in 000 Hz) only for non-CW modes
-    var isCWMode = (currentMode === 'CW' || currentMode === 'CW-R');
-    if (!isCWMode) {
-        freqHz = Math.round(freqHz / 1000) * 1000;
-    }
+    if (scopeGesturesBlocked()) return;
+    var freqHz = scopeFreqFromClientX(e.target, e.clientX);
     if (freqHz > 0) send({ cmd: 'setFrequency', value: freqHz });
 }
 
 function scopeWheel(e) {
-    // Disable waterfall gestures when CW bar is active on mobile portrait
-    var isMobilePortrait = window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
-    if (isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden')) return;
+    if (scopeGesturesBlocked()) return;
 
     e.preventDefault();
     if (e.deltaY < 0) tuneUp(); else tuneDown();
+}
+
+function scopePointerDown(e) {
+    if (scopeGesturesBlocked()) return;
+    if (spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return;
+    if (typeof e.button === 'number' && e.button !== 0) return;
+
+    e.preventDefault();
+
+    scopeDragActive = true;
+    scopeDragMoved = false;
+    scopeDragPointerId = e.pointerId;
+    scopeDragCanvas = e.currentTarget;
+    scopeDragStartX = e.clientX;
+    scopeDragLastTuneTime = 0;
+
+    var rect = scopeDragCanvas.getBoundingClientRect();
+    var frac = rect.width > 0 ? (e.clientX - rect.left) / rect.width : -1;
+    scopeDragPreviewFrac = Math.max(0, Math.min(1, frac));
+    scopeFreezeDuringDrag = true;
+
+    if (scopeDragCanvas.setPointerCapture) {
+        try { scopeDragCanvas.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    if (!spectRenderPending) { spectRenderPending = true; requestAnimationFrame(renderScope); }
+}
+
+function scopePointerMove(e) {
+    if (!scopeDragActive || e.pointerId !== scopeDragPointerId || !scopeDragCanvas) return;
+
+    var deltaX = e.clientX - scopeDragStartX;
+    if (!scopeDragMoved && Math.abs(deltaX) >= 4) {
+        scopeDragMoved = true;
+    }
+
+    var rect = scopeDragCanvas.getBoundingClientRect();
+    if (rect.width > 0) {
+        var frac = (e.clientX - rect.left) / rect.width;
+        scopeDragPreviewFrac = Math.max(0, Math.min(1, frac));
+    }
+
+    if (scopeDragMoved) {
+        var now = Date.now();
+        if (now - scopeDragLastTuneTime >= 35) {
+            var dragFreq = scopeFreqFromClientX(scopeDragCanvas, e.clientX);
+            if (dragFreq > 0) send({ cmd: 'setFrequency', value: dragFreq });
+            scopeDragLastTuneTime = now;
+        }
+        e.preventDefault();
+    }
+
+    if (!spectRenderPending) { spectRenderPending = true; requestAnimationFrame(renderScope); }
+}
+
+function scopePointerUpOrCancel(e) {
+    if (!scopeDragActive || e.pointerId !== scopeDragPointerId || !scopeDragCanvas) return;
+
+    var targetCanvas = scopeDragCanvas;
+    var wasDrag = scopeDragMoved;
+
+    if (targetCanvas.releasePointerCapture) {
+        try { targetCanvas.releasePointerCapture(e.pointerId); } catch (err) {}
+    }
+
+    scopeDragActive = false;
+    scopeDragMoved = false;
+    scopeDragPointerId = null;
+    scopeDragCanvas = null;
+    scopeDragPreviewFrac = -1;
+    scopeFreezeDuringDrag = false;
+
+    var finalFreq = scopeFreqFromClientX(targetCanvas, e.clientX);
+    if (finalFreq > 0) {
+        if (wasDrag) {
+            send({ cmd: 'setFrequency', value: finalFreq });
+        } else {
+            scopeClick({ target: targetCanvas, clientX: e.clientX });
+        }
+    }
+
+    if (!spectRenderPending) { spectRenderPending = true; requestAnimationFrame(renderScope); }
 }
 
 // ============================================================
@@ -4872,86 +4987,6 @@ document.getElementById('freqDisplay').addEventListener('wheel', function(e) {
     e.preventDefault();
     if (e.deltaY < 0) tuneUp(); else tuneDown();
 }, { passive: false });
-
-// Continuous touch tuning on waterfall/spectrum (vertical = kHz, horizontal = Hz)
-(function() {
-    var touchStartX = 0, touchStartY = 0;
-    var lastTouchX = 0, lastTouchY = 0;
-    var lastTuneTime = 0;
-    var tuneThrottle = 50; // ms between tune commands
-    var movementThreshold = 5; // minimum movement in pixels to trigger tuning
-    var isTouching = false;
-
-    function touchStart(e) {
-        // Disable touch gestures when CW bar is active on mobile portrait
-        var isMobilePortrait = window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
-        if (isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden')) return;
-
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-        lastTouchX = touchStartX;
-        lastTouchY = touchStartY;
-        isTouching = true;
-    }
-
-    function touchMove(e) {
-        if (!isTouching) return;
-
-        // Disable touch gestures when CW bar is active on mobile portrait
-        var isMobilePortrait = window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
-        if (isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden')) return;
-
-        var currentX = e.touches[0].clientX;
-        var currentY = e.touches[0].clientY;
-        var deltaX = currentX - lastTouchX;
-        var deltaY = lastTouchY - currentY;
-
-        var absDeltaX = Math.abs(deltaX);
-        var absDeltaY = Math.abs(deltaY);
-
-        // Determine if movement is primarily horizontal or vertical
-        if (absDeltaX >= movementThreshold || absDeltaY >= movementThreshold) {
-            var now = Date.now();
-            if (now - lastTuneTime >= tuneThrottle) {
-                e.preventDefault();
-
-                // Use whichever axis has more movement
-                if (absDeltaX > absDeltaY) {
-                    // Horizontal swipe - Hz tuning
-                    if (deltaX > 0) {
-                        tuneUpHz();
-                    } else {
-                        tuneDownHz();
-                    }
-                    lastTouchX = currentX;
-                } else {
-                    // Vertical swipe - kHz tuning
-                    if (deltaY > 0) {
-                        tuneUp();
-                    } else {
-                        tuneDown();
-                    }
-                    lastTouchY = currentY;
-                }
-                lastTuneTime = now;
-            }
-        }
-    }
-
-    function touchEnd() {
-        isTouching = false;
-    }
-
-    var spectCanvas = document.getElementById('spectrumCanvas');
-    var wfCanvas = document.getElementById('waterfallCanvas');
-
-    [spectCanvas, wfCanvas].forEach(function(canvas) {
-        canvas.addEventListener('touchstart', touchStart, { passive: true });
-        canvas.addEventListener('touchmove', touchMove, { passive: false });
-        canvas.addEventListener('touchend', touchEnd, { passive: true });
-        canvas.addEventListener('touchcancel', touchEnd, { passive: true });
-    });
-})();
 
 document.getElementById('freqDisplay').addEventListener('click', function() {
     setPanel('freqinp');
@@ -7838,10 +7873,14 @@ setInterval(updateClock, 10000);
 var otherVfoElem = document.getElementById('otherVfoFreq');
 if (otherVfoElem) updateOtherVfoDisplay();
 
-document.getElementById('spectrumCanvas').addEventListener('click', scopeClick);
-document.getElementById('waterfallCanvas').addEventListener('click', scopeClick);
-document.getElementById('spectrumCanvas').addEventListener('wheel', scopeWheel, { passive: false });
-document.getElementById('waterfallCanvas').addEventListener('wheel', scopeWheel, { passive: false });
+var scopeCanvasList = [document.getElementById('spectrumCanvas'), document.getElementById('waterfallCanvas')];
+scopeCanvasList.forEach(function(canvas) {
+    canvas.addEventListener('pointerdown', scopePointerDown);
+    canvas.addEventListener('pointermove', scopePointerMove);
+    canvas.addEventListener('pointerup', scopePointerUpOrCancel);
+    canvas.addEventListener('pointercancel', scopePointerUpOrCancel);
+    canvas.addEventListener('wheel', scopeWheel, { passive: false });
+});
 window.addEventListener('resize', function() {
     setMobileViewportHeight();
     resizeCanvases();
