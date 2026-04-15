@@ -4695,7 +4695,7 @@ function drawSpectrum() {
     if (currentFilterWidth > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
         var spanHz = (spectEndFreq - spectStartFreq) * 1e6;
         var bwPx = (currentFilterWidth / spanHz) * w;
-        var cx = w / 2;
+        var cx = scopeIndicatorCenterX(w);
         var pbLeft, pbRight;
         if (currentMode === 'USB' || currentMode === 'RTTY') {
             pbLeft = cx; pbRight = cx + bwPx;
@@ -4718,7 +4718,7 @@ function drawSpectrum() {
 
     // Frequency marker (IC-7300 style: white triangle + vertical line, anchored to center)
     if (spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
-        var fxPos = w / 2;
+        var fxPos = scopeIndicatorCenterX(w);
         // Vertical line
         ctx.strokeStyle = 'rgba(255,255,255,0.3)';
         ctx.lineWidth = 1;
@@ -4760,7 +4760,7 @@ function drawWaterfall() {
     if (currentFilterWidth > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
         var spanHz = (spectEndFreq - spectStartFreq) * 1e6;
         var bwPx = (currentFilterWidth / spanHz) * w;
-        var cx = w / 2;
+        var cx = scopeIndicatorCenterX(w);
         var pbL, pbR;
         if (currentMode === 'USB' || currentMode === 'RTTY') {
             pbL = cx; pbR = cx + bwPx;
@@ -4783,7 +4783,7 @@ function drawWaterfall() {
 
     // Frequency indicator (anchored to center)
     if (spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
-        var xPos = w / 2;
+        var xPos = scopeIndicatorCenterX(w);
         ctx.strokeStyle = 'rgba(255,255,255,0.25)';
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(xPos, 0); ctx.lineTo(xPos, h); ctx.stroke();
@@ -4821,6 +4821,11 @@ function scopeFreqFromDragClientX(clientX) {
     var frac = (clientX - scopeDragRectLeft) / scopeDragRectWidth;
     frac = Math.max(0, Math.min(1, frac));
     return Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6);
+}
+
+function scopeIndicatorCenterX(w) {
+    // Canvases are translated while dragging; compensate so center indicators stay fixed.
+    return w / 2 - scopeDragVisualOffsetX;
 }
 
 function scopeClick(e) {
