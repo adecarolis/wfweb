@@ -78,6 +78,18 @@ Note: `opus` is **not** installed via vcpkg. A custom Opus build with DRED/OSCE
 extensions is compiled from the `radae_nopy` submodule and statically linked for
 RADE support.
 
+### Clone
+
+```
+git clone --recursive https://github.com/adecarolis/wfweb.git
+```
+
+If you already cloned without `--recursive`:
+
+```
+git submodule update --init
+```
+
 #### Sibling repositories
 
 Clone `rtaudio` alongside `wfweb/`:
@@ -111,7 +123,7 @@ All build output goes to `build.log`. The last line is `EXIT:0` (success) or `EX
 1. **RADE custom Opus** (if `radae_nopy` submodule is present):
    - Runs `cmake` + `make` inside MSYS2 to fetch and build the custom Opus
      source (with LPCNet/FARGAN) via CMake ExternalProject.
-   - Patches Opus and RADE headers for MSVC compatibility (`sed` in MSYS2).
+   - Patches Opus and RADE headers for MSVC compatibility (PowerShell).
    - Builds the custom Opus as a static `.lib` using MSVC cmake.
    - Skipped if `resources/radae_nopy/build/opus_msvc_build/Release/opus.lib` already exists.
 
@@ -155,8 +167,24 @@ These are called by `build.bat` and are not intended to be run manually:
 
 | Script | Purpose |
 |---|---|
-| `build-rade-opus.sh` | MSYS2: cmake build of RADE custom Opus + header patching |
+| `build-rade-opus.sh` | MSYS2: cmake build of RADE custom Opus |
 | `build-codec2.sh` | MSYS2 MinGW: build codec2 as a DLL, install headers |
+
+### Troubleshooting
+
+**RADE build fails immediately**: If the RADE MSYS2 cmake step fails with
+`ninja: error: bad $-escape`, delete `resources/radae_nopy/build/` and rebuild.
+The `build-rade-opus.sh` script forces the "Unix Makefiles" cmake generator to
+avoid this issue.
+
+**RADE MSVC build fails with `RADE_EXPORT` errors**: The header patching step
+may have been skipped. Delete `resources/radae_nopy/build/opus_msvc_build/` and
+rebuild — the patching step runs independently of the MSYS2 build and will
+re-apply the patches.
+
+**Full RADE rebuild**: Delete the entire `resources/radae_nopy/build/` directory.
+The next build will redo the MSYS2 cmake, header patching, and MSVC build from
+scratch.
 
 ## macOS
 
