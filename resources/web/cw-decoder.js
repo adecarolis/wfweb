@@ -43,6 +43,8 @@
     let audioContext = null;
     let decoderWorker = null;
     let rafId = null;
+    let cwWorkletLoaded = false;
+    let cwUseWorklet = false;
 
     // Audio buffer for inference - sliding window like demo
     const audioBuffer = new Float32Array(BUFFER_SAMPLES);
@@ -59,6 +61,43 @@
 
     // Color LUT
     let colorLUT = null;
+
+    // AudioWorklet processor: runs decimation on the audio thread to avoid main-thread jitter
+    // that causes audio cracking on Windows (see issue #21)
+    const CW_PROCESSOR_CODE = [
+        'class CWDecoderProcessor extends AudioWorkletProcessor {',
+        '  constructor(options) {',
+        '    super();',
+        '    var targetRate = (options.processorOptions && options.processorOptions.targetRate) || 4000;',
+        '    this.df = Math.max(1, Math.round(sampleRate / targetRate));',
+        '    this.acc = 0;',
+        '    this.cnt = 0;',
+        '    this.outBuf = new Float32Array(Math.ceil(128 / this.df) + 1);',
+        '  }',
+        '  process(inputs, outputs) {',
+        '    var input = inputs[0] && inputs[0][0];',
+        '    var output = outputs[0] && outputs[0][0];',
+        '    if (!input || input.length === 0) { if (output) output.fill(0); return true; }',
+        '    if (output) output.set(input);',
+        '    var df = this.df, outIdx = 0;',
+        '    for (var i = 0; i < input.length; i++) {',
+        '      this.acc += input[i];',
+        '      this.cnt++;',
+        '      if (this.cnt >= df) {',
+        '        this.outBuf[outIdx++] = this.acc / df;',
+        '        this.acc = 0;',
+        '        this.cnt = 0;',
+        '      }',
+        '    }',
+        '    if (outIdx > 0) {',
+        '      var arr = this.outBuf.slice(0, outIdx);',
+        '      this.port.postMessage(arr, [arr.buffer]);',
+        '    }',
+        '    return true;',
+        '  }',
+        '}',
+        'registerProcessor("cw-decoder-processor", CWDecoderProcessor);'
+    ].join('\n');
 
     // Initialize
     function init() {
@@ -270,41 +309,43 @@
             gainNode = audioContext.createGain();
             gainNode.gain.value = Math.pow(10, decoderState.gain / 20);
 
-            // ScriptProcessor for audio capture (like demo's useAudioProcessing)
-            processorNode = audioContext.createScriptProcessor(2048, 1, 1);
-            processorNode.onaudioprocess = (e) => {
-                const inputData = e.inputBuffer.getChannelData(0);
-                const outputData = e.outputBuffer.getChannelData(0);
-                outputData.set(inputData);  // Pass-through
-
-                if (!decoderState.enabled) return;
-
-                // Sliding window: copyWithin + set (exactly like demo)
-                const chunkLen = inputData.length;
-                const sourceRate = audioContext.sampleRate;  // 48000
-                const decimationFactor = Math.round(sourceRate / SAMPLE_RATE);  // 15
-                const samplesToProduce = Math.floor(chunkLen / decimationFactor);
-
-                // Simple decimation (no gain here - gain is applied via gainNode)
-                const resampledChunk = new Float32Array(samplesToProduce);
-
-                for (let i = 0; i < samplesToProduce; i++) {
-                    let sum = 0;
-                    const startIdx = i * decimationFactor;
-                    for (let j = 0; j < decimationFactor; j++) {
-                        sum += inputData[startIdx + j];
+            // Audio capture: prefer AudioWorklet (decimation on audio thread, no
+            // main-thread jitter) with ScriptProcessor fallback for non-secure contexts
+            if (audioContext.audioWorklet && window.isSecureContext) {
+                try {
+                    if (!cwWorkletLoaded) {
+                        const blob = new Blob([CW_PROCESSOR_CODE], { type: 'application/javascript' });
+                        const url = URL.createObjectURL(blob);
+                        await audioContext.audioWorklet.addModule(url);
+                        URL.revokeObjectURL(url);
+                        cwWorkletLoaded = true;
                     }
-                    resampledChunk[i] = sum / decimationFactor;
+
+                    processorNode = new AudioWorkletNode(audioContext, 'cw-decoder-processor', {
+                        numberOfInputs: 1,
+                        numberOfOutputs: 1,
+                        outputChannelCount: [1],
+                        processorOptions: { targetRate: SAMPLE_RATE }
+                    });
+
+                    processorNode.port.onmessage = (e) => {
+                        if (!decoderState.enabled) return;
+                        const resampledChunk = e.data;
+                        const resampledLen = resampledChunk.length;
+                        audioBuffer.copyWithin(0, resampledLen);
+                        audioBuffer.set(resampledChunk, BUFFER_SAMPLES - resampledLen);
+                        totalSamplesAccumulated += resampledLen;
+                    };
+
+                    cwUseWorklet = true;
+                    console.log('[CW Decoder] Using AudioWorklet processor');
+                } catch (err) {
+                    console.warn('[CW Decoder] AudioWorklet failed, falling back to ScriptProcessor:', err);
+                    createCWScriptProcessor();
                 }
-
-                // Sliding window (exactly like demo)
-                const resampledLen = resampledChunk.length;
-                audioBuffer.copyWithin(0, resampledLen);
-                audioBuffer.set(resampledChunk, BUFFER_SAMPLES - resampledLen);
-
-                // Track how many new samples have arrived
-                totalSamplesAccumulated += resampledLen;
-            };
+            } else {
+                createCWScriptProcessor();
+            }
 
             // Connect nodes
             connectAudioNodes();
@@ -338,6 +379,39 @@
             decoderState.loading = false;
             updateButtons();
         }
+    }
+
+    function createCWScriptProcessor() {
+        processorNode = audioContext.createScriptProcessor(2048, 1, 1);
+        processorNode.onaudioprocess = (e) => {
+            const inputData = e.inputBuffer.getChannelData(0);
+            const outputData = e.outputBuffer.getChannelData(0);
+            outputData.set(inputData);  // Pass-through
+
+            if (!decoderState.enabled) return;
+
+            const chunkLen = inputData.length;
+            const sourceRate = audioContext.sampleRate;
+            const decimationFactor = Math.round(sourceRate / SAMPLE_RATE);
+            const samplesToProduce = Math.floor(chunkLen / decimationFactor);
+            const resampledChunk = new Float32Array(samplesToProduce);
+
+            for (let i = 0; i < samplesToProduce; i++) {
+                let sum = 0;
+                const startIdx = i * decimationFactor;
+                for (let j = 0; j < decimationFactor; j++) {
+                    sum += inputData[startIdx + j];
+                }
+                resampledChunk[i] = sum / decimationFactor;
+            }
+
+            const resampledLen = resampledChunk.length;
+            audioBuffer.copyWithin(0, resampledLen);
+            audioBuffer.set(resampledChunk, BUFFER_SAMPLES - resampledLen);
+            totalSamplesAccumulated += resampledLen;
+        };
+        cwUseWorklet = false;
+        console.log('[CW Decoder] Using ScriptProcessor fallback');
     }
 
     function connectAudioNodes() {
@@ -382,6 +456,7 @@
 
         if (processorNode) {
             processorNode.disconnect();
+            if (processorNode.port) processorNode.port.onmessage = null;
             processorNode.onaudioprocess = null;
             processorNode = null;
         }

@@ -69,9 +69,9 @@ if exist "%RADAE_DIR%\src\rade_api.h" (
     if not exist "%OPUS_MSVC_LIB%" (
         echo === RADE: building custom Opus === >> %LOG%
 
-        :: Step 1: MSYS2 cmake to fetch/build Opus source + patch headers for MSVC
+        :: Step 1: MSYS2 cmake to fetch/build Opus source
         if not exist "%RADAE_BUILD%\build_opus-prefix\src\build_opus\include\opus.h" (
-            echo --- MSYS2 cmake + header patching --- >> %LOG%
+            echo --- MSYS2 cmake build --- >> %LOG%
             C:\msys64\usr\bin\bash.exe -l "%SRCDIR%\build-rade-opus.sh" "%RADAE_DIR%" >> %LOG% 2>&1
             if errorlevel 1 (
                 echo ERROR: MSYS2 RADE build failed >> %LOG%
@@ -80,7 +80,11 @@ if exist "%RADAE_DIR%\src\rade_api.h" (
             )
         )
 
-        :: Step 2: Build custom Opus with MSVC (static lib)
+        :: Step 2: Patch Opus/RADE headers for MSVC (idempotent)
+        echo --- Patching headers for MSVC --- >> %LOG%
+        call :patch_rade_headers
+
+        :: Step 3: Build custom Opus with MSVC (static lib)
         echo --- MSVC Opus build --- >> %LOG%
         set OPUS_SRC=%RADAE_BUILD%\build_opus-prefix\src\build_opus
         cmake -S "!OPUS_SRC!" -B "%RADAE_BUILD%\opus_msvc_build" -DOPUS_DRED=ON -DOPUS_OSCE=ON -DBUILD_SHARED_LIBS=OFF -DOPUS_BUILD_PROGRAMS=OFF -DOPUS_BUILD_TESTING=OFF -A x64 >> %LOG% 2>&1
@@ -202,3 +206,17 @@ echo Rig files deployed >> %LOG%
 echo BUILD OK: wfweb-release\wfweb.exe >> %LOG%
 echo EXIT:0 >> %LOG%
 exit /b 0
+
+:: ---------------------------------------------------------------
+:: Subroutines (must be after exit /b to avoid falling through)
+:: ---------------------------------------------------------------
+
+:patch_rade_headers
+:: Patch Opus nnet.h and rade_api.h for MSVC compatibility.
+:: Uses PowerShell to avoid parenthesis-escaping issues in cmd.exe if-blocks.
+:: Idempotent — skips files already patched.
+set NNET_H=%RADAE_BUILD%\build_opus-prefix\src\build_opus\dnn\nnet.h
+set RADE_API_H=%RADAE_DIR%\src\rade_api.h
+powershell -NoProfile -Command "$nnet = '%NNET_H%'; if (Test-Path $nnet) { $c = Get-Content $nnet -Raw; if ($c -match '#define RADE_EXPORT __attribute__') { $c = $c -replace '#define RADE_EXPORT __attribute__\(\(visibility\(\"default\"\)\)\)', \"#ifdef _MSC_VER`n    #define RADE_EXPORT`n  #else`n    #define RADE_EXPORT __attribute__((visibility(\"\"default\"\")))  `n  #endif\"; Set-Content $nnet $c -NoNewline; 'Patched nnet.h' } else { 'nnet.h already patched' } }" >> %LOG% 2>&1
+powershell -NoProfile -Command "$api = '%RADE_API_H%'; if (Test-Path $api) { $c = Get-Content $api -Raw; if ($c -notmatch 'RADE_STATIC') { $c = $c -replace '#if IS_BUILDING_RADE_API', \"#if defined(RADE_STATIC)`n#define RADE_EXPORT`n#elif IS_BUILDING_RADE_API\"; Set-Content $api $c -NoNewline; 'Patched rade_api.h' } else { 'rade_api.h already patched' } }" >> %LOG% 2>&1
+goto :eof
