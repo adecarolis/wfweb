@@ -2492,6 +2492,7 @@ var scopeDragLastTuneTime = 0;
 var scopeDragRectLeft = 0;
 var scopeDragRectWidth = 0;
 var scopeDragVisualOffsetX = 0;
+var scopeDragPendingReset = false;
 
 // UI state
 var currentPanel = 'default';
@@ -4677,6 +4678,7 @@ function handleBinaryMessage(buffer) {
     if (msgType === 0x02) { handleAudioData(buffer); return; }
     if (msgType !== 0x01 || buffer.byteLength < 13) return;
     if (scopeFreezeDuringDrag) return;
+    if (scopeDragPendingReset) { scopeDragPendingReset = false; scopeSetVisualPan(0); }
 
     prevSpectStartFreq = spectStartFreq;
     prevSpectEndFreq = spectEndFreq;
@@ -5005,7 +5007,7 @@ function scopePointerEnd(e, commitTune) {
     scopeDragStartFreq = 0;
     scopeDragRectLeft = 0;
     scopeDragRectWidth = 0;
-    scopeSetVisualPan(0);
+    scopeDragPendingReset = true;
     scopeFreezeDuringDrag = false;
 
     if (commitTune) {
