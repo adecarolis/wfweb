@@ -37,6 +37,15 @@ Everything wfview does, wfweb does too — plus a built-in web interface:
 
 ---
 
+## Network Ports and API
+
+wfweb exposes its web interface and REST API on two ports:
+
+- **8080 (HTTPS):** Main web interface for browsers (required for mic/audio streaming). Accept the self-signed certificate warning.
+- **8081 (HTTP):** REST API for scripts, curl, microcontrollers, and home automation (no HTTPS required).
+
+For full API documentation, see [REST_API.md](REST_API.md).
+
 ## Getting started
 
 There are three ways to run wfweb. Pick the one that matches your setup:
