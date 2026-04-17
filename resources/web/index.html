@@ -313,6 +313,7 @@ html, body {
     display: block; width: 100%;
     position: absolute; left: 0;
     cursor: crosshair;
+    touch-action: none;
 }
 #spectrumCanvas {
     top: 0; height: 35%;
@@ -2480,6 +2481,17 @@ var wfOffCanvas = null;
 var wfOffCtx = null;
 var spectRenderPending = false;
 var colorTable = null;
+var scopeFreezeDuringDrag = false;
+var scopeDragActive = false;
+var scopeDragMoved = false;
+var scopeDragPointerId = null;
+var scopeDragCanvas = null;
+var scopeDragStartX = 0;
+var scopeDragStartFreq = 0;
+var scopeDragLastTuneTime = 0;
+var scopeDragRectLeft = 0;
+var scopeDragRectWidth = 0;
+var scopeDragVisualOffsetX = 0;
 
 // UI state
 var currentPanel = 'default';
@@ -4664,6 +4676,7 @@ function handleBinaryMessage(buffer) {
     var msgType = view.getUint8(0);
     if (msgType === 0x02) { handleAudioData(buffer); return; }
     if (msgType !== 0x01 || buffer.byteLength < 13) return;
+    if (scopeFreezeDuringDrag) return;
 
     prevSpectStartFreq = spectStartFreq;
     prevSpectEndFreq = spectEndFreq;
@@ -4773,7 +4786,7 @@ function drawSpectrum() {
     if (currentFilterWidth > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
         var spanHz = (spectEndFreq - spectStartFreq) * 1e6;
         var bwPx = (currentFilterWidth / spanHz) * w;
-        var cx = w / 2;
+        var cx = scopeIndicatorCenterX(w);
         var pbLeft, pbRight;
         if (currentMode === 'USB' || currentMode === 'RTTY') {
             pbLeft = cx; pbRight = cx + bwPx;
@@ -4796,7 +4809,7 @@ function drawSpectrum() {
 
     // Frequency marker (IC-7300 style: white triangle + vertical line, anchored to center)
     if (spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
-        var fxPos = w / 2;
+        var fxPos = scopeIndicatorCenterX(w);
         // Vertical line
         ctx.strokeStyle = 'rgba(255,255,255,0.3)';
         ctx.lineWidth = 1;
@@ -4838,7 +4851,7 @@ function drawWaterfall() {
     if (currentFilterWidth > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
         var spanHz = (spectEndFreq - spectStartFreq) * 1e6;
         var bwPx = (currentFilterWidth / spanHz) * w;
-        var cx = w / 2;
+        var cx = scopeIndicatorCenterX(w);
         var pbL, pbR;
         if (currentMode === 'USB' || currentMode === 'RTTY') {
             pbL = cx; pbR = cx + bwPx;
@@ -4861,37 +4874,158 @@ function drawWaterfall() {
 
     // Frequency indicator (anchored to center)
     if (spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
-        var xPos = w / 2;
+        var xPos = scopeIndicatorCenterX(w);
         ctx.strokeStyle = 'rgba(255,255,255,0.25)';
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(xPos, 0); ctx.lineTo(xPos, h); ctx.stroke();
     }
+
+}
+
+function scopeGesturesBlocked() {
+    var isMobilePortrait = window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
+    return isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden');
+}
+
+function scopeFreqFromClientX(target, clientX) {
+    if (!target || spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return 0;
+    var rect = target.getBoundingClientRect();
+    if (rect.width <= 0) return 0;
+    var frac = (clientX - rect.left) / rect.width;
+    frac = Math.max(0, Math.min(1, frac));
+    return Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6);
+}
+
+function scopeSetVisualPan(px) {
+    var pan = Math.round(px || 0);
+    if (pan === scopeDragVisualOffsetX) return;
+    scopeDragVisualOffsetX = pan;
+    var t = pan ? ('translateX(' + pan + 'px)') : '';
+    var spec = document.getElementById('spectrumCanvas');
+    var wf = document.getElementById('waterfallCanvas');
+    if (spec) spec.style.transform = t;
+    if (wf) wf.style.transform = t;
+}
+
+function scopeFreqFromDragDeltaX(deltaX) {
+    if (scopeDragRectWidth <= 0 || spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return 0;
+    if (scopeDragStartFreq <= 0) return 0;
+    var spanHz = (spectEndFreq - spectStartFreq) * 1e6;
+    var hzPerPx = spanHz / scopeDragRectWidth;
+    // Left pan (negative deltaX) should increase frequency.
+    return Math.max(1, Math.round(scopeDragStartFreq - deltaX * hzPerPx));
+}
+
+function scopeIndicatorCenterX(w) {
+    // Canvases are translated while dragging; compensate so center indicators stay fixed.
+    return w / 2 - scopeDragVisualOffsetX;
 }
 
 function scopeClick(e) {
-    // Disable waterfall gestures when CW bar is active on mobile portrait
-    var isMobilePortrait = window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
-    if (isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden')) return;
-
-    if (spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return;
-    var rect = e.target.getBoundingClientRect();
-    var frac = (e.clientX - rect.left) / rect.width;
-    var freqHz = Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6);
-    // Round to nearest kHz (ending in 000 Hz) only for non-CW modes
-    var isCWMode = (currentMode === 'CW' || currentMode === 'CW-R');
-    if (!isCWMode) {
-        freqHz = Math.round(freqHz / 1000) * 1000;
-    }
+    if (scopeGesturesBlocked()) return;
+    var freqHz = scopeFreqFromClientX(e.target, e.clientX);
     if (freqHz > 0) send({ cmd: 'setFrequency', value: freqHz });
 }
 
 function scopeWheel(e) {
-    // Disable waterfall gestures when CW bar is active on mobile portrait
-    var isMobilePortrait = window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
-    if (isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden')) return;
+    if (scopeGesturesBlocked()) return;
 
     e.preventDefault();
     if (e.deltaY < 0) tuneUp(); else tuneDown();
+}
+
+function scopePointerDown(e) {
+    if (scopeGesturesBlocked()) return;
+    if (spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return;
+    if (typeof e.button === 'number' && e.button !== 0) return;
+
+    e.preventDefault();
+
+    scopeDragActive = true;
+    scopeDragMoved = false;
+    scopeDragPointerId = e.pointerId;
+    scopeDragCanvas = e.currentTarget;
+    scopeDragStartX = e.clientX;
+    scopeDragStartFreq = currentFreq;
+    scopeDragLastTuneTime = 0;
+
+    var rect = scopeDragCanvas.getBoundingClientRect();
+    scopeDragRectLeft = rect.left;
+    scopeDragRectWidth = rect.width;
+    scopeSetVisualPan(0);
+    scopeFreezeDuringDrag = true;
+
+    if (scopeDragCanvas.setPointerCapture) {
+        try { scopeDragCanvas.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    if (!spectRenderPending) { spectRenderPending = true; requestAnimationFrame(renderScope); }
+}
+
+function scopePointerMove(e) {
+    if (!scopeDragActive || e.pointerId !== scopeDragPointerId || !scopeDragCanvas) return;
+
+    var deltaX = e.clientX - scopeDragStartX;
+    if (!scopeDragMoved && Math.abs(deltaX) >= 4) {
+        scopeDragMoved = true;
+    }
+
+    scopeSetVisualPan(deltaX);
+
+    if (scopeDragMoved) {
+        var now = Date.now();
+        if (now - scopeDragLastTuneTime >= 35) {
+            var dragFreq = scopeFreqFromDragDeltaX(deltaX);
+            if (dragFreq > 0) send({ cmd: 'setFrequency', value: dragFreq });
+            scopeDragLastTuneTime = now;
+        }
+        e.preventDefault();
+    }
+
+    if (!spectRenderPending) { spectRenderPending = true; requestAnimationFrame(renderScope); }
+}
+
+function scopePointerEnd(e, commitTune) {
+    if (!scopeDragActive || e.pointerId !== scopeDragPointerId || !scopeDragCanvas) return;
+
+    var targetCanvas = scopeDragCanvas;
+    var wasDrag = scopeDragMoved;
+
+    if (targetCanvas.releasePointerCapture) {
+        try { targetCanvas.releasePointerCapture(e.pointerId); } catch (err) {}
+    }
+
+    var finalDeltaX = e.clientX - scopeDragStartX;
+    var finalDragFreq = scopeFreqFromDragDeltaX(finalDeltaX);
+    var finalClickFreq = scopeFreqFromClientX(targetCanvas, e.clientX);
+
+    scopeDragActive = false;
+    scopeDragMoved = false;
+    scopeDragPointerId = null;
+    scopeDragCanvas = null;
+    scopeDragStartFreq = 0;
+    scopeDragRectLeft = 0;
+    scopeDragRectWidth = 0;
+    scopeSetVisualPan(0);
+    scopeFreezeDuringDrag = false;
+
+    if (commitTune) {
+        if (wasDrag) {
+            if (finalDragFreq > 0) send({ cmd: 'setFrequency', value: finalDragFreq });
+        } else {
+            if (finalClickFreq > 0) send({ cmd: 'setFrequency', value: finalClickFreq });
+        }
+    }
+
+    if (!spectRenderPending) { spectRenderPending = true; requestAnimationFrame(renderScope); }
+}
+
+function scopePointerUp(e) {
+    scopePointerEnd(e, true);
+}
+
+function scopePointerCancel(e) {
+    // Cancel should only clean up interaction state, never retune.
+    scopePointerEnd(e, false);
 }
 
 // ============================================================
@@ -4962,86 +5096,6 @@ document.getElementById('freqDisplay').addEventListener('wheel', function(e) {
     e.preventDefault();
     if (e.deltaY < 0) tuneUp(); else tuneDown();
 }, { passive: false });
-
-// Continuous touch tuning on waterfall/spectrum (vertical = kHz, horizontal = Hz)
-(function() {
-    var touchStartX = 0, touchStartY = 0;
-    var lastTouchX = 0, lastTouchY = 0;
-    var lastTuneTime = 0;
-    var tuneThrottle = 50; // ms between tune commands
-    var movementThreshold = 5; // minimum movement in pixels to trigger tuning
-    var isTouching = false;
-
-    function touchStart(e) {
-        // Disable touch gestures when CW bar is active on mobile portrait
-        var isMobilePortrait = window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
-        if (isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden')) return;
-
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-        lastTouchX = touchStartX;
-        lastTouchY = touchStartY;
-        isTouching = true;
-    }
-
-    function touchMove(e) {
-        if (!isTouching) return;
-
-        // Disable touch gestures when CW bar is active on mobile portrait
-        var isMobilePortrait = window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
-        if (isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden')) return;
-
-        var currentX = e.touches[0].clientX;
-        var currentY = e.touches[0].clientY;
-        var deltaX = currentX - lastTouchX;
-        var deltaY = lastTouchY - currentY;
-
-        var absDeltaX = Math.abs(deltaX);
-        var absDeltaY = Math.abs(deltaY);
-
-        // Determine if movement is primarily horizontal or vertical
-        if (absDeltaX >= movementThreshold || absDeltaY >= movementThreshold) {
-            var now = Date.now();
-            if (now - lastTuneTime >= tuneThrottle) {
-                e.preventDefault();
-
-                // Use whichever axis has more movement
-                if (absDeltaX > absDeltaY) {
-                    // Horizontal swipe - Hz tuning
-                    if (deltaX > 0) {
-                        tuneUpHz();
-                    } else {
-                        tuneDownHz();
-                    }
-                    lastTouchX = currentX;
-                } else {
-                    // Vertical swipe - kHz tuning
-                    if (deltaY > 0) {
-                        tuneUp();
-                    } else {
-                        tuneDown();
-                    }
-                    lastTouchY = currentY;
-                }
-                lastTuneTime = now;
-            }
-        }
-    }
-
-    function touchEnd() {
-        isTouching = false;
-    }
-
-    var spectCanvas = document.getElementById('spectrumCanvas');
-    var wfCanvas = document.getElementById('waterfallCanvas');
-
-    [spectCanvas, wfCanvas].forEach(function(canvas) {
-        canvas.addEventListener('touchstart', touchStart, { passive: true });
-        canvas.addEventListener('touchmove', touchMove, { passive: false });
-        canvas.addEventListener('touchend', touchEnd, { passive: true });
-        canvas.addEventListener('touchcancel', touchEnd, { passive: true });
-    });
-})();
 
 document.getElementById('freqDisplay').addEventListener('click', function() {
     setPanel('freqinp');
@@ -7971,10 +8025,14 @@ setInterval(updateClock, 10000);
 var otherVfoElem = document.getElementById('otherVfoFreq');
 if (otherVfoElem) updateOtherVfoDisplay();
 
-document.getElementById('spectrumCanvas').addEventListener('click', scopeClick);
-document.getElementById('waterfallCanvas').addEventListener('click', scopeClick);
-document.getElementById('spectrumCanvas').addEventListener('wheel', scopeWheel, { passive: false });
-document.getElementById('waterfallCanvas').addEventListener('wheel', scopeWheel, { passive: false });
+var scopeCanvasList = [document.getElementById('spectrumCanvas'), document.getElementById('waterfallCanvas')];
+scopeCanvasList.forEach(function(canvas) {
+    canvas.addEventListener('pointerdown', scopePointerDown);
+    canvas.addEventListener('pointermove', scopePointerMove);
+    canvas.addEventListener('pointerup', scopePointerUp);
+    canvas.addEventListener('pointercancel', scopePointerCancel);
+    canvas.addEventListener('wheel', scopeWheel, { passive: false });
+});
 window.addEventListener('resize', function() {
     setMobileViewportHeight();
     resizeCanvases();
