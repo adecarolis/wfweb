@@ -2351,13 +2351,35 @@ void webServer::receiveCache(cacheItem item)
     QJsonObject update;
     update["type"] = "update";
 
-    funcs func = item.command;
+    funcs origFunc = item.command;
+    funcs func = origFunc;
 
-    // Map various freq/mode funcs to canonical names
-    if (func == funcFreqTR || func == funcSelectedFreq || func == funcFreq) {
+    // Map various freq/mode funcs to canonical names. Include unselected
+    // variants so A/B rigs' VFO B poll responses reach the freq/mode handlers
+    // (where they are routed to vfoBFrequency rather than overwriting main).
+    if (func == funcFreqTR || func == funcSelectedFreq || func == funcFreq
+        || func == funcUnselectedFreq) {
         func = funcFreq;
-    } else if (func == funcModeTR || func == funcSelectedMode || func == funcMode) {
+    } else if (func == funcModeTR || func == funcSelectedMode || func == funcMode
+               || func == funcUnselectedMode) {
         func = funcMode;
+    }
+
+    // Determine whether this update targets VFO B (Sub on cmd29 rigs, or the
+    // unselected VFO on A/B rigs). Needed so the browser's Sub display
+    // populates at startup without waiting for the user to switch VFOs
+    // (issue #19).
+    bool cmd29 = rigCaps && rigCaps->hasCommand29;
+    bool isVfoB = false;
+    if (cmd29) {
+        // Main = receiver 0, Sub = receiver 1
+        isVfoB = (item.receiver == 1);
+    } else if (origFunc == funcUnselectedFreq || origFunc == funcUnselectedMode) {
+        // On A/B rigs the currently-selected VFO is the active one;
+        // the unselected reply is always the "other" VFO.
+        isVfoB = (queue && queue->getState().vfo != vfoB);
+    } else if (origFunc == funcSelectedFreq || origFunc == funcSelectedMode) {
+        isVfoB = (queue && queue->getState().vfo == vfoB);
     }
 
     switch (func) {
@@ -2366,10 +2388,15 @@ void webServer::receiveCache(cacheItem item)
     case funcFreqSet:
     {
         freqt f = item.value.value<freqt>();
-        update["frequency"] = (qint64)f.Hz;
+        if (isVfoB) {
+            update["vfoBFrequency"] = (qint64)f.Hz;
+        } else {
+            update["frequency"] = (qint64)f.Hz;
+            update["vfoAFrequency"] = (qint64)f.Hz;
 #ifdef FREEDV_SUPPORT
-        if (freedvReporter) freedvReporter->updateFrequency(f.Hz);
+            if (freedvReporter) freedvReporter->updateFrequency(f.Hz);
 #endif
+        }
         break;
     }
     case funcMode:
@@ -2377,6 +2404,11 @@ void webServer::receiveCache(cacheItem item)
     case funcModeSet:
     {
         modeInfo m = item.value.value<modeInfo>();
+        if (isVfoB) {
+            // The web UI has no Sub/VFO B mode field, so drop these rather
+            // than letting them overwrite the main mode display.
+            break;
+        }
         update["mode"] = modeToString(m);
         update["filter"] = m.filter;
         // FreeDV/RADE only makes sense on voice-carrying modes. If the rig
