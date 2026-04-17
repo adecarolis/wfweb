@@ -636,6 +636,7 @@ void icomCommander::parseData(QByteArray dataInput)
                     qInfo(logRig()) << "Sustained valid responses — radio powered on";
                     queue->receiveValue(funcPowerControl,QVariant::fromValue<bool>(true),0);
                     rigPoweredOn = true;
+                    powerOnTime.start();
                     validResponseCount = 0;
                 }
 
@@ -649,7 +650,10 @@ void icomCommander::parseData(QByteArray dataInput)
                     // The data are "to 00" and "from E1"
                     // Don't use it!
                     // We can use this to indicate power status I think.
-                    if (rigPoweredOn) {
+                    // Suppress echo-based power-off for 5 seconds after power-on
+                    // to avoid oscillation from delayed broadcast echoes
+                    // during LAN boot-up (issue #19).
+                    if (rigPoweredOn && (!powerOnTime.isValid() || powerOnTime.elapsed() > 5000)) {
                         qDebug(logRig()) << "Echo caught:" << data.toHex(' ');
                         queue->message("Radio is available but may be powered-off");
                         queue->receiveValue(funcPowerControl,QVariant::fromValue<bool>(false),0);

@@ -2693,6 +2693,10 @@ function handleMessage(msg) {
             if (msg.hasPowerControl) document.getElementById('powerBtn').style.display = 'flex';
             if (msg.freedvModes) freedvModes = msg.freedvModes;
             updateWarningVisibility();
+            // After rig identification, request a full status refresh so
+            // UI elements populate even if the browser connected before
+            // the radio was identified (LAN power-up scenario, issue #19).
+            setTimeout(function() { send({ cmd: 'getStatus' }); }, 1500);
             break;
         case 'audioAvailable':
             if (msg.available) { audioAvailable = true; audioSampleRate = msg.sampleRate || 48000; }

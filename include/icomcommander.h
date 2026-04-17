@@ -133,6 +133,7 @@ private:
     bool warnedAboutFA=false;
     int consecutiveFAErrors=0;
     int validResponseCount=0;
+    QElapsedTimer powerOnTime;  // tracks when rigPoweredOn last became true
     double frequencyMhz;
     quint16 civAddr;
     quint16 incomingCIVAddr; // place to store the incoming CIV.
