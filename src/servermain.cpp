@@ -375,6 +375,7 @@ void servermain::receiveRigCaps(rigCapabilities* rigCaps)
                 .arg(rigCaps->guid[15], 2, 16, QLatin1Char('0'))
                 ;
             radio->rigCaps = rigCaps;
+            rigCaps->connectionType = prefs.enableLAN ? connectionLAN : connectionUSB;
 
             // Enable CI-V Auto Information so the rig pushes meter/freq/mode
             // updates automatically (same as wfweb does in setupInitialValues)

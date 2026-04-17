@@ -268,6 +268,7 @@ struct rigCapabilities {
     QString modelName;
 
     bool hasLan; // OEM ethernet or wifi connection
+    connectionType_t connectionType = connectionUSB; // Actual connection used to reach the rig
     bool hasEthernet;
     bool hasWiFi;
     bool hasFDcomms;

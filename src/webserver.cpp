@@ -1716,22 +1716,23 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 savedDataOffMod = cache.value.value<rigInput>();
                 dataOffModSaved = true;
             }
-            // Find USB input from rig capabilities
+            // Select the correct mod input based on how we're connected to the rig
             if (rigCaps) {
-                rigInput usbInput;
+                inputTypes targetType = (rigCaps->connectionType == connectionLAN) ? inputLAN : inputUSB;
+                rigInput targetInput;
                 bool found = false;
                 for (const rigInput &inp : rigCaps->inputs) {
-                    if (inp.type == inputUSB) {
-                        usbInput = inp;
+                    if (inp.type == targetType) {
+                        targetInput = inp;
                         found = true;
                         break;
                     }
                 }
                 if (found) {
-                    queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(usbInput), false, 0));
-                    qInfo() << "Web: Set DATA MOD OFF to USB for web mic";
+                    queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(targetInput), false, 0));
+                    qInfo() << "Web: Set DATA MOD OFF to" << targetInput.name << "for web mic";
                 } else {
-                    qInfo() << "Web: No USB input found in rig capabilities";
+                    qInfo() << "Web: No suitable mod input found in rig capabilities (connectionType=" << rigCaps->connectionType << ")";
                 }
             }
             micActiveClient = client;
