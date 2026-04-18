@@ -2375,49 +2375,16 @@ void webServer::receiveCache(cacheItem item)
         func = funcMode;
     }
 
-    bool cmd29 = rigCaps && rigCaps->hasCommand29;
-
     switch (func) {
     case funcFreq:
     case funcFreqGet:
     case funcFreqSet:
     {
         freqt f = item.value.value<freqt>();
-        qint64 hz = (qint64)f.Hz;
-        // For cmd29 rigs, funcFreq comes with a receiver index — receiver 0 is
-        // Main (=VFO A) and receiver 1 is Sub (=VFO B). Route accordingly so
-        // the browser keeps both VFOs in sync, and only update the main
-        // `frequency` field for the currently-selected receiver.
-        if (cmd29) {
-            if (item.receiver == 1) {
-                update["vfoBFrequency"] = hz;
-                if (queue->getState().vfo == vfoSub) update["frequency"] = hz;
-            } else {
-                update["vfoAFrequency"] = hz;
-                if (queue->getState().vfo != vfoSub) update["frequency"] = hz;
-            }
-        } else {
-            // Non-cmd29: funcSelectedFreq is the selected VFO, plain funcFreq
-            // is also selected on rigs without selected/unselected commands.
-            update["frequency"] = hz;
-            bool bSelected = (queue->getState().vfo == vfoB);
-            update[bSelected ? "vfoBFrequency" : "vfoAFrequency"] = hz;
-        }
+        update["frequency"] = (qint64)f.Hz;
 #ifdef FREEDV_SUPPORT
         if (freedvReporter) freedvReporter->updateFrequency(f.Hz);
 #endif
-        break;
-    }
-    case funcUnselectedFreq:
-    {
-        // Non-cmd29 rigs report the unselected VFO's freq via this func.
-        // Don't touch `frequency` (that's the main display); only refresh the
-        // browser's cache of the *other* VFO so the side display stays fresh.
-        if (cmd29) return; // cmd29 rigs use receiver-indexed funcFreq instead
-        freqt f = item.value.value<freqt>();
-        qint64 hz = (qint64)f.Hz;
-        bool bSelected = (queue->getState().vfo == vfoB);
-        update[bSelected ? "vfoAFrequency" : "vfoBFrequency"] = hz;
         break;
     }
     case funcMode:
