@@ -38,6 +38,9 @@
 #ifdef RADE_SUPPORT
 #include "radeprocessor.h"
 #endif
+#ifdef PACKET_SUPPORT
+#include "direwolfprocessor.h"
+#endif
 
 #ifdef Q_OS_MACOS
 class TlsProxyWorker;
@@ -96,6 +99,10 @@ signals:
     void sendToRadeRx(audioPacket audio);
     void sendToRadeTx(audioPacket audio);
 #endif
+#ifdef PACKET_SUPPORT
+    void setupPacket(quint32 radioSampleRate);
+    void sendToPacketRx(audioPacket audio);
+#endif
 
 public slots:
     void init(quint16 httpPort, quint16 wsPort);
@@ -146,6 +153,11 @@ private slots:
     void onRadeTxReady(audioPacket audio);
     void onRadeStats(float snr, bool sync, float freqOffset);
     void onRadeRxCallsign(const QString &callsign);
+#endif
+
+#ifdef PACKET_SUPPORT
+    // Dire Wolf packet (AX.25 / APRS)
+    void onPacketRxDecoded(int chan, QJsonObject frame);
 #endif
 
 
@@ -279,6 +291,14 @@ private:
     QString radeRxCallsign;          // last decoded callsign from EOO
     bool radeEooDraining = false;    // true while draining EOO frame to ALSA
     QTimer *radeCallsignClearTimer = nullptr;  // delayed UI clear after decode
+#endif
+
+#ifdef PACKET_SUPPORT
+    // Dire Wolf packet (AX.25 / APRS)
+    DireWolfProcessor *dwProc = nullptr;
+    QThread *dwThread = nullptr;
+    bool packetEnabled = false;
+    bool packetChannelEnabled[2] = { false, false };
 #endif
 
     // Memory channel scanning
