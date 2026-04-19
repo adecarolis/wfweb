@@ -11,6 +11,7 @@
 #include <QSslConfiguration>
 #include <QTimer>
 #include <QThread>
+#include <QDateTime>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -2009,6 +2010,34 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     else if (type == "setFreeDVMonitor") {
         freedvMonitor = cmd["value"].toBool();
     }
+#ifdef PACKET_SUPPORT
+    else if (type == "packetEnable") {
+        packetEnabled = cmd["value"].toBool();
+        if (dwProc) {
+            QMetaObject::invokeMethod(dwProc, "setEnabled", Qt::QueuedConnection,
+                                      Q_ARG(bool, packetEnabled));
+        }
+        QJsonObject notify;
+        notify["type"] = "packetStatus";
+        notify["enabled"] = packetEnabled;
+        QJsonArray chans;
+        chans.append(packetChannelEnabled[0]);
+        chans.append(packetChannelEnabled[1]);
+        notify["channels"] = chans;
+        sendJsonToAll(notify);
+    }
+    else if (type == "packetSetChannel") {
+        int chan = cmd["chan"].toInt(-1);
+        bool on = cmd["value"].toBool();
+        if (chan == 0 || chan == 1) {
+            packetChannelEnabled[chan] = on;
+            if (dwProc) {
+                QMetaObject::invokeMethod(dwProc, "setChannelEnabled", Qt::QueuedConnection,
+                                          Q_ARG(int, chan), Q_ARG(bool, on));
+            }
+        }
+    }
+#endif
 #ifdef FREEDV_SUPPORT
     else if (type == "setReporter") {
         reporterCallsign = cmd["callsign"].toString().toUpper().trimmed();
@@ -2889,6 +2918,24 @@ void webServer::setupAudio(quint8 codec, quint32 sampleRate)
     radeThread->start();
 #endif
 
+#ifdef PACKET_SUPPORT
+    // Dire Wolf packet processor thread (created once, activated on demand)
+    dwProc = new DireWolfProcessor();
+    dwThread = new QThread(this);
+    dwThread->setObjectName("webPacket()");
+    dwProc->moveToThread(dwThread);
+
+    connect(this, &webServer::setupPacket, dwProc, &DireWolfProcessor::init);
+    connect(this, &webServer::sendToPacketRx, dwProc, &DireWolfProcessor::processRx);
+    connect(dwProc, &DireWolfProcessor::rxFrameDecoded, this, &webServer::onPacketRxDecoded);
+    connect(dwThread, &QThread::finished, dwProc, &QObject::deleteLater);
+
+    dwThread->start();
+
+    // Initialize the modem at the current rig sample rate so it's ready when enabled.
+    emit setupPacket(sampleRate);
+#endif
+
     qInfo() << "Web: Audio configured, codec=" << Qt::hex << codec
             << "sampleRate=" << Qt::dec << sampleRate;
 
@@ -3268,8 +3315,32 @@ void webServer::onRadeRxCallsign(const QString &callsign)
 }
 #endif
 
+#ifdef PACKET_SUPPORT
+void webServer::onPacketRxDecoded(int chan, QJsonObject frame)
+{
+    QJsonObject msg = frame;
+    msg["type"] = "packetRxFrame";
+    msg["chan"] = chan;
+    msg["ts"] = QDateTime::currentMSecsSinceEpoch();
+    sendJsonToAll(msg);
+
+    qInfo() << "Web: packet RX chan=" << chan
+            << "src=" << frame.value("src").toString()
+            << "dst=" << frame.value("dst").toString()
+            << "info=" << frame.value("info").toString();
+}
+#endif
+
 void webServer::onRxConverted(audioPacket audio)
 {
+#ifdef PACKET_SUPPORT
+    // Fan decoded PCM out to the packet processor. Independent of audio clients:
+    // decoding can happen even when no browser is listening to audio.
+    if (packetEnabled) {
+        emit sendToPacketRx(audio);
+    }
+#endif
+
     if (audioClients.isEmpty()) return;
 
     // Binary format: [0x02][0x00][seq_u16LE][rateDiv_u16LE][PCM_Int16LE...]
