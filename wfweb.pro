@@ -254,6 +254,33 @@ win32 {
     }
 }
 
+# Dire Wolf packet modem (AX.25 / APRS) — opt-in via: qmake CONFIG+=packet
+CONFIG(packet) {
+    DEFINES += PACKET_SUPPORT
+    # Dire Wolf expects these version macros from the build system.
+    DEFINES += MAJOR_VERSION=1 MINOR_VERSION=7 EXTRA_VERSION=\\\"wfweb\\\"
+    INCLUDEPATH += $$PWD/resources/direwolf/src
+    SOURCES += \
+        resources/direwolf/src/ax25_pad.c \
+        resources/direwolf/src/ax25_pad2.c \
+        resources/direwolf/src/demod.c \
+        resources/direwolf/src/demod_afsk.c \
+        resources/direwolf/src/demod_9600.c \
+        resources/direwolf/src/multi_modem.c \
+        resources/direwolf/src/hdlc_rec.c \
+        resources/direwolf/src/hdlc_rec2.c \
+        resources/direwolf/src/hdlc_send.c \
+        resources/direwolf/src/gen_tone.c \
+        resources/direwolf/src/fcs_calc.c \
+        resources/direwolf/src/dsp.c \
+        resources/direwolf/src/dtime_now.c \
+        resources/direwolf/src/rrbb.c \
+        resources/direwolf/wfweb_direwolf_stubs.c
+    SOURCES += src/direwolfprocessor.cpp
+    HEADERS += include/direwolfprocessor.h
+    message("Packet (Dire Wolf) support enabled")
+}
+
 contains(DEFINES,FTDI_SUPPORT){
   win32:INCLUDEPATH += ../LibFT4222-v1.4.7\imports\LibFT4222\inc
   win32:INCLUDEPATH += ../LibFT4222-v1.4.7\imports\ftd2xx
