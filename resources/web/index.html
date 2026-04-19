@@ -151,6 +151,41 @@ html, body {
     font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
 }
 #powerOffOverlay.visible { display: flex; }
+#powerOnBtn, #lanConnBtn {
+    padding: 14px 44px; font-size: 18px; font-weight: bold;
+    border: none; border-radius: 8px; cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+#powerOnBtn {
+    color: #000;
+    background: linear-gradient(135deg, #0c0 0%, #0a0 100%);
+    box-shadow: 0 4px 15px rgba(0,170,0,0.4);
+}
+#powerOnBtn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0,170,0,0.6);
+}
+#lanConnBtn {
+    padding: 14px 32px;
+    color: #fff;
+    background: linear-gradient(135deg, #266 0%, #155 100%);
+    box-shadow: 0 4px 15px rgba(0,60,80,0.4);
+}
+#lanConnBtn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0,60,80,0.6);
+}
+#powerOnSpinner {
+    width: 44px; height: 44px;
+    border: 3px solid rgba(0,170,170,0.15);
+    border-top-color: #0aa;
+    border-radius: 50%;
+    margin: 0 auto;
+    animation: powerOnSpin 0.9s linear infinite;
+}
+@keyframes powerOnSpin {
+    to { transform: rotate(360deg); }
+}
 #powerConfirm {
     display: none;
     position: fixed;
@@ -1956,9 +1991,10 @@ body.digi-open .digi-bar {
         <div style="font-size: 36px; font-weight: bold; color: #0aa; margin-bottom: 6px; text-shadow: 0 0 20px rgba(0,170,170,0.4);">wfweb</div>
         <div id="powerOffModel" style="font-size: 14px; color: #888; margin-bottom: 24px;"></div>
         <div id="powerOffMsg" style="font-size: 16px; color: #777; margin-bottom: 28px;">Radio is powered off</div>
-        <div id="powerOffBtns" style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-            <button id="powerOnBtn" onclick="doPowerOn()" style="padding: 14px 44px; font-size: 18px; font-weight: bold; color: #000; background: linear-gradient(135deg, #0c0 0%, #0a0 100%); border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,170,0,0.4); transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,170,0,0.6)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,170,0,0.4)';">Power On</button>
-            <button id="lanConnBtn" onclick="toggleLanConnection()" style="display: none; padding: 14px 32px; font-size: 18px; font-weight: bold; color: #fff; background: linear-gradient(135deg, #266 0%, #155 100%); border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,60,80,0.4); transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,60,80,0.6)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,60,80,0.4)';">Disconnect LAN</button>
+        <div id="powerOffBtns" style="display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap; min-height: 52px;">
+            <button id="powerOnBtn" onclick="doPowerOn()">Power On</button>
+            <button id="lanConnBtn" onclick="toggleLanConnection()" style="display: none;">Disconnect LAN</button>
+            <div id="powerOnSpinner" style="display: none;"></div>
         </div>
     </div>
     <div style="position: absolute; bottom: 20px; left: 20px; font-size: 11px; color: #555;">
@@ -2386,6 +2422,7 @@ var tuneStep = 1000;
 var isTransmitting = false;
 var isSplit = false;
 var rigPoweredOn = true;
+var rigPoweringOn = false;
 var isLan = false;
 var lanConnected = false;
 var reconnectTimer = null;
@@ -4277,10 +4314,15 @@ function doPowerOn() {
         audioWasEnabled = false;
         startAudio();
     }
+    rigPoweringOn = true;
     var msg = document.getElementById('powerOffMsg');
-    var btns = document.getElementById('powerOffBtns');
+    var pOnBtn = document.getElementById('powerOnBtn');
+    var lanBtn = document.getElementById('lanConnBtn');
+    var spin = document.getElementById('powerOnSpinner');
     if (msg) msg.textContent = 'Powering on, please wait\u2026';
-    if (btns) btns.style.display = 'none';
+    if (pOnBtn) pOnBtn.style.display = 'none';
+    if (lanBtn) lanBtn.style.display = 'none';
+    if (spin) spin.style.display = 'block';
 }
 function updatePowerState(on) {
     rigPoweredOn = on;
@@ -4288,15 +4330,18 @@ function updatePowerState(on) {
     var overlay = document.getElementById('powerOffOverlay');
     var overlayMsg = document.getElementById('powerOffMsg');
     var overlayBtnContainer = document.getElementById('powerOffBtns');
+    var spin = document.getElementById('powerOnSpinner');
+    rigPoweringOn = false;
     if (on) {
         btn.className = 'on';
         btn.title = 'Power Off';
         overlay.classList.remove('visible');
+        if (spin) spin.style.display = 'none';
     } else {
         btn.className = 'off';
         btn.title = 'Power On';
         if (overlayMsg) overlayMsg.textContent = 'Radio is powered off';
-        if (overlayBtnContainer) overlayBtnContainer.style.display = '';
+        if (spin) spin.style.display = 'none';
         var pm = document.getElementById('powerOffModel');
         if (pm) pm.textContent = rigModelName || '';
         overlay.classList.add('visible');
@@ -4332,6 +4377,7 @@ function refreshPowerOffButtons() {
     var lanBtn = document.getElementById('lanConnBtn');
     var msg = document.getElementById('powerOffMsg');
     if (!pOnBtn || !lanBtn) return;
+    if (rigPoweringOn) return;
     if (!isLan) {
         lanBtn.style.display = 'none';
         pOnBtn.style.display = '';
