@@ -2689,6 +2689,8 @@ function send(obj) {
 // MESSAGE HANDLING
 // ============================================================
 function handleMessage(msg) {
+    // Forward to read-only consumer modules before main state-machine switch.
+    if (window.Packet && window.Packet.onMessage) window.Packet.onMessage(msg);
     switch (msg.type) {
         case 'rigInfo':
             if (msg.version) {
@@ -3738,6 +3740,14 @@ function renderModeOverlay() {
     ft8Btn.textContent = 'FT8';
     ft8Btn.onclick = function() { setPanel('default'); toggleDigiBar(); };
     grid.appendChild(ft8Btn);
+    // Packet (Dire Wolf AX.25 / APRS) panel toggle
+    if (window.Packet) {
+        var pktBtn = document.createElement('button');
+        pktBtn.className = 'ov-btn' + (window.Packet.state && window.Packet.state.visible ? ' active' : '');
+        pktBtn.textContent = 'PKT';
+        pktBtn.onclick = function() { setPanel('default'); window.Packet.toggle(); };
+        grid.appendChild(pktBtn);
+    }
     // FreeDV — overlay mode (works on top of LSB/USB/AM/FM)
     if (freedvModes.length > 0) {
         var fdvBtn = document.createElement('button');
@@ -8181,5 +8191,6 @@ window.dispatchEvent(new Event('ft8tsReady'));
 <script src="cw-decoder-stft.js"></script>
 <script src="cw-decoder-utils.js"></script>
 <script src="cw-decoder.js"></script>
+<script src="packet.js"></script>
 </body>
 </html>

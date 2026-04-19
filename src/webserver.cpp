@@ -2020,21 +2020,22 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         QJsonObject notify;
         notify["type"] = "packetStatus";
         notify["enabled"] = packetEnabled;
-        QJsonArray chans;
-        chans.append(packetChannelEnabled[0]);
-        chans.append(packetChannelEnabled[1]);
-        notify["channels"] = chans;
+        notify["mode"] = packetMode;
         sendJsonToAll(notify);
     }
-    else if (type == "packetSetChannel") {
-        int chan = cmd["chan"].toInt(-1);
-        bool on = cmd["value"].toBool();
-        if (chan == 0 || chan == 1) {
-            packetChannelEnabled[chan] = on;
+    else if (type == "packetSetMode") {
+        int baud = cmd["value"].toInt(-1);
+        if (baud == 300 || baud == 1200 || baud == 9600) {
+            packetMode = baud;
             if (dwProc) {
-                QMetaObject::invokeMethod(dwProc, "setChannelEnabled", Qt::QueuedConnection,
-                                          Q_ARG(int, chan), Q_ARG(bool, on));
+                QMetaObject::invokeMethod(dwProc, "setMode", Qt::QueuedConnection,
+                                          Q_ARG(int, baud));
             }
+            QJsonObject notify;
+            notify["type"] = "packetStatus";
+            notify["enabled"] = packetEnabled;
+            notify["mode"] = packetMode;
+            sendJsonToAll(notify);
         }
     }
 #endif

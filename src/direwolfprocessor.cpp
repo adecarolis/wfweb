@@ -103,35 +103,35 @@ bool DireWolfProcessor::init(quint32 radioSampleRate)
     dwCfg->adev[0].samples_per_sec = modemRate_;
     dwCfg->adev[0].bits_per_sample = 16;
 
-    // ch0: 1200 AFSK (standard VHF packet / APRS).
+    // Single channel (ch0) configured per current mode_.  Dire Wolf's
+    // multichannel design is meant for multiple radios feeding separate
+    // audio streams — on our single audio source a signal is only ever
+    // one mode at a time, so we run exactly one demodulator.
     int ch = 0;
     dwCfg->chan_medium[ch] = MEDIUM_RADIO;
-    dwCfg->achan[ch].modem_type = audio_s::achan_param_s::MODEM_AFSK;
-    dwCfg->achan[ch].mark_freq = DEFAULT_MARK_FREQ;   // 1200
-    dwCfg->achan[ch].space_freq = DEFAULT_SPACE_FREQ; // 2200
-    dwCfg->achan[ch].baud = 1200;
-    std::strncpy(dwCfg->achan[ch].profiles, "A", sizeof(dwCfg->achan[ch].profiles) - 1);
-    dwCfg->achan[ch].num_freq = 1;
-    dwCfg->achan[ch].offset = 0;
-    dwCfg->achan[ch].fix_bits = RETRY_NONE;
-    dwCfg->achan[ch].sanity_test = SANITY_APRS;
-    dwCfg->achan[ch].passall = 0;
-    dwCfg->achan[ch].layer2_xmit = audio_s::achan_param_s::LAYER2_AX25;
-    dwCfg->achan[ch].dwait = DEFAULT_DWAIT;
-    dwCfg->achan[ch].slottime = DEFAULT_SLOTTIME;
-    dwCfg->achan[ch].persist = DEFAULT_PERSIST;
-    dwCfg->achan[ch].txdelay = DEFAULT_TXDELAY;
-    dwCfg->achan[ch].txtail = DEFAULT_TXTAIL;
-
-    // ch1: 9600 G3RUH scrambled baseband FSK.
-    ch = 1;
-    dwCfg->chan_medium[ch] = MEDIUM_RADIO;
-    dwCfg->achan[ch].modem_type = audio_s::achan_param_s::MODEM_SCRAMBLE;
-    dwCfg->achan[ch].mark_freq = 0;
-    dwCfg->achan[ch].space_freq = 0;
-    dwCfg->achan[ch].baud = 9600;
-    // Space-filled profile string avoids demod.c picking an AFSK default.
-    std::strncpy(dwCfg->achan[ch].profiles, " ", sizeof(dwCfg->achan[ch].profiles) - 1);
+    if (mode_ == 9600) {
+        dwCfg->achan[ch].modem_type = audio_s::achan_param_s::MODEM_SCRAMBLE;
+        dwCfg->achan[ch].mark_freq = 0;
+        dwCfg->achan[ch].space_freq = 0;
+        dwCfg->achan[ch].baud = 9600;
+        // Space-filled profile string avoids demod.c picking an AFSK default.
+        std::strncpy(dwCfg->achan[ch].profiles, " ", sizeof(dwCfg->achan[ch].profiles) - 1);
+    } else if (mode_ == 300) {
+        // HF AFSK: 200 Hz shift centered around 1700 Hz.
+        dwCfg->achan[ch].modem_type = audio_s::achan_param_s::MODEM_AFSK;
+        dwCfg->achan[ch].mark_freq = 1600;
+        dwCfg->achan[ch].space_freq = 1800;
+        dwCfg->achan[ch].baud = 300;
+        std::strncpy(dwCfg->achan[ch].profiles, "A", sizeof(dwCfg->achan[ch].profiles) - 1);
+    } else {
+        // Default / 1200 bps Bell 202 AFSK (VHF packet / APRS).
+        mode_ = 1200;
+        dwCfg->achan[ch].modem_type = audio_s::achan_param_s::MODEM_AFSK;
+        dwCfg->achan[ch].mark_freq = DEFAULT_MARK_FREQ;   // 1200
+        dwCfg->achan[ch].space_freq = DEFAULT_SPACE_FREQ; // 2200
+        dwCfg->achan[ch].baud = 1200;
+        std::strncpy(dwCfg->achan[ch].profiles, "A", sizeof(dwCfg->achan[ch].profiles) - 1);
+    }
     dwCfg->achan[ch].num_freq = 1;
     dwCfg->achan[ch].offset = 0;
     dwCfg->achan[ch].fix_bits = RETRY_NONE;
@@ -159,14 +159,13 @@ bool DireWolfProcessor::init(quint32 radioSampleRate)
 
     qCInfo(logWebServer) << "DireWolf: init ok — radioRate=" << radioRate_
                          << "modemRate=" << modemRate_
-                         << "ch0=1200 AFSK  ch1=9600 G3RUH";
+                         << "mode=" << mode_;
     return true;
 }
 
 void DireWolfProcessor::cleanup()
 {
     enabled_ = false;
-    channelEnabled_[0] = channelEnabled_[1] = false;
     destroyResamplers();
     txPcmBuffer.clear();
     rxAccumulator.clear();
@@ -185,15 +184,17 @@ void DireWolfProcessor::setEnabled(bool enabled)
     enabled_ = enabled;
 }
 
-void DireWolfProcessor::setChannelEnabled(int chan, bool on)
+void DireWolfProcessor::setMode(int baud)
 {
-    if (chan >= 0 && chan < 2) channelEnabled_[chan] = on;
+    if (baud != 300 && baud != 1200 && baud != 9600) return;
+    if (baud == mode_ && dwCfg) return;
+    mode_ = baud;
+    if (radioRate_ != 0) init(radioRate_);
 }
 
 void DireWolfProcessor::processRx(audioPacket audio)
 {
     if (!enabled_ || !dwCfg) return;
-    if (!channelEnabled_[0] && !channelEnabled_[1]) return;
 
     const qint16 *inSamples = reinterpret_cast<const qint16 *>(audio.data.constData());
     int inCount = audio.data.size() / (int)sizeof(qint16);
@@ -224,11 +225,9 @@ void DireWolfProcessor::processRx(audioPacket audio)
         modemCount = (int)outLen;
     }
 
-    // Feed every sample into each enabled channel's demodulator.
+    // Feed every sample into the single active demodulator (ch0).
     for (int i = 0; i < modemCount; i++) {
-        int s = (int)modemPtr[i];
-        if (channelEnabled_[0]) multi_modem_process_sample(0, s);
-        if (channelEnabled_[1]) multi_modem_process_sample(1, s);
+        multi_modem_process_sample(0, (int)modemPtr[i]);
     }
 }
 
@@ -315,7 +314,7 @@ void DireWolfProcessor::onTxByteFromC(int adev, int byte)
 // demodulator decodes them.  Returns 0 on match, nonzero on failure.
 // ---------------------------------------------------------------------------
 
-int DireWolfProcessor::runSelfTest()
+int DireWolfProcessor::runSelfTestMode(int baud)
 {
     const char kMonitor[] = "N0CALL>APRS:packet selftest";
     const QString kExpectedSrc  = "N0CALL";
@@ -323,11 +322,11 @@ int DireWolfProcessor::runSelfTest()
     const QString kExpectedInfo = "packet selftest";
 
     DireWolfProcessor dw;
+    dw.mode_ = baud;
     if (!dw.init(/*radioSampleRate=*/0)) {
-        qCWarning(logWebServer) << "SelfTest: init failed";
+        qCWarning(logWebServer) << "SelfTest[" << baud << "]: init failed";
         return 2;
     }
-    dw.setChannelEnabled(0, true);
     dw.setEnabled(true);
 
     QJsonObject decoded;
@@ -340,33 +339,33 @@ int DireWolfProcessor::runSelfTest()
 
     packet_t pp = ax25_from_text(const_cast<char *>(kMonitor), 1);
     if (!pp) {
-        qCWarning(logWebServer) << "SelfTest: ax25_from_text failed";
+        qCWarning(logWebServer) << "SelfTest[" << baud << "]: ax25_from_text failed";
         return 3;
     }
 
     // Preamble (TXDELAY), frame, postamble flush.  Use generous preamble
-    // so the AFSK demodulator's PLL locks well before the start flag.
+    // so the demodulator's PLL locks well before the start flag.
     layer2_preamble_postamble(0, 32, 0, dw.dwCfg);
     layer2_send_frame(0, pp, 0, dw.dwCfg);
     layer2_preamble_postamble(0, 2, 1, dw.dwCfg);
     ax25_delete(pp);
 
     // txPcmBuffer now holds int16 LE mono at modemRate_.  Feed it through
-    // the RX path as an audioPacket at the same rate (radioRate==0 => no
-    // resampling).
+    // the RX path as an audioPacket at the same rate (radioRate==0 =>
+    // no resampling).
     audioPacket pkt;
     pkt.data = dw.txPcmBuffer;
     pkt.seq = 0;
     dw.txPcmBuffer.clear();
 
-    qCInfo(logWebServer) << "SelfTest: TX produced"
+    qCInfo(logWebServer) << "SelfTest[" << baud << "]: TX produced"
                          << pkt.data.size() / 2 << "samples at"
                          << dw.modemRate_ << "Hz";
 
     dw.processRx(pkt);
 
     if (!gotFrame) {
-        qCWarning(logWebServer) << "SelfTest: no frame decoded";
+        qCWarning(logWebServer) << "SelfTest[" << baud << "]: no frame decoded";
         return 4;
     }
 
@@ -375,15 +374,34 @@ int DireWolfProcessor::runSelfTest()
     const QString info = decoded.value("info").toString();
 
     qCInfo(logWebServer).noquote()
-        << "SelfTest: decoded" << src << ">" << dst << "info:" << info;
+        << "SelfTest[" << baud << "]: decoded" << src << ">" << dst
+        << "info:" << info;
 
     if (src != kExpectedSrc || dst != kExpectedDst || info != kExpectedInfo) {
         qCWarning(logWebServer).noquote()
-            << "SelfTest: field mismatch — got"
+            << "SelfTest[" << baud << "]: field mismatch — got"
             << src << ">" << dst << "info:" << info;
         return 5;
     }
 
-    qCInfo(logWebServer) << "SelfTest: PASS";
+    qCInfo(logWebServer) << "SelfTest[" << baud << "]: PASS";
     return 0;
+}
+
+int DireWolfProcessor::runSelfTest()
+{
+    // Exercise every mode the UI exposes.  Returns 0 only if all pass;
+    // on failure returns (mode * 10 + per-mode-rc) so the caller can tell
+    // which mode failed.
+    const int modes[] = { 300, 1200, 9600 };
+    int worst = 0;
+    for (int i = 0; i < 3; i++) {
+        int rc = runSelfTestMode(modes[i]);
+        if (rc != 0) {
+            qCWarning(logWebServer) << "SelfTest: mode" << modes[i] << "FAILED rc=" << rc;
+            if (worst == 0) worst = modes[i] * 10 + rc;
+        }
+    }
+    if (worst == 0) qCInfo(logWebServer) << "SelfTest: ALL MODES PASS";
+    return worst;
 }

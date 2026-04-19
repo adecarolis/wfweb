@@ -298,7 +298,7 @@ private:
     DireWolfProcessor *dwProc = nullptr;
     QThread *dwThread = nullptr;
     bool packetEnabled = false;
-    bool packetChannelEnabled[2] = { false, false };
+    int  packetMode = 1200;    // 300 / 1200 / 9600 — single active modem
 #endif
 
     // Memory channel scanning

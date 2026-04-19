@@ -465,21 +465,25 @@ curl -s -X PUT http://localhost:8081/api/v1/radio/gains \
 ## WebSocket messages — Packet (Dire Wolf)
 
 Available only when wfweb is built with `CONFIG+=packet`. The packet modem
-decodes AX.25 / APRS on two channels: ch0 = 1200 bps AFSK, ch1 = 9600 bps
-G3RUH FSK. Both share the rig's RX audio.
+decodes AX.25 / APRS on the rig's RX audio with a single active demodulator
+at a time. Three modes are selectable:
+
+- `300`  — HF AFSK (mark 1600 / space 1800 Hz, 200 Hz shift)
+- `1200` — VHF AFSK Bell 202 (mark 1200 / space 2200 Hz), standard APRS
+- `9600` — VHF G3RUH scrambled baseband FSK
 
 ### Client → server
 
 | Command | Payload | Effect |
 |---------|---------|--------|
 | `packetEnable` | `{"cmd":"packetEnable","value":true\|false}` | Master enable for the modem. Must be true for RX decoding or TX. |
-| `packetSetChannel` | `{"cmd":"packetSetChannel","chan":0\|1,"value":true\|false}` | Per-channel gate: enable 1200 AFSK (ch0) and/or 9600 FSK (ch1). |
+| `packetSetMode` | `{"cmd":"packetSetMode","value":300\|1200\|9600}` | Select the active modem. Re-initializes the demodulator with the new parameters. |
 
 ### Server → client
 
 | Message | Payload |
 |---------|---------|
-| `packetStatus` | `{"type":"packetStatus","enabled":bool,"channels":[bool,bool]}` — broadcast after `packetEnable`. |
-| `packetRxFrame` | `{"type":"packetRxFrame","chan":0\|1,"ts":ms,"src":"CALL-N","dst":"DEST","path":["DIGI1","DIGI2*"],"info":"...","alevel":int}` — one per decoded AX.25 frame. |
+| `packetStatus` | `{"type":"packetStatus","enabled":bool,"mode":300\|1200\|9600}` — broadcast after `packetEnable` or `packetSetMode`. |
+| `packetRxFrame` | `{"type":"packetRxFrame","chan":0,"ts":ms,"src":"CALL-N","dst":"DEST","path":["DIGI1","DIGI2*"],"info":"...","alevel":int}` — one per decoded AX.25 frame. `chan` is always `0` in v1. |
 
 TX commands (`packetTxFrame`) land in M5 and are not yet wired.

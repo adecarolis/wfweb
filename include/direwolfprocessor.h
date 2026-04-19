@@ -30,7 +30,10 @@ public:
     // the generated audio back through the demodulator, verify the
     // decoded fields match.  Returns 0 on success, nonzero on failure.
     // Used by `wfweb --packet-self-test` and tests/test_packet.py.
+    // runSelfTest() exercises every supported mode; runSelfTestMode()
+    // tests one specific baud (300, 1200, or 9600).
     static int runSelfTest();
+    static int runSelfTestMode(int baud);
 
     // Invoked from the C shims via wfweb_dw_rx_frame / wfweb_dw_tx_put_byte.
     // Thread context: called on the DireWolf worker thread (same thread
@@ -47,7 +50,12 @@ public slots:
     void processRx(audioPacket audio);
     void transmitFrame(QByteArray ax25);
     void setEnabled(bool enabled);
-    void setChannelEnabled(int chan, bool on);
+    // Mode is the baud rate of the single active modem.  Valid values:
+    //   300  — HF AFSK (mark 1600 / space 1800, 200 Hz shift)
+    //   1200 — VHF AFSK (mark 1200 / space 2200, Bell 202 / APRS)
+    //   9600 — VHF G3RUH scrambled baseband FSK
+    // Other values are ignored.
+    void setMode(int baud);
     void cleanup();
 
 signals:
@@ -66,8 +74,8 @@ private:
     QByteArray rxAccumulator;
     bool enabled_ = false;
     quint32 radioRate_ = 0;
-    int modemRate_ = 48000;                         // common rate: works for 1200 AFSK + 9600 G3RUH
-    bool channelEnabled_[2] = { false, false };     // ch0 AFSK, ch1 FSK
+    int modemRate_ = 48000;                         // common rate: works for 300/1200 AFSK + 9600 G3RUH
+    int mode_ = 1200;                               // 300, 1200, or 9600 — see setMode()
     QByteArray rxResampleBuf;                       // accumulated modem-rate int16 samples
 };
 
