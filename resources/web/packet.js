@@ -16,6 +16,31 @@
 
     var barEl = null;
     var framesEl = null;
+    var scopeCanvas = null;
+    var scopeCtx = null;
+    var scopeColumn = null;
+
+    // AFSK / G3RUH parameters per baud.  minHz/maxHz define the visible
+    // frequency window for the spectrogram; mark/space are drawn as overlay
+    // lines so the user can see the tone pair they're trying to demodulate.
+    var MODE_PARAMS = {
+        300:  { minHz: 1200, maxHz: 2200, mark: 1600, space: 1800 },
+        1200: { minHz:  500, maxHz: 3000, mark: 1200, space: 2200 },
+        9600: { minHz:    0, maxHz: 5000, mark:    0, space:    0 }  // baseband
+    };
+    var FFT_SIZE = 8192;   // ~6 Hz/bin at 48 kHz — resolves the 200 Hz shift
+                           // of 300 AFSK (1600/1800) with clear separate ridges.
+    var MIN_DB = -90;
+    var MAX_DB = -30;
+
+    // Audio-graph nodes owned by this panel.  These are inserted between
+    // the webserver's AudioWorklet and audioGainNode — see cw-decoder.js
+    // for the same pattern.
+    var audioContext = null;
+    var analyserNode = null;
+    var rafId = null;
+    var lastPaintMs = 0;
+    var scopeColorLUT = null;
 
     function init() {
         buildUI();
@@ -37,9 +62,12 @@
                 '<button id="packetMode1200" class="packet-mode-btn" data-mode="1200" title="1200 bps AFSK Bell 202 (VHF / APRS)">1200 AFSK</button>' +
                 '<button id="packetMode9600" class="packet-mode-btn" data-mode="9600" title="9600 bps G3RUH FSK (VHF)">9600 FSK</button>' +
                 '<div class="flex-space"></div>' +
+                '<button id="packetCaptureBtn" class="packet-action-btn" title="Save 10 seconds of incoming audio (as seen by the demodulator) to a WAV file">Save 10s</button>' +
+                '<span id="packetCaptureStatus" class="packet-capture-status"></span>' +
                 '<button id="packetClearBtn" class="packet-action-btn" title="Clear frame list">Clear</button>' +
                 '<button id="packetCloseBtn" class="packet-close-btn">&#x2715;</button>' +
             '</div>' +
+            '<canvas id="packetScopeCanvas" class="packet-scope"></canvas>' +
             '<div id="packetFrames" class="packet-frames"></div>';
 
         // Mount inside #scopeArea — its z-index:300 paints over anything in body,
@@ -53,6 +81,11 @@
         }
 
         framesEl = document.getElementById('packetFrames');
+        scopeCanvas = document.getElementById('packetScopeCanvas');
+        if (scopeCanvas) {
+            scopeCtx = scopeCanvas.getContext('2d');
+            window.addEventListener('resize', resizeScope);
+        }
 
         var modeBtns = barEl.querySelectorAll('.packet-mode-btn');
         for (var i = 0; i < modeBtns.length; i++) {
@@ -63,6 +96,7 @@
             })(modeBtns[i]);
         }
         document.getElementById('packetClearBtn').onclick = clearFrames;
+        document.getElementById('packetCaptureBtn').onclick = captureAudio;
         document.getElementById('packetCloseBtn').onclick = hide;
         updateModeButtons();
     }
@@ -74,6 +108,7 @@
         style.textContent =
             '.packet-bar { position: fixed; top: 134px; left: 0; right: 0; bottom: 48px; background: #001008; border-top: 2px solid #0a0; z-index: 200; padding: 6px 8px; color: #cfc; font-family: monospace; font-size: 12px; display: flex; flex-direction: column; min-height: 0; box-sizing: border-box; }' +
             'body.packet-open #spectrumCanvas, body.packet-open #waterfallCanvas { display: none !important; }' +
+            '.packet-scope { width: 100%; height: 40%; min-height: 80px; background: #000; border: 1px solid #0a0; border-radius: 3px; margin-bottom: 6px; display: block; }' +
             '@media (max-height: 450px) { .packet-bar { top: 112px; bottom: 40px; } }' +
             '.packet-frames-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }' +
             '.packet-bar.hidden { display: none; }' +
@@ -84,6 +119,9 @@
             '.packet-mode-btn:hover { background: #0a0; color: #000; }' +
             '.packet-action-btn, .packet-close-btn { background: #111; border: 1px solid #555; color: #ccc; padding: 2px 8px; font-family: monospace; font-size: 10px; cursor: pointer; border-radius: 3px; }' +
             '.packet-action-btn:hover, .packet-close-btn:hover { background: #333; color: #fff; }' +
+            '.packet-action-btn:disabled { opacity: 0.5; cursor: default; }' +
+            '.packet-capture-status { color: #8c8; font-size: 10px; margin-left: 4px; min-width: 120px; }' +
+            '.packet-capture-status.err { color: #f66; }' +
             '.packet-frames { background: #000; border: 1px solid #0a0; border-radius: 3px; padding: 4px; flex: 1; min-height: 0; overflow-y: auto; font-size: 11px; line-height: 1.4; }' +
             '.packet-frame { padding: 2px 4px; border-bottom: 1px dotted #1a3a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }' +
             '.packet-frame:last-child { border-bottom: none; }' +
@@ -104,6 +142,9 @@
         document.body.classList.add('packet-open');
         setEnabled(true);
         renderFrames();
+        // Kick off the waterfall after the bar is visible so the canvas
+        // has a non-zero clientWidth/Height for the DPR math.
+        setTimeout(startScope, 0);
     }
 
     function hide() {
@@ -111,6 +152,7 @@
         if (barEl) barEl.classList.add('hidden');
         document.body.classList.remove('packet-open');
         setEnabled(false);
+        stopScope();
     }
 
     function toggle() {
@@ -129,6 +171,8 @@
         state.mode = baud;
         if (window.send) window.send({ cmd: 'packetSetMode', value: baud });
         updateModeButtons();
+        // Repaint frequency-marker overlay with the new mark/space pair.
+        if (scopeCtx) clearScope();
     }
 
     function updateModeButtons() {
@@ -150,7 +194,36 @@
                 state.mode = msg.mode;
                 updateModeButtons();
             }
+        } else if (msg.type === 'packetCaptureStarted') {
+            setCaptureStatus('capturing ' + msg.seconds + 's…', false);
+        } else if (msg.type === 'packetCaptureComplete') {
+            setCaptureStatus('saved ' + msg.path +
+                ' (' + msg.samples + ' samples @ ' + msg.sampleRate + ' Hz)', false);
+            var btn = document.getElementById('packetCaptureBtn');
+            if (btn) btn.disabled = false;
+        } else if (msg.type === 'packetCaptureFailed') {
+            setCaptureStatus('capture failed: ' + (msg.reason || 'unknown'), true);
+            var btn = document.getElementById('packetCaptureBtn');
+            if (btn) btn.disabled = false;
         }
+    }
+
+    function captureAudio() {
+        if (!state.enabled) {
+            setCaptureStatus('enable packet modem first', true);
+            return;
+        }
+        var btn = document.getElementById('packetCaptureBtn');
+        if (btn) btn.disabled = true;
+        setCaptureStatus('requesting…', false);
+        if (window.send) window.send({ cmd: 'packetCaptureAudio', seconds: 10 });
+    }
+
+    function setCaptureStatus(text, isError) {
+        var el = document.getElementById('packetCaptureStatus');
+        if (!el) return;
+        el.textContent = text;
+        el.classList.toggle('err', !!isError);
     }
 
     function appendFrame(frame) {
@@ -207,6 +280,213 @@
         }
         framesEl.innerHTML = html;
         framesEl.scrollTop = framesEl.scrollHeight;
+    }
+
+    // ---------------------------------------------------------------------
+    // Dedicated packet waterfall
+    //
+    // Mirrors cw-decoder.js: taps the live RX audio graph (window.audioCtx
+    // + window.audioWorkletNode) with an AnalyserNode and paints a scrolling
+    // spectrogram.  Mark/space tones for the active baud are drawn as
+    // horizontal marker lines so the operator can see they're on frequency.
+    // No decoding happens here — demod runs on the backend.  This is purely
+    // a diagnostic view.
+    // ---------------------------------------------------------------------
+
+    function buildScopeColorLUT() {
+        if (scopeColorLUT) return scopeColorLUT;
+        scopeColorLUT = new Array(256);
+        for (var v = 0; v < 256; v++) {
+            // Black -> dark blue -> cyan -> green -> yellow -> red (like wfview)
+            var t = v / 255;
+            var r, g, b;
+            if (t < 0.25)      { r = 0;                     g = 0;                     b = Math.floor(128 * (t / 0.25)); }
+            else if (t < 0.5)  { r = 0;                     g = Math.floor(255 * ((t - 0.25) / 0.25)); b = 128 + Math.floor(127 * ((t - 0.25) / 0.25)); }
+            else if (t < 0.75) { r = Math.floor(255 * ((t - 0.5) / 0.25));  g = 255;                   b = Math.floor(255 * (1 - (t - 0.5) / 0.25)); }
+            else               { r = 255;                   g = Math.floor(255 * (1 - (t - 0.75) / 0.25)); b = 0; }
+            scopeColorLUT[v] = [r, g, b];
+        }
+        return scopeColorLUT;
+    }
+
+    function resizeScope() {
+        if (!scopeCanvas) return;
+        var dpr = window.devicePixelRatio || 1;
+        var rect = scopeCanvas.getBoundingClientRect();
+        var w = Math.max(1, Math.floor((rect.width  || scopeCanvas.clientWidth  || 300) * dpr));
+        var h = Math.max(1, Math.floor((rect.height || scopeCanvas.clientHeight || 100) * dpr));
+        if (scopeCanvas.width !== w || scopeCanvas.height !== h) {
+            scopeCanvas.width = w;
+            scopeCanvas.height = h;
+            scopeColumn = null;     // drop stale column buffer
+            clearScope();
+        }
+    }
+
+    function clearScope() {
+        if (!scopeCanvas || !scopeCtx) return;
+        scopeCtx.fillStyle = '#000';
+        scopeCtx.fillRect(0, 0, scopeCanvas.width, scopeCanvas.height);
+        drawFreqMarkers();
+    }
+
+    function drawFreqMarkers() {
+        if (!scopeCanvas || !scopeCtx) return;
+        var p = MODE_PARAMS[state.mode];
+        if (!p || !p.mark || !p.space) return;  // 9600 baseband: skip
+        var range = p.maxHz - p.minHz;
+        // Markers live on a small right-edge ruler that doesn't scroll —
+        // the canvas is being shifted left each paint, so we can't draw
+        // into it permanently.  Instead we paint a dashed indicator on
+        // the rightmost 2 px column per frame inside painColumn().
+        // (Kept as a helper so clearScope() can stamp the labels once.)
+        scopeCtx.fillStyle = 'rgba(255,255,0,0.9)';
+        scopeCtx.font = (Math.floor(scopeCanvas.height / 14)) + 'px monospace';
+        var yMark  = yForHz(p.mark);
+        var ySpace = yForHz(p.space);
+        scopeCtx.fillText('M ' + p.mark,  4, yMark  + 4);
+        scopeCtx.fillText('S ' + p.space, 4, ySpace + 4);
+        // freq labels on the left stay, markers are redrawn each paint
+    }
+
+    function yForHz(hz) {
+        var p = MODE_PARAMS[state.mode];
+        if (!p) return 0;
+        var frac = (hz - p.minHz) / (p.maxHz - p.minHz);
+        return Math.floor((1 - frac) * (scopeCanvas.height - 1));
+    }
+
+    function startScope() {
+        if (!scopeCanvas || !scopeCtx) return;
+        resizeScope();
+        clearScope();
+        buildScopeColorLUT();
+
+        // Require the shared audio graph.  If the user hasn't started RX
+        // audio playback yet there's no context; poll briefly, then give up
+        // gracefully — the backend modem will still decode either way.
+        var tries = 0;
+        var attach = function() {
+            if (!state.visible) return;
+            if (window.audioCtx && window.audioWorkletNode && window.audioGainNode) {
+                attachAnalyser();
+                return;
+            }
+            if (++tries < 50) setTimeout(attach, 100);
+            else drawScopeMessage('Start RX audio for waterfall');
+        };
+        attach();
+    }
+
+    function attachAnalyser() {
+        audioContext = window.audioCtx;
+        try {
+            analyserNode = audioContext.createAnalyser();
+            analyserNode.fftSize = FFT_SIZE;
+            analyserNode.smoothingTimeConstant = 0.2;
+            analyserNode.minDecibels = MIN_DB;
+            analyserNode.maxDecibels = MAX_DB;
+
+            // Splice: worklet -> analyser -> gain (unchanged downstream).
+            window.audioWorkletNode.disconnect();
+            window.audioWorkletNode.connect(analyserNode);
+            analyserNode.connect(window.audioGainNode);
+        } catch (e) {
+            console.warn('[Packet] analyser attach failed:', e);
+            return;
+        }
+        lastPaintMs = performance.now();
+        rafId = requestAnimationFrame(paintScope);
+    }
+
+    function stopScope() {
+        if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+        if (analyserNode) {
+            try {
+                analyserNode.disconnect();
+                if (window.audioWorkletNode && window.audioGainNode) {
+                    window.audioWorkletNode.disconnect();
+                    window.audioWorkletNode.connect(window.audioGainNode);
+                }
+            } catch (e) { /* graph already torn down */ }
+            analyserNode = null;
+        }
+        audioContext = null;
+    }
+
+    function drawScopeMessage(text) {
+        if (!scopeCtx || !scopeCanvas) return;
+        scopeCtx.fillStyle = '#0a0';
+        scopeCtx.font = Math.floor(scopeCanvas.height / 6) + 'px monospace';
+        scopeCtx.textAlign = 'center';
+        scopeCtx.fillText(text, scopeCanvas.width / 2, scopeCanvas.height / 2);
+        scopeCtx.textAlign = 'left';
+    }
+
+    function paintScope() {
+        rafId = null;
+        if (!state.visible || !analyserNode || !scopeCanvas || !scopeCtx) return;
+
+        // Advance by whole pixels so the scroll rate is stable across frame
+        // rates.  30 px/s gives a visible packet burst that spans ~3 s at
+        // typical panel widths.
+        var now = performance.now();
+        var dt = (now - lastPaintMs) / 1000;
+        lastPaintMs = now;
+        var pxPerSec = Math.max(30, Math.floor(scopeCanvas.width / 6));
+        var step = Math.max(1, Math.floor(dt * pxPerSec));
+        if (step > scopeCanvas.width) step = scopeCanvas.width;
+
+        var bins = analyserNode.frequencyBinCount;
+        var spectrum = new Uint8Array(bins);
+        analyserNode.getByteFrequencyData(spectrum);
+
+        // Scroll existing image left.
+        scopeCtx.drawImage(
+            scopeCanvas,
+            0, 0, scopeCanvas.width, scopeCanvas.height,
+            -step, 0, scopeCanvas.width, scopeCanvas.height
+        );
+
+        if (!scopeColumn || scopeColumn.height !== scopeCanvas.height) {
+            scopeColumn = scopeCtx.createImageData(1, scopeCanvas.height);
+        }
+
+        var p = MODE_PARAMS[state.mode];
+        var nyquist = audioContext.sampleRate / 2;
+        var minBin = Math.floor((p.minHz / nyquist) * (bins - 1));
+        var maxBin = Math.min(bins - 1, Math.ceil((p.maxHz / nyquist) * (bins - 1)));
+        var binRange = Math.max(1, maxBin - minBin);
+        var buf = scopeColumn.data;
+        var H = scopeCanvas.height;
+        for (var y = 0; y < H; y++) {
+            // Top of canvas = high freq; invert so high freq appears at top.
+            var frac = (H - 1 - y) / Math.max(1, H - 1);
+            var idx = minBin + Math.floor(frac * binRange);
+            var v = spectrum[idx];
+            var rgb = scopeColorLUT[v];
+            var q = y * 4;
+            buf[q] = rgb[0]; buf[q + 1] = rgb[1]; buf[q + 2] = rgb[2]; buf[q + 3] = 255;
+        }
+        for (var i = 0; i < step; i++) {
+            scopeCtx.putImageData(scopeColumn, scopeCanvas.width - step + i, 0);
+        }
+
+        // Mark/space frequency lines (repainted on top of the freshly
+        // scrolled image).  Short ticks on the right edge + a faint
+        // full-width guide so the operator can align TX frequency.
+        if (p.mark && p.space) {
+            var yMark  = yForHz(p.mark);
+            var yOff   = yForHz(p.space);
+            scopeCtx.strokeStyle = 'rgba(255,255,0,0.35)';
+            scopeCtx.lineWidth = 1;
+            scopeCtx.beginPath();
+            scopeCtx.moveTo(0, yMark);  scopeCtx.lineTo(scopeCanvas.width, yMark);
+            scopeCtx.moveTo(0, yOff);   scopeCtx.lineTo(scopeCanvas.width, yOff);
+            scopeCtx.stroke();
+        }
+
+        rafId = requestAnimationFrame(paintScope);
     }
 
     window.Packet = {

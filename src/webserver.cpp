@@ -2023,6 +2023,35 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         notify["mode"] = packetMode;
         sendJsonToAll(notify);
     }
+    else if (type == "packetCaptureAudio") {
+        int seconds = cmd.value("seconds").toInt(10);
+        // Save to /tmp with a timestamped name so concurrent captures don't
+        // stomp each other.  The path is sent back to the client so the
+        // operator can grep for it or scp it off the host.
+        QString path = QString("/tmp/wfweb-packet-%1.wav")
+            .arg(QDateTime::currentDateTimeUtc().toString("yyyyMMdd-hhmmss"));
+        if (!dwProc) {
+            qWarning() << "Web: packetCaptureAudio — dwProc is null"
+                       << "audioConfigured=" << audioConfigured
+                       << "packetEnabled=" << packetEnabled
+                       << "rigSampleRate=" << rigSampleRate;
+            QJsonObject notify;
+            notify["type"] = "packetCaptureFailed";
+            notify["reason"] = QString("dwProc null (audioConfigured=%1 packetEnabled=%2) — "
+                                       "check wfweb logs; likely audio setup never ran")
+                .arg(audioConfigured).arg(packetEnabled);
+            sendJsonToAll(notify);
+        } else {
+            QMetaObject::invokeMethod(dwProc, "startCapture", Qt::QueuedConnection,
+                                      Q_ARG(int, seconds),
+                                      Q_ARG(QString, path));
+            QJsonObject notify;
+            notify["type"] = "packetCaptureStarted";
+            notify["path"] = path;
+            notify["seconds"] = seconds;
+            sendJsonToAll(notify);
+        }
+    }
     else if (type == "packetSetMode") {
         int baud = cmd["value"].toInt(-1);
         if (baud == 300 || baud == 1200 || baud == 9600) {
@@ -2929,6 +2958,22 @@ void webServer::setupAudio(quint8 codec, quint32 sampleRate)
     connect(this, &webServer::setupPacket, dwProc, &DireWolfProcessor::init);
     connect(this, &webServer::sendToPacketRx, dwProc, &DireWolfProcessor::processRx);
     connect(dwProc, &DireWolfProcessor::rxFrameDecoded, this, &webServer::onPacketRxDecoded);
+    connect(dwProc, &DireWolfProcessor::captureComplete, this,
+            [this](QString path, int rate, int samples) {
+                QJsonObject notify;
+                notify["type"] = "packetCaptureComplete";
+                notify["path"] = path;
+                notify["sampleRate"] = rate;
+                notify["samples"] = samples;
+                sendJsonToAll(notify);
+            });
+    connect(dwProc, &DireWolfProcessor::captureFailed, this,
+            [this](QString reason) {
+                QJsonObject notify;
+                notify["type"] = "packetCaptureFailed";
+                notify["reason"] = reason;
+                sendJsonToAll(notify);
+            });
     connect(dwThread, &QThread::finished, dwProc, &QObject::deleteLater);
 
     dwThread->start();
@@ -2953,7 +2998,15 @@ void webServer::setupAudio(quint8 codec, quint32 sampleRate)
 
 void webServer::receiveRxAudio(audioPacket audio)
 {
-    if (audioClients.isEmpty() || !audioConfigured) return;
+    if (!audioConfigured) return;
+    // Forward audio whenever *any* consumer cares: browser audio clients,
+    // or an active packet modem that needs samples even when no one is
+    // listening to RX audio in the browser.
+    bool haveConsumer = !audioClients.isEmpty();
+#ifdef PACKET_SUPPORT
+    haveConsumer = haveConsumer || packetEnabled;
+#endif
+    if (!haveConsumer) return;
     if (freedvEnabled && !freedvMonitor) {
 #ifdef RADE_SUPPORT
         if (freedvModeName == "RADE")
@@ -3537,6 +3590,40 @@ void webServer::setupUsbAudio(quint32 sampleRate)
     }
 #endif
 
+#ifdef PACKET_SUPPORT
+    // Dire Wolf packet processor (mirrors the LAN path in setupAudio()).
+    if (!dwProc) {
+        dwProc = new DireWolfProcessor();
+        dwThread = new QThread(this);
+        dwThread->setObjectName("webPacket()");
+        dwProc->moveToThread(dwThread);
+
+        connect(this, &webServer::setupPacket, dwProc, &DireWolfProcessor::init);
+        connect(this, &webServer::sendToPacketRx, dwProc, &DireWolfProcessor::processRx);
+        connect(dwProc, &DireWolfProcessor::rxFrameDecoded, this, &webServer::onPacketRxDecoded);
+        connect(dwProc, &DireWolfProcessor::captureComplete, this,
+                [this](QString path, int rate, int samples) {
+                    QJsonObject notify;
+                    notify["type"] = "packetCaptureComplete";
+                    notify["path"] = path;
+                    notify["sampleRate"] = rate;
+                    notify["samples"] = samples;
+                    sendJsonToAll(notify);
+                });
+        connect(dwProc, &DireWolfProcessor::captureFailed, this,
+                [this](QString reason) {
+                    QJsonObject notify;
+                    notify["type"] = "packetCaptureFailed";
+                    notify["reason"] = reason;
+                    sendJsonToAll(notify);
+                });
+        connect(dwThread, &QThread::finished, dwProc, &QObject::deleteLater);
+
+        dwThread->start();
+        emit setupPacket(rigSampleRate);
+    }
+#endif
+
     qInfo() << "Web: USB audio capture configured, sampleRate=" << rigSampleRate
             << "channels=" << format.channelCount();
 
@@ -3649,7 +3736,19 @@ void webServer::onAudioStateChanged(QAudio::State state)
 
 void webServer::readUsbAudio()
 {
-    if (!usbAudioDevice || audioClients.isEmpty()) return;
+    if (!usbAudioDevice) return;
+    // Forward whenever *any* consumer cares: browser audio clients, an
+    // active packet modem, or anything we need to drain so the input
+    // buffer doesn't pile up.
+    bool haveConsumer = !audioClients.isEmpty();
+#ifdef PACKET_SUPPORT
+    haveConsumer = haveConsumer || packetEnabled;
+#endif
+    if (!haveConsumer) {
+        // Still drain so the input buffer stays healthy.
+        usbAudioDevice->readAll();
+        return;
+    }
 
     QByteArray data = usbAudioDevice->readAll();
     if (data.isEmpty()) return;
@@ -3691,6 +3790,23 @@ void webServer::readUsbAudio()
 #endif
         return;
     }
+
+#ifdef PACKET_SUPPORT
+    // Fan out to the Dire Wolf demod.  The LAN path feeds packet via the
+    // audioConverter (onRxConverted); USB is already PCM Int16 at
+    // rigSampleRate, so send it straight in.
+    if (packetEnabled) {
+        audioPacket pkt;
+        pkt.data = data;
+        pkt.time = QTime::currentTime();
+        pkt.seq = audioSeq;
+        pkt.sent = 0;
+        pkt.volume = 1.0;
+        emit sendToPacketRx(pkt);
+    }
+#endif
+
+    if (audioClients.isEmpty()) return;
 
     // Build binary message: [0x02][0x00][seq_u16LE][rateDiv_u16LE][PCM_Int16LE...]
     quint16 rateDiv = static_cast<quint16>(rigSampleRate / 1000);

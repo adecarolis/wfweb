@@ -35,6 +35,13 @@ public:
     static int runSelfTest();
     static int runSelfTestMode(int baud);
 
+    // Offline demod: read a mono/stereo 16-bit PCM WAV, feed through the
+    // demodulator at the given baud (300/1200/9600), print decoded frames
+    // to stdout.  Returns 0 if at least one frame decoded, 1 on file/format
+    // error, 2 if the WAV produced no frames.
+    // Used by `wfweb --packet-decode-wav <file> [--packet-baud N]`.
+    static int decodeWavFile(const QString &path, int baud);
+
     // Invoked from the C shims via wfweb_dw_rx_frame / wfweb_dw_tx_put_byte.
     // Thread context: called on the DireWolf worker thread (same thread
     // the demodulator runs on), so signals are emitted there and Qt
@@ -50,6 +57,10 @@ public slots:
     void processRx(audioPacket audio);
     void transmitFrame(QByteArray ax25);
     void setEnabled(bool enabled);
+    // Start capturing the next `seconds` of incoming audio (as seen by the
+    // demodulator, post-resample to modemRate_) to a 16-bit mono WAV file.
+    // Emits captureComplete() when done or captureFailed() on error.
+    void startCapture(int seconds, const QString &path);
     // Mode is the baud rate of the single active modem.  Valid values:
     //   300  — HF AFSK (mark 1600 / space 1800, 200 Hz shift)
     //   1200 — VHF AFSK (mark 1200 / space 2200, Bell 202 / APRS)
@@ -63,6 +74,8 @@ signals:
     void rxFrameDecoded(int chan, QJsonObject frame);
     void txReady(audioPacket audio);
     void stats(int chan, float level);
+    void captureComplete(QString path, int sampleRate, int sampleCount);
+    void captureFailed(QString reason);
 
 private:
     void destroyResamplers();
@@ -77,6 +90,12 @@ private:
     int modemRate_ = 48000;                         // common rate: works for 300/1200 AFSK + 9600 G3RUH
     int mode_ = 1200;                               // 300, 1200, or 9600 — see setMode()
     QByteArray rxResampleBuf;                       // accumulated modem-rate int16 samples
+
+    // Audio capture (debug aid for --packet-decode-wav round-trip testing).
+    bool captureActive_ = false;
+    int  captureSamplesTarget_ = 0;
+    QByteArray capturePcm_;
+    QString capturePath_;
 };
 
 #endif // DIREWOLFPROCESSOR_H

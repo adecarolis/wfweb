@@ -4,11 +4,15 @@
 
 #include <QAtomicPointer>
 #include <QDebug>
-#include <QVector>
+#include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QDateTime>
+#include <QVector>
 
+#include <cstdio>
 #include <cstring>
 
 extern "C" {
@@ -90,7 +94,13 @@ DireWolfProcessor::~DireWolfProcessor()
 
 bool DireWolfProcessor::init(quint32 radioSampleRate)
 {
+    // cleanup() clears enabled_ as part of tearing down the modem.  When
+    // init() is called from setMode() after the user has already enabled
+    // the modem, we need to keep the enable flag so we don't silently
+    // drop every subsequent processRx() at the `!enabled_` gate.
+    bool wasEnabled = enabled_;
     cleanup();
+    enabled_ = wasEnabled;
     radioRate_ = radioSampleRate;
 
     dwCfg = new struct audio_s;
@@ -229,6 +239,72 @@ void DireWolfProcessor::processRx(audioPacket audio)
     for (int i = 0; i < modemCount; i++) {
         multi_modem_process_sample(0, (int)modemPtr[i]);
     }
+
+    // Opportunistic audio capture for offline debugging.  Grab samples
+    // post-resample (at modemRate_) so what we save is exactly what the
+    // demodulator sees — replayable via `wfweb --packet-decode-wav`.
+    if (captureActive_) {
+        int want = captureSamplesTarget_ - (capturePcm_.size() / (int)sizeof(qint16));
+        int take = qMin(want, modemCount);
+        if (take > 0) {
+            capturePcm_.append(reinterpret_cast<const char *>(modemPtr),
+                               take * (int)sizeof(qint16));
+        }
+        if (capturePcm_.size() / (int)sizeof(qint16) >= captureSamplesTarget_) {
+            captureActive_ = false;
+
+            // Write 16-bit mono RIFF/WAVE at modemRate_.
+            QFile f(capturePath_);
+            if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+                emit captureFailed(QString("cannot open %1").arg(capturePath_));
+                capturePcm_.clear();
+                return;
+            }
+            auto u32 = [&](quint32 v) { char b[4] = {
+                (char)(v & 0xff), (char)((v >> 8) & 0xff),
+                (char)((v >> 16) & 0xff), (char)((v >> 24) & 0xff) };
+                f.write(b, 4); };
+            auto u16 = [&](quint16 v) { char b[2] = {
+                (char)(v & 0xff), (char)((v >> 8) & 0xff) };
+                f.write(b, 2); };
+            int nBytes = capturePcm_.size();
+            f.write("RIFF", 4);  u32(36 + nBytes);
+            f.write("WAVE", 4);
+            f.write("fmt ", 4);  u32(16); u16(1); u16(1);
+            u32((quint32)modemRate_);        u32((quint32)modemRate_ * 2);
+            u16(2);              u16(16);
+            f.write("data", 4);  u32((quint32)nBytes);
+            f.write(capturePcm_);
+            f.close();
+
+            int samples = capturePcm_.size() / (int)sizeof(qint16);
+            qCInfo(logWebServer) << "DireWolf: capture wrote"
+                                 << capturePath_ << samples << "samples @"
+                                 << modemRate_ << "Hz";
+            capturePcm_.clear();
+            emit captureComplete(capturePath_, modemRate_, samples);
+        }
+    }
+}
+
+void DireWolfProcessor::startCapture(int seconds, const QString &path)
+{
+    if (captureActive_) {
+        emit captureFailed("capture already in progress");
+        return;
+    }
+    if (!enabled_ || !dwCfg) {
+        emit captureFailed("packet modem not enabled");
+        return;
+    }
+    if (seconds <= 0 || seconds > 60) seconds = 10;
+    capturePath_ = path;
+    capturePcm_.clear();
+    capturePcm_.reserve(seconds * modemRate_ * (int)sizeof(qint16));
+    captureSamplesTarget_ = seconds * modemRate_;
+    captureActive_ = true;
+    qCInfo(logWebServer) << "DireWolf: capturing" << seconds
+                         << "s @" << modemRate_ << "Hz ->" << path;
 }
 
 void DireWolfProcessor::transmitFrame(QByteArray ax25)
@@ -404,4 +480,140 @@ int DireWolfProcessor::runSelfTest()
     }
     if (worst == 0) qCInfo(logWebServer) << "SelfTest: ALL MODES PASS";
     return worst;
+}
+
+// ---------------------------------------------------------------------------
+// Offline WAV decoder (--packet-decode-wav)
+//
+// Minimal RIFF/WAVE reader: 16-bit PCM, mono or stereo (downmixed).
+// Anything else is rejected with an error.  No libsndfile dependency —
+// we only need enough to run Dire Wolf's TNC test corpus through processRx().
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Read a little-endian unsigned integer of the given size (2 or 4 bytes).
+quint32 readLE(const QByteArray &buf, int off, int size)
+{
+    quint32 v = 0;
+    for (int i = 0; i < size; i++)
+        v |= (quint32)(quint8)buf.at(off + i) << (8 * i);
+    return v;
+}
+
+// Parse WAV header, populate sampleRate / numChannels, return PCM int16
+// mono samples (stereo is averaged to mono).  Returns empty on error.
+QByteArray loadWavInt16Mono(const QString &path, quint32 *sampleRateOut)
+{
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly)) {
+        std::fprintf(stderr, "decode-wav: cannot open '%s'\n",
+                     qUtf8Printable(path));
+        return {};
+    }
+    QByteArray all = f.readAll();
+    f.close();
+
+    if (all.size() < 44 || all.left(4) != "RIFF" || all.mid(8, 4) != "WAVE") {
+        std::fprintf(stderr, "decode-wav: not a RIFF/WAVE file\n");
+        return {};
+    }
+
+    // Scan chunks after the "WAVE" tag.  We need "fmt " and "data".
+    int pos = 12;
+    int fmtOff = -1, fmtLen = 0;
+    int dataOff = -1, dataLen = 0;
+    while (pos + 8 <= all.size()) {
+        QByteArray id = all.mid(pos, 4);
+        int len = (int)readLE(all, pos + 4, 4);
+        int body = pos + 8;
+        if (id == "fmt ")  { fmtOff = body;  fmtLen = len; }
+        if (id == "data")  { dataOff = body; dataLen = len; break; }
+        pos = body + len + (len & 1);   // chunks are word-aligned
+    }
+    if (fmtOff < 0 || dataOff < 0 || fmtLen < 16) {
+        std::fprintf(stderr, "decode-wav: missing fmt or data chunk\n");
+        return {};
+    }
+
+    quint16 audioFormat  = (quint16)readLE(all, fmtOff + 0,  2);
+    quint16 numChannels  = (quint16)readLE(all, fmtOff + 2,  2);
+    quint32 sampleRate   =          readLE(all, fmtOff + 4,  4);
+    quint16 bitsPerSample= (quint16)readLE(all, fmtOff + 14, 2);
+
+    if (audioFormat != 1 || bitsPerSample != 16 ||
+        (numChannels != 1 && numChannels != 2)) {
+        std::fprintf(stderr,
+            "decode-wav: unsupported format (fmt=%u ch=%u bits=%u) "
+            "— need 16-bit PCM mono/stereo\n",
+            audioFormat, numChannels, bitsPerSample);
+        return {};
+    }
+
+    QByteArray pcm = all.mid(dataOff, dataLen);
+    if (numChannels == 2) {
+        // Downmix stereo -> mono by averaging.
+        int frames = pcm.size() / 4;
+        QByteArray mono;
+        mono.resize(frames * (int)sizeof(qint16));
+        const qint16 *in  = reinterpret_cast<const qint16 *>(pcm.constData());
+        qint16       *out = reinterpret_cast<qint16 *>(mono.data());
+        for (int i = 0; i < frames; i++)
+            out[i] = (qint16)(((qint32)in[2*i] + (qint32)in[2*i+1]) / 2);
+        pcm = mono;
+    }
+
+    if (sampleRateOut) *sampleRateOut = sampleRate;
+    return pcm;
+}
+
+} // namespace
+
+int DireWolfProcessor::decodeWavFile(const QString &path, int baud)
+{
+    if (baud != 300 && baud != 1200 && baud != 9600) {
+        std::fprintf(stderr,
+            "decode-wav: invalid baud %d (expected 300, 1200, or 9600)\n",
+            baud);
+        return 1;
+    }
+
+    quint32 wavRate = 0;
+    QByteArray pcm = loadWavInt16Mono(path, &wavRate);
+    if (pcm.isEmpty()) return 1;
+
+    QFileInfo fi(path);
+    std::fprintf(stderr,
+        "decode-wav: %s — %d samples @ %u Hz, baud=%d\n",
+        qUtf8Printable(fi.fileName()),
+        (int)(pcm.size() / (int)sizeof(qint16)), wavRate, baud);
+
+    DireWolfProcessor dw;
+    dw.mode_ = baud;
+    if (!dw.init(wavRate)) {
+        std::fprintf(stderr, "decode-wav: init failed\n");
+        return 1;
+    }
+    dw.setEnabled(true);
+
+    int frameCount = 0;
+    QObject::connect(&dw, &DireWolfProcessor::rxFrameDecoded,
+                     [&](int chan, QJsonObject frame) {
+                         frameCount++;
+                         QJsonDocument doc(frame);
+                         std::fprintf(stdout, "frame[%d] chan=%d %s\n",
+                             frameCount, chan,
+                             doc.toJson(QJsonDocument::Compact).constData());
+                         std::fflush(stdout);
+                     });
+
+    // Feed the full WAV in one shot — processRx handles resampling to
+    // modemRate_ internally via Speex.
+    audioPacket pkt;
+    pkt.data = pcm;
+    pkt.seq = 0;
+    dw.processRx(pkt);
+
+    std::fprintf(stderr, "decode-wav: %d frame(s) decoded\n", frameCount);
+    return frameCount > 0 ? 0 : 2;
 }
