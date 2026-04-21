@@ -9,7 +9,54 @@
 #include <QDebug>
 #include <QCryptographicHash>
 #include <QDateTime>
+#include <cmath>
 #include <random>
+
+namespace {
+// Channel bandwidth modeled as TX low-pass cutoff (Hz). The mixer already
+// gates by mode at the channel level; this complements that by limiting
+// what audio spectrum each transmitter actually emits — so a USB rig
+// can't dump 10 kHz of bandwidth onto the bus just because the mic
+// captured it.
+float txCutoffForMode(quint8 mode)
+{
+    switch (mode) {
+    case 0x00: case 0x01: return 3500.0f;   // LSB/USB
+    case 0x02:            return 5000.0f;   // AM
+    case 0x03: case 0x07: return 500.0f;    // CW / CW-R
+    case 0x04: case 0x08: return 500.0f;    // RTTY / RTTY-R
+    case 0x05:            return 12000.0f;  // FM voice
+    case 0x17:            return 5000.0f;   // DV
+    default:              return 3500.0f;
+    }
+}
+} // namespace
+
+void virtualRig::BiquadLpf::tune(float fs, float fc)
+{
+    // Audio EQ Cookbook LPF biquad, Butterworth (Q=1/sqrt(2)).
+    const float Q = 0.7071067811865475f;
+    float w0 = 2.0f * (float)M_PI * fc / fs;
+    float cos_w0 = std::cos(w0);
+    float sin_w0 = std::sin(w0);
+    float alpha = sin_w0 / (2.0f * Q);
+    float a0 = 1.0f + alpha;
+    b0 = (1.0f - cos_w0) * 0.5f / a0;
+    b1 = (1.0f - cos_w0) / a0;
+    b2 = b0;
+    a1 = -2.0f * cos_w0 / a0;
+    a2 = (1.0f - alpha) / a0;
+    // Don't reset history — small discontinuity is less ugly than a sudden
+    // zeroing click when the user changes mode mid-stream.
+}
+
+float virtualRig::BiquadLpf::process(float x)
+{
+    float y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+    x2 = x1; x1 = x;
+    y2 = y1; y1 = y;
+    return y;
+}
 
 virtualRig::virtualRig(const Config& cfg, channelMixer* mixer, QObject* parent)
     : QObject(parent), cfg(cfg), mixer(mixer)
@@ -234,7 +281,27 @@ void virtualRig::onTxAudioFromClient(const audioPacket& pkt)
     }
     if (civ) civ->setTxMeterFromPeak((quint16)peak);
     if (!ptt) return;
-    if (mixer) mixer->pushTxAudio(cfg.index, pkt);
+    if (!mixer) return;
+
+    // Band-limit to the current mode's TX bandwidth. Client audio is LPCM
+    // mono at the negotiated rx rate (48 kHz — see servermain.cpp:542),
+    // which is also what the browser captures, so fs=48000 is safe here.
+    quint8 mode = civ ? civ->rigMode() : 0x01;
+    if (mode != txLpf.tunedForMode) {
+        txLpf.tune(48000.0f, txCutoffForMode(mode));
+        txLpf.tunedForMode = mode;
+    }
+    audioPacket filtered = pkt;
+    filtered.data.resize(pkt.data.size());
+    qint16* out = reinterpret_cast<qint16*>(filtered.data.data());
+    for (int i = 0; i < n; ++i) {
+        float y = txLpf.process((float)s[i]);
+        int v = (int)y;
+        if (v > 32767) v = 32767;
+        if (v < -32768) v = -32768;
+        out[i] = (qint16)v;
+    }
+    mixer->pushTxAudio(cfg.index, filtered);
 }
 
 void virtualRig::onRxAudioFromMixer(int dstRig, const audioPacket& pkt)

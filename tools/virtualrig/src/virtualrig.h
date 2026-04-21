@@ -74,6 +74,18 @@ private:
     // and packet size so its jitter buffer never sees interleaved silence.
     QMutex rxMutex;
     QByteArray rxBuffer;
+
+    // 2nd-order Butterworth low-pass, re-tuned when the rig's mode changes.
+    // Applied on TX audio so the bus only carries what this rig would
+    // physically emit: SSB ~3.5 kHz, FM ~12 kHz, CW/RTTY ~500 Hz, etc.
+    struct BiquadLpf {
+        float b0 = 0, b1 = 0, b2 = 0, a1 = 0, a2 = 0;
+        float x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+        quint8 tunedForMode = 0xFF;
+        void tune(float sampleRate, float cutoffHz);
+        float process(float x);
+    };
+    BiquadLpf txLpf;
 };
 
 #endif
