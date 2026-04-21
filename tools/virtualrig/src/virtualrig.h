@@ -5,6 +5,8 @@
 #include <QThread>
 #include <QTimer>
 #include <QString>
+#include <QByteArray>
+#include <QMutex>
 
 #include "rigserver.h"
 #include "rigidentities.h"
@@ -60,7 +62,13 @@ private:
 
     bool ptt = false;
     quint32 rxSeq = 0;
-    qint64 lastRealRxMs = 0;
+
+    // Mixing buffer — real audio from the mixer is appended here, and the
+    // 20 ms idle timer drains exactly one 20 ms chunk per tick (padding with
+    // silence if the buffer is short). This gives the client a single cadence
+    // and packet size so its jitter buffer never sees interleaved silence.
+    QMutex rxMutex;
+    QByteArray rxBuffer;
 };
 
 #endif

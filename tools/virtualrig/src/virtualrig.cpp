@@ -147,20 +147,42 @@ void virtualRig::stop()
 void virtualRig::emitIdleRx()
 {
     if (server == nullptr || ptt) return;
-    // Skip if a real RX packet was dispatched in the last 100 ms; otherwise the
-    // silence would step on the voice stream in the client's audio buffer.
-    if (QDateTime::currentMSecsSinceEpoch() - lastRealRxMs < 100) return;
-    if (civ) civ->setSMeterFromPeak(0);
-    // 20 ms of LPCM silence at 48 kHz mono = 960 samples * 2 bytes = 1920 B.
-    // Matches the codec negotiated by the client (logs: rx sample rate 48000,
-    // codec 4 = LPCM 16-bit uncompressed).
+    // One 20 ms chunk of LPCM mono @ 48 kHz = 960 samples * 2 bytes = 1920 B.
+    // Matches the codec negotiated by the client (rx sample rate 48000, codec
+    // 4 = LPCM 16-bit uncompressed). Always emit exactly this size on every
+    // tick — pulling from the real-audio buffer first, padding with silence
+    // at the tail if short. Strict cadence + size keeps the client's jitter
+    // buffer happy and prevents interleaving with silence mid-speech.
     static const int bytes = 48 * 20 * 2;
+    QByteArray data(bytes, '\0');
+    qint16 peak = 0;
+    {
+        QMutexLocker lock(&rxMutex);
+        int take = qMin(rxBuffer.size(), bytes);
+        if (take > 0) {
+            memcpy(data.data(), rxBuffer.constData(), take);
+            rxBuffer.remove(0, take);
+            // Cap runaway growth if the timer ever stalls; drop oldest.
+            const int maxBytes = 48 * 500 * 2; // 500 ms
+            if (rxBuffer.size() > maxBytes) {
+                rxBuffer.remove(0, rxBuffer.size() - maxBytes);
+            }
+        }
+        // Peak over the portion we actually filled with real audio.
+        const qint16* s = reinterpret_cast<const qint16*>(data.constData());
+        int n = take / 2;
+        for (int i = 0; i < n; ++i) {
+            qint16 v = s[i] < 0 ? (qint16)-s[i] : s[i];
+            if (v > peak) peak = v;
+        }
+    }
+    if (civ) civ->setSMeterFromPeak((quint16)peak);
     audioPacket pkt;
-    pkt.data = QByteArray(bytes, '\0');
+    pkt.data = data;
     pkt.seq = rxSeq++;
     pkt.time = QTime::currentTime();
     pkt.sent = 0;
-    pkt.amplitudePeak = 0;
+    pkt.amplitudePeak = peak;
     pkt.amplitudeRMS = 0;
     pkt.volume = 0;
     QMetaObject::invokeMethod(server, [this, pkt]() {
@@ -197,23 +219,13 @@ void virtualRig::onRxAudioFromMixer(int dstRig, const audioPacket& pkt)
     if (++tick % 50 == 1) {
         qInfo() << "virtualRig" << cfg.name << "RX from mixer: bytes=" << pkt.data.size();
     }
-    lastRealRxMs = QDateTime::currentMSecsSinceEpoch();
-    if (civ) {
-        // Drive the synthesized S-meter from the mixer's PCM peak so the
-        // receiving UI shows activity while the other side transmits.
-        const qint16* s = reinterpret_cast<const qint16*>(pkt.data.constData());
-        int n = pkt.data.size() / 2;
-        qint16 peak = 0;
-        for (int i = 0; i < n; ++i) {
-            qint16 v = s[i] < 0 ? (qint16)-s[i] : s[i];
-            if (v > peak) peak = v;
-        }
-        civ->setSMeterFromPeak((quint16)peak);
-    }
-    if (server) {
-        audioPacket copy = pkt;
-        QMetaObject::invokeMethod(server, [this, copy]() {
-            server->receiveAudioData(copy);
-        }, Qt::QueuedConnection);
+    // Buffer the real PCM and let the 20 ms tick drain it at a fixed cadence.
+    // S-meter is recomputed from whatever bytes are actually emitted, so it
+    // reflects what the client will hear, not speculative buffer contents.
+    QMutexLocker lock(&rxMutex);
+    rxBuffer.append(pkt.data);
+    const int maxBytes = 48 * 500 * 2; // 500 ms hard cap
+    if (rxBuffer.size() > maxBytes) {
+        rxBuffer.remove(0, rxBuffer.size() - maxBytes);
     }
 }
