@@ -158,6 +158,9 @@ private slots:
 #ifdef PACKET_SUPPORT
     // Dire Wolf packet (AX.25 / APRS)
     void onPacketRxDecoded(int chan, QJsonObject frame);
+    void onPacketTxReady(audioPacket audio);
+    void onPacketTxFailed(QString reason);
+    void drainPacketLanTxBuffer();
 #endif
 
 
@@ -299,6 +302,14 @@ private:
     QThread *dwThread = nullptr;
     bool packetEnabled = false;
     int  packetMode = 1200;    // 300 / 1200 / 9600 — single active modem
+    bool packetTxDraining = false;   // set while a one-shot packet burst
+                                     // is emptying into ALSA; on buffer
+                                     // empty → stop ALSA + delayed PTT-off
+    // LAN TX paced chunker: converter's Opus path rejects arbitrary frame
+    // sizes, so the burst is fed in 20 ms slices at wall-clock rate.
+    QByteArray packetLanTxBuffer;
+    QTimer *packetLanTxTimer = nullptr;
+    int packetLanTxChunkBytes = 0;
 #endif
 
     // Memory channel scanning

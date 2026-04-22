@@ -48,6 +48,6 @@ def test_packet_loopback_self_test():
     # a future regression where the binary exits 0 without running the test
     # still fails loudly.
     combined = proc.stdout + proc.stderr
-    assert "SelfTest: PASS" in combined, (
-        f"SelfTest: PASS marker not found in output:\n{combined}"
+    assert "SelfTest: ALL MODES PASS" in combined, (
+        f"'SelfTest: ALL MODES PASS' marker not found in output:\n{combined}"
     )

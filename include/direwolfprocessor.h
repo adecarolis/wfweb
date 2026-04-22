@@ -55,7 +55,11 @@ public:
 public slots:
     bool init(quint32 radioSampleRate);
     void processRx(audioPacket audio);
-    void transmitFrame(QByteArray ax25);
+    // Encode and emit a single AX.25 UI frame.  `monitor` is TNC-style
+    // "SRC>DST[,PATH,...]:info" — parsed via ax25_from_text().  Emits
+    // txReady(audioPacket) with int16 LE mono PCM at radioRate_ on success,
+    // or txFailed(reason) if the modem is disabled / monitor is malformed.
+    void transmitFrame(QString monitor);
     void setEnabled(bool enabled);
     // Start capturing the next `seconds` of incoming audio (as seen by the
     // demodulator, post-resample to modemRate_) to a 16-bit mono WAV file.
@@ -73,6 +77,7 @@ signals:
     void rxFrame(int chan, QByteArray ax25, int alevel);
     void rxFrameDecoded(int chan, QJsonObject frame);
     void txReady(audioPacket audio);
+    void txFailed(QString reason);
     void stats(int chan, float level);
     void captureComplete(QString path, int sampleRate, int sampleCount);
     void captureFailed(QString reason);

@@ -11,7 +11,14 @@
         visible: false,
         enabled: false,        // master packet modem enable
         mode: 1200,            // 300 (HF AFSK), 1200 (VHF AFSK), or 9600 (VHF G3RUH)
-        frames: []
+        frames: [],
+        txBusy: false,         // true between packetTxStarted and packetTxComplete/Failed
+        compose: {             // last-used TX fields (persisted to localStorage)
+            src:  'N0CALL',
+            dst:  'APRS',
+            path: 'WIDE1-1',
+            info: 'hello from wfweb'
+        }
     };
 
     var barEl = null;
@@ -68,6 +75,14 @@
                 '<button id="packetCloseBtn" class="packet-close-btn">&#x2715;</button>' +
             '</div>' +
             '<canvas id="packetScopeCanvas" class="packet-scope"></canvas>' +
+            '<div class="packet-compose">' +
+                '<label>From <input id="packetTxSrc"  class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
+                '<label>To <input id="packetTxDst"  class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
+                '<label>Path <input id="packetTxPath" class="packet-tx-field" size="14" spellcheck="false" placeholder="WIDE1-1"></label>' +
+                '<input id="packetTxInfo" class="packet-tx-info" spellcheck="false" placeholder="payload"> ' +
+                '<button id="packetTxBtn" class="packet-send-btn" title="Transmit a single AX.25 UI frame">TX</button>' +
+                '<span id="packetTxStatus" class="packet-tx-status"></span>' +
+            '</div>' +
             '<div id="packetFrames" class="packet-frames"></div>';
 
         // Mount inside #scopeArea — its z-index:300 paints over anything in body,
@@ -98,6 +113,22 @@
         document.getElementById('packetClearBtn').onclick = clearFrames;
         document.getElementById('packetCaptureBtn').onclick = captureAudio;
         document.getElementById('packetCloseBtn').onclick = hide;
+
+        loadComposeFromStorage();
+        var txSrcEl  = document.getElementById('packetTxSrc');
+        var txDstEl  = document.getElementById('packetTxDst');
+        var txPathEl = document.getElementById('packetTxPath');
+        var txInfoEl = document.getElementById('packetTxInfo');
+        if (txSrcEl)  txSrcEl.value  = state.compose.src;
+        if (txDstEl)  txDstEl.value  = state.compose.dst;
+        if (txPathEl) txPathEl.value = state.compose.path;
+        if (txInfoEl) txInfoEl.value = state.compose.info;
+        var txBtn = document.getElementById('packetTxBtn');
+        if (txBtn) txBtn.onclick = sendFrame;
+        if (txInfoEl) txInfoEl.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); sendFrame(); }
+        });
+
         updateModeButtons();
     }
 
@@ -122,6 +153,16 @@
             '.packet-action-btn:disabled { opacity: 0.5; cursor: default; }' +
             '.packet-capture-status { color: #8c8; font-size: 10px; margin-left: 4px; min-width: 120px; }' +
             '.packet-capture-status.err { color: #f66; }' +
+            '.packet-compose { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 10px; color: #8c8; }' +
+            '.packet-compose label { display: flex; align-items: center; gap: 3px; }' +
+            '.packet-tx-field, .packet-tx-info { background: #001a00; border: 1px solid #0a0; color: #cfc; font-family: monospace; font-size: 11px; padding: 2px 4px; border-radius: 2px; outline: none; text-transform: uppercase; }' +
+            '.packet-tx-info { flex: 1; min-width: 140px; text-transform: none; }' +
+            '.packet-tx-field:focus, .packet-tx-info:focus { border-color: #0f0; }' +
+            '.packet-send-btn { background: #0a0; color: #000; border: 1px solid #0f0; padding: 3px 12px; font-family: monospace; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 3px; }' +
+            '.packet-send-btn:hover:not(:disabled) { background: #0f0; }' +
+            '.packet-send-btn:disabled { opacity: 0.5; cursor: default; }' +
+            '.packet-tx-status { color: #8c8; font-size: 10px; min-width: 120px; }' +
+            '.packet-tx-status.err { color: #f66; }' +
             '.packet-frames { background: #000; border: 1px solid #0a0; border-radius: 3px; padding: 4px; flex: 1; min-height: 0; overflow-y: auto; font-size: 11px; line-height: 1.4; }' +
             '.packet-frame { padding: 2px 4px; border-bottom: 1px dotted #1a3a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }' +
             '.packet-frame:last-child { border-bottom: none; }' +
@@ -130,6 +171,8 @@
             '.packet-frame .src { color: #ff0; }' +
             '.packet-frame .dst { color: #0ff; }' +
             '.packet-frame .path { color: #888; }' +
+            '.packet-frame.tx { background: #001a00; }' +
+            '.packet-frame.tx .chan { color: #f80; font-weight: bold; }' +
             '.packet-frame .info { color: #cfc; margin-left: 6px; }' +
             '.packet-empty { color: #666; padding: 8px; text-align: center; }' +
             '.flex-space { flex: 1; }';
@@ -205,7 +248,117 @@
             setCaptureStatus('capture failed: ' + (msg.reason || 'unknown'), true);
             var btn = document.getElementById('packetCaptureBtn');
             if (btn) btn.disabled = false;
+        } else if (msg.type === 'packetTxStarted') {
+            state.txBusy = true;
+            setTxStatus('transmitting…', false);
+            setTxButtonEnabled(false);
+            // Echo our own TX frame into the log so the operator sees it.
+            var parts = parseMonitor(msg.monitor);
+            if (parts) {
+                appendFrame({
+                    type: 'packetRxFrame',
+                    chan: 0,
+                    src: parts.src,
+                    dst: parts.dst,
+                    path: parts.path,
+                    info: parts.info,
+                    ts: Date.now(),
+                    tx: true
+                });
+            }
+        } else if (msg.type === 'packetTxComplete') {
+            state.txBusy = false;
+            setTxStatus('sent', false);
+            setTxButtonEnabled(true);
+        } else if (msg.type === 'packetTxFailed') {
+            state.txBusy = false;
+            setTxStatus('TX failed: ' + (msg.reason || 'unknown'), true);
+            setTxButtonEnabled(true);
         }
+    }
+
+    function parseMonitor(s) {
+        // "SRC>DST[,PATH,...]:info"
+        if (!s) return null;
+        var colon = s.indexOf(':');
+        if (colon < 0) return null;
+        var header = s.substring(0, colon);
+        var info   = s.substring(colon + 1);
+        var gt = header.indexOf('>');
+        if (gt < 0) return null;
+        var src = header.substring(0, gt);
+        var rest = header.substring(gt + 1).split(',');
+        var dst = rest[0];
+        var path = rest.slice(1);
+        return { src: src, dst: dst, path: path, info: info };
+    }
+
+    function setTxStatus(text, isError) {
+        var el = document.getElementById('packetTxStatus');
+        if (!el) return;
+        el.textContent = text;
+        el.classList.toggle('err', !!isError);
+    }
+
+    function setTxButtonEnabled(enabled) {
+        var btn = document.getElementById('packetTxBtn');
+        if (btn) btn.disabled = !enabled;
+    }
+
+    function sendFrame() {
+        if (state.txBusy) return;
+        if (!state.enabled) {
+            setTxStatus('enable packet modem first', true);
+            return;
+        }
+        var src  = (document.getElementById('packetTxSrc').value  || '').trim().toUpperCase();
+        var dst  = (document.getElementById('packetTxDst').value  || '').trim().toUpperCase();
+        var path = (document.getElementById('packetTxPath').value || '').trim().toUpperCase();
+        var info = (document.getElementById('packetTxInfo').value || '');
+        if (!src || !dst || !info) {
+            setTxStatus('From, To, and Info are required', true);
+            return;
+        }
+
+        var pathList = [];
+        if (path.length > 0) {
+            var parts = path.split(/[,\s]+/);
+            for (var i = 0; i < parts.length; i++) {
+                if (parts[i]) pathList.push(parts[i]);
+            }
+        }
+
+        state.compose.src = src;
+        state.compose.dst = dst;
+        state.compose.path = path;
+        state.compose.info = info;
+        saveComposeToStorage();
+
+        setTxStatus('requesting…', false);
+        setTxButtonEnabled(false);
+        if (window.send) {
+            window.send({ cmd: 'packetTx', src: src, dst: dst, path: pathList, info: info });
+        }
+    }
+
+    function loadComposeFromStorage() {
+        try {
+            var raw = localStorage.getItem('wfweb.packet.compose');
+            if (!raw) return;
+            var obj = JSON.parse(raw);
+            if (obj && typeof obj === 'object') {
+                if (typeof obj.src  === 'string') state.compose.src  = obj.src;
+                if (typeof obj.dst  === 'string') state.compose.dst  = obj.dst;
+                if (typeof obj.path === 'string') state.compose.path = obj.path;
+                if (typeof obj.info === 'string') state.compose.info = obj.info;
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    function saveComposeToStorage() {
+        try {
+            localStorage.setItem('wfweb.packet.compose', JSON.stringify(state.compose));
+        } catch (e) { /* quota exceeded — ignore */ }
     }
 
     function captureAudio() {
@@ -268,9 +421,9 @@
                 ? ' via ' + escapeHtml(f.path.join(','))
                 : '';
             html +=
-                '<div class="packet-frame">' +
+                '<div class="packet-frame' + (f.tx ? ' tx' : '') + '">' +
                     '<span class="ts">' + escapeHtml(formatTs(f.ts)) + '</span>' +
-                    '<span class="chan">ch' + escapeHtml(f.chan) + '</span>' +
+                    '<span class="chan">' + (f.tx ? 'TX' : 'ch' + escapeHtml(f.chan)) + '</span>' +
                     '<span class="src">' + escapeHtml(f.src) + '</span>' +
                     ' &gt; ' +
                     '<span class="dst">' + escapeHtml(f.dst) + '</span>' +

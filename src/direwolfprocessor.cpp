@@ -307,11 +307,80 @@ void DireWolfProcessor::startCapture(int seconds, const QString &path)
                          << "s @" << modemRate_ << "Hz ->" << path;
 }
 
-void DireWolfProcessor::transmitFrame(QByteArray ax25)
+void DireWolfProcessor::transmitFrame(QString monitor)
 {
-    (void)ax25;
-    // M5: pack into packet_t, call layer2_send_frame, emit txReady as
-    //     audio_put fills the buffer.
+    if (!enabled_ || !dwCfg) {
+        emit txFailed(QStringLiteral("packet modem not enabled"));
+        return;
+    }
+
+    // ax25_from_text expects a mutable C string.  AX.25 addresses are
+    // restricted to ASCII, and the info field is passed through verbatim
+    // as bytes — so Latin-1 round-trips without loss.
+    QByteArray asciiBuf = monitor.toLatin1();
+    // strict=1 applies APRS-style callsign checks (6-char base + SSID).  Same
+    // mode the self-test uses; loose mode (0) allows tactical calls but is
+    // out of scope for the initial TX UI.
+    packet_t pp = ax25_from_text(asciiBuf.data(), 1);
+    if (!pp) {
+        qCWarning(logWebServer) << "DireWolf TX: ax25_from_text rejected" << monitor;
+        emit txFailed(QStringLiteral("malformed packet: %1").arg(monitor));
+        return;
+    }
+
+    // Clear before encoding so txPcmBuffer holds exactly this burst.
+    txPcmBuffer.clear();
+    // Preamble (TXDELAY), frame, postamble/flush — identical sequence to
+    // the self-test.  At 1200 baud, 32 flag bytes is ~267 ms of key-up time
+    // before the first data byte; comfortable margin for most radios.
+    layer2_preamble_postamble(0, 32, 0, dwCfg);
+    layer2_send_frame(0, pp, 0, dwCfg);
+    layer2_preamble_postamble(0, 2, 1, dwCfg);
+    ax25_delete(pp);
+
+    if (txPcmBuffer.isEmpty()) {
+        qCWarning(logWebServer) << "DireWolf TX: hdlc_send produced no audio for" << monitor;
+        emit txFailed(QStringLiteral("TX produced no audio"));
+        return;
+    }
+
+    audioPacket pkt;
+    pkt.seq = 0;
+
+    if (txUpsampler && radioRate_ != 0 && (int)radioRate_ != modemRate_) {
+        // Upsample modemRate_ (48 kHz int16 LE mono) -> radioRate_.
+        int inCount = txPcmBuffer.size() / (int)sizeof(qint16);
+        const qint16 *inPtr = reinterpret_cast<const qint16 *>(txPcmBuffer.constData());
+
+        QVector<float> inFloat(inCount);
+        for (int i = 0; i < inCount; i++) inFloat[i] = inPtr[i] / 32768.0f;
+
+        spx_uint32_t inLen = inCount;
+        spx_uint32_t outLen = (spx_uint32_t)((qint64)inCount * radioRate_ / modemRate_) + 64;
+        QVector<float> outFloat(outLen);
+        wf_resampler_process_float(txUpsampler, 0,
+                                   inFloat.data(), &inLen,
+                                   outFloat.data(), &outLen);
+
+        pkt.data.resize((int)outLen * (int)sizeof(qint16));
+        qint16 *out = reinterpret_cast<qint16 *>(pkt.data.data());
+        for (spx_uint32_t i = 0; i < outLen; i++)
+            out[i] = (qint16)qBound(-32768, (int)(outFloat[i] * 32768.0f), 32767);
+    } else {
+        // Radio rate already matches modem rate (or no resampler configured).
+        pkt.data = txPcmBuffer;
+    }
+    txPcmBuffer.clear();
+
+    quint32 outRate = (radioRate_ != 0) ? radioRate_ : (quint32)modemRate_;
+    qCInfo(logWebServer).noquote()
+        << "DireWolf TX:" << monitor
+        << QString("(%1 samples @ %2 Hz, mode=%3)")
+            .arg(pkt.data.size() / (int)sizeof(qint16))
+            .arg(outRate)
+            .arg(mode_);
+
+    emit txReady(pkt);
 }
 
 void DireWolfProcessor::onRxFrameFromC(int chan, int subchan, int slice,

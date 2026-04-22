@@ -2067,6 +2067,67 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             sendJsonToAll(notify);
         }
     }
+    else if (type == "packetTx") {
+        // {src, dst, info}  required;  path: [ "WIDE1-1", ... ]  optional
+        QString src  = cmd["src"].toString().trimmed().toUpper();
+        QString dst  = cmd["dst"].toString().trimmed().toUpper();
+        QString info = cmd["info"].toString();
+        QStringList pathList;
+        if (cmd.value("path").isArray()) {
+            QJsonArray arr = cmd["path"].toArray();
+            for (int i = 0; i < arr.size(); i++) {
+                QString p = arr[i].toString().trimmed().toUpper();
+                if (!p.isEmpty()) pathList.append(p);
+            }
+        }
+
+        QString failReason;
+        if (!packetEnabled || !dwProc) {
+            failReason = "packet modem not enabled";
+        } else if (src.isEmpty() || dst.isEmpty() || info.isEmpty()) {
+            failReason = "src, dst, and info are required";
+        } else if (!(txAudioConfigured && usbAudioOutput) && !txConverter) {
+            // Either USB mode (usbAudioOutput + txAudioConfigured both set
+            // by setupUsbAudio) or LAN mode (txConverter set by setupAudio).
+            failReason = "TX audio not configured";
+        } else if (packetTxDraining || freedvTxActive) {
+            failReason = "TX already in progress";
+        }
+
+        if (!failReason.isEmpty()) {
+            QJsonObject notify;
+            notify["type"] = "packetTxFailed";
+            notify["reason"] = failReason;
+            sendJsonToAll(notify);
+        } else {
+            QString monitor = src + ">" + dst;
+            if (!pathList.isEmpty()) monitor += "," + pathList.join(",");
+            monitor += ":" + info;
+
+            // Claim the TX slot now — without this flag, a second packetTx
+            // that arrives before the queued encode completes would slip
+            // past the "already in progress" guard.  Cleared by the drain
+            // timer on completion, or by onPacketTxFailed on error.
+            packetTxDraining = true;
+
+            // Key the radio immediately so it's settled by the time the
+            // encoded burst arrives via onPacketTxReady.
+            queue->add(priorityImmediate,
+                       queueItem(funcTransceiverStatus,
+                                 QVariant::fromValue<bool>(true), false, uchar(0)));
+            queue->addUnique(priorityHighest,
+                             queueItem(funcALCMeter, true, 0));
+
+            QMetaObject::invokeMethod(dwProc, "transmitFrame", Qt::QueuedConnection,
+                                      Q_ARG(QString, monitor));
+
+            QJsonObject notify;
+            notify["type"] = "packetTxStarted";
+            notify["monitor"] = monitor;
+            sendJsonToAll(notify);
+            qInfo().noquote() << "Web: Packet TX queued:" << monitor;
+        }
+    }
 #endif
 #ifdef FREEDV_SUPPORT
     else if (type == "setReporter") {
@@ -2958,6 +3019,8 @@ void webServer::setupAudio(quint8 codec, quint32 sampleRate)
     connect(this, &webServer::setupPacket, dwProc, &DireWolfProcessor::init);
     connect(this, &webServer::sendToPacketRx, dwProc, &DireWolfProcessor::processRx);
     connect(dwProc, &DireWolfProcessor::rxFrameDecoded, this, &webServer::onPacketRxDecoded);
+    connect(dwProc, &DireWolfProcessor::txReady, this, &webServer::onPacketTxReady);
+    connect(dwProc, &DireWolfProcessor::txFailed, this, &webServer::onPacketTxFailed);
     connect(dwProc, &DireWolfProcessor::captureComplete, this,
             [this](QString path, int rate, int samples) {
                 QJsonObject notify;
@@ -3124,8 +3187,18 @@ void webServer::drainFreeDVTxBuffer()
         chunk.append(QByteArray(chunkSize - chunk.size(), 0));
         usbAudioOutputDevice->write(chunk);
         freedvTxBuffer.clear();
-    } else if (radeEooDraining) {
-        // EOO frame fully drained — stop ALSA and clean up TX state
+    } else if (radeEooDraining
+#ifdef PACKET_SUPPORT
+               || packetTxDraining
+#endif
+              ) {
+        // One-shot burst (RADE EOO or packet frame) fully drained — stop
+        // ALSA and clean up.  For packet we also schedule a delayed PTT-off
+        // so the radio has time to push the tail samples through.
+#ifdef PACKET_SUPPORT
+        bool wasPacket = packetTxDraining;
+        packetTxDraining = false;
+#endif
         radeEooDraining = false;
         freedvTxActive = false;
         freedvTxDrainTimer->stop();
@@ -3134,6 +3207,23 @@ void webServer::drainFreeDVTxBuffer()
             usbAudioOutput->stop();
             usbAudioOutputDevice = nullptr;
         }
+#ifdef PACKET_SUPPORT
+        if (wasPacket) {
+            qInfo() << "Web: Packet TX drain complete, ALSA stopped — delayed unkey";
+            QTimer::singleShot(300, this, [this]() {
+                if (queue) {
+                    queue->add(priorityImmediate,
+                               queueItem(funcTransceiverStatus,
+                                         QVariant::fromValue<bool>(false), false, uchar(0)));
+                    queue->del(funcALCMeter, 0);
+                }
+                QJsonObject notify;
+                notify["type"] = "packetTxComplete";
+                sendJsonToAll(notify);
+            });
+            return;
+        }
+#endif
         qInfo() << "Web: RADE EOO drain complete, ALSA stopped";
         return;
     } else {
@@ -3383,6 +3473,167 @@ void webServer::onPacketRxDecoded(int chan, QJsonObject frame)
             << "dst=" << frame.value("dst").toString()
             << "info=" << frame.value("info").toString();
 }
+
+// Receives the complete encoded burst for a single AX.25 frame (entire
+// preamble+frame+postamble in one audioPacket).  Pushes it into the shared
+// TX buffer and drives ALSA through the same drain timer FreeDV/RADE use.
+// packetTxDraining tells drainFreeDVTxBuffer to stop ALSA and unkey the
+// radio once the buffer empties.
+void webServer::onPacketTxReady(audioPacket audio)
+{
+    auto unkey = [this]() {
+        if (queue) {
+            queue->add(priorityImmediate,
+                       queueItem(funcTransceiverStatus,
+                                 QVariant::fromValue<bool>(false), false, uchar(0)));
+            queue->del(funcALCMeter, 0);
+        }
+    };
+
+    // LAN path: route through the TX converter instead of USB output.
+    // The Opus encoder inside audioConverter only accepts specific frame
+    // sizes (2.5 / 5 / 10 / 20 / 40 / 60 ms at sample rate), so a single
+    // multi-hundred-ms blob would be dropped.  Chunk into 20 ms slices
+    // and emit them at wall-clock rate — matches the mic path and keeps
+    // the rig's UDP audio jitter buffer happy.
+    if (!usbAudioOutput || !txAudioConfigured) {
+        if (txConverter) {
+            quint32 rate = rigSampleRate ? rigSampleRate : 48000;
+            packetLanTxChunkBytes = (int)(rate / 50) * (int)sizeof(qint16);
+            packetLanTxBuffer = audio.data;
+            if (!packetLanTxTimer) {
+                packetLanTxTimer = new QTimer(this);
+                packetLanTxTimer->setTimerType(Qt::PreciseTimer);
+                connect(packetLanTxTimer, &QTimer::timeout,
+                        this, &webServer::drainPacketLanTxBuffer);
+            }
+            qInfo() << "Web: Packet LAN TX started, bytes=" << audio.data.size()
+                    << "chunkBytes=" << packetLanTxChunkBytes;
+            packetLanTxTimer->start(20);
+            return;
+        }
+        qWarning() << "Web: Packet TX: no USB output and no TX converter";
+        packetTxDraining = false;
+        unkey();
+        QJsonObject notify;
+        notify["type"] = "packetTxFailed";
+        notify["reason"] = "no TX audio path available";
+        sendJsonToAll(notify);
+        return;
+    }
+
+    // Expand mono -> stereo if the USB output is a stereo device.
+    QByteArray writeData;
+    if (usbOutputChannels == 2) {
+        int numSamples = audio.data.size() / (int)sizeof(qint16);
+        writeData.resize(numSamples * 4);
+        const qint16 *src = reinterpret_cast<const qint16 *>(audio.data.constData());
+        qint16 *dst = reinterpret_cast<qint16 *>(writeData.data());
+        for (int i = 0; i < numSamples; i++) {
+            dst[i * 2] = src[i];
+            dst[i * 2 + 1] = src[i];
+        }
+    } else {
+        writeData = audio.data;
+    }
+
+    // Apply the existing ALC-controlled gain so the same slider governs
+    // packet TX level alongside FreeDV/RADE.  Packet modem output is full
+    // amplitude by default which would clip the rig's USB input.
+    if (freedvTxGain < 0.99f) {
+        qint16 *samples = reinterpret_cast<qint16 *>(writeData.data());
+        int count = writeData.size() / (int)sizeof(qint16);
+        for (int i = 0; i < count; i++)
+            samples[i] = qBound((int)-32768, (int)(samples[i] * freedvTxGain), (int)32767);
+    }
+
+    freedvTxBuffer.append(writeData);
+    packetTxDraining = true;
+
+    if (!freedvTxActive) {
+        freedvTxActive = true;
+        if (usbAudioOutput->state() != QAudio::StoppedState)
+            usbAudioOutput->stop();
+        usbAudioOutputDevice = nullptr;
+
+        usbAudioOutputDevice = usbAudioOutput->start();
+        if (usbAudioOutputDevice) {
+            txAudioActive = true;
+            preTxBuffering = false;
+            // 50 ms silence prefill (identical to FreeDV/RADE TX start).
+            QByteArray prefill(4800 * usbOutputChannels, 0);
+            usbAudioOutputDevice->write(prefill);
+
+            if (!freedvTxDrainTimer) {
+                freedvTxDrainTimer = new QTimer(this);
+                freedvTxDrainTimer->setTimerType(Qt::PreciseTimer);
+                connect(freedvTxDrainTimer, &QTimer::timeout, this, &webServer::drainFreeDVTxBuffer);
+            }
+            freedvTxDrainTimer->start(10);
+            qInfo() << "Web: Packet TX started, audioBytes=" << audio.data.size()
+                    << "bufSize=" << usbAudioOutput->bufferSize();
+        } else {
+            qWarning() << "Web: Packet TX ALSA start() failed";
+            freedvTxActive = false;
+            packetTxDraining = false;
+            freedvTxBuffer.clear();
+            unkey();
+            QJsonObject notify;
+            notify["type"] = "packetTxFailed";
+            notify["reason"] = "audio output start failed";
+            sendJsonToAll(notify);
+        }
+    }
+}
+
+void webServer::onPacketTxFailed(QString reason)
+{
+    qWarning() << "Web: Packet TX failed:" << reason;
+    // Release the TX slot and unkey if we already keyed.
+    packetTxDraining = false;
+    if (queue) {
+        queue->add(priorityImmediate,
+                   queueItem(funcTransceiverStatus,
+                             QVariant::fromValue<bool>(false), false, uchar(0)));
+        queue->del(funcALCMeter, 0);
+    }
+    QJsonObject notify;
+    notify["type"] = "packetTxFailed";
+    notify["reason"] = reason;
+    sendJsonToAll(notify);
+}
+
+// LAN path drain: feeds one 20 ms chunk per tick into the TX converter.
+// When the buffer empties, delays unkey by 300 ms so the tail has time
+// to clear the rig's UDP audio buffer before PTT drops.
+void webServer::drainPacketLanTxBuffer()
+{
+    if (packetLanTxBuffer.isEmpty()) {
+        if (packetLanTxTimer) packetLanTxTimer->stop();
+        qInfo() << "Web: Packet LAN TX drained, scheduling unkey";
+        QTimer::singleShot(300, this, [this]() {
+            packetTxDraining = false;
+            if (queue) {
+                queue->add(priorityImmediate,
+                           queueItem(funcTransceiverStatus,
+                                     QVariant::fromValue<bool>(false), false, uchar(0)));
+                queue->del(funcALCMeter, 0);
+            }
+            QJsonObject notify;
+            notify["type"] = "packetTxComplete";
+            sendJsonToAll(notify);
+        });
+        return;
+    }
+
+    int take = qMin(packetLanTxChunkBytes, packetLanTxBuffer.size());
+    audioPacket chunk;
+    chunk.data = packetLanTxBuffer.left(take);
+    chunk.time = QTime::currentTime();
+    chunk.volume = 1.0;
+    packetLanTxBuffer.remove(0, take);
+    emit sendToTxConverter(chunk);
+}
 #endif
 
 void webServer::onRxConverted(audioPacket audio)
@@ -3601,6 +3852,8 @@ void webServer::setupUsbAudio(quint32 sampleRate)
         connect(this, &webServer::setupPacket, dwProc, &DireWolfProcessor::init);
         connect(this, &webServer::sendToPacketRx, dwProc, &DireWolfProcessor::processRx);
         connect(dwProc, &DireWolfProcessor::rxFrameDecoded, this, &webServer::onPacketRxDecoded);
+        connect(dwProc, &DireWolfProcessor::txReady, this, &webServer::onPacketTxReady);
+        connect(dwProc, &DireWolfProcessor::txFailed, this, &webServer::onPacketTxFailed);
         connect(dwProc, &DireWolfProcessor::captureComplete, this,
                 [this](QString path, int rate, int samples) {
                     QJsonObject notify;
