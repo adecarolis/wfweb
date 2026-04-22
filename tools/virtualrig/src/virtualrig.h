@@ -45,6 +45,7 @@ public:
     // read from the main thread (civEmulator mutates there via queued slots).
     quint64 freq() const;
     quint8 mode() const;
+    bool isTransmitting() const { return ptt; }
 
 private slots:
     void onTxAudioFromClient(const audioPacket& pkt);

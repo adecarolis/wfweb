@@ -35,12 +35,14 @@ SOURCES += \
     src/main.cpp \
     src/virtualrig.cpp \
     src/civemulator.cpp \
-    src/channelmixer.cpp
+    src/channelmixer.cpp \
+    src/controlserver.cpp
 
 HEADERS += \
     src/virtualrig.h \
     src/civemulator.h \
-    src/channelmixer.h
+    src/channelmixer.h \
+    src/controlserver.h
 
 # Sources reused from wfweb. Kept deliberately tight: just the server stack
 # + audio-packet utilities + rig plumbing. No webserver, no GUI.

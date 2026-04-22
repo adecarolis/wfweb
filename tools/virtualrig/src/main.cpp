@@ -7,6 +7,7 @@
 #include "audioconverter.h"
 #include "channelmixer.h"
 #include "civemulator.h"
+#include "controlserver.h"
 #include "virtualrig.h"
 
 static QCoreApplication* g_app = nullptr;
@@ -47,12 +48,16 @@ int main(int argc, char* argv[])
         "rms", "0");
     QCommandLineOption broadcastOpt("broadcast",
         "Disable freq/mode gating; every rig hears every other rig.");
+    QCommandLineOption ctrlPortOpt("control-port",
+        "Port for the web control panel. 0 disables it. Default 5900.",
+        "port", "5900");
 
     parser.addOption(rigsOpt);
     parser.addOption(basePortOpt);
     parser.addOption(attenOpt);
     parser.addOption(noiseOpt);
     parser.addOption(broadcastOpt);
+    parser.addOption(ctrlPortOpt);
     parser.process(app);
 
     bool ok = false;
@@ -101,6 +106,15 @@ int main(int argc, char* argv[])
     qInfo() << "virtualrig: routing ="
             << (parser.isSet(broadcastOpt) ? "broadcast (all rigs hear all)"
                                            : "channel (same mode + passband)");
+
+    // Web control panel — optional, same process, separate port.
+    quint16 ctrlPort = (quint16)parser.value(ctrlPortOpt).toUInt(&ok);
+    if (ok && ctrlPort != 0) {
+        auto* ctrl = new controlServer(mixer, &app);
+        if (!ctrl->listen(ctrlPort)) {
+            qWarning() << "controlServer disabled (port" << ctrlPort << "unavailable).";
+        }
+    }
 
     std::signal(SIGINT, sigintHandler);
     std::signal(SIGTERM, sigintHandler);

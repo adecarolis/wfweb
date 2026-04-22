@@ -23,6 +23,7 @@ WFWEB="$REPO/wfweb"
 BASE_PORT=50001      # virtualrig rig 0 control port; civ=+1, audio=+2, next rig=+10
 WEB_BASE=9080        # wfweb #i serves HTTPS on WEB_BASE+i*10, WebSocket on WEB_BASE+i*10+1
 WEB_STEP=10          # wfweb also binds webPort+1 for WebSocket, so stride must be >= 2
+CTRL_PORT=5900       # virtualrig control panel (HTTP)
 
 die() { echo "testrig: $*" >&2; exit 1; }
 
@@ -164,6 +165,8 @@ cmd_up() {
         local label=${labels:i:1}
         printf '  Rig #%d  "virtual-IC7300-%s"   https://127.0.0.1:%d\n' "$i" "$label" "$web"
     done
+    echo
+    printf '  Bench control panel:               http://127.0.0.1:%d\n' "$CTRL_PORT"
     echo
     echo "virtualrig log:  $SCRATCH/virtualrig.log"
     echo "wfweb logs:      $SCRATCH/wfweb_{0..$((n-1))}.log"
