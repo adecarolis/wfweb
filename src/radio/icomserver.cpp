@@ -799,15 +799,6 @@ void icomServer::audioReceived()
                 }
 
                 QTime lastReceived = QTime::currentTime().addMSecs(current->timeDifference);
-                static int rxTick = 0;
-                if (++rxTick % 100 == 1) {
-                    qInfo(logRigServer()) << "AUDIO rx len=" << r.length()
-                        << "hasTxAudio==client:" << (hasTxAudio == current->ipAddress)
-                        << "hasTxAudio=" << hasTxAudio.toString()
-                        << "client=" << current->ipAddress.toString()
-                        << "lateBy=" << (lastReceived.msecsTo(QTime::currentTime()))
-                        << "txBufferLen=" << current->controlClient->txBufferLen;
-                }
                 if (hasTxAudio == current->ipAddress && lastReceived < QTime::currentTime().addMSecs(current->controlClient->txBufferLen))
                 {
                     // 0xac is the smallest possible audio packet.
