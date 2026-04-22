@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
         "Linear gain applied to inter-rig audio (default 0.1 ≈ -20 dB).",
         "gain", "0.1");
     QCommandLineOption noiseOpt("noise",
-        "Per-rig noise floor RMS in Int16 units (0..32767). Default 0 "
+        "Per-rig noise floor RMS in Int16 units (0..1000). Default 0 "
         "(silent floor). Try ~50 for a quiet band, ~500 for a noisy one.",
         "rms", "0");
     QCommandLineOption broadcastOpt("broadcast",
@@ -77,8 +77,8 @@ int main(int argc, char* argv[])
         return 2;
     }
     float noise = parser.value(noiseOpt).toFloat(&ok);
-    if (!ok || noise < 0.0f || noise > 32767.0f) {
-        qCritical() << "Invalid --noise value:" << parser.value(noiseOpt);
+    if (!ok || noise < 0.0f || noise > 1000.0f) {
+        qCritical() << "Invalid --noise value (0..1000):" << parser.value(noiseOpt);
         return 2;
     }
 

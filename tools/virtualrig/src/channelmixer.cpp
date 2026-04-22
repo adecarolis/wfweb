@@ -102,7 +102,9 @@ void channelMixer::setLinkAttenuation(int src, int dst, Band band, float gain)
     if (src < 0 || src >= linkGainByBand.size()) return;
     if (dst < 0 || dst >= linkGainByBand[src].size()) return;
     if (band < 0 || band >= BandCount) return;
+    // Links are symmetric — same path loss either way.
     linkGainByBand[src][dst][band] = gain;
+    linkGainByBand[dst][src][band] = gain;
 }
 
 float channelMixer::linkAttenuation(int src, int dst, Band band) const

@@ -40,7 +40,9 @@ public:
 
     // Per-link, per-band gain. "Band" reflects the SOURCE rig's current
     // band — i.e., what's being transmitted, not what the destination is
-    // tuned to. Unset cells default to whatever setAttenuation() installed.
+    // tuned to. Gains are kept symmetric: setLinkAttenuation(a,b,…) also
+    // updates (b,a,…) so the path between two rigs has a single value
+    // regardless of who keys up.
     void setLinkAttenuation(int src, int dst, Band band, float gain);
     float linkAttenuation(int src, int dst, Band band) const;
 

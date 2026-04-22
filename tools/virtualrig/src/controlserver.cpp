@@ -103,8 +103,8 @@ function renderRigs() {
       <td>${MODE_NAMES[r.mode] || "0x"+r.mode.toString(16)}</td>
       <td class="${r.ptt?"ptt-on":"ptt-off"}">${r.ptt?"TX":"—"}</td>
       <td>${editing
-            ? `<input type="number" data-kind="noise" data-rig="${r.idx}" value="${activeEditor.value}" min="0" max="32767" step="10">`
-            : `<input type="number" data-kind="noise" data-rig="${r.idx}" value="${r.noiseRms}" min="0" max="32767" step="10">`
+            ? `<input type="number" data-kind="noise" data-rig="${r.idx}" value="${activeEditor.value}" min="0" max="1000" step="10">`
+            : `<input type="number" data-kind="noise" data-rig="${r.idx}" value="${r.noiseRms}" min="0" max="1000" step="10">`
           }</td>
     </tr>`;
   });
@@ -361,6 +361,7 @@ QByteArray controlServer::applySetJson(const QByteArray& body)
         int rig = o.value("rig").toInt(-1);
         double rms = o.value("rms").toDouble(-1);
         if (rig < 0 || rms < 0) return "bad noise params";
+        if (rms > 1000) rms = 1000;
         mixer->setNoiseLevel(rig, (float)rms);
         return QByteArray();
     }
