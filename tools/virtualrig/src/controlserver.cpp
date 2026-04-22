@@ -109,8 +109,8 @@ function renderRigs() {
       <td>${MODE_NAMES[r.mode] || "0x"+r.mode.toString(16)}</td>
       <td class="${r.ptt?"ptt-on":"ptt-off"}">${r.ptt?"TX":"—"}</td>
       <td>${editing
-            ? `<input type="number" data-kind="noise" data-rig="${r.idx}" value="${activeEditor.value}" min="0" max="1000" step="10">`
-            : `<input type="number" data-kind="noise" data-rig="${r.idx}" value="${r.noiseRms}" min="0" max="1000" step="10">`
+            ? `<input type="number" data-kind="noise" data-rig="${r.idx}" value="${activeEditor.value}" min="0" max="1000" step="1">`
+            : `<input type="number" data-kind="noise" data-rig="${r.idx}" value="${r.noiseRms}" min="0" max="1000" step="1">`
           }</td>
     </tr>`;
   });
