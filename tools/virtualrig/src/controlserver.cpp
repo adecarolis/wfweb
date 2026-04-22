@@ -14,6 +14,11 @@ namespace {
 // Single-page UI embedded in the binary — no external assets so the bench
 // stays self-contained. Polls /api/state every 500 ms, POSTs to /api/set
 // on edit. Kept tight on purpose: one file, no framework.
+// Bumped on every rebuild so the browser's displayed build stamp makes it
+// obvious which binary is answering. __DATE__/__TIME__ expand at compile
+// time; there's no need to persist them elsewhere.
+const char* kBuildStamp = __DATE__ " " __TIME__;
+
 const char* kIndexHtml = R"HTML(<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -47,12 +52,13 @@ td.src { font-weight: 600; background: #fafafa; }
 <tbody></tbody>
 </table>
 
-<h2>Attenuation matrix (dB)</h2>
+<h2>Path attenuation (dB) — symmetric</h2>
 <div class="controls">
   Band: <select id="bandSel"></select>
-  <span class="hint">&nbsp;rows = source rig, columns = destination rig. Empty = self (not applicable).</span>
+  <span class="hint">&nbsp;one cell per rig pair. A ↔ B uses the same value whichever side transmits.</span>
 </div>
-<table id="atten" class="grid"><thead></thead><tbody></tbody></table>
+<table id="atten"><thead><tr><th>Pair</th><th>Attenuation (dB)</th></tr></thead><tbody></tbody></table>
+<p class="hint" id="buildStamp"></p>
 
 <script>
 const MODE_NAMES = {
@@ -113,19 +119,14 @@ function renderRigs() {
 
 function renderAtten() {
   const band = document.getElementById("bandSel").value;
-  const head = document.querySelector("#atten thead");
   const body = document.querySelector("#atten tbody");
   const n = state.rigs.length;
-  let hdr = "<tr><th>src \\ dst</th>";
-  for (let j = 0; j < n; ++j) hdr += `<th>#${j}</th>`;
-  hdr += "</tr>";
-  head.innerHTML = hdr;
 
+  // One row per unordered pair (i < j). Edits to this cell set both
+  // directions on the server, matching the physical path.
   let rows = "";
   for (let i = 0; i < n; ++i) {
-    let r = `<tr><td class="src">#${i} ${state.rigs[i].name}</td>`;
-    for (let j = 0; j < n; ++j) {
-      if (i === j) { r += "<td></td>"; continue; }
+    for (let j = i + 1; j < n; ++j) {
       const g = state.atten[band][i][j];
       const db = gainToDb(g).toFixed(1);
       const editing = activeEditor && activeEditor.dataset.kind === "atten" &&
@@ -133,11 +134,14 @@ function renderAtten() {
                       parseInt(activeEditor.dataset.dst) === j &&
                       activeEditor.dataset.band === band;
       const val = editing ? activeEditor.value : db;
-      r += `<td><input type="number" data-kind="atten" data-src="${i}" data-dst="${j}" data-band="${band}" value="${val}" min="-120" max="20" step="1"></td>`;
+      rows += `<tr>
+        <td><span class="src">#${i}</span> ↔ <span class="src">#${j}</span>
+            <span class="hint">&nbsp;${state.rigs[i].name} ↔ ${state.rigs[j].name}</span></td>
+        <td><input type="number" data-kind="atten" data-src="${i}" data-dst="${j}" data-band="${band}" value="${val}" min="-120" max="20" step="1"></td>
+      </tr>`;
     }
-    r += "</tr>";
-    rows += r;
   }
+  if (!rows) rows = `<tr><td colspan="2" class="hint">need at least two rigs</td></tr>`;
   body.innerHTML = rows;
 }
 
@@ -156,6 +160,7 @@ function render() {
   renderBandSelector();
   renderRigs();
   renderAtten();
+  document.getElementById("buildStamp").textContent = "virtualrig build: " + (state.build || "unknown");
 }
 
 document.addEventListener("focusin", e => {
@@ -295,8 +300,10 @@ void controlServer::sendResponse(QTcpSocket* s, int status,
     resp += "Content-Type: " + contentType + "\r\n";
     resp += "Content-Length: " + QByteArray::number(body.size()) + "\r\n";
     // The UI evolves across rebuilds; don't let the browser hold onto a
-    // stale copy after a restart.
-    resp += "Cache-Control: no-store\r\n";
+    // stale copy after a restart. Belt + suspenders for older browsers.
+    resp += "Cache-Control: no-store, no-cache, must-revalidate, max-age=0\r\n";
+    resp += "Pragma: no-cache\r\n";
+    resp += "Expires: 0\r\n";
     resp += "Connection: close\r\n\r\n";
     resp += body;
     s->write(resp);
@@ -331,6 +338,7 @@ QByteArray controlServer::renderStateJson() const
     }
     root["rigs"] = rigs;
     root["channelRouting"] = mixer->channelRoutingEnabled();
+    root["build"] = kBuildStamp;
 
     QJsonObject atten;
     for (int b = 0; b < channelMixer::BandCount; ++b) {
