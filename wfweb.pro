@@ -275,7 +275,12 @@ CONFIG(packet) {
         resources/direwolf/src/dsp.c \
         resources/direwolf/src/dtime_now.c \
         resources/direwolf/src/rrbb.c \
-        resources/direwolf/wfweb_direwolf_stubs.c
+        resources/direwolf/src/ax25_link.c \
+        resources/direwolf/src/xid.c \
+        resources/direwolf/src/dlq.c \
+        resources/direwolf/wfweb_direwolf_stubs.c \
+        resources/direwolf/wfweb_dw_server_shim.c \
+        resources/direwolf/wfweb_tq.c
     SOURCES += src/direwolfprocessor.cpp
     HEADERS += include/direwolfprocessor.h
     message("Packet (Dire Wolf) support enabled")
