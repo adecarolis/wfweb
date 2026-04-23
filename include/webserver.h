@@ -40,6 +40,7 @@
 #endif
 #ifdef PACKET_SUPPORT
 #include "direwolfprocessor.h"
+#include "ax25linkprocessor.h"
 #endif
 
 #ifdef Q_OS_MACOS
@@ -300,8 +301,9 @@ private:
     // Dire Wolf packet (AX.25 / APRS)
     DireWolfProcessor *dwProc = nullptr;
     QThread *dwThread = nullptr;
+    AX25LinkProcessor *axProc = nullptr;
     bool packetEnabled = false;
-    int  packetMode = 1200;    // 300 / 1200 / 9600 — single active modem
+    int  packetMode = 300;     // 300 / 1200 / 9600 — single active modem
     bool packetTxDraining = false;   // set while a one-shot packet burst
                                      // is emptying into ALSA; on buffer
                                      // empty → stop ALSA + delayed PTT-off

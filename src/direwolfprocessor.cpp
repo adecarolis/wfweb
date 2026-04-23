@@ -47,9 +47,6 @@ DireWolfProcessor *DireWolfProcessor::active()
 // C trampolines referenced from wfweb_direwolf_stubs.c
 // ---------------------------------------------------------------------------
 
-extern "C" void wfweb_dw_start_dlq_consumer(void);
-extern "C" void wfweb_dw_stop_dlq_consumer(void);
-
 extern "C" void wfweb_dw_log(int level, const char *msg)
 {
     if (!msg) return;
@@ -105,13 +102,6 @@ bool DireWolfProcessor::init(quint32 radioSampleRate)
     cleanup();
     enabled_ = wasEnabled;
     radioRate_ = radioSampleRate;
-
-    // The vendored dlq.c queues every received frame on the DLQ.  Spawn
-    // the consumer thread (idempotent) so frames get drained back into
-    // wfweb_dw_rx_frame() — restoring the APRS RX path.  M2 will replace
-    // this with AX25LinkProcessor, which dispatches connected-mode events
-    // in addition to monitor frames.
-    wfweb_dw_start_dlq_consumer();
 
     dwCfg = new struct audio_s;
     std::memset(dwCfg, 0, sizeof(*dwCfg));
@@ -389,6 +379,81 @@ void DireWolfProcessor::transmitFrame(QString monitor)
             .arg(pkt.data.size() / (int)sizeof(qint16))
             .arg(outRate)
             .arg(mode_);
+
+    emit txReady(pkt);
+}
+
+void DireWolfProcessor::transmitFrameBytes(int chan, int prio, QByteArray frame)
+{
+    (void)chan; (void)prio;
+
+    if (!enabled_ || !dwCfg) {
+        emit txFailed(QStringLiteral("packet modem not enabled"));
+        return;
+    }
+    if (frame.isEmpty()) {
+        emit txFailed(QStringLiteral("empty frame"));
+        return;
+    }
+
+    // Reconstruct a packet_t from the raw AX.25 bytes produced by ax25_pack
+    // on the AX25LinkProcessor side.  alevel is meaningless for TX so pass 0.
+    alevel_t a; std::memset(&a, 0, sizeof(a));
+    packet_t pp = ax25_from_frame(
+        reinterpret_cast<unsigned char *>(frame.data()), frame.size(), a);
+    if (!pp) {
+        qCWarning(logWebServer) << "DireWolf TX: ax25_from_frame failed for"
+                                << frame.size() << "bytes";
+        emit txFailed(QStringLiteral("ax25_from_frame failed"));
+        return;
+    }
+
+    txPcmBuffer.clear();
+    layer2_preamble_postamble(0, 32, 0, dwCfg);
+    layer2_send_frame(0, pp, 0, dwCfg);
+    layer2_preamble_postamble(0, 2, 1, dwCfg);
+    ax25_delete(pp);
+
+    if (txPcmBuffer.isEmpty()) {
+        qCWarning(logWebServer) << "DireWolf TX (bytes): hdlc_send produced no audio";
+        emit txFailed(QStringLiteral("TX produced no audio"));
+        return;
+    }
+
+    audioPacket pkt;
+    pkt.seq = 0;
+
+    if (txUpsampler && radioRate_ != 0 && (int)radioRate_ != modemRate_) {
+        int inCount = txPcmBuffer.size() / (int)sizeof(qint16);
+        const qint16 *inPtr = reinterpret_cast<const qint16 *>(txPcmBuffer.constData());
+
+        QVector<float> inFloat(inCount);
+        for (int i = 0; i < inCount; i++) inFloat[i] = inPtr[i] / 32768.0f;
+
+        spx_uint32_t inLen = inCount;
+        spx_uint32_t outLen = (spx_uint32_t)((qint64)inCount * radioRate_ / modemRate_) + 64;
+        QVector<float> outFloat(outLen);
+        wf_resampler_process_float(txUpsampler, 0,
+                                   inFloat.data(), &inLen,
+                                   outFloat.data(), &outLen);
+
+        pkt.data.resize((int)outLen * (int)sizeof(qint16));
+        qint16 *out = reinterpret_cast<qint16 *>(pkt.data.data());
+        for (spx_uint32_t i = 0; i < outLen; i++)
+            out[i] = (qint16)qBound(-32768, (int)(outFloat[i] * 32768.0f), 32767);
+    } else {
+        pkt.data = txPcmBuffer;
+    }
+    txPcmBuffer.clear();
+
+    quint32 outRate = (radioRate_ != 0) ? radioRate_ : (quint32)modemRate_;
+    qCInfo(logWebServer).noquote()
+        << "DireWolf TX (bytes):"
+        << QString("(%1 samples @ %2 Hz, mode=%3, frame=%4 B)")
+            .arg(pkt.data.size() / (int)sizeof(qint16))
+            .arg(outRate)
+            .arg(mode_)
+            .arg(frame.size());
 
     emit txReady(pkt);
 }

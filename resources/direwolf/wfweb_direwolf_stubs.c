@@ -134,66 +134,6 @@ int get_input(int it, int chan)
 
 /* dlq_rec_frame is now provided by the real dlq.c (vendored from upstream
  * Dire Wolf for connected-mode AX.25).  Frames placed on the DLQ by the
- * modem are drained by a small consumer thread spawned below.  For
- * DLQ_REC_FRAME items we trampoline into wfweb_dw_rx_frame() so the
- * existing APRS RX path keeps working unchanged.
- *
- * In M2 this consumer will be replaced by AX25LinkProcessor, which will
- * also dispatch connected-mode events (lm_data_indication etc.) into
- * ax25_link.c.  Until then we just service DLQ_REC_FRAME and free
- * everything else cleanly. */
-
-#include <pthread.h>
-
-extern int  dlq_wait_while_empty(double timeout_val);
-extern struct dlq_item_s *dlq_remove(void);
-extern void dlq_delete(struct dlq_item_s *pitem);
-extern void dlq_init(int debug_level);
-
-static pthread_t s_dlq_thread;
-static int       s_dlq_running = 0;
-
-static void *wfweb_dlq_consumer_loop(void *arg)
-{
-    (void)arg;
-    while (s_dlq_running) {
-        /* 1 s timeout lets us notice s_dlq_running flipping to 0 on shutdown. */
-        dlq_wait_while_empty(1.0);
-        if (!s_dlq_running) break;
-
-        struct dlq_item_s *item = dlq_remove();
-        if (item == NULL) continue;
-
-        if (item->type == DLQ_REC_FRAME && item->pp != NULL) {
-            unsigned char frame[AX25_MAX_PACKET_LEN];
-            int flen = ax25_pack(item->pp, frame);
-            if (flen > 0) {
-                wfweb_dw_rx_frame(item->chan, item->subchan, item->slice,
-                                  frame, flen,
-                                  item->alevel.rec, item->alevel.mark,
-                                  item->alevel.space,
-                                  (int)item->fec_type, (int)item->retries);
-            }
-        }
-
-        /* dlq_delete frees the embedded packet_t (and txdata) for us, so we
-         * must not call ax25_delete on item->pp ourselves. */
-        dlq_delete(item);
-    }
-    return NULL;
-}
-
-void wfweb_dw_start_dlq_consumer(void)
-{
-    if (s_dlq_running) return;
-    dlq_init(0);
-    s_dlq_running = 1;
-    pthread_create(&s_dlq_thread, NULL, wfweb_dlq_consumer_loop, NULL);
-}
-
-void wfweb_dw_stop_dlq_consumer(void)
-{
-    if (!s_dlq_running) return;
-    s_dlq_running = 0;
-    pthread_join(s_dlq_thread, NULL);
-}
+ * modem are drained by AX25LinkProcessor (src/ax25linkprocessor.cpp),
+ * which dispatches DLQ_REC_FRAME both to lm_data_indication (connected
+ * mode) and to the existing wfweb_dw_rx_frame trampoline (APRS UI). */

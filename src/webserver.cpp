@@ -3043,6 +3043,18 @@ void webServer::setupAudio(quint8 codec, quint32 sampleRate)
 
     // Initialize the modem at the current rig sample rate so it's ready when enabled.
     emit setupPacket(sampleRate);
+
+    // AX.25 connected-mode: spin up the data-link state machine.  Owns
+    // its own dispatcher thread internally; we just connect signals.
+    if (!axProc) {
+        axProc = new AX25LinkProcessor(this);
+        // Connected-mode TX: ax25_link → AX25LinkProcessor → DireWolfProcessor.
+        // QueuedConnection lets the dispatcher thread cross into the dwProc thread.
+        connect(axProc, &AX25LinkProcessor::transmitFrameBytes,
+                dwProc, &DireWolfProcessor::transmitFrameBytes,
+                Qt::QueuedConnection);
+        axProc->start();
+    }
 #endif
 
     qInfo() << "Web: Audio configured, codec=" << Qt::hex << codec

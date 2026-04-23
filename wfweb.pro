@@ -259,7 +259,7 @@ CONFIG(packet) {
     DEFINES += PACKET_SUPPORT
     # Dire Wolf expects these version macros from the build system.
     DEFINES += MAJOR_VERSION=1 MINOR_VERSION=7 EXTRA_VERSION=\\\"wfweb\\\"
-    INCLUDEPATH += $$PWD/resources/direwolf/src
+    INCLUDEPATH += $$PWD/resources/direwolf/src $$PWD/resources/direwolf
     SOURCES += \
         resources/direwolf/src/ax25_pad.c \
         resources/direwolf/src/ax25_pad2.c \
@@ -281,8 +281,8 @@ CONFIG(packet) {
         resources/direwolf/wfweb_direwolf_stubs.c \
         resources/direwolf/wfweb_dw_server_shim.c \
         resources/direwolf/wfweb_tq.c
-    SOURCES += src/direwolfprocessor.cpp
-    HEADERS += include/direwolfprocessor.h
+    SOURCES += src/direwolfprocessor.cpp src/ax25linkprocessor.cpp
+    HEADERS += include/direwolfprocessor.h include/ax25linkprocessor.h
     message("Packet (Dire Wolf) support enabled")
 }
 

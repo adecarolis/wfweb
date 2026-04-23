@@ -60,6 +60,11 @@ public slots:
     // txReady(audioPacket) with int16 LE mono PCM at radioRate_ on success,
     // or txFailed(reason) if the modem is disabled / monitor is malformed.
     void transmitFrame(QString monitor);
+    // Connected-mode TX entry point used by AX25LinkProcessor.  `frame`
+    // is a fully-formed AX.25 frame (address + control + info + FCS — i.e.
+    // exactly what ax25_pack produces).  Encoded through the same modem
+    // pipeline as transmitFrame().
+    void transmitFrameBytes(int chan, int prio, QByteArray frame);
     void setEnabled(bool enabled);
     // Start capturing the next `seconds` of incoming audio (as seen by the
     // demodulator, post-resample to modemRate_) to a 16-bit mono WAV file.
