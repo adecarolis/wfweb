@@ -2128,6 +2128,153 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             qInfo().noquote() << "Web: Packet TX queued:" << monitor;
         }
     }
+    // ---- AX.25 connected-mode terminal sessions ----
+    else if (type == "termList") {
+        QJsonArray sessions;
+        for (const TerminalSession *s : termSessions) {
+            sessions.append(termSessionToJson(s));
+        }
+        QJsonObject reply;
+        reply["type"] = "termList";
+        reply["sessions"] = sessions;
+        // termList is per-client; reply only to the requesting socket if we
+        // can identify it.  For now broadcast (cheap, idempotent).
+        sendJsonToAll(reply);
+    }
+    else if (type == "termHistory") {
+        QString sid = cmd["sid"].toString();
+        TerminalSession *s = termSessions.value(sid, nullptr);
+        QJsonObject reply;
+        reply["type"] = "termHistory";
+        reply["sid"] = sid;
+        QJsonArray entries;
+        if (s) {
+            for (const QJsonObject &e : s->scrollback) entries.append(e);
+        }
+        reply["entries"] = entries;
+        sendJsonToAll(reply);
+    }
+    else if (type == "termConnect") {
+        QString own  = cmd["ownCall"].toString().trimmed().toUpper();
+        QString peer = cmd["peerCall"].toString().trimmed().toUpper();
+        int chan = cmd.value("chan").toInt(0);
+        QStringList digis;
+        if (cmd.value("digis").isArray()) {
+            QJsonArray arr = cmd["digis"].toArray();
+            for (int i = 0; i < arr.size(); i++) {
+                QString d = arr[i].toString().trimmed().toUpper();
+                if (!d.isEmpty()) digis.append(d);
+            }
+        }
+        QString failReason;
+        if (!packetEnabled || !dwProc || !axProc) failReason = "packet modem not enabled";
+        else if (own.isEmpty() || peer.isEmpty()) failReason = "ownCall and peerCall are required";
+        else if (termFindByEndpoints(chan, own, peer)) failReason = "session already exists";
+
+        if (!failReason.isEmpty()) {
+            QJsonObject notify;
+            notify["type"] = "termError";
+            notify["reason"] = failReason;
+            sendJsonToAll(notify);
+        } else {
+            TerminalSession *s = new TerminalSession();
+            s->sid = termMakeSid();
+            s->chan = chan;
+            s->ownCall = own;
+            s->peerCall = peer;
+            s->digis = digis;
+            s->state = TerminalSession::Connecting;
+            s->createdMs = QDateTime::currentMSecsSinceEpoch();
+            s->lastActivityMs = s->createdMs;
+            termSessions.insert(s->sid, s);
+            // Make sure we'll accept inbound to this own_call too.
+            termEnsureRegistered(chan, own);
+            termAppendScrollback(s, termScrollbackEntry(QStringLiteral("info"),
+                QString("Connecting to %1...").arg(peer).toUtf8()));
+            termBroadcastSession(s);
+            QMetaObject::invokeMethod(axProc, "connectRequest", Qt::QueuedConnection,
+                                      Q_ARG(int, TERM_FIXED_CLIENT),
+                                      Q_ARG(int, chan),
+                                      Q_ARG(QString, own),
+                                      Q_ARG(QString, peer),
+                                      Q_ARG(QStringList, digis));
+            qInfo().noquote() << "Web: termConnect" << s->sid << own << "->" << peer;
+        }
+    }
+    else if (type == "termDisconnect") {
+        QString sid = cmd["sid"].toString();
+        TerminalSession *s = termSessions.value(sid, nullptr);
+        if (s && axProc) {
+            s->state = TerminalSession::Disconnecting;
+            termAppendScrollback(s, termScrollbackEntry(QStringLiteral("info"),
+                QStringLiteral("Disconnecting...").toUtf8()));
+            termBroadcastSession(s);
+            QMetaObject::invokeMethod(axProc, "disconnectRequest", Qt::QueuedConnection,
+                                      Q_ARG(int, TERM_FIXED_CLIENT),
+                                      Q_ARG(int, s->chan),
+                                      Q_ARG(QString, s->ownCall),
+                                      Q_ARG(QString, s->peerCall),
+                                      Q_ARG(QStringList, s->digis));
+        }
+    }
+    else if (type == "termSend") {
+        QString sid = cmd["sid"].toString();
+        QString text = cmd["data"].toString();
+        TerminalSession *s = termSessions.value(sid, nullptr);
+        if (s && axProc && s->state == TerminalSession::Connected) {
+            QByteArray data = text.toUtf8();
+            QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
+                                      Q_ARG(int, TERM_FIXED_CLIENT),
+                                      Q_ARG(int, s->chan),
+                                      Q_ARG(QString, s->ownCall),
+                                      Q_ARG(QString, s->peerCall),
+                                      Q_ARG(QStringList, s->digis),
+                                      Q_ARG(int, 0xF0),
+                                      Q_ARG(QByteArray, data));
+            QJsonObject entry = termScrollbackEntry(QStringLiteral("tx"), data);
+            termAppendScrollback(s, entry);
+            termBroadcastData(s->sid, entry);
+        }
+    }
+    else if (type == "termClose") {
+        // Force-remove a session record from the server.  Sends a disconnect
+        // first if the link is still up; the resulting linkTerminated will
+        // also clean up but this lets a stuck session be wiped immediately.
+        QString sid = cmd["sid"].toString();
+        TerminalSession *s = termSessions.take(sid);
+        if (s) {
+            if (axProc && s->state != TerminalSession::Disconnected) {
+                QMetaObject::invokeMethod(axProc, "disconnectRequest", Qt::QueuedConnection,
+                                          Q_ARG(int, TERM_FIXED_CLIENT),
+                                          Q_ARG(int, s->chan),
+                                          Q_ARG(QString, s->ownCall),
+                                          Q_ARG(QString, s->peerCall),
+                                          Q_ARG(QStringList, s->digis));
+            }
+            QJsonObject notify;
+            notify["type"] = "termClose";
+            notify["sid"] = sid;
+            sendJsonToAll(notify);
+            delete s;
+        }
+    }
+    else if (type == "termRegister") {
+        // Standalone callsign registration so the server accepts inbound
+        // connections without the operator first making an outbound call.
+        QString own = cmd["ownCall"].toString().trimmed().toUpper();
+        int chan = cmd.value("chan").toInt(0);
+        if (!own.isEmpty()) termEnsureRegistered(chan, own);
+    }
+    else if (type == "termUnregister") {
+        QString own = cmd["ownCall"].toString().trimmed().toUpper();
+        int chan = cmd.value("chan").toInt(0);
+        if (!own.isEmpty() && axProc && termRegisteredOwnCalls.remove(own)) {
+            QMetaObject::invokeMethod(axProc, "unregisterCallsign", Qt::QueuedConnection,
+                                      Q_ARG(int, TERM_FIXED_CLIENT),
+                                      Q_ARG(int, chan),
+                                      Q_ARG(QString, own));
+        }
+    }
 #endif
 #ifdef FREEDV_SUPPORT
     else if (type == "setReporter") {
@@ -3053,6 +3200,15 @@ void webServer::setupAudio(quint8 codec, quint32 sampleRate)
         connect(axProc, &AX25LinkProcessor::transmitFrameBytes,
                 dwProc, &DireWolfProcessor::transmitFrameBytes,
                 Qt::QueuedConnection);
+        connect(axProc, &AX25LinkProcessor::linkEstablished,
+                this,   &webServer::onAxLinkEstablished,
+                Qt::QueuedConnection);
+        connect(axProc, &AX25LinkProcessor::linkTerminated,
+                this,   &webServer::onAxLinkTerminated,
+                Qt::QueuedConnection);
+        connect(axProc, &AX25LinkProcessor::rxData,
+                this,   &webServer::onAxRxData,
+                Qt::QueuedConnection);
         axProc->start();
     }
 #endif
@@ -3646,6 +3802,154 @@ void webServer::drainPacketLanTxBuffer()
     packetLanTxBuffer.remove(0, take);
     emit sendToTxConverter(chunk);
 }
+
+// ---- AX.25 connected-mode terminal session helpers ----
+
+QString webServer::termMakeSid()
+{
+    return QStringLiteral("t%1").arg(termNextSidNum++);
+}
+
+QJsonObject webServer::termSessionToJson(const TerminalSession *s) const
+{
+    QJsonObject j;
+    j["sid"] = s->sid;
+    j["chan"] = s->chan;
+    j["ownCall"] = s->ownCall;
+    j["peerCall"] = s->peerCall;
+    QJsonArray digisJ;
+    for (const QString &d : s->digis) digisJ.append(d);
+    j["digis"] = digisJ;
+    const char *st = "disconnected";
+    switch (s->state) {
+    case TerminalSession::Disconnected:  st = "disconnected"; break;
+    case TerminalSession::Connecting:    st = "connecting";   break;
+    case TerminalSession::Connected:     st = "connected";    break;
+    case TerminalSession::Disconnecting: st = "disconnecting";break;
+    }
+    j["state"] = QString::fromLatin1(st);
+    j["incoming"] = s->incoming;
+    j["createdMs"] = (qint64)s->createdMs;
+    return j;
+}
+
+QJsonObject webServer::termScrollbackEntry(const QString &dir, const QByteArray &data)
+{
+    QJsonObject e;
+    e["ts"] = QDateTime::currentMSecsSinceEpoch();
+    e["dir"] = dir;          // "rx" | "tx" | "info"
+    // Send as UTF-8 string for printable text; binary payloads still survive
+    // round-tripping because Qt's QString::fromUtf8 preserves byte sequences
+    // it can decode and uses replacement characters otherwise.  YAPP-C
+    // (M6) will switch to base64.
+    e["data"] = QString::fromUtf8(data);
+    return e;
+}
+
+void webServer::termAppendScrollback(TerminalSession *s, const QJsonObject &entry)
+{
+    s->scrollback.append(entry);
+    while (s->scrollback.size() > TERM_SCROLLBACK_MAX) s->scrollback.removeFirst();
+    s->lastActivityMs = QDateTime::currentMSecsSinceEpoch();
+}
+
+void webServer::termBroadcastSession(const TerminalSession *s)
+{
+    QJsonObject notify = termSessionToJson(s);
+    notify["type"] = "termSession";
+    sendJsonToAll(notify);
+}
+
+void webServer::termBroadcastData(const QString &sid, const QJsonObject &entry)
+{
+    QJsonObject notify = entry;
+    notify["type"] = "termData";
+    notify["sid"] = sid;
+    sendJsonToAll(notify);
+}
+
+webServer::TerminalSession *webServer::termFindByEndpoints(int chan,
+                                                            const QString &own,
+                                                            const QString &peer)
+{
+    for (TerminalSession *s : termSessions) {
+        if (s->chan == chan && s->ownCall == own && s->peerCall == peer)
+            return s;
+    }
+    return nullptr;
+}
+
+void webServer::termEnsureRegistered(int chan, const QString &ownCall)
+{
+    if (termRegisteredOwnCalls.contains(ownCall)) return;
+    if (!axProc) return;
+    termRegisteredOwnCalls.insert(ownCall);
+    QMetaObject::invokeMethod(axProc, "registerCallsign", Qt::QueuedConnection,
+                              Q_ARG(int, TERM_FIXED_CLIENT),
+                              Q_ARG(int, chan),
+                              Q_ARG(QString, ownCall));
+}
+
+void webServer::onAxLinkEstablished(int client, int chan,
+                                    const QString &peerCall, const QString &ownCall,
+                                    bool incoming)
+{
+    (void)client;
+    TerminalSession *s = termFindByEndpoints(chan, ownCall, peerCall);
+    if (!s) {
+        // Inbound to a registered own_call: create a session record so the
+        // browser can attach.  The user might not have a UI tab open yet —
+        // termList will surface it on next refresh.
+        s = new TerminalSession();
+        s->sid = termMakeSid();
+        s->chan = chan;
+        s->ownCall = ownCall;
+        s->peerCall = peerCall;
+        s->incoming = true;
+        s->createdMs = QDateTime::currentMSecsSinceEpoch();
+        s->lastActivityMs = s->createdMs;
+        termSessions.insert(s->sid, s);
+    }
+    s->state = TerminalSession::Connected;
+    termAppendScrollback(s, termScrollbackEntry(QStringLiteral("info"),
+        QString("*** CONNECTED to %1").arg(peerCall).toUtf8()));
+    termBroadcastSession(s);
+    qInfo().noquote() << "Web: AX.25 link up" << s->sid
+                      << ownCall << "<->" << peerCall
+                      << (incoming ? "(inbound)" : "(outbound)");
+}
+
+void webServer::onAxLinkTerminated(int client, int chan,
+                                   const QString &peerCall, const QString &ownCall,
+                                   int timeout)
+{
+    (void)client;
+    TerminalSession *s = termFindByEndpoints(chan, ownCall, peerCall);
+    if (!s) return;
+    s->state = TerminalSession::Disconnected;
+    QString reason = timeout ? QStringLiteral("*** DISCONNECTED (link timeout)")
+                             : QStringLiteral("*** DISCONNECTED");
+    termAppendScrollback(s, termScrollbackEntry(QStringLiteral("info"), reason.toUtf8()));
+    termBroadcastSession(s);
+    qInfo().noquote() << "Web: AX.25 link down" << s->sid
+                      << "timeout=" << timeout;
+}
+
+void webServer::onAxRxData(int client, int chan,
+                           const QString &peerCall, const QString &ownCall,
+                           int pid, const QByteArray &data)
+{
+    (void)client; (void)pid;
+    TerminalSession *s = termFindByEndpoints(chan, ownCall, peerCall);
+    if (!s) {
+        qWarning() << "Web: AX.25 rxData for unknown session"
+                   << ownCall << "<->" << peerCall << "chan=" << chan;
+        return;
+    }
+    QJsonObject entry = termScrollbackEntry(QStringLiteral("rx"), data);
+    termAppendScrollback(s, entry);
+    termBroadcastData(s->sid, entry);
+}
 #endif
 
 void webServer::onRxConverted(audioPacket audio)
@@ -3886,6 +4190,23 @@ void webServer::setupUsbAudio(quint32 sampleRate)
 
         dwThread->start();
         emit setupPacket(rigSampleRate);
+    }
+
+    if (!axProc) {
+        axProc = new AX25LinkProcessor(this);
+        connect(axProc, &AX25LinkProcessor::transmitFrameBytes,
+                dwProc, &DireWolfProcessor::transmitFrameBytes,
+                Qt::QueuedConnection);
+        connect(axProc, &AX25LinkProcessor::linkEstablished,
+                this,   &webServer::onAxLinkEstablished,
+                Qt::QueuedConnection);
+        connect(axProc, &AX25LinkProcessor::linkTerminated,
+                this,   &webServer::onAxLinkTerminated,
+                Qt::QueuedConnection);
+        connect(axProc, &AX25LinkProcessor::rxData,
+                this,   &webServer::onAxRxData,
+                Qt::QueuedConnection);
+        axProc->start();
     }
 #endif
 
