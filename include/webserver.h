@@ -312,6 +312,54 @@ private:
     QByteArray packetLanTxBuffer;
     QTimer *packetLanTxTimer = nullptr;
     int packetLanTxChunkBytes = 0;
+
+    // ---- AX.25 connected-mode terminal sessions ----
+    // Sessions live server-side and survive WebSocket disconnects so a
+    // browser refresh keeps the session active.  ax25_link's "client" id
+    // is fixed at 1 — the server is one logical app — and individual
+    // sessions are keyed by sid (server-issued) and uniquely identified
+    // to ax25_link by the (own, peer, chan) tuple.
+    struct TerminalSession {
+        QString sid;
+        int     chan = 0;
+        QString ownCall;
+        QString peerCall;
+        QStringList digis;
+        enum State { Disconnected, Connecting, Connected, Disconnecting };
+        State   state = Disconnected;
+        QList<QJsonObject> scrollback;        // capped via TERM_SCROLLBACK_MAX
+        qint64  createdMs = 0;
+        qint64  lastActivityMs = 0;
+        bool    incoming = false;
+    };
+    QMap<QString, TerminalSession*> termSessions;
+    int termNextSidNum = 1;
+    static constexpr int TERM_FIXED_CLIENT = 1;
+    static constexpr int TERM_SCROLLBACK_MAX = 1000;
+    QSet<QString> termRegisteredOwnCalls;   // tracked so we don't double-register
+
+    QString termMakeSid();
+    QJsonObject termSessionToJson(const TerminalSession *s) const;
+    QJsonObject termScrollbackEntry(const QString &dir, const QByteArray &data);
+    void termAppendScrollback(TerminalSession *s, const QJsonObject &entry);
+    void termBroadcastSession(const TerminalSession *s);
+    void termBroadcastData(const QString &sid, const QJsonObject &entry);
+    TerminalSession *termFindByEndpoints(int chan, const QString &own, const QString &peer);
+    void termEnsureRegistered(int chan, const QString &ownCall);
+
+private slots:
+    // AX25LinkProcessor signal handlers (queued).
+    void onAxLinkEstablished(int client, int chan,
+                             const QString &peerCall, const QString &ownCall,
+                             bool incoming);
+    void onAxLinkTerminated (int client, int chan,
+                             const QString &peerCall, const QString &ownCall,
+                             int timeout);
+    void onAxRxData         (int client, int chan,
+                             const QString &peerCall, const QString &ownCall,
+                             int pid, const QByteArray &data);
+
+private:
 #endif
 
     // Memory channel scanning
