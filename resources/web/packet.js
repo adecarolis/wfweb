@@ -18,6 +18,16 @@
             dst:  'APRS',
             path: 'WIDE1-1',
             info: 'hello from wfweb'
+        },
+        activeTab: 'aprs',     // "aprs" or "term"
+        terminal: {
+            sessions: {},      // sid -> {sid, ownCall, peerCall, digis, state, scrollback[], chan}
+            activeSid: null,   // which session's scrollback we're showing
+            compose: {         // last-used connect fields
+                ownCall:  'N0CALL',
+                peerCall: 'N0CALL-1',
+                digis:    ''
+            }
         }
     };
 
@@ -75,15 +85,37 @@
                 '<button id="packetCloseBtn" class="packet-close-btn">&#x2715;</button>' +
             '</div>' +
             '<canvas id="packetScopeCanvas" class="packet-scope"></canvas>' +
-            '<div class="packet-compose">' +
-                '<label>From <input id="packetTxSrc"  class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
-                '<label>To <input id="packetTxDst"  class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
-                '<label>Path <input id="packetTxPath" class="packet-tx-field" size="14" spellcheck="false" placeholder="WIDE1-1"></label>' +
-                '<input id="packetTxInfo" class="packet-tx-info" spellcheck="false" placeholder="payload"> ' +
-                '<button id="packetTxBtn" class="packet-send-btn" title="Transmit a single AX.25 UI frame">TX</button>' +
-                '<span id="packetTxStatus" class="packet-tx-status"></span>' +
+            '<div class="packet-tabs">' +
+                '<button id="packetTabAprs" class="packet-tab-btn active" data-tab="aprs">APRS</button>' +
+                '<button id="packetTabTerm" class="packet-tab-btn" data-tab="term">TERMINAL</button>' +
             '</div>' +
-            '<div id="packetFrames" class="packet-frames"></div>';
+            '<div id="packetAprsPane" class="packet-pane">' +
+                '<div class="packet-compose">' +
+                    '<label>From <input id="packetTxSrc"  class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
+                    '<label>To <input id="packetTxDst"  class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
+                    '<label>Path <input id="packetTxPath" class="packet-tx-field" size="14" spellcheck="false" placeholder="WIDE1-1"></label>' +
+                    '<input id="packetTxInfo" class="packet-tx-info" spellcheck="false" placeholder="payload"> ' +
+                    '<button id="packetTxBtn" class="packet-send-btn" title="Transmit a single AX.25 UI frame">TX</button>' +
+                    '<span id="packetTxStatus" class="packet-tx-status"></span>' +
+                '</div>' +
+                '<div id="packetFrames" class="packet-frames"></div>' +
+            '</div>' +
+            '<div id="packetTermPane" class="packet-pane hidden">' +
+                '<div class="term-bar">' +
+                    '<label>Own <input id="termOwnCall"  class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
+                    '<label>Peer <input id="termPeerCall" class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
+                    '<label>Digi <input id="termDigis"    class="packet-tx-field" size="20" spellcheck="false" placeholder="DIGI1,DIGI2"></label>' +
+                    '<button id="termConnectBtn"    class="packet-send-btn" title="Open AX.25 connected-mode link">Connect</button>' +
+                    '<button id="termDisconnectBtn" class="packet-action-btn" title="Disconnect this session" disabled>Disconnect</button>' +
+                    '<span   id="termStateChip"     class="term-state-chip">DISCONNECTED</span>' +
+                    '<select id="termSessionPicker" class="term-session-picker"></select>' +
+                '</div>' +
+                '<div id="termScrollback" class="term-scrollback"></div>' +
+                '<div class="term-input-row">' +
+                    '<input id="termInput" class="term-input" spellcheck="false" placeholder="message — Enter to send">' +
+                    '<button id="termSendBtn" class="packet-send-btn" disabled>Send</button>' +
+                '</div>' +
+            '</div>';
 
         // Mount inside #scopeArea — its z-index:300 paints over anything in body,
         // so a sibling panel on body gets covered. The digi-bar lives inside it
@@ -129,7 +161,42 @@
             if (e.key === 'Enter') { e.preventDefault(); sendFrame(); }
         });
 
+        // Tab buttons.
+        var tabBtns = barEl.querySelectorAll('.packet-tab-btn');
+        for (var t = 0; t < tabBtns.length; t++) {
+            (function(btn) {
+                btn.onclick = function() { setActiveTab(btn.getAttribute('data-tab')); };
+            })(tabBtns[t]);
+        }
+
+        // Terminal pane controls.
+        loadTermComposeFromStorage();
+        var ownEl  = document.getElementById('termOwnCall');
+        var peerEl = document.getElementById('termPeerCall');
+        var digisEl = document.getElementById('termDigis');
+        if (ownEl)   ownEl.value   = state.terminal.compose.ownCall;
+        if (peerEl)  peerEl.value  = state.terminal.compose.peerCall;
+        if (digisEl) digisEl.value = state.terminal.compose.digis;
+
+        document.getElementById('termConnectBtn').onclick = termConnect;
+        document.getElementById('termDisconnectBtn').onclick = termDisconnect;
+        document.getElementById('termSendBtn').onclick = termSendLine;
+        var termInput = document.getElementById('termInput');
+        if (termInput) {
+            termInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    termSendLine();
+                }
+            });
+        }
+        document.getElementById('termSessionPicker').onchange = function(e) {
+            state.terminal.activeSid = e.target.value || null;
+            renderTerm();
+        };
+
         updateModeButtons();
+        renderTerm();
     }
 
     function addStyles() {
@@ -175,7 +242,33 @@
             '.packet-frame.tx .chan { color: #f80; font-weight: bold; }' +
             '.packet-frame .info { color: #cfc; margin-left: 6px; }' +
             '.packet-empty { color: #666; padding: 8px; text-align: center; }' +
-            '.flex-space { flex: 1; }';
+            '.flex-space { flex: 1; }' +
+            // Tab strip
+            '.packet-tabs { display: flex; gap: 2px; margin-bottom: 4px; border-bottom: 1px solid #0a0; }' +
+            '.packet-tab-btn { background: #001a00; border: 1px solid #0a0; border-bottom: none; color: #0a0; padding: 4px 14px; font-family: monospace; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 3px 3px 0 0; }' +
+            '.packet-tab-btn.active { background: #0a0; color: #000; }' +
+            '.packet-tab-btn:hover:not(.active) { background: #0a0; color: #000; }' +
+            '.packet-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; }' +
+            '.packet-pane.hidden { display: none; }' +
+            // Terminal pane
+            '.term-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 10px; color: #8c8; flex-wrap: wrap; }' +
+            '.term-bar label { display: flex; align-items: center; gap: 3px; }' +
+            '.term-state-chip { padding: 2px 8px; border: 1px solid #555; border-radius: 3px; font-size: 10px; font-weight: bold; color: #888; background: #111; min-width: 90px; text-align: center; letter-spacing: 1px; }' +
+            '.term-state-chip.connecting    { color: #ff0; border-color: #aa0; background: #110; }' +
+            '.term-state-chip.connected     { color: #0f0; border-color: #0a0; background: #010; }' +
+            '.term-state-chip.disconnecting { color: #f80; border-color: #a40; background: #110; }' +
+            '.term-state-chip.disconnected  { color: #888; border-color: #555; background: #111; }' +
+            '.term-session-picker { background: #001a00; border: 1px solid #0a0; color: #cfc; font-family: monospace; font-size: 11px; padding: 2px 4px; border-radius: 2px; outline: none; }' +
+            '.term-session-picker:empty { display: none; }' +
+            '.term-scrollback { background: #000; border: 1px solid #0a0; border-radius: 3px; padding: 6px; flex: 1; min-height: 0; overflow-y: auto; font-family: monospace; font-size: 12px; line-height: 1.4; color: #cfc; white-space: pre-wrap; word-wrap: break-word; }' +
+            '.term-scrollback .rx { color: #cfc; }' +
+            '.term-scrollback .tx { color: #ff0; }' +
+            '.term-scrollback .info { color: #888; font-style: italic; }' +
+            '.term-scrollback .ts { color: #555; margin-right: 6px; font-size: 10px; }' +
+            '.term-input-row { display: flex; gap: 6px; margin-top: 6px; }' +
+            '.term-input { flex: 1; background: #001a00; border: 1px solid #0a0; color: #cfc; font-family: monospace; font-size: 12px; padding: 4px 6px; border-radius: 2px; outline: none; }' +
+            '.term-input:focus { border-color: #0f0; }' +
+            '.term-input:disabled { opacity: 0.5; }';
         document.head.appendChild(style);
     }
 
@@ -274,7 +367,78 @@
             state.txBusy = false;
             setTxStatus('TX failed: ' + (msg.reason || 'unknown'), true);
             setTxButtonEnabled(true);
+        } else if (msg.type === 'termSession') {
+            handleTermSession(msg);
+        } else if (msg.type === 'termClose') {
+            delete state.terminal.sessions[msg.sid];
+            if (state.terminal.activeSid === msg.sid) state.terminal.activeSid = null;
+            renderTerm();
+        } else if (msg.type === 'termData') {
+            var s = state.terminal.sessions[msg.sid];
+            if (!s) {
+                // Server may emit data before our termSession arrived if we
+                // missed it; create a stub so the entry isn't lost.
+                s = { sid: msg.sid, scrollback: [], state: 'connected' };
+                state.terminal.sessions[msg.sid] = s;
+            }
+            s.scrollback = s.scrollback || [];
+            s.scrollback.push({ ts: msg.ts, dir: msg.dir, data: msg.data });
+            if (state.terminal.activeSid === msg.sid) renderTermScrollback();
+        } else if (msg.type === 'termList') {
+            // Replace local view with server snapshot.  Keep activeSid if it
+            // still exists.
+            state.terminal.sessions = {};
+            if (Array.isArray(msg.sessions)) {
+                for (var i = 0; i < msg.sessions.length; i++) {
+                    var ss = msg.sessions[i];
+                    state.terminal.sessions[ss.sid] = ss;
+                    state.terminal.sessions[ss.sid].scrollback = [];
+                }
+            }
+            // If we have sessions but no active one, pick the first.
+            var sids = Object.keys(state.terminal.sessions);
+            if (!state.terminal.activeSid && sids.length > 0) {
+                state.terminal.activeSid = sids[0];
+                if (window.send) window.send({ cmd: 'termHistory', sid: state.terminal.activeSid });
+            }
+            renderTerm();
+        } else if (msg.type === 'termHistory') {
+            var sh = state.terminal.sessions[msg.sid];
+            if (sh && Array.isArray(msg.entries)) {
+                sh.scrollback = msg.entries.slice();
+                if (state.terminal.activeSid === msg.sid) renderTermScrollback();
+            }
+        } else if (msg.type === 'termError') {
+            // Show as info line in active session, or alert if none.
+            var sa = state.terminal.activeSid && state.terminal.sessions[state.terminal.activeSid];
+            if (sa) {
+                sa.scrollback = sa.scrollback || [];
+                sa.scrollback.push({ ts: Date.now(), dir: 'info', data: '*** ERROR: ' + (msg.reason || 'unknown') });
+                renderTermScrollback();
+            } else {
+                console.warn('[term] error:', msg.reason);
+            }
         }
+    }
+
+    function handleTermSession(msg) {
+        var existing = state.terminal.sessions[msg.sid];
+        var s = existing || { sid: msg.sid, scrollback: [] };
+        s.sid      = msg.sid;
+        s.chan     = msg.chan;
+        s.ownCall  = msg.ownCall;
+        s.peerCall = msg.peerCall;
+        s.digis    = msg.digis || [];
+        s.state    = msg.state;
+        s.incoming = msg.incoming;
+        if (!existing) state.terminal.sessions[msg.sid] = s;
+        // First session we see becomes active.
+        if (!state.terminal.activeSid) state.terminal.activeSid = msg.sid;
+        // Pre-warm scrollback for fresh sessions; for reconnects, request history.
+        if (!existing && state.terminal.activeSid === msg.sid) {
+            if (window.send) window.send({ cmd: 'termHistory', sid: msg.sid });
+        }
+        renderTerm();
     }
 
     function parseMonitor(s) {
@@ -640,6 +804,162 @@
         }
 
         rafId = requestAnimationFrame(paintScope);
+    }
+
+    // ---------------------------------------------------------------------
+    // Tab + terminal handling
+
+    function setActiveTab(name) {
+        if (name !== 'aprs' && name !== 'term') return;
+        state.activeTab = name;
+        var aprsBtn = document.getElementById('packetTabAprs');
+        var termBtn = document.getElementById('packetTabTerm');
+        var aprsPane = document.getElementById('packetAprsPane');
+        var termPane = document.getElementById('packetTermPane');
+        if (aprsBtn)  aprsBtn.classList.toggle('active', name === 'aprs');
+        if (termBtn)  termBtn.classList.toggle('active', name === 'term');
+        if (aprsPane) aprsPane.classList.toggle('hidden', name !== 'aprs');
+        if (termPane) termPane.classList.toggle('hidden', name !== 'term');
+        if (name === 'term') {
+            // Pull any sessions the server might already be holding.
+            if (window.send) window.send({ cmd: 'termList' });
+            renderTerm();
+        }
+    }
+
+    function termConnect() {
+        if (!state.enabled) {
+            // Auto-enable so the operator doesn't have to flip two switches.
+            setEnabled(true);
+        }
+        var own  = (document.getElementById('termOwnCall').value  || '').trim().toUpperCase();
+        var peer = (document.getElementById('termPeerCall').value || '').trim().toUpperCase();
+        var digisRaw = (document.getElementById('termDigis').value || '').trim().toUpperCase();
+        if (!own || !peer) return;
+
+        var digis = [];
+        if (digisRaw.length > 0) {
+            var parts = digisRaw.split(/[,\s]+/);
+            for (var i = 0; i < parts.length; i++) {
+                if (parts[i]) digis.push(parts[i]);
+            }
+        }
+
+        state.terminal.compose.ownCall  = own;
+        state.terminal.compose.peerCall = peer;
+        state.terminal.compose.digis    = digisRaw;
+        saveTermComposeToStorage();
+
+        if (window.send) {
+            window.send({ cmd: 'termConnect', ownCall: own, peerCall: peer, digis: digis, chan: 0 });
+        }
+    }
+
+    function termDisconnect() {
+        var sid = state.terminal.activeSid;
+        if (!sid) return;
+        if (window.send) window.send({ cmd: 'termDisconnect', sid: sid });
+    }
+
+    function termSendLine() {
+        var sid = state.terminal.activeSid;
+        if (!sid) return;
+        var s = state.terminal.sessions[sid];
+        if (!s || s.state !== 'connected') return;
+        var input = document.getElementById('termInput');
+        if (!input) return;
+        var text = input.value;
+        if (text.length === 0) return;
+        // AX.25 BBSes expect CR line terminators (TSTHOST-era convention).
+        if (window.send) window.send({ cmd: 'termSend', sid: sid, data: text + '\r' });
+        input.value = '';
+    }
+
+    function loadTermComposeFromStorage() {
+        try {
+            var raw = localStorage.getItem('wfweb.term.compose');
+            if (!raw) return;
+            var obj = JSON.parse(raw);
+            if (obj && typeof obj === 'object') {
+                if (typeof obj.ownCall  === 'string') state.terminal.compose.ownCall  = obj.ownCall;
+                if (typeof obj.peerCall === 'string') state.terminal.compose.peerCall = obj.peerCall;
+                if (typeof obj.digis    === 'string') state.terminal.compose.digis    = obj.digis;
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    function saveTermComposeToStorage() {
+        try {
+            localStorage.setItem('wfweb.term.compose', JSON.stringify(state.terminal.compose));
+        } catch (e) { /* quota — ignore */ }
+    }
+
+    function renderTerm() {
+        renderTermPicker();
+        renderTermStateChip();
+        renderTermScrollback();
+        var sid = state.terminal.activeSid;
+        var s = sid && state.terminal.sessions[sid];
+        var connected = s && s.state === 'connected';
+        var canDisconnect = s && (s.state === 'connected' || s.state === 'connecting');
+        var dcBtn = document.getElementById('termDisconnectBtn');
+        var sendBtn = document.getElementById('termSendBtn');
+        var input = document.getElementById('termInput');
+        if (dcBtn)   dcBtn.disabled   = !canDisconnect;
+        if (sendBtn) sendBtn.disabled = !connected;
+        if (input)   input.disabled   = !connected;
+    }
+
+    function renderTermPicker() {
+        var picker = document.getElementById('termSessionPicker');
+        if (!picker) return;
+        var sids = Object.keys(state.terminal.sessions);
+        if (sids.length <= 1) {
+            picker.innerHTML = '';
+            picker.style.display = 'none';
+            return;
+        }
+        picker.style.display = '';
+        var html = '';
+        for (var i = 0; i < sids.length; i++) {
+            var s = state.terminal.sessions[sids[i]];
+            var lbl = s.peerCall + ' (' + s.state + ')';
+            html += '<option value="' + sids[i] + '"' +
+                    (sids[i] === state.terminal.activeSid ? ' selected' : '') +
+                    '>' + escapeHtml(lbl) + '</option>';
+        }
+        picker.innerHTML = html;
+    }
+
+    function renderTermStateChip() {
+        var chip = document.getElementById('termStateChip');
+        if (!chip) return;
+        var sid = state.terminal.activeSid;
+        var s = sid && state.terminal.sessions[sid];
+        var st = s ? s.state : 'disconnected';
+        chip.className = 'term-state-chip ' + st;
+        chip.textContent = st.toUpperCase();
+    }
+
+    function renderTermScrollback() {
+        var pane = document.getElementById('termScrollback');
+        if (!pane) return;
+        var sid = state.terminal.activeSid;
+        var s = sid && state.terminal.sessions[sid];
+        if (!s) {
+            pane.innerHTML = '<div class="info">No active session. Enter a callsign and click Connect.</div>';
+            return;
+        }
+        var html = '';
+        var entries = s.scrollback || [];
+        for (var i = 0; i < entries.length; i++) {
+            var e = entries[i];
+            html += '<span class="ts">' + escapeHtml(formatTs(e.ts)) + '</span>' +
+                    '<span class="' + (e.dir || 'info') + '">' + escapeHtml(e.data || '') + '</span>' +
+                    (e.dir === 'info' ? '\n' : '');
+        }
+        pane.innerHTML = html;
+        pane.scrollTop = pane.scrollHeight;
     }
 
     window.Packet = {
