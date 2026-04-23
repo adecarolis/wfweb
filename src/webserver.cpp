@@ -417,6 +417,16 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
             }
             obj["filters"] = filters;
         }
+        if (!rigCaps->inputs.empty()) {
+            QJsonArray inputs;
+            for (const rigInput &inp : rigCaps->inputs) {
+                QJsonObject inpObj;
+                inpObj["type"] = inp.type;
+                inpObj["name"] = inp.name;
+                inputs.append(inpObj);
+            }
+            obj["micInputs"] = inputs;
+        }
         sendJsonToAll(obj);
     }
 }
@@ -1608,6 +1618,29 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         ushort val = static_cast<ushort>(qBound(0, cmd["value"].toInt(), 255));
         queue->addUnique(priorityImmediate, queueItem(funcMonitorGain, QVariant::fromValue<ushort>(val), false, 0));
     }
+    else if (type == "cycleMicInput") {
+        // Cycle to the next available microphone input source
+        if (!rigCaps || rigCaps->inputs.empty()) return;
+        
+        cacheItem current = queue->getCache(funcDATAOffMod, 0);
+        int currentIdx = -1;
+        
+        // Find current input index
+        if (current.value.isValid()) {
+            rigInput curInput = current.value.value<rigInput>();
+            for (int i = 0; i < rigCaps->inputs.size(); i++) {
+                if (rigCaps->inputs[i].type == curInput.type) {
+                    currentIdx = i;
+                    break;
+                }
+            }
+        }
+        
+        // Move to next (or wrap to first)
+        int nextIdx = (currentIdx + 1) % rigCaps->inputs.size();
+        queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, 
+            QVariant::fromValue<rigInput>(rigCaps->inputs[nextIdx]), false, 0));
+    }
     else if (type == "setTuner") {
         // value: 0=off, 1=on, 2=start tuning
         uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 2));
@@ -2322,6 +2355,13 @@ QJsonObject webServer::buildStatusJson()
     cacheItem monGain = queue->getCache(funcMonitorGain, 0);
     if (monGain.value.isValid()) status["monitorGain"] = monGain.value.toInt();
 
+    // Microphone input source (DATA OFF MOD)
+    cacheItem micSource = queue->getCache(funcDATAOffMod, 0);
+    if (micSource.value.isValid()) {
+        rigInput modInput = micSource.value.value<rigInput>();
+        status["micSource"] = modInput.name;
+    }
+
     // Tuner (0=off, 1=on, 2=tuning)
     cacheItem tuner = queue->getCache(funcTunerStatus, 0);
     if (tuner.value.isValid()) status["tuner"] = tuner.value.toInt();
@@ -2460,6 +2500,12 @@ void webServer::receiveCache(cacheItem item)
     case funcUSBModLevel:
         update["micGain"] = item.value.toInt();
         break;
+    case funcDATAOffMod:
+    {
+        rigInput modInput = item.value.value<rigInput>();
+        update["micSource"] = modInput.name;
+        break;
+    }
     case funcScopeWaveData:
     {
         // Send spectrum data as binary message for efficiency
