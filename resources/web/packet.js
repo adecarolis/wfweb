@@ -10,7 +10,7 @@
     var state = {
         visible: false,
         enabled: false,        // master packet modem enable
-        mode: 1200,            // 300 (HF AFSK), 1200 (VHF AFSK), or 9600 (VHF G3RUH)
+        mode: 300,             // 300 (HF AFSK), 1200 (VHF AFSK), or 9600 (VHF G3RUH)
         frames: [],
         txBusy: false,         // true between packetTxStarted and packetTxComplete/Failed
         compose: {             // last-used TX fields (persisted to localStorage)

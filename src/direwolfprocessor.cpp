@@ -47,6 +47,9 @@ DireWolfProcessor *DireWolfProcessor::active()
 // C trampolines referenced from wfweb_direwolf_stubs.c
 // ---------------------------------------------------------------------------
 
+extern "C" void wfweb_dw_start_dlq_consumer(void);
+extern "C" void wfweb_dw_stop_dlq_consumer(void);
+
 extern "C" void wfweb_dw_log(int level, const char *msg)
 {
     if (!msg) return;
@@ -102,6 +105,13 @@ bool DireWolfProcessor::init(quint32 radioSampleRate)
     cleanup();
     enabled_ = wasEnabled;
     radioRate_ = radioSampleRate;
+
+    // The vendored dlq.c queues every received frame on the DLQ.  Spawn
+    // the consumer thread (idempotent) so frames get drained back into
+    // wfweb_dw_rx_frame() — restoring the APRS RX path.  M2 will replace
+    // this with AX25LinkProcessor, which dispatches connected-mode events
+    // in addition to monitor frames.
+    wfweb_dw_start_dlq_consumer();
 
     dwCfg = new struct audio_s;
     std::memset(dwCfg, 0, sizeof(*dwCfg));
