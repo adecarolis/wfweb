@@ -110,10 +110,18 @@
                     '<span   id="termStateChip"     class="term-state-chip">DISCONNECTED</span>' +
                     '<select id="termSessionPicker" class="term-session-picker"></select>' +
                 '</div>' +
+                '<div id="termXferBar" class="term-xfer-bar hidden">' +
+                    '<span id="termXferLabel" class="term-xfer-label"></span>' +
+                    '<div class="term-xfer-track"><div id="termXferFill" class="term-xfer-fill"></div></div>' +
+                    '<span id="termXferPct" class="term-xfer-pct">0%</span>' +
+                    '<button id="termXferAbortBtn" class="packet-action-btn term-xfer-abort">Abort</button>' +
+                '</div>' +
                 '<div id="termScrollback" class="term-scrollback"></div>' +
                 '<div class="term-input-row">' +
                     '<input id="termInput" class="term-input" spellcheck="false" placeholder="message — Enter to send">' +
                     '<button id="termSendBtn" class="packet-send-btn" disabled>Send</button>' +
+                    '<button id="termSendFileBtn" class="packet-action-btn" disabled title="Transfer a file (YAPP)">Send File</button>' +
+                    '<input id="termFileInput" type="file" style="display:none">' +
                 '</div>' +
             '</div>';
 
@@ -181,6 +189,12 @@
         document.getElementById('termConnectBtn').onclick = termConnect;
         document.getElementById('termDisconnectBtn').onclick = termDisconnect;
         document.getElementById('termSendBtn').onclick = termSendLine;
+
+        var termFileBtn   = document.getElementById('termSendFileBtn');
+        var termFileInput = document.getElementById('termFileInput');
+        if (termFileBtn)   termFileBtn.onclick   = function() { termFileInput.click(); };
+        if (termFileInput) termFileInput.onchange = termSendFilePicked;
+
         var termInput = document.getElementById('termInput');
         if (termInput) {
             termInput.addEventListener('keydown', function(e) {
@@ -194,6 +208,8 @@
             state.terminal.activeSid = e.target.value || null;
             renderTerm();
         };
+        var abortBtn = document.getElementById('termXferAbortBtn');
+        if (abortBtn) abortBtn.onclick = termAbortTransfer;
         // Re-register on focus-out so changes to the Own input flow through
         // without the operator having to re-enter the tab.
         if (ownEl) ownEl.addEventListener('blur', function() {
@@ -281,7 +297,18 @@
             '.term-input:focus { border-color: #0f0; }' +
             '.term-input:disabled { opacity: 0.5; }' +
             '.term-force-btn { background: #2a0000 !important; border-color: #a40 !important; color: #f80 !important; }' +
-            '.term-force-btn:hover:not(:disabled) { background: #4a0000 !important; color: #fb0 !important; }';
+            '.term-force-btn:hover:not(:disabled) { background: #4a0000 !important; color: #fb0 !important; }' +
+            '.term-dl-link { color: #0cf; text-decoration: underline; cursor: pointer; }' +
+            '.term-dl-link:hover { color: #0ff; }' +
+            // Transfer progress widget
+            '.term-xfer-bar { display: flex; align-items: center; gap: 8px; margin: 4px 0 6px 0; padding: 4px 6px; background: #001a00; border: 1px solid #0a0; border-radius: 3px; }' +
+            '.term-xfer-bar.hidden { display: none; }' +
+            '.term-xfer-label { color: #cfc; font-size: 11px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }' +
+            '.term-xfer-track { flex: 1; height: 10px; background: #000; border: 1px solid #0a0; border-radius: 2px; overflow: hidden; min-width: 60px; }' +
+            '.term-xfer-fill { height: 100%; background: #0a0; width: 0%; transition: width 100ms linear; }' +
+            '.term-xfer-pct { color: #0f0; font-size: 11px; min-width: 36px; text-align: right; }' +
+            '.term-xfer-abort { background: #2a0000 !important; border-color: #a40 !important; color: #f80 !important; }' +
+            '.term-xfer-abort:hover { background: #4a0000 !important; color: #fb0 !important; }';
         document.head.appendChild(style);
     }
 
@@ -466,6 +493,33 @@
                 sh.scrollback = msg.entries.slice();
                 if (state.terminal.activeSid === msg.sid) renderTermScrollback();
             }
+        } else if (msg.type === 'termFile') {
+            termHandleReceivedFile(msg);
+        } else if (msg.type === 'termXferStart') {
+            console.log('[xfer]', new Date().toISOString(), 'START', msg);
+            var sx = state.terminal.sessions[msg.sid];
+            if (!sx) { sx = { sid: msg.sid, scrollback: [] }; state.terminal.sessions[msg.sid] = sx; }
+            sx.xfer = { active: true, dir: msg.dir, name: msg.name,
+                        total: msg.total || 0, done: 0 };
+            console.log('[xfer] activeSid=', state.terminal.activeSid,
+                        'match=', state.terminal.activeSid === msg.sid);
+            // Force render regardless of activeSid so the bar still shows
+            // if the user hasn't selected the session yet (e.g. the WS
+            // was still connecting when termSession arrived).
+            if (!state.terminal.activeSid) state.terminal.activeSid = msg.sid;
+            renderTerm();
+        } else if (msg.type === 'termXferProgress') {
+            var sx = state.terminal.sessions[msg.sid];
+            if (sx && sx.xfer) {
+                sx.xfer.done  = msg.done  || 0;
+                sx.xfer.total = msg.total || sx.xfer.total;
+                if (state.terminal.activeSid === msg.sid) renderTermXfer();
+            }
+        } else if (msg.type === 'termXferEnd') {
+            console.log('[xfer]', new Date().toISOString(), 'END', msg);
+            var sx = state.terminal.sessions[msg.sid];
+            if (sx) { sx.xfer = null; }
+            if (state.terminal.activeSid === msg.sid) renderTerm();
         } else if (msg.type === 'termError') {
             // Show as info line in active session, or alert if none.
             var sa = state.terminal.activeSid && state.terminal.sessions[state.terminal.activeSid];
@@ -970,6 +1024,7 @@
         renderTermPicker();
         renderTermStateChip();
         renderTermScrollback();
+        renderTermXfer();
         var sid = state.terminal.activeSid;
         var s = sid && state.terminal.sessions[sid];
         var connected = s && s.state === 'connected';
@@ -977,6 +1032,7 @@
         var canDisconnect = s && (s.state === 'connected'
                                   || s.state === 'connecting'
                                   || isDisconnecting);
+        var xferActive = s && s.xfer && s.xfer.active;
         var dcBtn = document.getElementById('termDisconnectBtn');
         var sendBtn = document.getElementById('termSendBtn');
         var input = document.getElementById('termInput');
@@ -990,8 +1046,106 @@
                 ? 'Send DM and tear down the link immediately'
                 : 'Disconnect this session';
         }
-        if (sendBtn) sendBtn.disabled = !connected;
-        if (input)   input.disabled   = !connected;
+        // Text send and file pick are both disabled during an active
+        // transfer — the link is busy, and the Abort button (in the
+        // progress bar) is the only way forward besides waiting.
+        if (sendBtn) sendBtn.disabled = !connected || xferActive;
+        if (input)   input.disabled   = !connected || xferActive;
+        var fileBtn = document.getElementById('termSendFileBtn');
+        if (fileBtn) fileBtn.disabled = !connected || xferActive;
+    }
+
+    function renderTermXfer() {
+        var bar = document.getElementById('termXferBar');
+        if (!bar) return;
+        var sid = state.terminal.activeSid;
+        var s   = sid && state.terminal.sessions[sid];
+        var x   = s && s.xfer && s.xfer.active ? s.xfer : null;
+        if (!x) { bar.classList.add('hidden'); return; }
+
+        bar.classList.remove('hidden');
+        var pct = x.total > 0 ? Math.floor((x.done / x.total) * 100) : 0;
+        if (pct > 100) pct = 100;
+        var arrow = x.dir === 'tx' ? '↑' : '↓';
+        var label = arrow + ' ' + (x.name || '(file)')
+                    + '  ' + x.done + ' / ' + x.total + ' B';
+        document.getElementById('termXferLabel').textContent = label;
+        document.getElementById('termXferFill').style.width = pct + '%';
+        document.getElementById('termXferPct').textContent  = pct + '%';
+    }
+
+    function termAbortTransfer() {
+        var sid = state.terminal.activeSid;
+        if (!sid) return;
+        if (window.send) window.send({ cmd: 'termFileAbort', sid: sid });
+    }
+
+    function termSendFilePicked(e) {
+        var sid = state.terminal.activeSid;
+        if (!sid) return;
+        var s = state.terminal.sessions[sid];
+        if (!s || s.state !== 'connected') return;
+        var f = e.target.files && e.target.files[0];
+        if (!f) return;
+        // Cap at a few MB so the base64 round-trip doesn't flood the WS.
+        if (f.size > 4 * 1024 * 1024) {
+            alert('File too large (max 4 MB for this build).');
+            e.target.value = '';
+            return;
+        }
+        var reader = new FileReader();
+        reader.onload = function() {
+            var b64 = bufToBase64(new Uint8Array(reader.result));
+            if (window.send) {
+                window.send({ cmd: 'termFileSend', sid: sid, name: f.name, dataB64: b64 });
+            }
+        };
+        reader.readAsArrayBuffer(f);
+        e.target.value = '';  // reset so re-picking same file fires change
+    }
+
+    function bufToBase64(bytes) {
+        var bin = '';
+        var chunk = 0x8000;
+        for (var i = 0; i < bytes.length; i += chunk) {
+            bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+        }
+        return btoa(bin);
+    }
+
+    function termHandleReceivedFile(msg) {
+        // Convert base64 → Blob → auto-download.
+        var bin = atob(msg.dataB64 || '');
+        var buf = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+        var blob = new Blob([buf], { type: 'application/octet-stream' });
+        var url = URL.createObjectURL(blob);
+        var fname = msg.name || 'received.bin';
+
+        // Surface the save link inline with the completion notice so the
+        // user can retrieve the file again if the auto-download was blocked.
+        var s = state.terminal.sessions[msg.sid];
+        if (s) {
+            s.scrollback = s.scrollback || [];
+            s.scrollback.push({
+                ts: Date.now(),
+                dir: 'info',
+                data: '⤓ Saved: ' + fname,
+                __download: { href: url, name: fname }
+            });
+            if (state.terminal.activeSid === msg.sid) renderTermScrollback();
+        }
+
+        // Auto-click so the browser prompts the user right away.  If it's
+        // blocked (background tab, strict site setting), the scrollback
+        // link is the fallback.
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = fname;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function() { document.body.removeChild(a); }, 100);
     }
 
     function renderTermPicker() {
@@ -1039,8 +1193,15 @@
         for (var i = 0; i < entries.length; i++) {
             var e = entries[i];
             html += '<span class="ts">' + escapeHtml(formatTs(e.ts)) + '</span>' +
-                    '<span class="' + (e.dir || 'info') + '">' + escapeHtml(e.data || '') + '</span>' +
-                    (e.dir === 'info' ? '\n' : '');
+                    '<span class="' + (e.dir || 'info') + '">' + escapeHtml(e.data || '') + '</span>';
+            if (e.__download) {
+                // Render a visible "save again" link — the browser was also
+                // auto-clicked when the file arrived, so the file is already
+                // downloaded; this is a re-save affordance.
+                html += ' <a class="term-dl-link" href="' + e.__download.href +
+                        '" download="' + escapeHtml(e.__download.name) + '">[save again]</a>';
+            }
+            if (e.dir === 'info') html += '\n';
         }
         pane.innerHTML = html;
         pane.scrollTop = pane.scrollHeight;

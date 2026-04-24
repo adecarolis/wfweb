@@ -322,6 +322,39 @@ private:
     // is fixed at 1 — the server is one logical app — and individual
     // sessions are keyed by sid (server-issued) and uniquely identified
     // to ax25_link by the (own, peer, chan) tuple.
+    // Minimal YAPP receive-side state.  One instance per session.  Feeds
+    // bytes of an incoming AX.25 data stream through a 4-state framer that
+    // splits YAPP control frames (SOH <len> <type> <data>) from ordinary
+    // terminal text; YAPP frames are dispatched by type and ordinary bytes
+    // fall through to the scrollback.
+    struct YappRxState {
+        enum Phase { Idle, AwaitLen, AwaitType, AwaitData } phase = Idle;
+        int        remaining = 0;
+        char       type = 0;
+        QByteArray buffer;
+
+        // Current file being received (HD seen, EF not yet)
+        QString    filename;
+        qint64     filesize = 0;
+        QByteArray fileBuf;
+        bool       active = false;
+        qint64     lastProgressMs = 0;
+    };
+
+    // Per-session transfer tracking — shared by TX and RX so the UI can
+    // show a single "transfer in progress" widget.  TX side updates are
+    // driven by yappSendFile as frames are queued; RX side by
+    // yappHandleFrame as DT blocks arrive.
+    struct XferState {
+        bool       active = false;
+        QString    dir;          // "tx" or "rx"
+        QString    name;
+        qint64     total = 0;
+        qint64     done = 0;
+        qint64     lastProgressMs = 0;
+        bool       abortPending = false;  // TX only
+    };
+
     struct TerminalSession {
         QString sid;
         int     chan = 0;
@@ -334,6 +367,8 @@ private:
         qint64  createdMs = 0;
         qint64  lastActivityMs = 0;
         bool    incoming = false;
+        YappRxState yapp;
+        XferState   xfer;
     };
     QMap<QString, TerminalSession*> termSessions;
     int termNextSidNum = 1;
@@ -350,6 +385,17 @@ private:
     QString termMakeSid();
     QJsonObject termSessionToJson(const TerminalSession *s) const;
     QJsonObject termScrollbackEntry(const QString &dir, const QByteArray &data);
+    // YAPP helpers
+    void       yappFeedIncoming(TerminalSession *s, const QByteArray &chunk,
+                                QByteArray &textOut);
+    void       yappHandleFrame(TerminalSession *s, char type, const QByteArray &data);
+    void       yappSendFile   (TerminalSession *s, const QString &name,
+                                const QByteArray &data);
+    void       yappAbortSend  (TerminalSession *s);
+    void       xferBroadcastStart(const TerminalSession *s);
+    void       xferBroadcastProgress(TerminalSession *s, bool force = false);
+    void       xferBroadcastEnd(const TerminalSession *s, bool aborted);
+    static QByteArray yappFrame(char type, const QByteArray &data);
     void termAppendScrollback(TerminalSession *s, const QJsonObject &entry);
     void termBroadcastSession(const TerminalSession *s);
     void termBroadcastData(const QString &sid, const QJsonObject &entry);
