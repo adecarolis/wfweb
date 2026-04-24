@@ -308,7 +308,15 @@
             '.term-xfer-fill { height: 100%; background: #0a0; width: 0%; transition: width 100ms linear; }' +
             '.term-xfer-pct { color: #0f0; font-size: 11px; min-width: 36px; text-align: right; }' +
             '.term-xfer-abort { background: #2a0000 !important; border-color: #a40 !important; color: #f80 !important; }' +
-            '.term-xfer-abort:hover { background: #4a0000 !important; color: #fb0 !important; }';
+            '.term-xfer-abort:hover { background: #4a0000 !important; color: #fb0 !important; }' +
+            // Inbound-file modal prompt
+            '.term-file-prompt { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 2000; display: flex; align-items: center; justify-content: center; font-family: monospace; }' +
+            '.term-file-prompt-box { background: #001a00; border: 2px solid #0a0; border-radius: 6px; padding: 20px 24px; min-width: 320px; max-width: 500px; box-shadow: 0 0 40px rgba(0,255,0,0.2); }' +
+            '.term-file-prompt-title { color: #0f0; font-weight: bold; font-size: 14px; letter-spacing: 2px; margin-bottom: 10px; }' +
+            '.term-file-prompt-body { color: #cfc; font-size: 14px; margin-bottom: 6px; word-break: break-all; }' +
+            '.term-file-prompt-size { color: #888; font-size: 12px; }' +
+            '.term-file-prompt-note { color: #888; font-size: 11px; font-style: italic; margin-bottom: 14px; }' +
+            '.term-file-prompt-btns { display: flex; gap: 8px; justify-content: flex-end; }';
         document.head.appendChild(style);
     }
 
@@ -500,14 +508,15 @@
             var sx = state.terminal.sessions[msg.sid];
             if (!sx) { sx = { sid: msg.sid, scrollback: [] }; state.terminal.sessions[msg.sid] = sx; }
             sx.xfer = { active: true, dir: msg.dir, name: msg.name,
-                        total: msg.total || 0, done: 0 };
-            console.log('[xfer] activeSid=', state.terminal.activeSid,
-                        'match=', state.terminal.activeSid === msg.sid);
-            // Force render regardless of activeSid so the bar still shows
-            // if the user hasn't selected the session yet (e.g. the WS
-            // was still connecting when termSession arrived).
+                        total: msg.total || 0, done: 0,
+                        phase: msg.phase || 'active' };
             if (!state.terminal.activeSid) state.terminal.activeSid = msg.sid;
             renderTerm();
+        } else if (msg.type === 'termXferRequest') {
+            // Peer wants to send us a file (YAPP SI received).  Block data
+            // until the operator Accepts or Rejects; no bytes have been
+            // transmitted yet — Reject genuinely prevents the transfer.
+            showInboundFilePrompt(msg.sid, msg.senderInfo);
         } else if (msg.type === 'termXferProgress') {
             var sx = state.terminal.sessions[msg.sid];
             if (sx && sx.xfer) {
@@ -1067,8 +1076,15 @@
         var pct = x.total > 0 ? Math.floor((x.done / x.total) * 100) : 0;
         if (pct > 100) pct = 100;
         var arrow = x.dir === 'tx' ? '↑' : '↓';
-        var label = arrow + ' ' + (x.name || '(file)')
+        var label;
+        if (x.phase === 'awaiting_rr') {
+            // Sender side, pre-accept — no payload on the wire yet.
+            label = arrow + ' ' + (x.name || '(file)') + '  — awaiting peer...';
+            pct = 0;
+        } else {
+            label = arrow + ' ' + (x.name || '(file)')
                     + '  ' + x.done + ' / ' + x.total + ' B';
+        }
         document.getElementById('termXferLabel').textContent = label;
         document.getElementById('termXferFill').style.width = pct + '%';
         document.getElementById('termXferPct').textContent  = pct + '%';
@@ -1078,6 +1094,39 @@
         var sid = state.terminal.activeSid;
         if (!sid) return;
         if (window.send) window.send({ cmd: 'termFileAbort', sid: sid });
+    }
+
+    function showInboundFilePrompt(sid, senderInfo) {
+        // Avoid stacking prompts if a second request arrives before the
+        // first is answered.
+        var existing = document.getElementById('termFilePrompt');
+        if (existing) existing.remove();
+
+        var modal = document.createElement('div');
+        modal.id = 'termFilePrompt';
+        modal.className = 'term-file-prompt';
+        modal.innerHTML =
+            '<div class="term-file-prompt-box">' +
+                '<div class="term-file-prompt-title">Incoming file request</div>' +
+                '<div class="term-file-prompt-body">' +
+                    escapeHtml(senderInfo || '(unknown)') +
+                    ' wants to send you a file.' +
+                '</div>' +
+                '<div class="term-file-prompt-note">The transfer will only start if you accept.</div>' +
+                '<div class="term-file-prompt-btns">' +
+                    '<button id="termFilePromptReject" class="packet-action-btn term-xfer-abort">Reject</button>' +
+                    '<button id="termFilePromptAccept" class="packet-send-btn">Accept</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(modal);
+        document.getElementById('termFilePromptAccept').onclick = function() {
+            if (window.send) window.send({ cmd: 'termXferAccept', sid: sid });
+            modal.remove();
+        };
+        document.getElementById('termFilePromptReject').onclick = function() {
+            if (window.send) window.send({ cmd: 'termXferReject', sid: sid });
+            modal.remove();
+        };
     }
 
     function termSendFilePicked(e) {

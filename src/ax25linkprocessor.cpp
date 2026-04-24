@@ -46,9 +46,16 @@ void AX25LinkProcessor::start()
     s_misc_config.frack             = 4;     // updated dynamically by setLinkParamsForBaud
     s_misc_config.retry             = 10;
     s_misc_config.paclen            = 128;
-    s_misc_config.maxframe_basic    = 4;
-    s_misc_config.maxframe_extended = 32;
-    s_misc_config.maxv22            = 3;
+    // k_maxframe = 1 gives strict one-frame-one-ACK ping-pong, which is the
+    // classic BBS-era behaviour most packet operators expect: each I-frame
+    // keys the radio briefly, the peer ACKs, the channel is free for others.
+    // Larger windows (up to 7 v2.0, 127 v2.2) give higher throughput by
+    // pipelining, but then ACKs get batched at the end of a burst.
+    s_misc_config.maxframe_basic    = 1;
+    s_misc_config.maxframe_extended = 1;
+    // maxv22 = 0 disables v2.2/SABME — forces plain v2.0, modulo 8, so we
+    // don't get the v2.2 extended window behaviour sneaking back in.
+    s_misc_config.maxv22            = 0;
 
     ax25_link_init(&s_misc_config, /*debug=*/0, /*stats=*/0);
     tq_init(nullptr);
