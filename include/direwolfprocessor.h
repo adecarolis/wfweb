@@ -5,6 +5,8 @@
 #include <QByteArray>
 #include <QString>
 #include <QJsonObject>
+#include <QQueue>
+#include <QTimer>
 
 #include "audioconverter.h"
 
@@ -98,8 +100,21 @@ private:
     bool enabled_ = false;
     quint32 radioRate_ = 0;
     int modemRate_ = 48000;                         // common rate: works for 300/1200 AFSK + 9600 G3RUH
-    int mode_ = 1200;                               // 300, 1200, or 9600 — see setMode()
+    int mode_ = 300;                                // 300, 1200, or 9600 — see setMode()
     QByteArray rxResampleBuf;                       // accumulated modem-rate int16 samples
+
+    // CSMA gating for connected-mode TX.  Frames produced by ax25_link via
+    // transmitFrameBytes() can pile up faster than the channel allows;
+    // queue them and drain via txCsmaTimer_, gating each TX on DCD being
+    // idle for at least slottime ms (P-persistence equivalent).  The APRS
+    // single-shot UI path doesn't use this — it goes straight through
+    // transmitFrame() and is gated externally by packetTxDraining.
+    struct PendingTx { int chan; int prio; QByteArray frame; };
+    QQueue<PendingTx> txPendingFrames_;
+    QTimer *txCsmaTimer_ = nullptr;
+    qint64  txChannelIdleSinceMs_ = 0;
+    void    txCsmaTick();
+    void    encodeAndEmitFrame(const QByteArray &frame);
 
     // Audio capture (debug aid for --packet-decode-wav round-trip testing).
     bool captureActive_ = false;

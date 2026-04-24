@@ -385,22 +385,69 @@ void DireWolfProcessor::transmitFrame(QString monitor)
 
 void DireWolfProcessor::transmitFrameBytes(int chan, int prio, QByteArray frame)
 {
-    (void)chan; (void)prio;
-
     if (!enabled_ || !dwCfg) {
         emit txFailed(QStringLiteral("packet modem not enabled"));
         return;
     }
-    if (frame.isEmpty()) {
-        emit txFailed(QStringLiteral("empty frame"));
+    if (frame.isEmpty()) return;
+
+    // Defer through the CSMA queue so we don't TX while the channel is busy.
+    // 9600 G3RUH baseband doesn't have a meaningful DCD via the AFSK modem
+    // path, but the same gating still helps avoid back-to-back collisions.
+    txPendingFrames_.enqueue({chan, prio, frame});
+    if (!txCsmaTimer_) {
+        txCsmaTimer_ = new QTimer(this);
+        txCsmaTimer_->setTimerType(Qt::PreciseTimer);
+        connect(txCsmaTimer_, &QTimer::timeout, this, &DireWolfProcessor::txCsmaTick);
+    }
+    if (!txCsmaTimer_->isActive()) {
+        txChannelIdleSinceMs_ = 0;
+        txCsmaTimer_->start(50);
+    }
+}
+
+void DireWolfProcessor::txCsmaTick()
+{
+    if (txPendingFrames_.isEmpty()) {
+        if (txCsmaTimer_) txCsmaTimer_->stop();
         return;
     }
 
-    // Reconstruct a packet_t from the raw AX.25 bytes produced by ax25_pack
-    // on the AX25LinkProcessor side.  alevel is meaningless for TX so pass 0.
+    // hdlc_rec_data_detect_any returns non-zero while any subchannel/slice
+    // sees an HDLC carrier.  At 1200 baud one full UI frame is short enough
+    // that this is rarely contended, but on 300 bd HF a SABM is ~1.4 s of
+    // airtime and back-to-back TX without DCD gating routinely collides.
+    int busy = hdlc_rec_data_detect_any(0);
+    qint64 now = QDateTime::currentMSecsSinceEpoch();
+
+    if (busy) {
+        txChannelIdleSinceMs_ = 0;
+        return;
+    }
+    if (txChannelIdleSinceMs_ == 0) {
+        txChannelIdleSinceMs_ = now;
+        return;
+    }
+    // Slottime: at 300 bd we want a longer back-off because RX detection
+    // lags the actual end of TX more (longer flag train).  100 ms covers
+    // 1200 / 9600 comfortably.
+    int slottimeMs = (mode_ == 300) ? 250 : 100;
+    if (now - txChannelIdleSinceMs_ < slottimeMs) return;
+
+    PendingTx tx = txPendingFrames_.dequeue();
+    encodeAndEmitFrame(tx.frame);
+    // Reset the idle window for the next pending frame so we wait one more
+    // slottime after our own TX completes (DCD will go busy during our own
+    // emission and clear shortly after).
+    txChannelIdleSinceMs_ = 0;
+}
+
+void DireWolfProcessor::encodeAndEmitFrame(const QByteArray &frame)
+{
     alevel_t a; std::memset(&a, 0, sizeof(a));
     packet_t pp = ax25_from_frame(
-        reinterpret_cast<unsigned char *>(frame.data()), frame.size(), a);
+        reinterpret_cast<unsigned char *>(const_cast<char *>(frame.constData())),
+        frame.size(), a);
     if (!pp) {
         qCWarning(logWebServer) << "DireWolf TX: ax25_from_frame failed for"
                                 << frame.size() << "bytes";

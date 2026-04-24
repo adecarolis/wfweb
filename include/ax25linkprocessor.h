@@ -57,6 +57,12 @@ public slots:
                                   const QString &ownCall,
                                   const QString &peerCall);
 
+    // Adjust link-layer timing for the current modem baud rate.  At 300 bd
+    // a SABM is ~1.4 s of airtime; doubling T1 (frack) keeps the default
+    // 10 retries from triggering before the peer can reply.  Called from
+    // webServer on every packetSetMode.
+    void setLinkParamsForBaud(int baud);
+
     // Channel busy/idle from carrier sense (optional; carrier-sense not
     // wired in M2 but the slot is here for future use).
     void channelBusy(int chan, int activity, int status);

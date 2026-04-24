@@ -194,6 +194,11 @@
             state.terminal.activeSid = e.target.value || null;
             renderTerm();
         };
+        // Re-register on focus-out so changes to the Own input flow through
+        // without the operator having to re-enter the tab.
+        if (ownEl) ownEl.addEventListener('blur', function() {
+            if (state.activeTab === 'term') termRegisterOwn();
+        });
 
         updateModeButtons();
         renderTerm();
@@ -823,8 +828,21 @@
         if (name === 'term') {
             // Pull any sessions the server might already be holding.
             if (window.send) window.send({ cmd: 'termList' });
+            // Register our own callsign so the server accepts inbound SABMs
+            // even before we make any outbound call.  Auto-enable so the
+            // operator only flips one switch.
+            if (!state.enabled) setEnabled(true);
+            termRegisterOwn();
             renderTerm();
         }
+    }
+
+    function termRegisterOwn() {
+        var ownEl = document.getElementById('termOwnCall');
+        if (!ownEl) return;
+        var own = (ownEl.value || '').trim().toUpperCase();
+        if (!own || own === 'N0CALL') return;
+        if (window.send) window.send({ cmd: 'termRegister', ownCall: own, chan: 0 });
     }
 
     function termConnect() {

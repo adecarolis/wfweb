@@ -2060,6 +2060,10 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 QMetaObject::invokeMethod(dwProc, "setMode", Qt::QueuedConnection,
                                           Q_ARG(int, baud));
             }
+            if (axProc) {
+                QMetaObject::invokeMethod(axProc, "setLinkParamsForBaud", Qt::QueuedConnection,
+                                          Q_ARG(int, baud));
+            }
             QJsonObject notify;
             notify["type"] = "packetStatus";
             notify["enabled"] = packetEnabled;
@@ -2167,9 +2171,11 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             }
         }
         QString failReason;
+        TerminalSession *existing = termFindByEndpoints(chan, own, peer);
         if (!packetEnabled || !dwProc || !axProc) failReason = "packet modem not enabled";
         else if (own.isEmpty() || peer.isEmpty()) failReason = "ownCall and peerCall are required";
-        else if (termFindByEndpoints(chan, own, peer)) failReason = "session already exists";
+        else if (existing && existing->state != TerminalSession::Disconnected)
+            failReason = "session already in progress";
 
         if (!failReason.isEmpty()) {
             QJsonObject notify;
@@ -2177,16 +2183,19 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             notify["reason"] = failReason;
             sendJsonToAll(notify);
         } else {
-            TerminalSession *s = new TerminalSession();
-            s->sid = termMakeSid();
-            s->chan = chan;
-            s->ownCall = own;
-            s->peerCall = peer;
+            TerminalSession *s = existing;
+            if (!s) {
+                s = new TerminalSession();
+                s->sid = termMakeSid();
+                s->chan = chan;
+                s->ownCall = own;
+                s->peerCall = peer;
+                s->createdMs = QDateTime::currentMSecsSinceEpoch();
+                termSessions.insert(s->sid, s);
+            }
             s->digis = digis;
             s->state = TerminalSession::Connecting;
-            s->createdMs = QDateTime::currentMSecsSinceEpoch();
-            s->lastActivityMs = s->createdMs;
-            termSessions.insert(s->sid, s);
+            s->lastActivityMs = QDateTime::currentMSecsSinceEpoch();
             // Make sure we'll accept inbound to this own_call too.
             termEnsureRegistered(chan, own);
             termAppendScrollback(s, termScrollbackEntry(QStringLiteral("info"),
@@ -3658,6 +3667,23 @@ void webServer::onPacketTxReady(audioPacket audio)
         }
     };
 
+    // Key PTT if no burst is currently in flight.  The packetTx command
+    // does this itself before invoking transmitFrame, so packetTxDraining
+    // is already true on that path; for connected-mode TX (AX25LinkProcessor
+    // → transmitFrameBytes), nothing has keyed the radio yet, so do it
+    // here.  Existing drain logic in drainFreeDVTxBuffer / drainPacketLanTxBuffer
+    // already handles the delayed unkey when the buffer empties.
+    if (!packetTxDraining) {
+        if (queue) {
+            queue->add(priorityImmediate,
+                       queueItem(funcTransceiverStatus,
+                                 QVariant::fromValue<bool>(true), false, uchar(0)));
+            queue->addUnique(priorityHighest,
+                             queueItem(funcALCMeter, true, 0));
+        }
+        packetTxDraining = true;
+    }
+
     // LAN path: route through the TX converter instead of USB output.
     // The Opus encoder inside audioConverter only accepts specific frame
     // sizes (2.5 / 5 / 10 / 20 / 40 / 60 ms at sample rate), so a single
@@ -4207,6 +4233,9 @@ void webServer::setupUsbAudio(quint32 sampleRate)
                 this,   &webServer::onAxRxData,
                 Qt::QueuedConnection);
         axProc->start();
+        // Match link timing to the current modem baud rate.
+        QMetaObject::invokeMethod(axProc, "setLinkParamsForBaud", Qt::QueuedConnection,
+                                  Q_ARG(int, packetMode));
     }
 #endif
 

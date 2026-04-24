@@ -43,7 +43,7 @@ void AX25LinkProcessor::start()
     // Conservative defaults that match Dire Wolf's documented defaults.
     // The web UI may override these later via prefs.
     std::memset(&s_misc_config, 0, sizeof(s_misc_config));
-    s_misc_config.frack             = 4;
+    s_misc_config.frack             = 4;     // updated dynamically by setLinkParamsForBaud
     s_misc_config.retry             = 10;
     s_misc_config.paclen            = 128;
     s_misc_config.maxframe_basic    = 4;
@@ -80,17 +80,18 @@ void AX25LinkProcessor::stop()
     qCInfo(logAx25) << "AX25LinkProcessor stopped";
 }
 
-// Pack a QStringList of [peer, digi1, digi2, ...] into the fixed-size
-// AX.25 address array Dire Wolf expects.  num_addr returns 2 + #digis
-// (slot 0 = our call, slot 1 = peer, slots 2.. = path).
+// Pack into the fixed-size AX.25 address array Dire Wolf expects.
+// AX.25 slot layout (from ax25_pad.h):
+//   slot 0 = AX25_DESTINATION  (PEERCALL in ax25_link)
+//   slot 1 = AX25_SOURCE       (OWNCALL  in ax25_link)
+//   slots 2..9 = AX25_REPEATER_1..8 (digipeater path, in order)
+// num_addr returns 2 + #digis.
 static int packAddresses(const QString &ownCall, const QString &peerCall,
                          const QStringList &digis,
                          char addrs[AX25_MAX_ADDRS][AX25_MAX_ADDR_LEN])
 {
     std::memset(addrs, 0, sizeof(char) * AX25_MAX_ADDRS * AX25_MAX_ADDR_LEN);
 
-    // ax25_link uses AX25_SOURCE (0) for own call, AX25_DESTINATION (1) for peer.
-    // (See OWNCALL/PEERCALL #defines in ax25_link.c.)
     auto put = [&](int slot, const QString &call) {
         QByteArray ba = call.toUpper().toLatin1();
         int n = qMin(ba.size(), AX25_MAX_ADDR_LEN - 1);
@@ -98,8 +99,8 @@ static int packAddresses(const QString &ownCall, const QString &peerCall,
         addrs[slot][n] = '\0';
     };
 
-    put(0, ownCall);
-    put(1, peerCall);
+    put(0, peerCall);   // AX25_DESTINATION / PEERCALL
+    put(1, ownCall);    // AX25_SOURCE      / OWNCALL
     int n = 2;
     for (const QString &d : digis) {
         if (n >= AX25_MAX_ADDRS) break;
@@ -192,6 +193,22 @@ void AX25LinkProcessor::outstandingFramesRequest(int client, int chan,
 void AX25LinkProcessor::channelBusy(int chan, int activity, int status)
 {
     dlq_channel_busy(chan, activity, status);
+}
+
+void AX25LinkProcessor::setLinkParamsForBaud(int baud)
+{
+    // T1 (frack) sized so two full transmit cycles + processing fit before
+    // the first retry.  Numbers are for no-digi paths; ax25_link multiplies
+    // by (2*num_digis + 1) internally.
+    int frack;
+    switch (baud) {
+    case 300:  frack = 10; break;   // ~1.4 s airtime per SABM, leave room
+    case 1200: frack = 4;  break;   // ~225 ms airtime, default works fine
+    case 9600: frack = 3;  break;
+    default:   frack = 4;  break;
+    }
+    s_misc_config.frack = frack;
+    qCInfo(logAx25) << "Link params: baud=" << baud << "frack=" << frack;
 }
 
 void AX25LinkProcessor::seizeConfirm(int chan)
@@ -332,6 +349,9 @@ void AX25LinkProcessor::cbTxFrame(int chan, int prio, struct packet_s *pp)
 
     // wfweb_tq hands ownership of the packet_t to us — release it.
     ax25_delete(pp);
+
+    qCInfo(logAx25) << "TX frame chan=" << chan << "prio=" << prio
+                    << "bytes=" << flen;
 
     if (!s_instance || flen <= 0) return;
     emit s_instance->transmitFrameBytes(chan, prio, ba);
