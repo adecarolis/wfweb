@@ -8,6 +8,7 @@
 #include <QStandardPaths>
 #include <QDir>
 #include <QProcess>
+#include <QSettings>
 #include <QSslConfiguration>
 #include <QTimer>
 #include <QThread>
@@ -2017,6 +2018,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             QMetaObject::invokeMethod(dwProc, "setEnabled", Qt::QueuedConnection,
                                       Q_ARG(bool, packetEnabled));
         }
+        packetSaveSettings();
         QJsonObject notify;
         notify["type"] = "packetStatus";
         notify["enabled"] = packetEnabled;
@@ -2064,6 +2066,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 QMetaObject::invokeMethod(axProc, "setLinkParamsForBaud", Qt::QueuedConnection,
                                           Q_ARG(int, baud));
             }
+            packetSaveSettings();
             QJsonObject notify;
             notify["type"] = "packetStatus";
             notify["enabled"] = packetEnabled;
@@ -3829,6 +3832,45 @@ void webServer::drainPacketLanTxBuffer()
     emit sendToTxConverter(chunk);
 }
 
+// ---- Packet-modem pref persistence ----
+//
+// packetEnabled and packetMode survive a wfweb restart via the same
+// QSettings file the rest of servermain uses.  Load at setupAudio() /
+// setupUsbAudio() time (after dwProc exists so we can apply them);
+// save on every user change.
+
+void webServer::setSettingsFile(const QString &path)
+{
+    packetSettingsFile_ = path;
+}
+
+static QSettings *packetSettingsFor(const QString &file)
+{
+    return file.isEmpty()
+        ? new QSettings()
+        : new QSettings(file, QSettings::IniFormat);
+}
+
+void webServer::packetLoadSettings()
+{
+    QSettings *s = packetSettingsFor(packetSettingsFile_);
+    packetEnabled = s->value("Packet/Enabled", false).toBool();
+    int m = s->value("Packet/Mode", 300).toInt();
+    if (m == 300 || m == 1200 || m == 9600) packetMode = m;
+    delete s;
+    qInfo() << "Web: Packet prefs loaded — enabled=" << packetEnabled
+            << "mode=" << packetMode;
+}
+
+void webServer::packetSaveSettings()
+{
+    QSettings *s = packetSettingsFor(packetSettingsFile_);
+    s->setValue("Packet/Enabled", packetEnabled);
+    s->setValue("Packet/Mode", packetMode);
+    s->sync();
+    delete s;
+}
+
 // ---- AX.25 connected-mode terminal session helpers ----
 
 QString webServer::termMakeSid()
@@ -4233,9 +4275,18 @@ void webServer::setupUsbAudio(quint32 sampleRate)
                 this,   &webServer::onAxRxData,
                 Qt::QueuedConnection);
         axProc->start();
-        // Match link timing to the current modem baud rate.
+
+        // Load persisted enable/mode state, then apply it to the processors
+        // and broadcast a packetStatus so the UI picks up the restored value.
+        packetLoadSettings();
         QMetaObject::invokeMethod(axProc, "setLinkParamsForBaud", Qt::QueuedConnection,
                                   Q_ARG(int, packetMode));
+        QMetaObject::invokeMethod(dwProc, "setMode", Qt::QueuedConnection,
+                                  Q_ARG(int, packetMode));
+        if (packetEnabled) {
+            QMetaObject::invokeMethod(dwProc, "setEnabled", Qt::QueuedConnection,
+                                      Q_ARG(bool, true));
+        }
     }
 #endif
 
