@@ -202,6 +202,12 @@
 
         updateModeButtons();
         renderTerm();
+        // Re-open the packet panel (and its last tab) if the browser had it
+        // open before refresh.  Done after all handlers are bound.  The
+        // server keeps modem enable/mode in its own prefs, so this is a
+        // pure UI-layout restore; packetStatus from the server will
+        // re-sync once the WS connects.
+        restoreLayoutFromStorage();
     }
 
     function addStyles() {
@@ -273,7 +279,9 @@
             '.term-input-row { display: flex; gap: 6px; margin-top: 6px; }' +
             '.term-input { flex: 1; background: #001a00; border: 1px solid #0a0; color: #cfc; font-family: monospace; font-size: 12px; padding: 4px 6px; border-radius: 2px; outline: none; }' +
             '.term-input:focus { border-color: #0f0; }' +
-            '.term-input:disabled { opacity: 0.5; }';
+            '.term-input:disabled { opacity: 0.5; }' +
+            '.term-force-btn { background: #2a0000 !important; border-color: #a40 !important; color: #f80 !important; }' +
+            '.term-force-btn:hover:not(:disabled) { background: #4a0000 !important; color: #fb0 !important; }';
         document.head.appendChild(style);
     }
 
@@ -286,6 +294,7 @@
         // Kick off the waterfall after the bar is visible so the canvas
         // has a non-zero clientWidth/Height for the DPR math.
         setTimeout(startScope, 0);
+        saveLayoutToStorage();
     }
 
     function hide() {
@@ -294,10 +303,54 @@
         document.body.classList.remove('packet-open');
         setEnabled(false);
         stopScope();
+        saveLayoutToStorage();
     }
 
     function toggle() {
         if (state.visible) hide(); else show();
+    }
+
+    function saveLayoutToStorage() {
+        try {
+            localStorage.setItem('wfweb.packet.layout', JSON.stringify({
+                visible: state.visible,
+                activeTab: state.activeTab
+            }));
+        } catch (e) { /* quota — ignore */ }
+    }
+
+    function restoreLayoutFromStorage() {
+        try {
+            var raw = localStorage.getItem('wfweb.packet.layout');
+            if (!raw) return;
+            var obj = JSON.parse(raw);
+            if (!obj || typeof obj !== 'object') return;
+
+            if (obj.activeTab === 'aprs' || obj.activeTab === 'term') {
+                // Direct DOM toggle — don't fire the side-effects setActiveTab
+                // does (termList / termRegister) until we're actually visible.
+                state.activeTab = obj.activeTab;
+                var aprs = document.getElementById('packetAprsPane');
+                var term = document.getElementById('packetTermPane');
+                var aBtn = document.getElementById('packetTabAprs');
+                var tBtn = document.getElementById('packetTabTerm');
+                if (aprs) aprs.classList.toggle('hidden', obj.activeTab !== 'aprs');
+                if (term) term.classList.toggle('hidden', obj.activeTab !== 'term');
+                if (aBtn) aBtn.classList.toggle('active', obj.activeTab === 'aprs');
+                if (tBtn) tBtn.classList.toggle('active', obj.activeTab === 'term');
+            }
+
+            if (obj.visible === true) {
+                // Reopen the panel and, if we landed on the TERMINAL tab,
+                // run its per-tab activation (termList / termRegister).
+                // setEnabled inside show() fires packetEnable, but the
+                // server is the source of truth — if it's already enabled
+                // the round-trip is a no-op; if WS isn't open yet, send()
+                // silently drops and the later packetStatus sync corrects us.
+                show();
+                if (state.activeTab === 'term') setActiveTab('term');
+            }
+        } catch (e) { /* ignore */ }
     }
 
     function setEnabled(on) {
@@ -825,6 +878,7 @@
         if (termBtn)  termBtn.classList.toggle('active', name === 'term');
         if (aprsPane) aprsPane.classList.toggle('hidden', name !== 'aprs');
         if (termPane) termPane.classList.toggle('hidden', name !== 'term');
+        saveLayoutToStorage();
         if (name === 'term') {
             // Pull any sessions the server might already be holding.
             if (window.send) window.send({ cmd: 'termList' });
@@ -919,11 +973,23 @@
         var sid = state.terminal.activeSid;
         var s = sid && state.terminal.sessions[sid];
         var connected = s && s.state === 'connected';
-        var canDisconnect = s && (s.state === 'connected' || s.state === 'connecting');
+        var isDisconnecting = s && s.state === 'disconnecting';
+        var canDisconnect = s && (s.state === 'connected'
+                                  || s.state === 'connecting'
+                                  || isDisconnecting);
         var dcBtn = document.getElementById('termDisconnectBtn');
         var sendBtn = document.getElementById('termSendBtn');
         var input = document.getElementById('termInput');
-        if (dcBtn)   dcBtn.disabled   = !canDisconnect;
+        if (dcBtn) {
+            dcBtn.disabled = !canDisconnect;
+            // In Disconnecting, a second press asks ax25_link to send a DM
+            // and go straight to disconnected — no waiting for the peer's UA.
+            dcBtn.textContent = isDisconnecting ? 'Force' : 'Disconnect';
+            dcBtn.classList.toggle('term-force-btn', !!isDisconnecting);
+            dcBtn.title = isDisconnecting
+                ? 'Send DM and tear down the link immediately'
+                : 'Disconnect this session';
+        }
         if (sendBtn) sendBtn.disabled = !connected;
         if (input)   input.disabled   = !connected;
     }
