@@ -2030,35 +2030,6 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         notify["mode"] = packetMode;
         sendJsonToAll(notify);
     }
-    else if (type == "packetCaptureAudio") {
-        int seconds = cmd.value("seconds").toInt(10);
-        // Save to /tmp with a timestamped name so concurrent captures don't
-        // stomp each other.  The path is sent back to the client so the
-        // operator can grep for it or scp it off the host.
-        QString path = QString("/tmp/wfweb-packet-%1.wav")
-            .arg(QDateTime::currentDateTimeUtc().toString("yyyyMMdd-hhmmss"));
-        if (!dwProc) {
-            qWarning() << "Web: packetCaptureAudio — dwProc is null"
-                       << "audioConfigured=" << audioConfigured
-                       << "packetEnabled=" << packetEnabled
-                       << "rigSampleRate=" << rigSampleRate;
-            QJsonObject notify;
-            notify["type"] = "packetCaptureFailed";
-            notify["reason"] = QString("dwProc null (audioConfigured=%1 packetEnabled=%2) — "
-                                       "check wfweb logs; likely audio setup never ran")
-                .arg(audioConfigured).arg(packetEnabled);
-            sendJsonToAll(notify);
-        } else {
-            QMetaObject::invokeMethod(dwProc, "startCapture", Qt::QueuedConnection,
-                                      Q_ARG(int, seconds),
-                                      Q_ARG(QString, path));
-            QJsonObject notify;
-            notify["type"] = "packetCaptureStarted";
-            notify["path"] = path;
-            notify["seconds"] = seconds;
-            sendJsonToAll(notify);
-        }
-    }
     else if (type == "packetSetMode") {
         int baud = cmd["value"].toInt(-1);
         if (baud == 300 || baud == 1200 || baud == 9600) {
@@ -3264,24 +3235,9 @@ void webServer::setupAudio(quint8 codec, quint32 sampleRate)
     connect(this, &webServer::setupPacket, dwProc, &DireWolfProcessor::init);
     connect(this, &webServer::sendToPacketRx, dwProc, &DireWolfProcessor::processRx);
     connect(dwProc, &DireWolfProcessor::rxFrameDecoded, this, &webServer::onPacketRxDecoded);
+    connect(dwProc, &DireWolfProcessor::txFrameDecoded, this, &webServer::onPacketTxDecoded);
     connect(dwProc, &DireWolfProcessor::txReady, this, &webServer::onPacketTxReady);
     connect(dwProc, &DireWolfProcessor::txFailed, this, &webServer::onPacketTxFailed);
-    connect(dwProc, &DireWolfProcessor::captureComplete, this,
-            [this](QString path, int rate, int samples) {
-                QJsonObject notify;
-                notify["type"] = "packetCaptureComplete";
-                notify["path"] = path;
-                notify["sampleRate"] = rate;
-                notify["samples"] = samples;
-                sendJsonToAll(notify);
-            });
-    connect(dwProc, &DireWolfProcessor::captureFailed, this,
-            [this](QString reason) {
-                QJsonObject notify;
-                notify["type"] = "packetCaptureFailed";
-                notify["reason"] = reason;
-                sendJsonToAll(notify);
-            });
     connect(dwThread, &QThread::finished, dwProc, &QObject::deleteLater);
 
     dwThread->start();
@@ -3740,6 +3696,16 @@ void webServer::onPacketRxDecoded(int chan, QJsonObject frame)
             << "info=" << frame.value("info").toString();
 }
 
+void webServer::onPacketTxDecoded(int chan, QJsonObject frame)
+{
+    QJsonObject msg = frame;
+    msg["type"] = "packetRxFrame";   // shared handler in the web UI
+    msg["chan"] = chan;
+    msg["tx"] = true;
+    msg["ts"] = QDateTime::currentMSecsSinceEpoch();
+    sendJsonToAll(msg);
+}
+
 // Receives the complete encoded burst for a single AX.25 frame (entire
 // preamble+frame+postamble in one audioPacket).  Pushes it into the shared
 // TX buffer and drives ALSA through the same drain timer FreeDV/RADE use.
@@ -3747,6 +3713,26 @@ void webServer::onPacketRxDecoded(int chan, QJsonObject frame)
 // radio once the buffer empties.
 void webServer::onPacketTxReady(audioPacket audio)
 {
+    // Tee the TX PCM to audio clients for waterfall visualisation.  Radios
+    // mute their RX path while keyed, so the browser otherwise sees pure
+    // silence during TX — the web UI feeds this back into the same analyser
+    // so the TX signal is visible.  Binary format mirrors RX (msgType 0x04):
+    //   [0x04][0x00][seq_u16LE][rateDiv_u16LE][PCM_Int16LE...]
+    if (!audioClients.isEmpty() && !audio.data.isEmpty()) {
+        quint32 rate = rigSampleRate ? rigSampleRate : 48000;
+        quint16 rateDiv = static_cast<quint16>(rate / 1000);
+        QByteArray msg;
+        int headerSize = 6;
+        msg.resize(headerSize + audio.data.size());
+        msg[0] = 0x04;
+        msg[1] = 0x00;
+        quint16 seq = audioSeq++;
+        memcpy(msg.data() + 2, &seq, 2);
+        memcpy(msg.data() + 4, &rateDiv, 2);
+        memcpy(msg.data() + headerSize, audio.data.constData(), audio.data.size());
+        sendBinaryToAudioClients(msg);
+    }
+
     // If a connected-mode file transfer is in progress, this audio burst
     // is the encoding of the YAPP frame we queued last — advance
     // progress and pump the next one.  Doing it here (rather than on a
@@ -4802,24 +4788,9 @@ void webServer::setupUsbAudio(quint32 sampleRate)
         connect(this, &webServer::setupPacket, dwProc, &DireWolfProcessor::init);
         connect(this, &webServer::sendToPacketRx, dwProc, &DireWolfProcessor::processRx);
         connect(dwProc, &DireWolfProcessor::rxFrameDecoded, this, &webServer::onPacketRxDecoded);
+        connect(dwProc, &DireWolfProcessor::txFrameDecoded, this, &webServer::onPacketTxDecoded);
         connect(dwProc, &DireWolfProcessor::txReady, this, &webServer::onPacketTxReady);
         connect(dwProc, &DireWolfProcessor::txFailed, this, &webServer::onPacketTxFailed);
-        connect(dwProc, &DireWolfProcessor::captureComplete, this,
-                [this](QString path, int rate, int samples) {
-                    QJsonObject notify;
-                    notify["type"] = "packetCaptureComplete";
-                    notify["path"] = path;
-                    notify["sampleRate"] = rate;
-                    notify["samples"] = samples;
-                    sendJsonToAll(notify);
-                });
-        connect(dwProc, &DireWolfProcessor::captureFailed, this,
-                [this](QString reason) {
-                    QJsonObject notify;
-                    notify["type"] = "packetCaptureFailed";
-                    notify["reason"] = reason;
-                    sendJsonToAll(notify);
-                });
         connect(dwThread, &QThread::finished, dwProc, &QObject::deleteLater);
 
         dwThread->start();

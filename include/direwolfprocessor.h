@@ -68,10 +68,6 @@ public slots:
     // pipeline as transmitFrame().
     void transmitFrameBytes(int chan, int prio, QByteArray frame);
     void setEnabled(bool enabled);
-    // Start capturing the next `seconds` of incoming audio (as seen by the
-    // demodulator, post-resample to modemRate_) to a 16-bit mono WAV file.
-    // Emits captureComplete() when done or captureFailed() on error.
-    void startCapture(int seconds, const QString &path);
     // Mode is the baud rate of the single active modem.  Valid values:
     //   300  — HF AFSK (mark 1600 / space 1800, 200 Hz shift)
     //   1200 — VHF AFSK (mark 1200 / space 2200, Bell 202 / APRS)
@@ -83,11 +79,13 @@ public slots:
 signals:
     void rxFrame(int chan, QByteArray ax25, int alevel);
     void rxFrameDecoded(int chan, QJsonObject frame);
+    // Emitted once per TX frame encoded through transmitFrame() / transmitFrameBytes().
+    // Same shape as rxFrameDecoded but carries the locally-originated frame so the
+    // web UI can surface outgoing traffic in its monitor panel alongside RX.
+    void txFrameDecoded(int chan, QJsonObject frame);
     void txReady(audioPacket audio);
     void txFailed(QString reason);
     void stats(int chan, float level);
-    void captureComplete(QString path, int sampleRate, int sampleCount);
-    void captureFailed(QString reason);
 
 private:
     void destroyResamplers();
@@ -116,11 +114,11 @@ private:
     void    txCsmaTick();
     void    encodeAndEmitFrame(const QByteArray &frame);
 
-    // Audio capture (debug aid for --packet-decode-wav round-trip testing).
-    bool captureActive_ = false;
-    int  captureSamplesTarget_ = 0;
-    QByteArray capturePcm_;
-    QString capturePath_;
+    // Build a JSON summary of an AX.25 frame (src/dst/path/info/type/rawHex)
+    // using Dire Wolf's ax25 helpers.  Shared by RX and TX monitor paths so
+    // the web UI renders outgoing and incoming traffic identically.
+    QJsonObject buildFrameJson(void *packet, const QByteArray &rawBytes,
+                               int chan, int alevel);
 };
 
 #endif // DIREWOLFPROCESSOR_H
