@@ -394,6 +394,21 @@ void DireWolfProcessor::transmitFrameBytes(int chan, int prio, QByteArray frame)
     // Defer through the CSMA queue so we don't TX while the channel is busy.
     // 9600 G3RUH baseband doesn't have a meaningful DCD via the AFSK modem
     // path, but the same gating still helps avoid back-to-back collisions.
+    //
+    // Dedup: if this frame is a v2.0 S-frame (15 bytes — 14 addr + 1 ctrl,
+    // no info, typically RR) going to the same (src,dst) as another queued
+    // S-frame, the new one carries a later N(R) and supersedes the old one.
+    // This prevents the receiver from piling up a chain of RRs when the
+    // channel is held busy by a noisy sender retransmitting duplicates.
+    if (frame.size() == 15) {
+        QByteArray newAddr = frame.left(14);     // dest(7) + src(7)
+        for (int i = txPendingFrames_.size() - 1; i >= 0; --i) {
+            const QByteArray &old = txPendingFrames_[i].frame;
+            if (old.size() == 15 && old.left(14) == newAddr) {
+                txPendingFrames_.removeAt(i);
+            }
+        }
+    }
     txPendingFrames_.enqueue({chan, prio, frame});
     if (!txCsmaTimer_) {
         txCsmaTimer_ = new QTimer(this);

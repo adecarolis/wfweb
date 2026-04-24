@@ -353,6 +353,20 @@ private:
         qint64     done = 0;
         qint64     lastProgressMs = 0;
         bool       abortPending = false;  // TX only
+        // SI/RR handshake state:
+        //   "awaiting_rr"      — TX: SI sent, waiting for peer RR
+        //   "awaiting_accept"  — RX: SI received, waiting for user accept
+        //   "active"           — data flowing (HD/DT/EF)
+        QString    phase;
+        QByteArray pendingData;  // TX: buffered file bytes until RR arrives
+        // TX-side pump: the YAPP frame list, queued one at a time
+        // through onPacketTxReady so at most one frame sits in
+        // ax25_link's I-frame queue.  Makes Abort take effect within
+        // one frame instead of waiting for a pre-queued backlog to
+        // drain on the air.
+        QList<QByteArray> pendingYappFrames;
+        int        framesPlanned = 0;
+        int        framesSent = 0;
     };
 
     struct TerminalSession {
@@ -391,6 +405,11 @@ private:
     void       yappHandleFrame(TerminalSession *s, char type, const QByteArray &data);
     void       yappSendFile   (TerminalSession *s, const QString &name,
                                 const QByteArray &data);
+    void       yappStartDataPhase(TerminalSession *s);
+    void       yappPumpNextFrame(TerminalSession *s);
+    TerminalSession *yappFindActiveTxXfer();
+    void       yappSendRR     (TerminalSession *s);
+    void       yappSendAB     (TerminalSession *s);
     void       yappAbortSend  (TerminalSession *s);
     void       xferBroadcastStart(const TerminalSession *s);
     void       xferBroadcastProgress(TerminalSession *s, bool force = false);

@@ -2062,6 +2062,33 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     else if (type == "packetSetMode") {
         int baud = cmd["value"].toInt(-1);
         if (baud == 300 || baud == 1200 || baud == 9600) {
+            // Changing the baud rate invalidates the physical-layer timing
+            // any live AX.25 session is calibrated for.  t1v evolves from
+            // the observed srt once a session is open; switching 1200→300
+            // leaves T1 far too short, so the sender retries long before
+            // the peer can even finish TXing an ACK at the new speed.
+            // Tear down active sessions so a fresh Connect picks up the
+            // new frack/retry values cleanly.
+            if (axProc) {
+                for (TerminalSession *s : termSessions) {
+                    if (s->state == TerminalSession::Connected
+                        || s->state == TerminalSession::Connecting) {
+                        QByteArray info = QStringLiteral("*** Mode change — link closed").toUtf8();
+                        QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);
+                        termAppendScrollback(s, e);
+                        termBroadcastData(s->sid, e);
+                        s->state = TerminalSession::Disconnecting;
+                        termBroadcastSession(s);
+                        QMetaObject::invokeMethod(axProc, "disconnectRequest", Qt::QueuedConnection,
+                                                  Q_ARG(int, TERM_FIXED_CLIENT),
+                                                  Q_ARG(int, s->chan),
+                                                  Q_ARG(QString, s->ownCall),
+                                                  Q_ARG(QString, s->peerCall),
+                                                  Q_ARG(QStringList, s->digis));
+                    }
+                }
+            }
+
             packetMode = baud;
             if (dwProc) {
                 QMetaObject::invokeMethod(dwProc, "setMode", Qt::QueuedConnection,
@@ -2322,6 +2349,29 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         QString sid = cmd["sid"].toString();
         TerminalSession *s = termSessions.value(sid, nullptr);
         if (s && s->xfer.active) yappAbortSend(s);
+    }
+    else if (type == "termXferAccept") {
+        QString sid = cmd["sid"].toString();
+        TerminalSession *s = termSessions.value(sid, nullptr);
+        if (s && s->xfer.active && s->xfer.phase == "awaiting_accept") {
+            yappSendRR(s);
+            s->xfer.phase = QStringLiteral("active");
+            qInfo().noquote() << "Web: YAPP accept → RR sent" << s->sid;
+        }
+    }
+    else if (type == "termXferReject") {
+        QString sid = cmd["sid"].toString();
+        TerminalSession *s = termSessions.value(sid, nullptr);
+        if (s && s->xfer.active && s->xfer.phase == "awaiting_accept") {
+            yappSendAB(s);
+            xferBroadcastEnd(s, /*aborted=*/true);
+            QByteArray info = QStringLiteral("*** Rejected").toUtf8();
+            QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);
+            termAppendScrollback(s, e);
+            termBroadcastData(s->sid, e);
+            s->xfer = XferState{};
+            qInfo().noquote() << "Web: YAPP reject → AB sent" << s->sid;
+        }
     }
 #endif
 #ifdef FREEDV_SUPPORT
@@ -3697,6 +3747,32 @@ void webServer::onPacketRxDecoded(int chan, QJsonObject frame)
 // radio once the buffer empties.
 void webServer::onPacketTxReady(audioPacket audio)
 {
+    // If a connected-mode file transfer is in progress, this audio burst
+    // is the encoding of the YAPP frame we queued last — advance
+    // progress and pump the next one.  Doing it here (rather than on a
+    // Qt timer) keeps at most one frame in ax25_link's queue, so Abort
+    // doesn't leave a long tail of pre-queued frames on the air.
+    if (TerminalSession *x = yappFindActiveTxXfer()) {
+        x->xfer.framesSent++;
+        if (x->xfer.framesPlanned > 0) {
+            x->xfer.done = qMin<qint64>(x->xfer.total,
+                (qint64)x->xfer.total * x->xfer.framesSent / x->xfer.framesPlanned);
+        }
+        xferBroadcastProgress(x);
+
+        if (x->xfer.framesSent >= x->xfer.framesPlanned) {
+            QByteArray info = QString("*** Sent: %1 (%2 bytes)")
+                .arg(x->xfer.name).arg(x->xfer.total).toUtf8();
+            QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);
+            termAppendScrollback(x, e);
+            termBroadcastData(x->sid, e);
+            xferBroadcastEnd(x, /*aborted=*/false);
+            x->xfer = XferState{};
+        } else {
+            yappPumpNextFrame(x);
+        }
+    }
+
     auto unkey = [this]() {
         if (queue) {
             queue->add(priorityImmediate,
@@ -3733,16 +3809,27 @@ void webServer::onPacketTxReady(audioPacket audio)
         if (txConverter) {
             quint32 rate = rigSampleRate ? rigSampleRate : 48000;
             packetLanTxChunkBytes = (int)(rate / 50) * (int)sizeof(qint16);
-            packetLanTxBuffer = audio.data;
+            // APPEND — multiple YAPP frames arrive back-to-back during a
+            // file transfer; replacing the buffer here would truncate any
+            // audio still being drained from the previous frame and garble
+            // the on-air stream, triggering AX.25 retries.  Timer only
+            // starts on the first frame; subsequent calls just extend the
+            // playout.
+            bool wasIdle = packetLanTxBuffer.isEmpty()
+                           && (!packetLanTxTimer || !packetLanTxTimer->isActive());
+            packetLanTxBuffer.append(audio.data);
             if (!packetLanTxTimer) {
                 packetLanTxTimer = new QTimer(this);
                 packetLanTxTimer->setTimerType(Qt::PreciseTimer);
                 connect(packetLanTxTimer, &QTimer::timeout,
                         this, &webServer::drainPacketLanTxBuffer);
             }
-            qInfo() << "Web: Packet LAN TX started, bytes=" << audio.data.size()
+            qInfo() << "Web: Packet LAN TX"
+                    << (wasIdle ? "started" : "appended")
+                    << "bytes=" << audio.data.size()
+                    << "total=" << packetLanTxBuffer.size()
                     << "chunkBytes=" << packetLanTxChunkBytes;
-            packetLanTxTimer->start(20);
+            if (wasIdle) packetLanTxTimer->start(20);
             return;
         }
         qWarning() << "Web: Packet TX: no USB output and no TX converter";
@@ -4130,8 +4217,10 @@ void webServer::xferBroadcastStart(const TerminalSession *s)
     notify["dir"]   = s->xfer.dir;
     notify["name"]  = s->xfer.name;
     notify["total"] = (qint64)s->xfer.total;
+    notify["phase"] = s->xfer.phase;
     sendJsonToAll(notify);
     qInfo().noquote() << "Web: xferStart" << s->sid << s->xfer.dir
+                      << s->xfer.phase
                       << s->xfer.name << s->xfer.total << "B"
                       << "wsClients=" << wsClients.size();
 }
@@ -4167,6 +4256,47 @@ void webServer::yappHandleFrame(TerminalSession *s, char type, const QByteArray 
 {
     YappRxState &y = s->yapp;
     switch (type) {
+    case 'S': {                     // SI — peer wants to send a file
+        if (s->xfer.active) {
+            // Already busy with another xfer; reject.
+            yappSendAB(s);
+            return;
+        }
+        int nul = data.indexOf('\0');
+        QString senderInfo = (nul < 0)
+            ? QString::fromUtf8(data)
+            : QString::fromUtf8(data.constData(), nul);
+        s->xfer.active = true;
+        s->xfer.dir    = QStringLiteral("rx");
+        s->xfer.phase  = QStringLiteral("awaiting_accept");
+        s->xfer.name.clear();
+        s->xfer.total  = 0;
+        s->xfer.done   = 0;
+
+        QJsonObject notify;
+        notify["type"]       = "termXferRequest";
+        notify["sid"]        = s->sid;
+        notify["senderInfo"] = senderInfo;
+        sendJsonToAll(notify);
+
+        QByteArray info = QString("*** %1 wants to send you a file — accept or reject")
+            .arg(senderInfo).toUtf8();
+        QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);
+        termAppendScrollback(s, e);
+        termBroadcastData(s->sid, e);
+        qInfo().noquote() << "Web: YAPP SI received" << s->sid << "from" << senderInfo;
+        break;
+    }
+    case 'R':                       // RR — peer accepted our request
+        if (s->xfer.active && s->xfer.dir == "tx" && s->xfer.phase == "awaiting_rr") {
+            yappStartDataPhase(s);
+        } else {
+            qWarning().noquote() << "Web: unexpected YAPP RR" << s->sid
+                                 << "active=" << s->xfer.active
+                                 << "dir="    << s->xfer.dir
+                                 << "phase="  << s->xfer.phase;
+        }
+        break;
     case 'H': {                     // HD — new file starting
         int nul1 = data.indexOf('\0');
         if (nul1 < 0) return;
@@ -4204,10 +4334,17 @@ void webServer::yappHandleFrame(TerminalSession *s, char type, const QByteArray 
             xferBroadcastProgress(s);
         }
         break;
-    case 'A': {                     // AB — abort from the sender
-        if (!y.active) return;
-        QByteArray info = QString("*** Transfer aborted by sender: %1").arg(y.filename).toUtf8();
-        QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);
+    case 'A': {                     // AB — abort from peer
+        if (!s->xfer.active) return;
+        QString reason;
+        if (s->xfer.dir == "tx") {
+            reason = (s->xfer.phase == "awaiting_rr")
+                ? QStringLiteral("*** Peer rejected the transfer")
+                : QStringLiteral("*** Transfer aborted by peer");
+        } else {
+            reason = QString("*** Transfer aborted by sender: %1").arg(y.filename);
+        }
+        QJsonObject e = termScrollbackEntry(QStringLiteral("info"), reason.toUtf8());
         termAppendScrollback(s, e);
         termBroadcastData(s->sid, e);
 
@@ -4218,7 +4355,7 @@ void webServer::yappHandleFrame(TerminalSession *s, char type, const QByteArray 
         y.fileBuf.clear();
         y.filesize = 0;
         y.active = false;
-        qInfo().noquote() << "Web: YAPP RX aborted by sender" << s->sid;
+        qInfo().noquote() << "Web: YAPP aborted (AB from peer)" << s->sid;
         break;
     }
     case 'E': {                     // EF — end of file
@@ -4265,99 +4402,158 @@ void webServer::yappSendFile(TerminalSession *s, const QString &name,
     if (!axProc || s->state != TerminalSession::Connected) return;
     if (s->xfer.active) return;     // already transferring
 
-    // HD first — queued immediately so the receiver learns the incoming
-    // filename + size as soon as possible.
-    QByteArray hd;
-    hd.append(name.toUtf8());
-    hd.append('\0');
-    hd.append(QString::number(data.size()).toLatin1());
-    hd.append('\0');
-    QByteArray hdFrame = yappFrame('H', hd);
+    // Classic YAPP handshake: announce intent with SI, wait for RR before
+    // any file bytes hit the air.  The payload is a nul-terminated sender
+    // identifier — we use the operator's callsign.
+    QByteArray si;
+    si.append(s->ownCall.isEmpty() ? QByteArray("wfweb") : s->ownCall.toUtf8());
+    si.append('\0');
+    QByteArray siFrame = yappFrame('S', si);
     QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
                               Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, s->chan),
                               Q_ARG(QString, s->ownCall), Q_ARG(QString, s->peerCall),
                               Q_ARG(QStringList, s->digis), Q_ARG(int, 0xF0),
-                              Q_ARG(QByteArray, hdFrame));
+                              Q_ARG(QByteArray, siFrame));
 
-    s->xfer.active = true;
-    s->xfer.dir    = QStringLiteral("tx");
-    s->xfer.name   = name;
-    s->xfer.total  = data.size();
-    s->xfer.done   = 0;
+    s->xfer.active       = true;
+    s->xfer.dir          = QStringLiteral("tx");
+    s->xfer.name         = name;
+    s->xfer.total        = data.size();
+    s->xfer.done         = 0;
     s->xfer.abortPending = false;
+    s->xfer.phase        = QStringLiteral("awaiting_rr");
+    s->xfer.pendingData  = data;
     xferBroadcastStart(s);
 
-    QByteArray info = QString("*** Sending file: %1 (%2 bytes)")
+    QByteArray info = QString("*** Requesting to send %1 (%2 bytes) — awaiting peer acceptance...")
         .arg(name).arg(data.size()).toUtf8();
     QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);
     termAppendScrollback(s, e);
     termBroadcastData(s->sid, e);
-    qInfo().noquote() << "Web: YAPP TX start" << s->sid
-                      << name << data.size() << "B";
+    qInfo().noquote() << "Web: YAPP SI sent" << s->sid
+                      << name << data.size() << "B — awaiting RR";
 
-    // Drive the DT + EF sequence via a timer so the webServer event loop
-    // still runs (keeps WS alive for abort + UI) and ax25_link's TX queue
-    // doesn't get stuffed with thousands of I-frames at once — frames
-    // trickle out at the rate of one every 10 ms.  abortPending is
-    // checked every tick so Abort cuts the flow immediately.
-    QByteArray payload = data;
-    QString    sid     = s->sid;
-    int        *off    = new int(0);
-    QTimer     *t      = new QTimer(this);
-    t->setTimerType(Qt::PreciseTimer);
-    const int kDataChunk = 100;     // <= paclen=128 after 3-byte YAPP header
-    connect(t, &QTimer::timeout, this, [this, t, off, payload, sid, kDataChunk]() {
+    // Safety net: if the peer never replies within 60 s, tear down.
+    QString sid = s->sid;
+    QTimer::singleShot(60000, this, [this, sid]() {
         TerminalSession *cur = termSessions.value(sid, nullptr);
-        if (!cur || !cur->xfer.active || cur->xfer.dir != "tx") {
-            t->stop(); t->deleteLater(); delete off; return;
-        }
-        if (cur->xfer.abortPending) {
-            // Send AB and end.
-            QByteArray abFrame = yappFrame('A', QByteArray());
-            QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
-                Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, cur->chan),
-                Q_ARG(QString, cur->ownCall), Q_ARG(QString, cur->peerCall),
-                Q_ARG(QStringList, cur->digis), Q_ARG(int, 0xF0),
-                Q_ARG(QByteArray, abFrame));
-            QByteArray info = QStringLiteral("*** Transfer aborted").toUtf8();
-            QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);
-            termAppendScrollback(cur, e);
-            termBroadcastData(cur->sid, e);
-            xferBroadcastEnd(cur, /*aborted=*/true);
-            cur->xfer = XferState{};
-            t->stop(); t->deleteLater(); delete off; return;
-        }
-        if (*off < payload.size()) {
-            QByteArray slice = payload.mid(*off, kDataChunk);
-            QByteArray dtFrame = yappFrame('D', slice);
-            QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
-                Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, cur->chan),
-                Q_ARG(QString, cur->ownCall), Q_ARG(QString, cur->peerCall),
-                Q_ARG(QStringList, cur->digis), Q_ARG(int, 0xF0),
-                Q_ARG(QByteArray, dtFrame));
-            *off += slice.size();
-            cur->xfer.done = *off;
-            xferBroadcastProgress(cur);
-        } else {
-            // EF + end.
-            QByteArray efFrame = yappFrame('E', QByteArray());
-            QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
-                Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, cur->chan),
-                Q_ARG(QString, cur->ownCall), Q_ARG(QString, cur->peerCall),
-                Q_ARG(QStringList, cur->digis), Q_ARG(int, 0xF0),
-                Q_ARG(QByteArray, efFrame));
-            xferBroadcastProgress(cur, /*force=*/true);
-            QByteArray info = QString("*** Sent: %1 (%2 bytes)")
-                .arg(cur->xfer.name).arg(cur->xfer.total).toUtf8();
-            QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);
-            termAppendScrollback(cur, e);
-            termBroadcastData(cur->sid, e);
-            xferBroadcastEnd(cur, /*aborted=*/false);
-            cur->xfer = XferState{};
-            t->stop(); t->deleteLater(); delete off;
-        }
+        if (!cur || !cur->xfer.active) return;
+        if (cur->xfer.phase != "awaiting_rr") return;
+        QByteArray info = QStringLiteral("*** Transfer timed out — peer did not respond").toUtf8();
+        QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);
+        termAppendScrollback(cur, e);
+        termBroadcastData(cur->sid, e);
+        xferBroadcastEnd(cur, /*aborted=*/true);
+        cur->xfer = XferState{};
     });
-    t->start(10);
+}
+
+void webServer::yappSendRR(TerminalSession *s)
+{
+    if (!axProc) return;
+    QByteArray rrFrame = yappFrame('R', QByteArray());
+    QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
+                              Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, s->chan),
+                              Q_ARG(QString, s->ownCall), Q_ARG(QString, s->peerCall),
+                              Q_ARG(QStringList, s->digis), Q_ARG(int, 0xF0),
+                              Q_ARG(QByteArray, rrFrame));
+}
+
+void webServer::yappSendAB(TerminalSession *s)
+{
+    if (!axProc) return;
+    QByteArray abFrame = yappFrame('A', QByteArray());
+    QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
+                              Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, s->chan),
+                              Q_ARG(QString, s->ownCall), Q_ARG(QString, s->peerCall),
+                              Q_ARG(QStringList, s->digis), Q_ARG(int, 0xF0),
+                              Q_ARG(QByteArray, abFrame));
+}
+
+void webServer::yappStartDataPhase(TerminalSession *s)
+{
+    s->xfer.phase = QStringLiteral("active");
+
+    // Build the complete YAPP frame list up front: HD + DTs + EF.
+    // Frames are then pumped out one at a time via onPacketTxReady so
+    // at most one frame ever sits in ax25_link's I-frame queue.
+    QByteArray payload = s->xfer.pendingData;
+    s->xfer.pendingData.clear();
+
+    s->xfer.pendingYappFrames.clear();
+    QByteArray hd;
+    hd.append(s->xfer.name.toUtf8());
+    hd.append('\0');
+    hd.append(QString::number(s->xfer.total).toLatin1());
+    hd.append('\0');
+    s->xfer.pendingYappFrames.append(yappFrame('H', hd));
+
+    const int kDataChunk = 100;     // <= paclen=128 after 3-byte YAPP header
+    for (int off = 0; off < payload.size(); off += kDataChunk) {
+        s->xfer.pendingYappFrames.append(yappFrame('D', payload.mid(off, kDataChunk)));
+    }
+    s->xfer.pendingYappFrames.append(yappFrame('E', QByteArray()));
+    s->xfer.framesPlanned = s->xfer.pendingYappFrames.size();
+    s->xfer.framesSent = 0;
+
+    QByteArray info = QString("*** Peer accepted — sending %1 (%2 bytes, %3 frames)")
+        .arg(s->xfer.name).arg(s->xfer.total).arg(s->xfer.framesPlanned).toUtf8();
+    QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);
+    termAppendScrollback(s, e);
+    termBroadcastData(s->sid, e);
+
+    // Re-broadcast xferStart so the UI transitions from "awaiting" to "active".
+    xferBroadcastStart(s);
+    qInfo().noquote() << "Web: YAPP TX start (post-RR)" << s->sid
+                      << s->xfer.name << s->xfer.total << "B"
+                      << s->xfer.framesPlanned << "frames";
+
+    // Queue the first frame; subsequent frames are pumped from
+    // onPacketTxReady once the previous one's audio is ready.
+    yappPumpNextFrame(s);
+}
+
+void webServer::yappPumpNextFrame(TerminalSession *s)
+{
+    if (!axProc || !s->xfer.active || s->xfer.dir != "tx") return;
+
+    // Abort interrupts the pump.  AB jumps the queue: we clear any
+    // remaining YAPP frames that haven't been handed to ax25_link yet,
+    // then send AB as the very next frame.
+    if (s->xfer.abortPending) {
+        s->xfer.pendingYappFrames.clear();
+        QByteArray abFrame = yappFrame('A', QByteArray());
+        QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
+            Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, s->chan),
+            Q_ARG(QString, s->ownCall), Q_ARG(QString, s->peerCall),
+            Q_ARG(QStringList, s->digis), Q_ARG(int, 0xF0),
+            Q_ARG(QByteArray, abFrame));
+        QByteArray info = QStringLiteral("*** Transfer aborted").toUtf8();
+        QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);
+        termAppendScrollback(s, e);
+        termBroadcastData(s->sid, e);
+        xferBroadcastEnd(s, /*aborted=*/true);
+        s->xfer = XferState{};
+        return;
+    }
+
+    if (s->xfer.pendingYappFrames.isEmpty()) return;
+
+    QByteArray frame = s->xfer.pendingYappFrames.takeFirst();
+    QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
+        Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, s->chan),
+        Q_ARG(QString, s->ownCall), Q_ARG(QString, s->peerCall),
+        Q_ARG(QStringList, s->digis), Q_ARG(int, 0xF0),
+        Q_ARG(QByteArray, frame));
+}
+
+webServer::TerminalSession *webServer::yappFindActiveTxXfer()
+{
+    for (TerminalSession *s : termSessions) {
+        if (s->xfer.active && s->xfer.dir == "tx"
+            && s->xfer.phase == "active") return s;
+    }
+    return nullptr;
 }
 
 void webServer::yappAbortSend(TerminalSession *s)
