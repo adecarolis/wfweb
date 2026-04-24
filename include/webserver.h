@@ -112,6 +112,9 @@ public slots:
     void setupAudio(quint8 codec, quint32 sampleRate);
     void setupUsbAudio(quint32 sampleRate);
     void setLanInfo(bool isLan, bool connected);
+    // Settings file used for persistent prefs written from the web layer.
+    // Empty = use QSettings defaults (QCoreApplication org/app name).
+    void setSettingsFile(const QString &path);
 private slots:
     // HTTP
     void onHttpConnection();
@@ -337,6 +340,12 @@ private:
     static constexpr int TERM_FIXED_CLIENT = 1;
     static constexpr int TERM_SCROLLBACK_MAX = 1000;
     QSet<QString> termRegisteredOwnCalls;   // tracked so we don't double-register
+
+    // QSettings backing file — populated by servermain after getSettingsFilePath
+    // resolves the -s flag.  Empty means "use the default (QSettings org/app)".
+    QString packetSettingsFile_;
+    void    packetLoadSettings();
+    void    packetSaveSettings();
 
     QString termMakeSid();
     QJsonObject termSessionToJson(const TerminalSession *s) const;

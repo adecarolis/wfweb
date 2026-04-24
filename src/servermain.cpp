@@ -86,6 +86,13 @@ servermain::servermain(const QString settingsFile, const cmdLineOverrides& overr
         webThread = new QThread(this);
         webThread->setObjectName("WebServer()");
         web->moveToThread(webThread);
+        // Hand the resolved settings-file path so webServer can persist its
+        // own prefs (e.g. packetEnabled/packetMode) into the same file the
+        // -s flag pointed at.
+        if (settings) {
+            QMetaObject::invokeMethod(web, "setSettingsFile", Qt::QueuedConnection,
+                                      Q_ARG(QString, settings->fileName()));
+        }
         connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), web, SLOT(receiveRigCaps(rigCapabilities*)));
         connect(webThread, SIGNAL(finished()), web, SLOT(deleteLater()));
         connect(web, &webServer::requestPowerOn, this, &servermain::powerRigOn);
