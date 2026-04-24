@@ -160,6 +160,14 @@
         }
 
         framesEl = document.getElementById('packetFrames');
+        if (framesEl) {
+            framesEl.addEventListener('click', function(e) {
+                var link = e.target.closest && e.target.closest('.callsign-link');
+                if (!link) return;
+                var call = link.getAttribute('data-call');
+                if (call) setPeerFromMonitor(call);
+            });
+        }
         scopeCanvas = document.getElementById('packetScopeCanvas');
         if (scopeCanvas) {
             scopeCtx = scopeCanvas.getContext('2d');
@@ -304,6 +312,9 @@
             '.packet-frame.tx .ftype { color: #fc8; }' +
             '.packet-frame .info { color: #cfc; margin-left: 6px; }' +
             '.packet-frame .info.binary { color: #888; font-style: italic; }' +
+            '.packet-frame .digi { color: #888; }' +
+            '.packet-frame .callsign-link { cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }' +
+            '.packet-frame .callsign-link:hover { background: #003300; color: #fff; }' +
             '.packet-empty { color: #666; padding: 8px; text-align: center; }' +
             '.flex-space { flex: 1; }' +
             // Tab strip
@@ -700,6 +711,38 @@
             .replace(/>/g, '&gt;');
     }
 
+    // Real amateur callsigns always contain at least one digit (ITU rule).
+    // Service identifiers in the AX.25 destination field — BEACON, MAIL,
+    // APRS, ID, FBB, MBX — are letters only and shouldn't be offered as
+    // connect targets, so we skip the click affordance for those.
+    function looksLikeCallsign(s) {
+        if (!s) return false;
+        if (!/^[A-Z0-9]{1,6}(-[0-9]{1,2})?$/i.test(s)) return false;
+        return /[0-9]/.test(s.split('-')[0]);
+    }
+
+    // Treat "K1FM" and "K1FM-0" as the same station (AX.25 SSID 0 == bare).
+    function normalizeCall(s) {
+        var u = String(s || '').trim().toUpperCase();
+        return u.replace(/-0$/, '');
+    }
+
+    function isOwnCallsign(s) {
+        var own = normalizeCall(state.terminal && state.terminal.compose && state.terminal.compose.ownCall);
+        if (!own) return false;
+        return normalizeCall(s) === own;
+    }
+
+    function callsignSpan(s, cssClass) {
+        var safe = escapeHtml(s);
+        if (looksLikeCallsign(s) && !isOwnCallsign(s)) {
+            return '<span class="' + cssClass + ' callsign-link"'
+                 + ' data-call="' + safe + '"'
+                 + ' title="Click to set as terminal peer">' + safe + '</span>';
+        }
+        return '<span class="' + cssClass + '">' + safe + '</span>';
+    }
+
     function infoLooksBinary(s) {
         // The backend delivers info as Latin-1 (each JS char == one raw byte).
         // "Looks binary" = any byte outside printable ASCII, excluding the
@@ -725,9 +768,17 @@
         var html = '';
         for (var i = 0; i < state.frames.length; i++) {
             var f = state.frames[i];
-            var pathStr = Array.isArray(f.path) && f.path.length > 0
-                ? ' via ' + escapeHtml(f.path.join(','))
-                : '';
+            var pathStr = '';
+            if (Array.isArray(f.path) && f.path.length > 0) {
+                pathStr = ' via ';
+                for (var p = 0; p < f.path.length; p++) {
+                    if (p > 0) pathStr += ',';
+                    // Strip any "*" used-digi marker before the callsign test.
+                    var digi = String(f.path[p] || '');
+                    var bare = digi.replace(/\*$/, '');
+                    pathStr += callsignSpan(bare, 'digi') + (digi.endsWith('*') ? '*' : '');
+                }
+            }
             var ftypeStr = f.ftype
                 ? ' <span class="ftype">[' + escapeHtml(f.ftype) + ']</span>'
                 : '';
@@ -743,9 +794,9 @@
                 '<div class="packet-frame' + (f.tx ? ' tx' : '') + '">' +
                     '<span class="ts">' + escapeHtml(formatTs(f.ts)) + '</span>' +
                     '<span class="chan">' + (f.tx ? 'TX' : 'ch' + escapeHtml(f.chan)) + '</span>' +
-                    '<span class="src">' + escapeHtml(f.src) + '</span>' +
+                    callsignSpan(f.src, 'src') +
                     ' &gt; ' +
-                    '<span class="dst">' + escapeHtml(f.dst) + '</span>' +
+                    callsignSpan(f.dst, 'dst') +
                     '<span class="path">' + pathStr + '</span>' +
                     ftypeStr +
                     infoStr +
@@ -1040,6 +1091,21 @@
 
     // ---------------------------------------------------------------------
     // Tab + terminal handling
+
+    // Click target for callsigns rendered in the monitor pane.  Sets the
+    // terminal peer field, persists the compose state, and switches to the
+    // terminal tab so the operator can review channel/digis and hit Connect.
+    // Deliberately does NOT auto-connect — clicking should never key the
+    // radio without an explicit second action.
+    function setPeerFromMonitor(call) {
+        var peer = String(call || '').trim().toUpperCase();
+        if (!peer) return;
+        state.terminal.compose.peerCall = peer;
+        var peerEl = document.getElementById('termPeerCall');
+        if (peerEl) peerEl.value = peer;
+        saveTermComposeToStorage();
+        setActiveTab('term');
+    }
 
     function setActiveTab(name) {
         if (name !== 'aprs' && name !== 'term') return;

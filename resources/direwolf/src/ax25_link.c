@@ -2363,14 +2363,38 @@ void lm_data_indication (dlq_item_t *E)
 
 	ftype = ax25_frame_type (E->pp, &cr, desc, &pf, &nr, &ns);
 
-	// wfweb patch: also create a fresh DLSM for an incoming DISC addressed
-	// to one of our registered callsigns.  Upstream only creates on SABM/
-	// SABME, so a peer retrying DISC at a station with no prior link context
-	// was silently ignored — non-compliant with AX.25 v2.x §6.3.3 which
-	// requires DM (F=1) in response.  With a DLSM in state_0_disconnected,
-	// the existing DISC handler at disc_frame() emits DM naturally.
+	// wfweb patch: create a transient state_0_disconnected DLSM for any
+	// incoming COMMAND frame other than {SABM, SABME, UI} addressed to one
+	// of our registered callsigns when no link state exists.  Upstream only
+	// does this for SABM/SABME, so DISC/I/RR/RNR/REJ/SREJ commands arriving
+	// with no prior link context get silently dropped — non-compliant with
+	// AX.25 v2.x §4.3.3.5 / §6.5, which require a DM (F=1) response to any
+	// such command while in the disconnected state.
+	//
+	// The per-frame handlers (disc_frame, i_frame, rr_rnr_frame, rej_frame,
+	// srej_frame) already have correct state_0_disconnected branches that
+	// emit DM — they were just unreachable from lm_data_indication without
+	// a freshly-created DLSM to dispatch into.
+	//
+	// Closes the post-timeout silence we observed: after our side dropped a
+	// link via T1 timeout, the peer's retried RR polls went unanswered for
+	// 90+s until its own retry budget ran out.  With DM emitted on the
+	// first stray poll, the peer clears state immediately.
+	//
+	// The new frame types are gated on cr_cmd because RR/I/REJ are valid
+	// RESPONSE frames in normal operation; only the command form elicits
+	// DM per spec, and creating a DLSM for a stray response would be a
+	// pointless allocation.
 	S = get_link_handle (E->addrs, E->num_addr, E->chan, client_not_applicable,
-				(ftype == frame_type_U_SABM) | (ftype == frame_type_U_SABME) | (ftype == frame_type_U_DISC));
+				(ftype == frame_type_U_SABM)
+			  | (ftype == frame_type_U_SABME)
+			  | (cr == cr_cmd && (
+					 ftype == frame_type_U_DISC
+				  || ftype == frame_type_I
+				  || ftype == frame_type_S_RR
+				  || ftype == frame_type_S_RNR
+				  || ftype == frame_type_S_REJ
+				  || ftype == frame_type_S_SREJ)));
 
 	if (S == NULL) {
 	  return;
