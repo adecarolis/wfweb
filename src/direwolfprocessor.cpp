@@ -239,72 +239,6 @@ void DireWolfProcessor::processRx(audioPacket audio)
     for (int i = 0; i < modemCount; i++) {
         multi_modem_process_sample(0, (int)modemPtr[i]);
     }
-
-    // Opportunistic audio capture for offline debugging.  Grab samples
-    // post-resample (at modemRate_) so what we save is exactly what the
-    // demodulator sees — replayable via `wfweb --packet-decode-wav`.
-    if (captureActive_) {
-        int want = captureSamplesTarget_ - (capturePcm_.size() / (int)sizeof(qint16));
-        int take = qMin(want, modemCount);
-        if (take > 0) {
-            capturePcm_.append(reinterpret_cast<const char *>(modemPtr),
-                               take * (int)sizeof(qint16));
-        }
-        if (capturePcm_.size() / (int)sizeof(qint16) >= captureSamplesTarget_) {
-            captureActive_ = false;
-
-            // Write 16-bit mono RIFF/WAVE at modemRate_.
-            QFile f(capturePath_);
-            if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-                emit captureFailed(QString("cannot open %1").arg(capturePath_));
-                capturePcm_.clear();
-                return;
-            }
-            auto u32 = [&](quint32 v) { char b[4] = {
-                (char)(v & 0xff), (char)((v >> 8) & 0xff),
-                (char)((v >> 16) & 0xff), (char)((v >> 24) & 0xff) };
-                f.write(b, 4); };
-            auto u16 = [&](quint16 v) { char b[2] = {
-                (char)(v & 0xff), (char)((v >> 8) & 0xff) };
-                f.write(b, 2); };
-            int nBytes = capturePcm_.size();
-            f.write("RIFF", 4);  u32(36 + nBytes);
-            f.write("WAVE", 4);
-            f.write("fmt ", 4);  u32(16); u16(1); u16(1);
-            u32((quint32)modemRate_);        u32((quint32)modemRate_ * 2);
-            u16(2);              u16(16);
-            f.write("data", 4);  u32((quint32)nBytes);
-            f.write(capturePcm_);
-            f.close();
-
-            int samples = capturePcm_.size() / (int)sizeof(qint16);
-            qCInfo(logWebServer) << "DireWolf: capture wrote"
-                                 << capturePath_ << samples << "samples @"
-                                 << modemRate_ << "Hz";
-            capturePcm_.clear();
-            emit captureComplete(capturePath_, modemRate_, samples);
-        }
-    }
-}
-
-void DireWolfProcessor::startCapture(int seconds, const QString &path)
-{
-    if (captureActive_) {
-        emit captureFailed("capture already in progress");
-        return;
-    }
-    if (!enabled_ || !dwCfg) {
-        emit captureFailed("packet modem not enabled");
-        return;
-    }
-    if (seconds <= 0 || seconds > 60) seconds = 10;
-    capturePath_ = path;
-    capturePcm_.clear();
-    capturePcm_.reserve(seconds * modemRate_ * (int)sizeof(qint16));
-    captureSamplesTarget_ = seconds * modemRate_;
-    captureActive_ = true;
-    qCInfo(logWebServer) << "DireWolf: capturing" << seconds
-                         << "s @" << modemRate_ << "Hz ->" << path;
 }
 
 void DireWolfProcessor::transmitFrame(QString monitor)
@@ -327,6 +261,17 @@ void DireWolfProcessor::transmitFrame(QString monitor)
         emit txFailed(QStringLiteral("malformed packet: %1").arg(monitor));
         return;
     }
+
+    // Render the frame on the wire before keying — pp already has everything
+    // we need; compute the raw bytes via ax25_pack for the hex preview.
+    unsigned char frameBytesBuf[AX25_MAX_PACKET_LEN];
+    int frameLen = ax25_pack(pp, frameBytesBuf);
+    QByteArray frameBytes;
+    if (frameLen > 0) {
+        frameBytes = QByteArray(reinterpret_cast<const char *>(frameBytesBuf), frameLen);
+    }
+    QJsonObject monFrame = buildFrameJson(pp, frameBytes, 0, 0);
+    emit txFrameDecoded(0, monFrame);
 
     // Clear before encoding so txPcmBuffer holds exactly this burst.
     txPcmBuffer.clear();
@@ -470,6 +415,10 @@ void DireWolfProcessor::encodeAndEmitFrame(const QByteArray &frame)
         return;
     }
 
+    // Surface the outgoing frame to the UI monitor before we tear pp down.
+    QJsonObject monFrame = buildFrameJson(pp, frame, 0, 0);
+    emit txFrameDecoded(0, monFrame);
+
     txPcmBuffer.clear();
     layer2_preamble_postamble(0, 32, 0, dwCfg);
     layer2_send_frame(0, pp, 0, dwCfg);
@@ -520,6 +469,77 @@ void DireWolfProcessor::encodeAndEmitFrame(const QByteArray &frame)
     emit txReady(pkt);
 }
 
+QJsonObject DireWolfProcessor::buildFrameJson(void *packet,
+                                              const QByteArray &rawBytes,
+                                              int chan, int alevel)
+{
+    packet_t pp = static_cast<packet_t>(packet);
+    QJsonObject frame;
+    frame["chan"] = chan;
+    frame["level"] = alevel;
+    frame["ts"] = QDateTime::currentMSecsSinceEpoch();
+
+    char addr[AX25_MAX_ADDR_LEN] = {0};
+    if (ax25_get_num_addr(pp) >= 2) {
+        ax25_get_addr_with_ssid(pp, AX25_DESTINATION, addr);
+        frame["dst"] = QString::fromLatin1(addr);
+        ax25_get_addr_with_ssid(pp, AX25_SOURCE, addr);
+        frame["src"] = QString::fromLatin1(addr);
+
+        QJsonArray path;
+        int nAddr = ax25_get_num_addr(pp);
+        for (int i = AX25_REPEATER_1; i < nAddr; i++) {
+            ax25_get_addr_with_ssid(pp, i, addr);
+            path.append(QString::fromLatin1(addr));
+        }
+        frame["path"] = path;
+    }
+
+    unsigned char *info = nullptr;
+    int infoLen = ax25_get_info(pp, &info);
+    if (info && infoLen > 0) {
+        frame["info"] = QString::fromLatin1(reinterpret_cast<const char *>(info), infoLen);
+    }
+
+    // Frame-type label (SABM / UA / I / RR / UI ...).  ax25_frame_type()
+    // carries a "TERRIBLE HACK" in Dire Wolf that MUTATES the packet's
+    // modulo field when it can't decide between v2.0 and v2.2 — which
+    // for any I-frame with PID 0xF0 flips the packet to modulo_128 and
+    // makes layer2_send_frame emit bytes the peer cannot ACK.  Classify
+    // on a clone so the caller's pp is never touched.
+    packet_t ppClone = ax25_dup(pp);
+    cmdres_t cr = cr_11;
+    char desc[64] = {0};
+    int pf = 0, nr = 0, ns = 0;
+    ax25_frame_type_t ft = ppClone
+        ? ax25_frame_type(ppClone, &cr, desc, &pf, &nr, &ns)
+        : frame_not_AX25;
+    QString typeLabel;
+    switch (ft) {
+        case frame_type_I:       typeLabel = QString("I N(S)=%1 N(R)=%2").arg(ns).arg(nr); break;
+        case frame_type_S_RR:    typeLabel = QString("RR N(R)=%1").arg(nr); break;
+        case frame_type_S_RNR:   typeLabel = QString("RNR N(R)=%1").arg(nr); break;
+        case frame_type_S_REJ:   typeLabel = QString("REJ N(R)=%1").arg(nr); break;
+        case frame_type_S_SREJ:  typeLabel = QString("SREJ N(R)=%1").arg(nr); break;
+        case frame_type_U_SABME: typeLabel = "SABME"; break;
+        case frame_type_U_SABM:  typeLabel = "SABM";  break;
+        case frame_type_U_DISC:  typeLabel = "DISC";  break;
+        case frame_type_U_DM:    typeLabel = "DM";    break;
+        case frame_type_U_UA:    typeLabel = "UA";    break;
+        case frame_type_U_FRMR:  typeLabel = "FRMR";  break;
+        case frame_type_U_UI:    typeLabel = "UI";    break;
+        case frame_type_U_XID:   typeLabel = "XID";   break;
+        case frame_type_U_TEST:  typeLabel = "TEST";  break;
+        case frame_type_U:       typeLabel = "U?";    break;
+        case frame_not_AX25:     typeLabel = "?";     break;
+        default:                 typeLabel = QString::fromLatin1(desc); break;
+    }
+    frame["ftype"] = typeLabel;
+    frame["rawHex"] = QString::fromLatin1(rawBytes.toHex());
+    if (ppClone) ax25_delete(ppClone);
+    return frame;
+}
+
 void DireWolfProcessor::onRxFrameFromC(int chan, int subchan, int slice,
                                        const QByteArray &ax25,
                                        int alevelRec, int alevelMark,
@@ -543,37 +563,12 @@ void DireWolfProcessor::onRxFrameFromC(int chan, int subchan, int slice,
         return;
     }
 
-    char addr[AX25_MAX_ADDR_LEN] = {0};
-    QJsonObject frame;
-    frame["chan"] = chan;
-    frame["level"] = alevelRec;
-    frame["ts"] = QDateTime::currentMSecsSinceEpoch();
-
-    if (ax25_get_num_addr(pp) >= 2) {
-        ax25_get_addr_with_ssid(pp, AX25_DESTINATION, addr);
-        frame["dst"] = QString::fromLatin1(addr);
-        ax25_get_addr_with_ssid(pp, AX25_SOURCE, addr);
-        frame["src"] = QString::fromLatin1(addr);
-
-        QJsonArray path;
-        int nAddr = ax25_get_num_addr(pp);
-        for (int i = AX25_REPEATER_1; i < nAddr; i++) {
-            ax25_get_addr_with_ssid(pp, i, addr);
-            path.append(QString::fromLatin1(addr));
-        }
-        frame["path"] = path;
-    }
-
-    unsigned char *info = nullptr;
-    int infoLen = ax25_get_info(pp, &info);
-    if (info && infoLen > 0) {
-        frame["info"] = QString::fromLatin1(reinterpret_cast<const char *>(info), infoLen);
-    }
-    frame["rawHex"] = QString::fromLatin1(ax25.toHex());
+    QJsonObject frame = buildFrameJson(pp, ax25, chan, alevelRec);
 
     qCInfo(logWebServer).noquote() << "DireWolf RX ch" << chan
                                    << frame.value("src").toString() << ">"
                                    << frame.value("dst").toString()
+                                   << frame.value("ftype").toString()
                                    << "info:" << frame.value("info").toString();
 
     emit rxFrameDecoded(chan, frame);

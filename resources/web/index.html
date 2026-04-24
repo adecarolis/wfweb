@@ -4799,6 +4799,14 @@ function handleBinaryMessage(buffer) {
     var view = new DataView(buffer);
     var msgType = view.getUint8(0);
     if (msgType === 0x02) { handleAudioData(buffer); return; }
+    if (msgType === 0x04) {
+        // TX audio echo — visualisation-only PCM teed from the server so the
+        // packet waterfall can show the outgoing signal while the radio is keyed.
+        if (window.Packet && typeof window.Packet.onTxAudio === 'function') {
+            window.Packet.onTxAudio(buffer);
+        }
+        return;
+    }
     if (msgType !== 0x01 || buffer.byteLength < 13) return;
     if (scopeFreezeDuringDrag) return;
     if (scopeDragPendingReset) { scopeDragPendingReset = false; scopeSetVisualPan(0); }

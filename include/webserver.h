@@ -162,6 +162,7 @@ private slots:
 #ifdef PACKET_SUPPORT
     // Dire Wolf packet (AX.25 / APRS)
     void onPacketRxDecoded(int chan, QJsonObject frame);
+    void onPacketTxDecoded(int chan, QJsonObject frame);
     void onPacketTxReady(audioPacket audio);
     void onPacketTxFailed(QString reason);
     void drainPacketLanTxBuffer();

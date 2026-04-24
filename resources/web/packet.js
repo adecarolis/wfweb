@@ -13,6 +13,7 @@
         mode: 300,             // 300 (HF AFSK), 1200 (VHF AFSK), or 9600 (VHF G3RUH)
         frames: [],
         txBusy: false,         // true between packetTxStarted and packetTxComplete/Failed
+        txActiveUntilMs: 0,    // waterfall tints columns red while Date.now() < this
         compose: {             // last-used TX fields (persisted to localStorage)
             src:  'N0CALL',
             dst:  'APRS',
@@ -45,19 +46,37 @@
         1200: { minHz:  500, maxHz: 3000, mark: 1200, space: 2200 },
         9600: { minHz:    0, maxHz: 5000, mark:    0, space:    0 }  // baseband
     };
-    var FFT_SIZE = 8192;   // ~6 Hz/bin at 48 kHz — resolves the 200 Hz shift
-                           // of 300 AFSK (1600/1800) with clear separate ridges.
-    var MIN_DB = -90;
-    var MAX_DB = -30;
+    // 2048 pts balances temporal vs. frequency detail: ~43 ms window at
+    // 48 kHz (short enough that 9600-bd bursts line up roughly with their
+    // red stripe) and 23 Hz/bin — plenty of structure inside 300-AFSK's
+    // 200 Hz mark/space shift without smearing short bursts across the
+    // whole panel.  Paired with bin interpolation in paintScope(), the
+    // on-screen gradient looks sharper than the raw bin count suggests.
+    var FFT_SIZE = 2048;
+    var MIN_DB = -120;
+    var MAX_DB = -20;
+    // AGC keeps the column MEAN (noise floor proxy) at a dim-blue level so
+    // actual signals pop above it.  Max-tracking (previous algorithm) made
+    // noise grow brighter over idle RX because only a handful of bins
+    // drove the target — mean is dominated by the noise floor.
+    var AGC_GAIN_MIN = 0.2;
+    var AGC_GAIN_MAX = 20;
+    var AGC_TARGET_HI = 60;    // if EMA(mean) exceeds this, turn gain down
+    var AGC_TARGET_LO = 30;    // if EMA(mean) drops below this, turn gain up
 
     // Audio-graph nodes owned by this panel.  These are inserted between
     // the webserver's AudioWorklet and audioGainNode — see cw-decoder.js
     // for the same pattern.
     var audioContext = null;
     var analyserNode = null;
+    var boostGain = null;       // AGC-controlled — RX path only
+    var txFixedGain = null;     // constant attenuator on the TX-echo path to the same analyser
+    var txNextStart = 0;        // next playback time for TX-echo buffers on the shared analyser
     var rafId = null;
     var lastPaintMs = 0;
     var scopeColorLUT = null;
+    var agcEmaMean = 40;       // EMA of per-column mean byte value — the AGC's reference
+    var agcFrame = 0;
 
     function init() {
         buildUI();
@@ -79,12 +98,14 @@
                 '<button id="packetMode1200" class="packet-mode-btn" data-mode="1200" title="1200 bps AFSK Bell 202 (VHF / APRS)">1200 AFSK</button>' +
                 '<button id="packetMode9600" class="packet-mode-btn" data-mode="9600" title="9600 bps G3RUH FSK (VHF)">9600 FSK</button>' +
                 '<div class="flex-space"></div>' +
-                '<button id="packetCaptureBtn" class="packet-action-btn" title="Save 10 seconds of incoming audio (as seen by the demodulator) to a WAV file">Save 10s</button>' +
-                '<span id="packetCaptureStatus" class="packet-capture-status"></span>' +
                 '<button id="packetClearBtn" class="packet-action-btn" title="Clear frame list">Clear</button>' +
                 '<button id="packetCloseBtn" class="packet-close-btn">&#x2715;</button>' +
             '</div>' +
             '<canvas id="packetScopeCanvas" class="packet-scope"></canvas>' +
+            '<div class="packet-monitor">' +
+                '<div class="packet-monitor-label">MONITOR</div>' +
+                '<div id="packetFrames" class="packet-frames"></div>' +
+            '</div>' +
             '<div class="packet-tabs">' +
                 '<button id="packetTabAprs" class="packet-tab-btn active" data-tab="aprs">APRS</button>' +
                 '<button id="packetTabTerm" class="packet-tab-btn" data-tab="term">TERMINAL</button>' +
@@ -98,7 +119,6 @@
                     '<button id="packetTxBtn" class="packet-send-btn" title="Transmit a single AX.25 UI frame">TX</button>' +
                     '<span id="packetTxStatus" class="packet-tx-status"></span>' +
                 '</div>' +
-                '<div id="packetFrames" class="packet-frames"></div>' +
             '</div>' +
             '<div id="packetTermPane" class="packet-pane hidden">' +
                 '<div class="term-bar">' +
@@ -151,7 +171,6 @@
             })(modeBtns[i]);
         }
         document.getElementById('packetClearBtn').onclick = clearFrames;
-        document.getElementById('packetCaptureBtn').onclick = captureAudio;
         document.getElementById('packetCloseBtn').onclick = hide;
 
         loadComposeFromStorage();
@@ -233,7 +252,9 @@
         style.textContent =
             '.packet-bar { position: fixed; top: 134px; left: 0; right: 0; bottom: 48px; background: #001008; border-top: 2px solid #0a0; z-index: 200; padding: 6px 8px; color: #cfc; font-family: monospace; font-size: 12px; display: flex; flex-direction: column; min-height: 0; box-sizing: border-box; }' +
             'body.packet-open #spectrumCanvas, body.packet-open #waterfallCanvas { display: none !important; }' +
-            '.packet-scope { width: 100%; height: 40%; min-height: 80px; background: #000; border: 1px solid #0a0; border-radius: 3px; margin-bottom: 6px; display: block; }' +
+            '.packet-scope { width: 100%; height: 13%; min-height: 40px; background: #000; border: 1px solid #0a0; border-radius: 3px; margin-bottom: 6px; display: block; }' +
+            '.packet-monitor { display: flex; flex-direction: column; min-height: 0; flex: 1 1 0; margin-bottom: 6px; }' +
+            '.packet-monitor-label { color: #0f0; font-weight: bold; letter-spacing: 1px; font-size: 10px; margin-bottom: 2px; }' +
             '@media (max-height: 450px) { .packet-bar { top: 112px; bottom: 40px; } }' +
             '.packet-frames-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }' +
             '.packet-bar.hidden { display: none; }' +
@@ -245,8 +266,6 @@
             '.packet-action-btn, .packet-close-btn { background: #111; border: 1px solid #555; color: #ccc; padding: 2px 8px; font-family: monospace; font-size: 10px; cursor: pointer; border-radius: 3px; }' +
             '.packet-action-btn:hover, .packet-close-btn:hover { background: #333; color: #fff; }' +
             '.packet-action-btn:disabled { opacity: 0.5; cursor: default; }' +
-            '.packet-capture-status { color: #8c8; font-size: 10px; margin-left: 4px; min-width: 120px; }' +
-            '.packet-capture-status.err { color: #f66; }' +
             '.packet-compose { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 10px; color: #8c8; }' +
             '.packet-compose label { display: flex; align-items: center; gap: 3px; }' +
             '.packet-tx-field, .packet-tx-info { background: #001a00; border: 1px solid #0a0; color: #cfc; font-family: monospace; font-size: 11px; padding: 2px 4px; border-radius: 2px; outline: none; text-transform: uppercase; }' +
@@ -265,9 +284,12 @@
             '.packet-frame .src { color: #ff0; }' +
             '.packet-frame .dst { color: #0ff; }' +
             '.packet-frame .path { color: #888; }' +
-            '.packet-frame.tx { background: #001a00; }' +
+            '.packet-frame .ftype { color: #8cf; font-weight: bold; margin-left: 4px; }' +
+            '.packet-frame.tx { background: #1a0a00; }' +
             '.packet-frame.tx .chan { color: #f80; font-weight: bold; }' +
+            '.packet-frame.tx .ftype { color: #fc8; }' +
             '.packet-frame .info { color: #cfc; margin-left: 6px; }' +
+            '.packet-frame .info.binary { color: #888; font-style: italic; }' +
             '.packet-empty { color: #666; padding: 8px; text-align: center; }' +
             '.flex-space { flex: 1; }' +
             // Tab strip
@@ -275,7 +297,7 @@
             '.packet-tab-btn { background: #001a00; border: 1px solid #0a0; border-bottom: none; color: #0a0; padding: 4px 14px; font-family: monospace; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 3px 3px 0 0; }' +
             '.packet-tab-btn.active { background: #0a0; color: #000; }' +
             '.packet-tab-btn:hover:not(.active) { background: #0a0; color: #000; }' +
-            '.packet-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; }' +
+            '.packet-pane { flex: 3 1 0; min-height: 0; display: flex; flex-direction: column; }' +
             '.packet-pane.hidden { display: none; }' +
             // Terminal pane
             '.term-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 10px; color: #8c8; flex-wrap: wrap; }' +
@@ -417,47 +439,28 @@
         if (!msg || !msg.type) return;
         if (msg.type === 'packetRxFrame') {
             appendFrame(msg);
+            // Don't extend txActiveUntilMs here — onTxAudio() is the one
+            // authoritative source, driven by the actual PCM being played
+            // into the analyser.  Bumping it here left the stripe lingering
+            // for up to 2.5 s past the real TX end.
         } else if (msg.type === 'packetStatus') {
             state.enabled = !!msg.enabled;
             if (typeof msg.mode === 'number') {
                 state.mode = msg.mode;
                 updateModeButtons();
             }
-        } else if (msg.type === 'packetCaptureStarted') {
-            setCaptureStatus('capturing ' + msg.seconds + 's…', false);
-        } else if (msg.type === 'packetCaptureComplete') {
-            setCaptureStatus('saved ' + msg.path +
-                ' (' + msg.samples + ' samples @ ' + msg.sampleRate + ' Hz)', false);
-            var btn = document.getElementById('packetCaptureBtn');
-            if (btn) btn.disabled = false;
-        } else if (msg.type === 'packetCaptureFailed') {
-            setCaptureStatus('capture failed: ' + (msg.reason || 'unknown'), true);
-            var btn = document.getElementById('packetCaptureBtn');
-            if (btn) btn.disabled = false;
         } else if (msg.type === 'packetTxStarted') {
             state.txBusy = true;
+            // Stripe window is driven by onTxAudio(), not by this event.
             setTxStatus('transmitting…', false);
             setTxButtonEnabled(false);
-            // Echo our own TX frame into the log so the operator sees it.
-            var parts = parseMonitor(msg.monitor);
-            if (parts) {
-                appendFrame({
-                    type: 'packetRxFrame',
-                    chan: 0,
-                    src: parts.src,
-                    dst: parts.dst,
-                    path: parts.path,
-                    info: parts.info,
-                    ts: Date.now(),
-                    tx: true
-                });
-            }
         } else if (msg.type === 'packetTxComplete') {
             state.txBusy = false;
             setTxStatus('sent', false);
             setTxButtonEnabled(true);
         } else if (msg.type === 'packetTxFailed') {
             state.txBusy = false;
+            state.txActiveUntilMs = 0;
             setTxStatus('TX failed: ' + (msg.reason || 'unknown'), true);
             setTxButtonEnabled(true);
         } else if (msg.type === 'termSession') {
@@ -562,22 +565,6 @@
         renderTerm();
     }
 
-    function parseMonitor(s) {
-        // "SRC>DST[,PATH,...]:info"
-        if (!s) return null;
-        var colon = s.indexOf(':');
-        if (colon < 0) return null;
-        var header = s.substring(0, colon);
-        var info   = s.substring(colon + 1);
-        var gt = header.indexOf('>');
-        if (gt < 0) return null;
-        var src = header.substring(0, gt);
-        var rest = header.substring(gt + 1).split(',');
-        var dst = rest[0];
-        var path = rest.slice(1);
-        return { src: src, dst: dst, path: path, info: info };
-    }
-
     function setTxStatus(text, isError) {
         var el = document.getElementById('packetTxStatus');
         if (!el) return;
@@ -646,24 +633,6 @@
         } catch (e) { /* quota exceeded — ignore */ }
     }
 
-    function captureAudio() {
-        if (!state.enabled) {
-            setCaptureStatus('enable packet modem first', true);
-            return;
-        }
-        var btn = document.getElementById('packetCaptureBtn');
-        if (btn) btn.disabled = true;
-        setCaptureStatus('requesting…', false);
-        if (window.send) window.send({ cmd: 'packetCaptureAudio', seconds: 10 });
-    }
-
-    function setCaptureStatus(text, isError) {
-        var el = document.getElementById('packetCaptureStatus');
-        if (!el) return;
-        el.textContent = text;
-        el.classList.toggle('err', !!isError);
-    }
-
     function appendFrame(frame) {
         state.frames.push(frame);
         if (state.frames.length > FRAME_BUFFER_MAX) {
@@ -693,6 +662,22 @@
             .replace(/>/g, '&gt;');
     }
 
+    function infoLooksBinary(s) {
+        // The backend delivers info as Latin-1 (each JS char == one raw byte).
+        // "Looks binary" = any byte outside printable ASCII, excluding the
+        // usual CR/LF/TAB that show up in AX.25 I-frames.  YAPP file-transfer
+        // payloads (0x01 headers, 0x02 data, random bytes) trip the first
+        // non-printable char almost immediately; don't even try to render.
+        if (!s) return false;
+        var n = Math.min(s.length, 64);
+        for (var i = 0; i < n; i++) {
+            var c = s.charCodeAt(i);
+            if (c === 0x09 || c === 0x0a || c === 0x0d) continue;
+            if (c < 0x20 || c > 0x7e) return true;
+        }
+        return false;
+    }
+
     function renderFrames() {
         if (!framesEl) return;
         if (state.frames.length === 0) {
@@ -705,6 +690,17 @@
             var pathStr = Array.isArray(f.path) && f.path.length > 0
                 ? ' via ' + escapeHtml(f.path.join(','))
                 : '';
+            var ftypeStr = f.ftype
+                ? ' <span class="ftype">[' + escapeHtml(f.ftype) + ']</span>'
+                : '';
+            var infoStr = '';
+            if (f.info) {
+                if (infoLooksBinary(f.info)) {
+                    infoStr = ' <span class="info binary">&lt;' + f.info.length + ' bytes binary&gt;</span>';
+                } else {
+                    infoStr = ' <span class="info">' + escapeHtml(f.info) + '</span>';
+                }
+            }
             html +=
                 '<div class="packet-frame' + (f.tx ? ' tx' : '') + '">' +
                     '<span class="ts">' + escapeHtml(formatTs(f.ts)) + '</span>' +
@@ -713,7 +709,8 @@
                     ' &gt; ' +
                     '<span class="dst">' + escapeHtml(f.dst) + '</span>' +
                     '<span class="path">' + pathStr + '</span>' +
-                    '<span class="info">' + escapeHtml(f.info) + '</span>' +
+                    ftypeStr +
+                    infoStr +
                 '</div>';
         }
         framesEl.innerHTML = html;
@@ -725,10 +722,8 @@
     //
     // Mirrors cw-decoder.js: taps the live RX audio graph (window.audioCtx
     // + window.audioWorkletNode) with an AnalyserNode and paints a scrolling
-    // spectrogram.  Mark/space tones for the active baud are drawn as
-    // horizontal marker lines so the operator can see they're on frequency.
-    // No decoding happens here — demod runs on the backend.  This is purely
-    // a diagnostic view.
+    // spectrogram.  No decoding happens here — demod runs on the backend.
+    // This is purely a diagnostic view.
     // ---------------------------------------------------------------------
 
     function buildScopeColorLUT() {
@@ -765,33 +760,6 @@
         if (!scopeCanvas || !scopeCtx) return;
         scopeCtx.fillStyle = '#000';
         scopeCtx.fillRect(0, 0, scopeCanvas.width, scopeCanvas.height);
-        drawFreqMarkers();
-    }
-
-    function drawFreqMarkers() {
-        if (!scopeCanvas || !scopeCtx) return;
-        var p = MODE_PARAMS[state.mode];
-        if (!p || !p.mark || !p.space) return;  // 9600 baseband: skip
-        var range = p.maxHz - p.minHz;
-        // Markers live on a small right-edge ruler that doesn't scroll —
-        // the canvas is being shifted left each paint, so we can't draw
-        // into it permanently.  Instead we paint a dashed indicator on
-        // the rightmost 2 px column per frame inside painColumn().
-        // (Kept as a helper so clearScope() can stamp the labels once.)
-        scopeCtx.fillStyle = 'rgba(255,255,0,0.9)';
-        scopeCtx.font = (Math.floor(scopeCanvas.height / 14)) + 'px monospace';
-        var yMark  = yForHz(p.mark);
-        var ySpace = yForHz(p.space);
-        scopeCtx.fillText('M ' + p.mark,  4, yMark  + 4);
-        scopeCtx.fillText('S ' + p.space, 4, ySpace + 4);
-        // freq labels on the left stay, markers are redrawn each paint
-    }
-
-    function yForHz(hz) {
-        var p = MODE_PARAMS[state.mode];
-        if (!p) return 0;
-        var frac = (hz - p.minHz) / (p.maxHz - p.minHz);
-        return Math.floor((1 - frac) * (scopeCanvas.height - 1));
     }
 
     function startScope() {
@@ -821,14 +789,33 @@
         try {
             analyserNode = audioContext.createAnalyser();
             analyserNode.fftSize = FFT_SIZE;
-            analyserNode.smoothingTimeConstant = 0.2;
+            // No smoothing — each painted column should reflect the instant
+            // spectrum so short 9600-bd bursts line up with the TX stripe.
+            analyserNode.smoothingTimeConstant = 0;
             analyserNode.minDecibels = MIN_DB;
             analyserNode.maxDecibels = MAX_DB;
 
-            // Splice: worklet -> analyser -> gain (unchanged downstream).
+            // RX pre-analyser gain — AGC-controlled, so faint rig audio
+            // lights up the LUT without strong signals saturating it.
+            // Starts mid-range; paintScope() adjusts every ~100 ms.
+            boostGain = audioContext.createGain();
+            boostGain.gain.value = 5;
+
+            // TX audio (tee'd from the server) skips AGC and uses a fixed
+            // attenuator so a TX burst doesn't knock the AGC off the RX
+            // calibration, and so the TX spectrum is visible without
+            // saturating the analyser top-end.
+            txFixedGain = audioContext.createGain();
+            txFixedGain.gain.value = 0.05;   // ~-26 dB; keeps TX tone bins off the LUT's saturation wall
+            txFixedGain.connect(analyserNode);
+
+            // Splice the RX path: worklet -> boost -> analyser.  Keep the
+            // clean (unboosted) edge to audioGainNode so the speaker path
+            // is unaffected.
             window.audioWorkletNode.disconnect();
-            window.audioWorkletNode.connect(analyserNode);
-            analyserNode.connect(window.audioGainNode);
+            window.audioWorkletNode.connect(boostGain);
+            boostGain.connect(analyserNode);
+            window.audioWorkletNode.connect(window.audioGainNode);
         } catch (e) {
             console.warn('[Packet] analyser attach failed:', e);
             return;
@@ -839,17 +826,67 @@
 
     function stopScope() {
         if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-        if (analyserNode) {
+        if (analyserNode || boostGain || txFixedGain) {
             try {
-                analyserNode.disconnect();
+                if (analyserNode) analyserNode.disconnect();
+                if (boostGain)    boostGain.disconnect();
+                if (txFixedGain)  txFixedGain.disconnect();
                 if (window.audioWorkletNode && window.audioGainNode) {
                     window.audioWorkletNode.disconnect();
                     window.audioWorkletNode.connect(window.audioGainNode);
                 }
             } catch (e) { /* graph already torn down */ }
             analyserNode = null;
+            boostGain = null;
+            txFixedGain = null;
         }
         audioContext = null;
+        txNextStart = 0;
+    }
+
+    // Server teed TX audio via binary msgType 0x04.  Push it through a
+    // BufferSource that feeds boostGain/analyser *only* — not connected to
+    // destination, so the operator doesn't hear their own outgoing audio.
+    function onTxAudio(buffer) {
+        if (!audioContext || !txFixedGain) return;  // scope not attached yet
+        if (!buffer || buffer.byteLength < 6) return;
+        var view = new DataView(buffer);
+        if (view.getUint8(0) !== 0x04) return;
+        var rateDiv = view.getUint16(4, true);
+        var sampleRate = rateDiv > 0 ? rateDiv * 1000 : 48000;
+        var pcmBytes = buffer.byteLength - 6;
+        if (pcmBytes <= 0 || (pcmBytes & 1)) return;
+        var samples = pcmBytes / 2;
+        var pcm = new Int16Array(buffer, 6, samples);
+
+        var buf;
+        try {
+            buf = audioContext.createBuffer(1, samples, sampleRate);
+        } catch (e) {
+            // Some browsers reject buffer sampleRates that don't match the
+            // context; fall back to the context rate and accept pitch shift.
+            buf = audioContext.createBuffer(1, samples, audioContext.sampleRate);
+        }
+        var chan = buf.getChannelData(0);
+        for (var i = 0; i < samples; i++) chan[i] = pcm[i] / 32768;
+
+        var src = audioContext.createBufferSource();
+        src.buffer = buf;
+        src.connect(txFixedGain);     // → analyser only (NOT audioGainNode, NOT boostGain)
+        var now = audioContext.currentTime;
+        if (txNextStart < now) txNextStart = now;
+        try {
+            src.start(txNextStart);
+        } catch (e) {
+            try { src.start(); } catch (_) { return; }
+        }
+        txNextStart += buf.duration;
+
+        // Set the stripe window to the exact wall-clock end of the last
+        // scheduled buffer — no fudge tail, so the stripe stops the frame
+        // after the TX audio stops hitting the analyser.
+        var endMs = Date.now() + Math.max(0, (txNextStart - now) * 1000);
+        if (endMs > state.txActiveUntilMs) state.txActiveUntilMs = endMs;
     }
 
     function drawScopeMessage(text) {
@@ -897,31 +934,67 @@
         var binRange = Math.max(1, maxBin - minBin);
         var buf = scopeColumn.data;
         var H = scopeCanvas.height;
+        // TX-active columns keep the normal spectrogram colours so the
+        // actual TX audio shape stays visible; the TX window is marked by
+        // a thin red stripe painted across the top rows afterwards.
+        var txActive = Date.now() < state.txActiveUntilMs;
+        var colSum = 0;
+        // Visibility floor — radios mute RX for a brief window after unkey
+        // so the analyser genuinely receives silence there.  Mapping that
+        // to pure black reads as a visible "gap" after every TX; lifting
+        // everything by a few LUT steps paints the gap as a dim blue floor
+        // instead, matching the surrounding background colour.
+        var FLOOR = 18;
+        var Hm1 = Math.max(1, H - 1);
         for (var y = 0; y < H; y++) {
-            // Top of canvas = high freq; invert so high freq appears at top.
-            var frac = (H - 1 - y) / Math.max(1, H - 1);
-            var idx = minBin + Math.floor(frac * binRange);
-            var v = spectrum[idx];
+            // Linear interpolation between adjacent FFT bins.  Without this
+            // each bin maps to a stepped block of pixels and the LUT's
+            // quantised colour transitions are very visible — especially in
+            // narrow panels where binRange is much smaller than H.
+            var frac = (H - 1 - y) / Hm1;
+            var idxF = minBin + frac * binRange;
+            var i0 = Math.floor(idxF);
+            var i1 = i0 + 1;
+            if (i1 > maxBin) i1 = maxBin;
+            var t = idxF - i0;
+            var v = spectrum[i0] * (1 - t) + spectrum[i1] * t;
+            if (v < FLOOR) v = FLOOR;
+            v = v | 0;     // back to integer for the LUT lookup
+            if (v > 255) v = 255;
+            colSum += v;
             var rgb = scopeColorLUT[v];
             var q = y * 4;
-            buf[q] = rgb[0]; buf[q + 1] = rgb[1]; buf[q + 2] = rgb[2]; buf[q + 3] = 255;
+            buf[q] = rgb[0]; buf[q + 1] = rgb[1]; buf[q + 2] = rgb[2];
+            buf[q + 3] = 255;
         }
+        var colMean = colSum / H;
         for (var i = 0; i < step; i++) {
             scopeCtx.putImageData(scopeColumn, scopeCanvas.width - step + i, 0);
         }
 
-        // Mark/space frequency lines (repainted on top of the freshly
-        // scrolled image).  Short ticks on the right edge + a faint
-        // full-width guide so the operator can align TX frequency.
-        if (p.mark && p.space) {
-            var yMark  = yForHz(p.mark);
-            var yOff   = yForHz(p.space);
-            scopeCtx.strokeStyle = 'rgba(255,255,0,0.35)';
-            scopeCtx.lineWidth = 1;
-            scopeCtx.beginPath();
-            scopeCtx.moveTo(0, yMark);  scopeCtx.lineTo(scopeCanvas.width, yMark);
-            scopeCtx.moveTo(0, yOff);   scopeCtx.lineTo(scopeCanvas.width, yOff);
-            scopeCtx.stroke();
+        if (txActive) {
+            // Top-of-canvas red stripe (thicker than 1 px so it survives
+            // the DPR scaling on hi-dpi displays).
+            var stripeH = Math.max(2, Math.floor(H / 24));
+            scopeCtx.fillStyle = 'rgba(255, 50, 50, 0.9)';
+            scopeCtx.fillRect(scopeCanvas.width - step, 0, step, stripeH);
+        }
+
+        // AGC: drive the per-column mean (a good proxy for noise floor since
+        // most bins don't hold signal) toward a dim-blue target, so real
+        // signals pop above it.  Frozen during TX — the tee'd TX PCM would
+        // otherwise bias the EMA and leave RX dim once the burst ends.
+        if (!txActive) {
+            agcEmaMean = agcEmaMean * 0.92 + colMean * 0.08;
+            agcFrame++;
+            if (boostGain && (agcFrame % 6) === 0) {
+                var g = boostGain.gain.value;
+                if (agcEmaMean > AGC_TARGET_HI && g > AGC_GAIN_MIN) {
+                    boostGain.gain.value = Math.max(AGC_GAIN_MIN, g * 0.9);
+                } else if (agcEmaMean < AGC_TARGET_LO && g < AGC_GAIN_MAX) {
+                    boostGain.gain.value = Math.min(AGC_GAIN_MAX, g * 1.1);
+                }
+            }
         }
 
         rafId = requestAnimationFrame(paintScope);
@@ -1259,6 +1332,7 @@
     window.Packet = {
         init: init,
         onMessage: onMessage,
+        onTxAudio: onTxAudio,
         show: show,
         hide: hide,
         toggle: toggle,
