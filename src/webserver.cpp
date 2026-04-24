@@ -4122,27 +4122,71 @@ void webServer::onAxRxData(int client, int chan,
     }
 }
 
-// ---- Minimal YAPP framing ----
+// ---- YAPP framing (per IW3FQG spec, www.ir3ip.net/iw3fqg/doc/yapp.htm) ----
 //
-// Subset of classic YAPP sufficient for a single file send on top of an
-// established connected-mode AX.25 session.  No SI/RR/AT/AB/hash — just
-// HD (header) / DT (data) / EF (end of file).  Framing:
+// Each packet is identified by its leading control byte; the remaining
+// bytes are either a fixed 1-byte signature (for ENQ/ACK/ETX forms) or
+// a length-prefixed payload (for SOH/STX/CAN forms).
 //
-//     SOH (0x01) | len (u8) | type (u8) | data (<= 255 bytes)
+//   SI (Send_Init)  ENQ(0x05) 0x01
+//   RR (Rcv_Rdy)    ACK(0x06) 0x01
+//   AF (Ack_EOF)    ACK(0x06) 0x03
+//   HD (Header)     SOH(0x01) len  "<filename>\0<size-ascii>\0"  [data also
+//                                   optionally carries date/time per YAPP-C]
+//   DT (Data)       STX(0x02) len  <bytes>   ; len==0 means 256 bytes
+//   EF (End_Of_File) ETX(0x03) 0x01
+//   CN (Cancel)     CAN(0x18) len  [optional ASCII reason]
 //
-// HD payload: "<filename>\0<size-decimal>\0"
-// DT payload: raw file bytes
-// EF payload: empty
+// The earlier implementation used SOH-led frames with a type letter
+// inside — that framing interoperates only with its mirror image and
+// fails against real YAPP peers (BPQ, classic YAPP clients).
 
-QByteArray webServer::yappFrame(char type, const QByteArray &data)
+QByteArray webServer::yappBuildSI() { return QByteArray("\x05\x01", 2); }
+QByteArray webServer::yappBuildRR() { return QByteArray("\x06\x01", 2); }
+QByteArray webServer::yappBuildRF() { return QByteArray("\x06\x02", 2); }
+QByteArray webServer::yappBuildAF() { return QByteArray("\x06\x03", 2); }
+QByteArray webServer::yappBuildAT() { return QByteArray("\x06\x04", 2); }
+QByteArray webServer::yappBuildEF() { return QByteArray("\x03\x01", 2); }
+QByteArray webServer::yappBuildET() { return QByteArray("\x04\x01", 2); }
+
+QByteArray webServer::yappBuildHD(const QString &name, qint64 size)
 {
-    Q_ASSERT(data.size() <= 255);
+    QByteArray body;
+    body.append(name.toUtf8());
+    body.append('\0');
+    body.append(QString::number(size).toLatin1());
+    body.append('\0');
+    // No date/time — classic YAPP accepts an HD with just name\0size\0.
+    Q_ASSERT(body.size() > 0 && body.size() <= 255);
     QByteArray out;
-    out.reserve(data.size() + 3);
-    out.append((char)0x01);
-    out.append((char)(uchar)data.size());
-    out.append(type);
-    out.append(data);
+    out.reserve(body.size() + 2);
+    out.append((char)0x01);                        // SOH
+    out.append((char)(uchar)body.size());
+    out.append(body);
+    return out;
+}
+
+QByteArray webServer::yappBuildDT(const QByteArray &chunk)
+{
+    Q_ASSERT(chunk.size() > 0 && chunk.size() <= 256);
+    QByteArray out;
+    out.reserve(chunk.size() + 2);
+    out.append((char)0x02);                        // STX
+    // len=0 encodes 256 per spec — only legal when chunk is exactly 256
+    out.append((char)(uchar)(chunk.size() == 256 ? 0 : chunk.size()));
+    out.append(chunk);
+    return out;
+}
+
+QByteArray webServer::yappBuildCN(const QString &reason)
+{
+    QByteArray body = reason.toUtf8();
+    if (body.size() > 255) body.truncate(255);
+    QByteArray out;
+    out.reserve(body.size() + 2);
+    out.append((char)0x18);                        // CAN
+    out.append((char)(uchar)body.size());
+    out.append(body);
     return out;
 }
 
@@ -4154,27 +4198,96 @@ void webServer::yappFeedIncoming(TerminalSession *s, const QByteArray &chunk,
         quint8 b = (quint8)chunk[i];
         switch (y.phase) {
         case YappRxState::Idle:
-            if (b == 0x01) { y.phase = YappRxState::AwaitLen; }
-            else           { textOut.append((char)b); }
+            switch (b) {
+            case 0x05:                             // ENQ → SI start
+                y.phase = YappRxState::AwaitSISig;
+                break;
+            case 0x06:                             // ACK → RR or AF
+                y.phase = YappRxState::AwaitACKSub;
+                break;
+            case 0x01:                             // SOH → HD
+                y.pendingKind = YappKind::HD;
+                y.phase = YappRxState::AwaitLen;
+                break;
+            case 0x02:                             // STX → DT
+                y.pendingKind = YappKind::DT;
+                y.phase = YappRxState::AwaitLen;
+                break;
+            case 0x03:                             // ETX → EF
+                y.phase = YappRxState::AwaitEFSig;
+                break;
+            case 0x04:                             // EOT → ET (session end)
+                y.phase = YappRxState::AwaitETSig;
+                break;
+            case 0x18:                             // CAN → CN
+                y.pendingKind = YappKind::CN;
+                y.phase = YappRxState::AwaitLen;
+                break;
+            default:
+                // Plain terminal text — everything else falls through
+                // to the scrollback.  Control bytes that *aren't* YAPP
+                // openings (e.g., BEL, VT, FF) also land here; they're
+                // rare in practice and a mis-triggered YAPP parse is a
+                // bigger UX hit than a stray control char.
+                textOut.append((char)b);
+                break;
+            }
             break;
-        case YappRxState::AwaitLen:
-            y.remaining = (int)b;
-            y.buffer.clear();
-            y.phase = YappRxState::AwaitType;
+
+        case YappRxState::AwaitSISig:
+            // Per spec, SI is exactly ENQ+0x01.  If the second byte is
+            // not 0x01, treat the ENQ as noise and drop it (do not push
+            // the current byte to textOut — it may still be a valid
+            // YAPP lead byte, but the preceding stray ENQ is gone).
+            if (b == 0x01) yappHandleFrame(s, YappKind::SI, QByteArray());
+            y.phase = YappRxState::Idle;
             break;
-        case YappRxState::AwaitType:
-            y.type = (char)b;
-            if (y.remaining == 0) {
-                yappHandleFrame(s, y.type, QByteArray());
+
+        case YappRxState::AwaitACKSub:
+            switch (b) {
+            case 0x01: yappHandleFrame(s, YappKind::RR, QByteArray()); break;
+            case 0x02: yappHandleFrame(s, YappKind::RF, QByteArray()); break;
+            case 0x03: yappHandleFrame(s, YappKind::AF, QByteArray()); break;
+            case 0x04: yappHandleFrame(s, YappKind::AT, QByteArray()); break;
+            case 0x05: yappHandleFrame(s, YappKind::CA, QByteArray()); break;
+            // 0x06 (ACK ACK = RT, YappC enable) and other variants
+            // are silently dropped — we only speak base YAPP today.
+            default: break;
+            }
+            y.phase = YappRxState::Idle;
+            break;
+
+        case YappRxState::AwaitEFSig:
+            if (b == 0x01) yappHandleFrame(s, YappKind::EF, QByteArray());
+            y.phase = YappRxState::Idle;
+            break;
+
+        case YappRxState::AwaitETSig:
+            if (b == 0x01) yappHandleFrame(s, YappKind::ET, QByteArray());
+            y.phase = YappRxState::Idle;
+            break;
+
+        case YappRxState::AwaitLen: {
+            // Spec: DT treats len=0 as 256 bytes.  HD and CN don't have
+            // a documented 256-byte form — a zero-length HD/CN means
+            // "no payload" and is dispatched immediately.
+            int len = (b == 0 && y.pendingKind == YappKind::DT)
+                          ? 256 : (int)b;
+            if (len == 0) {
+                yappHandleFrame(s, y.pendingKind, QByteArray());
                 y.phase = YappRxState::Idle;
             } else {
+                y.remaining = len;
+                y.buffer.clear();
                 y.phase = YappRxState::AwaitData;
             }
             break;
+        }
+
         case YappRxState::AwaitData:
             y.buffer.append((char)b);
             if (--y.remaining == 0) {
-                yappHandleFrame(s, y.type, y.buffer);
+                yappHandleFrame(s, y.pendingKind, y.buffer);
                 y.phase = YappRxState::Idle;
             }
             break;
@@ -4225,20 +4338,20 @@ void webServer::xferBroadcastEnd(const TerminalSession *s, bool aborted)
     sendJsonToAll(notify);
 }
 
-void webServer::yappHandleFrame(TerminalSession *s, char type, const QByteArray &data)
+void webServer::yappHandleFrame(TerminalSession *s, YappKind kind, const QByteArray &data)
 {
     YappRxState &y = s->yapp;
-    switch (type) {
-    case 'S': {                     // SI — peer wants to send a file
+    switch (kind) {
+    case YappKind::SI: {             // peer wants to send a file
         if (s->xfer.active) {
             // Already busy with another xfer; reject.
             yappSendAB(s);
             return;
         }
-        int nul = data.indexOf('\0');
-        QString senderInfo = (nul < 0)
-            ? QString::fromUtf8(data)
-            : QString::fromUtf8(data.constData(), nul);
+        // YAPP SI carries no payload — the sender identity comes from
+        // the AX.25 source callsign (which we already have in peerCall).
+        QString senderInfo = s->peerCall.isEmpty()
+            ? QStringLiteral("(unknown)") : s->peerCall;
         s->xfer.active = true;
         s->xfer.dir    = QStringLiteral("rx");
         s->xfer.phase  = QStringLiteral("awaiting_accept");
@@ -4260,7 +4373,8 @@ void webServer::yappHandleFrame(TerminalSession *s, char type, const QByteArray 
         qInfo().noquote() << "Web: YAPP SI received" << s->sid << "from" << senderInfo;
         break;
     }
-    case 'R':                       // RR — peer accepted our request
+
+    case YappKind::RR:               // peer accepted our SI
         if (s->xfer.active && s->xfer.dir == "tx" && s->xfer.phase == "awaiting_rr") {
             yappStartDataPhase(s);
         } else {
@@ -4270,7 +4384,24 @@ void webServer::yappHandleFrame(TerminalSession *s, char type, const QByteArray 
                                  << "phase="  << s->xfer.phase;
         }
         break;
-    case 'H': {                     // HD — new file starting
+
+    case YappKind::AF:               // peer ACKed our EF — TX transfer done
+        if (s->xfer.active && s->xfer.dir == "tx") {
+            QByteArray info = QString("*** File sent: %1 (%2 bytes)")
+                .arg(s->xfer.name).arg(s->xfer.total).toUtf8();
+            QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);
+            termAppendScrollback(s, e);
+            termBroadcastData(s->sid, e);
+            xferBroadcastEnd(s, /*aborted=*/false);
+            qInfo().noquote() << "Web: YAPP TX complete (AF received)" << s->sid
+                              << s->xfer.name << s->xfer.total << "B";
+            s->xfer = XferState{};
+        } else {
+            qWarning().noquote() << "Web: unexpected YAPP AF" << s->sid;
+        }
+        break;
+
+    case YappKind::HD: {             // HD — new file starting
         int nul1 = data.indexOf('\0');
         if (nul1 < 0) return;
         QString name = QString::fromUtf8(data.constData(), nul1);
@@ -4298,43 +4429,56 @@ void webServer::yappHandleFrame(TerminalSession *s, char type, const QByteArray 
         termAppendScrollback(s, e);
         termBroadcastData(s->sid, e);
         qInfo().noquote() << "Web: YAPP RX start" << s->sid << name << sz << "B";
+
+        // Per the IW3FQG state table, the receiver must send RF
+        // (ACK 0x02) after HD before the sender will start streaming
+        // DT chunks.  Without this the link goes silent right after
+        // the file header parses.
+        yappSendRF(s);
         break;
     }
-    case 'D':                       // DT — data block
+
+    case YappKind::RF:               // peer ACKed our HD — start data
+        // We don't currently gate DT TX on RF (yappStartDataPhase
+        // queues HD+DTs+EF up-front and pumps them).  Logged for
+        // visibility; once we add gated-TX, this is where it'd fire.
+        qInfo().noquote() << "Web: YAPP RF received (peer ready for DT)" << s->sid;
+        break;
+
+    case YappKind::AT:               // peer ACKed end-of-transmission (multi-file)
+    case YappKind::CA:               // peer ACKed our cancel — finalize teardown
+        // Single-file flows don't normally see these; nothing to do
+        // beyond noting that they arrived.
+        qInfo().noquote() << "Web: YAPP" << (kind == YappKind::AT ? "AT" : "CA")
+                          << "received" << s->sid;
+        break;
+
+    case YappKind::ET:               // peer's "end of transmission" — session done
+        // Sender is telling us no more files will come in this YAPP
+        // session.  We must ACK with AT or the sender stays in
+        // YAPP-transfer state and rejects any subsequent terminal text
+        // as "Unexpected message during YAPP Transfer".  BPQ sends ET
+        // immediately after we AF the last EF.
+        yappSendAT(s);
+        qInfo().noquote() << "Web: YAPP ET received — AT sent" << s->sid;
+        break;
+
+    case YappKind::DT:               // DT — data block
         if (y.active) {
             y.fileBuf.append(data);
             s->xfer.done = y.fileBuf.size();
             xferBroadcastProgress(s);
         }
         break;
-    case 'A': {                     // AB — abort from peer
-        if (!s->xfer.active) return;
-        QString reason;
-        if (s->xfer.dir == "tx") {
-            reason = (s->xfer.phase == "awaiting_rr")
-                ? QStringLiteral("*** Peer rejected the transfer")
-                : QStringLiteral("*** Transfer aborted by peer");
-        } else {
-            reason = QString("*** Transfer aborted by sender: %1").arg(y.filename);
-        }
-        QJsonObject e = termScrollbackEntry(QStringLiteral("info"), reason.toUtf8());
-        termAppendScrollback(s, e);
-        termBroadcastData(s->sid, e);
 
-        xferBroadcastEnd(s, /*aborted=*/true);
-        s->xfer = XferState{};
-
-        y.filename.clear();
-        y.fileBuf.clear();
-        y.filesize = 0;
-        y.active = false;
-        qInfo().noquote() << "Web: YAPP aborted (AB from peer)" << s->sid;
-        break;
-    }
-    case 'E': {                     // EF — end of file
+    case YappKind::EF: {             // EF — end of file
         if (!y.active) return;
         s->xfer.done = y.fileBuf.size();
         xferBroadcastProgress(s, /*force=*/true);
+
+        // Tell the sender we got the whole file — per spec, the
+        // receiver owes AF in response to EF.
+        yappSendAF(s);
 
         QByteArray info = QString("*** File complete: %1 (%2 bytes)")
             .arg(y.filename).arg(y.fileBuf.size()).toUtf8();
@@ -4343,10 +4487,10 @@ void webServer::yappHandleFrame(TerminalSession *s, char type, const QByteArray 
         termBroadcastData(s->sid, e);
 
         QJsonObject notify;
-        notify["type"]   = "termFile";
-        notify["sid"]    = s->sid;
-        notify["name"]   = y.filename;
-        notify["bytes"]  = (qint64)y.fileBuf.size();
+        notify["type"]    = "termFile";
+        notify["sid"]     = s->sid;
+        notify["name"]    = y.filename;
+        notify["bytes"]   = (qint64)y.fileBuf.size();
         notify["dataB64"] = QString::fromLatin1(y.fileBuf.toBase64());
         sendJsonToAll(notify);
 
@@ -4362,10 +4506,34 @@ void webServer::yappHandleFrame(TerminalSession *s, char type, const QByteArray 
         y.active = false;
         break;
     }
-    default:
-        qWarning().noquote() << "Web: YAPP unknown type" << QString(QChar((int)type))
-                              << "len=" << data.size();
+
+    case YappKind::CN: {             // cancel from peer
+        if (!s->xfer.active) return;
+        QString peerReason = QString::fromUtf8(data).trimmed();
+        QString reason;
+        if (s->xfer.dir == "tx") {
+            reason = (s->xfer.phase == "awaiting_rr")
+                ? QStringLiteral("*** Peer rejected the transfer")
+                : QStringLiteral("*** Transfer aborted by peer");
+        } else {
+            reason = QString("*** Transfer aborted by sender: %1").arg(y.filename);
+        }
+        if (!peerReason.isEmpty()) reason += QString(" (%1)").arg(peerReason);
+        QJsonObject e = termScrollbackEntry(QStringLiteral("info"), reason.toUtf8());
+        termAppendScrollback(s, e);
+        termBroadcastData(s->sid, e);
+
+        xferBroadcastEnd(s, /*aborted=*/true);
+        s->xfer = XferState{};
+
+        y.filename.clear();
+        y.fileBuf.clear();
+        y.filesize = 0;
+        y.active = false;
+        qInfo().noquote() << "Web: YAPP cancel from peer" << s->sid
+                          << "reason=" << peerReason;
         break;
+    }
     }
 }
 
@@ -4375,18 +4543,14 @@ void webServer::yappSendFile(TerminalSession *s, const QString &name,
     if (!axProc || s->state != TerminalSession::Connected) return;
     if (s->xfer.active) return;     // already transferring
 
-    // Classic YAPP handshake: announce intent with SI, wait for RR before
-    // any file bytes hit the air.  The payload is a nul-terminated sender
-    // identifier — we use the operator's callsign.
-    QByteArray si;
-    si.append(s->ownCall.isEmpty() ? QByteArray("wfweb") : s->ownCall.toUtf8());
-    si.append('\0');
-    QByteArray siFrame = yappFrame('S', si);
+    // Classic YAPP handshake: announce intent with SI, wait for RR
+    // before any file bytes hit the air.  SI carries no payload per
+    // spec — the sender's identity comes from the AX.25 source call.
     QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
                               Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, s->chan),
                               Q_ARG(QString, s->ownCall), Q_ARG(QString, s->peerCall),
                               Q_ARG(QStringList, s->digis), Q_ARG(int, 0xF0),
-                              Q_ARG(QByteArray, siFrame));
+                              Q_ARG(QByteArray, yappBuildSI()));
 
     s->xfer.active       = true;
     s->xfer.dir          = QStringLiteral("tx");
@@ -4424,23 +4588,54 @@ void webServer::yappSendFile(TerminalSession *s, const QString &name,
 void webServer::yappSendRR(TerminalSession *s)
 {
     if (!axProc) return;
-    QByteArray rrFrame = yappFrame('R', QByteArray());
     QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
                               Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, s->chan),
                               Q_ARG(QString, s->ownCall), Q_ARG(QString, s->peerCall),
                               Q_ARG(QStringList, s->digis), Q_ARG(int, 0xF0),
-                              Q_ARG(QByteArray, rrFrame));
+                              Q_ARG(QByteArray, yappBuildRR()));
+}
+
+void webServer::yappSendAF(TerminalSession *s)
+{
+    if (!axProc) return;
+    QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
+                              Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, s->chan),
+                              Q_ARG(QString, s->ownCall), Q_ARG(QString, s->peerCall),
+                              Q_ARG(QStringList, s->digis), Q_ARG(int, 0xF0),
+                              Q_ARG(QByteArray, yappBuildAF()));
+}
+
+void webServer::yappSendRF(TerminalSession *s)
+{
+    if (!axProc) return;
+    QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
+                              Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, s->chan),
+                              Q_ARG(QString, s->ownCall), Q_ARG(QString, s->peerCall),
+                              Q_ARG(QStringList, s->digis), Q_ARG(int, 0xF0),
+                              Q_ARG(QByteArray, yappBuildRF()));
+}
+
+void webServer::yappSendAT(TerminalSession *s)
+{
+    if (!axProc) return;
+    QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
+                              Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, s->chan),
+                              Q_ARG(QString, s->ownCall), Q_ARG(QString, s->peerCall),
+                              Q_ARG(QStringList, s->digis), Q_ARG(int, 0xF0),
+                              Q_ARG(QByteArray, yappBuildAT()));
 }
 
 void webServer::yappSendAB(TerminalSession *s)
 {
+    // "AB" in the old type-letter framing; in real YAPP it's a Cancel
+    // frame (CAN) with an optional reason.  Callers ignore the reason,
+    // so send it empty.
     if (!axProc) return;
-    QByteArray abFrame = yappFrame('A', QByteArray());
     QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
                               Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, s->chan),
                               Q_ARG(QString, s->ownCall), Q_ARG(QString, s->peerCall),
                               Q_ARG(QStringList, s->digis), Q_ARG(int, 0xF0),
-                              Q_ARG(QByteArray, abFrame));
+                              Q_ARG(QByteArray, yappBuildCN()));
 }
 
 void webServer::yappStartDataPhase(TerminalSession *s)
@@ -4454,18 +4649,15 @@ void webServer::yappStartDataPhase(TerminalSession *s)
     s->xfer.pendingData.clear();
 
     s->xfer.pendingYappFrames.clear();
-    QByteArray hd;
-    hd.append(s->xfer.name.toUtf8());
-    hd.append('\0');
-    hd.append(QString::number(s->xfer.total).toLatin1());
-    hd.append('\0');
-    s->xfer.pendingYappFrames.append(yappFrame('H', hd));
+    s->xfer.pendingYappFrames.append(yappBuildHD(s->xfer.name, s->xfer.total));
 
-    const int kDataChunk = 100;     // <= paclen=128 after 3-byte YAPP header
+    // DT chunk size: AX.25 paclen is 128, real YAPP DT framing adds
+    // 2 bytes (STX + len), so 126 keeps each DT inside one I-frame.
+    const int kDataChunk = 126;
     for (int off = 0; off < payload.size(); off += kDataChunk) {
-        s->xfer.pendingYappFrames.append(yappFrame('D', payload.mid(off, kDataChunk)));
+        s->xfer.pendingYappFrames.append(yappBuildDT(payload.mid(off, kDataChunk)));
     }
-    s->xfer.pendingYappFrames.append(yappFrame('E', QByteArray()));
+    s->xfer.pendingYappFrames.append(yappBuildEF());
     s->xfer.framesPlanned = s->xfer.pendingYappFrames.size();
     s->xfer.framesSent = 0;
 
@@ -4495,12 +4687,11 @@ void webServer::yappPumpNextFrame(TerminalSession *s)
     // then send AB as the very next frame.
     if (s->xfer.abortPending) {
         s->xfer.pendingYappFrames.clear();
-        QByteArray abFrame = yappFrame('A', QByteArray());
         QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
             Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, s->chan),
             Q_ARG(QString, s->ownCall), Q_ARG(QString, s->peerCall),
             Q_ARG(QStringList, s->digis), Q_ARG(int, 0xF0),
-            Q_ARG(QByteArray, abFrame));
+            Q_ARG(QByteArray, yappBuildCN(QStringLiteral("user abort"))));
         QByteArray info = QStringLiteral("*** Transfer aborted").toUtf8();
         QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);
         termAppendScrollback(s, e);
@@ -4536,14 +4727,13 @@ void webServer::yappAbortSend(TerminalSession *s)
         // Flagged: the timer will send AB and tear down next tick.
         s->xfer.abortPending = true;
     } else {
-        // RX-side abort: send AB and clear our state.
-        QByteArray abFrame = yappFrame('A', QByteArray());
+        // RX-side abort: send CN and clear our state.
         if (axProc) {
             QMetaObject::invokeMethod(axProc, "sendData", Qt::QueuedConnection,
                 Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, s->chan),
                 Q_ARG(QString, s->ownCall), Q_ARG(QString, s->peerCall),
                 Q_ARG(QStringList, s->digis), Q_ARG(int, 0xF0),
-                Q_ARG(QByteArray, abFrame));
+                Q_ARG(QByteArray, yappBuildCN(QStringLiteral("user abort"))));
         }
         QByteArray info = QStringLiteral("*** Transfer aborted").toUtf8();
         QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);

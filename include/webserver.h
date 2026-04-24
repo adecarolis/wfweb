@@ -321,10 +321,28 @@ private:
     // splits YAPP control frames (SOH <len> <type> <data>) from ordinary
     // terminal text; YAPP frames are dispatched by type and ordinary bytes
     // fall through to the scrollback.
+    // YAPP packet kinds, one per leading control byte on the wire.
+    // ENQ(0x05)=SI  ACK(0x06)=RR or AF  SOH(0x01)=HD  STX(0x02)=DT
+    // ETX(0x03)=EF  CAN(0x18)=CN        Per IW3FQG YAPP spec.
+    enum class YappKind { SI, RR, RF, AF, AT, CA, HD, DT, EF, ET, CN };
+
     struct YappRxState {
-        enum Phase { Idle, AwaitLen, AwaitType, AwaitData } phase = Idle;
+        // AwaitSISig / AwaitACKSub / AwaitEFSig consume the second
+        // signature byte (0x01 / 0x01|0x03 / 0x01) that confirms the
+        // fixed-form packets.  AwaitLen + AwaitData collect the body
+        // of the length-prefixed packets (HD/DT/CN); pendingKind
+        // remembers which kind the leading control byte signalled.
+        enum Phase {
+            Idle,
+            AwaitSISig,
+            AwaitACKSub,
+            AwaitEFSig,
+            AwaitETSig,
+            AwaitLen,
+            AwaitData
+        } phase = Idle;
+        YappKind   pendingKind = YappKind::HD;
         int        remaining = 0;
-        char       type = 0;
         QByteArray buffer;
 
         // Current file being received (HD seen, EF not yet)
@@ -396,19 +414,33 @@ private:
     // YAPP helpers
     void       yappFeedIncoming(TerminalSession *s, const QByteArray &chunk,
                                 QByteArray &textOut);
-    void       yappHandleFrame(TerminalSession *s, char type, const QByteArray &data);
+    void       yappHandleFrame(TerminalSession *s, YappKind kind, const QByteArray &data);
     void       yappSendFile   (TerminalSession *s, const QString &name,
                                 const QByteArray &data);
     void       yappStartDataPhase(TerminalSession *s);
     void       yappPumpNextFrame(TerminalSession *s);
     TerminalSession *yappFindActiveTxXfer();
-    void       yappSendRR     (TerminalSession *s);
-    void       yappSendAB     (TerminalSession *s);
+    void       yappSendRR     (TerminalSession *s);   // ACK 0x01
+    void       yappSendRF     (TerminalSession *s);   // ACK 0x02
+    void       yappSendAF     (TerminalSession *s);   // ACK 0x03
+    void       yappSendAT     (TerminalSession *s);   // ACK 0x04
+    void       yappSendAB     (TerminalSession *s);   // CN with no reason
     void       yappAbortSend  (TerminalSession *s);
     void       xferBroadcastStart(const TerminalSession *s);
     void       xferBroadcastProgress(TerminalSession *s, bool force = false);
     void       xferBroadcastEnd(const TerminalSession *s, bool aborted);
-    static QByteArray yappFrame(char type, const QByteArray &data);
+    // Per-kind frame builders.  Each returns the exact bytes to queue
+    // into the AX.25 I-frame info field.
+    static QByteArray yappBuildSI();                              // ENQ 01
+    static QByteArray yappBuildRR();                              // ACK 01
+    static QByteArray yappBuildRF();                              // ACK 02
+    static QByteArray yappBuildAF();                              // ACK 03
+    static QByteArray yappBuildAT();                              // ACK 04
+    static QByteArray yappBuildHD(const QString &name, qint64 size);  // SOH len data
+    static QByteArray yappBuildDT(const QByteArray &chunk);        // STX len data
+    static QByteArray yappBuildEF();                              // ETX 01
+    static QByteArray yappBuildET();                              // EOT 01
+    static QByteArray yappBuildCN(const QString &reason = {});     // CAN len [reason]
     void termAppendScrollback(TerminalSession *s, const QJsonObject &entry);
     void termBroadcastSession(const TerminalSession *s);
     void termBroadcastData(const QString &sid, const QJsonObject &entry);
