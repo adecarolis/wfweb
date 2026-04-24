@@ -227,6 +227,43 @@ int AX25LinkProcessor::lookupRegisteredCallsign(const char *callsign)
     return -1;
 }
 
+void AX25LinkProcessor::maybeDigipeatFrame(struct dlq_item_s *E)
+{
+    if (!E || !E->pp) return;
+
+    int slot = ax25_get_first_not_repeated(E->pp);
+    if (slot < 0) return;   // no unrepeated digis
+
+    char call[AX25_MAX_ADDR_LEN];
+    std::memset(call, 0, sizeof(call));
+    ax25_get_addr_with_ssid(E->pp, slot, call);
+    QString callQ = QString::fromLatin1(call).toUpper();
+
+    bool isOurs = false;
+    {
+        QMutexLocker lock(&regMutex_);
+        for (const Registration &r : registrations_) {
+            if (r.call == callQ) { isOurs = true; break; }
+        }
+    }
+    if (!isOurs) return;
+
+    // Flip the H bit on the slot, re-pack, and hand to the CSMA queue.
+    // We modify E->pp in place here — safe because this runs AFTER
+    // lm_data_indication in the dispatcher loop, and dlq_delete will
+    // free the packet regardless.
+    ax25_set_h(E->pp, slot);
+
+    unsigned char frame[AX25_MAX_PACKET_LEN];
+    int flen = ax25_pack(E->pp, frame);
+    if (flen <= 0) return;
+
+    QByteArray ba(reinterpret_cast<const char *>(frame), flen);
+    emit transmitFrameBytes(E->chan, /*prio*/ 0, ba);
+    qCInfo(logAx25) << "Digipeat via" << callQ
+                    << "chan=" << E->chan << "len=" << flen;
+}
+
 // ----- C trampolines -----
 
 extern "C" void wfweb_dw_rx_frame(int chan, int subchan, int slice,
@@ -267,6 +304,9 @@ void AX25LinkProcessor::dispatcherLoop()
                 }
                 // 2) Connected-mode dispatch.
                 lm_data_indication(E);
+                // 3) Digipeat if we're the next unused hop.  Runs after
+                //    local dispatch so the SM sees the unmodified frame.
+                maybeDigipeatFrame(E);
             }
             break;
         case DLQ_CONNECT_REQUEST:            dl_connect_request(E); break;

@@ -102,6 +102,12 @@ private:
     // whether to accept an inbound SABM.  -1 = not registered.
     int  lookupRegisteredCallsign(const char *callsign);
 
+    // If the first unrepeated digipeater in the frame's path matches one
+    // of our registered callsigns, set its H bit and re-emit the packet.
+    // Called from the dispatcher loop after lm_data_indication so the
+    // local state machine sees the original frame unmodified.
+    void maybeDigipeatFrame(struct dlq_item_s *E);
+
     static AX25LinkProcessor *s_instance;
 
     // C callbacks (installed once in start()).

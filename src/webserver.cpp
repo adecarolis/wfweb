@@ -2217,9 +2217,17 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         QString sid = cmd["sid"].toString();
         TerminalSession *s = termSessions.value(sid, nullptr);
         if (s && axProc) {
+            bool force = (s->state == TerminalSession::Disconnecting);
+            // ax25_link's state_2_awaiting_release handler (dl_disconnect_request
+            // with S->state == state_2_awaiting_release) treats a second
+            // disconnect as the "impatient application" case: send DM
+            // (expedited), stop T1, go straight to state_0_disconnected, and
+            // fire server_link_terminated.  So re-issuing the same dlq event
+            // here gets us instant tear-down for free.
             s->state = TerminalSession::Disconnecting;
             termAppendScrollback(s, termScrollbackEntry(QStringLiteral("info"),
-                QStringLiteral("Disconnecting...").toUtf8()));
+                force ? QStringLiteral("Forcing disconnect...").toUtf8()
+                      : QStringLiteral("Disconnecting...").toUtf8()));
             termBroadcastSession(s);
             QMetaObject::invokeMethod(axProc, "disconnectRequest", Qt::QueuedConnection,
                                       Q_ARG(int, TERM_FIXED_CLIENT),
