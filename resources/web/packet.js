@@ -413,8 +413,10 @@
     function setEnabled(on) {
         state.enabled = !!on;
         if (window.send) window.send({ cmd: 'packetEnable', value: state.enabled });
-        // Ensure the backend knows the current mode whenever we (re)enable.
-        if (state.enabled) setMode(state.mode);
+        // Do NOT push state.mode back to the server here.  state.mode is
+        // the client-side default (300) until the first packetStatus from
+        // the server fills it in; sending it on enable would clobber the
+        // backend's persisted mode every time the panel reopens.
     }
 
     function setMode(baud) {
