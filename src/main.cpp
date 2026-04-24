@@ -33,9 +33,7 @@
 
 #include "logcategories.h"
 
-#ifdef PACKET_SUPPORT
 #include "direwolfprocessor.h"
-#endif
 
 bool debugMode=false;
 
@@ -177,11 +175,9 @@ int main(int argc, char *argv[])
         "  -b --background         Run as daemon (not Windows)\n"
         "  -d --debug [file]       Enable verbose debug logging (optionally to file)\n"
         "  -c --clearconfig CONFIRM  Clear all settings\n"
-#ifdef PACKET_SUPPORT
         "  --packet-self-test      Run Dire Wolf encode/decode loopback and exit\n"
         "  --packet-decode-wav <f> Decode AX.25 frames from a WAV file and exit\n"
         "  --packet-baud <n>       Baud for --packet-decode-wav (300|1200|9600, default 1200)\n"
-#endif
         "  -v --version            Show version\n"
         "  -? --help               Show this help\n");
 #ifdef BUILD_WFSERVER
@@ -212,7 +208,6 @@ int main(int argc, char *argv[])
     qDebug() << "Changed to translation language: " << myappTranslator.language();
 #endif
 
-#ifdef PACKET_SUPPORT
     // Early CLI short-circuit: run the packet self-test or decode a WAV
     // and exit, without starting the web server or touching radio state.
     // Used by tests/test_packet.py.
@@ -237,7 +232,6 @@ int main(int argc, char *argv[])
             return DireWolfProcessor::decodeWavFile(wav, baud);
         }
     }
-#endif
 
     for(int c=1; c<argc; c++)
     {

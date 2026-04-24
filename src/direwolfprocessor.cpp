@@ -14,6 +14,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <mutex>
 
 extern "C" {
 #include "direwolf.h"
@@ -25,6 +26,7 @@ extern "C" {
 #include "hdlc_send.h"
 #include "gen_tone.h"
 #include "demod.h"
+#include "dlq.h"
 }
 
 // ---------------------------------------------------------------------------
@@ -41,6 +43,12 @@ static QAtomicPointer<DireWolfProcessor> g_active;
 DireWolfProcessor *DireWolfProcessor::active()
 {
     return g_active.loadRelaxed();
+}
+
+void DireWolfProcessor::ensureDlqInitialized()
+{
+    static std::once_flag dlqOnce;
+    std::call_once(dlqOnce, []() { dlq_init(0); });
 }
 
 // ---------------------------------------------------------------------------
@@ -94,6 +102,12 @@ DireWolfProcessor::~DireWolfProcessor()
 
 bool DireWolfProcessor::init(quint32 radioSampleRate)
 {
+    // The HDLC decoder pushes decoded frames into dlq — make sure it's
+    // initialized before any RX processing, independent of whether the
+    // AX.25 link processor has been constructed (the self-test path
+    // runs the demod standalone).
+    ensureDlqInitialized();
+
     // cleanup() clears enabled_ as part of tearing down the modem.  When
     // init() is called from setMode() after the user has already enabled
     // the modem, we need to keep the enable flag so we don't silently
@@ -640,6 +654,25 @@ int DireWolfProcessor::runSelfTestMode(int baud)
                          << dw.modemRate_ << "Hz";
 
     dw.processRx(pkt);
+
+    // Drain the dlq.  In production, AX25LinkProcessor's dispatcher thread
+    // pulls DLQ_REC_FRAME items and feeds them into wfweb_dw_rx_frame()
+    // which in turn emits rxFrameDecoded.  The self-test runs the modem
+    // standalone, so we replicate the minimum of that loop here.
+    while (dlq_item_t *E = dlq_remove()) {
+        if (E->type == DLQ_REC_FRAME && E->pp != nullptr) {
+            unsigned char frame[AX25_MAX_PACKET_LEN];
+            int flen = ax25_pack(E->pp, frame);
+            if (flen > 0) {
+                wfweb_dw_rx_frame(E->chan, E->subchan, E->slice,
+                                  frame, flen,
+                                  E->alevel.rec, E->alevel.mark,
+                                  E->alevel.space,
+                                  E->fec_type, E->retries);
+            }
+        }
+        dlq_delete(E);
+    }
 
     if (!gotFrame) {
         qCWarning(logWebServer) << "SelfTest[" << baud << "]: no frame decoded";

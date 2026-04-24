@@ -37,6 +37,15 @@ public:
     static int runSelfTest();
     static int runSelfTestMode(int baud);
 
+    // Idempotent wrapper around Dire Wolf's dlq_init().  The HDLC decoder
+    // pushes every successfully-demodulated frame into the data-link queue
+    // via dlq_rec_frame(), which assert()s was_init.  Both the AX.25 link
+    // processor and the standalone self-test need this set up before any
+    // RX processing begins, and dlq_init() is not safe to call twice
+    // (calls pthread_mutex_init on already-initialized mutexes), so this
+    // helper uses std::call_once.
+    static void ensureDlqInitialized();
+
     // Offline demod: read a mono/stereo 16-bit PCM WAV, feed through the
     // demodulator at the given baud (300/1200/9600), print decoded frames
     // to stdout.  Returns 0 if at least one frame decoded, 1 on file/format

@@ -2016,7 +2016,6 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     else if (type == "setFreeDVMonitor") {
         freedvMonitor = cmd["value"].toBool();
     }
-#ifdef PACKET_SUPPORT
     else if (type == "packetEnable") {
         packetEnabled = cmd["value"].toBool();
         if (dwProc) {
@@ -2344,7 +2343,6 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             qInfo().noquote() << "Web: YAPP reject → AB sent" << s->sid;
         }
     }
-#endif
 #ifdef FREEDV_SUPPORT
     else if (type == "setReporter") {
         reporterCallsign = cmd["callsign"].toString().toUpper().trimmed();
@@ -3225,7 +3223,6 @@ void webServer::setupAudio(quint8 codec, quint32 sampleRate)
     radeThread->start();
 #endif
 
-#ifdef PACKET_SUPPORT
     // Dire Wolf packet processor thread (created once, activated on demand)
     dwProc = new DireWolfProcessor();
     dwThread = new QThread(this);
@@ -3265,7 +3262,6 @@ void webServer::setupAudio(quint8 codec, quint32 sampleRate)
                 Qt::QueuedConnection);
         axProc->start();
     }
-#endif
 
     qInfo() << "Web: Audio configured, codec=" << Qt::hex << codec
             << "sampleRate=" << Qt::dec << sampleRate;
@@ -3288,9 +3284,7 @@ void webServer::receiveRxAudio(audioPacket audio)
     // or an active packet modem that needs samples even when no one is
     // listening to RX audio in the browser.
     bool haveConsumer = !audioClients.isEmpty();
-#ifdef PACKET_SUPPORT
     haveConsumer = haveConsumer || packetEnabled;
-#endif
     if (!haveConsumer) return;
     if (freedvEnabled && !freedvMonitor) {
 #ifdef RADE_SUPPORT
@@ -3410,17 +3404,13 @@ void webServer::drainFreeDVTxBuffer()
         usbAudioOutputDevice->write(chunk);
         freedvTxBuffer.clear();
     } else if (radeEooDraining
-#ifdef PACKET_SUPPORT
                || packetTxDraining
-#endif
               ) {
         // One-shot burst (RADE EOO or packet frame) fully drained — stop
         // ALSA and clean up.  For packet we also schedule a delayed PTT-off
         // so the radio has time to push the tail samples through.
-#ifdef PACKET_SUPPORT
         bool wasPacket = packetTxDraining;
         packetTxDraining = false;
-#endif
         radeEooDraining = false;
         freedvTxActive = false;
         freedvTxDrainTimer->stop();
@@ -3429,7 +3419,6 @@ void webServer::drainFreeDVTxBuffer()
             usbAudioOutput->stop();
             usbAudioOutputDevice = nullptr;
         }
-#ifdef PACKET_SUPPORT
         if (wasPacket) {
             qInfo() << "Web: Packet TX drain complete, ALSA stopped — delayed unkey";
             QTimer::singleShot(300, this, [this]() {
@@ -3445,7 +3434,6 @@ void webServer::drainFreeDVTxBuffer()
             });
             return;
         }
-#endif
         qInfo() << "Web: RADE EOO drain complete, ALSA stopped";
         return;
     } else {
@@ -3681,7 +3669,6 @@ void webServer::onRadeRxCallsign(const QString &callsign)
 }
 #endif
 
-#ifdef PACKET_SUPPORT
 void webServer::onPacketRxDecoded(int chan, QJsonObject frame)
 {
     QJsonObject msg = frame;
@@ -4570,17 +4557,14 @@ void webServer::yappAbortSend(TerminalSession *s)
         s->yapp.filesize = 0;
     }
 }
-#endif
 
 void webServer::onRxConverted(audioPacket audio)
 {
-#ifdef PACKET_SUPPORT
     // Fan decoded PCM out to the packet processor. Independent of audio clients:
     // decoding can happen even when no browser is listening to audio.
     if (packetEnabled) {
         emit sendToPacketRx(audio);
     }
-#endif
 
     if (audioClients.isEmpty()) return;
 
@@ -4777,7 +4761,6 @@ void webServer::setupUsbAudio(quint32 sampleRate)
     }
 #endif
 
-#ifdef PACKET_SUPPORT
     // Dire Wolf packet processor (mirrors the LAN path in setupAudio()).
     if (!dwProc) {
         dwProc = new DireWolfProcessor();
@@ -4825,7 +4808,6 @@ void webServer::setupUsbAudio(quint32 sampleRate)
                                       Q_ARG(bool, true));
         }
     }
-#endif
 
     qInfo() << "Web: USB audio capture configured, sampleRate=" << rigSampleRate
             << "channels=" << format.channelCount();
@@ -4944,9 +4926,7 @@ void webServer::readUsbAudio()
     // active packet modem, or anything we need to drain so the input
     // buffer doesn't pile up.
     bool haveConsumer = !audioClients.isEmpty();
-#ifdef PACKET_SUPPORT
     haveConsumer = haveConsumer || packetEnabled;
-#endif
     if (!haveConsumer) {
         // Still drain so the input buffer stays healthy.
         usbAudioDevice->readAll();
@@ -4994,7 +4974,6 @@ void webServer::readUsbAudio()
         return;
     }
 
-#ifdef PACKET_SUPPORT
     // Fan out to the Dire Wolf demod.  The LAN path feeds packet via the
     // audioConverter (onRxConverted); USB is already PCM Int16 at
     // rigSampleRate, so send it straight in.
@@ -5007,7 +4986,6 @@ void webServer::readUsbAudio()
         pkt.volume = 1.0;
         emit sendToPacketRx(pkt);
     }
-#endif
 
     if (audioClients.isEmpty()) return;
 

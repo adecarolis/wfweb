@@ -22,8 +22,12 @@
         },
         activeTab: 'aprs',     // "aprs" or "term"
         terminal: {
-            sessions: {},      // sid -> {sid, ownCall, peerCall, digis, state, scrollback[], chan}
+            sessions: {},      // sid -> {sid, ownCall, peerCall, digis, state, scrollback[], chan, hasUnread}
             activeSid: null,   // which session's scrollback we're showing
+            pendingOutbound: null,  // {ownCall, peerCall, chan} — set by termConnect, matched
+                                    // against the next termSession we see so the tab the
+                                    // *user* just asked for becomes active.  Inbound
+                                    // sessions never set activeSid on their own.
             compose: {         // last-used connect fields
                 ownCall:  'N0CALL',
                 peerCall: 'N0CALL-1',
@@ -128,8 +132,8 @@
                     '<button id="termConnectBtn"    class="packet-send-btn" title="Open AX.25 connected-mode link">Connect</button>' +
                     '<button id="termDisconnectBtn" class="packet-action-btn" title="Disconnect this session" disabled>Disconnect</button>' +
                     '<span   id="termStateChip"     class="term-state-chip">DISCONNECTED</span>' +
-                    '<select id="termSessionPicker" class="term-session-picker"></select>' +
                 '</div>' +
+                '<div id="termSessionTabs" class="term-session-tabs"></div>' +
                 '<div id="termXferBar" class="term-xfer-bar hidden">' +
                     '<span id="termXferLabel" class="term-xfer-label"></span>' +
                     '<div class="term-xfer-track"><div id="termXferFill" class="term-xfer-fill"></div></div>' +
@@ -223,10 +227,20 @@
                 }
             });
         }
-        document.getElementById('termSessionPicker').onchange = function(e) {
-            state.terminal.activeSid = e.target.value || null;
-            renderTerm();
-        };
+        // Tab strip click delegation — body selects, × closes.
+        document.getElementById('termSessionTabs').addEventListener('click', function(e) {
+            var closeBtn = e.target.closest && e.target.closest('.term-tab-close');
+            if (closeBtn) {
+                e.stopPropagation();
+                var sidC = closeBtn.getAttribute('data-sid');
+                if (sidC && window.send) window.send({ cmd: 'termClose', sid: sidC });
+                return;
+            }
+            var tab = e.target.closest && e.target.closest('.term-tab');
+            if (!tab) return;
+            var sid = tab.getAttribute('data-sid');
+            if (sid) termSetActive(sid);
+        });
         var abortBtn = document.getElementById('termXferAbortBtn');
         if (abortBtn) abortBtn.onclick = termAbortTransfer;
         // Re-register on focus-out so changes to the Own input flow through
@@ -307,8 +321,15 @@
             '.term-state-chip.connected     { color: #0f0; border-color: #0a0; background: #010; }' +
             '.term-state-chip.disconnecting { color: #f80; border-color: #a40; background: #110; }' +
             '.term-state-chip.disconnected  { color: #888; border-color: #555; background: #111; }' +
-            '.term-session-picker { background: #001a00; border: 1px solid #0a0; color: #cfc; font-family: monospace; font-size: 11px; padding: 2px 4px; border-radius: 2px; outline: none; }' +
-            '.term-session-picker:empty { display: none; }' +
+            '.term-session-tabs { display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 4px; }' +
+            '.term-session-tabs:empty { display: none; }' +
+            '.term-tab { display: inline-flex; align-items: center; gap: 6px; background: #001a00; border: 1px solid #0a0; border-bottom: none; color: #8c8; font-family: monospace; font-size: 11px; padding: 3px 4px 3px 8px; border-radius: 3px 3px 0 0; cursor: pointer; user-select: none; }' +
+            '.term-tab:hover { background: #003300; color: #cfc; }' +
+            '.term-tab.active { background: #010; color: #0f0; border-color: #0f0; }' +
+            '.term-tab .term-tab-state { font-size: 9px; opacity: 0.7; margin-left: 2px; }' +
+            '.term-tab.unread::before { content: "●"; color: #ff0; margin-right: 4px; font-size: 10px; }' +
+            '.term-tab-close { background: transparent; border: none; color: inherit; font-family: monospace; font-size: 14px; line-height: 1; padding: 0 2px; cursor: pointer; opacity: 0.6; border-radius: 2px; }' +
+            '.term-tab-close:hover { opacity: 1; background: #300; color: #f88; }' +
             '.term-scrollback { background: #000; border: 1px solid #0a0; border-radius: 3px; padding: 6px; flex: 1; min-height: 0; overflow-y: auto; font-family: monospace; font-size: 12px; line-height: 1.4; color: #cfc; white-space: pre-wrap; word-wrap: break-word; }' +
             '.term-scrollback .rx { color: #cfc; }' +
             '.term-scrollback .tx { color: #ff0; }' +
@@ -481,10 +502,16 @@
             }
             s.scrollback = s.scrollback || [];
             s.scrollback.push({ ts: msg.ts, dir: msg.dir, data: msg.data });
-            if (state.terminal.activeSid === msg.sid) renderTermScrollback();
+            if (state.terminal.activeSid === msg.sid) {
+                renderTermScrollback();
+            } else {
+                // Background tab got traffic — surface it via the unread dot.
+                s.hasUnread = true;
+                renderTermTabs();
+            }
         } else if (msg.type === 'termList') {
             // Replace local view with server snapshot.  Keep activeSid if it
-            // still exists.
+            // still exists; never auto-pick a new one — the operator selects.
             state.terminal.sessions = {};
             if (Array.isArray(msg.sessions)) {
                 for (var i = 0; i < msg.sessions.length; i++) {
@@ -493,11 +520,8 @@
                     state.terminal.sessions[ss.sid].scrollback = [];
                 }
             }
-            // If we have sessions but no active one, pick the first.
-            var sids = Object.keys(state.terminal.sessions);
-            if (!state.terminal.activeSid && sids.length > 0) {
-                state.terminal.activeSid = sids[0];
-                if (window.send) window.send({ cmd: 'termHistory', sid: state.terminal.activeSid });
+            if (state.terminal.activeSid && !state.terminal.sessions[state.terminal.activeSid]) {
+                state.terminal.activeSid = null;
             }
             renderTerm();
         } else if (msg.type === 'termHistory') {
@@ -515,7 +539,8 @@
             sx.xfer = { active: true, dir: msg.dir, name: msg.name,
                         total: msg.total || 0, done: 0,
                         phase: msg.phase || 'active' };
-            if (!state.terminal.activeSid) state.terminal.activeSid = msg.sid;
+            // A transfer starting in a background tab is unread-worthy.
+            if (state.terminal.activeSid !== msg.sid) sx.hasUnread = true;
             renderTerm();
         } else if (msg.type === 'termXferRequest') {
             // Peer wants to send us a file (YAPP SI received).  Block data
@@ -558,11 +583,23 @@
         s.state    = msg.state;
         s.incoming = msg.incoming;
         if (!existing) state.terminal.sessions[msg.sid] = s;
-        // First session we see becomes active.
-        if (!state.terminal.activeSid) state.terminal.activeSid = msg.sid;
-        // Pre-warm scrollback for fresh sessions; for reconnects, request history.
-        if (!existing && state.terminal.activeSid === msg.sid) {
-            if (window.send) window.send({ cmd: 'termHistory', sid: msg.sid });
+
+        // Activate only when this is the session the user just asked to
+        // connect to (pendingOutbound).  Inbound or concurrent sessions
+        // never steal focus — they light up an unread marker instead.
+        if (!existing) {
+            var po = state.terminal.pendingOutbound;
+            var matchesPending = po
+                && po.ownCall  === msg.ownCall
+                && po.peerCall === msg.peerCall
+                && (typeof po.chan !== 'number' || po.chan === msg.chan);
+            if (matchesPending) {
+                state.terminal.pendingOutbound = null;
+                state.terminal.activeSid = msg.sid;
+                if (window.send) window.send({ cmd: 'termHistory', sid: msg.sid });
+            } else if (state.terminal.activeSid !== msg.sid) {
+                s.hasUnread = true;
+            }
         }
         renderTerm();
     }
@@ -1060,6 +1097,10 @@
         state.terminal.compose.digis    = digisRaw;
         saveTermComposeToStorage();
 
+        // Record the user's intent so handleTermSession activates the
+        // matching session when it arrives from the server, rather than
+        // whichever session happened to be first.
+        state.terminal.pendingOutbound = { ownCall: own, peerCall: peer, chan: 0 };
         if (window.send) {
             window.send({ cmd: 'termConnect', ownCall: own, peerCall: peer, digis: digis, chan: 0 });
         }
@@ -1105,7 +1146,7 @@
     }
 
     function renderTerm() {
-        renderTermPicker();
+        renderTermTabs();
         renderTermStateChip();
         renderTermScrollback();
         renderTermXfer();
@@ -1272,25 +1313,39 @@
         setTimeout(function() { document.body.removeChild(a); }, 100);
     }
 
-    function renderTermPicker() {
-        var picker = document.getElementById('termSessionPicker');
-        if (!picker) return;
+    function renderTermTabs() {
+        var host = document.getElementById('termSessionTabs');
+        if (!host) return;
         var sids = Object.keys(state.terminal.sessions);
-        if (sids.length <= 1) {
-            picker.innerHTML = '';
-            picker.style.display = 'none';
-            return;
-        }
-        picker.style.display = '';
         var html = '';
         for (var i = 0; i < sids.length; i++) {
-            var s = state.terminal.sessions[sids[i]];
-            var lbl = s.peerCall + ' (' + s.state + ')';
-            html += '<option value="' + sids[i] + '"' +
-                    (sids[i] === state.terminal.activeSid ? ' selected' : '') +
-                    '>' + escapeHtml(lbl) + '</option>';
+            var sid = sids[i];
+            var s = state.terminal.sessions[sid];
+            var isActive = sid === state.terminal.activeSid;
+            var cls = 'term-tab'
+                    + (isActive ? ' active' : '')
+                    + (!isActive && s.hasUnread ? ' unread' : '');
+            html += '<div class="' + cls + '" data-sid="' + escapeHtml(sid) + '"'
+                  + ' title="' + escapeHtml(s.ownCall + ' ↔ ' + s.peerCall
+                                            + (s.digis && s.digis.length ? ' via ' + s.digis.join(',') : '')) + '">'
+                  +   '<span>' + escapeHtml(s.peerCall || '(unknown)') + '</span>'
+                  +   '<span class="term-tab-state">' + escapeHtml(s.state || 'disconnected') + '</span>'
+                  +   '<button type="button" class="term-tab-close" data-sid="' + escapeHtml(sid) + '" title="Close session">×</button>'
+                  + '</div>';
         }
-        picker.innerHTML = html;
+        host.innerHTML = html;
+    }
+
+    // Explicit activation — the only place activeSid changes, aside from
+    // close-and-null-out.  Prefetch history and clear the unread marker.
+    function termSetActive(sid) {
+        if (!sid || !state.terminal.sessions[sid]) return;
+        if (state.terminal.activeSid === sid) return;
+        state.terminal.activeSid = sid;
+        var s = state.terminal.sessions[sid];
+        if (s) s.hasUnread = false;
+        if (window.send) window.send({ cmd: 'termHistory', sid: sid });
+        renderTerm();
     }
 
     function renderTermStateChip() {

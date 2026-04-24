@@ -1,4 +1,5 @@
 #include "ax25linkprocessor.h"
+#include "direwolfprocessor.h"
 
 #include <QDebug>
 #include <QLoggingCategory>
@@ -9,7 +10,6 @@ extern "C" {
 #include "direwolf.h"
 #include "ax25_pad.h"
 #include "ax25_link.h"
-#include "dlq.h"
 #include "tq.h"
 #include "config.h"
 #include "wfweb_dw_server_shim.h"
@@ -59,7 +59,9 @@ void AX25LinkProcessor::start()
 
     ax25_link_init(&s_misc_config, /*debug=*/0, /*stats=*/0);
     tq_init(nullptr);
-    dlq_init(0);
+    // Shared once-flag with DireWolfProcessor::init(); dlq_init() is not
+    // safe to call twice (pthread_mutex_init on an initialized mutex).
+    DireWolfProcessor::ensureDlqInitialized();
 
     s_instance = this;
     wfweb_dw_register_server_callbacks(&cbLinkEstablished,

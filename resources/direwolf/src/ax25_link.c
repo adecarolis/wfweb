@@ -2363,8 +2363,14 @@ void lm_data_indication (dlq_item_t *E)
 
 	ftype = ax25_frame_type (E->pp, &cr, desc, &pf, &nr, &ns);
 
+	// wfweb patch: also create a fresh DLSM for an incoming DISC addressed
+	// to one of our registered callsigns.  Upstream only creates on SABM/
+	// SABME, so a peer retrying DISC at a station with no prior link context
+	// was silently ignored — non-compliant with AX.25 v2.x §6.3.3 which
+	// requires DM (F=1) in response.  With a DLSM in state_0_disconnected,
+	// the existing DISC handler at disc_frame() emits DM naturally.
 	S = get_link_handle (E->addrs, E->num_addr, E->chan, client_not_applicable,
-				(ftype == frame_type_U_SABM) | (ftype == frame_type_U_SABME));
+				(ftype == frame_type_U_SABM) | (ftype == frame_type_U_SABME) | (ftype == frame_type_U_DISC));
 
 	if (S == NULL) {
 	  return;
