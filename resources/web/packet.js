@@ -330,11 +330,10 @@
             '.term-tab.unread::before { content: "●"; color: #ff0; margin-right: 4px; font-size: 10px; }' +
             '.term-tab-close { background: transparent; border: none; color: inherit; font-family: monospace; font-size: 14px; line-height: 1; padding: 0 2px; cursor: pointer; opacity: 0.6; border-radius: 2px; }' +
             '.term-tab-close:hover { opacity: 1; background: #300; color: #f88; }' +
-            '.term-scrollback { background: #000; border: 1px solid #0a0; border-radius: 3px; padding: 6px; flex: 1; min-height: 0; overflow-y: auto; font-family: monospace; font-size: 12px; line-height: 1.4; color: #cfc; white-space: pre-wrap; word-wrap: break-word; }' +
+            '.term-scrollback { background: #000; border: 1px solid #0a0; border-radius: 3px; padding: 6px; flex: 1; min-height: 0; overflow-y: auto; font-family: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", "DejaVu Sans Mono", monospace; font-size: 12px; line-height: 1.4; color: #cfc; white-space: pre-wrap; word-wrap: break-word; user-select: text; -webkit-user-select: text; cursor: text; }' +
             '.term-scrollback .rx { color: #cfc; }' +
             '.term-scrollback .tx { color: #ff0; }' +
             '.term-scrollback .info { color: #888; font-style: italic; }' +
-            '.term-scrollback .ts { color: #555; margin-right: 6px; font-size: 10px; }' +
             '.term-input-row { display: flex; gap: 6px; margin-top: 6px; }' +
             '.term-input { flex: 1; background: #001a00; border: 1px solid #0a0; color: #cfc; font-family: monospace; font-size: 12px; padding: 4px 6px; border-radius: 2px; outline: none; }' +
             '.term-input:focus { border-color: #0f0; }' +
@@ -1371,8 +1370,7 @@
         var entries = s.scrollback || [];
         for (var i = 0; i < entries.length; i++) {
             var e = entries[i];
-            html += '<span class="ts">' + escapeHtml(formatTs(e.ts)) + '</span>' +
-                    '<span class="' + (e.dir || 'info') + '">' + escapeHtml(e.data || '') + '</span>';
+            html += '<span class="' + (e.dir || 'info') + '">' + escapeHtml(e.data || '') + '</span>';
             if (e.__download) {
                 // Render a visible "save again" link — the browser was also
                 // auto-clicked when the file arrived, so the file is already
