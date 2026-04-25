@@ -371,12 +371,15 @@ html, body {
 #spanEdgeRight { right: 2px; }
 
 /* ---- Overlays (inside scope area) ---- */
+/* z-index 220 sits above the PACKET bar (200, also inside #scopeArea)
+   so MODE/BAND/FUNC/GAIN remain operable while a packet panel is open;
+   stays below #cwMacroEditor (250), which must paint over the overlays. */
 .overlay {
     display: none;
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(8,8,8,0.96);
-    z-index: 60;
+    z-index: 220;
 }
 .overlay.visible { display: flex; }
 
