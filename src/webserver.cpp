@@ -1262,6 +1262,13 @@ void webServer::onWsDisconnected()
                 usbAudioOutputDevice = nullptr;
             }
         }
+        // Cancel any pending PKT idle-driven unkey.  Clear the flag
+        // before any forced ALSA stop so a stray IdleState transition
+        // can't re-enter onUsbAudioOutputStateChanged.
+        packetTxAwaitingIdle = false;
+        if (packetUsbTxDrainTimer) packetUsbTxDrainTimer->stop();
+        packetUsbTxBuffer.clear();
+        packetUsbTxActive = false;
         audioClients.remove(pClient);
         wsClients.removeAll(pClient);
         pClient->deleteLater();
@@ -1302,42 +1309,29 @@ void webServer::onWsBinaryMessage(QByteArray message)
     }
 
     if (usbAudioOutput && txAudioConfigured) {
-        // USB path
-        // Expand mono → stereo if the device requires it
-        QByteArray writeData;
-        if (usbOutputChannels == 2) {
-            int numSamples = pcmData.size() / 2;
-            writeData.resize(numSamples * 4);
-            const qint16 *src = reinterpret_cast<const qint16 *>(pcmData.constData());
-            qint16 *dst = reinterpret_cast<qint16 *>(writeData.data());
-            for (int i = 0; i < numSamples; i++) {
-                dst[i * 2] = src[i];
-                dst[i * 2 + 1] = src[i];
-            }
-        } else {
-            writeData = pcmData;
-        }
-
+        // USB path.  preTxBuffer holds raw mono until the device starts;
+        // expansion to stereo (if needed) happens inside txWritePcmFrame
+        // so the same writer serves the mic, FT8 and PKT paths.
         if (preTxBuffering) {
             // Accumulate chunks until the buffer reaches the device's full capacity,
             // then start ALSA and dump them all at once.  This ensures ALSA begins
             // with a full buffer rather than an empty one, providing a real jitter
             // absorber instead of racing the drain rate from the first byte.
-            preTxBuffer.append(writeData);
-            int bufSize = 9600; // ~100ms at 48kHz mono 16-bit
+            preTxBuffer.append(pcmData);
+            const int bufSize = 9600; // ~100ms at 48kHz mono 16-bit
             if (preTxBuffer.size() >= bufSize) {
                 preTxBuffering = false;
                 usbAudioOutputDevice = usbAudioOutput->start();
                 if (usbAudioOutputDevice) {
-                    usbAudioOutputDevice->write(preTxBuffer);
                     txAudioActive = true;
+                    txWritePcmFrame(preTxBuffer, /*applyGain=*/false);
                 } else {
                     qWarning() << "Web: TX audio ALSA start() failed after pre-buffer";
                 }
                 preTxBuffer.clear();
             }
-        } else if (usbAudioOutputDevice) {
-            usbAudioOutputDevice->write(writeData);
+        } else {
+            txWritePcmFrame(pcmData, /*applyGain=*/false);
         }
     } else if (txConverter) {
         // LAN path: encode PCM → rig codec, then emit for transmission
@@ -2103,7 +2097,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             // Either USB mode (usbAudioOutput + txAudioConfigured both set
             // by setupUsbAudio) or LAN mode (txConverter set by setupAudio).
             failReason = "TX audio not configured";
-        } else if (packetTxDraining || freedvTxActive) {
+        } else if (packetTxBusy || freedvTxActive) {
             failReason = "TX already in progress";
         }
 
@@ -2121,7 +2115,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             // that arrives before the queued encode completes would slip
             // past the "already in progress" guard.  Cleared by the drain
             // timer on completion, or by onPacketTxFailed on error.
-            packetTxDraining = true;
+            packetTxBusy = true;
 
             // Key the radio immediately so it's settled by the time the
             // encoded burst arrives via onPacketTxReady.
@@ -3074,6 +3068,41 @@ void webServer::sendBinaryToAudioClients(const QByteArray &data)
     }
 }
 
+// Common TX-audio writer.  Used by the mic-frame WS handler and by the
+// PKT USB pacer so both TX paths share one piece of plumbing.  Mono in;
+// expanded to stereo here when the device requires it.  ALC-controlled
+// gain is opt-in via applyGain — modem audio (FreeDV/RADE/PKT) needs it
+// or it'll clip the rig's USB input; mic/FT8 paths already deliver
+// post-mixer levels and pass false.
+void webServer::txWritePcmFrame(const QByteArray &pcmMonoLE, bool applyGain)
+{
+    if (!usbAudioOutput || !usbAudioOutputDevice) return;
+    if (pcmMonoLE.isEmpty()) return;
+
+    QByteArray writeData;
+    if (usbOutputChannels == 2) {
+        int numSamples = pcmMonoLE.size() / (int)sizeof(qint16);
+        writeData.resize(numSamples * 4);
+        const qint16 *src = reinterpret_cast<const qint16 *>(pcmMonoLE.constData());
+        qint16 *dst = reinterpret_cast<qint16 *>(writeData.data());
+        for (int i = 0; i < numSamples; i++) {
+            dst[i * 2]     = src[i];
+            dst[i * 2 + 1] = src[i];
+        }
+    } else {
+        writeData = pcmMonoLE;
+    }
+
+    if (applyGain && freedvTxGain < 0.99f) {
+        qint16 *samples = reinterpret_cast<qint16 *>(writeData.data());
+        int count = writeData.size() / (int)sizeof(qint16);
+        for (int i = 0; i < count; i++)
+            samples[i] = qBound((int)-32768, (int)(samples[i] * freedvTxGain), (int)32767);
+    }
+
+    usbAudioOutputDevice->write(writeData);
+}
+
 QString webServer::modeToString(modeInfo m)
 {
     if (m.name.isEmpty()) {
@@ -3525,14 +3554,11 @@ void webServer::drainFreeDVTxBuffer()
         chunk.append(QByteArray(chunkSize - chunk.size(), 0));
         usbAudioOutputDevice->write(chunk);
         freedvTxBuffer.clear();
-    } else if (radeEooDraining
-               || packetTxDraining
-              ) {
-        // One-shot burst (RADE EOO or packet frame) fully drained — stop
-        // ALSA and clean up.  For packet we also schedule a delayed PTT-off
-        // so the radio has time to push the tail samples through.
-        bool wasPacket = packetTxDraining;
-        packetTxDraining = false;
+    } else if (radeEooDraining) {
+        // One-shot RADE EOO frame fully drained — stop ALSA and clean up.
+        // PKT no longer rides this drain function; it has its own pacer
+        // (drainPacketUsbTxBuffer) and an event-driven unkey via
+        // QAudioOutput::stateChanged → IdleState.
         radeEooDraining = false;
         freedvTxActive = false;
         freedvTxDrainTimer->stop();
@@ -3540,21 +3566,6 @@ void webServer::drainFreeDVTxBuffer()
         if (usbAudioOutput) {
             usbAudioOutput->stop();
             usbAudioOutputDevice = nullptr;
-        }
-        if (wasPacket) {
-            qInfo() << "Web: Packet TX drain complete, ALSA stopped — delayed unkey";
-            QTimer::singleShot(300, this, [this]() {
-                if (queue) {
-                    queue->add(priorityImmediate,
-                               queueItem(funcTransceiverStatus,
-                                         QVariant::fromValue<bool>(false), false, uchar(0)));
-                    queue->del(funcALCMeter, 0);
-                }
-                QJsonObject notify;
-                notify["type"] = "packetTxComplete";
-                sendJsonToAll(notify);
-            });
-            return;
         }
         qInfo() << "Web: RADE EOO drain complete, ALSA stopped";
         return;
@@ -3843,7 +3854,7 @@ void webServer::onAprsBeaconRequested(QString src, QString dst,
         qWarning() << "Web: APRS beacon dropped — TX audio not configured";
         return;
     }
-    if (packetTxDraining || freedvTxActive) {
+    if (packetTxBusy || freedvTxActive) {
         qInfo() << "Web: APRS beacon dropped — TX already in progress";
         return;
     }
@@ -3853,7 +3864,7 @@ void webServer::onAprsBeaconRequested(QString src, QString dst,
     if (!path.isEmpty()) monitor += "," + path.join(",");
     monitor += ":" + info;
 
-    packetTxDraining = true;
+    packetTxBusy = true;
     queue->add(priorityImmediate,
                queueItem(funcTransceiverStatus,
                          QVariant::fromValue<bool>(true), false, uchar(0)));
@@ -3871,10 +3882,12 @@ void webServer::onAprsBeaconRequested(QString src, QString dst,
 }
 
 // Receives the complete encoded burst for a single AX.25 frame (entire
-// preamble+frame+postamble in one audioPacket).  Pushes it into the shared
-// TX buffer and drives ALSA through the same drain timer FreeDV/RADE use.
-// packetTxDraining tells drainFreeDVTxBuffer to stop ALSA and unkey the
-// radio once the buffer empties.
+// preamble+frame+postamble in one audioPacket).  USB path: appends to the
+// PKT-owned packetUsbTxBuffer and lets drainPacketUsbTxBuffer feed ALSA
+// in 10 ms slices; the radio is unkeyed when QAudioOutput goes
+// IdleState (queue underran), gated by packetTxAwaitingIdle.  LAN path:
+// 20 ms slices into the TX converter, unkey 50 ms after the last chunk.
+// packetTxBusy is held high across both paths until the radio is unkeyed.
 void webServer::onPacketTxReady(audioPacket audio)
 {
     // Tee the TX PCM to audio clients for waterfall visualisation.  Radios
@@ -3956,12 +3969,12 @@ void webServer::onPacketTxReady(audioPacket audio)
     };
 
     // Key PTT if no burst is currently in flight.  The packetTx command
-    // does this itself before invoking transmitFrame, so packetTxDraining
+    // does this itself before invoking transmitFrame, so packetTxBusy
     // is already true on that path; for connected-mode TX (AX25LinkProcessor
     // → transmitFrameBytes), nothing has keyed the radio yet, so do it
-    // here.  Existing drain logic in drainFreeDVTxBuffer / drainPacketLanTxBuffer
-    // already handles the delayed unkey when the buffer empties.
-    if (!packetTxDraining) {
+    // here.  Drain logic (drainPacketUsbTxBuffer / drainPacketLanTxBuffer)
+    // handles the unkey when the buffer empties.
+    if (!packetTxBusy) {
         if (queue) {
             queue->add(priorityImmediate,
                        queueItem(funcTransceiverStatus,
@@ -3969,7 +3982,7 @@ void webServer::onPacketTxReady(audioPacket audio)
             queue->addUnique(priorityHighest,
                              queueItem(funcALCMeter, true, 0));
         }
-        packetTxDraining = true;
+        packetTxBusy = true;
     }
 
     // LAN path: route through the TX converter instead of USB output.
@@ -4006,7 +4019,7 @@ void webServer::onPacketTxReady(audioPacket audio)
             return;
         }
         qWarning() << "Web: Packet TX: no USB output and no TX converter";
-        packetTxDraining = false;
+        packetTxBusy = false;
         unkey();
         QJsonObject notify;
         notify["type"] = "packetTxFailed";
@@ -4015,67 +4028,63 @@ void webServer::onPacketTxReady(audioPacket audio)
         return;
     }
 
-    // Expand mono -> stereo if the USB output is a stereo device.
-    QByteArray writeData;
-    if (usbOutputChannels == 2) {
-        int numSamples = audio.data.size() / (int)sizeof(qint16);
-        writeData.resize(numSamples * 4);
-        const qint16 *src = reinterpret_cast<const qint16 *>(audio.data.constData());
-        qint16 *dst = reinterpret_cast<qint16 *>(writeData.data());
-        for (int i = 0; i < numSamples; i++) {
-            dst[i * 2] = src[i];
-            dst[i * 2 + 1] = src[i];
-        }
-    } else {
-        writeData = audio.data;
+    // USB path: append raw mono to PKT-owned buffer, kick off ALSA on
+    // first data, drain via packetUsbTxDrainTimer at 10 ms ticks.  The
+    // unkey is driven by QAudioOutput::stateChanged → IdleState (Qt's
+    // queue underran) instead of a fixed post-empty timer, so the PTT
+    // drops within ~30 ms of the last sample actually leaving the
+    // soundcard rather than ~300 ms after the app buffer emptied.
+    packetUsbTxBuffer.append(audio.data);
+    packetTxBusy = true;
+
+    // New frame arrived during the post-empty wait — cancel pending unkey
+    // and resume pacing so the radio stays keyed across the gap.  This
+    // matters most for back-to-back YAPP frames where a small gap between
+    // dwThread bursts must not unkey the radio.
+    if (packetTxAwaitingIdle) {
+        packetTxAwaitingIdle = false;
+        if (packetUsbTxDrainTimer && !packetUsbTxDrainTimer->isActive())
+            packetUsbTxDrainTimer->start(10);
     }
 
-    // Apply the existing ALC-controlled gain so the same slider governs
-    // packet TX level alongside FreeDV/RADE.  Packet modem output is full
-    // amplitude by default which would clip the rig's USB input.
-    if (freedvTxGain < 0.99f) {
-        qint16 *samples = reinterpret_cast<qint16 *>(writeData.data());
-        int count = writeData.size() / (int)sizeof(qint16);
-        for (int i = 0; i < count; i++)
-            samples[i] = qBound((int)-32768, (int)(samples[i] * freedvTxGain), (int)32767);
-    }
-
-    freedvTxBuffer.append(writeData);
-    packetTxDraining = true;
-
-    if (!freedvTxActive) {
-        freedvTxActive = true;
+    if (!packetUsbTxActive) {
+        packetUsbTxActive = true;
+        // Stop any prior ALSA session (e.g. mic was active).  Mode mutex
+        // means this is rare; keep the safety net.
         if (usbAudioOutput->state() != QAudio::StoppedState)
             usbAudioOutput->stop();
         usbAudioOutputDevice = nullptr;
 
         usbAudioOutputDevice = usbAudioOutput->start();
-        if (usbAudioOutputDevice) {
-            txAudioActive = true;
-            preTxBuffering = false;
-            // 50 ms silence prefill (identical to FreeDV/RADE TX start).
-            QByteArray prefill(4800 * usbOutputChannels, 0);
-            usbAudioOutputDevice->write(prefill);
-
-            if (!freedvTxDrainTimer) {
-                freedvTxDrainTimer = new QTimer(this);
-                freedvTxDrainTimer->setTimerType(Qt::PreciseTimer);
-                connect(freedvTxDrainTimer, &QTimer::timeout, this, &webServer::drainFreeDVTxBuffer);
-            }
-            freedvTxDrainTimer->start(10);
-            qInfo() << "Web: Packet TX started, audioBytes=" << audio.data.size()
-                    << "bufSize=" << usbAudioOutput->bufferSize();
-        } else {
-            qWarning() << "Web: Packet TX ALSA start() failed";
-            freedvTxActive = false;
-            packetTxDraining = false;
-            freedvTxBuffer.clear();
+        if (!usbAudioOutputDevice) {
+            qWarning() << "Web: PKT TX ALSA start() failed";
+            packetUsbTxActive = false;
+            packetTxBusy = false;
+            packetUsbTxBuffer.clear();
             unkey();
             QJsonObject notify;
             notify["type"] = "packetTxFailed";
             notify["reason"] = "audio output start failed";
             sendJsonToAll(notify);
+            return;
         }
+        txAudioActive = true;
+        preTxBuffering = false;
+        // 50 ms silence prefill — same headroom strategy the FreeDV/mic
+        // paths use; matters more for PKT because the first symbol must
+        // not be clipped by an ALSA underrun.
+        QByteArray prefill(4800 * usbOutputChannels, 0);
+        usbAudioOutputDevice->write(prefill);
+
+        if (!packetUsbTxDrainTimer) {
+            packetUsbTxDrainTimer = new QTimer(this);
+            packetUsbTxDrainTimer->setTimerType(Qt::PreciseTimer);
+            connect(packetUsbTxDrainTimer, &QTimer::timeout,
+                    this, &webServer::drainPacketUsbTxBuffer);
+        }
+        packetUsbTxDrainTimer->start(10);
+        qInfo() << "Web: PKT USB TX started, audioBytes=" << audio.data.size()
+                << "bufSize=" << usbAudioOutput->bufferSize();
     }
 }
 
@@ -4083,7 +4092,11 @@ void webServer::onPacketTxFailed(QString reason)
 {
     qWarning() << "Web: Packet TX failed:" << reason;
     // Release the TX slot and unkey if we already keyed.
-    packetTxDraining = false;
+    packetTxBusy = false;
+    packetTxAwaitingIdle = false;
+    if (packetUsbTxDrainTimer) packetUsbTxDrainTimer->stop();
+    packetUsbTxBuffer.clear();
+    packetUsbTxActive = false;
     if (queue) {
         queue->add(priorityImmediate,
                    queueItem(funcTransceiverStatus,
@@ -4097,15 +4110,18 @@ void webServer::onPacketTxFailed(QString reason)
 }
 
 // LAN path drain: feeds one 20 ms chunk per tick into the TX converter.
-// When the buffer empties, delays unkey by 300 ms so the tail has time
-// to clear the rig's UDP audio buffer before PTT drops.
+// The chunker emits at real-time rate, so when packetLanTxBuffer empties
+// the audio is already in flight to the rig (UDP send queue + network +
+// rig's UDP audio jitter buffer).  Add a small slack for the rig-side
+// jitter buffer (~40–60 ms typical on Icom UDP audio); 50 ms covers it
+// without the wasteful airtime of the old 300 ms guess.
 void webServer::drainPacketLanTxBuffer()
 {
     if (packetLanTxBuffer.isEmpty()) {
         if (packetLanTxTimer) packetLanTxTimer->stop();
         qDebug() << "Web: Packet LAN TX drained, scheduling unkey";
-        QTimer::singleShot(300, this, [this]() {
-            packetTxDraining = false;
+        QTimer::singleShot(50, this, [this]() {
+            packetTxBusy = false;
             if (queue) {
                 queue->add(priorityImmediate,
                            queueItem(funcTransceiverStatus,
@@ -4126,6 +4142,82 @@ void webServer::drainPacketLanTxBuffer()
     chunk.volume = 1.0;
     packetLanTxBuffer.remove(0, take);
     emit sendToTxConverter(chunk);
+}
+
+// PKT USB drain.  Pops one 10 ms chunk per tick and writes it via the
+// shared writer.  Empty + active → switch to packetTxAwaitingIdle and
+// stop the timer; QAudioOutput's stateChanged → IdleState then drives
+// the unkey (no fixed-300 ms guess).
+void webServer::drainPacketUsbTxBuffer()
+{
+    if (!usbAudioOutputDevice) return;
+
+    // 10 ms @ rigSampleRate, mono int16.  rigSampleRate is 48000 in
+    // practice; chunkSize falls out at 960 bytes mono.
+    const quint32 rate = rigSampleRate ? rigSampleRate : 48000;
+    const int chunkSize = (int)(rate / 100) * (int)sizeof(qint16);
+
+    if (packetUsbTxBuffer.size() >= chunkSize) {
+        QByteArray chunk = packetUsbTxBuffer.left(chunkSize);
+        packetUsbTxBuffer.remove(0, chunkSize);
+        txWritePcmFrame(chunk, /*applyGain=*/true);
+    } else if (!packetUsbTxBuffer.isEmpty()) {
+        // Partial trailing data: pad with silence to maintain timing.
+        QByteArray chunk = packetUsbTxBuffer;
+        chunk.append(QByteArray(chunkSize - chunk.size(), 0));
+        packetUsbTxBuffer.clear();
+        txWritePcmFrame(chunk, /*applyGain=*/true);
+    } else {
+        // Buffer drained.  Stop pacing; do NOT stop ALSA — we want Qt's
+        // internal queue to play out so its IdleState can fire.
+        packetUsbTxDrainTimer->stop();
+        packetTxAwaitingIdle = true;
+        qInfo() << "Web: PKT USB drain complete — awaiting ALSA idle";
+
+        // If ALSA is already idle right now (rare race where the prefill
+        // never queued behind real audio), stateChanged won't fire again
+        // — schedule the handler to run on the next event loop tick.
+        if (usbAudioOutput && usbAudioOutput->state() == QAudio::IdleState) {
+            QMetaObject::invokeMethod(this, [this]() {
+                onUsbAudioOutputStateChanged(QAudio::IdleState);
+            }, Qt::QueuedConnection);
+        }
+    }
+}
+
+// Triggers the PKT USB unkey precisely when Qt's queue underruns —
+// i.e. the tail samples have actually been emitted.  Replaces the old
+// 300 ms blind guard with an event-driven completion that only adds a
+// small slack (30 ms) for the rig's USB-audio hardware buffer between
+// Qt and the modulator.
+void webServer::onUsbAudioOutputStateChanged(QAudio::State state)
+{
+    if (state != QAudio::IdleState) return;
+    if (!packetTxAwaitingIdle) return;
+
+    // Latch immediately so a follow-up Idle (e.g. from a stop/start
+    // race during back-to-back transfers) can't queue a duplicate.
+    packetTxAwaitingIdle = false;
+
+    QTimer::singleShot(30, this, [this]() {
+        if (usbAudioOutput && usbAudioOutput->state() != QAudio::StoppedState)
+            usbAudioOutput->stop();
+        usbAudioOutputDevice = nullptr;
+        packetUsbTxActive = false;
+        txAudioActive = false;
+        packetTxBusy = false;
+
+        if (queue) {
+            queue->add(priorityImmediate,
+                       queueItem(funcTransceiverStatus,
+                                 QVariant::fromValue<bool>(false), false, uchar(0)));
+            queue->del(funcALCMeter, 0);
+        }
+        QJsonObject notify;
+        notify["type"] = "packetTxComplete";
+        sendJsonToAll(notify);
+        qInfo() << "Web: PKT TX idle-driven unkey";
+    });
 }
 
 // ---- Packet-modem pref persistence ----
@@ -5266,6 +5358,8 @@ void webServer::setupUsbAudio(quint32 sampleRate)
         }
 
         usbAudioOutput = new QAudioOutput(usbOutDevice, outFormat, this);
+        connect(usbAudioOutput, &QAudioOutput::stateChanged,
+                this, &webServer::onUsbAudioOutputStateChanged);
         // Device starts stopped; it is started fresh on each enableMic=true via pre-buffer.
         txAudioConfigured = true;
         qInfo() << "Web: USB audio output configured for TX, channels=" << usbOutputChannels;
@@ -5292,6 +5386,8 @@ void webServer::setupUsbAudio(quint32 sampleRate)
         // Qt6 QAudioSink handles format negotiation internally
 
         usbAudioOutput = new QAudioSink(usbOutDevice, outFormat, this);
+        connect(usbAudioOutput, &QAudioSink::stateChanged,
+                this, &webServer::onUsbAudioOutputStateChanged);
         usbAudioOutputDevice = usbAudioOutput->start();
         if (usbAudioOutputDevice) {
             txAudioConfigured = true;

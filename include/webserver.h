@@ -138,6 +138,10 @@ private slots:
     void readUsbAudio();
     void onAudioStateChanged(QAudio::State state);
 
+    // USB audio output (TX): drives precise PKT unkey via QAudioOutput's
+    // own state machine — fires when Qt's internal queue actually underruns.
+    void onUsbAudioOutputStateChanged(QAudio::State state);
+
 #ifdef FREEDV_SUPPORT
     // FreeDV codec2
     void onFreeDVRxReady(audioPacket audio);
@@ -162,6 +166,7 @@ private slots:
     void onPacketTxReady(audioPacket audio);
     void onPacketTxFailed(QString reason);
     void drainPacketLanTxBuffer();
+    void drainPacketUsbTxBuffer();
 
     // APRS station database / beacon scheduler
     void onAprsStationUpdated(QJsonObject station);
@@ -184,6 +189,13 @@ private:
     void stopReporterSnrTimer();
     void sendBinaryToAll(const QByteArray &data);
     void sendBinaryToAudioClients(const QByteArray &data);
+    // Common TX-audio writer.  Takes mono int16 LE PCM, expands to stereo
+    // if the device requires it, optionally applies freedvTxGain (ALC-
+    // controlled), and writes to usbAudioOutputDevice.  Called from
+    // onWsBinaryMessage (mic / FT8 / voice — applyGain=false) and
+    // drainPacketUsbTxBuffer (PKT — applyGain=true).  Same writer for
+    // both, which is the structural unification of TX audio plumbing.
+    void txWritePcmFrame(const QByteArray &pcmMonoLE, bool applyGain);
     void handleCommand(QWebSocket *client, const QJsonObject &cmd);
     void requestVfoUpdate();
     void disableFreeDV();
@@ -309,11 +321,25 @@ private:
     AprsProcessor *aprsProc = nullptr;
     bool packetEnabled = false;
     int  packetMode = 300;     // 300 / 1200 / 9600 — single active modem
-    bool packetTxDraining = false;   // set while a one-shot packet burst
-                                     // is emptying into ALSA; on buffer
-                                     // empty → stop ALSA + delayed PTT-off
-    // LAN TX paced chunker: converter's Opus path rejects arbitrary frame
-    // sizes, so the burst is fed in 20 ms slices at wall-clock rate.
+    // PKT TX in flight (any path).  Held from the first audio burst until
+    // the rig has been unkeyed.  Replaces packetTxDraining — broader name
+    // reflecting that PKT now has its own pipeline (no longer borrowing
+    // FreeDV's drain machinery).
+    bool packetTxBusy = false;
+
+    // PKT USB pacer: dwThread delivers a whole frame in one audioPacket;
+    // we feed it to ALSA in 10 ms slices via this timer.  Separate from
+    // FreeDV's so the two codecs don't fight over a shared buffer/flag.
+    QByteArray packetUsbTxBuffer;
+    QTimer *packetUsbTxDrainTimer = nullptr;
+    bool packetUsbTxActive = false;     // ALSA started for PKT TX
+    bool packetTxAwaitingIdle = false;  // app buffer drained; waiting for
+                                        // QAudioOutput → IdleState before
+                                        // unkeying (replaces the old 300 ms
+                                        // guess on USB).
+
+    // PKT LAN pacer: converter's Opus path requires fixed frame sizes, so
+    // the burst is fed in 20 ms slices at wall-clock rate.
     QByteArray packetLanTxBuffer;
     QTimer *packetLanTxTimer = nullptr;
     int packetLanTxChunkBytes = 0;
