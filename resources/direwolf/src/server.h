@@ -23,4 +23,9 @@ void server_outstanding_frames_reply (int chan, int client, char *own_call, char
 
 int  server_callsign_registered_by_client (char *callsign);
 
+/* wfweb extension: notified by ax25_link.c when N(R) advances and
+   one or more outbound I-frames are now acknowledged. */
+void server_data_acked (int chan, int client, const char *own_call,
+                        const char *remote_call, int count);
+
 #endif /* SERVER_H */

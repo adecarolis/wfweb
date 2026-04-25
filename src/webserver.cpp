@@ -3260,6 +3260,9 @@ void webServer::setupAudio(quint8 codec, quint32 sampleRate)
         connect(axProc, &AX25LinkProcessor::rxData,
                 this,   &webServer::onAxRxData,
                 Qt::QueuedConnection);
+        connect(axProc, &AX25LinkProcessor::dataAcked,
+                this,   &webServer::onAxDataAcked,
+                Qt::QueuedConnection);
         axProc->start();
 
         // Mirror the setupUsbAudio() startup block: load persisted
@@ -4159,6 +4162,21 @@ void webServer::onAxRxData(int client, int chan,
     }
 }
 
+void webServer::onAxDataAcked(int client, int chan,
+                              const QString &ownCall, const QString &peerCall,
+                              int count)
+{
+    (void)client;
+    if (count <= 0) return;
+    TerminalSession *s = termFindByEndpoints(chan, ownCall, peerCall);
+    if (!s) return;     // ack for a session we don't track — silent drop
+    QJsonObject notify;
+    notify["type"]  = "termAck";
+    notify["sid"]   = s->sid;
+    notify["count"] = count;
+    sendJsonToAll(notify);
+}
+
 // ---- YAPP framing (per IW3FQG spec, www.ir3ip.net/iw3fqg/doc/yapp.htm) ----
 //
 // Each packet is identified by its leading control byte; the remaining
@@ -5030,6 +5048,9 @@ void webServer::setupUsbAudio(quint32 sampleRate)
                 Qt::QueuedConnection);
         connect(axProc, &AX25LinkProcessor::rxData,
                 this,   &webServer::onAxRxData,
+                Qt::QueuedConnection);
+        connect(axProc, &AX25LinkProcessor::dataAcked,
+                this,   &webServer::onAxDataAcked,
                 Qt::QueuedConnection);
         axProc->start();
 

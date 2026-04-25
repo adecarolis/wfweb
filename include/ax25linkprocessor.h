@@ -92,6 +92,12 @@ signals:
     void outstandingFrames(int client, int chan,
                            const QString &ownCall, const QString &peerCall,
                            int count);
+    // Fired when N(R) advances and `count` outbound I-frames are now
+    // acknowledged by the peer.  Drives the terminal UI's transition
+    // of TX text from "pending" to "delivered".
+    void dataAcked        (int client, int chan,
+                           const QString &ownCall, const QString &peerCall,
+                           int count);
 
     // Connected-mode TX: an AX.25 frame (full HDLC payload sans flags
     // and FCS — exactly what ax25_pack produces) ready for the modem.
@@ -125,6 +131,8 @@ private:
                                   const char *own, int pid,
                                   const char *data, int len);
     static void cbOutstanding    (int chan, int client, const char *own,
+                                  const char *remote, int count);
+    static void cbDataAcked      (int chan, int client, const char *own,
                                   const char *remote, int count);
     static int  cbCallsignLookup (const char *callsign);
     // Signature must match wfweb_tq_data_cb: takes a packet_t (which is

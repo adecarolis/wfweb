@@ -75,6 +75,7 @@ void AX25LinkProcessor::start()
                                        &cbRecConnData,
                                        &cbOutstanding,
                                        &cbCallsignLookup);
+    wfweb_dw_register_data_acked_cb(&cbDataAcked);
     wfweb_dw_register_tq_callbacks(&cbTxFrame, &cbSeizeRequest);
 
     running_.store(true);
@@ -89,6 +90,7 @@ void AX25LinkProcessor::stop()
     if (worker_.joinable()) worker_.join();
 
     wfweb_dw_register_server_callbacks(nullptr, nullptr, nullptr, nullptr, nullptr);
+    wfweb_dw_register_data_acked_cb(nullptr);
     wfweb_dw_register_tq_callbacks(nullptr, nullptr);
     s_instance = nullptr;
 
@@ -414,6 +416,17 @@ void AX25LinkProcessor::cbOutstanding(int chan, int client,
                                        QString::fromLatin1(own    ? own    : ""),
                                        QString::fromLatin1(remote ? remote : ""),
                                        count);
+}
+
+void AX25LinkProcessor::cbDataAcked(int chan, int client,
+                                    const char *own, const char *remote,
+                                    int count)
+{
+    if (!s_instance) return;
+    emit s_instance->dataAcked(client, chan,
+                               QString::fromLatin1(own    ? own    : ""),
+                               QString::fromLatin1(remote ? remote : ""),
+                               count);
 }
 
 int AX25LinkProcessor::cbCallsignLookup(const char *callsign)

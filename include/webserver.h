@@ -458,6 +458,9 @@ private slots:
     void onAxRxData         (int client, int chan,
                              const QString &peerCall, const QString &ownCall,
                              int pid, const QByteArray &data);
+    void onAxDataAcked      (int client, int chan,
+                             const QString &ownCall, const QString &peerCall,
+                             int count);
 
 private:
 

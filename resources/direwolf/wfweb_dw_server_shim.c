@@ -18,6 +18,20 @@ static wfweb_link_event_cb        cb_link_terminated  = NULL;
 static wfweb_rec_data_cb          cb_rec_conn_data    = NULL;
 static wfweb_outstanding_cb       cb_outstanding      = NULL;
 static wfweb_callsign_lookup_cb   cb_callsign_lookup  = NULL;
+static wfweb_data_acked_cb        cb_data_acked       = NULL;
+
+void wfweb_dw_register_data_acked_cb(wfweb_data_acked_cb acked)
+{
+    cb_data_acked = acked;
+}
+
+void server_data_acked(int chan, int client,
+                       const char *own_call, const char *remote_call,
+                       int count)
+{
+    if (cb_data_acked && count > 0)
+        cb_data_acked(chan, client, own_call, remote_call, count);
+}
 
 void wfweb_dw_register_server_callbacks(wfweb_link_event_cb established,
                                         wfweb_link_event_cb terminated,

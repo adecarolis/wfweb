@@ -354,6 +354,10 @@
             '.term-scrollback { background: #000; border: 1px solid #0a0; border-radius: 3px; padding: 6px; flex: 1; min-height: 0; overflow-y: auto; font-family: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", "DejaVu Sans Mono", monospace; font-size: 12px; line-height: 1.4; color: #cfc; white-space: pre-wrap; word-wrap: break-word; user-select: text; -webkit-user-select: text; cursor: text; }' +
             '.term-scrollback .rx { color: #cfc; }' +
             '.term-scrollback .tx { color: #ff0; }' +
+            // Pending-ack TX: italic + dimmed.  Once peer responds with
+            // any byte, termData rewrites .pending → plain .tx and the
+            // scrollback re-renders, transitioning the line to normal.
+            '.term-scrollback .tx.pending { font-style: italic; opacity: 0.55; transition: opacity 0.15s, font-style 0.15s; }' +
             '.term-scrollback .info { color: #888; font-style: italic; }' +
             '.term-input-row { display: flex; gap: 6px; margin-top: 6px; }' +
             '.term-input { flex: 1; background: #001a00; border: 1px solid #0a0; color: #cfc; font-family: monospace; font-size: 12px; padding: 4px 6px; border-radius: 2px; outline: none; }' +
@@ -527,13 +531,40 @@
                 state.terminal.sessions[msg.sid] = s;
             }
             s.scrollback = s.scrollback || [];
-            s.scrollback.push({ ts: msg.ts, dir: msg.dir, data: msg.data });
+            var entry = { ts: msg.ts, dir: msg.dir, data: msg.data };
+            // Mark TX entries as pending-ack until an AX.25 N(R) advance
+            // (delivered via termAck below) flips them to delivered.
+            if (msg.dir === 'tx') entry.pending = true;
+            s.scrollback.push(entry);
             if (state.terminal.activeSid === msg.sid) {
                 renderTermScrollback();
             } else {
                 // Background tab got traffic — surface it via the unread dot.
                 s.hasUnread = true;
                 renderTermTabs();
+            }
+        } else if (msg.type === 'termAck') {
+            // Real AX.25 ack: peer's N(R) advanced by msg.count, so the
+            // oldest msg.count pending TX entries are now delivered.
+            // Counts include text-bearing I-frames AND any internal
+            // YAPP framing we sent — but YAPP frames don't appear in
+            // scrollback, so we just clear up to count *visible* pending
+            // TX lines and let the rest be no-op.
+            var sa = state.terminal.sessions[msg.sid];
+            if (sa && Array.isArray(sa.scrollback)) {
+                var remaining = msg.count || 0;
+                var changed = false;
+                for (var ai = 0; ai < sa.scrollback.length && remaining > 0; ai++) {
+                    var ea = sa.scrollback[ai];
+                    if (ea.dir === 'tx' && ea.pending) {
+                        ea.pending = false;
+                        remaining--;
+                        changed = true;
+                    }
+                }
+                if (changed && state.terminal.activeSid === msg.sid) {
+                    renderTermScrollback();
+                }
             }
         } else if (msg.type === 'termList') {
             // Replace local view with server snapshot.  Keep activeSid if it
@@ -1492,7 +1523,9 @@
         var entries = s.scrollback || [];
         for (var i = 0; i < entries.length; i++) {
             var e = entries[i];
-            html += '<span class="' + (e.dir || 'info') + '">' + escapeHtml(e.data || '') + '</span>';
+            var cls = e.dir || 'info';
+            if (e.dir === 'tx' && e.pending) cls += ' pending';
+            html += '<span class="' + cls + '">' + escapeHtml(e.data || '') + '</span>';
             if (e.__download) {
                 // Render a visible "save again" link — the browser was also
                 // auto-clicked when the file arrived, so the file is already

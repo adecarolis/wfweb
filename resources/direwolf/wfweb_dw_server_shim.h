@@ -30,11 +30,30 @@ typedef void (*wfweb_outstanding_cb)(int chan, int client,
 
 typedef int  (*wfweb_callsign_lookup_cb)(const char *callsign);
 
+/* Fires when N(R) advances and one or more outbound I-frames are
+   acknowledged by the peer.  count = number of frames newly acked
+   in this single ack event.  Used by the host UI to flip TX text
+   from "pending" to "delivered". */
+typedef void (*wfweb_data_acked_cb)(int chan, int client,
+                                    const char *own_call,
+                                    const char *remote_call,
+                                    int count);
+
 void wfweb_dw_register_server_callbacks(wfweb_link_event_cb established,
                                         wfweb_link_event_cb terminated,
                                         wfweb_rec_data_cb   recdata,
                                         wfweb_outstanding_cb outstanding,
                                         wfweb_callsign_lookup_cb lookup);
+
+/* Optional separate registration so older host code doesn't have to
+   pass an ack callback if it doesn't care.  Pass NULL to deregister. */
+void wfweb_dw_register_data_acked_cb(wfweb_data_acked_cb acked);
+
+/* Called from ax25_link.c (check_i_frame_ackd) when V(A) advances. */
+void server_data_acked(int chan, int client,
+                       const char *own_call,
+                       const char *remote_call,
+                       int count);
 
 #ifdef __cplusplus
 }
