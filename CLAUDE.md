@@ -44,6 +44,9 @@ WebSocket commands (from browser)
 | `freedvProcessor` | Classic FreeDV codec (700D/700E/1600, separate QThread) |
 | `freedvReporter` | Socket.IO client for FreeDV Reporter (qso.freedv.org) |
 | `rade_text` | Self-contained RADE EOO callsign encoder/decoder (C) |
+| `direwolfProcessor` | Vendored Direwolf modem (300/1200/9600 baud, AFSK + G3RUH FSK) |
+| `ax25LinkProcessor` | AX.25 connected-mode link state machine (own dispatch thread for DLQ) |
+| `aprsProcessor` | APRS frame parser, station db, beacon scheduler (lives in webserver thread) |
 
 ### Web Server
 - HTTP/HTTPS on port 8080, WebSocket on 8081 (configurable via `WebServerPort` in prefs)
@@ -105,6 +108,11 @@ modeInfo.filter = 1;
 | `src/rade_text.c` | RADE EOO text encoder/decoder (self-contained C) |
 | `include/rade_text.h` | RADE text public API |
 | `include/spotreporter.h` | Base class for reporter services |
+| `src/direwolfprocessor.cpp` | DireWolf modem wrapper (TX/RX audio plumbing, self-test) |
+| `src/ax25linkprocessor.cpp` | AX.25 connected-mode state machine wrapper |
+| `src/aprsprocessor.cpp` | APRS parser, station db, beacon scheduler |
+| `resources/direwolf/` | Vendored Direwolf subset (modem + AX.25 only — see `README-vendoring.md`) |
+| `tests/test_packet.py` | End-to-end packet self-test (wraps `--packet-self-test`) |
 | `CHANGELOG` | Release changelog |
 
 ---
@@ -140,6 +148,57 @@ modeInfo.filter = 1;
 - FreeDV indicator spans use stable IDs (`freedvSyncEl`, `freedvSnrEl`, `freedvCallsign`, `freedvFoEl`)
 - The meters fast-path updates individual spans by ID — do NOT use `nth-child` selectors
   (the callsign span shifts all positions when present/absent)
+
+---
+
+## Packet (AX.25 / Direwolf) Architecture
+
+### Components
+- `DireWolfProcessor` — modem only (300 AFSK, 1200 AFSK, 9600 G3RUH). Wraps the
+  vendored Direwolf subset under `resources/direwolf/`. Audio I/O, PTT, IGate,
+  KISS, digipeater, FX.25/IL2P are intentionally NOT vendored — wfweb supplies
+  its own audio bus and PTT path.
+- `AX25LinkProcessor` — connected-mode link state machine. Owns its own dispatch
+  thread that drains the data-link queue (DLQ) and services link timers. Slots are
+  safe to call from any thread; signals are emitted from the dispatch thread, so
+  receivers connect with auto/queued connections.
+- `AprsProcessor` — UI-frame filter, position parser (uncompressed/compressed/MIC-E),
+  in-memory station database, beacon scheduler. Lives in the webserver thread.
+  Beacons keep firing with no browser attached — that's intentional.
+
+### Direwolf process-global state — single instance only
+- Direwolf's modem uses static state. `DireWolfProcessor::active()` returns the one
+  currently-active instance; the C shims in `wfweb_direwolf_stubs.c` dispatch into it.
+  Don't try to run two `DireWolfProcessor`s.
+- `DireWolfProcessor::ensureDlqInitialized()` wraps `dlq_init()` in `std::call_once`.
+  Calling `dlq_init()` twice re-runs `pthread_mutex_init` on already-initialized
+  mutexes and corrupts the queue. Both the AX.25 link processor and the standalone
+  self-test path need this called before any RX.
+
+### TX coordination
+- One TX at a time across packet / FreeDV / RADE. `packetTxBusy` is claimed at the
+  start of a packet TX and released on completion; an active `freedvTxActive`
+  blocks `packetTx` with `packetTxFailed`. The flag must be claimed BEFORE the
+  audio is queued — otherwise a second `packetTx` arriving in the same event loop
+  tick races through.
+- `transmitFrame(monitor)` takes a TNC-style `SRC>DST[,PATH,...]:info` string for
+  one-shot UI frames. `transmitFrameBytes(chan, prio, frame)` takes a fully-formed
+  AX.25 frame and is the connected-mode path.
+
+### YAPP file transfer
+- Real YAPP framing per IW3FQG spec: control-byte-typed packets. Per-kind framing
+  table and the HD→RF critical detail are in memory under `yapp_protocol.md` —
+  consult it before touching `yappSendFile` / `yappSendRR` / `yappAbortSend`.
+
+### Self-test
+- `./wfweb --packet-self-test` runs the modem loopback (encode → demod → verify)
+  for every supported baud. `tests/test_packet.py` wraps it for CI.
+- Run this after any change to `direwolfprocessor.*`, the vendored subset under
+  `resources/direwolf/`, or `wfweb_direwolf_stubs.c`. Compile-clean is not enough.
+
+### Shared station callsign
+- One callsign in the gear dialog feeds CW, FT8/FT4, FreeDV Reporter, APRS, and
+  the AX.25 link. Do not add per-mode callsigns — the shared one is intentional.
 
 ---
 
