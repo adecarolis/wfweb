@@ -46,13 +46,6 @@ public:
     // helper uses std::call_once.
     static void ensureDlqInitialized();
 
-    // Offline demod: read a mono/stereo 16-bit PCM WAV, feed through the
-    // demodulator at the given baud (300/1200/9600), print decoded frames
-    // to stdout.  Returns 0 if at least one frame decoded, 1 on file/format
-    // error, 2 if the WAV produced no frames.
-    // Used by `wfweb --packet-decode-wav <file> [--packet-baud N]`.
-    static int decodeWavFile(const QString &path, int baud);
-
     // Invoked from the C shims via wfweb_dw_rx_frame / wfweb_dw_tx_put_byte.
     // Thread context: called on the DireWolf worker thread (same thread
     // the demodulator runs on), so signals are emitted there and Qt

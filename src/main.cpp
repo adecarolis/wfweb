@@ -176,8 +176,6 @@ int main(int argc, char *argv[])
         "  -d --debug [file]       Enable verbose debug logging (optionally to file)\n"
         "  -c --clearconfig CONFIRM  Clear all settings\n"
         "  --packet-self-test      Run Dire Wolf encode/decode loopback and exit\n"
-        "  --packet-decode-wav <f> Decode AX.25 frames from a WAV file and exit\n"
-        "  --packet-baud <n>       Baud for --packet-decode-wav (300|1200|9600, default 1200)\n"
         "  -v --version            Show version\n"
         "  -? --help               Show this help\n");
 #ifdef BUILD_WFSERVER
@@ -208,28 +206,12 @@ int main(int argc, char *argv[])
     qDebug() << "Changed to translation language: " << myappTranslator.language();
 #endif
 
-    // Early CLI short-circuit: run the packet self-test or decode a WAV
-    // and exit, without starting the web server or touching radio state.
-    // Used by tests/test_packet.py.
+    // Early CLI short-circuit: run the packet self-test and exit, without
+    // starting the web server or touching radio state.  Used by
+    // tests/test_packet.py.
     for (int c = 1; c < argc; c++) {
         if (QString(argv[c]) == "--packet-self-test") {
             return DireWolfProcessor::runSelfTest();
-        }
-        if (QString(argv[c]) == "--packet-decode-wav") {
-            if (c + 1 >= argc) {
-                std::fprintf(stderr,
-                    "--packet-decode-wav requires a file path\n");
-                return 1;
-            }
-            QString wav = QString::fromLocal8Bit(argv[c + 1]);
-            int baud = 1200;
-            for (int d = 1; d < argc - 1; d++) {
-                if (QString(argv[d]) == "--packet-baud") {
-                    baud = QString(argv[d + 1]).toInt();
-                    break;
-                }
-            }
-            return DireWolfProcessor::decodeWavFile(wav, baud);
         }
     }
 
