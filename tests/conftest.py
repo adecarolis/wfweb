@@ -87,15 +87,23 @@ def _dump_and_fail(proc, event_loop, loop_thread, message, url):
     pytest.fail(f"{message}. URL: {url}")
 
 
-def _wait_for_cache(freq_url: str, timeout: float = 20.0) -> bool:
-    """Poll until the frequency cache is populated (first poll cycle complete)."""
+def _wait_for_cache(status_url: str, timeout: float = 30.0) -> bool:
+    """Poll /status until frequency AND mode caches are both populated.
+
+    Mode lands in a later poll cycle than frequency, so waiting only on
+    frequency races test_status_has_core_fields.  Timeout is generous
+    because slow runners (macOS, Apple Silicon) sometimes take >10 s for
+    the first full poll cycle to land.
+    """
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
-            r = requests.get(freq_url, timeout=2)
+            r = requests.get(status_url, timeout=2)
             if r.status_code == 200:
                 data = r.json()
-                if "hz" in data and data["hz"] > 0:
+                if (data.get("frequency", 0) > 0
+                        and isinstance(data.get("mode"), str)
+                        and data["mode"]):
                     return True
         except (requests.ConnectionError, requests.JSONDecodeError):
             pass
@@ -186,13 +194,13 @@ def wfweb_instance(mock_radio, event_loop):
         _dump_and_fail(proc, event_loop, loop_thread,
                        "wfweb did not connect within timeout", info_url)
 
-    # Wait for the first poll cycle to populate frequency/mode cache
-    freq_url = f"{rest_base}/api/v1/radio/frequency"
-    cache_ready = _wait_for_cache(freq_url, timeout=10.0)
+    # Wait for the first poll cycle to populate frequency AND mode caches
+    status_url = f"{rest_base}/api/v1/radio/status"
+    cache_ready = _wait_for_cache(status_url)
 
     if not cache_ready:
         _dump_and_fail(proc, event_loop, loop_thread,
-                       "wfweb cache not populated within timeout", freq_url)
+                       "wfweb cache not populated within timeout", status_url)
 
     yield proc, web_port
 
@@ -294,8 +302,8 @@ def usb_wfweb_instance(serial_mock):
             proc.kill()
         pytest.fail(f"wfweb (USB) did not connect. PTY: {serial_mock.port_path}")
 
-    freq_url = f"{rest_base}/api/v1/radio/frequency"
-    if not _wait_for_cache(freq_url, timeout=10.0):
+    status_url = f"{rest_base}/api/v1/radio/status"
+    if not _wait_for_cache(status_url):
         proc.terminate()
         try:
             out, _ = proc.communicate(timeout=3)
