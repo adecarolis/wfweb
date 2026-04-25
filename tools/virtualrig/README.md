@@ -77,6 +77,14 @@ Values are polled every 500 ms; writes are POSTed immediately and the poll loop 
 
 `testrig.sh` generates one settings file per wfweb instance in `.testrig/wfweb_i.ini` and passes it with `-s`. Each instance binds its web UI to `9080 + i*10`, LAN-connects to rig `i`'s ports on 127.0.0.1, and authenticates with `wfweb / wfweb`. Delete `.testrig/` to reset everything.
 
+## Browser microphone contention
+
+Opening two wfweb tabs in the **same browser profile** and enabling the mic on both will silently break TX audio for the first tab. Browsers share one capture session per device per profile — when the second tab acquires the mic, the first tab's `MediaStream` keeps running but delivers zero-filled buffers, so its UDP TX stream becomes permanent silence (TX s-meter blank, receiving rig hears nothing). Refreshing the broken tab does not recover it.
+
+Affects any mode that uses the browser mic: SSB voice, FreeDV voice modes (700D/700E/1600), RADE voice. **Not** affected: FT8/FT4, RADE EOO callsign, the TX tune tone — those synthesize audio in JS or on the server, so no `getUserMedia()` is called.
+
+Workaround: put each wfweb in a separate browser profile, one in an incognito window, or use two different browsers (e.g. Chrome + Firefox).
+
 ## Debugging
 
 - **virtualrig log**: `.testrig/virtualrig.log` — CI-V traffic, PTT transitions, rig state, control-panel listen status.

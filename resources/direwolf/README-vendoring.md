@@ -2,6 +2,7 @@
 
 Upstream: https://github.com/wb2osz/direwolf
 Commit:   a231971a652bfb574a4bae9a5d875fbce53d2267
+Imported: 2026-04-25
 License:  GPLv2-or-later (see `LICENSE`)
 
 Only the modem, HDLC framing, and AX.25 packet core are vendored here.
