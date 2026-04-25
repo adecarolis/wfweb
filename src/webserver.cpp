@@ -86,6 +86,10 @@ webServer::~webServer()
         radeThread->wait();
     }
 #endif
+    if (dwThread) {
+        dwThread->quit();
+        dwThread->wait();
+    }
     if (txConverterThread) {
         txConverterThread->quit();
         txConverterThread->wait();

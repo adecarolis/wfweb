@@ -10,6 +10,7 @@ extern "C" {
 #include "direwolf.h"
 #include "ax25_pad.h"
 #include "ax25_link.h"
+#include "dlq.h"
 #include "tq.h"
 #include "config.h"
 #include "wfweb_dw_server_shim.h"
@@ -87,6 +88,11 @@ void AX25LinkProcessor::start()
 void AX25LinkProcessor::stop()
 {
     if (!running_.exchange(false)) return;
+    // Wake the dispatcher: it sleeps in dlq_wait_while_empty() and won't
+    // notice running_=false until the dlq receives an event.  Posting a
+    // client-cleanup with a sentinel client signals the wake_up_cond; the
+    // loop wakes, sees !running_, and breaks before consuming the item.
+    dlq_client_cleanup(-1);
     if (worker_.joinable()) worker_.join();
 
     wfweb_dw_register_server_callbacks(nullptr, nullptr, nullptr, nullptr, nullptr);
