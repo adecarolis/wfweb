@@ -2137,6 +2137,85 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             qInfo().noquote() << "Web: Packet TX queued:" << monitor;
         }
     }
+    // ---- APRS ----
+    else if (type == "aprsRequestSnapshot") {
+        if (aprsProc) {
+            QJsonObject snap = aprsProc->snapshot();
+            sendJsonTo(client, snap);
+        }
+    }
+    else if (type == "aprsClearStations") {
+        if (aprsProc) {
+            QMetaObject::invokeMethod(aprsProc, "clearStations", Qt::QueuedConnection);
+        }
+    }
+    else if (type == "aprsTxBeacon") {
+        // {src, lat, lon, symTable, symCode, comment, path?: ["WIDE1-1",...]}
+        if (!aprsProc) return;
+        QString src      = cmd["src"].toString().trimmed().toUpper();
+        double  lat      = cmd["lat"].toDouble();
+        double  lon      = cmd["lon"].toDouble();
+        QString symTable = cmd.value("symTable").toString();
+        QString symCode  = cmd.value("symCode").toString();
+        QString comment  = cmd.value("comment").toString();
+        QStringList path;
+        if (cmd.value("path").isArray()) {
+            QJsonArray arr = cmd["path"].toArray();
+            for (int i = 0; i < arr.size(); i++) {
+                QString p = arr[i].toString().trimmed().toUpper();
+                if (!p.isEmpty()) path.append(p);
+            }
+        }
+        if (src.isEmpty()) {
+            QJsonObject notify;
+            notify["type"] = "packetTxFailed";
+            notify["reason"] = "APRS beacon needs source callsign";
+            sendJsonToAll(notify);
+            return;
+        }
+        QChar st = symTable.isEmpty() ? QChar('/') : symTable.at(0);
+        QChar sc = symCode.isEmpty()  ? QChar('.') : symCode.at(0);
+        QMetaObject::invokeMethod(aprsProc, "txBeaconNow", Qt::QueuedConnection,
+                                  Q_ARG(QString, src),
+                                  Q_ARG(double, lat),
+                                  Q_ARG(double, lon),
+                                  Q_ARG(QChar, st),
+                                  Q_ARG(QChar, sc),
+                                  Q_ARG(QString, comment),
+                                  Q_ARG(QStringList, path));
+    }
+    else if (type == "aprsBeaconConfig") {
+        // {enabled, intervalSec, src, lat, lon, symTable, symCode, comment, path}
+        if (!aprsProc) return;
+        bool   enabled  = cmd.value("enabled").toBool();
+        int    interval = cmd.value("intervalSec").toInt(600);
+        QString src     = cmd["src"].toString().trimmed().toUpper();
+        double  lat     = cmd["lat"].toDouble();
+        double  lon     = cmd["lon"].toDouble();
+        QString symTable= cmd.value("symTable").toString();
+        QString symCode = cmd.value("symCode").toString();
+        QString comment = cmd.value("comment").toString();
+        QStringList path;
+        if (cmd.value("path").isArray()) {
+            QJsonArray arr = cmd["path"].toArray();
+            for (int i = 0; i < arr.size(); i++) {
+                QString p = arr[i].toString().trimmed().toUpper();
+                if (!p.isEmpty()) path.append(p);
+            }
+        }
+        QChar st = symTable.isEmpty() ? QChar('/') : symTable.at(0);
+        QChar sc = symCode.isEmpty()  ? QChar('.') : symCode.at(0);
+        QMetaObject::invokeMethod(aprsProc, "setBeaconConfig", Qt::QueuedConnection,
+                                  Q_ARG(bool, enabled),
+                                  Q_ARG(int, interval),
+                                  Q_ARG(QString, src),
+                                  Q_ARG(double, lat),
+                                  Q_ARG(double, lon),
+                                  Q_ARG(QChar, st),
+                                  Q_ARG(QChar, sc),
+                                  Q_ARG(QString, comment),
+                                  Q_ARG(QStringList, path));
+    }
     // ---- AX.25 connected-mode terminal sessions ----
     else if (type == "termList") {
         QJsonArray sessions;
@@ -2492,6 +2571,13 @@ void webServer::sendCurrentState(QWebSocket *client)
     // Send current status
     if (rigCaps) {
         sendJsonTo(client, buildStatusJson());
+    }
+
+    // APRS station database — push the full set so the panel renders
+    // immediately on reload instead of waiting for the next beacon to
+    // arrive over the air.
+    if (aprsProc) {
+        sendJsonTo(client, aprsProc->snapshot());
     }
 }
 
@@ -3265,6 +3351,21 @@ void webServer::setupAudio(quint8 codec, quint32 sampleRate)
                 Qt::QueuedConnection);
         axProc->start();
 
+        // APRS layer.  Lives in the webserver thread; receives decoded
+        // RX frames via queued connection, broadcasts station deltas to
+        // all WS clients, and asks us to TX beacons through the same
+        // path packetTx uses.
+        aprsProc = new AprsProcessor(this);
+        connect(dwProc, &DireWolfProcessor::rxFrameDecoded,
+                aprsProc, &AprsProcessor::onRxFrame,
+                Qt::QueuedConnection);
+        connect(aprsProc, &AprsProcessor::stationUpdated,
+                this, &webServer::onAprsStationUpdated);
+        connect(aprsProc, &AprsProcessor::stationsCleared,
+                this, &webServer::onAprsStationsCleared);
+        connect(aprsProc, &AprsProcessor::txBeaconRequested,
+                this, &webServer::onAprsBeaconRequested);
+
         // Mirror the setupUsbAudio() startup block: load persisted
         // packet enable/mode and apply it to the processors.  Without
         // this, the LAN path leaves paclen at the static-init default
@@ -3708,6 +3809,61 @@ void webServer::onPacketTxDecoded(int chan, QJsonObject frame)
     msg["tx"] = true;
     msg["ts"] = QDateTime::currentMSecsSinceEpoch();
     sendJsonToAll(msg);
+}
+
+void webServer::onAprsStationUpdated(QJsonObject station)
+{
+    // Already has type="aprsStation" set inside the processor.
+    sendJsonToAll(station);
+}
+
+void webServer::onAprsStationsCleared()
+{
+    QJsonObject msg;
+    msg["type"] = "aprsSnapshot";
+    msg["stations"] = QJsonArray();
+    sendJsonToAll(msg);
+}
+
+// Beacon TX: AprsProcessor asked us to transmit a UI frame.  Mirror the
+// packetTx command path so PTT / draining / status messages stay
+// consistent with operator-initiated TX.
+void webServer::onAprsBeaconRequested(QString src, QString dst,
+                                      QStringList path, QString info)
+{
+    if (!packetEnabled || !dwProc) {
+        qWarning() << "Web: APRS beacon dropped — packet modem not enabled";
+        return;
+    }
+    if (!(txAudioConfigured && usbAudioOutput) && !txConverter) {
+        qWarning() << "Web: APRS beacon dropped — TX audio not configured";
+        return;
+    }
+    if (packetTxDraining || freedvTxActive) {
+        qInfo() << "Web: APRS beacon dropped — TX already in progress";
+        return;
+    }
+    if (src.isEmpty() || dst.isEmpty() || info.isEmpty()) return;
+
+    QString monitor = src + ">" + dst;
+    if (!path.isEmpty()) monitor += "," + path.join(",");
+    monitor += ":" + info;
+
+    packetTxDraining = true;
+    queue->add(priorityImmediate,
+               queueItem(funcTransceiverStatus,
+                         QVariant::fromValue<bool>(true), false, uchar(0)));
+    queue->addUnique(priorityHighest,
+                     queueItem(funcALCMeter, true, 0));
+
+    QMetaObject::invokeMethod(dwProc, "transmitFrame", Qt::QueuedConnection,
+                              Q_ARG(QString, monitor));
+
+    QJsonObject notify;
+    notify["type"] = "packetTxStarted";
+    notify["monitor"] = monitor;
+    sendJsonToAll(notify);
+    qInfo().noquote() << "Web: APRS beacon TX queued:" << monitor;
 }
 
 // Receives the complete encoded burst for a single AX.25 frame (entire

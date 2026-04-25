@@ -7,6 +7,44 @@
 
     var FRAME_BUFFER_MAX = 200; // retain last N decoded frames
 
+    // Common APRS primary-table symbols.  `key` is our internal id; `table`
+    // is `/` (primary) or `\` (alternate); `code` is the single-char symbol.
+    // Kept short on purpose — operators who want exotic symbols can edit
+    // their lat/lon/comment by hand and we pick the icon by other means.
+    var APRS_SYMBOLS = [
+        { key: 'house',     label: 'House (QTH)',          table: '/', code: '-' },
+        { key: 'car',       label: 'Car',                  table: '/', code: '>' },
+        { key: 'pickup',    label: 'Pickup truck',         table: '/', code: 'U' },
+        { key: 'truck',     label: 'Truck (18-wheeler)',   table: '/', code: 'k' },
+        { key: 'van',       label: 'Van',                  table: '/', code: 'v' },
+        { key: 'jeep',      label: 'Jeep',                 table: '/', code: 'j' },
+        { key: 'motorcycle',label: 'Motorcycle',           table: '/', code: '<' },
+        { key: 'bicycle',   label: 'Bicycle',              table: '/', code: 'b' },
+        { key: 'runner',    label: 'Runner',               table: '/', code: '[' },
+        { key: 'antenna',   label: 'Antenna',              table: '/', code: 'r' },
+        { key: 'aircraft',  label: 'Aircraft',             table: '/', code: '\'' },
+        { key: 'balloon',   label: 'Balloon',              table: '/', code: 'O' },
+        { key: 'boat',      label: 'Boat',                 table: '/', code: 'Y' },
+        { key: 'ship',      label: 'Ship',                 table: '/', code: 's' },
+        { key: 'digi',      label: 'Digipeater',           table: '/', code: '#' },
+        { key: 'wx',        label: 'Weather station',      table: '/', code: '_' },
+        { key: 'phone',     label: 'Phone',                table: '/', code: '$' }
+    ];
+
+    function symbolFor(key) {
+        for (var i = 0; i < APRS_SYMBOLS.length; i++) {
+            if (APRS_SYMBOLS[i].key === key) return APRS_SYMBOLS[i];
+        }
+        return APRS_SYMBOLS[0];
+    }
+    function symbolKeyFor(table, code) {
+        for (var i = 0; i < APRS_SYMBOLS.length; i++) {
+            var s = APRS_SYMBOLS[i];
+            if (s.table === table && s.code === code) return s.key;
+        }
+        return null;
+    }
+
     var state = {
         visible: false,
         enabled: false,        // master packet modem enable
@@ -14,11 +52,20 @@
         frames: [],
         txBusy: false,         // true between packetTxStarted and packetTxComplete/Failed
         txActiveUntilMs: 0,    // waterfall tints columns red while Date.now() < this
-        compose: {             // last-used TX fields (persisted to localStorage)
-            src:  'N0CALL',
-            dst:  'APRS',
-            path: 'WIDE1-1',
-            info: 'hello from wfweb'
+        aprs: {
+            stations: {},      // src -> {src, lat, lon, symTable, symCode, comment, lastHeard, count, path[], _new}
+            sortBy: 'lastHeard',  // column key
+            sortDir: 'desc',
+            beacon: {           // last-used TX fields (persisted to localStorage)
+                src: 'N0CALL',
+                lat: 0,
+                lon: 0,
+                symKey: 'house',  // index into APRS_SYMBOLS
+                comment: 'wfweb',
+                path: 'WIDE1-1',
+                intervalMin: 10,
+                enabled: false
+            }
         },
         activeTab: 'aprs',     // "aprs" or "term"
         terminal: {
@@ -115,13 +162,35 @@
                 '<button id="packetTabTerm" class="packet-tab-btn" data-tab="term">TERMINAL</button>' +
             '</div>' +
             '<div id="packetAprsPane" class="packet-pane">' +
-                '<div class="packet-compose">' +
-                    '<label>From <input id="packetTxSrc"  class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
-                    '<label>To <input id="packetTxDst"  class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
-                    '<label>Path <input id="packetTxPath" class="packet-tx-field" size="14" spellcheck="false" placeholder="WIDE1-1"></label>' +
-                    '<input id="packetTxInfo" class="packet-tx-info" spellcheck="false" placeholder="payload"> ' +
-                    '<button id="packetTxBtn" class="packet-send-btn" title="Transmit a single AX.25 UI frame">TX</button>' +
-                    '<span id="packetTxStatus" class="packet-tx-status"></span>' +
+                '<div class="aprs-split">' +
+                    '<div class="aprs-stations-wrap">' +
+                        '<div class="aprs-section-header">' +
+                            '<span>HEARD STATIONS</span>' +
+                            '<span id="aprsStationCount" class="aprs-count">0</span>' +
+                            '<div class="flex-space"></div>' +
+                            '<button id="aprsClearBtn" class="packet-action-btn" title="Forget all heard stations">Clear</button>' +
+                        '</div>' +
+                        '<div id="aprsStations" class="aprs-stations"></div>' +
+                    '</div>' +
+                    '<div class="aprs-beacon-wrap">' +
+                        '<div class="aprs-section-header">' +
+                            '<span>MY BEACON</span>' +
+                            '<span id="aprsBeaconState" class="aprs-beacon-state">idle</span>' +
+                        '</div>' +
+                        '<div class="aprs-beacon-grid">' +
+                            '<label>Call <input id="aprsSrc"     class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
+                            '<label>Symbol <select id="aprsSym"   class="aprs-sym-select"></select></label>' +
+                            '<label>Lat  <input id="aprsLat"     class="packet-tx-field" size="10" spellcheck="false" placeholder="40.6892"></label>' +
+                            '<label>Lon  <input id="aprsLon"     class="packet-tx-field" size="10" spellcheck="false" placeholder="-74.0445"></label>' +
+                            '<button id="aprsGeoBtn"  class="packet-action-btn" title="Use this device\'s location">Use my location</button>' +
+                            '<label class="aprs-comment-label">Comment <input id="aprsComment" class="packet-tx-info" maxlength="43" spellcheck="false" placeholder="wfweb"></label>' +
+                            '<label>Path <input id="aprsPath"    class="packet-tx-field" size="14" spellcheck="false" placeholder="WIDE1-1"></label>' +
+                            '<label class="aprs-interval-label">Every <input id="aprsInterval" class="packet-tx-field" size="4" spellcheck="false" value="10"> min</label>' +
+                            '<button id="aprsTxNowBtn"   class="packet-send-btn" title="Send one position report now">TX now</button>' +
+                            '<button id="aprsBeaconBtn"  class="packet-action-btn" title="Toggle periodic beacon">Beacon: OFF</button>' +
+                            '<span id="packetTxStatus" class="packet-tx-status"></span>' +
+                        '</div>' +
+                    '</div>' +
                 '</div>' +
             '</div>' +
             '<div id="packetTermPane" class="packet-pane hidden">' +
@@ -185,20 +254,14 @@
         document.getElementById('packetClearBtn').onclick = clearFrames;
         document.getElementById('packetCloseBtn').onclick = hide;
 
-        loadComposeFromStorage();
-        var txSrcEl  = document.getElementById('packetTxSrc');
-        var txDstEl  = document.getElementById('packetTxDst');
-        var txPathEl = document.getElementById('packetTxPath');
-        var txInfoEl = document.getElementById('packetTxInfo');
-        if (txSrcEl)  txSrcEl.value  = state.compose.src;
-        if (txDstEl)  txDstEl.value  = state.compose.dst;
-        if (txPathEl) txPathEl.value = state.compose.path;
-        if (txInfoEl) txInfoEl.value = state.compose.info;
-        var txBtn = document.getElementById('packetTxBtn');
-        if (txBtn) txBtn.onclick = sendFrame;
-        if (txInfoEl) txInfoEl.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') { e.preventDefault(); sendFrame(); }
-        });
+        loadAprsFromStorage();
+        populateSymbolSelect();
+        bindAprsControls();
+        renderAprsStations();
+        renderAprsBeaconButton();
+        // Periodic redraw so "X min ago" ages stay current without
+        // round-trips to the server.
+        setInterval(function() { if (state.visible) renderAprsStations(); }, 5000);
 
         // Tab buttons.
         var tabBtns = barEl.querySelectorAll('.packet-tab-btn');
@@ -324,6 +387,40 @@
             '.packet-tab-btn:hover:not(.active) { background: #0a0; color: #000; }' +
             '.packet-pane { flex: 3 1 0; min-height: 0; display: flex; flex-direction: column; }' +
             '.packet-pane.hidden { display: none; }' +
+            // APRS pane
+            '.aprs-split { display: flex; flex-direction: column; gap: 6px; flex: 1 1 0; min-height: 0; }' +
+            '.aprs-stations-wrap { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }' +
+            '.aprs-beacon-wrap { display: flex; flex-direction: column; flex-shrink: 0; }' +
+            '.aprs-section-header { display: flex; align-items: center; gap: 8px; color: #0f0; font-weight: bold; letter-spacing: 1px; font-size: 10px; margin-bottom: 2px; }' +
+            '.aprs-count { color: #8c8; font-weight: normal; letter-spacing: 0; font-size: 10px; }' +
+            '.aprs-beacon-state { color: #8c8; font-weight: normal; letter-spacing: 0; font-size: 10px; }' +
+            '.aprs-beacon-state.on { color: #0f0; }' +
+            '.aprs-stations { background: #000; border: 1px solid #0a0; border-radius: 3px; flex: 1; min-height: 80px; overflow-y: auto; font-size: 11px; line-height: 1.5; }' +
+            '.aprs-stations table { width: 100%; border-collapse: collapse; }' +
+            '.aprs-stations th { position: sticky; top: 0; background: #001a00; color: #0f0; padding: 3px 6px; text-align: left; font-size: 10px; letter-spacing: 1px; border-bottom: 1px solid #0a0; cursor: pointer; user-select: none; }' +
+            '.aprs-stations th:hover { color: #fff; background: #0a0; }' +
+            '.aprs-stations th.sort-active::after { content: ""; display: inline-block; width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; margin-left: 4px; vertical-align: middle; }' +
+            '.aprs-stations th.sort-asc::after  { border-bottom: 4px solid currentColor; }' +
+            '.aprs-stations th.sort-desc::after { border-top: 4px solid currentColor; }' +
+            '.aprs-stations td { padding: 2px 6px; border-bottom: 1px dotted #1a3a1a; white-space: nowrap; }' +
+            '.aprs-stations tr.fresh { background: #001a00; }' +
+            '.aprs-stations td.aprs-call { color: #ff0; font-weight: bold; cursor: pointer; }' +
+            '.aprs-stations td.aprs-call:hover { color: #fff; background: #003300; }' +
+            '.aprs-stations td.aprs-sym { color: #0ff; font-family: ui-monospace, monospace; text-align: center; width: 22px; }' +
+            '.aprs-stations td.aprs-pos { color: #cfc; font-family: ui-monospace, monospace; }' +
+            '.aprs-stations td.aprs-comment { color: #cfc; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }' +
+            '.aprs-stations td.aprs-age { color: #8c8; text-align: right; }' +
+            '.aprs-stations td.aprs-count { color: #888; text-align: right; }' +
+            '.aprs-empty { color: #666; padding: 12px; text-align: center; font-style: italic; }' +
+            // Beacon compose grid
+            '.aprs-beacon-grid { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px; background: #001a00; border: 1px solid #0a0; border-radius: 3px; font-size: 10px; color: #8c8; }' +
+            '.aprs-beacon-grid label { display: inline-flex; align-items: center; gap: 3px; }' +
+            '.aprs-comment-label { flex: 1 1 200px; }' +
+            '.aprs-comment-label .packet-tx-info { flex: 1; min-width: 100px; }' +
+            '.aprs-interval-label { font-size: 10px; }' +
+            '.aprs-sym-select { background: #001a00; border: 1px solid #0a0; color: #cfc; font-family: monospace; font-size: 11px; padding: 2px; border-radius: 2px; }' +
+            '.aprs-sym-select:focus { border-color: #0f0; outline: none; }' +
+            '#aprsBeaconBtn.on { background: #0a0; color: #000; border-color: #0f0; box-shadow: 0 0 6px rgba(0,255,0,0.5); }' +
             // Terminal pane
             '.term-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 10px; color: #8c8; flex-wrap: wrap; }' +
             '.term-bar label { display: flex; align-items: center; gap: 3px; }' +
@@ -489,6 +586,20 @@
 
     function onMessage(msg) {
         if (!msg || !msg.type) return;
+        if (msg.type === 'aprsSnapshot') {
+            state.aprs.stations = {};
+            if (Array.isArray(msg.stations)) {
+                for (var ai = 0; ai < msg.stations.length; ai++) {
+                    var st = msg.stations[ai];
+                    if (st && st.src) state.aprs.stations[st.src] = st;
+                }
+            }
+            renderAprsStations();
+            return;
+        } else if (msg.type === 'aprsStation') {
+            applyAprsStation(msg);
+            return;
+        }
         if (msg.type === 'packetRxFrame') {
             appendFrame(msg);
             // Don't extend txActiveUntilMs here — onTxAudio() is the one
@@ -694,64 +805,352 @@
     }
 
     function setTxButtonEnabled(enabled) {
-        var btn = document.getElementById('packetTxBtn');
+        var btn = document.getElementById('aprsTxNowBtn');
         if (btn) btn.disabled = !enabled;
     }
 
-    function sendFrame() {
-        if (state.txBusy) return;
-        if (!state.enabled) {
-            setTxStatus('enable packet modem first', true);
-            return;
-        }
-        var src  = (document.getElementById('packetTxSrc').value  || '').trim().toUpperCase();
-        var dst  = (document.getElementById('packetTxDst').value  || '').trim().toUpperCase();
-        var path = (document.getElementById('packetTxPath').value || '').trim().toUpperCase();
-        var info = (document.getElementById('packetTxInfo').value || '');
-        if (!src || !dst || !info) {
-            setTxStatus('From, To, and Info are required', true);
-            return;
-        }
+    // ---------------------------------------------------------------------
+    // APRS pane
+    // ---------------------------------------------------------------------
 
-        var pathList = [];
-        if (path.length > 0) {
-            var parts = path.split(/[,\s]+/);
-            for (var i = 0; i < parts.length; i++) {
-                if (parts[i]) pathList.push(parts[i]);
-            }
-        }
-
-        state.compose.src = src;
-        state.compose.dst = dst;
-        state.compose.path = path;
-        state.compose.info = info;
-        saveComposeToStorage();
-
-        setTxStatus('requesting…', false);
-        setTxButtonEnabled(false);
-        if (window.send) {
-            window.send({ cmd: 'packetTx', src: src, dst: dst, path: pathList, info: info });
-        }
-    }
-
-    function loadComposeFromStorage() {
+    function loadAprsFromStorage() {
         try {
-            var raw = localStorage.getItem('wfweb.packet.compose');
+            var raw = localStorage.getItem('wfweb.aprs.beacon');
             if (!raw) return;
             var obj = JSON.parse(raw);
             if (obj && typeof obj === 'object') {
-                if (typeof obj.src  === 'string') state.compose.src  = obj.src;
-                if (typeof obj.dst  === 'string') state.compose.dst  = obj.dst;
-                if (typeof obj.path === 'string') state.compose.path = obj.path;
-                if (typeof obj.info === 'string') state.compose.info = obj.info;
+                var b = state.aprs.beacon;
+                if (typeof obj.src     === 'string') b.src      = obj.src;
+                if (typeof obj.lat     === 'number') b.lat      = obj.lat;
+                if (typeof obj.lon     === 'number') b.lon      = obj.lon;
+                if (typeof obj.symKey  === 'string') b.symKey   = obj.symKey;
+                if (typeof obj.comment === 'string') b.comment  = obj.comment;
+                if (typeof obj.path    === 'string') b.path     = obj.path;
+                if (typeof obj.intervalMin === 'number') b.intervalMin = obj.intervalMin;
+                // beacon.enabled is intentionally NOT restored — server owns
+                // the periodic-beacon state, and we never want a page reload
+                // to silently start TXing.
             }
         } catch (e) { /* ignore */ }
     }
 
-    function saveComposeToStorage() {
+    function saveAprsToStorage() {
         try {
-            localStorage.setItem('wfweb.packet.compose', JSON.stringify(state.compose));
-        } catch (e) { /* quota exceeded — ignore */ }
+            var b = state.aprs.beacon;
+            var obj = { src: b.src, lat: b.lat, lon: b.lon, symKey: b.symKey,
+                        comment: b.comment, path: b.path,
+                        intervalMin: b.intervalMin };
+            localStorage.setItem('wfweb.aprs.beacon', JSON.stringify(obj));
+        } catch (e) { /* quota — ignore */ }
+    }
+
+    function populateSymbolSelect() {
+        var sel = document.getElementById('aprsSym');
+        if (!sel) return;
+        var html = '';
+        for (var i = 0; i < APRS_SYMBOLS.length; i++) {
+            var s = APRS_SYMBOLS[i];
+            html += '<option value="' + s.key + '">'
+                  + escapeHtml(s.code + '  ' + s.label) + '</option>';
+        }
+        sel.innerHTML = html;
+        sel.value = state.aprs.beacon.symKey;
+    }
+
+    function bindAprsControls() {
+        var b = state.aprs.beacon;
+        var srcEl     = document.getElementById('aprsSrc');
+        var symEl     = document.getElementById('aprsSym');
+        var latEl     = document.getElementById('aprsLat');
+        var lonEl     = document.getElementById('aprsLon');
+        var commentEl = document.getElementById('aprsComment');
+        var pathEl    = document.getElementById('aprsPath');
+        var intervalEl= document.getElementById('aprsInterval');
+
+        if (srcEl)     srcEl.value     = b.src;
+        if (symEl)     symEl.value     = b.symKey;
+        if (latEl)     latEl.value     = b.lat ? b.lat.toFixed(5) : '';
+        if (lonEl)     lonEl.value     = b.lon ? b.lon.toFixed(5) : '';
+        if (commentEl) commentEl.value = b.comment;
+        if (pathEl)    pathEl.value    = b.path;
+        if (intervalEl)intervalEl.value= b.intervalMin;
+
+        document.getElementById('aprsTxNowBtn').onclick  = aprsTxNow;
+        document.getElementById('aprsBeaconBtn').onclick = aprsToggleBeacon;
+        document.getElementById('aprsGeoBtn').onclick    = aprsUseMyLocation;
+        document.getElementById('aprsClearBtn').onclick  = aprsClearStations;
+
+        // Persist on blur so partial typing doesn't churn localStorage.
+        var commit = function() { aprsCommitForm(); };
+        [srcEl, latEl, lonEl, commentEl, pathEl, intervalEl, symEl].forEach(function(el) {
+            if (!el) return;
+            el.addEventListener('change', commit);
+            el.addEventListener('blur',   commit);
+        });
+
+        // Sortable column headers — delegated on the stations container.
+        var st = document.getElementById('aprsStations');
+        if (st) {
+            st.addEventListener('click', function(e) {
+                var th = e.target.closest && e.target.closest('th');
+                if (th && th.dataset.col) {
+                    aprsSetSort(th.dataset.col);
+                    return;
+                }
+                var call = e.target.closest && e.target.closest('td.aprs-call');
+                if (call && call.dataset.call) aprsCopyCall(call.dataset.call);
+            });
+        }
+    }
+
+    function aprsCommitForm() {
+        var b = state.aprs.beacon;
+        var srcEl     = document.getElementById('aprsSrc');
+        var symEl     = document.getElementById('aprsSym');
+        var latEl     = document.getElementById('aprsLat');
+        var lonEl     = document.getElementById('aprsLon');
+        var commentEl = document.getElementById('aprsComment');
+        var pathEl    = document.getElementById('aprsPath');
+        var intervalEl= document.getElementById('aprsInterval');
+
+        if (srcEl)     b.src         = (srcEl.value || '').trim().toUpperCase();
+        if (symEl)     b.symKey      = symEl.value;
+        if (latEl)     b.lat         = parseFloat(latEl.value) || 0;
+        if (lonEl)     b.lon         = parseFloat(lonEl.value) || 0;
+        if (commentEl) b.comment     = commentEl.value || '';
+        if (pathEl)    b.path        = (pathEl.value || '').trim().toUpperCase();
+        if (intervalEl)b.intervalMin = Math.max(1, parseInt(intervalEl.value, 10) || 10);
+        saveAprsToStorage();
+
+        // If the periodic beacon is currently on, push the new config so the
+        // next firing uses the latest fields.
+        if (b.enabled) aprsSendBeaconConfig(true);
+    }
+
+    function aprsValidateBeacon() {
+        var b = state.aprs.beacon;
+        if (!b.src || b.src === 'N0CALL') return 'set your callsign';
+        if (!isFinite(b.lat) || !isFinite(b.lon)) return 'lat/lon required';
+        if (b.lat === 0 && b.lon === 0)           return 'lat/lon required';
+        if (b.lat < -90  || b.lat > 90)           return 'lat out of range';
+        if (b.lon < -180 || b.lon > 180)          return 'lon out of range';
+        return '';
+    }
+
+    function aprsBeaconPayload() {
+        var b = state.aprs.beacon;
+        var sym = symbolFor(b.symKey);
+        var pathList = [];
+        if (b.path) {
+            var parts = b.path.split(/[,\s]+/);
+            for (var i = 0; i < parts.length; i++) if (parts[i]) pathList.push(parts[i]);
+        }
+        return {
+            src: b.src, lat: b.lat, lon: b.lon,
+            symTable: sym.table, symCode: sym.code,
+            comment: b.comment, path: pathList
+        };
+    }
+
+    function aprsTxNow() {
+        aprsCommitForm();
+        if (state.txBusy) return;
+        if (!state.enabled) { setEnabled(true); }
+        var err = aprsValidateBeacon();
+        if (err) { setTxStatus(err, true); return; }
+        setTxStatus('beacon queued…', false);
+        setTxButtonEnabled(false);
+        if (window.send) {
+            var p = aprsBeaconPayload();
+            p.cmd = 'aprsTxBeacon';
+            window.send(p);
+        }
+    }
+
+    function aprsToggleBeacon() {
+        aprsCommitForm();
+        var b = state.aprs.beacon;
+        if (!b.enabled) {
+            var err = aprsValidateBeacon();
+            if (err) { setTxStatus(err, true); return; }
+            if (!state.enabled) setEnabled(true);
+            b.enabled = true;
+            aprsSendBeaconConfig(true);
+        } else {
+            b.enabled = false;
+            aprsSendBeaconConfig(false);
+        }
+        renderAprsBeaconButton();
+    }
+
+    function aprsSendBeaconConfig(enabled) {
+        if (!window.send) return;
+        var p = aprsBeaconPayload();
+        p.cmd = 'aprsBeaconConfig';
+        p.enabled = !!enabled;
+        p.intervalSec = state.aprs.beacon.intervalMin * 60;
+        window.send(p);
+    }
+
+    function aprsUseMyLocation() {
+        if (!navigator.geolocation) {
+            setTxStatus('geolocation not available', true);
+            return;
+        }
+        setTxStatus('locating…', false);
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            var latEl = document.getElementById('aprsLat');
+            var lonEl = document.getElementById('aprsLon');
+            if (latEl) latEl.value = pos.coords.latitude.toFixed(5);
+            if (lonEl) lonEl.value = pos.coords.longitude.toFixed(5);
+            aprsCommitForm();
+            setTxStatus('location set', false);
+        }, function(err) {
+            setTxStatus('location: ' + (err && err.message ? err.message : 'denied'), true);
+        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    }
+
+    function aprsClearStations() {
+        if (!confirm('Forget all heard APRS stations?')) return;
+        if (window.send) window.send({ cmd: 'aprsClearStations' });
+    }
+
+    function aprsCopyCall(call) {
+        var srcEl = document.getElementById('aprsSrc');
+        if (srcEl) { srcEl.value = call; aprsCommitForm(); }
+    }
+
+    function renderAprsBeaconButton() {
+        var btn = document.getElementById('aprsBeaconBtn');
+        var st  = document.getElementById('aprsBeaconState');
+        if (!btn) return;
+        var on = !!state.aprs.beacon.enabled;
+        btn.classList.toggle('on', on);
+        btn.textContent = on ? ('Beacon: ON (' + state.aprs.beacon.intervalMin + ' min)')
+                             : 'Beacon: OFF';
+        if (st) {
+            st.classList.toggle('on', on);
+            st.textContent = on
+                ? ('every ' + state.aprs.beacon.intervalMin + ' min')
+                : 'idle';
+        }
+    }
+
+    function aprsSetSort(col) {
+        if (state.aprs.sortBy === col) {
+            state.aprs.sortDir = state.aprs.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            state.aprs.sortBy = col;
+            // Default direction per column: alphabetic ASC; numerics DESC
+            // (largest/most-recent first).
+            state.aprs.sortDir = (col === 'src') ? 'asc' : 'desc';
+        }
+        renderAprsStations();
+    }
+
+    function aprsAge(ms) {
+        if (!ms) return '';
+        var dt = (Date.now() - ms) / 1000;
+        if (dt < 60)        return Math.floor(dt) + 's';
+        if (dt < 3600)      return Math.floor(dt / 60) + 'm';
+        if (dt < 86400)     return Math.floor(dt / 3600) + 'h';
+        return Math.floor(dt / 86400) + 'd';
+    }
+
+    function fmtCoord(v, isLat) {
+        if (!isFinite(v)) return '';
+        var hem = isLat ? (v >= 0 ? 'N' : 'S') : (v >= 0 ? 'E' : 'W');
+        return Math.abs(v).toFixed(4) + hem;
+    }
+
+    function renderAprsStations() {
+        var host = document.getElementById('aprsStations');
+        var countEl = document.getElementById('aprsStationCount');
+        if (!host) return;
+
+        var stations = Object.keys(state.aprs.stations).map(function(k) {
+            return state.aprs.stations[k];
+        });
+        if (countEl) countEl.textContent = stations.length;
+
+        if (stations.length === 0) {
+            host.innerHTML = '<div class="aprs-empty">No APRS stations heard yet. '
+                           + 'Tune to 144.390 (or your local APRS frequency), enable the modem, and wait for a beacon.</div>';
+            return;
+        }
+
+        var sortBy  = state.aprs.sortBy;
+        var sortDir = state.aprs.sortDir;
+        var sign = sortDir === 'asc' ? 1 : -1;
+        stations.sort(function(a, b) {
+            var av = a[sortBy], bv = b[sortBy];
+            if (av == null && bv == null) return 0;
+            if (av == null) return 1;
+            if (bv == null) return -1;
+            if (typeof av === 'string') return sign * av.localeCompare(bv);
+            return sign * (av - bv);
+        });
+
+        var cols = [
+            { key: 'src',       label: 'Callsign' },
+            { key: '_sym',      label: 'Sym',      sortable: false },
+            { key: 'lat',       label: 'Lat'      },
+            { key: 'lon',       label: 'Lon'      },
+            { key: 'comment',   label: 'Comment'  },
+            { key: 'lastHeard', label: 'Heard'    },
+            { key: 'count',     label: '#'        }
+        ];
+
+        var html = '<table><thead><tr>';
+        for (var c = 0; c < cols.length; c++) {
+            var col = cols[c];
+            var sortable = col.sortable !== false;
+            var classes = '';
+            if (sortable && col.key === sortBy) {
+                classes = 'sort-active sort-' + sortDir;
+            }
+            html += '<th' + (sortable ? ' data-col="' + col.key + '"' : '')
+                  + (classes ? ' class="' + classes + '"' : '') + '>'
+                  + escapeHtml(col.label) + '</th>';
+        }
+        html += '</tr></thead><tbody>';
+
+        for (var i = 0; i < stations.length; i++) {
+            var s = stations[i];
+            var freshCls = s._fresh ? ' class="fresh"' : '';
+            html += '<tr' + freshCls + '>'
+                  + '<td class="aprs-call" data-call="' + escapeHtml(s.src) + '" title="Click to use as beacon source">'
+                  +   escapeHtml(s.src) + '</td>'
+                  + '<td class="aprs-sym" title="' + escapeHtml(s.symTable + s.symCode) + '">'
+                  +   escapeHtml(s.symCode || '?') + '</td>'
+                  + '<td class="aprs-pos">' + fmtCoord(s.lat, true)  + '</td>'
+                  + '<td class="aprs-pos">' + fmtCoord(s.lon, false) + '</td>'
+                  + '<td class="aprs-comment" title="' + escapeHtml(s.comment || '') + '">'
+                  +   escapeHtml(s.comment || '') + '</td>'
+                  + '<td class="aprs-age">'  + escapeHtml(aprsAge(s.lastHeard)) + '</td>'
+                  + '<td class="aprs-count">' + (s.count || 0) + '</td>'
+                  + '</tr>';
+        }
+        html += '</tbody></table>';
+        host.innerHTML = html;
+    }
+
+    function applyAprsStation(st) {
+        var src = st.src;
+        if (!src) return;
+        var existing = state.aprs.stations[src];
+        st._fresh = true;
+        state.aprs.stations[src] = st;
+        // Drop the freshness highlight a couple seconds later.
+        setTimeout(function() {
+            var s = state.aprs.stations[src];
+            if (s) s._fresh = false;
+            if (state.visible) renderAprsStations();
+        }, 2500);
+        if (state.visible) renderAprsStations();
+        if (!existing && state.activeTab === 'aprs') {
+            // Subtle visual cue handled by `_fresh`.
+        }
     }
 
     function appendFrame(frame) {

@@ -40,6 +40,7 @@
 #endif
 #include "direwolfprocessor.h"
 #include "ax25linkprocessor.h"
+#include "aprsprocessor.h"
 
 #ifdef Q_OS_MACOS
 class TlsProxyWorker;
@@ -161,6 +162,12 @@ private slots:
     void onPacketTxReady(audioPacket audio);
     void onPacketTxFailed(QString reason);
     void drainPacketLanTxBuffer();
+
+    // APRS station database / beacon scheduler
+    void onAprsStationUpdated(QJsonObject station);
+    void onAprsStationsCleared();
+    void onAprsBeaconRequested(QString src, QString dst,
+                               QStringList path, QString info);
 
 
 private:
@@ -299,6 +306,7 @@ private:
     DireWolfProcessor *dwProc = nullptr;
     QThread *dwThread = nullptr;
     AX25LinkProcessor *axProc = nullptr;
+    AprsProcessor *aprsProc = nullptr;
     bool packetEnabled = false;
     int  packetMode = 300;     // 300 / 1200 / 9600 — single active modem
     bool packetTxDraining = false;   // set while a one-shot packet burst

@@ -279,8 +279,8 @@ SOURCES += \
     resources/direwolf/wfweb_direwolf_stubs.c \
     resources/direwolf/wfweb_dw_server_shim.c \
     resources/direwolf/wfweb_tq.c
-SOURCES += src/direwolfprocessor.cpp src/ax25linkprocessor.cpp
-HEADERS += include/direwolfprocessor.h include/ax25linkprocessor.h
+SOURCES += src/direwolfprocessor.cpp src/ax25linkprocessor.cpp src/aprsprocessor.cpp
+HEADERS += include/direwolfprocessor.h include/ax25linkprocessor.h include/aprsprocessor.h
 
 contains(DEFINES,FTDI_SUPPORT){
   win32:INCLUDEPATH += ../LibFT4222-v1.4.7\imports\LibFT4222\inc
