@@ -138,8 +138,8 @@
     // drove the target — mean is dominated by the noise floor.
     var AGC_GAIN_MIN = 0.2;
     var AGC_GAIN_MAX = 20;
-    var AGC_TARGET_HI = 60;    // if EMA(mean) exceeds this, turn gain down
-    var AGC_TARGET_LO = 30;    // if EMA(mean) drops below this, turn gain up
+    var AGC_TARGET_HI = 70;    // if EMA(mean) exceeds this, turn gain down
+    var AGC_TARGET_LO = 45;    // if EMA(mean) drops below this, turn gain up — sits a hair above FLOOR so idle noise lands in the dark-blue band
 
     // Audio-graph nodes owned by this panel.  These are inserted between
     // the webserver's AudioWorklet and audioGainNode — see cw-decoder.js
@@ -153,7 +153,7 @@
     var rafId = null;
     var lastPaintMs = 0;
     var scopeColorLUT = null;
-    var agcEmaMean = 40;       // EMA of per-column mean byte value — the AGC's reference
+    var agcEmaMean = 55;       // EMA of per-column mean byte value — the AGC's reference (sits between TARGET_LO and TARGET_HI on init)
     var agcFrame = 0;
 
     function init() {
@@ -1358,15 +1358,28 @@
     function buildScopeColorLUT() {
         if (scopeColorLUT) return scopeColorLUT;
         scopeColorLUT = new Array(256);
-        for (var v = 0; v < 256; v++) {
-            // Black -> dark blue -> cyan -> green -> yellow -> red (like wfview)
-            var t = v / 255;
+        // Mirrors initWfColorTable() in index.html (FT8/FT4 palette) so the
+        // packet WF reads the same as DIGI: black → dark blue → bright blue →
+        // cyan → yellow → red.  Combined with FLOOR in paintScope(), idle
+        // RX (S0) renders as a clear dark blue, not near-black.
+        for (var i = 0; i < 256; i++) {
             var r, g, b;
-            if (t < 0.25)      { r = 0;                     g = 0;                     b = Math.floor(128 * (t / 0.25)); }
-            else if (t < 0.5)  { r = 0;                     g = Math.floor(255 * ((t - 0.25) / 0.25)); b = 128 + Math.floor(127 * ((t - 0.25) / 0.25)); }
-            else if (t < 0.75) { r = Math.floor(255 * ((t - 0.5) / 0.25));  g = 255;                   b = Math.floor(255 * (1 - (t - 0.5) / 0.25)); }
-            else               { r = 255;                   g = Math.floor(255 * (1 - (t - 0.75) / 0.25)); b = 0; }
-            scopeColorLUT[v] = [r, g, b];
+            if (i < 85) {
+                r = 0; g = 0; b = Math.round(i * 3);
+            } else if (i < 150) {
+                var t1 = (i - 85) / 64;
+                r = 0; g = Math.round(t1 * 60); b = 255;
+            } else if (i < 190) {
+                var t2 = (i - 150) / 39;
+                r = 0; g = 60 + Math.round(t2 * 195); b = 255;
+            } else if (i < 225) {
+                var t3 = (i - 190) / 34;
+                r = Math.round(t3 * 255); g = 255; b = Math.round(255 * (1 - t3));
+            } else {
+                var t4 = (i - 225) / 30;
+                r = 255; g = Math.round(255 * (1 - t4)); b = 0;
+            }
+            scopeColorLUT[i] = [r, g, b];
         }
         return scopeColorLUT;
     }
@@ -1541,15 +1554,17 @@
         rafId = null;
         if (!state.visible || !analyserNode || !scopeCanvas || !scopeCtx) return;
 
-        // Advance by whole pixels so the scroll rate is stable across frame
-        // rates.  30 px/s gives a visible packet burst that spans ~3 s at
-        // typical panel widths.
+        // 1 px every ~16 ms (paint roughly every RAF tick at 60 Hz) — fast
+        // enough that a typical AX.25 burst lights up tens of pixels of
+        // streak.  The 43 ms FFT window means adjacent columns overlap, but
+        // that just means features look like wider streaks, not smeared.
         var now = performance.now();
-        var dt = (now - lastPaintMs) / 1000;
+        if (now - lastPaintMs < 16) {
+            rafId = requestAnimationFrame(paintScope);
+            return;
+        }
         lastPaintMs = now;
-        var pxPerSec = Math.max(30, Math.floor(scopeCanvas.width / 6));
-        var step = Math.max(1, Math.floor(dt * pxPerSec));
-        if (step > scopeCanvas.width) step = scopeCanvas.width;
+        var step = 1;
 
         var bins = analyserNode.frequencyBinCount;
         var spectrum = new Uint8Array(bins);
@@ -1581,9 +1596,9 @@
         // Visibility floor — radios mute RX for a brief window after unkey
         // so the analyser genuinely receives silence there.  Mapping that
         // to pure black reads as a visible "gap" after every TX; lifting
-        // everything by a few LUT steps paints the gap as a dim blue floor
-        // instead, matching the surrounding background colour.
-        var FLOOR = 18;
+        // everything to LUT step ~40 paints S0 as a clear dark blue, matching
+        // the FT8 waterfall's idle background.
+        var FLOOR = 40;
         var Hm1 = Math.max(1, H - 1);
         for (var y = 0; y < H; y++) {
             // Linear interpolation between adjacent FFT bins.  Without this

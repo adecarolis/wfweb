@@ -3774,7 +3774,7 @@ function renderModeOverlay() {
     if (window.Packet) {
         var pktBtn = document.createElement('button');
         pktBtn.className = 'ov-btn' + (window.Packet.state && window.Packet.state.visible ? ' active' : '');
-        pktBtn.textContent = 'PKT';
+        pktBtn.textContent = 'Packet';
         pktBtn.onclick = function() { setPanel('default'); window.Packet.toggle(); };
         grid.appendChild(pktBtn);
     }
