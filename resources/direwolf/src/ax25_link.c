@@ -6069,6 +6069,13 @@ static void invoke_retransmission (ax25_dlsm_t *S, int nr_input)
 
 static void check_i_frame_ackd (ax25_dlsm_t *S, int nr)
 {
+	// wfweb patch: count how many outbound I-frames are newly
+	// acknowledged by this nr advance, then notify the host so the
+	// terminal UI can flip "pending" TX text to "delivered" without
+	// waiting for the peer to send a reply.  Computed BEFORE SET_VA
+	// because each branch below will overwrite S->va.
+	int newly_acked = ((nr - S->va) + S->modulo) % S->modulo;
+
 	if (S->peer_receiver_busy) {
 	  SET_VA(nr);
 
@@ -6098,6 +6105,12 @@ static void check_i_frame_ackd (ax25_dlsm_t *S, int nr)
 	  SET_VA(nr);
 	  START_T1;			// Erratum?  Flow chart says "restart" rather than "start."
 					// Is this intentional, what is the difference?
+	}
+
+	if (newly_acked > 0) {
+	    server_data_acked(S->chan, S->client,
+	                      S->addrs[OWNCALL], S->addrs[PEERCALL],
+	                      newly_acked);
 	}
 
 } /* check_i_frame_ackd */
