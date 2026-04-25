@@ -3261,6 +3261,20 @@ void webServer::setupAudio(quint8 codec, quint32 sampleRate)
                 this,   &webServer::onAxRxData,
                 Qt::QueuedConnection);
         axProc->start();
+
+        // Mirror the setupUsbAudio() startup block: load persisted
+        // packet enable/mode and apply it to the processors.  Without
+        // this, the LAN path leaves paclen at the static-init default
+        // (128) instead of baud-scaling it via setLinkParamsForBaud.
+        packetLoadSettings();
+        QMetaObject::invokeMethod(axProc, "setLinkParamsForBaud", Qt::QueuedConnection,
+                                  Q_ARG(int, packetMode));
+        QMetaObject::invokeMethod(dwProc, "setMode", Qt::QueuedConnection,
+                                  Q_ARG(int, packetMode));
+        if (packetEnabled) {
+            QMetaObject::invokeMethod(dwProc, "setEnabled", Qt::QueuedConnection,
+                                      Q_ARG(bool, true));
+        }
     }
 
     qInfo() << "Web: Audio configured, codec=" << Qt::hex << codec
@@ -3734,13 +3748,36 @@ void webServer::onPacketTxReady(audioPacket audio)
         xferBroadcastProgress(x);
 
         if (x->xfer.framesSent >= x->xfer.framesPlanned) {
-            QByteArray info = QString("*** Sent: %1 (%2 bytes)")
-                .arg(x->xfer.name).arg(x->xfer.total).toUtf8();
+            // EF audio just left the encoder.  Don't tear down yet —
+            // YAPP says the transfer is only complete when the peer's
+            // AF (ACK 0x03) arrives confirming they got the whole file.
+            // The AF handler in yappHandleFrame() does the real
+            // completion (broadcast end, scrollback "File sent",
+            // clear xfer).  yappFindActiveTxXfer() gates on
+            // phase == "active", so this transition stops the pump.
+            x->xfer.phase = QStringLiteral("awaiting_af");
+            QByteArray info = QStringLiteral("*** All frames sent — awaiting AF from peer").toUtf8();
             QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);
             termAppendScrollback(x, e);
             termBroadcastData(x->sid, e);
-            xferBroadcastEnd(x, /*aborted=*/false);
-            x->xfer = XferState{};
+            qInfo().noquote() << "Web: YAPP TX awaiting AF" << x->sid
+                              << x->xfer.name << x->xfer.total << "B";
+
+            // Safety net: if AF never arrives, declare failed after
+            // 60 s.  Mirrors the awaiting_rr timer in yappSendFile.
+            QString sid = x->sid;
+            QTimer::singleShot(60000, this, [this, sid]() {
+                TerminalSession *cur = termSessions.value(sid, nullptr);
+                if (!cur || !cur->xfer.active) return;
+                if (cur->xfer.phase != "awaiting_af") return;
+                QByteArray info = QStringLiteral("*** No AF from peer — transfer may have failed").toUtf8();
+                QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);
+                termAppendScrollback(cur, e);
+                termBroadcastData(cur->sid, e);
+                xferBroadcastEnd(cur, /*aborted=*/true);
+                cur->xfer = XferState{};
+                qWarning().noquote() << "Web: YAPP TX AF timeout" << sid;
+            });
         } else {
             yappPumpNextFrame(x);
         }
@@ -4386,7 +4423,8 @@ void webServer::yappHandleFrame(TerminalSession *s, YappKind kind, const QByteAr
         break;
 
     case YappKind::AF:               // peer ACKed our EF — TX transfer done
-        if (s->xfer.active && s->xfer.dir == "tx") {
+        if (s->xfer.active && s->xfer.dir == "tx"
+            && s->xfer.phase == "awaiting_af") {
             QByteArray info = QString("*** File sent: %1 (%2 bytes)")
                 .arg(s->xfer.name).arg(s->xfer.total).toUtf8();
             QJsonObject e = termScrollbackEntry(QStringLiteral("info"), info);
@@ -4397,7 +4435,10 @@ void webServer::yappHandleFrame(TerminalSession *s, YappKind kind, const QByteAr
                               << s->xfer.name << s->xfer.total << "B";
             s->xfer = XferState{};
         } else {
-            qWarning().noquote() << "Web: unexpected YAPP AF" << s->sid;
+            qWarning().noquote() << "Web: unexpected YAPP AF" << s->sid
+                                 << "active=" << s->xfer.active
+                                 << "dir="    << s->xfer.dir
+                                 << "phase="  << s->xfer.phase;
         }
         break;
 
