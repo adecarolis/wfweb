@@ -2,13 +2,15 @@
 
 **Control your Icom radio from any browser — phone, tablet, or desktop.**
 
-wfweb turns your transceiver into a web-accessible station. Waterfall, SSB, CW decoding, FT8/FT4, [FreeDV digital voice](https://youtu.be/AWdHcyiOOnY), and RADE — all in the browser, no client software required.
+wfweb turns your transceiver into a web-accessible station. Waterfall, SSB, CW decoding, FT8/FT4, [FreeDV digital voice](https://youtu.be/AWdHcyiOOnY), RADE, and AX.25 packet (APRS, connected QSOs, file transfer) — all in the browser, no client software required.
 
 ![FT8 digital mode panel](ft8.png)
 
 ![SSB mode](ssb.png)
 
 ![CW mode with decoder](cw.png)
+
+![AX.25 packet — connected QSO with YAPP file transfer in progress](packet.png)
 
 ---
 
@@ -32,6 +34,7 @@ Everything wfview does, wfweb does too — plus a built-in web interface:
 | FT8/FT4 DIGI panel (full QSO) | — | ✓ |
 | RADE (Radio Autoencoder) | — | ✓ |
 | FreeDV digital voice (700D/700E/1600) | — | ✓ |
+| AX.25 packet — 300/1200/9600, APRS, terminal, YAPP | — | ✓ |
 | Mobile-responsive UI | — | ✓ |
 | Headless / no-display operation | — | ✓ |
 
@@ -149,6 +152,36 @@ Select the FreeDV mode from the web UI, key up, and talk — wfweb handles the r
 ### Performance
 
 RADE uses real-time neural network inference. Expect roughly **40% CPU usage** on a mid-range laptop (e.g. Intel i5-10310U @ 1.70 GHz). The classic FreeDV modes (700D/700E/1600) are much lighter and run comfortably on a Raspberry Pi.
+
+---
+
+## AX.25 packet — APRS, connected QSOs, and file transfer
+
+A complete browser-based packet station: AX.25 frame monitor, connected-mode QSOs, APRS, and YAPP file transfer — no separate TNC, KISS bridge, or APRS client.
+
+### What's included
+
+| Capability | Details |
+|------------|---------|
+| **Demodulators** | 300 baud AFSK • 1200 baud AFSK • 9600 baud G3RUH FSK |
+| **Monitor** | Live AX.25 decode with sender, receiver, digipeater path, control field, and PID |
+| **APRS** | Heard-stations table and beacon compose |
+| **Terminal** | Connected-mode QSO to a peer station — chat, message-on-Enter |
+| **File transfer** | YAPP send/receive over an established AX.25 connection |
+| **Waterfall** | Live RX spectrogram (FT8-style palette) with TX bursts marked in red |
+
+### How it works
+
+```
+RX:  Radio (audio) → Direwolf demod → AX.25 stack → frames to browser
+TX:  Browser (frame, beacon, file) → AX.25 → Direwolf modem → SSB/FM mic to radio
+```
+
+Packet runs entirely server-side using a built-in [Direwolf](https://github.com/wb2osz/direwolf) modem. The browser renders the waterfall, displays the monitor, and exposes the APRS / Terminal tabs; the radio just sees a normal voice carrier.
+
+Tune to a packet frequency in a voice mode (LSB/USB/FM/AM), open the **Packet** panel, pick the demodulator, and frames stream into the monitor as they decode. To open a connected QSO type the peer call, optional digipeater path, and press **Connect** — once `CONNECTED` shows you can send messages or push files via YAPP.
+
+The shared station callsign (gear dialog) is reused across CW, FT8/FT4, FreeDV reporter, APRS, and the AX.25 link, so you set it once and every mode uses it.
 
 ---
 
@@ -326,6 +359,7 @@ Please support the original project at **https://wfview.org** and **https://www.
 The FT8/FT4 DIGI panel is powered by [ft8ts](https://github.com/e04/ft8ts) by e04.
 The CW decoder uses [ggmorse](https://github.com/ggerganov/ggmorse) by Georgi Gerganov.
 FreeDV digital voice uses [codec2](https://github.com/drowe67/codec2) by David Rowe VK5DGR and contributors, and [radae_nopy](https://github.com/peterbmarks/radae_nopy) by Peter Marks VK5APM (a standalone C implementation of the RADE Radio Autoencoder).
+AX.25 packet — modems, framing, link control, APRS, and YAPP — is powered by [Direwolf](https://github.com/wb2osz/direwolf) by John Langner WB2OSZ.
 
 ---
 
