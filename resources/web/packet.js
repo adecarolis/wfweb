@@ -129,7 +129,7 @@
                     '<label>Own <input id="termOwnCall"  class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
                     '<label>Peer <input id="termPeerCall" class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
                     '<label>Digi <input id="termDigis"    class="packet-tx-field" size="20" spellcheck="false" placeholder="DIGI1,DIGI2"></label>' +
-                    '<button id="termConnectBtn"    class="packet-send-btn" title="Open AX.25 connected-mode link">Connect</button>' +
+                    '<button id="termConnectBtn"    class="packet-action-btn" title="Open AX.25 connected-mode link">Connect</button>' +
                     '<button id="termDisconnectBtn" class="packet-action-btn" title="Disconnect this session" disabled>Disconnect</button>' +
                     '<span   id="termStateChip"     class="term-state-chip">DISCONNECTED</span>' +
                 '</div>' +
@@ -327,17 +327,27 @@
             // Terminal pane
             '.term-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 10px; color: #8c8; flex-wrap: wrap; }' +
             '.term-bar label { display: flex; align-items: center; gap: 3px; }' +
-            '.term-state-chip { padding: 2px 8px; border: 1px solid #555; border-radius: 3px; font-size: 10px; font-weight: bold; color: #888; background: #111; min-width: 90px; text-align: center; letter-spacing: 1px; }' +
-            '.term-state-chip.connecting    { color: #ff0; border-color: #aa0; background: #110; }' +
-            '.term-state-chip.connected     { color: #0f0; border-color: #0a0; background: #010; }' +
-            '.term-state-chip.disconnecting { color: #f80; border-color: #a40; background: #110; }' +
+            '.term-state-chip { padding: 3px 10px; border: 1px solid #555; border-radius: 3px; font-size: 11px; font-weight: bold; color: #888; background: #111; min-width: 96px; text-align: center; letter-spacing: 1px; transition: box-shadow 0.2s; }' +
+            '.term-state-chip.connecting    { color: #ff3; border-color: #ee0; background: #221d00; animation: term-pulse 1.2s ease-in-out infinite; }' +
+            '.term-state-chip.connected     { color: #0f0; border-color: #0f0; background: #002a00; box-shadow: 0 0 8px rgba(0,255,0,0.5), inset 0 0 6px rgba(0,255,0,0.15); }' +
+            '.term-state-chip.disconnecting { color: #fb5; border-color: #f80; background: #2a1500; animation: term-pulse 1.2s ease-in-out infinite; }' +
             '.term-state-chip.disconnected  { color: #888; border-color: #555; background: #111; }' +
+            '@keyframes term-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }' +
             '.term-session-tabs { display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 4px; }' +
             '.term-session-tabs:empty { display: none; }' +
-            '.term-tab { display: inline-flex; align-items: center; gap: 6px; background: #001a00; border: 1px solid #0a0; border-bottom: none; color: #8c8; font-family: monospace; font-size: 11px; padding: 3px 4px 3px 8px; border-radius: 3px 3px 0 0; cursor: pointer; user-select: none; }' +
-            '.term-tab:hover { background: #003300; color: #cfc; }' +
-            '.term-tab.active { background: #010; color: #0f0; border-color: #0f0; }' +
-            '.term-tab .term-tab-state { font-size: 9px; opacity: 0.7; margin-left: 2px; }' +
+            '.term-tab { display: inline-flex; align-items: center; gap: 6px; background: #181818; border: 1px solid #555; border-bottom: none; color: #888; font-family: monospace; font-size: 11px; padding: 3px 4px 3px 8px; border-radius: 3px 3px 0 0; cursor: pointer; user-select: none; transition: box-shadow 0.2s; }' +
+            '.term-tab:hover { filter: brightness(1.25); }' +
+            // Connection-state colours (apply to all tabs, active or not).
+            '.term-tab.s-connecting    { background: #221d00; border-color: #ee0; color: #ff3; animation: term-pulse 1.2s ease-in-out infinite; }' +
+            '.term-tab.s-connected     { background: #002a00; border-color: #0f0; color: #0f0; }' +
+            '.term-tab.s-disconnecting { background: #2a1500; border-color: #f80; color: #fb5; animation: term-pulse 1.2s ease-in-out infinite; }' +
+            '.term-tab.s-disconnected  { background: #181818; border-color: #555; color: #888; }' +
+            // Active tab gets a glow + bottom-edge highlight on top of state colour.
+            '.term-tab.active            { box-shadow: 0 -2px 0 currentColor inset, 0 0 10px rgba(0,255,0,0.25); filter: brightness(1.15); }' +
+            '.term-tab.active.s-connecting    { box-shadow: 0 -2px 0 #ee0 inset, 0 0 10px rgba(238,238,0,0.35); }' +
+            '.term-tab.active.s-disconnecting { box-shadow: 0 -2px 0 #f80 inset, 0 0 10px rgba(255,136,0,0.35); }' +
+            '.term-tab.active.s-disconnected  { box-shadow: 0 -2px 0 #888 inset; }' +
+            '.term-tab .term-tab-state { font-size: 9px; opacity: 0.85; margin-left: 2px; text-transform: uppercase; letter-spacing: 0.5px; }' +
             '.term-tab.unread::before { content: "●"; color: #ff0; margin-right: 4px; font-size: 10px; }' +
             '.term-tab-close { background: transparent; border: none; color: inherit; font-family: monospace; font-size: 14px; line-height: 1; padding: 0 2px; cursor: pointer; opacity: 0.6; border-radius: 2px; }' +
             '.term-tab-close:hover { opacity: 1; background: #300; color: #f88; }' +
@@ -351,6 +361,11 @@
             '.term-input:disabled { opacity: 0.5; }' +
             '.term-force-btn { background: #2a0000 !important; border-color: #a40 !important; color: #f80 !important; }' +
             '.term-force-btn:hover:not(:disabled) { background: #4a0000 !important; color: #fb0 !important; }' +
+            // Disconnect button when there is a LIVE connection — bright red
+            // border + glow so the operator can see "click here to drop the
+            // active link" at a glance.
+            '.term-live-btn { background: #1a0000 !important; border: 1px solid #f33 !important; color: #f55 !important; font-weight: bold !important; box-shadow: 0 0 6px rgba(255,68,68,0.45) !important; }' +
+            '.term-live-btn:hover:not(:disabled) { background: #330000 !important; color: #f88 !important; }' +
             '.term-dl-link { color: #0cf; text-decoration: underline; cursor: pointer; }' +
             '.term-dl-link:hover { color: #0ff; }' +
             // Transfer progress widget
@@ -1258,9 +1273,22 @@
             // and go straight to disconnected — no waiting for the peer's UA.
             dcBtn.textContent = isDisconnecting ? 'Force' : 'Disconnect';
             dcBtn.classList.toggle('term-force-btn', !!isDisconnecting);
+            // When the link is live (connected), highlight the Disconnect
+            // button so it's obvious this is the ONE thing to press to drop
+            // the link.  Hidden under term-force-btn during the Force state.
+            dcBtn.classList.toggle('term-live-btn',
+                                   connected && !isDisconnecting);
             dcBtn.title = isDisconnecting
                 ? 'Send DM and tear down the link immediately'
                 : 'Disconnect this session';
+        }
+        var conBtn = document.getElementById('termConnectBtn');
+        if (conBtn) {
+            // Dim Connect while a session is alive — the operator should
+            // use Disconnect first.  Still enabled so a second connect
+            // attempt to a different peer works after closing the tab.
+            conBtn.style.opacity = (connected || s && s.state === 'connecting')
+                                   ? '0.5' : '';
         }
         // Text send and file pick are both disabled during an active
         // transfer — the link is busy, and the Abort button (in the
@@ -1413,7 +1441,9 @@
             var sid = sids[i];
             var s = state.terminal.sessions[sid];
             var isActive = sid === state.terminal.activeSid;
+            var stateClass = 's-' + (s.state || 'disconnected');
             var cls = 'term-tab'
+                    + ' ' + stateClass
                     + (isActive ? ' active' : '')
                     + (!isActive && s.hasUnread ? ' unread' : '');
             html += '<div class="' + cls + '" data-sid="' + escapeHtml(sid) + '"'
