@@ -501,6 +501,7 @@
         } else if (msg.type === 'termClose') {
             delete state.terminal.sessions[msg.sid];
             if (state.terminal.activeSid === msg.sid) state.terminal.activeSid = null;
+            maybeAutoActivateSole();
             renderTerm();
         } else if (msg.type === 'termData') {
             var s = state.terminal.sessions[msg.sid];
@@ -533,6 +534,7 @@
             if (state.terminal.activeSid && !state.terminal.sessions[state.terminal.activeSid]) {
                 state.terminal.activeSid = null;
             }
+            maybeAutoActivateSole();
             renderTerm();
         } else if (msg.type === 'termHistory') {
             var sh = state.terminal.sessions[msg.sid];
@@ -584,6 +586,7 @@
 
     function handleTermSession(msg) {
         var existing = state.terminal.sessions[msg.sid];
+        var prevState = existing ? existing.state : null;
         var s = existing || { sid: msg.sid, scrollback: [] };
         s.sid      = msg.sid;
         s.chan     = msg.chan;
@@ -596,7 +599,9 @@
 
         // Activate only when this is the session the user just asked to
         // connect to (pendingOutbound).  Inbound or concurrent sessions
-        // never steal focus — they light up an unread marker instead.
+        // never steal focus on creation — they light up an unread marker
+        // instead.  (The "became connected" and "sole session" rules
+        // below may still promote them.)
         if (!existing) {
             var po = state.terminal.pendingOutbound;
             var matchesPending = po
@@ -605,13 +610,34 @@
                 && (typeof po.chan !== 'number' || po.chan === msg.chan);
             if (matchesPending) {
                 state.terminal.pendingOutbound = null;
-                state.terminal.activeSid = msg.sid;
-                if (window.send) window.send({ cmd: 'termHistory', sid: msg.sid });
+                termSetActive(msg.sid);
             } else if (state.terminal.activeSid !== msg.sid) {
                 s.hasUnread = true;
             }
         }
+
+        // Promote on transition to 'connected' (covers inbound SABM/UA
+        // races where the first message we see is already 'connected',
+        // and outbound 'connecting' → 'connected').
+        if (msg.state === 'connected' && prevState !== 'connected') {
+            termSetActive(msg.sid);
+        }
+
+        // If this is now the only session, focus it.
+        maybeAutoActivateSole();
+
         renderTerm();
+    }
+
+    // Whenever the session set transitions to exactly one entry, that
+    // entry should be the active selection — there's no other choice
+    // for the operator to make.  Called from handleTermSession (add),
+    // termClose (remove), and termList (server snapshot replace).
+    function maybeAutoActivateSole() {
+        var sids = Object.keys(state.terminal.sessions);
+        if (sids.length !== 1) return;
+        if (state.terminal.activeSid === sids[0]) return;
+        termSetActive(sids[0]);
     }
 
     function setTxStatus(text, isError) {

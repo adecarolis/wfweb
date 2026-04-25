@@ -3940,7 +3940,7 @@ void webServer::drainPacketLanTxBuffer()
 {
     if (packetLanTxBuffer.isEmpty()) {
         if (packetLanTxTimer) packetLanTxTimer->stop();
-        qInfo() << "Web: Packet LAN TX drained, scheduling unkey";
+        qDebug() << "Web: Packet LAN TX drained, scheduling unkey";
         QTimer::singleShot(300, this, [this]() {
             packetTxDraining = false;
             if (queue) {
