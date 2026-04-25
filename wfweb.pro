@@ -258,11 +258,17 @@ win32 {
 # Dire Wolf expects these version macros from the build system.
 DEFINES += MAJOR_VERSION=1 MINOR_VERSION=7 EXTRA_VERSION=\\\"wfweb\\\"
 INCLUDEPATH += $$PWD/resources/direwolf/src $$PWD/resources/direwolf
+# macOS libc has strlcpy/strlcat; tell direwolf.h so it skips its macro shim,
+# which otherwise rewrites the SDK <string.h> declarations and breaks builds.
+macx:DEFINES += HAVE_STRLCPY HAVE_STRLCAT
 # Vendored Dire Wolf C predates current warning hygiene; quiet the noise
 # so wfweb's own C++ warnings stay readable.  Only affects C compilation
 # (wfweb itself is C++), so genuine warnings in our code are unaffected.
-QMAKE_CFLAGS += -Wno-write-strings -Wno-unused-parameter -Wno-sign-compare \
-                -Wno-old-style-declaration -Wno-type-limits -Wno-implicit-fallthrough
+# Scoped to GCC/clang — MSVC's cl.exe rejects these flags as "invalid numeric argument".
+linux|macx|win32-g++ {
+    QMAKE_CFLAGS += -Wno-write-strings -Wno-unused-parameter -Wno-sign-compare \
+                    -Wno-old-style-declaration -Wno-type-limits -Wno-implicit-fallthrough
+}
 SOURCES += \
     resources/direwolf/src/ax25_pad.c \
     resources/direwolf/src/ax25_pad2.c \

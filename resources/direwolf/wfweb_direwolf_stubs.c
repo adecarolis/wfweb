@@ -137,3 +137,40 @@ int get_input(int it, int chan)
  * modem are drained by AX25LinkProcessor (src/ax25linkprocessor.cpp),
  * which dispatches DLQ_REC_FRAME both to lm_data_indication (connected
  * mode) and to the existing wfweb_dw_rx_frame trampoline (APRS UI). */
+
+/* ----- strlcpy_debug / strlcat_debug -----
+ *
+ * direwolf.h routes strlcpy()/strlcat() through these wrappers (DEBUG_STRL=1)
+ * unless HAVE_STRLCPY / HAVE_STRLCAT are defined.  Direwolf only auto-detects
+ * those on glibc >= 2.38, leaving Debian 12 (glibc 2.36) and Windows MSVC
+ * with unresolved references.  Provide BSD-style implementations here so the
+ * link succeeds on every supported target.  On macOS we set HAVE_STRLCPY via
+ * wfweb.pro (libc already has the real ones), so these definitions are
+ * compiled but unused. */
+
+size_t strlcpy_debug(char *dst, const char *src, size_t siz,
+                     const char *file, const char *func, int line)
+{
+    (void)file; (void)func; (void)line;
+    size_t srclen = strlen(src);
+    if (siz != 0) {
+        size_t copy = (srclen < siz - 1) ? srclen : siz - 1;
+        memcpy(dst, src, copy);
+        dst[copy] = '\0';
+    }
+    return srclen;
+}
+
+size_t strlcat_debug(char *dst, const char *src, size_t siz,
+                     const char *file, const char *func, int line)
+{
+    (void)file; (void)func; (void)line;
+    size_t dstlen = strnlen(dst, siz);
+    size_t srclen = strlen(src);
+    if (dstlen >= siz) return siz + srclen;
+    size_t copy = siz - dstlen - 1;
+    if (srclen < copy) copy = srclen;
+    memcpy(dst + dstlen, src, copy);
+    dst[dstlen + copy] = '\0';
+    return dstlen + srclen;
+}
