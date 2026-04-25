@@ -24,6 +24,11 @@ AX25LinkProcessor *AX25LinkProcessor::s_instance = nullptr;
 // stores the pointer and reads from it on every link state change.
 static struct misc_config_s s_misc_config;
 
+// Mirror of s_misc_config.paclen, exposed thread-safely so YAPP (running
+// on the webserver thread) can size its DT chunks to fit the current
+// link's max info field.  Updated whenever setLinkParamsForBaud runs.
+static std::atomic<int> s_currentPaclen{128};
+
 AX25LinkProcessor::AX25LinkProcessor(QObject *parent)
     : QObject(parent)
 {
@@ -46,6 +51,7 @@ void AX25LinkProcessor::start()
     s_misc_config.frack             = 4;     // updated dynamically by setLinkParamsForBaud
     s_misc_config.retry             = 10;
     s_misc_config.paclen            = 128;
+    s_currentPaclen.store(s_misc_config.paclen);
     // k_maxframe = 1 gives strict one-frame-one-ACK ping-pong, which is the
     // classic BBS-era behaviour most packet operators expect: each I-frame
     // keys the radio briefly, the peer ACKs, the channel is free for others.
@@ -210,14 +216,43 @@ void AX25LinkProcessor::setLinkParamsForBaud(int baud)
     // the first retry.  Numbers are for no-digi paths; ax25_link multiplies
     // by (2*num_digis + 1) internally.
     int frack;
+    int paclen;
     switch (baud) {
-    case 300:  frack = 10; break;   // ~1.4 s airtime per SABM, leave room
-    case 1200: frack = 4;  break;   // ~225 ms airtime, default works fine
-    case 9600: frack = 3;  break;
-    default:   frack = 4;  break;
+    case 300:
+        // HF: noisy, slow.  Common HF practice (SV1BSX guide, Modern-Ham
+        // BPQ configs) is paclen=32 or 64; pick 64 for usable throughput
+        // while keeping per-frame airtime under ~2 s so a single bit
+        // error doesn't waste a long send.
+        frack  = 10;  // ~1.4 s airtime per SABM, leave room
+        paclen = 64;
+        break;
+    case 1200:
+        // VHF FM: clean and fast.  Classic 128 fits one I-frame in the
+        // typical FM-packet airtime budget.
+        frack  = 4;   // ~225 ms airtime, default works fine
+        paclen = 128;
+        break;
+    case 9600:
+        // VHF/UHF FSK: very clean and fast.  256 is the de-facto default.
+        frack  = 3;
+        paclen = 256;
+        break;
+    default:
+        frack  = 4;
+        paclen = 128;
+        break;
     }
-    s_misc_config.frack = frack;
-    qCInfo(logAx25) << "Link params: baud=" << baud << "frack=" << frack;
+    s_misc_config.frack  = frack;
+    s_misc_config.paclen = paclen;
+    s_currentPaclen.store(paclen);
+    qCInfo(logAx25) << "Link params: baud=" << baud
+                    << "frack=" << frack
+                    << "paclen=" << paclen;
+}
+
+int AX25LinkProcessor::currentPaclen()
+{
+    return s_currentPaclen.load();
 }
 
 void AX25LinkProcessor::seizeConfirm(int chan)

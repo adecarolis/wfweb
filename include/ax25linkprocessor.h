@@ -60,8 +60,14 @@ public slots:
     // Adjust link-layer timing for the current modem baud rate.  At 300 bd
     // a SABM is ~1.4 s of airtime; doubling T1 (frack) keeps the default
     // 10 retries from triggering before the peer can reply.  Called from
-    // webServer on every packetSetMode.
+    // webServer on every packetSetMode.  Also resizes paclen to a value
+    // appropriate for the link (small on HF, large on VHF/UHF).
     void setLinkParamsForBaud(int baud);
+
+    // Snapshot of the AX.25 paclen currently in effect.  Thread-safe;
+    // YAPP uses this to size DT chunks so they fit one I-frame.  Returns
+    // the static-init default before setLinkParamsForBaud is first called.
+    static int currentPaclen();
 
     // Channel busy/idle from carrier sense (optional; carrier-sense not
     // wired in M2 but the slot is here for future use).

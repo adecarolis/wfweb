@@ -4651,9 +4651,15 @@ void webServer::yappStartDataPhase(TerminalSession *s)
     s->xfer.pendingYappFrames.clear();
     s->xfer.pendingYappFrames.append(yappBuildHD(s->xfer.name, s->xfer.total));
 
-    // DT chunk size: AX.25 paclen is 128, real YAPP DT framing adds
-    // 2 bytes (STX + len), so 126 keeps each DT inside one I-frame.
-    const int kDataChunk = 126;
+    // DT chunk size: keep each DT inside one I-frame.  AX.25 paclen is
+    // baud-scaled (64 on HF/300, 128 on 1200, 256 on 9600); subtract 2
+    // for the STX + len YAPP header.  YAPP's len=0=256 special case
+    // means the encoded DT frame is at most 258 bytes, so paclen=256
+    // emits 256-byte data chunks correctly via yappBuildDT.
+    int paclen = AX25LinkProcessor::currentPaclen();
+    if (paclen < 8)   paclen = 8;
+    if (paclen > 256) paclen = 256;
+    const int kDataChunk = paclen - 2;
     for (int off = 0; off < payload.size(); off += kDataChunk) {
         s->xfer.pendingYappFrames.append(yappBuildDT(payload.mid(off, kDataChunk)));
     }
