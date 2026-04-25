@@ -4070,10 +4070,15 @@ void webServer::onPacketTxReady(audioPacket audio)
         }
         txAudioActive = true;
         preTxBuffering = false;
-        // 50 ms silence prefill — same headroom strategy the FreeDV/mic
-        // paths use; matters more for PKT because the first symbol must
-        // not be clipped by an ALSA underrun.
-        QByteArray prefill(4800 * usbOutputChannels, 0);
+        // 20 ms silence prefill — enough headroom that the 10 ms drain
+        // timer can be jittered by ~one tick without underrunning the
+        // first symbol, but small enough that ALSA's tail at end-of-
+        // burst (~prefill) drains quickly when we stop writing.  The
+        // FreeDV/RADE paths still use a larger 50 ms prefill because
+        // their continuous codec output is more sensitive to underrun.
+        const int prefillBytes = (int)((rigSampleRate ? rigSampleRate : 48000) / 50)
+                                 * (int)sizeof(qint16) * usbOutputChannels;
+        QByteArray prefill(prefillBytes, 0);
         usbAudioOutputDevice->write(prefill);
 
         if (!packetUsbTxDrainTimer) {
@@ -4145,9 +4150,10 @@ void webServer::drainPacketLanTxBuffer()
 }
 
 // PKT USB drain.  Pops one 10 ms chunk per tick and writes it via the
-// shared writer.  Empty + active → switch to packetTxAwaitingIdle and
-// stop the timer; QAudioOutput's stateChanged → IdleState then drives
-// the unkey (no fixed-300 ms guess).
+// shared writer.  When the last byte goes out we stop the timer in the
+// same tick (not the next one — that wasted ~10 ms of PTT-on time) and
+// flip into packetTxAwaitingIdle; QAudioOutput's stateChanged →
+// IdleState then drives the unkey (no fixed-300 ms guess).
 void webServer::drainPacketUsbTxBuffer()
 {
     if (!usbAudioOutputDevice) return;
@@ -4157,19 +4163,7 @@ void webServer::drainPacketUsbTxBuffer()
     const quint32 rate = rigSampleRate ? rigSampleRate : 48000;
     const int chunkSize = (int)(rate / 100) * (int)sizeof(qint16);
 
-    if (packetUsbTxBuffer.size() >= chunkSize) {
-        QByteArray chunk = packetUsbTxBuffer.left(chunkSize);
-        packetUsbTxBuffer.remove(0, chunkSize);
-        txWritePcmFrame(chunk, /*applyGain=*/true);
-    } else if (!packetUsbTxBuffer.isEmpty()) {
-        // Partial trailing data: pad with silence to maintain timing.
-        QByteArray chunk = packetUsbTxBuffer;
-        chunk.append(QByteArray(chunkSize - chunk.size(), 0));
-        packetUsbTxBuffer.clear();
-        txWritePcmFrame(chunk, /*applyGain=*/true);
-    } else {
-        // Buffer drained.  Stop pacing; do NOT stop ALSA — we want Qt's
-        // internal queue to play out so its IdleState can fire.
+    auto enterAwaitingIdle = [this]() {
         packetUsbTxDrainTimer->stop();
         packetTxAwaitingIdle = true;
         qInfo() << "Web: PKT USB drain complete — awaiting ALSA idle";
@@ -4182,14 +4176,35 @@ void webServer::drainPacketUsbTxBuffer()
                 onUsbAudioOutputStateChanged(QAudio::IdleState);
             }, Qt::QueuedConnection);
         }
+    };
+
+    if (packetUsbTxBuffer.size() >= chunkSize) {
+        QByteArray chunk = packetUsbTxBuffer.left(chunkSize);
+        packetUsbTxBuffer.remove(0, chunkSize);
+        txWritePcmFrame(chunk, /*applyGain=*/true);
+        // If that was the last full chunk and nothing's queued behind it,
+        // there's no more useful work for the timer — flip to awaiting
+        // now instead of burning another 10 ms tick to discover empty.
+        if (packetUsbTxBuffer.isEmpty()) enterAwaitingIdle();
+    } else if (!packetUsbTxBuffer.isEmpty()) {
+        // Partial trailing data: pad with silence to maintain timing.
+        QByteArray chunk = packetUsbTxBuffer;
+        chunk.append(QByteArray(chunkSize - chunk.size(), 0));
+        packetUsbTxBuffer.clear();
+        txWritePcmFrame(chunk, /*applyGain=*/true);
+        enterAwaitingIdle();
+    } else {
+        enterAwaitingIdle();
     }
 }
 
 // Triggers the PKT USB unkey precisely when Qt's queue underruns —
 // i.e. the tail samples have actually been emitted.  Replaces the old
-// 300 ms blind guard with an event-driven completion that only adds a
-// small slack (30 ms) for the rig's USB-audio hardware buffer between
-// Qt and the modulator.
+// 300 ms blind guard with an event-driven completion plus a tiny 5 ms
+// slack for the rig's USB-audio chip buffer between Qt and the
+// modulator.  Qt5's IdleState in ALSA push mode fires after the PCM
+// device underruns, so the audio is already on the wire by then —
+// the slack only covers the small DMA buffer downstream of ALSA.
 void webServer::onUsbAudioOutputStateChanged(QAudio::State state)
 {
     if (state != QAudio::IdleState) return;
@@ -4199,7 +4214,7 @@ void webServer::onUsbAudioOutputStateChanged(QAudio::State state)
     // race during back-to-back transfers) can't queue a duplicate.
     packetTxAwaitingIdle = false;
 
-    QTimer::singleShot(30, this, [this]() {
+    QTimer::singleShot(5, this, [this]() {
         if (usbAudioOutput && usbAudioOutput->state() != QAudio::StoppedState)
             usbAudioOutput->stop();
         usbAudioOutputDevice = nullptr;
