@@ -612,7 +612,29 @@
         } catch (e) { /* ignore */ }
     }
 
+    // PKT transports a VFT/FSK signal through the mic path, so the radio
+    // must be in a voice mode.  Digital modes (CW, RTTY, etc.) either
+    // gate mic audio or impose a narrow filter that wipes out the tones.
+    var PKT_VOICE_MODES = ['LSB', 'USB', 'AM', 'FM'];
+
     function setEnabled(on) {
+        if (on) {
+            // PKT and FreeDV are mutually exclusive — turning PKT on
+            // must kill any active FreeDV/RADE session.  The server will
+            // echo freedvStatus back, but we also fire the command here
+            // so the two panels never appear active at the same time.
+            if (window.freedvEnabled && window.send) {
+                window.send({ cmd: 'setFreeDV', enabled: false });
+            }
+            // If the radio is on CW / RTTY / etc., switch to a sensible
+            // voice mode for the current packet baud: FM for VHF
+            // (1200 AFSK / 9600 G3RUH), USB for HF (300 AFSK).
+            var cm = window.currentMode || '';
+            if (PKT_VOICE_MODES.indexOf(cm) < 0 && window.send) {
+                var target = (state.mode === 300) ? 'USB' : 'FM';
+                window.send({ cmd: 'setMode', value: target });
+            }
+        }
         state.enabled = !!on;
         if (window.send) window.send({ cmd: 'packetEnable', value: state.enabled });
         // Do NOT push state.mode back to the server here.  state.mode is

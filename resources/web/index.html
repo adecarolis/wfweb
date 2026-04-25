@@ -4294,6 +4294,12 @@ function setMode(mode) {
     send({ cmd: 'setMode', value: mode });
     // FT8/DIGI panel only valid in USB — close it if the user switches away
     if (mode !== 'USB' && digiBarVisible) toggleDigiBar();
+    // PKT needs a voice mode (mic path).  Close if the user tunes to
+    // CW / RTTY / etc.
+    var pktVoice = (mode === 'LSB' || mode === 'USB' || mode === 'AM' || mode === 'FM');
+    if (!pktVoice && window.Packet && window.Packet.state && window.Packet.state.visible) {
+        window.Packet.hide();
+    }
 }
 function updateVfoDisplay() {
     var label = document.getElementById('vfoLabel');
@@ -4452,6 +4458,10 @@ function toggleFreeDV() {
     } else {
         // Close DIGI panel if open — modes are mutually exclusive
         if (digiBarVisible) toggleDigiBar();
+        // PKT and FreeDV share the mic path; only one can be live.
+        if (window.Packet && window.Packet.state && window.Packet.state.visible) {
+            window.Packet.hide();
+        }
         freedvModeName = freedvModes[0];
         freedvTxGain = 0.25;
         ALC_SMOOTHED = 0;
