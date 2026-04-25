@@ -57,7 +57,7 @@
             sortBy: 'lastHeard',  // column key
             sortDir: 'desc',
             beacon: {           // last-used TX fields (persisted to localStorage)
-                src: 'N0CALL',
+                src: '',        // derived from app callsign + settings.aprsSsid
                 lat: 0,
                 lon: 0,
                 symKey: 'house',  // index into APRS_SYMBOLS
@@ -76,12 +76,38 @@
                                     // *user* just asked for becomes active.  Inbound
                                     // sessions never set activeSid on their own.
             compose: {         // last-used connect fields
-                ownCall:  'N0CALL',
+                ownCall:  '',  // derived from app callsign + settings.termSsid
                 peerCall: 'N0CALL-1',
                 digis:    ''
             }
+        },
+        // PKT-specific settings exposed via the gear dialog.  Callsign lives
+        // in the shared window.App.callsign store, but the AX.25/APRS world
+        // needs per-purpose SSIDs appended to it, so those live here.
+        settings: {
+            aprsSsid: '',      // "" or "0".."15"
+            termSsid: ''       // "" or "0".."15"
         }
     };
+
+    // Compose "K1FM" + "9" -> "K1FM-9"; blank/zero SSID leaves the bare call.
+    function composeCallWithSsid(call, ssid) {
+        var c = String(call || '').trim().toUpperCase();
+        if (!c) return '';
+        var s = String(ssid || '').trim();
+        if (s === '' || s === '0') return c;
+        var n = parseInt(s, 10);
+        if (!isFinite(n) || n < 0 || n > 15) return c;
+        return c + '-' + n;
+    }
+
+    // Re-derive the APRS beacon src and terminal own-call from the shared
+    // app callsign and PKT-specific SSIDs.  Call after either changes.
+    function recomputeDerivedCalls() {
+        var base = (window.App && window.App.callsign) ? window.App.callsign.get() : '';
+        state.aprs.beacon.src = composeCallWithSsid(base, state.settings.aprsSsid);
+        state.terminal.compose.ownCall = composeCallWithSsid(base, state.settings.termSsid);
+    }
 
     var barEl = null;
     var framesEl = null;
@@ -150,6 +176,7 @@
                 '<button id="packetMode9600" class="packet-mode-btn" data-mode="9600" title="9600 bps G3RUH FSK (VHF)">9600 FSK</button>' +
                 '<div class="flex-space"></div>' +
                 '<button id="packetClearBtn" class="packet-action-btn" title="Clear frame list">Clear</button>' +
+                '<button id="packetSettingsBtn" class="packet-settings-btn" title="PKT settings" aria-label="PKT settings">&#x2699;</button>' +
                 '<button id="packetCloseBtn" class="packet-close-btn">&#x2715;</button>' +
             '</div>' +
             '<canvas id="packetScopeCanvas" class="packet-scope"></canvas>' +
@@ -178,7 +205,7 @@
                             '<span id="aprsBeaconState" class="aprs-beacon-state">idle</span>' +
                         '</div>' +
                         '<div class="aprs-beacon-grid">' +
-                            '<label>Call <input id="aprsSrc"     class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
+                            '<span id="aprsSrcDisplay" class="packet-call-display" title="Set in PKT settings">—</span>' +
                             '<label>Symbol <select id="aprsSym"   class="aprs-sym-select"></select></label>' +
                             '<label>Lat  <input id="aprsLat"     class="packet-tx-field" size="10" spellcheck="false" placeholder="40.6892"></label>' +
                             '<label>Lon  <input id="aprsLon"     class="packet-tx-field" size="10" spellcheck="false" placeholder="-74.0445"></label>' +
@@ -195,7 +222,7 @@
             '</div>' +
             '<div id="packetTermPane" class="packet-pane hidden">' +
                 '<div class="term-bar">' +
-                    '<label>Own <input id="termOwnCall"  class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
+                    '<span id="termOwnCallDisplay" class="packet-call-display" title="Set in PKT settings">—</span>' +
                     '<label>Peer <input id="termPeerCall" class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
                     '<label>Digi <input id="termDigis"    class="packet-tx-field" size="20" spellcheck="false" placeholder="DIGI1,DIGI2"></label>' +
                     '<button id="termConnectBtn"    class="packet-action-btn" title="Open AX.25 connected-mode link">Connect</button>' +
@@ -252,9 +279,12 @@
             })(modeBtns[i]);
         }
         document.getElementById('packetClearBtn').onclick = clearFrames;
+        document.getElementById('packetSettingsBtn').onclick = openSettingsDialog;
         document.getElementById('packetCloseBtn').onclick = hide;
 
+        loadSettingsFromStorage();
         loadAprsFromStorage();
+        recomputeDerivedCalls();
         populateSymbolSelect();
         bindAprsControls();
         renderAprsStations();
@@ -273,12 +303,14 @@
 
         // Terminal pane controls.
         loadTermComposeFromStorage();
-        var ownEl  = document.getElementById('termOwnCall');
+        // Derived calls need to be recomputed after compose/settings load
+        // and peer/digi state is restored.
+        recomputeDerivedCalls();
         var peerEl = document.getElementById('termPeerCall');
         var digisEl = document.getElementById('termDigis');
-        if (ownEl)   ownEl.value   = state.terminal.compose.ownCall;
         if (peerEl)  peerEl.value  = state.terminal.compose.peerCall;
         if (digisEl) digisEl.value = state.terminal.compose.digis;
+        updateCallDisplays();
 
         document.getElementById('termConnectBtn').onclick = termConnect;
         document.getElementById('termDisconnectBtn').onclick = termDisconnect;
@@ -314,10 +346,17 @@
         });
         var abortBtn = document.getElementById('termXferAbortBtn');
         if (abortBtn) abortBtn.onclick = termAbortTransfer;
-        // Re-register on focus-out so changes to the Own input flow through
-        // without the operator having to re-enter the tab.
-        if (ownEl) ownEl.addEventListener('blur', function() {
+
+        // Shared-callsign change: recompute derived own-call / aprs src,
+        // refresh the visible chips, and re-register the terminal so the
+        // server accepts inbound SABMs under the new call.
+        window.addEventListener('appCallsignChanged', function() {
+            recomputeDerivedCalls();
+            updateCallDisplays();
+            saveTermComposeToStorage();
+            saveAprsToStorage();
             if (state.activeTab === 'term') termRegisterOwn();
+            if (state.aprs.beacon.enabled) aprsSendBeaconConfig(true);
         });
 
         updateModeButtons();
@@ -485,7 +524,23 @@
             '.term-file-prompt-body { color: #cfc; font-size: 14px; margin-bottom: 6px; word-break: break-all; }' +
             '.term-file-prompt-size { color: #888; font-size: 12px; }' +
             '.term-file-prompt-note { color: #888; font-size: 11px; font-style: italic; margin-bottom: 14px; }' +
-            '.term-file-prompt-btns { display: flex; gap: 8px; justify-content: flex-end; }';
+            '.term-file-prompt-btns { display: flex; gap: 8px; justify-content: flex-end; }' +
+            // Gear button + settings dialog.
+            '.packet-settings-btn { background: #111; border: 1px solid #555; color: #ccc; padding: 2px 6px; font-family: monospace; font-size: 13px; line-height: 1; cursor: pointer; border-radius: 3px; }' +
+            '.packet-settings-btn:hover { background: #333; color: #fff; }' +
+            '.packet-call-display { background: #001a00; border: 1px dashed #0a0; color: #0f0; font-family: monospace; font-weight: bold; font-size: 11px; padding: 2px 8px; border-radius: 2px; letter-spacing: 1px; }' +
+            '.packet-call-display.unset { color: #f66; border-color: #a33; font-weight: normal; font-style: italic; }' +
+            '.pkt-settings-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2100; display: flex; align-items: center; justify-content: center; font-family: monospace; }' +
+            '.pkt-settings-modal.hidden { display: none; }' +
+            '.pkt-settings-box { background: #001a00; border: 2px solid #0a0; border-radius: 6px; padding: 16px 20px; min-width: 320px; max-width: 420px; box-shadow: 0 0 40px rgba(0,255,0,0.25); color: #cfc; }' +
+            '.pkt-settings-title { color: #0f0; font-weight: bold; font-size: 13px; letter-spacing: 2px; margin: 0 0 12px 0; display: flex; align-items: center; justify-content: space-between; }' +
+            '.pkt-settings-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 11px; }' +
+            '.pkt-settings-row label { color: #8c8; min-width: 110px; }' +
+            '.pkt-settings-row input { background: #000; border: 1px solid #0a0; color: #cfc; font-family: monospace; font-size: 12px; padding: 3px 6px; border-radius: 2px; outline: none; text-transform: uppercase; }' +
+            '.pkt-settings-row input:focus { border-color: #0f0; }' +
+            '.pkt-settings-hint { color: #668; font-size: 10px; margin: 2px 0 10px 118px; }' +
+            '.pkt-settings-note { color: #888; font-size: 10px; margin-top: 10px; font-style: italic; }' +
+            '.pkt-settings-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }';
         document.head.appendChild(style);
     }
 
@@ -820,7 +875,8 @@
             var obj = JSON.parse(raw);
             if (obj && typeof obj === 'object') {
                 var b = state.aprs.beacon;
-                if (typeof obj.src     === 'string') b.src      = obj.src;
+                // b.src is derived from app callsign + settings.aprsSsid;
+                // legacy persisted values are intentionally ignored.
                 if (typeof obj.lat     === 'number') b.lat      = obj.lat;
                 if (typeof obj.lon     === 'number') b.lon      = obj.lon;
                 if (typeof obj.symKey  === 'string') b.symKey   = obj.symKey;
@@ -837,7 +893,7 @@
     function saveAprsToStorage() {
         try {
             var b = state.aprs.beacon;
-            var obj = { src: b.src, lat: b.lat, lon: b.lon, symKey: b.symKey,
+            var obj = { lat: b.lat, lon: b.lon, symKey: b.symKey,
                         comment: b.comment, path: b.path,
                         intervalMin: b.intervalMin };
             localStorage.setItem('wfweb.aprs.beacon', JSON.stringify(obj));
@@ -859,7 +915,6 @@
 
     function bindAprsControls() {
         var b = state.aprs.beacon;
-        var srcEl     = document.getElementById('aprsSrc');
         var symEl     = document.getElementById('aprsSym');
         var latEl     = document.getElementById('aprsLat');
         var lonEl     = document.getElementById('aprsLon');
@@ -867,7 +922,6 @@
         var pathEl    = document.getElementById('aprsPath');
         var intervalEl= document.getElementById('aprsInterval');
 
-        if (srcEl)     srcEl.value     = b.src;
         if (symEl)     symEl.value     = b.symKey;
         if (latEl)     latEl.value     = b.lat ? b.lat.toFixed(5) : '';
         if (lonEl)     lonEl.value     = b.lon ? b.lon.toFixed(5) : '';
@@ -882,30 +936,28 @@
 
         // Persist on blur so partial typing doesn't churn localStorage.
         var commit = function() { aprsCommitForm(); };
-        [srcEl, latEl, lonEl, commentEl, pathEl, intervalEl, symEl].forEach(function(el) {
+        [latEl, lonEl, commentEl, pathEl, intervalEl, symEl].forEach(function(el) {
             if (!el) return;
             el.addEventListener('change', commit);
             el.addEventListener('blur',   commit);
         });
 
         // Sortable column headers — delegated on the stations container.
+        // Clicking a callsign cell sets it as the terminal peer so the
+        // operator can quickly open an AX.25 link to a heard station.
         var st = document.getElementById('aprsStations');
         if (st) {
             st.addEventListener('click', function(e) {
                 var th = e.target.closest && e.target.closest('th');
-                if (th && th.dataset.col) {
-                    aprsSetSort(th.dataset.col);
-                    return;
-                }
+                if (th && th.dataset.col) { aprsSetSort(th.dataset.col); return; }
                 var call = e.target.closest && e.target.closest('td.aprs-call');
-                if (call && call.dataset.call) aprsCopyCall(call.dataset.call);
+                if (call && call.dataset.call) setPeerFromMonitor(call.dataset.call);
             });
         }
     }
 
     function aprsCommitForm() {
         var b = state.aprs.beacon;
-        var srcEl     = document.getElementById('aprsSrc');
         var symEl     = document.getElementById('aprsSym');
         var latEl     = document.getElementById('aprsLat');
         var lonEl     = document.getElementById('aprsLon');
@@ -913,7 +965,6 @@
         var pathEl    = document.getElementById('aprsPath');
         var intervalEl= document.getElementById('aprsInterval');
 
-        if (srcEl)     b.src         = (srcEl.value || '').trim().toUpperCase();
         if (symEl)     b.symKey      = symEl.value;
         if (latEl)     b.lat         = parseFloat(latEl.value) || 0;
         if (lonEl)     b.lon         = parseFloat(lonEl.value) || 0;
@@ -1013,11 +1064,6 @@
     function aprsClearStations() {
         if (!confirm('Forget all heard APRS stations?')) return;
         if (window.send) window.send({ cmd: 'aprsClearStations' });
-    }
-
-    function aprsCopyCall(call) {
-        var srcEl = document.getElementById('aprsSrc');
-        if (srcEl) { srcEl.value = call; aprsCommitForm(); }
     }
 
     function renderAprsBeaconButton() {
@@ -1603,9 +1649,7 @@
     }
 
     function termRegisterOwn() {
-        var ownEl = document.getElementById('termOwnCall');
-        if (!ownEl) return;
-        var own = (ownEl.value || '').trim().toUpperCase();
+        var own = state.terminal.compose.ownCall;
         if (!own || own === 'N0CALL') return;
         if (window.send) window.send({ cmd: 'termRegister', ownCall: own, chan: 0 });
     }
@@ -1615,10 +1659,14 @@
             // Auto-enable so the operator doesn't have to flip two switches.
             setEnabled(true);
         }
-        var own  = (document.getElementById('termOwnCall').value  || '').trim().toUpperCase();
+        var own  = state.terminal.compose.ownCall;
         var peer = (document.getElementById('termPeerCall').value || '').trim().toUpperCase();
         var digisRaw = (document.getElementById('termDigis').value || '').trim().toUpperCase();
-        if (!own || !peer) return;
+        if (!own) {
+            setTxStatus('set your callsign (gear icon)', true);
+            return;
+        }
+        if (!peer) return;
 
         var digis = [];
         if (digisRaw.length > 0) {
@@ -1628,7 +1676,6 @@
             }
         }
 
-        state.terminal.compose.ownCall  = own;
         state.terminal.compose.peerCall = peer;
         state.terminal.compose.digis    = digisRaw;
         saveTermComposeToStorage();
@@ -1668,7 +1715,8 @@
             if (!raw) return;
             var obj = JSON.parse(raw);
             if (obj && typeof obj === 'object') {
-                if (typeof obj.ownCall  === 'string') state.terminal.compose.ownCall  = obj.ownCall;
+                // ownCall is derived from app callsign + settings.termSsid;
+                // legacy persisted values are intentionally ignored.
                 if (typeof obj.peerCall === 'string') state.terminal.compose.peerCall = obj.peerCall;
                 if (typeof obj.digis    === 'string') state.terminal.compose.digis    = obj.digis;
             }
@@ -1677,7 +1725,13 @@
 
     function saveTermComposeToStorage() {
         try {
-            localStorage.setItem('wfweb.term.compose', JSON.stringify(state.terminal.compose));
+            // ownCall is persisted too so legacy readers see it, but the
+            // authoritative source on load is the shared app callsign.
+            var c = state.terminal.compose;
+            localStorage.setItem('wfweb.term.compose', JSON.stringify({
+                peerCall: c.peerCall,
+                digis: c.digis
+            }));
         } catch (e) { /* quota — ignore */ }
     }
 
@@ -1936,6 +1990,139 @@
         }
         pane.innerHTML = html;
         pane.scrollTop = pane.scrollHeight;
+    }
+
+    // -----------------------------------------------------------------
+    // PKT settings (gear dialog)
+    // -----------------------------------------------------------------
+
+    function loadSettingsFromStorage() {
+        try {
+            var raw = localStorage.getItem('wfweb.pkt.settings');
+            if (!raw) return;
+            var obj = JSON.parse(raw);
+            if (obj && typeof obj === 'object') {
+                if (typeof obj.aprsSsid === 'string') state.settings.aprsSsid = obj.aprsSsid;
+                if (typeof obj.termSsid === 'string') state.settings.termSsid = obj.termSsid;
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    function saveSettingsToStorage() {
+        try {
+            localStorage.setItem('wfweb.pkt.settings', JSON.stringify(state.settings));
+        } catch (e) { /* quota — ignore */ }
+    }
+
+    // Refresh the small non-editable callsign chips on the APRS and Term panes.
+    function updateCallDisplays() {
+        var aprsEl = document.getElementById('aprsSrcDisplay');
+        if (aprsEl) {
+            var a = state.aprs.beacon.src;
+            aprsEl.textContent = a || '(set callsign)';
+            aprsEl.classList.toggle('unset', !a);
+        }
+        var termEl = document.getElementById('termOwnCallDisplay');
+        if (termEl) {
+            var t = state.terminal.compose.ownCall;
+            termEl.textContent = t || '(set callsign)';
+            termEl.classList.toggle('unset', !t);
+        }
+    }
+
+    function openSettingsDialog() {
+        var modal = document.getElementById('pktSettingsModal');
+        if (!modal) modal = buildSettingsDialog();
+        var callEl = document.getElementById('pktSettingsCall');
+        var aprsEl = document.getElementById('pktSettingsAprsSsid');
+        var termEl = document.getElementById('pktSettingsTermSsid');
+        if (callEl) callEl.value = (window.App && window.App.callsign) ? window.App.callsign.get() : '';
+        if (aprsEl) aprsEl.value = state.settings.aprsSsid;
+        if (termEl) termEl.value = state.settings.termSsid;
+        modal.classList.remove('hidden');
+        if (callEl) callEl.focus();
+    }
+
+    function closeSettingsDialog() {
+        var modal = document.getElementById('pktSettingsModal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    // Normalise an SSID string: blank stays blank, else a number in [0,15] or blank.
+    function normalizeSsid(s) {
+        var t = String(s || '').trim();
+        if (t === '') return '';
+        var n = parseInt(t, 10);
+        if (!isFinite(n) || n < 0 || n > 15) return '';
+        return String(n);
+    }
+
+    function saveSettingsFromDialog() {
+        var callEl = document.getElementById('pktSettingsCall');
+        var aprsEl = document.getElementById('pktSettingsAprsSsid');
+        var termEl = document.getElementById('pktSettingsTermSsid');
+        if (callEl && window.App && window.App.callsign) {
+            window.App.callsign.set(callEl.value);
+        }
+        state.settings.aprsSsid = aprsEl ? normalizeSsid(aprsEl.value) : '';
+        state.settings.termSsid = termEl ? normalizeSsid(termEl.value) : '';
+        saveSettingsToStorage();
+        // appCallsignChanged already fires from callsign.set() when the call
+        // changed, triggering the shared listener that recomputes derived
+        // calls and updates displays.  Call the same logic explicitly here
+        // to cover the case where only an SSID was edited.
+        recomputeDerivedCalls();
+        updateCallDisplays();
+        saveTermComposeToStorage();
+        saveAprsToStorage();
+        if (state.activeTab === 'term') termRegisterOwn();
+        if (state.aprs.beacon.enabled) aprsSendBeaconConfig(true);
+        closeSettingsDialog();
+    }
+
+    function buildSettingsDialog() {
+        var modal = document.createElement('div');
+        modal.id = 'pktSettingsModal';
+        modal.className = 'pkt-settings-modal hidden';
+        modal.innerHTML =
+            '<div class="pkt-settings-box">' +
+                '<div class="pkt-settings-title">' +
+                    '<span>PKT SETTINGS</span>' +
+                    '<button id="pktSettingsClose" class="packet-close-btn" aria-label="Close">&#x2715;</button>' +
+                '</div>' +
+                '<div class="pkt-settings-row">' +
+                    '<label for="pktSettingsCall">Callsign</label>' +
+                    '<input id="pktSettingsCall" maxlength="10" size="10" spellcheck="false" autocomplete="off">' +
+                '</div>' +
+                '<div class="pkt-settings-hint">Shared with CW, FT8/FT4, FreeDV reporter, and logbook.</div>' +
+                '<div class="pkt-settings-row">' +
+                    '<label for="pktSettingsAprsSsid">APRS SSID</label>' +
+                    '<input id="pktSettingsAprsSsid" maxlength="2" size="3" spellcheck="false" placeholder="none">' +
+                '</div>' +
+                '<div class="pkt-settings-hint">0–15, or blank for no SSID (e.g. 9 for mobile).</div>' +
+                '<div class="pkt-settings-row">' +
+                    '<label for="pktSettingsTermSsid">Terminal SSID</label>' +
+                    '<input id="pktSettingsTermSsid" maxlength="2" size="3" spellcheck="false" placeholder="none">' +
+                '</div>' +
+                '<div class="pkt-settings-hint">Appended to your callsign for AX.25 connected-mode links.</div>' +
+                '<div class="pkt-settings-btns">' +
+                    '<button id="pktSettingsCancel" class="packet-action-btn">Cancel</button>' +
+                    '<button id="pktSettingsSave" class="packet-send-btn">Save</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(modal);
+
+        document.getElementById('pktSettingsClose').onclick  = closeSettingsDialog;
+        document.getElementById('pktSettingsCancel').onclick = closeSettingsDialog;
+        document.getElementById('pktSettingsSave').onclick   = saveSettingsFromDialog;
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) closeSettingsDialog();
+        });
+        modal.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeSettingsDialog();
+            else if (e.key === 'Enter') saveSettingsFromDialog();
+        });
+        return modal;
     }
 
     window.Packet = {

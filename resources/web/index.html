@@ -2417,6 +2417,33 @@ body.digi-open .digi-bar {
 var ws = null;
 var serverVersion = '';  // set from rigInfo message
 var rigModelName = '';   // set from rigInfo/rigConnected
+// Shared app-wide callsign (CW, FT8/FT4, FreeDV reporter, APRS, Terminal,
+// logbook).  Single source of truth backed by localStorage with a change
+// event so each panel can keep its own widgets in sync without polling.
+// One-shot migration pulls the first-found legacy key on initial read.
+window.App = window.App || {};
+window.App.callsign = (function() {
+    var KEY = 'wfweb.callsign';
+    function normalize(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+    function get() {
+        try {
+            var v = localStorage.getItem(KEY);
+            if (v !== null) return v;
+            var legacy = normalize(localStorage.getItem('digiMyCall') || localStorage.getItem('cwCallsign') || '');
+            if (legacy) { localStorage.setItem(KEY, legacy); return legacy; }
+        } catch(e) {}
+        return '';
+    }
+    function set(s) {
+        var v = normalize(s);
+        try { localStorage.setItem(KEY, v); } catch(e) {}
+        try { localStorage.setItem('digiMyCall', v); } catch(e) {}
+        try { localStorage.setItem('cwCallsign', v); } catch(e) {}
+        try { window.dispatchEvent(new CustomEvent('appCallsignChanged', { detail: v })); } catch(e) {}
+    }
+    return { get: get, set: set };
+})();
+
 var currentFreq = 0;
 var vfoAFreq = 0;
 var vfoBFreq = 0;
@@ -5282,19 +5309,13 @@ function saveCWMacros() {
 }
 
 function loadCWCallsign() {
-    try {
-        var saved = localStorage.getItem('cwCallsign');
-        if (saved) {
-            document.getElementById('cwCallInput').value = saved;
-        }
-    } catch(e) {}
+    var el = document.getElementById('cwCallInput');
+    if (el) el.value = window.App.callsign.get();
 }
 
 function saveCWCallsign() {
-    try {
-        var call = document.getElementById('cwCallInput').value.trim().toUpperCase();
-        localStorage.setItem('cwCallsign', call);
-    } catch(e) {}
+    var el = document.getElementById('cwCallInput');
+    if (el) window.App.callsign.set(el.value);
 }
 
 function substituteMacro(template) {
@@ -5778,9 +5799,18 @@ function initCWHandlers() {
     // Callsign inputs - update buttons when changed
     document.getElementById('cwCallInput').addEventListener('input', function() {
         updateMacroButtons();
-        saveCWCallsign(); // Save CALL to localStorage
+        saveCWCallsign(); // Save CALL to shared app callsign
     });
     document.getElementById('cwQsoInput').addEventListener('input', updateMacroButtons);
+
+    // Keep CW callsign input in sync when another panel changes it.
+    window.addEventListener('appCallsignChanged', function(e) {
+        var cwEl = document.getElementById('cwCallInput');
+        if (cwEl && cwEl.value !== e.detail) {
+            cwEl.value = e.detail;
+            updateMacroButtons();
+        }
+    });
 
     // Macro editor buttons
     document.getElementById('cwMacroSave').addEventListener('click', function() {
@@ -7821,7 +7851,7 @@ function initDigiHandlers() {
     }
 
     // Load persisted settings
-    var savedCall = localStorage.getItem('digiMyCall');
+    var savedCall = window.App.callsign.get();
     var savedGrid = localStorage.getItem('digiGrid');
     // Load shared QSO log (migrate from old 'digiQsoLog' key if needed)
     var savedLog = localStorage.getItem('qsoLog') || localStorage.getItem('digiQsoLog');
@@ -7843,11 +7873,21 @@ function initDigiHandlers() {
     if (myCallEl) {
         myCallEl.addEventListener('input', function() {
             this.value = this.value.toUpperCase();
-            try { localStorage.setItem('digiMyCall', this.value); } catch(e) {}
+            window.App.callsign.set(this.value);
             updateDigiMsgRows();
             sendReporterConfig();
         });
     }
+
+    // Keep this field synchronized when another panel (PKT settings, CW)
+    // changes the app callsign.
+    window.addEventListener('appCallsignChanged', function(e) {
+        if (myCallEl && myCallEl.value !== e.detail) {
+            myCallEl.value = e.detail;
+            updateDigiMsgRows();
+            sendReporterConfig();
+        }
+    });
     if (gridEl) {
         gridEl.addEventListener('input', function() {
             this.value = this.value.toUpperCase();
