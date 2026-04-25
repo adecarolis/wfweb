@@ -148,6 +148,7 @@
     var analyserNode = null;
     var boostGain = null;       // AGC-controlled — RX path only
     var txFixedGain = null;     // constant attenuator on the TX-echo path to the same analyser
+    var txMonitorGain = null;   // low-volume tap from TX-echo to speakers (operator monitor)
     var txNextStart = 0;        // next playback time for TX-echo buffers on the shared analyser
     var rafId = null;
     var lastPaintMs = 0;
@@ -1437,6 +1438,12 @@
             txFixedGain.gain.value = 0.05;   // ~-26 dB; keeps TX tone bins off the LUT's saturation wall
             txFixedGain.connect(analyserNode);
 
+            // Local TX monitor — operator hears their own outgoing audio at
+            // a low fixed level (matches FT8/FT4 monitor in index.html).
+            txMonitorGain = audioContext.createGain();
+            txMonitorGain.gain.value = 0.025;
+            txMonitorGain.connect(audioContext.destination);
+
             // Splice the RX path: worklet -> boost -> analyser.  Keep the
             // clean (unboosted) edge to audioGainNode so the speaker path
             // is unaffected.
@@ -1454,11 +1461,12 @@
 
     function stopScope() {
         if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-        if (analyserNode || boostGain || txFixedGain) {
+        if (analyserNode || boostGain || txFixedGain || txMonitorGain) {
             try {
-                if (analyserNode) analyserNode.disconnect();
-                if (boostGain)    boostGain.disconnect();
-                if (txFixedGain)  txFixedGain.disconnect();
+                if (analyserNode)   analyserNode.disconnect();
+                if (boostGain)      boostGain.disconnect();
+                if (txFixedGain)    txFixedGain.disconnect();
+                if (txMonitorGain)  txMonitorGain.disconnect();
                 if (window.audioWorkletNode && window.audioGainNode) {
                     window.audioWorkletNode.disconnect();
                     window.audioWorkletNode.connect(window.audioGainNode);
@@ -1467,14 +1475,16 @@
             analyserNode = null;
             boostGain = null;
             txFixedGain = null;
+            txMonitorGain = null;
         }
         audioContext = null;
         txNextStart = 0;
     }
 
     // Server teed TX audio via binary msgType 0x04.  Push it through a
-    // BufferSource that feeds boostGain/analyser *only* — not connected to
-    // destination, so the operator doesn't hear their own outgoing audio.
+    // BufferSource that feeds boostGain/analyser for the waterfall and a
+    // separate low-gain tap to the speakers so the operator hears their own
+    // outgoing audio (same approach as the FT8/FT4 TX monitor).
     function onTxAudio(buffer) {
         if (!audioContext || !txFixedGain) return;  // scope not attached yet
         if (!buffer || buffer.byteLength < 6) return;
@@ -1500,7 +1510,8 @@
 
         var src = audioContext.createBufferSource();
         src.buffer = buf;
-        src.connect(txFixedGain);     // → analyser only (NOT audioGainNode, NOT boostGain)
+        src.connect(txFixedGain);                        // → analyser (waterfall)
+        if (txMonitorGain) src.connect(txMonitorGain);   // → speakers (operator monitor)
         var now = audioContext.currentTime;
         if (txNextStart < now) txNextStart = now;
         try {
