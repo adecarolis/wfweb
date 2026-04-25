@@ -15,7 +15,7 @@ macx:CONFIG -= app_bundle
 macx:CONFIG += c++17
 win32:CONFIG += c++17
 
-DEFINES += WFWEB_VERSION=\\\"0.5.2\\\"
+DEFINES += WFWEB_VERSION=\\\"0.6.0\\\"
 
 DEFINES += BUILD_WFSERVER
 

@@ -6,6 +6,52 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.6.0 (2026-04-25)
+--------------------
+
+Packet (AX.25 / APRS / Terminal):
+- Add full packet station: live AX.25 frame monitor, connected-mode QSOs,
+  APRS heard-stations + beacon compose, and YAPP file transfer
+- Vendored Dire Wolf modem subset (300/1200 AFSK, 9600 G3RUH FSK) wired
+  into the web server; runs entirely server-side over the existing mic
+  and RX audio paths
+- Tabbed UI with MONITOR, RX/TX waterfall, and frame-type display
+- Tabbed terminal sessions with auto-select for the sole session, visible
+  connection state, selectable scrollback, and clickable callsigns that
+  populate the peer field
+- Real YAPP framing per IW3FQG spec; transfers show progress + abort and
+  gate completion on peer AF
+- AX.25 link layer: connected-mode address slots, CSMA + per-baud T1,
+  basic digipeating, force-disconnect, and DM on stray polls
+- AX.25 acks surface in the UI (pending TX flips on N(R) advance)
+- paclen scaled by baud; YAPP DT chunks follow
+- Modem state and panel layout persisted across wfweb restarts
+- Shared station callsign reused across CW, FT8/FT4, FreeDV reporter,
+  APRS, and the AX.25 link — set once in the gear dialog
+- TX path unified with mic/FT8 (drops the 300 ms unkey guard); USB tail
+  shaved by ~55 ms after a burst
+- Local TX monitor so the operator hears their own outgoing audio
+- Packet <-> FreeDV mutual exclusion; voice mode required when packet
+  is on
+- Waterfall: FT8-style palette, S0 renders as dark blue, ~60 px/s scroll
+- Fix Ctrl-C shutdown: clean up dwThread and wake the AX.25 dispatcher
+
+Documentation:
+- README: new "AX.25 packet" section with capability table, RX/TX flow,
+  and Direwolf attribution; comparison table and intro updated
+- THIRD_PARTY_LICENSES: add Dire Wolf entry (GPL-2.0-or-later)
+- resources/direwolf/README-vendoring.md: upstream commit + local patches
+
+Testing / CI:
+- New virtual rig simulator: closed-loop test bench with freq/mode-aware
+  channel routing, per-link attenuation matrix, per-mode TX bandwidth
+  filter, per-rig noise floor, and a web control panel on port 5900
+
+Fixes:
+- icomserver: clarify hasTxAudio setting on the config->LAN path; drop a
+  noisy per-packet TX-audio debug log
+
+
 v0.5.2 (2026-04-19)
 --------------------
 
