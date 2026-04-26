@@ -343,16 +343,16 @@ extern int ax25memdebug_get (void);
 extern int ax25memdebug_seq (packet_t this_p);
 
 
-extern packet_t ax25_from_text_debug (char *monitor, int strict, char *src_file, int src_line);
+extern packet_t ax25_from_text_debug (char *monitor, int strict, const char *src_file, int src_line);
 #define ax25_from_text(m,s) ax25_from_text_debug(m,s,__FILE__,__LINE__)
 
-extern packet_t ax25_from_frame_debug (unsigned char *data, int len, alevel_t alevel, char *src_file, int src_line);
+extern packet_t ax25_from_frame_debug (unsigned char *data, int len, alevel_t alevel, const char *src_file, int src_line);
 #define ax25_from_frame(d,l,a) ax25_from_frame_debug(d,l,a,__FILE__,__LINE__);
 
-extern packet_t ax25_dup_debug (packet_t copy_from, char *src_file, int src_line);
+extern packet_t ax25_dup_debug (packet_t copy_from, const char *src_file, int src_line);
 #define ax25_dup(p) ax25_dup_debug(p,__FILE__,__LINE__);
 
-extern void ax25_delete_debug (packet_t pp, char *src_file, int src_line);
+extern void ax25_delete_debug (packet_t pp, const char *src_file, int src_line);
 #define ax25_delete(p) ax25_delete_debug(p,__FILE__,__LINE__);
 
 #else

@@ -65,6 +65,18 @@ needs the modem + framing layer.
    etc. take their Windows code paths consistently — no pthread
    emulation needed.
 
+5. **`direwolf.h`** (MSVC compat) — add a `__restrict__` → `__restrict`
+   alias for MSVC. The `strlcpy_debug` / `strlcat_debug` prototypes
+   use the GCC-only `__restrict__` spelling; MSVC understands
+   `__restrict` (and the C99 `restrict`) but not the underscored form.
+
+6. **`ax25_pad.h` / `ax25_pad.c`** (MSVC compat) — change the
+   `src_file` parameter of `ax25_from_text_debug`, `ax25_from_frame_debug`,
+   `ax25_dup_debug`, and `ax25_delete_debug` from `char *` to
+   `const char *`. The macros that wrap them pass `__FILE__`, which
+   under MSVC's `Zc:strictStrings` is `const char[N]` and won't
+   implicitly bind to `char *`. GCC tolerates this; MSVC errors out.
+
 ## MSVC POSIX-header shims (`msvc-shim/`)
 
 `msvc-shim/unistd.h` and `msvc-shim/regex.h` are empty stubs added
