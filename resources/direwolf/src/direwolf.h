@@ -15,9 +15,14 @@
 /* wfweb: MSVC accepts __restrict (single underscore) and the C99 keyword
  * restrict, but not GCC's __restrict__ spelling used in the strlcpy_debug
  * prototypes below.  Map them so the headers parse on every supported
- * compiler. */
+ * compiler.  Same idea for __attribute__((...)) in textcolor.h /
+ * fsk_demod_state.h: MSVC has no equivalent and the attributes here
+ * (printf format hints, aligned(16) on float arrays) are purely
+ * advisory — the modem subset wfweb vendors uses no SSE intrinsics
+ * that would actually require 16-byte alignment. */
 #if defined(_MSC_VER) && !defined(__GNUC__)
 #define __restrict__ __restrict
+#define __attribute__(x)
 #endif
 
 /*
