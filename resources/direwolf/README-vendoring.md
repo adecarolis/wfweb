@@ -102,6 +102,10 @@ the includes are leftovers from upstream code paths we don't compile.
   - `dlq_rec_frame` (RX frame hook, routes to `DireWolfProcessor`)
   - `ptt_set`, `ptt_init`, `ptt_term`
   - `fx25_rec_bit`, `il2p_rec_bit`, `il2p_init`, `fx25_init`
+  - On MSVC only: `strsep` (BSD/glibc), `__builtin_popcount` (GCC
+    builtin, mapped to `__popcnt`), `localtime_r` (POSIX, mapped to
+    MSVC's `localtime_s`).  Direwolf's modem subset uses all three;
+    they're absent from MSVC's CRT.
 
 ## Updating from upstream
 
