@@ -270,6 +270,10 @@ macx:DEFINES += HAVE_STRLCPY HAVE_STRLCAT
 # none of the symbols those headers would declare are actually called.
 win32-msvc {
     DEFINES += __WIN32__=1
+    # MSVC's <math.h> hides M_PI etc. unless _USE_MATH_DEFINES is set
+    # before the include — Direwolf's DSP code (gen_tone.c, dsp.c,
+    # demod_afsk.c) uses M_PI directly.
+    DEFINES += _USE_MATH_DEFINES
     INCLUDEPATH = $$PWD/resources/direwolf/msvc-shim $$INCLUDEPATH
 }
 # Vendored Dire Wolf C predates current warning hygiene; quiet the noise
