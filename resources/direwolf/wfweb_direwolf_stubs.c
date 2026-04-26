@@ -174,3 +174,52 @@ size_t strlcat_debug(char *dst, const char *src, size_t siz,
     dst[dstlen + copy] = '\0';
     return dstlen + srclen;
 }
+
+/* ----- MSVC POSIX/GCC shims -----
+ *
+ * MSVC's CRT lacks strsep (BSD/glibc), __builtin_popcount (GCC builtin),
+ * and localtime_r (POSIX).  Direwolf's vendored modem subset uses all
+ * three.  Provide minimal native implementations here so the link
+ * succeeds; on MinGW/Linux/macOS these definitions are simply unused
+ * because the system already supplies the symbols. */
+
+#if defined(_MSC_VER) && !defined(__GNUC__)
+
+#include <time.h>
+#include <intrin.h>     /* __popcnt */
+
+char *strsep(char **stringp, const char *delim)
+{
+    char *start = *stringp;
+    char *p;
+    if (start == NULL) return NULL;
+    p = start;
+    while (*p != '\0') {
+        const char *d;
+        for (d = delim; *d != '\0'; d++) {
+            if (*p == *d) {
+                *p = '\0';
+                *stringp = p + 1;
+                return start;
+            }
+        }
+        p++;
+    }
+    *stringp = NULL;
+    return start;
+}
+
+int __builtin_popcount(unsigned int x)
+{
+    return (int)__popcnt(x);
+}
+
+/* MSVC has localtime_s with reversed argument order — wrap it to look
+ * like POSIX localtime_r so the call sites in dtime_now.c don't change. */
+struct tm *localtime_r(const time_t *timep, struct tm *result)
+{
+    if (localtime_s(result, timep) != 0) return NULL;
+    return result;
+}
+
+#endif  /* _MSC_VER && !__GNUC__ */
