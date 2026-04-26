@@ -69,6 +69,12 @@ needs the modem + framing layer.
    alias for MSVC. The `strlcpy_debug` / `strlcat_debug` prototypes
    use the GCC-only `__restrict__` spelling; MSVC understands
    `__restrict` (and the C99 `restrict`) but not the underscored form.
+   Same block also `#define`s `__attribute__(x)` to nothing on MSVC,
+   neutralising the GCC-only `__attribute__((format(...)))` hint on
+   `dw_printf` (textcolor.h) and the `__attribute__((aligned(16)))`
+   markers on float arrays in fsk_demod_state.h. The vendored modem
+   subset uses no SSE intrinsics that would actually require 16-byte
+   alignment, so dropping the hint is correctness-neutral.
 
 6. **`ax25_pad.h` / `ax25_pad.c`** (MSVC compat) — change the
    `src_file` parameter of `ax25_from_text_debug`, `ax25_from_frame_debug`,
