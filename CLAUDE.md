@@ -244,4 +244,4 @@ modeInfo.filter = 1;
 - Add a new section at the top of the CHANGELOG with the version and date
 - Summarize commits since the last release into user-facing categories
 - Check existing tags (`git tag -l`) to find the next available version number
-- The version is set in `wfweb.pro` (look for `VERSION =`)
+- The version is set in `wfweb.pro` (look for `DEFINES += WFWEB_VERSION=\"X.Y.Z\"`)

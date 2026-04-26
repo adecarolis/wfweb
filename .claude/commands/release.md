@@ -7,7 +7,7 @@ Steps:
    - Add a new section at the top with the version number and today's date
    - Categorize commits into user-facing sections (Features, Fixes, etc.)
    - Do NOT include internal/CI-only changes unless significant
-4. Update the version in `wfweb.pro` (look for `VERSION =`)
+4. Update the version in `wfweb.pro` (look for `DEFINES += WFWEB_VERSION=\"X.Y.Z\"` on line ~18)
 5. Build to verify: `qmake wfweb.pro && make -j$(nproc)`
 6. Show the user the CHANGELOG diff and version change for review before committing
 
