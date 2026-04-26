@@ -292,7 +292,7 @@ packet_t ax25_new (void)
  *------------------------------------------------------------------------------*/
 
 #if AX25MEMDEBUG
-void ax25_delete_debug (packet_t this_p, char *src_file, int src_line)
+void ax25_delete_debug (packet_t this_p, const char *src_file, int src_line)
 #else
 void ax25_delete (packet_t this_p)
 #endif
@@ -380,7 +380,7 @@ void ax25_delete (packet_t this_p)
  *------------------------------------------------------------------------------*/
 
 #if AX25MEMDEBUG
-packet_t ax25_from_text_debug (char *monitor, int strict, char *src_file, int src_line)
+packet_t ax25_from_text_debug (char *monitor, int strict, const char *src_file, int src_line)
 #else
 packet_t ax25_from_text (char *monitor, int strict)
 #endif
@@ -637,7 +637,7 @@ packet_t ax25_from_text (char *monitor, int strict)
  *------------------------------------------------------------------------------*/
 
 #if AX25MEMDEBUG
-packet_t ax25_from_frame_debug (unsigned char *fbuf, int flen, alevel_t alevel, char *src_file, int src_line)
+packet_t ax25_from_frame_debug (unsigned char *fbuf, int flen, alevel_t alevel, const char *src_file, int src_line)
 #else
 packet_t ax25_from_frame (unsigned char *fbuf, int flen, alevel_t alevel)
 #endif
@@ -709,7 +709,7 @@ packet_t ax25_from_frame (unsigned char *fbuf, int flen, alevel_t alevel)
 
 
 #if AX25MEMDEBUG
-packet_t ax25_dup_debug (packet_t copy_from, char *src_file, int src_line)
+packet_t ax25_dup_debug (packet_t copy_from, const char *src_file, int src_line)
 #else
 packet_t ax25_dup (packet_t copy_from)
 #endif

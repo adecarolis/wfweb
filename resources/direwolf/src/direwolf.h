@@ -12,6 +12,14 @@
 #ifndef DIREWOLF_H
 #define DIREWOLF_H 1
 
+/* wfweb: MSVC accepts __restrict (single underscore) and the C99 keyword
+ * restrict, but not GCC's __restrict__ spelling used in the strlcpy_debug
+ * prototypes below.  Map them so the headers parse on every supported
+ * compiler. */
+#if defined(_MSC_VER) && !defined(__GNUC__)
+#define __restrict__ __restrict
+#endif
+
 /*
  * Support Windows XP and later.
  *
