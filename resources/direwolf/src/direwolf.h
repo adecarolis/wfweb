@@ -22,15 +22,16 @@
 
 #if __WIN32__
 
-#ifdef _WIN32_WINNT
-#error	Include "direwolf.h" before any windows system files.
-#endif
-#ifdef WINVER
-#error	Include "direwolf.h" before any windows system files.
-#endif
-
+/* wfweb: Qt headers (and MSVC's own runtime headers) routinely pull in
+ * <windows.h> before Direwolf, so the upstream "must be first" #error
+ * trips on every MSVC translation unit.  Switch to idempotent #ifndef
+ * defines and respect any value the host has already set. */
+#ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0501     /* Minimum OS version is XP. */
+#endif
+#ifndef WINVER
 #define WINVER       0x0501     /* Minimum OS version is XP. */
+#endif
 
 // Other values are in Windows SDK sdkddkver.h
 //	0x0600 - Windows Vista
@@ -126,7 +127,7 @@
 #define SLEEP_MS(n) usleep((n)*1000)
 #endif
 
-#if __WIN32__
+#if __WIN32__ || defined(_WIN32)
 
 #define PTW32_STATIC_LIB
 //#include "pthreads/pthread.h"

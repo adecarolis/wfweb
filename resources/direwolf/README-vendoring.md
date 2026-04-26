@@ -49,6 +49,31 @@ needs the modem + framing layer.
 2. **`demod_afsk.c`** — replace `exit(1)` in the unknown-profile init
    path with a `dw_printf` log and `return` so the host can recover.
 
+3. **`direwolf.h`** (MSVC compat) — replace the `#error` guards on
+   `_WIN32_WINNT` / `WINVER` with `#ifndef`. Qt and the MSVC runtime
+   pull `<windows.h>` in before Direwolf, so the upstream check trips
+   on every translation unit. The `#ifndef` form respects whatever
+   value the host has already set and only falls back to `0x0501` when
+   nothing is defined.
+
+4. **`direwolf.h`** (MSVC compat) — change the pthread-include guard
+   from `#if __WIN32__` to `#if __WIN32__ || defined(_WIN32)`. MSVC
+   doesn't predefine `__WIN32__` (only MinGW does), so without this
+   the POSIX branch would try to `#include <pthread.h>`. wfweb.pro
+   also forces `__WIN32__=1` on `win32-msvc` so the rest of the
+   `#if __WIN32__` branches in `dlq.c`, `dtime_now.c`, `ax25_pad.c`,
+   etc. take their Windows code paths consistently — no pthread
+   emulation needed.
+
+## MSVC POSIX-header shims (`msvc-shim/`)
+
+`msvc-shim/unistd.h` and `msvc-shim/regex.h` are empty stubs added
+to `INCLUDEPATH` ahead of the system headers on `win32-msvc` builds.
+Several vendored sources include `<unistd.h>` (and `ax25_pad.c`
+includes `<regex.h>`) unconditionally even though no symbols from
+those headers are actually called in the modem subset we vendor —
+the includes are leftovers from upstream code paths we don't compile.
+
 ## Companion file (not from upstream)
 
 - `wfweb_direwolf_stubs.c` — provides the symbols Dire Wolf expects to

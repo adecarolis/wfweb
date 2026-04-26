@@ -261,6 +261,17 @@ INCLUDEPATH += $$PWD/resources/direwolf/src $$PWD/resources/direwolf
 # macOS libc has strlcpy/strlcat; tell direwolf.h so it skips its macro shim,
 # which otherwise rewrites the SDK <string.h> declarations and breaks builds.
 macx:DEFINES += HAVE_STRLCPY HAVE_STRLCAT
+# MSVC doesn't predefine __WIN32__ (MinGW does), so direwolf.h would fall
+# through to the POSIX branch and pull in <pthread.h>.  Force __WIN32__ on so
+# every Direwolf source consistently takes its Windows code path (CRITICAL_SECTION
+# in dlq.c, GetSystemTimeAsFileTime in dtime_now.c, etc.) — no pthread emulation
+# needed.  The msvc-shim dir provides empty <unistd.h> / <regex.h> headers for
+# the gratuitous POSIX includes upstream Direwolf left in the modem sources;
+# none of the symbols those headers would declare are actually called.
+win32-msvc {
+    DEFINES += __WIN32__=1
+    INCLUDEPATH = $$PWD/resources/direwolf/msvc-shim $$INCLUDEPATH
+}
 # Vendored Dire Wolf C predates current warning hygiene; quiet the noise
 # so wfweb's own C++ warnings stay readable.  Only affects C compilation
 # (wfweb itself is C++), so genuine warnings in our code are unaffected.
