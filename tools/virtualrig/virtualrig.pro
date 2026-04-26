@@ -29,7 +29,18 @@ INCLUDEPATH += $$WFWEB_ROOT/src/audio
 INCLUDEPATH += $$WFWEB_ROOT/src/audio/resampler
 
 # Headers pulled through transitive includes expect these prefixes.
-!win32:!linux:INCLUDEPATH += /usr/local/include
+macx:DEFINES += __MACOSX_CORE__
+macx:INCLUDEPATH += /usr/local/include /opt/local/include /opt/homebrew/include
+
+# Sibling checkouts matching wfweb.pro layout
+!win32:!linux:INCLUDEPATH += $$WFWEB_ROOT/../opus/include
+!linux:INCLUDEPATH += $$WFWEB_ROOT/../rtaudio
+!linux:INCLUDEPATH += $$WFWEB_ROOT/../eigen
+!linux:INCLUDEPATH += $$WFWEB_ROOT/../r8brain-free-src
+
+macx:LIBS += -L/usr/local/lib -L/opt/local/lib -L/opt/homebrew/lib \
+    -framework CoreAudio -framework CoreFoundation \
+    -lpthread -lopus -lportaudio
 
 SOURCES += \
     src/main.cpp \
@@ -46,6 +57,10 @@ HEADERS += \
 
 # Sources reused from wfweb. Kept deliberately tight: just the server stack
 # + audio-packet utilities + rig plumbing. No webserver, no GUI.
+# RtAudio source (non-linux builds use the sibling checkout)
+!linux:SOURCES += $$WFWEB_ROOT/../rtaudio/RTAudio.cpp
+!linux:HEADERS += $$WFWEB_ROOT/../rtaudio/RTAudio.h
+
 SOURCES += \
     $$WFWEB_ROOT/src/audio/adpcm/adpcm-dns.c \
     $$WFWEB_ROOT/src/audio/adpcm/adpcm-lib.c \
