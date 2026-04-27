@@ -119,11 +119,10 @@ jobs:
           dpkg-deb --build --root-owner-group ${DEB_ROOT}
 
           BRANCH_SAFE=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9-]/-/g')
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            DEV_SUFFIX=""
-          else
-            DEV_SUFFIX="-dev-${BRANCH_SAFE}"
-          fi
+          case "${{ github.ref }}" in
+            refs/tags/v*) DEV_SUFFIX="" ;;
+            *) DEV_SUFFIX="-dev-${BRANCH_SAFE}" ;;
+          esac
           mv deb-build/wfweb_${VERSION}_${{ matrix.deb_arch }}.deb \
              wfweb_${VERSION}${DEV_SUFFIX}-ubuntu2404_${{ matrix.deb_arch }}.deb
 
@@ -248,11 +247,10 @@ jobs:
           dpkg-deb --build --root-owner-group ${DEB_ROOT}
 
           BRANCH_SAFE=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9-]/-/g')
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            DEV_SUFFIX=""
-          else
-            DEV_SUFFIX="-dev-${BRANCH_SAFE}"
-          fi
+          case "${{ github.ref }}" in
+            refs/tags/v*) DEV_SUFFIX="" ;;
+            *) DEV_SUFFIX="-dev-${BRANCH_SAFE}" ;;
+          esac
           mv deb-build/wfweb_${VERSION}_${{ matrix.deb_arch }}.deb \
              wfweb_${VERSION}${DEV_SUFFIX}-debian12_${{ matrix.deb_arch }}.deb
 
@@ -377,11 +375,10 @@ jobs:
           dpkg-deb --build --root-owner-group ${DEB_ROOT}
 
           BRANCH_SAFE=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9-]/-/g')
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            DEV_SUFFIX=""
-          else
-            DEV_SUFFIX="-dev-${BRANCH_SAFE}"
-          fi
+          case "${{ github.ref }}" in
+            refs/tags/v*) DEV_SUFFIX="" ;;
+            *) DEV_SUFFIX="-dev-${BRANCH_SAFE}" ;;
+          esac
           mv deb-build/wfweb_${VERSION}_${{ matrix.deb_arch }}.deb \
              wfweb_${VERSION}${DEV_SUFFIX}-debian13_${{ matrix.deb_arch }}.deb
 
@@ -432,11 +429,10 @@ jobs:
       - name: Package zip
         run: |
           BRANCH_SAFE=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9-]/-/g')
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            DEV_SUFFIX=""
-          else
-            DEV_SUFFIX="-dev-${BRANCH_SAFE}"
-          fi
+          case "${{ github.ref }}" in
+            refs/tags/v*) DEV_SUFFIX="" ;;
+            *) DEV_SUFFIX="-dev-${BRANCH_SAFE}" ;;
+          esac
           mkdir -p wfweb-macos-arm64
           cp wfweb wfweb-macos-arm64/
           cp -r rigs wfweb-macos-arm64/
