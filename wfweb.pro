@@ -179,80 +179,67 @@ macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus -ls
 #   Windows:     build custom Opus with cmake (see BUILDING-WINDOWS.md)
 isEmpty(RADAE_DIR): RADAE_DIR = $$(RADAE_DIR)
 isEmpty(RADAE_DIR): exists($$PWD/resources/radae_nopy/src/rade_api.h): RADAE_DIR = $$PWD/resources/radae_nopy
-!isEmpty(RADAE_DIR) {
-    isEmpty(RADAE_BUILD): RADAE_BUILD = $$RADAE_DIR/build
-    # Check for built artifacts (platform-specific paths)
-    OPUS_AUTOTOOLS = $$RADAE_BUILD/build_opus-prefix/src/build_opus/.libs/libopus.a
-    OPUS_MSVC_LIB = $$RADAE_BUILD/opus_msvc_build/Release/opus.lib
-    exists($$RADAE_BUILD/src/librade.so) | exists($$RADAE_BUILD/src/librade.dylib) | exists($$OPUS_AUTOTOOLS) | exists($$OPUS_MSVC_LIB) {
-        DEFINES += RADE_SUPPORT
-        INCLUDEPATH += $$RADAE_DIR/src
-        # Custom Opus headers (LPCNet/FARGAN) from the CMake ExternalProject
-        OPUS_SRC = $$RADAE_BUILD/build_opus-prefix/src/build_opus
-        INCLUDEPATH += $$OPUS_SRC/dnn $$OPUS_SRC/celt $$OPUS_SRC/include $$OPUS_SRC
-        macx|win32 {
-            # macOS/Windows: compile rade sources directly into the binary (static link)
-            macx:  DEFINES += IS_BUILDING_RADE_API=1
-            win32: DEFINES += RADE_STATIC=1
-            DEFINES += RADE_PYTHON_FREE=1
-            SOURCES += \
-                $$RADAE_DIR/src/rade_api_nopy.c \
-                $$RADAE_DIR/src/rade_enc.c \
-                $$RADAE_DIR/src/rade_dec.c \
-                $$RADAE_DIR/src/rade_enc_data.c \
-                $$RADAE_DIR/src/rade_dec_data.c \
-                $$RADAE_DIR/src/rade_dsp.c \
-                $$RADAE_DIR/src/rade_ofdm.c \
-                $$RADAE_DIR/src/rade_bpf.c \
-                $$RADAE_DIR/src/rade_acq.c \
-                $$RADAE_DIR/src/rade_tx.c \
-                $$RADAE_DIR/src/rade_rx.c
-        } else {
-            # Linux: link shared library
-            LIBS += -L$$RADAE_BUILD/src -lrade
-            QMAKE_RPATHDIR += $$RADAE_BUILD/src
-        }
-        # Custom Opus (with LPCNet/FARGAN) - replace standard opus with custom build
-        win32 {
-            LIBS -= -lopus
-            exists($$OPUS_MSVC_LIB): LIBS += $$OPUS_MSVC_LIB
-            else: LIBS += $$OPUS_AUTOTOOLS
-        } else {
-            LIBS += $$OPUS_AUTOTOOLS
-        }
-        SOURCES += src/radeprocessor.cpp src/rade_text.c
-        HEADERS += include/radeprocessor.h include/rade_text.h
-        message("RADE V1 support enabled ($$RADAE_DIR)")
-    } else {
-        message("RADE V1: radae_nopy found but not built (run: cd $$RADAE_DIR/build && cmake .. && make)")
-    }
+isEmpty(RADAE_DIR): error("RADE submodule not found — clone radae_nopy into resources/radae_nopy")
+isEmpty(RADAE_BUILD): RADAE_BUILD = $$RADAE_DIR/build
+# Check for built artifacts (platform-specific paths)
+OPUS_AUTOTOOLS = $$RADAE_BUILD/build_opus-prefix/src/build_opus/.libs/libopus.a
+OPUS_MSVC_LIB = $$RADAE_BUILD/opus_msvc_build/Release/opus.lib
+!exists($$RADAE_BUILD/src/librade.so):!exists($$RADAE_BUILD/src/librade.dylib):!exists($$OPUS_AUTOTOOLS):!exists($$OPUS_MSVC_LIB) {
+    error("RADE submodule not built — run: cd $$RADAE_DIR/build && cmake -DCMAKE_BUILD_TYPE=Release .. && make")
 }
+INCLUDEPATH += $$RADAE_DIR/src
+# Custom Opus headers (LPCNet/FARGAN) from the CMake ExternalProject
+OPUS_SRC = $$RADAE_BUILD/build_opus-prefix/src/build_opus
+INCLUDEPATH += $$OPUS_SRC/dnn $$OPUS_SRC/celt $$OPUS_SRC/include $$OPUS_SRC
+macx|win32 {
+    # macOS/Windows: compile rade sources directly into the binary (static link)
+    macx:  DEFINES += IS_BUILDING_RADE_API=1
+    win32: DEFINES += RADE_STATIC=1
+    DEFINES += RADE_PYTHON_FREE=1
+    SOURCES += \
+        $$RADAE_DIR/src/rade_api_nopy.c \
+        $$RADAE_DIR/src/rade_enc.c \
+        $$RADAE_DIR/src/rade_dec.c \
+        $$RADAE_DIR/src/rade_enc_data.c \
+        $$RADAE_DIR/src/rade_dec_data.c \
+        $$RADAE_DIR/src/rade_dsp.c \
+        $$RADAE_DIR/src/rade_ofdm.c \
+        $$RADAE_DIR/src/rade_bpf.c \
+        $$RADAE_DIR/src/rade_acq.c \
+        $$RADAE_DIR/src/rade_tx.c \
+        $$RADAE_DIR/src/rade_rx.c
+} else {
+    # Linux: link shared library
+    LIBS += -L$$RADAE_BUILD/src -lrade
+    QMAKE_RPATHDIR += $$RADAE_BUILD/src
+}
+# Custom Opus (with LPCNet/FARGAN) - replace standard opus with custom build
+win32 {
+    LIBS -= -lopus
+    exists($$OPUS_MSVC_LIB): LIBS += $$OPUS_MSVC_LIB
+    else: LIBS += $$OPUS_AUTOTOOLS
+} else {
+    LIBS += $$OPUS_AUTOTOOLS
+}
+SOURCES += src/radeprocessor.cpp src/rade_text.c
+HEADERS += include/radeprocessor.h include/rade_text.h
+message("RADE V1 support enabled ($$RADAE_DIR)")
 
-# FreeDV (codec2) support — auto-detect via pkg-config or header presence
+# FreeDV (codec2) support — mandatory
 linux|macx {
-    system(pkg-config --exists codec2) {
-        DEFINES += FREEDV_SUPPORT
-        LIBS += -lcodec2
-        SOURCES += src/freedvprocessor.cpp src/freedvreporter.cpp
-        HEADERS += include/freedvprocessor.h include/freedvreporter.h include/spotreporter.h
-        message("FreeDV codec2 support enabled")
-    } else {
-        message("FreeDV codec2 not found — codec2 modes (700D/700E/1600) disabled")
-    }
+    !system(pkg-config --exists codec2): error("codec2 library not found — install libcodec2-dev or build from source")
+    LIBS += -lcodec2
 }
 win32 {
-    !isEmpty(VCPKG_DIR) {
-        exists($$VCPKG_DIR/lib/codec2.lib) | exists($$VCPKG_DIR/lib/libcodec2.a) {
-            DEFINES += FREEDV_SUPPORT
-            LIBS += -lcodec2
-            SOURCES += src/freedvprocessor.cpp src/freedvreporter.cpp
-            HEADERS += include/freedvprocessor.h include/freedvreporter.h include/spotreporter.h
-            message("FreeDV codec2 support enabled")
-        } else {
-            message("FreeDV codec2 not found — codec2 modes (700D/700E/1600) disabled")
-        }
+    isEmpty(VCPKG_DIR): VCPKG_DIR = $$(VCPKG_DIR)
+    !exists($$VCPKG_DIR/lib/codec2.lib):!exists($$VCPKG_DIR/lib/libcodec2.a) {
+        error("codec2 library not found — install via vcpkg (vcpkg install codec2)")
     }
+    LIBS += -lcodec2
 }
+SOURCES += src/freedvprocessor.cpp src/freedvreporter.cpp
+HEADERS += include/freedvprocessor.h include/freedvreporter.h include/spotreporter.h
+message("FreeDV codec2 support enabled")
 
 # Dire Wolf packet modem (AX.25 / APRS) — always built.
 # Dire Wolf expects these version macros from the build system.
@@ -322,11 +309,7 @@ win32 {
         INCLUDEPATH += $$VCPKG_DIR/include/opus
         INCLUDEPATH += $$VCPKG_DIR/include/hidapi
         LIBS += -L$$VCPKG_DIR/lib
-        contains(DEFINES, RADE_SUPPORT) {
-            LIBS += -lportaudio -lhidapi -llibssl -llibcrypto
-        } else {
-            LIBS += -lportaudio -lopus -lhidapi -llibssl -llibcrypto
-        }
+        LIBS += -lportaudio -lhidapi -llibssl -llibcrypto
     } else {
         INCLUDEPATH += ../opus/include
     }
