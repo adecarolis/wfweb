@@ -5,6 +5,7 @@
       "Bash(./virtualrig:*)",
       "Bash(./tools/virtualrig/virtualrig:*)",
       "Bash(./scripts/testrig.sh:*)",
+      "Bash(make -j$(nproc) 2>&1 | tail -*)",
       "Bash(nm:*)",
       "Bash(pgrep -af @playwright/mcp)",
       "Bash(pkill -f @playwright/mcp)",
