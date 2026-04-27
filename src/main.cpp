@@ -8,6 +8,7 @@
 
 #ifdef Q_OS_WIN
 #include <windows.h>
+#include <atomic>
 #include <csignal>
 #else
 #include <fcntl.h>
@@ -45,34 +46,65 @@ servermain* w=Q_NULLPTR;
 keyboard* kb=Q_NULLPTR;
 
 #ifdef Q_OS_WIN
+// Set true by main() once a.exec() has returned and Qt teardown is done.
+// The console-control handler runs on its own OS thread; we block it on
+// this flag so Windows does not terminate the process before
+// ~servermain() has had a chance to send the LAN 0x05 token-removal
+// packet, flush settings, and close handles.
+static std::atomic<bool> g_mainExited{false};
+
 bool __stdcall cleanup(DWORD sig)
- #else
-static void cleanup(int sig)
- #endif
 {
-    switch(sig) {
-#ifndef Q_OS_WIN
+    int budgetMs = 0;
+    switch (sig) {
+    case CTRL_C_EVENT:
+    case CTRL_BREAK_EVENT:
+    case CTRL_CLOSE_EVENT:
+        budgetMs = 4000;
+        break;
+    case CTRL_LOGOFF_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
+        budgetMs = 1500;
+        break;
+    default:
+        return FALSE;
+    }
+
+    qInfo() << "terminate signal caught (Windows)" << sig;
+    if (kb != Q_NULLPTR) kb->terminate();
+    if (w != Q_NULLPTR)
+        QMetaObject::invokeMethod(w, "deleteLater", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(QCoreApplication::instance(), "quit",
+                              Qt::QueuedConnection);
+
+    // Block the handler thread until main() finishes Qt teardown, or we hit
+    // the platform deadline. Without this, Windows will ExitProcess us
+    // before ~servermain() runs.
+    const int step = 50;
+    for (int waited = 0; waited < budgetMs && !g_mainExited.load(); waited += step) {
+        Sleep(step);
+    }
+    return TRUE;
+}
+#else
+static void cleanup(int sig)
+{
+    switch (sig) {
     case SIGHUP:
         qInfo() << "hangup signal";
         break;
-#endif
     case SIGINT:
     case SIGTERM:
         qInfo() << "terminate signal caught";
-        if (kb!=Q_NULLPTR) kb->terminate();
-        if (w!=Q_NULLPTR) w->deleteLater();
+        if (kb != Q_NULLPTR) kb->terminate();
+        if (w != Q_NULLPTR) w->deleteLater();
         QCoreApplication::quit();
         break;
     default:
         break;
     }
-
- #ifdef Q_OS_WIN
-    return true;
- #else
-    return;
- #endif
 }
+#endif
 
 
  #ifndef Q_OS_WIN
@@ -509,7 +541,13 @@ int main(int argc, char *argv[])
     w.show();
 
 #endif
-    return a.exec();
+    int rc = a.exec();
+#if defined(BUILD_WFSERVER) && defined(Q_OS_WIN)
+    // Release the console-control handler thread (if any) so Windows can
+    // proceed to terminate the process now that Qt teardown has completed.
+    g_mainExited.store(true);
+#endif
+    return rc;
 
 }
 
