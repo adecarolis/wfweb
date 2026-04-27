@@ -27,3 +27,4 @@ tools/virtualrig/virtualrig
 .claude/settings.local.json
 *.ini
 .DS_Store
+__pycache__/
