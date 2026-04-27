@@ -31,13 +31,9 @@
 
 #include "cachingqueue.h"
 #include "audioconverter.h"
-#ifdef FREEDV_SUPPORT
 #include "freedvprocessor.h"
 #include "freedvreporter.h"
-#endif
-#ifdef RADE_SUPPORT
 #include "radeprocessor.h"
-#endif
 #include "direwolfprocessor.h"
 #include "ax25linkprocessor.h"
 #include "aprsprocessor.h"
@@ -89,16 +85,12 @@ signals:
                           quint8 opusComplexity, quint8 resampleQuality);
     void sendToTxConverter(audioPacket audio);
     void haveTxAudioData(audioPacket audio);
-#ifdef FREEDV_SUPPORT
     void setupFreeDV(int mode, quint32 radioSampleRate);
     void sendToFreeDVRx(audioPacket audio);
     void sendToFreeDVTx(audioPacket audio);
-#endif
-#ifdef RADE_SUPPORT
     void setupRade(quint32 radioSampleRate);
     void sendToRadeRx(audioPacket audio);
     void sendToRadeTx(audioPacket audio);
-#endif
     void setupPacket(quint32 radioSampleRate);
     void sendToPacketRx(audioPacket audio);
 
@@ -142,23 +134,19 @@ private slots:
     // own state machine — fires when Qt's internal queue actually underruns.
     void onUsbAudioOutputStateChanged(QAudio::State state);
 
-#ifdef FREEDV_SUPPORT
     // FreeDV codec2
     void onFreeDVRxReady(audioPacket audio);
     void onFreeDVTxReady(audioPacket audio);
     void onFreeDVStats(float snr, bool sync);
     void onFreeDVRxCallsign(const QString &callsign);
     void onReporterStateChanged(int state);
-#endif
     void drainFreeDVTxBuffer();
 
-#ifdef RADE_SUPPORT
     // RADE V1
     void onRadeRxReady(audioPacket audio);
     void onRadeTxReady(audioPacket audio);
     void onRadeStats(float snr, bool sync, float freqOffset);
     void onRadeRxCallsign(const QString &callsign);
-#endif
 
     // Dire Wolf packet (AX.25 / APRS)
     void onPacketRxDecoded(int chan, QJsonObject frame);
@@ -279,21 +267,15 @@ private:
     QWebSocket *micActiveClient = nullptr;
 
     // FreeDV processing
-#ifdef FREEDV_SUPPORT
     FreeDVProcessor *freedvProcessor = nullptr;
     QThread *freedvThread = nullptr;
     FreeDVReporter *freedvReporter = nullptr;
     QString reporterCallsign;
     QString reporterGrid;
     bool reporterEnabled = false;
-#endif
     bool freedvEnabled = false;
     int freedvMode = 0;
-#ifdef RADE_SUPPORT
     QString freedvModeName = QStringLiteral("RADE");
-#else
-    QString freedvModeName = QStringLiteral("700D");
-#endif
     float freedvSNR = 0.0f;
     bool freedvSync = false;
     QTimer *reporterSnrTimer = nullptr;    // periodic SNR updates to FreeDV Reporter
@@ -304,7 +286,6 @@ private:
     float freedvTxGain = 0.25f;   // ALC-controlled gain applied to modem output
     bool freedvMonitor = false;   // bypass FreeDV RX to hear raw SSB
 
-#ifdef RADE_SUPPORT
     // RADE V1 processing
     RadeProcessor *radeProcessor = nullptr;
     QThread *radeThread = nullptr;
@@ -312,7 +293,6 @@ private:
     QString radeRxCallsign;          // last decoded callsign from EOO
     bool radeEooDraining = false;    // true while draining EOO frame to ALSA
     QTimer *radeCallsignClearTimer = nullptr;  // delayed UI clear after decode
-#endif
 
     // Dire Wolf packet (AX.25 / APRS)
     DireWolfProcessor *dwProc = nullptr;
