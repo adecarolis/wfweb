@@ -20,6 +20,14 @@ civEmulator::civEmulator(quint8 radioCiv, QObject* parent)
     connect(scopeTimer, &QTimer::timeout, this, &civEmulator::emitScopeWaveData);
 }
 
+void civEmulator::setExternalPtt(bool on)
+{
+    if (ptt == on) return;
+    ptt = on;
+    emit pttChanged(on);
+    updateScopeTimerState(); // mute scope while keyed
+}
+
 void civEmulator::setSMeterFromPeak(quint16 peak)
 {
     lastRxPeak = peak;
@@ -246,18 +254,61 @@ void civEmulator::onCivFromClient(const QByteArray& frame)
     case 0x14: { // gain read/write
         if (body.size() == 1) {
             quint8 sub = (quint8)body[0];
+            quint16 v;
+            switch (sub) {
+            case 0x09: v = cwPitchEncoded;  break;  // CW pitch
+            case 0x0C: v = keySpeedEncoded; break;  // key speed
+            default:   v = gains[sub & 0x0F]; break;
+            }
             QByteArray pl;
             pl.append((char)0x14);
             pl.append((char)sub);
-            pl.append(u16ToBcd2(gains[sub & 0x0F]));
+            pl.append(u16ToBcd2(v));
             emit replyFrame(buildFrame(ctlCiv, pl));
         } else if (body.size() >= 3) {
             quint8 sub = (quint8)body[0];
-            gains[sub & 0x0F] = bcd2ToU16(body.mid(1, 2));
+            quint16 v = bcd2ToU16(body.mid(1, 2));
+            switch (sub) {
+            case 0x09: cwPitchEncoded  = (quint8)qBound<quint16>(0, v, 255); break;
+            case 0x0C: keySpeedEncoded = (quint8)qBound<quint16>(0, v, 255); break;
+            default:   gains[sub & 0x0F] = v; break;
+            }
             emit replyFrame(ack(true));
         } else {
             emit replyFrame(ack(false));
         }
+        break;
+    }
+    case 0x16: { // various toggles. Only 0x47 (break-in) is meaningful here.
+        if (body.isEmpty()) {
+            emit replyFrame(ack(true));
+        } else if ((quint8)body[0] == 0x47) {
+            if (body.size() == 1) {
+                QByteArray pl;
+                pl.append((char)0x16);
+                pl.append((char)0x47);
+                pl.append((char)breakInMode);
+                emit replyFrame(buildFrame(ctlCiv, pl));
+            } else {
+                breakInMode = (quint8)body[1];
+                emit replyFrame(ack(true));
+            }
+        } else {
+            emit replyFrame(ack(true));
+        }
+        break;
+    }
+    case 0x17: { // send CW (no reply per IC-V ICD; ack anyway for safety)
+        // Empty payload OR 0xFF means abort.
+        bool isAbort = body.isEmpty() || ((quint8)body[0] == 0xFF);
+        if (isAbort) {
+            emit cwAbortRequested();
+        } else {
+            emit cwSendRequested(body, keySpeedWpm(), cwPitchHz());
+        }
+        // Real rigs return no reply for 0x17, but a benign ACK keeps the
+        // client's queue happy (it doesn't strictly require one either).
+        emit replyFrame(ack(true));
         break;
     }
     case 0x15: { // read meters

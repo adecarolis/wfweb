@@ -30,6 +30,154 @@ float txCutoffForMode(quint8 mode)
     default:              return 3500.0f;
     }
 }
+
+// International Morse table. Whitespace becomes an inter-word gap
+// (handled at the encoder level — no entry here). Anything not listed is
+// substituted with '?' before lookup, matching wfweb's CW input filter.
+const char* morseFor(char c)
+{
+    switch (c) {
+    case 'A': return ".-";
+    case 'B': return "-...";
+    case 'C': return "-.-.";
+    case 'D': return "-..";
+    case 'E': return ".";
+    case 'F': return "..-.";
+    case 'G': return "--.";
+    case 'H': return "....";
+    case 'I': return "..";
+    case 'J': return ".---";
+    case 'K': return "-.-";
+    case 'L': return ".-..";
+    case 'M': return "--";
+    case 'N': return "-.";
+    case 'O': return "---";
+    case 'P': return ".--.";
+    case 'Q': return "--.-";
+    case 'R': return ".-.";
+    case 'S': return "...";
+    case 'T': return "-";
+    case 'U': return "..-";
+    case 'V': return "...-";
+    case 'W': return ".--";
+    case 'X': return "-..-";
+    case 'Y': return "-.--";
+    case 'Z': return "--..";
+    case '0': return "-----";
+    case '1': return ".----";
+    case '2': return "..---";
+    case '3': return "...--";
+    case '4': return "....-";
+    case '5': return ".....";
+    case '6': return "-....";
+    case '7': return "--...";
+    case '8': return "---..";
+    case '9': return "----.";
+    case '.': return ".-.-.-";
+    case ',': return "--..--";
+    case '?': return "..--..";
+    case '/': return "-..-.";
+    case '=': return "-...-";
+    case '+': return ".-.-.";
+    case '-': return "-....-";
+    case '\'': return ".----.";
+    case '"': return ".-..-.";
+    case '@': return ".--.-.";
+    case ':': return "---...";
+    case ';': return "-.-.-.";
+    case '(': return "-.--.";
+    case ')': return "-.--.-";
+    default:  return nullptr;
+    }
+}
+
+// Build mono int16 LE LPCM @ 48 kHz of `text` keyed at `wpm` with carrier
+// at `pitchHz`. Each dit/dah is a sine pulse with a 5 ms raised-cosine
+// ramp at start and end — long enough to keep the on/off clicks out of
+// the audible band, short enough to preserve correct timing.
+//
+// `prevWasGap` carries timing state across calls so that back-to-back 0x17
+// frames (each with one or more chars) get correctly-spaced inter-char and
+// inter-word gaps. Set to true on first call (no leading gap); the function
+// updates it to reflect whether the synthesized audio ended on silence.
+QByteArray synthesizeCw(const QByteArray& text, quint16 wpm, quint16 pitchHz,
+                        bool& prevWasGap)
+{
+    constexpr int kSampleRate = 48000;
+    constexpr float kAmplitude = 12000.0f; // headroom under int16 max
+    constexpr int kRampMs = 5;
+
+    if (wpm < 5) wpm = 5;
+    if (wpm > 60) wpm = 60;
+    if (pitchHz < 200) pitchHz = 200;
+    if (pitchHz > 2000) pitchHz = 2000;
+
+    const int unitMs = 1200 / wpm;            // PARIS standard: 1 unit
+    const int unitSamples = (kSampleRate * unitMs) / 1000;
+    const int rampSamples = (kSampleRate * kRampMs) / 1000;
+
+    QByteArray out;
+    out.reserve(text.size() * unitSamples * 16); // worst case rough estimate
+
+    auto appendSilence = [&](int n) {
+        QByteArray s(n * (int)sizeof(qint16), '\0');
+        out.append(s);
+    };
+
+    // Phase carries across consecutive symbols inside one keyed segment so
+    // we don't introduce a phase discontinuity inside a single dah.
+    auto appendTone = [&](int samples) {
+        QByteArray s;
+        s.resize(samples * (int)sizeof(qint16));
+        qint16* p = reinterpret_cast<qint16*>(s.data());
+        const float w = 2.0f * (float)M_PI * (float)pitchHz / (float)kSampleRate;
+        for (int i = 0; i < samples; ++i) {
+            float env = 1.0f;
+            if (i < rampSamples) {
+                env = 0.5f * (1.0f - std::cos((float)M_PI * i / rampSamples));
+            } else if (i >= samples - rampSamples) {
+                int j = samples - 1 - i;
+                env = 0.5f * (1.0f - std::cos((float)M_PI * j / rampSamples));
+            }
+            float v = kAmplitude * env * std::sin(w * (float)i);
+            int iv = (int)v;
+            if (iv > 32767) iv = 32767;
+            if (iv < -32768) iv = -32768;
+            p[i] = (qint16)iv;
+        }
+        out.append(s);
+    };
+
+    for (int i = 0; i < text.size(); ++i) {
+        char c = text[i];
+        if (c >= 'a' && c <= 'z') c = (char)(c - 'a' + 'A');
+        if (c == ' ') {
+            // Word gap = 7 units total of silence between the surrounding
+            // tones. If we just finished a tone, lay down the 3-unit
+            // inter-char gap first, then 4 more units to reach 7. Consecutive
+            // spaces add another 4 each — fine, just longer pause.
+            if (!prevWasGap) appendSilence(3 * unitSamples);
+            appendSilence(4 * unitSamples);
+            prevWasGap = true;
+            continue;
+        }
+        const char* m = morseFor(c);
+        if (!m) m = morseFor('?');     // unknown → ?
+        if (!m) continue;              // can't happen, ? is in the table
+
+        // Inter-character gap: 3 units. Skip at the very start (or right
+        // after a space, which already laid down a full word gap).
+        if (!prevWasGap) appendSilence(3 * unitSamples);
+        prevWasGap = false;
+
+        for (int j = 0; m[j]; ++j) {
+            int onUnits = (m[j] == '-') ? 3 : 1;
+            appendTone(onUnits * unitSamples);
+            if (m[j + 1]) appendSilence(unitSamples); // intra-symbol gap
+        }
+    }
+    return out;
+}
 } // namespace
 
 void virtualRig::BiquadLpf::tune(float fs, float fc)
@@ -169,6 +317,10 @@ void virtualRig::start()
                      Qt::QueuedConnection);
     QObject::connect(civ, &civEmulator::pttChanged,
                      this, &virtualRig::onPttChanged);
+    QObject::connect(civ, &civEmulator::cwSendRequested,
+                     this, &virtualRig::onCwSendRequested);
+    QObject::connect(civ, &civEmulator::cwAbortRequested,
+                     this, &virtualRig::onCwAbortRequested);
 
     // Audio: TX from client → our gate → mixer; RX from mixer → server.
     QObject::connect(server, &rigServer::haveAudioData,
@@ -194,6 +346,10 @@ void virtualRig::start()
     connect(idleRxTimer, &QTimer::timeout, this, &virtualRig::emitIdleRx);
     idleRxTimer->start();
 
+    cwTxTimer = new QTimer(this);
+    cwTxTimer->setInterval(20); // same cadence as idle RX → 20 ms chunks
+    connect(cwTxTimer, &QTimer::timeout, this, &virtualRig::drainCwTx);
+
     qInfo() << "virtualRig" << cfg.name << "up on ports"
             << cfg.controlPort << cfg.civPort << cfg.audioPort;
 }
@@ -204,6 +360,12 @@ void virtualRig::stop()
         idleRxTimer->stop();
         idleRxTimer = nullptr; // parented to this, deleted by Qt
     }
+    if (cwTxTimer != nullptr) {
+        cwTxTimer->stop();
+        cwTxTimer = nullptr;
+    }
+    cwTxBuffer.clear();
+    cwActive = false;
     if (serverThread != nullptr) {
         serverThread->quit();
         serverThread->wait(2000);
@@ -340,4 +502,93 @@ void virtualRig::onRxAudioFromMixer(int dstRig, const audioPacket& pkt)
     if (rxBuffer.size() > maxBytes) {
         rxBuffer.remove(0, rxBuffer.size() - maxBytes);
     }
+}
+
+void virtualRig::onCwSendRequested(const QByteArray& text, quint16 wpm, quint16 pitchHz)
+{
+    if (!mixer) return;
+    // cwPrevWasGap carries the inter-frame state — true at the start of a
+    // session (no leading inter-char gap), and updated by synthesizeCw to
+    // reflect whether the produced audio ended on silence. So back-to-back
+    // single-char frames (e.g. typing "H" then "E") get the 3-unit gap
+    // they need not to slur into one symbol stream.
+    QByteArray audio = synthesizeCw(text, wpm, pitchHz, cwPrevWasGap);
+    if (audio.isEmpty()) return;
+    cwTxBuffer.append(audio);
+
+    if (!cwActive) {
+        cwActive = true;
+        // Take PTT internally so the channel mixer routes our audio out and
+        // S/TX meters reflect the keyed state. ptt member is updated through
+        // the existing pttChanged signal path.
+        if (civ) civ->setExternalPtt(true);
+        if (cwTxTimer && !cwTxTimer->isActive()) cwTxTimer->start();
+    }
+    qDebug() << "virtualRig" << cfg.name << "CW queued:" << text
+             << "wpm=" << wpm << "pitch=" << pitchHz
+             << "samples=" << (audio.size() / 2);
+}
+
+void virtualRig::onCwAbortRequested()
+{
+    cwTxBuffer.clear();
+    cwPrevWasGap = true; // next session starts fresh
+    if (cwActive) {
+        cwActive = false;
+        if (cwTxTimer) cwTxTimer->stop();
+        if (civ) civ->setExternalPtt(false);
+    }
+}
+
+void virtualRig::drainCwTx()
+{
+    if (!mixer) return;
+    // One 20 ms LPCM chunk @ 48 kHz = 960 samples × 2 bytes = 1920 B.
+    static const int kBytesPerTick = 48 * 20 * 2;
+
+    if (cwTxBuffer.isEmpty()) {
+        // Buffer drained — release PTT and stop the pump. Reset the
+        // inter-frame gap state so the *next* CW session starts fresh
+        // (no spurious leading 3-unit silence).
+        if (cwActive) {
+            cwActive = false;
+            cwPrevWasGap = true;
+            if (civ) civ->setExternalPtt(false);
+        }
+        if (cwTxTimer && cwTxTimer->isActive()) cwTxTimer->stop();
+        return;
+    }
+
+    QByteArray chunk;
+    int take = qMin(cwTxBuffer.size(), kBytesPerTick);
+    chunk = cwTxBuffer.left(take);
+    cwTxBuffer.remove(0, take);
+    // Pad short tail to a full 20 ms chunk so downstream resamplers see a
+    // consistent frame size.
+    if (chunk.size() < kBytesPerTick) {
+        chunk.append(QByteArray(kBytesPerTick - chunk.size(), '\0'));
+    }
+
+    // Drive the TX-meter from the chunk's peak so the rig's Po needle moves
+    // while CW is keying.
+    qint16 peak = 0;
+    {
+        const qint16* s = reinterpret_cast<const qint16*>(chunk.constData());
+        int n = chunk.size() / (int)sizeof(qint16);
+        for (int i = 0; i < n; ++i) {
+            qint16 v = s[i] < 0 ? (qint16)-s[i] : s[i];
+            if (v > peak) peak = v;
+        }
+    }
+    if (civ) civ->setTxMeterFromPeak((quint16)peak);
+
+    audioPacket pkt;
+    pkt.data = chunk;
+    pkt.seq = 0;
+    pkt.time = QTime::currentTime();
+    pkt.sent = 0;
+    pkt.amplitudePeak = peak;
+    pkt.amplitudeRMS = 0;
+    pkt.volume = 0;
+    mixer->pushTxAudio(cfg.index, pkt);
 }

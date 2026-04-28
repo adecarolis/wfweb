@@ -32,6 +32,12 @@ public:
     // RMS (in Q15 units, same scale the mixer reports).
     void setNoiseFloorFromRms(float rms) { noiseRms = rms; }
 
+    // Called by virtualRig to mark the rig as keyed (or unkeyed) when an
+    // internally-generated source — currently CW — drives PTT instead of the
+    // client. Keeps the civ-side ptt state authoritative so PTT-read replies
+    // and S/TX-meter gating stay correct.
+    void setExternalPtt(bool on);
+
 public slots:
     // Full CI-V frame as received from the client, including 0xFE 0xFE
     // preamble and 0xFD trailer.
@@ -44,6 +50,13 @@ signals:
 
     // Emitted on PTT edges so the virtualRig can gate mixer input.
     void pttChanged(bool on);
+
+    // Emitted when the client sends `0x17 [text]` — virtualRig synthesizes
+    // morse audio and pumps it onto the mixer. wpm/pitch reflect the rig's
+    // current 0x14 0x0c / 0x14 0x09 settings.
+    void cwSendRequested(const QByteArray& text, quint16 wpm, quint16 pitchHz);
+    // Emitted on `0x17 0xFF` (or empty CW text). Cancels any in-flight CW.
+    void cwAbortRequested();
 
 private:
     // State.
@@ -80,6 +93,14 @@ private:
     // Latest RX audio peak (0..32767) used to shape the synthesized waterfall.
     quint16 lastRxPeak = 0;
     float noiseRms = 0.0f;          // mixer noise RMS, drives the noise floor.
+
+    // CW state. The client sets pitch via 0x14 0x09 and WPM via 0x14 0x0c
+    // (both encoded as 0..255 BCD). Defaults: 600 Hz, 25 WPM, semi-break-in.
+    quint8 cwPitchEncoded = 128;    // encoded → 600 Hz
+    quint8 keySpeedEncoded = 115;   // encoded → ~25 WPM
+    quint8 breakInMode = 1;         // 0x16 0x47: 0=off, 1=semi, 2=full
+    quint16 cwPitchHz() const  { return 300 + (quint16)cwPitchEncoded * 600 / 255; }
+    quint16 keySpeedWpm() const{ return 6 + (quint16)((float)keySpeedEncoded / 6.071f); }
 
     // Periodic spectrum-frame emitter. Real IC-7300 pushes ~30 fps; we use a
     // 50 ms tick (20 fps) — enough to make the waterfall scroll smoothly while

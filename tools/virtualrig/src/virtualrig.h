@@ -52,6 +52,9 @@ private slots:
     void onRxAudioFromMixer(int dstRig, const audioPacket& pkt);
     void onPttChanged(bool on);
     void emitIdleRx();
+    void onCwSendRequested(const QByteArray& text, quint16 wpm, quint16 pitchHz);
+    void onCwAbortRequested();
+    void drainCwTx();
 
 private:
     Config cfg;
@@ -87,6 +90,18 @@ private:
         float process(float x);
     };
     BiquadLpf txLpf;
+
+    // CW transmit pump. text → enveloped sine wave at the rig's pitch/WPM,
+    // pumped onto the mixer in 20 ms chunks while PTT is held internally.
+    // Buffer is bytes (mono LPCM int16 LE @ 48 kHz) — same format as the
+    // rest of the audio bus.
+    QByteArray cwTxBuffer;
+    QTimer* cwTxTimer = nullptr;
+    bool cwActive = false;
+    // Carries the "previous symbol was a gap" state across back-to-back 0x17
+    // frames so single-char inputs ("H","E") don't slur into one mash. Reset
+    // to true (i.e. no leading gap needed) every time the pump fully drains.
+    bool cwPrevWasGap = true;
 };
 
 #endif
