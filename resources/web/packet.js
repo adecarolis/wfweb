@@ -375,12 +375,13 @@
         var style = document.createElement('style');
         style.id = 'packetStyles';
         style.textContent =
-            '.packet-bar { position: fixed; top: 134px; left: 0; right: 0; bottom: 48px; background: #001008; border-top: 2px solid #0a0; z-index: 200; padding: 6px 8px; color: #cfc; font-family: monospace; font-size: 12px; display: flex; flex-direction: column; min-height: 0; box-sizing: border-box; }' +
+            /* absolute (not fixed) so it letterboxes with #scopeArea (max-width 16:9):
+               fixed bars peek past the overlays on viewports wider than 16:9 — issue #39 */
+            '.packet-bar { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #001008; border-top: 2px solid #0a0; z-index: 200; padding: 6px 8px; color: #cfc; font-family: monospace; font-size: 12px; display: flex; flex-direction: column; min-height: 0; box-sizing: border-box; }' +
             'body.packet-open #spectrumCanvas, body.packet-open #waterfallCanvas { display: none !important; }' +
             '.packet-scope { width: 100%; height: 13%; min-height: 40px; background: #000; border: 1px solid #0a0; border-radius: 3px; margin-bottom: 6px; display: block; }' +
             '.packet-monitor { display: flex; flex-direction: column; min-height: 0; flex: 1 1 0; margin-bottom: 6px; }' +
             '.packet-monitor-label { color: #0f0; font-weight: bold; letter-spacing: 1px; font-size: 10px; margin-bottom: 2px; }' +
-            '@media (max-height: 450px) { .packet-bar { top: 112px; bottom: 40px; } }' +
             '.packet-frames-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }' +
             '.packet-bar.hidden { display: none; }' +
             '.packet-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }' +
