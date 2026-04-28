@@ -354,6 +354,18 @@ QStringList audioDevices::getOutputs()
     return list;
 }
 
+// Pick the device whose name is the system default, otherwise the first.
+// Used to disambiguate when multiple audio devices match a user-supplied name
+// (e.g. several USB CODEC dongles all matching "USB Audio CODEC").
+static int preferDefault(const QList<audioDevice*>& devices, const QList<int>& candidates)
+{
+    if (candidates.isEmpty()) return -1;
+    for (int idx : candidates) {
+        if (devices[idx]->isDefault) return idx;
+    }
+    return candidates.first();
+}
+
 int audioDevices::findInput(QString type, QString name, bool ignoreDefault)
 {
     if (type != "Server" && system == tciAudio)
@@ -363,31 +375,52 @@ int audioDevices::findInput(QString type, QString name, bool ignoreDefault)
 
     int ret = -1;
     int def = -1;
-    int codec = -1;
+    QList<int> prefixMatches;
+    QList<int> substringMatches;
+    QList<int> codecMatches;
     QString msg;
     QTextStream s(&msg);
 
+    const bool haveName = !name.isEmpty() && name != "default";
+
     for (int f = 0; f < inputs.size(); f++)
     {
-        if (!name.isEmpty() && name != "default" && inputs[f]->name.startsWith(name)) {
-            s << type << " Audio input device " << name << " found! ";
-            ret = f;
+        if (haveName) {
+            if (inputs[f]->name.startsWith(name)) {
+                prefixMatches.append(f);
+            } else if (inputs[f]->name.contains(name, Qt::CaseInsensitive)) {
+                substringMatches.append(f);
+            }
         }
         if (!ignoreDefault) {
-            if (inputs[f]->isDefault == true)
-            {
+            if (inputs[f]->isDefault) {
                 def = f;
             }
-            if (codec < 0 &&
-                (inputs[f]->name.contains("USB", Qt::CaseInsensitive) ||
-                 inputs[f]->name.contains("CODEC", Qt::CaseInsensitive))) {
-                codec = f;
+            if (inputs[f]->name.contains("USB", Qt::CaseInsensitive) ||
+                inputs[f]->name.contains("CODEC", Qt::CaseInsensitive)) {
+                codecMatches.append(f);
             }
         }
     }
 
+    if (!prefixMatches.isEmpty()) {
+        ret = preferDefault(inputs, prefixMatches);
+        s << type << " Audio input device " << name << " found! ";
+        if (prefixMatches.size() > 1) {
+            s << "(" << prefixMatches.size() << " matches; using "
+              << (inputs[ret]->isDefault ? "system default " : "first match ")
+              << inputs[ret]->name << ") ";
+        }
+    } else if (!substringMatches.isEmpty() && !ignoreDefault) {
+        ret = preferDefault(inputs, substringMatches);
+        s << type << " Audio input device " << name << " matched by substring: "
+          << (substringMatches.size() > 1 && inputs[ret]->isDefault ? "system default " : "")
+          << inputs[ret]->name;
+    }
+
     if (ret == -1 && !ignoreDefault)
     {
+        const int codec = preferDefault(inputs, codecMatches);
         if (name == "default") {
             if (codec > -1 && type != "Client") {
                 s << type << " Audio input: using USB/CODEC device " << inputs[codec]->name;
@@ -436,32 +469,52 @@ int audioDevices::findOutput(QString type, QString name, bool ignoreDefault)
 
     int ret = -1;
     int def = -1;
-    int codec = -1;
+    QList<int> prefixMatches;
+    QList<int> substringMatches;
+    QList<int> codecMatches;
     QString msg;
     QTextStream s(&msg);
 
+    const bool haveName = !name.isEmpty() && name != "default";
+
     for (int f = 0; f < outputs.size(); f++)
     {
-        if (!name.isEmpty() && name != "default" && outputs[f]->name.startsWith(name)) {
-            ret = f;
-            s << type << " Audio output device " << name << " found! ";
+        if (haveName) {
+            if (outputs[f]->name.startsWith(name)) {
+                prefixMatches.append(f);
+            } else if (outputs[f]->name.contains(name, Qt::CaseInsensitive)) {
+                substringMatches.append(f);
+            }
         }
         if (!ignoreDefault) {
-            if (outputs[f]->isDefault == true)
-            {
+            if (outputs[f]->isDefault) {
                 def = f;
             }
-            if (codec < 0 &&
-                (outputs[f]->name.contains("USB", Qt::CaseInsensitive) ||
-                 outputs[f]->name.contains("CODEC", Qt::CaseInsensitive))) {
-                codec = f;
+            if (outputs[f]->name.contains("USB", Qt::CaseInsensitive) ||
+                outputs[f]->name.contains("CODEC", Qt::CaseInsensitive)) {
+                codecMatches.append(f);
             }
         }
+    }
 
+    if (!prefixMatches.isEmpty()) {
+        ret = preferDefault(outputs, prefixMatches);
+        s << type << " Audio output device " << name << " found! ";
+        if (prefixMatches.size() > 1) {
+            s << "(" << prefixMatches.size() << " matches; using "
+              << (outputs[ret]->isDefault ? "system default " : "first match ")
+              << outputs[ret]->name << ") ";
+        }
+    } else if (!substringMatches.isEmpty() && !ignoreDefault) {
+        ret = preferDefault(outputs, substringMatches);
+        s << type << " Audio output device " << name << " matched by substring: "
+          << (substringMatches.size() > 1 && outputs[ret]->isDefault ? "system default " : "")
+          << outputs[ret]->name;
     }
 
     if (ret == -1 && !ignoreDefault)
     {
+        const int codec = preferDefault(outputs, codecMatches);
         if (name == "default") {
             if (codec > -1 && type != "Client") {
                 s << type << " Audio output: using USB/CODEC device " << outputs[codec]->name;
