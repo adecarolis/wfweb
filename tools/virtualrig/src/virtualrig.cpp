@@ -117,6 +117,23 @@ virtualRig::virtualRig(const Config& cfg, channelMixer* mixer, QObject* parent)
     caps.baudRate = 115200;
     memcpy(caps.guid, rigCfg.guid, GUIDLEN);
 
+    // Spectrum / waterfall — match what the IC-7300 advertises so wfweb's
+    // parser accepts our synthesized frames (parseSpectrum() bails when
+    // spectSeqMax == 0). civEmulator emits 11 sequence packets per frame.
+    caps.hasSpectrum = true;
+    caps.spectSeqMax = 11;
+    caps.spectAmpMax = 160;
+    caps.spectLenMax = 475;
+    caps.scopeCenterSpans.clear();
+    caps.scopeCenterSpans.push_back(centerSpanData(0, "±2.5 kHz",   2500));
+    caps.scopeCenterSpans.push_back(centerSpanData(1, "±5 kHz",     5000));
+    caps.scopeCenterSpans.push_back(centerSpanData(2, "±10 kHz",   10000));
+    caps.scopeCenterSpans.push_back(centerSpanData(3, "±25 kHz",   25000));
+    caps.scopeCenterSpans.push_back(centerSpanData(4, "±50 kHz",   50000));
+    caps.scopeCenterSpans.push_back(centerSpanData(5, "±100 kHz", 100000));
+    caps.scopeCenterSpans.push_back(centerSpanData(6, "±250 kHz", 250000));
+    caps.scopeCenterSpans.push_back(centerSpanData(7, "±500 kHz", 500000));
+
     civ = new civEmulator(cfg.civAddr, this);
     civ->setName(cfg.name);
 }
@@ -248,7 +265,10 @@ void virtualRig::emitIdleRx()
         peak = noisyPeak;
     }
 
-    if (civ) civ->setSMeterFromPeak((quint16)peak);
+    if (civ) {
+        civ->setNoiseFloorFromRms(nRms);
+        civ->setSMeterFromPeak((quint16)peak);
+    }
     audioPacket pkt;
     pkt.data = data;
     pkt.seq = rxSeq++;
