@@ -6,6 +6,26 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.6.1 (2026-04-28)
+--------------------
+
+Fixes:
+- Web: letterbox packet bar so overlays fully cover it (#39)
+- Windows: clean shutdown on Ctrl-C and console close (#32)
+
+Testing / CI:
+- virtualrig: synthesize 0x27 scope/waterfall frames internally
+- virtualrig: synthesize CW transmission audio internally
+- virtualrig: spread waterfall noise floor across the whole spectrum
+- virtualrig: silent by default — install message handler, demote
+  per-event logs
+- virtualrig: fix macOS build — add missing include/lib paths
+- CI: fix tag detection under sh in containers
+
+Internal:
+- Remove RADE_SUPPORT and FREEDV_SUPPORT preprocessor guards
+
+
 v0.6.0 (2026-04-25)
 --------------------
 
