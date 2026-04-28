@@ -151,7 +151,7 @@ void civEmulator::onCivFromClient(const QByteArray& frame)
     const quint8 cmd = (quint8)frame[p + 2];
     const QByteArray body = frame.mid(p + 3, end - (p + 3));
 
-    qInfo().noquote() << QString("civ[%1] rx cmd=0x%2 body=%3 full=%4")
+    qDebug().noquote() << QString("civ[%1] rx cmd=0x%2 body=%3 full=%4")
         .arg(name)
         .arg(cmd, 2, 16, QChar('0'))
         .arg(QString::fromLatin1(body.toHex(' ')))
@@ -316,8 +316,15 @@ void civEmulator::onCivFromClient(const QByteArray& frame)
         break;
     }
     default:
-        qInfo().noquote() << QString("  -> unhandled cmd 0x%1, sending ACK")
-            .arg(cmd, 2, 16, QChar('0'));
+        // 0x27 (scope) is polled aggressively by wfweb; we don't synthesise
+        // FFT frames yet, so demote it to debug to keep the log readable.
+        if (cmd == 0x27) {
+            qDebug().noquote() << QString("  -> unhandled cmd 0x%1, sending ACK")
+                .arg(cmd, 2, 16, QChar('0'));
+        } else {
+            qInfo().noquote() << QString("  -> unhandled cmd 0x%1, sending ACK")
+                .arg(cmd, 2, 16, QChar('0'));
+        }
         emit replyFrame(ack(true));
         break;
     }

@@ -28,7 +28,7 @@ void rigServer::receiveRigCaps(rigCapabilities* caps)
     foreach (RIGCONFIG* rig, config->rigs) {
         if (!memcmp(rig->guid, caps->guid, GUIDLEN) || config->rigs.size()==1) {
             // Matching rig, fill-in missing details
-            qInfo(logRigServer()) << "Received new rigCaps for:" << caps->modelName << "CIV:" << QString::number(caps->modelID,16);
+            qDebug(logRigServer()) << "Received new rigCaps for:" << caps->modelName << "CIV:" << QString::number(caps->modelID,16);
             rig->rigAvailable = true;
             rig->modelName = caps->modelName;
             rig->civAddr = caps->modelID;
@@ -36,10 +36,10 @@ void rigServer::receiveRigCaps(rigCapabilities* caps)
                 rig->rigName = caps->modelName;
             }
 
-            qInfo(logRigServer()) << "Model Number:" << rig->civAddr;
-            qInfo(logRigServer()) << "Model:" << rig->modelName;
-            qInfo(logRigServer()) << "Name:" << rig->rigName;
-            qInfo(logRigServer()).noquote() << QString("GUID: {%1%2%3%4-%5%6-%7%8-%9%10-%11%12%13%14%15%16}")
+            qDebug(logRigServer()) << "Model Number:" << rig->civAddr;
+            qDebug(logRigServer()) << "Model:" << rig->modelName;
+            qDebug(logRigServer()) << "Name:" << rig->rigName;
+            qDebug(logRigServer()).noquote() << QString("GUID: {%1%2%3%4-%5%6-%7%8-%9%10-%11%12%13%14%15%16}")
                .arg(rig->guid[0], 2, 16, QLatin1Char('0'))
                .arg(rig->guid[1], 2, 16, QLatin1Char('0'))
                .arg(rig->guid[2], 2, 16, QLatin1Char('0'))

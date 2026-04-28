@@ -45,7 +45,7 @@ void icomServer::init()
 
     uint32_t addr = localIP.toIPv4Address();
 
-    qInfo(logRigServer()) << "My IP Address:" << QHostAddress(addr).toString();
+    qDebug(logRigServer()) << "My IP Address:" << QHostAddress(addr).toString();
 
 
     controlId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (config->controlPort & 0xffff);
@@ -184,7 +184,7 @@ void icomServer::controlReceived()
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&icomServer::sendRetransmitRequest, this, current));
             current->retransmitTimer->start(RETRANSMIT_PERIOD);
 
-            qInfo(logRigServer()) << current->ipAddress.toString() << ": New Control connection created";
+            qDebug(logRigServer()) << current->ipAddress.toString() << ": New Control connection created";
 
 
             if (connMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
@@ -200,7 +200,7 @@ void icomServer::controlReceived()
                 connMutex.unlock();
             }
             else {
-                qInfo(logRigServer()) << "Unable to lock connMutex()";
+                qDebug(logRigServer()) << "Unable to lock connMutex()";
             }
         }
 
@@ -214,7 +214,7 @@ void icomServer::controlReceived()
             control_packet_t in = (control_packet_t)r.constData();
             if (in->type == 0x05)
             {
-                qInfo(logRigServer()) << current->ipAddress.toString() << ": Received 'disconnect' request";
+                qDebug(logRigServer()) << current->ipAddress.toString() << ": Received 'disconnect' request";
                 sendControl(current, 0x00, in->seq);
 
                 if (current->audioClient != Q_NULLPTR) {
@@ -266,7 +266,7 @@ void icomServer::controlReceived()
             memcpy(current->guid, in->guid, GUIDLEN);
             if (in->requesttype == 0x02 && in->requestreply == 0x01) {
                 // Request for new token
-                qInfo(logRigServer()) << current->ipAddress.toString() << ": Received create token request";
+                qDebug(logRigServer()) << current->ipAddress.toString() << ": Received create token request";
                 sendCapabilities(current);
                 foreach (RIGCONFIG* radio, config->rigs) {
                     sendConnectionInfo(current, radio->guid);
@@ -274,7 +274,7 @@ void icomServer::controlReceived()
             }
             else if (in->requesttype == 0x01 && in->requestreply == 0x01) {
                 // Token disconnect
-                qInfo(logRigServer()) << current->ipAddress.toString() << ": Received token disconnect request";
+                qDebug(logRigServer()) << current->ipAddress.toString() << ": Received token disconnect request";
                 sendTokenResponse(current, in->requesttype);
             }
             else if (in->requesttype == 0x04 && in->requestreply == 0x01) {
@@ -289,7 +289,7 @@ void icomServer::controlReceived()
                 }
             }
             else {
-                qInfo(logRigServer()) << current->ipAddress.toString() << ": Received token request";
+                qDebug(logRigServer()) << current->ipAddress.toString() << ": Received token request";
                 sendTokenResponse(current, in->requesttype);
             }
             break;
@@ -297,7 +297,7 @@ void icomServer::controlReceived()
         case (LOGIN_SIZE):
         {
             login_packet_t in = (login_packet_t)r.constData();
-            qInfo(logRigServer()) << current->ipAddress.toString() << ": Received 'login'";
+            qDebug(logRigServer()) << current->ipAddress.toString() << ": Received 'login'";
             foreach(SERVERUSER user, config->users)
             {
                 QByteArray usercomp;
@@ -323,7 +323,7 @@ void icomServer::controlReceived()
                 qInfo(logRigServer()) << current->ipAddress.toString() << ": User " << current->user.username << " login OK";
             }
             else {
-                qInfo(logRigServer()) << current->ipAddress.toString() << ": Incorrect username/password";
+                qWarning(logRigServer()) << current->ipAddress.toString() << ": Incorrect username/password";
             }
             sendLoginResponse(current, current->isAuthenticated);
             break;
@@ -335,7 +335,7 @@ void icomServer::controlReceived()
             //    admin = true;
 
             conninfo_packet_t in = (conninfo_packet_t)r.constData();
-            qInfo(logRigServer()) << current->ipAddress.toString() << ": Received request for radio connection";
+            qDebug(logRigServer()) << current->ipAddress.toString() << ": Received request for radio connection";
             // Request to start audio and civ!
             current->isStreaming = true;
             current->rxSeq = in->seq;
@@ -350,7 +350,7 @@ void icomServer::controlReceived()
             sendStatus(current);
             current->authInnerSeq = 0x00;
             sendConnectionInfo(current,in->guid);
-            qInfo(logRigServer()) << current->ipAddress.toString() << ": rxCodec:" << current->rxCodec << " txCodec:" << current->txCodec <<
+            qDebug(logRigServer()) << current->ipAddress.toString() << ": rxCodec:" << current->rxCodec << " txCodec:" << current->txCodec <<
                 " rxSampleRate" << current->rxSampleRate <<
                 " txSampleRate" << current->txSampleRate <<
                 " txBufferLen" << current->txBufferLen;
@@ -560,14 +560,14 @@ void icomServer::civReceived()
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&icomServer::sendRetransmitRequest, this, current));
             current->retransmitTimer->start(RETRANSMIT_PERIOD);
 
-            qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): New connection created";
+            qDebug(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): New connection created";
             if (connMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
             {
                 civClients.append(current);
                 connMutex.unlock();
             }
             else {
-                qInfo(logRigServer()) << "Unable to lock connMutex()";
+                qDebug(logRigServer()) << "Unable to lock connMutex()";
             }
 
 
@@ -621,17 +621,17 @@ void icomServer::civReceived()
                     {
                         // Strip all '0xFE' command preambles first:
                         int lastFE = r.lastIndexOf((char)0xfe);
-                        //qInfo(logRigServer()) << "Got:" << r.mid(lastFE);
+                        //qDebug(logRigServer()) << "Got:" << r.mid(lastFE);
                         if (current->civId == 0 && r.length() > lastFE + 2 && (quint8)r[lastFE+2] != 0xE1 && (quint8)r[lastFE + 2] > (quint8)0xdf && (quint8)r[lastFE + 2] < (quint8)0xef) {
                             // This is (should be) the remotes CIV id.
                             current->civId = (quint8)r[lastFE + 2];
-                            qInfo(logRigServer()) << current->ipAddress.toString() << ": Detected remote CI-V:" << QString("0x%1").arg(current->civId,0,16);
+                            qDebug(logRigServer()) << current->ipAddress.toString() << ": Detected remote CI-V:" << QString("0x%1").arg(current->civId,0,16);
                         }
                         else if (current->civId != 0 && r.length() > lastFE + 2 && (quint8)r[lastFE+2] != 0xE1 && (quint8)r[lastFE + 2] != current->civId)
                         {
                             current->civId = (quint8)r[lastFE + 2];
                             qDebug(logRigServer()) << current->ipAddress.toString() << ": Detected different remote CI-V:" << QString("0x%1").arg(current->civId,0,16);
-                            qInfo(logRigServer()) << current->ipAddress.toString() << ": Detected different remote CI-V:" << QString("0x%1").arg(current->civId,0,16);
+                            qDebug(logRigServer()) << current->ipAddress.toString() << ": Detected different remote CI-V:" << QString("0x%1").arg(current->civId,0,16);
                         } else if (r.length() > lastFE+2 && (quint8)r[lastFE+2] != 0xE1) {
                             qDebug(logRigServer()) << current->ipAddress.toString() << ": Detected invalid remote CI-V:" << QString("0x%1").arg((quint8)r[lastFE+2],0,16);
 			            }
@@ -659,7 +659,7 @@ void icomServer::civReceived()
 
                     }
                     else {
-                        qInfo(logRigServer()) << current->ipAddress.toString() << ": Datalen mismatch " << quint16(in->datalen + 0x15) << ":" << (quint16)in->len;
+                        qDebug(logRigServer()) << current->ipAddress.toString() << ": Datalen mismatch " << quint16(in->datalen + 0x15) << ":" << (quint16)in->len;
 
                     }
                 }
@@ -737,14 +737,14 @@ void icomServer::audioReceived()
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&icomServer::sendRetransmitRequest, this, current));
             current->retransmitTimer->start(RETRANSMIT_PERIOD);
             current->seqPrefix = 0;
-            qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): New connection created";
+            qDebug(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): New connection created";
             if (connMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
             {
                 audioClients.append(current);
                 connMutex.unlock();
             }
             else {
-                qInfo(logRigServer()) << "Unable to lock connMutex()";
+                qDebug(logRigServer()) << "Unable to lock connMutex()";
             }
 
         }
@@ -810,12 +810,12 @@ void icomServer::audioReceived()
                     tempAudio.time = lastReceived;
                     tempAudio.sent = 0;
                     tempAudio.data = r.mid(0x18);
-                    //qInfo(logRigServer()) << "sending tx audio " << in->seq;
+                    //qDebug(logRigServer()) << "sending tx audio " << in->seq;
                     emit haveAudioData(tempAudio);
                 }
                 else if (lastReceived >= QTime::currentTime().addMSecs(current->controlClient->txBufferLen))
                 {
-                    qInfo(logRigServer()) << "Audio timestamp is older than" << current->controlClient->txBufferLen << "ms, dropped";
+                    qDebug(logRigServer()) << "Audio timestamp is older than" << current->controlClient->txBufferLen << "ms, dropped";
                 }
             }
             break;
@@ -839,7 +839,7 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
     if (r.length() < 0x10)
     {
         // Invalid packet
-        qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Invalid packet received, len: " << r.length();
+        qDebug(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Invalid packet received, len: " << r.length();
         return;
     }
 
@@ -849,13 +849,13 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
     {
         control_packet_t in = (control_packet_t)r.constData();
         if (in->type == 0x03) {
-            qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'Are you there'";
+            qDebug(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'Are you there'";
             current->remoteId = in->sentid;
             sendControl(current, 0x04, in->seq);
         } // This is This is "Are you ready" in response to "I am here".
         else if (in->type == 0x06)
         {
-            qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'Are you ready'";
+            qDebug(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'Are you ready'";
             current->remoteId = in->sentid;
             sendControl(current, 0x06, in->seq);
             if (current->idleTimer != Q_NULLPTR && !current->idleTimer->isActive()) {
@@ -869,7 +869,7 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
             if (match != current->txSeqBuf.end() && match->retransmitCount < 5) {
                 // Found matching entry?
                 // Don't constantly retransmit the same packet, give-up eventually
-                qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Sending (single packet) retransmit of " << QString("0x%1").arg(match->seqNum, 0, 16);
+                qDebug(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Sending (single packet) retransmit of " << QString("0x%1").arg(match->seqNum, 0, 16);
                 match->retransmitCount++;
                 if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                 {
@@ -877,13 +877,13 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
                     udpMutex.unlock();
                 }
                 else {
-                    qInfo(logRigServer()) << "Unable to lock udpMutex()";
+                    qDebug(logRigServer()) << "Unable to lock udpMutex()";
                 }
 
             }
             else {
                 // Just send an idle!
-                qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type <<
+                qDebug(logRigServer()) << current->ipAddress.toString() << "(" << current->type <<
                     "): Requested (single) packet " << QString("0x%1").arg(in->seq, 0, 16) << 
                     "not found, have " << QString("0x%1").arg(current->txSeqBuf.firstKey(), 0, 16) <<
                     "to" << QString("0x%1").arg(current->txSeqBuf.lastKey(), 0, 16);
@@ -908,7 +908,7 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
             quint16 seq = (quint8)r[i] | (quint8)r[i + 1] << 8;
             auto match = current->txSeqBuf.find(seq);
             if (match == current->txSeqBuf.end()) {
-                qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type <<
+                qDebug(logRigServer()) << current->ipAddress.toString() << "(" << current->type <<
                     "): Requested (multiple) packet " << QString("0x%1").arg(seq,0,16) << 
                     "not found, have " << QString("0x%1").arg(current->txSeqBuf.firstKey(), 0, 16) <<
                     "to" << QString("0x%1").arg(current->txSeqBuf.lastKey(), 0, 16);
@@ -920,7 +920,7 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
             {
                 // Found matching entry?
                 // Send "untracked" as it has already been sent once.
-                qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Sending (multiple packet) retransmit of " << QString("0x%1").arg(match->seqNum,0,16);
+                qDebug(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Sending (multiple packet) retransmit of " << QString("0x%1").arg(match->seqNum,0,16);
                 match->retransmitCount++;
                 if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                 {
@@ -928,7 +928,7 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
                     udpMutex.unlock();
                 }
                 else {
-                    qInfo(logRigServer()) << "Unable to lock udpMutex()";
+                    qDebug(logRigServer()) << "Unable to lock udpMutex()";
                 }
             }
         }
@@ -936,7 +936,7 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
     else if (in->type == 0x00 && in->seq != 0x00)
     {
         //if (current->type == "CIV") {
-        //    qInfo(logRigServer()) << "Got:" << in->seq;
+        //    qDebug(logRigServer()) << "Got:" << in->seq;
         //}
         if (current->rxSeqBuf.isEmpty())
         {
@@ -946,7 +946,7 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
                 current->rxMutex.unlock();
             }
             else {
-                qInfo(logRigServer()) << "Unable to lock rxMutex()";
+                qDebug(logRigServer()) << "Unable to lock rxMutex()";
             }
 
         }
@@ -955,7 +955,7 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
             
             if (in->seq < current->rxSeqBuf.firstKey() || in->seq - current->rxSeqBuf.lastKey() > MAX_MISSING)
             {
-                qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "Large seq number gap detected, previous highest: " <<
+                qDebug(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "Large seq number gap detected, previous highest: " <<
                     QString("0x%1").arg(current->rxSeqBuf.lastKey(), 0, 16) << " current: " << QString("0x%1").arg(in->seq, 0, 16);
                 // Looks like it has rolled over so clear buffer and start again.
                 if (current->rxMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
@@ -964,7 +964,7 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
                     current->rxMutex.unlock();
                 }
                 else {
-                    qInfo(logRigServer()) << "Unable to lock rxMutex()";
+                    qDebug(logRigServer()) << "Unable to lock rxMutex()";
                 }
 
                 if (current->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
@@ -973,7 +973,7 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
                     current->missMutex.unlock();
                 }
                 else {
-                    qInfo(logRigServer()) << "Unable to lock missMutex()";
+                    qDebug(logRigServer()) << "Unable to lock missMutex()";
                 }
 
                 return;
@@ -986,7 +986,7 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
                     // Add incoming packet to the received buffer and if it is in the missing buffer, remove it.
                     //int missCounter = 0;
                     if (in->seq > current->rxSeqBuf.lastKey() + 1) {
-                        qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "1 or more missing packets detected, previous: " <<
+                        qDebug(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "1 or more missing packets detected, previous: " <<
                             QString("0x%1").arg(current->rxSeqBuf.lastKey(), 0, 16) << " current: " << QString("0x%1").arg(in->seq, 0, 16);
                         // We are likely missing packets then!
                         if (current->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
@@ -1009,7 +1009,7 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
                             current->missMutex.unlock();
                         }
                         else {
-                            qInfo(logRigServer()) << "Unable to lock missMutex()";
+                            qDebug(logRigServer()) << "Unable to lock missMutex()";
                         }
                     }
                     else {
@@ -1023,7 +1023,7 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
                     current->rxMutex.unlock();
                 }
                 else {
-                    qInfo(logRigServer()) << "Unable to lock rxMutex()";
+                    qDebug(logRigServer()) << "Unable to lock rxMutex()";
                 }
 
             } else{
@@ -1033,13 +1033,13 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
                     auto s = current->rxMissing.find(in->seq);
                     if (s != current->rxMissing.end())
                     {
-                        qInfo(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Missing SEQ has been received! " << QString("0x%1").arg(in->seq,0,16);
+                        qDebug(logRigServer()) << current->ipAddress.toString() << "(" << current->type << "): Missing SEQ has been received! " << QString("0x%1").arg(in->seq,0,16);
                         s = current->rxMissing.erase(s);
                     }
                     current->missMutex.unlock();
                 }
                 else {
-                    qInfo(logRigServer()) << "Unable to lock missMutex()";
+                    qDebug(logRigServer()) << "Unable to lock missMutex()";
                 }
             }
         }
@@ -1051,7 +1051,7 @@ void icomServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r
 void icomServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
 {
 
-    //qInfo(logRigServer()) << c->ipAddress.toString() << ": Sending control packet: " << type;
+    //qDebug(logRigServer()) << c->ipAddress.toString() << ": Sending control packet: " << type;
 
     control_packet p;
     memset(p.packet, 0x0, CONTROL_SIZE); // We can't be sure it is initialized with 0x00!
@@ -1084,7 +1084,7 @@ void icomServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
             c->txMutex.unlock();
         }
         else {
-            qInfo(logRigServer()) << "Unable to lock txMutex()";
+            qDebug(logRigServer()) << "Unable to lock txMutex()";
         }
 
         if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
@@ -1093,7 +1093,7 @@ void icomServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
             udpMutex.unlock();
         }
         else {
-            qInfo(logRigServer()) << "Unable to lock udpMutex()";
+            qDebug(logRigServer()) << "Unable to lock udpMutex()";
         }
 
     }
@@ -1105,7 +1105,7 @@ void icomServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
             udpMutex.unlock();
         }
         else {
-            qInfo(logRigServer()) << "Unable to lock udpMutex()";
+            qDebug(logRigServer()) << "Unable to lock udpMutex()";
         }
 
     }
@@ -1123,14 +1123,14 @@ void icomServer::sendPing(QList<CLIENT*>* l, CLIENT* c, quint16 seq, bool reply)
 
     if (c->lastHeard.secsTo(now) > STALE_CONNECTION)
     {
-        qInfo(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Deleting stale connection ";
+        qDebug(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Deleting stale connection ";
         deleteConnection(l, c);
         return;
     }
 
     */
 
-    //qInfo(logRigServer()) << c->ipAddress.toString() << ": Sending Ping";
+    //qDebug(logRigServer()) << c->ipAddress.toString() << ": Sending Ping";
 
     quint32 pingTime = 0;
     if (reply) {
@@ -1162,7 +1162,7 @@ void icomServer::sendPing(QList<CLIENT*>* l, CLIENT* c, quint16 seq, bool reply)
         udpMutex.unlock();
     }
     else {
-        qInfo(logRigServer()) << "Unable to lock udpMutex()";
+        qDebug(logRigServer()) << "Unable to lock udpMutex()";
     }
 
     return;
@@ -1170,7 +1170,7 @@ void icomServer::sendPing(QList<CLIENT*>* l, CLIENT* c, quint16 seq, bool reply)
 
 void icomServer::sendLoginResponse(CLIENT* c, bool allowed)
 {
-    qInfo(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Login response: " << c->txSeq;
+    qDebug(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Login response: " << c->txSeq;
 
     login_response_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -1224,7 +1224,7 @@ void icomServer::sendLoginResponse(CLIENT* c, bool allowed)
         c->txMutex.unlock();
     }
     else {
-        qInfo(logRigServer()) << "Unable to lock txMutex()";
+        qDebug(logRigServer()) << "Unable to lock txMutex()";
     }
 
     if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
@@ -1233,7 +1233,7 @@ void icomServer::sendLoginResponse(CLIENT* c, bool allowed)
         udpMutex.unlock();
     }
     else {
-        qInfo(logRigServer()) << "Unable to lock udpMutex()";
+        qDebug(logRigServer()) << "Unable to lock udpMutex()";
     }
 
     if (c->idleTimer != Q_NULLPTR)
@@ -1262,7 +1262,7 @@ void icomServer::sendCapabilities(CLIENT* c)
     s.retransmitCount = 0;
 
     foreach (RIGCONFIG* rig, config->rigs) {
-        qInfo(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Capabilities :" << c->txSeq << "for" << rig->modelName << "c-iv" << QString::number(rig->civAddr,16);
+        qDebug(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Capabilities :" << c->txSeq << "for" << rig->modelName << "c-iv" << QString::number(rig->civAddr,16);
         radio_cap_packet r;
         memset(r.packet, 0x0, sizeof(r)); // We can't be sure it is initialized with 0x00!
         
@@ -1314,10 +1314,10 @@ void icomServer::sendCapabilities(CLIENT* c)
         if (rig->txaudio == Q_NULLPTR) {
             r.txsample = 0x8b01; // all tx sample frequencies supported
             r.enablea = 0x01; // 0x01 enables TX 24K mode?
-            qInfo(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Client will have TX audio";
+            qDebug(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Client will have TX audio";
         }
         else {
-            qInfo(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Disable tx audio for client";
+            qDebug(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Disable tx audio for client";
             r.txsample = 0;
         }
 
@@ -1348,7 +1348,7 @@ void icomServer::sendCapabilities(CLIENT* c)
         c->txMutex.unlock();
     }
     else {
-        qInfo(logRigServer()) << "Unable to lock txMutex()";
+        qDebug(logRigServer()) << "Unable to lock txMutex()";
     }
 
     if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
@@ -1357,7 +1357,7 @@ void icomServer::sendCapabilities(CLIENT* c)
         udpMutex.unlock();
     }
     else {
-        qInfo(logRigServer()) << "Unable to lock udpMutex()";
+        qDebug(logRigServer()) << "Unable to lock udpMutex()";
     }
 
 
@@ -1374,7 +1374,7 @@ void icomServer::sendConnectionInfo(CLIENT* c, quint8 guid[GUIDLEN])
     foreach (RIGCONFIG* radio, config->rigs) {
         if (!memcmp(guid, radio->guid, GUIDLEN) || config->rigs.size()==1)
         {
-            qInfo(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending ConnectionInfo :" << c->txSeq;
+            qDebug(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending ConnectionInfo :" << c->txSeq;
             conninfo_packet p;
             memset(p.packet, 0x0, sizeof(p));
             p.len = sizeof(p);
@@ -1438,7 +1438,7 @@ void icomServer::sendConnectionInfo(CLIENT* c, quint8 guid[GUIDLEN])
                 c->txMutex.unlock();
             }
             else {
-                qInfo(logRigServer()) << "Unable to lock txMutex()";
+                qDebug(logRigServer()) << "Unable to lock txMutex()";
             }
 
 
@@ -1448,7 +1448,7 @@ void icomServer::sendConnectionInfo(CLIENT* c, quint8 guid[GUIDLEN])
                 udpMutex.unlock();
             }
             else {
-                qInfo(logRigServer()) << "Unable to lock udpMutex()";
+                qDebug(logRigServer()) << "Unable to lock udpMutex()";
             }
 
         }
@@ -1461,7 +1461,7 @@ void icomServer::sendConnectionInfo(CLIENT* c, quint8 guid[GUIDLEN])
 
 void icomServer::sendTokenResponse(CLIENT* c, quint8 type)
 {
-    qInfo(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Token response for type: " << type;
+    qDebug(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Token response for type: " << type;
 
     token_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -1499,7 +1499,7 @@ void icomServer::sendTokenResponse(CLIENT* c, quint8 type)
         c->txMutex.unlock();
     }
     else {
-        qInfo(logRigServer()) << "Unable to lock txMutex()";
+        qDebug(logRigServer()) << "Unable to lock txMutex()";
     }
 
 
@@ -1509,7 +1509,7 @@ void icomServer::sendTokenResponse(CLIENT* c, quint8 type)
         udpMutex.unlock();
     }
     else {
-        qInfo(logRigServer()) << "Unable to lock udpMutex()";
+        qDebug(logRigServer()) << "Unable to lock udpMutex()";
     }
 
 
@@ -1529,12 +1529,12 @@ void icomServer::watchdog()
         {
             if (client->lastHeard.secsTo(now) > STALE_CONNECTION)
             {
-                qInfo(logRigServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
+                qDebug(logRigServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
                 deleteConnection(&audioClients, client);
             }
         }
         else {
-            qInfo(logRigServer()) << "Current client is NULL!";
+            qDebug(logRigServer()) << "Current client is NULL!";
         }
     }
 
@@ -1544,12 +1544,12 @@ void icomServer::watchdog()
         {
             if (client->lastHeard.secsTo(now) > STALE_CONNECTION)
             {
-                qInfo(logRigServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
+                qDebug(logRigServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
                 deleteConnection(&civClients, client);
             }
         }
         else {
-            qInfo(logRigServer()) << "Current client is NULL!";
+            qDebug(logRigServer()) << "Current client is NULL!";
         }
     }
 
@@ -1559,12 +1559,12 @@ void icomServer::watchdog()
         {
             if (client->lastHeard.secsTo(now) > STALE_CONNECTION)
             {
-                qInfo(logRigServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
+                qDebug(logRigServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
                 deleteConnection(&controlClients, client);
             }
         }
         else {
-            qInfo(logRigServer()) << "Current client is NULL!";
+            qDebug(logRigServer()) << "Current client is NULL!";
         }
     }
     if (!config->lan) {
@@ -1576,7 +1576,7 @@ void icomServer::watchdog()
 void icomServer::sendStatus(CLIENT* c)
 {
 
-    qInfo(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Status";
+    qDebug(logRigServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Status";
 
     status_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -1619,7 +1619,7 @@ void icomServer::sendStatus(CLIENT* c)
         c->txMutex.unlock();
     }
     else {
-        qInfo(logRigServer()) << "Unable to lock txMutex()";
+        qDebug(logRigServer()) << "Unable to lock txMutex()";
     }
 
 
@@ -1629,7 +1629,7 @@ void icomServer::sendStatus(CLIENT* c)
         udpMutex.unlock();
     }
     else {
-        qInfo(logRigServer()) << "Unable to lock udpMutex()";
+        qDebug(logRigServer()) << "Unable to lock udpMutex()";
     }
 
 }
@@ -1659,7 +1659,7 @@ void icomServer::dataForServer(QByteArray d)
         }
 
         int lastFE = d.lastIndexOf((quint8)0xfe);
-        //qInfo(logRigServer()) << "Server got CIV data from" << config->rigs.first()->rigName << "length" << d.length() << d.toHex();
+        //qDebug(logRigServer()) << "Server got CIV data from" << config->rigs.first()->rigName << "length" << d.length() << d.toHex();
         if (client->connected && d.length() > lastFE + 2 &&
                 ((quint8)d[lastFE + 1] == client->civId || (quint8)d[lastFE + 2] == client->civId ||
                 (quint8)d[lastFE + 1] == 0x00 || (quint8)d[lastFE + 2] == 0x00 || (quint8)d[lastFE + 1] == 0xE1 || (quint8)d[lastFE + 2] == 0xE1))
@@ -1697,7 +1697,7 @@ void icomServer::dataForServer(QByteArray d)
                 client->txMutex.unlock();
             }
             else {
-                qInfo(logRigServer()) << "Unable to lock txMutex()";
+                qDebug(logRigServer()) << "Unable to lock txMutex()";
             }
 
 
@@ -1707,11 +1707,11 @@ void icomServer::dataForServer(QByteArray d)
                 udpMutex.unlock();
             }
             else {
-                qInfo(logRigServer()) << "Unable to lock udpMutex()";
+                qDebug(logRigServer()) << "Unable to lock udpMutex()";
             }
         }
         else {
-            qInfo(logRigServer()) << "Got data for different ID" <<
+            qDebug(logRigServer()) << "Got data for different ID" <<
                 QString("0x%1").arg((quint8)d[lastFE + 1],0,16) << ":" << QString("0x%1").arg((quint8)d[lastFE + 2],0,16);
         }
     }
@@ -1730,7 +1730,7 @@ void icomServer::receiveAudioData(const audioPacket& d)
     else {
         memcpy(guid, d.guid, GUIDLEN);
     }
-    //qInfo(logRigServer()) << "Server got:" << d.data.length();
+    //qDebug(logRigServer()) << "Server got:" << d.data.length();
     foreach(CLIENT * client, audioClients)
     {
         int len = 0;
@@ -1771,7 +1771,7 @@ void icomServer::receiveAudioData(const audioPacket& d)
                     client->txMutex.unlock();
                 }
                 else {
-                    qInfo(logRigServer()) << "Unable to lock txMutex()";
+                    qDebug(logRigServer()) << "Unable to lock txMutex()";
                 }
 
 
@@ -1781,7 +1781,7 @@ void icomServer::receiveAudioData(const audioPacket& d)
                     udpMutex.unlock();
                 }
                 else {
-                    qInfo(logRigServer()) << "Unable to lock udpMutex()";
+                    qDebug(logRigServer()) << "Unable to lock udpMutex()";
                 }
 
             }
@@ -1868,7 +1868,7 @@ void icomServer::sendRetransmitRequest(CLIENT* c)
                     udpMutex.unlock();
                 }
                 else {
-                    qInfo(logRigServer()) << "Unable to lock udpMutex()";
+                    qDebug(logRigServer()) << "Unable to lock udpMutex()";
                 }
 
             }
@@ -1885,7 +1885,7 @@ void icomServer::sendRetransmitRequest(CLIENT* c)
                     udpMutex.unlock();
                 }
                 else {
-                    qInfo(logRigServer()) << "Unable to lock udpMutex()";
+                    qDebug(logRigServer()) << "Unable to lock udpMutex()";
                 }
 
             }
@@ -1893,7 +1893,7 @@ void icomServer::sendRetransmitRequest(CLIENT* c)
         c->missMutex.unlock();
     }
     else {
-        qInfo(logRigServer()) << "Unable to lock missMutex()";
+        qDebug(logRigServer()) << "Unable to lock missMutex()";
     }
 }
 
@@ -1910,7 +1910,7 @@ void icomServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
     quint8 guid[GUIDLEN];
     memcpy(guid, c->guid, GUIDLEN);
 
-    qInfo(logRigServer()) << "Deleting" << c->type << "connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
+    qDebug(logRigServer()) << "Deleting" << c->type << "connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
     if (c->idleTimer != Q_NULLPTR) {
         c->idleTimer->stop();
         delete c->idleTimer;
@@ -1931,7 +1931,7 @@ void icomServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
         c->rxMutex.unlock();
     }
     else {
-        qInfo(logRigServer()) << "Unable to lock rxMutex()";
+        qDebug(logRigServer()) << "Unable to lock rxMutex()";
     }
 
 
@@ -1941,7 +1941,7 @@ void icomServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
         c->txMutex.unlock();
     }
     else {
-        qInfo(logRigServer()) << "Unable to lock txMutex()";
+        qDebug(logRigServer()) << "Unable to lock txMutex()";
     }
 
 
@@ -1951,7 +1951,7 @@ void icomServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
         c->missMutex.unlock();
     }
     else {
-        qInfo(logRigServer()) << "Unable to lock missMutex()";
+        qDebug(logRigServer()) << "Unable to lock missMutex()";
     }
 
 
@@ -1961,7 +1961,7 @@ void icomServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
         while (it != l->end()) {
             CLIENT* client = *it;
             if (client != Q_NULLPTR && client == c) {
-                qInfo(logRigServer()) << "Found" << client->type << "connection to: " << client->ipAddress.toString() << ":" << QString::number(client->port);
+                qDebug(logRigServer()) << "Found" << client->type << "connection to: " << client->ipAddress.toString() << ":" << QString::number(client->port);
                 it = l->erase(it);
             }
             else {
@@ -1970,11 +1970,11 @@ void icomServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
         }
         delete c; // Is this needed or will the erase have done it?
         c = Q_NULLPTR;
-        qInfo(logRigServer()) << "Current Number of clients connected: " << l->length();
+        qDebug(logRigServer()) << "Current Number of clients connected: " << l->length();
         connMutex.unlock();
     }
     else {
-        qInfo(logRigServer()) << "Unable to lock connMutex()";
+        qDebug(logRigServer()) << "Unable to lock connMutex()";
     }
 
     if (l->length() == 0) {

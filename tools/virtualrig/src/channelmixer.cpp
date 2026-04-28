@@ -192,8 +192,8 @@ void channelMixer::pushTxAudio(int srcRig, const audioPacket& pkt)
 
     static int tick = 0;
     if (++tick % 50 == 1) {
-        qInfo() << "mixer: tx from rig" << srcRig << "samples=" << sampleCount
-                << "n=" << n;
+        qDebug() << "mixer: tx from rig" << srcRig << "samples=" << sampleCount
+                 << "n=" << n;
     }
 
     quint64 srcFreq = 0;

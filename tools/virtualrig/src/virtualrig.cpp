@@ -264,7 +264,7 @@ void virtualRig::emitIdleRx()
 
 void virtualRig::onPttChanged(bool on)
 {
-    qInfo() << "virtualRig" << cfg.name << "PTT" << (on ? "ON" : "OFF");
+    qDebug() << "virtualRig" << cfg.name << "PTT" << (on ? "ON" : "OFF");
     ptt = on;
 }
 
@@ -309,7 +309,7 @@ void virtualRig::onRxAudioFromMixer(int dstRig, const audioPacket& pkt)
     if (dstRig != cfg.index) return;
     static int tick = 0;
     if (++tick % 50 == 1) {
-        qInfo() << "virtualRig" << cfg.name << "RX from mixer: bytes=" << pkt.data.size();
+        qDebug() << "virtualRig" << cfg.name << "RX from mixer: bytes=" << pkt.data.size();
     }
     // Buffer the real PCM and let the 20 ms tick drain it at a fixed cadence.
     // S-meter is recomputed from whatever bytes are actually emitted, so it

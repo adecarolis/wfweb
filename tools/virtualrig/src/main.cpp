@@ -2,7 +2,9 @@
 #include <QCommandLineParser>
 #include <QDebug>
 #include <QList>
+#include <QString>
 #include <csignal>
+#include <cstdio>
 
 #include "audioconverter.h"
 #include "channelmixer.h"
@@ -11,10 +13,29 @@
 #include "virtualrig.h"
 
 static QCoreApplication* g_app = nullptr;
+static bool g_verbose = false;
 
 static void sigintHandler(int)
 {
     if (g_app) QMetaObject::invokeMethod(g_app, "quit", Qt::QueuedConnection);
+}
+
+// Drop QtDebugMsg unless --verbose was passed.  Mirrors wfweb's
+// messageHandler so demoting a noisy log line to qDebug actually hides
+// it in the testrig log instead of just changing its (invisible) tag.
+// Info / warning / critical / fatal still go through.
+static void virtualRigMessageHandler(QtMsgType type,
+                                     const QMessageLogContext &ctx,
+                                     const QString &msg)
+{
+    if (type == QtDebugMsg && !g_verbose) return;
+    QString line = msg;
+    if (ctx.category && qstrcmp(ctx.category, "default") != 0) {
+        line = QString("%1: %2").arg(ctx.category, msg);
+    }
+    std::fputs(line.toLocal8Bit().constData(), stderr);
+    std::fputc('\n', stderr);
+    std::fflush(stderr);
 }
 
 int main(int argc, char* argv[])
@@ -51,6 +72,10 @@ int main(int argc, char* argv[])
     QCommandLineOption ctrlPortOpt("control-port",
         "Port for the web control panel. 0 disables it. Default 5900.",
         "port", "5900");
+    // --verbose only — no short alias because QCommandLineParser reserves
+    // -v for --version.
+    QCommandLineOption verboseOpt("verbose",
+        "Enable qDebug output (per-frame CI-V trace, per-packet mixer trace, etc.).");
 
     parser.addOption(rigsOpt);
     parser.addOption(basePortOpt);
@@ -58,7 +83,11 @@ int main(int argc, char* argv[])
     parser.addOption(noiseOpt);
     parser.addOption(broadcastOpt);
     parser.addOption(ctrlPortOpt);
+    parser.addOption(verboseOpt);
     parser.process(app);
+
+    g_verbose = parser.isSet(verboseOpt);
+    qInstallMessageHandler(virtualRigMessageHandler);
 
     bool ok = false;
     int n = parser.value(rigsOpt).toInt(&ok);
