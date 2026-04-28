@@ -673,10 +673,28 @@ void civEmulator::emitScopeWaveData()
         floor = (int)v;
     }
 
-    // Activity: map peak audio (0..32767) to 0..120 added on top of floor.
+    // White noise has peaks at roughly 4·RMS — that's what the audio path
+    // actually injects via emitIdleRx, so it's also what `lastRxPeak`
+    // measures when nothing is being received. Spread that level uniformly
+    // across every pixel (real noise floor) instead of letting it pump the
+    // centered Gaussian, which would render the noise as a fake signal.
+    const float noisePeakEst = noiseRms * 4.0f;
+    int flatNoise = 0;
+    if (noisePeakEst > 0.0f) {
+        double db = 20.0 * std::log10((double)noisePeakEst / 32767.0);
+        if (db < -60.0) db = -60.0;
+        int v = (int)((db + 60.0) / 60.0 * 120.0);
+        if (v < 0) v = 0;
+        if (v > 120) v = 120;
+        flatNoise = v;
+    }
+
+    // Real signal is whatever audio peak exceeds the noise floor's peak.
+    // That, and only that, drives the centered Gaussian.
     int signalPk = 0;
-    if (lastRxPeak > 0) {
-        double db = 20.0 * std::log10((double)lastRxPeak / 32767.0);
+    float signalAbove = (float)lastRxPeak - noisePeakEst;
+    if (signalAbove > 0.0f) {
+        double db = 20.0 * std::log10((double)signalAbove / 32767.0);
         if (db < -60.0) db = -60.0;
         int v = (int)((db + 60.0) / 60.0 * 120.0);
         if (v < 0) v = 0;
@@ -693,8 +711,10 @@ void civEmulator::emitScopeWaveData()
     for (int i = 0; i < kPixels; ++i) {
         double dx = i - center;
         double bell = std::exp(-(dx * dx) / twoSigma2);
-        int v = floor + (int)((double)signalPk * bell)
-              + (int)(rng->bounded(5)) - 2;
+        // Per-pixel jitter on the noise (±2) so the floor flickers like
+        // band noise instead of looking like a flat constant strip.
+        int v = floor + flatNoise + (int)(rng->bounded(5)) - 2
+              + (int)((double)signalPk * bell);
         if (v < 0) v = 0;
         if (v > kAmpMax) v = kAmpMax;
         pixels[i] = (char)v;
