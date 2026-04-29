@@ -188,6 +188,27 @@
                 sMeter: 0, transmitting: false,
             };
 
+            // RX audio capture state — getUserMedia → AudioWorklet → Int16
+            // PCM → 0x02 binary frame → SPA's handleAudioData.
+            this._rxAudio = {
+                ctx: null,        // AudioContext at 48kHz
+                stream: null,     // MediaStream from getUserMedia
+                source: null,     // MediaStreamAudioSourceNode
+                node: null,       // AudioWorkletNode (capture)
+                seq: 0,           // 0x02 frame sequence counter
+                enabled: false,
+            };
+
+            // TX audio playback state — 0x03 frame → AudioWorklet ring buffer
+            // → AudioContext destination routed via setSinkId() to the rig's
+            // USB audio output. Lazy-initialised on first sendAudioFrame.
+            this._txAudio = {
+                ctx: null,
+                node: null,         // AudioWorkletNode (ring buffer playback)
+                deviceId: null,
+                initPromise: null,  // dedupes concurrent _ensureTxAudioCtx() calls
+            };
+
             // Spectrum scope assembly state. The Icom scope command (0x27 0x00)
             // arrives as a sequence of frames: seq 1 carries header (mode +
             // start/end freq + out-of-range flag), seq 2..N carry pixels.
@@ -235,6 +256,8 @@
         async close() {
             this._stopPolling();
             this._open = false;
+            await this._stopRxAudio();
+            await this._stopTxAudio();
             try { if (this.writer) this.writer.releaseLock(); } catch (e) { /* ignore */ }
             this.writer = null;
             try { if (this.reader) await this.reader.cancel(); } catch (e) { /* ignore */ }
@@ -361,15 +384,154 @@
                 case 'stopCW':
                     this._enqueue('stopCW', civ.cmdStopCW());
                     return;
-                case 'enableMic':
                 case 'enableAudio':
+                    if (obj.value) {
+                        this._startRxAudio().catch(function (err) {
+                            console.error('SerialRigTransport: enableAudio failed:', err);
+                        });
+                    } else {
+                        this._stopRxAudio().catch(function () {});
+                    }
+                    return;
+                case 'enableMic':
+                    // Phase 2 TX audio (next chunk) — drop for now.
                     return;
                 default:
                     return;
             }
         }
 
-        sendAudioFrame(/* buffer */) { /* Phase 2 */ }
+        sendAudioFrame(buffer) {
+            // Frame format: [0x03][0x00][seq u16LE][rsv u16LE][PCM Int16 LE]
+            if (!buffer || buffer.byteLength < 8) return;
+            var view = new DataView(buffer);
+            if (view.getUint8(0) !== 0x03) return;
+
+            // Lazy-init the TX context the first time we get audio. The
+            // SPA fires this from a user gesture (PTT click, FT8 TX click,
+            // mic click) so AudioContext + setSinkId calls are allowed.
+            var self = this;
+            if (!this._txAudio.ctx) {
+                this._ensureTxAudioCtx().catch(function (e) {
+                    console.error('SerialRigTransport: TX audio init failed:', e);
+                });
+                return;  // drop this chunk; subsequent chunks will play
+            }
+            if (!this._txAudio.node) return;
+
+            // Convert Int16 PCM to Float32 [-1..1] for the playback worklet.
+            var int16 = new Int16Array(buffer, 6);
+            var f32 = new Float32Array(int16.length);
+            for (var i = 0; i < int16.length; i++) f32[i] = int16[i] / 32768;
+            try {
+                this._txAudio.node.port.postMessage(f32);
+            } catch (e) {
+                /* node may have been closed mid-call */
+            }
+        }
+
+        async _ensureTxAudioCtx() {
+            if (this._txAudio.ctx) return;
+            if (this._txAudio.initPromise) return this._txAudio.initPromise;
+            var self = this;
+            this._txAudio.initPromise = (async function () {
+                var ctx = new AudioContext({ sampleRate: 48000 });
+
+                // Pick the rig USB audio output device. Use a saved id if
+                // available; otherwise look for a label that matches the
+                // rig family. The user must have already granted audio
+                // permission via RX audio for labels to be readable.
+                var deviceId = null;
+                try { deviceId = localStorage.getItem('directTxAudioId'); } catch (e) { /* ignore */ }
+                if (!deviceId) {
+                    try {
+                        var devices = await navigator.mediaDevices.enumerateDevices();
+                        var rigPattern = /(USB Audio CODEC|USB-PCM Audio|IC-7300|IC-705|IC-9700|IC-7610|IC-7100|IC-9100|CP210|Burr-Brown|PCM29|PCM30)/i;
+                        for (var i = 0; i < devices.length; i++) {
+                            var d = devices[i];
+                            if (d.kind === 'audiooutput' && rigPattern.test(d.label)) {
+                                deviceId = d.deviceId;
+                                console.log('SerialRigTransport: using TX audio device:', d.label);
+                                try { localStorage.setItem('directTxAudioId', deviceId); } catch (e) { /* ignore */ }
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Could not enumerate audio devices for TX:', e);
+                    }
+                }
+                self._txAudio.deviceId = deviceId;
+
+                if (deviceId && typeof ctx.setSinkId === 'function') {
+                    try {
+                        await ctx.setSinkId(deviceId);
+                    } catch (e) {
+                        console.warn('AudioContext.setSinkId failed:', e);
+                    }
+                }
+                // Chromium creates AudioContexts in 'suspended' state until a
+                // user gesture; without resume() the worklet never runs and
+                // the rig hears silence. PTT firing in FT8 (control-plane
+                // gesture) doesn't auto-resume an unrelated context.
+                if (ctx.state === 'suspended') {
+                    try { await ctx.resume(); } catch (e) {
+                        console.warn('AudioContext.resume failed:', e);
+                    }
+                }
+
+                // Playback worklet: ring buffer fed by main-thread postMessage.
+                // ~1.5 s capacity is plenty for a TX queue.
+                var workletCode =
+                    'class TxPlayback extends AudioWorkletProcessor {' +
+                    '  constructor() {' +
+                    '    super();' +
+                    '    this.buffer = new Float32Array(sampleRate * 1.5);' +
+                    '    this.writePos = 0; this.readPos = 0; this.buffered = 0;' +
+                    '    this.port.onmessage = (e) => {' +
+                    '      var s = e.data; var len = s.length; var bufLen = this.buffer.length;' +
+                    '      for (var i = 0; i < len; i++) { this.buffer[this.writePos] = s[i]; this.writePos = (this.writePos + 1) % bufLen; }' +
+                    '      this.buffered += len; if (this.buffered > bufLen) this.buffered = bufLen;' +
+                    '    };' +
+                    '  }' +
+                    '  process(inputs, outputs) {' +
+                    '    var output = outputs[0][0]; if (!output) return true;' +
+                    '    var bufLen = this.buffer.length;' +
+                    '    for (var i = 0; i < output.length; i++) {' +
+                    '      if (this.buffered > 0) { output[i] = this.buffer[this.readPos]; this.readPos = (this.readPos + 1) % bufLen; this.buffered--; }' +
+                    '      else { output[i] = 0; }' +
+                    '    }' +
+                    '    return true;' +
+                    '  }' +
+                    '}' +
+                    'registerProcessor("wfweb-tx-playback", TxPlayback);';
+                var url = URL.createObjectURL(new Blob([workletCode], { type: 'application/javascript' }));
+                await ctx.audioWorklet.addModule(url);
+                URL.revokeObjectURL(url);
+
+                var node = new AudioWorkletNode(ctx, 'wfweb-tx-playback');
+                node.connect(ctx.destination);
+
+                self._txAudio.ctx = ctx;
+                self._txAudio.node = node;
+                console.log('SerialRigTransport: TX audio ready — sinkId=' +
+                    (ctx.sinkId || '(default)') + ', deviceId=' +
+                    (deviceId ? deviceId.slice(0, 12) + '…' : '(none)') +
+                    ', state=' + ctx.state);
+            })();
+            return this._txAudio.initPromise;
+        }
+
+        async _stopTxAudio() {
+            if (this._txAudio.node) {
+                try { this._txAudio.node.disconnect(); } catch (e) { /* ignore */ }
+                this._txAudio.node = null;
+            }
+            if (this._txAudio.ctx) {
+                try { await this._txAudio.ctx.close(); } catch (e) { /* ignore */ }
+                this._txAudio.ctx = null;
+            }
+            this._txAudio.initPromise = null;
+        }
 
         // ----------------------------------------------------------------
         // Detection + open
@@ -822,8 +984,9 @@
                 hasMainSub: false,
                 hasSpectrum: true,    // we'll stream scope data via 0x27 0x00
                 spectAmpMax: 160,     // Icom amplitude scale (matches C++ wfweb)
-                audioAvailable: false,
-                txAudioAvailable: false,
+                audioAvailable: true,    // Phase 2: rig USB audio via getUserMedia
+                audioSampleRate: 48000,
+                txAudioAvailable: true,  // Phase 2: setSinkId to rig USB output
                 hasPowerControl: false,
             });
         }
@@ -880,7 +1043,157 @@
             if (!this._open) return;
             this._open = false;
             this._stopPolling();
+            this._stopRxAudio().catch(function () {});
+            this._stopTxAudio().catch(function () {});
             this.dispatchEvent(new CustomEvent('close', { detail: { reason: reason } }));
+        }
+
+        // ----------------------------------------------------------------
+        // RX audio (Phase 2): rig USB audio → AudioWorklet → 0x02 frames
+        // ----------------------------------------------------------------
+
+        async _startRxAudio() {
+            if (this._rxAudio.enabled) return;
+            this._rxAudio.enabled = true;
+
+            var stream = await this._openRxStream();
+            this._rxAudio.stream = stream;
+
+            // AudioContext at 48kHz to match what we tell the SPA in rigInfo.
+            // The browser resamples the device's native rate as needed.
+            var ctx = new AudioContext({ sampleRate: 48000 });
+            this._rxAudio.ctx = ctx;
+
+            // Inline AudioWorklet processor — copies Float32 input to main
+            // thread. The SPA does the rest of the work (Int16 conversion is
+            // done here, then handed off to handleAudioData via 0x02 frame).
+            var workletCode =
+                'class RxCapture extends AudioWorkletProcessor {' +
+                '  process(inputs) {' +
+                '    var i = inputs[0];' +
+                '    if (i && i[0]) this.port.postMessage(i[0].slice());' +
+                '    return true;' +
+                '  }' +
+                '}' +
+                'registerProcessor("wfweb-rx-capture", RxCapture);';
+            var url = URL.createObjectURL(new Blob([workletCode], { type: 'application/javascript' }));
+            await ctx.audioWorklet.addModule(url);
+            URL.revokeObjectURL(url);
+
+            var src = ctx.createMediaStreamSource(stream);
+            var node = new AudioWorkletNode(ctx, 'wfweb-rx-capture');
+            src.connect(node);
+            // Intentionally no connect to ctx.destination — this context
+            // is capture-only; the SPA's playback path owns the speakers.
+
+            this._rxAudio.source = src;
+            this._rxAudio.node = node;
+
+            // Tell the SPA audio is now enabled so handleAudioData() starts
+            // accepting our synthesized 0x02 frames. Without this, audioEnabled
+            // stays false and every incoming frame is dropped at the top of
+            // handleAudioData. dispatchEvent runs the SPA listener
+            // synchronously, so audioEnabled is true before we set up
+            // port.onmessage and the first sample chunk flows.
+            this._emit('audioStatus', { enabled: true, sampleRate: 48000 });
+
+            var self = this;
+            node.port.onmessage = function (e) {
+                if (!self._rxAudio.enabled) return;
+                var f32 = e.data;
+                var int16 = new Int16Array(f32.length);
+                for (var i = 0; i < f32.length; i++) {
+                    var s = f32[i];
+                    if (s > 1) s = 1; else if (s < -1) s = -1;
+                    int16[i] = (s * 32767) | 0;
+                }
+                // Binary 0x02 frame format: [0x02][0x00][seq u16LE][rsv u16LE][PCM Int16 LE]
+                var buf = new ArrayBuffer(6 + int16.byteLength);
+                var view = new DataView(buf);
+                view.setUint8(0, 0x02);
+                view.setUint8(1, 0x00);
+                view.setUint16(2, (self._rxAudio.seq++) & 0xFFFF, true);
+                view.setUint16(4, 0, true);
+                new Int16Array(buf, 6).set(int16);
+                self.dispatchEvent(new CustomEvent('binary', { detail: buf }));
+            };
+        }
+
+        async _openRxStream() {
+            var savedId = null;
+            try { savedId = localStorage.getItem('directRxAudioId'); } catch (e) { /* ignore */ }
+            var constraints = {
+                echoCancellation: false,
+                noiseSuppression: false,
+                autoGainControl: false,
+            };
+
+            // Try the previously-saved device first — no picker prompt if
+            // the user has already authorised this origin for audio.
+            if (savedId) {
+                try {
+                    var c1 = Object.assign({ deviceId: { exact: savedId } }, constraints);
+                    return await navigator.mediaDevices.getUserMedia({ audio: c1 });
+                } catch (e) {
+                    console.warn('Saved RX audio device failed, falling back:', e);
+                }
+            }
+
+            // Fall back to default — this prompts the user the first time
+            // and gets permission so enumerateDevices() returns labels.
+            var stream = await navigator.mediaDevices.getUserMedia({ audio: constraints });
+
+            // Try to find a device that looks like the rig. If found and
+            // it isn't what getUserMedia gave us, switch and persist.
+            try {
+                var devices = await navigator.mediaDevices.enumerateDevices();
+                var rigPattern = /(USB Audio CODEC|USB-PCM Audio|IC-7300|IC-705|IC-9700|IC-7610|IC-7100|IC-9100|CP210|Burr-Brown|PCM29|PCM30)/i;
+                var rigDev = null;
+                for (var i = 0; i < devices.length; i++) {
+                    var d = devices[i];
+                    if (d.kind === 'audioinput' && rigPattern.test(d.label)) {
+                        rigDev = d;
+                        break;
+                    }
+                }
+                var currentId = stream.getAudioTracks()[0] && stream.getAudioTracks()[0].getSettings().deviceId;
+                if (rigDev && rigDev.deviceId !== currentId) {
+                    try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { /* ignore */ }
+                    var c2 = Object.assign({ deviceId: { exact: rigDev.deviceId } }, constraints);
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: c2 });
+                    try { localStorage.setItem('directRxAudioId', rigDev.deviceId); } catch (e) { /* ignore */ }
+                    console.log('SerialRigTransport: using RX audio device:', rigDev.label);
+                } else if (currentId) {
+                    try { localStorage.setItem('directRxAudioId', currentId); } catch (e) { /* ignore */ }
+                }
+            } catch (e) {
+                console.warn('Could not enumerate audio devices:', e);
+            }
+
+            return stream;
+        }
+
+        async _stopRxAudio() {
+            if (!this._rxAudio.enabled && !this._rxAudio.ctx) return;
+            this._rxAudio.enabled = false;
+            this._emit('audioStatus', { enabled: false });
+            if (this._rxAudio.node) {
+                try { this._rxAudio.node.port.onmessage = null; } catch (e) { /* ignore */ }
+                try { this._rxAudio.node.disconnect(); } catch (e) { /* ignore */ }
+                this._rxAudio.node = null;
+            }
+            if (this._rxAudio.source) {
+                try { this._rxAudio.source.disconnect(); } catch (e) { /* ignore */ }
+                this._rxAudio.source = null;
+            }
+            if (this._rxAudio.stream) {
+                try { this._rxAudio.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { /* ignore */ }
+                this._rxAudio.stream = null;
+            }
+            if (this._rxAudio.ctx) {
+                try { await this._rxAudio.ctx.close(); } catch (e) { /* ignore */ }
+                this._rxAudio.ctx = null;
+            }
         }
     }
 
