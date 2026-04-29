@@ -5029,7 +5029,8 @@ void webServer::onRxConverted(audioPacket audio)
 }
 
 
-void webServer::setupUsbAudio(quint32 sampleRate)
+void webServer::setupUsbAudio(quint32 sampleRate, QString preferredInputName,
+                              QString preferredOutputName)
 {
     if (sampleRate > 0) {
         rigSampleRate = sampleRate;
@@ -5044,21 +5045,46 @@ void webServer::setupUsbAudio(quint32 sampleRate)
     CoInitializeEx(NULL, COINIT_MULTITHREADED);
 #endif
 
-    // Find the rig's USB audio capture device.
-    // With PulseAudio the IC-7300 shows as "USB Audio CODEC" (matches "USB").
-    // With the ALSA backend (used in offscreen/headless mode) it shows as
-    // "hw:CARD=CODEC,DEV=0" — no "USB" in the name, so we also match "CODEC".
+    // Prefer the resolved name (so we pin to the same physical device the
+    // rigCommander side picked). Fall back to the legacy USB/CODEC heuristic
+    // for single-CODEC setups where no name was supplied.
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QAudioDeviceInfo usbDevice;
     bool found = false;
     qInfo() << "Web: Available audio input devices:";
-    for (const QAudioDeviceInfo &dev : QAudioDeviceInfo::availableDevices(QAudio::AudioInput)) {
+    QList<QAudioDeviceInfo> inputDevices = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
+    for (const QAudioDeviceInfo &dev : inputDevices) {
         qInfo() << "Web:  " << dev.deviceName();
-        if (!found && (dev.deviceName().contains("USB", Qt::CaseInsensitive) ||
-                       dev.deviceName().contains("CODEC", Qt::CaseInsensitive))) {
-            usbDevice = dev;
-            found = true;
-            qInfo() << "Web: Selected rig audio device:" << dev.deviceName();
+    }
+    if (!preferredInputName.isEmpty()) {
+        for (const QAudioDeviceInfo &dev : inputDevices) {
+            if (dev.deviceName() == preferredInputName) {
+                usbDevice = dev;
+                found = true;
+                qInfo() << "Web: Selected rig audio device (exact match):" << dev.deviceName();
+                break;
+            }
+        }
+        if (!found) {
+            for (const QAudioDeviceInfo &dev : inputDevices) {
+                if (dev.deviceName().contains(preferredInputName, Qt::CaseInsensitive)) {
+                    usbDevice = dev;
+                    found = true;
+                    qInfo() << "Web: Selected rig audio device (substring match):" << dev.deviceName();
+                    break;
+                }
+            }
+        }
+    }
+    if (!found) {
+        for (const QAudioDeviceInfo &dev : inputDevices) {
+            if (dev.deviceName().contains("USB", Qt::CaseInsensitive) ||
+                dev.deviceName().contains("CODEC", Qt::CaseInsensitive)) {
+                usbDevice = dev;
+                found = true;
+                qInfo() << "Web: Selected rig audio device:" << dev.deviceName();
+                break;
+            }
         }
     }
     if (!found) {
@@ -5105,11 +5131,36 @@ void webServer::setupUsbAudio(quint32 sampleRate)
     QList<QAudioDevice> inputDevices = QMediaDevices::audioInputs();
     for (const QAudioDevice &dev : inputDevices) {
         qInfo() << "Web:  " << dev.description();
-        if (!found && (dev.description().contains("USB", Qt::CaseInsensitive) ||
-                       dev.description().contains("CODEC", Qt::CaseInsensitive))) {
-            usbDevice = dev;
-            found = true;
-            qInfo() << "Web: Selected rig audio device:" << dev.description();
+    }
+    if (!preferredInputName.isEmpty()) {
+        for (const QAudioDevice &dev : inputDevices) {
+            if (dev.description() == preferredInputName) {
+                usbDevice = dev;
+                found = true;
+                qInfo() << "Web: Selected rig audio device (exact match):" << dev.description();
+                break;
+            }
+        }
+        if (!found) {
+            for (const QAudioDevice &dev : inputDevices) {
+                if (dev.description().contains(preferredInputName, Qt::CaseInsensitive)) {
+                    usbDevice = dev;
+                    found = true;
+                    qInfo() << "Web: Selected rig audio device (substring match):" << dev.description();
+                    break;
+                }
+            }
+        }
+    }
+    if (!found) {
+        for (const QAudioDevice &dev : inputDevices) {
+            if (dev.description().contains("USB", Qt::CaseInsensitive) ||
+                dev.description().contains("CODEC", Qt::CaseInsensitive)) {
+                usbDevice = dev;
+                found = true;
+                qInfo() << "Web: Selected rig audio device:" << dev.description();
+                break;
+            }
         }
     }
     if (!found) {
@@ -5254,17 +5305,41 @@ void webServer::setupUsbAudio(quint32 sampleRate)
     qInfo() << "Web: USB audio capture configured, sampleRate=" << rigSampleRate
             << "channels=" << format.channelCount();
 
-    // Also configure USB audio output (playback) for TX audio
+    // Also configure USB audio output (playback) for TX audio.
+    // Same matching strategy as the input above.
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QAudioDeviceInfo usbOutDevice;
     bool outFound = false;
-    for (const QAudioDeviceInfo &dev : QAudioDeviceInfo::availableDevices(QAudio::AudioOutput)) {
-        if (dev.deviceName().contains("USB", Qt::CaseInsensitive) ||
-            dev.deviceName().contains("CODEC", Qt::CaseInsensitive)) {
-            usbOutDevice = dev;
-            outFound = true;
-            qInfo() << "Web: Found rig audio output device:" << dev.deviceName();
-            break;
+    QList<QAudioDeviceInfo> outputDevices = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
+    if (!preferredOutputName.isEmpty()) {
+        for (const QAudioDeviceInfo &dev : outputDevices) {
+            if (dev.deviceName() == preferredOutputName) {
+                usbOutDevice = dev;
+                outFound = true;
+                qInfo() << "Web: Found rig audio output device (exact match):" << dev.deviceName();
+                break;
+            }
+        }
+        if (!outFound) {
+            for (const QAudioDeviceInfo &dev : outputDevices) {
+                if (dev.deviceName().contains(preferredOutputName, Qt::CaseInsensitive)) {
+                    usbOutDevice = dev;
+                    outFound = true;
+                    qInfo() << "Web: Found rig audio output device (substring match):" << dev.deviceName();
+                    break;
+                }
+            }
+        }
+    }
+    if (!outFound) {
+        for (const QAudioDeviceInfo &dev : outputDevices) {
+            if (dev.deviceName().contains("USB", Qt::CaseInsensitive) ||
+                dev.deviceName().contains("CODEC", Qt::CaseInsensitive)) {
+                usbOutDevice = dev;
+                outFound = true;
+                qInfo() << "Web: Found rig audio output device:" << dev.deviceName();
+                break;
+            }
         }
     }
     if (outFound) {
@@ -5299,13 +5374,36 @@ void webServer::setupUsbAudio(quint32 sampleRate)
 #else
     QAudioDevice usbOutDevice;
     bool outFound = false;
-    for (const QAudioDevice &dev : QMediaDevices::audioOutputs()) {
-        if (dev.description().contains("USB", Qt::CaseInsensitive) ||
-            dev.description().contains("CODEC", Qt::CaseInsensitive)) {
-            usbOutDevice = dev;
-            outFound = true;
-            qInfo() << "Web: Found rig audio output device:" << dev.description();
-            break;
+    QList<QAudioDevice> outputDevices = QMediaDevices::audioOutputs();
+    if (!preferredOutputName.isEmpty()) {
+        for (const QAudioDevice &dev : outputDevices) {
+            if (dev.description() == preferredOutputName) {
+                usbOutDevice = dev;
+                outFound = true;
+                qInfo() << "Web: Found rig audio output device (exact match):" << dev.description();
+                break;
+            }
+        }
+        if (!outFound) {
+            for (const QAudioDevice &dev : outputDevices) {
+                if (dev.description().contains(preferredOutputName, Qt::CaseInsensitive)) {
+                    usbOutDevice = dev;
+                    outFound = true;
+                    qInfo() << "Web: Found rig audio output device (substring match):" << dev.description();
+                    break;
+                }
+            }
+        }
+    }
+    if (!outFound) {
+        for (const QAudioDevice &dev : outputDevices) {
+            if (dev.description().contains("USB", Qt::CaseInsensitive) ||
+                dev.description().contains("CODEC", Qt::CaseInsensitive)) {
+                usbOutDevice = dev;
+                outFound = true;
+                qInfo() << "Web: Found rig audio output device:" << dev.description();
+                break;
+            }
         }
     }
     if (outFound) {

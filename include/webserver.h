@@ -99,7 +99,8 @@ public slots:
     void receiveRigCaps(rigCapabilities* caps);
     void receiveRxAudio(audioPacket audio);
     void setupAudio(quint8 codec, quint32 sampleRate);
-    void setupUsbAudio(quint32 sampleRate);
+    void setupUsbAudio(quint32 sampleRate, QString preferredInputName = QString(),
+                       QString preferredOutputName = QString());
     void setLanInfo(bool isLan, bool connected);
     // Settings file used for persistent prefs written from the web layer.
     // Empty = use QSettings defaults (QCoreApplication org/app name).
