@@ -47,15 +47,23 @@
     var PROBE_BAUDS = [19200, 115200, 9600, 57600, 38400, 4800];
     var PROBE_TIMEOUT_MS = 500;
 
-    var DEFAULT_MODES = [
-        { num: 0, name: 'LSB' }, { num: 1, name: 'USB' },
-        { num: 2, name: 'AM' },  { num: 3, name: 'CW' },
-        { num: 4, name: 'RTTY' },{ num: 5, name: 'FM' },
-        { num: 7, name: 'CW-R' },{ num: 8, name: 'RTTY-R' },
-    ];
+    // The SPA's populateModes() expects a flat array of mode-name strings —
+    // mirrors what the C++ webserver sends.
+    var DEFAULT_MODES = ['LSB', 'USB', 'AM', 'CW', 'RTTY', 'FM', 'CW-R', 'RTTY-R'];
+    // populateFilters() takes [{num, name}, ...]
     var DEFAULT_FILTERS = [
         { num: 1, name: 'FIL1' }, { num: 2, name: 'FIL2' }, { num: 3, name: 'FIL3' },
     ];
+
+    // Icom S-meter raw BCD (0..241) → dB relative to S9 (-54..+60), the
+    // scale the SPA's drawSMeter() expects.
+    //   0   → -54 dB (S0)
+    //   120 →   0 dB (S9)
+    //   241 → +60 dB (S9+60)
+    function rawSMeterToDb(raw) {
+        if (raw <= 120) return (raw - 120) * 54 / 120;   // -54..0
+        return Math.min(60, (raw - 120) * 60 / 121);     // 0..60
+    }
 
     var HANDLED_CMDS = {
         getStatus: true, setFrequency: true, setMode: true,
@@ -429,11 +437,12 @@
                 return;
             }
 
-            var sMeterValue = civ.parseSMeterReply(payload);
-            if (sMeterValue !== null) {
-                if (sMeterValue !== this.state.sMeter) {
-                    this.state.sMeter = sMeterValue;
-                    this._emit('meters', { sMeter: sMeterValue });
+            var sMeterRaw = civ.parseSMeterReply(payload);
+            if (sMeterRaw !== null) {
+                var sMeterDb = rawSMeterToDb(sMeterRaw);
+                if (sMeterDb !== this.state.sMeter) {
+                    this.state.sMeter = sMeterDb;
+                    this._emit('meters', { sMeter: sMeterDb });
                 }
                 return;
             }
