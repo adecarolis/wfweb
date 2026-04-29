@@ -328,6 +328,25 @@
         return new Uint8Array([0x17, 0xFF, 0xFF]);
     }
 
+    // ---------- Scope center-span (cmd 0x27 0x15) -----------------------
+    // 3 BCD-LE bytes give the ± half-span in Hz (e.g. ±50kHz = 50000).
+    // Frame layout matches the C++ wfweb's funcScopeSpan: cmd sub recv data.
+    function cmdSetScopeSpan(hz) {
+        var bcd = encodeBcdLE(hz, 3);
+        var out = new Uint8Array(3 + 3);
+        out[0] = 0x27; out[1] = 0x15; out[2] = 0x00;  // recv = 0 (single-receiver)
+        out.set(bcd, 3);
+        return out;
+    }
+    function cmdReadScopeSpan() {
+        return new Uint8Array([0x27, 0x15, 0x00]);
+    }
+    function parseScopeSpanReply(payload) {
+        // [0x27, 0x15, recv, b0, b1, b2]
+        if (payload.length < 6 || payload[0] !== 0x27 || payload[1] !== 0x15) return null;
+        return decodeBcdLE(payload.slice(3, 6));
+    }
+
     // Probe frame for auto-detecting the rig: broadcast read-transceiver-ID.
     // Any rig listening on the bus replies with its own CI-V address in the
     // frame's "from" field (regardless of how the rig is currently addressed).
@@ -424,6 +443,9 @@
         cmdReadAlcMeter: cmdReadAlcMeter,
         cmdSendCW: cmdSendCW,
         cmdStopCW: cmdStopCW,
+        cmdSetScopeSpan: cmdSetScopeSpan,
+        cmdReadScopeSpan: cmdReadScopeSpan,
+        parseScopeSpanReply: parseScopeSpanReply,
         // response parsers
         parseFrequencyReply: parseFrequencyReply,
         parseModeReply: parseModeReply,
