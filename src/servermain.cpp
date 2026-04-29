@@ -201,8 +201,18 @@ void servermain::openRig()
             QMetaObject::invokeMethod(web, "setupAudio", Qt::QueuedConnection,
                 Q_ARG(quint8, rxSetup.codec), Q_ARG(quint32, rxSetup.sampleRate));
         } else {
+            // Pass the resolved device names so the webserver matches the
+            // same physical device the rigCommander did (#43).
+            QString preferredIn;
+            QString preferredOut;
+            if (!serverConfig.rigs.isEmpty()) {
+                preferredIn = serverConfig.rigs.first()->rxAudioSetup.name;
+                preferredOut = serverConfig.rigs.first()->txAudioSetup.name;
+            }
             QMetaObject::invokeMethod(web, "setupUsbAudio", Qt::QueuedConnection,
-                Q_ARG(quint32, 48000));
+                Q_ARG(quint32, 48000),
+                Q_ARG(QString, preferredIn),
+                Q_ARG(QString, preferredOut));
         }
 
     }
