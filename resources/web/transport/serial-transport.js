@@ -55,6 +55,18 @@
         { num: 1, name: 'FIL1' }, { num: 2, name: 'FIL2' }, { num: 3, name: 'FIL3' },
     ];
 
+    // Icom scope center-span table. Identical across IC-7300 / IC-705 /
+    // IC-9700 (the modern HF/VHF rigs).
+    var DEFAULT_SPANS = [
+        { num: 0, name: '±2.5k', hz: 2500   },
+        { num: 1, name: '±5k',   hz: 5000   },
+        { num: 2, name: '±10k',  hz: 10000  },
+        { num: 3, name: '±25k',  hz: 25000  },
+        { num: 4, name: '±50k',  hz: 50000  },
+        { num: 5, name: '±100k', hz: 100000 },
+        { num: 6, name: '±250k', hz: 250000 },
+    ];
+
     // Icom S-meter raw BCD (0..241) → dB relative to S9 (-54..+60), the
     // scale the SPA's drawSMeter() expects.
     //   0   → -54 dB (S0)
@@ -120,7 +132,7 @@
         // VFO ops
         selectVFO: true, swapVFO: true, equalizeVFO: true, setSplit: true,
         // Misc
-        setTuner: true, setPower: true,
+        setTuner: true, setPower: true, setSpan: true,
         // CW
         sendCW: true, stopCW: true,
         // Anything else (FreeDV, packet, memory, span, filter shape, LAN
@@ -333,6 +345,15 @@
                 case 'setPower':
                     this._enqueue('setPower', civ.cmdSetPower(!!obj.value));
                     return;
+                case 'setSpan':
+                    var spIdx = (typeof obj.value === 'number') ? obj.value : -1;
+                    if (spIdx >= 0 && spIdx < DEFAULT_SPANS.length) {
+                        var spHz = DEFAULT_SPANS[spIdx].hz;
+                        this.state.spanIndex = spIdx;
+                        this._enqueue('setSpan', civ.cmdSetScopeSpan(spHz));
+                        this._emit('update', { spanIndex: spIdx });
+                    }
+                    return;
                 case 'sendCW':
                     if (typeof obj.text !== 'string' || !obj.text.length) return;
                     this._enqueue('sendCW', civ.cmdSendCW(obj.text));
@@ -502,6 +523,7 @@
             this._enqueue('readAttenuator', civ.cmdReadAttenuator());
             this._enqueue('readSplit',      civ.cmdReadSplit());
             this._enqueue('readTuner',      civ.cmdReadTuner());
+            this._enqueue('readScopeSpan',  civ.cmdReadScopeSpan());
 
             // Enable scope output (waterfall). Single-byte payloads match
             // the C++ wfweb's behaviour for single-receiver rigs.
@@ -571,6 +593,23 @@
             // emitted to the SPA as a binary 0x01 message when complete.
             if (payload.length >= 2 && payload[0] === 0x27 && payload[1] === 0x00) {
                 this._handleScopeFrame(payload);
+                return;
+            }
+
+            // Scope center-span (0x27 0x15) — single frame, used to surface
+            // the rig's current span to the SPA's SPAN button.
+            if (payload.length >= 6 && payload[0] === 0x27 && payload[1] === 0x15) {
+                var spanHz = civ.parseScopeSpanReply(payload);
+                if (spanHz !== null) {
+                    var idx = -1;
+                    for (var k = 0; k < DEFAULT_SPANS.length; k++) {
+                        if (DEFAULT_SPANS[k].hz === spanHz) { idx = k; break; }
+                    }
+                    if (idx >= 0 && this.state.spanIndex !== idx) {
+                        this.state.spanIndex = idx;
+                        this._emit('update', { spanIndex: idx });
+                    }
+                }
                 return;
             }
 
@@ -778,6 +817,7 @@
                 connected: true,
                 modes: DEFAULT_MODES,
                 filters: DEFAULT_FILTERS,
+                spans: DEFAULT_SPANS,
                 hasFilterSettings: true,
                 hasMainSub: false,
                 hasSpectrum: true,    // we'll stream scope data via 0x27 0x00
@@ -802,7 +842,7 @@
             var passthrough = ['afGain', 'rfGain', 'rfPower', 'squelch',
                 'micGain', 'monitorGain', 'pbtInner', 'pbtOuter', 'cwSpeed',
                 'autoNotch', 'nb', 'nr', 'preamp', 'attenuator',
-                'split', 'tuner'];
+                'split', 'tuner', 'spanIndex'];
             for (var i = 0; i < passthrough.length; i++) {
                 var k = passthrough[i];
                 if (this.state[k] !== undefined && this.state[k] !== null) s[k] = this.state[k];
