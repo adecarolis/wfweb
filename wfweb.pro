@@ -237,8 +237,8 @@ win32 {
     }
     LIBS += -lcodec2
 }
-SOURCES += src/freedvprocessor.cpp src/freedvreporter.cpp
-HEADERS += include/freedvprocessor.h include/freedvreporter.h include/spotreporter.h
+SOURCES += src/freedvprocessor.cpp src/freedvreporter.cpp src/pskreporter.cpp
+HEADERS += include/freedvprocessor.h include/freedvreporter.h include/pskreporter.h include/spotreporter.h
 message("FreeDV codec2 support enabled")
 
 # Dire Wolf packet modem (AX.25 / APRS) — always built.
