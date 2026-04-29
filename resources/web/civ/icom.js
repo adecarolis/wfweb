@@ -215,6 +215,11 @@
         return new Uint8Array([0x19, 0x00]);
     }
 
+    // Probe frame for auto-detecting the rig: broadcast read-transceiver-ID.
+    // Any rig listening on the bus replies with its own CI-V address in the
+    // frame's "from" field (regardless of how the rig is currently addressed).
+    var PROBE_FRAME = new Uint8Array([0xFE, 0xFE, 0x00, 0xE0, 0x19, 0x00, 0xFD]);
+
     // ---------- Response parsers ------------------------------------------
     //
     // Parsers consume the frame payload (i.e. starting at the cmd byte).
@@ -267,6 +272,7 @@
 
     global.IcomCiv = {
         FE: FE, FD: FD, CONTROLLER_ADDR: CONTROLLER_ADDR,
+        PROBE_FRAME: PROBE_FRAME,
         buildFrame: buildFrame,
         CivParser: CivParser,
         encodeBcdLE: encodeBcdLE,
