@@ -2417,11 +2417,14 @@ body.digi-open .digi-bar {
     <div id="bottomBar"></div>
 </div>
 
+<script src="transport/rig-transport.js"></script>
+<script src="transport/websocket-transport.js"></script>
 <script>
 // ============================================================
 // STATE
 // ============================================================
-var ws = null;
+var transport = null;  // RigTransport instance (WebSocket today; Serial in Phase 1)
+var ws = null;         // alias to transport.ws — kept for legacy readyState checks
 var serverVersion = '';  // set from rigInfo message
 var rigModelName = '';   // set from rigInfo/rigConnected
 // Shared app-wide callsign (CW, FT8/FT4, FreeDV reporter, APRS, Terminal,
@@ -2673,20 +2676,12 @@ var DIGI_BANDS = [
 ];
 
 // ============================================================
-// WEBSOCKET (preserved)
+// TRANSPORT (rig connection — currently always WebSocket; Phase 1 adds Serial)
 // ============================================================
-function connect() {
-    var wsUrl;
-    if (location.protocol === 'https:') {
-        wsUrl = 'wss://' + location.hostname + ':' + (location.port || '443');
-    } else {
-        var wsPort = parseInt(location.port || '80') + 1;
-        wsUrl = 'ws://' + location.hostname + ':' + wsPort;
-    }
-    ws = new WebSocket(wsUrl);
-    ws.binaryType = 'arraybuffer';
-
-    ws.onopen = function() {
+function ensureTransport() {
+    if (transport) return;
+    transport = new WebSocketRigTransport();
+    transport.addEventListener('open', function() {
         document.getElementById('connDot').classList.add('connected');
         document.getElementById('connDot').title = 'Connected';
         if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
@@ -2694,8 +2689,8 @@ function connect() {
         // Restore reporter state from localStorage
         var rCb = document.getElementById('digiReporterEnable');
         if (rCb && rCb.checked) sendReporterConfig();
-    };
-    ws.onclose = function() {
+    });
+    transport.addEventListener('close', function() {
         document.getElementById('connDot').classList.remove('connected');
         document.getElementById('connDot').title = 'Disconnected';
         if (micEnabled) stopMic();
@@ -2704,12 +2699,15 @@ function connect() {
         txAudioAvailable = false;
         updateWarningVisibility();
         scheduleReconnect();
-    };
-    ws.onerror = function() {};
-    ws.onmessage = function(event) {
-        if (event.data instanceof ArrayBuffer) { handleBinaryMessage(event.data); return; }
-        try { handleMessage(JSON.parse(event.data)); } catch(e) { console.error('Parse error:', e); }
-    };
+    });
+    transport.addEventListener('message', function(e) { handleMessage(e.detail); });
+    transport.addEventListener('binary',  function(e) { handleBinaryMessage(e.detail); });
+}
+
+function connect() {
+    ensureTransport();
+    transport.connect();
+    ws = transport.ws;  // keep legacy alias up to date for readyState checks
 }
 
 function scheduleReconnect() {
@@ -2719,7 +2717,7 @@ function scheduleReconnect() {
 }
 
 function send(obj) {
-    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+    if (transport) transport.sendCommand(obj);
 }
 
 // ============================================================
