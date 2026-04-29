@@ -2833,6 +2833,21 @@ function send(obj) {
     if (wsTransport) wsTransport.sendCommand(obj);
 }
 
+// TX audio routing. In Server mode the 0x03 PCM frames go straight to the
+// C++ wfweb server over WS; in Direct mode they go to the rig's USB audio
+// output via SerialRigTransport.sendAudioFrame() (setSinkId path).
+function txAudioReady() {
+    if (controlMode === 'direct' && serialTransport && serialTransport.isOpen()) return true;
+    return ws && ws.readyState === WebSocket.OPEN;
+}
+function sendTxAudio(frame) {
+    if (controlMode === 'direct' && serialTransport && serialTransport.isOpen()) {
+        serialTransport.sendAudioFrame(frame);
+        return;
+    }
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(frame);
+}
+
 function setControlMode(mode) {
     if (mode !== 'server' && mode !== 'direct') return;
     if (mode === controlMode) return;
@@ -4957,14 +4972,14 @@ function startMic() {
             source.connect(micWorkletNode);
             micWorkletNode.port.onmessage = function(e) {
                 // Suppress during DIGI TX (FT8 audio uses same type-0x03 channel)
-                if (!micEnabled || !ws || ws.readyState !== WebSocket.OPEN || digiTxActive) return;
+                if (!micEnabled || !txAudioReady() || digiTxActive) return;
                 var pcmBuffer = e.data;
                 var frame = new ArrayBuffer(6 + pcmBuffer.byteLength);
                 var view = new DataView(frame);
                 view.setUint8(0, 0x03); view.setUint8(1, 0x00);
                 view.setUint16(2, micSeq++ & 0xFFFF, true); view.setUint16(4, 0, true);
                 new Uint8Array(frame, 6).set(new Uint8Array(pcmBuffer));
-                ws.send(frame);
+                sendTxAudio(frame);
             };
             micEnabled = true;
             send({ cmd: 'enableMic', value: true });
@@ -7563,7 +7578,7 @@ function startDigiTune() {
     var PTT_AFTER_CHUNKS = 9;
 
     function sendTuneChunk(i16buf) {
-        if (!ws || ws.readyState !== WebSocket.OPEN || !digiTuneActive) return;
+        if (!txAudioReady() || !digiTuneActive) return;
         var samples = new Int16Array(i16buf);
         for (var g = 0; g < samples.length; g++) samples[g] = (samples[g] * digiTxGain) | 0;
         i16buf = samples.buffer;
@@ -7573,7 +7588,7 @@ function startDigiTune() {
         dv.setUint16(2, (seq++) & 0xFFFF, true);
         dv.setUint16(4, 0, true);
         new Uint8Array(frame, 6).set(new Uint8Array(i16buf));
-        ws.send(frame);
+        sendTxAudio(frame);
         chunksSent++;
         if (chunksSent === PTT_AFTER_CHUNKS) {
             send({ cmd: 'setPTT', value: true });
@@ -7693,9 +7708,9 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
     var PTT_AFTER_CHUNKS = 9;
 
     function sendInt16Chunk(i16buf) {
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-            console.warn('[DIGI stream] sendInt16Chunk: WS not open (state=' +
-                         (ws ? ws.readyState : 'null') + ') chunk#' + (chunksSent + 1));
+        if (!txAudioReady()) {
+            console.warn('[DIGI stream] sendInt16Chunk: tx audio not ready, chunk#' +
+                         (chunksSent + 1));
             return;
         }
         var samples = new Int16Array(i16buf);
@@ -7707,7 +7722,7 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
         dv.setUint16(2, (seq++) & 0xFFFF, true);
         dv.setUint16(4, 0, true);
         new Uint8Array(frame, 6).set(new Uint8Array(i16buf));
-        ws.send(frame);
+        sendTxAudio(frame);
         chunksSent++;
         if (chunksSent === 1) console.log('[DIGI stream] first chunk sent (' + i16buf.byteLength + ' bytes)');
         if (chunksSent === PTT_AFTER_CHUNKS) {
