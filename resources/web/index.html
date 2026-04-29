@@ -2790,6 +2790,7 @@ function ensureSerialTransport() {
         onTransportClose();
     });
     serialTransport.addEventListener('message', function (e) { handleMessage(e.detail); });
+    serialTransport.addEventListener('binary',  function (e) { handleBinaryMessage(e.detail); });
 }
 
 function connect() {

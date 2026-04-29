@@ -215,6 +215,119 @@
         return new Uint8Array([0x19, 0x00]);
     }
 
+    // ---------- Analog levels (cmd 0x14) ---------------------------------
+    // Sub-commands map to functions like AF gain, RF gain, etc. Values are
+    // 0..255 encoded as 4-digit BCD in 2 bytes (encodeBcdLevel format).
+    function cmdReadAnalogLevel(sub) {
+        return new Uint8Array([0x14, sub]);
+    }
+    function cmdSetAnalogLevel(sub, level) {
+        var bcd = encodeBcdLevel(level);
+        var out = new Uint8Array(2 + bcd.length);
+        out[0] = 0x14; out[1] = sub;
+        out.set(bcd, 2);
+        return out;
+    }
+    function parseAnalogLevelReply(payload) {
+        // [0x14, sub, b0, b1]  -> { sub, value }
+        if (payload.length < 4 || payload[0] !== 0x14) return null;
+        return { sub: payload[1], value: decodeBcdLevel(payload[2], payload[3]) };
+    }
+
+    // ---------- Bool toggles (cmd 0x16) ----------------------------------
+    function cmdReadBoolFunc(sub) {
+        return new Uint8Array([0x16, sub]);
+    }
+    function cmdSetBoolFunc(sub, on) {
+        return new Uint8Array([0x16, sub, on ? 0x01 : 0x00]);
+    }
+    // Preamp is multi-state (0=off, 1=Pre1, 2=Pre2). Treat separately.
+    function cmdSetPreamp(level) {
+        return new Uint8Array([0x16, 0x02, level & 0xFF]);
+    }
+    function parseBoolFuncReply(payload) {
+        // [0x16, sub, value]
+        if (payload.length < 3 || payload[0] !== 0x16) return null;
+        return { sub: payload[1], value: payload[2] };
+    }
+
+    // ---------- Attenuator (cmd 0x11) ------------------------------------
+    function cmdReadAttenuator() { return new Uint8Array([0x11]); }
+    function cmdSetAttenuator(dB) {
+        // 0 = off, otherwise BCD-encoded dB value (0x14 = 20dB on IC-7300)
+        return new Uint8Array([0x11, encodeBcd2(dB)]);
+    }
+    function parseAttenuatorReply(payload) {
+        // [0x11, level]
+        if (payload.length < 2 || payload[0] !== 0x11) return null;
+        // BCD-decode the level byte to dB
+        var hi = (payload[1] >> 4) & 0x0F;
+        var lo = payload[1] & 0x0F;
+        return hi * 10 + lo;
+    }
+
+    // ---------- Split (cmd 0x0F) -----------------------------------------
+    // 0x0F (no value) = read current split state
+    // 0x0F 0x00 = set split off, 0x0F 0x01 = set split on
+    function cmdReadSplit() { return new Uint8Array([0x0F]); }
+    function cmdSetSplit(on) {
+        return new Uint8Array([0x0F, on ? 0x01 : 0x00]);
+    }
+    function parseSplitReply(payload) {
+        if (payload.length < 2 || payload[0] !== 0x0F) return null;
+        return payload[1] !== 0;
+    }
+
+    // ---------- VFO ops (cmd 0x07) ---------------------------------------
+    function cmdSelectVFO(letter) {
+        // 'A' -> 0x07 0x00, 'B' -> 0x07 0x01
+        return new Uint8Array([0x07, letter === 'B' ? 0x01 : 0x00]);
+    }
+    function cmdSwapVFO()      { return new Uint8Array([0x07, 0xB0]); }
+    function cmdEqualizeVFO()  { return new Uint8Array([0x07, 0xA0]); }
+
+    // ---------- Tuner (cmd 0x1C 0x01) ------------------------------------
+    // value: 0 = off, 1 = on, 2 = start tune
+    function cmdSetTuner(value) {
+        return new Uint8Array([0x1C, 0x01, value & 0xFF]);
+    }
+    function cmdReadTuner() { return new Uint8Array([0x1C, 0x01]); }
+    function parseTunerReply(payload) {
+        if (payload.length < 3 || payload[0] !== 0x1C || payload[1] !== 0x01) return null;
+        return payload[2];
+    }
+
+    // ---------- Power on/off (cmd 0x18) ----------------------------------
+    function cmdSetPower(on) {
+        // Power-on from a powered-off rig requires a long FE preamble. The
+        // simple form here works while the rig is already on (turn it off)
+        // or for the rare case where transceive auto-on is configured.
+        return new Uint8Array([0x18, on ? 0x01 : 0x00]);
+    }
+
+    // ---------- TX meters (cmd 0x15 0x11/0x12/0x13) ----------------------
+    function cmdReadPowerMeter() { return new Uint8Array([0x15, 0x11]); }
+    function cmdReadSwrMeter()   { return new Uint8Array([0x15, 0x12]); }
+    function cmdReadAlcMeter()   { return new Uint8Array([0x15, 0x13]); }
+    function parseTxMeterReply(payload, sub) {
+        if (payload.length < 4 || payload[0] !== 0x15 || payload[1] !== sub) return null;
+        return decodeBcdLevel(payload[2], payload[3]);
+    }
+
+    // ---------- CW keyer (cmd 0x17) --------------------------------------
+    function cmdSendCW(text) {
+        // ASCII bytes after 0x17. Max 30 chars per frame on IC-7300.
+        var s = String(text).slice(0, 30);
+        var out = new Uint8Array(1 + s.length);
+        out[0] = 0x17;
+        for (var i = 0; i < s.length; i++) out[i + 1] = s.charCodeAt(i) & 0xFF;
+        return out;
+    }
+    function cmdStopCW() {
+        // Sending 0xFF as the only byte cancels in-progress CW transmission.
+        return new Uint8Array([0x17, 0xFF, 0xFF]);
+    }
+
     // Probe frame for auto-detecting the rig: broadcast read-transceiver-ID.
     // Any rig listening on the bus replies with its own CI-V address in the
     // frame's "from" field (regardless of how the rig is currently addressed).
@@ -291,12 +404,38 @@
         cmdSetPTT: cmdSetPTT,
         cmdReadSMeter: cmdReadSMeter,
         cmdReadTransceiverID: cmdReadTransceiverID,
+        cmdReadAnalogLevel: cmdReadAnalogLevel,
+        cmdSetAnalogLevel: cmdSetAnalogLevel,
+        cmdReadBoolFunc: cmdReadBoolFunc,
+        cmdSetBoolFunc: cmdSetBoolFunc,
+        cmdSetPreamp: cmdSetPreamp,
+        cmdReadAttenuator: cmdReadAttenuator,
+        cmdSetAttenuator: cmdSetAttenuator,
+        cmdReadSplit: cmdReadSplit,
+        cmdSetSplit: cmdSetSplit,
+        cmdSelectVFO: cmdSelectVFO,
+        cmdSwapVFO: cmdSwapVFO,
+        cmdEqualizeVFO: cmdEqualizeVFO,
+        cmdReadTuner: cmdReadTuner,
+        cmdSetTuner: cmdSetTuner,
+        cmdSetPower: cmdSetPower,
+        cmdReadPowerMeter: cmdReadPowerMeter,
+        cmdReadSwrMeter: cmdReadSwrMeter,
+        cmdReadAlcMeter: cmdReadAlcMeter,
+        cmdSendCW: cmdSendCW,
+        cmdStopCW: cmdStopCW,
         // response parsers
         parseFrequencyReply: parseFrequencyReply,
         parseModeReply: parseModeReply,
         parsePTTReply: parsePTTReply,
         parseSMeterReply: parseSMeterReply,
         parseTransceiverIDReply: parseTransceiverIDReply,
+        parseAnalogLevelReply: parseAnalogLevelReply,
+        parseBoolFuncReply: parseBoolFuncReply,
+        parseAttenuatorReply: parseAttenuatorReply,
+        parseSplitReply: parseSplitReply,
+        parseTunerReply: parseTunerReply,
+        parseTxMeterReply: parseTxMeterReply,
         parseAck: parseAck,
     };
 })(window);

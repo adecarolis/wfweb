@@ -65,11 +65,67 @@
         return Math.min(60, (raw - 120) * 60 / 121);     // 0..60
     }
 
+    // SPA command name → 0x14 NN sub byte (analog levels 0..255)
+    var ANALOG_SUB = {
+        setAfGain:      0x01,
+        setRfGain:      0x02,
+        setSquelch:     0x03,
+        setRfPower:     0x0A,
+        setMicGain:     0x0B,
+        setMonitorGain: 0x0F,
+        setPBTInner:    0x07,
+        setPBTOuter:    0x08,
+        setCWSpeed:     0x0C,
+    };
+    // 0x14 sub → field name reported to the SPA in 'update' messages.
+    var ANALOG_SUB_TO_FIELD = {
+        0x01: 'afGain',
+        0x02: 'rfGain',
+        0x03: 'squelch',
+        0x0A: 'rfPower',
+        0x0B: 'micGain',
+        0x0F: 'monitorGain',
+        0x07: 'pbtInner',
+        0x08: 'pbtOuter',
+        0x0C: 'cwSpeed',
+    };
+
+    // SPA command name → 0x16 NN sub byte (bool toggles)
+    var BOOL_SUB = {
+        setAutoNotch:      0x41,
+        setNoiseBlanker:   0x22,
+        setNoiseReduction: 0x40,
+    };
+    var BOOL_SUB_TO_FIELD = {
+        0x41: 'autoNotch',
+        0x22: 'nb',
+        0x40: 'nr',
+        0x02: 'preamp',  // multi-state but reply still parses through here
+    };
+
     var HANDLED_CMDS = {
+        // Already implemented
         getStatus: true, setFrequency: true, setMode: true,
         setFilter: true, setPTT: true,
-        // claim audio cmds so they don't noisily fall back to a closed WS
+        // Audio plumbing — Phase 2 will fill these in; for now silently drop
+        // so they don't noisily fall back to a closed WS.
         enableMic: true, enableAudio: true,
+        // Analog levels
+        setAfGain: true, setRfGain: true, setRfPower: true, setSquelch: true,
+        setMicGain: true, setMonitorGain: true, setPBTInner: true,
+        setPBTOuter: true, setCWSpeed: true,
+        // Bool toggles
+        setAutoNotch: true, setNoiseBlanker: true, setNoiseReduction: true,
+        setPreamp: true, setAttenuator: true,
+        // VFO ops
+        selectVFO: true, swapVFO: true, equalizeVFO: true, setSplit: true,
+        // Misc
+        setTuner: true, setPower: true,
+        // CW
+        sendCW: true, stopCW: true,
+        // Anything else (FreeDV, packet, memory, span, filter shape, LAN
+        // ops, reporters …) falls through to the WS path which is closed in
+        // Direct mode.
     };
 
     function lsGetInt(key) {
@@ -78,6 +134,11 @@
     }
     function lsSetInt(key, val) {
         try { localStorage.setItem(key, String(val)); } catch (e) { /* ignore */ }
+    }
+
+    // Decode a BCD-encoded byte (0x12 -> 12) — used for scope sequence numbers.
+    function bcdByteToInt(b) {
+        return ((b >> 4) & 0x0F) * 10 + (b & 0x0F);
     }
 
     class SerialRigTransport extends global.RigTransport {
@@ -113,6 +174,15 @@
             this.state = {
                 frequency: 0, mode: null, filter: null,
                 sMeter: 0, transmitting: false,
+            };
+
+            // Spectrum scope assembly state. The Icom scope command (0x27 0x00)
+            // arrives as a sequence of frames: seq 1 carries header (mode +
+            // start/end freq + out-of-range flag), seq 2..N carry pixels.
+            this._scope = {
+                seqMax: 0, mode: 0,
+                startFreq: 0, endFreq: 0,
+                pixels: [], capturing: false,
             };
         }
 
@@ -168,6 +238,33 @@
 
         sendCommand(obj) {
             if (!obj || !obj.cmd) return;
+
+            // Analog levels — uniform 0x14 NN <BCD level> shape.
+            if (ANALOG_SUB.hasOwnProperty(obj.cmd)) {
+                var aSub = ANALOG_SUB[obj.cmd];
+                // setCWSpeed uses obj.wpm; everything else uses obj.value.
+                var aVal = (obj.cmd === 'setCWSpeed') ? obj.wpm : obj.value;
+                if (typeof aVal !== 'number') return;
+                var aField = ANALOG_SUB_TO_FIELD[aSub];
+                this.state[aField] = aVal;
+                this._enqueue(obj.cmd, civ.cmdSetAnalogLevel(aSub, aVal));
+                var aUpd = {}; aUpd[aField] = aVal;
+                this._emit('update', aUpd);
+                return;
+            }
+
+            // Bool toggles — uniform 0x16 NN <0/1> shape.
+            if (BOOL_SUB.hasOwnProperty(obj.cmd)) {
+                var bSub = BOOL_SUB[obj.cmd];
+                var bOn = !!obj.value;
+                var bField = BOOL_SUB_TO_FIELD[bSub];
+                this.state[bField] = bOn;
+                this._enqueue(obj.cmd, civ.cmdSetBoolFunc(bSub, bOn));
+                var bUpd = {}; bUpd[bField] = bOn;
+                this._emit('update', bUpd);
+                return;
+            }
+
             switch (obj.cmd) {
                 case 'getStatus':
                     this._emitFullStatus();
@@ -193,10 +290,55 @@
                     this._emit('update', { filter: obj.value });
                     return;
                 case 'setPTT':
-                    var on = !!obj.value;
-                    this.state.transmitting = on;
-                    this._enqueue('setPTT', civ.cmdSetPTT(on));
-                    this._emit('update', { transmitting: on });
+                    var ptt = !!obj.value;
+                    this.state.transmitting = ptt;
+                    this._enqueue('setPTT', civ.cmdSetPTT(ptt));
+                    this._emit('update', { transmitting: ptt });
+                    return;
+                case 'setPreamp':
+                    var pre = (typeof obj.value === 'number') ? obj.value : 0;
+                    this.state.preamp = pre;
+                    this._enqueue('setPreamp', civ.cmdSetPreamp(pre));
+                    this._emit('update', { preamp: pre });
+                    return;
+                case 'setAttenuator':
+                    var att = (typeof obj.value === 'number') ? obj.value : 0;
+                    this.state.attenuator = att;
+                    this._enqueue('setAttenuator', civ.cmdSetAttenuator(att));
+                    this._emit('update', { attenuator: att });
+                    return;
+                case 'selectVFO':
+                    var vfo = (obj.value === 'B') ? 'B' : 'A';
+                    this._enqueue('selectVFO', civ.cmdSelectVFO(vfo));
+                    this._emit('update', { selectedVfo: vfo });
+                    return;
+                case 'swapVFO':
+                    this._enqueue('swapVFO', civ.cmdSwapVFO());
+                    return;
+                case 'equalizeVFO':
+                    this._enqueue('equalizeVFO', civ.cmdEqualizeVFO());
+                    return;
+                case 'setSplit':
+                    var sp = !!obj.value;
+                    this.state.split = sp;
+                    this._enqueue('setSplit', civ.cmdSetSplit(sp));
+                    this._emit('update', { split: sp });
+                    return;
+                case 'setTuner':
+                    var tn = (typeof obj.value === 'number') ? obj.value : 0;
+                    this.state.tuner = tn;
+                    this._enqueue('setTuner', civ.cmdSetTuner(tn));
+                    this._emit('update', { tuner: tn });
+                    return;
+                case 'setPower':
+                    this._enqueue('setPower', civ.cmdSetPower(!!obj.value));
+                    return;
+                case 'sendCW':
+                    if (typeof obj.text !== 'string' || !obj.text.length) return;
+                    this._enqueue('sendCW', civ.cmdSendCW(obj.text));
+                    return;
+                case 'stopCW':
+                    this._enqueue('stopCW', civ.cmdStopCW());
                     return;
                 case 'enableMic':
                 case 'enableAudio':
@@ -338,11 +480,34 @@
             this.dispatchEvent(new Event('open'));
             this._emitRigInfo();
 
-            // Initial reads
+            // Initial reads — freq / mode / ptt / s-meter.
             this._enqueue('readFreq',   civ.cmdReadFrequency());
             this._enqueue('readMode',   civ.cmdReadMode());
             this._enqueue('readPTT',    civ.cmdReadPTT());
             this._enqueue('readSMeter', civ.cmdReadSMeter());
+
+            // Initial reads — analog levels (so the UI sliders show the
+            // rig's current values rather than zeros).
+            for (var cmdName in ANALOG_SUB) {
+                if (cmdName === 'setCWSpeed') continue;  // CW speed is rare; skip
+                var sub = ANALOG_SUB[cmdName];
+                this._enqueue('read_' + cmdName, civ.cmdReadAnalogLevel(sub));
+            }
+
+            // Initial reads — bool toggles + multi-state preamp.
+            for (var cmdName2 in BOOL_SUB) {
+                this._enqueue('read_' + cmdName2, civ.cmdReadBoolFunc(BOOL_SUB[cmdName2]));
+            }
+            this._enqueue('readPreamp',     civ.cmdReadBoolFunc(0x02));
+            this._enqueue('readAttenuator', civ.cmdReadAttenuator());
+            this._enqueue('readSplit',      civ.cmdReadSplit());
+            this._enqueue('readTuner',      civ.cmdReadTuner());
+
+            // Enable scope output (waterfall). Single-byte payloads match
+            // the C++ wfweb's behaviour for single-receiver rigs.
+            this._enqueue('scopeOn',   new Uint8Array([0x27, 0x10, 0x01]));
+            this._enqueue('scopeData', new Uint8Array([0x27, 0x11, 0x01]));
+
             this._startPolling();
         }
 
@@ -402,6 +567,13 @@
             var payload = frame.payload;
             if (!payload || payload.length === 0) return;
 
+            // Spectrum scope (0x27 0x00) — assembled across multiple frames,
+            // emitted to the SPA as a binary 0x01 message when complete.
+            if (payload.length >= 2 && payload[0] === 0x27 && payload[1] === 0x00) {
+                this._handleScopeFrame(payload);
+                return;
+            }
+
             var freqHz = civ.parseFrequencyReply(payload);
             if (freqHz !== null && freqHz > 0) {
                 this._lastFreqStamp = Date.now();
@@ -447,12 +619,156 @@
                 return;
             }
 
+            // 0x14 NN — analog level reply (afGain / rfGain / squelch / …)
+            if (payload[0] === 0x14 && payload.length >= 4) {
+                var aReply = civ.parseAnalogLevelReply(payload);
+                if (aReply) {
+                    var aField = ANALOG_SUB_TO_FIELD[aReply.sub];
+                    if (aField && this.state[aField] !== aReply.value) {
+                        this.state[aField] = aReply.value;
+                        var u = {}; u[aField] = aReply.value;
+                        this._emit('update', u);
+                    }
+                    return;
+                }
+            }
+
+            // 0x15 NN — TX meters (power 0x11 / SWR 0x12 / ALC 0x13)
+            if (payload[0] === 0x15 && payload.length >= 4) {
+                var sub = payload[1];
+                var meterField = (sub === 0x11) ? 'powerMeter'
+                                : (sub === 0x12) ? 'swrMeter'
+                                : (sub === 0x13) ? 'alcMeter' : null;
+                if (meterField) {
+                    var v = civ.parseTxMeterReply(payload, sub);
+                    if (v !== null && this.state[meterField] !== v) {
+                        this.state[meterField] = v;
+                        var m = {}; m[meterField] = v;
+                        this._emit('meters', m);
+                    }
+                    return;
+                }
+            }
+
+            // 0x16 NN — bool toggle reply (NB / NR / ANF / preamp)
+            if (payload[0] === 0x16 && payload.length >= 3) {
+                var bReply = civ.parseBoolFuncReply(payload);
+                if (bReply) {
+                    var bField = BOOL_SUB_TO_FIELD[bReply.sub];
+                    if (bField) {
+                        var bVal = (bReply.sub === 0x02) ? bReply.value : !!bReply.value;
+                        if (this.state[bField] !== bVal) {
+                            this.state[bField] = bVal;
+                            var bu = {}; bu[bField] = bVal;
+                            this._emit('update', bu);
+                        }
+                    }
+                    return;
+                }
+            }
+
+            // 0x11 — attenuator reply
+            if (payload[0] === 0x11 && payload.length >= 2) {
+                var att = civ.parseAttenuatorReply(payload);
+                if (att !== null && this.state.attenuator !== att) {
+                    this.state.attenuator = att;
+                    this._emit('update', { attenuator: att });
+                }
+                return;
+            }
+
+            // 0x0F — split status reply
+            if (payload[0] === 0x0F && payload.length >= 2) {
+                var sp = civ.parseSplitReply(payload);
+                if (sp !== null && this.state.split !== sp) {
+                    this.state.split = sp;
+                    this._emit('update', { split: sp });
+                }
+                return;
+            }
+
+            // 0x1C 0x01 — tuner status reply
+            if (payload[0] === 0x1C && payload[1] === 0x01 && payload.length >= 3) {
+                var tn = civ.parseTunerReply(payload);
+                if (tn !== null && this.state.tuner !== tn) {
+                    this.state.tuner = tn;
+                    this._emit('update', { tuner: tn });
+                }
+                return;
+            }
+
             if (civ.parseAck(payload) !== null) return;
         }
 
         _emit(type, fields) {
             var msg = Object.assign({ type: type }, fields);
             this.dispatchEvent(new CustomEvent('message', { detail: msg }));
+        }
+
+        // Layout of a 0x27 0x00 frame after CivParser strips FE FE / FD:
+        //   payload[0..1]   = 0x27 0x00 (cmd + sub)
+        //   payload[2]      = receiver index (0 for single-receiver rigs)
+        //   payload[3]      = sequence number       (BCD-encoded byte)
+        //   payload[4]      = sequence max (= total #frames in this scope dump)
+        // For seq 1:
+        //   payload[5]      = scope mode (0=center, 1=fixed, 2=scroll-C, 3=scroll-F)
+        //   payload[6..10]  = start freq, 5 BCD-LE bytes (Hz)
+        //   payload[11..15] = end freq,   5 BCD-LE bytes (Hz)
+        //   payload[16]     = out-of-range flag
+        // For seq 2..(seqMax-1): 50 pixels at payload[5..]
+        // For seq seqMax:        final ~25 pixels at payload[5..]
+        _handleScopeFrame(payload) {
+            if (payload.length < 5) return;
+            var seq = bcdByteToInt(payload[3]);
+            var seqMax = bcdByteToInt(payload[4]);
+
+            if (seq === 1) {
+                if (payload.length < 17) return;
+                var mode = payload[5];
+                var startFreq = civ.decodeBcdLE(payload.slice(6, 11));
+                var endFreq   = civ.decodeBcdLE(payload.slice(11, 16));
+                var oor = payload[16];
+                if (mode === 0) {
+                    // Center mode: rig sends center + half-span. Convert to
+                    // (start, end) so the SPA's edge labels are correct.
+                    var halfSpan = endFreq;
+                    startFreq = startFreq - halfSpan;
+                    endFreq   = startFreq + 2 * halfSpan;
+                }
+                this._scope = {
+                    seqMax: seqMax, mode: mode,
+                    startFreq: startFreq, endFreq: endFreq,
+                    pixels: [], capturing: !oor,
+                };
+                if (oor) this._emitSpectrum(true);
+                return;
+            }
+
+            if (!this._scope.capturing) return;
+            // Pixel chunk: payload[5..end]
+            for (var i = 5; i < payload.length; i++) this._scope.pixels.push(payload[i]);
+            if (seq === this._scope.seqMax) {
+                this._emitSpectrum(false);
+                this._scope.capturing = false;
+            }
+        }
+
+        _emitSpectrum(empty) {
+            var pixels = empty ? [] : this._scope.pixels;
+            var startMhz = this._scope.startFreq / 1e6;
+            var endMhz   = this._scope.endFreq / 1e6;
+            var buf = new ArrayBuffer(12 + pixels.length);
+            var view = new DataView(buf);
+            view.setUint8(0, 0x01);
+            view.setUint8(1, 0x00);
+            view.setUint16(2, 0, true);
+            view.setFloat32(4, startMhz, true);
+            view.setFloat32(8, endMhz,   true);
+            if (pixels.length) {
+                var bytes = new Uint8Array(buf, 12);
+                for (var i = 0; i < pixels.length; i++) bytes[i] = pixels[i];
+            }
+            this.dispatchEvent(new CustomEvent('binary', { detail: buf }));
         }
 
         _emitRigInfo() {
@@ -464,6 +780,8 @@
                 filters: DEFAULT_FILTERS,
                 hasFilterSettings: true,
                 hasMainSub: false,
+                hasSpectrum: true,    // we'll stream scope data via 0x27 0x00
+                spectAmpMax: 160,     // Icom amplitude scale (matches C++ wfweb)
                 audioAvailable: false,
                 txAudioAvailable: false,
                 hasPowerControl: false,
@@ -471,7 +789,7 @@
         }
 
         _emitFullStatus() {
-            this._emit('status', {
+            var s = {
                 frequency: this.state.frequency,
                 vfoAFrequency: this.state.frequency,
                 selectedVfo: 'A',
@@ -479,14 +797,31 @@
                 filter: this.state.filter,
                 sMeter: this.state.sMeter,
                 transmitting: this.state.transmitting,
-            });
+            };
+            // Pass through any cached values so the UI populates fully.
+            var passthrough = ['afGain', 'rfGain', 'rfPower', 'squelch',
+                'micGain', 'monitorGain', 'pbtInner', 'pbtOuter', 'cwSpeed',
+                'autoNotch', 'nb', 'nr', 'preamp', 'attenuator',
+                'split', 'tuner'];
+            for (var i = 0; i < passthrough.length; i++) {
+                var k = passthrough[i];
+                if (this.state[k] !== undefined && this.state[k] !== null) s[k] = this.state[k];
+            }
+            this._emit('status', s);
         }
 
         _startPolling() {
+            // RX: S-meter every 200ms while not transmitting.
+            // TX: power, SWR, ALC every 200ms while transmitting.
             this._sMeterTimer = setInterval(() => {
                 if (!this._open) return;
-                if (this.state.transmitting) return;
-                this._enqueue('readSMeter', civ.cmdReadSMeter());
+                if (this.state.transmitting) {
+                    this._enqueue('readPowerMeter', civ.cmdReadPowerMeter());
+                    this._enqueue('readSwrMeter',   civ.cmdReadSwrMeter());
+                    this._enqueue('readAlcMeter',   civ.cmdReadAlcMeter());
+                } else {
+                    this._enqueue('readSMeter', civ.cmdReadSMeter());
+                }
             }, 200);
             this._safetyPollTimer = setInterval(() => {
                 if (!this._open) return;
