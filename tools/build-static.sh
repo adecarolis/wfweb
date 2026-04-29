@@ -73,11 +73,14 @@ required.
 ## Local testing
 
 ```
-python3 -m http.server 8000
+../tools/serve-static.py 8000 .
 ```
 
 Open `http://localhost:8000` in Chrome or Edge. Localhost is a secure
-context, so Web Serial works without HTTPS.
+context, so Web Serial works without HTTPS. The bundled serve-static.py
+sends `Cache-Control: no-store` to avoid browser-cache surprises during
+iterative development. Plain `python3 -m http.server` works too but
+caches aggressively.
 
 Click the dot in the top-right corner → **Connect rig**. Pick the rig's
 USB serial port from the OS picker. wfweb auto-probes common baud rates
@@ -114,5 +117,5 @@ echo "  ls $DIST"
 ls "$DIST"
 echo
 echo "Test locally:"
-echo "  cd $DIST && python3 -m http.server 8000"
+echo "  $REPO_ROOT/tools/serve-static.py 8000 $DIST"
 echo "  → open http://localhost:8000 in Chrome/Edge"
