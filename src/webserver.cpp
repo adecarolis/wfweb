@@ -414,6 +414,13 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
             obj["filters"] = filters;
         }
         sendJsonToAll(obj);
+
+        // Issue #31: poll both VFOs on initial connect so the Sub VFO display
+        // is populated without requiring user interaction. requestVfoUpdate()
+        // schedules a 200ms-delayed read of freq/mode for VFO A and (on cmd29
+        // rigs) VFO B; on non-cmd29 rigs the periodic status poll backfills
+        // the inactive VFO once selected/unselected freqs are cached.
+        requestVfoUpdate();
     }
 }
 
@@ -833,6 +840,8 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
                     v = wantB ? vfoSub : vfoMain;
                 else
                     v = wantB ? vfoB : vfoA;
+                activeVfoLocal = v;
+                activeReceiver = wantB ? 1 : 0;
                 queue->addUnique(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(v), false));
                 requestVfoUpdate();
                 QJsonObject resp; resp["status"] = "accepted";
@@ -1454,6 +1463,8 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             v = wantB ? vfoSub : vfoMain;
         else
             v = wantB ? vfoB : vfoA;
+        activeVfoLocal = v;
+        activeReceiver = wantB ? 1 : 0;
         queue->addUnique(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(v), false));
         requestVfoUpdate();
     }
@@ -2838,12 +2849,65 @@ void webServer::receiveCache(cacheItem item)
     case funcFreqGet:
     case funcFreqSet:
     {
+        // After canonicalization above, this case also handles funcFreqTR
+        // and funcSelectedFreq. On cmd29 rigs the receiver index in
+        // item.receiver is authoritative (0=Main/A, 1=Sub/B); on non-cmd29
+        // rigs the freq belongs to whichever VFO we currently track as
+        // active. The local mirror (activeVfoLocal/activeReceiver) is
+        // updated by the VFO-selection cases below and from the WebSocket
+        // selectVFO handler — never via queue->getState() from this slot
+        // (would re-enter the queue mutex; see issue #31 / 126f0f0c).
         freqt f = item.value.value<freqt>();
-        update["frequency"] = (qint64)f.Hz;
-        if (freedvReporter) freedvReporter->updateFrequency(f.Hz);
-        if (pskReporter) pskReporter->updateFrequency(f.Hz);
+        qint64 hz = (qint64)f.Hz;
+        bool cmd29 = rigCaps && rigCaps->hasCommand29;
+        bool isActive;
+        if (cmd29) {
+            update[item.receiver == 1 ? "vfoBFrequency" : "vfoAFrequency"] = hz;
+            isActive = (item.receiver == activeReceiver);
+        } else {
+            bool activeIsB = (activeVfoLocal == vfoB);
+            update[activeIsB ? "vfoBFrequency" : "vfoAFrequency"] = hz;
+            isActive = true;
+        }
+        if (isActive) {
+            update["frequency"] = hz;
+            if (freedvReporter) freedvReporter->updateFrequency(f.Hz);
+            if (pskReporter) pskReporter->updateFrequency(f.Hz);
+        }
         break;
     }
+    case funcUnselectedFreq:
+    {
+        // Non-cmd29 rigs report the inactive VFO's freq via this func.
+        // cmd29 rigs use receiver-indexed funcFreq, handled above.
+        if (rigCaps && rigCaps->hasCommand29) return;
+        freqt f = item.value.value<freqt>();
+        bool activeIsB = (activeVfoLocal == vfoB);
+        update[activeIsB ? "vfoAFrequency" : "vfoBFrequency"] = (qint64)f.Hz;
+        break;
+    }
+    case funcSelectVFO:
+    {
+        vfo_t v = item.value.value<vfo_t>();
+        if (v == vfoMem || v == vfoUnknown) return;
+        bool isB = (v == vfoB || v == vfoSub);
+        activeVfoLocal = v;
+        activeReceiver = isB ? 1 : 0;
+        update["selectedVfo"] = isB ? "B" : "A";
+        break;
+    }
+    case funcVFOASelect:
+    case funcVFOMainSelect:
+        activeVfoLocal = (rigCaps && rigCaps->hasCommand29) ? vfoMain : vfoA;
+        activeReceiver = 0;
+        update["selectedVfo"] = "A";
+        break;
+    case funcVFOBSelect:
+    case funcVFOSubSelect:
+        activeVfoLocal = (rigCaps && rigCaps->hasCommand29) ? vfoSub : vfoB;
+        activeReceiver = 1;
+        update["selectedVfo"] = "B";
+        break;
     case funcMode:
     case funcModeGet:
     case funcModeSet:
@@ -3020,6 +3084,17 @@ void webServer::receiveCache(cacheItem item)
 void webServer::sendPeriodicStatus()
 {
     if (wsClients.isEmpty() || !rigCaps) return;
+
+    // Reconcile the local active-VFO mirror with the queue's authoritative
+    // rigState. Cheap, off the receiveCache hot path, and recovers any drift
+    // from rig-initiated VFO changes that didn't echo back via transceive.
+    if (queue) {
+        vfo_t qv = queue->getState().vfo;
+        if (qv != vfoUnknown && qv != vfoMem && qv != activeVfoLocal) {
+            activeVfoLocal = qv;
+            activeReceiver = (qv == vfoB || qv == vfoSub) ? 1 : 0;
+        }
+    }
 
     // Request meter updates by querying current cache values
     QJsonObject status;
@@ -3249,6 +3324,7 @@ codecType webServer::codecByteToType(quint8 codec)
 void webServer::setLanInfo(bool isLan, bool connected)
 {
     bool changed = (lanMode != isLan) || (lanConnected != connected);
+    bool justConnected = connected && !lanConnected;
     lanMode = isLan;
     lanConnected = connected;
     if (!changed) return;
@@ -3257,6 +3333,11 @@ void webServer::setLanInfo(bool isLan, bool connected)
     obj["isLan"] = lanMode;
     obj["lanConnected"] = lanConnected;
     sendJsonToAll(obj);
+
+    // On LAN power-up, the rig caps may already be known (cached from a prior
+    // session) so receiveRigCaps won't fire again. Poll both VFOs here so the
+    // Sub VFO display populates without user interaction (issue #31).
+    if (justConnected && rigCaps) requestVfoUpdate();
 }
 
 void webServer::setupAudio(quint8 codec, quint32 sampleRate)
