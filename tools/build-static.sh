@@ -24,8 +24,11 @@ if [ ! -d "$SRC" ]; then
     exit 1
 fi
 
-# Make output dir
-rm -rf "$DIST"
+# Make / refresh output dir. Clear contents in place rather than rm -rf
+# the directory itself — a long-running serve-static.py that chdir'd in
+# would otherwise be left with a "(deleted)" cwd and refuse all requests.
+mkdir -p "$DIST"
+find "$DIST" -mindepth 1 -delete
 mkdir -p "$DIST/transport" "$DIST/civ" "$DIST/models" "$DIST/digits"
 
 # Top-level files
