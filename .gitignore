@@ -24,6 +24,7 @@ Makefile.server
 wfweb
 tools/virtualrig/virtualrig
 .testrig/
+/dist/
 .claude/settings.local.json
 *.ini
 .DS_Store

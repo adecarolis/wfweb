@@ -3,81 +3,85 @@
 // here — Phase 2 routes audio through Web Audio + setSinkId.
 //
 // Design:
-//   * Maintains a small JS rig-state cache (frequency, mode, filter, PTT, sMeter).
-//   * Synthesizes the same JSON message shapes the SPA already consumes
+//   * Auto-detect — when the user picks a port, the transport probes a list
+//     of common baud rates with a broadcast read-transceiver-ID frame. The
+//     first baud that elicits a reply is the right one; the reply's "from"
+//     byte is the rig's CI-V address. Detected baud + addr are cached in
+//     localStorage; subsequent connects skip detection.
+//   * Auto-reconnect — `tryAutoReconnect()` uses navigator.serial.getPorts()
+//     to find ports the user has already paired with this origin and opens
+//     the first one without showing a picker.
+//   * Maintains a small JS rig-state cache (frequency, mode, filter, PTT,
+//     S-meter) and synthesizes the JSON shapes the SPA already consumes
 //     (rigInfo, status, update, meters) so handleMessage works unchanged.
-//   * Outbound commands are funnelled through a deduping FIFO keyed by
-//     command name, mirroring cachingQueue::addUnique() semantics.
-//   * Inbound CI-V frames flow through IcomCiv.CivParser. Echoes (frames whose
-//     "from" equals our controllerAddr) are filtered out by the parser.
-//   * Polls the S-meter while RX. Frequency / mode arrive via Icom's transceive
-//     pushes when enabled on the rig (default for most models); a 1s safety
-//     poll catches rigs that have transceive disabled.
+//   * Outbound commands flow through a deduping FIFO keyed by command name,
+//     mirroring cachingQueue::addUnique() semantics.
+//   * Inbound CI-V frames flow through IcomCiv.CivParser; echoes (frames
+//     whose "from" equals our controllerAddr) are filtered out.
 
 (function (global) {
     'use strict';
 
-    if (!global.RigTransport) {
-        console.error('serial-transport.js: RigTransport base class not loaded');
-        return;
-    }
-    if (!global.IcomCiv) {
-        console.error('serial-transport.js: IcomCiv codec not loaded');
+    if (!global.RigTransport || !global.IcomCiv) {
+        console.error('serial-transport.js: missing prerequisite modules');
         return;
     }
 
     var civ = global.IcomCiv;
 
-    // CI-V address → display name. Known Icom rigs only; extend as needed.
+    // CI-V address → display name. Extend as needed.
     var KNOWN_RIGS = {
+        0x70: 'IC-9100',
+        0x88: 'IC-7000',
+        0x8C: 'IC-7100',
         0x94: 'IC-7300',
         0x98: 'IC-7610',
         0xA2: 'IC-9700',
         0xA4: 'IC-705',
-        0x8C: 'IC-7100',
-        0x70: 'IC-9100',
+        0xAC: 'IC-905',
     };
+
+    // Bauds tried during auto-detect, ordered by likelihood. 19200 is the
+    // most common Icom default; 115200 is what people set for snappy SDR
+    // operation; 9600 is the original factory default for older rigs.
+    var PROBE_BAUDS = [19200, 115200, 9600, 57600, 38400, 4800];
+    var PROBE_TIMEOUT_MS = 500;
 
     var DEFAULT_MODES = [
-        { num: 0, name: 'LSB' },
-        { num: 1, name: 'USB' },
-        { num: 2, name: 'AM' },
-        { num: 3, name: 'CW' },
-        { num: 4, name: 'RTTY' },
-        { num: 5, name: 'FM' },
-        { num: 7, name: 'CW-R' },
-        { num: 8, name: 'RTTY-R' },
+        { num: 0, name: 'LSB' }, { num: 1, name: 'USB' },
+        { num: 2, name: 'AM' },  { num: 3, name: 'CW' },
+        { num: 4, name: 'RTTY' },{ num: 5, name: 'FM' },
+        { num: 7, name: 'CW-R' },{ num: 8, name: 'RTTY-R' },
     ];
-
     var DEFAULT_FILTERS = [
-        { num: 1, name: 'FIL1' },
-        { num: 2, name: 'FIL2' },
-        { num: 3, name: 'FIL3' },
+        { num: 1, name: 'FIL1' }, { num: 2, name: 'FIL2' }, { num: 3, name: 'FIL3' },
     ];
 
-    // Commands SerialRigTransport currently knows how to handle.
-    // Anything else falls through to the WebSocket transport.
     var HANDLED_CMDS = {
-        getStatus: true,
-        setFrequency: true,
-        setMode: true,
-        setFilter: true,
-        setPTT: true,
-        // enableMic / enableAudio: in Phase 1 we don't have an audio path
-        // either way (no server reachable, no setSinkId yet), so claim them
-        // here to silently drop instead of letting them noisily fail on the
-        // WS side.
-        enableMic: true,
-        enableAudio: true,
+        getStatus: true, setFrequency: true, setMode: true,
+        setFilter: true, setPTT: true,
+        // claim audio cmds so they don't noisily fall back to a closed WS
+        enableMic: true, enableAudio: true,
     };
+
+    function lsGetInt(key) {
+        try { var v = localStorage.getItem(key); return v ? parseInt(v) : null; }
+        catch (e) { return null; }
+    }
+    function lsSetInt(key, val) {
+        try { localStorage.setItem(key, String(val)); } catch (e) { /* ignore */ }
+    }
 
     class SerialRigTransport extends global.RigTransport {
         constructor(opts) {
             super();
             opts = opts || {};
-            this.civAddr = opts.civAddr || 0x94;       // default: IC-7300
             this.controllerAddr = opts.controllerAddr || 0xE0;
-            this.baudRate = opts.baudRate || 19200;
+            this.onProgress = opts.onProgress || function () {};
+
+            this.civAddr = lsGetInt('directCivAddr') || 0;       // 0 means "not yet detected"
+            this.baudRate = lsGetInt('directBaudRate') || 0;
+
             this.parser = new civ.CivParser({
                 controllerAddr: this.controllerAddr,
                 onFrame: this._onFrame.bind(this),
@@ -87,25 +91,20 @@
             this.writer = null;
             this.reader = null;
             this._open = false;
+            this._connecting = false;
 
-            // FIFO of pending command keys; deduped by key.
             this._queue = [];
             this._payloads = {};
             this._draining = false;
 
-            // Polling timers.
             this._sMeterTimer = null;
             this._safetyPollTimer = null;
             this._lastFreqStamp = 0;
             this._lastModeStamp = 0;
 
-            // Rig state cache. Mirrors what the SPA reads out of status/update.
             this.state = {
-                frequency: 0,
-                mode: null,
-                filter: null,
-                sMeter: 0,
-                transmitting: false,
+                frequency: 0, mode: null, filter: null,
+                sMeter: 0, transmitting: false,
             };
         }
 
@@ -114,38 +113,33 @@
         // ----------------------------------------------------------------
 
         async connect(prePicked) {
-            if (this._open) return;
-            var port = prePicked || (await navigator.serial.requestPort({}));
-            await port.open({
-                baudRate: this.baudRate,
-                dataBits: 8,
-                stopBits: 1,
-                parity: 'none',
-                flowControl: 'none',
-            });
-            this.port = port;
-            this.writer = port.writable.getWriter();
-            this._open = true;
+            if (this._open || this._connecting) return;
+            this._connecting = true;
+            try {
+                var port = prePicked || (await navigator.serial.requestPort({}));
+                await this._openWithDetection(port);
+            } finally {
+                this._connecting = false;
+            }
+        }
 
-            // Kick off the read loop. Errors propagate as a 'close' event.
-            this._readLoop().catch((err) => {
-                console.error('SerialRigTransport read loop ended:', err);
-                this._notifyClose(err);
-            });
-
-            this.dispatchEvent(new Event('open'));
-
-            // Push synthesized rigInfo + initial polls so the UI populates
-            // before any rig replies.
-            this._emitRigInfo();
-
-            // Initial reads: freq, mode, PTT, S-meter.
-            this._enqueue('readFreq', civ.cmdReadFrequency());
-            this._enqueue('readMode', civ.cmdReadMode());
-            this._enqueue('readPTT',  civ.cmdReadPTT());
-            this._enqueue('readSMeter', civ.cmdReadSMeter());
-
-            this._startPolling();
+        // Opens the first previously-paired port without showing a picker.
+        // Returns true if a port was opened, false if none paired.
+        async tryAutoReconnect() {
+            if (this._open || this._connecting) return true;
+            if (!navigator.serial || !navigator.serial.getPorts) return false;
+            var ports = await navigator.serial.getPorts();
+            if (!ports || !ports.length) return false;
+            this._connecting = true;
+            try {
+                await this._openWithDetection(ports[0]);
+                return true;
+            } catch (e) {
+                console.warn('SerialRigTransport auto-reconnect failed:', e);
+                return false;
+            } finally {
+                this._connecting = false;
+            }
         }
 
         async close() {
@@ -174,16 +168,12 @@
                     if (typeof obj.value !== 'number' || obj.value <= 0) return;
                     this.state.frequency = obj.value;
                     this._enqueue('setFreq', civ.cmdSetFrequency(obj.value));
-                    this._emit('update', {
-                        frequency: obj.value,
-                        vfoAFrequency: obj.value,
-                    });
+                    this._emit('update', { frequency: obj.value, vfoAFrequency: obj.value });
                     return;
                 case 'setMode':
                     if (typeof obj.value !== 'string') return;
                     this.state.mode = obj.value;
-                    var fil = this.state.filter || 1;
-                    this._enqueue('setMode', civ.cmdSetMode(obj.value, fil));
+                    this._enqueue('setMode', civ.cmdSetMode(obj.value, this.state.filter || 1));
                     this._emit('update', { mode: obj.value });
                     return;
                 case 'setFilter':
@@ -200,23 +190,156 @@
                     this._enqueue('setPTT', civ.cmdSetPTT(on));
                     this._emit('update', { transmitting: on });
                     return;
-                // Audio plumbing — Phase 2 owns this; in Phase 1 we no-op.
                 case 'enableMic':
                 case 'enableAudio':
                     return;
-                // Anything else is silently ignored for now. Will fill in
-                // (gains, NB/NR/ANF, tuner, preamp, attenuator, …) as we go.
                 default:
                     return;
             }
         }
 
-        sendAudioFrame(/* buffer */) {
-            // Phase 2 wires this to setSinkId; for now, drop.
+        sendAudioFrame(/* buffer */) { /* Phase 2 */ }
+
+        // ----------------------------------------------------------------
+        // Detection + open
+        // ----------------------------------------------------------------
+
+        async _openWithDetection(port) {
+            // Optimistic path: we have saved baud/addr from a previous
+            // successful connect — try those first.
+            var savedBaud = this.baudRate;
+            var savedAddr = this.civAddr;
+
+            if (savedBaud) {
+                this.onProgress({ stage: 'opening', baud: savedBaud });
+                try {
+                    await port.open({
+                        baudRate: savedBaud, dataBits: 8, stopBits: 1,
+                        parity: 'none', flowControl: 'none',
+                    });
+                } catch (e) {
+                    throw new Error('Could not open serial port (' +
+                        (e && e.message ? e.message : e) + '). Is another program using it?');
+                }
+                var addr = await this._probePort(port, PROBE_TIMEOUT_MS);
+                if (addr) {
+                    this._finalizeDetection(port, savedBaud, addr);
+                    return;
+                }
+                // Saved baud didn't elicit a reply — fall through to full probe.
+                try { await port.close(); } catch (e) { /* ignore */ }
+            }
+
+            // Full auto-detect across PROBE_BAUDS. Saved baud (if any) tried
+            // first since the user almost certainly hasn't changed it.
+            var bauds = savedBaud
+                ? [savedBaud].concat(PROBE_BAUDS.filter(function (b) { return b !== savedBaud; }))
+                : PROBE_BAUDS.slice();
+
+            for (var i = 0; i < bauds.length; i++) {
+                var baud = bauds[i];
+                this.onProgress({ stage: 'probing', baud: baud, attempt: i + 1, total: bauds.length });
+                try {
+                    await port.open({
+                        baudRate: baud, dataBits: 8, stopBits: 1,
+                        parity: 'none', flowControl: 'none',
+                    });
+                } catch (e) {
+                    if (i === 0) {
+                        throw new Error('Could not open serial port (' +
+                            (e && e.message ? e.message : e) + '). Is another program using it?');
+                    }
+                    continue;
+                }
+                var found = await this._probePort(port, PROBE_TIMEOUT_MS);
+                if (found) {
+                    this._finalizeDetection(port, baud, found);
+                    return;
+                }
+                try { await port.close(); } catch (e) { /* ignore */ }
+            }
+
+            throw new Error('No CI-V reply at any common baud rate. ' +
+                'Check the radio is on, CI-V is enabled, and the cable is connected to the correct port.');
+        }
+
+        // Sends a broadcast read-TX-ID on an already-open port and listens
+        // up to timeoutMs for a reply. Returns the rig's CI-V address (the
+        // 'from' byte of the first reply frame), or null on timeout.
+        async _probePort(port, timeoutMs) {
+            if (!port) return null;
+            // Send probe frame
+            var writer = port.writable.getWriter();
+            try {
+                await writer.write(civ.PROBE_FRAME);
+            } catch (e) {
+                writer.releaseLock();
+                return null;
+            }
+            writer.releaseLock();
+
+            // Listen until timeout or first non-echo frame.
+            var localParser = new civ.CivParser({ controllerAddr: this.controllerAddr });
+            var detected = null;
+            localParser.onFrame = function (frame) {
+                if (!detected && frame.payload && frame.payload[0] === 0x19) {
+                    detected = frame.from;
+                }
+            };
+
+            var reader = port.readable.getReader();
+            var aborted = false;
+            var timer = setTimeout(function () {
+                aborted = true;
+                reader.cancel().catch(function () {});
+            }, timeoutMs);
+
+            try {
+                while (!detected && !aborted) {
+                    var result = await reader.read();
+                    if (result.done) break;
+                    if (result.value && result.value.length) localParser.feed(result.value);
+                }
+            } catch (e) { /* expected on cancel */ }
+
+            clearTimeout(timer);
+            try { reader.releaseLock(); } catch (e) { /* ignore */ }
+            return detected;
+        }
+
+        _finalizeDetection(port, baud, addr) {
+            this.baudRate = baud;
+            this.civAddr = addr;
+            lsSetInt('directBaudRate', baud);
+            lsSetInt('directCivAddr', addr);
+
+            this.port = port;
+            this.writer = port.writable.getWriter();
+            this._open = true;
+
+            this.onProgress({
+                stage: 'connected', baud: baud, civAddr: addr,
+                model: KNOWN_RIGS[addr] || ('Icom 0x' + addr.toString(16).toUpperCase()),
+            });
+
+            this._readLoop().catch((err) => {
+                console.error('SerialRigTransport read loop ended:', err);
+                this._notifyClose(err);
+            });
+
+            this.dispatchEvent(new Event('open'));
+            this._emitRigInfo();
+
+            // Initial reads
+            this._enqueue('readFreq',   civ.cmdReadFrequency());
+            this._enqueue('readMode',   civ.cmdReadMode());
+            this._enqueue('readPTT',    civ.cmdReadPTT());
+            this._enqueue('readSMeter', civ.cmdReadSMeter());
+            this._startPolling();
         }
 
         // ----------------------------------------------------------------
-        // Internals
+        // Internals (queue, read loop, parsing, polling)
         // ----------------------------------------------------------------
 
         _enqueue(key, payload) {
@@ -236,8 +359,6 @@
                     if (!payload) continue;
                     var frame = civ.buildFrame(this.civAddr, this.controllerAddr, payload);
                     await this.writer.write(frame);
-                    // Slight inter-frame gap so the rig has time to clear
-                    // the bus before the next command. 5 ms is enough at 19200.
                     await new Promise(function (r) { setTimeout(r, 5); });
                 }
             } catch (err) {
@@ -265,32 +386,24 @@
                     this.reader = null;
                 }
                 if (!this._open) break;
-                // Tiny delay before reattaching to avoid a tight error loop.
                 await new Promise(function (r) { setTimeout(r, 50); });
             }
         }
 
         _onFrame(frame) {
-            // 'to' may be the controller (0xE0) for solicited replies, or 0x00
-            // for transceive broadcasts. We accept both.
             var payload = frame.payload;
             if (!payload || payload.length === 0) return;
 
-            // Frequency
             var freqHz = civ.parseFrequencyReply(payload);
             if (freqHz !== null && freqHz > 0) {
                 this._lastFreqStamp = Date.now();
                 if (freqHz !== this.state.frequency) {
                     this.state.frequency = freqHz;
-                    this._emit('update', {
-                        frequency: freqHz,
-                        vfoAFrequency: freqHz,
-                    });
+                    this._emit('update', { frequency: freqHz, vfoAFrequency: freqHz });
                 }
                 return;
             }
 
-            // Mode + filter
             var modeReply = civ.parseModeReply(payload);
             if (modeReply !== null) {
                 this._lastModeStamp = Date.now();
@@ -307,7 +420,6 @@
                 return;
             }
 
-            // PTT
             var pttState = civ.parsePTTReply(payload);
             if (pttState !== null) {
                 if (pttState !== this.state.transmitting) {
@@ -317,7 +429,6 @@
                 return;
             }
 
-            // S-meter
             var sMeterValue = civ.parseSMeterReply(payload);
             if (sMeterValue !== null) {
                 if (sMeterValue !== this.state.sMeter) {
@@ -327,7 +438,6 @@
                 return;
             }
 
-            // Acks (FB/FA) — useful for confirming sets; ignore for now.
             if (civ.parseAck(payload) !== null) return;
         }
 
@@ -339,7 +449,7 @@
         _emitRigInfo() {
             this._emit('rigInfo', {
                 version: '0.6.1-direct',
-                model: KNOWN_RIGS[this.civAddr] || ('Icom 0x' + this.civAddr.toString(16)),
+                model: KNOWN_RIGS[this.civAddr] || ('Icom 0x' + this.civAddr.toString(16).toUpperCase()),
                 connected: true,
                 modes: DEFAULT_MODES,
                 filters: DEFAULT_FILTERS,
@@ -364,23 +474,16 @@
         }
 
         _startPolling() {
-            // S-meter every 200ms while RX.
             this._sMeterTimer = setInterval(() => {
                 if (!this._open) return;
                 if (this.state.transmitting) return;
                 this._enqueue('readSMeter', civ.cmdReadSMeter());
             }, 200);
-            // Safety poll: if we haven't seen freq/mode pushes in 2s, ask.
-            // Catches rigs with transceive disabled.
             this._safetyPollTimer = setInterval(() => {
                 if (!this._open) return;
                 var now = Date.now();
-                if (now - this._lastFreqStamp > 2000) {
-                    this._enqueue('readFreq', civ.cmdReadFrequency());
-                }
-                if (now - this._lastModeStamp > 2000) {
-                    this._enqueue('readMode', civ.cmdReadMode());
-                }
+                if (now - this._lastFreqStamp > 2000) this._enqueue('readFreq', civ.cmdReadFrequency());
+                if (now - this._lastModeStamp > 2000) this._enqueue('readMode', civ.cmdReadMode());
             }, 1000);
         }
 
@@ -398,6 +501,7 @@
     }
 
     SerialRigTransport.handles = function (cmd) { return !!HANDLED_CMDS[cmd]; };
+    SerialRigTransport.knownRigs = KNOWN_RIGS;
 
     global.SerialRigTransport = SerialRigTransport;
 })(window);
