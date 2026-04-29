@@ -119,8 +119,15 @@ html, body {
 #connDot {
     width: 8px; height: 8px; border-radius: 50%;
     background: #600; flex-shrink: 0;
+    cursor: pointer;
 }
 #connDot.connected { background: #0a0; }
+#connModeBadge {
+    color: #0cc; font-size: 9px; font-weight: bold;
+    border: 1px solid #0cc; border-radius: 2px;
+    padding: 0 3px; cursor: pointer;
+    line-height: 12px;
+}
 #powerBtn {
     width: 22px; height: 22px;
     border: 2px solid #0a0;
@@ -2026,7 +2033,8 @@ body.digi-open .digi-bar {
         <button id="qsoLogBtn" class="qso-log-btn" title="Log QSO">LOG</button>
         <span id="clock">--:--</span>
         <button id="powerBtn" class="on" title="Power" onclick="togglePower()">&#x23FB;</button>
-        <span id="connDot" title="Disconnected"></span>
+        <span id="connModeBadge" title="Direct mode" onclick="setPanel('conn')" style="display:none;">DIR</span>
+        <span id="connDot" title="Disconnected" onclick="setPanel('conn')"></span>
     </div>
     <!-- Row 2: Meter + Frequency -->
     <div id="meterFreqRow">
@@ -2407,6 +2415,54 @@ body.digi-open .digi-bar {
             <div class="overlay-grid" id="audioMicGrid"></div>
         </div>
 
+        <!-- Connection (transport) overlay -->
+        <div id="connOverlay" class="overlay">
+            <div class="overlay-title">CONNECTION</div>
+            <div id="connOverlayBody" style="padding:18px; color:#0c0; font-size:12px; max-width:420px; margin:auto;">
+                <div style="margin-bottom:14px;">
+                    <label style="cursor:pointer;"><input type="radio" name="connMode" value="server" id="connModeServer"> <b>Server</b> &mdash; route through wfweb server</label><br>
+                    <label style="cursor:pointer;"><input type="radio" name="connMode" value="direct" id="connModeDirect"> <b>Direct</b> &mdash; talk to the rig over Web Serial (CI-V)</label>
+                </div>
+                <div id="connDirectOpts" style="display:none; border-top:1px solid #044; padding-top:10px;">
+                    <div style="margin-bottom:8px;">
+                        <label>Rig:&nbsp;
+                            <select id="connRigSelect" style="background:#000; color:#0c0; border:1px solid #044;">
+                                <option value="0x94">IC-7300</option>
+                                <option value="0x98">IC-7610</option>
+                                <option value="0xA2">IC-9700</option>
+                                <option value="0xA4">IC-705</option>
+                                <option value="0x8C">IC-7100</option>
+                                <option value="0x70">IC-9100</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label>Baud:&nbsp;
+                            <select id="connBaudSelect" style="background:#000; color:#0c0; border:1px solid #044;">
+                                <option value="9600">9600</option>
+                                <option value="19200" selected>19200</option>
+                                <option value="38400">38400</option>
+                                <option value="57600">57600</option>
+                                <option value="115200">115200</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div style="margin-top:12px;">
+                        <button class="ov-btn" id="connConnectBtn" style="margin-right:8px;">Connect rig</button>
+                        <button class="ov-btn" id="connDisconnectBtn">Disconnect</button>
+                    </div>
+                    <div id="connStatus" style="margin-top:10px; color:#0a0; font-size:11px;"></div>
+                    <div style="margin-top:14px; color:#066; font-size:10px;">
+                        Direct mode requires a Chromium-family browser (Chrome/Edge).<br>
+                        Audio TX/RX is not yet supported in Direct mode (Phase 2).
+                    </div>
+                </div>
+            </div>
+            <div class="gain-back-row">
+                <button class="ov-btn back-btn" onclick="setPanel('default')">&#x21A9;</button>
+            </div>
+        </div>
+
         <!-- Warning overlays on spectrum -->
         <div id="audioOffWarning" class="spectrum-warning" onclick="showAudioMicMenu()" style="display: none;">AUDIO OFF</div>
         <div id="micOffWarning" class="spectrum-warning" onclick="toggleMic()" style="display: none;">MIC OFF</div>
@@ -2419,12 +2475,24 @@ body.digi-open .digi-bar {
 
 <script src="transport/rig-transport.js"></script>
 <script src="transport/websocket-transport.js"></script>
+<script src="civ/icom.js"></script>
+<script src="transport/serial-transport.js"></script>
 <script>
 // ============================================================
 // STATE
 // ============================================================
-var transport = null;  // RigTransport instance (WebSocket today; Serial in Phase 1)
-var ws = null;         // alias to transport.ws — kept for legacy readyState checks
+// Two transports coexist: WebSocketRigTransport (Server mode, default —
+// talks to the C++ wfweb server) and SerialRigTransport (Direct mode —
+// talks to the rig via Web Serial CI-V). Only one is the active control
+// transport at a time. `transport` is the active one; `ws` aliases the
+// underlying WebSocket so legacy readyState checks keep working.
+var wsTransport = null;       // WebSocketRigTransport (always created)
+var serialTransport = null;   // SerialRigTransport (created on first Direct enable)
+var transport = null;         // active control transport (= wsTransport or serialTransport)
+var controlMode = (function () {
+    try { return localStorage.getItem('controlMode') || 'server'; } catch (e) { return 'server'; }
+})();
+var ws = null;                // alias to wsTransport.ws — legacy readyState checks
 var serverVersion = '';  // set from rigInfo message
 var rigModelName = '';   // set from rigInfo/rigConnected
 // Shared app-wide callsign (CW, FT8/FT4, FreeDV reporter, APRS, Terminal,
@@ -2676,48 +2744,138 @@ var DIGI_BANDS = [
 ];
 
 // ============================================================
-// TRANSPORT (rig connection — currently always WebSocket; Phase 1 adds Serial)
+// TRANSPORT
 // ============================================================
-function ensureTransport() {
-    if (transport) return;
-    transport = new WebSocketRigTransport();
-    transport.addEventListener('open', function() {
-        document.getElementById('connDot').classList.add('connected');
-        document.getElementById('connDot').title = 'Connected';
-        if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
-        send({ cmd: 'getStatus' });
-        // Restore reporter state from localStorage
-        var rCb = document.getElementById('digiReporterEnable');
-        if (rCb && rCb.checked) sendReporterConfig();
-    });
-    transport.addEventListener('close', function() {
-        document.getElementById('connDot').classList.remove('connected');
-        document.getElementById('connDot').title = 'Disconnected';
-        if (micEnabled) stopMic();
-        if (audioEnabled) stopAudio();
-        audioAvailable = false;
-        txAudioAvailable = false;
-        updateWarningVisibility();
-        scheduleReconnect();
-    });
-    transport.addEventListener('message', function(e) { handleMessage(e.detail); });
-    transport.addEventListener('binary',  function(e) { handleBinaryMessage(e.detail); });
+function onTransportOpen() {
+    document.getElementById('connDot').classList.add('connected');
+    document.getElementById('connDot').title = (controlMode === 'direct') ? 'Direct (rig serial)' : 'Connected (server)';
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    send({ cmd: 'getStatus' });
+    var rCb = document.getElementById('digiReporterEnable');
+    if (rCb && rCb.checked) sendReporterConfig();
+    updateConnIndicator();
+}
+
+function onTransportClose() {
+    document.getElementById('connDot').classList.remove('connected');
+    document.getElementById('connDot').title = 'Disconnected';
+    if (micEnabled) stopMic();
+    if (audioEnabled) stopAudio();
+    audioAvailable = false;
+    txAudioAvailable = false;
+    updateWarningVisibility();
+    if (controlMode === 'server') scheduleReconnect();
+    updateConnIndicator();
+}
+
+function ensureWsTransport() {
+    if (wsTransport) return;
+    wsTransport = new WebSocketRigTransport();
+    wsTransport.addEventListener('open',    onTransportOpen);
+    wsTransport.addEventListener('close',   onTransportClose);
+    wsTransport.addEventListener('message', function (e) { handleMessage(e.detail); });
+    wsTransport.addEventListener('binary',  function (e) { handleBinaryMessage(e.detail); });
+}
+
+function ensureSerialTransport() {
+    if (serialTransport) return;
+    var civAddr = parseInt(localStorage.getItem('directCivAddr') || '0x94');
+    var baudRate = parseInt(localStorage.getItem('directBaudRate') || '19200');
+    serialTransport = new SerialRigTransport({ civAddr: civAddr, baudRate: baudRate });
+    serialTransport.addEventListener('open',    onTransportOpen);
+    serialTransport.addEventListener('close',   onTransportClose);
+    serialTransport.addEventListener('message', function (e) { handleMessage(e.detail); });
 }
 
 function connect() {
-    ensureTransport();
-    transport.connect();
-    ws = transport.ws;  // keep legacy alias up to date for readyState checks
+    if (controlMode === 'server') {
+        ensureWsTransport();
+        wsTransport.connect();
+        ws = wsTransport.ws;
+        transport = wsTransport;
+    } else {
+        // Direct mode requires a user gesture for navigator.serial.requestPort,
+        // so just wait for the user to click the Connect button in the
+        // connection overlay. The transport object is created lazily.
+        ensureSerialTransport();
+        transport = serialTransport;
+        updateConnIndicator();
+    }
 }
 
 function scheduleReconnect() {
+    if (controlMode !== 'server') return;
     if (!reconnectTimer) {
-        reconnectTimer = setTimeout(function() { reconnectTimer = null; connect(); }, 3000);
+        reconnectTimer = setTimeout(function () { reconnectTimer = null; connect(); }, 3000);
     }
 }
 
 function send(obj) {
-    if (transport) transport.sendCommand(obj);
+    // Direct-mode commands the SerialRigTransport handles → go to it.
+    // Everything else → WS (for compatibility with the C++ server's broader
+    // surface). In Direct mode without a server, those become no-ops.
+    if (controlMode === 'direct' && serialTransport && serialTransport.isOpen() &&
+            window.SerialRigTransport && SerialRigTransport.handles(obj && obj.cmd)) {
+        serialTransport.sendCommand(obj);
+        return;
+    }
+    if (wsTransport) wsTransport.sendCommand(obj);
+}
+
+function setControlMode(mode) {
+    if (mode !== 'server' && mode !== 'direct') return;
+    if (mode === controlMode) return;
+    var prev = controlMode;
+    controlMode = mode;
+    try { localStorage.setItem('controlMode', mode); } catch (e) { /* ignore */ }
+    if (prev === 'server' && wsTransport) {
+        wsTransport.close();
+        ws = null;
+    }
+    if (prev === 'direct' && serialTransport && serialTransport.isOpen()) {
+        serialTransport.close();
+    }
+    if (mode === 'server') {
+        connect();
+    } else {
+        // Set up but don't auto-open — needs user gesture.
+        ensureSerialTransport();
+        transport = serialTransport;
+        document.getElementById('connDot').classList.remove('connected');
+        document.getElementById('connDot').title = 'Direct: not connected';
+    }
+    updateConnIndicator();
+}
+
+async function connectDirect() {
+    if (controlMode !== 'direct') setControlMode('direct');
+    ensureSerialTransport();
+    try {
+        await serialTransport.connect();
+    } catch (err) {
+        console.error('Direct connect failed:', err);
+        alert('Could not open serial port: ' + (err && err.message || err));
+    }
+    updateConnIndicator();
+}
+
+async function disconnectDirect() {
+    if (serialTransport) { try { await serialTransport.close(); } catch (e) { /* ignore */ } }
+    updateConnIndicator();
+}
+
+function updateConnIndicator() {
+    var badge = document.getElementById('connModeBadge');
+    if (!badge) return;
+    if (controlMode === 'direct') {
+        badge.textContent = 'DIR';
+        badge.style.display = '';
+        badge.title = serialTransport && serialTransport.isOpen()
+            ? 'Direct (rig serial connected)'
+            : 'Direct mode — click to connect rig';
+    } else {
+        badge.style.display = 'none';
+    }
 }
 
 // ============================================================
@@ -3704,8 +3862,60 @@ function setPanel(name) {
     else if (name === 'freqinp') renderFreqInput();
     else if (name === 'cw') renderCWOverlay();
     else if (name === 'memory') openMemoryBrowser();
+    else if (name === 'conn') renderConnOverlay();
     renderBottomBar();
 }
+
+function renderConnOverlay() {
+    document.getElementById('connOverlay').classList.add('visible');
+    document.getElementById('connModeServer').checked = (controlMode === 'server');
+    document.getElementById('connModeDirect').checked = (controlMode === 'direct');
+    document.getElementById('connDirectOpts').style.display = (controlMode === 'direct') ? '' : 'none';
+    var civSel = document.getElementById('connRigSelect');
+    var baudSel = document.getElementById('connBaudSelect');
+    var savedCiv = (function () { try { return localStorage.getItem('directCivAddr'); } catch (e) { return null; } })() || '0x94';
+    var savedBaud = (function () { try { return localStorage.getItem('directBaudRate'); } catch (e) { return null; } })() || '19200';
+    civSel.value = savedCiv;
+    baudSel.value = savedBaud;
+    updateConnStatus();
+}
+
+function updateConnStatus() {
+    var s = document.getElementById('connStatus');
+    if (!s) return;
+    if (controlMode !== 'direct') { s.textContent = ''; return; }
+    if (serialTransport && serialTransport.isOpen()) {
+        s.textContent = 'Connected — receiving CI-V from rig.';
+        s.style.color = '#0c0';
+    } else {
+        s.textContent = 'Not connected.';
+        s.style.color = '#960';
+    }
+}
+
+document.addEventListener('change', function (e) {
+    if (e.target.name === 'connMode') {
+        setControlMode(e.target.value);
+        document.getElementById('connDirectOpts').style.display = (e.target.value === 'direct') ? '' : 'none';
+        updateConnStatus();
+    } else if (e.target.id === 'connRigSelect') {
+        try { localStorage.setItem('directCivAddr', e.target.value); } catch (err) { /* ignore */ }
+        if (serialTransport) serialTransport.civAddr = parseInt(e.target.value);
+    } else if (e.target.id === 'connBaudSelect') {
+        try { localStorage.setItem('directBaudRate', e.target.value); } catch (err) { /* ignore */ }
+        if (serialTransport && !serialTransport.isOpen()) {
+            serialTransport.baudRate = parseInt(e.target.value);
+        }
+    }
+});
+
+document.addEventListener('click', function (e) {
+    if (e.target.id === 'connConnectBtn') {
+        connectDirect().then(updateConnStatus);
+    } else if (e.target.id === 'connDisconnectBtn') {
+        disconnectDirect().then(updateConnStatus);
+    }
+});
 
 function hideAllOverlays() {
     var overlays = document.querySelectorAll('.overlay');
