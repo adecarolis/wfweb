@@ -2243,6 +2243,13 @@ body.digi-open .digi-bar {
                 </label>
                 <span id="digiReporterStatus" style="font-size:10px;color:#556;margin-left:8px"></span>
             </div>
+            <div class="digi-settings-field" style="margin-top:6px">
+                <label style="display:flex;align-items:center;gap:6px;color:#8cf;font-size:12px;cursor:pointer">
+                    <input type="checkbox" id="digiPskReporterEnable">
+                    <span>pskreporter.info Reporter (FT8/FT4)</span>
+                </label>
+                <span id="digiPskReporterStatus" style="font-size:10px;color:#556;margin-left:8px"></span>
+            </div>
             <button id="digiSettingsCloseBtn" class="digi-settings-close">Close</button>
         </div>
 
@@ -2894,6 +2901,9 @@ function handleMessage(msg) {
             break;
         case 'reporterStatus':
             updateReporterStatus(msg);
+            break;
+        case 'pskReporterStatus':
+            updatePskReporterStatus(msg);
             break;
         case 'radeCallsign':
             radeRxCallsign = msg.callsign || '';
@@ -5863,16 +5873,24 @@ function digiPeriod() { return digiMode === 'FT4' ? 7.5 : 15; }
 function getMyCall() { return ((document.getElementById('digiMyCall') || {}).value || '').toUpperCase(); }
 function getMyGrid() { return ((document.getElementById('digiGrid') || {}).value || '').toUpperCase().substr(0, 4); }
 
-// --- FreeDV Reporter ---
+// --- Reporters (FreeDV + pskreporter.info) ---
 function sendReporterConfig() {
-    var cb = document.getElementById('digiReporterEnable');
-    if (!cb || !ws || ws.readyState !== 1) return;
+    var fdvCb = document.getElementById('digiReporterEnable');
+    var pskCb = document.getElementById('digiPskReporterEnable');
+    if (!ws || ws.readyState !== 1) return;
     send({
         cmd: 'setReporter',
-        enabled: cb.checked,
+        freedvEnabled: !!(fdvCb && fdvCb.checked),
+        pskEnabled: !!(pskCb && pskCb.checked),
         callsign: getMyCall(),
         grid: getMyGrid()
     });
+}
+function reporterStateColor(state) {
+    if (state === 'connected') return '#0c6';
+    if (state === 'error')     return '#f44';
+    if (state === 'waiting')   return '#fa3';   // amber: armed but mode not active
+    return '#556';                              // disconnected / connecting / unknown
 }
 function updateReporterStatus(msg) {
     if (msg.enabled !== undefined) reporterEnabled = msg.enabled;
@@ -5881,20 +5899,81 @@ function updateReporterStatus(msg) {
     var st = document.getElementById('digiReporterStatus');
     if (cb && msg.enabled !== undefined) cb.checked = msg.enabled;
     if (st) {
-        st.textContent = msg.state || '';
-        st.style.color = msg.state === 'connected' ? '#0c6' : msg.state === 'error' ? '#f44' : '#556';
+        st.textContent = msg.state === 'waiting' ? 'waiting for FreeDV' : (msg.state || '');
+        st.style.color = reporterStateColor(msg.state);
     }
     // Refresh the FreeDV indicator bar to update the reporter dot
     if (freedvEnabled) updateFreeDVStatus({});
 }
+function updatePskReporterStatus(msg) {
+    var cb = document.getElementById('digiPskReporterEnable');
+    var st = document.getElementById('digiPskReporterStatus');
+    if (cb && msg.enabled !== undefined) cb.checked = msg.enabled;
+    if (st) {
+        st.textContent = msg.state === 'waiting' ? 'waiting for FT8/FT4' : (msg.state || '');
+        st.style.color = reporterStateColor(msg.state);
+    }
+}
+// Forward a single FT8/FT4 decode to the backend so it can be relayed to
+// pskreporter.info.  The browser is the only place that sees decoded
+// messages, so callsign + (optional) grid extraction lives here.
+function reportDigiSpot(d) {
+    if (!ws || ws.readyState !== 1) return;
+    var parts = (d.msg || '').trim().split(/\s+/);
+    if (parts.length < 2) return;
+    var first = parts[0].toUpperCase();
+    var fromCall = null, grid = '';
+    if (first === 'CQ' || first === 'QRZ') {
+        // "CQ [modifier]? CALL [GRID]?" — callsign is the first token with
+        // a digit that is NOT a 4-char Maidenhead grid (e.g. FN42).
+        for (var p = 1; p < parts.length; p++) {
+            var tok = parts[p].toUpperCase();
+            if (/^[A-Z]{2}\d{2}$/.test(tok)) {
+                if (fromCall && !grid) grid = tok;
+                continue;
+            }
+            if (!fromCall && /\d/.test(tok) && /[A-Z]/.test(tok)) fromCall = tok;
+        }
+    } else {
+        // Standard QSO: "THEIRCALL MYCALL <reply>" — sender is parts[1].
+        var maybe = parts[1].toUpperCase();
+        if (/\d/.test(maybe) && /[A-Z]/.test(maybe)) fromCall = maybe;
+        for (var q = 2; q < parts.length; q++) {
+            var t = parts[q].toUpperCase();
+            if (/^[A-Z]{2}\d{2}$/.test(t)) { grid = t; break; }
+        }
+    }
+    if (!fromCall || fromCall.length < 3) return;
+    // DIGI mode is always USB, so on-air freq = dial + audio offset.
+    var rfFreq = Math.round((currentFreq || 0) + (d.freq || 0));
+    if (rfFreq <= 0) return;
+    send({
+        cmd: 'reportDigiSpot',
+        callsign: fromCall,
+        grid: grid,
+        mode: digiMode,
+        snr: Math.round(d.snr || 0),
+        freq: rfFreq
+    });
+}
+
 function initReporter() {
     var cb = document.getElementById('digiReporterEnable');
-    if (!cb) return;
-    try { cb.checked = localStorage.getItem('digiReporterEnabled') === '1'; } catch(e) {}
-    cb.addEventListener('change', function() {
-        try { localStorage.setItem('digiReporterEnabled', this.checked ? '1' : '0'); } catch(e) {}
-        sendReporterConfig();
-    });
+    if (cb) {
+        try { cb.checked = localStorage.getItem('digiReporterEnabled') === '1'; } catch(e) {}
+        cb.addEventListener('change', function() {
+            try { localStorage.setItem('digiReporterEnabled', this.checked ? '1' : '0'); } catch(e) {}
+            sendReporterConfig();
+        });
+    }
+    var pskCb = document.getElementById('digiPskReporterEnable');
+    if (pskCb) {
+        try { pskCb.checked = localStorage.getItem('digiPskReporterEnabled') === '1'; } catch(e) {}
+        pskCb.addEventListener('change', function() {
+            try { localStorage.setItem('digiPskReporterEnabled', this.checked ? '1' : '0'); } catch(e) {}
+            sendReporterConfig();
+        });
+    }
 }
 
 // Check that MY CALL and MY GRID are set before transmitting.
@@ -5942,6 +6021,8 @@ function toggleDigiBar() {
     if (digiBarVisible) {
         // Disable FreeDV if active — modes are mutually exclusive
         if (freedvEnabled) send({ cmd: 'setFreeDV', enabled: false });
+        // Tell the backend FT8/FT4 is now active so PSK Reporter can connect.
+        send({ cmd: 'setDigiActive', active: true, mode: digiMode });
         bar.classList.remove('hidden');
         document.body.classList.add('digi-open');
         // FT8 requires USB — set it automatically on open
@@ -5970,6 +6051,7 @@ function toggleDigiBar() {
     } else {
         bar.classList.add('hidden');
         document.body.classList.remove('digi-open');
+        send({ cmd: 'setDigiActive', active: false });
         stopDigiTune();
         stopDigiPeriodTimer();
         // Restore USB Mod Level
@@ -6440,6 +6522,7 @@ function onFt8DecodeResult(results, decodedSlotIndex) {
                   freq: results[i].freq, msg: results[i].msg,
                   slotIndex: decodedSlotIndex };
         digiDecodes.push(d);
+        reportDigiSpot(d);
         var toUs = myCall && d.msg.toUpperCase().indexOf(myCall) >= 0;
         var onRxFreq = Math.abs(d.freq - digiRxFreq) <= 10;
         if (toUs || onRxFreq) {
@@ -7923,6 +8006,7 @@ function initDigiHandlers() {
             digiMode = (digiMode === 'FT8') ? 'FT4' : 'FT8';
             this.textContent = digiMode;
             if (digiBarVisible) {
+                send({ cmd: 'setDigiActive', active: true, mode: digiMode });
                 stopDigiPeriodTimer();
                 resetDigiRxBuffer();
                 startDigiPeriodTimer();

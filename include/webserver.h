@@ -33,6 +33,7 @@
 #include "audioconverter.h"
 #include "freedvprocessor.h"
 #include "freedvreporter.h"
+#include "pskreporter.h"
 #include "radeprocessor.h"
 #include "direwolfprocessor.h"
 #include "ax25linkprocessor.h"
@@ -140,6 +141,7 @@ private slots:
     void onFreeDVStats(float snr, bool sync);
     void onFreeDVRxCallsign(const QString &callsign);
     void onReporterStateChanged(int state);
+    void onPskReporterStateChanged(int state);
     void drainFreeDVTxBuffer();
 
     // RADE V1
@@ -175,6 +177,11 @@ private:
     void sendJsonTo(QWebSocket *client, const QJsonObject &obj);
     void startReporterSnrTimer();
     void stopReporterSnrTimer();
+    // Notify clients of the current state of either reporter.  The displayed
+    // state distinguishes "waiting" (checkbox on but the matching mode isn't
+    // active) from "connecting" (actually trying to reach the server).
+    void notifyFreedvReporterStatus();
+    void notifyPskReporterStatus();
     void sendBinaryToAll(const QByteArray &data);
     void sendBinaryToAudioClients(const QByteArray &data);
     // Common TX-audio writer.  Takes mono int16 LE PCM, expands to stereo
@@ -270,9 +277,13 @@ private:
     FreeDVProcessor *freedvProcessor = nullptr;
     QThread *freedvThread = nullptr;
     FreeDVReporter *freedvReporter = nullptr;
+    PskReporter *pskReporter = nullptr;
     QString reporterCallsign;
     QString reporterGrid;
-    bool reporterEnabled = false;
+    bool reporterEnabled = false;       // FreeDV Reporter toggle
+    bool pskReporterEnabled = false;    // pskreporter.info toggle (FT8/FT4)
+    bool digiActive = false;            // browser DIGI panel open (FT8/FT4)
+    QString digiMode = QStringLiteral("FT8");
     bool freedvEnabled = false;
     int freedvMode = 0;
     QString freedvModeName = QStringLiteral("RADE");

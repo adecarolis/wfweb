@@ -1401,6 +1401,9 @@ void webServer::disableFreeDV()
         freedvReporter->disconnectFromService();
         qInfo() << "Web: Reporter disconnected (FreeDV disabled)";
     }
+    // Reporter checkbox may still be on — flip the displayed state from
+    // "connected" to "waiting" so the UI stops looking active.
+    notifyFreedvReporterStatus();
     qInfo() << "Web: FreeDV disabled";
 }
 
@@ -1955,6 +1958,9 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             // Reconnect reporter when entering FreeDV/RADE mode
             if (freedvEnabled && freedvReporter && reporterEnabled)
                 freedvReporter->connectToService();
+            // Even without a connect, flip "waiting" → "connecting" / "connected"
+            // (or back the other way for disable) for the UI right away.
+            notifyFreedvReporterStatus();
         } else {
             disableFreeDV();
         }
@@ -2384,8 +2390,14 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     else if (type == "setReporter") {
         reporterCallsign = cmd["callsign"].toString().toUpper().trimmed();
         reporterGrid = cmd["grid"].toString().toUpper().trimmed();
-        reporterEnabled = cmd["enabled"].toBool();
+        // "enabled" is the legacy field (FreeDV reporter); "freedvEnabled"
+        // is the explicit name now that PSK Reporter is also configured here.
+        reporterEnabled = cmd.contains("freedvEnabled")
+                            ? cmd["freedvEnabled"].toBool()
+                            : cmd["enabled"].toBool();
+        bool wantPsk = cmd["pskEnabled"].toBool();
 
+        // ---- FreeDV Reporter ----
         if (reporterEnabled) {
             if (!freedvReporter) {
                 freedvReporter = new FreeDVReporter(this);
@@ -2413,6 +2425,36 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             if (freedvReporter)
                 freedvReporter->disconnectFromService();
         }
+
+        // ---- PSK Reporter (FT8/FT4) ----
+        pskReporterEnabled = wantPsk;
+        if (pskReporterEnabled) {
+            if (!pskReporter) {
+                pskReporter = new PskReporter(this);
+                connect(pskReporter, &PskReporter::stateChanged,
+                        this, &webServer::onPskReporterStateChanged);
+            }
+            pskReporter->setStation(reporterCallsign, reporterGrid);
+
+            if (queue) {
+                vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
+                cacheItem freqCache = queue->getCache(t.freqFunc, 0);
+                if (freqCache.value.isValid()) {
+                    freqt f = freqCache.value.value<freqt>();
+                    if (f.Hz > 0) pskReporter->updateFrequency(f.Hz);
+                }
+            }
+
+            // Connect only if a digital mode panel (FT8/FT4) is currently active.
+            if (digiActive) {
+                pskReporter->updateTx(digiMode, false);
+                pskReporter->connectToService();
+            }
+        } else {
+            if (pskReporter)
+                pskReporter->disconnectFromService();
+        }
+
         // Pass callsign to RADE processor for EOO encoding
         if (radeProcessor && !reporterCallsign.isEmpty()) {
             QMetaObject::invokeMethod(radeProcessor, "setTxCallsign",
@@ -2420,11 +2462,43 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                                       Q_ARG(QString, reporterCallsign));
         }
 
-        QJsonObject notify;
-        notify["type"] = "reporterStatus";
-        notify["enabled"] = reporterEnabled;
-        notify["state"] = freedvReporter ? (reporterEnabled ? "connecting" : "disconnected") : "disconnected";
-        sendJsonToAll(notify);
+        notifyFreedvReporterStatus();
+        notifyPskReporterStatus();
+    }
+    else if (type == "setDigiActive") {
+        // Browser opens / closes the FT8/FT4 panel.  PSK Reporter only
+        // connects while a digital mode is actually being decoded.
+        digiActive = cmd["active"].toBool();
+        QString m = cmd["mode"].toString().toUpper();
+        if (m == "FT8" || m == "FT4") digiMode = m;
+
+        if (pskReporter && pskReporterEnabled) {
+            if (digiActive) {
+                pskReporter->updateTx(digiMode, false);
+                pskReporter->connectToService();
+            } else {
+                // Flush whatever's queued before going dormant.
+                pskReporter->disconnectFromService();
+            }
+        }
+        // Even if no reporter object exists yet, the displayed state can flip
+        // between "waiting" and "disconnected" based on digiActive — refresh.
+        notifyPskReporterStatus();
+    }
+    else if (type == "reportDigiSpot") {
+        // Browser-side FT8/FT4 decode → forward to PSK Reporter.  The browser
+        // computes the on-air RF frequency (rig dial + audio offset) so the
+        // backend doesn't need to know the rig's USB/LSB sense.
+        if (pskReporter && pskReporterEnabled && digiActive) {
+            QString call = cmd["callsign"].toString().toUpper().trimmed();
+            QString grid = cmd["grid"].toString().toUpper().trimmed();
+            QString mode = cmd["mode"].toString().toUpper().trimmed();
+            if (mode != "FT8" && mode != "FT4") mode = digiMode;
+            int snr = cmd["snr"].toInt();
+            quint64 freqHz = cmd["freq"].toVariant().toULongLong();
+            if (freqHz > 0) pskReporter->updateFrequency(freqHz);
+            pskReporter->updateRxSpotWithGrid(call, grid, mode, snr);
+        }
     }
     else {
         qWarning() << "Web: Unknown command:" << type;
@@ -2641,10 +2715,15 @@ QJsonObject webServer::buildStatusJson()
 
     // Reporter
     status["reporterEnabled"] = reporterEnabled;
+    static const char *reporterStateNames[] = {"disconnected", "connecting", "connected", "error"};
     if (freedvReporter) {
-        static const char *stateNames[] = {"disconnected", "connecting", "connected", "error"};
         int s = static_cast<int>(freedvReporter->state());
-        status["reporterState"] = QString(stateNames[qBound(0, s, 3)]);
+        status["reporterState"] = QString(reporterStateNames[qBound(0, s, 3)]);
+    }
+    status["pskReporterEnabled"] = pskReporterEnabled;
+    if (pskReporter) {
+        int s = static_cast<int>(pskReporter->state());
+        status["pskReporterState"] = QString(reporterStateNames[qBound(0, s, 3)]);
     }
 
     // AF Gain
@@ -2762,6 +2841,7 @@ void webServer::receiveCache(cacheItem item)
         freqt f = item.value.value<freqt>();
         update["frequency"] = (qint64)f.Hz;
         if (freedvReporter) freedvReporter->updateFrequency(f.Hz);
+        if (pskReporter) pskReporter->updateFrequency(f.Hz);
         break;
     }
     case funcMode:
@@ -3538,21 +3618,52 @@ void webServer::onFreeDVRxCallsign(const QString &callsign)
         freedvReporter->updateRxSpot(callsign, freedvModeName, (int)freedvSNR);
 }
 
-void webServer::onReporterStateChanged(int state)
+// "waiting" replaces "connecting" when a reporter is enabled but the
+// matching mode (FreeDV or FT8/FT4) is not currently active — there is
+// nothing to connect to yet, so saying "connecting" would be misleading.
+static QString reporterDisplayState(SpotReporter::State s, bool enabled, bool modeActive)
 {
-    QString stateStr;
-    switch (static_cast<SpotReporter::State>(state)) {
-    case SpotReporter::Disconnected: stateStr = "disconnected"; break;
-    case SpotReporter::Connecting:   stateStr = "connecting";   break;
-    case SpotReporter::Connected:    stateStr = "connected";    break;
-    case SpotReporter::Error:        stateStr = "error";        break;
+    if (!enabled) return QStringLiteral("disconnected");
+    if (!modeActive) return QStringLiteral("waiting");
+    switch (s) {
+    case SpotReporter::Disconnected: return QStringLiteral("disconnected");
+    case SpotReporter::Connecting:   return QStringLiteral("connecting");
+    case SpotReporter::Connected:    return QStringLiteral("connected");
+    case SpotReporter::Error:        return QStringLiteral("error");
     }
+    return QStringLiteral("disconnected");
+}
 
+void webServer::notifyFreedvReporterStatus()
+{
+    SpotReporter::State s = freedvReporter ? freedvReporter->state()
+                                           : SpotReporter::Disconnected;
     QJsonObject notify;
     notify["type"] = "reporterStatus";
     notify["enabled"] = reporterEnabled;
-    notify["state"] = stateStr;
+    notify["state"] = reporterDisplayState(s, reporterEnabled, freedvEnabled);
     sendJsonToAll(notify);
+}
+
+void webServer::notifyPskReporterStatus()
+{
+    SpotReporter::State s = pskReporter ? pskReporter->state()
+                                        : SpotReporter::Disconnected;
+    QJsonObject notify;
+    notify["type"] = "pskReporterStatus";
+    notify["enabled"] = pskReporterEnabled;
+    notify["state"] = reporterDisplayState(s, pskReporterEnabled, digiActive);
+    sendJsonToAll(notify);
+}
+
+void webServer::onReporterStateChanged(int /*state*/)
+{
+    notifyFreedvReporterStatus();
+}
+
+void webServer::onPskReporterStateChanged(int /*state*/)
+{
+    notifyPskReporterStatus();
 }
 
 void webServer::startReporterSnrTimer()
