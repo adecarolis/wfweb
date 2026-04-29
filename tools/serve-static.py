@@ -12,6 +12,7 @@ Usage:
 """
 import os
 import sys
+from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 
@@ -25,14 +26,19 @@ class NoCacheHandler(SimpleHTTPRequestHandler):
 
 def main():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
-    directory = sys.argv[2] if len(sys.argv) > 2 else None
-    if directory:
-        os.chdir(directory)
+    directory = sys.argv[2] if len(sys.argv) > 2 else os.getcwd()
+    directory = os.path.abspath(directory)
+    # Bind directory via partial instead of os.chdir() — chdir'ing into a
+    # path that gets deleted (e.g. by build-static.sh's rm -rf dist) leaves
+    # the process in a "(deleted)" cwd, and every subsequent request fails
+    # with FileNotFoundError on os.getcwd(). Passing directory= sidesteps
+    # the problem entirely.
+    handler = partial(NoCacheHandler, directory=directory)
     addr = ("", port)
     print(f"wfweb static server (no-cache) → http://localhost:{port}")
-    print(f"  cwd: {os.getcwd()}")
+    print(f"  serving: {directory}")
     print("  Ctrl-C to stop")
-    ThreadingHTTPServer(addr, NoCacheHandler).serve_forever()
+    ThreadingHTTPServer(addr, handler).serve_forever()
 
 
 if __name__ == "__main__":
