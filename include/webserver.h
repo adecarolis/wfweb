@@ -217,6 +217,16 @@ private:
     bool lanMode = false;
     bool lanConnected = false;
 
+    // Locally tracked active VFO/receiver. Mirrors cachingQueue::rigState.vfo
+    // but is read/written entirely on webThread, so receiveCache() can route
+    // funcSelectedFreq/funcUnselectedFreq without re-locking the queue mutex
+    // (see issue #31 / commit 126f0f0c for the deadlock this avoids).
+    // Updated from: WebSocket selectVFO handler (predictively), incoming
+    // funcSelectVFO/funcVFOMainSelect/funcVFOSubSelect cache events, and
+    // reconciled from queue->getState() inside sendPeriodicStatus().
+    vfo_t activeVfoLocal = vfoA;
+    uchar activeReceiver = 0;
+
     // SSL
     bool sslEnabled = false;
     QSslCertificate sslCert;
