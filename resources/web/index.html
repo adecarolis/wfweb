@@ -2548,10 +2548,13 @@ var audioAvailable = false;
 var audioWasEnabled = false;
 var audioSampleRate = 48000;
 
-// FreeDV state
+// FreeDV state. In Direct mode the only mode wired to a WASM modem is
+// RADE — the classic codec2 modes need the C++ server, so we hide them.
 var freedvEnabled = false;
-var freedvModeName = '700D';
-var freedvModes = ['700D', '700E', '1600'];
+var freedvModeName = (controlMode === 'direct') ? 'RADE' : '700D';
+var freedvModes    = (controlMode === 'direct')
+    ? ['RADE']
+    : ['700D', '700E', '1600'];
 var freedvSync = false;
 var freedvSNR = 0.0;
 var freedvFreqOffset = 0.0;
@@ -3095,6 +3098,28 @@ function handleMessage(msg) {
             break;
         case 'radeCallsign':
             radeRxCallsign = msg.callsign || '';
+            updateFreeDVStatus({});
+            break;
+        case 'radeStats':
+            // RADE WASM stats — fold into the freedv* indicator surface so
+            // the existing renderer in updateFreeDVStatus picks them up.
+            if (typeof msg.sync === 'boolean') freedvSync = msg.sync;
+            if (typeof msg.snr === 'number')   freedvSNR  = msg.snr;
+            if (typeof msg.freqOffset === 'number') freedvFreqOffset = msg.freqOffset;
+            if (freedvEnabled) {
+                var rsc = freedvSync ? '#00ff88' : '#ff4444';
+                var syncEl2 = document.getElementById('freedvSyncEl');
+                var snrEl2  = document.getElementById('freedvSnrEl');
+                var foEl2   = document.getElementById('freedvFoEl');
+                if (syncEl2) { syncEl2.style.color = rsc; syncEl2.textContent = freedvSync ? 'SYNC' : 'NO SYNC'; }
+                if (snrEl2)  snrEl2.textContent = 'SNR ' + freedvSNR.toFixed(1);
+                if (foEl2)   foEl2.textContent  = 'FO '  + freedvFreqOffset.toFixed(1);
+            }
+            break;
+        case 'radeStatus':
+            // Authoritative on/off from the transport (e.g., on close).
+            freedvEnabled = !!msg.enabled;
+            if (freedvEnabled) freedvModeName = 'RADE';
             updateFreeDVStatus({});
             break;
         case 'error':
@@ -4694,7 +4719,14 @@ function toggleLanConnection() {
 // ============================================================
 function toggleFreeDV() {
     if (freedvModes.length === 0) return;
+    var direct = (controlMode === 'direct');
     if (freedvEnabled) {
+        if (direct && freedvModeName === 'RADE') {
+            send({ cmd: 'setRadeMode', value: false });
+            freedvEnabled = false;
+            updateFreeDVStatus({});
+            return;
+        }
         send({ cmd: 'setFreeDV', enabled: false });
     } else {
         // Close DIGI panel if open — modes are mutually exclusive
@@ -4706,10 +4738,28 @@ function toggleFreeDV() {
         freedvModeName = freedvModes[0];
         freedvTxGain = 0.25;
         ALC_SMOOTHED = 0;
+        if (direct && freedvModeName === 'RADE') {
+            // Push the shared station callsign so EOO carries it.
+            var cs = window.App && window.App.callsign && window.App.callsign.get();
+            if (cs) send({ cmd: 'setRadeCallsign', value: cs });
+            send({ cmd: 'setRadeMode', value: true });
+            freedvEnabled = true;
+            updateFreeDVStatus({});
+            return;
+        }
         send({ cmd: 'setFreeDV', enabled: true, mode: freedvModeName });
         send({ cmd: 'setFreeDVTxGain', value: freedvTxGain });
     }
 }
+
+// Re-push the callsign to the RADE modem whenever the user edits it in
+// the gear dialog. The modem keeps it in C-side state and re-encodes on
+// the next TX over.
+window.addEventListener('appCallsignChanged', function (ev) {
+    if (controlMode !== 'direct') return;
+    if (!freedvEnabled || freedvModeName !== 'RADE') return;
+    if (ev && ev.detail) send({ cmd: 'setRadeCallsign', value: ev.detail });
+});
 
 function cycleFreeDVMode() {
     if (!freedvEnabled) return;
