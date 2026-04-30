@@ -257,6 +257,47 @@
         // 0 = off, otherwise BCD-encoded dB value (0x14 = 20dB on IC-7300)
         return new Uint8Array([0x11, encodeBcd2(dB)]);
     }
+
+    // ---------- Filter width (cmd 0x1A 0x03) -----------------------------
+    // Encoded as a single BCD byte holding an "index" into the rig's
+    // mode-dependent passband table:
+    //   AM:        index = (pass / 200) - 1, range 0..49 (200..10000 Hz)
+    //   SSB/CW/PSK pass < 600: index = (pass / 50) - 1, range 0..9 (50..500 Hz)
+    //   SSB/CW/PSK pass >= 600: index = (pass / 100) + 4, range 10..40 (600..3600 Hz)
+    // Mirrors src/radio/icomcommander.cpp::makeFilterWidth().
+    function _hzToFilterWidthIdx(hz, modeName) {
+        var calc;
+        var isAM = (modeName === 'AM');
+        if (isAM) {
+            calc = Math.floor(hz / 200) - 1;
+            if (calc > 49) calc = 49;
+        } else if (hz >= 600) {
+            calc = Math.floor(hz / 100) + 4;
+            if (calc > 40) calc = 40;
+        } else {
+            calc = Math.floor(hz / 50) - 1;
+        }
+        if (calc < 0) calc = 0;
+        var tens = Math.floor(calc / 10);
+        var units = calc - 10 * tens;
+        return ((tens & 0x0F) << 4) | (units & 0x0F);
+    }
+    function cmdReadFilterWidth() { return new Uint8Array([0x1A, 0x03]); }
+    function cmdSetFilterWidth(hz, modeName) {
+        return new Uint8Array([0x1A, 0x03, _hzToFilterWidthIdx(hz, modeName)]);
+    }
+    function _filterWidthIdxToHz(idx, modeName) {
+        if (modeName === 'AM') return (idx + 1) * 200;
+        if (idx <= 9) return (idx + 1) * 50;
+        return (idx - 4) * 100;
+    }
+    function parseFilterWidthReply(payload, modeName) {
+        // [0x1A, 0x03, BCD-byte]
+        if (payload.length < 3 || payload[0] !== 0x1A || payload[1] !== 0x03) return null;
+        var b = payload[2];
+        var idx = ((b >> 4) & 0x0F) * 10 + (b & 0x0F);
+        return _filterWidthIdxToHz(idx, modeName || 'USB');
+    }
     function parseAttenuatorReply(payload) {
         // [0x11, level]
         if (payload.length < 2 || payload[0] !== 0x11) return null;
@@ -314,6 +355,55 @@
         return decodeBcdLevel(payload[2], payload[3]);
     }
 
+    // Default meter calibration tables. Used when the detected rig either
+    // has no entry in window.IcomRigCaps or has no entry for that meter
+    // kind. The defaults are the IC-7300 tables — a reasonable fit for any
+    // modern Icom HF rig and graceful for older / receiver-only rigs.
+    // Each entry is [rigVal (0..255), actualVal]. Caller's lookup table
+    // takes precedence; we just interpolate over it.
+    var DEFAULT_METER_CAL = {
+        sMeter: [[0,-54],[10,-48],[30,-36],[60,-24],[90,-12],[120,0],[241,64]],
+        swr:    [[0,1.0],[48,1.5],[80,2.0],[120,3.0],[255,6.0]],
+        power:  [[0,0],[21,5],[43,10],[65,15],[83,20],[95,25],[105,30],
+                 [114,35],[124,40],[143,50],[183,75],[213,100],[255,120]],
+        alc:    [[0,0],[120,1],[255,2]],
+        // Less common meters — no useful default, return raw if absent.
+        center: null, comp: null, voltage: null, current: null,
+    };
+    // Piecewise-linear interpolate `raw` through the [rigVal, actualVal]
+    // table, clamping to the endpoints (mirrors rigCommander::getMeterCal).
+    function interpolate(tbl, raw) {
+        if (!tbl || !tbl.length || raw == null) return raw;
+        if (raw <= tbl[0][0]) return tbl[0][1];
+        if (raw >= tbl[tbl.length - 1][0]) return tbl[tbl.length - 1][1];
+        for (var i = 1; i < tbl.length; i++) {
+            if (raw <= tbl[i][0]) {
+                var k0 = tbl[i - 1][0], v0 = tbl[i - 1][1];
+                var k1 = tbl[i][0],     v1 = tbl[i][1];
+                return v0 + (v1 - v0) * (raw - k0) / (k1 - k0);
+            }
+        }
+        return raw;
+    }
+    // Public entry point — caller passes the rig-specific cal table (from
+    // window.IcomRigCaps[civAddr].meters[kind]). Falls back to the IC-7300
+    // default for that kind when the rig has no entry.
+    function calMeter(kind, raw, rigTable) {
+        var tbl = rigTable || DEFAULT_METER_CAL[kind];
+        if (!tbl) return raw;
+        return interpolate(tbl, raw);
+    }
+    // Best-effort lookup helper. Reads from the global IcomRigCaps that
+    // rig-caps.js publishes. Returns null when the rig isn't registered or
+    // doesn't have that meter — caller should fall back to the default.
+    function getRigMeterTable(civAddr, kind) {
+        var caps = (typeof globalThis !== 'undefined' ? globalThis : window).IcomRigCaps;
+        if (!caps) return null;
+        var entry = caps[civAddr];
+        if (!entry || !entry.meters) return null;
+        return entry.meters[kind] || null;
+    }
+
     // ---------- CW keyer (cmd 0x17) --------------------------------------
     function cmdSendCW(text) {
         // ASCII bytes after 0x17. Max 30 chars per frame on IC-7300.
@@ -347,32 +437,56 @@
         return decodeBcdLE(payload.slice(3, 6));
     }
 
-    // ---------- MOD INPUT (cmd 0x1A 0x05 0x00 0x66 / 0x67) -------------
-    // 0x66 = "Data OFF Mod Input"  — modulation source in non-DATA modes
-    //                                 (USB voice, AM, FM, …)
-    // 0x67 = "DATA1 Mod Input"     — modulation source in DATA modes
-    //                                 (USB-D, LSB-D, …)
-    // IC-7300 input table (same registers for both settings):
-    //   0=MIC, 1=ACC, 2=MIC+ACC, 3=USB, 4=MIC+USB
-    var DATA_OFF_MOD_PREFIX = [0x1A, 0x05, 0x00, 0x66];
-    var DATA_MOD_PREFIX     = [0x1A, 0x05, 0x00, 0x67];
-    var MOD_INPUT_USB = 0x03;
-    var MOD_INPUT_MIC = 0x00;
-    function cmdSetDataOffMod(input) {
-        return new Uint8Array([0x1A, 0x05, 0x00, 0x66, input & 0xFF]);
+    // ---------- MOD INPUT — modulation source selector -----------------
+    // Two registers: "Data OFF Mod Input" (used in voice modes) and
+    // "DATA1 Mod Input" (used in DATA-on modes — USB-D, LSB-D, …). The
+    // CI-V byte sequence varies per rig (0x1A 0x05 NN MM); we get the
+    // exact bytes from the rig-caps table generated from rigs/*.rig.
+    //
+    // The "input value" written into the register is also rig-specific:
+    // each .rig file's Inputs section lists which Reg byte means USB,
+    // MIC, etc. Defaults below match the IC-7300 (the most common rig).
+    var DEFAULT_MOD_INPUTS = {
+        off:    [0x1A, 0x05, 0x00, 0x66],  // IC-7300 Data OFF
+        data1:  [0x1A, 0x05, 0x00, 0x67],  // IC-7300 DATA1
+        usbReg: 0x03,                       // IC-7300 input value for USB
+        micReg: 0x00,                       // IC-7300 input value for MIC
+    };
+    function getRigModInputs(civAddr) {
+        var caps = (typeof globalThis !== 'undefined' ? globalThis : window).IcomRigCaps;
+        var entry = caps && caps[civAddr];
+        return {
+            off:    (entry && entry.cmds && entry.cmds.modOff)   || DEFAULT_MOD_INPUTS.off,
+            data1:  (entry && entry.cmds && entry.cmds.modData1) || DEFAULT_MOD_INPUTS.data1,
+            usbReg: (entry && entry.inputs && entry.inputs.USB != null)
+                        ? entry.inputs.USB : DEFAULT_MOD_INPUTS.usbReg,
+            micReg: (entry && entry.inputs && entry.inputs.MIC != null)
+                        ? entry.inputs.MIC : DEFAULT_MOD_INPUTS.micReg,
+        };
     }
-    function cmdReadDataOffMod() {
-        return new Uint8Array(DATA_OFF_MOD_PREFIX);
+    // Append a single value byte to a CI-V prefix, returning a fresh Uint8Array.
+    function _appendByte(prefix, value) {
+        var out = new Uint8Array(prefix.length + 1);
+        out.set(prefix);
+        out[prefix.length] = value & 0xFF;
+        return out;
     }
-    function cmdSetDataMod(input) {
-        return new Uint8Array([0x1A, 0x05, 0x00, 0x67, input & 0xFF]);
+    function cmdSetModInput(prefix, regByte) { return _appendByte(prefix, regByte); }
+    function cmdReadModInput(prefix) { return new Uint8Array(prefix); }
+    function parseModInputReply(payload, prefix) {
+        if (payload.length < prefix.length + 1) return null;
+        for (var i = 0; i < prefix.length; i++) {
+            if (payload[i] !== prefix[i]) return null;
+        }
+        return payload[prefix.length];
     }
-    function parseDataOffModReply(payload) {
-        // [0x1A, 0x05, 0x00, 0x66, value]
-        if (payload.length < 5) return null;
-        if (payload[0] !== 0x1A || payload[1] !== 0x05 || payload[2] !== 0x00 || payload[3] !== 0x66) return null;
-        return payload[4];
-    }
+    // Back-compat shims — same surface, IC-7300 defaults.
+    function cmdSetDataOffMod(input) { return cmdSetModInput(DEFAULT_MOD_INPUTS.off, input); }
+    function cmdReadDataOffMod()     { return cmdReadModInput(DEFAULT_MOD_INPUTS.off); }
+    function cmdSetDataMod(input)    { return cmdSetModInput(DEFAULT_MOD_INPUTS.data1, input); }
+    function parseDataOffModReply(payload) { return parseModInputReply(payload, DEFAULT_MOD_INPUTS.off); }
+    var MOD_INPUT_USB = DEFAULT_MOD_INPUTS.usbReg;
+    var MOD_INPUT_MIC = DEFAULT_MOD_INPUTS.micReg;
 
     // Probe frame for auto-detecting the rig: broadcast read-transceiver-ID.
     // Any rig listening on the bus replies with its own CI-V address in the
@@ -457,6 +571,9 @@
         cmdSetPreamp: cmdSetPreamp,
         cmdReadAttenuator: cmdReadAttenuator,
         cmdSetAttenuator: cmdSetAttenuator,
+        cmdReadFilterWidth: cmdReadFilterWidth,
+        cmdSetFilterWidth: cmdSetFilterWidth,
+        parseFilterWidthReply: parseFilterWidthReply,
         cmdReadSplit: cmdReadSplit,
         cmdSetSplit: cmdSetSplit,
         cmdSelectVFO: cmdSelectVFO,
@@ -479,6 +596,11 @@
         parseDataOffModReply: parseDataOffModReply,
         MOD_INPUT_USB: MOD_INPUT_USB,
         MOD_INPUT_MIC: MOD_INPUT_MIC,
+        // Per-rig MOD INPUT (preferred over the back-compat helpers above)
+        getRigModInputs: getRigModInputs,
+        cmdSetModInput: cmdSetModInput,
+        cmdReadModInput: cmdReadModInput,
+        parseModInputReply: parseModInputReply,
         // response parsers
         parseFrequencyReply: parseFrequencyReply,
         parseModeReply: parseModeReply,
@@ -491,6 +613,8 @@
         parseSplitReply: parseSplitReply,
         parseTunerReply: parseTunerReply,
         parseTxMeterReply: parseTxMeterReply,
+        calMeter: calMeter,
+        getRigMeterTable: getRigMeterTable,
         parseAck: parseAck,
     };
 })(window);

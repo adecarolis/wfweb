@@ -28,18 +28,17 @@
     }
 
     var civ = global.IcomCiv;
+    var RIG_CAPS = global.IcomRigCaps || {};
 
-    // CI-V address → display name. Extend as needed.
-    var KNOWN_RIGS = {
-        0x70: 'IC-9100',
-        0x88: 'IC-7000',
-        0x8C: 'IC-7100',
-        0x94: 'IC-7300',
-        0x98: 'IC-7610',
-        0xA2: 'IC-9700',
-        0xA4: 'IC-705',
-        0xAC: 'IC-905',
-    };
+    // CI-V address → display name. The full table is generated from
+    // rigs/*.rig by tools/extract-rig-caps.py and lives in IcomRigCaps;
+    // we look up names from there. This minimal fallback covers the
+    // common modern rigs in case rig-caps.js failed to load.
+    function rigDisplayName(addr) {
+        var entry = RIG_CAPS[addr];
+        if (entry && entry.model) return entry.model;
+        return 'Icom 0x' + addr.toString(16).toUpperCase();
+    }
 
     // Bauds tried during auto-detect, ordered by likelihood. 19200 is the
     // most common Icom default; 115200 is what people set for snappy SDR
@@ -75,13 +74,12 @@
     ];
 
     // Icom S-meter raw BCD (0..241) → dB relative to S9 (-54..+60), the
-    // scale the SPA's drawSMeter() expects.
-    //   0   → -54 dB (S0)
-    //   120 →   0 dB (S9)
-    //   241 → +60 dB (S9+60)
-    function rawSMeterToDb(raw) {
-        if (raw <= 120) return (raw - 120) * 54 / 120;   // -54..0
-        return Math.min(60, (raw - 120) * 60 / 121);     // 0..60
+    // scale the SPA's drawSMeter() expects. Uses the per-rig table from
+    // IcomRigCaps when available (rigs/IC-*.rig has per-model curves);
+    // falls back to the IC-7300 default in icom.js for unknown rigs.
+    function rawSMeterToDb(raw, civAddr) {
+        var tbl = civ.getRigMeterTable(civAddr, 'sMeter');
+        return civ.calMeter('sMeter', raw, tbl);
     }
 
     // SPA command name → 0x14 NN sub byte (analog levels 0..255)
@@ -144,6 +142,8 @@
         setTuner: true, setPower: true, setSpan: true,
         // CW
         sendCW: true, stopCW: true,
+        // Filter width / shape
+        setFilterWidth: true,
         // Packet (WASM Direwolf modem; APRS UI-frame TX only for now).
         packetEnable: true, packetSetMode: true, aprsTxBeacon: true,
         // Anything else (FreeDV, memory, filter shape, LAN ops, reporters …)
@@ -222,6 +222,11 @@
             // Saved Data-Off Mod Input value, captured before we flip the
             // rig to USB on enableMic so we can restore on disable.
             this._savedDataOffMod = null;
+
+            // Per-rig MOD INPUT command bytes + USB/MIC register values.
+            // Filled in once we identify the rig (default = IC-7300 layout
+            // until we have a CI-V address).
+            this._modIn = civ.getRigModInputs(this.civAddr);
 
             // Spectrum scope assembly state. The Icom scope command (0x27 0x00)
             // arrives as a sequence of frames: seq 1 carries header (mode +
@@ -336,7 +341,14 @@
                 case 'setMode':
                     if (typeof obj.value !== 'string') return;
                     this.state.mode = obj.value;
-                    this._enqueue('setMode', civ.cmdSetMode(obj.value, this.state.filter || 1));
+                    // Send mode WITHOUT a filter byte — cmdSetMode emits
+                    // the bare 0x06 mode form, which makes the rig keep
+                    // its per-mode remembered filter. Sending an explicit
+                    // filter forces e.g. FIL1 every time something else
+                    // changes the mode (packet.js auto-restoring its
+                    // saved-enabled state on reload was clobbering the
+                    // user's filter selection back to FIL1 every refresh).
+                    this._enqueue('setMode', civ.cmdSetMode(obj.value, null));
                     this._emit('update', { mode: obj.value });
                     return;
                 case 'setFilter':
@@ -347,7 +359,19 @@
                     }
                     this._emit('update', { filter: obj.value });
                     return;
+                case 'setFilterWidth':
+                    if (typeof obj.value !== 'number' || obj.value <= 0) return;
+                    this.state.filterWidth = obj.value;
+                    var fwBytes = civ.cmdSetFilterWidth(obj.value, this.state.mode || 'USB');
+                    console.log('setFilterWidth:', obj.value, 'Hz mode=', this.state.mode,
+                        '→ bytes', Array.from(fwBytes).map(function(b){return b.toString(16).padStart(2,'0');}).join(' '));
+                    this._enqueue('setFilterWidth', fwBytes);
+                    this._emit('update', { filterWidth: obj.value });
+                    return;
                 case 'setPTT':
+                    // Receiver-only rigs (R-series) won't accept PTT — drop
+                    // the request silently rather than NAK the bus.
+                    if (!this._rigCanTransmit()) return;
                     var ptt = !!obj.value;
                     this.state.transmitting = ptt;
                     this._enqueue('setPTT', civ.cmdSetPTT(ptt));
@@ -401,19 +425,24 @@
                     }
                     return;
                 case 'sendCW':
+                    if (!this._rigCanTransmit()) return;
                     if (typeof obj.text !== 'string' || !obj.text.length) return;
                     this._enqueue('sendCW', civ.cmdSendCW(obj.text));
                     return;
                 case 'stopCW':
+                    if (!this._rigCanTransmit()) return;
                     this._enqueue('stopCW', civ.cmdStopCW());
                     return;
                 case 'packetEnable':
+                    if (!this._rigCanTransmit()) return;
                     this._packetSetEnabled(!!obj.value);
                     return;
                 case 'packetSetMode':
+                    if (!this._rigCanTransmit()) return;
                     this._packetSetMode(obj.value | 0);
                     return;
                 case 'aprsTxBeacon':
+                    if (!this._rigCanTransmit()) return;
                     this._packetTxBeacon(obj);
                     return;
                 case 'enableAudio':
@@ -431,10 +460,13 @@
                     // audio interface (otherwise SSB-voice TX is silent
                     // because the rig is listening to the front-panel
                     // MIC). Restore the previous setting on mic-off.
+                    if (!this._rigCanTransmit()) return;
                     if (obj.value) {
-                        this._enqueue('setDataOffMod', civ.cmdSetDataOffMod(civ.MOD_INPUT_USB));
+                        this._enqueue('setDataOffMod',
+                            civ.cmdSetModInput(this._modIn.off, this._modIn.usbReg));
                     } else if (this._savedDataOffMod !== null) {
-                        this._enqueue('setDataOffMod', civ.cmdSetDataOffMod(this._savedDataOffMod));
+                        this._enqueue('setDataOffMod',
+                            civ.cmdSetModInput(this._modIn.off, this._savedDataOffMod));
                     }
                     return;
                 default:
@@ -689,6 +721,7 @@
         _finalizeDetection(port, baud, addr) {
             this.baudRate = baud;
             this.civAddr = addr;
+            this._modIn = civ.getRigModInputs(addr);
             lsSetInt('directBaudRate', baud);
             lsSetInt('directCivAddr', addr);
 
@@ -698,7 +731,7 @@
 
             this.onProgress({
                 stage: 'connected', baud: baud, civAddr: addr,
-                model: KNOWN_RIGS[addr] || ('Icom 0x' + addr.toString(16).toUpperCase()),
+                model: rigDisplayName(addr),
             });
 
             this._readLoop().catch((err) => {
@@ -732,7 +765,8 @@
             this._enqueue('readSplit',      civ.cmdReadSplit());
             this._enqueue('readTuner',      civ.cmdReadTuner());
             this._enqueue('readScopeSpan',  civ.cmdReadScopeSpan());
-            this._enqueue('readDataOffMod', civ.cmdReadDataOffMod());
+            this._enqueue('readDataOffMod', civ.cmdReadModInput(this._modIn.off));
+            this._enqueue('readFilterWidth', civ.cmdReadFilterWidth());
 
             // Enable scope output (waterfall). Single-byte payloads match
             // the C++ wfweb's behaviour for single-receiver rigs.
@@ -859,7 +893,7 @@
 
             var sMeterRaw = civ.parseSMeterReply(payload);
             if (sMeterRaw !== null) {
-                var sMeterDb = rawSMeterToDb(sMeterRaw);
+                var sMeterDb = rawSMeterToDb(sMeterRaw, this.civAddr);
                 if (sMeterDb !== this.state.sMeter) {
                     this.state.sMeter = sMeterDb;
                     this._emit('meters', { sMeter: sMeterDb });
@@ -888,11 +922,17 @@
                                 : (sub === 0x12) ? 'swrMeter'
                                 : (sub === 0x13) ? 'alcMeter' : null;
                 if (meterField) {
-                    var v = civ.parseTxMeterReply(payload, sub);
-                    if (v !== null && this.state[meterField] !== v) {
-                        this.state[meterField] = v;
-                        var m = {}; m[meterField] = v;
-                        this._emit('meters', m);
+                    var raw = civ.parseTxMeterReply(payload, sub);
+                    if (raw !== null) {
+                        var calKind = (sub === 0x11) ? 'power'
+                                    : (sub === 0x12) ? 'swr' : 'alc';
+                        var calTbl = civ.getRigMeterTable(this.civAddr, calKind);
+                        var v = civ.calMeter(calKind, raw, calTbl);
+                        if (this.state[meterField] !== v) {
+                            this.state[meterField] = v;
+                            var m = {}; m[meterField] = v;
+                            this._emit('meters', m);
+                        }
                     }
                     return;
                 }
@@ -947,15 +987,32 @@
 
             // 0x1A 0x05 0x00 0x66 — Data Off Mod Input reply.
             // Cache the rig's current value so we can restore it after the
-            // user toggles mic off.
-            if (payload.length >= 5 && payload[0] === 0x1A && payload[1] === 0x05 &&
-                    payload[2] === 0x00 && payload[3] === 0x66) {
-                var v = civ.parseDataOffModReply(payload);
+            // user toggles mic off. Prefix bytes are rig-specific.
+            var modOffPrefix = this._modIn.off;
+            var modOffMatch = payload.length >= modOffPrefix.length + 1;
+            for (var mi = 0; mi < modOffPrefix.length && modOffMatch; mi++) {
+                if (payload[mi] !== modOffPrefix[mi]) modOffMatch = false;
+            }
+            if (modOffMatch) {
+                var v = civ.parseModInputReply(payload, modOffPrefix);
                 // Don't overwrite our saved value with our own write-back
                 // (when rig echoes back USB after we set it). Keep the
                 // first-seen value as the user's baseline.
-                if (v !== null && this._savedDataOffMod === null && v !== civ.MOD_INPUT_USB) {
+                if (v !== null && this._savedDataOffMod === null && v !== this._modIn.usbReg) {
                     this._savedDataOffMod = v;
+                }
+                return;
+            }
+
+            // 0x1A 0x03 — Filter Width reply (encoding depends on current mode).
+            if (payload.length >= 3 && payload[0] === 0x1A && payload[1] === 0x03) {
+                var hz = civ.parseFilterWidthReply(payload, this.state.mode || 'USB');
+                console.log('parseFilterWidth:',
+                    Array.from(payload).map(function(b){return b.toString(16).padStart(2,'0');}).join(' '),
+                    'mode=', this.state.mode, '→', hz, 'Hz');
+                if (hz !== null && hz !== this.state.filterWidth) {
+                    this.state.filterWidth = hz;
+                    this._emit('update', { filterWidth: hz });
                 }
                 return;
             }
@@ -1034,22 +1091,45 @@
             this.dispatchEvent(new CustomEvent('binary', { detail: buf }));
         }
 
+        // Whether the connected rig accepts TX commands. Receivers (R-series
+        // — IC-R7100/R8500/R8600) have hasTransmit=false in rig-caps; the
+        // SPA hides the TX UI but a stale rigInfo or buggy caller could
+        // still try, so we gate at the transport too.
+        _rigCanTransmit() {
+            var entry = RIG_CAPS[this.civAddr];
+            if (!entry || !entry.caps) return true;  // unknown rig: assume TX
+            return entry.caps.hasTransmit !== false;
+        }
+
         _emitRigInfo() {
+            // Pull per-rig caps from the auto-generated rig-caps registry.
+            // Falls back to "modern HF rig with scope and TX" when the rig
+            // isn't in the registry (preserves prior behaviour for unknown
+            // CI-V addresses on the bus).
+            var entry = RIG_CAPS[this.civAddr];
+            var caps = (entry && entry.caps) || {
+                hasTransmit: true, hasSpectrum: true, hasLAN: false,
+                numReceivers: 1, numVFOs: 2,
+            };
             this._emit('rigInfo', {
                 version: '0.6.1-direct',
-                model: KNOWN_RIGS[this.civAddr] || ('Icom 0x' + this.civAddr.toString(16).toUpperCase()),
+                model: rigDisplayName(this.civAddr),
                 connected: true,
                 modes: DEFAULT_MODES,
                 filters: DEFAULT_FILTERS,
                 spans: DEFAULT_SPANS,
                 hasFilterSettings: true,
-                hasMainSub: false,
-                hasSpectrum: true,    // we'll stream scope data via 0x27 0x00
+                hasMainSub: caps.numReceivers > 1,
+                hasSpectrum: caps.hasSpectrum,
                 spectAmpMax: 160,     // Icom amplitude scale (matches C++ wfweb)
                 audioAvailable: true,    // Phase 2: rig USB audio via getUserMedia
                 audioSampleRate: 48000,
-                txAudioAvailable: true,  // Phase 2: setSinkId to rig USB output
+                txAudioAvailable: caps.hasTransmit,
                 hasPowerControl: false,
+                hasTransmit: caps.hasTransmit,
+                hasLAN: caps.hasLAN,
+                numReceivers: caps.numReceivers,
+                numVFOs: caps.numVFOs,
             });
         }
 
@@ -1067,7 +1147,7 @@
             var passthrough = ['afGain', 'rfGain', 'rfPower', 'squelch',
                 'micGain', 'monitorGain', 'pbtInner', 'pbtOuter', 'cwSpeed',
                 'autoNotch', 'nb', 'nr', 'preamp', 'attenuator',
-                'split', 'tuner', 'spanIndex'];
+                'split', 'tuner', 'spanIndex', 'filterWidth'];
             for (var i = 0; i < passthrough.length; i++) {
                 var k = passthrough[i];
                 if (this.state[k] !== undefined && this.state[k] !== null) s[k] = this.state[k];
@@ -1425,8 +1505,10 @@
                 // (USB-D / LSB-D data mode) so it works across all packet
                 // bauds. We don't try to restore — the voice path's own
                 // enableMic flow re-sets these for SSB voice.
-                this._enqueue('setDataOffMod', civ.cmdSetDataOffMod(civ.MOD_INPUT_USB));
-                this._enqueue('setDataMod',    civ.cmdSetDataMod(civ.MOD_INPUT_USB));
+                this._enqueue('setDataOffMod',
+                    civ.cmdSetModInput(this._modIn.off, this._modIn.usbReg));
+                this._enqueue('setDataMod',
+                    civ.cmdSetModInput(this._modIn.data1, this._modIn.usbReg));
 
                 // Make sure the TX audio context is initialised BEFORE we
                 // key the rig and start pumping samples. This SHOULD already
@@ -1494,7 +1576,7 @@
     }
 
     SerialRigTransport.handles = function (cmd) { return !!HANDLED_CMDS[cmd]; };
-    SerialRigTransport.knownRigs = KNOWN_RIGS;
+    SerialRigTransport.rigDisplayName = rigDisplayName;
 
     global.SerialRigTransport = SerialRigTransport;
 })(window);
