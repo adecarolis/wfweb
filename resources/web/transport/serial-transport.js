@@ -247,7 +247,7 @@
             // panel and toggles enable. modem stays alive across mode
             // changes; init() reconfigures it in place.
             this._packet = {
-                enabled: false, mode: 1200, modem: null,
+                enabled: false, mode: 300, modem: null,
                 modulePromise: null, txInFlight: false,
             };
             // Connected-mode AX.25 terminal sessions. sid (string) keys

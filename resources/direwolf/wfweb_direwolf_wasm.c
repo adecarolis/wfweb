@@ -143,6 +143,12 @@ static void ensure_dlq_inited(void) {
     if (!g_dlq_inited) { dlq_init(0); g_dlq_inited = 1; }
 }
 int wfweb_dw_link_step(void);  /* forward-decl; defined further down */
+/* Set to 1 by wfweb_dw_link_init when JS starts an Ax25Link.  Read by
+ * wfweb_dw_process_samples to suppress the RX-path DLQ drain — when the
+ * link is active, only the JS setInterval tick is allowed to drain the
+ * DLQ, otherwise SABM/retry audio writes into tx_buf can be wiped by the
+ * next tick's reset before JS reads them. Defined further down. */
+static int g_link_initialized;
 
 /* --- Flat exported API ----------------------------------------------------
  *
@@ -213,9 +219,12 @@ int wfweb_dw_baud(void) { return g_cfg_baud; }
 
 /* Push a batch of int16 LE PCM samples through the demodulator. The buffer
  * lives in the WASM heap; JS already memcpy'd bytes there before the call.
- * Drains the DLQ at the end so modem-only callers (no Ax25Link active)
- * still see modem.onFrame fire — the link path is gated separately so a
- * non-init link is harmless here. */
+ * When no Ax25Link is active we drain the DLQ here so modem-only callers
+ * still see modem.onFrame fire. When the link IS active, JS drives
+ * wfweb_dw_link_step on its own ~50 ms tick and owns tx_buf — draining
+ * the DLQ from this RX path would let dl_connect_request (and timer-driven
+ * SABM retries via dl_timer_expiry) write audio into tx_buf, only for the
+ * next link tick's reset to wipe it before JS ever reads it. */
 EMSCRIPTEN_KEEPALIVE
 void wfweb_dw_process_samples(int ptr, int n_samples)
 {
@@ -223,7 +232,7 @@ void wfweb_dw_process_samples(int ptr, int n_samples)
     for (int i = 0; i < n_samples; i++) {
         multi_modem_process_sample(0, (int)p[i]);
     }
-    wfweb_dw_link_step();
+    if (!g_link_initialized) wfweb_dw_link_step();
 }
 
 /* Encode a TNC-style "SRC>DST[,VIA,...]:info" UI frame and append the
