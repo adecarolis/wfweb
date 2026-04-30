@@ -14,6 +14,7 @@
         <file alias="transport/websocket-transport.js">web/transport/websocket-transport.js</file>
         <file alias="transport/serial-transport.js">web/transport/serial-transport.js</file>
         <file alias="civ/icom.js">web/civ/icom.js</file>
+        <file alias="civ/rig-caps.js">web/civ/rig-caps.js</file>
         <file alias="ft8ts.mjs">ft8ts/dist/ft8ts.mjs</file>
         <file alias="ft8ts.mjs.map">ft8ts/dist/ft8ts.mjs.map</file>
     </qresource>
