@@ -5481,6 +5481,21 @@ void webServer::setupUsbAudio(quint32 sampleRate, QString preferredInputName,
                 Qt::QueuedConnection);
         axProc->start();
 
+        // APRS layer.  Mirrors the LAN-audio path in setupAudio(): without
+        // this the USB capture path decodes UI frames into the Monitor view
+        // but the Heard Stations list never populates because nothing is
+        // listening on rxFrameDecoded for parsing.
+        aprsProc = new AprsProcessor(this);
+        connect(dwProc, &DireWolfProcessor::rxFrameDecoded,
+                aprsProc, &AprsProcessor::onRxFrame,
+                Qt::QueuedConnection);
+        connect(aprsProc, &AprsProcessor::stationUpdated,
+                this, &webServer::onAprsStationUpdated);
+        connect(aprsProc, &AprsProcessor::stationsCleared,
+                this, &webServer::onAprsStationsCleared);
+        connect(aprsProc, &AprsProcessor::txBeaconRequested,
+                this, &webServer::onAprsBeaconRequested);
+
         // Load persisted enable/mode state, then apply it to the processors
         // and broadcast a packetStatus so the UI picks up the restored value.
         packetLoadSettings();
