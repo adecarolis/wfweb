@@ -144,9 +144,10 @@
         setTuner: true, setPower: true, setSpan: true,
         // CW
         sendCW: true, stopCW: true,
-        // Anything else (FreeDV, packet, memory, span, filter shape, LAN
-        // ops, reporters …) falls through to the WS path which is closed in
-        // Direct mode.
+        // Packet (WASM Direwolf modem; APRS UI-frame TX only for now).
+        packetEnable: true, packetSetMode: true, aprsTxBeacon: true,
+        // Anything else (FreeDV, memory, filter shape, LAN ops, reporters …)
+        // falls through to the WS path which is closed in Direct mode.
     };
 
     function lsGetInt(key) {
@@ -229,6 +230,15 @@
                 seqMax: 0, mode: 0,
                 startFreq: 0, endFreq: 0,
                 pixels: [], capturing: false,
+            };
+
+            // Packet (Direwolf WASM) state. Lazy-loaded — we don't pay the
+            // ~140 KB module download cost unless the user opens the packet
+            // panel and toggles enable. modem stays alive across mode
+            // changes; init() reconfigures it in place.
+            this._packet = {
+                enabled: false, mode: 1200, modem: null,
+                modulePromise: null, txInFlight: false,
             };
         }
 
@@ -397,6 +407,15 @@
                 case 'stopCW':
                     this._enqueue('stopCW', civ.cmdStopCW());
                     return;
+                case 'packetEnable':
+                    this._packetSetEnabled(!!obj.value);
+                    return;
+                case 'packetSetMode':
+                    this._packetSetMode(obj.value | 0);
+                    return;
+                case 'aprsTxBeacon':
+                    this._packetTxBeacon(obj);
+                    return;
                 case 'enableAudio':
                     if (obj.value) {
                         this._startRxAudio().catch(function (err) {
@@ -539,6 +558,12 @@
                     (deviceId ? deviceId.slice(0, 12) + '…' : '(none)') +
                     ', state=' + ctx.state);
             })();
+            // Clear the cached promise on failure so the next call (which
+            // will hopefully arrive from a real user gesture) gets a fresh
+            // attempt instead of awaiting a permanently-rejected promise.
+            this._txAudio.initPromise.catch(function () {
+                if (!self._txAudio.ctx) self._txAudio.initPromise = null;
+            });
             return this._txAudio.initPromise;
         }
 
@@ -1153,6 +1178,14 @@
                 view.setUint16(4, 0, true);
                 new Int16Array(buf, 6).set(int16);
                 self.dispatchEvent(new CustomEvent('binary', { detail: buf }));
+
+                // Tee a copy into the packet modem if it's running. Same
+                // 48 kHz Int16 samples; modem.processSamples copies into
+                // the WASM heap before invoking the demod.
+                if (self._packet && self._packet.enabled && self._packet.modem) {
+                    try { self._packet.modem.processSamples(int16); }
+                    catch (err) { console.warn('packet RX feed:', err); }
+                }
             };
         }
 
@@ -1237,6 +1270,225 @@
             if (this._rxAudio.ctx) {
                 try { await this._rxAudio.ctx.close(); } catch (e) { /* ignore */ }
                 this._rxAudio.ctx = null;
+            }
+        }
+
+        // ----------------------------------------------------------------
+        // Packet (WASM Direwolf) — RX feed + APRS UI-frame TX
+        // ----------------------------------------------------------------
+
+        async _packetEnsureModem() {
+            if (this._packet.modem) return this._packet.modem;
+            if (!this._packet.modulePromise) {
+                this._packet.modulePromise = import('/wasm/direwolf-modem.js');
+            }
+            var mod = await this._packet.modulePromise;
+            var modem = await mod.DirewolfModem.create();
+            modem.init(this._packet.mode, 48000);
+            // Cache the parser/builders so we don't re-look them up on
+            // each RX frame.
+            this._packet.parseAx25 = mod.parseAx25Frame;
+            this._packet.aprsBuildPos = mod.aprsBuildUncompressedPosition;
+            this._packet.aprsBuildLine = mod.aprsBuildMonitorLine;
+
+            var self = this;
+            modem.onFrame = function (chan, alevel, bytes) {
+                var json = self._packet.parseAx25(bytes, chan, alevel);
+                if (!json) return;
+                json.type = 'packetRxFrame';
+                self._emit('message', json);
+            };
+            this._packet.modem = modem;
+            return modem;
+        }
+
+        _packetSetEnabled(on) {
+            this._packet.enabled = !!on;
+            if (on) {
+                // Lazy-load on first enable so the WASM cost is opt-in.
+                // Modem load is fine to do without a user gesture (it's
+                // just a fetch + WASM compile), but the TX AudioContext
+                // is NOT — we used to pre-init it here too, but packet.js
+                // restores the saved PACKET-ON state from localStorage on
+                // page load and that fires this handler outside any user
+                // gesture, so the AudioContext creation rejected and the
+                // cached rejected promise poisoned every later TX. Defer
+                // audio init to the first TX click (which IS a gesture).
+                this._packetEnsureModem().catch(function (err) {
+                    console.error('packet: modem load failed:', err);
+                });
+            }
+            this._emit('message', {
+                type: 'packetStatus',
+                enabled: this._packet.enabled,
+                mode: this._packet.mode,
+            });
+        }
+
+        _packetSetMode(baud) {
+            if (baud !== 300 && baud !== 1200 && baud !== 9600) return;
+            this._packet.mode = baud;
+            if (this._packet.modem) this._packet.modem.init(baud, 48000);
+            this._emit('message', {
+                type: 'packetStatus',
+                enabled: this._packet.enabled,
+                mode: this._packet.mode,
+            });
+        }
+
+        _packetSendChunk(audio, off, n, seq) {
+            // Build a single 0x03 binary audio frame from a slice of the
+            // encoded burst and ship it to sendAudioFrame() (where it gets
+            // converted to Float32 and posted to the rig-USB-out worklet).
+            var slice = audio.subarray(off, off + n);
+            var buf = new ArrayBuffer(6 + slice.byteLength);
+            var view = new DataView(buf);
+            view.setUint8(0, 0x03);
+            view.setUint8(1, 0x00);
+            view.setUint16(2, seq & 0xFFFF, true);
+            view.setUint16(4, 0, true);
+            new Int16Array(buf, 6).set(slice);
+            if (typeof this.sendAudioFrame === 'function') {
+                this.sendAudioFrame(buf);
+            }
+
+            // Also tee the same audio back to the SPA as a 0x04 frame so
+            // the packet panel can show the TX burst on its waterfall —
+            // matches what the C++ wfweb webserver does (via TX-echo
+            // 0x04 frames). rateDiv = sample rate / 1000.
+            var echoBuf = new ArrayBuffer(6 + slice.byteLength);
+            var echoView = new DataView(echoBuf);
+            echoView.setUint8(0, 0x04);
+            echoView.setUint8(1, 0x00);
+            echoView.setUint16(2, seq & 0xFFFF, true);
+            echoView.setUint16(4, 48, true);   // 48 samples/ms = 48 kHz
+            new Int16Array(echoBuf, 6).set(slice);
+            this.dispatchEvent(new CustomEvent('binary', { detail: echoBuf }));
+        }
+
+        async _packetTxBeacon(obj) {
+            // SPA payload: { src, lat, lon, symTable, symCode, comment, path }.
+            // Format → APRS uncompressed position → TNC monitor line → WASM
+            // modem → audio. Audio is dispatched as 0x03 frames the same
+            // way the SPA's mic capture worklet would, so the existing
+            // sendAudioFrame() path forwards them to the rig USB out.
+            var self = this;
+            var fail = function (reason) {
+                self._emit('message', { type: 'packetTxFailed', reason: reason });
+            };
+            // Re-entry guard: a second click while a TX is in flight would
+            // race the PTT-on/-off enqueues against the in-flight queue and
+            // leave the rig keyed (or the button disabled). Drop the second.
+            if (this._packet.txInFlight) { fail('TX already in progress'); return; }
+            if (!obj.src) { fail('missing source callsign'); return; }
+            if (typeof obj.lat !== 'number' || typeof obj.lon !== 'number') {
+                fail('missing or invalid lat/lon'); return;
+            }
+            this._packet.txInFlight = true;
+            // Hard watchdog: independent of the try/finally below, force
+            // an unkey + UI recovery after 30 s no matter what. Catches
+            // the case where one of the awaits in the try block hangs
+            // silently — finally never runs, so without this safety the
+            // button stays disabled and the rig stays keyed forever.
+            var watchdogFired = false;
+            var watchdog = setTimeout(function () {
+                if (self._packet.txInFlight) {
+                    watchdogFired = true;
+                    console.warn('packet TX: watchdog forcing unkey + recovery');
+                    self.sendCommand({ cmd: 'setPTT', value: false });
+                    self._emit('message', { type: 'packetTxFailed', reason: 'TX watchdog (30s)' });
+                    self._packet.txInFlight = false;
+                }
+            }, 30000);
+            try {
+                var modem = await this._packetEnsureModem();
+                var info = this._packet.aprsBuildPos(
+                    obj.lat, obj.lon, obj.symTable, obj.symCode, obj.comment);
+                var monitor = this._packet.aprsBuildLine(obj.src, info, obj.path);
+                var audio = modem.txFrame(monitor);
+                if (!audio) { fail('modem rejected frame'); return; }
+
+                this._emit('message', { type: 'packetTxStarted' });
+                // Surface the locally-originated frame in the monitor pane
+                // so the operator sees what they just queued.
+                this._emit('message', {
+                    type: 'packetRxFrame', chan: 0, level: 0, ts: Date.now(),
+                    src: obj.src, dst: 'APRS', path: obj.path || [],
+                    info: info, ftype: 'UI', rawHex: '', _tx: true,
+                });
+
+                // Switch the rig to USB MOD INPUT so it actually modulates
+                // the audio we're streaming over the USB cable. Same fix the
+                // voice path applies on enableMic — without it the rig keys
+                // but transmits empty carrier (the front-panel MIC source
+                // sees nothing). Set both DATA-OFF (FM/USB voice) and DATA1
+                // (USB-D / LSB-D data mode) so it works across all packet
+                // bauds. We don't try to restore — the voice path's own
+                // enableMic flow re-sets these for SSB voice.
+                this._enqueue('setDataOffMod', civ.cmdSetDataOffMod(civ.MOD_INPUT_USB));
+                this._enqueue('setDataMod',    civ.cmdSetDataMod(civ.MOD_INPUT_USB));
+
+                // Make sure the TX audio context is initialised BEFORE we
+                // key the rig and start pumping samples. This SHOULD already
+                // be done from the pre-init in _packetSetEnabled, but cover
+                // the case where the user clicked TX-Beacon before the
+                // pre-init completed (within ~500 ms of PACKET ON).
+                if (!this._txAudio.ctx) {
+                    try {
+                        await this._ensureTxAudioCtx();
+                    } catch (e) {
+                        console.warn('packet TX: audio ctx init failed:', e);
+                    }
+                }
+
+                // Pre-buffer some audio chunks BEFORE keying PTT — same
+                // pattern FT8's onFirstChunk uses (waits ~100 ms of audio
+                // in the worklet ring buffer before firing setPTT). On a
+                // cold start, posting to a freshly-created worklet and
+                // immediately keying PTT can leave the rig keyed with the
+                // first chunks not yet drained.
+                var seq = 0;
+                var CHUNK = 960;
+                var PREBUFFER_CHUNKS = 5;  // ~100 ms @ 48 kHz
+                var off = 0;
+                for (var pre = 0; pre < PREBUFFER_CHUNKS && off < audio.length; pre++) {
+                    var n = Math.min(CHUNK, audio.length - off);
+                    this._packetSendChunk(audio, off, n, seq++);
+                    off += n;
+                }
+
+                // Now key the rig. Route through sendCommand so
+                // state.transmitting flips and the SPA's PTT indicator
+                // lights up — same path FT8 / voice use.
+                this.sendCommand({ cmd: 'setPTT', value: true });
+
+                // Push the rest of the audio.
+                while (off < audio.length) {
+                    var rest = Math.min(CHUNK, audio.length - off);
+                    this._packetSendChunk(audio, off, rest, seq++);
+                    off += rest;
+                }
+                // Wait for the audio to play out, plus a tail so the
+                // postamble flags fully unkey. await + try/finally below
+                // guarantees PTT-off + packetTxComplete fire even if any
+                // step earlier threw — the previous setTimeout-based path
+                // could leave the button stuck if a second click clobbered
+                // the in-flight enqueue.
+                var durationMs = (audio.length / 48000) * 1000 + 150;
+                await new Promise(function (r) { setTimeout(r, durationMs); });
+            } catch (err) {
+                console.error('packet TX:', err);
+                fail(err && err.message ? err.message : String(err));
+            } finally {
+                clearTimeout(watchdog);
+                // Skip cleanup if the watchdog already did it — we'd
+                // otherwise emit packetTxComplete after packetTxFailed and
+                // re-toggle the UI.
+                if (!watchdogFired) {
+                    this.sendCommand({ cmd: 'setPTT', value: false });
+                    this._emit('message', { type: 'packetTxComplete' });
+                    this._packet.txInFlight = false;
+                }
             }
         }
     }
