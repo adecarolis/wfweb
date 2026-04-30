@@ -6,6 +6,26 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.6.2 (2026-04-29)
+--------------------
+
+Features:
+- Reporters: add pskreporter.info spotting for FT8/FT4 decodes (#44)
+
+Fixes:
+- APRS: populate Heard Stations on the USB audio path — previously
+  only the LAN audio path wired the parser (#51)
+- APRS: replace blocking confirm() for "Forget all heard stations"
+  with an in-app overlay modal
+- Webserver: track active VFO locally and populate Sub VFO at
+  startup so the UI reflects rig state on first connect (#31)
+- Audio: match --audio-device by substring with a system-default
+  tiebreak; honor the resolved device for browser audio (#43)
+
+CI:
+- Windows: bundle MinGW runtime DLLs needed by libcodec2
+
+
 v0.6.1 (2026-04-28)
 --------------------
 
