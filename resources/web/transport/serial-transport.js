@@ -91,7 +91,7 @@
         setSquelch:     0x03,
         setRfPower:     0x0A,
         setMicGain:     0x0B,
-        setMonitorGain: 0x0F,
+        setMonitorGain: 0x15,
         setPBTInner:    0x07,
         setPBTOuter:    0x08,
         setCWSpeed:     0x0C,
@@ -103,7 +103,7 @@
         0x03: 'squelch',
         0x0A: 'rfPower',
         0x0B: 'micGain',
-        0x0F: 'monitorGain',
+        0x15: 'monitorGain',  // 0x0F is Break-in delay, NOT monitor — common confusion
         0x07: 'pbtInner',
         0x08: 'pbtOuter',
         0x0C: 'cwSpeed',
@@ -114,11 +114,13 @@
         setAutoNotch:      0x41,
         setNoiseBlanker:   0x22,
         setNoiseReduction: 0x40,
+        setMonitor:        0x45,
     };
     var BOOL_SUB_TO_FIELD = {
         0x41: 'autoNotch',
         0x22: 'nb',
         0x40: 'nr',
+        0x45: 'monitor',
         0x02: 'preamp',  // multi-state but reply still parses through here
     };
 
@@ -135,7 +137,7 @@
         setPBTOuter: true, setCWSpeed: true,
         // Bool toggles
         setAutoNotch: true, setNoiseBlanker: true, setNoiseReduction: true,
-        setPreamp: true, setAttenuator: true,
+        setMonitor: true, setPreamp: true, setAttenuator: true,
         // VFO ops
         selectVFO: true, swapVFO: true, equalizeVFO: true, setSplit: true,
         // Misc
