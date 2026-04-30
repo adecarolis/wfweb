@@ -4945,9 +4945,51 @@ function toggleMic() {
     startMic();
 }
 
+// In Direct mode the OS "default" input device is often the rig's USB
+// audio input itself (the PCM2901 the rig presents over USB), so a naive
+// getUserMedia({audio:true}) ends up capturing the rig's RX audio and
+// sending it back as TX — completely silent the moment we transmit
+// because the rig stops receiving. Exclude the rig from the mic pick.
+function pickDirectMicId() {
+    if (controlMode !== 'direct') return Promise.resolve(null);
+    var rigInId = null;
+    try { rigInId = localStorage.getItem('directRxAudioId'); } catch (e) { /* ignore */ }
+    var savedMicId = null;
+    try { savedMicId = localStorage.getItem('directMicId'); } catch (e) { /* ignore */ }
+    if (savedMicId && savedMicId !== rigInId) return Promise.resolve(savedMicId);
+    return navigator.mediaDevices.enumerateDevices().then(function(devs) {
+        var inputs = devs.filter(function(d) { return d.kind === 'audioinput'; });
+        var candidates = inputs.filter(function(d) {
+            if (rigInId && d.deviceId === rigInId) return false;
+            if (d.deviceId === 'default') return false;
+            if (/monitor of/i.test(d.label || '')) return false;
+            // Also skip anything matching the rig label pattern in case the
+            // saved id changed (e.g. user re-paired serial port).
+            if (/(USB Audio CODEC|PCM29|PCM30|Burr-Brown|IC-7300|IC-705|IC-9700|IC-7610)/i.test(d.label || '')) return false;
+            return true;
+        });
+        var preferred = candidates.find(function(d) {
+            return /Built-in|Microphone|Headset|Headphones|Mic/i.test(d.label || '');
+        }) || candidates[0];
+        if (preferred) {
+            try { localStorage.setItem('directMicId', preferred.deviceId); } catch (e) { /* ignore */ }
+            console.log('Mic device picked:', preferred.label || preferred.deviceId);
+            return preferred.deviceId;
+        }
+        return null;
+    }).catch(function(e) {
+        console.warn('Could not enumerate audio devices for mic pick:', e);
+        return null;
+    });
+}
+
 function startMic() {
     if (micEnabled) return;
-    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } })
+    pickDirectMicId().then(function(preferredId) {
+        var audioConstraints = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+        if (preferredId) audioConstraints.deviceId = { exact: preferredId };
+        return navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+    })
     .then(function(stream) {
         micStream = stream;
         micAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
