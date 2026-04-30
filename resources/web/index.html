@@ -4959,13 +4959,14 @@ function pickDirectMicId() {
     if (savedMicId && savedMicId !== rigInId) return Promise.resolve(savedMicId);
     return navigator.mediaDevices.enumerateDevices().then(function(devs) {
         var inputs = devs.filter(function(d) { return d.kind === 'audioinput'; });
+        var rigPattern = /(USB Audio CODEC|USB-PCM Audio|IC-7300|IC-705|IC-9700|IC-7610|IC-7100|IC-9100|CP210|Burr-Brown|PCM29|PCM30)/i;
         var candidates = inputs.filter(function(d) {
             if (rigInId && d.deviceId === rigInId) return false;
             if (d.deviceId === 'default') return false;
             if (/monitor of/i.test(d.label || '')) return false;
             // Also skip anything matching the rig label pattern in case the
             // saved id changed (e.g. user re-paired serial port).
-            if (/(USB Audio CODEC|PCM29|PCM30|Burr-Brown|IC-7300|IC-705|IC-9700|IC-7610)/i.test(d.label || '')) return false;
+            if (rigPattern.test(d.label || '')) return false;
             return true;
         });
         var preferred = candidates.find(function(d) {

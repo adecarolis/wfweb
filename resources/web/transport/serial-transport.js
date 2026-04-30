@@ -47,6 +47,13 @@
     var PROBE_BAUDS = [19200, 115200, 9600, 57600, 38400, 4800];
     var PROBE_TIMEOUT_MS = 500;
 
+    // Substring patterns the rig's USB audio device usually advertises.
+    // Used to identify the rig's audio interface among the OS audio devices
+    // (PulseAudio/Pipewire labels them with the chip name on Linux, e.g.
+    // "USB Audio CODEC" or "PCM2901"). Same pattern for input + output —
+    // a USB audio gadget typically shows under both kinds.
+    var RIG_AUDIO_PATTERN = /(USB Audio CODEC|USB-PCM Audio|IC-7300|IC-705|IC-9700|IC-7610|IC-7100|IC-9100|CP210|Burr-Brown|PCM29|PCM30)/i;
+
     // The SPA's populateModes() expects a flat array of mode-name strings —
     // mirrors what the C++ webserver sends.
     var DEFAULT_MODES = ['LSB', 'USB', 'AM', 'CW', 'RTTY', 'FM', 'CW-R', 'RTTY-R'];
@@ -459,10 +466,9 @@
                 if (!deviceId) {
                     try {
                         var devices = await navigator.mediaDevices.enumerateDevices();
-                        var rigPattern = /(USB Audio CODEC|USB-PCM Audio|IC-7300|IC-705|IC-9700|IC-7610|IC-7100|IC-9100|CP210|Burr-Brown|PCM29|PCM30)/i;
                         for (var i = 0; i < devices.length; i++) {
                             var d = devices[i];
-                            if (d.kind === 'audiooutput' && rigPattern.test(d.label)) {
+                            if (d.kind === 'audiooutput' && RIG_AUDIO_PATTERN.test(d.label)) {
                                 deviceId = d.deviceId;
                                 console.log('SerialRigTransport: using TX audio device:', d.label);
                                 try { localStorage.setItem('directTxAudioId', deviceId); } catch (e) { /* ignore */ }
@@ -1149,56 +1155,63 @@
         }
 
         async _openRxStream() {
-            var savedId = null;
-            try { savedId = localStorage.getItem('directRxAudioId'); } catch (e) { /* ignore */ }
             var constraints = {
                 echoCancellation: false,
                 noiseSuppression: false,
                 autoGainControl: false,
             };
 
-            // Try the previously-saved device first — no picker prompt if
-            // the user has already authorised this origin for audio.
+            // Step 1 — find the rig's audio input by label match.
+            // enumerateDevices() returns labels only after the user has
+            // already granted audio permission to this origin. If labels
+            // are missing we acquire permission once with the default mic
+            // (immediately stopped) so the next enumerate has labels.
+            var devices = await navigator.mediaDevices.enumerateDevices();
+            var hasLabels = devices.some(function (d) {
+                return d.kind === 'audioinput' && d.label;
+            });
+            if (!hasLabels) {
+                var primer = await navigator.mediaDevices.getUserMedia({ audio: constraints });
+                try { primer.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { /* ignore */ }
+                devices = await navigator.mediaDevices.enumerateDevices();
+            }
+
+            var rigDev = null;
+            for (var i = 0; i < devices.length; i++) {
+                var d = devices[i];
+                if (d.kind === 'audioinput' && RIG_AUDIO_PATTERN.test(d.label)) {
+                    rigDev = d;
+                    break;
+                }
+            }
+
+            // Step 2 — validate / refresh the saved deviceId. If it no
+            // longer points at a rig-labelled device, drop it. The early
+            // bug here was: a stale id pointing at the laptop mic caused
+            // permanent loopback (mic → 0x02 frames → speakers).
+            var savedId = null;
+            try { savedId = localStorage.getItem('directRxAudioId'); } catch (e) { /* ignore */ }
             if (savedId) {
-                try {
-                    var c1 = Object.assign({ deviceId: { exact: savedId } }, constraints);
-                    return await navigator.mediaDevices.getUserMedia({ audio: c1 });
-                } catch (e) {
-                    console.warn('Saved RX audio device failed, falling back:', e);
+                var match = devices.find(function (x) {
+                    return x.kind === 'audioinput' && x.deviceId === savedId;
+                });
+                if (!match || !RIG_AUDIO_PATTERN.test(match.label || '')) {
+                    try { localStorage.removeItem('directRxAudioId'); } catch (e) { /* ignore */ }
+                    savedId = null;
                 }
             }
 
-            // Fall back to default — this prompts the user the first time
-            // and gets permission so enumerateDevices() returns labels.
-            var stream = await navigator.mediaDevices.getUserMedia({ audio: constraints });
-
-            // Try to find a device that looks like the rig. If found and
-            // it isn't what getUserMedia gave us, switch and persist.
-            try {
-                var devices = await navigator.mediaDevices.enumerateDevices();
-                var rigPattern = /(USB Audio CODEC|USB-PCM Audio|IC-7300|IC-705|IC-9700|IC-7610|IC-7100|IC-9100|CP210|Burr-Brown|PCM29|PCM30)/i;
-                var rigDev = null;
-                for (var i = 0; i < devices.length; i++) {
-                    var d = devices[i];
-                    if (d.kind === 'audioinput' && rigPattern.test(d.label)) {
-                        rigDev = d;
-                        break;
-                    }
-                }
-                var currentId = stream.getAudioTracks()[0] && stream.getAudioTracks()[0].getSettings().deviceId;
-                if (rigDev && rigDev.deviceId !== currentId) {
-                    try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { /* ignore */ }
-                    var c2 = Object.assign({ deviceId: { exact: rigDev.deviceId } }, constraints);
-                    stream = await navigator.mediaDevices.getUserMedia({ audio: c2 });
-                    try { localStorage.setItem('directRxAudioId', rigDev.deviceId); } catch (e) { /* ignore */ }
-                    console.log('SerialRigTransport: using RX audio device:', rigDev.label);
-                } else if (currentId) {
-                    try { localStorage.setItem('directRxAudioId', currentId); } catch (e) { /* ignore */ }
-                }
-            } catch (e) {
-                console.warn('Could not enumerate audio devices:', e);
+            if (!rigDev && !savedId) {
+                throw new Error('No rig audio input device found. Plug in the rig USB cable, grant audio permission, and reload.');
             }
 
+            var deviceId = rigDev ? rigDev.deviceId : savedId;
+            var c = Object.assign({ deviceId: { exact: deviceId } }, constraints);
+            var stream = await navigator.mediaDevices.getUserMedia({ audio: c });
+            try { localStorage.setItem('directRxAudioId', deviceId); } catch (e) { /* ignore */ }
+            if (rigDev) {
+                console.log('SerialRigTransport: using RX audio device:', rigDev.label);
+            }
             return stream;
         }
 
