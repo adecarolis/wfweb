@@ -56,6 +56,11 @@ fi
 if ls "$SRC"/wasm/*-modem.js >/dev/null 2>&1; then
     cp "$SRC"/wasm/*-modem.js "$DIST/wasm/"
 fi
+# RADE emits a separate .wasm payload (not SINGLE_FILE) so the browser can
+# cache the 10 MB modem binary independently from the loader.
+if ls "$SRC"/wasm/*.wasm >/dev/null 2>&1; then
+    cp "$SRC"/wasm/*.wasm "$DIST/wasm/"
+fi
 
 # FT8/FT4 module + sourcemap (the index.html imports it from /ft8ts.mjs)
 cp "$FT8/ft8ts.mjs"     "$DIST/"

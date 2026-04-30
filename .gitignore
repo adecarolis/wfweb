@@ -27,6 +27,11 @@ tools/virtualrig/virtualrig
 /dist/
 # WASM build artifact from tools/build-direwolf-wasm.sh — large, regenerable.
 resources/web/wasm/direwolf.mjs
+# WASM build artifacts from tools/build-rade-wasm.sh — large, regenerable.
+resources/web/wasm/rade.mjs
+resources/web/wasm/rade.wasm
+# Emscripten Opus + RADE build cache (rebuilt by build-rade-wasm.sh).
+/build-wasm/
 .claude/settings.local.json
 *.ini
 .DS_Store

@@ -151,6 +151,8 @@
         termList: true, termRegister: true,
         termConnect: true, termDisconnect: true,
         termSend: true, termHistory: true,
+        // RADE V1 (LPCNet + FARGAN + RADE modem) — browser-only voice.
+        setRadeMode: true, setRadeCallsign: true,
         // Anything else (FreeDV, memory, filter shape, LAN ops, reporters …)
         // falls through to the WS path which is closed in Direct mode.
     };
@@ -249,6 +251,18 @@
             this._packet = {
                 enabled: false, mode: 300, modem: null,
                 modulePromise: null, txInFlight: false,
+            };
+            // RADE V1 voice modem state. Lazy-loaded — the WASM payload is
+            // ~10 MB and we only pull it down when the user picks RADE mode.
+            // _rade.txActive flips on PTT-key, off on PTT-unkey; while it's
+            // on, mic 0x03 frames are diverted through rade.processTx instead
+            // of being shipped raw to the rig USB output.
+            this._rade = {
+                enabled: false, modem: null, modulePromise: null,
+                txActive:  false,           // mic → modem encode is live
+                eooSent:   false,           // EOO already shipped this over
+                rxSpeechSeq: 0,             // 0x02 sequence for synthesized speech
+                callsign:  null,            // station callsign (for EOO)
             };
             // Connected-mode AX.25 terminal sessions. sid (string) keys
             // an entry; client (small int) is the id we hand to ax25_link.
@@ -391,6 +405,22 @@
                     // the request silently rather than NAK the bus.
                     if (!this._rigCanTransmit()) return;
                     var ptt = !!obj.value;
+                    if (this._rade.enabled && this._rade.modem) {
+                        // RADE intercept: on PTT-off, ship the EOO frame
+                        // (carries the encoded callsign) before unkeying so
+                        // the receiving station can decode it. Mirrors
+                        // RadeProcessor::generateEooAudio + 300 ms unkey delay.
+                        if (ptt) {
+                            this._rade.txActive = true;
+                            this._rade.eooSent  = false;
+                            this.state.transmitting = true;
+                            this._enqueue('setPTT', civ.cmdSetPTT(true));
+                            this._emit('update', { transmitting: true });
+                        } else {
+                            this._radePttOff();
+                        }
+                        return;
+                    }
                     this.state.transmitting = ptt;
                     this._enqueue('setPTT', civ.cmdSetPTT(ptt));
                     this._emit('update', { transmitting: ptt });
@@ -499,6 +529,21 @@
                     if (!this._rigCanTransmit()) return;
                     this._termSend(obj);                             return;
                 case 'termHistory':    this._termHistory(obj);       return;
+                case 'setRadeMode':
+                    if (obj.value) {
+                        this._radeEnable().catch(function (err) {
+                            console.error('SerialRigTransport: rade enable failed:', err);
+                        });
+                    } else {
+                        this._radeDisable();
+                    }
+                    return;
+                case 'setRadeCallsign':
+                    this._rade.callsign = String(obj.value || '').toUpperCase().trim();
+                    if (this._rade.modem && this._rade.callsign) {
+                        this._rade.modem.setTxCallsign(this._rade.callsign);
+                    }
+                    return;
                 case 'enableAudio':
                     if (obj.value) {
                         this._startRxAudio().catch(function (err) {
@@ -545,6 +590,19 @@
                 return;  // drop this chunk; subsequent chunks will play
             }
             if (!this._txAudio.node) return;
+
+            // RADE intercept: while RADE TX is live, divert mic samples
+            // through rade.processTx — its 'txReady' listener writes the
+            // encoded modem audio into the same playback worklet, so the
+            // post-encode path is identical. Skip the raw-mic playback
+            // below otherwise the rig would see voice + modem on top of
+            // each other.
+            if (this._rade.enabled && this._rade.txActive && this._rade.modem) {
+                var int16Mic = new Int16Array(buffer, 6);
+                try { this._rade.modem.processTx(int16Mic); }
+                catch (err) { console.warn('rade processTx:', err); }
+                return;
+            }
 
             // Convert Int16 PCM to Float32 [-1..1] for the playback worklet.
             var int16 = new Int16Array(buffer, 6);
@@ -1303,15 +1361,21 @@
                     if (s > 1) s = 1; else if (s < -1) s = -1;
                     int16[i] = (s * 32767) | 0;
                 }
-                // Binary 0x02 frame format: [0x02][0x00][seq u16LE][rsv u16LE][PCM Int16 LE]
-                var buf = new ArrayBuffer(6 + int16.byteLength);
-                var view = new DataView(buf);
-                view.setUint8(0, 0x02);
-                view.setUint8(1, 0x00);
-                view.setUint16(2, (self._rxAudio.seq++) & 0xFFFF, true);
-                view.setUint16(4, 0, true);
-                new Int16Array(buf, 6).set(int16);
-                self.dispatchEvent(new CustomEvent('binary', { detail: buf }));
+                // When RADE is active the speakers receive synthesized speech
+                // — not the rig's modem squawk. Suppress the raw-rig 0x02 emit
+                // and rely on the rxSpeech listener to push synthesized audio
+                // back into the SPA's playback path.
+                if (!(self._rade.enabled && self._rade.modem)) {
+                    // Binary 0x02 frame format: [0x02][0x00][seq u16LE][rsv u16LE][PCM Int16 LE]
+                    var buf = new ArrayBuffer(6 + int16.byteLength);
+                    var view = new DataView(buf);
+                    view.setUint8(0, 0x02);
+                    view.setUint8(1, 0x00);
+                    view.setUint16(2, (self._rxAudio.seq++) & 0xFFFF, true);
+                    view.setUint16(4, 0, true);
+                    new Int16Array(buf, 6).set(int16);
+                    self.dispatchEvent(new CustomEvent('binary', { detail: buf }));
+                }
 
                 // Tee a copy into the packet modem if it's running. Same
                 // 48 kHz Int16 samples; modem.processSamples copies into
@@ -1319,6 +1383,14 @@
                 if (self._packet && self._packet.enabled && self._packet.modem) {
                     try { self._packet.modem.processSamples(int16); }
                     catch (err) { console.warn('packet RX feed:', err); }
+                }
+
+                // Tee into RADE demod if it's running. RX speech samples
+                // come back via the rade 'rxSpeech' listener installed in
+                // _radeEnsureModem (re-emitted as 0x02 frames).
+                if (self._rade.enabled && self._rade.modem) {
+                    try { self._rade.modem.processRx(int16); }
+                    catch (err) { console.warn('rade RX feed:', err); }
                 }
             };
         }
@@ -1972,6 +2044,135 @@
                     this._packet.txInFlight = false;
                 }
             }
+        }
+
+        // ----------------------------------------------------------------
+        // RADE V1 — browser-only voice via LPCNet/FARGAN/RADE WASM.
+        //
+        // The modem stays loaded across PTT cycles; only TX activity flips
+        // on/off via _rade.txActive, which sendAudioFrame and _radePttOff
+        // observe. RX speech is rendered as 0x02 frames so the SPA's
+        // existing audio playback path picks it up — same channel the rig
+        // audio uses, swapped in transparently while RADE mode is on.
+        // ----------------------------------------------------------------
+
+        async _radeEnsureModem() {
+            if (this._rade.modem) return this._rade.modem;
+            if (!this._rade.modulePromise) {
+                this._rade.modulePromise = import('/wasm/rade-modem.js');
+            }
+            var mod = await this._rade.modulePromise;
+            var modem = await mod.RadeModem.create();
+            // 48 kHz to match every other audio path on the page.
+            modem.init(48000);
+            if (this._rade.callsign) modem.setTxCallsign(this._rade.callsign);
+
+            var self = this;
+            // RX synthesized speech → re-emit as 0x02 frames. The SPA
+            // already knows how to play these.
+            modem.addEventListener('rxSpeech', function (ev) {
+                var samples = ev.detail.samples;
+                if (!samples || !samples.length) return;
+                var buf = new ArrayBuffer(6 + samples.byteLength);
+                var view = new DataView(buf);
+                view.setUint8(0, 0x02);
+                view.setUint8(1, 0x00);
+                view.setUint16(2, (self._rade.rxSpeechSeq++) & 0xFFFF, true);
+                view.setUint16(4, 0, true);
+                new Int16Array(buf, 6).set(samples);
+                self.dispatchEvent(new CustomEvent('binary', { detail: buf }));
+            });
+            // TX modem audio → pipe directly into the playback worklet.
+            // Bypass sendAudioFrame to avoid the RADE intercept above
+            // (would loop forever).
+            modem.addEventListener('txReady', function (ev) {
+                var samples = ev.detail.samples;
+                if (!samples || !samples.length) return;
+                if (!self._txAudio.ctx) {
+                    self._ensureTxAudioCtx().catch(function () {});
+                    return;
+                }
+                if (!self._txAudio.node) return;
+                var f32 = new Float32Array(samples.length);
+                for (var i = 0; i < samples.length; i++) f32[i] = samples[i] / 32768;
+                try { self._txAudio.node.port.postMessage(f32); } catch (e) { /* node closed */ }
+            });
+            // Stats + decoded callsign → forward as messages so the SPA UI
+            // can update without knowing about the RadeModem object.
+            modem.addEventListener('statsUpdate', function (ev) {
+                self._emit('message', {
+                    type: 'radeStats',
+                    snr:  ev.detail.snr,
+                    sync: ev.detail.sync,
+                    freqOffset: ev.detail.freqOffset,
+                });
+            });
+            modem.addEventListener('rxCallsign', function (ev) {
+                self._emit('message', { type: 'radeCallsign', callsign: ev.detail.callsign });
+            });
+
+            this._rade.modem = modem;
+            return modem;
+        }
+
+        async _radeEnable() {
+            await this._radeEnsureModem();
+            // Flip the rig MOD INPUT to USB — same recipe as enableMic for
+            // SSB voice, since RADE rides on USB-DATA-OFF (no rig pre-emph).
+            if (this._rigCanTransmit() && this._modIn && this._modIn.off != null) {
+                this._enqueue('setDataOffMod',
+                    civ.cmdSetModInput(this._modIn.off, this._modIn.usbReg));
+            }
+            this._rade.enabled = true;
+            this._emit('message', { type: 'radeStatus', enabled: true });
+        }
+
+        _radeDisable() {
+            if (!this._rade.enabled) return;
+            this._rade.enabled = false;
+            this._rade.txActive = false;
+            this._rade.eooSent  = false;
+            // Restore the previous DATA-OFF mod input (if we saved one).
+            if (this._rigCanTransmit() && this._savedDataOffMod !== null && this._modIn) {
+                this._enqueue('setDataOffMod',
+                    civ.cmdSetModInput(this._modIn.off, this._savedDataOffMod));
+            }
+            this._emit('message', { type: 'radeStatus', enabled: false });
+        }
+
+        // PTT-off path while RADE is live: ship the EOO frame (carries the
+        // encoded callsign — receiver decodes after sync drops), wait long
+        // enough for the buffered audio to play out, then unkey.
+        _radePttOff() {
+            if (!this._rade.modem) {
+                this.state.transmitting = false;
+                this._enqueue('setPTT', civ.cmdSetPTT(false));
+                this._emit('update', { transmitting: false });
+                this._rade.txActive = false;
+                return;
+            }
+            this._rade.txActive = false;
+            // EOO is generated synchronously and pushed into the playback
+            // worklet via the same path as txReady samples.
+            try {
+                if (!this._rade.eooSent) {
+                    var eoo = this._rade.modem.generateEooAudio();
+                    this._rade.eooSent = true;
+                    if (eoo && eoo.length && this._txAudio.node) {
+                        var f32 = new Float32Array(eoo.length);
+                        for (var i = 0; i < eoo.length; i++) f32[i] = eoo[i] / 32768;
+                        try { this._txAudio.node.port.postMessage(f32); } catch (e) { /* ignore */ }
+                    }
+                }
+            } catch (err) { console.warn('rade EOO:', err); }
+            // Delay unkey so the EOO + tail audio leaves the rig before
+            // PTT drops. ~300 ms matches RadeProcessor.
+            var self = this;
+            setTimeout(function () {
+                self.state.transmitting = false;
+                self._enqueue('setPTT', civ.cmdSetPTT(false));
+                self._emit('update', { transmitting: false });
+            }, 300);
         }
     }
 
