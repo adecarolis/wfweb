@@ -249,3 +249,333 @@ export function aprsBuildMonitorLine(src, info, path, dst) {
         ? ',' + path.join(',') : '';
     return `${src}>${d}${pathStr}:${info}`;
 }
+
+
+// --- APRS position parsers -----------------------------------------------
+//
+// Hand-port of src/aprsprocessor.cpp's three parsers (uncompressed,
+// compressed, MIC-E). The browser-only build runs them on every UI
+// frame coming off the modem and keeps an in-memory station database
+// (see AprsProcessor below).
+
+function _digOrZero(c) {
+    if (c === ' ') return 0;
+    var n = c.charCodeAt(0) - 48;  // '0'
+    if (n >= 0 && n <= 9) return n;
+    return -1;
+}
+
+function _stripTimestamp(s) {
+    // "HHMMSSh" / "DDHHMMz" / "DDHHMM/" — 7-char prefix optional on `/` `@`.
+    if (s.length < 7) return s;
+    var suffix = s.charAt(6);
+    if (suffix !== 'z' && suffix !== '/' && suffix !== 'h') return s;
+    for (var i = 0; i < 6; i++) {
+        var c = s.charCodeAt(i);
+        if (c < 48 || c > 57) return s;
+    }
+    return s.substring(7);
+}
+
+function _parseUncompressed(body) {
+    // "DDMM.mmN/DDDMM.mmW<sym>comment"
+    if (body.length < 19) return null;
+    var latStr = body.substring(0, 8);
+    var latHem = latStr.charAt(7);
+    var lonStr = body.substring(9, 18);
+    var lonHem = lonStr.charAt(8);
+    if (latHem !== 'N' && latHem !== 'S') return null;
+    if (lonHem !== 'E' && lonHem !== 'W') return null;
+    if (latStr.charAt(4) !== '.' || lonStr.charAt(5) !== '.') return null;
+
+    var latDeg = _digOrZero(latStr.charAt(0)) * 10 + _digOrZero(latStr.charAt(1));
+    var latMin = _digOrZero(latStr.charAt(2)) * 10 + _digOrZero(latStr.charAt(3));
+    var latMinFrac = _digOrZero(latStr.charAt(5)) * 10 + _digOrZero(latStr.charAt(6));
+    if (latDeg < 0 || latMin < 0 || latMinFrac < 0) return null;
+
+    var lonDeg = _digOrZero(lonStr.charAt(0)) * 100
+               + _digOrZero(lonStr.charAt(1)) * 10
+               + _digOrZero(lonStr.charAt(2));
+    var lonMin = _digOrZero(lonStr.charAt(3)) * 10 + _digOrZero(lonStr.charAt(4));
+    var lonMinFrac = _digOrZero(lonStr.charAt(6)) * 10 + _digOrZero(lonStr.charAt(7));
+    if (lonDeg < 0 || lonMin < 0 || lonMinFrac < 0) return null;
+
+    var lat = latDeg + (latMin + latMinFrac / 100.0) / 60.0;
+    if (latHem === 'S') lat = -lat;
+    var lon = lonDeg + (lonMin + lonMinFrac / 100.0) / 60.0;
+    if (lonHem === 'W') lon = -lon;
+
+    return {
+        lat: lat, lon: lon,
+        symTable: body.charAt(8),
+        symCode:  body.charAt(18),
+        comment:  body.substring(19).trim(),
+    };
+}
+
+function _parseCompressed(body) {
+    // 13-byte fixed payload: sym + 4 lat + 4 lon + sym + 2 cs + 1 type
+    if (body.length < 13) return null;
+    var sym1 = body.charCodeAt(0);
+    var isAlnum = (sym1 >= 48 && sym1 <= 57) || (sym1 >= 65 && sym1 <= 90) || (sym1 >= 97 && sym1 <= 122);
+    if (!(sym1 === 47 || sym1 === 92 || isAlnum)) return null;
+
+    for (var i = 1; i <= 9; i++) {
+        var u = body.charCodeAt(i);
+        if (u < 0x21 || u > 0x7b) return null;
+    }
+    var b91 = function (cc) { return body.charCodeAt(cc) - 33; };
+    var y = b91(1) * 91 * 91 * 91 + b91(2) * 91 * 91 + b91(3) * 91 + b91(4);
+    var x = b91(5) * 91 * 91 * 91 + b91(6) * 91 * 91 + b91(7) * 91 + b91(8);
+
+    return {
+        lat:  90.0 - y / 380926.0,
+        lon: -180.0 + x / 190463.0,
+        symTable: body.charAt(0),
+        symCode:  body.charAt(9),
+        comment:  body.substring(13).trim(),
+    };
+}
+
+function _parseMicE(dst, payload) {
+    // Latitude lives in the 6-char destination callsign; longitude in the
+    // first 3 bytes of `info` after the DTI. APRS spec 1.0 §10.
+    if (dst.length < 6 || payload.length < 8) return null;
+
+    var latDig = new Array(6);
+    var nFlag = false, wFlag = false, lonOffset100 = false;
+    for (var i = 0; i < 6; i++) {
+        var c = dst.charAt(i);
+        var u = c.charCodeAt(0);
+        if (u >= 48 && u <= 57)      latDig[i] = u - 48;       // '0'-'9'
+        else if (u >= 65 && u <= 74) latDig[i] = u - 65;       // 'A'-'J'
+        else if (c === 'K' || c === 'L') latDig[i] = 0;         // ambig/space
+        else if (u >= 80 && u <= 89) latDig[i] = u - 80;       // 'P'-'Y'
+        else if (c === 'Z')          latDig[i] = 0;
+        else return null;
+
+        if (i === 3 && u >= 80 && u <= 90) nFlag = true;
+        if (i === 4 && u >= 80 && u <= 90) lonOffset100 = true;
+        if (i === 5 && u >= 80 && u <= 90) wFlag = true;
+    }
+    var latDeg = latDig[0] * 10 + latDig[1];
+    var latMin = latDig[2] * 10 + latDig[3];
+    var latMinFrac = latDig[4] * 10 + latDig[5];
+    var lat = latDeg + (latMin + latMinFrac / 100.0) / 60.0;
+    if (!nFlag) lat = -lat;
+
+    var lonDeg = (payload.charCodeAt(0) & 0xff) - 28;
+    var lonMin = (payload.charCodeAt(1) & 0xff) - 28;
+    var lonMinFrac = (payload.charCodeAt(2) & 0xff) - 28;
+    if (lonOffset100) lonDeg += 100;
+    if (lonDeg < 0 || lonDeg > 179) return null;
+    if (lonMin < 0 || lonMin >= 60) return null;
+    if (lonMinFrac < 0 || lonMinFrac > 99) return null;
+    var lon = lonDeg + (lonMin + lonMinFrac / 100.0) / 60.0;
+    if (wFlag) lon = -lon;
+
+    return {
+        lat: lat, lon: lon,
+        symCode:  payload.charAt(6),
+        symTable: payload.charAt(7),
+        comment:  payload.length > 8 ? payload.substring(8).trim() : '',
+    };
+}
+
+/**
+ * Parse an APRS info field for position data. Returns an object with
+ * { lat, lon, symTable, symCode, comment } on success, null on no match.
+ *
+ * @param {string} dst   AX.25 destination callsign (needed for MIC-E lat)
+ * @param {string} info  AX.25 info field (the bytes after PID 0xF0)
+ */
+export function aprsParsePosition(dst, info) {
+    if (!info) return null;
+    var dti = info.charAt(0);
+    if (dti === '!' || dti === '=' || dti === '/' || dti === '@') {
+        var body = info.substring(1);
+        if (dti === '/' || dti === '@') body = _stripTimestamp(body);
+        if (!body) return null;
+        var first = body.charCodeAt(0);
+        if ((first >= 48 && first <= 57) || first === 32) {
+            return _parseUncompressed(body);
+        }
+        return _parseCompressed(body);
+    }
+    var u = dti.charCodeAt(0);
+    if (dti === "'" || dti === '`' || u === 0x1c || u === 0x1d) {
+        return _parseMicE(dst, info.substring(1));
+    }
+    return null;
+}
+
+
+// --- APRS station database + beacon scheduler ---------------------------
+//
+// Mirrors src/aprsprocessor.cpp's stations_/beacon timer.  Browser-only
+// build's serial-transport.js owns one of these and forwards events back
+// to the SPA via the same JSON shape the C++ webserver emits.
+
+export class AprsProcessor extends EventTarget {
+    constructor() {
+        super();
+        this.stations = new Map();   // src -> Station record
+        this._beacon = {
+            enabled: false,
+            intervalSec: 600,
+            src: '', lat: 0, lon: 0,
+            symTable: '/', symCode: '.',
+            comment: '', path: [],
+            timer: null,
+        };
+    }
+
+    /**
+     * Build the aprsSnapshot message — same shape the C++ webserver emits
+     * so packet.js's existing handler renders without changes.
+     */
+    snapshot() {
+        var arr = [];
+        this.stations.forEach((s) => arr.push(this._stationToJson(s)));
+        return { type: 'aprsSnapshot', stations: arr };
+    }
+
+    clearStations() {
+        this.stations.clear();
+        this.dispatchEvent(new CustomEvent('cleared'));
+    }
+
+    /**
+     * Feed an RX-decoded AX.25 frame (the shape parseAx25Frame() returns).
+     * Non-UI / non-position frames are ignored. Position frames update the
+     * station record and dispatch an 'station' event with the JSON shape.
+     */
+    onRxFrame(frame) {
+        if (!frame || frame.ftype !== 'UI') return;
+        var src = (frame.src || '').trim();
+        var dst = (frame.dst || '').trim();
+        if (!src || !frame.info) return;
+        var pos = aprsParsePosition(dst, frame.info);
+        if (!pos) return;
+
+        var st = this.stations.get(src);
+        if (!st) {
+            st = { src: src, count: 0 };
+            this.stations.set(src, st);
+        }
+        st.lat = pos.lat;
+        st.lon = pos.lon;
+        st.symTable = pos.symTable || '/';
+        st.symCode  = pos.symCode  || '.';
+        st.comment  = pos.comment  || '';
+        st.path     = (frame.path || []).slice();
+        st.lastHeardMs = Date.now();
+        st.count++;
+
+        var json = this._stationToJson(st);
+        json.type = 'aprsStation';
+        this.dispatchEvent(new CustomEvent('station', { detail: json }));
+    }
+
+    /**
+     * Build the "!ddmm.mmN/dddmm.mmW>comment" info field for a position
+     * report. Comment truncated to 43 chars per APRS spec.
+     */
+    static buildPositionInfo(lat, lon, symTable, symCode, comment) {
+        var pad = function (n, w) {
+            var s = String(n);
+            while (s.length < w) s = '0' + s;
+            return s;
+        };
+        var latNeg = lat < 0, lonNeg = lon < 0;
+        var aLat = Math.abs(lat), aLon = Math.abs(lon);
+        var latDeg = Math.floor(aLat);
+        var latMinD = (aLat - latDeg) * 60;
+        var latMin = Math.floor(latMinD);
+        var latMinFrac = Math.round((latMinD - latMin) * 100);
+        if (latMinFrac >= 100) { latMinFrac = 0; latMin++; }
+        if (latMin >= 60)      { latMin = 0; latDeg++; }
+
+        var lonDeg = Math.floor(aLon);
+        var lonMinD = (aLon - lonDeg) * 60;
+        var lonMin = Math.floor(lonMinD);
+        var lonMinFrac = Math.round((lonMinD - lonMin) * 100);
+        if (lonMinFrac >= 100) { lonMinFrac = 0; lonMin++; }
+        if (lonMin >= 60)      { lonMin = 0; lonDeg++; }
+
+        var st = symTable || '/';
+        var sc = symCode  || '.';
+        var c = (comment || '').slice(0, 43);
+        return '!'
+            + pad(latDeg, 2) + pad(latMin, 2) + '.' + pad(latMinFrac, 2) + (latNeg ? 'S' : 'N')
+            + st
+            + pad(lonDeg, 3) + pad(lonMin, 2) + '.' + pad(lonMinFrac, 2) + (lonNeg ? 'W' : 'E')
+            + sc
+            + c;
+    }
+
+    /**
+     * Configure the periodic beacon. enabled+intervalSec start the timer,
+     * !enabled stops it. Other fields are stored regardless so a later
+     * enable picks them up.
+     *
+     * Beacon TX is delegated: when the timer fires we dispatch a
+     * 'txBeacon' event whose detail is { src, dst, path, info } — the
+     * transport hooks that into its packet TX path.
+     */
+    setBeaconConfig(cfg) {
+        // Only overwrite fields that the caller passed — a follow-up
+        // call with just {enabled: false} (e.g. on packet-disable) needs
+        // to leave src/lat/lon intact so a later re-enable still works.
+        var b = this._beacon;
+        b.enabled = !!cfg.enabled;
+        if (cfg.intervalSec > 0) b.intervalSec = cfg.intervalSec | 0;
+        if (cfg.src != null)      b.src      = String(cfg.src).trim();
+        if (cfg.lat != null)      b.lat      = +cfg.lat;
+        if (cfg.lon != null)      b.lon      = +cfg.lon;
+        if (cfg.symTable != null) b.symTable = cfg.symTable || '/';
+        if (cfg.symCode  != null) b.symCode  = cfg.symCode  || '.';
+        if (cfg.comment  != null) b.comment  = cfg.comment;
+        if (Array.isArray(cfg.path)) b.path  = cfg.path.slice();
+        if (b.timer) { clearInterval(b.timer); b.timer = null; }
+        if (b.enabled && b.src && b.intervalSec > 0) {
+            var self = this;
+            b.timer = setInterval(function () { self._fireBeacon(); }, b.intervalSec * 1000);
+        }
+    }
+
+    /**
+     * One-shot beacon TX. Same fields as setBeaconConfig but no timer.
+     * Caller is the SPA's "TX now" button.
+     */
+    txBeaconNow(cfg) {
+        if (!cfg || !cfg.src) return;
+        var info = AprsProcessor.buildPositionInfo(
+            +cfg.lat, +cfg.lon,
+            cfg.symTable, cfg.symCode, cfg.comment);
+        this.dispatchEvent(new CustomEvent('txBeacon', {
+            detail: {
+                src: cfg.src, dst: 'APWFWB',
+                path: Array.isArray(cfg.path) ? cfg.path.slice() : [],
+                info: info,
+            },
+        }));
+    }
+
+    _fireBeacon() {
+        var b = this._beacon;
+        if (!b.enabled || !b.src) return;
+        this.txBeaconNow(b);
+    }
+
+    _stationToJson(s) {
+        return {
+            src: s.src, lat: s.lat, lon: s.lon,
+            symTable: s.symTable, symCode: s.symCode,
+            comment: s.comment,
+            path: (s.path || []).slice(),
+            lastHeard: s.lastHeardMs || 0,
+            count: s.count || 0,
+        };
+    }
+}

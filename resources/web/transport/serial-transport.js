@@ -144,8 +144,9 @@
         sendCW: true, stopCW: true,
         // Filter width / shape
         setFilterWidth: true,
-        // Packet (WASM Direwolf modem; APRS UI-frame TX only for now).
-        packetEnable: true, packetSetMode: true, aprsTxBeacon: true,
+        // Packet (WASM Direwolf modem) + APRS station db / beacon scheduler.
+        packetEnable: true, packetSetMode: true,
+        aprsTxBeacon: true, aprsBeaconConfig: true, aprsClearStations: true,
         // Anything else (FreeDV, memory, filter shape, LAN ops, reporters …)
         // falls through to the WS path which is closed in Direct mode.
     };
@@ -444,6 +445,32 @@
                 case 'aprsTxBeacon':
                     if (!this._rigCanTransmit()) return;
                     this._packetTxBeacon(obj);
+                    return;
+                case 'aprsBeaconConfig':
+                    // Periodic beacon scheduler — feed straight into the
+                    // AprsProcessor's setBeaconConfig. The processor's
+                    // 'txBeacon' event lands in _packetTxBeacon (wired
+                    // when the modem loads), so periodic beacons take the
+                    // same TX path as the one-shot button.
+                    this._packetEnsureModem().then((m) => {
+                        m._aprsProc.setBeaconConfig({
+                            enabled: !!obj.enabled,
+                            intervalSec: obj.intervalSec | 0,
+                            src: obj.src, lat: obj.lat, lon: obj.lon,
+                            symTable: obj.symTable, symCode: obj.symCode,
+                            comment: obj.comment, path: obj.path,
+                        });
+                    }).catch(function (err) {
+                        console.error('aprsBeaconConfig: modem load failed:', err);
+                    });
+                    return;
+                case 'aprsClearStations':
+                    if (this._packet.aprsProc) {
+                        this._packet.aprsProc.clearStations();
+                        // Echo an empty snapshot so the SPA's heard list
+                        // re-renders to nothing immediately.
+                        this._emit('message', this._packet.aprsProc.snapshot());
+                    }
                     return;
                 case 'enableAudio':
                     if (obj.value) {
@@ -1371,13 +1398,39 @@
             this._packet.aprsBuildPos = mod.aprsBuildUncompressedPosition;
             this._packet.aprsBuildLine = mod.aprsBuildMonitorLine;
 
+            // APRS layer: parses positions out of UI frames, maintains a
+            // station db, runs the periodic-beacon timer. We hang it off
+            // the modem so the aprsBeaconConfig handler can reach it.
+            var aprs = new mod.AprsProcessor();
+            this._packet.aprsProc = aprs;
+            modem._aprsProc = aprs;
+
             var self = this;
             modem.onFrame = function (chan, alevel, bytes) {
                 var json = self._packet.parseAx25(bytes, chan, alevel);
                 if (!json) return;
                 json.type = 'packetRxFrame';
                 self._emit('message', json);
+                // Feed UI frames into APRS (it ignores non-UI / non-position).
+                aprs.onRxFrame(json);
             };
+            // APRS layer dispatches a 'station' event for each updated
+            // station and 'txBeacon' when the periodic timer fires.
+            aprs.addEventListener('station', function (ev) {
+                self._emit('message', ev.detail);
+            });
+            aprs.addEventListener('txBeacon', function (ev) {
+                // Re-use the same TX path as the one-shot beacon button.
+                // The detail carries SRC + DST + path + info; _packetTxBeacon
+                // wants {src, lat, lon, symTable, symCode, comment, path}
+                // so we feed the cached config straight back through it
+                // — the AprsProcessor already built the info string.
+                self._packetTxBeaconRaw(ev.detail);
+            });
+            // Push an initial empty snapshot so packet.js's heard-list
+            // renders even before the first RX.
+            self._emit('message', aprs.snapshot());
+
             this._packet.modem = modem;
             return modem;
         }
@@ -1397,6 +1450,10 @@
                 this._packetEnsureModem().catch(function (err) {
                     console.error('packet: modem load failed:', err);
                 });
+            } else if (this._packet.aprsProc) {
+                // Stop the periodic beacon timer when packet is disabled —
+                // otherwise it keeps firing and triggering TX failures.
+                this._packet.aprsProc.setBeaconConfig({ enabled: false });
             }
             this._emit('message', {
                 type: 'packetStatus',
@@ -1446,12 +1503,28 @@
             this.dispatchEvent(new CustomEvent('binary', { detail: echoBuf }));
         }
 
+        // Wrapper for periodic-beacon TX: AprsProcessor has already built
+        // the info string and chosen the destination, so we skip the
+        // lat/lon path of _packetTxBeacon and feed it through directly.
+        _packetTxBeaconRaw(detail) {
+            this._packetTxBeacon({
+                src: detail.src,
+                dst: detail.dst,
+                path: detail.path,
+                _info: detail.info,
+            });
+        }
+
         async _packetTxBeacon(obj) {
             // SPA payload: { src, lat, lon, symTable, symCode, comment, path }.
             // Format → APRS uncompressed position → TNC monitor line → WASM
             // modem → audio. Audio is dispatched as 0x03 frames the same
             // way the SPA's mic capture worklet would, so the existing
             // sendAudioFrame() path forwards them to the rig USB out.
+            //
+            // The periodic-beacon path passes a pre-built info string in
+            // obj._info (the AprsProcessor formatted it already); we skip
+            // lat/lon validation in that case.
             var self = this;
             var fail = function (reason) {
                 self._emit('message', { type: 'packetTxFailed', reason: reason });
@@ -1461,8 +1534,10 @@
             // leave the rig keyed (or the button disabled). Drop the second.
             if (this._packet.txInFlight) { fail('TX already in progress'); return; }
             if (!obj.src) { fail('missing source callsign'); return; }
-            if (typeof obj.lat !== 'number' || typeof obj.lon !== 'number') {
-                fail('missing or invalid lat/lon'); return;
+            if (!obj._info) {
+                if (typeof obj.lat !== 'number' || typeof obj.lon !== 'number') {
+                    fail('missing or invalid lat/lon'); return;
+                }
             }
             this._packet.txInFlight = true;
             // Hard watchdog: independent of the try/finally below, force
@@ -1482,9 +1557,10 @@
             }, 30000);
             try {
                 var modem = await this._packetEnsureModem();
-                var info = this._packet.aprsBuildPos(
+                var info = obj._info || this._packet.aprsBuildPos(
                     obj.lat, obj.lon, obj.symTable, obj.symCode, obj.comment);
-                var monitor = this._packet.aprsBuildLine(obj.src, info, obj.path);
+                var dst = obj.dst || 'APRS';
+                var monitor = this._packet.aprsBuildLine(obj.src, info, obj.path, dst);
                 var audio = modem.txFrame(monitor);
                 if (!audio) { fail('modem rejected frame'); return; }
 
@@ -1493,7 +1569,7 @@
                 // so the operator sees what they just queued.
                 this._emit('message', {
                     type: 'packetRxFrame', chan: 0, level: 0, ts: Date.now(),
-                    src: obj.src, dst: 'APRS', path: obj.path || [],
+                    src: obj.src, dst: dst, path: obj.path || [],
                     info: info, ftype: 'UI', rawHex: '', _tx: true,
                 });
 
