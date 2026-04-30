@@ -1086,8 +1086,33 @@
     }
 
     function aprsClearStations() {
-        if (!confirm('Forget all heard APRS stations?')) return;
-        if (window.send) window.send({ cmd: 'aprsClearStations' });
+        var existing = document.getElementById('aprsClearConfirm');
+        if (existing) existing.remove();
+
+        var modal = document.createElement('div');
+        modal.id = 'aprsClearConfirm';
+        modal.className = 'term-file-prompt';
+        modal.innerHTML =
+            '<div class="term-file-prompt-box">' +
+                '<div class="term-file-prompt-title">Forget heard stations?</div>' +
+                '<div class="term-file-prompt-body">' +
+                    'This will clear the APRS heard-stations list.' +
+                '</div>' +
+                '<div class="term-file-prompt-note">Stations will reappear as they are heard again.</div>' +
+                '<div class="term-file-prompt-btns">' +
+                    '<button id="aprsClearCancel" class="packet-action-btn">Cancel</button>' +
+                    '<button id="aprsClearOk" class="packet-action-btn term-xfer-abort">Forget all</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(modal);
+        document.getElementById('aprsClearCancel').onclick = function() { modal.remove(); };
+        document.getElementById('aprsClearOk').onclick = function() {
+            if (window.send) window.send({ cmd: 'aprsClearStations' });
+            modal.remove();
+        };
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) modal.remove();
+        });
     }
 
     function renderAprsBeaconButton() {
