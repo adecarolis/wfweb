@@ -29,7 +29,7 @@ fi
 # would otherwise be left with a "(deleted)" cwd and refuse all requests.
 mkdir -p "$DIST"
 find "$DIST" -mindepth 1 -delete
-mkdir -p "$DIST/transport" "$DIST/civ" "$DIST/models" "$DIST/digits"
+mkdir -p "$DIST/transport" "$DIST/civ" "$DIST/models" "$DIST/digits" "$DIST/wasm"
 
 # Top-level files
 cp "$SRC/index.html"           "$DIST/"
@@ -44,6 +44,18 @@ cp "$SRC"/transport/*.js "$DIST/transport/"
 cp "$SRC"/civ/*.js       "$DIST/civ/"
 cp "$SRC"/models/*.onnx  "$DIST/models/"
 cp "$SRC"/digits/*.png   "$DIST/digits/"
+# WASM modem(s) — only included if already built. tools/build-direwolf-wasm.sh
+# is a separate one-off step (requires Emscripten); a missing dist/wasm/* is
+# treated as "this build doesn't include packet" rather than a hard error.
+if ls "$SRC"/wasm/*.mjs >/dev/null 2>&1; then
+    cp "$SRC"/wasm/*.mjs   "$DIST/wasm/"
+fi
+if ls "$SRC"/wasm/*.html >/dev/null 2>&1; then
+    cp "$SRC"/wasm/*.html  "$DIST/wasm/"
+fi
+if ls "$SRC"/wasm/*-modem.js >/dev/null 2>&1; then
+    cp "$SRC"/wasm/*-modem.js "$DIST/wasm/"
+fi
 
 # FT8/FT4 module + sourcemap (the index.html imports it from /ft8ts.mjs)
 cp "$FT8/ft8ts.mjs"     "$DIST/"

@@ -25,6 +25,8 @@ wfweb
 tools/virtualrig/virtualrig
 .testrig/
 /dist/
+# WASM build artifact from tools/build-direwolf-wasm.sh — large, regenerable.
+resources/web/wasm/direwolf.mjs
 .claude/settings.local.json
 *.ini
 .DS_Store
