@@ -28,6 +28,12 @@
 #include "ais.h"
 #include "fx25.h"
 #include "il2p.h"
+#include "ax25_link.h"
+#include "dlq.h"
+#include "tq.h"
+#include "config.h"
+#include "wfweb_dw_server_shim.h"
+#include "wfweb_tq.h"
 
 /* --- JS callback trampolines ---------------------------------------------
  *
@@ -127,22 +133,16 @@ int ais_check_length(int type, int length) { (void)type; (void)length; return 0;
 
 int get_input(int it, int chan) { (void)it; (void)chan; return -1; }
 
-/* hdlc_rec / hdlc_rec2 push decoded frames here. We don't have ax25_link
- * vendored on the WASM build (yet), so route directly to JS as the
- * "got a frame" hook. Same packet_t shape; we serialize via ax25_pack. */
-void dlq_rec_frame (int chan, int subchan, int slice, packet_t pp,
-                    alevel_t alevel, fec_type_t fec_type, retry_t retries,
-                    char *spectrum)
-{
-    (void)subchan; (void)slice; (void)fec_type; (void)retries; (void)spectrum;
-    if (!pp) return;
-    unsigned char buf[AX25_MAX_PACKET_LEN];
-    int n = ax25_pack(pp, buf);
-    if (n > 0) {
-        wfweb_dw_emit_rx_frame(chan, alevel.rec, (int)(intptr_t)buf, n);
-    }
-    ax25_delete(pp);
+/* dlq_rec_frame is provided by the real dlq.c (linked in for the
+ * connected-mode build). Decoded frames land on the queue and are
+ * processed by wfweb_dw_link_step() below. dlq_init() must be called
+ * before the first decode — we do it lazily from both wfweb_dw_init()
+ * and wfweb_dw_link_init() guarded by g_dlq_inited. */
+static int g_dlq_inited = 0;
+static void ensure_dlq_inited(void) {
+    if (!g_dlq_inited) { dlq_init(0); g_dlq_inited = 1; }
 }
+int wfweb_dw_link_step(void);  /* forward-decl; defined further down */
 
 /* --- Flat exported API ----------------------------------------------------
  *
@@ -202,6 +202,9 @@ int wfweb_dw_init(int baud, int sample_rate)
     multi_modem_init(&g_cfg);
     gen_tone_init(&g_cfg, 100, 0);
     g_cfg_baud = baud;
+    /* hdlc_rec → dlq_rec_frame → append_to_queue asserts dlq_init was
+     * run; init it here so the modem-only path (no link layer) works. */
+    ensure_dlq_inited();
     return 0;
 }
 
@@ -209,7 +212,10 @@ EMSCRIPTEN_KEEPALIVE
 int wfweb_dw_baud(void) { return g_cfg_baud; }
 
 /* Push a batch of int16 LE PCM samples through the demodulator. The buffer
- * lives in the WASM heap; JS already memcpy'd bytes there before the call. */
+ * lives in the WASM heap; JS already memcpy'd bytes there before the call.
+ * Drains the DLQ at the end so modem-only callers (no Ax25Link active)
+ * still see modem.onFrame fire — the link path is gated separately so a
+ * non-init link is harmless here. */
 EMSCRIPTEN_KEEPALIVE
 void wfweb_dw_process_samples(int ptr, int n_samples)
 {
@@ -217,6 +223,7 @@ void wfweb_dw_process_samples(int ptr, int n_samples)
     for (int i = 0; i < n_samples; i++) {
         multi_modem_process_sample(0, (int)p[i]);
     }
+    wfweb_dw_link_step();
 }
 
 /* Encode a TNC-style "SRC>DST[,VIA,...]:info" UI frame and append the
@@ -248,3 +255,294 @@ EMSCRIPTEN_KEEPALIVE
 int wfweb_dw_tx_buffer_len(void)  { return (int)tx_buf_len; }
 EMSCRIPTEN_KEEPALIVE
 void wfweb_dw_tx_buffer_reset(void) { tx_buf_len = 0; }
+
+
+/* === AX.25 connected-mode link layer ====================================
+ *
+ * This section wraps Direwolf's ax25_link.c + dlq.c so JS can drive
+ * connected-mode AX.25 (terminal sessions, BBS access, etc.). Mirrors
+ * src/ax25linkprocessor.cpp on the C++ side — same callback shape, same
+ * dispatcher loop, same dlq_* request API. The big difference is
+ * threading: WASM is single-threaded, so JS calls wfweb_dw_link_step()
+ * from a setInterval to drain the DLQ + service link timers.
+ */
+
+/* --- JS event trampolines ----------------------------------------------- */
+
+EM_JS(void, wfweb_dw_emit_link_event, (int kind, int chan, int client,
+                                       const char *remote, const char *own,
+                                       int param), {
+    if (typeof Module !== 'undefined' && typeof Module.onLinkEvent === 'function') {
+        Module.onLinkEvent(kind, chan, client,
+            UTF8ToString(remote || 0), UTF8ToString(own || 0), param);
+    }
+});
+
+EM_JS(void, wfweb_dw_emit_link_data, (int chan, int client, const char *remote,
+                                      const char *own, int pid,
+                                      int ptr, int len), {
+    if (typeof Module !== 'undefined' && typeof Module.onLinkData === 'function') {
+        var bytes = HEAPU8.slice(ptr, ptr + len);
+        Module.onLinkData(chan, client, UTF8ToString(remote || 0),
+            UTF8ToString(own || 0), pid, bytes);
+    }
+});
+
+EM_JS(int, wfweb_dw_callsign_lookup_js, (const char *callsign), {
+    if (typeof Module !== 'undefined' && typeof Module.onCallsignLookup === 'function') {
+        return Module.onCallsignLookup(UTF8ToString(callsign || 0));
+    }
+    return -1;
+});
+
+/* Link event "kind" codes used by wfweb_dw_emit_link_event. */
+#define WFWEB_LINK_EV_ESTABLISHED 1
+#define WFWEB_LINK_EV_TERMINATED  2
+#define WFWEB_LINK_EV_OUTSTANDING 3
+#define WFWEB_LINK_EV_ACKED       4
+
+/* --- C-side callback shims --------------------------------------------- */
+
+static void on_link_established(int chan, int client, const char *remote,
+                                const char *own, int incoming) {
+    wfweb_dw_emit_link_event(WFWEB_LINK_EV_ESTABLISHED, chan, client,
+                             remote, own, incoming);
+}
+static void on_link_terminated(int chan, int client, const char *remote,
+                               const char *own, int timeout) {
+    wfweb_dw_emit_link_event(WFWEB_LINK_EV_TERMINATED, chan, client,
+                             remote, own, timeout);
+}
+static void on_rec_conn_data(int chan, int client, const char *remote,
+                             const char *own, int pid,
+                             const char *data, int len) {
+    wfweb_dw_emit_link_data(chan, client, remote, own, pid,
+                            (int)(intptr_t)data, len);
+}
+static void on_outstanding(int chan, int client, const char *own,
+                           const char *remote, int count) {
+    /* For OUTSTANDING + ACKED we re-use the link-event channel with own/remote
+     * swapped vs. ESTABLISHED — JS sorts it out from the kind. */
+    wfweb_dw_emit_link_event(WFWEB_LINK_EV_OUTSTANDING, chan, client,
+                             remote, own, count);
+}
+static void on_data_acked(int chan, int client, const char *own,
+                          const char *remote, int count) {
+    wfweb_dw_emit_link_event(WFWEB_LINK_EV_ACKED, chan, client,
+                             remote, own, count);
+}
+static int on_callsign_lookup(const char *callsign) {
+    return wfweb_dw_callsign_lookup_js(callsign);
+}
+
+/* tq callback: ax25_link wants a frame TX'd. We encode it straight to
+ * the modem's TX buffer (same path the one-shot APRS TX uses); JS reads
+ * tx_buf after wfweb_dw_link_step returns and ships the audio. */
+static void on_tq_data(int chan, int prio, packet_t pp) {
+    (void)prio;
+    if (!pp) return;
+    layer2_preamble_postamble(chan, 32, 0, &g_cfg);
+    layer2_send_frame(chan, pp, 0, &g_cfg);
+    layer2_preamble_postamble(chan, 2, 1, &g_cfg);
+    ax25_delete(pp);
+}
+
+/* tq seize callback: our channel always seizes immediately (we'll handle
+ * PTT timing on the JS side based on tx_buf flushes). */
+static void on_tq_seize(int chan) {
+    dlq_seize_confirm(chan);
+}
+
+/* --- Init / config / step / requests ----------------------------------- */
+
+static struct misc_config_s g_link_cfg;
+static int g_link_initialized = 0;
+
+EMSCRIPTEN_KEEPALIVE
+int wfweb_dw_link_init(void) {
+    if (g_link_initialized) return 0;
+    memset(&g_link_cfg, 0, sizeof(g_link_cfg));
+    g_link_cfg.frack             = 4;     /* updated dynamically by set_paclen_for_baud */
+    g_link_cfg.retry             = 10;
+    g_link_cfg.paclen            = 128;
+    g_link_cfg.maxframe_basic    = 1;     /* one I-frame per ACK — classic packet */
+    g_link_cfg.maxframe_extended = 1;
+    g_link_cfg.maxv22            = 0;     /* force v2.0; we don't need SABME */
+
+    ax25_link_init(&g_link_cfg, /*debug*/0, /*stats*/0);
+    tq_init(NULL);
+    ensure_dlq_inited();
+
+    wfweb_dw_register_server_callbacks(&on_link_established,
+                                       &on_link_terminated,
+                                       &on_rec_conn_data,
+                                       &on_outstanding,
+                                       &on_callsign_lookup);
+    wfweb_dw_register_data_acked_cb(&on_data_acked);
+    wfweb_dw_register_tq_callbacks(&on_tq_data, &on_tq_seize);
+
+    g_link_initialized = 1;
+    return 0;
+}
+
+/* Sized per the C++ AX25LinkProcessor::setLinkParamsForBaud — frack
+ * scaled to the modem's airtime, paclen scaled to typical link MTU. */
+EMSCRIPTEN_KEEPALIVE
+void wfweb_dw_link_set_baud(int baud) {
+    int frack, paclen;
+    switch (baud) {
+    case 300:  frack = 10; paclen = 64;  break;
+    case 1200: frack = 4;  paclen = 128; break;
+    case 9600: frack = 3;  paclen = 256; break;
+    default:   frack = 4;  paclen = 128; break;
+    }
+    g_link_cfg.frack  = frack;
+    g_link_cfg.paclen = paclen;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int wfweb_dw_link_paclen(void) { return g_link_cfg.paclen; }
+
+/* Pack two callsigns + an optional digi list into the address array
+ * dlq_*_request expects. addrs is fixed-size [10][12] (AX25_MAX_ADDRS *
+ * AX25_MAX_ADDR_LEN) — we own the storage on the stack, copy in from
+ * a flat null-separated string list (own,peer,via1,via2,…\0).
+ * Returns num_addr (2 + #digis). */
+static int pack_addrs(char addrs[AX25_MAX_ADDRS][AX25_MAX_ADDR_LEN],
+                      const char *own, const char *peer, const char *digis_csv) {
+    memset(addrs, 0, AX25_MAX_ADDRS * AX25_MAX_ADDR_LEN);
+    /* slot 0 = AX25_DESTINATION (peer), slot 1 = AX25_SOURCE (own) */
+    int n = 0;
+    strncpy(addrs[0], peer ? peer : "", AX25_MAX_ADDR_LEN - 1);
+    strncpy(addrs[1], own  ? own  : "", AX25_MAX_ADDR_LEN - 1);
+    n = 2;
+    if (digis_csv && *digis_csv) {
+        /* Comma-separated list. mutate-in-place via strtok on a dup. */
+        char *dup = strdup(digis_csv);
+        if (dup) {
+            char *tok, *save;
+            for (tok = strtok_r(dup, ",", &save);
+                 tok && n < AX25_MAX_ADDRS;
+                 tok = strtok_r(NULL, ",", &save)) {
+                while (*tok == ' ') tok++;
+                if (*tok) {
+                    strncpy(addrs[n], tok, AX25_MAX_ADDR_LEN - 1);
+                    n++;
+                }
+            }
+            free(dup);
+        }
+    }
+    return n;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void wfweb_dw_link_register_call(int chan, int client, const char *callsign) {
+    if (!callsign) return;
+    /* dlq_register_callsign mutates its first arg, so dup. */
+    char buf[AX25_MAX_ADDR_LEN];
+    strncpy(buf, callsign, AX25_MAX_ADDR_LEN - 1);
+    buf[AX25_MAX_ADDR_LEN - 1] = '\0';
+    dlq_register_callsign(buf, chan, client);
+}
+EMSCRIPTEN_KEEPALIVE
+void wfweb_dw_link_unregister_call(int chan, int client, const char *callsign) {
+    if (!callsign) return;
+    char buf[AX25_MAX_ADDR_LEN];
+    strncpy(buf, callsign, AX25_MAX_ADDR_LEN - 1);
+    buf[AX25_MAX_ADDR_LEN - 1] = '\0';
+    dlq_unregister_callsign(buf, chan, client);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void wfweb_dw_link_connect(int chan, int client, const char *own,
+                           const char *peer, const char *digis_csv) {
+    char addrs[AX25_MAX_ADDRS][AX25_MAX_ADDR_LEN];
+    int n = pack_addrs(addrs, own, peer, digis_csv);
+    dlq_connect_request(addrs, n, chan, client, /*pid*/0xF0);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void wfweb_dw_link_disconnect(int chan, int client, const char *own,
+                              const char *peer, const char *digis_csv) {
+    char addrs[AX25_MAX_ADDRS][AX25_MAX_ADDR_LEN];
+    int n = pack_addrs(addrs, own, peer, digis_csv);
+    dlq_disconnect_request(addrs, n, chan, client);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void wfweb_dw_link_send_data(int chan, int client, const char *own,
+                             const char *peer, const char *digis_csv,
+                             int pid, int data_ptr, int data_len) {
+    char addrs[AX25_MAX_ADDRS][AX25_MAX_ADDR_LEN];
+    int n = pack_addrs(addrs, own, peer, digis_csv);
+    /* dlq_xmit_data_request copies the buffer into a cdata_t, so the
+     * JS side's heap memory is safe to free after this call returns. */
+    dlq_xmit_data_request(addrs, n, chan, client, pid,
+                          (char *)(intptr_t)data_ptr, data_len);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void wfweb_dw_link_outstanding_request(int chan, int client,
+                                       const char *own, const char *peer) {
+    char addrs[AX25_MAX_ADDRS][AX25_MAX_ADDR_LEN];
+    int n = pack_addrs(addrs, own, peer, NULL);
+    dlq_outstanding_frames_request(addrs, n, chan, client);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void wfweb_dw_link_client_cleanup(int client) {
+    dlq_client_cleanup(client);
+}
+
+/* One iteration of AX25LinkProcessor::dispatcherLoop. JS calls this on a
+ * setInterval (~50 ms) when the link is active - services link timers,
+ * drains the DLQ, dispatches each item. Always emits RX frames to JS
+ * (for the monitor pane); link-specific dl_/lm_ dispatch is gated on
+ * link init so the modem-only path can use this to drain the DLQ too. */
+EMSCRIPTEN_KEEPALIVE
+int wfweb_dw_link_step(void) {
+    if (g_link_initialized) dl_timer_expiry();
+    int processed = 0;
+    for (;;) {
+        dlq_item_t *E = dlq_remove();
+        if (!E) break;
+        switch (E->type) {
+        case DLQ_REC_FRAME:
+            if (E->pp) {
+                /* Surface every RX frame to JS for the monitor pane —
+                 * AX25LinkProcessor::dispatcherLoop does the same so
+                 * the operator sees connected-mode I-frames too. */
+                unsigned char buf[AX25_MAX_PACKET_LEN];
+                int n = ax25_pack(E->pp, buf);
+                if (n > 0) {
+                    wfweb_dw_emit_rx_frame(E->chan, E->alevel.rec,
+                                           (int)(intptr_t)buf, n);
+                }
+                if (g_link_initialized) lm_data_indication(E);
+            }
+            break;
+        case DLQ_CONNECT_REQUEST:
+            if (g_link_initialized) dl_connect_request(E); break;
+        case DLQ_DISCONNECT_REQUEST:
+            if (g_link_initialized) dl_disconnect_request(E); break;
+        case DLQ_XMIT_DATA_REQUEST:
+            if (g_link_initialized) dl_data_request(E); break;
+        case DLQ_REGISTER_CALLSIGN:
+            if (g_link_initialized) dl_register_callsign(E); break;
+        case DLQ_UNREGISTER_CALLSIGN:
+            if (g_link_initialized) dl_unregister_callsign(E); break;
+        case DLQ_OUTSTANDING_FRAMES_REQUEST:
+            if (g_link_initialized) dl_outstanding_frames_request(E); break;
+        case DLQ_CHANNEL_BUSY:
+            if (g_link_initialized) lm_channel_busy(E); break;
+        case DLQ_SEIZE_CONFIRM:
+            if (g_link_initialized) lm_seize_confirm(E); break;
+        case DLQ_CLIENT_CLEANUP:
+            if (g_link_initialized) dl_client_cleanup(E); break;
+        }
+        dlq_delete(E);
+        processed++;
+    }
+    return processed;
+}

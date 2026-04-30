@@ -147,6 +147,10 @@
         // Packet (WASM Direwolf modem) + APRS station db / beacon scheduler.
         packetEnable: true, packetSetMode: true,
         aprsTxBeacon: true, aprsBeaconConfig: true, aprsClearStations: true,
+        // AX.25 connected-mode terminal sessions.
+        termList: true, termRegister: true,
+        termConnect: true, termDisconnect: true,
+        termSend: true, termHistory: true,
         // Anything else (FreeDV, memory, filter shape, LAN ops, reporters …)
         // falls through to the WS path which is closed in Direct mode.
     };
@@ -245,6 +249,19 @@
             this._packet = {
                 enabled: false, mode: 1200, modem: null,
                 modulePromise: null, txInFlight: false,
+            };
+            // Connected-mode AX.25 terminal sessions. sid (string) keys
+            // an entry; client (small int) is the id we hand to ax25_link.
+            // Sessions are reaped when linkTerminated fires, so the maps
+            // stay consistent without explicit cleanup.
+            this._terminal = {
+                sessions:    new Map(),    // sid -> session
+                byClient:    new Map(),    // client -> session
+                regsByCall:  new Map(),    // CALL@chan -> { client, ownCall, chan }
+                nextSid:     1,
+                nextClient:  1,
+                txQueue:     [],           // pending Int16Array audio chunks from link
+                txDraining:  false,
             };
         }
 
@@ -472,6 +489,16 @@
                         this._emit('message', this._packet.aprsProc.snapshot());
                     }
                     return;
+                case 'termList':       this._termList();             return;
+                case 'termRegister':   this._termRegister(obj);      return;
+                case 'termConnect':
+                    if (!this._rigCanTransmit()) return;
+                    this._termConnect(obj);                          return;
+                case 'termDisconnect': this._termDisconnect(obj);    return;
+                case 'termSend':
+                    if (!this._rigCanTransmit()) return;
+                    this._termSend(obj);                             return;
+                case 'termHistory':    this._termHistory(obj);       return;
                 case 'enableAudio':
                     if (obj.value) {
                         this._startRxAudio().catch(function (err) {
@@ -1431,6 +1458,36 @@
             // renders even before the first RX.
             self._emit('message', aprs.snapshot());
 
+            // AX.25 connected-mode link layer. Wraps the WASM
+            // ax25_link.c + dlq.c surface and runs a JS-driven
+            // dispatcher tick (~50 ms). Events surface as termSession /
+            // termData / termAck / termClose JSON messages.
+            var link = new mod.Ax25Link(modem);
+            link.start();
+            this._packet.link = link;
+            link.addEventListener('linkEstablished', function (ev) {
+                self._termOnLinkEstablished(ev.detail);
+            });
+            link.addEventListener('linkTerminated', function (ev) {
+                self._termOnLinkTerminated(ev.detail);
+            });
+            link.addEventListener('rxData', function (ev) {
+                self._termOnRxData(ev.detail);
+            });
+            link.addEventListener('dataAcked', function (ev) {
+                self._termOnDataAcked(ev.detail);
+            });
+            // Audio coming back from the link's TX path. Each event
+            // carries one TX burst (one or more I-frames coalesced).
+            // We queue them and drain serially through the same
+            // PTT-key-ship-unkey flow APRS one-shot uses.
+            link.addEventListener('transmitFrameAudio', function (ev) {
+                self._terminal.txQueue.push(ev.detail.audio);
+                self._termDrainTxQueue().catch(function (err) {
+                    console.error('term TX drain:', err);
+                });
+            });
+
             this._packet.modem = modem;
             return modem;
         }
@@ -1466,6 +1523,9 @@
             if (baud !== 300 && baud !== 1200 && baud !== 9600) return;
             this._packet.mode = baud;
             if (this._packet.modem) this._packet.modem.init(baud, 48000);
+            // Frack/paclen scale with baud — see AX25LinkProcessor::
+            // setLinkParamsForBaud.  Keeps T1 retries sane on slow HF.
+            if (this._packet.link) this._packet.link.setBaud(baud);
             this._emit('message', {
                 type: 'packetStatus',
                 enabled: this._packet.enabled,
@@ -1645,6 +1705,270 @@
                 if (!watchdogFired) {
                     this.sendCommand({ cmd: 'setPTT', value: false });
                     this._emit('message', { type: 'packetTxComplete' });
+                    this._packet.txInFlight = false;
+                }
+            }
+        }
+
+        // ----------------------------------------------------------------
+        // AX.25 connected-mode terminal (term*)
+        // ----------------------------------------------------------------
+
+        _termSessionToJson(s) {
+            return {
+                sid:      s.sid,
+                ownCall:  s.ownCall,
+                peerCall: s.peerCall,
+                digis:    s.digis ? s.digis.slice() : [],
+                chan:     s.chan,
+                state:    s.state,
+                incoming: !!s.incoming,
+                opened:   s.opened || 0,
+            };
+        }
+
+        _termList() {
+            var sessions = [];
+            this._terminal.sessions.forEach((s) => sessions.push(this._termSessionToJson(s)));
+            this._emit('message', { type: 'termList', sessions: sessions });
+        }
+
+        _termHistory(obj) {
+            var s = this._terminal.sessions.get(obj.sid);
+            if (!s) return;
+            this._emit('message', {
+                type: 'termHistory', sid: s.sid,
+                entries: (s.scrollback || []).slice(),
+            });
+        }
+
+        _termRegister(obj) {
+            // The SPA registers its station callsign so inbound SABMs
+            // addressed to it get a UA back. We assign one client id per
+            // registration; the same id is reused if the registration
+            // already exists, so re-registering on reconnect is cheap.
+            var self = this;
+            var ownCall = (obj.ownCall || '').toUpperCase();
+            var chan    = (obj.chan | 0);
+            if (!ownCall) return;
+            this._packetEnsureModem().then(function () {
+                var key = ownCall + '@' + chan;
+                var reg = self._terminal.regsByCall.get(key);
+                if (!reg) {
+                    reg = { ownCall, chan, client: self._terminal.nextClient++ };
+                    self._terminal.regsByCall.set(key, reg);
+                }
+                self._packet.link.registerCall(chan, reg.client, ownCall);
+            }).catch(function (err) {
+                console.error('termRegister:', err);
+            });
+        }
+
+        _termConnect(obj) {
+            // Outgoing connect. Allocates a new sid + client; the link
+            // layer's linkEstablished event will flip the session to
+            // 'connected' once SABM/UA completes.
+            var self = this;
+            var ownCall  = (obj.ownCall  || '').toUpperCase();
+            var peerCall = (obj.peerCall || '').toUpperCase();
+            var chan     = (obj.chan | 0);
+            var digis    = (obj.digis || []).map(function (d) { return d.toUpperCase(); });
+            if (!ownCall || !peerCall) return;
+            this._packetEnsureModem().then(function () {
+                var sid = 's' + (self._terminal.nextSid++);
+                var client = self._terminal.nextClient++;
+                var sess = {
+                    sid, client, ownCall, peerCall, digis, chan,
+                    state: 'connecting', incoming: false,
+                    opened: Date.now(),
+                    scrollback: [],
+                };
+                self._terminal.sessions.set(sid, sess);
+                self._terminal.byClient.set(client, sess);
+                // Register so we'll accept the UA reply addressed to us.
+                self._packet.link.registerCall(chan, client, ownCall);
+                self._emit('message', Object.assign({ type: 'termSession' },
+                    self._termSessionToJson(sess)));
+                self._packet.link.connectRequest({
+                    chan, client, ownCall, peerCall, digis,
+                });
+            }).catch(function (err) {
+                console.error('termConnect:', err);
+            });
+        }
+
+        _termDisconnect(obj) {
+            var s = this._terminal.sessions.get(obj.sid);
+            if (!s || !this._packet.link) return;
+            this._packet.link.disconnectRequest({
+                chan: s.chan, client: s.client,
+                ownCall: s.ownCall, peerCall: s.peerCall, digis: s.digis,
+            });
+            // Don't drop the session yet — wait for linkTerminated so the
+            // disconnect handshake's TX bytes can drain.
+        }
+
+        _termSend(obj) {
+            var s = this._terminal.sessions.get(obj.sid);
+            if (!s || !this._packet.link) return;
+            if (s.state !== 'connected') return;
+            // Append to scrollback as pending TX so the SPA shows it
+            // queued; the dataAcked event will flip it to delivered.
+            var entry = { ts: Date.now(), dir: 'tx', data: obj.data, pending: true };
+            s.scrollback.push(entry);
+            this._emit('message', Object.assign({ type: 'termData', sid: s.sid }, entry));
+            this._packet.link.sendData({
+                chan: s.chan, client: s.client,
+                ownCall: s.ownCall, peerCall: s.peerCall, digis: s.digis,
+                pid: 0xF0, data: obj.data,
+            });
+        }
+
+        // --- link event handlers ---
+
+        _termOnLinkEstablished(d) {
+            var s = this._terminal.byClient.get(d.client);
+            if (!s) {
+                // Inbound SABM — find/create the session by registered
+                // ownCall + remote peer.
+                var ownCall = (d.own || '').toUpperCase();
+                var peerCall = (d.remote || '').toUpperCase();
+                s = this._termFindOrCreateInboundSession({
+                    chan: d.chan, client: d.client, ownCall, peerCall,
+                });
+            }
+            s.state = 'connected';
+            s.incoming = !!d.incoming;
+            this._emit('message', Object.assign({ type: 'termSession' },
+                this._termSessionToJson(s)));
+        }
+
+        _termFindOrCreateInboundSession({ chan, client, ownCall, peerCall }) {
+            var sid = 's' + (this._terminal.nextSid++);
+            var sess = {
+                sid, client, ownCall, peerCall, digis: [], chan,
+                state: 'connecting', incoming: true,
+                opened: Date.now(),
+                scrollback: [],
+            };
+            this._terminal.sessions.set(sid, sess);
+            this._terminal.byClient.set(client, sess);
+            return sess;
+        }
+
+        _termOnLinkTerminated(d) {
+            var s = this._terminal.byClient.get(d.client);
+            if (!s) return;
+            this._terminal.sessions.delete(s.sid);
+            this._terminal.byClient.delete(s.client);
+            // Tell the link layer to release any cdata still queued.
+            if (this._packet.link) this._packet.link.clientCleanup(s.client);
+            this._emit('message', { type: 'termClose', sid: s.sid });
+        }
+
+        _termOnRxData(d) {
+            var s = this._terminal.byClient.get(d.client);
+            if (!s) return;
+            // ax25_link hands us bytes (Uint8Array). Most BBS / TNC
+            // traffic is plain ASCII; render as UTF-8 so accented
+            // chars survive.
+            var text;
+            try {
+                text = new TextDecoder('utf-8', { fatal: false }).decode(d.data);
+            } catch (_) {
+                text = String.fromCharCode.apply(null, d.data);
+            }
+            var entry = { ts: Date.now(), dir: 'rx', data: text };
+            s.scrollback.push(entry);
+            this._emit('message', Object.assign({ type: 'termData', sid: s.sid }, entry));
+        }
+
+        _termOnDataAcked(d) {
+            var s = this._terminal.byClient.get(d.client);
+            if (!s) return;
+            this._emit('message', {
+                type: 'termAck', sid: s.sid, count: d.count | 0,
+            });
+        }
+
+        // --- TX queue drain ---
+
+        async _termDrainTxQueue() {
+            // Single-flight: if a drain is already running, the new audio
+            // will be picked up when the current burst completes.
+            if (this._terminal.txDraining) return;
+            // Don't try to TX while a one-shot APRS beacon is mid-flight
+            // (or vice-versa) — both share PTT and tx_buf; serialise.
+            if (this._packet.txInFlight) {
+                // Re-poll shortly; APRS beacons are short.
+                setTimeout(() => this._termDrainTxQueue().catch(function () {}), 200);
+                return;
+            }
+            this._terminal.txDraining = true;
+            try {
+                while (this._terminal.txQueue.length) {
+                    var audio = this._terminal.txQueue.shift();
+                    if (!audio || !audio.length) continue;
+                    await this._packetTxAudio(audio);
+                }
+            } finally {
+                this._terminal.txDraining = false;
+            }
+        }
+
+        // Ship a pre-encoded audio burst to the rig: switch MOD INPUT,
+        // pre-buffer chunks, key PTT, drain, unkey, wait. Re-uses the
+        // existing _packetSendChunk and the rig's MOD INPUT setup the
+        // APRS one-shot path uses, just with audio handed in instead of
+        // built from a monitor string.
+        async _packetTxAudio(audio) {
+            var self = this;
+            this._packet.txInFlight = true;
+            var watchdogFired = false;
+            var watchdog = setTimeout(function () {
+                if (self._packet.txInFlight) {
+                    watchdogFired = true;
+                    console.warn('term TX: watchdog forcing unkey');
+                    self.sendCommand({ cmd: 'setPTT', value: false });
+                    self._packet.txInFlight = false;
+                }
+            }, 30000);
+            try {
+                // Tee the local TX as 0x04 frames so the packet panel
+                // waterfall shows what we sent. (No frame-level RX shim
+                // for connected-mode I-frames — those'd need ax25_pack
+                // out of the link's tx_buf, which we don't have here.)
+                this._enqueue('setDataOffMod',
+                    civ.cmdSetModInput(this._modIn.off, this._modIn.usbReg));
+                this._enqueue('setDataMod',
+                    civ.cmdSetModInput(this._modIn.data1, this._modIn.usbReg));
+
+                if (!this._txAudio.ctx) {
+                    try { await this._ensureTxAudioCtx(); }
+                    catch (e) { console.warn('term TX: audio ctx init failed:', e); }
+                }
+
+                var seq = 0;
+                var CHUNK = 960;
+                var PREBUFFER_CHUNKS = 5;
+                var off = 0;
+                for (var pre = 0; pre < PREBUFFER_CHUNKS && off < audio.length; pre++) {
+                    var n = Math.min(CHUNK, audio.length - off);
+                    this._packetSendChunk(audio, off, n, seq++);
+                    off += n;
+                }
+                this.sendCommand({ cmd: 'setPTT', value: true });
+                while (off < audio.length) {
+                    var rest = Math.min(CHUNK, audio.length - off);
+                    this._packetSendChunk(audio, off, rest, seq++);
+                    off += rest;
+                }
+                var durationMs = (audio.length / 48000) * 1000 + 150;
+                await new Promise(function (r) { setTimeout(r, durationMs); });
+            } finally {
+                clearTimeout(watchdog);
+                if (!watchdogFired) {
+                    this.sendCommand({ cmd: 'setPTT', value: false });
                     this._packet.txInFlight = false;
                 }
             }

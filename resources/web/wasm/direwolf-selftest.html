@@ -18,10 +18,11 @@
 <button id="run1200">Run @ 1200 bd</button>
 <button id="run9600">Run @ 9600 bd</button>
 <button id="runAll">Run all</button>
+<button id="runLink">AX.25 link smoke-test</button>
 <pre id="log">…click a button…</pre>
 
 <script type="module">
-  import { DirewolfModem } from './direwolf-modem.js';
+  import { DirewolfModem, Ax25Link } from './direwolf-modem.js';
 
   const KNOWN_FRAME = 'N0CALL>APRS:packet selftest';
   const log = document.getElementById('log');
@@ -83,6 +84,63 @@
   document.getElementById('run300').addEventListener('click',  () => { log.textContent=''; runOne(300); });
   document.getElementById('run1200').addEventListener('click', () => { log.textContent=''; runOne(1200); });
   document.getElementById('run9600').addEventListener('click', () => { log.textContent=''; runOne(9600); });
+  document.getElementById('runLink').addEventListener('click', async () => {
+      log.textContent = '';
+      append('---- AX.25 link smoke-test ----');
+      const modem = await DirewolfModem.create();
+      modem.init(1200, 48000);
+      const link = new Ax25Link(modem);
+      link.start();
+      append(`  link.start() OK, paclen=${link.paclen}`);
+
+      let txAudio = null;
+      link.addEventListener('transmitFrameAudio', (ev) => { txAudio = ev.detail.audio; });
+
+      let establishedCount = 0;
+      let terminatedCount = 0;
+      link.addEventListener('linkEstablished', (ev) => {
+          establishedCount++;
+          append(`  linkEstablished: client=${ev.detail.client} ${ev.detail.own}<->${ev.detail.remote}`, 'pass');
+      });
+      link.addEventListener('linkTerminated', (ev) => {
+          terminatedCount++;
+          append(`  linkTerminated: client=${ev.detail.client} timeout=${ev.detail.timeout}`);
+      });
+
+      link.registerCall(0, 1, 'CALLA-1');
+      link.connectRequest({ chan: 0, client: 1, ownCall: 'CALLA-1', peerCall: 'CALLB-2', digis: [] });
+      append('  connect request issued; waiting for SABM emission…');
+
+      // Wait up to ~500 ms for the dispatcher to emit the SABM audio.
+      for (let i = 0; i < 25 && !txAudio; i++) {
+          await new Promise(r => setTimeout(r, 20));
+      }
+      if (!txAudio) { append('  no TX audio after 500ms', 'fail'); link.stop(); return; }
+      append(`  SABM audio: ${txAudio.length} samples (${(txAudio.length/48000*1000).toFixed(0)} ms)`);
+
+      // Feed SABM back through the modem's RX. We expect the monitor
+      // path to fire onFrame with the SABM bytes (DST=CALLB-2).
+      let rxFrame = null;
+      modem.onFrame = (chan, alevel, bytes) => { rxFrame = bytes; };
+      const CHUNK = 960;
+      for (let i = 0; i < txAudio.length; i += CHUNK) {
+          modem.processSamples(txAudio.subarray(i, Math.min(i + CHUNK, txAudio.length)));
+      }
+      // Give the dispatcher one more tick.
+      await new Promise(r => setTimeout(r, 100));
+
+      if (!rxFrame) { append('  RX did not decode the SABM', 'fail'); link.stop(); return; }
+      // First 7 bytes = AX25_DESTINATION = 'CALLB-2'.
+      const dst = String.fromCharCode(...Array.from(rxFrame.slice(0, 6)).map(b => b >> 1)).trim();
+      if (dst !== 'CALLB') { append(`  unexpected destination "${dst}"`, 'fail'); link.stop(); return; }
+
+      append('  SABM round-trip via modem: PASS', 'pass');
+
+      link.stop();
+      append('');
+      append('PASS link smoke-test: SABM emitted, decoded, addressing correct', 'pass');
+  });
+
   document.getElementById('runAll').addEventListener('click',  async () => {
       log.textContent = '';
       const r1 = await runOne(300);

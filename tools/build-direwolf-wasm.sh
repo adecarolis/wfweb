@@ -8,10 +8,11 @@
 # Requires: emcc on PATH (any 3.x release).
 #
 # Scope: AFSK 300/1200 + G3RUH 9600 modem, HDLC framing, AX.25 packet
-# encode/decode.  ax25_link.c (connected-mode), xid.c, dlq.c, FX.25, IL2P,
-# and the audio/PTT/IGate/digipeater layers are intentionally NOT included
-# — wfweb supplies its own audio bus and the JS side runs the link state
-# machine.  See resources/direwolf/README-vendoring.md.
+# encode/decode, AX.25 v2.0 connected-mode link layer (ax25_link.c +
+# dlq.c + xid.c + the wfweb tq/server shims). FX.25, IL2P, and the
+# audio/PTT/IGate/digipeater layers are intentionally NOT included —
+# wfweb supplies its own audio bus and JS drives the dispatcher loop.
+# See resources/direwolf/README-vendoring.md.
 
 set -e
 
@@ -29,10 +30,14 @@ fi
 mkdir -p "$OUT_DIR"
 
 # Mirror the C sources wfweb.pro pulls in (line 274+), minus the
-# connected-mode pieces we don't need on the modem-only WASM build.
+# audio/PTT layers (wfweb supplies those) and the FEC layers we don't
+# enable (FX.25, IL2P).
 SOURCES="
     $SRC/src/ax25_pad.c
     $SRC/src/ax25_pad2.c
+    $SRC/src/ax25_link.c
+    $SRC/src/dlq.c
+    $SRC/src/xid.c
     $SRC/src/demod.c
     $SRC/src/demod_afsk.c
     $SRC/src/demod_9600.c
@@ -45,6 +50,8 @@ SOURCES="
     $SRC/src/dsp.c
     $SRC/src/dtime_now.c
     $SRC/src/rrbb.c
+    $SRC/wfweb_dw_server_shim.c
+    $SRC/wfweb_tq.c
     $SRC/wfweb_direwolf_wasm.c
 "
 
@@ -57,6 +64,17 @@ EXPORTED_FUNCS='[
   "_wfweb_dw_tx_buffer_ptr",
   "_wfweb_dw_tx_buffer_len",
   "_wfweb_dw_tx_buffer_reset",
+  "_wfweb_dw_link_init",
+  "_wfweb_dw_link_set_baud",
+  "_wfweb_dw_link_paclen",
+  "_wfweb_dw_link_register_call",
+  "_wfweb_dw_link_unregister_call",
+  "_wfweb_dw_link_connect",
+  "_wfweb_dw_link_disconnect",
+  "_wfweb_dw_link_send_data",
+  "_wfweb_dw_link_outstanding_request",
+  "_wfweb_dw_link_client_cleanup",
+  "_wfweb_dw_link_step",
   "_malloc",
   "_free"
 ]'

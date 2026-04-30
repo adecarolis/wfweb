@@ -579,3 +579,204 @@ export class AprsProcessor extends EventTarget {
         };
     }
 }
+
+
+// --- AX.25 connected-mode link layer ------------------------------------
+//
+// Wraps the WASM ax25_link.c + dlq.c surface that wfweb_dw_link_* exports.
+// Mirrors src/ax25linkprocessor.cpp on the C++ side: same callbacks, same
+// dlq request API, same dispatcher loop. Difference is threading — WASM
+// is single-threaded, so we drive the loop from a setInterval here.
+//
+// Usage:
+//   const modem = await DirewolfModem.create();
+//   modem.init(1200, 48000);
+//   const link = new Ax25Link(modem);
+//   link.start();
+//   link.addEventListener('linkEstablished', e => …);
+//   link.addEventListener('rxData', e => …);
+//   link.addEventListener('transmitFrameAudio', e => /* send int16 to rig */);
+//   link.registerCall(0, 0, 'N0CALL-1');
+//   link.connectRequest({ chan: 0, client: 0, ownCall: 'N0CALL-1', peerCall: 'BBS-1' });
+//   link.sendData(0, 0, 'N0CALL-1', 'BBS-1', [], 'hello\r');
+
+const LINK_EV_ESTABLISHED = 1;
+const LINK_EV_TERMINATED  = 2;
+const LINK_EV_OUTSTANDING = 3;
+const LINK_EV_ACKED       = 4;
+
+export class Ax25Link extends EventTarget {
+    constructor(modem) {
+        super();
+        const mod = modem._mod;
+        this._modem = modem;
+        this._mod   = mod;
+        // cwrap each export. Strings cross the JS/WASM boundary as char*
+        // so we let cwrap copy on the way in; on the way out we read from
+        // HEAPU8 manually (UTF8ToString in EM_JS handles that).
+        this._cInit       = mod.cwrap('wfweb_dw_link_init',                'number', []);
+        this._cStep       = mod.cwrap('wfweb_dw_link_step',                'number', []);
+        this._cSetBaud    = mod.cwrap('wfweb_dw_link_set_baud',            'null',   ['number']);
+        this._cPaclen     = mod.cwrap('wfweb_dw_link_paclen',              'number', []);
+        this._cReg        = mod.cwrap('wfweb_dw_link_register_call',       'null',   ['number', 'number', 'string']);
+        this._cUnreg      = mod.cwrap('wfweb_dw_link_unregister_call',     'null',   ['number', 'number', 'string']);
+        this._cConnect    = mod.cwrap('wfweb_dw_link_connect',             'null',   ['number', 'number', 'string', 'string', 'string']);
+        this._cDisconnect = mod.cwrap('wfweb_dw_link_disconnect',          'null',   ['number', 'number', 'string', 'string', 'string']);
+        this._cSendData   = mod.cwrap('wfweb_dw_link_send_data',           'null',   ['number', 'number', 'string', 'string', 'string', 'number', 'number', 'number']);
+        this._cOutstand   = mod.cwrap('wfweb_dw_link_outstanding_request', 'null',   ['number', 'number', 'string', 'string']);
+        this._cClientCleanup = mod.cwrap('wfweb_dw_link_client_cleanup',   'null',   ['number']);
+        this._cTxPtr      = mod.cwrap('wfweb_dw_tx_buffer_ptr',            'number', []);
+        this._cTxLen      = mod.cwrap('wfweb_dw_tx_buffer_len',            'number', []);
+        this._cTxReset    = mod.cwrap('wfweb_dw_tx_buffer_reset',          'null',   []);
+
+        // Callsigns registered with the link layer (server_callsign_lookup
+        // hits us for every inbound SABM). Map upper-case call -> client id.
+        this._registered = new Map();
+
+        // The C-side EM_JS trampolines invoke these:
+        mod.onLinkEvent = (kind, chan, client, remote, own, param) => {
+            this._dispatchLinkEvent(kind, chan, client, remote, own, param);
+        };
+        mod.onLinkData = (chan, client, remote, own, pid, bytes) => {
+            this.dispatchEvent(new CustomEvent('rxData', { detail: {
+                chan, client, remote, own, pid,
+                data: bytes,   // Uint8Array, already sliced out of the heap
+            } }));
+        };
+        mod.onCallsignLookup = (callsign) => {
+            const c = (callsign || '').toUpperCase();
+            return this._registered.has(c) ? this._registered.get(c) : -1;
+        };
+
+        this._tickInterval = null;
+        this._tickPeriod = 50;   // ms — tight enough for v2.0 timer accuracy
+        this._started = false;
+    }
+
+    /** Initialise the WASM link layer + start the dispatcher tick. */
+    start() {
+        if (this._started) return;
+        const rc = this._cInit();
+        if (rc !== 0) throw new Error('wfweb_dw_link_init failed: ' + rc);
+        // Match the link timing to the modem's current baud (frack/paclen).
+        if (this._modem.baud) this._cSetBaud(this._modem.baud);
+        this._tickInterval = setInterval(() => this._tick(), this._tickPeriod);
+        this._started = true;
+    }
+
+    stop() {
+        if (!this._started) return;
+        clearInterval(this._tickInterval);
+        this._tickInterval = null;
+        this._started = false;
+    }
+
+    /** Update link-layer parameters when the modem baud changes. */
+    setBaud(baud) {
+        if (this._started) this._cSetBaud(baud | 0);
+    }
+
+    /** Current AX.25 paclen — the SPA's YAPP/file-xfer code uses this to
+     *  size info-field chunks so they fit one I-frame. */
+    get paclen() { return this._started ? this._cPaclen() : 128; }
+
+    registerCall(chan, client, callsign) {
+        const c = (callsign || '').toUpperCase();
+        if (!c) return;
+        this._registered.set(c, client | 0);
+        this._cReg(chan | 0, client | 0, c);
+    }
+    unregisterCall(chan, client, callsign) {
+        const c = (callsign || '').toUpperCase();
+        if (!c) return;
+        this._registered.delete(c);
+        this._cUnreg(chan | 0, client | 0, c);
+    }
+
+    /** Outgoing connect request. Returns immediately; the
+     *  'linkEstablished' event fires when the SABM/UA exchange completes
+     *  (or 'linkTerminated' if it fails / times out). */
+    connectRequest({ chan, client, ownCall, peerCall, digis }) {
+        const csv = (digis && digis.length) ? digis.join(',') : '';
+        this._cConnect(chan | 0, client | 0,
+            (ownCall || '').toUpperCase(),
+            (peerCall || '').toUpperCase(), csv);
+    }
+
+    disconnectRequest({ chan, client, ownCall, peerCall, digis }) {
+        const csv = (digis && digis.length) ? digis.join(',') : '';
+        this._cDisconnect(chan | 0, client | 0,
+            (ownCall || '').toUpperCase(),
+            (peerCall || '').toUpperCase(), csv);
+    }
+
+    /** Queue data for transmission on a connected link. The payload is
+     *  shipped as one or more I-frames sized at paclen. ax25_link copies
+     *  the buffer internally (cdata_t), so the JS heap memory frees on
+     *  return. */
+    sendData({ chan, client, ownCall, peerCall, digis, pid, data }) {
+        const bytes = (data instanceof Uint8Array)
+            ? data
+            : new TextEncoder().encode(String(data));
+        const ptr = this._mod._malloc(bytes.length);
+        try {
+            this._mod.HEAPU8.set(bytes, ptr);
+            const csv = (digis && digis.length) ? digis.join(',') : '';
+            this._cSendData(chan | 0, client | 0,
+                (ownCall || '').toUpperCase(),
+                (peerCall || '').toUpperCase(),
+                csv, pid | 0xF0, ptr, bytes.length);
+        } finally {
+            this._mod._free(ptr);
+        }
+    }
+
+    outstandingRequest({ chan, client, ownCall, peerCall }) {
+        this._cOutstand(chan | 0, client | 0,
+            (ownCall || '').toUpperCase(),
+            (peerCall || '').toUpperCase());
+    }
+
+    clientCleanup(client) { this._cClientCleanup(client | 0); }
+
+    // --- internals -------------------------------------------------------
+
+    _dispatchLinkEvent(kind, chan, client, remote, own, param) {
+        switch (kind) {
+        case LINK_EV_ESTABLISHED:
+            this.dispatchEvent(new CustomEvent('linkEstablished', { detail: {
+                chan, client, remote, own, incoming: param !== 0,
+            } })); break;
+        case LINK_EV_TERMINATED:
+            this.dispatchEvent(new CustomEvent('linkTerminated', { detail: {
+                chan, client, remote, own, timeout: param,
+            } })); break;
+        case LINK_EV_OUTSTANDING:
+            this.dispatchEvent(new CustomEvent('outstandingFrames', { detail: {
+                chan, client, remote, own, count: param,
+            } })); break;
+        case LINK_EV_ACKED:
+            this.dispatchEvent(new CustomEvent('dataAcked', { detail: {
+                chan, client, remote, own, count: param,
+            } })); break;
+        }
+    }
+
+    /** Drain DLQ + service link timers + flush any TX audio that the
+     *  link's lm_data_request emitted. tx_buf is reset every tick so it
+     *  doesn't accumulate (and so the one-shot APRS txFrame path can
+     *  safely reuse the same buffer between ticks). */
+    _tick() {
+        this._cTxReset();
+        this._cStep();
+        const len = this._cTxLen();
+        if (len > 0) {
+            const ptr = this._cTxPtr();
+            const bytes = this._mod.HEAPU8.slice(ptr, ptr + len);
+            const audio = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength >> 1);
+            this.dispatchEvent(new CustomEvent('transmitFrameAudio', { detail: {
+                chan: 0, audio,
+            } }));
+        }
+    }
+}
