@@ -209,6 +209,10 @@
                 initPromise: null,  // dedupes concurrent _ensureTxAudioCtx() calls
             };
 
+            // Saved Data-Off Mod Input value, captured before we flip the
+            // rig to USB on enableMic so we can restore on disable.
+            this._savedDataOffMod = null;
+
             // Spectrum scope assembly state. The Icom scope command (0x27 0x00)
             // arrives as a sequence of frames: seq 1 carries header (mode +
             // start/end freq + out-of-range flag), seq 2..N carry pixels.
@@ -394,7 +398,16 @@
                     }
                     return;
                 case 'enableMic':
-                    // Phase 2 TX audio (next chunk) — drop for now.
+                    // Switch the rig's modulation input to USB so it
+                    // accepts the audio we're streaming over the USB
+                    // audio interface (otherwise SSB-voice TX is silent
+                    // because the rig is listening to the front-panel
+                    // MIC). Restore the previous setting on mic-off.
+                    if (obj.value) {
+                        this._enqueue('setDataOffMod', civ.cmdSetDataOffMod(civ.MOD_INPUT_USB));
+                    } else if (this._savedDataOffMod !== null) {
+                        this._enqueue('setDataOffMod', civ.cmdSetDataOffMod(this._savedDataOffMod));
+                    }
                     return;
                 default:
                     return;
@@ -686,6 +699,7 @@
             this._enqueue('readSplit',      civ.cmdReadSplit());
             this._enqueue('readTuner',      civ.cmdReadTuner());
             this._enqueue('readScopeSpan',  civ.cmdReadScopeSpan());
+            this._enqueue('readDataOffMod', civ.cmdReadDataOffMod());
 
             // Enable scope output (waterfall). Single-byte payloads match
             // the C++ wfweb's behaviour for single-receiver rigs.
@@ -894,6 +908,21 @@
                 if (tn !== null && this.state.tuner !== tn) {
                     this.state.tuner = tn;
                     this._emit('update', { tuner: tn });
+                }
+                return;
+            }
+
+            // 0x1A 0x05 0x00 0x66 — Data Off Mod Input reply.
+            // Cache the rig's current value so we can restore it after the
+            // user toggles mic off.
+            if (payload.length >= 5 && payload[0] === 0x1A && payload[1] === 0x05 &&
+                    payload[2] === 0x00 && payload[3] === 0x66) {
+                var v = civ.parseDataOffModReply(payload);
+                // Don't overwrite our saved value with our own write-back
+                // (when rig echoes back USB after we set it). Keep the
+                // first-seen value as the user's baseline.
+                if (v !== null && this._savedDataOffMod === null && v !== civ.MOD_INPUT_USB) {
+                    this._savedDataOffMod = v;
                 }
                 return;
             }

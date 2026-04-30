@@ -347,6 +347,33 @@
         return decodeBcdLE(payload.slice(3, 6));
     }
 
+    // ---------- MOD INPUT (cmd 0x1A 0x05 0x00 0x66 / 0x67) -------------
+    // 0x66 = "Data OFF Mod Input"  — modulation source in non-DATA modes
+    //                                 (USB voice, AM, FM, …)
+    // 0x67 = "DATA1 Mod Input"     — modulation source in DATA modes
+    //                                 (USB-D, LSB-D, …)
+    // IC-7300 input table (same registers for both settings):
+    //   0=MIC, 1=ACC, 2=MIC+ACC, 3=USB, 4=MIC+USB
+    var DATA_OFF_MOD_PREFIX = [0x1A, 0x05, 0x00, 0x66];
+    var DATA_MOD_PREFIX     = [0x1A, 0x05, 0x00, 0x67];
+    var MOD_INPUT_USB = 0x03;
+    var MOD_INPUT_MIC = 0x00;
+    function cmdSetDataOffMod(input) {
+        return new Uint8Array([0x1A, 0x05, 0x00, 0x66, input & 0xFF]);
+    }
+    function cmdReadDataOffMod() {
+        return new Uint8Array(DATA_OFF_MOD_PREFIX);
+    }
+    function cmdSetDataMod(input) {
+        return new Uint8Array([0x1A, 0x05, 0x00, 0x67, input & 0xFF]);
+    }
+    function parseDataOffModReply(payload) {
+        // [0x1A, 0x05, 0x00, 0x66, value]
+        if (payload.length < 5) return null;
+        if (payload[0] !== 0x1A || payload[1] !== 0x05 || payload[2] !== 0x00 || payload[3] !== 0x66) return null;
+        return payload[4];
+    }
+
     // Probe frame for auto-detecting the rig: broadcast read-transceiver-ID.
     // Any rig listening on the bus replies with its own CI-V address in the
     // frame's "from" field (regardless of how the rig is currently addressed).
@@ -446,6 +473,12 @@
         cmdSetScopeSpan: cmdSetScopeSpan,
         cmdReadScopeSpan: cmdReadScopeSpan,
         parseScopeSpanReply: parseScopeSpanReply,
+        cmdSetDataOffMod: cmdSetDataOffMod,
+        cmdReadDataOffMod: cmdReadDataOffMod,
+        cmdSetDataMod: cmdSetDataMod,
+        parseDataOffModReply: parseDataOffModReply,
+        MOD_INPUT_USB: MOD_INPUT_USB,
+        MOD_INPUT_MIC: MOD_INPUT_MIC,
         // response parsers
         parseFrequencyReply: parseFrequencyReply,
         parseModeReply: parseModeReply,
