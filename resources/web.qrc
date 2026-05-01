@@ -2,8 +2,8 @@
     <qresource prefix="/web">
         <file alias="index.html">web/index.html</file>
         <file alias="debug.html">web/debug.html</file>
-        <file alias="packet.js">web/packet.js</file>
-        <file alias="transport/rig-transport.js">web/transport/rig-transport.js</file>
+        <file alias="packet.js">web-shared/packet.js</file>
+        <file alias="transport/rig-transport.js">web-shared/transport/rig-transport.js</file>
         <file alias="transport/websocket-transport.js">web/transport/websocket-transport.js</file>
         <file alias="digits-sprite.png">web-shared/digits-sprite.png</file>
         <file alias="cw-decoder.js">web-shared/cw-decoder.js</file>

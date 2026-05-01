@@ -62,9 +62,13 @@ other.** No Direct/Server runtime gates: each `index.html` is single-purpose.
 
 | Dir | Used by | Contents |
 |-----|---------|----------|
-| `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, WebSocket transport, `packet.js`, `debug.html` |
-| `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `serial-transport.js`, `civ/`, `wasm/`, `packet.js`, `debug.html` |
-| `resources/web-shared/` | Both | Pure assets only: CW decoder JS family, `ggmorse-wasm.js`, `models/`, `digits/`, `digits-sprite.png` |
+| `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js`, `debug.html` |
+| `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `transport/serial-transport.js`, `civ/`, `wasm/` |
+| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `packet.js`, `transport/rig-transport.js` (base class), CW decoder JS family, `ggmorse-wasm.js`, `models/`, `digits/`, `digits-sprite.png` |
+
+Build inputs for `ggmorse-wasm.js` (the `.cpp` source + license) live in
+`resources/ggmorse-src/`, alongside `resources/build-ggmorse-wasm.sh`. They
+aren't browser assets, so they're kept out of the SPA dirs entirely.
 
 Build mechanics:
 - **Server**: `web.qrc` aliases keep runtime URLs at `/web/...` regardless of
