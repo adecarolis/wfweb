@@ -1,11 +1,11 @@
 #!/bin/sh
-# Build a standalone static distribution of the wfweb browser frontend.
-# The output is a directory containing index.html, the transport / CI-V JS
-# modules, the FT8/FT4 module, and the existing client-side helpers
-# (CW decoder, ggmorse-wasm, packet UI). It runs without the C++ wfweb
-# binary — host it on any HTTPS static host (GitHub Pages, Netlify, …)
-# or serve locally with `python3 -m http.server` (localhost is treated as
-# a secure context for Web Serial).
+# Build wfweb Standalone — the static, browser-only build of the wfweb
+# frontend. The output is a directory containing index.html, the
+# transport / CI-V JS modules, the FT8/FT4 module, and the client-side
+# helpers (CW decoder, ggmorse-wasm, packet UI). It runs without the
+# wfweb Server binary — host it on any HTTPS static host (GitHub Pages,
+# Netlify, …) or serve locally with `python3 -m http.server` (localhost
+# is treated as a secure context for Web Serial).
 #
 # Usage:
 #   tools/build-static.sh [output-dir]
@@ -75,11 +75,12 @@ cp "$FT8/ft8ts.mjs.map" "$DIST/"
 
 # Tiny README
 cat > "$DIST/README.md" <<'EOF'
-# wfweb (standalone static bundle)
+# wfweb Standalone
 
-This is a fully self-contained browser-only build of the wfweb frontend.
-It controls an Icom transceiver directly over Web Serial — no server
-required.
+This is the fully self-contained browser-only build of the wfweb
+frontend. It controls an Icom transceiver directly over Web Serial — no
+server process required. (For LAN-attached rigs, FreeDV 700D/700E/1600,
+or unattended-server features, use **wfweb Server** instead.)
 
 ## Local testing
 
@@ -113,7 +114,7 @@ Opera, Brave, Arc). Firefox / Safari users can't use this build.
 
 ## What works in this build
 
-- Frequency tune, mode + filter, PTT, S-meter (Direct mode)
+- Frequency tune, mode + filter, PTT, S-meter
 
 ## What is NOT yet supported
 
