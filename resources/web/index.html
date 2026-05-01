@@ -390,6 +390,59 @@ html, body {
 }
 .overlay.visible { display: flex; }
 
+/* Connection overlay (standalone surface) — friendlier styling than the
+   default dense overlay grid. Centered card-style buttons with the same
+   teal accent the splash uses. */
+#connOverlay.visible {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+}
+.conn-btn {
+    padding: 11px 22px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    background: transparent;
+    color: #ddd;
+    transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+.conn-btn:disabled { opacity: 0.5; cursor: default; }
+.conn-btn:not(:disabled):hover { transform: translateY(-1px); }
+.conn-btn-primary {
+    color: #001515;
+    background: linear-gradient(135deg, #0aa 0%, #088 100%);
+    box-shadow: 0 2px 10px rgba(0, 170, 170, 0.35);
+}
+.conn-btn-primary:not(:disabled):hover { box-shadow: 0 4px 14px rgba(0, 170, 170, 0.55); }
+.conn-btn-secondary {
+    color: #0cf;
+    background: rgba(0, 200, 255, 0.06);
+    border-color: rgba(0, 200, 255, 0.4);
+}
+.conn-btn-secondary:not(:disabled):hover { background: rgba(0, 200, 255, 0.12); }
+.conn-btn-danger {
+    color: #f88;
+    background: rgba(255, 80, 80, 0.05);
+    border-color: rgba(255, 80, 80, 0.45);
+}
+.conn-btn-danger:not(:disabled):hover { background: rgba(255, 80, 80, 0.12); }
+#connStandaloneDot {
+    background: #444;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.05);
+}
+#connStandaloneDot.connected {
+    background: #0f8;
+    box-shadow: 0 0 14px rgba(0, 255, 136, 0.7);
+}
+#connStandaloneDot.disconnected {
+    background: #fa0;
+    box-shadow: 0 0 14px rgba(255, 170, 0, 0.55);
+}
+
 /* Macro editor overlay - higher z-index to appear above CW bar */
 #cwMacroEditor {
     z-index: 250;
@@ -2004,11 +2057,16 @@ body.digi-open .digi-bar {
             <p style="margin:0; font-size:12px; color:#888;">
                 Need LAN-attached rigs (Icom UDP), Kenwood CI-V, FreeDV
                 700D/700E/1600, or unattended-server features? Run the
-                full <strong>wfweb</strong> locally — download a release
+                full <strong>wfweb</strong> locally —
+                <a href="https://github.com/adecarolis/wfweb/releases" target="_blank" rel="noopener"
+                   style="color:#0cf; text-decoration:underline;">download a release</a>
                 or pull the
                 <a href="https://hub.docker.com/r/k1fm/wfweb" target="_blank" rel="noopener"
                    style="color:#0cf; text-decoration:underline;">k1fm/wfweb</a>
-                Docker image. See the project README for both options.
+                Docker image. The
+                <a href="https://github.com/adecarolis/wfweb#readme" target="_blank" rel="noopener"
+                   style="color:#0cf; text-decoration:underline;">project README</a>
+                walks through both options.
             </p>
         </div>
 
@@ -2068,7 +2126,7 @@ body.digi-open .digi-bar {
         <button id="qsoLogBtn" class="qso-log-btn" title="Log QSO">LOG</button>
         <span id="clock">--:--</span>
         <button id="powerBtn" class="on" title="Power" onclick="togglePower()">&#x23FB;</button>
-        <span id="connModeBadge" title="Direct mode" onclick="setPanel('conn')" style="display:none;">DIR</span>
+        <span id="connModeBadge" title="Rig connection" onclick="setPanel('conn')" style="display:none;">RIG</span>
         <span id="connDot" title="Disconnected" onclick="setPanel('conn')"></span>
     </div>
     <!-- Row 2: Meter + Frequency -->
@@ -2450,13 +2508,30 @@ body.digi-open .digi-bar {
             <div class="overlay-grid" id="audioMicGrid"></div>
         </div>
 
-        <!-- Connection (transport) overlay. The Server vs Direct radios are
-             only shown when the page is hosted with the C++ wfweb server
-             behind it; the standalone build hides them and shows just the
-             rig connect/disconnect controls. -->
+        <!-- Connection (transport) overlay. Server-mode shows the
+             Direct/Server chooser; standalone shows just rig status and
+             a button to pair a different USB device. The bottom bar's
+             ⏎ is the only back affordance — no in-overlay back button. -->
         <div id="connOverlay" class="overlay">
             <div class="overlay-title">CONNECTION</div>
-            <div id="connOverlayBody" style="padding:18px; color:#0c0; font-size:12px; max-width:420px; margin:auto;">
+            <div id="connOverlayBody" style="padding:24px; color:#bbb; font-size:13px; width:100%; max-width:520px; margin:auto; align-self:center;">
+                <!-- Standalone-only surface: dot + rig info + actions. -->
+                <div id="connStandaloneBody" style="display:none; text-align:center;">
+                    <div style="display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:8px;">
+                        <span id="connStandaloneDot" style="display:inline-block; width:14px; height:14px; border-radius:50%;"></span>
+                        <span id="connStandaloneStatus" style="font-size:22px; color:#bbb; font-weight:600; letter-spacing:0.5px;">…</span>
+                    </div>
+                    <div id="connStandaloneRigInfo" style="margin-bottom:6px; color:#0cf; font-size:14px; min-height:18px;"></div>
+                    <div id="connStandaloneRigDetails" style="margin-bottom:24px; color:#777; font-size:12px; min-height:16px;"></div>
+                    <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                        <button class="conn-btn conn-btn-primary"  id="connStandaloneReconnect">Reconnect</button>
+                        <button class="conn-btn conn-btn-secondary" id="connStandalonePair">Pair different rig&hellip;</button>
+                        <button class="conn-btn conn-btn-danger"    id="connStandaloneDisconnect">Disconnect</button>
+                    </div>
+                    <div id="connStandaloneError"
+                         style="margin-top:18px; min-height:16px; color:#f88; font-size:12px;"></div>
+                </div>
+                <!-- Server-mode chooser + direct opts. -->
                 <div id="connModeChooser" style="margin-bottom:14px;">
                     <label style="cursor:pointer;"><input type="radio" name="connMode" value="server" id="connModeServer"> <b>Server</b> &mdash; route through wfweb server</label><br>
                     <label style="cursor:pointer;"><input type="radio" name="connMode" value="direct" id="connModeDirect"> <b>Direct</b> &mdash; talk to the rig over Web Serial (CI-V)</label>
@@ -2474,9 +2549,6 @@ body.digi-open .digi-bar {
                         Requires Chrome / Edge (Web Serial).
                     </div>
                 </div>
-            </div>
-            <div class="gain-back-row">
-                <button class="ov-btn back-btn" onclick="setPanel('default')">&#x21A9;</button>
             </div>
         </div>
 
@@ -2943,11 +3015,11 @@ function updateConnIndicator() {
     var badge = document.getElementById('connModeBadge');
     if (!badge) return;
     if (controlMode === 'direct') {
-        badge.textContent = 'DIR';
+        badge.textContent = 'RIG';
         badge.style.display = '';
         badge.title = serialTransport && serialTransport.isOpen()
-            ? 'Direct (rig serial connected)'
-            : 'Direct mode — click to connect rig';
+            ? 'Rig connected — click to manage'
+            : 'Click to connect a rig';
     } else {
         badge.style.display = 'none';
     }
@@ -3965,16 +4037,94 @@ function setPanel(name) {
 
 function renderConnOverlay() {
     document.getElementById('connOverlay').classList.add('visible');
-    // Standalone build: only Direct exists. Hide the chooser entirely so
-    // there's nothing to mis-click; the Direct opts are always shown.
-    var chooser = document.getElementById('connModeChooser');
-    if (window.WFWEB_STANDALONE && chooser) chooser.style.display = 'none';
+    var chooser   = document.getElementById('connModeChooser');
+    var serverDir = document.getElementById('connDirectOpts');
+    var standalone = document.getElementById('connStandaloneBody');
+    if (window.WFWEB_STANDALONE) {
+        // Single-purpose standalone surface: status + manage buttons.
+        if (chooser)    chooser.style.display    = 'none';
+        if (serverDir)  serverDir.style.display  = 'none';
+        if (standalone) standalone.style.display = '';
+        renderStandaloneConnBody();
+        return;
+    }
+    // Server-mode: existing chooser UI.
+    if (standalone) standalone.style.display = 'none';
     document.getElementById('connModeServer').checked = (controlMode === 'server');
     document.getElementById('connModeDirect').checked = (controlMode === 'direct');
     document.getElementById('connDirectOpts').style.display =
-        (window.WFWEB_STANDALONE || controlMode === 'direct') ? '' : 'none';
+        (controlMode === 'direct') ? '' : 'none';
     updateConnStatus();
 }
+
+function renderStandaloneConnBody() {
+    var statusEl  = document.getElementById('connStandaloneStatus');
+    var dotEl     = document.getElementById('connStandaloneDot');
+    var rigEl     = document.getElementById('connStandaloneRigInfo');
+    var detailsEl = document.getElementById('connStandaloneRigDetails');
+    var errEl     = document.getElementById('connStandaloneError');
+    var btnReco   = document.getElementById('connStandaloneReconnect');
+    var btnPair   = document.getElementById('connStandalonePair');
+    var btnDisc   = document.getElementById('connStandaloneDisconnect');
+    if (!statusEl || !dotEl) return;
+
+    var open = !!(serialTransport && serialTransport.isOpen());
+    if (open) {
+        dotEl.className = 'connected';
+        statusEl.style.color = '#0f8';
+        statusEl.textContent = 'Connected';
+        rigEl.textContent = rigModelName || 'Rig';
+        // connStatusText is the SerialRigTransport progress string —
+        // typically "Detected IC-7300 @ 19200 baud" once auto-detect lands.
+        detailsEl.textContent = connStatusText || '';
+        btnReco.style.display = 'none';
+        btnDisc.style.display = '';
+    } else {
+        dotEl.className = 'disconnected';
+        statusEl.style.color = '#fa0';
+        statusEl.textContent = 'Not connected';
+        rigEl.textContent = '';
+        detailsEl.textContent = connStatusText
+            ? connStatusText
+            : 'Click Reconnect to retry the previously-paired rig, or Pair different rig… to choose a USB port.';
+        btnReco.style.display = '';
+        btnDisc.style.display = 'none';
+    }
+    if (errEl) errEl.textContent = '';
+}
+
+// Standalone overlay buttons — wire once on first overlay open.
+document.addEventListener('click', function (e) {
+    if (!window.WFWEB_STANDALONE) return;
+    if (e.target.id === 'connStandaloneReconnect') {
+        var errEl = document.getElementById('connStandaloneError');
+        if (errEl) errEl.textContent = '';
+        ensureSerialTransport();
+        transport = serialTransport;
+        serialTransport.tryAutoReconnect().then(function (opened) {
+            if (!opened) return serialTransport.connect();   // gesture available — fall through to picker
+        }).catch(function (err) {
+            if (errEl) errEl.textContent = (err && err.message) ? err.message : String(err);
+        }).finally(renderStandaloneConnBody);
+    } else if (e.target.id === 'connStandalonePair') {
+        var errEl2 = document.getElementById('connStandaloneError');
+        if (errEl2) errEl2.textContent = '';
+        ensureSerialTransport();
+        transport = serialTransport;
+        // Drop the existing connection so we can re-pair cleanly.
+        var p = (serialTransport && serialTransport.isOpen())
+            ? serialTransport.close().catch(function () {})
+            : Promise.resolve();
+        p.then(function () { return serialTransport.connect(); })
+         .catch(function (err) {
+             if (errEl2) errEl2.textContent = (err && err.message) ? err.message : String(err);
+         })
+         .finally(renderStandaloneConnBody);
+    } else if (e.target.id === 'connStandaloneDisconnect') {
+        if (!serialTransport) return;
+        serialTransport.close().catch(function () {}).finally(renderStandaloneConnBody);
+    }
+});
 
 function updateConnStatus() {
     var s = document.getElementById('connStatus');
