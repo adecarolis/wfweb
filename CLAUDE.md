@@ -51,9 +51,34 @@ WebSocket commands (from browser)
 ### Web Server
 - HTTP/HTTPS on port 8080, WebSocket on 8081 (configurable via `WebServerPort` in prefs)
 - Set port to 0 to disable; enabled by default
-- Frontend: vanilla JS SPA in `resources/web/`, bundled via Qt resources (`resources/web.qrc`)
+- Frontend: vanilla JS SPA, bundled via Qt resources (`resources/web.qrc`)
 - Backend: `src/webserver.cpp`, `include/webserver.h`
 - REST API documented in `REST_API.md`
+
+### Frontend layout — three forks
+The browser SPA lives in three sibling directories. **Each build pulls from a
+specific subset; deleting or breaking a file in one fork cannot affect the
+other.** No Direct/Server runtime gates: each `index.html` is single-purpose.
+
+| Dir | Used by | Contents |
+|-----|---------|----------|
+| `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, WebSocket transport, `packet.js`, `debug.html` |
+| `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `serial-transport.js`, `civ/`, `wasm/`, `packet.js`, `debug.html` |
+| `resources/web-shared/` | Both | Pure assets only: CW decoder JS family, `ggmorse-wasm.js`, `models/`, `digits/`, `digits-sprite.png` |
+
+Build mechanics:
+- **Server**: `web.qrc` aliases keep runtime URLs at `/web/...` regardless of
+  whether the file lives under `web/` or `web-shared/`. C++ never sees the
+  source-dir distinction.
+- **Standalone**: `tools/build-static.sh` copies `web-standalone/` and then
+  `web-shared/` into the same `dist/` layout (no collisions today; if there
+  ever are, standalone wins because it's copied first).
+
+When you want to share a file between both builds:
+1. `git mv resources/web/<file> resources/web-shared/<file>`
+2. Delete the duplicate from `resources/web-standalone/`
+3. Update its `web.qrc` `<file alias=...>` line so the source path is `web-shared/<file>` (the alias stays the same — no C++ code changes)
+4. `tools/build-static.sh` already copies `web-shared/`, so the standalone build picks it up automatically
 
 ### Audio Binary Protocol
 | Direction | MsgType | Format |
@@ -99,8 +124,11 @@ modeInfo.filter = 1;
 | `src/webserver.cpp` | Web server backend |
 | `include/webserver.h` | Web server header |
 | `include/prefs.h` | Preferences struct (contains `webPort`) |
-| `resources/web/index.html` | Web frontend SPA |
-| `resources/web.qrc` | Qt resource file for web assets |
+| `resources/web/index.html` | Server-build SPA (WebSocket transport only) |
+| `resources/web-standalone/index.html` | Standalone-build SPA (Web Serial only) |
+| `resources/web-shared/` | Files shared by both builds (CW decoder, ggmorse, sprites, models) |
+| `resources/web.qrc` | Qt resource file for the server build |
+| `tools/build-static.sh` | Builds the standalone static bundle |
 | `resources/ft8ts/dist/ft8ts.mjs` | FT8/FT4 decoder module |
 | `src/radeprocessor.cpp` | RADE V1 modem processing |
 | `src/freedvprocessor.cpp` | Classic FreeDV codec processing |
