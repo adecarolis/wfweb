@@ -1981,14 +1981,46 @@ body.digi-open .digi-bar {
 </head>
 <body>
 <!-- Startup Overlay -->
-<div id="startupOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;">
-    <div style="text-align: center;">
-        <div style="font-size: 48px; font-weight: bold; color: #0aa; margin-bottom: 20px; text-shadow: 0 0 20px rgba(0, 170, 170, 0.5);">wfweb</div>
-        <div style="font-size: 14px; color: #888; margin-bottom: 40px;">Remote Control &amp; Web Interface</div>
+<div id="startupOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; padding: 24px;">
+    <div style="text-align: center; max-width: 640px;">
+        <div style="font-size: 48px; font-weight: bold; color: #0aa; margin-bottom: 8px; text-shadow: 0 0 20px rgba(0, 170, 170, 0.5);">wfweb</div>
+        <div id="splashTagline" style="font-size: 14px; color: #888; margin-bottom: 28px;">Remote Control &amp; Web Interface</div>
+
+        <!-- Standalone-only intro — populated at runtime when window.WFWEB_STANDALONE is set. -->
+        <div id="splashStandaloneIntro" style="display:none; text-align:left; color:#bbb; font-size:13px; line-height:1.6; margin-bottom: 28px;">
+            <p style="margin:0 0 12px 0;">
+                Direct rig control in your browser — no server, no install.
+                wfweb pairs with your Icom transceiver over a USB serial cable
+                using the Web Serial API and uses your rig's USB sound card for
+                audio. CW, FT8/FT4, AX.25 packet, APRS, and RADE V1 voice all
+                run client-side; the WASM modems live in this page.
+            </p>
+            <p style="margin:0 0 12px 0;">
+                Source &amp; documentation:
+                <a href="https://github.com/adecarolis/wfweb" target="_blank" rel="noopener"
+                   style="color:#0cf; text-decoration:underline;">github.com/adecarolis/wfweb</a>
+                (<code>wfweb</code> branch).
+            </p>
+            <p style="margin:0; font-size:12px; color:#888;">
+                Need LAN-attached rigs (Icom UDP), Kenwood/Yaesu CI-V, FreeDV
+                700D/700E/1600, or unattended-server features? Build the
+                full <strong>wfweb</strong> binary from source and run it
+                locally — see the README for instructions.
+            </p>
+        </div>
+
+        <!-- Browser-not-supported message (Firefox, Safari). Hidden by default. -->
+        <div id="splashUnsupported" style="display:none; text-align:left; padding:14px 18px; border:1px solid #f44; border-radius:6px; background:rgba(255,68,68,0.06); color:#fbb; font-size:13px; line-height:1.5;">
+            This browser doesn't support the Web Serial API.
+            wfweb's standalone build needs Chrome, Edge, Opera, Brave, or any
+            other Chromium-family browser. Firefox and Safari aren't supported.
+        </div>
+
         <button id="startBtn" style="padding: 20px 60px; font-size: 24px; font-weight: bold; color: #000; background: linear-gradient(135deg, #0aa 0%, #088 100%); border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 170, 170, 0.4); transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0, 170, 170, 0.6)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(0, 170, 170, 0.4)';">
             CLICK TO START
         </button>
-        <div style="margin-top: 20px; font-size: 12px; color: #666;">Enable RX Audio</div>
+        <div id="splashHint" style="margin-top: 20px; font-size: 12px; color: #666;">Enable RX Audio</div>
+        <div id="splashError"  style="margin-top: 16px; min-height: 18px; font-size: 12px; color: #f88;"></div>
     </div>
     <div style="position: absolute; bottom: 20px; left: 20px; font-size: 11px; color: #555;">
         <span id="splashVersion">wfweb</span>
@@ -2415,11 +2447,14 @@ body.digi-open .digi-bar {
             <div class="overlay-grid" id="audioMicGrid"></div>
         </div>
 
-        <!-- Connection (transport) overlay -->
+        <!-- Connection (transport) overlay. The Server vs Direct radios are
+             only shown when the page is hosted with the C++ wfweb server
+             behind it; the standalone build hides them and shows just the
+             rig connect/disconnect controls. -->
         <div id="connOverlay" class="overlay">
             <div class="overlay-title">CONNECTION</div>
             <div id="connOverlayBody" style="padding:18px; color:#0c0; font-size:12px; max-width:420px; margin:auto;">
-                <div style="margin-bottom:14px;">
+                <div id="connModeChooser" style="margin-bottom:14px;">
                     <label style="cursor:pointer;"><input type="radio" name="connMode" value="server" id="connModeServer"> <b>Server</b> &mdash; route through wfweb server</label><br>
                     <label style="cursor:pointer;"><input type="radio" name="connMode" value="direct" id="connModeDirect"> <b>Direct</b> &mdash; talk to the rig over Web Serial (CI-V)</label>
                 </div>
@@ -2433,7 +2468,7 @@ body.digi-open .digi-bar {
                     </div>
                     <div id="connStatus" style="margin-top:10px; color:#0a0; font-size:11px;"></div>
                     <div style="margin-top:14px; color:#066; font-size:10px;">
-                        Requires Chrome / Edge (Web Serial). Audio TX/RX is Phase 2.
+                        Requires Chrome / Edge (Web Serial).
                     </div>
                 </div>
             </div>
@@ -2470,12 +2505,14 @@ var wsTransport = null;       // WebSocketRigTransport (always created)
 var serialTransport = null;   // SerialRigTransport (created on first Direct enable)
 var transport = null;         // active control transport (= wsTransport or serialTransport)
 var controlMode = (function () {
+    // Standalone static deployments (window.WFWEB_STANDALONE injected by
+    // the static build) are always Direct — no server is reachable from
+    // this page. WFWEB_STANDALONE wins over any stale localStorage value
+    // (e.g. left over from visiting the server build at the same origin).
+    if (typeof window !== 'undefined' && window.WFWEB_STANDALONE) return 'direct';
     var saved = null;
     try { saved = localStorage.getItem('controlMode'); } catch (e) { /* ignore */ }
-    if (saved) return saved;
-    // Standalone static deployments (window.WFWEB_STANDALONE injected by
-    // the static build) default to Direct; otherwise Server.
-    return (typeof window !== 'undefined' && window.WFWEB_STANDALONE) ? 'direct' : 'server';
+    return saved || 'server';
 })();
 var ws = null;                // alias to wsTransport.ws — legacy readyState checks
 var connStatusText = '';      // last status string from SerialRigTransport.onProgress
@@ -3925,9 +3962,14 @@ function setPanel(name) {
 
 function renderConnOverlay() {
     document.getElementById('connOverlay').classList.add('visible');
+    // Standalone build: only Direct exists. Hide the chooser entirely so
+    // there's nothing to mis-click; the Direct opts are always shown.
+    var chooser = document.getElementById('connModeChooser');
+    if (window.WFWEB_STANDALONE && chooser) chooser.style.display = 'none';
     document.getElementById('connModeServer').checked = (controlMode === 'server');
     document.getElementById('connModeDirect').checked = (controlMode === 'direct');
-    document.getElementById('connDirectOpts').style.display = (controlMode === 'direct') ? '' : 'none';
+    document.getElementById('connDirectOpts').style.display =
+        (window.WFWEB_STANDALONE || controlMode === 'direct') ? '' : 'none';
     updateConnStatus();
 }
 
@@ -8633,17 +8675,112 @@ window.addEventListener('resize', function() {
 });
 requestAnimationFrame(resizeCanvases);
 
-connect();
+// In standalone mode the splash takes over the connect flow: render the
+// "pair USB" or "click to start" state up-front, gate the actual port
+// open behind the click, and skip the auto-connect that the server-mode
+// page does on load. Server-mode behaviour is unchanged.
+if (window.WFWEB_STANDALONE) {
+    initStandaloneSplash();
+} else {
+    connect();
+}
 
-// Startup overlay click handler
-document.getElementById('startBtn').addEventListener('click', function() {
-    // Hide the overlay
-    document.getElementById('startupOverlay').style.display = 'none';
-    // Start audio automatically
-    if (audioAvailable && !audioEnabled) {
-        startAudio();
+// ── Standalone splash ───────────────────────────────────────────────
+//
+// Goals from the user-visible spec:
+//   • If a USB port hasn't been paired yet → show a "Pair USB rig" button.
+//   • If a port is already paired → show "Click to Start".
+//   • Both states explain what wfweb is and link to the GitHub project.
+//   • Mention that there is a fuller wfweb (LAN rigs, more rig vendors,
+//     server features) you can build from source.
+//   • No Direct vs Server selection — this build IS Direct.
+//
+// Browser support: Web Serial requires Chromium-family. Firefox/Safari
+// see an unsupported message instead of the start button.
+
+async function initStandaloneSplash() {
+    var introEl    = document.getElementById('splashStandaloneIntro');
+    var taglineEl  = document.getElementById('splashTagline');
+    var unsupEl    = document.getElementById('splashUnsupported');
+    var startBtn   = document.getElementById('startBtn');
+    var hintEl     = document.getElementById('splashHint');
+    var errorEl    = document.getElementById('splashError');
+
+    if (introEl)   introEl.style.display = 'block';
+    if (taglineEl) taglineEl.textContent = 'Direct rig control · Web Serial · no server';
+
+    if (typeof navigator === 'undefined' || !navigator.serial) {
+        if (unsupEl) unsupEl.style.display = 'block';
+        if (startBtn) startBtn.style.display = 'none';
+        if (hintEl)   hintEl.style.display   = 'none';
+        return;
     }
-});
+
+    // Always Direct — wipe any stale 'server' choice from a prior session
+    // so reload-after-update isn't sticky on the wrong mode.
+    try {
+        if (localStorage.getItem('controlMode') !== 'direct') {
+            localStorage.setItem('controlMode', 'direct');
+        }
+    } catch (e) { /* private mode — ignore */ }
+    controlMode = 'direct';
+
+    // Decide between "Pair USB rig" and "Click to Start" based on whether
+    // the user has previously authorised a port for this origin. getPorts()
+    // does NOT need a user gesture; only requestPort() does.
+    var paired = false;
+    try {
+        var ports = await navigator.serial.getPorts();
+        paired = !!(ports && ports.length);
+    } catch (e) { /* getPorts unsupported (very old browser) */ }
+
+    if (paired) {
+        startBtn.textContent = 'CLICK TO START';
+        if (hintEl) hintEl.textContent = 'Connect rig and start audio';
+    } else {
+        startBtn.textContent = 'PAIR USB RIG';
+        if (hintEl) hintEl.textContent = 'Choose your rig\'s USB serial port';
+    }
+
+    startBtn.addEventListener('click', async function () {
+        startBtn.disabled = true;
+        if (errorEl) errorEl.textContent = '';
+        if (hintEl)  hintEl.textContent  = 'Connecting…';
+        try {
+            ensureSerialTransport();
+            transport = serialTransport;
+            if (paired) {
+                // Try silent reconnect first; if the previously-paired port
+                // is gone (different cable/PC), fall through to picker.
+                var opened = await serialTransport.tryAutoReconnect();
+                if (!opened) await serialTransport.connect();
+            } else {
+                await serialTransport.connect();
+            }
+        } catch (err) {
+            console.error('standalone connect failed:', err);
+            startBtn.disabled = false;
+            if (hintEl)  hintEl.textContent  = paired ? 'Click to retry' : 'Choose your rig\'s USB serial port';
+            if (errorEl) errorEl.textContent = (err && err.message) ? err.message : String(err);
+            return;
+        }
+
+        // Connected. Hide the splash and kick off RX audio (same as the
+        // legacy splash — needs to run in the user-gesture chain).
+        document.getElementById('startupOverlay').style.display = 'none';
+        if (audioAvailable && !audioEnabled) {
+            try { startAudio(); } catch (e) { console.warn('audio start failed:', e); }
+        }
+    });
+}
+
+if (!window.WFWEB_STANDALONE) {
+    // Server-mode: existing simple "click to start audio" splash.
+    document.getElementById('startBtn').addEventListener('click', function() {
+        document.getElementById('startupOverlay').style.display = 'none';
+        if (audioAvailable && !audioEnabled) startAudio();
+    });
+}
 
 // Initialize CW Decoder
 if (typeof CWDecoder !== 'undefined') {
