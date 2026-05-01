@@ -122,12 +122,6 @@ html, body {
     cursor: pointer;
 }
 #connDot.connected { background: #0a0; }
-#connModeBadge {
-    color: #0cc; font-size: 9px; font-weight: bold;
-    border: 1px solid #0cc; border-radius: 2px;
-    padding: 0 3px; cursor: pointer;
-    line-height: 12px;
-}
 #powerBtn {
     width: 22px; height: 22px;
     border: 2px solid #0a0;
@@ -389,59 +383,6 @@ html, body {
     z-index: 220;
 }
 .overlay.visible { display: flex; }
-
-/* Connection overlay (standalone surface) — friendlier styling than the
-   default dense overlay grid. Centered card-style buttons with the same
-   teal accent the splash uses. */
-#connOverlay.visible {
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: flex-start;
-}
-.conn-btn {
-    padding: 11px 22px;
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    border-radius: 8px;
-    border: 1px solid transparent;
-    cursor: pointer;
-    background: transparent;
-    color: #ddd;
-    transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
-}
-.conn-btn:disabled { opacity: 0.5; cursor: default; }
-.conn-btn:not(:disabled):hover { transform: translateY(-1px); }
-.conn-btn-primary {
-    color: #001515;
-    background: linear-gradient(135deg, #0aa 0%, #088 100%);
-    box-shadow: 0 2px 10px rgba(0, 170, 170, 0.35);
-}
-.conn-btn-primary:not(:disabled):hover { box-shadow: 0 4px 14px rgba(0, 170, 170, 0.55); }
-.conn-btn-secondary {
-    color: #0cf;
-    background: rgba(0, 200, 255, 0.06);
-    border-color: rgba(0, 200, 255, 0.4);
-}
-.conn-btn-secondary:not(:disabled):hover { background: rgba(0, 200, 255, 0.12); }
-.conn-btn-danger {
-    color: #f88;
-    background: rgba(255, 80, 80, 0.05);
-    border-color: rgba(255, 80, 80, 0.45);
-}
-.conn-btn-danger:not(:disabled):hover { background: rgba(255, 80, 80, 0.12); }
-#connStandaloneDot {
-    background: #444;
-    box-shadow: 0 0 6px rgba(255, 255, 255, 0.05);
-}
-#connStandaloneDot.connected {
-    background: #0f8;
-    box-shadow: 0 0 14px rgba(0, 255, 136, 0.7);
-}
-#connStandaloneDot.disconnected {
-    background: #fa0;
-    box-shadow: 0 0 14px rgba(255, 170, 0, 0.55);
-}
 
 /* Macro editor overlay - higher z-index to appear above CW bar */
 #cwMacroEditor {
@@ -2039,44 +1980,6 @@ body.digi-open .digi-bar {
         <div style="font-size: 48px; font-weight: bold; color: #0aa; margin-bottom: 8px; text-shadow: 0 0 20px rgba(0, 170, 170, 0.5);">wfweb</div>
         <div id="splashTagline" style="font-size: 14px; color: #888; margin-bottom: 28px;">Remote Control &amp; Web Interface</div>
 
-        <!-- Standalone-only intro — populated at runtime when window.WFWEB_STANDALONE is set. -->
-        <div id="splashStandaloneIntro" style="display:none; text-align:left; color:#bbb; font-size:13px; line-height:1.6; margin-bottom: 28px;">
-            <p style="margin:0 0 12px 0;">
-                Direct rig control in your browser — no server, no install.
-                wfweb pairs with your Icom transceiver over a USB serial cable
-                using the Web Serial API and uses your rig's USB sound card for
-                audio. CW, FT8/FT4, AX.25 packet, APRS, and RADE V1 voice all
-                run client-side; the WASM modems live in this page.
-            </p>
-            <p style="margin:0 0 12px 0;">
-                Source &amp; documentation:
-                <a href="https://github.com/adecarolis/wfweb" target="_blank" rel="noopener"
-                   style="color:#0cf; text-decoration:underline;">github.com/adecarolis/wfweb</a>
-                (<code>wfweb</code> branch).
-            </p>
-            <p style="margin:0; font-size:12px; color:#888;">
-                Need LAN-attached rigs (Icom UDP), Kenwood CI-V, FreeDV
-                700D/700E/1600, or unattended-server features? Run the
-                full <strong>wfweb</strong> locally —
-                <a href="https://github.com/adecarolis/wfweb/releases" target="_blank" rel="noopener"
-                   style="color:#0cf; text-decoration:underline;">download a release</a>
-                or pull the
-                <a href="https://hub.docker.com/r/k1fm/wfweb" target="_blank" rel="noopener"
-                   style="color:#0cf; text-decoration:underline;">k1fm/wfweb</a>
-                Docker image. The
-                <a href="https://github.com/adecarolis/wfweb#readme" target="_blank" rel="noopener"
-                   style="color:#0cf; text-decoration:underline;">project README</a>
-                walks through both options.
-            </p>
-        </div>
-
-        <!-- Browser-not-supported message (Firefox, Safari). Hidden by default. -->
-        <div id="splashUnsupported" style="display:none; text-align:left; padding:14px 18px; border:1px solid #f44; border-radius:6px; background:rgba(255,68,68,0.06); color:#fbb; font-size:13px; line-height:1.5;">
-            This browser doesn't support the Web Serial API.
-            wfweb's standalone build needs Chrome, Edge, Opera, Brave, or any
-            other Chromium-family browser. Firefox and Safari aren't supported.
-        </div>
-
         <button id="startBtn" style="padding: 20px 60px; font-size: 24px; font-weight: bold; color: #000; background: linear-gradient(135deg, #0aa 0%, #088 100%); border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 170, 170, 0.4); transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0, 170, 170, 0.6)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(0, 170, 170, 0.4)';">
             CLICK TO START
         </button>
@@ -2126,8 +2029,7 @@ body.digi-open .digi-bar {
         <button id="qsoLogBtn" class="qso-log-btn" title="Log QSO">LOG</button>
         <span id="clock">--:--</span>
         <button id="powerBtn" class="on" title="Power" onclick="togglePower()">&#x23FB;</button>
-        <span id="connModeBadge" title="Rig connection" onclick="setPanel('conn')" style="display:none;">RIG</span>
-        <span id="connDot" title="Disconnected" onclick="setPanel('conn')"></span>
+        <span id="connDot" title="Disconnected"></span>
     </div>
     <!-- Row 2: Meter + Frequency -->
     <div id="meterFreqRow">
@@ -2508,50 +2410,6 @@ body.digi-open .digi-bar {
             <div class="overlay-grid" id="audioMicGrid"></div>
         </div>
 
-        <!-- Connection (transport) overlay. Server-mode shows the
-             Direct/Server chooser; standalone shows just rig status and
-             a button to pair a different USB device. The bottom bar's
-             ⏎ is the only back affordance — no in-overlay back button. -->
-        <div id="connOverlay" class="overlay">
-            <div class="overlay-title">CONNECTION</div>
-            <div id="connOverlayBody" style="padding:24px; color:#bbb; font-size:13px; width:100%; max-width:520px; margin:auto; align-self:center;">
-                <!-- Standalone-only surface: dot + rig info + actions. -->
-                <div id="connStandaloneBody" style="display:none; text-align:center;">
-                    <div style="display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:8px;">
-                        <span id="connStandaloneDot" style="display:inline-block; width:14px; height:14px; border-radius:50%;"></span>
-                        <span id="connStandaloneStatus" style="font-size:22px; color:#bbb; font-weight:600; letter-spacing:0.5px;">…</span>
-                    </div>
-                    <div id="connStandaloneRigInfo" style="margin-bottom:6px; color:#0cf; font-size:14px; min-height:18px;"></div>
-                    <div id="connStandaloneRigDetails" style="margin-bottom:24px; color:#777; font-size:12px; min-height:16px;"></div>
-                    <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-                        <button class="conn-btn conn-btn-primary"  id="connStandaloneReconnect">Reconnect</button>
-                        <button class="conn-btn conn-btn-secondary" id="connStandalonePair">Pair different rig&hellip;</button>
-                        <button class="conn-btn conn-btn-danger"    id="connStandaloneDisconnect">Disconnect</button>
-                    </div>
-                    <div id="connStandaloneError"
-                         style="margin-top:18px; min-height:16px; color:#f88; font-size:12px;"></div>
-                </div>
-                <!-- Server-mode chooser + direct opts. -->
-                <div id="connModeChooser" style="margin-bottom:14px;">
-                    <label style="cursor:pointer;"><input type="radio" name="connMode" value="server" id="connModeServer"> <b>Server</b> &mdash; route through wfweb server</label><br>
-                    <label style="cursor:pointer;"><input type="radio" name="connMode" value="direct" id="connModeDirect"> <b>Direct</b> &mdash; talk to the rig over Web Serial (CI-V)</label>
-                </div>
-                <div id="connDirectOpts" style="display:none; border-top:1px solid #044; padding-top:10px;">
-                    <div style="margin-bottom:10px; color:#066; font-size:11px;">
-                        wfweb auto-detects the rig and baud rate when you connect.
-                    </div>
-                    <div style="margin-top:4px;">
-                        <button class="ov-btn" id="connConnectBtn" style="margin-right:8px;">Connect rig</button>
-                        <button class="ov-btn" id="connDisconnectBtn">Disconnect</button>
-                    </div>
-                    <div id="connStatus" style="margin-top:10px; color:#0a0; font-size:11px;"></div>
-                    <div style="margin-top:14px; color:#066; font-size:10px;">
-                        Requires Chrome / Edge (Web Serial).
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Warning overlays on spectrum -->
         <div id="audioOffWarning" class="spectrum-warning" onclick="showAudioMicMenu()" style="display: none;">AUDIO OFF</div>
         <div id="micOffWarning" class="spectrum-warning" onclick="toggleMic()" style="display: none;">MIC OFF</div>
@@ -2564,33 +2422,16 @@ body.digi-open .digi-bar {
 
 <script src="transport/rig-transport.js"></script>
 <script src="transport/websocket-transport.js"></script>
-<script src="civ/rig-caps.js"></script>
-<script src="civ/icom.js"></script>
-<script src="transport/serial-transport.js"></script>
 <script>
 // ============================================================
 // STATE
 // ============================================================
-// Two transports coexist: WebSocketRigTransport (Server mode, default —
-// talks to the C++ wfweb server) and SerialRigTransport (Direct mode —
-// talks to the rig via Web Serial CI-V). Only one is the active control
-// transport at a time. `transport` is the active one; `ws` aliases the
-// underlying WebSocket so legacy readyState checks keep working.
-var wsTransport = null;       // WebSocketRigTransport (always created)
-var serialTransport = null;   // SerialRigTransport (created on first Direct enable)
-var transport = null;         // active control transport (= wsTransport or serialTransport)
-var controlMode = (function () {
-    // Standalone static deployments (window.WFWEB_STANDALONE injected by
-    // the static build) are always Direct — no server is reachable from
-    // this page. WFWEB_STANDALONE wins over any stale localStorage value
-    // (e.g. left over from visiting the server build at the same origin).
-    if (typeof window !== 'undefined' && window.WFWEB_STANDALONE) return 'direct';
-    var saved = null;
-    try { saved = localStorage.getItem('controlMode'); } catch (e) { /* ignore */ }
-    return saved || 'server';
-})();
+// Server build: the only transport is the WebSocket to the C++ wfweb
+// server. The standalone (Web Serial) build lives in resources/web-standalone/
+// and is built separately by tools/build-static.sh.
+var wsTransport = null;
+var transport = null;         // alias to wsTransport
 var ws = null;                // alias to wsTransport.ws — legacy readyState checks
-var connStatusText = '';      // last status string from SerialRigTransport.onProgress
 var serverVersion = '';  // set from rigInfo message
 var rigModelName = '';   // set from rigInfo/rigConnected
 // Shared app-wide callsign (CW, FT8/FT4, FreeDV reporter, APRS, Terminal,
@@ -2660,13 +2501,12 @@ var audioAvailable = false;
 var audioWasEnabled = false;
 var audioSampleRate = 48000;
 
-// FreeDV state. In Direct mode the only mode wired to a WASM modem is
-// RADE — the classic codec2 modes need the C++ server, so we hide them.
+// FreeDV state. The C++ server pushes the authoritative mode list via
+// the WS rigInfo message; these defaults are just placeholders for the
+// brief window before that arrives.
 var freedvEnabled = false;
-var freedvModeName = (controlMode === 'direct') ? 'RADE' : '700D';
-var freedvModes    = (controlMode === 'direct')
-    ? ['RADE']
-    : ['700D', '700E', '1600'];
+var freedvModeName = '700D';
+var freedvModes    = ['700D', '700E', '1600'];
 var freedvSync = false;
 var freedvSNR = 0.0;
 var freedvFreqOffset = 0.0;
@@ -2849,12 +2689,11 @@ var DIGI_BANDS = [
 // ============================================================
 function onTransportOpen() {
     document.getElementById('connDot').classList.add('connected');
-    document.getElementById('connDot').title = (controlMode === 'direct') ? 'Direct (rig serial)' : 'Connected (server)';
+    document.getElementById('connDot').title = 'Connected';
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     send({ cmd: 'getStatus' });
     var rCb = document.getElementById('digiReporterEnable');
     if (rCb && rCb.checked) sendReporterConfig();
-    updateConnIndicator();
 }
 
 function onTransportClose() {
@@ -2865,8 +2704,7 @@ function onTransportClose() {
     audioAvailable = false;
     txAudioAvailable = false;
     updateWarningVisibility();
-    if (controlMode === 'server') scheduleReconnect();
-    updateConnIndicator();
+    scheduleReconnect();
 }
 
 function ensureWsTransport() {
@@ -2878,151 +2716,28 @@ function ensureWsTransport() {
     wsTransport.addEventListener('binary',  function (e) { handleBinaryMessage(e.detail); });
 }
 
-function ensureSerialTransport() {
-    if (serialTransport) return;
-    serialTransport = new SerialRigTransport({
-        onProgress: function (info) {
-            switch (info.stage) {
-                case 'opening':
-                    connStatusText = 'Opening port at ' + info.baud + ' baud…';
-                    break;
-                case 'probing':
-                    connStatusText = 'Probing rig (' + info.baud + ' baud, ' +
-                                     info.attempt + '/' + info.total + ')…';
-                    break;
-                case 'connected':
-                    connStatusText = 'Connected to ' + info.model +
-                                     ' @ ' + info.baud + ' baud (CI-V 0x' +
-                                     info.civAddr.toString(16).toUpperCase() + ')';
-                    break;
-            }
-            updateConnStatus();
-            updateConnIndicator();
-        },
-    });
-    serialTransport.addEventListener('open',    onTransportOpen);
-    serialTransport.addEventListener('close',   function () {
-        connStatusText = '';
-        onTransportClose();
-    });
-    serialTransport.addEventListener('message', function (e) { handleMessage(e.detail); });
-    serialTransport.addEventListener('binary',  function (e) { handleBinaryMessage(e.detail); });
-}
-
 function connect() {
-    if (controlMode === 'server') {
-        ensureWsTransport();
-        wsTransport.connect();
-        ws = wsTransport.ws;
-        transport = wsTransport;
-        return;
-    }
-    // Direct mode. requestPort() needs a user gesture, but getPorts() doesn't —
-    // if a port has already been paired with this origin, open it silently.
-    ensureSerialTransport();
-    transport = serialTransport;
-    updateConnIndicator();
-    serialTransport.tryAutoReconnect().then(function (opened) {
-        if (!opened) {
-            // No paired port — user must click "Connect rig".
-            updateConnStatus();
-        }
-    });
+    ensureWsTransport();
+    wsTransport.connect();
+    ws = wsTransport.ws;
+    transport = wsTransport;
 }
 
 function scheduleReconnect() {
-    if (controlMode !== 'server') return;
     if (!reconnectTimer) {
         reconnectTimer = setTimeout(function () { reconnectTimer = null; connect(); }, 3000);
     }
 }
 
 function send(obj) {
-    // Direct-mode commands the SerialRigTransport handles → go to it.
-    // Everything else → WS (for compatibility with the C++ server's broader
-    // surface). In Direct mode without a server, those become no-ops.
-    if (controlMode === 'direct' && serialTransport && serialTransport.isOpen() &&
-            window.SerialRigTransport && SerialRigTransport.handles(obj && obj.cmd)) {
-        serialTransport.sendCommand(obj);
-        return;
-    }
     if (wsTransport) wsTransport.sendCommand(obj);
 }
 
-// TX audio routing. In Server mode the 0x03 PCM frames go straight to the
-// C++ wfweb server over WS; in Direct mode they go to the rig's USB audio
-// output via SerialRigTransport.sendAudioFrame() (setSinkId path).
 function txAudioReady() {
-    if (controlMode === 'direct' && serialTransport && serialTransport.isOpen()) return true;
     return ws && ws.readyState === WebSocket.OPEN;
 }
 function sendTxAudio(frame) {
-    if (controlMode === 'direct' && serialTransport && serialTransport.isOpen()) {
-        serialTransport.sendAudioFrame(frame);
-        return;
-    }
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(frame);
-}
-
-function setControlMode(mode) {
-    if (mode !== 'server' && mode !== 'direct') return;
-    if (mode === controlMode) return;
-    var prev = controlMode;
-    controlMode = mode;
-    try { localStorage.setItem('controlMode', mode); } catch (e) { /* ignore */ }
-    if (prev === 'server' && wsTransport) {
-        wsTransport.close();
-        ws = null;
-    }
-    if (prev === 'direct' && serialTransport && serialTransport.isOpen()) {
-        serialTransport.close();
-    }
-    if (mode === 'server') {
-        connect();
-    } else {
-        // Direct mode — try silent auto-reconnect to a previously paired
-        // port. Falls through to "user must click Connect rig" if none.
-        ensureSerialTransport();
-        transport = serialTransport;
-        document.getElementById('connDot').classList.remove('connected');
-        document.getElementById('connDot').title = 'Direct: not connected';
-        serialTransport.tryAutoReconnect().then(function () {
-            updateConnStatus();
-            updateConnIndicator();
-        });
-    }
-    updateConnIndicator();
-}
-
-async function connectDirect() {
-    if (controlMode !== 'direct') setControlMode('direct');
-    ensureSerialTransport();
-    try {
-        await serialTransport.connect();
-    } catch (err) {
-        console.error('Direct connect failed:', err);
-        alert('Could not open serial port: ' + (err && err.message || err));
-    }
-    updateConnIndicator();
-}
-
-async function disconnectDirect() {
-    if (serialTransport) { try { await serialTransport.close(); } catch (e) { /* ignore */ } }
-    updateConnIndicator();
-}
-
-function updateConnIndicator() {
-    var badge = document.getElementById('connModeBadge');
-    if (!badge) return;
-    if (controlMode === 'direct') {
-        badge.textContent = 'RIG';
-        badge.style.display = '';
-        badge.title = serialTransport && serialTransport.isOpen()
-            ? 'Rig connected — click to manage'
-            : 'Click to connect a rig';
-    } else {
-        badge.style.display = 'none';
-    }
 }
 
 // ============================================================
@@ -3210,28 +2925,6 @@ function handleMessage(msg) {
             break;
         case 'radeCallsign':
             radeRxCallsign = msg.callsign || '';
-            updateFreeDVStatus({});
-            break;
-        case 'radeStats':
-            // RADE WASM stats — fold into the freedv* indicator surface so
-            // the existing renderer in updateFreeDVStatus picks them up.
-            if (typeof msg.sync === 'boolean') freedvSync = msg.sync;
-            if (typeof msg.snr === 'number')   freedvSNR  = msg.snr;
-            if (typeof msg.freqOffset === 'number') freedvFreqOffset = msg.freqOffset;
-            if (freedvEnabled) {
-                var rsc = freedvSync ? '#00ff88' : '#ff4444';
-                var syncEl2 = document.getElementById('freedvSyncEl');
-                var snrEl2  = document.getElementById('freedvSnrEl');
-                var foEl2   = document.getElementById('freedvFoEl');
-                if (syncEl2) { syncEl2.style.color = rsc; syncEl2.textContent = freedvSync ? 'SYNC' : 'NO SYNC'; }
-                if (snrEl2)  snrEl2.textContent = 'SNR ' + freedvSNR.toFixed(1);
-                if (foEl2)   foEl2.textContent  = 'FO '  + freedvFreqOffset.toFixed(1);
-            }
-            break;
-        case 'radeStatus':
-            // Authoritative on/off from the transport (e.g., on close).
-            freedvEnabled = !!msg.enabled;
-            if (freedvEnabled) freedvModeName = 'RADE';
             updateFreeDVStatus({});
             break;
         case 'error':
@@ -4031,134 +3724,8 @@ function setPanel(name) {
     else if (name === 'freqinp') renderFreqInput();
     else if (name === 'cw') renderCWOverlay();
     else if (name === 'memory') openMemoryBrowser();
-    else if (name === 'conn') renderConnOverlay();
     renderBottomBar();
 }
-
-function renderConnOverlay() {
-    document.getElementById('connOverlay').classList.add('visible');
-    var chooser   = document.getElementById('connModeChooser');
-    var serverDir = document.getElementById('connDirectOpts');
-    var standalone = document.getElementById('connStandaloneBody');
-    if (window.WFWEB_STANDALONE) {
-        // Single-purpose standalone surface: status + manage buttons.
-        if (chooser)    chooser.style.display    = 'none';
-        if (serverDir)  serverDir.style.display  = 'none';
-        if (standalone) standalone.style.display = '';
-        renderStandaloneConnBody();
-        return;
-    }
-    // Server-mode: existing chooser UI.
-    if (standalone) standalone.style.display = 'none';
-    document.getElementById('connModeServer').checked = (controlMode === 'server');
-    document.getElementById('connModeDirect').checked = (controlMode === 'direct');
-    document.getElementById('connDirectOpts').style.display =
-        (controlMode === 'direct') ? '' : 'none';
-    updateConnStatus();
-}
-
-function renderStandaloneConnBody() {
-    var statusEl  = document.getElementById('connStandaloneStatus');
-    var dotEl     = document.getElementById('connStandaloneDot');
-    var rigEl     = document.getElementById('connStandaloneRigInfo');
-    var detailsEl = document.getElementById('connStandaloneRigDetails');
-    var errEl     = document.getElementById('connStandaloneError');
-    var btnReco   = document.getElementById('connStandaloneReconnect');
-    var btnPair   = document.getElementById('connStandalonePair');
-    var btnDisc   = document.getElementById('connStandaloneDisconnect');
-    if (!statusEl || !dotEl) return;
-
-    var open = !!(serialTransport && serialTransport.isOpen());
-    if (open) {
-        dotEl.className = 'connected';
-        statusEl.style.color = '#0f8';
-        statusEl.textContent = 'Connected';
-        rigEl.textContent = rigModelName || 'Rig';
-        // connStatusText is the SerialRigTransport progress string —
-        // typically "Detected IC-7300 @ 19200 baud" once auto-detect lands.
-        detailsEl.textContent = connStatusText || '';
-        btnReco.style.display = 'none';
-        btnDisc.style.display = '';
-    } else {
-        dotEl.className = 'disconnected';
-        statusEl.style.color = '#fa0';
-        statusEl.textContent = 'Not connected';
-        rigEl.textContent = '';
-        detailsEl.textContent = connStatusText
-            ? connStatusText
-            : 'Click Reconnect to retry the previously-paired rig, or Pair different rig… to choose a USB port.';
-        btnReco.style.display = '';
-        btnDisc.style.display = 'none';
-    }
-    if (errEl) errEl.textContent = '';
-}
-
-// Standalone overlay buttons — wire once on first overlay open.
-document.addEventListener('click', function (e) {
-    if (!window.WFWEB_STANDALONE) return;
-    if (e.target.id === 'connStandaloneReconnect') {
-        var errEl = document.getElementById('connStandaloneError');
-        if (errEl) errEl.textContent = '';
-        ensureSerialTransport();
-        transport = serialTransport;
-        serialTransport.tryAutoReconnect().then(function (opened) {
-            if (!opened) return serialTransport.connect();   // gesture available — fall through to picker
-        }).catch(function (err) {
-            if (errEl) errEl.textContent = (err && err.message) ? err.message : String(err);
-        }).finally(renderStandaloneConnBody);
-    } else if (e.target.id === 'connStandalonePair') {
-        var errEl2 = document.getElementById('connStandaloneError');
-        if (errEl2) errEl2.textContent = '';
-        ensureSerialTransport();
-        transport = serialTransport;
-        // Drop the existing connection so we can re-pair cleanly.
-        var p = (serialTransport && serialTransport.isOpen())
-            ? serialTransport.close().catch(function () {})
-            : Promise.resolve();
-        p.then(function () { return serialTransport.connect(); })
-         .catch(function (err) {
-             if (errEl2) errEl2.textContent = (err && err.message) ? err.message : String(err);
-         })
-         .finally(renderStandaloneConnBody);
-    } else if (e.target.id === 'connStandaloneDisconnect') {
-        if (!serialTransport) return;
-        serialTransport.close().catch(function () {}).finally(renderStandaloneConnBody);
-    }
-});
-
-function updateConnStatus() {
-    var s = document.getElementById('connStatus');
-    if (!s) return;
-    if (controlMode !== 'direct') { s.textContent = ''; return; }
-    if (connStatusText) {
-        s.textContent = connStatusText;
-        s.style.color = (serialTransport && serialTransport.isOpen()) ? '#0c0' : '#960';
-        return;
-    }
-    if (serialTransport && serialTransport.isOpen()) {
-        s.textContent = 'Connected.';
-        s.style.color = '#0c0';
-    } else {
-        s.textContent = 'Not connected.';
-        s.style.color = '#960';
-    }
-}
-
-document.addEventListener('change', function (e) {
-    if (e.target.name === 'connMode') {
-        setControlMode(e.target.value);
-        document.getElementById('connDirectOpts').style.display = (e.target.value === 'direct') ? '' : 'none';
-        updateConnStatus();
-    }
-});
-
-document.addEventListener('click', function (e) {
-    if (e.target.id === 'connConnectBtn') {
-        connectDirect().then(updateConnStatus);
-    } else if (e.target.id === 'connDisconnectBtn') {
-        disconnectDirect().then(updateConnStatus);
-    }
-});
 
 function hideAllOverlays() {
     var overlays = document.querySelectorAll('.overlay');
@@ -4914,14 +4481,7 @@ function toggleLanConnection() {
 // ============================================================
 function toggleFreeDV() {
     if (freedvModes.length === 0) return;
-    var direct = (controlMode === 'direct');
     if (freedvEnabled) {
-        if (direct && freedvModeName === 'RADE') {
-            send({ cmd: 'setRadeMode', value: false });
-            freedvEnabled = false;
-            updateFreeDVStatus({});
-            return;
-        }
         send({ cmd: 'setFreeDV', enabled: false });
     } else {
         // Close DIGI panel if open — modes are mutually exclusive
@@ -4933,28 +4493,10 @@ function toggleFreeDV() {
         freedvModeName = freedvModes[0];
         freedvTxGain = 0.25;
         ALC_SMOOTHED = 0;
-        if (direct && freedvModeName === 'RADE') {
-            // Push the shared station callsign so EOO carries it.
-            var cs = window.App && window.App.callsign && window.App.callsign.get();
-            if (cs) send({ cmd: 'setRadeCallsign', value: cs });
-            send({ cmd: 'setRadeMode', value: true });
-            freedvEnabled = true;
-            updateFreeDVStatus({});
-            return;
-        }
         send({ cmd: 'setFreeDV', enabled: true, mode: freedvModeName });
         send({ cmd: 'setFreeDVTxGain', value: freedvTxGain });
     }
 }
-
-// Re-push the callsign to the RADE modem whenever the user edits it in
-// the gear dialog. The modem keeps it in C-side state and re-encodes on
-// the next TX over.
-window.addEventListener('appCallsignChanged', function (ev) {
-    if (controlMode !== 'direct') return;
-    if (!freedvEnabled || freedvModeName !== 'RADE') return;
-    if (ev && ev.detail) send({ cmd: 'setRadeCallsign', value: ev.detail });
-});
 
 function cycleFreeDVMode() {
     if (!freedvEnabled) return;
@@ -5191,52 +4733,9 @@ function toggleMic() {
     startMic();
 }
 
-// In Direct mode the OS "default" input device is often the rig's USB
-// audio input itself (the PCM2901 the rig presents over USB), so a naive
-// getUserMedia({audio:true}) ends up capturing the rig's RX audio and
-// sending it back as TX — completely silent the moment we transmit
-// because the rig stops receiving. Exclude the rig from the mic pick.
-function pickDirectMicId() {
-    if (controlMode !== 'direct') return Promise.resolve(null);
-    var rigInId = null;
-    try { rigInId = localStorage.getItem('directRxAudioId'); } catch (e) { /* ignore */ }
-    var savedMicId = null;
-    try { savedMicId = localStorage.getItem('directMicId'); } catch (e) { /* ignore */ }
-    if (savedMicId && savedMicId !== rigInId) return Promise.resolve(savedMicId);
-    return navigator.mediaDevices.enumerateDevices().then(function(devs) {
-        var inputs = devs.filter(function(d) { return d.kind === 'audioinput'; });
-        var rigPattern = /(USB Audio CODEC|USB-PCM Audio|IC-7300|IC-705|IC-9700|IC-7610|IC-7100|IC-9100|CP210|Burr-Brown|PCM29|PCM30)/i;
-        var candidates = inputs.filter(function(d) {
-            if (rigInId && d.deviceId === rigInId) return false;
-            if (d.deviceId === 'default') return false;
-            if (/monitor of/i.test(d.label || '')) return false;
-            // Also skip anything matching the rig label pattern in case the
-            // saved id changed (e.g. user re-paired serial port).
-            if (rigPattern.test(d.label || '')) return false;
-            return true;
-        });
-        var preferred = candidates.find(function(d) {
-            return /Built-in|Microphone|Headset|Headphones|Mic/i.test(d.label || '');
-        }) || candidates[0];
-        if (preferred) {
-            try { localStorage.setItem('directMicId', preferred.deviceId); } catch (e) { /* ignore */ }
-            console.log('Mic device picked:', preferred.label || preferred.deviceId);
-            return preferred.deviceId;
-        }
-        return null;
-    }).catch(function(e) {
-        console.warn('Could not enumerate audio devices for mic pick:', e);
-        return null;
-    });
-}
-
 function startMic() {
     if (micEnabled) return;
-    pickDirectMicId().then(function(preferredId) {
-        var audioConstraints = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
-        if (preferredId) audioConstraints.deviceId = { exact: preferredId };
-        return navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
-    })
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } })
     .then(function(stream) {
         micStream = stream;
         micAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
@@ -8828,112 +8327,15 @@ window.addEventListener('resize', function() {
 });
 requestAnimationFrame(resizeCanvases);
 
-// In standalone mode the splash takes over the connect flow: render the
-// "pair USB" or "click to start" state up-front, gate the actual port
-// open behind the click, and skip the auto-connect that the server-mode
-// page does on load. Server-mode behaviour is unchanged.
-if (window.WFWEB_STANDALONE) {
-    initStandaloneSplash();
-} else {
-    connect();
-}
+connect();
 
-// ── Standalone splash ───────────────────────────────────────────────
-//
-// Goals from the user-visible spec:
-//   • If a USB port hasn't been paired yet → show a "Pair USB rig" button.
-//   • If a port is already paired → show "Click to Start".
-//   • Both states explain what wfweb is and link to the GitHub project.
-//   • Mention that there is a fuller wfweb (LAN rigs, more rig vendors,
-//     server features) you can build from source.
-//   • No Direct vs Server selection — this build IS Direct.
-//
-// Browser support: Web Serial requires Chromium-family. Firefox/Safari
-// see an unsupported message instead of the start button.
-
-async function initStandaloneSplash() {
-    var introEl    = document.getElementById('splashStandaloneIntro');
-    var taglineEl  = document.getElementById('splashTagline');
-    var unsupEl    = document.getElementById('splashUnsupported');
-    var startBtn   = document.getElementById('startBtn');
-    var hintEl     = document.getElementById('splashHint');
-    var errorEl    = document.getElementById('splashError');
-
-    if (introEl)   introEl.style.display = 'block';
-    if (taglineEl) taglineEl.textContent = 'Direct rig control · Web Serial · no server';
-
-    if (typeof navigator === 'undefined' || !navigator.serial) {
-        if (unsupEl) unsupEl.style.display = 'block';
-        if (startBtn) startBtn.style.display = 'none';
-        if (hintEl)   hintEl.style.display   = 'none';
-        return;
-    }
-
-    // Always Direct — wipe any stale 'server' choice from a prior session
-    // so reload-after-update isn't sticky on the wrong mode.
-    try {
-        if (localStorage.getItem('controlMode') !== 'direct') {
-            localStorage.setItem('controlMode', 'direct');
-        }
-    } catch (e) { /* private mode — ignore */ }
-    controlMode = 'direct';
-
-    // Decide between "Pair USB rig" and "Click to Start" based on whether
-    // the user has previously authorised a port for this origin. getPorts()
-    // does NOT need a user gesture; only requestPort() does.
-    var paired = false;
-    try {
-        var ports = await navigator.serial.getPorts();
-        paired = !!(ports && ports.length);
-    } catch (e) { /* getPorts unsupported (very old browser) */ }
-
-    if (paired) {
-        startBtn.textContent = 'CLICK TO START';
-        if (hintEl) hintEl.textContent = 'Connect rig and start audio';
-    } else {
-        startBtn.textContent = 'PAIR USB RIG';
-        if (hintEl) hintEl.textContent = 'Choose your rig\'s USB serial port';
-    }
-
-    startBtn.addEventListener('click', async function () {
-        startBtn.disabled = true;
-        if (errorEl) errorEl.textContent = '';
-        if (hintEl)  hintEl.textContent  = 'Connecting…';
-        try {
-            ensureSerialTransport();
-            transport = serialTransport;
-            if (paired) {
-                // Try silent reconnect first; if the previously-paired port
-                // is gone (different cable/PC), fall through to picker.
-                var opened = await serialTransport.tryAutoReconnect();
-                if (!opened) await serialTransport.connect();
-            } else {
-                await serialTransport.connect();
-            }
-        } catch (err) {
-            console.error('standalone connect failed:', err);
-            startBtn.disabled = false;
-            if (hintEl)  hintEl.textContent  = paired ? 'Click to retry' : 'Choose your rig\'s USB serial port';
-            if (errorEl) errorEl.textContent = (err && err.message) ? err.message : String(err);
-            return;
-        }
-
-        // Connected. Hide the splash and kick off RX audio (same as the
-        // legacy splash — needs to run in the user-gesture chain).
-        document.getElementById('startupOverlay').style.display = 'none';
-        if (audioAvailable && !audioEnabled) {
-            try { startAudio(); } catch (e) { console.warn('audio start failed:', e); }
-        }
-    });
-}
-
-if (!window.WFWEB_STANDALONE) {
-    // Server-mode: existing simple "click to start audio" splash.
-    document.getElementById('startBtn').addEventListener('click', function() {
-        document.getElementById('startupOverlay').style.display = 'none';
-        if (audioAvailable && !audioEnabled) startAudio();
-    });
-}
+// Splash: simple "click to start audio" gesture. AudioContext can only be
+// resumed inside a user gesture, so the actual startAudio() call must run
+// from the click handler.
+document.getElementById('startBtn').addEventListener('click', function() {
+    document.getElementById('startupOverlay').style.display = 'none';
+    if (audioAvailable && !audioEnabled) startAudio();
+});
 
 // Initialize CW Decoder
 if (typeof CWDecoder !== 'undefined') {

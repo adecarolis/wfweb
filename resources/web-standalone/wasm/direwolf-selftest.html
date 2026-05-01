@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>wfweb — Direwolf WASM self-test</title>
+<style>
+  body { font-family: ui-monospace, monospace; padding: 1.5em; max-width: 60em; }
+  button { font-size: 1em; padding: 0.5em 1em; margin-right: 0.5em; }
+  pre { background: #111; color: #cfc; padding: 1em; border-radius: 4px; max-height: 30em; overflow: auto; }
+  .pass { color: #0c0; font-weight: bold; }
+  .fail { color: #f44; font-weight: bold; }
+</style>
+<h1>Direwolf WASM modem — TX → RX loopback</h1>
+<p>
+  Encodes a known AX.25 UI frame, feeds the generated int16 PCM straight
+  back through the demodulator, expects to decode the same frame.  Same
+  test the C++ <code>--packet-self-test</code> flag runs.
+</p>
+<button id="run300">Run @ 300 bd</button>
+<button id="run1200">Run @ 1200 bd</button>
+<button id="run9600">Run @ 9600 bd</button>
+<button id="runAll">Run all</button>
+<button id="runLink">AX.25 link smoke-test</button>
+<pre id="log">…click a button…</pre>
+
+<script type="module">
+  import { DirewolfModem, Ax25Link } from './direwolf-modem.js';
+
+  const KNOWN_FRAME = 'N0CALL>APRS:packet selftest';
+  const log = document.getElementById('log');
+  function append(line, cls) {
+      const span = document.createElement('span');
+      if (cls) span.className = cls;
+      span.textContent = line + '\n';
+      log.appendChild(span);
+      log.scrollTop = log.scrollHeight;
+  }
+
+  async function runOne(baud) {
+      append(`---- ${baud} bd ----`);
+      const modem = await DirewolfModem.create();
+      modem.init(baud, 48000);
+
+      let decodedBytes = null;
+      modem.onFrame = (chan, alevel, bytes) => {
+          decodedBytes = bytes;
+      };
+
+      const audio = modem.txFrame(KNOWN_FRAME);
+      if (!audio) {
+          append('  TX encode FAILED', 'fail');
+          return false;
+      }
+      append(`  TX encoded ${audio.length} samples (${(audio.length / 48000 * 1000).toFixed(0)} ms)`);
+
+      // Feed the audio back in 960-sample (20 ms @ 48 kHz) chunks so we
+      // exercise the same buffering shape the SPA will use.
+      const CHUNK = 960;
+      for (let i = 0; i < audio.length; i += CHUNK) {
+          modem.processSamples(audio.subarray(i, Math.min(i + CHUNK, audio.length)));
+      }
+
+      if (!decodedBytes) {
+          append('  RX decode FAILED — no frame received', 'fail');
+          return false;
+      }
+      append(`  RX decoded ${decodedBytes.length} bytes — ${hex(decodedBytes)}`);
+
+      // Smoke-check: AX.25 frames begin with the destination address (6
+      // shifted ASCII bytes + 1 SSID byte).  "APRS  " padded then SSID.
+      const dstAscii = String.fromCharCode(
+          ...Array.from(decodedBytes.slice(0, 6)).map(b => b >> 1)
+      );
+      if (!dstAscii.startsWith('APRS')) {
+          append(`  destination mismatch (got "${dstAscii}")`, 'fail');
+          return false;
+      }
+      append('  PASS', 'pass');
+      return true;
+  }
+
+  function hex(u8) {
+      return Array.from(u8).map(b => b.toString(16).padStart(2, '0')).join(' ');
+  }
+
+  document.getElementById('run300').addEventListener('click',  () => { log.textContent=''; runOne(300); });
+  document.getElementById('run1200').addEventListener('click', () => { log.textContent=''; runOne(1200); });
+  document.getElementById('run9600').addEventListener('click', () => { log.textContent=''; runOne(9600); });
+  document.getElementById('runLink').addEventListener('click', async () => {
+      log.textContent = '';
+      append('---- AX.25 link smoke-test ----');
+      const modem = await DirewolfModem.create();
+      modem.init(1200, 48000);
+      const link = new Ax25Link(modem);
+      link.start();
+      append(`  link.start() OK, paclen=${link.paclen}`);
+
+      let txAudio = null;
+      link.addEventListener('transmitFrameAudio', (ev) => { txAudio = ev.detail.audio; });
+
+      let establishedCount = 0;
+      let terminatedCount = 0;
+      link.addEventListener('linkEstablished', (ev) => {
+          establishedCount++;
+          append(`  linkEstablished: client=${ev.detail.client} ${ev.detail.own}<->${ev.detail.remote}`, 'pass');
+      });
+      link.addEventListener('linkTerminated', (ev) => {
+          terminatedCount++;
+          append(`  linkTerminated: client=${ev.detail.client} timeout=${ev.detail.timeout}`);
+      });
+
+      link.registerCall(0, 1, 'CALLA-1');
+      link.connectRequest({ chan: 0, client: 1, ownCall: 'CALLA-1', peerCall: 'CALLB-2', digis: [] });
+      append('  connect request issued; waiting for SABM emission…');
+
+      // Wait up to ~500 ms for the dispatcher to emit the SABM audio.
+      for (let i = 0; i < 25 && !txAudio; i++) {
+          await new Promise(r => setTimeout(r, 20));
+      }
+      if (!txAudio) { append('  no TX audio after 500ms', 'fail'); link.stop(); return; }
+      append(`  SABM audio: ${txAudio.length} samples (${(txAudio.length/48000*1000).toFixed(0)} ms)`);
+
+      // Feed SABM back through the modem's RX. We expect the monitor
+      // path to fire onFrame with the SABM bytes (DST=CALLB-2).
+      let rxFrame = null;
+      modem.onFrame = (chan, alevel, bytes) => { rxFrame = bytes; };
+      const CHUNK = 960;
+      for (let i = 0; i < txAudio.length; i += CHUNK) {
+          modem.processSamples(txAudio.subarray(i, Math.min(i + CHUNK, txAudio.length)));
+      }
+      // Give the dispatcher one more tick.
+      await new Promise(r => setTimeout(r, 100));
+
+      if (!rxFrame) { append('  RX did not decode the SABM', 'fail'); link.stop(); return; }
+      // First 7 bytes = AX25_DESTINATION = 'CALLB-2'.
+      const dst = String.fromCharCode(...Array.from(rxFrame.slice(0, 6)).map(b => b >> 1)).trim();
+      if (dst !== 'CALLB') { append(`  unexpected destination "${dst}"`, 'fail'); link.stop(); return; }
+
+      append('  SABM round-trip via modem: PASS', 'pass');
+
+      link.stop();
+      append('');
+      append('PASS link smoke-test: SABM emitted, decoded, addressing correct', 'pass');
+  });
+
+  document.getElementById('runAll').addEventListener('click',  async () => {
+      log.textContent = '';
+      const r1 = await runOne(300);
+      const r2 = await runOne(1200);
+      const r3 = await runOne(9600);
+      append('');
+      append(`Final: ${[r1,r2,r3].filter(x=>x).length} / 3 passed`,
+             (r1 && r2 && r3) ? 'pass' : 'fail');
+  });
+</script>
