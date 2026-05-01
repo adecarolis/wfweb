@@ -4571,12 +4571,14 @@ function updateFreeDVStatus(msg) {
         // Mode cycle on click
         var modeLink = document.getElementById('freedvModeLink');
         if (modeLink) modeLink.onclick = function(e) { e.stopPropagation(); cycleFreeDVMode(); };
-        // (set callsign) chip: open the shared station-callsign dialog
-        // (currently the PKT settings modal — same App.callsign target).
+        // (set callsign) chip: open the same Station Settings modal that
+        // the RPT button opens — that's the canonical surface for the
+        // FreeDV reporter callsign / grid that RADE EOO encoding uses.
         var noCallWarn = document.getElementById('freedvNoCallWarn');
         if (noCallWarn) noCallWarn.onclick = function(e) {
             e.stopPropagation();
-            if (window.Packet && window.Packet.openSettings) window.Packet.openSettings();
+            var m = document.getElementById('digiSettingsModal');
+            if (m) m.classList.add('visible');
         };
         // Settings gear: open DIGI Settings modal
         var settingsBtn = document.getElementById('freedvSettingsBtn');
