@@ -6208,9 +6208,12 @@ function getMyGrid() { return ((document.getElementById('digiGrid') || {}).value
 
 // --- Reporters (FreeDV + pskreporter.info) ---
 function sendReporterConfig() {
+    // Standalone build has no backend that can hold the long-lived
+    // reporter sockets; the checkboxes are disabled by reporters.js.
+    // This is a no-op until a CORS proxy on the serving site lands.
+    if (!window.WfwebReporters || !window.WfwebReporters.available) return;
     var fdvCb = document.getElementById('digiReporterEnable');
     var pskCb = document.getElementById('digiPskReporterEnable');
-    if (!ws || ws.readyState !== 1) return;
     send({
         cmd: 'setReporter',
         freedvEnabled: !!(fdvCb && fdvCb.checked),
@@ -6251,7 +6254,9 @@ function updatePskReporterStatus(msg) {
 // pskreporter.info.  The browser is the only place that sees decoded
 // messages, so callsign + (optional) grid extraction lives here.
 function reportDigiSpot(d) {
-    if (!ws || ws.readyState !== 1) return;
+    // PSK Reporter spots flow through the C++ backend in the server build;
+    // standalone has no backend to forward them. No-op here.
+    if (!window.WfwebReporters || !window.WfwebReporters.available) return;
     var parts = (d.msg || '').trim().split(/\s+/);
     if (parts.length < 2) return;
     var first = parts[0].toUpperCase();
@@ -7776,7 +7781,7 @@ function startDigiTune() {
 function streamDigiAudio(samples12k, onDone, onFirstChunk) {
     console.log('[DIGI stream] start: samples12k.length=' + samples12k.length +
                 ' audioSampleRate=' + audioSampleRate +
-                ' ws=' + (ws ? ws.readyState : 'null'));
+                ' serial=' + (serialTransport && serialTransport.isOpen() ? 'open' : 'closed'));
     // Reuse the pre-created AudioContext that was resumed during a user gesture.
     // Creating a new AudioContext from a setInterval callback produces a suspended
     // context that can never be resumed (browser blocks resume() without user gesture).
