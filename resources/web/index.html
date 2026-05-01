@@ -5888,7 +5888,7 @@ function initCWHandlers() {
 // ============================================================
 
 function digiPeriod() { return digiMode === 'FT4' ? 7.5 : 15; }
-function getMyCall() { return ((document.getElementById('digiMyCall') || {}).value || '').toUpperCase(); }
+function getMyCall() { return (window.App && window.App.callsign && window.App.callsign.get()) || ''; }
 function getMyGrid() { return ((document.getElementById('digiGrid') || {}).value || '').toUpperCase().substr(0, 4); }
 
 // --- Reporters (FreeDV + pskreporter.info) ---
@@ -5904,6 +5904,16 @@ function sendReporterConfig() {
         grid: getMyGrid()
     });
 }
+
+// Push the callsign to the C++ server whenever App.callsign changes. The
+// DIGI panel's input listener also calls sendReporterConfig, but only
+// after that panel has been opened (its myCallEl exists). Setting the
+// callsign through the CW or PKT panels alone would otherwise leave the
+// server's reporterCallsign empty — and therefore the RADE EOO encoding
+// silent — until the user opened DIGI for the first time.
+window.addEventListener('appCallsignChanged', function() {
+    sendReporterConfig();
+});
 function reporterStateColor(state) {
     if (state === 'connected') return '#0c6';
     if (state === 'error')     return '#f44';
