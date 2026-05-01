@@ -4551,7 +4551,15 @@ function updateFreeDVStatus(msg) {
         var csHtml = (freedvModeName === 'RADE' && radeRxCallsign)
             ? '<span id="freedvCallsign" style="color:#0ff; min-width:60px; display:inline-block; text-align:center;">' + radeRxCallsign + '</span>'
             : '';
+        // RADE encodes the user's callsign into the EOO frame on PTT-off.
+        // If the user hasn't set one, show a clickable warning that opens
+        // the shared station-callsign dialog.
+        var ownCall = window.App && window.App.callsign && window.App.callsign.get();
+        var noCallHtml = (freedvModeName === 'RADE' && !ownCall)
+            ? '<span id="freedvNoCallWarn" title="Click to set your station callsign" style="cursor:pointer; color:#f66; border:1px dashed #a33; border-radius:2px; padding:1px 6px; font-size:10px; font-style:italic;">(set callsign)</span>'
+            : '';
         indicator.innerHTML = '<span id="freedvModeLink" style="cursor:pointer; text-decoration:underline; min-width:72px; display:inline-block;">FreeDV ' + freedvModeName + '</span>'
+            + noCallHtml
             + '<span id="freedvSyncEl" style="color:' + syncColor + '; width:52px; display:inline-block; text-align:center;">' + (freedvSync ? 'SYNC' : 'NO SYNC') + '</span>'
             + '<span id="freedvSnrEl" style="width:62px; display:inline-block; text-align:right;">SNR ' + snrText + '</span>'
             + csHtml
@@ -4563,6 +4571,13 @@ function updateFreeDVStatus(msg) {
         // Mode cycle on click
         var modeLink = document.getElementById('freedvModeLink');
         if (modeLink) modeLink.onclick = function(e) { e.stopPropagation(); cycleFreeDVMode(); };
+        // (set callsign) chip: open the shared station-callsign dialog
+        // (currently the PKT settings modal — same App.callsign target).
+        var noCallWarn = document.getElementById('freedvNoCallWarn');
+        if (noCallWarn) noCallWarn.onclick = function(e) {
+            e.stopPropagation();
+            if (window.Packet && window.Packet.openSettings) window.Packet.openSettings();
+        };
         // Settings gear: open DIGI Settings modal
         var settingsBtn = document.getElementById('freedvSettingsBtn');
         if (settingsBtn) settingsBtn.onclick = function(e) {
@@ -5910,16 +5925,19 @@ function sendReporterConfig() {
     });
 }
 
-// Lightweight callsign-only push. Unlike sendReporterConfig this doesn't
+// Lightweight callsign push. Unlike sendReporterConfig this doesn't
 // touch the FreeDV / PSK reporter on/off state, so it's safe to call on
 // transport open (before the DIGI checkbox state has been restored from
 // localStorage) and from the App.callsign change listener regardless of
 // whether the DIGI panel has been opened yet.
+//
+// We always send the call — including when it's empty — so the server
+// clears any stale value it might have cached from a previous session
+// (e.g. a developer's debug tab), instead of silently inheriting
+// someone else's callsign on this user's first PTT.
 function pushStationCallsign() {
     if (!ws || ws.readyState !== 1) return;
-    var call = getMyCall();
-    if (!call) return;
-    send({ cmd: 'setStationCallsign', callsign: call, grid: getMyGrid() });
+    send({ cmd: 'setStationCallsign', callsign: getMyCall(), grid: getMyGrid() });
 }
 
 // Push the callsign whenever App.callsign changes. The DIGI panel's input
@@ -5930,6 +5948,9 @@ function pushStationCallsign() {
 // opened DIGI for the first time.
 window.addEventListener('appCallsignChanged', function() {
     pushStationCallsign();
+    // Re-render the FreeDV indicator so the "(set callsign)" chip
+    // disappears as soon as a call is set.
+    if (freedvEnabled) updateFreeDVStatus({});
 });
 function reporterStateColor(state) {
     if (state === 'connected') return '#0c6';
