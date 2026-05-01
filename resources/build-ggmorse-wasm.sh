@@ -17,7 +17,7 @@ PROJECT_DIR="$SCRIPT_DIR/.."
 echo "Building ggmorse WASM module..."
 
 emcc \
-    "$SCRIPT_DIR/web/ggmorse-wasm.cpp" \
+    "$SCRIPT_DIR/ggmorse-src/ggmorse-wasm.cpp" \
     "$SCRIPT_DIR/ggmorse/src/ggmorse.cpp" \
     "$SCRIPT_DIR/ggmorse/src/resampler.cpp" \
     -I "$SCRIPT_DIR/ggmorse/include" \
@@ -29,7 +29,7 @@ emcc \
     -s ALLOW_MEMORY_GROWTH=1 \
     -s EXPORTED_FUNCTIONS='["_ggmorse_init","_ggmorse_queue","_ggmorse_decode","_ggmorse_get_text","_ggmorse_get_frequency","_ggmorse_get_speed","_ggmorse_reset","_malloc","_free"]' \
     -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","UTF8ToString","HEAPF32"]' \
-    -o "$SCRIPT_DIR/web/ggmorse-wasm.js"
+    -o "$SCRIPT_DIR/web-shared/ggmorse-wasm.js"
 
-echo "Built: $SCRIPT_DIR/web/ggmorse-wasm.js"
-echo "File size: $(du -sh "$SCRIPT_DIR/web/ggmorse-wasm.js" | cut -f1)"
+echo "Built: $SCRIPT_DIR/web-shared/ggmorse-wasm.js"
+echo "File size: $(du -sh "$SCRIPT_DIR/web-shared/ggmorse-wasm.js" | cut -f1)"

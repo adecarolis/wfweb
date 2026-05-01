@@ -36,20 +36,21 @@ mkdir -p "$DIST"
 find "$DIST" -mindepth 1 -delete
 mkdir -p "$DIST/transport" "$DIST/civ" "$DIST/models" "$DIST/digits" "$DIST/wasm"
 
-# Standalone-only files (top-level + transport + civ).
-cp "$SRC/index.html" "$DIST/"
-cp "$SRC/packet.js"  "$DIST/"
+# Standalone-only files (index + serial transport + CI-V).
+cp "$SRC/index.html"     "$DIST/"
 cp "$SRC"/transport/*.js "$DIST/transport/"
 cp "$SRC"/civ/*.js       "$DIST/civ/"
 
-# Shared assets (CW decoder family, ggmorse, sprites, models).
+# Shared assets (CW decoder family, ggmorse, sprites, models, packet UI,
+# rig-transport base class).
 cp "$SHARED/digits-sprite.png" "$DIST/"
 for f in cw-decoder.js cw-decoder-stft.js cw-decoder-utils.js cw-decoder-worker.js \
-         ggmorse-wasm.js; do
+         ggmorse-wasm.js packet.js; do
     cp "$SHARED/$f" "$DIST/"
 done
-cp "$SHARED"/models/*.onnx "$DIST/models/"
-cp "$SHARED"/digits/*.png  "$DIST/digits/"
+cp "$SHARED"/transport/*.js "$DIST/transport/"
+cp "$SHARED"/models/*.onnx  "$DIST/models/"
+cp "$SHARED"/digits/*.png   "$DIST/digits/"
 # WASM modem(s) — only included if already built. tools/build-direwolf-wasm.sh
 # is a separate one-off step (requires Emscripten); a missing dist/wasm/* is
 # treated as "this build doesn't include packet" rather than a hard error.
