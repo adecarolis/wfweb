@@ -61,10 +61,6 @@ public:
     // halt processing without waiting for queued cleanup() to execute.
     std::atomic<bool> stopRequested{false};
 
-    // EOO audio result: written by generateEooAudio() on the RADE thread,
-    // read by webserver after BlockingQueuedConnection returns.
-    QByteArray eooAudioResult;
-
 private:
 
     // LPCNet encoder (TX: PCM -> features)

@@ -488,7 +488,6 @@ void RadeProcessor::sendEoo()
 
 QByteArray RadeProcessor::generateEooAudio()
 {
-    eooAudioResult.clear();
     if (!r || !enabled_) {
         qInfo() << "RADE: generateEooAudio early return, r=" << (r != nullptr) << "enabled=" << enabled_;
         return QByteArray();
@@ -534,7 +533,6 @@ QByteArray RadeProcessor::generateEooAudio()
 
     qInfo() << "RADE: generated EOO frame (" << nOut << "IQ samples," << modemData.size() << "bytes)";
     txEooPrepared = false;  // re-encode for next TX session
-    eooAudioResult = modemData;
     return modemData;
 }
 

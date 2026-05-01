@@ -154,13 +154,18 @@ modeInfo.filter = 1;
 ### Processing Threads
 - `freedvProcessor` and `radeProcessor` each run in their own QThread
 - Cross-thread communication uses Qt signal/slot (queued connections)
-- For synchronous cross-thread calls (e.g., EOO generation on PTT-off), use
-  `BlockingQueuedConnection` with a shared member variable — do NOT use `Q_RETURN_ARG`
+- For synchronous cross-thread fire-and-forget (e.g. PTT-off triggering an EOO),
+  use `BlockingQueuedConnection` so the caller waits for the slot to start
+  before returning — do NOT use `Q_RETURN_ARG`
 
 ### RADE EOO Callsign Flow
 - **TX**: `prepareTxEooBits()` encodes callsign via `rade_text_generate_tx_string()` on first TX frame.
-  On PTT-off (`setPTT: false`), `generateEooAudio()` is called synchronously via `BlockingQueuedConnection`,
-  the EOO audio is appended to `freedvTxBuffer`, and radio unkey is delayed 300ms so the frame plays out.
+  On PTT-off (`setPTT: false`), webserver invokes `RadeProcessor::sendEoo()` via
+  `BlockingQueuedConnection`. `sendEoo` calls `generateEooAudio()` and emits `txReady`,
+  which is routed by `onRadeTxReady` through the same TX path as voice frames —
+  USB-attached rigs (`freedvTxBuffer` → ALSA drain) and LAN-attached rigs
+  (`emit sendToTxConverter` → audio converter → LAN UDP) both work. Radio unkey
+  is delayed 300ms so the frame plays out.
 - **RX**: `rade_rx()` detects EOO → `rade_text_rx()` decodes → `rxCallsign` signal → webserver → browser
 - **Important**: The callsign arrives AFTER sync is lost (EOO is the last frame). Do not gate
   reporter or UI updates on `freedvSync`.

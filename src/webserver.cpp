@@ -1495,47 +1495,22 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     }
     else if (type == "setPTT") {
         bool on = cmd["value"].toBool();
-        // On PTT-off with RADE: generate EOO frame and delay the radio unkey
-        // so the callsign-bearing EOO OFDM frame plays out through ALSA/USB
-        // before the radio stops transmitting.
-        if (!on && freedvEnabled && freedvModeName == "RADE" && radeProcessor && usbAudioOutputDevice) {
-            radeProcessor->eooAudioResult.clear();
-            bool ok = QMetaObject::invokeMethod(radeProcessor, "generateEooAudio",
-                                                 Qt::BlockingQueuedConnection);
-            QByteArray eooData = radeProcessor->eooAudioResult;
-            qInfo() << "Web: RADE EOO invoke ok=" << ok << "dataSize=" << eooData.size();
-            if (!eooData.isEmpty()) {
-                // Stereo expansion (same as onRadeTxReady)
-                QByteArray writeData;
-                if (usbOutputChannels == 2) {
-                    int numSamples = eooData.size() / 2;
-                    writeData.resize(numSamples * 4);
-                    const qint16 *src = reinterpret_cast<const qint16 *>(eooData.constData());
-                    qint16 *dst = reinterpret_cast<qint16 *>(writeData.data());
-                    for (int i = 0; i < numSamples; i++) {
-                        dst[i * 2] = src[i];
-                        dst[i * 2 + 1] = src[i];
-                    }
-                } else {
-                    writeData = eooData;
-                }
-                // RADE uses a fixed TX level (see onRadeTxReady); EOO must match.
-                {
-                    qint16 *samples = reinterpret_cast<qint16 *>(writeData.data());
-                    int count = writeData.size() / (int)sizeof(qint16);
-                    for (int i = 0; i < count; i++)
-                        samples[i] = qBound((int)-32768, (int)(samples[i] * RADE_TX_GAIN), (int)32767);
-                }
-                freedvTxBuffer.append(writeData);
-                qInfo() << "Web: queued RADE EOO frame (" << writeData.size() << "bytes), delaying unkey";
-                // Delay the radio unkey so ALSA has time to play the EOO frame
-                QTimer::singleShot(300, this, [this]() {
-                    queue->add(priorityImmediate, queueItem(funcTransceiverStatus, QVariant::fromValue<bool>(false), false, uchar(0)));
-                    queue->del(funcALCMeter, 0);
-                    qInfo() << "Web: RADE delayed unkey sent";
-                });
-                return;
-            }
+        // On PTT-off with RADE: synthesise an EOO frame carrying the callsign
+        // and delay the radio unkey so the OFDM frame plays out before the
+        // radio stops transmitting. RadeProcessor::sendEoo() emits txReady;
+        // onRadeTxReady routes it through the same USB-or-LAN path as voice
+        // frames, so this works for both USB-attached and LAN-attached rigs.
+        bool radeUnkey = !on && freedvEnabled && freedvModeName == "RADE" && radeProcessor;
+        bool hasTxOut  = (usbAudioOutput && txAudioConfigured) || txConverter;
+        if (radeUnkey && hasTxOut) {
+            QMetaObject::invokeMethod(radeProcessor, "sendEoo", Qt::BlockingQueuedConnection);
+            qInfo() << "Web: queued RADE EOO frame, delaying unkey 300ms";
+            QTimer::singleShot(300, this, [this]() {
+                queue->add(priorityImmediate, queueItem(funcTransceiverStatus, QVariant::fromValue<bool>(false), false, uchar(0)));
+                queue->del(funcALCMeter, 0);
+                qInfo() << "Web: RADE delayed unkey sent";
+            });
+            return;
         }
         queue->add(priorityImmediate, queueItem(funcTransceiverStatus, QVariant::fromValue<bool>(on), false, uchar(0)));
         // Start/stop ALC meter polling for web clients
