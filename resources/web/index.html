@@ -2692,6 +2692,11 @@ function onTransportOpen() {
     document.getElementById('connDot').title = 'Connected';
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     send({ cmd: 'getStatus' });
+    // Push the saved station callsign on every connect — the server caches
+    // it for the RADE EOO encoder and the FreeDV reporter. This is needed
+    // because App.callsign reads from localStorage on page load without
+    // calling .set(), so the appCallsignChanged listener never fires.
+    pushStationCallsign();
     var rCb = document.getElementById('digiReporterEnable');
     if (rCb && rCb.checked) sendReporterConfig();
 }
@@ -5905,14 +5910,26 @@ function sendReporterConfig() {
     });
 }
 
-// Push the callsign to the C++ server whenever App.callsign changes. The
-// DIGI panel's input listener also calls sendReporterConfig, but only
-// after that panel has been opened (its myCallEl exists). Setting the
-// callsign through the CW or PKT panels alone would otherwise leave the
-// server's reporterCallsign empty — and therefore the RADE EOO encoding
-// silent — until the user opened DIGI for the first time.
+// Lightweight callsign-only push. Unlike sendReporterConfig this doesn't
+// touch the FreeDV / PSK reporter on/off state, so it's safe to call on
+// transport open (before the DIGI checkbox state has been restored from
+// localStorage) and from the App.callsign change listener regardless of
+// whether the DIGI panel has been opened yet.
+function pushStationCallsign() {
+    if (!ws || ws.readyState !== 1) return;
+    var call = getMyCall();
+    if (!call) return;
+    send({ cmd: 'setStationCallsign', callsign: call, grid: getMyGrid() });
+}
+
+// Push the callsign whenever App.callsign changes. The DIGI panel's input
+// listener also calls sendReporterConfig, but only after that panel has
+// been opened (its myCallEl exists). Setting the callsign via the CW or
+// PKT panels alone would otherwise leave the server's reporterCallsign
+// empty — and therefore the RADE EOO encoding silent — until the user
+// opened DIGI for the first time.
 window.addEventListener('appCallsignChanged', function() {
-    sendReporterConfig();
+    pushStationCallsign();
 });
 function reporterStateColor(state) {
     if (state === 'connected') return '#0c6';
