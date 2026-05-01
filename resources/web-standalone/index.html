@@ -2546,6 +2546,7 @@ body.digi-open .digi-bar {
 <script src="civ/rig-caps.js"></script>
 <script src="civ/icom.js"></script>
 <script src="transport/serial-transport.js"></script>
+<script src="reporters.js"></script>
 <script>
 // ============================================================
 // STATE
@@ -8614,6 +8615,7 @@ initSliderTracking();
 initCWHandlers();
 initDigiHandlers();
 initReporter();
+if (window.WfwebReporters) window.WfwebReporters.apply();
 
 // Top bar LOG button → SSB/voice QSO log
 var qsoLogBtn = document.getElementById('qsoLogBtn');
