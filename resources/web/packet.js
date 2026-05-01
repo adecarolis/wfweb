@@ -281,6 +281,8 @@
         }
         document.getElementById('packetClearBtn').onclick = clearFrames;
         document.getElementById('packetSettingsBtn').onclick = openSettingsDialog;
+        document.getElementById('aprsSrcDisplay').onclick = openSettingsDialog;
+        document.getElementById('termOwnCallDisplay').onclick = openSettingsDialog;
         document.getElementById('packetCloseBtn').onclick = hide;
 
         loadSettingsFromStorage();
@@ -530,7 +532,7 @@
             // Gear button + settings dialog.
             '.packet-settings-btn { background: #111; border: 1px solid #555; color: #ccc; padding: 2px 6px; font-family: monospace; font-size: 13px; line-height: 1; cursor: pointer; border-radius: 3px; }' +
             '.packet-settings-btn:hover { background: #333; color: #fff; }' +
-            '.packet-call-display { background: #001a00; border: 1px dashed #0a0; color: #0f0; font-family: monospace; font-weight: bold; font-size: 11px; padding: 2px 8px; border-radius: 2px; letter-spacing: 1px; }' +
+            '.packet-call-display { background: #001a00; border: 1px dashed #0a0; color: #0f0; font-family: monospace; font-weight: bold; font-size: 11px; padding: 2px 8px; border-radius: 2px; letter-spacing: 1px; cursor: pointer; }' +
             '.packet-call-display.unset { color: #f66; border-color: #a33; font-weight: normal; font-style: italic; }' +
             '.pkt-settings-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2100; display: flex; align-items: center; justify-content: center; font-family: monospace; }' +
             '.pkt-settings-modal.hidden { display: none; }' +
