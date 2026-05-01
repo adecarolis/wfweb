@@ -2452,27 +2452,31 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         notifyPskReporterStatus();
     }
     else if (type == "setStationCallsign") {
-        // Lightweight callsign-only push: caches the call (and grid) for the
+        // Lightweight callsign push: caches the call (and grid) for the
         // FreeDV reporter and pushes it to the RADE EOO encoder. Unlike
-        // setReporter this does NOT toggle the FreeDV/PSK reporter on/off, so
-        // the browser can call it on tab load (when the DIGI checkbox state
-        // hasn't been restored yet) without disconnecting an active reporter.
+        // setReporter, it does NOT toggle the FreeDV/PSK reporter on/off,
+        // so the browser can call it on tab load (when the DIGI checkbox
+        // state hasn't been restored yet) without disconnecting an active
+        // reporter.
+        //
+        // An empty callsign clears the cached value — important so a fresh
+        // browser session with no saved call doesn't inherit stale state
+        // from whoever last connected to this daemon (e.g. a developer's
+        // debug tab).  In multi-tab setups the most-recent client wins.
         QString call = cmd["callsign"].toString().toUpper().trimmed();
         QString grid = cmd["grid"].toString().toUpper().trimmed();
-        if (call.isEmpty()) {
-            // Nothing to do — refuse to clobber a previously-set callsign.
-        } else {
-            reporterCallsign = call;
-            if (!grid.isEmpty()) reporterGrid = grid;
-            qInfo() << "Web: setStationCallsign" << reporterCallsign << reporterGrid;
-            if (radeProcessor) {
-                QMetaObject::invokeMethod(radeProcessor, "setTxCallsign",
-                                          Qt::QueuedConnection,
-                                          Q_ARG(QString, reporterCallsign));
-            }
-            if (freedvReporter) freedvReporter->setStation(reporterCallsign, reporterGrid);
-            if (pskReporter)    pskReporter->setStation(reporterCallsign, reporterGrid);
+        reporterCallsign = call;
+        if (!grid.isEmpty()) reporterGrid = grid;
+        qInfo() << "Web: setStationCallsign"
+                << (reporterCallsign.isEmpty() ? QStringLiteral("<cleared>") : reporterCallsign)
+                << reporterGrid;
+        if (radeProcessor) {
+            QMetaObject::invokeMethod(radeProcessor, "setTxCallsign",
+                                      Qt::QueuedConnection,
+                                      Q_ARG(QString, reporterCallsign));
         }
+        if (freedvReporter) freedvReporter->setStation(reporterCallsign, reporterGrid);
+        if (pskReporter)    pskReporter->setStation(reporterCallsign, reporterGrid);
     }
     else if (type == "setDigiActive") {
         // Browser opens / closes the FT8/FT4 panel.  PSK Reporter only

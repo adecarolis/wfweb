@@ -2208,6 +2208,9 @@
         show: show,
         hide: hide,
         toggle: toggle,
+        // Exposed so unrelated panels can reuse this dialog as the canonical
+        // "set my station callsign" surface (RADE indicator, etc.).
+        openSettings: openSettingsDialog,
         get state() { return state; }
     };
 
