@@ -2451,6 +2451,29 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         notifyFreedvReporterStatus();
         notifyPskReporterStatus();
     }
+    else if (type == "setStationCallsign") {
+        // Lightweight callsign-only push: caches the call (and grid) for the
+        // FreeDV reporter and pushes it to the RADE EOO encoder. Unlike
+        // setReporter this does NOT toggle the FreeDV/PSK reporter on/off, so
+        // the browser can call it on tab load (when the DIGI checkbox state
+        // hasn't been restored yet) without disconnecting an active reporter.
+        QString call = cmd["callsign"].toString().toUpper().trimmed();
+        QString grid = cmd["grid"].toString().toUpper().trimmed();
+        if (call.isEmpty()) {
+            // Nothing to do — refuse to clobber a previously-set callsign.
+        } else {
+            reporterCallsign = call;
+            if (!grid.isEmpty()) reporterGrid = grid;
+            qInfo() << "Web: setStationCallsign" << reporterCallsign << reporterGrid;
+            if (radeProcessor) {
+                QMetaObject::invokeMethod(radeProcessor, "setTxCallsign",
+                                          Qt::QueuedConnection,
+                                          Q_ARG(QString, reporterCallsign));
+            }
+            if (freedvReporter) freedvReporter->setStation(reporterCallsign, reporterGrid);
+            if (pskReporter)    pskReporter->setStation(reporterCallsign, reporterGrid);
+        }
+    }
     else if (type == "setDigiActive") {
         // Browser opens / closes the FT8/FT4 panel.  PSK Reporter only
         // connects while a digital mode is actually being decoded.
