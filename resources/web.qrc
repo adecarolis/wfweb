@@ -12,6 +12,7 @@
         <file alias="cw-decoder-utils.js">web-shared/cw-decoder-utils.js</file>
         <file alias="model.onnx">web-shared/models/model.onnx</file>
         <file alias="ggmorse-wasm.js">web-shared/ggmorse-wasm.js</file>
+        <file alias="reporters.js">web-shared/reporters.js</file>
         <file alias="ft8ts.mjs">ft8ts/dist/ft8ts.mjs</file>
         <file alias="ft8ts.mjs.map">ft8ts/dist/ft8ts.mjs.map</file>
     </qresource>
