@@ -15,12 +15,17 @@
 set -e
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SRC="$REPO_ROOT/resources/web"
+SRC="$REPO_ROOT/resources/web-standalone"
+SHARED="$REPO_ROOT/resources/web-shared"
 FT8="$REPO_ROOT/resources/ft8ts/dist"
 DIST="${1:-$REPO_ROOT/dist}"
 
 if [ ! -d "$SRC" ]; then
     echo "ERROR: source dir $SRC does not exist" >&2
+    exit 1
+fi
+if [ ! -d "$SHARED" ]; then
+    echo "ERROR: shared dir $SHARED does not exist" >&2
     exit 1
 fi
 
@@ -31,19 +36,20 @@ mkdir -p "$DIST"
 find "$DIST" -mindepth 1 -delete
 mkdir -p "$DIST/transport" "$DIST/civ" "$DIST/models" "$DIST/digits" "$DIST/wasm"
 
-# Top-level files
-cp "$SRC/index.html"           "$DIST/"
-cp "$SRC/digits-sprite.png"    "$DIST/"
-for f in cw-decoder.js cw-decoder-stft.js cw-decoder-utils.js cw-decoder-worker.js \
-         ggmorse-wasm.js packet.js; do
-    cp "$SRC/$f" "$DIST/"
-done
-
-# Subdirs
+# Standalone-only files (top-level + transport + civ).
+cp "$SRC/index.html" "$DIST/"
+cp "$SRC/packet.js"  "$DIST/"
 cp "$SRC"/transport/*.js "$DIST/transport/"
 cp "$SRC"/civ/*.js       "$DIST/civ/"
-cp "$SRC"/models/*.onnx  "$DIST/models/"
-cp "$SRC"/digits/*.png   "$DIST/digits/"
+
+# Shared assets (CW decoder family, ggmorse, sprites, models).
+cp "$SHARED/digits-sprite.png" "$DIST/"
+for f in cw-decoder.js cw-decoder-stft.js cw-decoder-utils.js cw-decoder-worker.js \
+         ggmorse-wasm.js; do
+    cp "$SHARED/$f" "$DIST/"
+done
+cp "$SHARED"/models/*.onnx "$DIST/models/"
+cp "$SHARED"/digits/*.png  "$DIST/digits/"
 # WASM modem(s) — only included if already built. tools/build-direwolf-wasm.sh
 # is a separate one-off step (requires Emscripten); a missing dist/wasm/* is
 # treated as "this build doesn't include packet" rather than a hard error.
@@ -65,22 +71,6 @@ fi
 # FT8/FT4 module + sourcemap (the index.html imports it from /ft8ts.mjs)
 cp "$FT8/ft8ts.mjs"     "$DIST/"
 cp "$FT8/ft8ts.mjs.map" "$DIST/"
-
-# Inject the WFWEB_STANDALONE flag so the SPA defaults to Direct mode.
-# We splice a tiny <script> into the very first <head> opener so it runs
-# before everything else. The flag tells the SPA: there is no C++ server
-# behind this page; default to talking to the rig directly via Web Serial.
-TMP="$DIST/index.html.tmp"
-awk '
-    !inserted && /<head[^a-zA-Z]/ {
-        print
-        print "<script>window.WFWEB_STANDALONE = true;</script>"
-        inserted = 1
-        next
-    }
-    { print }
-' "$DIST/index.html" > "$TMP"
-mv "$TMP" "$DIST/index.html"
 
 # Tiny README
 cat > "$DIST/README.md" <<'EOF'
