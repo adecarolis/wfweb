@@ -444,6 +444,21 @@
         return entry.meters[kind] || null;
     }
 
+    // Returns the parsed memory format for a rig, or null if memories
+    // aren't supported (the .rig file's MemFormat= is empty for several
+    // older Icoms — e.g. IC-756PRO family, IC-706, IC-746, IC-718).
+    var _memFormatCache = {};
+    function getRigMemFormat(civAddr) {
+        if (Object.prototype.hasOwnProperty.call(_memFormatCache, civAddr)) {
+            return _memFormatCache[civAddr];
+        }
+        var caps = (typeof globalThis !== 'undefined' ? globalThis : window).IcomRigCaps;
+        var entry = caps && caps[civAddr];
+        var parsed = entry && entry.memFormat ? parseMemFormat(entry.memFormat) : null;
+        _memFormatCache[civAddr] = parsed;
+        return parsed;
+    }
+
     // ---------- CW keyer (cmd 0x17) --------------------------------------
     function cmdSendCW(text) {
         // ASCII bytes after 0x17. Max 30 chars per frame on IC-7300.
@@ -603,6 +618,411 @@
         return null;
     }
 
+    // ---------- Memory contents (cmd 0x1A 0x00) --------------------------
+    //
+    // The wire format for memory contents is rig-specific and described by
+    // the "MemFormat" string from rigs/<model>.rig — e.g. for the IC-7300:
+    //
+    //   %01.2b %3.1d %4.5f %9.1g %10.1h %11.1k %12.3n %15.3o %18.5F
+    //   %23.1G %24.1H %25.1K %26.3N %29.3O %32.10z
+    //
+    // Each token is %<offset>.<length><spec>. Specs follow the table in
+    // src/radio/icomcommander.cpp. Offsets are 1-based and used on the
+    // parse path; the encoder appends in token order.
+
+    function parseMemFormat(str) {
+        if (!str) return null;
+        var out = [];
+        var re = /%(\d+)\.(\d+)([a-zA-Z+])/g;
+        var m;
+        while ((m = re.exec(str)) !== null) {
+            out.push({ pos: parseInt(m[1], 10), len: parseInt(m[2], 10), spec: m[3] });
+        }
+        return out;
+    }
+
+    // BCD helpers, big-endian — matches icomCommander::bcdEncodeInt /
+    // bcdHexToUInt. Used for memory channel, group, and CTCSS tone (in
+    // tenths of Hz). Frequency uses the existing little-endian encoding.
+    function bcdEncodeCharBE(num) {
+        var n = Math.max(0, Math.min(99, Math.floor(num)));
+        return (((Math.floor(n / 10) & 0x0F) << 4) | (n % 10)) & 0xFF;
+    }
+    function bcdEncodeIntBE(num) {
+        var n = Math.max(0, Math.min(9999, Math.floor(num)));
+        var th = Math.floor(n / 1000); n -= th * 1000;
+        var hu = Math.floor(n / 100);  n -= hu * 100;
+        var te = Math.floor(n / 10);
+        var un = n - te * 10;
+        return [((th & 0x0F) << 4) | (hu & 0x0F), ((te & 0x0F) << 4) | (un & 0x0F)];
+    }
+    function bcdDecodeCharBE(b) {
+        return ((b >> 4) & 0x0F) * 10 + (b & 0x0F);
+    }
+    function bcdDecodeIntBE(b0, b1) {
+        return (((b0 >> 4) & 0x0F) * 1000 + (b0 & 0x0F) * 100
+              + ((b1 >> 4) & 0x0F) * 10   + (b1 & 0x0F));
+    }
+
+    // Find the 'a' (group) spec, if any — the read-frame payload for rigs
+    // that have memory groups starts with the group bytes.
+    function _memGroupSpec(memFormat) {
+        for (var i = 0; i < memFormat.length; i++) {
+            if (memFormat[i].spec === 'a') return memFormat[i];
+        }
+        return null;
+    }
+
+    // Build the CI-V payload that READS one memory channel. The rig
+    // responds with a full memory-contents frame for that channel — or a
+    // short reply (channel + 0xFF terminator, or just truncation) when the
+    // memory is empty.
+    function cmdReadMemoryContents(channel, group, memFormat) {
+        var data = [0x1A, 0x00];
+        var aSpec = _memGroupSpec(memFormat);
+        if (aSpec) {
+            if (aSpec.len === 1) {
+                data.push(bcdEncodeCharBE(group | 0));
+            } else {
+                var gb = bcdEncodeIntBE(group | 0);
+                data.push(gb[0], gb[1]);
+            }
+        }
+        var cb = bcdEncodeIntBE(channel | 0);
+        data.push(cb[0], cb[1]);
+        return new Uint8Array(data);
+    }
+
+    // Build the CI-V payload that WRITES a memory channel from `mem`.
+    // `mem` mirrors src/wfwebtypes.h memoryType; only the fields we need
+    // for a basic VFO-A snapshot are populated by the caller.
+    function cmdWriteMemoryContents(mem, memFormat) {
+        var data = [0x1A, 0x00];
+        for (var i = 0; i < memFormat.length; i++) {
+            var p = memFormat[i];
+            if (_encodeMemSpec(data, p, mem)) break;
+        }
+        return new Uint8Array(data);
+    }
+
+    // Build a "clear this channel" frame. Sets mem.del so the first
+    // del-aware spec ('c'/'C'/'d'/'f'/'F') writes 0xFF and the encoder
+    // stops after the channel/group prefix — matching the C++ path.
+    function cmdClearMemoryContents(channel, group, memFormat) {
+        return cmdWriteMemoryContents(
+            { del: true, channel: channel | 0, group: group | 0 },
+            memFormat
+        );
+    }
+
+    function _encodeMemSpec(data, p, mem) {
+        var len = p.len;
+        switch (p.spec) {
+        case 'a':
+            if (len === 1) {
+                data.push(bcdEncodeCharBE(mem.group || 0));
+            } else {
+                var gb = bcdEncodeIntBE(mem.group || 0);
+                data.push(gb[0], gb[1]);
+            }
+            return false;
+        case 'b': {
+            var cb = bcdEncodeIntBE(mem.channel | 0);
+            data.push(cb[0], cb[1]);
+            return false;
+        }
+        case 'c':
+        case 'C':
+            if (mem.del) { data.push(0xFF); return true; }
+            data.push((mem.skip || 0) << 4 | (mem.scan || 0));
+            return false;
+        case 'd':
+            if (mem.del) { data.push(0xFF); return true; }
+            data.push(((mem.split || 0) << 4 & 0xF0) | ((mem.scan || 0) & 0x0F));
+            return false;
+        case 'D':
+            data.push((mem.duplex || 0) & 0xFF);
+            return false;
+        case 'e':
+            data.push((mem.vfo || 0) & 0xFF);
+            return false;
+        case 'E':
+            data.push((mem.vfoB || 0) & 0xFF);
+            return false;
+        case 'f':
+            if (mem.del) { data.push(0xFF); return true; }
+            _appendFreqLE(data, mem.frequency || 0, len);
+            return false;
+        case 'F':
+            _appendFreqLE(data, mem.frequencyB || 0, len);
+            return false;
+        case 'g':
+            data.push(bcdEncodeCharBE(mem.mode || 0));
+            return false;
+        case 'G':
+            data.push(bcdEncodeCharBE(mem.modeB || 0));
+            return false;
+        case 'h':
+            data.push(bcdEncodeCharBE(mem.filter || 0));
+            return false;
+        case 'H':
+            data.push(bcdEncodeCharBE(mem.filterB || 0));
+            return false;
+        case 'i':
+            data.push(bcdEncodeCharBE(mem.datamode || 0));
+            return false;
+        case 'I':
+            data.push(bcdEncodeCharBE(mem.datamodeB || 0));
+            return false;
+        case 'j':
+            data.push((((mem.duplex || 0) << 4) | ((mem.tonemode || 0) & 0x0F)) & 0xFF);
+            return false;
+        case 'J':
+            data.push((((mem.duplexB || 0) << 4) | ((mem.tonemodeB || 0) & 0x0F)) & 0xFF);
+            return false;
+        case 'k':
+            data.push((((mem.datamode || 0) << 4) | ((mem.tonemode || 0) & 0x0F)) & 0xFF);
+            return false;
+        case 'K':
+            data.push((((mem.datamodeB || 0) << 4) | ((mem.tonemodeB || 0) & 0x0F)) & 0xFF);
+            return false;
+        case 'l':
+            data.push((mem.tonemode || 0) & 0xFF);
+            return false;
+        case 'L':
+            data.push((mem.tonemodeB || 0) & 0xFF);
+            return false;
+        case 'm':
+            data.push(((mem.dsql || 0) << 4) & 0xFF);
+            return false;
+        case 'M':
+            data.push(((mem.dsqlB || 0) << 4) & 0xFF);
+            return false;
+        case 'n':
+        case 'o':
+        case 'N':
+        case 'O': {
+            // CTCSS tone in tenths of Hz, big-endian BCD across 2 bytes,
+            // preceded by 1 nul byte → 3 bytes total. wfwebtypes.h
+            // defaults tone="67.0" (the lowest standard CTCSS), and the
+            // IC-7300 NACKs the whole frame if this is zero — even when
+            // tonemode is off. Pick a valid default tone (670 → 67.0 Hz)
+            // and pad anything beyond the standard 3 bytes with zeros.
+            data.push(0x00);
+            if (len >= 3) {
+                var tb = bcdEncodeIntBE(670);
+                data.push(tb[0], tb[1]);
+            }
+            for (var nfi = 3; nfi < len; nfi++) data.push(0x00);
+            return false;
+        }
+        case 'p':
+            data.push(((((mem.dtcsp || 0) << 3) & 0x10) | ((mem.dtcsp || 0) & 0x01)) & 0xFF);
+            return false;
+        case 'P':
+            data.push(((((mem.dtcspB || 0) << 3) & 0x10) | ((mem.dtcspB || 0) & 0x01)) & 0xFF);
+            return false;
+        case 'q': {
+            var qb = bcdEncodeIntBE(mem.dtcs || 0);
+            data.push(qb[0], qb[1]);
+            return false;
+        }
+        case 'Q': {
+            var Qb = bcdEncodeIntBE(mem.dtcsB || 0);
+            data.push(Qb[0], Qb[1]);
+            return false;
+        }
+        case 'r':
+            data.push(bcdEncodeCharBE(mem.dvsql || 0));
+            return false;
+        case 'R':
+            data.push(bcdEncodeCharBE(mem.dvsqlB || 0));
+            return false;
+        case 's':
+        case 'S':
+        case 't':
+        case 'T':
+        case 'u':
+        case 'U':
+        case 'v':
+        case 'V':
+            // D-STAR / duplex offset / call fields. Pad to declared length
+            // with zeros (D-STAR) or spaces (call signs). Without UI to
+            // populate them, the contents are "unset" — zeros are accepted
+            // by the rig as "empty".
+            for (var dfi = 0; dfi < len; dfi++) data.push(0x00);
+            return false;
+        case 'w':
+            // Tuning step: 1 enable + 1 step + 2 prog ts BCD = 4 bytes
+            for (var wfi = 0; wfi < len; wfi++) data.push(0x00);
+            return false;
+        case 'x':
+            data.push(bcdEncodeCharBE(mem.atten || 0));
+            data.push(bcdEncodeCharBE(mem.preamp || 0));
+            return false;
+        case 'y':
+            data.push(bcdEncodeCharBE(mem.antenna || 0));
+            return false;
+        case '+':
+            data.push(bcdEncodeCharBE(mem.ipplus ? 1 : 0));
+            return false;
+        case 'z': {
+            // Right-pad the channel name with spaces (0x20) to declared
+            // length. mem.name is a JS string — convert to bytes.
+            var name = String(mem.name || '');
+            for (var zi = 0; zi < len; zi++) {
+                var ch = zi < name.length ? name.charCodeAt(zi) & 0x7F : 0x20;
+                data.push(ch);
+            }
+            return false;
+        }
+        default:
+            // Unknown / mode-dependent ('Z'). Skip — the rig will accept a
+            // short trailing frame, same as the C++ path when 'Z' yields
+            // no output.
+            return false;
+        }
+    }
+
+    function _appendFreqLE(data, hz, len) {
+        var bcd = encodeBcdLE(hz | 0, len);
+        for (var i = 0; i < bcd.length; i++) data.push(bcd[i]);
+    }
+
+    // Parse an incoming `0x1A 0x00 …` reply. Returns null if the reply
+    // isn't a memory-contents frame; otherwise returns the populated `mem`
+    // (with `mem.empty = true` if the rig truncated the response, which
+    // signals "no entry stored for this channel").
+    function parseMemoryContentsReply(payload, memFormat) {
+        if (!payload || payload.length < 2) return null;
+        if (payload[0] !== 0x1A || payload[1] !== 0x00) return null;
+        if (!memFormat) return null;
+        // Skip the 0x1A 0x00 cmd bytes. The format's offsets are 1-based
+        // against the payload as the rig sees it (post-cmd bytes).
+        var data = payload.subarray ? payload.subarray(2) : payload.slice(2);
+        var mem = _newMemDefaults();
+        for (var i = 0; i < memFormat.length; i++) {
+            var p = memFormat[i];
+            var off = p.pos - 1;
+            if (off + p.len > data.length) {
+                mem.empty = true;
+                break;
+            }
+            _decodeMemSpec(mem, p, data, off);
+        }
+        // Mirror webserver.cpp's empty-detection (a freq-of-zero, mode-of-zero
+        // memory came from a truncated response on rigs that just drop the
+        // reply for absent channels).
+        if (!mem.empty && (mem.frequency || 0) === 0 && (mem.mode || 0) === 0) {
+            mem.empty = true;
+        }
+        return mem;
+    }
+
+    function _newMemDefaults() {
+        return {
+            channel: 0, group: 0, del: false, empty: false,
+            scan: 0, skip: 0, split: 0,
+            frequency: 0, mode: 0, filter: 1, datamode: 0, tonemode: 0,
+            tone: '', tsql: '', dtcs: 0, dtcsp: 0,
+            duplex: 0, dsql: 0, dvsql: 0,
+            frequencyB: 0, modeB: 0, filterB: 1, datamodeB: 0, tonemodeB: 0,
+            toneB: '', tsqlB: '', dtcsB: 0, dtcspB: 0, duplexB: 0,
+            atten: 0, preamp: 0, antenna: 0, ipplus: false,
+            name: '',
+        };
+    }
+
+    function _decodeMemSpec(mem, p, data, off) {
+        var len = p.len;
+        switch (p.spec) {
+        case 'a':
+            mem.group = (len === 1) ? bcdDecodeCharBE(data[off])
+                                    : bcdDecodeIntBE(data[off], data[off + 1]);
+            break;
+        case 'b':
+            mem.channel = bcdDecodeIntBE(data[off], data[off + 1]);
+            break;
+        case 'c':
+            if (data[off] === 0xFF) mem.del = true;
+            else mem.scan = data[off];
+            break;
+        case 'C':
+            if (data[off] === 0xFF) mem.del = true;
+            else { mem.skip = (data[off] >> 4) & 0xF; mem.scan = data[off] & 0xF; }
+            break;
+        case 'd':
+            if (data[off] === 0xFF) mem.del = true;
+            else { mem.split = (data[off] >> 4) & 0xF; mem.scan = data[off] & 0xF; }
+            break;
+        case 'D':
+            mem.duplex = data[off] & 0xF;
+            break;
+        case 'f':
+            if (data[off] === 0xFF && _allFF(data, off, len)) { mem.del = true; break; }
+            mem.frequency = decodeBcdLE(data.subarray ? data.subarray(off, off + len)
+                                                     : data.slice(off, off + len));
+            break;
+        case 'F':
+            mem.frequencyB = decodeBcdLE(data.subarray ? data.subarray(off, off + len)
+                                                      : data.slice(off, off + len));
+            break;
+        case 'g':
+            mem.mode = bcdDecodeCharBE(data[off]);
+            break;
+        case 'G':
+            mem.modeB = bcdDecodeCharBE(data[off]);
+            break;
+        case 'h':
+            mem.filter = bcdDecodeCharBE(data[off]);
+            break;
+        case 'H':
+            mem.filterB = bcdDecodeCharBE(data[off]);
+            break;
+        case 'i':
+            mem.datamode = bcdDecodeCharBE(data[off]);
+            break;
+        case 'I':
+            mem.datamodeB = bcdDecodeCharBE(data[off]);
+            break;
+        case 'j':
+            mem.duplex = (data[off] >> 4) & 0xF;
+            mem.tonemode = data[off] & 0xF;
+            break;
+        case 'J':
+            mem.duplexB = (data[off] >> 4) & 0xF;
+            mem.tonemodeB = data[off] & 0xF;
+            break;
+        case 'k':
+            mem.datamode = (data[off] >> 4) & 0xF;
+            mem.tonemode = data[off] & 0xF;
+            break;
+        case 'K':
+            mem.datamodeB = (data[off] >> 4) & 0xF;
+            mem.tonemodeB = data[off] & 0xF;
+            break;
+        case 'z': {
+            var s = '';
+            for (var zi = 0; zi < len; zi++) {
+                var ch = data[off + zi];
+                if (ch === 0x00 || ch === 0xFF) break;
+                if (ch >= 0x20 && ch < 0x7F) s += String.fromCharCode(ch);
+            }
+            mem.name = s.replace(/\s+$/, '');
+            break;
+        }
+        // Other fields (tone names, D-STAR calls, antenna, IP+) aren't
+        // surfaced in the standalone UI — leave defaults in place.
+        default:
+            break;
+        }
+    }
+
+    function _allFF(data, off, len) {
+        for (var i = 0; i < len; i++) if (data[off + i] !== 0xFF) return false;
+        return true;
+    }
+
     global.IcomCiv = {
         FE: FE, FD: FD, CONTROLLER_ADDR: CONTROLLER_ADDR,
         PROBE_FRAME: PROBE_FRAME,
@@ -683,5 +1103,12 @@
         calMeter: calMeter,
         getRigMeterTable: getRigMeterTable,
         parseAck: parseAck,
+        // Memory contents (cmd 0x1A 0x00)
+        parseMemFormat: parseMemFormat,
+        getRigMemFormat: getRigMemFormat,
+        cmdReadMemoryContents: cmdReadMemoryContents,
+        cmdWriteMemoryContents: cmdWriteMemoryContents,
+        cmdClearMemoryContents: cmdClearMemoryContents,
+        parseMemoryContentsReply: parseMemoryContentsReply,
     };
 })(window);

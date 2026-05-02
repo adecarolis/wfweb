@@ -641,6 +641,15 @@
                             civ.cmdSetModInput(this._modIn.off, this._savedDataOffMod));
                     }
                     return;
+                case 'getMemories':
+                    this._memScanStart(obj);
+                    return;
+                case 'writeMemory':
+                    this._memWrite(obj);
+                    return;
+                case 'clearMemory':
+                    this._memClear(obj);
+                    return;
                 default:
                     return;
             }
@@ -1297,6 +1306,16 @@
                 return;
             }
 
+            // 0x1A 0x00 — Memory contents reply (rig-specific layout).
+            // Routed via the active scan / pending-write so we know whose
+            // request this is for and forward it to the SPA as a
+            // 'memoryChannel' message.
+            if (payload.length >= 2 && payload[0] === 0x1A && payload[1] === 0x00) {
+                if (this._memHandleReply(payload)) return;
+                // Fall through if no memory handler claimed it (e.g. an
+                // unsolicited frame on an unsupported rig).
+            }
+
             // 0x1A 0x03 — Filter Width reply (encoding depends on current mode).
             if (payload.length >= 3 && payload[0] === 0x1A && payload[1] === 0x03) {
                 var hz = civ.parseFilterWidthReply(payload, this.state.mode || 'USB');
@@ -1310,12 +1329,169 @@
                 return;
             }
 
-            if (civ.parseAck(payload) !== null) return;
+            var ack = civ.parseAck(payload);
+            if (ack !== null) {
+                if (ack === false) console.warn('[CIV] rig NACK (0xFA)');
+                return;
+            }
         }
 
         _emit(type, fields) {
             var msg = Object.assign({ type: type }, fields);
             this.dispatchEvent(new CustomEvent('message', { detail: msg }));
+        }
+
+        // ---------- Memory channels (CI-V cmd 0x1A 0x00) -----------------
+        //
+        // The wire format for memory contents is rig-specific (see the
+        // memFormat field in civ/rig-caps.js). Server-side this lives in
+        // src/webserver.cpp / icomCommander::parseMemory; here we mirror
+        // it directly off the parsed CI-V replies.
+        //
+        // Read flow: SPA → 'getMemories' → _memScanStart() walks
+        // [start..end], enqueueing one read at a time and bumping the
+        // pointer when either a reply lands or the watchdog (500 ms,
+        // matching the server) fires for a non-existent slot. Each parsed
+        // entry is forwarded as a 'memoryChannel' message; when the walk
+        // finishes we emit 'memoryScanComplete' with the count.
+        //
+        // Write / clear flow: SPA → 'writeMemory' / 'clearMemory' →
+        // _memWrite / _memClear build the rig-specific frame from current
+        // VFO A state (or just the channel address for a clear) and push
+        // it through the normal CI-V queue.
+
+        _memFormat() {
+            return civ.getRigMemFormat(this.civAddr);
+        }
+
+        _memScanStart(obj) {
+            var fmt = this._memFormat();
+            if (!fmt) {
+                this._emit('memoryScanComplete',
+                    { count: 0, error: 'Memories not supported by this radio' });
+                return;
+            }
+            // Cancel any previous scan that's still in flight.
+            this._memScanCancel();
+            var start = (obj && obj.start) ? (obj.start | 0) : 1;
+            var end   = (obj && obj.end)   ? (obj.end | 0)   : 99;
+            var group = (obj && obj.group) ? (obj.group | 0) : 0;
+            this._memScan = {
+                active: true, start: start, end: end, group: group,
+                current: start, count: 0, fmt: fmt, timer: null,
+            };
+            this._memScanRequest();
+        }
+
+        _memScanRequest() {
+            var s = this._memScan;
+            if (!s || !s.active) return;
+            if (s.current > s.end) {
+                this._memScanFinish();
+                return;
+            }
+            this._enqueue('readMemory:' + s.current,
+                civ.cmdReadMemoryContents(s.current, s.group, s.fmt));
+            // Watchdog — non-existent channels on some rigs return a
+            // truncated reply that may not match our parse exactly, so
+            // advance after 500 ms even if nothing came back. Matches
+            // webserver::scanNextMemory.
+            var self = this;
+            s.timer = setTimeout(function () {
+                if (self._memScan === s && s.active) {
+                    s.current++;
+                    self._memScanRequest();
+                }
+            }, 500);
+        }
+
+        _memScanFinish() {
+            var s = this._memScan;
+            if (!s) return;
+            if (s.timer) { clearTimeout(s.timer); s.timer = null; }
+            s.active = false;
+            this._emit('memoryScanComplete', { count: s.count });
+        }
+
+        _memScanCancel() {
+            var s = this._memScan;
+            if (!s) return;
+            if (s.timer) clearTimeout(s.timer);
+            this._memScan = null;
+        }
+
+        _memWrite(obj) {
+            var fmt = this._memFormat();
+            if (!fmt) return;
+            if (!obj || !(obj.channel | 0)) return;
+            var ch = obj.channel | 0;
+            var group = (obj.group | 0) || 0;
+            // Snapshot current VFO A — the SPA's MEM-write button stores
+            // whatever is on VFO A right now. Mirrors webserver.cpp:
+            // freq/mode/filter pulled from cache, copied to the VFO B
+            // slots so the rig's split fields aren't undefined.
+            var modeCode = civ.modeToCode[this.state.mode || 'USB'];
+            if (typeof modeCode !== 'number') modeCode = 0x01; // USB
+            var filt = (this.state.filter | 0) > 0 ? (this.state.filter | 0) : 1;
+            var freq = this.state.frequency || this.state.vfoAFrequency || 0;
+            var mem = {
+                channel: ch, group: group, del: false,
+                scan: 0, skip: 0, split: 0,
+                frequency: freq, mode: modeCode, filter: filt,
+                datamode: 0, tonemode: 0,
+                tone: '', tsql: '', dtcs: 0, dtcsp: 0, duplex: 0,
+                frequencyB: freq, modeB: modeCode, filterB: filt,
+                datamodeB: 0, tonemodeB: 0, dtcsB: 0, dtcspB: 0, duplexB: 0,
+                name: '',
+            };
+            this._enqueue('writeMemory:' + ch,
+                civ.cmdWriteMemoryContents(mem, fmt));
+        }
+
+        _memClear(obj) {
+            var fmt = this._memFormat();
+            if (!fmt) return;
+            if (!obj || !(obj.channel | 0)) return;
+            var ch = obj.channel | 0;
+            var group = (obj.group | 0) || 0;
+            this._enqueue('clearMemory:' + ch,
+                civ.cmdClearMemoryContents(ch, group, fmt));
+            // The rig won't push a memory-channel update on its own after
+            // a clear, so synthesise one so the SPA's list updates.
+            this._emit('memoryChannel',
+                { memory: { channel: ch, group: group, del: true } });
+        }
+
+        _memHandleReply(payload) {
+            var fmt = this._memFormat();
+            if (!fmt) return false;
+            var mem = civ.parseMemoryContentsReply(payload, fmt);
+            if (!mem) return false;
+            // Translate the mode register byte to the SPA's string form
+            // before forwarding (the SPA expects mode names like 'USB').
+            var modeStr = civ.codeToMode[mem.mode] || '';
+            var out = {
+                channel: mem.channel, group: mem.group || 0,
+                frequency: mem.frequency || 0,
+                mode: modeStr, filter: mem.filter || 1,
+                name: mem.name || '',
+                del: !!mem.del, empty: !!mem.empty,
+            };
+            // Cancel the scan watchdog and bump the pointer if this reply
+            // belongs to an active scan (most likely case during a scan).
+            var s = this._memScan;
+            if (s && s.active) {
+                if (s.timer) { clearTimeout(s.timer); s.timer = null; }
+                if (!out.del && !out.empty && out.frequency > 0) s.count++;
+                s.current++;
+                this._emit('memoryChannel', { memory: out });
+                this._memScanRequest();
+            } else {
+                // Outside a scan (e.g. echo of our own writeMemory or an
+                // unsolicited frame) — just push it to the SPA.
+                this._emit('memoryChannel', { memory: out });
+            }
+            return true;
         }
 
         // Layout of a 0x27 0x00 frame after CivParser strips FE FE / FD:
