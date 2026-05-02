@@ -2859,6 +2859,9 @@ function ensureSerialTransport() {
                     connStatusText = 'Probing rig (' + info.baud + ' baud, ' +
                                      info.attempt + '/' + info.total + ')…';
                     break;
+                case 'wakingRadio':
+                    connStatusText = 'Waking radio at ' + info.baud + ' baud…';
+                    break;
                 case 'connected':
                     connStatusText = 'Connected to ' + info.model +
                                      ' @ ' + info.baud + ' baud (CI-V 0x' +

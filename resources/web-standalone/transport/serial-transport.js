@@ -461,7 +461,32 @@
                     this._emit('update', { tuner: tn });
                     return;
                 case 'setPower':
-                    this._enqueue('setPower', civ.cmdSetPower(!!obj.value));
+                    if (obj.value) {
+                        // Power-on needs the baud-dependent FE preamble to wake
+                        // the rig's CI-V receiver — bypass the normal builder
+                        // by enqueuing a pre-framed raw frame.
+                        this._enqueueRaw('setPower',
+                            civ.buildPowerOnFrame(this.civAddr, this.controllerAddr, this.baudRate));
+                        // Resume polling that was stopped on power-off and arm
+                        // the "rig is up" detector. Mirror wfweb's heuristic:
+                        // require 3 consecutive valid CI-V replies before
+                        // declaring power-on, so a stray frame during boot
+                        // doesn't trigger us before the rig is ready to
+                        // accept scope-enable commands.
+                        this._awaitingPowerOnRemaining = 3;
+                        this._startPolling();
+                    } else {
+                        this._enqueue('setPower', civ.cmdSetPower(false));
+                        // The rig is going dark — stop polling (otherwise
+                        // every 200 ms we queue queries to a dead radio) and
+                        // tell the UI so it can show the off-overlay. Wait
+                        // briefly for the off command to leave the wire.
+                        var self = this;
+                        setTimeout(function () {
+                            self._stopPolling();
+                            self._emit('update', { powerState: false });
+                        }, 800);
+                    }
                     return;
                 case 'setSpan':
                     var spIdx = (typeof obj.value === 'number') ? obj.value : -1;
@@ -782,6 +807,47 @@
                 try { await port.close(); } catch (e) { /* ignore */ }
             }
 
+            // Last resort: nothing replied at any baud. If we have saved
+            // baud/addr, the rig is most likely powered off — send the
+            // wake-up preamble + power-on at the saved baud, give the rig
+            // time to boot, and probe one more time.
+            if (savedBaud && savedAddr) {
+                this.onProgress({ stage: 'wakingRadio', baud: savedBaud });
+                var openedForWake = false;
+                try {
+                    await port.open({
+                        baudRate: savedBaud, dataBits: 8, stopBits: 1,
+                        parity: 'none', flowControl: 'none',
+                    });
+                    openedForWake = true;
+                    var w = port.writable.getWriter();
+                    try {
+                        await w.write(civ.buildPowerOnFrame(savedAddr, this.controllerAddr, savedBaud));
+                    } finally {
+                        w.releaseLock();
+                    }
+                    // The rig is silent during boot, so wait first and then
+                    // poll: firing probes during early boot is wasted, but
+                    // once the CI-V receiver is up it replies immediately.
+                    // Total budget ~7 s of polling — exits as soon as the
+                    // rig answers.
+                    await new Promise(function (r) { setTimeout(r, 1500); });
+                    var deadline = Date.now() + 7000;
+                    var wokenAddr = null;
+                    while (Date.now() < deadline) {
+                        wokenAddr = await this._probePort(port, PROBE_TIMEOUT_MS);
+                        if (wokenAddr) break;
+                    }
+                    if (wokenAddr) {
+                        this._finalizeDetection(port, savedBaud, wokenAddr);
+                        return;
+                    }
+                } catch (e) { /* fall through */ }
+                if (openedForWake) {
+                    try { await port.close(); } catch (e) { /* ignore */ }
+                }
+            }
+
             throw new Error('No CI-V reply at any common baud rate. ' +
                 'Check the radio is on, CI-V is enabled, and the cable is connected to the correct port.');
         }
@@ -898,6 +964,16 @@
             this._drain();
         }
 
+        // Like _enqueue, but the bytes are written verbatim instead of being
+        // wrapped by buildFrame. Used for the power-on wake-up frame (which
+        // needs a long FE preamble that must precede the FE FE addr ctrl ...
+        // start-of-frame).
+        _enqueueRaw(key, frameBytes) {
+            this._payloads[key] = { __raw: frameBytes };
+            if (this._queue.indexOf(key) === -1) this._queue.push(key);
+            this._drain();
+        }
+
         async _drain() {
             if (this._draining || !this._open) return;
             this._draining = true;
@@ -907,7 +983,9 @@
                     var payload = this._payloads[key];
                     delete this._payloads[key];
                     if (!payload) continue;
-                    var frame = civ.buildFrame(this.civAddr, this.controllerAddr, payload);
+                    var frame = payload.__raw
+                        ? payload.__raw
+                        : civ.buildFrame(this.civAddr, this.controllerAddr, payload);
                     await this.writer.write(frame);
                     await new Promise(function (r) { setTimeout(r, 5); });
                 }
@@ -943,6 +1021,21 @@
         _onFrame(frame) {
             var payload = frame.payload;
             if (!payload || payload.length === 0) return;
+
+            // After a power-on attempt, wait for 3 consecutive valid CI-V
+            // replies before declaring the rig back up — early-boot noise
+            // and stray frames before the scope subsystem is ready can fool
+            // a single-frame trigger. Once confirmed, tell the UI and
+            // re-enable scope output (the rig forgets it across a power
+            // cycle, so without this the waterfall stays frozen).
+            if (this._awaitingPowerOnRemaining > 0) {
+                this._awaitingPowerOnRemaining--;
+                if (this._awaitingPowerOnRemaining === 0) {
+                    this._emit('update', { powerState: true });
+                    this._enqueue('scopeOn',   new Uint8Array([0x27, 0x10, 0x01]));
+                    this._enqueue('scopeData', new Uint8Array([0x27, 0x11, 0x01]));
+                }
+            }
 
             // Spectrum scope (0x27 0x00) — assembled across multiple frames,
             // emitted to the SPA as a binary 0x01 message when complete.
@@ -1268,6 +1361,10 @@
         }
 
         _startPolling() {
+            // Idempotent — _startPolling can be called both from connect and
+            // from the power-on path; without this guard each call would leak
+            // the previous interval handles.
+            if (this._sMeterTimer || this._safetyPollTimer) return;
             // RX: S-meter every 200ms while not transmitting.
             // TX: power, SWR, ALC every 200ms while transmitting.
             this._sMeterTimer = setInterval(() => {
