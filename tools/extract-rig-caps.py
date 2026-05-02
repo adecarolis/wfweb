@@ -207,12 +207,26 @@ def extract_caps(props: dict[str, str]) -> dict:
             return int(props.get(f"Rig/{key}", str(default)))
         except ValueError:
             return default
+    # Detect support for the 0x25 0x00 / 0x25 0x01 commands ("Selected Freq" /
+    # "Unselected Freq"). On A/B-VFO Icoms (IC-7300, IC-705, …) these let the
+    # standalone transport read both VFOs without flipping the rig's selection.
+    has_selected_freq = False
+    pat = re.compile(r"^Rig/Commands\\(\d+)\\Type$")
+    for k, v in props.items():
+        if pat.match(k) and v.strip() == "Selected Freq":
+            has_selected_freq = True
+            break
     return {
         "hasTransmit": b("HasTransmit", True),
         "hasSpectrum": b("HasSpectrum", False),
         "hasLAN":      b("HasLAN", False),
         "numReceivers": n("NumberOfReceivers", 1),
         "numVFOs":      n("NumberOfVFOs", 1),
+        # Cmd29 (Main/Sub prefix) rigs — IC-7610 / IC-785x / IC-7760. The
+        # 0x29 0x00 / 0x29 0x01 prefix scopes the next CI-V command to the
+        # Main or Sub receiver respectively.
+        "hasCommand29": b("HasCommand29", False),
+        "hasSelectedFreq": has_selected_freq,
     }
 
 
@@ -317,7 +331,8 @@ def main() -> int:
         "// Source: rigs/*.rig (Icom only). Re-run the script after editing those.",
         "//",
         "// Each entry: civAddr -> { model, caps, meters, cmds, inputs, preamps, attenuators }",
-        "//   caps:   { hasTransmit, hasSpectrum, hasLAN, numReceivers, numVFOs }",
+        "//   caps:   { hasTransmit, hasSpectrum, hasLAN, numReceivers, numVFOs,",
+        "//             hasCommand29, hasSelectedFreq }",
         "//   meters: { kind: [[rigVal, actualVal], ...] }",
         "//           kinds: sMeter, swr, power, alc, comp, center, voltage, current",
         "//   cmds:   { modOff, modData1, modData2, modData3 } -> CI-V byte sequence",
