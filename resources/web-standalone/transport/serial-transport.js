@@ -1316,6 +1316,11 @@
                 hasTransmit: true, hasSpectrum: true, hasLAN: false,
                 numReceivers: 1, numVFOs: 2,
             };
+            // Most modern Icoms expose OFF/PRE1/PRE2; the SPA's P.AMP/ATT
+            // cycle button needs the full list to walk past PRE1.
+            var preamps = (entry && entry.preamps && entry.preamps.length)
+                ? entry.preamps
+                : [{num:0,name:'OFF'},{num:1,name:'PRE1'},{num:2,name:'PRE2'}];
             this._emit('rigInfo', {
                 version: '0.6.1-direct',
                 model: rigDisplayName(this.civAddr),
@@ -1323,6 +1328,7 @@
                 modes: DEFAULT_MODES,
                 filters: DEFAULT_FILTERS,
                 spans: DEFAULT_SPANS,
+                preamps: preamps,
                 hasFilterSettings: true,
                 hasMainSub: caps.numReceivers > 1,
                 hasSpectrum: caps.hasSpectrum,

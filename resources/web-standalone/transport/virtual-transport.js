@@ -25,6 +25,9 @@
         { num: 4, name: '±50k',  hz: 50000  }, { num: 5, name: '±100k', hz: 100000 },
         { num: 6, name: '±250k', hz: 250000 },
     ];
+    var DEFAULT_PREAMPS = [
+        { num: 0, name: 'OFF' }, { num: 1, name: 'PRE1' }, { num: 2, name: 'PRE2' },
+    ];
 
     // Commands that simply echo their value back as an 'update' field of the
     // same name. Keeps the table short — exotic commands fall through to a
@@ -335,6 +338,7 @@
                 modes: DEFAULT_MODES,
                 filters: DEFAULT_FILTERS,
                 spans: DEFAULT_SPANS,
+                preamps: DEFAULT_PREAMPS,
                 hasFilterSettings: true,
                 hasMainSub: false,
                 hasSpectrum: false,
