@@ -340,10 +340,37 @@
 
     // ---------- Power on/off (cmd 0x18) ----------------------------------
     function cmdSetPower(on) {
-        // Power-on from a powered-off rig requires a long FE preamble. The
-        // simple form here works while the rig is already on (turn it off)
-        // or for the rare case where transceive auto-on is configured.
         return new Uint8Array([0x18, on ? 0x01 : 0x00]);
+    }
+
+    // Power-on from a powered-off rig requires a baud-dependent run of 0xFE
+    // wake-up bytes before the framed command — the rig's CI-V receiver is in
+    // a low-power state and needs the preamble to lock onto the bit clock.
+    // Counts mirror icomCommander::powerOn(); 150 is the Icom-recommended
+    // value for 115200 and is the safe default.
+    function powerOnPreambleSize(baud) {
+        switch (baud) {
+            case 57600: return 75;
+            case 38400: return 50;
+            case 19200: return 25;
+            case 9600:  return 13;
+            case 4800:  return 7;
+            default:    return 150;
+        }
+    }
+
+    function buildPowerOnFrame(toAddr, fromAddr, baud) {
+        var n = powerOnPreambleSize(baud);
+        var out = new Uint8Array(n + 7);
+        for (var i = 0; i < n; i++) out[i] = FE;
+        out[n + 0] = FE;
+        out[n + 1] = FE;
+        out[n + 2] = toAddr & 0xFF;
+        out[n + 3] = fromAddr & 0xFF;
+        out[n + 4] = 0x18;
+        out[n + 5] = 0x01;
+        out[n + 6] = FD;
+        return out;
     }
 
     // ---------- TX meters (cmd 0x15 0x11/0x12/0x13) ----------------------
@@ -582,6 +609,7 @@
         cmdReadTuner: cmdReadTuner,
         cmdSetTuner: cmdSetTuner,
         cmdSetPower: cmdSetPower,
+        buildPowerOnFrame: buildPowerOnFrame,
         cmdReadPowerMeter: cmdReadPowerMeter,
         cmdReadSwrMeter: cmdReadSwrMeter,
         cmdReadAlcMeter: cmdReadAlcMeter,
