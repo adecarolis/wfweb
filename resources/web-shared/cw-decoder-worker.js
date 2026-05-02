@@ -1,7 +1,8 @@
 /// <reference lib="webworker" />
 // CW Decoder Web Worker - ggmorse (Goertzel algorithm, pure signal processing)
 
-importScripts('ggmorse-wasm.js');
+// Cache-bust: inherit ?v=… from this worker's own URL (set by parent at construction).
+importScripts('ggmorse-wasm.js' + location.search);
 
 let module = null;
 let ggmorse_init_fn = null;

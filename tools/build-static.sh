@@ -73,6 +73,13 @@ fi
 cp "$FT8/ft8ts.mjs"     "$DIST/"
 cp "$FT8/ft8ts.mjs.map" "$DIST/"
 
+# Optional: GitHub Pages custom-domain marker. Drop a CNAME file into
+# resources/web-standalone/ once you've picked the domain, and every build
+# (CI included) will publish with it.
+if [ -f "$SRC/CNAME" ]; then
+    cp "$SRC/CNAME" "$DIST/"
+fi
+
 # Tiny README
 cat > "$DIST/README.md" <<'EOF'
 # wfweb Standalone
@@ -121,6 +128,16 @@ Opera, Brave, Arc). Firefox / Safari users can't use this build.
 - Audio (RX, mic, FT8/CW/voice). Comes in Phase 2.
 - Non-Icom rigs.
 EOF
+
+# Cache-bust every local asset URL with ?v=<sha>. WFWEB_BUILD_VERSION lets
+# CI override with a clean commit SHA (see .github/workflows/pages.yml). For
+# local builds we always tack on a timestamp so iterative rebuilds bust the
+# cache even when HEAD hasn't moved.
+if [ -z "${WFWEB_BUILD_VERSION:-}" ]; then
+    SHA="$(git -C "$REPO_ROOT" rev-parse --short=12 HEAD 2>/dev/null || echo dev)"
+    WFWEB_BUILD_VERSION="${SHA}-$(date -u +%s)"
+fi
+"$REPO_ROOT/tools/fingerprint-static.py" "$DIST" "$WFWEB_BUILD_VERSION"
 
 echo
 echo "Static bundle written to: $DIST"
