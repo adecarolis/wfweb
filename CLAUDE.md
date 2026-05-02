@@ -1,22 +1,37 @@
 # wfview / wfweb Development Guide
 
 ## Project Overview
-Headless Qt5 C++ app for controlling amateur radio transceivers (Icom, Kenwood, Yaesu).
+Headless app for controlling amateur radio transceivers (Icom, Kenwood, Yaesu).
 The only user interface is web-based (browser). There is no desktop GUI.
-Built from `wfweb.pro`.
+
+There are two builds, both browser-driven:
+- **Server** — Qt5 C++ binary built from `wfweb.pro`. Connects to the rig over
+  USB or LAN and exposes HTTP + WebSocket. Required for LAN rigs, classic
+  FreeDV, reporter spotting, and unattended deployments.
+- **Standalone** — pure-browser SPA, no C++ in the loop. Drives a USB Icom
+  directly via Web Serial. Built by `tools/build-static.sh` into a static
+  `dist/` directory (published to https://wfweb.k1fm.us by
+  `.github/workflows/pages.yml`).
+
+Both builds share the SPA frontend (see "Frontend layout — three forks" below).
 
 ---
 
 ## Build
 
 ```bash
-# Linux - ALWAYS use wfweb.pro, NOT wfview.pro
+# Server build — Linux. ALWAYS use wfweb.pro, NOT wfview.pro
 qmake wfweb.pro && make -j$(nproc)
 
-# Flags: -b (daemon), -l (logfile), -s (settings file)
+# Server flags: -b (daemon), -l (logfile), -s (settings file)
+
+# Standalone build — pure browser bundle, no C++ toolchain needed
+tools/build-static.sh dist/
+tools/serve-static.py 8000 dist/   # local test (sends Cache-Control: no-store)
 ```
 
-See `BUILDING.md` for platform-specific prerequisites (Linux/Windows/macOS).
+See `BUILDING.md` for platform-specific prerequisites (Linux/Windows/macOS) and
+more on the Standalone bundle.
 
 ---
 
@@ -24,11 +39,19 @@ See `BUILDING.md` for platform-specific prerequisites (Linux/Windows/macOS).
 
 ### Core Signal Chain
 ```
-WebSocket commands (from browser)
-    -> cachingQueue (deduplication, prioritization)
-    -> rigCommander (command encoding, CI-V protocol)
-    -> serial port (USB) or icomUdpHandler (LAN)
-    -> radio
+Server build:
+  Browser (WebSocket commands)
+      -> cachingQueue (deduplication, prioritization)
+      -> rigCommander (command encoding, CI-V protocol)
+      -> serial port (USB) or icomUdpHandler (LAN)
+      -> radio
+
+Standalone build:
+  Browser
+      -> SerialRigTransport (resources/web-standalone/transport/serial-transport.js)
+      -> in-browser CI-V codec (resources/web-standalone/civ/icom.js)
+      -> Web Serial port
+      -> radio
 ```
 
 ### Key Components
@@ -84,6 +107,22 @@ When you want to share a file between both builds:
 3. Update its `web.qrc` `<file alias=...>` line so the source path is `web-shared/<file>` (the alias stays the same — no C++ code changes)
 4. `tools/build-static.sh` already copies `web-shared/`, so the standalone build picks it up automatically
 
+### Standalone runtime — what replaces the C++ server
+Without a server, the browser does in JS / WASM what the Server does in Qt:
+
+| Server (C++)                          | Standalone (browser) |
+|---------------------------------------|----------------------|
+| `cachingQueue` + `rigCommander`       | dedup FIFO + CI-V codec inside `serial-transport.js` and `civ/icom.js` |
+| serial port / `icomUdpHandler`        | `transport/serial-transport.js` (Web Serial) |
+| Per-rig `.rig` files in `rigs/`       | `civ/rig-caps.js` (generated from `rigs/*.rig` by `tools/extract-rig-caps.py`) |
+| `freedvProcessor` / `radeProcessor`   | `wasm/{rade,direwolf}.{mjs,wasm}` — committed in tree; rebuild only when WASM source changes via `tools/build-{rade,direwolf}-wasm.sh` (Emscripten) |
+| `aprsProcessor` / `ax25LinkProcessor` | Browser-side AX.25 stack in `resources/web-shared/packet.js` driving the Direwolf WASM modem |
+| `tools/virtualrig` (off-air loopback) | `resources/web-shared/airbus.js` + `transport/virtual-transport.js` (same-origin BroadcastChannel between two tabs at `/?virtual=1&id=N`) |
+| FreeDV 700D/700E/1600                 | _Server-only_ (no codec2 WASM port) |
+| PSK / FreeDV Reporter                 | _Server-only_ (disabled in Standalone UI) |
+
+`.github/workflows/pages.yml` builds the Standalone bundle on every push and publishes it to wfweb.k1fm.us. `tools/fingerprint-static.py` rewrites every local asset URL with `?v=<sha>` so a redeploy actually busts the Pages cache.
+
 ### Audio Binary Protocol
 | Direction | MsgType | Format |
 |-----------|---------|--------|
@@ -130,9 +169,22 @@ modeInfo.filter = 1;
 | `include/prefs.h` | Preferences struct (contains `webPort`) |
 | `resources/web/index.html` | Server-build SPA (WebSocket transport only) |
 | `resources/web-standalone/index.html` | Standalone-build SPA (Web Serial only) |
+| `resources/web-standalone/civ/icom.js` | In-browser Icom CI-V codec (Standalone) |
+| `resources/web-standalone/civ/rig-caps.js` | Generated per-rig caps for Standalone |
+| `resources/web-standalone/transport/serial-transport.js` | Web Serial transport + dedup FIFO (Standalone) |
+| `resources/web-standalone/transport/virtual-transport.js` | Browser virtual-rig transport (Standalone) |
+| `resources/web-standalone/wasm/` | Committed RADE + Direwolf WASM modems (Standalone) |
+| `resources/web-shared/transport/rig-transport.js` | Transport base class (both builds) |
+| `resources/web-shared/airbus.js` | Browser-side BroadcastChannel "air" for Standalone virtual rigs |
+| `resources/web-shared/packet.js` | Browser-side AX.25 / APRS / YAPP stack (both builds) |
 | `resources/web-shared/` | Files shared by both builds (CW decoder, ggmorse, sprites, models) |
 | `resources/web.qrc` | Qt resource file for the server build |
-| `tools/build-static.sh` | Builds the standalone static bundle |
+| `tools/build-static.sh` | Builds the Standalone static bundle into `dist/` |
+| `tools/serve-static.py` | Local HTTP server for `dist/` with `Cache-Control: no-store` |
+| `tools/fingerprint-static.py` | Cache-busts local asset URLs with `?v=<sha>` |
+| `tools/extract-rig-caps.py` | Generates `civ/rig-caps.js` from `rigs/*.rig` |
+| `tools/build-rade-wasm.sh` / `tools/build-direwolf-wasm.sh` | Emscripten rebuilds of the Standalone modems (only when their C source changes) |
+| `.github/workflows/pages.yml` | Publishes Standalone to wfweb.k1fm.us |
 | `resources/ft8ts/dist/ft8ts.mjs` | FT8/FT4 decoder module |
 | `src/radeprocessor.cpp` | RADE V1 modem processing |
 | `src/freedvprocessor.cpp` | Classic FreeDV codec processing |
