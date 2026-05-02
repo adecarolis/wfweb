@@ -48,8 +48,6 @@
         setMonitor:       'monitor',
         setPreamp:        'preamp',
         setAttenuator:    'attenuator',
-        setFilter:        'filter',
-        setFilterWidth:   'filterWidth',
         setSplit:         'split',
         setTuner:         'tuner',
         setSpan:          'spanIndex',
@@ -78,6 +76,10 @@
                 frequency: 14074000,
                 mode: 'USB',
                 filter: 1,
+                // Per-filter bandwidths (Hz). Real Icoms remember a separate
+                // width for each filter slot; without this the slider would
+                // refuse to move when the user switches filters.
+                filterWidths: { 1: 3000, 2: 2400, 3: 1800 },
                 transmitting: false,
                 // -54 dB = S0. The drawSMeter() scale treats 0 as S9, so a
                 // default of 0 would paint a permanent full-scale signal.
@@ -155,6 +157,19 @@
                     if (typeof obj.value !== 'string') return;
                     this.state.mode = obj.value;
                     this._emit('update', { mode: obj.value });
+                    return;
+                case 'setFilter':
+                    if (typeof obj.value !== 'number') return;
+                    this.state.filter = obj.value;
+                    this._emit('update', {
+                        filter: obj.value,
+                        filterWidth: this.state.filterWidths[obj.value] || 3000,
+                    });
+                    return;
+                case 'setFilterWidth':
+                    if (typeof obj.value !== 'number' || obj.value <= 0) return;
+                    this.state.filterWidths[this.state.filter] = obj.value;
+                    this._emit('update', { filterWidth: obj.value });
                     return;
                 case 'setPTT':
                     var ptt = !!obj.value;
@@ -361,6 +376,7 @@
                 selectedVfo: 'A',
                 mode: this.state.mode,
                 filter: this.state.filter,
+                filterWidth: this.state.filterWidths[this.state.filter] || 3000,
                 sMeter: this.state.sMeter,
                 transmitting: this.state.transmitting,
             };

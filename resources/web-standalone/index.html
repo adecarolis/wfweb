@@ -3259,6 +3259,10 @@ function updateFilterShapeBtn(val) {
 }
 
 function sendFilter(num) {
+    // Filter switch brings in the new filter's stored width; clear the
+    // slider-touch debounce so the incoming update isn't suppressed by a
+    // recent manual slider drag on the previous filter.
+    sliderSetTimes['filterWidth'] = 0;
     send({ cmd: 'setFilter', value: num });
 }
 

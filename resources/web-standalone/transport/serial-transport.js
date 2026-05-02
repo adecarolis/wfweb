@@ -390,6 +390,9 @@
                         this._enqueue('setMode', civ.cmdSetMode(this.state.mode, obj.value));
                     }
                     this._emit('update', { filter: obj.value });
+                    // Each filter has its own stored bandwidth on Icoms.
+                    // Re-read so the slider reflects the new filter's value.
+                    this._enqueue('readFilterWidth', civ.cmdReadFilterWidth());
                     return;
                 case 'setFilterWidth':
                     if (typeof obj.value !== 'number' || obj.value <= 0) return;
