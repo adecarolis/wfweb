@@ -170,6 +170,19 @@
         return ((b >> 4) & 0x0F) * 10 + (b & 0x0F);
     }
 
+    // Pick how to read the second VFO/receiver for a given Icom CI-V address.
+    // Cmd29 rigs (Main/Sub) take precedence over the 0x25 (Selected/Unselected)
+    // path; rigs with neither — single-VFO models or older A/B rigs that don't
+    // implement 0x25 — get 'single' so we just keep the active VFO populated.
+    function _dualVfoModeFor(civAddr) {
+        var entry = RIG_CAPS[civAddr];
+        var caps  = entry && entry.caps;
+        if (!caps) return 'single';
+        if (caps.hasCommand29) return 'cmd29';
+        if (caps.hasSelectedFreq) return 'selectedUnselected';
+        return 'single';
+    }
+
     class SerialRigTransport extends global.RigTransport {
         constructor(opts) {
             super();
@@ -197,13 +210,33 @@
 
             this._sMeterTimer = null;
             this._safetyPollTimer = null;
+            this._otherVfoPollTimer = null;
             this._lastFreqStamp = 0;
             this._lastModeStamp = 0;
 
             this.state = {
                 frequency: 0, mode: null, filter: null,
                 sMeter: 0, transmitting: false,
+                // VFO B / Sub frequency. Populated on rigs that expose a
+                // second VFO via the 0x25 (Selected/Unselected) or 0x29
+                // (Main/Sub) commands; left at 0 on single-VFO rigs so the
+                // SPA's side display stays at the "---.---.---" placeholder.
+                vfoAFrequency: 0, vfoBFrequency: 0,
+                // Best-effort tracking of which VFO is currently selected on
+                // the rig. We default to 'A' on connect and update when the
+                // user clicks the VFO label or 0x25 0x00 confirms it.
+                selectedVfo: 'A',
             };
+
+            // Dual-VFO read mode, derived from rig caps in _finalizeDetection.
+            // 'cmd29'              — IC-7610 / IC-785x / IC-7760: read both
+            //                        receivers via 0x29 0x00 0x03 / 0x29 0x01 0x03
+            // 'selectedUnselected' — IC-7300 / IC-705 / IC-7100 / IC-905 /
+            //                        IC-9700 / IC-7300MK2: read both VFOs via
+            //                        0x25 0x00 / 0x25 0x01
+            // 'single'             — older / RX-only rigs without either:
+            //                        only the active VFO is queried.
+            this._dualVfoMode = 'single';
 
             // RX audio capture state — getUserMedia → AudioWorklet → Int16
             // PCM → 0x02 binary frame → SPA's handleAudioData.
@@ -442,14 +475,26 @@
                     return;
                 case 'selectVFO':
                     var vfo = (obj.value === 'B') ? 'B' : 'A';
+                    this.state.selectedVfo = vfo;
                     this._enqueue('selectVFO', civ.cmdSelectVFO(vfo));
+                    // Re-pull both VFOs so the side display flips to the new
+                    // "other" VFO and the main display ends up matching the
+                    // rig. The 0x25 / 0x29 replies will land in
+                    // _applyVfoFreq and update the SPA.
+                    this._enqueueDualVfoReads();
                     this._emit('update', { selectedVfo: vfo });
                     return;
                 case 'swapVFO':
                     this._enqueue('swapVFO', civ.cmdSwapVFO());
+                    // The browser already mirrors the swap on its local
+                    // vfoAFreq/vfoBFreq cache for instant UX. Re-pull both
+                    // VFOs so the rig's actual post-swap values overwrite
+                    // that optimistic guess once the round-trip completes.
+                    this._enqueueDualVfoReads();
                     return;
                 case 'equalizeVFO':
                     this._enqueue('equalizeVFO', civ.cmdEqualizeVFO());
+                    this._enqueueDualVfoReads();
                     return;
                 case 'setSplit':
                     var sp = !!obj.value;
@@ -903,6 +948,7 @@
             this.baudRate = baud;
             this.civAddr = addr;
             this._modIn = civ.getRigModInputs(addr);
+            this._dualVfoMode = _dualVfoModeFor(addr);
             lsSetInt('directBaudRate', baud);
             lsSetInt('directCivAddr', addr);
 
@@ -925,6 +971,7 @@
 
             // Initial reads — freq / mode / ptt / s-meter.
             this._enqueue('readFreq',   civ.cmdReadFrequency());
+            this._enqueueDualVfoReads();
             this._enqueue('readMode',   civ.cmdReadMode());
             this._enqueue('readPTT',    civ.cmdReadPTT());
             this._enqueue('readSMeter', civ.cmdReadSMeter());
@@ -965,6 +1012,20 @@
             this._payloads[key] = payload;
             if (this._queue.indexOf(key) === -1) this._queue.push(key);
             this._drain();
+        }
+
+        // Pull both VFOs / receivers so the SPA's side display ("---.---.---")
+        // gets populated on initial connect. The plain 0x03 read above only
+        // returns the currently-selected VFO; this covers the OTHER one. On
+        // single-VFO rigs we skip — there's nothing to read.
+        _enqueueDualVfoReads() {
+            if (this._dualVfoMode === 'cmd29') {
+                this._enqueue('readMainFreq', civ.cmdReadMainFreq());
+                this._enqueue('readSubFreq',  civ.cmdReadSubFreq());
+            } else if (this._dualVfoMode === 'selectedUnselected') {
+                this._enqueue('readSelectedFreq',   civ.cmdReadSelectedFreq());
+                this._enqueue('readUnselectedFreq', civ.cmdReadUnselectedFreq());
+            }
         }
 
         // Like _enqueue, but the bytes are written verbatim instead of being
@@ -1064,13 +1125,37 @@
                 return;
             }
 
+            // Cmd29 freq reply (Main/Sub rigs — IC-7610 / IC-785x / IC-7760).
+            // Must be tried BEFORE the plain 0x03 / 0x25 parsers because the
+            // 0x29 prefix wraps a payload that would otherwise look like one
+            // of those.
+            var c29 = civ.parseCmd29FreqReply(payload);
+            if (c29 !== null && c29.hz > 0) {
+                this._lastFreqStamp = Date.now();
+                this._applyVfoFreq(c29.receiver === 1 ? 'B' : 'A', c29.hz, false);
+                return;
+            }
+
+            // Selected/Unselected freq reply (A/B-VFO rigs — IC-7300 etc.).
+            // selected=true is the rig's currently-selected VFO; selected=false
+            // is the OTHER one. We pair this with our local selectedVfo
+            // tracking to map back to the A/B labels the SPA expects.
+            var su = civ.parseSelectedUnselectedFreqReply(payload);
+            if (su !== null && su.hz > 0) {
+                this._lastFreqStamp = Date.now();
+                var sel = this.state.selectedVfo || 'A';
+                var which = su.selected ? sel : (sel === 'A' ? 'B' : 'A');
+                this._applyVfoFreq(which, su.hz, su.selected);
+                return;
+            }
+
             var freqHz = civ.parseFrequencyReply(payload);
             if (freqHz !== null && freqHz > 0) {
                 this._lastFreqStamp = Date.now();
-                if (freqHz !== this.state.frequency) {
-                    this.state.frequency = freqHz;
-                    this._emit('update', { frequency: freqHz, vfoAFrequency: freqHz });
-                }
+                // Plain 0x03 / 0x00 reply: this is the rig's currently-active
+                // VFO. Map onto whichever side our local selectedVfo says is
+                // active so the side-VFO display lines up with the main one.
+                this._applyVfoFreq(this.state.selectedVfo || 'A', freqHz, true);
                 return;
             }
 
@@ -1347,11 +1432,34 @@
             });
         }
 
+        // Map an incoming freq onto a specific VFO and emit the right combo
+        // of fields to the SPA. `which` ∈ {'A','B'}; isSelected=true means
+        // this VFO is the one currently driving the rig's main display, so
+        // we should also bump `frequency`. Mirrors the server-side flow in
+        // src/webserver.cpp::receiveCache().
+        _applyVfoFreq(which, hz, isSelected) {
+            var freqField = (which === 'B') ? 'vfoBFrequency' : 'vfoAFrequency';
+            var u = {};
+            var changed = false;
+            if (this.state[freqField] !== hz) {
+                this.state[freqField] = hz;
+                u[freqField] = hz;
+                changed = true;
+            }
+            if (isSelected && this.state.frequency !== hz) {
+                this.state.frequency = hz;
+                u.frequency = hz;
+                changed = true;
+            }
+            if (changed) this._emit('update', u);
+        }
+
         _emitFullStatus() {
             var s = {
                 frequency: this.state.frequency,
-                vfoAFrequency: this.state.frequency,
-                selectedVfo: 'A',
+                vfoAFrequency: this.state.vfoAFrequency || this.state.frequency,
+                vfoBFrequency: this.state.vfoBFrequency,
+                selectedVfo:   this.state.selectedVfo || 'A',
                 mode: this.state.mode,
                 filter: this.state.filter,
                 sMeter: this.state.sMeter,
@@ -1392,11 +1500,22 @@
                 if (now - this._lastFreqStamp > 2000) this._enqueue('readFreq', civ.cmdReadFrequency());
                 if (now - this._lastModeStamp > 2000) this._enqueue('readMode', civ.cmdReadMode());
             }, 1000);
+            // Slow refresh of the unselected/Sub VFO so dial motion on the
+            // *other* VFO eventually shows up in the side display. The rig
+            // doesn't push unsolicited 0x25 0x01 / 0x29 0x01 frames on its
+            // own — without this, the side stays stale forever.
+            if (this._dualVfoMode !== 'single') {
+                this._otherVfoPollTimer = setInterval(() => {
+                    if (!this._open || this.state.transmitting) return;
+                    this._enqueueDualVfoReads();
+                }, 3000);
+            }
         }
 
         _stopPolling() {
             if (this._sMeterTimer) { clearInterval(this._sMeterTimer); this._sMeterTimer = null; }
             if (this._safetyPollTimer) { clearInterval(this._safetyPollTimer); this._safetyPollTimer = null; }
+            if (this._otherVfoPollTimer) { clearInterval(this._otherVfoPollTimer); this._otherVfoPollTimer = null; }
         }
 
         _notifyClose(reason) {

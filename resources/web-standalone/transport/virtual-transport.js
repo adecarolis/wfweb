@@ -74,6 +74,11 @@
 
             this.state = {
                 frequency: 14074000,
+                // Initial VFO B to a different freq so the side display shows
+                // something distinct from the main display on first load.
+                vfoAFrequency: 14074000,
+                vfoBFrequency: 7074000,
+                selectedVfo: 'A',
                 mode: 'USB',
                 filter: 1,
                 // Per-filter bandwidths (Hz). Real Icoms remember a separate
@@ -151,7 +156,11 @@
                 case 'setFrequency':
                     if (typeof obj.value !== 'number' || obj.value <= 0) return;
                     this.state.frequency = obj.value;
-                    this._emit('update', { frequency: obj.value, vfoAFrequency: obj.value });
+                    var sf = (this.state.selectedVfo === 'B') ? 'vfoBFrequency' : 'vfoAFrequency';
+                    this.state[sf] = obj.value;
+                    var sfu = { frequency: obj.value };
+                    sfu[sf] = obj.value;
+                    this._emit('update', sfu);
                     return;
                 case 'setMode':
                     if (typeof obj.value !== 'string') return;
@@ -191,7 +200,11 @@
                     this._emit('update', { transmitting: ptt });
                     return;
                 case 'selectVFO':
-                    this._emit('update', { selectedVfo: obj.value || 'A' });
+                    var newVfo = (obj.value === 'B') ? 'B' : 'A';
+                    this.state.selectedVfo = newVfo;
+                    var nvf = (newVfo === 'B') ? this.state.vfoBFrequency : this.state.vfoAFrequency;
+                    this.state.frequency = nvf;
+                    this._emit('update', { selectedVfo: newVfo, frequency: nvf });
                     return;
                 case 'enableAudio':
                     // Mirror SerialRigTransport: the SPA's startAudio() flips
@@ -230,12 +243,44 @@
                     return;
                 // Phase-3 stubs. Accepting them keeps the UI controls live;
                 // the modems hook in here later.
+                case 'swapVFO':
+                    // Defer the bus update so the browser's eager local swap
+                    // (in index.html's swapVFO()) lands first; otherwise our
+                    // synchronous emit + the browser's post-send swap would
+                    // double-swap and net to nothing. queueMicrotask matches
+                    // the async cadence of the WebSocket transport.
+                    var selfS = this;
+                    var aS = this.state.vfoAFrequency, bS = this.state.vfoBFrequency;
+                    this.state.vfoAFrequency = bS;
+                    this.state.vfoBFrequency = aS;
+                    this.state.frequency = (this.state.selectedVfo === 'B') ? aS : bS;
+                    queueMicrotask(function () {
+                        selfS._emit('update', {
+                            vfoAFrequency: selfS.state.vfoAFrequency,
+                            vfoBFrequency: selfS.state.vfoBFrequency,
+                            frequency:     selfS.state.frequency,
+                        });
+                    });
+                    return;
+                case 'equalizeVFO':
+                    if (this.state.selectedVfo === 'B') {
+                        this.state.vfoAFrequency = this.state.vfoBFrequency;
+                    } else {
+                        this.state.vfoBFrequency = this.state.vfoAFrequency;
+                    }
+                    var selfE = this;
+                    queueMicrotask(function () {
+                        selfE._emit('update', {
+                            vfoAFrequency: selfE.state.vfoAFrequency,
+                            vfoBFrequency: selfE.state.vfoBFrequency,
+                        });
+                    });
+                    return;
                 case 'packetEnable': case 'packetSetMode':
                 case 'aprsTxBeacon': case 'aprsBeaconConfig': case 'aprsClearStations':
                 case 'termList': case 'termRegister': case 'termConnect':
                 case 'termDisconnect': case 'termSend': case 'termHistory':
                 case 'sendCW': case 'stopCW':
-                case 'swapVFO': case 'equalizeVFO':
                 case 'setPower':
                     return;
                 default:
@@ -371,9 +416,10 @@
 
         _emitFullStatus() {
             var s = {
-                frequency: this.state.frequency,
-                vfoAFrequency: this.state.frequency,
-                selectedVfo: 'A',
+                frequency:     this.state.frequency,
+                vfoAFrequency: this.state.vfoAFrequency,
+                vfoBFrequency: this.state.vfoBFrequency,
+                selectedVfo:   this.state.selectedVfo,
                 mode: this.state.mode,
                 filter: this.state.filter,
                 filterWidth: this.state.filterWidths[this.state.filter] || 3000,

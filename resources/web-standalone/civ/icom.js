@@ -177,6 +177,19 @@
         return new Uint8Array([0x03]);
     }
 
+    // Read selected / unselected VFO frequency on A/B-VFO Icoms that
+    // implement the 0x25 command (IC-7300, IC-705, IC-7100, IC-905,
+    // IC-9700, IC-7300MK2). 0x00 = currently-selected VFO, 0x01 = the
+    // other one — neither flips the rig's selection.
+    function cmdReadSelectedFreq()   { return new Uint8Array([0x25, 0x00]); }
+    function cmdReadUnselectedFreq() { return new Uint8Array([0x25, 0x01]); }
+
+    // Read Main / Sub frequency on cmd29 rigs (IC-7610, IC-785x, IC-7760).
+    // The 0x29 0xRR prefix scopes the next CI-V command to receiver RR
+    // (0=Main, 1=Sub), so 0x29 0xRR 0x03 reads that receiver's freq.
+    function cmdReadMainFreq() { return new Uint8Array([0x29, 0x00, 0x03]); }
+    function cmdReadSubFreq()  { return new Uint8Array([0x29, 0x01, 0x03]); }
+
     function cmdSetFrequency(hz, numBytes) {
         numBytes = numBytes || (hz >= 1e10 ? 6 : 5);
         var bcd = encodeBcdLE(hz, numBytes);
@@ -534,6 +547,26 @@
         return decodeBcdLE(payload.slice(1));
     }
 
+    // Reply to cmdReadSelectedFreq / cmdReadUnselectedFreq.
+    // Layout: [0x25, 0x00 | 0x01, b0..b4 or b5]
+    // selected=true -> the rig's currently-selected VFO; selected=false -> the other.
+    function parseSelectedUnselectedFreqReply(payload) {
+        if (payload.length < 7) return null;
+        if (payload[0] !== 0x25) return null;
+        if (payload[1] !== 0x00 && payload[1] !== 0x01) return null;
+        return { hz: decodeBcdLE(payload.slice(2)), selected: payload[1] === 0x00 };
+    }
+
+    // Reply to cmdReadMainFreq / cmdReadSubFreq on cmd29 rigs.
+    // Layout: [0x29, recv (0=Main, 1=Sub), 0x03 | 0x00, b0..b4 or b5]
+    // (0x00 covers the unsolicited form the rig sends on dial motion.)
+    function parseCmd29FreqReply(payload) {
+        if (payload.length < 8) return null;
+        if (payload[0] !== 0x29) return null;
+        if (payload[2] !== 0x03 && payload[2] !== 0x00) return null;
+        return { hz: decodeBcdLE(payload.slice(3)), receiver: payload[1] };
+    }
+
     function parseModeReply(payload) {
         // Solicited: [0x04, mode, filter]
         // Unsolicited: [0x01, mode, filter]
@@ -584,6 +617,10 @@
         codeToMode: CODE_TO_MODE,
         // command builders
         cmdReadFrequency: cmdReadFrequency,
+        cmdReadSelectedFreq: cmdReadSelectedFreq,
+        cmdReadUnselectedFreq: cmdReadUnselectedFreq,
+        cmdReadMainFreq: cmdReadMainFreq,
+        cmdReadSubFreq: cmdReadSubFreq,
         cmdSetFrequency: cmdSetFrequency,
         cmdReadMode: cmdReadMode,
         cmdSetMode: cmdSetMode,
@@ -631,6 +668,8 @@
         parseModInputReply: parseModInputReply,
         // response parsers
         parseFrequencyReply: parseFrequencyReply,
+        parseSelectedUnselectedFreqReply: parseSelectedUnselectedFreqReply,
+        parseCmd29FreqReply: parseCmd29FreqReply,
         parseModeReply: parseModeReply,
         parsePTTReply: parsePTTReply,
         parseSMeterReply: parseSMeterReply,
