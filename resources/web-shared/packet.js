@@ -623,11 +623,14 @@
 
     function setEnabled(on) {
         if (on) {
-            // PKT and FreeDV are mutually exclusive — turning PKT on
-            // must kill any active FreeDV/RADE session.  The server will
-            // echo freedvStatus back, but we also fire the command here
-            // so the two panels never appear active at the same time.
-            if (window.freedvEnabled && window.send) {
+            // PKT shares the mic / PTT path with FreeDV (and, in the
+            // standalone build, with FT8/FT4 and CW too) — only one can
+            // own it at a time.  Standalone wires window.closeOtherModes
+            // to handle all four; the C++ server build only enforces the
+            // FreeDV/PKT pair, so fall back to that here.
+            if (typeof window.closeOtherModes === 'function') {
+                window.closeOtherModes('packet');
+            } else if (window.freedvEnabled && window.send) {
                 window.send({ cmd: 'setFreeDV', enabled: false });
             }
             // If the radio is on CW / RTTY / etc., switch to a sensible

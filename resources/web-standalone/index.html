@@ -4754,6 +4754,32 @@ function toggleLanConnection() {
     }
 }
 // ============================================================
+// Mutual exclusion between digital-mode overlays
+// ============================================================
+// CW, FT8/FT4 (DIGI), AX.25 Packet, and FreeDV all need to own the mic /
+// audio / PTT path exclusively.  Showing two of their panels at once also
+// produces overlapping UI.  Whenever one of them is opened, this helper
+// closes whichever others are currently active.
+function closeOtherModes(except) {
+    if (except !== 'cw') {
+        var cwBar = document.getElementById('cwBar');
+        if (cwBar && !cwBar.classList.contains('hidden')) {
+            cwBar.classList.add('hidden');
+        }
+    }
+    if (except !== 'digi' && digiBarVisible) {
+        toggleDigiBar();
+    }
+    if (except !== 'packet' && window.Packet && window.Packet.state && window.Packet.state.visible) {
+        window.Packet.hide();
+    }
+    if (except !== 'freedv' && freedvEnabled) {
+        toggleFreeDV();
+    }
+}
+window.closeOtherModes = closeOtherModes;
+
+// ============================================================
 // FreeDV
 // ============================================================
 function toggleFreeDV() {
@@ -4764,11 +4790,15 @@ function toggleFreeDV() {
         updateFreeDVStatus({});
         return;
     }
-    // Close DIGI panel if open — modes are mutually exclusive
-    if (digiBarVisible) toggleDigiBar();
-    // PKT and FreeDV share the mic path; only one can be live.
-    if (window.Packet && window.Packet.state && window.Packet.state.visible) {
-        window.Packet.hide();
+    closeOtherModes('freedv');
+    // RADE/FreeDV needs a voice-mode passband.  If the radio is on a
+    // digital mode (CW, RTTY, etc.), switch to the conventional SSB side
+    // for the band (USB at/above 10 MHz, LSB below).  Already-voice
+    // modes (LSB/USB/AM/FM) are left alone — the user may be running
+    // RADE deliberately on AM/FM.
+    var FREEDV_VOICE_MODES = ['LSB', 'USB', 'AM', 'FM'];
+    if (FREEDV_VOICE_MODES.indexOf(currentMode) < 0) {
+        setMode((currentFreq >= 10000000) ? 'USB' : 'LSB');
     }
     freedvModeName = freedvModes[0];
     freedvTxGain = 0.25;
@@ -5869,6 +5899,7 @@ function toggleCWBar() {
     var cwBar = document.getElementById('cwBar');
     if (cwBar.classList.contains('hidden')) {
         // Show CW bar
+        closeOtherModes('cw');
         cwBar.classList.remove('hidden');
         document.getElementById('cwSpeedInput').value = cwSpeed;
         document.querySelectorAll('.cw-mode-btn').forEach(function(btn) {
@@ -5887,6 +5918,7 @@ function toggleCWBar() {
 }
 
 function renderCWOverlay() {
+    closeOtherModes('cw');
     document.getElementById('cwBar').classList.remove('hidden');
     document.getElementById('cwSpeedInput').value = cwSpeed;
     document.querySelectorAll('.cw-mode-btn').forEach(function(btn) {
@@ -6396,8 +6428,7 @@ function toggleDigiBar() {
     digiBarVisible = !digiBarVisible;
     var bar = document.getElementById('digiBar');
     if (digiBarVisible) {
-        // Disable FreeDV if active — modes are mutually exclusive
-        if (freedvEnabled) send({ cmd: 'setFreeDV', enabled: false });
+        closeOtherModes('digi');
         // Tell the backend FT8/FT4 is now active so PSK Reporter can connect.
         send({ cmd: 'setDigiActive', active: true, mode: digiMode });
         bar.classList.remove('hidden');
