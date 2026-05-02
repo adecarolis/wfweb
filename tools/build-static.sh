@@ -45,7 +45,7 @@ cp "$SRC"/civ/*.js       "$DIST/civ/"
 # rig-transport base class).
 cp "$SHARED/digits-sprite.png" "$DIST/"
 for f in cw-decoder.js cw-decoder-stft.js cw-decoder-utils.js cw-decoder-worker.js \
-         ggmorse-wasm.js packet.js reporters.js; do
+         ggmorse-wasm.js packet.js reporters.js airbus.js; do
     cp "$SHARED/$f" "$DIST/"
 done
 cp "$SHARED"/transport/*.js "$DIST/transport/"

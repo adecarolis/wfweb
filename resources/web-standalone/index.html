@@ -2546,6 +2546,8 @@ body.digi-open .digi-bar {
 <script src="civ/rig-caps.js"></script>
 <script src="civ/icom.js"></script>
 <script src="transport/serial-transport.js"></script>
+<script src="airbus.js"></script>
+<script src="transport/virtual-transport.js"></script>
 <script src="reporters.js"></script>
 <script>
 // ============================================================
@@ -2565,13 +2567,28 @@ var rigModelName = '';   // set from rigInfo/rigConnected
 // One-shot migration pulls the first-found legacy key on initial read.
 window.App = window.App || {};
 window.App.callsign = (function() {
-    var KEY = 'wfweb.callsign';
+    // Virtual rig mode (?virtual=1&id=N): namespace per rigId so two tabs on
+    // the same origin don't share a single localStorage callsign — each tab
+    // is supposed to be a different station. The legacy/mirror keys
+    // (digiMyCall, cwCallsign) are scoped the same way so per-panel UIs
+    // also stay independent across tabs.
+    var keySuffix = '';
+    try {
+        var qp = new URLSearchParams(location.search);
+        if (qp.get('virtual') === '1') {
+            var id = parseInt(qp.get('id') || '1', 10) | 0;
+            keySuffix = '.virtual.' + id;
+        }
+    } catch (e) { /* ignore */ }
+    var KEY        = 'wfweb.callsign'   + keySuffix;
+    var KEY_DIGI   = 'digiMyCall'       + keySuffix;
+    var KEY_CW     = 'cwCallsign'       + keySuffix;
     function normalize(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
     function get() {
         try {
             var v = localStorage.getItem(KEY);
             if (v !== null) return v;
-            var legacy = normalize(localStorage.getItem('digiMyCall') || localStorage.getItem('cwCallsign') || '');
+            var legacy = normalize(localStorage.getItem(KEY_DIGI) || localStorage.getItem(KEY_CW) || '');
             if (legacy) { localStorage.setItem(KEY, legacy); return legacy; }
         } catch(e) {}
         return '';
@@ -2579,8 +2596,8 @@ window.App.callsign = (function() {
     function set(s) {
         var v = normalize(s);
         try { localStorage.setItem(KEY, v); } catch(e) {}
-        try { localStorage.setItem('digiMyCall', v); } catch(e) {}
-        try { localStorage.setItem('cwCallsign', v); } catch(e) {}
+        try { localStorage.setItem(KEY_DIGI, v); } catch(e) {}
+        try { localStorage.setItem(KEY_CW, v); } catch(e) {}
         try { window.dispatchEvent(new CustomEvent('appCallsignChanged', { detail: v })); } catch(e) {}
     }
     return { get: get, set: set };
@@ -2851,6 +2868,20 @@ function ensureSerialTransport() {
             updateConnIndicator();
         },
     });
+    serialTransport.addEventListener('open',    onTransportOpen);
+    serialTransport.addEventListener('close',   function () {
+        connStatusText = '';
+        onTransportClose();
+    });
+    serialTransport.addEventListener('message', function (e) { handleMessage(e.detail); });
+    serialTransport.addEventListener('binary',  function (e) { handleBinaryMessage(e.detail); });
+}
+
+// Virtual rig mode (?virtual=1) — no hardware. Reuses the serialTransport
+// global so all the existing send/close/reconnect call sites stay unchanged.
+function ensureVirtualTransport(rigId) {
+    if (serialTransport) return;
+    serialTransport = new VirtualRigTransport({ rigId: rigId });
     serialTransport.addEventListener('open',    onTransportOpen);
     serialTransport.addEventListener('close',   function () {
         connStatusText = '';
@@ -8675,6 +8706,63 @@ async function initStandaloneSplash() {
 
     if (introEl)   introEl.style.display = 'block';
     if (taglineEl) taglineEl.textContent = 'Direct rig control · Web Serial · no server';
+
+    // Virtual rig mode: ?virtual=1[&id=N]. Bypasses Web Serial and
+    // getUserMedia entirely — each tab joins a same-origin BroadcastChannel
+    // and they all hear each other. Used for multi-tab testing of RADE,
+    // packet, etc. without real hardware.
+    var urlParams = new URLSearchParams(location.search);
+    if (urlParams.get('virtual') === '1') {
+        var rigId = parseInt(urlParams.get('id') || '1', 10) | 0;
+        if (introEl)   introEl.style.display = 'none';
+        if (unsupEl)   unsupEl.style.display = 'none';
+        if (taglineEl) taglineEl.textContent = 'VIRTUAL RIG #' + rigId + ' — no hardware';
+        startBtn.style.display = '';
+        startBtn.textContent = 'START VIRTUAL RIG';
+        if (hintEl) hintEl.textContent = 'Tabs on this origin share an in-browser audio bus.';
+        startBtn.addEventListener('click', async function () {
+            startBtn.disabled = true;
+
+            // Fire getUserMedia synchronously inside the click handler so
+            // Chrome shows the mic permission prompt. startMic() chains
+            // through pickDirectMicId() → enumerateDevices() before it ever
+            // gets to getUserMedia, and the gesture activation can lapse
+            // across that many async hops on some browsers — the prompt
+            // never appears. We grab the stream now, stop it (startMic will
+            // request its own with the proper constraints), and the cached
+            // permission then lets startMic succeed without a second prompt.
+            var micPromise = navigator.mediaDevices && navigator.mediaDevices.getUserMedia
+                ? navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+                  })
+                : Promise.reject(new Error('getUserMedia unavailable'));
+
+            try {
+                ensureVirtualTransport(rigId);
+                transport = serialTransport;
+                await serialTransport.connect();
+            } catch (err) {
+                console.error('virtual rig start failed:', err);
+                startBtn.disabled = false;
+                if (errorEl) errorEl.textContent = (err && err.message) ? err.message : String(err);
+                return;
+            }
+            document.getElementById('startupOverlay').style.display = 'none';
+            if (audioAvailable && !audioEnabled) {
+                try { startAudio(); } catch (e) { console.warn('audio start failed:', e); }
+            }
+            micPromise.then(function (stream) {
+                // Drop this stream — startMic opens its own with constraints.
+                try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { /* ignore */ }
+                if (!micEnabled) {
+                    try { startMic(); } catch (e) { console.warn('mic start failed:', e); }
+                }
+            }).catch(function (e) {
+                console.warn('mic permission denied/unavailable:', e);
+            });
+        });
+        return;
+    }
 
     if (typeof navigator === 'undefined' || !navigator.serial) {
         if (unsupEl) unsupEl.style.display = 'block';
