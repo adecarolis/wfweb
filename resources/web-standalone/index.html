@@ -960,38 +960,27 @@ html, body {
     50% { border-color: #aa0; }
 }
 
-/* ── DIGI Bar (blue theme, WSJT-X inspired) ── */
+/* ── DIGI Bar (blue theme, WSJT-X inspired) ──
+   Lives inside #scopeArea (position: relative) and fills it via
+   inset: 0, so the bar tracks the 16:9 #radio container instead of
+   spilling into the letterboxed area on widescreen viewports. */
 .digi-bar {
-    position: fixed;
-    bottom: 44px;
-    left: 0; right: 0;
+    position: absolute;
+    inset: 0;
     background: #000510;
-    border-top: 2px solid #048;
     z-index: 200;
     display: flex;
     flex-direction: column;
-    height: 55vh;
-    min-height: 300px;
 }
-/* When DIGI open: hide scope UI, keep scopeArea in DOM (digiBar lives inside it) */
+/* When DIGI open: hide scope UI, keep scopeArea in DOM so digiBar has a
+   parent box to fill. */
 body.digi-open #scopeInfoBar { display: none !important; }
 body.digi-open #spectrumCanvas,
 body.digi-open #waterfallCanvas { display: none !important; }
-/* Keep grid layout intact: pin scopeArea and bottomBar to correct rows */
+/* Stretch scopeArea over the info-bar row too, so the panel covers
+   from below meter/freq down to the top of bottomBar. */
 body.digi-open #scopeArea { grid-row: 3 / 5; }
 body.digi-open #bottomBar { grid-row: 5; }
-/* Expand DIGI bar to fill from below meter/freq to above bottom bar.
-   Both top+bottom set → height is definite → flex children work. */
-body.digi-open .digi-bar {
-    top: 114px; /* 34px topBar + 80px meterFreqRow */
-    bottom: 44px;
-    height: auto;
-    min-height: 0;
-    border-top: none;
-}
-@media (max-height: 450px) {
-    body.digi-open .digi-bar { top: 92px; bottom: 40px; } /* 28+64 mobile grid */
-}
 .digi-bar.hidden { display: none; }
 
 .digi-header {
