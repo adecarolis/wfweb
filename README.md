@@ -42,7 +42,24 @@ Everything wfview does, wfweb does too — plus a built-in web interface:
 
 ## Getting started
 
-There are three ways to run wfweb. Pick the one that matches your setup:
+wfweb ships in two flavours:
+
+- **Standalone** — a pure-browser build that controls the rig directly over Web Serial. No server process at all. Easiest if you have a USB Icom and a Chromium-family browser.
+- **Server** — the native binary. Required for LAN-attached rigs, classic FreeDV (700D/700E/1600), PSK Reporter / FreeDV Reporter spotting, headless / multi-user deployments, or any non-Chromium browser.
+
+### Standalone — no install, no server
+
+1. Plug your Icom into your computer via USB.
+2. Open **[https://wfweb.k1fm.us](https://wfweb.k1fm.us)** in Chrome, Edge, or another Chromium-family browser (Brave, Arc, Opera).
+3. Click the connection dot in the top-right corner → **Connect rig**, and pick the rig's USB serial port from the OS picker. wfweb auto-probes baud rates and identifies the rig from its CI-V address.
+
+Frequency, mode, filter, audio, FT8/FT4, CW, AX.25 packet, and RADE V1 voice all run in the browser. Subsequent visits auto-reconnect to the same port — no picker on return.
+
+If you'd rather not depend on a third-party host, build the static bundle yourself and serve it from any HTTPS site — see [Self-hosting Standalone](#self-hosting-standalone) below.
+
+**Limitations.** USB rigs only — no LAN. Chromium-family browsers only (no Firefox, no Safari). Classic FreeDV (700D/700E/1600) and reporter spotting (PSK Reporter, FreeDV Reporter) are Server-only. Multi-user / unattended deployments need the Server build too.
+
+### Server — three ways to run it
 
 1. [**Native build, USB radio**](#1-native-build--usb-radio) — any supported Icom connected by USB cable (most common)
 2. [**Native build, LAN radio**](#2-native-build--lan-radio) — radios with built-in Ethernet (e.g. IC-7300 Mk2, IC-9700) or a LAN accessory
@@ -278,6 +295,27 @@ Adjust `/dev/ttyUSB1` to match your system (`ls /dev/ttyUSB*` to find it).
 docker build -f docker/Dockerfile -t wfweb .
 docker run --rm -it --device /dev/ttyUSB0 -p 8080:8080 -p 8081:8081 wfweb
 ```
+
+---
+
+## Self-hosting Standalone
+
+The Standalone bundle is a directory of static files — drop it onto any HTTPS static host (GitHub Pages, Netlify, Cloudflare Pages, your own nginx) and you're done. Build it from a checkout:
+
+```bash
+tools/build-static.sh dist/
+```
+
+Test locally before publishing:
+
+```bash
+tools/serve-static.py 8000 dist/
+# open http://localhost:8000 in Chrome or Edge
+```
+
+Localhost is treated as a secure context, so Web Serial works without HTTPS during local testing. Public hosting requires HTTPS — Web Serial refuses to operate on plain HTTP.
+
+The pre-built RADE and Direwolf WebAssembly modems are committed under `resources/web-standalone/wasm/`, so `build-static.sh` produces a working bundle out of the box. Rebuilding the WASM modules from source (only needed when their C/C++ source changes) is a separate step that requires Emscripten — see `tools/build-direwolf-wasm.sh` and `tools/build-rade-wasm.sh`.
 
 ---
 

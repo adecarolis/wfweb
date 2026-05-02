@@ -121,12 +121,22 @@ Opera, Brave, Arc). Firefox / Safari users can't use this build.
 
 ## What works in this build
 
-- Frequency tune, mode + filter, PTT, S-meter
+- Full CI-V control: VFOs, mode + filter, PTT, gains, scope / waterfall,
+  memories, P.AMP / ATT, AGC, NB / NR / NOTCH, MON, …
+- RX and TX audio (mic via getUserMedia, RX via PCM stream from the rig)
+- FT8 / FT4 decode and reply
+- CW decode (ggmorse + Goertzel) and CW keying
+- AX.25 packet — 300 / 1200 / 9600 baud — including APRS heard-stations,
+  beacon scheduler, connected-mode terminal, and YAPP file transfer
+- RADE V1 digital voice (browser-side WebAssembly modem)
 
-## What is NOT yet supported
+## Use the Server build for
 
-- Audio (RX, mic, FT8/CW/voice). Comes in Phase 2.
-- Non-Icom rigs.
+- LAN-attached rigs (IC-7300 Mk2, IC-9700, IC-7610 LAN, …)
+- Classic FreeDV — 700D, 700E, 1600
+- PSK Reporter / FreeDV Reporter spotting
+- Multi-user, headless, or unattended deployments
+- Non-Chromium browsers (Firefox, Safari, …)
 EOF
 
 # Cache-bust every local asset URL with ?v=<sha>. WFWEB_BUILD_VERSION lets
