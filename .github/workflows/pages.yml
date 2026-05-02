@@ -1,0 +1,56 @@
+name: Deploy standalone to GitHub Pages
+
+# Builds resources/web-standalone/ + resources/web-shared/ (via
+# tools/build-static.sh), fingerprints every local asset URL with the
+# commit SHA so browsers can't serve stale sub-resources, and publishes
+# the bundle to GitHub Pages.
+#
+# One-time repo setup: Settings → Pages → Build and deployment → Source
+# = "GitHub Actions". With that flipped on, every push to master runs
+# this workflow. Manual dispatch from any branch lets you preview the
+# bundle without merging.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Pages only has one published version at a time; serialise deploys and
+# discard older runs that haven't finished yet.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      - name: Build standalone bundle
+        env:
+          # Pass the full commit SHA so fingerprint URLs survive a force-push
+          # and stay in lock-step with the deployed commit.
+          WFWEB_BUILD_VERSION: ${{ github.sha }}
+        run: tools/build-static.sh dist
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

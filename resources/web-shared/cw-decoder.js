@@ -350,8 +350,8 @@
             // Connect nodes
             connectAudioNodes();
 
-            // Start worker
-            decoderWorker = new Worker('cw-decoder-worker.js');
+            // Start worker — cache-bust: fingerprinter can't see new Worker(literal); append ?v=… by hand.
+            decoderWorker = new Worker('cw-decoder-worker.js' + (self.__WFWEB_V__ ? '?v=' + self.__WFWEB_V__ : ''));
             decoderWorker.onmessage = handleWorkerMessage;
             decoderWorker.postMessage({ type: 'loadModel' });
 

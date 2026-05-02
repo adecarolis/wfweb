@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>wfweb</title>
+<!--WFWEB_VERSION_SLOT-->
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
@@ -6951,8 +6952,10 @@ function onFt8DecodeResult(results, decodedSlotIndex) {
 // This keeps the main thread free to process incoming audio WebSocket frames during decode.
 function initFt8Worker() {
     if (ft8Worker) return;
+    // Cache-bust: tools/fingerprint-static.py can't see through Blob strings, so append ?v=… by hand.
+    var _v = (typeof window !== 'undefined' && window.__WFWEB_V__) ? '?v=' + window.__WFWEB_V__ : '';
     var workerSrc = [
-        'import { decodeFT8, decodeFT4, HashCallBook } from "' + location.origin + '/ft8ts.mjs";',
+        'import { decodeFT8, decodeFT4, HashCallBook } from "' + location.origin + '/ft8ts.mjs' + _v + '";',
         'var hashBook = null;',
         'self.onmessage = function(ev) {',
         '    var d = ev.data;',
