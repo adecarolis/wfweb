@@ -3028,19 +3028,44 @@ function updateModeBtnLabel() {
     document.getElementById('modeBtn').textContent = label;
 }
 function updateMode(mode) {
+    var prevMode = currentMode;
     currentMode = mode;
     updateModeBtnLabel();
     if (currentPanel === 'mode') renderModeOverlay();
     updateFilterConfig();
     if (currentPanel === 'filter') renderFilterOverlay();
 
-    // Hide CW bar if switching to non-CW mode
+    var wasCW = (prevMode === 'CW' || prevMode === 'CW-R');
     var isCW = (mode === 'CW' || mode === 'CW-R');
     if (!isCW) {
         document.getElementById('cwBar').classList.add('hidden');
+    } else if (!wasCW) {
+        autoOpenCwBarOnModeEntry();
     }
 
     renderBottomBar(); // Update PTT/KEY button
+}
+
+// Auto-open the CW bar and start the decoder when CW mode is entered.
+// If a non-default panel is open, defer the bar via cwBarSuspended so it
+// reappears when the overlay closes.
+function autoOpenCwBarOnModeEntry() {
+    if (currentPanel === 'default') {
+        renderCWOverlay();
+    } else {
+        cwBarSuspended = true;
+        var speedInput = document.getElementById('cwSpeedInput');
+        if (speedInput) speedInput.value = cwSpeed;
+        document.querySelectorAll('.cw-mode-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.dataset.mode === cwMode);
+        });
+    }
+    var decodeBtn = document.getElementById('cwDecoderToggle');
+    if (decodeBtn && audioEnabled
+        && !decodeBtn.classList.contains('active')
+        && !decodeBtn.classList.contains('loading')) {
+        decodeBtn.click();
+    }
 }
 
 function updateFilterBtn(num) {
