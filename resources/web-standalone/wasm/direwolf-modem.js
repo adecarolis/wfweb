@@ -625,6 +625,7 @@ export class Ax25Link extends EventTarget {
         this._cSendData   = mod.cwrap('wfweb_dw_link_send_data',           'null',   ['number', 'number', 'string', 'string', 'string', 'number', 'number', 'number']);
         this._cOutstand   = mod.cwrap('wfweb_dw_link_outstanding_request', 'null',   ['number', 'number', 'string', 'string']);
         this._cClientCleanup = mod.cwrap('wfweb_dw_link_client_cleanup',   'null',   ['number']);
+        this._cSetDwait   = mod.cwrap('wfweb_dw_link_set_dwait_ms',        'null',   ['number']);
         this._cTxPtr      = mod.cwrap('wfweb_dw_tx_buffer_ptr',            'number', []);
         this._cTxLen      = mod.cwrap('wfweb_dw_tx_buffer_len',            'number', []);
         this._cTxReset    = mod.cwrap('wfweb_dw_tx_buffer_reset',          'null',   []);
@@ -674,6 +675,13 @@ export class Ax25Link extends EventTarget {
     /** Update link-layer parameters when the modem baud changes. */
     setBaud(baud) {
         if (this._started) this._cSetBaud(baud | 0);
+    }
+
+    /** Hold-off (ms) the seize-request gate waits after DCD goes inactive
+     *  before letting the link layer key up. 100 ms is fine for HF; bump
+     *  to 200-300 for noisy/squelched FM. Takes effect immediately. */
+    setDwaitMs(ms) {
+        this._cSetDwait((ms | 0));
     }
 
     /** Current AX.25 paclen — the SPA's YAPP/file-xfer code uses this to

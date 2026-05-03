@@ -32,6 +32,8 @@
 #include "dlq.h"
 #include "tq.h"
 #include "config.h"
+#include "hdlc_rec.h"
+#include "dtime_now.h"
 #include "wfweb_dw_server_shim.h"
 #include "wfweb_tq.h"
 
@@ -344,22 +346,103 @@ static int on_callsign_lookup(const char *callsign) {
     return wfweb_dw_callsign_lookup_js(callsign);
 }
 
-/* tq callback: ax25_link wants a frame TX'd. We encode it straight to
- * the modem's TX buffer (same path the one-shot APRS TX uses); JS reads
- * tx_buf after wfweb_dw_link_step returns and ships the audio. */
+/* DCD-aware TX gate (issue #59).
+ *
+ * In real Direwolf, lm_data_request enqueues onto tq.c's per-channel
+ * queue, and a separate xmit thread drains the queue only when CSMA
+ * permits (DCD clear + DWAIT/SLOTTIME/PERSIST). Our minimal wfweb_tq.c
+ * stub used to write audio to tx_buf synchronously inside lm_data_request
+ * — bypassing CSMA entirely. That's the root cause of the collisions
+ * issue #59 describes.
+ *
+ * The seize_request path (SABM, UA setup) is rarer but also unguarded;
+ * we gate that too on the same DCD check, but use a separate state since
+ * the link state machine acts on the *confirm* event, not on draining.
+ *
+ * Both paths share channel_ready(): DCD inactive for >= g_dwait_ms.
+ */
+
+typedef struct tx_pkt_s {
+    packet_t pp;
+    struct tx_pkt_s *next;
+} tx_pkt_t;
+
+static tx_pkt_t *g_tx_head[MAX_RADIO_CHANS];
+static tx_pkt_t *g_tx_tail[MAX_RADIO_CHANS];
+static int      g_seize_pending[MAX_RADIO_CHANS];
+static double   g_dcd_clear_since[MAX_RADIO_CHANS];
+static int      g_dwait_ms = 100;
+
+static int channel_ready(int chan, double now) {
+    if (hdlc_rec_data_detect_any(chan)) {
+        g_dcd_clear_since[chan] = 0.0;
+        return 0;
+    }
+    if (g_dcd_clear_since[chan] == 0.0) {
+        g_dcd_clear_since[chan] = now;
+        return 0;
+    }
+    return ((now - g_dcd_clear_since[chan]) * 1000.0 >= (double)g_dwait_ms) ? 1 : 0;
+}
+
+/* tq callback: ax25_link wants a frame TX'd. Queue it; process_pending_tx
+ * (called from wfweb_dw_link_step) drains the queue when CSMA permits. */
 static void on_tq_data(int chan, int prio, packet_t pp) {
     (void)prio;
     if (!pp) return;
-    layer2_preamble_postamble(chan, 32, 0, &g_cfg);
-    layer2_send_frame(chan, pp, 0, &g_cfg);
-    layer2_preamble_postamble(chan, 2, 1, &g_cfg);
-    ax25_delete(pp);
+    if (chan < 0 || chan >= MAX_RADIO_CHANS) { ax25_delete(pp); return; }
+    tx_pkt_t *node = (tx_pkt_t *)malloc(sizeof(tx_pkt_t));
+    if (!node) { ax25_delete(pp); return; }
+    node->pp = pp;
+    node->next = NULL;
+    if (g_tx_tail[chan]) g_tx_tail[chan]->next = node;
+    else                 g_tx_head[chan] = node;
+    g_tx_tail[chan] = node;
 }
 
-/* tq seize callback: our channel always seizes immediately (we'll handle
- * PTT timing on the JS side based on tx_buf flushes). */
 static void on_tq_seize(int chan) {
-    dlq_seize_confirm(chan);
+    if (chan < 0 || chan >= MAX_RADIO_CHANS) return;
+    g_seize_pending[chan] = 1;
+}
+
+static void process_pending_tx(void) {
+    double now = dtime_monotonic();
+    for (int chan = 0; chan < MAX_RADIO_CHANS; chan++) {
+        if (!g_tx_head[chan] && !g_seize_pending[chan]) continue;
+        if (!channel_ready(chan, now)) continue;
+        /* Confirm seize first so the link state machine can fire any
+         * follow-on lm_data_request calls within this drain — those
+         * queue more frames that we'll catch on the next tick. */
+        if (g_seize_pending[chan]) {
+            dlq_seize_confirm(chan);
+            g_seize_pending[chan] = 0;
+        }
+        /* Drain all queued frames as one TX burst (one preamble, all
+         * frames concatenated, one postamble) — same shape real
+         * Direwolf's xmit_thread emits. */
+        if (g_tx_head[chan]) {
+            layer2_preamble_postamble(chan, 32, 0, &g_cfg);
+            while (g_tx_head[chan]) {
+                tx_pkt_t *node = g_tx_head[chan];
+                g_tx_head[chan] = node->next;
+                if (!g_tx_head[chan]) g_tx_tail[chan] = NULL;
+                layer2_send_frame(chan, node->pp, 0, &g_cfg);
+                ax25_delete(node->pp);
+                free(node);
+            }
+            layer2_preamble_postamble(chan, 2, 1, &g_cfg);
+            /* Reset the clear timer — the channel is now busy with our
+             * own TX, the next CSMA decision starts after our PTT-tail. */
+            g_dcd_clear_since[chan] = 0.0;
+        }
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE
+void wfweb_dw_link_set_dwait_ms(int ms) {
+    if (ms < 0) ms = 0;
+    if (ms > 5000) ms = 5000;
+    g_dwait_ms = ms;
 }
 
 /* --- Init / config / step / requests ----------------------------------- */
@@ -511,7 +594,9 @@ void wfweb_dw_link_client_cleanup(int client) {
  * link init so the modem-only path can use this to drain the DLQ too. */
 EMSCRIPTEN_KEEPALIVE
 int wfweb_dw_link_step(void) {
-    if (g_link_initialized) dl_timer_expiry();
+    if (g_link_initialized) {
+        dl_timer_expiry();
+    }
     int processed = 0;
     for (;;) {
         dlq_item_t *E = dlq_remove();
@@ -553,5 +638,9 @@ int wfweb_dw_link_step(void) {
         dlq_delete(E);
         processed++;
     }
+    /* Drain TX queue + confirm any pending seize. Done after the DLQ
+     * loop so frames the state machine queued via lm_data_request this
+     * tick can ship the same tick (when DCD already permits). */
+    if (g_link_initialized) process_pending_tx();
     return processed;
 }

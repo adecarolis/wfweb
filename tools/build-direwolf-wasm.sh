@@ -3,7 +3,7 @@
 # browser-only wfweb build can demodulate/encode AX.25 packets without the
 # C++ server in the loop.
 #
-# Output: resources/web/wasm/direwolf.mjs
+# Output: resources/web-standalone/wasm/direwolf.mjs
 #
 # Requires: emcc on PATH (any 3.x release).
 #
@@ -18,7 +18,7 @@ set -e
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$REPO_ROOT/resources/direwolf"
-OUT_DIR="$REPO_ROOT/resources/web/wasm"
+OUT_DIR="$REPO_ROOT/resources/web-standalone/wasm"
 OUT_MJS="$OUT_DIR/direwolf.mjs"
 
 if ! command -v emcc >/dev/null 2>&1; then
@@ -75,6 +75,7 @@ EXPORTED_FUNCS='[
   "_wfweb_dw_link_outstanding_request",
   "_wfweb_dw_link_client_cleanup",
   "_wfweb_dw_link_step",
+  "_wfweb_dw_link_set_dwait_ms",
   "_malloc",
   "_free"
 ]'
