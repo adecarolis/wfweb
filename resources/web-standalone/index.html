@@ -420,18 +420,34 @@ html, body {
     box-shadow: 0 2px 10px rgba(0, 170, 170, 0.35);
 }
 .conn-btn-primary:not(:disabled):hover { box-shadow: 0 4px 14px rgba(0, 170, 170, 0.55); }
-.conn-btn-secondary {
+.conn-link {
+    background: transparent;
+    border: none;
     color: #0cf;
-    background: rgba(0, 200, 255, 0.06);
-    border-color: rgba(0, 200, 255, 0.4);
+    font-size: 12px;
+    letter-spacing: 0.3px;
+    padding: 4px 8px;
+    cursor: pointer;
+    opacity: 0.75;
+    transition: opacity 120ms ease;
 }
-.conn-btn-secondary:not(:disabled):hover { background: rgba(0, 200, 255, 0.12); }
-.conn-btn-danger {
-    color: #f88;
-    background: rgba(255, 80, 80, 0.05);
-    border-color: rgba(255, 80, 80, 0.45);
+.conn-link:hover { opacity: 1; text-decoration: underline; }
+.conn-close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #888;
+    font-size: 22px;
+    line-height: 28px;
+    cursor: pointer;
+    transition: color 120ms ease, border-color 120ms ease;
 }
-.conn-btn-danger:not(:disabled):hover { background: rgba(255, 80, 80, 0.12); }
+.conn-close:hover { color: #ddd; border-color: rgba(255, 255, 255, 0.3); }
 #connStandaloneDot {
     background: #444;
     box-shadow: 0 0 6px rgba(255, 255, 255, 0.05);
@@ -2251,8 +2267,8 @@ body.digi-open #bottomBar { grid-row: 5; }
         <button id="qsoLogBtn" class="qso-log-btn" title="Log QSO">LOG</button>
         <span id="clock">--:--</span>
         <button id="powerBtn" class="on" title="Power" onclick="togglePower()">&#x23FB;</button>
-        <span id="connModeBadge" title="Rig connection" onclick="setPanel('conn')" style="display:none;">RIG</span>
-        <span id="connDot" title="Disconnected" onclick="setPanel('conn')"></span>
+        <span id="connModeBadge" title="Rig connection" onclick="openConnSurface()" style="display:none;">RIG</span>
+        <span id="connDot" title="Disconnected" onclick="openConnSurface()"></span>
     </div>
     <!-- Row 2: Meter + Frequency -->
     <div id="meterFreqRow">
@@ -2633,10 +2649,12 @@ body.digi-open #bottomBar { grid-row: 5; }
             <div class="overlay-grid" id="audioMicGrid"></div>
         </div>
 
-        <!-- Connection (transport) overlay. Standalone build: single surface
-             with rig status and Reconnect / Pair / Disconnect actions. The
-             bottom bar's ⏎ is the only back affordance. -->
+        <!-- Connection (transport) overlay. Standalone build: shown only
+             when a rig is connected. Disconnect closes the link and bounces
+             back to the CLICK TO START splash, which is the single entry
+             point for connecting/pairing. -->
         <div id="connOverlay" class="overlay">
+            <button id="connStandaloneClose" class="conn-close" title="Close" aria-label="Close">&times;</button>
             <div class="overlay-title">CONNECTION</div>
             <div id="connOverlayBody" style="padding:24px; color:#bbb; font-size:13px; width:100%; max-width:520px; margin:auto; align-self:center;">
                 <div id="connStandaloneBody" style="text-align:center;">
@@ -2646,10 +2664,11 @@ body.digi-open #bottomBar { grid-row: 5; }
                     </div>
                     <div id="connStandaloneRigInfo" style="margin-bottom:6px; color:#0cf; font-size:14px; min-height:18px;"></div>
                     <div id="connStandaloneRigDetails" style="margin-bottom:24px; color:#777; font-size:12px; min-height:16px;"></div>
-                    <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-                        <button class="conn-btn conn-btn-primary"  id="connStandaloneReconnect">Reconnect</button>
-                        <button class="conn-btn conn-btn-secondary" id="connStandalonePair">Pair different rig&hellip;</button>
-                        <button class="conn-btn conn-btn-danger"    id="connStandaloneDisconnect">Disconnect</button>
+                    <div style="display:flex; justify-content:center;">
+                        <button class="conn-btn conn-btn-primary" id="connStandaloneDisconnect">Disconnect</button>
+                    </div>
+                    <div style="margin-top:14px;">
+                        <button class="conn-link" id="connStandalonePair">Pair a different rig&hellip;</button>
                     </div>
                     <div id="connStandaloneError"
                          style="margin-top:18px; min-height:16px; color:#f88; font-size:12px;"></div>
@@ -4088,54 +4107,41 @@ function renderConnOverlay() {
     renderStandaloneConnBody();
 }
 
+// Entry point from the RIG badge / status dot: connected → conn overlay,
+// disconnected → CLICK TO START splash. Two surfaces, one each, no stale
+// "Not connected" view to confuse the user.
+function openConnSurface() {
+    if (serialTransport && serialTransport.isOpen()) {
+        setPanel('conn');
+    } else {
+        showStartupSplash();
+    }
+}
+
 function renderStandaloneConnBody() {
     var statusEl  = document.getElementById('connStandaloneStatus');
     var dotEl     = document.getElementById('connStandaloneDot');
     var rigEl     = document.getElementById('connStandaloneRigInfo');
     var detailsEl = document.getElementById('connStandaloneRigDetails');
     var errEl     = document.getElementById('connStandaloneError');
-    var btnReco   = document.getElementById('connStandaloneReconnect');
-    var btnDisc   = document.getElementById('connStandaloneDisconnect');
     if (!statusEl || !dotEl) return;
 
-    var open = !!(serialTransport && serialTransport.isOpen());
-    if (open) {
-        dotEl.className = 'connected';
-        statusEl.style.color = '#0f8';
-        statusEl.textContent = 'Connected';
-        rigEl.textContent = rigModelName || 'Rig';
-        // connStatusText is the SerialRigTransport progress string —
-        // typically "Detected IC-7300 @ 19200 baud" once auto-detect lands.
-        detailsEl.textContent = connStatusText || '';
-        btnReco.style.display = 'none';
-        btnDisc.style.display = '';
-    } else {
-        dotEl.className = 'disconnected';
-        statusEl.style.color = '#fa0';
-        statusEl.textContent = 'Not connected';
-        rigEl.textContent = '';
-        detailsEl.textContent = connStatusText
-            ? connStatusText
-            : 'Click Reconnect to retry the previously-paired rig, or Pair different rig… to choose a USB port.';
-        btnReco.style.display = '';
-        btnDisc.style.display = 'none';
-    }
+    // The conn overlay is only meaningful while the link is up — the
+    // disconnected entry point is the CLICK TO START splash (see the
+    // RIG badge handler below).
+    dotEl.className = 'connected';
+    statusEl.style.color = '#0f8';
+    statusEl.textContent = 'Connected';
+    rigEl.textContent = rigModelName || 'Rig';
+    // connStatusText is the SerialRigTransport progress string — typically
+    // "Detected IC-7300 @ 19200 baud" once auto-detect lands.
+    detailsEl.textContent = connStatusText || '';
     if (errEl) errEl.textContent = '';
 }
 
 // Standalone overlay buttons.
 document.addEventListener('click', function (e) {
-    if (e.target.id === 'connStandaloneReconnect') {
-        var errEl = document.getElementById('connStandaloneError');
-        if (errEl) errEl.textContent = '';
-        ensureSerialTransport();
-        transport = serialTransport;
-        serialTransport.tryAutoReconnect().then(function (opened) {
-            if (!opened) return serialTransport.connect();   // gesture available — fall through to picker
-        }).catch(function (err) {
-            if (errEl) errEl.textContent = (err && err.message) ? err.message : String(err);
-        }).finally(renderStandaloneConnBody);
-    } else if (e.target.id === 'connStandalonePair') {
+    if (e.target.id === 'connStandalonePair') {
         var errEl2 = document.getElementById('connStandaloneError');
         if (errEl2) errEl2.textContent = '';
         ensureSerialTransport();
@@ -4145,15 +4151,47 @@ document.addEventListener('click', function (e) {
             ? serialTransport.close().catch(function () {})
             : Promise.resolve();
         p.then(function () { return serialTransport.connect(); })
+         .then(function () {
+             // Picker fired inside this click — gesture is still live, so
+             // start RX audio now (matches the splash's CLICK TO START
+             // behaviour).
+             hideAllOverlays();
+             setPanel('default');
+             if (audioAvailable && !audioEnabled) {
+                 try { startAudio(); } catch (err) { console.warn('audio start failed:', err); }
+             }
+         })
          .catch(function (err) {
              if (errEl2) errEl2.textContent = (err && err.message) ? err.message : String(err);
-         })
-         .finally(renderStandaloneConnBody);
+             renderStandaloneConnBody();
+         });
     } else if (e.target.id === 'connStandaloneDisconnect') {
-        if (!serialTransport) return;
-        serialTransport.close().catch(function () {}).finally(renderStandaloneConnBody);
+        if (!serialTransport) { showStartupSplash(); return; }
+        serialTransport.close().catch(function () {}).finally(showStartupSplash);
+    } else if (e.target.id === 'connStandaloneClose') {
+        setPanel('default');
     }
 });
+
+// Re-display the CLICK TO START splash (used when the user disconnects
+// or clicks the RIG badge while disconnected). The splash already owns
+// the connect + audio-start flow inside a user gesture, so reusing it
+// is the simple, consistent path.
+function showStartupSplash() {
+    setPanel('default');
+    hideAllOverlays();
+    var overlay = document.getElementById('startupOverlay');
+    var startBtn = document.getElementById('startBtn');
+    var hintEl = document.getElementById('splashHint');
+    var errEl = document.getElementById('splashError');
+    if (overlay) overlay.style.display = 'flex'; // matches the inline default; '' would fall back to block and break centering
+    if (startBtn) {
+        startBtn.disabled = false;
+        startBtn.textContent = 'CLICK TO START';
+    }
+    if (hintEl) hintEl.textContent = 'Enable RX Audio';
+    if (errEl) errEl.textContent = '';
+}
 
 function hideAllOverlays() {
     var overlays = document.querySelectorAll('.overlay');
@@ -4203,6 +4241,10 @@ function getBottomButtons() {
             return [
                 { label: '\u23CE', action: function() { setPanel('default'); } }
             ];
+        case 'conn':
+            // CONN overlay has its own in-overlay close (top-right X) and
+            // a primary Disconnect action \u2014 no bottom-bar arrow needed.
+            return [];
         default:
             return [{ label: '\u23CE', action: function() { setPanel('default'); } }];
     }
