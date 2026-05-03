@@ -350,7 +350,7 @@ html, body {
     position: relative;
     overflow: hidden;
     background: #000;
-    z-index: 300; /* overlays must paint above fixed cw-bar/digi-bar (z-index 200) */
+    z-index: 300; /* overlays must paint above cw-bar/digi-bar (z-index 200) */
 }
 #spectrumCanvas, #waterfallCanvas {
     display: block; width: 100%;
@@ -642,10 +642,13 @@ html, body {
     grid-column: -2 / -1; /* always pin to last column of the grid */
 }
 
-/* CW Bar - RTTY decoder style (green terminal theme) */
+/* CW Bar - RTTY decoder style (green terminal theme).
+   Lives inside #scopeArea (position: relative) and pins to its bottom,
+   so the bar tracks the 16:9 #radio container instead of spilling into
+   the letterboxed area on widescreen viewports. */
 .cw-bar {
-    position: fixed;
-    bottom: 44px; /* Raise above bottom bar */
+    position: absolute;
+    bottom: 0;
     left: 0;
     right: 0;
     background: #000;
@@ -653,7 +656,7 @@ html, body {
     z-index: 200;
     display: flex;
     flex-direction: column;
-    max-height: calc(100vh - 44px);
+    max-height: 100%;
     overflow-y: auto;
 }
 .cw-bar.hidden { display: none; }
