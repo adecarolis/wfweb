@@ -1031,6 +1031,34 @@
             this._enqueue('scopeData', new Uint8Array([0x27, 0x11, 0x01]));
 
             this._startPolling();
+            this._applyFirstRunDefaults();
+        }
+
+        // First-run gain defaults — push sensible levels so a freshly-bought
+        // (or freshly-reset) rig doesn't come up with RF gain at 0% and look
+        // like a dead receiver. Applied exactly once per browser; user
+        // adjustments after that are never overridden.
+        //
+        // Deferred via setTimeout so the initial 0x14 NN level reads above
+        // come back first — otherwise their replies would land after our SETs
+        // and overwrite the defaults back to the rig's old values.
+        _applyFirstRunDefaults() {
+            if (lsGetInt('directInitialDefaultsApplied') === 1) return;
+            var self = this;
+            setTimeout(function () {
+                if (!self._open) return;
+                if (lsGetInt('directInitialDefaultsApplied') === 1) return;
+                var defaults = [
+                    ['setAfGain',  Math.round(255 * 0.20)],  // 20%
+                    ['setRfGain',  255],                     // 100%
+                    ['setMicGain', Math.round(255 * 0.75)],  // 75%
+                    ['setSquelch', 0],                       // 0%
+                ];
+                for (var i = 0; i < defaults.length; i++) {
+                    self.sendCommand({ cmd: defaults[i][0], value: defaults[i][1] });
+                }
+                lsSetInt('directInitialDefaultsApplied', 1);
+            }, 800);
         }
 
         // ----------------------------------------------------------------
