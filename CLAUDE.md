@@ -27,7 +27,7 @@ qmake wfweb.pro && make -j$(nproc)
 
 # Standalone build — pure browser bundle, no C++ toolchain needed
 tools/build-static.sh dist/
-tools/serve-static.py 8000 dist/   # local test (sends Cache-Control: no-store)
+tools/serve-static.py              # local test on port 8000 (fixed), always serves <repo>/dist (no-store)
 ```
 
 See `BUILDING.md` for platform-specific prerequisites (Linux/Windows/macOS) and
