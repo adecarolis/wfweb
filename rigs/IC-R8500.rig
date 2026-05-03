@@ -5,6 +5,7 @@ Version=2.04
 Manufacturer=0
 Model=IC-R8500
 CIVAddress=74
+MaxBaudRate=19200
 RigCtlDModel=0
 NumberOfReceivers=1
 NumberOfVFOs=1

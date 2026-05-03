@@ -5,6 +5,7 @@ Version=2.03
 Manufacturer=0
 Model=IC-756 PRO III
 CIVAddress=110
+MaxBaudRate=19200
 RigCtlDModel=3027
 NumberOfReceivers=1
 NumberOfVFOs=1

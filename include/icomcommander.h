@@ -41,6 +41,9 @@ public slots:
     void handleNewData(const QByteArray& data) override;
     void receiveBaudRate(quint32 baudrate) override;
 
+    // Serial port (probe retry / per-rig baud cap):
+    void setSerialBaudRate(quint32 newBaud);
+
     // Housekeeping:
     void receiveCommand(funcs func, QVariant value, uchar receiver) override;
 

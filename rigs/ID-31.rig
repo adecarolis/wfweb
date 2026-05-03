@@ -5,6 +5,7 @@ Version=2.02
 Manufacturer=Icom
 Model=ID-31A/E
 CIVAddress=132
+MaxBaudRate=38400
 RigCtlDModel=0
 NumberOfReceivers=1
 NumberOfVFOs=1

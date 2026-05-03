@@ -348,16 +348,45 @@ void servermain::receiveCommReady()
 
 void servermain::connectToRig(RIGCONFIG* rig)
 {
-    if (!rig->rigAvailable) {
-        qDebug(logSystem()) << "Searching for rig on" << rig->serialPort;
-        QMetaObject::invokeMethod(rig->rig, [=]() {
-            rig->rig->receiveCommand(funcTransceiverId,QVariant(),0);
-        }, Qt::QueuedConnection);
-
-    }
-    else {
+    if (rig->rigAvailable) {
         rig->connectTimer->stop();
+        return;
     }
+
+    // CI-V probe with baud-rate fallback. Some Icom rigs (IC-7100, IC-718,
+    // IC-756 family, ...) cap USB CI-V below the wfweb default of 115200,
+    // and over LAN we can't change rate at all. We try the user-configured
+    // rate first, then step down through the rates new users are likely to
+    // hit. See issue #57. LAN connections skip the cycling.
+    static const QList<quint32> kFallbacks = { 19200, 9600, 4800 };
+
+    QList<quint32> probeBauds;
+    probeBauds.append(rig->baudRate);
+    if (!prefs.enableLAN) {
+        for (quint32 b : kFallbacks) {
+            if (!probeBauds.contains(b)) probeBauds.append(b);
+        }
+    }
+
+    constexpr int kProbesPerBaud = 6; // ~3s at 500 ms cadence
+    if (rig->probeAttempts >= kProbesPerBaud && probeBauds.size() > 1) {
+        rig->probeBaudIndex = (rig->probeBaudIndex + 1) % probeBauds.size();
+        rig->probeAttempts = 0;
+        quint32 nextBaud = probeBauds.at(rig->probeBaudIndex);
+        qInfo(logSystem()) << "No reply on" << rig->serialPort
+                           << "— retrying at" << nextBaud << "baud";
+        icomCommander* ic = qobject_cast<icomCommander*>(rig->rig);
+        if (ic != Q_NULLPTR) {
+            QMetaObject::invokeMethod(ic, "setSerialBaudRate",
+                Qt::QueuedConnection, Q_ARG(quint32, nextBaud));
+        }
+    }
+
+    qDebug(logSystem()) << "Searching for rig on" << rig->serialPort;
+    rig->probeAttempts++;
+    QMetaObject::invokeMethod(rig->rig, [=]() {
+        rig->rig->receiveCommand(funcTransceiverId,QVariant(),0);
+    }, Qt::QueuedConnection);
 }
 
 void servermain::receiveRigCaps(rigCapabilities* rigCaps)

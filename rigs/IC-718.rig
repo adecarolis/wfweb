@@ -5,6 +5,7 @@ Version=2.04
 Manufacturer=0
 Model=IC-718
 CIVAddress=94
+MaxBaudRate=19200
 RigCtlDModel=3013
 NumberOfReceivers=1
 NumberOfVFOs=1

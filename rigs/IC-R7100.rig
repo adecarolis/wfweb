@@ -5,6 +5,7 @@ Version=2.03
 Manufacturer=0
 Model=IC-R7100
 CIVAddress=52
+MaxBaudRate=19200
 RigCtlDModel=0
 NumberOfReceivers=1
 NumberOfVFOs=1

@@ -5,6 +5,7 @@ Version=2.03
 Manufacturer=0
 Model=IC-756
 CIVAddress=80
+MaxBaudRate=19200
 RigCtlDModel=3026
 NumberOfReceivers=1
 NumberOfVFOs=1

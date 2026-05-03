@@ -5,6 +5,7 @@ Version=2.02
 Manufacturer=Icom
 Model=IC-706 (Mk1/Mk2)
 CIVAddress=72
+MaxBaudRate=19200
 RigCtlDModel=3009
 NumberOfReceivers=1
 NumberOfVFOs=1

@@ -5,6 +5,7 @@ Version=2.04
 Manufacturer=0
 Model=IC-706 (MkIIG)
 CIVAddress=88
+MaxBaudRate=19200
 RigCtlDModel=3010
 NumberOfReceivers=1
 NumberOfVFOs=1

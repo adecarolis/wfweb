@@ -334,6 +334,7 @@ struct rigCapabilities {
     QByteArray transceiveCommand;
     quint8 guid[GUIDLEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
     quint32 baudRate;
+    quint32 maxBaudRate = 0; // 0 = no cap; some rigs (IC-7100, IC-718, ...) cap USB CI-V below the wfweb default
     quint16 memGroups;
     quint16 memories;
     quint16 memStart;

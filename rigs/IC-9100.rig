@@ -5,6 +5,7 @@ Version=2.03
 Manufacturer=0
 Model=IC-9100
 CIVAddress=124
+MaxBaudRate=19200
 RigCtlDModel=3068
 NumberOfReceivers=2
 NumberOfVFOs=2
