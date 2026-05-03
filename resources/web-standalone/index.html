@@ -3222,6 +3222,7 @@ function updateMode(mode) {
     var isCW = (mode === 'CW' || mode === 'CW-R');
     if (!isCW) {
         document.getElementById('cwBar').classList.add('hidden');
+        cwBarSuspended = false;
     } else if (!wasCW) {
         autoOpenCwBarOnModeEntry();
     }
@@ -3908,7 +3909,8 @@ function setPanel(name) {
     // Hide CW / DIGI bars while any overlay is open; restore when returning to default
     if (name === 'default') {
         if (cwBarSuspended) {
-            document.getElementById('cwBar').classList.remove('hidden');
+            var _isCwNow = (currentMode === 'CW' || currentMode === 'CW-R');
+            if (_isCwNow) document.getElementById('cwBar').classList.remove('hidden');
             cwBarSuspended = false;
         }
         if (digiBarSuspended) {
