@@ -266,6 +266,17 @@ void icomCommander::receiveBaudRate(quint32 baudrate) {
     emit haveBaudRate(baudrate);
 }
 
+void icomCommander::setSerialBaudRate(quint32 newBaud)
+{
+    if (newBaud == 0 || comm == Q_NULLPTR || usingNativeLAN) return;
+    if (newBaud == rigBaudRate) return;
+    qInfo(logRig()) << "Switching probe baud rate to" << newBaud;
+    rigBaudRate = newBaud;
+    rigCaps.baudRate = newBaud;
+    comm->setBaudRate(newBaud);
+    emit haveBaudRate(newBaud);
+}
+
 void icomCommander::setPTTType(pttType_t ptt)
 {
     qDebug(logRig()) << "Received request to set PTT Type to:" << ptt;
@@ -1609,6 +1620,7 @@ void icomCommander::determineRigCaps()
     rigCaps.memFormat = settings->value("MemFormat","").toString();
     rigCaps.satMemories = settings->value("SatMemories",0).toUInt();
     rigCaps.satFormat = settings->value("SatFormat","").toString();
+    rigCaps.maxBaudRate = settings->value("MaxBaudRate", 0).toUInt();
 
     // If rig doesn't have FD comms, tell the commhandler early.
     emit setHalfDuplex(!rigCaps.hasFDcomms);
@@ -1929,6 +1941,21 @@ void icomCommander::determineRigCaps()
 
     // Copy received guid so we can recognise this radio.
     memcpy(rigCaps.guid, this->guid, GUIDLEN);
+
+    // Clamp serial baud rate against this rig's USB CI-V max. Some Icom
+    // rigs (IC-7100, IC-718, IC-756 family, ...) cap below the wfweb
+    // default of 115200; talking faster than that turns every byte into
+    // framing garbage and the rig never replies. See issue #57.
+    if (rigCaps.maxBaudRate > 0 && comm != Q_NULLPTR && !usingNativeLAN
+            && rigBaudRate > rigCaps.maxBaudRate) {
+        qWarning(logRig()) << "Configured baud" << rigBaudRate
+                           << "exceeds" << rigCaps.modelName << "max ("
+                           << rigCaps.maxBaudRate << "); lowering.";
+        rigBaudRate = rigCaps.maxBaudRate;
+        rigCaps.baudRate = rigCaps.maxBaudRate;
+        comm->setBaudRate(rigCaps.maxBaudRate);
+        emit haveBaudRate(rigCaps.maxBaudRate);
+    }
 
     haveRigCaps = true;
     queue->setRigCaps(&rigCaps);

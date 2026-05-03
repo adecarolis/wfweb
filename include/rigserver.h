@@ -50,6 +50,8 @@ struct RIGCONFIG {
 	QThread* txAudioThread = Q_NULLPTR;
 	QTimer* rxAudioTimer = Q_NULLPTR;
 	QTimer* connectTimer = Q_NULLPTR;
+	int probeAttempts = 0;       // probes since we last changed baud
+	int probeBaudIndex = 0;      // index into baud fallback list
     rtpAudio* rtp = Q_NULLPTR;
     QThread* rtpThread = Q_NULLPTR;
     quint8 waterfallFormat;

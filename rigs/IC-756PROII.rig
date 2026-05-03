@@ -5,6 +5,7 @@ Version=2.02
 Manufacturer=Icom
 Model=IC-756 PRO II
 CIVAddress=100
+MaxBaudRate=19200
 RigCtlDModel=3027
 NumberOfReceivers=1
 NumberOfVFOs=1

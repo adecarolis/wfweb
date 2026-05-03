@@ -5,6 +5,7 @@ Version=2.04
 Manufacturer=0
 Model=IC-7200
 CIVAddress=118
+MaxBaudRate=19200
 RigCtlDModel=3061
 NumberOfReceivers=1
 NumberOfVFOs=1

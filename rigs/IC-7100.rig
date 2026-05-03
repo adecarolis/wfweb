@@ -5,6 +5,7 @@ Version=2.11
 Manufacturer=0
 Model=IC-7100
 CIVAddress=136
+MaxBaudRate=19200
 RigCtlDModel=3070
 NumberOfReceivers=1
 NumberOfVFOs=2

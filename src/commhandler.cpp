@@ -331,6 +331,16 @@ void commHandler::setPTTType(pttType_t ptt)
     this->pttType = ptt;
 }
 
+void commHandler::setBaudRate(quint32 newBaud)
+{
+    if (newBaud == 0 || (qint32)newBaud == baudrate) return;
+    baudrate = newBaud;
+    if (port != Q_NULLPTR && isConnected) {
+        port->setBaudRate(newBaud);
+        qInfo(logSerial()) << "Set serial port baud rate to" << newBaud;
+    }
+}
+
 void commHandler::openPort()
 {
     bool success;

@@ -30,6 +30,7 @@ public slots:
     void setPTTType(pttType_t ptt);
     void handleError(QSerialPort::SerialPortError error);
     void init();
+    void setBaudRate(quint32 newBaud);
 
 private slots:
     void receiveDataIn(); // from physical port
