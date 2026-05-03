@@ -1606,7 +1606,7 @@
                 ? entry.preamps
                 : [{num:0,name:'OFF'},{num:1,name:'PRE1'},{num:2,name:'PRE2'}];
             this._emit('rigInfo', {
-                version: '0.6.1-direct',
+                version: ((typeof window !== 'undefined' && window.__WFWEB_SEMVER__) || 'dev') + '-direct',
                 model: rigDisplayName(this.civAddr),
                 connected: true,
                 modes: DEFAULT_MODES,
