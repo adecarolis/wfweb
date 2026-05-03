@@ -2121,8 +2121,8 @@ body.digi-open #bottomBar { grid-row: 5; }
 </head>
 <body>
 <!-- Startup Overlay -->
-<div id="startupOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; padding: 24px;">
-    <div style="text-align: center; max-width: 640px;">
+<div id="startupOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%); z-index: 9999; display: flex; flex-direction: column; align-items: center; overflow-y: auto; font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; padding: 24px 24px 56px;">
+    <div style="text-align: center; max-width: 640px; margin: auto 0;">
         <div style="font-size: 48px; font-weight: bold; color: #0aa; margin-bottom: 6px; text-shadow: 0 0 20px rgba(0, 170, 170, 0.5);">wfweb</div>
         <div id="splashTagline" style="font-size: 14px; color: #888; margin-bottom: 26px; letter-spacing: 0.3px;">A radio shack in your browser</div>
 
@@ -2190,11 +2190,18 @@ body.digi-open #bottomBar { grid-row: 5; }
             </div>
         </div>
 
-        <!-- Browser-not-supported message (Firefox, Safari). Hidden by default. -->
+        <!-- Browser-not-supported message (Firefox, Safari, mobile). Hidden by default. -->
         <div id="splashUnsupported" style="display:none; text-align:left; padding:14px 18px; border:1px solid #f44; border-radius:6px; background:rgba(255,68,68,0.06); color:#fbb; font-size:13px; line-height:1.5; max-width:520px; margin: 0 auto 24px;">
-            This browser doesn't support the Web Serial API.
-            wfweb's standalone build needs Chrome, Edge, Opera, Brave, or any
-            other Chromium-family browser. Firefox and Safari aren't supported.
+            <p style="margin: 0 0 8px;">
+                This browser doesn't support the Web Serial API.
+                wfweb's standalone build needs Chrome, Edge, Opera, Brave, or
+                another Chromium-family browser on a desktop OS. Mobile
+                browsers, Firefox, and Safari aren't supported.
+            </p>
+            <p style="margin: 0; color:#fdd;">
+                The full <b style="color:#0cf;">wfweb server</b> (linked below)
+                works on any modern browser &mdash; phones and tablets included.
+            </p>
         </div>
 
         <div style="margin-top: 22px;">
