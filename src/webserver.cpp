@@ -1265,6 +1265,7 @@ void webServer::onWsDisconnected()
         // before any forced ALSA stop so a stray IdleState transition
         // can't re-enter onUsbAudioOutputStateChanged.
         packetTxAwaitingIdle = false;
+        if (packetTxIdleWatchdog) packetTxIdleWatchdog->stop();
         if (packetUsbTxDrainTimer) packetUsbTxDrainTimer->stop();
         packetUsbTxBuffer.clear();
         packetUsbTxActive = false;
@@ -4158,6 +4159,7 @@ void webServer::onPacketTxReady(audioPacket audio)
     // dwThread bursts must not unkey the radio.
     if (packetTxAwaitingIdle) {
         packetTxAwaitingIdle = false;
+        if (packetTxIdleWatchdog) packetTxIdleWatchdog->stop();
         if (packetUsbTxDrainTimer && !packetUsbTxDrainTimer->isActive())
             packetUsbTxDrainTimer->start(10);
     }
@@ -4214,6 +4216,7 @@ void webServer::onPacketTxFailed(QString reason)
     // Release the TX slot and unkey if we already keyed.
     packetTxBusy = false;
     packetTxAwaitingIdle = false;
+    if (packetTxIdleWatchdog) packetTxIdleWatchdog->stop();
     if (packetUsbTxDrainTimer) packetUsbTxDrainTimer->stop();
     packetUsbTxBuffer.clear();
     packetUsbTxActive = false;
@@ -4290,7 +4293,28 @@ void webServer::drainPacketUsbTxBuffer()
             QMetaObject::invokeMethod(this, [this]() {
                 onUsbAudioOutputStateChanged(QAudio::IdleState);
             }, Qt::QueuedConnection);
+            return;
         }
+
+        // Backstop watchdog.  On some Qt5/ALSA configurations — notably
+        // raw hw: devices that fell back to nearestFormat (e.g. IC-7300
+        // CODEC negotiating 44100/stereo when 48000/mono was requested)
+        // — QAudioOutput::stateChanged(IdleState) is never delivered when
+        // the buffer underruns, leaving the radio keyed indefinitely.
+        // Fire the unkey ourselves after a generous bound: the device
+        // queue cannot exceed ~prefill (20 ms) plus drain-rate skew over
+        // the burst (~10 % of the burst duration), so 500 ms is well past
+        // any legitimate drain even for the longest single AX.25 frame.
+        if (!packetTxIdleWatchdog) {
+            packetTxIdleWatchdog = new QTimer(this);
+            packetTxIdleWatchdog->setSingleShot(true);
+            connect(packetTxIdleWatchdog, &QTimer::timeout, this, [this]() {
+                if (!packetTxAwaitingIdle) return;
+                qInfo() << "Web: PKT USB idle watchdog — IdleState never fired, forcing unkey";
+                onUsbAudioOutputStateChanged(QAudio::IdleState);
+            });
+        }
+        packetTxIdleWatchdog->start(500);
     };
 
     if (packetUsbTxBuffer.size() >= chunkSize) {
@@ -4328,6 +4352,7 @@ void webServer::onUsbAudioOutputStateChanged(QAudio::State state)
     // Latch immediately so a follow-up Idle (e.g. from a stop/start
     // race during back-to-back transfers) can't queue a duplicate.
     packetTxAwaitingIdle = false;
+    if (packetTxIdleWatchdog) packetTxIdleWatchdog->stop();
 
     QTimer::singleShot(5, this, [this]() {
         if (usbAudioOutput && usbAudioOutput->state() != QAudio::StoppedState)

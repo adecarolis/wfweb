@@ -339,6 +339,11 @@ private:
                                         // QAudioOutput → IdleState before
                                         // unkeying (replaces the old 300 ms
                                         // guess on USB).
+    QTimer *packetTxIdleWatchdog = nullptr;  // backstop: some Qt5/ALSA
+                                        // configurations (raw hw: devices
+                                        // opened via nearestFormat) never
+                                        // emit IdleState — fire the unkey
+                                        // anyway so PTT can't latch on.
 
     // PKT LAN pacer: converter's Opus path requires fixed frame sizes, so
     // the burst is fed in 20 ms slices at wall-clock rate.
