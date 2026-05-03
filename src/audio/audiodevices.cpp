@@ -360,8 +360,22 @@ QStringList audioDevices::getOutputs()
 static int preferDefault(const QList<audioDevice*>& devices, const QList<int>& candidates)
 {
     if (candidates.isEmpty()) return -1;
+    // Marked-default wins outright.
     for (int idx : candidates) {
         if (devices[idx]->isDefault) return idx;
+    }
+    // On Linux, the same physical USB CODEC is enumerated twice: once as
+    // a raw ALSA hw: device (realm "alsa") and once via the pulseaudio
+    // plugin (realm "default", names like alsa_input.usb-Burr-Brown_...).
+    // The hw: entry comes first in Qt's enumeration, so without this
+    // tiebreak we'd land on it — which forces nearestFormat fallbacks
+    // (48000/mono → 44100/stereo on IC-7300 CODECs) and trips Qt5's
+    // flaky IdleState reporting on push-mode QAudioOutput. Prefer any
+    // non-"alsa" realm so the pulseaudio entry wins; Windows ("wasapi")
+    // and macOS ("coreaudio") have no "alsa" entries, so this is a
+    // no-op there.
+    for (int idx : candidates) {
+        if (devices[idx]->realm != "alsa") return idx;
     }
     return candidates.first();
 }
@@ -396,6 +410,16 @@ int audioDevices::findInput(QString type, QString name, bool ignoreDefault)
         if (!ignoreDefault) {
             if (inputs[f]->isDefault) {
                 def = f;
+            }
+            // PulseAudio pairs every output sink with a .monitor virtual
+            // source that captures what's being *played* to that sink, not
+            // what's coming in from the rig CODEC. A .monitor named after
+            // the rig (alsa_output.usb-Burr-Brown_..._USB_Audio_CODEC-...
+            // .analog-stereo.monitor) would otherwise satisfy the CODEC
+            // match below and silently shadow the real rig input — the
+            // browser would record TX-loopback silence instead of RX audio.
+            if (inputs[f]->name.endsWith(QStringLiteral(".monitor"))) {
+                continue;
             }
             // "CODEC" is the strong signal for a USB rig sound chip (Burr-Brown
             // USB Audio CODEC etc.); "USB" alone also matches ALSA's bogus
