@@ -38,6 +38,7 @@ mkdir -p "$DIST/transport" "$DIST/civ" "$DIST/models" "$DIST/digits" "$DIST/wasm
 
 # Standalone-only files (index + serial transport + CI-V).
 cp "$SRC/index.html"     "$DIST/"
+cp "$SRC/favicon.svg"    "$DIST/"
 cp "$SRC"/transport/*.js "$DIST/transport/"
 cp "$SRC"/civ/*.js       "$DIST/civ/"
 
