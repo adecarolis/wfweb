@@ -6,6 +6,62 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.7.0 (2026-05-03)
+--------------------
+
+Standalone build (new):
+- Pure-browser wfweb — no C++ server required. Drives a USB Icom directly
+  over Web Serial; runs as a static SPA with no install
+- Published to https://wfweb.k1fm.us via GitHub Pages on every push, with
+  cache-busted asset URLs
+- Full non-audio CI-V control surface (frequency, mode, VFO, filters,
+  P.AMP/ATT, MON, scope/waterfall, MEM read/write/clear, power cycle)
+- Direct rig audio in/out (RX + SSB voice TX) over Web Serial / Web Audio
+- Per-rig caps generated from `rigs/*.rig` — 25 Icom rigs supported,
+  with effortless auto-detect (baud probe, per-rig USB CI-V clamp)
+- Packet station: Direwolf modem in WASM, AX.25 connected-mode link,
+  APRS heard-stations + beacon scheduler
+- RADE V1 voice mode in the browser (no codec2/FreeDV classic)
+- Virtual-rig mode for hardware-less testing — two tabs at
+  `/?virtual=1&id=N` talk over a same-origin BroadcastChannel
+- Splash redesigned for first-time visitors; pair / click-to-start flow
+- Source-and-docs pill links to release + README
+
+Frontend reorganization:
+- SPA forked into `resources/web/` (server), `resources/web-standalone/`
+  (standalone), and `resources/web-shared/` (both). Each `index.html` is
+  single-purpose; no runtime build gates
+- Local dev server `tools/serve-static.py` (fixed `dist/` on port 8000,
+  `Cache-Control: no-store`); survives a dist rebuild
+- Reporter checkboxes (FreeDV / PSK) disabled in the Standalone UI
+
+Features (server build):
+- Auto-open CW bar and decoder when entering a CW mode
+- "wfweb Standalone" / "wfweb Server" naming across docs and UI
+
+Fixes:
+- Packet: watchdog unkeys PTT when Qt5 IdleState never fires
+- Audio: prefer PulseAudio realm and skip `.monitor` inputs in auto-pick;
+  prefer CODEC over plain USB
+- RADE: generate EOO callsign frame on PTT-off for LAN-attached rigs
+- RADE: clear stale server callsign and show "(set callsign)" indicator
+  pointing at the Station Settings modal
+- Web: push saved callsign to server on transport open and on changes
+- Web: CW bar closes when leaving CW for non-CW-R modes
+- Web: CW and DIGI bars stay inside the 16:9 radio frame
+- Standalone: restart RX audio on reconnect; show TX meters; correct CW
+  WPM scaling for CW transmit; filter slider tracks per-filter bandwidth;
+  P.AMP/ATT cycle reaches PRE2; VFO B populated on first load;
+  CW/FT8/Packet/FreeDV overlays mutually exclusive; FT8 decode no longer
+  references stale ws.readyState; power-cycle wake-up preamble + clean
+  off-overlay + scope re-enable
+
+Documentation:
+- README: new section on the Standalone build alongside Server
+- Describe the new `resources/` frontend layout (web / web-standalone /
+  web-shared)
+
+
 v0.6.2 (2026-04-29)
 --------------------
 
