@@ -2034,32 +2034,12 @@ body.digi-open #bottomBar { grid-row: 5; }
 
         <!-- Splash intro — shown by initStandaloneSplash(). -->
         <div id="splashStandaloneIntro" style="display:none; text-align:left; color:#bbb; font-size:13px; line-height:1.6; margin-bottom: 28px;">
-            <p style="margin:0 0 12px 0;">
+            <p style="margin:0;">
                 Direct rig control in your browser — no server, no install.
                 wfweb pairs with your Icom transceiver over a USB serial cable
                 using the Web Serial API and uses your rig's USB sound card for
                 audio. CW, FT8/FT4, AX.25 packet, APRS, and RADE V1 voice all
                 run client-side; the WASM modems live in this page.
-            </p>
-            <p style="margin:0 0 12px 0;">
-                Source &amp; documentation:
-                <a href="https://github.com/adecarolis/wfweb" target="_blank" rel="noopener"
-                   style="color:#0cf; text-decoration:underline;">github.com/adecarolis/wfweb</a>
-                (<code>wfweb</code> branch).
-            </p>
-            <p style="margin:0; font-size:12px; color:#888;">
-                Need LAN-attached rigs (Icom UDP), Kenwood CI-V, FreeDV
-                700D/700E/1600, or unattended-server features? Run
-                <strong>wfweb Server</strong> alongside your rig —
-                <a href="https://github.com/adecarolis/wfweb/releases" target="_blank" rel="noopener"
-                   style="color:#0cf; text-decoration:underline;">download a release</a>
-                or pull the
-                <a href="https://hub.docker.com/r/k1fm/wfweb" target="_blank" rel="noopener"
-                   style="color:#0cf; text-decoration:underline;">k1fm/wfweb</a>
-                Docker image. The
-                <a href="https://github.com/adecarolis/wfweb#readme" target="_blank" rel="noopener"
-                   style="color:#0cf; text-decoration:underline;">project README</a>
-                walks through both options.
             </p>
         </div>
 
@@ -2075,6 +2055,25 @@ body.digi-open #bottomBar { grid-row: 5; }
         </button>
         <div id="splashHint" style="margin-top: 20px; font-size: 12px; color: #666;">Enable RX Audio</div>
         <div id="splashError"  style="margin-top: 16px; min-height: 18px; font-size: 12px; color: #f88;"></div>
+
+        <!-- Source link + server-version link. Hidden by initStandaloneSplash() in virtual-rig mode. -->
+        <div id="splashStandaloneLinks" style="display:none; margin-top: 32px; gap: 10px; flex-wrap: wrap; justify-content: center;">
+            <a href="https://github.com/adecarolis/wfweb" target="_blank" rel="noopener"
+               style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; color: #888; text-decoration: none; font-size: 12px; border: 1px solid #333; border-radius: 6px; transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;"
+               onmouseover="this.style.color='#0cf'; this.style.borderColor='#0cf'; this.style.background='rgba(0,170,170,0.06)';"
+               onmouseout="this.style.color='#888'; this.style.borderColor='#333'; this.style.background='transparent';">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                Source &amp; documentation
+            </a>
+            <a href="https://github.com/adecarolis/wfweb/releases" target="_blank" rel="noopener"
+               style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; color: #888; text-decoration: none; font-size: 12px; border: 1px solid #333; border-radius: 6px; transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;"
+               onmouseover="this.style.color='#0cf'; this.style.borderColor='#0cf'; this.style.background='rgba(0,170,170,0.06)';"
+               onmouseout="this.style.color='#888'; this.style.borderColor='#333'; this.style.background='transparent';"
+               title="LAN-attached rigs, Kenwood CI-V, FreeDV 700D/700E/1600, FreeDV Reporter, unattended deployments.">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 3a1 1 0 011-1h10a1 1 0 011 1v3a1 1 0 01-1 1H3a1 1 0 01-1-1V3zm2 1.5a.5.5 0 100 1 .5.5 0 000-1zm2 0a.5.5 0 100 1 .5.5 0 000-1zM2 10a1 1 0 011-1h10a1 1 0 011 1v3a1 1 0 01-1 1H3a1 1 0 01-1-1v-3zm2 1.5a.5.5 0 100 1 .5.5 0 000-1zm2 0a.5.5 0 100 1 .5.5 0 000-1z"/></svg>
+                Try the server version
+            </a>
+        </div>
     </div>
     <div style="position: absolute; bottom: 20px; left: 20px; font-size: 11px; color: #555;">
         <span id="splashVersion">wfweb</span>
@@ -8760,11 +8759,13 @@ async function initStandaloneSplash() {
     var introEl    = document.getElementById('splashStandaloneIntro');
     var taglineEl  = document.getElementById('splashTagline');
     var unsupEl    = document.getElementById('splashUnsupported');
+    var linksEl    = document.getElementById('splashStandaloneLinks');
     var startBtn   = document.getElementById('startBtn');
     var hintEl     = document.getElementById('splashHint');
     var errorEl    = document.getElementById('splashError');
 
     if (introEl)   introEl.style.display = 'block';
+    if (linksEl)   linksEl.style.display = 'inline-flex';
     if (taglineEl) taglineEl.textContent = 'Direct rig control · Web Serial · no server';
 
     // Virtual rig mode: ?virtual=1[&id=N]. Bypasses Web Serial and
@@ -8776,6 +8777,7 @@ async function initStandaloneSplash() {
         var rigId = parseInt(urlParams.get('id') || '1', 10) | 0;
         if (introEl)   introEl.style.display = 'none';
         if (unsupEl)   unsupEl.style.display = 'none';
+        if (linksEl)   linksEl.style.display = 'none';
         if (taglineEl) taglineEl.textContent = 'VIRTUAL RIG #' + rigId + ' — no hardware';
         startBtn.style.display = '';
         startBtn.textContent = 'START VIRTUAL RIG';
