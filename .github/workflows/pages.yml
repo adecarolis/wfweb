@@ -32,6 +32,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ft8ts ships its built dist/ inside the submodule; the build script
+      # copies dist/ft8ts.mjs straight out. radae_nopy isn't used by the
+      # standalone bundle, so init only the one submodule we need.
+      - name: Init ft8ts submodule
+        run: git submodule update --init --depth 1 resources/ft8ts
+
       - uses: actions/configure-pages@v5
 
       - name: Build standalone bundle
