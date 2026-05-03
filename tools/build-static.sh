@@ -92,7 +92,7 @@ or unattended-server features, use **wfweb Server** instead.)
 ## Local testing
 
 ```
-../tools/serve-static.py 8000 .
+../tools/serve-static.py
 ```
 
 Open `http://localhost:8000` in Chrome or Edge. Localhost is a secure
@@ -156,5 +156,5 @@ echo "  ls $DIST"
 ls "$DIST"
 echo
 echo "Test locally:"
-echo "  $REPO_ROOT/tools/serve-static.py 8000 $DIST"
+echo "  $REPO_ROOT/tools/serve-static.py"
 echo "  → open http://localhost:8000 in Chrome/Edge"
