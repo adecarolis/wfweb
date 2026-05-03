@@ -2023,56 +2023,188 @@ body.digi-open #bottomBar { grid-row: 5; }
     .digi-status-bar .digi-callsign-input { flex: 1 1 40px; width: auto; min-width: 40px; }
     .digi-enable-tx-btn, .digi-halt-btn, .digi-tune-btn { font-size: 10px; padding: 2px 5px; flex-shrink: 0; }
 }
+
+/* ============ SPLASH (standalone) ============ */
+.splash-hero {
+    color: #d8d8d8;
+    font-size: 14px;
+    line-height: 1.55;
+    max-width: 540px;
+    margin: 0 auto 22px;
+}
+.splash-feats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    max-width: 560px;
+    margin: 0 auto 18px;
+}
+.splash-feat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    padding: 12px 4px;
+    border: 1px solid #1c2e2e;
+    background: rgba(0, 170, 170, 0.05);
+    border-radius: 8px;
+    color: #cfd8d8;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-align: center;
+    line-height: 1.2;
+}
+.splash-feat svg { color: #0cc; opacity: 0.9; }
+.splash-req {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border: 1px solid #2a4848;
+    background: rgba(0, 170, 170, 0.06);
+    border-radius: 999px;
+    color: #6dd;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    margin: 0 auto 4px;
+}
+.splash-req svg { color: #0cc; flex-shrink: 0; }
+.splash-server-pitch {
+    margin: 28px auto 12px;
+    color: #888;
+    font-size: 12px;
+    line-height: 1.5;
+    max-width: 480px;
+}
+.splash-server-pitch b { color: #0cc; font-weight: 600; }
+.splash-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    color: #888;
+    text-decoration: none;
+    font-size: 12px;
+    border: 1px solid #333;
+    border-radius: 6px;
+    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.splash-pill:hover {
+    color: #0cf;
+    border-color: #0cf;
+    background: rgba(0, 170, 170, 0.06);
+}
+@media (max-width: 540px) {
+    .splash-feats { grid-template-columns: repeat(3, 1fr); }
+    .splash-hero { font-size: 13px; }
+}
 </style>
 </head>
 <body>
 <!-- Startup Overlay -->
 <div id="startupOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; padding: 24px;">
     <div style="text-align: center; max-width: 640px;">
-        <div style="font-size: 48px; font-weight: bold; color: #0aa; margin-bottom: 8px; text-shadow: 0 0 20px rgba(0, 170, 170, 0.5);">wfweb</div>
-        <div id="splashTagline" style="font-size: 14px; color: #888; margin-bottom: 28px;">Remote Control &amp; Web Interface</div>
+        <div style="font-size: 48px; font-weight: bold; color: #0aa; margin-bottom: 6px; text-shadow: 0 0 20px rgba(0, 170, 170, 0.5);">wfweb</div>
+        <div id="splashTagline" style="font-size: 14px; color: #888; margin-bottom: 26px; letter-spacing: 0.3px;">A radio shack in your browser</div>
 
         <!-- Splash intro — shown by initStandaloneSplash(). -->
-        <div id="splashStandaloneIntro" style="display:none; text-align:left; color:#bbb; font-size:13px; line-height:1.6; margin-bottom: 28px;">
-            <p style="margin:0;">
-                Direct rig control in your browser — no server, no install.
-                wfweb pairs with your Icom transceiver over a USB serial cable
-                using the Web Serial API and uses your rig's USB sound card for
-                audio. CW, FT8/FT4, AX.25 packet, APRS, and RADE V1 voice all
-                run client-side; the WASM modems live in this page.
+        <div id="splashStandaloneIntro" style="display:none;">
+            <p class="splash-hero">
+                Drive your Icom HF transceiver right from this page.
+                Voice, FT8/FT4, CW, AX.25 packet, and digital voice
+                all run client-side — nothing to install.
             </p>
+
+            <div class="splash-feats">
+                <div class="splash-feat">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="9" y="2" width="6" height="12" rx="3"/>
+                        <path d="M5 11a7 7 0 0014 0M12 18v3M8 22h8"/>
+                    </svg>
+                    <span>SSB &amp;<br>Voice</span>
+                </div>
+                <div class="splash-feat">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="4" y1="20" x2="4" y2="14"/>
+                        <line x1="9" y1="20" x2="9" y2="9"/>
+                        <line x1="14" y1="20" x2="14" y2="11"/>
+                        <line x1="19" y1="20" x2="19" y2="6"/>
+                    </svg>
+                    <span>FT8 / FT4</span>
+                </div>
+                <div class="splash-feat">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+                        <circle cx="3.5" cy="12" r="1.4" fill="currentColor"/>
+                        <line x1="7" y1="12" x2="13" y2="12"/>
+                        <circle cx="16.5" cy="12" r="1.4" fill="currentColor"/>
+                        <line x1="19" y1="12" x2="22" y2="12"/>
+                    </svg>
+                    <span>CW<br>Decoder</span>
+                </div>
+                <div class="splash-feat">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="5" cy="6" r="2"/>
+                        <circle cx="19" cy="6" r="2"/>
+                        <circle cx="12" cy="18" r="2"/>
+                        <line x1="7" y1="6" x2="17" y2="6"/>
+                        <line x1="6.5" y1="7.5" x2="10.7" y2="16.5"/>
+                        <line x1="17.5" y1="7.5" x2="13.3" y2="16.5"/>
+                    </svg>
+                    <span>Packet /<br>APRS</span>
+                </div>
+                <div class="splash-feat">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M2 12c1.2-3 2-3 3 0s1.8 7 3 4 1.8-10 3-7 1.8 10 3 7 1.8-7 3-4 1.8 3 3 0"/>
+                    </svg>
+                    <span>Digital<br>Voice</span>
+                </div>
+            </div>
+
+            <div class="splash-req">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="4" cy="12" r="2" fill="currentColor" stroke="none"/>
+                    <path d="M4 12h13"/>
+                    <path d="M13 7l5 5-5 5"/>
+                    <rect x="18" y="9" width="4" height="6" rx="1"/>
+                </svg>
+                ICOM RIG ON USB · CHROME / EDGE / BRAVE
+            </div>
         </div>
 
         <!-- Browser-not-supported message (Firefox, Safari). Hidden by default. -->
-        <div id="splashUnsupported" style="display:none; text-align:left; padding:14px 18px; border:1px solid #f44; border-radius:6px; background:rgba(255,68,68,0.06); color:#fbb; font-size:13px; line-height:1.5;">
+        <div id="splashUnsupported" style="display:none; text-align:left; padding:14px 18px; border:1px solid #f44; border-radius:6px; background:rgba(255,68,68,0.06); color:#fbb; font-size:13px; line-height:1.5; max-width:520px; margin: 0 auto 24px;">
             This browser doesn't support the Web Serial API.
             wfweb's standalone build needs Chrome, Edge, Opera, Brave, or any
             other Chromium-family browser. Firefox and Safari aren't supported.
         </div>
 
-        <button id="startBtn" style="padding: 20px 60px; font-size: 24px; font-weight: bold; color: #000; background: linear-gradient(135deg, #0aa 0%, #088 100%); border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 170, 170, 0.4); transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0, 170, 170, 0.6)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(0, 170, 170, 0.4)';">
-            CLICK TO START
-        </button>
-        <div id="splashHint" style="margin-top: 20px; font-size: 12px; color: #666;">Enable RX Audio</div>
-        <div id="splashError"  style="margin-top: 16px; min-height: 18px; font-size: 12px; color: #f88;"></div>
+        <div style="margin-top: 22px;">
+            <button id="startBtn" style="padding: 20px 60px; font-size: 24px; font-weight: bold; color: #000; background: linear-gradient(135deg, #0aa 0%, #088 100%); border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 170, 170, 0.4); transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0, 170, 170, 0.6)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(0, 170, 170, 0.4)';">
+                CLICK TO START
+            </button>
+        </div>
+        <div id="splashHint" style="margin-top: 18px; font-size: 12px; color: #666;">Enable RX Audio</div>
+        <div id="splashError"  style="margin-top: 14px; min-height: 18px; font-size: 12px; color: #f88;"></div>
 
         <!-- Source link + server-version link. Hidden by initStandaloneSplash() in virtual-rig mode. -->
-        <div id="splashStandaloneLinks" style="display:none; margin-top: 32px; gap: 10px; flex-wrap: wrap; justify-content: center;">
-            <a href="https://github.com/adecarolis/wfweb" target="_blank" rel="noopener"
-               style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; color: #888; text-decoration: none; font-size: 12px; border: 1px solid #333; border-radius: 6px; transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;"
-               onmouseover="this.style.color='#0cf'; this.style.borderColor='#0cf'; this.style.background='rgba(0,170,170,0.06)';"
-               onmouseout="this.style.color='#888'; this.style.borderColor='#333'; this.style.background='transparent';">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-                Source &amp; documentation
-            </a>
-            <a href="https://github.com/adecarolis/wfweb/releases" target="_blank" rel="noopener"
-               style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; color: #888; text-decoration: none; font-size: 12px; border: 1px solid #333; border-radius: 6px; transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;"
-               onmouseover="this.style.color='#0cf'; this.style.borderColor='#0cf'; this.style.background='rgba(0,170,170,0.06)';"
-               onmouseout="this.style.color='#888'; this.style.borderColor='#333'; this.style.background='transparent';"
-               title="LAN-attached rigs, Kenwood CI-V, FreeDV 700D/700E/1600, FreeDV Reporter, unattended deployments.">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 3a1 1 0 011-1h10a1 1 0 011 1v3a1 1 0 01-1 1H3a1 1 0 01-1-1V3zm2 1.5a.5.5 0 100 1 .5.5 0 000-1zm2 0a.5.5 0 100 1 .5.5 0 000-1zM2 10a1 1 0 011-1h10a1 1 0 011 1v3a1 1 0 01-1 1H3a1 1 0 01-1-1v-3zm2 1.5a.5.5 0 100 1 .5.5 0 000-1zm2 0a.5.5 0 100 1 .5.5 0 000-1z"/></svg>
-                Try the server version
-            </a>
+        <div id="splashStandaloneLinks" style="display:none; flex-direction: column; align-items: center; gap: 4px; margin-top: 8px;">
+            <p class="splash-server-pitch">
+                LAN-attached rig, Kenwood / Yaesu, or 24/7 deployment?
+                The full <b>wfweb server</b> runs natively or in Docker.
+            </p>
+            <div style="display: inline-flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                <a href="https://github.com/adecarolis/wfweb" target="_blank" rel="noopener" class="splash-pill">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    Source &amp; documentation
+                </a>
+                <a href="https://github.com/adecarolis/wfweb/releases" target="_blank" rel="noopener" class="splash-pill"
+                   title="Native Linux / macOS / Windows builds. Also published as k1fm/wfweb on Docker Hub. Adds: LAN-attached rigs, Kenwood/Yaesu CI-V, FreeDV 700D/700E/1600, FreeDV Reporter, unattended deployments.">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 3a1 1 0 011-1h10a1 1 0 011 1v3a1 1 0 01-1 1H3a1 1 0 01-1-1V3zm2 1.5a.5.5 0 100 1 .5.5 0 000-1zm2 0a.5.5 0 100 1 .5.5 0 000-1zM2 10a1 1 0 011-1h10a1 1 0 011 1v3a1 1 0 01-1 1H3a1 1 0 01-1-1v-3zm2 1.5a.5.5 0 100 1 .5.5 0 000-1zm2 0a.5.5 0 100 1 .5.5 0 000-1z"/></svg>
+                    Get the server &mdash; native or Docker
+                </a>
+            </div>
         </div>
     </div>
     <div style="position: absolute; bottom: 20px; left: 20px; font-size: 11px; color: #555;">
@@ -8765,8 +8897,8 @@ async function initStandaloneSplash() {
     var errorEl    = document.getElementById('splashError');
 
     if (introEl)   introEl.style.display = 'block';
-    if (linksEl)   linksEl.style.display = 'inline-flex';
-    if (taglineEl) taglineEl.textContent = 'Direct rig control · Web Serial · no server';
+    if (linksEl)   linksEl.style.display = 'flex';
+    if (taglineEl) taglineEl.textContent = 'A radio shack in your browser';
 
     // Virtual rig mode: ?virtual=1[&id=N]. Bypasses Web Serial and
     // getUserMedia entirely — each tab joins a same-origin BroadcastChannel
