@@ -375,7 +375,19 @@
                 if (typeof aVal !== 'number') return;
                 var aField = ANALOG_SUB_TO_FIELD[aSub];
                 this.state[aField] = aVal;
-                this._enqueue(obj.cmd, civ.cmdSetAnalogLevel(aSub, aVal));
+                // CW key speed is the only analog level that's not on the
+                // raw 0..255 BCD scale: the UI exposes WPM (6..48), and the
+                // Icom mapping is level = round((wpm - 6) * 6.071), matching
+                // icomcommander.cpp funcKeySpeed. Without this, a WPM of 35
+                // sends level=35 which the rig decodes back to ~12 WPM, and
+                // small UI changes look like no change at all.
+                var wireVal = aVal;
+                if (obj.cmd === 'setCWSpeed') {
+                    wireVal = Math.round((aVal - 6) * 6.071);
+                    if (wireVal < 0) wireVal = 0;
+                    if (wireVal > 255) wireVal = 255;
+                }
+                this._enqueue(obj.cmd, civ.cmdSetAnalogLevel(aSub, wireVal));
                 var aUpd = {}; aUpd[aField] = aVal;
                 this._emit('update', aUpd);
                 return;
@@ -549,6 +561,14 @@
                     if (!this._rigCanTransmit()) return;
                     if (typeof obj.text !== 'string' || !obj.text.length) return;
                     this._enqueue('sendCW', civ.cmdSendCW(obj.text));
+                    // The rig auto-keys to send the CW buffer; we never issue a
+                    // PTT command, so flip transmitting optimistically to switch
+                    // the meter UI to power/SWR and start polling TX meters
+                    // immediately. The PTT poll added below detects auto-unkey.
+                    if (!this.state.transmitting) {
+                        this.state.transmitting = true;
+                        this._emit('update', { transmitting: true });
+                    }
                     return;
                 case 'stopCW':
                     if (!this._rigCanTransmit()) return;
@@ -1666,6 +1686,10 @@
                     this._enqueue('readPowerMeter', civ.cmdReadPowerMeter());
                     this._enqueue('readSwrMeter',   civ.cmdReadSwrMeter());
                     this._enqueue('readAlcMeter',   civ.cmdReadAlcMeter());
+                    // CW (and any rig-initiated TX) keys without a setPTT
+                    // command, so we don't get a self-clearing edge. Poll PTT
+                    // here to detect auto-unkey and flip back to S-meter.
+                    this._enqueue('readPTT', civ.cmdReadPTT());
                 } else {
                     this._enqueue('readSMeter', civ.cmdReadSMeter());
                 }
