@@ -17,7 +17,12 @@ A URL is "local" when it doesn't start with a scheme (http:, https:, data:,
 blob:, mailto:) or with `//`. Already-versioned URLs (those containing `?`)
 are skipped, so the script is idempotent.
 
-Usage: tools/fingerprint-static.py <dist-dir> <version>
+Usage: tools/fingerprint-static.py <dist-dir> <version> [<semver>]
+
+<version> is the cache-bust string (typically <semver>-<sha>[-<ts>]).
+<semver> is the user-facing release number (e.g. "0.6.2"); defaults to
+<version>. Both are exposed as window globals (__WFWEB_V__ / __WFWEB_SEMVER__)
+in HTML files containing <!--WFWEB_VERSION_SLOT-->.
 """
 
 import os
@@ -26,10 +31,12 @@ import sys
 
 
 def main() -> int:
-    if len(sys.argv) != 3:
-        print("usage: fingerprint-static.py <dist-dir> <version>", file=sys.stderr)
+    if len(sys.argv) not in (3, 4):
+        print("usage: fingerprint-static.py <dist-dir> <version> [<semver>]", file=sys.stderr)
         return 2
-    dist, version = sys.argv[1], sys.argv[2]
+    dist = sys.argv[1]
+    version = sys.argv[2]
+    semver = sys.argv[3] if len(sys.argv) == 4 else version
     if not os.path.isdir(dist):
         print(f"error: {dist} is not a directory", file=sys.stderr)
         return 2
@@ -68,7 +75,12 @@ def main() -> int:
     # append `?v=…` themselves — the regex above can't see through Blob
     # strings or `new Worker(literal)` calls.
     version_slot = "<!--WFWEB_VERSION_SLOT-->"
-    version_script = f'<script>window.__WFWEB_V__="{version}";</script>'
+    version_script = (
+        f'<script>'
+        f'window.__WFWEB_V__="{version}";'
+        f'window.__WFWEB_SEMVER__="{semver}";'
+        f'</script>'
+    )
 
     exts = {".html", ".js", ".mjs"}
     changed_files = 0

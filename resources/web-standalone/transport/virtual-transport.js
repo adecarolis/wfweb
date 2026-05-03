@@ -392,7 +392,7 @@
 
         _emitRigInfo() {
             this._emit('rigInfo', {
-                version: '0.6.1-virtual',
+                version: ((typeof window !== 'undefined' && window.__WFWEB_SEMVER__) || 'dev') + '-virtual',
                 model: 'Virtual Rig #' + this.rigId,
                 connected: true,
                 modes: DEFAULT_MODES,

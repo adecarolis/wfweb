@@ -140,15 +140,24 @@ Opera, Brave, Arc). Firefox / Safari users can't use this build.
 - Non-Chromium browsers (Firefox, Safari, …)
 EOF
 
-# Cache-bust every local asset URL with ?v=<sha>. WFWEB_BUILD_VERSION lets
+# Single source of truth for the user-facing version: wfweb.pro. Server
+# (C++) reads it via the WFWEB_VERSION DEFINE; Standalone reads it here so
+# both builds report the same number.
+WFWEB_SEMVER="$(grep -E 'WFWEB_VERSION' "$REPO_ROOT/wfweb.pro" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+if [ -z "$WFWEB_SEMVER" ]; then
+    echo "ERROR: could not extract WFWEB_VERSION from $REPO_ROOT/wfweb.pro" >&2
+    exit 1
+fi
+
+# Cache-bust every local asset URL with ?v=<...>. WFWEB_BUILD_VERSION lets
 # CI override with a clean commit SHA (see .github/workflows/pages.yml). For
 # local builds we always tack on a timestamp so iterative rebuilds bust the
 # cache even when HEAD hasn't moved.
 if [ -z "${WFWEB_BUILD_VERSION:-}" ]; then
     SHA="$(git -C "$REPO_ROOT" rev-parse --short=12 HEAD 2>/dev/null || echo dev)"
-    WFWEB_BUILD_VERSION="${SHA}-$(date -u +%s)"
+    WFWEB_BUILD_VERSION="${WFWEB_SEMVER}-${SHA}-$(date -u +%s)"
 fi
-"$REPO_ROOT/tools/fingerprint-static.py" "$DIST" "$WFWEB_BUILD_VERSION"
+"$REPO_ROOT/tools/fingerprint-static.py" "$DIST" "$WFWEB_BUILD_VERSION" "$WFWEB_SEMVER"
 
 echo
 echo "Static bundle written to: $DIST"

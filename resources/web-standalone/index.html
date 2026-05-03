@@ -8943,6 +8943,17 @@ async function initStandaloneSplash() {
     if (linksEl)   linksEl.style.display = 'flex';
     if (taglineEl) taglineEl.textContent = 'A radio shack in your browser';
 
+    // Show the version on the splash before any rig is connected. The
+    // rigInfo handler later overwrites this with the same number plus a
+    // transport suffix once a transport opens.
+    var bootSemver = window.__WFWEB_SEMVER__;
+    if (bootSemver) {
+        var sv = document.getElementById('splashVersion');
+        if (sv) sv.textContent = 'wfweb v. ' + bootSemver;
+        var pv = document.getElementById('powerOffVersion');
+        if (pv) pv.textContent = 'wfweb v. ' + bootSemver;
+    }
+
     // Virtual rig mode: ?virtual=1[&id=N]. Bypasses Web Serial and
     // getUserMedia entirely — each tab joins a same-origin BroadcastChannel
     // and they all hear each other. Used for multi-tab testing of RADE,
