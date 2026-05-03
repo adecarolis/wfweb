@@ -378,6 +378,7 @@ int audioDevices::findInput(QString type, QString name, bool ignoreDefault)
     QList<int> prefixMatches;
     QList<int> substringMatches;
     QList<int> codecMatches;
+    QList<int> usbMatches;
     QString msg;
     QTextStream s(&msg);
 
@@ -396,12 +397,20 @@ int audioDevices::findInput(QString type, QString name, bool ignoreDefault)
             if (inputs[f]->isDefault) {
                 def = f;
             }
-            if (inputs[f]->name.contains("USB", Qt::CaseInsensitive) ||
-                inputs[f]->name.contains("CODEC", Qt::CaseInsensitive)) {
+            // "CODEC" is the strong signal for a USB rig sound chip (Burr-Brown
+            // USB Audio CODEC etc.); "USB" alone also matches ALSA's bogus
+            // usbstream:CARD=PCH virtual node, which can't be opened. Prefer
+            // CODEC matches and only fall back to USB-only matches if no CODEC
+            // device is present.
+            if (inputs[f]->name.contains("CODEC", Qt::CaseInsensitive)) {
                 codecMatches.append(f);
+            } else if (inputs[f]->name.contains("USB", Qt::CaseInsensitive)) {
+                usbMatches.append(f);
             }
         }
     }
+
+    const QList<int>& effectiveCodec = !codecMatches.isEmpty() ? codecMatches : usbMatches;
 
     if (!prefixMatches.isEmpty()) {
         ret = preferDefault(inputs, prefixMatches);
@@ -420,7 +429,7 @@ int audioDevices::findInput(QString type, QString name, bool ignoreDefault)
 
     if (ret == -1 && !ignoreDefault)
     {
-        const int codec = preferDefault(inputs, codecMatches);
+        const int codec = preferDefault(inputs, effectiveCodec);
         if (name == "default") {
             if (codec > -1 && type != "Client") {
                 s << type << " Audio input: using USB/CODEC device " << inputs[codec]->name;
@@ -472,6 +481,7 @@ int audioDevices::findOutput(QString type, QString name, bool ignoreDefault)
     QList<int> prefixMatches;
     QList<int> substringMatches;
     QList<int> codecMatches;
+    QList<int> usbMatches;
     QString msg;
     QTextStream s(&msg);
 
@@ -490,12 +500,18 @@ int audioDevices::findOutput(QString type, QString name, bool ignoreDefault)
             if (outputs[f]->isDefault) {
                 def = f;
             }
-            if (outputs[f]->name.contains("USB", Qt::CaseInsensitive) ||
-                outputs[f]->name.contains("CODEC", Qt::CaseInsensitive)) {
+            // See findInput(): prefer CODEC over plain USB so we don't pick
+            // ALSA's unopenable usbstream:CARD=PCH on hosts with both an
+            // onboard PCH chipset and a real USB rig sound chip.
+            if (outputs[f]->name.contains("CODEC", Qt::CaseInsensitive)) {
                 codecMatches.append(f);
+            } else if (outputs[f]->name.contains("USB", Qt::CaseInsensitive)) {
+                usbMatches.append(f);
             }
         }
     }
+
+    const QList<int>& effectiveCodec = !codecMatches.isEmpty() ? codecMatches : usbMatches;
 
     if (!prefixMatches.isEmpty()) {
         ret = preferDefault(outputs, prefixMatches);
@@ -514,7 +530,7 @@ int audioDevices::findOutput(QString type, QString name, bool ignoreDefault)
 
     if (ret == -1 && !ignoreDefault)
     {
-        const int codec = preferDefault(outputs, codecMatches);
+        const int codec = preferDefault(outputs, effectiveCodec);
         if (name == "default") {
             if (codec > -1 && type != "Client") {
                 s << type << " Audio output: using USB/CODEC device " << outputs[codec]->name;
