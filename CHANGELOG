@@ -55,6 +55,9 @@ Fixes:
   CW/FT8/Packet/FreeDV overlays mutually exclusive; FT8 decode no longer
   references stale ws.readyState; power-cycle wake-up preamble + clean
   off-overlay + scope re-enable
+- Standalone: push sane gain defaults on first connect (AF 20%, RF 100%,
+  MIC 75%, SQL 0%) so a rig coming up at RF 0% doesn't look like a dead
+  receiver; user adjustments are preserved on subsequent connects
 
 Documentation:
 - README: new section on the Standalone build alongside Server
