@@ -6,6 +6,21 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.7.1 (2026-05-03)
+--------------------
+
+Standalone fixes:
+- Packet panel correctly resumes the user's last baud after a page reload.
+  Previously the modem booted at 300 regardless of selection, leaving 1200
+  / 9600 traffic silently undecoded until a baud button was clicked (#60)
+- Transmitted AX.25 frames now appear in the monitor pane, matching the
+  C++ server build (#61)
+- AX.25 packet TX is now DCD-aware so half-duplex collisions are avoided
+  on busy channels (#59)
+- Splash overlay scrolls properly on mobile and points first-time visitors
+  at the server build when the standalone isn't a fit
+
+
 v0.7.0 (2026-05-03)
 --------------------
 
