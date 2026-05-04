@@ -280,7 +280,9 @@
             // Packet (Direwolf WASM) state. Lazy-loaded — we don't pay the
             // ~140 KB module download cost unless the user opens the packet
             // panel and toggles enable. modem stays alive across mode
-            // changes; init() reconfigures it in place.
+            // changes; init() reconfigures it in place. mode here is just
+            // the boot default; the SPA pushes packetSetMode on every
+            // transport-open via Packet.syncToTransport (see issue #60).
             this._packet = {
                 enabled: false, mode: 300, modem: null,
                 modulePromise: null, txInFlight: false,

@@ -577,7 +577,8 @@
         try {
             localStorage.setItem('wfweb.packet.layout', JSON.stringify({
                 visible: state.visible,
-                activeTab: state.activeTab
+                activeTab: state.activeTab,
+                mode: state.mode
             }));
         } catch (e) { /* quota — ignore */ }
     }
@@ -588,6 +589,18 @@
             if (!raw) return;
             var obj = JSON.parse(raw);
             if (!obj || typeof obj !== 'object') return;
+
+            // Restore the mode first so updateModeButtons() in show() paints the
+            // right active button and so any later setEnabled-driven UI doesn't
+            // briefly flash "300".  We do NOT push packetSetMode here: in the
+            // C++ server build the backend is the source of truth and pushing
+            // would clobber it.  In Standalone the transport persists its own
+            // _packet.mode (see serial-transport.js), so the modem still starts
+            // up at the right baud without an explicit push from this layer.
+            if (obj.mode === 300 || obj.mode === 1200 || obj.mode === 9600) {
+                state.mode = obj.mode;
+                updateModeButtons();
+            }
 
             if (obj.activeTab === 'aprs' || obj.activeTab === 'term') {
                 // Direct DOM toggle — don't fire the side-effects setActiveTab
@@ -657,6 +670,7 @@
         updateModeButtons();
         // Repaint frequency-marker overlay with the new mark/space pair.
         if (scopeCtx) clearScope();
+        saveLayoutToStorage();
     }
 
     function updateModeButtons() {
@@ -2204,6 +2218,37 @@
         return modal;
     }
 
+    // Re-push the SPA's current PKT state to the transport. Used by the
+    // Standalone build to recover from page reload: restoreLayoutFromStorage
+    // runs at DOMContentLoaded — long before the user clicks the splash to
+    // open the rig — so the packetEnable that show()/setEnabled fires gets
+    // dropped by window.send (no transport yet). Once the transport finally
+    // opens, the host calls syncToTransport() and we re-fire the state so
+    // _packetEnsureModem() actually runs and the modem boots at the
+    // persisted baud.  The C++ server build does NOT call this — the server
+    // owns persistence and pushes packetStatus on WS connect instead.
+    function syncToTransport() {
+        if (!window.send) return;
+        if (!state.visible) return;
+        // Order matters: push the baud BEFORE enabling so
+        // _packetEnsureModem() inside _packetSetEnabled sees the right mode.
+        // Snapshot state.enabled / state.mode UP FRONT — the transport's
+        // _packetSetMode handler synchronously echoes a packetStatus back
+        // into onMessage, which overwrites state.enabled with the transport's
+        // current (false) value. Without this snapshot, the second send
+        // reads the freshly-clobbered state.enabled and ships packetEnable
+        // (false), leaving the modem un-enabled and audio not flowing
+        // through it. The packetEnable echo immediately afterwards puts
+        // state.enabled back to true, but the damage is done by then.
+        var wantEnabled = !!state.enabled;
+        var wantMode = state.mode;
+        window.send({ cmd: 'packetSetMode', value: wantMode });
+        window.send({ cmd: 'packetEnable', value: wantEnabled });
+        // If the user landed on the TERMINAL tab, re-register their callsign
+        // so inbound SABMs are accepted.
+        if (state.activeTab === 'term') termRegisterOwn();
+    }
+
     window.Packet = {
         init: init,
         onMessage: onMessage,
@@ -2211,6 +2256,7 @@
         show: show,
         hide: hide,
         toggle: toggle,
+        syncToTransport: syncToTransport,
         get state() { return state; }
     };
 

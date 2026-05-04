@@ -2984,6 +2984,12 @@ function onTransportOpen() {
     send({ cmd: 'getStatus' });
     var rCb = document.getElementById('digiReporterEnable');
     if (rCb && rCb.checked) sendReporterConfig();
+    // packet.js's restore-on-load runs before the user opens the rig, so
+    // its packetEnable was dropped (no transport yet). Re-push it now so
+    // the modem actually boots at the persisted baud. See issue #60.
+    if (window.Packet && typeof window.Packet.syncToTransport === 'function') {
+        window.Packet.syncToTransport();
+    }
     updateConnIndicator();
 }
 
