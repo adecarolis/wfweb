@@ -1966,6 +1966,17 @@
                 // Feed UI frames into APRS (it ignores non-UI / non-position).
                 aprs.onRxFrame(json);
             };
+            // Local TX frames — fires for every encoded frame (APRS UI
+            // one-shots and connected-mode I/S/U). Surface them in the
+            // monitor pane the same way the C++ server's txFrameDecoded
+            // path does (packetRxFrame with tx:true → orange row).
+            modem.onTxFrame = function (chan, bytes) {
+                var json = self._packet.parseAx25(bytes, chan, 0);
+                if (!json) return;
+                json.type = 'packetRxFrame';
+                json.tx = true;
+                self._emit('message', json);
+            };
             // APRS layer dispatches a 'station' event for each updated
             // station and 'txBeacon' when the periodic timer fires.
             aprs.addEventListener('station', function (ev) {
@@ -2150,13 +2161,10 @@
                 if (!audio) { fail('modem rejected frame'); return; }
 
                 this._emit('message', { type: 'packetTxStarted' });
-                // Surface the locally-originated frame in the monitor pane
-                // so the operator sees what they just queued.
-                this._emit('message', {
-                    type: 'packetRxFrame', chan: 0, level: 0, ts: Date.now(),
-                    src: obj.src, dst: dst, path: obj.path || [],
-                    info: info, ftype: 'UI', rawHex: '', _tx: true,
-                });
+                // The TX-frame trampoline (modem.onTxFrame, hooked above)
+                // surfaces the encoded frame in the monitor pane on its
+                // own — same path connected-mode TX uses, so APRS one-shots
+                // and link-layer frames render identically.
 
                 // Switch the rig to USB MOD INPUT so it actually modulates
                 // the audio we're streaming over the USB cable. Same fix the

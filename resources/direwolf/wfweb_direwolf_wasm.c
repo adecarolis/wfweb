@@ -51,6 +51,17 @@ EM_JS(void, wfweb_dw_emit_rx_frame, (int chan, int alevel, int ptr, int len), {
     }
 });
 
+/* Mirror of wfweb_dw_emit_rx_frame for locally-originated TX frames so the
+ * SPA's monitor pane can show them alongside RX (matches the C++ server's
+ * txFrameDecoded -> packetRxFrame{tx:true} path). Fires for every frame the
+ * modem encodes — UI APRS one-shots AND connected-mode I/S/U frames. */
+EM_JS(void, wfweb_dw_emit_tx_frame, (int chan, int ptr, int len), {
+    if (typeof Module !== 'undefined' && typeof Module.onTxFrame === 'function') {
+        var bytes = HEAPU8.slice(ptr, ptr + len);
+        Module.onTxFrame(chan, bytes);
+    }
+});
+
 /* TX scratch buffer — gen_tone calls audio_put one byte at a time. The
  * stream is little-endian int16 LE PCM at modemRate (48 kHz mono). We
  * accumulate into a growable buffer and let JS pull it after the call
@@ -251,6 +262,13 @@ int wfweb_dw_tx_frame(const char *monitor)
     packet_t pp = ax25_from_text(dup, 1);
     free(dup);
     if (!pp) return -1;
+    /* Surface the outgoing frame to JS for the monitor pane before we
+     * tear pp down — same shape as the RX path. */
+    {
+        unsigned char fbuf[AX25_MAX_PACKET_LEN];
+        int fn = ax25_pack(pp, fbuf);
+        if (fn > 0) wfweb_dw_emit_tx_frame(0, (int)(intptr_t)fbuf, fn);
+    }
     layer2_preamble_postamble(0, 32, 0, &g_cfg);
     layer2_send_frame(0, pp, 0, &g_cfg);
     layer2_preamble_postamble(0, 2, 1, &g_cfg);
@@ -426,6 +444,15 @@ static void process_pending_tx(void) {
                 tx_pkt_t *node = g_tx_head[chan];
                 g_tx_head[chan] = node->next;
                 if (!g_tx_head[chan]) g_tx_tail[chan] = NULL;
+                /* Surface the outgoing frame to JS for the monitor pane
+                 * before we tear pp down — every link-layer I/S/U frame
+                 * shows up the same way RX frames do. */
+                {
+                    unsigned char fbuf[AX25_MAX_PACKET_LEN];
+                    int fn = ax25_pack(node->pp, fbuf);
+                    if (fn > 0) wfweb_dw_emit_tx_frame(chan,
+                                    (int)(intptr_t)fbuf, fn);
+                }
                 layer2_send_frame(chan, node->pp, 0, &g_cfg);
                 ax25_delete(node->pp);
                 free(node);

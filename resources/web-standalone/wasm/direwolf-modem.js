@@ -25,6 +25,7 @@ export class DirewolfModem {
         this._baud = 0;
         this._sampleRate = 0;
         this.onFrame = null;
+        this.onTxFrame = null;
 
         // Module.onRxFrame is invoked from the C dlq_rec_frame trampoline.
         // We unpack the AX.25 bytes (already a Uint8Array slice) and emit
@@ -32,6 +33,15 @@ export class DirewolfModem {
         Module.onRxFrame = (chan, alevel, bytes) => {
             if (typeof this.onFrame === 'function') {
                 this.onFrame(chan, alevel, bytes);
+            }
+        };
+        // Module.onTxFrame fires for every frame the modem encodes —
+        // UI APRS one-shots AND connected-mode I/S/U frames. The SPA's
+        // packet panel uses these to show outgoing traffic in the
+        // monitor pane (same as the C++ server's txFrameDecoded path).
+        Module.onTxFrame = (chan, bytes) => {
+            if (typeof this.onTxFrame === 'function') {
+                this.onTxFrame(chan, bytes);
             }
         };
     }
@@ -182,11 +192,11 @@ export function parseAx25Frame(bytes, chan, alevel) {
         else                     ftype = 'U?';
     }
 
-    // Strip trailing 2-byte FCS (Direwolf hands us frames with FCS still
-    // attached; the demod path that calls dlq_rec_frame checks it before
-    // emitting, so we can drop it without re-validating).
+    // No FCS to strip: bytes come from ax25_pack() in the WASM, which
+    // explicitly does NOT include the trailing 2-byte FCS — the demod
+    // verified it and discarded it before queueing the packet. Treat
+    // everything from off..end as the info field.
     let infoEnd = bytes.length;
-    if (infoEnd >= 2) infoEnd -= 2;
     if (off < infoEnd) {
         let s = '';
         for (let i = off; i < infoEnd; i++) s += String.fromCharCode(bytes[i]);
