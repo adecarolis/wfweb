@@ -207,6 +207,10 @@
             this._queue = [];
             this._payloads = {};
             this._draining = false;
+            // Most recently transmitted queue key — surfaced in the NACK log
+            // so an isolated 0xFA on the wire is attributable to a specific
+            // command instead of an anonymous failure.
+            this._lastSentKey = null;
 
             this._sMeterTimer = null;
             this._safetyPollTimer = null;
@@ -361,6 +365,7 @@
             this.port = null;
             this._queue = [];
             this._payloads = {};
+            this._lastSentKey = null;
             this.dispatchEvent(new CustomEvent('close', { detail: { reason: 'user-close' } }));
         }
 
@@ -1109,6 +1114,7 @@
                     var frame = payload.__raw
                         ? payload.__raw
                         : civ.buildFrame(this.civAddr, this.controllerAddr, payload);
+                    this._lastSentKey = key;
                     await this.writer.write(frame);
                     await new Promise(function (r) { setTimeout(r, 5); });
                 }
@@ -1381,7 +1387,15 @@
 
             var ack = civ.parseAck(payload);
             if (ack !== null) {
-                if (ack === false) console.warn('[CIV] rig NACK (0xFA)');
+                if (ack === false) {
+                    // CI-V NACK is a single 0xFA byte with no echoed command,
+                    // so we have to attribute it from the most-recently-sent
+                    // queue key. Mostly accurate (CI-V is roughly synchronous
+                    // with the 5ms drain gap); off-by-one when the rig is
+                    // bursting replies but still far better than anonymous.
+                    console.warn('[CIV] rig NACK (0xFA) — last cmd: ' +
+                        (this._lastSentKey || '<unknown>'));
+                }
                 return;
             }
         }
