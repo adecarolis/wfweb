@@ -3040,6 +3040,13 @@ function updateMode(mode) {
     if (!isCW) {
         document.getElementById('cwBar').classList.add('hidden');
         cwBarSuspended = false;
+        // Symmetric to autoOpenCwBarOnModeEntry — without this the
+        // decoder worker keeps consuming audio and logging detections
+        // forever after the user leaves CW.
+        var decodeBtn = document.getElementById('cwDecoderToggle');
+        if (decodeBtn && decodeBtn.classList.contains('active')) {
+            decodeBtn.click();
+        }
     } else if (!wasCW) {
         autoOpenCwBarOnModeEntry();
     }
