@@ -474,13 +474,11 @@
     }
 
     // ---------- Scope center-span (cmd 0x27 0x15) -----------------------
-    // The ± half-span is sent as the standard Icom 5-byte BCD-LE frequency
-    // payload (e.g. ±50kHz = 50000 → 00 00 05 00 00). Frame layout matches
-    // the C++ wfweb's funcScopeSpan path (icomCommander::makeFreqPayload):
-    // cmd sub recv data.
+    // 3 BCD-LE bytes give the ± half-span in Hz (e.g. ±50kHz = 50000).
+    // Frame layout matches the C++ wfweb's funcScopeSpan: cmd sub recv data.
     function cmdSetScopeSpan(hz) {
-        var bcd = encodeBcdLE(hz, 5);
-        var out = new Uint8Array(3 + 5);
+        var bcd = encodeBcdLE(hz, 3);
+        var out = new Uint8Array(3 + 3);
         out[0] = 0x27; out[1] = 0x15; out[2] = 0x00;  // recv = 0 (single-receiver)
         out.set(bcd, 3);
         return out;
@@ -489,9 +487,9 @@
         return new Uint8Array([0x27, 0x15, 0x00]);
     }
     function parseScopeSpanReply(payload) {
-        // [0x27, 0x15, recv, b0, b1, b2, b3, b4]
-        if (payload.length < 8 || payload[0] !== 0x27 || payload[1] !== 0x15) return null;
-        return decodeBcdLE(payload.slice(3, 8));
+        // [0x27, 0x15, recv, b0, b1, b2]
+        if (payload.length < 6 || payload[0] !== 0x27 || payload[1] !== 0x15) return null;
+        return decodeBcdLE(payload.slice(3, 6));
     }
 
     // ---------- MOD INPUT — modulation source selector -----------------
