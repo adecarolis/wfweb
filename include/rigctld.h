@@ -9,6 +9,7 @@
 
 #include <QObject>
 #include <QDebug>
+#include <QHostAddress>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QSet>
@@ -116,8 +117,13 @@ public:
 
     int startServer(qint16 port);
     void stopServer();
+    void setBindAddress(QHostAddress addr) { bindAddress = addr; }
 
 signals:
+    // PTT requests are routed through webServer so RADE EOO synthesis,
+    // packet TX gating and ALC meter polling stay coherent. Connect with
+    // Qt::QueuedConnection across threads.
+    void pttRequested(bool on);
     void onStarted();
     void onStopped();
     void sendData(QString data);
@@ -151,6 +157,8 @@ public slots:
     virtual void incomingConnection(qintptr socketDescriptor);
 //    void receiveFrequency(freqt freq);
 
+private:
+    QHostAddress bindAddress = QHostAddress::LocalHost;
 };
 
 
