@@ -363,6 +363,7 @@ SOURCES += \
     src/tcpserver.cpp \
     src/keyboard.cpp \
     src/rigserver.cpp \
+    src/rigctld.cpp \
     src/ft4222handler.cpp \
     src/rtpaudio.cpp \
     src/webserver.cpp
@@ -401,6 +402,7 @@ HEADERS  += \
     include/rtpaudio.h \
     include/logcategories.h \
     include/rigserver.h \
+    include/rigctld.h \
     include/packettypes.h \
     include/tcpserver.h \
     include/audiotaper.h \
