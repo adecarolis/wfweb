@@ -115,8 +115,8 @@ public:
     explicit rigCtlD(QObject *parent=nullptr);
     virtual ~rigCtlD();
 
-    int startServer(qint16 port);
-    void stopServer();
+    Q_INVOKABLE int startServer(qint16 port);
+    Q_INVOKABLE void stopServer();
     void setBindAddress(QHostAddress addr) { bindAddress = addr; }
 
 signals:

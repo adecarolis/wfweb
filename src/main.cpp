@@ -205,6 +205,9 @@ int main(int argc, char *argv[])
         "                          With multiple matches, the Windows/system default wins.\n"
         "                          Use '--audio-device list' to show available devices\n"
         "  --manufacturer <id>     Manufacturer ID (0=Icom, 1=Kenwood, 2=Yaesu)\n"
+        "  --rigctld-port <port>   Enable Hamlib rigctld TCP on the given port (default 4532)\n"
+        "  --no-rigctld            Disable rigctld even if enabled in settings\n"
+        "  --rigctld-bind-all      Bind rigctld to 0.0.0.0 (default: 127.0.0.1 only)\n"
         "  -l --logfile <file>     Log file\n"
         "  -b --background         Run as daemon (not Windows)\n"
         "  -d --debug [file]       Enable verbose debug logging (optionally to file)\n"
@@ -495,6 +498,28 @@ int main(int argc, char *argv[])
         {
             if (argc > c + 1) { overrides.manufacturer = QString(argv[++c]).toInt(); }
             else { std::cout << "Error: --manufacturer requires ID\n"; return -1; }
+        }
+        else if (currentArg == "--rigctld-port")
+        {
+            if (argc > c + 1) {
+                bool ok;
+                int port = QString(argv[++c]).toInt(&ok);
+                if (ok && port > 0 && port <= 65535) {
+                    overrides.rigCtlPort = port;
+                } else {
+                    std::cout << "Error: --rigctld-port requires 1-65535\n";
+                    return -1;
+                }
+            }
+            else { std::cout << "Error: --rigctld-port requires a port\n"; return -1; }
+        }
+        else if (currentArg == "--no-rigctld")
+        {
+            overrides.noRigCtl = true;
+        }
+        else if (currentArg == "--rigctld-bind-all")
+        {
+            overrides.rigCtlBindAll = true;
         }
         else if ((currentArg == "-?") || (currentArg == "--help"))
         {

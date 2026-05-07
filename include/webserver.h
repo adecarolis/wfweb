@@ -106,6 +106,10 @@ public slots:
     // Settings file used for persistent prefs written from the web layer.
     // Empty = use QSettings defaults (QCoreApplication org/app name).
     void setSettingsFile(const QString &path);
+    // PTT requested via rigctld (Hamlib TCP). Routed through the same
+    // setPTT path the WebSocket clients use, so RADE EOO synthesis,
+    // packet TX gating and ALC meter polling stay coherent.
+    void onRigCtlPtt(bool on);
 private slots:
     // HTTP
     void onHttpConnection();

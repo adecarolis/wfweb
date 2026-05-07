@@ -3,6 +3,7 @@
 #include "commhandler.h"
 #include "rigidentities.h"
 #include "logcategories.h"
+#include "rigctld.h"
 #include <iostream>
 
 // This code is copyright 2017-2020 Elliott H. Liggett
@@ -103,6 +104,27 @@ servermain::servermain(const QString settingsFile, const cmdLineOverrides& overr
         QMetaObject::invokeMethod(web, "init", Qt::QueuedConnection,
             Q_ARG(quint16, effectiveWebPort), Q_ARG(quint16, effectiveWebPort + 1));
         qInfo(logSystem()) << "Web server starting on port" << effectiveWebPort;
+
+        // rigctld lives on webThread so it shares cachingQueue with webServer
+        // and pttRequested→onRigCtlPtt is an in-thread queued connection.
+        if (prefs.rigCtlEnabled) {
+            rigctl = new rigCtlD();
+            rigctl->moveToThread(webThread);
+            rigctl->setBindAddress(prefs.rigCtlBindAll
+                                   ? QHostAddress::Any
+                                   : QHostAddress::LocalHost);
+            connect(webThread, &QThread::finished, rigctl, &QObject::deleteLater);
+            connect(rigctl, &rigCtlD::pttRequested,
+                    web, &webServer::onRigCtlPtt,
+                    Qt::QueuedConnection);
+            // rigCtlClient::rigCtlClient subscribes to cachingQueue::rigCapsUpdated
+            // directly per-connection, so we don't fan out from rigCtlD.
+            QMetaObject::invokeMethod(rigctl, "startServer",
+                                      Qt::QueuedConnection,
+                                      Q_ARG(qint16, prefs.rigCtlPort));
+            qInfo(logSystem()) << "rigctld starting on port" << prefs.rigCtlPort
+                               << (prefs.rigCtlBindAll ? "(0.0.0.0)" : "(127.0.0.1)");
+        }
     }
 
     openRig();
@@ -581,6 +603,9 @@ void servermain::setDefPrefs()
     defPrefs.rxAudio.name = QString("default");
     defPrefs.txAudio.name = QString("default");
     defPrefs.enableLAN = false;
+    defPrefs.rigCtlPort = 4532;
+    defPrefs.rigCtlEnabled = false;
+    defPrefs.rigCtlBindAll = false;
 
     // LAN audio defaults
     rxSetup.codec = 4;       // LPCM 16-bit
@@ -608,6 +633,9 @@ void servermain::loadSettings()
     prefs.audioSystem = static_cast<audioType>(settings->value("AudioSystem", defPrefs.audioSystem).toInt());
     prefs.manufacturer = static_cast<manufacturersType_t>(settings->value("Manufacturer",defPrefs.manufacturer).toInt());
     prefs.webPort = settings->value("WebServerPort", defPrefs.webPort).toInt();
+    prefs.rigCtlPort = settings->value("RigCtldPort", defPrefs.rigCtlPort).toInt();
+    prefs.rigCtlEnabled = settings->value("RigCtldEnabled", defPrefs.rigCtlEnabled).toBool();
+    prefs.rigCtlBindAll = settings->value("RigCtldBindAll", defPrefs.rigCtlBindAll).toBool();
 
     int numRadios = settings->beginReadArray("Radios");
     if (numRadios == 0) {
@@ -922,6 +950,18 @@ void servermain::applyCLIOverrides()
             radio->serialPort = cliOverrides.usbPort;
         }
         qInfo(logSystem()) << "Serial port overridden via CLI:" << cliOverrides.usbPort;
+    }
+
+    // rigctld overrides. --rigctld-port implies enable; --no-rigctld wins.
+    if (cliOverrides.rigCtlPort > 0) {
+        prefs.rigCtlPort = static_cast<quint16>(cliOverrides.rigCtlPort);
+        prefs.rigCtlEnabled = true;
+    }
+    if (cliOverrides.rigCtlBindAll) {
+        prefs.rigCtlBindAll = true;
+    }
+    if (cliOverrides.noRigCtl) {
+        prefs.rigCtlEnabled = false;
     }
 
     // Log if LAN mode was enabled via CLI

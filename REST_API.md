@@ -24,6 +24,8 @@ When SSL is not available on the host system, port 8080 is plain HTTP and port 8
 
 > **Microcontrollers (ESP32, Pico W, Arduino):** use port 8081 with plain HTTP. No TLS stack needed.
 
+> **Hamlib rigctld** (server build only): TCP, default port 4532, bound to `127.0.0.1`. Disabled by default — enable with `--rigctld-port 4532` or `RigCtldEnabled=true` in settings. Pass `--rigctld-bind-all` to listen on all interfaces (the Hamlib protocol is unauthenticated, so binding to a network interface hands PTT to anyone on the LAN). PTT requests route through the same path the WebSocket `setPTT` command uses, so RADE EOO synthesis and packet TX coordination stay intact. Use any Hamlib client (`rigctl`, fldigi, WSJT-X, POTACAT, gpredict) with `-m 2 -r 127.0.0.1:4532`.
+
 ---
 
 ## Response Format
