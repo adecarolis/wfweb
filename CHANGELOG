@@ -6,6 +6,19 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+[unreleased]
+--------------------
+
+Server build:
+- Hamlib rigctld TCP emulation on port 4532 for compatibility with fldigi,
+  WSJT-X, POTACAT, gpredict and other Hamlib clients. Disabled by default;
+  enable with `--rigctld-port 4532` or `RigCtldEnabled=true` in settings.
+  PTT requests route through the same setPTT path the WebSocket clients use,
+  so RADE EOO synthesis, packet TX gating and ALC meter polling stay
+  coherent. Default bind is `127.0.0.1`; pass `--rigctld-bind-all` to listen
+  on all interfaces (the Hamlib protocol is unauthenticated). (#64)
+
+
 v0.7.1 (2026-05-03)
 --------------------
 

@@ -2598,6 +2598,18 @@ QJsonObject webServer::buildInfoJson() const
     return info;
 }
 
+void webServer::onRigCtlPtt(bool on)
+{
+    // Funnel rigctld PTT through the same setPTT branch that WebSocket
+    // clients use. handleCommand() does not dereference the QWebSocket*
+    // for setPTT, so passing nullptr is safe and avoids broadcasting a
+    // synthetic client object.
+    QJsonObject cmd;
+    cmd["cmd"] = "setPTT";
+    cmd["value"] = on;
+    handleCommand(nullptr, cmd);
+}
+
 void webServer::sendCurrentState(QWebSocket *client)
 {
     QJsonObject info = buildInfoJson();

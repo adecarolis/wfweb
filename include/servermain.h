@@ -32,6 +32,8 @@
 #include "webserver.h"
 #include "signal.h"
 
+class rigCtlD;
+
 #include <qserialportinfo.h>
 
 #include <deque>
@@ -57,6 +59,10 @@ struct cmdLineOverrides {
     int audioSystem = -1; // --audio-system override
     QString usbPort;      // --serial-port override
     QString audioDevice;  // --audio-device override
+    // rigctld overrides
+    int rigCtlPort = 0;        // --rigctld-port (0 = no override)
+    bool noRigCtl = false;     // --no-rigctld
+    bool rigCtlBindAll = false; // --rigctld-bind-all
 };
 
 class servermain : public QObject
@@ -278,6 +284,9 @@ private:
         audioType audioSystem;
         quint16 webPort;
         bool enableLAN = false;
+        quint16 rigCtlPort;
+        bool rigCtlEnabled;
+        bool rigCtlBindAll;
     } prefs;
 
     preferences defPrefs;
@@ -310,6 +319,12 @@ private:
 
     webServer* web = Q_NULLPTR;
     QThread* webThread = Q_NULLPTR;
+
+    // Hamlib rigctld (TCP, port 4532). Lives on webThread; shares
+    // cachingQueue with webServer. PTT requests route through
+    // webServer::onRigCtlPtt so RADE EOO synthesis, packet TX gating
+    // and ALC meter polling stay coherent.
+    rigCtlD* rigctl = Q_NULLPTR;
 
     rigstate* rigState = Q_NULLPTR;
 

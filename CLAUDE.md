@@ -57,10 +57,11 @@ Standalone build:
 ### Key Components
 | Component | Role |
 |-----------|------|
-| `wfmain` | Main app logic, web server init |
+| `servermain` | Main app logic, web server init |
 | `cachingQueue` | Command queue with dedup and priority |
 | `rigCommander` | CI-V command encoding/decoding |
 | `webServer` | HTTP + WebSocket server (separate QThread) |
+| `rigCtlD` | Hamlib rigctld TCP server (port 4532, lives on webThread) |
 | `audioConverter` | Codec conversion (rig format <-> PCM) |
 | `icomUdpHandler` | LAN UDP transport (3 channels) |
 | `radeProcessor` | RADE V1 modem encode/decode (separate QThread) |
@@ -163,10 +164,13 @@ modeInfo.filter = 1;
 | File | Purpose |
 |------|---------|
 | `wfweb.pro` | Qt project file |
-| `src/wfmain.cpp` | Main app, web server init |
+| `src/main.cpp` | Process entry / CLI parser |
+| `src/servermain.cpp` | Main app, web server + rigctld init |
+| `include/servermain.h` | Main app header (contains `preferences` struct) |
 | `src/webserver.cpp` | Web server backend |
 | `include/webserver.h` | Web server header |
-| `include/prefs.h` | Preferences struct (contains `webPort`) |
+| `src/rigctld.cpp` | Hamlib rigctld TCP emulation (server build) |
+| `include/rigctld.h` | rigctld header (signals: `pttRequested`) |
 | `resources/web/index.html` | Server-build SPA (WebSocket transport only) |
 | `resources/web-standalone/index.html` | Standalone-build SPA (Web Serial only) |
 | `resources/web-standalone/civ/icom.js` | In-browser Icom CI-V codec (Standalone) |
