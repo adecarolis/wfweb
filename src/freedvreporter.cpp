@@ -1,5 +1,6 @@
 #include "freedvreporter.h"
 #include "logcategories.h"
+#include "wfweb_version.h"
 
 #include <QJsonDocument>
 #include <QJsonArray>

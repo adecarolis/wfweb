@@ -140,12 +140,12 @@ Opera, Brave, Arc). Firefox / Safari users can't use this build.
 - Non-Chromium browsers (Firefox, Safari, …)
 EOF
 
-# Single source of truth for the user-facing version: wfweb.pro. Server
-# (C++) reads it via the WFWEB_VERSION DEFINE; Standalone reads it here so
-# both builds report the same number.
-WFWEB_SEMVER="$(grep -E 'WFWEB_VERSION' "$REPO_ROOT/wfweb.pro" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+# Single source of truth for the user-facing version: include/wfweb_version.h.
+# Server (C++) reads it via #include; Standalone reads it here so both builds
+# report the same number.
+WFWEB_SEMVER="$(grep -E '#define WFWEB_VERSION' "$REPO_ROOT/include/wfweb_version.h" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
 if [ -z "$WFWEB_SEMVER" ]; then
-    echo "ERROR: could not extract WFWEB_VERSION from $REPO_ROOT/wfweb.pro" >&2
+    echo "ERROR: could not extract WFWEB_VERSION from $REPO_ROOT/include/wfweb_version.h" >&2
     exit 1
 fi
 

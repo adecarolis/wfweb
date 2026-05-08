@@ -2,6 +2,7 @@
 #include "freedvprocessor.h"
 #include <codec2/freedv_api.h>
 #include "logcategories.h"
+#include "wfweb_version.h"
 
 #include <QStandardPaths>
 #include <QDir>

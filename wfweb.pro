@@ -15,7 +15,8 @@ macx:CONFIG -= app_bundle
 macx:CONFIG += c++17
 win32:CONFIG += c++17
 
-DEFINES += WFWEB_VERSION=\\\"0.7.1\\\"
+# WFWEB_VERSION lives in include/wfweb_version.h so header-dep tracking
+# forces a rebuild of every consumer on bump. Do NOT add a -D for it here.
 
 DEFINES += BUILD_WFSERVER
 
@@ -372,6 +373,7 @@ macx:SOURCES += src/tlsproxy.cpp
 
 
 HEADERS  += \
+    include/wfweb_version.h \
     include/servermain.h \
     src/audio/adpcm/adpcm-lib.h \
     src/audio/resampler/resample_neon.h \
