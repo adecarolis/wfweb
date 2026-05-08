@@ -6,7 +6,7 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
-[unreleased]
+v0.7.2 (2026-05-08)
 --------------------
 
 Server build:
@@ -17,6 +17,15 @@ Server build:
   so RADE EOO synthesis, packet TX gating and ALC meter polling stay
   coherent. Default bind is `127.0.0.1`; pass `--rigctld-bind-all` to listen
   on all interfaces (the Hamlib protocol is unauthenticated). (#64)
+
+Fixes:
+- FreeDV Reporter (and PSK Reporter) no longer announce a stale version
+  string after a version bump. The version moved from a `-D` flag in
+  `wfweb.pro` to `include/wfweb_version.h`, which Make's header-dependency
+  tracking actually picks up. Previously, bumping only `wfweb.pro` left
+  `freedvreporter.o` and `pskreporter.o` compiled against the old version
+  while other objects rebuilt — so the splash showed the new number but
+  the reporter advertised the old one. Affected v0.7.1 in the wild. (#65)
 
 
 v0.7.1 (2026-05-03)

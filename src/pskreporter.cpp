@@ -1,5 +1,6 @@
 #include "pskreporter.h"
 #include "logcategories.h"
+#include "wfweb_version.h"
 
 #include <QDataStream>
 #include <QDateTime>

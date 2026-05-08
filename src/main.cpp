@@ -6,6 +6,8 @@
 #include <QTranslator>
 #endif
 
+#include "wfweb_version.h"
+
 #ifdef Q_OS_WIN
 #include <windows.h>
 #include <atomic>

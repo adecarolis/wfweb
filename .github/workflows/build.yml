@@ -67,7 +67,7 @@ jobs:
 
       - name: Get version
         id: version
-        run: echo "version=$(grep 'WFWEB_VERSION' wfweb.pro | grep -oP '[\d.]+')" >> $GITHUB_OUTPUT
+        run: echo "version=$(grep '#define WFWEB_VERSION' include/wfweb_version.h | grep -oP '[\d.]+')" >> $GITHUB_OUTPUT
 
       - name: Build .deb
         run: |
@@ -196,7 +196,7 @@ jobs:
 
       - name: Get version
         id: version
-        run: echo "version=$(grep 'WFWEB_VERSION' wfweb.pro | grep -oP '[\d.]+')" >> $GITHUB_OUTPUT
+        run: echo "version=$(grep '#define WFWEB_VERSION' include/wfweb_version.h | grep -oP '[\d.]+')" >> $GITHUB_OUTPUT
 
       - name: Build .deb
         run: |
@@ -324,7 +324,7 @@ jobs:
 
       - name: Get version
         id: version
-        run: echo "version=$(grep 'WFWEB_VERSION' wfweb.pro | grep -oP '[\d.]+')" >> $GITHUB_OUTPUT
+        run: echo "version=$(grep '#define WFWEB_VERSION' include/wfweb_version.h | grep -oP '[\d.]+')" >> $GITHUB_OUTPUT
 
       - name: Build .deb
         run: |
