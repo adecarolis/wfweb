@@ -19,6 +19,10 @@ Server build:
   on all interfaces (the Hamlib protocol is unauthenticated). (#64)
 
 Fixes:
+- CW decoder now stops when leaving CW mode. Previously the worker,
+  AudioWorklet, and audio graph stayed wired up after switching to SSB,
+  so the decoder kept consuming audio and logging detections forever.
+  Applies to both server and standalone builds. (#63)
 - FreeDV Reporter (and PSK Reporter) no longer announce a stale version
   string after a version bump. The version moved from a `-D` flag in
   `wfweb.pro` to `include/wfweb_version.h`, which Make's header-dependency
