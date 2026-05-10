@@ -65,18 +65,21 @@ struct js8_decoder {
 
 /* ============== Encoder ================================================ */
 
-extern "C" int js8_encode(int frame_type, const char* msg, int* tones_out) {
+extern "C" int js8_encode(int submode, int frame_type,
+                          const char* msg, int* tones_out) {
     if (!msg || !tones_out) return -1;
     // Length precondition — must be exactly 12 chars from the JS8 alphabet.
     int n = 0;
     while (msg[n] && n <= 12) ++n;
     if (n != 12) return -1;
     try {
-        // ORIGINAL Costas for Normal mode; MODIFIED for the others. JS8.h
-        // stores both; pick by speed-mode. For day 4 we always use the
-        // Normal Costas since the encoder's submode is the caller's choice
-        // (encoded into frame_type's upper bits in real JS8 use).
-        auto const& costas = JS8::Costas::array(JS8::Costas::Type::ORIGINAL);
+        // Normal uses the original FT8 Costas array; every other submode
+        // uses the modified per-position Costas to disambiguate which
+        // speed mode a sync candidate belongs to.
+        auto costasType = (submode == 0)
+            ? JS8::Costas::Type::ORIGINAL
+            : JS8::Costas::Type::MODIFIED;
+        auto const& costas = JS8::Costas::array(costasType);
         JS8::encode(frame_type, costas, msg, tones_out);
         return 0;
     } catch (...) {

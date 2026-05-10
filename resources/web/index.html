@@ -8473,7 +8473,7 @@ window.js8Ready = (async () => {
     window.js8 = js8;
 
     window.txJs8 = function(msg, opts = {}) {
-        opts = Object.assign({ frameType: 0, baseHz: 1500 }, opts);
+        opts = Object.assign({ frameType: 0, baseHz: 1500, submode: 0 }, opts);
         if (typeof msg !== 'string' || msg.length !== 12) {
             console.error('[JS8 TX] message must be exactly 12 chars from "0-9A-Za-z-+"');
             return;
@@ -8482,7 +8482,7 @@ window.js8Ready = (async () => {
             console.error('[JS8 TX] streamDigiAudio not in scope — is the SPA fully loaded?');
             return;
         }
-        const tones = js8.encode(opts.frameType, msg);
+        const tones = js8.encode(opts.frameType, msg, opts.submode);
         if (!tones) { console.error('[JS8 TX] encode failed for "' + msg + '"'); return; }
         const samples12k = synthesize(tones, opts);
         console.log('[JS8 TX] encoding "' + msg + '" → '

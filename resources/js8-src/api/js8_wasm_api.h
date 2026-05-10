@@ -12,13 +12,16 @@ extern "C" {
 /* Encode a 12-character JS8 message of the given frame type into
  * 79 8-FSK tones. Caller provides `tones_out` as int[79].
  *
+ * submode    — Varicode::SubmodeType ID (Normal=0, Fast=1, Turbo=2,
+ *              Slow=4, Ultra=8). Selects the Costas sync array
+ *              (ORIGINAL for Normal, MODIFIED for the others).
  * frame_type — Varicode::TransmissionType (0..7)
  * msg        — null-terminated 12-char string from the JS8 alphabet
  *              "0-9A-Za-z-+" (no whitespace; spaces map nowhere)
  * tones_out  — int[79], filled with 0..7 on success
  *
  * Returns 0 on success, -1 on bad input (invalid char in msg). */
-int js8_encode(int frame_type, const char* msg, int* tones_out);
+int js8_encode(int submode, int frame_type, const char* msg, int* tones_out);
 
 /* ---------------- Decoder ----------------------------------------- */
 

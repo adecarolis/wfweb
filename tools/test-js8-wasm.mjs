@@ -85,7 +85,7 @@ for (const msg of ["HELLOWK1FMab", "CQK1FMEM85en"]) {
   for (let i = 0; i < 12; i++) heapU8()[msgPtr+i] = msg.charCodeAt(i);
   heapU8()[msgPtr+12] = 0;
   const tonesPtr = _malloc(79*4);
-  const rc = _js8_encode(0, msgPtr, tonesPtr);
+  const rc = _js8_encode(0, 0, msgPtr, tonesPtr);  // (submode=Normal, frameType=0)
   if (rc !== 0) {
     console.log(`encode("${msg}"): rc=${rc} FAIL`);
     allOk = false;

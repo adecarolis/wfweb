@@ -124,16 +124,18 @@ class JS8Module {
         this._free   = M._free;
     }
 
-    // Encode a 12-character JS8 message of the given frame type
-    // (0..7) and return Int32Array of 79 tones (each 0..7), or null
-    // on bad input.
-    encode(frameType, msg) {
+    // Encode a 12-character JS8 message of the given frame type and
+    // submode. Returns Int32Array of 79 tones (each 0..7), or null on
+    // bad input. submode is a Varicode::SubmodeType ID (Normal=0,
+    // Fast=1, Turbo=2, Slow=4, Ultra=8) — selects the Costas sync
+    // pattern (ORIGINAL for Normal, MODIFIED for the others).
+    encode(frameType, msg, submode = 0) {
         if (typeof msg !== "string" || msg.length !== 12) return null;
         const msgPtr = this._malloc(13);
         for (let i = 0; i < 12; i++) this.M.HEAPU8[msgPtr+i] = msg.charCodeAt(i);
         this.M.HEAPU8[msgPtr+12] = 0;
         const tonesPtr = this._malloc(79 * 4);
-        const rc = this._encode(frameType, msgPtr, tonesPtr);
+        const rc = this._encode(submode, frameType, msgPtr, tonesPtr);
         let out = null;
         if (rc === 0) {
             out = new Int32Array(79);

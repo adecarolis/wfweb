@@ -49,7 +49,7 @@ function encode(msg, frameType = 0) {
     for (let i = 0; i < 12; ++i) Module.HEAPU8[msgPtr + i] = msg.charCodeAt(i);
     Module.HEAPU8[msgPtr + 12] = 0;
     const tonesPtr = Module._malloc(79 * 4);
-    const rc = Module._js8_encode(frameType, msgPtr, tonesPtr);
+    const rc = Module._js8_encode(0, frameType, msgPtr, tonesPtr);  // submode=Normal
     let out = null;
     if (rc === 0) {
         out = new Int32Array(79);
