@@ -12,6 +12,8 @@
 #include "js8_wasm_api.h"
 
 #include "JS8_Mode/JS8.h"
+#include "JS8_Mode/DecodedText.h"
+#include "JS8_Main/Varicode.h"
 #include "JS8_Include/commons.h"
 #include "QLoggingCategory"
 
@@ -146,16 +148,20 @@ extern "C" int js8_decoder_run(js8_decoder* dec) {
     // wide-band filter (200..2800 Hz) and let the decoder hunt for sync
     // anywhere in it. Phase 1 may refine these (e.g., narrow the band
     // around a user-selected nfqso to reduce false-decode rate).
+    // kszX must satisfy `sz <= Mode::NMAX` (assertion at JS8.cpp:2449),
+    // where NMAX = mode's TX duration × 12 kHz. If the caller pushed
+    // more audio than one slot, clamp here.
+    auto clamp = [&](int max) { return std::min(n, max); };
     ::dec_data.params.kposA = 0;
-    ::dec_data.params.kszA  = n;
+    ::dec_data.params.kszA  = clamp(JS8A_TX_SECONDS * JS8_RX_SAMPLE_RATE);
     ::dec_data.params.kposB = 0;
-    ::dec_data.params.kszB  = n;
+    ::dec_data.params.kszB  = clamp(JS8B_TX_SECONDS * JS8_RX_SAMPLE_RATE);
     ::dec_data.params.kposC = 0;
-    ::dec_data.params.kszC  = n;
+    ::dec_data.params.kszC  = clamp(JS8C_TX_SECONDS * JS8_RX_SAMPLE_RATE);
     ::dec_data.params.kposE = 0;
-    ::dec_data.params.kszE  = n;
+    ::dec_data.params.kszE  = clamp(JS8E_TX_SECONDS * JS8_RX_SAMPLE_RATE);
     ::dec_data.params.kposI = 0;
-    ::dec_data.params.kszI  = n;
+    ::dec_data.params.kszI  = clamp(JS8I_TX_SECONDS * JS8_RX_SAMPLE_RATE);
     ::dec_data.params.nfa = 200;
     ::dec_data.params.nfb = 2800;
     ::dec_data.params.nfqso = 1500;
@@ -167,14 +173,49 @@ extern "C" int js8_decoder_run(js8_decoder* dec) {
         char buf[512];
         int written = 0;
         if (auto p = std::get_if<::JS8::Event::Decoded>(&ev)) {
+            // Run the raw decoded event through DecodedText to get the
+            // human-readable form (e.g. "@VK3ACF: GD" rather than the
+            // 12-char raw alphabet encoding "AUThGRcQOiZG"). Keeping the
+            // raw form too in case a caller wants both.
+            DecodedText dt(*p);
+            QString message = dt.message();
+            std::string textHuman = message.toStdString();
+            std::string textRaw   = p->data;
+
+            // Crude JSON-string-escape: only the message field can hold
+            // user-supplied text with quotes / backslashes / control chars.
+            auto escapeJson = [](std::string const &in) {
+                std::string out;
+                out.reserve(in.size() + 8);
+                for (char c : in) {
+                    switch (c) {
+                        case '"':  out += "\\\""; break;
+                        case '\\': out += "\\\\"; break;
+                        case '\n': out += "\\n";  break;
+                        case '\r': out += "\\r";  break;
+                        case '\t': out += "\\t";  break;
+                        default:
+                            if ((unsigned char)c < 0x20)
+                                out += '?';     // non-printable Latin-1 outside JSON
+                            else
+                                out += c;
+                    }
+                }
+                return out;
+            };
+            std::string textHumanEsc = escapeJson(textHuman);
+            std::string textRawEsc   = escapeJson(textRaw);
+
             written = std::snprintf(buf, sizeof(buf),
                 "{\"event\":\"decoded\","
-                "\"snr\":%d,\"dt\":%g,\"freq\":%g,\"text\":\"%s\","
+                "\"snr\":%d,\"dt\":%g,\"freq\":%g,"
+                "\"text\":\"%s\",\"raw\":\"%s\",\"frameType\":%u,"
                 "\"type\":%d,\"quality\":%g,\"mode\":%d,\"utc\":%d}",
                 p->snr, static_cast<double>(p->xdt),
                 static_cast<double>(p->frequency),
-                p->data.c_str(), p->type,
-                static_cast<double>(p->quality),
+                textHumanEsc.c_str(), textRawEsc.c_str(),
+                static_cast<unsigned>(dt.frameType()),
+                p->type, static_cast<double>(p->quality),
                 p->mode, p->utc);
             ++emitted;
         } else if (auto p = std::get_if<::JS8::Event::DecodeStarted>(&ev)) {
