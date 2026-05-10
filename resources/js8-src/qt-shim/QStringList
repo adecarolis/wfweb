@@ -1,0 +1,108 @@
+#pragma once
+#include "QString"
+#include <algorithm>
+#include <vector>
+
+class QStringList {
+public:
+    QStringList() = default;
+    QStringList(std::initializer_list<QString> il) : v_(il) {}
+
+    int size()   const { return static_cast<int>(v_.size()); }
+    int length() const { return size(); }
+    int count()  const { return size(); }
+    bool isEmpty() const { return v_.empty(); }
+    bool empty()   const { return v_.empty(); }
+
+    void append(const QString& s) { v_.push_back(s); }
+    void append(const QStringList& o) { for (auto& s : o.v_) v_.push_back(s); }
+    void push_back(const QString& s) { v_.push_back(s); }
+    void reserve(int n) { v_.reserve(static_cast<size_t>(n)); }
+    QStringList& operator+=(const QStringList& o) { append(o); return *this; }
+
+    QString value(int i, const QString& def = QString()) const {
+        if (i < 0 || i >= size()) return def;
+        return v_[static_cast<size_t>(i)];
+    }
+
+    QString& operator[](int i)         { return v_[static_cast<size_t>(i)]; }
+    const QString& operator[](int i) const { return v_[static_cast<size_t>(i)]; }
+    QString& at(int i)                 { return v_[static_cast<size_t>(i)]; }
+    const QString& at(int i)     const { return v_[static_cast<size_t>(i)]; }
+
+    QString first() const { return v_.front(); }
+    QString last()  const { return v_.back(); }
+
+    QStringList mid(int pos, int n = -1) const {
+        QStringList out;
+        if (pos < 0 || pos >= size()) return out;
+        int end = (n < 0) ? size() : std::min(size(), pos + n);
+        for (int i = pos; i < end; ++i) out.append(v_[static_cast<size_t>(i)]);
+        return out;
+    }
+
+    void removeAll(const QString& s) {
+        v_.erase(std::remove(v_.begin(), v_.end(), s), v_.end());
+    }
+
+    QString join(QChar sep) const {
+        QString out;
+        for (int i = 0; i < size(); ++i) {
+            if (i) out += QString(sep);
+            out += v_[static_cast<size_t>(i)];
+        }
+        return out;
+    }
+    QString join(const QString& sep) const {
+        QString out;
+        for (int i = 0; i < size(); ++i) {
+            if (i) out += sep;
+            out += v_[static_cast<size_t>(i)];
+        }
+        return out;
+    }
+
+    auto begin() const { return v_.begin(); }
+    auto end()   const { return v_.end(); }
+
+private:
+    std::vector<QString> v_;
+};
+
+// QString::split is here because it returns QStringList.
+inline QStringList QString::split(QChar sep) const {
+    QStringList out;
+    std::string cur;
+    char c = static_cast<char>(sep);
+    for (char x : s_) {
+        if (x == c) { out.append(QString(cur)); cur.clear(); }
+        else cur.push_back(x);
+    }
+    out.append(QString(cur));
+    return out;
+}
+inline QStringList QString::split(const QString& sep) const {
+    if (sep.isEmpty()) { QStringList out; out.append(*this); return out; }
+    QStringList out;
+    size_t start = 0;
+    while (true) {
+        size_t p = s_.find(sep.s_, start);
+        if (p == std::string::npos) { out.append(QString(s_.substr(start))); return out; }
+        out.append(QString(s_.substr(start, p - start)));
+        start = p + sep.s_.size();
+    }
+}
+inline QStringList QString::split(QChar sep, SplitBehavior b) const {
+    QStringList raw = split(sep);
+    if (b == KeepEmptyParts) return raw;
+    QStringList out;
+    for (int i = 0; i < raw.size(); ++i) if (!raw[i].isEmpty()) out.append(raw[i]);
+    return out;
+}
+
+// Qt namespace shim — Qt::SkipEmptyParts is used by message_.split('?', Qt::SkipEmptyParts)
+namespace Qt {
+constexpr QString::SplitBehavior KeepEmptyParts = QString::KeepEmptyParts;
+constexpr QString::SplitBehavior SkipEmptyParts = QString::SkipEmptyParts;
+}
+

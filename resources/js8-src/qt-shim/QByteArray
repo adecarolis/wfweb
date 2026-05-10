@@ -1,0 +1,52 @@
+// Minimal QByteArray shim — std::string-backed bytes container.
+#pragma once
+#include "QtGlobal"
+#include <cstring>
+#include <string>
+
+class QByteArray {
+public:
+    QByteArray() = default;
+    QByteArray(const char* s)         : s_(s ? s : "") {}
+    QByteArray(const char* s, int n)  : s_(s, n) {}
+    QByteArray(int n, char c)         : s_(static_cast<size_t>(n), c) {}
+    QByteArray(std::string s)         : s_(std::move(s)) {}
+
+    int size()    const { return static_cast<int>(s_.size()); }
+    int length()  const { return size(); }
+    bool isEmpty() const { return s_.empty(); }
+    void reserve(int n) { s_.reserve(static_cast<size_t>(n)); }
+    void resize(int n)  { s_.resize(static_cast<size_t>(n)); }
+    void clear()        { s_.clear(); }
+
+    char* data()             { return s_.data(); }
+    const char* data() const { return s_.data(); }
+    const char* constData() const { return s_.data(); }
+    char at(int i) const { return s_[i]; }
+    char operator[](int i) const { return s_[i]; }
+    char& operator[](int i)      { return s_[i]; }
+
+    QByteArray& append(const QByteArray& o) { s_ += o.s_; return *this; }
+    QByteArray& append(const char* s)       { if (s) s_ += s; return *this; }
+    QByteArray& append(char c)              { s_ += c; return *this; }
+
+    QByteArray& operator+=(const QByteArray& o) { return append(o); }
+    QByteArray& operator+=(const char* s)       { return append(s); }
+    QByteArray& operator+=(char c)              { return append(c); }
+
+    friend bool operator==(const QByteArray& a, const QByteArray& b) { return a.s_ == b.s_; }
+    friend bool operator!=(const QByteArray& a, const QByteArray& b) { return !(a==b); }
+
+    QByteArray mid(int pos, int n = -1) const {
+        if (pos < 0 || pos > size()) return QByteArray();
+        size_t len = (n < 0) ? std::string::npos : static_cast<size_t>(n);
+        return QByteArray(s_.substr(static_cast<size_t>(pos), len));
+    }
+
+    static QByteArray fromRawData(const char* p, int n) { return QByteArray(p, n); }
+
+    const std::string& toStdString() const { return s_; }
+
+private:
+    std::string s_;
+};

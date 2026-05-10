@@ -1,0 +1,6 @@
+// Original QStringBuilder uses expression templates for lazy concatenation;
+// the shim just aliases operator% to operator+ in QString itself, so this
+// header is a no-op include placeholder so DecodedText.cpp's
+// #include <QStringBuilder> resolves.
+#pragma once
+#include "QString"

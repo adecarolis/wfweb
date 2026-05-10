@@ -1,0 +1,4 @@
+// Qt 6 made QList an alias for QVector — match that.
+#pragma once
+#include "QVector"
+template <typename T> using QList = QVector<T>;

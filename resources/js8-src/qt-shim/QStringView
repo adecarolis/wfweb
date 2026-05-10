@@ -1,0 +1,26 @@
+// Minimal QStringView — read-only view into a QString. std::string_view-backed.
+#pragma once
+#include "QString"
+#include <string_view>
+
+class QStringView {
+public:
+    QStringView() = default;
+    QStringView(const QString& s) : s_(s.toStdString()) {}
+    QStringView(const char* s)    : s_(s ? s : "") {}
+
+    int size()   const { return static_cast<int>(s_.size()); }
+    int length() const { return size(); }
+    bool isEmpty() const { return s_.empty(); }
+
+    QChar at(int i) const { return QChar(static_cast<unsigned char>(s_[i])); }
+
+    QString toString() const { return QString(std::string(s_)); }
+
+    bool operator==(QStringView o) const { return s_ == o.s_; }
+    bool operator==(const QString& o) const { return s_ == o.toStdString(); }
+    friend bool operator==(const QString& a, QStringView b) { return b == a; }
+
+private:
+    std::string_view s_;
+};

@@ -1,0 +1,31 @@
+#pragma once
+#include "QtGlobal"
+#include <cctype>
+
+class QChar {
+public:
+    constexpr QChar() : c_(0) {}
+    constexpr QChar(char c)     : c_(static_cast<unsigned char>(c)) {}
+    constexpr QChar(int c)      : c_(static_cast<char32_t>(c)) {}
+    constexpr QChar(char32_t c) : c_(c) {}
+    constexpr QChar(unsigned int c) : c_(c) {}
+
+    constexpr char32_t unicode() const { return c_; }
+    constexpr operator char() const { return c_ < 128 ? static_cast<char>(c_) : '?'; }
+    constexpr char toLatin1() const { return c_ < 256 ? static_cast<char>(c_) : '?'; }
+
+    constexpr bool isSpace() const { return c_==' '||c_=='\t'||c_=='\n'||c_=='\r'||c_=='\f'||c_=='\v'; }
+    constexpr bool isDigit() const { return c_ >= '0' && c_ <= '9'; }
+    QChar toUpper() const { return QChar(std::toupper(static_cast<unsigned char>(c_))); }
+    QChar toLower() const { return QChar(std::tolower(static_cast<unsigned char>(c_))); }
+
+    friend constexpr bool operator==(QChar a, QChar b) { return a.c_ == b.c_; }
+    friend constexpr bool operator!=(QChar a, QChar b) { return a.c_ != b.c_; }
+    friend constexpr bool operator==(QChar a, char b)  { return a.c_ == static_cast<unsigned char>(b); }
+    friend constexpr bool operator==(char a, QChar b)  { return b == a; }
+    friend constexpr bool operator!=(QChar a, char b)  { return !(a==b); }
+    friend constexpr bool operator!=(char a, QChar b)  { return !(a==b); }
+
+private:
+    char32_t c_;
+};

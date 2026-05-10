@@ -1,0 +1,6 @@
+#pragma once
+#include <cmath>
+inline float  qDegreesToRadians(float d)  { return d * 3.14159265358979323846f / 180.0f; }
+inline double qDegreesToRadians(double d) { return d * 3.14159265358979323846  / 180.0; }
+inline float  qFastSin(float r) { return std::sin(r); }
+inline float  qFastCos(float r) { return std::cos(r); }

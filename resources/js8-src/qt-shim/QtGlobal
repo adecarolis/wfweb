@@ -1,0 +1,39 @@
+// Minimal QtGlobal shim — type aliases + a small handful of Qt-global
+// helper functions used by the JS8 codec subset.
+#pragma once
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+
+using quint8  = std::uint8_t;
+using quint16 = std::uint16_t;
+using quint32 = std::uint32_t;
+using quint64 = std::uint64_t;
+using qint8   = std::int8_t;
+using qint16  = std::int16_t;
+using qint32  = std::int32_t;
+using qint64  = std::int64_t;
+using qreal   = double;
+using uchar   = unsigned char;
+
+// qEnvironmentVariableIsSet / IntValue — used by ldpc_feedback.h and
+// soft_combiner.h to read tuning knobs from the environment. In the
+// browser there's no env, so these always report "unset / 0".
+inline bool qEnvironmentVariableIsSet(const char* name) {
+    const char* v = std::getenv(name);
+    return v && *v;
+}
+inline int qEnvironmentVariableIntValue(const char* name, bool* ok = nullptr) {
+    const char* v = std::getenv(name);
+    if (!v || !*v) { if (ok) *ok = false; return 0; }
+    char* end = nullptr;
+    long n = std::strtol(v, &end, 10);
+    bool parsed = (end != v && *end == '\0');
+    if (ok) *ok = parsed;
+    return parsed ? static_cast<int>(n) : 0;
+}
+
+// Qt-style `foreach` macro. C++11 range-for is the modern equivalent;
+// Qt keeps the macro alive for legacy code (Varicode.cpp uses it).
+#define Q_FOREACH(var, container) for (var : container)
+#define foreach Q_FOREACH

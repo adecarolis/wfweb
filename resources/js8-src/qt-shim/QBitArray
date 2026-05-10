@@ -1,0 +1,27 @@
+// Minimal QBitArray — std::vector<bool> wrapper.
+#pragma once
+#include "QtGlobal"
+#include <vector>
+
+class QBitArray {
+public:
+    QBitArray() = default;
+    explicit QBitArray(int n) : b_(static_cast<size_t>(n), false) {}
+    QBitArray(int n, bool v)  : b_(static_cast<size_t>(n), v) {}
+
+    int size()  const { return static_cast<int>(b_.size()); }
+    int count() const { return size(); }
+    bool isEmpty() const { return b_.empty(); }
+    void resize(int n) { b_.resize(static_cast<size_t>(n)); }
+    void clear() { b_.clear(); }
+
+    void setBit(int i, bool v = true) { b_[static_cast<size_t>(i)] = v; }
+    void clearBit(int i) { b_[static_cast<size_t>(i)] = false; }
+    bool testBit(int i) const { return b_[static_cast<size_t>(i)]; }
+    bool at(int i)      const { return b_[static_cast<size_t>(i)]; }
+    bool operator[](int i) const { return b_[static_cast<size_t>(i)]; }
+    auto operator[](int i) { return b_[static_cast<size_t>(i)]; }
+
+private:
+    std::vector<bool> b_;
+};

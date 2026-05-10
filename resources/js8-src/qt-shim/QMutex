@@ -1,0 +1,21 @@
+// Stand-alone std::mutex/std::lock_guard wrapper. Only DriftingDateTime.h
+// referenced these and DriftingDateTime is dropped, but stubs are cheap
+// and keep #include <QMutex> resolutions working.
+#pragma once
+#include <mutex>
+class QMutex {
+public:
+    void lock()   { m_.lock(); }
+    bool tryLock() { return m_.try_lock(); }
+    void unlock() { m_.unlock(); }
+    std::mutex& std_mutex() { return m_; }
+private:
+    std::mutex m_;
+};
+class QMutexLocker {
+public:
+    explicit QMutexLocker(QMutex* m) : m_(m) { if (m_) m_->lock(); }
+    ~QMutexLocker() { if (m_) m_->unlock(); }
+private:
+    QMutex* m_;
+};

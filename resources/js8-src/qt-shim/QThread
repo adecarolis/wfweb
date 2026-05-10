@@ -1,0 +1,10 @@
+// QThread stub — only declares the class so any stray header reference
+// resolves; we deleted every actual QThread subclass from the vendored
+// tree. If something tries to instantiate this we'll see a link error.
+#pragma once
+#include "QObject"
+class QThread : public QObject {
+public:
+    QThread(QObject* parent = nullptr) : QObject(parent) {}
+    enum Priority { LowestPriority, NormalPriority, HighestPriority };
+};

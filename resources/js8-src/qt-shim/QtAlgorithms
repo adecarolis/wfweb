@@ -1,0 +1,10 @@
+// QtAlgorithms is mostly historical — qAbs / qMin / qMax / qSwap.
+// Forward to <algorithm> + <cmath>.
+#pragma once
+#include <algorithm>
+#include <cmath>
+
+template <typename T> constexpr T qMin(T a, T b) { return a < b ? a : b; }
+template <typename T> constexpr T qMax(T a, T b) { return a > b ? a : b; }
+template <typename T> constexpr T qAbs(T a) { return a < T(0) ? -a : a; }
+template <typename T> void qSwap(T& a, T& b) { using std::swap; swap(a, b); }

@@ -1,0 +1,6 @@
+// QPair = std::pair (Qt 6 made it an alias too).
+#pragma once
+#include <utility>
+template <typename A, typename B> using QPair = std::pair<A, B>;
+template <typename A, typename B>
+constexpr QPair<A, B> qMakePair(A&& a, B&& b) { return {std::forward<A>(a), std::forward<B>(b)}; }

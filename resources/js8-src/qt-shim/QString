@@ -1,0 +1,308 @@
+// Minimal QString shim, std::string-backed. ASCII / Latin-1 only —
+// JS8 messages stay in that range. Each method is deliberately a thin
+// wrapper around <string> to keep the surface auditable.
+#pragma once
+#include "QtGlobal"
+#include "QChar"
+#include "QByteArray"
+#include <algorithm>
+#include <cctype>
+#include <charconv>
+#include <cstdarg>
+#include <cstdio>
+#include <cstring>
+#include <string>
+#include <string_view>
+#include <vector>
+
+class QStringList;   // forward decl — defined in QStringList header
+
+class QString {
+public:
+    QString() = default;
+    QString(const char* s)             : s_(s ? s : "") {}
+    QString(const char* s, int n)      : s_(s, n) {}
+    QString(std::string s)             : s_(std::move(s)) {}
+    QString(int n, QChar c)            : s_(static_cast<size_t>(n), static_cast<char>(c)) {}
+    QString(QChar c)                   : s_(1, static_cast<char>(c)) {}
+
+    static QString fromLatin1(const char* s) { return QString(s); }
+    static QString fromUtf8(const char* s)   { return QString(s); }
+    static QString number(long long v) {
+        char buf[32]; std::snprintf(buf, sizeof(buf), "%lld", v); return QString(buf);
+    }
+    static QString number(int v) { return number(static_cast<long long>(v)); }
+    static QString fromStdString(const std::string& s) { return QString(s); }
+
+    // Capacity
+    int size()    const { return static_cast<int>(s_.size()); }
+    int length()  const { return size(); }
+    bool isEmpty() const { return s_.empty(); }
+    void reserve(int n) { s_.reserve(static_cast<size_t>(n)); }
+
+    // Element access
+    QChar at(int i) const { return QChar(static_cast<unsigned char>(s_[i])); }
+    QChar operator[](int i) const { return at(i); }
+
+    // Mutation
+    QString& append(const QString& o) { s_ += o.s_; return *this; }
+    QString& append(const char* s)    { s_ += s;    return *this; }
+    QString& append(QChar c)          { s_ += static_cast<char>(c); return *this; }
+
+    // Operators
+    QString& operator+=(const QString& o) { return append(o); }
+    QString& operator+=(const char* s)    { return append(s); }
+    QString& operator+=(QChar c)          { return append(c); }
+    QString& operator+=(char c)           { s_ += c; return *this; }
+    friend QString operator+(QString a, const QString& b) { a += b; return a; }
+    friend QString operator+(QString a, const char* b)    { a += b; return a; }
+    friend QString operator+(QString a, char b)           { a += b; return a; }
+    friend QString operator+(QString a, QChar b)          { a += b; return a; }
+    friend QString operator+(const char* a, const QString& b) { return QString(a) + b; }
+    friend QString operator+(char a, const QString& b)        { return QString(1, QChar(a)) + b; }
+    friend QString operator+(QChar a, const QString& b)       { return QString(1, a) + b; }
+    // QStringBuilder uses %; alias to +
+    friend QString operator%(const QString& a, const QString& b) { return a + b; }
+    friend QString operator%(const QString& a, const char* b)    { return a + b; }
+    friend QString operator%(const QString& a, char b)           { return a + b; }
+    friend QString operator%(const QString& a, QChar b)          { return a + b; }
+    friend QString operator%(const char* a, const QString& b)    { return a + b; }
+    friend QString operator%(char a, const QString& b)           { return a + b; }
+    friend QString operator%(QChar a, const QString& b)          { return a + b; }
+
+    friend bool operator==(const QString& a, const QString& b) { return a.s_ == b.s_; }
+    friend bool operator==(const QString& a, const char* b)    { return a.s_ == (b ? b : ""); }
+    friend bool operator==(const char* a, const QString& b)    { return b == a; }
+    friend bool operator!=(const QString& a, const QString& b) { return !(a==b); }
+    friend bool operator!=(const QString& a, const char* b)    { return !(a==b); }
+    friend bool operator< (const QString& a, const QString& b) { return a.s_  < b.s_; }
+
+    // Search
+    bool contains(const QString& o) const { return s_.find(o.s_) != std::string::npos; }
+    bool contains(QChar c)          const { return s_.find(static_cast<char>(c)) != std::string::npos; }
+    bool contains(const char* s)    const { return s_.find(s) != std::string::npos; }
+    int  count(QChar c) const {
+        int n = 0; for (auto x : s_) if (x == static_cast<char>(c)) ++n; return n;
+    }
+    int  count(const QString& o) const {
+        if (o.s_.empty()) return size() + 1;
+        int n = 0; size_t p = 0;
+        while ((p = s_.find(o.s_, p)) != std::string::npos) { ++n; p += o.s_.size(); }
+        return n;
+    }
+    int  indexOf(QChar c, int from = 0) const {
+        auto p = s_.find(static_cast<char>(c), static_cast<size_t>(from));
+        return p == std::string::npos ? -1 : static_cast<int>(p);
+    }
+    int  indexOf(const QString& o, int from = 0) const {
+        auto p = s_.find(o.s_, static_cast<size_t>(from));
+        return p == std::string::npos ? -1 : static_cast<int>(p);
+    }
+    int  lastIndexOf(QChar c) const {
+        auto p = s_.rfind(static_cast<char>(c));
+        return p == std::string::npos ? -1 : static_cast<int>(p);
+    }
+    int  lastIndexOf(const QString& o) const {
+        auto p = s_.rfind(o.s_);
+        return p == std::string::npos ? -1 : static_cast<int>(p);
+    }
+
+    // Slicing
+    QString mid(int pos, int n = -1) const {
+        if (pos < 0 || pos > size()) return QString();
+        size_t len = (n < 0) ? std::string::npos : static_cast<size_t>(n);
+        return QString(s_.substr(static_cast<size_t>(pos), len));
+    }
+    QString left(int n) const  { return mid(0, n); }
+    QString right(int n) const { int p = size() - n; return p < 0 ? *this : mid(p); }
+
+    QString trimmed() const {
+        size_t a = 0, b = s_.size();
+        while (a < b && std::isspace(static_cast<unsigned char>(s_[a]))) ++a;
+        while (b > a && std::isspace(static_cast<unsigned char>(s_[b - 1]))) --b;
+        return QString(s_.substr(a, b - a));
+    }
+
+    QString toUpper() const {
+        QString out(s_);
+        for (auto& c : out.s_) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        return out;
+    }
+    QString toLower() const {
+        QString out(s_);
+        for (auto& c : out.s_) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        return out;
+    }
+
+    bool startsWith(const QString& o) const {
+        return s_.size() >= o.s_.size() && s_.compare(0, o.s_.size(), o.s_) == 0;
+    }
+    bool startsWith(const char* o) const { return startsWith(QString(o)); }
+    bool startsWith(QChar c) const { return !s_.empty() && s_.front() == static_cast<char>(c); }
+    bool endsWith(const QString& o) const {
+        return s_.size() >= o.s_.size() &&
+               s_.compare(s_.size() - o.s_.size(), o.s_.size(), o.s_) == 0;
+    }
+    bool endsWith(const char* o) const { return endsWith(QString(o)); }
+    bool endsWith(QChar c) const { return !s_.empty() && s_.back() == static_cast<char>(c); }
+
+    QString& replace(const QString& before, const QString& after) {
+        if (before.s_.empty()) return *this;
+        size_t p = 0;
+        while ((p = s_.find(before.s_, p)) != std::string::npos) {
+            s_.replace(p, before.s_.size(), after.s_);
+            p += after.s_.size();
+        }
+        return *this;
+    }
+    QString& replace(QChar before, QChar after) {
+        char a = static_cast<char>(before), b = static_cast<char>(after);
+        for (auto& c : s_) if (c == a) c = b;
+        return *this;
+    }
+    QString& replace(int pos, int n, const QString& after) {
+        if (pos < 0 || pos > size()) return *this;
+        size_t len = (n < 0) ? s_.size() - static_cast<size_t>(pos)
+                             : static_cast<size_t>(n);
+        s_.replace(static_cast<size_t>(pos), len, after.s_);
+        return *this;
+    }
+
+    QString& prepend(const QString& o) { s_.insert(0, o.s_); return *this; }
+    QString& prepend(QChar c) { s_.insert(s_.begin(), static_cast<char>(c)); return *this; }
+    QString& insert(int pos, const QString& o) {
+        if (pos < 0) pos = 0;
+        s_.insert(static_cast<size_t>(pos), o.s_); return *this;
+    }
+    QString& insert(int pos, QChar c) {
+        if (pos < 0) pos = 0;
+        s_.insert(static_cast<size_t>(pos), 1, static_cast<char>(c)); return *this;
+    }
+
+    QString repeated(int n) const {
+        QString out;
+        if (n <= 0) return out;
+        out.s_.reserve(s_.size() * static_cast<size_t>(n));
+        for (int i = 0; i < n; ++i) out.s_ += s_;
+        return out;
+    }
+
+    void chop(int n) {
+        if (n <= 0) return;
+        if (static_cast<size_t>(n) >= s_.size()) s_.clear();
+        else s_.resize(s_.size() - static_cast<size_t>(n));
+    }
+    QString chopped(int n) const { QString out(*this); out.chop(n); return out; }
+
+    int compare(const QString& o) const { return s_.compare(o.s_); }
+
+    QString rightJustified(int width, QChar fill = QChar(' ')) const {
+        if (size() >= width) return *this;
+        QString out(width - size(), fill);
+        out.s_ += s_;
+        return out;
+    }
+
+    int toInt(bool* ok = nullptr, int base = 10) const {
+        try { size_t pos = 0; int v = std::stoi(s_, &pos, base);
+              if (ok) *ok = (pos == s_.size()); return v; }
+        catch (...) { if (ok) *ok = false; return 0; }
+    }
+    long long toLongLong(bool* ok = nullptr, int base = 10) const {
+        try { size_t pos = 0; long long v = std::stoll(s_, &pos, base);
+              if (ok) *ok = (pos == s_.size()); return v; }
+        catch (...) { if (ok) *ok = false; return 0; }
+    }
+    unsigned short toUShort(bool* ok = nullptr, int base = 10) const {
+        return static_cast<unsigned short>(toInt(ok, base));
+    }
+    double toDouble(bool* ok = nullptr) const {
+        try { size_t pos = 0; double v = std::stod(s_, &pos);
+              if (ok) *ok = (pos == s_.size()); return v; }
+        catch (...) { if (ok) *ok = false; return 0.0; }
+    }
+
+    auto begin() const { return s_.begin(); }
+    auto end()   const { return s_.end(); }
+    auto cbegin() const { return s_.cbegin(); }
+    auto cend()   const { return s_.cend(); }
+    auto constBegin() const { return s_.cbegin(); }
+    auto constEnd()   const { return s_.cend(); }
+    QChar first() const { return at(0); }
+    QChar last()  const { return at(size() - 1); }
+    const char* unicode() const { return s_.c_str(); }
+    const std::string& data_str() const { return s_; }
+
+    QByteArray toLocal8Bit() const { return QByteArray(s_); }
+
+    QStringList split(QChar sep) const;
+    QStringList split(const QString& sep) const;
+    // Qt::SplitBehavior overload — only the SkipEmptyParts case is used
+    enum SplitBehavior { KeepEmptyParts = 0, SkipEmptyParts = 1 };
+    QStringList split(QChar sep, SplitBehavior b) const;
+
+    // arg: Qt-style format-by-replacement. Each call replaces the lowest %N.
+    // Supports printf-style formatting via fieldWidth/base/fillChar overload.
+    QString arg(const QString& v) const { return argImpl(v); }
+    QString arg(const char* v) const    { return argImpl(QString(v)); }
+    QString arg(QChar v) const          { return argImpl(QString(1, v)); }
+    QString arg(int v) const            { return argImpl(QString::number(v)); }
+    QString arg(long long v) const      { return argImpl(QString::number(v)); }
+    QString arg(unsigned v) const       { return argImpl(QString::number((long long)v)); }
+    QString arg(double v) const {
+        char buf[64]; std::snprintf(buf, sizeof(buf), "%g", v);
+        return argImpl(QString(buf));
+    }
+    QString arg(int v, int fieldWidth, int base = 10, QChar fillChar = QChar(' ')) const {
+        char buf[64];
+        switch (base) {
+            case 16: std::snprintf(buf, sizeof(buf), "%x", v); break;
+            case 8:  std::snprintf(buf, sizeof(buf), "%o", v); break;
+            default: std::snprintf(buf, sizeof(buf), "%d", v); break;
+        }
+        std::string num(buf);
+        if (fieldWidth < 0) num.append(static_cast<size_t>(-fieldWidth) - num.size(), static_cast<char>(fillChar));
+        else if ((int)num.size() < fieldWidth)
+            num.insert(num.begin(), fieldWidth - (int)num.size(), static_cast<char>(fillChar));
+        return argImpl(QString(num));
+    }
+
+    // Conversion / iteration
+    const std::string& toStdString() const { return s_; }
+    const char* toLatin1() const { return s_.c_str(); }
+    const char* toUtf8()   const { return s_.c_str(); }
+
+private:
+    QString argImpl(const QString& replacement) const {
+        // Find the lowest %N (1..99) and replace its first occurrence.
+        int lowest = -1;
+        size_t lowestPos = std::string::npos;
+        size_t lowestLen = 0;
+        for (size_t i = 0; i + 1 < s_.size(); ++i) {
+            if (s_[i] != '%') continue;
+            if (!std::isdigit(static_cast<unsigned char>(s_[i + 1]))) continue;
+            int n = s_[i + 1] - '0';
+            size_t len = 2;
+            if (i + 2 < s_.size() && std::isdigit(static_cast<unsigned char>(s_[i + 2]))) {
+                n = n * 10 + (s_[i + 2] - '0');
+                len = 3;
+            }
+            if (lowest == -1 || n < lowest) {
+                lowest = n; lowestPos = i; lowestLen = len;
+            }
+        }
+        if (lowest == -1) return *this;
+        QString out;
+        out.s_.reserve(s_.size() + replacement.s_.size());
+        out.s_.append(s_, 0, lowestPos);
+        out.s_.append(replacement.s_);
+        out.s_.append(s_, lowestPos + lowestLen, std::string::npos);
+        return out;
+    }
+
+    std::string s_;
+    friend class QStringList;
+};
+
+// QStringLiteral is just a plain QString constructor in the shim.
+#define QStringLiteral(s) QString(s)

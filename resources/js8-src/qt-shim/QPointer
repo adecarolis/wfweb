@@ -1,0 +1,17 @@
+// QPointer<T> is a guarded pointer that nulls out when its target is
+// destroyed. Our shim treats it as a plain pointer — the only thing
+// that referenced it was Decoder.h (dropped) and DriftingDateTime.h (dropped).
+#pragma once
+template <typename T>
+class QPointer {
+public:
+    QPointer() = default;
+    QPointer(T* p) : p_(p) {}
+    T* operator->() const { return p_; }
+    T& operator*()  const { return *p_; }
+    operator T*()   const { return p_; }
+    T* data() const { return p_; }
+    bool isNull() const { return p_ == nullptr; }
+private:
+    T* p_ = nullptr;
+};

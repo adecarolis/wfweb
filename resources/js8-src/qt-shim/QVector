@@ -1,0 +1,73 @@
+// Minimal QVector shim — std::vector wrapper.
+#pragma once
+#include "QtGlobal"
+#include <algorithm>
+#include <initializer_list>
+#include <vector>
+
+template <typename T>
+class QVector {
+public:
+    QVector() = default;
+    QVector(std::initializer_list<T> il) : v_(il) {}
+    explicit QVector(int n)         : v_(static_cast<size_t>(n)) {}
+    QVector(int n, const T& val)    : v_(static_cast<size_t>(n), val) {}
+
+    int size()    const { return static_cast<int>(v_.size()); }
+    int length()  const { return size(); }
+    int count()   const { return size(); }
+    bool isEmpty() const { return v_.empty(); }
+    bool empty()   const { return v_.empty(); }
+    void reserve(int n) { v_.reserve(static_cast<size_t>(n)); }
+    void resize(int n)  { v_.resize(static_cast<size_t>(n)); }
+    void clear()        { v_.clear(); }
+
+    void append(const T& val) { v_.push_back(val); }
+    void append(const QVector& o) { for (auto& x : o.v_) v_.push_back(x); }
+    void push_back(const T& val) { v_.push_back(val); }
+    void prepend(const T& val) { v_.insert(v_.begin(), val); }
+
+    T&       operator[](int i)       { return v_[static_cast<size_t>(i)]; }
+    const T& operator[](int i) const { return v_[static_cast<size_t>(i)]; }
+    T&       at(int i)               { return v_[static_cast<size_t>(i)]; }
+    const T& at(int i)         const { return v_[static_cast<size_t>(i)]; }
+    T&       first()                 { return v_.front(); }
+    const T& first()           const { return v_.front(); }
+    T&       last()                  { return v_.back(); }
+    const T& last()            const { return v_.back(); }
+
+    T*       data()       { return v_.data(); }
+    const T* data() const { return v_.data(); }
+    const T* constData() const { return v_.data(); }
+
+    QVector mid(int pos, int n = -1) const {
+        QVector out;
+        if (pos < 0 || pos >= size()) return out;
+        int end = (n < 0) ? size() : std::min(size(), pos + n);
+        for (int i = pos; i < end; ++i) out.append(v_[static_cast<size_t>(i)]);
+        return out;
+    }
+
+    bool contains(const T& val) const {
+        return std::find(v_.begin(), v_.end(), val) != v_.end();
+    }
+
+    QVector& operator+=(const QVector& o) { append(o); return *this; }
+    QVector& operator+=(const T& val) { append(val); return *this; }
+
+    auto begin()       { return v_.begin(); }
+    auto end()         { return v_.end(); }
+    auto begin() const { return v_.begin(); }
+    auto end()   const { return v_.end(); }
+    auto cbegin() const { return v_.cbegin(); }
+    auto cend()   const { return v_.cend(); }
+    auto constBegin() const { return v_.cbegin(); }
+    auto constEnd()   const { return v_.cend(); }
+    using ConstIterator = typename std::vector<T>::const_iterator;
+    using Iterator      = typename std::vector<T>::iterator;
+    using const_iterator = ConstIterator;
+    using iterator       = Iterator;
+
+private:
+    std::vector<T> v_;
+};

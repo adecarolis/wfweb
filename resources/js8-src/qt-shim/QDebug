@@ -1,0 +1,19 @@
+// No-op QDebug stream. Swallows everything. Real Qt would write to stderr.
+#pragma once
+#include "QtGlobal"
+
+class QDebug {
+public:
+    QDebug() = default;
+    template <typename T>
+    QDebug& operator<<(const T&) { return *this; }
+    QDebug& noquote()    { return *this; }
+    QDebug& nospace()    { return *this; }
+    QDebug& space()      { return *this; }
+    QDebug& maybeSpace() { return *this; }
+};
+
+inline QDebug qDebug()   { return QDebug(); }
+inline QDebug qInfo()    { return QDebug(); }
+inline QDebug qWarning() { return QDebug(); }
+inline QDebug qCritical(){ return QDebug(); }

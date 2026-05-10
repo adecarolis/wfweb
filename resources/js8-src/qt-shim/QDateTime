@@ -1,0 +1,12 @@
+// QDateTime — only used by the dropped Detector/Modulator. Keep a tiny
+// stub for any stray reference; if any of our vendored .cpp actually
+// instantiates one we'll see compile errors.
+#pragma once
+#include "QtGlobal"
+
+class QDateTime {
+public:
+    QDateTime() = default;
+    static QDateTime currentDateTimeUtc() { return QDateTime(); }
+    qint64 toMSecsSinceEpoch() const { return 0; }
+};

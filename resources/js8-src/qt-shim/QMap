@@ -1,0 +1,84 @@
+// Minimal QMap — std::map wrapper. Keep API surface tight.
+#pragma once
+#include "QtGlobal"
+#include <map>
+#include <vector>
+#include <initializer_list>
+
+template <typename K, typename V>
+class QMap {
+public:
+    QMap() = default;
+    QMap(std::initializer_list<std::pair<const K, V>> il) : m_(il) {}
+
+    int size()    const { return static_cast<int>(m_.size()); }
+    int count()   const { return size(); }
+    bool isEmpty() const { return m_.empty(); }
+    bool empty()   const { return m_.empty(); }
+    void clear()        { m_.clear(); }
+
+    void insert(const K& k, const V& v) { m_[k] = v; }
+
+    bool contains(const K& k) const { return m_.find(k) != m_.end(); }
+
+    V value(const K& k) const {
+        auto it = m_.find(k);
+        return it == m_.end() ? V() : it->second;
+    }
+    V value(const K& k, const V& def) const {
+        auto it = m_.find(k);
+        return it == m_.end() ? def : it->second;
+    }
+
+    V& operator[](const K& k) { return m_[k]; }
+    const V& operator[](const K& k) const {
+        auto it = m_.find(k);
+        if (it == m_.end()) {
+            static V dummy{};
+            return dummy;
+        }
+        return it->second;
+    }
+
+    // Qt iterator: dereferences to value; key() returns the key.
+    class const_iterator {
+    public:
+        const_iterator(typename std::map<K, V>::const_iterator it) : it_(it) {}
+        const V& value() const { return it_->second; }
+        const K& key()   const { return it_->first; }
+        const V& operator*() const { return it_->second; }
+        const_iterator& operator++() { ++it_; return *this; }
+        const_iterator operator++(int) { auto t=*this; ++it_; return t; }
+        bool operator==(const const_iterator& o) const { return it_ == o.it_; }
+        bool operator!=(const const_iterator& o) const { return it_ != o.it_; }
+    private:
+        typename std::map<K, V>::const_iterator it_;
+    };
+    const_iterator begin() const { return const_iterator(m_.begin()); }
+    const_iterator end()   const { return const_iterator(m_.end()); }
+    const_iterator constBegin() const { return begin(); }
+    const_iterator constEnd()   const { return end(); }
+
+    const_iterator find(const K& k) const { return const_iterator(m_.find(k)); }
+    const_iterator lowerBound(const K& k) const { return const_iterator(m_.lower_bound(k)); }
+
+    std::vector<K> keys() const {
+        std::vector<K> out;
+        out.reserve(m_.size());
+        for (auto& p : m_) out.push_back(p.first);
+        return out;
+    }
+    std::vector<V> values() const {
+        std::vector<V> out;
+        out.reserve(m_.size());
+        for (auto& p : m_) out.push_back(p.second);
+        return out;
+    }
+    K key(const V& v) const {
+        for (auto& p : m_) if (p.second == v) return p.first;
+        return K();
+    }
+
+private:
+    std::map<K, V> m_;
+};

@@ -1,0 +1,26 @@
+#pragma once
+#include "QtGlobal"
+#include <set>
+#include <initializer_list>
+
+template <typename T>
+class QSet {
+public:
+    QSet() = default;
+    QSet(std::initializer_list<T> il) : s_(il) {}
+
+    int size()    const { return static_cast<int>(s_.size()); }
+    int count()   const { return size(); }
+    bool isEmpty() const { return s_.empty(); }
+    void clear()        { s_.clear(); }
+
+    void insert(const T& v) { s_.insert(v); }
+    bool contains(const T& v) const { return s_.find(v) != s_.end(); }
+    void remove(const T& v) { s_.erase(v); }
+
+    auto begin() const { return s_.begin(); }
+    auto end()   const { return s_.end(); }
+
+private:
+    std::set<T> s_;
+};

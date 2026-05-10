@@ -1,0 +1,46 @@
+// No-op QLoggingCategory + the macros that go with it. Categories all
+// resolve to a singleton Disabled instance; qCDebug/qCInfo/qCWarning /
+// qCCritical streams swallow everything (see QDebug).
+#pragma once
+#include "QDebug"
+
+enum QtMsgType { QtDebugMsg, QtInfoMsg, QtWarningMsg, QtCriticalMsg, QtFatalMsg };
+
+class QLoggingCategory {
+public:
+    constexpr QLoggingCategory(const char* = nullptr, QtMsgType = QtDebugMsg) {}
+    constexpr bool isDebugEnabled()    const { return false; }
+    constexpr bool isInfoEnabled()     const { return false; }
+    constexpr bool isWarningEnabled()  const { return false; }
+    constexpr bool isCriticalEnabled() const { return false; }
+    static const QLoggingCategory& defaultCategory() {
+        static QLoggingCategory d; return d;
+    }
+};
+
+// Q_DECLARE_LOGGING_CATEGORY(name) emits a forward declaration only
+// (multiple declarations of the same function are allowed in one TU,
+// so it's safe for the codec headers to repeat this for shared
+// categories like `decoder_js8`).
+//
+// Q_LOGGING_CATEGORY(name, ...) emits the definition. Marked `inline`
+// so multiple TUs that happen to include the same .cpp pattern won't
+// produce a multi-defined-symbol link error.
+//
+// Categories that are *never* defined inside our vendored subset (e.g.
+// `decoder_js8` — upstream defines it in Decoder.cpp, which we dropped)
+// get their definitions in resources/js8-src/api/js8_wasm_api.cpp.
+#define Q_DECLARE_LOGGING_CATEGORY(name) \
+    const QLoggingCategory& name();
+#define Q_LOGGING_CATEGORY(name, ...) \
+    inline const QLoggingCategory& name() { \
+        static const QLoggingCategory c; return c; \
+    }
+
+// qC* macros: we DO evaluate `cat` (so isDebugEnabled() etc. checks in
+// upstream code paths still type-check), but the QDebug() return value
+// is a no-op stream that swallows everything.
+#define qCDebug(cat)    ((cat)(), QDebug())
+#define qCInfo(cat)     ((cat)(), QDebug())
+#define qCWarning(cat)  ((cat)(), QDebug())
+#define qCCritical(cat) ((cat)(), QDebug())

@@ -1,0 +1,19 @@
+// Minimal QObject stub. Only Varicode/JS8Submode use QObject::tr(),
+// which we map to identity (no translation in WASM).
+#pragma once
+#include "QString"
+
+class QObject {
+public:
+    QObject(QObject* = nullptr) {}
+    virtual ~QObject() = default;
+
+    static QString tr(const char* s) { return QString(s); }
+    static QString tr(const char* s, const char*, int) { return QString(s); }
+};
+
+// JS8Call code uses Q_OBJECT inside classes; in our shim it's a no-op.
+#define Q_OBJECT
+#define Q_NAMESPACE
+#define Q_DISABLE_COPY(C)
+#define Q_DISABLE_COPY_MOVE(C)

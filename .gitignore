@@ -36,3 +36,7 @@ resources/web/wasm/rade.wasm
 *.ini
 .DS_Store
 __pycache__/
+
+# JS8 build cache: FFTW source + libfftw3f.a (rebuilt by tools/build-js8-fftw.sh)
+resources/js8-src/.fftw-cache/
+resources/js8-src/.emcache/

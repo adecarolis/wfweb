@@ -1,0 +1,104 @@
+// Minimal QRegularExpression — std::regex wrapper. Just enough for the
+// patterns Varicode uses (all are std::regex-compatible).
+#pragma once
+#include "QString"
+#include "QStringList"
+#include "QStringView"
+#include <regex>
+#include <string>
+
+class QRegularExpressionMatch {
+public:
+    QRegularExpressionMatch() : ok_(false) {}
+    explicit QRegularExpressionMatch(std::smatch m) : m_(std::move(m)), ok_(true) {}
+
+    bool hasMatch() const { return ok_ && !m_.empty(); }
+    QString captured(int n = 0) const {
+        if (!hasMatch() || n < 0 || n >= static_cast<int>(m_.size())) return QString();
+        return QString(m_[static_cast<size_t>(n)].str());
+    }
+    // Named-group capture isn't supported by std::regex/std::smatch via
+    // string lookup. None of the codec subset's patterns use named
+    // groups in this overload; we keep it as a stub returning empty so
+    // callers compile.
+    QString captured(const QString& /*name*/) const { return QString(); }
+    QStringView capturedView(int n = 0) const { return QStringView(captured(n)); }
+    int capturedLength(int n = 0) const {
+        if (!hasMatch() || n < 0 || n >= static_cast<int>(m_.size())) return 0;
+        return static_cast<int>(m_[static_cast<size_t>(n)].length());
+    }
+    QStringList capturedTexts() const {
+        QStringList out;
+        if (!hasMatch()) return out;
+        for (size_t i = 0; i < m_.size(); ++i) out.append(QString(m_[i].str()));
+        return out;
+    }
+
+private:
+    std::smatch m_;
+    bool ok_;
+};
+
+class QRegularExpressionMatchIterator {
+public:
+    QRegularExpressionMatchIterator() : valid_(false) {}
+    QRegularExpressionMatchIterator(std::string s, std::regex r)
+        : s_(std::move(s)), r_(std::move(r)), valid_(true) {
+        it_ = std::sregex_iterator(s_.begin(), s_.end(), r_);
+    }
+
+    bool hasNext() const { return valid_ && it_ != std::sregex_iterator(); }
+    QRegularExpressionMatch next() {
+        if (!hasNext()) return QRegularExpressionMatch();
+        std::smatch sm = *it_;
+        ++it_;
+        return QRegularExpressionMatch(std::move(sm));
+    }
+
+private:
+    std::string s_;
+    std::regex r_;
+    std::sregex_iterator it_;
+    bool valid_;
+};
+
+class QRegularExpression {
+public:
+    enum PatternOption {
+        NoPatternOption       = 0x0,
+        CaseInsensitiveOption = 0x1,
+    };
+
+    QRegularExpression() = default;
+    explicit QRegularExpression(const QString& pat, PatternOption opt = NoPatternOption)
+        : pat_(pat.toStdString()) {
+        auto flags = std::regex::ECMAScript;
+        if (opt & CaseInsensitiveOption) flags |= std::regex::icase;
+        try { re_ = std::regex(pat_, flags); ok_ = true; } catch (...) { ok_ = false; }
+    }
+
+    bool isValid() const { return ok_; }
+
+    QRegularExpressionMatch match(const QString& subject) const {
+        if (!ok_) return QRegularExpressionMatch();
+        std::smatch m;
+        std::string s = subject.toStdString();
+        if (std::regex_search(s, m, re_)) return QRegularExpressionMatch(std::move(m));
+        return QRegularExpressionMatch();
+    }
+    QRegularExpressionMatch matchView(QStringView subject) const {
+        return match(subject.toString());
+    }
+    QRegularExpressionMatchIterator globalMatch(const QString& subject) const {
+        if (!ok_) return QRegularExpressionMatchIterator();
+        return QRegularExpressionMatchIterator(subject.toStdString(), re_);
+    }
+
+private:
+    std::string pat_;
+    std::regex re_;
+    bool ok_ = false;
+};
+
+// QRegExp is the deprecated Qt 5 type; same behavior is OK for our uses.
+using QRegExp = QRegularExpression;
