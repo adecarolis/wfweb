@@ -22,51 +22,14 @@ const wasmBytes = fs.readFileSync(path.join(wasmDir, "js8.wasm"));
 const createJS8 = (await import(path.join(wasmDir, "js8.mjs"))).default;
 const Module    = await createJS8({ wasmBinary: wasmBytes });
 
-// ─── JS8 Normal-mode tone generation ──────────────────────────────────
-//
-// Symbol rate = 12000 / JS8A_SYMBOL_SAMPLES = 12000 / 1920 = 6.25 baud.
-// 8-FSK with tone spacing equal to baud rate (so tones are orthogonal).
-// We park tone 0 at BASE_HZ; tone n at BASE_HZ + n * BAUD_HZ.
-//
-// JS8 frames begin with JS8A_START_DELAY_MS = 500 ms of silence so the
-// decoder has time to settle and pick up sync. We pad the front with
-// that, and the back with a similar amount so the slot is comfortably
-// inside the decoder's expected 15 s window.
+// Pull the synthesis helper from the shared module — single source of
+// truth, also tested as part of the SPA path.
+const sharedJs8 = await import(path.join(__dirname, "..", "resources", "web-shared", "js8.mjs"));
+const synthesize = sharedJs8.synthesize;
 
+// JS8 8-FSK synthesis lives in resources/web-shared/js8.js — imported
+// above as `synthesize`. Constants used by the test reporter:
 const SAMPLE_RATE = 12000;
-const SYMBOL_SAMPLES = 1920;       // JS8A_SYMBOL_SAMPLES
-const NUM_SYMBOLS = 79;            // JS8_NUM_SYMBOLS
-const START_DELAY_MS = 500;
-const BAUD_HZ = SAMPLE_RATE / SYMBOL_SAMPLES;     // 6.25
-const BASE_HZ = 1500;                              // tone 0 frequency
-
-function synthesizeAudio(tones) {
-  if (tones.length !== NUM_SYMBOLS) {
-    throw new Error(`tones must be length ${NUM_SYMBOLS}, got ${tones.length}`);
-  }
-  const preroll = Math.round(START_DELAY_MS / 1000 * SAMPLE_RATE);
-  const payload = NUM_SYMBOLS * SYMBOL_SAMPLES;
-  // Pad to 15s slot
-  const totalSamples = 15 * SAMPLE_RATE;
-  const out = new Float32Array(totalSamples);
-
-  // Continuous-phase 8-FSK: keep a phase accumulator across symbols so
-  // we don't get phase discontinuity at symbol boundaries (those would
-  // otherwise spread spectral energy and confuse the sync stage).
-  let phase = 0;
-  for (let s = 0; s < NUM_SYMBOLS; ++s) {
-    const tone = tones[s];
-    const freq = BASE_HZ + tone * BAUD_HZ;
-    const dphi = 2 * Math.PI * freq / SAMPLE_RATE;
-    const off = preroll + s * SYMBOL_SAMPLES;
-    for (let i = 0; i < SYMBOL_SAMPLES; ++i) {
-      out[off + i] = 0.5 * Math.sin(phase);
-      phase += dphi;
-      if (phase > 2 * Math.PI) phase -= 2 * Math.PI;
-    }
-  }
-  return out;
-}
 
 // ─── Encode → tones helper ─────────────────────────────────────────────
 
@@ -165,7 +128,7 @@ let noise200Total = 0;
 for (const { msg, frameType } of cases) {
   const tones = encode(msg, frameType);
   if (!tones) { console.log(`encode("${msg}") FAILED`); allPass = false; continue; }
-  const cleanAudio = synthesizeAudio(tones);
+  const cleanAudio = synthesize(tones);
   console.log(`──── "${msg}" ────`);
   for (const noise of noiseLevels) {
     // Average over 3 trials per (msg, noise) for stochastic stability
@@ -175,8 +138,12 @@ for (const { msg, frameType } of cases) {
     for (let t = 0; t < trials; ++t) {
       const audio = addAWGN(cleanAudio, noise);
       const decoded = decode(audio);
+      // Match on `raw` (the 12-char alphabet payload), not `text` —
+      // text is the DecodedText-interpreted form, which only matches
+      // for messages that happen to be valid structured frames. Our
+      // synthetic test message is just random alphabet chars.
       const match = decoded.find(d => d && d.event === "decoded" &&
-                                       d.text && d.text.replace(/\s+/g, "") === msg);
+                                       (d.raw || "").replace(/\s+/g, "") === msg);
       if (match) { ++hits; snrSum += match.snr; ++snrN; }
     }
     const rate = hits / trials;

@@ -31,6 +31,9 @@ const wasmBytes = fs.readFileSync(path.join(wasmDir, "js8.wasm"));
 const createJS8 = (await import(path.join(wasmDir, "js8.mjs"))).default;
 const Module    = await createJS8({ wasmBinary: wasmBytes });
 
+const sharedJs8  = await import(path.join(__dirname, "..", "resources", "web-shared", "js8.mjs"));
+const synthesize = sharedJs8.synthesize;
+
 const ALLTXT = path.join(process.env.HOME, ".local/share/JS8Call/ALL.TXT");
 if (!fs.existsSync(ALLTXT)) {
     console.error(`ALL.TXT not found at ${ALLTXT}`);
@@ -38,14 +41,7 @@ if (!fs.existsSync(ALLTXT)) {
     process.exit(2);
 }
 
-// ─── Synthesis (same as roundtrip test) ────────────────────────────────
-
 const SAMPLE_RATE = 12000;
-const SYMBOL_SAMPLES = 1920;
-const NUM_SYMBOLS = 79;
-const START_DELAY_MS = 500;
-const BAUD_HZ = SAMPLE_RATE / SYMBOL_SAMPLES;
-const BASE_HZ = 1500;
 
 function encode(msg, frameType = 0) {
     if (msg.length !== 12) throw new Error("must be 12 chars");
@@ -60,24 +56,6 @@ function encode(msg, frameType = 0) {
         for (let i = 0; i < 79; ++i) out[i] = Module.HEAP32[tonesPtr / 4 + i];
     }
     Module._free(msgPtr); Module._free(tonesPtr);
-    return out;
-}
-
-function synthesizeAudio(tones) {
-    const preroll = Math.round(START_DELAY_MS / 1000 * SAMPLE_RATE);
-    const totalSamples = 15 * SAMPLE_RATE;
-    const out = new Float32Array(totalSamples);
-    let phase = 0;
-    for (let s = 0; s < NUM_SYMBOLS; ++s) {
-        const freq = BASE_HZ + tones[s] * BAUD_HZ;
-        const dphi = 2 * Math.PI * freq / SAMPLE_RATE;
-        const off = preroll + s * SYMBOL_SAMPLES;
-        for (let i = 0; i < SYMBOL_SAMPLES; ++i) {
-            out[off + i] = 0.5 * Math.sin(phase);
-            phase += dphi;
-            if (phase > 2 * Math.PI) phase -= 2 * Math.PI;
-        }
-    }
     return out;
 }
 
@@ -159,7 +137,7 @@ console.log();
 
 const tones = encode(message);
 if (!tones) { console.error("encode FAILED"); process.exit(1); }
-const audio = synthesizeAudio(tones);
+const audio = synthesize(tones);
 
 const tmpWav = "/tmp/js8-loopb.wav";
 writeWavFile(tmpWav, audio);
