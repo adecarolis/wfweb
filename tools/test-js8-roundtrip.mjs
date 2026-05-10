@@ -116,6 +116,31 @@ function decode(samples, submode = 0) {
   return results;
 }
 
+// ─── AWGN — matches virtualrig's noise model (Int16 RMS, 0..1000) ─────
+//
+// Virtualrig adds Gaussian noise at a configurable Int16 RMS to keep
+// audio in the same numeric scale the decoder sees from real LAN UDP
+// rigs. Our float audio gets scaled by 32767 inside js8_decoder_run.
+// To inject equivalent noise here we work at float RMS = n/32767.
+//
+// Box-Muller transform — fast enough for a 180k-sample buffer.
+
+function addAWGN(audio, rmsInt16) {
+  if (rmsInt16 <= 0) return audio;
+  const rmsFloat = rmsInt16 / 32767;
+  const out = new Float32Array(audio.length);
+  for (let i = 0; i < audio.length; i += 2) {
+    const u1 = Math.max(Math.random(), 1e-12);
+    const u2 = Math.random();
+    const r  = Math.sqrt(-2 * Math.log(u1));
+    const z0 = r * Math.cos(2 * Math.PI * u2);
+    const z1 = r * Math.sin(2 * Math.PI * u2);
+    out[i]     = audio[i]     + rmsFloat * z0;
+    if (i + 1 < audio.length) out[i + 1] = audio[i + 1] + rmsFloat * z1;
+  }
+  return out;
+}
+
 // ─── Test cases ────────────────────────────────────────────────────────
 
 const cases = [
@@ -123,28 +148,52 @@ const cases = [
   { msg: "CQK1FMEM85en", frameType: 0 },
 ];
 
+// SNR sweep — noise levels matching virtualrig's --noise flag scale.
+// 0 = silent, 50 = quiet band, 200 = moderate, 500 = noisy, 1000 = very
+// noisy. Phase 1 gate is "≥80% at noise=200 / 100% on clean bus".
+const noiseLevels = [0, 50, 100, 200, 350, 500, 750, 1000, 2000];
+
+console.log("\n┌─────────────────────────────────────────────────────────────────────┐");
+console.log("│ Loop A — encoder → 8-FSK synth + AWGN → decoder round-trip          │");
+console.log("└─────────────────────────────────────────────────────────────────────┘\n");
+
 let allPass = true;
+let cleanPass = true;
+let noise200Hits = 0;
+let noise200Total = 0;
+
 for (const { msg, frameType } of cases) {
-  console.log(`\n=== ${msg} (type=${frameType}) ===`);
   const tones = encode(msg, frameType);
-  if (!tones) { console.log("  encode FAILED"); allPass = false; continue; }
-  console.log(`  encoded → ${tones.length} tones, range [${Math.min(...tones)},${Math.max(...tones)}]`);
-  const audio = synthesizeAudio(tones);
-  let peak = 0;
-  for (let i = 0; i < audio.length; ++i) if (Math.abs(audio[i]) > peak) peak = Math.abs(audio[i]);
-  console.log(`  synthesized → ${audio.length} samples (${(audio.length / SAMPLE_RATE).toFixed(2)}s), peak=${peak.toFixed(3)}`);
-  const decoded = decode(audio, /*submode*/ 0);
-  console.log(`  decoded → ${decoded.length} message(s)`);
-  for (const d of decoded) {
-    console.log(`    ${JSON.stringify(d)}`);
-  }
-  const match = decoded.find(d => d && d.text && d.text.replace(/\s+/g, "") === msg);
-  if (match) {
-    console.log(`  PASS — found exact text match (snr=${match.snr}, freq=${match.freq}, dt=${match.dt})`);
-  } else {
-    console.log(`  FAIL — expected text containing "${msg}"`);
-    allPass = false;
+  if (!tones) { console.log(`encode("${msg}") FAILED`); allPass = false; continue; }
+  const cleanAudio = synthesizeAudio(tones);
+  console.log(`──── "${msg}" ────`);
+  for (const noise of noiseLevels) {
+    // Average over 3 trials per (msg, noise) for stochastic stability
+    const trials = noise === 0 ? 1 : 3;
+    let hits = 0;
+    let snrSum = 0, snrN = 0;
+    for (let t = 0; t < trials; ++t) {
+      const audio = addAWGN(cleanAudio, noise);
+      const decoded = decode(audio);
+      const match = decoded.find(d => d && d.event === "decoded" &&
+                                       d.text && d.text.replace(/\s+/g, "") === msg);
+      if (match) { ++hits; snrSum += match.snr; ++snrN; }
+    }
+    const rate = hits / trials;
+    const avgSnr = snrN > 0 ? (snrSum / snrN).toFixed(1) : "—";
+    const bar = "█".repeat(Math.round(rate * 10)) + "░".repeat(10 - Math.round(rate * 10));
+    console.log(`  noise=${noise.toString().padStart(4)}  ${bar}  ${(rate*100).toFixed(0).padStart(3)}%  avg-SNR=${avgSnr}`);
+    if (noise === 0   && rate < 1.0)  cleanPass = false;
+    if (noise === 200) { noise200Hits += hits; noise200Total += trials; }
   }
 }
-console.log(allPass ? "\nLOOP A: PASS" : "\nLOOP A: FAIL");
-process.exit(allPass ? 0 : 1);
+
+console.log("");
+const noise200Rate = noise200Total > 0 ? noise200Hits / noise200Total : 0;
+console.log(`Phase 1 gate (per PLAN.md):`);
+console.log(`  100%  on clean bus       — ${cleanPass ? "PASS" : "FAIL"}`);
+console.log(`  ≥80%  at noise=200       — ${(noise200Rate*100).toFixed(0)}% (${noise200Hits}/${noise200Total})  ${noise200Rate >= 0.8 ? "PASS" : "FAIL"}`);
+
+const gateOk = cleanPass && noise200Rate >= 0.8;
+console.log(gateOk ? "\nLOOP A SWEEP: PASS" : "\nLOOP A SWEEP: FAIL");
+process.exit(gateOk ? 0 : 1);
