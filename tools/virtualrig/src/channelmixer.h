@@ -8,7 +8,7 @@
 
 #include "audioconverter.h"
 
-class virtualRig;
+class RigSlot;
 
 // Audio bus with channel-aware routing. TX from rig i is forwarded to rig j
 // only when they share a mode and are within receiver-passband frequency
@@ -59,10 +59,10 @@ public:
 
     // Register a rig so the mixer can read its current freq/mode on forward.
     // Caller retains ownership; must outlive the mixer.
-    void registerRig(int idx, virtualRig* rig);
+    void registerRig(int idx, RigSlot* rig);
 
     int rigCount() const { return numRigs; }
-    virtualRig* rigAt(int i) const;
+    RigSlot* rigAt(int i) const;
 
 public slots:
     void pushTxAudio(int srcRig, const audioPacket& pkt);
@@ -81,7 +81,7 @@ private:
     QVector<QVector<QVector<float>>> linkGainByBand;
     // noiseRms[rig] — receive-side noise added on emit.
     QVector<float> noiseRms;
-    QVector<virtualRig*> rigs;
+    QVector<RigSlot*> rigs;
     mutable QMutex mx;
 };
 

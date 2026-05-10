@@ -11,6 +11,7 @@
 #include "civemulator.h"
 #include "controlserver.h"
 #include "virtualrig.h"
+#include "extslot.h"
 
 static QCoreApplication* g_app = nullptr;
 static bool g_verbose = false;
@@ -56,10 +57,18 @@ int main(int argc, char* argv[])
     parser.addVersionOption();
 
     QCommandLineOption rigsOpt({"n", "rigs"},
-        "Number of virtual rigs to spawn.", "N", "2");
+        "Number of internal (LAN-UDP) virtual rigs to spawn.", "N", "2");
+    QCommandLineOption externalOpt("external",
+        "Number of external slots (Hamlib NET rigctl + PulseAudio bridge) "
+        "for outside programs like JS8Call. 0 disables.",
+        "N", "0");
     QCommandLineOption basePortOpt("base-port",
         "Control port for rig #0 (civ=+1, audio=+2; rig i uses base+i*10).",
         "port", "50001");
+    QCommandLineOption rigctldBaseOpt("rigctld-base-port",
+        "First port for external slots' Hamlib NET rigctl servers; slot e "
+        "uses base+e (default 4532, the conventional rigctld port).",
+        "port", "4532");
     QCommandLineOption attenOpt("atten",
         "Linear gain applied to inter-rig audio (default 0.1 ≈ -20 dB).",
         "gain", "0.1");
@@ -78,7 +87,9 @@ int main(int argc, char* argv[])
         "Enable qDebug output (per-frame CI-V trace, per-packet mixer trace, etc.).");
 
     parser.addOption(rigsOpt);
+    parser.addOption(externalOpt);
     parser.addOption(basePortOpt);
+    parser.addOption(rigctldBaseOpt);
     parser.addOption(attenOpt);
     parser.addOption(noiseOpt);
     parser.addOption(broadcastOpt);
@@ -91,13 +102,32 @@ int main(int argc, char* argv[])
 
     bool ok = false;
     int n = parser.value(rigsOpt).toInt(&ok);
-    if (!ok || n < 1 || n > 16) {
-        qCritical() << "Invalid --rigs value (expected 1..16):" << parser.value(rigsOpt);
+    if (!ok || n < 0 || n > 16) {
+        qCritical() << "Invalid --rigs value (expected 0..16):" << parser.value(rigsOpt);
+        return 2;
+    }
+    int nExt = parser.value(externalOpt).toInt(&ok);
+    if (!ok || nExt < 0 || nExt > 16) {
+        qCritical() << "Invalid --external value (expected 0..16):" << parser.value(externalOpt);
+        return 2;
+    }
+    if (n + nExt < 1) {
+        qCritical() << "Need at least one slot — pass --rigs N and/or --external N (max 16 total).";
+        return 2;
+    }
+    if (n + nExt > 16) {
+        qCritical() << "Total slots (--rigs + --external) must be <= 16:"
+                    << n << "+" << nExt << "=" << (n + nExt);
         return 2;
     }
     quint16 basePort = (quint16)parser.value(basePortOpt).toUInt(&ok);
     if (!ok || basePort < 1024) {
         qCritical() << "Invalid --base-port value:" << parser.value(basePortOpt);
+        return 2;
+    }
+    quint16 rigctldBase = (quint16)parser.value(rigctldBaseOpt).toUInt(&ok);
+    if (!ok || rigctldBase < 1024) {
+        qCritical() << "Invalid --rigctld-base-port value:" << parser.value(rigctldBaseOpt);
         return 2;
     }
     float atten = parser.value(attenOpt).toFloat(&ok);
@@ -111,12 +141,13 @@ int main(int argc, char* argv[])
         return 2;
     }
 
-    auto* mixer = new channelMixer(n, &app);
+    const int totalSlots = n + nExt;
+    auto* mixer = new channelMixer(totalSlots, &app);
     mixer->setAttenuation(atten);
     mixer->setNoiseLevel(noise);
     mixer->setChannelRouting(!parser.isSet(broadcastOpt));
 
-    QList<virtualRig*> rigs;
+    QList<RigSlot*> slotList;
     const char* labels = "ABCDEFGHIJKLMNOP";
     for (int i = 0; i < n; ++i) {
         virtualRig::Config cfg;
@@ -127,9 +158,25 @@ int main(int argc, char* argv[])
         cfg.civPort     = basePort + i * 10 + 1;
         cfg.audioPort   = basePort + i * 10 + 2;
         auto* rig = new virtualRig(cfg, mixer, &app);
-        rigs.append(rig);
+        slotList.append(rig);
         mixer->registerRig(i, rig);
         rig->start();
+    }
+
+    for (int e = 0; e < nExt; ++e) {
+        const int idx = n + e;
+        const QChar letter = QChar(labels[idx]);
+        ExtSlot::Config cfg;
+        cfg.index = idx;
+        cfg.name = QString("external-%1").arg(letter);
+        cfg.rigctldPort = rigctldBase + e;
+        cfg.rxBusSink   = QString("virtualrig-%1-rxbus").arg(letter);
+        cfg.outputSink  = QString("virtualrig-%1-output").arg(letter);
+        cfg.inputSource = QString("virtualrig-%1-input").arg(letter);
+        auto* extSlot = new ExtSlot(cfg, mixer, &app);
+        slotList.append(extSlot);
+        mixer->registerRig(idx, extSlot);
+        extSlot->start();
     }
 
     qInfo() << "virtualrig: routing ="
@@ -151,7 +198,7 @@ int main(int argc, char* argv[])
     qInfo() << "virtualrig: ready.  Ctrl-C to stop.";
     int rc = app.exec();
 
-    for (auto* r : rigs) r->stop();
-    qDeleteAll(rigs);
+    for (auto* r : slotList) r->stop();
+    qDeleteAll(slotList);
     return rc;
 }

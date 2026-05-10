@@ -1,5 +1,5 @@
 #include "channelmixer.h"
-#include "virtualrig.h"
+#include "rigslot.h"
 
 #include <QDebug>
 #include <QtEndian>
@@ -147,13 +147,13 @@ bool channelMixer::channelRoutingEnabled() const
     return channelRouting;
 }
 
-void channelMixer::registerRig(int idx, virtualRig* rig)
+void channelMixer::registerRig(int idx, RigSlot* rig)
 {
     QMutexLocker lock(&mx);
     if (idx >= 0 && idx < rigs.size()) rigs[idx] = rig;
 }
 
-virtualRig* channelMixer::rigAt(int i) const
+RigSlot* channelMixer::rigAt(int i) const
 {
     QMutexLocker lock(&mx);
     if (i < 0 || i >= rigs.size()) return nullptr;
@@ -164,7 +164,7 @@ void channelMixer::pushTxAudio(int srcRig, const audioPacket& pkt)
 {
     int n;
     bool gate;
-    QVector<virtualRig*> snap;
+    QVector<RigSlot*> snap;
     QVector<float> gains;       // per-destination gain at the source's band
     {
         QMutexLocker lock(&mx);

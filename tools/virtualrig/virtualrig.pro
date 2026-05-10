@@ -47,13 +47,21 @@ SOURCES += \
     src/virtualrig.cpp \
     src/civemulator.cpp \
     src/channelmixer.cpp \
-    src/controlserver.cpp
+    src/controlserver.cpp \
+    src/rigslot.cpp \
+    src/extslot.cpp \
+    src/extrigctld.cpp \
+    src/extaudio.cpp
 
 HEADERS += \
     src/virtualrig.h \
     src/civemulator.h \
     src/channelmixer.h \
-    src/controlserver.h
+    src/controlserver.h \
+    src/rigslot.h \
+    src/extslot.h \
+    src/extrigctld.h \
+    src/extaudio.h
 
 # Sources reused from wfweb. Kept deliberately tight: just the server stack
 # + audio-packet utilities + rig plumbing. No webserver, no GUI.

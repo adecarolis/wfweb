@@ -1,7 +1,6 @@
 #include "controlserver.h"
 #include "channelmixer.h"
-#include "virtualrig.h"
-#include "civemulator.h"
+#include "rigslot.h"
 
 #include <QDebug>
 #include <QJsonArray>
@@ -37,6 +36,11 @@ input[type=number] { width: 72px; padding: 2px 4px; font: inherit; }
 select { font: inherit; padding: 2px 6px; }
 td.src { font-weight: 600; background: #fafafa; }
 .band-pill { display: inline-block; padding: 1px 8px; border-radius: 10px; background: #eef; color: #336; font-size: 11px; }
+.kind-pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; margin-left: 6px; vertical-align: middle; }
+.kind-internal { background: #efe; color: #363; }
+.kind-external { background: #fee; color: #933; }
+.ext-info { font-family: ui-monospace, monospace; font-size: 11px; color: #555; }
+.ext-info code { background: #f5f5f5; padding: 0 4px; border-radius: 3px; }
 .controls { margin: 12px 0; }
 .hint { color: #888; font-size: 12px; }
 .grid td { text-align: center; }
@@ -106,16 +110,31 @@ function ensureRigsTable() {
   if (lastRigCount === state.rigs.length) return;
   lastRigCount = state.rigs.length;
   const tbody = document.querySelector("#rigs tbody");
-  tbody.innerHTML = state.rigs.map(r => `
+  tbody.innerHTML = state.rigs.map(r => {
+    const kindPill = r.kind === "external"
+      ? `<span class="kind-pill kind-external">external</span>`
+      : `<span class="kind-pill kind-internal">internal</span>`;
+    const extRow = r.kind === "external" ? `
+      <tr class="ext-info">
+        <td></td>
+        <td colspan="6">
+          CAT  → <code>Hamlib NET rigctl</code> on
+          <code>127.0.0.1:${r.rigctldPort}</code><br>
+          Output → <code>${r.paOutputSink}</code>
+          &nbsp;&nbsp;Input → <code>${r.paInputSource}</code>
+        </td>
+      </tr>` : "";
+    return `
     <tr data-rig="${r.idx}">
       <td>${r.idx}</td>
-      <td>${r.name}</td>
+      <td>${r.name}${kindPill}</td>
       <td data-cell="freq"></td>
       <td data-cell="band"></td>
       <td data-cell="mode"></td>
       <td data-cell="ptt"></td>
       <td><input type="number" data-kind="noise" data-rig="${r.idx}" min="0" max="1000" step="1"></td>
-    </tr>`).join("");
+    </tr>${extRow}`;
+  }).join("");
 }
 
 function updateRigsTable() {
@@ -336,21 +355,28 @@ QByteArray controlServer::renderStateJson() const
 
     QJsonArray rigs;
     for (int i = 0; i < mixer->rigCount(); ++i) {
-        virtualRig* r = mixer->rigAt(i);
+        RigSlot* r = mixer->rigAt(i);
         QJsonObject o;
         o["idx"] = i;
         if (r) {
-            o["name"] = r->config().name;
+            o["name"] = r->name();
             o["freq"] = (qint64)r->freq();
             o["mode"] = (int)r->mode();
             o["band"] = channelMixer::bandName(channelMixer::bandForFreq(r->freq()));
             o["ptt"] = r->isTransmitting();
+            o["kind"] = (r->kind() == RigSlot::External) ? "external" : "internal";
+            if (r->kind() == RigSlot::External) {
+                o["rigctldPort"]   = r->rigctldPort();
+                o["paOutputSink"]  = r->paOutputSink();
+                o["paInputSource"] = r->paInputSource();
+            }
         } else {
             o["name"] = "—";
             o["freq"] = 0;
             o["mode"] = 0;
             o["band"] = "other";
             o["ptt"] = false;
+            o["kind"] = "internal";
         }
         o["noiseRms"] = mixer->noiseLevel(i);
         rigs.append(o);

@@ -3,13 +3,24 @@
 # each wfweb connecting over LAN UDP to its own virtual IC-7610.
 #
 # Usage:
-#   ./scripts/testrig.sh up [N] [virtualrig flags...]   (default N=2, max 16)
+#   ./scripts/testrig.sh up [INTERNAL] [EXTERNAL] [virtualrig flags...]
+#                                                       (default 2 0, max 16 total)
 #   ./scripts/testrig.sh down
 #   ./scripts/testrig.sh status
 #   ./scripts/testrig.sh logs [i|virtualrig]
 #
-# Any arguments after N are forwarded to the virtualrig binary, e.g.:
-#   ./scripts/testrig.sh up 3 --noise 500 --atten 0.3 --broadcast
+# INTERNAL is the number of LAN-UDP virtual rigs (each gets its own wfweb).
+# EXTERNAL is the number of slots reserved for outside programs (JS8Call,
+# wsjt-x, ...) that connect via Hamlib NET rigctl + PulseAudio. testrig
+# does NOT auto-launch anything for external slots — it just prints the
+# connection info so you can wire up the program yourself.
+#
+# Examples:
+#   ./scripts/testrig.sh up 2          # 2 internal, 0 external (back-compat)
+#   ./scripts/testrig.sh up 1 1        # 1 internal + 1 external (e.g. JS8Call)
+#   ./scripts/testrig.sh up 2 1 --broadcast --noise 50
+#
+# Anything after the two counts is forwarded to virtualrig.
 #
 # Scratch dir .testrig/ holds PIDs, logs, and per-instance settings files.
 
@@ -24,6 +35,7 @@ BASE_PORT=50001      # virtualrig rig 0 control port; civ=+1, audio=+2, next rig
 WEB_BASE=9080        # wfweb #i serves HTTPS on WEB_BASE+i*10, WebSocket on WEB_BASE+i*10+1
 WEB_STEP=10          # wfweb also binds webPort+1 for WebSocket, so stride must be >= 2
 CTRL_PORT=5900       # virtualrig control panel (HTTP)
+RIGCTLD_BASE=4532    # external slot e gets rigctld on RIGCTLD_BASE+e
 
 die() { echo "testrig: $*" >&2; exit 1; }
 
@@ -87,10 +99,19 @@ cmd_up() {
     require_binaries
     local n=${1:-2}
     shift || true
-    # Anything left is a passthrough to virtualrig (--noise, --atten, etc.).
+    [[ "$n" =~ ^[0-9]+$ ]] || die "INTERNAL must be an integer"
+
+    # If next arg is numeric, it's the external count; otherwise default 0
+    # and treat all remaining args as passthrough flags.
+    local n_ext=0
+    if [[ ${1:-} =~ ^[0-9]+$ ]]; then
+        n_ext=$1
+        shift
+    fi
     local extra_args=("$@")
-    [[ "$n" =~ ^[0-9]+$ ]] || die "N must be an integer"
-    (( n >= 1 && n <= 16 )) || die "N must be 1..16"
+
+    (( n + n_ext >= 1 ))       || die "Need at least one slot (INTERNAL + EXTERNAL >= 1)"
+    (( n + n_ext <= 16 ))      || die "INTERNAL + EXTERNAL must be <= 16 (got $n+$n_ext)"
 
     if pid_alive "$SCRATCH/virtualrig.pid"; then
         die "test rig already running (.testrig/virtualrig.pid). Run: $0 down"
@@ -98,14 +119,16 @@ cmd_up() {
 
     mkdir -p "$SCRATCH"
 
-    echo "testrig: starting virtualrig (N=$n, base port $BASE_PORT)"
+    echo "testrig: starting virtualrig (internal=$n, external=$n_ext, base port $BASE_PORT)"
     # Note: the subshell groups the cd with the launch but the `&` inside it
     # backgrounds the nohup itself (not the enclosing subshell), so `$!` is the
     # real virtualrig PID. Writing it inside the subshell keeps the whole thing
     # local — we don't touch the parent shell's cwd.
     (
         cd "$REPO"
-        nohup "$VIRTUALRIG" --rigs "$n" --base-port "$BASE_PORT" "${extra_args[@]}" \
+        nohup "$VIRTUALRIG" --rigs "$n" --external "$n_ext" \
+            --base-port "$BASE_PORT" --rigctld-base-port "$RIGCTLD_BASE" \
+            "${extra_args[@]}" \
             > "$SCRATCH/virtualrig.log" 2>&1 &
         echo $! > "$SCRATCH/virtualrig.pid"
     )
@@ -158,18 +181,33 @@ cmd_up() {
     # Labels match virtualrig's "virtual-IC7300-A..P" naming.
     local labels="ABCDEFGHIJKLMNOP"
     echo
-    echo "Test rig is up (N=$n)."
+    echo "Test rig is up (internal=$n, external=$n_ext)."
     echo
     for (( i=0; i<n; i++ )); do
         local web=$(( WEB_BASE + i*WEB_STEP ))
         local label=${labels:i:1}
         printf '  Rig #%d  "virtual-IC7300-%s"   https://127.0.0.1:%d\n' "$i" "$label" "$web"
     done
+    if (( n_ext > 0 )); then
+        echo
+        echo "  External slots — wire your program in manually:"
+        for (( e=0; e<n_ext; e++ )); do
+            local idx=$(( n + e ))
+            local label=${labels:idx:1}
+            local rport=$(( RIGCTLD_BASE + e ))
+            printf '    Slot #%d "external-%s"\n' "$idx" "$label"
+            printf '       CAT     →  Hamlib NET rigctl  127.0.0.1:%d\n' "$rport"
+            printf '       Output  →  virtualrig-%s-output  (program TX → rig)\n' "$label"
+            printf '       Input   →  virtualrig-%s-input   (rig RX → program)\n' "$label"
+        done
+    fi
     echo
     printf '  Bench control panel:               http://127.0.0.1:%d\n' "$CTRL_PORT"
     echo
     echo "virtualrig log:  $SCRATCH/virtualrig.log"
-    echo "wfweb logs:      $SCRATCH/wfweb_{0..$((n-1))}.log"
+    if (( n > 0 )); then
+        echo "wfweb logs:      $SCRATCH/wfweb_{0..$((n-1))}.log"
+    fi
     echo
     echo "Stop with:       $0 down"
 }

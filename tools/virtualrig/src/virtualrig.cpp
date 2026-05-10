@@ -207,7 +207,7 @@ float virtualRig::BiquadLpf::process(float x)
 }
 
 virtualRig::virtualRig(const Config& cfg, channelMixer* mixer, QObject* parent)
-    : QObject(parent), cfg(cfg), mixer(mixer)
+    : RigSlot(cfg.index, RigSlot::Internal, cfg.name, parent), cfg(cfg), mixer(mixer)
 {
     // --- SERVERCONFIG: single-rig, LAN-mode. ---
     serverCfg.enabled = true;

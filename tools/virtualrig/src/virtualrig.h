@@ -11,6 +11,7 @@
 #include "rigserver.h"
 #include "rigidentities.h"
 #include "audioconverter.h"
+#include "rigslot.h"
 
 class icomServer;
 class civEmulator;
@@ -19,7 +20,7 @@ class channelMixer;
 // One virtual rig: owns an icomServer (in its own thread), a civEmulator,
 // and talks to a shared channelMixer. The wfweb client connects to it as
 // if it were a real Icom over LAN.
-class virtualRig : public QObject
+class virtualRig : public RigSlot
 {
     Q_OBJECT
 
@@ -34,22 +35,24 @@ public:
     };
 
     virtualRig(const Config& cfg, channelMixer* mixer, QObject* parent = nullptr);
-    ~virtualRig();
+    ~virtualRig() override;
 
-    void start();
-    void stop();
+    void start() override;
+    void stop() override;
 
     const Config& config() const { return cfg; }
 
     // State accessors used by the mixer for freq/mode-aware routing. Safe to
     // read from the main thread (civEmulator mutates there via queued slots).
-    quint64 freq() const;
-    quint8 mode() const;
-    bool isTransmitting() const { return ptt; }
+    quint64 freq() const override;
+    quint8 mode() const override;
+    bool isTransmitting() const override { return ptt; }
+
+public slots:
+    void onRxAudioFromMixer(int dstRig, const audioPacket& pkt) override;
 
 private slots:
     void onTxAudioFromClient(const audioPacket& pkt);
-    void onRxAudioFromMixer(int dstRig, const audioPacket& pkt);
     void onPttChanged(bool on);
     void emitIdleRx();
     void onCwSendRequested(const QByteArray& text, quint16 wpm, quint16 pitchHz);
