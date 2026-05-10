@@ -8457,6 +8457,70 @@ import { decodeFT8, encodeFT8, decodeFT4, encodeFT4, HashCallBook }
 window.ft8tsLib = { decodeFT8, encodeFT8, decodeFT4, encodeFT4, HashCallBook };
 window.dispatchEvent(new Event('ft8tsReady'));
 </script>
+<script type="module">
+// JS8 codec — Phase 2 minimal TX integration. Loads the wasm module and
+// exposes a debug entry-point txJs8(msg) that encodes a 12-char message,
+// synthesizes 8-FSK audio, and streams it through the same TX pipeline
+// FT8 already uses. No DIGI panel UI yet (Phase 4); this is callable
+// from devtools to validate the path against JS8Call through the testrig.
+//
+//   await window.js8Ready;        // wasm loaded
+//   window.txJs8('HELLOWK1FMab'); // encodes + transmits one frame
+import { js8Init, synthesize } from '/js8.mjs';
+
+window.js8Ready = (async () => {
+    const js8 = await js8Init();
+    window.js8 = js8;
+
+    window.txJs8 = function(msg, opts = {}) {
+        opts = Object.assign({ frameType: 0, baseHz: 1500 }, opts);
+        if (typeof msg !== 'string' || msg.length !== 12) {
+            console.error('[JS8 TX] message must be exactly 12 chars from "0-9A-Za-z-+"');
+            return;
+        }
+        if (typeof streamDigiAudio !== 'function') {
+            console.error('[JS8 TX] streamDigiAudio not in scope — is the SPA fully loaded?');
+            return;
+        }
+        const tones = js8.encode(opts.frameType, msg);
+        if (!tones) { console.error('[JS8 TX] encode failed for "' + msg + '"'); return; }
+        const samples12k = synthesize(tones, opts);
+        console.log('[JS8 TX] encoding "' + msg + '" → '
+                    + samples12k.length + ' samples @12kHz, base=' + opts.baseHz + ' Hz');
+
+        // Reuse the existing FT8 TX plumbing: it knows how to upsample,
+        // chunk into 6-byte-header binary WS frames, and trigger PTT.
+        if (typeof digiTxActive !== 'undefined') digiTxActive = true;
+        if (typeof send === 'function') send({ cmd: 'enableMic', value: true });
+        streamDigiAudio(samples12k,
+            /* onDone */ function() {
+                if (typeof digiTxActive !== 'undefined') digiTxActive = false;
+                send({ cmd: 'setPTT', value: false });
+                console.log('[JS8 TX] complete (PTT off)');
+            },
+            /* onFirstChunk */ function() {
+                send({ cmd: 'setPTT', value: true });
+                console.log('[JS8 TX] PTT on');
+            }
+        );
+    };
+    // Browsers gate AudioContext creation behind user gestures, so the
+    // existing digiTxCtx is initialized inside FT8 panel button handlers.
+    // For the JS8 path during P2 (no DIGI panel UI yet), wire a one-time
+    // first-click listener that calls initDigiTxCtx — that way ANY click
+    // anywhere on the page primes the audio context, and a subsequent
+    // txJs8() from devtools or test harness has a usable digiTxCtx.
+    window.addEventListener('click', function once() {
+        if (typeof initDigiTxCtx === 'function') {
+            initDigiTxCtx();
+            console.log('[JS8] audio context primed via first click');
+            window.removeEventListener('click', once);
+        }
+    });
+
+    console.log('[JS8] ready — click anywhere to prime audio, then window.txJs8("HELLOWK1FMab")');
+})();
+</script>
 <script src="cw-decoder-stft.js"></script>
 <script src="cw-decoder-utils.js"></script>
 <script src="cw-decoder.js"></script>
