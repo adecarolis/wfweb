@@ -1,0 +1,13 @@
+// Minimal QtGlobal shim — type aliases used by JS8 codec subset.
+#pragma once
+#include <cstdint>
+using quint8  = std::uint8_t;
+using quint16 = std::uint16_t;
+using quint32 = std::uint32_t;
+using quint64 = std::uint64_t;
+using qint8   = std::int8_t;
+using qint16  = std::int16_t;
+using qint32  = std::int32_t;
+using qint64  = std::int64_t;
+using qreal   = double;
+using uchar   = unsigned char;
