@@ -5,6 +5,7 @@
 #include "QtGlobal"
 #include "QChar"
 #include "QByteArray"
+#include "QLatin1String"
 #include <algorithm>
 #include <cctype>
 #include <charconv>
@@ -25,6 +26,12 @@ public:
     QString(std::string s)             : s_(std::move(s)) {}
     QString(int n, QChar c)            : s_(static_cast<size_t>(n), static_cast<char>(c)) {}
     QString(QChar c)                   : s_(1, static_cast<char>(c)) {}
+    QString(const QChar* arr, int n) {
+        s_.reserve(static_cast<size_t>(n));
+        for (int i = 0; i < n; ++i) s_ += static_cast<char>(arr[i]);
+    }
+    QString(QLatin1String l) : s_(l.asString()) {}
+    QString(QLatin1String l, int /*reserved*/) : s_(l.asString()) {}
 
     static QString fromLatin1(const char* s) { return QString(s); }
     static QString fromUtf8(const char* s)   { return QString(s); }
@@ -32,6 +39,28 @@ public:
         char buf[32]; std::snprintf(buf, sizeof(buf), "%lld", v); return QString(buf);
     }
     static QString number(int v) { return number(static_cast<long long>(v)); }
+    static QString number(int v, int base) {
+        char buf[40];
+        const char* fmt =
+            (base == 16) ? "%x" :
+            (base == 8)  ? "%o" :
+            (base == 2)  ? nullptr  // handled below
+                         : "%d";
+        if (base == 2) {
+            // Manual base-2 — printf has no %b in standard C.
+            unsigned int u = static_cast<unsigned int>(v);
+            int p = 0;
+            if (u == 0) { buf[p++] = '0'; }
+            else { for (int i = 31; i >= 0; --i) if ((u >> i) & 1u || p) buf[p++] = ((u >> i) & 1u) ? '1' : '0'; }
+            buf[p] = '\0';
+            return QString(buf);
+        }
+        std::snprintf(buf, sizeof(buf), fmt, v);
+        return QString(buf);
+    }
+    static QString number(double v) {
+        char buf[64]; std::snprintf(buf, sizeof(buf), "%g", v); return QString(buf);
+    }
     static QString fromStdString(const std::string& s) { return QString(s); }
 
     // Capacity
@@ -98,6 +127,12 @@ public:
         auto p = s_.find(o.s_, static_cast<size_t>(from));
         return p == std::string::npos ? -1 : static_cast<int>(p);
     }
+    // QRegularExpression overloads — declared here as non-template
+    // forward decls so the template versions don't outcompete them
+    // during overload resolution against unrelated types like char[].
+    // Defined inline at the bottom of the QRegularExpression header.
+    int indexOf(const class QRegularExpression& re, int from,
+                class QRegularExpressionMatch* match) const;
     int  lastIndexOf(QChar c) const {
         auto p = s_.rfind(static_cast<char>(c));
         return p == std::string::npos ? -1 : static_cast<int>(p);
@@ -167,6 +202,10 @@ public:
         s_.replace(static_cast<size_t>(pos), len, after.s_);
         return *this;
     }
+    // QRegularExpression replace — non-template forward decl to keep
+    // overload resolution clean against char-array literals; defined
+    // inline at the bottom of the QRegularExpression header.
+    QString& replace(const class QRegularExpression& re, const QString& after);
 
     QString& prepend(const QString& o) { s_.insert(0, o.s_); return *this; }
     QString& prepend(QChar c) { s_.insert(s_.begin(), static_cast<char>(c)); return *this; }
@@ -195,6 +234,17 @@ public:
     QString chopped(int n) const { QString out(*this); out.chop(n); return out; }
 
     int compare(const QString& o) const { return s_.compare(o.s_); }
+    int compare(const QString& o, int /*caseSensitivity*/) const {
+        // Case-insensitive compare — both args may be ASCII.
+        size_t n = std::min(s_.size(), o.s_.size());
+        for (size_t i = 0; i < n; ++i) {
+            char a = std::tolower(static_cast<unsigned char>(s_[i]));
+            char b = std::tolower(static_cast<unsigned char>(o.s_[i]));
+            if (a != b) return a < b ? -1 : 1;
+        }
+        if (s_.size() == o.s_.size()) return 0;
+        return s_.size() < o.s_.size() ? -1 : 1;
+    }
 
     QString rightJustified(int width, QChar fill = QChar(' ')) const {
         if (size() >= width) return *this;
@@ -222,15 +272,55 @@ public:
         catch (...) { if (ok) *ok = false; return 0.0; }
     }
 
-    auto begin() const { return s_.begin(); }
-    auto end()   const { return s_.end(); }
-    auto cbegin() const { return s_.cbegin(); }
-    auto cend()   const { return s_.cend(); }
-    auto constBegin() const { return s_.cbegin(); }
-    auto constEnd()   const { return s_.cend(); }
-    QChar first() const { return at(0); }
-    QChar last()  const { return at(size() - 1); }
+    // Iterator wrapping std::string::const_iterator that dereferences
+    // to QChar (matching real-Qt semantics — QString iteration yields
+    // QChar, not raw char). Without this, code like `(*it).toUpper()`
+    // breaks because `*it` would be `char`.
+    class const_iterator {
+    public:
+        using base = std::string::const_iterator;
+        using iterator_category = std::random_access_iterator_tag;
+        using value_type = QChar;
+        using difference_type = std::ptrdiff_t;
+        using pointer = const QChar*;
+        using reference = QChar;
+        const_iterator() = default;
+        explicit const_iterator(base b) : it_(b) {}
+        QChar operator*() const { return QChar(static_cast<unsigned char>(*it_)); }
+        const_iterator& operator++()    { ++it_; return *this; }
+        const_iterator  operator++(int) { auto t = *this; ++it_; return t; }
+        const_iterator& operator--()    { --it_; return *this; }
+        const_iterator  operator--(int) { auto t = *this; --it_; return t; }
+        const_iterator& operator+=(difference_type n) { it_ += n; return *this; }
+        const_iterator& operator-=(difference_type n) { it_ -= n; return *this; }
+        friend const_iterator operator+(const_iterator a, difference_type n) { return const_iterator(a.it_ + n); }
+        friend const_iterator operator-(const_iterator a, difference_type n) { return const_iterator(a.it_ - n); }
+        friend difference_type operator-(const_iterator a, const_iterator b) { return a.it_ - b.it_; }
+        bool operator==(const const_iterator& o) const { return it_ == o.it_; }
+        bool operator!=(const const_iterator& o) const { return it_ != o.it_; }
+        bool operator< (const const_iterator& o) const { return it_  < o.it_; }
+        base raw() const { return it_; }
+    private:
+        base it_;
+    };
+    using iterator = const_iterator;  // shim only exposes const access
+
+    const_iterator begin()      const { return const_iterator(s_.begin()); }
+    const_iterator end()        const { return const_iterator(s_.end()); }
+    const_iterator cbegin()     const { return begin(); }
+    const_iterator cend()       const { return end(); }
+    const_iterator constBegin() const { return begin(); }
+    const_iterator constEnd()   const { return end(); }
+    // Qt 6: first(qsizetype) returns QStringView. We return QString
+    // (substring) — close enough for our callers.
+    QString first(int n) const { return left(n); }
+    QString last(int n)  const { return right(n); }
+    QChar firstChar() const { return at(0); }
+    QChar lastChar()  const { return at(size() - 1); }
     const char* unicode() const { return s_.c_str(); }
+    // Real Qt's QStringView has toString(); our QString::first/last
+    // return QString already, so identity works.
+    QString toString() const { return *this; }
     const std::string& data_str() const { return s_; }
 
     QByteArray toLocal8Bit() const { return QByteArray(s_); }

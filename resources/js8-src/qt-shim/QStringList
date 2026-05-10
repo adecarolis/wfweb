@@ -100,9 +100,12 @@ inline QStringList QString::split(QChar sep, SplitBehavior b) const {
     return out;
 }
 
-// Qt namespace shim — Qt::SkipEmptyParts is used by message_.split('?', Qt::SkipEmptyParts)
+// Qt namespace shim — used by Qt::SkipEmptyParts (split behavior),
+// Qt::CaseInsensitive (string comparison flag), etc.
 namespace Qt {
 constexpr QString::SplitBehavior KeepEmptyParts = QString::KeepEmptyParts;
 constexpr QString::SplitBehavior SkipEmptyParts = QString::SkipEmptyParts;
+enum CaseSensitivity { CaseInsensitive = 0, CaseSensitive = 1 };
 }
+
 

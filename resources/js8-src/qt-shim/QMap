@@ -78,6 +78,24 @@ public:
         for (auto& p : m_) if (p.second == v) return p.first;
         return K();
     }
+    K key(const V& v, const K& def) const {
+        for (auto& p : m_) if (p.second == v) return p.first;
+        return def;
+    }
+    V last() const {
+        if (m_.empty()) return V();
+        auto it = m_.end(); --it; return it->second;
+    }
+    V first() const {
+        return m_.empty() ? V() : m_.begin()->second;
+    }
+    K firstKey() const {
+        return m_.empty() ? K() : m_.begin()->first;
+    }
+    K lastKey() const {
+        if (m_.empty()) return K();
+        auto it = m_.end(); --it; return it->first;
+    }
 
 private:
     std::map<K, V> m_;

@@ -8,6 +8,8 @@ class QSet {
 public:
     QSet() = default;
     QSet(std::initializer_list<T> il) : s_(il) {}
+    template <typename It>
+    QSet(It a, It b) : s_(a, b) {}
 
     int size()    const { return static_cast<int>(s_.size()); }
     int count()   const { return size(); }

@@ -15,5 +15,8 @@
         <file alias="reporters.js">web-shared/reporters.js</file>
         <file alias="ft8ts.mjs">ft8ts/dist/ft8ts.mjs</file>
         <file alias="ft8ts.mjs.map">ft8ts/dist/ft8ts.mjs.map</file>
+        <file alias="js8.js">web-shared/js8.js</file>
+        <file alias="wasm/js8.mjs">web-standalone/wasm/js8.mjs</file>
+        <file alias="wasm/js8.wasm">web-standalone/wasm/js8.wasm</file>
     </qresource>
 </RCC>

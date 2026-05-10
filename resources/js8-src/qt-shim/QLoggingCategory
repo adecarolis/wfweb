@@ -32,8 +32,13 @@ public:
 // get their definitions in resources/js8-src/api/js8_wasm_api.cpp.
 #define Q_DECLARE_LOGGING_CATEGORY(name) \
     const QLoggingCategory& name();
+// Q_LOGGING_CATEGORY emits a non-inline definition. The TU that issues
+// it owns the symbol; other TUs that did Q_DECLARE_LOGGING_CATEGORY for
+// the same name see only the forward declaration and link to that one
+// definition. Don't issue Q_LOGGING_CATEGORY for the same name in two
+// TUs or you'll get a duplicate-symbol link error.
 #define Q_LOGGING_CATEGORY(name, ...) \
-    inline const QLoggingCategory& name() { \
+    const QLoggingCategory& name() { \
         static const QLoggingCategory c; return c; \
     }
 

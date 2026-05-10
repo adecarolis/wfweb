@@ -42,21 +42,21 @@ namespace JS8 {
 class DecoderImpl;
 }
 
-// We can't construct DecoderImpl across TUs without its definition. The
-// API instead opens up a thin factory inside JS8.cpp via two free
-// functions exposed at the bottom of that file: js8_make_decoder() and
-// js8_run_decoder(). For Day 4 we declare them here; Day 4 also adds
-// matching definitions to JS8.cpp in a follow-up edit.
+// We can't construct DecoderImpl across TUs without its definition
+// (it lives inside JS8.cpp's anonymous namespace). The API instead
+// opens up a thin factory inside JS8.cpp via free functions returning
+// raw pointers; we manage lifetime here.
 namespace JS8 {
-extern std::unique_ptr<DecoderImpl> js8_make_decoder(struct dec_data& data);
-extern void js8_run_decoder(DecoderImpl& impl, ::JS8::Event::Emitter emit);
+extern DecoderImpl* js8_make_decoder(struct dec_data& data);
+extern void         js8_delete_decoder(DecoderImpl* p);
+extern void         js8_run_decoder(DecoderImpl& impl, ::JS8::Event::Emitter emit);
 } // namespace JS8
 
 /* ============== js8_decoder ============================================ */
 
 struct js8_decoder {
     int submode_bit;
-    std::unique_ptr<JS8::DecoderImpl> impl;
+    JS8::DecoderImpl* impl;
     std::vector<float> ring;
     std::deque<std::string> outbox;
 };
@@ -93,6 +93,8 @@ extern "C" js8_decoder* js8_decoder_new(int submode) {
 }
 
 extern "C" void js8_decoder_free(js8_decoder* dec) {
+    if (!dec) return;
+    if (dec->impl) JS8::js8_delete_decoder(dec->impl);
     delete dec;
 }
 

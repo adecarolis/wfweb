@@ -1,0 +1,23 @@
+// QLatin1String — Latin-1 narrow-string view, used by Varicode.cpp to
+// pass char* literals where QString is expected.
+//
+// CIRCULAR INCLUDE — QLatin1String wraps a std::string (lighter than
+// QString), and QString in turn includes us so callers get the type
+// without an explicit include. To avoid circularity we don't include
+// "QString" here and use std::string directly; conversion to QString
+// happens at the call site via implicit construction.
+#pragma once
+#include <string>
+
+class QString;  // forward — toString/operator QString defined inline
+
+class QLatin1String {
+public:
+    QLatin1String(const char* s)        : s_(s ? s : "") {}
+    QLatin1String(const char* s, int n) : s_(s, n) {}
+    const char*        data() const { return s_.c_str(); }
+    const std::string& asString() const { return s_; }
+    int                size() const { return static_cast<int>(s_.size()); }
+private:
+    std::string s_;
+};

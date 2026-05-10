@@ -1,91 +1,91 @@
-# Phase 0 status
+# Phase 0 status — COMPLETE
 
-Branch: `js8/phase-0-foundation`. Day 5 still pending.
+Branch: `js8/phase-0-foundation`. All five days done.
 
-## What works
+## Final gates
 
 | Day | Deliverable | State |
 |---|---|---|
-| 1 | Vendor JS8_Mode + JS8_Main + JS8_Include + vendor/{CRCpp,Eigen} | DONE |
-| 1 | `JS8.h` / `JS8.cpp` stripped of QObject Decoder/Worker | DONE |
-| 1 | `README-vendoring.md` with upstream SHA + diff catalog | DONE |
-| 2 | Qt shim: 23 headers covering QString/QStringList/QChar/QByteArray/QMap/QVector/QList/QSet/QPair/QBitArray/QStringView/QStringBuilder/QStringLiteral/QRegularExpression(+Match,Iterator)/QRegExp/QDebug/QLoggingCategory/QObject/QtAlgorithms/QtMath/QMutex/QPointer/QThread/QtGlobal | DONE |
-| 2 | `qt-shim/_smoketest.cpp` compiles (every shim + every codec header includes clean) | PASS |
-| 3 | `tools/build-js8-fftw.sh` builds + caches `libfftw3f.a` (~890 KB) under `.fftw-cache/`. Idempotent. | PASS |
-| 4 | `api/js8_wasm_api.{h,cpp}` — C-callable surface (encode + decoder lifecycle) | DONE |
-| 4 | `JS8.cpp` factory functions `js8_make_decoder` / `js8_run_decoder` linking `DecoderImpl` across TUs | DONE |
-| 4 | `tools/build-js8-wasm.sh` orchestration (FFTW + cache bootstrap + emcc + USE_BOOST_HEADERS) | DONE |
-| 4 | First `js8.{mjs,wasm}` artifact emitted | **BLOCKED** — see below |
+| 1 | Vendor JS8_Mode + JS8_Main + JS8_Include + JSC stub + vendor/{CRCpp,Eigen} | PASS |
+| 1 | `JS8.h` / `JS8.cpp` stripped of QObject Decoder/Worker; DecoderImpl hoisted out | PASS |
+| 1 | `README-vendoring.md` documents upstream commit + every diff | PASS |
+| 2 | Qt shim — 24 headers covering all the types + macros the codec uses | PASS |
+| 2 | `qt-shim/_smoketest.cpp` compiles clean against shim + every codec header | PASS |
+| 3 | `tools/build-js8-fftw.sh` builds + caches `libfftw3f.a` (~890 KB), idempotent | PASS |
+| 4 | `api/js8_wasm_api.{h,cpp}` — C-callable surface (encode + decoder lifecycle) | PASS |
+| 4 | `tools/build-js8-wasm.sh` produces `js8.{mjs,wasm}` (37 KB / 1.0 MB) | PASS |
+| 4 | `tools/test-js8-wasm.mjs` end-to-end smoke: encode round-trip + decoder lifecycle | PASS |
+| 5 | `resources/web-shared/js8.js` Worker harness (encode + decoder JS API) | DONE |
+| 5 | `resources/web.qrc` aliases for `js8.{js,mjs,wasm}` (server build) | DONE |
+| 5 | `tools/build-static.sh` already copies `wasm/*.mjs` + `wasm/*.wasm` (standalone) | DONE |
 
-## Phase 0 day 4 blockers (real, not "I gave up")
+```
+$ node tools/test-js8-wasm.mjs
+encode("HELLOWK1FMab"): PASS
+encode("CQK1FMEM85en"): PASS
+decoder lifecycle: new=ok, push consumed=1000, free=ok
+DAY 4 GATE: PASS
+```
 
-### B1. Debian's emcc 3.1.6 ships libc++ 14, which has known bugs
+## Vendor diffs — full list
 
-- **`std::visit` with overloaded function-object alternatives** — return-type
-  deduction fails on the dispatch template. **Worked around in source**:
-  patched `JS8.cpp:DecoderImpl::operator()` to use manual `std::get_if`
-  dispatch instead of `std::visit`. Vendor diff documented in
-  `JS8.cpp` next to the change.
+Six in-tree patches against pristine upstream JS8Call-improved
+3f1b548. Each documented inline next to its change site.
 
-- **Boost-headers port pinned to Boost 1.75** (in emcc 3.1.6's port
-  registry). `<boost/math/ccmath/round.hpp>` was added in Boost 1.79.
-  **Worked around in source**: replaced `using boost::math::ccmath::round;`
-  with a constexpr `round` lambda. Vendor diff in `JS8.cpp`.
-
-These two source patches mean we can never fully roll forward against
-fresh upstream without re-applying them — until the host emcc updates.
-
-### B2. Compile is still failing on `Varicode.cpp` against the shim
-
-Each iteration has uncovered another surface bit Varicode uses that the
-shim doesn't yet handle. Latest in-progress error: a `QString(const
-QChar*, int)` constructor overload (raw QChar array → string). After
-that, more iterations are likely needed before the codec subset compiles
-end-to-end.
-
-## What this means for Phase 0's gate
-
-Per `tools/js8-spike/PLAN.md`:
-> **Gate:** `tools/build-js8-wasm.sh` produces `resources/web-standalone/wasm/js8.{mjs,wasm}`. `js8_encode` exported and callable from a Node test harness, returns the same 79-tone array as the spike. `js8_decoder_new/free` link cleanly even if `_push` returns 0 results.
-
-Day 4 gate is **not yet met**. We have the right structure (build
-script, C API, factory functions, all toolchain bits) but the shim still
-needs ~5–10 more iterations of "compile, find missing method, add it,
-rebuild" before Varicode.cpp links cleanly.
-
-The PLAN.md estimate ("3–5 days") for Phase 0 was based on the spike
-having already proven the path. The spike's target was DecodedText.cpp
-(344 lines, 5 Qt types). Varicode.cpp is 2370 lines + JSC stubs + the
-JS8 codec's own surface; the actual shim it needs is bigger than the
-spike's measurement. **Realistic Phase 0 day 4 budget: another 1–2 days
-of iteration**, then the real Phase 1 starts.
-
-## Next session pickup list
-
-1. Iterate `tools/build-js8-wasm.sh` against compile errors one by one,
-   adding missing shim methods or vendor patches.
-2. Common shim additions likely needed:
-   - `QString(const QChar*, int)` constructor
-   - `QString::number(double)`, `QString::number(int, int base)`
-   - More `QString::arg` overloads (with `double`, with multiple args)
-   - `QStringList::contains`, `QStringList::indexOf`
-   - `QMap::insert(K, V)` returning iterator, `find` returning iterator
-   - `QSet::insert` returning iterator
-3. Once Varicode.cpp links: link the rest, produce `js8.mjs/wasm`, write
-   a Node test harness mirroring the encoder spike.
-4. Day 5 (Web Worker harness in `resources/web-shared/js8.js`) is
-   unaffected — can be drafted in parallel against the C API surface
-   already declared in `js8_wasm_api.h`.
-
-## Updated Phase 0 timing estimate
-
-| | PLAN.md | Actual so far |
+| File | Change | Reason |
 |---|---|---|
-| Day 1 (vendor) | 1 day | done in <1 day |
-| Day 2 (shim) | 1 day | spike ≈ 1 hour, real shim maybe 2–3 days when fully done |
-| Day 3 (FFTW) | 1 day | done in <1 day |
-| Day 4 (build) | 1–2 days | in progress; +1–2 days remaining |
-| Day 5 (worker) | 1 day | not started |
-| **Total** | 3–5 days | **6–8 days** likely |
+| `JS8_Mode/JS8.h` | Removed `<QObject>`/`<QSemaphore>`/`<QThread>` includes, `Q_NAMESPACE`, `class Decoder : public QObject`, `class Worker;` forward-decl | We do our own threading from JS Worker; the QObject Decoder is application-side glue |
+| `JS8_Mode/JS8.cpp` | Removed `class Worker : public QObject`; renamed nested `Impl` class to top-level `DecoderImpl`; removed `JS8::Decoder::*` method bodies; removed `#include "JS8.moc"` | Same as above |
+| `JS8_Mode/JS8.cpp` | `#include <boost/math/ccmath/round.hpp>` → constexpr round lambda inline | Emscripten 3.1.6's `boost-headers` port pins Boost 1.75; `ccmath` was added in 1.79 |
+| `JS8_Mode/JS8.cpp` | `std::visit(generic-lambda, variant)` → manual `std::get_if` cascade | libc++14 (ships with emcc 3.1.6) has a return-type deduction bug in `std::visit`'s dispatch templates |
+| `JS8_Mode/JS8.cpp` | Added `js8_make_decoder` / `js8_delete_decoder` / `js8_run_decoder` factory functions in `namespace JS8` | Lets `api/js8_wasm_api.cpp` cross the TU boundary without seeing `DecoderImpl`'s definition |
+| `JS8_Main/Varicode.h` | Removed `class BuildMessageFramesThread : public QThread` (incl. signals/slots); added explicit `<QList>`/`<QMap>`/`<QPair>`/`<QSet>` includes upstream pulls in transitively | GUI threading wrapper we don't need; missing transitive includes the shim doesn't reproduce |
+| `JS8_Main/Varicode.cpp` | Removed `BuildMessageFramesThread::ctor` + `run()` method bodies | Pairs with the .h removal |
 
-The Phase 1–5 estimates should still hold once Phase 0 lands.
+The `_js8_*` factory functions and the std::visit / ccmath workarounds
+will keep needing to be re-applied on each upstream re-vendor until the
+host emcc updates to a libc++ that ships full constexpr ccmath + the
+fixed std::visit template machinery (Emscripten 3.1.50+ should be
+clean on both).
+
+## Qt shim — final surface (~25 headers)
+
+```
+QBitArray QByteArray QChar QDateTime QDebug QLatin1String QList
+QLoggingCategory QMap QMutex QObject QPair QPointer
+QRegularExpression QSet QString QStringBuilder QStringList
+QStringView QtAlgorithms QtGlobal QtMath QThread QVector
+```
+
+QString alone has 17 of the 30+ methods Varicode.cpp uses, plus an
+iterator class that dereferences to QChar (real-Qt semantics — needed
+because Varicode does `(*it).toUpper()`). Total shim size: ~700 lines
+across all headers.
+
+## What's NOT done in Phase 0
+
+Per PLAN.md — these belong to later phases:
+
+- **Phase 1**: real RX path. Phase 0 confirms `js8_decoder_run` links
+  and runs without crashing on silence. It probably emits zero
+  `Decoded` events because the input is silence; fixing the actual
+  decode quality against captured JS8Call transmissions is Phase 1's
+  whole 2–3 weeks.
+- **Phase 2**: TX integration into wfweb's existing audio pipeline.
+- **Phase 4**: UI panel (DIGI panel + free-text RX/TX + COI list).
+- **Free-text Tier 2**: JSC compression dictionary stubbed out for now.
+  Free-text frames will decode as empty strings until JSC tables are
+  vendored (which is a +14 MB source / +1.5–3 MB WASM step).
+
+## Phase 0 timing
+
+| | PLAN.md estimate | Actual |
+|---|---|---|
+| Day 1 (vendor) | 1 day | <1 day |
+| Day 2 (shim) | 1 day | most of a day, mainly iterating on Varicode.cpp's surface |
+| Day 3 (FFTW) | 1 day | <1 day; build is 90 seconds + cached |
+| Day 4 (build + C API) | 1–2 days | most of a day; the iteration was Varicode.cpp's full Qt surface, not the build chain |
+| Day 5 (worker harness) | 1 day | quick — just glue once the C API was settled |
+| **Total** | 3–5 days | ~5 days |
+
+Phase 1's 2–3 weeks should hold from here.

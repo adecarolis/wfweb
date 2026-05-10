@@ -23,6 +23,12 @@ public:
     static const quint32 size = 262144;
     static const quint32 prefixSize = 103;
 
+    // Tier 2 stub: the prefix table normally lists the 103 most-common
+    // English words. Empty here — free-text frames degrade to "no
+    // matching prefix" which the upstream code handles gracefully.
+    struct PrefixEntry { char const* str; int size; int index; };
+    static const PrefixEntry prefix[1];
+
     static QList<CodewordPair> compress(QString /*text*/) {
         return QList<CodewordPair>{};
     }
@@ -46,3 +52,7 @@ public:
         return Codeword{};
     }
 };
+
+// Empty prefix table — a single sentinel entry the codec can iterate
+// over and find nothing matching. Out-of-line so it has linkage.
+inline const JSC::PrefixEntry JSC::prefix[1] = {{nullptr, 0, 0}};

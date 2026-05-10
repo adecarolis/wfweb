@@ -1,6 +1,7 @@
 // Minimal QtGlobal shim — type aliases + a small handful of Qt-global
 // helper functions used by the JS8 codec subset.
 #pragma once
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -15,6 +16,8 @@ using qint32  = std::int32_t;
 using qint64  = std::int64_t;
 using qreal   = double;
 using uchar   = unsigned char;
+using ushort  = unsigned short;
+using qsizetype = std::ptrdiff_t;
 
 // qEnvironmentVariableIsSet / IntValue — used by ldpc_feedback.h and
 // soft_combiner.h to read tuning knobs from the environment. In the
@@ -37,3 +40,18 @@ inline int qEnvironmentVariableIntValue(const char* name, bool* ok = nullptr) {
 // Qt keeps the macro alive for legacy code (Varicode.cpp uses it).
 #define Q_FOREACH(var, container) for (var : container)
 #define foreach Q_FOREACH
+
+// qMin/qMax/qAbs — also used by the codec without an explicit
+// QtAlgorithms include; expose them at the QtGlobal level.
+template <typename T> constexpr T qMin(T a, T b) { return a < b ? a : b; }
+template <typename T> constexpr T qMax(T a, T b) { return a > b ? a : b; }
+template <typename T> constexpr T qAbs(T a) { return a < T(0) ? -a : a; }
+template <typename A, typename B> constexpr auto qMin(A a, B b) { return a < b ? a : b; }
+template <typename A, typename B> constexpr auto qMax(A a, B b) { return a > b ? a : b; }
+
+// QT_VERSION_CHECK — used in Varicode.cpp #ifdef-style version guards.
+// Real Qt encodes a major.minor.patch into a 24-bit integer; we
+// hard-code "matches Qt 6.6 or newer" so the modern code paths are
+// taken (the codec subset doesn't actually run on older paths anyway).
+#define QT_VERSION_CHECK(maj, min, pat) ((maj << 16) | (min << 8) | (pat))
+#define QT_VERSION QT_VERSION_CHECK(6, 6, 0)

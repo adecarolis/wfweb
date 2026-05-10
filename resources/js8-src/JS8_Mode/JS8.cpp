@@ -2848,8 +2848,15 @@ void encode(int const type, Costas::Array const &costas,
 
 namespace JS8 {
 
-std::unique_ptr<DecoderImpl> js8_make_decoder(struct dec_data& data) {
-    return std::make_unique<DecoderImpl>(data);
+// Raw-pointer factory: api/js8_wasm_api.cpp manages lifetime via
+// new/delete since it can't see DecoderImpl's full definition (it's
+// inside this TU's anonymous namespace).
+DecoderImpl* js8_make_decoder(struct dec_data& data) {
+    return new DecoderImpl(data);
+}
+
+void js8_delete_decoder(DecoderImpl* p) {
+    delete p;
 }
 
 void js8_run_decoder(DecoderImpl& impl, ::JS8::Event::Emitter emit) {

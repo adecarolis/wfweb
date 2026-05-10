@@ -22,19 +22,26 @@ public:
     void resize(int n)  { v_.resize(static_cast<size_t>(n)); }
     void clear()        { v_.clear(); }
 
-    void append(const T& val) { v_.push_back(val); }
-    void append(const QVector& o) { for (auto& x : o.v_) v_.push_back(x); }
-    void push_back(const T& val) { v_.push_back(val); }
-    void prepend(const T& val) { v_.insert(v_.begin(), val); }
+    // append/push_back take by value: std::vector<bool> uses proxy
+    // references that won't bind to const T&, and the codec uses
+    // QVector<bool> heavily (LDPC bits).
+    void append(T val) { v_.push_back(std::move(val)); }
+    void append(const QVector& o) { for (auto x : o.v_) v_.push_back(x); }
+    void push_back(T val) { v_.push_back(std::move(val)); }
+    void prepend(T val) { v_.insert(v_.begin(), std::move(val)); }
 
-    T&       operator[](int i)       { return v_[static_cast<size_t>(i)]; }
-    const T& operator[](int i) const { return v_[static_cast<size_t>(i)]; }
-    T&       at(int i)               { return v_[static_cast<size_t>(i)]; }
-    const T& at(int i)         const { return v_[static_cast<size_t>(i)]; }
-    T&       first()                 { return v_.front(); }
-    const T& first()           const { return v_.front(); }
-    T&       last()                  { return v_.back(); }
-    const T& last()            const { return v_.back(); }
+    // decltype(auto) so vector<T>'s native reference type is preserved:
+    // T& for normal types, the bit-reference proxy for vector<bool>.
+    // Both are assignable, so callers can do `v.first().second |= …`
+    // (used in Varicode for QPair element mutation).
+    decltype(auto) operator[](int i)       { return v_[static_cast<size_t>(i)]; }
+    decltype(auto) operator[](int i) const { return v_[static_cast<size_t>(i)]; }
+    decltype(auto) at(int i)               { return v_[static_cast<size_t>(i)]; }
+    decltype(auto) at(int i)         const { return v_[static_cast<size_t>(i)]; }
+    decltype(auto) first()                 { return v_.front(); }
+    decltype(auto) first()           const { return v_.front(); }
+    decltype(auto) last()                  { return v_.back(); }
+    decltype(auto) last()            const { return v_.back(); }
 
     T*       data()       { return v_.data(); }
     const T* data() const { return v_.data(); }
@@ -52,8 +59,24 @@ public:
         return std::find(v_.begin(), v_.end(), val) != v_.end();
     }
 
+    int indexOf(const T& val, int from = 0) const {
+        for (int i = from; i < size(); ++i)
+            if (v_[static_cast<size_t>(i)] == val) return i;
+        return -1;
+    }
+    int lastIndexOf(const T& val) const {
+        for (int i = size() - 1; i >= 0; --i)
+            if (v_[static_cast<size_t>(i)] == val) return i;
+        return -1;
+    }
+
     QVector& operator+=(const QVector& o) { append(o); return *this; }
     QVector& operator+=(const T& val) { append(val); return *this; }
+    friend QVector operator+(QVector a, const QVector& b) { a += b; return a; }
+
+    // Qt's QVector supports stream-style append via operator<<.
+    QVector& operator<<(T val)              { append(std::move(val)); return *this; }
+    QVector& operator<<(const QVector& o)   { append(o); return *this; }
 
     auto begin()       { return v_.begin(); }
     auto end()         { return v_.end(); }

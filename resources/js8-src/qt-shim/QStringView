@@ -8,6 +8,10 @@ public:
     QStringView() = default;
     QStringView(const QString& s) : s_(s.toStdString()) {}
     QStringView(const char* s)    : s_(s ? s : "") {}
+    // Construct from a pair of QString::const_iterators (which iterate
+    // QChar). We materialize the underlying chars into the owned buffer.
+    QStringView(QString::const_iterator a, QString::const_iterator b)
+        : owned_(a.raw(), b.raw()), s_(owned_) {}
 
     int size()   const { return static_cast<int>(s_.size()); }
     int length() const { return size(); }
@@ -17,10 +21,45 @@ public:
 
     QString toString() const { return QString(std::string(s_)); }
 
+    bool startsWith(const QString& o) const {
+        return s_.size() >= o.toStdString().size() &&
+               s_.compare(0, o.toStdString().size(), o.toStdString()) == 0;
+    }
+    bool startsWith(QChar c) const {
+        return !s_.empty() && s_.front() == static_cast<char>(c);
+    }
+
+    int  indexOf(QChar c, int from = 0) const {
+        auto p = s_.find(static_cast<char>(c), static_cast<size_t>(from));
+        return p == std::string_view::npos ? -1 : static_cast<int>(p);
+    }
+    int  count(QChar c) const {
+        int n = 0; for (auto x : s_) if (x == static_cast<char>(c)) ++n; return n;
+    }
+    QChar firstChar() const { return s_.empty() ? QChar() : QChar(static_cast<unsigned char>(s_.front())); }
+    QChar lastChar()  const { return s_.empty() ? QChar() : QChar(static_cast<unsigned char>(s_.back())); }
+    // first(n)/last(n) match Qt 6: return the first/last n chars as a view.
+    QStringView first(int n) const {
+        if (n <= 0 || s_.empty()) return QStringView();
+        QStringView v;
+        v.owned_.assign(s_.data(), std::min(static_cast<size_t>(n), s_.size()));
+        v.s_ = v.owned_;
+        return v;
+    }
+    QStringView last(int n) const {
+        if (n <= 0 || s_.empty()) return QStringView();
+        size_t len = std::min(static_cast<size_t>(n), s_.size());
+        QStringView v;
+        v.owned_.assign(s_.data() + (s_.size() - len), len);
+        v.s_ = v.owned_;
+        return v;
+    }
+
     bool operator==(QStringView o) const { return s_ == o.s_; }
     bool operator==(const QString& o) const { return s_ == o.toStdString(); }
     friend bool operator==(const QString& a, QStringView b) { return b == a; }
 
 private:
+    std::string owned_;       // backs the view when constructed from iterators
     std::string_view s_;
 };

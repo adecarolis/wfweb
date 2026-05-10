@@ -102,3 +102,41 @@ private:
 
 // QRegExp is the deprecated Qt 5 type; same behavior is OK for our uses.
 using QRegExp = QRegularExpression;
+
+// Out-of-line non-template definitions of QString methods that need
+// the full QRegularExpression type. (They were forward-declared in
+// QString.)
+inline int QString::indexOf(const QRegularExpression& re, int from,
+                            QRegularExpressionMatch* match) const {
+    if (from < 0) from = 0;
+    if (from >= size()) return -1;
+    auto m = re.match(QString(s_.substr(static_cast<size_t>(from))));
+    if (!m.hasMatch()) return -1;
+    if (match) *match = m;
+    QString cap = m.captured(0);
+    return cap.isEmpty() ? -1 :
+           static_cast<int>(s_.find(cap.toStdString(),
+                                     static_cast<size_t>(from)));
+}
+
+inline QString& QString::replace(const QRegularExpression& re,
+                                 const QString& after) {
+    QString out;
+    out.reserve(size());
+    int pos = 0;
+    while (pos < size()) {
+        auto sub = QString(s_.substr(static_cast<size_t>(pos)));
+        auto m = re.match(sub);
+        if (!m.hasMatch()) { out += mid(pos); break; }
+        QString cap = m.captured(0);
+        if (cap.isEmpty()) { out += mid(pos); break; }
+        int found = static_cast<int>(s_.find(cap.toStdString(),
+                                              static_cast<size_t>(pos)));
+        if (found < 0) { out += mid(pos); break; }
+        out += mid(pos, found - pos);
+        out += after;
+        pos = found + cap.size();
+    }
+    s_ = std::move(out.s_);
+    return *this;
+}
