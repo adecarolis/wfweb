@@ -87,7 +87,21 @@ extern "C" int js8_encode(int frame_type, const char* msg, int* tones_out) {
 extern "C" js8_decoder* js8_decoder_new(int submode) {
     auto* dec = new (std::nothrow) js8_decoder;
     if (!dec) return nullptr;
-    dec->submode_bit = submode;
+    // The caller passes a Varicode::SubmodeType *ID* (Normal=0, Fast=1,
+    // Turbo=2, Slow=4, Ultra=8). The decoder selects modes via a
+    // `nsubmodes` *bitmask* where ModeA=1, ModeB=2, ModeC=4, ModeE=8,
+    // ModeI=16 (== 1<<{0,1,2,3,4}). Translate so the JS side doesn't
+    // have to think about it.
+    int bit = 0;
+    switch (submode) {
+        case 0: bit = 1;  break; // JS8CallNormal → ModeA
+        case 1: bit = 2;  break; // JS8CallFast   → ModeB
+        case 2: bit = 4;  break; // JS8CallTurbo  → ModeC
+        case 4: bit = 8;  break; // JS8CallSlow   → ModeE
+        case 8: bit = 16; break; // JS8CallUltra  → ModeI
+        default: bit = 1; break; // default to Normal
+    }
+    dec->submode_bit = bit;
     dec->impl = JS8::js8_make_decoder(::dec_data);
     return dec;
 }
@@ -127,23 +141,63 @@ extern "C" int js8_decoder_run(js8_decoder* dec) {
     ::dec_data.params.kin = n;
     ::dec_data.params.newdat = true;
     ::dec_data.params.nsubmodes = dec->submode_bit;
+    // Decode-window defaults — JS8Call's mainwindow.cpp sets these per
+    // slot. For the WASM bridge we cover the whole pushed buffer with a
+    // wide-band filter (200..2800 Hz) and let the decoder hunt for sync
+    // anywhere in it. Phase 1 may refine these (e.g., narrow the band
+    // around a user-selected nfqso to reduce false-decode rate).
+    ::dec_data.params.kposA = 0;
+    ::dec_data.params.kszA  = n;
+    ::dec_data.params.kposB = 0;
+    ::dec_data.params.kszB  = n;
+    ::dec_data.params.kposC = 0;
+    ::dec_data.params.kszC  = n;
+    ::dec_data.params.kposE = 0;
+    ::dec_data.params.kszE  = n;
+    ::dec_data.params.kposI = 0;
+    ::dec_data.params.kszI  = n;
+    ::dec_data.params.nfa = 200;
+    ::dec_data.params.nfb = 2800;
+    ::dec_data.params.nfqso = 1500;
+    ::dec_data.params.syncStats = false;
+    ::dec_data.params.nutc = 0;
 
     int emitted = 0;
     JS8::js8_run_decoder(*dec->impl, [&](::JS8::Event::Variant const& ev) {
+        char buf[512];
+        int written = 0;
         if (auto p = std::get_if<::JS8::Event::Decoded>(&ev)) {
-            char buf[512];
-            int written = std::snprintf(buf, sizeof(buf),
-                "{\"snr\":%d,\"dt\":%g,\"freq\":%g,\"text\":\"%s\","
+            written = std::snprintf(buf, sizeof(buf),
+                "{\"event\":\"decoded\","
+                "\"snr\":%d,\"dt\":%g,\"freq\":%g,\"text\":\"%s\","
                 "\"type\":%d,\"quality\":%g,\"mode\":%d,\"utc\":%d}",
                 p->snr, static_cast<double>(p->xdt),
                 static_cast<double>(p->frequency),
                 p->data.c_str(), p->type,
                 static_cast<double>(p->quality),
                 p->mode, p->utc);
-            if (written > 0) {
-                dec->outbox.emplace_back(buf, std::min(written, (int)sizeof(buf)));
-                ++emitted;
-            }
+            ++emitted;
+        } else if (auto p = std::get_if<::JS8::Event::DecodeStarted>(&ev)) {
+            written = std::snprintf(buf, sizeof(buf),
+                "{\"event\":\"started\",\"submodes\":%d}", p->submodes);
+        } else if (auto p = std::get_if<::JS8::Event::DecodeFinished>(&ev)) {
+            written = std::snprintf(buf, sizeof(buf),
+                "{\"event\":\"finished\",\"decoded\":%zu}", p->decoded);
+        } else if (auto p = std::get_if<::JS8::Event::SyncStart>(&ev)) {
+            written = std::snprintf(buf, sizeof(buf),
+                "{\"event\":\"sync_start\",\"position\":%d,\"size\":%d}",
+                p->position, p->size);
+        } else if (auto p = std::get_if<::JS8::Event::SyncState>(&ev)) {
+            written = std::snprintf(buf, sizeof(buf),
+                "{\"event\":\"sync\",\"mode\":%d,\"freq\":%g,\"dt\":%g,"
+                "\"kind\":\"%s\"}",
+                p->mode, static_cast<double>(p->frequency),
+                static_cast<double>(p->dt),
+                p->type == ::JS8::Event::SyncState::Type::CANDIDATE ?
+                    "candidate" : "decoded");
+        }
+        if (written > 0) {
+            dec->outbox.emplace_back(buf, std::min(written, (int)sizeof(buf)));
         }
     });
     return emitted;
