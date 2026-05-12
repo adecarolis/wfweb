@@ -9011,17 +9011,9 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         renderStations();
     }
 
-    function flushChain(key) {
-        var c = S.chains.get(key);
-        if (!c) return;
-        emitFeedEntry({
-            t:      c.t,
-            from:   c.from,
-            msg:    c.parts.join(' '),
-            snr:    c.snr,
-            freq:   c.freq,
-            fromMe: false,
-        });
+    function closeChain(key) {
+        // The chain's feed entry was unshifted on the first frame and has
+        // been mutated in-place ever since; closing is just bookkeeping.
         S.chains.delete(key);
     }
 
@@ -9033,7 +9025,7 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             S.chains.forEach(function (c, key) {
                 if (c.lastUtc < cutoff) stale.push(key);
             });
-            for (var i = 0; i < stale.length; ++i) flushChain(stale[i]);
+            for (var i = 0; i < stale.length; ++i) closeChain(stale[i]);
             if (S.chains.size === 0) {
                 clearInterval(S.chainFlushTimer);
                 S.chainFlushTimer = null;
@@ -9044,6 +9036,12 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     function ingestDecode(d) {
         var text = (d.text || '').trim();
         if (!text) return;
+        // d.type is the raw 3-bit field carried in the JS8 frame:
+        //   bit 0 = JS8CallFirst, bit 1 = JS8CallLast, bit 2 = JS8CallData.
+        // Multi-frame messages mark the first frame with First and the
+        // last with Last; the Data bit is only set in Fast/Turbo/Slow
+        // submodes (and is set on every frame of those, not just the
+        // ends). A single-frame message has First+Last.
         var bits = (d.type | 0);
         var isFirst = (bits & JS8_BIT_FIRST) !== 0;
         var isLast  = (bits & JS8_BIT_LAST)  !== 0;
@@ -9056,33 +9054,47 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         var chain = S.chains.get(key);
 
         if (isFirst || !chain) {
-            // If a chain was already open at this frequency, flush it as
-            // its own entry — the sender restarted before sending Last.
-            if (chain) flushChain(key);
+            // Open a new chain. If one was already open at this frequency,
+            // its entry is already in the feed — just close it out and
+            // make a new entry. Push the feed entry NOW (not at chain
+            // close) so the user sees each frame as it's decoded; the
+            // chain object holds a reference to that entry and mutates it
+            // in place as continuations arrive.
+            if (chain) closeChain(key);
+            var entry = {
+                t:      utcStamp(),
+                from:   parsed.from,
+                msg:    parsed.msg,
+                snr:    d.snr,
+                freq:   d.freq,
+                fromMe: false,
+            };
+            emitFeedEntry(entry);
             chain = {
-                t:       utcStamp(),
-                from:    parsed.from,
-                parts:   [parsed.msg],
-                snr:     d.snr,
-                freq:    d.freq,
-                lastUtc: now,
+                entry:    entry,
+                parts:    [parsed.msg],
+                lastUtc:  now,
             };
             S.chains.set(key, chain);
         } else {
-            // Continuation frame. Inherit the chain's sender; this frame's
-            // payload may or may not have the "FROM: ..." preamble, so use
-            // its full text if no sender prefix was found, else use the
-            // post-prefix message.
-            chain.parts.push(parsed.from ? parsed.msg : text);
-            chain.lastUtc = now;
-            chain.snr     = d.snr;
-            chain.freq    = d.freq;
+            // Continuation frame. JSC-encoded data frames carry their own
+            // trailing space when more text follows, so concatenate with
+            // no separator. A continuation may or may not have its own
+            // "FROM: " preamble; keep the chain's original sender either
+            // way.
+            var part = parsed.from ? parsed.msg : text;
+            chain.parts.push(part);
+            chain.entry.msg  = chain.parts.join('');
+            chain.entry.snr  = d.snr;
+            chain.entry.freq = d.freq;
+            chain.lastUtc    = now;
+            renderFeed();
         }
 
-        if (isLast || (isFirst && (bits & 4) /*JS8CallData on single frame*/)) {
-            // Single-frame message has First+Last set (or First+Data),
-            // multi-frame messages close on Last.
-            flushChain(key);
+        if (isLast) {
+            // Single-frame (First+Last) and last-of-multi-frame both land
+            // here — the entry already shows the complete text.
+            closeChain(key);
         } else {
             scheduleChainFlushTimer();
         }
