@@ -8948,6 +8948,17 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             }
         }
 
+        // The wasm decoder's push() is append-only with front-eviction. If
+        // we kept reusing one long-lived decoder across passes, every push
+        // would duplicate prior samples into its ring (we always slice from
+        // rxBuffer[0]), so kpos/ksz coordinates — which are in SPA-buffer
+        // space — would drift out of alignment with what's actually staged
+        // in dec_data.d2. Recreating per pass keeps the two in lockstep;
+        // the constructor is essentially free (just an initializer list
+        // over dec_data). Same pattern the roundtrip tests use.
+        if (S.decoder) S.decoder.free();
+        S.decoder = js8.newDecoder(0);
+
         var samples = S.rxBuffer.slice(0, S.rxWritePos);
         S.decoder.push(samples);
         S.decoder.runModes(nsubmodes, posA, szA, posB, szB, posC, szC, posE, szE);
