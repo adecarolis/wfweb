@@ -89,24 +89,17 @@ extern "C" int js8_encode(int submode, int frame_type,
 
 /* ============== Decoder lifecycle ===================================== */
 
-extern "C" js8_decoder* js8_decoder_new(int submode) {
+extern "C" js8_decoder* js8_decoder_new(int /*submode*/) {
     auto* dec = new (std::nothrow) js8_decoder;
     if (!dec) return nullptr;
-    // The caller passes a Varicode::SubmodeType *ID* (Normal=0, Fast=1,
-    // Turbo=2, Slow=4, Ultra=8). The decoder selects modes via a
-    // `nsubmodes` *bitmask* where ModeA=1, ModeB=2, ModeC=4, ModeE=8,
-    // ModeI=16 (== 1<<{0,1,2,3,4}). Translate so the JS side doesn't
-    // have to think about it.
-    int bit = 0;
-    switch (submode) {
-        case 0: bit = 1;  break; // JS8CallNormal → ModeA
-        case 1: bit = 2;  break; // JS8CallFast   → ModeB
-        case 2: bit = 4;  break; // JS8CallTurbo  → ModeC
-        case 4: bit = 8;  break; // JS8CallSlow   → ModeE
-        case 8: bit = 16; break; // JS8CallUltra  → ModeI
-        default: bit = 1; break; // default to Normal
-    }
-    dec->submode_bit = bit;
+    // Always enable all four official-client submodes — Normal=1, Fast=2,
+    // Turbo=4, Slow=8 → bitmask 15 — so the decoder finds whichever speed
+    // a station is transmitting without requiring the user to pre-select.
+    // (ModeI = "Ultra" is upstream JS8Call-improved only and is omitted
+    // intentionally to stay interoperable with the official client.)
+    // The `submode` argument is kept in the signature for callers that
+    // still pass it but is otherwise ignored.
+    dec->submode_bit = 1 | 2 | 4 | 8;
     dec->impl = JS8::js8_make_decoder(::dec_data);
     return dec;
 }
@@ -133,82 +126,61 @@ extern "C" int js8_decoder_push(js8_decoder* dec, const float* samples, int n) {
     return n;
 }
 
-extern "C" int js8_decoder_run(js8_decoder* dec) {
-    if (!dec || !dec->impl) return 0;
-
-    // Stage the buffered audio into dec_data.
+// Pull `dec->ring` into dec_data.d2 (with int16 quantization), set the
+// common per-call parameters, and return the staged sample count. The
+// caller still needs to fill in nsubmodes + kposX/kszX per mode.
+static int js8_stage_dec_data(js8_decoder* dec) {
     int n = static_cast<int>(std::min(dec->ring.size(),
                                       static_cast<size_t>(JS8_RX_SAMPLE_SIZE)));
     for (int i = 0; i < n; ++i) {
         float s = std::max(-1.0f, std::min(1.0f, dec->ring[i]));
         ::dec_data.d2[i] = static_cast<int16_t>(s * 32767.0f);
     }
-    ::dec_data.params.kin = n;
-    ::dec_data.params.newdat = true;
-    ::dec_data.params.nsubmodes = dec->submode_bit;
-    // Decode-window defaults — JS8Call's mainwindow.cpp sets these per
-    // slot. For the WASM bridge we cover the whole pushed buffer with a
-    // wide-band filter (200..2800 Hz) and let the decoder hunt for sync
-    // anywhere in it. Phase 1 may refine these (e.g., narrow the band
-    // around a user-selected nfqso to reduce false-decode rate).
-    // kszX must satisfy `sz <= Mode::NMAX` (assertion at JS8.cpp:2449),
-    // where NMAX = mode's TX duration × 12 kHz. If the caller pushed
-    // more audio than one slot, clamp here.
-    auto clamp = [&](int max) { return std::min(n, max); };
-    ::dec_data.params.kposA = 0;
-    ::dec_data.params.kszA  = clamp(JS8A_TX_SECONDS * JS8_RX_SAMPLE_RATE);
-    ::dec_data.params.kposB = 0;
-    ::dec_data.params.kszB  = clamp(JS8B_TX_SECONDS * JS8_RX_SAMPLE_RATE);
-    ::dec_data.params.kposC = 0;
-    ::dec_data.params.kszC  = clamp(JS8C_TX_SECONDS * JS8_RX_SAMPLE_RATE);
-    ::dec_data.params.kposE = 0;
-    ::dec_data.params.kszE  = clamp(JS8E_TX_SECONDS * JS8_RX_SAMPLE_RATE);
-    ::dec_data.params.kposI = 0;
-    ::dec_data.params.kszI  = clamp(JS8I_TX_SECONDS * JS8_RX_SAMPLE_RATE);
-    ::dec_data.params.nfa = 200;
-    ::dec_data.params.nfb = 2800;
-    ::dec_data.params.nfqso = 1500;
+    ::dec_data.params.kin     = n;
+    ::dec_data.params.newdat  = true;
+    ::dec_data.params.nfa     = 200;
+    ::dec_data.params.nfb     = 2800;
+    ::dec_data.params.nfqso   = 1500;
     ::dec_data.params.syncStats = false;
-    ::dec_data.params.nutc = 0;
+    ::dec_data.params.nutc    = 0;
+    ::dec_data.params.kposI   = 0;   // Ultra is intentionally never decoded
+    ::dec_data.params.kszI    = 0;
+    return n;
+}
+
+// Run the decoder and serialize whatever events come out into dec->outbox.
+// Shared between js8_decoder_run and js8_decoder_run_modes — the only
+// thing that differs between those is how nsubmodes / kposX / kszX are
+// populated above this call.
+static int js8_drain_decoder(js8_decoder* dec) {
+    auto escapeJson = [](std::string const &in) {
+        std::string out;
+        out.reserve(in.size() + 8);
+        for (char c : in) {
+            switch (c) {
+                case '"':  out += "\\\""; break;
+                case '\\': out += "\\\\"; break;
+                case '\n': out += "\\n";  break;
+                case '\r': out += "\\r";  break;
+                case '\t': out += "\\t";  break;
+                default:
+                    if ((unsigned char)c < 0x20) out += '?';
+                    else                          out += c;
+            }
+        }
+        return out;
+    };
 
     int emitted = 0;
     JS8::js8_run_decoder(*dec->impl, [&](::JS8::Event::Variant const& ev) {
         char buf[512];
         int written = 0;
         if (auto p = std::get_if<::JS8::Event::Decoded>(&ev)) {
-            // Run the raw decoded event through DecodedText to get the
-            // human-readable form (e.g. "@VK3ACF: GD" rather than the
-            // 12-char raw alphabet encoding "AUThGRcQOiZG"). Keeping the
-            // raw form too in case a caller wants both.
             DecodedText dt(*p);
-            QString message = dt.message();
-            std::string textHuman = message.toStdString();
+            std::string textHuman = dt.message().toStdString();
             std::string textRaw   = p->data;
-
-            // Crude JSON-string-escape: only the message field can hold
-            // user-supplied text with quotes / backslashes / control chars.
-            auto escapeJson = [](std::string const &in) {
-                std::string out;
-                out.reserve(in.size() + 8);
-                for (char c : in) {
-                    switch (c) {
-                        case '"':  out += "\\\""; break;
-                        case '\\': out += "\\\\"; break;
-                        case '\n': out += "\\n";  break;
-                        case '\r': out += "\\r";  break;
-                        case '\t': out += "\\t";  break;
-                        default:
-                            if ((unsigned char)c < 0x20)
-                                out += '?';     // non-printable Latin-1 outside JSON
-                            else
-                                out += c;
-                    }
-                }
-                return out;
-            };
             std::string textHumanEsc = escapeJson(textHuman);
             std::string textRawEsc   = escapeJson(textRaw);
-
             written = std::snprintf(buf, sizeof(buf),
                 "{\"event\":\"decoded\","
                 "\"snr\":%d,\"dt\":%g,\"freq\":%g,"
@@ -247,6 +219,40 @@ extern "C" int js8_decoder_run(js8_decoder* dec) {
     return emitted;
 }
 
+extern "C" int js8_decoder_run(js8_decoder* dec) {
+    if (!dec || !dec->impl) return 0;
+    int n = js8_stage_dec_data(dec);
+    // Legacy path used by the corpus tests: nsubmodes from the decoder's
+    // saved bit, each mode's window pinned to the first kszX samples,
+    // clamped to one slot. New callers should prefer run_modes.
+    ::dec_data.params.nsubmodes = dec->submode_bit;
+    auto clamp = [&](int max) { return std::min(n, max); };
+    ::dec_data.params.kposA = 0;
+    ::dec_data.params.kszA  = clamp(JS8A_TX_SECONDS * JS8_RX_SAMPLE_RATE);
+    ::dec_data.params.kposB = 0;
+    ::dec_data.params.kszB  = clamp(JS8B_TX_SECONDS * JS8_RX_SAMPLE_RATE);
+    ::dec_data.params.kposC = 0;
+    ::dec_data.params.kszC  = clamp(JS8C_TX_SECONDS * JS8_RX_SAMPLE_RATE);
+    ::dec_data.params.kposE = 0;
+    ::dec_data.params.kszE  = clamp(JS8E_TX_SECONDS * JS8_RX_SAMPLE_RATE);
+    return js8_drain_decoder(dec);
+}
+
+extern "C" int js8_decoder_run_modes(js8_decoder* dec, int nsubmodes,
+                                     int kposA, int kszA,
+                                     int kposB, int kszB,
+                                     int kposC, int kszC,
+                                     int kposE, int kszE) {
+    if (!dec || !dec->impl) return 0;
+    js8_stage_dec_data(dec);
+    ::dec_data.params.nsubmodes = nsubmodes;
+    ::dec_data.params.kposA = kposA; ::dec_data.params.kszA = kszA;
+    ::dec_data.params.kposB = kposB; ::dec_data.params.kszB = kszB;
+    ::dec_data.params.kposC = kposC; ::dec_data.params.kszC = kszC;
+    ::dec_data.params.kposE = kposE; ::dec_data.params.kszE = kszE;
+    return js8_drain_decoder(dec);
+}
+
 extern "C" char* js8_decoder_pop(js8_decoder* dec) {
     if (!dec || dec->outbox.empty()) return nullptr;
     std::string s = std::move(dec->outbox.front());
@@ -260,4 +266,52 @@ extern "C" char* js8_decoder_pop(js8_decoder* dec) {
 
 extern "C" void js8_free_string(char* s) {
     std::free(s);
+}
+
+/* ============== Packer (free-text + compound frames) ================== */
+
+extern "C" char* js8_pack(const char* mycall, const char* mygrid,
+                          const char* selectedCall, const char* text,
+                          int submode) {
+    if (!text) return nullptr;
+    try {
+        QString qMycall = mycall ? QString(mycall) : QString();
+        QString qMygrid = mygrid ? QString(mygrid) : QString();
+        QString qSel    = selectedCall ? QString(selectedCall) : QString();
+        QString qText   = QString(text);
+
+        // forceIdentify=true matches the official JS8Call client: when the
+        // line is a bare data frame with no DX target and mycall isn't
+        // already in it, buildMessageFrames prepends "MYCALL: " so the
+        // receiver sees who said it. Without this flag, "HELLO" goes out
+        // as one literal frame; with it, "K1FM: HELLO" goes out as the
+        // expected two-frame compound. Safe to leave on for directed
+        // messages too — the prepend only triggers for unaddressed data.
+        auto frames = Varicode::buildMessageFrames(
+            qMycall, qMygrid, qSel, qText,
+            /*forceIdentify*/ true, /*forceData*/ false, submode, nullptr);
+
+        // Build JSON manually — Qt's JSON classes aren't shimmed.
+        std::string out = "[";
+        bool first = true;
+        for (auto const& pair : frames) {
+            if (!first) out += ",";
+            first = false;
+            // Frames are 12-char raw alphabet — no JSON-escape needed.
+            out += "{\"frame\":\"";
+            out += pair.first.toStdString();
+            out += "\",\"type\":";
+            out += std::to_string(pair.second);
+            out += "}";
+        }
+        out += "]";
+
+        char* dup = static_cast<char*>(std::malloc(out.size() + 1));
+        if (!dup) return nullptr;
+        std::memcpy(dup, out.data(), out.size());
+        dup[out.size()] = '\0';
+        return dup;
+    } catch (...) {
+        return nullptr;
+    }
 }

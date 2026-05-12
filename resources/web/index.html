@@ -1943,6 +1943,199 @@ body.digi-open #bottomBar { grid-row: 5; }
 #digiDirectedPanel .digi-decode-dt,
 #digiDirectedPanel .digi-decode-freq { display: none; }
 
+/* ── JS8 Messenger Bar — same overlay shell as digi-bar but distilled
+   to the three things JS8 is actually about: who's around, what they
+   said, and what you want to reply. Color theme = amber to set it
+   apart from the FT8/FT4 blue. ── */
+.js8-bar {
+    /* Same overlay positioning as .digi-bar — fills its scopeArea parent
+       so the flex column gets a real height to lay out from. */
+    position: absolute;
+    inset: 0;
+    z-index: 200;
+    background: #1a1410;
+    color: #fc8;
+    border-top: 2px solid #c80;
+    display: flex;
+    flex-direction: column;
+    padding: 4px 6px;
+    gap: 4px;
+    overflow: hidden;
+    font-size: 14px;
+}
+body.js8-open #scopeInfoBar { display: none !important; }
+body.js8-open #spectrumCanvas,
+body.js8-open #waterfallCanvas { display: none !important; }
+body.js8-open #scopeArea { grid-row: 3 / 5; }
+body.js8-open #bottomBar { grid-row: 5; }
+.js8-bar.hidden { display: none; }
+
+.js8-header {
+    display: flex; align-items: center; gap: 6px;
+    border-bottom: 1px solid #530;
+    padding-bottom: 4px;
+}
+.js8-brand {
+    background: #c80; color: #000;
+    padding: 2px 8px; border-radius: 3px;
+    font-weight: bold; letter-spacing: 1px;
+}
+.js8-submode-sel {
+    background: #2a2018; color: #fc8;
+    border: 1px solid #530; border-radius: 3px;
+    padding: 2px 4px; font-size: 13px;
+}
+.js8-status-pill {
+    background: #530; color: #fc8;
+    padding: 2px 8px; border-radius: 10px;
+    font-size: 12px; font-weight: bold;
+    min-width: 50px; text-align: center;
+}
+.js8-status-pill.tx  { background: #c00; color: #fff; }
+.js8-status-pill.rx  { background: #060; color: #fff; }
+.js8-status-pill.dec { background: #c80; color: #000; }
+.js8-progress-wrap {
+    flex: 1; height: 6px; background: #2a2018;
+    border: 1px solid #530; border-radius: 3px; overflow: hidden;
+    max-width: 200px;
+}
+.js8-progress-fill {
+    height: 100%; width: 0%; background: #c80;
+    transition: width 0.1s linear;
+}
+.js8-progress-fill.tx { background: #c00; }
+.js8-clock {
+    font-family: monospace; font-size: 13px;
+    min-width: 22px; text-align: right; color: #fc8;
+}
+.js8-rx-toggle {
+    background: #2a2018; color: #fc8;
+    border: 1px solid #530; border-radius: 3px;
+    padding: 3px 10px; font-size: 12px; cursor: pointer;
+}
+.js8-rx-toggle.active { background: #060; color: #fff; border-color: #0a0; }
+.js8-icon-btn {
+    background: transparent; color: #fc8;
+    border: 1px solid #530; border-radius: 3px;
+    padding: 3px 8px; font-size: 14px; cursor: pointer;
+}
+.js8-icon-btn:hover { background: #2a2018; }
+
+.js8-content {
+    flex: 1; display: flex; gap: 6px; min-height: 0;
+}
+.js8-col {
+    background: #2a2018; border: 1px solid #530; border-radius: 3px;
+    display: flex; flex-direction: column;
+    min-height: 0; overflow: hidden;
+}
+.js8-stations-col { flex: 0 0 180px; }
+.js8-feed-col     { flex: 1; }
+.js8-col-header {
+    background: #530; color: #fc8;
+    padding: 3px 8px; font-size: 11px; letter-spacing: 1px;
+    font-weight: bold; text-transform: uppercase;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.js8-link-btn {
+    background: transparent; color: #fc8;
+    border: none; padding: 0; cursor: pointer;
+    font-size: 11px; text-decoration: underline;
+}
+.js8-stations, .js8-feed {
+    flex: 1; overflow-y: auto; padding: 2px;
+    font-family: monospace; font-size: 13px;
+}
+.js8-station {
+    display: flex; justify-content: space-between;
+    padding: 3px 6px; cursor: pointer; border-bottom: 1px solid #2a2018;
+}
+.js8-station:hover    { background: #3a2a18; }
+.js8-station.selected { background: #c80; color: #000; }
+.js8-station-call { font-weight: bold; }
+.js8-station-meta { color: #a96; font-size: 11px; }
+.js8-feed-row {
+    padding: 3px 6px; border-bottom: 1px solid #2a2018;
+    word-break: break-word;
+}
+.js8-feed-row.from-me  { background: #2a1a08; }
+.js8-feed-row .ts      { color: #a96; font-size: 11px; margin-right: 6px; }
+.js8-feed-row .from    { color: #fc8; font-weight: bold; cursor: pointer; }
+.js8-feed-row .from:hover { text-decoration: underline; }
+.js8-feed-row .arrow   { color: #a96; margin: 0 4px; }
+.js8-feed-row .to      { color: #ec0; }
+.js8-feed-row .msg     { color: #fff; margin-left: 6px; }
+.js8-feed-row .snr     { color: #a96; font-size: 11px; margin-left: 6px; }
+
+.js8-action-row {
+    display: flex; align-items: center; gap: 4px;
+    border-top: 1px solid #530; padding-top: 4px;
+}
+.js8-field-label {
+    color: #a96; font-size: 11px; letter-spacing: 1px;
+    text-transform: uppercase; font-weight: bold;
+}
+.js8-callsign-input, .js8-compose, .js8-num-input {
+    background: #2a2018; color: #fc8;
+    border: 1px solid #530; border-radius: 3px;
+    padding: 6px 8px; font-family: monospace; font-size: 14px;
+}
+.js8-callsign-input { width: 90px; text-transform: uppercase; }
+.js8-compose        { flex: 1; min-width: 100px; }
+.js8-num-input      { width: 80px; }
+.js8-callsign-input:focus, .js8-compose:focus, .js8-num-input:focus {
+    outline: none; border-color: #c80; background: #3a2a18;
+}
+.js8-big-btn {
+    background: #530; color: #fc8;
+    border: 1px solid #c80; border-radius: 3px;
+    padding: 8px 16px; font-weight: bold; font-size: 14px;
+    letter-spacing: 1px; cursor: pointer; min-width: 60px;
+}
+.js8-big-btn:hover  { background: #c80; color: #000; }
+.js8-big-btn:active { transform: scale(0.97); }
+.js8-big-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.js8-send-btn { background: #c80; color: #000; }
+.js8-send-btn:hover { background: #fc8; }
+.js8-cq-btn   { background: #060; color: #fff; border-color: #0a0; }
+.js8-cq-btn:hover   { background: #0a0; color: #000; }
+.js8-hb-btn   { background: #042; color: #fff; border-color: #084; }
+.js8-hb-btn:hover   { background: #084; color: #000; }
+
+.js8-modal {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7); z-index: 400;
+    display: flex; align-items: center; justify-content: center;
+}
+.js8-modal.hidden { display: none; }
+.js8-modal-body {
+    background: #1a1410; color: #fc8;
+    border: 2px solid #c80; border-radius: 6px;
+    padding: 16px; min-width: 280px; max-width: 90vw;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.js8-modal-title {
+    font-weight: bold; font-size: 16px; color: #fc8;
+    border-bottom: 1px solid #530; padding-bottom: 6px;
+}
+.js8-settings-field { display: flex; align-items: center; gap: 8px; }
+.js8-settings-field .js8-field-label { min-width: 100px; }
+.js8-modal-close {
+    margin-top: 8px;
+    background: #c80; color: #000;
+    border: none; border-radius: 3px;
+    padding: 8px; font-weight: bold; cursor: pointer;
+}
+
+@media (orientation: portrait), (max-width: 600px) {
+    .js8-content { flex-direction: column; }
+    .js8-stations-col { flex: 0 0 80px; }
+    .js8-station-meta { display: none; }
+    .js8-action-row { flex-wrap: wrap; }
+    .js8-compose { min-width: 150px; }
+    .js8-big-btn { padding: 6px 10px; min-width: 50px; }
+}
+
 /* ---- Mobile DIGI tweaks (portrait or narrow screen) ---- */
 @media (orientation: portrait), (max-width: 600px) {
     /* Stack TX EVEN/ODD and CALL CQ buttons vertically */
@@ -2226,6 +2419,87 @@ body.digi-open #bottomBar { grid-row: 5; }
                 <span class="digi-field-label">Hz</span>
             </div>
 
+        </div>
+
+        <!-- JS8 messenger panel — same overlay treatment as DIGI Bar, but
+             the contents are a conversational feed instead of a CQ roster.
+             Three zones: stations (left), feed (right), compose (bottom). -->
+        <div id="js8Bar" class="js8-bar hidden">
+            <div class="js8-header">
+                <span class="js8-brand">JS8</span>
+                <select id="js8SubmodeSel" class="js8-submode-sel"
+                        title="TX speed — RX decodes all four speeds at once">
+                    <option value="0">Normal · 15s</option>
+                    <option value="1">Fast · 10s</option>
+                    <option value="2">Turbo · 6s</option>
+                    <option value="4">Slow · 30s</option>
+                </select>
+                <span class="js8-status-pill" id="js8Status">IDLE</span>
+                <div class="js8-progress-wrap">
+                    <div id="js8ProgressBar" class="js8-progress-fill"></div>
+                </div>
+                <span id="js8Clock" class="js8-clock">15</span>
+                <div class="flex-space"></div>
+                <button id="js8RxToggle" class="js8-rx-toggle active">RX ON</button>
+                <button id="js8SettingsBtn" class="js8-icon-btn" title="Settings">&#9881;</button>
+                <button id="js8CloseBtn" class="js8-icon-btn" title="Close">&#x2715;</button>
+            </div>
+
+            <div class="js8-content">
+                <div class="js8-col js8-stations-col">
+                    <div class="js8-col-header">Heard</div>
+                    <div id="js8Stations" class="js8-stations"></div>
+                </div>
+                <div class="js8-col js8-feed-col">
+                    <div class="js8-col-header">
+                        <span>Feed</span>
+                        <button id="js8ClearFeedBtn" class="js8-link-btn">clear</button>
+                    </div>
+                    <div id="js8Feed" class="js8-feed"></div>
+                </div>
+            </div>
+
+            <div class="js8-action-row">
+                <span class="js8-field-label">TO</span>
+                <input type="text" id="js8DxCall" class="js8-callsign-input"
+                       maxlength="9" placeholder="@ALLCALL" autocomplete="off">
+                <input type="text" id="js8Compose" class="js8-compose"
+                       placeholder="Type message…" maxlength="120" autocomplete="off">
+                <button id="js8SendBtn" class="js8-big-btn js8-send-btn">SEND</button>
+                <button id="js8CqBtn" class="js8-big-btn js8-cq-btn">CQ</button>
+                <button id="js8HbBtn" class="js8-big-btn js8-hb-btn">HB</button>
+            </div>
+        </div>
+
+        <!-- JS8 settings modal — minimal: station identity + audio base freq.
+             Callsign + grid come from the app-wide shared widgets; this
+             modal is for JS8-only knobs (submode default, base Hz). -->
+        <div id="js8SettingsModal" class="js8-modal hidden">
+            <div class="js8-modal-body">
+                <div class="js8-modal-title">JS8 Settings</div>
+                <div class="js8-settings-field">
+                    <span class="js8-field-label">CALL</span>
+                    <input type="text" id="js8SettingMycall" class="js8-callsign-input" maxlength="10" placeholder="CALL" autocomplete="off">
+                </div>
+                <div class="js8-settings-field">
+                    <span class="js8-field-label">GRID</span>
+                    <input type="text" id="js8SettingMygrid" class="js8-callsign-input" maxlength="6" placeholder="EM85" autocomplete="off">
+                </div>
+                <div class="js8-settings-field">
+                    <span class="js8-field-label">BASE Hz</span>
+                    <input type="number" id="js8SettingBaseHz" class="js8-num-input" min="200" max="2800" step="50" value="1500">
+                </div>
+                <div class="js8-settings-field">
+                    <span class="js8-field-label">DEFAULT SPEED</span>
+                    <select id="js8SettingSubmode" class="js8-submode-sel">
+                        <option value="0">Normal · 15s</option>
+                        <option value="1">Fast · 10s</option>
+                        <option value="2">Turbo · 6s</option>
+                        <option value="4">Slow · 30s</option>
+                    </select>
+                </div>
+                <button id="js8SettingsCloseBtn" class="js8-modal-close">Close</button>
+            </div>
         </div>
 
         <!-- DIGI Settings Modal -->
@@ -3838,6 +4112,16 @@ function renderModeOverlay() {
     ft8Btn.textContent = 'FT8';
     ft8Btn.onclick = function() { setPanel('default'); toggleDigiBar(); };
     grid.appendChild(ft8Btn);
+    // JS8 messenger panel — same row, separate overlay
+    var js8Btn = document.createElement('button');
+    var js8On = (typeof window.js8MessengerVisible === 'function') && window.js8MessengerVisible();
+    js8Btn.className = 'ov-btn' + (js8On ? ' active' : '');
+    js8Btn.textContent = 'JS8';
+    js8Btn.onclick = function() {
+        setPanel('default');
+        if (typeof window.toggleJs8Bar === 'function') window.toggleJs8Bar();
+    };
+    grid.appendChild(js8Btn);
     // Packet (Dire Wolf AX.25 / APRS) panel toggle
     if (window.Packet) {
         var pktBtn = document.createElement('button');
@@ -4539,6 +4823,9 @@ function closeOtherModes(except) {
     if (except !== 'freedv' && freedvEnabled) {
         toggleFreeDV();
     }
+    if (except !== 'js8' && typeof window.js8MessengerVisible === 'function' && window.js8MessengerVisible()) {
+        window.toggleJs8Bar();
+    }
 }
 window.closeOtherModes = closeOtherModes;
 
@@ -4873,6 +5160,7 @@ function handleAudioData(buffer) {
     var floatData = new Float32Array(pcmData.length);
     for (var i = 0; i < pcmData.length; i++) floatData[i] = pcmData[i] / 32768.0;
     if (digiRxEnabled && digiRxBuffer) processDigiAudioChunk(pcmData);
+    if (typeof window._js8ProcessAudioChunk === 'function') window._js8ProcessAudioChunk(pcmData);
 
     if (audioUseWorklet && audioWorkletNode) {
         audioWorkletNode.port.postMessage(floatData);
@@ -8458,67 +8746,592 @@ window.ft8tsLib = { decodeFT8, encodeFT8, decodeFT4, encodeFT4, HashCallBook };
 window.dispatchEvent(new Event('ft8tsReady'));
 </script>
 <script type="module">
-// JS8 codec — Phase 2 minimal TX integration. Loads the wasm module and
-// exposes a debug entry-point txJs8(msg) that encodes a 12-char message,
-// synthesizes 8-FSK audio, and streams it through the same TX pipeline
-// FT8 already uses. No DIGI panel UI yet (Phase 4); this is callable
-// from devtools to validate the path against JS8Call through the testrig.
-//
-//   await window.js8Ready;        // wasm loaded
-//   window.txJs8('HELLOWK1FMab'); // encodes + transmits one frame
-import { js8Init, synthesize } from '/js8.mjs';
+// JS8 messenger — Phase 4. Loads the wasm codec, owns the JS8 panel
+// state machine, and bridges the existing digi audio pipeline:
+//   • RX: tapped from handleAudioData's int16 chunk via _js8ProcessAudioChunk
+//   • TX: routed through streamDigiAudio (same path FT8 uses)
+// The panel is an overlay peer of the FT8 DIGI Bar; opening one closes
+// the other through closeOtherModes('js8' | 'digi' | ...).
+import { js8Init, synthesize, getSubmode } from '/js8.mjs';
 
-window.js8Ready = (async () => {
+(async () => {
     const js8 = await js8Init();
     window.js8 = js8;
 
-    window.txJs8 = function(msg, opts = {}) {
-        opts = Object.assign({ frameType: 0, baseHz: 1500, submode: 0 }, opts);
+    // ─── State ─────────────────────────────────────────────────────────
+    // RX runs Normal+Fast+Turbo+Slow simultaneously — each mode has its
+    // own slot duration aligned to UTC seconds. lastSlot tracks the most
+    // recent slot index we've seen per mode so we can detect a boundary
+    // and trigger an *aligned* decode for the just-ended slot.
+    const SUBMODE_BITS = { 0: 1, 1: 2, 2: 4, 4: 8 }; // SubmodeType ID → ksz bit
+    const RX_MODES     = [0, 1, 2, 4];               // Normal, Fast, Turbo, Slow
+    const S = {
+        visible: false,
+        rxEnabled: false,
+        submode: 0,             // TX submode (RX always tries all 4)
+        baseHz: 1500,
+        decoder: null,
+        rxBuffer: null,
+        rxWritePos: 0,
+        rxPhase: 0,
+        slotIndex: -1,                  // TX slot tracker (driven by S.submode)
+        lastSlot: { 0: -1, 1: -1, 2: -1, 4: -1 }, // per-mode RX slot trackers
+        chains: new Map(),              // freqKey → { from, parts, firstUtc, snr, freq }
+        chainFlushTimer: null,
+        timer: null,
+        stations: new Map(),
+        feed: [],
+        feedMax: 100,
+        dxCall: '@ALLCALL',
+        txBusy: false,
+        txQueue: [],
+    };
+
+    // ─── Helpers ──────────────────────────────────────────────────────
+    function getMyCall() {
+        return (window.App && window.App.callsign && window.App.callsign.get()) || '';
+    }
+    function getMyGridLocal() {
+        var el = document.getElementById('digiGrid');
+        return ((el && el.value) || '').toUpperCase().substr(0, 6);
+    }
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function(c) {
+            return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+        });
+    }
+    function utcStamp() {
+        var d = new Date(), p = (n) => n < 10 ? '0' + n : '' + n;
+        return p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()) + ':' + p(d.getUTCSeconds());
+    }
+    function setStatus(label, cls) {
+        var el = document.getElementById('js8Status');
+        if (!el) return;
+        el.textContent = label;
+        el.className = 'js8-status-pill' + (cls ? ' ' + cls : '');
+    }
+
+    // ─── RX pipeline ──────────────────────────────────────────────────
+    // The decoder runs all four submodes at once. Slow's slot is 30 s
+    // (longest); we want at least one full Slow slot at every Slow slot
+    // boundary plus headroom for the older slot we just decoded. 60 s
+    // of rolling buffer covers that comfortably and matches JS8Call's
+    // own JS8_NTMAX (= 60). We slide when more than half the buffer is
+    // used so writes never run off the end.
+    var RX_BUFFER_SECONDS = 60;
+    function resetRxBuffer() {
+        S.rxBuffer = new Float32Array(RX_BUFFER_SECONDS * 12000);
+        S.rxWritePos = 0;
+        S.rxPhase = 0;
+    }
+    function maybeSlideRxBuffer() {
+        var halfLen   = (RX_BUFFER_SECONDS / 2) * 12000;
+        var maxKeep   = halfLen;  // keep at most the most-recent half
+        if (S.rxWritePos > halfLen) {
+            S.rxBuffer.copyWithin(0, S.rxWritePos - maxKeep, S.rxWritePos);
+            S.rxWritePos = maxKeep;
+        }
+    }
+
+    // Diagnostic counters for the RX pipeline. Easy to read from devtools:
+    //   window.js8Diag()
+    var diag = { audioChunks: 0, audioSamples: 0, decodePasses: 0,
+                 syncCandidates: 0, decodes: 0, lastBufferSamples: 0 };
+    window.js8Diag = function () { return Object.assign({}, diag,
+        { rxEnabled: S.rxEnabled, txBusy: S.txBusy,
+          submode: S.submode, rxWritePos: S.rxWritePos,
+          rxBufferLen: S.rxBuffer ? S.rxBuffer.length : 0,
+          audioSampleRate: typeof audioSampleRate !== 'undefined' ? audioSampleRate : '(undef)',
+          decoder: !!S.decoder, visible: S.visible }); };
+
+    // Called from handleAudioData via window._js8ProcessAudioChunk. Decimates
+    // rig-rate Int16 audio down to 12 kHz Float32 into S.rxBuffer.
+    window._js8ProcessAudioChunk = function (int16Chunk) {
+        if (!S.rxEnabled || !S.rxBuffer || S.txBusy) return;
+        diag.audioChunks++;
+        diag.audioSamples += int16Chunk.length;
+        if (diag.audioChunks === 1) {
+            console.log('[JS8 RX] first audio chunk: '
+                + int16Chunk.length + ' samples, audioSampleRate='
+                + (typeof audioSampleRate !== 'undefined' ? audioSampleRate : '?'));
+        }
+        var D = Math.round(audioSampleRate / 12000); if (D < 1) D = 1;
+        for (var i = 0; i < int16Chunk.length; i++) {
+            S.rxPhase++;
+            if (S.rxPhase >= D) {
+                S.rxPhase = 0;
+                if (S.rxWritePos < S.rxBuffer.length) {
+                    S.rxBuffer[S.rxWritePos++] = int16Chunk[i] / 32768.0;
+                }
+            }
+        }
+    };
+
+    function slotInfo() {
+        var p = getSubmode(S.submode).slotSeconds;
+        var now = Date.now() / 1000;
+        var phase = now % p;
+        return { slotIndex: Math.floor(now / p), slotPhase: phase, remaining: p - phase, period: p };
+    }
+
+    function tickTimer() {
+        if (!S.visible) return;
+        var nowSec = Date.now() / 1000;
+
+        // Clock + progress bar — driven by the user's selected TX submode
+        // so it shows the cadence of the speed they'll transmit at.
+        var info = slotInfo();
+        var clk = document.getElementById('js8Clock');
+        if (clk) clk.textContent = Math.ceil(info.remaining);
+        var bar = document.getElementById('js8ProgressBar');
+        if (bar) {
+            bar.style.width = ((info.slotPhase / info.period) * 100).toFixed(1) + '%';
+            bar.className = 'js8-progress-fill' + (S.txBusy ? ' tx' : '');
+        }
+
+        // RX: detect each enabled submode's slot boundary independently
+        // and decode that mode's slot as soon as it completes. Multiple
+        // modes can complete at the same instant (every 30 s all four
+        // align), so we collect them and run a single decode pass with
+        // the right kpos/ksz per mode.
+        var modesEnded = [];
+        for (var i = 0; i < RX_MODES.length; ++i) {
+            var sm = RX_MODES[i];
+            var p  = getSubmode(sm).slotSeconds;
+            var idx = Math.floor(nowSec / p);
+            if (idx !== S.lastSlot[sm]) {
+                if (S.lastSlot[sm] !== -1) {
+                    modesEnded.push({ sm: sm, slotSeconds: p, bit: SUBMODE_BITS[sm] });
+                }
+                S.lastSlot[sm] = idx;
+            }
+        }
+        if (modesEnded.length > 0 && S.rxEnabled && !S.txBusy) {
+            triggerDecode(modesEnded);
+        }
+
+        // TX: fire at the user's selected TX submode's slot boundary.
+        if (info.slotIndex !== S.slotIndex) {
+            S.slotIndex = info.slotIndex;
+            if (S.txQueue.length > 0 && !S.txBusy) {
+                fireNextTxFrame();
+            }
+        }
+
+        maybeSlideRxBuffer();
+    }
+
+    function triggerDecode(modesEnded) {
+        if (!S.decoder || !S.rxBuffer || S.rxWritePos < 1000) return;
+        setStatus('DEC', 'dec');
+        diag.decodePasses++;
+        diag.lastBufferSamples = S.rxWritePos;
+
+        // Each mode's window points at the LAST slotSeconds of staged audio.
+        // We've just detected the slot ended at wall-clock T_now ≈ now, and
+        // the audio we captured into the buffer up to S.rxWritePos covers
+        // that slot's transmission interval. Setting kposX = rxWritePos -
+        // slotSamples and kszX = slotSamples points the decoder at it.
+        var nsubmodes = 0;
+        var posA = 0, szA = 0, posB = 0, szB = 0, posC = 0, szC = 0, posE = 0, szE = 0;
+        for (var i = 0; i < modesEnded.length; ++i) {
+            var m = modesEnded[i];
+            var slotSamples = m.slotSeconds * 12000;
+            var sz  = Math.min(S.rxWritePos, slotSamples);
+            var pos = Math.max(0, S.rxWritePos - slotSamples);
+            nsubmodes |= m.bit;
+            switch (m.bit) {
+                case 1: posA = pos; szA = sz; break;
+                case 2: posB = pos; szB = sz; break;
+                case 4: posC = pos; szC = sz; break;
+                case 8: posE = pos; szE = sz; break;
+            }
+        }
+
+        var samples = S.rxBuffer.slice(0, S.rxWritePos);
+        S.decoder.push(samples);
+        S.decoder.runModes(nsubmodes, posA, szA, posB, szB, posC, szC, posE, szE);
+
+        var syncCands = 0, decoded = 0;
+        while (true) {
+            var ev = S.decoder.pop();
+            if (!ev) break;
+            if (ev.event === 'sync') {
+                if (ev.kind === 'candidate') { syncCands++; diag.syncCandidates++; }
+            } else if (ev.event === 'decoded') {
+                decoded++; diag.decodes++;
+                ingestDecode(ev);
+            }
+        }
+        console.log('[JS8 RX] decode (modes='
+            + modesEnded.map(function (m) { return m.sm; }).join(',')
+            + ', nsubmodes=' + nsubmodes
+            + ', samples=' + samples.length + ', cands=' + syncCands
+            + ', decoded=' + decoded + ')');
+        setStatus(S.rxEnabled ? 'RX' : 'IDLE', S.rxEnabled ? 'rx' : '');
+    }
+
+    // Multi-frame messages arrive across several slots: the first frame
+    // has the JS8CallFirst bit (1), the last has JS8CallLast (2), middle
+    // frames have neither (and contain the message continuation). We
+    // group consecutive frames by transmit frequency (bucketed coarsely
+    // so small dt jitter doesn't break the chain) and emit one merged
+    // entry once the chain closes. Stale chains are flushed after 60 s.
+    var JS8_BIT_FIRST = 1;
+    var JS8_BIT_LAST  = 2;
+
+    function parseFrom(text) {
+        var m = text.match(/^([@A-Z0-9\/]{2,})\s*[:>]\s*(.*)$/);
+        return m ? { from: m[1], msg: m[2].trim() } : { from: '', msg: text };
+    }
+
+    function emitFeedEntry(entry) {
+        S.feed.unshift(entry);
+        if (S.feed.length > S.feedMax) S.feed.length = S.feedMax;
+        if (entry.from && entry.from.charAt(0) !== '@') {
+            var s = S.stations.get(entry.from) || { count: 0 };
+            s.lastUtc = Date.now();
+            if (typeof entry.snr === 'number') s.snr = entry.snr;
+            if (typeof entry.freq === 'number') s.freq = entry.freq;
+            s.count++;
+            S.stations.set(entry.from, s);
+        }
+        renderFeed();
+        renderStations();
+    }
+
+    function flushChain(key) {
+        var c = S.chains.get(key);
+        if (!c) return;
+        emitFeedEntry({
+            t:      c.t,
+            from:   c.from,
+            msg:    c.parts.join(' '),
+            snr:    c.snr,
+            freq:   c.freq,
+            fromMe: false,
+        });
+        S.chains.delete(key);
+    }
+
+    function scheduleChainFlushTimer() {
+        if (S.chainFlushTimer) return;
+        S.chainFlushTimer = setInterval(function () {
+            var cutoff = Date.now() - 60000;
+            var stale = [];
+            S.chains.forEach(function (c, key) {
+                if (c.lastUtc < cutoff) stale.push(key);
+            });
+            for (var i = 0; i < stale.length; ++i) flushChain(stale[i]);
+            if (S.chains.size === 0) {
+                clearInterval(S.chainFlushTimer);
+                S.chainFlushTimer = null;
+            }
+        }, 5000);
+    }
+
+    function ingestDecode(d) {
+        var text = (d.text || '').trim();
+        if (!text) return;
+        var bits = (d.type | 0);
+        var isFirst = (bits & JS8_BIT_FIRST) !== 0;
+        var isLast  = (bits & JS8_BIT_LAST)  !== 0;
+        // Bucket frequencies into 50 Hz bins so small dt jitter between
+        // frames doesn't pop the chain.
+        var key = Math.round((d.freq || 0) / 50);
+
+        var parsed = parseFrom(text);
+        var now = Date.now();
+        var chain = S.chains.get(key);
+
+        if (isFirst || !chain) {
+            // If a chain was already open at this frequency, flush it as
+            // its own entry — the sender restarted before sending Last.
+            if (chain) flushChain(key);
+            chain = {
+                t:       utcStamp(),
+                from:    parsed.from,
+                parts:   [parsed.msg],
+                snr:     d.snr,
+                freq:    d.freq,
+                lastUtc: now,
+            };
+            S.chains.set(key, chain);
+        } else {
+            // Continuation frame. Inherit the chain's sender; this frame's
+            // payload may or may not have the "FROM: ..." preamble, so use
+            // its full text if no sender prefix was found, else use the
+            // post-prefix message.
+            chain.parts.push(parsed.from ? parsed.msg : text);
+            chain.lastUtc = now;
+            chain.snr     = d.snr;
+            chain.freq    = d.freq;
+        }
+
+        if (isLast || (isFirst && (bits & 4) /*JS8CallData on single frame*/)) {
+            // Single-frame message has First+Last set (or First+Data),
+            // multi-frame messages close on Last.
+            flushChain(key);
+        } else {
+            scheduleChainFlushTimer();
+        }
+    }
+
+    // ─── TX pipeline ──────────────────────────────────────────────────
+    function pack(text) {
+        var myCall = getMyCall();
+        if (!myCall) { alert('Set your callsign first (gear icon).'); return null; }
+        var myGrid = getMyGridLocal();
+        var dx = (S.dxCall || '').trim();
+        var sel = dx && dx !== '@ALLCALL' ? dx : '';
+        return js8.pack(myCall, myGrid, sel, text, S.submode);
+    }
+
+    function enqueueTx(text, label) {
+        var frames = pack(text);
+        if (!frames || frames.length === 0) {
+            console.warn('[JS8] pack returned no frames for "' + text + '"');
+            return;
+        }
+        for (var i = 0; i < frames.length; i++) S.txQueue.push(frames[i]);
+        S.feed.unshift({
+            t: utcStamp(),
+            from: getMyCall(),
+            msg: text + (label ? '  (' + label + ')' : ''),
+            fromMe: true
+        });
+        renderFeed();
+        console.log('[JS8 TX] queued ' + frames.length + ' frame(s): "' + text + '"');
+    }
+
+    function fireNextTxFrame() {
+        if (S.txQueue.length === 0) return;
+        // Drain the whole queue into one continuous audio buffer so the
+        // frames go out in consecutive slots (back-to-back), not every
+        // other slot. The official JS8Call client behaves this way; JS8
+        // has no odd/even alternation like FT8.
+        var buffers = [];
+        while (S.txQueue.length > 0) {
+            var f = S.txQueue.shift();
+            var tones = js8.encode(f.type, f.frame, S.submode);
+            if (!tones) { console.error('[JS8 TX] encode failed for', f); continue; }
+            buffers.push(synthesize(tones, { submode: S.submode, baseHz: S.baseHz }));
+        }
+        if (buffers.length === 0) return;
+        var total = buffers.reduce(function (s, b) { return s + b.length; }, 0);
+        var combined = new Float32Array(total);
+        var off = 0;
+        for (var i = 0; i < buffers.length; ++i) {
+            combined.set(buffers[i], off);
+            off += buffers[i].length;
+        }
+        console.log('[JS8 TX] firing ' + buffers.length + ' frame(s) = '
+            + (total / 12000).toFixed(1) + 's of audio');
+        S.txBusy = true;
+        setStatus('TX', 'tx');
+        if (typeof digiTxActive !== 'undefined') digiTxActive = true;
+        if (typeof send === 'function') send({ cmd: 'enableMic', value: true });
+        streamDigiAudio(
+            combined,
+            function () {
+                S.txBusy = false;
+                if (typeof digiTxActive !== 'undefined') digiTxActive = false;
+                send({ cmd: 'setPTT', value: false });
+                setStatus(S.rxEnabled ? 'RX' : 'IDLE', S.rxEnabled ? 'rx' : '');
+            },
+            function () { send({ cmd: 'setPTT', value: true }); }
+        );
+    }
+
+    // ─── Rendering ────────────────────────────────────────────────────
+    function renderFeed() {
+        var el = document.getElementById('js8Feed');
+        if (!el) return;
+        var html = '';
+        for (var i = 0; i < S.feed.length; i++) {
+            var f = S.feed[i];
+            html += '<div class="js8-feed-row' + (f.fromMe ? ' from-me' : '') + '">';
+            html += '<span class="ts">' + f.t + '</span>';
+            if (f.from) {
+                html += '<span class="from" data-call="' + escapeHtml(f.from) + '">'
+                     +  escapeHtml(f.from) + '</span><span class="arrow">›</span>';
+            }
+            html += '<span class="msg">' + escapeHtml(f.msg) + '</span>';
+            if (typeof f.snr === 'number') html += '<span class="snr">' + f.snr + 'dB</span>';
+            html += '</div>';
+        }
+        el.innerHTML = html;
+    }
+
+    function renderStations() {
+        var el = document.getElementById('js8Stations');
+        if (!el) return;
+        var arr = Array.from(S.stations.entries());
+        arr.sort(function (a, b) { return (b[1].lastUtc || 0) - (a[1].lastUtc || 0); });
+        var html = '';
+        for (var i = 0; i < arr.length && i < 50; i++) {
+            var call = arr[i][0], s = arr[i][1];
+            var sel = call === S.dxCall ? ' selected' : '';
+            html += '<div class="js8-station' + sel + '" data-call="' + escapeHtml(call) + '">';
+            html += '<span class="js8-station-call">' + escapeHtml(call) + '</span>';
+            html += '<span class="js8-station-meta">' + (typeof s.snr === 'number' ? s.snr + 'dB' : '') + '</span>';
+            html += '</div>';
+        }
+        el.innerHTML = html;
+    }
+
+    // ─── Open / close ─────────────────────────────────────────────────
+    function open() {
+        if (S.visible) return;
+        S.visible = true;
+        document.getElementById('js8Bar').classList.remove('hidden');
+        document.body.classList.add('js8-open');
+        if (typeof closeOtherModes === 'function') closeOtherModes('js8');
+        if (typeof currentMode !== 'undefined' && currentMode !== 'USB'
+            && typeof setMode === 'function') setMode('USB');
+        if (typeof initDigiTxCtx === 'function') initDigiTxCtx();
+        if (S.decoder) S.decoder.free();
+        S.decoder = js8.newDecoder(0);
+        resetRxBuffer();
+        S.rxEnabled = true;
+        S.slotIndex = -1;
+        for (var i = 0; i < RX_MODES.length; ++i) S.lastSlot[RX_MODES[i]] = -1;
+        S.chains.clear();
+        updateRxToggle();
+        if (S.timer) clearInterval(S.timer);
+        S.timer = setInterval(tickTimer, 100);
+        setStatus('RX', 'rx');
+        renderFeed();
+        renderStations();
+    }
+
+    function close() {
+        if (!S.visible) return;
+        S.visible = false;
+        document.getElementById('js8Bar').classList.add('hidden');
+        document.body.classList.remove('js8-open');
+        if (S.timer) { clearInterval(S.timer); S.timer = null; }
+        if (S.chainFlushTimer) {
+            clearInterval(S.chainFlushTimer); S.chainFlushTimer = null;
+        }
+        if (S.decoder) { S.decoder.free(); S.decoder = null; }
+        S.rxEnabled = false;
+        if (S.txBusy) { send({ cmd: 'setPTT', value: false }); S.txBusy = false; }
+        S.txQueue.length = 0;
+        S.chains.clear();
+    }
+
+    function updateRxToggle() {
+        var btn = document.getElementById('js8RxToggle');
+        if (!btn) return;
+        btn.classList.toggle('active', S.rxEnabled);
+        btn.textContent = S.rxEnabled ? 'RX ON' : 'RX OFF';
+    }
+
+    // ─── Event wiring ─────────────────────────────────────────────────
+    document.getElementById('js8CloseBtn').addEventListener('click', close);
+    document.getElementById('js8RxToggle').addEventListener('click', function () {
+        S.rxEnabled = !S.rxEnabled;
+        updateRxToggle();
+        if (S.rxEnabled) resetRxBuffer();
+        setStatus(S.rxEnabled ? 'RX' : 'IDLE', S.rxEnabled ? 'rx' : '');
+    });
+    document.getElementById('js8SubmodeSel').addEventListener('change', function (e) {
+        // Only affects TX speed; RX always decodes all four submodes
+        // simultaneously, so the decoder doesn't need to be rebuilt.
+        S.submode = parseInt(e.target.value, 10);
+        S.slotIndex = -1;
+    });
+    document.getElementById('js8DxCall').addEventListener('input', function (e) {
+        S.dxCall = e.target.value.toUpperCase().trim() || '@ALLCALL';
+        renderStations();
+    });
+    document.getElementById('js8Compose').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { document.getElementById('js8SendBtn').click(); }
+    });
+    document.getElementById('js8SendBtn').addEventListener('click', function () {
+        var input = document.getElementById('js8Compose');
+        // JSC dictionary is uppercase-only; lower-case text would hand
+        // buildMessageFrames a string nothing can consume, and the upstream
+        // loop spins forever. Same convention FT8/FT4 follow on TX.
+        var text = input.value.trim().toUpperCase();
+        if (!text) return;
+        enqueueTx(text);
+        input.value = '';
+    });
+    document.getElementById('js8CqBtn').addEventListener('click', function () {
+        var myCall = getMyCall(); var myGrid = getMyGridLocal();
+        if (!myCall) { alert('Set your callsign first.'); return; }
+        enqueueTx('CQ ' + myCall + (myGrid ? ' ' + myGrid : ''), 'CQ');
+    });
+    document.getElementById('js8HbBtn').addEventListener('click', function () {
+        var myCall = getMyCall();
+        if (!myCall) { alert('Set your callsign first.'); return; }
+        // JS8Call's "heartbeat" — short broadcast announcing we're listening.
+        // Server-side buildMessageFrames will pick the right frame type.
+        enqueueTx('@HB HEARTBEAT', 'HB');
+    });
+    document.getElementById('js8ClearFeedBtn').addEventListener('click', function () {
+        S.feed = []; renderFeed();
+    });
+    document.getElementById('js8SettingsBtn').addEventListener('click', function () {
+        document.getElementById('js8SettingMycall').value = getMyCall();
+        document.getElementById('js8SettingMygrid').value = getMyGridLocal();
+        document.getElementById('js8SettingBaseHz').value = S.baseHz;
+        document.getElementById('js8SettingSubmode').value = S.submode;
+        document.getElementById('js8SettingsModal').classList.remove('hidden');
+    });
+    document.getElementById('js8SettingsCloseBtn').addEventListener('click', function () {
+        var newCall = (document.getElementById('js8SettingMycall').value || '').toUpperCase();
+        if (newCall && window.App && window.App.callsign) window.App.callsign.set(newCall);
+        var newGrid = (document.getElementById('js8SettingMygrid').value || '').toUpperCase();
+        var gridEl = document.getElementById('digiGrid');
+        if (newGrid && gridEl) gridEl.value = newGrid;
+        S.baseHz = parseInt(document.getElementById('js8SettingBaseHz').value, 10) || 1500;
+        S.submode = parseInt(document.getElementById('js8SettingSubmode').value, 10) || 0;
+        document.getElementById('js8SubmodeSel').value = S.submode;
+        document.getElementById('js8SettingsModal').classList.add('hidden');
+    });
+    document.getElementById('js8Stations').addEventListener('click', function (e) {
+        var el = e.target.closest('.js8-station');
+        if (!el) return;
+        S.dxCall = el.dataset.call;
+        document.getElementById('js8DxCall').value = S.dxCall;
+        renderStations();
+    });
+    document.getElementById('js8Feed').addEventListener('click', function (e) {
+        var el = e.target.closest('.from');
+        if (!el) return;
+        var call = el.dataset.call;
+        if (!call || call.charAt(0) === '@') return;
+        S.dxCall = call;
+        document.getElementById('js8DxCall').value = call;
+        renderStations();
+    });
+
+    window.toggleJs8Bar       = function () { if (S.visible) close(); else open(); };
+    window.js8MessengerVisible = function () { return S.visible; };
+    window.js8Ready            = Promise.resolve(js8);
+
+    // Debug entry kept for devtools / corpus tests
+    window.txJs8 = function (msg, opts) {
+        opts = Object.assign({ frameType: 0, baseHz: 1500, submode: 0 }, opts || {});
         if (typeof msg !== 'string' || msg.length !== 12) {
             console.error('[JS8 TX] message must be exactly 12 chars from "0-9A-Za-z-+"');
             return;
         }
-        if (typeof streamDigiAudio !== 'function') {
-            console.error('[JS8 TX] streamDigiAudio not in scope — is the SPA fully loaded?');
-            return;
-        }
-        const tones = js8.encode(opts.frameType, msg, opts.submode);
-        if (!tones) { console.error('[JS8 TX] encode failed for "' + msg + '"'); return; }
-        const samples12k = synthesize(tones, opts);
-        console.log('[JS8 TX] encoding "' + msg + '" → '
-                    + samples12k.length + ' samples @12kHz, base=' + opts.baseHz + ' Hz');
-
-        // Reuse the existing FT8 TX plumbing: it knows how to upsample,
-        // chunk into 6-byte-header binary WS frames, and trigger PTT.
+        var tones = js8.encode(opts.frameType, msg, opts.submode);
+        if (!tones) { console.error('[JS8 TX] encode failed'); return; }
+        var samples = synthesize(tones, opts);
         if (typeof digiTxActive !== 'undefined') digiTxActive = true;
-        if (typeof send === 'function') send({ cmd: 'enableMic', value: true });
-        streamDigiAudio(samples12k,
-            /* onDone */ function() {
-                if (typeof digiTxActive !== 'undefined') digiTxActive = false;
-                send({ cmd: 'setPTT', value: false });
-                console.log('[JS8 TX] complete (PTT off)');
-            },
-            /* onFirstChunk */ function() {
-                send({ cmd: 'setPTT', value: true });
-                console.log('[JS8 TX] PTT on');
-            }
-        );
+        send({ cmd: 'enableMic', value: true });
+        streamDigiAudio(samples,
+            function () { if (typeof digiTxActive !== 'undefined') digiTxActive = false;
+                          send({ cmd: 'setPTT', value: false }); },
+            function () { send({ cmd: 'setPTT', value: true }); });
     };
-    // Browsers gate AudioContext creation behind user gestures, so the
-    // existing digiTxCtx is initialized inside FT8 panel button handlers.
-    // For the JS8 path during P2 (no DIGI panel UI yet), wire a one-time
-    // first-click listener that calls initDigiTxCtx — that way ANY click
-    // anywhere on the page primes the audio context, and a subsequent
-    // txJs8() from devtools or test harness has a usable digiTxCtx.
-    window.addEventListener('click', function once() {
-        if (typeof initDigiTxCtx === 'function') {
-            initDigiTxCtx();
-            console.log('[JS8] audio context primed via first click');
-            window.removeEventListener('click', once);
-        }
-    });
 
-    console.log('[JS8] ready — click anywhere to prime audio, then window.txJs8("HELLOWK1FMab")');
+    console.log('[JS8] messenger panel ready');
 })();
 </script>
 <script src="cw-decoder-stft.js"></script>

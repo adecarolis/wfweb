@@ -376,13 +376,19 @@ void virtualRig::stop()
 
 void virtualRig::emitIdleRx()
 {
-    if (server == nullptr || ptt) return;
+    if (server == nullptr) return;
     // One 20 ms chunk of LPCM mono @ 48 kHz = 960 samples * 2 bytes = 1920 B.
     // Matches the codec negotiated by the client (rx sample rate 48000, codec
     // 4 = LPCM 16-bit uncompressed). Always emit exactly this size on every
     // tick — pulling from the real-audio buffer first, padding with silence
     // at the tail if short. Strict cadence + size keeps the client's jitter
     // buffer happy and prevents interleaving with silence mid-speech.
+    //
+    // Critical: keep emitting even when PTT is on. A real radio reports its
+    // own modulation back as RX while transmitting; wfweb's icomUdpAudio
+    // watchdog kills the TX audio handler after 30 s of no-RX, so going
+    // silent during a long TX (e.g. 45 s for a 3-frame JS8 message) causes
+    // the third frame's audio to vanish even though PTT stays asserted.
     static const int bytes = 48 * 20 * 2;
     QByteArray data(bytes, '\0');
     qint16 peak = 0;

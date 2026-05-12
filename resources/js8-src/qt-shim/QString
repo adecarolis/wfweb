@@ -330,6 +330,7 @@ public:
     // Qt::SplitBehavior overload — only the SkipEmptyParts case is used
     enum SplitBehavior { KeepEmptyParts = 0, SkipEmptyParts = 1 };
     QStringList split(QChar sep, SplitBehavior b) const;
+    QStringList split(const QString& sep, SplitBehavior b) const;
 
     // arg: Qt-style format-by-replacement. Each call replaces the lowest %N.
     // Supports printf-style formatting via fieldWidth/base/fillChar overload.
@@ -359,8 +360,11 @@ public:
 
     // Conversion / iteration
     const std::string& toStdString() const { return s_; }
-    const char* toLatin1() const { return s_.c_str(); }
-    const char* toUtf8()   const { return s_.c_str(); }
+    // Real Qt: toLatin1() returns QByteArray. We return one so callers can
+    // do both implicit `const char*` consumption via .data()/.constData()
+    // and chained `.data()` (e.g. JSC::lookup uses `.toLatin1().data()`).
+    QByteArray  toLatin1() const { return QByteArray(s_); }
+    QByteArray  toUtf8()   const { return QByteArray(s_); }
 
 private:
     QString argImpl(const QString& replacement) const {

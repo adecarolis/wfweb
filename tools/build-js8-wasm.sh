@@ -79,15 +79,19 @@ emcc -std=c++20 -O3 -fno-rtti \
     "$SRC/JS8_Mode/DecodedText.cpp" \
     "$SRC/JS8_Mode/FrequencyTracker.cpp" \
     "$SRC/JS8_Main/Varicode.cpp" \
+    "$SRC/JS8_JSC/JSC.cpp" \
+    "$SRC/JS8_JSC/JSC_list.cpp" \
+    "$SRC/JS8_JSC/JSC_map.cpp" \
     "$SRC/api/js8_wasm_api.cpp" \
     "$FFTW_CACHE/libfftw3f.a" \
     -lm \
     -s WASM=1 -s MODULARIZE=1 -s EXPORT_ES6=1 \
     -s EXPORT_NAME=createJS8 \
     -s EXPORTED_FUNCTIONS='[
-        "_js8_encode",
+        "_js8_encode","_js8_pack",
         "_js8_decoder_new","_js8_decoder_free",
-        "_js8_decoder_push","_js8_decoder_run","_js8_decoder_pop",
+        "_js8_decoder_push","_js8_decoder_run","_js8_decoder_run_modes",
+        "_js8_decoder_pop",
         "_js8_free_string","_malloc","_free"]' \
     -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","HEAPU8","HEAP32","HEAPF32"]' \
     -s ALLOW_MEMORY_GROWTH=1 \

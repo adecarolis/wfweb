@@ -77,6 +77,31 @@ Per PLAN.md — these belong to later phases:
   Free-text frames will decode as empty strings until JSC tables are
   vendored (which is a +14 MB source / +1.5–3 MB WASM step).
 
+## Tier 2 — JSC free-text dictionary (DONE, 2026-05-10)
+
+Vendored upstream's full `JS8_JSC/{JSC.cpp,JSC.h,JSC_list.cpp,JSC_map.cpp}`
+(262 144-entry English Huffman dictionary). Two surgical drops in the
+Qt includes (`<QTextStream>` from JSC.h, `<QCache>` from JSC.cpp — both
+unused); two shim additions (`QString::split(QString,SplitBehavior)`,
+`QVector::removeFirst/removeLast/removeAt`); `QString::toLatin1()` now
+returns a `QByteArray` (matches real-Qt; only callsite needed `.data()`).
+
+Build cost: WASM 1.0 MB → 5.9 MB after JSC tables, 5.9 MB → 9.1 MB
+after also exporting `js8_pack` (which transitively pulls in much more
+of Varicode through buildMessageFrames + JSC::compress). Compile time
+~75 s (most of which is parsing the 14 MB of `static const Tuple[]`
+initialisers).
+
+Roundtrip gate (`tools/test-js8-jsc-roundtrip.mjs`) — all four phrases
+pack→encode→synth→decode→decompress losslessly:
+
+```
+"HELLO"                     → "HELLO"
+"HELLO WORLD"               → "HELLO WORLD"
+"WX FB ANT IS OK"           → "WX FB ANT IS OK"
+"GOOD MORNING FROM BOSTON"  → "GOOD MORNING FROM BOSTON"
+```
+
 ## Phase 0 timing
 
 | | PLAN.md estimate | Actual |

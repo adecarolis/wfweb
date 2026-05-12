@@ -28,6 +28,10 @@ newer upstream is mostly `cp`.
 | `JS8_Main/Varicode.{cpp,h}` | same | no |
 | `JS8_Main/DriftingDateTime.h` | same | no |
 | `JS8_Include/commons.h` | same | no |
+| `JS8_JSC/JSC.h` | same | **yes** — `<QTextStream>` include dropped |
+| `JS8_JSC/JSC.cpp` | same | **yes** — `<QCache>` include dropped |
+| `JS8_JSC/JSC_list.cpp` | same | no (~7 MB, 262 144 dictionary entries) |
+| `JSC_JSC/JSC_map.cpp` | same | no (~7 MB, indexed dictionary) |
 | `vendor/CRCpp/CRC.h` | `vendor/CRCpp/CRC.h` | no |
 | `vendor/Eigen/` | `vendor/Eigen/` | no |
 
@@ -38,8 +42,8 @@ newer upstream is mostly `cp`.
 | `JS8_Mode/Decoder.{cpp,h}` | QObject wrapper for QThread orchestration. The WASM bridge does its own threading via Web Workers; the underlying decode logic lives inside `JS8.cpp`'s class (renamed `DecoderImpl` in our tree). |
 | `JS8_Mode/Modulator.{cpp,h}` | QAudio output glue. We synthesize 8-FSK from the 79-tone array in `js8.js` and feed it through wfweb's existing TX path. |
 | `JS8_Mode/Detector.{cpp,h}` | QAudio input glue, same reasoning. |
-| `JS8_Audio/`, `JS8_UI/`, `JS8_Mainwindow/`, `JS8_Network/`, `JS8_Logbook/`, `JS8_Transceiver/`, `JS8_UDP/`, `JS8_Widgets/`, `JS8_JSC/` | Application code. |
-| `JS8_JSC/JSC_list.cpp`, `JSC_map.cpp` | The 14 MB free-text Huffman dictionary (Tier 2). Out of scope for the initial port; can be added later under a flag. |
+| `JS8_Audio/`, `JS8_UI/`, `JS8_Mainwindow/`, `JS8_Network/`, `JS8_Logbook/`, `JS8_Transceiver/`, `JS8_UDP/`, `JS8_Widgets/` | Application code. |
+| `JS8_JSC/JSC_checker.{cpp,h}` | GUI spell-check (QTextEdit/QTextCursor); compress/decompress doesn't reference it. |
 | `vendor/sqlite3/` | Logbook persistence. |
 | `tools/`, `docker/`, `docs/`, `Palettes/`, `media/`, `icons/`, `artwork/` | Not codec. |
 
@@ -70,6 +74,16 @@ Decoded,DecodeFinished,Variant,Emitter}` types.
 `Q_DECLARE_LOGGING_CATEGORY(decoder_js8);` and the `qCDebug(decoder_js8) <<
 …` calls remain; the qt-shim provides no-op stand-ins for these so we keep
 upstream's diagnostic surface intact.
+
+### `JS8_JSC/JSC.h`
+
+- Dropped `#include <QTextStream>` — only the `#if 0` `loadCompressionTable`
+  overload referenced it. Replaced with a comment.
+
+### `JS8_JSC/JSC.cpp`
+
+- Dropped `#include <QCache>` — `LOOKUP_CACHE` is a `QMap`, not a `QCache`.
+  Replaced with a comment.
 
 ## How to refresh this tree against a newer upstream
 

@@ -55,6 +55,27 @@ int js8_decoder_push(js8_decoder* dec, const float* samples, int n_samples);
  * Returns the number of decoded messages added to the queue. */
 int js8_decoder_run(js8_decoder* dec);
 
+/* Decode a specific slice of buffered audio for one or more submodes.
+ * Unlike js8_decoder_run, this gives the caller full control over
+ * which modes to scan and where in the staged audio to scan them.
+ *
+ *   nsubmodes   — bitmask: Normal=1, Fast=2, Turbo=4, Slow=8.
+ *                 Use the OR of every mode whose slot just ended.
+ *   kposX/kszX  — for each enabled mode, the start sample and length
+ *                 of that mode's slot within the staged audio. kszX
+ *                 must be ≤ Mode::NMAX (slot duration × 12 000); the
+ *                 decoder asserts otherwise.
+ *
+ * Modes with their bit clear in nsubmodes are skipped entirely; their
+ * kpos/ksz arguments may be 0.
+ *
+ * Returns the number of decoded messages added to the queue. */
+int js8_decoder_run_modes(js8_decoder* dec, int nsubmodes,
+                          int kposA, int kszA,
+                          int kposB, int kszB,
+                          int kposC, int kszC,
+                          int kposE, int kszE);
+
 /* Pop one decoded-message JSON record from the queue, or return NULL
  * when the queue is empty. Caller must free the returned string with
  * js8_free_string().
@@ -67,6 +88,30 @@ char* js8_decoder_pop(js8_decoder* dec);
 
 /* Free a string previously returned by js8_decoder_pop. Safe with NULL. */
 void js8_free_string(char* s);
+
+/* ---------------- Packer (free-text + compound frames) -------------- */
+
+/* Wraps Varicode::buildMessageFrames — JS8Call's central frame
+ * factory. Takes a natural-language line plus the operator's identity
+ * and the selected addressee (or empty for non-directed messages), and
+ * returns the resulting frame sequence as a JSON array.
+ *
+ * Each element is {"frame": "<12-char raw>", "type": <FrameType>}.
+ * The 12-char raw payload is exactly what js8_encode() expects; the
+ * type is the Varicode::FrameType the receiver will see embedded in
+ * the bitstream.
+ *
+ *   mycall       — operator callsign (used for compound/directed framing)
+ *   mygrid       — 4- or 6-char locator (may be empty)
+ *   selectedCall — current QSO partner (may be empty for CQ/HB/free-text)
+ *   text         — UTF-8 input string; JSC handles the English subset
+ *   submode      — Varicode::SubmodeType ID (Normal=0..)
+ *
+ * Returns a malloc'd JSON string (free with js8_free_string), or NULL
+ * on allocation failure or empty result.
+ */
+char* js8_pack(const char* mycall, const char* mygrid,
+               const char* selectedCall, const char* text, int submode);
 
 #ifdef __cplusplus
 }

@@ -99,6 +99,13 @@ inline QStringList QString::split(QChar sep, SplitBehavior b) const {
     for (int i = 0; i < raw.size(); ++i) if (!raw[i].isEmpty()) out.append(raw[i]);
     return out;
 }
+inline QStringList QString::split(const QString& sep, SplitBehavior b) const {
+    QStringList raw = split(sep);
+    if (b == KeepEmptyParts) return raw;
+    QStringList out;
+    for (int i = 0; i < raw.size(); ++i) if (!raw[i].isEmpty()) out.append(raw[i]);
+    return out;
+}
 
 // Qt namespace shim — used by Qt::SkipEmptyParts (split behavior),
 // Qt::CaseInsensitive (string comparison flag), etc.

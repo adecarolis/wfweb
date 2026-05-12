@@ -47,6 +47,12 @@ public:
     const T* data() const { return v_.data(); }
     const T* constData() const { return v_.data(); }
 
+    void removeFirst() { if (!v_.empty()) v_.erase(v_.begin()); }
+    void removeLast()  { if (!v_.empty()) v_.pop_back(); }
+    void removeAt(int i) {
+        if (i >= 0 && i < size()) v_.erase(v_.begin() + i);
+    }
+
     QVector mid(int pos, int n = -1) const {
         QVector out;
         if (pos < 0 || pos >= size()) return out;

@@ -2307,6 +2307,19 @@ Varicode::buildMessageFrames(QString const &mycall, QString const &mygrid,
                                                         : Varicode::JS8Call});
                 line = line.mid(m);
             }
+
+            // wfweb vendor diff: watchdog. If none of the pack* helpers
+            // consumed any of `line` this iteration, we'd loop forever
+            // (e.g. lowercase free-text outside the JSC dictionary, or any
+            // input the four packers all reject). Bail instead of hanging
+            // the calling thread — the WASM bridge runs on the JS main
+            // thread and a hang freezes the entire SPA.
+            if (!useBcn && !useCmp && !useDir && !useDat) {
+                qCWarning(varicode_js8)
+                    << "buildMessageFrames: no packer matched, aborting line"
+                    << line;
+                break;
+            }
         }
 
         if (!lineFrames.isEmpty()) {

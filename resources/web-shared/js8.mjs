@@ -114,14 +114,41 @@ class JS8Module {
     constructor(M) {
         this.M = M;
         this._encode = M._js8_encode;
-        this._decoder_new  = M._js8_decoder_new;
-        this._decoder_free = M._js8_decoder_free;
-        this._decoder_push = M._js8_decoder_push;
-        this._decoder_run  = M._js8_decoder_run;
-        this._decoder_pop  = M._js8_decoder_pop;
+        this._pack   = M._js8_pack;
+        this._decoder_new        = M._js8_decoder_new;
+        this._decoder_free       = M._js8_decoder_free;
+        this._decoder_push       = M._js8_decoder_push;
+        this._decoder_run        = M._js8_decoder_run;
+        this._decoder_run_modes  = M._js8_decoder_run_modes;
+        this._decoder_pop        = M._js8_decoder_pop;
         this._free_string  = M._js8_free_string;
         this._malloc = M._malloc;
         this._free   = M._free;
+    }
+
+    // Pack a natural-language line into one or more JS8 frames via the
+    // upstream Varicode::buildMessageFrames pipeline. Each returned entry
+    // is { frame: "<12-char raw>", type: <FrameType> } ready to feed
+    // straight into encode().
+    pack(mycall, mygrid, selectedCall, text, submode = 0) {
+        const enc = (s) => {
+            const bytes = new TextEncoder().encode((s || "") + "\0");
+            const ptr = this._malloc(bytes.length);
+            this.M.HEAPU8.set(bytes, ptr);
+            return ptr;
+        };
+        const pMycall = enc(mycall);
+        const pMygrid = enc(mygrid);
+        const pSel    = enc(selectedCall);
+        const pText   = enc(text);
+        const outPtr = this._pack(pMycall, pMygrid, pSel, pText, submode);
+        this._free(pMycall); this._free(pMygrid); this._free(pSel); this._free(pText);
+        if (!outPtr) return null;
+        let end = outPtr;
+        while (this.M.HEAPU8[end] !== 0) ++end;
+        const json = new TextDecoder().decode(this.M.HEAPU8.subarray(outPtr, end));
+        this._free_string(outPtr);
+        try { return JSON.parse(json); } catch { return null; }
     }
 
     // Encode a 12-character JS8 message of the given frame type and
@@ -178,6 +205,19 @@ class JS8Decoder {
     run() {
         if (this.ptr === 0) return 0;
         return this.js8._decoder_run(this.ptr);
+    }
+
+    // Run a decode pass over caller-controlled mode windows. Use this
+    // when you know which modes' slots just ended and where in the
+    // staged audio their slot lives. nsubmodes is a bitmask
+    // (Normal=1, Fast=2, Turbo=4, Slow=8). Each pair kpos*/ksz* gives
+    // the offset and length of that mode's slot inside the staged audio.
+    // For modes whose bit isn't set, pass 0/0.
+    runModes(nsubmodes, posA, szA, posB, szB, posC, szC, posE, szE) {
+        if (this.ptr === 0) return 0;
+        return this.js8._decoder_run_modes(
+            this.ptr, nsubmodes,
+            posA, szA, posB, szB, posC, szC, posE, szE);
     }
 
     // Pop one queued decoded message (object with snr/dt/freq/text/...
