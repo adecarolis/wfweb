@@ -2008,6 +2008,12 @@ body.js8-open #bottomBar { grid-row: 5; }
     font-family: monospace; font-size: 13px;
     min-width: 22px; text-align: right; color: #fc8;
 }
+.js8-auto-tag {
+    display: inline-block; padding: 1px 6px; font-size: 10px;
+    background: #530; color: #fc8; border-radius: 2px;
+    letter-spacing: 0.5px; user-select: none;
+}
+.js8-auto-tag.off { background: #222; color: #666; }
 .js8-rx-toggle {
     background: #2a2018; color: #fc8;
     border: 1px solid #530; border-radius: 3px;
@@ -2058,7 +2064,13 @@ body.js8-open #bottomBar { grid-row: 5; }
     padding: 3px 6px; border-bottom: 1px solid #2a2018;
     word-break: break-word;
 }
-.js8-feed-row.from-me  { background: #2a1a08; }
+.js8-feed-row.from-me {
+    background: #06200a;
+    border-left: 3px solid #4a4;
+    padding-left: 3px;
+}
+.js8-feed-row.from-me .from { color: #ae8; }
+.js8-feed-row.from-me .msg  { color: #cfc; }
 .js8-feed-row .ts      { color: #a96; font-size: 11px; margin-right: 6px; }
 .js8-feed-row .from    { color: #fc8; font-weight: bold; cursor: pointer; }
 .js8-feed-row .from:hover { text-decoration: underline; }
@@ -2066,6 +2078,46 @@ body.js8-open #bottomBar { grid-row: 5; }
 .js8-feed-row .to      { color: #ec0; }
 .js8-feed-row .msg     { color: #fff; margin-left: 6px; }
 .js8-feed-row .snr     { color: #a96; font-size: 11px; margin-left: 6px; }
+
+.js8-tx-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: #444; color: #aaa;
+    font-size: 10px; font-weight: bold;
+    letter-spacing: 1px;
+    vertical-align: middle;
+}
+.js8-tx-badge.queued  { background: #443a20; color: #ec8; }
+.js8-tx-badge.tx      { background: #0a0; color: #000; }
+.js8-tx-badge.done    { background: #060; color: #cfc; }
+.js8-tx-badge.aborted { background: #800; color: #fcc; }
+.js8-tx-progress {
+    margin: 4px 0 1px 0;
+    height: 4px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.js8-tx-progress > .fill {
+    height: 100%; width: 0;
+    background: linear-gradient(90deg, #0a0, #4f4);
+    transition: width 200ms linear;
+}
+.js8-tx-progress.aborted > .fill {
+    background: linear-gradient(90deg, #800, #c44);
+}
+
+/* Make the feed selectable so users can copy decodes. The global
+ * `user-select: none` on <html> would otherwise block selection. */
+.js8-feed,
+.js8-feed-row,
+.js8-feed-row * {
+    user-select: text;
+    -webkit-user-select: text;
+}
+.js8-feed { cursor: text; }
 
 .js8-action-row {
     display: flex; align-items: center; gap: 4px;
@@ -2439,6 +2491,12 @@ body.js8-open #bottomBar { grid-row: 5; }
                     <div id="js8ProgressBar" class="js8-progress-fill"></div>
                 </div>
                 <span id="js8Clock" class="js8-clock">15</span>
+                <span class="js8-field-label" title="TX audio frequency. Auto when 'Auto Freq' is on (Settings).">TX</span>
+                <input type="number" id="js8TxFreq" class="js8-num-input"
+                       min="200" max="2800" step="10" value="1500"
+                       title="TX audio frequency in Hz">
+                <span class="js8-field-label">Hz</span>
+                <span id="js8AutoTag" class="js8-auto-tag" title="Auto-pick TX frequency">AUTO</span>
                 <div class="flex-space"></div>
                 <button id="js8RxToggle" class="js8-rx-toggle active">RX ON</button>
                 <button id="js8SettingsBtn" class="js8-icon-btn" title="Settings">&#9881;</button>
@@ -2486,10 +2544,6 @@ body.js8-open #bottomBar { grid-row: 5; }
                     <input type="text" id="js8SettingMygrid" class="js8-callsign-input" maxlength="6" placeholder="EM85" autocomplete="off">
                 </div>
                 <div class="js8-settings-field">
-                    <span class="js8-field-label">BASE Hz</span>
-                    <input type="number" id="js8SettingBaseHz" class="js8-num-input" min="200" max="2800" step="50" value="1500">
-                </div>
-                <div class="js8-settings-field">
                     <span class="js8-field-label">DEFAULT SPEED</span>
                     <select id="js8SettingSubmode" class="js8-submode-sel">
                         <option value="0">Normal · 15s</option>
@@ -2497,6 +2551,28 @@ body.js8-open #bottomBar { grid-row: 5; }
                         <option value="2">Turbo · 6s</option>
                         <option value="4">Slow · 30s</option>
                     </select>
+                </div>
+                <div class="js8-settings-field">
+                    <span class="js8-field-label" title="Auto-pick a non-colliding TX frequency. HB uses the 500–1000 Hz sub-channel; regular traffic uses 1000–2500 Hz.">AUTO FREQ</span>
+                    <input type="checkbox" id="js8SettingAutoFreq">
+                </div>
+                <div class="js8-settings-field">
+                    <span class="js8-field-label" title="Periodically broadcast a heartbeat so other JS8 stations can discover you.">HB NETWORK</span>
+                    <input type="checkbox" id="js8SettingHbNet">
+                </div>
+                <div class="js8-settings-field">
+                    <span class="js8-field-label" title="Minutes between automatic heartbeats.">HB INTERVAL</span>
+                    <input type="number" id="js8SettingHbInterval" class="js8-num-input" min="2" max="120" step="1" value="15">
+                    <span class="js8-field-label">min</span>
+                </div>
+                <div class="js8-settings-field">
+                    <span class="js8-field-label" title="Automatically reply to received heartbeats with a signal-strength report.">HB ACK</span>
+                    <input type="checkbox" id="js8SettingHbAck">
+                </div>
+                <div class="js8-settings-field">
+                    <span class="js8-field-label" title="Minimum minutes between successive ACKs to the same station, to avoid ACK storms.">HB ACK COOLDOWN</span>
+                    <input type="number" id="js8SettingHbAckCooldown" class="js8-num-input" min="0" max="60" step="1" value="2">
+                    <span class="js8-field-label">min</span>
                 </div>
                 <button id="js8SettingsCloseBtn" class="js8-modal-close">Close</button>
             </div>
@@ -5627,6 +5703,10 @@ document.addEventListener('keydown', function(e) {
         e.preventDefault();
         // Stop CW transmission first
         send({ cmd: 'stopCW' });
+        // If a digi-mode TX (FT8/JS8/FreeDV) is in flight, halt it
+        // immediately and leave overlays/panels in place. ESC pressed
+        // again with nothing TXing falls through to the overlay close.
+        if (typeof haltDigiTx === 'function' && haltDigiTx()) return;
         // Then hide overlays
         hideAllOverlays();
         closeMemoryModal();
@@ -7853,6 +7933,23 @@ function startDigiTune() {
     });
 }
 
+// haltDigiTx() — called by ESC and Halt-TX to immediately stop whichever
+// digi-mode TX (FT8/JS8/FreeDV) is currently streaming through
+// streamDigiAudio. The active stream registers itself via
+// `activeDigiTxHalt` when its pacer/rAF loop starts, and clears the slot
+// when it finishes. Returning true here lets callers know they actually
+// interrupted something (ESC uses that to decide whether to also close
+// overlays).
+var activeDigiTxHalt = null;
+function haltDigiTx() {
+    if (!activeDigiTxHalt) return false;
+    var fn = activeDigiTxHalt;
+    activeDigiTxHalt = null;
+    try { fn(); } catch (e) { console.warn('[DIGI halt]', e); }
+    return true;
+}
+window.haltDigiTx = haltDigiTx;
+
 function streamDigiAudio(samples12k, onDone, onFirstChunk) {
     console.log('[DIGI stream] start: samples12k.length=' + samples12k.length +
                 ' audioSampleRate=' + audioSampleRate +
@@ -7973,15 +8070,27 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
         var sink = txCtx.createAnalyser();
         node.connect(sink);
 
+        var finished = false;
+        function finish(aborted) {
+            if (finished) return;
+            finished = true;
+            if (activeDigiTxHalt === abortFn) activeDigiTxHalt = null;
+            try { node.disconnect(); } catch (e) {}
+            // Do NOT close txCtx — it is the shared digiTxCtx, kept alive for next TX
+            digiTxSeq = seq;
+            var dly = aborted ? 0 : 200;
+            setTimeout(function() { if (onDone) onDone(aborted); }, dly);
+        }
+        var abortFn = function() { finish(true); };
+        activeDigiTxHalt = abortFn;
+
         node.port.onmessage = function(e) {
             if (e.data === 'done') {
                 console.log('[DIGI stream] worklet done, chunksSent=' + chunksSent);
-                node.disconnect();
-                // Do NOT close txCtx — it is the shared digiTxCtx, kept alive for next TX
-                digiTxSeq = seq;
-                setTimeout(function() { if (onDone) onDone(); }, 200);
+                finish(false);
                 return;
             }
+            if (finished) return;
             sendInt16Chunk(e.data);
         };
 
@@ -8008,7 +8117,16 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
             console.warn('[DIGI] AudioWorklet unavailable, using rAF fallback:', err);
             var pos = 0;
             var startTs = null;
+            var aborted = false;
+            var rafAbort = function () { aborted = true; };
+            activeDigiTxHalt = rafAbort;
             function rafTick(ts) {
+                if (aborted) {
+                    if (activeDigiTxHalt === rafAbort) activeDigiTxHalt = null;
+                    digiTxSeq = seq;
+                    if (onDone) onDone(true);
+                    return;
+                }
                 if (startTs === null) startTs = ts;
                 var target = Math.floor((ts - startTs) / 1000 * audioSampleRate);
                 var toSend = Math.min(target - pos, out48.length - pos);
@@ -8023,7 +8141,11 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
                     pos += toSend;
                 }
                 if (pos < out48.length) { requestAnimationFrame(rafTick); }
-                else { digiTxSeq = seq; setTimeout(function() { if (onDone) onDone(); }, 200); }
+                else {
+                    if (activeDigiTxHalt === rafAbort) activeDigiTxHalt = null;
+                    digiTxSeq = seq;
+                    setTimeout(function() { if (onDone) onDone(false); }, 200);
+                }
             }
             requestAnimationFrame(rafTick);
         });
@@ -8769,7 +8891,12 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         visible: false,
         rxEnabled: false,
         submode: 0,             // TX submode (RX always tries all 4)
-        baseHz: 1500,
+        baseHz: 1500,           // current TX audio freq (Hz), auto-picked or manual
+        autoFreq: true,         // recompute baseHz at every enqueueTx
+        hbNet: true,            // auto-broadcast HB every hbInterval minutes
+        hbInterval: 15,         // minutes between auto HBs
+        hbAck: true,            // auto-reply to received HBs with SNR
+        hbAckCooldown: 2,       // minutes — per-station cooldown between ACKs
         decoder: null,
         rxBuffer: null,
         rxWritePos: 0,
@@ -8785,7 +8912,44 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         dxCall: '@ALLCALL',
         txBusy: false,
         txQueue: [],
+        lastHbTx: 0,              // wall-clock ms of most recent auto HB
+        lastAckTo: new Map(),     // call → ms timestamp of last ACK we sent
+        txIdCounter: 0,           // monotonic id for matching TX feed rows to queued frames
+        activeTx: null,           // { entries: [{entry,count}], totalFrames, startMs, slotMs, timer }
     };
+
+    // ─── Persistent settings (localStorage) ───────────────────────────
+    // Each setting reads from localStorage on open() and writes when the
+    // settings modal is closed. Booleans are stored as "0"/"1".
+    function loadSettings() {
+        try {
+            var ls = window.localStorage;
+            if (ls.getItem('js8AutoFreq')    != null) S.autoFreq    = ls.getItem('js8AutoFreq') === '1';
+            if (ls.getItem('js8HbNet')       != null) S.hbNet       = ls.getItem('js8HbNet') === '1';
+            if (ls.getItem('js8HbAck')       != null) S.hbAck       = ls.getItem('js8HbAck') === '1';
+            var iv = parseInt(ls.getItem('js8HbInterval'), 10);
+            if (!isNaN(iv) && iv > 0)                 S.hbInterval  = iv;
+            var ac = parseInt(ls.getItem('js8HbAckCooldown'), 10);
+            if (!isNaN(ac) && ac > 0)                 S.hbAckCooldown = ac;
+            var sm = parseInt(ls.getItem('js8Submode'), 10);
+            if (!isNaN(sm))                           S.submode     = sm;
+            var bh = parseInt(ls.getItem('js8BaseHz'), 10);
+            if (!isNaN(bh))                           S.baseHz      = bh;
+        } catch (e) {}
+    }
+    function saveSettings() {
+        try {
+            var ls = window.localStorage;
+            ls.setItem('js8AutoFreq',   S.autoFreq ? '1' : '0');
+            ls.setItem('js8HbNet',      S.hbNet    ? '1' : '0');
+            ls.setItem('js8HbAck',      S.hbAck    ? '1' : '0');
+            ls.setItem('js8HbInterval', String(S.hbInterval));
+            ls.setItem('js8HbAckCooldown', String(S.hbAckCooldown));
+            ls.setItem('js8Submode',    String(S.submode));
+            ls.setItem('js8BaseHz',     String(S.baseHz));
+        } catch (e) {}
+    }
+    loadSettings();
 
     // ─── Helpers ──────────────────────────────────────────────────────
     function getMyCall() {
@@ -8915,6 +9079,13 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             S.slotIndex = info.slotIndex;
             if (S.txQueue.length > 0 && !S.txBusy) {
                 fireNextTxFrame();
+            } else {
+                // Slot boundary is also when the HB scheduler considers
+                // queueing a new auto-beacon. We only queue at slot
+                // boundaries because that's when fireNextTxFrame will
+                // pick it up — queueing mid-slot would idle for almost
+                // a whole period.
+                maybeFireHb();
             }
         }
 
@@ -8996,17 +9167,29 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         return m ? { from: m[1], msg: m[2].trim() } : { from: '', msg: text };
     }
 
+    // Record/refresh a station's last-heard record. Called from
+    // ingestDecode the moment a frame arrives — earlier than
+    // emitFeedEntry, because the HB-ACK decision needs to know the
+    // sender's freq when it picks its own TX freq. Without this, two
+    // independent stations replying to the same HB would both see an
+    // empty station db and pick the same default freq (collision).
+    function noteStation(from, freq, snr) {
+        if (!from || from.charAt(0) === '@') return;
+        var s = S.stations.get(from) || { count: 0 };
+        s.lastUtc = Date.now();
+        if (typeof snr === 'number')  s.snr  = snr;
+        if (typeof freq === 'number') s.freq = freq;
+        s.count++;
+        S.stations.set(from, s);
+    }
+
     function emitFeedEntry(entry) {
         S.feed.unshift(entry);
         if (S.feed.length > S.feedMax) S.feed.length = S.feedMax;
-        if (entry.from && entry.from.charAt(0) !== '@') {
-            var s = S.stations.get(entry.from) || { count: 0 };
-            s.lastUtc = Date.now();
-            if (typeof entry.snr === 'number') s.snr = entry.snr;
-            if (typeof entry.freq === 'number') s.freq = entry.freq;
-            s.count++;
-            S.stations.set(entry.from, s);
-        }
+        // Station record was already updated up front in ingestDecode;
+        // we still call here for direct emitFeedEntry callers (none today,
+        // but cheap insurance).
+        noteStation(entry.from, entry.freq, entry.snr);
         renderFeed();
         renderStations();
     }
@@ -9045,6 +9228,13 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         var bits = (d.type | 0);
         var isFirst = (bits & JS8_BIT_FIRST) !== 0;
         var isLast  = (bits & JS8_BIT_LAST)  !== 0;
+        // Record the sender BEFORE the ACK decision so pickAutoFreq sees
+        // their freq as occupied and doesn't land on top of them. The
+        // ACK itself is enqueued AFTER the HB feed entry is emitted (see
+        // the end of this function) so the resulting feed order — newer
+        // on top — shows the ACK above the HB it's replying to.
+        var parsedHead = parseFrom(text);
+        noteStation(parsedHead.from, d.freq, d.snr);
         // Bucket frequencies into 50 Hz bins so small dt jitter between
         // frames doesn't pop the chain.
         var key = Math.round((d.freq || 0) / 50);
@@ -9098,6 +9288,50 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         } else {
             scheduleChainFlushTimer();
         }
+
+        // ACK *after* the HB has been pushed to the feed so the newer
+        // ACK lands above the HB in the newest-on-top view.
+        if (d.frameType === 0) {
+            maybeAckHb(d, parsedHead.from);
+        }
+    }
+
+    // ─── HB network scheduler + ACK responder ─────────────────────────
+    // Auto-broadcast a heartbeat every hbInterval minutes when HB
+    // Network is on. Quiet during TX, no callsign means nothing to send.
+    function maybeFireHb() {
+        if (!S.hbNet || !S.rxEnabled || S.txBusy) return;
+        if (S.txQueue.length > 0) return;
+        var myCall = getMyCall();
+        if (!myCall) return;
+        var now = Date.now();
+        var intervalMs = (S.hbInterval || 15) * 60 * 1000;
+        if (now - (S.lastHbTx || 0) < intervalMs) return;
+        S.lastHbTx = now;
+        var grid = getMyGridLocal();
+        var text = grid ? ('HB ' + grid) : 'HB';
+        enqueueTx(text, 'HB auto', { hb: true });
+    }
+
+    // Called from ingestDecode when a Heartbeat frame arrives. If HB
+    // ACK is enabled and we haven't recently ACKed this station, queue
+    // a directed SNR report. Cooldown prevents ACK storms on a busy
+    // band — once per station per 10 minutes is plenty.
+    function maybeAckHb(d, fromCall) {
+        if (!S.hbAck) return;
+        if (!fromCall || fromCall.charAt(0) === '@') return;
+        if (fromCall === getMyCall()) return;
+        if (typeof d.snr !== 'number') return;
+        var now = Date.now();
+        var prev = S.lastAckTo.get(fromCall) || 0;
+        var cooldownMs = (S.hbAckCooldown || 2) * 60 * 1000;
+        if (now - prev < cooldownMs) return;
+        S.lastAckTo.set(fromCall, now);
+        // Format SNR per JS8Call convention: signed dB clipped to ±31
+        // (the codec only carries 5 bits + sign).
+        var snr = Math.max(-31, Math.min(31, Math.round(d.snr)));
+        var snrStr = (snr >= 0 ? '+' : '') + snr;
+        enqueueTx(fromCall + ' SNR ' + snrStr, 'HB ACK', { hb: true });
     }
 
     // ─── TX pipeline ──────────────────────────────────────────────────
@@ -9110,21 +9344,118 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         return js8.pack(myCall, myGrid, sel, text, S.submode);
     }
 
-    function enqueueTx(text, label) {
+    // Pick an audio TX frequency that avoids stations we've recently
+    // decoded. HB traffic stays in the 500–1000 Hz sub-channel per JS8Call
+    // convention; everything else goes in the main 1000–2500 Hz region.
+    // We scan the chosen band in 50 Hz steps and pick the frequency
+    // furthest from any station heard in the last 5 minutes. If no one
+    // has been heard, fall back to the middle of the band — that's the
+    // "what a reasonable user would pick" default.
+    // crypto-strong random uint32. Math.random is process-local in V8,
+    // but using crypto removes any lingering doubt about correlated PRNG
+    // state between simultaneously-launched browser instances.
+    function randU32() {
+        if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+            var a = new Uint32Array(1);
+            crypto.getRandomValues(a);
+            return a[0];
+        }
+        return (Math.random() * 0x100000000) >>> 0;
+    }
+
+    function pickAutoFreq(isHb) {
+        var lo = isHb ? 500  : 1000;
+        var hi = isHb ? 1000 : 2500;
+        var margin = 50;          // keep tones away from the band edge
+        var step = 25;            // snap to 25 Hz grid
+        var minSep = 80;          // ≥ 80 Hz from any heard station
+        var now = Date.now();
+        var occupied = [];
+        S.stations.forEach(function (s) {
+            if (typeof s.freq === 'number' && s.freq >= 200 && s.freq <= 2800 &&
+                (now - (s.lastUtc || 0)) < 5 * 60 * 1000) {
+                occupied.push(s.freq);
+            }
+        });
+        function dist(f) {
+            var d = Infinity;
+            for (var i = 0; i < occupied.length; ++i) {
+                var dd = Math.abs(f - occupied[i]);
+                if (dd < d) d = dd;
+            }
+            return d;
+        }
+        var loCand = lo + margin;
+        var hiCand = hi - margin;
+        var rangeSteps = Math.floor((hiCand - loCand) / step) + 1;
+        // Try random picks until one is clear. With ~17 candidate slots
+        // on the HB band, 16 attempts and minSep=80 cover any band
+        // density up to fully crowded.
+        for (var t = 0; t < 32; ++t) {
+            var k = randU32() % rangeSteps;
+            var f = loCand + k * step;
+            if (dist(f) >= minSep) return f;
+        }
+        // Crowded band — fall back to the freq furthest from any heard
+        // station so we at least pick the least-bad slot.
+        var best = (lo + hi) / 2, bestD = -1;
+        for (var f2 = loCand; f2 <= hiCand; f2 += step) {
+            var d2 = dist(f2);
+            if (d2 > bestD) { bestD = d2; best = f2; }
+        }
+        return best;
+    }
+
+    function setTxFreq(hz) {
+        S.baseHz = hz;
+        var el = document.getElementById('js8TxFreq');
+        if (el && document.activeElement !== el) el.value = hz;
+    }
+
+    function enqueueTx(text, label, opts) {
+        opts = opts || {};
         var frames = pack(text);
         if (!frames || frames.length === 0) {
             console.warn('[JS8] pack returned no frames for "' + text + '"');
-            return;
+            return null;
         }
-        for (var i = 0; i < frames.length; i++) S.txQueue.push(frames[i]);
-        S.feed.unshift({
+        // Decide the audio freq for THIS transmission. The user can
+        // override by editing the TX freq box (Auto Freq turned off, or
+        // we pick auto then they type a custom value before the slot
+        // fires). Each frame carries its own baseHz so back-to-back
+        // mixed traffic could in theory hop, though the current code
+        // drains them all at once.
+        var hz = S.autoFreq ? pickAutoFreq(!!opts.hb) : S.baseHz;
+        setTxFreq(hz);
+        var entryId = 'tx-' + (++S.txIdCounter);
+        for (var i = 0; i < frames.length; i++) {
+            frames[i].baseHz = hz;
+            frames[i].entryId = entryId;
+            S.txQueue.push(frames[i]);
+        }
+        var entry = {
+            id: entryId,
             t: utcStamp(),
             from: getMyCall(),
             msg: text + (label ? '  (' + label + ')' : ''),
-            fromMe: true
-        });
+            fromMe: true,
+            framesTotal: frames.length,
+            framesSent: 0,
+            txStatus: 'queued',
+        };
+        S.feed.unshift(entry);
+        if (S.feed.length > S.feedMax) S.feed.length = S.feedMax;
         renderFeed();
-        console.log('[JS8 TX] queued ' + frames.length + ' frame(s): "' + text + '"');
+        console.log('[JS8 TX] queued ' + frames.length + ' frame(s) @ '
+            + hz + 'Hz: "' + text + '"');
+        return entry;
+    }
+
+    function findFeedEntryById(id) {
+        for (var i = 0; i < S.feed.length; i++) {
+            if (S.feed[i].id === id) return S.feed[i];
+        }
+        return null;
     }
 
     function fireNextTxFrame() {
@@ -9133,47 +9464,131 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // frames go out in consecutive slots (back-to-back), not every
         // other slot. The official JS8Call client behaves this way; JS8
         // has no odd/even alternation like FT8.
+        var taken = S.txQueue.splice(0, S.txQueue.length);
+        // Bin frames by feed-entry, preserving queue order, so the
+        // progress timer can advance one entry's "frames sent" counter at
+        // a time as the audio plays out.
+        var entryGroups = [];
+        var byId = new Map();
+        for (var gi = 0; gi < taken.length; gi++) {
+            var fid = taken[gi].entryId;
+            var ent = byId.get(fid);
+            if (!ent) {
+                var fe = findFeedEntryById(fid);
+                if (!fe) continue;
+                ent = { entry: fe, count: 0 };
+                entryGroups.push(ent);
+                byId.set(fid, ent);
+            }
+            ent.count++;
+        }
         var buffers = [];
-        while (S.txQueue.length > 0) {
-            var f = S.txQueue.shift();
+        for (var bi = 0; bi < taken.length; bi++) {
+            var f = taken[bi];
             var tones = js8.encode(f.type, f.frame, S.submode);
             if (!tones) { console.error('[JS8 TX] encode failed for', f); continue; }
-            buffers.push(synthesize(tones, { submode: S.submode, baseHz: S.baseHz }));
+            var hz = (typeof f.baseHz === 'number') ? f.baseHz : S.baseHz;
+            buffers.push(synthesize(tones, { submode: S.submode, baseHz: hz }));
         }
         if (buffers.length === 0) return;
         var total = buffers.reduce(function (s, b) { return s + b.length; }, 0);
         var combined = new Float32Array(total);
         var off = 0;
-        for (var i = 0; i < buffers.length; ++i) {
-            combined.set(buffers[i], off);
-            off += buffers[i].length;
+        for (var ci = 0; ci < buffers.length; ++ci) {
+            combined.set(buffers[ci], off);
+            off += buffers[ci].length;
         }
-        console.log('[JS8 TX] firing ' + buffers.length + ' frame(s) = '
+        var totalFrames = buffers.length;
+        var slotMs = getSubmode(S.submode).slotSeconds * 1000;
+        console.log('[JS8 TX] firing ' + totalFrames + ' frame(s) = '
             + (total / 12000).toFixed(1) + 's of audio');
         S.txBusy = true;
         setStatus('TX', 'tx');
         if (typeof digiTxActive !== 'undefined') digiTxActive = true;
         if (typeof send === 'function') send({ cmd: 'enableMic', value: true });
+
+        var startMs = 0;
+        function tickProgress() {
+            if (!startMs) return;
+            var elapsed = Date.now() - startMs;
+            var done = Math.min(totalFrames, Math.floor(elapsed / slotMs));
+            var rem = done;
+            for (var i = 0; i < entryGroups.length; i++) {
+                var g = entryGroups[i];
+                var sent = Math.min(rem, g.count);
+                g.entry.framesSent = sent;
+                if (sent >= g.count)      g.entry.txStatus = 'done';
+                else if (sent > 0)        g.entry.txStatus = 'tx';
+                else if (rem === 0 && firstUnfinished(entryGroups) === i)
+                                          g.entry.txStatus = 'tx';
+                else                      g.entry.txStatus = 'queued';
+                rem -= sent;
+            }
+            updateTxRowsDom();
+        }
+        function firstUnfinished(arr) {
+            for (var i = 0; i < arr.length; i++)
+                if (arr[i].entry.framesSent < arr[i].count) return i;
+            return -1;
+        }
+
+        S.activeTx = { entries: entryGroups, totalFrames: totalFrames,
+                       slotMs: slotMs, timer: null };
+
         streamDigiAudio(
             combined,
-            function () {
+            function (aborted) {
+                if (S.activeTx && S.activeTx.timer) {
+                    clearInterval(S.activeTx.timer);
+                }
+                // Settle final state on every entry. Aborted entries keep
+                // their last framesSent count (so the bar reflects what
+                // actually went out), but get the red 'aborted' badge if
+                // they had unsent frames remaining.
+                for (var i = 0; i < entryGroups.length; i++) {
+                    var g = entryGroups[i];
+                    if (aborted) {
+                        if (g.entry.framesSent < g.count)
+                            g.entry.txStatus = 'aborted';
+                        else
+                            g.entry.txStatus = 'done';
+                    } else {
+                        g.entry.framesSent = g.count;
+                        g.entry.txStatus = 'done';
+                    }
+                }
+                S.activeTx = null;
                 S.txBusy = false;
                 if (typeof digiTxActive !== 'undefined') digiTxActive = false;
                 send({ cmd: 'setPTT', value: false });
                 setStatus(S.rxEnabled ? 'RX' : 'IDLE', S.rxEnabled ? 'rx' : '');
+                renderFeed();
             },
-            function () { send({ cmd: 'setPTT', value: true }); }
+            function () {
+                send({ cmd: 'setPTT', value: true });
+                startMs = Date.now();
+                if (S.activeTx) S.activeTx.timer = setInterval(tickProgress, 200);
+            }
         );
     }
 
     // ─── Rendering ────────────────────────────────────────────────────
+    function txBadgeLabel(status, sent, total) {
+        var label = status === 'queued'  ? 'QUEUED'
+                  : status === 'tx'      ? 'TX'
+                  : status === 'aborted' ? 'STOPPED'
+                  :                        'SENT';
+        return label + ' ' + (sent || 0) + '/' + total;
+    }
+
     function renderFeed() {
         var el = document.getElementById('js8Feed');
         if (!el) return;
         var html = '';
         for (var i = 0; i < S.feed.length; i++) {
             var f = S.feed[i];
-            html += '<div class="js8-feed-row' + (f.fromMe ? ' from-me' : '') + '">';
+            var rowId = f.id ? ' data-id="' + escapeHtml(f.id) + '"' : '';
+            html += '<div class="js8-feed-row' + (f.fromMe ? ' from-me' : '') + '"' + rowId + '>';
             html += '<span class="ts">' + f.t + '</span>';
             if (f.from) {
                 html += '<span class="from" data-call="' + escapeHtml(f.from) + '">'
@@ -9181,9 +9596,49 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             }
             html += '<span class="msg">' + escapeHtml(f.msg) + '</span>';
             if (typeof f.snr === 'number') html += '<span class="snr">' + f.snr + 'dB</span>';
+            if (f.fromMe && f.framesTotal) {
+                var st = f.txStatus || 'queued';
+                html += '<span class="js8-tx-badge ' + st + '" data-tx-badge>'
+                     +  txBadgeLabel(st, f.framesSent, f.framesTotal)
+                     +  '</span>';
+                var pct = Math.max(0, Math.min(100,
+                            (f.framesSent || 0) / f.framesTotal * 100));
+                html += '<div class="js8-tx-progress' +
+                        (st === 'aborted' ? ' aborted' : '') +
+                        '" data-tx-progress><div class="fill" style="width:'
+                     +  pct + '%"></div></div>';
+            }
             html += '</div>';
         }
         el.innerHTML = html;
+    }
+
+    // Targeted DOM update for in-flight TX rows. Called from the progress
+    // timer instead of renderFeed() so user text-selections elsewhere in
+    // the feed aren't wiped out 5x/second.
+    function updateTxRowsDom() {
+        if (!S.activeTx) return;
+        for (var i = 0; i < S.activeTx.entries.length; i++) {
+            var g = S.activeTx.entries[i];
+            var f = g.entry;
+            var row = document.querySelector('.js8-feed-row[data-id="' + f.id + '"]');
+            if (!row) continue;
+            var badge = row.querySelector('[data-tx-badge]');
+            var prog  = row.querySelector('[data-tx-progress]');
+            if (badge) {
+                badge.className = 'js8-tx-badge ' + (f.txStatus || 'queued');
+                badge.textContent = txBadgeLabel(f.txStatus, f.framesSent, f.framesTotal);
+            }
+            if (prog) {
+                prog.classList.toggle('aborted', f.txStatus === 'aborted');
+                var fill = prog.querySelector('.fill');
+                if (fill) {
+                    var pct = Math.max(0, Math.min(100,
+                                (f.framesSent || 0) / f.framesTotal * 100));
+                    fill.style.width = pct + '%';
+                }
+            }
+        }
     }
 
     function renderStations() {
@@ -9221,11 +9676,19 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         for (var i = 0; i < RX_MODES.length; ++i) S.lastSlot[RX_MODES[i]] = -1;
         S.chains.clear();
         updateRxToggle();
+        updateAutoTag();
+        document.getElementById('js8TxFreq').value = S.baseHz;
+        document.getElementById('js8SubmodeSel').value = S.submode;
         if (S.timer) clearInterval(S.timer);
         S.timer = setInterval(tickTimer, 100);
         setStatus('RX', 'rx');
         renderFeed();
         renderStations();
+        // Stagger the first auto-HB so the user has a moment of audible
+        // silence before we start beaconing. Subtract half an interval
+        // — fast feedback the feature works, but not "TX the instant
+        // the panel opens".
+        S.lastHbTx = Date.now() - (S.hbInterval || 15) * 60 * 1000 / 2;
     }
 
     function close() {
@@ -9239,6 +9702,9 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         }
         if (S.decoder) { S.decoder.free(); S.decoder = null; }
         S.rxEnabled = false;
+        // If we were mid-TX, halt the pacer so audio stops immediately
+        // (haltDigiTx's onDone callback releases PTT and clears flags).
+        if (S.txBusy && typeof window.haltDigiTx === 'function') window.haltDigiTx();
         if (S.txBusy) { send({ cmd: 'setPTT', value: false }); S.txBusy = false; }
         S.txQueue.length = 0;
         S.chains.clear();
@@ -9290,9 +9756,12 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     document.getElementById('js8HbBtn').addEventListener('click', function () {
         var myCall = getMyCall();
         if (!myCall) { alert('Set your callsign first.'); return; }
-        // JS8Call's "heartbeat" — short broadcast announcing we're listening.
-        // Server-side buildMessageFrames will pick the right frame type.
-        enqueueTx('@HB HEARTBEAT', 'HB');
+        // Single manual HB. Grid suffix when we know it so receivers can
+        // map us; otherwise just "HB". The hb=true flag puts this in the
+        // 500–1000 Hz HB sub-channel when Auto Freq is on.
+        var grid = getMyGridLocal();
+        S.lastHbTx = Date.now();  // reset the auto-HB interval
+        enqueueTx(grid ? ('HB ' + grid) : 'HB', 'HB', { hb: true });
     });
     document.getElementById('js8ClearFeedBtn').addEventListener('click', function () {
         S.feed = []; renderFeed();
@@ -9300,8 +9769,12 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     document.getElementById('js8SettingsBtn').addEventListener('click', function () {
         document.getElementById('js8SettingMycall').value = getMyCall();
         document.getElementById('js8SettingMygrid').value = getMyGridLocal();
-        document.getElementById('js8SettingBaseHz').value = S.baseHz;
         document.getElementById('js8SettingSubmode').value = S.submode;
+        document.getElementById('js8SettingAutoFreq').checked   = S.autoFreq;
+        document.getElementById('js8SettingHbNet').checked      = S.hbNet;
+        document.getElementById('js8SettingHbInterval').value   = S.hbInterval;
+        document.getElementById('js8SettingHbAck').checked      = S.hbAck;
+        document.getElementById('js8SettingHbAckCooldown').value = S.hbAckCooldown;
         document.getElementById('js8SettingsModal').classList.remove('hidden');
     });
     document.getElementById('js8SettingsCloseBtn').addEventListener('click', function () {
@@ -9310,11 +9783,40 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         var newGrid = (document.getElementById('js8SettingMygrid').value || '').toUpperCase();
         var gridEl = document.getElementById('digiGrid');
         if (newGrid && gridEl) gridEl.value = newGrid;
-        S.baseHz = parseInt(document.getElementById('js8SettingBaseHz').value, 10) || 1500;
-        S.submode = parseInt(document.getElementById('js8SettingSubmode').value, 10) || 0;
+        S.submode  = parseInt(document.getElementById('js8SettingSubmode').value, 10) || 0;
+        S.autoFreq = document.getElementById('js8SettingAutoFreq').checked;
+        S.hbNet    = document.getElementById('js8SettingHbNet').checked;
+        var iv     = parseInt(document.getElementById('js8SettingHbInterval').value, 10);
+        if (!isNaN(iv) && iv >= 2 && iv <= 120) S.hbInterval = iv;
+        S.hbAck    = document.getElementById('js8SettingHbAck').checked;
+        var ac     = parseInt(document.getElementById('js8SettingHbAckCooldown').value, 10);
+        if (!isNaN(ac) && ac >= 0 && ac <= 60) S.hbAckCooldown = ac;
         document.getElementById('js8SubmodeSel').value = S.submode;
+        updateAutoTag();
+        saveSettings();
         document.getElementById('js8SettingsModal').classList.add('hidden');
     });
+    document.getElementById('js8TxFreq').addEventListener('change', function (e) {
+        var v = parseInt(e.target.value, 10);
+        if (isNaN(v) || v < 200 || v > 2800) { e.target.value = S.baseHz; return; }
+        S.baseHz = v;
+        saveSettings();
+    });
+    document.getElementById('js8AutoTag').addEventListener('click', function () {
+        // Quick toggle for Auto Freq right from the header.
+        S.autoFreq = !S.autoFreq;
+        updateAutoTag();
+        saveSettings();
+    });
+    function updateAutoTag() {
+        var el = document.getElementById('js8AutoTag');
+        if (!el) return;
+        el.classList.toggle('off', !S.autoFreq);
+        el.textContent = S.autoFreq ? 'AUTO' : 'MANUAL';
+        el.title = S.autoFreq
+            ? 'Auto-pick TX frequency — click to switch to manual'
+            : 'Manual TX frequency — click to enable auto-pick';
+    }
     document.getElementById('js8Stations').addEventListener('click', function (e) {
         var el = e.target.closest('.js8-station');
         if (!el) return;

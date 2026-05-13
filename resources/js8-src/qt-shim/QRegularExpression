@@ -1,49 +1,193 @@
 // Minimal QRegularExpression — std::regex wrapper. Just enough for the
 // patterns Varicode uses (all are std::regex-compatible).
+//
+// Named captures: std::regex accepts `(?<name>...)` as a numbered group
+// but std::smatch only exposes by index. We scan the pattern at
+// construction time to build a name → 1-based index map, then look up
+// names via that map.
 #pragma once
 #include "QString"
 #include "QStringList"
 #include "QStringView"
+#include <memory>
 #include <regex>
 #include <string>
+#include <unordered_map>
+
+namespace _qtshim_re {
+    using NameMap = std::unordered_map<std::string, std::size_t>;
+
+    // Walk a regex pattern and produce:
+    //   1) a name → group-index map for named groups, and
+    //   2) a rewritten pattern with `(?<name>...)` / `(?P<name>...)`
+    //      replaced by anonymous `(...)` so std::regex (ECMAScript
+    //      flavour in libc++/libstdc++) accepts it. We still tracked the
+    //      name → numbered-index mapping so QRegularExpressionMatch can
+    //      resolve by name.
+    //
+    // Patterns we recognise:
+    //   (?<name>...)   capturing, named — record + rewrite to (...)
+    //   (?P<name>...)  Python-style — record + rewrite to (...)
+    //   (?:...)        non-capturing — left as-is, no name
+    //   (?=...) (?!...) (?<=...) (?<!...)  zero-width — left as-is
+    //   (...)          capturing, anonymous — counted, no name
+    // Bracket-class contents and escaped characters are skipped so a
+    // literal "(" inside `[(]` or "\(" doesn't shift the counter.
+    struct Parsed { std::shared_ptr<NameMap> names; std::string rewritten; };
+    inline Parsed parsePattern(std::string const &pat) {
+        Parsed result{std::make_shared<NameMap>(), {}};
+        result.rewritten.reserve(pat.size());
+        std::size_t groupIdx = 0;
+        for (std::size_t i = 0; i < pat.size();) {
+            char c = pat[i];
+            if (c == '\\' && i + 1 < pat.size()) {
+                result.rewritten.push_back(c);
+                result.rewritten.push_back(pat[i + 1]);
+                i += 2;
+                continue;
+            }
+            if (c == '[') {
+                result.rewritten.push_back(c);
+                ++i;
+                while (i < pat.size() && pat[i] != ']') {
+                    if (pat[i] == '\\' && i + 1 < pat.size()) {
+                        result.rewritten.push_back(pat[i]);
+                        result.rewritten.push_back(pat[i + 1]);
+                        i += 2;
+                    } else {
+                        result.rewritten.push_back(pat[i]);
+                        ++i;
+                    }
+                }
+                if (i < pat.size()) { result.rewritten.push_back(pat[i]); ++i; }
+                continue;
+            }
+            if (c != '(') {
+                result.rewritten.push_back(c);
+                ++i;
+                continue;
+            }
+            // c == '(' — decide kind.
+            if (i + 1 < pat.size() && pat[i + 1] == '?') {
+                std::size_t j = i + 2;
+                if (j < pat.size() &&
+                    (pat[j] == ':' || pat[j] == '=' || pat[j] == '!')) {
+                    // (?:  (?=  (?!  — pass through.
+                    result.rewritten.push_back(c);
+                    ++i;
+                    continue;
+                }
+                if (j < pat.size() && pat[j] == '<' &&
+                    j + 1 < pat.size() &&
+                    (pat[j + 1] == '=' || pat[j + 1] == '!')) {
+                    // (?<=...)  (?<!...) — std::regex ECMAScript on
+                    // libc++/libstdc++ does not support lookbehind, so we
+                    // strip these groups entirely. The semantic loss is
+                    // that the constraint is dropped — the surrounding
+                    // pattern must be tolerant of looser matching at
+                    // that point. The only use in the codec subset is
+                    // `(?<=SNR)` inside optional_num_pattern; numbers
+                    // can technically match outside SNR context but
+                    // optional_cmd_pattern already restricts cmds, so
+                    // in practice it's a no-op.
+                    int depth = 1;
+                    std::size_t k = j + 2;
+                    while (k < pat.size() && depth > 0) {
+                        if (pat[k] == '\\' && k + 1 < pat.size()) { k += 2; continue; }
+                        if (pat[k] == '(') ++depth;
+                        else if (pat[k] == ')') --depth;
+                        ++k;
+                    }
+                    i = k;  // past the closing ')'
+                    continue;
+                }
+                std::size_t nameStart = std::string::npos;
+                std::size_t prefixLen = 0;
+                if (j < pat.size() && pat[j] == '<') {
+                    nameStart = j + 1;
+                    prefixLen = 2;  // `?<`
+                } else if (j + 1 < pat.size() && pat[j] == 'P' &&
+                           pat[j + 1] == '<') {
+                    nameStart = j + 2;
+                    prefixLen = 3;  // `?P<`
+                }
+                if (nameStart == std::string::npos) {
+                    // Unknown `(?X` — pass through verbatim.
+                    result.rewritten.push_back(c);
+                    ++i;
+                    continue;
+                }
+                std::size_t nameEnd = pat.find('>', nameStart);
+                if (nameEnd == std::string::npos) {
+                    result.rewritten.push_back(c);
+                    ++i;
+                    continue;
+                }
+                ++groupIdx;
+                (*result.names)[pat.substr(nameStart, nameEnd - nameStart)] = groupIdx;
+                // Rewrite the entire `(?<name>` → `(`.
+                result.rewritten.push_back('(');
+                i = nameEnd + 1;
+            } else {
+                ++groupIdx;  // anonymous capturing group
+                result.rewritten.push_back(c);
+                ++i;
+            }
+        }
+        return result;
+    }
+}
 
 class QRegularExpressionMatch {
 public:
     QRegularExpressionMatch() : ok_(false) {}
-    explicit QRegularExpressionMatch(std::smatch m) : m_(std::move(m)), ok_(true) {}
-
-    bool hasMatch() const { return ok_ && !m_.empty(); }
-    QString captured(int n = 0) const {
-        if (!hasMatch() || n < 0 || n >= static_cast<int>(m_.size())) return QString();
-        return QString(m_[static_cast<size_t>(n)].str());
+    // Snapshot capture strings from the smatch at construction. The
+    // smatch itself holds iterators into the subject buffer, which the
+    // caller may free as soon as match() returns — copying out the
+    // strings avoids dangling references.
+    QRegularExpressionMatch(std::smatch const &m,
+                            std::shared_ptr<_qtshim_re::NameMap> names)
+        : names_(std::move(names)), ok_(true) {
+        caps_.reserve(m.size());
+        for (size_t i = 0; i < m.size(); ++i) caps_.emplace_back(m[i].str());
     }
-    // Named-group capture isn't supported by std::regex/std::smatch via
-    // string lookup. None of the codec subset's patterns use named
-    // groups in this overload; we keep it as a stub returning empty so
-    // callers compile.
-    QString captured(const QString& /*name*/) const { return QString(); }
+
+    bool hasMatch() const { return ok_ && !caps_.empty(); }
+    QString captured(int n = 0) const {
+        if (!hasMatch() || n < 0 || n >= static_cast<int>(caps_.size())) return QString();
+        return QString(caps_[static_cast<size_t>(n)]);
+    }
+    QString captured(const QString& name) const {
+        if (!names_) return QString();
+        auto it = names_->find(name.toStdString());
+        if (it == names_->end()) return QString();
+        return captured(static_cast<int>(it->second));
+    }
     QStringView capturedView(int n = 0) const { return QStringView(captured(n)); }
     int capturedLength(int n = 0) const {
-        if (!hasMatch() || n < 0 || n >= static_cast<int>(m_.size())) return 0;
-        return static_cast<int>(m_[static_cast<size_t>(n)].length());
+        if (!hasMatch() || n < 0 || n >= static_cast<int>(caps_.size())) return 0;
+        return static_cast<int>(caps_[static_cast<size_t>(n)].size());
     }
     QStringList capturedTexts() const {
         QStringList out;
         if (!hasMatch()) return out;
-        for (size_t i = 0; i < m_.size(); ++i) out.append(QString(m_[i].str()));
+        for (size_t i = 0; i < caps_.size(); ++i) out.append(QString(caps_[i]));
         return out;
     }
 
 private:
-    std::smatch m_;
+    std::vector<std::string> caps_;
+    std::shared_ptr<_qtshim_re::NameMap> names_;
     bool ok_;
 };
 
 class QRegularExpressionMatchIterator {
 public:
     QRegularExpressionMatchIterator() : valid_(false) {}
-    QRegularExpressionMatchIterator(std::string s, std::regex r)
-        : s_(std::move(s)), r_(std::move(r)), valid_(true) {
+    QRegularExpressionMatchIterator(std::string s, std::regex r,
+                                    std::shared_ptr<_qtshim_re::NameMap> names)
+        : s_(std::move(s)), r_(std::move(r)), names_(std::move(names)),
+          valid_(true) {
         it_ = std::sregex_iterator(s_.begin(), s_.end(), r_);
     }
 
@@ -52,13 +196,14 @@ public:
         if (!hasNext()) return QRegularExpressionMatch();
         std::smatch sm = *it_;
         ++it_;
-        return QRegularExpressionMatch(std::move(sm));
+        return QRegularExpressionMatch(sm, names_);
     }
 
 private:
     std::string s_;
     std::regex r_;
     std::sregex_iterator it_;
+    std::shared_ptr<_qtshim_re::NameMap> names_;
     bool valid_;
 };
 
@@ -74,7 +219,14 @@ public:
         : pat_(pat.toStdString()) {
         auto flags = std::regex::ECMAScript;
         if (opt & CaseInsensitiveOption) flags |= std::regex::icase;
-        try { re_ = std::regex(pat_, flags); ok_ = true; } catch (...) { ok_ = false; }
+        try {
+            auto parsed = _qtshim_re::parsePattern(pat_);
+            names_ = parsed.names;
+            re_    = std::regex(parsed.rewritten, flags);
+            ok_    = true;
+        } catch (...) {
+            ok_ = false;
+        }
     }
 
     bool isValid() const { return ok_; }
@@ -83,7 +235,8 @@ public:
         if (!ok_) return QRegularExpressionMatch();
         std::smatch m;
         std::string s = subject.toStdString();
-        if (std::regex_search(s, m, re_)) return QRegularExpressionMatch(std::move(m));
+        if (std::regex_search(s, m, re_))
+            return QRegularExpressionMatch(m, names_);
         return QRegularExpressionMatch();
     }
     QRegularExpressionMatch matchView(QStringView subject) const {
@@ -91,12 +244,13 @@ public:
     }
     QRegularExpressionMatchIterator globalMatch(const QString& subject) const {
         if (!ok_) return QRegularExpressionMatchIterator();
-        return QRegularExpressionMatchIterator(subject.toStdString(), re_);
+        return QRegularExpressionMatchIterator(subject.toStdString(), re_, names_);
     }
 
 private:
     std::string pat_;
     std::regex re_;
+    std::shared_ptr<_qtshim_re::NameMap> names_;
     bool ok_ = false;
 };
 
