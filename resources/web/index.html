@@ -2119,6 +2119,49 @@ body.js8-open #bottomBar { grid-row: 5; }
 }
 .js8-feed { cursor: text; }
 
+.js8-quickcmd-row {
+    display: flex; align-items: center; gap: 4px;
+    border-top: 1px solid #530; padding: 4px 0 4px 0;
+    flex-wrap: wrap;
+}
+.js8-quickcmd-btn {
+    background: #2a2018; color: #fc8;
+    border: 1px solid #530; border-radius: 3px;
+    padding: 3px 7px; font-family: monospace; font-size: 11px;
+    font-weight: bold; cursor: pointer;
+    letter-spacing: 0.5px;
+    user-select: none;
+}
+.js8-quickcmd-btn:hover { background: #3a2820; border-color: #850; }
+.js8-quickcmd-btn:active { background: #850; color: #000; }
+.js8-quickcmd-btn.js8-reply-btn { color: #ae8; border-color: #353; }
+.js8-quickcmd-btn.js8-reply-btn:hover { background: #1a2a18; border-color: #686; }
+.js8-cmd-sep { width: 1px; background: #530; align-self: stretch; margin: 2px 4px; }
+
+.js8-modal-help {
+    color: #ccb; font-size: 12px; line-height: 1.4;
+    margin: 0 0 12px 0; max-width: 480px;
+}
+.js8-relay-preview {
+    display: flex; align-items: center; gap: 8px;
+    margin: 6px 0; padding: 6px 8px;
+    background: #1a120a; border: 1px solid #530; border-radius: 3px;
+}
+.js8-relay-path, .js8-relay-wire {
+    font-family: monospace; color: #fc8; font-size: 13px;
+    overflow-wrap: anywhere;
+}
+.js8-relay-wire { color: #8f8; }
+.js8-relay-path .arrow { color: #a96; padding: 0 4px; }
+.js8-relay-path .hop   { color: #fc8; font-weight: bold; }
+.js8-relay-path .me    { color: #ae8; }
+.js8-relay-path .target{ color: #ec0; }
+.js8-modal-actions {
+    display: flex; justify-content: flex-end; gap: 8px;
+    margin-top: 12px; padding-top: 8px;
+    border-top: 1px solid #530;
+}
+
 .js8-action-row {
     display: flex; align-items: center; gap: 4px;
     border-top: 1px solid #530; padding-top: 4px;
@@ -2517,6 +2560,32 @@ body.js8-open #bottomBar { grid-row: 5; }
                 </div>
             </div>
 
+            <!-- Quick-cmd row: standard JS8Call directed commands. Each
+                 button sends "<TO> <CMD>" to the current DX call. The
+                 ones that need a free-text arg (INFO, STATUS, GRID,
+                 HEARING) prompt the user; the rest go out as-is. -->
+            <div class="js8-quickcmd-row">
+                <span class="js8-field-label">CMD</span>
+                <button class="js8-quickcmd-btn" data-cmd="SNR?"   title="Ask what SNR they hear me at">SNR?</button>
+                <button class="js8-quickcmd-btn" data-cmd="INFO?"  title="Ask for their info text">INFO?</button>
+                <button class="js8-quickcmd-btn" data-cmd="GRID?"  title="Ask for their Maidenhead grid">GRID?</button>
+                <button class="js8-quickcmd-btn" data-cmd="STATUS?" title="Ask for their status">STATUS?</button>
+                <button class="js8-quickcmd-btn" data-cmd="HEARING?" title="Ask which stations they're hearing">HEARING?</button>
+                <button class="js8-quickcmd-btn" data-cmd="HW CPY?" title="How do you copy?">HW CPY?</button>
+                <button class="js8-quickcmd-btn" data-cmd="QSL?"   title="Do you copy?">QSL?</button>
+                <button class="js8-quickcmd-btn" data-cmd="AGN?"   title="Please repeat">AGN?</button>
+                <button class="js8-quickcmd-btn" data-cmd="RELAY"  title="Relay a message through the TO station to a different final target">&gt;RELAY</button>
+                <span class="js8-cmd-sep"></span>
+                <button class="js8-quickcmd-btn js8-reply-btn" data-cmd="RR"  title="Roger roger">RR</button>
+                <button class="js8-quickcmd-btn js8-reply-btn" data-cmd="FB"  title="Fine business">FB</button>
+                <button class="js8-quickcmd-btn js8-reply-btn" data-cmd="QSL" title="I copy">QSL</button>
+                <button class="js8-quickcmd-btn js8-reply-btn" data-cmd="ACK" title="Acknowledge">ACK</button>
+                <button class="js8-quickcmd-btn js8-reply-btn" data-cmd="YES">YES</button>
+                <button class="js8-quickcmd-btn js8-reply-btn" data-cmd="NO">NO</button>
+                <button class="js8-quickcmd-btn js8-reply-btn" data-cmd="SK"  title="End of contact">SK</button>
+                <button class="js8-quickcmd-btn js8-reply-btn" data-cmd="73"  title="Best regards / end of contact">73</button>
+            </div>
+
             <div class="js8-action-row">
                 <span class="js8-field-label">TO</span>
                 <input type="text" id="js8DxCall" class="js8-callsign-input"
@@ -2526,6 +2595,40 @@ body.js8-open #bottomBar { grid-row: 5; }
                 <button id="js8SendBtn" class="js8-big-btn js8-send-btn">SEND</button>
                 <button id="js8CqBtn" class="js8-big-btn js8-cq-btn">CQ</button>
                 <button id="js8HbBtn" class="js8-big-btn js8-hb-btn">HB</button>
+            </div>
+        </div>
+
+        <!-- JS8 Relay modal — compose a relay chain. The user fills in
+             space-separated VIA hops, a final TO target, and a MESSAGE;
+             the preview shows the exact wire form before sending. -->
+        <div id="js8RelayModal" class="js8-modal hidden">
+            <div class="js8-modal-body">
+                <div class="js8-modal-title">Relay a Message</div>
+                <p class="js8-modal-help">Send a message that travels through one or more relay stations on its way to the final recipient. Each station along the chain forwards it on automatically.</p>
+                <div class="js8-settings-field">
+                    <span class="js8-field-label" title="Each station forwards the message to the next one. Order matters.">VIA (space-separated)</span>
+                    <input type="text" id="js8RelayVia" class="js8-compose" placeholder="e.g. IZ6BYY VK2ITM" autocomplete="off">
+                </div>
+                <div class="js8-settings-field">
+                    <span class="js8-field-label" title="The station the message is for. It does not need to be in range of yours — only the last VIA station needs to reach it.">TO (final target)</span>
+                    <input type="text" id="js8RelayTo" class="js8-compose" placeholder="e.g. IW6PBC" autocomplete="off">
+                </div>
+                <div class="js8-settings-field">
+                    <span class="js8-field-label">MESSAGE</span>
+                    <input type="text" id="js8RelayMsg" class="js8-compose" placeholder="e.g. HELLO" maxlength="80" autocomplete="off">
+                </div>
+                <div class="js8-relay-preview">
+                    <span class="js8-field-label">PATH</span>
+                    <span id="js8RelayPath" class="js8-relay-path"></span>
+                </div>
+                <div class="js8-relay-preview">
+                    <span class="js8-field-label">ON-AIR</span>
+                    <span id="js8RelayPreview" class="js8-relay-wire"></span>
+                </div>
+                <div class="js8-modal-actions">
+                    <button id="js8RelayCancelBtn" class="js8-modal-close">Cancel</button>
+                    <button id="js8RelaySendBtn" class="js8-big-btn js8-send-btn">SEND</button>
+                </div>
             </div>
         </div>
 
@@ -2573,6 +2676,18 @@ body.js8-open #bottomBar { grid-row: 5; }
                     <span class="js8-field-label" title="Minimum minutes between successive ACKs to the same station, to avoid ACK storms.">HB ACK COOLDOWN</span>
                     <input type="number" id="js8SettingHbAckCooldown" class="js8-num-input" min="0" max="60" step="1" value="2">
                     <span class="js8-field-label">min</span>
+                </div>
+                <div class="js8-settings-field">
+                    <span class="js8-field-label" title="Auto-reply to received SNR?, GRID?, INFO?, STATUS?, HEARING?, AGN?, and QSL? queries.">AUTO RESPOND</span>
+                    <input type="checkbox" id="js8SettingAutoRespond">
+                </div>
+                <div class="js8-settings-field">
+                    <span class="js8-field-label" title="Free-text reply sent when someone asks INFO?.">INFO TEXT</span>
+                    <input type="text" id="js8SettingInfoText" class="js8-compose" maxlength="80" placeholder="e.g. RIG IC-7300 ANT DIPOLE">
+                </div>
+                <div class="js8-settings-field">
+                    <span class="js8-field-label" title="Free-text reply sent when someone asks STATUS?.">STATUS TEXT</span>
+                    <input type="text" id="js8SettingStatusText" class="js8-compose" maxlength="80" placeholder="e.g. WFWEB IDLE">
                 </div>
                 <button id="js8SettingsCloseBtn" class="js8-modal-close">Close</button>
             </div>
@@ -8897,6 +9012,11 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         hbInterval: 15,         // minutes between auto HBs
         hbAck: true,            // auto-reply to received HBs with SNR
         hbAckCooldown: 2,       // minutes — per-station cooldown between ACKs
+        autoRespond: true,      // auto-reply to SNR? / GRID? / INFO? / STATUS? / HEARING? / AGN? / QSL?
+        infoText: '',           // free-text reply to INFO?
+        statusText: 'WFWEB',    // free-text reply to STATUS?
+        lastAutoReply: new Map(), // "fromCall:cmd" → ms timestamp (per-pair cooldown)
+        lastTxText: '',         // most recent TX text — used to answer AGN?
         decoder: null,
         rxBuffer: null,
         rxWritePos: 0,
@@ -8931,6 +9051,9 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             if (!isNaN(iv) && iv > 0)                 S.hbInterval  = iv;
             var ac = parseInt(ls.getItem('js8HbAckCooldown'), 10);
             if (!isNaN(ac) && ac > 0)                 S.hbAckCooldown = ac;
+            if (ls.getItem('js8AutoRespond')  != null) S.autoRespond = ls.getItem('js8AutoRespond') === '1';
+            if (ls.getItem('js8InfoText')     != null) S.infoText    = ls.getItem('js8InfoText');
+            if (ls.getItem('js8StatusText')   != null) S.statusText  = ls.getItem('js8StatusText');
             var sm = parseInt(ls.getItem('js8Submode'), 10);
             if (!isNaN(sm))                           S.submode     = sm;
             var bh = parseInt(ls.getItem('js8BaseHz'), 10);
@@ -8945,6 +9068,9 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             ls.setItem('js8HbAck',      S.hbAck    ? '1' : '0');
             ls.setItem('js8HbInterval', String(S.hbInterval));
             ls.setItem('js8HbAckCooldown', String(S.hbAckCooldown));
+            ls.setItem('js8AutoRespond',  S.autoRespond ? '1' : '0');
+            ls.setItem('js8InfoText',     S.infoText || '');
+            ls.setItem('js8StatusText',   S.statusText || '');
             ls.setItem('js8Submode',    String(S.submode));
             ls.setItem('js8BaseHz',     String(S.baseHz));
         } catch (e) {}
@@ -9162,8 +9288,13 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     var JS8_BIT_FIRST = 1;
     var JS8_BIT_LAST  = 2;
 
+    // Recognise only ":" as the FROM/MSG separator. Some decoded frame
+    // texts contain "TARGET> …" (the relay marker), and the old form
+    // `[:>]` mistakenly treated that as if TARGET were the sender —
+    // which silently dropped the intermediate hop of a multi-hop relay
+    // when the data continuation began with "<NEXT-HOP>>".
     function parseFrom(text) {
-        var m = text.match(/^([@A-Z0-9\/]{2,})\s*[:>]\s*(.*)$/);
+        var m = text.match(/^([@A-Z0-9\/]{2,})\s*:\s*(.*)$/);
         return m ? { from: m[1], msg: m[2].trim() } : { from: '', msg: text };
     }
 
@@ -9200,6 +9331,129 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         S.chains.delete(key);
     }
 
+    // ─── CRC-16 KERMIT (mirrors Varicode::checksum16) ─────────────────
+    // JS8Call appends a 3-char CRC-16 KERMIT checksum to buffered-cmd
+    // messages (>, MSG, QUERY, QUERY MSGS?, QUERY CALL, GRID, CMD) so
+    // receivers can detect corruption. The 16-bit value is packed into 3
+    // chars from JS8's 41-char alphabet (digits + uppercase + +-./?).
+    // Helpers below match the C++ implementation in Varicode.cpp lines
+    // 482-490 and 729-742.
+    var JS8_ALPHABET   = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+-./?';
+    var JS8_ALPHABET_N = 41;
+
+    function js8Crc16Kermit(str) {
+        var crc = 0;
+        for (var i = 0; i < str.length; ++i) {
+            crc ^= str.charCodeAt(i);
+            for (var j = 0; j < 8; ++j) {
+                crc = (crc & 1) ? ((crc >>> 1) ^ 0x8408) : (crc >>> 1);
+            }
+        }
+        return crc & 0xFFFF;
+    }
+    function js8Pack16Bits(packed) {
+        var n = JS8_ALPHABET_N;
+        var c0 = Math.floor(packed / (n * n));
+        var c1 = Math.floor((packed - c0 * n * n) / n);
+        var c2 = packed % n;
+        return JS8_ALPHABET.charAt(c0) + JS8_ALPHABET.charAt(c1) + JS8_ALPHABET.charAt(c2);
+    }
+    // Only strip if the trailing 3 chars validate as a CRC of the body —
+    // that way legitimate 3-char message endings (e.g. "73", "RR", or a
+    // grid like "FN30" with a stray space) aren't truncated. The CRC body
+    // depends on the buffered cmd: JS8Call computes it over the text
+    // AFTER the directed-cmd marker (with leading whitespace lstripped),
+    // not over the full chain.entry.msg. For relay (`>`), that's the
+    // substring after the first `>`; for word cmds like " MSG" / " QUERY"
+    // it's the substring after the cmd word. Try both candidates.
+    function stripValidChecksum(text, cmd) {
+        if (text.length < 5) return text;
+        var sp = text.length - 4;
+        if (text.charAt(sp) !== ' ') return text;
+        var tag = text.substr(sp + 1);
+        var candidates = [text.substr(0, sp)]; // legacy: full body
+        if (cmd === '>') {
+            var gt = text.indexOf('>');
+            if (gt >= 0 && gt < sp) {
+                candidates.push(text.substring(gt + 1, sp).replace(/^\s+/, ''));
+            }
+        } else if (cmd) {
+            var ix = text.indexOf(' ' + cmd);
+            if (ix >= 0 && ix + 1 + cmd.length < sp) {
+                candidates.push(text.substring(ix + 1 + cmd.length, sp).replace(/^\s+/, ''));
+            }
+        }
+        for (var i = 0; i < candidates.length; ++i) {
+            if (js8Pack16Bits(js8Crc16Kermit(candidates[i])) === tag) {
+                return text.substr(0, sp);
+            }
+        }
+        return text;
+    }
+    // For relay forwarding: strip the trailing 3-char CRC tag
+    // unconditionally. The CRC in an incoming `>` was computed over the
+    // FULL chain (with hops we're about to strip out), so we can't
+    // re-validate it against the remaining payload. But we KNOW the
+    // sender attached one — `>` is in JS8Call's checksum_cmds — so the
+    // last " XXX" is guaranteed to be the CRC, not message text.
+    function stripBufferedChecksum(text) {
+        if (text.length < 4) return text;
+        if (text.charAt(text.length - 4) !== ' ') return text;
+        return text.substr(0, text.length - 4);
+    }
+
+    // JS8Call's "buffered" directed commands (checksummed multi-frame
+    // messages): >, MSG, MSG TO:, QUERY, QUERY MSGS?, QUERY CALL, CMD.
+    // GRID is also buffered per Varicode.cpp:128. wfweb only acts on `>`
+    // today; the rest are recognised but otherwise pass through as
+    // ordinary feed entries.
+    function isBufferedDirectedCmd(cmd) {
+        return cmd === '>' || cmd === 'MSG' || cmd === 'MSG TO:' ||
+               cmd === 'QUERY' || cmd === 'QUERY MSGS?' || cmd === 'QUERY MSGS' ||
+               cmd === 'QUERY CALL' || cmd === 'CMD' || cmd === 'GRID';
+    }
+
+    // Handle a completed buffered-cmd chain that was directed at mycall.
+    // For `>` (relay), strip the "TARGET> " prefix and re-transmit the
+    // rest — buildMessageFrames will route further relay hops or
+    // free-text delivery automatically based on what comes next.
+    function processBufferedDirected(chain) {
+        var info = chain.buffered;
+        if (!info || info.cmd !== '>') return;   // only relay implemented
+        var myCall = getMyCall();
+        if (!myCall) return;
+        if (info.from === myCall) return;        // our own echo, ignore
+        // chain.entry.msg = full concatenated text after the "FROM: "
+        // prefix; for relay it looks like "ME> PAYLOAD". Split on the
+        // first ">" to recover the payload.
+        var fullMsg = chain.entry.msg || '';
+        var gt = fullMsg.indexOf('>');
+        if (gt < 0) return;
+        var payload = fullMsg.substr(gt + 1).trim();
+        if (!payload) return;
+        // Strip the original CRC-16. We can't re-validate it (the CRC
+        // was computed over the full chain, including hops we're about
+        // to drop), so use the unconditional strip — `>` always carries
+        // a CRC per JS8Call's checksum_cmds table. Without this, the
+        // old tag stays glued onto the payload and ends up displayed at
+        // the final hop as if it were message text.
+        payload = stripBufferedChecksum(payload);
+        // Per-from cooldown so a repeated relay frame doesn't fire us
+        // twice. Uses the same lastAutoReply map as the query auto-
+        // responder.
+        var ckey = 'RELAY:' + info.from;
+        var now  = Date.now();
+        if (now - (S.lastAutoReply.get(ckey) || 0) < 60 * 1000) return;
+        S.lastAutoReply.set(ckey, now);
+        // Don't bounce back to the sender on a "ME> SENDER MSG" form —
+        // that's the simplest loop scenario.
+        var firstToken = payload.split(/\s+/)[0];
+        if (firstToken === info.from) return;
+        // bypassSel: pack with empty selectedCall so the payload's own
+        // routing (next-hop callsign or directed-cmd) survives intact.
+        enqueueTx(payload, 'RELAY ' + info.from + '>', { bypassSel: true });
+    }
+
     function scheduleChainFlushTimer() {
         if (S.chainFlushTimer) return;
         S.chainFlushTimer = setInterval(function () {
@@ -9217,7 +9471,17 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     }
 
     function ingestDecode(d) {
-        var text = (d.text || '').trim();
+        // PRESERVE the trailing whitespace on `rawText`: JSC packs an
+        // `appendSpace` marker onto the last codeword of a word, so a data
+        // frame that ended a word mid-message carries that space as the
+        // last char of its decoded text. Trimming here strips that marker
+        // and the next continuation frame ends up glued to this one —
+        // e.g. "VK2ITM CIAO " + "DRW" → "VK2ITM CIAODRW", which then makes
+        // the buffered-CRC strip miss the " DRW" tail and we forward the
+        // whole stale CRC blob to the next hop. Use `text` (trimmed) for
+        // parsing/dispatch only; use `rawText` for chain accumulation.
+        var rawText = d.text || '';
+        var text = rawText.trim();
         if (!text) return;
         // d.type is the raw 3-bit field carried in the JS8 frame:
         //   bit 0 = JS8CallFirst, bit 1 = JS8CallLast, bit 2 = JS8CallData.
@@ -9235,11 +9499,49 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // on top — shows the ACK above the HB it's replying to.
         var parsedHead = parseFrom(text);
         noteStation(parsedHead.from, d.freq, d.snr);
-        // Bucket frequencies into 50 Hz bins so small dt jitter between
-        // frames doesn't pop the chain.
-        var key = Math.round((d.freq || 0) / 50);
+        // Find a chain to join. Frames from the same TX can drift several
+        // Hz between the directed compound and the data frames (different
+        // submodes' decoders, different timing windows), so a fixed-bin
+        // bucket like Math.round(freq/50) breaks the chain whenever the
+        // jitter crosses a bin boundary — e.g. 2222 Hz → bin 44 vs 2227 Hz
+        // → bin 45 splits the relay's compound from its "CIAO" data frame.
+        // Match instead by absolute Hz proximity: any chain whose key is
+        // within FREQ_TOL Hz of this frame's freq counts as the same TX.
+        var freq = d.freq || 0;
+        // 40 Hz covers the few-Hz inter-frame jitter we actually see in
+        // ALL.TXT logs (2222 vs 2227 was the smoking gun for the broken
+        // chain). Stays comfortably below the ~50 Hz audio bandwidth of a
+        // single JS8 Normal tone bundle so adjacent simultaneous TXs don't
+        // accidentally merge into one chain.
+        var FREQ_TOL = 40;
+        var key = null;
+        var bestDist = Infinity;
+        S.chains.forEach(function (_c, k) {
+            var dist = Math.abs(k - freq);
+            if (dist < FREQ_TOL && dist < bestDist) {
+                bestDist = dist;
+                key = k;
+            }
+        });
+        if (key === null) key = freq; // new chain, key = this frame's freq
 
         var parsed = parseFrom(text);
+        // Preserve the trailing whitespace from the un-trimmed source: the
+        // directed-compound decoder appends the cmd marker as trailing
+        // space(s) (cmd " " for freetext, cmd "X" suffixes etc.), and the
+        // JSC inter-word marker on data frames lives in the same trailing
+        // slot. Trimming both during parsing strips the only separator we
+        // had between consecutive chain parts. parsed.from / parsed.msg
+        // (trimmed) are still used for dispatch decisions.
+        var rawMsg;
+        if (parsed.from) {
+            var colon = rawText.indexOf(':');
+            rawMsg = colon >= 0
+                ? rawText.substr(colon + 1).replace(/^\s+/, '')
+                : rawText;
+        } else {
+            rawMsg = rawText;
+        }
         var now = Date.now();
         var chain = S.chains.get(key);
 
@@ -9260,10 +9562,21 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
                 fromMe: false,
             };
             emitFeedEntry(entry);
+            // If this is a buffered directed command (>, MSG, QUERY, …),
+            // record it on the chain so we can act when the chain closes
+            // after the continuation data frames arrive.
+            var bufferedInfo = null;
+            if (d.frameType === 3) {
+                var pd = parseDirected(text);
+                if (pd && isBufferedDirectedCmd(pd.cmd)) {
+                    bufferedInfo = pd;
+                }
+            }
             chain = {
                 entry:    entry,
-                parts:    [parsed.msg],
+                parts:    [rawMsg],
                 lastUtc:  now,
+                buffered: bufferedInfo,
             };
             S.chains.set(key, chain);
         } else {
@@ -9271,9 +9584,10 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             // trailing space when more text follows, so concatenate with
             // no separator. A continuation may or may not have its own
             // "FROM: " preamble; keep the chain's original sender either
-            // way.
-            var part = parsed.from ? parsed.msg : text;
-            chain.parts.push(part);
+            // way. Use rawMsg (post-preamble strip but trailing whitespace
+            // intact) so the JSC inter-word marker is preserved when we
+            // join parts.
+            chain.parts.push(rawMsg);
             chain.entry.msg  = chain.parts.join('');
             chain.entry.snr  = d.snr;
             chain.entry.freq = d.freq;
@@ -9283,17 +9597,37 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
 
         if (isLast) {
             // Single-frame (First+Last) and last-of-multi-frame both land
-            // here — the entry already shows the complete text.
+            // here — the entry already shows the complete text. Run the
+            // buffered-cmd processor first so a relay's re-TX lands above
+            // the originating frame in the newest-on-top feed.
+            if (chain && chain.buffered &&
+                chain.buffered.target === getMyCall()) {
+                processBufferedDirected(chain);
+            }
+            // Hide the CRC tag from the feed: buffered-cmd messages
+            // arrive with a trailing "<space><3-char CRC>" that's noise
+            // to the user. Only strip if the CRC actually validates so
+            // we don't accidentally truncate a real 3-char message tail.
+            if (chain && chain.buffered) {
+                var cleaned = stripValidChecksum(chain.entry.msg || '',
+                                                 chain.buffered.cmd);
+                if (cleaned !== chain.entry.msg) {
+                    chain.entry.msg = cleaned;
+                    renderFeed();
+                }
+            }
             closeChain(key);
         } else {
             scheduleChainFlushTimer();
         }
 
-        // ACK *after* the HB has been pushed to the feed so the newer
-        // ACK lands above the HB in the newest-on-top view.
+        // ACK / auto-respond *after* the originating frame has been
+        // pushed to the feed so the newer reply lands above it in the
+        // newest-on-top view.
         if (d.frameType === 0) {
             maybeAckHb(d, parsedHead.from);
         }
+        maybeAutoRespond(d);
     }
 
     // ─── HB network scheduler + ACK responder ─────────────────────────
@@ -9311,6 +9645,110 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         var grid = getMyGridLocal();
         var text = grid ? ('HB ' + grid) : 'HB';
         enqueueTx(text, 'HB auto', { hb: true });
+    }
+
+    // Recognized directed commands, longest first so multi-word forms
+    // match before their substrings (e.g. "HEARTBEAT SNR" before "SNR",
+    // "QUERY MSGS?" before "QUERY").
+    var JS8_DIRECTED_CMDS = [
+        'HEARTBEAT SNR', 'QUERY MSGS?', 'QUERY MSGS', 'QUERY CALL',
+        'HW CPY?', 'MSG TO:', 'DIT DIT', 'HEARING?', 'STATUS?',
+        'GRID?', 'INFO?', 'SNR?', 'QSL?', 'AGN?',
+        'HEARTBEAT', 'HEARING', 'STATUS', 'QUERY', 'NACK',
+        'GRID', 'INFO', 'CMD', 'MSG', 'ACK', 'SNR', 'QSL',
+        'YES', 'RR', 'SK', 'FB', 'HB', 'NO', '73', '>'
+    ];
+
+    // Parse a decoded message into { from, target, cmd, args }. Returns
+    // null if the text isn't a directed message. `>` is the relay marker
+    // and lives glued to the target callsign (e.g. "VK2ITM>"), so it's
+    // handled before the space-delimited scan.
+    function parseDirected(text) {
+        var p = parseFrom(text);
+        if (!p.from) return null;
+        var rest = p.msg;
+        var tm = rest.match(/^(@?[A-Z0-9\/]{2,})(.*)$/);
+        if (!tm) return null;
+        var target = tm[1];
+        var after  = tm[2];
+        if (after.charAt(0) === '>') {
+            return { from: p.from, target: target, cmd: '>', args: after.substr(1).trim() };
+        }
+        for (var i = 0; i < JS8_DIRECTED_CMDS.length; ++i) {
+            var c = JS8_DIRECTED_CMDS[i];
+            if (c === '>') continue;
+            if (after.startsWith(' ' + c)) {
+                var tail = after.substr(1 + c.length);
+                if (tail === '' || tail.charAt(0) === ' ') {
+                    return { from: p.from, target: target, cmd: c, args: tail.trim() };
+                }
+            }
+        }
+        return { from: p.from, target: target, cmd: '', args: after.trim() };
+    }
+
+    // Auto-reply to a directed command sent to mycall. Mirrors the JS8Call
+    // autoreply set (SNR?, NACK, HEARING?, GRID?, STATUS?, MSG, MSG TO:,
+    // QUERY, QUERY MSGS?, QUERY CALL, ACK, INFO?, AGN?) — wfweb implements
+    // the simple ones (SNR?, GRID?, INFO?, STATUS?, HEARING?, AGN?, QSL?).
+    // MSG / QUERY MSGS / QUERY CALL / CMD need a message store, deferred.
+    function maybeAutoRespond(d) {
+        if (!S.autoRespond) return;
+        if (d.frameType !== 3) return;          // FrameDirected only
+        var parsed = parseDirected(d.text || '');
+        if (!parsed || !parsed.cmd) return;
+        var myCall = getMyCall();
+        if (!myCall) return;
+        if (parsed.target !== myCall) return;   // only when directed at us
+        if (parsed.from   === myCall) return;   // don't reply to ourselves
+        // 30 s per-(from, cmd) cooldown — covers the case where a remote
+        // re-sends the same query while we're still TXing the reply.
+        var ckey = parsed.from + ':' + parsed.cmd;
+        var now  = Date.now();
+        var prev = S.lastAutoReply.get(ckey) || 0;
+        if (now - prev < 30 * 1000) return;
+
+        var replyText = null;
+        var label = 'AUTO ' + parsed.cmd;
+        var fromCall = parsed.from;
+        if (parsed.cmd === 'SNR?') {
+            if (typeof d.snr !== 'number') return;
+            var snr = Math.max(-31, Math.min(31, Math.round(d.snr)));
+            replyText = fromCall + ' SNR ' + (snr >= 0 ? '+' : '') + snr;
+        } else if (parsed.cmd === 'GRID?') {
+            var g = getMyGridLocal();
+            if (!g) return;
+            replyText = fromCall + ' GRID ' + g;
+        } else if (parsed.cmd === 'INFO?') {
+            var info = (S.infoText || '').trim();
+            if (!info) return;
+            replyText = fromCall + ' INFO ' + info;
+        } else if (parsed.cmd === 'STATUS?') {
+            var st = (S.statusText || '').trim();
+            if (!st) return;
+            replyText = fromCall + ' STATUS ' + st;
+        } else if (parsed.cmd === 'HEARING?') {
+            var heard = [];
+            S.stations.forEach(function (s, call) {
+                if (call.charAt(0) === '@') return;
+                if (call === myCall || call === fromCall) return;
+                heard.push(call);
+            });
+            // 5 calls keeps the reply under one Normal frame's worth of
+            // packed chars; older entries fall off naturally.
+            if (heard.length === 0) return;
+            replyText = fromCall + ' HEARING ' + heard.slice(0, 5).join(' ');
+        } else if (parsed.cmd === 'AGN?') {
+            if (!S.lastTxText) return;
+            replyText = S.lastTxText;
+            label = 'AUTO AGN';
+        } else if (parsed.cmd === 'QSL?') {
+            replyText = fromCall + ' QSL';
+        } else {
+            return;   // unsupported cmd → no reply
+        }
+        S.lastAutoReply.set(ckey, now);
+        enqueueTx(replyText, label);
     }
 
     // Called from ingestDecode when a Heartbeat frame arrives. If HB
@@ -9331,7 +9769,11 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // (the codec only carries 5 bits + sign).
         var snr = Math.max(-31, Math.min(31, Math.round(d.snr)));
         var snrStr = (snr >= 0 ? '+' : '') + snr;
-        enqueueTx(fromCall + ' SNR ' + snrStr, 'HB ACK', { hb: true });
+        // " HEARTBEAT SNR " (cmd 29) is the canonical JS8Call HB-ACK form,
+        // distinct from plain " SNR " (cmd 25, a general SNR report). The
+        // packed-bit layout flags it via the second bit of the SNR-encoded
+        // command byte (see Varicode::packCmd in Varicode.cpp).
+        enqueueTx(fromCall + ' HEARTBEAT SNR ' + snrStr, 'HB ACK', { hb: true });
     }
 
     // ─── TX pipeline ──────────────────────────────────────────────────
@@ -9414,7 +9856,20 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
 
     function enqueueTx(text, label, opts) {
         opts = opts || {};
-        var frames = pack(text);
+        var frames;
+        if (opts.bypassSel) {
+            // Relay path: the payload encodes its own routing
+            // (next-hop + cmd or final-target + text). We must NOT pass
+            // S.dxCall as selectedCall, because AUTO_PREPEND_DIRECTED in
+            // buildMessageFrames would munge the payload (e.g. silently
+            // turn "B> C HELLO" into "K1FM B> C HELLO" if dxCall=K1FM),
+            // which then fails packDirectedMessage and returns 0 frames.
+            var myCall = getMyCall();
+            if (!myCall) { alert('Set your callsign first (gear icon).'); return null; }
+            frames = js8.pack(myCall, getMyGridLocal(), '', text, S.submode);
+        } else {
+            frames = pack(text);
+        }
         if (!frames || frames.length === 0) {
             console.warn('[JS8] pack returned no frames for "' + text + '"');
             return null;
@@ -9445,6 +9900,13 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         };
         S.feed.unshift(entry);
         if (S.feed.length > S.feedMax) S.feed.length = S.feedMax;
+        // Remember the last user-content TX so we can re-send it on AGN?.
+        // HB beacons and auto-replies shouldn't be re-sent — they're
+        // self-generated and not "the message" the remote is asking us
+        // to repeat.
+        if (!opts.hb && !/^AUTO /.test(label || '')) {
+            S.lastTxText = text;
+        }
         renderFeed();
         console.log('[JS8 TX] queued ' + frames.length + ' frame(s) @ '
             + hz + 'Hz: "' + text + '"');
@@ -9751,7 +10213,103 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     document.getElementById('js8CqBtn').addEventListener('click', function () {
         var myCall = getMyCall(); var myGrid = getMyGridLocal();
         if (!myCall) { alert('Set your callsign first.'); return; }
-        enqueueTx('CQ ' + myCall + (myGrid ? ' ' + myGrid : ''), 'CQ');
+        // JS8Call's heartbeat_re recognises "CQ CQ CQ" as a triple-CQ
+        // heartbeat type and "CQ" alone as a bare type. The official
+        // client's CQ button always emits the triple form with grid
+        // (e.g. "CQ CQ CQ FN30") — which packs to "@ALLCALL CQ CQ CQ FN30"
+        // on air. We send a 4-char grid (Maidenhead 4) when set, matching
+        // K1FM's behaviour.
+        var grid4 = (myGrid || '').slice(0, 4);
+        enqueueTx('CQ CQ CQ' + (grid4 ? ' ' + grid4 : ''), 'CQ');
+    });
+    // Quick-cmd buttons: build "<TO> <CMD>" against the current DX call.
+    // Querying @ALLCALL is allowed for HEARING? (common "who's around?"
+    // call) but blocked for the rest where it doesn't make sense.
+    document.querySelectorAll('.js8-quickcmd-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var cmd = btn.dataset.cmd;
+            if (cmd === 'RELAY') { openRelayModal(); return; }
+            var to = (document.getElementById('js8DxCall').value || '').toUpperCase().trim()
+                  || S.dxCall || '@ALLCALL';
+            if (to === '@ALLCALL' && cmd !== 'HEARING?') {
+                alert('Pick a TO callsign first (or use HEARING? for an @ALLCALL query).');
+                return;
+            }
+            enqueueTx(to + ' ' + cmd, cmd);
+        });
+    });
+
+    // ─── Relay modal ──────────────────────────────────────────────────
+    // Build the wire form for a relay chain "VIA1> VIA2> ... TO MSG" and
+    // show a live preview. The first VIA hop is the immediate TO of the
+    // packet; everything after the last ">" is the final target + the
+    // free-text payload.
+    function buildRelayWire(viaList, target, message) {
+        var hops = viaList.filter(function (s) { return !!s; });
+        if (hops.length === 0 || !target) return '';
+        // "<HOP1>> <HOP2>> ... <TARGET> <MSG>"
+        return hops.join('> ') + '> ' + target + (message ? ' ' + message : '');
+    }
+    function updateRelayPreview() {
+        var via    = (document.getElementById('js8RelayVia').value  || '').toUpperCase().trim();
+        var target = (document.getElementById('js8RelayTo').value   || '').toUpperCase().trim();
+        var msg    = (document.getElementById('js8RelayMsg').value  || '').toUpperCase().trim();
+        var hops   = via.split(/\s+/).filter(Boolean);
+        // PATH visual: ME → HOP1 → HOP2 → ... → TARGET
+        var pathEl = document.getElementById('js8RelayPath');
+        if (pathEl) {
+            var me = escapeHtml(getMyCall() || '(YOU)');
+            var path = '<span class="me">' + me + '</span>';
+            for (var i = 0; i < hops.length; ++i) {
+                path += '<span class="arrow">→</span><span class="hop">'
+                     +  escapeHtml(hops[i]) + '</span>';
+            }
+            if (target) {
+                path += '<span class="arrow">→</span><span class="target">'
+                     +  escapeHtml(target) + '</span>';
+            }
+            pathEl.innerHTML = path;
+        }
+        // WIRE preview: actual on-air payload string
+        var wire = buildRelayWire(hops, target, msg);
+        var wireEl = document.getElementById('js8RelayPreview');
+        if (wireEl) wireEl.textContent = wire || '(fill in VIA and TO)';
+        // Only enable Send when we have at least one hop, a target, and
+        // a message.
+        var sendBtn = document.getElementById('js8RelaySendBtn');
+        if (sendBtn) sendBtn.disabled = !(hops.length > 0 && target && msg);
+    }
+    function openRelayModal() {
+        var via = document.getElementById('js8RelayVia');
+        var to  = document.getElementById('js8RelayTo');
+        var msg = document.getElementById('js8RelayMsg');
+        // Pre-fill VIA with the current TO callsign as a sensible default
+        // (the station you're already talking to is often the first hop).
+        var curTo = (document.getElementById('js8DxCall').value || '').toUpperCase().trim();
+        if (curTo && curTo !== '@ALLCALL') via.value = curTo;
+        if (to)  to.value  = '';
+        if (msg) msg.value = '';
+        updateRelayPreview();
+        document.getElementById('js8RelayModal').classList.remove('hidden');
+        setTimeout(function () { via.focus(); }, 50);
+    }
+    document.getElementById('js8RelayVia').addEventListener('input', updateRelayPreview);
+    document.getElementById('js8RelayTo').addEventListener('input',  updateRelayPreview);
+    document.getElementById('js8RelayMsg').addEventListener('input', updateRelayPreview);
+    document.getElementById('js8RelayCancelBtn').addEventListener('click', function () {
+        document.getElementById('js8RelayModal').classList.add('hidden');
+    });
+    document.getElementById('js8RelaySendBtn').addEventListener('click', function () {
+        var via    = (document.getElementById('js8RelayVia').value || '').toUpperCase().trim();
+        var target = (document.getElementById('js8RelayTo').value  || '').toUpperCase().trim();
+        var msg    = (document.getElementById('js8RelayMsg').value || '').toUpperCase().trim();
+        var hops   = via.split(/\s+/).filter(Boolean);
+        if (hops.length === 0 || !target || !msg) return;
+        var wire = buildRelayWire(hops, target, msg);
+        // bypassSel: keep the payload routing intact — DON'T let
+        // AUTO_PREPEND_DIRECTED reshuffle the chain based on S.dxCall.
+        enqueueTx(wire, 'RELAY → ' + target, { bypassSel: true });
+        document.getElementById('js8RelayModal').classList.add('hidden');
     });
     document.getElementById('js8HbBtn').addEventListener('click', function () {
         var myCall = getMyCall();
@@ -9775,6 +10333,9 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         document.getElementById('js8SettingHbInterval').value   = S.hbInterval;
         document.getElementById('js8SettingHbAck').checked      = S.hbAck;
         document.getElementById('js8SettingHbAckCooldown').value = S.hbAckCooldown;
+        document.getElementById('js8SettingAutoRespond').checked = S.autoRespond;
+        document.getElementById('js8SettingInfoText').value      = S.infoText   || '';
+        document.getElementById('js8SettingStatusText').value    = S.statusText || '';
         document.getElementById('js8SettingsModal').classList.remove('hidden');
     });
     document.getElementById('js8SettingsCloseBtn').addEventListener('click', function () {
@@ -9791,6 +10352,9 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         S.hbAck    = document.getElementById('js8SettingHbAck').checked;
         var ac     = parseInt(document.getElementById('js8SettingHbAckCooldown').value, 10);
         if (!isNaN(ac) && ac >= 0 && ac <= 60) S.hbAckCooldown = ac;
+        S.autoRespond = document.getElementById('js8SettingAutoRespond').checked;
+        S.infoText    = (document.getElementById('js8SettingInfoText').value   || '').toUpperCase();
+        S.statusText  = (document.getElementById('js8SettingStatusText').value || '').toUpperCase();
         document.getElementById('js8SubmodeSel').value = S.submode;
         updateAutoTag();
         saveSettings();
