@@ -9250,9 +9250,22 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     // ─── Persistent settings (localStorage) ───────────────────────────
     // Each setting reads from localStorage on open() and writes when the
     // settings modal is closed. Booleans are stored as "0"/"1".
+    // A version key (js8SettingsV) guards one-shot migrations against
+    // stale data — older builds defaulted the submode to JS8 40 (then-
+    // named "Turbo"), which is no longer the desired starting speed.
+    var JS8_SETTINGS_VERSION = 2;
     function loadSettings() {
         try {
             var ls = window.localStorage;
+            // One-shot migration: anyone whose stored settings predate v2
+            // gets their saved submode wiped so the in-code default
+            // (JS8 Normal) takes effect on the next load. Other settings
+            // are preserved.
+            var savedVer = parseInt(ls.getItem('js8SettingsV'), 10);
+            if (isNaN(savedVer) || savedVer < JS8_SETTINGS_VERSION) {
+                ls.removeItem('js8Submode');
+                ls.setItem('js8SettingsV', String(JS8_SETTINGS_VERSION));
+            }
             if (ls.getItem('js8AutoFreq')    != null) S.autoFreq    = ls.getItem('js8AutoFreq') === '1';
             if (ls.getItem('js8HbNet')       != null) S.hbNet       = ls.getItem('js8HbNet') === '1';
             if (ls.getItem('js8HbAck')       != null) S.hbAck       = ls.getItem('js8HbAck') === '1';
@@ -9272,6 +9285,7 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     function saveSettings() {
         try {
             var ls = window.localStorage;
+            ls.setItem('js8SettingsV', String(JS8_SETTINGS_VERSION));
             ls.setItem('js8AutoFreq',   S.autoFreq ? '1' : '0');
             ls.setItem('js8HbNet',      S.hbNet    ? '1' : '0');
             ls.setItem('js8HbAck',      S.hbAck    ? '1' : '0');
@@ -10003,8 +10017,15 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // distinct from plain " SNR " (cmd 25, a general SNR report). The
         // packed-bit layout flags it via the second bit of the SNR-encoded
         // command byte (see Varicode::packCmd in Varicode.cpp).
+        //
+        // bypassSel: the payload encodes its own target ("K1FM HEARTBEAT
+        // SNR +5"). If pack() were to hand buildMessageFrames a non-empty
+        // selectedCall (= S.dxCall, often a different peer the user was
+        // chatting with), AUTO_PREPEND_DIRECTED reshuffles the payload —
+        // same bug pattern that broke relay forwarding. Result on-air is
+        // a malformed frame that no one decodes as a valid HB ACK.
         enqueueTx(fromCall + ' HEARTBEAT SNR ' + snrStr, 'HB ACK',
-                  { hb: true, qsoPeer: fromCall });
+                  { hb: true, qsoPeer: fromCall, bypassSel: true });
     }
 
     // ─── TX pipeline ──────────────────────────────────────────────────
@@ -10605,6 +10626,8 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         S.visible = true;
         document.getElementById('js8Bar').classList.remove('hidden');
         document.body.classList.add('js8-open');
+        // Persist that the panel is open so a page reload restores it.
+        try { window.localStorage.setItem('js8Open', '1'); } catch (e) {}
         if (typeof closeOtherModes === 'function') closeOtherModes('js8');
         if (typeof currentMode !== 'undefined' && currentMode !== 'USB'
             && typeof setMode === 'function') setMode('USB');
@@ -10618,6 +10641,7 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         S.chains.clear();
         updateRxToggle();
         updateAutoTag();
+        updateHbButtonVisibility();
         document.getElementById('js8TxFreq').value = S.baseHz;
         document.getElementById('js8SubmodeSel').value = S.submode;
         if (S.timer) clearInterval(S.timer);
@@ -10644,6 +10668,7 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         document.getElementById('js8Bar').classList.add('hidden');
         document.body.classList.remove('js8-open');
         document.body.classList.remove('js8-qso-tab');
+        try { window.localStorage.setItem('js8Open', '0'); } catch (e) {}
         closeCmdPalette();
         if (S.timer) { clearInterval(S.timer); S.timer = null; }
         if (S.chainFlushTimer) {
@@ -10674,11 +10699,28 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         if (S.rxEnabled) resetRxBuffer();
         setStatus(S.rxEnabled ? 'RX' : 'IDLE', S.rxEnabled ? 'rx' : '');
     });
+    // HB participates only in Slow / Normal / Fast (JS8Call 3.0 user
+    // guide: "HBs are intentionally restricted … HB is disabled and will
+    // not appear on the button for JS8 40 and JS8 60"). Hide the HB
+    // button when the active TX submode is one of those two.
+    function updateHbButtonVisibility() {
+        var hb = document.getElementById('js8HbBtn');
+        if (!hb) return;
+        // 2 = JS8 40, 8 = JS8 60 — both excluded from the HB network.
+        var hbAllowed = S.submode !== 2 && S.submode !== 8;
+        hb.style.display = hbAllowed ? '' : 'none';
+    }
     document.getElementById('js8SubmodeSel').addEventListener('change', function (e) {
-        // Only affects TX speed; RX always decodes all four submodes
+        // Only affects TX speed; RX always decodes all five submodes
         // simultaneously, so the decoder doesn't need to be rebuilt.
         S.submode = parseInt(e.target.value, 10);
         S.slotIndex = -1;
+        updateHbButtonVisibility();
+        // Persist the header-bar speed change. Without this, switching
+        // submode from the dropdown sticks for the session but evaporates
+        // on the next page reload — only the Settings modal's "Default
+        // Speed" field saved through to localStorage.
+        saveSettings();
     });
     document.getElementById('js8DxCall').addEventListener('input', function (e) {
         S.dxCall = e.target.value.toUpperCase().trim() || '@ALLCALL';
@@ -10936,6 +10978,7 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         S.statusText  = (document.getElementById('js8SettingStatusText').value || '').toUpperCase();
         document.getElementById('js8SubmodeSel').value = S.submode;
         updateAutoTag();
+        updateHbButtonVisibility();
         saveSettings();
         document.getElementById('js8SettingsModal').classList.add('hidden');
     });
@@ -11005,6 +11048,21 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     window.toggleJs8Bar       = function () { if (S.visible) close(); else open(); };
     window.js8MessengerVisible = function () { return S.visible; };
     window.js8Ready            = Promise.resolve(js8);
+
+    // Restore panel visibility from the previous session. Browsers block
+    // AudioContext start without a user gesture, so the panel comes back
+    // visually but the mic/decoder run lazily — same constraint that
+    // affects every wfweb mode that touches audio on first load.
+    try {
+        if (window.localStorage.getItem('js8Open') === '1') {
+            // Defer until the WebSocket is up and the other-mode-coordinator
+            // (closeOtherModes) is wired, otherwise opening here races with
+            // initialization elsewhere on the page.
+            window.addEventListener('load', function () {
+                setTimeout(function () { if (!S.visible) open(); }, 100);
+            });
+        }
+    } catch (e) {}
 
     // Debug entry kept for devtools / corpus tests
     window.txJs8 = function (msg, opts) {
