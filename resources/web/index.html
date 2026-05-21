@@ -2035,7 +2035,7 @@ body.js8-open #bottomBar { grid-row: 5; }
     display: flex; flex-direction: column;
     min-height: 0; overflow: hidden;
 }
-.js8-stations-col { flex: 0 0 180px; }
+.js8-stations-col { flex: 0 0 140px; }
 .js8-feed-col     { flex: 1; }
 .js8-col-header {
     background: #530; color: #fc8;
@@ -2053,24 +2053,51 @@ body.js8-open #bottomBar { grid-row: 5; }
     font-family: monospace; font-size: 13px;
 }
 .js8-station {
-    display: flex; justify-content: space-between;
-    padding: 3px 6px; cursor: pointer; border-bottom: 1px solid #2a2018;
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 4px 6px; cursor: pointer; border-bottom: 1px solid #2a2018;
 }
 .js8-station:hover    { background: #3a2a18; }
 .js8-station.selected { background: #c80; color: #000; }
+.js8-station-row1 { display: flex; justify-content: space-between; align-items: baseline; }
 .js8-station-call { font-weight: bold; }
-.js8-station-meta { color: #a96; font-size: 11px; }
+.js8-station-dbm  { color: #a96; font-size: 10px; }
+.js8-station.selected .js8-station-dbm { color: #200; }
+/* 5-segment S-meter bar — graphical link-quality indicator. Each segment is
+   lit when SNR is at-or-above its threshold; colours go red → amber → green
+   as the bar fills up. Sized so a station row stays compact. */
+.js8-sbar { display: flex; gap: 2px; height: 6px; align-items: stretch; }
+.js8-sbar > span {
+    flex: 1; background: #2a2018; border: 1px solid #3a2a18; border-radius: 1px;
+}
+.js8-sbar > span.on.lvl1 { background: #c33; border-color: #d44; }
+.js8-sbar > span.on.lvl2 { background: #d63; border-color: #e74; }
+.js8-sbar > span.on.lvl3 { background: #db4; border-color: #ec5; }
+.js8-sbar > span.on.lvl4 { background: #8c4; border-color: #9d5; }
+.js8-sbar > span.on.lvl5 { background: #4d4; border-color: #5e5; }
+.js8-station.selected .js8-sbar > span { background: #aa6; border-color: #bb7; }
+.js8-station.selected .js8-sbar > span.on { filter: brightness(1.15); }
 .js8-feed-row {
     padding: 3px 6px; border-bottom: 1px solid #2a2018;
     word-break: break-word;
 }
+/* Sent (from me) — red theme. Right-aligned accent + soft red wash. */
 .js8-feed-row.from-me {
-    background: #06200a;
-    border-left: 3px solid #4a4;
+    background: #2a0808;
+    border-left: 3px solid #c33;
     padding-left: 3px;
 }
-.js8-feed-row.from-me .from { color: #ae8; }
-.js8-feed-row.from-me .msg  { color: #cfc; }
+.js8-feed-row.from-me .from { color: #fcc; }
+.js8-feed-row.from-me .msg  { color: #fee; }
+/* Directed AT me — green theme. The single most important signal in
+   the Monitor feed: someone is talking to you. */
+.js8-feed-row.to-me {
+    background: #062a10;
+    border-left: 3px solid #4c4;
+    padding-left: 3px;
+}
+.js8-feed-row.to-me .from { color: #afa; }
+.js8-feed-row.to-me .to   { color: #cfc; font-weight: bold; }
+.js8-feed-row.to-me .msg  { color: #efe; }
 .js8-feed-row .ts      { color: #a96; font-size: 11px; margin-right: 6px; }
 .js8-feed-row .from    { color: #fc8; font-weight: bold; cursor: pointer; }
 .js8-feed-row .from:hover { text-decoration: underline; }
@@ -2119,24 +2146,158 @@ body.js8-open #bottomBar { grid-row: 5; }
 }
 .js8-feed { cursor: text; }
 
-.js8-quickcmd-row {
-    display: flex; align-items: center; gap: 4px;
-    border-top: 1px solid #530; padding: 4px 0 4px 0;
-    flex-wrap: wrap;
+/* ── QSO tab strip — mirrors packet's term-session-tabs but with the
+   amber JS8 palette. Monitor is the always-present first tab; every
+   open QSO with a peer gets its own pill. ── */
+.js8-main-col { flex: 1; display: flex; flex-direction: column;
+    background: #2a2018; border: 1px solid #530; border-radius: 3px;
+    min-height: 0; overflow: hidden; }
+.js8-tabs {
+    display: flex; flex-wrap: wrap; gap: 2px;
+    padding: 3px 3px 0 3px;
+    background: #1d160f; border-bottom: 1px solid #530;
 }
-.js8-quickcmd-btn {
+.js8-tab {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; font-size: 11px; font-weight: bold;
+    letter-spacing: 0.5px; text-transform: uppercase;
+    background: #1a1410; color: #fc8;
+    border: 1px solid #530; border-bottom: none;
+    border-radius: 3px 3px 0 0; cursor: pointer; user-select: none;
+}
+.js8-tab:hover { background: #2a2018; }
+.js8-tab.active { background: #c80; color: #000; border-color: #c80; }
+.js8-tab .js8-tab-close {
+    background: transparent; border: none; padding: 0; margin: 0;
+    color: inherit; cursor: pointer; font-size: 12px; line-height: 1;
+    opacity: 0.6;
+}
+.js8-tab .js8-tab-close:hover { opacity: 1; }
+.js8-tab .js8-tab-unread {
+    background: #c00; color: #fff;
+    font-size: 9px; font-weight: bold;
+    padding: 0 5px; border-radius: 7px;
+    min-width: 14px; text-align: center;
+}
+.js8-tab.active .js8-tab-unread { display: none; }
+
+/* QSO view — chat bubbles. Path header above messages shows the relay
+   chain (if any) the conversation is using. */
+.js8-qso-view { flex: 1; display: flex; flex-direction: column;
+    overflow: hidden; min-height: 0; }
+.js8-qso-view.hidden { display: none; }
+.js8-qso-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 8px; background: #2a2018;
+    border-bottom: 1px solid #530;
+    font-family: monospace; font-size: 12px;
+}
+.js8-qso-path { display: flex; align-items: center; gap: 4px; flex: 1; }
+.js8-qso-path .hop   { color: #fc8; font-weight: bold; padding: 1px 6px;
+    background: #1d160f; border: 1px solid #530; border-radius: 3px; }
+.js8-qso-path .me    { background: #2a0808; border-color: #c33; color: #fcc; }
+.js8-qso-path .peer  { background: #062a10; border-color: #4c4; color: #afa; }
+.js8-qso-path .arrow { color: #a96; }
+.js8-qso-messages {
+    flex: 1; overflow-y: auto; padding: 8px;
+    display: flex; flex-direction: column; gap: 4px;
+    font-family: monospace; font-size: 13px;
+    user-select: text; -webkit-user-select: text;
+}
+.js8-bubble {
+    max-width: 75%; padding: 5px 10px; border-radius: 10px;
+    border: 1px solid transparent; word-break: break-word;
+    user-select: text; -webkit-user-select: text;
+}
+.js8-bubble.tx { background: #2a0808; border-color: #c33; color: #fee;
+    align-self: flex-end; }
+.js8-bubble.rx { background: #062a10; border-color: #4c4; color: #efe;
+    align-self: flex-start; }
+.js8-bubble .meta { display: block; font-size: 10px; color: #a96; margin-top: 2px; }
+.js8-bubble.tx .meta { color: #faa; text-align: right; }
+.js8-bubble.rx .meta { color: #afa; }
+.js8-bubble .cmd-chip {
+    display: inline-block; padding: 0 4px; margin-right: 4px;
+    background: rgba(0,0,0,0.3); border-radius: 2px;
+    font-size: 10px; font-weight: bold; letter-spacing: 0.5px;
+}
+.js8-qso-empty {
+    text-align: center; color: #a96;
+    padding: 24px; font-size: 12px; font-style: italic;
+}
+/* When a QSO tab is active hide the Monitor feed; when Monitor is
+   active hide the QSO view. Toggled via .hidden on the wrapper divs. */
+.js8-feed.hidden { display: none; }
+
+/* ── Reply-chip strip inside a QSO tab — one-tap RR/73/QSL/ACK so the
+   common closers don't require opening the palette. Lives just above
+   the compose row when a QSO is active. ── */
+.js8-reply-strip {
+    display: none;
+    align-items: center; gap: 4px;
+    padding: 4px 0;
+    border-top: 1px dashed #530;
+}
+body.js8-qso-tab .js8-reply-strip { display: flex; }
+.js8-chip {
+    background: #1a1410; color: #ae8;
+    border: 1px solid #353; border-radius: 12px;
+    padding: 2px 10px; font-family: monospace; font-size: 12px;
+    font-weight: bold; cursor: pointer; user-select: none;
+}
+.js8-chip:hover { background: #1a2a18; border-color: #686; }
+.js8-chip:active { background: #686; color: #000; }
+.js8-chip.cmd-trigger {
+    color: #fc8; border-color: #850;
+    margin-left: auto;
+}
+.js8-chip.cmd-trigger:hover { background: #3a2820; }
+
+/* ── CMD palette — replaces the long quickcmd button wall. Anchored to
+   the compose row; opened by clicking the ⌘ chip or pressing `/` in
+   the compose box. Three grouped grids: Query (?-suffix asks), Reply
+   (short closers), Action (RELAY modal). ── */
+.js8-cmd-palette {
+    position: absolute;
+    z-index: 410;
+    background: #1d160f;
+    border: 2px solid #c80; border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    padding: 8px; min-width: 360px;
+    display: none;
+}
+.js8-cmd-palette.open { display: block; }
+.js8-cmd-palette-section + .js8-cmd-palette-section { margin-top: 8px; }
+.js8-cmd-palette-title {
+    color: #a96; font-size: 10px; letter-spacing: 1.5px;
+    text-transform: uppercase; font-weight: bold;
+    margin-bottom: 4px;
+}
+.js8-cmd-palette-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+}
+.js8-cmd-palette-btn {
     background: #2a2018; color: #fc8;
     border: 1px solid #530; border-radius: 3px;
-    padding: 3px 7px; font-family: monospace; font-size: 11px;
+    padding: 6px 8px; font-family: monospace; font-size: 12px;
     font-weight: bold; cursor: pointer;
-    letter-spacing: 0.5px;
-    user-select: none;
+    letter-spacing: 0.5px; user-select: none;
+    text-align: left;
 }
-.js8-quickcmd-btn:hover { background: #3a2820; border-color: #850; }
-.js8-quickcmd-btn:active { background: #850; color: #000; }
-.js8-quickcmd-btn.js8-reply-btn { color: #ae8; border-color: #353; }
-.js8-quickcmd-btn.js8-reply-btn:hover { background: #1a2a18; border-color: #686; }
-.js8-cmd-sep { width: 1px; background: #530; align-self: stretch; margin: 2px 4px; }
+.js8-cmd-palette-btn:hover  { background: #3a2820; border-color: #850; }
+.js8-cmd-palette-btn:active { background: #850; color: #000; }
+.js8-cmd-palette-btn.reply  { color: #ae8; border-color: #353; }
+.js8-cmd-palette-btn.reply:hover  { background: #1a2a18; border-color: #686; }
+.js8-cmd-palette-btn.action { color: #fc8; background: #3a2820; border-color: #850; }
+.js8-cmd-palette-btn .desc {
+    display: block; font-size: 9px; color: #a96;
+    font-weight: normal; letter-spacing: 0; margin-top: 1px;
+}
+.js8-cmd-palette-backdrop {
+    position: fixed; inset: 0; z-index: 405; background: transparent;
+    display: none;
+}
+.js8-cmd-palette-backdrop.open { display: block; }
 
 .js8-modal-help {
     color: #ccb; font-size: 12px; line-height: 1.4;
@@ -2225,7 +2386,7 @@ body.js8-open #bottomBar { grid-row: 5; }
 @media (orientation: portrait), (max-width: 600px) {
     .js8-content { flex-direction: column; }
     .js8-stations-col { flex: 0 0 80px; }
-    .js8-station-meta { display: none; }
+    .js8-station-dbm { display: none; }
     .js8-action-row { flex-wrap: wrap; }
     .js8-compose { min-width: 150px; }
     .js8-big-btn { padding: 6px 10px; min-width: 50px; }
@@ -2552,39 +2713,76 @@ body.js8-open #bottomBar { grid-row: 5; }
                     <div class="js8-col-header">Heard</div>
                     <div id="js8Stations" class="js8-stations"></div>
                 </div>
-                <div class="js8-col js8-feed-col">
-                    <div class="js8-col-header">
-                        <span>Feed</span>
-                        <button id="js8ClearFeedBtn" class="js8-link-btn">clear</button>
-                    </div>
+                <div class="js8-main-col">
+                    <!-- Tab strip: Monitor (catch-all feed) + one tab per
+                         open QSO. Mirrors packet's term-session-tabs. -->
+                    <div id="js8Tabs" class="js8-tabs"></div>
+                    <!-- Monitor view = the original chronological feed -->
                     <div id="js8Feed" class="js8-feed"></div>
+                    <!-- QSO view = chat-bubble layout for the active peer.
+                         Path header above messages reflects the relay
+                         chain the conversation uses. -->
+                    <div id="js8QsoView" class="js8-qso-view hidden">
+                        <div class="js8-qso-header">
+                            <span id="js8QsoPath" class="js8-qso-path"></span>
+                            <button id="js8QsoCloseBtn" class="js8-link-btn"
+                                title="Close this QSO">close</button>
+                        </div>
+                        <div id="js8QsoMessages" class="js8-qso-messages"></div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Quick-cmd row: standard JS8Call directed commands. Each
-                 button sends "<TO> <CMD>" to the current DX call. The
-                 ones that need a free-text arg (INFO, STATUS, GRID,
-                 HEARING) prompt the user; the rest go out as-is. -->
-            <div class="js8-quickcmd-row">
-                <span class="js8-field-label">CMD</span>
-                <button class="js8-quickcmd-btn" data-cmd="SNR?"   title="Ask what SNR they hear me at">SNR?</button>
-                <button class="js8-quickcmd-btn" data-cmd="INFO?"  title="Ask for their info text">INFO?</button>
-                <button class="js8-quickcmd-btn" data-cmd="GRID?"  title="Ask for their Maidenhead grid">GRID?</button>
-                <button class="js8-quickcmd-btn" data-cmd="STATUS?" title="Ask for their status">STATUS?</button>
-                <button class="js8-quickcmd-btn" data-cmd="HEARING?" title="Ask which stations they're hearing">HEARING?</button>
-                <button class="js8-quickcmd-btn" data-cmd="HW CPY?" title="How do you copy?">HW CPY?</button>
-                <button class="js8-quickcmd-btn" data-cmd="QSL?"   title="Do you copy?">QSL?</button>
-                <button class="js8-quickcmd-btn" data-cmd="AGN?"   title="Please repeat">AGN?</button>
-                <button class="js8-quickcmd-btn" data-cmd="RELAY"  title="Relay a message through the TO station to a different final target">&gt;RELAY</button>
-                <span class="js8-cmd-sep"></span>
-                <button class="js8-quickcmd-btn js8-reply-btn" data-cmd="RR"  title="Roger roger">RR</button>
-                <button class="js8-quickcmd-btn js8-reply-btn" data-cmd="FB"  title="Fine business">FB</button>
-                <button class="js8-quickcmd-btn js8-reply-btn" data-cmd="QSL" title="I copy">QSL</button>
-                <button class="js8-quickcmd-btn js8-reply-btn" data-cmd="ACK" title="Acknowledge">ACK</button>
-                <button class="js8-quickcmd-btn js8-reply-btn" data-cmd="YES">YES</button>
-                <button class="js8-quickcmd-btn js8-reply-btn" data-cmd="NO">NO</button>
-                <button class="js8-quickcmd-btn js8-reply-btn" data-cmd="SK"  title="End of contact">SK</button>
-                <button class="js8-quickcmd-btn js8-reply-btn" data-cmd="73"  title="Best regards / end of contact">73</button>
+            <!-- Reply-chip strip — only visible inside a QSO tab. Top
+                 four closers (RR/QSL/73/SK) get one-tap chips so the
+                 most common interactions don't require opening the
+                 palette. The right-side ⌘ chip opens the full grid. -->
+            <div class="js8-reply-strip">
+                <button class="js8-chip" data-cmd="RR"  title="Roger roger">RR</button>
+                <button class="js8-chip" data-cmd="QSL" title="I copy">QSL</button>
+                <button class="js8-chip" data-cmd="73"  title="Best regards / end of contact">73</button>
+                <button class="js8-chip" data-cmd="SK"  title="End of contact">SK</button>
+                <button id="js8CmdChip" class="js8-chip cmd-trigger"
+                    title="Open the CMD palette (or press / in compose)">⌘ CMD</button>
+            </div>
+
+            <!-- CMD palette overlay. Position is recalculated on open
+                 to anchor above the compose row. Backdrop catches
+                 outside-clicks. -->
+            <div id="js8CmdPaletteBackdrop" class="js8-cmd-palette-backdrop"></div>
+            <div id="js8CmdPalette" class="js8-cmd-palette">
+                <div class="js8-cmd-palette-section">
+                    <div class="js8-cmd-palette-title">Ask</div>
+                    <div class="js8-cmd-palette-grid">
+                        <button class="js8-cmd-palette-btn" data-cmd="SNR?">SNR?<span class="desc">how do you hear me</span></button>
+                        <button class="js8-cmd-palette-btn" data-cmd="GRID?">GRID?<span class="desc">their locator</span></button>
+                        <button class="js8-cmd-palette-btn" data-cmd="INFO?">INFO?<span class="desc">their info</span></button>
+                        <button class="js8-cmd-palette-btn" data-cmd="STATUS?">STATUS?<span class="desc">their status</span></button>
+                        <button class="js8-cmd-palette-btn" data-cmd="HEARING?">HEARING?<span class="desc">who they hear</span></button>
+                        <button class="js8-cmd-palette-btn" data-cmd="HW CPY?">HW CPY?<span class="desc">copy check</span></button>
+                        <button class="js8-cmd-palette-btn" data-cmd="QSL?">QSL?<span class="desc">do you copy</span></button>
+                        <button class="js8-cmd-palette-btn" data-cmd="AGN?">AGN?<span class="desc">please repeat</span></button>
+                    </div>
+                </div>
+                <div class="js8-cmd-palette-section">
+                    <div class="js8-cmd-palette-title">Reply</div>
+                    <div class="js8-cmd-palette-grid">
+                        <button class="js8-cmd-palette-btn reply" data-cmd="RR">RR<span class="desc">roger roger</span></button>
+                        <button class="js8-cmd-palette-btn reply" data-cmd="FB">FB<span class="desc">fine business</span></button>
+                        <button class="js8-cmd-palette-btn reply" data-cmd="QSL">QSL<span class="desc">I copy</span></button>
+                        <button class="js8-cmd-palette-btn reply" data-cmd="ACK">ACK<span class="desc">acknowledge</span></button>
+                        <button class="js8-cmd-palette-btn reply" data-cmd="YES">YES</button>
+                        <button class="js8-cmd-palette-btn reply" data-cmd="NO">NO</button>
+                        <button class="js8-cmd-palette-btn reply" data-cmd="73">73<span class="desc">best regards</span></button>
+                        <button class="js8-cmd-palette-btn reply" data-cmd="SK">SK<span class="desc">end of contact</span></button>
+                    </div>
+                </div>
+                <div class="js8-cmd-palette-section">
+                    <div class="js8-cmd-palette-title">Action</div>
+                    <div class="js8-cmd-palette-grid">
+                        <button class="js8-cmd-palette-btn action" data-cmd="RELAY">&gt; RELAY<span class="desc">multi-hop message</span></button>
+                    </div>
+                </div>
             </div>
 
             <div class="js8-action-row">
@@ -9038,6 +9236,15 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         lastAckTo: new Map(),     // call → ms timestamp of last ACK we sent
         txIdCounter: 0,           // monotonic id for matching TX feed rows to queued frames
         activeTx: null,           // { entries: [{entry,count}], totalFrames, startMs, slotMs, timer }
+        // ─── QSO tabs ──────────────────────────────────────────────────
+        // Each direct conversation lives in its own QSO entry: messages
+        // are entry objects (same shape as feed entries — usually the SAME
+        // object reference, pushed into both feed and qso.messages). The
+        // active tab decides what's rendered to the right of Heard.
+        // 'monitor' = the catch-all feed; any other value is a peer call.
+        qsos: new Map(),       // peer → { peer, path: [], messages: [], unread: 0, lastUtc, lastSnr }
+        activeTab: 'monitor',  // 'monitor' or peer callsign
+        tabOrder: [],          // [peer1, peer2, ...] (Monitor is implicit head)
     };
 
     // ─── Persistent settings (localStorage) ───────────────────────────
@@ -9325,6 +9532,15 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // we still call here for direct emitFeedEntry callers (none today,
         // but cheap insurance).
         noteStation(entry.from, entry.freq, entry.snr);
+        // Auto-route into the per-peer QSO when the entry is directed at
+        // me by a real callsign. The `>` (relay) case is excluded —
+        // that's a forwarding request handled in processBufferedDirected,
+        // not a chat message. @ALLCALL/@HB never open QSOs.
+        var myCall = getMyCall();
+        if (!entry.fromMe && entry.from && entry.from.charAt(0) !== '@'
+            && myCall && entry.target === myCall && entry.cmd !== '>') {
+            routeEntryToQso(entry, entry.from);
+        }
         renderFeed();
         renderStations();
     }
@@ -9557,9 +9773,17 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             // chain object holds a reference to that entry and mutates it
             // in place as continuations arrive.
             if (chain) closeChain(key);
+            // Try to extract the directed target up front so the feed
+            // can colour entries addressed to me. parseDirected only
+            // succeeds on FrameDirected (frameType 3); for other frames
+            // there's no target and the entry stays in the neutral
+            // Monitor colour.
+            var pdHead = (d.frameType === 3) ? parseDirected(text) : null;
             var entry = {
                 t:      utcStamp(),
                 from:   parsed.from,
+                target: pdHead ? pdHead.target : '',
+                cmd:    pdHead ? pdHead.cmd    : '',
                 msg:    parsed.msg,
                 snr:    d.snr,
                 freq:   d.freq,
@@ -9570,11 +9794,8 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             // record it on the chain so we can act when the chain closes
             // after the continuation data frames arrive.
             var bufferedInfo = null;
-            if (d.frameType === 3) {
-                var pd = parseDirected(text);
-                if (pd && isBufferedDirectedCmd(pd.cmd)) {
-                    bufferedInfo = pd;
-                }
+            if (pdHead && isBufferedDirectedCmd(pdHead.cmd)) {
+                bufferedInfo = pdHead;
             }
             chain = {
                 entry:    entry,
@@ -9597,6 +9818,7 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             chain.entry.freq = d.freq;
             chain.lastUtc    = now;
             renderFeed();
+            if (S.activeTab !== 'monitor') renderQso();
         }
 
         if (isLast) {
@@ -9618,6 +9840,7 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
                 if (cleaned !== chain.entry.msg) {
                     chain.entry.msg = cleaned;
                     renderFeed();
+                    if (S.activeTab !== 'monitor') renderQso();
                 }
             }
             closeChain(key);
@@ -9752,7 +9975,10 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             return;   // unsupported cmd → no reply
         }
         S.lastAutoReply.set(ckey, now);
-        enqueueTx(replyText, label);
+        // Route the auto-reply into the QSO with the original sender so
+        // the chat reads naturally: their query above, our auto-reply
+        // below, both threaded under the same peer tab.
+        enqueueTx(replyText, label, { qsoPeer: fromCall });
     }
 
     // Called from ingestDecode when a Heartbeat frame arrives. If HB
@@ -9777,7 +10003,8 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // distinct from plain " SNR " (cmd 25, a general SNR report). The
         // packed-bit layout flags it via the second bit of the SNR-encoded
         // command byte (see Varicode::packCmd in Varicode.cpp).
-        enqueueTx(fromCall + ' HEARTBEAT SNR ' + snrStr, 'HB ACK', { hb: true });
+        enqueueTx(fromCall + ' HEARTBEAT SNR ' + snrStr, 'HB ACK',
+                  { hb: true, qsoPeer: fromCall });
     }
 
     // ─── TX pipeline ──────────────────────────────────────────────────
@@ -9892,11 +10119,17 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             frames[i].entryId = entryId;
             S.txQueue.push(frames[i]);
         }
+        // Capture an inline label as a CMD chip on the QSO bubble (e.g.
+        // "AUTO SNR?", "HB ACK", "RELAY → VK2ITM"). Falls back to nothing
+        // for plain SEND so the bubble reads as bare message text.
         var entry = {
             id: entryId,
             t: utcStamp(),
             from: getMyCall(),
-            msg: text + (label ? '  (' + label + ')' : ''),
+            target: opts.qsoPeer || '',
+            cmd: label || '',
+            msg: text,
+            label: label || '',
             fromMe: true,
             framesTotal: frames.length,
             framesSent: 0,
@@ -9910,6 +10143,21 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // to repeat.
         if (!opts.hb && !/^AUTO /.test(label || '')) {
             S.lastTxText = text;
+        }
+        // Auto-open/focus a QSO tab when the caller declared a peer.
+        // Plumbed through opts (qsoPeer + optional relay qsoPath) by
+        // callers that know they're starting/continuing a chat — Send
+        // button while a QSO tab is active, quickcmd to a real call,
+        // auto-replies, HB ACK, and the Relay modal. CQ/HB broadcasts
+        // and relay-forwarding (we're an intermediate hop) skip this.
+        if (opts.qsoPeer && opts.qsoPeer.charAt(0) !== '@') {
+            routeEntryToQso(entry, opts.qsoPeer, { path: opts.qsoPath });
+            // User-driven TX auto-focuses the tab so they see their
+            // message land. Auto-replies/ACKs skip this so a back-
+            // ground HB ACK doesn't yank focus away from Monitor.
+            if (!opts.hb && !/^AUTO /.test(opts.label || label || '')) {
+                if (S.activeTab !== opts.qsoPeer) setActiveTab(opts.qsoPeer);
+            }
         }
         renderFeed();
         console.log('[JS8 TX] queued ' + frames.length + ' frame(s) @ '
@@ -10038,6 +10286,172 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         );
     }
 
+    // ─── QSO tab model ────────────────────────────────────────────────
+    // A "QSO" is one open conversation with a peer. The tab strip shows
+    // Monitor (always present) + one pill per QSO. Sending while a QSO
+    // tab is active routes via that QSO's stored relay path; sending
+    // from Monitor uses the TO field as before. Messages live on the
+    // QSO object (same entry references as the global feed) so render
+    // is just iterating qso.messages, not filtering S.feed every paint.
+    function ensureQso(peer, path) {
+        if (!peer || peer.charAt(0) === '@') return null;
+        var q = S.qsos.get(peer);
+        if (!q) {
+            q = { peer: peer, path: path || [], messages: [],
+                  unread: 0, lastUtc: Date.now(), lastSnr: null };
+            S.qsos.set(peer, q);
+            S.tabOrder.push(peer);
+            renderTabs();
+        } else if (path && path.length && !q.path.length) {
+            // Promote an empty-path QSO once we observe a relay chain
+            // — first message was direct, follow-up arrived via relay.
+            q.path = path;
+        }
+        return q;
+    }
+
+    function routeEntryToQso(entry, peer, opts) {
+        var q = ensureQso(peer, opts && opts.path);
+        if (!q) return;
+        q.messages.push(entry);
+        q.lastUtc = Date.now();
+        if (typeof entry.snr === 'number') q.lastSnr = entry.snr;
+        // Unread badge bumps only when the message is RX and the tab is
+        // not the one currently shown.
+        if (!entry.fromMe && S.activeTab !== peer) q.unread++;
+        if (S.activeTab === peer) renderQso();
+        renderTabs();
+    }
+
+    function setActiveTab(name) {
+        S.activeTab = name || 'monitor';
+        var feedEl = document.getElementById('js8Feed');
+        var qsoEl  = document.getElementById('js8QsoView');
+        if (S.activeTab === 'monitor') {
+            feedEl.classList.remove('hidden');
+            qsoEl.classList.add('hidden');
+            document.body.classList.remove('js8-qso-tab');
+        } else {
+            feedEl.classList.add('hidden');
+            qsoEl.classList.remove('hidden');
+            document.body.classList.add('js8-qso-tab');
+            var q = S.qsos.get(S.activeTab);
+            if (q) { q.unread = 0; }
+        }
+        // Sync TO input + dxCall to the active peer for compose context.
+        if (S.activeTab !== 'monitor') {
+            S.dxCall = S.activeTab;
+            var dxEl = document.getElementById('js8DxCall');
+            if (dxEl) dxEl.value = S.dxCall;
+        }
+        renderTabs();
+        renderQso();
+        renderStations();
+    }
+
+    function closeQso(peer) {
+        if (!S.qsos.has(peer)) return;
+        S.qsos.delete(peer);
+        var ix = S.tabOrder.indexOf(peer);
+        if (ix >= 0) S.tabOrder.splice(ix, 1);
+        if (S.activeTab === peer) setActiveTab('monitor');
+        else { renderTabs(); }
+    }
+
+    // Render the relay path as a sequence of pills:
+    //   <ME> → <HOP1> → <HOP2> → <PEER>
+    // For a direct QSO (no relay) it's just <ME> → <PEER>. The HTML is
+    // safe-escaped; callsigns come from local state only but cheap to
+    // be defensive.
+    function pathHtml(peer, path) {
+        var me = escapeHtml(getMyCall() || 'ME');
+        var html = '<span class="hop me">' + me + '</span>';
+        var arrow = '<span class="arrow">→</span>';
+        if (path && path.length) {
+            for (var i = 0; i < path.length; ++i) {
+                html += arrow + '<span class="hop">' + escapeHtml(path[i]) + '</span>';
+            }
+        }
+        html += arrow + '<span class="hop peer">' + escapeHtml(peer) + '</span>';
+        return html;
+    }
+
+    function renderTabs() {
+        var el = document.getElementById('js8Tabs');
+        if (!el) return;
+        var html = '';
+        // Monitor tab — always first, no close button.
+        var monActive = S.activeTab === 'monitor' ? ' active' : '';
+        html += '<div class="js8-tab' + monActive + '" data-tab="monitor">'
+             +  '<span>Monitor</span></div>';
+        for (var i = 0; i < S.tabOrder.length; ++i) {
+            var peer = S.tabOrder[i];
+            var q = S.qsos.get(peer);
+            if (!q) continue;
+            var cls = 'js8-tab' + (S.activeTab === peer ? ' active' : '');
+            html += '<div class="' + cls + '" data-tab="' + escapeHtml(peer) + '">'
+                 +  '<span>' + escapeHtml(peer) + '</span>';
+            if (q.unread > 0) {
+                html += '<span class="js8-tab-unread">' + q.unread + '</span>';
+            }
+            html += '<button class="js8-tab-close" data-close="'
+                 +  escapeHtml(peer) + '" title="Close">×</button>'
+                 +  '</div>';
+        }
+        el.innerHTML = html;
+    }
+
+    function renderQso() {
+        var headerEl = document.getElementById('js8QsoPath');
+        var msgsEl   = document.getElementById('js8QsoMessages');
+        if (!headerEl || !msgsEl) return;
+        if (S.activeTab === 'monitor') return;
+        var q = S.qsos.get(S.activeTab);
+        if (!q) { setActiveTab('monitor'); return; }
+        headerEl.innerHTML = pathHtml(q.peer, q.path);
+        if (q.messages.length === 0) {
+            msgsEl.innerHTML = '<div class="js8-qso-empty">Type a message below to start the QSO with '
+                + escapeHtml(q.peer) + '.</div>';
+            return;
+        }
+        var html = '';
+        var peerPrefix = q.peer + ' ';
+        for (var i = 0; i < q.messages.length; ++i) {
+            var m = q.messages[i];
+            var dirCls = m.fromMe ? 'tx' : 'rx';
+            html += '<div class="js8-bubble ' + dirCls + '" '
+                 +  (m.id ? 'data-id="' + escapeHtml(m.id) + '"' : '') + '>';
+            if (m.cmd) {
+                html += '<span class="cmd-chip">' + escapeHtml(m.cmd) + '</span>';
+            }
+            // Strip the redundant peer callsign at the start of the
+            // wire-form payload — the QSO tab already says who this is
+            // with, so "K1FM SNR +5" reads better as just "SNR +5".
+            var body = m.msg || '';
+            if (m.fromMe && body.indexOf(peerPrefix) === 0) {
+                body = body.substr(peerPrefix.length);
+            }
+            // If the remaining body is identical to the cmd chip, drop
+            // it — quickcmd sends like `PEER 73` would otherwise read
+            // as a duplicated "73 · 73" pair.
+            if (m.cmd && body === m.cmd) body = '';
+            html += escapeHtml(body);
+            var meta = m.t || '';
+            if (typeof m.snr === 'number' && !m.fromMe) {
+                meta += '  ' + (m.snr >= 0 ? '+' : '') + m.snr + ' dB';
+            }
+            if (m.fromMe && m.framesTotal) {
+                var st = m.txStatus || 'queued';
+                meta += '  ' + txBadgeLabel(st, m.framesSent, m.framesTotal);
+            }
+            html += '<span class="meta">' + escapeHtml(meta) + '</span>';
+            html += '</div>';
+        }
+        msgsEl.innerHTML = html;
+        // Always show the latest message — scroll to bottom.
+        msgsEl.scrollTop = msgsEl.scrollHeight;
+    }
+
     // ─── Rendering ────────────────────────────────────────────────────
     function txBadgeLabel(status, sent, total) {
         var label = status === 'queued'  ? 'QUEUED'
@@ -10050,17 +10464,33 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     function renderFeed() {
         var el = document.getElementById('js8Feed');
         if (!el) return;
+        var myCall = getMyCall();
         var html = '';
         for (var i = 0; i < S.feed.length; i++) {
             var f = S.feed[i];
             var rowId = f.id ? ' data-id="' + escapeHtml(f.id) + '"' : '';
-            html += '<div class="js8-feed-row' + (f.fromMe ? ' from-me' : '') + '"' + rowId + '>';
+            // Theme classes: sent = red (.from-me), directed at me = green
+            // (.to-me). Mutually exclusive — a TX I originated never lands
+            // here as to-me. We only flag .to-me when the parsed target
+            // matches our own callsign, not for @ALLCALL/@HB.
+            var cls = 'js8-feed-row';
+            if (f.fromMe) cls += ' from-me';
+            else if (myCall && f.target && f.target === myCall) cls += ' to-me';
+            html += '<div class="' + cls + '"' + rowId + '>';
             html += '<span class="ts">' + f.t + '</span>';
             if (f.from) {
                 html += '<span class="from" data-call="' + escapeHtml(f.from) + '">'
                      +  escapeHtml(f.from) + '</span><span class="arrow">›</span>';
             }
-            html += '<span class="msg">' + escapeHtml(f.msg) + '</span>';
+            // Show the directed target as a separate badge when known —
+            // makes the to-me green stand out and lets @ALLCALL/@HB read
+            // at a glance in the Monitor feed.
+            if (f.target && !f.fromMe) {
+                html += '<span class="to">' + escapeHtml(f.target) + '</span>';
+            }
+            var msgText = f.msg || '';
+            if (f.fromMe && f.label) msgText += '  (' + f.label + ')';
+            html += '<span class="msg">' + escapeHtml(msgText) + '</span>';
             if (typeof f.snr === 'number') html += '<span class="snr">' + f.snr + 'dB</span>';
             if (f.fromMe && f.framesTotal) {
                 var st = f.txStatus || 'queued';
@@ -10084,27 +10514,66 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     // the feed aren't wiped out 5x/second.
     function updateTxRowsDom() {
         if (!S.activeTx) return;
+        var qsoActive = S.activeTab !== 'monitor';
         for (var i = 0; i < S.activeTx.entries.length; i++) {
             var g = S.activeTx.entries[i];
             var f = g.entry;
             var row = document.querySelector('.js8-feed-row[data-id="' + f.id + '"]');
-            if (!row) continue;
-            var badge = row.querySelector('[data-tx-badge]');
-            var prog  = row.querySelector('[data-tx-progress]');
-            if (badge) {
-                badge.className = 'js8-tx-badge ' + (f.txStatus || 'queued');
-                badge.textContent = txBadgeLabel(f.txStatus, f.framesSent, f.framesTotal);
+            if (row) {
+                var badge = row.querySelector('[data-tx-badge]');
+                var prog  = row.querySelector('[data-tx-progress]');
+                if (badge) {
+                    badge.className = 'js8-tx-badge ' + (f.txStatus || 'queued');
+                    badge.textContent = txBadgeLabel(f.txStatus, f.framesSent, f.framesTotal);
+                }
+                if (prog) {
+                    prog.classList.toggle('aborted', f.txStatus === 'aborted');
+                    var fill = prog.querySelector('.fill');
+                    if (fill) {
+                        var pct = Math.max(0, Math.min(100,
+                                    (f.framesSent || 0) / f.framesTotal * 100));
+                        fill.style.width = pct + '%';
+                    }
+                }
             }
-            if (prog) {
-                prog.classList.toggle('aborted', f.txStatus === 'aborted');
-                var fill = prog.querySelector('.fill');
-                if (fill) {
-                    var pct = Math.max(0, Math.min(100,
-                                (f.framesSent || 0) / f.framesTotal * 100));
-                    fill.style.width = pct + '%';
+            // Update the matching bubble's meta line when a QSO tab is
+            // active. Cheap enough to do every tick — one querySelector
+            // per in-flight entry, max ~3.
+            if (qsoActive) {
+                var bubble = document.querySelector(
+                    '.js8-bubble[data-id="' + f.id + '"]');
+                if (bubble) {
+                    var meta = bubble.querySelector('.meta');
+                    if (meta) {
+                        meta.textContent = (f.t || '') + '  ' +
+                            txBadgeLabel(f.txStatus, f.framesSent, f.framesTotal);
+                    }
                 }
             }
         }
+    }
+
+    // Map SNR (dB) to a 1..5 bar count. JS8 SNRs run roughly -25..+10 in
+    // practice; these thresholds keep typical-band signals around 2-3 bars
+    // and only push to 5 for genuinely strong copy. Returns 0 if snr is
+    // missing — the bar then renders all-empty.
+    function snrToBars(snr) {
+        if (typeof snr !== 'number' || isNaN(snr)) return 0;
+        if (snr >= 0)   return 5;
+        if (snr >= -5)  return 4;
+        if (snr >= -10) return 3;
+        if (snr >= -15) return 2;
+        return 1;
+    }
+    function sbarHtml(snr) {
+        var n = snrToBars(snr);
+        var html = '<div class="js8-sbar" title="' +
+            (typeof snr === 'number' ? snr + ' dB' : 'no signal') + '">';
+        for (var i = 1; i <= 5; i++) {
+            html += '<span class="' + (i <= n ? 'on lvl' + i : '') + '"></span>';
+        }
+        html += '</div>';
+        return html;
     }
 
     function renderStations() {
@@ -10116,9 +10585,15 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         for (var i = 0; i < arr.length && i < 50; i++) {
             var call = arr[i][0], s = arr[i][1];
             var sel = call === S.dxCall ? ' selected' : '';
+            var dbm = typeof s.snr === 'number'
+                ? (s.snr >= 0 ? '+' : '') + s.snr + ' dB'
+                : '—';
             html += '<div class="js8-station' + sel + '" data-call="' + escapeHtml(call) + '">';
+            html += '<div class="js8-station-row1">';
             html += '<span class="js8-station-call">' + escapeHtml(call) + '</span>';
-            html += '<span class="js8-station-meta">' + (typeof s.snr === 'number' ? s.snr + 'dB' : '') + '</span>';
+            html += '<span class="js8-station-dbm">' + dbm + '</span>';
+            html += '</div>';
+            html += sbarHtml(s.snr);
             html += '</div>';
         }
         el.innerHTML = html;
@@ -10148,6 +10623,12 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         if (S.timer) clearInterval(S.timer);
         S.timer = setInterval(tickTimer, 100);
         setStatus('RX', 'rx');
+        // Reset to Monitor tab on open. Existing QSO state is preserved
+        // across panel close/open — once you're chatting with someone,
+        // closing the JS8 panel shouldn't lose the conversation.
+        S.activeTab = 'monitor';
+        renderTabs();
+        setActiveTab('monitor');
         renderFeed();
         renderStations();
         // Stagger the first auto-HB so the user has a moment of audible
@@ -10162,6 +10643,8 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         S.visible = false;
         document.getElementById('js8Bar').classList.add('hidden');
         document.body.classList.remove('js8-open');
+        document.body.classList.remove('js8-qso-tab');
+        closeCmdPalette();
         if (S.timer) { clearInterval(S.timer); S.timer = null; }
         if (S.chainFlushTimer) {
             clearInterval(S.chainFlushTimer); S.chainFlushTimer = null;
@@ -10211,7 +10694,25 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // loop spins forever. Same convention FT8/FT4 follow on TX.
         var text = input.value.trim().toUpperCase();
         if (!text) return;
-        enqueueTx(text);
+        // When a QSO tab is active, route the message via that QSO's
+        // peer + relay path. Build the wire form here so the existing
+        // pack pipeline sees the same string a manual user would type
+        // ("PEER msg" for direct, "HOP1> HOP2> PEER msg" for relay).
+        // Monitor tab → enqueueTx with no qsoPeer (compose's TO field
+        // already drives the addressing through `pack`'s selectedCall).
+        if (S.activeTab !== 'monitor') {
+            var q = S.qsos.get(S.activeTab);
+            if (q) {
+                var wire = (q.path && q.path.length)
+                    ? buildRelayWire(q.path, q.peer, text)
+                    : (q.peer + ' ' + text);
+                var bypass = !!(q.path && q.path.length);
+                enqueueTx(wire, '', { qsoPeer: q.peer, qsoPath: q.path,
+                                       bypassSel: bypass });
+            }
+        } else {
+            enqueueTx(text, '', { qsoPeer: S.dxCall });
+        }
         input.value = '';
     });
     document.getElementById('js8CqBtn').addEventListener('click', function () {
@@ -10226,21 +10727,90 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         var grid4 = (myGrid || '').slice(0, 4);
         enqueueTx('CQ CQ CQ' + (grid4 ? ' ' + grid4 : ''), 'CQ');
     });
-    // Quick-cmd buttons: build "<TO> <CMD>" against the current DX call.
-    // Querying @ALLCALL is allowed for HEARING? (common "who's around?"
-    // call) but blocked for the rest where it doesn't make sense.
-    document.querySelectorAll('.js8-quickcmd-btn').forEach(function (btn) {
+    // Resolve the target callsign for a CMD: prefer the active QSO tab's
+    // peer (most natural reading: chips inside a QSO go to that QSO),
+    // then fall back to the TO field. Returns null + alerts when there's
+    // no real callsign and the cmd isn't @ALLCALL-friendly.
+    function resolveCmdTarget(cmd) {
+        var to;
+        if (S.activeTab !== 'monitor') {
+            to = S.activeTab;
+        } else {
+            to = (document.getElementById('js8DxCall').value || '').toUpperCase().trim()
+              || S.dxCall || '@ALLCALL';
+        }
+        if (to === '@ALLCALL' && cmd !== 'HEARING?') {
+            alert('Pick a TO callsign first (or use HEARING? for an @ALLCALL query).');
+            return null;
+        }
+        return to;
+    }
+    function fireCmd(cmd) {
+        if (cmd === 'RELAY') { openRelayModal(); return; }
+        var to = resolveCmdTarget(cmd);
+        if (!to) return;
+        enqueueTx(to + ' ' + cmd, cmd, { qsoPeer: to });
+    }
+    // Reply-strip chips (only visible inside a QSO tab) — one-tap RR/73/etc.
+    document.querySelectorAll('.js8-reply-strip .js8-chip[data-cmd]').forEach(function (btn) {
+        btn.addEventListener('click', function () { fireCmd(btn.dataset.cmd); });
+    });
+    // Palette buttons — fire the cmd, then close the palette.
+    document.querySelectorAll('.js8-cmd-palette-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            var cmd = btn.dataset.cmd;
-            if (cmd === 'RELAY') { openRelayModal(); return; }
-            var to = (document.getElementById('js8DxCall').value || '').toUpperCase().trim()
-                  || S.dxCall || '@ALLCALL';
-            if (to === '@ALLCALL' && cmd !== 'HEARING?') {
-                alert('Pick a TO callsign first (or use HEARING? for an @ALLCALL query).');
-                return;
-            }
-            enqueueTx(to + ' ' + cmd, cmd);
+            closeCmdPalette();
+            fireCmd(btn.dataset.cmd);
         });
+    });
+
+    // ─── CMD palette overlay ──────────────────────────────────────────
+    // Anchored just above the compose row; opened by clicking the ⌘ chip
+    // or pressing `/` as the first character in the compose input.
+    function openCmdPalette() {
+        var pal = document.getElementById('js8CmdPalette');
+        var bd  = document.getElementById('js8CmdPaletteBackdrop');
+        var action = document.querySelector('.js8-action-row');
+        if (!pal || !bd || !action) return;
+        // Position above the action row. The palette is `position:
+        // absolute` inside the .js8-bar so coords are relative to the
+        // bar. Pin to the bar's right padding so the palette doesn't
+        // disappear off-screen on narrow windows.
+        var bar = document.getElementById('js8Bar');
+        var barRect = bar.getBoundingClientRect();
+        var actRect = action.getBoundingClientRect();
+        pal.style.left   = '8px';
+        pal.style.right  = '8px';
+        pal.style.bottom = (barRect.bottom - actRect.top + 4) + 'px';
+        pal.classList.add('open');
+        bd.classList.add('open');
+    }
+    function closeCmdPalette() {
+        var pal = document.getElementById('js8CmdPalette');
+        var bd  = document.getElementById('js8CmdPaletteBackdrop');
+        if (pal) pal.classList.remove('open');
+        if (bd)  bd.classList.remove('open');
+    }
+    document.getElementById('js8CmdChip').addEventListener('click', openCmdPalette);
+    document.getElementById('js8CmdPaletteBackdrop').addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        closeCmdPalette();
+    });
+    // `/` as first char of empty compose opens the palette.
+    document.getElementById('js8Compose').addEventListener('keydown', function (e) {
+        if (e.key === '/' && !e.target.value) {
+            e.preventDefault();
+            openCmdPalette();
+        }
+    });
+    // Esc closes the palette from anywhere — the keystroke is rarely
+    // captured by anything else, and binding to document survives the
+    // case where the user opened the palette via the ⌘ chip and never
+    // gave compose focus.
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' &&
+            document.getElementById('js8CmdPalette').classList.contains('open')) {
+            closeCmdPalette();
+        }
     });
 
     // ─── Relay modal ──────────────────────────────────────────────────
@@ -10312,8 +10882,13 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         var wire = buildRelayWire(hops, target, msg);
         // bypassSel: keep the payload routing intact — DON'T let
         // AUTO_PREPEND_DIRECTED reshuffle the chain based on S.dxCall.
-        enqueueTx(wire, 'RELAY → ' + target, { bypassSel: true });
+        // qsoPeer = final target, qsoPath = relay hops — the QSO tab
+        // opens with the full chain visible above the bubbles, and any
+        // reply within that tab will reuse the same path.
+        enqueueTx(wire, 'RELAY → ' + target,
+                  { bypassSel: true, qsoPeer: target, qsoPath: hops });
         document.getElementById('js8RelayModal').classList.add('hidden');
+        setActiveTab(target);
     });
     document.getElementById('js8HbBtn').addEventListener('click', function () {
         var myCall = getMyCall();
@@ -10325,9 +10900,9 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         S.lastHbTx = Date.now();  // reset the auto-HB interval
         enqueueTx(grid ? ('HB ' + grid) : 'HB', 'HB', { hb: true });
     });
-    document.getElementById('js8ClearFeedBtn').addEventListener('click', function () {
-        S.feed = []; renderFeed();
-    });
+    // Monitor feed clear is exposed via console as window.js8ClearFeed —
+    // the old in-panel "clear" link was retired when Monitor became a tab.
+    window.js8ClearFeed = function () { S.feed = []; renderFeed(); };
     document.getElementById('js8SettingsBtn').addEventListener('click', function () {
         document.getElementById('js8SettingMycall').value = getMyCall();
         document.getElementById('js8SettingMygrid').value = getMyGridLocal();
@@ -10388,9 +10963,34 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     document.getElementById('js8Stations').addEventListener('click', function (e) {
         var el = e.target.closest('.js8-station');
         if (!el) return;
-        S.dxCall = el.dataset.call;
-        document.getElementById('js8DxCall').value = S.dxCall;
-        renderStations();
+        var call = el.dataset.call;
+        if (!call) return;
+        S.dxCall = call;
+        document.getElementById('js8DxCall').value = call;
+        // Click a heard station → open a QSO with them and focus that
+        // tab. Skips broadcast aliases (@ALLCALL/@HB) — those stay as
+        // Monitor-tab destinations only.
+        if (call.charAt(0) !== '@') {
+            ensureQso(call, []);
+            setActiveTab(call);
+        } else {
+            renderStations();
+        }
+    });
+    // Tab strip — click switches active view; ✕ closes the QSO.
+    document.getElementById('js8Tabs').addEventListener('click', function (e) {
+        var closeBtn = e.target.closest('.js8-tab-close');
+        if (closeBtn) {
+            e.stopPropagation();
+            closeQso(closeBtn.dataset.close);
+            return;
+        }
+        var tab = e.target.closest('.js8-tab');
+        if (!tab) return;
+        setActiveTab(tab.dataset.tab);
+    });
+    document.getElementById('js8QsoCloseBtn').addEventListener('click', function () {
+        if (S.activeTab !== 'monitor') closeQso(S.activeTab);
     });
     document.getElementById('js8Feed').addEventListener('click', function (e) {
         var el = e.target.closest('.from');
