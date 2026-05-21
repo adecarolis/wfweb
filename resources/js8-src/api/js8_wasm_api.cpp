@@ -92,14 +92,13 @@ extern "C" int js8_encode(int submode, int frame_type,
 extern "C" js8_decoder* js8_decoder_new(int /*submode*/) {
     auto* dec = new (std::nothrow) js8_decoder;
     if (!dec) return nullptr;
-    // Always enable all four official-client submodes — Normal=1, Fast=2,
-    // Turbo=4, Slow=8 → bitmask 15 — so the decoder finds whichever speed
-    // a station is transmitting without requiring the user to pre-select.
-    // (ModeI = "Ultra" is upstream JS8Call-improved only and is omitted
-    // intentionally to stay interoperable with the official client.)
-    // The `submode` argument is kept in the signature for callers that
-    // still pass it but is otherwise ignored.
-    dec->submode_bit = 1 | 2 | 4 | 8;
+    // Enable all five submodes — Normal=1, Fast=2, Turbo("JS8 40")=4,
+    // Slow=8, Ultra("JS8 60")=16 → bitmask 31. JS8Call 3.0.0 exposes
+    // JS8 60 (formerly the upstream-only "Ultra" mode) in the official
+    // client, so wfweb can decode it interoperably. The `submode`
+    // argument is kept in the signature for callers that still pass it
+    // but is otherwise ignored.
+    dec->submode_bit = 1 | 2 | 4 | 8 | 16;
     dec->impl = JS8::js8_make_decoder(::dec_data);
     return dec;
 }
@@ -235,6 +234,8 @@ extern "C" int js8_decoder_run(js8_decoder* dec) {
     ::dec_data.params.kszC  = clamp(JS8C_TX_SECONDS * JS8_RX_SAMPLE_RATE);
     ::dec_data.params.kposE = 0;
     ::dec_data.params.kszE  = clamp(JS8E_TX_SECONDS * JS8_RX_SAMPLE_RATE);
+    ::dec_data.params.kposI = 0;
+    ::dec_data.params.kszI  = clamp(JS8I_TX_SECONDS * JS8_RX_SAMPLE_RATE);
     return js8_drain_decoder(dec);
 }
 
@@ -242,7 +243,8 @@ extern "C" int js8_decoder_run_modes(js8_decoder* dec, int nsubmodes,
                                      int kposA, int kszA,
                                      int kposB, int kszB,
                                      int kposC, int kszC,
-                                     int kposE, int kszE) {
+                                     int kposE, int kszE,
+                                     int kposI, int kszI) {
     if (!dec || !dec->impl) return 0;
     js8_stage_dec_data(dec);
     ::dec_data.params.nsubmodes = nsubmodes;
@@ -250,6 +252,7 @@ extern "C" int js8_decoder_run_modes(js8_decoder* dec, int nsubmodes,
     ::dec_data.params.kposB = kposB; ::dec_data.params.kszB = kszB;
     ::dec_data.params.kposC = kposC; ::dec_data.params.kszC = kszC;
     ::dec_data.params.kposE = kposE; ::dec_data.params.kszE = kszE;
+    ::dec_data.params.kposI = kposI; ::dec_data.params.kszI = kszI;
     return js8_drain_decoder(dec);
 }
 

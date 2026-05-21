@@ -2524,10 +2524,11 @@ body.js8-open #bottomBar { grid-row: 5; }
                 <span class="js8-brand">JS8</span>
                 <select id="js8SubmodeSel" class="js8-submode-sel"
                         title="TX speed — RX decodes all four speeds at once">
-                    <option value="0">Normal · 15s</option>
-                    <option value="1">Fast · 10s</option>
-                    <option value="2">Turbo · 6s</option>
-                    <option value="4">Slow · 30s</option>
+                    <option value="0">JS8 Normal · 15s</option>
+                    <option value="1">JS8 Fast · 10s</option>
+                    <option value="2">JS8 40 · 6s</option>
+                    <option value="4">JS8 Slow · 30s</option>
+                    <option value="8">JS8 60 · 4s</option>
                 </select>
                 <span class="js8-status-pill" id="js8Status">IDLE</span>
                 <div class="js8-progress-wrap">
@@ -2649,10 +2650,11 @@ body.js8-open #bottomBar { grid-row: 5; }
                 <div class="js8-settings-field">
                     <span class="js8-field-label">DEFAULT SPEED</span>
                     <select id="js8SettingSubmode" class="js8-submode-sel">
-                        <option value="0">Normal · 15s</option>
-                        <option value="1">Fast · 10s</option>
-                        <option value="2">Turbo · 6s</option>
-                        <option value="4">Slow · 30s</option>
+                        <option value="0">JS8 Normal · 15s</option>
+                        <option value="1">JS8 Fast · 10s</option>
+                        <option value="2">JS8 40 · 6s</option>
+                        <option value="4">JS8 Slow · 30s</option>
+                        <option value="8">JS8 60 · 4s</option>
                     </select>
                 </div>
                 <div class="js8-settings-field">
@@ -8996,12 +8998,12 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     window.js8 = js8;
 
     // ─── State ─────────────────────────────────────────────────────────
-    // RX runs Normal+Fast+Turbo+Slow simultaneously — each mode has its
+    // RX runs all five submodes simultaneously — each mode has its
     // own slot duration aligned to UTC seconds. lastSlot tracks the most
     // recent slot index we've seen per mode so we can detect a boundary
     // and trigger an *aligned* decode for the just-ended slot.
-    const SUBMODE_BITS = { 0: 1, 1: 2, 2: 4, 4: 8 }; // SubmodeType ID → ksz bit
-    const RX_MODES     = [0, 1, 2, 4];               // Normal, Fast, Turbo, Slow
+    const SUBMODE_BITS = { 0: 1, 1: 2, 2: 4, 4: 8, 8: 16 }; // SubmodeType ID → ksz bit
+    const RX_MODES     = [0, 1, 2, 4, 8];                   // JS8 Normal/Fast/40/Slow/60
     const S = {
         visible: false,
         rxEnabled: false,
@@ -9022,7 +9024,7 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         rxWritePos: 0,
         rxPhase: 0,
         slotIndex: -1,                  // TX slot tracker (driven by S.submode)
-        lastSlot: { 0: -1, 1: -1, 2: -1, 4: -1 }, // per-mode RX slot trackers
+        lastSlot: { 0: -1, 1: -1, 2: -1, 4: -1, 8: -1 }, // per-mode RX slot trackers
         chains: new Map(),              // freqKey → { from, parts, firstUtc, snr, freq }
         chainFlushTimer: null,
         timer: null,
@@ -9230,7 +9232,8 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // that slot's transmission interval. Setting kposX = rxWritePos -
         // slotSamples and kszX = slotSamples points the decoder at it.
         var nsubmodes = 0;
-        var posA = 0, szA = 0, posB = 0, szB = 0, posC = 0, szC = 0, posE = 0, szE = 0;
+        var posA = 0, szA = 0, posB = 0, szB = 0, posC = 0, szC = 0;
+        var posE = 0, szE = 0, posI = 0, szI = 0;
         for (var i = 0; i < modesEnded.length; ++i) {
             var m = modesEnded[i];
             var slotSamples = m.slotSeconds * 12000;
@@ -9238,10 +9241,11 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             var pos = Math.max(0, S.rxWritePos - slotSamples);
             nsubmodes |= m.bit;
             switch (m.bit) {
-                case 1: posA = pos; szA = sz; break;
-                case 2: posB = pos; szB = sz; break;
-                case 4: posC = pos; szC = sz; break;
-                case 8: posE = pos; szE = sz; break;
+                case 1:  posA = pos; szA = sz; break; // Normal
+                case 2:  posB = pos; szB = sz; break; // Fast
+                case 4:  posC = pos; szC = sz; break; // JS8 40 (Turbo)
+                case 8:  posE = pos; szE = sz; break; // Slow
+                case 16: posI = pos; szI = sz; break; // JS8 60 (Ultra)
             }
         }
 
@@ -9258,7 +9262,7 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
 
         var samples = S.rxBuffer.slice(0, S.rxWritePos);
         S.decoder.push(samples);
-        S.decoder.runModes(nsubmodes, posA, szA, posB, szB, posC, szC, posE, szE);
+        S.decoder.runModes(nsubmodes, posA, szA, posB, szB, posC, szC, posE, szE, posI, szI);
 
         var syncCands = 0, decoded = 0;
         while (true) {
@@ -9486,7 +9490,7 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // d.type is the raw 3-bit field carried in the JS8 frame:
         //   bit 0 = JS8CallFirst, bit 1 = JS8CallLast, bit 2 = JS8CallData.
         // Multi-frame messages mark the first frame with First and the
-        // last with Last; the Data bit is only set in Fast/Turbo/Slow
+        // last with Last; the Data bit is only set in Fast/JS8 40/Slow/JS8 60
         // submodes (and is set on every frame of those, not just the
         // ends). A single-frame message has First+Last.
         var bits = (d.type | 0);

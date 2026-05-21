@@ -59,8 +59,9 @@ int js8_decoder_run(js8_decoder* dec);
  * Unlike js8_decoder_run, this gives the caller full control over
  * which modes to scan and where in the staged audio to scan them.
  *
- *   nsubmodes   — bitmask: Normal=1, Fast=2, Turbo=4, Slow=8.
- *                 Use the OR of every mode whose slot just ended.
+ *   nsubmodes   — bitmask: Normal=1, Fast=2, Turbo(JS8 40)=4, Slow=8,
+ *                 Ultra(JS8 60)=16. Use the OR of every mode whose slot
+ *                 just ended.
  *   kposX/kszX  — for each enabled mode, the start sample and length
  *                 of that mode's slot within the staged audio. kszX
  *                 must be ≤ Mode::NMAX (slot duration × 12 000); the
@@ -74,7 +75,8 @@ int js8_decoder_run_modes(js8_decoder* dec, int nsubmodes,
                           int kposA, int kszA,
                           int kposB, int kszB,
                           int kposC, int kszC,
-                          int kposE, int kszE);
+                          int kposE, int kszE,
+                          int kposI, int kszI);
 
 /* Pop one decoded-message JSON record from the queue, or return NULL
  * when the queue is empty. Caller must free the returned string with

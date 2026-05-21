@@ -107,16 +107,16 @@ function addAWGN(audio, rmsInt16) {
 // ─── Test cases — one fixed message, sweep over all five submodes ─────
 
 const TEST_MSG = "HELLOWK1FMab";
-// Ultra (ModeI, bit 16) is a JS8Call-improved-only submode and isn't
-// enabled in the decoder bitmask (which is fixed at Normal|Fast|Turbo|Slow
-// = 15 for official-client interop). Encoder still produces Ultra-shaped
-// frames, but the decoder won't decode them — so we drop Ultra from the
-// roundtrip gate. If a future build re-enables Ultra add it back here.
+// All five JS8Call 3.0.0 submodes (decoder bitmask is 31 — Normal|Fast|
+// JS8 40|Slow|JS8 60). JS8 60 (ModeI, bit 16) was previously gated off
+// because JS8Call 2.x didn't ship it; with 3.0.0 it's part of the
+// official client and we want full coverage.
 const SUBMODES = [
-    { id: 0, name: "Normal" },
-    { id: 1, name: "Fast"   },
-    { id: 2, name: "Turbo"  },
-    { id: 4, name: "Slow"   },
+    { id: 0, name: "JS8 Normal" },
+    { id: 1, name: "JS8 Fast"   },
+    { id: 2, name: "JS8 40"     },
+    { id: 4, name: "JS8 Slow"   },
+    { id: 8, name: "JS8 60"     },
 ];
 
 // SNR sweep — noise levels matching virtualrig's --noise flag scale.

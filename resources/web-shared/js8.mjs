@@ -14,13 +14,17 @@
 
 // ─── Submode parameter table — mirrors JS8_Include/commons.h ──────────
 
+// Names track JS8Call 3.0.0's user-visible labels: "JS8 Normal/Fast/Slow"
+// for the canonical three, and the bare-number "JS8 40" / "JS8 60" for the
+// two former internal names (Turbo / Ultra) that the 3.0.0 client now
+// surfaces.
 const SUBMODE = {
-    // id : { name,    symbolSamples, slotSeconds, prerollMs }
-    0:    { name: "Normal", symbolSamples: 1920, slotSeconds: 15, prerollMs: 500 },
-    1:    { name: "Fast",   symbolSamples: 1200, slotSeconds: 10, prerollMs: 200 },
-    2:    { name: "Turbo",  symbolSamples: 600,  slotSeconds: 6,  prerollMs: 100 },
-    4:    { name: "Slow",   symbolSamples: 3840, slotSeconds: 30, prerollMs: 500 },
-    8:    { name: "Ultra",  symbolSamples: 384,  slotSeconds: 4,  prerollMs: 100 },
+    // id : { name,        symbolSamples, slotSeconds, prerollMs }
+    0:    { name: "JS8 Normal", symbolSamples: 1920, slotSeconds: 15, prerollMs: 500 },
+    1:    { name: "JS8 Fast",   symbolSamples: 1200, slotSeconds: 10, prerollMs: 200 },
+    2:    { name: "JS8 40",     symbolSamples: 600,  slotSeconds: 6,  prerollMs: 100 },
+    4:    { name: "JS8 Slow",   symbolSamples: 3840, slotSeconds: 30, prerollMs: 500 },
+    8:    { name: "JS8 60",     symbolSamples: 384,  slotSeconds: 4,  prerollMs: 100 },
 };
 
 export function getSubmode(id) {
@@ -154,7 +158,7 @@ class JS8Module {
     // Encode a 12-character JS8 message of the given frame type and
     // submode. Returns Int32Array of 79 tones (each 0..7), or null on
     // bad input. submode is a Varicode::SubmodeType ID (Normal=0,
-    // Fast=1, Turbo=2, Slow=4, Ultra=8) — selects the Costas sync
+    // Fast=1, JS8 40=2, Slow=4, JS8 60=8) — selects the Costas sync
     // pattern (ORIGINAL for Normal, MODIFIED for the others).
     encode(frameType, msg, submode = 0) {
         if (typeof msg !== "string" || msg.length !== 12) return null;
@@ -174,8 +178,8 @@ class JS8Module {
     }
 
     // Create a Decoder object for the given submode (matching the
-    // bits of Varicode::SubmodeType: Normal=0, Fast=1, Turbo=2,
-    // Slow=4, Ultra=8).
+    // bits of Varicode::SubmodeType: Normal=0, Fast=1, JS8 40=2,
+    // Slow=4, JS8 60=8).
     newDecoder(submode = 0) {
         const ptr = this._decoder_new(submode);
         if (!ptr) return null;
@@ -210,14 +214,15 @@ class JS8Decoder {
     // Run a decode pass over caller-controlled mode windows. Use this
     // when you know which modes' slots just ended and where in the
     // staged audio their slot lives. nsubmodes is a bitmask
-    // (Normal=1, Fast=2, Turbo=4, Slow=8). Each pair kpos*/ksz* gives
-    // the offset and length of that mode's slot inside the staged audio.
-    // For modes whose bit isn't set, pass 0/0.
-    runModes(nsubmodes, posA, szA, posB, szB, posC, szC, posE, szE) {
+    // (Normal=1, Fast=2, Turbo[JS8 40]=4, Slow=8, Ultra[JS8 60]=16).
+    // Each pair kpos*/ksz* gives the offset and length of that mode's
+    // slot inside the staged audio. For modes whose bit isn't set,
+    // pass 0/0.
+    runModes(nsubmodes, posA, szA, posB, szB, posC, szC, posE, szE, posI, szI) {
         if (this.ptr === 0) return 0;
         return this.js8._decoder_run_modes(
             this.ptr, nsubmodes,
-            posA, szA, posB, szB, posC, szC, posE, szE);
+            posA, szA, posB, szB, posC, szC, posE, szE, posI, szI);
     }
 
     // Pop one queued decoded message (object with snr/dt/freq/text/...
