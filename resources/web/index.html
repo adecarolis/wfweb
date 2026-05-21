@@ -10445,12 +10445,18 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             if (m.cmd) {
                 html += '<span class="cmd-chip">' + escapeHtml(m.cmd) + '</span>';
             }
-            // Strip the redundant peer callsign at the start of the
-            // wire-form payload — the QSO tab already says who this is
-            // with, so "K1FM SNR +5" reads better as just "SNR +5".
+            // Strip the redundant callsign prefix at the start of the
+            // on-air payload. For TX the wire form is "PEER body" (we
+            // packed it that way); for RX it's "MYCALL body" (the peer
+            // addressed us). Either way the QSO header already names
+            // both participants, so the prefix is noise inside the
+            // bubble — "K1FM SNR +5" reads better as just "SNR +5".
             var body = m.msg || '';
-            if (m.fromMe && body.indexOf(peerPrefix) === 0) {
-                body = body.substr(peerPrefix.length);
+            var myCall = getMyCall();
+            var stripPrefix = m.fromMe ? peerPrefix
+                                       : (myCall ? myCall + ' ' : '');
+            if (stripPrefix && body.indexOf(stripPrefix) === 0) {
+                body = body.substr(stripPrefix.length);
             }
             // If the remaining body is identical to the cmd chip, drop
             // it — quickcmd sends like `PEER 73` would otherwise read
