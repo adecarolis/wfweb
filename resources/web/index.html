@@ -11059,14 +11059,20 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     // AudioContext start without a user gesture, so the panel comes back
     // visually but the mic/decoder run lazily — same constraint that
     // affects every wfweb mode that touches audio on first load.
+    //
+    // Done inline at end of init (mirrors packet.js's restoreLayoutFromStorage
+    // call site). Wrapping this in a `load` event listener was a dead end:
+    // the JS8 module awaits the WASM codec init, so by the time the IIFE
+    // gets here `load` has long since fired and a freshly-attached handler
+    // never runs. document.readyState check is belt-and-braces in case
+    // this ever moves earlier.
     try {
         if (window.localStorage.getItem('js8Open') === '1') {
-            // Defer until the WebSocket is up and the other-mode-coordinator
-            // (closeOtherModes) is wired, otherwise opening here races with
-            // initialization elsewhere on the page.
-            window.addEventListener('load', function () {
-                setTimeout(function () { if (!S.visible) open(); }, 100);
-            });
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', open);
+            } else if (!S.visible) {
+                open();
+            }
         }
     } catch (e) {}
 
