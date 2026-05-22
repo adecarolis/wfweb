@@ -10200,9 +10200,11 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // Plumbed through opts (qsoPeer + optional relay qsoPath) by
         // callers that know they're starting/continuing a chat — Send
         // button while a QSO tab is active, quickcmd to a real call,
-        // auto-replies, HB ACK, and the Relay modal. CQ/HB broadcasts
-        // and relay-forwarding (we're an intermediate hop) skip this.
-        if (opts.qsoPeer && opts.qsoPeer.charAt(0) !== '@') {
+        // auto-replies, HB ACK, Relay modal, and group sends.
+        // @ALLCALL alone is excluded — that traffic belongs in Monitor.
+        // CQ/HB broadcasts and relay-forwarding (we're an intermediate
+        // hop) don't pass qsoPeer at all, so they skip naturally.
+        if (opts.qsoPeer && opts.qsoPeer !== '@ALLCALL') {
             routeEntryToQso(entry, opts.qsoPeer, { path: opts.qsoPath });
             // User-driven TX auto-focuses the tab so they see their
             // message land. Auto-replies/ACKs skip this so a back-
