@@ -9535,8 +9535,17 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // otherwise the chain accumulator never learns who sent the
         // multi-frame TX and routing on isLast falls through to
         // Monitor instead of the QSO/group tab.
-        var m2 = text.match(/^([@A-Z0-9\/]{2,})\s*$/);
-        if (m2) return { from: m2[1], msg: '' };
+        //
+        // Restrict the fallback to real-callsign shape: no '@' prefix
+        // (rules out compound directed frames like "@GROUP1  "),
+        // must contain at least one digit AND at least one letter
+        // (rules out pure-letter message data like "HELLO" or
+        // "TEST"), and the trailing must be whitespace only (rules
+        // out anything carrying message content past the head).
+        var m2 = text.match(/^([A-Z0-9\/]{2,})\s*$/);
+        if (m2 && /[0-9]/.test(m2[1]) && /[A-Z]/.test(m2[1])) {
+            return { from: m2[1], msg: '' };
+        }
         return { from: '', msg: text };
     }
 
