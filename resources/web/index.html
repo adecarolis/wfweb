@@ -9526,7 +9526,18 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     // when the data continuation began with "<NEXT-HOP>>".
     function parseFrom(text) {
         var m = text.match(/^([@A-Z0-9\/]{2,})\s*:\s*(.*)$/);
-        return m ? { from: m[1], msg: m[2].trim() } : { from: '', msg: text };
+        if (m) return { from: m[1], msg: m[2].trim() };
+        // Compound de-compound frames where the sender has no grid set
+        // come back as a bare "CALLSIGN  " — JS8Call's unpack
+        // strategies bail because the trimmed text contains a space
+        // (or is <12 chars), so message_ stays as the raw frame text
+        // with no ": " sender suffix. Recognise that shape too,
+        // otherwise the chain accumulator never learns who sent the
+        // multi-frame TX and routing on isLast falls through to
+        // Monitor instead of the QSO/group tab.
+        var m2 = text.match(/^([@A-Z0-9\/]{2,})\s*$/);
+        if (m2) return { from: m2[1], msg: '' };
+        return { from: '', msg: text };
     }
 
     // Record/refresh a station's last-heard record. Called from
@@ -9554,8 +9565,10 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         noteStation(entry.from, entry.freq, entry.snr);
         // Auto-route into a chat tab.
         //   * Directed-at-me from a real callsign → per-peer chat tab.
-        //   * Directed at a non-@ALLCALL group → that group's multi-
-        //     party tab (peer is the group itself, sender per bubble).
+        //   * Directed at a non-@ALLCALL group → only when the operator
+        //     has subscribed (= already has that group's tab open).
+        //     Unsubscribed groups stay in Monitor so a station that
+        //     overhears @GROUP1 traffic doesn't get a tab forced open.
         // The `>` (relay) case is excluded — that's a forwarding
         // request handled in processBufferedDirected, not chat. Echoes
         // of our own TX (fromMe / from === myCall) are also skipped.
@@ -9565,7 +9578,8 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             if (myCall && entry.target === myCall) {
                 routeEntryToQso(entry, entry.from);
             } else if (entry.target && entry.target.charAt(0) === '@'
-                       && entry.target !== '@ALLCALL') {
+                       && entry.target !== '@ALLCALL'
+                       && S.qsos.has(entry.target)) {
                 routeEntryToQso(entry, entry.target);
             }
         }
@@ -9784,9 +9798,17 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         var rawMsg;
         if (parsed.from) {
             var colon = rawText.indexOf(':');
-            rawMsg = colon >= 0
-                ? rawText.substr(colon + 1).replace(/^\s+/, '')
-                : rawText;
+            if (colon >= 0) {
+                rawMsg = rawText.substr(colon + 1).replace(/^\s+/, '');
+            } else {
+                // No colon — bare-callsign form from a deCompound frame
+                // with no grid. Strip the sender callsign and any
+                // leading whitespace so this frame contributes an
+                // empty payload to the chain (the trailing whitespace
+                // after the callsign was JSC padding, not message
+                // content).
+                rawMsg = rawText.substr(parsed.from.length).replace(/^\s+/, '');
+            }
         } else {
             rawMsg = rawText;
         }
@@ -9887,7 +9909,8 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
                         if (myCallNow && chain.entry.target === myCallNow) {
                             routeEntryToQso(chain.entry, chain.entry.from);
                         } else if (chain.entry.target.charAt(0) === '@' &&
-                                   chain.entry.target !== '@ALLCALL') {
+                                   chain.entry.target !== '@ALLCALL' &&
+                                   S.qsos.has(chain.entry.target)) {
                             routeEntryToQso(chain.entry, chain.entry.target);
                         }
                     }
