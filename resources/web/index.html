@@ -2216,6 +2216,12 @@ body.js8-open #bottomBar { grid-row: 5; }
 .js8-bubble .meta { display: block; font-size: 10px; color: #a96; margin-top: 2px; }
 .js8-bubble.tx .meta { color: #faa; text-align: right; }
 .js8-bubble.rx .meta { color: #afa; }
+/* Per-bubble sender (group tabs only) — small callout above the body
+   so a multi-station chat is readable without scanning the tab name. */
+.js8-bubble-from {
+    display: block; font-size: 11px; font-weight: bold;
+    color: #afa; margin-bottom: 2px; letter-spacing: 0.5px;
+}
 .js8-bubble .cmd-chip {
     display: inline-block; padding: 0 4px; margin-right: 4px;
     background: rgba(0,0,0,0.3); border-radius: 2px;
@@ -9546,14 +9552,22 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // we still call here for direct emitFeedEntry callers (none today,
         // but cheap insurance).
         noteStation(entry.from, entry.freq, entry.snr);
-        // Auto-route into the per-peer QSO when the entry is directed at
-        // me by a real callsign. The `>` (relay) case is excluded —
-        // that's a forwarding request handled in processBufferedDirected,
-        // not a chat message. @ALLCALL/@HB never open QSOs.
+        // Auto-route into a chat tab.
+        //   * Directed-at-me from a real callsign → per-peer chat tab.
+        //   * Directed at a non-@ALLCALL group → that group's multi-
+        //     party tab (peer is the group itself, sender per bubble).
+        // The `>` (relay) case is excluded — that's a forwarding
+        // request handled in processBufferedDirected, not chat. Echoes
+        // of our own TX (fromMe / from === myCall) are also skipped.
         var myCall = getMyCall();
         if (!entry.fromMe && entry.from && entry.from.charAt(0) !== '@'
-            && myCall && entry.target === myCall && entry.cmd !== '>') {
-            routeEntryToQso(entry, entry.from);
+            && entry.cmd !== '>' && (!myCall || entry.from !== myCall)) {
+            if (myCall && entry.target === myCall) {
+                routeEntryToQso(entry, entry.from);
+            } else if (entry.target && entry.target.charAt(0) === '@'
+                       && entry.target !== '@ALLCALL') {
+                routeEntryToQso(entry, entry.target);
+            }
         }
         renderFeed();
         renderStations();
@@ -10034,8 +10048,25 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         if (!myCall) { alert('Set your callsign first (gear icon).'); return null; }
         var myGrid = getMyGridLocal();
         var dx = (S.dxCall || '').trim();
-        var sel = dx && dx !== '@ALLCALL' ? dx : '';
-        return js8.pack(myCall, myGrid, sel, text, S.submode);
+        // Real callsigns ride in selectedCall — buildMessageFrames'
+        // AUTO_PREPEND_DIRECTED prepends them to form a directed
+        // compound. @-prefixed groups (@ALLCALL, @GROUP1, ...) must be
+        // baked into the text instead and selectedCall left empty:
+        // buildMessageFrames won't synthesize a compound for a group
+        // in selectedCall, which is why @ALLCALL sends previously went
+        // nowhere — the target was simply dropped on the floor.
+        var sel = (dx && dx.charAt(0) !== '@') ? dx : '';
+        var packText = text;
+        if (dx && dx.charAt(0) === '@') {
+            // Don't double-prefix when the caller already prepended
+            // the group (e.g. SEND inside a @GROUP1 tab builds
+            // "@GROUP1 HELLO" itself).
+            var dxEsc = dx.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            if (!new RegExp('^' + dxEsc + '\\b').test(text)) {
+                packText = dx + ' ' + text;
+            }
+        }
+        return js8.pack(myCall, myGrid, sel, packText, S.submode);
     }
 
     // Pick an audio TX frequency that avoids stations we've recently
@@ -10315,11 +10346,18 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     // QSO object (same entry references as the global feed) so render
     // is just iterating qso.messages, not filtering S.feed every paint.
     function ensureQso(peer, path) {
-        if (!peer || peer.charAt(0) === '@') return null;
+        if (!peer) return null;
+        // @ALLCALL is the broadcast view = the Monitor tab. Other
+        // @groups (@SAR, @ARES, @GROUP1, ...) open their own multi-party
+        // tab where the per-message sender is shown next to each RX
+        // bubble (vs. individual chats where the sender is implicit
+        // from the tab header).
+        if (peer === '@ALLCALL') return null;
         var q = S.qsos.get(peer);
         if (!q) {
             q = { peer: peer, path: path || [], messages: [],
-                  unread: 0, lastUtc: Date.now(), lastSnr: null };
+                  unread: 0, lastUtc: Date.now(), lastSnr: null,
+                  isGroup: peer.charAt(0) === '@' };
             S.qsos.set(peer, q);
             S.tabOrder.push(peer);
             renderTabs();
@@ -10437,24 +10475,37 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         }
         var html = '';
         var peerPrefix = q.peer + ' ';
+        var myCall = getMyCall();
         for (var i = 0; i < q.messages.length; ++i) {
             var m = q.messages[i];
             var dirCls = m.fromMe ? 'tx' : 'rx';
             html += '<div class="js8-bubble ' + dirCls + '" '
                  +  (m.id ? 'data-id="' + escapeHtml(m.id) + '"' : '') + '>';
+            // Group tabs: show the sender at the top of each RX bubble
+            // because multiple stations participate. Individual tabs:
+            // sender is implicit from the tab header — no per-bubble
+            // sender. TX bubbles never need a sender (it's me).
+            if (q.isGroup && !m.fromMe && m.from) {
+                html += '<span class="js8-bubble-from">'
+                     +  escapeHtml(m.from) + '</span>';
+            }
             if (m.cmd) {
                 html += '<span class="cmd-chip">' + escapeHtml(m.cmd) + '</span>';
             }
             // Strip the redundant callsign prefix at the start of the
-            // on-air payload. For TX the wire form is "PEER body" (we
-            // packed it that way); for RX it's "MYCALL body" (the peer
-            // addressed us). Either way the QSO header already names
-            // both participants, so the prefix is noise inside the
-            // bubble — "K1FM SNR +5" reads better as just "SNR +5".
+            // on-air payload. The wire form always starts with the
+            // *target*: peer/group on TX, myCall on RX (individual),
+            // group on RX (group tab). Strip whichever applies so the
+            // bubble reads as a plain message body.
             var body = m.msg || '';
-            var myCall = getMyCall();
-            var stripPrefix = m.fromMe ? peerPrefix
-                                       : (myCall ? myCall + ' ' : '');
+            var stripPrefix;
+            if (m.fromMe) {
+                stripPrefix = peerPrefix;
+            } else if (q.isGroup) {
+                stripPrefix = peerPrefix;
+            } else {
+                stripPrefix = myCall ? myCall + ' ' : '';
+            }
             if (stripPrefix && body.indexOf(stripPrefix) === 0) {
                 body = body.substr(stripPrefix.length);
             }
