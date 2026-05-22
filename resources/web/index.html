@@ -9854,6 +9854,15 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             // here — the entry already shows the complete text. Run the
             // buffered-cmd processor first so a relay's re-TX lands above
             // the originating frame in the newest-on-top feed.
+            // Diagnostic for the "12 34567" join bug: log multi-frame
+            // chain parts on close so we can see whether the space comes
+            // from a frame payload's trailing JSC marker or from somewhere
+            // else. Single-frame messages skip the log to keep RX noise
+            // down.
+            if (chain && chain.parts && chain.parts.length > 1) {
+                console.log('[JS8 RX chain]', JSON.stringify(chain.parts),
+                            '→', JSON.stringify(chain.entry.msg));
+            }
             if (chain && chain.buffered &&
                 chain.buffered.target === getMyCall()) {
                 processBufferedDirected(chain);
@@ -10785,6 +10794,20 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         S.dxCall = e.target.value.toUpperCase().trim() || '@ALLCALL';
         renderStations();
     });
+    // Pressing Enter in the TO field opens a chat tab for the typed
+    // target without transmitting — useful for joining a group window
+    // to listen in (e.g. type @ARES, press Enter, monitor group
+    // traffic) rather than having to send a message just to subscribe.
+    // @ALLCALL is skipped because that's the Monitor view by design.
+    document.getElementById('js8DxCall').addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        var target = (e.target.value || '').toUpperCase().trim();
+        if (!target || target === '@ALLCALL') return;
+        ensureQso(target, []);
+        setActiveTab(target);
+        document.getElementById('js8Compose').focus();
+    });
     document.getElementById('js8Compose').addEventListener('keydown', function (e) {
         if (e.key === 'Enter') { document.getElementById('js8SendBtn').click(); }
     });
@@ -10795,25 +10818,30 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // loop spins forever. Same convention FT8/FT4 follow on TX.
         var text = input.value.trim().toUpperCase();
         if (!text) return;
-        // When a QSO tab is active, route the message via that QSO's
-        // peer + relay path. Build the wire form here so the existing
-        // pack pipeline sees the same string a manual user would type
-        // ("PEER msg" for direct, "HOP1> HOP2> PEER msg" for relay).
-        // Monitor tab → enqueueTx with no qsoPeer (compose's TO field
-        // already drives the addressing through `pack`'s selectedCall).
-        if (S.activeTab !== 'monitor') {
-            var q = S.qsos.get(S.activeTab);
-            if (q) {
-                var wire = (q.path && q.path.length)
-                    ? buildRelayWire(q.path, q.peer, text)
-                    : (q.peer + ' ' + text);
-                var bypass = !!(q.path && q.path.length);
-                enqueueTx(wire, '', { qsoPeer: q.peer, qsoPath: q.path,
-                                       bypassSel: bypass });
-            }
+        // The TO field (= S.dxCall) is the authoritative target. The
+        // active tab is just visual context — if the user edited TO
+        // to a different peer or group, the message goes to THAT
+        // target and we open/focus its tab in enqueueTx's auto-route.
+        // Previously SEND inside a QSO tab pulled the target from the
+        // tab object itself, so editing TO had no effect and every
+        // subsequent send still went to the first tab opened.
+        var target = (S.dxCall || '').trim() || '@ALLCALL';
+        var q = S.qsos.get(target);
+        var path = (q && q.path && q.path.length) ? q.path : [];
+        var wire, bypass;
+        if (path.length) {
+            // Relay: build explicit "HOP1> HOP2> TARGET text" and let
+            // pack() know not to touch selectedCall.
+            wire = buildRelayWire(path, target, text);
+            bypass = true;
         } else {
-            enqueueTx(text, '', { qsoPeer: S.dxCall });
+            // Direct send. pack() handles addressing via dxCall:
+            // selectedCall for real calls, prepend for @-groups
+            // (including @ALLCALL). The message body stays bare.
+            wire = text;
+            bypass = false;
         }
+        enqueueTx(wire, '', { qsoPeer: target, qsoPath: path, bypassSel: bypass });
         input.value = '';
     });
     document.getElementById('js8CqBtn').addEventListener('click', function () {
