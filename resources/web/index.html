@@ -10835,10 +10835,14 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             wire = buildRelayWire(path, target, text);
             bypass = true;
         } else {
-            // Direct send. pack() handles addressing via dxCall:
-            // selectedCall for real calls, prepend for @-groups
-            // (including @ALLCALL). The message body stays bare.
-            wire = text;
+            // Direct send — always prepend the target into the wire so
+            // buildMessageFrames sees an unambiguous "TARGET msg" form.
+            // Relying on AUTO_PREPEND_DIRECTED to inject the target via
+            // selectedCall was the regression source: parseCallsigns +
+            // start-with-base-call heuristics inside that path can
+            // suppress the prepend for innocuous-looking message text,
+            // leaving the data frame uncredited to any recipient.
+            wire = target + ' ' + text;
             bypass = false;
         }
         enqueueTx(wire, '', { qsoPeer: target, qsoPath: path, bypassSel: bypass });
