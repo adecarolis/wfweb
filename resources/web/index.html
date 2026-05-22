@@ -9863,6 +9863,36 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
                 console.log('[JS8 RX chain]', JSON.stringify(chain.parts),
                             '→', JSON.stringify(chain.entry.msg));
             }
+            // Recover the target for compound 3-frame messages. When the
+            // sender is base but the target is compound (e.g. @GROUP1,
+            // which is NOT in JS8Call's basecalls list — only @GROUP/0..
+            // @GROUP/9 with slashes are), JS8 emits:
+            //   frame 1: compound de-compound  → "FROM: "    (no target)
+            //   frame 2: compound directed     → "@TARGET  " (no FROM:)
+            //   frame 3: data                  → "PAYLOAD"
+            // emitFeedEntry runs on frame 1 with entry.target='' because
+            // parseDirected only handles the standard "FROM: TARGET …"
+            // shape — so the message stayed in Monitor with no QSO tab.
+            // By isLast we have the joined msg; extract the target from
+            // its first token and re-route.
+            if (chain && chain.entry && chain.entry.from && !chain.entry.target) {
+                var fullMsg = chain.entry.msg || '';
+                var tm = fullMsg.match(/^(@?[A-Z0-9\/]{2,})(\s|$)/);
+                if (tm) {
+                    chain.entry.target = tm[1];
+                    var myCallNow = getMyCall();
+                    if (chain.entry.from.charAt(0) !== '@' &&
+                        chain.entry.cmd !== '>' &&
+                        (!myCallNow || chain.entry.from !== myCallNow)) {
+                        if (myCallNow && chain.entry.target === myCallNow) {
+                            routeEntryToQso(chain.entry, chain.entry.from);
+                        } else if (chain.entry.target.charAt(0) === '@' &&
+                                   chain.entry.target !== '@ALLCALL') {
+                            routeEntryToQso(chain.entry, chain.entry.target);
+                        }
+                    }
+                }
+            }
             if (chain && chain.buffered &&
                 chain.buffered.target === getMyCall()) {
                 processBufferedDirected(chain);
@@ -10519,6 +10549,11 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             }
             if (stripPrefix && body.indexOf(stripPrefix) === 0) {
                 body = body.substr(stripPrefix.length);
+                // Compound directed frames decode with a double trailing
+                // space ("@GROUP1  ") — after stripping one of those the
+                // body would carry a leading space. Drop any remaining
+                // leading whitespace so the bubble reads cleanly.
+                body = body.replace(/^\s+/, '');
             }
             // If the remaining body is identical to the cmd chip, drop
             // it — quickcmd sends like `PEER 73` would otherwise read
