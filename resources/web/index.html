@@ -9574,10 +9574,14 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         noteStation(entry.from, entry.freq, entry.snr);
         // Auto-route into a chat tab.
         //   * Directed-at-me from a real callsign → per-peer chat tab.
-        //   * Directed at a non-@ALLCALL group → only when the operator
-        //     has subscribed (= already has that group's tab open).
-        //     Unsubscribed groups stay in Monitor so a station that
-        //     overhears @GROUP1 traffic doesn't get a tab forced open.
+        //   * Directed at @ALLCALL → always auto-route (broadcast
+        //     channel; every station listens, so the tab subscribes
+        //     itself on first hit).
+        //   * Directed at any other group (@SAR, @GROUP1, …) → only
+        //     when the operator has already subscribed (= a tab for
+        //     that group is open). Unsubscribed groups stay in Monitor
+        //     so a station that overhears @GROUP1 traffic doesn't get
+        //     a tab forced open.
         // The `>` (relay) case is excluded — that's a forwarding
         // request handled in processBufferedDirected, not chat. Echoes
         // of our own TX (fromMe / from === myCall) are also skipped.
@@ -9587,8 +9591,8 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             if (myCall && entry.target === myCall) {
                 routeEntryToQso(entry, entry.from);
             } else if (entry.target && entry.target.charAt(0) === '@'
-                       && entry.target !== '@ALLCALL'
-                       && S.qsos.has(entry.target)) {
+                       && (entry.target === '@ALLCALL'
+                           || S.qsos.has(entry.target))) {
                 routeEntryToQso(entry, entry.target);
             }
         }
@@ -9894,32 +9898,45 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
                 console.log('[JS8 RX chain]', JSON.stringify(chain.parts),
                             '→', JSON.stringify(chain.entry.msg));
             }
-            // Recover the target for compound 3-frame messages. When the
-            // sender is base but the target is compound (e.g. @GROUP1,
-            // which is NOT in JS8Call's basecalls list — only @GROUP/0..
-            // @GROUP/9 with slashes are), JS8 emits:
-            //   frame 1: compound de-compound  → "FROM: "    (no target)
-            //   frame 2: compound directed     → "@TARGET  " (no FROM:)
-            //   frame 3: data                  → "PAYLOAD"
-            // emitFeedEntry runs on frame 1 with entry.target='' because
-            // parseDirected only handles the standard "FROM: TARGET …"
-            // shape — so the message stayed in Monitor with no QSO tab.
+            // Recover the target for compound multi-frame messages.
+            // When EITHER the sender OR the target isn't in JS8Call's
+            // basecalls list (only @GROUP/0..@GROUP/9 with slashes and
+            // a small set of plain calls are), JS8 emits a compound
+            // chain instead of a single FrameDirected:
+            //   compound-sender base+compound-target (e.g. K1FM → @ALLCALL)
+            //     frame 1: compound directed     → "@ALLCALL  " (no FROM:)
+            //     frame 2: data                  → "PAYLOAD"
+            //   compound-sender (e.g. VK2ITM/P → @GROUP1)
+            //     frame 1: compound de-compound  → "VK2ITM/P: "
+            //     frame 2: compound directed     → "@GROUP1  "
+            //     frame 3: data                  → "PAYLOAD"
+            // emitFeedEntry on the head sees entry.target='' because
+            // parseDirected requires the standard "FROM: TARGET …"
+            // shape — the message stays in Monitor with no QSO tab.
             // By isLast we have the joined msg; extract the target from
             // its first token and re-route.
-            if (chain && chain.entry && chain.entry.from && !chain.entry.target) {
+            if (chain && chain.entry && !chain.entry.target) {
                 var fullMsg = chain.entry.msg || '';
                 var tm = fullMsg.match(/^(@?[A-Z0-9\/]{2,})(\s|$)/);
                 if (tm) {
                     chain.entry.target = tm[1];
                     var myCallNow = getMyCall();
-                    if (chain.entry.from.charAt(0) !== '@' &&
-                        chain.entry.cmd !== '>' &&
-                        (!myCallNow || chain.entry.from !== myCallNow)) {
-                        if (myCallNow && chain.entry.target === myCallNow) {
-                            routeEntryToQso(chain.entry, chain.entry.from);
+                    var fromCall = chain.entry.from || '';
+                    // Drop our own echo (only checkable when we have
+                    // a real sender), drop relay forwards (`>`), and
+                    // drop any `from === @something` (system traffic).
+                    var notEcho   = !myCallNow || !fromCall || fromCall !== myCallNow;
+                    var notSysFrm = !fromCall || fromCall.charAt(0) !== '@';
+                    if (notSysFrm && chain.entry.cmd !== '>' && notEcho) {
+                        if (myCallNow && chain.entry.target === myCallNow && fromCall) {
+                            routeEntryToQso(chain.entry, fromCall);
                         } else if (chain.entry.target.charAt(0) === '@' &&
-                                   chain.entry.target !== '@ALLCALL' &&
-                                   S.qsos.has(chain.entry.target)) {
+                                   (chain.entry.target === '@ALLCALL' ||
+                                    S.qsos.has(chain.entry.target))) {
+                            // Unknown sender (base-to-@ALLCALL case
+                            // drops the de-compound frame) — show '?'
+                            // so the group bubble doesn't read blank.
+                            if (!chain.entry.from) chain.entry.from = '?';
                             routeEntryToQso(chain.entry, chain.entry.target);
                         }
                     }
@@ -9970,7 +9987,12 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         S.lastHbTx = now;
         var grid = getMyGridLocal();
         var text = grid ? ('HB ' + grid) : 'HB';
-        enqueueTx(text, 'HB auto', { hb: true });
+        // bypassSel: HB is a broadcast (@HB on air) — must never be
+        // re-targeted to whatever's in the TO field. Without this, if
+        // the user is sitting in an @GROUP1 tab, pack() would prepend
+        // "@GROUP1 " and the resulting frame stops looking like an HB
+        // to other stations' decoders.
+        enqueueTx(text, 'HB auto', { hb: true, bypassSel: true });
     }
 
     // Recognized directed commands, longest first so multi-word forms
@@ -10074,10 +10096,18 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
             return;   // unsupported cmd → no reply
         }
         S.lastAutoReply.set(ckey, now);
+        // bypassSel: the reply wire already starts with the sender's
+        // callsign (e.g. "IZ6BYY INFO IC-7300"). If pack() were to
+        // hand buildMessageFrames a non-empty selectedCall (= S.dxCall,
+        // which is whatever tab the operator happens to be sitting in
+        // — often @GROUP1 or another peer), the @-group case would
+        // bake "@GROUP1 " in front of the wire and the reply lands in
+        // the wrong channel. Same bug pattern that broke HB ACK and
+        // relay forwarding.
         // Route the auto-reply into the QSO with the original sender so
         // the chat reads naturally: their query above, our auto-reply
         // below, both threaded under the same peer tab.
-        enqueueTx(replyText, label, { qsoPeer: fromCall });
+        enqueueTx(replyText, label, { qsoPeer: fromCall, bypassSel: true });
     }
 
     // Called from ingestDecode when a Heartbeat frame arrives. If HB
@@ -10271,11 +10301,12 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // Plumbed through opts (qsoPeer + optional relay qsoPath) by
         // callers that know they're starting/continuing a chat — Send
         // button while a QSO tab is active, quickcmd to a real call,
-        // auto-replies, HB ACK, Relay modal, and group sends.
-        // @ALLCALL alone is excluded — that traffic belongs in Monitor.
+        // auto-replies, HB ACK, Relay modal, group sends, and @ALLCALL
+        // sends (so the operator sees their own broadcast in the
+        // @ALLCALL tab next to incoming broadcasts).
         // CQ/HB broadcasts and relay-forwarding (we're an intermediate
         // hop) don't pass qsoPeer at all, so they skip naturally.
-        if (opts.qsoPeer && opts.qsoPeer !== '@ALLCALL') {
+        if (opts.qsoPeer) {
             routeEntryToQso(entry, opts.qsoPeer, { path: opts.qsoPath });
             // User-driven TX auto-focuses the tab so they see their
             // message land. Auto-replies/ACKs skip this so a back-
@@ -10420,12 +10451,12 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     // is just iterating qso.messages, not filtering S.feed every paint.
     function ensureQso(peer, path) {
         if (!peer) return null;
-        // @ALLCALL is the broadcast view = the Monitor tab. Other
-        // @groups (@SAR, @ARES, @GROUP1, ...) open their own multi-party
-        // tab where the per-message sender is shown next to each RX
-        // bubble (vs. individual chats where the sender is implicit
-        // from the tab header).
-        if (peer === '@ALLCALL') return null;
+        // @-groups (@ALLCALL, @SAR, @ARES, @GROUP1, ...) open their own
+        // multi-party tab where the per-message sender is shown next
+        // to each RX bubble (vs. individual chats where the sender is
+        // implicit from the tab header). Monitor stays the catch-all
+        // view of every decode; the @ALLCALL tab is the subset
+        // explicitly addressed to all stations.
         var q = S.qsos.get(peer);
         if (!q) {
             q = { peer: peer, path: path || [], messages: [],
@@ -10865,12 +10896,11 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
     // target without transmitting — useful for joining a group window
     // to listen in (e.g. type @ARES, press Enter, monitor group
     // traffic) rather than having to send a message just to subscribe.
-    // @ALLCALL is skipped because that's the Monitor view by design.
     document.getElementById('js8DxCall').addEventListener('keydown', function (e) {
         if (e.key !== 'Enter') return;
         e.preventDefault();
         var target = (e.target.value || '').toUpperCase().trim();
-        if (!target || target === '@ALLCALL') return;
+        if (!target) return;
         ensureQso(target, []);
         setActiveTab(target);
         document.getElementById('js8Compose').focus();
@@ -10925,7 +10955,12 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // on air. We send a 4-char grid (Maidenhead 4) when set, matching
         // K1FM's behaviour.
         var grid4 = (myGrid || '').slice(0, 4);
-        enqueueTx('CQ CQ CQ' + (grid4 ? ' ' + grid4 : ''), 'CQ');
+        // bypassSel: CQ is a broadcast (packs to "@ALLCALL CQ CQ CQ FN30"
+        // on air). If the operator is sitting in a group tab when they
+        // click CQ, pack()'s @-group handling would prepend that group
+        // to the wire and the CQ goes to the wrong channel.
+        enqueueTx('CQ CQ CQ' + (grid4 ? ' ' + grid4 : ''), 'CQ',
+                  { bypassSel: true });
     });
     // Resolve the target callsign for a CMD: prefer the active QSO tab's
     // peer (most natural reading: chips inside a QSO go to that QSO),
@@ -11098,7 +11133,10 @@ import { js8Init, synthesize, getSubmode } from '/js8.mjs';
         // 500–1000 Hz HB sub-channel when Auto Freq is on.
         var grid = getMyGridLocal();
         S.lastHbTx = Date.now();  // reset the auto-HB interval
-        enqueueTx(grid ? ('HB ' + grid) : 'HB', 'HB', { hb: true });
+        // bypassSel: see maybeFireHb — HB must not inherit the active
+        // group as its target.
+        enqueueTx(grid ? ('HB ' + grid) : 'HB', 'HB',
+                  { hb: true, bypassSel: true });
     });
     // Monitor feed clear is exposed via console as window.js8ClearFeed —
     // the old in-panel "clear" link was retired when Monitor became a tab.
