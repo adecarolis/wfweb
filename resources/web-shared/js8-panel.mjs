@@ -2491,8 +2491,14 @@ const JS8_PANEL_MARKUP = `
         // on air). If the operator is sitting in a group tab when they
         // click CQ, pack()'s @-group handling would prepend that group
         // to the wire and the CQ goes to the wrong channel.
+        //
+        // qsoPeer '@ALLCALL' routes the CQ into the @ALLCALL tab (opening
+        // and focusing it) so the operator's own CQ sits alongside the
+        // incoming CQs that already populate that group window — instead
+        // of being visible only in Monitor. @ALLCALL is @-prefixed so it
+        // doesn't arm the QSO-pause gate.
         enqueueTx('CQ CQ CQ' + (grid4 ? ' ' + grid4 : ''), 'CQ',
-                  { bypassSel: true, target: '@ALLCALL' });
+                  { bypassSel: true, qsoPeer: '@ALLCALL' });
     }
     function doHb() {
         var myCall = getMyCall();
