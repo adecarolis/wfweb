@@ -731,6 +731,15 @@ const JS8_PANEL_MARKUP = `
         S.stations.set(from, s);
     }
 
+    // Heartbeat traffic directed at us (an HB ACK — "<me> HEARTBEAT SNR
+    // +N" — or a bare "<me> HEARTBEAT") is network housekeeping, not a
+    // conversation. It must NOT auto-open a per-peer chat tab: a single
+    // HB beacon can draw ACKs from a dozen stations and we don't want a
+    // dozen tabs. It still lands in Monitor and updates the Heard list.
+    function isHeartbeatCmd(cmd) {
+        return cmd === 'HEARTBEAT SNR' || cmd === 'HEARTBEAT';
+    }
+
     function emitFeedEntry(entry) {
         S.feed.unshift(entry);
         if (S.feed.length > S.feedMax) S.feed.length = S.feedMax;
@@ -753,7 +762,8 @@ const JS8_PANEL_MARKUP = `
         // of our own TX (fromMe / from === myCall) are also skipped.
         var myCall = getMyCall();
         if (!entry.fromMe && entry.from && entry.from.charAt(0) !== '@'
-            && entry.cmd !== '>' && (!myCall || entry.from !== myCall)) {
+            && entry.cmd !== '>' && !isHeartbeatCmd(entry.cmd)
+            && (!myCall || entry.from !== myCall)) {
             if (myCall && entry.target === myCall) {
                 routeEntryToQso(entry, entry.from);
             } else if (entry.target && entry.target.charAt(0) === '@'
@@ -1105,7 +1115,8 @@ const JS8_PANEL_MARKUP = `
                     // drop any `from === @something` (system traffic).
                     var notEcho   = !myCallNow || !fromCall || fromCall !== myCallNow;
                     var notSysFrm = !fromCall || fromCall.charAt(0) !== '@';
-                    if (notSysFrm && chain.entry.cmd !== '>' && notEcho) {
+                    if (notSysFrm && chain.entry.cmd !== '>'
+                        && !isHeartbeatCmd(chain.entry.cmd) && notEcho) {
                         if (myCallNow && chain.entry.target === myCallNow && fromCall) {
                             routeEntryToQso(chain.entry, fromCall);
                         } else if (chain.entry.target.charAt(0) === '@' &&
