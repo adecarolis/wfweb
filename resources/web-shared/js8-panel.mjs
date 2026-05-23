@@ -91,6 +91,8 @@ const JS8_PANEL_MARKUP = `
                     <div id="js8QsoView" class="js8-qso-view hidden">
                         <div class="js8-qso-header">
                             <span id="js8QsoPath" class="js8-qso-path"></span>
+                            <button id="js8QsoLogBtn" class="js8-link-btn"
+                                title="Log this QSO to the shared log">log</button>
                             <button id="js8QsoCloseBtn" class="js8-link-btn"
                                 title="Close this QSO">close</button>
                         </div>
@@ -950,6 +952,18 @@ const JS8_PANEL_MARKUP = `
         // on top — shows the ACK above the HB it's replying to.
         var parsedHead = parseFrom(text);
         noteStation(parsedHead.from, d.freq, d.snr);
+        // Opportunistically capture the sender's Maidenhead grid from
+        // HB / CQ / GRID traffic so QSO logging has a locator to fill
+        // the ADIF GRIDSQUARE field. Match a standalone 4- or 6-char
+        // grid token (strict A-R / 0-9 / A-X positional ranges, so a
+        // callsign like K1FM or a word can't masquerade as one).
+        if (parsedHead.from && parsedHead.from.charAt(0) !== '@') {
+            var gm = text.match(/\b([A-R]{2}[0-9]{2}(?:[A-X]{2})?)\b/);
+            if (gm) {
+                var gst = S.stations.get(parsedHead.from);
+                if (gst) gst.grid = gm[1];
+            }
+        }
         // Find a chain to join. Frames from the same TX can drift several
         // Hz between the directed compound and the data frames (different
         // submodes' decoders, different timing windows), so a fixed-bin
@@ -1823,6 +1837,34 @@ const JS8_PANEL_MARKUP = `
         el.innerHTML = html;
     }
 
+    // Log the active QSO peer into the shared QSO log (the same store
+    // FT8 / CW / SSB write to, exported as ADIF). Manual: JS8 has no
+    // rigid report exchange, so the operator decides when a contact is
+    // worth logging. Pulls the peer's grid + last decode SNR from the
+    // station record when known; everything else is editable in the Log
+    // modal afterward. Group/broadcast tabs (@ALLCALL, @HB) aren't
+    // loggable as a single contact.
+    function logActiveQso() {
+        var peer = S.activeTab;
+        if (!peer || peer === 'monitor' || peer.charAt(0) === '@') return;
+        if (typeof window.addQsoLogEntry !== 'function') return;
+        var st = S.stations.get(peer) || {};
+        var rcvd = (typeof st.snr === 'number')
+                 ? ((st.snr >= 0 ? '+' : '') + Math.round(st.snr)) : '';
+        window.addQsoLogEntry({
+            call: peer, mode: 'JS8', df: S.baseHz,
+            grid: getMyGridLocal(),   // operator's own grid → MY_GRIDSQUARE
+            theirGrid: st.grid || '', // worked station's grid → GRIDSQUARE
+            rstRcvd: rcvd, rstSent: '',
+        });
+        var btn = document.getElementById('js8QsoLogBtn');
+        if (btn) {
+            var prev = btn.textContent;
+            btn.textContent = '✓ logged';
+            setTimeout(function () { btn.textContent = prev; }, 1500);
+        }
+    }
+
     function renderQso() {
         var headerEl = document.getElementById('js8QsoPath');
         var msgsEl   = document.getElementById('js8QsoMessages');
@@ -1830,6 +1872,10 @@ const JS8_PANEL_MARKUP = `
         if (S.activeTab === 'monitor') return;
         var q = S.qsos.get(S.activeTab);
         if (!q) { setActiveTab('monitor'); return; }
+        // LOG applies to individual contacts only — hide it on
+        // @ALLCALL / @HB group windows.
+        var logBtn = document.getElementById('js8QsoLogBtn');
+        if (logBtn) logBtn.style.display = (S.activeTab.charAt(0) === '@') ? 'none' : '';
         headerEl.innerHTML = pathHtml(q.peer, q.path);
         if (q.messages.length === 0) {
             msgsEl.innerHTML = '<div class="js8-qso-empty">Type a message below to start the QSO with '
@@ -2770,6 +2816,9 @@ const JS8_PANEL_MARKUP = `
     });
     document.getElementById('js8QsoCloseBtn').addEventListener('click', function () {
         if (S.activeTab !== 'monitor') closeQso(S.activeTab);
+    });
+    document.getElementById('js8QsoLogBtn').addEventListener('click', function () {
+        logActiveQso();
     });
     document.getElementById('js8Feed').addEventListener('click', function (e) {
         var el = e.target.closest('.from');

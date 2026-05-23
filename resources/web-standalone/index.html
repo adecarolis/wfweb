@@ -8044,6 +8044,37 @@ function logDigiQso(dxCall, rstSent) {
     }
 }
 
+// Generic QSO logger — fills date/time/band/freq from the current rig
+// state and stores into the same shared qsoLog (and ADIF export) the
+// per-mode loggers use. Callers supply call + mode + optional
+// grid/reports/df. Used by the JS8 panel (window.addQsoLogEntry) and
+// available to any future mode that builds its own fields.
+function addQsoLogEntry(fields) {
+    fields = fields || {};
+    if (!fields.call) return null;
+    var now = new Date();
+    var iso = now.toISOString();
+    var freqHz = (vfoAFreq || currentFreq || 0);
+    var entry = {
+        date: iso.substr(0, 10).replace(/-/g, ''),
+        time: iso.substr(11, 8).replace(/:/g, ''),
+        call: String(fields.call).toUpperCase(),
+        freq: freqHz,
+        band: freqToBand(freqHz),
+        mode: fields.mode || 'JS8',
+        df:   fields.df || 0,
+        grid: (fields.grid || '').toUpperCase(),
+        theirGrid: (fields.theirGrid || '').toUpperCase(),
+        rstSent: fields.rstSent || '',
+        rstRcvd: fields.rstRcvd || ''
+    };
+    qsoLog.unshift(entry);
+    try { localStorage.setItem('qsoLog', JSON.stringify(qsoLog.slice(0, 500))); } catch(e) {}
+    renderDigiLog();
+    return entry;
+}
+window.addQsoLogEntry = addQsoLogEntry;
+
 function logCWQso() {
     var callEl = document.getElementById('cwQsoInput');
     var call = (callEl ? callEl.value : '').trim().toUpperCase();
@@ -8254,6 +8285,7 @@ function downloadAdif() {
             adifField('MODE', q.mode) +
             adifField('RST_SENT', q.rstSent) +
             adifField('RST_RCVD', q.rstRcvd) +
+            adifField('GRIDSQUARE', q.theirGrid) +
             adifField('MY_GRIDSQUARE', q.grid) +
             '<EOR>\n'
         );
