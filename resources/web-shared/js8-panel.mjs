@@ -2093,6 +2093,33 @@ const JS8_PANEL_MARKUP = `
     }
 
     // ─── Open / close ─────────────────────────────────────────────────
+    // Standard JS8Call dial frequencies (USB). Hoisted above open() so
+    // it can pick the nearest band and tune on panel open — same pattern
+    // toggleDigiBar uses for FT8/FT4.
+    var JS8_BANDS = [
+        { label: '160m', hz: 1842000  },
+        { label: '80m',  hz: 3578000  },
+        { label: '40m',  hz: 7078000  },
+        { label: '30m',  hz: 10130000 },
+        { label: '20m',  hz: 14078000 },
+        { label: '17m',  hz: 18104000 },
+        { label: '15m',  hz: 21078000 },
+        { label: '12m',  hz: 24922000 },
+        { label: '10m',  hz: 28078000 },
+        { label: '6m',   hz: 50318000 }
+    ];
+    function getCurrentJs8Band() {
+        if (typeof currentFreq !== 'number' || !currentFreq) return null;
+        var best = null, bestDist = Infinity;
+        for (var i = 0; i < JS8_BANDS.length; i++) {
+            var dist = Math.abs(currentFreq - JS8_BANDS[i].hz);
+            if (dist < bestDist) { bestDist = dist; best = JS8_BANDS[i]; }
+        }
+        // 500 kHz tolerance — keeps a 14.345 MHz USB QSO from snapping to
+        // 14.078, but does let 14.085 (chatty digital region) snap.
+        return (bestDist < 500000) ? best : null;
+    }
+
     function open() {
         if (S.visible) return;
         S.visible = true;
@@ -2103,6 +2130,16 @@ const JS8_PANEL_MARKUP = `
         if (typeof closeOtherModes === 'function') closeOtherModes('js8');
         if (typeof currentMode !== 'undefined' && currentMode !== 'USB'
             && typeof setMode === 'function') setMode('USB');
+        // Tune to the JS8 dial frequency for the current band — same flow
+        // FT8 uses on open. Updates the BAND selector to reflect the
+        // chosen band. Skipped silently when the rig isn't on or near
+        // any JS8 band (currentFreq far from every entry).
+        var jb = getCurrentJs8Band();
+        if (jb) {
+            var bsel = document.getElementById('js8BandSel');
+            if (bsel) bsel.value = jb.label;
+            send({ cmd: 'setFrequency', value: jb.hz });
+        }
         if (typeof initDigiTxCtx === 'function') initDigiTxCtx();
         if (S.decoder) S.decoder.free();
         S.decoder = js8.newDecoder(0);
@@ -2182,20 +2219,6 @@ const JS8_PANEL_MARKUP = `
         setStatus(S.rxEnabled ? 'RX' : 'IDLE', S.rxEnabled ? 'rx' : '');
     });
 
-    // Standard JS8Call dial frequencies (USB). Selecting one tunes the
-    // rig — the audio TX freq inside the passband is independent.
-    var JS8_BANDS = [
-        { label: '160m', hz: 1842000  },
-        { label: '80m',  hz: 3578000  },
-        { label: '40m',  hz: 7078000  },
-        { label: '30m',  hz: 10130000 },
-        { label: '20m',  hz: 14078000 },
-        { label: '17m',  hz: 18104000 },
-        { label: '15m',  hz: 21078000 },
-        { label: '12m',  hz: 24922000 },
-        { label: '10m',  hz: 28078000 },
-        { label: '6m',   hz: 50318000 }
-    ];
     (function initJs8BandSel() {
         var sel = document.getElementById('js8BandSel');
         if (!sel) return;
