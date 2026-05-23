@@ -1,0 +1,711 @@
+/*
+ * JS8 messenger panel styles — shared by both the server build
+ * (resources/web/index.html, via web.qrc alias) and the standalone
+ * build (resources/web-standalone/index.html, via tools/build-static.sh).
+ *
+ * Single source of truth: editing this file affects both UIs. The
+ * panel's outermost shell (`body.js8-open #scopeArea`, …) reuses the
+ * same overlay slot the FT8/FT4 DIGI bar uses; both indexes provide
+ * matching IDs (#scopeInfoBar, #scopeArea, #spectrumCanvas,
+ * #waterfallCanvas, #bottomBar) so the rules apply identically.
+ */
+
+/* ── JS8 Messenger Bar — same overlay shell as digi-bar but distilled
+   to the three things JS8 is actually about: who's around, what they
+   said, and what you want to reply. Color theme = amber to set it
+   apart from the FT8/FT4 blue. ── */
+.js8-bar {
+    /* Same overlay positioning as .digi-bar — fills its scopeArea parent
+       so the flex column gets a real height to lay out from. */
+    position: absolute;
+    inset: 0;
+    z-index: 200;
+    background: #1a1410;
+    color: #fc8;
+    border-top: 2px solid #c80;
+    display: flex;
+    flex-direction: column;
+    padding: 4px 6px;
+    gap: 4px;
+    overflow: hidden;
+    font-size: 14px;
+}
+body.js8-open #scopeInfoBar { display: none !important; }
+body.js8-open #spectrumCanvas,
+body.js8-open #waterfallCanvas { display: none !important; }
+body.js8-open #scopeArea { grid-row: 3 / 5; }
+body.js8-open #bottomBar { grid-row: 5; }
+.js8-bar.hidden { display: none; }
+
+.js8-header {
+    display: flex; align-items: center; gap: 6px;
+    border-bottom: 1px solid #530;
+    padding-bottom: 4px;
+    flex-wrap: wrap;
+    row-gap: 4px;
+}
+.js8-brand {
+    background: #c80; color: #000;
+    padding: 2px 8px; border-radius: 3px;
+    font-weight: bold; letter-spacing: 1px;
+}
+.js8-submode-sel {
+    background: #2a2018; color: #fc8;
+    border: 1px solid #530; border-radius: 3px;
+    padding: 2px 4px; font-size: 13px;
+}
+.js8-status-pill {
+    background: #530; color: #fc8;
+    padding: 2px 8px; border-radius: 10px;
+    font-size: 12px; font-weight: bold;
+    min-width: 50px; text-align: center;
+}
+.js8-status-pill.tx  { background: #c00; color: #fff; }
+.js8-status-pill.rx  { background: #060; color: #fff; }
+.js8-status-pill.dec { background: #c80; color: #000; }
+.js8-progress-wrap {
+    flex: 1; height: 6px; background: #2a2018;
+    border: 1px solid #530; border-radius: 3px; overflow: hidden;
+    max-width: 200px;
+}
+.js8-progress-fill {
+    height: 100%; width: 0%; background: #c80;
+    transition: width 0.1s linear;
+}
+.js8-progress-fill.tx { background: #c00; }
+.js8-clock {
+    font-family: monospace; font-size: 13px;
+    min-width: 22px; text-align: right; color: #fc8;
+}
+.js8-auto-tag {
+    display: inline-block; padding: 1px 6px; font-size: 10px;
+    background: #530; color: #fc8; border-radius: 2px;
+    letter-spacing: 0.5px; user-select: none;
+}
+.js8-auto-tag.off { background: #222; color: #666; }
+.js8-rx-toggle {
+    background: #2a2018; color: #fc8;
+    border: 1px solid #530; border-radius: 3px;
+    padding: 3px 10px; font-size: 12px; cursor: pointer;
+}
+.js8-rx-toggle.active { background: #060; color: #fff; border-color: #0a0; }
+.js8-tune-btn {
+    background: #1a1410; color: #fc8;
+    border: 1px solid #850; border-radius: 3px;
+    padding: 3px 10px; font-family: monospace; font-size: 11px;
+    font-weight: bold; cursor: pointer; user-select: none;
+    text-transform: uppercase; letter-spacing: 1px;
+}
+.js8-tune-btn:hover  { background: #2a2018; }
+.js8-tune-btn.active { background: #c00; color: #fff; border-color: #f44; }
+.js8-band-sel {
+    background: #1a1410; color: #fc8;
+    border: 1px solid #530; border-radius: 3px;
+    padding: 2px 4px; font-family: monospace; font-size: 11px;
+    text-transform: uppercase;
+}
+.js8-icon-btn {
+    background: transparent; color: #fc8;
+    border: 1px solid #530; border-radius: 3px;
+    padding: 3px 8px; font-size: 14px; cursor: pointer;
+}
+.js8-icon-btn:hover { background: #2a2018; }
+
+.js8-content {
+    flex: 1; display: flex; gap: 6px; min-height: 0;
+}
+
+/* ── JS8 waterfall — reuses drawWfCanvas (same FFT/blit core as the
+   FT8/FT4 panel). Sizing mirrors .digi-waterfall-wrap but with the
+   amber JS8 palette: TX marker is amber-orange, no separate RX marker
+   (JS8 listens broadband across the full 200-2800 Hz window). ── */
+.js8-waterfall-wrap {
+    flex: 0 0 90px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #530;
+    border-radius: 3px;
+    cursor: crosshair;
+    overflow: hidden;
+}
+.js8-wf-bar {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    background: #100804;
+    overflow: hidden;
+}
+.js8-wf-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    display: block;
+}
+.js8-wf-scale {
+    height: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 2px 2px;
+    background: #1d160f;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    color: #a96;
+    pointer-events: none;
+    user-select: none;
+}
+.js8-wf-marker {
+    position: absolute;
+    top: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 2;
+    border-left: 2px solid;
+    border-right: 2px solid;
+}
+.js8-wf-tx {
+    background: rgba(255,170,0,0.18);
+    border-color: rgba(255,170,0,0.65);
+}
+.js8-wf-tx.armed {
+    background: rgba(255,60,0,0.25);
+    border-color: rgba(255,60,0,0.85);
+}
+.js8-wf-label {
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Courier New', monospace;
+    font-size: 11px; font-weight: bold;
+    white-space: nowrap;
+    padding: 1px 4px;
+    border-radius: 0 0 3px 3px;
+}
+.js8-wf-tx .js8-wf-label {
+    background: rgba(255,170,0,0.85);
+    color: #000;
+}
+.js8-wf-tx.armed .js8-wf-label {
+    background: rgba(255,60,0,0.9);
+    color: #fff;
+}
+.js8-col {
+    background: #2a2018; border: 1px solid #530; border-radius: 3px;
+    display: flex; flex-direction: column;
+    min-height: 0; overflow: hidden;
+}
+.js8-stations-col { flex: 0 0 140px; }
+.js8-feed-col     { flex: 1; }
+.js8-col-header {
+    background: #530; color: #fc8;
+    padding: 3px 8px; font-size: 11px; letter-spacing: 1px;
+    font-weight: bold; text-transform: uppercase;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.js8-link-btn {
+    background: transparent; color: #fc8;
+    border: none; padding: 0; cursor: pointer;
+    font-size: 11px; text-decoration: underline;
+}
+.js8-stations, .js8-feed {
+    flex: 1; overflow-y: auto; padding: 2px;
+    font-family: monospace; font-size: 13px;
+}
+.js8-station {
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 4px 6px; cursor: pointer; border-bottom: 1px solid #2a2018;
+}
+.js8-station:hover    { background: #3a2a18; }
+.js8-station.selected { background: #c80; color: #000; }
+.js8-station-row1 { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; }
+.js8-station-call { font-weight: bold; }
+.js8-station-meta { display: flex; gap: 4px; align-items: baseline; }
+.js8-station-age  { color: #a96; font-size: 10px; font-variant-numeric: tabular-nums; }
+.js8-station-dbm  { color: #a96; font-size: 10px; }
+.js8-station.selected .js8-station-dbm,
+.js8-station.selected .js8-station-age { color: #200; }
+/* 5-segment S-meter bar — graphical link-quality indicator. Each segment is
+   lit when SNR is at-or-above its threshold; colours go red → amber → green
+   as the bar fills up. Sized so a station row stays compact. */
+.js8-sbar { display: flex; gap: 2px; height: 6px; align-items: stretch; }
+.js8-sbar > span {
+    flex: 1; background: #2a2018; border: 1px solid #3a2a18; border-radius: 1px;
+}
+.js8-sbar > span.on.lvl1 { background: #c33; border-color: #d44; }
+.js8-sbar > span.on.lvl2 { background: #d63; border-color: #e74; }
+.js8-sbar > span.on.lvl3 { background: #db4; border-color: #ec5; }
+.js8-sbar > span.on.lvl4 { background: #8c4; border-color: #9d5; }
+.js8-sbar > span.on.lvl5 { background: #4d4; border-color: #5e5; }
+.js8-station.selected .js8-sbar > span { background: #aa6; border-color: #bb7; }
+.js8-station.selected .js8-sbar > span.on { filter: brightness(1.15); }
+.js8-feed-row {
+    padding: 3px 6px; border-bottom: 1px solid #2a2018;
+    word-break: break-word;
+}
+/* Sent (from me) — red theme. Right-aligned accent + soft red wash. */
+.js8-feed-row.from-me {
+    background: #2a0808;
+    border-left: 3px solid #c33;
+    padding-left: 3px;
+}
+.js8-feed-row.from-me .from { color: #fcc; }
+.js8-feed-row.from-me .msg  { color: #fee; }
+/* Directed AT me — green theme. The single most important signal in
+   the Monitor feed: someone is talking to you. */
+.js8-feed-row.to-me {
+    background: #062a10;
+    border-left: 3px solid #4c4;
+    padding-left: 3px;
+}
+.js8-feed-row.to-me .from { color: #afa; }
+.js8-feed-row.to-me .to   { color: #cfc; font-weight: bold; }
+.js8-feed-row.to-me .msg  { color: #efe; }
+.js8-feed-row .ts      { color: #a96; font-size: 11px; margin-right: 6px; }
+/* Sender/target chunk reads as a single pill so it's visually separate
+   from the message body. Avoids confusion with `>` relay markers that
+   can appear inside the message itself. */
+.js8-feed-row .addr {
+    display: inline-flex; align-items: baseline; gap: 4px;
+    padding: 1px 6px; border-radius: 3px;
+    background: rgba(255, 200, 100, 0.07);
+    border: 1px solid rgba(255, 200, 100, 0.22);
+}
+.js8-feed-row .from    { color: #fc8; font-weight: bold; cursor: pointer; }
+.js8-feed-row .from:hover { text-decoration: underline; }
+.js8-feed-row .arrow   { color: #a96; }
+.js8-feed-row .to      { color: #ec0; font-weight: bold; }
+.js8-feed-row .sep     { color: #530; margin: 0 6px; }
+.js8-feed-row .msg     { color: #fff; }
+.js8-feed-row .snr     { color: #a96; font-size: 11px; margin-left: 6px; }
+
+.js8-tx-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: #444; color: #aaa;
+    font-size: 10px; font-weight: bold;
+    letter-spacing: 1px;
+    vertical-align: middle;
+}
+.js8-tx-badge.queued  { background: #443a20; color: #ec8; }
+.js8-tx-badge.tx      { background: #c80; color: #000; }
+.js8-tx-badge.done    { background: transparent; color: #a96;
+    border: 1px solid #530; padding: 0 4px; }
+.js8-tx-badge.aborted { background: #800; color: #fcc; }
+.js8-tx-progress {
+    margin: 4px 0 1px 0;
+    height: 4px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.js8-tx-progress > .fill {
+    height: 100%; width: 0;
+    background: linear-gradient(90deg, #850, #fc8);
+    transition: width 200ms linear;
+}
+.js8-tx-progress.aborted > .fill {
+    background: linear-gradient(90deg, #800, #c44);
+}
+/* Once a TX completes the progress bar served its purpose — keep the
+   row but drop the bar so the feed stops accumulating bright stripes. */
+.js8-tx-progress.done { display: none; }
+
+/* Make the feed selectable so users can copy decodes. The global
+ * `user-select: none` on <html> would otherwise block selection. */
+.js8-feed,
+.js8-feed-row,
+.js8-feed-row * {
+    user-select: text;
+    -webkit-user-select: text;
+}
+.js8-feed { cursor: text; }
+
+/* ── QSO tab strip — mirrors packet's term-session-tabs but with the
+   amber JS8 palette. Monitor is the always-present first tab; every
+   open QSO with a peer gets its own pill. ── */
+.js8-main-col { flex: 1; display: flex; flex-direction: column;
+    background: #2a2018; border: 1px solid #530; border-radius: 3px;
+    min-height: 0; overflow: hidden; }
+.js8-tabs {
+    display: flex; flex-wrap: wrap; gap: 2px;
+    padding: 3px 3px 0 3px;
+    background: #1d160f; border-bottom: 1px solid #530;
+}
+.js8-tab {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; font-size: 11px; font-weight: bold;
+    letter-spacing: 0.5px; text-transform: uppercase;
+    background: #1a1410; color: #fc8;
+    border: 1px solid #530; border-bottom: none;
+    border-radius: 3px 3px 0 0; cursor: pointer; user-select: none;
+}
+.js8-tab:hover { background: #2a2018; }
+.js8-tab.active { background: #c80; color: #000; border-color: #c80; }
+.js8-tab .js8-tab-close {
+    background: transparent; border: none; padding: 0; margin: 0;
+    color: inherit; cursor: pointer; font-size: 12px; line-height: 1;
+    opacity: 0.6;
+}
+.js8-tab .js8-tab-close:hover { opacity: 1; }
+.js8-tab .js8-tab-unread {
+    background: #c00; color: #fff;
+    font-size: 9px; font-weight: bold;
+    padding: 0 5px; border-radius: 7px;
+    min-width: 14px; text-align: center;
+}
+.js8-tab.active .js8-tab-unread { display: none; }
+
+/* QSO view — chat bubbles. Path header above messages shows the relay
+   chain (if any) the conversation is using. */
+.js8-qso-view { flex: 1; display: flex; flex-direction: column;
+    overflow: hidden; min-height: 0; }
+.js8-qso-view.hidden { display: none; }
+.js8-qso-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 8px; background: #2a2018;
+    border-bottom: 1px solid #530;
+    font-family: monospace; font-size: 12px;
+}
+.js8-qso-path { display: flex; align-items: center; gap: 4px; flex: 1; }
+.js8-qso-path .hop   { color: #fc8; font-weight: bold; padding: 1px 6px;
+    background: #1d160f; border: 1px solid #530; border-radius: 3px; }
+.js8-qso-path .me    { background: #2a0808; border-color: #c33; color: #fcc; }
+.js8-qso-path .peer  { background: #062a10; border-color: #4c4; color: #afa; }
+.js8-qso-path .arrow { color: #a96; }
+.js8-qso-messages {
+    flex: 1; overflow-y: auto; padding: 14px 12px;
+    display: flex; flex-direction: column;
+    font-family: monospace; font-size: 13px;
+    background: #15100c;
+    user-select: text; -webkit-user-select: text;
+}
+/* Inner column caps the conversation width on wide windows so RX and
+   TX bubbles stay near each other and the eye doesn't have to sweep
+   across the whole panel to follow the thread. */
+.js8-qso-messages > .js8-thread {
+    display: flex; flex-direction: column; gap: 6px;
+    width: 100%; max-width: 680px; margin: 0 auto;
+}
+.js8-bubble {
+    max-width: 78%;
+    padding: 8px 12px 6px 12px;
+    border-radius: 14px;
+    border: 1px solid transparent;
+    word-break: break-word;
+    line-height: 1.45;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    user-select: text; -webkit-user-select: text;
+}
+.js8-bubble.tx {
+    background: #341210;
+    border-color: rgba(204, 51, 51, 0.32);
+    color: #ffeeee;
+    align-self: flex-end;
+    /* Tail-style corner pointing toward the user's side */
+    border-bottom-right-radius: 4px;
+}
+.js8-bubble.rx {
+    background: #12241a;
+    border-color: rgba(76, 204, 76, 0.32);
+    color: #eeffee;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+}
+/* Meta line sits at the bottom of the bubble, right-aligned for both
+   directions (reading order). Subtle and small — never competes with
+   the message body. Separators use a middle dot, not arrows or `>`,
+   to avoid any confusion with relay markers. */
+.js8-bubble .meta {
+    display: block;
+    text-align: right;
+    font-size: 10px;
+    margin-top: 5px;
+    letter-spacing: 0.3px;
+}
+.js8-bubble.tx .meta { color: rgba(255, 200, 200, 0.65); }
+.js8-bubble.rx .meta { color: rgba(200, 255, 200, 0.65); }
+/* Per-bubble sender (group tabs only) — pill at the top of the bubble
+   so a multi-station chat is readable without scanning the tab name. */
+.js8-bubble-from {
+    display: inline-block;
+    font-size: 9px; font-weight: bold;
+    letter-spacing: 1.2px; text-transform: uppercase;
+    margin-bottom: 5px;
+    padding: 1px 6px;
+    background: rgba(170, 255, 170, 0.14);
+    color: #bfb;
+    border-radius: 3px;
+}
+.js8-bubble .cmd-chip {
+    display: inline-block;
+    padding: 1px 6px;
+    margin-right: 6px;
+    border-radius: 4px;
+    font-size: 10px; font-weight: bold;
+    letter-spacing: 1px; text-transform: uppercase;
+    vertical-align: 1px;
+}
+.js8-bubble.tx .cmd-chip { background: rgba(255, 170, 170, 0.16); color: #fcc; }
+.js8-bubble.rx .cmd-chip { background: rgba(170, 255, 170, 0.16); color: #afa; }
+.js8-qso-empty {
+    text-align: center; color: #a96;
+    padding: 36px 24px;
+    font-size: 13px; font-style: italic;
+    line-height: 1.6;
+    border: 1px dashed #530;
+    border-radius: 8px;
+    background: rgba(255, 200, 100, 0.025);
+    margin: 32px auto;
+    max-width: 380px;
+}
+/* When a QSO tab is active hide the Monitor feed; when Monitor is
+   active hide the QSO view. Toggled via .hidden on the wrapper divs. */
+.js8-feed.hidden { display: none; }
+
+/* ── Compact CMD chip sitting inside the compose row, between the TO
+   callsign input and the message input. The slash-command trigger.
+   Sized to roughly match the input height so the row reads as one
+   horizontal control strip. ── */
+.js8-cmd-chip {
+    background: #2a2018; color: #fc8;
+    border: 1px solid #850; border-radius: 4px;
+    padding: 4px 8px;
+    font-family: monospace; font-size: 14px; font-weight: bold;
+    line-height: 1;
+    cursor: pointer; user-select: none;
+    flex: 0 0 auto;
+}
+.js8-cmd-chip:hover  { background: #3a2820; border-color: #c80; }
+.js8-cmd-chip:active { background: #c80; color: #000; }
+
+/* ── CMD palette — replaces the long quickcmd button wall. Anchored to
+   the compose row; opened by clicking the ⌘ chip or pressing `/` in
+   the compose box. Three grouped grids: Query (?-suffix asks), Reply
+   (short closers), Action (RELAY modal). ── */
+.js8-cmd-palette {
+    position: absolute;
+    z-index: 410;
+    background: #1d160f;
+    border: 2px solid #c80; border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    padding: 8px; min-width: 360px;
+    display: none;
+}
+.js8-cmd-palette.open { display: block; }
+.js8-cmd-palette-section + .js8-cmd-palette-section { margin-top: 8px; }
+.js8-cmd-palette-title {
+    color: #a96; font-size: 10px; letter-spacing: 1.5px;
+    text-transform: uppercase; font-weight: bold;
+    margin-bottom: 4px;
+}
+.js8-cmd-palette-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+}
+.js8-cmd-palette-btn {
+    background: #2a2018; color: #fc8;
+    border: 1px solid #530; border-radius: 3px;
+    padding: 6px 8px; font-family: monospace; font-size: 12px;
+    font-weight: bold; cursor: pointer;
+    letter-spacing: 0.5px; user-select: none;
+    text-align: left;
+}
+.js8-cmd-palette-btn:hover  { background: #3a2820; border-color: #850; }
+.js8-cmd-palette-btn:active { background: #850; color: #000; }
+.js8-cmd-palette-btn.reply  { color: #ae8; border-color: #353; }
+.js8-cmd-palette-btn.reply:hover  { background: #1a2a18; border-color: #686; }
+.js8-cmd-palette-btn.action { color: #fc8; background: #3a2820; border-color: #850; }
+.js8-cmd-palette-btn .desc {
+    display: block; font-size: 9px; color: #a96;
+    font-weight: normal; letter-spacing: 0; margin-top: 1px;
+}
+.js8-cmd-palette-backdrop {
+    position: fixed; inset: 0; z-index: 405; background: transparent;
+    display: none;
+}
+.js8-cmd-palette-backdrop.open { display: block; }
+
+.js8-modal-help {
+    color: #ccb; font-size: 12px; line-height: 1.4;
+    margin: 0 0 12px 0; max-width: 480px;
+}
+.js8-relay-preview {
+    display: flex; align-items: center; gap: 8px;
+    margin: 6px 0; padding: 6px 8px;
+    background: #1a120a; border: 1px solid #530; border-radius: 3px;
+}
+.js8-relay-path, .js8-relay-wire {
+    font-family: monospace; color: #fc8; font-size: 13px;
+    overflow-wrap: anywhere;
+}
+.js8-relay-wire { color: #8f8; }
+.js8-relay-path .arrow { color: #a96; padding: 0 4px; }
+.js8-relay-path .hop   { color: #fc8; font-weight: bold; }
+.js8-relay-path .me    { color: #ae8; }
+.js8-relay-path .target{ color: #ec0; }
+.js8-modal-actions {
+    display: flex; justify-content: flex-end; gap: 8px;
+    margin-top: 12px; padding-top: 8px;
+    border-top: 1px solid #530;
+}
+
+.js8-action-row {
+    display: flex; align-items: center; gap: 4px;
+    border-top: 1px solid #530; padding-top: 4px;
+    position: relative; /* anchor for the floating TO-suggestion popover */
+}
+
+/* ── TO-field suggestion popover ─────────────────────────────────────
+   Appears above the TO input on hover/focus. Lists groups (@ALLCALL,
+   @HB) plus the most-recently-heard stations from the Heard column,
+   so the user can pick a target without seeing @ALLCALL hard-coded
+   in the input. Same visual treatment as the CMD palette. */
+.js8-dx-suggest {
+    position: absolute;
+    z-index: 410;
+    bottom: 100%;
+    left: 0;
+    margin-bottom: 6px;
+    background: #1d160f;
+    border: 2px solid #c80; border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    padding: 8px;
+    min-width: 220px; max-width: 360px;
+    display: none;
+}
+.js8-dx-suggest.open { display: block; }
+.js8-dx-suggest-title {
+    color: #a96; font-size: 10px; letter-spacing: 1.5px;
+    text-transform: uppercase; font-weight: bold;
+    margin-bottom: 6px;
+}
+.js8-dx-suggest-grid {
+    display: flex; flex-wrap: wrap; gap: 4px;
+}
+.js8-dx-suggest-btn {
+    background: #2a2018; color: #fc8;
+    border: 1px solid #530; border-radius: 4px;
+    padding: 4px 10px;
+    font-family: monospace; font-size: 12px; font-weight: bold;
+    cursor: pointer; user-select: none;
+}
+.js8-dx-suggest-btn:hover  { background: #3a2820; border-color: #c80; }
+.js8-dx-suggest-btn:active { background: #c80; color: #000; }
+.js8-dx-suggest-btn.group  { color: #ec0; border-color: #850; }
+.js8-dx-suggest-btn.group:hover { background: #3a2820; }
+.js8-dx-suggest-help {
+    color: #a96; font-size: 10px;
+    margin-top: 8px; padding-top: 6px;
+    border-top: 1px solid #530;
+    line-height: 1.4;
+}
+.js8-dx-suggest-help b { color: #fc8; font-weight: bold; }
+.js8-dx-suggest-empty {
+    color: #856; font-size: 11px; font-style: italic;
+    padding: 4px 0;
+}
+.js8-field-label {
+    color: #a96; font-size: 11px; letter-spacing: 1px;
+    text-transform: uppercase; font-weight: bold;
+}
+.js8-callsign-input, .js8-compose, .js8-num-input {
+    background: #2a2018; color: #fc8;
+    border: 1px solid #530; border-radius: 3px;
+    padding: 6px 8px; font-family: monospace; font-size: 14px;
+}
+.js8-callsign-input { width: 90px; text-transform: uppercase; }
+.js8-compose        { flex: 1; min-width: 100px; }
+.js8-num-input      { width: 80px; }
+.js8-callsign-input:focus, .js8-compose:focus, .js8-num-input:focus {
+    outline: none; border-color: #c80; background: #3a2a18;
+}
+.js8-big-btn {
+    background: #530; color: #fc8;
+    border: 1px solid #c80; border-radius: 3px;
+    padding: 8px 16px; font-weight: bold; font-size: 14px;
+    letter-spacing: 1px; cursor: pointer; min-width: 60px;
+}
+.js8-big-btn:hover  { background: #c80; color: #000; }
+.js8-big-btn:active { transform: scale(0.97); }
+.js8-big-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.js8-send-btn { background: #c80; color: #000; }
+.js8-send-btn:hover { background: #fc8; }
+
+.js8-modal {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7); z-index: 400;
+    display: flex; align-items: center; justify-content: center;
+}
+.js8-modal.hidden { display: none; }
+.js8-modal-body {
+    background: #1a1410; color: #fc8;
+    border: 2px solid #c80; border-radius: 6px;
+    padding: 16px; min-width: 280px; max-width: 90vw;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.js8-modal-title {
+    font-weight: bold; font-size: 16px; color: #fc8;
+    border-bottom: 1px solid #530; padding-bottom: 6px;
+}
+.js8-settings-field { display: flex; align-items: center; gap: 8px; }
+.js8-settings-field .js8-field-label { min-width: 100px; }
+.js8-modal-close {
+    margin-top: 8px;
+    background: #c80; color: #000;
+    border: none; border-radius: 3px;
+    padding: 8px; font-weight: bold; cursor: pointer;
+}
+
+/* ── JS8 responsive layering ──────────────────────────────────────────
+   The panel packs a lot of controls. Hide them in priority order as
+   width shrinks. The conversation thread, compose row, RX-ON, settings
+   and close stay visible at every size. Anything hidden here is still
+   reachable from the Settings modal or the waterfall click target. */
+
+/* ≤ 1000px — drop the BAND select and the JS8 brand pill; trim spacing */
+@media (max-width: 1000px) {
+    .js8-brand { display: none; }
+}
+
+/* ≤ 880px — drop the TX/Hz labels and the AUTO chip (auto-freq still
+   lives in Settings); shrink the TX freq input */
+@media (max-width: 880px) {
+    .js8-header .js8-field-label,
+    .js8-auto-tag { display: none; }
+    #js8TxFreq.js8-num-input { width: 60px; }
+}
+
+/* ≤ 760px — drop the TUNE button and the in-flight progress bar */
+@media (max-width: 760px) {
+    .js8-tune-btn,
+    .js8-progress-wrap { display: none; }
+}
+
+/* ≤ 640px — drop the BAND selector and the Heard column; stack the
+   action row so SEND wraps below the compose box */
+@media (max-width: 640px) {
+    .js8-band-sel { display: none; }
+    .js8-content { flex-direction: column; }
+    .js8-stations-col { display: none; }
+    .js8-action-row { flex-wrap: wrap; }
+    .js8-compose { min-width: 140px; }
+    .js8-big-btn { padding: 6px 10px; min-width: 50px; }
+}
+
+/* ≤ 480px — final crunch: drop submode selector and TX-freq field
+   (waterfall click still works); shrink status pill */
+@media (max-width: 480px) {
+    .js8-submode-sel,
+    #js8TxFreq.js8-num-input { display: none; }
+    .js8-status-pill { min-width: 0; padding: 2px 6px; font-size: 11px; }
+    .js8-to-label { display: none; }
+}
+
+/* Tall portrait mode (tablets, phones in portrait): hide the waterfall
+   so the conversation gets the room. */
+@media (orientation: portrait) and (max-width: 800px) {
+    .js8-waterfall-wrap { display: none; }
+}
+

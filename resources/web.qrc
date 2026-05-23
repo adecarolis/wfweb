@@ -13,6 +13,9 @@
         <file alias="model.onnx">web-shared/models/model.onnx</file>
         <file alias="ggmorse-wasm.js">web-shared/ggmorse-wasm.js</file>
         <file alias="reporters.js">web-shared/reporters.js</file>
+        <file alias="wf-canvas.js">web-shared/wf-canvas.js</file>
+        <file alias="js8-panel.css">web-shared/js8-panel.css</file>
+        <file alias="js8-panel.mjs">web-shared/js8-panel.mjs</file>
         <file alias="ft8ts.mjs">ft8ts/dist/ft8ts.mjs</file>
         <file alias="ft8ts.mjs.map">ft8ts/dist/ft8ts.mjs.map</file>
         <file alias="js8.mjs">web-shared/js8.mjs</file>

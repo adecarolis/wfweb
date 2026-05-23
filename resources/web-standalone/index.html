@@ -2118,6 +2118,9 @@ body.digi-open #bottomBar { grid-row: 5; }
     .splash-hero { font-size: 13px; }
 }
 </style>
+<!-- JS8 messenger panel styles — shared with the server build via
+     resources/web-shared/js8-panel.css. -->
+<link rel="stylesheet" href="js8-panel.css">
 </head>
 <body>
 <!-- Startup Overlay -->
@@ -2700,6 +2703,7 @@ body.digi-open #bottomBar { grid-row: 5; }
 <script src="airbus.js"></script>
 <script src="transport/virtual-transport.js"></script>
 <script src="reporters.js"></script>
+<script src="wf-canvas.js"></script>
 <script>
 // ============================================================
 // STATE
@@ -2936,30 +2940,14 @@ var digiCqOnly = false;
 var digiTxFreq = 1000;      // audio TX frequency (Hz) within SSB passband
 var digiRxFreq = 1000;      // audio RX frequency (Hz) — decodes here also appear in Directed
 var digiHoldTxFreq = false; // when true, clicking a row does not change TX freq
-// Waterfall FFT
-var WF_FFT_SIZE = 4096;
-var WF_DISPLAY_BINS = 1024; // bins 0-1023 cover 0-3000 Hz at 12kHz/4096
-var WF_FREQ_LOW  = 300;   // display range start (Hz)
-var WF_FREQ_HIGH = 2800;  // display range end (Hz)
-var wfBuf = new Float32Array(WF_FFT_SIZE);
-var wfBufPos = 0;
-var wfBufFull = false;
-var wfColorTable = null;    // Array[256] of [r,g,b]
-var wfCanvas = null;
-var wfCtx = null;
-var wfLabelCanvas = null;
-var wfLabelCtx = null;
-var wfMinDb = -100;
-var wfMaxDb = -40;
-var wfSlotPeakDb = -200;    // peak dB within current slot (for slow auto-gain)
-var wfSlotCount = 0;        // slots seen since start (faster adaptation initially)
+// Waterfall renderer + circular sample buffer live in
+// resources/web-shared/wf-canvas.js (loaded above). WF_FFT_SIZE,
+// WF_DISPLAY_BINS, WF_FREQ_LOW, WF_FREQ_HIGH, wfBuf, wfBufPos,
+// wfBufFull, wfColorTable, wfMinDb/wfMaxDb/wfSlotPeakDb/wfSlotCount/
+// wfScrollCounter/wfSlotLines/wfLastSlotIndex, wfRe/wfIm/wfMags,
+// initWfColorTable(), wfFftInPlace(), drawWfCanvas() are all globals
+// from that file.
 var wfLabels = [];          // [{freq, from, directed, cq}] — updated each decode slot
-var wfScrollCounter = 0;    // scroll every 4th frame (4x slower)
-var wfSlotLines = [];       // pixel rows where slot boundaries were drawn
-var wfLastSlotIndex = -1;   // tracks slot transitions for boundary lines
-var wfRe = null;            // reusable FFT real buffer (WF_FFT_SIZE)
-var wfIm = null;            // reusable FFT imag buffer (WF_FFT_SIZE)
-var wfMags = null;          // reusable magnitude buffer (WF_DISPLAY_BINS)
 var ft8Worker = null;       // Web Worker for async FT8/FT4 decode
 var digiFt8tsReady = false;
 var DIGI_BANDS = [
@@ -4288,6 +4276,18 @@ function renderModeOverlay() {
     ft8Btn.textContent = 'FT8';
     ft8Btn.onclick = function() { setPanel('default'); toggleDigiBar(); };
     grid.appendChild(ft8Btn);
+    // JS8 messenger panel — sibling overlay of FT8. Provided by
+    // resources/web-shared/js8-panel.mjs which installs toggleJs8Bar
+    // and js8MessengerVisible on window once it finishes booting.
+    var js8Btn = document.createElement('button');
+    var js8On = (typeof window.js8MessengerVisible === 'function') && window.js8MessengerVisible();
+    js8Btn.className = 'ov-btn' + (js8On ? ' active' : '');
+    js8Btn.textContent = 'JS8';
+    js8Btn.onclick = function() {
+        setPanel('default');
+        if (typeof window.toggleJs8Bar === 'function') window.toggleJs8Bar();
+    };
+    grid.appendChild(js8Btn);
     // Packet (Dire Wolf AX.25 / APRS) panel toggle
     if (window.Packet) {
         var pktBtn = document.createElement('button');
@@ -4989,6 +4989,9 @@ function closeOtherModes(except) {
     if (except !== 'freedv' && freedvEnabled) {
         toggleFreeDV();
     }
+    if (except !== 'js8' && typeof window.js8MessengerVisible === 'function' && window.js8MessengerVisible()) {
+        window.toggleJs8Bar();
+    }
 }
 window.closeOtherModes = closeOtherModes;
 
@@ -5392,6 +5395,10 @@ function handleAudioData(buffer) {
     var floatData = new Float32Array(pcmData.length);
     for (var i = 0; i < pcmData.length; i++) floatData[i] = pcmData[i] / 32768.0;
     if (digiRxEnabled && digiRxBuffer) processDigiAudioChunk(pcmData);
+    // JS8 panel taps the same int16 chunk if it's open — same pattern
+    // the server build uses. The hook is installed by js8-panel.mjs
+    // once the module finishes booting.
+    if (typeof window._js8ProcessAudioChunk === 'function') window._js8ProcessAudioChunk(pcmData);
 
     if (audioUseWorklet && audioWorkletNode) {
         audioWorkletNode.port.postMessage(floatData);
@@ -6821,80 +6828,19 @@ function updateDigiRxFreqDisplay() {
     drawDigiWaterfall();
 }
 
-function initWfColorTable() {
-    wfColorTable = [];
-    for (var i = 0; i < 256; i++) {
-        var r, g, b;
-        if (i < 85) {
-            // black → dark blue (noise floor)
-            r = 0; g = 0; b = Math.round(i * 3);
-        } else if (i < 150) {
-            // dark blue → bright blue (weak signals stay blue)
-            var t = (i - 85) / 64;
-            r = 0; g = Math.round(t * 60); b = 255;
-        } else if (i < 190) {
-            // bright blue → cyan
-            var t = (i - 150) / 39;
-            r = 0; g = 60 + Math.round(t * 195); b = 255;
-        } else if (i < 225) {
-            // cyan → yellow (medium signals)
-            var t = (i - 190) / 34;
-            r = Math.round(t * 255); g = 255; b = Math.round(255 * (1 - t));
-        } else {
-            // yellow → red (strong signals)
-            var t = (i - 225) / 30;
-            r = 255; g = Math.round(255 * (1 - t)); b = 0;
-        }
-        wfColorTable[i] = [r, g, b];
-    }
-}
-
-function wfFftInPlace(re, im) {
-    var n = re.length;
-    var bits = Math.round(Math.log2(n));
-    // Bit-reversal permutation
-    for (var i = 0; i < n; i++) {
-        var j = 0, x = i;
-        for (var k = 0; k < bits; k++) { j = (j << 1) | (x & 1); x >>= 1; }
-        if (j > i) {
-            var t = re[i]; re[i] = re[j]; re[j] = t;
-            t = im[i]; im[i] = im[j]; im[j] = t;
-        }
-    }
-    // Cooley-Tukey butterfly passes
-    for (var len = 2; len <= n; len <<= 1) {
-        var half = len >> 1;
-        var ang = -2 * Math.PI / len;
-        var wR = Math.cos(ang), wI = Math.sin(ang);
-        for (var i = 0; i < n; i += len) {
-            var curR = 1.0, curI = 0.0;
-            for (var j = 0; j < half; j++) {
-                var uR = re[i+j], uI = im[i+j];
-                var vR = curR * re[i+j+half] - curI * im[i+j+half];
-                var vI = curR * im[i+j+half] + curI * re[i+j+half];
-                re[i+j]      = uR + vR;  im[i+j]      = uI + vI;
-                re[i+j+half] = uR - vR;  im[i+j+half] = uI - vI;
-                var newCurR = curR * wR - curI * wI;
-                curI = curR * wI + curI * wR;
-                curR = newCurR;
-            }
-        }
-    }
-}
-
-// Returns the Hz offset from the signal BASE frequency to the visual CENTER of the tone span.
-// FT8: 8 tones × 6.25 Hz → center at +21.875 Hz above base
 // FT4: 4 tones × 12.5 Hz → center at +18.75 Hz above base
 function digiCenterOffset() {
     return digiMode === 'FT8' ? 3.5 * 6.25 : 1.5 * 12.5;
 }
 
+// Mode-specific waterfall: positions the FT8/FT4 TX/RX markers, then
+// delegates to the shared drawWfCanvas in wf-canvas.js for the FFT,
+// blit, auto-gain and label overlay. Same pattern the server build
+// uses — single source of truth for the renderer.
 function drawDigiWaterfall() {
-    // --- Update DOM frequency markers ---
-    // Markers show the full signal bandwidth as a semi-transparent band
     var txEl = document.getElementById('digiWfTxMarker');
     var rxEl = document.getElementById('digiWfRxMarker');
-    var bwHz = digiCenterOffset() * 2; // full signal bandwidth in Hz
+    var bwHz = digiCenterOffset() * 2;
     var freqRange = WF_FREQ_HIGH - WF_FREQ_LOW;
     var bwPct = (bwHz / freqRange * 100).toFixed(3) + '%';
     var txLeftPct = ((digiTxFreq - WF_FREQ_LOW) / freqRange * 100).toFixed(3) + '%';
@@ -6909,205 +6855,16 @@ function drawDigiWaterfall() {
         rxEl.style.width = bwPct;
     }
 
-    // --- FFT spectrogram ---
-    if (!wfCanvas) wfCanvas = document.getElementById('digiWfCanvas');
-    if (!wfCanvas) return;
-    var bar = wfCanvas.parentElement;
-    if (!bar) return;
-    var w = bar.clientWidth, h = bar.clientHeight;
-    if (w <= 0 || h <= 0) return;
-
-    // Resize canvas if layout changed
-    if (wfCanvas.width !== w || wfCanvas.height !== h) {
-        wfCanvas.width = w;
-        wfCanvas.height = h;
-        wfCtx = null; // force context re-fetch
-        wfBufFull = false; // fresh canvas needs fresh data
-        wfSlotLines = []; // reset slot boundary lines
-        wfLastSlotIndex = -1;
-    }
-    if (!wfCtx) wfCtx = wfCanvas.getContext('2d');
-    if (!wfColorTable) initWfColorTable();
-
-    // When RX is off: clear both canvases so no stale content lingers, then stop
-    if (!digiRxEnabled) {
-        wfCtx.fillStyle = '#000';
-        wfCtx.fillRect(0, 0, w, h);
-        wfBufFull = false; // discard stale buffer so next RX-on starts fresh
-        wfSlotLines = []; // clear slot boundary lines
-        wfLastSlotIndex = -1;
-        if (!wfLabelCanvas) wfLabelCanvas = document.getElementById('digiWfLabelCanvas');
-        if (wfLabelCanvas && wfLabelCtx) wfLabelCtx.clearRect(0, 0, w, h);
-        return;
-    }
-
-    // Need a full buffer before we can FFT
-    if (!wfBufFull) return;
-
-    // Lazy-init reusable typed arrays (no GC per frame)
-    if (!wfRe) { wfRe = new Float32Array(WF_FFT_SIZE); wfIm = new Float32Array(WF_FFT_SIZE); wfMags = new Float32Array(WF_DISPLAY_BINS); }
-    var re = wfRe, im = wfIm;
-
-    // Extract WF_FFT_SIZE samples in time order from circular buffer, apply Hann window
-    for (var i = 0; i < WF_FFT_SIZE; i++) {
-        var idx = (wfBufPos + i) % WF_FFT_SIZE;
-        var wCoef = 0.5 * (1.0 - Math.cos(2 * Math.PI * i / (WF_FFT_SIZE - 1)));
-        re[i] = wfBuf[idx] * wCoef;
-        im[i] = 0;
-    }
-
-    wfFftInPlace(re, im);
-
-    // Compute dB magnitudes for bins 0..WF_DISPLAY_BINS-1
-    var mags = wfMags;
-    var peakDb = -200;
-    for (var b = 0; b < WF_DISPLAY_BINS; b++) {
-        var mag = Math.sqrt(re[b] * re[b] + im[b] * im[b]) / WF_FFT_SIZE;
-        var db = (mag > 1e-12) ? (20 * Math.log10(mag)) : -200;
-        mags[b] = db;
-        if (db > peakDb) peakDb = db;
-    }
-
-    // Track peak dB within the current slot (auto-gain updates at slot boundaries only)
-    if (peakDb > wfSlotPeakDb) wfSlotPeakDb = peakDb;
-
-    // Scroll 4x slower: only advance every 4th frame
-    wfScrollCounter++;
-    if (wfScrollCounter < 4) return;
-    wfScrollCounter = 0;
-
-    // Detect slot boundary by tracking the slot index (reliable across timing jitter)
-    var info = getDigiSlotInfo();
-    var isSlotBoundary = false;
-    if (wfLastSlotIndex < 0) wfLastSlotIndex = info.slotIndex;
-    if (info.slotIndex !== wfLastSlotIndex) {
-        wfLastSlotIndex = info.slotIndex;
-        isSlotBoundary = true;
-    }
-
-    // Scroll canvas up by 1 pixel (oldest row goes off the top)
-    var imgData = wfCtx.getImageData(0, 0, w, h);
-    var data = imgData.data;
-    data.copyWithin(0, w * 4); // shift rows 1..h-1 up to rows 0..h-2
-
-    // Age slot boundary lines (they scroll up with the waterfall)
-    for (var si = wfSlotLines.length - 1; si >= 0; si--) {
-        wfSlotLines[si]--;
-        if (wfSlotLines[si] < 0) wfSlotLines.splice(si, 1);
-    }
-    if (isSlotBoundary) {
-        wfSlotLines.push(h - 1);
-        // Adapt dB range at slot boundaries only — keeps colors stable within each slot
-        // and changes gradually over minutes.  First few slots adapt faster for initial calibration.
-        var alpha = wfSlotCount < 3 ? 0.5 : 0.15;
-        wfMaxDb = wfMaxDb * (1 - alpha) + wfSlotPeakDb * alpha;
-        wfMinDb = wfMaxDb - 60; // 60 dB dynamic range
-        wfSlotPeakDb = -200;
-        wfSlotCount++;
-    }
-
-    // Write new row at the bottom (with linear interpolation between bins)
-    // Map canvas X to FFT bins covering WF_FREQ_LOW..WF_FREQ_HIGH only
-    var binLow  = WF_FREQ_LOW  * WF_FFT_SIZE / 12000; // first bin to display
-    var binHigh = WF_FREQ_HIGH * WF_FFT_SIZE / 12000; // last bin to display
-    var rowStart = (h - 1) * w * 4;
-    var dbRange = wfMaxDb - wfMinDb;
-    if (dbRange < 1) dbRange = 1;
-    for (var x = 0; x < w; x++) {
-        var binExact = binLow + x * (binHigh - binLow) / w;
-        var bin0 = Math.floor(binExact);
-        var bin1 = bin0 + 1 < WF_FFT_SIZE / 2 ? bin0 + 1 : bin0;
-        var frac = binExact - bin0;
-        var db = mags[bin0] * (1 - frac) + mags[bin1] * frac;
-        var norm = (db - wfMinDb) / dbRange;
-        if (norm < 0) norm = 0;
-        if (norm > 1) norm = 1;
-        var ci = Math.round(norm * 255);
-        var col = wfColorTable[ci];
-        data[rowStart + x * 4 + 0] = col[0]; // R
-        data[rowStart + x * 4 + 1] = col[1]; // G
-        data[rowStart + x * 4 + 2] = col[2]; // B
-        data[rowStart + x * 4 + 3] = 255;    // A
-    }
-
-    // Draw slot boundary separators as thin horizontal lines
-    for (var si2 = 0; si2 < wfSlotLines.length; si2++) {
-        var sy = wfSlotLines[si2];
-        if (sy < 0 || sy >= h) continue;
-        var sRowStart = sy * w * 4;
-        for (var sx = 0; sx < w; sx++) {
-            data[sRowStart + sx * 4 + 0] = 80;  // R — dim cyan line
-            data[sRowStart + sx * 4 + 1] = 180; // G
-            data[sRowStart + sx * 4 + 2] = 220; // B
-            data[sRowStart + sx * 4 + 3] = 255; // A
+    drawWfCanvas(
+        document.getElementById('digiWfCanvas'),
+        document.getElementById('digiWfLabelCanvas'),
+        {
+            rxEnabled: digiRxEnabled,
+            slotInfo: getDigiSlotInfo(),
+            labels: wfLabels,
+            centerOffset: digiCenterOffset(),
         }
-    }
-
-    wfCtx.putImageData(imgData, 0, 0);
-
-    // Draw callsign labels on a separate overlay canvas so they don't scroll with the waterfall
-    if (!wfLabelCanvas) wfLabelCanvas = document.getElementById('digiWfLabelCanvas');
-    if (wfLabelCanvas) {
-        if (wfLabelCanvas.width !== w || wfLabelCanvas.height !== h) {
-            wfLabelCanvas.width = w; wfLabelCanvas.height = h; wfLabelCtx = null;
-        }
-        if (!wfLabelCtx) wfLabelCtx = wfLabelCanvas.getContext('2d');
-        // Clear the overlay every frame — labels simply appear/disappear, never slide
-        wfLabelCtx.clearRect(0, 0, w, h);
-        var currentSlot = getDigiSlotInfo().slotIndex;
-        // Filter to labels still within 5 periods at draw time (belt-and-suspenders)
-        var visibleLabels = wfLabels.filter(function(l) { return currentSlot - l.slotIndex < 5; });
-        if (visibleLabels.length > 0) {
-            var fontSize = 18;
-            wfLabelCtx.save();
-            wfLabelCtx.font = 'bold ' + fontSize + 'px "Courier New", monospace';
-            wfLabelCtx.textBaseline = 'top';
-            wfLabelCtx.lineJoin = 'round';
-            for (var li = 0; li < visibleLabels.length; li++) {
-                var lbl = visibleLabels[li];
-                var lx = Math.round((lbl.freq + digiCenterOffset() - WF_FREQ_LOW) / (WF_FREQ_HIGH - WF_FREQ_LOW) * w);
-                if (lx < 0 || lx >= w) continue;
-                // CQ: bright green / 73: cyan
-                var fillColor   = lbl.cq ? '#40ff80' : '#40e0ff';
-                var strokeColor = lbl.cq ? '#006020' : '#005060';
-                var lineColor   = lbl.cq ? 'rgba(64,255,128,0.35)' : 'rgba(64,224,255,0.35)';
-
-                // Vertical line at the exact frequency position; label centered around it
-                var lineX = lx + 0.5;
-                wfLabelCtx.save();
-                wfLabelCtx.strokeStyle = lineColor;
-                wfLabelCtx.lineWidth = 2;
-                wfLabelCtx.beginPath();
-                wfLabelCtx.moveTo(lineX, 0);
-                wfLabelCtx.lineTo(lineX, h);
-                wfLabelCtx.stroke();
-                wfLabelCtx.restore();
-
-                // Rotated callsign label at the top — omitted on mobile (narrow canvas)
-                if (w >= 500) {
-                    wfLabelCtx.save();
-                    wfLabelCtx.lineWidth = 2;
-                    var tw = wfLabelCtx.measureText(lbl.from).width;
-                    // Translate so the label box is centered on lineX, below the TX/RX indicator
-                    wfLabelCtx.translate(lineX - Math.round(fontSize / 2), 22 + tw + 4);
-                    wfLabelCtx.rotate(-Math.PI / 2);
-                    // Black background
-                    wfLabelCtx.fillStyle = 'rgba(0,0,0,0.75)';
-                    wfLabelCtx.fillRect(-2, -3, tw + 4, fontSize + 6);
-                    // Colored border
-                    wfLabelCtx.strokeStyle = strokeColor;
-                    wfLabelCtx.strokeRect(-2, -3, tw + 4, fontSize + 6);
-                    // Text outline then fill
-                    wfLabelCtx.strokeStyle = strokeColor;
-                    wfLabelCtx.strokeText(lbl.from, 0, 0);
-                    wfLabelCtx.fillStyle = fillColor;
-                    wfLabelCtx.fillText(lbl.from, 0, 0);
-                    wfLabelCtx.restore();
-                }
-            }
-            wfLabelCtx.restore();
-        }
-    }
+    );
 }
 
 function updateDigiHoldTxBtn() {
@@ -9100,6 +8857,9 @@ import { decodeFT8, encodeFT8, decodeFT4, encodeFT4, HashCallBook }
 window.ft8tsLib = { decodeFT8, encodeFT8, decodeFT4, encodeFT4, HashCallBook };
 window.dispatchEvent(new Event('ft8tsReady'));
 </script>
+<!-- JS8 messenger panel — markup + state machine live in
+     resources/web-shared/js8-panel.mjs so both builds share them. -->
+<script type="module" src="js8-panel.mjs"></script>
 <script src="cw-decoder-stft.js"></script>
 <script src="cw-decoder-utils.js"></script>
 <script src="cw-decoder.js"></script>
