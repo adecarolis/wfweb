@@ -695,15 +695,22 @@ const JS8_PANEL_MARKUP = `
         // multi-frame TX and routing on isLast falls through to
         // Monitor instead of the QSO/group tab.
         //
-        // Restrict the fallback to real-callsign shape: no '@' prefix
-        // (rules out compound directed frames like "@GROUP1  "),
-        // must contain at least one digit AND at least one letter
-        // (rules out pure-letter message data like "HELLO" or
-        // "TEST"), and the trailing must be whitespace only (rules
-        // out anything carrying message content past the head).
+        // Validator is shaped to the ITU callsign pattern (1-2 letter
+        // prefix + 1-2 digits + 1-4 letter suffix, optional /SUFFIX),
+        // THEN rejected if the same token also matches a Maidenhead
+        // grid (4/6/8-char). The callsign regex alone can't tell
+        // EM60RV (grid) from KE6ABC (callsign) — both are LL##LL —
+        // but grids have positional constraints (first 2 letters in
+        // A-R, sub-square in A-X) that real callsigns mostly violate.
+        // Without this second pass, bare grids decoded out of context
+        // showed up in the Heard list as phantom stations.
         var m2 = text.match(/^([A-Z0-9\/]{2,})\s*$/);
-        if (m2 && /[0-9]/.test(m2[1]) && /[A-Z]/.test(m2[1])) {
-            return { from: m2[1], msg: '' };
+        if (m2 && /^[A-Z]{1,2}[0-9]{1,2}[A-Z]{1,4}(\/[A-Z0-9]{1,4})?$/.test(m2[1])) {
+            var looksLikeGrid =
+                /^[A-R]{2}[0-9]{2}$/.test(m2[1]) ||
+                /^[A-R]{2}[0-9]{2}[A-X]{2}$/.test(m2[1]) ||
+                /^[A-R]{2}[0-9]{2}[A-X]{2}[0-9]{2}$/.test(m2[1]);
+            if (!looksLikeGrid) return { from: m2[1], msg: '' };
         }
         return { from: '', msg: text };
     }
