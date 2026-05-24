@@ -118,6 +118,10 @@ const JS8_PANEL_MARKUP = `
                  outside-clicks. -->
             <div id="js8CmdPaletteBackdrop" class="js8-cmd-palette-backdrop"></div>
             <div id="js8CmdPalette" class="js8-cmd-palette">
+                <div class="js8-cmd-palette-head">
+                    <span class="js8-cmd-palette-heading">⌘ Commands</span>
+                    <button id="js8CmdPaletteClose" class="js8-cmd-palette-close" aria-label="Close commands" title="Close">&#10005;</button>
+                </div>
                 <div class="js8-cmd-palette-section">
                     <div class="js8-cmd-palette-title">Ask</div>
                     <div class="js8-cmd-palette-grid">
@@ -166,7 +170,7 @@ const JS8_PANEL_MARKUP = `
                     <div id="js8DxSuggestGrid" class="js8-dx-suggest-grid"></div>
                     <div class="js8-dx-suggest-help">Leave empty to broadcast to <b>@ALLCALL</b>.</div>
                 </div>
-                <button id="js8CmdChip" class="js8-cmd-chip wf-btn"
+                <button id="js8CmdChip" class="js8-cmd-chip wf-btn sq"
                     title="Open the CMD palette (or press / in compose)"
                     aria-label="Open CMD palette">⌘</button>
                 <input type="text" id="js8Compose" class="js8-compose wf-field"
@@ -2637,6 +2641,7 @@ const JS8_PANEL_MARKUP = `
         if (bd)  bd.classList.remove('open');
     }
     document.getElementById('js8CmdChip').addEventListener('click', openCmdPalette);
+    document.getElementById('js8CmdPaletteClose').addEventListener('click', closeCmdPalette);
     document.getElementById('js8CmdPaletteBackdrop').addEventListener('mousedown', function (e) {
         e.preventDefault();
         closeCmdPalette();

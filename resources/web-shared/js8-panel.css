@@ -454,9 +454,7 @@ body.js8-open #bottomBar { grid-row: 5; }
    horizontal control strip. ── */
 .js8-cmd-chip {
     background: #2a2018; color: var(--mode-accent);
-    line-height: 1;
-    cursor: pointer; user-select: none;
-    flex: 0 0 auto;
+    flex: 0 0 auto;           /* square icon sizing comes from .wf-btn.sq */
 }
 .js8-cmd-chip:hover  { background: #3a2820; border-color: var(--mode-accent-dim); }
 .js8-cmd-chip:active { background: var(--mode-accent-dim); color: var(--on-accent); }
@@ -475,9 +473,23 @@ body.js8-open #bottomBar { grid-row: 5; }
     display: none;
 }
 .js8-cmd-palette.open { display: block; }
+.js8-cmd-palette-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: -2px 0 8px; padding-bottom: 6px;
+    border-bottom: 1px solid var(--mode-accent-bg);
+}
+.js8-cmd-palette-heading {
+    color: var(--mode-accent); font-size: 13px; font-weight: bold;
+    letter-spacing: 1px; text-transform: uppercase;
+}
+.js8-cmd-palette-close {
+    background: transparent; border: none; cursor: pointer;
+    color: #a96; font-size: 18px; line-height: 1; padding: 0 4px;
+}
+.js8-cmd-palette-close:hover { color: var(--mode-accent); }
 .js8-cmd-palette-section + .js8-cmd-palette-section { margin-top: 8px; }
 .js8-cmd-palette-title {
-    color: #a96; font-size: 10px; letter-spacing: 1.5px;
+    color: #c9a; font-size: 12px; letter-spacing: 1.5px;
     text-transform: uppercase; font-weight: bold;
     margin-bottom: 4px;
 }
@@ -487,7 +499,7 @@ body.js8-open #bottomBar { grid-row: 5; }
 .js8-cmd-palette-btn {
     background: #2a2018; color: var(--mode-accent);
     border: 1px solid var(--mode-accent-bg); border-radius: 3px;
-    padding: 6px 8px; font-family: var(--font-mono); font-size: 12px;
+    padding: 6px 8px; font-family: var(--font-mono); font-size: 13px;
     font-weight: bold; cursor: pointer;
     letter-spacing: 0.5px; user-select: none;
     text-align: left;
@@ -498,8 +510,8 @@ body.js8-open #bottomBar { grid-row: 5; }
 .js8-cmd-palette-btn.reply:hover  { background: #1a2a18; border-color: #686; }
 .js8-cmd-palette-btn.action { color: var(--mode-accent); background: #3a2820; border-color: #850; }
 .js8-cmd-palette-btn .desc {
-    display: block; font-size: 9px; color: #a96;
-    font-weight: normal; letter-spacing: 0; margin-top: 1px;
+    display: block; font-size: 11px; color: #c9a;
+    font-weight: normal; letter-spacing: 0; margin-top: 2px;
 }
 .js8-cmd-palette-backdrop {
     position: fixed; inset: 0; z-index: 405; background: transparent;
