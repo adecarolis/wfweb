@@ -1116,6 +1116,13 @@ const JS8_PANEL_MARKUP = `
                 // promoting "IS" would render in Monitor as a misleading
                 // sender→target pill.
                 var candidate = tm ? tm[1] : null;
+                // A CQ is implicitly addressed to @ALLCALL. If the
+                // compound's explicit "@ALLCALL" directed frame was
+                // missed (only the de-compound + "CQ …" data decoded),
+                // the assembled msg starts straight with "CQ" — recover
+                // the @ALLCALL target so it still routes to the broadcast
+                // tab instead of being mis-promoted or stranded.
+                if (/^CQ(\s|$)/.test(fullMsg)) candidate = '@ALLCALL';
                 var looksLikeTarget = candidate && (
                     candidate.charAt(0) === '@' ||
                     (/\d/.test(candidate) && candidate.length >= 3)
@@ -1350,6 +1357,12 @@ const JS8_PANEL_MARKUP = `
     // band — once per station per 10 minutes is plenty.
     function maybeAckHb(d, fromCall) {
         if (!S.hbAck) return;
+        // frameType 0 (FrameHeartbeat) is shared by @HB HEARTBEAT *and*
+        // @ALLCALL CQ — both pack into the same compact wire type. Only a
+        // real heartbeat gets an HB-SNR ACK; a CQ is answered by calling
+        // the station, not by a courtesy report. Gate on the HEARTBEAT
+        // keyword so we never reply "<call> HEARTBEAT SNR" to a CQ.
+        if (!/\bHEARTBEAT\b/.test(d.text || '')) return;
         if (!fromCall || fromCall.charAt(0) === '@') return;
         if (fromCall === getMyCall()) return;
         // Mid-QSO: an unsolicited HB from a third party would TX over
