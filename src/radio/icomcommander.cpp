@@ -182,6 +182,16 @@ void icomCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr
 void icomCommander::closeComm()
 {
     qDebug(logRig()) << "Closing rig comms";
+    // Leave the radio quiet on the way out. Once scope waveform output
+    // (0x27 0x11) is enabled the rig streams continuously and has no idea the
+    // host has gone; a new controller (e.g. the browser Standalone) that opens
+    // the flooded port can't find its CI-V probe reply in the torrent and
+    // times out — until a USB replug. Broadcast scope-data-output OFF + flush
+    // while the serial port is still open. Serial only — LAN releases cleanly.
+    if (comm != Q_NULLPTR && !usingNativeLAN) {
+        static const unsigned char scopeOff[] = {0xFE,0xFE,0x00,0xE0,0x27,0x11,0x00,0xFD};
+        comm->sendDirect(QByteArray(reinterpret_cast<const char*>(scopeOff), sizeof(scopeOff)));
+    }
     // Clear the queue's rigCaps pointer so that when determineRigCaps()
     // runs again on reconnect its setRigCaps(&rigCaps) call actually
     // re-emits rigCapsUpdated — the signal is guarded by a pointer-equality

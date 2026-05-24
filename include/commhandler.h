@@ -31,6 +31,7 @@ public slots:
     void handleError(QSerialPort::SerialPortError error);
     void init();
     void setBaudRate(quint32 newBaud);
+    void sendDirect(const QByteArray& data); // synchronous write + flush (shutdown cleanup)
 
 private slots:
     void receiveDataIn(); // from physical port

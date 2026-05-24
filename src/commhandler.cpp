@@ -361,6 +361,19 @@ void commHandler::openPort()
     }
 }
 
+void commHandler::sendDirect(const QByteArray& data)
+{
+    // Synchronous write + flush, bypassing the queue. Used on shutdown to push
+    // a final command (e.g. scope-data-output OFF) out the port before it is
+    // torn down, where queued/async delivery would not survive the teardown.
+    if (port != Q_NULLPTR && isConnected)
+    {
+        port->write(data);
+        port->flush();
+        port->waitForBytesWritten(100);
+    }
+}
+
 void commHandler::closePort()
 {
     if(port)
