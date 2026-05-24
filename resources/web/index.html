@@ -1089,20 +1089,6 @@ body.digi-open #bottomBar { grid-row: 5; }
     border-radius: 2px;
     cursor: pointer;
 }
-.digi-toggle-btn {
-    padding: 2px 7px;
-    background: #001020;
-    border: 1px solid #048;
-    color: #08f;
-    font-size: 11px;
-    font-weight: bold;
-    font-family: 'Courier New', monospace;
-    cursor: pointer;
-    border-radius: 2px;
-    white-space: nowrap;
-}
-.digi-toggle-btn.active { background: #048; color: #fff; border-color: #08f; }
-.digi-toggle-btn:active { background: #08f; color: #000; }
 .digi-settings-btn {
     padding: 2px 7px;
     background: #001020;
@@ -2158,12 +2144,12 @@ body.digi-open #bottomBar { grid-row: 5; }
         </div>
 
         <!-- DIGI Bar (FT8/FT4 panel) -->
-        <div id="digiBar" class="digi-bar hidden">
+        <div id="digiBar" class="digi-bar mode-digi hidden">
 
             <!-- Row 1: toolbar -->
             <div class="digi-header">
                 <span id="digiModeLabel" class="digi-label">FT8</span>
-                <button id="digiCqOnlyBtn" class="digi-toggle-btn">CQ ONLY</button>
+                <button id="digiCqOnlyBtn" class="wf-btn">CQ ONLY</button>
                 <select id="digiBandSel" class="digi-band-sel"></select>
                 <div class="flex-space"></div>
                 <button id="digiRxToggle" class="digi-rx-toggle active">RX ON</button>
