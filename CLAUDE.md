@@ -88,7 +88,7 @@ other.** No Direct/Server runtime gates: each `index.html` is single-purpose.
 |-----|---------|----------|
 | `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js`, `debug.html` |
 | `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `transport/serial-transport.js`, `civ/`, `wasm/` |
-| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `packet.js`, `transport/rig-transport.js` (base class), CW decoder JS family, `ggmorse-wasm.js`, `models/`, `digits/`, `digits-sprite.png` |
+| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `transport/rig-transport.js` (base class), CW decoder JS family, `ggmorse-wasm.js`, JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
 
 Build inputs for `ggmorse-wasm.js` (the `.cpp` source + license) live in
 `resources/ggmorse-src/`, alongside `resources/build-ggmorse-wasm.sh`. They
@@ -107,6 +107,20 @@ When you want to share a file between both builds:
 2. Delete the duplicate from `resources/web-standalone/`
 3. Update its `web.qrc` `<file alias=...>` line so the source path is `web-shared/<file>` (the alias stays the same — no C++ code changes)
 4. `tools/build-static.sh` already copies `web-shared/`, so the standalone build picks it up automatically
+
+### Shared theme + component kit (`theme.css`)
+`resources/web-shared/theme.css` is the single source of UI styling for both
+builds (linked from each `index.html`, aliased in `web.qrc`, copied by
+`build-static.sh` — same plumbing as `js8-panel.css`). Two layers:
+- **Design tokens** (`:root`) — colors, type scale, spacing. Use these vars
+  instead of hardcoded hex/px.
+- **Component kit** (`.wf-*`) — one button / tab / field / progress shape for
+  every mode panel. Each panel keeps its identity by setting `--mode-accent`
+  via a `.mode-*` helper (`.mode-cw`, `.mode-digi`, `.mode-js8`, `.mode-packet`,
+  …); the `.wf-*` components inherit that tint through `var()`.
+
+Design intent is "one component kit, tinted per mode". Do **not** reintroduce
+per-panel button/tab/input styling — set a `--mode-accent` and reuse `.wf-*`.
 
 ### Standalone runtime — what replaces the C++ server
 Without a server, the browser does in JS / WASM what the Server does in Qt:
@@ -177,19 +191,22 @@ modeInfo.filter = 1;
 | `resources/web-standalone/civ/rig-caps.js` | Generated per-rig caps for Standalone |
 | `resources/web-standalone/transport/serial-transport.js` | Web Serial transport + dedup FIFO (Standalone) |
 | `resources/web-standalone/transport/virtual-transport.js` | Browser virtual-rig transport (Standalone) |
-| `resources/web-standalone/wasm/` | Committed RADE + Direwolf WASM modems (Standalone) |
+| `resources/web-standalone/wasm/` | Committed RADE + Direwolf + JS8 WASM modems (used by both builds; standalone owns the dir, server aliases `wasm/js8.*` via web.qrc) |
 | `resources/web-shared/transport/rig-transport.js` | Transport base class (both builds) |
 | `resources/web-shared/airbus.js` | Browser-side BroadcastChannel "air" for Standalone virtual rigs |
 | `resources/web-shared/packet.js` | Browser-side AX.25 / APRS / YAPP stack (both builds) |
+| `resources/web-shared/js8-panel.mjs` | JS8 messenger panel — markup + state machine, QSO tabs, RX/TX, CMD palette (both builds) |
+| `resources/web-shared/js8.mjs` | JS8 WASM codec bridge — 8-FSK synth + encode/decode wrapper (both builds) |
 | `resources/web-shared/` | Files shared by both builds (CW decoder, ggmorse, sprites, models) |
 | `resources/web.qrc` | Qt resource file for the server build |
 | `tools/build-static.sh` | Builds the Standalone static bundle into `dist/` |
 | `tools/serve-static.py` | Local HTTP server for `dist/` with `Cache-Control: no-store` |
 | `tools/fingerprint-static.py` | Cache-busts local asset URLs with `?v=<sha>` |
 | `tools/extract-rig-caps.py` | Generates `civ/rig-caps.js` from `rigs/*.rig` |
-| `tools/build-rade-wasm.sh` / `tools/build-direwolf-wasm.sh` | Emscripten rebuilds of the Standalone modems (only when their C source changes) |
+| `tools/build-rade-wasm.sh` / `tools/build-direwolf-wasm.sh` / `tools/build-js8-wasm.sh` | Emscripten rebuilds of the browser modems (only when their C/C++ source changes) |
 | `.github/workflows/pages.yml` | Publishes Standalone to wfweb.k1fm.us |
 | `resources/ft8ts/dist/ft8ts.mjs` | FT8/FT4 decoder module |
+| `resources/js8-src/` | Vendored JS8Call-improved subset — JS8 mode codec only, compiled to WASM (see `README-vendoring.md`) |
 | `src/radeprocessor.cpp` | RADE V1 modem processing |
 | `src/freedvprocessor.cpp` | Classic FreeDV codec processing |
 | `src/freedvreporter.cpp` | FreeDV Reporter Socket.IO client |
@@ -290,8 +307,41 @@ modeInfo.filter = 1;
   `resources/direwolf/`, or `wfweb_direwolf_stubs.c`. Compile-clean is not enough.
 
 ### Shared station callsign
-- One callsign in the gear dialog feeds CW, FT8/FT4, FreeDV Reporter, APRS, and
+- One callsign in the gear dialog feeds CW, FT8/FT4, JS8, FreeDV Reporter, APRS, and
   the AX.25 link. Do not add per-mode callsigns — the shared one is intentional.
+
+---
+
+## JS8 Architecture
+
+### Browser-side, both builds
+- JS8 is entirely browser-side, like FT8 — there is **no C++ server component**.
+  The codec is a WASM module (`resources/web-standalone/wasm/js8.{mjs,wasm}`,
+  source vendored under `resources/js8-src/`, built by `tools/build-js8-wasm.sh`).
+- The panel and codec bridge live in `resources/web-shared/` (`js8-panel.mjs`,
+  `js8.mjs`, `js8-panel.css`), so both the server and standalone SPAs load them.
+  The server build reaches `wasm/js8.*` through a `web.qrc` alias; the standalone
+  build gets it via `tools/build-static.sh`'s `web-shared/` copy step.
+
+### Codec bridge (`js8.mjs`)
+- `js8Init()` → wasm module; `encode()` → 79 tones; `newDecoder()` → push samples,
+  drain decodes; `synthesize(tones)` → Float32 @ 12 kHz continuous-phase 8-FSK
+  (phase accumulator MUST stay continuous across symbols or sync fails).
+- Submodes mirror `JS8_Include/commons.h` and JS8Call 3.0.0 labels:
+  Slow (30 s) / Normal (15 s) / Fast (10 s) / JS8 40 (6 s) / JS8 60 (4 s).
+
+### Panel (`js8-panel.mjs`)
+- Owns the full panel: markup (template literal), RX decoder loop, TX queue, CMD
+  palette, QSO tab manager, group/@ALLCALL channels, HB scheduler, auto-replies,
+  relay forwarding, and ADIF logging to the shared log.
+- It's an **overlay peer of the FT8 DIGI bar** — opening one closes the other via
+  `closeOtherModes('js8')`.
+- **RX**: taps `int16` chunks via `window._js8ProcessAudioChunk`, which the host's
+  audio path calls. **TX**: routes through `streamDigiAudio(...)` — the same sink
+  FT8 uses (WebSocket on server, Web Serial on standalone).
+- Reads host helpers off the page: `send`, `streamDigiAudio`, `haltDigiTx`,
+  `initDigiTxCtx`, `startDigiTune`/`stopDigiTune`, `wfBuf`/`drawWfCanvas`,
+  `closeOtherModes`. Everything else stays local to the module.
 
 ---
 
@@ -337,4 +387,6 @@ modeInfo.filter = 1;
 - Add a new section at the top of the CHANGELOG with the version and date
 - Summarize commits since the last release into user-facing categories
 - Check existing tags (`git tag -l`) to find the next available version number
-- The version is set in `wfweb.pro` (look for `DEFINES += WFWEB_VERSION=\"X.Y.Z\"`)
+- The version is set in `include/wfweb_version.h` (look for `#define WFWEB_VERSION "X.Y.Z"`).
+  It moved out of `wfweb.pro` so Make's header-dependency tracking rebuilds every
+  object that bakes in the version string (see the v0.7.1 reporter-version bug).

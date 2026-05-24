@@ -258,6 +258,9 @@ LAN mode:
 Server:
   -p --port <port>        Web server HTTPS port (default: 8080)
   -S --no-web             Disable web server, enable rig server
+  --rigctld-port <port>   Enable Hamlib rigctld TCP server (default off)
+  --rigctld-bind-all      Bind rigctld to all interfaces (default localhost)
+  --no-rigctld            Disable rigctld even if enabled in settings
 
 Audio:
   --audio-system <id>     Audio backend (0=Qt, 1=PortAudio, 2=RtAudio)

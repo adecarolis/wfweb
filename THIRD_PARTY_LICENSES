@@ -110,6 +110,33 @@ https://www.gnu.org/licenses/gpl-3.0.html
 
 
 ================================================================================
+JS8Call-improved — GPLv3
+https://github.com/JS8Call-improved/JS8Call-improved
+================================================================================
+
+Copyright (C) Jordan Sherer, KN4CRD, the JS8Call-improved contributors, and
+the WSJT-X / JS8Call authors.
+
+A subset of JS8Call-improved — the JS8 mode encoder/decoder (8-FSK modem,
+LDPC, Varicode), with no Qt UI, audio, network, or rig glue — is vendored
+under `resources/js8-src/` and compiled to WebAssembly. The exact upstream
+commit and local modifications are documented in
+`resources/js8-src/README-vendoring.md`.
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+The full text of the GNU General Public License v3 is available at:
+https://www.gnu.org/licenses/gpl-3.0.html
+
+
+================================================================================
 QCustomPlot — GPLv3
 https://www.qcustomplot.com
 ================================================================================

@@ -2,7 +2,7 @@
 
 **Control your Icom radio from any browser — phone, tablet, or desktop.**
 
-wfweb turns your transceiver into a web-accessible station. Waterfall, SSB, CW decoding, FT8/FT4, [FreeDV digital voice](https://youtu.be/AWdHcyiOOnY), RADE, and AX.25 packet (APRS, connected QSOs, file transfer) — all in the browser, no client software required.
+wfweb turns your transceiver into a web-accessible station. Waterfall, SSB, CW decoding, FT8/FT4, JS8 messaging, [FreeDV digital voice](https://youtu.be/AWdHcyiOOnY), RADE, and AX.25 packet (APRS, connected QSOs, file transfer) — all in the browser, no client software required.
 
 ![FT8 digital mode panel](ft8.png)
 
@@ -32,6 +32,7 @@ Everything wfview does, wfweb does too — plus a built-in web interface:
 | Browser TX audio (mic to rig) | — | ✓ |
 | CW decoder (ggmorse / Goertzel) | — | ✓ |
 | FT8/FT4 DIGI panel (full QSO) | — | ✓ |
+| JS8 messenger (chat-style, QSO tabs) | — | ✓ |
 | RADE (Radio Autoencoder) | — | ✓ |
 | FreeDV digital voice (700D/700E/1600) | — | ✓ |
 | AX.25 packet — 300/1200/9600, APRS, terminal, YAPP | — | ✓ |
@@ -53,7 +54,7 @@ wfweb ships in two flavours:
 2. Open **[https://wfweb.k1fm.us](https://wfweb.k1fm.us)** in Chrome, Edge, or another Chromium-family browser (Brave, Arc, Opera).
 3. Click the connection dot in the top-right corner → **Connect rig**, and pick the rig's USB serial port from the OS picker. wfweb auto-probes baud rates and identifies the rig from its CI-V address.
 
-Frequency, mode, filter, audio, FT8/FT4, CW, AX.25 packet, and RADE V1 voice all run in the browser. Subsequent visits auto-reconnect to the same port — no picker on return.
+Frequency, mode, filter, audio, FT8/FT4, JS8, CW, AX.25 packet, and RADE V1 voice all run in the browser. Subsequent visits auto-reconnect to the same port — no picker on return.
 
 If you'd rather not depend on a third-party host, build the static bundle yourself and serve it from any HTTPS site — see [Self-hosting Standalone](#self-hosting-standalone) below.
 
@@ -198,7 +199,27 @@ Packet runs entirely server-side using a built-in [Direwolf](https://github.com/
 
 Tune to a packet frequency in a voice mode (LSB/USB/FM/AM), open the **Packet** panel, pick the demodulator, and frames stream into the monitor as they decode. To open a connected QSO type the peer call, optional digipeater path, and press **Connect** — once `CONNECTED` shows you can send messages or push files via YAPP.
 
-The shared station callsign (gear dialog) is reused across CW, FT8/FT4, FreeDV reporter, APRS, and the AX.25 link, so you set it once and every mode uses it.
+The shared station callsign (gear dialog) is reused across CW, FT8/FT4, JS8, FreeDV reporter, APRS, and the AX.25 link, so you set it once and every mode uses it.
+
+---
+
+## JS8 — keyboard-to-keyboard messaging
+
+JS8 brings JS8Call-style weak-signal messaging into the browser: a chat-style panel with per-station QSO tabs, a live "Heard" list, group / @ALLCALL channels, automatic heartbeats, and one-click ADIF logging. Like FT8/FT4, the codec runs entirely in the browser (WebAssembly), so JS8 works in **both** the Standalone and Server builds.
+
+### What's included
+
+| Capability | Details |
+|------------|---------|
+| **Submodes** | JS8 Slow (30 s) • Normal (15 s) • Fast (10 s) • JS8 40 (6 s) • JS8 60 (4 s) |
+| **Chat UI** | Per-callsign QSO tabs, message bubbles, Enter-to-open / Send |
+| **Heard list** | Live S-bar of decoded stations with SNR |
+| **Groups** | @ALLCALL and group tabs; directed, broadcast, and relay messages |
+| **Heartbeat** | JS8Call 3.0 HB / ACK rules with auto-reply |
+| **Logging** | Per-tab LOG button writes QSOs to the shared ADIF log |
+| **Waterfall** | Shared RX spectrogram with the JS8 decode region marked |
+
+Open the **JS8** panel, pick a submode, and decodes stream into the Heard list as they arrive. Type a callsign to open a QSO tab and start messaging. The shared station callsign (gear dialog) is used here too.
 
 ---
 
@@ -223,6 +244,9 @@ All settings can be passed as CLI flags. Run `wfweb --help` for the full list.
 | `-b --background` | Run as daemon (Linux/macOS) | foreground |
 | `-c --clearconfig CONFIRM` | Reset all saved settings and exit | — |
 | `-d --debug [file]` | Enable verbose debug logging (optionally to file) | off |
+| `--rigctld-port <port>` | Enable Hamlib rigctld TCP server (server build) | disabled |
+| `--rigctld-bind-all` | Bind rigctld to all interfaces instead of localhost | localhost only |
+| `--no-rigctld` | Disable rigctld even if enabled in settings | — |
 
 ### About `--settings`
 
@@ -259,6 +283,16 @@ wfweb --debug /tmp/wfweb-debug.log --lan 192.168.1.100 --lan-user myuser --lan-p
 This produces detailed, timestamped logs covering power on/off state transitions, VFO/split routing decisions, CI-V command traffic, and cache updates. Reproduce the issue, then share the log file with your bug report.
 
 Without the filename argument, `--debug` writes to the default log location (`/tmp/wfweb-*.log`).
+
+### Hamlib rigctld (server build)
+
+The Server build can expose a Hamlib `rigctld` TCP interface so external tools — WSJT-X, fldigi, gpredict, POTACAT, and anything else that speaks the Hamlib net protocol — can drive the rig. It's disabled by default; enable it on the standard port with:
+
+```bash
+wfweb --rigctld-port 4532
+```
+
+Point your Hamlib client at "Hamlib NET rigctl" (`rigctl -m 2 -r 127.0.0.1:4532`). PTT requests route through the same path the web UI uses, so RADE EOO synthesis and packet TX coordination stay intact. The listener binds to `127.0.0.1` only — the Hamlib protocol is unauthenticated, so `--rigctld-bind-all` (which exposes PTT to your whole LAN) is opt-in. See [REST_API.md](REST_API.md) for details. Standalone has no rigctld (browsers can't open TCP listeners).
 
 ---
 
@@ -309,13 +343,13 @@ tools/build-static.sh dist/
 Test locally before publishing:
 
 ```bash
-tools/serve-static.py 8000 dist/
+tools/serve-static.py
 # open http://localhost:8000 in Chrome or Edge
 ```
 
-Localhost is treated as a secure context, so Web Serial works without HTTPS during local testing. Public hosting requires HTTPS — Web Serial refuses to operate on plain HTTP.
+`serve-static.py` takes no arguments — it always serves the repo's `dist/` directory on port 8000 with `Cache-Control: no-store`. Localhost is treated as a secure context, so Web Serial works without HTTPS during local testing. Public hosting requires HTTPS — Web Serial refuses to operate on plain HTTP.
 
-The pre-built RADE and Direwolf WebAssembly modems are committed under `resources/web-standalone/wasm/`, so `build-static.sh` produces a working bundle out of the box. Rebuilding the WASM modules from source (only needed when their C/C++ source changes) is a separate step that requires Emscripten — see `tools/build-direwolf-wasm.sh` and `tools/build-rade-wasm.sh`.
+The pre-built RADE, Direwolf, and JS8 WebAssembly modems are committed under `resources/web-standalone/wasm/`, so `build-static.sh` produces a working bundle out of the box. Rebuilding the WASM modules from source (only needed when their C/C++ source changes) is a separate step that requires Emscripten — see `tools/build-direwolf-wasm.sh`, `tools/build-rade-wasm.sh`, and `tools/build-js8-wasm.sh`.
 
 ---
 
@@ -395,6 +429,7 @@ Full credit for the radio control engine, audio subsystem, waterfall, and everyt
 Please support the original project at **https://wfview.org** and **https://www.patreon.com/wfview**.
 
 The FT8/FT4 DIGI panel is powered by [ft8ts](https://github.com/e04/ft8ts) by e04.
+JS8 weak-signal messaging uses a WebAssembly build of [JS8Call-improved](https://github.com/JS8Call-improved/JS8Call-improved), itself a fork of JS8Call by Jordan Sherer KN4CRD.
 The CW decoder uses [ggmorse](https://github.com/ggerganov/ggmorse) by Georgi Gerganov.
 FreeDV digital voice uses [codec2](https://github.com/drowe67/codec2) by David Rowe VK5DGR and contributors, and [radae_nopy](https://github.com/peterbmarks/radae_nopy) by Peter Marks VK5APM (a standalone C implementation of the RADE Radio Autoencoder).
 AX.25 packet — modems, framing, link control, APRS, and YAPP — is powered by [Direwolf](https://github.com/wb2osz/direwolf) by John Langner WB2OSZ.

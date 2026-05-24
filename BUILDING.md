@@ -268,21 +268,22 @@ The output `dist/` directory can be served from any HTTPS host. For local
 testing use `tools/serve-static.py`:
 
 ```bash
-tools/serve-static.py 8000 dist/
+tools/serve-static.py
 # open http://localhost:8000 in Chrome or Edge
 ```
 
-`serve-static.py` sends `Cache-Control: no-store` so browsers don't cache
-stale assets between rebuilds. Localhost is treated as a secure context,
-so Web Serial works without HTTPS during local testing; public hosting
-needs HTTPS.
+`serve-static.py` takes no arguments — it always serves the repo's
+`dist/` directory on port 8000, sending `Cache-Control: no-store` so
+browsers don't cache stale assets between rebuilds. Localhost is treated
+as a secure context, so Web Serial works without HTTPS during local
+testing; public hosting needs HTTPS.
 
-The pre-built RADE and Direwolf WebAssembly modems are committed under
-`resources/web-standalone/wasm/` — `build-static.sh` produces a working
-bundle out of the box. Rebuilding the WASM modules from source (only
-needed when their C/C++ source changes) requires Emscripten and is a
-separate one-off step: `tools/build-direwolf-wasm.sh`,
-`tools/build-rade-wasm.sh`.
+The pre-built RADE, Direwolf, and JS8 WebAssembly modems are committed
+under `resources/web-standalone/wasm/` — `build-static.sh` produces a
+working bundle out of the box. Rebuilding the WASM modules from source
+(only needed when their C/C++ source changes) requires Emscripten and is
+a separate one-off step: `tools/build-direwolf-wasm.sh`,
+`tools/build-rade-wasm.sh`, `tools/build-js8-wasm.sh`.
 
 ## Notes
 
