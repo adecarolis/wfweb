@@ -46,7 +46,7 @@ body.js8-open #bottomBar { grid-row: 5; }
     min-width: 50px; text-align: center;
 }
 .js8-status-pill.tx  { background: var(--state-error); color: #fff; }
-.js8-status-pill.rx  { background: var(--state-ok); color: #fff; }
+.js8-status-pill.rx  { background: #060; color: #fff; }
 .js8-status-pill.dec { background: var(--mode-accent-dim); color: var(--on-accent); }
 .js8-progress-wrap {
     flex: 1; height: 6px; background: #2a2018;
@@ -73,7 +73,7 @@ body.js8-open #bottomBar { grid-row: 5; }
     border: 1px solid var(--mode-accent-bg); border-radius: 3px;
     padding: 3px 10px; font-size: 12px; cursor: pointer;
 }
-.js8-rx-toggle.active { background: var(--state-ok); color: #fff; border-color: #0a0; }
+.js8-rx-toggle.active { background: #060; color: #fff; border-color: #0a0; }
 .js8-tune-btn {
     background: #1a1410; color: var(--mode-accent);
     border: 1px solid #850; border-radius: 3px;

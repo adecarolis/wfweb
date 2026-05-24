@@ -33,10 +33,10 @@
     /* -- Typography -------------------------------------------------------- */
     --font-ui:   system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
     --font-mono: 'Courier New', monospace;
-    --fs-xs:  9px;
-    --fs-sm:  11px;
-    --fs-md:  13px;
-    --fs-lg:  16px;
+    --fs-xs:  10px;
+    --fs-sm:  12px;
+    --fs-md:  14px;
+    --fs-lg:  17px;
     --fw-bold: 700;
 
     /* -- Spacing / shape --------------------------------------------------- */
@@ -209,8 +209,8 @@
     border: var(--border-w) solid var(--mode-accent-dim);
     color: var(--field-text);
     font-family: var(--font-mono);
-    font-size: var(--fs-sm);
-    padding: var(--space-1) var(--space-2);
+    font-size: var(--fs-md);
+    padding: 5px 8px;
     border-radius: var(--radius);
     outline: none;
 }
