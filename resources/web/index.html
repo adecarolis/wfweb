@@ -959,7 +959,7 @@ body.digi-open #bottomBar { grid-row: 5; }
 .digi-progress-fill {
     height: 100%;
     width: 0%;
-    background: #08f;
+    background: var(--mode-accent);
     border-radius: 2px;
     transition: background 0.3s;
 }
@@ -1001,7 +1001,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     align-items: flex-end;
     padding: 0 2px 2px;
     background: #000c1c;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 9px;
     color: #5090c0;
     pointer-events: none;
@@ -1031,7 +1031,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     position: absolute;
     top: 0; left: 50%;
     transform: translateX(-50%);
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 11px; font-weight: bold;
     white-space: nowrap;
     padding: 1px 4px;
@@ -1050,22 +1050,22 @@ body.digi-open #bottomBar { grid-row: 5; }
     color: #000;
 }
 .digi-label {
-    color: #08f;
+    color: var(--mode-accent);
     font-weight: bold;
     font-size: 14px;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     cursor: pointer;
     padding: 2px 7px;
-    border: 1px solid #048;
+    border: 1px solid var(--mode-accent-dim);
     border-radius: 3px;
     min-width: 38px;
     text-align: center;
     user-select: none;
 }
-.digi-label:active { background: #048; color: #000; }
+.digi-label:active { background: var(--mode-accent-dim); color: #000; }
 .digi-period-clock {
-    color: #08f;
-    font-family: 'Courier New', monospace;
+    color: var(--mode-accent);
+    font-family: var(--font-mono);
     font-size: 16px;
     font-weight: bold;
     min-width: 28px;
@@ -1074,16 +1074,16 @@ body.digi-open #bottomBar { grid-row: 5; }
 .digi-status {
     color: #666;
     font-size: 11px;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     min-width: 60px;
 }
-.digi-status.tx { color: #f44; font-weight: bold; }
+.digi-status.tx { color: var(--state-error); font-weight: bold; }
 .digi-status.decoding { color: #ff0; }
 .digi-band-sel {
     background: #000820;
-    border: 1px solid #048;
+    border: 1px solid var(--mode-accent-dim);
     color: #8cf;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 11px;
     padding: 2px 3px;
     border-radius: 2px;
@@ -1091,36 +1091,36 @@ body.digi-open #bottomBar { grid-row: 5; }
 }
 .digi-settings-btn {
     padding: 2px 7px;
-    background: #001020;
-    border: 1px solid #048;
-    color: #08f;
+    background: var(--mode-accent-bg);
+    border: 1px solid var(--mode-accent-dim);
+    color: var(--mode-accent);
     font-size: 13px;
     cursor: pointer;
     border-radius: 2px;
     margin-left: auto;
 }
-.digi-settings-btn:active { background: #048; color: #000; }
+.digi-settings-btn:active { background: var(--mode-accent-dim); color: #000; }
 .digi-rx-toggle {
     padding: 2px 7px;
-    background: #001020;
-    border: 1px solid #048;
-    color: #08f;
+    background: var(--mode-accent-bg);
+    border: 1px solid var(--mode-accent-dim);
+    color: var(--mode-accent);
     font-size: 11px;
     font-weight: bold;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     cursor: pointer;
     border-radius: 2px;
 }
-.digi-rx-toggle.active { background: #048; color: #000; border-color: #08f; }
+.digi-rx-toggle.active { background: var(--mode-accent-dim); color: #000; border-color: var(--mode-accent); }
 .digi-close-btn {
     padding: 2px 7px;
     background: #1a0010;
     border: 1px solid #600;
-    color: #f44;
+    color: var(--state-error);
     font-size: 13px;
     cursor: pointer;
     border-radius: 2px;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
 }
 .digi-close-btn:active { background: #600; }
 
@@ -1147,8 +1147,8 @@ body.digi-open #bottomBar { grid-row: 5; }
 .digi-msg-header { border-top: 1px solid #024; margin-top: 0; }
 .digi-col-header {
     background: #000820;
-    color: #08f;
-    font-family: 'Courier New', monospace;
+    color: var(--mode-accent);
+    font-family: var(--font-mono);
     font-size: 10px;
     padding: 2px 8px;
     border-bottom: 1px solid #024;
@@ -1160,7 +1160,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     flex: 1;
     overflow-y: auto;
     background: #000308;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 12px;
 }
 .digi-directed-panel { background: #000205; }
@@ -1189,20 +1189,20 @@ body.digi-open #bottomBar { grid-row: 5; }
 .digi-decode-row:hover { background: #001428; }
 .digi-decode-row.cq-row { background: #001830; }
 .digi-decode-row.cq-row:hover { background: #002040; }
-.digi-decode-row.highlight { background: #002850; border-left: 3px solid #08f; }
+.digi-decode-row.highlight { background: #002850; border-left: 3px solid var(--mode-accent); }
 .digi-decode-row.directed { background: #1a1000; border-left: 3px solid #f80; }
 .digi-decode-row.directed:hover { background: #251800; }
 .digi-decode-row.tx-row { background: #001a00; border-left: 3px solid #0a0; }
-.digi-decode-row.digi-tx-pending { background: #001020; border-left: 3px solid #444; color: #668; }
+.digi-decode-row.digi-tx-pending { background: var(--mode-accent-bg); border-left: 3px solid #444; color: #668; }
 .digi-decode-row.digi-tx-pending .digi-decode-msg { color: #88a; font-style: italic; }
-.digi-logged-row { background: #001800; border-left: 3px solid #0c0; color: #0d0; padding: 2px 6px; font-family: 'Courier New', monospace; font-size: 11px; letter-spacing: 0.5px; }
+.digi-logged-row { background: #001800; border-left: 3px solid #0c0; color: #0d0; padding: 2px 6px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.5px; }
 .digi-decode-row.digi-tx-pending .digi-decode-snr { color: #666; }
-.digi-slot-divider { border-top: 1px solid #048; margin: 4px 0 2px 0; padding: 2px 6px; text-align: center; }
-.digi-slot-divider .digi-slot-time { color: #08f; font-size: 10px; font-weight: bold; }
+.digi-slot-divider { border-top: 1px solid var(--mode-accent-dim); margin: 4px 0 2px 0; padding: 2px 6px; text-align: center; }
+.digi-slot-divider .digi-slot-time { color: var(--mode-accent); font-size: 10px; font-weight: bold; }
 .digi-decode-time { color: #556; min-width: 36px; font-size: 10px; }
 .digi-decode-snr  { color: #8cf; min-width: 30px; text-align: right; font-size: 11px; }
 .digi-decode-dt   { color: #556; min-width: 26px; font-size: 10px; }
-.digi-decode-freq { color: #08f; min-width: 34px; text-align: right; font-size: 11px; }
+.digi-decode-freq { color: var(--mode-accent); min-width: 34px; text-align: right; font-size: 11px; }
 .digi-decode-msg  { color: #cef; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .digi-decode-row.cq-row .digi-decode-msg { color: #8cf; font-weight: bold; }
 .digi-decode-row.highlight .digi-decode-msg { color: #fff; }
@@ -1223,20 +1223,20 @@ body.digi-open #bottomBar { grid-row: 5; }
     background: #002040;
     border: 1px solid #036;
     color: #08a;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 9px;
     padding: 2px 3px;
     cursor: pointer;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
-.digi-cq-parity-btn:hover { background: #003060; border-color: #08f; color: #0af; }
+.digi-cq-parity-btn:hover { background: #003060; border-color: var(--mode-accent); color: #0af; }
 .digi-call-cq-btn {
     flex: 1;
     background: #002820;
     border: 1px solid #040;
     color: #0b0;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 9px;
     padding: 2px 3px;
     cursor: pointer;
@@ -1268,12 +1268,12 @@ body.digi-open #bottomBar { grid-row: 5; }
     min-height: 15px;
 }
 .digi-msg-row:hover { background: #001428; }
-.digi-msg-row.armed { background: #00203a; border-left: 3px solid #08f; }
-.digi-msg-row-num { color: #048; font-family: 'Courier New', monospace; font-size: 10px; min-width: 12px; text-align: right; }
-.digi-msg-row-text { color: #cc8; font-family: 'Courier New', monospace; font-size: 11px; flex: 1; }
+.digi-msg-row.armed { background: #00203a; border-left: 3px solid var(--mode-accent); }
+.digi-msg-row-num { color: var(--mode-accent-dim); font-family: var(--font-mono); font-size: 10px; min-width: 12px; text-align: right; }
+.digi-msg-row-text { color: #cc8; font-family: var(--font-mono); font-size: 11px; flex: 1; }
 .digi-msg-row.armed .digi-msg-row-text { color: #8cf; font-weight: bold; }
-.digi-msg-row-badge { font-family: 'Courier New', monospace; font-size: 9px; color: #048; min-width: 40px; text-align: right; }
-.digi-msg-row.armed .digi-msg-row-badge { color: #08f; }
+.digi-msg-row-badge { font-family: var(--font-mono); font-size: 9px; color: var(--mode-accent-dim); min-width: 40px; text-align: right; }
+.digi-msg-row.armed .digi-msg-row-badge { color: var(--mode-accent); }
 
 /* Action row */
 .digi-action-row {
@@ -1286,23 +1286,23 @@ body.digi-open #bottomBar { grid-row: 5; }
     flex-shrink: 0;
 }
 .digi-field-label {
-    color: #08f;
+    color: var(--mode-accent);
     font-size: 11px;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-weight: bold;
 }
 .digi-action-btn {
     padding: 2px 8px;
-    background: #001020;
-    border: 1px solid #048;
-    color: #08f;
+    background: var(--mode-accent-bg);
+    border: 1px solid var(--mode-accent-dim);
+    color: var(--mode-accent);
     font-size: 11px;
     font-weight: bold;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     cursor: pointer;
     border-radius: 2px;
 }
-.digi-action-btn:active { background: #048; color: #000; }
+.digi-action-btn:active { background: var(--mode-accent-dim); color: #000; }
 .digi-enable-tx-btn {
     padding: 2px 8px;
     background: #001800;
@@ -1310,7 +1310,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     color: #484;
     font-size: 11px;
     font-weight: bold;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     cursor: pointer;
     border-radius: 2px;
 }
@@ -1320,10 +1320,10 @@ body.digi-open #bottomBar { grid-row: 5; }
     padding: 2px 8px;
     background: #1a0000;
     border: 1px solid #800;
-    color: #f44;
+    color: var(--state-error);
     font-size: 11px;
     font-weight: bold;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     cursor: pointer;
     border-radius: 2px;
 }
@@ -1335,7 +1335,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     color: #cc4;
     font-size: 11px;
     font-weight: bold;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     cursor: pointer;
     border-radius: 2px;
 }
@@ -1343,9 +1343,9 @@ body.digi-open #bottomBar { grid-row: 5; }
 .digi-tune-btn:active { background: #880; color: #000; }
 .digi-callsign-input {
     background: #000;
-    border: 1px solid #048;
+    border: 1px solid var(--mode-accent-dim);
     color: #8cf;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 12px;
     font-weight: bold;
     padding: 2px 5px;
@@ -1353,30 +1353,30 @@ body.digi-open #bottomBar { grid-row: 5; }
     width: 76px;
     border-radius: 2px;
 }
-.digi-callsign-input:focus { outline: none; border-color: #08f; background: #000820; }
+.digi-callsign-input:focus { outline: none; border-color: var(--mode-accent); background: #000820; }
 .digi-freq-input {
     background: #000;
-    border: 1px solid #048;
+    border: 1px solid var(--mode-accent-dim);
     color: #8cf;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 12px;
     padding: 2px 5px;
     width: 58px;
     border-radius: 2px;
 }
-.digi-freq-input:focus { outline: none; border-color: #08f; background: #000820; }
+.digi-freq-input:focus { outline: none; border-color: var(--mode-accent); background: #000820; }
 .digi-tx-freq-display {
-    font-family: 'Courier New', monospace; font-size: 12px;
-    color: #08f; width: 52px; text-align: right;
-    background: #001020; border: 1px solid #048;
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--mode-accent); width: 52px; text-align: right;
+    background: var(--mode-accent-bg); border: 1px solid var(--mode-accent-dim);
     padding: 2px 5px; border-radius: 2px;
     -moz-appearance: textfield; outline: none;
 }
 .digi-tx-freq-display::-webkit-outer-spin-button,
 .digi-tx-freq-display::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.digi-tx-freq-display:focus { border-color: #08f; box-shadow: 0 0 4px #08f; }
+.digi-tx-freq-display:focus { border-color: var(--mode-accent); box-shadow: 0 0 4px var(--mode-accent); }
 .digi-rx-freq-display {
-    font-family: 'Courier New', monospace; font-size: 12px;
+    font-family: var(--font-mono); font-size: 12px;
     color: #0d8; width: 52px; text-align: right;
     background: #001008; border: 1px solid #082;
     padding: 2px 5px; border-radius: 2px;
@@ -1389,15 +1389,15 @@ body.digi-open #bottomBar { grid-row: 5; }
 /* Log button in header */
 .digi-log-btn {
     padding: 2px 7px;
-    background: #001020;
-    border: 1px solid #048;
-    color: #08f;
-    font-family: 'Courier New', monospace;
+    background: var(--mode-accent-bg);
+    border: 1px solid var(--mode-accent-dim);
+    color: var(--mode-accent);
+    font-family: var(--font-mono);
     font-size: 12px;
     cursor: pointer;
     border-radius: 3px;
 }
-.digi-log-btn:active { background: #048; color: #000; }
+.digi-log-btn:active { background: var(--mode-accent-dim); color: #000; }
 
 /* QSO Log Modal */
 .digi-log-modal {
@@ -1407,7 +1407,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     left: 50%;
     transform: translate(-50%, -50%);
     background: #000820;
-    border: 2px solid #048;
+    border: 2px solid var(--mode-accent-dim);
     border-radius: 6px;
     padding: 12px 16px;
     z-index: 300;
@@ -1420,11 +1420,11 @@ body.digi-open #bottomBar { grid-row: 5; }
 .digi-log-modal-title {
     display: flex;
     align-items: center;
-    color: #08f;
-    font-family: 'Courier New', monospace;
+    color: var(--mode-accent);
+    font-family: var(--font-mono);
     font-size: 13px;
     font-weight: bold;
-    border-bottom: 1px solid #048;
+    border-bottom: 1px solid var(--mode-accent-dim);
     padding-bottom: 5px;
     margin-bottom: 6px;
 }
@@ -1433,7 +1433,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     overflow-y: auto;
     flex: 1;
     min-height: 80px;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 11px;
 }
 .digi-log-row {
@@ -1450,20 +1450,20 @@ body.digi-open #bottomBar { grid-row: 5; }
 .digi-log-time { color: #447; }
 .digi-log-call { color: #8cf; font-weight: bold; }
 .digi-log-freq { color: #5af; }
-.digi-log-band { color: #048; }
-.digi-log-mode { color: #08f; }
+.digi-log-band { color: var(--mode-accent-dim); }
+.digi-log-mode { color: var(--mode-accent); }
 .digi-log-rstsent { color: #5a5; }
 .digi-log-rstrcvd { color: #a55; }
 .digi-log-edit { color: #248; cursor: pointer; font-size: 13px; text-align: center; line-height: 1; }
-.digi-log-edit:hover { color: #08f; }
+.digi-log-edit:hover { color: var(--mode-accent); }
 .digi-log-save { color: #262; cursor: pointer; font-size: 15px; text-align: center; line-height: 1; }
 .digi-log-save:hover { color: #4f4; }
 .digi-log-del { color: #844; cursor: pointer; font-size: 14px; text-align: center; line-height: 1; }
-.digi-log-del:hover { color: #f44; }
+.digi-log-del:hover { color: var(--state-error); }
 .digi-log-empty { color: #224; font-style: italic; padding: 8px 4px; }
 .digi-log-input {
-    background: #001828; border: 1px solid #048; color: #8cf;
-    font-family: 'Courier New', monospace; font-size: 10px;
+    background: #001828; border: 1px solid var(--mode-accent-dim); color: #8cf;
+    font-family: var(--font-mono); font-size: 10px;
     width: 100%; box-sizing: border-box; padding: 1px 2px;
 }
 .digi-log-actions {
@@ -1476,17 +1476,17 @@ body.digi-open #bottomBar { grid-row: 5; }
 }
 .digi-log-action-btn {
     padding: 3px 12px;
-    background: #001020;
-    border: 1px solid #048;
-    color: #08f;
-    font-family: 'Courier New', monospace;
+    background: var(--mode-accent-bg);
+    border: 1px solid var(--mode-accent-dim);
+    color: var(--mode-accent);
+    font-family: var(--font-mono);
     font-size: 11px;
     cursor: pointer;
     border-radius: 3px;
 }
-.digi-log-action-btn:active { background: #048; color: #000; }
+.digi-log-action-btn:active { background: var(--mode-accent-dim); color: #000; }
 .digi-log-action-btn.danger { border-color: #422; color: #844; }
-.digi-log-action-btn.danger:active { background: #422; color: #f44; }
+.digi-log-action-btn.danger:active { background: #422; color: var(--state-error); }
 
 /* Settings modal */
 .digi-settings-modal {
@@ -1496,7 +1496,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     left: 50%;
     transform: translate(-50%, -50%);
     background: #000820;
-    border: 2px solid #048;
+    border: 2px solid var(--mode-accent-dim);
     border-radius: 6px;
     padding: 16px 20px;
     z-index: 300;
@@ -1505,12 +1505,12 @@ body.digi-open #bottomBar { grid-row: 5; }
 }
 .digi-settings-modal.visible { display: block; }
 .digi-settings-modal-title {
-    color: #08f;
-    font-family: 'Courier New', monospace;
+    color: var(--mode-accent);
+    font-family: var(--font-mono);
     font-size: 13px;
     font-weight: bold;
     margin-bottom: 12px;
-    border-bottom: 1px solid #048;
+    border-bottom: 1px solid var(--mode-accent-dim);
     padding-bottom: 5px;
 }
 .digi-settings-field {
@@ -1522,10 +1522,10 @@ body.digi-open #bottomBar { grid-row: 5; }
 .digi-settings-close {
     margin-top: 10px;
     padding: 4px 16px;
-    background: #001020;
-    border: 1px solid #048;
-    color: #08f;
-    font-family: 'Courier New', monospace;
+    background: var(--mode-accent-bg);
+    border: 1px solid var(--mode-accent-dim);
+    color: var(--mode-accent);
+    font-family: var(--font-mono);
     font-size: 12px;
     cursor: pointer;
     border-radius: 3px;
@@ -1533,7 +1533,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     width: 100%;
     box-sizing: border-box;
 }
-.digi-settings-close:active { background: #048; color: #000; }
+.digi-settings-close:active { background: var(--mode-accent-dim); color: #000; }
 
 /* GAIN overlay */
 #gainOverlay.visible {
