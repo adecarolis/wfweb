@@ -1073,46 +1073,15 @@ body.digi-open #bottomBar { grid-row: 5; }
 .digi-status.decoding { color: #ff0; }
 .digi-band-sel {
     background: #000820;
-    border: 1px solid var(--mode-accent-dim);
     color: #8cf;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    padding: 2px 3px;
-    border-radius: 2px;
     cursor: pointer;
 }
 .digi-settings-btn {
-    padding: 2px 7px;
-    background: var(--mode-accent-bg);
-    border: 1px solid var(--mode-accent-dim);
-    color: var(--mode-accent);
-    font-size: 13px;
-    cursor: pointer;
-    border-radius: 2px;
     margin-left: auto;
 }
-.digi-settings-btn:active { background: var(--mode-accent-dim); color: #000; }
-.digi-rx-toggle {
-    padding: 2px 7px;
-    background: var(--mode-accent-bg);
-    border: 1px solid var(--mode-accent-dim);
-    color: var(--mode-accent);
-    font-size: 11px;
-    font-weight: bold;
-    font-family: var(--font-mono);
-    cursor: pointer;
-    border-radius: 2px;
-}
-.digi-rx-toggle.active { background: var(--mode-accent-dim); color: #000; border-color: var(--mode-accent); }
 .digi-close-btn {
-    padding: 2px 7px;
     background: #1a0010;
-    border: 1px solid #600;
     color: var(--state-error);
-    font-size: 13px;
-    cursor: pointer;
-    border-radius: 2px;
-    font-family: var(--font-mono);
 }
 .digi-close-btn:active { background: #600; }
 
@@ -1226,13 +1195,7 @@ body.digi-open #bottomBar { grid-row: 5; }
 .digi-call-cq-btn {
     flex: 1;
     background: #002820;
-    border: 1px solid #040;
     color: #0b0;
-    font-family: var(--font-mono);
-    font-size: 9px;
-    padding: 2px 3px;
-    cursor: pointer;
-    font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -1283,67 +1246,24 @@ body.digi-open #bottomBar { grid-row: 5; }
     font-family: var(--font-mono);
     font-weight: bold;
 }
-.digi-action-btn {
-    padding: 2px 8px;
-    background: var(--mode-accent-bg);
-    border: 1px solid var(--mode-accent-dim);
-    color: var(--mode-accent);
-    font-size: 11px;
-    font-weight: bold;
-    font-family: var(--font-mono);
-    cursor: pointer;
-    border-radius: 2px;
-}
-.digi-action-btn:active { background: var(--mode-accent-dim); color: #000; }
 .digi-enable-tx-btn {
-    padding: 2px 8px;
     background: #001800;
-    border: 1px solid #040;
     color: #484;
-    font-size: 11px;
-    font-weight: bold;
-    font-family: var(--font-mono);
-    cursor: pointer;
-    border-radius: 2px;
 }
 .digi-enable-tx-btn.active { background: #003000; border-color: #0a0; color: #0f0; }
 .digi-enable-tx-btn:active { background: #080; color: #000; }
-.digi-halt-btn {
-    padding: 2px 8px;
-    background: #1a0000;
-    border: 1px solid #800;
-    color: var(--state-error);
-    font-size: 11px;
-    font-weight: bold;
-    font-family: var(--font-mono);
-    cursor: pointer;
-    border-radius: 2px;
-}
 .digi-halt-btn:active { background: #800; color: #000; }
 .digi-tune-btn {
-    padding: 2px 8px;
     background: #181800;
-    border: 1px solid #880;
     color: #cc4;
-    font-size: 11px;
-    font-weight: bold;
-    font-family: var(--font-mono);
-    cursor: pointer;
-    border-radius: 2px;
 }
 .digi-tune-btn.active { background: #443000; border-color: #fa0; color: #fa0; }
 .digi-tune-btn:active { background: #880; color: #000; }
 .digi-callsign-input {
     background: #000;
-    border: 1px solid var(--mode-accent-dim);
     color: #8cf;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    font-weight: bold;
-    padding: 2px 5px;
     text-transform: uppercase;
     width: 76px;
-    border-radius: 2px;
 }
 .digi-callsign-input:focus { outline: none; border-color: var(--mode-accent); background: #000820; }
 .digi-freq-input {
@@ -2311,11 +2231,11 @@ body.digi-open #bottomBar { grid-row: 5; }
             <div class="digi-header">
                 <span id="digiModeLabel" class="digi-label">FT8</span>
                 <button id="digiCqOnlyBtn" class="wf-btn">CQ ONLY</button>
-                <select id="digiBandSel" class="digi-band-sel"></select>
+                <select id="digiBandSel" class="digi-band-sel wf-field"></select>
                 <div class="flex-space"></div>
-                <button id="digiRxToggle" class="digi-rx-toggle active">RX ON</button>
-                <button id="digiSettingsBtn" class="digi-settings-btn" title="Settings">&#9881;</button>
-                <button id="digiCloseBtn" class="digi-close-btn">&#x2715;</button>
+                <button id="digiRxToggle" class="digi-rx-toggle wf-btn active">RX ON</button>
+                <button id="digiSettingsBtn" class="digi-settings-btn wf-btn sq" title="Settings">&#9881;</button>
+                <button id="digiCloseBtn" class="digi-close-btn wf-btn sq">&#x2715;</button>
             </div>
 
             <!-- Row 2: status + progress + TX controls -->
@@ -2327,10 +2247,10 @@ body.digi-open #bottomBar { grid-row: 5; }
                 <span id="digiClock" class="digi-period-clock">15</span>
                 <span class="digi-mobile-break"></span>
                 <span class="digi-field-label">DX:</span>
-                <input type="text" id="digiDxCall" class="digi-callsign-input" maxlength="10" placeholder="DX" autocomplete="off">
-                <button id="digiEnableTxBtn" class="digi-enable-tx-btn">Enable TX</button>
-                <button id="digiHaltBtn" class="digi-halt-btn">Halt TX</button>
-                <button id="digiTuneBtn" class="digi-tune-btn">Tune</button>
+                <input type="text" id="digiDxCall" class="digi-callsign-input wf-field" maxlength="10" placeholder="DX" autocomplete="off">
+                <button id="digiEnableTxBtn" class="digi-enable-tx-btn wf-btn">Enable TX</button>
+                <button id="digiHaltBtn" class="digi-halt-btn wf-btn danger">Halt TX</button>
+                <button id="digiTuneBtn" class="digi-tune-btn wf-btn">Tune</button>
             </div>
 
             <!-- Two-column decode area -->
@@ -2347,7 +2267,7 @@ body.digi-open #bottomBar { grid-row: 5; }
                     <div class="digi-col-header digi-msg-header">QSO Messages</div>
                     <div class="digi-msg-cq-bar">
                         <button id="digiCqParityBtn" class="digi-cq-parity-btn" onclick="toggleDigiCqParity()">TX EVEN</button>
-                        <button id="digiCallCqBtn" class="digi-call-cq-btn" onclick="digiCallCq()">CALL CQ</button>
+                        <button id="digiCallCqBtn" class="digi-call-cq-btn wf-btn" onclick="digiCallCq()">CALL CQ</button>
                     </div>
                     <div id="digiMsgRows" class="digi-msg-rows"></div>
                 </div>
@@ -2368,9 +2288,9 @@ body.digi-open #bottomBar { grid-row: 5; }
 
             <!-- Bottom action row -->
             <div class="digi-action-row">
-                <button id="digiLogQsoBtn" class="digi-action-btn">Log QSO</button>
-                <button id="digiEraseBtn" class="digi-action-btn">Erase</button>
-                <button id="digiHoldTxBtn" class="digi-action-btn">Hold TX</button>
+                <button id="digiLogQsoBtn" class="digi-action-btn wf-btn">Log QSO</button>
+                <button id="digiEraseBtn" class="digi-action-btn wf-btn">Erase</button>
+                <button id="digiHoldTxBtn" class="digi-action-btn wf-btn">Hold TX</button>
                 <div class="flex-space"></div>
                 <span class="digi-field-label">TX:</span>
                 <input type="number" id="digiTxFreqDisplay" class="digi-tx-freq-display" min="300" max="2800" step="1" value="1000">
@@ -2387,11 +2307,11 @@ body.digi-open #bottomBar { grid-row: 5; }
             <div class="digi-settings-modal-title">Station Settings</div>
             <div class="digi-settings-field">
                 <span class="digi-field-label">MY CALL:</span>
-                <input type="text" id="digiMyCall" class="digi-callsign-input" maxlength="10" placeholder="CALL" autocomplete="off">
+                <input type="text" id="digiMyCall" class="digi-callsign-input wf-field" maxlength="10" placeholder="CALL" autocomplete="off">
             </div>
             <div class="digi-settings-field">
                 <span class="digi-field-label">MY GRID:</span>
-                <input type="text" id="digiGrid" class="digi-callsign-input" maxlength="6" placeholder="AA00" autocomplete="off">
+                <input type="text" id="digiGrid" class="digi-callsign-input wf-field" maxlength="6" placeholder="AA00" autocomplete="off">
             </div>
             <div class="digi-settings-field" style="margin-top:6px">
                 <label style="display:flex;align-items:center;gap:6px;color:#8cf;font-size:12px;cursor:pointer">
