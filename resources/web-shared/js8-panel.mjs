@@ -45,7 +45,7 @@ const JS8_PANEL_MARKUP = `
         <div id="js8Bar" class="js8-bar mode-js8 hidden">
             <div class="js8-header">
                 <span class="js8-brand">JS8</span>
-                <select id="js8SubmodeSel" class="js8-submode-sel"
+                <select id="js8SubmodeSel" class="js8-submode-sel wf-field"
                         title="TX speed — RX decodes all four speeds at once">
                     <option value="0">JS8 Normal · 15s</option>
                     <option value="1">JS8 Fast · 10s</option>
@@ -156,7 +156,7 @@ const JS8_PANEL_MARKUP = `
 
             <div class="js8-action-row">
                 <span class="js8-field-label js8-to-label">TO</span>
-                <input type="text" id="js8DxCall" class="js8-callsign-input"
+                <input type="text" id="js8DxCall" class="js8-callsign-input wf-field"
                        maxlength="9" placeholder="TO…" autocomplete="off">
                 <!-- Floating suggestion popover for the TO field. Opens
                      on hover/focus, lists @ALLCALL + @HB + most-recently
@@ -166,12 +166,12 @@ const JS8_PANEL_MARKUP = `
                     <div id="js8DxSuggestGrid" class="js8-dx-suggest-grid"></div>
                     <div class="js8-dx-suggest-help">Leave empty to broadcast to <b>@ALLCALL</b>.</div>
                 </div>
-                <button id="js8CmdChip" class="js8-cmd-chip"
+                <button id="js8CmdChip" class="js8-cmd-chip wf-btn"
                     title="Open the CMD palette (or press / in compose)"
                     aria-label="Open CMD palette">⌘</button>
-                <input type="text" id="js8Compose" class="js8-compose"
+                <input type="text" id="js8Compose" class="js8-compose wf-field"
                        placeholder="Type message…" maxlength="120" autocomplete="off">
-                <button id="js8SendBtn" class="js8-big-btn js8-send-btn">SEND</button>
+                <button id="js8SendBtn" class="js8-big-btn js8-send-btn wf-btn lg">SEND</button>
             </div>
         </div>
 
@@ -184,15 +184,15 @@ const JS8_PANEL_MARKUP = `
                 <p class="js8-modal-help">Send a message that travels through one or more relay stations on its way to the final recipient. Each station along the chain forwards it on automatically.</p>
                 <div class="js8-settings-field">
                     <span class="js8-field-label" title="Each station forwards the message to the next one. Order matters.">VIA (space-separated)</span>
-                    <input type="text" id="js8RelayVia" class="js8-compose" placeholder="e.g. IZ6BYY VK2ITM" autocomplete="off">
+                    <input type="text" id="js8RelayVia" class="js8-compose wf-field" placeholder="e.g. IZ6BYY VK2ITM" autocomplete="off">
                 </div>
                 <div class="js8-settings-field">
                     <span class="js8-field-label" title="The station the message is for. It does not need to be in range of yours — only the last VIA station needs to reach it.">TO (final target)</span>
-                    <input type="text" id="js8RelayTo" class="js8-compose" placeholder="e.g. IW6PBC" autocomplete="off">
+                    <input type="text" id="js8RelayTo" class="js8-compose wf-field" placeholder="e.g. IW6PBC" autocomplete="off">
                 </div>
                 <div class="js8-settings-field">
                     <span class="js8-field-label">MESSAGE</span>
-                    <input type="text" id="js8RelayMsg" class="js8-compose" placeholder="e.g. HELLO" maxlength="80" autocomplete="off">
+                    <input type="text" id="js8RelayMsg" class="js8-compose wf-field" placeholder="e.g. HELLO" maxlength="80" autocomplete="off">
                 </div>
                 <div class="js8-relay-preview">
                     <span class="js8-field-label">PATH</span>
@@ -204,7 +204,7 @@ const JS8_PANEL_MARKUP = `
                 </div>
                 <div class="js8-modal-actions">
                     <button id="js8RelayCancelBtn" class="js8-modal-close">Cancel</button>
-                    <button id="js8RelaySendBtn" class="js8-big-btn js8-send-btn">SEND</button>
+                    <button id="js8RelaySendBtn" class="js8-big-btn js8-send-btn wf-btn lg">SEND</button>
                 </div>
             </div>
         </div>
@@ -217,15 +217,15 @@ const JS8_PANEL_MARKUP = `
                 <div class="js8-modal-title">JS8 Settings</div>
                 <div class="js8-settings-field">
                     <span class="js8-field-label">CALL</span>
-                    <input type="text" id="js8SettingMycall" class="js8-callsign-input" maxlength="10" placeholder="CALL" autocomplete="off">
+                    <input type="text" id="js8SettingMycall" class="js8-callsign-input wf-field" maxlength="10" placeholder="CALL" autocomplete="off">
                 </div>
                 <div class="js8-settings-field">
                     <span class="js8-field-label">GRID</span>
-                    <input type="text" id="js8SettingMygrid" class="js8-callsign-input" maxlength="6" placeholder="EM85" autocomplete="off">
+                    <input type="text" id="js8SettingMygrid" class="js8-callsign-input wf-field" maxlength="6" placeholder="EM85" autocomplete="off">
                 </div>
                 <div class="js8-settings-field">
                     <span class="js8-field-label">DEFAULT SPEED</span>
-                    <select id="js8SettingSubmode" class="js8-submode-sel">
+                    <select id="js8SettingSubmode" class="js8-submode-sel wf-field">
                         <option value="0">JS8 Normal · 15s</option>
                         <option value="1">JS8 Fast · 10s</option>
                         <option value="2">JS8 40 · 6s</option>
@@ -261,11 +261,11 @@ const JS8_PANEL_MARKUP = `
                 </div>
                 <div class="js8-settings-field">
                     <span class="js8-field-label" title="Free-text reply sent when someone asks INFO?.">INFO TEXT</span>
-                    <input type="text" id="js8SettingInfoText" class="js8-compose" maxlength="80" placeholder="e.g. RIG IC-7300 ANT DIPOLE">
+                    <input type="text" id="js8SettingInfoText" class="js8-compose wf-field" maxlength="80" placeholder="e.g. RIG IC-7300 ANT DIPOLE">
                 </div>
                 <div class="js8-settings-field">
                     <span class="js8-field-label" title="Free-text reply sent when someone asks STATUS?.">STATUS TEXT</span>
-                    <input type="text" id="js8SettingStatusText" class="js8-compose" maxlength="80" placeholder="e.g. WFWEB IDLE">
+                    <input type="text" id="js8SettingStatusText" class="js8-compose wf-field" maxlength="80" placeholder="e.g. WFWEB IDLE">
                 </div>
                 <button id="js8SettingsCloseBtn" class="js8-modal-close">Close</button>
             </div>
@@ -1831,13 +1831,13 @@ const JS8_PANEL_MARKUP = `
         var html = '';
         // Monitor tab — always first, no close button.
         var monActive = S.activeTab === 'monitor' ? ' active' : '';
-        html += '<div class="js8-tab' + monActive + '" data-tab="monitor">'
+        html += '<div class="js8-tab wf-tab' + monActive + '" data-tab="monitor">'
              +  '<span>Monitor</span></div>';
         for (var i = 0; i < S.tabOrder.length; ++i) {
             var peer = S.tabOrder[i];
             var q = S.qsos.get(peer);
             if (!q) continue;
-            var cls = 'js8-tab' + (S.activeTab === peer ? ' active' : '');
+            var cls = 'js8-tab wf-tab' + (S.activeTab === peer ? ' active' : '');
             html += '<div class="' + cls + '" data-tab="' + escapeHtml(peer) + '">'
                  +  '<span>' + escapeHtml(peer) + '</span>';
             if (q.unread > 0) {
@@ -2429,12 +2429,12 @@ const JS8_PANEL_MARKUP = `
         var heardHits = heard.filter(matchPrefix);
         var html = '';
         groupHits.forEach(function (g) {
-            html += '<button type="button" class="js8-dx-suggest-btn group" '
+            html += '<button type="button" class="js8-dx-suggest-btn wf-btn group" '
                   + 'data-val="' + escapeHtml(g) + '">'
                   + escapeHtml(g) + '</button>';
         });
         heardHits.forEach(function (c) {
-            html += '<button type="button" class="js8-dx-suggest-btn" '
+            html += '<button type="button" class="js8-dx-suggest-btn wf-btn" '
                   + 'data-val="' + escapeHtml(c) + '">'
                   + escapeHtml(c) + '</button>';
         });

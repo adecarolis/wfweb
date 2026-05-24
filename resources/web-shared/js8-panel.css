@@ -51,8 +51,6 @@ body.js8-open #bottomBar { grid-row: 5; }
 }
 .js8-submode-sel {
     background: #2a2018; color: var(--mode-accent);
-    border: 1px solid var(--mode-accent-bg); border-radius: 3px;
-    padding: 2px 4px; font-size: 13px;
 }
 .js8-status-pill {
     background: var(--mode-accent-bg); color: var(--mode-accent);
@@ -336,11 +334,9 @@ body.js8-open #bottomBar { grid-row: 5; }
 }
 .js8-tab {
     display: inline-flex; align-items: center; gap: 4px;
-    padding: 3px 8px; font-size: 11px; font-weight: bold;
     letter-spacing: 0.5px; text-transform: uppercase;
     background: #1a1410; color: var(--mode-accent);
-    border: 1px solid var(--mode-accent-bg); border-bottom: none;
-    border-radius: 3px 3px 0 0; cursor: pointer; user-select: none;
+    cursor: pointer; user-select: none;
 }
 .js8-tab:hover { background: #2a2018; }
 .js8-tab.active { background: var(--mode-accent-dim); color: var(--on-accent); border-color: var(--mode-accent-dim); }
@@ -471,9 +467,6 @@ body.js8-open #bottomBar { grid-row: 5; }
    horizontal control strip. ── */
 .js8-cmd-chip {
     background: #2a2018; color: var(--mode-accent);
-    border: 1px solid #850; border-radius: 4px;
-    padding: 4px 8px;
-    font-family: var(--font-mono); font-size: 14px; font-weight: bold;
     line-height: 1;
     cursor: pointer; user-select: none;
     flex: 0 0 auto;
@@ -586,9 +579,6 @@ body.js8-open #bottomBar { grid-row: 5; }
 }
 .js8-dx-suggest-btn {
     background: #2a2018; color: var(--mode-accent);
-    border: 1px solid var(--mode-accent-bg); border-radius: 4px;
-    padding: 4px 10px;
-    font-family: var(--font-mono); font-size: 12px; font-weight: bold;
     cursor: pointer; user-select: none;
 }
 .js8-dx-suggest-btn:hover  { background: #3a2820; border-color: var(--mode-accent-dim); }
@@ -610,7 +600,11 @@ body.js8-open #bottomBar { grid-row: 5; }
     color: #a96; font-size: 11px; letter-spacing: 1px;
     text-transform: uppercase; font-weight: bold;
 }
-.js8-callsign-input, .js8-compose, .js8-num-input {
+.js8-callsign-input, .js8-compose {
+    background: #2a2018; color: var(--mode-accent);
+}
+/* .js8-num-input is not migrated to .wf-field — keep its full geometry. */
+.js8-num-input {
     background: #2a2018; color: var(--mode-accent);
     border: 1px solid var(--mode-accent-bg); border-radius: 3px;
     padding: 6px 8px; font-family: var(--font-mono); font-size: 14px;
@@ -623,8 +617,6 @@ body.js8-open #bottomBar { grid-row: 5; }
 }
 .js8-big-btn {
     background: var(--mode-accent-bg); color: var(--mode-accent);
-    border: 1px solid var(--mode-accent-dim); border-radius: 3px;
-    padding: 8px 16px; font-weight: bold; font-size: 14px;
     letter-spacing: 1px; cursor: pointer; min-width: 60px;
 }
 .js8-big-btn:hover  { background: var(--mode-accent-dim); color: var(--on-accent); }
