@@ -172,13 +172,13 @@
         barEl.innerHTML =
             '<div class="packet-header">' +
                 '<span class="packet-label">PACKET</span>' +
-                '<button id="packetMode300"  class="packet-mode-btn" data-mode="300"  title="300 bps AFSK (HF packet)">300 AFSK</button>' +
-                '<button id="packetMode1200" class="packet-mode-btn" data-mode="1200" title="1200 bps AFSK Bell 202 (VHF / APRS)">1200 AFSK</button>' +
-                '<button id="packetMode9600" class="packet-mode-btn" data-mode="9600" title="9600 bps G3RUH FSK (VHF)">9600 FSK</button>' +
+                '<button id="packetMode300"  class="packet-mode-btn wf-btn" data-mode="300"  title="300 bps AFSK (HF packet)">300 AFSK</button>' +
+                '<button id="packetMode1200" class="packet-mode-btn wf-btn" data-mode="1200" title="1200 bps AFSK Bell 202 (VHF / APRS)">1200 AFSK</button>' +
+                '<button id="packetMode9600" class="packet-mode-btn wf-btn" data-mode="9600" title="9600 bps G3RUH FSK (VHF)">9600 FSK</button>' +
                 '<div class="flex-space"></div>' +
-                '<button id="packetClearBtn" class="packet-action-btn" title="Clear frame list">Clear</button>' +
+                '<button id="packetClearBtn" class="packet-action-btn wf-btn" title="Clear frame list">Clear</button>' +
                 '<button id="packetSettingsBtn" class="packet-settings-btn" title="PKT settings" aria-label="PKT settings">&#x2699;</button>' +
-                '<button id="packetCloseBtn" class="packet-close-btn">&#x2715;</button>' +
+                '<button id="packetCloseBtn" class="packet-close-btn wf-btn">&#x2715;</button>' +
             '</div>' +
             '<canvas id="packetScopeCanvas" class="packet-scope"></canvas>' +
             '<div class="packet-monitor">' +
@@ -186,8 +186,8 @@
                 '<div id="packetFrames" class="packet-frames"></div>' +
             '</div>' +
             '<div class="packet-tabs">' +
-                '<button id="packetTabAprs" class="packet-tab-btn active" data-tab="aprs">APRS</button>' +
-                '<button id="packetTabTerm" class="packet-tab-btn" data-tab="term">TERMINAL</button>' +
+                '<button id="packetTabAprs" class="packet-tab-btn wf-tab active" data-tab="aprs">APRS</button>' +
+                '<button id="packetTabTerm" class="packet-tab-btn wf-tab" data-tab="term">TERMINAL</button>' +
             '</div>' +
             '<div id="packetAprsPane" class="packet-pane">' +
                 '<div class="aprs-split">' +
@@ -196,7 +196,7 @@
                             '<span>HEARD STATIONS</span>' +
                             '<span id="aprsStationCount" class="aprs-count">0</span>' +
                             '<div class="flex-space"></div>' +
-                            '<button id="aprsClearBtn" class="packet-action-btn" title="Forget all heard stations">Clear</button>' +
+                            '<button id="aprsClearBtn" class="packet-action-btn wf-btn" title="Forget all heard stations">Clear</button>' +
                         '</div>' +
                         '<div id="aprsStations" class="aprs-stations"></div>' +
                     '</div>' +
@@ -208,14 +208,14 @@
                         '<div class="aprs-beacon-grid">' +
                             '<span id="aprsSrcDisplay" class="packet-call-display" title="Set in PKT settings">—</span>' +
                             '<label>Symbol <select id="aprsSym"   class="aprs-sym-select"></select></label>' +
-                            '<label>Lat  <input id="aprsLat"     class="packet-tx-field" size="10" spellcheck="false" placeholder="40.6892"></label>' +
-                            '<label>Lon  <input id="aprsLon"     class="packet-tx-field" size="10" spellcheck="false" placeholder="-74.0445"></label>' +
-                            '<button id="aprsGeoBtn"  class="packet-action-btn" title="Use this device\'s location">Use my location</button>' +
-                            '<label class="aprs-comment-label">Comment <input id="aprsComment" class="packet-tx-info" maxlength="43" spellcheck="false" placeholder="wfweb"></label>' +
-                            '<label>Path <input id="aprsPath"    class="packet-tx-field" size="14" spellcheck="false" placeholder="WIDE1-1"></label>' +
-                            '<label class="aprs-interval-label">Every <input id="aprsInterval" class="packet-tx-field" size="4" spellcheck="false" value="10"> min</label>' +
+                            '<label>Lat  <input id="aprsLat"     class="packet-tx-field wf-field" size="10" spellcheck="false" placeholder="40.6892"></label>' +
+                            '<label>Lon  <input id="aprsLon"     class="packet-tx-field wf-field" size="10" spellcheck="false" placeholder="-74.0445"></label>' +
+                            '<button id="aprsGeoBtn"  class="packet-action-btn wf-btn" title="Use this device\'s location">Use my location</button>' +
+                            '<label class="aprs-comment-label">Comment <input id="aprsComment" class="packet-tx-info wf-field" maxlength="43" spellcheck="false" placeholder="wfweb"></label>' +
+                            '<label>Path <input id="aprsPath"    class="packet-tx-field wf-field" size="14" spellcheck="false" placeholder="WIDE1-1"></label>' +
+                            '<label class="aprs-interval-label">Every <input id="aprsInterval" class="packet-tx-field wf-field" size="4" spellcheck="false" value="10"> min</label>' +
                             '<button id="aprsTxNowBtn"   class="packet-send-btn" title="Send one position report now">TX now</button>' +
-                            '<button id="aprsBeaconBtn"  class="packet-action-btn" title="Toggle periodic beacon">Beacon: OFF</button>' +
+                            '<button id="aprsBeaconBtn"  class="packet-action-btn wf-btn" title="Toggle periodic beacon">Beacon: OFF</button>' +
                             '<span id="packetTxStatus" class="packet-tx-status"></span>' +
                         '</div>' +
                     '</div>' +
@@ -224,10 +224,10 @@
             '<div id="packetTermPane" class="packet-pane hidden">' +
                 '<div class="term-bar">' +
                     '<span id="termOwnCallDisplay" class="packet-call-display" title="Set in PKT settings">—</span>' +
-                    '<label>Peer <input id="termPeerCall" class="packet-tx-field" maxlength="9" size="9" spellcheck="false"></label>' +
-                    '<label>Digi <input id="termDigis"    class="packet-tx-field" size="20" spellcheck="false" placeholder="DIGI1,DIGI2"></label>' +
-                    '<button id="termConnectBtn"    class="packet-action-btn" title="Open AX.25 connected-mode link">Connect</button>' +
-                    '<button id="termDisconnectBtn" class="packet-action-btn" title="Disconnect this session" disabled>Disconnect</button>' +
+                    '<label>Peer <input id="termPeerCall" class="packet-tx-field wf-field" maxlength="9" size="9" spellcheck="false"></label>' +
+                    '<label>Digi <input id="termDigis"    class="packet-tx-field wf-field" size="20" spellcheck="false" placeholder="DIGI1,DIGI2"></label>' +
+                    '<button id="termConnectBtn"    class="packet-action-btn wf-btn" title="Open AX.25 connected-mode link">Connect</button>' +
+                    '<button id="termDisconnectBtn" class="packet-action-btn wf-btn" title="Disconnect this session" disabled>Disconnect</button>' +
                     '<span   id="termStateChip"     class="term-state-chip">DISCONNECTED</span>' +
                 '</div>' +
                 '<div id="termSessionTabs" class="term-session-tabs"></div>' +
@@ -235,13 +235,13 @@
                     '<span id="termXferLabel" class="term-xfer-label"></span>' +
                     '<div class="term-xfer-track"><div id="termXferFill" class="term-xfer-fill"></div></div>' +
                     '<span id="termXferPct" class="term-xfer-pct">0%</span>' +
-                    '<button id="termXferAbortBtn" class="packet-action-btn term-xfer-abort">Abort</button>' +
+                    '<button id="termXferAbortBtn" class="packet-action-btn wf-btn term-xfer-abort">Abort</button>' +
                 '</div>' +
                 '<div id="termScrollback" class="term-scrollback"></div>' +
                 '<div class="term-input-row">' +
-                    '<input id="termInput" class="term-input" spellcheck="false" placeholder="message — Enter to send">' +
+                    '<input id="termInput" class="term-input wf-field" spellcheck="false" placeholder="message — Enter to send">' +
                     '<button id="termSendBtn" class="packet-send-btn" disabled>Send</button>' +
-                    '<button id="termSendFileBtn" class="packet-action-btn" disabled title="Transfer a file (YAPP)">Send File</button>' +
+                    '<button id="termSendFileBtn" class="packet-action-btn wf-btn" disabled title="Transfer a file (YAPP)">Send File</button>' +
                     '<input id="termFileInput" type="file" style="display:none">' +
                 '</div>' +
             '</div>';
@@ -388,15 +388,15 @@
             '.packet-bar.hidden { display: none; }' +
             '.packet-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }' +
             '.packet-label { color: var(--mode-accent); font-weight: bold; letter-spacing: 1px; }' +
-            '.packet-mode-btn { background: var(--mode-accent-bg); border: 1px solid var(--mode-accent-dim); color: var(--mode-accent-dim); padding: 2px 8px; font-family: var(--font-mono); font-size: 10px; font-weight: bold; cursor: pointer; border-radius: 3px; }' +
+            '.packet-mode-btn { background: var(--mode-accent-bg); color: var(--mode-accent-dim); cursor: pointer; }' +
             '.packet-mode-btn.active { background: var(--mode-accent-dim); color: var(--on-accent); }' +
             '.packet-mode-btn:hover { background: var(--mode-accent-dim); color: var(--on-accent); }' +
-            '.packet-action-btn, .packet-close-btn { background: #111; border: 1px solid #555; color: #ccc; padding: 2px 8px; font-family: var(--font-mono); font-size: 10px; cursor: pointer; border-radius: 3px; }' +
+            '.packet-action-btn, .packet-close-btn { background: #111; color: #ccc; border: 1px solid #555; cursor: pointer; }' +
             '.packet-action-btn:hover, .packet-close-btn:hover { background: #333; color: #fff; }' +
             '.packet-action-btn:disabled { opacity: 0.5; cursor: default; }' +
             '.packet-compose { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 10px; color: #8c8; }' +
             '.packet-compose label { display: flex; align-items: center; gap: 3px; }' +
-            '.packet-tx-field, .packet-tx-info { background: var(--mode-accent-bg); border: 1px solid var(--mode-accent-dim); color: var(--field-text); font-family: var(--font-mono); font-size: 11px; padding: 2px 4px; border-radius: 2px; outline: none; text-transform: uppercase; }' +
+            '.packet-tx-field, .packet-tx-info { background: var(--mode-accent-bg); color: var(--field-text); outline: none; text-transform: uppercase; }' +
             '.packet-tx-info { flex: 1; min-width: 140px; text-transform: none; }' +
             '.packet-tx-field:focus, .packet-tx-info:focus { border-color: var(--mode-accent); }' +
             '.packet-send-btn { background: var(--mode-accent-dim); color: var(--on-accent); border: 1px solid var(--mode-accent); padding: 3px 12px; font-family: var(--font-mono); font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 3px; }' +
@@ -425,7 +425,7 @@
             '.flex-space { flex: 1; }' +
             // Tab strip
             '.packet-tabs { display: flex; gap: 2px; margin-bottom: 4px; border-bottom: 1px solid var(--mode-accent-dim); }' +
-            '.packet-tab-btn { background: var(--mode-accent-bg); border: 1px solid var(--mode-accent-dim); border-bottom: none; color: var(--mode-accent-dim); padding: 4px 14px; font-family: var(--font-mono); font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 3px 3px 0 0; }' +
+            '.packet-tab-btn { background: var(--mode-accent-bg); color: var(--mode-accent-dim); cursor: pointer; }' +
             '.packet-tab-btn.active { background: var(--mode-accent-dim); color: var(--on-accent); }' +
             '.packet-tab-btn:hover:not(.active) { background: var(--mode-accent-dim); color: var(--on-accent); }' +
             '.packet-pane { flex: 3 1 0; min-height: 0; display: flex; flex-direction: column; }' +
@@ -475,7 +475,7 @@
             '@keyframes term-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }' +
             '.term-session-tabs { display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 4px; }' +
             '.term-session-tabs:empty { display: none; }' +
-            '.term-tab { display: inline-flex; align-items: center; gap: 6px; background: #181818; border: 1px solid #555; border-bottom: none; color: #888; font-family: var(--font-mono); font-size: 11px; padding: 3px 4px 3px 8px; border-radius: 3px 3px 0 0; cursor: pointer; user-select: none; transition: box-shadow 0.2s; }' +
+            '.term-tab { display: inline-flex; align-items: center; gap: 6px; background: #181818; color: #888; cursor: pointer; user-select: none; transition: box-shadow 0.2s; }' +
             '.term-tab:hover { filter: brightness(1.25); }' +
             // Connection-state colours (apply to all tabs, active or not).
             '.term-tab.s-connecting    { background: #221d00; border-color: var(--state-warn); color: #ff3; animation: term-pulse 1.2s ease-in-out infinite; }' +
@@ -500,7 +500,7 @@
             '.term-scrollback .tx.pending { font-style: italic; opacity: 0.55; transition: opacity 0.15s, font-style 0.15s; }' +
             '.term-scrollback .info { color: #888; font-style: italic; }' +
             '.term-input-row { display: flex; gap: 6px; margin-top: 6px; }' +
-            '.term-input { flex: 1; background: var(--mode-accent-bg); border: 1px solid var(--mode-accent-dim); color: var(--field-text); font-family: var(--font-mono); font-size: 12px; padding: 4px 6px; border-radius: 2px; outline: none; }' +
+            '.term-input { flex: 1; background: var(--mode-accent-bg); color: var(--field-text); outline: none; }' +
             '.term-input:focus { border-color: var(--mode-accent); }' +
             '.term-input:disabled { opacity: 0.5; }' +
             '.term-force-btn { background: #2a0000 !important; border-color: #a40 !important; color: #f80 !important; }' +
@@ -1119,8 +1119,8 @@
                 '</div>' +
                 '<div class="term-file-prompt-note">Stations will reappear as they are heard again.</div>' +
                 '<div class="term-file-prompt-btns">' +
-                    '<button id="aprsClearCancel" class="packet-action-btn">Cancel</button>' +
-                    '<button id="aprsClearOk" class="packet-action-btn term-xfer-abort">Forget all</button>' +
+                    '<button id="aprsClearCancel" class="packet-action-btn wf-btn">Cancel</button>' +
+                    '<button id="aprsClearOk" class="packet-action-btn wf-btn term-xfer-abort">Forget all</button>' +
                 '</div>' +
             '</div>';
         document.body.appendChild(modal);
@@ -1926,7 +1926,7 @@
                 '</div>' +
                 '<div class="term-file-prompt-note">The transfer will only start if you accept.</div>' +
                 '<div class="term-file-prompt-btns">' +
-                    '<button id="termFilePromptReject" class="packet-action-btn term-xfer-abort">Reject</button>' +
+                    '<button id="termFilePromptReject" class="packet-action-btn wf-btn term-xfer-abort">Reject</button>' +
                     '<button id="termFilePromptAccept" class="packet-send-btn">Accept</button>' +
                 '</div>' +
             '</div>';
@@ -2019,7 +2019,7 @@
             var s = state.terminal.sessions[sid];
             var isActive = sid === state.terminal.activeSid;
             var stateClass = 's-' + (s.state || 'disconnected');
-            var cls = 'term-tab'
+            var cls = 'term-tab wf-tab'
                     + ' ' + stateClass
                     + (isActive ? ' active' : '')
                     + (!isActive && s.hasUnread ? ' unread' : '');
@@ -2181,7 +2181,7 @@
             '<div class="pkt-settings-box">' +
                 '<div class="pkt-settings-title">' +
                     '<span>PKT SETTINGS</span>' +
-                    '<button id="pktSettingsClose" class="packet-close-btn" aria-label="Close">&#x2715;</button>' +
+                    '<button id="pktSettingsClose" class="packet-close-btn wf-btn" aria-label="Close">&#x2715;</button>' +
                 '</div>' +
                 '<div class="pkt-settings-row">' +
                     '<label for="pktSettingsCall">Callsign</label>' +
@@ -2199,7 +2199,7 @@
                 '</div>' +
                 '<div class="pkt-settings-hint">Appended to your callsign for AX.25 connected-mode links.</div>' +
                 '<div class="pkt-settings-btns">' +
-                    '<button id="pktSettingsCancel" class="packet-action-btn">Cancel</button>' +
+                    '<button id="pktSettingsCancel" class="packet-action-btn wf-btn">Cancel</button>' +
                     '<button id="pktSettingsSave" class="packet-send-btn">Save</button>' +
                 '</div>' +
             '</div>';
