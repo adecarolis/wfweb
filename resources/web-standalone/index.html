@@ -672,8 +672,8 @@ html, body {
     bottom: 0;
     left: 0;
     right: 0;
-    background: #000;
-    border-top: 2px solid #0a0;
+    background: var(--bg);
+    border-top: 2px solid var(--mode-accent-dim);
     z-index: 200;
     display: flex;
     flex-direction: column;
@@ -687,8 +687,8 @@ html, body {
     align-items: center;
     gap: 12px;
     padding: 6px 10px;
-    background: #000;
-    border-bottom: 1px solid #0a0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--mode-accent-dim);
     font-size: 14px;
 }
 
@@ -716,11 +716,11 @@ html, body {
     .cw-callsign-input { font-size: 11px; padding: 3px 4px; max-width: 100px; }
 }
 .cw-label {
-    color: #0f0;
+    color: var(--mode-accent);
     font-weight: bold;
     font-size: 16px;
     padding-right: 8px;
-    font-family: monospace;
+    font-family: var(--font-mono);
 }
 .cw-speed-ctrl {
     display: flex;
@@ -730,9 +730,9 @@ html, body {
 .cw-speed-btn {
     width: 28px;
     height: 28px;
-    background: #001a00;
-    border: 1px solid #0a0;
-    color: #0f0;
+    background: var(--mode-accent-bg);
+    border: 1px solid var(--mode-accent-dim);
+    color: var(--mode-accent);
     font-size: 18px;
     line-height: 1;
     cursor: pointer;
@@ -740,31 +740,31 @@ html, body {
     font-weight: bold;
 }
 .cw-speed-btn:active {
-    background: #0a0;
-    color: #000;
+    background: var(--mode-accent-dim);
+    color: var(--on-accent);
 }
 #cwSpeedInput {
     width: 40px;
     height: 28px;
-    background: #000;
-    border: 1px solid #0a0;
-    color: #0f0;
+    background: var(--bg);
+    border: 1px solid var(--mode-accent-dim);
+    color: var(--mode-accent);
     text-align: center;
     font-size: 14px;
-    font-family: monospace;
+    font-family: var(--font-mono);
     font-weight: bold;
     padding: 0 4px;
 }
 #cwSpeedInput:focus {
     outline: none;
-    border-color: #0f0;
-    box-shadow: 0 0 4px #0a0;
+    border-color: var(--mode-accent);
+    box-shadow: 0 0 4px var(--mode-accent-dim);
 }
 .cw-wpm-label {
-    color: #0a0;
+    color: var(--mode-accent-dim);
     font-size: 12px;
     padding-right: 8px;
-    font-family: monospace;
+    font-family: var(--font-mono);
 }
 .cw-mode-btns {
     display: flex;
@@ -773,29 +773,29 @@ html, body {
 }
 .cw-mode-btn {
     padding: 4px 10px;
-    background: #001a00;
-    border: 1px solid #0a0;
-    color: #0a0;
+    background: var(--mode-accent-bg);
+    border: 1px solid var(--mode-accent-dim);
+    color: var(--mode-accent-dim);
     font-size: 12px;
     font-weight: bold;
     cursor: pointer;
-    font-family: monospace;
+    font-family: var(--font-mono);
 }
 .cw-mode-btn.active {
-    background: #0a0;
-    border-color: #0f0;
-    color: #000;
+    background: var(--mode-accent-dim);
+    border-color: var(--mode-accent);
+    color: var(--on-accent);
 }
 .cw-stop-btn {
     padding: 4px 12px;
     background: #1a0000;
     border: 1px solid #a00;
-    color: #f44;
+    color: var(--state-error);
     font-size: 12px;
     font-weight: bold;
     cursor: pointer;
     margin-left: 8px;
-    font-family: monospace;
+    font-family: var(--font-mono);
 }
 .cw-stop-btn:active {
     background: #c00;
@@ -803,59 +803,59 @@ html, body {
 }
 .cw-edit-btn {
     padding: 4px 10px;
-    background: #001a00;
-    border: 1px solid #0a0;
-    color: #0a0;
+    background: var(--mode-accent-bg);
+    border: 1px solid var(--mode-accent-dim);
+    color: var(--mode-accent-dim);
     font-size: 12px;
     font-weight: bold;
     cursor: pointer;
     margin-left: 8px;
-    font-family: monospace;
+    font-family: var(--font-mono);
 }
 .cw-edit-btn:active {
-    background: #0a0;
-    color: #000;
+    background: var(--mode-accent-dim);
+    color: var(--on-accent);
 }
 .cw-edit-btn.editing {
-    background: #0a0;
-    color: #000;
+    background: var(--mode-accent-dim);
+    color: var(--on-accent);
 }
 .cw-close-btn {
     padding: 4px 10px;
-    background: #001a00;
-    border: 1px solid #0a0;
-    color: #0a0;
+    background: var(--mode-accent-bg);
+    border: 1px solid var(--mode-accent-dim);
+    color: var(--mode-accent-dim);
     font-size: 14px;
     cursor: pointer;
     margin-left: 8px;
     font-weight: bold;
 }
 .cw-close-btn:active {
-    background: #0a0;
-    color: #000;
+    background: var(--mode-accent-dim);
+    color: var(--on-accent);
 }
 .cw-log-btn {
     padding: 4px 10px;
-    background: #00101a;
-    border: 1px solid #048;
-    color: #08f;
+    background: var(--mode-accent-bg);
+    border: 1px solid var(--mode-accent-dim);
+    color: var(--mode-accent);
     font-size: 12px;
     font-weight: bold;
     cursor: pointer;
     margin-left: 8px;
-    font-family: monospace;
+    font-family: var(--font-mono);
 }
-.cw-log-btn:active { background: #048; color: #fff; }
+.cw-log-btn:active { background: var(--mode-accent-dim); color: var(--on-accent); }
 .cw-display {
-    background: #000;
-    color: #0f0;
-    font-family: 'Courier New', 'Consolas', monospace;
+    background: var(--bg);
+    color: var(--mode-accent);
+    font-family: var(--font-mono);
     font-size: 15px;
     font-weight: bold;
     padding: 8px 10px;
     overflow-x: auto;
     white-space: pre;
-    border-bottom: 1px solid #0a0;
+    border-bottom: 1px solid var(--mode-accent-dim);
     min-height: 30px;
     letter-spacing: 1px;
 }
@@ -866,14 +866,14 @@ html, body {
     color: #052;
 }
 .cw-char.pending {
-    color: #0f0;
+    color: var(--mode-accent);
 }
 .cw-char.sending {
-    color: #0f0;
-    text-shadow: 0 0 4px #0f0;
+    color: var(--mode-accent);
+    text-shadow: 0 0 4px var(--mode-accent);
 }
 .cw-cursor {
-    color: #0f0;
+    color: var(--mode-accent);
     animation: blink 1s step-end infinite;
 }
 @keyframes blink {
@@ -881,10 +881,10 @@ html, body {
 }
 .cw-input-field {
     width: 100%;
-    background: #000;
+    background: var(--bg);
     border: none;
-    color: #0f0;
-    font-family: 'Courier New', 'Consolas', monospace;
+    color: var(--mode-accent);
+    font-family: var(--font-mono);
     font-size: 15px;
     font-weight: bold;
     padding: 8px 10px;
@@ -893,7 +893,7 @@ html, body {
 }
 .cw-input-field:focus {
     outline: none;
-    background: #001a00;
+    background: var(--mode-accent-bg);
 }
 .cw-input-field::placeholder {
     color: #052;
@@ -903,8 +903,8 @@ html, body {
     display: flex;
     gap: 8px;
     padding: 4px 10px;
-    background: #000;
-    border-bottom: 1px solid #0a0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--mode-accent-dim);
     align-items: center;
 }
 .cw-callsign-label {
@@ -916,10 +916,10 @@ html, body {
 .cw-callsign-input {
     flex: 1;
     max-width: 120px;
-    background: #001a00;
-    border: 1px solid #0a0;
-    color: #0f0;
-    font-family: 'Courier New', 'Consolas', monospace;
+    background: var(--mode-accent-bg);
+    border: 1px solid var(--mode-accent-dim);
+    color: var(--mode-accent);
+    font-family: var(--font-mono);
     font-size: 14px;
     font-weight: bold;
     padding: 4px 6px;
@@ -928,19 +928,19 @@ html, body {
 .cw-callsign-input:focus {
     outline: none;
     background: #002a00;
-    border-color: #0f0;
+    border-color: var(--mode-accent);
 }
 .cw-macro-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 4px;
     padding: 6px 10px;
-    background: #0a0a0a;
+    background: var(--bg-app);
 }
 .cw-macro-btn {
-    background: #1a1a1a;
-    border: 1px solid #0a0;
-    color: #0a0;
+    background: var(--bg-raised);
+    border: 1px solid var(--mode-accent-dim);
+    color: var(--mode-accent-dim);
     padding: 8px 4px;
     font-size: 11px;
     font-weight: bold;
@@ -950,16 +950,16 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     text-transform: uppercase;
 }
 .cw-macro-btn:hover {
     background: #002a00;
-    border-color: #0f0;
+    border-color: var(--mode-accent);
 }
 .cw-macro-btn:active {
-    background: #0a0;
-    color: #000;
+    background: var(--mode-accent-dim);
+    color: var(--on-accent);
 }
 .cw-macro-btn.empty {
     color: #333;
@@ -970,14 +970,14 @@ html, body {
     animation: pulse-border 1.5s ease-in-out infinite;
 }
 .cw-macro-btn.edit-set-btn {
-    background: #001a00;
-    border: 1px solid #0a0;
-    color: #0a0;
+    background: var(--mode-accent-bg);
+    border: 1px solid var(--mode-accent-dim);
+    color: var(--mode-accent-dim);
     font-size: 10px;
 }
 .cw-macro-btn.edit-set-btn.editing {
-    background: #0a0;
-    color: #000;
+    background: var(--mode-accent-dim);
+    color: var(--on-accent);
 }
 @keyframes pulse-border {
     0%, 100% { border-color: #ff0; }
@@ -2354,7 +2354,7 @@ body.digi-open #bottomBar { grid-row: 5; }
 
 
         <!-- CW Bar (minimal bottom interface) -->
-        <div id="cwBar" class="cw-bar hidden">
+        <div id="cwBar" class="cw-bar mode-cw hidden">
             <div class="cw-bar-header">
                 <span class="cw-label">CW</span>
                 <div class="cw-speed-ctrl">
