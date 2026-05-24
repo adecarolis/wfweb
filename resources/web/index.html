@@ -605,15 +605,8 @@ html, body {
 }
 .cw-bar.hidden { display: none; }
 
-.cw-bar-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 6px 10px;
-    background: var(--bg);
-    border-bottom: 1px solid var(--mode-accent-dim);
-    font-size: 14px;
-}
+/* .cw-bar-header geometry is now .wf-panel-header; .cw-label is now .wf-badge.
+   (Mobile overrides for these live in the @media block below.) */
 
 /* Mobile portrait: more compact CW bar */
 @media (orientation: portrait) and (max-width: 600px) {
@@ -637,13 +630,6 @@ html, body {
     .cw-callsign-row { padding: 3px 6px; gap: 4px; }
     .cw-callsign-label { font-size: 10px; }
     .cw-callsign-input { font-size: 11px; padding: 3px 4px; max-width: 100px; }
-}
-.cw-label {
-    color: var(--mode-accent);
-    font-weight: bold;
-    font-size: 16px;
-    padding-right: 8px;
-    font-family: var(--font-mono);
 }
 .cw-speed-ctrl {
     display: flex;
@@ -845,14 +831,7 @@ body.digi-open #scopeArea { grid-row: 3 / 5; }
 body.digi-open #bottomBar { grid-row: 5; }
 .digi-bar.hidden { display: none; }
 
-.digi-header {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 6px;
-    border-bottom: 1px solid #048;
-    flex-shrink: 0;
-}
+/* .digi-header geometry is now .wf-panel-header */
 .digi-status-bar {
     display: flex;
     align-items: center;
@@ -964,19 +943,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     background: rgba(0,200,100,0.8);
     color: #000;
 }
-.digi-label {
-    color: var(--mode-accent);
-    font-weight: bold;
-    font-size: 14px;
-    font-family: var(--font-mono);
-    cursor: pointer;
-    padding: 2px 7px;
-    border: 1px solid var(--mode-accent-dim);
-    border-radius: 3px;
-    min-width: 38px;
-    text-align: center;
-    user-select: none;
-}
+.digi-label { cursor: pointer; user-select: none; }  /* look = .wf-badge */
 .digi-label:active { background: var(--mode-accent-dim); color: #000; }
 .digi-period-clock {
     color: var(--mode-accent);
@@ -1944,8 +1911,8 @@ body.digi-open #bottomBar { grid-row: 5; }
 
         <!-- CW Bar (minimal bottom interface) -->
         <div id="cwBar" class="cw-bar mode-cw hidden">
-            <div class="cw-bar-header">
-                <span class="cw-label">CW</span>
+            <div class="cw-bar-header wf-panel-header">
+                <span class="cw-label wf-badge">CW</span>
                 <div class="cw-speed-ctrl">
                     <button class="cw-speed-btn wf-btn sq" id="cwSpeedDown">−</button>
                     <input type="number" id="cwSpeedInput" min="10" max="35" value="20">
@@ -1982,8 +1949,8 @@ body.digi-open #bottomBar { grid-row: 5; }
         <div id="digiBar" class="digi-bar mode-digi hidden">
 
             <!-- Row 1: toolbar -->
-            <div class="digi-header">
-                <span id="digiModeLabel" class="digi-label">FT8</span>
+            <div class="digi-header wf-panel-header">
+                <span id="digiModeLabel" class="digi-label wf-badge">FT8</span>
                 <button id="digiCqOnlyBtn" class="wf-btn">CQ ONLY</button>
                 <select id="digiBandSel" class="digi-band-sel wf-field"></select>
                 <div class="flex-space"></div>

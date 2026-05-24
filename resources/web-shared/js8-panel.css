@@ -37,18 +37,8 @@ body.js8-open #scopeArea { grid-row: 3 / 5; }
 body.js8-open #bottomBar { grid-row: 5; }
 .js8-bar.hidden { display: none; }
 
-.js8-header {
-    display: flex; align-items: center; gap: 6px;
-    border-bottom: 1px solid var(--mode-accent-bg);
-    padding-bottom: 4px;
-    flex-wrap: wrap;
-    row-gap: 4px;
-}
-.js8-brand {
-    background: var(--mode-accent-dim); color: var(--on-accent);
-    padding: 2px 8px; border-radius: 3px;
-    font-weight: bold; letter-spacing: 1px;
-}
+.js8-header { flex-wrap: wrap; row-gap: 4px; }  /* base = .wf-panel-header */
+/* .js8-brand look is now .wf-badge */
 .js8-submode-sel {
     background: #2a2018; color: var(--mode-accent);
 }

@@ -170,8 +170,8 @@
         barEl.id = 'packetBar';
         barEl.className = 'packet-bar mode-packet hidden';
         barEl.innerHTML =
-            '<div class="packet-header">' +
-                '<span class="packet-label">PACKET</span>' +
+            '<div class="packet-header wf-panel-header">' +
+                '<span class="packet-label wf-badge">PACKET</span>' +
                 '<button id="packetMode300"  class="packet-mode-btn wf-btn" data-mode="300"  title="300 bps AFSK (HF packet)">300 AFSK</button>' +
                 '<button id="packetMode1200" class="packet-mode-btn wf-btn" data-mode="1200" title="1200 bps AFSK Bell 202 (VHF / APRS)">1200 AFSK</button>' +
                 '<button id="packetMode9600" class="packet-mode-btn wf-btn" data-mode="9600" title="9600 bps G3RUH FSK (VHF)">9600 FSK</button>' +
@@ -386,8 +386,8 @@
             '.packet-monitor-label { color: var(--mode-accent); font-weight: bold; letter-spacing: 1px; font-size: 10px; margin-bottom: 2px; }' +
             '.packet-frames-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }' +
             '.packet-bar.hidden { display: none; }' +
-            '.packet-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }' +
-            '.packet-label { color: var(--mode-accent); font-weight: bold; letter-spacing: 1px; }' +
+            '.packet-header { margin-bottom: 6px; }' +
+            '/* .packet-label look = .wf-badge */' +
             '.packet-mode-btn { background: var(--mode-accent-bg); color: var(--mode-accent-dim); cursor: pointer; }' +
             '.packet-mode-btn.active { background: var(--mode-accent-dim); color: var(--on-accent); }' +
             '.packet-mode-btn:hover { background: var(--mode-accent-dim); color: var(--on-accent); }' +

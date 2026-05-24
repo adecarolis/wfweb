@@ -226,3 +226,27 @@
     background: var(--mode-accent);
     transition: width 0.2s ease;
 }
+
+/* -- Panel header + mode badge --------------------------------------------- *
+ * Every mode panel (CW / DIGI / packet / JS8) opens with a header strip whose
+ * top-left is a filled accent "mode badge". One shape for all; only the accent
+ * hue differs. Keeps the panels reading as one app.                          */
+.wf-panel-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-2);
+    border-bottom: var(--border-w) solid var(--mode-accent-dim);
+    flex-shrink: 0;
+}
+.wf-badge {
+    background: var(--mode-accent-dim);
+    color: var(--on-accent);
+    padding: 2px 8px;
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-bold);
+    letter-spacing: 1px;
+    white-space: nowrap;
+}

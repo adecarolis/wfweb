@@ -43,8 +43,8 @@ const JS8_PANEL_MARKUP = `
              the contents are a conversational feed instead of a CQ roster.
              Three zones: stations (left), feed (right), compose (bottom). -->
         <div id="js8Bar" class="js8-bar mode-js8 hidden">
-            <div class="js8-header">
-                <span class="js8-brand">JS8</span>
+            <div class="js8-header wf-panel-header">
+                <span class="js8-brand wf-badge">JS8</span>
                 <select id="js8SubmodeSel" class="js8-submode-sel wf-field"
                         title="TX speed — RX decodes all four speeds at once">
                     <option value="0">JS8 Normal · 15s</option>
