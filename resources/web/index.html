@@ -3508,11 +3508,19 @@ function setPanel(name) {
     if (name === 'default') {
         if (cwBarSuspended) {
             var _isCwNow = (currentMode === 'CW' || currentMode === 'CW-R');
-            if (_isCwNow) document.getElementById('cwBar').classList.remove('hidden');
+            if (_isCwNow) {
+                // Restoring a suspended bar must arbitrate like opening it,
+                // else a mode entered while an overlay was open (e.g. JS8→CW
+                // via Standalone's synchronous mode echo) leaves the other
+                // panel visible too.
+                closeOtherModes('cw');
+                document.getElementById('cwBar').classList.remove('hidden');
+            }
             cwBarSuspended = false;
         }
         if (digiBarSuspended) {
             if (digiBarVisible) {
+                closeOtherModes('digi');
                 document.getElementById('digiBar').classList.remove('hidden');
             }
             digiBarSuspended = false;
