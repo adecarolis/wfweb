@@ -650,22 +650,6 @@ html, body {
     align-items: center;
     gap: 4px;
 }
-.cw-speed-btn {
-    width: 28px;
-    height: 28px;
-    background: var(--mode-accent-bg);
-    border: 1px solid var(--mode-accent-dim);
-    color: var(--mode-accent);
-    font-size: 18px;
-    line-height: 1;
-    cursor: pointer;
-    padding: 0;
-    font-weight: bold;
-}
-.cw-speed-btn:active {
-    background: var(--mode-accent-dim);
-    color: var(--on-accent);
-}
 #cwSpeedInput {
     width: 40px;
     height: 28px;
@@ -677,6 +661,7 @@ html, body {
     font-family: var(--font-mono);
     font-weight: bold;
     padding: 0 4px;
+    border-radius: var(--radius);
 }
 #cwSpeedInput:focus {
     outline: none;
@@ -693,36 +678,6 @@ html, body {
     display: flex;
     gap: 4px;
     margin-left: auto;
-}
-.cw-mode-btn {
-    padding: 4px 10px;
-    background: var(--mode-accent-bg);
-    border: 1px solid var(--mode-accent-dim);
-    color: var(--mode-accent-dim);
-    font-size: 12px;
-    font-weight: bold;
-    cursor: pointer;
-    font-family: var(--font-mono);
-}
-.cw-mode-btn.active {
-    background: var(--mode-accent-dim);
-    border-color: var(--mode-accent);
-    color: var(--on-accent);
-}
-.cw-stop-btn {
-    padding: 4px 12px;
-    background: #1a0000;
-    border: 1px solid #a00;
-    color: var(--state-error);
-    font-size: 12px;
-    font-weight: bold;
-    cursor: pointer;
-    margin-left: 8px;
-    font-family: var(--font-mono);
-}
-.cw-stop-btn:active {
-    background: #c00;
-    color: #fff;
 }
 .cw-edit-btn {
     padding: 4px 10px;
@@ -743,32 +698,6 @@ html, body {
     background: var(--mode-accent-dim);
     color: var(--on-accent);
 }
-.cw-close-btn {
-    padding: 4px 10px;
-    background: var(--mode-accent-bg);
-    border: 1px solid var(--mode-accent-dim);
-    color: var(--mode-accent-dim);
-    font-size: 14px;
-    cursor: pointer;
-    margin-left: 8px;
-    font-weight: bold;
-}
-.cw-close-btn:active {
-    background: var(--mode-accent-dim);
-    color: var(--on-accent);
-}
-.cw-log-btn {
-    padding: 4px 10px;
-    background: var(--mode-accent-bg);
-    border: 1px solid var(--mode-accent-dim);
-    color: var(--mode-accent);
-    font-size: 12px;
-    font-weight: bold;
-    cursor: pointer;
-    margin-left: 8px;
-    font-family: var(--font-mono);
-}
-.cw-log-btn:active { background: var(--mode-accent-dim); color: var(--on-accent); }
 .cw-display {
     background: var(--bg);
     color: var(--mode-accent);
@@ -839,13 +768,7 @@ html, body {
 .cw-callsign-input {
     flex: 1;
     max-width: 120px;
-    background: var(--mode-accent-bg);
-    border: 1px solid var(--mode-accent-dim);
-    color: var(--mode-accent);
-    font-family: var(--font-mono);
-    font-size: 14px;
     font-weight: bold;
-    padding: 4px 6px;
     text-transform: uppercase;
 }
 .cw-callsign-input:focus {
@@ -861,19 +784,11 @@ html, body {
     background: var(--bg-app);
 }
 .cw-macro-btn {
-    background: var(--bg-raised);
-    border: 1px solid var(--mode-accent-dim);
-    color: var(--mode-accent-dim);
-    padding: 8px 4px;
-    font-size: 11px;
-    font-weight: bold;
-    cursor: pointer;
     text-align: center;
     min-height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: var(--font-mono);
     text-transform: uppercase;
 }
 .cw-macro-btn:hover {
@@ -2112,19 +2027,19 @@ body.digi-open #bottomBar { grid-row: 5; }
             <div class="cw-bar-header">
                 <span class="cw-label">CW</span>
                 <div class="cw-speed-ctrl">
-                    <button class="cw-speed-btn" id="cwSpeedDown">−</button>
+                    <button class="cw-speed-btn wf-btn sq" id="cwSpeedDown">−</button>
                     <input type="number" id="cwSpeedInput" min="10" max="35" value="20">
                     <span class="cw-wpm-label">WPM</span>
-                    <button class="cw-speed-btn" id="cwSpeedUp">+</button>
+                    <button class="cw-speed-btn wf-btn sq" id="cwSpeedUp">+</button>
                 </div>
                 <div class="cw-mode-btns">
-                    <button class="cw-mode-btn active" data-mode="chars">CHR</button>
-                    <button class="cw-mode-btn" data-mode="words">WRD</button>
-                    <button class="cw-mode-btn" data-mode="lines">LN</button>
+                    <button class="cw-mode-btn active wf-btn" data-mode="chars">CHR</button>
+                    <button class="cw-mode-btn wf-btn" data-mode="words">WRD</button>
+                    <button class="cw-mode-btn wf-btn" data-mode="lines">LN</button>
                 </div>
-                <button id="cwLogBtn" class="cw-log-btn">LOG QSO</button>
-                <button id="cwStopBtn" class="cw-stop-btn">STOP</button>
-                <button id="cwCloseBtn" class="cw-close-btn">✕</button>
+                <button id="cwLogBtn" class="cw-log-btn wf-btn">LOG QSO</button>
+                <button id="cwStopBtn" class="cw-stop-btn wf-btn danger">STOP</button>
+                <button id="cwCloseBtn" class="cw-close-btn wf-btn sq">✕</button>
             </div>
 
             <!-- Macro buttons -->
@@ -2134,9 +2049,9 @@ body.digi-open #bottomBar { grid-row: 5; }
             <!-- Callsign inputs -->
             <div class="cw-callsign-row">
                 <span class="cw-callsign-label">CALL:</span>
-                <input type="text" id="cwCallInput" class="cw-callsign-input" maxlength="10" placeholder="">
+                <input type="text" id="cwCallInput" class="cw-callsign-input wf-field" maxlength="10" placeholder="">
                 <span class="cw-callsign-label">QSO:</span>
-                <input type="text" id="cwQsoInput" class="cw-callsign-input" maxlength="10" placeholder="">
+                <input type="text" id="cwQsoInput" class="cw-callsign-input wf-field" maxlength="10" placeholder="">
             </div>
 
             <div class="cw-display" id="cwDisplay"></div>
@@ -5881,11 +5796,11 @@ function initCWHandlers() {
 
         // Button 5 (top right) is the EDIT/SET button
         if (i === 5) {
-            btn.className = 'cw-macro-btn edit-set-btn';
+            btn.className = 'cw-macro-btn edit-set-btn wf-btn';
             btn.textContent = 'EDIT/SET';
             btn.addEventListener('click', toggleEditMode);
         } else {
-            btn.className = 'cw-macro-btn empty';
+            btn.className = 'cw-macro-btn empty wf-btn';
             btn.textContent = 'M' + i;
 
             // Click to edit (if in edit mode) or send (if not in edit mode)
