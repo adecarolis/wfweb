@@ -1,0 +1,199 @@
+/* ============================================================================
+   wfweb — shared design tokens + component kit
+   ----------------------------------------------------------------------------
+   Shared by BOTH builds (server `web/` and standalone `web-standalone/`) the
+   same way js8-panel.css is: linked from each index.html, aliased in web.qrc,
+   copied by tools/build-static.sh.
+
+   Two layers:
+     1. Design tokens (:root)  — colors, type scale, spacing. Use these instead
+                                  of hardcoded hex/px so panels stay coherent.
+     2. Component kit (.wf-*)  — one button/tab/field/progress shape for every
+                                  mode panel. Each panel keeps its identity by
+                                  setting --mode-accent (see .mode-* helpers);
+                                  the components inherit that tint via var().
+
+   Design intent: "one component kit, tinted per mode". Do NOT reintroduce
+   per-panel button/tab/input styling — set a --mode-accent and reuse .wf-*.
+   ========================================================================== */
+
+:root {
+    /* -- App chrome (neutral, mode-independent) ---------------------------- */
+    --bg:           #000;       /* deepest background (scope, sunken wells)   */
+    --bg-app:       #0a0a0a;    /* main #radio surface                        */
+    --bg-bar:       #111;       /* top bar / control strips                   */
+    --bg-raised:    #181818;    /* raised inactive chrome (idle tabs)         */
+    --border-col:   #282828;    /* hairline separators                        */
+    --border-w:     1px;
+
+    --text:         #e0e0e0;    /* primary text                               */
+    --text-dim:     #aaa;       /* secondary text                             */
+    --text-faint:   #666;       /* tertiary / disabled-ish text               */
+
+    /* -- Typography -------------------------------------------------------- */
+    --font-ui:   system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --font-mono: 'Courier New', monospace;
+    --fs-xs:  9px;
+    --fs-sm:  11px;
+    --fs-md:  13px;
+    --fs-lg:  16px;
+    --fw-bold: 700;
+
+    /* -- Spacing / shape --------------------------------------------------- */
+    --space-1: 4px;
+    --space-2: 6px;
+    --space-3: 10px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --radius:  3px;
+
+    /* -- Semantic state (STATUS, not mode identity) ------------------------ *
+     * Use for connection/health signalling, never as a panel accent.        */
+    --state-ok:     #0f0;
+    --state-warn:   #ee0;
+    --state-busy:   #f80;
+    --state-error:  #f44;
+
+    /* -- Mode accent (default = green; panels override via .mode-*) -------- *
+     * --mode-accent     bright highlight (active border, focus ring, text)  *
+     * --mode-accent-dim mid tone        (idle border)                        *
+     * --mode-accent-bg  dark fill behind idle controls                       *
+     * --on-accent       text drawn on a filled (dim/bright) accent           *
+     * --field-text      input text color (light tint of the accent hue)      */
+    --mode-accent:     #0f0;
+    --mode-accent-dim: #0a0;
+    --mode-accent-bg:  #001a00;
+    --on-accent:       #000;
+    --field-text:      #cfc;
+}
+
+/* -- Per-mode accent palettes ------------------------------------------------
+   Set one of these on a panel's root container; every .wf-* inside inherits
+   the tint. Values mirror each panel's pre-refactor look so migration is a
+   visual no-op aside from shape unification.                                 */
+.mode-cw,
+.mode-packet {                          /* terminal green */
+    --mode-accent:     #0f0;
+    --mode-accent-dim: #0a0;
+    --mode-accent-bg:  #001a00;
+    --on-accent:       #000;
+    --field-text:      #cfc;
+}
+.mode-digi {                            /* WSJT-X cyan/blue */
+    --mode-accent:     #08f;
+    --mode-accent-dim: #048;
+    --mode-accent-bg:  #001020;
+    --on-accent:       #fff;
+    --field-text:      #bdf;
+}
+.mode-js8 {                             /* messenger amber */
+    --mode-accent:     #fc8;
+    --mode-accent-dim: #c80;
+    --mode-accent-bg:  #530;
+    --on-accent:       #000;
+    --field-text:      #fed;
+}
+.mode-freedv {                          /* FreeDV cyan */
+    --mode-accent:     #0ff;
+    --mode-accent-dim: #0aa;
+    --mode-accent-bg:  #011a1a;
+    --on-accent:       #000;
+    --field-text:      #cff;
+}
+
+/* ============================================================================
+   Component kit
+   ========================================================================== */
+
+/* -- Button ----------------------------------------------------------------- */
+.wf-btn {
+    padding: var(--space-1) var(--space-3);
+    background: var(--mode-accent-bg);
+    border: var(--border-w) solid var(--mode-accent-dim);
+    color: var(--mode-accent);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    line-height: 1.2;
+    border-radius: var(--radius);
+    cursor: pointer;
+    white-space: nowrap;
+}
+.wf-btn:hover:not(:disabled),
+.wf-btn.active {
+    background: var(--mode-accent-dim);
+    color: var(--on-accent);
+    border-color: var(--mode-accent);
+}
+.wf-btn:active:not(:disabled) { transform: translateY(1px); }
+.wf-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* -- Tab -------------------------------------------------------------------- *
+ * Top-docked tab (rounded top corners, no bottom border). For stateful tabs   *
+ * (e.g. terminal connection state) layer status colors on top using the       *
+ * --state-* tokens.                                                           */
+.wf-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-3);
+    background: var(--mode-accent-bg);
+    border: var(--border-w) solid var(--mode-accent-dim);
+    border-bottom: none;
+    color: var(--mode-accent);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    border-radius: var(--radius) var(--radius) 0 0;
+    cursor: pointer;
+    user-select: none;
+}
+.wf-tab:hover:not(.active) {
+    background: var(--mode-accent-dim);
+    color: var(--on-accent);
+}
+.wf-tab.active {
+    background: var(--mode-accent-dim);
+    color: var(--on-accent);
+    border-color: var(--mode-accent);
+}
+.wf-tab .wf-tab-unread {
+    background: var(--state-error);
+    color: #fff;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    padding: 0 5px;
+    border-radius: 7px;
+    min-width: 14px;
+    text-align: center;
+}
+.wf-tab.active .wf-tab-unread { display: none; }
+
+/* -- Text field ------------------------------------------------------------- */
+.wf-field {
+    background: var(--mode-accent-bg);
+    border: var(--border-w) solid var(--mode-accent-dim);
+    color: var(--field-text);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius);
+    outline: none;
+}
+.wf-field:focus { border-color: var(--mode-accent); }
+.wf-field:disabled { opacity: 0.5; }
+
+/* -- Progress bar ----------------------------------------------------------- */
+.wf-progress {
+    height: 10px;
+    background: var(--bg);
+    border: var(--border-w) solid var(--mode-accent-dim);
+    border-radius: var(--radius);
+    overflow: hidden;
+    min-width: 60px;
+}
+.wf-progress-bar {
+    height: 100%;
+    background: var(--mode-accent);
+    transition: width 0.2s ease;
+}

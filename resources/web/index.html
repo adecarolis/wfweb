@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>wfweb</title>
+<!-- Shared design tokens + component kit (.wf-*). Source of truth lives at
+     resources/web-shared/theme.css; loaded before the inline styles so its
+     CSS custom properties are available everywhere. -->
+<link rel="stylesheet" href="theme.css">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {

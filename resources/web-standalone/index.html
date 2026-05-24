@@ -6,6 +6,10 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <title>wfweb</title>
 <!--WFWEB_VERSION_SLOT-->
+<!-- Shared design tokens + component kit (.wf-*). Source of truth lives at
+     resources/web-shared/theme.css; loaded before the inline styles so its
+     CSS custom properties are available everywhere. -->
+<link rel="stylesheet" href="theme.css">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
