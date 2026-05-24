@@ -14,8 +14,8 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
     height: 100%; overflow: hidden;
-    font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
-    background: #000; color: #e0e0e0;
+    font-family: var(--font-ui);
+    background: var(--bg); color: var(--text);
     touch-action: manipulation;
     user-select: none; -webkit-user-select: none;
 }
@@ -34,16 +34,16 @@ html, body {
     max-width: calc(100vh * 16 / 9);
     margin: 0 auto;
     overflow: hidden;
-    background: #0a0a0a;
+    background: var(--bg-app);
 }
 
 /* ============ ROW 1: TOP BAR ============ */
 #topBar {
     display: flex; align-items: center;
     padding: 0 6px; gap: 6px;
-    background: #111;
+    background: var(--bg-bar);
     font-size: 12px;
-    border-bottom: 1px solid #282828;
+    border-bottom: 1px solid var(--border-col);
     z-index: 2;
 }
 #txIndicator {
@@ -107,7 +107,7 @@ html, body {
     border-radius: 2px;
 }
 .flex-space { flex: 1; }
-#clock { color: #888; font-family: 'Courier New', monospace; font-size: 11px; }
+#clock { color: #888; font-family: var(--font-mono); font-size: 11px; }
 .qso-log-btn {
     padding: 2px 8px;
     background: #00161a;
@@ -116,12 +116,12 @@ html, body {
     font-size: 10px;
     font-weight: bold;
     cursor: pointer;
-    font-family: monospace;
+    font-family: var(--font-mono);
     letter-spacing: 0.5px;
     border-radius: 3px;
 }
 .qso-log-btn:active { background: #048; color: #000; }
-#stepLabel { color: #666; font-size: 10px; }
+#stepLabel { color: var(--text-faint); font-size: 10px; }
 #connDot {
     width: 8px; height: 8px; border-radius: 50%;
     background: #600; flex-shrink: 0;
@@ -161,7 +161,7 @@ html, body {
     align-items: center;
     color: #888;
     font-size: 18px;
-    font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-family: var(--font-ui);
 }
 #powerOffOverlay.visible { display: flex; }
 #powerOnBtn, #lanConnBtn {
@@ -207,7 +207,7 @@ html, body {
     z-index: 10001;
     justify-content: center;
     align-items: center;
-    font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-family: var(--font-ui);
 }
 #powerConfirm.visible { display: flex; }
 #powerConfirm .dialog {
@@ -248,7 +248,7 @@ html, body {
 /* ============ ROW 2: METER + FREQUENCY ============ */
 #meterFreqRow {
     display: flex; align-items: stretch;
-    background: #0a0a0a;
+    background: var(--bg-app);
     padding: 0 8px;
     gap: 8px;
 }
@@ -271,7 +271,7 @@ html, body {
     display: flex; align-items: center; gap: 6px;
     font-size: 12px; margin-bottom: 2px;
 }
-#vfoLabel { color: #aaa; font-weight: bold; cursor: pointer; }
+#vfoLabel { color: var(--text-dim); font-weight: bold; cursor: pointer; }
 #vfoNum { color: #888; display: none; }
 #splitBadge {
     padding: 1px 6px; border-radius: 3px;
@@ -279,7 +279,7 @@ html, body {
     font-size: 10px; font-weight: bold;
 }
 #splitBadge.hidden { display: none; }
-#splitFreq { color: #666; font-family: 'Courier New', monospace; font-size: 13px; }
+#splitFreq { color: var(--text-faint); font-family: var(--font-mono); font-size: 13px; }
 #splitFreq.hidden { display: none; }
 
 #freqDisplay {
@@ -346,7 +346,7 @@ html, body {
 #otherVfoFreq {
     color: #888;
     font-size: 10px;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     justify-self: end;
 }
 
@@ -354,7 +354,7 @@ html, body {
 #scopeArea {
     position: relative;
     overflow: hidden;
-    background: #000;
+    background: var(--bg);
     z-index: 300; /* overlays must paint above cw-bar/digi-bar (z-index 200) */
 }
 #spectrumCanvas, #waterfallCanvas {
@@ -369,14 +369,14 @@ html, body {
 }
 #waterfallCanvas {
     top: 35%; height: 65%;
-    background: #000;
+    background: var(--bg);
     image-rendering: pixelated;
 }
 /* Span labels at edges of spectrum */
 #spanEdgeLeft, #spanEdgeRight {
     position: absolute; top: 35%;
     transform: translateY(-100%);
-    font-size: 9px; color: #666;
+    font-size: 9px; color: var(--text-faint);
     padding: 1px 3px;
     pointer-events: none;
 }
@@ -473,7 +473,7 @@ html, body {
     overflow-y: auto;
 }
 #cwMacroEditor .editor-dialog {
-    background: #000;
+    background: var(--bg);
     border: 2px solid #0a0;
     padding: 16px;
     max-width: 90%;
@@ -500,7 +500,7 @@ html, body {
     background: #001a00;
     border: 1px solid #0a0;
     color: #0f0;
-    font-family: monospace;
+    font-family: var(--font-mono);
     padding: 8px;
     font-size: 13px;
     resize: vertical;
@@ -655,7 +655,7 @@ html, body {
     margin-top: 2px;
 }
 .ov-btn.active .btn-state { color: #0cc; }
-.ov-btn:not(.active) .btn-state { color: #666; }
+.ov-btn:not(.active) .btn-state { color: var(--text-faint); }
 .ov-btn.back-btn {
     border-color: #555;
     color: #888;
@@ -5090,9 +5090,9 @@ function updateFreeDVStatus(msg) {
             + '<span id="freedvSnrEl" style="width:62px; display:inline-block; text-align:right;">SNR ' + snrText + '</span>'
             + csHtml
             + foHtml
-            + '<span id="freedvSettingsBtn" style="cursor:pointer; padding:1px 5px; border:1px solid #666; border-radius:3px; font-size:10px;" title="FreeDV Settings">RPT</span>'
+            + '<span id="freedvSettingsBtn" style="cursor:pointer; padding:1px 5px; border:1px solid var(--text-faint); border-radius:3px; font-size:10px;" title="FreeDV Settings">RPT</span>'
             + rptDot
-            + '<span id="freedvMonBtn" style="cursor:pointer; padding:1px 5px; border:1px solid #666; border-radius:3px; font-size:10px;">MON</span>';
+            + '<span id="freedvMonBtn" style="cursor:pointer; padding:1px 5px; border:1px solid var(--text-faint); border-radius:3px; font-size:10px;">MON</span>';
         indicator.style.display = 'flex';
         // Mode cycle on click
         var modeLink = document.getElementById('freedvModeLink');
