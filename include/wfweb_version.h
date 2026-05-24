@@ -14,6 +14,6 @@
 // tools/build-static.sh and .github/workflows/build.yml grep this file for
 // the version, so keep the line format stable.
 
-#define WFWEB_VERSION "0.7.2"
+#define WFWEB_VERSION "0.8.0"
 
 #endif // WFWEB_VERSION_H

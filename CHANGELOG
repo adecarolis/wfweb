@@ -6,6 +6,39 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.8.0 (2026-05-24)
+--------------------
+
+New mode — JS8:
+- JS8 keyboard-to-keyboard messaging, JS8Call-compatible and entirely
+  browser-side (WebAssembly codec), so it runs in both the Server and
+  Standalone builds with no extra software. The panel is a chat-style
+  messenger: per-station QSO tabs, a live "Heard" list, a command (CMD)
+  palette, group / @ALLCALL channels, a heartbeat network with auto-reply
+  and relay forwarding, ADIF logging to the shared log, and a shared
+  waterfall. All five submodes are supported — Slow (30 s), Normal (15 s),
+  Fast (10 s), JS8 40 (6 s), JS8 60 (4 s) — aligned with JS8Call 3.0.0
+  labels and HB rules. Powered by a vendored WASM build of
+  JS8Call-improved (KN4CRD).
+
+UI refresh:
+- All mode panels now share one design system: a single set of theme.css
+  design tokens (colors, type scale, spacing) and a .wf-* component kit
+  (buttons, tabs, fields, panels). Each mode keeps its identity through a
+  per-mode accent colour rather than bespoke styling. Panel headers, mode
+  badges, and control geometry are unified across CW, FT8/FT4, JS8, and
+  packet.
+
+Fixes:
+- Standalone can reconnect to a USB Icom after the Server build exits.
+  The server left the rig's scope waveform stream running on shutdown,
+  which buried the Standalone build's CI-V probe and forced a USB replug
+  to recover. The server now silences the scope stream before closing
+  the port. (both builds)
+- Restoring a suspended CW or FT8/FT4 (DIGI) bar now closes any
+  conflicting mode panel first, so the two can't fight over the screen.
+
+
 v0.7.2 (2026-05-08)
 --------------------
 
