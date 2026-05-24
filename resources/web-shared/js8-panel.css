@@ -20,9 +20,6 @@
     position: absolute;
     inset: 0;
     z-index: 200;
-    background: #1a1410;
-    color: var(--mode-accent);
-    border-top: 2px solid var(--mode-accent-dim);
     display: flex;
     flex-direction: column;
     padding: 4px 6px;

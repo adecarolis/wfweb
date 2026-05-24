@@ -168,7 +168,7 @@
 
         barEl = document.createElement('div');
         barEl.id = 'packetBar';
-        barEl.className = 'packet-bar mode-packet hidden';
+        barEl.className = 'packet-bar mode-packet wf-panel hidden';
         barEl.innerHTML =
             '<div class="packet-header wf-panel-header">' +
                 '<span class="packet-label wf-badge">PACKET</span>' +
@@ -379,7 +379,7 @@
         style.textContent =
             /* absolute (not fixed) so it letterboxes with #scopeArea (max-width 16:9):
                fixed bars peek past the overlays on viewports wider than 16:9 — issue #39 */
-            '.packet-bar { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--mode-accent-bg); border-top: 2px solid var(--mode-accent-dim); z-index: 200; padding: 6px 8px; color: var(--field-text); font-family: var(--font-mono); font-size: 12px; display: flex; flex-direction: column; min-height: 0; box-sizing: border-box; }' +
+            '.packet-bar { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 200; padding: 6px 8px; font-size: 12px; display: flex; flex-direction: column; min-height: 0; box-sizing: border-box; }' +
             'body.packet-open #spectrumCanvas, body.packet-open #waterfallCanvas { display: none !important; }' +
             '.packet-scope { width: 100%; height: 13%; min-height: 40px; background: var(--bg); border: 1px solid var(--mode-accent-dim); border-radius: 3px; margin-bottom: 6px; display: block; }' +
             '.packet-monitor { display: flex; flex-direction: column; min-height: 0; flex: 1 1 0; margin-bottom: 6px; }' +

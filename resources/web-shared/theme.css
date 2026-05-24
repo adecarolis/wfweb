@@ -65,6 +65,7 @@
     --mode-accent-bg:  #001a00;
     --on-accent:       #000;
     --field-text:      #cfc;
+    --panel-bg:        #00140c;
 }
 
 /* -- Per-mode accent palettes ------------------------------------------------
@@ -78,6 +79,7 @@
     --mode-accent-bg:  #001a00;
     --on-accent:       #000;
     --field-text:      #cfc;
+    --panel-bg:        #00140c;          /* panel frame: faint green on near-black */
 }
 .mode-digi {                            /* WSJT-X cyan/blue */
     --mode-accent:     #08f;
@@ -85,6 +87,7 @@
     --mode-accent-bg:  #001020;
     --on-accent:       #fff;
     --field-text:      #bdf;
+    --panel-bg:        #001018;
 }
 .mode-js8 {                             /* messenger amber */
     --mode-accent:     #fc8;
@@ -92,6 +95,7 @@
     --mode-accent-bg:  #530;
     --on-accent:       #000;
     --field-text:      #fed;
+    --panel-bg:        #100c06;
 }
 .mode-freedv {                          /* FreeDV cyan */
     --mode-accent:     #0ff;
@@ -99,6 +103,7 @@
     --mode-accent-bg:  #011a1a;
     --on-accent:       #000;
     --field-text:      #cff;
+    --panel-bg:        #001414;
 }
 
 /* ============================================================================
@@ -249,4 +254,16 @@
     font-weight: var(--fw-bold);
     letter-spacing: 1px;
     white-space: nowrap;
+}
+
+/* -- Panel frame ------------------------------------------------------------ *
+ * The shared "frame" of a mode panel: a near-black, faintly accent-tinted
+ * surface with an accent top rule. Positioning/padding stay per-panel (CW
+ * docks to the bottom; DIGI/JS8/packet fill the scope area). Apply alongside
+ * a .mode-* class.                                                           */
+.wf-panel {
+    background: var(--panel-bg);
+    border-top: 2px solid var(--mode-accent-dim);
+    color: var(--field-text);
+    font-family: var(--font-mono);
 }

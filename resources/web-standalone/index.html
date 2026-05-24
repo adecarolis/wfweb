@@ -672,8 +672,6 @@ html, body {
     bottom: 0;
     left: 0;
     right: 0;
-    background: var(--bg);
-    border-top: 2px solid var(--mode-accent-dim);
     z-index: 200;
     display: flex;
     flex-direction: column;
@@ -892,7 +890,6 @@ html, body {
 .digi-bar {
     position: absolute;
     inset: 0;
-    background: #000510;
     z-index: 200;
     display: flex;
     flex-direction: column;
@@ -2156,7 +2153,7 @@ body.digi-open #bottomBar { grid-row: 5; }
 
 
         <!-- CW Bar (minimal bottom interface) -->
-        <div id="cwBar" class="cw-bar mode-cw hidden">
+        <div id="cwBar" class="cw-bar mode-cw wf-panel hidden">
             <div class="cw-bar-header wf-panel-header">
                 <span class="cw-label wf-badge">CW</span>
                 <div class="cw-speed-ctrl">
@@ -2192,7 +2189,7 @@ body.digi-open #bottomBar { grid-row: 5; }
         </div>
 
         <!-- DIGI Bar (FT8/FT4 panel) -->
-        <div id="digiBar" class="digi-bar mode-digi hidden">
+        <div id="digiBar" class="digi-bar mode-digi wf-panel hidden">
 
             <!-- Row 1: toolbar -->
             <div class="digi-header wf-panel-header">

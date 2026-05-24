@@ -42,7 +42,7 @@ const JS8_PANEL_MARKUP = `
         <!-- JS8 messenger panel — same overlay treatment as DIGI Bar, but
              the contents are a conversational feed instead of a CQ roster.
              Three zones: stations (left), feed (right), compose (bottom). -->
-        <div id="js8Bar" class="js8-bar mode-js8 hidden">
+        <div id="js8Bar" class="js8-bar mode-js8 wf-panel hidden">
             <div class="js8-header wf-panel-header">
                 <span class="js8-brand wf-badge">JS8</span>
                 <select id="js8SubmodeSel" class="js8-submode-sel wf-field"
