@@ -8654,6 +8654,27 @@ async function initStandaloneSplash() {
         startBtn.disabled = true;
         if (errorEl) errorEl.textContent = '';
         if (hintEl)  hintEl.textContent  = 'Connecting…';
+
+        // Prime audio permission synchronously inside the click, BEFORE the
+        // long `await tryAutoReconnect()` below. RX audio capture chains
+        // startAudio() -> addModule() -> enableAudio -> _openRxStream() ->
+        // enumerateDevices() -> getUserMedia; the serial connect + baud-detect
+        // easily burns the transient user-activation window before we get
+        // there, so getUserMedia throws NotAllowedError and audio silently
+        // fails until you reload 2-3x (warm cache wins the race). Grabbing the
+        // grant now, in-gesture, lets the later getUserMedia succeed from
+        // cached permission no matter how long connect took. (Same fix the
+        // virtual-rig path above already uses.)
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({
+                audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+            }).then(function (stream) {
+                try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { /* ignore */ }
+            }).catch(function (e) {
+                console.warn('audio permission priming failed (capture will retry):', e);
+            });
+        }
+
         try {
             ensureSerialTransport();
             transport = serialTransport;
