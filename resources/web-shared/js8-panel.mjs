@@ -47,10 +47,10 @@ const JS8_PANEL_MARKUP = `
                 <span class="js8-brand wf-badge">JS8</span>
                 <select id="js8SubmodeSel" class="js8-submode-sel wf-field"
                         title="TX speed — RX decodes all four speeds at once">
+                    <option value="4">JS8 Slow · 30s</option>
                     <option value="0">JS8 Normal · 15s</option>
                     <option value="1">JS8 Fast · 10s</option>
                     <option value="2">JS8 40 · 6s</option>
-                    <option value="4">JS8 Slow · 30s</option>
                     <option value="8">JS8 60 · 4s</option>
                 </select>
                 <span class="js8-status-pill" id="js8Status">IDLE</span>
