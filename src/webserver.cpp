@@ -585,6 +585,7 @@ void webServer::serveStaticFile(QTcpSocket *socket, const QString &path)
     else if (path.endsWith(".png")) contentType = "image/png";
     else if (path.endsWith(".svg")) contentType = "image/svg+xml";
     else if (path.endsWith(".ico")) contentType = "image/x-icon";
+    else if (path.endsWith(".wasm")) contentType = "application/wasm"; // required for WebAssembly streaming compile
     else if (path.endsWith(".onnx")) contentType = "application/octet-stream";
 
     sendHttpResponse(socket, 200, "OK", contentType, body);
