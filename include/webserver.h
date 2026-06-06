@@ -283,6 +283,16 @@ private:
     bool preTxBuffering = false;
     bool txAudioActive = false; // true once pre-buffer is flushed; stops device on IdleState
 
+    // Single-writer rule for browser TX audio: wall-clock of the last
+    // modem-tagged (header byte 1 & 0x01) frame.  Untagged mic frames are
+    // dropped while within 300 ms of this — see onWsBinaryMessage().
+    qint64 lastModemAudioMs = 0;
+
+    // SHA1 fingerprint (first 12 hex chars) of the embedded SPA assets.
+    // Sent in getStatus replies so an open tab can detect a server upgrade
+    // on WS reconnect and reload itself — see init() and index.html.
+    QString spaBuildId;
+
     // DATA MOD OFF auto-switch to USB when web mic is active
     rigInput savedDataOffMod;
     bool dataOffModSaved = false;

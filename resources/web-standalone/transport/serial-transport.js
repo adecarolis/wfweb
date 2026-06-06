@@ -708,12 +708,33 @@
                 return;
             }
 
+            // Single-writer rule: modem-generated audio (FT8/JS8/tune
+            // pacers, packet bursts) tags byte 1 with 0x01; mic frames are
+            // untagged. While a tagged stream is flowing, drop untagged
+            // frames — otherwise a still-streaming mic queues its chunks
+            // between the modem's in the same playback worklet and garbles
+            // the transmission.
+            var isModem = (view.getUint8(1) & 0x01) !== 0;
+            var nowMs = performance.now();
+            var burstStart = false;
+            if (isModem) {
+                burstStart = !this._modemAudioMs || nowMs - this._modemAudioMs >= 300;
+                this._modemAudioMs = nowMs;
+            } else if (this._modemAudioMs && nowMs - this._modemAudioMs < 300) {
+                return;
+            }
+
             // Convert Int16 PCM to Float32 [-1..1] for the playback worklet.
             var int16 = new Int16Array(buffer, 6);
             var f32 = new Float32Array(int16.length);
             for (var i = 0; i < int16.length; i++) f32[i] = int16[i] / 32768;
             try {
-                this._txAudio.node.port.postMessage(f32);
+                // A new modem burst flushes whatever is still queued (any
+                // residual voice backlog) so the burst starts clean and
+                // on time; voice frames are tagged so the worklet can cap
+                // their queued depth at ~250 ms.
+                if (burstStart) this._txAudio.node.port.postMessage({ cmd: 'flush' });
+                this._txAudio.node.port.postMessage({ pcm: f32, voice: !isModem });
             } catch (e) {
                 /* node may have been closed mid-call */
             }
@@ -768,15 +789,30 @@
                 }
 
                 // Playback worklet: ring buffer fed by main-thread postMessage.
-                // ~1.5 s capacity is plenty for a TX queue.
+                // 10 s capacity so a whole modem burst (300 bd beacons are
+                // ~2.3 s, YAPP frames longer) queues without overwriting its
+                // own head.  Voice (mic) audio is latency-capped instead:
+                // the mic streams continuously in RX and its clock is not
+                // the codec's clock, so an uncapped ring slowly accumulates
+                // a permanent voice backlog — which then plays out FIRST
+                // when a modem burst keys the rig ("mic audio transmitted
+                // during FT8/packet TX").  Messages: {cmd:'flush'} empties
+                // the ring; {pcm, voice} queues audio (voice dropped when
+                // more than 250 ms is already buffered); a bare Float32Array
+                // is treated as modem audio for backward compatibility.
                 var workletCode =
                     'class TxPlayback extends AudioWorkletProcessor {' +
                     '  constructor() {' +
                     '    super();' +
-                    '    this.buffer = new Float32Array(sampleRate * 1.5);' +
+                    '    this.buffer = new Float32Array(sampleRate * 10);' +
+                    '    this.voiceCap = sampleRate * 0.25;' +
                     '    this.writePos = 0; this.readPos = 0; this.buffered = 0;' +
                     '    this.port.onmessage = (e) => {' +
-                    '      var s = e.data; var len = s.length; var bufLen = this.buffer.length;' +
+                    '      var d = e.data;' +
+                    '      if (d && d.cmd === "flush") { this.readPos = this.writePos; this.buffered = 0; return; }' +
+                    '      var s = (d && d.pcm) ? d.pcm : d;' +
+                    '      if (d && d.voice && this.buffered > this.voiceCap) return;' +
+                    '      var len = s.length; var bufLen = this.buffer.length;' +
                     '      for (var i = 0; i < len; i++) { this.buffer[this.writePos] = s[i]; this.writePos = (this.writePos + 1) % bufLen; }' +
                     '      this.buffered += len; if (this.buffered > bufLen) this.buffered = bufLen;' +
                     '    };' +
@@ -2079,7 +2115,7 @@
             var buf = new ArrayBuffer(6 + slice.byteLength);
             var view = new DataView(buf);
             view.setUint8(0, 0x03);
-            view.setUint8(1, 0x00);
+            view.setUint8(1, 0x01);   // modem-audio tag — see sendAudioFrame
             view.setUint16(2, seq & 0xFFFF, true);
             view.setUint16(4, 0, true);
             new Int16Array(buf, 6).set(slice);

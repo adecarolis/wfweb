@@ -314,6 +314,15 @@
                 return;
             }
 
+            // Single-writer rule — same semantics as SerialRigTransport:
+            // drop untagged (mic) frames while tagged modem audio flows.
+            if (view.getUint8(1) & 0x01) {
+                this._modemAudioMs = performance.now();
+            } else if (this._modemAudioMs &&
+                       performance.now() - this._modemAudioMs < 300) {
+                return;
+            }
+
             // Copy out — the SPA reuses its source buffer across frames, so
             // we can't transfer it. The AirBus then transfers our copy.
             var copy = new Int16Array(src.length);

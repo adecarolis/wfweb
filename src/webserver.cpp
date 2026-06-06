@@ -6,6 +6,8 @@
 
 #include <QStandardPaths>
 #include <QDir>
+#include <QDirIterator>
+#include <QCryptographicHash>
 #include <QProcess>
 #include <QSettings>
 #include <QSslConfiguration>
@@ -351,6 +353,29 @@ void webServer::init(quint16 httpPort, quint16 wsPort)
     statusTimer = new QTimer(this);
     connect(statusTimer, &QTimer::timeout, this, &webServer::sendPeriodicStatus);
     statusTimer->start(200);
+
+    // Fingerprint the embedded SPA so an already-open tab can detect a
+    // server upgrade.  The SPA's WebSocket auto-reconnects across server
+    // restarts, so without this a tab keeps running pre-upgrade JS forever
+    // (HTTP no-store only helps on a fresh page load).  The browser
+    // compares this id on every getStatus reply and reloads itself when
+    // it changes — see the 'status' handler in index.html.
+    {
+        QStringList paths;
+        QDirIterator it(":/web", QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            it.next();
+            if (it.fileInfo().isFile()) paths.append(it.filePath());
+        }
+        paths.sort();
+        QCryptographicHash h(QCryptographicHash::Sha1);
+        for (const QString &p : paths) {
+            QFile f(p);
+            if (f.open(QIODevice::ReadOnly)) h.addData(f.readAll());
+        }
+        spaBuildId = QString::fromLatin1(h.result().toHex().left(12));
+        qInfo() << "Web: SPA build id" << spaBuildId;
+    }
 }
 
 void webServer::receiveRigCaps(rigCapabilities *caps)
@@ -1290,7 +1315,32 @@ void webServer::onWsBinaryMessage(QByteArray message)
     QByteArray pcmData = message.mid(6);
     if (pcmData.isEmpty()) return;
 
-    if (freedvEnabled) {
+    // A packet burst owns the TX audio path (ALSA on USB, the TX converter
+    // on LAN).  The browser keeps streaming mic frames regardless — mic
+    // stays enabled across PTT cycles — and writing them here would
+    // interleave mic samples with the modem audio in the same sink and
+    // garble the packet on the air.  Drop mic audio until the burst
+    // completes; the unkey path re-arms the mic pre-buffer.
+    if (packetTxBusy || packetUsbTxActive) return;
+
+    // Single-writer rule for browser TX audio: modem-generated frames
+    // (FT8/JS8 pacers, TUNE) tag header byte 1 with 0x01; mic/voice frames
+    // are untagged.  While a tagged stream is flowing, drop untagged frames
+    // — this stops a mic left streaming (in this client or another tab or
+    // device) from interleaving with the modem audio and garbling the
+    // transmission.  300 ms covers pacer jitter without noticeably delaying
+    // mic resumption after the modem stream ends.
+    const bool modemTagged = (static_cast<quint8>(message[1]) & 0x01) != 0;
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    if (modemTagged)
+        lastModemAudioMs = nowMs;
+    else if (nowMs - lastModemAudioMs < 300)
+        return;
+
+    // Modem audio must never enter the FreeDV/RADE voice codec — if the
+    // FreeDV mode was left enabled (it survives mode changes between voice
+    // modes), route tagged frames straight to the rig like normal digi TX.
+    if (freedvEnabled && !modemTagged) {
         audioPacket pkt;
         pkt.data = pcmData;
         pkt.time = QTime::currentTime();
@@ -2637,6 +2687,10 @@ QJsonObject webServer::buildStatusJson()
 {
     QJsonObject status;
     status["type"] = "status";
+    // SPA fingerprint — lets a tab that survived a server upgrade (the
+    // WebSocket auto-reconnects) notice the mismatch and reload itself.
+    if (!spaBuildId.isEmpty())
+        status["buildId"] = spaBuildId;
 
     vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
 
@@ -4232,7 +4286,21 @@ void webServer::onPacketTxFailed(QString reason)
     if (packetTxIdleWatchdog) packetTxIdleWatchdog->stop();
     if (packetUsbTxDrainTimer) packetUsbTxDrainTimer->stop();
     packetUsbTxBuffer.clear();
+    bool tookUsbSession = packetUsbTxActive;
     packetUsbTxActive = false;
+    // Mirror the unkey path's mic recovery: if PKT had taken over the ALSA
+    // session, stop it and re-arm the mic pre-buffer for the still-
+    // streaming mic client.
+    if (tookUsbSession && usbAudioOutput) {
+        if (usbAudioOutput->state() != QAudio::StoppedState)
+            usbAudioOutput->stop();
+        usbAudioOutputDevice = nullptr;
+        txAudioActive = false;
+        if (micActiveClient) {
+            preTxBuffer.clear();
+            preTxBuffering = true;
+        }
+    }
     if (queue) {
         queue->add(priorityImmediate,
                    queueItem(funcTransceiverStatus,
@@ -4374,6 +4442,16 @@ void webServer::onUsbAudioOutputStateChanged(QAudio::State state)
         packetUsbTxActive = false;
         txAudioActive = false;
         packetTxBusy = false;
+
+        // PKT stole the ALSA session and left the device null.  If a mic
+        // client is still streaming (its frames were dropped during the
+        // burst), re-arm the pre-buffer so the next mic frames restart the
+        // device — otherwise they'd hit a null device and be silently
+        // dropped until the user toggled the mic.
+        if (micActiveClient && usbAudioOutput) {
+            preTxBuffer.clear();
+            preTxBuffering = true;
+        }
 
         if (queue) {
             queue->add(priorityImmediate,

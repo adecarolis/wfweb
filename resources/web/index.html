@@ -2411,6 +2411,7 @@ var digiPeriodTimer = null;
 var digiTxEnabled = false;
 var digiTxCtx = null; // pre-created from user gesture so it's never suspended
 var digiTxPacerReady = false; // true after first addModule succeeds on digiTxCtx
+var digiTuneWorkletReady = false; // same, for the tune-tone processor
 var digiTxSlotParity = -1; // 0=even slots, 1=odd slots, -1=unconstrained
 var digiCqParity = 0;      // user-selected parity for CQ calling: 0=even, 1=odd
 var digiTxQueued = null;
@@ -2599,6 +2600,19 @@ function handleMessage(msg) {
             if (currentPanel === 'audiomiс') renderAudioMicOverlay();
             break;
         case 'status':
+            // Stale-tab guard: the WS auto-reconnects across server
+            // restarts, so a tab opened before an upgrade keeps running old
+            // JS against the new server. The server fingerprints its
+            // embedded SPA (buildId); if it changes mid-session, reload to
+            // pick up the matching frontend.
+            if (msg.buildId !== undefined) {
+                if (window._srvBuildId && window._srvBuildId !== msg.buildId) {
+                    console.warn('Server SPA changed (' + window._srvBuildId + ' -> ' + msg.buildId + ') — reloading');
+                    location.reload();
+                    return;
+                }
+                window._srvBuildId = msg.buildId;
+            }
             applyVfoFreqMessage(msg);
             if (msg.mode !== undefined) updateMode(msg.mode);
             if (msg.filter !== undefined) updateFilterBtn(msg.filter);
@@ -4636,8 +4650,16 @@ function startMic() {
             micWorkletNode = new AudioWorkletNode(micAudioCtx, 'wfweb-capture-processor');
             source.connect(micWorkletNode);
             micWorkletNode.port.onmessage = function(e) {
-                // Suppress during DIGI TX (FT8 audio uses same type-0x03 channel)
-                if (!micEnabled || !txAudioReady() || digiTxActive) return;
+                // Suppress during DIGI TX or TUNE (FT8/JS8/tune audio uses
+                // the same type-0x03 channel)
+                if (!micEnabled || !txAudioReady() || digiTxActive || digiTuneActive) return;
+                // Suppress during packet TX too — a packet burst owns the
+                // 0x03 channel, and interleaved mic frames garble the modem
+                // audio on the air. txBusy covers one-shot UI frames;
+                // txActiveUntilMs covers connected-mode bursts (set from the
+                // 0x04 TX tee for the exact playout window).
+                if (window.Packet && Packet.state &&
+                    (Packet.state.txBusy || Date.now() < Packet.state.txActiveUntilMs)) return;
                 var pcmBuffer = e.data;
                 var frame = new ArrayBuffer(6 + pcmBuffer.byteLength);
                 var view = new DataView(frame);
@@ -5928,6 +5950,7 @@ function initDigiTxCtx() {
     if (digiTxCtx && digiTxCtx.state !== 'closed') return; // already ready
     digiTxCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: audioSampleRate || 48000 });
     digiTxPacerReady = false; // new context — processor not yet registered
+    digiTuneWorkletReady = false;
     digiTxCtx.resume().then(function() {
         console.log('[DIGI] TX AudioContext created and running, rate=' + digiTxCtx.sampleRate);
     }).catch(function(e) {
@@ -5992,7 +6015,7 @@ function toggleDigiBar() {
         ALC_SMOOTHED = 0;
         digiRxEnabled = false;
         updateDigiRxToggle();
-        if (digiTxCtx) { digiTxCtx.close(); digiTxCtx = null; digiTxPacerReady = false; }
+        if (digiTxCtx) { digiTxCtx.close(); digiTxCtx = null; digiTxPacerReady = false; digiTuneWorkletReady = false; }
     }
     renderBottomBar();
 }
@@ -7025,7 +7048,10 @@ function startDigiTune(overrideFreq) {
         i16buf = samples.buffer;
         var frame = new ArrayBuffer(6 + i16buf.byteLength);
         var dv = new DataView(frame);
-        dv.setUint8(0, 0x03); dv.setUint8(1, 0x00);
+        // byte 1 = 0x01 tags this as modem-generated audio: the server
+        // (and standalone transport) enforce a single-writer rule, dropping
+        // untagged mic frames while a tagged stream is flowing.
+        dv.setUint8(0, 0x03); dv.setUint8(1, 0x01);
         dv.setUint16(2, (seq++) & 0xFFFF, true);
         dv.setUint16(4, 0, true);
         new Uint8Array(frame, 6).set(new Uint8Array(i16buf));
@@ -7099,16 +7125,24 @@ function startDigiTune(overrideFreq) {
         console.log('[DIGI] Tune started: ' + df + ' Hz');
     }
 
-    var blob = new Blob([tuneCode], { type: 'application/javascript' });
-    var blobUrl = URL.createObjectURL(blob);
-    txCtx.audioWorklet.addModule(blobUrl).then(function() {
-        URL.revokeObjectURL(blobUrl);
+    if (digiTuneWorkletReady) {
+        // Processor already registered in this AudioContext — skip addModule.
+        // Re-evaluating the module would call registerProcessor("tune-tone")
+        // twice on the same worklet global scope, which throws.
         startTuneNode();
-    }).catch(function(err) {
-        URL.revokeObjectURL(blobUrl);
-        console.error('[DIGI] Tune worklet failed:', err);
-        stopDigiTune();
-    });
+    } else {
+        var blob = new Blob([tuneCode], { type: 'application/javascript' });
+        var blobUrl = URL.createObjectURL(blob);
+        txCtx.audioWorklet.addModule(blobUrl).then(function() {
+            URL.revokeObjectURL(blobUrl);
+            digiTuneWorkletReady = true;
+            startTuneNode();
+        }).catch(function(err) {
+            URL.revokeObjectURL(blobUrl);
+            console.error('[DIGI] Tune worklet failed:', err);
+            stopDigiTune();
+        });
+    }
 }
 
 // haltDigiTx() — called by ESC and Halt-TX to immediately stop whichever
@@ -7209,7 +7243,8 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
         i16buf = samples.buffer;
         var frame = new ArrayBuffer(6 + i16buf.byteLength);
         var dv = new DataView(frame);
-        dv.setUint8(0, 0x03); dv.setUint8(1, 0x00);
+        // byte 1 = 0x01 tags this as modem-generated audio (see sendTuneChunk)
+        dv.setUint8(0, 0x03); dv.setUint8(1, 0x01);
         dv.setUint16(2, (seq++) & 0xFFFF, true);
         dv.setUint16(4, 0, true);
         new Uint8Array(frame, 6).set(new Uint8Array(i16buf));
