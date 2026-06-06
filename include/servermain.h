@@ -63,6 +63,8 @@ struct cmdLineOverrides {
     int rigCtlPort = 0;        // --rigctld-port (0 = no override)
     bool noRigCtl = false;     // --no-rigctld
     bool rigCtlBindAll = false; // --rigctld-bind-all
+    // startup behavior
+    bool noAutoConnect = false; // --no-autoconnect / WFWEB_NO_AUTOCONNECT (LAN only)
 };
 
 class servermain : public QObject

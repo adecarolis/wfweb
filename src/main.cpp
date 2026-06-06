@@ -210,6 +210,9 @@ int main(int argc, char *argv[])
         "  --rigctld-port <port>   Enable Hamlib rigctld TCP on the given port (default 4532)\n"
         "  --no-rigctld            Disable rigctld even if enabled in settings\n"
         "  --rigctld-bind-all      Bind rigctld to 0.0.0.0 (default: 127.0.0.1 only)\n"
+        "  --no-autoconnect        Start without connecting to the rig (LAN only; connect\n"
+        "                          later with the web UI Reconnect button). Also enabled\n"
+        "                          by setting WFWEB_NO_AUTOCONNECT=1 in the environment\n"
         "  -l --logfile <file>     Log file\n"
         "  -b --background         Run as daemon (not Windows)\n"
         "  -d --debug [file]       Enable verbose debug logging (optionally to file)\n"
@@ -523,6 +526,10 @@ int main(int argc, char *argv[])
         {
             overrides.rigCtlBindAll = true;
         }
+        else if (currentArg == "--no-autoconnect")
+        {
+            overrides.noAutoConnect = true;
+        }
         else if ((currentArg == "-?") || (currentArg == "--help"))
         {
             std::cout << helpText.toStdString();
@@ -540,6 +547,10 @@ int main(int argc, char *argv[])
         }
 
     }
+
+    // Container-friendly alternative to --no-autoconnect (issue #70)
+    if (qEnvironmentVariableIntValue("WFWEB_NO_AUTOCONNECT") > 0)
+        overrides.noAutoConnect = true;
 
 #ifdef BUILD_WFSERVER
 

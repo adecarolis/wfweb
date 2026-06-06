@@ -127,11 +127,23 @@ servermain::servermain(const QString settingsFile, const cmdLineOverrides& overr
         }
     }
 
-    openRig();
+    // --no-autoconnect / WFWEB_NO_AUTOCONNECT (issue #70): start with the LAN
+    // session closed so a host/container restart doesn't grab the radio. The
+    // web UI Reconnect button performs the first connect (reconnectLan() ->
+    // openRig()). Serial mode has no reconnect UI, so honoring the flag there
+    // would strand the user — warn and connect normally instead.
+    bool startDisconnected = cliOverrides.noAutoConnect && prefs.enableLAN;
+    if (cliOverrides.noAutoConnect && !prefs.enableLAN)
+        qWarning(logSystem()) << "--no-autoconnect is only supported with LAN rigs; connecting normally";
+
+    if (startDisconnected)
+        qInfo(logSystem()) << "Auto-connect disabled; use the web UI Reconnect button to connect to the rig";
+    else
+        openRig();
 
     if (web != Q_NULLPTR) {
         QMetaObject::invokeMethod(web, "setLanInfo", Qt::QueuedConnection,
-            Q_ARG(bool, prefs.enableLAN), Q_ARG(bool, prefs.enableLAN));
+            Q_ARG(bool, prefs.enableLAN), Q_ARG(bool, prefs.enableLAN && !startDisconnected));
     }
 
     setServerToPrefs();

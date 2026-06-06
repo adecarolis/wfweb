@@ -106,6 +106,11 @@ docker run --rm -it \
   k1fm/wfweb --lan 192.168.1.100 --lan-user admin --lan-pass secret
 ```
 
+To keep a container (re)start from grabbing the radio — handy when other
+clients share the rig — add `-e WFWEB_NO_AUTOCONNECT=1` (or the
+`--no-autoconnect` flag): wfweb starts with the LAN session closed and you
+connect on demand with the web UI's **Reconnect** button.
+
 **USB radio** (share the serial device and sound subsystem with the container):
 
 ```bash
@@ -247,6 +252,7 @@ All settings can be passed as CLI flags. Run `wfweb --help` for the full list.
 | `--rigctld-port <port>` | Enable Hamlib rigctld TCP server (server build) | disabled |
 | `--rigctld-bind-all` | Bind rigctld to all interfaces instead of localhost | localhost only |
 | `--no-rigctld` | Disable rigctld even if enabled in settings | — |
+| `--no-autoconnect` | Start without connecting to the rig (LAN only; connect via web UI Reconnect). Env: `WFWEB_NO_AUTOCONNECT=1` | autoconnect |
 
 ### About `--settings`
 
