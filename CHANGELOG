@@ -6,6 +6,42 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.8.1 (2026-06-06)
+--------------------
+
+Server build:
+- New `--no-autoconnect` flag (or `WFWEB_NO_AUTOCONNECT=1` for docker
+  compose) starts with the LAN session closed, so a host or container
+  restart doesn't grab the radio away from other clients. The web UI's
+  Reconnect button performs the first connect. LAN only — serial mode
+  has no reconnect UI, so the flag warns and connects normally. (#70)
+
+Fixes:
+- Mic audio no longer leaks into modem transmissions. With the web mic
+  enabled, packet / FT8 / JS8 TX audio could go out garbled (mic frames
+  interleaved with the modem audio), and SSB voice could stay dead after
+  a packet burst. Modem-generated audio is now tagged at the source and
+  every sink enforces a single-writer rule while a modem burst is
+  flowing; mic voice re-arms cleanly after each burst. The standalone
+  TX ring also no longer accumulates seconds of stale mic audio that
+  played out ahead of a modem burst. (both builds)
+- Server-build pages now reload themselves automatically when the
+  server is upgraded mid-session, so a long-lived tab can't keep
+  running stale frontend code against a new server.
+- Standalone RX audio now starts on the first connect. The mic
+  permission prompt used to fire after the serial connect completed,
+  outside the click's user-activation window, so audio silently failed
+  until a lucky reload — the long-standing "reload 2-3 times before
+  audio works" bug.
+- The server now serves `.wasm` with the correct MIME type, so the JS8
+  codec module loads via the fast streaming-compile path.
+- Repeated TUNE activations no longer throw a duplicate AudioWorklet
+  registration error.
+
+Standalone:
+- The start page now mentions JS8 among the supported modes.
+
+
 v0.8.0 (2026-05-24)
 --------------------
 
