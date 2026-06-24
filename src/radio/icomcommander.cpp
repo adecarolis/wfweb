@@ -1491,10 +1491,19 @@ void icomCommander::parseCommand()
         consecutiveFAErrors++;
         validResponseCount = 0;
         qDebug(logRig()) << "FA error, consecutiveFAErrors=" << consecutiveFAErrors << " rigPoweredOn=" << rigPoweredOn;
-        if (consecutiveFAErrors >= 5 && rigPoweredOn) {
-            qInfo(logRig()) << "Multiple consecutive FA errors — radio likely powered off";
+        if (consecutiveFAErrors >= 5) {
+            if (rigPoweredOn)
+                qInfo(logRig()) << "Multiple consecutive FA errors — radio likely powered off";
+            else
+                qDebug(logRig()) << "Multiple consecutive FA errors while already powered off";
+
+            // Publish the off state regardless of the previous internal flag:
+            // when wfweb starts with the radio already off, rigPoweredOn begins
+            // false and the false power state would otherwise never reach the
+            // queue/web layer (issue #71).
             queue->receiveValue(funcPowerControl, QVariant::fromValue<bool>(false), 0);
             rigPoweredOn = false;
+            consecutiveFAErrors = 0;
         }
         break;
     }

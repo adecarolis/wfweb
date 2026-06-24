@@ -456,6 +456,12 @@ void cachingQueue::updateCache(bool reply, queueItem item)
 
     cache.insert(item.command,c);
 
+    // Notify listeners on the first valid value for a command too — web clients
+    // depend on cacheUpdated for state changes such as funcPowerControl, which
+    // may be inserted (not updated) the first time the radio reports off (#71).
+    if (c.value.isValid()) {
+        emit cacheUpdated(c);
+    }
 }
 
 

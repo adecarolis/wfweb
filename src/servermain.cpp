@@ -1039,6 +1039,26 @@ void servermain::receiveBaudRate(quint32 baud)
 void servermain::powerRigOn()
 {
     qDebug(logSystem()) << "powerRigOn() called, current rigPoweredOn=" << rigPoweredOn;
+
+    // A radio that started powered-off is CI-V-silent, so it was never
+    // identified and the auto-baud probe (connectToRig) is still sweeping the
+    // serial port through its fallback rates. If the wake-up preamble goes out
+    // at whatever rate the probe happens to sit on (e.g. 4800), it never
+    // matches the rig's real CI-V baud and the radio never wakes — the web
+    // "Power On" button then hangs. Pin the port back to the user-configured
+    // rate and restart the probe sweep from it BEFORE sending the wake, so both
+    // the preamble and the rig's first replies after boot land at the right
+    // baud. (issue #71 — start the server with the rig off, then power it on.)
+    for (RIGCONFIG* radio : serverConfig.rigs) {
+        icomCommander* ic = qobject_cast<icomCommander*>(radio->rig);
+        if (ic != Q_NULLPTR && !radio->rigAvailable && radio->baudRate != 0) {
+            radio->probeBaudIndex = 0;
+            radio->probeAttempts = 0;
+            QMetaObject::invokeMethod(ic, "setSerialBaudRate",
+                Qt::QueuedConnection, Q_ARG(quint32, radio->baudRate));
+        }
+    }
+
     emit sendPowerOn();
     // Start heartbeat probe while rig boots; after 5 seconds
     // force-reinitialize even if echo detection hasn't fired yet.
