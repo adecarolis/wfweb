@@ -267,6 +267,7 @@ bool webServer::setupSsl()
 
 void webServer::init(quint16 httpPort, quint16 wsPort)
 {
+    webHttpsPort = httpPort; // remembered for the REST-port signpost (#69)
     this->setObjectName("Web Server");
     queue = cachingQueue::getInstance();
     rigCaps = queue->getRigCaps();
@@ -457,6 +458,10 @@ void webServer::onHttpConnection()
     QTcpServer *srv = qobject_cast<QTcpServer *>(sender());
     if (!srv) return;
     QTcpSocket *socket = srv->nextPendingConnection();
+    // Tag connections arriving on the plain-HTTP REST port so onHttpReadyRead
+    // can serve them the signpost page instead of the SPA (#69).
+    if (srv == restServer)
+        socket->setProperty("isRestPort", true);
     connect(socket, &QTcpSocket::readyRead, this, &webServer::onHttpReadyRead);
     connect(socket, &QTcpSocket::disconnected, this, &webServer::onHttpDisconnected);
 }
@@ -544,6 +549,15 @@ void webServer::onHttpReadyRead()
         return;
     }
 
+    // On the plain-HTTP REST port, a non-API GET is almost always a browser
+    // that reached for the wrong port: serving the SPA here leaves it stuck
+    // retrying a WebSocket that only lives on the HTTPS port.  Hand back a
+    // signpost to the real web UI instead (#69).
+    if (socket->property("isRestPort").toBool()) {
+        serveRestInfoPage(socket, headerSection);
+        return;
+    }
+
     // Default to index.html
     if (path == "/") {
         path = "/index.html";
@@ -589,6 +603,60 @@ void webServer::serveStaticFile(QTcpSocket *socket, const QString &path)
     else if (path.endsWith(".onnx")) contentType = "application/octet-stream";
 
     sendHttpResponse(socket, 200, "OK", contentType, body);
+}
+
+void webServer::serveRestInfoPage(QTcpSocket *socket, const QByteArray &headerSection)
+{
+    // Pull the hostname out of the Host: header so we can offer a best-effort
+    // link to the web UI on the HTTPS port.  Strip any port the client sent
+    // (this is the REST port) and handle bracketed IPv6 literals.
+    QString host;
+    const QList<QByteArray> lines = headerSection.split('\n');
+    for (const QByteArray &line : lines) {
+        if (line.toLower().startsWith("host:")) {
+            host = QString::fromUtf8(line.mid(5)).trimmed();
+            break;
+        }
+    }
+    if (host.startsWith('[')) {
+        // IPv6 literal: keep "[...]" intact, drop a trailing :port
+        int close = host.indexOf(']');
+        if (close >= 0) host = host.left(close + 1);
+    } else {
+        int colon = host.indexOf(':');
+        if (colon >= 0) host = host.left(colon);
+    }
+    if (host.isEmpty()) host = "<host>";
+
+    QString hostEsc = host.toHtmlEscaped();
+    QString webUrl = QString("https://%1:%2/").arg(hostEsc).arg(webHttpsPort);
+
+    QString html = QStringLiteral(
+        "<!DOCTYPE html>\n"
+        "<html lang=\"en\"><head><meta charset=\"utf-8\">\n"
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
+        "<title>wfweb REST API</title>\n"
+        "<style>\n"
+        "  body { font-family: system-ui, sans-serif; max-width: 40em; margin: 3em auto;\n"
+        "         padding: 0 1em; line-height: 1.5; color: #222; background: #fafafa; }\n"
+        "  h1 { font-size: 1.4em; } code { background: #eee; padding: 0 .3em; border-radius: 3px; }\n"
+        "  a.btn { display: inline-block; margin: 1em 0; padding: .6em 1.1em; background: #2563eb;\n"
+        "          color: #fff; text-decoration: none; border-radius: 5px; }\n"
+        "  .note { color: #555; font-size: .9em; }\n"
+        "</style></head><body>\n"
+        "<h1>This is the wfweb REST API endpoint</h1>\n"
+        "<p>You've reached the plain-HTTP REST/API port. The web user interface is served over\n"
+        "HTTPS on a different port.</p>\n"
+        "<p><a class=\"btn\" href=\"%1\">Open the web UI &rarr;</a></p>\n"
+        "<p class=\"note\">If that link doesn't work, the inferred port may be wrong &mdash; for\n"
+        "example if you remapped ports with Docker. The web UI is the HTTPS port you mapped to the\n"
+        "container's web port (default <code>8080</code>), not this REST port.</p>\n"
+        "<p class=\"note\">Programmatic clients should call <code>/api/v1/&hellip;</code> on this port.\n"
+        "See <a href=\"https://github.com/adecarolis/wfweb/blob/master/REST_API.md\">REST_API.md</a>\n"
+        "for the full API.</p>\n"
+        "</body></html>\n").arg(webUrl);
+
+    sendHttpResponse(socket, 200, "OK", "text/html; charset=utf-8", html.toUtf8());
 }
 
 void webServer::sendHttpResponse(QTcpSocket *socket, int statusCode, const QString &statusText,

@@ -172,6 +172,10 @@ private slots:
 
 private:
     void serveStaticFile(QTcpSocket *socket, const QString &path);
+    // Issue #69: the plain-HTTP REST port used to hand back the SPA for any
+    // non-/api/v1 GET, which left a browser stuck retrying a WebSocket that
+    // only exists on the HTTPS port.  Serve a human-readable signpost instead.
+    void serveRestInfoPage(QTcpSocket *socket, const QByteArray &headerSection);
     void sendHttpResponse(QTcpSocket *socket, int statusCode, const QString &statusText,
                          const QByteArray &contentType, const QByteArray &body);
     void handleRestRequest(QTcpSocket *socket, const QString &method,
@@ -211,6 +215,7 @@ private:
 
     QTcpServer *httpServer = nullptr;
     QTcpServer *restServer = nullptr;  // plain HTTP for microcontrollers/scripts (SSL mode only)
+    quint16 webHttpsPort = 0;          // configured HTTPS/web-UI port, for the REST signpost (#69)
     QWebSocketServer *wsServer = nullptr;
     QList<QWebSocket *> wsClients;
     cachingQueue *queue = nullptr;
