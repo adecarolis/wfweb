@@ -1801,28 +1801,47 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     else if (type == "enableMic") {
         bool enable = cmd["value"].toBool();
         if (enable) {
-            // Save current DATA MOD OFF setting and switch to USB
+            // Save current DATA MOD OFF setting and switch it to the input that
+            // matches our audio transport. LAN-attached rigs carry mic audio over
+            // the Icom UDP audio stream, so their DATA MOD OFF must be "LAN";
+            // USB-attached rigs use "USB". Forcing USB on a LAN rig (e.g. IC-7610,
+            // IC-7300 MK2, IC-9700) keys the radio with no modulation. (issue #72)
             cacheItem cache = queue->getCache(funcDATAOffMod, 0);
             if (cache.value.isValid()) {
                 savedDataOffMod = cache.value.value<rigInput>();
                 dataOffModSaved = true;
             }
-            // Find USB input from rig capabilities
+            // Pick the mod input from rig capabilities: LAN when LAN-connected,
+            // otherwise USB. The LAN input is matched by name ("LAN"/"WLAN") —
+            // its numeric type is inconsistent across rig files (inputLAN on the
+            // IC-7610, but inputMICACCA on the IC-9700/IC-7300 MK2), whereas the
+            // name is uniform. Fall back to USB if the rig lists no LAN input.
             if (rigCaps) {
-                rigInput usbInput;
+                rigInput modInput;
                 bool found = false;
-                for (const rigInput &inp : rigCaps->inputs) {
-                    if (inp.type == inputUSB) {
-                        usbInput = inp;
-                        found = true;
-                        break;
+                if (lanMode) {
+                    for (const rigInput &inp : rigCaps->inputs) {
+                        if (inp.name.contains("LAN", Qt::CaseInsensitive)) {
+                            modInput = inp;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                if (!found) {
+                    for (const rigInput &inp : rigCaps->inputs) {
+                        if (inp.type == inputUSB) {
+                            modInput = inp;
+                            found = true;
+                            break;
+                        }
                     }
                 }
                 if (found) {
-                    queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(usbInput), false, 0));
-                    qInfo() << "Web: Set DATA MOD OFF to USB for web mic";
+                    queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(modInput), false, 0));
+                    qInfo() << "Web: Set DATA MOD OFF to" << modInput.name << "for web mic";
                 } else {
-                    qInfo() << "Web: No USB input found in rig capabilities";
+                    qInfo() << "Web: No suitable mod input found in rig capabilities";
                 }
             }
             micActiveClient = client;
