@@ -2202,6 +2202,7 @@ body.digi-open #bottomBar { grid-row: 5; }
             <!-- Row 1: toolbar -->
             <div class="digi-header wf-panel-header">
                 <span id="digiModeLabel" class="digi-label wf-badge">FT8</span>
+                <span id="digiFdBadge" class="wf-badge" style="display:none;background:var(--mode-accent);color:#fff" title="ARRL Field Day mode active">FD</span>
                 <button id="digiCqOnlyBtn" class="wf-btn">CQ ONLY</button>
                 <select id="digiBandSel" class="digi-band-sel wf-field"></select>
                 <div class="flex-space"></div>
@@ -2284,6 +2285,27 @@ body.digi-open #bottomBar { grid-row: 5; }
             <div class="digi-settings-field">
                 <span class="digi-field-label">MY GRID:</span>
                 <input type="text" id="digiGrid" class="digi-callsign-input wf-field" maxlength="6" placeholder="AA00" autocomplete="off">
+            </div>
+            <div class="digi-settings-field" style="margin-top:6px">
+                <label style="display:flex;align-items:center;gap:6px;color:#8cf;font-size:12px;cursor:pointer">
+                    <input type="checkbox" id="digiFdEnable">
+                    <span>ARRL Field Day mode</span>
+                </label>
+            </div>
+            <div id="digiFdFields" class="digi-settings-field" style="display:none;flex-direction:column;gap:6px;margin-top:4px;padding-left:6px">
+                <div style="display:flex;align-items:center;gap:6px">
+                    <span class="digi-field-label">CLASS:</span>
+                    <input type="number" id="digiFdNtx" class="wf-field" min="1" max="32" style="width:56px" title="Number of transmitters">
+                    <select id="digiFdClassSel" class="wf-field" title="Field Day class">
+                        <option>A</option><option>B</option><option>C</option>
+                        <option>D</option><option>E</option><option>F</option>
+                    </select>
+                    <span id="digiFdClassPreview" style="font-size:11px;color:#8cf"></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">
+                    <span class="digi-field-label">SECTION:</span>
+                    <select id="digiFdSectionSel" class="wf-field" title="ARRL/RAC section"></select>
+                </div>
             </div>
             <div class="digi-settings-field" style="margin-top:6px">
                 <label style="display:flex;align-items:center;gap:6px;color:#8cf;font-size:12px;cursor:pointer">
@@ -2734,6 +2756,11 @@ var digiQsoState = 'IDLE';
 var digiQsoPartner = '';
 var digiTheirReport = '';  // report they sent us
 var digiOurReport = '';    // report we sent them (for logging)
+// ── ARRL Field Day (#73) — opt-in contest mode; '' leaves standard FT8/FT4 unchanged ──
+var digiContestMode = '';  // '' = standard, 'FD' = ARRL Field Day
+var digiFdClass = '';      // operator's class, e.g. "1D" (1-32 transmitters + class A-F)
+var digiFdSection = '';    // operator's ARRL/RAC section, e.g. "EMA"
+var digiFdLogged = false;  // guard so each FD QSO is logged once
 var digiCqOnly = false;
 var digiTxFreq = 1000;      // audio TX frequency (Hz) within SSB passband
 var digiRxFreq = 1000;      // audio RX frequency (Hz) — decodes here also appear in Directed
@@ -6982,6 +7009,12 @@ function digiRowClick(el) {
         updateDigiTxFreqDisplay();
         updateDigiRxFreqDisplay();
     }
+    if (digiContestMode === 'FD') {
+        if (!digiFdReady()) { updateDigiStatus('Set FD class/section', ''); updateDigiMsgRows(); return; }
+        digiFdRowClick(parts, slotIndex, dxEl);
+        updateDigiMsgRows();
+        return;
+    }
     if (/^CQ$/i.test(parts[0])) {
         // CQ <CALL> <GRID> or CQ DX <CALL> <GRID>
         var cqCall = parts.length >= 3 ? parts[parts.length - 2] : parts[1];
@@ -7074,6 +7107,7 @@ function digiRowDblClick(el) {
 // Double-click on a message row: enable TX (if needed) AND arm the message immediately.
 function digiMsgRowDblClick(step) {
     if (!checkDigiCallGrid()) return;
+    if (digiContestMode === 'FD' && !digiFdReady()) { updateDigiStatus('Set FD class/section', ''); return; }
     var msgs = getDigiMsgTexts();
     var msg = msgs[step];
     if (!msg || msg === '\u2014') { console.warn('[DIGI] dblclick: msg row ' + (step+1) + ' is empty'); return; }
@@ -7107,10 +7141,11 @@ function digiCallCq() {
     var myCall = getMyCall();
     var myGrid = getMyGrid();
     initDigiTxCtx();
-    var cqMsg = 'CQ ' + myCall + ' ' + myGrid;
+    var cqMsg = (digiContestMode === 'FD') ? ('CQ FD ' + myCall + ' ' + myGrid) : ('CQ ' + myCall + ' ' + myGrid);
     digiQsoState = 'IDLE';
     digiQsoPartner = '';
     digiTheirReport = '';
+    digiFdLogged = false;
     digiTxQueued = cqMsg;
     digiTxAttempts = 0;
     digiTxSlotParity = digiCqParity;
@@ -7166,6 +7201,7 @@ function armMessageForQsoState(decodedSlotIndex) {
 
 function digiMsgRowClick(step) {
     if (!checkDigiCallGrid()) return;
+    if (digiContestMode === 'FD' && !digiFdReady()) { updateDigiStatus('Set FD class/section', ''); return; }
     if (!digiTxEnabled) {
         console.warn('[DIGI] msg row clicked but TX not enabled');
         updateDigiStatus('TX disabled', '');
@@ -7183,6 +7219,7 @@ function digiMsgRowClick(step) {
 }
 
 function getDigiMsgTexts() {
+    if (digiContestMode === 'FD') return getDigiFdMsgTexts();
     var myCall = getMyCall() || 'MYCALL';
     var myGrid = getMyGrid() || 'AA00';
     var dxCall = getDxCall();
@@ -7253,6 +7290,7 @@ function queueDigiCqReply(dxCall, decodedSlotIndex) {
 // decodedSlotIndex: the slot in which the audio was decoded (captured before the
 // blocking ft8ts call so it reflects the correct slot, not "current time + 2.5s").
 function handleDigiAutoQso(decodes, decodedSlotIndex) {
+    if (digiContestMode === 'FD') return handleDigiFdAutoQso(decodes, decodedSlotIndex);
     var myCall = getMyCall();
     var myGrid = getMyGrid();
     if (!myCall || !myGrid) return;
@@ -7356,6 +7394,256 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
         }
     }
     updateDigiMsgRows();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ARRL Field Day (#73) — opt-in contest layer. Everything below runs ONLY when
+// digiContestMode === 'FD'; with it off (default) standard FT8/FT4 is unchanged.
+// DIGI_FD_SECTIONS is copied verbatim from the ft8ts codec (FIELD_DAY_SECTIONS)
+// so the picker can only emit sections the encoder packs — no free-text truncation.
+// ════════════════════════════════════════════════════════════════════════════
+var DIGI_FD_SECTIONS = ['AB','AK','AL','AR','AZ','BC','CO','CT','DE','EB','EMA',
+    'ENY','EPA','EWA','GA','GTA','IA','ID','IL','IN','KS','KY','LA','LAX','MAR',
+    'MB','MDC','ME','MI','MN','MO','MS','MT','NC','ND','NE','NFL','NH','NL','NLI',
+    'NM','NNJ','NNY','NT','NTX','NV','OH','OK','ONE','ONN','ONS','OR','ORG','PAC',
+    'PR','QC','RI','SB','SC','SCV','SD','SDG','SF','SFL','SJV','SK','SNJ','STX',
+    'SV','TN','UT','VA','VI','VT','WCF','WI','WMA','WNY','WPA','WTX','WV','WWA',
+    'WY','DX','PE'];
+
+// Operator's exchange "1D EMA", or '' if class/section not valid yet.
+function digiFdExch() {
+    var cls = (digiFdClass || '').toUpperCase();
+    var sec = (digiFdSection || '').toUpperCase();
+    if (!/^[1-9][0-9]?[A-F]$/.test(cls)) return '';
+    if (DIGI_FD_SECTIONS.indexOf(sec) < 0) return '';
+    return cls + ' ' + sec;
+}
+
+// FD mode on AND exchange valid — gate before transmitting any FD message.
+function digiFdReady() { return digiContestMode === 'FD' && digiFdExch() !== ''; }
+
+// Parse the tokens after the two callsigns. Accepts ["6A","WI"] or ["R","6A","WI"].
+// Returns "CLASS SEC" for a valid Field Day exchange, else ''.
+function digiFdParseExch(tail) {
+    if (tail.length && tail[0] === 'R') tail = tail.slice(1);
+    if (tail.length !== 2) return '';
+    if (!/^[1-9][0-9]?[A-F]$/.test(tail[0])) return '';
+    if (DIGI_FD_SECTIONS.indexOf(tail[1]) < 0) return '';
+    return tail[0] + ' ' + tail[1];
+}
+
+// Field Day message templates — same 6 row indices the panel/arming logic use.
+function getDigiFdMsgTexts() {
+    var myCall = getMyCall() || 'MYCALL';
+    var myGrid = getMyGrid() || 'AA00';
+    var dxCall = getDxCall();
+    var exch = digiFdExch() || '?? ??';
+    var dash = '—';
+    return [
+        dxCall ? (dxCall + ' ' + myCall + ' ' + exch)   : ('CQ FD ' + myCall + ' ' + myGrid),
+        dxCall ? (dxCall + ' ' + myCall + ' R ' + exch) : dash,
+        dxCall ? (dxCall + ' ' + myCall + ' RR73')      : dash,
+        dxCall ? (dxCall + ' ' + myCall + ' RRR')       : dash,
+        dxCall ? (dxCall + ' ' + myCall + ' 73')        : dash,
+        'CQ FD ' + myCall + ' ' + myGrid
+    ];
+}
+
+// Log a Field Day QSO once. The exchange goes in the RST columns / ADIF RST fields.
+function logDigiFdQso(partner, theirExch) {
+    if (digiFdLogged) return;
+    digiFdLogged = true;
+    digiTheirReport = theirExch || digiTheirReport || '';
+    addQsoLogEntry({
+        call: partner, mode: digiMode, grid: getMyGrid(),
+        df: (digiTxFreq >= 200 && digiTxFreq <= 3000) ? digiTxFreq : 0,
+        rstSent: digiFdExch(), rstRcvd: theirExch || ''
+    });
+    var dirPanel = document.getElementById('digiDirectedPanel');
+    if (dirPanel) {
+        var row = document.createElement('div');
+        row.className = 'digi-logged-row';
+        row.textContent = '✓ LOGGED ' + String(partner).toUpperCase() + (theirExch ? '  ' + theirExch : '');
+        dirPanel.appendChild(row);
+        dirPanel.scrollTop = dirPanel.scrollHeight;
+    }
+}
+
+// Abort the current FD QSO and disable TX (mirror of the standard bail-out).
+function digiFdResetToIdle() {
+    digiReArmPending = false; digiTxArmed = false; digiTxActive = false;
+    digiTxQueued = null; digiTxEnabled = false; digiTxAttempts = 0;
+    digiTxSlotParity = -1; digiQsoState = 'IDLE'; digiQsoPartner = '';
+    digiTheirReport = ''; digiFdLogged = false;
+    var etb = document.getElementById('digiEnableTxBtn'); if (etb) etb.classList.remove('active');
+    send({ cmd: 'setPTT', value: false });
+    updateDigiStatus('IDLE', '');
+    updateDigiMsgRows();
+}
+
+// Click-to-respond for Field Day decodes (replaces the standard report parsing).
+function digiFdRowClick(parts, slotIndex, dxEl) {
+    var myCall = (getMyCall() || '').toUpperCase();
+    var prevPartner = digiQsoPartner;
+    var txParity = ((slotIndex >= 0 ? slotIndex : getDigiSlotInfo().slotIndex) + 1) % 2;
+    if (/^CQ$/.test(parts[0])) {
+        // "CQ [FD] <call> <grid>" → open with our exchange
+        var cqCall = parts.length >= 3 ? parts[parts.length - 2] : parts[1];
+        if (dxEl) dxEl.value = cqCall;
+        digiQsoPartner = cqCall; digiFdLogged = false; digiTheirReport = '';
+        digiTxQueued = cqCall + ' ' + myCall + ' ' + digiFdExch();
+        digiQsoState = 'CALLING';
+    } else if (parts.length >= 2) {
+        var dxCall = parts[1];
+        if (dxEl) dxEl.value = dxCall;
+        digiQsoPartner = dxCall;
+        if (dxCall !== prevPartner) digiFdLogged = false;
+        var toMe = myCall && parts[0] === myCall;
+        var theirExch = digiFdParseExch(parts.slice(2));
+        if (toMe && (parts[2] === 'RR73' || parts[2] === 'RRR' || parts[2] === '73')) {
+            digiTheirReport = digiTheirReport || '';
+            digiTxQueued = dxCall + ' ' + myCall + ' 73';
+            digiQsoState = 'LOGGED';
+            logDigiFdQso(dxCall, digiTheirReport);
+        } else if (toMe && parts[2] === 'R' && theirExch) {
+            // they rogered + sent their exchange → we are the answerer → RR73
+            digiTheirReport = theirExch;
+            digiTxQueued = dxCall + ' ' + myCall + ' RR73';
+            digiQsoState = 'EXCHANGE';
+            logDigiFdQso(dxCall, theirExch);
+        } else if (toMe && theirExch) {
+            // they sent their exchange (no R) → we are the CQer → roger with our exchange
+            digiTheirReport = theirExch;
+            digiTxQueued = dxCall + ' ' + myCall + ' R ' + digiFdExch();
+            digiQsoState = 'EXCHANGE';
+            logDigiFdQso(dxCall, theirExch);
+        } else {
+            // not addressed to us / unrecognized tail → call them with our exchange
+            digiTxQueued = dxCall + ' ' + myCall + ' ' + digiFdExch();
+            digiQsoState = 'CALLING';
+        }
+    }
+    digiTxAttempts = 0;
+    digiTxSlotParity = txParity;
+    if (digiTxEnabled && digiTxQueued) digiTxArmed = true;
+}
+
+// Field Day auto-sequencer (search-and-pounce answerer). Mirrors the standard
+// machine but reads the class+section exchange instead of a signal report.
+function handleDigiFdAutoQso(decodes, decodedSlotIndex) {
+    var myCall = (getMyCall() || '').toUpperCase();
+    if (!myCall || !getMyGrid() || !digiFdReady()) return;
+    var myExch = digiFdExch();
+    for (var i = 0; i < decodes.length; i++) {
+        var msg = decodes[i].msg.trim().toUpperCase();
+        var parts = msg.split(/\s+/);
+        var dSlot = (decodes[i].slotIndex !== undefined) ? decodes[i].slotIndex : decodedSlotIndex;
+        var txParity = (dSlot + 1) % 2;
+
+        if (digiQsoState === 'IDLE') {
+            // Only answer a CQ from the station the user has targeted in the DX field.
+            if (/^CQ$/.test(parts[0]) && parts.length >= 3) {
+                var cqCall = parts[parts.length - 2];
+                var userDx = getDxCall();
+                if (cqCall && cqCall !== myCall && userDx && userDx === cqCall) {
+                    digiQsoPartner = cqCall; digiFdLogged = false; digiTheirReport = '';
+                    digiTxQueued = cqCall + ' ' + myCall + ' ' + myExch;
+                    digiTxAttempts = 0; digiTxSlotParity = txParity;
+                    if (digiTxEnabled) digiTxArmed = true;
+                    digiQsoState = 'CALLING';
+                    break;
+                }
+            }
+        } else if (digiQsoState === 'CALLING') {
+            if (parts[0] === myCall && parts[1] === digiQsoPartner && parts.length >= 3) {
+                var ex = digiFdParseExch(parts.slice(2));
+                if (ex) {
+                    // partner sent their exchange (CQer rogering us) → confirm with RR73
+                    digiTheirReport = ex;
+                    logDigiFdQso(digiQsoPartner, ex);
+                    digiTxQueued = digiQsoPartner + ' ' + myCall + ' RR73';
+                    digiTxAttempts = 0; digiTxSlotParity = txParity;
+                    if (digiTxEnabled) digiTxArmed = true;
+                    digiQsoState = 'EXCHANGE';
+                    break;
+                }
+            } else if (parts.length >= 2 && parts[1] === digiQsoPartner && parts[0] !== myCall && parts[0] !== 'CQ') {
+                // partner answered someone else → abort
+                console.log('[DIGI FD] ' + digiQsoPartner + ' replied to ' + parts[0] + ', not us — aborting');
+                digiFdResetToIdle();
+                break;
+            }
+        } else if (digiQsoState === 'EXCHANGE') {
+            if (parts[0] === myCall && parts[1] === digiQsoPartner &&
+                (parts[2] === 'RR73' || parts[2] === 'RRR' || parts[2] === '73')) {
+                logDigiFdQso(digiQsoPartner, digiTheirReport);
+                digiTxQueued = digiQsoPartner + ' ' + myCall + ' 73';
+                digiTxAttempts = 0; digiTxSlotParity = txParity;
+                if (digiTxEnabled) digiTxArmed = true;
+                digiQsoState = 'LOGGED';
+                break;
+            }
+        } else if (digiQsoState === 'LOGGED') {
+            break;
+        }
+    }
+    updateDigiMsgRows();
+}
+
+// Wire the Field Day settings UI (checkbox + class + section). Called once at init.
+function initDigiFieldDaySettings() {
+    var enCb = document.getElementById('digiFdEnable');
+    var fields = document.getElementById('digiFdFields');
+    var ntxEl = document.getElementById('digiFdNtx');
+    var clsEl = document.getElementById('digiFdClassSel');
+    var secEl = document.getElementById('digiFdSectionSel');
+    var badge = document.getElementById('digiFdBadge');
+    var preview = document.getElementById('digiFdClassPreview');
+    if (!enCb || !secEl || !ntxEl || !clsEl) return;
+    if (!secEl.options.length) {
+        for (var i = 0; i < DIGI_FD_SECTIONS.length; i++) {
+            var o = document.createElement('option');
+            o.value = o.textContent = DIGI_FD_SECTIONS[i];
+            secEl.appendChild(o);
+        }
+    }
+    // Load persisted state
+    digiContestMode = (localStorage.getItem('digiContestMode') === 'FD') ? 'FD' : '';
+    digiFdClass = (localStorage.getItem('digiFdClass') || '').toUpperCase();
+    digiFdSection = (localStorage.getItem('digiFdSection') || '').toUpperCase();
+    enCb.checked = (digiContestMode === 'FD');
+    var m = /^([1-9][0-9]?)([A-F])$/.exec(digiFdClass);
+    if (m) { ntxEl.value = m[1]; clsEl.value = m[2]; } else if (!ntxEl.value) { ntxEl.value = '1'; }
+    if (digiFdSection && DIGI_FD_SECTIONS.indexOf(digiFdSection) >= 0) secEl.value = digiFdSection;
+    else digiFdSection = secEl.value;
+
+    function syncClass() {
+        var n = parseInt(ntxEl.value, 10);
+        if (isNaN(n) || n < 1) n = 1;
+        if (n > 32) n = 32;
+        ntxEl.value = n;
+        digiFdClass = n + clsEl.value;
+        try { localStorage.setItem('digiFdClass', digiFdClass); } catch(e) {}
+        if (preview) preview.textContent = digiFdExch() ? ('= ' + digiFdExch()) : '(needs section)';
+        updateDigiMsgRows();
+    }
+    function applyMode() {
+        digiContestMode = enCb.checked ? 'FD' : '';
+        try { localStorage.setItem('digiContestMode', digiContestMode); } catch(e) {}
+        if (fields) fields.style.display = enCb.checked ? 'flex' : 'none';
+        if (badge) badge.style.display = enCb.checked ? '' : 'none';
+        updateDigiMsgRows();
+    }
+    enCb.addEventListener('change', applyMode);
+    ntxEl.addEventListener('input', syncClass);
+    clsEl.addEventListener('change', syncClass);
+    secEl.addEventListener('change', function() {
+        digiFdSection = secEl.value;
+        try { localStorage.setItem('digiFdSection', digiFdSection); } catch(e) {}
+        syncClass(); // refresh the "= CLASS SEC" preview + message rows
+    });
+    syncClass();
+    applyMode();
 }
 
 function executeDigiTx(slotPhase) {
@@ -8228,6 +8516,9 @@ function initDigiHandlers() {
             sendReporterConfig();
         });
     }
+
+    // ARRL Field Day settings (#73) — checkbox + class + section
+    initDigiFieldDaySettings();
 
     // DX call — rebuild msg rows when changed
     var dxEl = document.getElementById('digiDxCall');
