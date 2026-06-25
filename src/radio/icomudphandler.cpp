@@ -127,6 +127,16 @@ void icomUdpHandler::receiveAudioData(const audioPacket &data)
 void icomUdpHandler::receiveExternalTxAudio(const audioPacket &data)
 {
     if (audio != Q_NULLPTR) {
+        // Diagnostic (issue #72): confirm web-mic TX audio reaches the LAN UDP
+        // audio channel bound for the rig. First frame at info level, then
+        // periodically. If this never fires while transmitting, the audio
+        // stops upstream (browser/converter); if it fires but the rig stays
+        // silent, the rig is dropping it (mod input/level, codec, or mode).
+        if (extTxAudioFrames == 0)
+            qInfo(logUdp()) << "First external (web mic) TX audio frame to rig," << data.data.size() << "bytes";
+        else if (extTxAudioFrames % 250 == 0)
+            qInfo(logUdp()) << "External (web mic) TX audio:" << extTxAudioFrames << "frames sent to rig";
+        extTxAudioFrames++;
         audio->receiveAudioData(data);
     }
 }

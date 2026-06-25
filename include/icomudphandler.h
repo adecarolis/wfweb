@@ -108,6 +108,8 @@ private:
 	//QByteArray replyId;
 	quint16 tokRequest;
 	quint32 token;
+	// Diagnostic counter for externally-sourced (web mic) TX audio (issue #72)
+	quint32 extTxAudioFrames = 0;
 	// These are for stream ident info.
 	quint8 macaddress[8];
 	quint8 guid[GUIDLEN];

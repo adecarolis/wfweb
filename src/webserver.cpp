@@ -1454,6 +1454,13 @@ void webServer::onWsBinaryMessage(QByteArray message)
         pkt.time = QTime::currentTime();
         pkt.sent = 0;
         pkt.volume = 1.0;
+        // Diagnostic (issue #72): confirm browser mic frames are reaching the
+        // LAN TX converter. First frame at info level, then every ~250 frames.
+        if (lanTxInFrames == 0)
+            qInfo() << "Web: LAN mic TX - first PCM frame to converter," << pcmData.size() << "bytes";
+        else if (lanTxInFrames % 250 == 0)
+            qInfo() << "Web: LAN mic TX -" << lanTxInFrames << "PCM frames pushed to converter";
+        lanTxInFrames++;
         emit sendToTxConverter(pkt);
     }
 }
@@ -1461,6 +1468,13 @@ void webServer::onWsBinaryMessage(QByteArray message)
 void webServer::onTxConverted(audioPacket audio)
 {
     if (audio.data.isEmpty()) return;
+    // Diagnostic (issue #72): confirm the converter is emitting rig-codec audio
+    // toward the rig (USB ALSA path bypasses this; LAN path runs through here).
+    if (lanTxOutFrames == 0)
+        qInfo() << "Web: LAN mic TX - first converted frame to rig," << audio.data.size() << "bytes";
+    else if (lanTxOutFrames % 250 == 0)
+        qInfo() << "Web: LAN mic TX -" << lanTxOutFrames << "converted frames sent to rig";
+    lanTxOutFrames++;
     emit haveTxAudioData(audio);
 }
 
@@ -1811,6 +1825,9 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 savedDataOffMod = cache.value.value<rigInput>();
                 dataOffModSaved = true;
             }
+            // Reset the LAN TX-audio diagnostics so each mic session logs afresh.
+            lanTxInFrames = 0;
+            lanTxOutFrames = 0;
             // Pick the mod input from rig capabilities: LAN when LAN-connected,
             // otherwise USB. The LAN input is matched by name ("LAN"/"WLAN") —
             // its numeric type is inconsistent across rig files (inputLAN on the

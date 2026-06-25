@@ -303,6 +303,13 @@ private:
     bool dataOffModSaved = false;
     QWebSocket *micActiveClient = nullptr;
 
+    // Diagnostic counters for the LAN web-mic TX path (issue #72): how many
+    // mic PCM frames the browser pushed into the TX converter, and how many
+    // came back out encoded for the rig.  First frame logs at info level so
+    // it is visible without --debug; running totals log periodically.
+    quint32 lanTxInFrames = 0;
+    quint32 lanTxOutFrames = 0;
+
     // FreeDV processing
     FreeDVProcessor *freedvProcessor = nullptr;
     QThread *freedvThread = nullptr;
