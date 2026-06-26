@@ -112,20 +112,32 @@ static void cleanup(int sig)
  #ifndef Q_OS_WIN
 void initDaemon()
 {
-    int i;
     if(getppid()==1)
         return; /* already a daemon */
-    i=fork();
-    if (i<0)
+    pid_t pid=fork();
+    if (pid<0)
         exit(1); /* fork error */
-    if (i>0)
+    if (pid>0)
         exit(0); /* parent exits */
 
     setsid(); /* obtain a new process group */
 
-    for (i=getdtablesize();i>=0;--i)
-        close(i); /* close all descriptors */
-    i=open("/dev/null",O_RDWR); dup(i); dup(i);
+    // Detach the standard streams by pointing them at /dev/null. Do NOT close
+    // every descriptor: QCoreApplication has already been constructed by the
+    // time "-b" is parsed, and it owns the event-loop wakeup eventfd (plus
+    // other internal fds). Blindly closing them with getdtablesize()/close()
+    // corrupts the Qt event dispatcher — the main loop then spins a CPU core at
+    // 100%, and its wakeup writes (uint64 = 1) leak into whatever low fd gets
+    // reused next (typically the -l log file, filling it with NUL garbage).
+    // Redirecting only stdin/stdout/stderr leaves Qt's descriptors untouched.
+    int fd=open("/dev/null",O_RDWR);
+    if (fd>=0) {
+        dup2(fd,STDIN_FILENO);
+        dup2(fd,STDOUT_FILENO);
+        dup2(fd,STDERR_FILENO);
+        if (fd>STDERR_FILENO)
+            close(fd);
+    }
 
     signal(SIGCHLD,SIG_IGN);
     signal(SIGTSTP,SIG_IGN);
