@@ -1103,6 +1103,7 @@ body.digi-open #bottomBar { grid-row: 5; }
 .digi-msg-row {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     padding: 1px 6px;
     border-bottom: 1px solid #011;
     cursor: pointer;
@@ -1112,10 +1113,30 @@ body.digi-open #bottomBar { grid-row: 5; }
 .digi-msg-row:hover { background: #001428; }
 .digi-msg-row.armed { background: #00203a; border-left: 3px solid var(--mode-accent); }
 .digi-msg-row-num { color: var(--mode-accent-dim); font-family: var(--font-mono); font-size: 10px; min-width: 12px; text-align: right; }
-.digi-msg-row-text { color: #cc8; font-family: var(--font-mono); font-size: 11px; flex: 1; }
-.digi-msg-row.armed .digi-msg-row-text { color: #8cf; font-weight: bold; }
-.digi-msg-row-badge { font-family: var(--font-mono); font-size: 9px; color: var(--mode-accent-dim); min-width: 40px; text-align: right; }
-.digi-msg-row.armed .digi-msg-row-badge { color: var(--mode-accent); }
+.digi-msg-row.pinned .digi-msg-row-num { color: var(--mode-accent); }
+/* Editable message text — one input per row (WSJT-X style in-place edit, #74) */
+.digi-msg-row-input {
+    flex: 1; min-width: 0;
+    background: #001020; border: 1px solid #013049;
+    color: #cc8; font-family: var(--font-mono); font-size: 11px;
+    padding: 1px 4px; border-radius: 3px; outline: none;
+}
+.digi-msg-row-input:hover { border-color: var(--mode-accent-dim); }
+.digi-msg-row-input:focus { border-color: var(--mode-accent); color: var(--field-text); }
+/* Locked (Field Day) rows render as plain read-only text, not an input box */
+.digi-msg-row-input[readonly] { border-color: transparent; background: transparent; cursor: pointer; padding-left: 0; }
+.digi-msg-row-input[readonly]:hover { border-color: transparent; }
+.digi-msg-row.armed .digi-msg-row-input { color: #8cf; font-weight: bold; }
+.digi-msg-row.pinned .digi-msg-row-input { border-color: var(--mode-accent-dim); color: var(--field-text); }
+/* Per-row Send button — explicit "transmit this line" action (#74) */
+.digi-msg-send-btn { flex: 0 0 auto; min-width: 60px; padding: 1px 6px; font-size: 9px; line-height: 1.4; text-align: center; }
+/* Hint line so the edit→send flow is discoverable */
+.digi-msg-hint { font-family: var(--font-mono); font-size: 9px; color: var(--mode-accent-dim); padding: 2px 6px 3px; }
+.digi-msg-hint b { color: var(--field-text); font-weight: bold; }
+/* Honest "will transmit as" preview — wraps to a second line only when present */
+.digi-msg-row-warn { flex-basis: 100%; font-family: var(--font-mono); font-size: 9px; padding-left: 19px; color: var(--mode-accent-dim); }
+.digi-msg-row-warn:empty { display: none; }
+.digi-msg-row-warn.trunc { color: #ec6; }
 
 /* Action row */
 .digi-action-row {
@@ -1738,8 +1759,9 @@ body.digi-open #bottomBar { grid-row: 5; }
     .digi-msg-cq-bar { flex-direction: column; gap: 2px; }
     /* Compact message rows on mobile */
     .digi-msg-row { padding: 1px 3px; gap: 2px; }
-    .digi-msg-row-text { font-size: 9px; }
-    .digi-msg-row-badge { display: none; }
+    .digi-msg-row-input { font-size: 9px; }
+    .digi-msg-row-warn { padding-left: 6px; }
+    .digi-msg-send-btn { min-width: 46px; font-size: 8px; }
     .digi-cq-parity-btn, .digi-call-cq-btn { font-size: 8px; padding: 2px 2px; }
     /* Limit msg rows height tighter on mobile */
     .digi-right-col .digi-msg-rows { max-height: 80px; }
@@ -1988,6 +2010,7 @@ body.digi-open #bottomBar { grid-row: 5; }
                         <button id="digiCqParityBtn" class="digi-cq-parity-btn" onclick="toggleDigiCqParity()">TX EVEN</button>
                         <button id="digiCallCqBtn" class="digi-call-cq-btn wf-btn" onclick="digiCallCq()">CALL CQ</button>
                     </div>
+                    <div id="digiMsgHint" class="digi-msg-hint">Edit any line, then <b>Send</b> (or press <b>Enter</b>) to transmit it on the next slot.</div>
                     <div id="digiMsgRows" class="digi-msg-rows"></div>
                 </div>
             </div>
@@ -2461,6 +2484,14 @@ var digiTheirReport = '';  // report they sent us
 var digiOurReport = '';    // report we sent them (for logging)
 // ── ARRL Field Day (#73) — opt-in contest mode; '' leaves standard FT8/FT4 unchanged ──
 var digiContestMode = '';  // '' = standard, 'FD' = ARRL Field Day
+// Editable / "pinned" message rows (#74). Per-row operator overrides overlaid
+// on the auto-generated texts; '' / missing = use the auto default.
+var DIGI_MSG_ROW_COUNT = 6;
+var digiMsgOverrides = [];        // index-aligned with getDigiMsgTexts()
+var digiMsgRowsBuilt = false;     // rows are built once, then updated in place
+var digiMsgPreviewTimers = {};    // per-row debounce timers for the truncation preview
+var digiLastDxForOverrides = '';  // last DX call seen; changing it clears overrides
+var FTALPH = ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+-./?'; // FT8/FT4 TX alphabet
 var digiFdClass = '';      // operator's class, e.g. "1D" (1-32 transmitters + class A-F)
 var digiFdSection = '';    // operator's ARRL/RAC section, e.g. "EMA"
 var digiFdLogged = false;  // guard so each FD QSO is logged once
@@ -6319,9 +6350,9 @@ function initFt8Worker() {
         '    try {',
         '        var samples = new Float32Array(d.samples);',
         '        var results = (d.mode === "FT8" ? decodeFT8 : decodeFT4)(samples, opts);',
-        '        self.postMessage({ ok: true, results: results, id: d.id });',
+        '        self.postMessage({ ok: true, results: results, id: d.id, preview: d.preview, rowIndex: d.rowIndex, original: d.original });',
         '    } catch(err) {',
-        '        self.postMessage({ ok: false, error: String(err), id: d.id });',
+        '        self.postMessage({ ok: false, error: String(err), id: d.id, preview: d.preview });',
         '    }',
         '};'
     ].join('\n');
@@ -6332,11 +6363,13 @@ function initFt8Worker() {
         ft8Worker.onmessage = function(e) {
             var data = e.data;
             if (!data.ok) {
+                if (data.preview) return; // preview decode failures are non-fatal
                 digiDecodeInProgress = false;
                 console.error('[DIGI] worker decode error:', data.error);
                 updateDigiStatus('ERR', '');
                 return;
             }
+            if (data.preview) { onDigiMsgPreviewResult(data.rowIndex, data.results, data.original); return; }
             onFt8DecodeResult(data.results, data.id);
         };
         ft8Worker.onerror = function(e) {
@@ -6612,29 +6645,6 @@ function digiRowDblClick(el) {
 }
 
 // Double-click on a message row: enable TX (if needed) AND arm the message immediately.
-function digiMsgRowDblClick(step) {
-    if (!checkDigiCallGrid()) return;
-    if (digiContestMode === 'FD' && !digiFdReady()) { updateDigiStatus('Set FD class/section', ''); return; }
-    var msgs = getDigiMsgTexts();
-    var msg = msgs[step];
-    if (!msg || msg === '\u2014') { console.warn('[DIGI] dblclick: msg row ' + (step+1) + ' is empty'); return; }
-    initDigiTxCtx();
-    if (!digiTxEnabled) {
-        digiTxEnabled = true;
-        var etb = document.getElementById('digiEnableTxBtn');
-        if (etb) etb.classList.add('active');
-        console.log('[DIGI] dblclick: TX enabled');
-    }
-    digiTxQueued = msg;
-    digiTxAttempts = 0;
-    digiTxArmed = true;
-    // For CQ messages use the user-chosen parity; for other messages leave unconstrained
-    var isCqMsg = msg.indexOf('CQ ') === 0;
-    digiTxSlotParity = isCqMsg ? digiCqParity : -1;
-    console.log('[DIGI] dblclick: armed "' + msg + '" parity=' + digiTxSlotParity);
-    updateDigiMsgRows();
-}
-
 // Toggle the CQ TX parity preference (even / odd slots)
 function toggleDigiCqParity() {
     digiCqParity = digiCqParity === 0 ? 1 : 0;
@@ -6706,26 +6716,8 @@ function armMessageForQsoState(decodedSlotIndex) {
     }
 }
 
-function digiMsgRowClick(step) {
-    if (!checkDigiCallGrid()) return;
-    if (digiContestMode === 'FD' && !digiFdReady()) { updateDigiStatus('Set FD class/section', ''); return; }
-    if (!digiTxEnabled) {
-        console.warn('[DIGI] msg row clicked but TX not enabled');
-        updateDigiStatus('TX disabled', '');
-        return;
-    }
-    var msgs = getDigiMsgTexts();
-    var msg = msgs[step];
-    if (!msg || msg === '\u2014') { console.warn('[DIGI] msg row ' + (step+1) + ' is empty'); return; }
-    console.log('[DIGI] msg row ' + (step+1) + ' clicked — arming: "' + msg + '"');
-    initDigiTxCtx(); // reinforce running state while we have a user gesture
-    digiTxQueued = msg;
-    digiTxAttempts = 0;
-    digiTxArmed = true;
-    updateDigiMsgRows();
-}
-
-function getDigiMsgTexts() {
+// Auto-generated message defaults for the active mode (standard or Field Day).
+function getDigiBaseMsgTexts() {
     if (digiContestMode === 'FD') return getDigiFdMsgTexts();
     var myCall = getMyCall() || 'MYCALL';
     var myGrid = getMyGrid() || 'AA00';
@@ -6748,26 +6740,260 @@ function getDigiMsgTexts() {
     ];
 }
 
+// Message texts the panel actually uses: auto defaults with any operator
+// overrides overlaid (#74 \u2014 editable / "pinned" rows). An override is a
+// non-empty string the operator typed into that row's input.
+function getDigiMsgTexts() {
+    var base = getDigiBaseMsgTexts();
+    // Field Day: the class/section picker is the single source of truth for both
+    // TX and the logged exchange, so its rows are NOT editable — never overlay.
+    if (digiContestMode === 'FD') return base;
+    for (var i = 0; i < base.length; i++) {
+        var ov = digiMsgOverrides[i];
+        if (ov && ov.trim()) base[i] = ov;
+    }
+    return base;
+}
+
+function saveDigiMsgOverrides() {
+    try { localStorage.setItem('digiMsgOverrides', JSON.stringify(digiMsgOverrides)); } catch (e) {}
+}
+
+// Build the six editable message rows once. Subsequent refreshes update values
+// in place (updateDigiMsgRows) so the operator's focus / cursor is never lost.
+function buildDigiMsgRows() {
+    var container = document.getElementById('digiMsgRows');
+    if (!container) return;
+    container.innerHTML = '';
+    for (var i = 0; i < DIGI_MSG_ROW_COUNT; i++) {
+        (function(step) {
+            var row = document.createElement('div');
+            row.className = 'digi-msg-row';
+            row.dataset.step = step;
+
+            var num = document.createElement('span');
+            num.className = 'digi-msg-row-num';
+            num.textContent = (step + 1);
+
+            var input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'digi-msg-row-input';
+            input.maxLength = 28;
+            input.autocomplete = 'off';
+            input.spellcheck = false;
+
+            var send = document.createElement('button');
+            send.type = 'button';
+            send.className = 'digi-msg-send-btn wf-btn';
+            send.textContent = 'Send';
+            send.title = 'Transmit this message on the next slot';
+
+            var warn = document.createElement('span');
+            warn.className = 'digi-msg-row-warn';
+
+            // Explicit Send button (or Enter) transmits the line and enables TX.
+            // Clicking the row margin does the same; the input itself just edits.
+            send.addEventListener('click', function(e) { e.stopPropagation(); digiMsgArm(step, true); });
+            row.addEventListener('click', function() { digiMsgArm(step, true); });
+            // Editable rows: clicking the field edits (don't arm). Locked FD rows
+            // are plain text, so let the click bubble up and arm the row.
+            input.addEventListener('click', function(e) { if (!input.readOnly) e.stopPropagation(); });
+            input.addEventListener('input', function() { onDigiMsgInput(step); });
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') { e.preventDefault(); digiMsgArm(step, true); }
+            });
+
+            row.appendChild(num);
+            row.appendChild(input);
+            row.appendChild(send);
+            row.appendChild(warn);
+            container.appendChild(row);
+        })(i);
+    }
+    digiMsgRowsBuilt = true;
+}
+
+// Operator edited a row: normalise to the FT8 alphabet, store as an override,
+// refresh state, and schedule a truncation preview for long free text.
+function onDigiMsgInput(step) {
+    if (digiContestMode === 'FD') return;   // FD rows are locked to the picker
+    var container = document.getElementById('digiMsgRows');
+    if (!container) return;
+    var row = container.children[step];
+    if (!row) return;
+    var input = row.querySelector('.digi-msg-row-input');
+    var caret = input.selectionStart;
+    var filtered = input.value.toUpperCase().split('').filter(function(c) {
+        return FTALPH.indexOf(c) >= 0;
+    }).join('');
+    if (filtered !== input.value) {
+        var drop = input.value.length - filtered.length;
+        input.value = filtered;
+        try { input.setSelectionRange(caret - drop, caret - drop); } catch (e) {}
+    }
+    digiMsgOverrides[step] = filtered;   // '' = no override (row reverts to auto)
+    saveDigiMsgOverrides();
+    updateDigiMsgRows();                 // refresh pinned/armed state (won't stomp focus)
+    scheduleDigiMsgPreview(step, filtered);
+}
+
+// Refresh row values + armed/pinned state in place, without rebuilding the DOM.
 function updateDigiMsgRows() {
     var container = document.getElementById('digiMsgRows');
     if (!container) return;
-    var msgs = getDigiMsgTexts();
-    var html = '';
-    for (var i = 0; i < msgs.length; i++) {
-        var isArmed = digiTxArmed && digiTxQueued === msgs[i];
-        var rowCls = 'digi-msg-row' + (isArmed ? ' armed' : '');
-        html += '<div class="' + rowCls + '" onclick="digiMsgRowClick(' + i + ')" ondblclick="digiMsgRowDblClick(' + i + ')">' +
-            '<span class="digi-msg-row-num">' + (i + 1) + '</span>' +
-            '<span class="digi-msg-row-text">' + escapeHtml(msgs[i]) + '</span>' +
-            '<span class="digi-msg-row-badge">' + (isArmed ? '&#9654; NEXT TX' : '') + '</span>' +
-            '</div>';
+    if (!digiMsgRowsBuilt) buildDigiMsgRows();
+
+    // Targeting a new DX station starts a fresh QSO — drop overrides so the
+    // canonical exchange messages regenerate (WSJT-X behaviour). Clearing DX to
+    // empty keeps any standing CQ / free-text edits.
+    var dxNow = getDxCall().trim();
+    if (dxNow && dxNow !== digiLastDxForOverrides &&
+        digiMsgOverrides.some(function(o) { return o && o.trim(); })) {
+        digiMsgOverrides = [];
+        saveDigiMsgOverrides();
     }
-    container.innerHTML = html;
+    if (dxNow !== digiLastDxForOverrides) digiLastDxForOverrides = dxNow;
+
+    // Field Day rows are locked (driven by the class/section picker); standard
+    // rows are freely editable.
+    var fdLocked = (digiContestMode === 'FD');
+    var hint = document.getElementById('digiMsgHint');
+    if (hint) hint.innerHTML = fdLocked
+        ? 'Field Day exchange is set in <b>Station Settings</b> &middot; <b>Send</b> (or <b>Enter</b>) to transmit.'
+        : 'Edit any line, then <b>Send</b> (or press <b>Enter</b>) to transmit it on the next slot.';
+
+    var msgs = getDigiMsgTexts();
+    for (var i = 0; i < DIGI_MSG_ROW_COUNT; i++) {
+        var row = container.children[i];
+        if (!row) continue;
+        var input = row.querySelector('.digi-msg-row-input');
+        var txt = (msgs[i] === '—') ? '' : msgs[i];
+        if (input) input.readOnly = fdLocked;
+        // Never overwrite a field the operator is actively editing.
+        if (input && document.activeElement !== input) input.value = txt;
+        var pinned = !fdLocked && !!(digiMsgOverrides[i] && digiMsgOverrides[i].trim());
+        row.classList.toggle('pinned', pinned);
+        var isArmed = digiTxArmed && msgs[i] !== '—' && digiTxQueued === msgs[i];
+        row.classList.toggle('armed', isArmed);
+        var send = row.querySelector('.digi-msg-send-btn');
+        if (send) {
+            send.classList.toggle('active', isArmed);
+            send.textContent = isArmed ? '▶ NEXT TX' : 'Send';
+        }
+        // Auto rows are always canonical (never truncate) — clear any stale warn.
+        if (!pinned) {
+            var warn = row.querySelector('.digi-msg-row-warn');
+            if (warn) { warn.textContent = ''; warn.className = 'digi-msg-row-warn'; }
+        }
+    }
+
     // Keep CALL CQ button lit while a CQ message is armed
     var ccb = document.getElementById('digiCallCqBtn');
     if (ccb) {
         var cqActive = digiTxEnabled && digiTxQueued && digiTxQueued.indexOf('CQ ') === 0;
         ccb.classList.toggle('active', !!cqActive);
+    }
+}
+
+// Arm a message row for transmit. enableTx=true (Enter key) also turns TX on,
+// mirroring the old double-click behaviour; clicking the row margin does not.
+function digiMsgArm(step, enableTx) {
+    if (!checkDigiCallGrid()) return;
+    if (digiContestMode === 'FD' && !digiFdReady()) { updateDigiStatus('Set FD class/section', ''); return; }
+    var msgs = getDigiMsgTexts();
+    var msg = msgs[step];
+    if (!msg || msg === '—' || !msg.trim()) { updateDigiStatus('Row empty', ''); return; }
+    initDigiTxCtx();
+    if (enableTx && !digiTxEnabled) {
+        digiTxEnabled = true;
+        var etb = document.getElementById('digiEnableTxBtn');
+        if (etb) etb.classList.add('active');
+    }
+    if (!digiTxEnabled) {
+        console.warn('[DIGI] msg row armed but TX not enabled');
+        updateDigiStatus('TX disabled', '');
+        return;
+    }
+    digiTxQueued = msg;
+    digiTxAttempts = 0;
+    digiTxArmed = true;
+    // CQ messages honour the chosen parity; everything else is unconstrained.
+    digiTxSlotParity = (msg.indexOf('CQ ') === 0) ? digiCqParity : -1;
+    console.log('[DIGI] armed row ' + (step + 1) + ': "' + msg + '" parity=' + digiTxSlotParity);
+    updateDigiMsgRows();
+}
+
+// Back-compat thin wrappers (single-click arms; double-click arms + enables TX).
+function digiMsgRowClick(step) { digiMsgArm(step, false); }
+function digiMsgRowDblClick(step) { digiMsgArm(step, true); }
+
+// Debounced honest "will transmit as" preview. Only long free text can be
+// truncated to 13 chars; standard forms (CQ DX …, calls, reports) survive.
+function scheduleDigiMsgPreview(step, text) {
+    var container = document.getElementById('digiMsgRows');
+    var row = container ? container.children[step] : null;
+    var warn = row ? row.querySelector('.digi-msg-row-warn') : null;
+    if (digiMsgPreviewTimers[step]) { clearTimeout(digiMsgPreviewTimers[step]); digiMsgPreviewTimers[step] = null; }
+    if (!warn) return;
+    if (!text || text.length <= 13) { warn.textContent = ''; warn.className = 'digi-msg-row-warn'; return; }
+    warn.textContent = '…checking'; warn.className = 'digi-msg-row-warn';
+    digiMsgPreviewTimers[step] = setTimeout(function() {
+        digiMsgPreviewTimers[step] = null;
+        requestDigiMsgPreview(step, text);
+    }, 400);
+}
+
+// Encode the candidate (cheap) then decode a narrow window around it (off the
+// main thread, in the FT8 worker) to learn exactly what a receiver would copy.
+function requestDigiMsgPreview(step, text) {
+    var lib = window.ft8tsLib;
+    if (!lib) return;
+    if (digiDecodeInProgress) {   // don't delay a live RX decode — retry shortly
+        digiMsgPreviewTimers[step] = setTimeout(function() {
+            digiMsgPreviewTimers[step] = null; requestDigiMsgPreview(step, text);
+        }, 500);
+        return;
+    }
+    var df = 1500;
+    var samples;
+    try {
+        samples = (digiMode === 'FT8' ? lib.encodeFT8 : lib.encodeFT4)(
+            text, { sampleRate: 12000, baseFrequency: df });
+    } catch (e) { return; }
+    var opts = { sampleRate: 12000, freqLow: df - 80, freqHigh: df + 80, depth: 1 };
+    initFt8Worker();
+    if (ft8Worker) {
+        ft8Worker.postMessage({
+            mode: digiMode, samples: samples.buffer,
+            sampleRate: 12000, freqLow: opts.freqLow, freqHigh: opts.freqHigh, depth: 1,
+            preview: true, rowIndex: step, original: text
+        }, [samples.buffer]);
+    } else {
+        try {
+            var res = (digiMode === 'FT8' ? lib.decodeFT8 : lib.decodeFT4)(samples, opts);
+            onDigiMsgPreviewResult(step, res, text);
+        } catch (e) {}
+    }
+}
+
+// Render the preview verdict on the row: green if it survives in full, amber
+// with the actual copy if the codec truncated it.
+function onDigiMsgPreviewResult(step, results, original) {
+    var container = document.getElementById('digiMsgRows');
+    var row = container ? container.children[step] : null;
+    if (!row) return;
+    var warn = row.querySelector('.digi-msg-row-warn');
+    if (!warn) return;
+    // Stale: operator cleared / changed the override since this decode was queued.
+    if (!digiMsgOverrides[step] || digiMsgOverrides[step] !== original) return;
+    var decoded = (results && results[0] && results[0].msg) ? results[0].msg.trim().toUpperCase() : '';
+    if (decoded && decoded === original.trim().toUpperCase()) {
+        // Survives in full — no indicator, only warn when something is wrong.
+        warn.textContent = ''; warn.className = 'digi-msg-row-warn';
+    } else if (!decoded) {
+        warn.textContent = '⚠ may not decode'; warn.className = 'digi-msg-row-warn trunc';
+    } else {
+        warn.textContent = '⚠ sends as: ' + decoded; warn.className = 'digi-msg-row-warn trunc';
     }
 }
 
@@ -8097,6 +8323,12 @@ function initDigiHandlers() {
 
     // ARRL Field Day settings (#73) — checkbox + class + section
     initDigiFieldDaySettings();
+
+    // Restore persisted editable-row overrides (#74)
+    try {
+        var savedOv = JSON.parse(localStorage.getItem('digiMsgOverrides') || '[]');
+        if (Array.isArray(savedOv)) digiMsgOverrides = savedOv.slice(0, DIGI_MSG_ROW_COUNT);
+    } catch (e) { digiMsgOverrides = []; }
 
     // DX call — rebuild msg rows when changed
     var dxEl = document.getElementById('digiDxCall');
