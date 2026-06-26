@@ -1130,9 +1130,6 @@ body.digi-open #bottomBar { grid-row: 5; }
 .digi-msg-row.pinned .digi-msg-row-input { border-color: var(--mode-accent-dim); color: var(--field-text); }
 /* Per-row Send button — explicit "transmit this line" action (#74) */
 .digi-msg-send-btn { flex: 0 0 auto; min-width: 60px; padding: 1px 6px; font-size: 9px; line-height: 1.4; text-align: center; }
-/* Hint line so the edit→send flow is discoverable */
-.digi-msg-hint { font-family: var(--font-mono); font-size: 9px; color: var(--mode-accent-dim); padding: 2px 6px 3px; }
-.digi-msg-hint b { color: var(--field-text); font-weight: bold; }
 /* Honest "will transmit as" preview — wraps to a second line only when present */
 .digi-msg-row-warn { flex-basis: 100%; font-family: var(--font-mono); font-size: 9px; padding-left: 19px; color: var(--mode-accent-dim); }
 .digi-msg-row-warn:empty { display: none; }
@@ -2010,7 +2007,6 @@ body.digi-open #bottomBar { grid-row: 5; }
                         <button id="digiCqParityBtn" class="digi-cq-parity-btn" onclick="toggleDigiCqParity()">TX EVEN</button>
                         <button id="digiCallCqBtn" class="digi-call-cq-btn wf-btn" onclick="digiCallCq()">CALL CQ</button>
                     </div>
-                    <div id="digiMsgHint" class="digi-msg-hint">Edit any line, then <b>Send</b> (or press <b>Enter</b>) to transmit it on the next slot.</div>
                     <div id="digiMsgRows" class="digi-msg-rows"></div>
                 </div>
             </div>
@@ -6693,11 +6689,11 @@ function armMessageForQsoState(decodedSlotIndex) {
             step = 2;
             break;
         case 'RREPORT':
-            msgToArm = msgs[3]; // RRR (we received R-report, reply with RRR)
+            msgToArm = msgs[3]; // RR73 (we received R-report, reply with RR73)
             step = 3;
             break;
         case 'RRR':
-            msgToArm = msgs[4]; // 73 (we received RRR, reply with 73)
+            msgToArm = msgs[4]; // 73 (we received RR73/RRR, reply with 73)
             step = 4;
             break;
         case 'LOGGED':
@@ -6734,7 +6730,7 @@ function getDigiBaseMsgTexts() {
         dxCall ? (dxCall + ' ' + myCall + ' ' + myGrid)          : ('CQ ' + myCall + ' ' + myGrid),
         dxCall ? (dxCall + ' ' + myCall + ' ' + report)          : dash,
         dxCall ? (dxCall + ' ' + myCall + ' R' + report)         : dash,
-        dxCall ? (dxCall + ' ' + myCall + ' RRR')                : dash,
+        dxCall ? (dxCall + ' ' + myCall + ' RR73')               : dash,
         dxCall ? (dxCall + ' ' + myCall + ' 73')                 : dash,
         'CQ ' + myCall + ' ' + myGrid
     ];
@@ -6857,10 +6853,6 @@ function updateDigiMsgRows() {
     // Field Day rows are locked (driven by the class/section picker); standard
     // rows are freely editable.
     var fdLocked = (digiContestMode === 'FD');
-    var hint = document.getElementById('digiMsgHint');
-    if (hint) hint.innerHTML = fdLocked
-        ? 'Field Day exchange is set in <b>Station Settings</b> &middot; <b>Send</b> (or <b>Enter</b>) to transmit.'
-        : 'Edit any line, then <b>Send</b> (or press <b>Enter</b>) to transmit it on the next slot.';
 
     var msgs = getDigiMsgTexts();
     for (var i = 0; i < DIGI_MSG_ROW_COUNT; i++) {
@@ -6917,8 +6909,9 @@ function digiMsgArm(step, enableTx) {
     digiTxQueued = msg;
     digiTxAttempts = 0;
     digiTxArmed = true;
-    // CQ messages honour the chosen parity; everything else is unconstrained.
-    digiTxSlotParity = (msg.indexOf('CQ ') === 0) ? digiCqParity : -1;
+    // All manual sends go out on the operator's chosen TX even/odd parity — one
+    // slot per cycle (never -1 / "every slot", which keys both halves).
+    digiTxSlotParity = digiCqParity;
     console.log('[DIGI] armed row ' + (step + 1) + ': "' + msg + '" parity=' + digiTxSlotParity);
     updateDigiMsgRows();
 }
