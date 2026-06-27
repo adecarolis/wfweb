@@ -1115,8 +1115,9 @@ body.digi-open #bottomBar { grid-row: 5; }
 .digi-decode-row.cq-row { background: #001830; }
 .digi-decode-row.cq-row:hover { background: #002040; }
 .digi-decode-row.highlight { background: #002850; border-left: 3px solid var(--mode-accent); }
-.digi-decode-row.directed { background: #1a1000; border-left: 3px solid #f80; }
-.digi-decode-row.directed:hover { background: #251800; }
+.digi-decode-row.directed { background: #3a2800; border-left: 4px solid #ffb000; }
+.digi-decode-row.directed:hover { background: #4a3400; }
+.digi-decode-row.directed .digi-decode-msg { color: #ffcf7a; font-weight: bold; }
 .digi-decode-row.tx-row { background: #001a00; border-left: 3px solid #0a0; }
 .digi-decode-row.digi-tx-pending { background: var(--mode-accent-bg); border-left: 3px solid #444; color: #668; }
 .digi-decode-row.digi-tx-pending .digi-decode-msg { color: #88a; font-style: italic; }
@@ -6997,7 +6998,12 @@ function appendDigiDirectedRow(d, isTx) {
     var snrStr = isTx ? 'TX' : ((d.snr >= 0 ? '+' : '') + d.snr.toFixed(0));
     var dtStr  = isTx ? '' : ((d.dt  >= 0 ? '+' : '') + d.dt.toFixed(1));
     var freqStr = isTx ? '' : Math.round(d.freq).toString();
-    var rowCls = 'digi-decode-row ' + (isTx ? 'tx-row' : 'highlight');
+    // Match the All Decodes panel: amber for messages addressed to us, blue for
+    // other relevant (on-frequency) traffic, green for our own TX.
+    var dMyCall = getMyCall();
+    var dParts = (d.msg || '').trim().toUpperCase().split(/\s+/);
+    var dDirected = !isTx && dMyCall && dParts.length >= 2 && dParts[0] === dMyCall.toUpperCase();
+    var rowCls = 'digi-decode-row ' + (isTx ? 'tx-row' : (dDirected ? 'directed' : 'highlight'));
     var div = document.createElement('div');
     div.className = rowCls;
     div.setAttribute('data-msg', encodeURIComponent(d.msg));
@@ -7085,14 +7091,16 @@ function digiRowClick(el) {
                 digiTheirReport = parts[2]; // their R-report of us → rstRcvd
                 digiOurReport = ourSnrStr;  // our SNR of them → rstSent
             } else if (parts.length >= 3 && /^[-+]?\d+$/i.test(parts[2])) {
-                // They sent us a plain signal report → reply R+our_snr
+                // They sent us a plain signal report → we are the answerer, reply R+our_snr (Tx3)
                 digiQsoState = 'REPORT';
                 digiTheirReport = parts[2]; // their report of us → rstRcvd
-                digiOurReport = ourSnrStr;  // our SNR of them → Tx2 R-report + rstSent
+                digiOurReport = ourSnrStr;  // our SNR of them → Tx3 R-report + rstSent
             } else {
-                digiQsoState = 'REPORT';
+                // They answered our CQ (grid/other, no report yet) — we are the
+                // CALLER and owe them a PLAIN report (Tx2), per canonical FT8.
+                digiQsoState = 'ANSWERED';
                 digiTheirReport = '';
-                digiOurReport = ourSnrStr;
+                digiOurReport = ourSnrStr;  // our SNR of them → Tx2 plain report
             }
         } else {
             // Message not to us — just target that station from IDLE
@@ -7177,8 +7185,12 @@ function armMessageForQsoState(decodedSlotIndex) {
             msgToArm = msgs[0]; // Initial call with grid
             step = 0;
             break;
+        case 'ANSWERED':
+            msgToArm = msgs[1]; // plain report (we are the CQ caller, give Tx2)
+            step = 1;
+            break;
         case 'REPORT':
-            msgToArm = msgs[2]; // R+report (we received report, reply with R-report)
+            msgToArm = msgs[2]; // R+report (we received their report, reply with R-report)
             step = 2;
             break;
         case 'RREPORT':
@@ -7332,14 +7344,18 @@ function updateDigiMsgRows() {
     if (!container) return;
     if (!digiMsgRowsBuilt) buildDigiMsgRows();
 
-    // Targeting a new DX station starts a fresh QSO — drop overrides so the
-    // canonical exchange messages regenerate (WSJT-X behaviour). Clearing DX to
-    // empty keeps any standing CQ / free-text edits.
+    // Targeting a new DX station starts a fresh QSO — drop the exchange-row
+    // overrides so canonical messages regenerate for the new partner. The
+    // dedicated CQ row (index 5) is DX-independent: preserve a custom CQ there
+    // so it survives across QSOs and can be re-sent without re-typing.
     var dxNow = getDxCall().trim();
-    if (dxNow && dxNow !== digiLastDxForOverrides &&
-        digiMsgOverrides.some(function(o) { return o && o.trim(); })) {
-        digiMsgOverrides = [];
-        saveDigiMsgOverrides();
+    if (dxNow && dxNow !== digiLastDxForOverrides) {
+        var ovChanged = false;
+        for (var ovk = 0; ovk < digiMsgOverrides.length; ovk++) {
+            if (ovk === 5) continue; // keep the custom CQ
+            if (digiMsgOverrides[ovk] && digiMsgOverrides[ovk].trim()) { digiMsgOverrides[ovk] = ''; ovChanged = true; }
+        }
+        if (ovChanged) saveDigiMsgOverrides();
     }
     if (dxNow !== digiLastDxForOverrides) digiLastDxForOverrides = dxNow;
 
@@ -7575,9 +7591,23 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
                 updateDigiMsgRows();
                 break;
             }
+        } else if (digiQsoState === 'ANSWERED') {
+            // CQ-caller path: we sent a plain report (Tx2). Await their R+report
+            // (Tx3) → reply RR73 (Tx4), then wait for their 73 in RREPORT.
+            if (parts[0] === myCall && parts[1] === digiQsoPartner && /^R[-+]?\d+$/i.test(parts[2] || '')) {
+                console.log('[DIGI QSO] ANSWERED→RREPORT: received ' + parts[2]);
+                digiTheirReport = parts[2]; // their R-report of us → rstRcvd
+                digiTxAttempts = 0;
+                digiTxQueued = digiQsoPartner + ' ' + myCall + ' RR73';
+                digiTxSlotParity = (dSlot + 1) % 2;
+                if (digiTxEnabled) { digiTxArmed = true; console.log('[DIGI QSO] armed (parity ' + digiTxSlotParity + '): ' + digiTxQueued); }
+                else { console.log('[DIGI QSO] TX disabled — queued but not armed: ' + digiTxQueued); }
+                digiQsoState = 'RREPORT';
+                break;
+            }
         } else if (digiQsoState === 'EXCHANGE' || digiQsoState === 'REPORT') {
             // EXCHANGE: auto-QSO path (we sent R-report via handleDigiAutoQso CALLING→EXCHANGE)
-            // REPORT:   click path (user double-clicked reply to their CQ, we queued Tx2 via armMessageForQsoState)
+            // REPORT:   click path (we are the answerer; we sent R-report via armMessageForQsoState)
             // Both wait for <MY> <PARTNER> RR73 / RRR → queue 73, log.
             if (parts[0] === myCall && parts[1] === digiQsoPartner &&
                 (parts[2] === 'RR73' || parts[2] === 'RRR')) {
