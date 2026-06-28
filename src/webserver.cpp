@@ -1448,20 +1448,35 @@ void webServer::onWsBinaryMessage(QByteArray message)
             txWritePcmFrame(pcmData, /*applyGain=*/false);
         }
     } else if (txConverter) {
-        // LAN path: encode PCM → rig codec, then emit for transmission
-        audioPacket pkt;
-        pkt.data = pcmData;
-        pkt.time = QTime::currentTime();
-        pkt.sent = 0;
-        pkt.volume = 1.0;
-        // Diagnostic (issue #72): confirm browser mic frames are reaching the
-        // LAN TX converter. First frame at info level, then every ~250 frames.
+        // LAN path. The rig's UDP audio jitter buffer expects audio in ~20 ms
+        // chunks at wall-clock cadence — exactly what wfview's mic and our own
+        // packet modem deliver. The browser hands us tiny 128-sample (256-byte,
+        // 2.67 ms) frames; forwarding each one immediately floods the rig with
+        // ~378 packets/s and, on some rigs (IC-7610), keys the radio but
+        // produces no modulation. Coalesce into 20 ms slices first. The browser
+        // is a real-time source, so re-chunking preserves the cadence without a
+        // separate pacer. (issue #72)
+        if (micLanTxChunkBytes <= 0) {
+            quint32 rate = rigSampleRate ? rigSampleRate : 48000;
+            micLanTxChunkBytes = (int)(rate / 50) * (int)sizeof(qint16); // 20 ms mono
+        }
+        // Diagnostic (issue #72): confirm browser mic frames are arriving.
+        // First frame at info level, then every ~250 frames.
         if (lanTxInFrames == 0)
-            qInfo() << "Web: LAN mic TX - first PCM frame to converter," << pcmData.size() << "bytes";
+            qInfo() << "Web: LAN mic TX - first PCM frame from browser," << pcmData.size() << "bytes, coalescing to" << micLanTxChunkBytes;
         else if (lanTxInFrames % 250 == 0)
-            qInfo() << "Web: LAN mic TX -" << lanTxInFrames << "PCM frames pushed to converter";
+            qInfo() << "Web: LAN mic TX -" << lanTxInFrames << "PCM frames from browser";
         lanTxInFrames++;
-        emit sendToTxConverter(pkt);
+        micLanTxBuffer.append(pcmData);
+        while (micLanTxBuffer.size() >= micLanTxChunkBytes) {
+            audioPacket pkt;
+            pkt.data = micLanTxBuffer.left(micLanTxChunkBytes);
+            pkt.time = QTime::currentTime();
+            pkt.sent = 0;
+            pkt.volume = 1.0;
+            micLanTxBuffer.remove(0, micLanTxChunkBytes);
+            emit sendToTxConverter(pkt);
+        }
     }
 }
 
@@ -1828,6 +1843,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             // Reset the LAN TX-audio diagnostics so each mic session logs afresh.
             lanTxInFrames = 0;
             lanTxOutFrames = 0;
+            micLanTxBuffer.clear();
             // Pick the mod input from rig capabilities: LAN when LAN-connected,
             // otherwise USB. The LAN input is matched by name ("LAN"/"WLAN") —
             // its numeric type is inconsistent across rig files (inputLAN on the
@@ -1890,6 +1906,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             freedvTxActive = false;
             if (freedvTxDrainTimer) freedvTxDrainTimer->stop();
             txAudioActive = false;
+            micLanTxBuffer.clear();
             if (usbAudioOutput) {
                 usbAudioOutput->stop();
                 usbAudioOutputDevice = nullptr;

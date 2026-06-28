@@ -310,6 +310,14 @@ private:
     quint32 lanTxInFrames = 0;
     quint32 lanTxOutFrames = 0;
 
+    // LAN web-mic TX coalescing (issue #72): the browser streams tiny
+    // 128-sample frames; the rig's UDP audio jitter buffer wants ~20 ms
+    // chunks (as wfview's mic and the packet modem send). Accumulate browser
+    // frames here and emit 20 ms slices. micLanTxChunkBytes is the 20 ms size
+    // at the rig sample rate, computed lazily on the first frame.
+    QByteArray micLanTxBuffer;
+    int micLanTxChunkBytes = 0;
+
     // FreeDV processing
     FreeDVProcessor *freedvProcessor = nullptr;
     QThread *freedvThread = nullptr;
