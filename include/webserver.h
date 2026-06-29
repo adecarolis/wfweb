@@ -303,12 +303,9 @@ private:
     bool dataOffModSaved = false;
     QWebSocket *micActiveClient = nullptr;
 
-    // Diagnostic counters for the LAN web-mic TX path (issue #72): how many
-    // mic PCM frames the browser pushed into the TX converter, and how many
-    // came back out encoded for the rig.  First frame logs at info level so
-    // it is visible without --debug; running totals log periodically.
-    quint32 lanTxInFrames = 0;
-    quint32 lanTxOutFrames = 0;
+    // One-shot log guard for the LAN web-mic TX path (issue #72): logs once per
+    // mic session that browser frames are arriving and being coalesced.
+    bool micLanTxLogged = false;
 
     // LAN web-mic TX coalescing (issue #72): the browser streams tiny
     // 128-sample frames; the rig's UDP audio jitter buffer wants ~20 ms

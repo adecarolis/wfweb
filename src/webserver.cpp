@@ -1460,13 +1460,12 @@ void webServer::onWsBinaryMessage(QByteArray message)
             quint32 rate = rigSampleRate ? rigSampleRate : 48000;
             micLanTxChunkBytes = (int)(rate / 50) * (int)sizeof(qint16); // 20 ms mono
         }
-        // Diagnostic (issue #72): confirm browser mic frames are arriving.
-        // First frame at info level, then every ~250 frames.
-        if (lanTxInFrames == 0)
+        // One-shot confirmation that the LAN mic path engaged and browser
+        // frames are being coalesced into 20 ms slices. (issue #72)
+        if (!micLanTxLogged) {
             qInfo() << "Web: LAN mic TX - first PCM frame from browser," << pcmData.size() << "bytes, coalescing to" << micLanTxChunkBytes;
-        else if (lanTxInFrames % 250 == 0)
-            qInfo() << "Web: LAN mic TX -" << lanTxInFrames << "PCM frames from browser";
-        lanTxInFrames++;
+            micLanTxLogged = true;
+        }
         micLanTxBuffer.append(pcmData);
         while (micLanTxBuffer.size() >= micLanTxChunkBytes) {
             audioPacket pkt;
@@ -1483,13 +1482,6 @@ void webServer::onWsBinaryMessage(QByteArray message)
 void webServer::onTxConverted(audioPacket audio)
 {
     if (audio.data.isEmpty()) return;
-    // Diagnostic (issue #72): confirm the converter is emitting rig-codec audio
-    // toward the rig (USB ALSA path bypasses this; LAN path runs through here).
-    if (lanTxOutFrames == 0)
-        qInfo() << "Web: LAN mic TX - first converted frame to rig," << audio.data.size() << "bytes";
-    else if (lanTxOutFrames % 250 == 0)
-        qInfo() << "Web: LAN mic TX -" << lanTxOutFrames << "converted frames sent to rig";
-    lanTxOutFrames++;
     emit haveTxAudioData(audio);
 }
 
@@ -1840,9 +1832,9 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 savedDataOffMod = cache.value.value<rigInput>();
                 dataOffModSaved = true;
             }
-            // Reset the LAN TX-audio diagnostics so each mic session logs afresh.
-            lanTxInFrames = 0;
-            lanTxOutFrames = 0;
+            // Reset the LAN mic-session state so each session coalesces and
+            // logs afresh.
+            micLanTxLogged = false;
             micLanTxBuffer.clear();
             // Pick the mod input from rig capabilities: LAN when LAN-connected,
             // otherwise USB. The LAN input is matched by name ("LAN"/"WLAN") —
