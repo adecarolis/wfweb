@@ -6,6 +6,39 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.8.2 (2026-06-28)
+--------------------
+
+FT8/FT4 DIGI panel:
+- Editable, free-text FT8 messages. The DIGI message rows can now be
+  edited directly, with an honest preview of how an over-length message
+  will be truncated on air. Clicking a decoded caller builds the
+  canonical reply sequence and highlights stations calling you, and a
+  custom CQ now persists across sessions. (#74)
+- New opt-in ARRL Field Day mode that switches the panel to Field Day
+  exchange messages. Standard FT8/FT4 operation is unchanged when the
+  option is off. (#73)
+- Send now uses the correct slot parity and RR73, and the obsolete
+  in-panel help line was dropped. (#74)
+- Switching to a new target mid-transmission now cleanly halts the
+  in-flight frame instead of leaving the rig keyed on the old message;
+  the reply goes out on the next correct-parity slot. (#74)
+
+Server build:
+- Web mic now modulates LAN-attached rigs. On rigs reached over the
+  network (e.g. IC-7610) the mic audio is routed to the DATA-OFF mod
+  input selected by name (LAN vs USB) and coalesced into 20 ms chunks,
+  matching what the rig's network-audio buffer expects — previously the
+  rig keyed but produced no modulation. (#72)
+- IC-7300 power state is now reported correctly and recovers when the
+  radio starts powered off. (#71)
+- The REST port (8081) now serves a signpost page instead of the SPA,
+  so loading it over plain HTTP no longer freezes the UI. (#69)
+- The `-b` daemon no longer spins at 100% CPU: the keyboard thread now
+  stops on stdin EOF, and daemon mode keeps the Qt event-loop file
+  descriptors open instead of closing them out from under the event loop.
+
+
 v0.8.1 (2026-06-06)
 --------------------
 
