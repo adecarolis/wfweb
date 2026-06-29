@@ -2759,6 +2759,7 @@ var digiTxActive = false; // true while audio is streaming — prevents concurre
 var digiTxWfSamples = null; // Float32Array @12kHz fed into wfBuf during TX
 var digiMonitorSrc = null; // AudioBufferSourceNode for local TX monitor
 var digiTxUserInitiated = false; // true when TX was armed by a user gesture (dblclick); widens slot window
+var digiSwitchAbortedSlot = -1;  // slotIndex whose TX was aborted for a mid-TX switch — don't restart it
 var digiTxWfPos = 0;        // read position into digiTxWfSamples
 var digiTxSeq = 0;
 var digiTxAttempts = 0;
@@ -6659,7 +6660,8 @@ function startDigiPeriodTimer() {
         // Auto re-arm from onDone uses the narrow 4.5 s window to avoid firing again in the
         // same slot's decode tail (seconds 12-15 / 6-7.5 for FT4).
         var txPhaseLimit = digiTxUserInitiated ? 13 : 4.5;
-        if (info.slotPhase < txPhaseLimit && digiTxArmed && !digiTxActive && !digiDecodeInProgress) {
+        if (info.slotPhase < txPhaseLimit && digiTxArmed && !digiTxActive && !digiDecodeInProgress &&
+            info.slotIndex !== digiSwitchAbortedSlot) {
             var currentParity = info.slotIndex % 2;
             if (digiTxSlotParity >= 0 && currentParity !== digiTxSlotParity) {
                 // Wrong parity slot — FT8 requires strict alternation with the DX station.
@@ -7119,12 +7121,18 @@ function digiRowDblClick(el) {
     // If a transmission is already in progress, abort it transparently so the
     // new selection takes over immediately (same slot if phase allows).
     if (digiTxActive) {
-        console.log('[DIGI] dblclick: aborting active TX to replace with new target');
+        console.log('[DIGI] dblclick: aborting active TX to switch to new target');
+        haltDigiTx(); // actually stop the in-flight audio pacer (not just the flags)
         if (digiMonitorSrc) { try { digiMonitorSrc.stop(); } catch(e) {} digiMonitorSrc = null; }
         digiTxActive = false;
         digiTxWfSamples = null;
         send({ cmd: 'setPTT', value: false });
         if (!micEnabled) send({ cmd: 'enableMic', value: false });
+        // FT8 frames are atomic — a partly-sent CQ can't morph into a decodable
+        // reply mid-slot (only the leading Costas sync is message-independent).
+        // So don't restart THIS slot; the reply goes out cleanly on the next
+        // correct-parity slot.
+        digiSwitchAbortedSlot = getDigiSlotInfo().slotIndex;
     }
     digiRowClick(el); // sets DX, queues message, updates state
     if (!digiTxEnabled) {
@@ -7974,10 +7982,19 @@ function executeDigiTx(slotPhase) {
         // Add "transmitting" indicator row (greyed out)
         var txRowId = appendDigiTransmittingRow(txMsg, txDf);
 
-        streamDigiAudio(samples12k, function() {
+        streamDigiAudio(samples12k, function(aborted) {
             // onDone: all audio sent to server; release transmitter
             digiTxActive = false;
             digiTxWfSamples = null; // stop waterfall loopback
+            if (aborted) {
+                // Deliberate halt (mid-TX switch / Halt / ESC): whoever halted
+                // decides what's next — do NOT re-arm, count attempts, or reset
+                // QSO state here, or we'd clobber the just-armed replacement.
+                var ta = new Date().toISOString().substr(11, 8);
+                replaceDigiTransmittingRow(txRowId, { time: ta, snr: 0, dt: 0, freq: txDf, msg: txMsgCapture });
+                updateDigiMsgRows();
+                return;
+            }
             send({ cmd: 'setPTT', value: false });
             if (!micEnabled) send({ cmd: 'enableMic', value: false });
             console.log('[DIGI TX] PTT OFF — TX complete');
@@ -8183,6 +8200,19 @@ function startDigiTune() {
     }
 }
 
+// Halt the in-flight digi TX (FT8/FT4/JS8) immediately — used by the mid-TX
+// switch (dblclick), Halt TX, and ESC. streamDigiAudio registers its aborter in
+// activeDigiTxHalt; calling it disconnects the pacer and fires onDone(true).
+var activeDigiTxHalt = null;
+function haltDigiTx() {
+    if (!activeDigiTxHalt) return false;
+    var fn = activeDigiTxHalt;
+    activeDigiTxHalt = null;
+    try { fn(); } catch (e) { console.warn('[DIGI halt]', e); }
+    return true;
+}
+window.haltDigiTx = haltDigiTx;
+
 function streamDigiAudio(samples12k, onDone, onFirstChunk) {
     console.log('[DIGI stream] start: samples12k.length=' + samples12k.length +
                 ' audioSampleRate=' + audioSampleRate +
@@ -8304,15 +8334,26 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
         var sink = txCtx.createAnalyser();
         node.connect(sink);
 
+        var finished = false;
+        function finish(aborted) {
+            if (finished) return;
+            finished = true;
+            if (activeDigiTxHalt === abortFn) activeDigiTxHalt = null;
+            try { node.disconnect(); } catch (e) {}
+            // Do NOT close txCtx — it is the shared digiTxCtx, kept alive for next TX
+            digiTxSeq = seq;
+            setTimeout(function() { if (onDone) onDone(aborted); }, aborted ? 0 : 200);
+        }
+        var abortFn = function() { finish(true); };
+        activeDigiTxHalt = abortFn;
+
         node.port.onmessage = function(e) {
             if (e.data === 'done') {
                 console.log('[DIGI stream] worklet done, chunksSent=' + chunksSent);
-                node.disconnect();
-                // Do NOT close txCtx — it is the shared digiTxCtx, kept alive for next TX
-                digiTxSeq = seq;
-                setTimeout(function() { if (onDone) onDone(); }, 200);
+                finish(false);
                 return;
             }
+            if (finished) return;
             sendInt16Chunk(e.data);
         };
 
@@ -8339,7 +8380,16 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
             console.warn('[DIGI] AudioWorklet unavailable, using rAF fallback:', err);
             var pos = 0;
             var startTs = null;
+            var rafAborted = false;
+            var rafAbort = function() { rafAborted = true; };
+            activeDigiTxHalt = rafAbort;
             function rafTick(ts) {
+                if (rafAborted) {
+                    if (activeDigiTxHalt === rafAbort) activeDigiTxHalt = null;
+                    digiTxSeq = seq;
+                    if (onDone) onDone(true);
+                    return;
+                }
                 if (startTs === null) startTs = ts;
                 var target = Math.floor((ts - startTs) / 1000 * audioSampleRate);
                 var toSend = Math.min(target - pos, out48.length - pos);
@@ -8354,7 +8404,11 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
                     pos += toSend;
                 }
                 if (pos < out48.length) { requestAnimationFrame(rafTick); }
-                else { digiTxSeq = seq; setTimeout(function() { if (onDone) onDone(); }, 200); }
+                else {
+                    if (activeDigiTxHalt === rafAbort) activeDigiTxHalt = null;
+                    digiTxSeq = seq;
+                    setTimeout(function() { if (onDone) onDone(false); }, 200);
+                }
             }
             requestAnimationFrame(rafTick);
         });
