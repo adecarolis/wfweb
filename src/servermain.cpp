@@ -1146,6 +1146,13 @@ void servermain::initPeriodicPolling()
             if (rigCaps->hasSpectrum) {
                 queue->add(priorityImmediate, queueItem(funcScopeOnOff, QVariant::fromValue(quint8(1)), false));
                 queue->add(priorityImmediate, queueItem(funcScopeDataOutput, QVariant::fromValue(quint8(1)), false));
+                // Force Center scope mode: the web UI keeps the RX indicator fixed
+                // mid-screen and scrolls the waterfall under it, which only renders
+                // correctly when the rig reports center-mode spectrum (startFreq/endFreq
+                // re-centred on the VFO). A rig left in Fixed mode sends static band
+                // edges, so the marker/passband/span all appear frozen (issue #75).
+                if (rigCaps->commands.contains(funcScopeMode))
+                    queue->add(priorityImmediate, queueItem(funcScopeMode, QVariant::fromValue(quint8(0)), false));
             }
 
             qInfo(logSystem()) << "Periodic polling restored for" << rigCaps->modelName;
