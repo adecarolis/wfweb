@@ -74,6 +74,14 @@ private:
     quint16 swrMeter = 0;       // 0x15 0x12 SWR Meter.
     quint16 alcMeter = 0;       // 0x15 0x13 ALC Meter.
 
+    // Antenna selector (cmd 0x12, issue #76). Framing differs per rig:
+    // IC-7610/785x use bare `12 <ant> <rx>`, IC-7300MK2 uses `12 00 <ant>`
+    // (subcommand byte, no RX flag). Derived from radioCiv in the ctor.
+    quint8 antenna = 0;
+    bool rxAnt = false;
+    bool antHasSub = false;     // 0x12 carries a 0x00 subcommand byte (MK2)
+    bool antHasRx = false;      // 0x12 carries the RX-antenna flag byte
+
     // Scope (0x27) state. Default values mirror what an IC-7300 boots with so
     // wfweb sees a sane rig the moment it queries us.
     bool scopeOn = true;             // 0x10

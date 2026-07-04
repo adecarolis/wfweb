@@ -430,6 +430,17 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
             }
             obj["preamps"] = preamps;
         }
+        if (!rigCaps->antennas.empty()) {
+            QJsonArray antennas;
+            for (const genericType &a : rigCaps->antennas) {
+                QJsonObject ao;
+                ao["num"] = a.num;
+                ao["name"] = a.name;
+                antennas.append(ao);
+            }
+            obj["antennas"] = antennas;
+            obj["hasRxAnt"] = rigCaps->commands.contains(funcRXAntenna);
+        }
         if (!rigCaps->filters.empty()) {
             QJsonArray filters;
             for (const filterType &f : rigCaps->filters) {
@@ -441,6 +452,14 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
             obj["filters"] = filters;
         }
         sendJsonToAll(obj);
+
+        // Issue #76: rigs with an antenna selector but no periodic Antenna
+        // poll (IC-746/9100/756-family, Kenwood) need one initial read so the
+        // FUNC page shows the real selection. Harmless elsewhere: periodic-poll
+        // rigs (IC-7610/785x) refresh it anyway and set-only rigs drop the get.
+        if (!rigCaps->antennas.empty() && rigCaps->commands.contains(funcAntenna)) {
+            queue->add(priorityImmediate, funcAntenna, false, 0);
+        }
 
         // Issue #31: poll both VFOs on initial connect so the Sub VFO display
         // is populated without requiring user interaction. requestVfoUpdate()
@@ -1690,6 +1709,14 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 255));
         queue->addUnique(priorityImmediate, queueItem(funcPreamp, QVariant::fromValue<uchar>(val), false, 0));
     }
+    else if (type == "setAntenna") {
+        // Issue #76: one command carries both the antenna selector and the
+        // RX-antenna flag — they travel in a single CI-V 0x12 frame.
+        antennaInfo ant;
+        ant.antenna = static_cast<quint8>(qBound(0, cmd["antenna"].toInt(), 7));
+        ant.rx = cmd["rx"].toBool();
+        queue->addUnique(priorityImmediate, queueItem(funcAntenna, QVariant::fromValue<antennaInfo>(ant), false, 0));
+    }
     else if (type == "setNoiseBlanker") {
         bool on = cmd["value"].toBool();
         queue->addUnique(priorityImmediate, queueItem(funcNoiseBlanker, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
@@ -2747,6 +2774,17 @@ QJsonObject webServer::buildInfoJson() const
             }
             info["preamps"] = preamps;
         }
+        if (!rigCaps->antennas.empty()) {
+            QJsonArray antennas;
+            for (const genericType &a : rigCaps->antennas) {
+                QJsonObject ao;
+                ao["num"] = a.num;
+                ao["name"] = a.name;
+                antennas.append(ao);
+            }
+            info["antennas"] = antennas;
+            info["hasRxAnt"] = rigCaps->commands.contains(funcRXAntenna);
+        }
         if (!rigCaps->filters.empty()) {
             QJsonArray filters;
             for (const filterType &f : rigCaps->filters) {
@@ -2971,6 +3009,14 @@ QJsonObject webServer::buildStatusJson()
     cacheItem preamp = queue->getCache(funcPreamp, 0);
     if (preamp.value.isValid()) status["preamp"] = preamp.value.toInt();
 
+    // Antenna selector (+ RX antenna flag) — only cached on rigs that have one
+    cacheItem antCache = queue->getCache(funcAntenna, 0);
+    if (antCache.value.isValid() && !strcmp(antCache.value.typeName(), "antennaInfo")) {
+        antennaInfo ant = antCache.value.value<antennaInfo>();
+        status["antenna"] = ant.antenna;
+        status["rxAntenna"] = ant.rx;
+    }
+
     // Auto Notch
     cacheItem anf = queue->getCache(funcAutoNotch, 0);
     if (anf.value.isValid()) status["autoNotch"] = anf.value.toBool();
@@ -3190,6 +3236,13 @@ void webServer::receiveCache(cacheItem item)
     case funcAttenuator:
         update["attenuator"] = item.value.toInt();
         break;
+    case funcAntenna:
+    {
+        antennaInfo ant = item.value.value<antennaInfo>();
+        update["antenna"] = ant.antenna;
+        update["rxAntenna"] = ant.rx;
+        break;
+    }
     case funcAutoNotch:
         update["autoNotch"] = item.value.toBool();
         break;

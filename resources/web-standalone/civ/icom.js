@@ -271,6 +271,34 @@
         return new Uint8Array([0x11, encodeBcd2(dB)]);
     }
 
+    // ---------- Antenna selector (cmd 0x12) -------------------------------
+    // Per-rig command bytes come from rig-caps (`cmds.antenna`): most rigs
+    // use bare [0x12], the IC-7300MK2 uses [0x12, 0x00]. Rigs with an RX
+    // antenna input (`cmds.rxAntenna` present) carry its on/off flag as an
+    // extra byte in the same frame — mirrors src/radio/icomcommander.cpp.
+    function cmdReadAntenna(cmdBytes) {
+        return new Uint8Array(cmdBytes || [0x12]);
+    }
+    function cmdSetAntenna(cmdBytes, ant, rx, hasRxAnt) {
+        var bytes = (cmdBytes || [0x12]).slice();
+        bytes.push(encodeBcd2(ant));
+        if (hasRxAnt) bytes.push(rx ? 0x01 : 0x00);
+        return new Uint8Array(bytes);
+    }
+    function parseAntennaReply(payload, cmdBytes) {
+        var pre = cmdBytes || [0x12];
+        if (payload.length < pre.length + 1) return null;
+        for (var i = 0; i < pre.length; i++) {
+            if (payload[i] !== pre[i]) return null;
+        }
+        var b = payload[pre.length];
+        return {
+            antenna: ((b >> 4) & 0x0F) * 10 + (b & 0x0F),
+            // null = frame carried no RX flag (rig has no RX antenna)
+            rx: payload.length > pre.length + 1 ? !!payload[pre.length + 1] : null,
+        };
+    }
+
     // ---------- Filter width (cmd 0x1A 0x03) -----------------------------
     // Encoded as a single BCD byte holding an "index" into the rig's
     // mode-dependent passband table:
@@ -1055,6 +1083,9 @@
         cmdSetPreamp: cmdSetPreamp,
         cmdReadAttenuator: cmdReadAttenuator,
         cmdSetAttenuator: cmdSetAttenuator,
+        cmdReadAntenna: cmdReadAntenna,
+        cmdSetAntenna: cmdSetAntenna,
+        parseAntennaReply: parseAntennaReply,
         cmdReadFilterWidth: cmdReadFilterWidth,
         cmdSetFilterWidth: cmdSetFilterWidth,
         parseFilterWidthReply: parseFilterWidthReply,

@@ -15,6 +15,13 @@ civEmulator::civEmulator(quint8 radioCiv, QObject* parent)
     gains[7] = 128; // Comp
     gains[0x0A] = 128; // Power
 
+    // Antenna-selector framing by emulated model (see civemulator.h):
+    // IC-7300MK2 (0xB6) uses `12 00 <ant>`; IC-7610 (0x98) / IC-785x (0x8E) /
+    // IC-7760 (0xB2) use `12 <ant> <rx>`. Everything else (IC-7300 default)
+    // has no antenna selector and NAKs cmd 0x12 like the real rig.
+    antHasSub = (radioCiv == 0xB6);
+    antHasRx = (radioCiv == 0x98 || radioCiv == 0x8E || radioCiv == 0xB2);
+
     scopeTimer = new QTimer(this);
     scopeTimer->setInterval(50); // 20 fps
     connect(scopeTimer, &QTimer::timeout, this, &civEmulator::emitScopeWaveData);
@@ -212,6 +219,32 @@ void civEmulator::onCivFromClient(const QByteArray& frame)
             emitTransceive(t); // cmd 0x01 = transceive mode
         } else {
             emit replyFrame(ack(false));
+        }
+        break;
+    }
+    case 0x12: { // antenna selector (only on models that have one — see ctor)
+        if (!antHasSub && !antHasRx) {
+            emit replyFrame(ack(false)); // e.g. IC-7300: no antenna selector
+            break;
+        }
+        // Strip the MK2's 0x00 subcommand byte so `data` is [ant[, rx]].
+        QByteArray data = antHasSub ? body.mid(1) : body;
+        if (antHasSub && !body.isEmpty() && (quint8)body[0] != 0x00) {
+            emit replyFrame(ack(false));
+            break;
+        }
+        if (data.isEmpty()) { // get
+            QByteArray pl;
+            pl.append((char)0x12);
+            if (antHasSub) pl.append((char)0x00);
+            pl.append((char)((antenna / 10) << 4 | (antenna % 10))); // BCD
+            if (antHasRx) pl.append((char)(rxAnt ? 0x01 : 0x00));
+            emit replyFrame(buildFrame(ctlCiv, pl));
+        } else { // set
+            quint8 b = (quint8)data[0];
+            antenna = (quint8)(((b >> 4) & 0x0F) * 10 + (b & 0x0F));
+            if (antHasRx && data.size() >= 2) rxAnt = ((quint8)data[1] != 0);
+            emit replyFrame(ack(true));
         }
         break;
     }

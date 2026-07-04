@@ -78,6 +78,11 @@ int main(int argc, char* argv[])
         "rms", "0");
     QCommandLineOption broadcastOpt("broadcast",
         "Disable freq/mode gating; every rig hears every other rig.");
+    QCommandLineOption civOpt("civ",
+        "CI-V address the virtual rigs answer as, in hex (default 94 = "
+        "IC-7300). Clients identify the rig model from this — e.g. b6 "
+        "(IC-7300MK2) to emulate a two-antenna rig (#76).",
+        "hex", "94");
     QCommandLineOption ctrlPortOpt("control-port",
         "Port for the web control panel. 0 disables it. Default 5900.",
         "port", "5900");
@@ -93,6 +98,7 @@ int main(int argc, char* argv[])
     parser.addOption(attenOpt);
     parser.addOption(noiseOpt);
     parser.addOption(broadcastOpt);
+    parser.addOption(civOpt);
     parser.addOption(ctrlPortOpt);
     parser.addOption(verboseOpt);
     parser.process(app);
@@ -140,6 +146,11 @@ int main(int argc, char* argv[])
         qCritical() << "Invalid --noise value (0..1000):" << parser.value(noiseOpt);
         return 2;
     }
+    quint8 civAddr = (quint8)parser.value(civOpt).toUInt(&ok, 16);
+    if (!ok || civAddr == 0 || civAddr >= 0xE0) {
+        qCritical() << "Invalid --civ value (hex rig address, e.g. 94):" << parser.value(civOpt);
+        return 2;
+    }
 
     const int totalSlots = n + nExt;
     auto* mixer = new channelMixer(totalSlots, &app);
@@ -152,8 +163,13 @@ int main(int argc, char* argv[])
     for (int i = 0; i < n; ++i) {
         virtualRig::Config cfg;
         cfg.index = i;
-        cfg.name = QString("virtual-IC7300-%1").arg(QChar(labels[i]));
-        cfg.civAddr = 0x94;
+        // Keep the historical name for the default model — testrig.sh and
+        // the mode-test skills reference "virtual-IC7300-A..P" labels.
+        cfg.name = (civAddr == 0x94)
+            ? QString("virtual-IC7300-%1").arg(QChar(labels[i]))
+            : QString("virtual-rig%1-%2")
+                  .arg(civAddr, 2, 16, QChar('0')).arg(QChar(labels[i]));
+        cfg.civAddr = civAddr;
         cfg.controlPort = basePort + i * 10;
         cfg.civPort     = basePort + i * 10 + 1;
         cfg.audioPort   = basePort + i * 10 + 2;

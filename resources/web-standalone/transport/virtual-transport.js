@@ -86,6 +86,11 @@
                 // refuse to move when the user switches filters.
                 filterWidths: { 1: 3000, 2: 2400, 3: 1800 },
                 transmitting: false,
+                // Two virtual antennas + an RX-antenna input so the FUNC page
+                // ANT / RX ANT buttons (#76) can be exercised without a
+                // multi-antenna rig on the bench.
+                antenna: 0,
+                rxAntenna: false,
                 // -54 dB = S0. The drawSMeter() scale treats 0 as S9, so a
                 // default of 0 would paint a permanent full-scale signal.
                 sMeter: -54,
@@ -166,6 +171,15 @@
                     if (typeof obj.value !== 'string') return;
                     this.state.mode = obj.value;
                     this._emit('update', { mode: obj.value });
+                    return;
+                case 'setAntenna':
+                    // Two fields (antenna + rx), so not an ECHO_FIELDS entry.
+                    this.state.antenna = (typeof obj.antenna === 'number') ? obj.antenna : 0;
+                    this.state.rxAntenna = !!obj.rx;
+                    this._emit('update', {
+                        antenna: this.state.antenna,
+                        rxAntenna: this.state.rxAntenna,
+                    });
                     return;
                 case 'setFilter':
                     if (typeof obj.value !== 'number') return;
@@ -408,6 +422,8 @@
                 filters: DEFAULT_FILTERS,
                 spans: DEFAULT_SPANS,
                 preamps: DEFAULT_PREAMPS,
+                antennas: [{ num: 0, name: 'ANT 1' }, { num: 1, name: 'ANT 2' }],
+                hasRxAnt: true,
                 hasFilterSettings: true,
                 hasMainSub: false,
                 hasSpectrum: false,
@@ -434,6 +450,8 @@
                 filterWidth: this.state.filterWidths[this.state.filter] || 3000,
                 sMeter: this.state.sMeter,
                 transmitting: this.state.transmitting,
+                antenna: this.state.antenna,
+                rxAntenna: this.state.rxAntenna,
             };
             this._emit('status', s);
         }

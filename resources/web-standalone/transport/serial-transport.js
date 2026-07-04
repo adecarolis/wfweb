@@ -136,6 +136,7 @@
         // Bool toggles
         setAutoNotch: true, setNoiseBlanker: true, setNoiseReduction: true,
         setMonitor: true, setPreamp: true, setAttenuator: true,
+        setAntenna: true,
         // VFO ops
         selectVFO: true, swapVFO: true, equalizeVFO: true, setSplit: true,
         // Misc
@@ -237,6 +238,12 @@
             // 'single'             — older / RX-only rigs without either:
             //                        only the active VFO is queried.
             this._dualVfoMode = 'single';
+
+            // Antenna selector caps — filled in by _finalizeDetection from
+            // the rig-caps registry; null/empty on single-antenna rigs (#76).
+            this._antCmd = null;
+            this._antennas = [];
+            this._hasRxAnt = false;
 
             // RX audio capture state — getUserMedia → AudioWorklet → Int16
             // PCM → 0x02 binary frame → SPA's handleAudioData.
@@ -486,6 +493,16 @@
                     this.state.attenuator = att;
                     this._enqueue('setAttenuator', civ.cmdSetAttenuator(att));
                     this._emit('update', { attenuator: att });
+                    return;
+                case 'setAntenna':
+                    if (!this._antCmd) return;  // rig has no antenna selector
+                    var antSel = (typeof obj.antenna === 'number') ? obj.antenna : 0;
+                    var antRx = !!obj.rx;
+                    this.state.antenna = antSel;
+                    this.state.rxAntenna = antRx;
+                    this._enqueue('setAntenna',
+                        civ.cmdSetAntenna(this._antCmd, antSel, antRx, this._hasRxAnt));
+                    this._emit('update', { antenna: antSel, rxAntenna: antRx });
                     return;
                 case 'selectVFO':
                     var vfo = (obj.value === 'B') ? 'B' : 'A';
@@ -1016,6 +1033,13 @@
             this.civAddr = addr;
             this._modIn = civ.getRigModInputs(addr);
             this._dualVfoMode = _dualVfoModeFor(addr);
+            // Antenna selector caps (#76) — per-rig command bytes + antenna
+            // list from the registry; empty/null on single-antenna rigs.
+            var capsEntry = RIG_CAPS[addr];
+            this._antCmd = (capsEntry && capsEntry.cmds && capsEntry.cmds.antenna) || null;
+            this._antennas = (capsEntry && capsEntry.antennas) || [];
+            this._hasRxAnt = !!(capsEntry && capsEntry.cmds && capsEntry.cmds.rxAntenna)
+                && this._antennas.length > 0;
             lsSetInt('directBaudRate', baud);
             lsSetInt('directCivAddr', addr);
 
@@ -1057,6 +1081,9 @@
             }
             this._enqueue('readPreamp',     civ.cmdReadBoolFunc(0x02));
             this._enqueue('readAttenuator', civ.cmdReadAttenuator());
+            if (this._antCmd && this._antennas.length) {
+                this._enqueue('readAntenna', civ.cmdReadAntenna(this._antCmd));
+            }
             this._enqueue('readSplit',      civ.cmdReadSplit());
             this._enqueue('readTuner',      civ.cmdReadTuner());
             this._enqueue('readScopeSpan',  civ.cmdReadScopeSpan());
@@ -1349,6 +1376,25 @@
                 if (att !== null && this.state.attenuator !== att) {
                     this.state.attenuator = att;
                     this._emit('update', { attenuator: att });
+                }
+                return;
+            }
+
+            // 0x12 — antenna selector reply (only rigs with an antenna cmd;
+            // per-rig prefix may be [0x12] or [0x12, 0x00])
+            if (payload[0] === 0x12 && this._antCmd) {
+                var antReply = civ.parseAntennaReply(payload, this._antCmd);
+                if (antReply !== null) {
+                    var au = {};
+                    if (this.state.antenna !== antReply.antenna) {
+                        this.state.antenna = antReply.antenna;
+                        au.antenna = antReply.antenna;
+                    }
+                    if (antReply.rx !== null && this.state.rxAntenna !== antReply.rx) {
+                        this.state.rxAntenna = antReply.rx;
+                        au.rxAntenna = antReply.rx;
+                    }
+                    if (Object.keys(au).length) this._emit('update', au);
                 }
                 return;
             }
@@ -1679,6 +1725,8 @@
                 filters: DEFAULT_FILTERS,
                 spans: DEFAULT_SPANS,
                 preamps: preamps,
+                antennas: this._antennas,
+                hasRxAnt: this._hasRxAnt,
                 hasFilterSettings: true,
                 hasMainSub: caps.numReceivers > 1,
                 hasSpectrum: caps.hasSpectrum,
@@ -1731,6 +1779,7 @@
             var passthrough = ['afGain', 'rfGain', 'rfPower', 'squelch',
                 'micGain', 'monitorGain', 'pbtInner', 'pbtOuter', 'cwSpeed',
                 'autoNotch', 'nb', 'nr', 'preamp', 'attenuator',
+                'antenna', 'rxAntenna',
                 'split', 'tuner', 'spanIndex', 'filterWidth'];
             for (var i = 0; i < passthrough.length; i++) {
                 var k = passthrough[i];

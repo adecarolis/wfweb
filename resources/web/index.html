@@ -2429,6 +2429,10 @@ var currentPanel = 'default';
 var availableModes = defaultModes.slice();
 var availablePreamps = [];
 var availableFilters = [];
+var availableAntennas = [];   // [{num, name}] — empty on single-antenna rigs (#76)
+var hasRxAnt = false;         // rig has an RX-antenna input (IC-7610/785x)
+var currentAntenna = 0;
+var rxAntOn = false;
 var currentVfo = 'A';
 var hasMainSub = false;
 
@@ -2613,6 +2617,8 @@ function handleMessage(msg) {
                 updateTxAudioAvailable(msg.txAudioAvailable || false);
                 if (msg.spans) populateSpans(msg.spans);
                 if (msg.preamps) populatePreamps(msg.preamps);
+                if (msg.antennas) populateAntennas(msg.antennas);
+                if (msg.hasRxAnt !== undefined) hasRxAnt = !!msg.hasRxAnt;
                 if (msg.filters) populateFilters(msg.filters);
                 if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
                 if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
@@ -2632,6 +2638,8 @@ function handleMessage(msg) {
             updateTxAudioAvailable(msg.txAudioAvailable || false);
             if (msg.spans) populateSpans(msg.spans);
             if (msg.preamps) populatePreamps(msg.preamps);
+            if (msg.antennas) populateAntennas(msg.antennas);
+            if (msg.hasRxAnt !== undefined) hasRxAnt = !!msg.hasRxAnt;
             if (msg.filters) populateFilters(msg.filters);
             if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
             if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
@@ -2693,6 +2701,7 @@ function handleMessage(msg) {
             if (msg.tuner !== undefined) updateTunerState(msg.tuner);
             if (msg.preamp !== undefined) updatePreampBtn(msg.preamp);
             if (msg.attenuator !== undefined) updateAttenuatorBtn(msg.attenuator);
+            if (msg.antenna !== undefined || msg.rxAntenna !== undefined) updateAntennaState(msg.antenna, msg.rxAntenna);
             if (msg.filterWidth !== undefined) updateSlider('filterWidth', msg.filterWidth);
             if (msg.pbtInner !== undefined) updateSlider('pbtInner', msg.pbtInner);
             if (msg.pbtOuter !== undefined) updateSlider('pbtOuter', msg.pbtOuter);
@@ -2733,6 +2742,7 @@ function handleMessage(msg) {
             if (msg.tuner !== undefined) updateTunerState(msg.tuner);
             if (msg.preamp !== undefined) updatePreampBtn(msg.preamp);
             if (msg.attenuator !== undefined) updateAttenuatorBtn(msg.attenuator);
+            if (msg.antenna !== undefined || msg.rxAntenna !== undefined) updateAntennaState(msg.antenna, msg.rxAntenna);
             if (msg.filterWidth !== undefined) updateSlider('filterWidth', msg.filterWidth);
             if (msg.pbtInner !== undefined) updateSlider('pbtInner', msg.pbtInner);
             if (msg.pbtOuter !== undefined) updateSlider('pbtOuter', msg.pbtOuter);
@@ -3243,6 +3253,12 @@ function populateModes(modes) { availableModes = modes; if (currentPanel === 'mo
 function populateSpans(spans) { availableSpans = spans; }
 function populatePreamps(preamps) { availablePreamps = preamps || []; }
 function populateFilters(filters) { availableFilters = filters || []; }
+function populateAntennas(antennas) { availableAntennas = antennas || []; }
+function updateAntennaState(ant, rx) {
+    if (ant !== undefined) currentAntenna = ant;
+    if (rx !== undefined) rxAntOn = !!rx;
+    if (currentPanel === 'func') renderFuncOverlay();
+}
 function updateSpanIndex(idx) {
     currentSpanIndex = idx;
     if (currentPanel === 'span') renderSpanOverlay();
@@ -3824,6 +3840,17 @@ function renderFuncOverlay() {
     var tunerStateStr = tunerState === 0 ? 'OFF' : (tunerState === 2 ? 'TUNING' : 'ON');
     grid.appendChild(makeFuncBtn(tunerLabel, tunerStateStr, tunerState > 0, handleTunerPress));
 
+    // Antenna selector + RX antenna — only on rigs that declare more than
+    // one antenna in their caps (IC-7610/785x/9100, Kenwood TS-590/890) (#76)
+    if (availableAntennas.length >= 2) {
+        grid.appendChild(makeFuncBtn('ANT', antennaName(currentAntenna), false, cycleAntenna));
+        if (hasRxAnt) {
+            grid.appendChild(makeFuncBtn('RX ANT', rxAntOn ? 'ON' : 'OFF', rxAntOn, function() {
+                send({ cmd: 'setAntenna', antenna: currentAntenna, rx: !rxAntOn });
+            }));
+        }
+    }
+
     // ANF
     grid.appendChild(makeFuncBtn('NOTCH', anfOn ? 'ON' : 'OFF', anfOn, function() {
         send({ cmd: 'setAutoNotch', value: !anfOn });
@@ -3960,6 +3987,22 @@ function cyclePreampAtt() {
             send({ cmd: 'setPreamp', value: 0 });
         }
     }
+}
+
+function antennaName(num) {
+    for (var i = 0; i < availableAntennas.length; i++) {
+        if (availableAntennas[i].num === num) return availableAntennas[i].name;
+    }
+    return 'ANT ' + (num + 1);  // antenna nums are 0-based
+}
+
+function cycleAntenna() {
+    var idx = 0;
+    for (var i = 0; i < availableAntennas.length; i++) {
+        if (availableAntennas[i].num === currentAntenna) { idx = i; break; }
+    }
+    var next = availableAntennas[(idx + 1) % availableAntennas.length];
+    send({ cmd: 'setAntenna', antenna: next.num, rx: rxAntOn });
 }
 
 function renderSpanOverlay() {
