@@ -5413,13 +5413,35 @@ function shiftWaterfallForFreqChange() {
     }
 }
 
+// Automatic waterfall reference level. The rig's scope amplitudes are
+// log-scaled and the per-bin noise floor rises with span, so a fixed
+// amp->color map saturates to yellow at wide spans. Anchor the palette to
+// the measured noise floor instead: each row's floor (25th percentile,
+// EMA-smoothed) maps to a fixed deep-blue index and signals color by
+// strength above it, which is span-independent.
+var wfAutoFloor = -1;
+var WF_FLOOR_CI = 24; // color index the noise floor maps to
+
+function wfEstimateFloor() {
+    var hist = new Uint32Array(256), len = spectData.length;
+    for (var i = 0; i < len; i++) hist[spectData[i]]++;
+    var target = len >> 2, acc = 0;
+    for (var v = 0; v < 256; v++) { acc += hist[v]; if (acc >= target) return v; }
+    return 0;
+}
+
 function updateWaterfallRow() {
     if (!wfImageData || !spectData) return;
+    var floorNow = wfEstimateFloor();
+    if (wfAutoFloor < 0 || Math.abs(floorNow - wfAutoFloor) > 20) wfAutoFloor = floorNow;
+    else wfAutoFloor += (floorNow - wfAutoFloor) * 0.1;
+    var scale = 255 / spectAmpMax;
     var w = wfImageData.width, d = wfImageData.data;
     d.copyWithin(w * 4, 0, d.length - w * 4);
     for (var i = 0; i < w; i++) {
         var amp = i < spectData.length ? spectData[i] : 0;
-        var ci = Math.min(255, Math.round((amp / spectAmpMax) * 255));
+        var ci = Math.round((amp - wfAutoFloor) * scale) + WF_FLOOR_CI;
+        if (ci < 0) ci = 0; else if (ci > 255) ci = 255;
         var c = colorTable[ci];
         var idx = i * 4;
         d[idx] = c[0]; d[idx+1] = c[1]; d[idx+2] = c[2]; d[idx+3] = 255;
