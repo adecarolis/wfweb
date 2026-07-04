@@ -3258,9 +3258,8 @@ function updateSpanIndex(idx) {
 // CANVAS S-METER (IC-7300 segmented style)
 // ============================================================
 // IC-7300 S-meter constants
-// The RX bar tile grid is computed in drawSMeter (density adapts to width);
-// METER_SEGS only sizes the TX Po/SWR bars.
-var METER_SEGS = 36;
+// Each face computes its tile grid locally (density adapts to width):
+// drawSMeter for RX, drawTxMeters for TX.
 // IC-7300 colors
 var METER_BLUE = '#3f8fd6';     // segments below S9
 var METER_RED  = '#dd3327';     // segments above S9
@@ -3270,6 +3269,10 @@ var METER_BASELINE = '#999';    // thin white line under segments
 var METER_PEAK_HOLD_MS = 800;   // IC-7300 style peak-hold segment
 var meterPeakCount = 0;         // held peak fill level (in segments)
 var meterPeakTs = 0;
+var txPoPeakCount = 0;          // TX Po bar peak hold
+var txPoPeakTs = 0;
+var txSwrPeakCount = 0;         // TX SWR bar peak hold
+var txSwrPeakTs = 0;
 
 var alcVal = 0;
 var digiTxGain = 0.25;         // FT8/FT4 audio gain multiplier (conservative start)
@@ -3336,17 +3339,11 @@ function drawMeter() {
     var labelW = cw < 280 ? 24 : 30;
     var barX = labelW + 2;                     // where segments start
     var barW = cw - barX - 2;                  // total width for segments
-    var segGap = Math.max(1, Math.round(barW * 0.004));
-    var segW  = (barW - (METER_SEGS - 1) * segGap) / METER_SEGS;
-    if (segW < 2) { segW = 2; segGap = 1; }
-
-    // Helper: x position of segment n
-    function segX(n) { return barX + n * (segW + segGap); }
 
     if (!isTransmitting) {
         drawSMeter(ctx, cw, ch, barX, barW);
     } else {
-        drawTxMeters(ctx, cw, ch, barX, barW, segW, segGap, segX, labelW);
+        drawTxMeters(ctx, cw, ch, barX, barW);
     }
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -3470,113 +3467,138 @@ function drawSMeter(ctx, cw, ch, barX, barW) {
     ctx.fillText('∞', barX + barW, swrNumY);
 }
 
-function drawTxMeters(ctx, cw, ch, barX, barW, segW, segGap, segX, labelW) {
-    // TX mode: S/Po bar on top, SWR bar on bottom (matching IC-7300 "S/Po" display)
-    var gap = 4;
-    var meterH = Math.floor((ch - gap) / 2);
+function drawTxMeters(ctx, cw, ch, barX, barW) {
+    // TX face, same visual language as the RX face in drawSMeter: Po scale
+    // and tile bar on top, live SWR tile bar sitting on the static SWR
+    // scale below (the row that is ornamental during RX).
+    var k      = barW >= 300 ? 6 : barW >= 190 ? 4 : 2;
+    var tiles  = 18 * k + 1;
+    var pitch  = barW / tiles;
+    var gap    = pitch >= 4 ? 1 : 0.5;
+    var tileW  = pitch - gap;
 
-    // === Po meter (top half) ===
-    drawSegBar(ctx, {
-        x: barX, y: 0, w: barW, h: meterH,
-        label: 'Po', labelX: 2,
-        scaleLabels: [
-            { text: '0', frac: 0 },
-            { text: '25', frac: 0.25 },
-            { text: '50', frac: 0.50 },
-            { text: '100%', frac: 1.0 }
-        ],
-        fillFrac: Math.min(1, powerVal / 100),
-        fillColor: METER_BLUE,
-        warnColor: METER_RED,
-        warnFrac: 1.0,  // no warning zone for Po
-        valueText: Math.round(powerVal) + 'W',
-        segW: segW, segGap: segGap, segX: segX
-    });
+    var fs    = Math.max(7, Math.min(11, Math.round(cw / 26)));
+    var numH  = fs + 2;
+    var tickH = 4;
+    var segH  = Math.max(7, Math.min(10, Math.round(barW * 0.02)));
+    // Two bars share the canvas: shrink the mid gap, then the bars,
+    // until the face fits.
+    var midGap = 3;
+    if (2 * (numH + tickH + segH) + midGap + 6 > ch) midGap = 2;
+    while (2 * (numH + tickH + segH) + midGap + 6 > ch && segH > 5) segH--;
+    var faceH = 2 * (numH + tickH + segH) + midGap + 6;
+    var y0    = Math.max(0, Math.floor((ch - faceH) / 2));
 
-    // === SWR meter (bottom half) ===
-    var swrY = meterH + gap;
-    // SWR scale is non-linear: 1.0-1.5-2-3 compressed on left
-    var swrFrac = Math.min(1, Math.max(0, (swrVal - 1.0) / 5.0));
-    drawSegBar(ctx, {
-        x: barX, y: swrY, w: barW, h: meterH,
-        label: 'SWR', labelX: 2,
-        scaleLabels: [
-            { text: '1', frac: 0 },
-            { text: '1.5', frac: 0.1 },
-            { text: '2', frac: 0.2 },
-            { text: '3', frac: 0.4 }
-        ],
-        fillFrac: swrFrac,
-        fillColor: METER_BLUE,
-        warnColor: METER_RED,
-        warnFrac: 0.2,  // SWR > 2.0 → red
-        valueText: swrVal.toFixed(1),
-        segW: segW, segGap: segGap, segX: segX
-    });
+    var poSegY   = y0 + numH + tickH + 1;      // top of the Po bar
+    var poLineY  = poSegY + segH + 1;          // white baseline under it
+    var swrSegY  = poLineY + 1 + midGap;       // top of the SWR bar
+    var swrLineY = swrSegY + segH + 1;         // white baseline under it
+    var swrTickY = swrLineY + 2;
+    var swrNumY  = swrTickY + tickH;
 
-    // ALC indicator — visible during DIGI TX or FreeDV TX
-    if (digiTxActive || digiTuneActive || (freedvEnabled && micEnabled && isTransmitting)) {
-        var alcPct = Math.round(alcVal * 100);
-        var alcColor = alcVal > 0.05 ? '#ff4444' : '#44cc44';
-        var alcText = 'ALC ' + alcPct + '%';
-        ctx.fillStyle = alcColor;
-        ctx.font = 'bold 9px system-ui, sans-serif';
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText(alcText, cw - 2, ch - 1);
-    }
-}
-
-// Generic segmented meter bar (used for Po, SWR in TX mode)
-function drawSegBar(ctx, o) {
-    var scaleY = o.y + 1;
-    var segY = o.y + 14;
-    var segH = o.h - 16;
-    if (segH < 6) segH = 6;
-    var baseY = segY + segH;
-
-    // Label
-    ctx.fillStyle = '#888';
-    ctx.font = 'bold 9px system-ui, sans-serif';
+    // --- "Po" / "SWR" row labels (left column) ---
+    ctx.font = fs + 'px system-ui, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText(o.label, o.labelX, scaleY);
+    ctx.fillStyle = '#ddd';
+    ctx.fillText('Po', 2, y0 + 1);
+    ctx.fillStyle = '#bbb';
+    ctx.fillText('SWR', 2, swrTickY);
 
-    // Scale labels
-    ctx.fillStyle = '#888';
-    ctx.font = '8px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    for (var i = 0; i < o.scaleLabels.length; i++) {
-        var sl = o.scaleLabels[i];
-        var lx = o.segX(Math.round(sl.frac * (METER_SEGS - 1)));
-        ctx.fillText(sl.text, lx, scaleY);
-    }
-
-    // Value text (right side)
+    // --- Numeric readouts (left column, beside each bar) ---
+    var vfs = Math.min(fs, segH);
+    ctx.font = 'bold ' + vfs + 'px monospace';
+    ctx.textBaseline = 'middle';
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 10px monospace';
-    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(powerVal) + 'W', 2, poSegY + segH / 2 + 1);
+    ctx.fillText(swrVal.toFixed(1), 2, swrSegY + segH / 2 + 1);
+
+    // --- Po scale: 0 25 50 above the bar, 100% at the right end ---
+    var poMarks = (barW >= 160)
+        ? [['0', 0], ['25', 0.25], ['50', 0.5], ['100%', 1]]
+        : [['0', 0], ['50', 0.5], ['100', 1]];
+    ctx.font = 'bold ' + fs + 'px system-ui, sans-serif';
     ctx.textBaseline = 'top';
-    ctx.fillText(o.valueText, o.x + o.w, scaleY);
-
-    // Segments
-    var fillCount = Math.round(o.fillFrac * METER_SEGS);
-    fillCount = Math.max(0, Math.min(METER_SEGS, fillCount));
-    var warnSeg = Math.round(o.warnFrac * METER_SEGS);
-
-    for (var s = 0; s < METER_SEGS; s++) {
-        var sx = o.segX(s);
-        if (s < fillCount) {
-            ctx.fillStyle = (s >= warnSeg) ? o.warnColor : o.fillColor;
-        } else {
-            ctx.fillStyle = METER_DARK;
-        }
-        ctx.fillRect(sx, segY, o.segW, segH);
+    ctx.fillStyle = '#e8e8e8';
+    for (var p = 0; p < poMarks.length; p++) {
+        var px = barX + poMarks[p][1] * barW;
+        ctx.textAlign = (p === 0) ? 'left'
+                      : (p === poMarks.length - 1) ? 'right' : 'center';
+        ctx.fillText(poMarks[p][0], (p === 0) ? px - 1 : px, y0 + 1);
     }
 
-    // White baseline
+    // --- Po tick marks (majors on the quarters, minors on the eighths) ---
+    var poTickY = y0 + numH;
+    for (var t = 0; t <= 8; t++) {
+        var major = (t % 2 === 0);
+        ctx.fillStyle = major ? '#ccc' : '#777';
+        ctx.fillRect(Math.round(barX + t / 8 * barW) - 0.5, poTickY, 1,
+                     major ? tickH : tickH - 2);
+    }
+
+    var now = performance.now();
+
+    // --- Po tile bar (all blue; the scale tops out at 100%) ---
+    var poFill = Math.round(Math.min(1, Math.max(0, powerVal / 100)) * tiles);
+    if (poFill >= txPoPeakCount || now - txPoPeakTs > METER_PEAK_HOLD_MS) {
+        txPoPeakCount = poFill;
+        txPoPeakTs = now;
+    }
+    for (var i = 0; i < tiles; i++) {
+        var on = (i < poFill) || (i === txPoPeakCount - 1);
+        ctx.fillStyle = on ? METER_BLUE : METER_DARK;
+        ctx.fillRect(barX + i * pitch + gap / 2, poSegY, tileW, segH);
+    }
     ctx.fillStyle = METER_BASELINE;
-    ctx.fillRect(o.x, baseY, o.w, 1);
+    ctx.fillRect(barX, poLineY, barW, 1);
+
+    // --- SWR tile bar (blue to the 3 mark, red in the over-3 zone) ---
+    // Fill tracks the printed scale: linear 1..3 over the left 2/3,
+    // 3..6 compressed into the red zone toward ∞.
+    var swrFrac = (swrVal <= 3) ? (swrVal - 1) * 0.33
+                                : 0.66 + (swrVal - 3) * (0.34 / 3);
+    var swrFill = Math.round(Math.min(1, Math.max(0, swrFrac)) * tiles);
+    var warnTile = Math.round(0.66 * tiles);
+    if (swrFill >= txSwrPeakCount || now - txSwrPeakTs > METER_PEAK_HOLD_MS) {
+        txSwrPeakCount = swrFill;
+        txSwrPeakTs = now;
+    }
+    for (var j = 0; j < tiles; j++) {
+        var jon = (j < swrFill) || (j === txSwrPeakCount - 1);
+        ctx.fillStyle = jon ? (j <= warnTile ? METER_BLUE : METER_RED) : METER_DARK;
+        ctx.fillRect(barX + j * pitch + gap / 2, swrSegY, tileW, segH);
+    }
+    ctx.fillStyle = METER_BASELINE;
+    ctx.fillRect(barX, swrLineY, barW, 1);
+
+    // --- SWR scale below the bar (same face as RX) ---
+    var swrMarks = (barW >= 220)
+        ? [['1', 0], ['1.5', 0.165], ['2', 0.33], ['2.5', 0.5], ['3', 0.66]]
+        : [['1', 0], ['2', 0.33], ['3', 0.66]];
+    ctx.font = fs + 'px system-ui, sans-serif';
+    for (var m = 0; m < swrMarks.length; m++) {
+        var mx = barX + swrMarks[m][1] * barW;
+        ctx.fillStyle = '#aaa';
+        ctx.fillRect(Math.round(mx) - 0.5, swrTickY, 1, tickH - 1);
+        ctx.fillStyle = '#ccc';
+        ctx.textAlign = (m === 0) ? 'left' : 'center';
+        ctx.fillText(swrMarks[m][0], (m === 0) ? mx - 1 : mx, swrNumY);
+    }
+    // red over-3 zone ticks + infinity at the right end
+    ctx.fillStyle = METER_SCALE_RED;
+    for (var rz = 0.73; rz <= 0.92; rz += 0.063)
+        ctx.fillRect(Math.round(barX + rz * barW) - 0.5, swrTickY, 1, tickH - 1);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ccc';
+    ctx.fillText('∞', barX + barW, swrNumY);
+
+    // ALC readout — visible during DIGI TX or FreeDV TX (drives auto-gain)
+    if (digiTxActive || digiTuneActive || (freedvEnabled && micEnabled && isTransmitting)) {
+        ctx.fillStyle = alcVal > 0.05 ? '#ff4444' : '#44cc44';
+        ctx.font = 'bold 9px system-ui, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('ALC ' + Math.round(alcVal * 100) + '%', barX + barW - 12, swrNumY);
+    }
 }
 
 // ============================================================
