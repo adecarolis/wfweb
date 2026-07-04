@@ -1709,7 +1709,8 @@ body.digi-open #bottomBar { grid-row: 5; }
     #bottomBar { padding: 2px 4px; }
     .softBtn { height: 34px; font-size: 11px; }
 }
-@media (max-width: 480px) and (orientation: landscape) {
+@media (max-width: 900px) and (orientation: landscape) {
+    /* 50px digits (~474px of freq row) overflow the freq column below ~900px */
     #freqDisplay { height: 32px; }
     #freqDisplay .freq-digit { width: 32px; height: 32px; background-size: 332px 32px; }
     #freqDisplay .freq-digit.digit-0 { background-position: 0px 0; }
@@ -1723,6 +1724,9 @@ body.digi-open #bottomBar { grid-row: 5; }
     #freqDisplay .freq-digit.digit-8 { background-position: -260px 0; }
     #freqDisplay .freq-digit.digit-9 { background-position: -292px 0; }
     #freqDisplay .freq-digit.digit-dot { width: 7px; background-position: -325px 0; }
+}
+@media (max-width: 600px) and (orientation: landscape) {
+    /* narrow the meter so even 32px digits fit beside it */
     #meterSection { flex: 0 0 35%; }
 }
 @media (orientation: portrait) {
@@ -3254,14 +3258,18 @@ function updateSpanIndex(idx) {
 // CANVAS S-METER (IC-7300 segmented style)
 // ============================================================
 // IC-7300 S-meter constants
-// Segment layout: 21 segs for S0-S9, 14 segs for S9+ (total 35)
-var METER_SEGS = 35;
-var METER_S9_SEG = 21;
+// The RX bar tile grid is computed in drawSMeter (density adapts to width);
+// METER_SEGS only sizes the TX Po/SWR bars.
+var METER_SEGS = 36;
 // IC-7300 colors
-var METER_BLUE = '#4488cc';     // segments below S9
-var METER_RED  = '#cc2222';     // segments above S9
+var METER_BLUE = '#3f8fd6';     // segments below S9
+var METER_RED  = '#dd3327';     // segments above S9
+var METER_SCALE_RED = '#e0524a';// +20/+40/+60dB scale text and ticks
 var METER_DARK = '#1c1c1c';     // inactive segment
 var METER_BASELINE = '#999';    // thin white line under segments
+var METER_PEAK_HOLD_MS = 800;   // IC-7300 style peak-hold segment
+var meterPeakCount = 0;         // held peak fill level (in segments)
+var meterPeakTs = 0;
 
 var alcVal = 0;
 var digiTxGain = 0.25;         // FT8/FT4 audio gain multiplier (conservative start)
@@ -3324,8 +3332,8 @@ function drawMeter() {
     var cw = cssW, ch = cssH;
 
     // --- Shared geometry ---
-    // "S/SWR" label on the left takes ~30px
-    var labelW = 30;
+    // "S/SWR" label column on the left (narrower on small screens)
+    var labelW = cw < 280 ? 24 : 30;
     var barX = labelW + 2;                     // where segments start
     var barW = cw - barX - 2;                  // total width for segments
     var segGap = Math.max(1, Math.round(barW * 0.004));
@@ -3336,7 +3344,7 @@ function drawMeter() {
     function segX(n) { return barX + n * (segW + segGap); }
 
     if (!isTransmitting) {
-        drawSMeter(ctx, cw, ch, barX, barW, segW, segGap, segX, labelW);
+        drawSMeter(ctx, cw, ch, barX, barW);
     } else {
         drawTxMeters(ctx, cw, ch, barX, barW, segW, segGap, segX, labelW);
     }
@@ -3344,117 +3352,122 @@ function drawMeter() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
-function drawSMeter(ctx, cw, ch, barX, barW, segW, segGap, segX, labelW) {
-    // Layout: scale row at top, tick marks, segments, white baseline, value text
-    var scaleY  = 1;       // top of scale numbers
-    var tickY   = 14;      // tick mark top
-    var tickH   = 3;
-    var segY    = 20;      // top of segment bar
-    var segH    = ch - segY - 14;  // leave room for value text at bottom
-    if (segH < 10) segH = 10;
-    var baseY   = segY + segH;     // white baseline
+function drawSMeter(ctx, cw, ch, barX, barW) {
+    // IC-7300 meter face: S scale above the bar, static SWR scale below it,
+    // S9 at the exact center (blue half = S0-S9, red half = S9..+60dB).
+    //
+    // Tile grid: k tiles per S-unit (and therefore 3k tiles per 20 dB on the
+    // red half), so every labelled point (1 3 5 7 9, +20/+40/+60) lands
+    // exactly on a tile center, like the rig. The rig density is k=6
+    // (11 tiles strictly between S7 and S9); narrower meters drop to
+    // k=4 / k=2 so tiles never collapse below ~2px.
+    var k      = barW >= 300 ? 6 : barW >= 190 ? 4 : 2;
+    var s9tile = 9 * k;                   // tile index of S9 (= mid-bar)
+    var tiles  = 18 * k + 1;              // S0 .. S9+60dB inclusive
+    var pitch  = barW / tiles;
+    var gap    = pitch >= 4 ? 1 : 0.5;
+    var tileW  = pitch - gap;
+    function tileCx(i) { return barX + (i + 0.5) * pitch; }  // tile center x
 
-    // --- "S/SWR" label (left side, two lines) ---
-    ctx.fillStyle = '#888';
-    ctx.font = '9px system-ui, sans-serif';
+    var fs    = Math.max(7, Math.min(11, Math.round(cw / 26)));
+    var numH  = fs + 2;                       // scale-number row height
+    var tickH = 4;
+    // The rig's bar is a thin strip — keep tile height at rig-like
+    // proportions instead of stretching to the canvas, and center the
+    // whole face vertically in the leftover space.
+    var segH  = Math.max(7, Math.min(10, Math.round(barW * 0.02)));
+    var faceH = numH + tickH + 1 + segH + 3 + tickH + numH;
+    var y0    = Math.max(0, Math.floor((ch - faceH) / 2));
+    var segY  = y0 + numH + tickH + 1;        // top of segment bar
+    var lineY = segY + segH + 1;              // white baseline under the bar
+
+    // --- "S" / "SWR" row labels (left column) ---
+    ctx.font = fs + 'px system-ui, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText('S', 2, scaleY);
-    ctx.fillStyle = '#666';
-    ctx.fillText('SWR', 2, scaleY + 11);
+    ctx.fillStyle = '#ddd';
+    ctx.fillText('S', 2, y0 + 1);
+    ctx.fillStyle = '#bbb';
+    ctx.fillText('SWR', 2, lineY + 2);
 
-    // --- Scale labels (above segments) ---
-    // S-unit labels: 1, 3, 5, 7, 9 – positioned at their segment
-    // Each S-unit = METER_S9_SEG/9 segments
-    var sPerUnit = METER_S9_SEG / 9;
-    var sLabels = [
-        { text: '1', seg: 1 * sPerUnit },
-        { text: '3', seg: 3 * sPerUnit },
-        { text: '5', seg: 5 * sPerUnit },
-        { text: '7', seg: 7 * sPerUnit },
-        { text: '9', seg: 9 * sPerUnit }
-    ];
-    ctx.font = 'bold 9px system-ui, sans-serif';
+    // --- S scale: 1 3 5 7 9 in white, +20/+40/+60dB in red ---
+    ctx.font = 'bold ' + fs + 'px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = '#ccc';
-    for (var i = 0; i < sLabels.length; i++) {
-        var lx = segX(Math.round(sLabels[i].seg));
-        ctx.fillText(sLabels[i].text, lx, scaleY);
+    ctx.fillStyle = '#e8e8e8';
+    for (var s = 1; s <= 9; s += 2)
+        ctx.fillText('' + s, tileCx(s * k), y0 + 1);
+    // Shorten the red labels when the bar is too narrow for all three
+    var dbLabels = (barW >= 250) ? [[20, '+20'], [40, '+40'], [60, '+60dB']]
+                 : (barW >= 150) ? [[20, '+20'], [40, '+40'], [60, '+60']]
+                                 : [[20, '+20'], [60, '+60']];
+    ctx.fillStyle = METER_SCALE_RED;
+    for (var d = 0; d < dbLabels.length; d++) {
+        var last = (d === dbLabels.length - 1);
+        ctx.textAlign = last ? 'right' : 'center';   // keep +60dB inside the canvas
+        ctx.fillText(dbLabels[d][1],
+                     last ? barX + barW : tileCx(s9tile + dbLabels[d][0] / 60 * s9tile), y0 + 1);
     }
 
-    // +dB labels in red: +20, +40, +60dB
-    var dbPerSeg = 60 / (METER_SEGS - METER_S9_SEG);  // dB per segment in S9+ zone
-    var dbLabels = [
-        { text: '+20', seg: METER_S9_SEG + Math.round(20 / dbPerSeg) },
-        { text: '+40', seg: METER_S9_SEG + Math.round(40 / dbPerSeg) },
-        { text: '+60dB', seg: METER_SEGS - 1 }
-    ];
-    ctx.fillStyle = '#cc4444';
-    for (var j = 0; j < dbLabels.length; j++) {
-        var dx = segX(Math.round(dbLabels[j].seg));
-        ctx.fillText(dbLabels[j].text, dx, scaleY);
-    }
-
-    // --- Tick marks (small vertical lines below scale numbers) ---
-    ctx.fillStyle = '#666';
-    // Ticks at every S-unit position (1-9)
+    // --- S-scale tick marks (hang below the numbers, on tile centers) ---
+    var tickY = y0 + numH;
     for (var t = 1; t <= 9; t++) {
-        var tx = segX(Math.round(t * sPerUnit));
-        ctx.fillRect(Math.round(tx) - 0.5, tickY, 1, tickH);
+        var major = (t % 2 === 1);
+        ctx.fillStyle = major ? '#ccc' : '#777';
+        ctx.fillRect(Math.round(tileCx(t * k)) - 0.5, tickY, 1, major ? tickH : tickH - 2);
     }
-    // Ticks at +20, +40, +60
-    for (var dt = 0; dt < dbLabels.length; dt++) {
-        var dtx = segX(Math.round(dbLabels[dt].seg));
-        ctx.fillStyle = '#884444';
-        ctx.fillRect(Math.round(dtx) - 0.5, tickY, 1, tickH);
-    }
-    // Small dots between major ticks (every other segment)
-    ctx.fillStyle = '#333';
-    for (var dot = 0; dot < METER_SEGS; dot += 2) {
-        var dotx = segX(dot) + segW / 2;
-        ctx.fillRect(Math.round(dotx), tickY + 1, 1, 1);
+    for (var db = 10; db <= 60; db += 10) {
+        var majorDb = (db % 20 === 0);
+        ctx.fillStyle = majorDb ? METER_SCALE_RED : '#8a3a34';
+        ctx.fillRect(Math.round(tileCx(s9tile + db / 60 * s9tile)) - 0.5, tickY, 1,
+                     majorDb ? tickH : tickH - 2);
     }
 
-    // --- Calculate fill level ---
-    var fillCount = 0;
-    if (meterVal <= 0) {
-        // -54 (S0) → 0 segs, 0 (S9) → METER_S9_SEG segs
-        fillCount = Math.round(((meterVal + 54) / 54) * METER_S9_SEG);
-    } else {
-        // 0 (S9) → S9_SEG, 60 (S9+60) → METER_SEGS
-        fillCount = METER_S9_SEG + Math.round(Math.min(60, meterVal) / 60 * (METER_SEGS - METER_S9_SEG));
-    }
-    fillCount = Math.max(0, Math.min(METER_SEGS, fillCount));
+    // --- Fill level: the tile aligned with the current reading is the last lit ---
+    var idx = (meterVal <= 0)
+        ? Math.round((meterVal + 54) / 54 * s9tile)
+        : s9tile + Math.round(Math.min(60, meterVal) / 60 * s9tile);
+    var fillCount = Math.max(0, Math.min(tiles, idx + 1));
 
-    // --- Draw segment bar ---
-    for (var s = 0; s < METER_SEGS; s++) {
-        var sx = segX(s);
-        if (s < fillCount) {
-            ctx.fillStyle = (s < METER_S9_SEG) ? METER_BLUE : METER_RED;
-        } else {
-            ctx.fillStyle = METER_DARK;
-        }
-        ctx.fillRect(sx, segY, segW, segH);
+    // IC-7300 style peak hold: the highest segment lingers briefly
+    var now = performance.now();
+    if (fillCount >= meterPeakCount || now - meterPeakTs > METER_PEAK_HOLD_MS) {
+        meterPeakCount = fillCount;
+        meterPeakTs = now;
+    }
+
+    // --- Tile bar (the S9 boundary tile itself is blue) ---
+    for (var i = 0; i < tiles; i++) {
+        var on = (i < fillCount) || (i === meterPeakCount - 1);
+        ctx.fillStyle = on ? (i <= s9tile ? METER_BLUE : METER_RED) : METER_DARK;
+        ctx.fillRect(barX + i * pitch + gap / 2, segY, tileW, segH);
     }
 
     // --- White baseline under segments (IC-7300 distinctive feature) ---
     ctx.fillStyle = METER_BASELINE;
-    ctx.fillRect(barX, baseY, barW, 1);
+    ctx.fillRect(barX, lineY, barW, 1);
 
-    // --- S-value readout (bottom-left) ---
-    var label;
-    if (meterVal <= 0) {
-        var sUnit = Math.max(0, (meterVal + 54) / 6);
-        label = sUnit >= 9 ? 'S9' : 'S' + Math.floor(Math.min(9, sUnit));
-    } else {
-        label = 'S9+' + Math.round(meterVal) + 'dB';
+    // --- SWR scale below the bar (static face, like the rig) ---
+    var swrTickY = lineY + 2;
+    var swrNumY  = swrTickY + tickH;
+    var swrMarks = (barW >= 220)
+        ? [['1', 0], ['1.5', 0.165], ['2', 0.33], ['2.5', 0.5], ['3', 0.66]]
+        : [['1', 0], ['2', 0.33], ['3', 0.66]];
+    ctx.font = fs + 'px system-ui, sans-serif';
+    for (var m = 0; m < swrMarks.length; m++) {
+        var mx = barX + swrMarks[m][1] * barW;
+        ctx.fillStyle = '#aaa';
+        ctx.fillRect(Math.round(mx) - 0.5, swrTickY, 1, tickH - 1);
+        ctx.fillStyle = '#ccc';
+        ctx.textAlign = (m === 0) ? 'left' : 'center';
+        ctx.fillText(swrMarks[m][0], (m === 0) ? mx - 1 : mx, swrNumY);
     }
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 10px system-ui, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(label, 2, ch - 1);
+    // red over-3 zone ticks + infinity at the right end
+    ctx.fillStyle = METER_SCALE_RED;
+    for (var rz = 0.73; rz <= 0.92; rz += 0.063)
+        ctx.fillRect(Math.round(barX + rz * barW) - 0.5, swrTickY, 1, tickH - 1);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ccc';
+    ctx.fillText('∞', barX + barW, swrNumY);
 }
 
 function drawTxMeters(ctx, cw, ch, barX, barW, segW, segGap, segX, labelW) {
