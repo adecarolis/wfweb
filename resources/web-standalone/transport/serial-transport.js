@@ -1717,6 +1717,11 @@
             var preamps = (entry && entry.preamps && entry.preamps.length)
                 ? entry.preamps
                 : [{num:0,name:'OFF'},{num:1,name:'PRE1'},{num:2,name:'PRE2'}];
+            // Attenuator steps vary widely (IC-7300: 0/20 dB; IC-7610: 0..45
+            // in 3 dB steps). The P.AMP/ATT cycle button needs the real list.
+            var attenuators = (entry && entry.attenuators && entry.attenuators.length)
+                ? entry.attenuators
+                : [{num:0,name:'0 dB'},{num:20,name:'-20 dB'}];
             this._emit('rigInfo', {
                 version: ((typeof window !== 'undefined' && window.__WFWEB_SEMVER__) || 'dev') + '-direct',
                 model: rigDisplayName(this.civAddr),
@@ -1725,6 +1730,7 @@
                 filters: DEFAULT_FILTERS,
                 spans: DEFAULT_SPANS,
                 preamps: preamps,
+                attenuators: attenuators,
                 antennas: this._antennas,
                 hasRxAnt: this._hasRxAnt,
                 hasFilterSettings: true,

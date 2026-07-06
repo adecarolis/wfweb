@@ -2725,6 +2725,7 @@ var scopeDragPendingReset = false;
 var currentPanel = 'default';
 var availableModes = defaultModes.slice();
 var availablePreamps = [];
+var availableAttenuators = [];  // [{num, name}] incl. a num:0 "off" at index 0
 var availableFilters = [];
 var availableAntennas = [];   // [{num, name}] — empty on single-antenna rigs (#76)
 var hasRxAnt = false;         // rig has an RX-antenna input (IC-7610/785x)
@@ -2952,6 +2953,7 @@ function handleMessage(msg) {
                 updateTxAudioAvailable(msg.txAudioAvailable || false);
                 if (msg.spans) populateSpans(msg.spans);
                 if (msg.preamps) populatePreamps(msg.preamps);
+                if (msg.attenuators) populateAttenuators(msg.attenuators);
                 if (msg.antennas) populateAntennas(msg.antennas);
                 if (msg.hasRxAnt !== undefined) hasRxAnt = !!msg.hasRxAnt;
                 if (msg.filters) populateFilters(msg.filters);
@@ -2973,6 +2975,7 @@ function handleMessage(msg) {
             updateTxAudioAvailable(msg.txAudioAvailable || false);
             if (msg.spans) populateSpans(msg.spans);
             if (msg.preamps) populatePreamps(msg.preamps);
+            if (msg.attenuators) populateAttenuators(msg.attenuators);
             if (msg.antennas) populateAntennas(msg.antennas);
             if (msg.hasRxAnt !== undefined) hasRxAnt = !!msg.hasRxAnt;
             if (msg.filters) populateFilters(msg.filters);
@@ -3600,6 +3603,7 @@ function throttledSend(name, cmd, val) {
 function populateModes(modes) { availableModes = modes; if (currentPanel === 'mode') renderModeOverlay(); }
 function populateSpans(spans) { availableSpans = spans; }
 function populatePreamps(preamps) { availablePreamps = preamps || []; }
+function populateAttenuators(atts) { availableAttenuators = atts || []; }
 function populateFilters(filters) { availableFilters = filters || []; }
 function populateAntennas(antennas) { availableAntennas = antennas || []; }
 function updateAntennaState(ant, rx) {
@@ -4403,7 +4407,16 @@ function renderAudioMicOverlay() {
 }
 
 function getPreampAttState() {
-    if (currentAttenuator > 0) return { label: 'ATT', active: true };
+    if (currentAttenuator > 0) {
+        // Show the actual dB (e.g. "-21 dB") so multi-step rigs (IC-7610 has
+        // 16 steps) reveal the level, not just "ATT".
+        for (var i = 0; i < availableAttenuators.length; i++) {
+            if (availableAttenuators[i].num === currentAttenuator) {
+                return { label: availableAttenuators[i].name, active: true };
+            }
+        }
+        return { label: 'ATT', active: true };
+    }
     if (currentPreamp > 0) {
         return { label: 'P.AMP' + currentPreamp, active: true };
     }
@@ -4411,28 +4424,43 @@ function getPreampAttState() {
 }
 
 function cyclePreampAtt() {
-    // Cycle: OFF → ATT → PRE1 → PRE2 → OFF
-    if (currentAttenuator === 0 && currentPreamp === 0) {
-        // OFF → ATT
-        send({ cmd: 'setAttenuator', value: 20 });
-    } else if (currentAttenuator > 0) {
-        // ATT → PRE1 (turn off ATT first)
-        send({ cmd: 'setAttenuator', value: 0 });
-        var pre1 = availablePreamps.length > 1 ? availablePreamps[1].num : 1;
-        send({ cmd: 'setPreamp', value: pre1 });
-    } else if (currentPreamp > 0) {
-        // Find current preamp index
-        var idx = -1;
-        for (var i = 0; i < availablePreamps.length; i++) {
-            if (availablePreamps[i].num === currentPreamp) { idx = i; break; }
+    // One button walks OFF → each ATT step → each PRE step → OFF, driven by
+    // the rig's real caps (both lists carry a num:0 "off" entry at index 0).
+    // Attenuator hardcoding the old "20 dB" step broke on rigs whose steps
+    // differ (IC-7610: 0,3,6,…,45 — 20 is not a valid step). ATT and preamp
+    // stay mutually exclusive, matching the radio.
+    var atts = availableAttenuators, pres = availablePreamps;
+
+    if (currentAttenuator > 0) {
+        // In the ATT run: advance to the next step, or hand off to PRE1.
+        var ai = 0;
+        for (var i = 1; i < atts.length; i++) {
+            if (atts[i].num === currentAttenuator) { ai = i; break; }
         }
-        // If there's a higher preamp, go to it; otherwise back to OFF
-        if (idx >= 0 && idx + 1 < availablePreamps.length && availablePreamps[idx + 1].num > 0) {
-            send({ cmd: 'setPreamp', value: availablePreamps[idx + 1].num });
+        if (ai > 0 && ai + 1 < atts.length) {
+            send({ cmd: 'setAttenuator', value: atts[ai + 1].num });
+        } else {
+            send({ cmd: 'setAttenuator', value: 0 });
+            if (pres.length > 1) send({ cmd: 'setPreamp', value: pres[1].num });
+        }
+        return;
+    }
+    if (currentPreamp > 0) {
+        // In the PRE run: advance to the next preamp, or back to OFF.
+        var pi = 0;
+        for (var j = 1; j < pres.length; j++) {
+            if (pres[j].num === currentPreamp) { pi = j; break; }
+        }
+        if (pi > 0 && pi + 1 < pres.length) {
+            send({ cmd: 'setPreamp', value: pres[pi + 1].num });
         } else {
             send({ cmd: 'setPreamp', value: 0 });
         }
+        return;
     }
+    // Both off: start the ATT run, or the PRE run if the rig has no attenuator.
+    if (atts.length > 1) send({ cmd: 'setAttenuator', value: atts[1].num });
+    else if (pres.length > 1) send({ cmd: 'setPreamp', value: pres[1].num });
 }
 
 function antennaName(num) {

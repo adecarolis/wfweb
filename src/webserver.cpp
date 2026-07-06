@@ -430,6 +430,16 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
             }
             obj["preamps"] = preamps;
         }
+        if (!rigCaps->attenuators.empty()) {
+            QJsonArray attenuators;
+            for (const genericType &a : rigCaps->attenuators) {
+                QJsonObject ao;
+                ao["num"] = a.num;
+                ao["name"] = a.name;
+                attenuators.append(ao);
+            }
+            obj["attenuators"] = attenuators;
+        }
         if (!rigCaps->antennas.empty()) {
             QJsonArray antennas;
             for (const genericType &a : rigCaps->antennas) {
@@ -2773,6 +2783,16 @@ QJsonObject webServer::buildInfoJson() const
                 preamps.append(po);
             }
             info["preamps"] = preamps;
+        }
+        if (!rigCaps->attenuators.empty()) {
+            QJsonArray attenuators;
+            for (const genericType &a : rigCaps->attenuators) {
+                QJsonObject ao;
+                ao["num"] = a.num;
+                ao["name"] = a.name;
+                attenuators.append(ao);
+            }
+            info["attenuators"] = attenuators;
         }
         if (!rigCaps->antennas.empty()) {
             QJsonArray antennas;

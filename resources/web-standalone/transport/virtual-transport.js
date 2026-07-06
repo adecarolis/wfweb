@@ -91,6 +91,10 @@
                 // multi-antenna rig on the bench.
                 antenna: 0,
                 rxAntenna: false,
+                // Preamp / attenuator both off at start (num 0). The P.AMP/ATT
+                // cycle button walks the caps lists from here.
+                preamp: 0,
+                attenuator: 0,
                 // -54 dB = S0. The drawSMeter() scale treats 0 as S9, so a
                 // default of 0 would paint a permanent full-scale signal.
                 sMeter: -54,
@@ -422,6 +426,12 @@
                 filters: DEFAULT_FILTERS,
                 spans: DEFAULT_SPANS,
                 preamps: DEFAULT_PREAMPS,
+                // Multi-step attenuator so the P.AMP/ATT cycle button can be
+                // exercised without a real IC-7610 (which has 16 steps).
+                attenuators: [
+                    { num: 0, name: '0 dB' }, { num: 6, name: '-6 dB' },
+                    { num: 12, name: '-12 dB' }, { num: 18, name: '-18 dB' },
+                ],
                 antennas: [{ num: 0, name: 'ANT 1' }, { num: 1, name: 'ANT 2' }],
                 hasRxAnt: true,
                 hasFilterSettings: true,
@@ -452,6 +462,8 @@
                 transmitting: this.state.transmitting,
                 antenna: this.state.antenna,
                 rxAntenna: this.state.rxAntenna,
+                preamp: this.state.preamp,
+                attenuator: this.state.attenuator,
             };
             this._emit('status', s);
         }
