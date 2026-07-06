@@ -2147,6 +2147,15 @@ body.digi-open #bottomBar { grid-row: 5; }
         <div id="funcOverlay" class="overlay">
             <div class="overlay-title">FUNCTION</div>
             <div class="overlay-grid" id="funcGrid"></div>
+            <!-- Attenuator slider — only shown for rigs with a multi-step
+                 attenuator (IC-7610/785x/7760/R8600); simple rigs keep the
+                 combined P.AMP/ATT cycle button instead. -->
+            <div class="gain-row" id="funcAttRow" style="display:none;">
+                <span class="gain-label">ATT</span>
+                <div class="gain-bar-bg"><div class="gain-bar-fill" id="funcAttFill" style="width:0%"></div>
+                    <input type="range" id="funcAttSlider" min="0" max="1" value="0"></div>
+                <span class="gain-val" id="funcAttVal">OFF</span>
+            </div>
         </div>
 
         <!-- Span overlay -->
@@ -3536,6 +3545,27 @@ function initSliderTracking() {
             }
         });
     });
+    // FUNC-overlay attenuator slider (index into availableAttenuators; #76).
+    (function() {
+        var slider = document.getElementById('funcAttSlider');
+        if (!slider) return;
+        slider.addEventListener('mousedown', function() { sliderDragging['funcAtt'] = true; });
+        slider.addEventListener('touchstart', function() { sliderDragging['funcAtt'] = true; });
+        slider.addEventListener('mouseup', function() { sliderDragging['funcAtt'] = false; });
+        slider.addEventListener('touchend', function() { sliderDragging['funcAtt'] = false; });
+        slider.addEventListener('mouseleave', function() { sliderDragging['funcAtt'] = false; });
+        slider.addEventListener('touchcancel', function() { sliderDragging['funcAtt'] = false; });
+        slider.addEventListener('input', function() {
+            var idx = parseInt(slider.value);
+            var a = availableAttenuators[idx] || { num: 0, name: 'OFF' };
+            sliderSetTimes['funcAtt'] = Date.now();
+            var max = Math.max(1, availableAttenuators.length - 1);
+            var fill = document.getElementById('funcAttFill');
+            if (fill) fill.style.width = (idx / max * 100) + '%';
+            document.getElementById('funcAttVal').textContent = idx === 0 ? 'OFF' : (a.name || ('-' + a.num + ' dB'));
+            throttledSend('attenuator', 'setAttenuator', a.num);
+        });
+    })();
 }
 
 function formatBW(val) {
@@ -4280,10 +4310,18 @@ function renderFuncOverlay() {
     var grid = document.getElementById('funcGrid');
     grid.innerHTML = '';
 
-    // Preamp/Attenuator button: cycles OFF → ATT → PRE1 → PRE2
-    var paState = getPreampAttState();
-    var preBtn = makeFuncBtn('P.AMP/ATT', paState.label, paState.active, function() { cyclePreampAtt(); });
-    grid.appendChild(preBtn);
+    // Preamp / attenuator. On rigs with a multi-step attenuator (IC-7610 has
+    // 16 steps) cycling through every step to reach the preamp is painful, so
+    // the button becomes preamp-only and the attenuator gets a slider below
+    // the grid. Simple rigs (IC-7300: off/-20) keep the combined cycle button.
+    var multiStepAtt = availableAttenuators.length > 2;
+    if (multiStepAtt) {
+        var pState = getPreampState();
+        grid.appendChild(makeFuncBtn('P.AMP', pState.label, pState.active, cyclePreamp));
+    } else {
+        var paState = getPreampAttState();
+        grid.appendChild(makeFuncBtn('P.AMP/ATT', paState.label, paState.active, function() { cyclePreampAtt(); }));
+    }
 
     // Tuner button
     var tunerLabel = 'TUNER';
@@ -4357,6 +4395,7 @@ function renderFuncOverlay() {
     back.onclick = function() { setPanel('default'); };
     grid.appendChild(back);
 
+    updateFuncAttRow(multiStepAtt);
     document.getElementById('funcOverlay').classList.add('visible');
 }
 
@@ -4461,6 +4500,60 @@ function cyclePreampAtt() {
     // Both off: start the ATT run, or the PRE run if the rig has no attenuator.
     if (atts.length > 1) send({ cmd: 'setAttenuator', value: atts[1].num });
     else if (pres.length > 1) send({ cmd: 'setPreamp', value: pres[1].num });
+}
+
+// --- Preamp-only + attenuator-slider controls (multi-step-attenuator rigs) ---
+// On the IC-7610 and friends the attenuator is a slider (see #funcAttRow) and
+// this button only walks the preamp: OFF → PRE1 → PRE2 → OFF.
+function getPreampState() {
+    if (currentPreamp > 0) return { label: 'P.AMP' + currentPreamp, active: true };
+    return { label: 'OFF', active: false };
+}
+function cyclePreamp() {
+    var pres = availablePreamps;
+    var pi = 0;
+    for (var j = 1; j < pres.length; j++) {
+        if (pres[j].num === currentPreamp) { pi = j; break; }
+    }
+    if (currentPreamp > 0 && pi > 0 && pi + 1 < pres.length) {
+        send({ cmd: 'setPreamp', value: pres[pi + 1].num });
+    } else if (currentPreamp > 0) {
+        send({ cmd: 'setPreamp', value: 0 });
+    } else if (pres.length > 1) {
+        send({ cmd: 'setPreamp', value: pres[1].num });
+    }
+}
+
+// Index of the current attenuator level within availableAttenuators (0 = off).
+function funcAttIndex() {
+    for (var i = 0; i < availableAttenuators.length; i++) {
+        if (availableAttenuators[i].num === currentAttenuator) return i;
+    }
+    return 0;
+}
+// Show/hide + configure the FUNC-overlay attenuator slider.
+function updateFuncAttRow(show) {
+    var row = document.getElementById('funcAttRow');
+    if (!row) return;
+    if (!show) { row.style.display = 'none'; return; }
+    row.style.display = '';
+    var slider = document.getElementById('funcAttSlider');
+    if (slider) slider.max = Math.max(1, availableAttenuators.length - 1);
+    syncFuncAttSlider();
+}
+// Reflect currentAttenuator onto the slider position / fill / label.
+function syncFuncAttSlider() {
+    if (sliderDragging['funcAtt']) return;
+    if ((Date.now() - (sliderSetTimes['funcAtt'] || 0)) < SLIDER_DEBOUNCE_MS) return;
+    var slider = document.getElementById('funcAttSlider');
+    if (!slider) return;
+    var idx = funcAttIndex();
+    var max = Math.max(1, availableAttenuators.length - 1);
+    slider.value = idx;
+    var fill = document.getElementById('funcAttFill');
+    if (fill) fill.style.width = (idx / max * 100) + '%';
+    var val = document.getElementById('funcAttVal');
+    if (val) val.textContent = idx === 0 ? 'OFF' : (availableAttenuators[idx].name || ('-' + availableAttenuators[idx].num + ' dB'));
 }
 
 function antennaName(num) {
