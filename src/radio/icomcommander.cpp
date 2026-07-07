@@ -2986,10 +2986,15 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
     cmd = getCommand(func,payload,val,receiver);
     if (cmd.cmd != funcNone)
     {
-        // Certain commands need the receiver number adding first!
+        // Certain commands need the receiver (scope-window) number adding first.
+        // NOTE: funcScopeCenterType (0x27 0x1C) is deliberately NOT in this list —
+        // unlike per-window scope commands, the CENTER-type display setting is global
+        // and takes no scope byte. Icom rigs reject the prefixed form (0x27 0x1C 00 vv)
+        // with an NG/FA response; the correct wire form is 0x27 0x1C vv. Verified on a
+        // real IC-7300 (issue #75).
         switch (cmd.cmd) {
         case funcFreq: case funcMode: case funcScopeMode: case funcScopeSpan: case funcScopeRef: case funcScopeHold:
-        case funcScopeSpeed: case funcScopeRBW: case funcScopeVBW: case funcScopeCenterType: case funcScopeEdge:
+        case funcScopeSpeed: case funcScopeRBW: case funcScopeVBW: case funcScopeEdge:
             payload.append(receiver);
             break;
         default:
