@@ -1153,6 +1153,14 @@ void servermain::initPeriodicPolling()
                 // edges, so the marker/passband/span all appear frozen (issue #75).
                 if (rigCaps->commands.contains(funcScopeMode))
                     queue->add(priorityImmediate, queueItem(funcScopeMode, QVariant::fromValue(quint8(0)), false));
+                // Force Carrier Point Center: the web UI pins the RX indicator to the
+                // carrier (VFO) frequency at mid-screen, so the scope must centre on the
+                // carrier point too. With the rig set to Filter Center (0) the spectrum
+                // centres on the filter passband instead, offsetting the display from the
+                // actual tuning — a signal aligned to the visual passband is then mistuned
+                // in the RX audio (issue #75). 1 = Carrier Point Center.
+                if (rigCaps->commands.contains(funcScopeCenterType))
+                    queue->add(priorityImmediate, queueItem(funcScopeCenterType, QVariant::fromValue(quint8(1)), false));
             }
 
             qInfo(logSystem()) << "Periodic polling restored for" << rigCaps->modelName;
