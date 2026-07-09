@@ -6,6 +6,30 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.8.3 (2026-07-08)
+--------------------
+
+Web UI:
+- New ANT / RX ANT antenna buttons on the FUNC page for rigs with
+  selectable antennas. (#76)
+- Attenuator and preamp rework: a P.AMP button toggles the preamp on its
+  own, and a new attenuator slider walks the rig's real attenuator steps
+  instead of assuming a fixed 20 dB. (#76)
+- Redesigned S-meter and TX meters to match the IC-7300 face.
+- Waterfall palette now auto-references the noise floor so weak signals
+  stay visible as band conditions change.
+
+Scope / waterfall:
+- Center scope mode is now forced on connect and the Carrier Point is
+  centered, so the waterfall marker, passband and span track tuning
+  correctly on rigs that power up in Fixed scope mode (e.g. IC-7610). The
+  Scope Center Type is now sent without the trailing scope-window byte. (#75)
+
+Server build:
+- Dropped the #72 LAN web-mic TX diagnostics, keeping a single one-shot
+  confirmation log line.
+
+
 v0.8.2 (2026-06-28)
 --------------------
 
