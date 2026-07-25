@@ -131,15 +131,17 @@ def extract_commands(props: dict[str, str]) -> dict[str, list[int]]:
     return out
 
 
-# inputType enum from include/rigidentities.h. We only really need USB
-# (the modulation source the browser audio path drives) but extract a few
-# more so the code can swap more easily later.
-INPUT_NAMES = {
-    0: "MIC", 1: "ACCA", 2: "ACCB", 3: "USB", 4: "LAN",
-    5: "MICACCA", 6: "MICACCB", 7: "ACCAACCB", 8: "MICACCAACCB",
-    9: "SPDIF", 10: "MICUSB", 11: "AV", 12: "MICAV",
-    13: "ACCUSB", 14: "LINE",
-}
+def normalize_input_name(name: str) -> str:
+    """Normalize a .rig input Name to a JS identifier key.
+
+    'USB' -> 'USB', 'M/U' -> 'MU', '"MIC, ACC"' -> 'MICACC'. The Name
+    field is the authoritative label for what a Reg value selects; the
+    Num field is an enum index that is NOT consistent across .rig files
+    (e.g. IC-705 has USB at Num=1, which rigidentities.h calls ACCA, and
+    WLAN at Num=3, which it calls USB — keying by Num wrote USB:0x03 and
+    made standalone TX silent, issue #79).
+    """
+    return re.sub(r"[^A-Z0-9]", "", name.upper())
 
 
 def extract_num_name_list(props: dict[str, str], prefix: str) -> list[dict]:
@@ -172,10 +174,11 @@ def extract_num_name_list(props: dict[str, str], prefix: str) -> list[dict]:
 
 
 def extract_inputs(props: dict[str, str]) -> dict[str, int]:
-    """Walk Inputs\\N\\... entries — each gives a Num (enum) -> Reg (byte) map.
+    """Walk Inputs\\N\\... entries — each gives a Name -> Reg (byte) map.
 
     We return a name-keyed dict so the JS side can look up by input kind
-    (e.g., 'USB') without knowing the enum value.
+    (e.g., 'USB') without knowing the register value. Keys come from the
+    .rig Name field (see normalize_input_name), never from the Num enum.
     """
     pat = re.compile(r"^Rig/Inputs\\(\d+)\\(\w+)$")
     found: dict[int, dict[str, str]] = {}
@@ -187,13 +190,13 @@ def extract_inputs(props: dict[str, str]) -> dict[str, int]:
         field = m.group(2)
         found.setdefault(idx, {})[field] = v
     out: dict[str, int] = {}
-    for idx, e in found.items():
+    for idx in sorted(found):
+        e = found[idx]
         try:
-            num = int(e.get("Num", "-1"))
             reg = int(e.get("Reg", "-1"))
         except ValueError:
             continue
-        name = INPUT_NAMES.get(num)
+        name = normalize_input_name(e.get("Name", "").strip().strip('"'))
         if name and reg >= 0:
             out[name] = reg
     return out

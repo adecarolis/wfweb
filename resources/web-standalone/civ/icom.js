@@ -538,6 +538,15 @@
     function getRigModInputs(civAddr) {
         var caps = (typeof globalThis !== 'undefined' ? globalThis : window).IcomRigCaps;
         var entry = caps && caps[civAddr];
+        // Network (WLAN/LAN) register values. The browser has no network
+        // audio path to the rig, so selecting one of these as the mod
+        // input always means silent TX — the transport refuses to ever
+        // write them (issue #79).
+        var netRegs = [];
+        if (entry && entry.inputs) {
+            if (entry.inputs.WLAN != null) netRegs.push(entry.inputs.WLAN);
+            if (entry.inputs.LAN  != null) netRegs.push(entry.inputs.LAN);
+        }
         return {
             off:    (entry && entry.cmds && entry.cmds.modOff)   || DEFAULT_MOD_INPUTS.off,
             data1:  (entry && entry.cmds && entry.cmds.modData1) || DEFAULT_MOD_INPUTS.data1,
@@ -545,6 +554,7 @@
                         ? entry.inputs.USB : DEFAULT_MOD_INPUTS.usbReg,
             micReg: (entry && entry.inputs && entry.inputs.MIC != null)
                         ? entry.inputs.MIC : DEFAULT_MOD_INPUTS.micReg,
+            netRegs: netRegs,
         };
     }
     // Append a single value byte to a CI-V prefix, returning a fresh Uint8Array.

@@ -266,9 +266,12 @@
                 initPromise: null,  // dedupes concurrent _ensureTxAudioCtx() calls
             };
 
-            // Saved Data-Off Mod Input value, captured before we flip the
-            // rig to USB on enableMic so we can restore on disable.
+            // Saved mod-input baselines (Data-Off and DATA1 registers),
+            // captured on connect before we flip the rig to USB so we can
+            // put the rig back the way the user had it — on mic-off, mode
+            // disable, and disconnect (issue #79).
             this._savedDataOffMod = null;
+            this._savedDataMod = null;
 
             // Per-rig MOD INPUT command bytes + USB/MIC register values.
             // Filled in once we identify the rig (default = IC-7300 layout
@@ -356,6 +359,10 @@
         }
 
         async close() {
+            // Put the rig's mod inputs back the way the user had them
+            // before we drop the link (issue #79). The command queue is
+            // about to be cleared, so the frames are written directly.
+            await this._restoreModInputsDirect();
             this._stopPolling();
             this._open = false;
             await this._stopRxAudio();
@@ -666,19 +673,14 @@
                     }
                     return;
                 case 'enableMic':
-                    // Switch the rig's modulation input to USB so it
-                    // accepts the audio we're streaming over the USB
-                    // audio interface (otherwise SSB-voice TX is silent
-                    // because the rig is listening to the front-panel
-                    // MIC). Restore the previous setting on mic-off.
-                    if (!this._rigCanTransmit()) return;
-                    if (obj.value) {
-                        this._enqueue('setDataOffMod',
-                            civ.cmdSetModInput(this._modIn.off, this._modIn.usbReg));
-                    } else if (this._savedDataOffMod !== null) {
-                        this._enqueue('setDataOffMod',
-                            civ.cmdSetModInput(this._modIn.off, this._savedDataOffMod));
-                    }
+                    // Re-assert USB as the modulation source. The registers
+                    // are already set at connect and stay on USB for the
+                    // whole session (restored only on disconnect), but the
+                    // user may have twiddled the rig menu in between —
+                    // mic-on is the moment it must be right.
+                    if (!this._rigCanTransmit() || !obj.value) return;
+                    this._setModInput('setDataOffMod', this._modIn.off, this._modIn.usbReg);
+                    this._setModInput('setDataMod', this._modIn.data1, this._modIn.usbReg);
                     return;
                 case 'getMemories':
                     this._memScanStart(obj);
@@ -1087,7 +1089,18 @@
             this._enqueue('readSplit',      civ.cmdReadSplit());
             this._enqueue('readTuner',      civ.cmdReadTuner());
             this._enqueue('readScopeSpan',  civ.cmdReadScopeSpan());
-            this._enqueue('readDataOffMod', civ.cmdReadModInput(this._modIn.off));
+            // Mod inputs: read the user's current settings first (the
+            // replies become the restore-on-disconnect baseline), then
+            // switch both registers to USB for the whole session — the
+            // browser streams all TX audio (voice, digi, packet) over the
+            // USB audio interface, so any other source means silent TX
+            // (issue #79). The originals are put back in close().
+            if (this._rigCanTransmit()) {
+                this._enqueue('readDataOffMod', civ.cmdReadModInput(this._modIn.off));
+                this._enqueue('readDataMod',    civ.cmdReadModInput(this._modIn.data1));
+                this._setModInput('setDataOffMod', this._modIn.off, this._modIn.usbReg);
+                this._setModInput('setDataMod', this._modIn.data1, this._modIn.usbReg);
+            }
             this._enqueue('readFilterWidth', civ.cmdReadFilterWidth());
 
             // Enable scope output (waterfall). Single-byte payloads match
@@ -1181,6 +1194,46 @@
             } finally {
                 this._draining = false;
             }
+        }
+
+        // Queue a MOD INPUT register write, refusing network (WLAN/LAN)
+        // values: the browser has no network audio path to the rig, so a
+        // network mod input always means silent TX. Standalone must never
+        // select one no matter what the caps table says (issue #79).
+        _setModInput(key, prefix, reg) {
+            if (prefix == null || reg == null) return;
+            if (this._modIn.netRegs && this._modIn.netRegs.indexOf(reg) !== -1) {
+                console.warn('SerialRigTransport: refusing to set mod input to network source 0x'
+                    + reg.toString(16) + ' (' + key + ')');
+                return;
+            }
+            this._enqueue(key, civ.cmdSetModInput(prefix, reg));
+        }
+
+        // Put both mod-input registers back to the values the rig had
+        // before we touched them (captured by the connect-time reads).
+        // Only runs on disconnect: close() clears the command queue, so
+        // the restore frames go straight to the port (best-effort,
+        // deadline-guarded). Never restores a network (WLAN/LAN) value.
+        async _restoreModInputsDirect() {
+            if (!this.writer || !this._modIn) return;
+            var regs = [
+                [this._modIn.off,   this._savedDataOffMod],
+                [this._modIn.data1, this._savedDataMod],
+            ];
+            for (var i = 0; i < regs.length; i++) {
+                var prefix = regs[i][0], v = regs[i][1];
+                if (prefix == null || v === null) continue;
+                if (this._modIn.netRegs && this._modIn.netRegs.indexOf(v) !== -1) continue;
+                try {
+                    var frame = civ.buildFrame(this.civAddr, this.controllerAddr,
+                        civ.cmdSetModInput(prefix, v));
+                    await withDeadline(this.writer.write(frame), 1000, 'Mod-input restore write');
+                    await new Promise(function (r) { setTimeout(r, 20); });
+                } catch (e) { /* best effort — the link may already be gone */ }
+            }
+            this._savedDataOffMod = null;
+            this._savedDataMod = null;
         }
 
         async _readLoop() {
@@ -1419,21 +1472,27 @@
                 return;
             }
 
-            // 0x1A 0x05 0x00 0x66 — Data Off Mod Input reply.
-            // Cache the rig's current value so we can restore it after the
-            // user toggles mic off. Prefix bytes are rig-specific.
-            var modOffPrefix = this._modIn.off;
-            var modOffMatch = payload.length >= modOffPrefix.length + 1;
-            for (var mi = 0; mi < modOffPrefix.length && modOffMatch; mi++) {
-                if (payload[mi] !== modOffPrefix[mi]) modOffMatch = false;
-            }
-            if (modOffMatch) {
-                var v = civ.parseModInputReply(payload, modOffPrefix);
+            // 0x1A 0x05 NN MM — mod-input register replies (Data-Off and
+            // DATA1; prefix bytes are rig-specific). Cache the rig's
+            // current values so we can restore them on mic-off / disconnect.
+            var modOffV = civ.parseModInputReply(payload, this._modIn.off);
+            if (modOffV !== null) {
                 // Don't overwrite our saved value with our own write-back
-                // (when rig echoes back USB after we set it). Keep the
-                // first-seen value as the user's baseline.
-                if (v !== null && this._savedDataOffMod === null && v !== this._modIn.usbReg) {
-                    this._savedDataOffMod = v;
+                // (when rig echoes back USB after we set it), and never
+                // save a network (WLAN/LAN) value as the baseline — it is
+                // unusable in standalone (likely a leftover from the old
+                // rig-caps bug) and we must never write it back.
+                if (this._savedDataOffMod === null && modOffV !== this._modIn.usbReg
+                        && (!this._modIn.netRegs || this._modIn.netRegs.indexOf(modOffV) === -1)) {
+                    this._savedDataOffMod = modOffV;
+                }
+                return;
+            }
+            var modDataV = civ.parseModInputReply(payload, this._modIn.data1);
+            if (modDataV !== null) {
+                if (this._savedDataMod === null && modDataV !== this._modIn.usbReg
+                        && (!this._modIn.netRegs || this._modIn.netRegs.indexOf(modDataV) === -1)) {
+                    this._savedDataMod = modDataV;
                 }
                 return;
             }
@@ -2265,12 +2324,10 @@
                 // but transmits empty carrier (the front-panel MIC source
                 // sees nothing). Set both DATA-OFF (FM/USB voice) and DATA1
                 // (USB-D / LSB-D data mode) so it works across all packet
-                // bauds. We don't try to restore — the voice path's own
-                // enableMic flow re-sets these for SSB voice.
-                this._enqueue('setDataOffMod',
-                    civ.cmdSetModInput(this._modIn.off, this._modIn.usbReg));
-                this._enqueue('setDataMod',
-                    civ.cmdSetModInput(this._modIn.data1, this._modIn.usbReg));
+                // bauds. Restored on disconnect (close) — the voice path's
+                // own enableMic flow re-sets these for SSB voice.
+                this._setModInput('setDataOffMod', this._modIn.off, this._modIn.usbReg);
+                this._setModInput('setDataMod', this._modIn.data1, this._modIn.usbReg);
 
                 // Make sure the TX audio context is initialised BEFORE we
                 // key the rig and start pumping samples. This SHOULD already
@@ -2564,10 +2621,8 @@
                 // waterfall shows what we sent. (No frame-level RX shim
                 // for connected-mode I-frames — those'd need ax25_pack
                 // out of the link's tx_buf, which we don't have here.)
-                this._enqueue('setDataOffMod',
-                    civ.cmdSetModInput(this._modIn.off, this._modIn.usbReg));
-                this._enqueue('setDataMod',
-                    civ.cmdSetModInput(this._modIn.data1, this._modIn.usbReg));
+                this._setModInput('setDataOffMod', this._modIn.off, this._modIn.usbReg);
+                this._setModInput('setDataMod', this._modIn.data1, this._modIn.usbReg);
 
                 if (!this._txAudio.ctx) {
                     try { await this._ensureTxAudioCtx(); }
@@ -2673,9 +2728,8 @@
             await this._radeEnsureModem();
             // Flip the rig MOD INPUT to USB — same recipe as enableMic for
             // SSB voice, since RADE rides on USB-DATA-OFF (no rig pre-emph).
-            if (this._rigCanTransmit() && this._modIn && this._modIn.off != null) {
-                this._enqueue('setDataOffMod',
-                    civ.cmdSetModInput(this._modIn.off, this._modIn.usbReg));
+            if (this._rigCanTransmit() && this._modIn) {
+                this._setModInput('setDataOffMod', this._modIn.off, this._modIn.usbReg);
             }
             this._rade.enabled = true;
             this._emit('message', { type: 'radeStatus', enabled: true });
@@ -2686,11 +2740,6 @@
             this._rade.enabled = false;
             this._rade.txActive = false;
             this._rade.eooSent  = false;
-            // Restore the previous DATA-OFF mod input (if we saved one).
-            if (this._rigCanTransmit() && this._savedDataOffMod !== null && this._modIn) {
-                this._enqueue('setDataOffMod',
-                    civ.cmdSetModInput(this._modIn.off, this._savedDataOffMod));
-            }
             this._emit('message', { type: 'radeStatus', enabled: false });
         }
 
