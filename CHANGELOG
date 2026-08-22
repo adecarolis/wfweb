@@ -6,6 +6,24 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.8.4 (2026-08-22)
+--------------------
+
+Web UI:
+- Jump-to-spot links: the page URL now accepts `?f=<kHz>&m=<mode>`, so
+  hyperlinks can tune the radio on arrival (e.g. `/?f=7024.5&m=CW` from a
+  DX-cluster spot). `m` accepts rig modes or the app modes FT8, FT4, JS8,
+  RADE and PKT, which open the matching panel and switch the rig to the
+  mode the app needs. An explicit `f` wins over the panel's standard dial
+  frequency, and the jump fires once per page load — reconnects never
+  re-tune the radio. Works on both the Server and Standalone builds. (#83)
+
+Standalone:
+- IC-705 no longer transmits silence over USB: the correct DATA MOD input
+  register is set to USB for the whole session (never WLAN), and the
+  radio's original setting is restored on disconnect. (#79)
+
+
 v0.8.3 (2026-07-08)
 --------------------
 
