@@ -302,6 +302,24 @@ Point your Hamlib client at "Hamlib NET rigctl" (`rigctl -m 2 -r 127.0.0.1:4532`
 
 ---
 
+## Jump-to-spot links (URL parameters)
+
+The web UI accepts a frequency and mode in the URL, so you can build hyperlinks that tune the radio when opened — handy for DX-cluster spots:
+
+```
+https://your-server:8080/?f=14250&m=USB
+https://your-server:8080/?f=7024.5&m=CW
+```
+
+- `f` — frequency in **kHz** (decimals allowed, DX-cluster convention)
+- `m` — either a rig mode (`USB`, `LSB`, `CW`, `CW-R`, `AM`, `FM`, `RTTY`, …, case-insensitive, matched against the modes your rig supports) or an app mode: `FT8`, `FT4`, `JS8`, `RADE`, or `PKT` — which opens that panel just like tapping its button, including switching the rig to the mode the app needs
+
+Both parameters are optional and work on the Server and Standalone builds alike (Standalone tunes after you connect the rig). The jump happens once per page load — reconnects don't re-tune the radio. App panels open after your first click on the page (browsers require a gesture before audio can start).
+
+This makes "click to operate" links possible — for example, publish `https://wfweb.k1fm.us/?f=14236&m=RADE` with the instructions *"1) plug your radio in via USB, 2) click the link, 3) connect"* and the reader lands in RADE mode on frequency.
+
+---
+
 ## Docker details
 
 The [Getting started](#3-docker) section covers the common cases. These are extras.

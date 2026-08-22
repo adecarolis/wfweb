@@ -2270,6 +2270,7 @@ body.digi-open #bottomBar { grid-row: 5; }
 
 <script src="transport/rig-transport.js"></script>
 <script src="transport/websocket-transport.js"></script>
+<script src="urltune.js"></script>
 <script src="reporters.js"></script>
 <script src="wf-canvas.js"></script>
 <script>
@@ -2635,6 +2636,7 @@ function handleMessage(msg) {
                 if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
 
                 updateWarningVisibility();
+                applyUrlTune();
             } else {
                 // Radio not detected — likely powered off
                 updatePowerState(false);
@@ -2658,6 +2660,7 @@ function handleMessage(msg) {
             if (msg.hasPowerControl) document.getElementById('powerBtn').style.display = 'flex';
             if (msg.freedvModes) freedvModes = msg.freedvModes;
             updateWarningVisibility();
+            applyUrlTune();
             // After rig identification, request a full status refresh so
             // UI elements populate even if the browser connected before
             // the radio was identified (LAN power-up scenario, issue #19).
