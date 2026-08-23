@@ -5265,13 +5265,24 @@ function scopeGesturesBlocked() {
     return isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden');
 }
 
+const SCOPE_TUNE_STEP_HZ = 100;
+
+function snapScopeFrequency(freqHz) {
+    return Math.max(
+        SCOPE_TUNE_STEP_HZ,
+        Math.round(freqHz / SCOPE_TUNE_STEP_HZ) * SCOPE_TUNE_STEP_HZ
+    );
+}
+
 function scopeFreqFromClientX(target, clientX) {
     if (!target || spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return 0;
     var rect = target.getBoundingClientRect();
     if (rect.width <= 0) return 0;
     var frac = (clientX - rect.left) / rect.width;
     frac = Math.max(0, Math.min(1, frac));
-    return Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6);
+    return snapScopeFrequency(
+        (spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6
+    );
 }
 
 function scopeSetVisualPan(px) {
@@ -5291,7 +5302,7 @@ function scopeFreqFromDragDeltaX(deltaX) {
     var spanHz = (spectEndFreq - spectStartFreq) * 1e6;
     var hzPerPx = spanHz / scopeDragRectWidth;
     // Left pan (negative deltaX) should increase frequency.
-    return Math.max(1, Math.round(scopeDragStartFreq - deltaX * hzPerPx));
+    return snapScopeFrequency(scopeDragStartFreq - deltaX * hzPerPx);
 }
 
 function scopeIndicatorCenterX(w) {
