@@ -1844,6 +1844,7 @@ body.digi-open #bottomBar { grid-row: 5; }
         <span class="flex-space"></span>
         <button id="qsoLogBtn" class="qso-log-btn" title="Log QSO">LOG</button>
         <span id="clock">--:--</span>
+        <button id="fullscreenBtn" title="Full Screen" onclick="toggleFullscreen()">&#x26F6;</button>
         <button id="powerBtn" class="on" title="Power" onclick="togglePower()">&#x23FB;</button>
         <span id="connDot" title="Disconnected"></span>
     </div>
@@ -4736,6 +4737,14 @@ function updateFreeDVStatus(msg) {
     if (currentPanel === 'func') renderFuncOverlay();
 }
 
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+    } else {
+        document.exitFullscreen();
+    }
+}
+
 function tuneUp() {
     if (currentFreq > 0) {
         var newFreq = currentFreq + tuneStep;
@@ -5265,24 +5274,13 @@ function scopeGesturesBlocked() {
     return isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden');
 }
 
-const SCOPE_TUNE_STEP_HZ = 100;
-
-function snapScopeFrequency(freqHz) {
-    return Math.max(
-        SCOPE_TUNE_STEP_HZ,
-        Math.round(freqHz / SCOPE_TUNE_STEP_HZ) * SCOPE_TUNE_STEP_HZ
-    );
-}
-
 function scopeFreqFromClientX(target, clientX) {
     if (!target || spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return 0;
     var rect = target.getBoundingClientRect();
     if (rect.width <= 0) return 0;
     var frac = (clientX - rect.left) / rect.width;
     frac = Math.max(0, Math.min(1, frac));
-    return snapScopeFrequency(
-        (spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6
-    );
+    return Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6);
 }
 
 function scopeSetVisualPan(px) {
@@ -5302,7 +5300,7 @@ function scopeFreqFromDragDeltaX(deltaX) {
     var spanHz = (spectEndFreq - spectStartFreq) * 1e6;
     var hzPerPx = spanHz / scopeDragRectWidth;
     // Left pan (negative deltaX) should increase frequency.
-    return snapScopeFrequency(scopeDragStartFreq - deltaX * hzPerPx);
+    return Math.max(100, Math.round((scopeDragStartFreq - deltaX * hzPerPx) / 100) * 100);
 }
 
 function scopeIndicatorCenterX(w) {
