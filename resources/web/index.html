@@ -2434,6 +2434,7 @@ var scopeDragRectLeft = 0;
 var scopeDragRectWidth = 0;
 var scopeDragVisualOffsetX = 0;
 var scopeDragPendingReset = false;
+var scopeDragMoveHistory = []; // recent {t, dx} samples; release commits roll back past lift-off wobble
 
 // UI state
 var currentPanel = 'default';
@@ -5338,6 +5339,7 @@ function scopePointerDown(e) {
     scopeDragStartX = e.clientX;
     scopeDragStartFreq = currentFreq;
     scopeDragLastTuneTime = 0;
+    scopeDragMoveHistory = [];
 
     var rect = scopeDragCanvas.getBoundingClientRect();
     scopeDragRectLeft = rect.left;
@@ -5355,6 +5357,14 @@ function scopePointerMove(e) {
     if (!scopeDragActive || e.pointerId !== scopeDragPointerId || !scopeDragCanvas) return;
 
     var deltaX = e.clientX - scopeDragStartX;
+    var now = Date.now();
+    // Position history for the release rollback. history[0] is kept as the
+    // one sample just older than the window so the pre-wobble position
+    // survives a long motionless hold (no moves fire while holding still).
+    scopeDragMoveHistory.push({ t: now, dx: deltaX });
+    while (scopeDragMoveHistory.length >= 2 && now - scopeDragMoveHistory[1].t > 300) {
+        scopeDragMoveHistory.shift();
+    }
     if (!scopeDragMoved && Math.abs(deltaX) >= 4) {
         scopeDragMoved = true;
     }
@@ -5362,7 +5372,6 @@ function scopePointerMove(e) {
     scopeSetVisualPan(deltaX);
 
     if (scopeDragMoved) {
-        var now = Date.now();
         if (now - scopeDragLastTuneTime >= 35) {
             var dragFreq = scopeFreqFromDragDeltaX(deltaX);
             if (dragFreq > 0) send({ cmd: 'setFrequency', value: dragFreq });
@@ -5384,7 +5393,16 @@ function scopePointerEnd(e, commitTune) {
         try { targetCanvas.releasePointerCapture(e.pointerId); } catch (err) {}
     }
 
+    // Lifting a finger wobbles the pointer by a few px — hundreds of Hz at
+    // wide spans — so commit the position held ~100ms before release, not
+    // the release coordinate itself.
     var finalDeltaX = e.clientX - scopeDragStartX;
+    if (e.pointerType !== 'mouse') {
+        var wobbleCutoff = Date.now() - 100;
+        for (var i = scopeDragMoveHistory.length - 1; i >= 0; i--) {
+            if (scopeDragMoveHistory[i].t <= wobbleCutoff) { finalDeltaX = scopeDragMoveHistory[i].dx; break; }
+        }
+    }
     var finalDragFreq = scopeFreqFromDragDeltaX(finalDeltaX);
     var finalClickFreq = scopeFreqFromClientX(targetCanvas, e.clientX);
 
@@ -5393,6 +5411,7 @@ function scopePointerEnd(e, commitTune) {
     scopeDragPointerId = null;
     scopeDragCanvas = null;
     scopeDragStartFreq = 0;
+    scopeDragMoveHistory = [];
     scopeDragRectLeft = 0;
     scopeDragRectWidth = 0;
     scopeDragPendingReset = true;
