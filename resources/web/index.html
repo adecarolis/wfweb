@@ -8900,6 +8900,12 @@ if (window.WfwebReporters) window.WfwebReporters.apply();
 // Top bar LOG button → SSB/voice QSO log
 var qsoLogBtn = document.getElementById('qsoLogBtn');
 if (qsoLogBtn) { qsoLogBtn.addEventListener('click', logSSBQso); }
+// iPhone WebKit has no Fullscreen API for page elements (video-only), so the
+// button would be dead there — hide it when the API is missing.
+var fullscreenBtn = document.getElementById('fullscreenBtn');
+if (fullscreenBtn && !document.documentElement.requestFullscreen) {
+    fullscreenBtn.style.display = 'none';
+}
 renderBottomBar();
 drawMeter();
 updateClock();
