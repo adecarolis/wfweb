@@ -1844,6 +1844,7 @@ body.digi-open #bottomBar { grid-row: 5; }
         <span class="flex-space"></span>
         <button id="qsoLogBtn" class="qso-log-btn" title="Log QSO">LOG</button>
         <span id="clock">--:--</span>
+        <button id="fullscreenBtn" title="Full Screen" onclick="toggleFullscreen()">&#x26F6;</button>
         <button id="powerBtn" class="on" title="Power" onclick="togglePower()">&#x23FB;</button>
         <span id="connDot" title="Disconnected"></span>
     </div>
@@ -4739,6 +4740,14 @@ function updateFreeDVStatus(msg) {
     if (currentPanel === 'func') renderFuncOverlay();
 }
 
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+    } else {
+        document.exitFullscreen();
+    }
+}
+
 function tuneUp() {
     if (currentFreq > 0) {
         var newFreq = currentFreq + tuneStep;
@@ -5294,7 +5303,7 @@ function scopeFreqFromDragDeltaX(deltaX) {
     var spanHz = (spectEndFreq - spectStartFreq) * 1e6;
     var hzPerPx = spanHz / scopeDragRectWidth;
     // Left pan (negative deltaX) should increase frequency.
-    return Math.max(1, Math.round(scopeDragStartFreq - deltaX * hzPerPx));
+    return Math.max(100, Math.round((scopeDragStartFreq - deltaX * hzPerPx) / 100) * 100);
 }
 
 function scopeIndicatorCenterX(w) {
