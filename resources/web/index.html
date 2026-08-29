@@ -4248,8 +4248,10 @@ function renderMemoryList() {
                 renderMemoryList();
             });
             row.addEventListener('click', function() {
-                if (m.frequency) send({ cmd: 'setFrequency', value: m.frequency });
-                if (m.mode) send({ cmd: 'setMode', value: m.mode });
+                // Recall on the radio so it restores tone / tone squelch /
+                // duplex offset from the channel — not just freq + mode.
+                send({ cmd: 'recallMemory', channel: m.channel, group: m.group || 0,
+                       frequency: m.frequency || 0, mode: m.mode || '' });
                 setPanel('default');
             });
         })(mem);

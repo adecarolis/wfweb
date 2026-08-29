@@ -2021,6 +2021,69 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         queue->addUnique(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<uint>(val), false, 0));
         memoryScanTimer->start();
     }
+    else if (type == "recallMemory") {
+        // Recall a stored memory channel *on the radio* so it applies the
+        // channel's full contents — mode, filter, repeater tone / tone
+        // squelch, duplex direction and offset — not just frequency + mode.
+        if (!queue || !rigCaps) return;
+        int ch = cmd["channel"].toInt();
+        int group = cmd.contains("group") ? cmd["group"].toInt() : 0;
+        quint64 freqHz = cmd.contains("frequency") ? cmd["frequency"].toVariant().toULongLong() : 0;
+        if (ch <= 0) return;
+
+        // Icom selects a memory with CI-V 08; Kenwood / Yaesu use funcMemorySelect.
+        funcs selCmd = rigCaps->commands.contains(funcMemoryMode) ? funcMemoryMode
+                     : rigCaps->commands.contains(funcMemorySelect) ? funcMemorySelect
+                     : funcNone;
+
+        bool cmd29 = rigCaps->hasCommand29;
+        uchar rx = cmd29 ? (queue->getState().vfo == vfoSub ? 1 : 0) : 0;
+
+        if (selCmd == funcNone) {
+            // Rig can't select a channel directly — fall back to loading the
+            // stored freq + mode (no tone / offset, but better than nothing).
+            if (freqHz > 0) {
+                freqt f;
+                f.Hz = freqHz;
+                f.MHzDouble = freqHz / 1.0E6;
+                f.VFO = activeVFO;
+                vfoCommandType tf = queue->getVfoCommand(vfoA, rx, true);
+                queue->addUnique(priorityImmediate, queueItem(tf.freqFunc, QVariant::fromValue<freqt>(f), false, tf.receiver));
+            }
+            QString modeName = cmd["mode"].toString();
+            if (!modeName.isEmpty()) {
+                modeInfo m = stringToMode(modeName);
+                if (m.mk != modeUnknown) {
+                    vfoCommandType tm = queue->getVfoCommand(vfoA, rx, true);
+                    queue->addUnique(priorityImmediate, queueItem(tm.modeFunc, QVariant::fromValue<modeInfo>(m), false, tm.receiver));
+                }
+            }
+            requestVfoUpdate();
+            return;
+        }
+
+        // Icom recall (CI-V 08) acts on the currently selected band's memory
+        // bank. Rigs with a direct group-select command use it; the IC-9700 /
+        // IC-9100 have none, so nudge the VFO onto the band that owns this
+        // group first, using the channel's own stored frequency.
+        if (rigCaps->commands.contains(funcMemoryGroup)) {
+            queue->addUnique(priorityImmediate, queueItem(funcMemoryGroup, QVariant::fromValue<uchar>((uchar)group), false, 0));
+        } else if (selCmd == funcMemoryMode && freqHz > 0) {
+            freqt f;
+            f.Hz = freqHz;
+            f.MHzDouble = freqHz / 1.0E6;
+            f.VFO = activeVFO;
+            vfoCommandType tf = queue->getVfoCommand(vfoA, rx, true);
+            queue->addUnique(priorityImmediate, queueItem(tf.freqFunc, QVariant::fromValue<freqt>(f), false, tf.receiver));
+        }
+
+        // Enter memory mode / select the channel — the radio loads mode,
+        // filter, tone, tone squelch, duplex direction and offset from it.
+        queue->addUnique(priorityImmediate, queueItem(selCmd, QVariant::fromValue<uint>((uint)ch), false, 0));
+
+        // Read freq/mode back so the browser display follows the recalled channel.
+        requestVfoUpdate();
+    }
     else if (type == "writeMemory") {
         if (!queue || !rigCaps) return;
         int ch = cmd["channel"].toInt();
