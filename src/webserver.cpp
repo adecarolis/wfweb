@@ -461,14 +461,12 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
             }
             obj["filters"] = filters;
         }
-        // Memory-channel capabilities. memGroups is the highest group number
+        // Memory-group capabilities. memGroups is the highest group number
         // (IC-9700: 3, one per band); memStart is the lowest (1 on the 9700,
         // 0 on rigs whose groups are zero-based). Rigs with no groups report
         // memGroups < memStart and the browser keeps group 0.
-        obj["hasMemories"] = rigCaps->commands.contains(funcMemoryContents) && !rigCaps->memParser.isEmpty();
         obj["memGroups"] = rigCaps->memGroups;
         obj["memStart"] = rigCaps->memStart;
-        obj["satMemories"] = rigCaps->satMemories;
         sendJsonToAll(obj);
 
         // Issue #76: rigs with an antenna selector but no periodic Antenna
@@ -2823,10 +2821,8 @@ QJsonObject webServer::buildInfoJson() const
             }
             info["filters"] = filters;
         }
-        info["hasMemories"] = rigCaps->commands.contains(funcMemoryContents) && !rigCaps->memParser.isEmpty();
         info["memGroups"] = rigCaps->memGroups;
         info["memStart"] = rigCaps->memStart;
-        info["satMemories"] = rigCaps->satMemories;
     } else {
         info["connected"] = false;
     }
@@ -3328,8 +3324,13 @@ void webServer::receiveCache(cacheItem item)
         } else {
             memories[key] = mem;
         }
-        // Stop scan timer since we got a response
-        if (memoryScanTimer) memoryScanTimer->stop();
+        // A reply belongs to the running scan only if it matches the group and
+        // channel we are waiting on; a late reply from before a scan restart
+        // (e.g. a group switch) must not stop the timer or advance the counter.
+        bool scanReply = memoryScanActive
+                && int(mem.group) == memoryScanGroup
+                && int(mem.channel) == memoryScanCurrent;
+        if (scanReply && memoryScanTimer) memoryScanTimer->stop();
         // Broadcast to clients (only non-empty channels)
         if (!mem.del && (mem.frequency.Hz != 0 || mem.mode != 0)) {
             QJsonObject memUpdate;
@@ -3338,7 +3339,7 @@ void webServer::receiveCache(cacheItem item)
             sendJsonToAll(memUpdate);
         }
         // Continue scan if active (but not for our own write/delete echoed back)
-        if (memoryScanActive && !mem.del) {
+        if (scanReply && !mem.del) {
             scanNextMemory();
         }
         return; // Don't send as generic update
@@ -3555,9 +3556,11 @@ void webServer::scanNextMemory()
         if (memoryScanTimer) memoryScanTimer->stop();
         QJsonObject done;
         done["type"] = "memoryScanComplete";
+        // Count only the scanned group — a late reply from a previous scan
+        // may have parked an entry under another group's key.
         int count = 0;
-        for (auto &m : memories) {
-            if (!m.del) count++;
+        for (auto it = memories.constBegin(); it != memories.constEnd(); ++it) {
+            if (!it.value().del && int(it.key() >> 16) == memoryScanGroup) count++;
         }
         done["count"] = count;
         sendJsonToAll(done);

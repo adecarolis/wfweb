@@ -1473,10 +1473,7 @@ body.digi-open #bottomBar { grid-row: 5; }
 .mem-modal-title span { flex: 1; }
 #memScanStatus { font-size: 0.8em; color: #448; margin-left: 8px; font-weight: normal; }
 #memGroupRow { font-size: 0.85em; margin: 0 8px; align-items: center; gap: 4px; }
-#memGroupSelect {
-    background: #001828; border: 1px solid #048; color: #8cf;
-    font-family: 'Courier New', monospace; font-size: 11px; padding: 1px 4px; border-radius: 3px;
-}
+#memGroupSelect { font-size: var(--fs-xs); padding: 1px 4px; }
 .memory-list {
     overflow-y: auto;
     flex: 1;
@@ -1929,9 +1926,9 @@ body.digi-open #bottomBar { grid-row: 5; }
         <div id="memoryOverlay" class="mem-modal">
             <div class="mem-modal-title">
                 <span>Memories <span id="memScanStatus"></span></span>
-                <span id="memGroupRow" style="display:none;flex:0 0 auto;font-weight:normal;">
-                    <label for="memGroupSelect" style="color:#448;">Group</label>
-                    <select id="memGroupSelect" onchange="onMemGroupChange()"></select>
+                <span id="memGroupRow" class="mode-digi" style="display:none;flex:0 0 auto;font-weight:normal;">
+                    <label for="memGroupSelect" style="color:var(--mode-accent-dim);">Group</label>
+                    <select id="memGroupSelect" class="wf-field" onchange="onMemGroupChange()"></select>
                 </span>
                 <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeMemoryModal()">&#x2715; Close</button>
             </div>
@@ -4173,15 +4170,24 @@ function renderSpanOverlay() {
 var memoryChannels = {};
 var memGroupList = [];       // valid memory-group numbers for this rig ([] = rig has no groups)
 var memCurrentGroup = 0;     // group the browser is currently reading/writing
+var memCapsSeen = null;      // "memGroups/memStart" caps last applied
 
 // Build the group list + selector from rig caps. memGroups is the highest
 // group number, memStart the lowest; a rig with no groups reports
 // memGroups < memStart, and we fall back to group 0 (byte is ignored by
 // the CI-V encoder for those rigs anyway).
 function setupMemoryGroups(memGroups, memStart) {
+    // Caps are re-broadcast on reconnects and getStatus; a repeat must not
+    // yank the user's selected group out from under an open overlay.
+    var caps = memGroups + '/' + memStart;
+    if (caps === memCapsSeen) return;
+    memCapsSeen = caps;
     memGroupList = [];
     for (var g = memStart; g <= memGroups; g++) memGroupList.push(g);
-    memCurrentGroup = memGroupList.length ? memGroupList[0] : 0;
+    // Rigs with a single group (IC-7610/7760/785x) don't carry a group byte
+    // in their memory frames and report group 0 — keep addressing group 0
+    // for them, exactly like rigs with no groups at all.
+    memCurrentGroup = memGroupList.length >= 2 ? memGroupList[0] : 0;
     var row = document.getElementById('memGroupRow');
     var sel = document.getElementById('memGroupSelect');
     if (memGroupList.length >= 2) {
@@ -4278,8 +4284,10 @@ function formatMemFreq(hz) {
 function handleMemoryChannel(msg) {
     var mem = msg.memory;
     if (!mem) return;
-    // Drop late replies from a group we've since switched away from.
-    if (memGroupList.length && (mem.group || 0) !== memCurrentGroup) return;
+    // Drop late replies from a group we've since switched away from. Only
+    // multi-group rigs report a group in replies; on single-group rigs the
+    // reply's group (0) wouldn't match and would empty the list.
+    if (memGroupList.length >= 2 && (mem.group || 0) !== memCurrentGroup) return;
     var key = (mem.group || 0) * 65536 + mem.channel;
     if (mem.del || mem.empty) {
         delete memoryChannels[key];
