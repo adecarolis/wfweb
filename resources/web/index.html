@@ -2461,8 +2461,9 @@ var availableAntennas = [];   // [{num, name}] — empty on single-antenna rigs 
 var hasRxAnt = false;         // rig has an RX-antenna input (IC-7610/785x)
 var currentAntenna = 0;
 var rxAntOn = false;
-var currentVfo = 'A';
+var currentVfo = 'A';        // 'A' | 'B' | 'MEM'
 var hasMainSub = false;
+var hasMemoryMode = false;    // rig has a V/M memory-mode toggle
 
 // Meter state
 var meterVal = -54;
@@ -2651,6 +2652,7 @@ function handleMessage(msg) {
                 if (msg.filters) populateFilters(msg.filters);
                 if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
                 if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
+                if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
                 if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
 
                 updateWarningVisibility();
@@ -2675,6 +2677,7 @@ function handleMessage(msg) {
             if (msg.filters) populateFilters(msg.filters);
             if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
             if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
+            if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
             if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
             if (msg.hasPowerControl) document.getElementById('powerBtn').style.display = 'flex';
             if (msg.freedvModes) freedvModes = msg.freedvModes;
@@ -2851,10 +2854,11 @@ function updateFrequency(hz) {
         }
     }
 
-    // Store frequency for current VFO only
+    // Store frequency for current VFO only (not in memory mode — the recalled
+    // channel's freq must not overwrite either VFO's cached value)
     if (currentVfo === 'A') {
         vfoAFreq = hz;
-    } else {
+    } else if (currentVfo === 'B') {
         vfoBFreq = hz;
     }
 
@@ -2901,7 +2905,7 @@ function updateOtherVfoDisplay() {
 function applyVfoFreqMessage(msg) {
     if (msg.vfoAFrequency !== undefined) vfoAFreq = msg.vfoAFrequency;
     if (msg.vfoBFrequency !== undefined) vfoBFreq = msg.vfoBFrequency;
-    if (msg.selectedVfo === 'A' || msg.selectedVfo === 'B') {
+    if (msg.selectedVfo === 'A' || msg.selectedVfo === 'B' || msg.selectedVfo === 'MEM') {
         if (currentVfo !== msg.selectedVfo) {
             currentVfo = msg.selectedVfo;
             updateVfoDisplay();
@@ -2909,7 +2913,11 @@ function applyVfoFreqMessage(msg) {
         }
     }
     var hasVfoFreq = (msg.vfoAFrequency !== undefined || msg.vfoBFrequency !== undefined);
-    if (hasVfoFreq) {
+    if (currentVfo === 'MEM') {
+        // In memory mode the operating frequency is the recalled channel's,
+        // reported as msg.frequency — not either VFO cache slot.
+        if (msg.frequency !== undefined) updateFrequency(msg.frequency);
+    } else if (hasVfoFreq) {
         var ownFreq = (currentVfo === 'A') ? vfoAFreq : vfoBFreq;
         if (ownFreq > 0) updateFrequency(ownFreq);
         else updateOtherVfoDisplay();
@@ -4263,8 +4271,16 @@ function renderMemoryList() {
                 renderMemoryList();
             });
             row.addEventListener('click', function() {
-                if (m.frequency) send({ cmd: 'setFrequency', value: m.frequency });
-                if (m.mode) send({ cmd: 'setMode', value: m.mode });
+                // Recall on the radio so it restores tone / tone squelch /
+                // duplex offset from the channel — not just freq + mode. The
+                // server queues the rig's own channel select and (where the
+                // rig has one) the V/M memory-mode switch.
+                send({ cmd: 'recallMemory', channel: m.channel, group: m.group || 0 });
+                if (hasMemoryMode) {
+                    currentVfo = 'MEM';
+                    updateVfoDisplay();
+                    renderBottomBar();
+                }
                 setPanel('default');
             });
         })(mem);
@@ -4504,7 +4520,9 @@ function setMode(mode) {
 function updateVfoDisplay() {
     var label = document.getElementById('vfoLabel');
     var num = document.getElementById('vfoNum');
-    if (hasMainSub) {
+    if (currentVfo === 'MEM') {
+        label.textContent = 'MEM';
+    } else if (hasMainSub) {
         label.textContent = 'VFO ' + (currentVfo === 'A' ? 'MAIN' : 'SUB');
     } else {
         label.textContent = 'VFO ' + currentVfo;
@@ -4517,6 +4535,9 @@ function selectVFO(vfo) {
     currentVfo = vfo;
     updateVfoDisplay();
     renderBottomBar();
+    // Memory mode: leave the frequency display for the radio's round-trip
+    // (the recalled channel's freq), don't force a VFO-cache value.
+    if (vfo === 'MEM') return;
     // Reflect the new VFO's cached freq on the main display immediately so
     // the label and frequency stay in sync without waiting for the radio's
     // round-trip response. The server will follow up with fresh values.
@@ -5577,7 +5598,11 @@ document.getElementById('freqDisplay').addEventListener('click', function() {
 });
 
 document.getElementById('vfoLabel').addEventListener('click', function() {
-    selectVFO(currentVfo === 'A' ? 'B' : 'A');
+    // Cycle the operating mode: A -> B -> MEM -> A (MEM only on rigs with a
+    // V/M memory-mode toggle). Mirrors the front-panel A/B and V/M buttons.
+    var order = hasMemoryMode ? ['A', 'B', 'MEM'] : ['A', 'B'];
+    var i = order.indexOf(currentVfo);
+    selectVFO(order[(i + 1) % order.length]);
 });
 
 

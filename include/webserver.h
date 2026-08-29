@@ -546,6 +546,7 @@ private:
     QJsonObject memoryToJson(const memoryType &mem);
     QString modeRegToString(quint8 reg);
     void scanNextMemory();
+    bool recallMemoryOnRig(int channel, int group, QString *error = nullptr);
 };
 
 #endif // WEBSERVER_H

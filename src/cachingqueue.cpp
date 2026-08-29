@@ -393,6 +393,8 @@ void cachingQueue::updateCache(bool reply, queueItem item)
             rigState.vfo = item.param.value<vfo_t>();
             if (item.param.value<vfo_t>() != vfoMem)
                 rigState.vfoMode = vfoModeType_t::vfoModeVfo;
+            else
+                rigState.vfoMode = vfoModeType_t::vfoModeMem;
         } else if (item.command == funcVFOASelect) {
             qDebug(logRig()) << "updateCache: VFO A selected (was vfo=" << rigState.vfo << ")";
             rigState.vfo = vfo_t::vfoA;

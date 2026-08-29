@@ -2950,6 +2950,13 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
         }
     }
 
+    // Channel select (CI-V 08 <ch>) needs the 2-byte BCD channel encoding of
+    // the uint branch below; a uchar payload (rigctld set_channel) would fall
+    // through to the generic 1-byte encoder and truncate channels > 99.
+    if (func == funcMemoryMode && value.isValid() && !strcmp(value.typeName(),"uchar")) {
+        value.setValue(static_cast<uint>(value.value<uchar>()));
+    }
+
     if (func == funcAfGain && value.isValid() && udp != Q_NULLPTR) {
         // Ignore the AF Gain command, just queue it for processing
         emit haveSetVolume(static_cast<uchar>(value.toInt()));
@@ -3067,6 +3074,26 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         qDebug(logRig()) << "CW output::" << textData ;
                     }
                     qDebug(logRig()) << "Sending CW: payload:" << payload.toHex(' ');
+                }
+            }
+            else if (func == funcMemoryGroup)
+            {
+                // Group select (CI-V 08 A0). The group field width is per-rig:
+                // encode by the memParser 'a' width like funcMemoryContents does
+                // (IC-705/905/R8600 declare %1.2a = 2 BCD bytes; IC-7100 %1.1a = 1).
+                // A fixed 1-byte encode is rejected by the 2-byte rigs.
+                uint group = value.toUInt();
+                int groupLen = 1;
+                for (auto &parse: rigCaps.memParser) {
+                    if (parse.spec == 'a') {
+                        groupLen = parse.len;
+                        break;
+                    }
+                }
+                if (groupLen == 2) {
+                    payload.append(bcdEncodeInt(quint16(group & 0xffff)));
+                } else {
+                    payload.append(bcdEncodeChar(quint8(group & 0xff)));
                 }
             }
             else if (!strcmp(value.typeName(),"uchar"))

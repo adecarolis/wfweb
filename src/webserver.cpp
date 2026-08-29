@@ -467,6 +467,9 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
         // memGroups < memStart and the browser keeps group 0.
         obj["memGroups"] = rigCaps->memGroups;
         obj["memStart"] = rigCaps->memStart;
+        // Rig has a memory-mode toggle (V/M): the browser offers MEM in the
+        // VFO cycle only when the rig can actually enter/leave memory mode.
+        obj["hasMemoryMode"] = rigCaps->commands.contains(funcMemoryMode);
         sendJsonToAll(obj);
 
         // Issue #76: rigs with an antenna selector but no periodic Antenna
@@ -1291,7 +1294,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             QJsonObject e; e["error"] = "Rig not connected";
             sendRestResponse(socket, 503, e); return;
         }
-        // Extract channel number from path
+        // Extract channel number from path; optional group in the JSON body.
         QString mid = p.mid(22); // after "/api/v1/radio/memories/"
         mid.chop(7); // remove "/recall"
         int ch = mid.toInt();
@@ -1299,31 +1302,11 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             QJsonObject e; e["error"] = "Invalid channel number";
             sendRestResponse(socket, 400, e); return;
         }
-        quint32 key = (quint32(0) << 16) | ch;
-        auto it = memories.find(key);
-        if (it == memories.end()) {
-            QJsonObject e; e["error"] = "Memory channel not found";
-            sendRestResponse(socket, 404, e); return;
-        }
-        const memoryType &mem = it.value();
-        // Set frequency
-        bool cmd29 = rigCaps && rigCaps->hasCommand29;
-        uchar rx = cmd29 ? (queue->getState().vfo == vfoSub ? 1 : 0) : 0;
-        vfoCommandType t = queue->getVfoCommand(vfoA, rx, true);
-        freqt f;
-        f.Hz = mem.frequency.Hz;
-        f.MHzDouble = mem.frequency.Hz / 1.0E6;
-        f.VFO = activeVFO;
-        queue->addUnique(priorityImmediate, queueItem(t.freqFunc, QVariant::fromValue<freqt>(f), false, t.receiver));
-        // Set mode
-        for (const modeInfo &mi : rigCaps->modes) {
-            if (mi.reg == mem.mode) {
-                modeInfo m = mi;
-                m.filter = mem.filter > 0 ? mem.filter : 1;
-                m.data = 0;
-                queue->addUnique(priorityImmediate, queueItem(t.modeFunc, QVariant::fromValue<modeInfo>(m), false, t.receiver));
-                break;
-            }
+        int group = parseBody().value("group").toInt(0);
+        QString err;
+        if (!recallMemoryOnRig(ch, group, &err)) {
+            QJsonObject e; e["error"] = err;
+            sendRestResponse(socket, 400, e); return;
         }
         QJsonObject resp; resp["status"] = "accepted";
         sendRestResponse(socket, 202, resp);
@@ -1634,12 +1617,29 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         QString vfoName = cmd["value"].toString();
         // On cmd29 rigs (IC-7610/785x/9700/905) selecting a VFO means Main/Sub,
         // not A/B. funcSelectVFO in icomcommander maps vfo_t to the right command.
+        if (vfoName == "MEM") {
+            // Memory mode — the front-panel V/M (bare CI-V 08 / FR2). Leave
+            // activeVfoLocal alone so a later switch back to VFO returns here.
+            if (rigCaps && rigCaps->commands.contains(funcMemoryMode)) {
+                queue->addUnique(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(vfoMem), false));
+                requestVfoUpdate();
+            }
+            return;
+        }
         bool wantB = (vfoName == "B");
         vfo_t v;
         if (rigCaps && rigCaps->hasCommand29)
             v = wantB ? vfoSub : vfoMain;
         else
             v = wantB ? vfoB : vfoA;
+        // Leaving memory mode on a cmd29 rig needs a real VFO-mode select
+        // (bare CI-V 07): Main/Sub select alone does not exit memory mode.
+        // On A/B rigs the VFO A/B select (07 00/01) exits it by itself.
+        if (rigCaps && rigCaps->hasCommand29
+                && (queue->getState().vfoMode == vfoModeMem || queue->getState().vfo == vfoMem)
+                && rigCaps->commands.contains(funcVFOModeSelect)) {
+            queue->add(priorityImmediate, funcVFOModeSelect, false, 0);
+        }
         activeVfoLocal = v;
         activeReceiver = wantB ? 1 : 0;
         queue->addUnique(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(v), false));
@@ -2018,6 +2018,21 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         uint val = (uint(group) << 16) | uint(start);
         queue->addUnique(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<uint>(val), false, 0));
         memoryScanTimer->start();
+    }
+    else if (type == "recallMemory") {
+        // Recall the channel on the radio itself so tone / tone squelch /
+        // duplex offset apply. Wire protocol is {channel, group} only — the
+        // rig's stored contents are authoritative, never client-supplied.
+        if (!queue || !rigCaps) return;
+        if (!cmd.contains("channel")) return;
+        int ch = cmd["channel"].toInt(-1);
+        int group = cmd.contains("group") ? cmd["group"].toInt() : 0;
+        QString err;
+        if (!recallMemoryOnRig(ch, group, &err)) {
+            qCWarning(logWebServer) << "recallMemory: channel=" << ch << "group=" << group << ":" << err;
+        } else {
+            qCInfo(logWebServer) << "recallMemory: channel=" << ch << "group=" << group;
+        }
     }
     else if (type == "writeMemory") {
         if (!queue || !rigCaps) return;
@@ -2823,6 +2838,7 @@ QJsonObject webServer::buildInfoJson() const
         }
         info["memGroups"] = rigCaps->memGroups;
         info["memStart"] = rigCaps->memStart;
+        info["hasMemoryMode"] = rigCaps->commands.contains(funcMemoryMode);
     } else {
         info["connected"] = false;
     }
@@ -2899,7 +2915,8 @@ QJsonObject webServer::buildStatusJson()
         if (freqCacheB.value.isValid()) {
             status["vfoBFrequency"] = (qint64)freqCacheB.value.value<freqt>().Hz;
         }
-        status["selectedVfo"] = (queue->getState().vfo == vfoSub) ? "B" : "A";
+        status["selectedVfo"] = (queue->getState().vfo == vfoMem) ? "MEM"
+                              : (queue->getState().vfo == vfoSub) ? "B" : "A";
     } else {
         bool bSelected = (queue->getState().vfo == vfoB);
         cacheItem selCache = queue->getCache(funcSelectedFreq, 0);
@@ -2913,7 +2930,8 @@ QJsonObject webServer::buildStatusJson()
             qint64 hz = (qint64)unselCache.value.value<freqt>().Hz;
             status[bSelected ? "vfoAFrequency" : "vfoBFrequency"] = hz;
         }
-        status["selectedVfo"] = bSelected ? "B" : "A";
+        status["selectedVfo"] = (queue->getState().vfo == vfoMem) ? "MEM"
+                              : bSelected ? "B" : "A";
     }
 
     // Mode
@@ -3147,7 +3165,14 @@ void webServer::receiveCache(cacheItem item)
     case funcSelectVFO:
     {
         vfo_t v = item.value.value<vfo_t>();
-        if (v == vfoMem || v == vfoUnknown) return;
+        if (v == vfoUnknown) return;
+        if (v == vfoMem) {
+            // Memory mode: report it, but keep activeVfoLocal pointing at the
+            // last real VFO so command targeting (and a later switch back to
+            // VFO mode) still lands on it.
+            update["selectedVfo"] = "MEM";
+            break;
+        }
         bool isB = (v == vfoB || v == vfoSub);
         activeVfoLocal = v;
         activeReceiver = isB ? 1 : 0;
@@ -3358,6 +3383,9 @@ void webServer::sendPeriodicStatus()
     // Reconcile the local active-VFO mirror with the queue's authoritative
     // rigState. Cheap, off the receiveCache hot path, and recovers any drift
     // from rig-initiated VFO changes that didn't echo back via transceive.
+    // vfoMem is deliberately not mirrored: activeVfoLocal keeps the last real
+    // VFO for command targeting, while the MEM indicator itself stays fresh
+    // because buildStatusJson() reads rigState.vfo directly on every tick.
     if (queue) {
         vfo_t qv = queue->getState().vfo;
         if (qv != vfoUnknown && qv != vfoMem && qv != activeVfoLocal) {
@@ -3569,6 +3597,133 @@ void webServer::scanNextMemory()
     uint val = (uint(memoryScanGroup) << 16) | uint(memoryScanCurrent);
     queue->addUnique(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<uint>(val), false, 0));
     if (memoryScanTimer) memoryScanTimer->start();
+}
+
+// Recall a stored channel *on the radio* (issue #92) so the rig itself
+// restores the channel's full contents — mode, filter, repeater tone / tone
+// squelch, duplex direction and offset — instead of replaying freq + mode
+// from the cache. The wire protocol is {channel, group} only: the rig's own
+// data stays authoritative, clients never supply channel contents.
+bool webServer::recallMemoryOnRig(int channel, int group, QString *error)
+{
+    if (!queue || !rigCaps) {
+        if (error) *error = "Rig not connected";
+        return false;
+    }
+    if (channel < 0 || group < 0) {
+        if (error) *error = "Invalid channel or group";
+        return false;
+    }
+
+    // Per-rig select dialect. Kenwood defines BOTH funcMemoryMode (FR2, a
+    // bare toggle) and funcMemorySelect (MC, takes the channel) — MC must
+    // win or the channel digit gets appended to FR2. Yaesu has only MC.
+    // Icom has only funcMemoryMode (CI-V 08), which takes the channel.
+    funcs selCmd = rigCaps->commands.contains(funcMemorySelect) ? funcMemorySelect
+                 : rigCaps->commands.contains(funcMemoryMode)   ? funcMemoryMode
+                 : funcNone;
+
+    const quint32 key = (quint32(group) << 16) | quint32(channel);
+    bool cmd29 = rigCaps->hasCommand29;
+    uchar rx = cmd29 ? (queue->getState().vfo == vfoSub ? 1 : 0) : 0;
+
+    if (selCmd == funcNone) {
+        // No channel-select command at all: fall back to replaying the cached
+        // channel contents onto the VFO. No tone/offset, but better than
+        // nothing. Same freq/mode path as the canonical set handlers; the
+        // filter and datamode come from the channel itself.
+        auto it = memories.find(key);
+        if (it == memories.end()) {
+            if (error) *error = "Rig has no memory recall command and channel is not cached";
+            return false;
+        }
+        const memoryType &mem = it.value();
+        vfoCommandType t = queue->getVfoCommand(vfoA, rx, true);
+        if (mem.frequency.Hz > 0) {
+            freqt f;
+            f.Hz = mem.frequency.Hz;
+            f.MHzDouble = mem.frequency.Hz / 1.0E6;
+            f.VFO = activeVFO;
+            queue->addUnique(priorityImmediate, queueItem(t.freqFunc, QVariant::fromValue<freqt>(f), false, t.receiver));
+        }
+        for (const modeInfo &mi : rigCaps->modes) {
+            if (mi.reg == mem.mode) {
+                modeInfo m = mi;
+                m.filter = mem.filter > 0 ? mem.filter : 1;
+                m.data = mem.datamode;
+                queue->addUnique(priorityImmediate, queueItem(t.modeFunc, QVariant::fromValue<modeInfo>(m), false, t.receiver));
+                break;
+            }
+        }
+        requestVfoUpdate();
+        return true;
+    }
+
+    // Does this rig actually store a group in its channels? MemGroups alone
+    // lies on some rigs (IC-7610 declares 1 with no group field) — trust the
+    // memParser's 'a' spec instead.
+    bool hasGroupField = false;
+    for (const memParserFormat &parse : rigCaps->memParser) {
+        if (parse.spec == 'a') { hasGroupField = true; break; }
+    }
+
+    if (hasGroupField) {
+        if (rigCaps->commands.contains(funcMemoryGroup)) {
+            // Direct group select (CI-V 08 A0). The commander encodes the
+            // group to this rig's field width (1 or 2 BCD bytes).
+            queue->addUnique(priorityImmediate, queueItem(funcMemoryGroup, QVariant::fromValue<uint>(uint(group)), false, 0));
+        } else {
+            // IC-9700/IC-9100: groups exist but there is no group-select
+            // command — channel select acts on the bank owned by the current
+            // band. Derive the band from the group (Bands\N\MemoryGroup in
+            // the rig file) and nudge the VFO onto it first. If the rig is
+            // sitting in memory mode, drop back to VFO mode before retuning.
+            if (queue->getState().vfoMode == vfoModeMem || queue->getState().vfo == vfoMem) {
+                if (rigCaps->commands.contains(funcVFOModeSelect)) {
+                    queue->add(priorityImmediate, funcVFOModeSelect, false, 0);
+                }
+            }
+            quint64 bandHz = 0;
+            for (const bandType &b : rigCaps->bands) {
+                if (b.memGroup == group) { bandHz = b.lowFreq; break; }
+            }
+            // Prefer the server-cached channel frequency (it is inside the
+            // right band by definition and avoids an extra band-edge hop).
+            auto it = memories.constFind(key);
+            if (it != memories.constEnd() && it.value().frequency.Hz > 0) {
+                bandHz = it.value().frequency.Hz;
+            }
+            if (bandHz > 0) {
+                freqt f;
+                f.Hz = bandHz;
+                f.MHzDouble = bandHz / 1.0E6;
+                f.VFO = activeVFO;
+                vfoCommandType t = queue->getVfoCommand(vfoA, rx, true);
+                queue->addUnique(priorityImmediate, queueItem(t.freqFunc, QVariant::fromValue<freqt>(f), false, t.receiver));
+            } else {
+                qCWarning(logWebServer) << "recallMemory: no band found for memory group" << group
+                                        << "- recalling from the current band's bank";
+            }
+        }
+    }
+
+    // Select the channel — the radio loads mode, filter, tone, tone squelch,
+    // duplex direction and offset from it.
+    queue->addUnique(priorityImmediate, queueItem(selCmd, QVariant::fromValue<uint>(uint(channel)), false, 0));
+
+    // Selecting a channel does not flip the rig into memory mode by itself
+    // (Icom stays on VFO A/B, Kenwood needs FR2). funcSelectVFO(vfoMem) sends
+    // the bare mode select (CI-V 08 / FR2;) and marks the queue's rigState.
+    // Distinct queue command from the channel select above, so addUnique
+    // doesn't dedup it. Yaesu MC already switches to memory operation and
+    // defines no memory-mode toggle, so nothing is queued there.
+    if (rigCaps->commands.contains(funcMemoryMode)) {
+        queue->addUnique(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(vfoMem), false, 0));
+    }
+
+    // Read freq/mode back so the browser display follows the recalled channel.
+    requestVfoUpdate();
+    return true;
 }
 
 // --- Audio Streaming ---

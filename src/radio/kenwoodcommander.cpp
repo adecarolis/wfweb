@@ -1505,9 +1505,21 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
 
     if (func == funcSelectVFO) {
         vfo_t v = value.value<vfo_t>();
-        func = (v == vfoA)?funcVFOASelect:(v == vfoB)?funcVFOBSelect:(v == vfoMain)?funcNone:(v == vfoSub)?funcNone:funcNone;
+        // vfoMem maps to funcMemoryMode: with the value cleared the command
+        // goes out bare ("FR2;"), which is the memory-mode select.
+        func = (v == vfoA)?funcVFOASelect:(v == vfoB)?funcVFOBSelect:(v == vfoMem)?funcMemoryMode:funcNone;
         value.clear();
         val = INT_MIN;
+    }
+
+    if (func == funcMemoryMode && value.isValid()) {
+        // FR2 is a bare toggle (Bytes=0): appending a channel digit would emit
+        // a malformed "FR2<n>;". A channel-select payload belongs to MC.
+        if (rigCaps.commands.contains(funcMemorySelect)) {
+            func = funcMemorySelect;
+        } else {
+            value.clear();
+        }
     }
 
     if (func == funcAfGain && value.isValid() && usingNativeLAN) {
