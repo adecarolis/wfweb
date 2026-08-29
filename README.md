@@ -286,7 +286,7 @@ When reporting a bug, run wfweb with `--debug` and a log file to capture verbose
 wfweb --debug /tmp/wfweb-debug.log --lan 192.168.1.100 --lan-user myuser --lan-pass mypass
 ```
 
-This produces detailed, timestamped logs covering power on/off state transitions, VFO/split routing decisions, CI-V command traffic, and cache updates. Reproduce the issue, then share the log file with your bug report.
+This produces detailed, timestamped logs covering power on/off state transitions, VFO/split routing decisions, CI-V command traffic, and cache updates. Reproduce the issue, then attach the log file to your bug report — either on the [issue tracker](https://github.com/adecarolis/wfweb/issues) or by email (see [Bugs and feature requests](#bugs-and-feature-requests)).
 
 Without the filename argument, `--debug` writes to the default log location (`/tmp/wfweb-*.log`).
 
@@ -431,6 +431,17 @@ Password=
 ## Building from source
 
 See **[BUILDING.md](BUILDING.md)** for platform-specific prerequisites and build instructions (Linux, macOS, Windows).
+
+---
+
+## Bugs and feature requests
+
+Two ways to report a bug or ask for a new feature:
+
+- **Open a [GitHub issue](https://github.com/adecarolis/wfweb/issues)** — the usual way.
+- **Email [wfweb@k1fm.us](mailto:wfweb@k1fm.us)** — no GitHub account needed. Describe the problem or the feature you'd like; log files and screenshots are welcome as attachments.
+
+Every email is automatically turned into a GitHub issue and triaged. **You will not get a reply by email** — follow the issue on the [issue tracker](https://github.com/adecarolis/wfweb/issues) instead for answers and progress.
 
 ---
 
