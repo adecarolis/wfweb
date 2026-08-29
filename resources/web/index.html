@@ -1472,6 +1472,11 @@ body.digi-open #bottomBar { grid-row: 5; }
 }
 .mem-modal-title span { flex: 1; }
 #memScanStatus { font-size: 0.8em; color: #448; margin-left: 8px; font-weight: normal; }
+#memGroupRow { font-size: 0.85em; margin: 0 8px; align-items: center; gap: 4px; }
+#memGroupSelect {
+    background: #001828; border: 1px solid #048; color: #8cf;
+    font-family: 'Courier New', monospace; font-size: 11px; padding: 1px 4px; border-radius: 3px;
+}
 .memory-list {
     overflow-y: auto;
     flex: 1;
@@ -1924,6 +1929,10 @@ body.digi-open #bottomBar { grid-row: 5; }
         <div id="memoryOverlay" class="mem-modal">
             <div class="mem-modal-title">
                 <span>Memories <span id="memScanStatus"></span></span>
+                <span id="memGroupRow" style="display:none;flex:0 0 auto;font-weight:normal;">
+                    <label for="memGroupSelect" style="color:#448;">Group</label>
+                    <select id="memGroupSelect" onchange="onMemGroupChange()"></select>
+                </span>
                 <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeMemoryModal()">&#x2715; Close</button>
             </div>
             <div class="memory-list">
@@ -2645,6 +2654,7 @@ function handleMessage(msg) {
                 if (msg.filters) populateFilters(msg.filters);
                 if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
                 if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
+                if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
 
                 updateWarningVisibility();
                 applyUrlTune();
@@ -2668,6 +2678,7 @@ function handleMessage(msg) {
             if (msg.filters) populateFilters(msg.filters);
             if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
             if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
+            if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
             if (msg.hasPowerControl) document.getElementById('powerBtn').style.display = 'flex';
             if (msg.freedvModes) freedvModes = msg.freedvModes;
             updateWarningVisibility();
@@ -4160,6 +4171,38 @@ function renderSpanOverlay() {
 
 // --- Memory overlay ---
 var memoryChannels = {};
+var memGroupList = [];       // valid memory-group numbers for this rig ([] = rig has no groups)
+var memCurrentGroup = 0;     // group the browser is currently reading/writing
+
+// Build the group list + selector from rig caps. memGroups is the highest
+// group number, memStart the lowest; a rig with no groups reports
+// memGroups < memStart, and we fall back to group 0 (byte is ignored by
+// the CI-V encoder for those rigs anyway).
+function setupMemoryGroups(memGroups, memStart) {
+    memGroupList = [];
+    for (var g = memStart; g <= memGroups; g++) memGroupList.push(g);
+    memCurrentGroup = memGroupList.length ? memGroupList[0] : 0;
+    var row = document.getElementById('memGroupRow');
+    var sel = document.getElementById('memGroupSelect');
+    if (memGroupList.length >= 2) {
+        sel.innerHTML = '';
+        for (var i = 0; i < memGroupList.length; i++) {
+            var o = document.createElement('option');
+            o.value = memGroupList[i];
+            o.textContent = String(memGroupList[i]).padStart(2, '0');
+            sel.appendChild(o);
+        }
+        sel.value = memCurrentGroup;
+        row.style.display = 'inline-flex';
+    } else {
+        row.style.display = 'none';
+    }
+}
+
+function onMemGroupChange() {
+    memCurrentGroup = parseInt(document.getElementById('memGroupSelect').value, 10) || 0;
+    refreshMemories();
+}
 
 function renderMemoryOverlay() {
     document.getElementById('memoryOverlay').classList.add('visible');
@@ -4183,7 +4226,7 @@ function refreshMemories() {
     document.getElementById('memoryList').innerHTML =
         '<div class="memory-empty">Scanning...</div>';
     document.getElementById('memScanStatus').textContent = 'scanning...';
-    send({ cmd: 'getMemories', start: 1, end: 99, group: 0 });
+    send({ cmd: 'getMemories', start: 1, end: 99, group: memCurrentGroup });
 }
 
 function renderMemoryList() {
@@ -4235,6 +4278,8 @@ function formatMemFreq(hz) {
 function handleMemoryChannel(msg) {
     var mem = msg.memory;
     if (!mem) return;
+    // Drop late replies from a group we've since switched away from.
+    if (memGroupList.length && (mem.group || 0) !== memCurrentGroup) return;
     var key = (mem.group || 0) * 65536 + mem.channel;
     if (mem.del || mem.empty) {
         delete memoryChannels[key];
@@ -4283,7 +4328,7 @@ function memoryWrite() {
 function memoryWriteConfirm() {
     var ch = parseInt(document.getElementById('memWriteCh').value);
     if (ch > 0) {
-        send({ cmd: 'writeMemory', channel: ch, group: 0 });
+        send({ cmd: 'writeMemory', channel: ch, group: memCurrentGroup });
         document.getElementById('memWritePrompt').classList.remove('visible');
         // Refresh after a short delay to see the new entry
         setTimeout(refreshMemories, 500);

@@ -461,6 +461,14 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
             }
             obj["filters"] = filters;
         }
+        // Memory-channel capabilities. memGroups is the highest group number
+        // (IC-9700: 3, one per band); memStart is the lowest (1 on the 9700,
+        // 0 on rigs whose groups are zero-based). Rigs with no groups report
+        // memGroups < memStart and the browser keeps group 0.
+        obj["hasMemories"] = rigCaps->commands.contains(funcMemoryContents) && !rigCaps->memParser.isEmpty();
+        obj["memGroups"] = rigCaps->memGroups;
+        obj["memStart"] = rigCaps->memStart;
+        obj["satMemories"] = rigCaps->satMemories;
         sendJsonToAll(obj);
 
         // Issue #76: rigs with an antenna selector but no periodic Antenna
@@ -2815,6 +2823,10 @@ QJsonObject webServer::buildInfoJson() const
             }
             info["filters"] = filters;
         }
+        info["hasMemories"] = rigCaps->commands.contains(funcMemoryContents) && !rigCaps->memParser.isEmpty();
+        info["memGroups"] = rigCaps->memGroups;
+        info["memStart"] = rigCaps->memStart;
+        info["satMemories"] = rigCaps->satMemories;
     } else {
         info["connected"] = false;
     }
