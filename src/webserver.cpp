@@ -1636,16 +1636,23 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         QString vfoName = cmd["value"].toString();
         // On cmd29 rigs (IC-7610/785x/9700/905) selecting a VFO means Main/Sub,
         // not A/B. funcSelectVFO in icomcommander maps vfo_t to the right command.
-        bool wantB = (vfoName == "B");
-        vfo_t v;
-        if (rigCaps && rigCaps->hasCommand29)
-            v = wantB ? vfoSub : vfoMain;
-        else
-            v = wantB ? vfoB : vfoA;
-        activeVfoLocal = v;
-        activeReceiver = wantB ? 1 : 0;
-        queue->addUnique(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(v), false));
-        requestVfoUpdate();
+        if (vfoName == "MEM" || vfoName == "MEMO") {
+            // Memory mode — bare CI-V 08 (front-panel V/M). Leave
+            // activeVfoLocal alone so a later switch back to VFO returns here.
+            queue->addUnique(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(vfoMem), false));
+            requestVfoUpdate();
+        } else {
+            bool wantB = (vfoName == "B");
+            vfo_t v;
+            if (rigCaps && rigCaps->hasCommand29)
+                v = wantB ? vfoSub : vfoMain;
+            else
+                v = wantB ? vfoB : vfoA;
+            activeVfoLocal = v;
+            activeReceiver = wantB ? 1 : 0;
+            queue->addUnique(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(v), false));
+            requestVfoUpdate();
+        }
     }
     else if (type == "swapVFO") {
         // IC-7300/7100/705/etc use VFO Swap A/B; IC-7610/785x/9700/905 use Swap M/S.
@@ -2077,9 +2084,20 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             queue->addUnique(priorityImmediate, queueItem(tf.freqFunc, QVariant::fromValue<freqt>(f), false, tf.receiver));
         }
 
-        // Enter memory mode / select the channel — the radio loads mode,
-        // filter, tone, tone squelch, duplex direction and offset from it.
+        // Select the channel — the radio loads mode, filter, tone, tone
+        // squelch, duplex direction and offset from it.
         queue->addUnique(priorityImmediate, queueItem(selCmd, QVariant::fromValue<uint>((uint)ch), false, 0));
+
+        // Icom: selecting a channel (CI-V 08 <ch>) does NOT flip the operating
+        // mode to memory — the radio stays on VFO A/B, so the recalled tone /
+        // offset never take effect. funcSelectVFO(vfoMem) sends the bare CI-V
+        // 08 that the front-panel V/M button uses and also marks the queue's
+        // rigState as memory mode. Distinct command from the line above, so
+        // addUnique here doesn't dedup the channel select. Kenwood / Yaesu
+        // funcMemorySelect already enters memory mode, so this is Icom-only.
+        if (selCmd == funcMemoryMode) {
+            queue->addUnique(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(vfoMem), false, 0));
+        }
 
         // Read freq/mode back so the browser display follows the recalled channel.
         requestVfoUpdate();
@@ -2966,7 +2984,8 @@ QJsonObject webServer::buildStatusJson()
         if (freqCacheB.value.isValid()) {
             status["vfoBFrequency"] = (qint64)freqCacheB.value.value<freqt>().Hz;
         }
-        status["selectedVfo"] = (queue->getState().vfo == vfoSub) ? "B" : "A";
+        status["selectedVfo"] = (queue->getState().vfo == vfoMem) ? "MEM"
+                              : (queue->getState().vfo == vfoSub) ? "B" : "A";
     } else {
         bool bSelected = (queue->getState().vfo == vfoB);
         cacheItem selCache = queue->getCache(funcSelectedFreq, 0);
@@ -2980,7 +2999,7 @@ QJsonObject webServer::buildStatusJson()
             qint64 hz = (qint64)unselCache.value.value<freqt>().Hz;
             status[bSelected ? "vfoAFrequency" : "vfoBFrequency"] = hz;
         }
-        status["selectedVfo"] = bSelected ? "B" : "A";
+        status["selectedVfo"] = (queue->getState().vfo == vfoMem) ? "MEM" : bSelected ? "B" : "A";
     }
 
     // Mode
@@ -3214,7 +3233,8 @@ void webServer::receiveCache(cacheItem item)
     case funcSelectVFO:
     {
         vfo_t v = item.value.value<vfo_t>();
-        if (v == vfoMem || v == vfoUnknown) return;
+        if (v == vfoUnknown) return;
+        if (v == vfoMem) { update["selectedVfo"] = "MEM"; break; }
         bool isB = (v == vfoB || v == vfoSub);
         activeVfoLocal = v;
         activeReceiver = isB ? 1 : 0;
