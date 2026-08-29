@@ -1,0 +1,15 @@
+{
+  "name": "wfweb-support-inbox",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-01",
+  "vars": {
+    // Personal copy of every support mail. Must be a verified
+    // "destination address" in Cloudflare Email Routing, or forwards fail
+    // (the issue still gets created). Leave empty to disable.
+    "FORWARD_TO": "wfweb@alain.it"
+  }
+  // Secret (set once, never committed):
+  //   npx wrangler secret put GITHUB_TOKEN
+  // Fine-grained PAT scoped to adecarolis/wfweb only,
+  // permissions: Issues read/write + Contents read/write.
+}
