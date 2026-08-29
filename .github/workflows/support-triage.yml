@@ -45,9 +45,12 @@ jobs:
           # Workflow token instead of the Claude GitHub App (not installed on
           # this repo); triage comments post as github-actions[bot].
           github_token: ${{ github.token }}
+          # Write commands are pinned to the triggering issue so a hijacked
+          # agent can't vandalize the rest of the tracker; Read is scoped to
+          # the checkouts so it can't roam the runner filesystem.
           claude_args: |
             --model claude-sonnet-5
-            --allowedTools "Read,Grep,Glob,Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh search issues:*)"
+            --allowedTools "Read(./**),Grep,Glob,Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue edit ${{ github.event.issue.number }}:*),Bash(gh issue comment ${{ github.event.issue.number }}:*),Bash(gh search issues:*)"
           prompt: |
             You are the support-triage agent for wfweb, a headless app for
             controlling amateur radio transceivers whose only UI is a web
