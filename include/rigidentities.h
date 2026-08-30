@@ -174,7 +174,8 @@ struct bandType {
         this->region=i.region;
         this->band=i.band;
         this->bsr=i.bsr;
-        this->lowFreq=i.highFreq;
+        this->lowFreq=i.lowFreq;
+        this->highFreq=i.highFreq;
         this->defaultMode=i.defaultMode;
         this->range=i.range;
         this->memGroup=i.memGroup;
