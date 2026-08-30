@@ -1499,9 +1499,14 @@ body.digi-open #bottomBar { grid-row: 5; }
 .mem-name.auto { color: #48a; font-weight: normal; font-style: italic; }
 .mem-sub { color: #467; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .memory-row.current .mem-sub { color: #5af; }
-.mem-edit { color: #467; cursor: pointer; font-size: 12px; text-align: center; line-height: 1; }
+.mem-edit, .mem-del {
+    cursor: pointer; line-height: 1;
+    /* the whole grid cell is the tap target, not just the glyph */
+    align-self: stretch; display: flex; align-items: center; justify-content: center;
+}
+.mem-edit { color: #467; font-size: 12px; }
 .mem-edit:hover { color: #8cf; }
-.mem-del { color: #844; cursor: pointer; font-size: 14px; text-align: center; line-height: 1; }
+.mem-del { color: #844; font-size: 14px; }
 .mem-del:hover { color: #f44; }
 .mem-rename-input {
     width: 100%; box-sizing: border-box;
@@ -1518,6 +1523,18 @@ body.digi-open #bottomBar { grid-row: 5; }
 }
 .mem-seg:active { background: #048; color: #000; }
 .mem-seg.active { background: #024a80; border-color: #5af; color: #fff; }
+/* Touch devices: finger-sized targets in the memory panel. The delete cell
+   especially — a mis-tap there clears a channel. */
+@media (pointer: coarse) {
+    /* vertical padding lives on the content cell so the edit/delete cells
+       stretch to the full row height as tap targets */
+    .memory-row { padding: 0 4px; grid-template-columns: 30px 1fr 38px 38px; }
+    .mem-main { padding: 9px 0; }
+    .mem-edit { font-size: 15px; }
+    .mem-del { font-size: 17px; }
+    .mem-seg { padding: 11px 0; }
+    .mem-action-btn { padding: 8px 16px; }
+}
 .memory-empty { color: #224; font-style: italic; padding: 8px 4px; }
 .mem-actions {
     display: flex;
