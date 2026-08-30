@@ -2038,7 +2038,8 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         if (!queue || !rigCaps) return;
         int ch = cmd["channel"].toInt();
         int group = cmd.contains("group") ? cmd["group"].toInt() : 0;
-        if (ch <= 0) return;
+        // Channel 0 is real on zero-based rigs (IC-705/905)
+        if (ch < 0 || (ch == 0 && rigCaps->memStart != 0)) return;
         // Build memoryType from current VFO state
         memoryType mem;
         mem.channel = ch;

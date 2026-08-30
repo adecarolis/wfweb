@@ -1523,6 +1523,20 @@ body.digi-open #bottomBar { grid-row: 5; }
 }
 .mem-seg:active { background: #048; color: #000; }
 .mem-seg.active { background: #024a80; border-color: #5af; color: #fff; }
+/* Save-target picker: shown by "+ Save" */
+#memSaveBar {
+    display: none; gap: 8px; align-items: center; flex-wrap: wrap;
+    margin-top: 6px; padding: 6px 8px;
+    border: 1px solid #5af; border-radius: 3px; background: #001830;
+    font-family: 'Courier New', monospace; font-size: 11px;
+}
+#memSaveBar.visible { display: flex; }
+.mem-savebar-label { color: #8cf; font-weight: bold; }
+#memSaveCh {
+    width: 54px; background: #001020; border: 1px solid #048; color: #8cf;
+    padding: 3px 6px; font-family: 'Courier New', monospace; font-size: 12px; text-align: center;
+}
+.mem-savebar-hint { color: #467; font-style: italic; }
 /* Touch devices: finger-sized targets in the memory panel. The delete cell
    especially — a mis-tap there clears a channel. */
 @media (pointer: coarse) {
@@ -1959,8 +1973,15 @@ body.digi-open #bottomBar { grid-row: 5; }
                 <div id="memoryList"></div>
             </div>
             <div class="mem-actions">
-                <button class="mem-action-btn" onclick="memorySaveCurrent()" title="Save the current frequency and mode into the next free channel">&#xFF0B; Save</button>
+                <button class="mem-action-btn" onclick="memorySaveCurrent()" title="Save the current frequency and mode into a memory channel">&#xFF0B; Save</button>
                 <button class="mem-action-btn" onclick="refreshMemories()">Refresh</button>
+            </div>
+            <div id="memSaveBar">
+                <span class="mem-savebar-label">Save to Ch</span>
+                <input type="number" id="memSaveCh" min="0" max="999">
+                <button class="mem-action-btn" onclick="memorySaveConfirm()">OK</button>
+                <button class="mem-action-btn" onclick="memorySaveCancel()">Cancel</button>
+                <span class="mem-savebar-hint">or tap a channel above to overwrite it</span>
             </div>
         </div>
 
@@ -4255,12 +4276,14 @@ function renderMemoryOverlay() {
 
 function openMemoryBrowser() {
     document.getElementById('memoryOverlay').classList.add('visible');
+    memorySaveCancel();
     updateMemPanelVfoRow();
     refreshMemories();
 }
 
 function closeMemoryModal() {
     document.getElementById('memoryOverlay').classList.remove('visible');
+    memorySaveCancel();
 }
 
 function refreshMemories() {
@@ -4313,6 +4336,12 @@ function renderMemoryList() {
                 startMemoryRename(r, m);
             });
             row.addEventListener('click', function() {
+                // While the save picker is open a row tap picks that channel
+                // as the save target instead of recalling it.
+                if (memSaveBarOpen()) {
+                    document.getElementById('memSaveCh').value = m.channel;
+                    return;
+                }
                 // Recall on the radio so it restores tone / tone squelch /
                 // duplex offset from the channel — not just freq + mode. The
                 // server queues the rig's own channel select and (where the
@@ -4388,17 +4417,34 @@ function nextFreeMemoryChannel() {
     return 1;
 }
 
-// "+ Save": snapshot the current frequency/mode into the next free channel of
-// the viewed group — no slot picking, auto-named "146.955 FM" (short enough
-// for the 10-char name fields; rename afterwards with the pencil).
+// "+ Save": open the target picker, prefilled with the next free channel of
+// the viewed group. Type any channel number, or tap a row to overwrite that
+// channel. OK writes the current frequency/mode there, auto-named
+// "146.955 FM" (short enough for the 10-char name fields; rename with the
+// pencil afterwards).
 function memorySaveCurrent() {
-    var ch = nextFreeMemoryChannel();
+    document.getElementById('memSaveCh').value = nextFreeMemoryChannel();
+    document.getElementById('memSaveBar').classList.add('visible');
+}
+
+function memSaveBarOpen() {
+    return document.getElementById('memSaveBar').classList.contains('visible');
+}
+
+function memorySaveConfirm() {
+    var ch = parseInt(document.getElementById('memSaveCh').value);
+    if (isNaN(ch) || ch < 0) return;
     var name = '';
     if (lastShownFreq > 0) {
         name = (lastShownFreq / 1e6).toFixed(3) + ' ' + (currentMode || '');
     }
     send({ cmd: 'writeMemory', channel: ch, group: memCurrentGroup, name: name.trim() });
+    memorySaveCancel();
     setTimeout(refreshMemories, 500);
+}
+
+function memorySaveCancel() {
+    document.getElementById('memSaveBar').classList.remove('visible');
 }
 
 // Pencil: edit the channel name in place. Enter saves, Esc/blur cancels.
