@@ -1508,6 +1508,16 @@ body.digi-open #bottomBar { grid-row: 5; }
     background: #001020; border: 1px solid #048; color: #8cf;
     font-family: 'Courier New', monospace; font-size: 11px; padding: 1px 3px;
 }
+/* VFO A / VFO B / MEM selector at the top of the memory panel */
+.mem-vfo-row { display: flex; gap: 6px; margin: 2px 8px 6px; }
+.mem-seg {
+    flex: 1; padding: 6px 0;
+    background: #001020; border: 1px solid #048; border-radius: 3px;
+    color: #08f; font-family: 'Courier New', monospace; font-size: 12px;
+    font-weight: bold; cursor: pointer;
+}
+.mem-seg:active { background: #048; color: #000; }
+.mem-seg.active { background: #024a80; border-color: #5af; color: #fff; }
 .memory-empty { color: #224; font-style: italic; padding: 8px 4px; }
 .mem-actions {
     display: flex;
@@ -1922,6 +1932,11 @@ body.digi-open #bottomBar { grid-row: 5; }
                     <select id="memGroupSelect" class="wf-field" onchange="onMemGroupChange()"></select>
                 </span>
                 <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeMemoryModal()">&#x2715; Close</button>
+            </div>
+            <div class="mem-vfo-row">
+                <button id="memVfoA" class="mem-seg" onclick="memPanelSelect('A')">VFO A</button>
+                <button id="memVfoB" class="mem-seg" onclick="memPanelSelect('B')">VFO B</button>
+                <button id="memVfoMem" class="mem-seg" onclick="memPanelSelect('MEM')">MEM</button>
             </div>
             <div class="memory-list">
                 <div id="memoryList"></div>
@@ -2890,9 +2905,10 @@ function applyVfoFreqMessage(msg) {
     if (msg.vfoBFrequency !== undefined) vfoBFreq = msg.vfoBFrequency;
     if (msg.memChannel !== undefined && memChannel !== msg.memChannel) {
         memChannel = msg.memChannel;
-        // Channel number shows on the MEM indicator ("MEM 2") and the FUNC
-        // MEM button state ("CH 2")
+        // Channel number shows on the MEM indicator ("MEM 2"), the panel's
+        // MEM segment, and the FUNC MEM button state ("CH 2")
         if (currentVfo === 'MEM') updateVfoDisplay();
+        else updateMemPanelVfoRow();
         if (currentPanel === 'func') renderFuncOverlay();
     }
     if (msg.selectedVfo === 'A' || msg.selectedVfo === 'B' || msg.selectedVfo === 'MEM') {
@@ -3943,19 +3959,13 @@ function renderFuncOverlay() {
         grid.appendChild(fbtn);
     }
 
-    // MEM mode toggle (front-panel V/M). Selectable like the other toggles;
-    // entering MEM also opens the channel list, and the tile shows the
-    // current memory channel while active. MEM mode is entered ONLY here (or
-    // by recalling a channel), never from the VFO tile. Rigs without a
-    // memory-mode command keep a plain MEM tile that just opens the list.
-    if (hasMemoryMode) {
-        var memState = currentVfo === 'MEM' ? (memChannel !== null ? 'CH ' + memChannel : 'ON') : 'OFF';
-        grid.appendChild(makeFuncBtn('MEM', memState, currentVfo === 'MEM', toggleMemMode));
-    } else {
-        grid.appendChild(makeFuncBtn('MEM', '', false, function() {
-            openMemoryBrowser();
-        }));
-    }
+    // MEM button opens the VFO/MEM panel (VFO A/B + memory mode + channel
+    // list + save). Lit with the channel number while the rig is in memory
+    // mode, so it doubles as an indicator.
+    var memState = currentVfo === 'MEM' ? (memChannel !== null ? 'CH ' + memChannel : 'ON') : '';
+    grid.appendChild(makeFuncBtn('MEM', memState, currentVfo === 'MEM', function() {
+        openMemoryBrowser();
+    }));
 
     // Monitor (TX sidetone)
     grid.appendChild(makeFuncBtn('MON', monitorEnabled ? toPercent(monitorLevel, 255) : 'OFF', monitorEnabled, function() {
@@ -4228,6 +4238,7 @@ function renderMemoryOverlay() {
 
 function openMemoryBrowser() {
     document.getElementById('memoryOverlay').classList.add('visible');
+    updateMemPanelVfoRow();
     refreshMemories();
 }
 
@@ -4240,7 +4251,10 @@ function refreshMemories() {
     document.getElementById('memoryList').innerHTML =
         '<div class="memory-empty">Scanning...</div>';
     document.getElementById('memScanStatus').textContent = 'scanning...';
-    send({ cmd: 'getMemories', start: 1, end: 99, group: memCurrentGroup });
+    // Start at 0: zero-based rigs (IC-705/905) have a real channel 0. Rigs
+    // whose channels start at 1 just drop the out-of-range first read and
+    // the scan moves on.
+    send({ cmd: 'getMemories', start: 0, end: 99, group: memCurrentGroup });
 }
 
 function renderMemoryList() {
@@ -4553,6 +4567,7 @@ function setMode(mode) {
 function updateVfoDisplay() {
     var label = document.getElementById('vfoLabel');
     var num = document.getElementById('vfoNum');
+    updateMemPanelVfoRow();
     if (currentVfo === 'MEM') {
         label.textContent = memChannel !== null ? 'MEM ' + memChannel : 'MEM';
     } else if (hasMainSub) {
@@ -4579,18 +4594,27 @@ function selectVFO(vfo) {
     if (newFreq > 0) updateFrequency(newFreq);
     else updateOtherVfoDisplay();
 }
-// FUNC MEM tile: toggle memory mode (front-panel V/M). Entering goes to the
-// rig's current memory channel and opens the channel list for picking one;
-// leaving returns to the last selected VFO.
-function toggleMemMode() {
-    if (currentVfo === 'MEM') {
-        selectVFO(lastRealVfo);
-        closeMemoryModal();
-    } else {
-        selectVFO('MEM');
-        openMemoryBrowser();
+// Memory panel VFO A / VFO B / MEM selector. Selecting a VFO exits memory
+// mode on the rig; MEM enters it on the rig's current channel.
+function memPanelSelect(v) {
+    if (v === 'MEM' && !hasMemoryMode) return;
+    if (v === currentVfo) return;
+    selectVFO(v);
+    updateMemPanelVfoRow();
+    renderMemoryList();
+}
+
+function updateMemPanelVfoRow() {
+    var segs = { 'A': 'memVfoA', 'B': 'memVfoB', 'MEM': 'memVfoMem' };
+    for (var k in segs) {
+        var el = document.getElementById(segs[k]);
+        if (el) el.classList.toggle('active', currentVfo === k);
     }
-    renderFuncOverlay();
+    var memBtn = document.getElementById('memVfoMem');
+    if (memBtn) {
+        memBtn.style.display = hasMemoryMode ? '' : 'none';
+        memBtn.textContent = (currentVfo === 'MEM' && memChannel !== null) ? 'MEM ' + memChannel : 'MEM';
+    }
 }
 
 function swapVFO() {

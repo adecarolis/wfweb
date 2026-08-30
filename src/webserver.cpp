@@ -2052,6 +2052,20 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             QByteArray nb = cmd["name"].toString().toLatin1().left(int(sizeof(mem.name)) - 1);
             memcpy(mem.name, nb.constData(), size_t(nb.size()));
         }
+        // The DV callsign buffers and duplex offsets have no default
+        // initializers. Rigs whose MemFormat includes them (IC-705 t/u/v
+        // fields) serialize whatever is in there — uninitialized garbage gets
+        // the whole write rejected (FA). The IC-7300 never showed this only
+        // because its format has no DV fields.
+        memset(mem.UR, 0, sizeof(mem.UR));
+        memset(mem.URB, 0, sizeof(mem.URB));
+        memset(mem.R1, 0, sizeof(mem.R1));
+        memset(mem.R1B, 0, sizeof(mem.R1B));
+        memset(mem.R2, 0, sizeof(mem.R2));
+        memset(mem.R2B, 0, sizeof(mem.R2B));
+        mem.duplexOffset.Hz = 0;
+        mem.duplexOffset.MHzDouble = 0.0;
+        mem.duplexOffsetB = mem.duplexOffset;
         mem.split = 0;
         // Get the current operating frequency and mode. getVfoCommand only
         // routes to funcSelectedFreq/Mode while the rig is in VFO mode, and
