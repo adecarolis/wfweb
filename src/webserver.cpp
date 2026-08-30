@@ -2934,6 +2934,16 @@ QJsonObject webServer::buildStatusJson()
                               : bSelected ? "B" : "A";
     }
 
+    // Current memory channel number (for the browser's MEM tile) — last
+    // channel select seen, from whichever select command this rig uses.
+    if (queue->getState().vfo == vfoMem) {
+        cacheItem memCh = queue->getCache(funcMemoryMode, 0);
+        if (!memCh.value.isValid()) memCh = queue->getCache(funcMemorySelect, 0);
+        bool ok = false;
+        int ch = memCh.value.toInt(&ok);
+        if (ok) status["memChannel"] = ch;
+    }
+
     // Mode
     cacheItem modeCache = queue->getCache(t.modeFunc, 0);
     if (modeCache.value.isValid()) {
@@ -3177,6 +3187,17 @@ void webServer::receiveCache(cacheItem item)
         activeVfoLocal = v;
         activeReceiver = isB ? 1 : 0;
         update["selectedVfo"] = isB ? "B" : "A";
+        break;
+    }
+    case funcMemoryMode:
+    case funcMemorySelect:
+    {
+        // Channel-select value (recall, MC reply, CI-V 08 echo) — surface the
+        // current memory channel number for the browser's MEM indicator.
+        bool ok = false;
+        int ch = item.value.toInt(&ok);
+        if (!ok) return;
+        update["memChannel"] = ch;
         break;
     }
     case funcVFOASelect:

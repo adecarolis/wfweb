@@ -2462,6 +2462,8 @@ var hasRxAnt = false;         // rig has an RX-antenna input (IC-7610/785x)
 var currentAntenna = 0;
 var rxAntOn = false;
 var currentVfo = 'A';        // 'A' | 'B' | 'MEM'
+var lastRealVfo = 'A';        // last selected A/B — where leaving MEM returns
+var memChannel = null;        // current memory channel number (shown on the MEM tile)
 var hasMainSub = false;
 var hasMemoryMode = false;    // rig has a V/M memory-mode toggle
 
@@ -2905,11 +2907,21 @@ function updateOtherVfoDisplay() {
 function applyVfoFreqMessage(msg) {
     if (msg.vfoAFrequency !== undefined) vfoAFreq = msg.vfoAFrequency;
     if (msg.vfoBFrequency !== undefined) vfoBFreq = msg.vfoBFrequency;
+    if (msg.memChannel !== undefined && memChannel !== msg.memChannel) {
+        memChannel = msg.memChannel;
+        // Channel number shows on the MEM indicator ("MEM 2") and the FUNC
+        // MEM button state ("CH 2")
+        if (currentVfo === 'MEM') updateVfoDisplay();
+        if (currentPanel === 'func') renderFuncOverlay();
+    }
     if (msg.selectedVfo === 'A' || msg.selectedVfo === 'B' || msg.selectedVfo === 'MEM') {
         if (currentVfo !== msg.selectedVfo) {
             currentVfo = msg.selectedVfo;
+            if (currentVfo !== 'MEM') lastRealVfo = currentVfo;
             updateVfoDisplay();
             renderBottomBar();
+            // Keep the FUNC MEM toggle's selected state in sync with the rig
+            if (currentPanel === 'func') renderFuncOverlay();
         }
     }
     var hasVfoFreq = (msg.vfoAFrequency !== undefined || msg.vfoBFrequency !== undefined);
@@ -3950,10 +3962,19 @@ function renderFuncOverlay() {
         grid.appendChild(fbtn);
     }
 
-    // Memory browser
-    grid.appendChild(makeFuncBtn('MEM', '', false, function() {
-        openMemoryBrowser();
-    }));
+    // MEM mode toggle (front-panel V/M). Selectable like the other toggles;
+    // entering MEM also opens the channel list, and the tile shows the
+    // current memory channel while active. MEM mode is entered ONLY here (or
+    // by recalling a channel), never from the VFO tile. Rigs without a
+    // memory-mode command keep a plain MEM tile that just opens the list.
+    if (hasMemoryMode) {
+        var memState = currentVfo === 'MEM' ? (memChannel !== null ? 'CH ' + memChannel : 'ON') : 'OFF';
+        grid.appendChild(makeFuncBtn('MEM', memState, currentVfo === 'MEM', toggleMemMode));
+    } else {
+        grid.appendChild(makeFuncBtn('MEM', '', false, function() {
+            openMemoryBrowser();
+        }));
+    }
 
     // Monitor (TX sidetone)
     grid.appendChild(makeFuncBtn('MON', monitorEnabled ? toPercent(monitorLevel, 255) : 'OFF', monitorEnabled, function() {
@@ -4276,6 +4297,7 @@ function renderMemoryList() {
                 // server queues the rig's own channel select and (where the
                 // rig has one) the V/M memory-mode switch.
                 send({ cmd: 'recallMemory', channel: m.channel, group: m.group || 0 });
+                memChannel = m.channel;
                 if (hasMemoryMode) {
                     currentVfo = 'MEM';
                     updateVfoDisplay();
@@ -4521,7 +4543,7 @@ function updateVfoDisplay() {
     var label = document.getElementById('vfoLabel');
     var num = document.getElementById('vfoNum');
     if (currentVfo === 'MEM') {
-        label.textContent = 'MEM';
+        label.textContent = memChannel !== null ? 'MEM ' + memChannel : 'MEM';
     } else if (hasMainSub) {
         label.textContent = 'VFO ' + (currentVfo === 'A' ? 'MAIN' : 'SUB');
     } else {
@@ -4533,6 +4555,7 @@ function updateVfoDisplay() {
 function selectVFO(vfo) {
     send({ cmd: 'selectVFO', value: vfo });
     currentVfo = vfo;
+    if (vfo !== 'MEM') lastRealVfo = vfo;
     updateVfoDisplay();
     renderBottomBar();
     // Memory mode: leave the frequency display for the radio's round-trip
@@ -4545,6 +4568,20 @@ function selectVFO(vfo) {
     if (newFreq > 0) updateFrequency(newFreq);
     else updateOtherVfoDisplay();
 }
+// FUNC MEM tile: toggle memory mode (front-panel V/M). Entering goes to the
+// rig's current memory channel and opens the channel list for picking one;
+// leaving returns to the last selected VFO.
+function toggleMemMode() {
+    if (currentVfo === 'MEM') {
+        selectVFO(lastRealVfo);
+        closeMemoryModal();
+    } else {
+        selectVFO('MEM');
+        openMemoryBrowser();
+    }
+    renderFuncOverlay();
+}
+
 function swapVFO() {
     send({ cmd: 'swapVFO' });
     // VFO Swap exchanges the contents of A and B but leaves the selection
@@ -5598,11 +5635,11 @@ document.getElementById('freqDisplay').addEventListener('click', function() {
 });
 
 document.getElementById('vfoLabel').addEventListener('click', function() {
-    // Cycle the operating mode: A -> B -> MEM -> A (MEM only on rigs with a
-    // V/M memory-mode toggle). Mirrors the front-panel A/B and V/M buttons.
-    var order = hasMemoryMode ? ['A', 'B', 'MEM'] : ['A', 'B'];
-    var i = order.indexOf(currentVfo);
-    selectVFO(order[(i + 1) % order.length]);
+    // Toggle VFO A <-> B only. MEM mode is entered/left exclusively from the
+    // FUNC MEM button; while in MEM this label reads "MEM n" and tapping it
+    // opens the channel list (like tapping the frequency opens freq input).
+    if (currentVfo === 'MEM') openMemoryBrowser();
+    else selectVFO(currentVfo === 'A' ? 'B' : 'A');
 });
 
 
