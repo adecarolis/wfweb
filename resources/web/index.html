@@ -1483,22 +1483,31 @@ body.digi-open #bottomBar { grid-row: 5; }
 }
 .memory-row {
     display: grid;
-    grid-template-columns: 36px 1fr 110px 44px 20px;
-    gap: 3px;
-    padding: 2px 4px;
+    grid-template-columns: 30px 1fr 20px 20px;
+    gap: 4px;
+    padding: 4px;
     border-bottom: 1px solid #011;
     color: #5af;
     align-items: center;
     cursor: pointer;
 }
 .memory-row:active { background: #001840; }
-.memory-row.header { color: #448; font-size: 10px; border-bottom: 1px solid #024; padding-top: 0; cursor: default; }
-.mem-ch { color: #448; }
-.mem-name { color: #8cf; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mem-freq { color: #5af; font-size: 11px; text-align: right; }
-.mem-mode { color: #08f; text-align: center; }
+.memory-row.current { background: #002850; box-shadow: inset 2px 0 0 #5af; }
+.mem-ch { color: #448; text-align: right; padding-right: 2px; }
+.mem-main { min-width: 0; }
+.mem-name { color: #8cf; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mem-name.auto { color: #48a; font-weight: normal; font-style: italic; }
+.mem-sub { color: #467; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.memory-row.current .mem-sub { color: #5af; }
+.mem-edit { color: #467; cursor: pointer; font-size: 12px; text-align: center; line-height: 1; }
+.mem-edit:hover { color: #8cf; }
 .mem-del { color: #844; cursor: pointer; font-size: 14px; text-align: center; line-height: 1; }
 .mem-del:hover { color: #f44; }
+.mem-rename-input {
+    width: 100%; box-sizing: border-box;
+    background: #001020; border: 1px solid #048; color: #8cf;
+    font-family: 'Courier New', monospace; font-size: 11px; padding: 1px 3px;
+}
 .memory-empty { color: #224; font-style: italic; padding: 8px 4px; }
 .mem-actions {
     display: flex;
@@ -1521,24 +1530,6 @@ body.digi-open #bottomBar { grid-row: 5; }
 }
 .mem-action-btn:active { background: #048; color: #000; }
 /* Write prompt */
-#memWritePrompt {
-    display: none; gap: 8px; align-items: center;
-    margin-top: 6px; padding-top: 6px; border-top: 1px solid #024;
-}
-#memWritePrompt.visible { display: flex; }
-#memWritePrompt input {
-    width: 50px; background: #001828; border: 1px solid #048; color: #8cf;
-    padding: 2px 6px; font-family: 'Courier New', monospace; font-size: 11px; text-align: center;
-}
-#memWritePrompt button {
-    padding: 3px 12px; background: #001020; border: 1px solid #048;
-    color: #08f; cursor: pointer; border-radius: 3px;
-    font-family: 'Courier New', monospace; font-size: 11px;
-}
-#memWritePrompt button:active { background: #048; color: #000; }
-
-/* MEM mini overlay (compact bar for MEM mode navigation) */
-
 .gain-bar-fill.centered {
     position: absolute; top: 0; height: 100%;
     background: linear-gradient(90deg, #066, #0aa);
@@ -1933,24 +1924,11 @@ body.digi-open #bottomBar { grid-row: 5; }
                 <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeMemoryModal()">&#x2715; Close</button>
             </div>
             <div class="memory-list">
-                <div class="memory-row header">
-                    <span class="mem-ch">Ch</span>
-                    <span class="mem-name">Name</span>
-                    <span class="mem-freq">Frequency</span>
-                    <span class="mem-mode">Mode</span>
-                    <span></span>
-                </div>
                 <div id="memoryList"></div>
             </div>
             <div class="mem-actions">
-                <button class="mem-action-btn" onclick="memoryWrite()">Write VFO</button>
+                <button class="mem-action-btn" onclick="memorySaveCurrent()" title="Save the current frequency and mode into the next free channel">&#xFF0B; Save</button>
                 <button class="mem-action-btn" onclick="refreshMemories()">Refresh</button>
-            </div>
-            <div id="memWritePrompt">
-                <span style="color:#448; font-size:11px; font-family:'Courier New',monospace;">Ch:</span>
-                <input type="number" id="memWriteCh" min="1" max="999" value="1">
-                <button onclick="memoryWriteConfirm()">Save</button>
-                <button onclick="memoryWriteCancel()">Cancel</button>
             </div>
         </div>
 
@@ -2464,6 +2442,8 @@ var rxAntOn = false;
 var currentVfo = 'A';        // 'A' | 'B' | 'MEM'
 var lastRealVfo = 'A';        // last selected A/B — where leaving MEM returns
 var memChannel = null;        // current memory channel number (shown on the MEM tile)
+var memChannelGroup = null;   // group of the last recalled channel (list highlight)
+var lastShownFreq = 0;        // operating frequency on the main display (Hz)
 var hasMainSub = false;
 var hasMemoryMode = false;    // rig has a V/M memory-mode toggle
 
@@ -2856,6 +2836,7 @@ function updateFrequency(hz) {
         }
     }
 
+    lastShownFreq = hz;
     // Store frequency for current VFO only (not in memory mode — the recalled
     // channel's freq must not overwrite either VFO's cached value)
     if (currentVfo === 'A') {
@@ -4241,14 +4222,12 @@ function onMemGroupChange() {
 
 function renderMemoryOverlay() {
     document.getElementById('memoryOverlay').classList.add('visible');
-    document.getElementById('memWritePrompt').classList.remove('visible');
     renderMemoryList();
     refreshMemories();
 }
 
 function openMemoryBrowser() {
     document.getElementById('memoryOverlay').classList.add('visible');
-    document.getElementById('memWritePrompt').classList.remove('visible');
     refreshMemories();
 }
 
@@ -4276,20 +4255,31 @@ function renderMemoryList() {
         var mem = memoryChannels[keys[i]];
         if (mem.del || mem.empty) continue;
         var row = document.createElement('div');
-        row.className = 'memory-row';
+        var isCurrent = currentVfo === 'MEM' && memChannel === mem.channel
+            && (memChannelGroup === null || (mem.group || 0) === memChannelGroup);
+        row.className = 'memory-row' + (isCurrent ? ' current' : '');
         row.setAttribute('data-key', keys[i]);
+        var name = (mem.name || '').trim();
+        var sub = formatMemFreq(mem.frequency) + ' \u00b7 ' + (mem.mode || '?');
         row.innerHTML =
             '<span class="mem-ch">' + mem.channel + '</span>' +
-            '<span class="mem-name">' + (mem.name || '') + '</span>' +
-            '<span class="mem-freq">' + formatMemFreq(mem.frequency) + '</span>' +
-            '<span class="mem-mode">' + (mem.mode || '') + '</span>' +
+            '<span class="mem-main">' +
+                '<div class="mem-name' + (name ? '' : ' auto') + '">' +
+                    (name ? escapeHtml(name) : sub) + '</div>' +
+                (name ? '<div class="mem-sub">' + sub + '</div>' : '') +
+            '</span>' +
+            '<span class="mem-edit" title="Rename">\u270e</span>' +
             '<span class="mem-del" title="Clear">\u2715</span>';
-        (function(m) {
-            row.querySelector('.mem-del').addEventListener('click', function(e) {
+        (function(m, r) {
+            r.querySelector('.mem-del').addEventListener('click', function(e) {
                 e.stopPropagation();
                 send({ cmd: 'clearMemory', channel: m.channel, group: m.group || 0 });
                 delete memoryChannels[(m.group || 0) * 65536 + m.channel];
                 renderMemoryList();
+            });
+            r.querySelector('.mem-edit').addEventListener('click', function(e) {
+                e.stopPropagation();
+                startMemoryRename(r, m);
             });
             row.addEventListener('click', function() {
                 // Recall on the radio so it restores tone / tone squelch /
@@ -4298,14 +4288,16 @@ function renderMemoryList() {
                 // rig has one) the V/M memory-mode switch.
                 send({ cmd: 'recallMemory', channel: m.channel, group: m.group || 0 });
                 memChannel = m.channel;
+                memChannelGroup = m.group || 0;
                 if (hasMemoryMode) {
                     currentVfo = 'MEM';
                     updateVfoDisplay();
                     renderBottomBar();
                 }
+                renderMemoryList();
                 setPanel('default');
             });
-        })(mem);
+        })(mem, row);
         list.appendChild(row);
     }
     if (list.children.length === 0) {
@@ -4315,8 +4307,10 @@ function renderMemoryList() {
 
 function formatMemFreq(hz) {
     if (!hz) return '---';
-    var mhz = hz / 1e6;
-    return mhz.toFixed(mhz >= 100 ? 4 : (mhz >= 10 ? 5 : 6));
+    var mhz = Math.floor(hz / 1e6);
+    var khz = Math.floor((hz % 1e6) / 1e3);
+    var h = hz % 1e3;
+    return mhz + '.' + String(khz).padStart(3, '0') + '.' + String(h).padStart(3, '0');
 }
 
 function handleMemoryChannel(msg) {
@@ -4363,26 +4357,43 @@ function nextFreeMemoryChannel() {
     return 1;
 }
 
-function memoryWrite() {
-    document.getElementById('memWritePrompt').classList.add('visible');
-    var next = nextFreeMemoryChannel();
-    console.log('memoryWrite: memoryChannels keys=' + Object.keys(memoryChannels).length + ' nextFree=' + next, memoryChannels);
-    document.getElementById('memWriteCh').value = next;
-    document.getElementById('memWriteCh').focus();
-}
-
-function memoryWriteConfirm() {
-    var ch = parseInt(document.getElementById('memWriteCh').value);
-    if (ch > 0) {
-        send({ cmd: 'writeMemory', channel: ch, group: memCurrentGroup });
-        document.getElementById('memWritePrompt').classList.remove('visible');
-        // Refresh after a short delay to see the new entry
-        setTimeout(refreshMemories, 500);
+// "+ Save": snapshot the current frequency/mode into the next free channel of
+// the viewed group — no slot picking, auto-named "146.955 FM" (short enough
+// for the 10-char name fields; rename afterwards with the pencil).
+function memorySaveCurrent() {
+    var ch = nextFreeMemoryChannel();
+    var name = '';
+    if (lastShownFreq > 0) {
+        name = (lastShownFreq / 1e6).toFixed(3) + ' ' + (currentMode || '');
     }
+    send({ cmd: 'writeMemory', channel: ch, group: memCurrentGroup, name: name.trim() });
+    setTimeout(refreshMemories, 500);
 }
 
-function memoryWriteCancel() {
-    document.getElementById('memWritePrompt').classList.remove('visible');
+// Pencil: edit the channel name in place. Enter saves, Esc/blur cancels.
+function startMemoryRename(row, m) {
+    var main = row.querySelector('.mem-main');
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.maxLength = 16;
+    input.className = 'mem-rename-input';
+    input.value = (m.name || '').trim();
+    main.innerHTML = '';
+    main.appendChild(input);
+    input.focus();
+    input.select();
+    input.addEventListener('click', function(e) { e.stopPropagation(); });
+    input.addEventListener('keydown', function(e) {
+        e.stopPropagation();
+        if (e.key === 'Enter') {
+            send({ cmd: 'renameMemory', channel: m.channel, group: m.group || 0, name: input.value.trim() });
+            m.name = input.value.trim();
+            renderMemoryList();
+        } else if (e.key === 'Escape') {
+            renderMemoryList();
+        }
+    });
+    input.addEventListener('blur', function() { renderMemoryList(); });
 }
 
 // Freq input keypad

@@ -2048,14 +2048,38 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         mem.scan = 0;
         memset(mem.name, ' ', sizeof(mem.name) - 1);
         mem.name[sizeof(mem.name) - 1] = '\0';
+        if (cmd.contains("name")) {
+            QByteArray nb = cmd["name"].toString().toLatin1().left(int(sizeof(mem.name)) - 1);
+            memcpy(mem.name, nb.constData(), size_t(nb.size()));
+        }
         mem.split = 0;
-        // Get current VFO A frequency and mode
+        // Get the current operating frequency and mode. getVfoCommand only
+        // routes to funcSelectedFreq/Mode while the rig is in VFO mode, and
+        // rigs differ in which cache the periodic poll fills — so fall back
+        // through the same sources buildStatusJson uses. In memory mode the
+        // selected-freq cache carries the recalled channel's frequency, so a
+        // write from MEM captures what you're actually listening to.
         vfoCommandType tA = queue->getVfoCommand(vfoA, 0, false);
         cacheItem freqCache = queue->getCache(tA.freqFunc, 0);
+        if (!freqCache.value.isValid()) freqCache = queue->getCache(funcSelectedFreq, 0);
+        if (!freqCache.value.isValid()) freqCache = queue->getCache(funcFreq, 0);
         if (freqCache.value.isValid()) {
             mem.frequency = freqCache.value.value<freqt>();
         }
+        if (mem.frequency.Hz == 0) {
+            // Never send the rig a 0 Hz channel — it NGs the write (FA).
+            qCWarning(logWebServer) << "writeMemory: no cached frequency, refusing to write channel" << ch;
+            if (client) {
+                QJsonObject err;
+                err["type"] = "error";
+                err["message"] = "Memory write failed: no known frequency";
+                sendJsonTo(client, err);
+            }
+            return;
+        }
         cacheItem modeCache = queue->getCache(tA.modeFunc, 0);
+        if (!modeCache.value.isValid()) modeCache = queue->getCache(funcSelectedMode, 0);
+        if (!modeCache.value.isValid()) modeCache = queue->getCache(funcMode, 0);
         if (modeCache.value.isValid()) {
             modeInfo m = modeCache.value.value<modeInfo>();
             mem.mode = m.reg;
@@ -2077,6 +2101,34 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         mem.dtcsB = mem.dtcs;
         mem.dtcspB = mem.dtcsp;
         queue->addUnique(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<memoryType>(mem), false, 0));
+    }
+    else if (type == "renameMemory") {
+        // Rewrite an existing channel with a new name. The rest of the
+        // contents come from the server's cached copy of the channel, so
+        // tone / duplex / split written from the rig's front panel survive.
+        if (!queue || !rigCaps) return;
+        int ch = cmd["channel"].toInt();
+        int group = cmd.contains("group") ? cmd["group"].toInt() : 0;
+        if (ch <= 0 && !(ch == 0 && rigCaps->memStart == 0)) return;
+        quint32 key = (quint32(group) << 16) | quint32(ch);
+        auto it = memories.find(key);
+        if (it == memories.end()) {
+            qCWarning(logWebServer) << "renameMemory: channel" << ch << "group" << group << "not cached";
+            return;
+        }
+        memoryType mem = it.value();
+        memset(mem.name, ' ', sizeof(mem.name) - 1);
+        mem.name[sizeof(mem.name) - 1] = '\0';
+        QByteArray nb = cmd["name"].toString().toLatin1().left(int(sizeof(mem.name)) - 1);
+        memcpy(mem.name, nb.constData(), size_t(nb.size()));
+        mem.del = false;
+        memories[key] = mem;
+        queue->addUnique(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<memoryType>(mem), false, 0));
+        // Let every client refresh the row without a rescan
+        QJsonObject memUpdate;
+        memUpdate["type"] = "memoryChannel";
+        memUpdate["memory"] = memoryToJson(mem);
+        sendJsonToAll(memUpdate);
     }
     else if (type == "clearMemory") {
         if (!queue || !rigCaps) return;
