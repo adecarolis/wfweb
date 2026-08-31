@@ -287,9 +287,9 @@ void DireWolfProcessor::transmitFrame(QString monitor)
     // Clear before encoding so txPcmBuffer holds exactly this burst.
     txPcmBuffer.clear();
     // Preamble (TXDELAY), frame, postamble/flush — identical sequence to
-    // the self-test.  At 1200 baud, 32 flag bytes is ~267 ms of key-up time
-    // before the first data byte; comfortable margin for most radios.
-    layer2_preamble_postamble(0, 32, 0, dwCfg);
+    // the self-test, but with the preamble scaled to the baud rate so the
+    // digipeaters' DCD has real time to lock regardless of speed.
+    layer2_preamble_postamble(0, preambleFlags(), 0, dwCfg);
     layer2_send_frame(0, pp, 0, dwCfg);
     layer2_preamble_postamble(0, 2, 1, dwCfg);
     ax25_delete(pp);
@@ -431,7 +431,7 @@ void DireWolfProcessor::encodeAndEmitFrame(const QByteArray &frame)
     emit txFrameDecoded(0, monFrame);
 
     txPcmBuffer.clear();
-    layer2_preamble_postamble(0, 32, 0, dwCfg);
+    layer2_preamble_postamble(0, preambleFlags(), 0, dwCfg);
     layer2_send_frame(0, pp, 0, dwCfg);
     layer2_preamble_postamble(0, 2, 1, dwCfg);
     ax25_delete(pp);
