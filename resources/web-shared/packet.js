@@ -1100,7 +1100,14 @@
             aprsCommitForm();
             setTxStatus('location set', false);
         }, function(err) {
-            setTxStatus('location: ' + (err && err.message ? err.message : 'denied'), true);
+            var msg = (err && err.message) ? err.message : 'denied';
+            if (err && err.code === 1) {
+                // Safari says "User denied Geolocation" even when the
+                // per-site permission is Allow but OS Location Services
+                // deny the browser itself.
+                msg += ' — also check OS Location Services for the browser';
+            }
+            setTxStatus('location: ' + msg, true);
         }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
     }
 
