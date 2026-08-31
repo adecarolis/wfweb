@@ -1874,37 +1874,13 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             micLanTxLogged = false;
             micLanTxBuffer.clear();
             // Pick the mod input from rig capabilities: LAN when LAN-connected,
-            // otherwise USB. The LAN input is matched by name ("LAN"/"WLAN") —
-            // its numeric type is inconsistent across rig files (inputLAN on the
-            // IC-7610, but inputMICACCA on the IC-9700/IC-7300 MK2), whereas the
-            // name is uniform. Fall back to USB if the rig lists no LAN input.
-            if (rigCaps) {
-                rigInput modInput;
-                bool found = false;
-                if (lanMode) {
-                    for (const rigInput &inp : rigCaps->inputs) {
-                        if (inp.name.contains("LAN", Qt::CaseInsensitive)) {
-                            modInput = inp;
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-                if (!found) {
-                    for (const rigInput &inp : rigCaps->inputs) {
-                        if (inp.type == inputUSB) {
-                            modInput = inp;
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-                if (found) {
-                    queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(modInput), false, 0));
-                    qInfo() << "Web: Set DATA MOD OFF to" << modInput.name << "for web mic";
-                } else {
-                    qInfo() << "Web: No suitable mod input found in rig capabilities";
-                }
+            // otherwise USB (shared with the packet TX path).
+            rigInput modInput;
+            if (pickDataModInput(modInput)) {
+                queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(modInput), false, 0));
+                qInfo() << "Web: Set DATA MOD OFF to" << modInput.name << "for web mic";
+            } else {
+                qInfo() << "Web: No suitable mod input found in rig capabilities";
             }
             micActiveClient = client;
             if (usbAudioOutput) {
@@ -2275,6 +2251,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
 
             // Key the radio immediately so it's settled by the time the
             // encoded burst arrives via onPacketTxReady.
+            queuePacketModInput();
             queue->add(priorityImmediate,
                        queueItem(funcTransceiverStatus,
                                  QVariant::fromValue<bool>(true), false, uchar(0)));
@@ -4210,6 +4187,50 @@ void webServer::onAprsStationsCleared()
     sendJsonToAll(msg);
 }
 
+// Pick the DATA MOD OFF input matching our audio transport: LAN when
+// LAN-connected, otherwise USB. The LAN input is matched by name
+// ("LAN"/"WLAN") — its numeric type is inconsistent across rig files
+// (inputLAN on the IC-7610, but inputMICACCA on the IC-9700/IC-7300 MK2),
+// whereas the name is uniform. Fall back to USB if the rig lists no LAN
+// input. (issue #72)
+bool webServer::pickDataModInput(rigInput &out) const
+{
+    if (!rigCaps) return false;
+    if (lanMode) {
+        for (const rigInput &inp : rigCaps->inputs) {
+            if (inp.name.contains("LAN", Qt::CaseInsensitive)) {
+                out = inp;
+                return true;
+            }
+        }
+    }
+    for (const rigInput &inp : rigCaps->inputs) {
+        if (inp.type == inputUSB) {
+            out = inp;
+            return true;
+        }
+    }
+    return false;
+}
+
+// Route the radio's modulator to our audio transport before a packet TX.
+// The mic path does this in enableMic, but packet TX (APRS beacons,
+// terminal sessions) never involves the mic — without this the radio
+// keys up with the DATA MOD OFF input pointing at MIC/USB while the
+// AFSK arrives over LAN, transmitting a dead carrier.
+void webServer::queuePacketModInput()
+{
+    rigInput modInput;
+    if (!queue || !pickDataModInput(modInput)) return;
+    queue->addUnique(priorityImmediate,
+                     queueItem(funcDATAOffMod,
+                               QVariant::fromValue<rigInput>(modInput), false, 0));
+    if (!packetModInputLogged) {
+        packetModInputLogged = true;
+        qInfo() << "Web: Set DATA MOD OFF to" << modInput.name << "for packet TX";
+    }
+}
+
 // Beacon TX: AprsProcessor asked us to transmit a UI frame.  Mirror the
 // packetTx command path so PTT / draining / status messages stay
 // consistent with operator-initiated TX.
@@ -4235,6 +4256,7 @@ void webServer::onAprsBeaconRequested(QString src, QString dst,
     monitor += ":" + info;
 
     packetTxBusy = true;
+    queuePacketModInput();
     queue->add(priorityImmediate,
                queueItem(funcTransceiverStatus,
                          QVariant::fromValue<bool>(true), false, uchar(0)));
@@ -4346,6 +4368,7 @@ void webServer::onPacketTxReady(audioPacket audio)
     // handles the unkey when the buffer empties.
     if (!packetTxBusy) {
         if (queue) {
+            queuePacketModInput();
             queue->add(priorityImmediate,
                        queueItem(funcTransceiverStatus,
                                  QVariant::fromValue<bool>(true), false, uchar(0)));
