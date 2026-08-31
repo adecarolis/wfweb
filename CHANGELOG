@@ -6,6 +6,54 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.8.5 (2026-08-31)
+--------------------
+
+Web UI:
+- Memory channels: the radio's memory keeper is now a first-class panel.
+  A VFO A | B | MEM selector switches the rig between VFO and memory
+  mode, memory channels can be recalled straight onto the radio, saved to
+  the next free slot with "+ Save", renamed inline, and the lit row shows
+  which channel the rig is actually on. A save-target picker chooses the
+  destination slot instead of always taking the next one. Memory groups
+  are read from the rig rather than assumed to be group 0, so multi-group
+  rigs (IC-9700) address the right bank and single-group rigs are left
+  alone. (#92)
+- Memory writes that silently failed now work: the FA path no longer
+  writes from empty caches while the rig is in MEM mode, and the IC-705
+  no longer stores DV garbage from uninitialised UR/R1/R2 buffers.
+- Memory panel controls are finger-sized on touch devices.
+- Fullscreen button and 100 Hz snap when dragging the waterfall to tune,
+  contributed by MakoWish. The button hides itself on iPhone, where the
+  Fullscreen API is unavailable, and a touch lift-off wobble no longer
+  nudges the frequency when a drag is committed. (#84, #85)
+
+Packet / APRS:
+- Packet TX no longer transmits a silent carrier on LAN-attached rigs:
+  DATA MOD OFF is routed to the audio transport before the packet TX,
+  which packet had never done (only the mic path did). Confirmed on air
+  with a digipeated 1200 bd beacon.
+- TX preamble now scales with baud rate for a ~400 ms TXDelay, instead of
+  a fixed symbol count that left slow bauds under-keyed.
+- New full-window APRS station map with real aprs-symbols icons, next to
+  the existing heard-stations table.
+- Denied geolocation now points at OS Location Services rather than
+  failing silently.
+
+Standalone:
+- Ported the 100 Hz drag snap and fullscreen button from the server build.
+  (The memory panel is server-build only for now.)
+
+Fixes:
+- bandType's copy-assignment operator wrote highFreq into lowFreq and
+  never copied highFreq. Dormant today, since bands are only
+  copy-constructed.
+
+Docs:
+- Support now points at GitHub issues, with wfweb@k1fm.us as a plain
+  mailbox alternative.
+
+
 v0.8.4 (2026-08-22)
 --------------------
 
