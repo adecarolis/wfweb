@@ -248,6 +248,16 @@ void wfweb_dw_process_samples(int ptr, int n_samples)
     if (!g_link_initialized) wfweb_dw_link_step();
 }
 
+/* TXDelay preamble length in flag bytes, scaled to the channel's baud so
+ * key-up time is constant (~400 ms) instead of shrinking 4x per baud step.
+ * Floor of 32 flags keeps 300 bd at its proven ~853 ms.  Mirrors
+ * DireWolfProcessor::preambleFlags() on the C++ side. */
+static int preamble_flags(int chan)
+{
+    int flags = g_cfg.achan[chan].baud * 400 / 8000;
+    return flags < 32 ? 32 : flags;
+}
+
 /* Encode a TNC-style "SRC>DST[,VIA,...]:info" UI frame and append the
  * resulting int16 LE PCM bytes to the global TX buffer.  Returns 0 on
  * success, -1 if ax25_from_text rejected the input. */
@@ -269,7 +279,7 @@ int wfweb_dw_tx_frame(const char *monitor)
         int fn = ax25_pack(pp, fbuf);
         if (fn > 0) wfweb_dw_emit_tx_frame(0, (int)(intptr_t)fbuf, fn);
     }
-    layer2_preamble_postamble(0, 32, 0, &g_cfg);
+    layer2_preamble_postamble(0, preamble_flags(0), 0, &g_cfg);
     layer2_send_frame(0, pp, 0, &g_cfg);
     layer2_preamble_postamble(0, 2, 1, &g_cfg);
     ax25_delete(pp);
@@ -439,7 +449,7 @@ static void process_pending_tx(void) {
          * frames concatenated, one postamble) — same shape real
          * Direwolf's xmit_thread emits. */
         if (g_tx_head[chan]) {
-            layer2_preamble_postamble(chan, 32, 0, &g_cfg);
+            layer2_preamble_postamble(chan, preamble_flags(chan), 0, &g_cfg);
             while (g_tx_head[chan]) {
                 tx_pkt_t *node = g_tx_head[chan];
                 g_tx_head[chan] = node->next;

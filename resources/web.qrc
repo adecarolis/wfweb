@@ -21,6 +21,10 @@
         <file alias="ft8ts.mjs">ft8ts/dist/ft8ts.mjs</file>
         <file alias="ft8ts.mjs.map">ft8ts/dist/ft8ts.mjs.map</file>
         <file alias="js8.mjs">web-shared/js8.mjs</file>
+        <file alias="leaflet/leaflet.js">web-shared/leaflet/leaflet.js</file>
+        <file alias="leaflet/leaflet.css">web-shared/leaflet/leaflet.css</file>
+        <file alias="aprs-symbols/aprs-symbols-24-0@2x.png">web-shared/aprs-symbols/aprs-symbols-24-0@2x.png</file>
+        <file alias="aprs-symbols/aprs-symbols-24-1@2x.png">web-shared/aprs-symbols/aprs-symbols-24-1@2x.png</file>
         <file alias="wasm/js8.mjs">web-standalone/wasm/js8.mjs</file>
         <file alias="wasm/js8.wasm">web-standalone/wasm/js8.wasm</file>
     </qresource>

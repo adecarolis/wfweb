@@ -53,6 +53,11 @@ done
 cp "$SHARED"/transport/*.js "$DIST/transport/"
 cp "$SHARED"/models/*.onnx  "$DIST/models/"
 cp "$SHARED"/digits/*.png   "$DIST/digits/"
+# APRS map: vendored Leaflet + hessu/aprs-symbols sprite sheets
+# (lazy-loaded by packet.js when the map pane is expanded).
+mkdir -p "$DIST/leaflet" "$DIST/aprs-symbols"
+cp "$SHARED"/leaflet/leaflet.js "$SHARED"/leaflet/leaflet.css "$SHARED"/leaflet/LICENSE "$DIST/leaflet/"
+cp "$SHARED"/aprs-symbols/*.png "$SHARED"/aprs-symbols/COPYRIGHT.md "$DIST/aprs-symbols/"
 # WASM modem(s) — only included if already built. tools/build-direwolf-wasm.sh
 # is a separate one-off step (requires Emscripten); a missing dist/wasm/* is
 # treated as "this build doesn't include packet" rather than a hard error.

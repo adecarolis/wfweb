@@ -56,6 +56,10 @@
             stations: {},      // src -> {src, lat, lon, symTable, symCode, comment, lastHeard, count, path[], _new}
             sortBy: 'lastHeard',  // column key
             sortDir: 'desc',
+            map: {              // collapsible Leaflet map pane (persisted)
+                open: false,
+                view: null      // {lat, lng, zoom} — last user-set view
+            },
             beacon: {           // last-used TX fields (persisted to localStorage)
                 src: '',        // derived from app callsign + settings.aprsSsid
                 lat: 0,
@@ -114,6 +118,17 @@
     var scopeCanvas = null;
     var scopeCtx = null;
     var scopeColumn = null;
+
+    // APRS map (Leaflet, lazy-loaded on first expand).
+    var aprsMapObj = null;        // L.map instance
+    var aprsMapMarkers = {};      // src -> L.marker
+    var aprsMapOwnMarker = null;  // our beacon position
+    // While false, the map keeps auto-fitting to show every heard station
+    // as they trickle in.  Flips true the moment the operator takes over
+    // (drag/zoom/wheel, a click-to-focus, or a restored saved view) — from
+    // then on the view is theirs and gets persisted.
+    var aprsMapUserView = false;
+    var leafletLoadPromise = null;
 
     // AFSK / G3RUH parameters per baud.  minHz/maxHz define the visible
     // frequency window for the spectrogram; mark/space are drawn as overlay
@@ -191,6 +206,11 @@
             '</div>' +
             '<div id="packetAprsPane" class="packet-pane">' +
                 '<div class="aprs-split">' +
+                    '<div id="aprsMapHeader" class="aprs-section-header aprs-map-header" title="Open the full-screen station map">' +
+                        '<span class="aprs-map-chevron">&#x1F5FA;</span>' +
+                        '<span>MAP</span>' +
+                        '<span id="aprsMapStatus" class="aprs-count"></span>' +
+                    '</div>' +
                     '<div class="aprs-stations-wrap">' +
                         '<div class="aprs-section-header">' +
                             '<span>HEARD STATIONS</span>' +
@@ -290,6 +310,8 @@
         recomputeDerivedCalls();
         populateSymbolSelect();
         bindAprsControls();
+        loadAprsMapFromStorage();
+        bindAprsMapControls();
         renderAprsStations();
         renderAprsBeaconButton();
         // Periodic redraw so "X min ago" ages stay current without
@@ -438,6 +460,31 @@
             '.aprs-count { color: #8c8; font-weight: normal; letter-spacing: 0; font-size: 10px; }' +
             '.aprs-beacon-state { color: #8c8; font-weight: normal; letter-spacing: 0; font-size: 10px; }' +
             '.aprs-beacon-state.on { color: var(--mode-accent); }' +
+            // Full-window map overlay. Sits above the packet bar (z 200/300)
+            // and below the confirm/settings modals (z 2000/2100). The
+            // overlay is its own stacking context, so Leaflet's internal
+            // z-indexes (up to ~1000) stay contained.
+            '.aprs-map-header { cursor: pointer; user-select: none; }' +
+            '.aprs-map-header:hover { color: #fff; }' +
+            '.aprs-map-overlay { position: fixed; inset: 0; z-index: 1500; background: #14181f; font-family: var(--font-mono); }' +
+            '.aprs-map-overlay.hidden { display: none; }' +
+            '.aprs-map { position: absolute; inset: 0; background: #14181f; }' +
+            '.aprs-map-close { position: absolute; top: 10px; right: 10px; z-index: 1100; font-weight: bold; letter-spacing: 1px; box-shadow: 0 2px 8px rgba(0,0,0,0.6); }' +
+            '.aprs-map .leaflet-tile { filter: brightness(0.82) saturate(0.85); }' +
+            '.aprs-map .leaflet-control-attribution { background: rgba(0,0,0,0.55); color: #9ab; font-size: 9px; }' +
+            '.aprs-map .leaflet-control-attribution a { color: #8cf; }' +
+            '.aprs-map .leaflet-bar a { background: #21262e; color: #ddd; border-color: #444; }' +
+            '.aprs-map .leaflet-bar a:hover { background: #333a44; color: #fff; }' +
+            // Station markers: APRS symbol sprite + callsign label.
+            '.aprs-mk-anchor { background: none; border: none; }' +
+            '.aprs-mk { position: relative; white-space: nowrap; }' +
+            '.aprs-mk-ico { position: relative; display: inline-block; width: 24px; height: 24px; background-size: 384px 144px; vertical-align: middle; }' +
+            '.aprs-mk-ico-blank { background: #08f; border-radius: 50%; width: 10px; height: 10px; margin: 7px; }' +
+            '.aprs-mk-ovl { position: absolute; left: 0; top: 0; width: 24px; height: 24px; text-align: center; line-height: 24px; color: #fff; font-family: var(--font-mono); font-size: 11px; font-weight: bold; text-shadow: 0 0 2px #000, 0 0 3px #000; }' +
+            '.aprs-mk-call { margin-left: 2px; vertical-align: middle; font-family: var(--font-mono); font-size: 10px; font-weight: bold; color: #ff0; text-shadow: 0 1px 2px #000, 0 -1px 2px #000, 1px 0 2px #000, -1px 0 2px #000; }' +
+            '.aprs-mk.own .aprs-mk-ico { outline: 2px solid var(--mode-accent); outline-offset: 1px; border-radius: 4px; }' +
+            '.aprs-mk.own .aprs-mk-call { color: var(--mode-accent); }' +
+            '.aprs-mk.fresh .aprs-mk-ico { filter: drop-shadow(0 0 5px #ff0); }' +
             '.aprs-stations { background: var(--bg); border: 1px solid var(--mode-accent-dim); border-radius: 3px; flex: 1; min-height: 80px; overflow-y: auto; font-size: 11px; line-height: 1.5; }' +
             '.aprs-stations table { width: 100%; border-collapse: collapse; }' +
             '.aprs-stations th { position: sticky; top: 0; background: var(--mode-accent-bg); color: var(--mode-accent); padding: 3px 6px; text-align: left; font-size: 10px; letter-spacing: 1px; border-bottom: 1px solid var(--mode-accent-dim); cursor: pointer; user-select: none; }' +
@@ -557,6 +604,8 @@
         // Kick off the waterfall after the bar is visible so the canvas
         // has a non-zero clientWidth/Height for the DPR math.
         setTimeout(startScope, 0);
+        // Re-show the map overlay if it was open when the panel closed.
+        applyAprsMapOpen();
         saveLayoutToStorage();
     }
 
@@ -566,6 +615,9 @@
         document.body.classList.remove('packet-open');
         setEnabled(false);
         stopScope();
+        // Hide the map overlay with the panel (state.aprs.map.open is kept,
+        // so reopening the panel brings the map back).
+        applyAprsMapOpen();
         saveLayoutToStorage();
     }
 
@@ -994,7 +1046,9 @@
                 var th = e.target.closest && e.target.closest('th');
                 if (th && th.dataset.col) { aprsSetSort(th.dataset.col); return; }
                 var call = e.target.closest && e.target.closest('td.aprs-call');
-                if (call && call.dataset.call) setPeerFromMonitor(call.dataset.call);
+                if (call && call.dataset.call) { setPeerFromMonitor(call.dataset.call); return; }
+                var pos = e.target.closest && e.target.closest('td.aprs-pos');
+                if (pos && pos.dataset.src) aprsMapFocusStation(pos.dataset.src);
             });
         }
     }
@@ -1015,6 +1069,7 @@
         if (pathEl)    b.path        = (pathEl.value || '').trim().toUpperCase();
         if (intervalEl)b.intervalMin = Math.max(1, parseInt(intervalEl.value, 10) || 10);
         saveAprsToStorage();
+        renderAprsMap();   // own-beacon marker tracks the form fields
 
         // If the periodic beacon is currently on, push the new config so the
         // next firing uses the latest fields.
@@ -1100,7 +1155,14 @@
             aprsCommitForm();
             setTxStatus('location set', false);
         }, function(err) {
-            setTxStatus('location: ' + (err && err.message ? err.message : 'denied'), true);
+            var msg = (err && err.message) ? err.message : 'denied';
+            if (err && err.code === 1) {
+                // Safari says "User denied Geolocation" even when the
+                // per-site permission is Allow but OS Location Services
+                // deny the browser itself.
+                msg += ' — also check OS Location Services for the browser';
+            }
+            setTxStatus('location: ' + msg, true);
         }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
     }
 
@@ -1177,6 +1239,281 @@
         return Math.abs(v).toFixed(4) + hem;
     }
 
+    // ------------------------------------------------------------------
+    // APRS map — collapsible Leaflet pane above the heard-stations table.
+    // Leaflet (vendored under leaflet/) is lazy-loaded the first time the
+    // pane is expanded so operators who never open the map don't pay for
+    // it.  Tiles come from openstreetmap.org, the one network dependency:
+    // offline the markers still plot on the dark pane background.
+    // ------------------------------------------------------------------
+
+    function loadAprsMapFromStorage() {
+        try {
+            var raw = localStorage.getItem('wfweb.aprs.map');
+            if (!raw) return;
+            var obj = JSON.parse(raw);
+            if (!obj || typeof obj !== 'object') return;
+            state.aprs.map.open = obj.open === true;
+            if (obj.view && isFinite(obj.view.lat) && isFinite(obj.view.lng)
+                && isFinite(obj.view.zoom)) {
+                state.aprs.map.view = obj.view;
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    function saveAprsMapToStorage() {
+        try {
+            localStorage.setItem('wfweb.aprs.map', JSON.stringify({
+                open: state.aprs.map.open,
+                view: state.aprs.map.view
+            }));
+        } catch (e) { /* quota — ignore */ }
+    }
+
+    function bindAprsMapControls() {
+        // The map is a full-window overlay, so it lives on document.body —
+        // not inside the packet bar, whose ancestors could break
+        // position:fixed and whose z-index it must escape anyway.
+        var ov = document.createElement('div');
+        ov.id = 'aprsMapOverlay';
+        ov.className = 'aprs-map-overlay mode-packet hidden';
+        ov.innerHTML =
+            '<div id="aprsMap" class="aprs-map"></div>' +
+            '<button id="aprsMapCloseBtn" class="aprs-map-close wf-btn" title="Close the map (Esc)">&#x2715; CLOSE MAP</button>';
+        document.body.appendChild(ov);
+
+        var toggle = function(open) {
+            state.aprs.map.open = open;
+            saveAprsMapToStorage();
+            applyAprsMapOpen();
+        };
+        var header = document.getElementById('aprsMapHeader');
+        if (header) header.onclick = function() { toggle(!state.aprs.map.open); };
+        document.getElementById('aprsMapCloseBtn').onclick = function() { toggle(false); };
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && state.aprs.map.open
+                && !document.getElementById('aprsMapOverlay').classList.contains('hidden')) {
+                toggle(false);
+            }
+        });
+        window.addEventListener('resize', function() {
+            if (aprsMapObj && state.aprs.map.open) aprsMapObj.invalidateSize();
+        });
+        applyAprsMapOpen();
+    }
+
+    function applyAprsMapOpen() {
+        // Overlay shows only while the packet panel itself is open — the
+        // map is part of the packet UI, not a standalone view.
+        var open = state.aprs.map.open && state.visible;
+        var ov = document.getElementById('aprsMapOverlay');
+        if (ov) ov.classList.toggle('hidden', !open);
+        // Only spin Leaflet up while the overlay is actually on screen — a
+        // zero-size container confuses its projection math and the tile
+        // fetches would be wasted.
+        if (open) ensureAprsMap();
+    }
+
+    function loadLeaflet() {
+        if (window.L) return Promise.resolve();
+        if (leafletLoadPromise) return leafletLoadPromise;
+        leafletLoadPromise = new Promise(function(resolve, reject) {
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'leaflet/leaflet.css';
+            document.head.appendChild(link);
+            var s = document.createElement('script');
+            s.src = 'leaflet/leaflet.js';
+            s.onload = function() { resolve(); };
+            s.onerror = function() {
+                leafletLoadPromise = null;
+                reject(new Error('leaflet load failed'));
+            };
+            document.head.appendChild(s);
+        });
+        return leafletLoadPromise;
+    }
+
+    function ensureAprsMap() {
+        var statusEl = document.getElementById('aprsMapStatus');
+        loadLeaflet().then(function() {
+            if (statusEl) statusEl.textContent = '';
+            if (!aprsMapObj) {
+                var el = document.getElementById('aprsMap');
+                if (!el) return;
+                aprsMapObj = L.map(el, { worldCopyJump: true, zoomSnap: 0.5 });
+                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                               + ' | icons <a href="https://github.com/hessu/aprs-symbols">aprs-symbols</a>'
+                }).addTo(aprsMapObj);
+                aprsMapObj.attributionControl.setPrefix(false);
+                var v = state.aprs.map.view;
+                if (v) {
+                    aprsMapObj.setView([v.lat, v.lng], v.zoom);
+                    aprsMapUserView = true;   // respect the saved view, no auto-fit
+                } else {
+                    aprsMapObj.setView([30, 0], 2);
+                }
+                // Any pointer/wheel input inside the map (drag, pinch, the
+                // zoom buttons) hands the view over to the operator.  DOM
+                // events rather than Leaflet's zoomstart/movestart because
+                // those also fire for our own programmatic fitBounds.
+                var takeOver = function() { aprsMapUserView = true; };
+                el.addEventListener('pointerdown', takeOver, true);
+                el.addEventListener('wheel', takeOver, { capture: true, passive: true });
+                // Persist only operator-owned views — auto-fits stay
+                // ephemeral so a fresh session auto-fits again.
+                aprsMapObj.on('zoomend moveend', function() {
+                    if (!aprsMapUserView) return;
+                    var c = aprsMapObj.getCenter();
+                    state.aprs.map.view = { lat: c.lat, lng: c.lng, zoom: aprsMapObj.getZoom() };
+                    saveAprsMapToStorage();
+                });
+            }
+            // The container just went display:block — Leaflet measured it at
+            // zero, so re-measure on the next frame before drawing markers.
+            setTimeout(function() {
+                if (!aprsMapObj) return;
+                aprsMapObj.invalidateSize();
+                renderAprsMap();
+            }, 0);
+        }).catch(function() {
+            if (statusEl) statusEl.textContent = 'map failed to load';
+        });
+    }
+
+    // Sprite-sheet lookup for an APRS symbol.  Sheets are the hessu/
+    // aprs-symbols 24 px grids (16 cols x 6 rows): sheet 0 = primary
+    // table '/', sheet 1 = alternate '\'.  A table byte of 0-9 or A-Z
+    // means "alternate symbol with overlay character" — we draw the
+    // alternate glyph and stamp the overlay char on top as text.
+    function aprsSpritePos(table, code) {
+        var idx = (code || '').charCodeAt(0) - 33;
+        if (!(idx >= 0 && idx < 96)) return null;
+        return {
+            x: (idx % 16) * 24,
+            y: ((idx / 16) | 0) * 24,
+            sheet: table === '/' ? 0 : 1,
+            overlay: (table !== '/' && table !== '\\') ? table : ''
+        };
+    }
+
+    function aprsMapDivIcon(st, isOwn) {
+        var cls = 'aprs-mk' + (isOwn ? ' own' : '') + (st._fresh ? ' fresh' : '');
+        var tip = st.src + (st.comment ? ' — ' + st.comment : '');
+        var html = '<div class="' + cls + '" title="' + escapeHtml(tip) + '">';
+        var sp = aprsSpritePos(st.symTable || '/', st.symCode || '&');
+        if (sp) {
+            html += '<span class="aprs-mk-ico" style="background-image:url(aprs-symbols/aprs-symbols-24-'
+                  + sp.sheet + '@2x.png);background-position:-' + sp.x + 'px -' + sp.y + 'px">'
+                  + (sp.overlay ? '<span class="aprs-mk-ovl">' + escapeHtml(sp.overlay) + '</span>' : '')
+                  + '</span>';
+        } else {
+            html += '<span class="aprs-mk-ico aprs-mk-ico-blank"></span>';
+        }
+        html += '<span class="aprs-mk-call">' + escapeHtml(st.src) + '</span></div>';
+        return L.divIcon({ className: 'aprs-mk-anchor', html: html,
+                           iconSize: null, iconAnchor: [12, 12] });
+    }
+
+    function aprsStationPosOk(st) {
+        return st && isFinite(st.lat) && isFinite(st.lon)
+            && !(st.lat === 0 && st.lon === 0);
+    }
+
+    // Diff the marker layer against state.aprs.stations.  Cheap enough to
+    // run from every renderAprsStations() — a per-marker signature skips
+    // the DOM churn of rebuilding unchanged icons.
+    function renderAprsMap() {
+        if (!aprsMapObj || !state.aprs.map.open) return;
+        var seen = {};
+        var bounds = [];
+        Object.keys(state.aprs.stations).forEach(function(src) {
+            var st = state.aprs.stations[src];
+            if (!aprsStationPosOk(st)) return;
+            seen[src] = true;
+            bounds.push([st.lat, st.lon]);
+            var sig = st.lat + ',' + st.lon + ',' + st.symTable + st.symCode + ','
+                    + (st._fresh ? 1 : 0) + ',' + (st.comment || '');
+            var mk = aprsMapMarkers[src];
+            if (mk) {
+                if (mk._wfSig === sig) return;
+                mk.setLatLng([st.lat, st.lon]);
+                mk.setIcon(aprsMapDivIcon(st, false));
+            } else {
+                mk = L.marker([st.lat, st.lon], {
+                    icon: aprsMapDivIcon(st, false),
+                    keyboard: false
+                }).addTo(aprsMapObj);
+                aprsMapMarkers[src] = mk;
+            }
+            mk._wfSig = sig;
+        });
+        Object.keys(aprsMapMarkers).forEach(function(src) {
+            if (!seen[src]) {
+                aprsMapObj.removeLayer(aprsMapMarkers[src]);
+                delete aprsMapMarkers[src];
+            }
+        });
+
+        // Our own beacon position, when set.
+        var b = state.aprs.beacon;
+        var own = { src: b.src || 'ME', lat: b.lat, lon: b.lon,
+                    symTable: symbolFor(b.symKey).table, symCode: symbolFor(b.symKey).code,
+                    comment: 'my beacon' };
+        if (aprsStationPosOk(own)) {
+            bounds.push([own.lat, own.lon]);
+            var osig = own.lat + ',' + own.lon + ',' + own.symTable + own.symCode + ',' + own.src;
+            if (aprsMapOwnMarker) {
+                if (aprsMapOwnMarker._wfSig !== osig) {
+                    aprsMapOwnMarker.setLatLng([own.lat, own.lon]);
+                    aprsMapOwnMarker.setIcon(aprsMapDivIcon(own, true));
+                }
+            } else {
+                aprsMapOwnMarker = L.marker([own.lat, own.lon], {
+                    icon: aprsMapDivIcon(own, true),
+                    keyboard: false,
+                    zIndexOffset: 1000
+                }).addTo(aprsMapObj);
+            }
+            aprsMapOwnMarker._wfSig = osig;
+        } else if (aprsMapOwnMarker) {
+            aprsMapObj.removeLayer(aprsMapOwnMarker);
+            aprsMapOwnMarker = null;
+        }
+
+        // Track the fleet until the operator takes over: refit whenever the
+        // marker set changes so late arrivals don't land off-screen.
+        if (!aprsMapUserView && bounds.length) {
+            aprsMapObj.fitBounds(bounds, { padding: [40, 40], maxZoom: 11 });
+        }
+    }
+
+    // Clicking a lat/lon cell in the table pans the map to that station,
+    // expanding the pane first if it's collapsed.
+    function aprsMapFocusStation(src) {
+        var st = state.aprs.stations[src];
+        if (!aprsStationPosOk(st)) return;
+        if (!state.aprs.map.open) {
+            state.aprs.map.open = true;
+            saveAprsMapToStorage();
+            applyAprsMapOpen();
+        }
+        // ensureAprsMap resolves async on first open; retry until Leaflet
+        // is up (bounded so a failed load doesn't loop forever).
+        var tries = 0;
+        (function focus() {
+            if (aprsMapObj) {
+                aprsMapUserView = true;   // explicit focus = operator's view now
+                aprsMapObj.setView([st.lat, st.lon],
+                                   Math.max(aprsMapObj.getZoom(), 11));
+            } else if (++tries < 40) {
+                setTimeout(focus, 250);
+            }
+        })();
+    }
+
     function renderAprsStations() {
         var host = document.getElementById('aprsStations');
         var countEl = document.getElementById('aprsStationCount');
@@ -1190,6 +1527,7 @@
         if (stations.length === 0) {
             host.innerHTML = '<div class="aprs-empty">No APRS stations heard yet. '
                            + 'Tune to 144.390 (or your local APRS frequency), enable the modem, and wait for a beacon.</div>';
+            renderAprsMap();   // still diff: drop stale markers, keep own beacon
             return;
         }
 
@@ -1237,8 +1575,8 @@
                   +   escapeHtml(s.src) + '</td>'
                   + '<td class="aprs-sym" title="' + escapeHtml(s.symTable + s.symCode) + '">'
                   +   escapeHtml(s.symCode || '?') + '</td>'
-                  + '<td class="aprs-pos">' + fmtCoord(s.lat, true)  + '</td>'
-                  + '<td class="aprs-pos">' + fmtCoord(s.lon, false) + '</td>'
+                  + '<td class="aprs-pos" data-src="' + escapeHtml(s.src) + '" title="Show on map">' + fmtCoord(s.lat, true)  + '</td>'
+                  + '<td class="aprs-pos" data-src="' + escapeHtml(s.src) + '" title="Show on map">' + fmtCoord(s.lon, false) + '</td>'
                   + '<td class="aprs-comment" title="' + escapeHtml(s.comment || '') + '">'
                   +   escapeHtml(s.comment || '') + '</td>'
                   + '<td class="aprs-age">'  + escapeHtml(aprsAge(s.lastHeard)) + '</td>'
@@ -1247,6 +1585,7 @@
         }
         html += '</tbody></table>';
         host.innerHTML = html;
+        renderAprsMap();
     }
 
     function applyAprsStation(st) {

@@ -303,6 +303,18 @@ private:
     bool dataOffModSaved = false;
     QWebSocket *micActiveClient = nullptr;
 
+    // Pick the DATA MOD OFF input matching our audio transport: "LAN"/"WLAN"
+    // by name when LAN-connected, otherwise USB by type (see issue #72 —
+    // the LAN input's numeric type is inconsistent across .rig files).
+    // Returns false if rigCaps lists no suitable input.
+    bool pickDataModInput(rigInput &out) const;
+    // Queue the DATA MOD OFF switch for a packet TX.  Every packet keying
+    // site must call this before PTT: unlike the mic path there is no
+    // enableMic step, so nothing else routes the modulator to the audio
+    // transport — without it the radio keys a dead carrier (silent FM).
+    void queuePacketModInput();
+    bool packetModInputLogged = false;
+
     // One-shot log guard for the LAN web-mic TX path (issue #72): logs once per
     // mic session that browser frames are arriving and being coalesced.
     bool micLanTxLogged = false;

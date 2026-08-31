@@ -92,6 +92,14 @@ signals:
 private:
     void destroyResamplers();
 
+    // TXDelay preamble length in flag bytes, scaled to the active baud so
+    // the key-up time is constant (~400 ms) instead of shrinking 4x every
+    // baud step.  Floor of 32 flags keeps 300 bd at its proven ~853 ms.
+    int preambleFlags() const {
+        int flags = mode_ * 400 / 8000;   // 400 ms worth of 8-bit flags
+        return flags < 32 ? 32 : flags;
+    }
+
     struct audio_s *dwCfg = nullptr;
     SpeexResamplerState *rxDownsampler = nullptr;   // radioRate -> modemRate
     SpeexResamplerState *txUpsampler = nullptr;     // modemRate -> radioRate
