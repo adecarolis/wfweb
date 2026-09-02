@@ -5173,6 +5173,13 @@ function stopMic() {
     if (currentPanel === 'audiomiс') renderAudioMicOverlay();
 }
 
+// Explicitly release the web mic before the page is discarded.
+// This lets the server restore the radio's previous DATA OFF MOD setting
+// while the WebSocket is still alive.
+window.addEventListener('pagehide', function() {
+    if (micEnabled) stopMic();
+});
+
 function handleAudioData(buffer) {
     if (!audioEnabled) return;
     if (buffer.byteLength < 8) return;

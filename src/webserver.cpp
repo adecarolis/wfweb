@@ -39,6 +39,18 @@
 // classic-FreeDV ALC loop can't affect RADE.
 static constexpr float RADE_TX_GAIN = 0.4f;
 
+// Return true when the selected modulation input already includes USB.
+// In that case a USB-attached web mic can transmit without changing
+// DATA MOD OFF and unnecessarily disabling the radio's other inputs.
+static bool inputIncludesUsb(const rigInput &input)
+{
+    // The numeric input type/Num field is not consistent across .rig
+    // files. The input Name is authoritative. Some Icom rig definitions
+    // abbreviate MIC+USB as "M/U".
+    return input.name.contains("USB", Qt::CaseInsensitive)
+        || input.name.compare("M/U", Qt::CaseInsensitive) == 0;
+}
+
 webServer::webServer(QObject *parent) :
     QObject(parent)
 {
@@ -1871,23 +1883,40 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             // USB-attached rigs use "USB". Forcing USB on a LAN rig (e.g. IC-7610,
             // IC-7300 MK2, IC-9700) keys the radio with no modulation. (issue #72)
             cacheItem cache = queue->getCache(funcDATAOffMod, 0);
+            bool inputAlreadySuitable = false;
             if (cache.value.isValid()) {
-                savedDataOffMod = cache.value.value<rigInput>();
-                dataOffModSaved = true;
+                rigInput currentInput = cache.value.value<rigInput>();
+
+                // For a locally USB-attached rig, don't replace a combined
+                // input such as MIC,USB with USB-only. USB audio is already
+                // accepted by the current setting.
+                if (!lanMode && inputIncludesUsb(currentInput)) {
+                    inputAlreadySuitable = true;
+                    qInfo() << "Web: DATA MOD OFF already includes USB:"
+                            << currentInput.name << "- leaving unchanged";
+                } else {
+                    savedDataOffMod = currentInput;
+                    dataOffModSaved = true;
+                }
             }
+
             // Reset the LAN mic-session state so each session coalesces and
             // logs afresh.
             micLanTxLogged = false;
             micLanTxBuffer.clear();
+
             // Pick the mod input from rig capabilities: LAN when LAN-connected,
             // otherwise USB (shared with the packet TX path).
-            rigInput modInput;
-            if (pickDataModInput(modInput)) {
-                queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(modInput), false, 0));
-                qInfo() << "Web: Set DATA MOD OFF to" << modInput.name << "for web mic";
-            } else {
-                qInfo() << "Web: No suitable mod input found in rig capabilities";
+            if (!inputAlreadySuitable) {
+                rigInput modInput;
+                if (pickDataModInput(modInput)) {
+                    queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(modInput), false, 0));
+                    qInfo() << "Web: Set DATA MOD OFF to" << modInput.name << "for web mic";
+                } else {
+                    qInfo() << "Web: No suitable mod input found in rig capabilities";
+                }
             }
+
             micActiveClient = client;
             if (usbAudioOutput) {
                 // Stop any previous session cleanly, then arm the pre-buffer.
