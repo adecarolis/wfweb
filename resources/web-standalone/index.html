@@ -4580,15 +4580,9 @@ function preampLabel(num) {
 }
 
 function getPreampAttState() {
+    // "ATT" is what the radio itself shows — the dB level belongs on the FUNC
+    // attenuator slider (multi-step rigs), not on the button or the indicator.
     if (currentAttenuator > 0) {
-        // Show the actual dB (e.g. "-21 dB") so multi-step rigs (IC-7610 has
-        // 16 steps) reveal the level, not just "ATT".
-        var here = attsHere();
-        for (var i = 0; i < here.length; i++) {
-            if (here[i].num === currentAttenuator) {
-                return { label: here[i].name, active: true };
-            }
-        }
         return { label: 'ATT', active: true };
     }
     if (currentPreamp > 0) {
