@@ -371,10 +371,15 @@ curl -s http://localhost:8081/api/v1/radio/tx | jq .
 
 **Response:**
 ```json
-{"split": false, "tuner": 0, "compressor": false, "monitor": false}
+{"split": false, "tuner": 0, "compressor": false, "monitor": false,
+ "duplex": "OFF", "duplexOffset": 600000}
 ```
 
 `tuner`: 0=off, 1=on, 2=start-tuning.
+
+`duplex`: repeater shift direction — `"OFF"`, `"DUP-"` or `"DUP+"`.
+`duplexOffset`: the shift in Hz. Both are present only on rigs that support a
+duplex offset (IC-705, IC-9700, IC-905, IC-785x).
 
 > `compressor` and `monitor` may be absent if the rig has not reported them.
 
@@ -388,11 +393,20 @@ All fields optional.
 | `tuner` | int (0–2) | 0=off, 1=on, 2=start tuning |
 | `compressor` | bool | Speech compressor on/off |
 | `monitor` | bool | TX monitor (sidetone) on/off |
+| `duplex` | string | Repeater shift: `"OFF"`, `"DUP-"`, `"DUP+"` |
+| `duplexOffset` | int | Repeater shift in Hz (rounded down to 100 Hz) |
 
 ```bash
 curl -s -X PUT http://localhost:8081/api/v1/radio/tx \
   -H 'Content-Type: application/json' \
   -d '{"split": true}' | jq .
+```
+
+```bash
+# 2 m repeater: 600 kHz down-shift
+curl -s -X PUT http://localhost:8081/api/v1/radio/tx \
+  -H 'Content-Type: application/json' \
+  -d '{"duplexOffset": 600000, "duplex": "DUP-"}' | jq .
 ```
 
 ---

@@ -348,16 +348,52 @@
         return hi * 10 + lo;
     }
 
-    // ---------- Split (cmd 0x0F) -----------------------------------------
-    // 0x0F (no value) = read current split state
-    // 0x0F 0x00 = set split off, 0x0F 0x01 = set split on
+    // ---------- Split / duplex (cmd 0x0F) ---------------------------------
+    // One command carries two settings. 0x0F with no data reads whichever is
+    // current; the value byte is
+    //   0x00 split off   0x01 split on
+    //   0x10 simplex     0x11 DUP-      0x12 DUP+
+    var DUP_SIMPLEX = 0x10, DUP_MINUS = 0x11, DUP_PLUS = 0x12;
     function cmdReadSplit() { return new Uint8Array([0x0F]); }
     function cmdSetSplit(on) {
         return new Uint8Array([0x0F, on ? 0x01 : 0x00]);
     }
+    function cmdSetDuplex(name) {
+        var b = name === 'DUP-' ? DUP_MINUS : (name === 'DUP+' ? DUP_PLUS : DUP_SIMPLEX);
+        return new Uint8Array([0x0F, b]);
+    }
+    // Only the dedicated 0x01 sub-command means split; a duplex value means
+    // the rig is in repeater shift, which is not split.
     function parseSplitReply(payload) {
         if (payload.length < 2 || payload[0] !== 0x0F) return null;
-        return payload[1] !== 0;
+        return payload[1] === 0x01;
+    }
+    // Verified on a real IC-705: the rig answers 0x11/0x12 whenever a shift is
+    // engaged and falls back to the split flag when it is not, so a split
+    // answer also means simplex. RPS (0x13) has no UI, so it returns null and
+    // leaves the tile alone rather than mislabelling itself.
+    function parseDuplexReply(payload) {
+        if (payload.length < 2 || payload[0] !== 0x0F) return null;
+        if (payload[1] === DUP_MINUS) return 'DUP-';
+        if (payload[1] === DUP_PLUS) return 'DUP+';
+        if (payload[1] === 0x13) return null;
+        return 'OFF';
+    }
+
+    // ---------- Duplex offset (0x0C read / 0x0D write) --------------------
+    // Three little-endian BCD bytes starting at the 100 Hz digit, so 600 kHz
+    // is 00 60 00 and nothing finer than 100 Hz can be represented.
+    function cmdReadDuplexOffset() { return new Uint8Array([0x0C]); }
+    function cmdSetDuplexOffset(hz) {
+        var bcd = encodeBcdLE(Math.round(Math.max(0, hz) / 100), 3);
+        var out = new Uint8Array(4);
+        out[0] = 0x0D;
+        out.set(bcd, 1);
+        return out;
+    }
+    function parseDuplexOffsetReply(payload) {
+        if (payload.length < 4 || payload[0] !== 0x0C) return null;
+        return decodeBcdLE(payload.subarray(1, 4)) * 100;
     }
 
     // ---------- VFO ops (cmd 0x07) ---------------------------------------
@@ -1101,6 +1137,9 @@
         parseFilterWidthReply: parseFilterWidthReply,
         cmdReadSplit: cmdReadSplit,
         cmdSetSplit: cmdSetSplit,
+        cmdSetDuplex: cmdSetDuplex,
+        cmdReadDuplexOffset: cmdReadDuplexOffset,
+        cmdSetDuplexOffset: cmdSetDuplexOffset,
         cmdSelectVFO: cmdSelectVFO,
         cmdSwapVFO: cmdSwapVFO,
         cmdEqualizeVFO: cmdEqualizeVFO,
@@ -1139,6 +1178,8 @@
         parseBoolFuncReply: parseBoolFuncReply,
         parseAttenuatorReply: parseAttenuatorReply,
         parseSplitReply: parseSplitReply,
+        parseDuplexReply: parseDuplexReply,
+        parseDuplexOffsetReply: parseDuplexOffsetReply,
         parseTunerReply: parseTunerReply,
         parseTxMeterReply: parseTxMeterReply,
         calMeter: calMeter,

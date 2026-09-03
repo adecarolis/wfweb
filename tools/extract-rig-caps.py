@@ -228,12 +228,19 @@ def extract_caps(props: dict[str, str]) -> dict:
     # Detect support for the 0x25 0x00 / 0x25 0x01 commands ("Selected Freq" /
     # "Unselected Freq"). On A/B-VFO Icoms (IC-7300, IC-705, …) these let the
     # standalone transport read both VFOs without flipping the rig's selection.
+    # "Send Freq Offset" (CI-V 0x0D) is what lets a rig shift its TX frequency
+    # for a repeater, so it is the honest test for whether the DUP tile has
+    # anything to drive.
     has_selected_freq = False
+    has_duplex = False
     pat = re.compile(r"^Rig/Commands\\(\d+)\\Type$")
     for k, v in props.items():
-        if pat.match(k) and v.strip() == "Selected Freq":
+        if not pat.match(k):
+            continue
+        if v.strip() == "Selected Freq":
             has_selected_freq = True
-            break
+        elif v.strip() == "Send Freq Offset":
+            has_duplex = True
     return {
         "hasTransmit": b("HasTransmit", True),
         "hasSpectrum": b("HasSpectrum", False),
@@ -245,6 +252,7 @@ def extract_caps(props: dict[str, str]) -> dict:
         # Main or Sub receiver respectively.
         "hasCommand29": b("HasCommand29", False),
         "hasSelectedFreq": has_selected_freq,
+        "hasDuplex": has_duplex,
     }
 
 
@@ -357,7 +365,7 @@ def main() -> int:
         "//",
         "// Each entry: civAddr -> { model, caps, meters, cmds, inputs, preamps, attenuators, antennas }",
         "//   caps:   { hasTransmit, hasSpectrum, hasLAN, numReceivers, numVFOs,",
-        "//             hasCommand29, hasSelectedFreq }",
+        "//             hasCommand29, hasSelectedFreq, hasDuplex }",
         "//   meters: { kind: [[rigVal, actualVal], ...] }",
         "//           kinds: sMeter, swr, power, alc, comp, center, voltage, current",
         "//   cmds:   { modOff, modData1, modData2, modData3, antenna, rxAntenna }",

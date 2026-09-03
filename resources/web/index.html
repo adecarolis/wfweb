@@ -1396,6 +1396,41 @@ body.digi-open #bottomBar { grid-row: 5; }
     grid-column: unset; /* override back-btn grid-column */
 }
 
+/* DUP window — same modal shell as the memory browser (.mem-modal), so
+   direction and offset are set in one place instead of adding standing
+   chrome to the FUNCTION grid. */
+/* Buttons are scoped to #dupOverlay rather than reusing .mem-seg: that class
+   only exists in the server fork, so borrowing it would leave the standalone
+   window unstyled. Same palette, so the two windows still read as a pair. */
+#dupOverlay .dup-btn {
+    padding: 7px 0;
+    background: #001020; border: 1px solid #048; border-radius: 3px;
+    color: #08f; font-family: 'Courier New', monospace; font-size: 12px;
+    font-weight: bold; cursor: pointer;
+}
+#dupOverlay .dup-btn:active { background: #048; color: #000; }
+#dupOverlay .dup-btn.active { background: #024a80; border-color: #5af; color: #fff; }
+#dupDirRow { display: flex; gap: 6px; margin: 2px 8px 6px; }
+#dupDirRow .dup-btn { flex: 1; }
+#dupSectionLabel {
+    color: #8cf; font-family: 'Courier New', monospace; font-size: 11px;
+    font-weight: bold; margin: 8px 8px 4px;
+}
+#dupOffsetChoices { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 8px; }
+#dupOffsetChoices .dup-btn { flex: 0 0 auto; padding: 7px 16px; }
+#dupOverlay .dup-label { color: #8cf; font-family: 'Courier New', monospace; font-size: 11px; font-weight: bold; }
+#dupOverlay .dup-hint { color: #467; font-family: 'Courier New', monospace; font-size: 11px; }
+#dupCustomInput {
+    width: 72px; background: #001020; border: 1px solid #048; color: #8cf;
+    padding: 4px 6px; font-family: 'Courier New', monospace;
+    font-size: 12px; text-align: right;
+}
+#dupOffsetUnit { color: #467; font-family: 'Courier New', monospace; font-size: 11px; }
+@media (pointer: coarse) {
+    #dupOverlay .dup-btn { padding: 11px 0; }
+    #dupOffsetChoices .dup-btn { padding: 11px 16px; }
+}
+
 /* Hidden range inputs over the gain bars */
 .gain-row input[type="range"] {
     position: absolute; top: 0; left: 0;
@@ -1722,6 +1757,14 @@ body.digi-open #bottomBar { grid-row: 5; }
     font-size: 14px;
     color: #888;
 }
+/* Repeater shift is live on the main display, directly under the P.AMP/ATT
+   readout and styled identically to it — same colour, font and size — so the
+   two read as one stack of rig-state lines. */
+#dupIndicator {
+    top: 66px;   /* clears the 14px-tall P.AMP readout above (40 + 23) */
+    font-size: 14px;
+    color: #888;
+}
 
 /* ============ RESPONSIVE ============ */
 @media (max-height: 450px) {
@@ -1952,6 +1995,31 @@ body.digi-open #bottomBar { grid-row: 5; }
         <div id="spanOverlay" class="overlay">
             <div class="overlay-title">SPAN</div>
             <div class="overlay-grid" id="spanGrid"></div>
+        </div>
+
+        <!-- DUP window (styled like the memory browser). Opened from the DUP
+             tile in FUNCTION or from the DUP indicator over the spectrum:
+             direction on top, then the standard shifts for the band the rig
+             is on, with a kHz box for odd splits. -->
+        <div id="dupOverlay" class="mem-modal">
+            <div class="mem-modal-title">
+                <span>Duplex <span id="dupTitleState"></span></span>
+                <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeDupModal()">&#x2715; Close</button>
+            </div>
+            <div id="dupDirRow">
+                <button id="dupSegOff"   class="dup-btn" onclick="setDuplexMode('OFF')">OFF</button>
+                <button id="dupSegMinus" class="dup-btn" onclick="setDuplexMode('DUP-')">DUP &#x2212;</button>
+                <button id="dupSegPlus"  class="dup-btn" onclick="setDuplexMode('DUP+')">DUP &#x2B;</button>
+            </div>
+            <div id="dupSectionLabel">Offset</div>
+            <div id="dupOffsetChoices"></div>
+            <div class="mem-actions">
+                <span class="dup-label">Other</span>
+                <input type="number" id="dupCustomInput" min="0" max="99999.9" step="5">
+                <span id="dupOffsetUnit">kHz</span>
+                <button class="mem-action-btn" onclick="dupCustomSet()">Set</button>
+                <span class="dup-hint" id="dupTxHint"></span>
+            </div>
         </div>
 
         <!-- Memory modal (styled like QSO Log) -->
@@ -2309,6 +2377,7 @@ body.digi-open #bottomBar { grid-row: 5; }
         <div id="audioOffWarning" class="spectrum-warning" onclick="showAudioMicMenu()" style="display: none;">AUDIO OFF</div>
         <div id="micOffWarning" class="spectrum-warning" onclick="toggleMic()" style="display: none;">MIC OFF</div>
         <div id="preampAttIndicator" class="spectrum-warning" style="display: none;"></div>
+        <div id="dupIndicator" class="spectrum-warning" style="display: none;" onclick="openDupModal()"></div>
     </div>
 
     <!-- Row 5: Bottom bar -->
@@ -2428,6 +2497,9 @@ var anfOn = false;
 var tunerState = 0;
 var currentPreamp = 0;
 var lastPreampAttSig = '';  // preamp/att steps valid at currentFreq (band-change watch)
+var hasDuplex = false;        // rig can shift TX for a repeater (CI-V 0x0D)
+var currentDuplex = 'OFF';    // 'OFF' | 'DUP-' | 'DUP+'
+var currentDupOffset = null;  // repeater shift in Hz; null until the rig reports one
 var currentAttenuator = 0;
 var currentFilter = 1;
 var currentPBTInner = 128;
@@ -2688,6 +2760,7 @@ function handleMessage(msg) {
                 if (msg.filters) populateFilters(msg.filters);
                 if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
                 if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
+                if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
                 if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
                 if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
 
@@ -2713,6 +2786,7 @@ function handleMessage(msg) {
             if (msg.filters) populateFilters(msg.filters);
             if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
             if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
+            if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
             if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
             if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
             if (msg.hasPowerControl) document.getElementById('powerBtn').style.display = 'flex';
@@ -2767,6 +2841,8 @@ function handleMessage(msg) {
             if (msg.monitor !== undefined) { monitorEnabled = msg.monitor; if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.monitorGain !== undefined) { monitorLevel = msg.monitorGain; updateSlider('monitorLevel', msg.monitorGain); if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.split !== undefined) updateSplit(msg.split);
+            if (msg.duplex !== undefined) updateDuplex(msg.duplex);
+            if (msg.duplexOffset !== undefined) updateDupOffset(msg.duplexOffset);
             if (msg.spanIndex !== undefined) updateSpanIndex(msg.spanIndex);
             if (msg.nb !== undefined) updateToggle('nb', msg.nb);
             if (msg.nr !== undefined) updateToggle('nr', msg.nr);
@@ -2808,6 +2884,8 @@ function handleMessage(msg) {
             if (msg.monitor !== undefined) { monitorEnabled = msg.monitor; if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.monitorGain !== undefined) { monitorLevel = msg.monitorGain; updateSlider('monitorLevel', msg.monitorGain); if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.split !== undefined) updateSplit(msg.split);
+            if (msg.duplex !== undefined) updateDuplex(msg.duplex);
+            if (msg.duplexOffset !== undefined) updateDupOffset(msg.duplexOffset);
             if (msg.spanIndex !== undefined) updateSpanIndex(msg.spanIndex);
             if (msg.nb !== undefined) updateToggle('nb', msg.nb);
             if (msg.nr !== undefined) updateToggle('nr', msg.nr);
@@ -2881,12 +2959,15 @@ function updateFrequency(hz) {
     currentFreq = hz;
 
     // Crossing a front-end boundary (IC-705: 74.8 MHz) changes which P.AMP and
-    // ATT steps the rig has — refresh the button, slider and spectrum indicator.
-    var paSig = preampsHere().concat(attsHere()).map(function(e) { return e.num; }).join(',');
+    // ATT steps the rig has, and changing band changes the repeater shifts on
+    // offer — refresh the buttons, slider and spectrum indicator.
+    var paSig = preampsHere().concat(attsHere()).map(function(e) { return e.num; }).join(',')
+              + '|' + dupOffsetsHere().join('/');
     if (paSig !== lastPreampAttSig) {
         lastPreampAttSig = paSig;
         if (currentPanel === 'func') renderFuncOverlay();
         updatePreampAttIndicator();
+        if (document.getElementById('dupOverlay').classList.contains('visible')) renderDupModal();
     }
 
     // Update band frequency memory
@@ -3965,6 +4046,15 @@ function renderFuncOverlay() {
         grid.appendChild(makeFuncBtn('P.AMP/ATT', paState.label, paState.active, function() { cyclePreampAtt(); }));
     }
 
+    // Repeater duplex, next to P.AMP. Only rigs whose caps declare the offset
+    // command can shift the TX frequency, so everything else keeps the old
+    // grid untouched. Opens the DUP window, the same way MEM opens the
+    // memory browser; the tile itself doubles as the indicator.
+    if (hasDuplex) {
+        var dState = getDuplexState();
+        grid.appendChild(makeFuncBtn('DUP', dState.label, dState.active, openDupModal));
+    }
+
     // Tuner button
     var tunerLabel = 'TUNER';
     var tunerStateStr = tunerState === 0 ? 'OFF' : (tunerState === 2 ? 'TUNING' : 'ON');
@@ -4201,6 +4291,151 @@ function funcAttIndex() {
     }
     return 0;
 }
+// --- Repeater duplex (DUP +/-) ---
+//
+// Standard repeater shifts per band. The FIRST entry is IARU Region 2 and is
+// what the DUP tile applies when the rig has no offset of its own; the rest
+// are the other shifts in common use (Region 1 mostly), offered as one-tap
+// choices in the picker. Bands with no convention (the IC-905's microwave
+// segments) list none — the kHz box still takes anything.
+var DUP_BAND_OFFSETS = [
+    { min:   28000000, max:   29700000, offsets: [100000] },
+    { min:   50000000, max:   54000000, offsets: [1000000, 500000] },
+    { min:  144000000, max:  148000000, offsets: [600000] },
+    { min:  222000000, max:  225000000, offsets: [1600000] },
+    { min:  420000000, max:  450000000, offsets: [5000000, 1600000, 7600000] },
+    { min:  902000000, max:  928000000, offsets: [25000000, 12000000] },
+    { min: 1240000000, max: 1300000000, offsets: [12000000, 20000000, 6000000] }
+];
+function dupOffsetsHere() {
+    for (var i = 0; i < DUP_BAND_OFFSETS.length; i++) {
+        var b = DUP_BAND_OFFSETS[i];
+        if (currentFreq >= b.min && currentFreq <= b.max) return b.offsets;
+    }
+    return [];
+}
+// Spelled-out offset for the picker, where there is room for units.
+function formatDupOffsetLong(hz) {
+    if (hz === null || hz === undefined) return '?';
+    if (hz >= 1000000) return String(Math.round(hz / 1000) / 1000) + ' MHz';
+    return String(Math.round(hz / 100) / 10) + ' kHz';
+}
+// Compact offset for the tile legend: 600k, 5M, 1.6M, 20M. Trailing zeros are
+// only stripped after a decimal point — "20" must not become "2".
+function formatDupOffset(hz) {
+    if (hz === null || hz === undefined) return '?';
+    if (hz >= 1000000) {
+        var m = hz / 1000000;
+        return (hz % 1000000 ? m.toFixed(2).replace(/0+$/, '').replace(/\.$/, '') : String(m)) + 'M';
+    }
+    return (hz / 1000).toFixed(hz % 1000 ? 1 : 0) + 'k';
+}
+// The tile shows the direction and the shift together, so it alone tells you
+// where the rig will transmit.
+function getDuplexState() {
+    if (currentDuplex !== 'DUP-' && currentDuplex !== 'DUP+') return { label: 'OFF', active: false };
+    return { label: (currentDuplex === 'DUP-' ? '\u2212' : '+') + formatDupOffset(currentDupOffset), active: true };
+}
+function setDuplexMode(mode) {
+    // Engaging a shift with no offset would transmit on the receive frequency.
+    // Seed the band's standard shift first so the button is never a no-op.
+    if (mode !== 'OFF' && !currentDupOffset) {
+        var d = dupOffsetsHere()[0];
+        if (d) setDupOffset(d);
+    }
+    currentDuplex = mode;
+    send({ cmd: 'setDuplex', value: mode });
+    refreshDuplexUi();
+}
+function setDupOffset(hz) {
+    hz = Math.max(0, Math.round(hz / 100) * 100);  // rig resolution is 100 Hz
+    currentDupOffset = hz;
+    send({ cmd: 'setDuplexOffset', value: hz });
+    refreshDuplexUi();
+}
+function updateDuplex(mode) {
+    currentDuplex = mode;
+    refreshDuplexUi();
+}
+function updateDupOffset(hz) {
+    currentDupOffset = hz;
+    refreshDuplexUi();
+}
+// Everywhere the duplex state shows: the spectrum indicator, the FUNCTION
+// tile, and the window itself when it is open.
+function refreshDuplexUi() {
+    updateDupIndicator();
+    if (currentPanel === 'func') renderFuncOverlay();
+    if (document.getElementById('dupOverlay').classList.contains('visible')) renderDupModal();
+}
+// Live on the main display beside the P.AMP/ATT readout, but only while a
+// shift is actually engaged — nothing to show when transmit follows receive.
+function updateDupIndicator() {
+    var el = document.getElementById('dupIndicator');
+    if (!el) return;
+    if (!hasDuplex || (currentDuplex !== 'DUP-' && currentDuplex !== 'DUP+')) {
+        el.style.display = 'none';
+        return;
+    }
+    el.textContent = 'DUP ' + (currentDuplex === 'DUP-' ? '\u2212' : '+') + ' ' + formatDupOffset(currentDupOffset);
+    el.style.display = '';
+}
+function openDupModal() {
+    renderDupModal();
+    document.getElementById('dupOverlay').classList.add('visible');
+}
+function closeDupModal() {
+    document.getElementById('dupOverlay').classList.remove('visible');
+}
+// Direction on top, then the band's standard shifts, then a kHz box for odd
+// splits. The hint spells out the resulting TX frequency so the window says
+// what it will actually do.
+function renderDupModal() {
+    var segs = { 'OFF': 'dupSegOff', 'DUP-': 'dupSegMinus', 'DUP+': 'dupSegPlus' };
+    var live = (currentDuplex === 'DUP-' || currentDuplex === 'DUP+') ? currentDuplex : 'OFF';
+    for (var k in segs) {
+        document.getElementById(segs[k]).classList.toggle('active', k === live);
+    }
+    document.getElementById('dupTitleState').textContent =
+        live === 'OFF' ? '' : (live === 'DUP-' ? '\u2212' : '+') + formatDupOffset(currentDupOffset);
+
+    var box = document.getElementById('dupOffsetChoices');
+    box.innerHTML = '';
+    var here = dupOffsetsHere();
+    for (var i = 0; i < here.length; i++) {
+        var btn = document.createElement('button');
+        btn.className = 'dup-btn' + (here[i] === currentDupOffset ? ' active' : '');
+        btn.textContent = formatDupOffsetLong(here[i]);
+        btn.onclick = (function(hz) { return function() { setDupOffset(hz); }; })(here[i]);
+        box.appendChild(btn);
+    }
+    if (!here.length) {
+        var none = document.createElement('span');
+        none.className = 'dup-hint';
+        none.textContent = 'no standard shift on this band';
+        box.appendChild(none);
+    }
+
+    var inp = document.getElementById('dupCustomInput');
+    if (document.activeElement !== inp) {
+        inp.value = currentDupOffset === null ? '' : (currentDupOffset / 1000);
+    }
+    inp.onkeydown = function(e) { if (e.key === 'Enter') dupCustomSet(); };
+
+    var hint = document.getElementById('dupTxHint');
+    if (live === 'OFF' || !currentDupOffset || !currentFreq) {
+        hint.textContent = '';
+    } else {
+        var tx = currentFreq + (live === 'DUP+' ? currentDupOffset : -currentDupOffset);
+        hint.textContent = 'TX ' + (tx / 1000000).toFixed(4) + ' MHz';
+    }
+}
+function dupCustomSet() {
+    var kHz = parseFloat(document.getElementById('dupCustomInput').value);
+    if (isNaN(kHz)) return;
+    setDupOffset(kHz * 1000);
+}
+
 // Show/hide + configure the FUNC-overlay attenuator slider.
 function updateFuncAttRow(show) {
     var row = document.getElementById('funcAttRow');
@@ -4568,6 +4803,10 @@ function updateWarningVisibility() {
     } else {
         micWarning.style.display = 'none';
     }
+
+    // The duplex readout lives in the same stack; keep it in step with rig
+    // (re)connects, which is when hasDuplex can flip.
+    updateDupIndicator();
 }
 
 function handlePTTPress() {

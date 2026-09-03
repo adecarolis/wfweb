@@ -39,6 +39,27 @@
 // classic-FreeDV ALC loop can't affect RADE.
 static constexpr float RADE_TX_GAIN = 0.4f;
 
+// Repeater duplex direction on the wire. The browser and the REST clients
+// speak these three names; the parser only ever caches simplex / DUP- / DUP+,
+// so the default arm is just a guard.
+static QString duplexModeName(duplexMode_t dm)
+{
+    switch (dm) {
+    case dmDupMinus: return QStringLiteral("DUP-");
+    case dmDupPlus:  return QStringLiteral("DUP+");
+    default:         return QStringLiteral("OFF");
+    }
+}
+
+// Inverse of duplexModeName(). Returns dmSimplex for anything unrecognised,
+// which is the safe direction: it turns the repeater shift off.
+static duplexMode_t duplexModeFromName(const QString &name)
+{
+    if (name.compare(QLatin1String("DUP-"), Qt::CaseInsensitive) == 0) return dmDupMinus;
+    if (name.compare(QLatin1String("DUP+"), Qt::CaseInsensitive) == 0) return dmDupPlus;
+    return dmSimplex;
+}
+
 webServer::webServer(QObject *parent) :
     QObject(parent)
 {
@@ -1197,6 +1218,14 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             if (comp.value.isValid()) resp["compressor"] = comp.value.toBool();
             cacheItem mon = queue->getCache(funcMonitor, 0);
             if (mon.value.isValid()) resp["monitor"] = mon.value.toBool();
+            cacheItem duplex = queue->getCache(funcDuplexMode, 0);
+            if (duplex.value.isValid())
+                resp["duplex"] = duplexModeName(duplex.value.value<duplexMode_t>());
+            if (rigCaps->commands.contains(funcReadFreqOffset)) {
+                cacheItem dupOffset = queue->getCache(funcReadFreqOffset, 0);
+                if (dupOffset.value.isValid())
+                    resp["duplexOffset"] = (double)dupOffset.value.value<freqt>().Hz;
+            }
             sendRestResponse(socket, 200, resp);
         } else if (method == "PUT") {
             if (!queue || !rigCaps) {
@@ -1219,6 +1248,18 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             if (obj.contains("compressor")) {
                 uchar val = obj["compressor"].toBool() ? 1 : 0;
                 queue->add(priorityImmediate, queueItem(funcCompressor, QVariant::fromValue<uchar>(val), false, 0));
+            }
+            if (obj.contains("duplex")) {
+                duplexMode_t dm = duplexModeFromName(obj["duplex"].toString());
+                queue->addUnique(priorityImmediate, queueItem(funcSplitStatus, QVariant::fromValue<duplexMode_t>(dm), false, 0));
+                queue->receiveValue(funcDuplexMode, QVariant::fromValue<duplexMode_t>(dm), 0);
+            }
+            if (obj.contains("duplexOffset")) {
+                freqt off;
+                off.Hz = static_cast<quint64>(qBound(0.0, obj["duplexOffset"].toDouble(), 99999900.0)) / 100 * 100;
+                off.MHzDouble = off.Hz / 1000000.0;
+                queue->addUnique(priorityImmediate, queueItem(funcSendFreqOffset, QVariant::fromValue<freqt>(off), false, 0));
+                queue->receiveValue(funcReadFreqOffset, QVariant::fromValue<freqt>(off), 0);
             }
             if (obj.contains("monitor")) {
                 uchar val = obj["monitor"].toBool() ? 1 : 0;
@@ -1834,6 +1875,31 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                              << "hasCmd29=" << (rigCaps && rigCaps->hasCommand29);
         if (supported) {
             queue->addUnique(priorityImmediate, queueItem(funcSplitStatus, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
+        }
+    }
+    else if (type == "setDuplex") {
+        // Repeater shift direction. Shares CI-V 0x0F with split, so it is sent
+        // as a duplexMode_t (the encoder appends the raw sub-command byte)
+        // rather than the uchar setSplit uses.
+        duplexMode_t dm = duplexModeFromName(cmd["value"].toString());
+        bool supported = rigCaps && rigCaps->commands.contains(funcSendFreqOffset);
+        qCInfo(logWebServer) << "setDuplex:" << cmd["value"].toString() << "supported=" << supported;
+        if (supported) {
+            queue->addUnique(priorityImmediate, queueItem(funcSplitStatus, QVariant::fromValue<duplexMode_t>(dm), false, 0));
+            // The rig echoes 0x0F back through the periodic poll, but push the
+            // new direction now so the tile doesn't lag a poll interval.
+            queue->receiveValue(funcDuplexMode, QVariant::fromValue<duplexMode_t>(dm), 0);
+        }
+    }
+    else if (type == "setDuplexOffset") {
+        // Offset in Hz. The rig takes 3 BCD bytes from the 100 Hz digit up,
+        // so anything finer than 100 Hz cannot be represented.
+        freqt off;
+        off.Hz = static_cast<quint64>(qBound(0.0, cmd["value"].toDouble(), 99999900.0)) / 100 * 100;
+        off.MHzDouble = off.Hz / 1000000.0;
+        if (rigCaps && rigCaps->commands.contains(funcSendFreqOffset)) {
+            queue->addUnique(priorityImmediate, queueItem(funcSendFreqOffset, QVariant::fromValue<freqt>(off), false, 0));
+            queue->receiveValue(funcReadFreqOffset, QVariant::fromValue<freqt>(off), 0);
         }
     }
     else if (type == "setSpan") {
@@ -2836,6 +2902,10 @@ QJsonObject webServer::buildInfoJson() const
         info["hasFilterSettings"] = rigCaps->commands.contains(funcPBTInner);
         info["hasPowerControl"] = rigCaps->commands.contains(funcPowerControl);
         info["hasMainSub"] = rigCaps->hasCommand29;
+        // Repeater duplex: only the rigs whose .rig declares the offset
+        // command (IC-705/9700/905/785x) can shift the TX frequency, so the
+        // DUP tile follows that capability rather than a model list.
+        info["hasDuplex"] = rigCaps->commands.contains(funcSendFreqOffset);
         if (!rigCaps->scopeCenterSpans.empty()) {
             QJsonArray spans;
             for (const centerSpanData &s : rigCaps->scopeCenterSpans) {
@@ -3111,6 +3181,20 @@ QJsonObject webServer::buildStatusJson()
         status["split"] = split.value.toBool();
     }
 
+    // Repeater duplex direction and offset. getCache() re-requests anything
+    // stale, so only ask on rigs that actually have the command — otherwise
+    // every status tick burns an immediate queue slot the rig will reject.
+    cacheItem duplex = queue->getCache(funcDuplexMode, 0);
+    if (duplex.value.isValid()) {
+        status["duplex"] = duplexModeName(duplex.value.value<duplexMode_t>());
+    }
+    if (rigCaps && rigCaps->commands.contains(funcReadFreqOffset)) {
+        cacheItem dupOffset = queue->getCache(funcReadFreqOffset, 0);
+        if (dupOffset.value.isValid()) {
+            status["duplexOffset"] = (double)dupOffset.value.value<freqt>().Hz;
+        }
+    }
+
     // Monitor
     cacheItem mon = queue->getCache(funcMonitor, 0);
     if (mon.value.isValid()) status["monitor"] = mon.value.toBool();
@@ -3360,6 +3444,13 @@ void webServer::receiveCache(cacheItem item)
         break;
     case funcSplitStatus:
         update["split"] = item.value.toBool();
+        break;
+    case funcDuplexMode:
+        update["duplex"] = duplexModeName(item.value.value<duplexMode_t>());
+        break;
+    case funcReadFreqOffset:
+    case funcSendFreqOffset:
+        update["duplexOffset"] = (double)item.value.value<freqt>().Hz;
         break;
     case funcTunerStatus:
         update["tuner"] = item.value.toInt();  // 0=off, 1=on, 2=tuning

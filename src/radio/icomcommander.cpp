@@ -924,8 +924,18 @@ void icomCommander::parseCommand()
     case funcScanning:
         break;
     case funcReadFreqOffset:
-        value.setValue(parseFreqData(payloadIn,receiver));
+    {
+        // The duplex offset is 3 BCD bytes that start at the 100 Hz digit
+        // (600 kHz arrives as 00 60 00), so the generic frequency parser
+        // lands a factor of 100 short. This is the exact inverse of the
+        // makeFreqPayload().mid(1,3) the set path uses.
+        freqt off;
+        off.Hz = parseFreqDataToInt(payloadIn) * 100;
+        off.MHzDouble = off.Hz / 1000000.0;
+        off.VFO = selVFO_t(receiver);
+        value.setValue(off);
         break;
+    }
     // These return a single byte that we convert to a uchar (0-99)
     case funcTuningStep:
     case funcAttenuator:
@@ -934,8 +944,28 @@ void icomCommander::parseCommand()
     // Split/duplex status: store as bool (on = dmSplitOn, off = anything else)
     // Must be bool to match Kenwood/Yaesu and for webserver toBool() to work
     case funcSplitStatus:
-        value.setValue(uchar(payloadIn.at(0)) == dmSplitOn);
+    {
+        // 0x0F reports two settings through one command: the split flag
+        // (0x00/0x01) and the repeater duplex direction (0x10 simplex,
+        // 0x11 DUP-, 0x12 DUP+, 0x13 RPS). Republish the duplex half under
+        // its own internal func so the split cache keeps the plain bool the
+        // rest of the app -- and the Kenwood/Yaesu commanders -- expect.
+        // Verified on a real IC-705: the rig answers 0x11/0x12 whenever a
+        // repeater shift is engaged and falls back to the split flag
+        // (0x00/0x01) when it is not, so a split answer also means simplex.
+        // That is what lets the DUP tile follow the rig's own front panel.
+        // RPS (0x13, the IC-9700's DD-mode shift) is deliberately left out:
+        // the web UI has no control for it, and reporting it as one of the
+        // three it does offer would be a lie.
+        uchar raw = uchar(payloadIn.at(0));
+        qDebug(logRig()) << "Split/Duplex reply: 0x" << QString::number(raw, 16);
+        if (queue != Q_NULLPTR && raw != dmDupRPS) {
+            duplexMode_t dm = (raw == dmDupMinus || raw == dmDupPlus) ? duplexMode_t(raw) : dmSimplex;
+            queue->receiveValue(funcDuplexMode, QVariant::fromValue<duplexMode_t>(dm), receiver);
+        }
+        value.setValue(raw == dmSplitOn);
         break;
+    }
     case funcQuickSplit:
         value.setValue(bcdHexToUChar(payloadIn.at(0)));
         break;

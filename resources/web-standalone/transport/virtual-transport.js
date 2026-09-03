@@ -49,6 +49,8 @@
         setPreamp:        'preamp',
         setAttenuator:    'attenuator',
         setSplit:         'split',
+        setDuplex:        'duplex',
+        setDuplexOffset:  'duplexOffset',
         setTuner:         'tuner',
         setSpan:          'spanIndex',
     };
@@ -436,6 +438,9 @@
                 hasRxAnt: true,
                 hasFilterSettings: true,
                 hasMainSub: false,
+                // Advertised so the DUP tile can be exercised off-air; the
+                // virtual rig just echoes whatever it is told.
+                hasDuplex: true,
                 hasSpectrum: false,
                 spectAmpMax: 160,
                 audioAvailable: true,
@@ -464,7 +469,9 @@
                 rxAntenna: this.state.rxAntenna,
                 preamp: this.state.preamp,
                 attenuator: this.state.attenuator,
+                duplex: this.state.duplex || 'OFF',
             };
+            if (this.state.duplexOffset !== undefined) s.duplexOffset = this.state.duplexOffset;
             this._emit('status', s);
         }
 

@@ -139,6 +139,8 @@
         setAntenna: true,
         // VFO ops
         selectVFO: true, swapVFO: true, equalizeVFO: true, setSplit: true,
+        // Repeater duplex (direction + offset)
+        setDuplex: true, setDuplexOffset: true,
         // Misc
         setTuner: true, setPower: true, setSpan: true,
         // CW
@@ -227,6 +229,9 @@
                 // the rig. We default to 'A' on connect and update when the
                 // user clicks the VFO label or 0x25 0x00 confirms it.
                 selectedVfo: 'A',
+                // Repeater shift. 'OFF' until the rig reports otherwise;
+                // duplexOffset stays null until 0x0C answers.
+                duplex: 'OFF', duplexOffset: null,
             };
 
             // Dual-VFO read mode, derived from rig caps in _finalizeDetection.
@@ -244,6 +249,11 @@
             this._antCmd = null;
             this._antennas = [];
             this._hasRxAnt = false;
+
+            // Repeater duplex caps — true only for rigs whose .rig declares
+            // the offset command (IC-705/9700/905/785x). Set in
+            // _finalizeDetection from the rig-caps registry.
+            this._hasDuplex = false;
 
             // RX audio capture state — getUserMedia → AudioWorklet → Int16
             // PCM → 0x02 binary frame → SPA's handleAudioData.
@@ -539,6 +549,20 @@
                     this.state.split = sp;
                     this._enqueue('setSplit', civ.cmdSetSplit(sp));
                     this._emit('update', { split: sp });
+                    return;
+                case 'setDuplex':
+                    // Shares CI-V 0x0F with split: the sub-command byte picks
+                    // simplex / DUP- / DUP+ instead of the split flag.
+                    var dp = obj.value === 'DUP-' || obj.value === 'DUP+' ? obj.value : 'OFF';
+                    this.state.duplex = dp;
+                    this._enqueue('setDuplex', civ.cmdSetDuplex(dp));
+                    this._emit('update', { duplex: dp });
+                    return;
+                case 'setDuplexOffset':
+                    var doff = Math.max(0, Math.round((obj.value || 0) / 100) * 100);
+                    this.state.duplexOffset = doff;
+                    this._enqueue('setDuplexOffset', civ.cmdSetDuplexOffset(doff));
+                    this._emit('update', { duplexOffset: doff });
                     return;
                 case 'setTuner':
                     var tn = (typeof obj.value === 'number') ? obj.value : 0;
@@ -1042,6 +1066,7 @@
             this._antennas = (capsEntry && capsEntry.antennas) || [];
             this._hasRxAnt = !!(capsEntry && capsEntry.cmds && capsEntry.cmds.rxAntenna)
                 && this._antennas.length > 0;
+            this._hasDuplex = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasDuplex);
             lsSetInt('directBaudRate', baud);
             lsSetInt('directCivAddr', addr);
 
@@ -1087,6 +1112,7 @@
                 this._enqueue('readAntenna', civ.cmdReadAntenna(this._antCmd));
             }
             this._enqueue('readSplit',      civ.cmdReadSplit());
+            if (this._hasDuplex) this._enqueue('readDuplexOffset', civ.cmdReadDuplexOffset());
             this._enqueue('readTuner',      civ.cmdReadTuner());
             this._enqueue('readScopeSpan',  civ.cmdReadScopeSpan());
             // Mod inputs: read the user's current settings first (the
@@ -1452,12 +1478,27 @@
                 return;
             }
 
-            // 0x0F — split status reply
+            // 0x0F — split status reply, which doubles as the duplex direction
             if (payload[0] === 0x0F && payload.length >= 2) {
                 var sp = civ.parseSplitReply(payload);
                 if (sp !== null && this.state.split !== sp) {
                     this.state.split = sp;
                     this._emit('update', { split: sp });
+                }
+                var dpr = civ.parseDuplexReply(payload);
+                if (dpr !== null && this.state.duplex !== dpr) {
+                    this.state.duplex = dpr;
+                    this._emit('update', { duplex: dpr });
+                }
+                return;
+            }
+
+            // 0x0C — duplex offset reply
+            if (payload[0] === 0x0C && payload.length >= 4) {
+                var dof = civ.parseDuplexOffsetReply(payload);
+                if (dof !== null && this.state.duplexOffset !== dof) {
+                    this.state.duplexOffset = dof;
+                    this._emit('update', { duplexOffset: dof });
                 }
                 return;
             }
@@ -1794,6 +1835,7 @@
                 hasRxAnt: this._hasRxAnt,
                 hasFilterSettings: true,
                 hasMainSub: caps.numReceivers > 1,
+                hasDuplex: !!caps.hasDuplex,
                 hasSpectrum: caps.hasSpectrum,
                 spectAmpMax: 160,     // Icom amplitude scale (matches C++ wfweb)
                 audioAvailable: true,    // Phase 2: rig USB audio via getUserMedia
@@ -1845,7 +1887,8 @@
                 'micGain', 'monitorGain', 'pbtInner', 'pbtOuter', 'cwSpeed',
                 'autoNotch', 'nb', 'nr', 'preamp', 'attenuator',
                 'antenna', 'rxAntenna',
-                'split', 'tuner', 'spanIndex', 'filterWidth'];
+                'split', 'tuner', 'spanIndex', 'filterWidth',
+                'duplex', 'duplexOffset'];
             for (var i = 0; i < passthrough.length; i++) {
                 var k = passthrough[i];
                 if (this.state[k] !== undefined && this.state[k] !== null) s[k] = this.state[k];
@@ -1879,6 +1922,12 @@
                 var now = Date.now();
                 if (now - this._lastFreqStamp > 2000) this._enqueue('readFreq', civ.cmdReadFrequency());
                 if (now - this._lastModeStamp > 2000) this._enqueue('readMode', civ.cmdReadMode());
+                // The rig stores a separate duplex offset per band, so a band
+                // change silently replaces it. Re-read on the slow tick.
+                if (this._hasDuplex && (this._dupPollTick = (this._dupPollTick || 0) + 1) % 5 === 0) {
+                    this._enqueue('readSplit', civ.cmdReadSplit());
+                    this._enqueue('readDuplexOffset', civ.cmdReadDuplexOffset());
+                }
             }, 1000);
             // Slow refresh of the unselected/Sub VFO so dial motion on the
             // *other* VFO eventually shows up in the side display. The rig
