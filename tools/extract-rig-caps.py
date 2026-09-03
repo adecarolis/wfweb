@@ -145,10 +145,11 @@ def normalize_input_name(name: str) -> str:
 
 
 def extract_num_name_list(props: dict[str, str], prefix: str) -> list[dict]:
-    """Walk Rig/<prefix>\\N\\{Num,Name} entries and return [{num, name}, ...].
+    """Walk Rig/<prefix>\\N\\{Num,Name,Start,End} entries.
 
-    Excludes the OFF/0-dB entry (Num=0) — the SPA cycle code uses Num=0 as
-    the "off" value already, so listing it would create a redundant cycle step.
+    Returns [{num, name, minFreq?, maxFreq?}, ...] in .rig order — the
+    OFF/0-dB entry included, since the SPA cycle code treats index 0 as
+    the "off" step.
     """
     pat = re.compile(rf"^Rig/{prefix}\\(\d+)\\(\w+)$")
     found: dict[int, dict[str, str]] = {}
@@ -168,7 +169,17 @@ def extract_num_name_list(props: dict[str, str], prefix: str) -> list[dict]:
         if num < 0:
             continue
         name = e.get("Name", "").strip()
-        out.append((idx, {"num": num, "name": name}))
+        item = {"num": num, "name": name}
+        # Optional Start/End (Hz) restrict an entry to part of the rig's
+        # coverage — the IC-705 only offers PREAMP 2 below 74.8 MHz.
+        for field, key in (("Start", "minFreq"), ("End", "maxFreq")):
+            try:
+                hz = int(e.get(field, "0"))
+            except ValueError:
+                continue
+            if hz > 0:
+                item[key] = hz
+        out.append((idx, item))
     out.sort(key=lambda t: t[0])
     return [d for _, d in out]
 
@@ -292,7 +303,13 @@ def js_inputs(inputs: dict[str, int]) -> str:
 
 
 def js_num_name_list(items: list[dict]) -> str:
-    parts = [f"{{num:{e['num']},name:{js_string(e['name'])}}}" for e in items]
+    parts = []
+    for e in items:
+        fields = f"num:{e['num']},name:{js_string(e['name'])}"
+        for key in ("minFreq", "maxFreq"):
+            if e.get(key):
+                fields += f",{key}:{e[key]}"
+        parts.append("{" + fields + "}")
     return "[" + ",".join(parts) + "]"
 
 

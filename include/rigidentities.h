@@ -234,13 +234,22 @@ struct filterType {
     unsigned int modes;
 };
 
+// A numbered, named rig setting (preamp, attenuator, antenna, roofing filter...).
+// Some rigs only offer part of a list over part of their coverage: the IC-705
+// has P.AMP1/P.AMP2 on its HF/50 MHz front end but a single P.AMP above it.
+// minFreq/maxFreq (Hz, 0 = unbounded) bound where an entry is selectable;
+// entries without a range are valid everywhere.
 struct genericType {
     genericType():num(0),name("") {}
-    genericType(genericType const &g):num(g.num),name(g.name) {}
+    genericType(genericType const &g):num(g.num),name(g.name),minFreq(g.minFreq),maxFreq(g.maxFreq) {}
     genericType(quint8 num, QString name) :
         num(num), name(name) {}
+    genericType(quint8 num, QString name, quint64 minFreq, quint64 maxFreq) :
+        num(num), name(name), minFreq(minFreq), maxFreq(maxFreq) {}
     quint8 num;
     QString name;
+    quint64 minFreq=0;
+    quint64 maxFreq=0;
 };
 
 

@@ -426,6 +426,10 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
                 QJsonObject po;
                 po["num"] = p.num;
                 po["name"] = p.name;
+                // Band-limited entries (IC-705: PREAMP 2 is HF/50 MHz only).
+                // Absent = valid across the rig's whole coverage.
+                if (p.minFreq) po["minFreq"] = double(p.minFreq);
+                if (p.maxFreq) po["maxFreq"] = double(p.maxFreq);
                 preamps.append(po);
             }
             obj["preamps"] = preamps;
@@ -436,6 +440,10 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
                 QJsonObject ao;
                 ao["num"] = a.num;
                 ao["name"] = a.name;
+                // Band-limited entries (IC-705: the attenuator is HF/50 MHz only).
+                // Absent = valid across the rig's whole coverage.
+                if (a.minFreq) ao["minFreq"] = double(a.minFreq);
+                if (a.maxFreq) ao["maxFreq"] = double(a.maxFreq);
                 attenuators.append(ao);
             }
             obj["attenuators"] = attenuators;
@@ -2845,6 +2853,10 @@ QJsonObject webServer::buildInfoJson() const
                 QJsonObject po;
                 po["num"] = p.num;
                 po["name"] = p.name;
+                // Band-limited entries (IC-705: PREAMP 2 is HF/50 MHz only).
+                // Absent = valid across the rig's whole coverage.
+                if (p.minFreq) po["minFreq"] = double(p.minFreq);
+                if (p.maxFreq) po["maxFreq"] = double(p.maxFreq);
                 preamps.append(po);
             }
             info["preamps"] = preamps;
@@ -2855,6 +2867,10 @@ QJsonObject webServer::buildInfoJson() const
                 QJsonObject ao;
                 ao["num"] = a.num;
                 ao["name"] = a.name;
+                // Band-limited entries (IC-705: the attenuator is HF/50 MHz only).
+                // Absent = valid across the rig's whole coverage.
+                if (a.minFreq) ao["minFreq"] = double(a.minFreq);
+                if (a.maxFreq) ao["maxFreq"] = double(a.maxFreq);
                 attenuators.append(ao);
             }
             info["attenuators"] = attenuators;

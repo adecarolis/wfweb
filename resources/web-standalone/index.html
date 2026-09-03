@@ -2683,6 +2683,7 @@ var nrOn = false;
 var anfOn = false;
 var tunerState = 0;
 var currentPreamp = 0;
+var lastPreampAttSig = '';  // preamp/att steps valid at currentFreq (band-change watch)
 var currentAttenuator = 0;
 var currentFilter = 1;
 var currentPBTInner = 128;
@@ -3173,6 +3174,15 @@ function handleMessage(msg) {
 function updateFrequency(hz) {
     currentFreq = hz;
 
+    // Crossing a front-end boundary (IC-705: 74.8 MHz) changes which P.AMP and
+    // ATT steps the rig has — refresh the button, slider and spectrum indicator.
+    var paSig = preampsHere().concat(attsHere()).map(function(e) { return e.num; }).join(',');
+    if (paSig !== lastPreampAttSig) {
+        lastPreampAttSig = paSig;
+        if (currentPanel === 'func') renderFuncOverlay();
+        updatePreampAttIndicator();
+    }
+
     // Update band frequency memory
     for (var _b in BAND_RANGES) {
         var _r = BAND_RANGES[_b];
@@ -3567,9 +3577,10 @@ function initSliderTracking() {
         slider.addEventListener('touchcancel', function() { sliderDragging['funcAtt'] = false; });
         slider.addEventListener('input', function() {
             var idx = parseInt(slider.value);
-            var a = availableAttenuators[idx] || { num: 0, name: 'OFF' };
+            var here = attsHere();
+            var a = here[idx] || { num: 0, name: 'OFF' };
             sliderSetTimes['funcAtt'] = Date.now();
-            var max = Math.max(1, availableAttenuators.length - 1);
+            var max = Math.max(1, here.length - 1);
             var fill = document.getElementById('funcAttFill');
             if (fill) fill.style.width = (idx / max * 100) + '%';
             document.getElementById('funcAttVal').textContent = idx === 0 ? 'OFF' : (a.name || ('-' + a.num + ' dB'));
@@ -3642,8 +3653,8 @@ function throttledSend(name, cmd, val) {
 
 function populateModes(modes) { availableModes = modes; if (currentPanel === 'mode') renderModeOverlay(); }
 function populateSpans(spans) { availableSpans = spans; }
-function populatePreamps(preamps) { availablePreamps = preamps || []; }
-function populateAttenuators(atts) { availableAttenuators = atts || []; }
+function populatePreamps(preamps) { availablePreamps = preamps || []; lastPreampAttSig = ''; }
+function populateAttenuators(atts) { availableAttenuators = atts || []; lastPreampAttSig = ''; }
 function populateFilters(filters) { availableFilters = filters || []; }
 function populateAntennas(antennas) { availableAntennas = antennas || []; }
 function updateAntennaState(ant, rx) {
@@ -4324,7 +4335,7 @@ function renderFuncOverlay() {
     // 16 steps) cycling through every step to reach the preamp is painful, so
     // the button becomes preamp-only and the attenuator gets a slider below
     // the grid. Simple rigs (IC-7300: off/-20) keep the combined cycle button.
-    var multiStepAtt = availableAttenuators.length > 2;
+    var multiStepAtt = attsHere().length > 2;
     if (multiStepAtt) {
         var pState = getPreampState();
         grid.appendChild(makeFuncBtn('P.AMP', pState.label, pState.active, cyclePreamp));
@@ -4455,19 +4466,43 @@ function renderAudioMicOverlay() {
     document.getElementById('audioMicOverlay').classList.add('visible');
 }
 
+// A rig's preamp and attenuator lists can be band-dependent: on the IC-705
+// both live on the HF/50 MHz front end, so above 74.8 MHz there is a single
+// P.AMP and no attenuator at all. Caps entries carry an optional
+// minFreq/maxFreq (Hz) to say so; entries without a range are valid across the
+// whole rig. Index 0 stays the "off" step in either list.
+function entriesHere(list) {
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+        var e = list[i];
+        if (e.minFreq && currentFreq < e.minFreq) continue;
+        if (e.maxFreq && currentFreq >= e.maxFreq) continue;
+        out.push(e);
+    }
+    return out;
+}
+function preampsHere() { return entriesHere(availablePreamps); }
+function attsHere() { return entriesHere(availableAttenuators); }
+// Button text for a preamp value: a band with a single preamp is just
+// "P.AMP" (what the IC-705 shows on 2 m/70 cm), numbered when it has more.
+function preampLabel(num) {
+    return preampsHere().length > 2 ? 'P.AMP' + num : 'P.AMP';
+}
+
 function getPreampAttState() {
     if (currentAttenuator > 0) {
         // Show the actual dB (e.g. "-21 dB") so multi-step rigs (IC-7610 has
         // 16 steps) reveal the level, not just "ATT".
-        for (var i = 0; i < availableAttenuators.length; i++) {
-            if (availableAttenuators[i].num === currentAttenuator) {
-                return { label: availableAttenuators[i].name, active: true };
+        var here = attsHere();
+        for (var i = 0; i < here.length; i++) {
+            if (here[i].num === currentAttenuator) {
+                return { label: here[i].name, active: true };
             }
         }
         return { label: 'ATT', active: true };
     }
     if (currentPreamp > 0) {
-        return { label: 'P.AMP' + currentPreamp, active: true };
+        return { label: preampLabel(currentPreamp), active: true };
     }
     return { label: 'OFF', active: false };
 }
@@ -4478,7 +4513,7 @@ function cyclePreampAtt() {
     // Attenuator hardcoding the old "20 dB" step broke on rigs whose steps
     // differ (IC-7610: 0,3,6,…,45 — 20 is not a valid step). ATT and preamp
     // stay mutually exclusive, matching the radio.
-    var atts = availableAttenuators, pres = availablePreamps;
+    var atts = attsHere(), pres = preampsHere();
 
     if (currentAttenuator > 0) {
         // In the ATT run: advance to the next step, or hand off to PRE1.
@@ -4516,11 +4551,11 @@ function cyclePreampAtt() {
 // On the IC-7610 and friends the attenuator is a slider (see #funcAttRow) and
 // this button only walks the preamp: OFF → PRE1 → PRE2 → OFF.
 function getPreampState() {
-    if (currentPreamp > 0) return { label: 'P.AMP' + currentPreamp, active: true };
+    if (currentPreamp > 0) return { label: preampLabel(currentPreamp), active: true };
     return { label: 'OFF', active: false };
 }
 function cyclePreamp() {
-    var pres = availablePreamps;
+    var pres = preampsHere();
     var pi = 0;
     for (var j = 1; j < pres.length; j++) {
         if (pres[j].num === currentPreamp) { pi = j; break; }
@@ -4534,10 +4569,11 @@ function cyclePreamp() {
     }
 }
 
-// Index of the current attenuator level within availableAttenuators (0 = off).
+// Index of the current attenuator level within the band-valid list (0 = off).
 function funcAttIndex() {
-    for (var i = 0; i < availableAttenuators.length; i++) {
-        if (availableAttenuators[i].num === currentAttenuator) return i;
+    var here = attsHere();
+    for (var i = 0; i < here.length; i++) {
+        if (here[i].num === currentAttenuator) return i;
     }
     return 0;
 }
@@ -4548,7 +4584,7 @@ function updateFuncAttRow(show) {
     if (!show) { row.style.display = 'none'; return; }
     row.style.display = '';
     var slider = document.getElementById('funcAttSlider');
-    if (slider) slider.max = Math.max(1, availableAttenuators.length - 1);
+    if (slider) slider.max = Math.max(1, attsHere().length - 1);
     syncFuncAttSlider();
 }
 // Reflect currentAttenuator onto the slider position / fill / label.
@@ -4557,13 +4593,14 @@ function syncFuncAttSlider() {
     if ((Date.now() - (sliderSetTimes['funcAtt'] || 0)) < SLIDER_DEBOUNCE_MS) return;
     var slider = document.getElementById('funcAttSlider');
     if (!slider) return;
+    var here = attsHere();
     var idx = funcAttIndex();
-    var max = Math.max(1, availableAttenuators.length - 1);
+    var max = Math.max(1, here.length - 1);
     slider.value = idx;
     var fill = document.getElementById('funcAttFill');
     if (fill) fill.style.width = (idx / max * 100) + '%';
     var val = document.getElementById('funcAttVal');
-    if (val) val.textContent = idx === 0 ? 'OFF' : (availableAttenuators[idx].name || ('-' + availableAttenuators[idx].num + ' dB'));
+    if (val) val.textContent = idx === 0 ? 'OFF' : (here[idx].name || ('-' + here[idx].num + ' dB'));
 }
 
 function antennaName(num) {

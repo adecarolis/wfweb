@@ -1797,7 +1797,12 @@ void icomCommander::determineRigCaps()
         for (int c = 0; c < numPreamps; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.preamps.push_back(genericType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", 0).toString()));
+            // Start/End (Hz, optional) restrict an entry to part of the rig's
+            // coverage — the IC-705 only offers PREAMP 2 below 74.8 MHz.
+            rigCaps.preamps.push_back(genericType(settings->value("Num", 0).toString().toUInt(),
+                settings->value("Name", 0).toString(),
+                settings->value("Start", 0ULL).toULongLong(),
+                settings->value("End", 0ULL).toULongLong()));
         }
         settings->endArray();
     }
@@ -1823,10 +1828,16 @@ void icomCommander::determineRigCaps()
         for (int c = 0; c < numAttenuators; c++)
         {
             settings->setArrayIndex(c);
+            // Start/End (Hz, optional) restrict an entry to part of the rig's
+            // coverage — the IC-705's attenuator is HF/50 MHz only.
+            quint64 attStart = settings->value("Start", 0ULL).toULongLong();
+            quint64 attEnd = settings->value("End", 0ULL).toULongLong();
             if (settings->value("Num", -1).toString().toInt() == -1) {
-                rigCaps.attenuators.push_back(genericType(settings->value("dB", 0).toString().toUInt(),QString("%0 dB").arg(settings->value("dB", 0).toString().toUInt())));
+                rigCaps.attenuators.push_back(genericType(settings->value("dB", 0).toString().toUInt(),
+                    QString("%0 dB").arg(settings->value("dB", 0).toString().toUInt()), attStart, attEnd));
             } else {
-                rigCaps.attenuators.push_back(genericType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", 0).toString()));
+                rigCaps.attenuators.push_back(genericType(settings->value("Num", 0).toString().toUInt(),
+                    settings->value("Name", 0).toString(), attStart, attEnd));
             }
         }
         settings->endArray();
