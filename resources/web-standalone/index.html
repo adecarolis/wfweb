@@ -1808,6 +1808,13 @@ body.digi-open #bottomBar { grid-row: 5; }
     font-size: 14px;
     color: #888;
 }
+/* RF Gain left backed off is a silent band-killer — you hear nothing and blame
+   the antenna. Same size and font as the rig-state lines above, but orange
+   (the .spectrum-warning default) because this one is a warning, not a readout. */
+#rfGainIndicator {
+    top: 92px;   /* clears the 14px-tall DUP readout above (66 + 26) */
+    font-size: 14px;
+}
 
 /* ============ RESPONSIVE ============ */
 @media (max-height: 450px) {
@@ -2617,6 +2624,7 @@ body.digi-open #bottomBar { grid-row: 5; }
         <div id="micOffWarning" class="spectrum-warning" onclick="toggleMic()" style="display: none;">MIC OFF</div>
         <div id="preampAttIndicator" class="spectrum-warning" style="display: none;"></div>
         <div id="dupIndicator" class="spectrum-warning" style="display: none;" onclick="openDupModal()"></div>
+        <div id="rfGainIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
     </div>
 
     <!-- Row 5: Bottom bar -->
@@ -3558,6 +3566,20 @@ function updatePreampAttIndicator() {
     }
 }
 
+// Anything short of full RF Gain gets a standing tile on the display — tapping
+// it opens the gain panel so the fix is one more tap away.
+function updateRfGainIndicator(val) {
+    var el = document.getElementById('rfGainIndicator');
+    if (!el) return;
+    var pct = Math.round(val / 255 * 100);
+    if (pct >= 100) {
+        el.style.display = 'none';
+        return;
+    }
+    el.textContent = 'RFG ' + pct + '%';
+    el.style.display = '';
+}
+
 function updateDspIndicators() {
     var el = document.getElementById('dspIndicators');
     var tags = [];
@@ -3589,7 +3611,7 @@ function initSliderTracking() {
             var fill = document.getElementById(name.replace(/([A-Z])/g, function(m) { return m; }) + 'Fill');
             if (fill) fill.style.width = (val / 255 * 100) + '%';
             if (name === 'afGain') throttledSend('afGain', 'setAfGain', val);
-            else if (name === 'rfGain') throttledSend('rfGain', 'setRfGain', val);
+            else if (name === 'rfGain') { throttledSend('rfGain', 'setRfGain', val); updateRfGainIndicator(val); }
             else if (name === 'rfPower') throttledSend('rfPower', 'setRfPower', val);
             else if (name === 'squelch') throttledSend('squelch', 'setSquelch', val);
             else if (name === 'micGain') throttledSend('micGain', 'setMicGain', val);
@@ -3724,6 +3746,7 @@ function updateSlider(name, val) {
     var fillId = name + 'Fill';
     var fill = document.getElementById(fillId);
     if (fill) fill.style.width = (val / 255 * 100) + '%';
+    if (name === 'rfGain') updateRfGainIndicator(val);
 }
 
 var sliderTimers = {};
