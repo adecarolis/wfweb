@@ -29,6 +29,13 @@
 
     var civ = global.IcomCiv;
     var RIG_CAPS = global.IcomRigCaps || {};
+    // Standard tone tables, emitted once by tools/extract-rig-caps.py because
+    // every Icom that has them has the same ones.
+    var CTCSS_TONES = global.IcomCtcssTones || [];
+    var DTCS_CODES  = global.IcomDtcsCodes || [];
+    // A memory channel stores the repeater shift as a 4-bit direction, not
+    // the 0x1x duplexMode_t register the live 0x0F command uses.
+    var DUPLEX_MEM_NIBBLE = { 'OFF': 0, 'DUP-': 1, 'DUP+': 2 };
 
     // CI-V address → display name. The full table is generated from
     // rigs/*.rig by tools/extract-rig-caps.py and lives in IcomRigCaps;
@@ -141,6 +148,9 @@
         selectVFO: true, swapVFO: true, equalizeVFO: true, setSplit: true,
         // Repeater duplex (direction + offset)
         setDuplex: true, setDuplexOffset: true,
+        // Repeater access tone (TONE / TSQL / DTCS) + software tone scan
+        setToneMode: true, setToneFreq: true, setTsqlFreq: true,
+        setDtcsCode: true,
         // Misc
         setTuner: true, setPower: true, setSpan: true,
         // CW
@@ -232,6 +242,10 @@
                 // Repeater shift. 'OFF' until the rig reports otherwise;
                 // duplexOffset stays null until 0x0C answers.
                 duplex: 'OFF', duplexOffset: null,
+                // Repeater access tone. Names match the server build's
+                // toneModeName() so the SPA is identical in both forks.
+                toneMode: 'OFF', toneFreq: null, tsqlFreq: null,
+                dtcsCode: null, dtcsPolarity: 0,
             };
 
             // Dual-VFO read mode, derived from rig caps in _finalizeDetection.
@@ -254,6 +268,21 @@
             // the offset command (IC-705/9700/905/785x). Set in
             // _finalizeDetection from the rig-caps registry.
             this._hasDuplex = false;
+
+            // Antenna tuner caps — true only for rigs whose .rig declares the
+            // ATU command (CI-V 0x1C 0x01). Set in _finalizeDetection.
+            this._hasTuner = false;
+
+            // Repeater-tone command bytes, filled in by _finalizeDetection.
+            // Rigs speak one of two dialects: `sqlType` (0x16 0x5D) carries
+            // the whole TONE/TSQL/DTCS selection in one register, otherwise
+            // rptTone/rptTsql/rptDtcs are independent booleans.
+            this._toneCmds = {};
+            // Cached TONE/TSQL/DTCS flags for the boolean dialect — they
+            // arrive in separate replies and have to be folded together.
+            this._rptTone = false;
+            this._rptTsql = false;
+            this._rptDtcs = false;
 
             // RX audio capture state — getUserMedia → AudioWorklet → Int16
             // PCM → 0x02 binary frame → SPA's handleAudioData.
@@ -564,7 +593,21 @@
                     this._enqueue('setDuplexOffset', civ.cmdSetDuplexOffset(doff));
                     this._emit('update', { duplexOffset: doff });
                     return;
+                case 'setToneMode':
+                    this._setToneMode(obj.value);
+                    return;
+                case 'setToneFreq':
+                    this._setToneValue('toneFreq', this._toneCmds.toneFreq, obj.value | 0, 0);
+                    return;
+                case 'setTsqlFreq':
+                    this._setToneValue('tsqlFreq', this._toneCmds.tsqlFreq, obj.value | 0, 0);
+                    return;
+                case 'setDtcsCode':
+                    this._setToneValue('dtcsCode', this._toneCmds.dtcsCode, obj.value | 0,
+                                       obj.polarity | 0);
+                    return;
                 case 'setTuner':
+                    if (!this._hasTuner) return;
                     var tn = (typeof obj.value === 'number') ? obj.value : 0;
                     this.state.tuner = tn;
                     this._enqueue('setTuner', civ.cmdSetTuner(tn));
@@ -1067,6 +1110,18 @@
             this._hasRxAnt = !!(capsEntry && capsEntry.cmds && capsEntry.cmds.rxAntenna)
                 && this._antennas.length > 0;
             this._hasDuplex = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasDuplex);
+            this._hasTuner = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasTuner);
+            var toneCmds = (capsEntry && capsEntry.cmds) || {};
+            this._toneCmds = {
+                sqlType:   toneCmds.toneSqlType || null,
+                rptTone:   toneCmds.rptTone   || null,
+                rptTsql:   toneCmds.rptTsql   || null,
+                rptDtcs:   toneCmds.rptDtcs   || null,
+                toneFreq:  toneCmds.toneFreq  || null,
+                tsqlFreq:  toneCmds.tsqlFreq  || null,
+                dtcsCode:  toneCmds.dtcsCode  || null,
+                sqlStatus: toneCmds.sqlStatus || null,
+            };
             lsSetInt('directBaudRate', baud);
             lsSetInt('directCivAddr', addr);
 
@@ -1113,7 +1168,8 @@
             }
             this._enqueue('readSplit',      civ.cmdReadSplit());
             if (this._hasDuplex) this._enqueue('readDuplexOffset', civ.cmdReadDuplexOffset());
-            this._enqueue('readTuner',      civ.cmdReadTuner());
+            if (this._hasTuner) this._enqueue('readTuner', civ.cmdReadTuner());
+            this._enqueueToneReads();
             this._enqueue('readScopeSpan',  civ.cmdReadScopeSpan());
             // Mod inputs: read the user's current settings first (the
             // replies become the restore-on-disconnect baseline), then
@@ -1432,6 +1488,14 @@
                 }
             }
 
+            // 0x16 NN — repeater tone registers. Checked before the generic
+            // bool table below because they share the 0x16 command and the
+            // browser wants one mode name, not three flags.
+            if (payload[0] === 0x16 && this._handleToneBoolReply(payload)) return;
+
+            // 0x1B NN — tone / TSQL / DTCS frequency registers
+            if (payload[0] === 0x1B && this._handleToneFreqReply(payload)) return;
+
             // 0x16 NN — bool toggle reply (NB / NR / ANF / preamp)
             if (payload[0] === 0x16 && payload.length >= 3) {
                 var bReply = civ.parseBoolFuncReply(payload);
@@ -1592,6 +1656,66 @@
         // VFO A state (or just the channel address for a clear) and push
         // it through the normal CI-V queue.
 
+        // ---------- Repeater access tone ---------------------------------
+        //
+        // Mirrors the server build (src/webserver.cpp): one mode name on the
+        // wire, whichever dialect the rig speaks underneath.
+
+        _enqueueToneReads() {
+            var t = this._toneCmds;
+            if (t.sqlType) this._enqueue('readToneSqlType', civ.cmdReadToneSqlType(t.sqlType));
+            if (t.rptTone) this._enqueue('readRptTone', civ.cmdReadToneBool(t.rptTone));
+            if (t.rptTsql) this._enqueue('readRptTsql', civ.cmdReadToneBool(t.rptTsql));
+            if (t.rptDtcs) this._enqueue('readRptDtcs', civ.cmdReadToneBool(t.rptDtcs));
+            if (t.toneFreq) this._enqueue('readToneFreq', civ.cmdReadTone(t.toneFreq));
+            if (t.tsqlFreq) this._enqueue('readTsqlFreq', civ.cmdReadTone(t.tsqlFreq));
+            if (t.dtcsCode) this._enqueue('readDtcsCode', civ.cmdReadTone(t.dtcsCode));
+        }
+
+        // Coalesce tone-mode notifications (see _handleToneBoolReply).
+        _notifyToneModeSoon() {
+            var self = this;
+            clearTimeout(this._toneModeNotify);
+            this._toneModeNotify = setTimeout(function () {
+                self._emit('update', { toneMode: self.state.toneMode });
+            }, 60);
+        }
+
+        _setToneMode(name) {
+            var t = this._toneCmds;
+            // Anything we don't recognise turns the tone off — the safe
+            // direction: it can only stop us keying a repeater, never start.
+            var known = civ.toneModeUsesTone(name) || civ.toneModeUsesTsql(name)
+                     || civ.toneModeUsesDtcs(name);
+            var mode = known ? name : 'OFF';
+            this.state.toneMode = mode;
+            if (t.sqlType) {
+                this._enqueue('setToneSqlType', civ.cmdSetToneSqlType(t.sqlType, mode));
+            } else {
+                // Every flag is written every time: leaving the previous
+                // mode's flag set would silently combine the two.
+                if (t.rptTone) this._enqueue('setRptTone', civ.cmdSetToneBool(t.rptTone, civ.toneModeUsesTone(mode)));
+                if (t.rptTsql) this._enqueue('setRptTsql', civ.cmdSetToneBool(t.rptTsql, civ.toneModeUsesTsql(mode)));
+                if (t.rptDtcs) this._enqueue('setRptDtcs', civ.cmdSetToneBool(t.rptDtcs, civ.toneModeUsesDtcs(mode)));
+            }
+            this._emit('update', { toneMode: mode });
+        }
+
+        // One setter for all three 0x1B registers. `polarity` is only
+        // meaningful for DTCS: bit 1 inverts TX, bit 0 inverts RX.
+        _setToneValue(field, cmdBytes, value, polarity) {
+            if (!cmdBytes || !value) return;
+            var tinv = (polarity & 2) !== 0, rinv = (polarity & 1) !== 0;
+            this.state[field] = value;
+            var u = {}; u[field] = value;
+            if (field === 'dtcsCode') {
+                this.state.dtcsPolarity = polarity & 3;
+                u.dtcsPolarity = polarity & 3;
+            }
+            this._enqueue('set_' + field, civ.cmdSetTone(cmdBytes, value, tinv, rinv));
+            this._emit('update', u);
+        }
+
         _memFormat() {
             return civ.getRigMemFormat(this.civAddr);
         }
@@ -1670,12 +1794,30 @@
                 channel: ch, group: group, del: false,
                 scan: 0, skip: 0, split: 0,
                 frequency: freq, mode: modeCode, filter: filt,
-                datamode: 0, tonemode: 0,
-                tone: '', tsql: '', dtcs: 0, dtcsp: 0, duplex: 0,
+                datamode: 0,
                 frequencyB: freq, modeB: modeCode, filterB: filt,
-                datamodeB: 0, tonemodeB: 0, dtcsB: 0, dtcspB: 0, duplexB: 0,
-                name: '',
+                datamodeB: 0,
+                name: (obj.name || ''),
             };
+            // Repeater tone and shift, captured from the live rig state so a
+            // saved channel reopens the same machine. tonemode and duplex
+            // share one byte in the 'j'/'J' MemFormat specs, so writing the
+            // tone without the shift would silently clear the shift.
+            mem.tonemode = civ.toneModeToReg(this.state.toneMode);
+            mem.tone = this.state.toneFreq ? civ.toneNameFromReg(this.state.toneFreq) : '';
+            mem.tsql = this.state.tsqlFreq ? civ.toneNameFromReg(this.state.tsqlFreq) : '';
+            mem.dtcs = this.state.dtcsCode || 0;
+            mem.dtcsp = this.state.dtcsPolarity || 0;
+            mem.duplex = DUPLEX_MEM_NIBBLE[this.state.duplex] || 0;
+            mem.duplexOffset = this.state.duplexOffset || 0;
+            // No split support here: the VFO B half of the channel mirrors A.
+            mem.tonemodeB = mem.tonemode;
+            mem.toneB = mem.tone;
+            mem.tsqlB = mem.tsql;
+            mem.dtcsB = mem.dtcs;
+            mem.dtcspB = mem.dtcsp;
+            mem.duplexB = mem.duplex;
+            mem.duplexOffsetB = mem.duplexOffset;
             this._enqueue('writeMemory:' + ch,
                 civ.cmdWriteMemoryContents(mem, fmt));
         }
@@ -1708,6 +1850,13 @@
                 mode: modeStr, filter: mem.filter || 1,
                 name: mem.name || '',
                 del: !!mem.del, empty: !!mem.empty,
+                // Same keys the server build's memoryToJson() emits, so the
+                // SPA renders a channel's tone identically in both forks.
+                tonemode: mem.tonemode || 0,
+                toneModeName: civ.toneModeFromReg(mem.tonemode || 0),
+                tone: mem.tone || '', tsql: mem.tsql || '',
+                dtcs: mem.dtcs || 0, dtcsPolarity: mem.dtcsp || 0,
+                duplex: mem.duplex || 0, duplexOffset: mem.duplexOffset || 0,
             };
             // Cancel the scan watchdog and bump the pointer if this reply
             // belongs to an active scan (most likely case during a scan).
@@ -1724,6 +1873,68 @@
                 this._emit('memoryChannel', { memory: out });
             }
             return true;
+        }
+
+        // 0x16 replies for the tone registers. The single-register dialect
+        // reports the mode directly; the boolean dialect needs all three
+        // flags folded back together, so they are cached as they arrive.
+        _handleToneBoolReply(payload) {
+            var t = this._toneCmds;
+            var mode = null;
+            if (t.sqlType) {
+                mode = civ.parseToneSqlTypeReply(payload, t.sqlType);
+            } else {
+                var flags = [['rptTone', '_rptTone'], ['rptTsql', '_rptTsql'], ['rptDtcs', '_rptDtcs']];
+                var matched = false;
+                for (var i = 0; i < flags.length; i++) {
+                    if (!t[flags[i][0]]) continue;
+                    var v = civ.parseToneBoolReply(payload, t[flags[i][0]]);
+                    if (v === null) continue;
+                    this[flags[i][1]] = v;
+                    matched = true;
+                    break;
+                }
+                if (!matched) return false;
+                mode = civ.toneModeFromBools(!!this._rptTone, !!this._rptTsql, !!this._rptDtcs);
+            }
+            if (mode === null) return false;
+            if (this.state.toneMode !== mode) {
+                this.state.toneMode = mode;
+                // The three flags answer as three separate replies, so the
+                // folded value is briefly a mode nobody selected. Tell the SPA
+                // once the burst has landed.
+                this._notifyToneModeSoon();
+            }
+            return true;
+        }
+
+        // 0x1B replies. All three registers share one payload shape, so the
+        // rig's own command bytes pick which field the value belongs to.
+        _handleToneFreqReply(payload) {
+            var t = this._toneCmds;
+            var regs = [['toneFreq', 'toneFreq'], ['tsqlFreq', 'tsqlFreq'], ['dtcsCode', 'dtcsCode']];
+            for (var i = 0; i < regs.length; i++) {
+                var cmdBytes = t[regs[i][0]];
+                if (!cmdBytes) continue;
+                var r = civ.parseToneReply(payload, cmdBytes);
+                if (r === null) continue;
+                var field = regs[i][1];
+                var u = {};
+                if (this.state[field] !== r.value) {
+                    this.state[field] = r.value;
+                    u[field] = r.value;
+                }
+                if (field === 'dtcsCode') {
+                    var pol = (r.tinv ? 2 : 0) | (r.rinv ? 1 : 0);
+                    if (this.state.dtcsPolarity !== pol) {
+                        this.state.dtcsPolarity = pol;
+                        u.dtcsPolarity = pol;
+                    }
+                }
+                if (Object.keys(u).length) this._emit('update', u);
+                return true;
+            }
+            return false;
         }
 
         // Layout of a 0x27 0x00 frame after CivParser strips FE FE / FD:
@@ -1836,6 +2047,18 @@
                 hasFilterSettings: true,
                 hasMainSub: caps.numReceivers > 1,
                 hasDuplex: !!caps.hasDuplex,
+                hasTuner: !!caps.hasTuner,
+                // Repeater access tone. canSet* is separate from hasCTCSS
+                // because a rig can engage a tone without exposing the 0x1B
+                // frequency register (IC-905), and tone scan additionally
+                // needs the squelch readout to watch.
+                hasCTCSS: !!caps.hasCTCSS,
+                hasDTCS: !!caps.hasDTCS,
+                hasToneSqlType: !!caps.hasToneSqlType,
+                canSetToneFreq: !!(entry && entry.cmds && entry.cmds.toneFreq),
+                canSetTsqlFreq: !!(entry && entry.cmds && entry.cmds.tsqlFreq),
+                ctcssTones: caps.hasCTCSS ? CTCSS_TONES : [],
+                dtcsCodes: caps.hasDTCS ? DTCS_CODES : [],
                 hasSpectrum: caps.hasSpectrum,
                 spectAmpMax: 160,     // Icom amplitude scale (matches C++ wfweb)
                 audioAvailable: true,    // Phase 2: rig USB audio via getUserMedia
@@ -1927,6 +2150,11 @@
                 if (this._hasDuplex && (this._dupPollTick = (this._dupPollTick || 0) + 1) % 5 === 0) {
                     this._enqueue('readSplit', civ.cmdReadSplit());
                     this._enqueue('readDuplexOffset', civ.cmdReadDuplexOffset());
+                }
+                // Tone is per-band too, and can be changed from the front
+                // panel — re-read on the same slow tick.
+                if ((this._tonePollTick = (this._tonePollTick || 0) + 1) % 5 === 0) {
+                    this._enqueueToneReads();
                 }
             }, 1000);
             // Slow refresh of the unselected/Sub VFO so dial motion on the

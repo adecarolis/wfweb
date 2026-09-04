@@ -51,6 +51,9 @@
         setSplit:         'split',
         setDuplex:        'duplex',
         setDuplexOffset:  'duplexOffset',
+        setToneMode:      'toneMode',
+        setToneFreq:      'toneFreq',
+        setTsqlFreq:      'tsqlFreq',
         setTuner:         'tuner',
         setSpan:          'spanIndex',
     };
@@ -100,6 +103,10 @@
                 // -54 dB = S0. The drawSMeter() scale treats 0 as S9, so a
                 // default of 0 would paint a permanent full-scale signal.
                 sMeter: -54,
+                // Repeater access tone — echoed back like the DUP fields so
+                // the TONE panel can be exercised off-air.
+                toneMode: 'OFF', toneFreq: 885, tsqlFreq: 885,
+                dtcsCode: 23, dtcsPolarity: 0,
             };
             this._audioEnabled = false;
 
@@ -150,6 +157,16 @@
         sendCommand(obj) {
             if (!this._open || !obj || !obj.cmd) return;
 
+            if (obj.cmd === 'setDtcsCode') {
+                // Two fields in one command, so it can't ride ECHO_FIELDS.
+                this.state.dtcsCode = obj.value | 0;
+                this.state.dtcsPolarity = obj.polarity | 0;
+                this._emit('update', {
+                    dtcsCode: this.state.dtcsCode,
+                    dtcsPolarity: this.state.dtcsPolarity,
+                });
+                return;
+            }
             if (ECHO_FIELDS.hasOwnProperty(obj.cmd)) {
                 var field = ECHO_FIELDS[obj.cmd];
                 var val = (obj.cmd === 'setCWSpeed') ? obj.wpm : obj.value;
@@ -441,6 +458,17 @@
                 // Advertised so the DUP tile can be exercised off-air; the
                 // virtual rig just echoes whatever it is told.
                 hasDuplex: true,
+                // Same for the TUNE tile — the virtual rig echoes tuner
+                // state, so the bench can exercise it off-air.
+                hasTuner: true,
+                // Repeater access tone, same treatment.
+                hasCTCSS: true,
+                hasDTCS: true,
+                hasToneSqlType: true,
+                canSetToneFreq: true,
+                canSetTsqlFreq: true,
+                ctcssTones: global.IcomCtcssTones || [],
+                dtcsCodes: global.IcomDtcsCodes || [],
                 hasSpectrum: false,
                 spectAmpMax: 160,
                 audioAvailable: true,
@@ -470,6 +498,11 @@
                 preamp: this.state.preamp,
                 attenuator: this.state.attenuator,
                 duplex: this.state.duplex || 'OFF',
+                toneMode: this.state.toneMode || 'OFF',
+                toneFreq: this.state.toneFreq,
+                tsqlFreq: this.state.tsqlFreq,
+                dtcsCode: this.state.dtcsCode,
+                dtcsPolarity: this.state.dtcsPolarity || 0,
             };
             if (this.state.duplexOffset !== undefined) s.duplexOffset = this.state.duplexOffset;
             this._emit('status', s);

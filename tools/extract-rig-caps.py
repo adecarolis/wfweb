@@ -103,6 +103,29 @@ EXTRACTED_CMDS = {
     # [0x12, 0x00]); rxAntenna presence also gates the 0x12 rx flag byte.
     "antenna":   "Antenna",
     "rxAntenna": "RX Antenna",
+    # Repeater access tone. Two dialects: the newer rigs (IC-705/9700/905)
+    # carry the whole TONE/TSQL/DTCS selection in one "Tone Squelch Type"
+    # register (0x16 0x5D); the rest toggle independent booleans (0x16 0x42
+    # TONE, 0x43 TSQL, 0x4B DTCS). The sub-command byte differs per rig, so
+    # capture the sequences rather than hardcoding them.
+    "toneSqlType": "Tone Squelch Type",
+    "rptTone":     "Repeater Tone",
+    "rptTsql":     "Repeater TSQL",
+    "rptDtcs":     "Repeater DTCS",
+    # Tone / DTCS frequency registers (0x1B 0x00/0x01/0x02).
+    "toneFreq":  "Tone Frequency",
+    "tsqlFreq":  "TSQL Frequency",
+    "dtcsCode":  "DTCS Code/Polarity",
+    # Squelch open/closed readout (0x15 0x05) — the only way to tell that a
+    # tone scan has found the repeater's tone.
+    "sqlStatus": "Various Squelch",
+}
+
+
+# Command labels that say something about repeater-tone capability.
+TONE_CMD_LABELS = {
+    "Tone Squelch Type", "Repeater Tone", "Repeater TSQL", "Repeater DTCS",
+    "Tone Frequency", "TSQL Frequency", "DTCS Code/Polarity", "Various Squelch",
 }
 
 
@@ -213,6 +236,26 @@ def extract_inputs(props: dict[str, str]) -> dict[str, int]:
     return out
 
 
+def extract_tones(props: dict[str, str], prefix: str) -> list[int]:
+    """Walk CTCSS\\N\\Reg / DTCS\\N\\Reg into an ordered list of registers.
+
+    CTCSS registers are tenths of Hz (670 = 67.0 Hz); DTCS registers are the
+    code itself (23 = D023). The .rig files also carry a Tone field for CTCSS,
+    but it is just Reg/10 — the JS side formats the label from Reg.
+    """
+    pat = re.compile(rf"^Rig/{prefix}\\(\d+)\\Reg$")
+    found: dict[int, int] = {}
+    for k, v in props.items():
+        m = pat.match(k)
+        if not m:
+            continue
+        try:
+            found[int(m.group(1))] = int(v)
+        except ValueError:
+            continue
+    return [found[i] for i in sorted(found)]
+
+
 def extract_caps(props: dict[str, str]) -> dict:
     """Pull boolean / numeric capability flags from the [Rig] section."""
     def b(key: str, default: bool = False) -> bool:
@@ -230,9 +273,19 @@ def extract_caps(props: dict[str, str]) -> dict:
     # standalone transport read both VFOs without flipping the rig's selection.
     # "Send Freq Offset" (CI-V 0x0D) is what lets a rig shift its TX frequency
     # for a repeater, so it is the honest test for whether the DUP tile has
-    # anything to drive.
+    # anything to drive. "Tuner/ATU Status" (CI-V 0x1C 0x01) plays the same
+    # role for the TUNE tile: rigs with no tuner (IC-9700/905, the receivers,
+    # the older HF rigs) never declare it.
+    #
+    # Repeater access tone works the same way, but takes two facts: a rig needs
+    # a way to engage the tone (either the one-register "Tone Squelch Type" or
+    # the per-function TONE/TSQL/DTCS booleans) AND a tone table in its .rig.
+    # "Various Squelch" (0x15 0x05) reports squelch open/closed, which is what
+    # makes a software tone scan possible — the IC-9100 and IC-7100 lack it.
     has_selected_freq = False
     has_duplex = False
+    has_tuner = False
+    tone_cmds: set[str] = set()
     pat = re.compile(r"^Rig/Commands\\(\d+)\\Type$")
     for k, v in props.items():
         if not pat.match(k):
@@ -241,6 +294,12 @@ def extract_caps(props: dict[str, str]) -> dict:
             has_selected_freq = True
         elif v.strip() == "Send Freq Offset":
             has_duplex = True
+        elif v.strip() == "Tuner/ATU Status":
+            has_tuner = True
+        elif v.strip() in TONE_CMD_LABELS:
+            tone_cmds.add(v.strip())
+    can_engage_tone = bool(tone_cmds & {
+        "Tone Squelch Type", "Repeater Tone", "Repeater TSQL", "Repeater DTCS"})
     return {
         "hasTransmit": b("HasTransmit", True),
         "hasSpectrum": b("HasSpectrum", False),
@@ -253,6 +312,11 @@ def extract_caps(props: dict[str, str]) -> dict:
         "hasCommand29": b("HasCommand29", False),
         "hasSelectedFreq": has_selected_freq,
         "hasDuplex": has_duplex,
+        "hasTuner": has_tuner,
+        "hasCTCSS": can_engage_tone and bool(extract_tones(props, "CTCSS")),
+        "hasDTCS": (can_engage_tone and bool(extract_tones(props, "DTCS"))
+                    and "DTCS Code/Polarity" in tone_cmds),
+        "hasToneSqlType": "Tone Squelch Type" in tone_cmds,
     }
 
 
@@ -331,12 +395,18 @@ def js_caps(caps: dict) -> str:
     return "{" + ",".join(parts) + "}"
 
 
+def js_int_list(vals: list[int]) -> str:
+    return "[" + ",".join(str(v) for v in vals) + "]"
+
+
 def js_string(s: str) -> str:
     return "'" + s.replace("\\", "\\\\").replace("'", "\\'") + "'"
 
 
 def main() -> int:
     rigs: list[tuple[int, str, dict, dict, dict, dict, list, list, list]] = []
+    ctcss: list[int] = []
+    dtcs: list[int] = []
     for p in sorted(RIGS_DIR.glob("*.rig")):
         props = parse_ini(p)
         if not is_icom(props):
@@ -356,6 +426,21 @@ def main() -> int:
         attenuators = extract_num_name_list(props, "Attenuators")
         antennas = extract_num_name_list(props, "Antennas")
         rigs.append((civ, model, meters, cmds, caps, inputs, preamps, attenuators, antennas))
+        # The CTCSS (48) and DTCS (104) tables are the standard sets and are
+        # byte-identical in every Icom .rig, so they are emitted once instead
+        # of being repeated per rig. Bail loudly if that ever stops holding —
+        # a silently wrong tone list would key the wrong repeater.
+        for prefix, shared in (("CTCSS", ctcss), ("DTCS", dtcs)):
+            table = extract_tones(props, prefix)
+            if not table:
+                continue
+            if not shared:
+                shared.extend(table)
+            elif table != shared:
+                print(f"error: {p.name} has a {prefix} table that differs from the "
+                      f"shared one; per-rig tone tables are not supported yet",
+                      file=sys.stderr)
+                return 1
 
     rigs.sort(key=lambda r: r[0])
 
@@ -365,10 +450,13 @@ def main() -> int:
         "//",
         "// Each entry: civAddr -> { model, caps, meters, cmds, inputs, preamps, attenuators, antennas }",
         "//   caps:   { hasTransmit, hasSpectrum, hasLAN, numReceivers, numVFOs,",
-        "//             hasCommand29, hasSelectedFreq, hasDuplex }",
+        "//             hasCommand29, hasSelectedFreq, hasDuplex, hasTuner,",
+        "//             hasCTCSS, hasDTCS, hasToneSqlType }",
         "//   meters: { kind: [[rigVal, actualVal], ...] }",
         "//           kinds: sMeter, swr, power, alc, comp, center, voltage, current",
-        "//   cmds:   { modOff, modData1, modData2, modData3, antenna, rxAntenna }",
+        "//   cmds:   { modOff, modData1, modData2, modData3, antenna, rxAntenna,",
+        "//             toneSqlType, rptTone, rptTsql, rptDtcs, toneFreq, tsqlFreq,",
+        "//             dtcsCode, sqlStatus }",
         "//           -> CI-V byte sequence",
         "//   inputs: name -> reg byte. The JS side writes <prefix>+<reg> to",
         "//           switch the rig's modulation source (e.g., USB).",
@@ -378,6 +466,10 @@ def main() -> int:
         "",
         "(function (global) {",
         "    'use strict';",
+        "    // Standard CTCSS tones in tenths of Hz (670 = 67.0) and DTCS codes,",
+        "    // shared by every Icom that has them. Index order is the rig's own.",
+        "    global.IcomCtcssTones = " + js_int_list(ctcss) + ";",
+        "    global.IcomDtcsCodes = " + js_int_list(dtcs) + ";",
         "    global.IcomRigCaps = {",
     ]
     for civ, model, meters, cmds, caps, inputs, preamps, attenuators, antennas in rigs:

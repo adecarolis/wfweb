@@ -1479,14 +1479,16 @@ body.digi-open #bottomBar { grid-row: 5; }
 /* Buttons are scoped to #dupOverlay rather than reusing .mem-seg: that class
    only exists in the server fork, so borrowing it would leave the standalone
    window unstyled. Same palette, so the two windows still read as a pair. */
-#dupOverlay .dup-btn {
+/* The TONE window is the DUP window's twin — same buttons, same palette —
+   so both share these rules instead of growing a second look. */
+#dupOverlay .dup-btn, #toneOverlay .dup-btn {
     padding: 7px 0;
     background: #001020; border: 1px solid #048; border-radius: 3px;
     color: #08f; font-family: 'Courier New', monospace; font-size: 12px;
     font-weight: bold; cursor: pointer;
 }
-#dupOverlay .dup-btn:active { background: #048; color: #000; }
-#dupOverlay .dup-btn.active { background: #024a80; border-color: #5af; color: #fff; }
+#dupOverlay .dup-btn:active, #toneOverlay .dup-btn:active { background: #048; color: #000; }
+#dupOverlay .dup-btn.active, #toneOverlay .dup-btn.active { background: #024a80; border-color: #5af; color: #fff; }
 #dupDirRow { display: flex; gap: 6px; margin: 2px 8px 6px; }
 #dupDirRow .dup-btn { flex: 1; }
 #dupSectionLabel {
@@ -1495,8 +1497,19 @@ body.digi-open #bottomBar { grid-row: 5; }
 }
 #dupOffsetChoices { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 8px; }
 #dupOffsetChoices .dup-btn { flex: 0 0 auto; padding: 7px 16px; }
-#dupOverlay .dup-label { color: #8cf; font-family: 'Courier New', monospace; font-size: 11px; font-weight: bold; }
-#dupOverlay .dup-hint { color: #467; font-family: 'Courier New', monospace; font-size: 11px; }
+#dupOverlay .dup-label, #toneOverlay .dup-label { color: #8cf; font-family: 'Courier New', monospace; font-size: 11px; font-weight: bold; }
+#dupOverlay .dup-hint, #toneOverlay .dup-hint { color: #467; font-family: 'Courier New', monospace; font-size: 11px; }
+/* The DUP window has one section, the TONE window several (TX tone, RX tone
+   squelch, DTCS code, DTCS polarity), so its labels and grids are classes. */
+#toneModeRow { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 8px 6px; }
+#toneModeRow .dup-btn { flex: 1 0 auto; padding: 7px 14px; }
+#toneSections { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+#toneOverlay .tone-section-label {
+    color: #8cf; font-family: 'Courier New', monospace; font-size: 11px;
+    font-weight: bold; margin: 8px 8px 4px;
+}
+#toneOverlay .tone-grid { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 8px; }
+#toneOverlay .tone-grid .dup-btn { flex: 0 0 auto; padding: 7px 12px; }
 #dupCustomInput {
     width: 72px; background: #001020; border: 1px solid #048; color: #8cf;
     padding: 4px 6px; font-family: 'Courier New', monospace;
@@ -1506,6 +1519,8 @@ body.digi-open #bottomBar { grid-row: 5; }
 @media (pointer: coarse) {
     #dupOverlay .dup-btn { padding: 11px 0; }
     #dupOffsetChoices .dup-btn { padding: 11px 16px; }
+    #toneModeRow .dup-btn { padding: 11px 14px; }
+    #toneOverlay .tone-grid .dup-btn { padding: 11px 12px; }
 }
 
 /* Hidden range inputs over the gain bars */
@@ -1593,7 +1608,8 @@ body.digi-open #bottomBar { grid-row: 5; }
 }
 .memory-row {
     display: grid;
-    grid-template-columns: 36px 1fr 110px 44px 20px;
+    /* the mode cell also carries the channel's tone, so it needs the room */
+    grid-template-columns: 36px 1fr 110px 96px 20px;
     gap: 3px;
     padding: 2px 4px;
     border-bottom: 1px solid #011;
@@ -1808,11 +1824,19 @@ body.digi-open #bottomBar { grid-row: 5; }
     font-size: 14px;
     color: #888;
 }
+/* Repeater access tone joins the same stack, directly under the shift it goes
+   with: a readout of what the rig is doing, so it takes the P.AMP/DUP grey
+   rather than the orange .spectrum-warning default. */
+#toneIndicator {
+    top: 92px;   /* clears the 14px-tall DUP readout above (66 + 26) */
+    font-size: 14px;
+    color: #888;
+}
 /* RF Gain left backed off is a silent band-killer — you hear nothing and blame
    the antenna. Same size and font as the rig-state lines above, but orange
    (the .spectrum-warning default) because this one is a warning, not a readout. */
 #rfGainIndicator {
-    top: 92px;   /* clears the 14px-tall DUP readout above (66 + 26) */
+    top: 118px;  /* clears the 14px-tall TONE readout above (92 + 26) */
     font-size: 14px;
 }
 
@@ -2245,6 +2269,22 @@ body.digi-open #bottomBar { grid-row: 5; }
             </div>
         </div>
 
+        <!-- TONE window (the DUP window's twin). Access mode on top, then the
+             tone each half of that mode actually uses, then Scan — a sweep of
+             the tone squelch that stops on whatever opens it. -->
+        <div id="toneOverlay" class="mem-modal">
+            <div class="mem-modal-title">
+                <span>Tone <span id="toneTitleState"></span></span>
+                <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeToneModal()">&#x2715; Close</button>
+            </div>
+            <div id="toneModeRow"></div>
+            <div id="toneSections"></div>
+            <div class="mem-actions">
+                <button class="mem-action-btn" id="toneScanBtn" onclick="toneScanToggle()">Scan</button>
+                <span class="dup-hint" id="toneHint"></span>
+            </div>
+        </div>
+
         <!-- Memory modal (styled like QSO Log) -->
         <div id="memoryOverlay" class="mem-modal">
             <div class="mem-modal-title">
@@ -2624,6 +2664,7 @@ body.digi-open #bottomBar { grid-row: 5; }
         <div id="micOffWarning" class="spectrum-warning" onclick="toggleMic()" style="display: none;">MIC OFF</div>
         <div id="preampAttIndicator" class="spectrum-warning" style="display: none;"></div>
         <div id="dupIndicator" class="spectrum-warning" style="display: none;" onclick="openDupModal()"></div>
+        <div id="toneIndicator" class="spectrum-warning" style="display: none;" onclick="openToneModal()"></div>
         <div id="rfGainIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
     </div>
 
@@ -2759,9 +2800,22 @@ var nbOn = false;
 var nrOn = false;
 var anfOn = false;
 var tunerState = 0;
+var hasTuner = false;         // rig declares the ATU command (CI-V 0x1C 0x01)
 var currentPreamp = 0;
 var lastPreampAttSig = '';  // preamp/att steps valid at currentFreq (band-change watch)
 var hasDuplex = false;        // rig can shift TX for a repeater (CI-V 0x0D)
+// Repeater access tone. Caps say what the rig can do; the current* values are
+// what it is doing. Both arrive from whichever transport is in use, so the
+// panel below is identical in the server and standalone builds.
+var hasCTCSS = false, hasDTCS = false, hasToneSqlType = false;
+var canSetToneFreq = false, canSetTsqlFreq = false;
+var ctcssTones = [], dtcsCodes = [];
+var currentToneMode = 'OFF';
+var currentToneFreq = null, currentTsqlFreq = null;
+var currentDtcsCode = null, currentDtcsPol = 0;
+var toneScanRunning = false, toneScanHint = '';
+var toneScanDetector = null;   // CtcssDetector while a scan is listening
+var toneScanCandidate = null;  // tone the grid is lighting for the scan
 var currentDuplex = 'OFF';    // 'OFF' | 'DUP-' | 'DUP+'
 var currentDupOffset = null;  // repeater shift in Hz; null until the rig reports one
 var currentAttenuator = 0;
@@ -3058,6 +3112,8 @@ function handleMessage(msg) {
                 if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
                 if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
                 if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
+                updateToneCaps(msg);
+                if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
 
                 updateWarningVisibility();
                 applyUrlTune();
@@ -3082,6 +3138,8 @@ function handleMessage(msg) {
             if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
             if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
             if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
+            updateToneCaps(msg);
+            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
             if (msg.hasPowerControl) document.getElementById('powerBtn').style.display = 'flex';
             if (msg.freedvModes) freedvModes = msg.freedvModes;
             updateWarningVisibility();
@@ -3122,6 +3180,7 @@ function handleMessage(msg) {
             if (msg.monitorGain !== undefined) { monitorLevel = msg.monitorGain; updateSlider('monitorLevel', msg.monitorGain); if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.split !== undefined) updateSplit(msg.split);
             if (msg.duplex !== undefined) updateDuplex(msg.duplex);
+            updateToneStatus(msg);
             if (msg.duplexOffset !== undefined) updateDupOffset(msg.duplexOffset);
             if (msg.spanIndex !== undefined) updateSpanIndex(msg.spanIndex);
             if (msg.nb !== undefined) updateToggle('nb', msg.nb);
@@ -3165,6 +3224,7 @@ function handleMessage(msg) {
             if (msg.monitorGain !== undefined) { monitorLevel = msg.monitorGain; updateSlider('monitorLevel', msg.monitorGain); if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.split !== undefined) updateSplit(msg.split);
             if (msg.duplex !== undefined) updateDuplex(msg.duplex);
+            updateToneStatus(msg);
             if (msg.duplexOffset !== undefined) updateDupOffset(msg.duplexOffset);
             if (msg.spanIndex !== undefined) updateSpanIndex(msg.spanIndex);
             if (msg.nb !== undefined) updateToggle('nb', msg.nb);
@@ -3531,6 +3591,17 @@ function updateToggle(name, state) {
     else if (name === 'nr') nrOn = !!state;
     else if (name === 'anf') anfOn = !!state;
     updateDspIndicators();
+    if (currentPanel === 'func') renderFuncOverlay();
+}
+
+// Tuner capability gate. Rigs with no ATU (IC-9700/905, the receivers, the
+// older HF rigs) never declare the CI-V tuner command, so hide the top-bar
+// TUNE tile for them. The inline style outranks the .active class that
+// updateTunerState toggles, and clearing it hands control back to the CSS.
+function updateHasTuner(on) {
+    hasTuner = !!on;
+    var lbl = document.getElementById('tuneLabel');
+    if (lbl) lbl.style.display = hasTuner ? '' : 'none';
     if (currentPanel === 'func') renderFuncOverlay();
 }
 
@@ -4457,10 +4528,18 @@ function renderFuncOverlay() {
         grid.appendChild(makeFuncBtn('DUP', dState.label, dState.active, openDupModal));
     }
 
-    // Tuner button
-    var tunerLabel = 'TUNER';
-    var tunerStateStr = tunerState === 0 ? 'OFF' : (tunerState === 2 ? 'TUNING' : 'ON');
-    grid.appendChild(makeFuncBtn(tunerLabel, tunerStateStr, tunerState > 0, handleTunerPress));
+    // Repeater access tone, right after DUP — the two together are what it
+    // takes to work a repeater. Hidden on rigs with neither tone table.
+    if (hasCTCSS || hasDTCS) {
+        var tState = getToneState();
+        grid.appendChild(makeFuncBtn('TONE', tState.value, tState.active, openToneModal));
+    }
+
+    // Tuner button — only on rigs whose caps declare the ATU command.
+    if (hasTuner) {
+        var tunerStateStr = tunerState === 0 ? 'OFF' : (tunerState === 2 ? 'TUNING' : 'ON');
+        grid.appendChild(makeFuncBtn('TUNER', tunerStateStr, tunerState > 0, handleTunerPress));
+    }
 
     // Antenna selector + RX antenna — only on rigs that declare more than
     // one antenna in their caps (IC-7610/785x/9100, Kenwood TS-590/890) (#76)
@@ -4829,6 +4908,329 @@ function dupCustomSet() {
     setDupOffset(kHz * 1000);
 }
 
+// ---- Repeater access tone (TONE / TSQL / DTCS) --------------------------
+// The rig speaks one of two CI-V dialects for this; the transport hides that
+// and gives us one mode name. Names match src/webserver.cpp's toneModeName().
+
+function updateToneCaps(msg) {
+    if (msg.hasCTCSS !== undefined) hasCTCSS = !!msg.hasCTCSS;
+    if (msg.hasDTCS !== undefined) hasDTCS = !!msg.hasDTCS;
+    if (msg.hasToneSqlType !== undefined) hasToneSqlType = !!msg.hasToneSqlType;
+    if (msg.canSetToneFreq !== undefined) canSetToneFreq = !!msg.canSetToneFreq;
+    if (msg.canSetTsqlFreq !== undefined) canSetTsqlFreq = !!msg.canSetTsqlFreq;
+    if (msg.ctcssTones !== undefined) ctcssTones = msg.ctcssTones || [];
+    if (msg.dtcsCodes !== undefined) dtcsCodes = msg.dtcsCodes || [];
+    refreshToneUi();
+}
+
+function updateToneStatus(msg) {
+    var changed = false;
+    if (msg.toneMode !== undefined) { currentToneMode = msg.toneMode; changed = true; }
+    if (msg.toneFreq !== undefined) { currentToneFreq = msg.toneFreq; changed = true; }
+    if (msg.tsqlFreq !== undefined) { currentTsqlFreq = msg.tsqlFreq; changed = true; }
+    if (msg.dtcsCode !== undefined) { currentDtcsCode = msg.dtcsCode; changed = true; }
+    if (msg.dtcsPolarity !== undefined) { currentDtcsPol = msg.dtcsPolarity; changed = true; }
+    if (changed) refreshToneUi();
+}
+
+// CTCSS travels in tenths of Hz (885 = 88.5); DTCS codes are printed with the
+// leading zero the radio shows.
+function fmtCtcss(reg) { return reg ? (reg / 10).toFixed(1) : '--'; }
+function fmtDtcs(code) { return 'D' + String(code || 0).padStart(3, '0'); }
+
+function toneModeUsesTone(m) {
+    return m === 'TONE' || m === 'TONE(T)/DTCS(R)' || m === 'TONE(T)/TSQL(R)';
+}
+function toneModeUsesTsql(m) {
+    return m === 'TSQL' || m === 'DTCS(T)/TSQL(R)' || m === 'TONE(T)/TSQL(R)';
+}
+function toneModeUsesDtcs(m) {
+    return m === 'DTCS' || m === 'DTCS(T)' || m === 'TONE(T)/DTCS(R)' || m === 'DTCS(T)/TSQL(R)';
+}
+
+// One short label for the tile, the indicator and a memory row: the mode plus
+// the tone it uses, so it alone says what will open the repeater. A rig left
+// in one of the combined modes from its front panel is quoted verbatim rather
+// than flattened into a lie.
+// Just the tone itself — 141.3, or D023 which names itself. For places that
+// already say TONE, like the FUNCTION tile's caption.
+function toneValueLabel(mode, tone, tsql, dtcs) {
+    if (!mode || mode === 'OFF') return 'OFF';
+    if (mode === 'TONE') return fmtCtcss(tone);
+    if (mode === 'TSQL') return fmtCtcss(tsql);
+    if (mode === 'DTCS') return fmtDtcs(dtcs);
+    return mode;   // a combined mode names itself
+}
+// Mode and tone together, for readouts that stand on their own — the spectrum
+// indicator and a stored memory's row.
+function toneLabel(mode, tone, tsql, dtcs) {
+    if (!mode || mode === 'OFF') return 'OFF';
+    var value = toneValueLabel(mode, tone, tsql, dtcs);
+    return (mode === 'TONE' || mode === 'TSQL') ? mode + ' ' + value : value;
+}
+function getToneState() {
+    return {
+        label: toneLabel(currentToneMode, currentToneFreq, currentTsqlFreq, currentDtcsCode),
+        value: toneValueLabel(currentToneMode, currentToneFreq, currentTsqlFreq, currentDtcsCode),
+        active: currentToneMode !== 'OFF',
+    };
+}
+
+function setToneMode(mode) {
+    // Engaging a tone with none picked would key the repeater with whatever
+    // the rig happens to hold. Seed the first standard tone first, the same
+    // way setDuplexMode() seeds the band's standard shift.
+    if (toneModeUsesTone(mode) && !currentToneFreq && ctcssTones.length) setToneFreq(ctcssTones[0]);
+    if (toneModeUsesTsql(mode) && !currentTsqlFreq && ctcssTones.length) setTsqlFreq(ctcssTones[0]);
+    if (toneModeUsesDtcs(mode) && !currentDtcsCode && dtcsCodes.length) setDtcsCode(dtcsCodes[0]);
+    currentToneMode = mode;
+    send({ cmd: 'setToneMode', value: mode });
+    refreshToneUi();
+}
+function setToneFreq(reg) {
+    currentToneFreq = reg;
+    send({ cmd: 'setToneFreq', value: reg });
+    refreshToneUi();
+}
+function setTsqlFreq(reg) {
+    currentTsqlFreq = reg;
+    send({ cmd: 'setTsqlFreq', value: reg });
+    refreshToneUi();
+}
+function setDtcsCode(code, pol) {
+    currentDtcsCode = code;
+    if (pol !== undefined) currentDtcsPol = pol;
+    send({ cmd: 'setDtcsCode', value: code, polarity: currentDtcsPol });
+    refreshToneUi();
+}
+
+// Everywhere the tone shows: the spectrum indicator, the FUNCTION tile, and
+// the window itself while it is open.
+function refreshToneUi() {
+    updateToneIndicator();
+    if (currentPanel === 'func') renderFuncOverlay();
+    var ov = document.getElementById('toneOverlay');
+    if (ov && ov.classList.contains('visible')) renderToneModal();
+}
+
+// Live on the main display beside the DUP readout, but only while a tone is
+// actually engaged — nothing to show when the squelch is plain carrier.
+function updateToneIndicator() {
+    var el = document.getElementById('toneIndicator');
+    if (!el) return;
+    if ((!hasCTCSS && !hasDTCS) || currentToneMode === 'OFF') {
+        el.style.display = 'none';
+        return;
+    }
+    el.textContent = getToneState().label;
+    el.style.display = '';
+}
+
+function openToneModal() {
+    toneScanHint = '';          // a stale message from a previous scan is noise
+    toneScanCandidate = null;
+    renderToneModal();
+    document.getElementById('toneOverlay').classList.add('visible');
+}
+function closeToneModal() {
+    // Closing on a running scan would hide the only control that stops it.
+    if (toneScanRunning) stopToneScan('');
+    document.getElementById('toneOverlay').classList.remove('visible');
+}
+
+function renderToneModal() {
+    var modes = ['OFF'];
+    if (hasCTCSS) { modes.push('TONE'); modes.push('TSQL'); }
+    if (hasDTCS) modes.push('DTCS');
+    // A combined mode set from the front panel gets listed too, so the window
+    // shows what the rig is really doing instead of falling back to OFF.
+    if (modes.indexOf(currentToneMode) === -1) modes.push(currentToneMode);
+
+    var row = document.getElementById('toneModeRow');
+    row.innerHTML = '';
+    for (var i = 0; i < modes.length; i++) {
+        var b = document.createElement('button');
+        b.className = 'dup-btn' + (modes[i] === currentToneMode ? ' active' : '');
+        b.textContent = modes[i];
+        b.onclick = (function (m) { return function () { setToneMode(m); }; })(modes[i]);
+        row.appendChild(b);
+    }
+    document.getElementById('toneTitleState').textContent =
+        currentToneMode === 'OFF' ? '' : getToneState().value;
+
+    var box = document.getElementById('toneSections');
+    box.innerHTML = '';
+    if (toneModeUsesDtcs(currentToneMode) && hasDTCS) {
+        // Polarity first: the code list is 104 buttons long, and two switches
+        // parked under it would never be found.
+        appendDtcsPolarity(box);
+        appendToneGrid(box, 'DTCS code', dtcsCodes, currentDtcsCode, fmtDtcs,
+                       function (c) { setDtcsCode(c); });
+    } else if (hasCTCSS && (currentToneMode !== 'OFF' || toneScanRunning || toneScanCandidate !== null)) {
+        // One grid for TONE and TSQL both: picking a tone writes both
+        // registers, so the two modes can never show different selections.
+        // A scan drives the same grid, which is how its result is read.
+        // While the scan runs the grid follows what it is hearing; once it
+        // stops, the found tone has been written, so the grid follows the
+        // selection again and a manual pick lands normally.
+        appendToneGrid(box, 'Tone', ctcssTones,
+                       toneScanRunning ? toneScanCandidate : currentTone(),
+                       fmtCtcss, setTone);
+    }
+
+    var btn = document.getElementById('toneScanBtn');
+    btn.style.display = (hasCTCSS && ctcssTones.length) ? '' : 'none';
+    btn.textContent = toneScanRunning ? 'Stop' : 'Scan';
+    document.getElementById('toneHint').textContent = toneScanHint;
+}
+
+// TONE and TSQL are one tone to the operator, so the panel keeps the rig's two
+// registers on the same value rather than offering two selections.
+function setTone(reg) {
+    if (canSetToneFreq) setToneFreq(reg);
+    if (canSetTsqlFreq) setTsqlFreq(reg);
+}
+function currentTone() {
+    return toneModeUsesTsql(currentToneMode) ? (currentTsqlFreq || currentToneFreq)
+                                             : (currentToneFreq || currentTsqlFreq);
+}
+
+// Move the lit key without rebuilding the grid — a scan repaints several times
+// a second, and a rebuild would throw away the list's scroll position.
+function highlightToneGrid(value) {
+    var grid = document.querySelector('#toneSections .tone-grid');
+    if (!grid) { renderToneModal(); return; }
+    var btns = grid.querySelectorAll('.dup-btn');
+    for (var i = 0; i < btns.length; i++) {
+        var on = Number(btns[i].getAttribute('data-tone')) === value;
+        btns[i].classList.toggle('active', on);
+        if (on && btns[i].scrollIntoView) btns[i].scrollIntoView({ block: 'nearest' });
+    }
+}
+
+function appendToneGrid(box, label, values, current, fmt, onPick) {
+    var lbl = document.createElement('div');
+    lbl.className = 'tone-section-label';
+    lbl.textContent = label;
+    box.appendChild(lbl);
+    var grid = document.createElement('div');
+    grid.className = 'tone-grid';
+    for (var i = 0; i < values.length; i++) {
+        var b = document.createElement('button');
+        b.className = 'dup-btn' + (values[i] === current ? ' active' : '');
+        b.textContent = fmt(values[i]);
+        b.setAttribute('data-tone', values[i]);
+        b.onclick = (function (v) { return function () { onPick(v); }; })(values[i]);
+        grid.appendChild(b);
+    }
+    if (!values.length) {
+        var none = document.createElement('span');
+        none.className = 'dup-hint';
+        none.textContent = 'this radio reports no tone table';
+        grid.appendChild(none);
+    }
+    box.appendChild(grid);
+}
+
+// DTCS sends one code both ways; the two switches invert it independently on
+// transmit and on receive.
+function appendDtcsPolarity(box) {
+    var lbl = document.createElement('div');
+    lbl.className = 'tone-section-label';
+    lbl.textContent = 'DTCS polarity';
+    box.appendChild(lbl);
+    var grid = document.createElement('div');
+    grid.className = 'tone-grid';
+    var bits = [{ name: 'TX invert', bit: 2 }, { name: 'RX invert', bit: 1 }];
+    for (var i = 0; i < bits.length; i++) {
+        var b = document.createElement('button');
+        b.className = 'dup-btn' + ((currentDtcsPol & bits[i].bit) ? ' active' : '');
+        b.textContent = bits[i].name;
+        b.onclick = (function (bit) {
+            return function () { setDtcsCode(currentDtcsCode, currentDtcsPol ^ bit); };
+        })(bits[i].bit);
+        grid.appendChild(b);
+    }
+    box.appendChild(grid);
+}
+
+// Tone scan. No Icom exposes one over CI-V, and the obvious workaround —
+// engage the rig's tone squelch and step the table until it opens — mutes the
+// receiver for the whole sweep. That is not a scan, it is 25 seconds of
+// silence, and it makes the radio unusable while it runs.
+//
+// The tone is already in the audio we are playing. So the scan just listens: a
+// Goertzel bank over the tone table (ctcss.js) reads the sub-tone straight off
+// the RX stream. Nothing is asked of the radio, nothing is engaged, and the
+// receiver keeps playing the repeater while its tone is identified.
+function toneScanToggle() {
+    if (toneScanRunning) { stopToneScan(''); return; }
+    if (typeof CtcssDetector !== 'function') {
+        toneScanHint = 'detector unavailable';
+        refreshToneUi();
+        return;
+    }
+    if (!audioEnabled) {
+        toneScanHint = 'RX audio off';
+        refreshToneUi();
+        return;
+    }
+    toneScanCandidate = null;
+    toneScanDetector = new CtcssDetector({
+        sampleRate: audioSampleRate || 48000,
+        // The rig's own table, so the scan can only name a tone it can set.
+        tones: (ctcssTones && ctcssTones.length) ? ctcssTones : undefined,
+    });
+    toneScanRunning = true;
+    toneScanHint = 'listening…';
+    refreshToneUi();
+}
+
+function stopToneScan(hint) {
+    toneScanRunning = false;
+    toneScanDetector = null;
+    toneScanHint = hint || '';
+    refreshToneUi();
+}
+
+// Called from handleAudioData for every RX chunk while a scan is armed.
+function feedToneScan(pcmData) {
+    var events;
+    try {
+        events = toneScanDetector.feed(pcmData);
+    } catch (e) {
+        stopToneScan('scan failed: ' + e.message);
+        return;
+    }
+    for (var i = 0; i < events.length; i++) {
+        var ev = events[i];
+        if (ev.type === 'detected') {
+            toneScanCandidate = ev.tone;
+            // Loading transmits nothing and opens no squelch — engaging a mode
+            // does that, and that stays the operator's call.
+            setTone(ev.tone);
+            stopToneScan('');
+            return;
+        }
+        // The grid is the readout: light whatever the detector is hearing.
+        toneScanCandidate = ev.tone;
+    }
+    if (events.length) highlightToneGrid(toneScanCandidate);
+}
+
+// A stored channel's tone, labelled the way the indicator labels the live one.
+// Channels carry the tone as its printed name ('88.5'); the label helpers work
+// in tenths of Hz.
+function memToneBadge(mem) {
+    var mode = mem.toneModeName || 'OFF';
+    if (mode === 'OFF') return '';
+    return toneLabel(mode, toneNameToTenths(mem.tone), toneNameToTenths(mem.tsql), mem.dtcs);
+}
+function toneNameToTenths(name) {
+    var v = Math.round(parseFloat(name) * 10);
+    return isFinite(v) ? v : 0;
+}
+
 // Show/hide + configure the FUNC-overlay attenuator slider.
 function updateFuncAttRow(show) {
     var row = document.getElementById('funcAttRow');
@@ -4935,7 +5337,8 @@ function renderMemoryList() {
             '<span class="mem-ch">' + mem.channel + '</span>' +
             '<span class="mem-name">' + (mem.name || '') + '</span>' +
             '<span class="mem-freq">' + formatMemFreq(mem.frequency) + '</span>' +
-            '<span class="mem-mode">' + (mem.mode || '') + '</span>' +
+            '<span class="mem-mode">' + (mem.mode || '')
+                + (memToneBadge(mem) ? ' \u00b7 ' + memToneBadge(mem) : '') + '</span>' +
             '<span class="mem-del" title="Clear">\u2715</span>';
         (function(m) {
             row.querySelector('.mem-del').addEventListener('click', function(e) {
@@ -5779,6 +6182,7 @@ function handleAudioData(buffer) {
     // the server build uses. The hook is installed by js8-panel.mjs
     // once the module finishes booting.
     if (typeof window._js8ProcessAudioChunk === 'function') window._js8ProcessAudioChunk(pcmData);
+    if (toneScanDetector) feedToneScan(pcmData);
 
     if (audioUseWorklet && audioWorkletNode) {
         audioWorkletNode.port.postMessage(floatData);
@@ -9899,6 +10303,7 @@ window.dispatchEvent(new Event('ft8tsReady'));
 <script src="cw-decoder-stft.js"></script>
 <script src="cw-decoder-utils.js"></script>
 <script src="cw-decoder.js"></script>
+<script src="ctcss.js"></script>
 <script src="packet.js"></script>
 </body>
 </html>

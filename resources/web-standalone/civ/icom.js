@@ -264,6 +264,117 @@
         return { sub: payload[1], value: payload[2] };
     }
 
+    // ---------- Repeater access tone --------------------------------------
+    //
+    // Two dialects, both driven from rig-caps `cmds`:
+    //   * `toneSqlType` ([0x16, 0x5D]) — one register holding the whole
+    //     TONE/TSQL/DTCS selection (IC-705 / IC-9700 / IC-905).
+    //   * `rptTone` / `rptTsql` / `rptDtcs` ([0x16, 0x42/0x43/0x4B]) —
+    //     independent booleans (IC-7300 / IC-7610 / IC-7760 / R8600).
+    // Mode names match src/webserver.cpp's toneModeName() so both builds put
+    // the same strings on the wire.
+    var TONE_MODE_BY_REG = {
+        0x00: 'OFF', 0x01: 'TONE', 0x02: 'TSQL', 0x03: 'DTCS', 0x06: 'DTCS(T)',
+        0x07: 'TONE(T)/DTCS(R)', 0x08: 'DTCS(T)/TSQL(R)', 0x09: 'TONE(T)/TSQL(R)',
+    };
+    var TONE_MODE_TO_REG = {};
+    for (var _tmk in TONE_MODE_BY_REG) TONE_MODE_TO_REG[TONE_MODE_BY_REG[_tmk]] = parseInt(_tmk, 10);
+
+    // The tone-mode nibble stored in a memory channel uses the same encoding
+    // as the 0x16 0x5D register, so memories and the live mode share these.
+    function toneModeFromReg(reg) {
+        var n = TONE_MODE_BY_REG[reg & 0x0F];
+        return n === undefined ? 'OFF' : n;
+    }
+    function toneModeToReg(name) { return TONE_MODE_TO_REG[name] || 0; }
+
+    function toneModeUsesTone(m) { return m === 'TONE' || m === 'TONE(T)/DTCS(R)' || m === 'TONE(T)/TSQL(R)'; }
+    function toneModeUsesTsql(m) { return m === 'TSQL' || m === 'DTCS(T)/TSQL(R)' || m === 'TONE(T)/TSQL(R)'; }
+    function toneModeUsesDtcs(m) {
+        return m === 'DTCS' || m === 'DTCS(T)' || m === 'TONE(T)/DTCS(R)' || m === 'DTCS(T)/TSQL(R)';
+    }
+
+    function cmdReadToneSqlType(cmdBytes) { return new Uint8Array(cmdBytes || [0x16, 0x5D]); }
+    function cmdSetToneSqlType(cmdBytes, modeName) {
+        var bytes = (cmdBytes || [0x16, 0x5D]).slice();
+        // Unknown names fall back to OFF — the safe direction.
+        bytes.push(encodeBcd2(TONE_MODE_TO_REG[modeName] || 0));
+        return new Uint8Array(bytes);
+    }
+    function parseToneSqlTypeReply(payload, cmdBytes) {
+        var pre = cmdBytes || [0x16, 0x5D];
+        if (payload.length < pre.length + 1) return null;
+        for (var i = 0; i < pre.length; i++) if (payload[i] !== pre[i]) return null;
+        var reg = ((payload[pre.length] >> 4) & 0x0F) * 10 + (payload[pre.length] & 0x0F);
+        return TONE_MODE_BY_REG[reg] !== undefined ? TONE_MODE_BY_REG[reg] : 'OFF';
+    }
+
+    // The boolean dialect (0x16 0x42/0x43/0x4B). Same shape as the generic
+    // 0x16 helpers above, but keyed off the rig's own command bytes instead
+    // of a sub-command number so a rig that moves them still works.
+    function cmdReadToneBool(cmdBytes) { return new Uint8Array(cmdBytes); }
+    function cmdSetToneBool(cmdBytes, on) {
+        var bytes = cmdBytes.slice();
+        bytes.push(on ? 0x01 : 0x00);
+        return new Uint8Array(bytes);
+    }
+    function parseToneBoolReply(payload, cmdBytes) {
+        if (payload.length < cmdBytes.length + 1) return null;
+        for (var i = 0; i < cmdBytes.length; i++) if (payload[i] !== cmdBytes[i]) return null;
+        return !!payload[cmdBytes.length];
+    }
+
+    // Fold the three booleans back into one mode name, the way
+    // webServer::currentToneMode() does. DTCS wins over the CTCSS pair: a rig
+    // in DTCS is not also sending a tone.
+    function toneModeFromBools(tone, tsql, dtcs) {
+        if (dtcs) return 'DTCS';
+        if (tone && tsql) return 'TONE(T)/TSQL(R)';
+        if (tsql) return 'TSQL';
+        if (tone) return 'TONE';
+        return 'OFF';
+    }
+
+    // ---------- Tone / DTCS frequency (cmd 0x1B 0x00/0x01/0x02) -----------
+    //
+    // Payload is 3 bytes: an invert-flags byte then the value as big-endian
+    // BCD in tenths of Hz for CTCSS (1273 = 127.3), or the bare code for
+    // DTCS. Mirrors icomCommander::encodeTone / decodeTone.
+    function cmdReadTone(cmdBytes) { return new Uint8Array(cmdBytes); }
+    function cmdSetTone(cmdBytes, value, tinv, rinv) {
+        var bytes = cmdBytes.slice();
+        bytes.push(((tinv ? 1 : 0) << 4) | (rinv ? 1 : 0));
+        var v = Math.max(0, Math.min(9999, value | 0));
+        var th = Math.floor(v / 1000), hu = Math.floor((v % 1000) / 100);
+        var te = Math.floor((v % 100) / 10), un = v % 10;
+        bytes.push((th << 4) | hu, (te << 4) | un);
+        return new Uint8Array(bytes);
+    }
+    function parseToneReply(payload, cmdBytes) {
+        if (payload.length < cmdBytes.length + 3) return null;
+        for (var i = 0; i < cmdBytes.length; i++) if (payload[i] !== cmdBytes[i]) return null;
+        var f = payload[cmdBytes.length];
+        var b1 = payload[cmdBytes.length + 1], b2 = payload[cmdBytes.length + 2];
+        return {
+            value: ((b1 >> 4) & 0x0F) * 1000 + (b1 & 0x0F) * 100
+                 + ((b2 >> 4) & 0x0F) * 10   + (b2 & 0x0F),
+            tinv: !!(f & 0xF0),
+            rinv: !!(f & 0x0F),
+        };
+    }
+
+    // ---------- Squelch status (cmd 0x15 0x05) ----------------------------
+    // "Various squelch": 1 when the squelch is open. Unlike the noise squelch
+    // this reflects tone/DTCS squelch too, which is what makes a tone scan
+    // possible — with TSQL engaged it opens only on the matching tone.
+    function cmdReadSqlStatus(cmdBytes) { return new Uint8Array(cmdBytes || [0x15, 0x05]); }
+    function parseSqlStatusReply(payload, cmdBytes) {
+        var pre = cmdBytes || [0x15, 0x05];
+        if (payload.length < pre.length + 1) return null;
+        for (var i = 0; i < pre.length; i++) if (payload[i] !== pre[i]) return null;
+        return !!payload[pre.length];
+    }
+
     // ---------- Attenuator (cmd 0x11) ------------------------------------
     function cmdReadAttenuator() { return new Uint8Array([0x11]); }
     function cmdSetAttenuator(dB) {
@@ -738,6 +849,14 @@
               + ((b1 >> 4) & 0x0F) * 10   + (b1 & 0x0F));
     }
 
+    // Stored CTCSS tones travel as the printable name ('88.5'), matching the
+    // server build's memoryType::tone, so the SPA renders both forks the same.
+    function toneNameFromReg(reg) { return ((reg | 0) / 10).toFixed(1); }
+    function toneRegFromName(name) {
+        var v = Math.round(parseFloat(name) * 10);
+        return isFinite(v) && v > 0 ? v : 0;
+    }
+
     // Find the 'a' (group) spec, if any — the read-frame payload for rigs
     // that have memory groups starts with the group bytes.
     function _memGroupSpec(memFormat) {
@@ -877,14 +996,17 @@
         case 'N':
         case 'O': {
             // CTCSS tone in tenths of Hz, big-endian BCD across 2 bytes,
-            // preceded by 1 nul byte → 3 bytes total. wfwebtypes.h
-            // defaults tone="67.0" (the lowest standard CTCSS), and the
-            // IC-7300 NACKs the whole frame if this is zero — even when
-            // tonemode is off. Pick a valid default tone (670 → 67.0 Hz)
-            // and pad anything beyond the standard 3 bytes with zeros.
+            // preceded by an invert-flags byte (always 0 for CTCSS) → 3 bytes
+            // total. The IC-7300 NACKs the whole frame if the value is zero,
+            // even with tonemode off, so an unset tone falls back to 67.0 —
+            // the lowest standard CTCSS and wfwebtypes.h's own default.
+            var isTx = (p.spec === 'n' || p.spec === 'N');
+            var isB = (p.spec === 'N' || p.spec === 'O');
+            var src = isTx ? (isB ? mem.toneB : mem.tone)
+                           : (isB ? mem.tsqlB : mem.tsql);
             data.push(0x00);
             if (len >= 3) {
-                var tb = bcdEncodeIntBE(670);
+                var tb = bcdEncodeIntBE(toneRegFromName(src) || 670);
                 data.push(tb[0], tb[1]);
             }
             for (var nfi = 3; nfi < len; nfi++) data.push(0x00);
@@ -914,6 +1036,11 @@
             return false;
         case 's':
         case 'S':
+            // Repeater shift. The field drops the two lowest digits, so its
+            // unit is 100 Hz — same convention as CI-V 0x0D.
+            _appendFreqLE(data, Math.round((p.spec === 's' ? (mem.duplexOffset || 0)
+                                                           : (mem.duplexOffsetB || 0)) / 100), len);
+            return false;
         case 't':
         case 'T':
         case 'u':
@@ -999,9 +1126,9 @@
             scan: 0, skip: 0, split: 0,
             frequency: 0, mode: 0, filter: 1, datamode: 0, tonemode: 0,
             tone: '', tsql: '', dtcs: 0, dtcsp: 0,
-            duplex: 0, dsql: 0, dvsql: 0,
+            duplex: 0, duplexOffset: 0, dsql: 0, dvsql: 0,
             frequencyB: 0, modeB: 0, filterB: 1, datamodeB: 0, tonemodeB: 0,
-            toneB: '', tsqlB: '', dtcsB: 0, dtcspB: 0, duplexB: 0,
+            toneB: '', tsqlB: '', dtcsB: 0, dtcspB: 0, duplexB: 0, duplexOffsetB: 0,
             atten: 0, preamp: 0, antenna: 0, ipplus: false,
             name: '',
         };
@@ -1085,8 +1212,62 @@
             mem.name = s.replace(/\s+$/, '');
             break;
         }
-        // Other fields (tone names, D-STAR calls, antenna, IP+) aren't
-        // surfaced in the standalone UI — leave defaults in place.
+        case 'l':
+            mem.tonemode = data[off] & 0x0F;
+            break;
+        case 'L':
+            mem.tonemodeB = data[off] & 0x0F;
+            break;
+        case 'm':
+            mem.dsql = (data[off] >> 4) & 0x0F;
+            break;
+        case 'M':
+            mem.dsqlB = (data[off] >> 4) & 0x0F;
+            break;
+        // Tone fields lead with an invert-flags byte; the value follows as
+        // two big-endian BCD bytes.
+        case 'n':
+            mem.tone = toneNameFromReg(bcdDecodeIntBE(data[off + 1], data[off + 2]));
+            break;
+        case 'N':
+            mem.toneB = toneNameFromReg(bcdDecodeIntBE(data[off + 1], data[off + 2]));
+            break;
+        case 'o':
+            mem.tsql = toneNameFromReg(bcdDecodeIntBE(data[off + 1], data[off + 2]));
+            break;
+        case 'O':
+            mem.tsqlB = toneNameFromReg(bcdDecodeIntBE(data[off + 1], data[off + 2]));
+            break;
+        // DTCS polarity: bit 4 inverts TX, bit 0 inverts RX — the same
+        // packing the encoder above writes.
+        case 'p':
+            mem.dtcsp = ((data[off] >> 3) & 0x02) | (data[off] & 0x01);
+            break;
+        case 'P':
+            mem.dtcspB = ((data[off] >> 3) & 0x02) | (data[off] & 0x01);
+            break;
+        case 'q':
+            mem.dtcs = bcdDecodeIntBE(data[off], data[off + 1]);
+            break;
+        case 'Q':
+            mem.dtcsB = bcdDecodeIntBE(data[off], data[off + 1]);
+            break;
+        case 'r':
+            mem.dvsql = bcdDecodeCharBE(data[off]);
+            break;
+        case 'R':
+            mem.dvsqlB = bcdDecodeCharBE(data[off]);
+            break;
+        case 's':
+            mem.duplexOffset = decodeBcdLE(data.subarray ? data.subarray(off, off + len)
+                                                         : data.slice(off, off + len)) * 100;
+            break;
+        case 'S':
+            mem.duplexOffsetB = decodeBcdLE(data.subarray ? data.subarray(off, off + len)
+                                                          : data.slice(off, off + len)) * 100;
+            break;
+        // Remaining fields (D-STAR calls, antenna, IP+) aren't surfaced in
+        // the standalone UI — leave defaults in place.
         default:
             break;
         }
@@ -1138,6 +1319,26 @@
         cmdReadSplit: cmdReadSplit,
         cmdSetSplit: cmdSetSplit,
         cmdSetDuplex: cmdSetDuplex,
+        // Repeater access tone
+        toneModeFromReg: toneModeFromReg,
+        toneModeToReg: toneModeToReg,
+        toneModeUsesTone: toneModeUsesTone,
+        toneModeUsesTsql: toneModeUsesTsql,
+        toneModeUsesDtcs: toneModeUsesDtcs,
+        toneNameFromReg: toneNameFromReg,
+        toneRegFromName: toneRegFromName,
+        toneModeFromBools: toneModeFromBools,
+        cmdReadToneBool: cmdReadToneBool,
+        cmdSetToneBool: cmdSetToneBool,
+        parseToneBoolReply: parseToneBoolReply,
+        cmdReadToneSqlType: cmdReadToneSqlType,
+        cmdSetToneSqlType: cmdSetToneSqlType,
+        parseToneSqlTypeReply: parseToneSqlTypeReply,
+        cmdReadTone: cmdReadTone,
+        cmdSetTone: cmdSetTone,
+        parseToneReply: parseToneReply,
+        cmdReadSqlStatus: cmdReadSqlStatus,
+        parseSqlStatusReply: parseSqlStatusReply,
         cmdReadDuplexOffset: cmdReadDuplexOffset,
         cmdSetDuplexOffset: cmdSetDuplexOffset,
         cmdSelectVFO: cmdSelectVFO,

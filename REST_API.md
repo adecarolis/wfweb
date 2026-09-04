@@ -372,7 +372,9 @@ curl -s http://localhost:8081/api/v1/radio/tx | jq .
 **Response:**
 ```json
 {"split": false, "tuner": 0, "compressor": false, "monitor": false,
- "duplex": "OFF", "duplexOffset": 600000}
+ "duplex": "OFF", "duplexOffset": 600000,
+ "toneMode": "TSQL", "toneFreq": 1148, "tsqlFreq": 885,
+ "dtcsCode": 23, "dtcsPolarity": 0}
 ```
 
 `tuner`: 0=off, 1=on, 2=start-tuning.
@@ -380,6 +382,15 @@ curl -s http://localhost:8081/api/v1/radio/tx | jq .
 `duplex`: repeater shift direction — `"OFF"`, `"DUP-"` or `"DUP+"`.
 `duplexOffset`: the shift in Hz. Both are present only on rigs that support a
 duplex offset (IC-705, IC-9700, IC-905, IC-785x).
+
+`toneMode`: repeater access tone — `"OFF"`, `"TONE"`, `"TSQL"`, `"DTCS"`, or one
+of the combined modes a rig with the Tone Squelch Type register can report
+(`"DTCS(T)"`, `"TONE(T)/DTCS(R)"`, `"DTCS(T)/TSQL(R)"`, `"TONE(T)/TSQL(R)"`).
+`toneFreq` / `tsqlFreq`: CTCSS tone in **tenths of a Hz** — 885 is 88.5 Hz.
+`dtcsCode`: the DTCS code as printed on the radio (23 is D023).
+`dtcsPolarity`: bitfield — bit 1 inverts TX, bit 0 inverts RX.
+Only the keys the rig supports are present; `hasCTCSS` / `hasDTCS` /
+`canSetToneFreq` / `canSetTsqlFreq` in `/api/v1/radio/info` say which.
 
 > `compressor` and `monitor` may be absent if the rig has not reported them.
 
@@ -395,6 +406,14 @@ All fields optional.
 | `monitor` | bool | TX monitor (sidetone) on/off |
 | `duplex` | string | Repeater shift: `"OFF"`, `"DUP-"`, `"DUP+"` |
 | `duplexOffset` | int | Repeater shift in Hz (rounded down to 100 Hz) |
+| `toneMode` | string | Access tone: `"OFF"`, `"TONE"`, `"TSQL"`, `"DTCS"` |
+| `toneFreq` | int | CTCSS tone sent on transmit, in tenths of a Hz |
+| `tsqlFreq` | int | CTCSS tone the squelch opens on, in tenths of a Hz |
+| `dtcsCode` | int | DTCS code as printed on the radio (23 = D023) |
+| `dtcsPolarity` | int | With `dtcsCode`: bit 1 inverts TX, bit 0 inverts RX |
+
+A tone frequency the rig's own table doesn't contain is ignored rather than
+rounded, so read `ctcssTones` / `dtcsCodes` from `/api/v1/radio/info` first.
 
 ```bash
 curl -s -X PUT http://localhost:8081/api/v1/radio/tx \
@@ -403,11 +422,15 @@ curl -s -X PUT http://localhost:8081/api/v1/radio/tx \
 ```
 
 ```bash
-# 2 m repeater: 600 kHz down-shift
+# 2 m repeater: 600 kHz down-shift with a 114.8 Hz access tone
 curl -s -X PUT http://localhost:8081/api/v1/radio/tx \
   -H 'Content-Type: application/json' \
-  -d '{"duplexOffset": 600000, "duplex": "DUP-"}' | jq .
+  -d '{"duplexOffset": 600000, "duplex": "DUP-",
+       "toneMode": "TONE", "toneFreq": 1148}' | jq .
 ```
+
+> Tone scan has no API at all: it runs in the browser, reading the repeater's
+> sub-tone out of the received audio, so no command reaches the radio.
 
 ---
 

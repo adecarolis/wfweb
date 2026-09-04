@@ -60,6 +60,65 @@ static duplexMode_t duplexModeFromName(const QString &name)
     return dmSimplex;
 }
 
+// Repeater access tone on the wire. The names follow the labels Icom prints on
+// the rig itself, so what the browser shows matches the front panel. The UI
+// only offers the first four; the combined modes exist because a rig with the
+// "Tone Squelch Type" register can be left in one from its front panel and we
+// must be able to report that faithfully rather than lie about it.
+static QString toneModeName(rptAccessTxRx_t m)
+{
+    switch (m) {
+    case ratrTN: return QStringLiteral("TONE");
+    case ratrNT: return QStringLiteral("TSQL");
+    case ratrDD: return QStringLiteral("DTCS");
+    case ratrDN: return QStringLiteral("DTCS(T)");
+    case ratrTD: return QStringLiteral("TONE(T)/DTCS(R)");
+    case ratrDT: return QStringLiteral("DTCS(T)/TSQL(R)");
+    case ratrTT: return QStringLiteral("TONE(T)/TSQL(R)");
+    default:     return QStringLiteral("OFF");
+    }
+}
+
+// Inverse of toneModeName(). Anything unrecognised turns the tone off, which
+// is the safe direction — it can only stop us keying a repeater, never start.
+static rptAccessTxRx_t toneModeFromName(const QString &name)
+{
+    const QString n = name.trimmed().toUpper();
+    if (n == QLatin1String("TONE"))            return ratrTN;
+    if (n == QLatin1String("TSQL"))            return ratrNT;
+    if (n == QLatin1String("DTCS"))            return ratrDD;
+    if (n == QLatin1String("DTCS(T)"))         return ratrDN;
+    if (n == QLatin1String("TONE(T)/DTCS(R)")) return ratrTD;
+    if (n == QLatin1String("DTCS(T)/TSQL(R)")) return ratrDT;
+    if (n == QLatin1String("TONE(T)/TSQL(R)")) return ratrTT;
+    return ratrNN;
+}
+
+// Look a tone / DTCS register up in the rig's own table. The toneInfo we hand
+// the queue carries the rig's label as well as the register, because the
+// memory writer matches stored channels by name.
+static bool findToneByReg(const std::vector<toneInfo> &table, ushort reg, toneInfo *out)
+{
+    for (const toneInfo &t : table) {
+        if (t.tone == reg) { *out = t; return true; }
+    }
+    return false;
+}
+
+// Does the mode transmit a CTCSS tone / squelch on one?
+static bool toneModeUsesTone(rptAccessTxRx_t m)
+{
+    return m == ratrTN || m == ratrTD || m == ratrTT;
+}
+static bool toneModeUsesTsql(rptAccessTxRx_t m)
+{
+    return m == ratrNT || m == ratrDT || m == ratrTT;
+}
+static bool toneModeUsesDtcs(rptAccessTxRx_t m)
+{
+    return m == ratrDD || m == ratrDN || m == ratrTD || m == ratrDT;
+}
+
 webServer::webServer(QObject *parent) :
     QObject(parent)
 {
@@ -413,6 +472,11 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
         obj["spectLenMax"] = rigCaps->spectLenMax;
         obj["spectAmpMax"] = rigCaps->spectAmpMax;
         obj["hasMainSub"] = rigCaps->hasCommand29;
+        // Antenna tuner: only rigs whose .rig declares the ATU command have
+        // something to tune, so the TUNE tile and the FUNC TUNER button
+        // follow that capability instead of appearing on every rig.
+        obj["hasTuner"] = rigCaps->commands.contains(funcTunerStatus);
+        addToneCaps(obj);
 
         QJsonArray modes;
         for (const modeInfo &mi : rigCaps->modes) {
@@ -1226,6 +1290,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
                 if (dupOffset.value.isValid())
                     resp["duplexOffset"] = (double)dupOffset.value.value<freqt>().Hz;
             }
+            addToneStatus(resp);
             sendRestResponse(socket, 200, resp);
         } else if (method == "PUT") {
             if (!queue || !rigCaps) {
@@ -1260,6 +1325,27 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
                 off.MHzDouble = off.Hz / 1000000.0;
                 queue->addUnique(priorityImmediate, queueItem(funcSendFreqOffset, QVariant::fromValue<freqt>(off), false, 0));
                 queue->receiveValue(funcReadFreqOffset, QVariant::fromValue<freqt>(off), 0);
+            }
+            if (obj.contains("toneMode") && toneCommandsAvailable()) {
+                applyToneMode(toneModeFromName(obj["toneMode"].toString()));
+            }
+            for (const auto &pair : { std::make_pair(QStringLiteral("toneFreq"), funcToneFreq),
+                                      std::make_pair(QStringLiteral("tsqlFreq"), funcTSQLFreq) }) {
+                if (!obj.contains(pair.first) || !rigCaps->commands.contains(pair.second)) continue;
+                toneInfo t;
+                if (!findToneByReg(rigCaps->ctcss, static_cast<ushort>(obj[pair.first].toInt()), &t)) continue;
+                queue->addUnique(priorityImmediate, queueItem(pair.second, QVariant::fromValue<toneInfo>(t), false, 0));
+                queue->receiveValue(pair.second, QVariant::fromValue<toneInfo>(t), 0);
+            }
+            if (obj.contains("dtcsCode") && rigCaps->commands.contains(funcDTCSCode)) {
+                toneInfo t;
+                if (findToneByReg(rigCaps->dtcs, static_cast<ushort>(obj["dtcsCode"].toInt()), &t)) {
+                    int pol = obj["dtcsPolarity"].toInt();
+                    t.tinv = (pol & 2) != 0;
+                    t.rinv = (pol & 1) != 0;
+                    queue->addUnique(priorityImmediate, queueItem(funcDTCSCode, QVariant::fromValue<toneInfo>(t), false, 0));
+                    queue->receiveValue(funcDTCSCode, QVariant::fromValue<toneInfo>(t), 0);
+                }
             }
             if (obj.contains("monitor")) {
                 uchar val = obj["monitor"].toBool() ? 1 : 0;
@@ -1891,6 +1977,36 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             queue->receiveValue(funcDuplexMode, QVariant::fromValue<duplexMode_t>(dm), 0);
         }
     }
+    else if (type == "setToneMode") {
+        if (!queue || !rigCaps || !toneCommandsAvailable()) return;
+        applyToneMode(toneModeFromName(cmd["value"].toString()));
+    }
+    else if (type == "setToneFreq" || type == "setTsqlFreq") {
+        if (!queue || !rigCaps) return;
+        funcs f = (type == "setToneFreq") ? funcToneFreq : funcTSQLFreq;
+        if (!rigCaps->commands.contains(f)) return;
+        toneInfo t;
+        if (!findToneByReg(rigCaps->ctcss, static_cast<ushort>(cmd["value"].toInt()), &t)) {
+            qCWarning(logWebServer) << type << "unknown tone" << cmd["value"].toInt();
+            return;
+        }
+        queue->addUnique(priorityImmediate, queueItem(f, QVariant::fromValue<toneInfo>(t), false, 0));
+        queue->receiveValue(f, QVariant::fromValue<toneInfo>(t), 0);
+    }
+    else if (type == "setDtcsCode") {
+        if (!queue || !rigCaps || !rigCaps->commands.contains(funcDTCSCode)) return;
+        toneInfo t;
+        if (!findToneByReg(rigCaps->dtcs, static_cast<ushort>(cmd["value"].toInt()), &t)) {
+            qCWarning(logWebServer) << "setDtcsCode: unknown code" << cmd["value"].toInt();
+            return;
+        }
+        // Polarity is one field on the wire: bit 1 inverts TX, bit 0 inverts RX.
+        int pol = cmd["polarity"].toInt();
+        t.tinv = (pol & 2) != 0;
+        t.rinv = (pol & 1) != 0;
+        queue->addUnique(priorityImmediate, queueItem(funcDTCSCode, QVariant::fromValue<toneInfo>(t), false, 0));
+        queue->receiveValue(funcDTCSCode, QVariant::fromValue<toneInfo>(t), 0);
+    }
     else if (type == "setDuplexOffset") {
         // Offset in Hz. The rig takes 3 BCD bytes from the 100 Hz digit up,
         // so anything finer than 100 Hz cannot be represented.
@@ -2116,8 +2232,53 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         memset(mem.R2B, 0, sizeof(mem.R2B));
         mem.duplexOffset.Hz = 0;
         mem.duplexOffset.MHzDouble = 0.0;
-        mem.duplexOffsetB = mem.duplexOffset;
         mem.split = 0;
+        // Repeater tone and shift, captured from the live caches so the
+        // channel stores what you are actually hearing. These are not
+        // optional extras: the 'j'/'J' MemFormat specs pack the duplex
+        // direction and the tone mode into a single byte, so writing one
+        // without the other silently clears the repeater shift.
+        mem.tonemode = static_cast<quint8>(currentToneMode());
+        cacheItem toneCache = queue->getCache(funcToneFreq, 0);
+        if (toneCache.value.isValid()) mem.tone = toneCache.value.value<toneInfo>().name;
+        cacheItem tsqlCache = queue->getCache(funcTSQLFreq, 0);
+        if (tsqlCache.value.isValid()) mem.tsql = tsqlCache.value.value<toneInfo>().name;
+        cacheItem dtcsCache = queue->getCache(funcDTCSCode, 0);
+        if (dtcsCache.value.isValid()) {
+            // Only a code the rig actually lists: the struct's own default is a
+            // CTCSS value, and a memory carrying it is rejected outright.
+            toneInfo dt = dtcsCache.value.value<toneInfo>();
+            toneInfo known;
+            if (findToneByReg(rigCaps->dtcs, dt.tone, &known)) {
+                mem.dtcs = dt.tone;
+                mem.dtcsp = (dt.tinv ? 2 : 0) | (dt.rinv ? 1 : 0);
+            } else {
+                qCWarning(logWebServer) << "writeMemory: ignoring unknown DTCS code" << dt.tone;
+            }
+        }
+        // The stored duplex is the low nibble of duplexMode_t (0 simplex,
+        // 1 DUP-, 2 DUP+), not the 0x1x register value.
+        cacheItem dupCache = queue->getCache(funcDuplexMode, 0);
+        if (dupCache.value.isValid())
+            mem.duplex = static_cast<quint8>(dupCache.value.value<duplexMode_t>()) & 0x0f;
+        if (rigCaps->commands.contains(funcReadFreqOffset)) {
+            cacheItem offCache = queue->getCache(funcReadFreqOffset, 0);
+            if (offCache.value.isValid()) mem.duplexOffset = offCache.value.value<freqt>();
+        }
+        // A channel that says "shift down" with no shift transmits on its own
+        // receive frequency. Refuse rather than store that.
+        if (mem.duplex != 0 && mem.duplexOffset.Hz == 0) {
+            qCWarning(logWebServer) << "writeMemory: refusing channel" << ch
+                                    << "- duplex set with no offset";
+            if (client) {
+                QJsonObject err;
+                err["type"] = "error";
+                err["message"] = "Memory not saved: repeater shift is set but the offset is unknown";
+                sendJsonTo(client, err);
+            }
+            return;
+        }
+        mem.duplexOffsetB = mem.duplexOffset;
         // Get the current operating frequency and mode. getVfoCommand only
         // routes to funcSelectedFreq/Mode while the rig is in VFO mode, and
         // rigs differ in which cache the periodic poll fills — so fall back
@@ -2165,6 +2326,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         mem.tsqlB = mem.tsql;
         mem.dtcsB = mem.dtcs;
         mem.dtcspB = mem.dtcsp;
+        mem.duplexB = mem.duplex;
         queue->addUnique(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<memoryType>(mem), false, 0));
     }
     else if (type == "renameMemory") {
@@ -2906,6 +3068,10 @@ QJsonObject webServer::buildInfoJson() const
         // command (IC-705/9700/905/785x) can shift the TX frequency, so the
         // DUP tile follows that capability rather than a model list.
         info["hasDuplex"] = rigCaps->commands.contains(funcSendFreqOffset);
+        // Antenna tuner (see receiveRigCaps): tuner-less rigs (IC-9700/905,
+        // the receivers, the older HF rigs) never declare the ATU command.
+        info["hasTuner"] = rigCaps->commands.contains(funcTunerStatus);
+        addToneCaps(info);
         if (!rigCaps->scopeCenterSpans.empty()) {
             QJsonArray spans;
             for (const centerSpanData &s : rigCaps->scopeCenterSpans) {
@@ -3195,6 +3361,9 @@ QJsonObject webServer::buildStatusJson()
         }
     }
 
+    // Repeater access tone (TONE / TSQL / DTCS)
+    addToneStatus(status);
+
     // Monitor
     cacheItem mon = queue->getCache(funcMonitor, 0);
     if (mon.value.isValid()) status["monitor"] = mon.value.toBool();
@@ -3260,6 +3429,26 @@ QJsonObject webServer::buildStatusJson()
 
 void webServer::receiveCache(cacheItem item)
 {
+    // Tone state is mirrored here, ahead of the no-clients shortcut below: the
+    // REST status and a memory write both need it whether or not a browser is
+    // attached. Nothing in this block may call back into the queue — see the
+    // note on these members in webserver.h.
+    switch (item.command) {
+    case funcToneSquelchType:
+        toneModeCache = item.value.value<rptrAccessData>().accessMode;
+        break;
+    case funcRepeaterTone: toneFlagTone = item.value.toBool(); break;
+    case funcRepeaterTSQL: toneFlagTsql = item.value.toBool(); break;
+    case funcRepeaterDTCS: toneFlagDtcs = item.value.toBool(); break;
+    // The tone scan reads the squelch, not the browser, so it too is serviced
+    // before that shortcut — otherwise a sweep whose last client walked away
+    // would run to exhaustion without noticing it had found the tone. Only the
+    // rig ever reports this register, so this slot is always reached through a
+    // queued connection here and the queue calls below are safe.
+    default:
+        break;
+    }
+
     if (wsClients.isEmpty()) return;
 
     QJsonObject update;
@@ -3448,6 +3637,26 @@ void webServer::receiveCache(cacheItem item)
     case funcDuplexMode:
         update["duplex"] = duplexModeName(item.value.value<duplexMode_t>());
         break;
+    // Whichever dialect reported, re-derive the one mode the browser knows.
+    case funcToneSquelchType:
+    case funcRepeaterTone:
+    case funcRepeaterTSQL:
+    case funcRepeaterDTCS:
+        scheduleToneModeNotify();
+        return;
+    case funcToneFreq:
+        update["toneFreq"] = item.value.value<toneInfo>().tone;
+        break;
+    case funcTSQLFreq:
+        update["tsqlFreq"] = item.value.value<toneInfo>().tone;
+        break;
+    case funcDTCSCode:
+    {
+        toneInfo t = item.value.value<toneInfo>();
+        update["dtcsCode"] = t.tone;
+        update["dtcsPolarity"] = (t.tinv ? 2 : 0) | (t.rinv ? 1 : 0);
+        break;
+    }
     case funcReadFreqOffset:
     case funcSendFreqOffset:
         update["duplexOffset"] = (double)item.value.value<freqt>().Hz;
@@ -3564,6 +3773,17 @@ void webServer::sendPeriodicStatus()
             activeVfoLocal = qv;
             activeReceiver = (qv == vfoB || qv == vfoSub) ? 1 : 0;
         }
+    }
+
+    // The duplex offset is asked for nowhere else: buildStatusJson() runs only
+    // when a browser connects, so the one request it makes lands while the
+    // cache is still cold and nothing ever retries. The rig also keeps a
+    // separate offset per band, so a band change silently replaces it. Poll it
+    // on a slow tick — getCache() re-requests only what has gone stale, and
+    // receiveCache() pushes duplexOffset to clients when it changes.
+    if (queue && rigCaps && rigCaps->commands.contains(funcReadFreqOffset)
+            && ++dupOffsetPollTick % 25 == 0) {          // 200 ms tick -> 5 s
+        queue->getCache(funcReadFreqOffset, 0);
     }
 
     // Request meter updates by querying current cache values
@@ -3733,8 +3953,14 @@ QJsonObject webServer::memoryToJson(const memoryType &mem)
     o["duplex"] = mem.duplex;
     o["split"] = (int)mem.split;
     o["tonemode"] = mem.tonemode;
+    // The stored nibble uses the same encoding as the live tone mode, so the
+    // browser can label a channel without repeating the enum.
+    o["toneModeName"] = toneModeName(static_cast<rptAccessTxRx_t>(mem.tonemode));
     o["tone"] = mem.tone;
     o["tsql"] = mem.tsql;
+    o["dtcs"] = mem.dtcs;
+    o["dtcsPolarity"] = mem.dtcsp;
+    o["duplexOffset"] = (qint64)mem.duplexOffset.Hz;
     o["skip"] = mem.skip;
     o["del"] = mem.del;
     if (mem.frequency.Hz == 0 && mem.mode == 0) {
@@ -3895,8 +4121,151 @@ bool webServer::recallMemoryOnRig(int channel, int group, QString *error)
 
     // Read freq/mode back so the browser display follows the recalled channel.
     requestVfoUpdate();
+    // …and the tone the channel just restored, so the TONE tile and indicator
+    // show what the rig is actually doing rather than the previous VFO's tone.
+    for (funcs f : { funcToneSquelchType, funcRepeaterTone, funcRepeaterTSQL,
+                     funcRepeaterDTCS, funcToneFreq, funcTSQLFreq, funcDTCSCode }) {
+        if (rigCaps->commands.contains(f)) queue->addUnique(priorityImmediate, f, false, 0);
+    }
     return true;
 }
+
+// --- Repeater access tone ---
+
+// What the browser needs to draw the TONE panel: which of the three tone kinds
+// this rig can do, whether the tone *frequency* is settable (the IC-905 can
+// engage a tone but has no 0x1B register), and the rig's own tone tables.
+void webServer::addToneCaps(QJsonObject &o) const
+{
+    if (!rigCaps) return;
+    const bool hasTone = toneCommandsAvailable();
+    o["hasCTCSS"] = hasTone && !rigCaps->ctcss.empty();
+    o["hasDTCS"] = hasTone && !rigCaps->dtcs.empty()
+                && rigCaps->commands.contains(funcDTCSCode);
+    o["hasToneSqlType"] = rigCaps->commands.contains(funcToneSquelchType);
+    o["canSetToneFreq"] = rigCaps->commands.contains(funcToneFreq);
+    o["canSetTsqlFreq"] = rigCaps->commands.contains(funcTSQLFreq);
+    if (hasTone && !rigCaps->ctcss.empty()) {
+        QJsonArray tones;
+        for (const toneInfo &t : rigCaps->ctcss) tones.append(t.tone);
+        o["ctcssTones"] = tones;
+    }
+    if (o["hasDTCS"].toBool()) {
+        QJsonArray codes;
+        for (const toneInfo &t : rigCaps->dtcs) codes.append(t.tone);
+        o["dtcsCodes"] = codes;
+    }
+}
+
+// True when the rig can engage a tone at all — either dialect will do.
+bool webServer::toneCommandsAvailable() const
+{
+    if (!rigCaps) return false;
+    return rigCaps->commands.contains(funcToneSquelchType)
+        || rigCaps->commands.contains(funcRepeaterTone)
+        || rigCaps->commands.contains(funcRepeaterTSQL)
+        || rigCaps->commands.contains(funcRepeaterDTCS);
+}
+
+// Collapse whichever dialect the rig speaks into a single rptAccessTxRx_t.
+// Rigs with the "Tone Squelch Type" register report the combined modes
+// directly; the rest are three independent booleans we fold together.
+//
+// Reads only the mirrored members (see the note in webserver.h) so it is safe
+// to call from receiveCache(), which may hold the queue mutex.
+rptAccessTxRx_t webServer::currentToneMode() const
+{
+    if (!rigCaps) return ratrNN;
+    if (rigCaps->commands.contains(funcToneSquelchType)) return toneModeCache;
+    // DTCS wins over the CTCSS pair: a rig in DTCS is not also sending a tone.
+    if (toneFlagDtcs) return ratrDD;
+    if (toneFlagTone && toneFlagTsql) return ratrTT;
+    if (toneFlagTsql) return ratrNT;
+    if (toneFlagTone) return ratrTN;
+    return ratrNN;
+}
+
+// Write the mode back out in whichever dialect the rig speaks. On the boolean
+// rigs every flag is written every time — leaving the previous mode's flag set
+// would silently combine the two.
+void webServer::applyToneMode(rptAccessTxRx_t mode)
+{
+    if (!queue || !rigCaps) return;
+    if (rigCaps->commands.contains(funcToneSquelchType)) {
+        rptrAccessData r;
+        r.accessMode = mode;
+        queue->addUnique(priorityImmediate,
+                         queueItem(funcToneSquelchType, QVariant::fromValue<rptrAccessData>(r), false, 0));
+        queue->receiveValue(funcToneSquelchType, QVariant::fromValue<rptrAccessData>(r), 0);
+        return;
+    }
+    struct { funcs f; bool on; } flags[] = {
+        { funcRepeaterTone, toneModeUsesTone(mode) },
+        { funcRepeaterTSQL, toneModeUsesTsql(mode) },
+        { funcRepeaterDTCS, toneModeUsesDtcs(mode) },
+    };
+    for (const auto &fl : flags) {
+        if (!rigCaps->commands.contains(fl.f)) continue;
+        queue->addUnique(priorityImmediate, queueItem(fl.f, QVariant::fromValue<bool>(fl.on), false, 0));
+        queue->receiveValue(fl.f, QVariant::fromValue<bool>(fl.on), 0);
+    }
+    scheduleToneModeNotify();
+}
+
+// Coalesce the tone-mode notification. Three flags land as three separate
+// cache updates — whether we just wrote them or the rig is answering a poll —
+// and folding after each one would flash a mode nobody selected.
+void webServer::scheduleToneModeNotify()
+{
+    if (!toneModeNotifyTimer) {
+        toneModeNotifyTimer = new QTimer(this);
+        toneModeNotifyTimer->setSingleShot(true);
+        toneModeNotifyTimer->setInterval(60);
+        connect(toneModeNotifyTimer, &QTimer::timeout, this, [this]() {
+            if (wsClients.isEmpty()) return;
+            QJsonObject u;
+            u["type"] = "update";
+            u["toneMode"] = toneModeName(currentToneMode());
+            sendJsonToAll(u);
+        });
+    }
+    toneModeNotifyTimer->start();
+}
+
+// Shared by the periodic status and the REST status document.
+void webServer::addToneStatus(QJsonObject &o)
+{
+    if (!queue || !rigCaps || !toneCommandsAvailable()) return;
+    // currentToneMode() is served from the mirrored members, so ask the queue
+    // for the mode registers here — getCache() re-requests anything stale, and
+    // this runs from the status build, where the queue mutex is free.
+    if (rigCaps->commands.contains(funcToneSquelchType)) {
+        queue->getCache(funcToneSquelchType, 0);
+    } else {
+        for (funcs f : { funcRepeaterTone, funcRepeaterTSQL, funcRepeaterDTCS }) {
+            if (rigCaps->commands.contains(f)) queue->getCache(f, 0);
+        }
+    }
+    o["toneMode"] = toneModeName(currentToneMode());
+    if (rigCaps->commands.contains(funcToneFreq)) {
+        cacheItem c = queue->getCache(funcToneFreq, 0);
+        if (c.value.isValid()) o["toneFreq"] = c.value.value<toneInfo>().tone;
+    }
+    if (rigCaps->commands.contains(funcTSQLFreq)) {
+        cacheItem c = queue->getCache(funcTSQLFreq, 0);
+        if (c.value.isValid()) o["tsqlFreq"] = c.value.value<toneInfo>().tone;
+    }
+    if (rigCaps->commands.contains(funcDTCSCode)) {
+        cacheItem c = queue->getCache(funcDTCSCode, 0);
+        if (c.value.isValid()) {
+            toneInfo t = c.value.value<toneInfo>();
+            o["dtcsCode"] = t.tone;
+            o["dtcsPolarity"] = (t.tinv ? 2 : 0) | (t.rinv ? 1 : 0);
+        }
+    }
+}
+
+
 
 // --- Audio Streaming ---
 

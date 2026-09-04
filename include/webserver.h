@@ -559,6 +559,32 @@ private:
     QString modeRegToString(quint8 reg);
     void scanNextMemory();
     bool recallMemoryOnRig(int channel, int group, QString *error = nullptr);
+
+    // Repeater access tone (TONE / TSQL / DTCS). Rigs speak one of two
+    // dialects — the single "Tone Squelch Type" register (IC-705/9700/905) or
+    // independent TONE/TSQL/DTCS booleans (IC-7300/7610/…) — and these two
+    // helpers hide the difference behind one rptAccessTxRx_t.
+    // Tone state is mirrored into these members by receiveCache() rather than
+    // read back out of the queue on demand. receiveCache() can run
+    // *synchronously inside* cachingQueue::receiveValue() — Qt picks a direct
+    // connection when the emit happens on the receiver's own thread, which is
+    // exactly what applyToneMode() does — and the queue mutex is held for the
+    // duration. Calling queue->getCache() from there deadlocks.
+    rptAccessTxRx_t toneModeCache = ratrNN;   // the 0x16 0x5D dialect
+    bool toneFlagTone = false;                // the 0x16 0x42/0x43/0x4B dialect
+    bool toneFlagTsql = false;
+    bool toneFlagDtcs = false;
+    rptAccessTxRx_t currentToneMode() const;
+    void applyToneMode(rptAccessTxRx_t mode);
+    // The boolean dialect needs three writes (and answers three reads) for one
+    // mode, so the folded value is briefly nonsense — TONE on its way to TSQL
+    // reads as TONE(T)/TSQL(R) in between. Clients are told once things settle.
+    int dupOffsetPollTick = 0;   // slow-tick counter for the duplex offset
+    QTimer *toneModeNotifyTimer = nullptr;
+    void scheduleToneModeNotify();
+    void addToneCaps(QJsonObject &o) const;
+    void addToneStatus(QJsonObject &o);
+    bool toneCommandsAvailable() const;
 };
 
 #endif // WEBSERVER_H

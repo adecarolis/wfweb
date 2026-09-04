@@ -526,12 +526,27 @@ toneInfo icomCommander::decodeTone(QByteArray eTone)
     tone += (eTone.at(1) & 0x0f) *  100;
     tone += ((eTone.at(1) & 0xf0) >> 4) * 1000;
 
+    // The tables only supply the display name; the value the rig sent is
+    // authoritative. Falling through to toneInfo's default here used to
+    // report 670 ("67.0") for anything absent from the CTCSS list — which is
+    // every DTCS code, since this same decoder handles 1B 02. A memory
+    // written from that cache carried DTCS 670, which no rig accepts.
+    bool named = false;
     for (const auto &ti: rigCaps.ctcss)
     {
-        if (ti.tone == tone) {
-            t = ti;
-            break;
+        if (ti.tone == tone) { t = ti; named = true; break; }
+    }
+    if (!named)
+    {
+        for (const auto &ti: rigCaps.dtcs)
+        {
+            if (ti.tone == tone) { t = ti; named = true; break; }
         }
+    }
+    if (!named)
+    {
+        t.tone = tone;
+        t.name = QString::number(tone);
     }
 
     if((eTone.at(0) & 0x01) == 0x01)
@@ -2786,10 +2801,14 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
             mem->dvsqlB = bcdHexToUChar(data[0]);
             break;
         case 's':
-            mem->duplexOffset.Hz = parseFreqDataToInt(data);
+            // The stored offset drops the two lowest digits — the encoder
+            // writes makeFreqPayload(...).mid(1,len), so the field's unit is
+            // 100 Hz. Scale back to Hz or a read/write round trip shrinks
+            // every repeater shift by a factor of 100.
+            mem->duplexOffset.Hz = parseFreqDataToInt(data) * 100;
             break;
         case 'S':
-            mem->duplexOffsetB.Hz = parseFreqDataToInt(data);
+            mem->duplexOffsetB.Hz = parseFreqDataToInt(data) * 100;
             break;
         case 't':
             memcpy(mem->UR,data.data(),qMin(int(sizeof mem->UR),data.size()));

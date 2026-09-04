@@ -47,6 +47,7 @@ cp "$SRC"/civ/*.js       "$DIST/civ/"
 cp "$SHARED/digits-sprite.png" "$DIST/"
 for f in cw-decoder.js cw-decoder-stft.js cw-decoder-utils.js cw-decoder-worker.js \
          ggmorse-wasm.js packet.js reporters.js airbus.js wf-canvas.js urltune.js \
+         ctcss.js \
          theme.css js8-panel.css js8-panel.mjs js8.mjs; do
     cp "$SHARED/$f" "$DIST/"
 done
