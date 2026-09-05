@@ -70,6 +70,7 @@ servermain::servermain(const QString settingsFile, const cmdLineOverrides& overr
 
     loadSettings(); // Look for saved preferences
     applyCLIOverrides();
+    autoDetectSerialPort();
 
     setManufacturer(prefs.manufacturer);
 
@@ -424,7 +425,10 @@ void servermain::connectToRig(RIGCONFIG* rig)
         }
     }
 
-    qDebug(logSystem()) << "Searching for rig on" << rig->serialPort;
+    if (prefs.enableLAN)
+        qDebug(logSystem()) << "Searching for rig via LAN at" << udpPrefs.ipAddress;
+    else
+        qDebug(logSystem()) << "Searching for rig on" << rig->serialPort;
     rig->probeAttempts++;
     QMetaObject::invokeMethod(rig->rig, [=]() {
         rig->rig->receiveCommand(funcTransceiverId,QVariant(),0);
@@ -747,81 +751,8 @@ void servermain::loadSettings()
         tempPrefs->rxAudioSetup.type = prefs.audioSystem;
         tempPrefs->txAudioSetup.type = prefs.audioSystem;
 
-        if (tempPrefs->serialPort == "auto") {
-            // Find the ICOM radio connected, or, if none, fall back to OS default.
-            // qInfo(logSystem()) << "Searching for serial port...";
-            QString serialPortRig="";
-            bool found = false;
-            // First try to find first Icom port:
-            for(const QSerialPortInfo & serialPortInfo: QSerialPortInfo::availablePorts())
-            {
-                if (serialPortInfo.serialNumber().left(3) == "IC-") {
-                    qInfo(logSystem()) << "Icom Serial Port found: " << serialPortInfo.portName() << "S/N" << serialPortInfo.serialNumber();
-#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
-                    tempPrefs->serialPort = (QString("/dev/") + serialPortInfo.portName());
-#else
-                    tempPrefs->serialPort = serialPortInfo.portName();
-#endif
-                    tempPrefs->rigName = serialPortInfo.serialNumber();
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found) {
-                QDirIterator it73("/dev/serial/by-id", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
-                QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*A*", QDir::Files, QDirIterator::Subdirectories);
-                QDirIterator it785x("/dev/serial", QStringList() << "*IC-785*A*", QDir::Files, QDirIterator::Subdirectories);
-                QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
-                QDirIterator it7610("/dev/serial", QStringList() << "*IC-7610*A", QDir::Files, QDirIterator::Subdirectories);
-                QDirIterator itR8600("/dev/serial", QStringList() << "*IC-R8600*A", QDir::Files, QDirIterator::Subdirectories);
-
-                if(!it73.filePath().isEmpty())
-                {
-                    // IC-7300
-                    tempPrefs->serialPort = it73.filePath(); // first
-                } else if(!it97.filePath().isEmpty())
-                {
-                    // IC-9700
-                    tempPrefs->serialPort = it97.filePath();
-                } else if(!it785x.filePath().isEmpty())
-                {
-                    // IC-785x
-                    tempPrefs->serialPort = it785x.filePath();
-                } else if(!it705.filePath().isEmpty())
-                {
-                    // IC-705
-                    tempPrefs->serialPort = it705.filePath();
-                } else if(!it7610.filePath().isEmpty())
-                {
-                    // IC-7610
-                    tempPrefs->serialPort = it7610.filePath();
-                } else if(!itR8600.filePath().isEmpty())
-                {
-                    // IC-R8600
-                    tempPrefs->serialPort = itR8600.filePath();
-                }
-                else {
-                    //fall back:
-                    qInfo(logSystem()) << "Could not find an Icom serial port. Falling back to OS default. Use --serial-port to specify, or modify preferences.";
-                    qInfo(logSystem()) << "Found serial ports:";
-                    for(const QSerialPortInfo & serialPortInfo: QSerialPortInfo::availablePorts())
-                    {
-                            qInfo(logSystem()) << serialPortInfo.portName() << "Manufacturer:" << serialPortInfo.manufacturer() << "S/N:" << serialPortInfo.serialNumber();
-                    }
-
-#ifdef Q_OS_MAC
-                    tempPrefs->serialPort = QString("/dev/tty.SLAB_USBtoUART");
-#endif
-#ifdef Q_OS_LINUX
-                    tempPrefs->serialPort = QString("/dev/ttyUSB0");
-#endif
-#ifdef Q_OS_WIN
-                    tempPrefs->serialPort = QString("COM1");
-#endif
-                }
-            }
-        }
+        // "auto" is resolved later by autoDetectSerialPort(), once the LAN
+        // section and CLI overrides are known — LAN rigs never touch USB.
 
         QString guid = settings->value("GUID", "").toString();
         if (guid.isEmpty()) {
@@ -990,6 +921,97 @@ void servermain::applyCLIOverrides()
                            << "control:" << udpPrefs.controlLANPort
                            << "serial:" << udpPrefs.serialLANPort
                            << "audio:" << udpPrefs.audioLANPort;
+    }
+}
+
+void servermain::autoDetectSerialPort()
+{
+    // Resolve SerialPortRadio="auto" to a real device. Runs after loadSettings()
+    // and applyCLIOverrides() so that a LAN rig (EnableLAN or --lan) never
+    // enumerates or claims a USB serial port, and --serial-port wins without
+    // any enumeration either.
+    if (prefs.enableLAN) {
+        qDebug(logSystem()) << "LAN mode: skipping serial port discovery";
+        return;
+    }
+
+    for (RIGCONFIG* rig : serverConfig.rigs)
+    {
+        if (rig->serialPort == "auto") {
+            // Find the ICOM radio connected, or, if none, fall back to OS default.
+            // qInfo(logSystem()) << "Searching for serial port...";
+            QString serialPortRig="";
+            bool found = false;
+            // First try to find first Icom port:
+            for(const QSerialPortInfo & serialPortInfo: QSerialPortInfo::availablePorts())
+            {
+                if (serialPortInfo.serialNumber().left(3) == "IC-") {
+                    qInfo(logSystem()) << "Icom Serial Port found: " << serialPortInfo.portName() << "S/N" << serialPortInfo.serialNumber();
+#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
+                    rig->serialPort = (QString("/dev/") + serialPortInfo.portName());
+#else
+                    rig->serialPort = serialPortInfo.portName();
+#endif
+                    rig->rigName = serialPortInfo.serialNumber();
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                QDirIterator it73("/dev/serial/by-id", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
+                QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*A*", QDir::Files, QDirIterator::Subdirectories);
+                QDirIterator it785x("/dev/serial", QStringList() << "*IC-785*A*", QDir::Files, QDirIterator::Subdirectories);
+                QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
+                QDirIterator it7610("/dev/serial", QStringList() << "*IC-7610*A", QDir::Files, QDirIterator::Subdirectories);
+                QDirIterator itR8600("/dev/serial", QStringList() << "*IC-R8600*A", QDir::Files, QDirIterator::Subdirectories);
+
+                if(!it73.filePath().isEmpty())
+                {
+                    // IC-7300
+                    rig->serialPort = it73.filePath(); // first
+                } else if(!it97.filePath().isEmpty())
+                {
+                    // IC-9700
+                    rig->serialPort = it97.filePath();
+                } else if(!it785x.filePath().isEmpty())
+                {
+                    // IC-785x
+                    rig->serialPort = it785x.filePath();
+                } else if(!it705.filePath().isEmpty())
+                {
+                    // IC-705
+                    rig->serialPort = it705.filePath();
+                } else if(!it7610.filePath().isEmpty())
+                {
+                    // IC-7610
+                    rig->serialPort = it7610.filePath();
+                } else if(!itR8600.filePath().isEmpty())
+                {
+                    // IC-R8600
+                    rig->serialPort = itR8600.filePath();
+                }
+                else {
+                    //fall back:
+                    qInfo(logSystem()) << "Could not find an Icom serial port. Falling back to OS default. Use --serial-port to specify, or modify preferences.";
+                    qInfo(logSystem()) << "Found serial ports:";
+                    for(const QSerialPortInfo & serialPortInfo: QSerialPortInfo::availablePorts())
+                    {
+                            qInfo(logSystem()) << serialPortInfo.portName() << "Manufacturer:" << serialPortInfo.manufacturer() << "S/N:" << serialPortInfo.serialNumber();
+                    }
+
+#ifdef Q_OS_MAC
+                    rig->serialPort = QString("/dev/tty.SLAB_USBtoUART");
+#endif
+#ifdef Q_OS_LINUX
+                    rig->serialPort = QString("/dev/ttyUSB0");
+#endif
+#ifdef Q_OS_WIN
+                    rig->serialPort = QString("COM1");
+#endif
+                }
+            }
+        }
     }
 }
 

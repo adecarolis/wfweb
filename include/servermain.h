@@ -219,6 +219,7 @@ private:
     QSettings *settings=Q_NULLPTR;
     void loadSettings();
     void applyCLIOverrides();
+    void autoDetectSerialPort();
     cmdLineOverrides cliOverrides;
 
     void openRig();
