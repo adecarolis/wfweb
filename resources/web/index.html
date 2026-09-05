@@ -2964,6 +2964,9 @@ function handleMessage(msg) {
             if (msg.nb !== undefined) updateToggle('nb', msg.nb);
             if (msg.nr !== undefined) updateToggle('nr', msg.nr);
             if (msg.autoNotch !== undefined) updateToggle('anf', msg.autoNotch);
+            // hasTuner arrives here when the server learns, after the fact, that the
+            // rig refuses (or has started answering) the tuner status read.
+            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
             if (msg.tuner !== undefined) updateTunerState(msg.tuner);
             if (msg.preamp !== undefined) updatePreampBtn(msg.preamp);
             if (msg.attenuator !== undefined) updateAttenuatorBtn(msg.attenuator);

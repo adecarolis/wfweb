@@ -682,6 +682,8 @@ struct commandErrorType{
     int minValue;
     int maxValue;
     uchar bytes;
+    bool isSet = false;   // carried a value (set) rather than being a read
+    uchar receiver = 0;   // queue receiver the command was issued for
 };
 
 enum audioType {qtAudio,portAudio,rtAudio,tciAudio};

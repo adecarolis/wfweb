@@ -357,6 +357,19 @@ void webServer::init(quint16 httpPort, quint16 wsPort)
     connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), this, SLOT(receiveRigCaps(rigCapabilities*)));
     connect(queue, SIGNAL(cacheUpdated(cacheItem)), this, SLOT(receiveCache(cacheItem)));
 
+    // A rig that keeps refusing the tuner-status read has nothing to tune (an
+    // IC-705 declares the command for the optional AH-705 and answers FA
+    // without one): pull the TUNE tile once the queue gives up on the read.
+    // receiveCache() restores it the moment a real value arrives.
+    connect(queue, &cachingQueue::cacheRejected, this, [this](cacheItem item) {
+        if (item.command != funcTunerStatus || tunerRejected) return;
+        tunerRejected = true;
+        QJsonObject update;
+        update["type"] = "update";
+        update["hasTuner"] = false;
+        sendJsonToAll(update);
+    });
+
     sslEnabled = setupSsl();
 
     if (sslEnabled) {
@@ -464,6 +477,7 @@ void webServer::init(quint16 httpPort, quint16 wsPort)
 void webServer::receiveRigCaps(rigCapabilities *caps)
 {
     rigCaps = caps;
+    tunerRejected = false;   // new rig, new evidence
     // Notify connected clients that rig capabilities changed
     if (rigCaps) {
         QJsonObject obj;
@@ -3085,7 +3099,9 @@ QJsonObject webServer::buildInfoJson() const
         info["hasDuplex"] = rigCaps->commands.contains(funcSendFreqOffset);
         // Antenna tuner (see receiveRigCaps): tuner-less rigs (IC-9700/905,
         // the receivers, the older HF rigs) never declare the ATU command.
-        info["hasTuner"] = rigCaps->commands.contains(funcTunerStatus);
+        // The IC-705 declares it for the optional AH-705 and refuses the
+        // status read without one — tunerRejected tracks that.
+        info["hasTuner"] = rigCaps->commands.contains(funcTunerStatus) && !tunerRejected;
         addToneCaps(info);
         if (!rigCaps->scopeCenterSpans.empty()) {
             QJsonArray spans;
@@ -3457,6 +3473,7 @@ void webServer::receiveCache(cacheItem item)
     case funcRepeaterTone: toneFlagTone = item.value.toBool(); break;
     case funcRepeaterTSQL: toneFlagTsql = item.value.toBool(); break;
     case funcRepeaterDTCS: toneFlagDtcs = item.value.toBool(); break;
+    case funcTunerStatus: tunerRejected = false; break;   // the rig answered: it has a tuner
     // The tone scan reads the squelch, not the browser, so it too is serviced
     // before that shortcut — otherwise a sweep whose last client walked away
     // would run to exhaustion without noticing it had found the tone. Only the
@@ -3681,6 +3698,7 @@ void webServer::receiveCache(cacheItem item)
         break;
     case funcTunerStatus:
         update["tuner"] = item.value.toInt();  // 0=off, 1=on, 2=tuning
+        update["hasTuner"] = true;             // a value proves the tuner is there
         break;
     case funcPreamp:
         update["preamp"] = item.value.toInt();
@@ -3799,9 +3817,15 @@ void webServer::sendPeriodicStatus()
     // separate offset per band, so a band change silently replaces it. Poll it
     // on a slow tick — getCache() re-requests only what has gone stale, and
     // receiveCache() pushes duplexOffset to clients when it changes.
-    if (queue && rigCaps && rigCaps->commands.contains(funcReadFreqOffset)
-            && ++dupOffsetPollTick % 25 == 0) {          // 200 ms tick -> 5 s
-        queue->getCache(funcReadFreqOffset, 0);
+    // The tuner status rides the same tick on rigs whose .rig file does not
+    // poll it: a TUNER press on the rig's own panel would otherwise never
+    // reach the browser, and it is the evidence the NAK back-off needs to
+    // hide the tile on an IC-705 with no AH-705 (see tunerRejected).
+    if (queue && rigCaps && ++slowPollTick % 25 == 0) {   // 200 ms tick -> 5 s
+        if (rigCaps->commands.contains(funcReadFreqOffset))
+            queue->getCache(funcReadFreqOffset, 0);
+        if (rigCaps->commands.contains(funcTunerStatus))
+            queue->getCache(funcTunerStatus, 0);
     }
 
     // Request meter updates by querying current cache values

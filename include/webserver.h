@@ -230,6 +230,9 @@ private:
     bool rigPoweredOn = true;
     bool lanMode = false;
     bool lanConnected = false;
+    // The rig declares the ATU command but keeps refusing its status read
+    // (IC-705 with no AH-705 attached): hide the tuner until it answers.
+    bool tunerRejected = false;
 
     // Locally tracked active VFO/receiver. Mirrors cachingQueue::rigState.vfo
     // but is read/written entirely on webThread, so receiveCache() can route
@@ -584,7 +587,7 @@ private:
     // The boolean dialect needs three writes (and answers three reads) for one
     // mode, so the folded value is briefly nonsense — TONE on its way to TSQL
     // reads as TONE(T)/TSQL(R) in between. Clients are told once things settle.
-    int dupOffsetPollTick = 0;   // slow-tick counter for the duplex offset
+    int slowPollTick = 0;        // 5 s tick in sendPeriodicStatus (duplex offset, tuner status)
     QTimer *toneModeNotifyTimer = nullptr;
     void scheduleToneModeNotify();
     void addToneCaps(QJsonObject &o) const;

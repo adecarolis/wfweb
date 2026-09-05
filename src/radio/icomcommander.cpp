@@ -1562,13 +1562,31 @@ void icomCommander::parseCommand()
         break;
     case funcFA:
     {
+        // Let the queue count refused reads per command, so it stops asking
+        // for one the rig will never answer (the IC-705's tuner status with
+        // no AH-705 attached, filter width on a receive-only band).  Only
+        // reads are counted: a refused set is a complaint about the value.
+        int nak = 0;
+        if (!lastCommand.isSet && lastCommand.func != funcNone)
+            nak = queue->receiveNak(lastCommand.func, lastCommand.receiver);
         if (!lastCommand.data.isEmpty()) {
             if (!warnedAboutFA) {
                 qInfo(logRig()) << "Occasional error response (FA) from rig can safely be ignored";
                  warnedAboutFA=true;
             }
-            qWarning(logRig()) << "Rig (FA) error, last command sent:" << funcString[lastCommand.func] << "(min:" << lastCommand.minValue << "max:" <<
-                lastCommand.maxValue << "bytes:" << lastCommand.bytes <<  ") data:" << lastCommand.data.toHex(' ');
+            // Once the queue has backed a read off, its further refusals are
+            // expected: say so once at info level, then keep them at debug.
+            QString msg = QString("Rig (FA) error, last command sent: \"%1\" (min: %2 max: %3 bytes: %4 ) data: \"%5\"")
+                .arg(funcString[lastCommand.func]).arg(lastCommand.minValue).arg(lastCommand.maxValue)
+                .arg(lastCommand.bytes).arg(QString(lastCommand.data.toHex(' ')));
+            if (nak > CACHE_NAK_LIMIT)
+                qDebug(logRig()).noquote() << msg;
+            else
+                qWarning(logRig()).noquote() << msg;
+            if (nak == CACHE_NAK_LIMIT)
+                qInfo(logRig()) << "Rig has refused" << nak << "consecutive reads of" << funcString[lastCommand.func]
+                                << "- backing off to one attempt every" << CACHE_NAK_RETRY_SECS
+                                << "s (further refusals logged at debug level)";
         }
         consecutiveFAErrors++;
         validResponseCount = 0;
@@ -3753,6 +3771,8 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
         lastCommand.minValue = cmd.minVal;
         lastCommand.maxValue = cmd.maxVal;
         lastCommand.bytes = cmd.bytes;
+        lastCommand.isSet = value.isValid();
+        lastCommand.receiver = receiver;
     }
     else
     {
