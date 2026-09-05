@@ -117,6 +117,10 @@ class CivRadioBase:
         self._alc: int = 0
         self._power_meter: int = 0
 
+        # Emulate a blank memory channel: a real IC-705 answers the frequency
+        # and mode reads with a single 0xFF data byte instead of BCD digits.
+        self.blank_channel: bool = False
+
         # Track received CI-V commands for test assertions
         self.civ_log: list[bytes] = []
 
@@ -179,6 +183,8 @@ class CivRadioBase:
                                   data=bytes([0x00, self._radio_addr]))
 
         if cmd == CMD_FREQ_READ:
+            if self.blank_channel:
+                return self.civ_frame(to, frm, CMD_FREQ_READ, data=b"\xff")
             return self.civ_frame(to, frm, CMD_FREQ_READ,
                                   data=bcd_encode_freq(self._frequency))
 
@@ -188,6 +194,8 @@ class CivRadioBase:
             return self.civ_ack(to, frm)
 
         if cmd == CMD_MODE_READ:
+            if self.blank_channel:
+                return self.civ_frame(to, frm, CMD_MODE_READ, data=b"\xff")
             return self.civ_frame(to, frm, CMD_MODE_READ,
                                   data=bytes([self._mode, self._filter]))
 
@@ -219,6 +227,9 @@ class CivRadioBase:
                     self._frequency = bcd_decode_freq(rest)
                 return self.civ_ack(to, frm)
             else:
+                if self.blank_channel:
+                    return self.civ_frame(to, frm, CMD_RX_FREQ,
+                                          data=bytes([receiver, 0xFF]))
                 return self.civ_frame(to, frm, CMD_RX_FREQ,
                                       data=bytes([receiver]) + bcd_encode_freq(self._frequency))
 
@@ -231,6 +242,9 @@ class CivRadioBase:
                     self._filter = rest[1]
                 return self.civ_ack(to, frm)
             else:
+                if self.blank_channel:
+                    return self.civ_frame(to, frm, CMD_RX_MODE,
+                                          data=bytes([receiver, 0xFF]))
                 return self.civ_frame(to, frm, CMD_RX_MODE,
                                       data=bytes([receiver, self._mode, self._filter]))
 

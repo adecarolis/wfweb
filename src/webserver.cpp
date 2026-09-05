@@ -918,10 +918,14 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             vfoCommandType t = queue->getVfoCommand(vfoA, rx, false);
             cacheItem freqCache = queue->getCache(t.freqFunc, t.receiver);
             QJsonObject resp;
+            resp["hz"] = QJsonValue(QJsonValue::Null);
+            resp["mhz"] = QJsonValue(QJsonValue::Null);
             if (freqCache.value.isValid()) {
                 freqt f = freqCache.value.value<freqt>();
-                resp["hz"] = (qint64)f.Hz;
-                resp["mhz"] = f.MHzDouble;
+                if (f.Hz) {
+                    resp["hz"] = (qint64)f.Hz;
+                    resp["mhz"] = f.MHzDouble;
+                }
             }
             sendRestResponse(socket, 200, resp);
         } else if (method == "PUT") {
@@ -968,10 +972,12 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             vfoCommandType t = queue->getVfoCommand(vfoA, rx, false);
             cacheItem modeCache = queue->getCache(t.modeFunc, t.receiver);
             QJsonObject resp;
+            resp["mode"] = QJsonValue(QJsonValue::Null);
+            resp["filter"] = QJsonValue(QJsonValue::Null);
             if (modeCache.value.isValid()) {
                 modeInfo m = modeCache.value.value<modeInfo>();
-                resp["mode"] = modeToString(m);
-                resp["filter"] = m.filter;
+                resp["mode"] = modeJson(m);
+                resp["filter"] = filterJson(m);
             }
             sendRestResponse(socket, 200, resp);
         } else if (method == "PUT") {
@@ -1016,11 +1022,11 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             QJsonObject resp;
             vfoCommandType tA = queue->getVfoCommand(vfoA, 0, false);
             cacheItem freqA = queue->getCache(tA.freqFunc, 0);
-            if (freqA.value.isValid()) resp["vfoA"] = (qint64)freqA.value.value<freqt>().Hz;
+            if (freqA.value.isValid()) resp["vfoA"] = freqJson(freqA.value.value<freqt>());
             bool cmd29 = rigCaps && rigCaps->hasCommand29;
             vfoCommandType tB = queue->getVfoCommand(vfoB, cmd29 ? 1 : 0, false);
             cacheItem freqB = queue->getCache(tB.freqFunc, cmd29 ? 1 : 0);
-            if (freqB.value.isValid()) resp["vfoB"] = (qint64)freqB.value.value<freqt>().Hz;
+            if (freqB.value.isValid()) resp["vfoB"] = freqJson(freqB.value.value<freqt>());
             sendRestResponse(socket, 200, resp);
         } else if (method == "PUT") {
             if (!queue || !rigCaps) {
@@ -3195,12 +3201,13 @@ QJsonObject webServer::buildStatusJson()
 
     vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
 
-    // Frequency - keep current VFO frequency for backwards compat
+    // Frequency - keep current VFO frequency for backwards compat. The key is
+    // always present: null before the first reply and while the rig has no
+    // frequency to report (blank memory channel), never a bogus number.
     cacheItem freqCache = queue->getCache(t.freqFunc, 0);
-    if (freqCache.value.isValid()) {
-        freqt f = freqCache.value.value<freqt>();
-        status["frequency"] = (qint64)f.Hz;
-    }
+    status["frequency"] = freqCache.value.isValid()
+                        ? freqJson(freqCache.value.value<freqt>())
+                        : QJsonValue(QJsonValue::Null);
 
     // VFO A and VFO B frequencies (send both).
     // On cmd29 rigs (IC-7610 etc) the two VFOs are Main (rx=0) and Sub (rx=1),
@@ -3213,12 +3220,12 @@ QJsonObject webServer::buildStatusJson()
         vfoCommandType tA = queue->getVfoCommand(vfoA, 0, false);
         cacheItem freqCacheA = queue->getCache(tA.freqFunc, 0);
         if (freqCacheA.value.isValid()) {
-            status["vfoAFrequency"] = (qint64)freqCacheA.value.value<freqt>().Hz;
+            status["vfoAFrequency"] = freqJson(freqCacheA.value.value<freqt>());
         }
         vfoCommandType tB = queue->getVfoCommand(vfoB, 1, false);
         cacheItem freqCacheB = queue->getCache(tB.freqFunc, 1);
         if (freqCacheB.value.isValid()) {
-            status["vfoBFrequency"] = (qint64)freqCacheB.value.value<freqt>().Hz;
+            status["vfoBFrequency"] = freqJson(freqCacheB.value.value<freqt>());
         }
         status["selectedVfo"] = (queue->getState().vfo == vfoMem) ? "MEM"
                               : (queue->getState().vfo == vfoSub) ? "B" : "A";
@@ -3228,12 +3235,10 @@ QJsonObject webServer::buildStatusJson()
         cacheItem unselCache = queue->getCache(funcUnselectedFreq, 0);
         if (!selCache.value.isValid()) selCache = freqCache; // fall back to plain funcFreq
         if (selCache.value.isValid()) {
-            qint64 hz = (qint64)selCache.value.value<freqt>().Hz;
-            status[bSelected ? "vfoBFrequency" : "vfoAFrequency"] = hz;
+            status[bSelected ? "vfoBFrequency" : "vfoAFrequency"] = freqJson(selCache.value.value<freqt>());
         }
         if (unselCache.value.isValid()) {
-            qint64 hz = (qint64)unselCache.value.value<freqt>().Hz;
-            status[bSelected ? "vfoAFrequency" : "vfoBFrequency"] = hz;
+            status[bSelected ? "vfoAFrequency" : "vfoBFrequency"] = freqJson(unselCache.value.value<freqt>());
         }
         status["selectedVfo"] = (queue->getState().vfo == vfoMem) ? "MEM"
                               : bSelected ? "B" : "A";
@@ -3249,12 +3254,15 @@ QJsonObject webServer::buildStatusJson()
         if (ok) status["memChannel"] = ch;
     }
 
-    // Mode
+    // Mode - same contract as frequency: keys always present, null when unknown.
     cacheItem modeCache = queue->getCache(t.modeFunc, 0);
     if (modeCache.value.isValid()) {
         modeInfo m = modeCache.value.value<modeInfo>();
-        status["mode"] = modeToString(m);
-        status["filter"] = m.filter;
+        status["mode"] = modeJson(m);
+        status["filter"] = filterJson(m);
+    } else {
+        status["mode"] = QJsonValue(QJsonValue::Null);
+        status["filter"] = QJsonValue(QJsonValue::Null);
     }
 
     // S-Meter
@@ -3486,7 +3494,7 @@ void webServer::receiveCache(cacheItem item)
         // selectVFO handler — never via queue->getState() from this slot
         // (would re-enter the queue mutex; see issue #31 / 126f0f0c).
         freqt f = item.value.value<freqt>();
-        qint64 hz = (qint64)f.Hz;
+        QJsonValue hz = freqJson(f);
         bool cmd29 = rigCaps && rigCaps->hasCommand29;
         bool isActive;
         if (cmd29) {
@@ -3499,8 +3507,9 @@ void webServer::receiveCache(cacheItem item)
         }
         if (isActive) {
             update["frequency"] = hz;
-            if (freedvReporter) freedvReporter->updateFrequency(f.Hz);
-            if (pskReporter) pskReporter->updateFrequency(f.Hz);
+            // Reporters keep the last real frequency while the rig has none.
+            if (f.Hz && freedvReporter) freedvReporter->updateFrequency(f.Hz);
+            if (f.Hz && pskReporter) pskReporter->updateFrequency(f.Hz);
         }
         break;
     }
@@ -3511,7 +3520,7 @@ void webServer::receiveCache(cacheItem item)
         if (rigCaps && rigCaps->hasCommand29) return;
         freqt f = item.value.value<freqt>();
         bool activeIsB = (activeVfoLocal == vfoB);
-        update[activeIsB ? "vfoAFrequency" : "vfoBFrequency"] = (qint64)f.Hz;
+        update[activeIsB ? "vfoAFrequency" : "vfoBFrequency"] = freqJson(f);
         break;
     }
     case funcSelectVFO:
@@ -3559,8 +3568,8 @@ void webServer::receiveCache(cacheItem item)
     case funcModeSet:
     {
         modeInfo m = item.value.value<modeInfo>();
-        update["mode"] = modeToString(m);
-        update["filter"] = m.filter;
+        update["mode"] = modeJson(m);
+        update["filter"] = filterJson(m);
         // FreeDV/RADE only makes sense on voice-carrying modes. If the rig
         // (or the user) switches to CW/RTTY/PSK/etc, tear it down so it
         // doesn't keep trying to decode/encode through a non-audio modem.
@@ -3896,6 +3905,25 @@ void webServer::txWritePcmFrame(const QByteArray &pcmMonoLE, bool applyGain)
     }
 
     usbAudioOutputDevice->write(writeData);
+}
+
+// icomCommander caches a frequency the rig could not report as Hz == 0 and a
+// mode it could not report as a default modeInfo (IC-705 on a blank memory
+// channel answers both reads with a lone 0xFF). Emit JSON null for those so
+// the keys stay present and a client can tell "no value" from a number.
+QJsonValue webServer::freqJson(const freqt &f)
+{
+    return f.Hz ? QJsonValue((qint64)f.Hz) : QJsonValue(QJsonValue::Null);
+}
+
+QJsonValue webServer::modeJson(const modeInfo &m)
+{
+    return m.reg == 0xff ? QJsonValue(QJsonValue::Null) : QJsonValue(modeToString(m));
+}
+
+QJsonValue webServer::filterJson(const modeInfo &m)
+{
+    return m.filter == 0xff ? QJsonValue(QJsonValue::Null) : QJsonValue(int(m.filter));
 }
 
 QString webServer::modeToString(modeInfo m)

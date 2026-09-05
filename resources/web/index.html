@@ -302,6 +302,13 @@ html, body {
 .freq-digit.digit-8 { background-position: -400px 0; }
 .freq-digit.digit-9 { background-position: -450px 0; }
 .freq-digit.digit-dot { background-position: -500px 0; width: 12px; }
+/* "No frequency" placeholder (blank memory channel): the sprite has no dash,
+   so draw one; percentages keep it in step with the compact layout below. */
+.freq-digit.digit-dash { background-image: none; position: relative; }
+.freq-digit.digit-dash::after {
+    content: ''; position: absolute; left: 24%; right: 24%; top: 46%; height: 8%;
+    background: var(--text-dim);
+}
 
 /* ============ ROW 3: SCOPE INFO BAR ============ */
 #scopeInfoBar {
@@ -3023,6 +3030,21 @@ function handleMessage(msg) {
 // UI UPDATES
 // ============================================================
 function updateFrequency(hz) {
+    if (hz === null) {
+        // The server sends null when the rig has no frequency to report (blank
+        // memory channel). Show dashes rather than drawing 0.000.000.
+        currentFreq = 0;
+        lastShownFreq = 0;
+        var blank = document.getElementById('freqDisplay');
+        blank.innerHTML = '';
+        '---.---.---'.split('').forEach(function(ch) {
+            var s = document.createElement('span');
+            s.className = 'freq-digit ' + (ch === '.' ? 'digit-dot' : 'digit-dash');
+            blank.appendChild(s);
+        });
+        updateOtherVfoDisplay();
+        return;
+    }
     currentFreq = hz;
 
     // Crossing a front-end boundary (IC-705: 74.8 MHz) changes which P.AMP and
@@ -3137,6 +3159,7 @@ function updateModeBtnLabel() {
     document.getElementById('modeBtn').textContent = label;
 }
 function updateMode(mode) {
+    if (mode === null) mode = '---'; // rig has no mode to report (blank memory channel)
     var prevMode = currentMode;
     currentMode = mode;
     updateModeBtnLabel();
@@ -3187,7 +3210,7 @@ function autoOpenCwBarOnModeEntry() {
 
 function updateFilterBtn(num) {
     currentFilter = num;
-    document.getElementById('filterText').textContent = 'FIL' + num;
+    document.getElementById('filterText').textContent = 'FIL' + (num === null ? '-' : num);
     if (currentPanel === 'func') renderFuncOverlay();
     if (currentPanel === 'filter') updateFilterBtnHighlight();
 }

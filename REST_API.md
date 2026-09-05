@@ -133,6 +133,11 @@ All current radio state fields.
 curl -s http://localhost:8081/api/v1/radio/status | jq .
 ```
 
+`frequency`, `mode` and `filter` are always present. They are `null` before
+the first reply from the rig and whenever the rig has nothing to report - an
+Icom sitting on a blank memory channel answers the frequency and mode reads
+with `0xFF` instead of a value. Treat `null` as "unknown", never as 0 Hz.
+
 **Response:** same as `status` object above. Returns `503` if rig not connected.
 
 ---
@@ -147,6 +152,9 @@ curl -s http://localhost:8081/api/v1/radio/frequency | jq .
 ```json
 {"hz": 14200000, "mhz": 14.2}
 ```
+
+Both fields are `null` when the rig has no frequency to report (blank memory
+channel, or no reply yet).
 
 ### PUT /api/v1/radio/frequency
 
@@ -173,6 +181,9 @@ curl -s http://localhost:8081/api/v1/radio/mode | jq .
 ```json
 {"mode": "USB", "filter": 1}
 ```
+
+Both fields are `null` when the rig has no mode to report (blank memory
+channel, or no reply yet).
 
 ### PUT /api/v1/radio/mode
 

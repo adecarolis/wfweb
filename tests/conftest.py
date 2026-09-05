@@ -101,7 +101,8 @@ def _wait_for_cache(status_url: str, timeout: float = 30.0) -> bool:
             r = requests.get(status_url, timeout=2)
             if r.status_code == 200:
                 data = r.json()
-                if (data.get("frequency", 0) > 0
+                # frequency/mode are null (not absent) until the first reply
+                if ((data.get("frequency") or 0) > 0
                         and isinstance(data.get("mode"), str)
                         and data["mode"]):
                     return True

@@ -742,6 +742,21 @@ void icomCommander::parseData(QByteArray dataInput)
     */
 }
 
+// True when every byte of `data` is packed BCD (both nibbles 0-9). A rig that
+// has nothing to report fails this: an IC-705 sitting on a blank memory
+// channel answers 25 00 / 26 00 with a single 0xFF instead of digits.
+static bool isBcdPayload(const QByteArray &data)
+{
+    if (data.isEmpty())
+        return false;
+    for (const char c : data) {
+        const quint8 b = static_cast<quint8>(c);
+        if ((b & 0x0f) > 9 || (b >> 4) > 9)
+            return false;
+    }
+    return true;
+}
+
 void icomCommander::parseCommand()
 {
 
@@ -836,7 +851,18 @@ void icomCommander::parseCommand()
             vfo = 1;
         }
 
-        value.setValue(parseFreqData(payloadIn,vfo));
+        if (isBcdPayload(payloadIn)) {
+            value.setValue(parseFreqData(payloadIn,vfo));
+        } else {
+            // No frequency to report (blank memory channel replies 0xFF, which
+            // parseFreqData() would read as 165 Hz). Cache an explicit Hz == 0
+            // so consumers stop showing the previous channel's value; the web
+            // layer turns it into JSON null.
+            freqt none;
+            none.VFO = selVFO_t(vfo);
+            value.setValue(none);
+            qDebug(logRig()) << funcString[func] << "carries no frequency:" << payloadIn.toHex(' ');
+        }
         //qDebug(logRig()) << funcString[func] << "len:" << payloadIn.size() << "receiver=" << receiver << "vfo=" << vfo <<
         //    "value:" << value.value<freqt>().Hz << "data:" << payloadIn.toHex(' ');
 
@@ -880,6 +906,17 @@ void icomCommander::parseCommand()
             // Old format payload with datamode+filter
             mi.filter = bcdHexToUChar(payloadIn.at(1));
             mi.data = bcdHexToUChar(payloadIn.at(0));
+        }
+        else if (payloadIn.size() && !isBcdPayload(payloadIn.left(1)))
+        {
+            // No mode to report (blank memory channel replies 0xFF). Left
+            // alone, bcdHexToUChar() turns 0xFF into reg 165 and parseMode()
+            // logs "no such mode" on every poll. Cache the explicit unknown
+            // modeInfo (modeUnknown, reg/filter/data 0xFF) instead.
+            mi = modeInfo();
+            mi.VFO = selVFO_t(receiver);
+            value.setValue(mi);
+            break;
         }
         else
         {

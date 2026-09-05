@@ -206,6 +206,11 @@ private:
     bool isFreeDVCompatibleMode(rigMode_t mk) const;
     void sendCurrentState(QWebSocket *client);
     QString modeToString(modeInfo m);
+    // JSON for a cached rig value, or null when the rig had nothing to report
+    // (blank memory channel): Hz == 0 / a default modeInfo / filter 0xff.
+    static QJsonValue freqJson(const freqt &f);
+    QJsonValue modeJson(const modeInfo &m);
+    static QJsonValue filterJson(const modeInfo &m);
     modeInfo stringToMode(const QString &mode);
     QJsonObject buildStatusJson();
     codecType codecByteToType(quint8 codec);
