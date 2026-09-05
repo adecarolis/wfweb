@@ -5,6 +5,7 @@ Version=2.05
 Manufacturer=0
 Model=IC-7600
 CIVAddress=122
+MaxBaudRate=19200
 RigCtlDModel=3063
 NumberOfReceivers=2
 NumberOfVFOs=1
