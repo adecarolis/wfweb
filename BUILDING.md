@@ -7,7 +7,7 @@
 ```bash
 sudo apt-get install -y \
     qt5-qmake qtbase5-dev libqt5serialport5-dev \
-    qtmultimedia5-dev libqt5websockets5-dev \
+    qtmultimedia5-dev libqt5multimedia5-plugins libqt5websockets5-dev \
     libqt5gamepad5-dev libqt5printsupport5 \
     libopus-dev libeigen3-dev \
     portaudio19-dev librtaudio-dev \

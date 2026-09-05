@@ -6319,6 +6319,15 @@ void webServer::setupUsbAudio(quint32 sampleRate, QString preferredInputName,
     for (const QAudioDeviceInfo &dev : inputDevices) {
         qInfo() << "Web:  " << dev.deviceName();
     }
+    if (inputDevices.isEmpty()) {
+        // A working backend always lists something (ALSA reports at least
+        // "default"), so an empty list means no Qt audio backend plugin is
+        // loaded.  On Debian/Ubuntu the ALSA and PulseAudio backends ship in
+        // libqt5multimedia5-plugins, not in libqt5multimedia5 (#98).
+        qWarning() << "Web: Qt Multimedia found no audio input devices at all:"
+                   << "no audio backend plugin is loaded. On Debian/Ubuntu install"
+                   << "libqt5multimedia5-plugins.";
+    }
     if (!preferredInputName.isEmpty()) {
         for (const QAudioDeviceInfo &dev : inputDevices) {
             if (dev.deviceName() == preferredInputName) {
@@ -6352,7 +6361,9 @@ void webServer::setupUsbAudio(quint32 sampleRate, QString preferredInputName,
     }
     if (!found) {
         qWarning() << "Web: No rig audio device found for direct capture";
-        audioErrorReason = "No compatible audio device found.";
+        audioErrorReason = inputDevices.isEmpty()
+            ? "No audio backend loaded (on Debian/Ubuntu install libqt5multimedia5-plugins)."
+            : "No compatible audio device found.";
         if (!wsClients.isEmpty()) {
             QJsonObject err;
             err["type"] = "audioError";
