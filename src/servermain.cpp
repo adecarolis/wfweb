@@ -161,6 +161,14 @@ servermain::~servermain()
         webThread->quit();
         webThread->wait();
     }
+    // ~webServer() ran at webThread finish and may have queued a last rig
+    // command (the DATA MOD OFF restore for an active web mic).  The queue
+    // worker dispatches one command per tick, so let it hand that command to
+    // the rig thread before closeComm() below tears the port down; the rig
+    // thread processes events in order, so once dispatched it is written and
+    // flushed ahead of the close (#95).
+    if (queue != Q_NULLPTR && !queue->waitForImmediate(500))
+        qInfo(logSystem()) << "Command queue did not drain before closing the rig";
     for (RIGCONFIG* radio : serverConfig.rigs)
     {
         if (radio->rig != Q_NULLPTR && radio->rigThread != Q_NULLPTR && radio->rigThread->isRunning())

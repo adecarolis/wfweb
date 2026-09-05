@@ -126,11 +126,13 @@ webServer::webServer(QObject *parent) :
 
 webServer::~webServer()
 {
-    // Restore DATA MOD OFF setting if mic was active
+    // Restore DATA MOD OFF setting if mic was active.  ~servermain() waits
+    // for the queue to dispatch this before it closes the rig port.
     if (dataOffModSaved && queue) {
         queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(savedDataOffMod), false, 0));
         dataOffModSaved = false;
         micActiveClient = nullptr;
+        qInfo() << "Web: Restored DATA MOD OFF setting (server shutting down)";
     }
     if (statusTimer) {
         statusTimer->stop();
@@ -2060,10 +2062,17 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             // the Icom UDP audio stream, so their DATA MOD OFF must be "LAN";
             // USB-attached rigs use "USB". Forcing USB on a LAN rig (e.g. IC-7610,
             // IC-7300 MK2, IC-9700) keys the radio with no modulation. (issue #72)
-            cacheItem cache = queue->getCache(funcDATAOffMod, 0);
-            if (cache.value.isValid()) {
-                savedDataOffMod = cache.value.value<rigInput>();
-                dataOffModSaved = true;
+            // Save the baseline once per mic session.  TUNE and the FT8/JS8
+            // TX path send enableMic unconditionally, so a second enable can
+            // arrive while the mic is already on; by then the periodic poll
+            // has refreshed the cache to the input we switched to, and saving
+            // that would make the later restore leave the rig on USB/LAN (#95).
+            if (!dataOffModSaved) {
+                cacheItem cache = queue->getCache(funcDATAOffMod, 0);
+                if (cache.value.isValid()) {
+                    savedDataOffMod = cache.value.value<rigInput>();
+                    dataOffModSaved = true;
+                }
             }
             // Reset the LAN mic-session state so each session coalesces and
             // logs afresh.

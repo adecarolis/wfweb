@@ -281,6 +281,24 @@ queuePriority cachingQueue::del(funcs func, uchar receiver)
 }
 
 
+// Block until the worker has handed every priorityImmediate command to the
+// rig thread (one per tick), or timeoutMs elapses.  Used on shutdown so a
+// final command queued during teardown — the DATA MOD OFF restore for an
+// active web mic — is dispatched before the rig port is closed (#95).
+bool cachingQueue::waitForImmediate(int timeoutMs)
+{
+    QDeadlineTimer deadline(timeoutMs);
+    while (!deadline.hasExpired()) {
+        {
+            QMutexLocker locker(&mutex);
+            if (!queue.contains(priorityImmediate))
+                return true;
+        }
+        QThread::msleep(5);
+    }
+    return false;
+}
+
 queuePriority cachingQueue::getQueued(funcs func, uchar receiver)
 {
     queuePriority prio = priorityNone;
