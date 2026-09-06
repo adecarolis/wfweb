@@ -92,7 +92,16 @@ void cachingQueue::run()
                 it--;
                 auto item = it.value();
 
-                emit haveCommand(item.command,item.param,item.receiver);
+                // A recurring read the rig keeps refusing sits out its retry
+                // window (see CACHE_NAK_LIMIT): it is rotated but not sent.
+                // Sets and one-shot reads always go out.
+                bool held = false;
+                if (item.recurring && !item.param.isValid()) {
+                    auto cv = findCache(item.command, item.receiver);
+                    held = (cv != cache.end() && cv->backedOff());
+                }
+                if (!held)
+                    emit haveCommand(item.command,item.param,item.receiver);
                 it=queue.erase(it);
                 //queue.remove(prio,it.value()); // Will remove ALL matching commands which breaks some things (memory bulk write)
 
@@ -102,7 +111,7 @@ void cachingQueue::run()
                 }
 
                 // Immediate will be updated by the add command, any other commands should update the cache
-                if (prio != priorityImmediate) {
+                if (!held && prio != priorityImmediate) {
                     updateCache(false,item.command,item.param,item.receiver);
                 }
             }
@@ -281,6 +290,24 @@ queuePriority cachingQueue::del(funcs func, uchar receiver)
 }
 
 
+// Block until the worker has handed every priorityImmediate command to the
+// rig thread (one per tick), or timeoutMs elapses.  Used on shutdown so a
+// final command queued during teardown — the DATA MOD OFF restore for an
+// active web mic — is dispatched before the rig port is closed (#95).
+bool cachingQueue::waitForImmediate(int timeoutMs)
+{
+    QDeadlineTimer deadline(timeoutMs);
+    while (!deadline.hasExpired()) {
+        {
+            QMutexLocker locker(&mutex);
+            if (!queue.contains(priorityImmediate))
+                return true;
+        }
+        QThread::msleep(5);
+    }
+    return false;
+}
+
 queuePriority cachingQueue::getQueued(funcs func, uchar receiver)
 {
     queuePriority prio = priorityNone;
@@ -362,6 +389,49 @@ void cachingQueue::receiveValue(funcs func, QVariant value, uchar receiver)
 }
 
 
+// Mutex MUST be locked by the calling function.
+QMultiMap<funcs,cacheItem>::iterator cachingQueue::findCache(funcs func, uchar receiver)
+{
+    auto cv = cache.find(func);
+    while (cv != cache.end() && cv->command == func) {
+        if (cv->receiver == receiver)
+            return cv;
+        ++cv;
+    }
+    return cache.end();
+}
+
+// The rig refused a read of func (Icom FA/NG).  Counts consecutive refusals on
+// the cache entry — getCache() and the run loop back the read off once the
+// count reaches CACHE_NAK_LIMIT — and returns the new count so the caller can
+// log accordingly (the commander owns the log line, since it follows the
+// rig's own error).  A valid reply (updateCache) clears the count.
+int cachingQueue::receiveNak(funcs func, uchar receiver)
+{
+    if (func == funcNone)
+        return 0;
+    int count = 0;
+    cacheItem tripped;
+    if (mutex.tryLock(CACHE_LOCK_TIME)) {
+        auto cv = findCache(func, receiver);
+        if (cv == cache.end()) {
+            cacheItem c;
+            c.command = func;
+            c.receiver = receiver;
+            cv = cache.insert(func, c);
+        }
+        count = ++cv->nak;
+        if (count == CACHE_NAK_LIMIT)
+            tripped = *cv;
+        mutex.unlock();
+    } else {
+        qWarning(logRig()) << "Failed to receiveNak() after" << CACHE_LOCK_TIME << "ms, mutex locked";
+    }
+    if (count == CACHE_NAK_LIMIT)
+        emit cacheRejected(tripped);
+    return count;
+}
+
 void cachingQueue::updateCache(bool reply, queueItem item)
 {
     // Mutex MUST be locked by the calling function.
@@ -419,15 +489,24 @@ void cachingQueue::updateCache(bool reply, queueItem item)
     auto cv = cache.find(item.command);
     while (cv != cache.end() && cv->command == item.command) {
         if (cv->receiver == item.receiver) {
+            bool recovered = false;
             if (reply) {
                 cv->reply = QDateTime::currentDateTime();
+                if (item.param.isValid()) {
+                    // The rig answered: earlier refusals are history.  A read
+                    // coming back from back-off is announced even when its
+                    // value is unchanged, so listeners that reacted to the
+                    // refusal (the tuner tile) can undo that.
+                    recovered = cv->nak >= CACHE_NAK_LIMIT;
+                    cv->nak = 0;
+                }
             } else {
                 cv->req = QDateTime::currentDateTime();
             }
             // If we are sending an actual value, update the cache with it
             // Value will be replaced if invalid on next get()
 
-            if (compare(item.param,cv.value().value))
+            if (compare(item.param,cv.value().value) || recovered)
             {
                 cv->value.clear();
                 cv->value.setValue(item.param);
@@ -491,7 +570,11 @@ cacheItem cachingQueue::getCache(funcs func, uchar receiver)
     }
     // If the cache is more than 5-20 seconds old, re-request it as it may be stale (maybe make this a config option?)
     // Using priorityhighest WILL slow down the S-Meter when a command intensive client is connected to rigctl
-    if (func != funcNone && func != funcPowerControl && func != funcSelectVFO && (!ret.value.isValid() || ret.reply.addSecs(QRandomGenerator::global()->bounded(5,20)) <= QDateTime::currentDateTime())) {
+    // ...but not while the rig is refusing it: a read that never gets a valid
+    // value (IC-705 tuner status with no AH-705 attached, filter width on a
+    // receive-only band) would otherwise be re-asked on every status build.
+    if (func != funcNone && func != funcPowerControl && func != funcSelectVFO && func != funcDuplexMode && !ret.backedOff()
+        && (!ret.value.isValid() || ret.reply.addSecs(QRandomGenerator::global()->bounded(5,20)) <= QDateTime::currentDateTime())) {
         addUnique(priorityImmediate,func,false,receiver);
     }
     return ret;

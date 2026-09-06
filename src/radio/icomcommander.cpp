@@ -526,12 +526,27 @@ toneInfo icomCommander::decodeTone(QByteArray eTone)
     tone += (eTone.at(1) & 0x0f) *  100;
     tone += ((eTone.at(1) & 0xf0) >> 4) * 1000;
 
+    // The tables only supply the display name; the value the rig sent is
+    // authoritative. Falling through to toneInfo's default here used to
+    // report 670 ("67.0") for anything absent from the CTCSS list — which is
+    // every DTCS code, since this same decoder handles 1B 02. A memory
+    // written from that cache carried DTCS 670, which no rig accepts.
+    bool named = false;
     for (const auto &ti: rigCaps.ctcss)
     {
-        if (ti.tone == tone) {
-            t = ti;
-            break;
+        if (ti.tone == tone) { t = ti; named = true; break; }
+    }
+    if (!named)
+    {
+        for (const auto &ti: rigCaps.dtcs)
+        {
+            if (ti.tone == tone) { t = ti; named = true; break; }
         }
+    }
+    if (!named)
+    {
+        t.tone = tone;
+        t.name = QString::number(tone);
     }
 
     if((eTone.at(0) & 0x01) == 0x01)
@@ -727,6 +742,21 @@ void icomCommander::parseData(QByteArray dataInput)
     */
 }
 
+// True when every byte of `data` is packed BCD (both nibbles 0-9). A rig that
+// has nothing to report fails this: an IC-705 sitting on a blank memory
+// channel answers 25 00 / 26 00 with a single 0xFF instead of digits.
+static bool isBcdPayload(const QByteArray &data)
+{
+    if (data.isEmpty())
+        return false;
+    for (const char c : data) {
+        const quint8 b = static_cast<quint8>(c);
+        if ((b & 0x0f) > 9 || (b >> 4) > 9)
+            return false;
+    }
+    return true;
+}
+
 void icomCommander::parseCommand()
 {
 
@@ -821,7 +851,18 @@ void icomCommander::parseCommand()
             vfo = 1;
         }
 
-        value.setValue(parseFreqData(payloadIn,vfo));
+        if (isBcdPayload(payloadIn)) {
+            value.setValue(parseFreqData(payloadIn,vfo));
+        } else {
+            // No frequency to report (blank memory channel replies 0xFF, which
+            // parseFreqData() would read as 165 Hz). Cache an explicit Hz == 0
+            // so consumers stop showing the previous channel's value; the web
+            // layer turns it into JSON null.
+            freqt none;
+            none.VFO = selVFO_t(vfo);
+            value.setValue(none);
+            qDebug(logRig()) << funcString[func] << "carries no frequency:" << payloadIn.toHex(' ');
+        }
         //qDebug(logRig()) << funcString[func] << "len:" << payloadIn.size() << "receiver=" << receiver << "vfo=" << vfo <<
         //    "value:" << value.value<freqt>().Hz << "data:" << payloadIn.toHex(' ');
 
@@ -865,6 +906,17 @@ void icomCommander::parseCommand()
             // Old format payload with datamode+filter
             mi.filter = bcdHexToUChar(payloadIn.at(1));
             mi.data = bcdHexToUChar(payloadIn.at(0));
+        }
+        else if (payloadIn.size() && !isBcdPayload(payloadIn.left(1)))
+        {
+            // No mode to report (blank memory channel replies 0xFF). Left
+            // alone, bcdHexToUChar() turns 0xFF into reg 165 and parseMode()
+            // logs "no such mode" on every poll. Cache the explicit unknown
+            // modeInfo (modeUnknown, reg/filter/data 0xFF) instead.
+            mi = modeInfo();
+            mi.VFO = selVFO_t(receiver);
+            value.setValue(mi);
+            break;
         }
         else
         {
@@ -924,8 +976,18 @@ void icomCommander::parseCommand()
     case funcScanning:
         break;
     case funcReadFreqOffset:
-        value.setValue(parseFreqData(payloadIn,receiver));
+    {
+        // The duplex offset is 3 BCD bytes that start at the 100 Hz digit
+        // (600 kHz arrives as 00 60 00), so the generic frequency parser
+        // lands a factor of 100 short. This is the exact inverse of the
+        // makeFreqPayload().mid(1,3) the set path uses.
+        freqt off;
+        off.Hz = parseFreqDataToInt(payloadIn) * 100;
+        off.MHzDouble = off.Hz / 1000000.0;
+        off.VFO = selVFO_t(receiver);
+        value.setValue(off);
         break;
+    }
     // These return a single byte that we convert to a uchar (0-99)
     case funcTuningStep:
     case funcAttenuator:
@@ -934,8 +996,28 @@ void icomCommander::parseCommand()
     // Split/duplex status: store as bool (on = dmSplitOn, off = anything else)
     // Must be bool to match Kenwood/Yaesu and for webserver toBool() to work
     case funcSplitStatus:
-        value.setValue(uchar(payloadIn.at(0)) == dmSplitOn);
+    {
+        // 0x0F reports two settings through one command: the split flag
+        // (0x00/0x01) and the repeater duplex direction (0x10 simplex,
+        // 0x11 DUP-, 0x12 DUP+, 0x13 RPS). Republish the duplex half under
+        // its own internal func so the split cache keeps the plain bool the
+        // rest of the app -- and the Kenwood/Yaesu commanders -- expect.
+        // Verified on a real IC-705: the rig answers 0x11/0x12 whenever a
+        // repeater shift is engaged and falls back to the split flag
+        // (0x00/0x01) when it is not, so a split answer also means simplex.
+        // That is what lets the DUP tile follow the rig's own front panel.
+        // RPS (0x13, the IC-9700's DD-mode shift) is deliberately left out:
+        // the web UI has no control for it, and reporting it as one of the
+        // three it does offer would be a lie.
+        uchar raw = uchar(payloadIn.at(0));
+        qDebug(logRig()) << "Split/Duplex reply: 0x" << QString::number(raw, 16);
+        if (queue != Q_NULLPTR && raw != dmDupRPS) {
+            duplexMode_t dm = (raw == dmDupMinus || raw == dmDupPlus) ? duplexMode_t(raw) : dmSimplex;
+            queue->receiveValue(funcDuplexMode, QVariant::fromValue<duplexMode_t>(dm), receiver);
+        }
+        value.setValue(raw == dmSplitOn);
         break;
+    }
     case funcQuickSplit:
         value.setValue(bcdHexToUChar(payloadIn.at(0)));
         break;
@@ -1480,13 +1562,31 @@ void icomCommander::parseCommand()
         break;
     case funcFA:
     {
+        // Let the queue count refused reads per command, so it stops asking
+        // for one the rig will never answer (the IC-705's tuner status with
+        // no AH-705 attached, filter width on a receive-only band).  Only
+        // reads are counted: a refused set is a complaint about the value.
+        int nak = 0;
+        if (!lastCommand.isSet && lastCommand.func != funcNone)
+            nak = queue->receiveNak(lastCommand.func, lastCommand.receiver);
         if (!lastCommand.data.isEmpty()) {
             if (!warnedAboutFA) {
                 qInfo(logRig()) << "Occasional error response (FA) from rig can safely be ignored";
                  warnedAboutFA=true;
             }
-            qWarning(logRig()) << "Rig (FA) error, last command sent:" << funcString[lastCommand.func] << "(min:" << lastCommand.minValue << "max:" <<
-                lastCommand.maxValue << "bytes:" << lastCommand.bytes <<  ") data:" << lastCommand.data.toHex(' ');
+            // Once the queue has backed a read off, its further refusals are
+            // expected: say so once at info level, then keep them at debug.
+            QString msg = QString("Rig (FA) error, last command sent: \"%1\" (min: %2 max: %3 bytes: %4 ) data: \"%5\"")
+                .arg(funcString[lastCommand.func]).arg(lastCommand.minValue).arg(lastCommand.maxValue)
+                .arg(lastCommand.bytes).arg(QString(lastCommand.data.toHex(' ')));
+            if (nak > CACHE_NAK_LIMIT)
+                qDebug(logRig()).noquote() << msg;
+            else
+                qWarning(logRig()).noquote() << msg;
+            if (nak == CACHE_NAK_LIMIT)
+                qInfo(logRig()) << "Rig has refused" << nak << "consecutive reads of" << funcString[lastCommand.func]
+                                << "- backing off to one attempt every" << CACHE_NAK_RETRY_SECS
+                                << "s (further refusals logged at debug level)";
         }
         consecutiveFAErrors++;
         validResponseCount = 0;
@@ -1797,7 +1897,12 @@ void icomCommander::determineRigCaps()
         for (int c = 0; c < numPreamps; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.preamps.push_back(genericType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", 0).toString()));
+            // Start/End (Hz, optional) restrict an entry to part of the rig's
+            // coverage — the IC-705 only offers PREAMP 2 below 74.8 MHz.
+            rigCaps.preamps.push_back(genericType(settings->value("Num", 0).toString().toUInt(),
+                settings->value("Name", 0).toString(),
+                settings->value("Start", 0ULL).toULongLong(),
+                settings->value("End", 0ULL).toULongLong()));
         }
         settings->endArray();
     }
@@ -1823,10 +1928,16 @@ void icomCommander::determineRigCaps()
         for (int c = 0; c < numAttenuators; c++)
         {
             settings->setArrayIndex(c);
+            // Start/End (Hz, optional) restrict an entry to part of the rig's
+            // coverage — the IC-705's attenuator is HF/50 MHz only.
+            quint64 attStart = settings->value("Start", 0ULL).toULongLong();
+            quint64 attEnd = settings->value("End", 0ULL).toULongLong();
             if (settings->value("Num", -1).toString().toInt() == -1) {
-                rigCaps.attenuators.push_back(genericType(settings->value("dB", 0).toString().toUInt(),QString("%0 dB").arg(settings->value("dB", 0).toString().toUInt())));
+                rigCaps.attenuators.push_back(genericType(settings->value("dB", 0).toString().toUInt(),
+                    QString("%0 dB").arg(settings->value("dB", 0).toString().toUInt()), attStart, attEnd));
             } else {
-                rigCaps.attenuators.push_back(genericType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", 0).toString()));
+                rigCaps.attenuators.push_back(genericType(settings->value("Num", 0).toString().toUInt(),
+                    settings->value("Name", 0).toString(), attStart, attEnd));
             }
         }
         settings->endArray();
@@ -2745,10 +2856,14 @@ bool icomCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType*
             mem->dvsqlB = bcdHexToUChar(data[0]);
             break;
         case 's':
-            mem->duplexOffset.Hz = parseFreqDataToInt(data);
+            // The stored offset drops the two lowest digits — the encoder
+            // writes makeFreqPayload(...).mid(1,len), so the field's unit is
+            // 100 Hz. Scale back to Hz or a read/write round trip shrinks
+            // every repeater shift by a factor of 100.
+            mem->duplexOffset.Hz = parseFreqDataToInt(data) * 100;
             break;
         case 'S':
-            mem->duplexOffsetB.Hz = parseFreqDataToInt(data);
+            mem->duplexOffsetB.Hz = parseFreqDataToInt(data) * 100;
             break;
         case 't':
             memcpy(mem->UR,data.data(),qMin(int(sizeof mem->UR),data.size()));
@@ -3656,6 +3771,8 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
         lastCommand.minValue = cmd.minVal;
         lastCommand.maxValue = cmd.maxVal;
         lastCommand.bytes = cmd.bytes;
+        lastCommand.isSet = value.isValid();
+        lastCommand.receiver = receiver;
     }
     else
     {

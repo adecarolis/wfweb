@@ -29,6 +29,13 @@
 
     var civ = global.IcomCiv;
     var RIG_CAPS = global.IcomRigCaps || {};
+    // Standard tone tables, emitted once by tools/extract-rig-caps.py because
+    // every Icom that has them has the same ones.
+    var CTCSS_TONES = global.IcomCtcssTones || [];
+    var DTCS_CODES  = global.IcomDtcsCodes || [];
+    // A memory channel stores the repeater shift as a 4-bit direction, not
+    // the 0x1x duplexMode_t register the live 0x0F command uses.
+    var DUPLEX_MEM_NIBBLE = { 'OFF': 0, 'DUP-': 1, 'DUP+': 2 };
 
     // CI-V address → display name. The full table is generated from
     // rigs/*.rig by tools/extract-rig-caps.py and lives in IcomRigCaps;
@@ -139,12 +146,17 @@
         setAntenna: true,
         // VFO ops
         selectVFO: true, swapVFO: true, equalizeVFO: true, setSplit: true,
+        // Repeater duplex (direction + offset)
+        setDuplex: true, setDuplexOffset: true,
+        // Repeater access tone (TONE / TSQL / DTCS) + software tone scan
+        setToneMode: true, setToneFreq: true, setTsqlFreq: true,
+        setDtcsCode: true,
         // Misc
         setTuner: true, setPower: true, setSpan: true,
         // CW
         sendCW: true, stopCW: true,
         // Filter width / shape
-        setFilterWidth: true,
+        setFilterWidth: true, setFilterShape: true,
         // Packet (WASM Direwolf modem) + APRS station db / beacon scheduler.
         packetEnable: true, packetSetMode: true,
         aprsTxBeacon: true, aprsBeaconConfig: true, aprsClearStations: true,
@@ -154,7 +166,10 @@
         termSend: true, termHistory: true,
         // RADE V1 (LPCNet + FARGAN + RADE modem) — browser-only voice.
         setRadeMode: true, setRadeCallsign: true,
-        // Anything else (FreeDV, memory, filter shape, LAN ops, reporters …)
+        // Memory channels (scan / write / clear / recall on the rig / rename)
+        getMemories: true, writeMemory: true, clearMemory: true,
+        recallMemory: true, renameMemory: true,
+        // Anything else (FreeDV, LAN ops, reporters …)
         // falls through to the WS path which is closed in Direct mode.
     };
 
@@ -214,6 +229,9 @@
             this._otherVfoPollTimer = null;
             this._lastFreqStamp = 0;
             this._lastModeStamp = 0;
+            this._lastRealVfo = 'A';   // A/B to return to when leaving MEM
+            this._memCaps = null;      // filled on connect from rig-caps
+            this._memCache = {};       // last parsed channel per group/channel key
 
             this.state = {
                 frequency: 0, mode: null, filter: null,
@@ -225,8 +243,18 @@
                 vfoAFrequency: 0, vfoBFrequency: 0,
                 // Best-effort tracking of which VFO is currently selected on
                 // the rig. We default to 'A' on connect and update when the
-                // user clicks the VFO label or 0x25 0x00 confirms it.
+                // user clicks the VFO label or 0x25 0x00 confirms it. 'MEM'
+                // while the rig is in memory mode (#92); memChannel is then
+                // the last channel we selected (Icom never reports it).
                 selectedVfo: 'A',
+                memChannel: null, memGroup: null,
+                // Repeater shift. 'OFF' until the rig reports otherwise;
+                // duplexOffset stays null until 0x0C answers.
+                duplex: 'OFF', duplexOffset: null,
+                // Repeater access tone. Names match the server build's
+                // toneModeName() so the SPA is identical in both forks.
+                toneMode: 'OFF', toneFreq: null, tsqlFreq: null,
+                dtcsCode: null, dtcsPolarity: 0,
             };
 
             // Dual-VFO read mode, derived from rig caps in _finalizeDetection.
@@ -244,6 +272,26 @@
             this._antCmd = null;
             this._antennas = [];
             this._hasRxAnt = false;
+
+            // Repeater duplex caps — true only for rigs whose .rig declares
+            // the offset command (IC-705/9700/905/785x). Set in
+            // _finalizeDetection from the rig-caps registry.
+            this._hasDuplex = false;
+
+            // Antenna tuner caps — true only for rigs whose .rig declares the
+            // ATU command (CI-V 0x1C 0x01). Set in _finalizeDetection.
+            this._hasTuner = false;
+
+            // Repeater-tone command bytes, filled in by _finalizeDetection.
+            // Rigs speak one of two dialects: `sqlType` (0x16 0x5D) carries
+            // the whole TONE/TSQL/DTCS selection in one register, otherwise
+            // rptTone/rptTsql/rptDtcs are independent booleans.
+            this._toneCmds = {};
+            // Cached TONE/TSQL/DTCS flags for the boolean dialect — they
+            // arrive in separate replies and have to be folded together.
+            this._rptTone = false;
+            this._rptTsql = false;
+            this._rptDtcs = false;
 
             // RX audio capture state — getUserMedia → AudioWorklet → Int16
             // PCM → 0x02 binary frame → SPA's handleAudioData.
@@ -451,9 +499,10 @@
                         this._enqueue('setMode', civ.cmdSetMode(this.state.mode, obj.value));
                     }
                     this._emit('update', { filter: obj.value });
-                    // Each filter has its own stored bandwidth on Icoms.
-                    // Re-read so the slider reflects the new filter's value.
+                    // Each filter has its own stored bandwidth and shape on
+                    // Icoms. Re-read so the window reflects the new filter's.
                     this._enqueue('readFilterWidth', civ.cmdReadFilterWidth());
+                    this._enqueue('readFilterShape', civ.cmdReadBoolFunc(0x56));
                     return;
                 case 'setFilterWidth':
                     if (typeof obj.value !== 'number' || obj.value <= 0) return;
@@ -463,6 +512,14 @@
                         '→ bytes', Array.from(fwBytes).map(function(b){return b.toString(16).padStart(2,'0');}).join(' '));
                     this._enqueue('setFilterWidth', fwBytes);
                     this._emit('update', { filterWidth: obj.value });
+                    return;
+                case 'setFilterShape':
+                    // 0x16 0x56 <0 sharp / 1 soft> for the current filter.
+                    if (typeof obj.value !== 'number') return;
+                    var shape = obj.value ? 1 : 0;
+                    this.state.filterShape = shape;
+                    this._enqueue('setFilterShape', civ.cmdSetBoolFunc(0x56, shape === 1));
+                    this._emit('update', { filterShape: shape });
                     return;
                 case 'setPTT':
                     // Receiver-only rigs (R-series) won't accept PTT — drop
@@ -512,15 +569,34 @@
                     this._emit('update', { antenna: antSel, rxAntenna: antRx });
                     return;
                 case 'selectVFO':
+                    if (obj.value === 'MEM') {
+                        // Memory mode — the front-panel V/M (bare CI-V 08) on
+                        // whatever channel the rig has current.
+                        if (!this._memCaps || !this._memCaps.hasMemoryMode) return;
+                        this._enqueue('memoryMode', civ.cmdMemoryMode());
+                        this._setSelectedVfo('MEM');
+                        this._enqueueMemReadback();
+                        return;
+                    }
                     var vfo = (obj.value === 'B') ? 'B' : 'A';
-                    this.state.selectedVfo = vfo;
+                    // Leaving memory mode on a cmd29 rig needs a real VFO-mode
+                    // select (bare 07) first: Main/Sub select alone does not
+                    // exit memory mode. On A/B rigs 07 00/01 exits it by itself.
+                    if (this.state.selectedVfo === 'MEM' && this._dualVfoMode === 'cmd29'
+                            && this._memCaps && this._memCaps.hasVfoModeSelect) {
+                        this._enqueue('vfoMode', civ.cmdVfoMode(this._memCaps.vfoModeCmd29));
+                    }
+                    var wasMem = this.state.selectedVfo === 'MEM';
+                    this._setSelectedVfo(vfo);
                     this._enqueue('selectVFO', civ.cmdSelectVFO(vfo));
                     // Re-pull both VFOs so the side display flips to the new
                     // "other" VFO and the main display ends up matching the
                     // rig. The 0x25 / 0x29 replies will land in
                     // _applyVfoFreq and update the SPA.
                     this._enqueueDualVfoReads();
-                    this._emit('update', { selectedVfo: vfo });
+                    // Back from a memory channel the VFO's own mode / tone /
+                    // shift come back too — re-read them like a recall does.
+                    if (wasMem) this._enqueueMemReadback();
                     return;
                 case 'swapVFO':
                     this._enqueue('swapVFO', civ.cmdSwapVFO());
@@ -540,7 +616,35 @@
                     this._enqueue('setSplit', civ.cmdSetSplit(sp));
                     this._emit('update', { split: sp });
                     return;
+                case 'setDuplex':
+                    // Shares CI-V 0x0F with split: the sub-command byte picks
+                    // simplex / DUP- / DUP+ instead of the split flag.
+                    var dp = obj.value === 'DUP-' || obj.value === 'DUP+' ? obj.value : 'OFF';
+                    this.state.duplex = dp;
+                    this._enqueue('setDuplex', civ.cmdSetDuplex(dp));
+                    this._emit('update', { duplex: dp });
+                    return;
+                case 'setDuplexOffset':
+                    var doff = Math.max(0, Math.round((obj.value || 0) / 100) * 100);
+                    this.state.duplexOffset = doff;
+                    this._enqueue('setDuplexOffset', civ.cmdSetDuplexOffset(doff));
+                    this._emit('update', { duplexOffset: doff });
+                    return;
+                case 'setToneMode':
+                    this._setToneMode(obj.value);
+                    return;
+                case 'setToneFreq':
+                    this._setToneValue('toneFreq', this._toneCmds.toneFreq, obj.value | 0, 0);
+                    return;
+                case 'setTsqlFreq':
+                    this._setToneValue('tsqlFreq', this._toneCmds.tsqlFreq, obj.value | 0, 0);
+                    return;
+                case 'setDtcsCode':
+                    this._setToneValue('dtcsCode', this._toneCmds.dtcsCode, obj.value | 0,
+                                       obj.polarity | 0);
+                    return;
                 case 'setTuner':
+                    if (!this._hasTuner) return;
                     var tn = (typeof obj.value === 'number') ? obj.value : 0;
                     this.state.tuner = tn;
                     this._enqueue('setTuner', civ.cmdSetTuner(tn));
@@ -690,6 +794,12 @@
                     return;
                 case 'clearMemory':
                     this._memClear(obj);
+                    return;
+                case 'recallMemory':
+                    this._memRecall(obj);
+                    return;
+                case 'renameMemory':
+                    this._memRename(obj);
                     return;
                 default:
                     return;
@@ -1042,6 +1152,34 @@
             this._antennas = (capsEntry && capsEntry.antennas) || [];
             this._hasRxAnt = !!(capsEntry && capsEntry.cmds && capsEntry.cmds.rxAntenna)
                 && this._antennas.length > 0;
+            this._hasDuplex = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasDuplex);
+            this._hasTuner = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasTuner);
+            this._hasSpectrum = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasSpectrum);
+            // Memory channels (#92): V/M switch, addressing range, group
+            // handling. Same facts webserver.cpp pulls from rigCaps.
+            var mc = (capsEntry && capsEntry.caps) || {};
+            var mcmds = (capsEntry && capsEntry.cmds) || {};
+            this._memCaps = {
+                hasMemoryMode: !!mc.hasMemoryMode,
+                memGroups: mc.memGroups | 0,
+                memStart: (mc.memStart === undefined) ? 1 : (mc.memStart | 0),
+                memMax: mc.memMax | 0,
+                hasGroupCmd: !!mcmds.memoryGroup,
+                hasVfoModeSelect: !!mcmds.vfoModeSelect,
+                vfoModeCmd29: !!mc.vfoModeSelectCmd29,
+            };
+            this._memCache = {};
+            var toneCmds = (capsEntry && capsEntry.cmds) || {};
+            this._toneCmds = {
+                sqlType:   toneCmds.toneSqlType || null,
+                rptTone:   toneCmds.rptTone   || null,
+                rptTsql:   toneCmds.rptTsql   || null,
+                rptDtcs:   toneCmds.rptDtcs   || null,
+                toneFreq:  toneCmds.toneFreq  || null,
+                tsqlFreq:  toneCmds.tsqlFreq  || null,
+                dtcsCode:  toneCmds.dtcsCode  || null,
+                sqlStatus: toneCmds.sqlStatus || null,
+            };
             lsSetInt('directBaudRate', baud);
             lsSetInt('directCivAddr', addr);
 
@@ -1087,7 +1225,9 @@
                 this._enqueue('readAntenna', civ.cmdReadAntenna(this._antCmd));
             }
             this._enqueue('readSplit',      civ.cmdReadSplit());
-            this._enqueue('readTuner',      civ.cmdReadTuner());
+            if (this._hasDuplex) this._enqueue('readDuplexOffset', civ.cmdReadDuplexOffset());
+            if (this._hasTuner) this._enqueue('readTuner', civ.cmdReadTuner());
+            this._enqueueToneReads();
             this._enqueue('readScopeSpan',  civ.cmdReadScopeSpan());
             // Mod inputs: read the user's current settings first (the
             // replies become the restore-on-disconnect baseline), then
@@ -1102,11 +1242,9 @@
                 this._setModInput('setDataMod', this._modIn.data1, this._modIn.usbReg);
             }
             this._enqueue('readFilterWidth', civ.cmdReadFilterWidth());
+            this._enqueue('readFilterShape', civ.cmdReadBoolFunc(0x56));
 
-            // Enable scope output (waterfall). Single-byte payloads match
-            // the C++ wfweb's behaviour for single-receiver rigs.
-            this._enqueue('scopeOn',   new Uint8Array([0x27, 0x10, 0x01]));
-            this._enqueue('scopeData', new Uint8Array([0x27, 0x11, 0x01]));
+            this._enqueueScopeSetup();
 
             this._startPolling();
             this._applyFirstRunDefaults();
@@ -1271,8 +1409,7 @@
                 this._awaitingPowerOnRemaining--;
                 if (this._awaitingPowerOnRemaining === 0) {
                     this._emit('update', { powerState: true });
-                    this._enqueue('scopeOn',   new Uint8Array([0x27, 0x10, 0x01]));
-                    this._enqueue('scopeData', new Uint8Array([0x27, 0x11, 0x01]));
+                    this._enqueueScopeSetup();
                 }
             }
 
@@ -1311,13 +1448,44 @@
                 return;
             }
 
+            // Blank memory channel: the rig answers the freq / mode reads
+            // with a lone 0xFF. Report null so the SPA draws dashes instead
+            // of keeping the previous channel's values on screen.
+            var blank = civ.parseBlankReply(payload);
+            if (blank !== null) {
+                if (blank === 'freq') {
+                    this._lastFreqStamp = Date.now();
+                    if (this.state.frequency !== null) {
+                        this.state.frequency = null;
+                        this._emit('update', { frequency: null });
+                    }
+                } else {
+                    this._lastModeStamp = Date.now();
+                    if (this.state.mode !== null) {
+                        this.state.mode = null;
+                        this._emit('update', { mode: null });
+                    }
+                }
+                return;
+            }
+
+            var inMem = this.state.selectedVfo === 'MEM';
+
             // Selected/Unselected freq reply (A/B-VFO rigs — IC-7300 etc.).
             // selected=true is the rig's currently-selected VFO; selected=false
             // is the OTHER one. We pair this with our local selectedVfo
-            // tracking to map back to the A/B labels the SPA expects.
+            // tracking to map back to the A/B labels the SPA expects. In
+            // memory mode the selected side is the recalled channel — it must
+            // not land in either VFO's cache slot — and the "unselected" read
+            // answers with the channel too (IC-7300, measured), so it says
+            // nothing about the other VFO and is dropped.
             var su = civ.parseSelectedUnselectedFreqReply(payload);
             if (su !== null && su.hz > 0) {
                 this._lastFreqStamp = Date.now();
+                if (inMem) {
+                    if (su.selected) this._applyMemFreq(su.hz);
+                    return;
+                }
                 var sel = this.state.selectedVfo || 'A';
                 var which = su.selected ? sel : (sel === 'A' ? 'B' : 'A');
                 this._applyVfoFreq(which, su.hz, su.selected);
@@ -1327,6 +1495,7 @@
             var freqHz = civ.parseFrequencyReply(payload);
             if (freqHz !== null && freqHz > 0) {
                 this._lastFreqStamp = Date.now();
+                if (inMem) { this._applyMemFreq(freqHz); return; }
                 // Plain 0x03 / 0x00 reply: this is the rig's currently-active
                 // VFO. Map onto whichever side our local selectedVfo says is
                 // active so the side-VFO display lines up with the main one.
@@ -1346,6 +1515,10 @@
                     if (modeChanged) update.mode = modeReply.mode;
                     if (filterChanged) update.filter = modeReply.filter;
                     this._emit('update', update);
+                    // Width and shape are stored per mode and filter, so the
+                    // cached ones just went stale.
+                    this._enqueue('readFilterWidth', civ.cmdReadFilterWidth());
+                    this._enqueue('readFilterShape', civ.cmdReadBoolFunc(0x56));
                 }
                 return;
             }
@@ -1406,6 +1579,24 @@
                 }
             }
 
+            // 0x16 NN — repeater tone registers. Checked before the generic
+            // bool table below because they share the 0x16 command and the
+            // browser wants one mode name, not three flags.
+            if (payload[0] === 0x16 && this._handleToneBoolReply(payload)) return;
+
+            // 0x1B NN — tone / TSQL / DTCS frequency registers
+            if (payload[0] === 0x1B && this._handleToneFreqReply(payload)) return;
+
+            // 0x16 0x56 — filter shape (0 sharp / 1 soft) of the current filter.
+            if (payload[0] === 0x16 && payload[1] === 0x56 && payload.length >= 3) {
+                var shp = payload[2] & 0x0F;
+                if (shp !== this.state.filterShape) {
+                    this.state.filterShape = shp;
+                    this._emit('update', { filterShape: shp });
+                }
+                return;
+            }
+
             // 0x16 NN — bool toggle reply (NB / NR / ANF / preamp)
             if (payload[0] === 0x16 && payload.length >= 3) {
                 var bReply = civ.parseBoolFuncReply(payload);
@@ -1452,12 +1643,27 @@
                 return;
             }
 
-            // 0x0F — split status reply
+            // 0x0F — split status reply, which doubles as the duplex direction
             if (payload[0] === 0x0F && payload.length >= 2) {
                 var sp = civ.parseSplitReply(payload);
                 if (sp !== null && this.state.split !== sp) {
                     this.state.split = sp;
                     this._emit('update', { split: sp });
+                }
+                var dpr = civ.parseDuplexReply(payload);
+                if (dpr !== null && this.state.duplex !== dpr) {
+                    this.state.duplex = dpr;
+                    this._emit('update', { duplex: dpr });
+                }
+                return;
+            }
+
+            // 0x0C — duplex offset reply
+            if (payload[0] === 0x0C && payload.length >= 4) {
+                var dof = civ.parseDuplexOffsetReply(payload);
+                if (dof !== null && this.state.duplexOffset !== dof) {
+                    this.state.duplexOffset = dof;
+                    this._emit('update', { duplexOffset: dof });
                 }
                 return;
             }
@@ -1551,6 +1757,66 @@
         // VFO A state (or just the channel address for a clear) and push
         // it through the normal CI-V queue.
 
+        // ---------- Repeater access tone ---------------------------------
+        //
+        // Mirrors the server build (src/webserver.cpp): one mode name on the
+        // wire, whichever dialect the rig speaks underneath.
+
+        _enqueueToneReads() {
+            var t = this._toneCmds;
+            if (t.sqlType) this._enqueue('readToneSqlType', civ.cmdReadToneSqlType(t.sqlType));
+            if (t.rptTone) this._enqueue('readRptTone', civ.cmdReadToneBool(t.rptTone));
+            if (t.rptTsql) this._enqueue('readRptTsql', civ.cmdReadToneBool(t.rptTsql));
+            if (t.rptDtcs) this._enqueue('readRptDtcs', civ.cmdReadToneBool(t.rptDtcs));
+            if (t.toneFreq) this._enqueue('readToneFreq', civ.cmdReadTone(t.toneFreq));
+            if (t.tsqlFreq) this._enqueue('readTsqlFreq', civ.cmdReadTone(t.tsqlFreq));
+            if (t.dtcsCode) this._enqueue('readDtcsCode', civ.cmdReadTone(t.dtcsCode));
+        }
+
+        // Coalesce tone-mode notifications (see _handleToneBoolReply).
+        _notifyToneModeSoon() {
+            var self = this;
+            clearTimeout(this._toneModeNotify);
+            this._toneModeNotify = setTimeout(function () {
+                self._emit('update', { toneMode: self.state.toneMode });
+            }, 60);
+        }
+
+        _setToneMode(name) {
+            var t = this._toneCmds;
+            // Anything we don't recognise turns the tone off — the safe
+            // direction: it can only stop us keying a repeater, never start.
+            var known = civ.toneModeUsesTone(name) || civ.toneModeUsesTsql(name)
+                     || civ.toneModeUsesDtcs(name);
+            var mode = known ? name : 'OFF';
+            this.state.toneMode = mode;
+            if (t.sqlType) {
+                this._enqueue('setToneSqlType', civ.cmdSetToneSqlType(t.sqlType, mode));
+            } else {
+                // Every flag is written every time: leaving the previous
+                // mode's flag set would silently combine the two.
+                if (t.rptTone) this._enqueue('setRptTone', civ.cmdSetToneBool(t.rptTone, civ.toneModeUsesTone(mode)));
+                if (t.rptTsql) this._enqueue('setRptTsql', civ.cmdSetToneBool(t.rptTsql, civ.toneModeUsesTsql(mode)));
+                if (t.rptDtcs) this._enqueue('setRptDtcs', civ.cmdSetToneBool(t.rptDtcs, civ.toneModeUsesDtcs(mode)));
+            }
+            this._emit('update', { toneMode: mode });
+        }
+
+        // One setter for all three 0x1B registers. `polarity` is only
+        // meaningful for DTCS: bit 1 inverts TX, bit 0 inverts RX.
+        _setToneValue(field, cmdBytes, value, polarity) {
+            if (!cmdBytes || !value) return;
+            var tinv = (polarity & 2) !== 0, rinv = (polarity & 1) !== 0;
+            this.state[field] = value;
+            var u = {}; u[field] = value;
+            if (field === 'dtcsCode') {
+                this.state.dtcsPolarity = polarity & 3;
+                u.dtcsPolarity = polarity & 3;
+            }
+            this._enqueue('set_' + field, civ.cmdSetTone(cmdBytes, value, tinv, rinv));
+            this._emit('update', u);
+        }
+
         _memFormat() {
             return civ.getRigMemFormat(this.civAddr);
         }
@@ -1564,9 +1830,14 @@
             }
             // Cancel any previous scan that's still in flight.
             this._memScanCancel();
-            var start = (obj && obj.start) ? (obj.start | 0) : 1;
-            var end   = (obj && obj.end)   ? (obj.end | 0)   : 99;
+            var mc = this._memCaps || { memStart: 1, memMax: 0 };
+            // Zero-based rigs (IC-705/905) have a real channel 0, so 0 is a
+            // legal start; clamp to what the rig's 0x08 select accepts.
+            var start = (obj && typeof obj.start === 'number') ? (obj.start | 0) : mc.memStart;
+            var end   = (obj && typeof obj.end === 'number')   ? (obj.end | 0)   : 99;
             var group = (obj && obj.group) ? (obj.group | 0) : 0;
+            if (start < mc.memStart) start = mc.memStart;
+            if (mc.memMax && end > mc.memMax) end = mc.memMax;
             this._memScan = {
                 active: true, start: start, end: end, group: group,
                 current: start, count: 0, fmt: fmt, timer: null,
@@ -1611,11 +1882,18 @@
             this._memScan = null;
         }
 
+        // Channel number the rig will accept for a write / clear / recall.
+        _memChannelOk(ch) {
+            var mc = this._memCaps || { memStart: 1, memMax: 0 };
+            return ch >= mc.memStart && (!mc.memMax || ch <= mc.memMax);
+        }
+
         _memWrite(obj) {
             var fmt = this._memFormat();
             if (!fmt) return;
-            if (!obj || !(obj.channel | 0)) return;
+            if (!obj || obj.channel === undefined) return;
             var ch = obj.channel | 0;
+            if (!this._memChannelOk(ch)) return;
             var group = (obj.group | 0) || 0;
             // Snapshot current VFO A — the SPA's MEM-write button stores
             // whatever is on VFO A right now. Mirrors webserver.cpp:
@@ -1625,16 +1903,40 @@
             if (typeof modeCode !== 'number') modeCode = 0x01; // USB
             var filt = (this.state.filter | 0) > 0 ? (this.state.filter | 0) : 1;
             var freq = this.state.frequency || this.state.vfoAFrequency || 0;
+            // Never send the rig a 0 Hz channel — it NGs the write (FA).
+            if (!(freq > 0)) {
+                console.warn('[CIV] writeMemory: no known frequency, refusing');
+                this._emit('error', { message: 'Memory write failed: no known frequency' });
+                return;
+            }
             var mem = {
                 channel: ch, group: group, del: false,
                 scan: 0, skip: 0, split: 0,
                 frequency: freq, mode: modeCode, filter: filt,
-                datamode: 0, tonemode: 0,
-                tone: '', tsql: '', dtcs: 0, dtcsp: 0, duplex: 0,
+                datamode: 0,
                 frequencyB: freq, modeB: modeCode, filterB: filt,
-                datamodeB: 0, tonemodeB: 0, dtcsB: 0, dtcspB: 0, duplexB: 0,
-                name: '',
+                datamodeB: 0,
+                name: (obj.name || ''),
             };
+            // Repeater tone and shift, captured from the live rig state so a
+            // saved channel reopens the same machine. tonemode and duplex
+            // share one byte in the 'j'/'J' MemFormat specs, so writing the
+            // tone without the shift would silently clear the shift.
+            mem.tonemode = civ.toneModeToReg(this.state.toneMode);
+            mem.tone = this.state.toneFreq ? civ.toneNameFromReg(this.state.toneFreq) : '';
+            mem.tsql = this.state.tsqlFreq ? civ.toneNameFromReg(this.state.tsqlFreq) : '';
+            mem.dtcs = this.state.dtcsCode || 0;
+            mem.dtcsp = this.state.dtcsPolarity || 0;
+            mem.duplex = DUPLEX_MEM_NIBBLE[this.state.duplex] || 0;
+            mem.duplexOffset = this.state.duplexOffset || 0;
+            // No split support here: the VFO B half of the channel mirrors A.
+            mem.tonemodeB = mem.tonemode;
+            mem.toneB = mem.tone;
+            mem.tsqlB = mem.tsql;
+            mem.dtcsB = mem.dtcs;
+            mem.dtcspB = mem.dtcsp;
+            mem.duplexB = mem.duplex;
+            mem.duplexOffsetB = mem.duplexOffset;
             this._enqueue('writeMemory:' + ch,
                 civ.cmdWriteMemoryContents(mem, fmt));
         }
@@ -1642,9 +1944,11 @@
         _memClear(obj) {
             var fmt = this._memFormat();
             if (!fmt) return;
-            if (!obj || !(obj.channel | 0)) return;
+            if (!obj || obj.channel === undefined) return;
             var ch = obj.channel | 0;
+            if (!this._memChannelOk(ch)) return;
             var group = (obj.group | 0) || 0;
+            delete this._memCache[group * 65536 + ch];
             this._enqueue('clearMemory:' + ch,
                 civ.cmdClearMemoryContents(ch, group, fmt));
             // The rig won't push a memory-channel update on its own after
@@ -1653,21 +1957,140 @@
                 { memory: { channel: ch, group: group, del: true } });
         }
 
+        // Recall a channel ON the rig (#92) so tone / tone squelch / duplex
+        // offset come from the channel — not just freq + mode. Mirrors
+        // webServer::recallMemoryOnRig(): group select where the rig has the
+        // command, the band-nudge dance where it doesn't, then the channel
+        // select and the V/M switch. The rig never reports the channel, so
+        // the number is remembered here and re-sent in every status.
+        _memRecall(obj) {
+            var mc = this._memCaps;
+            var fmt = this._memFormat();
+            if (!mc || !fmt || !obj || obj.channel === undefined) return;
+            var ch = obj.channel | 0;
+            var group = (obj.group | 0) || 0;
+            if (!this._memChannelOk(ch) || group < 0) return;
+            // Trust the memFormat's 'a' spec, not memGroups — the IC-7610
+            // declares one group but carries no group field.
+            if (civ.memGroupSpec(fmt)) {
+                if (mc.hasGroupCmd) {
+                    this._enqueue('memoryGroup', civ.cmdSelectMemoryGroup(group, fmt));
+                } else {
+                    // IC-9700/9100: no group select command — the group is
+                    // implied by the band. Drop out of memory mode (bare 07)
+                    // if we're in it, then tune into the group's band so the
+                    // channel select lands in the right bank. The cached
+                    // channel frequency is inside that band by definition.
+                    if (this.state.selectedVfo === 'MEM' && mc.hasVfoModeSelect) {
+                        this._enqueue('vfoMode', civ.cmdVfoMode(mc.vfoModeCmd29));
+                    }
+                    var cached = this._memCache[group * 65536 + ch];
+                    var bandHz = (cached && cached.frequency > 0)
+                        ? cached.frequency : this._memGroupBandStart(group);
+                    if (bandHz > 0) this._enqueue('setFrequency', civ.cmdSetFrequency(bandHz));
+                    else console.warn('[CIV] recallMemory: no band for memory group ' + group);
+                }
+            }
+            this._enqueue('memoryChannel:' + ch, civ.cmdSelectMemoryChannel(ch));
+            // Selecting a channel does not flip the rig into memory mode by
+            // itself (Icom stays on VFO A/B) — the bare 08 does.
+            if (mc.hasMemoryMode) this._enqueue('memoryMode', civ.cmdMemoryMode());
+            this.state.memChannel = ch;
+            this.state.memGroup = group;
+            this._setSelectedVfo(mc.hasMemoryMode ? 'MEM' : this.state.selectedVfo);
+            this._enqueueMemReadback();
+        }
+
+        // First band the rig-caps table maps to this memory group (rigs whose
+        // groups are per-band, IC-9700) — the same edge the server nudges to.
+        _memGroupBandStart(group) {
+            var entry = RIG_CAPS[this.civAddr];
+            var bands = (entry && entry.bands) || [];
+            for (var i = 0; i < bands.length; i++) {
+                if (bands[i].memGroup === group && bands[i].groupStart > 0) return bands[i].groupStart;
+            }
+            return 0;
+        }
+
+        // Track the selected VFO ('A' | 'B' | 'MEM') and tell the SPA. The
+        // channel rides along so the MEM indicator reads "MEM n".
+        _setSelectedVfo(v) {
+            if (v !== 'MEM') this._lastRealVfo = v;
+            this.state.selectedVfo = v;
+            var u = { selectedVfo: v };
+            if (v === 'MEM' && this.state.memChannel !== null) u.memChannel = this.state.memChannel;
+            this._emit('update', u);
+        }
+
+        // After a recall / V-M switch the rig does not announce the new
+        // operating state — pull freq / mode / shift / tone so the SPA follows.
+        _enqueueMemReadback() {
+            this._enqueue('readFreq', civ.cmdReadFrequency());
+            this._enqueue('readMode', civ.cmdReadMode());
+            this._enqueueDualVfoReads();
+            if (this._hasDuplex) {
+                this._enqueue('readSplit', civ.cmdReadSplit());
+                this._enqueue('readDuplexOffset', civ.cmdReadDuplexOffset());
+            }
+            this._enqueueToneReads();
+        }
+
+        // In memory mode the operating frequency is the recalled channel's —
+        // it belongs to neither VFO cache slot.
+        _applyMemFreq(hz) {
+            if (this.state.frequency === hz) return;
+            this.state.frequency = hz;
+            this._emit('update', { frequency: hz });
+        }
+
+        // Rename: rewrite the channel from the cached contents with only the
+        // name changed, so tone / shift / DV fields survive (webserver.cpp
+        // does the same from its memoryType cache).
+        _memRename(obj) {
+            var fmt = this._memFormat();
+            if (!fmt || !obj || obj.channel === undefined) return;
+            var ch = obj.channel | 0;
+            var group = (obj.group | 0) || 0;
+            var mem = this._memCache[group * 65536 + ch];
+            if (!mem || mem.del || mem.empty) {
+                console.warn('[CIV] renameMemory: channel ' + ch + ' group ' + group + ' not cached');
+                return;
+            }
+            mem.name = String(obj.name || '');
+            mem.del = false;
+            this._enqueue('writeMemory:' + ch, civ.cmdWriteMemoryContents(mem, fmt));
+            // The rig won't echo the write — tell the SPA directly.
+            this._emit('memoryChannel', { memory: this._memToJson(mem) });
+        }
+
+        // Same keys the server build's memoryToJson() emits, so the SPA
+        // renders a channel identically in both forks.
+        _memToJson(mem) {
+            return {
+                channel: mem.channel, group: mem.group || 0,
+                frequency: mem.frequency || 0,
+                mode: civ.codeToMode[mem.mode] || '', filter: mem.filter || 1,
+                name: mem.name || '',
+                del: !!mem.del, empty: !!mem.empty,
+                tonemode: mem.tonemode || 0,
+                toneModeName: civ.toneModeFromReg(mem.tonemode || 0),
+                tone: mem.tone || '', tsql: mem.tsql || '',
+                dtcs: mem.dtcs || 0, dtcsPolarity: mem.dtcsp || 0,
+                duplex: mem.duplex || 0, duplexOffset: mem.duplexOffset || 0,
+            };
+        }
+
         _memHandleReply(payload) {
             var fmt = this._memFormat();
             if (!fmt) return false;
             var mem = civ.parseMemoryContentsReply(payload, fmt);
             if (!mem) return false;
-            // Translate the mode register byte to the SPA's string form
-            // before forwarding (the SPA expects mode names like 'USB').
-            var modeStr = civ.codeToMode[mem.mode] || '';
-            var out = {
-                channel: mem.channel, group: mem.group || 0,
-                frequency: mem.frequency || 0,
-                mode: modeStr, filter: mem.filter || 1,
-                name: mem.name || '',
-                del: !!mem.del, empty: !!mem.empty,
-            };
+            // Keep the parsed contents: rename rewrites from them, and the
+            // IC-9700 recall path band-nudges to the cached frequency.
+            var key = (mem.group || 0) * 65536 + (mem.channel | 0);
+            if (mem.del || mem.empty) delete this._memCache[key];
+            else this._memCache[key] = mem;
+            var out = this._memToJson(mem);
             // Cancel the scan watchdog and bump the pointer if this reply
             // belongs to an active scan (most likely case during a scan).
             var s = this._memScan;
@@ -1683,6 +2106,68 @@
                 this._emit('memoryChannel', { memory: out });
             }
             return true;
+        }
+
+        // 0x16 replies for the tone registers. The single-register dialect
+        // reports the mode directly; the boolean dialect needs all three
+        // flags folded back together, so they are cached as they arrive.
+        _handleToneBoolReply(payload) {
+            var t = this._toneCmds;
+            var mode = null;
+            if (t.sqlType) {
+                mode = civ.parseToneSqlTypeReply(payload, t.sqlType);
+            } else {
+                var flags = [['rptTone', '_rptTone'], ['rptTsql', '_rptTsql'], ['rptDtcs', '_rptDtcs']];
+                var matched = false;
+                for (var i = 0; i < flags.length; i++) {
+                    if (!t[flags[i][0]]) continue;
+                    var v = civ.parseToneBoolReply(payload, t[flags[i][0]]);
+                    if (v === null) continue;
+                    this[flags[i][1]] = v;
+                    matched = true;
+                    break;
+                }
+                if (!matched) return false;
+                mode = civ.toneModeFromBools(!!this._rptTone, !!this._rptTsql, !!this._rptDtcs);
+            }
+            if (mode === null) return false;
+            if (this.state.toneMode !== mode) {
+                this.state.toneMode = mode;
+                // The three flags answer as three separate replies, so the
+                // folded value is briefly a mode nobody selected. Tell the SPA
+                // once the burst has landed.
+                this._notifyToneModeSoon();
+            }
+            return true;
+        }
+
+        // 0x1B replies. All three registers share one payload shape, so the
+        // rig's own command bytes pick which field the value belongs to.
+        _handleToneFreqReply(payload) {
+            var t = this._toneCmds;
+            var regs = [['toneFreq', 'toneFreq'], ['tsqlFreq', 'tsqlFreq'], ['dtcsCode', 'dtcsCode']];
+            for (var i = 0; i < regs.length; i++) {
+                var cmdBytes = t[regs[i][0]];
+                if (!cmdBytes) continue;
+                var r = civ.parseToneReply(payload, cmdBytes);
+                if (r === null) continue;
+                var field = regs[i][1];
+                var u = {};
+                if (this.state[field] !== r.value) {
+                    this.state[field] = r.value;
+                    u[field] = r.value;
+                }
+                if (field === 'dtcsCode') {
+                    var pol = (r.tinv ? 2 : 0) | (r.rinv ? 1 : 0);
+                    if (this.state.dtcsPolarity !== pol) {
+                        this.state.dtcsPolarity = pol;
+                        u.dtcsPolarity = pol;
+                    }
+                }
+                if (Object.keys(u).length) this._emit('update', u);
+                return true;
+            }
+            return false;
         }
 
         // Layout of a 0x27 0x00 frame after CivParser strips FE FE / FD:
@@ -1761,6 +2246,28 @@
             return entry.caps.hasTransmit !== false;
         }
 
+        // Scope bring-up, sent on connect and again after a power-on (the rig
+        // forgets scope output across a power cycle). Single-byte payloads
+        // match the C++ wfweb's behaviour for single-receiver rigs.
+        _enqueueScopeSetup() {
+            this._enqueue('scopeOn',   new Uint8Array([0x27, 0x10, 0x01]));
+            this._enqueue('scopeData', new Uint8Array([0x27, 0x11, 0x01]));
+            if (!this._hasSpectrum) return;
+            // Force Center scope mode: the SPA keeps the RX indicator fixed
+            // mid-screen and scrolls the waterfall under it, which only
+            // renders correctly when the rig reports center-mode spectrum.
+            // A rig left in Fixed mode sends static band edges, so the
+            // marker/passband/span all appear frozen (issue #75). 0 = Center.
+            this._enqueue('scopeMode',   new Uint8Array([0x27, 0x14, 0x00, 0x00]));
+            // Force Carrier Point Center: with Filter Center (0) the spectrum
+            // centres on the passband instead of the VFO, so a signal aligned
+            // to the visual passband is mistuned in RX audio (issue #75).
+            // 1 = Carrier Point Center. Unlike the per-window scope commands
+            // this setting is global and takes NO scope byte — the rig NGs
+            // the prefixed form (verified on a real IC-7300, issue #75).
+            this._enqueue('scopeCenter', new Uint8Array([0x27, 0x1C, 0x01]));
+        }
+
         _emitRigInfo() {
             // Pull per-rig caps from the auto-generated rig-caps registry.
             // Falls back to "modern HF rig with scope and TX" when the rig
@@ -1790,11 +2297,31 @@
                 spans: DEFAULT_SPANS,
                 preamps: preamps,
                 attenuators: attenuators,
+                // Band table for the BAND picker — an unknown rig gets none
+                // and the SPA falls back to its HF-only layout.
+                bands: (entry && entry.bands) || [],
                 antennas: this._antennas,
                 hasRxAnt: this._hasRxAnt,
                 hasFilterSettings: true,
                 hasMainSub: caps.numReceivers > 1,
+                hasDuplex: !!caps.hasDuplex,
+                hasTuner: !!caps.hasTuner,
+                // Repeater access tone. canSet* is separate from hasCTCSS
+                // because a rig can engage a tone without exposing the 0x1B
+                // frequency register (IC-905), and tone scan additionally
+                // needs the squelch readout to watch.
+                hasCTCSS: !!caps.hasCTCSS,
+                hasDTCS: !!caps.hasDTCS,
+                hasToneSqlType: !!caps.hasToneSqlType,
+                canSetToneFreq: !!(entry && entry.cmds && entry.cmds.toneFreq),
+                canSetTsqlFreq: !!(entry && entry.cmds && entry.cmds.tsqlFreq),
+                ctcssTones: caps.hasCTCSS ? CTCSS_TONES : [],
+                dtcsCodes: caps.hasDTCS ? DTCS_CODES : [],
                 hasSpectrum: caps.hasSpectrum,
+                // Memory channels (#92) — same three fields the server's caps carry.
+                hasMemoryMode: !!(this._memCaps && this._memCaps.hasMemoryMode),
+                memGroups: this._memCaps ? this._memCaps.memGroups : 0,
+                memStart:  this._memCaps ? this._memCaps.memStart : 1,
                 spectAmpMax: 160,     // Icom amplitude scale (matches C++ wfweb)
                 audioAvailable: true,    // Phase 2: rig USB audio via getUserMedia
                 audioSampleRate: 48000,
@@ -1840,12 +2367,16 @@
                 sMeter: this.state.sMeter,
                 transmitting: this.state.transmitting,
             };
+            if (this.state.selectedVfo === 'MEM' && this.state.memChannel !== null) {
+                s.memChannel = this.state.memChannel;
+            }
             // Pass through any cached values so the UI populates fully.
             var passthrough = ['afGain', 'rfGain', 'rfPower', 'squelch',
                 'micGain', 'monitorGain', 'pbtInner', 'pbtOuter', 'cwSpeed',
                 'autoNotch', 'nb', 'nr', 'preamp', 'attenuator',
                 'antenna', 'rxAntenna',
-                'split', 'tuner', 'spanIndex', 'filterWidth'];
+                'split', 'tuner', 'spanIndex', 'filterWidth', 'filterShape',
+                'duplex', 'duplexOffset'];
             for (var i = 0; i < passthrough.length; i++) {
                 var k = passthrough[i];
                 if (this.state[k] !== undefined && this.state[k] !== null) s[k] = this.state[k];
@@ -1879,6 +2410,17 @@
                 var now = Date.now();
                 if (now - this._lastFreqStamp > 2000) this._enqueue('readFreq', civ.cmdReadFrequency());
                 if (now - this._lastModeStamp > 2000) this._enqueue('readMode', civ.cmdReadMode());
+                // The rig stores a separate duplex offset per band, so a band
+                // change silently replaces it. Re-read on the slow tick.
+                if (this._hasDuplex && (this._dupPollTick = (this._dupPollTick || 0) + 1) % 5 === 0) {
+                    this._enqueue('readSplit', civ.cmdReadSplit());
+                    this._enqueue('readDuplexOffset', civ.cmdReadDuplexOffset());
+                }
+                // Tone is per-band too, and can be changed from the front
+                // panel — re-read on the same slow tick.
+                if ((this._tonePollTick = (this._tonePollTick || 0) + 1) % 5 === 0) {
+                    this._enqueueToneReads();
+                }
             }, 1000);
             // Slow refresh of the unselected/Sub VFO so dial motion on the
             // *other* VFO eventually shows up in the side display. The rig

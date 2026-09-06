@@ -11,6 +11,11 @@ Each entry has:
     meters  ({sMeter, swr, power, alc, comp, center, voltage, current}
              — each a list of [rigVal, actualVal] pairs, sorted by rigVal)
     preamps / attenuators ([{num, name}, ...] — Num is the CI-V byte)
+    bands   ([{num, name, start, end, memGroup?, groupStart?}, ...] — Num
+             is the availableBands enum from include/rigidentities.h,
+             start/end in Hz; memGroup/groupStart on rigs whose memory
+             groups are per-band (IC-9700))
+    memFormat (the .rig MemFormat string — drives the 0x1A 0x00 codec)
 
 We only emit Icom rigs (Manufacturer = 0 or "Icom"). Run after editing
 .rig files and check the result in:
@@ -103,11 +108,49 @@ EXTRACTED_CMDS = {
     # [0x12, 0x00]); rxAntenna presence also gates the 0x12 rx flag byte.
     "antenna":   "Antenna",
     "rxAntenna": "RX Antenna",
+    # Repeater access tone. Two dialects: the newer rigs (IC-705/9700/905)
+    # carry the whole TONE/TSQL/DTCS selection in one "Tone Squelch Type"
+    # register (0x16 0x5D); the rest toggle independent booleans (0x16 0x42
+    # TONE, 0x43 TSQL, 0x4B DTCS). The sub-command byte differs per rig, so
+    # capture the sequences rather than hardcoding them.
+    "toneSqlType": "Tone Squelch Type",
+    "rptTone":     "Repeater Tone",
+    "rptTsql":     "Repeater TSQL",
+    "rptDtcs":     "Repeater DTCS",
+    # Tone / DTCS frequency registers (0x1B 0x00/0x01/0x02).
+    "toneFreq":  "Tone Frequency",
+    "tsqlFreq":  "TSQL Frequency",
+    "dtcsCode":  "DTCS Code/Polarity",
+    # Squelch open/closed readout (0x15 0x05) — the only way to tell that a
+    # tone scan has found the repeater's tone.
+    "sqlStatus": "Various Squelch",
+    # Memory channels (issue #92). memoryMode is the V/M switch AND the
+    # channel select (0x08 / 0x08 <ch>); memoryGroup (0x08 0xA0) exists only
+    # on rigs with a group byte in their memory frames; vfoModeSelect is the
+    # bare 0x07 that exits memory mode.
+    "memoryMode":     "Memory Mode",
+    "memoryGroup":    "Memory Group",
+    "vfoModeSelect":  "VFO Mode Select",
+    "memoryContents": "Memory Contents",
+    "memoryClear":    "Memory Clear",
 }
 
 
-def extract_commands(props: dict[str, str]) -> dict[str, list[int]]:
-    """Pull selected Commands\\N\\String byte sequences by Type label."""
+# Command labels that say something about repeater-tone capability.
+TONE_CMD_LABELS = {
+    "Tone Squelch Type", "Repeater Tone", "Repeater TSQL", "Repeater DTCS",
+    "Tone Frequency", "TSQL Frequency", "DTCS Code/Polarity", "Various Squelch",
+}
+
+
+def extract_commands(props: dict[str, str],
+                     meta: dict[str, dict] | None = None) -> dict[str, list[int]]:
+    """Pull selected Commands\\N\\String byte sequences by Type label.
+
+    When `meta` is given it is filled with {key: {min, max, cmd29}} for the
+    same commands — the memory code needs the channel range and whether the
+    bare 0x07 wants the 0x29 Main/Sub prefix (IC-7610).
+    """
     out: dict[str, list[int]] = {}
     pat = re.compile(r"^Rig/Commands\\(\d+)\\(\w+)$")
     found: dict[int, dict[str, str]] = {}
@@ -128,6 +171,13 @@ def extract_commands(props: dict[str, str]) -> dict[str, list[int]]:
         if bytes_ is None:
             continue
         out[key] = bytes_
+        if meta is not None:
+            try:
+                lo = int(e.get("Min", "0")); hi = int(e.get("Max", "0"))
+            except ValueError:
+                lo, hi = 0, 0
+            meta[key] = {"min": lo, "max": hi,
+                         "cmd29": e.get("Command29", "").strip().lower() == "true"}
     return out
 
 
@@ -145,10 +195,11 @@ def normalize_input_name(name: str) -> str:
 
 
 def extract_num_name_list(props: dict[str, str], prefix: str) -> list[dict]:
-    """Walk Rig/<prefix>\\N\\{Num,Name} entries and return [{num, name}, ...].
+    """Walk Rig/<prefix>\\N\\{Num,Name,Start,End} entries.
 
-    Excludes the OFF/0-dB entry (Num=0) — the SPA cycle code uses Num=0 as
-    the "off" value already, so listing it would create a redundant cycle step.
+    Returns [{num, name, minFreq?, maxFreq?}, ...] in .rig order — the
+    OFF/0-dB entry included, since the SPA cycle code treats index 0 as
+    the "off" step.
     """
     pat = re.compile(rf"^Rig/{prefix}\\(\d+)\\(\w+)$")
     found: dict[int, dict[str, str]] = {}
@@ -168,9 +219,68 @@ def extract_num_name_list(props: dict[str, str], prefix: str) -> list[dict]:
         if num < 0:
             continue
         name = e.get("Name", "").strip()
-        out.append((idx, {"num": num, "name": name}))
+        item = {"num": num, "name": name}
+        # Optional Start/End (Hz) restrict an entry to part of the rig's
+        # coverage — the IC-705 only offers PREAMP 2 below 74.8 MHz.
+        for field, key in (("Start", "minFreq"), ("End", "maxFreq")):
+            try:
+                hz = int(e.get(field, "0"))
+            except ValueError:
+                continue
+            if hz > 0:
+                item[key] = hz
+        out.append((idx, item))
     out.sort(key=lambda t: t[0])
     return [d for _, d in out]
+
+
+def extract_bands(props: dict[str, str]) -> list[dict]:
+    """Walk Rig/Bands\\N\\{Num,Name,Start,End} into [{num, name, start, end}].
+
+    A .rig carries one row per ITU region wherever the band edges differ
+    (40 m is 7.0-7.2 MHz in region 1, 7.0-7.3 in region 2). The SPA never
+    picks a region — it only needs "where does this band start" and "which
+    band is this frequency in" — so the rows are folded to the widest edges.
+    num is the availableBands enum from include/rigidentities.h; the SPA
+    keys its BAND-picker labels on it. Sorted by num.
+
+    Bands\\N\\MemoryGroup (IC-9700: one memory group per band, no group
+    select command) is kept as memGroup, with groupStart = the FIRST row's
+    Start — the same edge the server's recallMemoryOnRig() band-nudges to —
+    rather than the folded minimum, which may lie outside the rig's region.
+    """
+    pat = re.compile(r"^Rig/Bands\\(\d+)\\(\w+)$")
+    found: dict[int, dict[str, str]] = {}
+    for k, v in props.items():
+        m = pat.match(k)
+        if not m:
+            continue
+        found.setdefault(int(m.group(1)), {})[m.group(2)] = v
+    folded: dict[int, dict] = {}
+    for e in found.values():
+        try:
+            num = int(e.get("Num", "-1"))
+            start = int(e.get("Start", "0"))
+            end = int(e.get("End", "0"))
+        except ValueError:
+            continue
+        if num < 0 or end <= start:
+            continue
+        try:
+            mem_group = int(e.get("MemoryGroup", "-1"))
+        except ValueError:
+            mem_group = -1
+        cur = folded.get(num)
+        if cur is None:
+            folded[num] = {"num": num, "name": e.get("Name", "").strip(),
+                           "start": start, "end": end}
+            if mem_group >= 0:
+                folded[num]["memGroup"] = mem_group
+                folded[num]["groupStart"] = start
+        else:
+            cur["start"] = min(cur["start"], start)
+            cur["end"] = max(cur["end"], end)
+    return [folded[n] for n in sorted(folded)]
 
 
 def extract_inputs(props: dict[str, str]) -> dict[str, int]:
@@ -202,7 +312,27 @@ def extract_inputs(props: dict[str, str]) -> dict[str, int]:
     return out
 
 
-def extract_caps(props: dict[str, str]) -> dict:
+def extract_tones(props: dict[str, str], prefix: str) -> list[int]:
+    """Walk CTCSS\\N\\Reg / DTCS\\N\\Reg into an ordered list of registers.
+
+    CTCSS registers are tenths of Hz (670 = 67.0 Hz); DTCS registers are the
+    code itself (23 = D023). The .rig files also carry a Tone field for CTCSS,
+    but it is just Reg/10 — the JS side formats the label from Reg.
+    """
+    pat = re.compile(rf"^Rig/{prefix}\\(\d+)\\Reg$")
+    found: dict[int, int] = {}
+    for k, v in props.items():
+        m = pat.match(k)
+        if not m:
+            continue
+        try:
+            found[int(m.group(1))] = int(v)
+        except ValueError:
+            continue
+    return [found[i] for i in sorted(found)]
+
+
+def extract_caps(props: dict[str, str], cmd_meta: dict[str, dict]) -> dict:
     """Pull boolean / numeric capability flags from the [Rig] section."""
     def b(key: str, default: bool = False) -> bool:
         v = props.get(f"Rig/{key}", "").strip().lower()
@@ -217,12 +347,38 @@ def extract_caps(props: dict[str, str]) -> dict:
     # Detect support for the 0x25 0x00 / 0x25 0x01 commands ("Selected Freq" /
     # "Unselected Freq"). On A/B-VFO Icoms (IC-7300, IC-705, …) these let the
     # standalone transport read both VFOs without flipping the rig's selection.
+    # "Send Freq Offset" (CI-V 0x0D) is what lets a rig shift its TX frequency
+    # for a repeater, so it is the honest test for whether the DUP tile has
+    # anything to drive. "Tuner/ATU Status" (CI-V 0x1C 0x01) plays the same
+    # role for the TUNE tile: rigs with no tuner (IC-9700/905, the receivers,
+    # the older HF rigs) never declare it.
+    #
+    # Repeater access tone works the same way, but takes two facts: a rig needs
+    # a way to engage the tone (either the one-register "Tone Squelch Type" or
+    # the per-function TONE/TSQL/DTCS booleans) AND a tone table in its .rig.
+    # "Various Squelch" (0x15 0x05) reports squelch open/closed, which is what
+    # makes a software tone scan possible — the IC-9100 and IC-7100 lack it.
     has_selected_freq = False
+    has_duplex = False
+    has_tuner = False
+    has_memory_mode = False
+    tone_cmds: set[str] = set()
     pat = re.compile(r"^Rig/Commands\\(\d+)\\Type$")
     for k, v in props.items():
-        if pat.match(k) and v.strip() == "Selected Freq":
+        if not pat.match(k):
+            continue
+        if v.strip() == "Selected Freq":
             has_selected_freq = True
-            break
+        elif v.strip() == "Send Freq Offset":
+            has_duplex = True
+        elif v.strip() == "Tuner/ATU Status":
+            has_tuner = True
+        elif v.strip() == "Memory Mode":
+            has_memory_mode = True
+        elif v.strip() in TONE_CMD_LABELS:
+            tone_cmds.add(v.strip())
+    can_engage_tone = bool(tone_cmds & {
+        "Tone Squelch Type", "Repeater Tone", "Repeater TSQL", "Repeater DTCS"})
     return {
         "hasTransmit": b("HasTransmit", True),
         "hasSpectrum": b("HasSpectrum", False),
@@ -234,6 +390,25 @@ def extract_caps(props: dict[str, str]) -> dict:
         # Main or Sub receiver respectively.
         "hasCommand29": b("HasCommand29", False),
         "hasSelectedFreq": has_selected_freq,
+        "hasDuplex": has_duplex,
+        "hasTuner": has_tuner,
+        "hasCTCSS": can_engage_tone and bool(extract_tones(props, "CTCSS")),
+        "hasDTCS": (can_engage_tone and bool(extract_tones(props, "DTCS"))
+                    and "DTCS Code/Polarity" in tone_cmds),
+        "hasToneSqlType": "Tone Squelch Type" in tone_cmds,
+        # Memory channels. hasMemoryMode = the rig has a V/M switch (CI-V
+        # 0x08), so the SPA can enter/leave memory mode. memGroups is the
+        # highest group number and memStart the lowest channel/group (0 on
+        # the IC-705/905, 1 elsewhere) — same fields the server puts in its
+        # caps JSON. memMax is the highest channel the 0x08 select accepts;
+        # vfoModeSelectCmd29 says the bare 0x07 wants the 0x29 prefix.
+        "hasMemoryMode": has_memory_mode,
+        "memGroups": n("MemGroups", 0),
+        "memStart":  n("MemStart", 1),
+        "memories":  n("Memories", 0),
+        "memMax":    (cmd_meta.get("memoryMode") or cmd_meta.get("memoryContents")
+                      or {}).get("max", 0),
+        "vfoModeSelectCmd29": bool((cmd_meta.get("vfoModeSelect") or {}).get("cmd29")),
     }
 
 
@@ -292,7 +467,23 @@ def js_inputs(inputs: dict[str, int]) -> str:
 
 
 def js_num_name_list(items: list[dict]) -> str:
-    parts = [f"{{num:{e['num']},name:{js_string(e['name'])}}}" for e in items]
+    parts = []
+    for e in items:
+        fields = f"num:{e['num']},name:{js_string(e['name'])}"
+        for key in ("minFreq", "maxFreq"):
+            if e.get(key):
+                fields += f",{key}:{e[key]}"
+        parts.append("{" + fields + "}")
+    return "[" + ",".join(parts) + "]"
+
+
+def js_bands(items: list[dict]) -> str:
+    parts = []
+    for b in items:
+        fields = f"num:{b['num']},name:{js_string(b['name'])},start:{b['start']},end:{b['end']}"
+        if "memGroup" in b:
+            fields += f",memGroup:{b['memGroup']},groupStart:{b['groupStart']}"
+        parts.append("{" + fields + "}")
     return "[" + ",".join(parts) + "]"
 
 
@@ -306,12 +497,18 @@ def js_caps(caps: dict) -> str:
     return "{" + ",".join(parts) + "}"
 
 
+def js_int_list(vals: list[int]) -> str:
+    return "[" + ",".join(str(v) for v in vals) + "]"
+
+
 def js_string(s: str) -> str:
     return "'" + s.replace("\\", "\\\\").replace("'", "\\'") + "'"
 
 
 def main() -> int:
-    rigs: list[tuple[int, str, dict, dict, dict, dict, list, list, list]] = []
+    rigs: list[tuple[int, str, dict, dict, dict, dict, list, list, list, list, str]] = []
+    ctcss: list[int] = []
+    dtcs: list[int] = []
     for p in sorted(RIGS_DIR.glob("*.rig")):
         props = parse_ini(p)
         if not is_icom(props):
@@ -324,13 +521,31 @@ def main() -> int:
             continue  # DEFAULT-ICOM has no real address
         model = props.get("Rig/Model", p.stem)
         meters = extract_meters(props)
-        cmds = extract_commands(props)
-        caps = extract_caps(props)
+        cmd_meta: dict[str, dict] = {}
+        cmds = extract_commands(props, cmd_meta)
+        caps = extract_caps(props, cmd_meta)
+        mem_format = props.get("Rig/MemFormat", "").strip()
         inputs = extract_inputs(props)
         preamps = extract_num_name_list(props, "Preamps")
         attenuators = extract_num_name_list(props, "Attenuators")
         antennas = extract_num_name_list(props, "Antennas")
-        rigs.append((civ, model, meters, cmds, caps, inputs, preamps, attenuators, antennas))
+        bands = extract_bands(props)
+        rigs.append((civ, model, meters, cmds, caps, inputs, preamps, attenuators, antennas, bands, mem_format))
+        # The CTCSS (48) and DTCS (104) tables are the standard sets and are
+        # byte-identical in every Icom .rig, so they are emitted once instead
+        # of being repeated per rig. Bail loudly if that ever stops holding —
+        # a silently wrong tone list would key the wrong repeater.
+        for prefix, shared in (("CTCSS", ctcss), ("DTCS", dtcs)):
+            table = extract_tones(props, prefix)
+            if not table:
+                continue
+            if not shared:
+                shared.extend(table)
+            elif table != shared:
+                print(f"error: {p.name} has a {prefix} table that differs from the "
+                      f"shared one; per-rig tone tables are not supported yet",
+                      file=sys.stderr)
+                return 1
 
     rigs.sort(key=lambda r: r[0])
 
@@ -338,24 +553,41 @@ def main() -> int:
         "// Auto-generated by tools/extract-rig-caps.py — do NOT hand-edit.",
         "// Source: rigs/*.rig (Icom only). Re-run the script after editing those.",
         "//",
-        "// Each entry: civAddr -> { model, caps, meters, cmds, inputs, preamps, attenuators, antennas }",
+        "// Each entry: civAddr -> { model, caps, meters, cmds, inputs, preamps, attenuators, antennas, bands, memFormat }",
         "//   caps:   { hasTransmit, hasSpectrum, hasLAN, numReceivers, numVFOs,",
-        "//             hasCommand29, hasSelectedFreq }",
+        "//             hasCommand29, hasSelectedFreq, hasDuplex, hasTuner,",
+        "//             hasCTCSS, hasDTCS, hasToneSqlType,",
+        "//             hasMemoryMode, memGroups, memStart, memories, memMax,",
+        "//             vfoModeSelectCmd29 }",
         "//   meters: { kind: [[rigVal, actualVal], ...] }",
         "//           kinds: sMeter, swr, power, alc, comp, center, voltage, current",
-        "//   cmds:   { modOff, modData1, modData2, modData3, antenna, rxAntenna }",
+        "//   cmds:   { modOff, modData1, modData2, modData3, antenna, rxAntenna,",
+        "//             toneSqlType, rptTone, rptTsql, rptDtcs, toneFreq, tsqlFreq,",
+        "//             dtcsCode, sqlStatus, memoryMode, memoryGroup, vfoModeSelect,",
+        "//             memoryContents, memoryClear }",
         "//           -> CI-V byte sequence",
         "//   inputs: name -> reg byte. The JS side writes <prefix>+<reg> to",
         "//           switch the rig's modulation source (e.g., USB).",
         "//           Names: MIC, ACCA, ACCB, USB, LAN, MICUSB, ACCUSB, …",
         "//   preamps / attenuators / antennas: [{num, name}, ...] — Num is the",
         "//           CI-V byte; the SPA's cycle buttons walk the lists.",
+        "//   bands:  [{num, name, start, end, memGroup?, groupStart?}, ...] — Num",
+        "//           is the availableBands enum (include/rigidentities.h), start/end",
+        "//           in Hz, one entry per band folded across ITU regions. Drives the",
+        "//           BAND picker; memGroup/groupStart drive memory recall on rigs",
+        "//           whose memory groups are per-band (IC-9700).",
+        "//   memFormat: the .rig MemFormat string ('' = no memory support);",
+        "//           parsed by civ/icom.js for the 0x1A 0x00 read/write codec.",
         "",
         "(function (global) {",
         "    'use strict';",
+        "    // Standard CTCSS tones in tenths of Hz (670 = 67.0) and DTCS codes,",
+        "    // shared by every Icom that has them. Index order is the rig's own.",
+        "    global.IcomCtcssTones = " + js_int_list(ctcss) + ";",
+        "    global.IcomDtcsCodes = " + js_int_list(dtcs) + ";",
         "    global.IcomRigCaps = {",
     ]
-    for civ, model, meters, cmds, caps, inputs, preamps, attenuators, antennas in rigs:
+    for civ, model, meters, cmds, caps, inputs, preamps, attenuators, antennas, bands, mem_format in rigs:
         lines.append(
             f"        0x{civ:02X}: {{ model: {js_string(model)}, "
             f"caps: {js_caps(caps)}, "
@@ -364,7 +596,9 @@ def main() -> int:
             f"inputs: {js_inputs(inputs)}, "
             f"preamps: {js_num_name_list(preamps)}, "
             f"attenuators: {js_num_name_list(attenuators)}, "
-            f"antennas: {js_num_name_list(antennas)} }},"
+            f"antennas: {js_num_name_list(antennas)}, "
+            f"bands: {js_bands(bands)}, "
+            f"memFormat: {js_string(mem_format)} }},"
         )
     lines += [
         "    };",
@@ -373,7 +607,7 @@ def main() -> int:
     ]
     OUT.write_text("\n".join(lines), encoding="utf-8")
     print(f"wrote {OUT.relative_to(REPO)} — {len(rigs)} Icom rigs")
-    for civ, model, meters, cmds, caps, inputs, preamps, attenuators, antennas in rigs:
+    for civ, model, meters, cmds, caps, inputs, preamps, attenuators, antennas, bands, mem_format in rigs:
         flags = []
         if not caps["hasTransmit"]: flags.append("RX-only")
         if caps["hasSpectrum"]: flags.append("scope")
@@ -384,7 +618,14 @@ def main() -> int:
         pa = f"PA={len(preamps)}" if preamps else "PA=-"
         at = f"ATT={len(attenuators)}" if attenuators else "ATT=-"
         an = f"ANT={len(antennas)}" if antennas else "ANT=-"
-        print(f"  0x{civ:02X}  {model:<18}{flag}  USB-reg={usb_str}  {pa} {at} {an}")
+        bd = f"BANDS={len(bands)}" if bands else "BANDS=-"
+        if mem_format:
+            mm = f"MEM={caps['memStart']}-{caps['memMax']}"
+            if caps["memGroups"] > 0: mm += f"/g{caps['memGroups']}"
+            if not caps["hasMemoryMode"]: mm += "(noVM)"
+        else:
+            mm = "MEM=-"
+        print(f"  0x{civ:02X}  {model:<18}{flag}  USB-reg={usb_str}  {pa} {at} {an} {bd} {mm}")
     return 0
 
 

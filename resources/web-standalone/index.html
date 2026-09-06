@@ -95,9 +95,8 @@ html, body {
     display: block; width: 2px; height: 12px;
     background: #888; border-radius: 1px;
 }
-#filterText { color: #888; font-size: 11px; font-weight: bold; cursor: pointer; }
-#filterText.clickable { color: #0aa; }
-#filterText.clickable:active { color: #0ff; }
+#filterText { color: #0aa; font-size: 11px; font-weight: bold; cursor: pointer; }
+#filterText:active { color: #0ff; }
 #dspIndicators { display: flex; gap: 4px; margin-left: 6px; }
 .dsp-tag {
     font-size: 9px; font-weight: bold;
@@ -310,6 +309,11 @@ html, body {
 .freq-digit.digit-8 { background-position: -400px 0; }
 .freq-digit.digit-9 { background-position: -450px 0; }
 .freq-digit.digit-dot { background-position: -500px 0; width: 12px; }
+.freq-digit.digit-dash { background-image: none; position: relative; }
+.freq-digit.digit-dash::after {
+    content: ''; position: absolute; left: 24%; right: 24%; top: 46%; height: 8%;
+    background: var(--text-dim);
+}
 
 /* ============ ROW 3: SCOPE INFO BAR ============ */
 #scopeInfoBar {
@@ -1473,6 +1477,58 @@ body.digi-open #bottomBar { grid-row: 5; }
     grid-column: unset; /* override back-btn grid-column */
 }
 
+/* DUP window — same modal shell as the memory browser (.mem-modal), so
+   direction and offset are set in one place instead of adding standing
+   chrome to the FUNCTION grid. */
+/* Buttons are scoped to #dupOverlay rather than reusing .mem-seg: that class
+   only exists in the server fork, so borrowing it would leave the standalone
+   window unstyled. Same palette, so the two windows still read as a pair. */
+/* The TONE and FILTER windows are the DUP window's twins — same buttons,
+   same palette — so all three share these rules instead of growing a second
+   look. */
+#dupOverlay .dup-btn, #toneOverlay .dup-btn, #filterOverlay .dup-btn {
+    padding: 7px 0;
+    background: #001020; border: 1px solid #048; border-radius: 3px;
+    color: #08f; font-family: 'Courier New', monospace; font-size: 12px;
+    font-weight: bold; cursor: pointer;
+}
+#dupOverlay .dup-btn:active, #toneOverlay .dup-btn:active, #filterOverlay .dup-btn:active { background: #048; color: #000; }
+#dupOverlay .dup-btn.active, #toneOverlay .dup-btn.active, #filterOverlay .dup-btn.active { background: #024a80; border-color: #5af; color: #fff; }
+#dupDirRow { display: flex; gap: 6px; margin: 2px 8px 6px; }
+#dupDirRow .dup-btn { flex: 1; }
+#dupSectionLabel {
+    color: #8cf; font-family: 'Courier New', monospace; font-size: 11px;
+    font-weight: bold; margin: 8px 8px 4px;
+}
+#dupOffsetChoices { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 8px; }
+#dupOffsetChoices .dup-btn { flex: 0 0 auto; padding: 7px 16px; }
+#dupOverlay .dup-label, #toneOverlay .dup-label, #filterOverlay .dup-label { color: #8cf; font-family: 'Courier New', monospace; font-size: 11px; font-weight: bold; }
+#dupOverlay .dup-hint, #toneOverlay .dup-hint { color: #467; font-family: 'Courier New', monospace; font-size: 11px; }
+/* The DUP window has one section, the TONE window several (TX tone, RX tone
+   squelch, DTCS code, DTCS polarity), so its labels and grids are classes. */
+#toneModeRow { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 8px 6px; }
+#toneModeRow .dup-btn { flex: 1 0 auto; padding: 7px 14px; }
+#toneSections { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+#toneOverlay .tone-section-label {
+    color: #8cf; font-family: 'Courier New', monospace; font-size: 11px;
+    font-weight: bold; margin: 8px 8px 4px;
+}
+#toneOverlay .tone-grid { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 8px; }
+#toneOverlay .tone-grid .dup-btn { flex: 0 0 auto; padding: 7px 12px; }
+#dupCustomInput {
+    width: 72px; background: #001020; border: 1px solid #048; color: #8cf;
+    padding: 4px 6px; font-family: 'Courier New', monospace;
+    font-size: 12px; text-align: right;
+}
+#dupOffsetUnit { color: #467; font-family: 'Courier New', monospace; font-size: 11px; }
+@media (pointer: coarse) {
+    #dupOverlay .dup-btn { padding: 11px 0; }
+    #dupOffsetChoices .dup-btn { padding: 11px 16px; }
+    #toneModeRow .dup-btn { padding: 11px 14px; }
+    #toneOverlay .tone-grid .dup-btn { padding: 11px 12px; }
+    #filterOverlay .filter-seg-row .dup-btn { padding: 11px 0; }
+}
+
 /* Hidden range inputs over the gain bars */
 .gain-row input[type="range"] {
     position: absolute; top: 0; left: 0;
@@ -1481,43 +1537,27 @@ body.digi-open #bottomBar { grid-row: 5; }
     margin: 0;
 }
 
-/* FILTER overlay */
-#filterOverlay.visible {
-    flex-direction: column;
-    justify-content: center;
-    padding: 10px 16px;
-    gap: 8px;
+/* FILTER window — same .mem-modal shell as DUP/TONE. Segmented rows share
+   the .dup-btn look; the sliders are the GAIN panel's bars. The passband
+   graphic is drawn on #pbtCanvas by drawPbtDiagram(). */
+#filterOverlay .filter-seg-row { display: flex; align-items: center; gap: 6px; margin: 2px 8px 6px; }
+#filterOverlay .filter-seg-row .dup-btn { flex: 1; }
+#filterOverlay .filter-seg-row .dup-label { width: 44px; flex-shrink: 0; text-align: right; }
+#filterOverlay .gain-row { margin: 0 8px 6px; }
+#filterOverlay .gain-label { width: 44px; }
+#filterOverlay .gain-val { width: 46px; }
+#filterOverlay .pbt-val { cursor: pointer; }
+#filterOverlay .pbt-readouts { display: flex; gap: 8px; margin: 4px 8px 3px; }
+#filterOverlay .pbt-chip {
+    color: #8cf; font-family: 'Courier New', monospace; font-size: 10px; font-weight: bold;
+    padding: 1px 6px; background: rgba(0,0,0,0.45); border-radius: 3px;
 }
-#filterOverlay .filter-btn-row {
-    display: flex; gap: 6px; justify-content: center;
-    margin-bottom: 4px;
+#filterOverlay .pbt-chip b { color: #e6e6e6; margin-left: 4px; }
+#filterOverlay #pbtCanvas {
+    display: block; width: calc(100% - 16px); height: 82px; margin: 0 8px 8px;
+    background: #000; border: 1px solid #048; border-radius: 3px;
 }
-#filterOverlay .filter-btn {
-    padding: 6px 16px;
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #888;
-    font-size: 11px; font-weight: bold;
-    cursor: pointer; border-radius: 3px;
-}
-#filterOverlay .filter-btn.active {
-    background: #066; border-color: #0aa; color: #0ff;
-}
-#filterOverlay .shape-btn-row {
-    display: flex; gap: 6px; align-items: center;
-    margin-top: 4px;
-}
-#filterOverlay .shape-btn {
-    padding: 5px 14px;
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #888;
-    font-size: 10px; font-weight: bold;
-    cursor: pointer; border-radius: 3px;
-}
-#filterOverlay .shape-btn.active {
-    background: #066; border-color: #0aa; color: #0ff;
-}
+#filterAdjustControls.hidden { display: none; }
 /* MEMORY modal (styled like QSO Log modal) */
 .mem-modal {
     display: none;
@@ -1549,6 +1589,8 @@ body.digi-open #bottomBar { grid-row: 5; }
 }
 .mem-modal-title span { flex: 1; }
 #memScanStatus { font-size: 0.8em; color: #448; margin-left: 8px; font-weight: normal; }
+#memGroupRow { font-size: 0.85em; margin: 0 8px; align-items: center; gap: 4px; }
+#memGroupSelect { font-size: var(--fs-xs); padding: 1px 4px; }
 .memory-list {
     overflow-y: auto;
     flex: 1;
@@ -1558,22 +1600,72 @@ body.digi-open #bottomBar { grid-row: 5; }
 }
 .memory-row {
     display: grid;
-    grid-template-columns: 36px 1fr 110px 44px 20px;
-    gap: 3px;
-    padding: 2px 4px;
+    grid-template-columns: 30px 1fr 20px 20px;
+    gap: 4px;
+    padding: 4px;
     border-bottom: 1px solid #011;
     color: #5af;
     align-items: center;
     cursor: pointer;
 }
 .memory-row:active { background: #001840; }
-.memory-row.header { color: #448; font-size: 10px; border-bottom: 1px solid #024; padding-top: 0; cursor: default; }
-.mem-ch { color: #448; }
-.mem-name { color: #8cf; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mem-freq { color: #5af; font-size: 11px; text-align: right; }
-.mem-mode { color: #08f; text-align: center; }
-.mem-del { color: #844; cursor: pointer; font-size: 14px; text-align: center; line-height: 1; }
+.memory-row.current { background: #002850; box-shadow: inset 2px 0 0 #5af; }
+.mem-ch { color: #448; text-align: right; padding-right: 2px; }
+.mem-main { min-width: 0; }
+.mem-name { color: #8cf; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mem-name.auto { color: #48a; font-weight: normal; font-style: italic; }
+.mem-sub { color: #467; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.memory-row.current .mem-sub { color: #5af; }
+.mem-edit, .mem-del {
+    cursor: pointer; line-height: 1;
+    /* the whole grid cell is the tap target, not just the glyph */
+    align-self: stretch; display: flex; align-items: center; justify-content: center;
+}
+.mem-edit { color: #467; font-size: 12px; }
+.mem-edit:hover { color: #8cf; }
+.mem-del { color: #844; font-size: 14px; }
 .mem-del:hover { color: #f44; }
+.mem-rename-input {
+    width: 100%; box-sizing: border-box;
+    background: #001020; border: 1px solid #048; color: #8cf;
+    font-family: 'Courier New', monospace; font-size: 11px; padding: 1px 3px;
+}
+/* VFO A / VFO B / MEM selector at the top of the memory panel */
+.mem-vfo-row { display: flex; gap: 6px; margin: 2px 8px 6px; }
+.mem-seg {
+    flex: 1; padding: 6px 0;
+    background: #001020; border: 1px solid #048; border-radius: 3px;
+    color: #08f; font-family: 'Courier New', monospace; font-size: 12px;
+    font-weight: bold; cursor: pointer;
+}
+.mem-seg:active { background: #048; color: #000; }
+.mem-seg.active { background: #024a80; border-color: #5af; color: #fff; }
+/* Save-target picker: shown by "+ Save" */
+#memSaveBar {
+    display: none; gap: 8px; align-items: center; flex-wrap: wrap;
+    margin-top: 6px; padding: 6px 8px;
+    border: 1px solid #5af; border-radius: 3px; background: #001830;
+    font-family: 'Courier New', monospace; font-size: 11px;
+}
+#memSaveBar.visible { display: flex; }
+.mem-savebar-label { color: #8cf; font-weight: bold; }
+#memSaveCh {
+    width: 54px; background: #001020; border: 1px solid #048; color: #8cf;
+    padding: 3px 6px; font-family: 'Courier New', monospace; font-size: 12px; text-align: center;
+}
+.mem-savebar-hint { color: #467; font-style: italic; }
+/* Touch devices: finger-sized targets in the memory panel. The delete cell
+   especially — a mis-tap there clears a channel. */
+@media (pointer: coarse) {
+    /* vertical padding lives on the content cell so the edit/delete cells
+       stretch to the full row height as tap targets */
+    .memory-row { padding: 0 4px; grid-template-columns: 30px 1fr 38px 38px; }
+    .mem-main { padding: 9px 0; }
+    .mem-edit { font-size: 15px; }
+    .mem-del { font-size: 17px; }
+    .mem-seg { padding: 11px 0; }
+    .mem-action-btn { padding: 8px 16px; }
+}
 .memory-empty { color: #224; font-style: italic; padding: 8px 4px; }
 .mem-actions {
     display: flex;
@@ -1595,24 +1687,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     border-radius: 3px;
 }
 .mem-action-btn:active { background: #048; color: #000; }
-/* Write prompt */
-#memWritePrompt {
-    display: none; gap: 8px; align-items: center;
-    margin-top: 6px; padding-top: 6px; border-top: 1px solid #024;
-}
-#memWritePrompt.visible { display: flex; }
-#memWritePrompt input {
-    width: 50px; background: #001828; border: 1px solid #048; color: #8cf;
-    padding: 2px 6px; font-family: 'Courier New', monospace; font-size: 11px; text-align: center;
-}
-#memWritePrompt button {
-    padding: 3px 12px; background: #001020; border: 1px solid #048;
-    color: #08f; cursor: pointer; border-radius: 3px;
-    font-family: 'Courier New', monospace; font-size: 11px;
-}
-#memWritePrompt button:active { background: #048; color: #000; }
 
-/* MEM mini overlay (compact bar for MEM mode navigation) */
 
 .gain-bar-fill.centered {
     position: absolute; top: 0; height: 100%;
@@ -1764,6 +1839,29 @@ body.digi-open #bottomBar { grid-row: 5; }
     top: 40px;
     font-size: 14px;
     color: #888;
+}
+/* Repeater shift is live on the main display, directly under the P.AMP/ATT
+   readout and styled identically to it — same colour, font and size — so the
+   two read as one stack of rig-state lines. */
+#dupIndicator {
+    top: 66px;   /* clears the 14px-tall P.AMP readout above (40 + 23) */
+    font-size: 14px;
+    color: #888;
+}
+/* Repeater access tone joins the same stack, directly under the shift it goes
+   with: a readout of what the rig is doing, so it takes the P.AMP/DUP grey
+   rather than the orange .spectrum-warning default. */
+#toneIndicator {
+    top: 92px;   /* clears the 14px-tall DUP readout above (66 + 26) */
+    font-size: 14px;
+    color: #888;
+}
+/* RF Gain left backed off is a silent band-killer — you hear nothing and blame
+   the antenna. Same size and font as the rig-state lines above, but orange
+   (the .spectrum-warning default) because this one is a warning, not a readout. */
+#rfGainIndicator {
+    top: 118px;  /* clears the 14px-tall TONE readout above (92 + 26) */
+    font-size: 14px;
 }
 
 /* ============ RESPONSIVE ============ */
@@ -2097,7 +2195,7 @@ body.digi-open #bottomBar { grid-row: 5; }
         <span id="tuneLabel">TUNE</span>
         <button id="modeBtn" onclick="setPanel('mode')">---</button>
         <span id="pbBars"><i></i><i></i></span>
-        <span id="filterText" onclick="if(hasFilterSettings)setPanel('filter')">FIL1</span>
+        <span id="filterText" onclick="openFilterModal()">FIL1</span>
         <span id="dspIndicators"></span>
         <span class="flex-space"></span>
         <button id="qsoLogBtn" class="qso-log-btn" title="Log QSO">LOG</button>
@@ -2170,31 +2268,75 @@ body.digi-open #bottomBar { grid-row: 5; }
             <div class="overlay-grid" id="spanGrid"></div>
         </div>
 
+        <!-- DUP window (styled like the memory browser). Opened from the DUP
+             tile in FUNCTION or from the DUP indicator over the spectrum:
+             direction on top, then the standard shifts for the band the rig
+             is on, with a kHz box for odd splits. -->
+        <div id="dupOverlay" class="mem-modal">
+            <div class="mem-modal-title">
+                <span>Duplex <span id="dupTitleState"></span></span>
+                <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeDupModal()">&#x2715; Close</button>
+            </div>
+            <div id="dupDirRow">
+                <button id="dupSegOff"   class="dup-btn" onclick="setDuplexMode('OFF')">OFF</button>
+                <button id="dupSegMinus" class="dup-btn" onclick="setDuplexMode('DUP-')">DUP &#x2212;</button>
+                <button id="dupSegPlus"  class="dup-btn" onclick="setDuplexMode('DUP+')">DUP &#x2B;</button>
+            </div>
+            <div id="dupSectionLabel">Offset</div>
+            <div id="dupOffsetChoices"></div>
+            <div class="mem-actions">
+                <span class="dup-label">Other</span>
+                <input type="number" id="dupCustomInput" min="0" max="99999.9" step="5">
+                <span id="dupOffsetUnit">kHz</span>
+                <button class="mem-action-btn" onclick="dupCustomSet()">Set</button>
+                <span class="dup-hint" id="dupTxHint"></span>
+            </div>
+        </div>
+
+        <!-- TONE window (the DUP window's twin). Access mode on top, then the
+             tone each half of that mode actually uses, then Scan — a sweep of
+             the tone squelch that stops on whatever opens it. -->
+        <div id="toneOverlay" class="mem-modal">
+            <div class="mem-modal-title">
+                <span>Tone <span id="toneTitleState"></span></span>
+                <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeToneModal()">&#x2715; Close</button>
+            </div>
+            <div id="toneModeRow"></div>
+            <div id="toneSections"></div>
+            <div class="mem-actions">
+                <button class="mem-action-btn" id="toneScanBtn" onclick="toneScanToggle()">Scan</button>
+                <span class="dup-hint" id="toneHint"></span>
+            </div>
+        </div>
+
         <!-- Memory modal (styled like QSO Log) -->
         <div id="memoryOverlay" class="mem-modal">
             <div class="mem-modal-title">
                 <span>Memories <span id="memScanStatus"></span></span>
+                <span id="memGroupRow" class="mode-digi" style="display:none;flex:0 0 auto;font-weight:normal;">
+                    <label for="memGroupSelect" style="color:var(--mode-accent-dim);">Group</label>
+                    <select id="memGroupSelect" class="wf-field" onchange="onMemGroupChange()"></select>
+                </span>
                 <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeMemoryModal()">&#x2715; Close</button>
             </div>
+            <div class="mem-vfo-row">
+                <button id="memVfoA" class="mem-seg" onclick="memPanelSelect('A')">VFO A</button>
+                <button id="memVfoB" class="mem-seg" onclick="memPanelSelect('B')">VFO B</button>
+                <button id="memVfoMem" class="mem-seg" onclick="memPanelSelect('MEM')">MEM</button>
+            </div>
             <div class="memory-list">
-                <div class="memory-row header">
-                    <span class="mem-ch">Ch</span>
-                    <span class="mem-name">Name</span>
-                    <span class="mem-freq">Frequency</span>
-                    <span class="mem-mode">Mode</span>
-                    <span></span>
-                </div>
                 <div id="memoryList"></div>
             </div>
             <div class="mem-actions">
-                <button class="mem-action-btn" onclick="memoryWrite()">Write VFO</button>
+                <button class="mem-action-btn" onclick="memorySaveCurrent()" title="Save the current frequency and mode into a memory channel">&#xFF0B; Save</button>
                 <button class="mem-action-btn" onclick="refreshMemories()">Refresh</button>
             </div>
-            <div id="memWritePrompt">
-                <span style="color:#448; font-size:11px; font-family:'Courier New',monospace;">Ch:</span>
-                <input type="number" id="memWriteCh" min="1" max="999" value="1">
-                <button onclick="memoryWriteConfirm()">Save</button>
-                <button onclick="memoryWriteCancel()">Cancel</button>
+            <div id="memSaveBar">
+                <span class="mem-savebar-label">Save to Ch</span>
+                <input type="number" id="memSaveCh" min="0" max="999">
+                <button class="mem-action-btn" onclick="memorySaveConfirm()">OK</button>
+                <button class="mem-action-btn" onclick="memorySaveCancel()">Cancel</button>
+                <span class="mem-savebar-hint">or tap a channel above to overwrite it</span>
             </div>
         </div>
 
@@ -2448,42 +2590,54 @@ body.digi-open #bottomBar { grid-row: 5; }
             </div>
         </div>
 
-        <!-- Filter overlay -->
-        <div id="filterOverlay" class="overlay">
-            <div class="overlay-title" id="filterOverlayTitle">FILTER</div>
-            <div class="filter-btn-row" id="filterBtnRow">
-                <button class="filter-btn" id="filBtn1" onclick="sendFilter(1)">FIL1</button>
-                <button class="filter-btn" id="filBtn2" onclick="sendFilter(2)">FIL2</button>
-                <button class="filter-btn" id="filBtn3" onclick="sendFilter(3)">FIL3</button>
+        <!-- FILTER window (the DUP/TONE windows' sibling). FIL1/2/3 on top,
+             then the passband width, the rig's twin-PBT graphic with its two
+             knobs, and the SHARP/SOFT shape — the rig's own FILTER popup,
+             which is its own screen separate from the mode menu. -->
+        <div id="filterOverlay" class="mem-modal">
+            <div class="mem-modal-title">
+                <span>Filter <span id="filterTitleState"></span></span>
+                <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeFilterModal()">&#x2715; Close</button>
+            </div>
+            <div class="filter-seg-row">
+                <span class="dup-label">FILTER</span>
+                <button class="dup-btn" id="filBtn1" onclick="sendFilter(1)">FIL1</button>
+                <button class="dup-btn" id="filBtn2" onclick="sendFilter(2)">FIL2</button>
+                <button class="dup-btn" id="filBtn3" onclick="sendFilter(3)">FIL3</button>
             </div>
             <div id="filterAdjustControls">
                 <div class="gain-row">
-                    <span class="gain-label">BW</span>
+                    <span class="gain-label">WIDTH</span>
                     <div class="gain-bar-bg"><div class="gain-bar-fill" id="filterWidthFill" style="width:30%"></div>
                         <input type="range" id="filterWidthSlider" min="0" max="40" value="30"></div>
                     <span class="gain-val" id="filterWidthVal">3.0k</span>
                 </div>
+                <!-- Symmetry: the two PBT knobs, independent like the rig's,
+                     over the FILTER screen's passband graphic — each knob a
+                     full-width filter, the overlap surviving in orange.
+                     Tapping a value recentres that knob. -->
+                <div class="pbt-readouts">
+                    <span class="pbt-chip">BW <b id="pbtBwVal">0</b></span>
+                    <span class="pbt-chip">SFT <b id="pbtSftVal">0</b></span>
+                </div>
+                <canvas id="pbtCanvas"></canvas>
                 <div class="gain-row">
-                    <span class="gain-label">PBT1</span>
+                    <span class="gain-label">PBT-1</span>
                     <div class="gain-bar-bg"><div class="gain-bar-fill centered" id="pbtInnerFill" style="left:50%;width:0%"></div>
                         <input type="range" id="pbtInnerSlider" min="0" max="255" value="128"></div>
-                    <span class="gain-val" id="pbtInnerVal">0</span>
+                    <span class="gain-val pbt-val" id="pbtInnerVal" title="Tap to centre" onclick="centerPBT('pbtInner')">0</span>
                 </div>
                 <div class="gain-row">
-                    <span class="gain-label">PBT2</span>
+                    <span class="gain-label">PBT-2</span>
                     <div class="gain-bar-bg"><div class="gain-bar-fill centered" id="pbtOuterFill" style="left:50%;width:0%"></div>
                         <input type="range" id="pbtOuterSlider" min="0" max="255" value="128"></div>
-                    <span class="gain-val" id="pbtOuterVal">0</span>
+                    <span class="gain-val pbt-val" id="pbtOuterVal" title="Tap to centre" onclick="centerPBT('pbtOuter')">0</span>
                 </div>
-                <div class="shape-btn-row">
-                    <button class="shape-btn" id="sharpBtn" onclick="sendFilterShape(0)">SHARP</button>
-                    <button class="shape-btn" id="softBtn" onclick="sendFilterShape(1)">SOFT</button>
-                    <span class="flex-space"></span>
-                    <button class="shape-btn" onclick="resetPBT()">RESET</button>
+                <div class="filter-seg-row">
+                    <span class="dup-label">SHAPE</span>
+                    <button class="dup-btn" id="sharpBtn" onclick="sendFilterShape(0)">SHARP</button>
+                    <button class="dup-btn" id="softBtn" onclick="sendFilterShape(1)">SOFT</button>
                 </div>
-            </div>
-            <div class="gain-back-row">
-                <button class="ov-btn back-btn" onclick="setPanel('default')" style="width:60px">&#x21A9;</button>
             </div>
         </div>
 
@@ -2548,6 +2702,9 @@ body.digi-open #bottomBar { grid-row: 5; }
         <div id="audioOffWarning" class="spectrum-warning" onclick="showAudioMicMenu()" style="display: none;">AUDIO OFF</div>
         <div id="micOffWarning" class="spectrum-warning" onclick="toggleMic()" style="display: none;">MIC OFF</div>
         <div id="preampAttIndicator" class="spectrum-warning" style="display: none;"></div>
+        <div id="dupIndicator" class="spectrum-warning" style="display: none;" onclick="openDupModal()"></div>
+        <div id="toneIndicator" class="spectrum-warning" style="display: none;" onclick="openToneModal()"></div>
+        <div id="rfGainIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
     </div>
 
     <!-- Row 5: Bottom bar -->
@@ -2635,19 +2792,51 @@ var bandLastFreq = (function() {
     try { var s = localStorage.getItem('bandLastFreq'); if (s) return JSON.parse(s); } catch(e) {}
     return {};
 })();
-var BAND_RANGES = {
-    '1.8':  [1800000,  2000000],
-    '3.5':  [3500000,  4000000],
-    '7':    [7000000,  7300000],
-    '10':   [10100000, 10150000],
-    '14':   [14000000, 14350000],
-    '18':   [18068000, 18168000],
-    '21':   [21000000, 21450000],
-    '24':   [24890000, 24990000],
-    '28':   [28000000, 29700000],
-    '50':   [50000000, 54000000],
-    'GENE': [500000,   1800000]
-};
+// BAND picker keys. num is the rig's availableBands number (see
+// include/rigidentities.h) — what the rig's band table is keyed on — and the
+// label is Icom's own, in front-panel order. home is where a key lands the
+// first time (after that the band memory takes over): the band's bottom in
+// every ITU region, since the rig table is folded across regions and 70 cm
+// starts at 420 MHz in region 2 but 430 MHz elsewhere. Only ham bands get a
+// key: 60 m / 630 m / 2200 m (no Icom panel has one), the IC-705's WFM / AIR
+// broadcast ranges and general coverage are all reached through F-INP.
+var BAND_KEYS = [
+    { num: 20, label: '1.8',  home: 1800000 },
+    { num: 19, label: '3.5',  home: 3500000 },
+    { num: 17, label: '7',    home: 7000000 },
+    { num: 16, label: '10',   home: 10100000 },
+    { num: 15, label: '14',   home: 14000000 },
+    { num: 14, label: '18',   home: 18068000 },
+    { num: 13, label: '21',   home: 21000000 },
+    { num: 12, label: '24',   home: 24890000 },
+    { num: 11, label: '28',   home: 28000000 },
+    { num: 10, label: '50',   home: 50000000 },
+    { num: 9,  label: '70',   home: 70000000 },
+    { num: 6,  label: '144',  home: 144000000 },
+    { num: 5,  label: '430',  home: 430000000 },
+    { num: 4,  label: '1200', home: 1240000000 },
+    { num: 3,  label: '2400', home: 2400000000 },
+    { num: 2,  label: '3400', home: 3400000000 },
+    { num: 1,  label: '5600', home: 5650000000 },
+    { num: 0,  label: '10G',  home: 10000000000 }
+];
+// The HF-only picker of a rig that announced no band table (older server,
+// unknown standalone CI-V address): what every rig got before they told us.
+var DEFAULT_BANDS = [
+    { num: 20, start: 1800000,  end: 2000000 },
+    { num: 19, start: 3500000,  end: 4000000 },
+    { num: 17, start: 7000000,  end: 7300000 },
+    { num: 16, start: 10100000, end: 10150000 },
+    { num: 15, start: 14000000, end: 14350000 },
+    { num: 14, start: 18068000, end: 18168000 },
+    { num: 13, start: 21000000, end: 21450000 },
+    { num: 12, start: 24890000, end: 24990000 },
+    { num: 11, start: 28000000, end: 29700000 },
+    { num: 10, start: 50000000, end: 54000000 }
+];
+var rigBands = [];      // [{label, freq}] — the picker's buttons, see populateBands()
+var BAND_RANGES = {};   // label -> [start, end) — which band a frequency belongs to
+populateBands(null);
 
 var audioCtx = null;
 var audioWorkletNode = null;
@@ -2682,7 +2871,24 @@ var nbOn = false;
 var nrOn = false;
 var anfOn = false;
 var tunerState = 0;
+var hasTuner = false;         // rig declares the ATU command (CI-V 0x1C 0x01)
 var currentPreamp = 0;
+var lastPreampAttSig = '';  // preamp/att steps valid at currentFreq (band-change watch)
+var hasDuplex = false;        // rig can shift TX for a repeater (CI-V 0x0D)
+// Repeater access tone. Caps say what the rig can do; the current* values are
+// what it is doing. Both arrive from whichever transport is in use, so the
+// panel below is identical in the server and standalone builds.
+var hasCTCSS = false, hasDTCS = false, hasToneSqlType = false;
+var canSetToneFreq = false, canSetTsqlFreq = false;
+var ctcssTones = [], dtcsCodes = [];
+var currentToneMode = 'OFF';
+var currentToneFreq = null, currentTsqlFreq = null;
+var currentDtcsCode = null, currentDtcsPol = 0;
+var toneScanRunning = false, toneScanHint = '';
+var toneScanDetector = null;   // CtcssDetector while a scan is listening
+var toneScanCandidate = null;  // tone the grid is lighting for the scan
+var currentDuplex = 'OFF';    // 'OFF' | 'DUP-' | 'DUP+'
+var currentDupOffset = null;  // repeater shift in Hz; null until the rig reports one
 var currentAttenuator = 0;
 var currentFilter = 1;
 var currentPBTInner = 128;
@@ -2705,6 +2911,8 @@ var amFilterValues = (function() {
     for (var i = 200; i <= 10000; i += 200) v.push(i);
     return v;
 })();
+// RTTY stops at 2.7k (step 31)
+var rttyFilterValues = ssbFilterValues.slice(0, 32);
 var fmFixedBW = [15000, 10000, 7000];
 var filterWidthValues = ssbFilterValues;
 
@@ -2748,8 +2956,12 @@ var availableAntennas = [];   // [{num, name}] — empty on single-antenna rigs 
 var hasRxAnt = false;         // rig has an RX-antenna input (IC-7610/785x)
 var currentAntenna = 0;
 var rxAntOn = false;
-var currentVfo = 'A';
+var currentVfo = 'A';        // 'A' | 'B' | 'MEM'
+var lastRealVfo = 'A';        // last selected A/B — where leaving MEM returns
+var memChannel = null;        // current memory channel number (shown on the MEM tile)
+var memChannelGroup = null;   // group of the last recalled channel (list highlight)
 var hasMainSub = false;
+var hasMemoryMode = false;    // rig has a V/M memory-mode toggle
 
 // Meter state
 var meterVal = -54;
@@ -2971,11 +3183,17 @@ function handleMessage(msg) {
                 if (msg.spans) populateSpans(msg.spans);
                 if (msg.preamps) populatePreamps(msg.preamps);
                 if (msg.attenuators) populateAttenuators(msg.attenuators);
+            if (msg.bands) populateBands(msg.bands);
                 if (msg.antennas) populateAntennas(msg.antennas);
                 if (msg.hasRxAnt !== undefined) hasRxAnt = !!msg.hasRxAnt;
                 if (msg.filters) populateFilters(msg.filters);
                 if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
                 if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
+                if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
+                updateToneCaps(msg);
+                if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
+                if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
+                if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
 
                 updateWarningVisibility();
                 applyUrlTune();
@@ -2994,11 +3212,17 @@ function handleMessage(msg) {
             if (msg.spans) populateSpans(msg.spans);
             if (msg.preamps) populatePreamps(msg.preamps);
             if (msg.attenuators) populateAttenuators(msg.attenuators);
+            if (msg.bands) populateBands(msg.bands);
             if (msg.antennas) populateAntennas(msg.antennas);
             if (msg.hasRxAnt !== undefined) hasRxAnt = !!msg.hasRxAnt;
             if (msg.filters) populateFilters(msg.filters);
             if (msg.hasFilterSettings !== undefined) updateHasFilterSettings(msg.hasFilterSettings);
             if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
+            if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
+            updateToneCaps(msg);
+            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
+            if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
+            if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
             if (msg.hasPowerControl) document.getElementById('powerBtn').style.display = 'flex';
             if (msg.freedvModes) freedvModes = msg.freedvModes;
             updateWarningVisibility();
@@ -3038,6 +3262,9 @@ function handleMessage(msg) {
             if (msg.monitor !== undefined) { monitorEnabled = msg.monitor; if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.monitorGain !== undefined) { monitorLevel = msg.monitorGain; updateSlider('monitorLevel', msg.monitorGain); if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.split !== undefined) updateSplit(msg.split);
+            if (msg.duplex !== undefined) updateDuplex(msg.duplex);
+            updateToneStatus(msg);
+            if (msg.duplexOffset !== undefined) updateDupOffset(msg.duplexOffset);
             if (msg.spanIndex !== undefined) updateSpanIndex(msg.spanIndex);
             if (msg.nb !== undefined) updateToggle('nb', msg.nb);
             if (msg.nr !== undefined) updateToggle('nr', msg.nr);
@@ -3079,6 +3306,9 @@ function handleMessage(msg) {
             if (msg.monitor !== undefined) { monitorEnabled = msg.monitor; if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.monitorGain !== undefined) { monitorLevel = msg.monitorGain; updateSlider('monitorLevel', msg.monitorGain); if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.split !== undefined) updateSplit(msg.split);
+            if (msg.duplex !== undefined) updateDuplex(msg.duplex);
+            updateToneStatus(msg);
+            if (msg.duplexOffset !== undefined) updateDupOffset(msg.duplexOffset);
             if (msg.spanIndex !== undefined) updateSpanIndex(msg.spanIndex);
             if (msg.nb !== undefined) updateToggle('nb', msg.nb);
             if (msg.nr !== undefined) updateToggle('nr', msg.nr);
@@ -3171,7 +3401,33 @@ function handleMessage(msg) {
 // UI UPDATES
 // ============================================================
 function updateFrequency(hz) {
+    if (hz === null) {
+        // The server sends null when the rig has no frequency to report (blank
+        // memory channel). Show dashes rather than drawing 0.000.000.
+        currentFreq = 0;
+        var blank = document.getElementById('freqDisplay');
+        blank.innerHTML = '';
+        '---.---.---'.split('').forEach(function(ch) {
+            var s = document.createElement('span');
+            s.className = 'freq-digit ' + (ch === '.' ? 'digit-dot' : 'digit-dash');
+            blank.appendChild(s);
+        });
+        updateOtherVfoDisplay();
+        return;
+    }
     currentFreq = hz;
+
+    // Crossing a front-end boundary (IC-705: 74.8 MHz) changes which P.AMP and
+    // ATT steps the rig has, and changing band changes the repeater shifts on
+    // offer — refresh the buttons, slider and spectrum indicator.
+    var paSig = preampsHere().concat(attsHere()).map(function(e) { return e.num; }).join(',')
+              + '|' + dupOffsetsHere().join('/');
+    if (paSig !== lastPreampAttSig) {
+        lastPreampAttSig = paSig;
+        if (currentPanel === 'func') renderFuncOverlay();
+        updatePreampAttIndicator();
+        if (document.getElementById('dupOverlay').classList.contains('visible')) renderDupModal();
+    }
 
     // Update band frequency memory
     for (var _b in BAND_RANGES) {
@@ -3183,10 +3439,11 @@ function updateFrequency(hz) {
         }
     }
 
-    // Store frequency for current VFO only
+    // Store frequency for current VFO only (not in memory mode — the recalled
+    // channel's freq must not overwrite either VFO's cached value)
     if (currentVfo === 'A') {
         vfoAFreq = hz;
-    } else {
+    } else if (currentVfo === 'B') {
         vfoBFreq = hz;
     }
 
@@ -3233,15 +3490,30 @@ function updateOtherVfoDisplay() {
 function applyVfoFreqMessage(msg) {
     if (msg.vfoAFrequency !== undefined) vfoAFreq = msg.vfoAFrequency;
     if (msg.vfoBFrequency !== undefined) vfoBFreq = msg.vfoBFrequency;
-    if (msg.selectedVfo === 'A' || msg.selectedVfo === 'B') {
+    if (msg.memChannel !== undefined && memChannel !== msg.memChannel) {
+        memChannel = msg.memChannel;
+        // Channel number shows on the MEM indicator ("MEM 2"), the panel's
+        // MEM segment, and the FUNC MEM button state ("CH 2")
+        if (currentVfo === 'MEM') updateVfoDisplay();
+        else updateMemPanelVfoRow();
+        if (currentPanel === 'func') renderFuncOverlay();
+    }
+    if (msg.selectedVfo === 'A' || msg.selectedVfo === 'B' || msg.selectedVfo === 'MEM') {
         if (currentVfo !== msg.selectedVfo) {
             currentVfo = msg.selectedVfo;
+            if (currentVfo !== 'MEM') lastRealVfo = currentVfo;
             updateVfoDisplay();
             renderBottomBar();
+            // Keep the FUNC MEM toggle's selected state in sync with the rig
+            if (currentPanel === 'func') renderFuncOverlay();
         }
     }
     var hasVfoFreq = (msg.vfoAFrequency !== undefined || msg.vfoBFrequency !== undefined);
-    if (hasVfoFreq) {
+    if (currentVfo === 'MEM') {
+        // In memory mode the operating frequency is the recalled channel's,
+        // reported as msg.frequency — not either VFO cache slot.
+        if (msg.frequency !== undefined) updateFrequency(msg.frequency);
+    } else if (hasVfoFreq) {
         var ownFreq = (currentVfo === 'A') ? vfoAFreq : vfoBFreq;
         if (ownFreq > 0) updateFrequency(ownFreq);
         else updateOtherVfoDisplay();
@@ -3256,12 +3528,14 @@ function updateModeBtnLabel() {
     document.getElementById('modeBtn').textContent = label;
 }
 function updateMode(mode) {
+    if (mode === null) mode = '---'; // rig has no mode to report (blank memory channel)
     var prevMode = currentMode;
     currentMode = mode;
+    if (mode !== prevMode) filterWidthStale();
     updateModeBtnLabel();
     if (currentPanel === 'mode') renderModeOverlay();
     updateFilterConfig();
-    if (currentPanel === 'filter') renderFilterOverlay();
+    if (filterModalVisible()) renderFilterModal();
 
     var wasCW = (prevMode === 'CW' || prevMode === 'CW-R');
     var isCW = (mode === 'CW' || mode === 'CW-R');
@@ -3304,67 +3578,247 @@ function autoOpenCwBarOnModeEntry() {
     }
 }
 
+// A filter or mode switch brings in that filter's own stored width. A WIDTH
+// slider touched within the last SLIDER_DEBOUNCE_MS would otherwise have
+// updateSlider swallow that one incoming value and the bar would stay where
+// the drag left it (the rig's echo of a drag is what the debounce is for).
+function filterWidthStale() {
+    sliderSetTimes['filterWidth'] = 0;
+}
+
 function updateFilterBtn(num) {
+    if (num !== currentFilter) filterWidthStale();
     currentFilter = num;
     document.getElementById('filterText').textContent = 'FIL' + num;
     if (currentPanel === 'func') renderFuncOverlay();
-    if (currentPanel === 'filter') updateFilterBtnHighlight();
+    if (filterModalVisible()) renderFilterModal();
 }
 
 function updateFilterBtnHighlight() {
     for (var i = 1; i <= 3; i++) {
         var btn = document.getElementById('filBtn' + i);
-        if (btn) btn.className = 'filter-btn' + (currentFilter === i ? ' active' : '');
+        if (btn) btn.classList.toggle('active', currentFilter === i);
     }
 }
 
 function updateFilterShapeBtn(val) {
     // Decode: val / 10 = filter, val % 10 = shape (0=Sharp, 1=Soft)
     currentFilterShape = val % 10;
-    document.getElementById('sharpBtn').className = 'shape-btn' + (currentFilterShape === 0 ? ' active' : '');
-    document.getElementById('softBtn').className = 'shape-btn' + (currentFilterShape === 1 ? ' active' : '');
+    document.getElementById('sharpBtn').classList.toggle('active', currentFilterShape === 0);
+    document.getElementById('softBtn').classList.toggle('active', currentFilterShape === 1);
 }
 
 function sendFilter(num) {
-    // Filter switch brings in the new filter's stored width; clear the
-    // slider-touch debounce so the incoming update isn't suppressed by a
-    // recent manual slider drag on the previous filter.
-    sliderSetTimes['filterWidth'] = 0;
     send({ cmd: 'setFilter', value: num });
 }
+
 
 function sendFilterShape(shape) {
     send({ cmd: 'setFilterShape', value: shape });
 }
 
-function resetPBT() {
-    send({ cmd: 'setPBTInner', value: 128 });
-    send({ cmd: 'setPBTOuter', value: 128 });
-    updateSlider('pbtInner', 128);
-    updateSlider('pbtOuter', 128);
+// One PBT knob into the window: raw 0..255, centre 128, shown as a signed
+// percentage of full throw like the rig. The two knobs are independent —
+// matching them shifts the whole passband, splitting them narrows and skews it.
+function showPBT(name, val) {
+    if (name === 'pbtInner') currentPBTInner = val; else currentPBTOuter = val;
+    var pct = Math.round((val - 128) / 128 * 100);
+    var span = document.getElementById(name + 'Val');
+    if (span) span.textContent = pct === 0 ? '0' : (pct > 0 ? '+' : '') + pct + '%';
+    var slider = document.getElementById(name + 'Slider');
+    if (slider) slider.value = val;
+    updatePBTFill(name + 'Fill', val);
+    drawPbtDiagram();
+}
+
+function centerPBT(name) {
+    sliderSetTimes[name] = Date.now();
+    showPBT(name, 128);
+    send({ cmd: name === 'pbtInner' ? 'setPBTInner' : 'setPBTOuter', value: 128 });
+}
+
+function showFilterWidth(hz) {
+    currentFilterWidth = hz;
+    var pos = hzToSliderPos(hz);
+    var slider = document.getElementById('filterWidthSlider');
+    if (slider) slider.value = pos;
+    var span = document.getElementById('filterWidthVal');
+    if (span) span.textContent = formatBW(hz);
+    var fill = document.getElementById('filterWidthFill');
+    if (fill) fill.style.width = (pos / Math.max(1, filterWidthValues.length - 1) * 100) + '%';
+    updateFilterTitle();
+    drawPbtDiagram();
 }
 
 function updateHasFilterSettings(has) {
     hasFilterSettings = has;
-    var ft = document.getElementById('filterText');
-    if (ft) ft.classList.toggle('clickable', has);
+    if (filterModalVisible()) renderFilterModal();
 }
 
+// FM / WFM / DV have fixed passbands — no width, PBT or shape to adjust. Data
+// sub-modes (USB-D, AM-D, …) filter like their parent.
 function getFilterModeType(mode) {
-    if (mode === 'FM') return 'fm';
-    if (mode === 'AM') return 'am';
+    var base = (mode || '').split('-D')[0];
+    if (base === 'FM' || base === 'WFM' || base === 'DV') return 'fm';
+    if (base === 'AM') return 'am';
+    if (base === 'RTTY' || base === 'RTTY-R') return 'rtty';
     return 'ssb';
 }
 
 function updateFilterConfig() {
     filterModeType = getFilterModeType(currentMode);
-    if (filterModeType === 'am') filterWidthValues = amFilterValues;
-    else filterWidthValues = ssbFilterValues;
+    filterWidthValues = filterModeType === 'am' ? amFilterValues
+        : filterModeType === 'rtty' ? rttyFilterValues : ssbFilterValues;
     var slider = document.getElementById('filterWidthSlider');
-    if (slider && filterModeType !== 'fm') {
+    if (slider) {
         slider.max = filterWidthValues.length - 1;
         slider.value = hzToSliderPos(currentFilterWidth);
     }
+}
+
+function filterModalVisible() {
+    return document.getElementById('filterOverlay').classList.contains('visible');
+}
+
+function openFilterModal() {
+    renderFilterModal();
+    document.getElementById('filterOverlay').classList.add('visible');
+    drawPbtDiagram(); // the canvas only has a size once it's displayed
+}
+
+function closeFilterModal() {
+    document.getElementById('filterOverlay').classList.remove('visible');
+}
+
+// The passband's nominal audio centre for the graphic's labels: 1500 Hz for
+// phone (the rig's SSB drawing), the sidetone pitch in CW (600 Hz nominal —
+// the rig doesn't report it), the carrier in AM, the RTTY mark tone.
+function filterCenterHz() {
+    if (filterModeType === 'am') return 0;
+    if (filterModeType === 'rtty') return 2125;
+    return (currentMode === 'CW' || currentMode === 'CW-R') ? 600 : 1500;
+}
+
+// FUNC tile state: the passband the rig is actually set to.
+function filterFuncState() {
+    if (currentFilter === null) return '';
+    if (filterModeType === 'fm') {
+        var fixed = fmFixedBW[currentFilter - 1];
+        return fixed ? (fixed / 1000) + 'k' : 'FIL' + currentFilter;   // 15k / 10k / 7k
+    }
+    return hasFilterSettings ? formatBW(currentFilterWidth) : 'FIL' + currentFilter;
+}
+
+function updateFilterTitle() {
+    var t = document.getElementById('filterTitleState');
+    if (!t) return;
+    var state = filterFuncState();
+    t.textContent = (currentMode || '') + (state ? ' \u00b7 ' + state : '');
+}
+
+function renderFilterModal() {
+    updateFilterConfig();
+    updateFilterBtnHighlight();
+    updateFilterShapeBtn(currentFilterShape);
+    // Nothing below the FIL row on FM-family modes, or on rigs without PBT.
+    document.getElementById('filterAdjustControls').classList.toggle('hidden',
+        filterModeType === 'fm' || !hasFilterSettings);
+    showFilterWidth(currentFilterWidth);
+    showPBT('pbtInner', currentPBTInner);
+    showPBT('pbtOuter', currentPBTOuter);
+}
+
+// The rig's FILTER-screen passband graphic. Each PBT knob shifts a full-width
+// copy of the filter by up to half the band — PBT-1 red, PBT-2 blue — and only
+// their overlap passes, filled orange with the fixed centre tick on it. Above,
+// the resulting BW and SFT of the overlap; below, its audio-frequency edges
+// around the nominal centre, green at their home positions and warm once
+// moved, matching the rig's screen.
+function drawPbtDiagram() {
+    var canvas = document.getElementById('pbtCanvas');
+    if (!canvas || !filterModalVisible() || filterModeType === 'fm') return;
+    var cssW = canvas.clientWidth, cssH = canvas.clientHeight;
+    if (!cssW || !cssH) return;
+    var dpr = window.devicePixelRatio || 1;
+    if (canvas.width !== Math.round(cssW * dpr) || canvas.height !== Math.round(cssH * dpr)) {
+        canvas.width = Math.round(cssW * dpr);
+        canvas.height = Math.round(cssH * dpr);
+    }
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    // Overlap of the two shifted filters. Each knob throws its filter by up
+    // to half the set bandwidth, so a 50 Hz filter's sides barely move —
+    // exactly like the rig. The left edge follows the higher knob, the
+    // right the lower.
+    var w = currentFilterWidth;
+    var shift1 = (currentPBTInner - 128) / 128 * w / 2;
+    var shift2 = (currentPBTOuter - 128) / 128 * w / 2;
+    var bw = Math.max(0, w - Math.abs(shift1 - shift2));
+    var sft = (shift1 + shift2) / 2;
+    var sign = sft > 0 ? '+' : '';
+    document.getElementById('pbtBwVal').textContent =
+        bw <= 0 ? '0' : (bw < 1000 ? String(Math.round(bw)) : (bw / 1000).toFixed(2) + 'k');
+    document.getElementById('pbtSftVal').textContent =
+        sft === 0 ? '0' : (Math.abs(sft) < 1000 ? sign + Math.round(sft) : sign + (sft / 1000).toFixed(3) + 'k');
+
+    var labelH = 14, baseY = cssH - labelH - 2, topY = 6, cx = cssW / 2;
+    // Hz-true horizontal scale spanning TWICE the mode's widest filter — a
+    // full-throw PBT shift always stays inside the frame, and a centred band
+    // sits compact in the middle with dark margins around it, like the rig's.
+    var maxHz = filterWidthValues[filterWidthValues.length - 1];
+    var pxPerHz = cssW * 0.92 / (2 * maxHz);
+    var half = w / 2 * pxPerHz;
+    var skirt = 8; // fixed slope — the rig doesn't redraw the edges for SHARP/SOFT
+
+    var RED = '200,56,38', BLUE = '64,135,230', ORANGE = '237,115,26', GREEN = '#6bcc59';
+    function band(left, right) {
+        ctx.beginPath();
+        ctx.moveTo(left - skirt, baseY); ctx.lineTo(left, topY);
+        ctx.lineTo(right, topY); ctx.lineTo(right + skirt, baseY);
+        ctx.closePath();
+    }
+    // The two filters, translucent so the outlines read where they separate.
+    function shifted(shiftHz, rgb) {
+        band(cx - half + shiftHz * pxPerHz, cx + half + shiftHz * pxPerHz);
+        ctx.fillStyle = 'rgba(' + rgb + ',0.5)'; ctx.fill();
+        ctx.strokeStyle = 'rgb(' + rgb + ')'; ctx.lineWidth = 1.2; ctx.stroke();
+    }
+    shifted(shift1, RED);
+    shifted(shift2, BLUE);
+    // The surviving overlap, solid orange like the rig.
+    var overlapL = cx - half + Math.max(shift1, shift2) * pxPerHz;
+    var overlapR = cx + half + Math.min(shift1, shift2) * pxPerHz;
+    if (overlapR > overlapL) {
+        band(overlapL, overlapR);
+        ctx.fillStyle = 'rgba(' + ORANGE + ',0.9)'; ctx.fill();
+    }
+
+    ctx.strokeStyle = '#a6a6a6'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, baseY); ctx.lineTo(cssW, baseY); ctx.stroke();
+    // Fixed centre tick, baseline to the band's top like the rig.
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(cx, baseY); ctx.lineTo(cx, topY); ctx.stroke();
+
+    // Audio-frequency labels riding under the actual edges, kept apart when
+    // a narrow band pulls them together. Green marks an edge parked at the
+    // mode's nominal limits (0/3000 on SSB); moved edges go warm.
+    var center = filterCenterHz();
+    var leftHz = center - w / 2 + Math.max(shift1, shift2);
+    var rightHz = center + w / 2 + Math.min(shift1, shift2);
+    var labelY = cssH - 2;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    function edge(hz, x) {
+        var home = Math.abs(hz - (center - 1500)) < 1 || Math.abs(hz - (center + 1500)) < 1;
+        ctx.font = 'bold 10px "Courier New", monospace';
+        ctx.fillStyle = home ? GREEN : 'rgb(' + ORANGE + ')';
+        ctx.fillText(String(Math.round(hz)), x, labelY);
+    }
+    edge(leftHz, Math.max(16, Math.min(overlapL, cx - 34)));
+    ctx.font = '10px "Courier New", monospace'; ctx.fillStyle = '#ccc';
+    ctx.fillText(String(Math.round(center)), cx, labelY);
+    edge(rightHz, Math.min(cssW - 16, Math.max(overlapR, cx + 34)));
 }
 
 function hzToSliderPos(hz) {
@@ -3380,36 +3834,6 @@ function hzToSliderPos(hz) {
 function sliderPosToHz(pos) {
     pos = Math.max(0, Math.min(pos, filterWidthValues.length - 1));
     return filterWidthValues[pos];
-}
-
-function renderFilterOverlay() {
-    updateFilterConfig();
-    updateFilterBtnHighlight();
-    updateFilterShapeBtn(currentFilterShape);
-
-    var adjust = document.getElementById('filterAdjustControls');
-
-    if (filterModeType === 'fm') {
-        adjust.classList.add('hidden');
-        document.getElementById('filBtn1').textContent = 'FIL1 15k';
-        document.getElementById('filBtn2').textContent = 'FIL2 10k';
-        document.getElementById('filBtn3').textContent = 'FIL3 7k';
-    } else {
-        adjust.classList.remove('hidden');
-        document.getElementById('filBtn1').textContent = 'FIL1';
-        document.getElementById('filBtn2').textContent = 'FIL2';
-        document.getElementById('filBtn3').textContent = 'FIL3';
-        // Sync slider position from current Hz value
-        var slider = document.getElementById('filterWidthSlider');
-        var pos = hzToSliderPos(currentFilterWidth);
-        slider.value = pos;
-        document.getElementById('filterWidthVal').textContent = formatBW(currentFilterWidth);
-        document.getElementById('filterWidthFill').style.width = (pos / (filterWidthValues.length - 1) * 100) + '%';
-    }
-
-    var title = document.getElementById('filterOverlayTitle');
-    if (title) title.textContent = 'FILTER (' + currentMode + ')';
-    document.getElementById('filterOverlay').classList.add('visible');
 }
 
 function updateTxStatus(tx) {
@@ -3432,6 +3856,17 @@ function updateToggle(name, state) {
     else if (name === 'nr') nrOn = !!state;
     else if (name === 'anf') anfOn = !!state;
     updateDspIndicators();
+    if (currentPanel === 'func') renderFuncOverlay();
+}
+
+// Tuner capability gate. Rigs with no ATU (IC-9700/905, the receivers, the
+// older HF rigs) never declare the CI-V tuner command, so hide the top-bar
+// TUNE tile for them. The inline style outranks the .active class that
+// updateTunerState toggles, and clearing it hands control back to the CSS.
+function updateHasTuner(on) {
+    hasTuner = !!on;
+    var lbl = document.getElementById('tuneLabel');
+    if (lbl) lbl.style.display = hasTuner ? '' : 'none';
     if (currentPanel === 'func') renderFuncOverlay();
 }
 
@@ -3467,6 +3902,20 @@ function updatePreampAttIndicator() {
     }
 }
 
+// Anything short of full RF Gain gets a standing tile on the display — tapping
+// it opens the gain panel so the fix is one more tap away.
+function updateRfGainIndicator(val) {
+    var el = document.getElementById('rfGainIndicator');
+    if (!el) return;
+    var pct = Math.round(val / 255 * 100);
+    if (pct >= 100) {
+        el.style.display = 'none';
+        return;
+    }
+    el.textContent = 'RFG ' + pct + '%';
+    el.style.display = '';
+}
+
 function updateDspIndicators() {
     var el = document.getElementById('dspIndicators');
     var tags = [];
@@ -3498,7 +3947,7 @@ function initSliderTracking() {
             var fill = document.getElementById(name.replace(/([A-Z])/g, function(m) { return m; }) + 'Fill');
             if (fill) fill.style.width = (val / 255 * 100) + '%';
             if (name === 'afGain') throttledSend('afGain', 'setAfGain', val);
-            else if (name === 'rfGain') throttledSend('rfGain', 'setRfGain', val);
+            else if (name === 'rfGain') { throttledSend('rfGain', 'setRfGain', val); updateRfGainIndicator(val); }
             else if (name === 'rfPower') throttledSend('rfPower', 'setRfPower', val);
             else if (name === 'squelch') throttledSend('squelch', 'setSquelch', val);
             else if (name === 'micGain') throttledSend('micGain', 'setMicGain', val);
@@ -3538,23 +3987,15 @@ function initSliderTracking() {
             sliderSetTimes[name] = Date.now();
             if (name === 'filterWidth') {
                 var hz = sliderPosToHz(val);
-                currentFilterWidth = hz;
-                document.getElementById('filterWidthVal').textContent = formatBW(hz);
-                document.getElementById('filterWidthFill').style.width = (val / (filterWidthValues.length - 1) * 100) + '%';
+                showFilterWidth(hz);
                 throttledSend('filterWidth', 'setFilterWidth', hz);
-            } else if (name === 'pbtInner') {
-                currentPBTInner = val;
-                document.getElementById('pbtInnerVal').textContent = val - 128;
-                updatePBTFill('pbtInnerFill', val);
-                throttledSend('pbtInner', 'setPBTInner', val);
-            } else if (name === 'pbtOuter') {
-                currentPBTOuter = val;
-                document.getElementById('pbtOuterVal').textContent = val - 128;
-                updatePBTFill('pbtOuterFill', val);
-                throttledSend('pbtOuter', 'setPBTOuter', val);
+            } else {
+                showPBT(name, val);
+                throttledSend(name, name === 'pbtInner' ? 'setPBTInner' : 'setPBTOuter', val);
             }
         });
     });
+    window.addEventListener('resize', drawPbtDiagram);
     // FUNC-overlay attenuator slider (index into availableAttenuators; #76).
     (function() {
         var slider = document.getElementById('funcAttSlider');
@@ -3567,9 +4008,10 @@ function initSliderTracking() {
         slider.addEventListener('touchcancel', function() { sliderDragging['funcAtt'] = false; });
         slider.addEventListener('input', function() {
             var idx = parseInt(slider.value);
-            var a = availableAttenuators[idx] || { num: 0, name: 'OFF' };
+            var here = attsHere();
+            var a = here[idx] || { num: 0, name: 'OFF' };
             sliderSetTimes['funcAtt'] = Date.now();
-            var max = Math.max(1, availableAttenuators.length - 1);
+            var max = Math.max(1, here.length - 1);
             var fill = document.getElementById('funcAttFill');
             if (fill) fill.style.width = (idx / max * 100) + '%';
             document.getElementById('funcAttVal').textContent = idx === 0 ? 'OFF' : (a.name || ('-' + a.num + ' dB'));
@@ -3605,26 +4047,15 @@ function updateSlider(name, val) {
     var slider = document.getElementById(name + 'Slider');
     var valSpan = document.getElementById(name + 'Val');
     if (slider) slider.value = val;
-    // Custom display for filter sliders
+    // Filter window values have their own displays (and the FIL tile in the
+    // FUNC grid carries the width).
     if (name === 'filterWidth') {
-        currentFilterWidth = val;
-        var pos = hzToSliderPos(val);
-        if (slider) slider.value = pos;
-        if (valSpan) valSpan.textContent = formatBW(val);
-        var fwFill = document.getElementById('filterWidthFill');
-        if (fwFill) fwFill.style.width = (pos / Math.max(1, filterWidthValues.length - 1) * 100) + '%';
+        showFilterWidth(val);
+        if (currentPanel === 'func') renderFuncOverlay();
         return;
     }
-    if (name === 'pbtInner') {
-        currentPBTInner = val;
-        if (valSpan) valSpan.textContent = val - 128;
-        updatePBTFill('pbtInnerFill', val);
-        return;
-    }
-    if (name === 'pbtOuter') {
-        currentPBTOuter = val;
-        if (valSpan) valSpan.textContent = val - 128;
-        updatePBTFill('pbtOuterFill', val);
+    if (name === 'pbtInner' || name === 'pbtOuter') {
+        showPBT(name, val);
         return;
     }
     if (valSpan) valSpan.textContent = toPercent(val, parseInt((slider || {}).max) || 255);
@@ -3632,6 +4063,7 @@ function updateSlider(name, val) {
     var fillId = name + 'Fill';
     var fill = document.getElementById(fillId);
     if (fill) fill.style.width = (val / 255 * 100) + '%';
+    if (name === 'rfGain') updateRfGainIndicator(val);
 }
 
 var sliderTimers = {};
@@ -3642,8 +4074,8 @@ function throttledSend(name, cmd, val) {
 
 function populateModes(modes) { availableModes = modes; if (currentPanel === 'mode') renderModeOverlay(); }
 function populateSpans(spans) { availableSpans = spans; }
-function populatePreamps(preamps) { availablePreamps = preamps || []; }
-function populateAttenuators(atts) { availableAttenuators = atts || []; }
+function populatePreamps(preamps) { availablePreamps = preamps || []; lastPreampAttSig = ''; }
+function populateAttenuators(atts) { availableAttenuators = atts || []; lastPreampAttSig = ''; }
 function populateFilters(filters) { availableFilters = filters || []; }
 function populateAntennas(antennas) { availableAntennas = antennas || []; }
 function updateAntennaState(ant, rx) {
@@ -4057,7 +4489,6 @@ function setPanel(name) {
     else if (name === 'func') renderFuncOverlay();
     else if (name === 'audiomiс') renderAudioMicOverlay();
     else if (name === 'gain') document.getElementById('gainOverlay').classList.add('visible');
-    else if (name === 'filter') renderFilterOverlay();
     else if (name === 'scope') {}
     else if (name === 'span') renderSpanOverlay();
     else if (name === 'freqinp') renderFreqInput();
@@ -4270,42 +4701,62 @@ function renderModeOverlay() {
     document.getElementById('modeOverlay').classList.add('visible');
 }
 
+// Build the BAND picker from the rig's band table (rigInfo/rigConnected
+// `bands`: one {num, name, start, end} per band, Hz). null/empty → the
+// HF-only picker. Only bands with a key in BAND_KEYS get a button, so an
+// IC-9700 shows 144/430/1200 and an IC-705 grows a 144/430 row under
+// the HF ones.
+function populateBands(bands) {
+    var byNum = {};
+    (bands && bands.length ? bands : DEFAULT_BANDS).forEach(function(b) { byNum[b.num] = b; });
+    rigBands = [];
+    BAND_RANGES = {};
+    BAND_KEYS.forEach(function(k) {
+        var b = byNum[k.num];
+        if (!b || !(b.end > b.start)) return;
+        rigBands.push({ label: k.label, freq: Math.min(Math.max(k.home, b.start), b.end) });
+        BAND_RANGES[k.label] = [b.start, b.end];
+    });
+    if (currentPanel === 'band') renderBandOverlay();
+}
+
 function renderBandOverlay() {
     var grid = document.getElementById('bandGrid');
     grid.innerHTML = '';
-    var bands = [
-        { label: '1.8', freq: 1800000 },
-        { label: '3.5', freq: 3500000 },
-        { label: '7', freq: 7000000 },
-        { label: 'F-INP', action: 'freqinp' },
-        { label: '10', freq: 10100000 },
-        { label: '14', freq: 14000000 },
-        { label: '18', freq: 18068000 },
-        { label: '', freq: 0 },
-        { label: '21', freq: 21000000 },
-        { label: '24', freq: 24890000 },
-        { label: '28', freq: 28000000 },
-        { label: '', freq: 0 },
-        { label: '50', freq: 50000000 },
-        { label: 'GENE', freq: 500000 },
-        { label: '', freq: 0 }
-    ];
-    for (var i = 0; i < bands.length; i++) {
-        var b = bands[i];
-        var btn = document.createElement('button');
-        btn.className = 'ov-btn';
-        btn.textContent = b.label;
-        if (!b.label) { btn.style.visibility = 'hidden'; }
-        else if (b.action === 'freqinp') {
-            btn.onclick = function() { setPanel('freqinp'); };
-        } else if (b.freq > 0) {
+    // Icom's BAND popup: three bands per row across the first three columns,
+    // the fourth column holding F-INP on the first row and the back button
+    // on the last (spacers in between). Rigs whose table runs past 50 MHz
+    // simply get more rows.
+    function spacer() {
+        var s = document.createElement('button');
+        s.className = 'ov-btn';
+        s.style.visibility = 'hidden';
+        return s;
+    }
+    var rows = Math.max(1, Math.ceil(rigBands.length / 3));
+    for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < 3; c++) {
+            var b = rigBands[r * 3 + c];
+            if (!b) { grid.appendChild(spacer()); continue; }
+            var btn = document.createElement('button');
+            btn.className = 'ov-btn';
+            btn.textContent = b.label;
             btn.onclick = (function(f, lbl) { return function() {
                 var target = bandLastFreq[lbl] || f;
                 send({ cmd: 'setFrequency', value: target });
                 setPanel('default');
             }; })(b.freq, b.label);
+            grid.appendChild(btn);
         }
-        grid.appendChild(btn);
+        if (r === 0) {
+            var finp = document.createElement('button');
+            finp.className = 'ov-btn';
+            finp.textContent = 'F-INP';
+            finp.onclick = function() { setPanel('freqinp'); };
+            grid.appendChild(finp);
+        } else if (r < rows - 1) {
+            grid.appendChild(spacer());
+        }
     }
     // Back button
     var back = document.createElement('button');
@@ -4324,7 +4775,7 @@ function renderFuncOverlay() {
     // 16 steps) cycling through every step to reach the preamp is painful, so
     // the button becomes preamp-only and the attenuator gets a slider below
     // the grid. Simple rigs (IC-7300: off/-20) keep the combined cycle button.
-    var multiStepAtt = availableAttenuators.length > 2;
+    var multiStepAtt = attsHere().length > 2;
     if (multiStepAtt) {
         var pState = getPreampState();
         grid.appendChild(makeFuncBtn('P.AMP', pState.label, pState.active, cyclePreamp));
@@ -4333,10 +4784,27 @@ function renderFuncOverlay() {
         grid.appendChild(makeFuncBtn('P.AMP/ATT', paState.label, paState.active, function() { cyclePreampAtt(); }));
     }
 
-    // Tuner button
-    var tunerLabel = 'TUNER';
-    var tunerStateStr = tunerState === 0 ? 'OFF' : (tunerState === 2 ? 'TUNING' : 'ON');
-    grid.appendChild(makeFuncBtn(tunerLabel, tunerStateStr, tunerState > 0, handleTunerPress));
+    // Repeater duplex, next to P.AMP. Only rigs whose caps declare the offset
+    // command can shift the TX frequency, so everything else keeps the old
+    // grid untouched. Opens the DUP window, the same way MEM opens the
+    // memory browser; the tile itself doubles as the indicator.
+    if (hasDuplex) {
+        var dState = getDuplexState();
+        grid.appendChild(makeFuncBtn('DUP', dState.label, dState.active, openDupModal));
+    }
+
+    // Repeater access tone, right after DUP — the two together are what it
+    // takes to work a repeater. Hidden on rigs with neither tone table.
+    if (hasCTCSS || hasDTCS) {
+        var tState = getToneState();
+        grid.appendChild(makeFuncBtn('TONE', tState.value, tState.active, openToneModal));
+    }
+
+    // Tuner button — only on rigs whose caps declare the ATU command.
+    if (hasTuner) {
+        var tunerStateStr = tunerState === 0 ? 'OFF' : (tunerState === 2 ? 'TUNING' : 'ON');
+        grid.appendChild(makeFuncBtn('TUNER', tunerStateStr, tunerState > 0, handleTunerPress));
+    }
 
     // Antenna selector + RX antenna — only on rigs that declare more than
     // one antenna in their caps (IC-7610/785x/9100, Kenwood TS-590/890) (#76)
@@ -4364,20 +4832,15 @@ function renderFuncOverlay() {
         send({ cmd: 'setNoiseReduction', value: !nrOn });
     }));
 
-    // Second row: Filter buttons
-    var filters = availableFilters.length > 0 ? availableFilters : [
-        { name: 'FIL1', num: 1 }, { name: 'FIL2', num: 2 }, { name: 'FIL3', num: 3 }
-    ];
-    for (var f = 0; f < filters.length; f++) {
-        var fbtn = document.createElement('button');
-        fbtn.className = 'ov-btn' + (currentFilter === filters[f].num ? ' active' : '');
-        fbtn.textContent = filters[f].name;
-        fbtn.onclick = (function(n) { return function() { send({ cmd: 'setFilter', value: n }); }; })(filters[f].num);
-        grid.appendChild(fbtn);
-    }
+    // FIL opens the FILTER window (FIL1/2/3, width, twin PBT, shape) the way
+    // DUP and TONE open theirs; the tile carries the passband it's set to.
+    grid.appendChild(makeFuncBtn('FIL', filterFuncState(), false, openFilterModal));
 
-    // Memory browser
-    grid.appendChild(makeFuncBtn('MEM', '', false, function() {
+    // MEM button opens the VFO/MEM panel (VFO A/B + memory mode + channel
+    // list + save). Lit with the channel number while the rig is in memory
+    // mode, so it doubles as an indicator.
+    var memState = currentVfo === 'MEM' ? (memChannel !== null ? 'CH ' + memChannel : 'ON') : '';
+    grid.appendChild(makeFuncBtn('MEM', memState, currentVfo === 'MEM', function() {
         openMemoryBrowser();
     }));
 
@@ -4455,19 +4918,37 @@ function renderAudioMicOverlay() {
     document.getElementById('audioMicOverlay').classList.add('visible');
 }
 
+// A rig's preamp and attenuator lists can be band-dependent: on the IC-705
+// both live on the HF/50 MHz front end, so above 74.8 MHz there is a single
+// P.AMP and no attenuator at all. Caps entries carry an optional
+// minFreq/maxFreq (Hz) to say so; entries without a range are valid across the
+// whole rig. Index 0 stays the "off" step in either list.
+function entriesHere(list) {
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+        var e = list[i];
+        if (e.minFreq && currentFreq < e.minFreq) continue;
+        if (e.maxFreq && currentFreq >= e.maxFreq) continue;
+        out.push(e);
+    }
+    return out;
+}
+function preampsHere() { return entriesHere(availablePreamps); }
+function attsHere() { return entriesHere(availableAttenuators); }
+// Button text for a preamp value: a band with a single preamp is just
+// "P.AMP" (what the IC-705 shows on 2 m/70 cm), numbered when it has more.
+function preampLabel(num) {
+    return preampsHere().length > 2 ? 'P.AMP' + num : 'P.AMP';
+}
+
 function getPreampAttState() {
+    // "ATT" is what the radio itself shows — the dB level belongs on the FUNC
+    // attenuator slider (multi-step rigs), not on the button or the indicator.
     if (currentAttenuator > 0) {
-        // Show the actual dB (e.g. "-21 dB") so multi-step rigs (IC-7610 has
-        // 16 steps) reveal the level, not just "ATT".
-        for (var i = 0; i < availableAttenuators.length; i++) {
-            if (availableAttenuators[i].num === currentAttenuator) {
-                return { label: availableAttenuators[i].name, active: true };
-            }
-        }
         return { label: 'ATT', active: true };
     }
     if (currentPreamp > 0) {
-        return { label: 'P.AMP' + currentPreamp, active: true };
+        return { label: preampLabel(currentPreamp), active: true };
     }
     return { label: 'OFF', active: false };
 }
@@ -4478,7 +4959,7 @@ function cyclePreampAtt() {
     // Attenuator hardcoding the old "20 dB" step broke on rigs whose steps
     // differ (IC-7610: 0,3,6,…,45 — 20 is not a valid step). ATT and preamp
     // stay mutually exclusive, matching the radio.
-    var atts = availableAttenuators, pres = availablePreamps;
+    var atts = attsHere(), pres = preampsHere();
 
     if (currentAttenuator > 0) {
         // In the ATT run: advance to the next step, or hand off to PRE1.
@@ -4516,11 +4997,11 @@ function cyclePreampAtt() {
 // On the IC-7610 and friends the attenuator is a slider (see #funcAttRow) and
 // this button only walks the preamp: OFF → PRE1 → PRE2 → OFF.
 function getPreampState() {
-    if (currentPreamp > 0) return { label: 'P.AMP' + currentPreamp, active: true };
+    if (currentPreamp > 0) return { label: preampLabel(currentPreamp), active: true };
     return { label: 'OFF', active: false };
 }
 function cyclePreamp() {
-    var pres = availablePreamps;
+    var pres = preampsHere();
     var pi = 0;
     for (var j = 1; j < pres.length; j++) {
         if (pres[j].num === currentPreamp) { pi = j; break; }
@@ -4534,13 +5015,482 @@ function cyclePreamp() {
     }
 }
 
-// Index of the current attenuator level within availableAttenuators (0 = off).
+// Index of the current attenuator level within the band-valid list (0 = off).
 function funcAttIndex() {
-    for (var i = 0; i < availableAttenuators.length; i++) {
-        if (availableAttenuators[i].num === currentAttenuator) return i;
+    var here = attsHere();
+    for (var i = 0; i < here.length; i++) {
+        if (here[i].num === currentAttenuator) return i;
     }
     return 0;
 }
+// --- Repeater duplex (DUP +/-) ---
+//
+// Standard repeater shifts per band. The FIRST entry is IARU Region 2 and is
+// what the DUP tile applies when the rig has no offset of its own; the rest
+// are the other shifts in common use (Region 1 mostly), offered as one-tap
+// choices in the picker. Bands with no convention (the IC-905's microwave
+// segments) list none — the kHz box still takes anything.
+var DUP_BAND_OFFSETS = [
+    { min:   28000000, max:   29700000, offsets: [100000] },
+    { min:   50000000, max:   54000000, offsets: [1000000, 500000] },
+    { min:  144000000, max:  148000000, offsets: [600000] },
+    { min:  222000000, max:  225000000, offsets: [1600000] },
+    { min:  420000000, max:  450000000, offsets: [5000000, 1600000, 7600000] },
+    { min:  902000000, max:  928000000, offsets: [25000000, 12000000] },
+    { min: 1240000000, max: 1300000000, offsets: [12000000, 20000000, 6000000] }
+];
+function dupOffsetsHere() {
+    for (var i = 0; i < DUP_BAND_OFFSETS.length; i++) {
+        var b = DUP_BAND_OFFSETS[i];
+        if (currentFreq >= b.min && currentFreq <= b.max) return b.offsets;
+    }
+    return [];
+}
+// Spelled-out offset for the picker, where there is room for units.
+function formatDupOffsetLong(hz) {
+    if (hz === null || hz === undefined) return '?';
+    if (hz >= 1000000) return String(Math.round(hz / 1000) / 1000) + ' MHz';
+    return String(Math.round(hz / 100) / 10) + ' kHz';
+}
+// Compact offset for the tile legend: 600k, 5M, 1.6M, 20M. Trailing zeros are
+// only stripped after a decimal point — "20" must not become "2".
+function formatDupOffset(hz) {
+    if (hz === null || hz === undefined) return '?';
+    if (hz >= 1000000) {
+        var m = hz / 1000000;
+        return (hz % 1000000 ? m.toFixed(2).replace(/0+$/, '').replace(/\.$/, '') : String(m)) + 'M';
+    }
+    return (hz / 1000).toFixed(hz % 1000 ? 1 : 0) + 'k';
+}
+// The tile shows the direction and the shift together, so it alone tells you
+// where the rig will transmit.
+function getDuplexState() {
+    if (currentDuplex !== 'DUP-' && currentDuplex !== 'DUP+') return { label: 'OFF', active: false };
+    return { label: (currentDuplex === 'DUP-' ? '\u2212' : '+') + formatDupOffset(currentDupOffset), active: true };
+}
+function setDuplexMode(mode) {
+    // Engaging a shift with no offset would transmit on the receive frequency.
+    // Seed the band's standard shift first so the button is never a no-op.
+    if (mode !== 'OFF' && !currentDupOffset) {
+        var d = dupOffsetsHere()[0];
+        if (d) setDupOffset(d);
+    }
+    currentDuplex = mode;
+    send({ cmd: 'setDuplex', value: mode });
+    refreshDuplexUi();
+}
+function setDupOffset(hz) {
+    hz = Math.max(0, Math.round(hz / 100) * 100);  // rig resolution is 100 Hz
+    currentDupOffset = hz;
+    send({ cmd: 'setDuplexOffset', value: hz });
+    refreshDuplexUi();
+}
+function updateDuplex(mode) {
+    currentDuplex = mode;
+    refreshDuplexUi();
+}
+function updateDupOffset(hz) {
+    currentDupOffset = hz;
+    refreshDuplexUi();
+}
+// Everywhere the duplex state shows: the spectrum indicator, the FUNCTION
+// tile, and the window itself when it is open.
+function refreshDuplexUi() {
+    updateDupIndicator();
+    if (currentPanel === 'func') renderFuncOverlay();
+    if (document.getElementById('dupOverlay').classList.contains('visible')) renderDupModal();
+}
+// Live on the main display beside the P.AMP/ATT readout, but only while a
+// shift is actually engaged — nothing to show when transmit follows receive.
+function updateDupIndicator() {
+    var el = document.getElementById('dupIndicator');
+    if (!el) return;
+    if (!hasDuplex || (currentDuplex !== 'DUP-' && currentDuplex !== 'DUP+')) {
+        el.style.display = 'none';
+        return;
+    }
+    el.textContent = 'DUP ' + (currentDuplex === 'DUP-' ? '\u2212' : '+') + ' ' + formatDupOffset(currentDupOffset);
+    el.style.display = '';
+}
+function openDupModal() {
+    renderDupModal();
+    document.getElementById('dupOverlay').classList.add('visible');
+}
+function closeDupModal() {
+    document.getElementById('dupOverlay').classList.remove('visible');
+}
+// Direction on top, then the band's standard shifts, then a kHz box for odd
+// splits. The hint spells out the resulting TX frequency so the window says
+// what it will actually do.
+function renderDupModal() {
+    var segs = { 'OFF': 'dupSegOff', 'DUP-': 'dupSegMinus', 'DUP+': 'dupSegPlus' };
+    var live = (currentDuplex === 'DUP-' || currentDuplex === 'DUP+') ? currentDuplex : 'OFF';
+    for (var k in segs) {
+        document.getElementById(segs[k]).classList.toggle('active', k === live);
+    }
+    document.getElementById('dupTitleState').textContent =
+        live === 'OFF' ? '' : (live === 'DUP-' ? '\u2212' : '+') + formatDupOffset(currentDupOffset);
+
+    var box = document.getElementById('dupOffsetChoices');
+    box.innerHTML = '';
+    var here = dupOffsetsHere();
+    for (var i = 0; i < here.length; i++) {
+        var btn = document.createElement('button');
+        btn.className = 'dup-btn' + (here[i] === currentDupOffset ? ' active' : '');
+        btn.textContent = formatDupOffsetLong(here[i]);
+        btn.onclick = (function(hz) { return function() { setDupOffset(hz); }; })(here[i]);
+        box.appendChild(btn);
+    }
+    if (!here.length) {
+        var none = document.createElement('span');
+        none.className = 'dup-hint';
+        none.textContent = 'no standard shift on this band';
+        box.appendChild(none);
+    }
+
+    var inp = document.getElementById('dupCustomInput');
+    if (document.activeElement !== inp) {
+        inp.value = currentDupOffset === null ? '' : (currentDupOffset / 1000);
+    }
+    inp.onkeydown = function(e) { if (e.key === 'Enter') dupCustomSet(); };
+
+    var hint = document.getElementById('dupTxHint');
+    if (live === 'OFF' || !currentDupOffset || !currentFreq) {
+        hint.textContent = '';
+    } else {
+        var tx = currentFreq + (live === 'DUP+' ? currentDupOffset : -currentDupOffset);
+        hint.textContent = 'TX ' + (tx / 1000000).toFixed(4) + ' MHz';
+    }
+}
+function dupCustomSet() {
+    var kHz = parseFloat(document.getElementById('dupCustomInput').value);
+    if (isNaN(kHz)) return;
+    setDupOffset(kHz * 1000);
+}
+
+// ---- Repeater access tone (TONE / TSQL / DTCS) --------------------------
+// The rig speaks one of two CI-V dialects for this; the transport hides that
+// and gives us one mode name. Names match src/webserver.cpp's toneModeName().
+
+function updateToneCaps(msg) {
+    if (msg.hasCTCSS !== undefined) hasCTCSS = !!msg.hasCTCSS;
+    if (msg.hasDTCS !== undefined) hasDTCS = !!msg.hasDTCS;
+    if (msg.hasToneSqlType !== undefined) hasToneSqlType = !!msg.hasToneSqlType;
+    if (msg.canSetToneFreq !== undefined) canSetToneFreq = !!msg.canSetToneFreq;
+    if (msg.canSetTsqlFreq !== undefined) canSetTsqlFreq = !!msg.canSetTsqlFreq;
+    if (msg.ctcssTones !== undefined) ctcssTones = msg.ctcssTones || [];
+    if (msg.dtcsCodes !== undefined) dtcsCodes = msg.dtcsCodes || [];
+    refreshToneUi();
+}
+
+function updateToneStatus(msg) {
+    var changed = false;
+    if (msg.toneMode !== undefined) { currentToneMode = msg.toneMode; changed = true; }
+    if (msg.toneFreq !== undefined) { currentToneFreq = msg.toneFreq; changed = true; }
+    if (msg.tsqlFreq !== undefined) { currentTsqlFreq = msg.tsqlFreq; changed = true; }
+    if (msg.dtcsCode !== undefined) { currentDtcsCode = msg.dtcsCode; changed = true; }
+    if (msg.dtcsPolarity !== undefined) { currentDtcsPol = msg.dtcsPolarity; changed = true; }
+    if (changed) refreshToneUi();
+}
+
+// CTCSS travels in tenths of Hz (885 = 88.5); DTCS codes are printed with the
+// leading zero the radio shows.
+function fmtCtcss(reg) { return reg ? (reg / 10).toFixed(1) : '--'; }
+function fmtDtcs(code) { return 'D' + String(code || 0).padStart(3, '0'); }
+
+function toneModeUsesTone(m) {
+    return m === 'TONE' || m === 'TONE(T)/DTCS(R)' || m === 'TONE(T)/TSQL(R)';
+}
+function toneModeUsesTsql(m) {
+    return m === 'TSQL' || m === 'DTCS(T)/TSQL(R)' || m === 'TONE(T)/TSQL(R)';
+}
+function toneModeUsesDtcs(m) {
+    return m === 'DTCS' || m === 'DTCS(T)' || m === 'TONE(T)/DTCS(R)' || m === 'DTCS(T)/TSQL(R)';
+}
+
+// One short label for the tile, the indicator and a memory row: the mode plus
+// the tone it uses, so it alone says what will open the repeater. A rig left
+// in one of the combined modes from its front panel is quoted verbatim rather
+// than flattened into a lie.
+// Just the tone itself — 141.3, or D023 which names itself. For places that
+// already say TONE, like the FUNCTION tile's caption.
+function toneValueLabel(mode, tone, tsql, dtcs) {
+    if (!mode || mode === 'OFF') return 'OFF';
+    if (mode === 'TONE') return fmtCtcss(tone);
+    if (mode === 'TSQL') return fmtCtcss(tsql);
+    if (mode === 'DTCS') return fmtDtcs(dtcs);
+    return mode;   // a combined mode names itself
+}
+// Mode and tone together, for readouts that stand on their own — the spectrum
+// indicator and a stored memory's row.
+function toneLabel(mode, tone, tsql, dtcs) {
+    if (!mode || mode === 'OFF') return 'OFF';
+    var value = toneValueLabel(mode, tone, tsql, dtcs);
+    return (mode === 'TONE' || mode === 'TSQL') ? mode + ' ' + value : value;
+}
+function getToneState() {
+    return {
+        label: toneLabel(currentToneMode, currentToneFreq, currentTsqlFreq, currentDtcsCode),
+        value: toneValueLabel(currentToneMode, currentToneFreq, currentTsqlFreq, currentDtcsCode),
+        active: currentToneMode !== 'OFF',
+    };
+}
+
+function setToneMode(mode) {
+    // Engaging a tone with none picked would key the repeater with whatever
+    // the rig happens to hold. Seed the first standard tone first, the same
+    // way setDuplexMode() seeds the band's standard shift.
+    if (toneModeUsesTone(mode) && !currentToneFreq && ctcssTones.length) setToneFreq(ctcssTones[0]);
+    if (toneModeUsesTsql(mode) && !currentTsqlFreq && ctcssTones.length) setTsqlFreq(ctcssTones[0]);
+    if (toneModeUsesDtcs(mode) && !currentDtcsCode && dtcsCodes.length) setDtcsCode(dtcsCodes[0]);
+    currentToneMode = mode;
+    send({ cmd: 'setToneMode', value: mode });
+    refreshToneUi();
+}
+function setToneFreq(reg) {
+    currentToneFreq = reg;
+    send({ cmd: 'setToneFreq', value: reg });
+    refreshToneUi();
+}
+function setTsqlFreq(reg) {
+    currentTsqlFreq = reg;
+    send({ cmd: 'setTsqlFreq', value: reg });
+    refreshToneUi();
+}
+function setDtcsCode(code, pol) {
+    currentDtcsCode = code;
+    if (pol !== undefined) currentDtcsPol = pol;
+    send({ cmd: 'setDtcsCode', value: code, polarity: currentDtcsPol });
+    refreshToneUi();
+}
+
+// Everywhere the tone shows: the spectrum indicator, the FUNCTION tile, and
+// the window itself while it is open.
+function refreshToneUi() {
+    updateToneIndicator();
+    if (currentPanel === 'func') renderFuncOverlay();
+    var ov = document.getElementById('toneOverlay');
+    if (ov && ov.classList.contains('visible')) renderToneModal();
+}
+
+// Live on the main display beside the DUP readout, but only while a tone is
+// actually engaged — nothing to show when the squelch is plain carrier.
+function updateToneIndicator() {
+    var el = document.getElementById('toneIndicator');
+    if (!el) return;
+    if ((!hasCTCSS && !hasDTCS) || currentToneMode === 'OFF') {
+        el.style.display = 'none';
+        return;
+    }
+    el.textContent = getToneState().label;
+    el.style.display = '';
+}
+
+function openToneModal() {
+    toneScanHint = '';          // a stale message from a previous scan is noise
+    toneScanCandidate = null;
+    renderToneModal();
+    document.getElementById('toneOverlay').classList.add('visible');
+}
+function closeToneModal() {
+    // Closing on a running scan would hide the only control that stops it.
+    if (toneScanRunning) stopToneScan('');
+    document.getElementById('toneOverlay').classList.remove('visible');
+}
+
+function renderToneModal() {
+    var modes = ['OFF'];
+    if (hasCTCSS) { modes.push('TONE'); modes.push('TSQL'); }
+    if (hasDTCS) modes.push('DTCS');
+    // A combined mode set from the front panel gets listed too, so the window
+    // shows what the rig is really doing instead of falling back to OFF.
+    if (modes.indexOf(currentToneMode) === -1) modes.push(currentToneMode);
+
+    var row = document.getElementById('toneModeRow');
+    row.innerHTML = '';
+    for (var i = 0; i < modes.length; i++) {
+        var b = document.createElement('button');
+        b.className = 'dup-btn' + (modes[i] === currentToneMode ? ' active' : '');
+        b.textContent = modes[i];
+        b.onclick = (function (m) { return function () { setToneMode(m); }; })(modes[i]);
+        row.appendChild(b);
+    }
+    document.getElementById('toneTitleState').textContent =
+        currentToneMode === 'OFF' ? '' : getToneState().value;
+
+    var box = document.getElementById('toneSections');
+    box.innerHTML = '';
+    if (toneModeUsesDtcs(currentToneMode) && hasDTCS) {
+        // Polarity first: the code list is 104 buttons long, and two switches
+        // parked under it would never be found.
+        appendDtcsPolarity(box);
+        appendToneGrid(box, 'DTCS code', dtcsCodes, currentDtcsCode, fmtDtcs,
+                       function (c) { setDtcsCode(c); });
+    } else if (hasCTCSS && (currentToneMode !== 'OFF' || toneScanRunning || toneScanCandidate !== null)) {
+        // One grid for TONE and TSQL both: picking a tone writes both
+        // registers, so the two modes can never show different selections.
+        // A scan drives the same grid, which is how its result is read.
+        // While the scan runs the grid follows what it is hearing; once it
+        // stops, the found tone has been written, so the grid follows the
+        // selection again and a manual pick lands normally.
+        appendToneGrid(box, 'Tone', ctcssTones,
+                       toneScanRunning ? toneScanCandidate : currentTone(),
+                       fmtCtcss, setTone);
+    }
+
+    var btn = document.getElementById('toneScanBtn');
+    btn.style.display = (hasCTCSS && ctcssTones.length) ? '' : 'none';
+    btn.textContent = toneScanRunning ? 'Stop' : 'Scan';
+    document.getElementById('toneHint').textContent = toneScanHint;
+}
+
+// TONE and TSQL are one tone to the operator, so the panel keeps the rig's two
+// registers on the same value rather than offering two selections.
+function setTone(reg) {
+    if (canSetToneFreq) setToneFreq(reg);
+    if (canSetTsqlFreq) setTsqlFreq(reg);
+}
+function currentTone() {
+    return toneModeUsesTsql(currentToneMode) ? (currentTsqlFreq || currentToneFreq)
+                                             : (currentToneFreq || currentTsqlFreq);
+}
+
+// Move the lit key without rebuilding the grid — a scan repaints several times
+// a second, and a rebuild would throw away the list's scroll position.
+function highlightToneGrid(value) {
+    var grid = document.querySelector('#toneSections .tone-grid');
+    if (!grid) { renderToneModal(); return; }
+    var btns = grid.querySelectorAll('.dup-btn');
+    for (var i = 0; i < btns.length; i++) {
+        var on = Number(btns[i].getAttribute('data-tone')) === value;
+        btns[i].classList.toggle('active', on);
+        if (on && btns[i].scrollIntoView) btns[i].scrollIntoView({ block: 'nearest' });
+    }
+}
+
+function appendToneGrid(box, label, values, current, fmt, onPick) {
+    var lbl = document.createElement('div');
+    lbl.className = 'tone-section-label';
+    lbl.textContent = label;
+    box.appendChild(lbl);
+    var grid = document.createElement('div');
+    grid.className = 'tone-grid';
+    for (var i = 0; i < values.length; i++) {
+        var b = document.createElement('button');
+        b.className = 'dup-btn' + (values[i] === current ? ' active' : '');
+        b.textContent = fmt(values[i]);
+        b.setAttribute('data-tone', values[i]);
+        b.onclick = (function (v) { return function () { onPick(v); }; })(values[i]);
+        grid.appendChild(b);
+    }
+    if (!values.length) {
+        var none = document.createElement('span');
+        none.className = 'dup-hint';
+        none.textContent = 'this radio reports no tone table';
+        grid.appendChild(none);
+    }
+    box.appendChild(grid);
+}
+
+// DTCS sends one code both ways; the two switches invert it independently on
+// transmit and on receive.
+function appendDtcsPolarity(box) {
+    var lbl = document.createElement('div');
+    lbl.className = 'tone-section-label';
+    lbl.textContent = 'DTCS polarity';
+    box.appendChild(lbl);
+    var grid = document.createElement('div');
+    grid.className = 'tone-grid';
+    var bits = [{ name: 'TX invert', bit: 2 }, { name: 'RX invert', bit: 1 }];
+    for (var i = 0; i < bits.length; i++) {
+        var b = document.createElement('button');
+        b.className = 'dup-btn' + ((currentDtcsPol & bits[i].bit) ? ' active' : '');
+        b.textContent = bits[i].name;
+        b.onclick = (function (bit) {
+            return function () { setDtcsCode(currentDtcsCode, currentDtcsPol ^ bit); };
+        })(bits[i].bit);
+        grid.appendChild(b);
+    }
+    box.appendChild(grid);
+}
+
+// Tone scan. No Icom exposes one over CI-V, and the obvious workaround —
+// engage the rig's tone squelch and step the table until it opens — mutes the
+// receiver for the whole sweep. That is not a scan, it is 25 seconds of
+// silence, and it makes the radio unusable while it runs.
+//
+// The tone is already in the audio we are playing. So the scan just listens: a
+// Goertzel bank over the tone table (ctcss.js) reads the sub-tone straight off
+// the RX stream. Nothing is asked of the radio, nothing is engaged, and the
+// receiver keeps playing the repeater while its tone is identified.
+function toneScanToggle() {
+    if (toneScanRunning) { stopToneScan(''); return; }
+    if (typeof CtcssDetector !== 'function') {
+        toneScanHint = 'detector unavailable';
+        refreshToneUi();
+        return;
+    }
+    if (!audioEnabled) {
+        toneScanHint = 'RX audio off';
+        refreshToneUi();
+        return;
+    }
+    toneScanCandidate = null;
+    toneScanDetector = new CtcssDetector({
+        sampleRate: audioSampleRate || 48000,
+        // The rig's own table, so the scan can only name a tone it can set.
+        tones: (ctcssTones && ctcssTones.length) ? ctcssTones : undefined,
+    });
+    toneScanRunning = true;
+    toneScanHint = 'listening…';
+    refreshToneUi();
+}
+
+function stopToneScan(hint) {
+    toneScanRunning = false;
+    toneScanDetector = null;
+    toneScanHint = hint || '';
+    refreshToneUi();
+}
+
+// Called from handleAudioData for every RX chunk while a scan is armed.
+function feedToneScan(pcmData) {
+    var events;
+    try {
+        events = toneScanDetector.feed(pcmData);
+    } catch (e) {
+        stopToneScan('scan failed: ' + e.message);
+        return;
+    }
+    for (var i = 0; i < events.length; i++) {
+        var ev = events[i];
+        if (ev.type === 'detected') {
+            toneScanCandidate = ev.tone;
+            // Loading transmits nothing and opens no squelch — engaging a mode
+            // does that, and that stays the operator's call.
+            setTone(ev.tone);
+            stopToneScan('');
+            return;
+        }
+        // The grid is the readout: light whatever the detector is hearing.
+        toneScanCandidate = ev.tone;
+    }
+    if (events.length) highlightToneGrid(toneScanCandidate);
+}
+
+// A stored channel's tone, labelled the way the indicator labels the live one.
+// Channels carry the tone as its printed name ('88.5'); the label helpers work
+// in tenths of Hz.
+function memToneBadge(mem) {
+    var mode = mem.toneModeName || 'OFF';
+    if (mode === 'OFF') return '';
+    return toneLabel(mode, toneNameToTenths(mem.tone), toneNameToTenths(mem.tsql), mem.dtcs);
+}
+function toneNameToTenths(name) {
+    var v = Math.round(parseFloat(name) * 10);
+    return isFinite(v) ? v : 0;
+}
+
 // Show/hide + configure the FUNC-overlay attenuator slider.
 function updateFuncAttRow(show) {
     var row = document.getElementById('funcAttRow');
@@ -4548,7 +5498,7 @@ function updateFuncAttRow(show) {
     if (!show) { row.style.display = 'none'; return; }
     row.style.display = '';
     var slider = document.getElementById('funcAttSlider');
-    if (slider) slider.max = Math.max(1, availableAttenuators.length - 1);
+    if (slider) slider.max = Math.max(1, attsHere().length - 1);
     syncFuncAttSlider();
 }
 // Reflect currentAttenuator onto the slider position / fill / label.
@@ -4557,13 +5507,14 @@ function syncFuncAttSlider() {
     if ((Date.now() - (sliderSetTimes['funcAtt'] || 0)) < SLIDER_DEBOUNCE_MS) return;
     var slider = document.getElementById('funcAttSlider');
     if (!slider) return;
+    var here = attsHere();
     var idx = funcAttIndex();
-    var max = Math.max(1, availableAttenuators.length - 1);
+    var max = Math.max(1, here.length - 1);
     slider.value = idx;
     var fill = document.getElementById('funcAttFill');
     if (fill) fill.style.width = (idx / max * 100) + '%';
     var val = document.getElementById('funcAttVal');
-    if (val) val.textContent = idx === 0 ? 'OFF' : (availableAttenuators[idx].name || ('-' + availableAttenuators[idx].num + ' dB'));
+    if (val) val.textContent = idx === 0 ? 'OFF' : (here[idx].name || ('-' + here[idx].num + ' dB'));
 }
 
 function antennaName(num) {
@@ -4602,22 +5553,64 @@ function renderSpanOverlay() {
 
 // --- Memory overlay ---
 var memoryChannels = {};
+var memGroupList = [];       // valid memory-group numbers for this rig ([] = rig has no groups)
+var memCurrentGroup = 0;     // group the browser is currently reading/writing
+var memCapsSeen = null;      // "memGroups/memStart" caps last applied
+
+// Build the group list + selector from rig caps. memGroups is the highest
+// group number, memStart the lowest; a rig with no groups reports
+// memGroups < memStart, and we fall back to group 0 (byte is ignored by
+// the CI-V encoder for those rigs anyway).
+function setupMemoryGroups(memGroups, memStart) {
+    // Caps are re-broadcast on reconnects and getStatus; a repeat must not
+    // yank the user's selected group out from under an open overlay.
+    var caps = memGroups + '/' + memStart;
+    if (caps === memCapsSeen) return;
+    memCapsSeen = caps;
+    memGroupList = [];
+    for (var g = memStart; g <= memGroups; g++) memGroupList.push(g);
+    // Rigs with a single group (IC-7610/7760/785x) don't carry a group byte
+    // in their memory frames and report group 0 — keep addressing group 0
+    // for them, exactly like rigs with no groups at all.
+    memCurrentGroup = memGroupList.length >= 2 ? memGroupList[0] : 0;
+    var row = document.getElementById('memGroupRow');
+    var sel = document.getElementById('memGroupSelect');
+    if (memGroupList.length >= 2) {
+        sel.innerHTML = '';
+        for (var i = 0; i < memGroupList.length; i++) {
+            var o = document.createElement('option');
+            o.value = memGroupList[i];
+            o.textContent = String(memGroupList[i]).padStart(2, '0');
+            sel.appendChild(o);
+        }
+        sel.value = memCurrentGroup;
+        row.style.display = 'inline-flex';
+    } else {
+        row.style.display = 'none';
+    }
+}
+
+function onMemGroupChange() {
+    memCurrentGroup = parseInt(document.getElementById('memGroupSelect').value, 10) || 0;
+    refreshMemories();
+}
 
 function renderMemoryOverlay() {
     document.getElementById('memoryOverlay').classList.add('visible');
-    document.getElementById('memWritePrompt').classList.remove('visible');
     renderMemoryList();
     refreshMemories();
 }
 
 function openMemoryBrowser() {
     document.getElementById('memoryOverlay').classList.add('visible');
-    document.getElementById('memWritePrompt').classList.remove('visible');
+    memorySaveCancel();
+    updateMemPanelVfoRow();
     refreshMemories();
 }
 
 function closeMemoryModal() {
     document.getElementById('memoryOverlay').classList.remove('visible');
+    memorySaveCancel();
 }
 
 function refreshMemories() {
@@ -4625,7 +5618,10 @@ function refreshMemories() {
     document.getElementById('memoryList').innerHTML =
         '<div class="memory-empty">Scanning...</div>';
     document.getElementById('memScanStatus').textContent = 'scanning...';
-    send({ cmd: 'getMemories', start: 1, end: 99, group: 0 });
+    // Start at 0: zero-based rigs (IC-705/905) have a real channel 0. Rigs
+    // whose channels start at 1 just drop the out-of-range first read and
+    // the scan moves on.
+    send({ cmd: 'getMemories', start: 0, end: 99, group: memCurrentGroup });
 }
 
 function renderMemoryList() {
@@ -4640,27 +5636,57 @@ function renderMemoryList() {
         var mem = memoryChannels[keys[i]];
         if (mem.del || mem.empty) continue;
         var row = document.createElement('div');
-        row.className = 'memory-row';
+        var isCurrent = currentVfo === 'MEM' && memChannel === mem.channel
+            && (memChannelGroup === null || (mem.group || 0) === memChannelGroup);
+        row.className = 'memory-row' + (isCurrent ? ' current' : '');
         row.setAttribute('data-key', keys[i]);
+        var name = (mem.name || '').trim();
+        var sub = formatMemFreq(mem.frequency) + ' \u00b7 ' + (mem.mode || '?');
+        var toneBadge = memToneBadge(mem);
+        if (toneBadge) sub += ' \u00b7 ' + toneBadge;
         row.innerHTML =
             '<span class="mem-ch">' + mem.channel + '</span>' +
-            '<span class="mem-name">' + (mem.name || '') + '</span>' +
-            '<span class="mem-freq">' + formatMemFreq(mem.frequency) + '</span>' +
-            '<span class="mem-mode">' + (mem.mode || '') + '</span>' +
+            '<span class="mem-main">' +
+                '<div class="mem-name' + (name ? '' : ' auto') + '">' +
+                    (name ? escapeHtml(name) : sub) + '</div>' +
+                (name ? '<div class="mem-sub">' + sub + '</div>' : '') +
+            '</span>' +
+            '<span class="mem-edit" title="Rename">\u270e</span>' +
             '<span class="mem-del" title="Clear">\u2715</span>';
-        (function(m) {
-            row.querySelector('.mem-del').addEventListener('click', function(e) {
+        (function(m, r) {
+            r.querySelector('.mem-del').addEventListener('click', function(e) {
                 e.stopPropagation();
                 send({ cmd: 'clearMemory', channel: m.channel, group: m.group || 0 });
                 delete memoryChannels[(m.group || 0) * 65536 + m.channel];
                 renderMemoryList();
             });
+            r.querySelector('.mem-edit').addEventListener('click', function(e) {
+                e.stopPropagation();
+                startMemoryRename(r, m);
+            });
             row.addEventListener('click', function() {
-                if (m.frequency) send({ cmd: 'setFrequency', value: m.frequency });
-                if (m.mode) send({ cmd: 'setMode', value: m.mode });
+                // While the save picker is open a row tap picks that channel
+                // as the save target instead of recalling it.
+                if (memSaveBarOpen()) {
+                    document.getElementById('memSaveCh').value = m.channel;
+                    return;
+                }
+                // Recall on the radio so it restores tone / tone squelch /
+                // duplex offset from the channel — not just freq + mode. The
+                // server queues the rig's own channel select and (where the
+                // rig has one) the V/M memory-mode switch.
+                send({ cmd: 'recallMemory', channel: m.channel, group: m.group || 0 });
+                memChannel = m.channel;
+                memChannelGroup = m.group || 0;
+                if (hasMemoryMode) {
+                    currentVfo = 'MEM';
+                    updateVfoDisplay();
+                    renderBottomBar();
+                }
+                renderMemoryList();
                 setPanel('default');
             });
-        })(mem);
+        })(mem, row);
         list.appendChild(row);
     }
     if (list.children.length === 0) {
@@ -4670,13 +5696,19 @@ function renderMemoryList() {
 
 function formatMemFreq(hz) {
     if (!hz) return '---';
-    var mhz = hz / 1e6;
-    return mhz.toFixed(mhz >= 100 ? 4 : (mhz >= 10 ? 5 : 6));
+    var mhz = Math.floor(hz / 1e6);
+    var khz = Math.floor((hz % 1e6) / 1e3);
+    var h = hz % 1e3;
+    return mhz + '.' + String(khz).padStart(3, '0') + '.' + String(h).padStart(3, '0');
 }
 
 function handleMemoryChannel(msg) {
     var mem = msg.memory;
     if (!mem) return;
+    // Drop late replies from a group we've since switched away from. Only
+    // multi-group rigs report a group in replies; on single-group rigs the
+    // reply's group (0) wouldn't match and would empty the list.
+    if (memGroupList.length >= 2 && (mem.group || 0) !== memCurrentGroup) return;
     var key = (mem.group || 0) * 65536 + mem.channel;
     if (mem.del || mem.empty) {
         delete memoryChannels[key];
@@ -4714,26 +5746,60 @@ function nextFreeMemoryChannel() {
     return 1;
 }
 
-function memoryWrite() {
-    document.getElementById('memWritePrompt').classList.add('visible');
-    var next = nextFreeMemoryChannel();
-    console.log('memoryWrite: memoryChannels keys=' + Object.keys(memoryChannels).length + ' nextFree=' + next, memoryChannels);
-    document.getElementById('memWriteCh').value = next;
-    document.getElementById('memWriteCh').focus();
+// "+ Save": open the target picker, prefilled with the next free channel of
+// the viewed group. Type any channel number, or tap a row to overwrite that
+// channel. OK writes the current frequency/mode there, auto-named
+// "146.955 FM" (short enough for the 10-char name fields; rename with the
+// pencil afterwards).
+function memorySaveCurrent() {
+    document.getElementById('memSaveCh').value = nextFreeMemoryChannel();
+    document.getElementById('memSaveBar').classList.add('visible');
 }
 
-function memoryWriteConfirm() {
-    var ch = parseInt(document.getElementById('memWriteCh').value);
-    if (ch > 0) {
-        send({ cmd: 'writeMemory', channel: ch, group: 0 });
-        document.getElementById('memWritePrompt').classList.remove('visible');
-        // Refresh after a short delay to see the new entry
-        setTimeout(refreshMemories, 500);
+function memSaveBarOpen() {
+    return document.getElementById('memSaveBar').classList.contains('visible');
+}
+
+function memorySaveConfirm() {
+    var ch = parseInt(document.getElementById('memSaveCh').value);
+    if (isNaN(ch) || ch < 0) return;
+    var name = '';
+    if (currentFreq > 0) {
+        name = (currentFreq / 1e6).toFixed(3) + ' ' + (currentMode || '');
     }
+    send({ cmd: 'writeMemory', channel: ch, group: memCurrentGroup, name: name.trim() });
+    memorySaveCancel();
+    setTimeout(refreshMemories, 500);
 }
 
-function memoryWriteCancel() {
-    document.getElementById('memWritePrompt').classList.remove('visible');
+function memorySaveCancel() {
+    document.getElementById('memSaveBar').classList.remove('visible');
+}
+
+// Pencil: edit the channel name in place. Enter saves, Esc/blur cancels.
+function startMemoryRename(row, m) {
+    var main = row.querySelector('.mem-main');
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.maxLength = 16;
+    input.className = 'mem-rename-input';
+    input.value = (m.name || '').trim();
+    main.innerHTML = '';
+    main.appendChild(input);
+    input.focus();
+    input.select();
+    input.addEventListener('click', function(e) { e.stopPropagation(); });
+    input.addEventListener('keydown', function(e) {
+        e.stopPropagation();
+        if (e.key === 'Enter') {
+            send({ cmd: 'renameMemory', channel: m.channel, group: m.group || 0, name: input.value.trim() });
+            m.name = input.value.trim();
+            renderMemoryList();
+        } else if (e.key === 'Escape') {
+            renderMemoryList();
+        }
+    });
+    input.addEventListener('blur', function() { renderMemoryList(); });
 }
 
 // Freq input keypad
@@ -4794,6 +5860,10 @@ function updateWarningVisibility() {
     } else {
         micWarning.style.display = 'none';
     }
+
+    // The duplex readout lives in the same stack; keep it in step with rig
+    // (re)connects, which is when hasDuplex can flip.
+    updateDupIndicator();
 }
 
 function handlePTTPress() {
@@ -4893,7 +5963,10 @@ function setMode(mode) {
 function updateVfoDisplay() {
     var label = document.getElementById('vfoLabel');
     var num = document.getElementById('vfoNum');
-    if (hasMainSub) {
+    updateMemPanelVfoRow();
+    if (currentVfo === 'MEM') {
+        label.textContent = memChannel !== null ? 'MEM ' + memChannel : 'MEM';
+    } else if (hasMainSub) {
         label.textContent = 'VFO ' + (currentVfo === 'A' ? 'MAIN' : 'SUB');
     } else {
         label.textContent = 'VFO ' + currentVfo;
@@ -4904,8 +5977,12 @@ function updateVfoDisplay() {
 function selectVFO(vfo) {
     send({ cmd: 'selectVFO', value: vfo });
     currentVfo = vfo;
+    if (vfo !== 'MEM') lastRealVfo = vfo;
     updateVfoDisplay();
     renderBottomBar();
+    // Memory mode: leave the frequency display for the radio's round-trip
+    // (the recalled channel's freq), don't force a VFO-cache value.
+    if (vfo === 'MEM') return;
     // Reflect the new VFO's cached freq on the main display immediately so
     // the label and frequency stay in sync without waiting for the radio's
     // round-trip response. The server will follow up with fresh values.
@@ -4913,6 +5990,29 @@ function selectVFO(vfo) {
     if (newFreq > 0) updateFrequency(newFreq);
     else updateOtherVfoDisplay();
 }
+// Memory panel VFO A / VFO B / MEM selector. Selecting a VFO exits memory
+// mode on the rig; MEM enters it on the rig's current channel.
+function memPanelSelect(v) {
+    if (v === 'MEM' && !hasMemoryMode) return;
+    if (v === currentVfo) return;
+    selectVFO(v);
+    updateMemPanelVfoRow();
+    renderMemoryList();
+}
+
+function updateMemPanelVfoRow() {
+    var segs = { 'A': 'memVfoA', 'B': 'memVfoB', 'MEM': 'memVfoMem' };
+    for (var k in segs) {
+        var el = document.getElementById(segs[k]);
+        if (el) el.classList.toggle('active', currentVfo === k);
+    }
+    var memBtn = document.getElementById('memVfoMem');
+    if (memBtn) {
+        memBtn.style.display = hasMemoryMode ? '' : 'none';
+        memBtn.textContent = (currentVfo === 'MEM' && memChannel !== null) ? 'MEM ' + memChannel : 'MEM';
+    }
+}
+
 function swapVFO() {
     send({ cmd: 'swapVFO' });
     // VFO Swap exchanges the contents of A and B but leaves the selection
@@ -5486,6 +6586,7 @@ function handleAudioData(buffer) {
     // the server build uses. The hook is installed by js8-panel.mjs
     // once the module finishes booting.
     if (typeof window._js8ProcessAudioChunk === 'function') window._js8ProcessAudioChunk(pcmData);
+    if (toneScanDetector) feedToneScan(pcmData);
 
     if (audioUseWorklet && audioWorkletNode) {
         audioWorkletNode.port.postMessage(floatData);
@@ -5992,6 +7093,10 @@ document.addEventListener('keydown', function(e) {
         e.preventDefault();
         // Stop CW transmission first
         send({ cmd: 'stopCW' });
+        // If a digi-mode TX (FT8/JS8/FreeDV) is in flight, halt it
+        // immediately and leave overlays/panels in place. ESC pressed
+        // again with nothing TXing falls through to the overlay close.
+        if (typeof haltDigiTx === 'function' && haltDigiTx()) return;
         // Then hide overlays
         hideAllOverlays();
         closeMemoryModal();
@@ -6034,7 +7139,11 @@ document.getElementById('freqDisplay').addEventListener('click', function() {
 });
 
 document.getElementById('vfoLabel').addEventListener('click', function() {
-    selectVFO(currentVfo === 'A' ? 'B' : 'A');
+    // Toggle VFO A <-> B only. MEM mode is entered/left exclusively from the
+    // FUNC MEM button; while in MEM this label reads "MEM n" and tapping it
+    // opens the channel list (like tapping the frequency opens freq input).
+    if (currentVfo === 'MEM') openMemoryBrowser();
+    else selectVFO(currentVfo === 'A' ? 'B' : 'A');
 });
 
 
@@ -8216,21 +9325,36 @@ function executeDigiTx(slotPhase) {
         updateDigiStatus('TX', 'tx');
         send({ cmd: 'enableMic', value: true });
 
-        // Local TX monitor: play the generated audio through browser speakers at reduced volume.
+        // Local TX monitor: play the generated audio through browser speakers
+        // at reduced volume. The source is tracked on the shared digiMonitorSrc
+        // so external halt paths can still stop it.
+        var monSrc = null;
         try {
             if (digiTxCtx && digiTxCtx.state === 'running') {
                 var monBuf = digiTxCtx.createBuffer(1, samples12k.length, 12000);
                 monBuf.copyToChannel(samples12k, 0);
-                digiMonitorSrc = digiTxCtx.createBufferSource();
-                digiMonitorSrc.buffer = monBuf;
+                monSrc = digiTxCtx.createBufferSource();
+                monSrc.buffer = monBuf;
                 var monGain = digiTxCtx.createGain();
                 monGain.gain.value = 0.025;
-                digiMonitorSrc.connect(monGain);
+                monSrc.connect(monGain);
                 monGain.connect(digiTxCtx.destination);
-                digiMonitorSrc.onended = function() { digiMonitorSrc = null; };
-                digiMonitorSrc.start();
+                digiMonitorSrc = monSrc;
+                monSrc.onended = function() {
+                    if (digiMonitorSrc === monSrc) digiMonitorSrc = null;
+                };
+                monSrc.start();
             }
-        } catch(e) { console.warn('[DIGI TX] local monitor error:', e); }
+        } catch(e) {
+            console.warn('[DIGI TX] local monitor error:', e);
+            monSrc = null;
+        }
+        function stopSidetone() {
+            if (!monSrc) return;
+            try { monSrc.stop(); } catch (e) {}
+            if (digiMonitorSrc === monSrc) digiMonitorSrc = null;
+            monSrc = null;
+        }
 
         // Capture df/txMsg for the closures below
         var txDf = df;
@@ -8597,6 +9721,10 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
             finished = true;
             if (activeDigiTxHalt === abortFn) activeDigiTxHalt = null;
             try { node.disconnect(); } catch (e) {}
+            // Aborted TX: cut the sidetone immediately so the operator hears
+            // the same silence the rig hears. On clean completion let it
+            // play out — the buffer's natural .onended will clear it.
+            if (aborted) stopSidetone();
             // Do NOT close txCtx — it is the shared digiTxCtx, kept alive for next TX
             digiTxSeq = seq;
             setTimeout(function() { if (onDone) onDone(aborted); }, aborted ? 0 : 200);
@@ -9606,6 +10734,7 @@ window.dispatchEvent(new Event('ft8tsReady'));
 <script src="cw-decoder-stft.js"></script>
 <script src="cw-decoder-utils.js"></script>
 <script src="cw-decoder.js"></script>
+<script src="ctcss.js"></script>
 <script src="packet.js"></script>
 </body>
 </html>

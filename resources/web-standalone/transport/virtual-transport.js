@@ -49,6 +49,11 @@
         setPreamp:        'preamp',
         setAttenuator:    'attenuator',
         setSplit:         'split',
+        setDuplex:        'duplex',
+        setDuplexOffset:  'duplexOffset',
+        setToneMode:      'toneMode',
+        setToneFreq:      'toneFreq',
+        setTsqlFreq:      'tsqlFreq',
         setTuner:         'tuner',
         setSpan:          'spanIndex',
     };
@@ -79,12 +84,24 @@
                 vfoAFrequency: 14074000,
                 vfoBFrequency: 7074000,
                 selectedVfo: 'A',
+                // Memory channels (#92): a small bank so the MEM panel, recall
+                // and rename can be exercised without a rig. selectedVfo
+                // becomes 'MEM' on recall; memChannel is the recalled channel.
+                memChannel: null,
+                memories: {
+                    1: { channel: 1, group: 0, name: 'FT8 20m', frequency: 14074000, mode: 'USB', filter: 1 },
+                    2: { channel: 2, group: 0, name: '',        frequency: 7074000,  mode: 'USB', filter: 1 },
+                    3: { channel: 3, group: 0, name: 'W1AW',    frequency: 3581500,  mode: 'CW',  filter: 2 },
+                },
                 mode: 'USB',
                 filter: 1,
                 // Per-filter bandwidths (Hz). Real Icoms remember a separate
                 // width for each filter slot; without this the slider would
                 // refuse to move when the user switches filters.
                 filterWidths: { 1: 3000, 2: 2400, 3: 1800 },
+                // Per-filter shape (0 sharp / 1 soft), the FILTER window's
+                // SHARP/SOFT segment.
+                filterShapes: { 1: 0, 2: 0, 3: 0 },
                 transmitting: false,
                 // Two virtual antennas + an RX-antenna input so the FUNC page
                 // ANT / RX ANT buttons (#76) can be exercised without a
@@ -98,6 +115,10 @@
                 // -54 dB = S0. The drawSMeter() scale treats 0 as S9, so a
                 // default of 0 would paint a permanent full-scale signal.
                 sMeter: -54,
+                // Repeater access tone — echoed back like the DUP fields so
+                // the TONE panel can be exercised off-air.
+                toneMode: 'OFF', toneFreq: 885, tsqlFreq: 885,
+                dtcsCode: 23, dtcsPolarity: 0,
             };
             this._audioEnabled = false;
 
@@ -148,6 +169,16 @@
         sendCommand(obj) {
             if (!this._open || !obj || !obj.cmd) return;
 
+            if (obj.cmd === 'setDtcsCode') {
+                // Two fields in one command, so it can't ride ECHO_FIELDS.
+                this.state.dtcsCode = obj.value | 0;
+                this.state.dtcsPolarity = obj.polarity | 0;
+                this._emit('update', {
+                    dtcsCode: this.state.dtcsCode,
+                    dtcsPolarity: this.state.dtcsPolarity,
+                });
+                return;
+            }
             if (ECHO_FIELDS.hasOwnProperty(obj.cmd)) {
                 var field = ECHO_FIELDS[obj.cmd];
                 var val = (obj.cmd === 'setCWSpeed') ? obj.wpm : obj.value;
@@ -191,12 +222,18 @@
                     this._emit('update', {
                         filter: obj.value,
                         filterWidth: this.state.filterWidths[obj.value] || 3000,
+                        filterShape: this.state.filterShapes[obj.value] || 0,
                     });
                     return;
                 case 'setFilterWidth':
                     if (typeof obj.value !== 'number' || obj.value <= 0) return;
                     this.state.filterWidths[this.state.filter] = obj.value;
                     this._emit('update', { filterWidth: obj.value });
+                    return;
+                case 'setFilterShape':
+                    if (typeof obj.value !== 'number') return;
+                    this.state.filterShapes[this.state.filter] = obj.value ? 1 : 0;
+                    this._emit('update', { filterShape: obj.value ? 1 : 0 });
                     return;
                 case 'setPTT':
                     var ptt = !!obj.value;
@@ -218,12 +255,58 @@
                     this._emit('update', { transmitting: ptt });
                     return;
                 case 'selectVFO':
+                    if (obj.value === 'MEM') {
+                        // V/M on the rig's current channel (default ch 1).
+                        var mch = this.state.memChannel || 1;
+                        this._memRecall(mch);
+                        return;
+                    }
                     var newVfo = (obj.value === 'B') ? 'B' : 'A';
                     this.state.selectedVfo = newVfo;
                     var nvf = (newVfo === 'B') ? this.state.vfoBFrequency : this.state.vfoAFrequency;
                     this.state.frequency = nvf;
                     this._emit('update', { selectedVfo: newVfo, frequency: nvf });
                     return;
+                // ---- Memory channels (#92) ----
+                case 'getMemories': {
+                    var self = this;
+                    var g = obj.group | 0;
+                    var chans = Object.keys(this.state.memories).map(Number).sort(function (a, b) { return a - b; });
+                    var n = 0;
+                    chans.forEach(function (c) {
+                        var m = self.state.memories[c];
+                        if (c < (obj.start | 0) || c > ((obj.end === undefined) ? 99 : obj.end | 0)) return;
+                        n++;
+                        setTimeout(function () { self._emit('memoryChannel', { memory: self._memToJson(m) }); }, 20 * n);
+                    });
+                    setTimeout(function () { self._emit('memoryScanComplete', { count: n }); }, 20 * n + 50);
+                    return;
+                }
+                case 'writeMemory': {
+                    var wch = obj.channel | 0;
+                    if (wch < 1) return;
+                    var freq = this.state.frequency;
+                    if (!(freq > 0)) { this._emit('error', { message: 'Memory write failed: no known frequency' }); return; }
+                    this.state.memories[wch] = {
+                        channel: wch, group: 0, name: String(obj.name || ''),
+                        frequency: freq, mode: this.state.mode, filter: this.state.filter,
+                    };
+                    return;
+                }
+                case 'clearMemory':
+                    delete this.state.memories[obj.channel | 0];
+                    this._emit('memoryChannel', { memory: { channel: obj.channel | 0, group: 0, del: true } });
+                    return;
+                case 'recallMemory':
+                    this._memRecall(obj.channel | 0);
+                    return;
+                case 'renameMemory': {
+                    var rm = this.state.memories[obj.channel | 0];
+                    if (!rm) return;
+                    rm.name = String(obj.name || '');
+                    this._emit('memoryChannel', { memory: this._memToJson(rm) });
+                    return;
+                }
                 case 'enableAudio':
                     // Mirror SerialRigTransport: the SPA's startAudio() flips
                     // audioEnabled to true only after the transport echoes
@@ -417,15 +500,44 @@
             this.dispatchEvent(new CustomEvent('message', { detail: msg }));
         }
 
+        _memToJson(m) {
+            return {
+                channel: m.channel, group: m.group || 0, name: m.name || '',
+                frequency: m.frequency, mode: m.mode, filter: m.filter || 1,
+                del: false, empty: false,
+                tonemode: 0, toneModeName: 'OFF', tone: '', tsql: '',
+                dtcs: 0, dtcsPolarity: 0, duplex: 0, duplexOffset: 0,
+            };
+        }
+
+        // Recall on the "rig": the channel's freq/mode become the operating
+        // state, neither VFO slot changes, and we report MEM + the channel —
+        // exactly what the serial transport does after a real recall.
+        _memRecall(ch) {
+            var m = this.state.memories[ch];
+            if (!m) return;
+            this.state.memChannel = ch;
+            this.state.selectedVfo = 'MEM';
+            this.state.frequency = m.frequency;
+            this.state.mode = m.mode;
+            this.state.filter = m.filter || 1;
+            this._emit('update', { selectedVfo: 'MEM', memChannel: ch,
+                                   frequency: m.frequency, mode: m.mode, filter: this.state.filter });
+        }
+
         _emitRigInfo() {
             this._emit('rigInfo', {
                 version: ((typeof window !== 'undefined' && window.__WFWEB_SEMVER__) || 'dev') + '-virtual',
                 model: 'Virtual Rig #' + this.rigId,
                 connected: true,
+                hasMemoryMode: true, memGroups: 0, memStart: 1,
                 modes: DEFAULT_MODES,
                 filters: DEFAULT_FILTERS,
                 spans: DEFAULT_SPANS,
                 preamps: DEFAULT_PREAMPS,
+                // The IC-705's band table (HF through 70 cm) so the BAND
+                // picker's VHF/UHF row can be exercised off-air.
+                bands: (global.IcomRigCaps && global.IcomRigCaps[0xA4] && global.IcomRigCaps[0xA4].bands) || [],
                 // Multi-step attenuator so the P.AMP/ATT cycle button can be
                 // exercised without a real IC-7610 (which has 16 steps).
                 attenuators: [
@@ -436,6 +548,20 @@
                 hasRxAnt: true,
                 hasFilterSettings: true,
                 hasMainSub: false,
+                // Advertised so the DUP tile can be exercised off-air; the
+                // virtual rig just echoes whatever it is told.
+                hasDuplex: true,
+                // Same for the TUNE tile — the virtual rig echoes tuner
+                // state, so the bench can exercise it off-air.
+                hasTuner: true,
+                // Repeater access tone, same treatment.
+                hasCTCSS: true,
+                hasDTCS: true,
+                hasToneSqlType: true,
+                canSetToneFreq: true,
+                canSetTsqlFreq: true,
+                ctcssTones: global.IcomCtcssTones || [],
+                dtcsCodes: global.IcomDtcsCodes || [],
                 hasSpectrum: false,
                 spectAmpMax: 160,
                 audioAvailable: true,
@@ -455,16 +581,25 @@
                 vfoAFrequency: this.state.vfoAFrequency,
                 vfoBFrequency: this.state.vfoBFrequency,
                 selectedVfo:   this.state.selectedVfo,
+                memChannel:    this.state.selectedVfo === 'MEM' ? this.state.memChannel : undefined,
                 mode: this.state.mode,
                 filter: this.state.filter,
                 filterWidth: this.state.filterWidths[this.state.filter] || 3000,
+                filterShape: this.state.filterShapes[this.state.filter] || 0,
                 sMeter: this.state.sMeter,
                 transmitting: this.state.transmitting,
                 antenna: this.state.antenna,
                 rxAntenna: this.state.rxAntenna,
                 preamp: this.state.preamp,
                 attenuator: this.state.attenuator,
+                duplex: this.state.duplex || 'OFF',
+                toneMode: this.state.toneMode || 'OFF',
+                toneFreq: this.state.toneFreq,
+                tsqlFreq: this.state.tsqlFreq,
+                dtcsCode: this.state.dtcsCode,
+                dtcsPolarity: this.state.dtcsPolarity || 0,
             };
+            if (this.state.duplexOffset !== undefined) s.duplexOffset = this.state.duplexOffset;
             this._emit('status', s);
         }
 

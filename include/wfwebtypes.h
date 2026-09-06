@@ -372,7 +372,7 @@ funcLoginEnableDisable,
 /* Special Commands (internal use only) */
 funcSelectVFO,          funcSeparator,          funcLCDWaterfall,           funcLCDSpectrum,        funcLCDNothing,         funcPageUp,
 funcPageDown,           funcVFOFrequency,       funcVFOMode,                funcRigctlFunction,     funcRigctlLevel,        funcRigctlParam,
-funcRXAudio,            funcTXAudio,
+funcRXAudio,            funcTXAudio,            funcDuplexMode,
 // This MUST be the last defined func.
 funcLastFunc
 };
@@ -514,7 +514,8 @@ static QString funcString[funcLastFunc] { "None",
 /* Special Commands */
 "-Select VFO",          "-Seperator",
 "-LCD Waterfall",       "-LCD Spectrum",        "-LCD Nothing",             "-Page Up",             "-Page Down",           "-VFO Frequency",
-"-VFO Mode",            "-Rigctl Function",     "-Rigctl Level",            "-Rigctl Param",        "-RX Audio Data",       "-TX Audio Data"
+"-VFO Mode",            "-Rigctl Function",     "-Rigctl Level",            "-Rigctl Param",        "-RX Audio Data",       "-TX Audio Data",
+"-Duplex Mode"
 };
 
 struct spanType {
@@ -681,6 +682,8 @@ struct commandErrorType{
     int minValue;
     int maxValue;
     uchar bytes;
+    bool isSet = false;   // carried a value (set) rather than being a read
+    uchar receiver = 0;   // queue receiver the command was issued for
 };
 
 enum audioType {qtAudio,portAudio,rtAudio,tciAudio};

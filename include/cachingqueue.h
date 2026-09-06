@@ -24,6 +24,14 @@ enum queuePriority {
 
 inline QMap<QString,int> priorityMap = {{"None",0},{"Immediate",1},{"Highest",2},{"High",3},{"Medium High",5},{"Medium",7},{"Medium Low",11},{"Low",19},{"Lowest",23}};
 
+// A read the rig keeps refusing (Icom FA/NG) is backed off once it has failed
+// CACHE_NAK_LIMIT times in a row: getCache() stops refreshing it and the run
+// loop skips its recurring poll, each retrying once per CACHE_NAK_RETRY_SECS
+// so a read that starts working again (band or mode change) still recovers.
+// A valid reply clears the count.  Explicit one-shot requests are never held.
+#define CACHE_NAK_LIMIT 3
+#define CACHE_NAK_RETRY_SECS 30
+
 // Command with no param is a get by default
 struct queueItem {
     queueItem () {}
@@ -47,7 +55,7 @@ struct queueItem {
 
 struct cacheItem {
     cacheItem () {};
-    cacheItem (cacheItem const &c): command(c.command), req(c.req), reply(c.reply), value(c.value), receiver(c.receiver) {};
+    cacheItem (cacheItem const &c): command(c.command), req(c.req), reply(c.reply), value(c.value), receiver(c.receiver), nak(c.nak) {};
     cacheItem (funcs command, QVariant value, uchar receiver=0) : command(command), req(QDateTime()), reply(QDateTime()), value(value), receiver(receiver){};
 
     funcs command;
@@ -55,12 +63,19 @@ struct cacheItem {
     QDateTime reply;
     QVariant value;
     uchar receiver;
+    int nak = 0;      // consecutive reads the rig refused; a valid reply resets it
+    // True while a refused read is sitting out its retry window.
+    bool backedOff() const {
+        return nak >= CACHE_NAK_LIMIT && req.isValid()
+            && req.secsTo(QDateTime::currentDateTime()) < CACHE_NAK_RETRY_SECS;
+    }
     cacheItem &operator=(const cacheItem &i) {
         this->receiver=i.receiver;
         this->command=i.command;
         this->reply=i.reply;
         this->req=i.req;
         this->value=i.value;
+        this->nak=i.nak;
         return *this;
     }
 };
@@ -74,6 +89,7 @@ signals:
     void sendValue(cacheItem item);
     void sendMessage(QString msg);
     void cacheUpdated(cacheItem item);
+    void cacheRejected(cacheItem item);   // a read just hit CACHE_NAK_LIMIT refusals
     void rigCapsUpdated(rigCapabilities* caps);
     void intervalUpdated(qint64 val);
 
@@ -98,6 +114,7 @@ private:
     void setCache(funcs func, QVariant val, uchar receiver=0);
     queuePriority isRecurring(funcs func, uchar receiver=0);
     bool compare(QVariant a, QVariant b);
+    QMultiMap<funcs,cacheItem>::iterator findCache(funcs func, uchar receiver);
 
     // Various other values
     bool aborted=false;
@@ -131,12 +148,14 @@ public:
 
     queuePriority del(funcs func, uchar receiver=0);
     void clear();
+    bool waitForImmediate(int timeoutMs);
     void interval(qint64 val);
     qint64 interval() {return queueInterval;}
     void updateCache(bool reply, queueItem item);
     void updateCache(bool reply, funcs func, QVariant value=QVariant(), uchar receiver=0);
 
     cacheItem getCache(funcs func, uchar receiver=0);
+    int receiveNak(funcs func, uchar receiver=0);
 
     queuePriority getQueued(funcs func, uchar receiver=0);
 
