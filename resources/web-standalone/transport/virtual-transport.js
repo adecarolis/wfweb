@@ -445,6 +445,9 @@
                 filters: DEFAULT_FILTERS,
                 spans: DEFAULT_SPANS,
                 preamps: DEFAULT_PREAMPS,
+                // The IC-705's band table (HF through 70 cm) so the BAND
+                // picker's VHF/UHF row can be exercised off-air.
+                bands: (global.IcomRigCaps && global.IcomRigCaps[0xA4] && global.IcomRigCaps[0xA4].bands) || [],
                 // Multi-step attenuator so the P.AMP/ATT cycle button can be
                 // exercised without a real IC-7610 (which has 16 steps).
                 attenuators: [

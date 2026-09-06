@@ -591,6 +591,7 @@ private:
     QTimer *toneModeNotifyTimer = nullptr;
     void scheduleToneModeNotify();
     void addToneCaps(QJsonObject &o) const;
+    void addBandCaps(QJsonObject &o) const;
     void addToneStatus(QJsonObject &o);
     bool toneCommandsAvailable() const;
 };

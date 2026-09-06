@@ -2753,19 +2753,51 @@ var bandLastFreq = (function() {
     try { var s = localStorage.getItem('bandLastFreq'); if (s) return JSON.parse(s); } catch(e) {}
     return {};
 })();
-var BAND_RANGES = {
-    '1.8':  [1800000,  2000000],
-    '3.5':  [3500000,  4000000],
-    '7':    [7000000,  7300000],
-    '10':   [10100000, 10150000],
-    '14':   [14000000, 14350000],
-    '18':   [18068000, 18168000],
-    '21':   [21000000, 21450000],
-    '24':   [24890000, 24990000],
-    '28':   [28000000, 29700000],
-    '50':   [50000000, 54000000],
-    'GENE': [500000,   1800000]
-};
+// BAND picker keys. num is the rig's availableBands number (see
+// include/rigidentities.h) — what the rig's band table is keyed on — and the
+// label is Icom's own, in front-panel order. home is where a key lands the
+// first time (after that the band memory takes over): the band's bottom in
+// every ITU region, since the rig table is folded across regions and 70 cm
+// starts at 420 MHz in region 2 but 430 MHz elsewhere. Only ham bands get a
+// key: 60 m / 630 m / 2200 m (no Icom panel has one), the IC-705's WFM / AIR
+// broadcast ranges and general coverage are all reached through F-INP.
+var BAND_KEYS = [
+    { num: 20, label: '1.8',  home: 1800000 },
+    { num: 19, label: '3.5',  home: 3500000 },
+    { num: 17, label: '7',    home: 7000000 },
+    { num: 16, label: '10',   home: 10100000 },
+    { num: 15, label: '14',   home: 14000000 },
+    { num: 14, label: '18',   home: 18068000 },
+    { num: 13, label: '21',   home: 21000000 },
+    { num: 12, label: '24',   home: 24890000 },
+    { num: 11, label: '28',   home: 28000000 },
+    { num: 10, label: '50',   home: 50000000 },
+    { num: 9,  label: '70',   home: 70000000 },
+    { num: 6,  label: '144',  home: 144000000 },
+    { num: 5,  label: '430',  home: 430000000 },
+    { num: 4,  label: '1200', home: 1240000000 },
+    { num: 3,  label: '2400', home: 2400000000 },
+    { num: 2,  label: '3400', home: 3400000000 },
+    { num: 1,  label: '5600', home: 5650000000 },
+    { num: 0,  label: '10G',  home: 10000000000 }
+];
+// The HF-only picker of a rig that announced no band table (older server,
+// unknown standalone CI-V address): what every rig got before they told us.
+var DEFAULT_BANDS = [
+    { num: 20, start: 1800000,  end: 2000000 },
+    { num: 19, start: 3500000,  end: 4000000 },
+    { num: 17, start: 7000000,  end: 7300000 },
+    { num: 16, start: 10100000, end: 10150000 },
+    { num: 15, start: 14000000, end: 14350000 },
+    { num: 14, start: 18068000, end: 18168000 },
+    { num: 13, start: 21000000, end: 21450000 },
+    { num: 12, start: 24890000, end: 24990000 },
+    { num: 11, start: 28000000, end: 29700000 },
+    { num: 10, start: 50000000, end: 54000000 }
+];
+var rigBands = [];      // [{label, freq}] — the picker's buttons, see populateBands()
+var BAND_RANGES = {};   // label -> [start, end) — which band a frequency belongs to
+populateBands(null);
 
 var audioCtx = null;
 var audioWorkletNode = null;
@@ -3106,6 +3138,7 @@ function handleMessage(msg) {
                 if (msg.spans) populateSpans(msg.spans);
                 if (msg.preamps) populatePreamps(msg.preamps);
                 if (msg.attenuators) populateAttenuators(msg.attenuators);
+            if (msg.bands) populateBands(msg.bands);
                 if (msg.antennas) populateAntennas(msg.antennas);
                 if (msg.hasRxAnt !== undefined) hasRxAnt = !!msg.hasRxAnt;
                 if (msg.filters) populateFilters(msg.filters);
@@ -3132,6 +3165,7 @@ function handleMessage(msg) {
             if (msg.spans) populateSpans(msg.spans);
             if (msg.preamps) populatePreamps(msg.preamps);
             if (msg.attenuators) populateAttenuators(msg.attenuators);
+            if (msg.bands) populateBands(msg.bands);
             if (msg.antennas) populateAntennas(msg.antennas);
             if (msg.hasRxAnt !== undefined) hasRxAnt = !!msg.hasRxAnt;
             if (msg.filters) populateFilters(msg.filters);
@@ -4456,42 +4490,62 @@ function renderModeOverlay() {
     document.getElementById('modeOverlay').classList.add('visible');
 }
 
+// Build the BAND picker from the rig's band table (rigInfo/rigConnected
+// `bands`: one {num, name, start, end} per band, Hz). null/empty → the
+// HF-only picker. Only bands with a key in BAND_KEYS get a button, so an
+// IC-9700 shows 144/430/1200 and an IC-705 grows a 144/430 row under
+// the HF ones.
+function populateBands(bands) {
+    var byNum = {};
+    (bands && bands.length ? bands : DEFAULT_BANDS).forEach(function(b) { byNum[b.num] = b; });
+    rigBands = [];
+    BAND_RANGES = {};
+    BAND_KEYS.forEach(function(k) {
+        var b = byNum[k.num];
+        if (!b || !(b.end > b.start)) return;
+        rigBands.push({ label: k.label, freq: Math.min(Math.max(k.home, b.start), b.end) });
+        BAND_RANGES[k.label] = [b.start, b.end];
+    });
+    if (currentPanel === 'band') renderBandOverlay();
+}
+
 function renderBandOverlay() {
     var grid = document.getElementById('bandGrid');
     grid.innerHTML = '';
-    var bands = [
-        { label: '1.8', freq: 1800000 },
-        { label: '3.5', freq: 3500000 },
-        { label: '7', freq: 7000000 },
-        { label: 'F-INP', action: 'freqinp' },
-        { label: '10', freq: 10100000 },
-        { label: '14', freq: 14000000 },
-        { label: '18', freq: 18068000 },
-        { label: '', freq: 0 },
-        { label: '21', freq: 21000000 },
-        { label: '24', freq: 24890000 },
-        { label: '28', freq: 28000000 },
-        { label: '', freq: 0 },
-        { label: '50', freq: 50000000 },
-        { label: 'GENE', freq: 500000 },
-        { label: '', freq: 0 }
-    ];
-    for (var i = 0; i < bands.length; i++) {
-        var b = bands[i];
-        var btn = document.createElement('button');
-        btn.className = 'ov-btn';
-        btn.textContent = b.label;
-        if (!b.label) { btn.style.visibility = 'hidden'; }
-        else if (b.action === 'freqinp') {
-            btn.onclick = function() { setPanel('freqinp'); };
-        } else if (b.freq > 0) {
+    // Icom's BAND popup: three bands per row across the first three columns,
+    // the fourth column holding F-INP on the first row and the back button
+    // on the last (spacers in between). Rigs whose table runs past 50 MHz
+    // simply get more rows.
+    function spacer() {
+        var s = document.createElement('button');
+        s.className = 'ov-btn';
+        s.style.visibility = 'hidden';
+        return s;
+    }
+    var rows = Math.max(1, Math.ceil(rigBands.length / 3));
+    for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < 3; c++) {
+            var b = rigBands[r * 3 + c];
+            if (!b) { grid.appendChild(spacer()); continue; }
+            var btn = document.createElement('button');
+            btn.className = 'ov-btn';
+            btn.textContent = b.label;
             btn.onclick = (function(f, lbl) { return function() {
                 var target = bandLastFreq[lbl] || f;
                 send({ cmd: 'setFrequency', value: target });
                 setPanel('default');
             }; })(b.freq, b.label);
+            grid.appendChild(btn);
         }
-        grid.appendChild(btn);
+        if (r === 0) {
+            var finp = document.createElement('button');
+            finp.className = 'ov-btn';
+            finp.textContent = 'F-INP';
+            finp.onclick = function() { setPanel('freqinp'); };
+            grid.appendChild(finp);
+        } else if (r < rows - 1) {
+            grid.appendChild(spacer());
+        }
     }
     // Back button
     var back = document.createElement('button');

@@ -493,6 +493,7 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
         // follow that capability instead of appearing on every rig.
         obj["hasTuner"] = rigCaps->commands.contains(funcTunerStatus);
         addToneCaps(obj);
+        addBandCaps(obj);
 
         QJsonArray modes;
         for (const modeInfo &mi : rigCaps->modes) {
@@ -3103,6 +3104,7 @@ QJsonObject webServer::buildInfoJson() const
         // status read without one — tunerRejected tracks that.
         info["hasTuner"] = rigCaps->commands.contains(funcTunerStatus) && !tunerRejected;
         addToneCaps(info);
+        addBandCaps(info);
         if (!rigCaps->scopeCenterSpans.empty()) {
             QJsonArray spans;
             for (const centerSpanData &s : rigCaps->scopeCenterSpans) {
@@ -4192,6 +4194,40 @@ bool webServer::recallMemoryOnRig(int channel, int group, QString *error)
 }
 
 // --- Repeater access tone ---
+
+// The rig's band table, one entry per band, for the browser's BAND picker.
+// A .rig carries a separate row per ITU region wherever the edges differ
+// (40 m is 7.0-7.2 MHz in region 1, 7.0-7.3 in region 2) and nothing here
+// picks a region, so each band is folded to its widest edges: the picker
+// only needs "where does this band start" and "which band is this
+// frequency in". num is the availableBands enum (rigidentities.h), which
+// is what the browser keys its button labels on.
+void webServer::addBandCaps(QJsonObject &o) const
+{
+    if (!rigCaps || rigCaps->bands.empty()) return;
+    struct edges { QString name; quint64 lo; quint64 hi; };
+    QMap<int, edges> folded;
+    for (const bandType &b : rigCaps->bands) {
+        if (b.band == bandUnknown || b.highFreq <= b.lowFreq) continue;
+        auto it = folded.find(int(b.band));
+        if (it == folded.end()) {
+            folded.insert(int(b.band), edges{b.name, b.lowFreq, b.highFreq});
+        } else {
+            it->lo = qMin(it->lo, b.lowFreq);
+            it->hi = qMax(it->hi, b.highFreq);
+        }
+    }
+    QJsonArray bands;
+    for (auto it = folded.constBegin(); it != folded.constEnd(); ++it) {
+        QJsonObject bo;
+        bo["num"] = it.key();
+        bo["name"] = it->name;
+        bo["start"] = double(it->lo);
+        bo["end"] = double(it->hi);
+        bands.append(bo);
+    }
+    o["bands"] = bands;
+}
 
 // What the browser needs to draw the TONE panel: which of the three tone kinds
 // this rig can do, whether the tone *frequency* is settable (the IC-905 can

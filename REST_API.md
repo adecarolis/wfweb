@@ -83,6 +83,7 @@ curl -s http://localhost:8081/api/v1/radio | jq .
     "audioSampleRate": 48000,
     "txAudioAvailable": true,
     "preamps": [{"num": 1, "name": "Preamp 1"}, {"num": 2, "name": "Preamp 2"}],
+    "bands": [{"num": 20, "name": "160m", "start": 1800000, "end": 2000000}, {"num": 6, "name": "2m", "start": 144000000, "end": 148000000}],
     "filters": [{"num": 1, "name": "FIL1"}, {"num": 2, "name": "FIL2"}, {"num": 3, "name": "FIL3"}],
     "spans": [{"reg": 1, "name": "±2.5kHz", "freq": 5000}]
   },

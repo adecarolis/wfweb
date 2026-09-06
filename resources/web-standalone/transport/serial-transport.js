@@ -2042,6 +2042,9 @@
                 spans: DEFAULT_SPANS,
                 preamps: preamps,
                 attenuators: attenuators,
+                // Band table for the BAND picker — an unknown rig gets none
+                // and the SPA falls back to its HF-only layout.
+                bands: (entry && entry.bands) || [],
                 antennas: this._antennas,
                 hasRxAnt: this._hasRxAnt,
                 hasFilterSettings: true,
