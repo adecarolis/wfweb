@@ -6,6 +6,72 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.8.6 (2026-09-06)
+--------------------
+
+Web UI:
+- The BAND picker is built from the rig's own band table instead of a
+  fixed HF list, so VHF/UHF rigs can reach their upper bands from it at
+  last: the IC-705 gains 144/430, the IC-9700 144/430/1200, and the
+  IC-905 up to 10 GHz. Keys appear only for bands the rig declares, the
+  grid keeps Icom's three-per-row shape, and per-band last-frequency
+  memory covers the new bands.
+- FILTER window: the three FIL tiles are replaced by one FIL tile that
+  opens a DUP-style window with FIL1/2/3, WIDTH, a twin-PBT graphic with
+  tap-to-centre PBT-1/2, and SHARP/SOFT filter shape.
+- Repeater TONE: a TONE window for TONE / TSQL / DTCS, with a readout in
+  the P.AMP/DUP stack. TONE and TSQL share one tone selection, since the
+  radio transmits the tone-squelch frequency in TSQL anyway. The tone
+  scan reads the sub-tone out of the received audio with a Goertzel bank
+  rather than engaging the rig's own tone squelch, which would mute the
+  receiver for the whole sweep.
+- DUP +/- repeater shift for the rigs that support it (IC-705, IC-9700,
+  IC-905, IC-785x), with IARU Region 2 offsets by default and Region 1
+  offered alongside, a kHz box for odd splits, and a readout under the
+  P.AMP/ATT one.
+- An RFG warning tile when RF gain sits below 100%.
+- The attenuator indicator reads ATT rather than the dB level.
+
+Standalone:
+- Memory channels can be recalled onto the radio, closing the last gap
+  against the server build. (#92)
+- Center scope mode and Carrier Point Center are forced on connect, so a
+  rig left in Fixed or Filter Center no longer gives a frozen waterfall
+  or a mistuned display. (#75)
+- ESC halts an in-flight FT8/JS8/FreeDV transmission before closing the
+  overlay, and an aborted digi TX cuts the sidetone immediately instead
+  of letting the monitor buffer play out.
+
+Rigs:
+- IC-7600 set commands went out as 0x25/0x26 rather than 0x05/0x06, and
+  the set-mode commands were missing the 0x05 sub-command entirely, so
+  every 1A 05 write (DATA OFF MOD, USB Mod Level) was addressed as 1A 00
+  and refused — the browser mic only modulated in a DATA sub-mode.
+  (#97, #102)
+- IC-7600 USB CI-V is capped at 19200 baud, which is what the radio
+  actually supports. (#99)
+- IC-705 P.AMP and ATT steps are band-aware.
+
+Fixes:
+- A blank memory channel is reported as null instead of 165 Hz / Unknown
+  / filter 255: an FF reply is cached as an explicit no-value, status and
+  REST emit null, and the SPA shows dashes.
+- Reads the rig keeps refusing are backed off instead of re-asked
+  forever. An IC-705 over LAN logged "Rig (FA) error" for the tuner every
+  few seconds for as long as it ran; after three consecutive refusals a
+  read drops to one attempt every 30 s, and a valid reply clears the
+  count.
+- LAN rigs no longer enumerate or probe USB serial ports at startup.
+- The DATA MOD OFF baseline survives server shutdown and repeated mic
+  enables, so the rig's modulation input is restored rather than left on
+  USB. (#95)
+
+Packaging:
+- The Debian packages depend on libqt5multimedia5-plugins, and wfweb
+  prints a hint when Qt reports no audio backend — the cause of "No rig
+  audio device found" reports on Raspberry Pi and arm64 builds. (#98)
+
+
 v0.8.5 (2026-08-31)
 --------------------
 
