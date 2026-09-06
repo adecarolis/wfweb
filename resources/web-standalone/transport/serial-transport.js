@@ -1120,6 +1120,7 @@
                 && this._antennas.length > 0;
             this._hasDuplex = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasDuplex);
             this._hasTuner = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasTuner);
+            this._hasSpectrum = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasSpectrum);
             var toneCmds = (capsEntry && capsEntry.cmds) || {};
             this._toneCmds = {
                 sqlType:   toneCmds.toneSqlType || null,
@@ -1195,10 +1196,7 @@
             this._enqueue('readFilterWidth', civ.cmdReadFilterWidth());
             this._enqueue('readFilterShape', civ.cmdReadBoolFunc(0x56));
 
-            // Enable scope output (waterfall). Single-byte payloads match
-            // the C++ wfweb's behaviour for single-receiver rigs.
-            this._enqueue('scopeOn',   new Uint8Array([0x27, 0x10, 0x01]));
-            this._enqueue('scopeData', new Uint8Array([0x27, 0x11, 0x01]));
+            this._enqueueScopeSetup();
 
             this._startPolling();
             this._applyFirstRunDefaults();
@@ -1363,8 +1361,7 @@
                 this._awaitingPowerOnRemaining--;
                 if (this._awaitingPowerOnRemaining === 0) {
                     this._emit('update', { powerState: true });
-                    this._enqueue('scopeOn',   new Uint8Array([0x27, 0x10, 0x01]));
-                    this._enqueue('scopeData', new Uint8Array([0x27, 0x11, 0x01]));
+                    this._enqueueScopeSetup();
                 }
             }
 
@@ -2035,6 +2032,28 @@
             var entry = RIG_CAPS[this.civAddr];
             if (!entry || !entry.caps) return true;  // unknown rig: assume TX
             return entry.caps.hasTransmit !== false;
+        }
+
+        // Scope bring-up, sent on connect and again after a power-on (the rig
+        // forgets scope output across a power cycle). Single-byte payloads
+        // match the C++ wfweb's behaviour for single-receiver rigs.
+        _enqueueScopeSetup() {
+            this._enqueue('scopeOn',   new Uint8Array([0x27, 0x10, 0x01]));
+            this._enqueue('scopeData', new Uint8Array([0x27, 0x11, 0x01]));
+            if (!this._hasSpectrum) return;
+            // Force Center scope mode: the SPA keeps the RX indicator fixed
+            // mid-screen and scrolls the waterfall under it, which only
+            // renders correctly when the rig reports center-mode spectrum.
+            // A rig left in Fixed mode sends static band edges, so the
+            // marker/passband/span all appear frozen (issue #75). 0 = Center.
+            this._enqueue('scopeMode',   new Uint8Array([0x27, 0x14, 0x00, 0x00]));
+            // Force Carrier Point Center: with Filter Center (0) the spectrum
+            // centres on the passband instead of the VFO, so a signal aligned
+            // to the visual passband is mistuned in RX audio (issue #75).
+            // 1 = Carrier Point Center. Unlike the per-window scope commands
+            // this setting is global and takes NO scope byte — the rig NGs
+            // the prefixed form (verified on a real IC-7300, issue #75).
+            this._enqueue('scopeCenter', new Uint8Array([0x27, 0x1C, 0x01]));
         }
 
         _emitRigInfo() {

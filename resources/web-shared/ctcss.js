@@ -24,8 +24,7 @@
 // the winner are excluded from the runner-up when measuring stability —
 // otherwise a tone's own harmonic vetoes its detection.
 //
-// Ported from the same detector in FM-Remote (K1FM), which is where the
-// harmonic-folding behaviour was worked out against live repeaters.
+// The harmonic-folding behaviour was worked out against live repeaters.
 (function (global) {
     'use strict';
 

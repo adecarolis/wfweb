@@ -6865,6 +6865,10 @@ document.addEventListener('keydown', function(e) {
         e.preventDefault();
         // Stop CW transmission first
         send({ cmd: 'stopCW' });
+        // If a digi-mode TX (FT8/JS8/FreeDV) is in flight, halt it
+        // immediately and leave overlays/panels in place. ESC pressed
+        // again with nothing TXing falls through to the overlay close.
+        if (typeof haltDigiTx === 'function' && haltDigiTx()) return;
         // Then hide overlays
         hideAllOverlays();
         closeMemoryModal();
@@ -9089,21 +9093,36 @@ function executeDigiTx(slotPhase) {
         updateDigiStatus('TX', 'tx');
         send({ cmd: 'enableMic', value: true });
 
-        // Local TX monitor: play the generated audio through browser speakers at reduced volume.
+        // Local TX monitor: play the generated audio through browser speakers
+        // at reduced volume. The source is tracked on the shared digiMonitorSrc
+        // so external halt paths can still stop it.
+        var monSrc = null;
         try {
             if (digiTxCtx && digiTxCtx.state === 'running') {
                 var monBuf = digiTxCtx.createBuffer(1, samples12k.length, 12000);
                 monBuf.copyToChannel(samples12k, 0);
-                digiMonitorSrc = digiTxCtx.createBufferSource();
-                digiMonitorSrc.buffer = monBuf;
+                monSrc = digiTxCtx.createBufferSource();
+                monSrc.buffer = monBuf;
                 var monGain = digiTxCtx.createGain();
                 monGain.gain.value = 0.025;
-                digiMonitorSrc.connect(monGain);
+                monSrc.connect(monGain);
                 monGain.connect(digiTxCtx.destination);
-                digiMonitorSrc.onended = function() { digiMonitorSrc = null; };
-                digiMonitorSrc.start();
+                digiMonitorSrc = monSrc;
+                monSrc.onended = function() {
+                    if (digiMonitorSrc === monSrc) digiMonitorSrc = null;
+                };
+                monSrc.start();
             }
-        } catch(e) { console.warn('[DIGI TX] local monitor error:', e); }
+        } catch(e) {
+            console.warn('[DIGI TX] local monitor error:', e);
+            monSrc = null;
+        }
+        function stopSidetone() {
+            if (!monSrc) return;
+            try { monSrc.stop(); } catch (e) {}
+            if (digiMonitorSrc === monSrc) digiMonitorSrc = null;
+            monSrc = null;
+        }
 
         // Capture df/txMsg for the closures below
         var txDf = df;
@@ -9470,6 +9489,10 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
             finished = true;
             if (activeDigiTxHalt === abortFn) activeDigiTxHalt = null;
             try { node.disconnect(); } catch (e) {}
+            // Aborted TX: cut the sidetone immediately so the operator hears
+            // the same silence the rig hears. On clean completion let it
+            // play out — the buffer's natural .onended will clear it.
+            if (aborted) stopSidetone();
             // Do NOT close txCtx — it is the shared digiTxCtx, kept alive for next TX
             digiTxSeq = seq;
             setTimeout(function() { if (onDone) onDone(aborted); }, aborted ? 0 : 200);
