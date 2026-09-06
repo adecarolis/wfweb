@@ -90,6 +90,9 @@
                 // width for each filter slot; without this the slider would
                 // refuse to move when the user switches filters.
                 filterWidths: { 1: 3000, 2: 2400, 3: 1800 },
+                // Per-filter shape (0 sharp / 1 soft), the FILTER window's
+                // SHARP/SOFT segment.
+                filterShapes: { 1: 0, 2: 0, 3: 0 },
                 transmitting: false,
                 // Two virtual antennas + an RX-antenna input so the FUNC page
                 // ANT / RX ANT buttons (#76) can be exercised without a
@@ -210,12 +213,18 @@
                     this._emit('update', {
                         filter: obj.value,
                         filterWidth: this.state.filterWidths[obj.value] || 3000,
+                        filterShape: this.state.filterShapes[obj.value] || 0,
                     });
                     return;
                 case 'setFilterWidth':
                     if (typeof obj.value !== 'number' || obj.value <= 0) return;
                     this.state.filterWidths[this.state.filter] = obj.value;
                     this._emit('update', { filterWidth: obj.value });
+                    return;
+                case 'setFilterShape':
+                    if (typeof obj.value !== 'number') return;
+                    this.state.filterShapes[this.state.filter] = obj.value ? 1 : 0;
+                    this._emit('update', { filterShape: obj.value ? 1 : 0 });
                     return;
                 case 'setPTT':
                     var ptt = !!obj.value;
@@ -494,6 +503,7 @@
                 mode: this.state.mode,
                 filter: this.state.filter,
                 filterWidth: this.state.filterWidths[this.state.filter] || 3000,
+                filterShape: this.state.filterShapes[this.state.filter] || 0,
                 sMeter: this.state.sMeter,
                 transmitting: this.state.transmitting,
                 antenna: this.state.antenna,

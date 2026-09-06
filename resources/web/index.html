@@ -93,9 +93,8 @@ html, body {
     display: block; width: 2px; height: 12px;
     background: #888; border-radius: 1px;
 }
-#filterText { color: #888; font-size: 11px; font-weight: bold; cursor: pointer; }
-#filterText.clickable { color: #0aa; }
-#filterText.clickable:active { color: #0ff; }
+#filterText { color: #0aa; font-size: 11px; font-weight: bold; cursor: pointer; }
+#filterText:active { color: #0ff; }
 #dspIndicators { display: flex; gap: 4px; margin-left: 6px; }
 .dsp-tag {
     font-size: 9px; font-weight: bold;
@@ -1409,16 +1408,17 @@ body.digi-open #bottomBar { grid-row: 5; }
 /* Buttons are scoped to #dupOverlay rather than reusing .mem-seg: that class
    only exists in the server fork, so borrowing it would leave the standalone
    window unstyled. Same palette, so the two windows still read as a pair. */
-/* The TONE window is the DUP window's twin — same buttons, same palette —
-   so both share these rules instead of growing a second look. */
-#dupOverlay .dup-btn, #toneOverlay .dup-btn {
+/* The TONE and FILTER windows are the DUP window's twins — same buttons,
+   same palette — so all three share these rules instead of growing a second
+   look. */
+#dupOverlay .dup-btn, #toneOverlay .dup-btn, #filterOverlay .dup-btn {
     padding: 7px 0;
     background: #001020; border: 1px solid #048; border-radius: 3px;
     color: #08f; font-family: 'Courier New', monospace; font-size: 12px;
     font-weight: bold; cursor: pointer;
 }
-#dupOverlay .dup-btn:active, #toneOverlay .dup-btn:active { background: #048; color: #000; }
-#dupOverlay .dup-btn.active, #toneOverlay .dup-btn.active { background: #024a80; border-color: #5af; color: #fff; }
+#dupOverlay .dup-btn:active, #toneOverlay .dup-btn:active, #filterOverlay .dup-btn:active { background: #048; color: #000; }
+#dupOverlay .dup-btn.active, #toneOverlay .dup-btn.active, #filterOverlay .dup-btn.active { background: #024a80; border-color: #5af; color: #fff; }
 #dupDirRow { display: flex; gap: 6px; margin: 2px 8px 6px; }
 #dupDirRow .dup-btn { flex: 1; }
 #dupSectionLabel {
@@ -1427,7 +1427,7 @@ body.digi-open #bottomBar { grid-row: 5; }
 }
 #dupOffsetChoices { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 8px; }
 #dupOffsetChoices .dup-btn { flex: 0 0 auto; padding: 7px 16px; }
-#dupOverlay .dup-label, #toneOverlay .dup-label { color: #8cf; font-family: 'Courier New', monospace; font-size: 11px; font-weight: bold; }
+#dupOverlay .dup-label, #toneOverlay .dup-label, #filterOverlay .dup-label { color: #8cf; font-family: 'Courier New', monospace; font-size: 11px; font-weight: bold; }
 #dupOverlay .dup-hint, #toneOverlay .dup-hint { color: #467; font-family: 'Courier New', monospace; font-size: 11px; }
 /* The DUP window has one section, the TONE window several (TX tone, RX tone
    squelch, DTCS code, DTCS polarity), so its labels and grids are classes. */
@@ -1451,6 +1451,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     #dupOffsetChoices .dup-btn { padding: 11px 16px; }
     #toneModeRow .dup-btn { padding: 11px 14px; }
     #toneOverlay .tone-grid .dup-btn { padding: 11px 12px; }
+    #filterOverlay .filter-seg-row .dup-btn { padding: 11px 0; }
 }
 
 /* Hidden range inputs over the gain bars */
@@ -1461,43 +1462,27 @@ body.digi-open #bottomBar { grid-row: 5; }
     margin: 0;
 }
 
-/* FILTER overlay */
-#filterOverlay.visible {
-    flex-direction: column;
-    justify-content: center;
-    padding: 10px 16px;
-    gap: 8px;
+/* FILTER window — same .mem-modal shell as DUP/TONE. Segmented rows share
+   the .dup-btn look; the sliders are the GAIN panel's bars. The passband
+   graphic is drawn on #pbtCanvas by drawPbtDiagram(). */
+#filterOverlay .filter-seg-row { display: flex; align-items: center; gap: 6px; margin: 2px 8px 6px; }
+#filterOverlay .filter-seg-row .dup-btn { flex: 1; }
+#filterOverlay .filter-seg-row .dup-label { width: 44px; flex-shrink: 0; text-align: right; }
+#filterOverlay .gain-row { margin: 0 8px 6px; }
+#filterOverlay .gain-label { width: 44px; }
+#filterOverlay .gain-val { width: 46px; }
+#filterOverlay .pbt-val { cursor: pointer; }
+#filterOverlay .pbt-readouts { display: flex; gap: 8px; margin: 4px 8px 3px; }
+#filterOverlay .pbt-chip {
+    color: #8cf; font-family: 'Courier New', monospace; font-size: 10px; font-weight: bold;
+    padding: 1px 6px; background: rgba(0,0,0,0.45); border-radius: 3px;
 }
-#filterOverlay .filter-btn-row {
-    display: flex; gap: 6px; justify-content: center;
-    margin-bottom: 4px;
+#filterOverlay .pbt-chip b { color: #e6e6e6; margin-left: 4px; }
+#filterOverlay #pbtCanvas {
+    display: block; width: calc(100% - 16px); height: 82px; margin: 0 8px 8px;
+    background: #000; border: 1px solid #048; border-radius: 3px;
 }
-#filterOverlay .filter-btn {
-    padding: 6px 16px;
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #888;
-    font-size: 11px; font-weight: bold;
-    cursor: pointer; border-radius: 3px;
-}
-#filterOverlay .filter-btn.active {
-    background: #066; border-color: #0aa; color: #0ff;
-}
-#filterOverlay .shape-btn-row {
-    display: flex; gap: 6px; align-items: center;
-    margin-top: 4px;
-}
-#filterOverlay .shape-btn {
-    padding: 5px 14px;
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #888;
-    font-size: 10px; font-weight: bold;
-    cursor: pointer; border-radius: 3px;
-}
-#filterOverlay .shape-btn.active {
-    background: #066; border-color: #0aa; color: #0ff;
-}
+#filterAdjustControls.hidden { display: none; }
 /* MEMORY modal (styled like QSO Log modal) */
 .mem-modal {
     display: none;
@@ -1962,7 +1947,7 @@ body.digi-open #bottomBar { grid-row: 5; }
         <span id="tuneLabel">TUNE</span>
         <button id="modeBtn" onclick="setPanel('mode')">---</button>
         <span id="pbBars"><i></i><i></i></span>
-        <span id="filterText" onclick="if(hasFilterSettings)setPanel('filter')">FIL1</span>
+        <span id="filterText" onclick="openFilterModal()">FIL1</span>
         <span id="dspIndicators"></span>
         <span class="flex-space"></span>
         <button id="qsoLogBtn" class="qso-log-btn" title="Log QSO">LOG</button>
@@ -2357,42 +2342,54 @@ body.digi-open #bottomBar { grid-row: 5; }
             </div>
         </div>
 
-        <!-- Filter overlay -->
-        <div id="filterOverlay" class="overlay">
-            <div class="overlay-title" id="filterOverlayTitle">FILTER</div>
-            <div class="filter-btn-row" id="filterBtnRow">
-                <button class="filter-btn" id="filBtn1" onclick="sendFilter(1)">FIL1</button>
-                <button class="filter-btn" id="filBtn2" onclick="sendFilter(2)">FIL2</button>
-                <button class="filter-btn" id="filBtn3" onclick="sendFilter(3)">FIL3</button>
+        <!-- FILTER window (the DUP/TONE windows' sibling). FIL1/2/3 on top,
+             then the passband width, the rig's twin-PBT graphic with its two
+             knobs, and the SHARP/SOFT shape — the rig's own FILTER popup,
+             which is its own screen separate from the mode menu. -->
+        <div id="filterOverlay" class="mem-modal">
+            <div class="mem-modal-title">
+                <span>Filter <span id="filterTitleState"></span></span>
+                <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeFilterModal()">&#x2715; Close</button>
+            </div>
+            <div class="filter-seg-row">
+                <span class="dup-label">FILTER</span>
+                <button class="dup-btn" id="filBtn1" onclick="sendFilter(1)">FIL1</button>
+                <button class="dup-btn" id="filBtn2" onclick="sendFilter(2)">FIL2</button>
+                <button class="dup-btn" id="filBtn3" onclick="sendFilter(3)">FIL3</button>
             </div>
             <div id="filterAdjustControls">
                 <div class="gain-row">
-                    <span class="gain-label">BW</span>
+                    <span class="gain-label">WIDTH</span>
                     <div class="gain-bar-bg"><div class="gain-bar-fill" id="filterWidthFill" style="width:30%"></div>
                         <input type="range" id="filterWidthSlider" min="0" max="40" value="30"></div>
                     <span class="gain-val" id="filterWidthVal">3.0k</span>
                 </div>
+                <!-- Symmetry: the two PBT knobs, independent like the rig's,
+                     over the FILTER screen's passband graphic — each knob a
+                     full-width filter, the overlap surviving in orange.
+                     Tapping a value recentres that knob. -->
+                <div class="pbt-readouts">
+                    <span class="pbt-chip">BW <b id="pbtBwVal">0</b></span>
+                    <span class="pbt-chip">SFT <b id="pbtSftVal">0</b></span>
+                </div>
+                <canvas id="pbtCanvas"></canvas>
                 <div class="gain-row">
-                    <span class="gain-label">PBT1</span>
+                    <span class="gain-label">PBT-1</span>
                     <div class="gain-bar-bg"><div class="gain-bar-fill centered" id="pbtInnerFill" style="left:50%;width:0%"></div>
                         <input type="range" id="pbtInnerSlider" min="0" max="255" value="128"></div>
-                    <span class="gain-val" id="pbtInnerVal">0</span>
+                    <span class="gain-val pbt-val" id="pbtInnerVal" title="Tap to centre" onclick="centerPBT('pbtInner')">0</span>
                 </div>
                 <div class="gain-row">
-                    <span class="gain-label">PBT2</span>
+                    <span class="gain-label">PBT-2</span>
                     <div class="gain-bar-bg"><div class="gain-bar-fill centered" id="pbtOuterFill" style="left:50%;width:0%"></div>
                         <input type="range" id="pbtOuterSlider" min="0" max="255" value="128"></div>
-                    <span class="gain-val" id="pbtOuterVal">0</span>
+                    <span class="gain-val pbt-val" id="pbtOuterVal" title="Tap to centre" onclick="centerPBT('pbtOuter')">0</span>
                 </div>
-                <div class="shape-btn-row">
-                    <button class="shape-btn" id="sharpBtn" onclick="sendFilterShape(0)">SHARP</button>
-                    <button class="shape-btn" id="softBtn" onclick="sendFilterShape(1)">SOFT</button>
-                    <span class="flex-space"></span>
-                    <button class="shape-btn" onclick="resetPBT()">RESET</button>
+                <div class="filter-seg-row">
+                    <span class="dup-label">SHAPE</span>
+                    <button class="dup-btn" id="sharpBtn" onclick="sendFilterShape(0)">SHARP</button>
+                    <button class="dup-btn" id="softBtn" onclick="sendFilterShape(1)">SOFT</button>
                 </div>
-            </div>
-            <div class="gain-back-row">
-                <button class="ov-btn back-btn" onclick="setPanel('default')" style="width:60px">&#x21A9;</button>
             </div>
         </div>
 
@@ -2622,6 +2619,8 @@ var amFilterValues = (function() {
     for (var i = 200; i <= 10000; i += 200) v.push(i);
     return v;
 })();
+// RTTY stops at 2.7k (step 31)
+var rttyFilterValues = ssbFilterValues.slice(0, 32);
 var fmFixedBW = [15000, 10000, 7000];
 var filterWidthValues = ssbFilterValues;
 
@@ -3199,10 +3198,11 @@ function updateMode(mode) {
     if (mode === null) mode = '---'; // rig has no mode to report (blank memory channel)
     var prevMode = currentMode;
     currentMode = mode;
+    if (mode !== prevMode) filterWidthStale();
     updateModeBtnLabel();
     if (currentPanel === 'mode') renderModeOverlay();
     updateFilterConfig();
-    if (currentPanel === 'filter') renderFilterOverlay();
+    if (filterModalVisible()) renderFilterModal();
 
     var wasCW = (prevMode === 'CW' || prevMode === 'CW-R');
     var isCW = (mode === 'CW' || mode === 'CW-R');
@@ -3245,25 +3245,34 @@ function autoOpenCwBarOnModeEntry() {
     }
 }
 
+// A filter or mode switch brings in that filter's own stored width. A WIDTH
+// slider touched within the last SLIDER_DEBOUNCE_MS would otherwise have
+// updateSlider swallow that one incoming value and the bar would stay where
+// the drag left it (the rig's echo of a drag is what the debounce is for).
+function filterWidthStale() {
+    sliderSetTimes['filterWidth'] = 0;
+}
+
 function updateFilterBtn(num) {
+    if (num !== currentFilter) filterWidthStale();
     currentFilter = num;
     document.getElementById('filterText').textContent = 'FIL' + (num === null ? '-' : num);
     if (currentPanel === 'func') renderFuncOverlay();
-    if (currentPanel === 'filter') updateFilterBtnHighlight();
+    if (filterModalVisible()) renderFilterModal();
 }
 
 function updateFilterBtnHighlight() {
     for (var i = 1; i <= 3; i++) {
         var btn = document.getElementById('filBtn' + i);
-        if (btn) btn.className = 'filter-btn' + (currentFilter === i ? ' active' : '');
+        if (btn) btn.classList.toggle('active', currentFilter === i);
     }
 }
 
 function updateFilterShapeBtn(val) {
     // Decode: val / 10 = filter, val % 10 = shape (0=Sharp, 1=Soft)
     currentFilterShape = val % 10;
-    document.getElementById('sharpBtn').className = 'shape-btn' + (currentFilterShape === 0 ? ' active' : '');
-    document.getElementById('softBtn').className = 'shape-btn' + (currentFilterShape === 1 ? ' active' : '');
+    document.getElementById('sharpBtn').classList.toggle('active', currentFilterShape === 0);
+    document.getElementById('softBtn').classList.toggle('active', currentFilterShape === 1);
 }
 
 function sendFilter(num) {
@@ -3274,34 +3283,208 @@ function sendFilterShape(shape) {
     send({ cmd: 'setFilterShape', value: shape });
 }
 
-function resetPBT() {
-    send({ cmd: 'setPBTInner', value: 128 });
-    send({ cmd: 'setPBTOuter', value: 128 });
-    updateSlider('pbtInner', 128);
-    updateSlider('pbtOuter', 128);
+// One PBT knob into the window: raw 0..255, centre 128, shown as a signed
+// percentage of full throw like the rig. The two knobs are independent —
+// matching them shifts the whole passband, splitting them narrows and skews it.
+function showPBT(name, val) {
+    if (name === 'pbtInner') currentPBTInner = val; else currentPBTOuter = val;
+    var pct = Math.round((val - 128) / 128 * 100);
+    var span = document.getElementById(name + 'Val');
+    if (span) span.textContent = pct === 0 ? '0' : (pct > 0 ? '+' : '') + pct + '%';
+    var slider = document.getElementById(name + 'Slider');
+    if (slider) slider.value = val;
+    updatePBTFill(name + 'Fill', val);
+    drawPbtDiagram();
+}
+
+function centerPBT(name) {
+    sliderSetTimes[name] = Date.now();
+    showPBT(name, 128);
+    send({ cmd: name === 'pbtInner' ? 'setPBTInner' : 'setPBTOuter', value: 128 });
+}
+
+function showFilterWidth(hz) {
+    currentFilterWidth = hz;
+    var pos = hzToSliderPos(hz);
+    var slider = document.getElementById('filterWidthSlider');
+    if (slider) slider.value = pos;
+    var span = document.getElementById('filterWidthVal');
+    if (span) span.textContent = formatBW(hz);
+    var fill = document.getElementById('filterWidthFill');
+    if (fill) fill.style.width = (pos / Math.max(1, filterWidthValues.length - 1) * 100) + '%';
+    updateFilterTitle();
+    drawPbtDiagram();
 }
 
 function updateHasFilterSettings(has) {
     hasFilterSettings = has;
-    var ft = document.getElementById('filterText');
-    if (ft) ft.classList.toggle('clickable', has);
+    if (filterModalVisible()) renderFilterModal();
 }
 
+// FM / WFM / DV have fixed passbands — no width, PBT or shape to adjust. Data
+// sub-modes (USB-D, AM-D, …) filter like their parent.
 function getFilterModeType(mode) {
-    if (mode === 'FM') return 'fm';
-    if (mode === 'AM') return 'am';
+    var base = (mode || '').split('-D')[0];
+    if (base === 'FM' || base === 'WFM' || base === 'DV') return 'fm';
+    if (base === 'AM') return 'am';
+    if (base === 'RTTY' || base === 'RTTY-R') return 'rtty';
     return 'ssb';
 }
 
 function updateFilterConfig() {
     filterModeType = getFilterModeType(currentMode);
-    if (filterModeType === 'am') filterWidthValues = amFilterValues;
-    else filterWidthValues = ssbFilterValues;
+    filterWidthValues = filterModeType === 'am' ? amFilterValues
+        : filterModeType === 'rtty' ? rttyFilterValues : ssbFilterValues;
     var slider = document.getElementById('filterWidthSlider');
-    if (slider && filterModeType !== 'fm') {
+    if (slider) {
         slider.max = filterWidthValues.length - 1;
         slider.value = hzToSliderPos(currentFilterWidth);
     }
+}
+
+function filterModalVisible() {
+    return document.getElementById('filterOverlay').classList.contains('visible');
+}
+
+function openFilterModal() {
+    renderFilterModal();
+    document.getElementById('filterOverlay').classList.add('visible');
+    drawPbtDiagram(); // the canvas only has a size once it's displayed
+}
+
+function closeFilterModal() {
+    document.getElementById('filterOverlay').classList.remove('visible');
+}
+
+// The passband's nominal audio centre for the graphic's labels: 1500 Hz for
+// phone (the rig's SSB drawing), the sidetone pitch in CW (600 Hz nominal —
+// the rig doesn't report it), the carrier in AM, the RTTY mark tone.
+function filterCenterHz() {
+    if (filterModeType === 'am') return 0;
+    if (filterModeType === 'rtty') return 2125;
+    return (currentMode === 'CW' || currentMode === 'CW-R') ? 600 : 1500;
+}
+
+// FUNC tile state: the passband the rig is actually set to.
+function filterFuncState() {
+    if (currentFilter === null) return '';
+    if (filterModeType === 'fm') {
+        var fixed = fmFixedBW[currentFilter - 1];
+        return fixed ? (fixed / 1000) + 'k' : 'FIL' + currentFilter;   // 15k / 10k / 7k
+    }
+    return hasFilterSettings ? formatBW(currentFilterWidth) : 'FIL' + currentFilter;
+}
+
+function updateFilterTitle() {
+    var t = document.getElementById('filterTitleState');
+    if (!t) return;
+    var state = filterFuncState();
+    t.textContent = (currentMode || '') + (state ? ' \u00b7 ' + state : '');
+}
+
+function renderFilterModal() {
+    updateFilterConfig();
+    updateFilterBtnHighlight();
+    updateFilterShapeBtn(currentFilterShape);
+    // Nothing below the FIL row on FM-family modes, or on rigs without PBT.
+    document.getElementById('filterAdjustControls').classList.toggle('hidden',
+        filterModeType === 'fm' || !hasFilterSettings);
+    showFilterWidth(currentFilterWidth);
+    showPBT('pbtInner', currentPBTInner);
+    showPBT('pbtOuter', currentPBTOuter);
+}
+
+// The rig's FILTER-screen passband graphic. Each PBT knob shifts a full-width
+// copy of the filter by up to half the band — PBT-1 red, PBT-2 blue — and only
+// their overlap passes, filled orange with the fixed centre tick on it. Above,
+// the resulting BW and SFT of the overlap; below, its audio-frequency edges
+// around the nominal centre, green at their home positions and warm once
+// moved, matching the rig's screen.
+function drawPbtDiagram() {
+    var canvas = document.getElementById('pbtCanvas');
+    if (!canvas || !filterModalVisible() || filterModeType === 'fm') return;
+    var cssW = canvas.clientWidth, cssH = canvas.clientHeight;
+    if (!cssW || !cssH) return;
+    var dpr = window.devicePixelRatio || 1;
+    if (canvas.width !== Math.round(cssW * dpr) || canvas.height !== Math.round(cssH * dpr)) {
+        canvas.width = Math.round(cssW * dpr);
+        canvas.height = Math.round(cssH * dpr);
+    }
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    // Overlap of the two shifted filters. Each knob throws its filter by up
+    // to half the set bandwidth, so a 50 Hz filter's sides barely move —
+    // exactly like the rig. The left edge follows the higher knob, the
+    // right the lower.
+    var w = currentFilterWidth;
+    var shift1 = (currentPBTInner - 128) / 128 * w / 2;
+    var shift2 = (currentPBTOuter - 128) / 128 * w / 2;
+    var bw = Math.max(0, w - Math.abs(shift1 - shift2));
+    var sft = (shift1 + shift2) / 2;
+    var sign = sft > 0 ? '+' : '';
+    document.getElementById('pbtBwVal').textContent =
+        bw <= 0 ? '0' : (bw < 1000 ? String(Math.round(bw)) : (bw / 1000).toFixed(2) + 'k');
+    document.getElementById('pbtSftVal').textContent =
+        sft === 0 ? '0' : (Math.abs(sft) < 1000 ? sign + Math.round(sft) : sign + (sft / 1000).toFixed(3) + 'k');
+
+    var labelH = 14, baseY = cssH - labelH - 2, topY = 6, cx = cssW / 2;
+    // Hz-true horizontal scale spanning TWICE the mode's widest filter — a
+    // full-throw PBT shift always stays inside the frame, and a centred band
+    // sits compact in the middle with dark margins around it, like the rig's.
+    var maxHz = filterWidthValues[filterWidthValues.length - 1];
+    var pxPerHz = cssW * 0.92 / (2 * maxHz);
+    var half = w / 2 * pxPerHz;
+    var skirt = 8; // fixed slope — the rig doesn't redraw the edges for SHARP/SOFT
+
+    var RED = '200,56,38', BLUE = '64,135,230', ORANGE = '237,115,26', GREEN = '#6bcc59';
+    function band(left, right) {
+        ctx.beginPath();
+        ctx.moveTo(left - skirt, baseY); ctx.lineTo(left, topY);
+        ctx.lineTo(right, topY); ctx.lineTo(right + skirt, baseY);
+        ctx.closePath();
+    }
+    // The two filters, translucent so the outlines read where they separate.
+    function shifted(shiftHz, rgb) {
+        band(cx - half + shiftHz * pxPerHz, cx + half + shiftHz * pxPerHz);
+        ctx.fillStyle = 'rgba(' + rgb + ',0.5)'; ctx.fill();
+        ctx.strokeStyle = 'rgb(' + rgb + ')'; ctx.lineWidth = 1.2; ctx.stroke();
+    }
+    shifted(shift1, RED);
+    shifted(shift2, BLUE);
+    // The surviving overlap, solid orange like the rig.
+    var overlapL = cx - half + Math.max(shift1, shift2) * pxPerHz;
+    var overlapR = cx + half + Math.min(shift1, shift2) * pxPerHz;
+    if (overlapR > overlapL) {
+        band(overlapL, overlapR);
+        ctx.fillStyle = 'rgba(' + ORANGE + ',0.9)'; ctx.fill();
+    }
+
+    ctx.strokeStyle = '#a6a6a6'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, baseY); ctx.lineTo(cssW, baseY); ctx.stroke();
+    // Fixed centre tick, baseline to the band's top like the rig.
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(cx, baseY); ctx.lineTo(cx, topY); ctx.stroke();
+
+    // Audio-frequency labels riding under the actual edges, kept apart when
+    // a narrow band pulls them together. Green marks an edge parked at the
+    // mode's nominal limits (0/3000 on SSB); moved edges go warm.
+    var center = filterCenterHz();
+    var leftHz = center - w / 2 + Math.max(shift1, shift2);
+    var rightHz = center + w / 2 + Math.min(shift1, shift2);
+    var labelY = cssH - 2;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    function edge(hz, x) {
+        var home = Math.abs(hz - (center - 1500)) < 1 || Math.abs(hz - (center + 1500)) < 1;
+        ctx.font = 'bold 10px "Courier New", monospace';
+        ctx.fillStyle = home ? GREEN : 'rgb(' + ORANGE + ')';
+        ctx.fillText(String(Math.round(hz)), x, labelY);
+    }
+    edge(leftHz, Math.max(16, Math.min(overlapL, cx - 34)));
+    ctx.font = '10px "Courier New", monospace'; ctx.fillStyle = '#ccc';
+    ctx.fillText(String(Math.round(center)), cx, labelY);
+    edge(rightHz, Math.min(cssW - 16, Math.max(overlapR, cx + 34)));
 }
 
 function hzToSliderPos(hz) {
@@ -3317,36 +3500,6 @@ function hzToSliderPos(hz) {
 function sliderPosToHz(pos) {
     pos = Math.max(0, Math.min(pos, filterWidthValues.length - 1));
     return filterWidthValues[pos];
-}
-
-function renderFilterOverlay() {
-    updateFilterConfig();
-    updateFilterBtnHighlight();
-    updateFilterShapeBtn(currentFilterShape);
-
-    var adjust = document.getElementById('filterAdjustControls');
-
-    if (filterModeType === 'fm') {
-        adjust.classList.add('hidden');
-        document.getElementById('filBtn1').textContent = 'FIL1 15k';
-        document.getElementById('filBtn2').textContent = 'FIL2 10k';
-        document.getElementById('filBtn3').textContent = 'FIL3 7k';
-    } else {
-        adjust.classList.remove('hidden');
-        document.getElementById('filBtn1').textContent = 'FIL1';
-        document.getElementById('filBtn2').textContent = 'FIL2';
-        document.getElementById('filBtn3').textContent = 'FIL3';
-        // Sync slider position from current Hz value
-        var slider = document.getElementById('filterWidthSlider');
-        var pos = hzToSliderPos(currentFilterWidth);
-        slider.value = pos;
-        document.getElementById('filterWidthVal').textContent = formatBW(currentFilterWidth);
-        document.getElementById('filterWidthFill').style.width = (pos / (filterWidthValues.length - 1) * 100) + '%';
-    }
-
-    var title = document.getElementById('filterOverlayTitle');
-    if (title) title.textContent = 'FILTER (' + currentMode + ')';
-    document.getElementById('filterOverlay').classList.add('visible');
 }
 
 function updateTxStatus(tx) {
@@ -3500,23 +3653,15 @@ function initSliderTracking() {
             sliderSetTimes[name] = Date.now();
             if (name === 'filterWidth') {
                 var hz = sliderPosToHz(val);
-                currentFilterWidth = hz;
-                document.getElementById('filterWidthVal').textContent = formatBW(hz);
-                document.getElementById('filterWidthFill').style.width = (val / (filterWidthValues.length - 1) * 100) + '%';
+                showFilterWidth(hz);
                 throttledSend('filterWidth', 'setFilterWidth', hz);
-            } else if (name === 'pbtInner') {
-                currentPBTInner = val;
-                document.getElementById('pbtInnerVal').textContent = val - 128;
-                updatePBTFill('pbtInnerFill', val);
-                throttledSend('pbtInner', 'setPBTInner', val);
-            } else if (name === 'pbtOuter') {
-                currentPBTOuter = val;
-                document.getElementById('pbtOuterVal').textContent = val - 128;
-                updatePBTFill('pbtOuterFill', val);
-                throttledSend('pbtOuter', 'setPBTOuter', val);
+            } else {
+                showPBT(name, val);
+                throttledSend(name, name === 'pbtInner' ? 'setPBTInner' : 'setPBTOuter', val);
             }
         });
     });
+    window.addEventListener('resize', drawPbtDiagram);
     // FUNC-overlay attenuator slider (index into availableAttenuators; #76).
     (function() {
         var slider = document.getElementById('funcAttSlider');
@@ -3568,26 +3713,15 @@ function updateSlider(name, val) {
     var slider = document.getElementById(name + 'Slider');
     var valSpan = document.getElementById(name + 'Val');
     if (slider) slider.value = val;
-    // Custom display for filter sliders
+    // Filter window values have their own displays (and the FIL tile in the
+    // FUNC grid carries the width).
     if (name === 'filterWidth') {
-        currentFilterWidth = val;
-        var pos = hzToSliderPos(val);
-        if (slider) slider.value = pos;
-        if (valSpan) valSpan.textContent = formatBW(val);
-        var fwFill = document.getElementById('filterWidthFill');
-        if (fwFill) fwFill.style.width = (pos / Math.max(1, filterWidthValues.length - 1) * 100) + '%';
+        showFilterWidth(val);
+        if (currentPanel === 'func') renderFuncOverlay();
         return;
     }
-    if (name === 'pbtInner') {
-        currentPBTInner = val;
-        if (valSpan) valSpan.textContent = val - 128;
-        updatePBTFill('pbtInnerFill', val);
-        return;
-    }
-    if (name === 'pbtOuter') {
-        currentPBTOuter = val;
-        if (valSpan) valSpan.textContent = val - 128;
-        updatePBTFill('pbtOuterFill', val);
+    if (name === 'pbtInner' || name === 'pbtOuter') {
+        showPBT(name, val);
         return;
     }
     if (valSpan) valSpan.textContent = toPercent(val, parseInt((slider || {}).max) || 255);
@@ -4021,7 +4155,6 @@ function setPanel(name) {
     else if (name === 'func') renderFuncOverlay();
     else if (name === 'audiomiс') renderAudioMicOverlay();
     else if (name === 'gain') document.getElementById('gainOverlay').classList.add('visible');
-    else if (name === 'filter') renderFilterOverlay();
     else if (name === 'scope') {}
     else if (name === 'span') renderSpanOverlay();
     else if (name === 'freqinp') renderFreqInput();
@@ -4267,17 +4400,9 @@ function renderFuncOverlay() {
         send({ cmd: 'setNoiseReduction', value: !nrOn });
     }));
 
-    // Second row: Filter buttons
-    var filters = availableFilters.length > 0 ? availableFilters : [
-        { name: 'FIL1', num: 1 }, { name: 'FIL2', num: 2 }, { name: 'FIL3', num: 3 }
-    ];
-    for (var f = 0; f < filters.length; f++) {
-        var fbtn = document.createElement('button');
-        fbtn.className = 'ov-btn' + (currentFilter === filters[f].num ? ' active' : '');
-        fbtn.textContent = filters[f].name;
-        fbtn.onclick = (function(n) { return function() { send({ cmd: 'setFilter', value: n }); }; })(filters[f].num);
-        grid.appendChild(fbtn);
-    }
+    // FIL opens the FILTER window (FIL1/2/3, width, twin PBT, shape) the way
+    // DUP and TONE open theirs; the tile carries the passband it's set to.
+    grid.appendChild(makeFuncBtn('FIL', filterFuncState(), false, openFilterModal));
 
     // MEM button opens the VFO/MEM panel (VFO A/B + memory mode + channel
     // list + save). Lit with the channel number while the rig is in memory

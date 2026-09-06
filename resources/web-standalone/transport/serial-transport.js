@@ -156,7 +156,7 @@
         // CW
         sendCW: true, stopCW: true,
         // Filter width / shape
-        setFilterWidth: true,
+        setFilterWidth: true, setFilterShape: true,
         // Packet (WASM Direwolf modem) + APRS station db / beacon scheduler.
         packetEnable: true, packetSetMode: true,
         aprsTxBeacon: true, aprsBeaconConfig: true, aprsClearStations: true,
@@ -166,7 +166,7 @@
         termSend: true, termHistory: true,
         // RADE V1 (LPCNet + FARGAN + RADE modem) — browser-only voice.
         setRadeMode: true, setRadeCallsign: true,
-        // Anything else (FreeDV, memory, filter shape, LAN ops, reporters …)
+        // Anything else (FreeDV, memory, LAN ops, reporters …)
         // falls through to the WS path which is closed in Direct mode.
     };
 
@@ -490,9 +490,10 @@
                         this._enqueue('setMode', civ.cmdSetMode(this.state.mode, obj.value));
                     }
                     this._emit('update', { filter: obj.value });
-                    // Each filter has its own stored bandwidth on Icoms.
-                    // Re-read so the slider reflects the new filter's value.
+                    // Each filter has its own stored bandwidth and shape on
+                    // Icoms. Re-read so the window reflects the new filter's.
                     this._enqueue('readFilterWidth', civ.cmdReadFilterWidth());
+                    this._enqueue('readFilterShape', civ.cmdReadBoolFunc(0x56));
                     return;
                 case 'setFilterWidth':
                     if (typeof obj.value !== 'number' || obj.value <= 0) return;
@@ -502,6 +503,14 @@
                         '→ bytes', Array.from(fwBytes).map(function(b){return b.toString(16).padStart(2,'0');}).join(' '));
                     this._enqueue('setFilterWidth', fwBytes);
                     this._emit('update', { filterWidth: obj.value });
+                    return;
+                case 'setFilterShape':
+                    // 0x16 0x56 <0 sharp / 1 soft> for the current filter.
+                    if (typeof obj.value !== 'number') return;
+                    var shape = obj.value ? 1 : 0;
+                    this.state.filterShape = shape;
+                    this._enqueue('setFilterShape', civ.cmdSetBoolFunc(0x56, shape === 1));
+                    this._emit('update', { filterShape: shape });
                     return;
                 case 'setPTT':
                     // Receiver-only rigs (R-series) won't accept PTT — drop
@@ -1184,6 +1193,7 @@
                 this._setModInput('setDataMod', this._modIn.data1, this._modIn.usbReg);
             }
             this._enqueue('readFilterWidth', civ.cmdReadFilterWidth());
+            this._enqueue('readFilterShape', civ.cmdReadBoolFunc(0x56));
 
             // Enable scope output (waterfall). Single-byte payloads match
             // the C++ wfweb's behaviour for single-receiver rigs.
@@ -1428,6 +1438,10 @@
                     if (modeChanged) update.mode = modeReply.mode;
                     if (filterChanged) update.filter = modeReply.filter;
                     this._emit('update', update);
+                    // Width and shape are stored per mode and filter, so the
+                    // cached ones just went stale.
+                    this._enqueue('readFilterWidth', civ.cmdReadFilterWidth());
+                    this._enqueue('readFilterShape', civ.cmdReadBoolFunc(0x56));
                 }
                 return;
             }
@@ -1495,6 +1509,16 @@
 
             // 0x1B NN — tone / TSQL / DTCS frequency registers
             if (payload[0] === 0x1B && this._handleToneFreqReply(payload)) return;
+
+            // 0x16 0x56 — filter shape (0 sharp / 1 soft) of the current filter.
+            if (payload[0] === 0x16 && payload[1] === 0x56 && payload.length >= 3) {
+                var shp = payload[2] & 0x0F;
+                if (shp !== this.state.filterShape) {
+                    this.state.filterShape = shp;
+                    this._emit('update', { filterShape: shp });
+                }
+                return;
+            }
 
             // 0x16 NN — bool toggle reply (NB / NR / ANF / preamp)
             if (payload[0] === 0x16 && payload.length >= 3) {
@@ -2113,7 +2137,7 @@
                 'micGain', 'monitorGain', 'pbtInner', 'pbtOuter', 'cwSpeed',
                 'autoNotch', 'nb', 'nr', 'preamp', 'attenuator',
                 'antenna', 'rxAntenna',
-                'split', 'tuner', 'spanIndex', 'filterWidth',
+                'split', 'tuner', 'spanIndex', 'filterWidth', 'filterShape',
                 'duplex', 'duplexOffset'];
             for (var i = 0; i < passthrough.length; i++) {
                 var k = passthrough[i];

@@ -1971,8 +1971,13 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 modeInfo m = modeCache.value.value<modeInfo>();
                 m.filter = filterNum;
                 queue->add(priorityImmediate, queueItem(t.modeFunc, QVariant::fromValue<modeInfo>(m), false, 0));
-                QTimer::singleShot(200, this, [this]() {
-                    if (queue) queue->add(priorityImmediate, funcFilterWidth, false, 0);
+                // Width and shape are stored per filter; re-read both so the
+                // FILTER window shows the new filter's values.
+                bool hasShape = rigCaps && rigCaps->commands.contains(funcFilterShape);
+                QTimer::singleShot(200, this, [this, hasShape]() {
+                    if (!queue) return;
+                    queue->add(priorityImmediate, funcFilterWidth, false, 0);
+                    if (hasShape) queue->add(priorityImmediate, funcFilterShape, false, 0);
                 });
             }
         }
