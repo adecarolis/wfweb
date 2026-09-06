@@ -84,6 +84,15 @@
                 vfoAFrequency: 14074000,
                 vfoBFrequency: 7074000,
                 selectedVfo: 'A',
+                // Memory channels (#92): a small bank so the MEM panel, recall
+                // and rename can be exercised without a rig. selectedVfo
+                // becomes 'MEM' on recall; memChannel is the recalled channel.
+                memChannel: null,
+                memories: {
+                    1: { channel: 1, group: 0, name: 'FT8 20m', frequency: 14074000, mode: 'USB', filter: 1 },
+                    2: { channel: 2, group: 0, name: '',        frequency: 7074000,  mode: 'USB', filter: 1 },
+                    3: { channel: 3, group: 0, name: 'W1AW',    frequency: 3581500,  mode: 'CW',  filter: 2 },
+                },
                 mode: 'USB',
                 filter: 1,
                 // Per-filter bandwidths (Hz). Real Icoms remember a separate
@@ -246,12 +255,58 @@
                     this._emit('update', { transmitting: ptt });
                     return;
                 case 'selectVFO':
+                    if (obj.value === 'MEM') {
+                        // V/M on the rig's current channel (default ch 1).
+                        var mch = this.state.memChannel || 1;
+                        this._memRecall(mch);
+                        return;
+                    }
                     var newVfo = (obj.value === 'B') ? 'B' : 'A';
                     this.state.selectedVfo = newVfo;
                     var nvf = (newVfo === 'B') ? this.state.vfoBFrequency : this.state.vfoAFrequency;
                     this.state.frequency = nvf;
                     this._emit('update', { selectedVfo: newVfo, frequency: nvf });
                     return;
+                // ---- Memory channels (#92) ----
+                case 'getMemories': {
+                    var self = this;
+                    var g = obj.group | 0;
+                    var chans = Object.keys(this.state.memories).map(Number).sort(function (a, b) { return a - b; });
+                    var n = 0;
+                    chans.forEach(function (c) {
+                        var m = self.state.memories[c];
+                        if (c < (obj.start | 0) || c > ((obj.end === undefined) ? 99 : obj.end | 0)) return;
+                        n++;
+                        setTimeout(function () { self._emit('memoryChannel', { memory: self._memToJson(m) }); }, 20 * n);
+                    });
+                    setTimeout(function () { self._emit('memoryScanComplete', { count: n }); }, 20 * n + 50);
+                    return;
+                }
+                case 'writeMemory': {
+                    var wch = obj.channel | 0;
+                    if (wch < 1) return;
+                    var freq = this.state.frequency;
+                    if (!(freq > 0)) { this._emit('error', { message: 'Memory write failed: no known frequency' }); return; }
+                    this.state.memories[wch] = {
+                        channel: wch, group: 0, name: String(obj.name || ''),
+                        frequency: freq, mode: this.state.mode, filter: this.state.filter,
+                    };
+                    return;
+                }
+                case 'clearMemory':
+                    delete this.state.memories[obj.channel | 0];
+                    this._emit('memoryChannel', { memory: { channel: obj.channel | 0, group: 0, del: true } });
+                    return;
+                case 'recallMemory':
+                    this._memRecall(obj.channel | 0);
+                    return;
+                case 'renameMemory': {
+                    var rm = this.state.memories[obj.channel | 0];
+                    if (!rm) return;
+                    rm.name = String(obj.name || '');
+                    this._emit('memoryChannel', { memory: this._memToJson(rm) });
+                    return;
+                }
                 case 'enableAudio':
                     // Mirror SerialRigTransport: the SPA's startAudio() flips
                     // audioEnabled to true only after the transport echoes
@@ -445,11 +500,37 @@
             this.dispatchEvent(new CustomEvent('message', { detail: msg }));
         }
 
+        _memToJson(m) {
+            return {
+                channel: m.channel, group: m.group || 0, name: m.name || '',
+                frequency: m.frequency, mode: m.mode, filter: m.filter || 1,
+                del: false, empty: false,
+                tonemode: 0, toneModeName: 'OFF', tone: '', tsql: '',
+                dtcs: 0, dtcsPolarity: 0, duplex: 0, duplexOffset: 0,
+            };
+        }
+
+        // Recall on the "rig": the channel's freq/mode become the operating
+        // state, neither VFO slot changes, and we report MEM + the channel —
+        // exactly what the serial transport does after a real recall.
+        _memRecall(ch) {
+            var m = this.state.memories[ch];
+            if (!m) return;
+            this.state.memChannel = ch;
+            this.state.selectedVfo = 'MEM';
+            this.state.frequency = m.frequency;
+            this.state.mode = m.mode;
+            this.state.filter = m.filter || 1;
+            this._emit('update', { selectedVfo: 'MEM', memChannel: ch,
+                                   frequency: m.frequency, mode: m.mode, filter: this.state.filter });
+        }
+
         _emitRigInfo() {
             this._emit('rigInfo', {
                 version: ((typeof window !== 'undefined' && window.__WFWEB_SEMVER__) || 'dev') + '-virtual',
                 model: 'Virtual Rig #' + this.rigId,
                 connected: true,
+                hasMemoryMode: true, memGroups: 0, memStart: 1,
                 modes: DEFAULT_MODES,
                 filters: DEFAULT_FILTERS,
                 spans: DEFAULT_SPANS,
@@ -500,6 +581,7 @@
                 vfoAFrequency: this.state.vfoAFrequency,
                 vfoBFrequency: this.state.vfoBFrequency,
                 selectedVfo:   this.state.selectedVfo,
+                memChannel:    this.state.selectedVfo === 'MEM' ? this.state.memChannel : undefined,
                 mode: this.state.mode,
                 filter: this.state.filter,
                 filterWidth: this.state.filterWidths[this.state.filter] || 3000,

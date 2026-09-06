@@ -166,7 +166,10 @@
         termSend: true, termHistory: true,
         // RADE V1 (LPCNet + FARGAN + RADE modem) — browser-only voice.
         setRadeMode: true, setRadeCallsign: true,
-        // Anything else (FreeDV, memory, LAN ops, reporters …)
+        // Memory channels (scan / write / clear / recall on the rig / rename)
+        getMemories: true, writeMemory: true, clearMemory: true,
+        recallMemory: true, renameMemory: true,
+        // Anything else (FreeDV, LAN ops, reporters …)
         // falls through to the WS path which is closed in Direct mode.
     };
 
@@ -226,6 +229,9 @@
             this._otherVfoPollTimer = null;
             this._lastFreqStamp = 0;
             this._lastModeStamp = 0;
+            this._lastRealVfo = 'A';   // A/B to return to when leaving MEM
+            this._memCaps = null;      // filled on connect from rig-caps
+            this._memCache = {};       // last parsed channel per group/channel key
 
             this.state = {
                 frequency: 0, mode: null, filter: null,
@@ -237,8 +243,11 @@
                 vfoAFrequency: 0, vfoBFrequency: 0,
                 // Best-effort tracking of which VFO is currently selected on
                 // the rig. We default to 'A' on connect and update when the
-                // user clicks the VFO label or 0x25 0x00 confirms it.
+                // user clicks the VFO label or 0x25 0x00 confirms it. 'MEM'
+                // while the rig is in memory mode (#92); memChannel is then
+                // the last channel we selected (Icom never reports it).
                 selectedVfo: 'A',
+                memChannel: null, memGroup: null,
                 // Repeater shift. 'OFF' until the rig reports otherwise;
                 // duplexOffset stays null until 0x0C answers.
                 duplex: 'OFF', duplexOffset: null,
@@ -560,15 +569,34 @@
                     this._emit('update', { antenna: antSel, rxAntenna: antRx });
                     return;
                 case 'selectVFO':
+                    if (obj.value === 'MEM') {
+                        // Memory mode — the front-panel V/M (bare CI-V 08) on
+                        // whatever channel the rig has current.
+                        if (!this._memCaps || !this._memCaps.hasMemoryMode) return;
+                        this._enqueue('memoryMode', civ.cmdMemoryMode());
+                        this._setSelectedVfo('MEM');
+                        this._enqueueMemReadback();
+                        return;
+                    }
                     var vfo = (obj.value === 'B') ? 'B' : 'A';
-                    this.state.selectedVfo = vfo;
+                    // Leaving memory mode on a cmd29 rig needs a real VFO-mode
+                    // select (bare 07) first: Main/Sub select alone does not
+                    // exit memory mode. On A/B rigs 07 00/01 exits it by itself.
+                    if (this.state.selectedVfo === 'MEM' && this._dualVfoMode === 'cmd29'
+                            && this._memCaps && this._memCaps.hasVfoModeSelect) {
+                        this._enqueue('vfoMode', civ.cmdVfoMode(this._memCaps.vfoModeCmd29));
+                    }
+                    var wasMem = this.state.selectedVfo === 'MEM';
+                    this._setSelectedVfo(vfo);
                     this._enqueue('selectVFO', civ.cmdSelectVFO(vfo));
                     // Re-pull both VFOs so the side display flips to the new
                     // "other" VFO and the main display ends up matching the
                     // rig. The 0x25 / 0x29 replies will land in
                     // _applyVfoFreq and update the SPA.
                     this._enqueueDualVfoReads();
-                    this._emit('update', { selectedVfo: vfo });
+                    // Back from a memory channel the VFO's own mode / tone /
+                    // shift come back too — re-read them like a recall does.
+                    if (wasMem) this._enqueueMemReadback();
                     return;
                 case 'swapVFO':
                     this._enqueue('swapVFO', civ.cmdSwapVFO());
@@ -766,6 +794,12 @@
                     return;
                 case 'clearMemory':
                     this._memClear(obj);
+                    return;
+                case 'recallMemory':
+                    this._memRecall(obj);
+                    return;
+                case 'renameMemory':
+                    this._memRename(obj);
                     return;
                 default:
                     return;
@@ -1121,6 +1155,20 @@
             this._hasDuplex = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasDuplex);
             this._hasTuner = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasTuner);
             this._hasSpectrum = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasSpectrum);
+            // Memory channels (#92): V/M switch, addressing range, group
+            // handling. Same facts webserver.cpp pulls from rigCaps.
+            var mc = (capsEntry && capsEntry.caps) || {};
+            var mcmds = (capsEntry && capsEntry.cmds) || {};
+            this._memCaps = {
+                hasMemoryMode: !!mc.hasMemoryMode,
+                memGroups: mc.memGroups | 0,
+                memStart: (mc.memStart === undefined) ? 1 : (mc.memStart | 0),
+                memMax: mc.memMax | 0,
+                hasGroupCmd: !!mcmds.memoryGroup,
+                hasVfoModeSelect: !!mcmds.vfoModeSelect,
+                vfoModeCmd29: !!mc.vfoModeSelectCmd29,
+            };
+            this._memCache = {};
             var toneCmds = (capsEntry && capsEntry.cmds) || {};
             this._toneCmds = {
                 sqlType:   toneCmds.toneSqlType || null,
@@ -1400,13 +1448,44 @@
                 return;
             }
 
+            // Blank memory channel: the rig answers the freq / mode reads
+            // with a lone 0xFF. Report null so the SPA draws dashes instead
+            // of keeping the previous channel's values on screen.
+            var blank = civ.parseBlankReply(payload);
+            if (blank !== null) {
+                if (blank === 'freq') {
+                    this._lastFreqStamp = Date.now();
+                    if (this.state.frequency !== null) {
+                        this.state.frequency = null;
+                        this._emit('update', { frequency: null });
+                    }
+                } else {
+                    this._lastModeStamp = Date.now();
+                    if (this.state.mode !== null) {
+                        this.state.mode = null;
+                        this._emit('update', { mode: null });
+                    }
+                }
+                return;
+            }
+
+            var inMem = this.state.selectedVfo === 'MEM';
+
             // Selected/Unselected freq reply (A/B-VFO rigs — IC-7300 etc.).
             // selected=true is the rig's currently-selected VFO; selected=false
             // is the OTHER one. We pair this with our local selectedVfo
-            // tracking to map back to the A/B labels the SPA expects.
+            // tracking to map back to the A/B labels the SPA expects. In
+            // memory mode the selected side is the recalled channel — it must
+            // not land in either VFO's cache slot — and the "unselected" read
+            // answers with the channel too (IC-7300, measured), so it says
+            // nothing about the other VFO and is dropped.
             var su = civ.parseSelectedUnselectedFreqReply(payload);
             if (su !== null && su.hz > 0) {
                 this._lastFreqStamp = Date.now();
+                if (inMem) {
+                    if (su.selected) this._applyMemFreq(su.hz);
+                    return;
+                }
                 var sel = this.state.selectedVfo || 'A';
                 var which = su.selected ? sel : (sel === 'A' ? 'B' : 'A');
                 this._applyVfoFreq(which, su.hz, su.selected);
@@ -1416,6 +1495,7 @@
             var freqHz = civ.parseFrequencyReply(payload);
             if (freqHz !== null && freqHz > 0) {
                 this._lastFreqStamp = Date.now();
+                if (inMem) { this._applyMemFreq(freqHz); return; }
                 // Plain 0x03 / 0x00 reply: this is the rig's currently-active
                 // VFO. Map onto whichever side our local selectedVfo says is
                 // active so the side-VFO display lines up with the main one.
@@ -1750,9 +1830,14 @@
             }
             // Cancel any previous scan that's still in flight.
             this._memScanCancel();
-            var start = (obj && obj.start) ? (obj.start | 0) : 1;
-            var end   = (obj && obj.end)   ? (obj.end | 0)   : 99;
+            var mc = this._memCaps || { memStart: 1, memMax: 0 };
+            // Zero-based rigs (IC-705/905) have a real channel 0, so 0 is a
+            // legal start; clamp to what the rig's 0x08 select accepts.
+            var start = (obj && typeof obj.start === 'number') ? (obj.start | 0) : mc.memStart;
+            var end   = (obj && typeof obj.end === 'number')   ? (obj.end | 0)   : 99;
             var group = (obj && obj.group) ? (obj.group | 0) : 0;
+            if (start < mc.memStart) start = mc.memStart;
+            if (mc.memMax && end > mc.memMax) end = mc.memMax;
             this._memScan = {
                 active: true, start: start, end: end, group: group,
                 current: start, count: 0, fmt: fmt, timer: null,
@@ -1797,11 +1882,18 @@
             this._memScan = null;
         }
 
+        // Channel number the rig will accept for a write / clear / recall.
+        _memChannelOk(ch) {
+            var mc = this._memCaps || { memStart: 1, memMax: 0 };
+            return ch >= mc.memStart && (!mc.memMax || ch <= mc.memMax);
+        }
+
         _memWrite(obj) {
             var fmt = this._memFormat();
             if (!fmt) return;
-            if (!obj || !(obj.channel | 0)) return;
+            if (!obj || obj.channel === undefined) return;
             var ch = obj.channel | 0;
+            if (!this._memChannelOk(ch)) return;
             var group = (obj.group | 0) || 0;
             // Snapshot current VFO A — the SPA's MEM-write button stores
             // whatever is on VFO A right now. Mirrors webserver.cpp:
@@ -1811,6 +1903,12 @@
             if (typeof modeCode !== 'number') modeCode = 0x01; // USB
             var filt = (this.state.filter | 0) > 0 ? (this.state.filter | 0) : 1;
             var freq = this.state.frequency || this.state.vfoAFrequency || 0;
+            // Never send the rig a 0 Hz channel — it NGs the write (FA).
+            if (!(freq > 0)) {
+                console.warn('[CIV] writeMemory: no known frequency, refusing');
+                this._emit('error', { message: 'Memory write failed: no known frequency' });
+                return;
+            }
             var mem = {
                 channel: ch, group: group, del: false,
                 scan: 0, skip: 0, split: 0,
@@ -1846,9 +1944,11 @@
         _memClear(obj) {
             var fmt = this._memFormat();
             if (!fmt) return;
-            if (!obj || !(obj.channel | 0)) return;
+            if (!obj || obj.channel === undefined) return;
             var ch = obj.channel | 0;
+            if (!this._memChannelOk(ch)) return;
             var group = (obj.group | 0) || 0;
+            delete this._memCache[group * 65536 + ch];
             this._enqueue('clearMemory:' + ch,
                 civ.cmdClearMemoryContents(ch, group, fmt));
             // The rig won't push a memory-channel update on its own after
@@ -1857,28 +1957,140 @@
                 { memory: { channel: ch, group: group, del: true } });
         }
 
-        _memHandleReply(payload) {
+        // Recall a channel ON the rig (#92) so tone / tone squelch / duplex
+        // offset come from the channel — not just freq + mode. Mirrors
+        // webServer::recallMemoryOnRig(): group select where the rig has the
+        // command, the band-nudge dance where it doesn't, then the channel
+        // select and the V/M switch. The rig never reports the channel, so
+        // the number is remembered here and re-sent in every status.
+        _memRecall(obj) {
+            var mc = this._memCaps;
             var fmt = this._memFormat();
-            if (!fmt) return false;
-            var mem = civ.parseMemoryContentsReply(payload, fmt);
-            if (!mem) return false;
-            // Translate the mode register byte to the SPA's string form
-            // before forwarding (the SPA expects mode names like 'USB').
-            var modeStr = civ.codeToMode[mem.mode] || '';
-            var out = {
+            if (!mc || !fmt || !obj || obj.channel === undefined) return;
+            var ch = obj.channel | 0;
+            var group = (obj.group | 0) || 0;
+            if (!this._memChannelOk(ch) || group < 0) return;
+            // Trust the memFormat's 'a' spec, not memGroups — the IC-7610
+            // declares one group but carries no group field.
+            if (civ.memGroupSpec(fmt)) {
+                if (mc.hasGroupCmd) {
+                    this._enqueue('memoryGroup', civ.cmdSelectMemoryGroup(group, fmt));
+                } else {
+                    // IC-9700/9100: no group select command — the group is
+                    // implied by the band. Drop out of memory mode (bare 07)
+                    // if we're in it, then tune into the group's band so the
+                    // channel select lands in the right bank. The cached
+                    // channel frequency is inside that band by definition.
+                    if (this.state.selectedVfo === 'MEM' && mc.hasVfoModeSelect) {
+                        this._enqueue('vfoMode', civ.cmdVfoMode(mc.vfoModeCmd29));
+                    }
+                    var cached = this._memCache[group * 65536 + ch];
+                    var bandHz = (cached && cached.frequency > 0)
+                        ? cached.frequency : this._memGroupBandStart(group);
+                    if (bandHz > 0) this._enqueue('setFrequency', civ.cmdSetFrequency(bandHz));
+                    else console.warn('[CIV] recallMemory: no band for memory group ' + group);
+                }
+            }
+            this._enqueue('memoryChannel:' + ch, civ.cmdSelectMemoryChannel(ch));
+            // Selecting a channel does not flip the rig into memory mode by
+            // itself (Icom stays on VFO A/B) — the bare 08 does.
+            if (mc.hasMemoryMode) this._enqueue('memoryMode', civ.cmdMemoryMode());
+            this.state.memChannel = ch;
+            this.state.memGroup = group;
+            this._setSelectedVfo(mc.hasMemoryMode ? 'MEM' : this.state.selectedVfo);
+            this._enqueueMemReadback();
+        }
+
+        // First band the rig-caps table maps to this memory group (rigs whose
+        // groups are per-band, IC-9700) — the same edge the server nudges to.
+        _memGroupBandStart(group) {
+            var entry = RIG_CAPS[this.civAddr];
+            var bands = (entry && entry.bands) || [];
+            for (var i = 0; i < bands.length; i++) {
+                if (bands[i].memGroup === group && bands[i].groupStart > 0) return bands[i].groupStart;
+            }
+            return 0;
+        }
+
+        // Track the selected VFO ('A' | 'B' | 'MEM') and tell the SPA. The
+        // channel rides along so the MEM indicator reads "MEM n".
+        _setSelectedVfo(v) {
+            if (v !== 'MEM') this._lastRealVfo = v;
+            this.state.selectedVfo = v;
+            var u = { selectedVfo: v };
+            if (v === 'MEM' && this.state.memChannel !== null) u.memChannel = this.state.memChannel;
+            this._emit('update', u);
+        }
+
+        // After a recall / V-M switch the rig does not announce the new
+        // operating state — pull freq / mode / shift / tone so the SPA follows.
+        _enqueueMemReadback() {
+            this._enqueue('readFreq', civ.cmdReadFrequency());
+            this._enqueue('readMode', civ.cmdReadMode());
+            this._enqueueDualVfoReads();
+            if (this._hasDuplex) {
+                this._enqueue('readSplit', civ.cmdReadSplit());
+                this._enqueue('readDuplexOffset', civ.cmdReadDuplexOffset());
+            }
+            this._enqueueToneReads();
+        }
+
+        // In memory mode the operating frequency is the recalled channel's —
+        // it belongs to neither VFO cache slot.
+        _applyMemFreq(hz) {
+            if (this.state.frequency === hz) return;
+            this.state.frequency = hz;
+            this._emit('update', { frequency: hz });
+        }
+
+        // Rename: rewrite the channel from the cached contents with only the
+        // name changed, so tone / shift / DV fields survive (webserver.cpp
+        // does the same from its memoryType cache).
+        _memRename(obj) {
+            var fmt = this._memFormat();
+            if (!fmt || !obj || obj.channel === undefined) return;
+            var ch = obj.channel | 0;
+            var group = (obj.group | 0) || 0;
+            var mem = this._memCache[group * 65536 + ch];
+            if (!mem || mem.del || mem.empty) {
+                console.warn('[CIV] renameMemory: channel ' + ch + ' group ' + group + ' not cached');
+                return;
+            }
+            mem.name = String(obj.name || '');
+            mem.del = false;
+            this._enqueue('writeMemory:' + ch, civ.cmdWriteMemoryContents(mem, fmt));
+            // The rig won't echo the write — tell the SPA directly.
+            this._emit('memoryChannel', { memory: this._memToJson(mem) });
+        }
+
+        // Same keys the server build's memoryToJson() emits, so the SPA
+        // renders a channel identically in both forks.
+        _memToJson(mem) {
+            return {
                 channel: mem.channel, group: mem.group || 0,
                 frequency: mem.frequency || 0,
-                mode: modeStr, filter: mem.filter || 1,
+                mode: civ.codeToMode[mem.mode] || '', filter: mem.filter || 1,
                 name: mem.name || '',
                 del: !!mem.del, empty: !!mem.empty,
-                // Same keys the server build's memoryToJson() emits, so the
-                // SPA renders a channel's tone identically in both forks.
                 tonemode: mem.tonemode || 0,
                 toneModeName: civ.toneModeFromReg(mem.tonemode || 0),
                 tone: mem.tone || '', tsql: mem.tsql || '',
                 dtcs: mem.dtcs || 0, dtcsPolarity: mem.dtcsp || 0,
                 duplex: mem.duplex || 0, duplexOffset: mem.duplexOffset || 0,
             };
+        }
+
+        _memHandleReply(payload) {
+            var fmt = this._memFormat();
+            if (!fmt) return false;
+            var mem = civ.parseMemoryContentsReply(payload, fmt);
+            if (!mem) return false;
+            // Keep the parsed contents: rename rewrites from them, and the
+            // IC-9700 recall path band-nudges to the cached frequency.
+            var key = (mem.group || 0) * 65536 + (mem.channel | 0);
+            if (mem.del || mem.empty) delete this._memCache[key];
+            else this._memCache[key] = mem;
+            var out = this._memToJson(mem);
             // Cancel the scan watchdog and bump the pointer if this reply
             // belongs to an active scan (most likely case during a scan).
             var s = this._memScan;
@@ -2106,6 +2318,10 @@
                 ctcssTones: caps.hasCTCSS ? CTCSS_TONES : [],
                 dtcsCodes: caps.hasDTCS ? DTCS_CODES : [],
                 hasSpectrum: caps.hasSpectrum,
+                // Memory channels (#92) — same three fields the server's caps carry.
+                hasMemoryMode: !!(this._memCaps && this._memCaps.hasMemoryMode),
+                memGroups: this._memCaps ? this._memCaps.memGroups : 0,
+                memStart:  this._memCaps ? this._memCaps.memStart : 1,
                 spectAmpMax: 160,     // Icom amplitude scale (matches C++ wfweb)
                 audioAvailable: true,    // Phase 2: rig USB audio via getUserMedia
                 audioSampleRate: 48000,
@@ -2151,6 +2367,9 @@
                 sMeter: this.state.sMeter,
                 transmitting: this.state.transmitting,
             };
+            if (this.state.selectedVfo === 'MEM' && this.state.memChannel !== null) {
+                s.memChannel = this.state.memChannel;
+            }
             // Pass through any cached values so the UI populates fully.
             var passthrough = ['afGain', 'rfGain', 'rfPower', 'squelch',
                 'micGain', 'monitorGain', 'pbtInner', 'pbtOuter', 'cwSpeed',

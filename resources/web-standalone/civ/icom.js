@@ -908,6 +908,49 @@
         );
     }
 
+    // ---------- Memory mode / channel select (cmd 0x08, 0x07) -----------
+    // Mirrors icomCommander's funcMemoryMode / funcMemoryGroup /
+    // funcVFOModeSelect encoders (issue #92):
+    //   08 <ch>     select a channel. Always 2 BCD bytes — the 1-byte form
+    //               truncates channels > 99. The rig stays on VFO A/B.
+    //   08          bare: enter memory mode (the front-panel V/M switch).
+    //   08 A0 <g>   select a memory group. Width follows the memFormat 'a'
+    //               spec (IC-705/905/R8600 %1.2a = 2 bytes, IC-7100/9100
+    //               %1.1a = 1) — the 2-byte rigs reject a 1-byte group.
+    //   07          bare: VFO mode, exits memory mode. cmd29 rigs (IC-7610)
+    //               want it prefixed, 29 00 07.
+    function cmdSelectMemoryChannel(channel) {
+        var cb = bcdEncodeIntBE(channel | 0);
+        return new Uint8Array([0x08, cb[0], cb[1]]);
+    }
+    function cmdMemoryMode() { return new Uint8Array([0x08]); }
+    function cmdSelectMemoryGroup(group, memFormat) {
+        var aSpec = memFormat ? _memGroupSpec(memFormat) : null;
+        if (aSpec && aSpec.len === 2) {
+            var gb = bcdEncodeIntBE(group | 0);
+            return new Uint8Array([0x08, 0xA0, gb[0], gb[1]]);
+        }
+        return new Uint8Array([0x08, 0xA0, bcdEncodeCharBE(group | 0)]);
+    }
+    function cmdVfoMode(cmd29) {
+        return cmd29 ? new Uint8Array([0x29, 0x00, 0x07]) : new Uint8Array([0x07]);
+    }
+
+    // A blank memory channel answers the frequency and mode reads with a
+    // lone 0xFF (IC-705: 25 00 FF / 26 00 FF; plain reads 03 FF / 04 FF).
+    // Returns 'freq' | 'mode' | null.
+    function parseBlankReply(payload) {
+        if (payload.length === 3 && (payload[1] === 0x00 || payload[1] === 0x01) && payload[2] === 0xFF) {
+            if (payload[0] === 0x25) return 'freq';
+            if (payload[0] === 0x26) return 'mode';
+        }
+        if (payload.length === 2 && payload[1] === 0xFF) {
+            if (payload[0] === 0x03) return 'freq';
+            if (payload[0] === 0x04) return 'mode';
+        }
+        return null;
+    }
+
     function _encodeMemSpec(data, p, mem) {
         var len = p.len;
         switch (p.spec) {
@@ -1393,5 +1436,12 @@
         cmdWriteMemoryContents: cmdWriteMemoryContents,
         cmdClearMemoryContents: cmdClearMemoryContents,
         parseMemoryContentsReply: parseMemoryContentsReply,
+        memGroupSpec: _memGroupSpec,
+        // Memory mode / channel / group select (cmd 0x08) + VFO mode (0x07)
+        cmdSelectMemoryChannel: cmdSelectMemoryChannel,
+        cmdMemoryMode: cmdMemoryMode,
+        cmdSelectMemoryGroup: cmdSelectMemoryGroup,
+        cmdVfoMode: cmdVfoMode,
+        parseBlankReply: parseBlankReply,
     };
 })(window);
