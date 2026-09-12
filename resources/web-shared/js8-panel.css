@@ -694,9 +694,14 @@ body.js8-open #bottomBar { grid-row: 5; }
     .js8-to-label { display: none; }
 }
 
-/* Tall portrait mode (tablets, phones in portrait): hide the waterfall
-   so the conversation gets the room. */
+/* Tall portrait mode (tablets, phones in portrait). The waterfall stays
+   visible, like FT8's: below 480px the TX-freq field and submode selector
+   are gone, so tapping the waterfall is the only way left to pick an
+   offset. A slightly taller strip makes that tap easier on a phone. */
 @media (orientation: portrait) and (max-width: 800px) {
-    .js8-waterfall-wrap { display: none; }
+    .js8-waterfall-wrap { flex-basis: 120px; }
+    .js8-cmd-palette-close { min-width: 30px; min-height: 30px; }
+    /* The palette's 360px floor overflows a 360px phone by its own offset. */
+    .js8-cmd-palette { min-width: 0; max-width: calc(100vw - 16px); }
 }
 

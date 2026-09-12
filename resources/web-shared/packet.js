@@ -591,7 +591,27 @@
             '.pkt-settings-row input:focus { border-color: var(--mode-accent); }' +
             '.pkt-settings-hint { color: #668; font-size: 10px; margin: 2px 0 10px 118px; }' +
             '.pkt-settings-note { color: #888; font-size: 10px; margin-top: 10px; font-style: italic; }' +
-            '.pkt-settings-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }';
+            '.pkt-settings-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }' +
+            // Phone portrait: the header wraps onto two rows (mode buttons /
+            // actions) instead of pushing Clear / settings / close off-screen;
+            // the heard-stations table scrolls sideways instead of being
+            // clipped; panes keep their content height so the bar scrolls
+            // rather than collapsing the station list on short screens; and
+            // every control gets a >= 28px tap target. Keep this block last:
+            // it overrides same-specificity rules declared above.
+            '@media (orientation: portrait), (max-width: 600px) {' +
+                '.packet-bar { overflow-y: auto; }' +
+                '.packet-header { flex-wrap: wrap; gap: 6px; row-gap: 2px; }' +
+                '.packet-mode-btn { padding-left: 6px; padding-right: 6px; }' +
+                '.packet-header .flex-space { flex-basis: 100%; height: 0; }' +
+                '#packetClearBtn { margin-left: auto; }' +
+                '.packet-monitor { min-height: 90px; }' +
+                '.packet-pane, .aprs-split, .aprs-stations-wrap { min-height: auto; }' +
+                '.aprs-stations { overflow: auto; }' +
+                '.aprs-stations td.aprs-comment { max-width: 160px; }' +
+                '.packet-bar .wf-btn, .packet-bar .wf-tab, .packet-bar .wf-field, .packet-bar select, .packet-settings-btn, .packet-send-btn { min-height: 28px; box-sizing: border-box; }' +
+                '.packet-settings-btn { min-width: 28px; }' +
+            '}';
         document.head.appendChild(style);
     }
 

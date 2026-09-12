@@ -220,7 +220,7 @@
             #cwDecoderToggle.active { background: #0a0 !important; color: #000 !important; }
             #cwDecoderToggle.loading { background: #1a1a00 !important; border-color: #aa0 !important; color: #aa0 !important; }
             @media (orientation: portrait) and (max-width: 600px) {
-                #cwDecoderToggle { font-size: 8px !important; padding: 1px 2px !important; margin-left: 2px !important; letter-spacing: 0; }
+                #cwDecoderToggle { font-size: 10px !important; padding: 6px 6px !important; margin-left: 2px !important; min-height: 28px; letter-spacing: 0; }
             }
             .cw-scope-container { position: relative; width: 100%; height: 100px; }
             #cwScopeCanvas { display: block; background: #000; width: 100%; height: 100px; border-radius: 4px; border: 1px solid #0a0; }
