@@ -18,8 +18,9 @@ sudo apt-get install -y \
 
 ### Clone
 
-The repository uses a git submodule for the FT8/FT4 decoder. Make sure to
-initialise it when cloning:
+The repository uses git submodules for the FT8/FT4 decoder (`resources/ft8ts`,
+required) and the RADE codec (`resources/radae_nopy`, optional). Make sure to
+initialise them when cloning:
 
 ```bash
 git clone --recursive https://github.com/adecarolis/wfweb.git
