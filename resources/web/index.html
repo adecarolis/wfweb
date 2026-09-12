@@ -644,6 +644,9 @@ html, body {
     }
     .cw-label { display: none; } /* Hide "CW" label - obvious from context */
     .cw-speed-ctrl { gap: 2px; }
+    /* Never swallow the whole scope area: the spectrum + waterfall live in
+       the strip above the bar (resizeCanvases) so tap-to-tune keeps working. */
+    .cw-bar { max-height: 60%; }
     /* Touch targets: keep every header control >= 28px tall (WCAG floor is 24). */
     .cw-speed-btn { width: 28px; height: 28px; font-size: 15px; padding: 0; }
     #cwSpeedInput { width: 36px; height: 28px; font-size: 12px; padding: 2px; }
@@ -6282,11 +6285,27 @@ function resizeCanvases() {
     var areaRect = area.getBoundingClientRect();
     if (areaRect.width <= 0 || areaRect.height <= 0) return;
 
-    var spectH = Math.round(areaRect.height * 0.35);
-    var wfH = Math.round(areaRect.height * 0.65);
+    // Portrait phones: the CW bar is bottom-anchored over the scope area, so
+    // lay the spectrum + waterfall out in the strip above it — otherwise the
+    // waterfall is buried under the decoder and you can't tap-tune while
+    // decoding. The bar caps itself at 60% of the area (CSS), so the scope
+    // always keeps at least the top 40%.
+    var availH = areaRect.height;
+    var cwBar = document.getElementById('cwBar');
+    if (cwBar && !cwBar.classList.contains('hidden') &&
+        window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches) {
+        availH = Math.max(areaRect.height * 0.4, areaRect.height - cwBar.getBoundingClientRect().height);
+    }
+    var spectH = Math.round(availH * 0.35);
+    var wfH = Math.round(availH * 0.65);
     spectCanvas.style.height = spectH + 'px';
     wfCanvas.style.top = spectH + 'px';
     wfCanvas.style.height = wfH + 'px';
+    // Span edge labels hug the spectrum/waterfall boundary (CSS puts them at
+    // 35% of the area; that's wrong once the strip shrinks above the CW bar).
+    var seL = document.getElementById('spanEdgeLeft'), seR = document.getElementById('spanEdgeRight');
+    if (seL) seL.style.top = spectH + 'px';
+    if (seR) seR.style.top = spectH + 'px';
     spectCanvas.width = Math.round(areaRect.width);
     spectCanvas.height = spectH;
     wfCanvas.width = Math.round(areaRect.width);
@@ -6295,6 +6314,15 @@ function resizeCanvases() {
     // Redraw meter for new DPI
     drawMeter();
 }
+
+// The CW bar's height changes when it opens/closes or its header wraps;
+// the scope strip above it has to follow (see resizeCanvases).
+(function () {
+    var cwBar = document.getElementById('cwBar');
+    if (cwBar && window.ResizeObserver) {
+        new ResizeObserver(function () { resizeCanvases(); }).observe(cwBar);
+    }
+})();
 
 function initWaterfallBuffer(dataLen) {
     var wfCanvas = document.getElementById('waterfallCanvas');
@@ -6550,11 +6578,6 @@ function drawWaterfall() {
 
 }
 
-function scopeGesturesBlocked() {
-    var isMobilePortrait = window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
-    return isMobilePortrait && !document.getElementById('cwBar').classList.contains('hidden');
-}
-
 function scopeFreqFromClientX(target, clientX) {
     if (!target || spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return 0;
     var rect = target.getBoundingClientRect();
@@ -6590,20 +6613,17 @@ function scopeIndicatorCenterX(w) {
 }
 
 function scopeClick(e) {
-    if (scopeGesturesBlocked()) return;
     var freqHz = scopeFreqFromClientX(e.target, e.clientX);
     if (freqHz > 0) send({ cmd: 'setFrequency', value: freqHz });
 }
 
 function scopeWheel(e) {
-    if (scopeGesturesBlocked()) return;
 
     e.preventDefault();
     if (e.deltaY < 0) tuneUp(); else tuneDown();
 }
 
 function scopePointerDown(e) {
-    if (scopeGesturesBlocked()) return;
     if (spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return;
     if (typeof e.button === 'number' && e.button !== 0) return;
 
