@@ -65,6 +65,9 @@ struct cmdLineOverrides {
     bool rigCtlBindAll = false; // --rigctld-bind-all
     // startup behavior
     bool noAutoConnect = false; // --no-autoconnect / WFWEB_NO_AUTOCONNECT (LAN only)
+    // -n/--name: label shown in the web UI top bar and browser tab instead
+    // of the rig model, to tell several wfweb instances apart
+    QString name;
 };
 
 class servermain : public QObject

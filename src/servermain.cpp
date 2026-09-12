@@ -95,6 +95,10 @@ servermain::servermain(const QString settingsFile, const cmdLineOverrides& overr
             QMetaObject::invokeMethod(web, "setSettingsFile", Qt::QueuedConnection,
                                       Q_ARG(QString, settings->fileName()));
         }
+        if (!cliOverrides.name.isEmpty()) {
+            QMetaObject::invokeMethod(web, "setInstanceName", Qt::QueuedConnection,
+                                      Q_ARG(QString, cliOverrides.name));
+        }
         connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), web, SLOT(receiveRigCaps(rigCapabilities*)));
         connect(webThread, SIGNAL(finished()), web, SLOT(deleteLater()));
         connect(web, &webServer::requestPowerOn, this, &servermain::powerRigOn);

@@ -106,6 +106,9 @@ public slots:
     // Settings file used for persistent prefs written from the web layer.
     // Empty = use QSettings defaults (QCoreApplication org/app name).
     void setSettingsFile(const QString &path);
+    // --name tag: sent to the browser as rigInfo.name so the top bar and
+    // tab title show it instead of the rig model.
+    void setInstanceName(const QString &name);
     // PTT requested via rigctld (Hamlib TCP). Routed through the same
     // setPTT path the WebSocket clients use, so RADE EOO synthesis,
     // packet TX gating and ALC meter polling stay coherent.
@@ -497,6 +500,7 @@ private:
     // QSettings backing file — populated by servermain after getSettingsFilePath
     // resolves the -s flag.  Empty means "use the default (QSettings org/app)".
     QString packetSettingsFile_;
+    QString instanceName_;
     void    packetLoadSettings();
     void    packetSaveSettings();
 

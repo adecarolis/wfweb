@@ -3079,6 +3079,8 @@ QJsonObject webServer::buildInfoJson() const
 {
     QJsonObject info;
     info["version"] = QString(WFWEB_VERSION);
+    // Instance tag from --name; empty means "show the rig model".
+    info["name"] = instanceName_;
 
     // freedvModes depends only on compile-time flags, not on the rig,
     // so it must be sent regardless of whether rigCaps is populated yet.
@@ -5537,6 +5539,11 @@ void webServer::onUsbAudioOutputStateChanged(QAudio::State state)
 void webServer::setSettingsFile(const QString &path)
 {
     packetSettingsFile_ = path;
+}
+
+void webServer::setInstanceName(const QString &name)
+{
+    instanceName_ = name;
 }
 
 static QSettings *packetSettingsFor(const QString &file)

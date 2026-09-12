@@ -23,7 +23,7 @@ Both builds share the SPA frontend (see "Frontend layout — three forks" below)
 # Server build — Linux. ALWAYS use wfweb.pro, NOT wfview.pro
 qmake wfweb.pro && make -j$(nproc)
 
-# Server flags: -b (daemon), -l (logfile), -s (settings file)
+# Server flags: -b (daemon), -l (logfile), -s (settings file), -n (top-bar name tag)
 
 # Standalone build — pure browser bundle, no C++ toolchain needed
 tools/build-static.sh dist/

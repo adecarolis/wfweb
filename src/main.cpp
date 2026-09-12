@@ -222,6 +222,8 @@ int main(int argc, char *argv[])
         "  --rigctld-port <port>   Enable Hamlib rigctld TCP on the given port (default 4532)\n"
         "  --no-rigctld            Disable rigctld even if enabled in settings\n"
         "  --rigctld-bind-all      Bind rigctld to 0.0.0.0 (default: 127.0.0.1 only)\n"
+        "  -n --name <tag>         Name shown in the web UI top bar and browser tab\n"
+        "                          (default: the rig model, e.g. IC-7300)\n"
         "  --no-autoconnect        Start without connecting to the rig (LAN only; connect\n"
         "                          later with the web UI Reconnect button). Also enabled\n"
         "                          by setting WFWEB_NO_AUTOCONNECT=1 in the environment\n"
@@ -537,6 +539,11 @@ int main(int argc, char *argv[])
         else if (currentArg == "--rigctld-bind-all")
         {
             overrides.rigCtlBindAll = true;
+        }
+        else if ((currentArg == "-n") || (currentArg == "--name"))
+        {
+            if (argc > c + 1) { overrides.name = QString(argv[++c]).trimmed(); }
+            else { std::cout << "Error: --name requires a tag\n"; return -1; }
         }
         else if (currentArg == "--no-autoconnect")
         {

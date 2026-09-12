@@ -75,6 +75,7 @@ curl -s http://localhost:8081/api/v1/radio | jq .
   "info": {
     "connected": true,
     "model": "IC-7300",
+    "name": "",
     "version": "0.2.4",
     "hasTransmit": true,
     "hasSpectrum": true,

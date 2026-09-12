@@ -105,6 +105,15 @@ html, body {
 }
 .flex-space { flex: 1; }
 #clock { color: #888; font-family: var(--font-mono); font-size: 11px; }
+/* Rig model (or the server's --name tag) so several wfweb tabs/instances
+   can be told apart at a glance. Empty until the rig is identified. */
+#rigTag {
+    color: var(--text-faint); font-family: var(--font-mono);
+    font-size: 11px; font-weight: bold; letter-spacing: 0.5px;
+    white-space: nowrap; max-width: 160px;
+    overflow: hidden; text-overflow: ellipsis;
+}
+#rigTag:empty { display: none; }
 .qso-log-btn {
     padding: 2px 8px;
     background: #00161a;
@@ -1960,6 +1969,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     /* Top bar at 360px: with FreeDV on the mode badge reads "USB | RADE";
        tighter gap + padding keep the whole bar inside the viewport. */
     #topBar { gap: 4px; }
+    #rigTag { display: none; }   /* no room at 360px; the tab title still carries it */
     #modeBtn { padding: 3px 5px; font-size: 11px; letter-spacing: 0; white-space: nowrap; }
     /* QSO log: the 10-column grid is ~500px wide. On a phone drop Band
        and both RST columns (band is implied by freq) and let Call flex. */
@@ -2048,6 +2058,7 @@ body.digi-open #bottomBar { grid-row: 5; }
         <span id="filterText" onclick="openFilterModal()">FIL1</span>
         <span id="dspIndicators"></span>
         <span class="flex-space"></span>
+        <span id="rigTag" title="Rig"></span>
         <button id="qsoLogBtn" class="qso-log-btn" title="Log QSO">LOG</button>
         <span id="clock">--:--</span>
         <button id="fullscreenBtn" title="Full Screen" onclick="toggleFullscreen()">&#x26F6;</button>
@@ -2553,6 +2564,16 @@ var transport = null;         // alias to wsTransport
 var ws = null;                // alias to wsTransport.ws — legacy readyState checks
 var serverVersion = '';  // set from rigInfo message
 var rigModelName = '';   // set from rigInfo/rigConnected
+var rigTagName = '';     // server --name override (rigInfo.name); empty = show the model
+function updateRigTag() {
+    var label = rigTagName || rigModelName;
+    var el = document.getElementById('rigTag');
+    if (el) {
+        el.textContent = label;
+        el.title = (rigTagName && rigModelName) ? rigModelName : 'Rig';
+    }
+    document.title = label ? label + ' \u2013 wfweb' : 'wfweb';
+}
 // Rigs that only accept the CI-V power-on command on a connector wfweb may not
 // be using (the IC-7600's [REMOTE] jack — its USB dies in standby).  Server
 // sets this per rig; it turns the power-off confirm into a warning (#104).
@@ -2950,6 +2971,8 @@ function handleMessage(msg) {
                 if (pv) pv.textContent = 'wfweb v. ' + msg.version;
             }
             if (msg.model) rigModelName = msg.model;
+            if (msg.name !== undefined) rigTagName = msg.name || '';
+            updateRigTag();
             if (msg.freedvModes) freedvModes = msg.freedvModes;
             if (msg.isLan !== undefined || msg.lanConnected !== undefined) {
                 updateLanStatus(!!msg.isLan, msg.lanConnected !== undefined ? !!msg.lanConnected : lanConnected);
@@ -2986,6 +3009,7 @@ function handleMessage(msg) {
             break;
         case 'rigConnected':
             if (msg.model) rigModelName = msg.model;
+            updateRigTag();
             if (msg.modes) populateModes(msg.modes);
             if (msg.hasSpectrum) { hasSpectrum = true; spectAmpMax = msg.spectAmpMax || 160; }
             if (msg.audioAvailable) { audioAvailable = true; audioSampleRate = msg.audioSampleRate || 48000; }

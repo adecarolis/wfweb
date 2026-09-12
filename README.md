@@ -268,6 +268,7 @@ All settings can be passed as CLI flags. Run `wfweb --help` for the full list.
 | `--rigctld-port <port>` | Enable Hamlib rigctld TCP server (server build) | disabled |
 | `--rigctld-bind-all` | Bind rigctld to all interfaces instead of localhost | localhost only |
 | `--no-rigctld` | Disable rigctld even if enabled in settings | — |
+| `-n --name <tag>` | Name shown in the web UI top bar and browser tab (handy with several instances) | rig model |
 | `--no-autoconnect` | Start without connecting to the rig (LAN only; connect via web UI Reconnect). Env: `WFWEB_NO_AUTOCONNECT=1` | autoconnect |
 
 ### About `--settings`
