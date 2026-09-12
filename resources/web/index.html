@@ -132,7 +132,10 @@ html, body {
     background: transparent;
     color: #0a0;
     cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
+    /* Hidden until the rig reports it declares the power control command;
+       updateHasPowerControl() switches this to flex.  Rigs without it would
+       get a button whose Power Off silently does nothing. */
+    display: none; align-items: center; justify-content: center;
     font-size: 13px;
     flex-shrink: 0;
     padding: 0;
@@ -2468,6 +2471,11 @@ var rigModelName = '';   // set from rigInfo/rigConnected
 // be using (the IC-7600's [REMOTE] jack — its USB dies in standby).  Server
 // sets this per rig; it turns the power-off confirm into a warning (#104).
 var powerOnNeedsRemoteJack = false;
+// Rig declares the CI-V power control command (funcPowerControl).  Rigs whose
+// .rig file has no entry (IC-718, IC-706 family, IC-9100, IC-746 family, the
+// IC-756 family, IC-R7100, DEFAULT-ICOM) cannot be switched on or off from
+// here, so the toolbar power button stays hidden for them.
+var hasPowerControl = false;
 // Shared app-wide callsign (CW, FT8/FT4, FreeDV reporter, APRS, Terminal,
 // logbook).  Single source of truth backed by localStorage with a change
 // event so each panel can keep its own widgets in sync without polling.
@@ -2880,6 +2888,7 @@ function handleMessage(msg) {
                 if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
                 if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
                 if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
+                if (msg.hasPowerControl !== undefined) updateHasPowerControl(msg.hasPowerControl);
                 if (msg.powerOnNeedsRemoteJack !== undefined) powerOnNeedsRemoteJack = !!msg.powerOnNeedsRemoteJack;
 
                 updateWarningVisibility();
@@ -2910,7 +2919,7 @@ function handleMessage(msg) {
             if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
             if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
             if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
-            if (msg.hasPowerControl) document.getElementById('powerBtn').style.display = 'flex';
+            if (msg.hasPowerControl !== undefined) updateHasPowerControl(msg.hasPowerControl);
             if (msg.powerOnNeedsRemoteJack !== undefined) powerOnNeedsRemoteJack = !!msg.powerOnNeedsRemoteJack;
             if (msg.freedvModes) freedvModes = msg.freedvModes;
             updateWarningVisibility();
@@ -3540,6 +3549,15 @@ function updateToggle(name, state) {
     else if (name === 'anf') anfOn = !!state;
     updateDspIndicators();
     if (currentPanel === 'func') renderFuncOverlay();
+}
+
+// Power capability gate. Rigs whose .rig file declares no Power Control
+// command can neither be switched off nor woken over CI-V, so hide the
+// toolbar power button for them rather than offering a no-op.
+function updateHasPowerControl(on) {
+    hasPowerControl = !!on;
+    var btn = document.getElementById('powerBtn');
+    if (btn) btn.style.display = hasPowerControl ? 'flex' : 'none';
 }
 
 // Tuner capability gate. Rigs with no ATU (IC-9700/905, the receivers, the
