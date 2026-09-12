@@ -4,13 +4,29 @@
 
 wfweb turns your transceiver into a web-accessible station. Waterfall, SSB, CW decoding, FT8/FT4, JS8 messaging, [FreeDV digital voice](https://youtu.be/AWdHcyiOOnY), RADE, and AX.25 packet (APRS, connected QSOs, file transfer) — all in the browser, no client software required.
 
+![SSB mode](ssb.png)
+
+**SSB** — spectrum scope and waterfall, with the browser's own microphone keying the rig.
+
 ![FT8 digital mode panel](ft8.png)
 
-![SSB mode](ssb.png)
+**FT8 / FT4** — decode, call and log without leaving the page; every decode is marked on the waterfall.
+
+![JS8 messenger panel](js8.png)
+
+**JS8** — keyboard-to-keyboard messaging, with stations heard and their signal reports, a tab per QSO, and submodes from Slow down to JS8 60.
 
 ![CW mode with decoder](cw.png)
 
-![AX.25 packet — connected QSO with YAPP file transfer in progress](packet.png)
+**CW** — built-in decoder and keyer, with editable macros and one-click QSO logging.
+
+![AX.25 packet — connected session with a BBS, YAPP file transfer available](packet.png)
+
+**Packet** — AX.25 connected mode at 300, 1200 and 9600 baud: BBS sessions, frame monitor, and YAPP file transfer.
+
+![APRS station map — live positions decoded from received beacons](aprs.png)
+
+**APRS** — received beacons plotted live on the map, drawn with the real APRS symbol set.
 
 ---
 
